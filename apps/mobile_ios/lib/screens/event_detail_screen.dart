@@ -16,6 +16,9 @@ import '../auth_error.dart';
 import '../calendar_intent.dart';
 import '../event_category.dart';
 import '../event_gym_template.dart';
+import '../event_host_cancel.dart';
+import '../event_occurrence.dart';
+import '../event_waitlist_offer.dart';
 import '../finisher_certificate.dart';
 import '../local_gym_store.dart';
 import 'checkpoint_checkin_screen.dart';
@@ -42,6 +45,21 @@ import '../widgets/top_banner.dart';
 @visibleForTesting
 bool canMarkEventAttendance(ClubView? club, String category) =>
     club?.isEventOrganiser == true && category == 'class';
+
+/// The event page on the web, where a held waitlist seat is paid for: the
+/// phone has no checkout (club_events.md P3 is the web-checkout handoff). The
+/// host comes from `WEB_BASE_URL`, falling back to production, as every other
+/// web link does.
+@visibleForTesting
+String eventWebUrl(String clubSlug, String eventId, {String? webBase}) {
+  var base = (webBase ??
+          (dotenv.isInitialized ? dotenv.maybeGet('WEB_BASE_URL') : null) ??
+          '')
+      .trim();
+  if (base.isEmpty) base = 'https://threkir.com';
+  if (base.endsWith('/')) base = base.substring(0, base.length - 1);
+  return '$base/clubs/${Uri.encodeComponent(clubSlug)}/events/${Uri.encodeComponent(eventId)}';
+}
 
 SessionItemKind _sessionKindFromString(String raw) {
   switch (raw) {
@@ -135,6 +153,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   /// the other.
   bool _raceBusy = false;
   bool _autoApproveOnArm = true;
+  /// Set while a host cancel or reinstate is in flight, so a second press
+  /// cannot start a second refund run.
+  bool _cancelBusy = false;
   _EventLoadError? _loadError;
 
   RealtimeChannel? _channel;
@@ -979,6 +1000,13 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               ),
               const SizedBox(height: 16),
             ],
+            if (_instances.isEmpty &&
+                isSeriesCancelled(e.toRecurrence(), _cancelled) &&
+                !_cancelled.contains(active.toUtc())) ...[
+              _cancelledBanner(theme, l10n.eventSeriesWasCancelled,
+                  key: const Key('series-cancelled')),
+              const SizedBox(height: 12),
+            ],
             if (_activeInstance != null &&
                 _cancelled.contains(_activeInstance!.toUtc()))
               // A cancelled occurrence reached by a direct link (the picker
@@ -997,7 +1025,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        l10n.eventOccurrenceCancelled,
+                        e.freq == null
+                            ? l10n.eventEventCancelled
+                            : l10n.eventOccurrenceCancelled,
                         style: theme.textTheme.bodyMedium?.copyWith(
                             color: theme.colorScheme.onErrorContainer),
                       ),
@@ -1011,7 +1041,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               const SizedBox(height: 16),
               _buildCourses(theme),
             ],
+            ..._buildWaitlistOffer(theme, e),
             ..._buildCalendarActions(theme, e),
+            ..._buildHostCancelActions(theme, e),
             if (athletic &&
                 (e.row.distanceM != null || e.row.paceTargetSec != null)) ...[
               const SizedBox(height: 16),
@@ -1239,6 +1271,325 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
           ),
         ),
     ];
+  }
+
+  Widget _cancelledBanner(ThemeData theme, String text, {Key? key}) {
+    return Container(
+      key: key,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.errorContainer,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.event_busy,
+              size: 18, color: theme.colorScheme.onErrorContainer),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(color: theme.colorScheme.onErrorContainer),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// The viewer's held waitlist seat on a paid occurrence, with its deadline
+  /// and the way to claim it (decisions § 1840). Mirrors web's register box:
+  /// a waiting place is already shown by the RSVP row, and a lapsed offer
+  /// promises nothing.
+  List<Widget> _buildWaitlistOffer(ThemeData theme, EventView e) {
+    final me = widget.social.currentUserId;
+    final active = _activeInstance;
+    if (me == null || active == null || _cancelled.contains(active.toUtc())) {
+      return const [];
+    }
+    AttendeeView? mine;
+    for (final a in _attendees) {
+      if (a.userId == me) mine = a;
+    }
+    final state = waitlistOfferState(
+      status: mine?.status,
+      offerExpiresAt: mine?.offerExpiresAt,
+      now: DateTime.now(),
+    );
+    if (state is! WaitlistOffered) return const [];
+    final l10n = AppLocalizations.of(context);
+    final locale = localeToTag(Localizations.localeOf(context));
+    return [
+      const SizedBox(height: 12),
+      Container(
+        key: const Key('waitlist-offer'),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.tertiaryContainer,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.hourglass_top,
+                    size: 18, color: theme.colorScheme.onTertiaryContainer),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    l10n.eventWaitlistOfferHeld(
+                        formatDateTime(state.deadline.toLocal(), locale)),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onTertiaryContainer),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              l10n.eventWaitlistOfferClaimHint,
+              style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onTertiaryContainer),
+            ),
+            const SizedBox(height: 8),
+            FilledButton.icon(
+              key: const Key('waitlist-claim'),
+              onPressed: () => _claimOnWeb(e),
+              icon: const Icon(Icons.open_in_new, size: 18),
+              label: Text(l10n.eventWaitlistOfferClaim),
+            ),
+          ],
+        ),
+      ),
+    ];
+  }
+
+  Future<void> _claimOnWeb(EventView e) async {
+    final slug = _club?.row.slug ?? widget.clubSlug;
+    final url = eventWebUrl(slug, e.row.id);
+    try {
+      final ok = await launchUrl(Uri.parse(url),
+          mode: LaunchMode.externalApplication);
+      if (!ok && mounted) {
+        showTopBanner(
+            context, AppLocalizations.of(context).legalCouldNotOpen(url));
+      }
+    } catch (err) {
+      debugPrint('EventDetailScreen claim link failed: $err');
+      if (mounted) {
+        showTopBanner(
+            context, AppLocalizations.of(context).legalCouldNotOpen(url));
+      }
+    }
+  }
+
+  /// The organiser's cancel controls, mirroring web: call off the occurrence
+  /// on screen (a one-off event is its own single occurrence), cancel the
+  /// whole series, or reinstate what was called off. A paid occurrence is
+  /// refunded by the server in the same request.
+  List<Widget> _buildHostCancelActions(ThemeData theme, EventView e) {
+    if (_club?.isEventOrganiser != true) return const [];
+    final active = _activeInstance;
+    if (active == null) return const [];
+    final l10n = AppLocalizations.of(context);
+    final recurring = e.freq != null;
+    final activeCancelled = _cancelled.contains(active.toUtc());
+    final canCancelActive = !activeCancelled &&
+        (recurring ? _instances.isNotEmpty : active.isAfter(DateTime.now()));
+    final canCancelSeries = recurring && _instances.isNotEmpty;
+    if (!activeCancelled && !canCancelActive && !canCancelSeries) {
+      return const [];
+    }
+    return [
+      const SizedBox(height: 16),
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          if (activeCancelled)
+            OutlinedButton.icon(
+              key: const Key('reinstate-occurrence'),
+              onPressed: _cancelBusy ? null : () => _reinstate(e, active),
+              icon: const Icon(Icons.event_available, size: 18),
+              label: Text(recurring
+                  ? l10n.eventReinstateOccurrence
+                  : l10n.eventReinstateEvent),
+            ),
+          if (canCancelActive)
+            OutlinedButton.icon(
+              key: const Key('cancel-occurrence'),
+              style: OutlinedButton.styleFrom(
+                  foregroundColor: theme.colorScheme.error),
+              onPressed: _cancelBusy ? null : () => _cancelActive(e, active),
+              icon: const Icon(Icons.event_busy, size: 18),
+              label: Text(recurring
+                  ? l10n.eventCancelOccurrence
+                  : l10n.eventCancelEvent),
+            ),
+          if (canCancelSeries)
+            OutlinedButton.icon(
+              key: const Key('cancel-series'),
+              style: OutlinedButton.styleFrom(
+                  foregroundColor: theme.colorScheme.error),
+              onPressed: _cancelBusy ? null : () => _cancelSeries(e),
+              icon: const Icon(Icons.event_repeat, size: 18),
+              label: Text(l10n.eventCancelSeries),
+            ),
+        ],
+      ),
+    ];
+  }
+
+  /// Asks for confirmation and an optional reason. Null when the organiser
+  /// backs out; the (possibly empty) reason otherwise.
+  Future<String?> _confirmCancel({
+    required String title,
+    required String body,
+    required String confirmLabel,
+  }) async {
+    final l10n = AppLocalizations.of(context);
+    final reason = TextEditingController();
+    try {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(title),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(body),
+                const SizedBox(height: 8),
+                Text(l10n.eventCancelPaidNote,
+                    key: const Key('cancel-paid-note')),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: reason,
+                  maxLength: 300,
+                  maxLines: 2,
+                  decoration:
+                      InputDecoration(labelText: l10n.eventCancelReasonLabel),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(l10n.eventCancelKeep),
+            ),
+            TextButton(
+              key: const Key('cancel-confirm'),
+              style: TextButton.styleFrom(
+                  foregroundColor: Theme.of(ctx).colorScheme.error),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(confirmLabel),
+            ),
+          ],
+        ),
+      );
+      return ok == true ? reason.text : null;
+    } finally {
+      reason.dispose();
+    }
+  }
+
+  Future<void> _cancelActive(EventView e, DateTime active) async {
+    final l10n = AppLocalizations.of(context);
+    final recurring = e.freq != null;
+    final reason = await _confirmCancel(
+      title: recurring ? l10n.eventCancelOccurrence : l10n.eventCancelEvent,
+      body: recurring
+          ? l10n.eventCancelOccurrenceBody
+          : l10n.eventCancelEventBody,
+      confirmLabel:
+          recurring ? l10n.eventCancelOccurrence : l10n.eventCancelEvent,
+    );
+    if (reason == null || !mounted) return;
+    setState(() => _cancelBusy = true);
+    try {
+      final refunds = await widget.social
+          .cancelEventOccurrence(e.row.id, active, reason: reason);
+      if (!mounted) return;
+      _reportCancel(refunds, series: false);
+      await _load();
+    } catch (err) {
+      debugPrint('EventDetailScreen cancel failed: $err');
+      if (mounted) showTopBanner(context, _cancelErrorMessage(err));
+    } finally {
+      if (mounted) setState(() => _cancelBusy = false);
+    }
+  }
+
+  Future<void> _cancelSeries(EventView e) async {
+    final l10n = AppLocalizations.of(context);
+    final reason = await _confirmCancel(
+      title: l10n.eventCancelSeries,
+      body: l10n.eventCancelSeriesBody,
+      confirmLabel: l10n.eventCancelSeries,
+    );
+    if (reason == null || !mounted) return;
+    setState(() => _cancelBusy = true);
+    try {
+      final refunds =
+          await widget.social.cancelEventSeries(e.row.id, reason: reason);
+      if (!mounted) return;
+      _reportCancel(refunds, series: true);
+      _activeInstance = null;
+      await _load();
+    } catch (err) {
+      debugPrint('EventDetailScreen series cancel failed: $err');
+      if (mounted) showTopBanner(context, _cancelErrorMessage(err));
+    } finally {
+      if (mounted) setState(() => _cancelBusy = false);
+    }
+  }
+
+  Future<void> _reinstate(EventView e, DateTime active) async {
+    setState(() => _cancelBusy = true);
+    try {
+      await widget.social.reinstateEventOccurrence(e.row.id, active);
+      if (!mounted) return;
+      await _load();
+    } catch (err) {
+      debugPrint('EventDetailScreen reinstate failed: $err');
+      if (mounted) {
+        showTopBanner(context, AppLocalizations.of(context).eventReinstateFailed);
+      }
+    } finally {
+      if (mounted) setState(() => _cancelBusy = false);
+    }
+  }
+
+  /// A failed refund is reported as such, never folded into a success.
+  void _reportCancel(OccurrenceRefundSummary? refunds, {required bool series}) {
+    final l10n = AppLocalizations.of(context);
+    if (refunds != null && !refunds.complete) {
+      showTopBanner(context, l10n.eventCancelRefundsIncomplete(refunds.failed));
+      return;
+    }
+    if (refunds != null && refunds.refunded > 0) {
+      showTopBanner(context, l10n.eventCancelRefundsStarted(refunds.refunded));
+      return;
+    }
+    showTopBanner(context,
+        series ? l10n.eventSeriesCancelledToast : l10n.eventCancelledToast);
+  }
+
+  String _cancelErrorMessage(Object err) {
+    final l10n = AppLocalizations.of(context);
+    final code = err is EventCancelRefused ? err.code : null;
+    switch (code) {
+      case 'stripe_not_configured':
+        return l10n.eventCancelNotConfigured;
+      case 'not_event_organiser':
+        return l10n.eventCancelNotOrganiser;
+      default:
+        return l10n.eventCancelFailed;
+    }
   }
 
   Widget _buildRsvpRow(ThemeData theme, EventView e) {

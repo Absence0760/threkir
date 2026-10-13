@@ -111,7 +111,7 @@
 	import { buildStaticMarkerMapUrl, mapsDirectionsUrl, geoUri } from '#lib/routes/static_map.ts';
 	import { staticMapSlugFromPreference } from '#lib/routes/map-style.svelte.ts';
 	import { buildFinisherCertificateSvg, CERT_WIDTH, CERT_HEIGHT } from '#lib/runs/finisher_certificate.ts';
-	import { rasterizeSvgToPng, downloadBlob } from '#lib/format/svg_raster.ts';
+	import { rasterizeSvgToPng, downloadBlob, fileNamePart } from '#lib/format/svg_raster.ts';
 	import {
 		parseChipTimingCsv,
 		parseDurationToSeconds,
@@ -1221,7 +1221,7 @@
 				clubName: club?.name ?? null,
 			});
 			const blob = await rasterizeSvgToPng(svg, CERT_WIDTH, CERT_HEIGHT);
-			const safe = event.title.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+			const safe = fileNamePart(event.title);
 			downloadBlob(blob, `threkir-certificate-${safe}.png`);
 		} catch (e) {
 			console.error('certificate generation failed', e);
@@ -1244,7 +1244,7 @@
 			}))
 		);
 		const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-		const safe = event.title.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+		const safe = fileNamePart(event.title);
 		downloadBlob(blob, `threkir-results-${safe}.csv`);
 	}
 

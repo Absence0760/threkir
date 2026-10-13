@@ -11,6 +11,7 @@
  * lockstep (same parse tolerance, same build rules, same draft shape).
  */
 
+import { namesAnExercise } from '../gym/gym_prs';
 import { prefillFromRoutine, type PlannedRoutine } from '../gym/gym_routine';
 import type { SessionStep } from './session_steps';
 
@@ -157,7 +158,7 @@ export function workoutDraftFromRoutine(
 ): GymWorkoutDraft & { sets: RoutineDraftItem[] } {
 	const sets: RoutineDraftItem[] = [];
 	for (const block of prefillFromRoutine(routine)) {
-		if (block.name.trim() === '') continue;
+		if (!namesAnExercise(block.name)) continue;
 		for (const s of block.sets) {
 			sets.push({
 				exercise_name: block.name,

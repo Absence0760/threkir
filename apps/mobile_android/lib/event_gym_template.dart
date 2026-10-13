@@ -10,6 +10,7 @@
 /// (same parse tolerance, same build rules, same draft shape).
 library;
 
+import 'gym_prs.dart' show namesAnExercise;
 import 'gym_routine.dart';
 import 'session_steps.dart';
 
@@ -173,7 +174,7 @@ RoutineWorkoutDraft workoutDraftFromRoutine(
 ) {
   final sets = <RoutineDraftItem>[];
   for (final block in prefillFromRoutine(routine)) {
-    if (block.name.trim().isEmpty) continue;
+    if (!namesAnExercise(block.name)) continue;
     for (final s in block.sets) {
       sets.add(RoutineDraftItem(
         exerciseName: block.name,

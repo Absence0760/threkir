@@ -5431,6 +5431,9 @@ void main() {
       // nothing else, cancelling leaves the runner exactly where they were,
       // and the account screen's withdrawal control reverses either way.
       'widgets/ai_disclosure_notice.dart::l10n.coachConsentHeadline': 1,
+      // An agreement, not a confirm: accepting joins the club and declining
+      // leaves the caller where it was, so neither button can lose data.
+      'widgets/activity_waiver_dialog.dart::l10n.clubWaiverTitle': 1,
       'widgets/nutrition_log_sheet.dart::widget.result.name': 1,
       'screens/nutrition_screen.dart::l10n.nutritionSaveAsMealTitle': 1,
       'screens/nutrition_screen.dart::l10n.nutritionSaveAsRecipeTitle': 1,

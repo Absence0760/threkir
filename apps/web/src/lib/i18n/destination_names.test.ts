@@ -35,6 +35,7 @@ const DESTINATION_KEYS = [
 	'shell.viewProfile',
 	'shell.coaching',
 	'shell.settings',
+	'shell.help',
 	'settingsLayout.tabAccount',
 	'settingsLayout.tabBody',
 	'settingsLayout.tabDisplay',

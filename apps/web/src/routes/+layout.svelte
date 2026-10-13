@@ -639,6 +639,15 @@
 						<span class="material-symbols" aria-hidden="true">settings</span>
 						{m('shell.settings')}
 					</a>
+					<a
+						class="popover-item"
+						role="menuitem"
+						href="/help"
+						onclick={() => (showLogoutModal = false)}
+					>
+						<span class="material-symbols" aria-hidden="true">help</span>
+						{m('shell.help')}
+					</a>
 					<div class="popover-divider" role="separator"></div>
 				{/if}
 				<button class="popover-item popover-danger" role="menuitem" onclick={handleLogout}>

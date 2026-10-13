@@ -116,6 +116,50 @@ Deno.test('refundOrder — a failed refund rolls back only the stamp this call w
   ]);
 });
 
+Deno.test('refundOrder — a partially refunded order is stamped and rolled back on its own status', async () => {
+  // A goodwill refund leaves the order `partially_refunded`, and a host cancel
+  // then owes the rest. Matching a hardcoded 'paid' would stamp nothing and roll
+  // back nothing while reporting the refund as sent.
+  const order = { ...ORDER, status: 'partially_refunded' };
+  const ok = fakeService();
+  const okCreator = recordingCreator();
+  assertEquals(await refundOrder(okCreator.create, ok.client, order), {
+    orderId: 'order-1',
+    outcome: 'initiated',
+  });
+  assertEquals(ok.writes[0].ops.slice(1), [
+    ['eq', 'id', 'order-1'],
+    ['eq', 'status', 'partially_refunded'],
+    ['is', 'refund_initiated_at', null],
+  ]);
+  assertEquals(okCreator.calls, [{ params: buildRefundParams('pi_123'), key: refundIdempotencyKey('order-1') }]);
+
+  const failed = fakeService();
+  await refundOrder(
+    recordingCreator(new StripeRefundError('declined', 'card_declined')).create,
+    failed.client,
+    order,
+  );
+  assertEquals(failed.writes.length, 2);
+  assertEquals(failed.writes[1].ops.slice(0, 3), [
+    ['update', { refund_initiated_at: null }],
+    ['eq', 'id', 'order-1'],
+    ['eq', 'status', 'partially_refunded'],
+  ]);
+});
+
+Deno.test('refundOrder — a rollback that fails still reports the refund as failed', async () => {
+  // The stamp lands, Stripe refuses, and clearing the stamp errors too. The
+  // refund still did not happen, and the caller must hear that rather than a
+  // throw or a success.
+  const { writes, client } = fakeService([null, { code: '57014' }]);
+  const { calls, create } = recordingCreator(new StripeRefundError('declined', 'card_declined'));
+  const result = await refundOrder(create, client, ORDER);
+  assertEquals(result, { orderId: 'order-1', outcome: 'failed', code: 'stripe_refund_failed' });
+  assertEquals(calls.length, 1);
+  assertEquals(writes.length, 2, 'the rollback was attempted');
+});
+
 Deno.test('refundOrder — an already-refunded charge is done, and keeps its stamp', async () => {
   const { writes, client } = fakeService();
   const result = await refundOrder(

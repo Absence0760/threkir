@@ -86,12 +86,23 @@ export async function refundOrder(
     // Clear our optimistic stamp so the UI doesn't show "refund in progress"
     // forever, and report the failure (the order is untouched — status stays
     // charged, and a retry resumes here).
-    await service
+    // A rollback that fails leaves a stamp on an unrefunded order. That is
+    // still the failed refund's answer: the sweep re-owes a stamp after a day
+    // (`event_orders_owed_refund`), so it is logged and never raised.
+    const { error: rollbackErr } = await service
       .from('event_orders')
       .update({ refund_initiated_at: null })
       .eq('id', order.id)
       .eq('status', orderStatus)
       .eq('refund_initiated_at', stampedAt);
+    if (rollbackErr) {
+      console.error(
+        'refund stamp rollback failed (code):',
+        rollbackErr?.code ?? 'unknown',
+        'order:',
+        order.id,
+      );
+    }
     console.error(
       'stripe refund create failed:',
       e instanceof Error ? e.message : 'unknown',

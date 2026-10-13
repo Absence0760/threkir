@@ -35,17 +35,17 @@ export const REQUIREMENTS: readonly Requirement[] = [
 ];
 export const PLATFORMS: readonly Platform[] = ['web', 'android', 'ios', 'wear', 'apple-watch'];
 
-export interface CategoryGroup {
+export interface CategoryGroup<G extends Guide = Guide> {
 	category: GuideCategory;
-	guides: Guide[];
+	guides: G[];
 }
 
-export interface HelpIndex {
-	allGuides(): Guide[];
-	guideFor(id: string): Guide | undefined;
-	guidesByCategory(): CategoryGroup[];
-	guidesForRoute(routeId: string): Guide[];
-	searchGuides(query: string): Guide[];
+export interface HelpIndex<G extends Guide = Guide> {
+	allGuides(): G[];
+	guideFor(id: string): G | undefined;
+	guidesByCategory(): CategoryGroup<G>[];
+	guidesForRoute(routeId: string): G[];
+	searchGuides(query: string): G[];
 }
 
 function blockText(block: Block): string {
@@ -58,11 +58,11 @@ function blockText(block: Block): string {
 	}
 }
 
-function byKindThenTitle(a: Guide, b: Guide): number {
-	return GUIDE_KINDS.indexOf(a.kind) - GUIDE_KINDS.indexOf(b.kind) || a.title.localeCompare(b.title, 'en');
-}
-
-export function createHelpIndex(guides: readonly Guide[]): HelpIndex {
+/// `lang` is the language the guides' titles are in, which decides how they
+/// sort within a kind.
+export function createHelpIndex<G extends Guide>(guides: readonly G[], lang = 'en'): HelpIndex<G> {
+	const byKindThenTitle = (a: G, b: G) =>
+		GUIDE_KINDS.indexOf(a.kind) - GUIDE_KINDS.indexOf(b.kind) || a.title.localeCompare(b.title, lang);
 	const ordered = [...guides].sort(
 		(a, b) => GUIDE_CATEGORIES.indexOf(a.category) - GUIDE_CATEGORIES.indexOf(b.category) || byKindThenTitle(a, b),
 	);
@@ -88,7 +88,7 @@ export function createHelpIndex(guides: readonly Guide[]): HelpIndex {
 		searchGuides: (query) => {
 			const words = fold(query).split(/\s+/).filter(Boolean);
 			if (words.length === 0) return [];
-			const scored: { guide: Guide; score: number; order: number }[] = [];
+			const scored: { guide: G; score: number; order: number }[] = [];
 			haystacks.forEach((h, order) => {
 				let score = 0;
 				for (const word of words) {

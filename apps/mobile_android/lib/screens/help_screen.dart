@@ -10,8 +10,9 @@ import '../widgets/error_state.dart';
 
 // In-app help: the guide list with search and an audience filter, one guide,
 // and "the guides about this screen". Mobile renderer of web's help centre
-// (`apps/web/src/lib/help/`); the content is the generated English JSON that
-// `help_loader.dart` reads, so only the chrome here is localized.
+// (`apps/web/src/lib/help/`); the content is the generated per-locale JSON
+// that `help_loader.dart` reads, already in the app's language wherever the
+// guide has a translation, and the chrome here is localized as usual.
 
 const _pagePadding = EdgeInsets.fromLTRB(16, 12, 16, 32);
 
@@ -100,7 +101,18 @@ class HelpLibraryBuilder extends StatefulWidget {
 }
 
 class _HelpLibraryBuilderState extends State<HelpLibraryBuilder> {
-  late Future<HelpLibrary?> _future = helpLibraryLoader();
+  String? _localeTag;
+  late Future<HelpLibrary?> _future;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final tag = helpLocaleTag(Localizations.localeOf(context));
+    if (tag != _localeTag) {
+      _localeTag = tag;
+      _future = helpLibraryLoader(tag);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -121,7 +133,7 @@ class _HelpLibraryBuilderState extends State<HelpLibraryBuilder> {
                   icon: Icons.menu_book_outlined,
                   message: l10n.helpUnavailable,
                   onRetry: () => setState(() {
-                    _future = helpLibraryLoader();
+                    _future = helpLibraryLoader(_localeTag!);
                   }),
                 ),
         );
@@ -388,6 +400,16 @@ class GuideView extends StatelessWidget {
           Text(
             guide.summary,
             style: theme.textTheme.bodyLarge?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+        if (guide.lang != helpLocaleTag(Localizations.localeOf(context))) ...[
+          const SizedBox(height: 8),
+          Text(
+            l10n.helpGuideInEnglish,
+            key: const Key('help-guide-in-english'),
+            style: theme.textTheme.bodySmall?.copyWith(
               color: scheme.onSurfaceVariant,
             ),
           ),

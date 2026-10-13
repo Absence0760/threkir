@@ -5650,7 +5650,7 @@ export const messages = {
 	"help.pageTitle": "Ajuda — Threkir",
 	"help.title": "Ajuda",
 	"help.intro": "Guias para cada parte do Threkir: o que um recurso faz, para quem é e onde encontrá-lo.",
-	"help.englishOnly": "Por enquanto, os guias estão em inglês. As traduções para os outros idiomas do app estão chegando.",
+	"help.guideInEnglish": "Este guia ainda não foi traduzido para o seu idioma, por isso é exibido em inglês.",
 	"help.searchLabel": "Pesquisar nos guias",
 	"help.searchSubmit": "Pesquisar",
 	"help.audienceFilter": "Mostrar guias para",

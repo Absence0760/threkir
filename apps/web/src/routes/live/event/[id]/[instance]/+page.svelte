@@ -78,6 +78,7 @@
 	let pingRefetcher: CoalescingRefetcher<{
 		recent: RacePingRow[];
 		leaders: RacePingRow[];
+		byUser: Map<string, string>;
 		profiles: Map<string, { display_name: string | null }>;
 	}> | null = null;
 

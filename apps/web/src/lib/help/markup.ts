@@ -89,9 +89,11 @@ export function routeHref(routeId: string): string | null {
 	return path === '' ? '/' : path;
 }
 
-/// The in-page anchor for a guide section, from its heading.
+/// The in-page anchor for a guide section, from its heading. Letters of any
+/// script survive, so a Japanese heading has an anchor too; an English one
+/// folds to the same ASCII it always did.
 export function sectionId(heading: string): string {
 	return fold(heading)
-		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/[^\p{L}\p{N}]+/gu, '-')
 		.replace(/^-|-$/g, '');
 }

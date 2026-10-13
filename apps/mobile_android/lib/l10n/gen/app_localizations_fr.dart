@@ -14803,17 +14803,18 @@ class AppLocalizationsFr extends AppLocalizations {
   String get helpRequiresPro => 'Nécessite Pro';
 
   @override
-  String get helpRequiresClubAdmin => 'Admins de club uniquement';
+  String get helpRequiresClubAdmin => 'Réservé aux admins de club';
 
   @override
-  String get helpRequiresRaceDirector => 'Directeurs de course uniquement';
+  String get helpRequiresRaceDirector => 'Réservé aux directeurs de course';
 
   @override
-  String get helpRequiresStripeConnected => 'Nécessite Stripe connecté';
+  String get helpRequiresStripeConnected =>
+      'Nécessite un compte Stripe connecté';
 
   @override
   String get helpRequiresPaidRailLive =>
-      'Nécessite l\'inscription payante activée';
+      'L\'inscription payante doit être activée';
 
   @override
   String get helpPlatformsLabel => 'Disponible sur';
@@ -14860,6 +14861,10 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get helpGuideMissing => 'Ce guide n\'est pas disponible.';
+
+  @override
+  String get helpGuideInEnglish =>
+      'Ce guide n\'a pas encore été traduit dans votre langue : il est donc affiché en anglais.';
 
   @override
   String get helpHowThisWorks => 'Comment ça marche';
@@ -14943,6 +14948,202 @@ class AppLocalizationsFr extends AppLocalizations {
   String eventResultActionFailed(String error) {
     return 'Impossible de mettre à jour le résultat : $error';
   }
+
+  @override
+  String get eventCancelOccurrence => 'Annuler cette occurrence';
+
+  @override
+  String get eventCancelEvent => 'Annuler l’événement';
+
+  @override
+  String get eventCancelSeries => 'Annuler toute la série';
+
+  @override
+  String get eventCancelOccurrenceBody =>
+      'Seule cette occurrence est annulée — le reste de la série n\'est pas affecté. Toutes les personnes ayant répondu (présent, peut-être ou en liste d\'attente) sont prévenues.';
+
+  @override
+  String get eventCancelEventBody =>
+      'L’événement est annulé. Toutes les personnes ayant répondu (présent, peut-être ou en liste d’attente) sont prévenues.';
+
+  @override
+  String get eventCancelSeriesBody =>
+      'La série s’arrête maintenant et aucune occurrence ultérieure n’est prévue. Chaque occurrence à venir à laquelle quelqu’un a répondu est annulée, et les personnes concernées sont prévenues.';
+
+  @override
+  String get eventCancelPaidNote =>
+      'Toute personne ayant payé est remboursée intégralement, quelle que soit la politique de remboursement.';
+
+  @override
+  String get eventCancelReasonLabel => 'Motif (facultatif)';
+
+  @override
+  String get eventCancelKeep => 'Conserver';
+
+  @override
+  String eventCancelRefundsStarted(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Annulé. $count personnes inscrites sont remboursées intégralement.',
+      one: 'Annulé. 1 personne inscrite est remboursée intégralement.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String eventCancelRefundsIncomplete(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count remboursements n’ont pas pu être lancés',
+      one: '1 remboursement n’a pas pu être lancé',
+    );
+    return 'Annulé, mais $_temp0. Réessayez depuis la page de l’événement sur le web.';
+  }
+
+  @override
+  String get eventCancelledToast => 'Annulé.';
+
+  @override
+  String get eventSeriesCancelledToast => 'Série annulée.';
+
+  @override
+  String get eventCancelNotConfigured =>
+      'Il y a des inscriptions payées et les paiements ne sont pas disponibles pour le moment : l’annulation n’est donc pas encore possible. Rien n’a été modifié.';
+
+  @override
+  String get eventCancelNotOrganiser =>
+      'Seuls les organisateurs de ce club peuvent annuler une occurrence.';
+
+  @override
+  String get eventCancelFailed => 'Impossible d’annuler. Veuillez réessayer.';
+
+  @override
+  String get eventReinstateOccurrence => 'Rétablir cette occurrence';
+
+  @override
+  String get eventReinstateEvent => 'Rétablir cet événement';
+
+  @override
+  String get eventReinstateFailed => 'Impossible de rétablir cette occurrence';
+
+  @override
+  String get eventEventCancelled => 'Cet événement a été annulé.';
+
+  @override
+  String get eventSeriesWasCancelled => 'Cette série a été annulée.';
+
+  @override
+  String eventWaitlistOfferHeld(String time) {
+    return 'Une place vous est réservée jusqu’à $time. Payez pour l’obtenir, sinon elle revient à la personne suivante sur la liste d’attente.';
+  }
+
+  @override
+  String get eventWaitlistOfferClaimHint => 'Le paiement se fait sur le web.';
+
+  @override
+  String get eventWaitlistOfferClaim => 'Réserver sur le web';
+
+  @override
+  String get eventFormCapacity => 'Capacité';
+
+  @override
+  String get eventFormCapacityHint =>
+      'Une fois ce nombre de participants atteint, la personne suivante passe sur liste d\'attente au lieu d\'être refusée. Laisse vide pour aucune limite.';
+
+  @override
+  String get eventFormErrCapacity =>
+      'Saisissez un nombre entier supérieur ou égal à 1, ou laissez le champ vide.';
+
+  @override
+  String get eventFormEndsOn => 'Se termine le';
+
+  @override
+  String get eventFormEndsOnNone => 'Pas de date de fin';
+
+  @override
+  String get eventFormEndsOnClear => 'Effacer la date de fin';
+
+  @override
+  String get eventFormEndAfter => 'Se termine après';
+
+  @override
+  String get eventFormRepeatEndHint =>
+      'Où s\'arrête la série. Renseigne l\'un, l\'autre ou les deux : le premier atteint l\'emporte. Si les deux restent vides, elle se répète indéfiniment.';
+
+  @override
+  String get eventFormErrCount =>
+      'Saisissez un nombre entier entre 1 et 520, ou laissez le champ vide.';
+
+  @override
+  String get eventFormSessionPlan => 'Plan de séance';
+
+  @override
+  String get eventFormSessionPlanNone => 'Aucun';
+
+  @override
+  String get eventFormSessionPlanEmpty =>
+      'Aucun plan de séance pour le moment. Créez-en un sur le web.';
+
+  @override
+  String get eventFormCharge => 'Faire payer cet événement';
+
+  @override
+  String get eventFormChargeHint =>
+      'Prélève des frais à l\'inscription. L\'argent arrive sur ton propre compte de versement, pas sur celui du club, et seul un événement en présentiel peut facturer.';
+
+  @override
+  String get eventFormChargeNeedsPayout =>
+      'Configurez les versements sur le web pour faire payer vos événements.';
+
+  @override
+  String get eventFormPrice => 'Prix';
+
+  @override
+  String get eventFormCurrency => 'Devise';
+
+  @override
+  String get eventFormErrPrice => 'Saisissez un prix d’au moins 0,50.';
+
+  @override
+  String get eventFormErrCurrency =>
+      'Utilisez un code de devise à trois lettres, comme EUR.';
+
+  @override
+  String get eventFormSalesClose =>
+      'Clôturer les ventes (minutes avant le début)';
+
+  @override
+  String get eventFormSalesCloseHint =>
+      'Combien de temps avant le début les inscriptions ferment. Zéro les laisse ouvertes jusqu\'à l\'heure de départ.';
+
+  @override
+  String get eventFormErrSalesClose =>
+      'Saisissez un nombre entier de minutes entre 0 et 10080.';
+
+  @override
+  String get eventFormRefundPolicy => 'Politique de remboursement';
+
+  @override
+  String get eventFormRefundFullUntilStart =>
+      'Remboursement intégral jusqu’à l’heure de début';
+
+  @override
+  String get eventFormRefundFullUntil24h =>
+      'Remboursement intégral jusqu’à 24 h avant';
+
+  @override
+  String get eventFormRefundNone => 'Aucun remboursement';
+
+  @override
+  String get eventFormPricingFailed =>
+      'Événement créé, mais l’enregistrement du prix a échoué. Définissez le prix depuis la page de l’événement sur le web.';
+
+  @override
+  String get eventFormSessionPlanFailed =>
+      'Événement créé, mais le plan de séance n’a pas pu être associé. Associez-le depuis la page de l’événement sur le web.';
 
   @override
   String get audienceTitle => 'Qui peut voir ceci';

@@ -1110,15 +1110,16 @@ jobs:
             echo "Reproduce with: node --test scripts/check_web_bundle_budget.test.mjs (stdlib only, no install needed)."
             exit 1
           fi
-      # The phone apps render the in-app help guides from a JSON copy of the
-      # TypeScript guides under apps/web/src/lib/help/guides (docs/features/
-      # help.md). Node strips the guide files' types itself, so this needs no
+      # The phone apps render the in-app help guides, and the web its
+      # translated locales, from per-locale JSON copies of the TypeScript
+      # guides and translations under apps/web/src/lib/help (docs/features/
+      # help.md). Node strips the files' types itself, so this needs no
       # install and runs before one.
-      - name: Verify the mobile help-guide JSON matches the web guides
+      - name: Verify the per-locale help-guide JSON matches the guide files
         run: |
           if ! node scripts/gen_help_guides.mjs --check; then
-            echo "::error::apps/mobile_{android,ios}/assets/help/guides.en.json is stale against apps/web/src/lib/help/guides. Nothing here is about the Svelte build or the bundle — the phone apps would show different help text from the web."
-            echo "Fix with: pnpm gen:help-guides (node scripts/gen_help_guides.mjs) and commit both JSON files."
+            echo "::error::A per-locale help-guide JSON (apps/mobile_{android,ios}/assets/help/guides.<locale>.json or apps/web/static/help-guides/guides.<locale>.json) is stale against apps/web/src/lib/help/guides and translations. Nothing here is about the Svelte build or the bundle — the phone apps or a translated web locale would show different help text from the guide files."
+            echo "Fix with: pnpm gen:help-guides (node scripts/gen_help_guides.mjs) and commit every file it writes or removes."
             exit 1
           fi
       - name: Unit-test the help-guide JSON generator
@@ -1126,6 +1127,24 @@ jobs:
           if ! node --test scripts/gen_help_guides.test.mjs; then
             echo "::error::The help-guide JSON generator's own unit tests failed, so the freshness check above cannot be trusted to fire. Nothing here is about the Svelte build or the bundle."
             echo "Reproduce with: node --test scripts/gen_help_guides.test.mjs (stdlib only, no install needed)."
+            exit 1
+          fi
+      # Each string of a translated help guide records a hash of the English
+      # it was translated from; an English edit without a re-translation of
+      # the strings it touched (or the file's deletion, which falls back to
+      # English) fails here (decisions § 1871, § 1873).
+      - name: Verify no help-guide translation is stale against its English guide
+        run: |
+          if ! node scripts/check_help_translations.mjs; then
+            echo "::error::A translated string under apps/web/src/lib/help/translations was made from older English than its guide now holds, or a translation does not line up with its guide. Nothing here is about the Svelte build or the bundle. The lines above name each file, each stale string's path and its new hash."
+            echo "Fix: re-translate each named string and set its entry in the file's sources: to the 'now' hash printed above (node scripts/check_help_translations.mjs --hash <id> [path]), or delete the file so the guide falls back to English."
+            exit 1
+          fi
+      - name: Unit-test the help-guide translation guard
+        run: |
+          if ! node --test scripts/check_help_translations.test.mjs; then
+            echo "::error::The help-guide translation guard's own unit tests failed, so the staleness check above cannot be trusted to fire. Nothing here is about the Svelte build or the bundle."
+            echo "Reproduce with: node --test scripts/check_help_translations.test.mjs (stdlib only, no install needed)."
             exit 1
           fi
       - run: npm ci

@@ -14746,7 +14746,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get helpAudienceOrganiser => 'Veranstalter';
 
   @override
-  String get helpAudienceParticipant => 'Teilnehmer';
+  String get helpAudienceParticipant => 'Teilnehmende';
 
   @override
   String get helpAudienceSpectator => 'Zuschauer';
@@ -14779,19 +14779,20 @@ class AppLocalizationsDe extends AppLocalizations {
   String get helpCategoryOther => 'Weitere Anleitungen';
 
   @override
-  String get helpRequiresPro => 'Benötigt Pro';
+  String get helpRequiresPro => 'Erfordert Pro';
 
   @override
   String get helpRequiresClubAdmin => 'Nur für Club-Admins';
 
   @override
-  String get helpRequiresRaceDirector => 'Nur für die Rennleitung';
+  String get helpRequiresRaceDirector => 'Nur für Renndirektoren';
 
   @override
-  String get helpRequiresStripeConnected => 'Benötigt verbundenes Stripe';
+  String get helpRequiresStripeConnected =>
+      'Erfordert verbundenes Stripe-Konto';
 
   @override
-  String get helpRequiresPaidRailLive => 'Benötigt aktive Bezahlanmeldung';
+  String get helpRequiresPaidRailLive => 'Bezahlte Anmeldung muss aktiv sein';
 
   @override
   String get helpPlatformsLabel => 'Verfügbar auf';
@@ -14841,7 +14842,11 @@ class AppLocalizationsDe extends AppLocalizations {
   String get helpGuideMissing => 'Diese Anleitung ist nicht verfügbar.';
 
   @override
-  String get helpHowThisWorks => 'So funktioniert es';
+  String get helpGuideInEnglish =>
+      'Diese Anleitung wurde noch nicht in deine Sprache übersetzt und wird daher auf Englisch angezeigt.';
+
+  @override
+  String get helpHowThisWorks => 'So funktioniert das';
 
   @override
   String get helpForThisScreen => 'Anleitungen zu diesem Bildschirm';
@@ -14922,6 +14927,204 @@ class AppLocalizationsDe extends AppLocalizations {
   String eventResultActionFailed(String error) {
     return 'Das Ergebnis konnte nicht aktualisiert werden: $error';
   }
+
+  @override
+  String get eventCancelOccurrence => 'Diesen Termin absagen';
+
+  @override
+  String get eventCancelEvent => 'Veranstaltung absagen';
+
+  @override
+  String get eventCancelSeries => 'Ganze Serie absagen';
+
+  @override
+  String get eventCancelOccurrenceBody =>
+      'Nur dieser Termin wird abgesagt — der Rest der Serie bleibt unberührt. Alle, die zugesagt haben (zugesagt, vielleicht oder Warteliste), werden benachrichtigt.';
+
+  @override
+  String get eventCancelEventBody =>
+      'Die Veranstaltung wird abgesagt. Alle, die zugesagt haben (zugesagt, vielleicht oder Warteliste), werden benachrichtigt.';
+
+  @override
+  String get eventCancelSeriesBody =>
+      'Die Serie endet jetzt, und es werden keine weiteren Termine geplant. Jeder kommende Termin, für den jemand zugesagt hat, wird abgesagt, und die Betroffenen werden benachrichtigt.';
+
+  @override
+  String get eventCancelPaidNote =>
+      'Wer bezahlt hat, bekommt den vollen Betrag erstattet, unabhängig von den Erstattungsbedingungen.';
+
+  @override
+  String get eventCancelReasonLabel => 'Grund (optional)';
+
+  @override
+  String get eventCancelKeep => 'Beibehalten';
+
+  @override
+  String eventCancelRefundsStarted(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Abgesagt. $count angemeldete Personen bekommen den vollen Betrag erstattet.',
+      one:
+          'Abgesagt. 1 angemeldete Person bekommt den vollen Betrag erstattet.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String eventCancelRefundsIncomplete(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Erstattungen konnten',
+      one: '1 Erstattung konnte',
+    );
+    return 'Abgesagt, aber $_temp0 nicht gestartet werden. Versuche es auf der Veranstaltungsseite im Web erneut.';
+  }
+
+  @override
+  String get eventCancelledToast => 'Abgesagt.';
+
+  @override
+  String get eventSeriesCancelledToast => 'Serie abgesagt.';
+
+  @override
+  String get eventCancelNotConfigured =>
+      'Es gibt bezahlte Anmeldungen, und Zahlungen sind gerade nicht verfügbar. Deshalb kann noch nicht abgesagt werden. Es wurde nichts geändert.';
+
+  @override
+  String get eventCancelNotOrganiser =>
+      'Nur Organisator*innen dieses Clubs können einen Termin absagen.';
+
+  @override
+  String get eventCancelFailed =>
+      'Absage fehlgeschlagen. Bitte versuche es erneut.';
+
+  @override
+  String get eventReinstateOccurrence => 'Diesen Termin wiederherstellen';
+
+  @override
+  String get eventReinstateEvent => 'Diese Veranstaltung wiederherstellen';
+
+  @override
+  String get eventReinstateFailed =>
+      'Dieser Termin konnte nicht wiederhergestellt werden';
+
+  @override
+  String get eventEventCancelled => 'Diese Veranstaltung wurde abgesagt.';
+
+  @override
+  String get eventSeriesWasCancelled => 'Diese Serie wurde abgesagt.';
+
+  @override
+  String eventWaitlistOfferHeld(String time) {
+    return 'Ein Platz ist bis $time für dich reserviert. Bezahle, um ihn zu sichern – sonst geht er an die nächste Person auf der Warteliste.';
+  }
+
+  @override
+  String get eventWaitlistOfferClaimHint => 'Bezahlt wird im Web.';
+
+  @override
+  String get eventWaitlistOfferClaim => 'Im Web sichern';
+
+  @override
+  String get eventFormCapacity => 'Kapazität';
+
+  @override
+  String get eventFormCapacityHint =>
+      'Sobald so viele zugesagt haben, landet die nächste Zusage auf einer Warteliste, statt abgewiesen zu werden. Leer lassen für kein Limit.';
+
+  @override
+  String get eventFormErrCapacity =>
+      'Gib eine ganze Zahl ab 1 ein oder lass das Feld leer.';
+
+  @override
+  String get eventFormEndsOn => 'Endet am';
+
+  @override
+  String get eventFormEndsOnNone => 'Kein Enddatum';
+
+  @override
+  String get eventFormEndsOnClear => 'Enddatum entfernen';
+
+  @override
+  String get eventFormEndAfter => 'Endet nach';
+
+  @override
+  String get eventFormRepeatEndHint =>
+      'Wo die Reihe endet. Setze eines von beiden oder beides — was zuerst eintritt, gilt. Bleiben beide leer, wiederholt sie sich weiter.';
+
+  @override
+  String get eventFormErrCount =>
+      'Gib eine ganze Zahl von 1 bis 520 ein oder lass das Feld leer.';
+
+  @override
+  String get eventFormSessionPlan => 'Session-Plan';
+
+  @override
+  String get eventFormSessionPlanNone => 'Keiner';
+
+  @override
+  String get eventFormSessionPlanEmpty =>
+      'Noch keine Session-Pläne. Erstelle einen im Web.';
+
+  @override
+  String get eventFormCharge => 'Für dieses Event Geld verlangen';
+
+  @override
+  String get eventFormChargeHint =>
+      'Erhebt bei der Anmeldung eine Gebühr. Das Geld geht auf dein eigenes Auszahlungskonto, nicht auf das des Clubs — und nur Veranstaltungen vor Ort dürfen Gebühren nehmen.';
+
+  @override
+  String get eventFormChargeNeedsPayout =>
+      'Richte im Web Auszahlungen ein, um für Veranstaltungen Geld zu verlangen.';
+
+  @override
+  String get eventFormPrice => 'Preis';
+
+  @override
+  String get eventFormCurrency => 'Währung';
+
+  @override
+  String get eventFormErrPrice => 'Gib einen Preis von mindestens 0,50 ein.';
+
+  @override
+  String get eventFormErrCurrency =>
+      'Verwende einen dreistelligen Währungscode wie EUR.';
+
+  @override
+  String get eventFormSalesClose => 'Verkauf stoppen (Minuten vor Beginn)';
+
+  @override
+  String get eventFormSalesCloseHint =>
+      'Wie lange vor dem Start die Anmeldung schließt. Null hält sie bis zur Startzeit offen.';
+
+  @override
+  String get eventFormErrSalesClose =>
+      'Gib eine ganze Zahl an Minuten von 0 bis 10080 ein.';
+
+  @override
+  String get eventFormRefundPolicy => 'Rückerstattungsrichtlinie';
+
+  @override
+  String get eventFormRefundFullUntilStart =>
+      'Volle Rückerstattung bis zur Startzeit';
+
+  @override
+  String get eventFormRefundFullUntil24h =>
+      'Volle Rückerstattung bis 24 Std. vorher';
+
+  @override
+  String get eventFormRefundNone => 'Keine Rückerstattung';
+
+  @override
+  String get eventFormPricingFailed =>
+      'Veranstaltung erstellt, aber der Preis konnte nicht gespeichert werden. Lege den Preis auf der Veranstaltungsseite im Web fest.';
+
+  @override
+  String get eventFormSessionPlanFailed =>
+      'Veranstaltung erstellt, aber der Session-Plan konnte nicht angehängt werden. Hänge ihn auf der Veranstaltungsseite im Web an.';
 
   @override
   String get audienceTitle => 'Wer das sehen kann';

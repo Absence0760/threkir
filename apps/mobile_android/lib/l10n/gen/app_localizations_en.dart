@@ -14679,6 +14679,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get helpGuideMissing => 'This guide is not available.';
 
   @override
+  String get helpGuideInEnglish =>
+      'This guide has not been translated into your language yet, so it is shown in English.';
+
+  @override
   String get helpHowThisWorks => 'How this works';
 
   @override
@@ -14760,6 +14764,198 @@ class AppLocalizationsEn extends AppLocalizations {
   String eventResultActionFailed(String error) {
     return 'Couldn\'t update the result: $error';
   }
+
+  @override
+  String get eventCancelOccurrence => 'Cancel this occurrence';
+
+  @override
+  String get eventCancelEvent => 'Cancel event';
+
+  @override
+  String get eventCancelSeries => 'Cancel the whole series';
+
+  @override
+  String get eventCancelOccurrenceBody =>
+      'Only this occurrence is called off — the rest of the series is unaffected. Everyone who RSVP\'d to it (going, maybe, or waitlisted) is notified.';
+
+  @override
+  String get eventCancelEventBody =>
+      'The event is called off. Everyone who RSVP\'d (going, maybe, or waitlisted) is notified.';
+
+  @override
+  String get eventCancelSeriesBody =>
+      'The series ends now and no later occurrences are scheduled. Every upcoming occurrence someone RSVP\'d to is called off, and they are notified.';
+
+  @override
+  String get eventCancelPaidNote =>
+      'Anyone who paid is refunded in full, whatever the refund policy says.';
+
+  @override
+  String get eventCancelReasonLabel => 'Reason (optional)';
+
+  @override
+  String get eventCancelKeep => 'Keep it';
+
+  @override
+  String eventCancelRefundsStarted(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Cancelled. $count registrants are being refunded in full.',
+      one: 'Cancelled. 1 registrant is being refunded in full.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String eventCancelRefundsIncomplete(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count refunds couldn\'t be started. Retry them',
+      one: '1 refund couldn\'t be started. Retry it',
+    );
+    return 'Cancelled, but $_temp0 from the event on the web.';
+  }
+
+  @override
+  String get eventCancelledToast => 'Cancelled.';
+
+  @override
+  String get eventSeriesCancelledToast => 'Series cancelled.';
+
+  @override
+  String get eventCancelNotConfigured =>
+      'There are paid registrations and payments aren\'t available right now, so this can\'t be cancelled yet. Nothing has changed.';
+
+  @override
+  String get eventCancelNotOrganiser =>
+      'Only an organiser of this club can cancel an occurrence.';
+
+  @override
+  String get eventCancelFailed => 'Couldn\'t cancel. Please try again.';
+
+  @override
+  String get eventReinstateOccurrence => 'Reinstate this occurrence';
+
+  @override
+  String get eventReinstateEvent => 'Reinstate this event';
+
+  @override
+  String get eventReinstateFailed => 'Could not reinstate this occurrence';
+
+  @override
+  String get eventEventCancelled => 'This event was cancelled.';
+
+  @override
+  String get eventSeriesWasCancelled => 'This series was cancelled.';
+
+  @override
+  String eventWaitlistOfferHeld(String time) {
+    return 'A place is held for you until $time. Pay to claim it, or it goes to the next person on the waitlist.';
+  }
+
+  @override
+  String get eventWaitlistOfferClaimHint => 'Payment happens on the web.';
+
+  @override
+  String get eventWaitlistOfferClaim => 'Claim on the web';
+
+  @override
+  String get eventFormCapacity => 'Capacity';
+
+  @override
+  String get eventFormCapacityHint =>
+      'Once this many people are going, the next person to say yes joins a waitlist instead of being turned away. Leave it empty for no limit.';
+
+  @override
+  String get eventFormErrCapacity =>
+      'Enter a whole number of 1 or more, or leave it empty.';
+
+  @override
+  String get eventFormEndsOn => 'Ends on';
+
+  @override
+  String get eventFormEndsOnNone => 'No end date';
+
+  @override
+  String get eventFormEndsOnClear => 'Clear end date';
+
+  @override
+  String get eventFormEndAfter => 'End after';
+
+  @override
+  String get eventFormRepeatEndHint =>
+      'Where the series stops. Set either, or both — whichever comes first wins. Leave both empty and it keeps repeating.';
+
+  @override
+  String get eventFormErrCount =>
+      'Enter a whole number from 1 to 520, or leave it empty.';
+
+  @override
+  String get eventFormSessionPlan => 'Session plan';
+
+  @override
+  String get eventFormSessionPlanNone => 'None';
+
+  @override
+  String get eventFormSessionPlanEmpty =>
+      'No session plans yet. Build one on the web.';
+
+  @override
+  String get eventFormCharge => 'Charge for this event';
+
+  @override
+  String get eventFormChargeHint =>
+      'Takes a fee at registration. The money settles into your own payout account rather than the club\'s, and only an in-person event can charge.';
+
+  @override
+  String get eventFormChargeNeedsPayout =>
+      'Set up payouts on the web to charge for events.';
+
+  @override
+  String get eventFormPrice => 'Price';
+
+  @override
+  String get eventFormCurrency => 'Currency';
+
+  @override
+  String get eventFormErrPrice => 'Enter a price of at least 0.50.';
+
+  @override
+  String get eventFormErrCurrency =>
+      'Use a three-letter currency code, like USD.';
+
+  @override
+  String get eventFormSalesClose => 'Stop sales (minutes before start)';
+
+  @override
+  String get eventFormSalesCloseHint =>
+      'How long before the start registration shuts. Zero keeps it open right up to the start time.';
+
+  @override
+  String get eventFormErrSalesClose =>
+      'Enter a whole number of minutes from 0 to 10080.';
+
+  @override
+  String get eventFormRefundPolicy => 'Refund policy';
+
+  @override
+  String get eventFormRefundFullUntilStart => 'Full refund until start time';
+
+  @override
+  String get eventFormRefundFullUntil24h => 'Full refund until 24h before';
+
+  @override
+  String get eventFormRefundNone => 'No refunds';
+
+  @override
+  String get eventFormPricingFailed =>
+      'Event created, but saving the price failed. Set the price from the event on the web.';
+
+  @override
+  String get eventFormSessionPlanFailed =>
+      'Event created, but the session plan couldn\'t be attached. Attach it from the event on the web.';
 
   @override
   String get audienceTitle => 'Who can see this';

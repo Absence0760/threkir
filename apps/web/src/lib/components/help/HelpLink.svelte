@@ -5,11 +5,11 @@
 	/// when there are several, nothing when there are none.
 	/// `help_guides_guard.test.ts` fails the unit job when a `route` here has no
 	/// guide, so a mounted link never silently renders nothing.
-	import { guidesForRoute } from '#lib/help/index.ts';
+	import { helpIndex } from '#lib/help/localized.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 
 	let { route }: { route: string } = $props();
-	const guides = $derived(guidesForRoute(route));
+	const guides = $derived(helpIndex().guidesForRoute(route));
 	const only = $derived(guides.length === 1 ? guides[0] : undefined);
 </script>
 
@@ -26,7 +26,7 @@
 		</summary>
 		<ul aria-label={m('help.guidesForThisPage')}>
 			{#each guides as guide (guide.id)}
-				<li><a href="/help/{guide.id}">{guide.title}</a></li>
+				<li><a href="/help/{guide.id}" lang={guide.lang}>{guide.title}</a></li>
 			{/each}
 		</ul>
 	</details>

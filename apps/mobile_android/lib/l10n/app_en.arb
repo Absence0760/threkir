@@ -18864,6 +18864,10 @@
   "@helpGuideMissing": {
     "description": "Shown when a linked guide does not exist"
   },
+  "helpGuideInEnglish": "This guide has not been translated into your language yet, so it is shown in English.",
+  "@helpGuideInEnglish": {
+    "description": "Note under a help guide's summary, shown only when the guide has no translation in the app language and its English text is shown instead"
+  },
   "helpHowThisWorks": "How this works",
   "@helpHowThisWorks": {
     "description": "Button and tooltip opening the guides about the current screen"
@@ -18968,6 +18972,229 @@
         "type": "String"
       }
     }
+  },
+  "eventCancelOccurrence": "Cancel this occurrence",
+  "@eventCancelOccurrence": {
+    "description": "Organiser action calling off the selected occurrence of a recurring event"
+  },
+  "eventCancelEvent": "Cancel event",
+  "@eventCancelEvent": {
+    "description": "Organiser action calling off a one-off event"
+  },
+  "eventCancelSeries": "Cancel the whole series",
+  "@eventCancelSeries": {
+    "description": "Organiser action ending a recurring event and calling off every upcoming occurrence"
+  },
+  "eventCancelOccurrenceBody": "Only this occurrence is called off — the rest of the series is unaffected. Everyone who RSVP'd to it (going, maybe, or waitlisted) is notified.",
+  "@eventCancelOccurrenceBody": {
+    "description": "Confirmation body when cancelling one occurrence of a series"
+  },
+  "eventCancelEventBody": "The event is called off. Everyone who RSVP'd (going, maybe, or waitlisted) is notified.",
+  "@eventCancelEventBody": {
+    "description": "Confirmation body when cancelling a one-off event"
+  },
+  "eventCancelSeriesBody": "The series ends now and no later occurrences are scheduled. Every upcoming occurrence someone RSVP'd to is called off, and they are notified.",
+  "@eventCancelSeriesBody": {
+    "description": "Confirmation body when cancelling a whole series"
+  },
+  "eventCancelPaidNote": "Anyone who paid is refunded in full, whatever the refund policy says.",
+  "@eventCancelPaidNote": {
+    "description": "Confirmation note that a host cancel refunds everyone who paid"
+  },
+  "eventCancelReasonLabel": "Reason (optional)",
+  "@eventCancelReasonLabel": {
+    "description": "Label of the optional cancel reason field"
+  },
+  "eventCancelKeep": "Keep it",
+  "@eventCancelKeep": {
+    "description": "Dismiss the cancel confirmation without cancelling"
+  },
+  "eventCancelRefundsStarted": "{count, plural, one{Cancelled. 1 registrant is being refunded in full.} other{Cancelled. {count} registrants are being refunded in full.}}",
+  "@eventCancelRefundsStarted": {
+    "description": "Banner after a host cancel started refunds",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "eventCancelRefundsIncomplete": "Cancelled, but {count, plural, one{1 refund couldn't be started. Retry it} other{{count} refunds couldn't be started. Retry them}} from the event on the web.",
+  "@eventCancelRefundsIncomplete": {
+    "description": "Banner after a host cancel where some refunds could not be started",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "eventCancelledToast": "Cancelled.",
+  "@eventCancelledToast": {
+    "description": "Banner after a host cancelled an occurrence or event with no refunds involved"
+  },
+  "eventSeriesCancelledToast": "Series cancelled.",
+  "@eventSeriesCancelledToast": {
+    "description": "Banner after a host cancelled a whole series with no refunds involved"
+  },
+  "eventCancelNotConfigured": "There are paid registrations and payments aren't available right now, so this can't be cancelled yet. Nothing has changed.",
+  "@eventCancelNotConfigured": {
+    "description": "Error when a paid cancel cannot run because payments are unavailable"
+  },
+  "eventCancelNotOrganiser": "Only an organiser of this club can cancel an occurrence.",
+  "@eventCancelNotOrganiser": {
+    "description": "Error when the viewer may not cancel"
+  },
+  "eventCancelFailed": "Couldn't cancel. Please try again.",
+  "@eventCancelFailed": {
+    "description": "Generic cancel failure"
+  },
+  "eventReinstateOccurrence": "Reinstate this occurrence",
+  "@eventReinstateOccurrence": {
+    "description": "Organiser action putting a cancelled occurrence back"
+  },
+  "eventReinstateEvent": "Reinstate this event",
+  "@eventReinstateEvent": {
+    "description": "Organiser action putting a cancelled one-off event back"
+  },
+  "eventReinstateFailed": "Could not reinstate this occurrence",
+  "@eventReinstateFailed": {
+    "description": "Error when reinstating fails"
+  },
+  "eventEventCancelled": "This event was cancelled.",
+  "@eventEventCancelled": {
+    "description": "Banner on a cancelled one-off event"
+  },
+  "eventSeriesWasCancelled": "This series was cancelled.",
+  "@eventSeriesWasCancelled": {
+    "description": "Banner on a series its organiser cancelled"
+  },
+  "eventWaitlistOfferHeld": "A place is held for you until {time}. Pay to claim it, or it goes to the next person on the waitlist.",
+  "@eventWaitlistOfferHeld": {
+    "description": "A waitlist seat is held for the viewer until the given time",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "eventWaitlistOfferClaimHint": "Payment happens on the web.",
+  "@eventWaitlistOfferClaimHint": {
+    "description": "The held seat is paid for on the web"
+  },
+  "eventWaitlistOfferClaim": "Claim on the web",
+  "@eventWaitlistOfferClaim": {
+    "description": "Button opening the event on the web to pay for the held seat"
+  },
+  "eventFormCapacity": "Capacity",
+  "@eventFormCapacity": {
+    "description": "Event form capacity field label"
+  },
+  "eventFormCapacityHint": "Once this many people are going, the next person to say yes joins a waitlist instead of being turned away. Leave it empty for no limit.",
+  "@eventFormCapacityHint": {
+    "description": "Event form capacity helper text"
+  },
+  "eventFormErrCapacity": "Enter a whole number of 1 or more, or leave it empty.",
+  "@eventFormErrCapacity": {
+    "description": "Event form capacity validation error"
+  },
+  "eventFormEndsOn": "Ends on",
+  "@eventFormEndsOn": {
+    "description": "Event form label of the optional series end date"
+  },
+  "eventFormEndsOnNone": "No end date",
+  "@eventFormEndsOnNone": {
+    "description": "Shown when no series end date is set"
+  },
+  "eventFormEndsOnClear": "Clear end date",
+  "@eventFormEndsOnClear": {
+    "description": "Tooltip clearing the series end date"
+  },
+  "eventFormEndAfter": "End after",
+  "@eventFormEndAfter": {
+    "description": "Event form label of the optional occurrence count"
+  },
+  "eventFormRepeatEndHint": "Where the series stops. Set either, or both — whichever comes first wins. Leave both empty and it keeps repeating.",
+  "@eventFormRepeatEndHint": {
+    "description": "Helper text explaining the series end fields"
+  },
+  "eventFormErrCount": "Enter a whole number from 1 to 520, or leave it empty.",
+  "@eventFormErrCount": {
+    "description": "Event form occurrence count validation error"
+  },
+  "eventFormSessionPlan": "Session plan",
+  "@eventFormSessionPlan": {
+    "description": "Event form session plan picker label"
+  },
+  "eventFormSessionPlanNone": "None",
+  "@eventFormSessionPlanNone": {
+    "description": "Session plan picker option for no plan"
+  },
+  "eventFormSessionPlanEmpty": "No session plans yet. Build one on the web.",
+  "@eventFormSessionPlanEmpty": {
+    "description": "Helper text when the host has no session plans"
+  },
+  "eventFormCharge": "Charge for this event",
+  "@eventFormCharge": {
+    "description": "Event form toggle to charge for the event"
+  },
+  "eventFormChargeHint": "Takes a fee at registration. The money settles into your own payout account rather than the club's, and only an in-person event can charge.",
+  "@eventFormChargeHint": {
+    "description": "Helper text of the charge toggle"
+  },
+  "eventFormChargeNeedsPayout": "Set up payouts on the web to charge for events.",
+  "@eventFormChargeNeedsPayout": {
+    "description": "Shown when the host cannot take payments yet"
+  },
+  "eventFormPrice": "Price",
+  "@eventFormPrice": {
+    "description": "Event form price field label"
+  },
+  "eventFormCurrency": "Currency",
+  "@eventFormCurrency": {
+    "description": "Event form currency field label"
+  },
+  "eventFormErrPrice": "Enter a price of at least 0.50.",
+  "@eventFormErrPrice": {
+    "description": "Event form price validation error"
+  },
+  "eventFormErrCurrency": "Use a three-letter currency code, like USD.",
+  "@eventFormErrCurrency": {
+    "description": "Event form currency validation error"
+  },
+  "eventFormSalesClose": "Stop sales (minutes before start)",
+  "@eventFormSalesClose": {
+    "description": "Event form sales close field label"
+  },
+  "eventFormSalesCloseHint": "How long before the start registration shuts. Zero keeps it open right up to the start time.",
+  "@eventFormSalesCloseHint": {
+    "description": "Helper text of the sales close field"
+  },
+  "eventFormErrSalesClose": "Enter a whole number of minutes from 0 to 10080.",
+  "@eventFormErrSalesClose": {
+    "description": "Event form sales close validation error"
+  },
+  "eventFormRefundPolicy": "Refund policy",
+  "@eventFormRefundPolicy": {
+    "description": "Event form refund policy picker label"
+  },
+  "eventFormRefundFullUntilStart": "Full refund until start time",
+  "@eventFormRefundFullUntilStart": {
+    "description": "Refund policy: full refund until the start"
+  },
+  "eventFormRefundFullUntil24h": "Full refund until 24h before",
+  "@eventFormRefundFullUntil24h": {
+    "description": "Refund policy: full refund until 24 hours before"
+  },
+  "eventFormRefundNone": "No refunds",
+  "@eventFormRefundNone": {
+    "description": "Refund policy: no refunds"
+  },
+  "eventFormPricingFailed": "Event created, but saving the price failed. Set the price from the event on the web.",
+  "@eventFormPricingFailed": {
+    "description": "Banner when the event was created but its price was not saved"
+  },
+  "eventFormSessionPlanFailed": "Event created, but the session plan couldn't be attached. Attach it from the event on the web.",
+  "@eventFormSessionPlanFailed": {
+    "description": "Banner when the event was created but its session plan was not attached"
   },
   "audienceTitle": "Who can see this",
   "@audienceTitle": {

@@ -14814,7 +14814,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get helpNoResultsBody =>
-      'Prueba con otra palabra o muestra las guías para todos.';
+      'Prueba con otra palabra o muestra las guías para todos los grupos.';
 
   @override
   String get helpLoading => 'Cargando guías';
@@ -14824,6 +14824,10 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get helpGuideMissing => 'Esta guía no está disponible.';
+
+  @override
+  String get helpGuideInEnglish =>
+      'Esta guía aún no está traducida a tu idioma, así que se muestra en inglés.';
 
   @override
   String get helpHowThisWorks => 'Cómo funciona';
@@ -14907,6 +14911,201 @@ class AppLocalizationsEs extends AppLocalizations {
   String eventResultActionFailed(String error) {
     return 'No se pudo actualizar el resultado: $error';
   }
+
+  @override
+  String get eventCancelOccurrence => 'Cancelar esta ocurrencia';
+
+  @override
+  String get eventCancelEvent => 'Cancelar evento';
+
+  @override
+  String get eventCancelSeries => 'Cancelar toda la serie';
+
+  @override
+  String get eventCancelOccurrenceBody =>
+      'Solo se anula esta ocurrencia: el resto de la serie no se ve afectado. Se notifica a todos los que confirmaron (asistirán, quizás o en lista de espera).';
+
+  @override
+  String get eventCancelEventBody =>
+      'El evento se cancela. Se notifica a todos los que confirmaron (asistirán, quizás o en lista de espera).';
+
+  @override
+  String get eventCancelSeriesBody =>
+      'La serie termina ahora y no se programan más ocurrencias. Se cancela cada próxima ocurrencia a la que alguien respondió y se avisa a esas personas.';
+
+  @override
+  String get eventCancelPaidNote =>
+      'Quien haya pagado recibe el reembolso completo, sea cual sea la política de reembolso.';
+
+  @override
+  String get eventCancelReasonLabel => 'Motivo (opcional)';
+
+  @override
+  String get eventCancelKeep => 'Mantener';
+
+  @override
+  String eventCancelRefundsStarted(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Cancelado. $count personas inscritas reciben el reembolso completo.',
+      one: 'Cancelado. 1 persona inscrita recibe el reembolso completo.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String eventCancelRefundsIncomplete(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'pudieron iniciar $count reembolsos',
+      one: 'pudo iniciar 1 reembolso',
+    );
+    return 'Cancelado, pero no se $_temp0. Vuelve a intentarlo desde la página del evento en la web.';
+  }
+
+  @override
+  String get eventCancelledToast => 'Cancelado.';
+
+  @override
+  String get eventSeriesCancelledToast => 'Serie cancelada.';
+
+  @override
+  String get eventCancelNotConfigured =>
+      'Hay inscripciones pagadas y los pagos no están disponibles ahora mismo, así que todavía no se puede cancelar. No se ha cambiado nada.';
+
+  @override
+  String get eventCancelNotOrganiser =>
+      'Solo un organizador de este club puede cancelar una ocurrencia.';
+
+  @override
+  String get eventCancelFailed => 'No se pudo cancelar. Inténtalo de nuevo.';
+
+  @override
+  String get eventReinstateOccurrence => 'Restablecer esta ocurrencia';
+
+  @override
+  String get eventReinstateEvent => 'Restablecer este evento';
+
+  @override
+  String get eventReinstateFailed => 'No se pudo restablecer esta ocurrencia';
+
+  @override
+  String get eventEventCancelled => 'Este evento se canceló.';
+
+  @override
+  String get eventSeriesWasCancelled => 'Esta serie se canceló.';
+
+  @override
+  String eventWaitlistOfferHeld(String time) {
+    return 'Te guardamos una plaza hasta $time. Paga para conseguirla o pasará a la siguiente persona de la lista de espera.';
+  }
+
+  @override
+  String get eventWaitlistOfferClaimHint => 'El pago se hace en la web.';
+
+  @override
+  String get eventWaitlistOfferClaim => 'Reservar en la web';
+
+  @override
+  String get eventFormCapacity => 'Aforo';
+
+  @override
+  String get eventFormCapacityHint =>
+      'Cuando haya esta cantidad de asistentes, quien diga que sí después entra en lista de espera en lugar de quedarse fuera. Déjalo vacío para no poner límite.';
+
+  @override
+  String get eventFormErrCapacity =>
+      'Introduce un número entero de 1 o más, o déjalo vacío.';
+
+  @override
+  String get eventFormEndsOn => 'Termina el';
+
+  @override
+  String get eventFormEndsOnNone => 'Sin fecha de fin';
+
+  @override
+  String get eventFormEndsOnClear => 'Quitar la fecha de fin';
+
+  @override
+  String get eventFormEndAfter => 'Termina tras';
+
+  @override
+  String get eventFormRepeatEndHint =>
+      'Dónde termina la serie. Pon uno, el otro o los dos: manda el que llegue antes. Si dejas ambos vacíos, sigue repitiéndose.';
+
+  @override
+  String get eventFormErrCount =>
+      'Introduce un número entero del 1 al 520, o déjalo vacío.';
+
+  @override
+  String get eventFormSessionPlan => 'Plan de sesión';
+
+  @override
+  String get eventFormSessionPlanNone => 'Ninguno';
+
+  @override
+  String get eventFormSessionPlanEmpty =>
+      'Todavía no hay planes de sesión. Crea uno en la web.';
+
+  @override
+  String get eventFormCharge => 'Cobrar por este evento';
+
+  @override
+  String get eventFormChargeHint =>
+      'Cobra una cuota al inscribirse. El dinero llega a tu propia cuenta de pagos, no a la del club, y solo puede cobrar un evento presencial.';
+
+  @override
+  String get eventFormChargeNeedsPayout =>
+      'Configura los cobros en la web para cobrar por los eventos.';
+
+  @override
+  String get eventFormPrice => 'Precio';
+
+  @override
+  String get eventFormCurrency => 'Moneda';
+
+  @override
+  String get eventFormErrPrice => 'Introduce un precio de al menos 0,50.';
+
+  @override
+  String get eventFormErrCurrency =>
+      'Usa un código de moneda de tres letras, como EUR.';
+
+  @override
+  String get eventFormSalesClose => 'Cerrar ventas (minutos antes del inicio)';
+
+  @override
+  String get eventFormSalesCloseHint =>
+      'Cuánto antes del inicio se cierra la inscripción. Cero la mantiene abierta hasta la hora de comienzo.';
+
+  @override
+  String get eventFormErrSalesClose =>
+      'Introduce un número entero de minutos entre 0 y 10080.';
+
+  @override
+  String get eventFormRefundPolicy => 'Política de reembolso';
+
+  @override
+  String get eventFormRefundFullUntilStart =>
+      'Reembolso completo hasta la hora de inicio';
+
+  @override
+  String get eventFormRefundFullUntil24h =>
+      'Reembolso completo hasta 24 h antes';
+
+  @override
+  String get eventFormRefundNone => 'Sin reembolsos';
+
+  @override
+  String get eventFormPricingFailed =>
+      'Evento creado, pero no se pudo guardar el precio. Fíjalo desde la página del evento en la web.';
+
+  @override
+  String get eventFormSessionPlanFailed =>
+      'Evento creado, pero no se pudo adjuntar el plan de sesión. Adjúntalo desde la página del evento en la web.';
 
   @override
   String get audienceTitle => 'Quién puede ver esto';

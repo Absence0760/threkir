@@ -345,15 +345,17 @@ void main() {
       (tester) async {
         // event_exceptions was never read on mobile, so a cancelled occurrence
         // stayed selectable and RSVP-able with nothing saying it was called off.
+        // The fixture is a one-off event, whose only occurrence is the event
+        // itself, so the banner names the event.
         await pumpWith(tester, {DateTime.utc(2026, 6, 20, 8)});
-        expect(find.text('This occurrence was cancelled.'), findsOneWidget);
+        expect(find.text('This event was cancelled.'), findsOneWidget);
         expect(find.text("I'm in"), findsNothing);
       },
     );
 
     realtimeWidgetTest('a live occurrence keeps the RSVP row', (tester) async {
       await pumpWith(tester, const {});
-      expect(find.text('This occurrence was cancelled.'), findsNothing);
+      expect(find.text('This event was cancelled.'), findsNothing);
       expect(find.text("I'm in"), findsOneWidget);
     });
   });

@@ -1,5 +1,5 @@
 // The catalogue key for every value a guide's metadata can take, so the help
-// pages' chrome is translated even while guide text is English-only.
+// pages' chrome is translated by the catalogues, apart from the guide text.
 
 import type { MessageKey } from '#lib/i18n/messages.ts';
 import type { Audience, GuideCategory, GuideKind, Platform, Requirement } from './types';

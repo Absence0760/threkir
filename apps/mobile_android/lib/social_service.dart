@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'challenge_list.dart';
 import 'challenge_progress.dart';
 import 'event_category.dart';
+import 'event_host_cancel.dart';
 import 'event_occurrence.dart';
 import 'event_gym_template.dart';
 import 'geocoding.dart';
@@ -161,12 +162,16 @@ class AttendeeView {
   /// The `event_courses` row this racer picked at RSVP; null on an event
   /// with no courses or an RSVP made before courses existed.
   final String? courseId;
+  /// The claim deadline of a waitlist seat offer on a paid occurrence
+  /// (20270726000002, decisions § 1840); null when nothing is offered.
+  final DateTime? offerExpiresAt;
   const AttendeeView({
     required this.userId,
     required this.status,
     this.displayName,
     this.attendance,
     this.courseId,
+    this.offerExpiresAt,
   });
 }
 
@@ -1533,6 +1538,177 @@ class SocialService extends ChangeNotifier {
     }
   }
 
+  /// Whether the signed-in host can take payments, and the currency their
+  /// payout account settles in. Mirrors web's `fetchPayoutAccount`: the
+  /// own-row policy lets a host read their account, and only the capability
+  /// columns are projected (the Stripe account id is column-revoked). Null when
+  /// there is no account or the read fails, which the form reads as "cannot
+  /// charge" — the `event_pricing` trigger refuses a price otherwise anyway.
+  Future<({bool chargesEnabled, String? defaultCurrency})?>
+      fetchPayoutCapability() async {
+    final uid = _uid;
+    if (uid == null) return null;
+    try {
+      final row = await _c
+          .from('instructor_payout_accounts')
+          .select('charges_enabled, default_currency')
+          .eq('user_id', uid)
+          .maybeSingle();
+      if (row == null) return null;
+      return (
+        chargesEnabled: row['charges_enabled'] == true,
+        defaultCurrency: row['default_currency'] as String?,
+      );
+    } catch (e) {
+      debugPrint('fetchPayoutCapability failed: $e');
+      return null;
+    }
+  }
+
+  /// Session plans the host can attach to a class: their own plus those of a
+  /// club they belong to, as web's `fetchSessionPlans` scopes it (a stranger's
+  /// public plan is not "mine"). Empty on a failed read, which leaves the
+  /// picker showing only "no plan".
+  Future<List<({String id, String title})>> fetchSessionPlanOptions() async {
+    final uid = _uid;
+    if (uid == null) return const [];
+    try {
+      final memberships =
+          await _c.from('club_members').select('club_id').eq('user_id', uid);
+      final clubIds = [
+        for (final m in memberships as List)
+          if ((m as Map)['club_id'] is String) m['club_id'] as String,
+      ];
+      final query = _c.from('session_plans').select('id, title');
+      final rows = await (clubIds.isEmpty
+              ? query.eq('author_id', uid)
+              : query.or('author_id.eq.$uid,club_id.in.(${clubIds.join(',')})'))
+          .order('updated_at', ascending: false);
+      return [
+        for (final r in rows as List)
+          if ((r as Map)['id'] is String && r['title'] is String)
+            (id: r['id'] as String, title: r['title'] as String),
+      ];
+    } catch (e) {
+      debugPrint('fetchSessionPlanOptions failed: $e');
+      return const [];
+    }
+  }
+
+  /// The series price of a paid event, in the currency's minor units. Mirrors
+  /// web's `setEventPricing` for the series row (`instance_start` null):
+  /// in-person only, upserted on the one non-partial arbiter.
+  Future<void> setEventPricing({
+    required String eventId,
+    required int priceCents,
+    required String currency,
+    required String refundPolicy,
+    required int salesCloseOffsetMinutes,
+  }) async {
+    await _c.from('event_pricing').upsert(
+      {
+        'event_id': eventId,
+        'instance_start': null,
+        'price_cents': priceCents,
+        'currency': currency,
+        'modality': 'in_person',
+        'refund_policy': refundPolicy,
+        'sales_close_offset_minutes': salesCloseOffsetMinutes,
+      },
+      onConflict: 'event_id,instance_start',
+    );
+  }
+
+  /// Attach (or with null, detach) a session plan to a class. The database
+  /// trigger enforces organiser-only, as on web.
+  Future<void> setEventSessionPlan(String eventId, String? sessionPlanId) async {
+    await _c
+        .from('events')
+        .update({'session_plan_id': sessionPlanId}).eq('id', eventId);
+  }
+
+  /// Call off one occurrence of a series, or a one-off event (whose only
+  /// occurrence is its start), as an organiser. Mirrors web's
+  /// `cancelEventInstance`: the direct `event_exceptions` insert is tried first,
+  /// and an occurrence that still holds money is refused there by
+  /// `guard_paid_occurrence_cancel`, so it goes through the `events-cancel`
+  /// function, which cancels and refunds every registrant in one request.
+  /// Returns that function's refund summary, or null when no money was
+  /// involved. Throws [EventCancelRefused] with the function's machine code on
+  /// a refusal.
+  Future<OccurrenceRefundSummary?> cancelEventOccurrence(
+    String eventId,
+    DateTime instance, {
+    String? reason,
+  }) async {
+    final uid = _uid;
+    if (uid == null) throw Exception('Not authenticated');
+    final trimmed = reason?.trim();
+    try {
+      await _c.from('event_exceptions').upsert(
+        {
+          'event_id': eventId,
+          'instance_start': instanceStartKey(instance),
+          'cancelled_by': uid,
+          'reason': (trimmed == null || trimmed.isEmpty) ? null : trimmed,
+        },
+        onConflict: 'event_id,instance_start',
+        ignoreDuplicates: true,
+      );
+      return null;
+    } on PostgrestException catch (e) {
+      if (e.message != paidOccurrenceRefusal) rethrow;
+    }
+    final body = await _invokeEventsCancel({
+      'event_id': eventId,
+      'instance_start': instanceStartKey(instance),
+      'scope': 'occurrence',
+      'reason': (trimmed == null || trimmed.isEmpty) ? null : trimmed,
+    });
+    final refunds = parseOccurrenceRefundSummary(body['refunds']);
+    if (refunds == null) throw const EventCancelRefused('cancel_failed');
+    return refunds;
+  }
+
+  /// End a recurring series now and call off every remaining occurrence anyone
+  /// signed up for, refunding all of them, through `events-cancel`'s `series`
+  /// scope (decisions § 1868). Mirrors web's `cancelEventSeries`.
+  Future<OccurrenceRefundSummary> cancelEventSeries(
+    String eventId, {
+    String? reason,
+  }) async {
+    final trimmed = reason?.trim();
+    final body = await _invokeEventsCancel({
+      'event_id': eventId,
+      'scope': 'series',
+      'reason': (trimmed == null || trimmed.isEmpty) ? null : trimmed,
+    });
+    final refunds = parseOccurrenceRefundSummary(body['refunds']);
+    if (refunds == null) throw const EventCancelRefused('cancel_failed');
+    return refunds;
+  }
+
+  Future<Map<String, dynamic>> _invokeEventsCancel(
+      Map<String, dynamic> body) async {
+    try {
+      final res = await _c.functions.invoke('events-cancel', body: body);
+      final data = res.data;
+      return data is Map<String, dynamic> ? data : const {};
+    } on FunctionException catch (e) {
+      throw EventCancelRefused(eventCancelErrorCode(e.details));
+    }
+  }
+
+  /// Put a cancelled occurrence (or a cancelled one-off event) back. Moves no
+  /// money, so the guard that refuses a paid cancel does not apply.
+  Future<void> reinstateEventOccurrence(String eventId, DateTime instance) async {
+    await _c
+        .from('event_exceptions')
+        .delete()
+        .eq('event_id', eventId)
+        .eq('instance_start', instanceStartKey(instance));
+  }
+
   /// Instance starts of this event's CANCELLED occurrences
   /// (`event_exceptions`, migration `20261019_001`). Mirrors web's
   /// `fetchEventExceptions`: without it a cancelled occurrence stayed
@@ -1588,6 +1764,7 @@ class SocialService extends ChangeNotifier {
           status: a['status'] as String,
           displayName: byId[a['user_id']],
           attendance: a['attendance'] as String?,
+          offerExpiresAt: parseIsoStrictValue(a['offer_expires_at']),
           courseId: a['course_id'] as String?,
         ),
     ];

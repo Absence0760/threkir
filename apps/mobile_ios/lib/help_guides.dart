@@ -4,8 +4,9 @@ import 'dart:convert';
 ///
 /// The source of truth is web: one TypeScript file per guide under
 /// `apps/web/src/lib/help/guides/`, typed by `types.ts` in the folder above.
-/// `scripts/gen_help_guides.mjs` writes them to `assets/help/guides.en.json`
-/// as one JSON array, and this file reads that array. Nothing here throws on
+/// `scripts/gen_help_guides.mjs` writes them, with their translations laid
+/// over them, to `assets/help/guides.<locale>.json` as one JSON array per
+/// locale, and this file reads that array. Nothing here throws on
 /// bad input: a guide missing a required field is dropped, an unknown block
 /// type is skipped, and markup that does not parse renders as the text it is.
 /// Help is an auxiliary surface — a malformed guide must never cost the app.
@@ -78,9 +79,14 @@ class Guide {
     required this.routes,
     required this.sections,
     required this.related,
+    this.lang = 'en',
   });
 
   final String id;
+
+  /// The language [title], [summary] and [sections] are in: the app's locale
+  /// tag when the guide is translated, `en` when it fell back to English.
+  final String lang;
   final String title;
   final String summary;
   final String kind;
@@ -113,6 +119,7 @@ class Guide {
       routes: _strings(json['routes']),
       sections: sections,
       related: _strings(json['related']),
+      lang: _string(json['lang']) ?? 'en',
     );
   }
 

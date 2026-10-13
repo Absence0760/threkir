@@ -66,8 +66,8 @@ export const guide: Guide = {
 				},
 				{
 					type: 'note',
-					tone: 'caution',
-					text: 'Guides are in English for now, whatever language the app is set to. Translations are coming.',
+					tone: 'tip',
+					text: 'Guides are shown in the language the app is set to. A guide that has not been translated into it yet is shown in English, with a note at the top saying so.',
 				},
 			],
 		},

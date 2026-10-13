@@ -3175,9 +3175,14 @@ export function normaliseClubLink(raw: string | null | undefined): string | null
 	return /^https?:\/\//i.test(v) ? v : null;
 }
 
+/// A club delete cascades into its events, so a club holding an event that has
+/// taken payments is refused by the same guard as `deleteEvent`.
 export async function deleteClub(id: string): Promise<void> {
 	const { error } = await supabase.from('clubs').delete().eq('id', id);
-	if (error) throw error;
+	if (error) {
+		if (error.message === PAID_EVENT_DELETE_REFUSAL) throw new Error(PAID_EVENT_DELETE_REFUSAL);
+		throw error;
+	}
 }
 
 export async function joinClub(
@@ -3768,9 +3773,19 @@ export async function eventHasAthleticData(eventId: string): Promise<boolean> {
 	}
 }
 
+/// The message `guard_paid_event_delete` (20270731000001) raises when a client
+/// deletes an event, or a club holding one, that has taken payments. The event
+/// is cancelled instead, and its payment records stay (decisions § R7PAID-1).
+export const PAID_EVENT_DELETE_REFUSAL = 'paid_event_has_orders';
+
+/// Throws `Error(PAID_EVENT_DELETE_REFUSAL)` when the event has taken payments,
+/// so the page can say why rather than show the database's raw message.
 export async function deleteEvent(id: string): Promise<void> {
 	const { error } = await supabase.from('events').delete().eq('id', id);
-	if (error) throw error;
+	if (error) {
+		if (error.message === PAID_EVENT_DELETE_REFUSAL) throw new Error(PAID_EVENT_DELETE_REFUSAL);
+		throw error;
+	}
 }
 
 export interface EventException {
@@ -4038,7 +4053,8 @@ export async function cancelEventOrder(
 }
 
 /// Cancel a single occurrence of a recurring event (the rest of the series
-/// is untouched). Organiser-only via RLS; the fan-out trigger notifies every
+/// is untouched), or a one-off event, whose only occurrence is its
+/// `starts_at`. Organiser-only via RLS; the fan-out trigger notifies every
 /// going / maybe / waitlisted attendee of this instance.
 ///
 /// An occurrence that still holds money (a pending, paid or partially
@@ -4106,6 +4122,31 @@ export async function cancelPaidEventInstance(
 	const refunds = parseOccurrenceRefundSummary((data as { refunds?: unknown } | null)?.refunds);
 	if (!refunds) throw new Error('cancel_failed');
 	return refunds;
+}
+
+/// End a recurring series now and call off every remaining occurrence anyone
+/// signed up for, refunding all of their registrations, through the
+/// events-cancel function's `series` scope (decisions § R7PAID-2). The function
+/// moves `recurrence_until` to the moment of the cancel, so later occurrences
+/// stop existing rather than each being cancelled. Re-running it resumes any
+/// refund that failed, exactly as an occurrence cancel does. Throws an Error
+/// whose message is the function's machine code on a non-2xx.
+export async function cancelEventSeries(
+	eventId: string,
+	reason: string | null
+): Promise<{ cancelledOccurrences: number; refunds: OccurrenceRefundSummary }> {
+	const { data, error } = await supabase.functions.invoke('events-cancel', {
+		body: { event_id: eventId, scope: 'series', reason: reason?.trim() || null }
+	});
+	if (error) {
+		const code = await edgeFunctionErrorCode(error);
+		throw new Error(code ?? (error instanceof Error ? error.message : 'cancel_failed'));
+	}
+	const body = data as { refunds?: unknown; cancelled_occurrences?: unknown } | null;
+	const refunds = parseOccurrenceRefundSummary(body?.refunds);
+	if (!refunds) throw new Error('cancel_failed');
+	const n = body?.cancelled_occurrences;
+	return { cancelledOccurrences: typeof n === 'number' && n >= 0 ? n : 0, refunds };
 }
 
 /// What is still owed on each cancelled occurrence of an event, for its

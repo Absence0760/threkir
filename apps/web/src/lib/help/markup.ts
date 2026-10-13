@@ -9,6 +9,8 @@
 // The mobile renderer parses the same grammar from the generated JSON, so a
 // new form here is a new form there.
 
+import { fold } from '../segments/catalogue_browse';
+
 export type HelpToken =
 	| { kind: 'text'; text: string }
 	| { kind: 'strong'; text: string }
@@ -89,10 +91,7 @@ export function routeHref(routeId: string): string | null {
 
 /// The in-page anchor for a guide section, from its heading.
 export function sectionId(heading: string): string {
-	return heading
-		.normalize('NFKD')
-		.replace(/[̀-ͯ]/g, '')
-		.toLowerCase()
+	return fold(heading)
 		.replace(/[^a-z0-9]+/g, '-')
 		.replace(/^-|-$/g, '');
 }

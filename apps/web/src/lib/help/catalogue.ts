@@ -3,6 +3,7 @@
 // module takes the guides as an argument so the unit suite (raw tsx, no Vite)
 // can build the same index from the files on disk.
 
+import { fold } from '../segments/catalogue_browse';
 import { plainText } from './markup';
 import type { Audience, Block, Guide, GuideCategory, GuideKind, Platform, Requirement } from './types';
 
@@ -47,11 +48,6 @@ export interface HelpIndex {
 	searchGuides(query: string): Guide[];
 }
 
-/// Case- and accent-insensitive form for matching.
-export function foldForSearch(s: string): string {
-	return s.normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase();
-}
-
 function blockText(block: Block): string {
 	switch (block.type) {
 		case 'steps':
@@ -73,9 +69,9 @@ export function createHelpIndex(guides: readonly Guide[]): HelpIndex {
 	const byId = new Map(ordered.map((g) => [g.id, g]));
 	const haystacks = ordered.map((g) => ({
 		guide: g,
-		title: foldForSearch(g.title),
-		summary: foldForSearch(g.summary),
-		body: foldForSearch(g.sections.flatMap((s) => [s.heading, ...s.blocks.map(blockText)]).join(' ')),
+		title: fold(g.title),
+		summary: fold(g.summary),
+		body: fold(g.sections.flatMap((s) => [s.heading, ...s.blocks.map(blockText)]).join(' ')),
 	}));
 
 	return {
@@ -90,7 +86,7 @@ export function createHelpIndex(guides: readonly Guide[]): HelpIndex {
 		// Every word must match somewhere; a word in the title outranks one in
 		// the summary, which outranks one in the body. Ties keep contents order.
 		searchGuides: (query) => {
-			const words = foldForSearch(query).split(/\s+/).filter(Boolean);
+			const words = fold(query).split(/\s+/).filter(Boolean);
 			if (words.length === 0) return [];
 			const scored: { guide: Guide; score: number; order: number }[] = [];
 			haystacks.forEach((h, order) => {

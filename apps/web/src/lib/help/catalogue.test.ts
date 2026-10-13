@@ -3,7 +3,7 @@
 //   npx tsx --test src/lib/help/catalogue.test.ts
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createHelpIndex, foldForSearch } from './catalogue';
+import { createHelpIndex } from './catalogue';
 import type { Guide } from './types';
 
 function guide(over: Partial<Guide> & Pick<Guide, 'id'>): Guide {
@@ -96,6 +96,3 @@ test('search reads markup as its labels, not its syntax', () => {
 	assert.deepEqual(index.searchGuides('**').map((g) => g.id), []);
 });
 
-test('foldForSearch strips accents and case', () => {
-	assert.equal(foldForSearch('Ñandú ÉTÉ'), 'nandu ete');
-});

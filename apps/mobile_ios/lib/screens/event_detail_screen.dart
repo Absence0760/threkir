@@ -330,10 +330,15 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   }
 
   /// Off the main load's critical path: a slow or failed course read must
-  /// not hold up the page, and RSVP without a course still works.
+  /// not hold up the page, and RSVP without a course still works — the
+  /// server names the missing pick if the event turns out to need one.
   Future<void> _loadCourses(String eventId) async {
-    final courses = await widget.social.fetchEventCourses(eventId);
-    if (mounted) setState(() => _courses = courses);
+    try {
+      final courses = await widget.social.fetchEventCourses(eventId);
+      if (mounted) setState(() => _courses = courses);
+    } catch (e) {
+      debugPrint('EventDetailScreen._loadCourses: ${safeErrorLabel(e)}');
+    }
   }
 
   /// The course on the viewer's own RSVP for the occurrence on screen.

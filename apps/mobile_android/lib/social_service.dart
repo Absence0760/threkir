@@ -1499,24 +1499,32 @@ class SocialService extends ChangeNotifier {
     ];
   }
 
-  /// The courses a race event offers, in the host's order. Fails closed to
-  /// none: a read error leaves RSVP working as it did before courses existed.
+  /// The courses a race event offers, in the host's order. An empty list
+  /// means the event has no courses; a read error throws, because the two
+  /// mean different races — a course-less event is gated on the event's own
+  /// distance, and a course that failed to load must not be.
   Future<List<EventCourseView>> fetchEventCourses(String eventId) async {
-    try {
-      final rows = await _c
-          .from('event_courses')
-          .select(
-              'id, event_id, route_id, name, distance_m, sort_order, finish_lat, finish_lng')
-          .eq('event_id', eventId)
-          .order('sort_order', ascending: true);
-      return [
-        for (final r in (rows as List).whereType<Map>())
-          ?EventCourseView.fromJson(r.cast<String, dynamic>()),
-      ];
-    } catch (e) {
-      debugPrint('fetchEventCourses failed for $eventId: $e');
-      return const [];
-    }
+    final rows = await _c
+        .from('event_courses')
+        .select(
+            'id, event_id, route_id, name, distance_m, sort_order, finish_lat, finish_lng')
+        .eq('event_id', eventId)
+        .order('sort_order', ascending: true);
+    return [
+      for (final r in (rows as List).whereType<Map>())
+        ?EventCourseView.fromJson(r.cast<String, dynamic>()),
+    ];
+  }
+
+  /// The event's own `distance_m`: what a race with no courses is gated on.
+  /// Null when the event carries none; a read error throws.
+  Future<double?> fetchEventDistanceM(String eventId) async {
+    final row = await _c
+        .from('events')
+        .select('distance_m')
+        .eq('id', eventId)
+        .maybeSingle();
+    return (row?['distance_m'] as num?)?.toDouble();
   }
 
   /// The course the signed-in racer picked for one occurrence, or null.

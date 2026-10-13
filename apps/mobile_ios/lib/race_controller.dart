@@ -543,10 +543,11 @@ class RaceController extends ChangeNotifier {
     _raceEnded = false;
     _lateStart = false;
     _firstFixSeen = false;
-    unawaited(_resolveCourse(eventId, instance));
+    unawaited(_resolveCourse(++_attachGeneration, eventId, instance));
   }
 
   void detachRecorder() {
+    _attachGeneration++;
     _hostingEventId = null;
     _hostingInstance = null;
     _gunAt = null;
@@ -566,16 +567,22 @@ class RaceController extends ChangeNotifier {
   @visibleForTesting
   Future<RaceCourse?> Function(String eventId, DateTime instance)? courseLoader;
 
+  /// Bumped by every attach and detach, so a course load that outlives the
+  /// recording it was started for — a detach, or a re-attach to the same
+  /// race — lands on nothing.
+  int _attachGeneration = 0;
+
   /// L4: a course that cannot be resolved leaves the race recording with no
   /// auto-finish and an ungated manual finish, never a broken recording.
-  Future<void> _resolveCourse(String eventId, DateTime instance) async {
+  Future<void> _resolveCourse(
+      int generation, String eventId, DateTime instance) async {
     try {
       final loader = courseLoader ?? _loadCourse;
       final course = await loader(eventId, instance);
-      if (_hostingEventId != eventId || _hostingInstance != instance) return;
+      if (generation != _attachGeneration) return;
       setCourse(course);
     } catch (e) {
-      debugPrint('[RaceController._resolveCourse] $e');
+      debugPrint('[RaceController._resolveCourse] ${safeErrorLabel(e)}');
     }
   }
 
@@ -601,7 +608,9 @@ class RaceController extends ChangeNotifier {
   /// The finish point comes off the course row, never the route: a
   /// non-owner is served the route privacy-clipped (moving the line) and a
   /// private route not at all. A course with no finish point, or an event
-  /// with no courses, races with a manual finish only.
+  /// with no courses, races with a manual finish only. A failed read throws
+  /// rather than reading as "no courses": the event's own distance is not
+  /// this racer's course, and gating on it could mark a finisher DNF.
   Future<RaceCourse?> _loadCourse(String eventId, DateTime instance) async {
     final courses = await _social.fetchEventCourses(eventId);
     if (courses.isNotEmpty) {
@@ -615,14 +624,9 @@ class RaceController extends ChangeNotifier {
         finishLng: mine.finishLng,
       );
     }
-    final row = await _c
-        .from('events')
-        .select('distance_m')
-        .eq('id', eventId)
-        .maybeSingle();
     return RaceCourse(
       courseId: null,
-      distanceM: (row?['distance_m'] as num?)?.toDouble(),
+      distanceM: await _social.fetchEventDistanceM(eventId),
     );
   }
 

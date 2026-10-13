@@ -29,6 +29,7 @@
 //   "back-to-back instance switch fires notifyListeners" test
 //   below.
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -44,20 +45,39 @@ import '../lib/social_service.dart';
 /// Records finisher submissions and can be told to fail them, standing in
 /// for the network leg `submitEventResult` would otherwise take.
 class _FakeSocial extends SocialService {
-  _FakeSocial({this.failing = false, this.courses = const [], this.myCourseId});
+  _FakeSocial({
+    this.failing = false,
+    this.courses = const [],
+    this.myCourseId,
+    this.coursesFail = false,
+    this.eventDistanceM,
+  });
 
   bool failing;
+
+  /// Thrown by [submitEventResult] instead of the generic network error.
+  Object? submitError;
 
   /// What the default course loader reads. It reaches nothing else: no
   /// route read, and no ApiClient is initialised in a host test.
   final List<EventCourseView> courses;
   final String? myCourseId;
+  final bool coursesFail;
+  final double? eventDistanceM;
   int courseReads = 0;
+  int eventDistanceReads = 0;
 
   @override
   Future<List<EventCourseView>> fetchEventCourses(String eventId) async {
     courseReads++;
+    if (coursesFail) throw Exception('event_courses unreachable');
     return courses;
+  }
+
+  @override
+  Future<double?> fetchEventDistanceM(String eventId) async {
+    eventDistanceReads++;
+    return eventDistanceM;
   }
 
   @override
@@ -93,6 +113,8 @@ class _FakeSocial extends SocialService {
     int? chipTimeS,
     String? finishMethod,
   }) async {
+    final err = submitError;
+    if (err != null) throw err;
     if (failing) throw Exception('network unreachable');
     submitted.add((
       eventId: eventId,
@@ -805,6 +827,60 @@ void main() {
     });
   });
 
+  group('course resolution is L4', () {
+    final gun = DateTime.utc(2026, 5, 22, 18);
+    final instance = DateTime.utc(2026, 5, 22, 18);
+
+    test('a loader that throws leaves an ungated race that still records',
+        () async {
+      final c = RaceController(_FakeSocial());
+      c.courseLoader = (_, _) async => throw StateError('offline');
+      c.attachRecorder(
+          eventId: 'event-1',
+          instance: instance,
+          startedAt: gun,
+          recordingStartedAt: gun);
+      await pumpEventQueue();
+
+      expect(c.isHosting, isTrue);
+      expect(c.course, isNull);
+      expect(c.coverageMet(1), isTrue);
+      expect(_offer(c, 0, gun.add(const Duration(minutes: 20)), 5000), isNull);
+    });
+
+    test('a course load that outlives a re-attach to the same race is discarded',
+        () async {
+      // The old guard compared event and instance only, so a slow load from
+      // the previous recording of the SAME race installed its course over
+      // the new one's.
+      final c = RaceController(_FakeSocial());
+      final slow = Completer<RaceCourse?>();
+      c.courseLoader = (_, _) => slow.future;
+      c.attachRecorder(eventId: 'event-1', instance: instance, startedAt: gun);
+      c.detachRecorder();
+      const fresh = RaceCourse(courseId: 'course-new', distanceM: 2500);
+      c.courseLoader = (_, _) async => fresh;
+      c.attachRecorder(eventId: 'event-1', instance: instance, startedAt: gun);
+      await pumpEventQueue();
+      expect(c.course?.courseId, 'course-new');
+
+      slow.complete(_course);
+      await pumpEventQueue();
+      expect(c.course?.courseId, 'course-new');
+    });
+
+    test('a course load that lands after detach installs nothing', () async {
+      final c = RaceController(_FakeSocial());
+      final slow = Completer<RaceCourse?>();
+      c.courseLoader = (_, _) => slow.future;
+      c.attachRecorder(eventId: 'event-1', instance: instance, startedAt: gun);
+      c.detachRecorder();
+      slow.complete(_course);
+      await pumpEventQueue();
+      expect(c.course, isNull);
+    });
+  });
+
   group('PendingRaceResult', () {
     test('round-trips the live-race fields', () {
       final r = PendingRaceResult(
@@ -934,6 +1010,57 @@ void main() {
 
       expect(_offer(c, 0, gun.add(const Duration(minutes: 20)), 5000), isNull);
       expect(c.coverageMet(10), isTrue);
+    });
+
+    test('a failed course read races ungated, never on the event distance',
+        () async {
+      // fetchEventCourses used to answer a read error with an empty list,
+      // which _loadCourse took for "no courses" and gated the racer on the
+      // EVENT's distance under no course id — the wrong course, and a
+      // finisher of a shorter one marked DNF.
+      final social = _FakeSocial(coursesFail: true, eventDistanceM: 10000);
+      final c = await attachWithDefaultLoader(social);
+
+      expect(social.courseReads, 1);
+      expect(social.eventDistanceReads, 0);
+      expect(c.course, isNull);
+      expect(c.coverageMet(10), isTrue);
+      final o = c.decideStop(
+          coveredM: 5000, now: gun.add(const Duration(minutes: 25)));
+      expect(o.method, RaceFinishMethod.manual);
+    });
+
+    test('an event with no courses is gated on its own distance', () async {
+      final social = _FakeSocial(eventDistanceM: 10000);
+      final c = await attachWithDefaultLoader(social);
+
+      expect(social.eventDistanceReads, 1);
+      expect(c.course!.courseId, isNull);
+      expect(c.course!.distanceM, 10000);
+      expect(c.coverageMet(8999), isFalse);
+      expect(c.coverageMet(9000), isTrue);
+    });
+
+    test('two courses and no pick race ungated on no course', () async {
+      const fiveK = EventCourseView(
+        id: 'course-5k',
+        eventId: 'event-1',
+        routeId: 'route-5k',
+        name: '5K',
+        distanceM: 2500,
+        sortOrder: 1,
+        finishLat: 52.0,
+        finishLng: 0.0,
+      );
+      final social =
+          _FakeSocial(courses: const [tenK, fiveK], eventDistanceM: 10000);
+      final c = await attachWithDefaultLoader(social);
+
+      expect(c.course, isNull);
+      expect(social.eventDistanceReads, 0,
+          reason: 'the event distance is no course of this race');
+      expect(c.coverageMet(10), isTrue);
+      expect(_offer(c, 0, gun.add(const Duration(minutes: 20)), 5000), isNull);
     });
 
     test('a half finish pair on the wire parses as no finish', () {

@@ -299,7 +299,15 @@ export const PAIRS = [
 	},
 	{
 		tableColumn: 'event_results.finish_method',
-		clients: [{ file: TS_TYPES, decl: 'FinishMethod', shape: 'union' }],
+		clients: [
+			{ file: TS_TYPES, decl: 'FinishMethod', shape: 'union' },
+			{ file: 'apps/mobile_android/lib/race_finish.dart', decl: 'RaceFinishMethod', shape: 'enum' },
+			{
+				file: 'apps/mobile_android/lib/screens/event_detail_screen.dart',
+				decl: '_ResultRow._finishMethodLabel',
+				shape: 'switch',
+			},
+		],
 	},
 	{
 		tableColumn: 'events.category',

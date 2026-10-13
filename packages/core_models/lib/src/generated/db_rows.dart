@@ -1489,6 +1489,8 @@ class EventCourseRow {
   static const String colName = 'name';
   static const String colDistanceM = 'distance_m';
   static const String colSortOrder = 'sort_order';
+  static const String colFinishLat = 'finish_lat';
+  static const String colFinishLng = 'finish_lng';
   static const String colCreatedAt = 'created_at';
 
   final String id;
@@ -1497,6 +1499,8 @@ class EventCourseRow {
   final String name;
   final double? distanceM;
   final int sortOrder;
+  final double? finishLat;
+  final double? finishLng;
   final DateTime createdAt;
 
   const EventCourseRow({
@@ -1506,6 +1510,8 @@ class EventCourseRow {
     required this.name,
     this.distanceM,
     required this.sortOrder,
+    this.finishLat,
+    this.finishLng,
     required this.createdAt,
   });
 
@@ -1516,6 +1522,8 @@ class EventCourseRow {
     name: json['name'] as String,
     distanceM: _toDoubleOrNull(json['distance_m']),
     sortOrder: (json['sort_order'] as num).toInt(),
+    finishLat: _toDoubleOrNull(json['finish_lat']),
+    finishLng: _toDoubleOrNull(json['finish_lng']),
     createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
   );
 
@@ -1526,6 +1534,8 @@ class EventCourseRow {
     colName: name,
     colDistanceM: distanceM,
     colSortOrder: sortOrder,
+    colFinishLat: finishLat,
+    colFinishLng: finishLng,
     colCreatedAt: createdAt.toIso8601String(),
   };
 
@@ -1536,6 +1546,8 @@ class EventCourseRow {
     String? name,
     double? distanceM,
     int? sortOrder,
+    double? finishLat,
+    double? finishLng,
     DateTime? createdAt,
   }) => EventCourseRow(
     id: id ?? this.id,
@@ -1544,6 +1556,8 @@ class EventCourseRow {
     name: name ?? this.name,
     distanceM: distanceM ?? this.distanceM,
     sortOrder: sortOrder ?? this.sortOrder,
+    finishLat: finishLat ?? this.finishLat,
+    finishLng: finishLng ?? this.finishLng,
     createdAt: createdAt ?? this.createdAt,
   );
 }

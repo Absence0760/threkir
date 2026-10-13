@@ -971,6 +971,8 @@ export type Database = {
           created_at: string
           distance_m: number | null
           event_id: string
+          finish_lat: number | null
+          finish_lng: number | null
           id: string
           name: string
           route_id: string | null
@@ -980,6 +982,8 @@ export type Database = {
           created_at?: string
           distance_m?: number | null
           event_id: string
+          finish_lat?: number | null
+          finish_lng?: number | null
           id?: string
           name: string
           route_id?: string | null
@@ -989,6 +993,8 @@ export type Database = {
           created_at?: string
           distance_m?: number | null
           event_id?: string
+          finish_lat?: number | null
+          finish_lng?: number | null
           id?: string
           name?: string
           route_id?: string | null

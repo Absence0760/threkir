@@ -14,9 +14,12 @@
 --   20-21. The window stays open 24 h after the finish, then closes.
 --   22.    A result on a single-course event with no RSVP'd course takes that
 --          course.
+--   23-24. A course's finish point is copied from its route's last waypoint,
+--          and only from a route the organiser can see.
+--   25.    GO stamps started_at with server time, not the client's value.
 
 begin;
-select plan(22);
+select plan(25);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -52,6 +55,16 @@ values
    'Members-only race', '2026-08-02 08:00+00', 'e7270000-0000-0000-0000-000000000001', false),
   ('e7270000-0000-0000-0000-0000000000e3', 'e7270000-0000-0000-0000-0000000000c1',
    'One-course run', '2026-08-03 08:00+00', 'e7270000-0000-0000-0000-000000000001', true);
+
+-- The owner's private route, and the outsider's private route.
+insert into routes (id, user_id, name, waypoints, distance_m, is_public)
+values
+  ('e7270000-0000-0000-0000-0000000000b1', 'e7270000-0000-0000-0000-000000000001',
+   'Club 10K', '[{"lat":-37.8136,"lng":144.9631},{"lat":-37.8096,"lng":144.9690}]'::jsonb,
+   10000, false),
+  ('e7270000-0000-0000-0000-0000000000b2', 'e7270000-0000-0000-0000-000000000004',
+   'Home loop', '[{"lat":51.5,"lng":-0.1},{"lat":51.51,"lng":-0.11}]'::jsonb,
+   5000, false);
 
 insert into event_courses (id, event_id, name, distance_m, sort_order)
 values
@@ -162,6 +175,30 @@ values
 insert into race_sessions (event_id, instance_start, status)
 values ('e7270000-0000-0000-0000-0000000000e1', '2026-08-01 08:00+00', 'armed');
 
+-- ── 23-24: the course finish point ──────────────────────────────────────────
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"e7270000-0000-0000-0000-000000000001","role":"authenticated"}';
+
+update event_courses set route_id = 'e7270000-0000-0000-0000-0000000000b1'
+ where id = 'e7270000-0000-0000-0000-0000000000a1';
+
+select is(
+  (select finish_lat::text || ',' || finish_lng::text from event_courses
+    where id = 'e7270000-0000-0000-0000-0000000000a1'),
+  '-37.8096,144.969',
+  'a course given a route takes the route''s last waypoint as its finish'
+);
+
+select throws_ok(
+  $$ update event_courses set route_id = 'e7270000-0000-0000-0000-0000000000b2'
+      where id = 'e7270000-0000-0000-0000-0000000000a2' $$,
+  '42501',
+  null,
+  'an organiser cannot publish the finish of a route they cannot see'
+);
+
+set local role service_role;
+
 -- ── 10-13: the write window, before and after GO ────────────────────────────
 set local role authenticated;
 set local "request.jwt.claims" = '{"sub":"e7270000-0000-0000-0000-000000000002","role":"authenticated"}';
@@ -175,10 +212,20 @@ select throws_ok(
   'a result cannot be written while the race is only armed'
 );
 
-set local role service_role;
+set local "request.jwt.claims" = '{"sub":"e7270000-0000-0000-0000-000000000001","role":"authenticated"}';
 update race_sessions
-   set status = 'running', started_at = now() - interval '1 hour'
+   set status = 'running', started_at = '2000-01-01 00:00+00'
  where event_id = 'e7270000-0000-0000-0000-0000000000e1';
+
+-- ── 25: GO is server time ───────────────────────────────────────────────────
+select is(
+  (select started_at from race_sessions
+    where event_id = 'e7270000-0000-0000-0000-0000000000e1'),
+  now(),
+  'GO stamps started_at with the server clock, not the host device''s value'
+);
+
+set local role service_role;
 
 insert into race_pings (event_id, instance_start, user_id, lat, lng, distance_m, elapsed_s)
 values

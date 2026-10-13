@@ -7,9 +7,16 @@
 -- time. This migration is the data half of that loop:
 --
 --   * event_courses — the courses of an event (a route, a name, a distance, an
---     order). One per existing event that names a route is backfilled, so the
---     legacy single-route event reads as a one-course race; events.route_id
---     stays as that legacy pointer and is not dropped.
+--     order, and the finish point). One per existing event that names a route
+--     is backfilled, so the legacy single-route event reads as a one-course
+--     race; events.route_id stays as that legacy pointer and is not dropped.
+--     finish_lat / finish_lng are copied from the route's last waypoint when
+--     the course is given a route, so a racer's device reads the finish from
+--     the course row: it needs no read of a route it may not own, and gets the
+--     unclipped point a non-owner's privacy-clipped route view would move.
+--   * race_sessions.started_at is stamped with server time on the move to
+--     running. Every racer's gun time is measured from it, so it cannot be the
+--     host device's clock.
 --   * event_attendees.course_id — the racer's chosen course. When an event has
 --     more than one course a self-RSVP to going / waitlisted must name one.
 --   * event_results.course_id / gun_time_s / chip_time_s / finish_method —
@@ -46,7 +53,15 @@ create table public.event_courses (
   sort_order  integer not null default 0
     constraint event_courses_sort_order_check
       check (sort_order between 0 and 1000),
-  created_at  timestamptz not null default now()
+  finish_lat  double precision
+    constraint event_courses_finish_lat_check
+      check (finish_lat is null or finish_lat between -90 and 90),
+  finish_lng  double precision
+    constraint event_courses_finish_lng_check
+      check (finish_lng is null or finish_lng between -180 and 180),
+  created_at  timestamptz not null default now(),
+  constraint event_courses_finish_pair_check
+    check ((finish_lat is null) = (finish_lng is null))
 );
 
 create index event_courses_event_id on public.event_courses (event_id, sort_order);
@@ -90,6 +105,62 @@ grant select on public.event_courses to anon;
 grant select, insert, update, delete on public.event_courses to authenticated;
 grant select, insert, update, delete on public.event_courses to service_role;
 
+-- The finish point is the route's last waypoint, copied when a course gains a
+-- route (or changes route). Copying it rather than reading the route at race
+-- time is deliberate: the route belongs to whoever drew it, a racer may not be
+-- able to read it, and the clipped geometry a non-owner is served moves a
+-- finish that sits inside the owner's privacy zone. Attaching a route is
+-- therefore publishing its finish point to everyone who can see the event, so
+-- a client caller may only attach a route they can see themselves. Clearing
+-- the route clears the finish. A course with no route has no finish point and
+-- its racers finish by hand.
+create or replace function public.event_courses_set_finish()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_last jsonb;
+begin
+  if tg_op = 'UPDATE' and new.route_id is not distinct from old.route_id then
+    return new;
+  end if;
+  if new.route_id is null then
+    new.finish_lat := null;
+    new.finish_lng := null;
+    return new;
+  end if;
+  if auth.uid() is not null
+     and not private.is_route_visible_to(new.route_id, auth.uid()) then
+    raise exception 'event_course_route_not_visible: route % is not visible to you', new.route_id
+      using errcode = 'insufficient_privilege';
+  end if;
+  select r.waypoints -> (jsonb_array_length(r.waypoints) - 1) into v_last
+  from routes r
+  where r.id = new.route_id
+    and jsonb_typeof(r.waypoints) = 'array'
+    and jsonb_array_length(r.waypoints) > 0;
+  if v_last is not null
+     and (v_last ->> 'lat') ~ '^-?[0-9]+(\.[0-9]+)?$'
+     and (v_last ->> 'lng') ~ '^-?[0-9]+(\.[0-9]+)?$'
+     and (v_last ->> 'lat')::float8 between -90 and 90
+     and (v_last ->> 'lng')::float8 between -180 and 180
+  then
+    new.finish_lat := (v_last ->> 'lat')::float8;
+    new.finish_lng := (v_last ->> 'lng')::float8;
+  else
+    new.finish_lat := null;
+    new.finish_lng := null;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger event_courses_set_finish_trg
+  before insert or update of route_id on public.event_courses
+  for each row execute function public.event_courses_set_finish();
+
 -- Backfill: one course per event that names a route. `events` is a bounded
 -- config table, so one statement is fine. The distance prefers the route's
 -- geometry (what the finish rule measures against) over the event's stated
@@ -109,6 +180,40 @@ from public.events e
 left join public.routes r on r.id = e.route_id
 where e.route_id is not null
   and not exists (select 1 from public.event_courses c where c.event_id = e.id);
+
+-- ─── server-stamped GO ─────────────────────────────────────────────────────
+
+-- On the move to running, started_at is the database's clock, whatever the
+-- client sent: every gun time is measured against it, and a host phone's clock
+-- can be minutes out. The service role and the server itself (no JWT) keep the
+-- value they write — they are not a device clock, and the operator / fixture
+-- paths that backdate a race need it.
+create or replace function public.race_sessions_stamp_started_at()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+declare
+  v_role text := coalesce(
+    nullif(current_setting('request.jwt.claim.role', true), ''),
+    (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role'),
+    ''
+  );
+begin
+  if new.status = 'running'
+     and (tg_op = 'INSERT' or old.status is distinct from 'running')
+     and v_role <> 'service_role'
+     and auth.uid() is not null
+  then
+    new.started_at := now();
+  end if;
+  return new;
+end;
+$$;
+
+create trigger race_sessions_stamp_started_at_trg
+  before insert or update of status on public.race_sessions
+  for each row execute function public.race_sessions_stamp_started_at();
 
 -- ─── event_attendees.course_id ────────────────────────────────────────────
 

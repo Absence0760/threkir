@@ -5299,6 +5299,14 @@ export type Database = {
           going_count: number
         }[]
       }
+      event_orders_owed_refund: {
+        Args: { p_limit: number }
+        Returns: {
+          id: string
+          status: string
+          stripe_payment_intent_id: string
+        }[]
+      }
       exercise_fold_case: { Args: { p_name: string }; Returns: string }
       expire_stale_export_jobs: { Args: never; Returns: number }
       export_retention_overrun: { Args: { p_grace?: string }; Returns: Json }
@@ -5601,6 +5609,7 @@ export type Database = {
         }[]
       }
       increment_coach_usage: { Args: { p_user_id: string }; Returns: number }
+      invoke_event_refund_sweep: { Args: never; Returns: number }
       is_blocked_either_way: {
         Args: { a: string; b: string }
         Returns: boolean

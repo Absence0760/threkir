@@ -119,6 +119,12 @@ Deno.test('every refund in the tier goes through ONE refundOrder over ONE transp
       .test(files['stripe-events-webhook/index.ts']),
     'the webhook no longer refunds a cancelled occurrence through refundOrder',
   );
+  assert(
+    /refundOrder\(createRefund, service, order\)/.test(files['events-refund-sweep/index.ts']) &&
+      /const createRefund = stripeRestRefundCreator\(stripeSecretKey\);/
+        .test(files['events-refund-sweep/index.ts']),
+    'the reconciliation sweep no longer retries through refundOrder (decisions § 1839)',
+  );
 });
 
 Deno.test('the refund idempotency key is the shared per-order key, nothing hand-built', async () => {

@@ -14910,6 +14910,122 @@ class AppLocalizationsPt extends AppLocalizations {
   String eventResultActionFailed(String error) {
     return 'Não foi possível atualizar o resultado: $error';
   }
+
+  @override
+  String get audienceTitle => 'Quem pode ver isto';
+
+  @override
+  String get audienceLevelPrivate => 'Só eu';
+
+  @override
+  String get audienceLevelPrivateHint => 'Mais ninguém pode abrir.';
+
+  @override
+  String get audienceLevelFollowers => 'Seguidores';
+
+  @override
+  String get audienceLevelFollowersHint =>
+      'Quem o segue pode abrir através de uma ligação. Não aparece nos feeds, nas notificações nem na pesquisa.';
+
+  @override
+  String get audienceLevelSpecific => 'Pessoas específicas';
+
+  @override
+  String get audienceLevelSpecificHint =>
+      'Só as pessoas que escolher podem abrir. Pode deixar de partilhar com qualquer pessoa a qualquer momento.';
+
+  @override
+  String get audienceLevelPublic => 'Público';
+
+  @override
+  String get audienceLevelPublicHint =>
+      'Qualquer pessoa com a ligação pode abrir, e pode aparecer nos feeds e na pesquisa.';
+
+  @override
+  String get audienceClipNote =>
+      'Todos, exceto o próprio, veem o mapa sem as suas zonas de privacidade.';
+
+  @override
+  String get audienceSharedWith => 'Partilhado com';
+
+  @override
+  String get audienceSharedWithNobody => 'Ainda não partilhado com ninguém.';
+
+  @override
+  String audienceRevokeTooltip(String name) {
+    return 'Deixar de partilhar com $name';
+  }
+
+  @override
+  String audienceRevoked(String name) {
+    return '$name já não pode abrir.';
+  }
+
+  @override
+  String audienceRevokeFailed(String error) {
+    return 'Não foi possível deixar de partilhar: $error';
+  }
+
+  @override
+  String get audienceAddPeople => 'Adicionar pessoas';
+
+  @override
+  String get audienceSearchHint => 'Pesquise pessoas que segue ou que o seguem';
+
+  @override
+  String get audienceShareAction => 'Partilhar';
+
+  @override
+  String get audienceAlreadyShared => 'Partilhado';
+
+  @override
+  String audienceShared(String name) {
+    return '$name já pode abrir.';
+  }
+
+  @override
+  String audienceShareFailed(String error) {
+    return 'Não foi possível partilhar: $error';
+  }
+
+  @override
+  String get audienceLoadFailed =>
+      'Não foi possível carregar com quem isto está partilhado.';
+
+  @override
+  String get audiencePeopleLoadFailed =>
+      'Não foi possível carregar as pessoas com quem pode partilhar.';
+
+  @override
+  String get audienceNoPeople =>
+      'Pode partilhar com pessoas que segue ou que o seguem, e ainda não tem nenhuma.';
+
+  @override
+  String get audienceNoMatches => 'Ninguém corresponde a esse nome.';
+
+  @override
+  String get audienceRetry => 'Tentar novamente';
+
+  @override
+  String audienceUpdateFailed(String error) {
+    return 'Não foi possível alterar quem pode ver isto: $error';
+  }
+
+  @override
+  String get audienceUpdated => 'Visibilidade atualizada.';
+
+  @override
+  String get audienceRevokeAllTitle => 'Deixar de partilhar com todos?';
+
+  @override
+  String get audienceRevokeAllBody =>
+      'Todas as pessoas com quem partilhou deixarão de poder abrir.';
+
+  @override
+  String get audienceRevokeAllConfirm => 'Só eu';
+
+  @override
+  String get audienceShareLink => 'Link de partilha';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -29809,4 +29925,121 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String eventResultActionFailed(String error) {
     return 'Não foi possível atualizar o resultado: $error';
   }
+
+  @override
+  String get audienceTitle => 'Quem pode ver isto';
+
+  @override
+  String get audienceLevelPrivate => 'Só eu';
+
+  @override
+  String get audienceLevelPrivateHint => 'Ninguém mais pode abrir.';
+
+  @override
+  String get audienceLevelFollowers => 'Seguidores';
+
+  @override
+  String get audienceLevelFollowersHint =>
+      'Quem segue você pode abrir por um link. Não aparece nos feeds, nas notificações nem na busca.';
+
+  @override
+  String get audienceLevelSpecific => 'Pessoas específicas';
+
+  @override
+  String get audienceLevelSpecificHint =>
+      'Só as pessoas que você escolher podem abrir. Você pode parar de compartilhar com qualquer pessoa a qualquer momento.';
+
+  @override
+  String get audienceLevelPublic => 'Público';
+
+  @override
+  String get audienceLevelPublicHint =>
+      'Qualquer pessoa com o link pode abrir, e pode aparecer nos feeds e na busca.';
+
+  @override
+  String get audienceClipNote =>
+      'Todos, menos você, veem o mapa sem as suas zonas de privacidade.';
+
+  @override
+  String get audienceSharedWith => 'Compartilhado com';
+
+  @override
+  String get audienceSharedWithNobody => 'Ainda não compartilhado com ninguém.';
+
+  @override
+  String audienceRevokeTooltip(String name) {
+    return 'Parar de compartilhar com $name';
+  }
+
+  @override
+  String audienceRevoked(String name) {
+    return '$name não pode mais abrir.';
+  }
+
+  @override
+  String audienceRevokeFailed(String error) {
+    return 'Não foi possível parar de compartilhar: $error';
+  }
+
+  @override
+  String get audienceAddPeople => 'Adicionar pessoas';
+
+  @override
+  String get audienceSearchHint =>
+      'Busque pessoas que você segue ou que seguem você';
+
+  @override
+  String get audienceShareAction => 'Compartilhar';
+
+  @override
+  String get audienceAlreadyShared => 'Compartilhado';
+
+  @override
+  String audienceShared(String name) {
+    return '$name agora pode abrir.';
+  }
+
+  @override
+  String audienceShareFailed(String error) {
+    return 'Não foi possível compartilhar: $error';
+  }
+
+  @override
+  String get audienceLoadFailed =>
+      'Não foi possível carregar com quem isto está compartilhado.';
+
+  @override
+  String get audiencePeopleLoadFailed =>
+      'Não foi possível carregar as pessoas com quem você pode compartilhar.';
+
+  @override
+  String get audienceNoPeople =>
+      'Você pode compartilhar com pessoas que você segue ou que seguem você, e ainda não tem nenhuma.';
+
+  @override
+  String get audienceNoMatches => 'Ninguém corresponde a esse nome.';
+
+  @override
+  String get audienceRetry => 'Tentar de novo';
+
+  @override
+  String audienceUpdateFailed(String error) {
+    return 'Não foi possível mudar quem pode ver isto: $error';
+  }
+
+  @override
+  String get audienceUpdated => 'Visibilidade atualizada.';
+
+  @override
+  String get audienceRevokeAllTitle => 'Parar de compartilhar com todos?';
+
+  @override
+  String get audienceRevokeAllBody =>
+      'Todos com quem você compartilhou não poderão mais abrir.';
+
+  @override
+  String get audienceRevokeAllConfirm => 'Só eu';
+
+  @override
+  String get audienceShareLink => 'Link de compartilhamento';
 }

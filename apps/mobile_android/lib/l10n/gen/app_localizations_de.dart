@@ -14922,4 +14922,121 @@ class AppLocalizationsDe extends AppLocalizations {
   String eventResultActionFailed(String error) {
     return 'Das Ergebnis konnte nicht aktualisiert werden: $error';
   }
+
+  @override
+  String get audienceTitle => 'Wer das sehen kann';
+
+  @override
+  String get audienceLevelPrivate => 'Nur ich';
+
+  @override
+  String get audienceLevelPrivateHint => 'Niemand sonst kann es öffnen.';
+
+  @override
+  String get audienceLevelFollowers => 'Follower';
+
+  @override
+  String get audienceLevelFollowersHint =>
+      'Personen, die dir folgen, können es über einen Link öffnen. Es erscheint nicht in Feeds, Benachrichtigungen oder der Suche.';
+
+  @override
+  String get audienceLevelSpecific => 'Bestimmte Personen';
+
+  @override
+  String get audienceLevelSpecificHint =>
+      'Nur die Personen, die du auswählst, können es öffnen. Du kannst das Teilen mit jeder Person jederzeit beenden.';
+
+  @override
+  String get audienceLevelPublic => 'Öffentlich';
+
+  @override
+  String get audienceLevelPublicHint =>
+      'Jede Person mit dem Link kann es öffnen, und es kann in Feeds und der Suche erscheinen.';
+
+  @override
+  String get audienceClipNote =>
+      'Alle außer dir sehen die Karte ohne deine Privatsphärezonen.';
+
+  @override
+  String get audienceSharedWith => 'Geteilt mit';
+
+  @override
+  String get audienceSharedWithNobody => 'Noch mit niemandem geteilt.';
+
+  @override
+  String audienceRevokeTooltip(String name) {
+    return 'Teilen mit $name beenden';
+  }
+
+  @override
+  String audienceRevoked(String name) {
+    return '$name kann es nicht mehr öffnen.';
+  }
+
+  @override
+  String audienceRevokeFailed(String error) {
+    return 'Teilen konnte nicht beendet werden: $error';
+  }
+
+  @override
+  String get audienceAddPeople => 'Personen hinzufügen';
+
+  @override
+  String get audienceSearchHint =>
+      'Personen suchen, denen du folgst oder die dir folgen';
+
+  @override
+  String get audienceShareAction => 'Teilen';
+
+  @override
+  String get audienceAlreadyShared => 'Geteilt';
+
+  @override
+  String audienceShared(String name) {
+    return '$name kann es jetzt öffnen.';
+  }
+
+  @override
+  String audienceShareFailed(String error) {
+    return 'Teilen fehlgeschlagen: $error';
+  }
+
+  @override
+  String get audienceLoadFailed =>
+      'Konnte nicht laden, mit wem das geteilt ist.';
+
+  @override
+  String get audiencePeopleLoadFailed =>
+      'Konnte die Personen nicht laden, mit denen du teilen kannst.';
+
+  @override
+  String get audienceNoPeople =>
+      'Du kannst mit Personen teilen, denen du folgst oder die dir folgen – davon hast du noch keine.';
+
+  @override
+  String get audienceNoMatches => 'Niemand passt zu diesem Namen.';
+
+  @override
+  String get audienceRetry => 'Erneut versuchen';
+
+  @override
+  String audienceUpdateFailed(String error) {
+    return 'Konnte nicht ändern, wer das sehen kann: $error';
+  }
+
+  @override
+  String get audienceUpdated => 'Sichtbarkeit aktualisiert.';
+
+  @override
+  String get audienceRevokeAllTitle => 'Teilen mit allen beenden?';
+
+  @override
+  String get audienceRevokeAllBody =>
+      'Alle, mit denen du es geteilt hast, können es dann nicht mehr öffnen.';
+
+  @override
+  String get audienceRevokeAllConfirm => 'Nur ich';
+
+  @override
+  String get audienceShareLink => 'Link teilen';
 }

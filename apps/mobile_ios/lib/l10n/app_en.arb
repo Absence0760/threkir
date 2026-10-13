@@ -18968,5 +18968,163 @@
         "type": "String"
       }
     }
+  },
+  "audienceTitle": "Who can see this",
+  "@audienceTitle": {
+    "description": "Title of the sheet where the owner chooses who can see a run or route"
+  },
+  "audienceLevelPrivate": "Only me",
+  "@audienceLevelPrivate": {
+    "description": "Audience level: only the owner"
+  },
+  "audienceLevelPrivateHint": "Nobody else can open it.",
+  "@audienceLevelPrivateHint": {
+    "description": "Hint under the Only me level"
+  },
+  "audienceLevelFollowers": "Followers",
+  "@audienceLevelFollowers": {
+    "description": "Audience level: the owner's followers"
+  },
+  "audienceLevelFollowersHint": "People who follow you can open it from a link. It stays out of feeds, notifications and search.",
+  "@audienceLevelFollowersHint": {
+    "description": "Hint under the Followers level"
+  },
+  "audienceLevelSpecific": "Specific people",
+  "@audienceLevelSpecific": {
+    "description": "Audience level: people the owner picks"
+  },
+  "audienceLevelSpecificHint": "Only the people you pick can open it. You can stop sharing with anyone at any time.",
+  "@audienceLevelSpecificHint": {
+    "description": "Hint under the Specific people level"
+  },
+  "audienceLevelPublic": "Public",
+  "@audienceLevelPublic": {
+    "description": "Audience level: anyone with the link"
+  },
+  "audienceLevelPublicHint": "Anyone with the link can open it, and it can appear in feeds and search.",
+  "@audienceLevelPublicHint": {
+    "description": "Hint under the Public level"
+  },
+  "audienceClipNote": "Everyone but you sees the map with your privacy zones trimmed off.",
+  "@audienceClipNote": {
+    "description": "Note that every non-owner sees the map with privacy zones trimmed"
+  },
+  "audienceSharedWith": "Shared with",
+  "@audienceSharedWith": {
+    "description": "Heading over the list of people a run or route is shared with"
+  },
+  "audienceSharedWithNobody": "Not shared with anyone yet.",
+  "@audienceSharedWithNobody": {
+    "description": "Empty state of the shared-with list"
+  },
+  "audienceRevokeTooltip": "Stop sharing with {name}",
+  "@audienceRevokeTooltip": {
+    "description": "Tooltip / accessible label of the button that stops sharing with one person",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "audienceRevoked": "{name} can no longer open it.",
+  "@audienceRevoked": {
+    "description": "Banner after the owner stops sharing with one person",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "audienceRevokeFailed": "Couldn't stop sharing: {error}",
+  "@audienceRevokeFailed": {
+    "description": "Banner when stopping a share fails",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "audienceAddPeople": "Add people",
+  "@audienceAddPeople": {
+    "description": "Heading over the list of people the owner can share with"
+  },
+  "audienceSearchHint": "Search people you follow or who follow you",
+  "@audienceSearchHint": {
+    "description": "Hint text of the people search field"
+  },
+  "audienceShareAction": "Share",
+  "@audienceShareAction": {
+    "description": "Button that shares with one person"
+  },
+  "audienceAlreadyShared": "Shared",
+  "@audienceAlreadyShared": {
+    "description": "Label shown instead of the share button for someone already shared with"
+  },
+  "audienceShared": "{name} can now open it.",
+  "@audienceShared": {
+    "description": "Banner after sharing with one person",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "audienceShareFailed": "Couldn't share: {error}",
+  "@audienceShareFailed": {
+    "description": "Banner when sharing with a person fails",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "audienceLoadFailed": "Couldn't load who this is shared with.",
+  "@audienceLoadFailed": {
+    "description": "Shown when the shared-with list cannot be loaded"
+  },
+  "audiencePeopleLoadFailed": "Couldn't load the people you can share with.",
+  "@audiencePeopleLoadFailed": {
+    "description": "Shown when the people to share with cannot be loaded"
+  },
+  "audienceNoPeople": "You can share with people you follow or who follow you, and you don't have any yet.",
+  "@audienceNoPeople": {
+    "description": "Empty state when the owner has no followers or followees"
+  },
+  "audienceNoMatches": "No one matches that name.",
+  "@audienceNoMatches": {
+    "description": "Empty state when the people search matches no one"
+  },
+  "audienceRetry": "Retry",
+  "@audienceRetry": {
+    "description": "Retry button"
+  },
+  "audienceUpdateFailed": "Couldn't change who can see this: {error}",
+  "@audienceUpdateFailed": {
+    "description": "Banner when changing the audience fails",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "audienceUpdated": "Updated who can see this.",
+  "@audienceUpdated": {
+    "description": "Banner after the audience changed"
+  },
+  "audienceRevokeAllTitle": "Stop sharing with everyone?",
+  "@audienceRevokeAllTitle": {
+    "description": "Title of the confirm before Only me revokes every share"
+  },
+  "audienceRevokeAllBody": "Everyone you shared it with will no longer be able to open it.",
+  "@audienceRevokeAllBody": {
+    "description": "Body of the confirm before Only me revokes every share"
+  },
+  "audienceRevokeAllConfirm": "Only me",
+  "@audienceRevokeAllConfirm": {
+    "description": "Confirm button that moves to Only me and revokes every share"
+  },
+  "audienceShareLink": "Share link",
+  "@audienceShareLink": {
+    "description": "Button that hands the in-app link (it opens only for the people who can see it) to the share sheet"
   }
 }

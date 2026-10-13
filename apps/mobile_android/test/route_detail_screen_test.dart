@@ -85,6 +85,26 @@ class _GatedPublicApi extends ApiClient {
   }
 }
 
+/// [_GatedPublicApi] with audience sharing switched on and a private route
+/// shared with nobody, so Share link opens the "Who can see this" sheet.
+class _AudienceOnApi extends _GatedPublicApi {
+  @override
+  Future<bool> audienceSharingEnabled() async => true;
+
+  @override
+  Future<({bool isPublic, bool followersOnly})?> fetchAudienceColumns(
+          ShareableKind kind, String id) async =>
+      (isPublic: false, followersOnly: false);
+
+  @override
+  Future<List<ShareRecipient>> fetchShares(
+          ShareableKind kind, String id) async =>
+      const [];
+
+  @override
+  Future<List<UserProfileRow>> fetchShareCandidates() async => const [];
+}
+
 ClubView _club({
   required String id,
   required String name,
@@ -299,6 +319,52 @@ void main() {
       await tester.pump(Duration.zero);
       expect(api.publicCalls, 1,
           reason: 'confirming must flip the route public');
+    });
+
+    testWidgets(
+        'with audience sharing on, Share link asks who can see the route '
+        'before anything is made public (decisions § R8SHARE-6)',
+        (tester) async {
+      final api = _AudienceOnApi();
+      SharedPreferences.setMockInitialValues({});
+      final prefs = Preferences();
+      await prefs.init();
+
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: RouteDetailScreen(
+          route: _route(isPublic: false),
+          routeStore: _FakePinStore(),
+          preferences: prefs,
+          apiClient: api,
+          isOwner: true,
+        ),
+      ));
+      await tester.pump();
+      await tester.pump(Duration.zero);
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+
+      await tester.tap(find.byIcon(Icons.ios_share));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(find.text(l10n.routeDetailShareLink));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byKey(const ValueKey('audience-sheet')), findsOneWidget);
+      expect(find.text(l10n.routeDetailShareConfirmTitle), findsNothing);
+      expect(api.publicCalls, 0);
+
+      final public = find.byKey(const ValueKey('audience-level-public'));
+      await tester.ensureVisible(public);
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(public);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.text(l10n.routeDetailShareConfirmTitle), findsOneWidget,
+          reason: 'Public goes through the same make-public confirm');
+      expect(api.publicCalls, 0);
     });
 
     testWidgets(

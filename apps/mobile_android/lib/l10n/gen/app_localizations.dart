@@ -24674,6 +24674,198 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t update the result: {error}'**
   String eventResultActionFailed(String error);
+
+  /// Title of the sheet where the owner chooses who can see a run or route
+  ///
+  /// In en, this message translates to:
+  /// **'Who can see this'**
+  String get audienceTitle;
+
+  /// Audience level: only the owner
+  ///
+  /// In en, this message translates to:
+  /// **'Only me'**
+  String get audienceLevelPrivate;
+
+  /// Hint under the Only me level
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody else can open it.'**
+  String get audienceLevelPrivateHint;
+
+  /// Audience level: the owner's followers
+  ///
+  /// In en, this message translates to:
+  /// **'Followers'**
+  String get audienceLevelFollowers;
+
+  /// Hint under the Followers level
+  ///
+  /// In en, this message translates to:
+  /// **'People who follow you can open it from a link. It stays out of feeds, notifications and search.'**
+  String get audienceLevelFollowersHint;
+
+  /// Audience level: people the owner picks
+  ///
+  /// In en, this message translates to:
+  /// **'Specific people'**
+  String get audienceLevelSpecific;
+
+  /// Hint under the Specific people level
+  ///
+  /// In en, this message translates to:
+  /// **'Only the people you pick can open it. You can stop sharing with anyone at any time.'**
+  String get audienceLevelSpecificHint;
+
+  /// Audience level: anyone with the link
+  ///
+  /// In en, this message translates to:
+  /// **'Public'**
+  String get audienceLevelPublic;
+
+  /// Hint under the Public level
+  ///
+  /// In en, this message translates to:
+  /// **'Anyone with the link can open it, and it can appear in feeds and search.'**
+  String get audienceLevelPublicHint;
+
+  /// Note that every non-owner sees the map with privacy zones trimmed
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone but you sees the map with your privacy zones trimmed off.'**
+  String get audienceClipNote;
+
+  /// Heading over the list of people a run or route is shared with
+  ///
+  /// In en, this message translates to:
+  /// **'Shared with'**
+  String get audienceSharedWith;
+
+  /// Empty state of the shared-with list
+  ///
+  /// In en, this message translates to:
+  /// **'Not shared with anyone yet.'**
+  String get audienceSharedWithNobody;
+
+  /// Tooltip / accessible label of the button that stops sharing with one person
+  ///
+  /// In en, this message translates to:
+  /// **'Stop sharing with {name}'**
+  String audienceRevokeTooltip(String name);
+
+  /// Banner after the owner stops sharing with one person
+  ///
+  /// In en, this message translates to:
+  /// **'{name} can no longer open it.'**
+  String audienceRevoked(String name);
+
+  /// Banner when stopping a share fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t stop sharing: {error}'**
+  String audienceRevokeFailed(String error);
+
+  /// Heading over the list of people the owner can share with
+  ///
+  /// In en, this message translates to:
+  /// **'Add people'**
+  String get audienceAddPeople;
+
+  /// Hint text of the people search field
+  ///
+  /// In en, this message translates to:
+  /// **'Search people you follow or who follow you'**
+  String get audienceSearchHint;
+
+  /// Button that shares with one person
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get audienceShareAction;
+
+  /// Label shown instead of the share button for someone already shared with
+  ///
+  /// In en, this message translates to:
+  /// **'Shared'**
+  String get audienceAlreadyShared;
+
+  /// Banner after sharing with one person
+  ///
+  /// In en, this message translates to:
+  /// **'{name} can now open it.'**
+  String audienceShared(String name);
+
+  /// Banner when sharing with a person fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t share: {error}'**
+  String audienceShareFailed(String error);
+
+  /// Shown when the shared-with list cannot be loaded
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load who this is shared with.'**
+  String get audienceLoadFailed;
+
+  /// Shown when the people to share with cannot be loaded
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the people you can share with.'**
+  String get audiencePeopleLoadFailed;
+
+  /// Empty state when the owner has no followers or followees
+  ///
+  /// In en, this message translates to:
+  /// **'You can share with people you follow or who follow you, and you don\'t have any yet.'**
+  String get audienceNoPeople;
+
+  /// Empty state when the people search matches no one
+  ///
+  /// In en, this message translates to:
+  /// **'No one matches that name.'**
+  String get audienceNoMatches;
+
+  /// Retry button
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get audienceRetry;
+
+  /// Banner when changing the audience fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t change who can see this: {error}'**
+  String audienceUpdateFailed(String error);
+
+  /// Banner after the audience changed
+  ///
+  /// In en, this message translates to:
+  /// **'Updated who can see this.'**
+  String get audienceUpdated;
+
+  /// Title of the confirm before Only me revokes every share
+  ///
+  /// In en, this message translates to:
+  /// **'Stop sharing with everyone?'**
+  String get audienceRevokeAllTitle;
+
+  /// Body of the confirm before Only me revokes every share
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone you shared it with will no longer be able to open it.'**
+  String get audienceRevokeAllBody;
+
+  /// Confirm button that moves to Only me and revokes every share
+  ///
+  /// In en, this message translates to:
+  /// **'Only me'**
+  String get audienceRevokeAllConfirm;
+
+  /// Button that hands the in-app link (it opens only for the people who can see it) to the share sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Share link'**
+  String get audienceShareLink;
 }
 
 class _AppLocalizationsDelegate

@@ -14907,4 +14907,121 @@ class AppLocalizationsEs extends AppLocalizations {
   String eventResultActionFailed(String error) {
     return 'No se pudo actualizar el resultado: $error';
   }
+
+  @override
+  String get audienceTitle => 'Quién puede ver esto';
+
+  @override
+  String get audienceLevelPrivate => 'Solo yo';
+
+  @override
+  String get audienceLevelPrivateHint => 'Nadie más puede abrirlo.';
+
+  @override
+  String get audienceLevelFollowers => 'Seguidores';
+
+  @override
+  String get audienceLevelFollowersHint =>
+      'Las personas que te siguen pueden abrirlo desde un enlace. No aparece en los feeds, las notificaciones ni la búsqueda.';
+
+  @override
+  String get audienceLevelSpecific => 'Personas concretas';
+
+  @override
+  String get audienceLevelSpecificHint =>
+      'Solo las personas que elijas pueden abrirlo. Puedes dejar de compartir con cualquiera en cualquier momento.';
+
+  @override
+  String get audienceLevelPublic => 'Público';
+
+  @override
+  String get audienceLevelPublicHint =>
+      'Cualquiera con el enlace puede abrirlo, y puede aparecer en los feeds y la búsqueda.';
+
+  @override
+  String get audienceClipNote =>
+      'Todos menos tú ven el mapa sin tus zonas de privacidad.';
+
+  @override
+  String get audienceSharedWith => 'Compartido con';
+
+  @override
+  String get audienceSharedWithNobody => 'Aún no lo has compartido con nadie.';
+
+  @override
+  String audienceRevokeTooltip(String name) {
+    return 'Dejar de compartir con $name';
+  }
+
+  @override
+  String audienceRevoked(String name) {
+    return '$name ya no puede abrirlo.';
+  }
+
+  @override
+  String audienceRevokeFailed(String error) {
+    return 'No se pudo dejar de compartir: $error';
+  }
+
+  @override
+  String get audienceAddPeople => 'Añadir personas';
+
+  @override
+  String get audienceSearchHint =>
+      'Busca a personas que sigues o que te siguen';
+
+  @override
+  String get audienceShareAction => 'Compartir';
+
+  @override
+  String get audienceAlreadyShared => 'Compartido';
+
+  @override
+  String audienceShared(String name) {
+    return '$name ya puede abrirlo.';
+  }
+
+  @override
+  String audienceShareFailed(String error) {
+    return 'No se pudo compartir: $error';
+  }
+
+  @override
+  String get audienceLoadFailed =>
+      'No se pudo cargar con quién está compartido.';
+
+  @override
+  String get audiencePeopleLoadFailed =>
+      'No se pudieron cargar las personas con las que puedes compartir.';
+
+  @override
+  String get audienceNoPeople =>
+      'Puedes compartir con personas que sigues o que te siguen, y todavía no tienes ninguna.';
+
+  @override
+  String get audienceNoMatches => 'Nadie coincide con ese nombre.';
+
+  @override
+  String get audienceRetry => 'Reintentar';
+
+  @override
+  String audienceUpdateFailed(String error) {
+    return 'No se pudo cambiar quién puede ver esto: $error';
+  }
+
+  @override
+  String get audienceUpdated => 'Visibilidad actualizada.';
+
+  @override
+  String get audienceRevokeAllTitle => '¿Dejar de compartir con todos?';
+
+  @override
+  String get audienceRevokeAllBody =>
+      'Todas las personas con las que lo compartiste dejarán de poder abrirlo.';
+
+  @override
+  String get audienceRevokeAllConfirm => 'Solo yo';
+
+  @override
+  String get audienceShareLink => 'Enlace para compartir';
 }

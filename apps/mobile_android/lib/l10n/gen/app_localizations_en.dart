@@ -14760,4 +14760,119 @@ class AppLocalizationsEn extends AppLocalizations {
   String eventResultActionFailed(String error) {
     return 'Couldn\'t update the result: $error';
   }
+
+  @override
+  String get audienceTitle => 'Who can see this';
+
+  @override
+  String get audienceLevelPrivate => 'Only me';
+
+  @override
+  String get audienceLevelPrivateHint => 'Nobody else can open it.';
+
+  @override
+  String get audienceLevelFollowers => 'Followers';
+
+  @override
+  String get audienceLevelFollowersHint =>
+      'People who follow you can open it from a link. It stays out of feeds, notifications and search.';
+
+  @override
+  String get audienceLevelSpecific => 'Specific people';
+
+  @override
+  String get audienceLevelSpecificHint =>
+      'Only the people you pick can open it. You can stop sharing with anyone at any time.';
+
+  @override
+  String get audienceLevelPublic => 'Public';
+
+  @override
+  String get audienceLevelPublicHint =>
+      'Anyone with the link can open it, and it can appear in feeds and search.';
+
+  @override
+  String get audienceClipNote =>
+      'Everyone but you sees the map with your privacy zones trimmed off.';
+
+  @override
+  String get audienceSharedWith => 'Shared with';
+
+  @override
+  String get audienceSharedWithNobody => 'Not shared with anyone yet.';
+
+  @override
+  String audienceRevokeTooltip(String name) {
+    return 'Stop sharing with $name';
+  }
+
+  @override
+  String audienceRevoked(String name) {
+    return '$name can no longer open it.';
+  }
+
+  @override
+  String audienceRevokeFailed(String error) {
+    return 'Couldn\'t stop sharing: $error';
+  }
+
+  @override
+  String get audienceAddPeople => 'Add people';
+
+  @override
+  String get audienceSearchHint => 'Search people you follow or who follow you';
+
+  @override
+  String get audienceShareAction => 'Share';
+
+  @override
+  String get audienceAlreadyShared => 'Shared';
+
+  @override
+  String audienceShared(String name) {
+    return '$name can now open it.';
+  }
+
+  @override
+  String audienceShareFailed(String error) {
+    return 'Couldn\'t share: $error';
+  }
+
+  @override
+  String get audienceLoadFailed => 'Couldn\'t load who this is shared with.';
+
+  @override
+  String get audiencePeopleLoadFailed =>
+      'Couldn\'t load the people you can share with.';
+
+  @override
+  String get audienceNoPeople =>
+      'You can share with people you follow or who follow you, and you don\'t have any yet.';
+
+  @override
+  String get audienceNoMatches => 'No one matches that name.';
+
+  @override
+  String get audienceRetry => 'Retry';
+
+  @override
+  String audienceUpdateFailed(String error) {
+    return 'Couldn\'t change who can see this: $error';
+  }
+
+  @override
+  String get audienceUpdated => 'Updated who can see this.';
+
+  @override
+  String get audienceRevokeAllTitle => 'Stop sharing with everyone?';
+
+  @override
+  String get audienceRevokeAllBody =>
+      'Everyone you shared it with will no longer be able to open it.';
+
+  @override
+  String get audienceRevokeAllConfirm => 'Only me';
+
+  @override
+  String get audienceShareLink => 'Share link';
 }

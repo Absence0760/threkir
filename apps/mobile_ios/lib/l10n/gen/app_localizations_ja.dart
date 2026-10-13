@@ -14219,4 +14219,114 @@ class AppLocalizationsJa extends AppLocalizations {
   String eventResultActionFailed(String error) {
     return '結果を更新できませんでした: $error';
   }
+
+  @override
+  String get audienceTitle => '公開範囲';
+
+  @override
+  String get audienceLevelPrivate => '自分のみ';
+
+  @override
+  String get audienceLevelPrivateHint => '他の人は開けません。';
+
+  @override
+  String get audienceLevelFollowers => 'フォロワー';
+
+  @override
+  String get audienceLevelFollowersHint =>
+      'あなたをフォローしている人がリンクから開けます。フィード、通知、検索には表示されません。';
+
+  @override
+  String get audienceLevelSpecific => '特定の人';
+
+  @override
+  String get audienceLevelSpecificHint => '選んだ人だけが開けます。いつでも共有を解除できます。';
+
+  @override
+  String get audienceLevelPublic => '公開';
+
+  @override
+  String get audienceLevelPublicHint =>
+      'リンクを知っている人は誰でも開けます。フィードや検索に表示されることがあります。';
+
+  @override
+  String get audienceClipNote => 'あなた以外の人には、プライバシーゾーンを除いた地図が表示されます。';
+
+  @override
+  String get audienceSharedWith => '共有相手';
+
+  @override
+  String get audienceSharedWithNobody => 'まだ誰とも共有していません。';
+
+  @override
+  String audienceRevokeTooltip(String name) {
+    return '$nameとの共有を解除';
+  }
+
+  @override
+  String audienceRevoked(String name) {
+    return '$nameは開けなくなりました。';
+  }
+
+  @override
+  String audienceRevokeFailed(String error) {
+    return '共有を解除できませんでした: $error';
+  }
+
+  @override
+  String get audienceAddPeople => '共有相手を追加';
+
+  @override
+  String get audienceSearchHint => 'フォロー中またはフォロワーの人を検索';
+
+  @override
+  String get audienceShareAction => '共有';
+
+  @override
+  String get audienceAlreadyShared => '共有済み';
+
+  @override
+  String audienceShared(String name) {
+    return '$nameが開けるようになりました。';
+  }
+
+  @override
+  String audienceShareFailed(String error) {
+    return '共有できませんでした: $error';
+  }
+
+  @override
+  String get audienceLoadFailed => '共有相手を読み込めませんでした。';
+
+  @override
+  String get audiencePeopleLoadFailed => '共有できる相手を読み込めませんでした。';
+
+  @override
+  String get audienceNoPeople => '共有できるのは、フォローしている人かフォロワーです。まだ該当する人がいません。';
+
+  @override
+  String get audienceNoMatches => 'その名前に一致する人はいません。';
+
+  @override
+  String get audienceRetry => '再試行';
+
+  @override
+  String audienceUpdateFailed(String error) {
+    return '公開範囲を変更できませんでした: $error';
+  }
+
+  @override
+  String get audienceUpdated => '公開範囲を更新しました。';
+
+  @override
+  String get audienceRevokeAllTitle => 'すべての共有を解除しますか？';
+
+  @override
+  String get audienceRevokeAllBody => '共有した全員がこれを開けなくなります。';
+
+  @override
+  String get audienceRevokeAllConfirm => '自分のみ';
+
+  @override
+  String get audienceShareLink => '共有リンク';
 }

@@ -32,6 +32,7 @@ import '../route_description.dart';
 import '../route_geometry.dart' show interpolateAlongRoute;
 import '../route_gpx.dart';
 import '../share_sheet.dart';
+import '../widgets/audience_sheet.dart';
 import '../roadbook.dart'
     show RoadbookMarker, RoadbookWaypoint, buildRoadbook;
 import '../sim_watch_link.dart' show maybeDevBackendUrl;
@@ -1585,6 +1586,28 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
   /// non-owner never shares a dead link.
   Future<void> _shareLink(BuildContext context) async {
     final l10n = AppLocalizations.of(context);
+    final api = widget.apiClient;
+    if (_isOwner && !_isPublic && api != null && api.userId != null) {
+      // With audience sharing on, Share asks who should see the route; public
+      // is one answer of four, never a side effect of the button (decisions
+      // § R8SHARE-6).
+      if (await api.audienceSharingEnabled()) {
+        if (!context.mounted) return;
+        final choice = await showAudienceSheet(
+          context,
+          backend: ApiAudienceBackend(api, ShareableKind.route, widget.route.id),
+        );
+        if (!context.mounted) return;
+        if (choice == AudienceSheetResult.shareLink) {
+          await shareTextFrom(context,
+              text: audienceLinkUrl(ShareableKind.route, widget.route.id),
+              subject: widget.route.name);
+          return;
+        }
+        if (choice != AudienceSheetResult.requestPublic) return;
+      }
+    }
+    if (!context.mounted) return;
     if (_isOwner && !_isPublic) {
       // Making a still-private route public exposes it (and its start point)
       // to anyone with the link and in Explore — confirm before that flip.

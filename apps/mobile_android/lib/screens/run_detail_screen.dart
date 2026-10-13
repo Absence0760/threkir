@@ -38,6 +38,7 @@ import '../grade_adjusted_pace.dart';
 import '../guided_runs.dart';
 import '../run_stats.dart';
 import '../settings_sync.dart';
+import '../share_sheet.dart';
 import '../social_service.dart';
 import '../typed_decimal.dart';
 import 'guided_runs_screen.dart';
@@ -52,6 +53,7 @@ import '../widgets/run_gear_chips.dart';
 import '../widgets/run_race_section.dart';
 import '../widgets/run_photos.dart';
 import '../widgets/run_segment_efforts.dart';
+import '../widgets/audience_sheet.dart';
 import '../widgets/run_share_card.dart';
 import '../widgets/run_social_section.dart';
 import '../widgets/workout_review_section.dart';
@@ -2815,6 +2817,25 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       }
       final api = widget.apiClient;
       if (api != null && api.userId != null) {
+        // With audience sharing on, Share asks who should see the run;
+        // public is one answer of four, never a side effect of the button
+        // (decisions § R8SHARE-6).
+        if (await api.audienceSharingEnabled()) {
+          if (!mounted) return;
+          final choice = await showAudienceSheet(
+            context,
+            backend: ApiAudienceBackend(api, ShareableKind.run, run.id),
+          );
+          if (!mounted) return;
+          if (choice == AudienceSheetResult.shareLink) {
+            await shareTextFrom(context,
+                text: audienceLinkUrl(ShareableKind.run, run.id),
+                subject: _title);
+            return;
+          }
+          if (choice != AudienceSheetResult.requestPublic) return;
+        }
+        if (!mounted) return;
         final ok = await _confirmMakePublic(zones);
         if (!ok) return;
         try {

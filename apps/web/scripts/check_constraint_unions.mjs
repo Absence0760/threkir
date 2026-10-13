@@ -286,7 +286,15 @@ export const PAIRS = [
 	},
 	{
 		tableColumn: 'event_pricing.refund_policy',
-		clients: [{ file: TS_TYPES, decl: 'RefundPolicy', shape: 'union' }],
+		clients: [
+			{ file: TS_TYPES, decl: 'RefundPolicy', shape: 'union' },
+			{ file: 'apps/mobile_android/lib/event_pricing.dart', decl: 'kEventRefundPolicies', shape: 'strings' },
+			{
+				file: 'apps/mobile_android/lib/event_pricing.dart',
+				decl: 'eventRefundPolicyLabel',
+				shape: 'switch',
+			},
+		],
 	},
 	{
 		tableColumn: 'event_result_claims.status',

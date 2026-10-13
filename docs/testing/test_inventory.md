@@ -962,7 +962,7 @@ Three source-level resilience guards were added on 2026-09-03 in the same idiom 
 
 The handful of Wear OS surfaces NOT covered (need instrumentation): `Pedometer` sensor binding itself, `HeartRateMonitor.MeasureCallback` registration with Health Services, `GpsRecorder` `FusedLocationProviderClient` callback, foreground-service lifecycle, Compose UI screen rendering (the team deliberately stayed off Robolectric — `ScreenWiringTest`'s source-grep approach is the cheap-but-effective alternative).
 
-### `apps/job_worker/internal/**/*_test.go` — 942 tests across 85 files (Go unit tests)
+### `apps/job_worker/internal/**/*_test.go` — 944 tests across 86 files (Go unit tests)
 
 Run with `go test ./...` from `apps/job_worker`. No network or Postgres dependency — the worker tests use a fake `Backend`, the matcher tests use `httptest.Server` to stand in for OSRM. Gated in CI by the `test-worker` job (`go vet` + `go test ./...`), so a Go-side guard like `internal/personal_data_export_guard_test.go` (the GDPR Art 20 export-completeness tripwire — fails the build when a new `user_id`-bearing table isn't wired into `exportPersonalDataSpecs` or the reasoned exclusion list) now fails a PR, not just a local run. Files:
 
@@ -970,6 +970,7 @@ Run with `go test ./...` from `apps/job_worker`. No network or Postgres dependen
 - **`matcher_test.go`** — pins `PassthroughMatcher` contract: input not aliased into output, empty in → nil out, stable algorithm/version strings.
 - **`matcher_osrm_test.go`** — 16 tests covering `OSRMMatcher`: chunking (250 points → 3 calls, stitched), tail-of-1 passthrough, NoMatch translation (`code != "Ok"` → nil, downstream `'skipped'`), HTTP error surfacing (`*HTTPError` for 5xx), malformed-JSON wrapping, trailing-slash normalisation. The real engine isn't reachable from a unit test (multi-GB pre-extracted graph), so the tests stand up an `httptest.Server` that returns canned `/match` JSON.
 - **`dataexport/runs_projection_test.go`** — 3 tests over the projection the Art 20 export builds each `runs` row from. Round 39 widened both transports to select the whole table and inverted the direction — each format now declares what it OMITS — so these are coverage claims rather than column lists: every field of the generated `runs` Row reaches the CSV, the backup JSON or a named omission, and an omission that no longer names a real column fails.
+- **`supabase_notification_fetch_test.go`** — 2 tests (3 subtests each) over the three notification fetchers the email, web-push and native-push rails read through. Each one's PostgREST `select` must carry `refunded` (and its own `*_sent_at` guard), and the fetched row must reach `copyKeyFor` as `event_cancel_refunded`: a projection that drops the column decodes every paid registrant's cancel as a plain one while every render test, which builds its row by hand, stays green. A cleared row reads as `(nil, nil)`.
 - **`export_run_row_test.go`** — 1 test pinning that the Go writer's run row carries every column the projection promises, so a column added to the table cannot reach the archive as an absent key.
 - **`handler_export_blob_reap_test.go`** — 16 tests over the export-blob reaper: which blobs are eligible, that a job still running is never reaped, and that a delete failure is reported without stopping the sweep.
 

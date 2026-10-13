@@ -83,8 +83,7 @@ test.describe('architecture guards', () => {
 
 			// Skip files that don't reference the auth store at all —
 			// those are anon pages by definition.
-			if (!src.includes("from '#lib/stores/auth.svelte.ts'") &&
-				!src.includes("from '#lib/stores/auth.svelte.ts'")) {
+			if (!/from '[^']*\/stores\/auth\.svelte(?:\.ts)?'/.test(src)) {
 				continue;
 			}
 

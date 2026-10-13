@@ -86,9 +86,8 @@ test('the refund the note promises is issued by us, under the policy the host se
 		"events-cancel no longer creates the refund itself, so the note's claim that we issue refunds is unsourced.",
 	);
 	// The one refund transport (decisions § 1839) posts with the platform's key.
-	assert.match(
-		edgeFunctionCode('events-cancel/refund.ts'),
-		/https:\/\/api\.stripe\.com\/v1\/refunds/,
+	assert.ok(
+		edgeFunctionCode('events-cancel/refund.ts').includes('https://api.stripe.com/v1/refunds'),
 		"the refund transport no longer reaches Stripe's refunds endpoint, so the note's claim that we issue refunds is unsourced.",
 	);
 });

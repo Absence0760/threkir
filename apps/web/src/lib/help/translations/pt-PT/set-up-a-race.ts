@@ -28,7 +28,7 @@ export const translation: GuideTranslation = {
 						'Em **Tipo de evento**, escolha **Corrida em grupo** (ou **Ciclismo**). Os eventos de aula e os sociais não têm rota, distância, controlos de prova nem resultados.',
 						'Dê-lhe um **Título** e uma **Data**. Defina uma repetição apenas se a prova se repetir mesmo; cada ocorrência é disputada separadamente.',
 						'Escolha uma **Rota** e preencha a **Distância**. Juntas, formam o seu *percurso principal*.',
-						'Opcionalmente, escreva um **Nome do percurso principal** em **Percursos da corrida** (por exemplo, “Meia maratona”). Se o deixar em branco, é usado o nome da rota.',
+						'Opcionalmente, escreva um **Nome do percurso principal** em **Percursos da prova** (por exemplo, “Meia maratona”). Se o deixar em branco, é usado o nome da rota.',
 						'Escolha **Criar evento**.',
 					],
 				},
@@ -49,7 +49,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'steps',
 					items: [
-						'No editor do evento, encontre **Percursos da corrida** e escolha **Adicionar um percurso**.',
+						'No editor do evento, encontre **Percursos da prova** e escolha **Adicionar um percurso**.',
 						'Dê-lhe um **Nome do percurso**, escolha a respetiva **Rota** e introduza a sua distância.',
 						'Use as setas para cima e para baixo para reordenar os percursos, ou remova um de que já não precise.',
 						'Guarde o evento.',

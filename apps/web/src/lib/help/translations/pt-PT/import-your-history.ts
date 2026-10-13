@@ -33,7 +33,7 @@ export const translation: GuideTranslation = {
 					type: 'steps',
 					items: [
 						'No Strava, vá a “Definições”, “A minha conta” e peça a exportação dos seus dados. O Strava envia-lhe por e-mail um link para um ficheiro zip.',
-						'Na web, abra [[route:/settings/integrations|Integrações]], encontre **Importação em lote de uma exportação do Strava** e selecione **Escolher zip de exportação do Strava**. Na app do telemóvel, abra **Conta** no separador **Tu**, depois **Importar de outro app**, e toque em **Importar ZIP do Strava**.',
+						'Na web, abra [[route:/settings/integrations|Integrações]], encontre **Importação em lote de uma exportação do Strava** e selecione **Escolher zip de exportação do Strava**. Na app do telemóvel, abra **Conta** no separador **Tu**, depois **Importar de outra app**, e toque em **Importar ZIP do Strava**.',
 						'Aguarde que a importação termine. As corridas que já tem, por exemplo da sua ligação ao Strava, são ignoradas, por isso pode repeti-la em segurança.',
 					],
 				},
@@ -57,7 +57,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'note',
 					tone: 'tip',
-					text: 'No Android, os treinos que a app da Garmin, da Samsung ou da Fitbit escreve no Health Connect também podem entrar através de **Importar de outro app**. Num iPhone, o mesmo cartão lê o Apple Saúde.',
+					text: 'No Android, os treinos que a app da Garmin, da Samsung ou da Fitbit escreve no Health Connect também podem entrar através de **Importar de outra app**. Num iPhone, o mesmo cartão lê o Apple Saúde.',
 				},
 			],
 		},

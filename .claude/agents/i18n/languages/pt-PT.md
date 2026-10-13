@@ -47,7 +47,8 @@ in `apps/mobile_android/test/architecture_guards_test.dart`:
   `ônibus`, `geladeira`, `xícara`, `aplicativo`, `cadastrar`, `planejar`,
   `gerenciar`, `tênis`, `quilômetro`, `gênero`, `acessar`, `câmera`,
   `escanear`, `cronômetro`, `oxigênio`, `autônomo`, `autônoma`,
-  `planilha`, `usuário`, `deletar`, `esporte` (and their plurals).
+  `planilha`, `usuário`, `deletar`, `esporte`, `pareado`, `pareada`,
+  `pareamento`, `monitorar`, `monitoramento`, `login` (and their plurals).
 - **`padrão` is banned** except at allowlisted keys meaning *standard* or
   *pattern* (§ 767). A default value is a **`predefinição`**.
 - **No tu-register marker** anywhere (`teu`, `tua`, `ti`, `contigo`,
@@ -105,7 +106,8 @@ rendering "1 …" for 0. Use `{count}` (ARB) / `#` (web).
 | heart rate zone | Zonas de frequência cardíaca | |
 | cadence (steps/min) | Cadência | "Frequência" in `discover.cadenceLabel` means *recurrence* |
 | training plan | Plano de treino; short Plano(s) | |
-| race | **Prova** (workout kind, run source); "Corridas" in nav, tabs and `races.title` "Calendário de corridas" | collides with *run* — inconsistency 1 |
+| race | **Prova** everywhere: workout kind, nav and tabs ("Provas"), `races.title` "Calendário de provas", race control ("Preparar prova", "Encerrar prova") | settled 2026-10-13; *corrida* is only ever a run, so the Runs and Races tabs no longer collide |
+| gun time / chip time | **Tempo oficial** / **Tempo de chip**; short forms "oficial {gun} · chip {chip}" | settled 2026-10-13; not "bruto"/"líquido" (Brazilian race-results usage) nor "tempo real" (collides with *em tempo real*) |
 | finish | Chegada (finish line); Concluído (status); Concluir (mobile) / Finalizar (web) action | |
 | DNF | DNF; "Não concluiu" (web `checkpoint.statusDnf`) | |
 | route | Rota / Rotas (100 / 138); percurso for a course | |
@@ -117,26 +119,27 @@ rendering "1 …" for 0. Use `{count}` (ARB) / `#` (web).
 | log (verb) | Registar | `navLog` |
 | streak | Sequência | |
 | goal | Meta / Metas (dominant); "Objetivo" on web onboarding and plans | |
-| coach | Treinador; AI Coach = **Treinador IA** | web `coachChat.coach` "Coach" |
+| coach (a person) | **Treinador** | `coaching.*`, guided-run "voz de treinador" |
+| AI Coach (the product) | **Coach** as its name (capital C, also mid-sentence: "o Coach está a pensar"); **Coach de IA** where the English says *AI Coach* | settled 2026-10-13; never "Treinador IA", "Coach IA" or "AI Coach" |
+| Pro & support | **Pro e apoio** | *support* here is supporting the app ("apoiar a app"); "suporte" is tech support |
+| sign in | **Iniciar sessão** ("Inicie sessão…", "início de sessão", "sem sessão iniciada"); a bare "Entrar" on a button | never "login" / "Faça login" — guarded |
+| pair (Bluetooth) | **Emparelhar** / emparelhado / emparelhamento | never "parear" — guarded |
 | auto-pause | — | no catalogue string yet; build from "Corrida pausada" / "Pausar" → "Pausa automática", and flag it as a new term |
 | kudos | kudos ("dar kudos", "remover kudos") | |
 | workout | Treino | |
 | warm-up / cool-down / recovery | Aquecimento / Desaquecimento / Recuperação | |
 | save / settings / feed / followers | Guardar / **Definições** / Feed / Seguidores | `navSettings` is "Config." — inconsistency 3 |
-| app | app — gender mixed | inconsistency 4 |
+| app | **a app** (feminine, from *a aplicação*): "na app", "da app", "esta app", "outra app" | settled 2026-10-13 |
 
 ## Known inconsistencies (findings for the user — don't fix them in a batch)
 
-1. **run vs race**: web `runSurface.tabRuns` and `runSurface.tabRaces` both
-   render "Corridas" on one tab bar (`RunSurfaceTabs.svelte`); "Prova" is
-   used for race elsewhere and would separate them.
+1. ~~**run vs race**~~ — settled 2026-10-13: race is always *prova*.
 2. **plural `one` with literal 1** in 11 mobile strings, made worse by the
    phone's `pt` plural rule — see Plurals.
 3. **settings**: mobile `navSettings` "Config." abbreviates
    *Configurações*, a Brazilian word; everywhere else (incl. mobile
    `runSettings`) is "Definições".
-4. **"app" gender**: "o app" (14 / 16 strings) vs "a app" (3 / 5);
-   European usage is usually feminine (*a app*, from *a aplicação*).
+4. ~~**"app" gender**~~ — settled 2026-10-13: *a app*.
 5. **elevation gain**: Subida / Ganho de elevação / Elevação.
 6. **PR badge**: RP (mobile) vs PR (web).
 7. **goal**: Meta vs Objetivo.

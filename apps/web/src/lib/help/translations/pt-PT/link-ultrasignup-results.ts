@@ -3,7 +3,7 @@ import type { GuideTranslation } from '../../types';
 export const translation: GuideTranslation = {
 	id: 'link-ultrasignup-results',
 	title: 'Associar os seus resultados do UltraSignup',
-	summary: 'Encontre o seu perfil do UltraSignup pelo nome, confirme qual das pessoas corresponde a si e importe um resultado de ultra ou trail a partir do calendário de corridas.',
+	summary: 'Encontre o seu perfil do UltraSignup pelo nome, confirme qual das pessoas corresponde a si e importe um resultado de ultra ou trail a partir do calendário de provas.',
 	sections: [
 		{
 			heading: 'Antes de começar',
@@ -11,7 +11,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'note',
 					tone: 'caution',
-					text: 'A importação do UltraSignup só existe na web e está desligada até ser ativada. Se o cartão do UltraSignup não aparecer em Integrações, ou disser **A importação do UltraSignup ainda não está disponível. parkrun e a colagem manual continuam a funcionar.**, pode na mesma adicionar um resultado colando-o no calendário de corridas.',
+					text: 'A importação do UltraSignup só existe na web e está desligada até ser ativada. Se o cartão do UltraSignup não aparecer em Integrações, ou disser **A importação do UltraSignup ainda não está disponível. parkrun e a colagem manual continuam a funcionar.**, pode na mesma adicionar um resultado colando-o no calendário de provas.',
 				},
 				{
 					type: 'p',
@@ -43,12 +43,12 @@ export const translation: GuideTranslation = {
 			],
 		},
 		{
-			heading: 'Importar um resultado do calendário de corridas',
+			heading: 'Importar um resultado do calendário de provas',
 			blocks: [
 				{
 					type: 'steps',
 					items: [
-						'Abra [[route:/races|Corridas]] e encontre a prova em que correu.',
+						'Abra [[route:/races|Provas]] e encontre a prova em que correu.',
 						'Selecione **Importar o meu resultado**. O importador mostra em nome de quem está a importar.',
 						'Confirme a importação. Só chega o seu próprio resultado nessa prova, identificado pelo id da prova no UltraSignup e pela data da prova.',
 					],
@@ -60,7 +60,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'note',
 					tone: 'caution',
-					text: 'Só são importados resultados de quem terminou, e uma prova cujo id ou data não coincida é ignorada em vez de adivinhada. Ainda há muito poucas provas do UltraSignup no calendário, por isso a sua pode não estar listada; use antes **Colar o seu resultado** no calendário de corridas.',
+					text: 'Só são importados resultados de quem terminou, e uma prova cujo id ou data não coincida é ignorada em vez de adivinhada. Ainda há muito poucas provas do UltraSignup no calendário, por isso a sua pode não estar listada; use antes **Colar o seu resultado** no calendário de provas.',
 				},
 				{
 					type: 'p',

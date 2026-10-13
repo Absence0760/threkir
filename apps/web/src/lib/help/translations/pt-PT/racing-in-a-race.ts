@@ -42,12 +42,12 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Quando o organizador prepara a prova, o separador Corrida da app do telemóvel mostra **Corrida preparada** com “a aguardar a partida”. O relógio Wear OS mostra “PROVA PRONTA” por cima do botão Iniciar. Quando o organizador dá a partida, passa a **Prova EM DIRETO** (“PROVA EM DIRETO” no relógio), com o tempo decorrido e “toque em Iniciar”.',
+					text: 'Quando o organizador prepara a prova, o separador Corrida da app do telemóvel mostra **Prova preparada** com “a aguardar a partida”. O relógio Wear OS mostra “PROVA PRONTA” por cima do botão Iniciar. Quando o organizador dá a partida, passa a **Prova EM DIRETO** (“PROVA EM DIRETO” no relógio), com o tempo decorrido e “toque em Iniciar”.',
 				},
 				{
 					type: 'note',
 					tone: 'caution',
-					text: 'O telemóvel ou o relógio não começa a gravar sozinho: tem de premir Iniciar. Pode começar na linha de partida enquanto a prova mostra **Corrida preparada**, ou quando vir **Prova EM DIRETO**. Uma gravação iniciada antes entra na prova no momento da partida, no telemóvel e num relógio Wear OS, e o seu tempo líquido passa a contar a partir da partida e não de quando premiu Iniciar.',
+					text: 'O telemóvel ou o relógio não começa a gravar sozinho: tem de premir Iniciar. Pode começar na linha de partida enquanto a prova mostra **Prova preparada**, ou quando vir **Prova EM DIRETO**. Uma gravação iniciada antes entra na prova no momento da partida, no telemóvel e num relógio Wear OS, e o seu tempo de chip passa a contar a partir da partida e não de quando premiu Iniciar.',
 				},
 				{
 					type: 'p',
@@ -71,7 +71,7 @@ export const translation: GuideTranslation = {
 				},
 				{
 					type: 'p',
-					text: 'O seu tempo é registado no momento em que esteve mais perto da meta, não no primeiro momento em que ficou a 30 m. A regra dos 90% impede que um percurso em circuito, que começa onde termina, registe a sua chegada logo no primeiro segundo. O telemóvel mostra “Meta cortada!” com o seu tempo bruto, e a gravação para.',
+					text: 'O seu tempo é registado no momento em que esteve mais perto da meta, não no primeiro momento em que ficou a 30 m. A regra dos 90% impede que um percurso em circuito, que começa onde termina, registe a sua chegada logo no primeiro segundo. O telemóvel mostra “Meta cortada!” com o seu tempo oficial, e a gravação para.',
 				},
 				{
 					type: 'note',
@@ -116,14 +116,14 @@ export const translation: GuideTranslation = {
 			],
 		},
 		{
-			heading: 'Tempo bruto, tempo líquido e partidas tardias',
+			heading: 'Tempo oficial, tempo de chip e partidas tardias',
 			blocks: [
 				{
 					type: 'list',
 					items: [
-						'O **Tempo bruto** conta desde o momento em que o organizador deu a partida até à sua chegada. É o tempo pelo qual é classificado.',
-						'O **Tempo líquido** conta desde que premiu Iniciar até à sua chegada, incluindo eventuais pausas. Se premiu Iniciar antes da partida, conta a partir da partida, por isso nunca é maior do que o seu tempo bruto.',
-						'Se começar mais de 5 minutos depois da partida, ou se a sua primeira posição estiver a mais de 200 m do início do percurso, a app do telemóvel mostra um aviso de partida tardia. O seu tempo bruto continua a contar a partir da partida, por isso uma partida tardia torna-o maior do que o seu tempo líquido.',
+						'O **Tempo oficial** conta desde o momento em que o organizador deu a partida até à sua chegada. É o tempo pelo qual é classificado.',
+						'O **Tempo de chip** conta desde que premiu Iniciar até à sua chegada, incluindo eventuais pausas. Se premiu Iniciar antes da partida, conta a partir da partida, por isso nunca é maior do que o seu tempo oficial.',
+						'Se começar mais de 5 minutos depois da partida, ou se a sua primeira posição estiver a mais de 200 m do início do percurso, a app do telemóvel mostra um aviso de partida tardia. O seu tempo oficial continua a contar a partir da partida, por isso uma partida tardia torna-o maior do que o seu tempo de chip.',
 					],
 				},
 				{

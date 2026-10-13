@@ -19,7 +19,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'**Pré-corrida**: o organizador ainda não preparou o cronómetro da prova.',
+						'**Pré-prova**: o organizador ainda não preparou o cronómetro da prova.',
 						'**Preparada**: o cronómetro está preparado e à espera da partida.',
 						'**A decorrer**: a prova está em curso, com o tempo decorrido.',
 						'**Concluído**: a prova terminou.',

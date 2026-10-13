@@ -209,6 +209,10 @@ const BRAZILIAN_ONLY = [
 	// (`A carregar…`), and three nouns Portugal says another way.
 	"carregando", "aguardando", "procurando", "enviando", "criando", "salvando",
 	"desconectar", "provedor", "treinamento",
+	// Bluetooth pairing is `emparelhar` in Portugal, and to monitor is
+	// `monitorizar`; signing in is `iniciar sessão`, so the English loanword
+	// `login` is how a string copied from the Brazilian catalogue shows.
+	"pareado", "pareada", "pareamento", "monitorar", "monitoramento", "login",
 ];
 const EUROPEAN_ONLY = [
 	"palavra-passe", "ecrã", "ficheiro", "telemóvel", "passadeira", "partilhar",

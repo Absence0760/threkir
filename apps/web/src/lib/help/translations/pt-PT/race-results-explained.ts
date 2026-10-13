@@ -3,22 +3,22 @@ import type { GuideTranslation } from '../../types';
 export const translation: GuideTranslation = {
 	id: 'race-results-explained',
 	title: 'Perceber os resultados das provas',
-	summary: 'O que significam o tempo bruto e o tempo líquido, como as posições são calculadas por percurso e o que dizem as marcas Manual, Organizador, DNF, DNS e pendente.',
+	summary: 'O que significam o tempo oficial e o tempo de chip, como as posições são calculadas por percurso e o que dizem as marcas Manual, Organizador, DNF, DNS e pendente.',
 	sections: [
 		{
-			heading: 'Tempo bruto e tempo líquido',
+			heading: 'Tempo oficial e tempo de chip',
 			blocks: [
 				{
 					type: 'list',
 					items: [
-						'O **Tempo bruto** é medido desde o momento em que o organizador deu a partida até ao momento em que cruzou a meta. A partida é registada pelo nosso servidor, por isso todos os participantes da prova partilham a mesma partida.',
-						'O **Tempo líquido** é medido desde que premiu Iniciar no seu próprio dispositivo até à sua chegada, incluindo eventuais pausas.',
-						'O tempo grande no quadro é o seu tempo bruto quando o organizador deu a partida na prova; caso contrário, é o seu tempo líquido. As posições são calculadas a partir desse tempo grande.',
+						'O **Tempo oficial** é medido desde o momento em que o organizador deu a partida até ao momento em que cruzou a meta. A partida é registada pelo nosso servidor, por isso todos os participantes da prova partilham a mesma partida.',
+						'O **Tempo de chip** é medido desde que premiu Iniciar no seu próprio dispositivo até à sua chegada, incluindo eventuais pausas.',
+						'O tempo grande no quadro é o seu tempo oficial quando o organizador deu a partida na prova; caso contrário, é o seu tempo de chip. As posições são calculadas a partir desse tempo grande.',
 					],
 				},
 				{
 					type: 'p',
-					text: 'Na web, a linha mais pequena por baixo de um tempo diz algo como “oficial 41:58 · chip 41:20”. Na app do telemóvel, aparece um tempo “Tempo real” por baixo do tempo principal quando é diferente dele. Se partiu tarde, o seu tempo bruto é maior do que o seu tempo líquido.',
+					text: 'Na web, a linha mais pequena por baixo de um tempo diz algo como “oficial 41:58 · chip 41:20”. Na app do telemóvel, aparece um tempo “Chip” por baixo do tempo principal quando é diferente dele. Se partiu tarde, o seu tempo oficial é maior do que o seu tempo de chip.',
 				},
 			],
 		},

@@ -10,7 +10,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'O controlo da prova aparece na página do evento para os proprietários e administradores do clube e para os membros com o papel **Diretor de prova**. Na web é o cartão **Controlo da corrida**; na app do telemóvel é o cartão **CONTROLO DA CORRIDA** no ecrã do evento. Ambos permitem aprovar e editar resultados.',
+					text: 'O controlo da prova aparece na página do evento para os proprietários e administradores do clube e para os membros com o papel **Diretor de prova**. Na web é o cartão **Controlo da prova**; na app do telemóvel é o cartão **CONTROLO DA PROVA** no ecrã do evento. Ambos permitem aprovar e editar resultados.',
 				},
 				{
 					type: 'p',
@@ -26,12 +26,12 @@ export const translation: GuideTranslation = {
 					items: [
 						'Abra o evento e escolha a ocorrência de hoje, se o evento se repetir.',
 						'Deixe **Aprovar automaticamente os resultados enviados** assinalado para publicar os resultados à medida que chegam, ou desmarque-o para aprovar cada um. (Na app do telemóvel diz **Aprovar automaticamente os tempos enviados**.)',
-						'Escolha **Preparar corrida** quando estiverem todos reunidos.',
+						'Escolha **Preparar prova** quando estiverem todos reunidos.',
 					],
 				},
 				{
 					type: 'p',
-					text: 'Os corredores que disseram **Eu vou** veem agora **Corrida preparada** no separador Corrida do telemóvel e “PROVA PRONTA” no relógio Wear OS.',
+					text: 'Os corredores que disseram **Eu vou** veem agora **Prova preparada** no separador Corrida do telemóvel e “PROVA PRONTA” no relógio Wear OS.',
 				},
 				{
 					type: 'note',
@@ -49,7 +49,7 @@ export const translation: GuideTranslation = {
 				},
 				{
 					type: 'p',
-					text: 'A hora de partida é registada pelo nosso servidor, não pelo seu dispositivo, por isso é a mesma hora de partida oficial para todos os corredores, mesmo que o relógio do seu telemóvel esteja alguns segundos desacertado. O tempo bruto de cada corredor é medido a partir dela.',
+					text: 'A hora de partida é registada pelo nosso servidor, não pelo seu dispositivo, por isso é a mesma hora de partida oficial para todos os corredores, mesmo que o relógio do seu telemóvel esteja alguns segundos desacertado. O tempo oficial de cada corredor é medido a partir dela.',
 				},
 				{
 					type: 'note',
@@ -77,9 +77,9 @@ export const translation: GuideTranslation = {
 				{
 					type: 'steps',
 					items: [
-						'Quando o último corredor tiver chegado (ou o seu tempo limite tiver passado), escolha **Encerrar corrida**.',
+						'Quando o último corredor tiver chegado (ou o seu tempo limite tiver passado), escolha **Encerrar prova**.',
 						'A confirmação, na web e na app do telemóvel, diz-lhe quantos corredores que partiram não têm resultado. Esses corredores ficarão como DNF.',
-						'Confirme com **Encerrar corrida**.',
+						'Confirme com **Encerrar prova**.',
 					],
 				},
 				{
@@ -102,7 +102,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Só pode cancelar enquanto a prova está preparada: escolha **Cancelar** ao lado de **JÁ** (**Disparar o Go** na app do telemóvel) e depois **Cancelar corrida**. Depois de dar a partida, a prova só pode ser encerrada.',
+					text: 'Só pode cancelar enquanto a prova está preparada: escolha **Cancelar** ao lado de **JÁ** (**Disparar o Go** na app do telemóvel) e depois **Cancelar prova**. Depois de dar a partida, a prova só pode ser encerrada.',
 				},
 				{
 					type: 'p',
@@ -111,7 +111,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'note',
 					tone: 'caution',
-					text: 'Cancelar não pode ser desfeito. Use antes **Encerrar corrida** se as pessoas chegaram a correr e quer os seus resultados.',
+					text: 'Cancelar não pode ser desfeito. Use antes **Encerrar prova** se as pessoas chegaram a correr e quer os seus resultados.',
 				},
 			],
 		},
@@ -127,7 +127,7 @@ export const translation: GuideTranslation = {
 					items: [
 						'Se a aprovação automática estava desligada, os novos resultados mostram **PENDENTE** e nenhuma posição. Escolha **Aprovar** para publicar um. **Remover verificação** devolve um resultado aprovado ao estado pendente.',
 						'Para corrigir um resultado, escolha **Editar**, introduza um **Tempo (h:mm:ss)** e um **Estado** (**Terminou**, **DNF** ou **DNS**) e depois **Guardar resultado**.',
-						'Um resultado editado é marcado como **Editado pelo organizador**, para que todos vejam que foi alterado pelo organizador. A edição altera também o tempo bruto do corredor.',
+						'Um resultado editado é marcado como **Editado pelo organizador**, para que todos vejam que foi alterado pelo organizador. A edição altera também o tempo oficial do corredor.',
 						'**Transferir resultados CSV** exporta os quadros.',
 					],
 				},

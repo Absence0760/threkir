@@ -84,7 +84,7 @@
     "id": "what-pro-includes",
     "lang": "pt-PT",
     "title": "O que o Pro inclui",
-    "summary": "Todos os ecrãs do Threkir são gratuitos; o Pro aumenta o seu limite do Treinador IA e passa algum trabalho em segundo plano para a frente da fila.",
+    "summary": "Todos os ecrãs do Threkir são gratuitos; o Pro aumenta o seu limite do Coach de IA e passa algum trabalho em segundo plano para a frente da fila.",
     "kind": "explainer",
     "category": "account",
     "audience": [
@@ -115,8 +115,8 @@
           {
             "type": "list",
             "items": [
-              "**Coach IA — 10/dia**: dez mensagens do Treinador IA por dia em vez de duas. A contagem é reposta à meia-noite UTC.",
-              "Respostas do Treinador mais longas e completas, que podem ter em conta mais das suas corridas.",
+              "**Coach de IA — 10/dia**: dez mensagens do Coach de IA por dia em vez de duas. A contagem é reposta à meia-noite UTC.",
+              "Respostas do Coach de IA mais longas e completas, que podem ter em conta mais das suas corridas.",
               "**Map-matching prioritário**: os seus trajetos GPS são ajustados às estradas antes dos das contas gratuitas, por isso ficam prontos mais cedo.",
               "**Exportações para a nuvem prioritárias**: até 8 exportações de pacotes GPX por hora em vez de 2.",
               "**Geração de rotas no servidor**: circuitos traçados na rede viária real quando gera uma rota por distância. As contas gratuitas continuam a ter geração de circuitos, calculada no navegador.",
@@ -140,7 +140,7 @@
           {
             "type": "list",
             "items": [
-              "Num iPhone, abra **Pro e suporte** no separador **Tu** e subscreva através da App Store.",
+              "Num iPhone, abra **Pro e apoio** no separador **Tu** e subscreva através da App Store.",
               "Na web, abra [[route:/settings/upgrade|Pro e apoio]] nas Definições. Se disser **A subscrição pela web chega em breve.**, subscreva antes na app para iPhone."
             ]
           },
@@ -162,7 +162,7 @@
             "type": "list",
             "items": [
               "Cancele ou altere o seu plano onde o iniciou: na App Store, na Play Store ou no portal de faturação da web. **Gerir subscrição** leva-o até lá.",
-              "Num telemóvel novo, toque em **Restaurar compras** em **Pro e suporte** para transferir uma subscrição existente.",
+              "Num telemóvel novo, toque em **Restaurar compras** em **Pro e apoio** para transferir uma subscrição existente.",
               "Prefere fazer uma contribuição única? **Doar** está na mesma página."
             ]
           }
@@ -1601,7 +1601,7 @@
           {
             "type": "list",
             "items": [
-              "**Pré-corrida**: o organizador ainda não preparou o cronómetro da prova.",
+              "**Pré-prova**: o organizador ainda não preparou o cronómetro da prova.",
               "**Preparada**: o cronómetro está preparado e à espera da partida.",
               "**A decorrer**: a prova está em curso, com o tempo decorrido.",
               "**Concluído**: a prova terminou.",
@@ -1697,7 +1697,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "O controlo da prova aparece na página do evento para os proprietários e administradores do clube e para os membros com o papel **Diretor de prova**. Na web é o cartão **Controlo da corrida**; na app do telemóvel é o cartão **CONTROLO DA CORRIDA** no ecrã do evento. Ambos permitem aprovar e editar resultados."
+            "text": "O controlo da prova aparece na página do evento para os proprietários e administradores do clube e para os membros com o papel **Diretor de prova**. Na web é o cartão **Controlo da prova**; na app do telemóvel é o cartão **CONTROLO DA PROVA** no ecrã do evento. Ambos permitem aprovar e editar resultados."
           },
           {
             "type": "p",
@@ -1713,12 +1713,12 @@
             "items": [
               "Abra o evento e escolha a ocorrência de hoje, se o evento se repetir.",
               "Deixe **Aprovar automaticamente os resultados enviados** assinalado para publicar os resultados à medida que chegam, ou desmarque-o para aprovar cada um. (Na app do telemóvel diz **Aprovar automaticamente os tempos enviados**.)",
-              "Escolha **Preparar corrida** quando estiverem todos reunidos."
+              "Escolha **Preparar prova** quando estiverem todos reunidos."
             ]
           },
           {
             "type": "p",
-            "text": "Os corredores que disseram **Eu vou** veem agora **Corrida preparada** no separador Corrida do telemóvel e “PROVA PRONTA” no relógio Wear OS."
+            "text": "Os corredores que disseram **Eu vou** veem agora **Prova preparada** no separador Corrida do telemóvel e “PROVA PRONTA” no relógio Wear OS."
           },
           {
             "type": "note",
@@ -1736,7 +1736,7 @@
           },
           {
             "type": "p",
-            "text": "A hora de partida é registada pelo nosso servidor, não pelo seu dispositivo, por isso é a mesma hora de partida oficial para todos os corredores, mesmo que o relógio do seu telemóvel esteja alguns segundos desacertado. O tempo bruto de cada corredor é medido a partir dela."
+            "text": "A hora de partida é registada pelo nosso servidor, não pelo seu dispositivo, por isso é a mesma hora de partida oficial para todos os corredores, mesmo que o relógio do seu telemóvel esteja alguns segundos desacertado. O tempo oficial de cada corredor é medido a partir dela."
           },
           {
             "type": "note",
@@ -1764,9 +1764,9 @@
           {
             "type": "steps",
             "items": [
-              "Quando o último corredor tiver chegado (ou o seu tempo limite tiver passado), escolha **Encerrar corrida**.",
+              "Quando o último corredor tiver chegado (ou o seu tempo limite tiver passado), escolha **Encerrar prova**.",
               "A confirmação, na web e na app do telemóvel, diz-lhe quantos corredores que partiram não têm resultado. Esses corredores ficarão como DNF.",
-              "Confirme com **Encerrar corrida**."
+              "Confirme com **Encerrar prova**."
             ]
           },
           {
@@ -1789,7 +1789,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Só pode cancelar enquanto a prova está preparada: escolha **Cancelar** ao lado de **JÁ** (**Disparar o Go** na app do telemóvel) e depois **Cancelar corrida**. Depois de dar a partida, a prova só pode ser encerrada."
+            "text": "Só pode cancelar enquanto a prova está preparada: escolha **Cancelar** ao lado de **JÁ** (**Disparar o Go** na app do telemóvel) e depois **Cancelar prova**. Depois de dar a partida, a prova só pode ser encerrada."
           },
           {
             "type": "p",
@@ -1798,7 +1798,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Cancelar não pode ser desfeito. Use antes **Encerrar corrida** se as pessoas chegaram a correr e quer os seus resultados."
+            "text": "Cancelar não pode ser desfeito. Use antes **Encerrar prova** se as pessoas chegaram a correr e quer os seus resultados."
           }
         ]
       },
@@ -1814,7 +1814,7 @@
             "items": [
               "Se a aprovação automática estava desligada, os novos resultados mostram **PENDENTE** e nenhuma posição. Escolha **Aprovar** para publicar um. **Remover verificação** devolve um resultado aprovado ao estado pendente.",
               "Para corrigir um resultado, escolha **Editar**, introduza um **Tempo (h:mm:ss)** e um **Estado** (**Terminou**, **DNF** ou **DNS**) e depois **Guardar resultado**.",
-              "Um resultado editado é marcado como **Editado pelo organizador**, para que todos vejam que foi alterado pelo organizador. A edição altera também o tempo bruto do corredor.",
+              "Um resultado editado é marcado como **Editado pelo organizador**, para que todos vejam que foi alterado pelo organizador. A edição altera também o tempo oficial do corredor.",
               "**Transferir resultados CSV** exporta os quadros."
             ]
           }
@@ -1832,7 +1832,7 @@
     "id": "race-results-explained",
     "lang": "pt-PT",
     "title": "Perceber os resultados das provas",
-    "summary": "O que significam o tempo bruto e o tempo líquido, como as posições são calculadas por percurso e o que dizem as marcas Manual, Organizador, DNF, DNS e pendente.",
+    "summary": "O que significam o tempo oficial e o tempo de chip, como as posições são calculadas por percurso e o que dizem as marcas Manual, Organizador, DNF, DNS e pendente.",
     "kind": "explainer",
     "category": "races",
     "audience": [
@@ -1849,19 +1849,19 @@
     ],
     "sections": [
       {
-        "heading": "Tempo bruto e tempo líquido",
+        "heading": "Tempo oficial e tempo de chip",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "O **Tempo bruto** é medido desde o momento em que o organizador deu a partida até ao momento em que cruzou a meta. A partida é registada pelo nosso servidor, por isso todos os participantes da prova partilham a mesma partida.",
-              "O **Tempo líquido** é medido desde que premiu Iniciar no seu próprio dispositivo até à sua chegada, incluindo eventuais pausas.",
-              "O tempo grande no quadro é o seu tempo bruto quando o organizador deu a partida na prova; caso contrário, é o seu tempo líquido. As posições são calculadas a partir desse tempo grande."
+              "O **Tempo oficial** é medido desde o momento em que o organizador deu a partida até ao momento em que cruzou a meta. A partida é registada pelo nosso servidor, por isso todos os participantes da prova partilham a mesma partida.",
+              "O **Tempo de chip** é medido desde que premiu Iniciar no seu próprio dispositivo até à sua chegada, incluindo eventuais pausas.",
+              "O tempo grande no quadro é o seu tempo oficial quando o organizador deu a partida na prova; caso contrário, é o seu tempo de chip. As posições são calculadas a partir desse tempo grande."
             ]
           },
           {
             "type": "p",
-            "text": "Na web, a linha mais pequena por baixo de um tempo diz algo como “oficial 41:58 · chip 41:20”. Na app do telemóvel, aparece um tempo “Tempo real” por baixo do tempo principal quando é diferente dele. Se partiu tarde, o seu tempo bruto é maior do que o seu tempo líquido."
+            "text": "Na web, a linha mais pequena por baixo de um tempo diz algo como “oficial 41:58 · chip 41:20”. Na app do telemóvel, aparece um tempo “Chip” por baixo do tempo principal quando é diferente dele. Se partiu tarde, o seu tempo oficial é maior do que o seu tempo de chip."
           }
         ]
       },
@@ -2001,12 +2001,12 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Quando o organizador prepara a prova, o separador Corrida da app do telemóvel mostra **Corrida preparada** com “a aguardar a partida”. O relógio Wear OS mostra “PROVA PRONTA” por cima do botão Iniciar. Quando o organizador dá a partida, passa a **Prova EM DIRETO** (“PROVA EM DIRETO” no relógio), com o tempo decorrido e “toque em Iniciar”."
+            "text": "Quando o organizador prepara a prova, o separador Corrida da app do telemóvel mostra **Prova preparada** com “a aguardar a partida”. O relógio Wear OS mostra “PROVA PRONTA” por cima do botão Iniciar. Quando o organizador dá a partida, passa a **Prova EM DIRETO** (“PROVA EM DIRETO” no relógio), com o tempo decorrido e “toque em Iniciar”."
           },
           {
             "type": "note",
             "tone": "caution",
-            "text": "O telemóvel ou o relógio não começa a gravar sozinho: tem de premir Iniciar. Pode começar na linha de partida enquanto a prova mostra **Corrida preparada**, ou quando vir **Prova EM DIRETO**. Uma gravação iniciada antes entra na prova no momento da partida, no telemóvel e num relógio Wear OS, e o seu tempo líquido passa a contar a partir da partida e não de quando premiu Iniciar."
+            "text": "O telemóvel ou o relógio não começa a gravar sozinho: tem de premir Iniciar. Pode começar na linha de partida enquanto a prova mostra **Prova preparada**, ou quando vir **Prova EM DIRETO**. Uma gravação iniciada antes entra na prova no momento da partida, no telemóvel e num relógio Wear OS, e o seu tempo de chip passa a contar a partir da partida e não de quando premiu Iniciar."
           },
           {
             "type": "p",
@@ -2030,7 +2030,7 @@
           },
           {
             "type": "p",
-            "text": "O seu tempo é registado no momento em que esteve mais perto da meta, não no primeiro momento em que ficou a 30 m. A regra dos 90% impede que um percurso em circuito, que começa onde termina, registe a sua chegada logo no primeiro segundo. O telemóvel mostra “Meta cortada!” com o seu tempo bruto, e a gravação para."
+            "text": "O seu tempo é registado no momento em que esteve mais perto da meta, não no primeiro momento em que ficou a 30 m. A regra dos 90% impede que um percurso em circuito, que começa onde termina, registe a sua chegada logo no primeiro segundo. O telemóvel mostra “Meta cortada!” com o seu tempo oficial, e a gravação para."
           },
           {
             "type": "note",
@@ -2075,14 +2075,14 @@
         ]
       },
       {
-        "heading": "Tempo bruto, tempo líquido e partidas tardias",
+        "heading": "Tempo oficial, tempo de chip e partidas tardias",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "O **Tempo bruto** conta desde o momento em que o organizador deu a partida até à sua chegada. É o tempo pelo qual é classificado.",
-              "O **Tempo líquido** conta desde que premiu Iniciar até à sua chegada, incluindo eventuais pausas. Se premiu Iniciar antes da partida, conta a partir da partida, por isso nunca é maior do que o seu tempo bruto.",
-              "Se começar mais de 5 minutos depois da partida, ou se a sua primeira posição estiver a mais de 200 m do início do percurso, a app do telemóvel mostra um aviso de partida tardia. O seu tempo bruto continua a contar a partir da partida, por isso uma partida tardia torna-o maior do que o seu tempo líquido."
+              "O **Tempo oficial** conta desde o momento em que o organizador deu a partida até à sua chegada. É o tempo pelo qual é classificado.",
+              "O **Tempo de chip** conta desde que premiu Iniciar até à sua chegada, incluindo eventuais pausas. Se premiu Iniciar antes da partida, conta a partir da partida, por isso nunca é maior do que o seu tempo oficial.",
+              "Se começar mais de 5 minutos depois da partida, ou se a sua primeira posição estiver a mais de 200 m do início do percurso, a app do telemóvel mostra um aviso de partida tardia. O seu tempo oficial continua a contar a partir da partida, por isso uma partida tardia torna-o maior do que o seu tempo de chip."
             ]
           },
           {
@@ -2151,7 +2151,7 @@
               "Em **Tipo de evento**, escolha **Corrida em grupo** (ou **Ciclismo**). Os eventos de aula e os sociais não têm rota, distância, controlos de prova nem resultados.",
               "Dê-lhe um **Título** e uma **Data**. Defina uma repetição apenas se a prova se repetir mesmo; cada ocorrência é disputada separadamente.",
               "Escolha uma **Rota** e preencha a **Distância**. Juntas, formam o seu *percurso principal*.",
-              "Opcionalmente, escreva um **Nome do percurso principal** em **Percursos da corrida** (por exemplo, “Meia maratona”). Se o deixar em branco, é usado o nome da rota.",
+              "Opcionalmente, escreva um **Nome do percurso principal** em **Percursos da prova** (por exemplo, “Meia maratona”). Se o deixar em branco, é usado o nome da rota.",
               "Escolha **Criar evento**."
             ]
           },
@@ -2172,7 +2172,7 @@
           {
             "type": "steps",
             "items": [
-              "No editor do evento, encontre **Percursos da corrida** e escolha **Adicionar um percurso**.",
+              "No editor do evento, encontre **Percursos da prova** e escolha **Adicionar um percurso**.",
               "Dê-lhe um **Nome do percurso**, escolha a respetiva **Rota** e introduza a sua distância.",
               "Use as setas para cima e para baixo para reordenar os percursos, ou remova um de que já não precise.",
               "Guarde o evento."
@@ -2294,7 +2294,7 @@
             "type": "steps",
             "items": [
               "No Strava, vá a “Definições”, “A minha conta” e peça a exportação dos seus dados. O Strava envia-lhe por e-mail um link para um ficheiro zip.",
-              "Na web, abra [[route:/settings/integrations|Integrações]], encontre **Importação em lote de uma exportação do Strava** e selecione **Escolher zip de exportação do Strava**. Na app do telemóvel, abra **Conta** no separador **Tu**, depois **Importar de outro app**, e toque em **Importar ZIP do Strava**.",
+              "Na web, abra [[route:/settings/integrations|Integrações]], encontre **Importação em lote de uma exportação do Strava** e selecione **Escolher zip de exportação do Strava**. Na app do telemóvel, abra **Conta** no separador **Tu**, depois **Importar de outra app**, e toque em **Importar ZIP do Strava**.",
               "Aguarde que a importação termine. As corridas que já tem, por exemplo da sua ligação ao Strava, são ignoradas, por isso pode repeti-la em segurança."
             ]
           }
@@ -2318,7 +2318,7 @@
           {
             "type": "note",
             "tone": "tip",
-            "text": "No Android, os treinos que a app da Garmin, da Samsung ou da Fitbit escreve no Health Connect também podem entrar através de **Importar de outro app**. Num iPhone, o mesmo cartão lê o Apple Saúde."
+            "text": "No Android, os treinos que a app da Garmin, da Samsung ou da Fitbit escreve no Health Connect também podem entrar através de **Importar de outra app**. Num iPhone, o mesmo cartão lê o Apple Saúde."
           }
         ]
       },
@@ -2360,7 +2360,7 @@
     "id": "link-ultrasignup-results",
     "lang": "pt-PT",
     "title": "Associar os seus resultados do UltraSignup",
-    "summary": "Encontre o seu perfil do UltraSignup pelo nome, confirme qual das pessoas corresponde a si e importe um resultado de ultra ou trail a partir do calendário de corridas.",
+    "summary": "Encontre o seu perfil do UltraSignup pelo nome, confirme qual das pessoas corresponde a si e importe um resultado de ultra ou trail a partir do calendário de provas.",
     "kind": "how-to",
     "category": "running",
     "audience": [
@@ -2381,7 +2381,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "A importação do UltraSignup só existe na web e está desligada até ser ativada. Se o cartão do UltraSignup não aparecer em Integrações, ou disser **A importação do UltraSignup ainda não está disponível. parkrun e a colagem manual continuam a funcionar.**, pode na mesma adicionar um resultado colando-o no calendário de corridas."
+            "text": "A importação do UltraSignup só existe na web e está desligada até ser ativada. Se o cartão do UltraSignup não aparecer em Integrações, ou disser **A importação do UltraSignup ainda não está disponível. parkrun e a colagem manual continuam a funcionar.**, pode na mesma adicionar um resultado colando-o no calendário de provas."
           },
           {
             "type": "p",
@@ -2413,12 +2413,12 @@
         ]
       },
       {
-        "heading": "Importar um resultado do calendário de corridas",
+        "heading": "Importar um resultado do calendário de provas",
         "blocks": [
           {
             "type": "steps",
             "items": [
-              "Abra [[route:/races|Corridas]] e encontre a prova em que correu.",
+              "Abra [[route:/races|Provas]] e encontre a prova em que correu.",
               "Selecione **Importar o meu resultado**. O importador mostra em nome de quem está a importar.",
               "Confirme a importação. Só chega o seu próprio resultado nessa prova, identificado pelo id da prova no UltraSignup e pela data da prova."
             ]
@@ -2430,7 +2430,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Só são importados resultados de quem terminou, e uma prova cujo id ou data não coincida é ignorada em vez de adivinhada. Ainda há muito poucas provas do UltraSignup no calendário, por isso a sua pode não estar listada; use antes **Colar o seu resultado** no calendário de corridas."
+            "text": "Só são importados resultados de quem terminou, e uma prova cujo id ou data não coincida é ignorada em vez de adivinhada. Ainda há muito poucas provas do UltraSignup no calendário, por isso a sua pode não estar listada; use antes **Colar o seu resultado** no calendário de provas."
           },
           {
             "type": "p",

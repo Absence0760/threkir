@@ -1,9 +1,9 @@
 [
   {
     "id": "using-help",
-    "lang": "en",
-    "title": "Finding help in the app",
-    "summary": "Where the help guides live, how to search them, and how to jump from a screen to the guide that explains it.",
+    "lang": "ja",
+    "title": "アプリでヘルプを見つける",
+    "summary": "ヘルプガイドの場所と検索方法、今いる画面からその画面を説明するガイドに移動する方法を説明します。",
     "kind": "start",
     "category": "account",
     "audience": [
@@ -18,63 +18,63 @@
     ],
     "sections": [
       {
-        "heading": "Opening help",
+        "heading": "ヘルプを開く",
         "blocks": [
           {
             "type": "steps",
             "items": [
-              "Select your name at the bottom of the sidebar. In a narrow window the sidebar shrinks to icons, so select the round avatar with your initial instead.",
-              "Choose **Help** in the menu that opens."
+              "サイドバーの下部にある自分の名前を選択します。ウィンドウの幅が狭いとサイドバーはアイコンだけになるので、代わりにイニシャルの入った丸いアバターを選択します。",
+              "開いたメニューで**ヘルプ**を選びます。"
             ]
           },
           {
             "type": "p",
-            "text": "The contents page lists every guide by topic. The chips under **Show guides for** narrow the list to the guides written for you, such as **Organisers** or **Spectators**; **All** shows everything again."
+            "text": "目次ページには、すべてのガイドがトピック別に一覧表示されます。**表示するガイドの対象**の下にあるフィルターで、**主催者**や**観戦者**など、あなた向けに書かれたガイドに絞り込めます。**すべて**を選ぶと、再びすべてが表示されます。"
           }
         ]
       },
       {
-        "heading": "Searching the guides",
+        "heading": "ガイドを検索する",
         "blocks": [
           {
             "type": "p",
-            "text": "Type a word or two into **Search the guides** at the top of [[route:/help|Help]] and press **Search**. Guides with your words in the title come first, then guides that mention them in the summary, then the rest."
+            "text": "[[route:/help|ヘルプ]]の上部にある**ガイドを検索**に1〜2語を入力し、**検索**を押します。タイトルに入力した語を含むガイドが最初に、次に概要でその語に触れているガイド、その後にそれ以外のガイドが表示されます。"
           },
           {
             "type": "note",
             "tone": "tip",
-            "text": "Capitals and accents do not matter, so *cafe* finds *Café*. Every word you type has to appear somewhere in a guide for it to be listed."
+            "text": "大文字と小文字、アクセント記号は区別されないため、*cafe*で*Café*も見つかります。一覧に表示されるのは、入力したすべての語がガイドのどこかに含まれているガイドだけです。"
           }
         ]
       },
       {
-        "heading": "Help from the screen you are on",
+        "heading": "今いる画面からヘルプを開く",
         "blocks": [
           {
             "type": "p",
-            "text": "A screen that has a guide shows a **How this works** link near its title. It opens the guide for that screen; where several guides cover it, it opens a short list to choose from."
+            "text": "ガイドがある画面では、タイトルの近くに**使い方ガイド**リンクが表示されます。これを押すとその画面のガイドが開きます。複数のガイドがある画面では、選択できる短い一覧が開きます。"
           },
           {
             "type": "p",
-            "text": "Some cards and settings carry a small round *i* button. It explains the feature in a sentence or two, and when a guide goes further it ends with **Read the guide**."
+            "text": "一部のカードや設定には、小さな丸い*i*ボタンがあります。機能を1〜2文で説明し、ガイドにさらに詳しい説明がある場合は最後に**ガイドを読む**が表示されます。"
           }
         ]
       },
       {
-        "heading": "Reading a guide",
+        "heading": "ガイドを読む",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "The badges under the title say which apps the guide applies to and whether you need something first, such as Pro or a club admin role.",
-              "**On this page** lists the sections of a longer guide and jumps to the one you pick.",
-              "**Related guides** at the end points to what you are likely to need next."
+              "タイトルの下のバッジには、ガイドが対象とするアプリと、Proやクラブ管理者の役割など事前に必要なものがあるかどうかが表示されます。",
+              "**このページの内容**には長いガイドのセクションが一覧表示され、選んだセクションに移動できます。",
+              "最後にある**関連ガイド**には、次に必要になりそうなガイドが表示されます。"
             ]
           },
           {
             "type": "note",
             "tone": "tip",
-            "text": "Guides are shown in the language the app is set to. A guide that has not been translated into it yet is shown in English, with a note at the top saying so."
+            "text": "ガイドはアプリで設定している言語で表示されます。その言語にまだ翻訳されていないガイドは英語で表示され、上部にその旨の注記が表示されます。"
           }
         ]
       }
@@ -82,9 +82,9 @@
   },
   {
     "id": "what-pro-includes",
-    "lang": "en",
-    "title": "What Pro includes",
-    "summary": "Every screen in Threkir is free; Pro raises your AI Coach allowance and moves some background work to the front of the queue.",
+    "lang": "ja",
+    "title": "Proに含まれるもの",
+    "summary": "Threkirのすべての画面は無料で使え、ProではAIコーチの利用上限が増え、一部のバックグラウンド処理が優先されます。",
     "kind": "explainer",
     "category": "account",
     "audience": [
@@ -101,69 +101,69 @@
     ],
     "sections": [
       {
-        "heading": "What stays free",
+        "heading": "無料のまま使えるもの",
         "blocks": [
           {
             "type": "p",
-            "text": "Nothing in the app is locked behind Pro. Free accounts get unlimited recording on phone and watch, routes, training plans and the numbers behind them, clubs and events, the social feed, safety contacts, imports and backups."
+            "text": "アプリにProでしか使えない機能はありません。無料アカウントでも、スマートフォンと時計での無制限の記録、ルート、トレーニングプランとその根拠となる数値、クラブとイベント、ソーシャルフィード、緊急連絡先、インポートとバックアップを利用できます。"
           }
         ]
       },
       {
-        "heading": "What Pro adds",
+        "heading": "Proで追加されるもの",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "**AI Coach — 10/day**: ten Coach messages a day instead of two. The count resets at midnight UTC.",
-              "Longer, more thorough Coach answers that can take more of your runs into account.",
-              "**Priority map-matching**: your GPS tracks are snapped to roads ahead of free accounts, so they are ready sooner.",
-              "**Priority cloud exports**: up to 8 GPX bundle exports an hour instead of 2.",
-              "**Server route generation**: loops traced on the real street network when you generate a route by distance. Free accounts still get loop generation, worked out in the browser.",
-              "Richer route descriptions: on a route's page, **Enhance with AI** turns the standard description into a fuller paragraph."
+              "**AIコーチ — 1日10回**: コーチに送れるメッセージが1日2回から10回に増えます。回数はUTCの午前0時にリセットされます。",
+              "より多くのランを考慮に入れた、より長く詳しいコーチの回答。",
+              "**優先マップマッチング**: GPSトラックが無料アカウントより優先して道路に合わせて補正されるため、早く準備できます。",
+              "**優先クラウドエクスポート**: GPXバンドルのエクスポートが1時間に2回から最大8回に増えます。",
+              "**サーバールート生成**: 距離を指定してルートを生成するとき、実際の道路網に沿ってループが作成されます。無料アカウントでもループ生成は使え、ブラウザ内で計算されます。",
+              "より充実したルートの説明: ルートのページで**AIで強化**を押すと、標準の説明がより詳しい文章になります。"
             ]
           },
           {
             "type": "note",
             "tone": "caution",
-            "text": "Some of these depend on services that may not be switched on yet. The Pro card in [[route:/settings/upgrade|Pro & support]] only lists what is working today; if it says **Pro unlocks the AI Coach — coming soon.**, Pro can't be bought yet."
+            "text": "これらの一部は、まだ有効になっていない可能性のあるサービスに依存しています。[[route:/settings/upgrade|Proとサポート]]のProカードには、現在使える機能だけが表示されます。**Pro は AI コーチを解放します — 近日公開。**と表示されている場合、Proはまだ購入できません。"
           }
         ]
       },
       {
-        "heading": "How to get Pro",
+        "heading": "Proの入手方法",
         "blocks": [
           {
             "type": "p",
-            "text": "Pro is a monthly or yearly subscription; the Pro card shows the current prices. Where you can buy it depends on your device:"
+            "text": "Proは月額または年額のサブスクリプションで、現在の価格はProカードに表示されます。購入できる場所は、端末によって次のように異なります。"
           },
           {
             "type": "list",
             "items": [
-              "On an iPhone, open **Pro & support** in the **You** tab and subscribe through the App Store.",
-              "On the web, open [[route:/settings/upgrade|Pro & support]] in Settings. If it says **Subscribing on the web is coming soon.**, subscribe in the iPhone app instead."
+              "iPhoneでは、**あなた**タブで**Pro とサポート**を開き、App Storeで登録します。",
+              "Webでは、設定で[[route:/settings/upgrade|Proとサポート]]を開きます。**ウェブでの登録は近日公開予定です。**と表示されている場合は、代わりにiPhoneアプリで登録してください。"
             ]
           },
           {
             "type": "p",
-            "text": "Pro belongs to your account, not your device, so a subscription bought on one device works everywhere you sign in."
+            "text": "Proは端末ではなくアカウントに紐付くため、ある端末で購入したサブスクリプションは、サインインしたすべての端末で使えます。"
           },
           {
             "type": "note",
             "tone": "caution",
-            "text": "Prices are in US dollars, and the App Store charges the price set for your country. Some countries and payment methods can't be served by our payment processor."
+            "text": "価格は米ドル建てで、App Storeではあなたの国に設定された価格が請求されます。一部の国や支払い方法には、当社の決済代行業者が対応できません。"
           }
         ]
       },
       {
-        "heading": "Managing or cancelling",
+        "heading": "管理と解約",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "Cancel or change your plan where you started it: the App Store, the Play Store, or the web billing portal. **Manage subscription** takes you there.",
-              "On a new phone, tap **Restore purchases** in **Pro & support** to bring an existing subscription across.",
-              "Prefer a one-off contribution? **Donate** is on the same page."
+              "プランの解約や変更は、登録した場所（App Store、Play Store、またはWebの請求ポータル）で行います。**サブスクリプションを管理**からそこに移動できます。",
+              "新しいスマートフォンでは、**Pro とサポート**で**購入を復元**をタップすると、既存のサブスクリプションを引き継げます。",
+              "1回だけ支援したい場合は、同じページに**寄付する**があります。"
             ]
           }
         ]
@@ -176,9 +176,9 @@
   },
   {
     "id": "your-data-and-privacy",
-    "lang": "en",
-    "title": "Your data and privacy",
-    "summary": "See what other people can see, choose who sees new runs, download everything we hold about you, and delete your account.",
+    "lang": "ja",
+    "title": "あなたのデータとプライバシー",
+    "summary": "ほかの人に見える情報の確認、新しいランを見られる人の選択、当社が保持するすべてのデータのダウンロード、アカウントの削除の方法を説明します。",
     "kind": "explainer",
     "category": "account",
     "audience": [
@@ -197,84 +197,84 @@
     ],
     "sections": [
       {
-        "heading": "What other people can see",
+        "heading": "ほかの人に見えるもの",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "Your profile page, with your display name, picture, follower counts and your public runs, can be opened by anyone with its link.",
-              "Runs you make public appear on your profile and in the feed. Private runs are visible only to you.",
-              "Membership of a public club, and anything you post there, can be seen by people who can see the club.",
-              "While you share a live link, the run in progress can be seen by anyone with the link."
+              "表示名、写真、フォロワー数、公開ランが載ったプロフィールページは、リンクを知っている人なら誰でも開けます。",
+              "公開にしたランは、プロフィールとフィードに表示されます。非公開のランはあなたにしか見えません。",
+              "公開クラブのメンバーであることと、そこに投稿した内容は、そのクラブを見られる人に見えます。",
+              "ライブリンクを共有している間は、進行中のランをリンクを知っている人なら誰でも見られます。"
             ]
           },
           {
             "type": "p",
-            "text": "Privacy zones trim the start and end of your tracks wherever someone else sees them. See [[guide:privacy-zones|Hide your home with privacy zones]]."
+            "text": "プライバシーゾーンを設定すると、ほかの人がどこでトラックを見る場合でも、始点と終点の部分が切り取られます。[[guide:privacy-zones|プライバシーゾーンで自宅を隠す]]を参照してください。"
           }
         ]
       },
       {
-        "heading": "Choose who sees new runs",
+        "heading": "新しいランを見られる人を選ぶ",
         "blocks": [
           {
             "type": "steps",
             "items": [
-              "On the web open [[route:/settings/privacy|Privacy & sharing]] in Settings and pick a **Default Visibility for New Runs**. In the phone app, it is **Default run privacy** under **Preferences** in the **You** tab.",
-              "To change a single run later, open it and use **Make public** or **Make private**."
+              "Webでは、設定で[[route:/settings/privacy|プライバシーと共有]]を開き、**新しいランのデフォルトの公開範囲**を選びます。スマートフォンアプリでは、**あなた**タブの**環境設定**にある**ランのデフォルトプライバシー**です。",
+              "個別のランを後から変更するには、そのランを開いて**公開する**または**非公開にする**を使います。"
             ]
           },
           {
             "type": "note",
             "tone": "caution",
-            "text": "Only **Public** makes new runs visible to others. Runs don't have a followers-only setting yet, so choosing followers as your default keeps new runs private, and your followers won't see them."
+            "text": "新しいランをほかの人に見えるようにするのは**公開**だけです。ランにはまだフォロワー限定の設定がないため、デフォルトでフォロワーを選ぶと新しいランは非公開になり、フォロワーにも表示されません。"
           },
           {
             "type": "list",
             "items": [
-              "**Show me in name search**: turn off to keep your account out of name searches. Your profile and public runs can still be opened by anyone who has the link.",
-              "**Show me in Runners nearby**, where it is offered: off by default. When on, runners near the area you set can find you. Only a rough area is stored, never your live location."
+              "**名前検索に表示する**: オフにすると、あなたのアカウントが名前検索に表示されなくなります。プロフィールと公開ランは、リンクを知っている人なら引き続き誰でも開けます。",
+              "**「近くのランナー」に表示する**（提供されている場合）: デフォルトはオフです。オンにすると、あなたが設定したエリアの近くにいるランナーがあなたを見つけられます。保存されるのはおおよそのエリアだけで、現在地が保存されることはありません。"
             ]
           }
         ]
       },
       {
-        "heading": "Download your data",
+        "heading": "データをダウンロードする",
         "blocks": [
           {
             "type": "p",
-            "text": "On the web, open **Account** in Settings. The phone app has the same choices under **Account** in the **You** tab."
+            "text": "Webでは、設定で**アカウント**を開きます。スマートフォンアプリでは、**あなた**タブの**アカウント**に同じ項目があります。"
           },
           {
             "type": "list",
             "items": [
-              "**Download full account archive** (on the phone, **Account export**): everything we hold about you, including coach chats, messages, integrations and safety contacts, as one zip. It is built on our server, so you can close the page and come back for it. A finished export is kept for 7 days.",
-              "**Download full backup** (on the phone, **Full backup**): every run with its GPS trace, plus your routes, profile and preferences, in a file you can restore later with **Restore from backup**.",
-              "**Cloud export (GPX zip)**: one GPX file per run, with heart rate, ready to import into other apps. Free accounts can export twice an hour, Pro accounts eight times.",
-              "**Export All Runs (CSV)** (on the phone, **Export runs as CSV**): one row per run for a spreadsheet, without GPS traces."
+              "**アカウントの完全アーカイブをダウンロード**（スマートフォンでは**アカウントのエクスポート**）: コーチとのチャット、メッセージ、連携、緊急連絡先など、当社が保持するあなたのすべてのデータを1つのzipにまとめます。サーバー上で作成されるため、ページを閉じて後から受け取りに戻ってこられます。完成したエクスポートは7日間保管されます。",
+              "**完全バックアップをダウンロード**（スマートフォンでは**完全バックアップ**）: GPSトレース付きのすべてのランに加え、ルート、プロフィール、設定を、後から**バックアップから復元**で復元できる1つのファイルにまとめます。",
+              "**クラウドエクスポート (GPX zip)**: ランごとに心拍数付きのGPXファイルを1つずつ作成し、ほかのアプリにそのままインポートできます。無料アカウントは1時間に2回、Proアカウントは8回までエクスポートできます。",
+              "**すべてのランをエクスポート (CSV)**（スマートフォンでは**ランをCSVでエクスポート**）: スプレッドシート用に1ランにつき1行で出力し、GPSトレースは含まれません。"
             ]
           }
         ]
       },
       {
-        "heading": "Delete your account",
+        "heading": "アカウントを削除する",
         "blocks": [
           {
             "type": "steps",
             "items": [
-              "Download anything you want to keep first. Deletion cannot be undone.",
-              "On the web, open **Account** in Settings and select **Delete Account** under **Danger Zone**. In the phone app, open **Account** in the **You** tab and tap **Delete account**.",
-              "Type DELETE to confirm, then select **Delete my account** on the web or **Delete** in the app."
+              "残しておきたいものは先にダウンロードしてください。削除は取り消せません。",
+              "Webでは、設定で**アカウント**を開き、**危険ゾーン**の**アカウントを削除**を選択します。スマートフォンアプリでは、**あなた**タブで**アカウント**を開き、**アカウントを削除**をタップします。",
+              "確認のため「削除」と入力し、Webでは**アカウントを削除する**、アプリでは**削除**を選択します。"
             ]
           },
           {
             "type": "p",
-            "text": "This permanently removes your account, runs, routes, tracks, club memberships and preferences from our servers. On a phone, runs stored on the device itself stay there until you sign in as someone else or remove the app."
+            "text": "これにより、あなたのアカウント、ラン、ルート、トラック、クラブのメンバーシップ、設定が当社のサーバーから完全に削除されます。スマートフォンでは、端末自体に保存されているランは、別のユーザーとしてサインインするかアプリを削除するまで端末に残ります。"
           },
           {
             "type": "note",
             "tone": "tip",
-            "text": "Can't get into the app? [[route:/delete-account|Delete your account]] explains how to ask for deletion without it."
+            "text": "アプリにアクセスできない場合は、[[route:/delete-account|アカウントの削除]]で、アプリを使わずに削除を依頼する方法を確認できます。"
           }
         ]
       }
@@ -287,9 +287,9 @@
   },
   {
     "id": "create-a-club",
-    "lang": "en",
-    "title": "Create a club",
-    "summary": "Start a club for your running group, choose who can find it and how people join, then post your first event.",
+    "lang": "ja",
+    "title": "クラブを作成する",
+    "summary": "ランニンググループのクラブを作り、誰が見つけられるかと参加方法を決めてから、最初のイベントを投稿します。",
     "kind": "how-to",
     "category": "clubs",
     "audience": [
@@ -308,62 +308,62 @@
     ],
     "sections": [
       {
-        "heading": "On the web",
+        "heading": "Webの場合",
         "blocks": [
           {
             "type": "steps",
             "items": [
-              "Open [[route:/social|Social]] and choose the **Clubs** tab.",
-              "Select **Create club**.",
-              "Fill in **Name**. Members search for the club by this name, and the club's web address is built from it when you create the club. Renaming the club later does not change that address.",
-              "Add a **Description** and a **Location** if you like. Both are optional, but a town and country in **Location** helps runners nearby find you when they search their own region.",
-              "Pick a **Visibility**: **Public** clubs appear in **Browse**, while **Private** clubs are hidden and people can only join through an invite link.",
-              "Under **Who can join?** choose **Anyone can join**, **Approval required** or **Invite only**.",
-              "Tick **Require an activity-risk acknowledgement to join** if you want every new member to confirm they understand the risks of group runs. This can only be set now, while the club is being created.",
-              "Select **Create club**. You are taken to the new club's page, and you are its owner."
+              "[[route:/social|ソーシャル]]を開き、**クラブ**タブを選びます。",
+              "**クラブを作成**を選択します。",
+              "**名前**を入力します。メンバーはこの名前でクラブを検索します。また、クラブを作成するときに、この名前からクラブのWebアドレスが作られます。あとでクラブ名を変更しても、そのアドレスは変わりません。",
+              "必要に応じて**説明**と**場所**を追加します。どちらも任意ですが、**場所**に市区町村と国を入れておくと、近くのランナーが自分の地域を検索したときに見つけてもらいやすくなります。",
+              "**公開設定**を選びます。**公開**のクラブは**さがす**に表示されます。**非公開**のクラブは表示されず、招待リンクからしか参加できません。",
+              "**だれが参加できる？**で、**だれでも参加可能**、**承認が必要**、**招待制**のいずれかを選びます。",
+              "新しいメンバー全員にグループランのリスクを理解していることを確認してもらいたい場合は、**参加にあたって活動リスクの同意を求める**にチェックを入れます。この設定は、クラブを作成するこの時点でしかできません。",
+              "**クラブを作成**を選択します。新しいクラブのページに移動し、あなたがそのオーナーになります。"
             ]
           }
         ]
       },
       {
-        "heading": "On the phone app",
+        "heading": "スマートフォンアプリの場合",
         "blocks": [
           {
             "type": "steps",
             "items": [
-              "Open the **Social** tab and choose **Clubs**.",
-              "Tap **New club**.",
-              "Enter a **Name**, and optionally a **Description (optional)** and **Location (optional)**.",
-              "Choose **Public** or **Private**, then pick a **Join policy**: **Open — anyone joins**, **Request — admins approve** or **Invite only**.",
-              "Tap **Create**."
+              "**ソーシャル**タブを開き、**クラブ**を選びます。",
+              "**新しいクラブ**をタップします。",
+              "**名前**を入力し、必要に応じて**説明（任意）**と**場所（任意）**も入力します。",
+              "**公開**か**非公開**を選び、**参加ポリシー**で**オープン — 誰でも参加可**、**リクエスト — 管理者が承認**、**招待制のみ**のいずれかを選びます。",
+              "**作成**をタップします。"
             ]
           },
           {
             "type": "note",
             "tone": "tip",
-            "text": "The activity-risk acknowledgement and the club's website and social links can only be set on the web."
+            "text": "活動リスクの同意と、クラブのWebサイトやSNSのリンクは、Webでのみ設定できます。"
           }
         ]
       },
       {
-        "heading": "After you create it",
+        "heading": "クラブを作成したあと",
         "blocks": [
           {
             "type": "p",
-            "text": "Your club page has tabs for **Feed**, **Events**, **Routes**, **Templates**, **Photos** and **Members**. As the owner you can post updates to the feed, add events and manage members."
+            "text": "クラブページには**フィード**、**イベント**、**ルート**、**テンプレート**、**写真**、**メンバー**のタブがあります。オーナーは、フィードへの投稿、イベントの追加、メンバーの管理ができます。"
           },
           {
             "type": "list",
             "items": [
-              "To change the name, description, visibility, join policy or links later, open the club on the web and select **Edit club**.",
-              "To add your first group run, select **New event** on the web, or tap **Create event** on the **Events** tab in the phone app.",
-              "To bring people in, see [[guide:invite-members-and-roles|Invite members and give them roles]]."
+              "あとで名前、説明、公開設定、参加ポリシー、リンクを変更するには、Webでクラブを開いて**クラブを編集**を選択します。",
+              "最初のグループランを追加するには、Webでは**新しいイベント**を選択し、スマートフォンアプリでは**イベント**タブの**イベントを作成**をタップします。",
+              "メンバーを招待する方法は、[[guide:invite-members-and-roles|メンバーを招待して役割を割り当てる]]を参照してください。"
             ]
           },
           {
             "type": "note",
             "tone": "caution",
-            "text": "Deleting a club removes all of its events, posts and members for everyone, and it cannot be undone."
+            "text": "クラブを削除すると、そのクラブのすべてのイベント、投稿、メンバーが全員に対して削除され、元に戻すことはできません。"
           }
         ]
       }
@@ -376,9 +376,9 @@
   },
   {
     "id": "invite-members-and-roles",
-    "lang": "en",
-    "title": "Invite members and give them roles",
-    "summary": "Share an invite link, approve join requests, and give trusted members the admin, event organiser or race director role.",
+    "lang": "ja",
+    "title": "メンバーを招待して役割を割り当てる",
+    "summary": "招待リンクを共有し、参加リクエストを承認して、信頼できるメンバーに管理者、イベント主催者、レースディレクターの役割を割り当てます。",
     "kind": "how-to",
     "category": "clubs",
     "audience": [
@@ -399,93 +399,93 @@
     ],
     "sections": [
       {
-        "heading": "How people join",
+        "heading": "参加の仕組み",
         "blocks": [
           {
             "type": "p",
-            "text": "How someone joins depends on the club's join policy, which you chose when you created it and can change with **Edit club** on the web."
+            "text": "参加方法はクラブの参加ポリシーによって決まります。参加ポリシーはクラブの作成時に選んだもので、Webの**クラブを編集**で変更できます。"
           },
           {
             "type": "list",
             "items": [
-              "**Anyone can join**: people select **Join club** on the club page and are in straight away.",
-              "**Approval required**: people select **Request to join** and wait in a queue until an admin approves them.",
-              "**Invite only**: people need an invite link from an admin."
+              "**だれでも参加可能**：クラブページで**クラブに参加**を選択すると、すぐに参加できます。",
+              "**承認が必要**：**参加をリクエスト**を選択し、管理者が承認するまで待ちます。",
+              "**招待制**：管理者からの招待リンクが必要です。"
             ]
           }
         ]
       },
       {
-        "heading": "Share an invite link",
+        "heading": "招待リンクを共有する",
         "blocks": [
           {
             "type": "steps",
             "items": [
-              "Open your club on the web. When the club is **Invite only**, admins see an **Invite link** panel on the club page.",
-              "Select **Generate invite link** the first time, then **Copy** to put the link on your clipboard.",
-              "Send the link however you like. Anyone who opens it and signs in joins the club as a member."
+              "Webでクラブを開きます。クラブが**招待制**の場合、管理者にはクラブページに**招待リンク**パネルが表示されます。",
+              "初回は**招待リンクを生成**を選択し、続いて**コピー**を選択してリンクをクリップボードにコピーします。",
+              "リンクは好きな方法で送ってください。リンクを開いてサインインした人は、メンバーとしてクラブに参加します。"
             ]
           },
           {
             "type": "p",
-            "text": "If a link has spread further than you wanted, select **Rotate**. A new link is made and the old one stops working immediately."
+            "text": "リンクが意図した範囲を超えて広まってしまった場合は、**再生成**を選択します。新しいリンクが作られ、古いリンクはすぐに使えなくなります。"
           },
           {
             "type": "note",
             "tone": "caution",
-            "text": "An invite link lets people straight in: it skips the approval queue, so only share it with people you are happy to admit. If the club requires the activity-risk acknowledgement, the link asks for it before letting anyone in."
+            "text": "招待リンクを使うと、すぐに参加できます。承認待ちをスキップするので、参加を認めてもよい人にだけ共有してください。クラブが活動リスクの同意を求めている場合、リンクからの参加でも、参加前にその同意が求められます。"
           },
           {
             "type": "note",
             "tone": "tip",
-            "text": "In the phone app, a member can also tap **Join with invite code** on the **Clubs** tab of **Social** and paste the whole link or just the code after /clubs/join/. Opening the link in a phone browser works too."
+            "text": "スマートフォンアプリでは、メンバーは**ソーシャル**の**クラブ**タブで**招待コードで参加**をタップし、リンク全体、または /clubs/join/ の後ろのコードだけを貼り付けることもできます。スマートフォンのブラウザでリンクを開いても参加できます。"
           }
         ]
       },
       {
-        "heading": "Approve or reject join requests",
+        "heading": "参加リクエストを承認・却下する",
         "blocks": [
           {
             "type": "p",
-            "text": "When the club needs approval, admins see **Pending requests** with a count beside it."
+            "text": "承認が必要なクラブでは、管理者に**保留中のリクエスト**と件数が表示されます。"
           },
           {
             "type": "list",
             "items": [
-              "On the web, select **Approve** or **Reject** on each request, or **Approve all** when several are waiting. Rejecting asks you to confirm first.",
-              "In the phone app, open the club's **Members** tab and tap **Approve** or **Deny** on each request."
+              "Webでは、各リクエストで**承認**または**却下**を選択します。複数のリクエストが待っている場合は**すべて承認**を選択できます。却下する場合は、先に確認を求められます。",
+              "スマートフォンアプリでは、クラブの**メンバー**タブを開き、各リクエストで**承認**または**拒否**をタップします。"
             ]
           }
         ]
       },
       {
-        "heading": "Give members a role",
+        "heading": "メンバーに役割を割り当てる",
         "blocks": [
           {
             "type": "p",
-            "text": "Every club has one **Owner**, the person who created it. Other people can hold one of these roles:"
+            "text": "どのクラブにも、クラブを作成した**オーナー**が1人います。ほかのメンバーには、次のいずれかの役割を割り当てられます："
           },
           {
             "type": "list",
             "items": [
-              "**Admin**: changes the club's settings, manages members and their roles, runs events and races, and approves results.",
-              "**Event organiser**: creates, edits and deletes events and adds attendees, without access to club settings or members.",
-              "**Race director**: arms, starts and ends races and approves or rejects results.",
-              "**Member**: posts replies, RSVPs to events and submits their own race results."
+              "**管理者**：クラブの設定を変更し、メンバーとその役割を管理し、イベントやレースを運営し、結果を承認します。",
+              "**イベント主催者**：イベントの作成、編集、削除と参加者の追加を行います。クラブの設定やメンバーにはアクセスできません。",
+              "**レースディレクター**：レースの準備、スタート、終了を行い、結果を承認または却下します。",
+              "**メンバー**：返信を投稿し、イベントへの出欠を回答し、自分のレース結果を提出します。"
             ]
           },
           {
             "type": "steps",
             "items": [
-              "Open your club on the web and choose the **Members** tab.",
-              "Use the role menu beside a member to pick their new role. The change saves straight away.",
-              "To take someone out of the club, use the remove button beside them and confirm."
+              "Webでクラブを開き、**メンバー**タブを選びます。",
+              "メンバーの横にある役割メニューで、新しい役割を選びます。変更はすぐに保存されます。",
+              "メンバーをクラブから外すには、その横にある削除ボタンを使い、確定します。"
             ]
           },
           {
             "type": "note",
             "tone": "caution",
-            "text": "Changing roles and removing members is web-only for now. The phone app's **Members** tab shows the member count and the pending requests, not the full list."
+            "text": "役割の変更とメンバーの削除は、現在Webでのみ行えます。スマートフォンアプリの**メンバー**タブには、メンバー数と保留中のリクエストが表示され、全員の一覧は表示されません。"
           }
         ]
       }
@@ -498,9 +498,9 @@
   },
   {
     "id": "recurring-events",
-    "lang": "en",
-    "title": "Set up a recurring club event",
-    "summary": "Turn a club event into a weekly, fortnightly or monthly series, RSVP to a single date, and call off one occurrence without touching the rest.",
+    "lang": "ja",
+    "title": "繰り返しのクラブイベントを設定する",
+    "summary": "クラブのイベントを毎週・2週間ごと・毎月のシリーズにし、日付ごとに参加表明し、ほかの開催回はそのままで1つの開催回だけを中止する方法を説明します。",
     "kind": "how-to",
     "category": "clubs",
     "audience": [
@@ -520,82 +520,82 @@
     ],
     "sections": [
       {
-        "heading": "Create the series",
+        "heading": "シリーズを作成する",
         "blocks": [
           {
             "type": "p",
-            "text": "Club owners, admins and event organisers can create events. A recurring event is one event that repeats, so everything you fill in applies to every date."
+            "text": "クラブのオーナー、管理者、イベント主催者はイベントを作成できます。繰り返しイベントは1つのイベントが繰り返されるものなので、入力した内容はすべての日付に適用されます。"
           },
           {
             "type": "steps",
             "items": [
-              "Open your club on the web and select **New event**.",
-              "Fill in the **Title**, **Start time** and the other details as for a one-off event. The start time you pick is the first date of the series.",
-              "Under **Repeats**, choose **Weekly**, **Every 2 weeks** or **Monthly** instead of **One-off**.",
-              "For a weekly or fortnightly series, pick the weekdays under **On these days:**. A monthly series repeats on the same day of the month as the start date.",
-              "Decide where the series stops: set **Ends on** to a date, **End after** to a number of occurrences, or both, and whichever comes first wins. Leave both empty and it keeps repeating.",
-              "Select **Create event**."
+              "Webでクラブを開き、**新しいイベント**を選択します。",
+              "単発のイベントと同じように、**タイトル**、**開始時刻**などの詳細を入力します。選んだ開始時刻がシリーズの最初の日付になります。",
+              "**繰り返し**で、**単発**の代わりに**毎週**、**2週間ごと**、**毎月**のいずれかを選びます。",
+              "毎週または2週間ごとのシリーズでは、**これらの曜日に:**で曜日を選びます。毎月のシリーズは、毎月、開始日と同じ日付に繰り返されます。",
+              "シリーズの終わりを決めます。**終了日**に日付を設定するか、**次の回数で終了**に回数を設定するか、その両方を設定します。両方を設定した場合は、先に到達したほうで終了します。どちらも空欄にすると、繰り返しは続きます。",
+              "**イベントを作成**を選択します。"
             ]
           },
           {
             "type": "note",
             "tone": "caution",
-            "text": "The repeat pattern can only be chosen while the event is being created. **Edit event** changes the title, time, meeting point and other details for the whole series, but not how often it repeats."
+            "text": "繰り返しのパターンを選べるのはイベントの作成時だけです。**イベントを編集**ではシリーズ全体のタイトル、時刻、集合場所などの詳細を変更できますが、繰り返しの頻度は変更できません。"
           },
           {
             "type": "p",
-            "text": "In the phone app, tap **Create event** on the club's **Events** tab and choose **Weekly**, **Bi-weekly** or **Monthly** under **Recurrence**. The phone repeats the event on the weekday of its start date and has no end date or occurrence count, so use the web if the series needs to stop."
+            "text": "スマートフォンアプリでは、クラブの**イベント**タブで**イベントを作成**をタップし、**繰り返し**で**毎週**、**隔週**、**毎月**のいずれかを選びます。スマートフォンアプリではイベントは開始日の曜日に繰り返され、終了日や回数は設定できないため、シリーズを終わらせる必要がある場合はWebを使ってください。"
           }
         ]
       },
       {
-        "heading": "RSVP to one date",
+        "heading": "1つの日付に参加表明する",
         "blocks": [
           {
             "type": "p",
-            "text": "Each date in a series has its own RSVPs, attendee list, capacity and results."
+            "text": "シリーズの各日付には、それぞれ独自の参加表明、参加者リスト、定員、結果があります。"
           },
           {
             "type": "steps",
             "items": [
-              "Open the event and use **Pick an occurrence** to choose the date. The next few dates are shown, and **Show all** expands to every upcoming date in the next year.",
-              "Choose **I'm in**, **Maybe** or **Can't make it** for that date."
+              "イベントを開き、**開催回を選択**で日付を選びます。直近の数回分が表示され、**すべて表示**を押すと今後1年間のすべての日付が表示されます。",
+              "その日付について、**参加する**、**未定**、**行けない**のいずれかを選びます。"
             ]
           },
           {
             "type": "p",
-            "text": "To put the dates in your own calendar, select **Add to calendar**. On a series you can choose **Add this occurrence** for one date or **Add whole series** for every date."
+            "text": "日付を自分のカレンダーに追加するには、**カレンダーに追加**を選択します。シリーズでは、1つの日付だけなら**この回を追加**、すべての日付なら**シリーズ全体を追加**を選べます。"
           }
         ]
       },
       {
-        "heading": "Cancel one occurrence",
+        "heading": "1つの開催回だけ中止する",
         "blocks": [
           {
             "type": "p",
-            "text": "If one date can't go ahead, call off just that date and leave the rest of the series alone."
+            "text": "ある日付だけ開催できない場合は、その日付だけを中止し、シリーズのほかの開催回はそのままにできます。"
           },
           {
             "type": "steps",
             "items": [
-              "Open the event on the web and pick the date you need to cancel.",
-              "Select **Cancel this occurrence**.",
-              "Add a **Reason (optional)**, such as a flooded course or a public holiday, and confirm. Select **Keep it** if you change your mind."
+              "Webでイベントを開き、キャンセルする日付を選びます。",
+              "**この回をキャンセル**を選択します。",
+              "コースの冠水や祝日など、**理由(任意)**を入力して確定します。考え直した場合は**そのままにする**を選択します。"
             ]
           },
           {
             "type": "p",
-            "text": "Everyone who RSVP'd to that date, whether going, maybe or waitlisted, gets a notification. The date shows **This occurrence was cancelled.** and nobody can RSVP to it. To bring it back, open the date and select **Reinstate this occurrence**."
+            "text": "その日付に参加表明した人には、参加・未定・キャンセル待ちのいずれであっても通知が届きます。その日付には**この回はキャンセルされました。**と表示され、誰も参加表明できなくなります。元に戻すには、その日付を開いて**この回を再開する**を選択します。"
           },
           {
             "type": "note",
             "tone": "caution",
-            "text": "Cancelling and reinstating a date is web-only. **Delete event** removes every occurrence of the series, not just one."
+            "text": "日付のキャンセルと再開はWebでのみ行えます。**イベントを削除**を使うと、1回だけでなくシリーズのすべての開催回が削除されます。"
           },
           {
             "type": "note",
             "tone": "tip",
-            "text": "If the event is a paid class, cancelling an occurrence refunds everyone registered for it in full. See [[guide:host-a-paid-yoga-class|Host a paid yoga class]]."
+            "text": "イベントが有料クラスの場合、開催回をキャンセルすると、その開催回に登録した全員に全額が返金されます。[[guide:host-a-paid-yoga-class|有料のヨガ・ピラティスクラスを開催する]]を参照してください。"
           }
         ]
       }
@@ -608,9 +608,9 @@
   },
   {
     "id": "build-a-gym-routine",
-    "lang": "en",
-    "title": "Build a gym routine",
-    "summary": "Turn a workout you teach or repeat into a reusable routine with sets, reps, load, rest and supersets, then run it guided or share it with your club.",
+    "lang": "ja",
+    "title": "ジムルーティンを作成する",
+    "summary": "指導や反復で使うワークアウトを、セット・レップ・負荷・休憩・スーパーセットを含む再利用可能なルーティンにし、ガイド付きで実施したりクラブで共有したりできます。",
     "kind": "how-to",
     "category": "instructors",
     "audience": [
@@ -632,66 +632,66 @@
     ],
     "sections": [
       {
-        "heading": "Two ways to start",
+        "heading": "2通りの始め方",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "From scratch: open [[route:/gym/routines|Routines]] and press **New routine**. On the web you can also go to [[route:/plans/new|New plan]] and pick **Gym routine**.",
-              "From a workout you already logged: open it in your gym log and press **Save as routine**. Its exercises and sets become the routine's targets. **Repeat last** starts a new log from the same workout instead."
+              "一から作る: [[route:/gym/routines|ルーティン]]を開いて**新しいルーティン**を押します。Webでは[[route:/plans/new|新しいプラン]]に移動して**ジムルーティン**を選ぶこともできます。",
+              "記録済みのワークアウトから作る: ジムログでそのワークアウトを開き、**ルーティンとして保存**を押します。その種目とセットがルーティンの目標になります。**前回を繰り返す**は、代わりに同じワークアウトから新しい記録を始めます。"
             ]
           },
           {
             "type": "p",
-            "text": "On the phone app, open the gym screen and tap **Routines**, then **New routine**."
+            "text": "スマートフォンアプリでは、ジム画面を開いて**ルーティン**をタップし、次に**新しいルーティン**をタップします。"
           }
         ]
       },
       {
-        "heading": "Fill it in",
+        "heading": "内容を入力する",
         "blocks": [
           {
             "type": "steps",
             "items": [
-              "Give it a **Routine name**, named after the day rather than the first exercise, for example \"Bootcamp A\".",
-              "Type the first exercise name. Reuse a name you already log, so your records for that lift stay in one place.",
-              "Pick what it is **Measured by**: weight and reps, bodyweight, time, or distance. The set rows change to ask for the matching target.",
-              "For each set, give a **Set type** and its targets, such as **Target reps** and weight, and a **Rest (s)**. Press **Add set** for more sets.",
-              "To run two exercises back to back, turn on **Superset with the next exercise** on the first one.",
-              "Press **Add exercise** for the next one, and repeat.",
-              "Optionally open **Advanced** and choose a **Progression** rule, which suggests next session's numbers from this one's result. Left on None, your targets stay exactly as typed.",
-              "Add any **Notes (optional)** and press **Save routine**."
+              "**ルーティン名**を付けます。最初の種目ではなく、その日の内容がわかる名前にします（例:「ブートキャンプA」）。",
+              "最初の種目名を入力します。すでに記録で使っている名前を使うと、その種目の記録が1か所にまとまります。",
+              "**計測方法**を、重量と回数、自重、時間、距離から選びます。セットの行が、それに合った目標を入力する形に変わります。",
+              "各セットに**セットタイプ**と、**目標レップ数**や重量などの目標、**休憩（秒）**を設定します。セットを増やすには**セットを追加**を押します。",
+              "2つの種目を続けて行うには、最初の種目で**次の種目とスーパーセット**をオンにします。",
+              "次の種目は**種目を追加**を押して追加し、同じ手順を繰り返します。",
+              "必要に応じて**詳細**を開き、**漸進**のルールを選びます。今回の結果から次回の数値を提案するものです。「なし」のままにすると、目標は入力したとおりのまま変わりません。",
+              "必要に応じて**メモ（任意）**を入力し、**ルーティンを保存**を押します。"
             ]
           },
           {
             "type": "note",
             "tone": "tip",
-            "text": "Each set row is a target, not a log. It is what a session started from the routine is filled in with, and you can still change the numbers as you go."
+            "text": "各セットの行は記録ではなく目標です。ルーティンから始めたセッションにはこの値があらかじめ入り、進めながら数値を変更することもできます。"
           }
         ]
       },
       {
-        "heading": "Run it",
+        "heading": "実施する",
         "blocks": [
           {
             "type": "p",
-            "text": "Open the routine and press **Start routine** (on the phone app, **Start session**). You are guided one set at a time with your target shown: log what you did and press **Complete set**, or **Skip set**, with a rest timer between sets. Press **Finish** at the end and the session is saved to your gym log, with how it compared to the plan."
+            "text": "ルーティンを開いて**ルーティンを開始**（スマートフォンアプリでは**セッションを開始**）を押します。目標が表示された状態で1セットずつガイドされるので、行った内容を記録して**セットを完了**を押すか、**セットをスキップ**を押します。セットの間には休憩タイマーが表示されます。最後に**終了**を押すと、セッションがプランとの比較とともにジムログに保存されます。"
           }
         ]
       },
       {
-        "heading": "Share it with a class",
+        "heading": "クラスで共有する",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "**Publish to a club**: choose the club from **Pick a club…** and press **Publish**. It shows on that club's **Templates** tab under **Gym routine templates**, where members press **Adopt** to get their own copy. Edits to a copy don't change your original.",
-              "**Publish to public library**: anyone signed in can preview and adopt it. Your logged workouts stay private."
+              "**クラブに公開**: **クラブを選択…**からクラブを選び、**公開**を押します。そのクラブの**テンプレート**タブの**ジムルーティンのテンプレート**に表示され、メンバーは**採用**を押して自分用のコピーを入手できます。コピーを編集しても、元のルーティンは変わりません。",
+              "**公開ライブラリに公開**: サインインしている人なら誰でもプレビューして採用できます。記録したワークアウトは非公開のままです。"
             ]
           },
           {
             "type": "p",
-            "text": "Running a paid class around the routine? See [[guide:host-a-paid-gym-class|Host a paid HIIT, strength or bootcamp class]]."
+            "text": "このルーティンを使って有料クラスを開催する場合は、[[guide:host-a-paid-gym-class|有料のHIIT・筋トレ・ブートキャンプクラスを開催する]]を参照してください。"
           }
         ]
       }
@@ -704,9 +704,9 @@
   },
   {
     "id": "build-a-session-plan",
-    "lang": "en",
-    "title": "Build a session plan for yoga, pilates or mobility",
-    "summary": "Write a timed sequence of holds, flows and reps with per-side movements and cues, then teach from it, attach it to a class and follow along.",
+    "lang": "ja",
+    "title": "ヨガ・ピラティス・モビリティのセッションプランを作成する",
+    "summary": "キープ、フロー、回数の動作を左右別の動きやキューとともに時間付きのシーケンスにまとめ、それを使って指導したり、クラスに紐付けたり、一緒に進めたりできます。",
     "kind": "how-to",
     "category": "instructors",
     "audience": [
@@ -727,81 +727,81 @@
     ],
     "sections": [
       {
-        "heading": "Where to build it",
+        "heading": "作成する場所",
         "blocks": [
           {
             "type": "p",
-            "text": "Session plans are written on the web. The phone app lists them and runs them, but has no editor yet."
+            "text": "セッションプランはWebで作成します。スマートフォンアプリではプランの一覧表示と実施はできますが、編集機能はまだありません。"
           },
           {
             "type": "list",
             "items": [
-              "For yourself: open [[route:/plans/new|New plan]] and pick **Session plan**, or press **New session** on [[route:/sessions|Sessions]].",
-              "For your club: on the club's **Templates** tab, press **Add template** and pick **Session plan**. It is saved as a club template straight away."
+              "自分用: [[route:/plans/new|新しいプラン]]を開いて**セッションプラン**を選ぶか、[[route:/sessions|セッション]]で**新しいセッション**を押します。",
+              "クラブ用: クラブの**テンプレート**タブで**テンプレートを追加**を押し、**セッションプラン**を選びます。すぐにクラブテンプレートとして保存されます。"
             ]
           }
         ]
       },
       {
-        "heading": "Fill it in",
+        "heading": "内容を入力する",
         "blocks": [
           {
             "type": "steps",
             "items": [
-              "Give it a **Title** that names the sequence, such as \"Hip opener flow, 45 min\".",
-              "Add a **Discipline** (for example Vinyasa yoga) and the **Equipment** people should have out, such as a mat or a reformer.",
-              "Optionally press **Add block** to split it into sections like Warm-up, Standing and Cool-down. A plan with no blocks runs straight through.",
-              "Press **Add movement** for each pose or exercise and type its name in **Movement**.",
-              "Pick its **Type**: **Hold** for a timed pose, **Flow** for a timed sequence of movement, or **Reps** for a counted exercise. Then enter the **Seconds** or **Reps**, and the **Block** it belongs to.",
-              "Tick **Per side (left & right)** for anything done on each side. It runs once each way, so it takes twice as long.",
-              "Optionally add a **Tempo** and a **Cue**, the breath or alignment prompt shown beside the movement while someone follows along.",
-              "Check the estimated length the editor works out for you, then press **Save**."
+              "シーケンスがわかる**タイトル**を付けます（例:「股関節を開くフロー 45分」）。",
+              "**種目**（例: ヴィンヤサヨガ）と、マットやリフォーマーなど参加者が用意しておく**用具**を入力します。",
+              "必要に応じて**ブロックを追加**を押し、ウォームアップ、立位のポーズ、クールダウンなどのセクションに分けます。ブロックのないプランは最初から最後まで通しで進みます。",
+              "ポーズやエクササイズごとに**動作を追加**を押し、**動作**に名前を入力します。",
+              "**種類**を選びます。時間を決めて保つポーズなら**キープ**、時間を決めた一連の動きなら**フロー**、回数を数えるエクササイズなら**回数**です。次に**秒**または**回数**と、属する**ブロック**を入力します。",
+              "左右それぞれで行うものには**左右それぞれ**にチェックを入れます。片側ずつ1回ずつ行うため、時間は2倍になります。",
+              "必要に応じて**テンポ**と**キュー**を追加します。キューは、一緒に進めている間に動作の横に表示される、呼吸や姿勢の指示です。",
+              "エディターが算出する推定時間を確認し、**保存**を押します。"
             ]
           },
           {
             "type": "note",
             "tone": "tip",
-            "text": "Movement names are suggested from your earlier plans as you type. Picking a suggestion keeps the same pose spelled the same way everywhere."
+            "text": "入力中に、過去のプランから動作名の候補が表示されます。候補を選ぶと、同じポーズがどこでも同じ表記になります。"
           }
         ]
       },
       {
-        "heading": "Attach it to a class",
+        "heading": "クラスに紐付ける",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "When creating a class, pick the plan under **Session plan**.",
-              "Already created the class? On the class page, organisers press **Attach to a class event** in the **Session sequence** card."
+              "クラスを作成するときに、**セッションプラン**でプランを選びます。",
+              "クラスをすでに作成した場合は、クラスのページで管理者やイベント主催者が**セッションのシーケンス**カードの**クラスイベントに紐付ける**を押します。"
             ]
           },
           {
             "type": "p",
-            "text": "Attendees then see the full sequence on the class page. A private plan stays private to everyone else, but the people at a class you attach it to can see it."
+            "text": "紐付けると、参加者はクラスのページでシーケンス全体を見られます。非公開のプランはほかの人には非公開のままですが、紐付けたクラスの参加者は見ることができます。"
           }
         ]
       },
       {
-        "heading": "Follow along",
+        "heading": "一緒に進める",
         "blocks": [
           {
             "type": "p",
-            "text": "Open the plan and press **Start session**. Timed holds and flows move on by themselves; for reps, press **Done** when finished. You can **Pause**, **Resume**, **Skip** a step, or **Abandon**. When you finish it is saved to your gym log as a workout."
+            "text": "プランを開いて**セッションを開始**を押します。時間を決めたキープとフローは自動で次に進み、回数の動作では終わったら**完了**を押します。**一時停止**、**再開**、ステップの**スキップ**、**中止**も使えます。最後まで終えると、ワークアウトとしてジムログに保存されます。"
           },
           {
             "type": "p",
-            "text": "The phone app runs the same follow-along, reads the cues aloud, keeps the screen awake, and keeps time if you switch to another app."
+            "text": "スマートフォンアプリでも同じように一緒に進められます。キューが読み上げられ、画面はオンのまま保たれ、ほかのアプリに切り替えても時間の計測は続きます。"
           }
         ]
       },
       {
-        "heading": "Share it",
+        "heading": "共有する",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "**Make public** lets anyone find and follow it. **Copy share link** makes the plan public and copies a link that works without signing in.",
-              "**Publish to a club**: pick the club from **Pick a club…** and press **Publish**. It appears under **Session templates** on the club's **Templates** tab, and members press **Adopt** to get their own copy."
+              "**公開する**を使うと、誰でも見つけて一緒に進められます。**共有リンクをコピー**はプランを公開し、サインインしなくても開けるリンクをコピーします。",
+              "**クラブに公開**: **クラブを選択…**からクラブを選び、**公開**を押します。クラブの**テンプレート**タブの**セッションテンプレート**に表示され、メンバーは**採用**を押して自分用のコピーを入手できます。"
             ]
           }
         ]
@@ -815,9 +815,9 @@
   },
   {
     "id": "take-attendance",
-    "lang": "en",
-    "title": "Take attendance at a class",
-    "summary": "Mark who actually came to each occurrence of a class, separately from who said they would, on the web or the phone app.",
+    "lang": "ja",
+    "title": "クラスで出欠を取る",
+    "summary": "クラスの各開催回に実際に来た人を、参加すると答えた人とは別に、Webまたはスマートフォンアプリで記録します。",
     "kind": "how-to",
     "category": "instructors",
     "audience": [
@@ -834,47 +834,47 @@
     ],
     "sections": [
       {
-        "heading": "Who can take it, and where",
+        "heading": "出欠を取れる人と場所",
         "blocks": [
           {
             "type": "p",
-            "text": "Attendance is for events with the **Class** type, and only the club's admins and event organisers can mark it. It works the same on the web and in the phone app, so you can do it from your phone at the front of the room."
+            "text": "出欠は種類が**クラス**のイベントで使え、記録できるのはクラブの管理者とイベント主催者だけです。Webでもスマートフォンアプリでも同じように使えるので、教室の前に立ったままスマートフォンで記録できます。"
           },
           {
             "type": "p",
-            "text": "It is separate from the RSVP. Someone can be **Going**, or registered and paid, and still be marked as a no-show; marking attendance never changes their registration or refunds anyone."
+            "text": "出欠は参加表明とは別のものです。**参加**の人や、登録して支払いを済ませた人でも、欠席として記録されることがあります。出欠を記録しても、登録が変わったり返金が行われたりすることはありません。"
           }
         ]
       },
       {
-        "heading": "Mark who came",
+        "heading": "来た人を記録する",
         "blocks": [
           {
             "type": "steps",
             "items": [
-              "Open the class. If it repeats, use **Pick an occurrence** to choose today's date, because attendance is recorded per occurrence.",
-              "Scroll to the attendee list.",
-              "Next to each person, press **Mark attended** or **Mark no-show**.",
-              "Pressed the wrong one? Press the same button again to clear it."
+              "クラスを開きます。出欠は回ごとに記録されるため、繰り返しクラスの場合は**開催回を選択**で今日の日付を選びます。",
+              "参加者リストまでスクロールします。",
+              "各人の横にある**出席として記録**または**欠席として記録**を押します。",
+              "押し間違えた場合は、同じボタンをもう一度押すと記録が消えます。"
             ]
           },
           {
             "type": "note",
             "tone": "tip",
-            "text": "You don't have to mark everyone. Anyone left unmarked simply has no attendance recorded."
+            "text": "全員を記録する必要はありません。記録しなかった人は、出欠が記録されていない状態になります。"
           }
         ]
       },
       {
-        "heading": "What others see",
+        "heading": "ほかの人に表示される内容",
         "blocks": [
           {
             "type": "p",
-            "text": "Other people looking at the class see an **Attended** or **No-show** label next to each name you marked, but can't change it."
+            "text": "クラスを見ているほかの人には、記録した各人の名前の横に**出席**または**欠席**のラベルが表示されますが、変更はできません。"
           },
           {
             "type": "p",
-            "text": "Attendance doesn't add the class to anyone's training history. Attendees do that themselves with **Log this as a workout** on the class page, or by following the class's session plan: see [[guide:build-a-session-plan|Build a session plan]]."
+            "text": "出欠を記録しても、誰かのトレーニング履歴にクラスが追加されることはありません。参加者自身が、クラスのページの**ワークアウトとして記録**を使うか、クラスのセッションプランに沿って進めることで追加します。[[guide:build-a-session-plan|ヨガ・ピラティス・モビリティのセッションプランを作成する]]を参照してください。"
           }
         ]
       }
@@ -888,9 +888,9 @@
   },
   {
     "id": "cancel-a-class",
-    "lang": "en",
-    "title": "Cancel a class and refund everyone who paid",
-    "summary": "Call off one occurrence of a repeating class; everyone who paid for it is refunded in full automatically, with an hourly retry and a Refund now fallback.",
+    "lang": "ja",
+    "title": "クラスを中止し、支払った全員に返金する",
+    "summary": "繰り返しクラスの開催回を1つ中止すると、その開催回に支払った全員に自動で全額が返金され、1時間ごとの再試行と「今すぐ返金」による手動の再実行も用意されています。",
     "kind": "how-to",
     "category": "paid-classes",
     "audience": [
@@ -909,83 +909,83 @@
     ],
     "sections": [
       {
-        "heading": "Before you start",
+        "heading": "始める前に",
         "blocks": [
           {
             "type": "note",
             "tone": "caution",
-            "text": "Paid classes are not live yet: they need the host's Stripe account connected and the platform's paid rail switched on. If payments aren't available when you try to cancel an occurrence that has paid registrations, you'll see **This occurrence has paid registrations and payments aren't available right now, so it can't be cancelled yet. Nothing has changed.** The class is left on, so nobody is left holding a payment for a class that isn't happening."
+            "text": "有料クラスはまだ提供されていません。主催者のStripeアカウントの接続と、プラットフォーム側での有料登録の有効化が必要です。支払い済みの登録がある開催回をキャンセルしようとしたときに支払いを利用できない場合は、**この回には支払い済みの登録があり、現在お支払いを処理できないため、まだキャンセルできません。変更は行われていません。**と表示されます。クラスは開催予定のまま残るので、開催されないクラスの代金を払ったままになる人は出ません。"
           },
           {
             "type": "p",
-            "text": "Cancelling is for admins and event organisers of the club, and it is done on the web. Free classes cancel the same way, just without the refunds."
+            "text": "キャンセルはクラブの管理者とイベント主催者が行う操作で、Webで行います。無料クラスも同じ手順でキャンセルでき、返金がないだけです。"
           }
         ]
       },
       {
-        "heading": "Cancel one occurrence",
+        "heading": "1つの開催回だけ中止する",
         "blocks": [
           {
             "type": "steps",
             "items": [
-              "Open the class on the web. If it repeats, use **Pick an occurrence** to choose the date you are calling off.",
-              "Press **Cancel this occurrence**.",
-              "The dialog explains that only this occurrence is called off and the rest of the series is unaffected. On a paid class it adds: **Everyone registered for this occurrence is refunded in full, whatever the refund policy says.**",
-              "Optionally add a **Reason (optional)**, then press **Cancel this occurrence** again to confirm, or **Keep it** to back out."
+              "Webでクラスを開きます。繰り返しクラスの場合は、**開催回を選択**で中止する日付を選びます。",
+              "**この回をキャンセル**を押します。",
+              "ダイアログには、中止されるのはこの回だけで、シリーズのほかの開催回には影響しないことが表示されます。有料クラスでは、さらに**この回に登録した全員に、返金ポリシーにかかわらず全額が返金されます。**と表示されます。",
+              "必要に応じて**理由(任意)**を入力し、もう一度**この回をキャンセル**を押して確定します。やめる場合は**そのままにする**を押します。"
             ]
           },
           {
             "type": "p",
-            "text": "When it finishes you see how many people are being refunded, for example *Occurrence cancelled. 8 registrants are being refunded in full.* Anyone who was part-way through checkout has their held spot released and is not charged. Nobody on the waitlist is moved into a cancelled class."
+            "text": "完了すると、返金の対象人数が表示されます。例えば*この回をキャンセルしました。8名の登録者に全額を返金しています。*のように表示されます。決済の途中だった人は確保されていた枠が解放され、請求されません。キャンセル待ちの人が、キャンセルされたクラスに繰り上がることはありません。"
           }
         ]
       },
       {
-        "heading": "What your attendees are told",
+        "heading": "参加者への通知内容",
         "blocks": [
           {
             "type": "p",
-            "text": "Everyone who RSVP'd to that occurrence (going, maybe, or waitlisted) is notified. People who paid get a notification that reads like *An occurrence of \"Tuesday Reformer\" was cancelled — your payment is being refunded*, and the same wording goes out by email or push to anyone who gets those. It says *being* refunded because the refund is started at that moment and can take a few days to reach their bank."
+            "text": "その開催回に参加表明した人（参加・未定・キャンセル待ち）には通知が届きます。支払った人には*「火曜リフォーマー」の開催が1回キャンセルされました。お支払いは返金手続き中です*のような通知が届き、メールやプッシュ通知を受け取っている人には同じ文面がそれらでも送られます。*手続き中*となっているのは、返金はその時点で開始されますが、相手の銀行に届くまで数日かかることがあるためです。"
           }
         ]
       },
       {
-        "heading": "If a refund fails",
+        "heading": "返金が失敗した場合",
         "blocks": [
           {
             "type": "p",
-            "text": "The occurrence is still cancelled even if Stripe refuses a refund. You'll see a message saying how many refunds couldn't be started, and the class page gains a **Refunds on cancelled occurrences** card listing, per cancelled date, who hasn't been refunded yet, which refunds are in progress, and any the bank sent back."
+            "text": "Stripeが返金を拒否しても、その開催回はキャンセルされたままです。開始できなかった返金の件数を示すメッセージが表示され、クラスのページに**キャンセルした回の返金**カードが追加されます。このカードには、キャンセルした日付ごとに、まだ返金されていない人、処理中の返金、銀行から返送された返金が一覧表示されます。"
           },
           {
             "type": "list",
             "items": [
-              "The app retries every refund still owed on a cancelled class automatically, once an hour.",
-              "You don't have to wait: press **Refund now** next to the occurrence to try again straight away. It never refunds anyone twice.",
-              "A refund the bank sends back can't be retried this way; it is returned to the person another way."
+              "キャンセルしたクラスでまだ返金されていないものは、アプリが1時間に1回、自動で再試行します。",
+              "待つ必要はありません。その開催回の横にある**今すぐ返金**を押すと、すぐに再試行できます。同じ人に二重に返金されることはありません。",
+              "銀行から返送された返金は、この方法では再試行できません。その人には別の方法で返金されます。"
             ]
           },
           {
             "type": "note",
             "tone": "caution",
-            "text": "Don't refund people by hand from a Stripe dashboard. A refund made there can skip reversing your payout and the platform fee, and the app may then refund the rest on top. Use **Refund now** instead."
+            "text": "Stripeのダッシュボードから手動で返金しないでください。そこで行った返金では、あなたへの支払いとプラットフォーム手数料が取り消されない場合があり、さらにアプリが残りを重ねて返金する可能性があります。代わりに**今すぐ返金**を使ってください。"
           }
         ]
       },
       {
-        "heading": "One-off classes and whole series",
+        "heading": "単発クラスとシリーズ全体",
         "blocks": [
           {
             "type": "p",
-            "text": "**Cancel this occurrence** is only offered on a repeating class. There is no single button to call off a whole series: cancel each upcoming occurrence that has registrations."
+            "text": "**この回をキャンセル**は繰り返しクラスでのみ表示されます。シリーズ全体を一度に中止するボタンはないため、登録のある今後の開催回を1つずつキャンセルしてください。"
           },
           {
             "type": "note",
             "tone": "caution",
-            "text": "**Delete event** is not a cancellation. It removes the event and all its occurrences and does not refund anyone who paid. Don't delete a paid class that still has registrations."
+            "text": "**イベントを削除**はキャンセルではありません。イベントとそのすべての開催回が削除され、支払った人への返金も行われません。登録が残っている有料クラスは削除しないでください。"
           },
           {
             "type": "p",
-            "text": "Changed your mind? **Reinstate this occurrence** puts a cancelled date back on the calendar, but refunds already made are not undone, so people will need to register again."
+            "text": "考え直した場合は、**この回を再開する**でキャンセルした日付をカレンダーに戻せます。ただし、すでに行われた返金は取り消されないため、参加者はもう一度登録する必要があります。"
           }
         ]
       }
@@ -1000,9 +1000,9 @@
   },
   {
     "id": "get-paid-with-stripe",
-    "lang": "en",
-    "title": "Get paid for the events you host",
-    "summary": "Connect a Stripe payout account once so the classes and events you host can take payment, with the money going to you rather than the club.",
+    "lang": "ja",
+    "title": "主催するイベントで支払いを受け取る",
+    "summary": "Stripeの支払いアカウントを一度接続すると、主催するクラスやイベントで料金を受け取れるようになり、代金はクラブではなくあなたに支払われます。",
     "kind": "how-to",
     "category": "paid-classes",
     "audience": [
@@ -1022,82 +1022,82 @@
     ],
     "sections": [
       {
-        "heading": "Before you start",
+        "heading": "始める前に",
         "blocks": [
           {
             "type": "note",
             "tone": "caution",
-            "text": "Paid registration is not live yet. Charging for an event needs two things: your own Stripe account connected here, and the platform switching its paid rail on. Until both are true, nobody can be charged. If pressing **Set up payments** shows **Payments aren't configured on this build yet.**, the second one is still missing and there is nothing for you to do yet."
+            "text": "有料登録はまだ提供されていません。イベントで料金を請求するには、ここであなた自身のStripeアカウントを接続することと、プラットフォーム側で有料登録を有効にすることの2つが必要です。両方がそろうまでは、誰にも請求されません。**支払いを設定**を押して**このビルドではまだ支払いが設定されていません。**と表示される場合は、2つ目がまだそろっていないということなので、今のところあなたが行うことはありません。"
           },
           {
             "type": "p",
-            "text": "Payouts belong to *you*, not to a club. The money for an event goes to the person who hosts it, so a co-organiser who never hosts a class never sees money that isn't theirs, and you keep your earnings if you stop organising for a club. One payout account covers every club you host for and every kind of event, a [[guide:set-up-a-race|race]] included."
+            "text": "支払いを受け取るのはクラブではなく*あなた*です。イベントの代金はそれを主催する人に支払われるため、クラスを主催しないほかの運営メンバーが自分のものではないお金を目にすることはなく、クラブの運営から離れても収益はあなたの手元に残ります。1つの支払いアカウントで、あなたが主催するすべてのクラブとあらゆる種類のイベント（[[guide:set-up-a-race|レース]]を含む）に対応できます。"
           }
         ]
       },
       {
-        "heading": "Connect your payout account",
+        "heading": "支払いアカウントを接続する",
         "blocks": [
           {
             "type": "steps",
             "items": [
-              "Open [[route:/settings/payouts|Settings, Payouts]] on the web.",
-              "Press **Set up payments**. You are taken to Stripe to enter your details and the bank account you want paid into.",
-              "Finish Stripe's steps. When you come back, the page shows your status.",
-              "If it says **Onboarding incomplete — finish to start charging** or **Your payout account needs attention before you can take payment**, press **Finish setting up payments** to go back to Stripe and pick up where you left off."
+              "Webで[[route:/settings/payouts|設定の「支払い」]]を開きます。",
+              "**支払いを設定**を押します。Stripeに移動するので、あなたの情報と入金先の銀行口座を入力します。",
+              "Stripeの手順を完了します。戻ってくると、ページにステータスが表示されます。",
+              "**設定が未完了です。完了すると請求を開始できます**または**支払いを受け取る前に、支払いアカウントの対応が必要です**と表示された場合は、**支払い設定を完了する**を押してStripeに戻り、中断したところから再開します。"
             ]
           }
         ]
       },
       {
-        "heading": "What the status means",
+        "heading": "ステータスの意味",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "**Ready to take payment**: Stripe has enabled charges on your account, and **Open Stripe dashboard** takes you to your Stripe account. This is what \"charges enabled\" means, and it is the only state in which the **Charge for this event** switch on a new event can be turned on.",
-              "**Onboarding incomplete — finish to start charging**: Stripe still needs something from you before it will accept a charge.",
-              "**Your payout account needs attention before you can take payment**: Stripe has restricted the account, usually because it wants more information. **Finish setting up payments** takes you to what it is asking for."
+              "**支払い受付可能**: Stripeがあなたのアカウントで請求を有効にしており、**Stripe ダッシュボードを開く**からStripeアカウントに移動できます。これが「請求が有効」という状態で、新しいイベントの**このイベントを有料にする**スイッチをオンにできるのはこの状態のときだけです。",
+              "**設定が未完了です。完了すると請求を開始できます**: Stripeが請求を受け付けるには、まだあなたからの対応が必要です。",
+              "**支払いを受け取る前に、支払いアカウントの対応が必要です**: Stripeがアカウントを制限しています。通常は追加の情報が必要なためです。**支払い設定を完了する**を押すと、求められている内容の画面に移動します。"
             ]
           },
           {
             "type": "p",
-            "text": "Until you are ready to take payment, the event form shows **Set up payouts to charge for events.** with a **Set up payouts** link back to this page."
+            "text": "支払いを受け取れる状態になるまで、イベントのフォームには**イベントを有料にするには支払いを設定してください。**と表示され、このページに戻る**支払いを設定**リンクが表示されます。"
           }
         ]
       },
       {
-        "heading": "Fees and who handles what",
+        "heading": "手数料と役割分担",
         "blocks": [
           {
             "type": "p",
-            "text": "The platform takes a small fee from each registration, shown as **Platform fee** in your earnings. The platform is the merchant of record: the charge carries its name on your buyer's statement, refunds are issued by the platform under the refund policy you set on each event, and a disputed charge is taken from the platform's Stripe account, not yours. When an order is fully refunded, the platform fee on it is given back too."
+            "text": "プラットフォームは各登録から少額の手数料を受け取り、収益には**プラットフォーム手数料**として表示されます。プラットフォームが販売事業者（merchant of record）となるため、購入者の明細にはプラットフォームの名前で請求が記載され、返金は各イベントであなたが設定した返金ポリシーに基づいてプラットフォームが行い、異議が申し立てられた請求はあなたではなくプラットフォームのStripeアカウントから差し引かれます。注文が全額返金された場合は、その注文のプラットフォーム手数料も返還されます。"
           },
           {
             "type": "note",
             "tone": "caution",
-            "text": "Don't refund a buyer by hand in Stripe. Use the app's own paths ([[guide:refund-policies|a buyer's cancellation]] or [[guide:cancel-a-class|cancelling an occurrence]]), which reverse your payout and the platform fee together and keep your earnings figures right."
+            "text": "Stripeで購入者に手動で返金しないでください。アプリ内の手順（[[guide:refund-policies|購入者によるキャンセル]]または[[guide:cancel-a-class|開催回のキャンセル]]）を使ってください。これらはあなたへの支払いとプラットフォーム手数料をまとめて取り消し、収益の数値を正しく保ちます。"
           }
         ]
       },
       {
-        "heading": "See what you earned",
+        "heading": "収益を確認する",
         "blocks": [
           {
             "type": "p",
-            "text": "The **Earnings** section on the same page shows what you were paid for your classes, one block per month and currency. A class is filed under the month it ran in its own timezone, not the month someone paid, so \"my October classes\" means the classes that happened in October."
+            "text": "同じページの**収益**セクションには、あなたのクラスで支払われた金額が、月と通貨ごとに1ブロックずつ表示されます。クラスは支払いが行われた月ではなく、そのクラスのタイムゾーンで開催された月に計上されるため、「10月のクラス」は10月に開催されたクラスを指します。"
           },
           {
             "type": "list",
             "items": [
-              "**Registrations**, **Gross**, **Refunded** and **Platform fee** for the month, and **Net to you** at the end.",
-              "A breakdown by class with **Class** and **When** columns.",
-              "A refund the bank sent back is left out of the totals until it is resolved, and the section says how many there are."
+              "その月の**申し込み**、**総額**、**返金済み**、**プラットフォーム手数料**と、最後に**受取額(純額)**。",
+              "**クラス**列と**日時**列のある、クラスごとの内訳。",
+              "銀行から返送された返金は、解決するまで合計から除外され、その件数がセクションに表示されます。"
             ]
           },
           {
             "type": "p",
-            "text": "Before anyone has paid, it reads **No paid registrations yet. Once someone pays for one of your classes, it shows up here.** Earnings are on the web only for now."
+            "text": "まだ誰も支払っていない場合は、**有料の申し込みはまだありません。誰かがクラスの料金を支払うと、ここに表示されます。**と表示されます。収益は現在Webでのみ確認できます。"
           }
         ]
       }
@@ -1112,9 +1112,9 @@
   },
   {
     "id": "host-a-paid-gym-class",
-    "lang": "en",
-    "title": "Host a paid HIIT, strength or bootcamp class",
-    "summary": "Schedule a recurring gym class with a spot limit and drop-in price, share the workout as a club routine, and let attendees log it to their own history.",
+    "lang": "ja",
+    "title": "有料のHIIT・筋トレ・ブートキャンプクラスを開催する",
+    "summary": "定員とドロップイン料金を設定した繰り返しのジムクラスを予定し、ワークアウトをクラブのルーティンとして共有して、参加者が自分の履歴に記録できるようにします。",
     "kind": "how-to",
     "category": "paid-classes",
     "audience": [
@@ -1137,83 +1137,83 @@
     ],
     "sections": [
       {
-        "heading": "Before you start",
+        "heading": "始める前に",
         "blocks": [
           {
             "type": "note",
             "tone": "caution",
-            "text": "Paid classes are not live yet. Taking money needs your own Stripe account connected ([[guide:get-paid-with-stripe|Get paid for the events you host]]) and the platform's paid rail switched on. Until then the **Charge for this event** switch stays off and you can still run the class for free."
+            "text": "有料クラスはまだ提供されていません。料金を受け取るには、あなた自身のStripeアカウントの接続（[[guide:get-paid-with-stripe|主催するイベントで支払いを受け取る]]）と、プラットフォーム側での有料登録の有効化が必要です。それまでは**このイベントを有料にする**スイッチはオフのままですが、クラスを無料で開催することはできます。"
           },
           {
             "type": "p",
-            "text": "You need to be an admin or event organiser of the club. Price, capacity and the repeat schedule are set on the web; the phone app can create a class but has no fields for them."
+            "text": "クラブの管理者またはイベント主催者である必要があります。価格、定員、繰り返しのスケジュールはWebで設定します。スマートフォンアプリでもクラスを作成できますが、これらの項目はありません。"
           }
         ]
       },
       {
-        "heading": "Create the class",
+        "heading": "クラスを作成する",
         "blocks": [
           {
             "type": "steps",
             "items": [
-              "Open your club, go to the **Events** tab and press **New event**.",
-              "Under **Event type**, pick **Class**. Route, distance, pace and race results are hidden for a class.",
-              "Fill in **Discipline**, for example \"HIIT\" or \"Bootcamp\", and a **Title** people will recognise on the calendar.",
-              "Set **Default workout length** to the class length in minutes. This is what lets attendees log the class in one tap afterwards.",
-              "Set the **Date**, **Start time**, **Duration** and **Meeting point**.",
-              "Under **Repeats**, pick **Weekly**, **Every 2 weeks** or **Monthly** and the days. You can only choose this while creating the event.",
-              "Set **Capacity** to your racks, bikes or spots.",
-              "Turn on **Charge for this event**, then set **Price**, **Currency**, **Stop sales (minutes before start)** and a **Refund policy**. Price and currency can't be changed after the event is created.",
-              "Press **Create event**."
+              "クラブを開き、**イベント**タブで**新しいイベント**を押します。",
+              "**イベントの種類**で**クラス**を選びます。クラスではルート、距離、ペース、レース結果は表示されません。",
+              "**種目**（例:「HIIT」や「ブートキャンプ」）と、カレンダーで見てすぐわかる**タイトル**を入力します。",
+              "**デフォルトのワークアウト時間**にクラスの長さを分単位で設定します。これにより、参加者は後からワンタップでクラスを記録できます。",
+              "**日付**、**開始時刻**、**所要時間**、**集合場所**を設定します。",
+              "**繰り返し**で**毎週**、**2週間ごと**、**毎月**のいずれかと曜日を選びます。これを選べるのはイベントの作成時だけです。",
+              "**定員**を、ラックやバイク、スペースの数に合わせて設定します。",
+              "**このイベントを有料にする**をオンにし、**価格**、**通貨**、**販売終了（開始の何分前）**、**返金ポリシー**を設定します。価格と通貨はイベントの作成後は変更できません。",
+              "**イベントを作成**を押します。"
             ]
           }
         ]
       },
       {
-        "heading": "Share the workout with your class",
+        "heading": "クラスとワークアウトを共有する",
         "blocks": [
           {
             "type": "p",
-            "text": "A class can't carry a gym routine directly yet. Instead, publish your routine to the club, where members can copy it into their own routines and run it."
+            "text": "現時点では、クラスにジムルーティンを直接紐付けることはできません。代わりにルーティンをクラブに公開すると、メンバーがそれを自分のルーティンにコピーして実施できます。"
           },
           {
             "type": "steps",
             "items": [
-              "Build the routine: see [[guide:build-a-gym-routine|Build a gym routine]].",
-              "Open the routine, and under **Publish to a club** choose your club from **Pick a club…** and press **Publish**.",
-              "It appears on the club's **Templates** tab under **Gym routine templates**, marked **Club template**. Members press **Adopt** to get their own copy."
+              "ルーティンを作成します。[[guide:build-a-gym-routine|ジムルーティンを作成する]]を参照してください。",
+              "ルーティンを開き、**クラブに公開**で**クラブを選択…**からクラブを選んで**公開**を押します。",
+              "クラブの**テンプレート**タブの**ジムルーティンのテンプレート**に、**クラブテンプレート**の印付きで表示されます。メンバーは**採用**を押すと自分用のコピーを入手できます。"
             ]
           },
           {
             "type": "note",
             "tone": "tip",
-            "text": "Club admins can also go straight to the **Templates** tab, press **Add template** and choose **Gym routine**. It is saved as a club template in one step."
+            "text": "クラブの管理者は、**テンプレート**タブで直接**テンプレートを追加**を押して**ジムルーティン**を選ぶこともできます。1回の操作でクラブテンプレートとして保存されます。"
           }
         ]
       },
       {
-        "heading": "Attendees log the class to their own history",
+        "heading": "参加者が自分の履歴にクラスを記録する",
         "blocks": [
           {
             "type": "p",
-            "text": "On the class page, any signed-in attendee sees **Log this as a workout**. It opens a gym log already named after the class, which they can adjust with their own sets and weights before saving. They then see **Added to your gym log**, and the class counts in their training history like any other workout. This works on the web and in the phone app."
+            "text": "クラスのページでは、サインインしている参加者に**ワークアウトとして記録**が表示されます。これを押すと、クラス名があらかじめ入ったジムログが開き、保存前に自分のセットや重量に合わせて調整できます。保存すると**ジムログに追加しました**と表示され、クラスはほかのワークアウトと同様にトレーニング履歴に反映されます。これはWebでもスマートフォンアプリでも使えます。"
           },
           {
             "type": "p",
-            "text": "Someone who adopted your routine can instead open it and press **Start routine** to be guided set by set; that session is saved to their gym log as well."
+            "text": "あなたのルーティンを採用した人は、代わりにそれを開いて**ルーティンを開始**を押し、1セットずつガイドに沿って進めることもできます。そのセッションもジムログに保存されます。"
           }
         ]
       },
       {
-        "heading": "Registration, the day itself and changes",
+        "heading": "登録、当日、変更",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "Attendees register and pay on the web, see **You're registered**, and can cancel under your [[guide:refund-policies|refund policy]].",
-              "When the spots are taken it shows **Sold out** and offers **Join the waitlist**: see [[guide:waitlist-and-claim-window|Waitlists and the 12-hour claim window]].",
-              "Mark who turned up: [[guide:take-attendance|Take attendance]].",
-              "Calling a session off refunds everyone who paid: [[guide:cancel-a-class|Cancel a class]]."
+              "参加者はWebで登録して支払いを済ませると**登録済みです**と表示され、あなたの[[guide:refund-policies|返金ポリシー]]に従ってキャンセルできます。",
+              "枠が埋まると**満員**と表示され、**キャンセル待ちに登録**が表示されます。[[guide:waitlist-and-claim-window|キャンセル待ちと12時間の確保期間]]を参照してください。",
+              "来た人を記録します: [[guide:take-attendance|クラスで出欠を取る]]。",
+              "開催回を中止すると、支払った全員に返金されます: [[guide:cancel-a-class|クラスを中止し、支払った全員に返金する]]。"
             ]
           }
         ]
@@ -1230,9 +1230,9 @@
   },
   {
     "id": "host-a-paid-yoga-class",
-    "lang": "en",
-    "title": "Host a paid yoga or pilates class",
-    "summary": "Schedule a recurring class for your club, cap the mats, set a drop-in price and refund policy, and attach a timed sequence people can follow.",
+    "lang": "ja",
+    "title": "有料のヨガ・ピラティスクラスを開催する",
+    "summary": "クラブで繰り返しのクラスを予定し、マットの数で定員を設け、ドロップイン料金と返金ポリシーを設定して、参加者が一緒に進められる時間付きのシーケンスを紐付けます。",
     "kind": "how-to",
     "category": "paid-classes",
     "audience": [
@@ -1255,92 +1255,92 @@
     ],
     "sections": [
       {
-        "heading": "Before you start",
+        "heading": "始める前に",
         "blocks": [
           {
             "type": "note",
             "tone": "caution",
-            "text": "Paid classes are not live yet. Taking money needs your own Stripe account connected ([[guide:get-paid-with-stripe|Get paid for the events you host]]) and the platform's paid rail switched on. Until then the **Charge for this event** switch stays off and you can still run the class for free."
+            "text": "有料クラスはまだ提供されていません。料金を受け取るには、あなた自身のStripeアカウントの接続（[[guide:get-paid-with-stripe|主催するイベントで支払いを受け取る]]）と、プラットフォーム側での有料登録の有効化が必要です。それまでは**このイベントを有料にする**スイッチはオフのままですが、クラスを無料で開催することはできます。"
           },
           {
             "type": "list",
             "items": [
-              "You need to be an admin or event organiser of the club. The club page tells you which with **You're an admin** or **You're an event organiser**.",
-              "Price, capacity, the repeat schedule and the session plan are all set on the web. The phone app can create a class and shows it to members, but it has no price, capacity or session plan fields.",
-              "Build your sequence first if you want to attach one: see [[guide:build-a-session-plan|Build a session plan]]."
+              "クラブの管理者またはイベント主催者である必要があります。どちらであるかは、クラブのページに**あなたは管理者です**または**あなたはイベント主催者です**と表示されます。",
+              "価格、定員、繰り返しのスケジュール、セッションプランはすべてWebで設定します。スマートフォンアプリでもクラスを作成してメンバーに表示できますが、価格、定員、セッションプランの項目はありません。",
+              "シーケンスを紐付けたい場合は、先に作成しておきます。[[guide:build-a-session-plan|ヨガ・ピラティス・モビリティのセッションプランを作成する]]を参照してください。"
             ]
           }
         ]
       },
       {
-        "heading": "Create the class",
+        "heading": "クラスを作成する",
         "blocks": [
           {
             "type": "steps",
             "items": [
-              "Open your club, go to the **Events** tab and press **New event**.",
-              "Under **Event type**, pick **Class**. Route, distance, pace and race results disappear, because a class doesn't need them.",
-              "Fill in **Discipline**, for example \"Reformer pilates\". It names the style on the listing.",
-              "Optionally set **Default workout length** in minutes. With a discipline or a length set, attendees get a **Log this as a workout** button on the class page.",
-              "Optionally pick a **Session plan** to attach your timed sequence. Left on **None**, the class runs without one.",
-              "Give it a **Title**, then the **Date**, **Start time**, **Duration** and a **Meeting point** a stranger could find, such as the studio address."
+              "クラブを開き、**イベント**タブで**新しいイベント**を押します。",
+              "**イベントの種類**で**クラス**を選びます。クラスには不要なので、ルート、距離、ペース、レース結果は表示されなくなります。",
+              "**種目**に、例えば「リフォーマーピラティス」と入力します。一覧ではこれがスタイル名として表示されます。",
+              "必要に応じて**デフォルトのワークアウト時間**を分単位で設定します。種目または時間が設定されていると、参加者のクラスページに**ワークアウトとして記録**ボタンが表示されます。",
+              "必要に応じて**セッションプラン**を選び、時間付きのシーケンスを紐付けます。**なし**のままにすると、シーケンスなしでクラスが行われます。",
+              "**タイトル**を付け、**日付**、**開始時刻**、**所要時間**と、スタジオの住所など初めての人でも見つけられる**集合場所**を設定します。"
             ]
           }
         ]
       },
       {
-        "heading": "Schedule, capacity and price",
+        "heading": "スケジュール、定員、料金",
         "blocks": [
           {
             "type": "steps",
             "items": [
-              "Under **Repeats**, choose **Weekly**, **Every 2 weeks** or **Monthly**, then the days and when the series ends with **Ends on** or **End after**. The schedule can only be chosen while you are creating the event.",
-              "Set **Capacity** to the number of mats. Once that many people are registered, the next person joins a waitlist instead.",
-              "Turn on **Charge for this event** and enter the **Price** and **Currency**. Both are fixed once the event is created, so check them now.",
-              "Set **Stop sales (minutes before start)**. Zero keeps registration open right up to the start.",
-              "Choose a **Refund policy**: **Full refund until start time**, **Full refund until 24h before** or **No refunds**. See [[guide:refund-policies|Refund policies]].",
-              "Press **Create event**."
+              "**繰り返し**で**毎週**、**2週間ごと**、**毎月**のいずれかを選び、曜日と、**終了日**または**次の回数で終了**でシリーズの終わりを設定します。スケジュールを選べるのはイベントの作成時だけです。",
+              "**定員**をマットの数に設定します。その人数が登録すると、次の人はキャンセル待ちに入ります。",
+              "**このイベントを有料にする**をオンにし、**価格**と**通貨**を入力します。どちらもイベントの作成後は変更できないので、ここで確認してください。",
+              "**販売終了（開始の何分前）**を設定します。0にすると、開始直前まで登録を受け付けます。",
+              "**返金ポリシー**を**開始時刻まで全額返金**、**24時間前まで全額返金**、**返金なし**から選びます。[[guide:refund-policies|返金ポリシーと登録のキャンセル]]を参照してください。",
+              "**イベントを作成**を押します。"
             ]
           },
           {
             "type": "note",
             "tone": "tip",
-            "text": "Paid registration is for in-person classes only. Each occurrence of a repeating class is paid for separately, like a drop-in."
+            "text": "有料登録は対面のクラスのみが対象です。繰り返しクラスの各開催回は、ドロップインのように個別に支払います。"
           }
         ]
       },
       {
-        "heading": "What your attendees see",
+        "heading": "参加者に表示される内容",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "The discipline, time, place, the **Price** and a line about cancellation, such as **Free cancellation until 24 hours before the start**.",
-              "A button reading *Register · $22* (with your price) that takes them to checkout. When they come back it says **Payment confirmed — you're registered.**",
-              "**Sold out** when the mats are taken, with **Join the waitlist** while sales are open ([[guide:waitlist-and-claim-window|how the waitlist works]]), and **Registration closed** once sales stop.",
-              "Your sequence under **Session sequence**. They can open it and press **Start session** to follow along at home."
+              "種目、時刻、場所、**価格**と、**開始24時間前までキャンセル無料**のようなキャンセルに関する一文。",
+              "決済画面に進む*登録 · $22*（あなたの価格が入ります）というボタン。戻ってくると**支払いが確認されました。登録が完了しました。**と表示されます。",
+              "マットが埋まると**満員**と表示され、販売期間中は**キャンセル待ちに登録**が表示されます（[[guide:waitlist-and-claim-window|キャンセル待ちの仕組み]]）。販売が終了すると**登録は締め切りました**と表示されます。",
+              "**セッションのシーケンス**の下にあなたのシーケンスが表示されます。参加者はそれを開いて**セッションを開始**を押せば、自宅で一緒に進められます。"
             ]
           },
           {
             "type": "p",
-            "text": "Registering and paying happen on the web. The phone app shows the class but has no register button yet."
+            "text": "登録と支払いはWebで行います。スマートフォンアプリにはクラスが表示されますが、登録ボタンはまだありません。"
           }
         ]
       },
       {
-        "heading": "On the day and after",
+        "heading": "当日とその後",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "Mark who came: [[guide:take-attendance|Take attendance]].",
-              "Need to call one off? [[guide:cancel-a-class|Cancel a class]] refunds everyone who paid.",
-              "The money goes to your own payout account, minus the platform fee, and shows under **Earnings** in [[route:/settings/payouts|Payouts]]."
+              "来た人を記録します: [[guide:take-attendance|クラスで出欠を取る]]。",
+              "開催回を1つ中止する必要がある場合は、[[guide:cancel-a-class|クラスを中止し、支払った全員に返金する]]の手順で、支払った全員に返金されます。",
+              "代金はプラットフォーム手数料を差し引いてあなた自身の支払いアカウントに支払われ、[[route:/settings/payouts|支払い]]の**収益**に表示されます。"
             ]
           },
           {
             "type": "p",
-            "text": "Forgot the plan at creation? On the class page, organisers can use **Attach to a class event** in the **Session sequence** card to pick one later."
+            "text": "作成時にプランを紐付け忘れた場合は、クラスのページで管理者やイベント主催者が**セッションのシーケンス**カードの**クラスイベントに紐付ける**を使って、後から選べます。"
           }
         ]
       }
@@ -1356,9 +1356,9 @@
   },
   {
     "id": "refund-policies",
-    "lang": "en",
-    "title": "Refund policies and cancelling your registration",
-    "summary": "How the three refund policies work, how a participant cancels a paid registration, and what they see when they do.",
+    "lang": "ja",
+    "title": "返金ポリシーと登録のキャンセル",
+    "summary": "3つの返金ポリシーの仕組みと、参加者が有料の登録をキャンセルする方法、その際に表示される内容を説明します。",
     "kind": "explainer",
     "category": "paid-classes",
     "audience": [
@@ -1379,77 +1379,77 @@
     ],
     "sections": [
       {
-        "heading": "Before you start",
+        "heading": "始める前に",
         "blocks": [
           {
             "type": "note",
             "tone": "caution",
-            "text": "Paid registration is not live yet. It needs the host's Stripe account connected and the platform's paid rail switched on. Until then no event can be charged for, so there is nothing to refund."
+            "text": "有料登録はまだ提供されていません。主催者のStripeアカウントの接続と、プラットフォーム側での有料登録の有効化が必要です。それまではどのイベントも有料にできないため、返金の対象もありません。"
           }
         ]
       },
       {
-        "heading": "The three policies",
+        "heading": "3つのポリシー",
         "blocks": [
           {
             "type": "p",
-            "text": "The host picks one **Refund policy** when creating a paid event. It decides what someone gets back if *they* cancel, and it is shown on the event page before anyone pays."
+            "text": "主催者は有料イベントの作成時に**返金ポリシー**を1つ選びます。これは*参加者自身*がキャンセルした場合に何が返金されるかを決めるもので、誰かが支払う前にイベントページに表示されます。"
           },
           {
             "type": "list",
             "items": [
-              "**Full refund until start time**: shown to participants as **Free cancellation until the event starts**.",
-              "**Full refund until 24h before**: shown as **Free cancellation until 24 hours before the start**. This is the default.",
-              "**No refunds**: shown as **No refund on cancellation**."
+              "**開始時刻まで全額返金**: 参加者には**イベント開始までキャンセル無料**と表示されます。",
+              "**24時間前まで全額返金**: **開始24時間前までキャンセル無料**と表示されます。これがデフォルトです。",
+              "**返金なし**: **キャンセル時の返金なし**と表示されます。"
             ]
           },
           {
             "type": "p",
-            "text": "A refund is all or nothing: inside the window you get the full price back, outside it you get nothing back. The window is measured against the start of the occurrence you registered for."
+            "text": "返金は全額か、まったくなしかのどちらかです。期限内なら全額が返金され、期限を過ぎると何も返金されません。期限は、登録した開催回の開始時刻を基準に判断されます。"
           },
           {
             "type": "note",
             "tone": "tip",
-            "text": "The policy only covers a participant cancelling. If the host calls a class off, everyone who paid is refunded in full whatever the policy says: see [[guide:cancel-a-class|Cancel a class]]."
+            "text": "このポリシーが適用されるのは参加者がキャンセルした場合だけです。主催者がクラスを中止した場合は、ポリシーにかかわらず支払った全員に全額が返金されます。[[guide:cancel-a-class|クラスを中止し、支払った全員に返金する]]を参照してください。"
           }
         ]
       },
       {
-        "heading": "Cancel your own registration",
+        "heading": "自分の登録をキャンセルする",
         "blocks": [
           {
             "type": "steps",
             "items": [
-              "Open the event on the web. Where it says **You're registered**, press **Cancel registration**.",
-              "Read the dialog. Inside the refund window it says you'll be refunded to your original payment method and that your spot opens up for someone on the waitlist.",
-              "Press **Cancel registration** to go ahead, or **Keep my spot** to back out."
+              "Webでイベントを開きます。**登録済みです**と表示されているところで、**登録をキャンセル**を押します。",
+              "ダイアログを確認します。返金期限内であれば、元の支払い方法に返金されることと、あなたの枠がキャンセル待ちの人に開放されることが表示されます。",
+              "続ける場合は**登録をキャンセル**を、やめる場合は**枠を維持する**を押します。"
             ]
           },
           {
             "type": "p",
-            "text": "Once it goes through you see **Refund started — it can take a few days to appear. Your spot has been released.** Until your bank confirms it, the page shows **Refund in progress**."
+            "text": "完了すると**返金を開始しました。反映まで数日かかる場合があります。あなたの枠は解放されました。**と表示されます。銀行で確認されるまで、ページには**返金処理中**と表示されます。"
           },
           {
             "type": "p",
-            "text": "If you left checkout before paying, the same button cancels the pending registration instead: your held spot is released and no payment is taken."
+            "text": "支払い前に決済画面を離れた場合は、同じボタンで保留中の登録がキャンセルされます。確保されていた枠は解放され、支払いは発生しません。"
           }
         ]
       },
       {
-        "heading": "Outside the refund window",
+        "heading": "返金期限を過ぎた場合",
         "blocks": [
           {
             "type": "p",
-            "text": "Past the window, or on a **No refunds** event, the app can't cancel your registration for you. The dialog warns you before you try, you keep your spot, and if you go ahead you'll see **This registration is past the refund window. Contact the host to cancel.**"
+            "text": "期限を過ぎている場合や**返金なし**のイベントでは、アプリで登録をキャンセルすることはできません。操作する前にダイアログで警告が表示され、枠はそのまま維持されます。それでも続けると、**この登録は返金期限を過ぎています。キャンセルするには主催者に連絡してください。**と表示されます。"
           }
         ]
       },
       {
-        "heading": "If a refund doesn't arrive",
+        "heading": "返金が届かない場合",
         "blocks": [
           {
             "type": "p",
-            "text": "Occasionally a bank sends a refund back. The event page then shows **Your refund didn't reach you** and a notification says **A refund didn't go through — we'll be in touch**. You don't need to pay again; use **Contact billing** and it will be returned another way."
+            "text": "まれに、銀行が返金を返送することがあります。その場合、イベントページに**返金がお手元に届きませんでした**と表示され、**返金が完了しませんでした。こちらからご連絡します**という通知が届きます。もう一度支払う必要はありません。**請求担当に連絡**を使えば、別の方法で返金されます。"
           }
         ]
       }
@@ -1464,9 +1464,9 @@
   },
   {
     "id": "waitlist-and-claim-window",
-    "lang": "en",
-    "title": "Waitlists and the 12-hour claim window",
-    "summary": "How joining a full class works, how a freed place is held for you for 12 hours on a paid class, and what happens if you don't claim it.",
+    "lang": "ja",
+    "title": "キャンセル待ちと12時間の確保期間",
+    "summary": "満員のクラスへの申し込みの仕組みと、有料クラスで空いた枠が12時間あなたのために確保される仕組み、確定しなかった場合にどうなるかを説明します。",
     "kind": "explainer",
     "category": "paid-classes",
     "audience": [
@@ -1485,78 +1485,78 @@
     ],
     "sections": [
       {
-        "heading": "Free classes: you are moved in automatically",
+        "heading": "無料クラスは自動で繰り上がる",
         "blocks": [
           {
             "type": "p",
-            "text": "When a free class with a **Capacity** is full, pressing **I'm in** puts you on the waitlist and your RSVP shows **Waitlisted**. When someone drops out, the earliest person on the waitlist is moved to **Going** automatically; there is nothing to claim. This works on the web and in the phone app."
+            "text": "**定員**のある無料クラスが満員のとき、**参加する**を押すとキャンセル待ちに入り、あなたの参加表明は**補欠**と表示されます。誰かが辞退すると、キャンセル待ちで最も早く登録した人が自動的に**参加**に移ります。確定の操作は必要ありません。これはWebでもスマートフォンアプリでも使えます。"
           }
         ]
       },
       {
-        "heading": "Paid classes: a place is held, then you pay",
+        "heading": "有料クラスは枠の確保後に支払う",
         "blocks": [
           {
             "type": "note",
             "tone": "caution",
-            "text": "Paid classes are not live yet: they need the host's Stripe account connected and the platform's paid rail switched on. Everything in this section applies once they are."
+            "text": "有料クラスはまだ提供されていません。主催者のStripeアカウントの接続と、プラットフォーム側での有料登録の有効化が必要です。このセクションの内容は、それらが有効になってから適用されます。"
           },
           {
             "type": "p",
-            "text": "Nobody is charged just for being on a waitlist. Instead, when a place opens you are offered it and pay to take it."
+            "text": "キャンセル待ちに入るだけで請求されることはありません。代わりに、枠が空くとその枠が提示され、支払うことで確定します。"
           },
           {
             "type": "steps",
             "items": [
-              "On a full paid class the page shows **Sold out**. While sales are still open, press **Join the waitlist**. You'll see **You're on the waitlist. If a place opens, we'll hold it for you and let you know.**",
-              "When a place opens and you are first in line, you get a notification: *A place opened in \"Tuesday Reformer\" and is held for you — pay to claim it*.",
-              "Open the class on the web. It says when your hold ends, for example *A place is held for you until Tue 6 May, 18:00. Pay to claim it, or it goes to the next person on the waitlist.*",
-              "Press the claim button (it reads *Claim your place* with the price) and pay at checkout. Once paid you are registered like everyone else."
+              "満員の有料クラスでは、ページに**満員**と表示されます。販売期間中であれば、**キャンセル待ちに登録**を押します。**キャンセル待ちに登録済みです。空きが出たら枠を確保してお知らせします。**と表示されます。",
+              "枠が空いてあなたが先頭のとき、*「火曜リフォーマー」に空きが出ました。あなたのために確保中です。お支払いで確定します*という通知が届きます。",
+              "Webでクラスを開きます。確保の期限が表示されます。例えば*5月6日火曜日 18:00まであなたの枠を確保しています。お支払いで確定します。期限を過ぎると次の方に回ります。*のように表示されます。",
+              "確定ボタン（価格付きで*枠を確定する*と表示されます）を押し、決済画面で支払います。支払いが完了すると、ほかの人と同じように登録済みになります。"
             ]
           },
           {
             "type": "note",
             "tone": "tip",
-            "text": "Claiming happens on the web. The phone app shows the notification and opens the class, but it has no checkout yet, so open the class in a browser to pay."
+            "text": "確定はWebで行います。スマートフォンアプリでは通知が表示され、クラスも開けますが、まだ決済機能がないため、支払うにはブラウザでクラスを開いてください。"
           }
         ]
       },
       {
-        "heading": "How long the hold lasts",
+        "heading": "確保の期間",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "You have 12 hours to claim, long enough that nobody loses a place by being asleep.",
-              "The hold is cut short when sales close for that class (the host's stop-sales time before the start). No place is offered after sales close, because nobody could pay for it.",
-              "While your place is held, nobody else can buy it, even though the class looks full to them.",
-              "If you are part-way through checkout when the time runs out, the hold stays while that checkout is still open."
+              "確定までの時間は12時間です。眠っている間に枠を失うことがないよう、十分な長さにしています。",
+              "そのクラスの販売が終了すると（開始前の、主催者が設定した販売終了時刻）、確保期間はその時点で終わります。販売終了後は誰も支払えないため、枠は提示されません。",
+              "あなたのために枠が確保されている間は、ほかの人にはクラスが満員に見えていても、誰もその枠を購入できません。",
+              "時間切れの時点で決済の途中だった場合は、その決済が開いている間は確保が続きます。"
             ]
           }
         ]
       },
       {
-        "heading": "If you don't claim it",
+        "heading": "確定しなかった場合",
         "blocks": [
           {
             "type": "p",
-            "text": "When the hold runs out, the place is offered to the next person on the waitlist and you leave the waitlist. If you still want in, press **Join the waitlist** again; you go to the back of the queue."
+            "text": "確保期間が終わると、枠はキャンセル待ちの次の人に提示され、あなたはキャンセル待ちから外れます。それでも参加したい場合は、もう一度**キャンセル待ちに登録**を押してください。列の最後尾に並びます。"
           },
           {
             "type": "p",
-            "text": "Changed your mind while you are still waiting? Press **Leave the waitlist**. It warns you that you'll lose your place in the queue; if you join again later, you go to the back. If a place is already being held for you and you don't want it, just let the hold run out."
+            "text": "待っている間に気が変わった場合は、**キャンセル待ちをやめる**を押します。順番を失うことが警告され、後でもう一度登録すると最後尾になります。すでに枠が確保されていてそれが不要な場合は、確保期間が切れるのを待つだけで構いません。"
           }
         ]
       },
       {
-        "heading": "For hosts",
+        "heading": "主催者向け",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "The waitlist runs itself. Set a **Capacity** on the class and the rest happens automatically; the 12-hour window can't be changed per class.",
-              "A held place counts against your capacity, so you never end up with more people than mats.",
-              "If someone cancels with a refund, their place goes to the waitlist. If you cancel an occurrence, nobody from the waitlist is moved into it: see [[guide:cancel-a-class|Cancel a class]]."
+              "キャンセル待ちは自動で運用されます。クラスに**定員**を設定すれば、あとは自動で処理されます。12時間の確保期間はクラスごとに変更できません。",
+              "確保中の枠は定員に含まれるため、マットの数より多くの人が集まることはありません。",
+              "誰かが返金ありでキャンセルすると、その枠はキャンセル待ちに回ります。あなたが開催回をキャンセルした場合は、キャンセル待ちから誰も繰り上がりません。[[guide:cancel-a-class|クラスを中止し、支払った全員に返金する]]を参照してください。"
             ]
           }
         ]
@@ -1571,9 +1571,9 @@
   },
   {
     "id": "follow-a-race-live",
-    "lang": "en",
-    "title": "Follow a race live",
-    "summary": "Watch a race as it happens on the live race page: runners on a map, who is on course, and who has finished on each course.",
+    "lang": "ja",
+    "title": "レースをライブで観戦する",
+    "summary": "ライブレースページで、地図上のランナー、コース上の選手、各コースの完走者を確認しながら、レースをリアルタイムで観戦できます。",
     "kind": "how-to",
     "category": "races",
     "audience": [
@@ -1588,78 +1588,78 @@
     ],
     "sections": [
       {
-        "heading": "Open the live page",
+        "heading": "ライブページを開く",
         "blocks": [
           {
             "type": "p",
-            "text": "The host shares a link to the live race page, or, if you can see the event, open it and choose **Spectator view**. You do not need an account. If the event is **Members only**, you need to be a club member to see it."
+            "text": "主催者がライブレースページへのリンクを共有します。イベントを閲覧できる場合は、イベントを開いて**観戦ビュー**を選ぶこともできます。アカウントは必要ありません。イベントが**メンバー限定**の場合は、クラブのメンバーでなければ閲覧できません。"
           },
           {
             "type": "p",
-            "text": "The top of the page shows the race state:"
+            "text": "ページ上部には、レースの状態が次のように表示されます："
           },
           {
             "type": "list",
             "items": [
-              "**Pre-race**: the organiser has not armed the race timer yet.",
-              "**Armed**: the timer is armed and waiting for the start.",
-              "**Running**: the race is on, with the elapsed time.",
-              "**Finished**: the race is over.",
-              "**Cancelled**: the organiser cancelled the race."
+              "**レース前**：主催者がまだレースタイマーを準備していません。",
+              "**準備完了**：タイマーが準備され、スタートを待っています。",
+              "**進行中**：レースが行われていて、経過時間が表示されます。",
+              "**完了**：レースが終了しました。",
+              "**中止**：主催者がレースを中止しました。"
             ]
           }
         ]
       },
       {
-        "heading": "The map",
+        "heading": "地図",
         "blocks": [
           {
             "type": "p",
-            "text": "Unless you have already allowed maps in your cookie settings, the map stays off until you choose **Load map**, because loading it sends your IP address to our map tile provider. Once loaded, each runner is a coloured dot with a short trail of their recent path. Runners' phones and watches send a position about every 10 seconds, and the page updates on its own."
+            "text": "Cookieの設定ですでに地図を許可していない限り、**地図を読み込む**を選ぶまで地図は表示されません。地図を読み込むと、あなたのIPアドレスが地図タイルの提供元に送信されるためです。読み込むと、各ランナーは色付きの点と、最近の経路を示す短い軌跡で表示されます。ランナーのスマートフォンやウォッチは約10秒ごとに位置を送信し、ページは自動的に更新されます。"
           }
         ]
       },
       {
-        "heading": "On course",
+        "heading": "コース上",
         "blocks": [
           {
             "type": "p",
-            "text": "The **On course** board lists every runner who has sent a position, furthest first, with distance, pace and elapsed time, with one board per course when the race has more than one. Each row also says how long ago it was last updated."
+            "text": "**コース上**のボードには、位置を送信したすべてのランナーが、最も先にいる人から順に、距離、ペース、経過時間とともに表示されます。レースに複数のコースがある場合は、コースごとにボードが分かれます。各行には、最後に更新されてからどれくらい経ったかも表示されます。"
           },
           {
             "type": "p",
-            "text": "There is no separate \"paused\" label. A runner who has stopped (to tie a lace, at an aid station, or because they paused their recording) or who has lost signal simply stops updating. After about 90 seconds without an update their row is marked **DELAYED**. That does not mean anything is wrong; it often just means no signal."
+            "text": "「一時停止」という専用の表示はありません。立ち止まった（靴ひもを結ぶ、エイドステーションに寄る、記録を一時停止するなど）ランナーや、電波を失ったランナーは、単に更新が止まります。更新がないまま約90秒経つと、その行に**遅延**と表示されます。これは何か問題があるという意味ではなく、多くの場合は電波がないだけです。"
           }
         ]
       },
       {
-        "heading": "Finished",
+        "heading": "完走者",
         "blocks": [
           {
             "type": "p",
-            "text": "Finishers appear under **Finished** as their results arrive, with one board per course when the race has more than one. Runners who did not finish are listed under **Did not finish**. A result the host has not approved yet is marked **Pending**."
+            "text": "完走者は、結果が届くと**完走**の下に表示されます。レースに複数のコースがある場合は、コースごとにボードが分かれます。完走しなかったランナーは**未完走**の下に表示されます。主催者がまだ承認していない結果には**保留中**と表示されます。"
           },
           {
             "type": "p",
-            "text": "What the times and badges mean is in [[guide:race-results-explained|Race results explained]]."
+            "text": "タイムやバッジの意味は[[guide:race-results-explained|レース結果の見方]]で説明しています。"
           }
         ]
       },
       {
-        "heading": "Privacy",
+        "heading": "プライバシー",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "Runners' real names are shown only to people connected to them by a follow, in either direction. Everyone else sees an anonymous handle such as Runner #A1B2.",
-              "Near a runner's privacy zone, their exact position is hidden. You see **Last seen near here · approximate** instead, shown as a hollow ring rather than a dot.",
-              "Finishers imported by the host from a bib list have no account, so they keep the name the host entered."
+              "ランナーの本名は、どちらか一方からでもフォローでつながっている人にだけ表示されます。それ以外の人には、Runner #A1B2のような匿名のハンドルが表示されます。",
+              "ランナーのプライバシーゾーンの近くでは、正確な位置は非表示になります。代わりに**この付近で最後に確認 · おおよその位置**と表示され、点ではなく中抜きの輪で示されます。",
+              "主催者がゼッケンリストからインポートした完走者はアカウントを持たないため、主催者が入力した名前のままになります。"
             ]
           },
           {
             "type": "note",
             "tone": "tip",
-            "text": "Anyone with the link can watch. If you are racing and would rather not be followed live, talk to the host before the race."
+            "text": "リンクを持っている人は誰でも観戦できます。レースに出場していて、ライブで追跡されたくない場合は、レース前に主催者に相談してください。"
           }
         ]
       }
@@ -1672,9 +1672,9 @@
   },
   {
     "id": "race-day-for-hosts",
-    "lang": "en",
-    "title": "Race day for hosts",
-    "summary": "Arm the race, fire GO, watch it live, end it, then approve and correct the results.",
+    "lang": "ja",
+    "title": "主催者向けレース当日の流れ",
+    "summary": "レースを準備してGOを出し、ライブで見守ってからレースを終了し、結果を承認・修正します。",
     "kind": "how-to",
     "category": "races",
     "audience": [
@@ -1693,129 +1693,129 @@
     ],
     "sections": [
       {
-        "heading": "Who can run a race",
+        "heading": "レースを運営できる人",
         "blocks": [
           {
             "type": "p",
-            "text": "Race control appears on the event page for club owners, admins and members with the **Race director** role. On the web it is the **Race control** card; in the phone app it is the **RACE CONTROL** card on the event screen. Both can approve and edit results."
+            "text": "レース管理は、クラブのオーナー、管理者、**レースディレクター**の役割を持つメンバーに対して、イベントページに表示されます。Webでは**レース管理**カード、スマートフォンアプリではイベント画面の**レース管理**カードです。どちらでも結果の承認と編集ができます。"
           },
           {
             "type": "p",
-            "text": "Make sure the event has courses first — see [[guide:set-up-a-race|Set up a race]]."
+            "text": "まず、イベントにコースがあることを確認してください。[[guide:set-up-a-race|レースを設定する]]を参照してください。"
           }
         ]
       },
       {
-        "heading": "1. Arm the race",
+        "heading": "1. レースを準備する",
         "blocks": [
           {
             "type": "steps",
             "items": [
-              "Open the event and pick today's occurrence if it repeats.",
-              "Leave **Auto-approve submitted results** ticked to publish results as they arrive, or untick it to approve each one yourself. (In the phone app it reads **Auto-approve submitted times**.)",
-              "Choose **Arm race** when everyone is gathered."
+              "イベントを開き、繰り返しイベントの場合は今日の開催回を選びます。",
+              "届いた結果をそのまま公開するには**提出された結果を自動承認**にチェックを入れたままにし、1件ずつ自分で承認するにはチェックを外します。（スマートフォンアプリでは**送信されたタイムを自動承認**と表示されます。）",
+              "全員が集まったら**レースを準備**を選びます。"
             ]
           },
           {
             "type": "p",
-            "text": "Racers who said **I'm in** now see **Race armed** on their phone's Run tab and \"RACE ARMED\" on their Wear OS watch."
+            "text": "**参加する**と回答したランナーには、スマートフォンの「ラン」タブに**レース準備完了**、Wear OSウォッチに「レース準備完了」と表示されます。"
           },
           {
             "type": "note",
             "tone": "tip",
-            "text": "Armed is a waiting state. Nothing is timed and no results can be saved until you fire GO."
+            "text": "準備完了は待機状態です。GOを出すまでは計時されず、結果も保存できません。"
           }
         ]
       },
       {
-        "heading": "2. Fire GO",
+        "heading": "2. GOを出す",
         "blocks": [
           {
             "type": "p",
-            "text": "Press **GO** on the web (**Fire Go** in the phone app) at the moment the race starts."
+            "text": "レースがスタートする瞬間に、Webでは**スタート**（スマートフォンアプリでは**GO**）を押します。"
           },
           {
             "type": "p",
-            "text": "The start time is stamped by our server, not by your device, so it is the same gun time for every racer even if your phone's clock is a few seconds off. Each racer's gun time is measured from it."
+            "text": "スタート時刻はあなたのデバイスではなくサーバーで記録されるので、スマートフォンの時計が数秒ずれていても、すべてのランナーに同じ号砲時刻が適用されます。各ランナーのグロスタイムはこの時刻から計測されます。"
           },
           {
             "type": "note",
             "tone": "caution",
-            "text": "GO does not start anyone's recording. Racers press Start on their own phone or watch, either on the line while the race is armed (the recording joins the race at GO) or after they see **Race LIVE**. Remind them to start one."
+            "text": "GOを出しても、誰の記録も開始されません。ランナーは自分のスマートフォンやウォッチでスタートを押します。レースが準備完了の間にスタートラインで押すか（記録はGOの時点でレースに加わります）、**レース ライブ**が表示されてから押します。記録を開始するよう伝えてください。"
           }
         ]
       },
       {
-        "heading": "3. Watch it live",
+        "heading": "3. ライブで見守る",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "The race control card shows **Running** with the elapsed time.",
-              "Choose **Spectator view** for the live map, the **On course** board and the **Finished** board. See [[guide:follow-a-race-live|Follow a race live]].",
-              "Racers' devices finish them automatically at the finish line, so results appear on the event page while the race is still running."
+              "レース管理カードに**進行中**と経過時間が表示されます。",
+              "**観戦ビュー**を選ぶと、ライブマップ、**コース上**ボード、**完走**ボードが表示されます。[[guide:follow-a-race-live|レースをライブで観戦する]]を参照してください。",
+              "ランナーのデバイスはフィニッシュラインで自動的にゴール処理を行うので、レースの進行中でも結果がイベントページに表示されます。"
             ]
           }
         ]
       },
       {
-        "heading": "4. End the race",
+        "heading": "4. レースを終了する",
         "blocks": [
           {
             "type": "steps",
             "items": [
-              "When the last racer is in (or your cut-off has passed), choose **End race**.",
-              "The confirmation, on the web and in the phone app, tells you how many racers who started have no result. Those racers will be marked DNF.",
-              "Confirm with **End race**."
+              "最後のランナーが戻ったら（または制限時間を過ぎたら）、**レースを終了**を選びます。",
+              "Webでもスマートフォンアプリでも、確認画面に、スタートしたものの結果がないランナーの人数が表示されます。それらのランナーはDNFになります。",
+              "**レースを終了**で確定します。"
             ]
           },
           {
             "type": "p",
-            "text": "Ending files a DNF for every racer who sent at least one live position but has no result, using the distance and time from their last position. These DNFs carry the host mark. Racers who never started recording get nothing filed."
+            "text": "終了すると、ライブ位置を1回以上送信したものの結果がないすべてのランナーに、最後の位置の距離とタイムを使ってDNFが記録されます。これらのDNFには主催者マークが付きます。記録を開始しなかったランナーには何も記録されません。"
           },
           {
             "type": "p",
-            "text": "A racer whose phone or watch was out of signal at the finish can still send a queued result for up to 24 hours after you end the race, and it replaces the DNF."
-          },
-          {
-            "type": "note",
-            "tone": "caution",
-            "text": "Ending cannot be undone. Once ended, racers' devices stop expecting a result. To race the same occurrence again, arm a new session."
-          }
-        ]
-      },
-      {
-        "heading": "Cancelling",
-        "blocks": [
-          {
-            "type": "p",
-            "text": "You can cancel only while the race is armed: choose **Cancel** next to **GO** (**Fire Go** in the phone app), then **Cancel race**. Once you have fired GO the race can only be ended."
-          },
-          {
-            "type": "p",
-            "text": "Cancelling files no DNFs. The spectator page says the race was cancelled by the organiser, and racers see that the race has ended."
+            "text": "ゴール時にスマートフォンやウォッチの電波が届いていなかったランナーは、レース終了後24時間以内であれば、保存しておいた結果を送信できます。その結果がDNFに置き換わります。"
           },
           {
             "type": "note",
             "tone": "caution",
-            "text": "Cancelling cannot be undone. Use **End race** instead if people actually raced and you want their results."
+            "text": "終了は取り消せません。終了すると、ランナーのデバイスは結果を待たなくなります。同じ開催回でもう一度レースを行うには、新しいセッションを準備してください。"
           }
         ]
       },
       {
-        "heading": "Approve and edit results",
+        "heading": "レースを中止する",
         "blocks": [
           {
             "type": "p",
-            "text": "Results are on the event page under **Results**, with one board per course. In the phone app, each result has a menu with the same **Approve**, **Unverify** and **Edit** actions."
+            "text": "レースを中止できるのは準備完了の間だけです。**スタート**（スマートフォンアプリでは**GO**）の隣の**キャンセル**を選び、続いて**レースをキャンセル**を選びます。GOを出したあとは、レースを終了することしかできません。"
+          },
+          {
+            "type": "p",
+            "text": "中止してもDNFは記録されません。観戦ページにはレースが主催者によって中止されたと表示され、ランナーにはレースが終了したことが表示されます。"
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "中止は取り消せません。実際にレースが行われ、その結果を残したい場合は、代わりに**レースを終了**を使ってください。"
+          }
+        ]
+      },
+      {
+        "heading": "結果を承認・編集する",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "結果はイベントページの**結果**に、コースごとのボードで表示されます。スマートフォンアプリでは、各結果のメニューから同じ**承認**、**検証を解除**、**編集**の操作ができます。"
           },
           {
             "type": "list",
             "items": [
-              "If auto-approve was off, new results show **PENDING** and no place. Choose **Approve** to publish one. **Unverify** puts an approved result back into pending.",
-              "To correct a result, choose **Edit**, enter a **Time (h:mm:ss)** and a **Status** (**Finished**, **DNF** or **DNS**), then **Save result**.",
-              "An edited result is marked **Host edited** so everyone can see it was changed by the host. The edit moves the racer's gun time with it.",
-              "**Download results CSV** exports the boards."
+              "自動承認がオフの場合、新しい結果は**保留中**と表示され、順位は付きません。**承認**を選ぶと公開されます。**検証を解除**を選ぶと、承認済みの結果が保留中に戻ります。",
+              "結果を修正するには、**編集**を選び、**タイム (h:mm:ss)**と**ステータス**（**完走**、**DNF**、**DNS**）を入力して、**結果を保存**を選びます。",
+              "編集した結果には**主催者が編集**と表示され、主催者によって変更されたことが誰にでもわかります。編集すると、そのランナーのグロスタイムも合わせて変わります。",
+              "**結果CSVをダウンロード**でボードをエクスポートできます。"
             ]
           }
         ]
@@ -1830,9 +1830,9 @@
   },
   {
     "id": "race-results-explained",
-    "lang": "en",
-    "title": "Race results explained",
-    "summary": "What gun and chip time mean, how places are worked out per course, and what the Manual, Host, DNF, DNS and pending marks say.",
+    "lang": "ja",
+    "title": "レース結果の見方",
+    "summary": "グロスタイムとネットタイムの意味、コースごとの順位の決まり方、手動・主催者・DNF・DNS・保留中の各マークの意味を説明します。",
     "kind": "explainer",
     "category": "races",
     "audience": [
@@ -1849,88 +1849,88 @@
     ],
     "sections": [
       {
-        "heading": "Gun time and chip time",
+        "heading": "グロスタイムとネットタイム",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "**Gun time** is measured from the moment the host fired GO to the moment you crossed the finish. GO is stamped by our server, so everyone in the race shares the same start.",
-              "**Chip time** is measured from when you pressed Start on your own device to your finish, including any pauses.",
-              "The big time on the board is your gun time when the race had a GO, otherwise your chip time. Places are worked out from that big time."
+              "**グロスタイム**は、主催者がGOを出した瞬間から、あなたがフィニッシュを通過した瞬間までの時間です。GOはサーバーで記録されるので、レースの全員が同じスタート時刻を共有します。",
+              "**ネットタイム**は、自分のデバイスでスタートを押したときからゴールまでの時間で、一時停止していた時間も含みます。",
+              "ボードに大きく表示されるタイムは、レースでGOが出された場合はグロスタイム、それ以外の場合はネットタイムです。順位はこの大きく表示されるタイムで決まります。"
             ]
           },
           {
             "type": "p",
-            "text": "On the web the smaller line under a time reads like \"gun 41:58 · chip 41:20\". In the phone app, a \"Chip\" time is shown under the main time when it differs from it. If you started late, your gun time is longer than your chip time."
+            "text": "Webでは、タイムの下の小さな行に「グロス 41:58 · ネット 41:20」のように表示されます。スマートフォンアプリでは、メインのタイムと異なる場合に、その下に「ネット」のタイムが表示されます。遅れてスタートした場合は、グロスタイムがネットタイムより長くなります。"
           }
         ]
       },
       {
-        "heading": "Places are per course",
+        "heading": "順位はコースごと",
         "blocks": [
           {
             "type": "p",
-            "text": "When a race has more than one course, each course has its own board and its own places. A 5K finisher is never ranked against a 10K finisher. Results with no course are grouped together (**No course** on the event page, **Other** on the live page)."
+            "text": "レースに複数のコースがある場合、コースごとにボードと順位が分かれます。5Kの完走者が10Kの完走者と同じ順位表に並ぶことはありません。コースのない結果はまとめて表示されます（イベントページでは**コースなし**、ライブページでは**その他**）。"
           },
           {
             "type": "p",
-            "text": "Only finishers get a place. Ties are broken by whoever's result arrived first."
+            "text": "順位が付くのは完走者だけです。同タイムの場合は、結果が先に届いた人が上位になります。"
           }
         ]
       },
       {
-        "heading": "How the finish was recorded",
+        "heading": "ゴールの記録方法",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "**No badge**: the racer's phone or watch detected the finish line. This is the normal case, so neither the web nor the phone app marks it.",
-              "**Manual**: the racer finished by hand, either with **Finish race** after covering at least 90% of the course, or by using **Submit my time** on the web during the race.",
-              "**Host** (on the web, **Host edited**): the host entered or corrected this result, or the racer was marked DNF when the host ended the race."
+              "**バッジなし**：ランナーのスマートフォンやウォッチがフィニッシュラインを検出しました。これが通常のケースなので、Webでもスマートフォンアプリでもマークは表示されません。",
+              "**手動**：コースの90%以上を走ったあとに**レースを終了**を使うか、レース中にWebで**自分のタイムを送信**を使って、ランナーが手動でゴールしました。",
+              "**主催者**（Webでは**主催者が編集**）：主催者がこの結果を入力または修正したか、主催者がレースを終了したときにランナーがDNFとされました。"
             ]
           }
         ]
       },
       {
-        "heading": "DNF and DNS",
+        "heading": "DNFとDNS",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "**DNF** (did not finish): the racer started but did not finish. This happens when someone chooses **Finish as DNF** before covering 90% of the course, when the host ends the race while they are still out, or when the host records it.",
-              "**DNS** (did not start): recorded by the racer with **Record DNS** or by the host.",
-              "Neither gets a place. On the live page they are listed under **Did not finish**."
+              "**DNF**（途中棄権）：ランナーはスタートしたものの、完走しませんでした。コースの90%を走る前に**DNFとして終了**を選んだ場合、ランナーがまだコース上にいるうちに主催者がレースを終了した場合、または主催者が記録した場合にこうなります。",
+              "**DNS**（不出走）：ランナーが**DNSを記録**で記録したか、主催者が記録しました。",
+              "どちらにも順位は付きません。ライブページでは**未完走**の下に表示されます。"
             ]
           }
         ]
       },
       {
-        "heading": "Pending results",
+        "heading": "保留中の結果",
         "blocks": [
           {
             "type": "p",
-            "text": "If the host turned off auto-approve, each new result waits for the host. On the web event page it shows **PENDING** with no place yet; in the phone app and on the live page it shows **Pending**. Once the host chooses **Approve**, it takes its place on the board."
+            "text": "主催者が自動承認をオフにしている場合、新しい結果はそれぞれ主催者の承認を待ちます。Webのイベントページでは**保留中**と表示されてまだ順位が付かず、スマートフォンアプリとライブページでは**保留中**と表示されます。主催者が**承認**を選ぶと、ボード上の順位に入ります。"
           },
           {
             "type": "note",
             "tone": "tip",
-            "text": "A finisher **Certificate** can be downloaded only once a finished result has been approved."
+            "text": "完走者の**証明書**は、完走した結果が承認されたあとでのみダウンロードできます。"
           }
         ]
       },
       {
-        "heading": "Something looks wrong",
+        "heading": "何かがおかしいとき",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "No result at all? If your device had no signal at the finish, it sends the result when it reconnects, within 24 hours of the race ending.",
-              "A DNF you think is wrong, or a time that is off? Ask the host. They can correct it on the web, and the result will then show the host mark."
+              "結果がまったくありませんか？ゴール時にデバイスの電波が届いていなかった場合は、再接続したときに、レース終了から24時間以内に結果が送信されます。",
+              "DNFが間違っている、またはタイムがずれていると思いますか？主催者に問い合わせてください。主催者はWebで修正でき、その結果には主催者マークが表示されます。"
             ]
           },
           {
             "type": "p",
-            "text": "For the racer side, see [[guide:racing-in-a-race|Racing in a live race]]. Hosts: [[guide:race-day-for-hosts|Race day for hosts]]."
+            "text": "ランナー側については[[guide:racing-in-a-race|ライブレースに出場する]]を参照してください。主催者の方は[[guide:race-day-for-hosts|主催者向けレース当日の流れ]]をご覧ください。"
           }
         ]
       }
@@ -1944,9 +1944,9 @@
   },
   {
     "id": "racing-in-a-race",
-    "lang": "en",
-    "title": "Racing in a live race",
-    "summary": "Sign up, pick your course, start recording on the line or after GO and let your phone or watch time you over the finish line.",
+    "lang": "ja",
+    "title": "ライブレースに出場する",
+    "summary": "参加登録してコースを選び、スタートラインで、またはGOのあとに記録を開始すれば、フィニッシュラインでスマートフォンやウォッチがタイムを計測します。",
     "kind": "how-to",
     "category": "races",
     "audience": [
@@ -1965,138 +1965,138 @@
     ],
     "sections": [
       {
-        "heading": "Which devices can race",
+        "heading": "レースに使えるデバイス",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "Android phone app: full support. It shows the race banner, sends your live position and finishes you automatically.",
-              "iPhone app: runs the same code as Android, but it has not been tested on an iPhone in a real race yet.",
-              "Wear OS watch: full support on the wrist, including the automatic finish. You still sign up and choose your course on the web or the phone.",
-              "Apple Watch: early support only. It shows the race banner, sends your position and reports your time through your iPhone, but it has no automatic finish and has not been proven in a real race. Carry your phone as a backup.",
-              "Web: use it to sign up, pick a course and see results. A browser cannot record a run."
+              "Androidのスマートフォンアプリ：完全対応。レースバナーを表示し、ライブ位置を送信し、自動でゴール処理を行います。",
+              "iPhoneアプリ：Androidと同じコードで動作しますが、実際のレースでのiPhoneでのテストはまだ行われていません。",
+              "Wear OSウォッチ：自動ゴールを含め、ウォッチ上で完全対応。参加登録とコースの選択は、引き続きWebまたはスマートフォンで行います。",
+              "Apple Watch：初期対応のみ。レースバナーを表示し、位置を送信し、iPhone経由でタイムを報告しますが、自動ゴールはなく、実際のレースでの動作も確認されていません。予備としてスマートフォンを携帯してください。",
+              "Web：参加登録、コースの選択、結果の確認に使います。ブラウザではランを記録できません。"
             ]
           }
         ]
       },
       {
-        "heading": "Sign up and pick a course",
+        "heading": "参加登録してコースを選ぶ",
         "blocks": [
           {
             "type": "steps",
             "items": [
-              "Open the race event.",
-              "If there is more than one course, choose yours from **Your course** on the web. In the phone app you are asked to **Pick your course** when you tap **I'm in**.",
-              "Tap **I'm in**. Only an **I'm in** sign-up gets race alerts on your device; **Maybe** does not."
+              "レースのイベントを開きます。",
+              "コースが複数ある場合は、Webでは**あなたのコース**から自分のコースを選びます。スマートフォンアプリでは、**参加する**をタップすると**コースを選択**を求められます。",
+              "**参加する**をタップします。デバイスでレースの通知を受け取れるのは**参加する**で登録した場合だけで、**未定**では受け取れません。"
             ]
           },
           {
             "type": "p",
-            "text": "Changed your mind? On the web, choose a different course from **Your course** (you will see \"Course updated.\"). In the phone app, tap **Change course**. Settle on your course before you start recording: your phone or watch reads it when your race recording begins, and your result goes on that course's board."
+            "text": "気が変わった場合は、Webでは**あなたのコース**から別のコースを選びます（「コースを更新しました。」と表示されます）。スマートフォンアプリでは**コースを変更**をタップします。記録を開始する前にコースを決めておいてください。スマートフォンやウォッチはレースの記録開始時にコースを読み込み、結果はそのコースのボードに載ります。"
           }
         ]
       },
       {
-        "heading": "Race armed and Race LIVE",
+        "heading": "レース準備完了とレース ライブ",
         "blocks": [
           {
             "type": "p",
-            "text": "When the host arms the race, the Run tab of the phone app shows **Race armed** with \"waiting for GO\". The Wear OS watch shows \"RACE ARMED\" above its Start button. When the host fires GO it changes to **Race LIVE** (\"RACE LIVE\" on the watch) with the elapsed time and \"tap Start\"."
+            "text": "主催者がレースを準備すると、スマートフォンアプリの「ラン」タブに**レース準備完了**と「スタート待ち」が表示されます。Wear OSウォッチでは、開始ボタンの上に「レース準備完了」と表示されます。主催者がGOを出すと、表示が**レース ライブ**（ウォッチでは「レース実施中」）に変わり、経過時間と「スタートをタップ」が表示されます。"
           },
           {
             "type": "note",
             "tone": "caution",
-            "text": "Your phone or watch does not start recording by itself: press Start yourself. You can start on the line while the race shows **Race armed**, or once you see **Race LIVE**. A recording started early joins the race at GO, on the phone and on a Wear OS watch, and your chip time then counts from GO rather than from when you pressed Start."
+            "text": "スマートフォンやウォッチが自動で記録を開始することはありません。自分でスタートを押してください。**レース準備完了**と表示されている間にスタートラインで開始することも、**レース ライブ**が表示されてから開始することもできます。早めに開始した記録は、スマートフォンでもWear OSウォッチでもGOの時点でレースに加わり、ネットタイムはスタートを押したときではなくGOから計測されます。"
           },
           {
             "type": "p",
-            "text": "The phone app checks for races you said **I'm in** to that start within the next day. If the banner is slow to appear, keep the app open on the Run tab for a minute."
+            "text": "スマートフォンアプリは、**参加する**と回答したレースのうち、今後1日以内にスタートするものを確認します。バナーがなかなか表示されない場合は、「ラン」タブでアプリを1分ほど開いたままにしてください。"
           }
         ]
       },
       {
-        "heading": "Finishing automatically",
+        "heading": "自動でゴールする",
         "blocks": [
           {
             "type": "p",
-            "text": "You do not need to press anything at the finish. Your phone or Wear OS watch finishes you when both of these are true:"
+            "text": "ゴールでは何も押す必要はありません。次の両方の条件を満たすと、スマートフォンまたはWear OSウォッチがゴール処理を行います："
           },
           {
             "type": "list",
             "items": [
-              "you are within 30 m of the finish line, and",
-              "you have covered at least 90% of your course distance."
+              "フィニッシュラインから30 m以内にいること",
+              "コース距離の90%以上を走っていること。"
             ]
           },
           {
             "type": "p",
-            "text": "Your time is taken at the moment you were closest to the finish, not the first moment you came within 30 m. The 90% rule stops a loop course, which starts where it finishes, from finishing you in the first second. The phone shows \"Finished!\" with your gun time, and your recording stops."
+            "text": "タイムは、初めて30 m以内に入った瞬間ではなく、フィニッシュに最も近づいた瞬間で計測されます。90%のルールは、スタートとフィニッシュが同じ場所の周回コースで、最初の1秒でゴールになってしまうのを防ぐためのものです。スマートフォンには「ゴール！」とグロスタイムが表示され、記録が停止します。"
           },
           {
             "type": "note",
             "tone": "tip",
-            "text": "If your course has no route or no distance, there is no automatic finish. Use Stop and then **Finish race** when you cross the line."
+            "text": "コースにルートや距離がない場合、自動ゴールはありません。ラインを越えたら停止を押し、**レースを終了**を使ってください。"
           }
         ]
       },
       {
-        "heading": "Stopping during the race",
+        "heading": "レース中に停止する",
         "blocks": [
           {
             "type": "p",
-            "text": "During a live race, Stop does not end your race. It pauses your recording and shows **Race paused**. The race clock keeps running."
+            "text": "ライブレース中は、停止を押してもレースは終わりません。記録が一時停止し、**レース一時停止中**と表示されます。レースの時計は動き続けます。"
           },
           {
             "type": "list",
             "items": [
-              "**Resume race** carries on recording.",
-              "**Finish race** ends your race now. If you have covered at least 90% of the course this is a manual finish at that moment.",
-              "Below 90% the button reads **Finish as DNF**, and finishing records a DNF."
+              "**レースを再開**で記録を続けます。",
+              "**レースを終了**で、その時点でレースを終えます。コースの90%以上を走っていれば、その時点での手動ゴールになります。",
+              "90%未満の場合はボタンが**DNFとして終了**になり、終了するとDNFが記録されます。"
             ]
           },
           {
             "type": "p",
-            "text": "On a Wear OS watch the paused screen offers \"Go\" to resume, and you hold **Finish** to finish."
+            "text": "Wear OSウォッチでは、一時停止画面の「再開」で再開でき、**完了**を長押しするとゴールします。"
           },
           {
             "type": "note",
             "tone": "caution",
-            "text": "Finishing before 90% of the course records a DNF. If you only stopped to tie a lace, choose **Resume race**."
+            "text": "コースの90%未満で終了するとDNFが記録されます。靴ひもを結ぶために止まっただけなら、**レースを再開**を選んでください。"
           }
         ]
       },
       {
-        "heading": "No signal at the finish",
+        "heading": "ゴールで電波がない場合",
         "blocks": [
           {
             "type": "p",
-            "text": "Finish lines often have poor signal. Your phone and Wear OS watch save your result first and send it as soon as they reconnect, so it is not lost. It must reach us within 24 hours of the host ending the race. Don't sign out of the app before it has been sent."
+            "text": "フィニッシュラインは電波が弱いことがよくあります。スマートフォンとWear OSウォッチは結果をまず保存し、再接続したらすぐに送信するので、結果が失われることはありません。結果は、主催者がレースを終了してから24時間以内に届く必要があります。送信が完了する前にアプリからサインアウトしないでください。"
           }
         ]
       },
       {
-        "heading": "Gun time, chip time and late starts",
+        "heading": "グロスタイム、ネットタイム、遅れスタート",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "**Gun time** runs from the moment the host fired GO to your finish. It is the time you are ranked on.",
-              "**Chip time** runs from when you pressed Start to your finish, including any pauses. If you pressed Start before GO, it runs from GO, so it is never longer than your gun time.",
-              "If you start more than 5 minutes after GO, or your first position is more than 200 m from the course start, the phone app shows a late-start notice. Your gun time still counts from GO, so a late start makes it longer than your chip time."
+              "**グロスタイム**は、主催者がGOを出した瞬間からあなたのゴールまでの時間です。順位はこのタイムで決まります。",
+              "**ネットタイム**は、あなたがスタートを押したときからゴールまでの時間で、一時停止していた時間も含みます。GOより前にスタートを押した場合はGOから計測されるため、グロスタイムより長くなることはありません。",
+              "GOから5分を超えて遅れてスタートするか、最初の位置がコースのスタート地点から200 mを超えて離れていると、スマートフォンアプリに遅れスタートの通知が表示されます。グロスタイムはGOから計測されるため、遅れてスタートするとネットタイムより長くなります。"
             ]
           },
           {
             "type": "p",
-            "text": "More on reading the board in [[guide:race-results-explained|Race results explained]]."
+            "text": "ボードの読み方について詳しくは、[[guide:race-results-explained|レース結果の見方]]を参照してください。"
           }
         ]
       },
       {
-        "heading": "If the host ends the race first",
+        "heading": "主催者が先にレースを終了した場合",
         "blocks": [
           {
             "type": "p",
-            "text": "If the host ends the race before you finish, your phone tells you so and your watch shows \"Race ended\". Your run keeps recording as a normal run, but your device sends no race result. If you had already sent a live position, the race marks you DNF."
+            "text": "あなたがゴールする前に主催者がレースを終了すると、スマートフォンにそのことが通知され、ウォッチには「レース終了」と表示されます。ランは通常のランとして記録を続けますが、デバイスからレース結果は送信されません。すでにライブ位置を送信していた場合、レースではDNFになります。"
           }
         ]
       }
@@ -2110,9 +2110,9 @@
   },
   {
     "id": "set-up-a-race",
-    "lang": "en",
-    "title": "Set up a race",
-    "summary": "Create a club event with one or more courses so racers can pick a distance, be timed live and land on a leaderboard per course.",
+    "lang": "ja",
+    "title": "レースを設定する",
+    "summary": "1つ以上のコースを持つクラブイベントを作成すると、ランナーは距離を選び、ライブで計時され、コースごとのリーダーボードに載ります。",
     "kind": "how-to",
     "category": "races",
     "audience": [
@@ -2129,112 +2129,112 @@
     ],
     "sections": [
       {
-        "heading": "Before you start",
+        "heading": "始める前に",
         "blocks": [
           {
             "type": "p",
-            "text": "A race is an ordinary club event with courses attached. Club owners, admins and event organisers can create events. Running the race on the day (Arm, GO, End) needs an owner, an admin or a **Race director** — see [[guide:race-day-for-hosts|Race day for hosts]]."
+            "text": "レースは、コースが付いた通常のクラブイベントです。イベントを作成できるのは、クラブのオーナー、管理者、イベント主催者です。当日のレース運営（準備、GO、終了）には、オーナー、管理者、または**レースディレクター**が必要です。[[guide:race-day-for-hosts|主催者向けレース当日の流れ]]を参照してください。"
           },
           {
             "type": "p",
-            "text": "Courses are built on the web. The phone app can create a simple event, but it has no course editor, so add or change courses from a browser."
+            "text": "コースはWebで作成します。スマートフォンアプリでも簡単なイベントは作成できますが、コースエディターがないため、コースの追加や変更はブラウザから行ってください。"
           }
         ]
       },
       {
-        "heading": "Create the event",
+        "heading": "イベントを作成する",
         "blocks": [
           {
             "type": "steps",
             "items": [
-              "Open your club and choose **New event**.",
-              "Under **Event type**, pick **Group run** (or **Cycle**). Class and social events have no route, distance, race controls or results.",
-              "Give it a **Title** and a **Date**. Set a repeat only if the race really recurs; each occurrence is raced separately.",
-              "Choose a **Route** and fill in **Distance**. Together these are your *main course*.",
-              "Optionally type a **Main course name** under **Race courses** (for example \"Half marathon\"). If you leave it blank, the route name is used.",
-              "Choose **Create event**."
+              "クラブを開き、**新しいイベント**を選びます。",
+              "**イベントの種類**で**グループラン**（または**サイクリング**）を選びます。クラスやソーシャルのイベントには、ルート、距離、レース管理、結果がありません。",
+              "**タイトル**と**日付**を入力します。繰り返しは、レースが本当に定期開催される場合にだけ設定してください。各開催回は別々のレースとして扱われます。",
+              "**ルート**を選び、**距離**を入力します。この2つを合わせたものが*メインコース*になります。",
+              "必要に応じて、**レースのコース**の下にある**メインコースの名前**を入力します（例：「ハーフマラソン」）。空欄の場合はルート名が使われます。",
+              "**イベントを作成**を選びます。"
             ]
           },
           {
             "type": "note",
             "tone": "tip",
-            "text": "The finish line racers are timed at is the last point of the course route. Draw the route so it ends exactly where your finish arch will be."
+            "text": "ランナーが計時されるフィニッシュラインは、コースのルートの最終地点です。ゴールアーチを置く場所でぴったり終わるようにルートを描いてください。"
           }
         ]
       },
       {
-        "heading": "Add more courses",
+        "heading": "コースを追加する",
         "blocks": [
           {
             "type": "p",
-            "text": "Racing more than one distance on the same day? Add each extra distance as its own course. Every course gets its own leaderboard."
+            "text": "同じ日に複数の距離のレースを行いますか？追加の距離は、それぞれ独立したコースとして追加します。コースごとにリーダーボードが作られます。"
           },
           {
             "type": "steps",
             "items": [
-              "In the event editor, find **Race courses** and choose **Add a course**.",
-              "Give it a **Course name**, pick its **Route** and enter its distance.",
-              "Use the up and down arrows to reorder courses, or remove one you no longer need.",
-              "Save the event."
+              "イベントエディターで**レースのコース**を見つけ、**コースを追加**を選びます。",
+              "**コース名**を入力し、**ルート**を選んで距離を入力します。",
+              "上下の矢印でコースを並べ替えたり、不要になったコースを削除したりできます。",
+              "イベントを保存します。"
             ]
           },
           {
             "type": "list",
             "items": [
-              "Every course needs a name, and no two courses can share one.",
-              "A course with no route has no finish point, so its racers are not finished automatically; they finish by hand from their device.",
-              "A course with no distance cannot check that a racer covered most of the course, so its racers also finish by hand."
+              "どのコースにも名前が必要で、同じ名前のコースを2つ作ることはできません。",
+              "ルートのないコースにはフィニッシュ地点がないため、そのコースのランナーは自動ではゴールになりません。自分のデバイスから手動でゴールします。",
+              "距離のないコースでは、ランナーがコースの大部分を走ったかどうかを確認できないため、そのコースのランナーも手動でゴールします。"
             ]
           },
           {
             "type": "note",
             "tone": "caution",
-            "text": "Attaching a route shows its finish point to everyone who can see the event, even if the route itself is private. You can only attach routes you are allowed to see."
+            "text": "ルートを付けると、そのルート自体が非公開であっても、イベントを閲覧できる全員にフィニッシュ地点が表示されます。付けられるのは、あなたが閲覧を許可されているルートだけです。"
           }
         ]
       },
       {
-        "heading": "What racers see",
+        "heading": "ランナーに表示される内容",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "On the event page racers see the courses. When there is more than one, they must choose one from **Your course** before **I'm in** will work; otherwise they see \"Pick your course first.\"",
-              "In the phone app, tapping **I'm in** on a multi-course race asks them to **Pick your course**, and they can use **Change course** later.",
-              "With a single course, nobody has to choose anything.",
-              "Paid registrations do not ask for a course yet. A paid racer picks one afterwards from the same **Your course** menu."
+              "イベントページでは、ランナーにコースが表示されます。コースが複数ある場合、**参加する**を使う前に**あなたのコース**から1つ選ぶ必要があり、選ばないと「先にコースを選んでください。」と表示されます。",
+              "スマートフォンアプリでは、複数コースのレースで**参加する**をタップすると**コースを選択**を求められ、あとから**コースを変更**を使うこともできます。",
+              "コースが1つだけの場合は、何も選ぶ必要はありません。",
+              "有料の登録では、まだコースを尋ねません。有料で登録したランナーは、あとから同じ**あなたのコース**メニューでコースを選びます。"
             ]
           },
           {
             "type": "p",
-            "text": "The racer side is covered in [[guide:racing-in-a-race|Racing in a race]]."
+            "text": "ランナー側については[[guide:racing-in-a-race|ライブレースに出場する]]で説明しています。"
           }
         ]
       },
       {
-        "heading": "Approving results automatically",
+        "heading": "結果を自動で承認する",
         "blocks": [
           {
             "type": "p",
-            "text": "Just before you arm the race you choose whether results go straight onto the leaderboard. **Auto-approve submitted results** is ticked by default. Untick it if you want to check every result first; each one then shows as **PENDING** until you approve it."
+            "text": "レースを準備する直前に、結果をそのままリーダーボードに載せるかどうかを選びます。**提出された結果を自動承認**には、初期設定でチェックが入っています。すべての結果を先に確認したい場合はチェックを外してください。その場合、各結果はあなたが承認するまで**保留中**と表示されます。"
           }
         ]
       },
       {
-        "heading": "Share the spectator link",
+        "heading": "観戦リンクを共有する",
         "blocks": [
           {
             "type": "p",
-            "text": "Every race occurrence has a live page with a map and boards. On the event page, the race control card has a **Spectator view** link that opens it in a new tab. Copy that address and share it with family, friends and your race channel."
+            "text": "レースの各開催回には、地図とボードのあるライブページがあります。イベントページのレース管理カードにある**観戦ビュー**リンクを使うと、新しいタブで開きます。そのアドレスをコピーして、家族や友人、レースのチャンネルで共有してください。"
           },
           {
             "type": "note",
             "tone": "tip",
-            "text": "For a **Members only** event, only club members can see the event, so the spectator page will not work for people outside the club."
+            "text": "**メンバー限定**のイベントはクラブのメンバーしか閲覧できないため、クラブ外の人には観戦ページが機能しません。"
           },
           {
             "type": "p",
-            "text": "What spectators see is explained in [[guide:follow-a-race-live|Follow a race live]]."
+            "text": "観戦者に表示される内容は[[guide:follow-a-race-live|レースをライブで観戦する]]で説明しています。"
           }
         ]
       }
@@ -2248,9 +2248,9 @@
   },
   {
     "id": "import-your-history",
-    "lang": "en",
-    "title": "Import your running history",
-    "summary": "Bring your past runs in from Strava, a Garmin export, or your phone's health app, and know what happens to GPX files.",
+    "lang": "ja",
+    "title": "ランニングの履歴をインポートする",
+    "summary": "Strava、Garminのエクスポート、またはスマートフォンのヘルスケアアプリから過去のランを取り込む方法と、GPXファイルの扱いについて説明します。",
     "kind": "how-to",
     "category": "running",
     "audience": [
@@ -2267,85 +2267,85 @@
     ],
     "sections": [
       {
-        "heading": "Connect Strava for recent and new runs",
+        "heading": "Stravaを連携して最近のランと新しいランを取り込む",
         "blocks": [
           {
             "type": "steps",
             "items": [
-              "On the web open [[route:/settings/integrations|Integrations]] in Settings and select **Connect** on the Strava card, or in the phone app open **Integrations** in the **You** tab and tap Strava.",
-              "Sign in to Strava and allow access.",
-              "Your last 90 days of runs, walks and hikes are copied across, and new Strava activities follow automatically."
+              "Webでは設定の[[route:/settings/integrations|連携]]を開き、Stravaカードで**連携する**を選択します。スマートフォンアプリでは**あなた**タブの**連携**を開き、Stravaをタップします。",
+              "Stravaにサインインし、アクセスを許可します。",
+              "過去90日分のラン、ウォーク、ハイキングがコピーされ、以降の新しいStravaアクティビティも自動的に取り込まれます。"
             ]
           },
           {
             "type": "p",
-            "text": "Select **Sync now** to pull again. On the web, **How far back to sync** reaches up to a year back."
+            "text": "もう一度取り込むには**今すぐ同期**を選択します。Webでは、**さかのぼる期間**で最大1年前までさかのぼれます。"
           }
         ]
       },
       {
-        "heading": "Bring in your whole Strava archive",
+        "heading": "Stravaのアーカイブ全体を取り込む",
         "blocks": [
           {
             "type": "p",
-            "text": "Connecting Strava only reaches recent activity. For years of history, use a Strava data export."
+            "text": "Stravaの連携で取り込めるのは最近のアクティビティだけです。何年分もの履歴を取り込むには、Stravaのデータエクスポートを使います。"
           },
           {
             "type": "steps",
             "items": [
-              "In Strava, go to Settings, My Account, and request your archive. Strava emails you a link to a zip file.",
-              "On the web, open [[route:/settings/integrations|Integrations]], find **Bulk import from a Strava export** and select **Choose Strava export zip**. In the phone app, open **Account** in the **You** tab, then **Import from another app**, and tap **Import Strava ZIP**.",
-              "Wait for the import to finish. Runs you already have, for example from your Strava connection, are skipped, so it is safe to run it again."
+              "Stravaで「設定」、「マイアカウント」の順に進み、アーカイブをリクエストします。Stravaからzipファイルへのリンクがメールで届きます。",
+              "Webでは[[route:/settings/integrations|連携]]を開き、**Strava エクスポートからの一括インポート**を見つけて**Strava エクスポートの zip を選択**を選択します。スマートフォンアプリでは**あなた**タブの**アカウント**を開き、**別のアプリからインポート**に進んで**Strava ZIPをインポート**をタップします。",
+              "インポートが完了するまで待ちます。Stravaの連携などですでに取り込まれているランはスキップされるので、何度実行しても問題ありません。"
             ]
           }
         ]
       },
       {
-        "heading": "Garmin and FIT files",
+        "heading": "GarminとFITファイル",
         "blocks": [
           {
             "type": "p",
-            "text": "An automatic Garmin Connect link isn't available yet because Garmin has to approve it. Until then you can import Garmin files on the web."
+            "text": "Garmin Connectとの自動連携は、Garminの承認が必要なため、まだ利用できません。それまではWebでGarminのファイルをインポートできます。"
           },
           {
             "type": "steps",
             "items": [
-              "In Garmin Connect, either export one activity with Export Original, which gives you a .fit file, or request your full data export from Garmin Account Management.",
-              "On the web, open [[route:/settings/integrations|Integrations]], find **Bulk import from a Garmin export** and select **Choose Garmin export**.",
-              "Pick the .fit file or the zip. Activities you already imported are skipped."
+              "Garmin Connectで、「オリジナルをエクスポート」で1件のアクティビティをエクスポートして.fitファイルを取得するか、Garminアカウント管理からすべてのデータのエクスポートをリクエストします。",
+              "Webでは[[route:/settings/integrations|連携]]を開き、**Garmin エクスポートからの一括インポート**を見つけて**Garmin エクスポートを選択**を選択します。",
+              ".fitファイルまたはzipを選びます。すでにインポート済みのアクティビティはスキップされます。"
             ]
           },
           {
             "type": "note",
             "tone": "tip",
-            "text": "On Android, workouts your Garmin, Samsung or Fitbit app writes to Health Connect can come in through **Import from another app** too. On an iPhone the same card reads Apple Health."
+            "text": "Androidでは、Garmin、Samsung、FitbitのアプリがHealth Connectに書き込んだワークアウトも**別のアプリからインポート**から取り込めます。iPhoneでは、同じカードがApple Healthのデータを読み込みます。"
           }
         ]
       },
       {
-        "heading": "GPX and other single files",
+        "heading": "GPXなどの単一ファイル",
         "blocks": [
           {
             "type": "p",
-            "text": "A single GPX, KML, KMZ, GeoJSON or TCX file is imported as a route you can follow, not as a run in your history. Open [[route:/routes|Routes]] on the web or the routes list in the app and import it there."
+            "text": "単一のGPX、KML、KMZ、GeoJSON、TCXファイルは、履歴のランではなく、たどれるルートとしてインポートされます。Webでは[[route:/routes|ルート]]、アプリではルート一覧を開き、そこでインポートしてください。"
           },
           {
             "type": "p",
-            "text": "GPX and TCX files inside a Strava or Garmin export zip are read as runs, so the bulk imports above are the way to add a history of GPX activities."
+            "text": "StravaやGarminのエクスポートzipに含まれるGPXやTCXファイルはランとして読み込まれます。GPXアクティビティの履歴を追加するには、上記の一括インポートを使ってください。"
           }
         ]
       },
       {
-        "heading": "If something doesn't import",
+        "heading": "インポートされないものがある場合",
         "blocks": [
           {
             "type": "p",
-            "text": "When some activities are left out, the import lists each one and why, such as a dropped connection or a file that couldn't be read. Run the import again to retry them: anything that already landed is skipped, so nothing is duplicated."
+            "text": "一部のアクティビティが取り込まれなかった場合、インポート結果にそれぞれのアクティビティとその理由（接続の切断や、読み込めなかったファイルなど）が一覧表示されます。もう一度インポートを実行すると再試行できます。すでに取り込まれたものはスキップされるので、重複することはありません。"
           },
           {
             "type": "note",
             "tone": "caution",
-            "text": "Imported runs follow your default run privacy, so check it before a big import if you don't want years of runs to appear publicly at once. See [[guide:your-data-and-privacy|Your data and privacy]]."
+            "text": "インポートしたランには、ランのデフォルトプライバシー設定が適用されます。何年分ものランが一度に公開されるのを避けたい場合は、大量にインポートする前に確認してください。[[guide:your-data-and-privacy|あなたのデータとプライバシー]]を参照してください。"
           }
         ]
       }
@@ -2358,9 +2358,9 @@
   },
   {
     "id": "link-ultrasignup-results",
-    "lang": "en",
-    "title": "Link your UltraSignup results",
-    "summary": "Find your UltraSignup profile by name, confirm which person is you, then import an ultra or trail result from the race calendar.",
+    "lang": "ja",
+    "title": "UltraSignupの結果を連携する",
+    "summary": "名前でUltraSignupのプロフィールを探し、どれが自分かを確認してから、レースカレンダーからウルトラやトレイルの結果をインポートします。",
     "kind": "how-to",
     "category": "running",
     "audience": [
@@ -2376,65 +2376,65 @@
     ],
     "sections": [
       {
-        "heading": "Before you start",
+        "heading": "始める前に",
         "blocks": [
           {
             "type": "note",
             "tone": "caution",
-            "text": "UltraSignup import is web-only and is switched off until it has been enabled. If the UltraSignup card is missing from Integrations, or says **UltraSignup import isn't available yet. parkrun and manual paste still work.**, you can still add a result by pasting it on the race calendar."
+            "text": "UltraSignupのインポートはWeb専用で、有効化されるまではオフになっています。連携画面にUltraSignupカードがない場合や、**UltraSignupのインポートはまだ利用できません。parkrunと手動での貼り付けは引き続き利用できます。**と表示される場合でも、レースカレンダーで結果を貼り付けて追加できます。"
           },
           {
             "type": "p",
-            "text": "UltraSignup handles entries and results for many trail and ultra races. Linking your profile once means you never type your name or bib again when importing a result."
+            "text": "UltraSignupは、多くのトレイルレースやウルトラレースのエントリーと結果を扱っています。プロフィールを一度連携しておけば、結果をインポートするたびに名前やゼッケン番号を入力する必要はありません。"
           }
         ]
       },
       {
-        "heading": "Link your profile",
+        "heading": "プロフィールを連携する",
         "blocks": [
           {
             "type": "steps",
             "items": [
-              "Open [[route:/settings/integrations|Integrations]] in Settings and find the UltraSignup card.",
-              "Under **Find your UltraSignup profile**, enter your **First name** and **Last name** exactly as you enter races, then select **Find me**.",
-              "UltraSignup lists everyone with that name. Use each person's age, number of results and most recent races to spot yourself.",
-              "Under **Which of these is you?**, select **This is me** on your entry."
+              "設定の[[route:/settings/integrations|連携]]を開き、UltraSignupカードを見つけます。",
+              "**UltraSignup のプロフィールを探す**で、レースのエントリー時と同じ表記で**名**と**姓**を入力し、**検索**を選択します。",
+              "UltraSignupに登録されている同じ名前の人が一覧表示されます。各人の年齢、結果の件数、最近のレースを手がかりに自分を見つけてください。",
+              "**どれがあなたですか？**で、自分の項目の**これが自分**を選択します。"
             ]
           },
           {
             "type": "p",
-            "text": "The card now shows **Linked as** with your name and UltraSignup number. If you picked the wrong person, select **Unlink** and search again. Runs you already imported stay when you unlink."
+            "text": "カードに、名前とUltraSignupの番号とともに**連携済み**と表示されます。違う人を選んでしまった場合は、**連携を解除**を選択して検索し直してください。連携を解除しても、インポート済みのランは残ります。"
           },
           {
             "type": "note",
             "tone": "tip",
-            "text": "If you see **UltraSignup has nobody by that name. Check the spelling you race under.**, try the exact spelling on your race entries, including any middle name or hyphen."
+            "text": "**UltraSignup にその名前の人は見つかりませんでした。エントリー時のつづりを確認してください。**と表示された場合は、ミドルネームやハイフンも含め、レースのエントリーと同じつづりで試してください。"
           }
         ]
       },
       {
-        "heading": "Import a result from the race calendar",
+        "heading": "レースカレンダーから結果をインポートする",
         "blocks": [
           {
             "type": "steps",
             "items": [
-              "Open [[route:/races|Races]] and find the race you ran.",
-              "Select **Import my result**. The importer shows who it is importing as.",
-              "Confirm the import. Only your own result for that race comes across, matched on UltraSignup's race id and the race date."
+              "[[route:/races|レース]]を開き、出場したレースを見つけます。",
+              "**自分の記録をインポート**を選択します。インポート画面に、誰としてインポートするかが表示されます。",
+              "インポートを確定します。取り込まれるのはそのレースのあなた自身の結果だけで、UltraSignupのレースIDとレース日で照合されます。"
             ]
           },
           {
             "type": "p",
-            "text": "The result arrives as a run with your official time and placings. If you recorded the race yourself, open that run instead: when it matches a race in the calendar, the run asks whether this was that race, and selecting **Import result** adds the official result to the run you already have rather than creating a second one."
+            "text": "結果は、公式タイムと順位が入ったランとして追加されます。レースを自分で記録していた場合は、代わりにそのランを開いてください。カレンダーのレースと一致すると、そのランがこのレースだったかどうかを確認されます。**記録をインポート**を選択すると、2件目のランを作らずに、すでにあるランに公式結果が追加されます。"
           },
           {
             "type": "note",
             "tone": "caution",
-            "text": "Only finished results are imported, and a race whose id or date doesn't match is skipped rather than guessed. Very few UltraSignup races are in the calendar yet, so your race may not be listed; use **Paste your result** on the race calendar instead."
+            "text": "インポートされるのは完走した結果だけで、IDや日付が一致しないレースは推測せずにスキップされます。カレンダーに登録されているUltraSignupのレースはまだごくわずかなので、あなたのレースが載っていないこともあります。その場合はレースカレンダーの**記録を貼り付け**を使ってください。"
           },
           {
             "type": "p",
-            "text": "If you see **Link your UltraSignup profile in Settings first, then import from here.**, link your profile as above and come back."
+            "text": "**先に設定で UltraSignup のプロフィールを連携してから、ここでインポートしてください。**と表示された場合は、上の手順でプロフィールを連携してから戻ってきてください。"
           }
         ]
       }
@@ -2447,9 +2447,9 @@
   },
   {
     "id": "live-tracking-and-safety",
-    "lang": "en",
-    "title": "Live tracking and safety contacts",
-    "summary": "Let someone follow your run live, and have trusted contacts emailed when you finish, go quiet or are not back on time.",
+    "lang": "ja",
+    "title": "ライブトラッキングと緊急連絡先",
+    "summary": "ランをライブで見守ってもらい、ランの終了時、通信が途絶えたとき、予定時刻までに戻らないときに、信頼できる連絡先へメールで知らせます。",
     "kind": "how-to",
     "category": "running",
     "audience": [
@@ -2468,94 +2468,94 @@
     ],
     "sections": [
       {
-        "heading": "Share a live link",
+        "heading": "ライブリンクを共有する",
         "blocks": [
           {
             "type": "steps",
             "items": [
-              "Sign in on the phone app. A live link only works for a signed-in runner.",
-              "On the run screen, before you start, tap **Share live link** and send it with any app on your phone.",
-              "Tap **START**. The link goes live as the run begins."
+              "スマートフォンアプリでサインインします。ライブリンクは、サインインしているランナーでなければ機能しません。",
+              "ラン画面で、開始する前に**ライブリンクを共有**をタップし、スマートフォンの任意のアプリで送信します。",
+              "**スタート**をタップします。ランの開始と同時にリンクが有効になります。"
             ]
           },
           {
             "type": "p",
-            "text": "Whoever has the link can open it in a web browser and watch your position and stats, with no account needed. Privacy zones still apply to the live map."
+            "text": "リンクを持っている人は誰でも、Webブラウザで開いてあなたの位置と記録を見ることができます。アカウントは必要ありません。ライブマップにもプライバシーゾーンが適用されます。"
           },
           {
             "type": "p",
-            "text": "While sharing, a **Live** badge shows on the recording screen. Tap it to **Share link again**, **Stop sharing**, or set a **Not back by…** time."
+            "text": "共有中は、記録画面に**ライブ**バッジが表示されます。タップすると、**リンクを再共有**、**共有を停止**、または**指定時刻までに未帰還**の時刻の設定ができます。"
           },
           {
             "type": "p",
-            "text": "When the run ends, the link stops updating. If your runs are normally not public, you are asked whether to **Keep public** the saved run for people with the link; otherwise it goes back to your usual run privacy."
+            "text": "ランが終了すると、リンクは更新されなくなります。普段ランを公開していない場合は、保存したランをリンクを持つ人に向けて**公開のままにする**かどうかを尋ねられます。そうしない場合は、通常のランの公開設定に戻ります。"
           },
           {
             "type": "note",
             "tone": "tip",
-            "text": "To share every run without remembering to, turn on **Auto live share** under **Safety contacts** in the **You** tab. It applies to that phone only, and the run in progress can be viewed by anyone with the link."
+            "text": "毎回操作しなくてもすべてのランを共有するには、**あなた**タブの**緊急連絡先**で**自動ライブ共有**をオンにします。この設定はそのスマートフォンにのみ適用され、進行中のランはリンクを持つ誰でも見ることができます。"
           }
         ]
       },
       {
-        "heading": "Add safety contacts",
+        "heading": "緊急連絡先を追加する",
         "blocks": [
           {
             "type": "p",
-            "text": "A safety contact is someone you trust, such as a partner, friend or family member. They are emailed when you finish a run, even a private one, so they know you got back."
+            "text": "緊急連絡先とは、パートナー、友人、家族など、あなたが信頼する人です。ランを終えると、非公開のランであっても連絡先にメールが届くので、あなたが無事に戻ったことがわかります。"
           },
           {
             "type": "steps",
             "items": [
-              "On the web open [[route:/settings/safety|Safety]] in Settings, or in the phone app open **Safety contacts** in the **You** tab.",
-              "Enter their **Contact email**. You can also add a **Phone for SMS (optional)** in international format, such as +447700900123.",
-              "Select **Add contact**. They get an email asking them to confirm.",
-              "Their status shows **Pending — waiting for them to confirm** until they accept, then **Confirmed**. Only confirmed contacts are alerted."
+              "Webでは設定の[[route:/settings/safety|セーフティ]]を開きます。スマートフォンアプリでは**あなた**タブの**緊急連絡先**を開きます。",
+              "**連絡先のメール**を入力します。+447700900123のような国際形式で**SMS用電話番号（任意）**を追加することもできます。",
+              "**連絡先を追加**を選択します。相手に確認を求めるメールが届きます。",
+              "相手が承諾するまでステータスは**保留中 — 相手の確認待ち**と表示され、承諾後は**確認済み**になります。通知が届くのは確認済みの連絡先だけです。"
             ]
           },
           {
             "type": "p",
-            "text": "If someone adds you as their contact, the request appears under **Requests for you**, where you can **Confirm** or **Decline**. Later, under **You are a safety contact**, you can change how you are alerted or **Withdraw**."
+            "text": "誰かがあなたを緊急連絡先に追加すると、そのリクエストが**あなたへの依頼**に表示され、**確認する**または**辞退する**を選べます。あとから、**あなたが緊急連絡先になっているランナー**で通知方法を変更したり、**辞退する**を選んだりできます。"
           },
           {
             "type": "note",
             "tone": "caution",
-            "text": "Email alerts are always sent. Text messages also need the contact to agree when they confirm, and SMS sending is not switched on everywhere yet, so don't rely on SMS alone."
+            "text": "メールでの通知は必ず送信されます。テキストメッセージには、相手が確認時に同意していることも必要です。また、SMS送信はまだすべての地域で有効になっているわけではないため、SMSだけに頼らないでください。"
           }
         ]
       },
       {
-        "heading": "Alerts when something seems wrong",
+        "heading": "異常がありそうなときの通知",
         "blocks": [
           {
             "type": "p",
-            "text": "These alerts only cover runs with live sharing on, because the live link is what tells us where you are. Each contact gets at most one alert per run."
+            "text": "これらの通知の対象は、ライブ共有をオンにしたランだけです。あなたの居場所を知らせるのはライブリンクだからです。各連絡先に届く通知は、1回のランにつき最大1件です。"
           },
           {
             "type": "list",
             "items": [
-              "**Overdue alert**: choose a time under **Alert contacts after silence of** on the web, or **Alert after silence of** in the app. If your live run sends nothing for that long, your confirmed contacts are emailed your live link. It is **Off** until you pick a time.",
-              "**Not back by…**: during a live-shared run, tap the **Live** badge and pick when you expect to be done. If the run is still going then, your contacts are alerted. The time is kept on our server, so it still counts if your phone dies. You can also set it from your own live page on the web."
+              "**遅延アラート**：Webでは**無応答がこの時間続いたら連絡先に通知**、アプリでは**無応答がこの時間続いたら通知**で時間を選びます。ライブ中のランからその時間何も送信されないと、確認済みの連絡先にあなたのライブリンクがメールで送られます。時間を選ぶまでは**オフ**です。",
+              "**指定時刻までに未帰還**：ライブ共有中のランで**ライブ**バッジをタップし、終わる予定の時刻を選びます。その時刻になってもランが続いている場合は、連絡先に通知が届きます。時刻はサーバーに保存されるので、スマートフォンの電池が切れても有効です。Webの自分のライブページから設定することもできます。"
             ]
           },
           {
             "type": "note",
             "tone": "caution",
-            "text": "Losing phone signal looks the same as going quiet, and a run that finishes with no signal can still trigger an alert until it uploads. The email tells your contacts that signal loss is a possible cause."
+            "text": "スマートフォンの電波が途切れることは、通信が途絶えたことと区別できません。また、電波のない場所で終えたランは、アップロードされるまでは通知のきっかけになることがあります。メールには、電波の喪失が原因の可能性もあることが記載されます。"
           },
           {
             "type": "note",
             "tone": "caution",
-            "text": "An automatic alert to your contacts when you leave your planned route is built but not switched on yet. Until it is, the **Off-route alert** setting stays hidden."
+            "text": "予定のルートから外れたときに連絡先へ自動で通知する機能はできていますが、まだ有効になっていません。有効になるまでは、**ルート逸脱アラート**の設定は表示されません。"
           }
         ]
       },
       {
-        "heading": "Off-route warnings while you run",
+        "heading": "ラン中のルート逸脱の警告",
         "blocks": [
           {
             "type": "p",
-            "text": "If you follow a saved route, the run screen warns you when you stray from it, showing how far away you are, and can say so out loud if audio cues are on. This warning is for you; it does not contact anyone."
+            "text": "保存したルートをたどっている場合、ルートから外れるとラン画面に警告が表示され、どれだけ離れているかがわかります。音声キューがオンなら読み上げることもできます。この警告はあなた向けのもので、誰かに連絡することはありません。"
           }
         ]
       }
@@ -2568,9 +2568,9 @@
   },
   {
     "id": "privacy-zones",
-    "lang": "en",
-    "title": "Hide your home with privacy zones",
-    "summary": "Draw a circle around home, work or anywhere else so the start and end of your runs and routes inside it are hidden from everyone but you.",
+    "lang": "ja",
+    "title": "プライバシーゾーンで自宅を隠す",
+    "summary": "自宅や職場などの周りに円を描くと、その内側にあるランやルートのスタートとゴールが、あなた以外の誰からも見えなくなります。",
     "kind": "how-to",
     "category": "running",
     "audience": [
@@ -2586,74 +2586,74 @@
     ],
     "sections": [
       {
-        "heading": "What a privacy zone does",
+        "heading": "プライバシーゾーンの働き",
         "blocks": [
           {
             "type": "p",
-            "text": "A privacy zone is a circle on the map. When a run or route starts or ends inside one, that part of the track is cut off before anyone else sees it, so the line appears to begin and end at the edge of the circle."
+            "text": "プライバシーゾーンは地図上の円です。ランやルートがその内側で始まるか終わると、その部分のトラックは他の人に表示される前に切り取られ、線は円の縁から始まって縁で終わるように見えます。"
           },
           {
             "type": "list",
             "items": [
-              "It applies to what other people see: shared runs and routes, your public profile, the feed, heatmaps and the live tracking page.",
-              "It applies to runs you have already recorded as well as new ones, because the track is trimmed each time someone else views it.",
-              "You always see your own full track, and files you export for yourself keep the full track too."
+              "適用されるのは他の人に見える部分です：共有したランとルート、公開プロフィール、フィード、ヒートマップ、ライブトラッキングページ。",
+              "トラックは他の人が閲覧するたびに切り取られるので、新しいランだけでなく、すでに記録したランにも適用されます。",
+              "自分のトラックは常にすべて表示され、自分用にエクスポートしたファイルにもトラック全体が残ります。"
             ]
           }
         ]
       },
       {
-        "heading": "Add a zone on the web",
+        "heading": "Webでゾーンを追加する",
         "blocks": [
           {
             "type": "steps",
             "items": [
-              "Open [[route:/settings/privacy|Privacy & sharing]] in Settings.",
-              "Under **Privacy zones**, select **Add a zone**.",
-              "Click the map where the zone should be centred, or select **Use current location**, then drag the marker to fine-tune it.",
-              "Set the **Radius**. Anything inside the red circle is hidden from public shares.",
-              "Select **Add zone**. The zone is saved straight away."
+              "設定の[[route:/settings/privacy|プライバシーと共有]]を開きます。",
+              "**プライバシーゾーン**で**ゾーンを追加**を選択します。",
+              "ゾーンの中心にしたい場所で地図をクリックするか、**現在地を使用**を選択し、マーカーをドラッグして微調整します。",
+              "**半径**を設定します。赤い円の内側はすべて公開共有で非表示になります。",
+              "**ゾーンを追加**を選択します。ゾーンはすぐに保存されます。"
             ]
           },
           {
             "type": "p",
-            "text": "To delete a zone, select **Remove** beside it and confirm. Removing a zone shows that area on public shares again."
+            "text": "ゾーンを削除するには、その横の**削除**を選択して確定します。ゾーンを削除すると、そのエリアは公開共有で再び表示されます。"
           }
         ]
       },
       {
-        "heading": "Add a zone on the phone app",
+        "heading": "スマートフォンアプリでゾーンを追加する",
         "blocks": [
           {
             "type": "steps",
             "items": [
-              "Open the **You** tab, then **Preferences**, and under **Privacy & sharing** tap **Privacy zones**.",
-              "Tap the map to drop a zone. Use **Search places…** or **Locate me** to move the map first.",
-              "Adjust the **Radius** slider.",
-              "Tap **Save**. Nothing changes until you save."
+              "**あなた**タブを開いて**環境設定**に進み、**プライバシーと共有**の**プライバシーゾーン**をタップします。",
+              "地図をタップしてゾーンを置きます。先に地図を移動するには、**場所を検索…**または**現在地を取得**を使います。",
+              "**半径**のスライダーを調整します。",
+              "**保存**をタップします。保存するまでは何も変更されません。"
             ]
           },
           {
             "type": "p",
-            "text": "To delete a zone, tap its marker and confirm, or use **Clear all** to remove every zone at once. Then tap **Save**; removing a zone shows that area on public shares again."
+            "text": "ゾーンを削除するには、そのマーカーをタップして確定します。**すべて消去**ですべてのゾーンを一度に削除することもできます。そのあと**保存**をタップします。ゾーンを削除すると、そのエリアは公開共有で再び表示されます。"
           }
         ]
       },
       {
-        "heading": "Choosing a good zone",
+        "heading": "よいゾーンの選び方",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "Centre the zone near, rather than exactly on, your front door, so the edge of the circle doesn't point straight at your house.",
-              "Make it big enough to cover a few streets. A tiny circle can still give your home away.",
-              "Add one for anywhere you regularly start from, such as work or a friend's house."
+              "ゾーンの中心は玄関の真上ではなく、その近くに置きましょう。円の縁がまっすぐ自宅を指してしまわないようにするためです。",
+              "数本の通りを覆えるくらいの大きさにしましょう。小さすぎる円では、自宅の場所がわかってしまうことがあります。",
+              "職場や友人の家など、よくスタートする場所にもゾーンを追加しましょう。"
             ]
           },
           {
             "type": "note",
             "tone": "caution",
-            "text": "Zones trim the map line only. A run's title, description and photos are shown as you wrote them, so leave addresses out of those."
+            "text": "ゾーンが切り取るのは地図上の線だけです。ランのタイトル、説明、写真は書いたとおりに表示されるので、そこには住所を書かないでください。"
           }
         ]
       }
@@ -2666,9 +2666,9 @@
   },
   {
     "id": "record-your-first-run",
-    "lang": "en",
-    "title": "Record your first run",
-    "summary": "Start a run on your phone, pause and stop it safely, get a good GPS signal, and see what gets saved afterwards.",
+    "lang": "ja",
+    "title": "初めてのランを記録する",
+    "summary": "スマートフォンでランを開始し、安全に一時停止・停止する方法、GPS信号を良好に保つ方法、記録後に保存される内容を説明します。",
     "kind": "start",
     "category": "running",
     "audience": [
@@ -2680,85 +2680,85 @@
     ],
     "sections": [
       {
-        "heading": "Start recording",
+        "heading": "記録を開始する",
         "blocks": [
           {
             "type": "p",
-            "text": "Runs are recorded in the phone app or on a watch. The web app shows your runs but cannot record one."
+            "text": "ランはスマートフォンアプリまたはウォッチで記録します。Webアプリではランを表示できますが、記録はできません。"
           },
           {
             "type": "steps",
             "items": [
-              "Tap the big button in the middle of the bottom bar. It reads **Start run**, or **Log** if you have switched on gym or nutrition, in which case choose **Log run**.",
-              "Tap **START**. The first time, your phone asks for location access: allow it, or the run records time only, with no distance or map.",
-              "A three-second countdown runs while the GPS warms up, then the clock starts."
+              "下部バーの中央にある大きなボタンをタップします。ボタンには**ラン開始**と表示されます。ジムや栄養の記録をオンにしている場合は**記録**と表示されるので、その場合は**ランを記録**を選びます。",
+              "**スタート**をタップします。初回は位置情報へのアクセスを求められるので、許可してください。許可しないと、ランは時間だけが記録され、距離や地図は記録されません。",
+              "GPSの準備中に3秒のカウントダウンが表示され、その後タイマーが始まります。"
             ]
           },
           {
             "type": "note",
             "tone": "tip",
-            "text": "On Android, choose **Allow all the time** for location. With access only while the app is open, distance you cover with the screen off is not counted, although the clock keeps running."
+            "text": "Androidでは、位置情報を**常に許可**にしてください。アプリの使用中のみのアクセスでは、画面がオフの間に進んだ距離は加算されません。ただし、タイマーは動き続けます。"
           }
         ]
       },
       {
-        "heading": "Pausing and stopping",
+        "heading": "一時停止と停止",
         "blocks": [
           {
             "type": "p",
-            "text": "There is no auto-pause: the clock runs until you pause it. Use the pause button for a stop you want left out of your time, and the resume button to carry on."
+            "text": "自動一時停止はありません。一時停止するまでタイマーは動き続けます。タイムから除きたい停止には一時停止ボタンを、再び走り出すときは再開ボタンを使います。"
           },
           {
             "type": "p",
-            "text": "Standing at a crossing without pausing does no harm. After the run, **Moving** time leaves out the stretches where you were standing still, and your pace is worked out from moving time."
+            "text": "一時停止せずに横断歩道で立ち止まっても問題ありません。ラン後の**移動時間**には立ち止まっていた区間が含まれず、ペースは移動時間から計算されます。"
           },
           {
             "type": "steps",
             "items": [
-              "To finish, press and hold the stop button. The hint reads **Hold to stop**, so a stray tap in your pocket doesn't end the run.",
-              "The **Run Complete** summary shows your distance, **Time**, **Moving** time, pace and any other stats your phone measured.",
-              "Tap **Done** to go back to the start screen."
+              "終了するには、停止ボタンを長押しします。ヒントには**長押しで停止**と表示されます。これにより、ポケットの中で誤ってタップしてもランは終わりません。",
+              "**ラン完了**のサマリーには、距離、**時間**、**移動時間**、ペースのほか、スマートフォンが計測したその他の記録が表示されます。",
+              "**完了**をタップすると、開始画面に戻ります。"
             ]
           }
         ]
       },
       {
-        "heading": "Getting a good GPS signal",
+        "heading": "GPS信号を良好に保つ",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "Start outside, away from tall buildings and thick tree cover, so the countdown has a clear view of the sky.",
-              "If you see **GPS signal lost — move to open sky**, keep going: the clock keeps running and distance picks up again when the signal returns.",
-              "**Weak GPS — distance paused** means your position is too uncertain to count. Distance resumes as soon as the signal improves.",
-              "Keep location services on and battery saving off for the app, so your phone doesn't stop the recording in the background."
+              "高い建物や茂った木々から離れた屋外で開始し、カウントダウン中に空が開けて見えるようにします。",
+              "**GPS信号を失いました — 開けた場所へ移動してください**と表示されても、そのまま続けてください。タイマーは動き続け、信号が戻ると距離の計測も再開します。",
+              "**GPSが弱い — 距離は一時停止中**は、位置が不確かすぎて距離に加算できないことを意味します。信号が改善するとすぐに距離の計測が再開します。",
+              "位置情報サービスをオンにし、このアプリのバッテリー節約をオフにしておくと、スマートフォンがバックグラウンドで記録を止めてしまうのを防げます。"
             ]
           },
           {
             "type": "note",
             "tone": "tip",
-            "text": "If the app closes mid-run, open it again: you are asked **Resume your run?** and can resume, finish now, or discard it."
+            "text": "ランの途中でアプリが終了した場合は、もう一度開いてください。**ランを再開しますか？**と表示され、再開する、今すぐ終了する、破棄する、のいずれかを選べます。"
           }
         ]
       },
       {
-        "heading": "What gets saved",
+        "heading": "保存される内容",
         "blocks": [
           {
             "type": "p",
-            "text": "When you stop, the run is saved on your phone first, then uploaded to your account. The summary shows **Synced** once it is safely in the cloud, or **Saved offline.** if you are signed out. A run that couldn't upload stays on the phone and retries later."
+            "text": "停止すると、ランはまずスマートフォンに保存され、その後アカウントにアップロードされます。クラウドに安全に保存されるとサマリーに**同期済み**と表示され、サインアウトしている場合は**オフラインで保存しました。**と表示されます。アップロードできなかったランはスマートフォンに残り、あとで再試行されます。"
           },
           {
             "type": "list",
             "items": [
-              "Distance, elapsed time, moving time and pace.",
-              "Your GPS track, which draws the map and splits.",
-              "Elevation, steps, and heart rate if you paired a heart-rate strap."
+              "距離、経過時間、移動時間、ペース。",
+              "GPSトラック（地図とスプリットの作成に使われます）。",
+              "標高、歩数、心拍数（心拍計ストラップをペアリングしている場合）。"
             ]
           },
           {
             "type": "p",
-            "text": "Who can see the run follows your **Default run privacy** setting, which you can change for any single run afterwards. To hide where you live, set up [[guide:privacy-zones|privacy zones]] before you share anything."
+            "text": "ランを誰が見られるかは**ランのデフォルトプライバシー**の設定に従い、あとからランごとに変更できます。住んでいる場所を隠すには、何かを共有する前に[[guide:privacy-zones|プライバシーゾーン]]を設定してください。"
           }
         ]
       }

@@ -81,6 +81,32 @@ test('a brace inside a regex, a template or a string does not shift the depth', 
   assert.equal(topLevelExports(FIXTURE).length, 10);
 });
 
+test('a regex after a keyword is a regex, so a quote inside it opens no string', () => {
+  // `return /^\p{L}['’ .-]*$/u` read as a division by `return`: its `'` opened a
+  // string that ran to the next quote in the file, and every export after it
+  // vanished from the stub (race-results-import/lib.ts lost 14).
+  const src = [
+    "export function namePart(s: string) { return /^[A-Za-z' .-]*$/u.test(s) ? s : null; }",
+    "export function kind(x: unknown) { if (typeof /'/ === 'object') return 1; return 2; }",
+    'export function ratio(a: number, b: number) { return a / b / 2; }',
+    "export const after = 'still read';",
+  ].join('\n');
+  assert.deepEqual(topLevelExports(src).map((e) => e.name), ['namePart', 'kind', 'ratio', 'after']);
+});
+
+test('every line-anchored declaration in a real module is read by the scanner', () => {
+  // An independent count, so a lexer slip that hides exports from BOTH the
+  // original and its stub cannot pass the shape check below by agreeing with
+  // itself.
+  const DECL = /^export (?:async )?(?:function\*?|const|let|class|interface|type|enum) ([A-Za-z_$][A-Za-z0-9_$]*)/gm;
+  for (const rel of sourceModules()) {
+    const src = readFileSync(join(REPO_ROOT, rel), 'utf8');
+    const found = new Set(topLevelExports(src).map((e) => e.name));
+    const missed = [...src.matchAll(DECL)].map((m) => m[1]).filter((name) => !found.has(name));
+    assert.deepEqual(missed, [], `${rel}: the scanner does not see these exports`);
+  }
+});
+
 test('an export nested inside a function body is not a top-level export', () => {
   const found = topLevelExports(FIXTURE).map((e) => e.name);
   assert.ok(!found.includes('1'), 'the object key `export: 1` was read as a declaration');

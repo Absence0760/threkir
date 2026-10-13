@@ -23,8 +23,29 @@ const IDENT = /[A-Za-z_$][A-Za-z0-9_$]*/y;
 
 // A `/` opens a regex literal only where a value cannot precede it. The last
 // significant character is enough to decide for this tree: after an
-// identifier, a literal, or a closing bracket it is division.
+// identifier, a literal, or a closing bracket it is division -- unless that
+// identifier is a keyword that takes an operand, as in `return /^\p{L}'/u`. Read
+// as division, that regex's quote opened a string that ran to the next quote in
+// the file and hid every export after it (race-results-import/lib.ts lost 14).
 const DIV_BEFORE = /[A-Za-z0-9_$)\]]/;
+const OPERAND_KEYWORDS = new Set([
+  'return', 'typeof', 'instanceof', 'in', 'of', 'new', 'delete', 'void', 'throw',
+  'case', 'do', 'else', 'yield', 'await',
+]);
+
+/**
+ * Whether the `/` at `i` follows a keyword that takes an operand.
+ * @param {string} src
+ * @param {number} i
+ */
+function afterOperandKeyword(src, i) {
+  let end = i;
+  while (end > 0 && /\s/.test(src[end - 1])) end--;
+  let start = end;
+  while (start > 0 && /[A-Za-z0-9_$]/.test(src[start - 1])) start--;
+  if (start > 0 && src[start - 1] === '.') return false;
+  return OPERAND_KEYWORDS.has(src.slice(start, end));
+}
 
 /**
  * Every top-level `export` in a TypeScript module, with the kind that decides
@@ -60,7 +81,7 @@ export function topLevelExports(src) {
       lastSignificant = '`';
       continue;
     }
-    if (c === '/' && !DIV_BEFORE.test(lastSignificant)) {
+    if (c === '/' && (!DIV_BEFORE.test(lastSignificant) || afterOperandKeyword(src, i))) {
       const end = skipRegex(src, i);
       if (end !== null) {
         i = end;

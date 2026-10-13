@@ -516,6 +516,10 @@ Deno.test('the confirm arm is handed the real key and the tier\'s one refund tra
 });
 
 Deno.test('the shared refund module stays SDK-free, because the webhook bundles it', () => {
+  // The positive first: both files are read as real source with real imports,
+  // so the negatives below cannot pass on an empty or stubbed file.
+  assert(REFUND.includes("from './lib.ts';"), 'events-cancel/refund.ts no longer imports its lib');
+  assert(COMPLETED.includes("from '../events-cancel/refund.ts';"), 'completed.ts no longer imports refund.ts');
   assert(
     !/^import(?! type)[^\n]*_shared\/stripe\.ts';$/m.test(REFUND),
     'events-cancel/refund.ts value-imports the Stripe SDK, which now lands in the webhook eszip',

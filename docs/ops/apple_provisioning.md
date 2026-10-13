@@ -578,13 +578,19 @@ are never touched). The live secret is therefore never more than a month old,
 and a missed run still leaves five months. Before writing it checks that the
 provider is enabled and that `com.threkir.web` is the **first** Client ID,
 because a secret signed for the Services ID is useless to any other; after
-writing it reads the field back and accepts either the secret or its SHA-256
-digest: the first live run (2026-10-11) wrote successfully but read back something
-other than the value, and a digest is how Supabase reports secrets elsewhere. The
-read-back is polled for up to a minute, because the config applies asynchronously
-and an immediate read can still show the previous secret. If it never matches, the
-error says whether the value stayed as it was (the write did not take) or changed
-to a form the check does not recognise, without printing either. Design: [decisions
+writing it reads the field back and requires it to hold the secret this run
+signed. The Management API never returns a secret setting: it returns
+HMAC-SHA256 of the value **keyed with the project ref**, as hex — the same digest
+the Supabase CLI computes to decide whether `config push` would change a secret.
+The check computes that keyed digest and compares exactly; a bare SHA-256 of the
+value, a digest keyed with another ref, or "it changed" are all refused. (The
+2026-10-11 runs failed because the check expected a bare SHA-256, although the
+field had changed after each write —
+[decisions § 1835](../architecture/decisions.md).)
+The read-back is polled for up to a minute, because an immediate read can still
+show the previous secret's digest. If it never matches, the error says whether
+the value stayed as it was (the write did not take) or changed to a form the
+check does not recognise, without printing either. Design: [decisions
 § 1824](../architecture/decisions.md).
 
 **One-time setup** (Settings → Environments → **New environment**):

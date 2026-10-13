@@ -260,14 +260,16 @@ export async function rotate({
  * change it. A bare SHA-256 of the value never matches. So the read-back
  * proves the write exactly when it is that keyed digest of the secret this run
  * signed; the plain value is accepted too, in case the API ever returns it.
+ * Without a project ref there is no project the read-back can be proof for, so
+ * that answers false rather than throwing out of the HMAC.
  * decisions.md § 1835.
  *
  * @param {unknown} readBack
  * @param {string} secret
- * @param {string} projectRef
+ * @param {string | undefined} projectRef
  */
 export function holdsSecret(readBack, secret, projectRef) {
-	if (typeof readBack !== 'string') return false;
+	if (typeof readBack !== 'string' || typeof projectRef !== 'string' || !projectRef.trim()) return false;
 	return readBack === secret || readBack.toLowerCase() === secretDigest(secret, projectRef);
 }
 

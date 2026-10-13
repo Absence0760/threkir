@@ -191,6 +191,18 @@ test('rotate fails closed, naming every missing secret, before any request', asy
 	assert.equal(api.calls.length, 0);
 });
 
+for (const ref of [undefined, '', '   ']) {
+	test(`rotate with SUPABASE_PROJECT_REF ${JSON.stringify(ref) ?? 'unset'} names it and sends no request at all`, async () => {
+		const api = fakeApi();
+		await assert.rejects(
+			rotate({ env: { ...ENV, SUPABASE_PROJECT_REF: ref }, fetcher: api.fetcher, nowS: NOW, sleep: noSleep }),
+			(err) => err instanceof Error && /unset: SUPABASE_PROJECT_REF\./.test(err.message),
+		);
+		assert.deepEqual(api.calls, [], 'no GET, and above all no PATCH, may go out without a project to address');
+		assert.equal(api.state.external_apple_secret, 'old');
+	});
+}
+
 test('rotate refuses to write when the web Services ID is not the first client id', async () => {
 	const api = fakeApi({ config: { external_apple_client_id: 'com.threkir.app' } });
 	await assert.rejects(rotate({ env: ENV, fetcher: api.fetcher, nowS: NOW, sleep: noSleep }), /first Client ID is not com\.threkir\.web/);
@@ -244,6 +256,16 @@ test('holdsSecret accepts the value or its keyed digest for this project and not
 	assert.equal(holdsSecret(createHmac('sha256', ref).update('other').digest('hex'), 's3cret', ref), false);
 	assert.equal(holdsSecret('******', 's3cret', ref), false);
 	assert.equal(holdsSecret(undefined, 's3cret', ref), false);
+});
+
+test('holdsSecret without a project ref answers false instead of throwing', () => {
+	const digest = createHmac('sha256', 'abcdefghijklmnopqrst').update('s3cret').digest('hex');
+	for (const ref of [undefined, '', '  ']) {
+		assert.doesNotThrow(() => holdsSecret(digest, 's3cret', ref));
+		assert.equal(holdsSecret(digest, 's3cret', ref), false);
+		assert.equal(holdsSecret('s3cret', 's3cret', ref), false);
+		assert.equal(holdsSecret(undefined, 's3cret', ref), false);
+	}
 });
 
 test('a failed read-back is described by shape, never by content', async () => {

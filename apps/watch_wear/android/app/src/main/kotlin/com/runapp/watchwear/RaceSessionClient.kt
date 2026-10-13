@@ -46,12 +46,15 @@ class RaceSessionClient(
     )
 
     /// The runner's chosen course for a race: `event_attendees.course_id` →
-    /// `event_courses` → the course route's polyline.
+    /// the `event_courses` row, whose finish point the server copied from
+    /// the route's last waypoint. Null [finishLat]/[finishLng] (a course with
+    /// no route) or a null [distanceM] leave the race to a manual finish.
     data class RaceCourse(
         val id: String,
         val name: String?,
         val distanceM: Double?,
-        val waypoints: List<com.runapp.watchwear.recording.RouteMath.LatLng>,
+        val finishLat: Double?,
+        val finishLng: Double?,
     )
 
     /// Return the most relevant armed/running race for the signed-in
@@ -99,10 +102,12 @@ class RaceSessionClient(
         return null
     }
 
-    /// The course the runner picked at RSVP, with the geometry the finish
-    /// detector needs. Null when they picked none or the course has no route.
-    /// Three hops rather than an embedded select, so nothing here depends on
-    /// a foreign-key name PostgREST would have to resolve.
+    /// The course the runner picked at RSVP. Null when they picked none.
+    /// Two hops rather than an embedded select, so nothing here depends on
+    /// a foreign-key name PostgREST would have to resolve. The route itself
+    /// is never read: a non-owner is served it privacy-clipped (moving the
+    /// finish) and a private route not at all, so the finish comes off the
+    /// course row and a course without one finishes by hand.
     suspend fun fetchCourse(
         accessToken: String,
         userId: String,
@@ -118,25 +123,12 @@ class RaceSessionClient(
                 accessToken,
             ),
         ) ?: return null
-        val course = parseCourse(
+        return parseCourse(
             get(
                 "$baseUrl/rest/v1/event_courses?id=eq.${enc(courseId)}" +
-                    "&select=id,route_id,name,distance_m",
+                    "&select=id,name,distance_m,finish_lat,finish_lng",
                 accessToken,
             ),
-        ) ?: return null
-        val routeId = course.routeId ?: return null
-        val route = parseRouteGeometry(
-            get(
-                "$baseUrl/rest/v1/routes?id=eq.${enc(routeId)}&select=waypoints,distance_m",
-                accessToken,
-            ),
-        ) ?: return null
-        return RaceCourse(
-            id = course.id,
-            name = course.name,
-            distanceM = course.distanceM ?: route.distanceM,
-            waypoints = route.waypoints,
         )
     }
 
@@ -266,18 +258,6 @@ class RaceSessionClient(
     private fun enc(s: String): String = encodeQueryValue(s)
 
     companion object {
-        internal data class CourseRow(
-            val id: String,
-            val routeId: String?,
-            val name: String?,
-            val distanceM: Double?,
-        )
-
-        internal data class RouteGeometry(
-            val waypoints: List<com.runapp.watchwear.recording.RouteMath.LatLng>,
-            val distanceM: Double?,
-        )
-
         private val parser = Json { ignoreUnknownKeys = true }
 
         private fun firstRow(body: String): JsonObject? =
@@ -287,31 +267,22 @@ class RaceSessionClient(
         internal fun parseCourseId(body: String): String? =
             firstRow(body)?.get("course_id")?.jsonPrimitive?.contentOrNull
 
+        /// One `event_courses` row. The finish point is both-or-neither in
+        /// the schema; a half pair read here is treated as no finish.
         @JvmStatic
-        internal fun parseCourse(body: String): CourseRow? {
+        internal fun parseCourse(body: String): RaceCourse? {
             val row = firstRow(body) ?: return null
             val id = row["id"]?.jsonPrimitive?.contentOrNull ?: return null
-            return CourseRow(
+            val lat = row["finish_lat"]?.jsonPrimitive?.doubleOrNull
+            val lng = row["finish_lng"]?.jsonPrimitive?.doubleOrNull
+            val hasFinish = lat != null && lng != null
+            return RaceCourse(
                 id = id,
-                routeId = row["route_id"]?.jsonPrimitive?.contentOrNull,
                 name = row["name"]?.jsonPrimitive?.contentOrNull,
                 distanceM = row["distance_m"]?.jsonPrimitive?.doubleOrNull,
+                finishLat = lat.takeIf { hasFinish },
+                finishLng = lng.takeIf { hasFinish },
             )
-        }
-
-        /// The same `{lat, lng}` waypoint shape `SupabaseClient.fetchRoutes`
-        /// reads. Null below two points: a single point is not a course.
-        @JvmStatic
-        internal fun parseRouteGeometry(body: String): RouteGeometry? {
-            val row = firstRow(body) ?: return null
-            val pts = (row["waypoints"] as? JsonArray)?.mapNotNull { el ->
-                val wp = el as? JsonObject ?: return@mapNotNull null
-                val lat = wp["lat"]?.jsonPrimitive?.doubleOrNull ?: return@mapNotNull null
-                val lng = wp["lng"]?.jsonPrimitive?.doubleOrNull ?: return@mapNotNull null
-                com.runapp.watchwear.recording.RouteMath.LatLng(lat, lng)
-            } ?: return null
-            if (pts.size < 2) return null
-            return RouteGeometry(pts, row["distance_m"]?.jsonPrimitive?.doubleOrNull)
         }
 
         /// The `event_results` upsert body. The race-mode columns are written

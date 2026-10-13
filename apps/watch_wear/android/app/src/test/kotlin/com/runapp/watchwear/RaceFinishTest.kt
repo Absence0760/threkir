@@ -117,12 +117,13 @@ class RaceFinishTest {
     }
 
     @Test
-    fun `forCourse needs a last point and a positive distance`() {
-        val pts = listOf(RouteMath.LatLng(51.0, 0.0), RouteMath.LatLng(51.5, -0.1))
-        assertNull(RaceFinishDetector.forCourse(emptyList(), 5000.0))
-        assertNull(RaceFinishDetector.forCourse(pts, null))
-        assertNull(RaceFinishDetector.forCourse(pts, 0.0))
-        val d = RaceFinishDetector.forCourse(pts, 5000.0)!!
+    fun `forCourse needs the course's finish point and a positive distance`() {
+        assertNull(RaceFinishDetector.forCourse(null, null, 5000.0))
+        assertNull(RaceFinishDetector.forCourse(finishLat, null, 5000.0))
+        assertNull(RaceFinishDetector.forCourse(finishLat, finishLng, null))
+        assertNull(RaceFinishDetector.forCourse(finishLat, finishLng, 0.0))
+        assertNull(RaceFinishDetector.forCourse(finishLat, finishLng, Double.NaN))
+        val d = RaceFinishDetector.forCourse(finishLat, finishLng, 5000.0)!!
         assertNull(d.offer(fix(3.0, 4990.0, 0)))
         assertTrue(d.isCandidate)
     }

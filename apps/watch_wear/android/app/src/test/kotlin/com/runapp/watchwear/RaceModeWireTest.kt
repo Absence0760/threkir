@@ -15,27 +15,48 @@ import org.junit.Test
 class RaceModeWireTest {
 
     @Test
-    fun `course id, course row and route geometry parse from PostgREST arrays`() {
+    fun `course id and course row parse from PostgREST arrays`() {
         assertEquals("c1", RaceSessionClient.parseCourseId("""[{"course_id":"c1"}]"""))
         assertNull(RaceSessionClient.parseCourseId("""[{"course_id":null}]"""))
         assertNull(RaceSessionClient.parseCourseId("[]"))
 
         val course = RaceSessionClient.parseCourse(
-            """[{"id":"c1","route_id":"r1","name":"10K","distance_m":10000}]""",
+            """[{"id":"c1","name":"10K","distance_m":10000,"finish_lat":51.1,"finish_lng":0.2}]""",
         )!!
-        assertEquals("r1", course.routeId)
+        assertEquals("c1", course.id)
         assertEquals(10_000.0, course.distanceM!!, 0.0)
-        assertNull(RaceSessionClient.parseCourse("""[{"route_id":"r1"}]"""))
+        assertEquals(51.1, course.finishLat!!, 0.0)
+        assertEquals(0.2, course.finishLng!!, 0.0)
+        assertNull(RaceSessionClient.parseCourse("""[{"name":"10K"}]"""))
+    }
 
-        val geo = RaceSessionClient.parseRouteGeometry(
-            """[{"waypoints":[{"lat":51.0,"lng":0.1},{"lat":51.1,"lng":0.2}],"distance_m":null}]""",
+    @Test
+    fun `a course with no finish point or a half pair parses with no finish`() {
+        val none = RaceSessionClient.parseCourse(
+            """[{"id":"c1","name":"10K","distance_m":10000,"finish_lat":null,"finish_lng":null}]""",
         )!!
-        assertEquals(2, geo.waypoints.size)
-        assertEquals(51.1, geo.waypoints.last().lat, 0.0)
-        assertNull(geo.distanceM)
-        assertNull(
-            RaceSessionClient.parseRouteGeometry("""[{"waypoints":[{"lat":51.0,"lng":0.1}]}]"""),
+        assertNull(none.finishLat)
+        assertNull(none.finishLng)
+        assertNull(RaceFinishDetector.forCourse(none.finishLat, none.finishLng, none.distanceM))
+        assertEquals(
+            RaceFinish.Outcome.MANUAL_FINISH,
+            RaceFinish.manualOutcome(9_000.0, none.distanceM),
         )
+
+        val half = RaceSessionClient.parseCourse(
+            """[{"id":"c1","distance_m":10000,"finish_lat":51.1,"finish_lng":null}]""",
+        )!!
+        assertNull(half.finishLat)
+        assertNull(half.finishLng)
+    }
+
+    @Test
+    fun `a course with no distance has no auto finish and finishes by hand`() {
+        val c = RaceSessionClient.parseCourse(
+            """[{"id":"c1","distance_m":null,"finish_lat":51.1,"finish_lng":0.2}]""",
+        )!!
+        assertNull(RaceFinishDetector.forCourse(c.finishLat, c.finishLng, c.distanceM))
+        assertEquals(RaceFinish.Outcome.MANUAL_FINISH, RaceFinish.manualOutcome(10.0, c.distanceM))
     }
 
     @Test
@@ -52,7 +73,7 @@ class RaceModeWireTest {
         status = "running",
         startedAtMs = 1_000_000L,
         eventTitle = "Club 10K",
-        course = RaceSessionClient.RaceCourse("c1", "10K", 10_000.0, emptyList()),
+        course = RaceSessionClient.RaceCourse("c1", "10K", 10_000.0, 51.1, 0.2),
     )
 
     @Test

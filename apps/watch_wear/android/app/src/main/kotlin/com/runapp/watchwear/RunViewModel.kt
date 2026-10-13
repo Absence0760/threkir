@@ -798,7 +798,8 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
             if (boundRace !== bound) return
             val withCourse = bound.copy(course = course)
             boundRace = withCourse
-            raceDetector = RaceFinishDetector.forCourse(course.waypoints, course.distanceM)
+            raceDetector =
+                RaceFinishDetector.forCourse(course.finishLat, course.finishLng, course.distanceM)
         }
     }
 
@@ -824,7 +825,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         boundRace = race
         boundRunId = runId
         raceDetector = race.course?.let {
-            RaceFinishDetector.forCourse(it.waypoints, it.distanceM)
+            RaceFinishDetector.forCourse(it.finishLat, it.finishLng, it.distanceM)
         }
         lastRaceFixEpochMs = Long.MIN_VALUE
         raceStopDecision = null

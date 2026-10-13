@@ -146,17 +146,20 @@ class RaceFinishDetector(
         ).also { finish = it }
 
     companion object {
-        /// Detector for a course polyline, or null when the course cannot be
-        /// judged: no points to finish at, or no distance to gate on. A null
-        /// detector leaves the race to the manual "Finish race" path.
+        /// Detector for a course's finish point, or null when the course
+        /// cannot be judged: no finish point (a course with no route), or no
+        /// distance to gate on. A null detector leaves the race to the manual
+        /// "Finish race" path.
         fun forCourse(
-            waypoints: List<RouteMath.LatLng>,
+            finishLat: Double?,
+            finishLng: Double?,
             courseDistanceM: Double?,
         ): RaceFinishDetector? {
-            val end = waypoints.lastOrNull() ?: return null
+            val lat = finishLat ?: return null
+            val lng = finishLng ?: return null
             val distance = courseDistanceM ?: return null
-            if (distance <= 0.0) return null
-            return RaceFinishDetector(end.lat, end.lng, distance)
+            if (!distance.isFinite() || distance <= 0.0) return null
+            return RaceFinishDetector(lat, lng, distance)
         }
     }
 }

@@ -171,6 +171,12 @@ class EventCourseView {
   final int sortOrder;
   final double? finishLat;
   final double? finishLng;
+
+  /// The route's first point, copied server-side and privacy-clipped like the
+  /// finish (migration `20270728000001`). Read only by the late-start check
+  /// (decisions § 1845); null when the row has none or it was clipped away.
+  final double? startLat;
+  final double? startLng;
   const EventCourseView({
     required this.id,
     required this.eventId,
@@ -180,6 +186,8 @@ class EventCourseView {
     required this.sortOrder,
     this.finishLat,
     this.finishLng,
+    this.startLat,
+    this.startLng,
   });
 
   static EventCourseView? fromJson(Map<String, dynamic> m) {
@@ -191,8 +199,11 @@ class EventCourseView {
     final sort = m['sort_order'];
     final lat = m['finish_lat'];
     final lng = m['finish_lng'];
-    // Both-or-neither in the schema; a half pair is no finish.
+    // Both-or-neither in the schema; a half pair is no point.
     final hasFinish = lat is num && lng is num;
+    final sLat = m['start_lat'];
+    final sLng = m['start_lng'];
+    final hasStart = sLat is num && sLng is num;
     return EventCourseView(
       id: id,
       eventId: eventId,
@@ -202,6 +213,8 @@ class EventCourseView {
       sortOrder: sort is num ? sort.toInt() : 0,
       finishLat: hasFinish ? lat.toDouble() : null,
       finishLng: hasFinish ? lng.toDouble() : null,
+      startLat: hasStart ? sLat.toDouble() : null,
+      startLng: hasStart ? sLng.toDouble() : null,
     );
   }
 }
@@ -1507,7 +1520,7 @@ class SocialService extends ChangeNotifier {
     final rows = await _c
         .from('event_courses')
         .select(
-            'id, event_id, route_id, name, distance_m, sort_order, finish_lat, finish_lng')
+            'id, event_id, route_id, name, distance_m, sort_order, finish_lat, finish_lng, start_lat, start_lng')
         .eq('event_id', eventId)
         .order('sort_order', ascending: true);
     return [

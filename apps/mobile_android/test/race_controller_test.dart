@@ -1023,6 +1023,63 @@ void main() {
       expect(c.lateStart, isFalse);
     });
 
+    test('a first fix over 200 m from the course start is flagged', () async {
+      // The start point comes off the course row, like the finish; with it
+      // the far-from-start arm § 1845 left dormant is live again.
+      const withStart = RaceCourse(
+        courseId: 'course-10k',
+        distanceM: 5000,
+        finishLat: 51.5,
+        finishLng: -0.1,
+        startLat: 51.5,
+        startLng: -0.1,
+      );
+      final c = RaceController(_FakeSocial());
+      await _attachRacing(c, gun, course: withStart);
+      _offer(c, -300, gun.add(const Duration(seconds: 30)), 0);
+      expect(c.lateStart, isTrue);
+    });
+
+    test('a first fix near the course start, on time, is not flagged',
+        () async {
+      const withStart = RaceCourse(
+        courseId: 'course-10k',
+        distanceM: 5000,
+        finishLat: 51.5,
+        finishLng: -0.1,
+        startLat: 51.5,
+        startLng: -0.1,
+      );
+      final c = RaceController(_FakeSocial());
+      await _attachRacing(c, gun, course: withStart);
+      _offer(c, -150, gun.add(const Duration(seconds: 30)), 0);
+      expect(c.lateStart, isFalse);
+    });
+
+    test('a start point that lands after the first fix is still checked',
+        () async {
+      final c = RaceController(_FakeSocial());
+      final slow = Completer<RaceCourse?>();
+      c.courseLoader = (_, _) => slow.future;
+      c.attachRecorder(
+        eventId: 'event-1',
+        instance: DateTime.utc(2026, 5, 22, 18),
+        startedAt: gun,
+        recordingStartedAt: gun,
+      );
+      _offer(c, -400, gun.add(const Duration(seconds: 20)), 0);
+      expect(c.lateStart, isFalse, reason: 'no start point known yet');
+
+      slow.complete(const RaceCourse(
+        courseId: 'course-10k',
+        distanceM: 5000,
+        startLat: 51.5,
+        startLng: -0.1,
+      ));
+      await pumpEventQueue();
+      expect(c.lateStart, isTrue);
+    });
+
     test('a first fix on the start line, on time, is not flagged', () async {
       final c = RaceController(_FakeSocial());
       await _attachRacing(c, gun);
@@ -1303,6 +1360,47 @@ void main() {
       })!;
       expect(both.finishLat, 51.5);
       expect(both.finishLng, -0.1);
+    });
+
+    test('the start pair parses like the finish pair', () {
+      final v = EventCourseView.fromJson({
+        'id': 'c1',
+        'event_id': 'e1',
+        'name': '10K',
+        'start_lat': 51.4,
+        'start_lng': -0.2,
+      })!;
+      expect(v.startLat, 51.4);
+      expect(v.startLng, -0.2);
+      final half = EventCourseView.fromJson({
+        'id': 'c1',
+        'event_id': 'e1',
+        'name': '10K',
+        'start_lat': 51.4,
+      })!;
+      expect(half.startLat, isNull);
+      expect(half.startLng, isNull);
+    });
+
+    test('the course row\'s start point reaches the late-start check',
+        () async {
+      const withStart = EventCourseView(
+        id: 'course-10k',
+        eventId: 'event-1',
+        routeId: 'route-private',
+        name: '10K',
+        distanceM: 5000,
+        sortOrder: 0,
+        finishLat: 51.5,
+        finishLng: -0.1,
+        startLat: 51.5,
+        startLng: -0.1,
+      );
+      final c = await attachWithDefaultLoader(
+          _FakeSocial(courses: const [withStart]));
+      expect(c.course!.hasStart, isTrue);
+      _offer(c, -250, gun.add(const Duration(seconds: 10)), 0);
+      expect(c.lateStart, isTrue);
     });
   });
 

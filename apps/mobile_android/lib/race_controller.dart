@@ -173,6 +173,8 @@ class RaceCourse {
     required this.distanceM,
     this.finishLat,
     this.finishLng,
+    this.startLat,
+    this.startLng,
   });
 
   /// Null for an event with no `event_courses` rows, raced on the event's
@@ -181,8 +183,11 @@ class RaceCourse {
   final double? distanceM;
   final double? finishLat;
   final double? finishLng;
+  final double? startLat;
+  final double? startLng;
 
   bool get hasFinish => finishLat != null && finishLng != null;
+  bool get hasStart => startLat != null && startLng != null;
 }
 
 /// Which of an event's [courses] a racer runs: the one they picked at RSVP,
@@ -291,6 +296,8 @@ class RaceController extends ChangeNotifier {
   bool _raceEnded = false;
   bool _lateStart = false;
   bool _firstFixSeen = false;
+  double? _firstFixLat;
+  double? _firstFixLng;
 
   /// Device-to-server clock offset, sampled off every ping's server-stamped
   /// `at` (decisions § 1843).
@@ -303,10 +310,11 @@ class RaceController extends ChangeNotifier {
   /// the runner DNF; nothing is submitted from here.
   bool get raceEnded => _raceEnded;
 
-  /// The recording started more than five minutes after GO (the
-  /// far-from-start arm is dormant: no start point on the course row,
-  /// decisions § 1845). Surfaced on the run screen; not yet carried on the
-  /// result (decisions § 1843).
+  /// The recording started more than five minutes after GO, or its first
+  /// fix was more than 200 m from the course's start point — measured only
+  /// when the course row carries one, never against the route (decisions
+  /// § 1845). Surfaced on the run screen; not yet carried on the result
+  /// (decisions § 1843).
   bool get lateStart => _lateStart;
 
   RaceCourse? get course => _course;
@@ -612,6 +620,8 @@ class RaceController extends ChangeNotifier {
     _raceEnded = false;
     _lateStart = false;
     _firstFixSeen = false;
+    _firstFixLat = null;
+    _firstFixLng = null;
     unawaited(_resolveCourse(++_attachGeneration, eventId, instance));
   }
 
@@ -627,6 +637,8 @@ class RaceController extends ChangeNotifier {
     _raceEnded = false;
     _lateStart = false;
     _firstFixSeen = false;
+    _firstFixLat = null;
+    _firstFixLng = null;
     _pingTimer?.cancel();
     _pingTimer = null;
   }
@@ -672,6 +684,7 @@ class RaceController extends ChangeNotifier {
             courseDistanceM: distance,
           )
         : null;
+    _evaluateLateStart();
   }
 
   /// The finish point comes off the course row, never the route: a
@@ -691,6 +704,8 @@ class RaceController extends ChangeNotifier {
         distanceM: mine.distanceM,
         finishLat: mine.finishLat,
         finishLng: mine.finishLng,
+        startLat: mine.startLat,
+        startLng: mine.startLng,
       );
     }
     return RaceCourse(
@@ -709,8 +724,10 @@ class RaceController extends ChangeNotifier {
     required DateTime at,
   }) {
     if (!isHosting || _outcome != null || _raceEnded) return null;
-    if (!_firstFixSeen) {
+    if (!_firstFixSeen && lat.isFinite && lng.isFinite) {
       _firstFixSeen = true;
+      _firstFixLat = lat;
+      _firstFixLng = lng;
       _evaluateLateStart();
     }
     final finish = _detector?.offer(
@@ -725,15 +742,23 @@ class RaceController extends ChangeNotifier {
     return finish;
   }
 
+  /// Runs on the first fix and again when the course lands, whichever is
+  /// second: the course load is async and may finish after the first fix.
   void _evaluateLateStart() {
     final gun = _gunAt;
     final began = _recordingStartedAt;
-    if (_lateStart || gun == null || began == null) return;
-    // No first-fix-from-start distance: the course row carries no start
-    // point and the route is not read (decisions § 1845).
+    if (_lateStart || !_firstFixSeen || gun == null || began == null) return;
+    final course = _course;
+    final lat = _firstFixLat;
+    final lng = _firstFixLng;
+    final fromStart = course != null && course.hasStart &&
+            lat != null && lng != null
+        ? raceDistanceM(lat, lng, course.startLat!, course.startLng!)
+        : null;
     if (raceStartFlagged(
       gunAt: gun,
       recordingStartedAt: clockOffset.toServer(began),
+      firstFixFromStartM: fromStart,
     )) {
       _lateStart = true;
       notifyListeners();

@@ -36,6 +36,7 @@ RunRow _row({dynamic metadata, String activityType = 'run', double? elevationGai
       distanceM: 5000,
       source: 'app',
       isDnf: false,
+      followersOnly: false,
       metadata: metadata,
       activityType: activityType,
       elevationGainM: elevationGainM,

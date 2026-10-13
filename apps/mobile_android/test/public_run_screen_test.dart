@@ -42,6 +42,7 @@ RunRow _run() => RunRow(
       source: 'app',
       activityType: 'run',
       isDnf: false,
+      followersOnly: false,
     );
 
 /// A 100-hour, 240-mile ultra: the widest the stat cells ever get
@@ -55,6 +56,7 @@ RunRow _ultraRun() => RunRow(
       source: 'app',
       activityType: 'run',
       isDnf: false,
+      followersOnly: false,
     );
 
 /// The stub row `beginLiveBroadcast` upserts: 0 duration, 0 distance, public,
@@ -68,6 +70,7 @@ RunRow _liveStub() => RunRow(
       source: 'app',
       activityType: 'run',
       isDnf: false,
+      followersOnly: false,
     );
 
 UserProfileRow _author(String displayName) => UserProfileRow(
@@ -201,6 +204,7 @@ void main() {
         source: 'app',
         activityType: 'run',
         isDnf: false,
+        followersOnly: false,
         concludedAt: DateTime(2026, 6, 1, 9),
       );
       expect(isLiveBroadcast(concluded), isFalse);

@@ -45,6 +45,7 @@ RunFeedEntry _runEntry({
         source: 'manual',
         activityType: 'run',
         isDnf: false,
+        followersOnly: false,
         isPublic: true,
       ),
       author: _author(id: authorId, name: authorName),

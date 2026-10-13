@@ -116,6 +116,7 @@ RunRow runRowFromRun(
   required String userId,
   String? trackUrl,
   bool? isPublic,
+  bool followersOnly = false,
   DateTime? createdAt,
 }) {
   final meta = run.metadata;
@@ -132,6 +133,7 @@ RunRow runRowFromRun(
     createdAt: createdAt,
     trackUrl: trackUrl,
     isPublic: isPublic,
+    followersOnly: followersOnly,
     activityType: (meta?[MetadataKeys.activityType] as String?) ?? 'run',
     eventId: runPromotedId(meta, MetadataKeys.eventId),
     isDnf: meta?[MetadataKeys.isDnf] == true,

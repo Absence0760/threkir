@@ -189,4 +189,12 @@ void main() {
       expect(body['user_id'], 'auth-user-id');
     });
   });
+
+  test('a new route body leaves followers_only to its server default', () {
+    // A new route starts at Only me; the audience is chosen afterwards. The
+    // column is NOT NULL, so the row always holds a value the null strip
+    // would keep, and it is dropped by name instead.
+    final body = ApiClient.buildSaveRouteBody(_route(), 'auth-user-id');
+    expect(body.containsKey('followers_only'), isFalse);
+  });
 }

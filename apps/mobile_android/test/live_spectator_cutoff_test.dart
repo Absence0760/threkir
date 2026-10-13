@@ -62,6 +62,7 @@ RunRow _liveRun(String routeId) => RunRow(
   source: 'app',
   activityType: 'run',
   isDnf: false,
+  followersOnly: false,
   routeId: routeId,
 );
 
@@ -339,6 +340,7 @@ void main() {
           source: 'app',
           activityType: 'run',
           isDnf: false,
+          followersOnly: false,
         ),
         pings: [_ping(at: DateTime.now(), distanceM: 2000, elapsedS: 600)],
       );

@@ -37,6 +37,7 @@ RunRow _liveRun() => RunRow(
   source: 'app',
   activityType: 'run',
   isDnf: false,
+  followersOnly: false,
 );
 
 Map<String, dynamic> _ping({

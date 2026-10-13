@@ -795,9 +795,10 @@ class RaceController extends ChangeNotifier {
   /// the line somewhere with no signal. The result is queued to disk on
   /// failure instead and replayed by [drainPendingResults].
   ///
-  /// [durationS] is the recording's own duration — the chip time. The
-  /// submitted `duration_s` is the gun time whenever the race had a GO
-  /// (decisions § 1843). A race the host ended first submits nothing: the
+  /// Chip time runs from this recording's Start to the finish instant on the
+  /// device clock, pauses included; [durationS] stands in only when there is
+  /// no finish instant (a DNF). The submitted `duration_s` is the gun time
+  /// whenever the race had a GO, else the chip time (decisions § 1843). A race the host ended first submits nothing: the
   /// server has already marked this runner DNF.
   Future<void> submitResult({
     required String runId,
@@ -814,18 +815,22 @@ class RaceController extends ChangeNotifier {
       return;
     }
     final finishAt = outcome.finishAt;
+    final began = _recordingStartedAt;
     final gun = finishAt == null ? null : gunTimeTo(finishAt);
+    final chip = finishAt != null && began != null
+        ? raceChipTimeS(finishAtDevice: finishAt, recordingStartedAt: began)
+        : null;
     final result = PendingRaceResult(
       eventId: eid,
       instanceStart: inst,
       runId: runId,
-      durationS: gun ?? durationS,
+      durationS: gun ?? chip ?? durationS,
       distanceM: distanceM,
       finisherStatus: outcome.finisherStatus,
       courseId: _course?.courseId,
       gunTimeS: gun,
-      chipTimeS: durationS,
-      finishMethod: outcome.method.wire,
+      chipTimeS: chip ?? durationS,
+      finishMethod: outcome.method?.wire,
     );
     try {
       await _submitPending(result);

@@ -8,7 +8,8 @@
 ///
 /// Kotlin twin: `apps/watch_wear/android/app/src/main/kotlin/com/runapp/watchwear/RaceFinish.kt`
 /// (the `race_finish` pair in `docs/architecture/parity_pairs.md`). Keep the
-/// constants, the rules and the test cases in lockstep.
+/// constants, the edge rules (`<=` 30 m, `>=` 90%, strictly-farther
+/// finalises) and the test cases in lockstep.
 library;
 
 import 'dart:math' as math;
@@ -21,15 +22,6 @@ const double kRaceFinishZoneM = 30;
 /// out-and-back course — where start and finish are the same place — from
 /// finishing the race in its first second.
 const double kRaceFinishMinCoverage = 0.9;
-
-/// How far past the closest approach a fix must read before the approach is
-/// over. A bare "distance went up" would let one jittery fix finalise the
-/// finish a few metres early, while the runner was still closing.
-const double kRaceFinishRecedeM = 5;
-
-/// Consecutive receding fixes needed to finalise. Two, so a single outlier
-/// fix cannot end an approach that the next fix shows was still closing.
-const int kRaceFinishRecedeFixes = 2;
 
 /// A recording that starts this long after GO is flagged as a late start.
 const Duration kRaceLateStartAfter = Duration(minutes: 5);
@@ -90,33 +82,28 @@ bool raceCoverageMet(double coveredM, double? courseDistanceM) {
 
 /// Closest-approach finish detection over a stream of fixes.
 ///
-/// A fix is a candidate when it is within [zoneM] of the finish AND its
-/// covered distance clears the coverage gate. The best candidate is the
-/// closest one (the earlier on a tie). The finish is finalised — and its
-/// time is the best candidate's — once [recedeFixes] consecutive fixes read
-/// at least [recedeM] further from the finish than the best, which also
-/// covers the runner leaving the zone. Fixes that jitter out of the zone and
-/// back without receding that far keep the approach open.
+/// A fix is a candidate when it is within [zoneM] of the finish (inclusive)
+/// AND its covered distance clears the coverage gate (inclusive). The best
+/// candidate is the closest one (the earlier on a tie). Once there is one,
+/// the first fix that is strictly farther from the finish than the best, or
+/// that no longer qualifies, finalises the finish at the best candidate's
+/// time. A fix that jitters out of the zone therefore ends the approach on
+/// the closest fix so far.
 class RaceFinishDetector {
   RaceFinishDetector({
     required this.finishLat,
     required this.finishLng,
     required this.courseDistanceM,
     this.zoneM = kRaceFinishZoneM,
-    this.recedeM = kRaceFinishRecedeM,
-    this.recedeFixes = kRaceFinishRecedeFixes,
   });
 
   final double finishLat;
   final double finishLng;
   final double courseDistanceM;
   final double zoneM;
-  final double recedeM;
-  final int recedeFixes;
 
   RaceFix? _best;
   double _bestD = double.infinity;
-  int _receding = 0;
   RaceFinish? _result;
 
   /// The finalised finish, once there is one.
@@ -138,18 +125,13 @@ class RaceFinishDetector {
       return null;
     }
     final d = raceDistanceM(fix.lat, fix.lng, finishLat, finishLng);
+    final qualifies =
+        d <= zoneM && raceCoverageMet(fix.coveredM, courseDistanceM);
     final best = _best;
-    if (best != null && d >= _bestD + recedeM) {
-      _receding++;
-      if (_receding >= recedeFixes) return _finalise(best);
-      return null;
-    }
-    _receding = 0;
-    if (d <= zoneM && raceCoverageMet(fix.coveredM, courseDistanceM)) {
-      if (best == null || d < _bestD) {
-        _best = fix;
-        _bestD = d;
-      }
+    if (best != null && (!qualifies || d > _bestD)) return _finalise(best);
+    if (qualifies && (best == null || d < _bestD)) {
+      _best = fix;
+      _bestD = d;
     }
     return null;
   }
@@ -215,14 +197,27 @@ class ServerClockOffset {
 }
 
 /// Seconds from GO ([gunAt], server clock) to [finishAtDevice] (device
-/// clock), correcting the device instant by [clockOffset]. Never negative.
-int raceGunTimeS({
+/// clock), correcting the device instant by [clockOffset]. Null when the
+/// result would be negative: a gun time before GO is a clock fault, not a
+/// time, and is omitted rather than clamped.
+int? raceGunTimeS({
   required DateTime finishAtDevice,
   required DateTime gunAt,
   Duration clockOffset = Duration.zero,
 }) {
-  final s = finishAtDevice.add(clockOffset).difference(gunAt).inSeconds;
-  return s < 0 ? 0 : s;
+  final ms =
+      finishAtDevice.add(clockOffset).difference(gunAt).inMilliseconds;
+  return ms < 0 ? null : ms ~/ 1000;
+}
+
+/// Seconds from the runner's own Start to [finishAtDevice], both on the
+/// device clock, pauses included. Null when negative.
+int? raceChipTimeS({
+  required DateTime finishAtDevice,
+  required DateTime recordingStartedAt,
+}) {
+  final ms = finishAtDevice.difference(recordingStartedAt).inMilliseconds;
+  return ms < 0 ? null : ms ~/ 1000;
 }
 
 /// How a result was recorded. `host` is written server-side only.
@@ -245,7 +240,9 @@ class RaceOutcome {
 
   /// `finished` or `dnf`.
   final String finisherStatus;
-  final RaceFinishMethod method;
+
+  /// Null for a DNF: no finish was recorded, so there is no method.
+  final RaceFinishMethod? method;
 
   /// Device-clock instant the gun time is measured to; null for a DNF.
   final DateTime? finishAt;
@@ -278,7 +275,7 @@ RaceOutcome raceStopOutcome({
   }
   return const RaceOutcome(
     finisherStatus: 'dnf',
-    method: RaceFinishMethod.manual,
+    method: null,
     finishAt: null,
   );
 }

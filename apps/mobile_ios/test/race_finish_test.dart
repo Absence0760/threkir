@@ -64,6 +64,13 @@ void main() {
       expect(finish.coveredM, 4998);
     });
 
+    test('the first strictly farther fix finalises', () {
+      final d = _detector();
+      expect(_run(d, [_fix(-20, 0, 4980), _fix(-4, 3, 4996)]), isNull);
+      final finish = d.offer(_fix(5, 5, 5005));
+      expect(finish!.at, _t0.add(const Duration(seconds: 3)));
+    });
+
     test('nothing finalises while the runner is still closing', () {
       final d = _detector();
       expect(
@@ -79,6 +86,18 @@ void main() {
       expect(d.settle(), isNull);
     });
 
+    test('a fix exactly on the zone edge counts', () {
+      final edge = _fix(-30, 0, 4970);
+      final d = RaceFinishDetector(
+        finishLat: _finishLat,
+        finishLng: _finishLng,
+        courseDistanceM: 5000,
+        zoneM: raceDistanceM(edge.lat, edge.lng, _finishLat, _finishLng),
+      );
+      d.offer(edge);
+      expect(d.candidate!.at, _t0);
+    });
+
     test('settle() finalises an open approach on its closest fix', () {
       final d = _detector();
       _run(d, [_fix(-20, 0, 4980), _fix(-3, 4, 4997)]);
@@ -89,59 +108,45 @@ void main() {
           reason: 'a settled detector takes no more fixes');
     });
 
-    test('a tie keeps the earlier fix', () {
+    test('a tie keeps the earlier fix and does not finalise', () {
       final d = _detector();
-      final finish = _run(d, [
-        _fix(-5, 0, 4995),
-        _fix(-5, 2, 4995),
-        _fix(15, 4, 5015),
-        _fix(25, 6, 5025),
-      ]);
+      expect(_run(d, [_fix(-5, 0, 4995), _fix(-5, 2, 4995)]), isNull);
+      final finish = d.offer(_fix(15, 4, 5015));
       expect(finish!.at, _t0);
     });
   });
 
   group('GPS jitter in and out of the zone', () {
-    test('jitter across the zone edge keeps the approach open', () {
+    test('jitter outside the zone before reaching it changes nothing', () {
       final d = _detector();
       final finish = _run(d, [
-        _fix(-29, 0, 4971),
-        _fix(-33, 1, 4972),
-        _fix(-27, 2, 4974),
-        _fix(-31, 3, 4975),
+        _fix(-33, 0, 4967),
+        _fix(-31, 1, 4969),
+        _fix(-40, 2, 4970),
+        _fix(-29, 3, 4971),
         _fix(-14, 7, 4986),
         _fix(-3, 10, 4997),
-        _fix(-6, 11, 4999),
-        _fix(-1, 12, 5000),
-        _fix(8, 14, 5008),
-        _fix(12, 16, 5012),
+        _fix(4, 12, 5004),
       ]);
-      expect(finish!.at, _t0.add(const Duration(seconds: 12)));
+      expect(finish!.at, _t0.add(const Duration(seconds: 10)));
     });
 
-    test('a single outlier fix does not finalise the approach', () {
+    test('a fix jittering out of the zone ends the approach on the best so far',
+        () {
       final d = _detector();
       final finish = _run(d, [
         _fix(-20, 0, 4980),
         _fix(-12, 2, 4988),
-        _fix(-70, 3, 4990),
+        _fix(-31, 3, 4990),
         _fix(-4, 4, 4996),
-        _fix(10, 7, 5010),
-        _fix(15, 8, 5015),
       ]);
-      expect(finish!.at, _t0.add(const Duration(seconds: 4)),
-          reason: 'one far fix between two closing fixes is noise');
+      expect(finish!.at, _t0.add(const Duration(seconds: 2)));
     });
 
-    test('a receding run that returns resets the count', () {
+    test('jitter inside the zone that is not farther keeps it open', () {
       final d = _detector();
       expect(
-          _run(d, [
-            _fix(-10, 0, 4990),
-            _fix(-20, 1, 4990),
-            _fix(-8, 2, 4992),
-            _fix(-25, 3, 4992),
-          ]),
+          _run(d, [_fix(-10, 0, 4990), _fix(-10, 1, 4990), _fix(-6, 2, 4994)]),
           isNull);
       expect(d.candidate!.at, _t0.add(const Duration(seconds: 2)));
     });
@@ -297,12 +302,32 @@ void main() {
           1193);
     });
 
-    test('is never negative', () {
+    test('is omitted, not clamped, when negative', () {
       expect(
           raceGunTimeS(
               finishAtDevice: gun.subtract(const Duration(seconds: 5)),
               gunAt: gun),
-          0);
+          isNull);
+    });
+  });
+
+  group('raceChipTimeS', () {
+    final start = DateTime.utc(2026, 10, 13, 9, 2);
+
+    test('runs from the runner\'s Start to the finish, pauses included', () {
+      expect(
+          raceChipTimeS(
+              finishAtDevice: start.add(const Duration(minutes: 21, seconds: 3)),
+              recordingStartedAt: start),
+          1263);
+    });
+
+    test('is omitted when negative', () {
+      expect(
+          raceChipTimeS(
+              finishAtDevice: start.subtract(const Duration(seconds: 1)),
+              recordingStartedAt: start),
+          isNull);
     });
   });
 
@@ -334,6 +359,7 @@ void main() {
           candidate: null, coveredM: 4400, courseDistanceM: 5000, now: now);
       expect(o.finisherStatus, 'dnf');
       expect(o.finishAt, isNull);
+      expect(o.method, isNull, reason: 'a DNF has no finish method');
     });
 
     test('the method wire values match the result CHECK', () {

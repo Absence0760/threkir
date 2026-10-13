@@ -641,18 +641,18 @@ void main() {
       expect(_offer(c, -1, t.add(const Duration(seconds: 4)), 4999), isNull);
       expect(c.stopNeedsRaceChoice, isFalse,
           reason: 'a stop mid-approach is the finish, not a pause');
-      expect(_offer(c, 10, t.add(const Duration(seconds: 6)), 5010), isNull);
-      final fin = _offer(c, 20, t.add(const Duration(seconds: 8)), 5020);
+      final fin = _offer(c, 10, t.add(const Duration(seconds: 6)), 5010);
       expect(fin, isNotNull);
       expect(c.outcome!.method, RaceFinishMethod.auto);
 
-      await c.submitResult(runId: 'run-1', durationS: 1490, distanceM: 5020);
+      await c.submitResult(runId: 'run-1', durationS: 1490, distanceM: 5010);
 
       final r = social.submitted.single;
       expect(r.gunTimeS, 25 * 60 + 4);
       expect(r.durationS, 25 * 60 + 4,
           reason: 'duration_s is the gun time when the race had a GO');
-      expect(r.chipTimeS, 1490);
+      expect(r.chipTimeS, 25 * 60 + 4,
+          reason: 'chip runs Start to the finish fix, not to the stop');
       expect(r.finishMethod, 'auto');
       expect(r.finisherStatus, 'finished');
       expect(r.courseId, 'course-10k');
@@ -685,7 +685,7 @@ void main() {
       expect(r.finisherStatus, 'finished');
       expect(r.finishMethod, 'manual');
       expect(r.gunTimeS, 1800);
-      expect(r.chipTimeS, 1700);
+      expect(r.chipTimeS, 1800);
     });
 
     test('Finish race under 90% covered is a DNF', () async {
@@ -700,6 +700,7 @@ void main() {
       final r = social.submitted.single;
       expect(r.finisherStatus, 'dnf');
       expect(r.gunTimeS, isNull);
+      expect(r.finishMethod, isNull);
       expect(r.durationS, 1700);
     });
 
@@ -780,7 +781,7 @@ void main() {
       await c.drainPendingResults();
       final r = social.submitted.single;
       expect(r.gunTimeS, 1200);
-      expect(r.chipTimeS, 1190);
+      expect(r.chipTimeS, 1200);
       expect(r.finishMethod, 'manual');
       expect(r.courseId, 'course-10k');
     });

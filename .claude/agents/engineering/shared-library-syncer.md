@@ -163,6 +163,14 @@ The mobile_android side is the byte-identical twin source — `apps/mobile_ios/`
 
 Not a pair: `apps/mobile_android/lib/exercise_records.dart` (per-exercise current bests) has **no** web twin — the web records surface moved to the server-side `gym_exercise_records()` RPC (migration `20261224_001`, commit `525e47ef`), so the web `gym/exercise_records.ts` helper was retired. The Dart helper stays as mobile's own client-side implementation until mobile also moves to the RPC. Do not re-add it to the table above.
 
+## Dart↔Kotlin pairs (mobile ↔ Wear OS)
+
+Not web↔mobile, so not in the table above, which `scripts/check_parity_pair_registry.mjs` reads as TS↔Dart only. Check these the same way when either side is touched — algorithm, edge cases, constants, test cases.
+
+| Mobile (Dart) | Wear OS (Kotlin) | Mirror test pair |
+|---|---|---|
+| `apps/mobile_android/lib/race_finish.dart` | `apps/watch_wear/android/app/src/main/kotlin/com/runapp/watchwear/RaceFinish.kt` | `test/race_finish_test.dart` ↔ `apps/watch_wear/android/app/src/test/kotlin/com/runapp/watchwear/RaceFinishTest.kt` |
+
 ## When you fire
 
 - After any edit to a file in the table above.

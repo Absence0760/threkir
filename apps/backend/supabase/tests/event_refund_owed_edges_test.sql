@@ -98,6 +98,7 @@ select throws_ok(
   '42501', null,
   'a signed-in buyer calling the worklist is refused');
 reset role;
+set local "request.jwt.claims" = '';
 
 -- ── the cap ──
 insert into event_orders (id, event_id, instance_start, buyer_user_id, host_user_id,

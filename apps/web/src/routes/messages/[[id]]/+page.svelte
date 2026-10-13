@@ -54,10 +54,19 @@
 		void loadThreads();
 	});
 
+	// When each conversation was last marked read. A thread-list fetch that
+	// started before that answers with the count from before the mark, and
+	// assigning it as-is put the badge back on the conversation just opened.
+	const markedReadAt = new Map<string, number>();
+
 	async function loadThreads() {
 		threadsError = false;
+		const startedAt = Date.now();
 		try {
-			threads = await fetchDmThreads();
+			const rows = await fetchDmThreads();
+			threads = rows.map((t) =>
+				(markedReadAt.get(t.partnerId) ?? -Infinity) >= startedAt ? { ...t, unread: 0 } : t
+			);
 		} catch {
 			threadsError = true;
 		}
@@ -101,6 +110,7 @@
 		}
 		try {
 			await markDmThreadRead(id);
+			markedReadAt.set(id, Date.now());
 			// Zero the unread badge locally without a full refetch.
 			threads = threads.map((t) => (t.partnerId === id ? { ...t, unread: 0 } : t));
 		} catch {

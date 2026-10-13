@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { activeFormatLocale } from '$lib/format/time';
 	import { lengthLimit } from '$lib/core/column_limits';
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { createTrainingPlan, fetchActivePlanOverview, fetchRuns } from '$lib/core/data';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import MetricLabel from '$lib/components/MetricLabel.svelte';
@@ -136,9 +136,10 @@
 		initialWeeks,
 	}: Props = $props();
 
-	let name = $state(initialName ?? '');
-	let goalEvent = $state<GoalEvent>(initialGoalEvent ?? 'distance_half');
-	let startDate = $state(initialStartDate ?? defaultStart());
+	// The initial* props seed the form once; the fields are edited locally after.
+	let name = $state(untrack(() => initialName ?? ''));
+	let goalEvent = $state<GoalEvent>(untrack(() => initialGoalEvent ?? 'distance_half'));
+	let startDate = $state(untrack(() => initialStartDate ?? defaultStart()));
 	let daysPerWeek = $state(4);
 
 	let targetHours = $state<number | null>(null);
@@ -153,9 +154,9 @@
 	// reflects current fitness; otherwise we fall back to goal-based paces.
 	let recent5kConfirmed = $state(false);
 	// Beginner / return-to-run: generate a C25K-style walk-run plan (persona #22).
-	let beginnerWalkRun = $state(initialBeginnerWalkRun ?? false);
+	let beginnerWalkRun = $state(untrack(() => initialBeginnerWalkRun ?? false));
 
-	let weekOverride = $state<number | null>(initialWeeks ?? null);
+	let weekOverride = $state<number | null>(untrack(() => initialWeeks ?? null));
 	let busy = $state(false);
 	let error = $state<string | null>(null);
 

@@ -6,7 +6,7 @@ import { USER_A, USER_C_PRO } from '../fixtures/users';
 
 /**
  * /clubs/join/[token] on a club that requires the activity-risk
- * acknowledgement (§ R7CLUBS-1). `join_club_by_token` refuses the bare
+ * acknowledgement (§ 1864). `join_club_by_token` refuses the bare
  * token with `activity_waiver_required`, so the page must stop on an
  * acknowledgement step instead of an error, keep Continue disabled until the
  * box is ticked, and only then admit the member with the acknowledgement

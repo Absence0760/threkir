@@ -278,7 +278,7 @@
 		path.startsWith('/fundraisers/') ||
 		// The help centre is static guide data with no per-user read, and the
 		// public live-event page links a signed-out spectator into it
-		// (decisions § R7CLUBS-3). Still noindex + robots-disallowed.
+		// (decisions § 1866). Still noindex + robots-disallowed.
 		path === '/help' ||
 		path.startsWith('/help/');
 

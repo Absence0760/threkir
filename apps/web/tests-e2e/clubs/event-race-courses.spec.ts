@@ -438,7 +438,7 @@ test.describe('/clubs/[slug]/events/[id] — race courses (organiser)', () => {
 		const panel = page.locator('.race-panel');
 		await expect(panel.getByRole('button', { name: 'End race' })).toBeVisible({ timeout: 10_000 });
 		// A started race is ended, never cancelled: the server refuses running
-		// -> cancelled, and the phone offers the same (decisions § R7RACE-3).
+		// -> cancelled, and the phone offers the same (decisions § 1863).
 		await expect(panel.getByRole('button', { name: /Cancel/ })).toHaveCount(0);
 		await page.getByRole('button', { name: 'End race' }).click();
 		const dialog = page.getByRole('dialog');

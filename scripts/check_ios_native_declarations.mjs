@@ -322,7 +322,7 @@ export const PLIST_FLAGS = [
 			"Flutter's own deep-link handler is on by default since 3.27 and pushes " +
 			"an incoming URL's path as a named route; the app defines none, so a " +
 			'club invite link would land on an unknown route instead of the ' +
-			'invite screen (decisions § R7CLUBS-2).',
+			'invite screen (decisions § 1865).',
 	},
 ];
 

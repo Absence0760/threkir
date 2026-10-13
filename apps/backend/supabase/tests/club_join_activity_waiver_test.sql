@@ -1,5 +1,5 @@
 -- Pins migration 20270801000001: a club's activity-risk acknowledgement is
--- enforced in the database on every join path (§ R7CLUBS-1).
+-- enforced in the database on every join path (§ 1864).
 --
 --   * join_club_by_token refuses a waiver club with `activity_waiver_required`
 --     until the caller passes the acknowledgement, plants no row when it

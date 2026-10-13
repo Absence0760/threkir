@@ -306,6 +306,8 @@ export const PAIRS = [
 				file: 'apps/mobile_android/lib/screens/event_detail_screen.dart',
 				decl: '_ResultRow._finishMethodLabel',
 				shape: 'switch',
+				// A device-measured finish wears no badge on any surface (decisions § 1862).
+				allowMissing: ['auto'],
 			},
 		],
 	},

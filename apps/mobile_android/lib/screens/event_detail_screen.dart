@@ -2230,7 +2230,7 @@ class _ResultRow extends StatelessWidget {
   }
 
   /// The badge flags a time the finish rule did NOT measure, so a device's
-  /// automatic finish wears none, as on web (decisions § R7RACE-2).
+  /// automatic finish wears none, as on web (decisions § 1862).
   static String? _finishMethodLabel(BuildContext context, String? method) {
     final l10n = AppLocalizations.of(context);
     return switch (method) {

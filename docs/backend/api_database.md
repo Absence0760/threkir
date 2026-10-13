@@ -2381,7 +2381,7 @@ SECURITY DEFINER boolean — `select user_profiles.subscription_tier in ('pro','
 
 SECURITY DEFINER. Looks the club up by `clubs.invite_token`, raises `invalid invite token` when none matches, and upserts an **active** `club_members` row for the caller (an existing pending or rejected row flips to active). Returns the club id. Granted to `authenticated`; revoked from `public, anon`. Migration `20260417_001_phase2_social.sql`, rewritten by `20270801000001`.
 
-**Activity-risk acknowledgement** (§ R7CLUBS-1). When `clubs.requires_activity_waiver` is true, the call raises `activity_waiver_required` (`P0001`) and plants nothing unless `activity_waiver_ack` is true or the caller's existing membership row already carries `activity_waiver_ack_at`. An admitted join server-stamps `activity_waiver_ack_at = now()` and never overwrites an earlier one. The same rule binds the direct self-join path: the `self-join open clubs` and `self-request join request-policy clubs` INSERT policies refuse a waiver club's row whose `activity_waiver_ack_at` is null. Pinned by `club_join_activity_waiver_test.sql`.
+**Activity-risk acknowledgement** (§ 1864). When `clubs.requires_activity_waiver` is true, the call raises `activity_waiver_required` (`P0001`) and plants nothing unless `activity_waiver_ack` is true or the caller's existing membership row already carries `activity_waiver_ack_at`. An admitted join server-stamps `activity_waiver_ack_at = now()` and never overwrites an earlier one. The same rule binds the direct self-join path: the `self-join open clubs` and `self-request join request-policy clubs` INSERT policies refuse a waiver club's row whose `activity_waiver_ack_at` is null. Pinned by `club_join_activity_waiver_test.sql`.
 
 ### `redeem_coach_invite(token text)`
 

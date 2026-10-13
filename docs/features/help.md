@@ -6,7 +6,7 @@ In-app help is a **reference to the app itself**, written for someone using it: 
 
 | | `/learn` | `/help` |
 |---|---|---|
-| Reader | anyone, signed out, arriving from search | someone using the app; readable signed out (§ R7CLUBS-3), because the public live-event page links spectators to it |
+| Reader | anyone, signed out, arriving from search | someone using the app; readable signed out (§ 1866), because the public live-event page links spectators to it |
 | Purpose | evergreen running topics that funnel to sign-up | how *this app* works, screen by screen |
 | Source | mdsvex `.md` under `lib/learn/guides/` | typed TypeScript under `lib/help/guides/` |
 | Rendering | prerendered static HTML, indexed, JSON-LD | app shell, not prerendered, `noindex` + `Disallow: /help` |

@@ -4,7 +4,7 @@ import '../l10n/gen/app_localizations.dart';
 
 /// Ask for a club's activity-risk acknowledgement before joining it. The
 /// accept button stays disabled until the box is ticked, so the database's
-/// requirement (§ R7CLUBS-1) is met by an explicit act, not a reflex tap.
+/// requirement (§ 1864) is met by an explicit act, not a reflex tap.
 /// Resolves `true` only on accept; cancel and barrier dismiss resolve
 /// `false`.
 Future<bool> confirmActivityWaiver(BuildContext context) async {

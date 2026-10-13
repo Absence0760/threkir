@@ -3202,7 +3202,7 @@ export async function joinClub(
 }
 
 /** Raised by `join_club_by_token` when the club requires the activity-risk
- * acknowledgement and the call did not carry it (§ R7CLUBS-1). */
+ * acknowledgement and the call did not carry it (§ 1864). */
 export const ACTIVITY_WAIVER_REQUIRED = 'activity_waiver_required';
 
 export function isActivityWaiverRequired(e: unknown): boolean {

@@ -310,7 +310,7 @@ void main() {
       expect(find.text('Chip 24:50'), findsOneWidget);
     });
 
-    testWidgets('a device finish wears no badge, as on web (§ R7RACE-2)',
+    testWidgets('a device finish wears no badge, as on web (§ 1862)',
         (tester) async {
       // The badge flags a time the finish rule did not measure; an
       // unbadged time is a measured one.

@@ -297,7 +297,7 @@ class RaceResultTiming {
 /// gun, chip and [elapsedS] that exists. The chip time never exceeds the gun
 /// time: a recording started while the race was armed joins it at GO, and
 /// the wait on the line before GO is no part of the runner's race
-/// (decisions § R7RACE-1). A DNF has no finish instant, so it
+/// (decisions § 1861). A DNF has no finish instant, so it
 /// carries neither time and `duration_s` is [elapsedS] — the recording's own
 /// elapsed seconds, the quantity its race pings carry and so the one the
 /// server writes on a host-filed DNF (decisions § 1855).

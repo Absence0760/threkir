@@ -176,7 +176,7 @@
                  App Link: it opens here without a chooser only once
                  https://threkir.com/.well-known/assetlinks.json names this
                  package and its Play app-signing SHA-256 fingerprint
-                 (decisions § R7CLUBS-2); until then Android leaves it to the
+                 (decisions § 1865); until then Android leaves it to the
                  browser unless the user enables the link in app settings. -->
             <intent-filter android:autoVerify="false">
                 <action android:name="android.intent.action.VIEW" />

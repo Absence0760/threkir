@@ -1065,7 +1065,7 @@ class SocialService extends ChangeNotifier {
   }
 
   /// [ackWaiver] records the activity-risk acknowledgement; a club that
-  /// requires it refuses the row without one (§ R7CLUBS-1).
+  /// requires it refuses the row without one (§ 1864).
   Future<String> joinClub(
     String clubId,
     String policy, {

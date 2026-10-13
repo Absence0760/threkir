@@ -1,5 +1,5 @@
 -- Enforce a club's activity-risk acknowledgement in the database
--- (§ R7CLUBS-1).
+-- (§ 1864).
 --
 -- `clubs.requires_activity_waiver` (20261023_001) was only ever checked by
 -- the web club page, which disables its Join button until the box is

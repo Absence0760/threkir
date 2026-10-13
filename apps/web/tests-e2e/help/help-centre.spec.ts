@@ -143,7 +143,7 @@ test.describe('/help — in-app help centre', () => {
 
 /**
  * The public live-event page links a signed-out spectator to the guides
- * (decisions § R7CLUBS-3), so the help centre must answer them rather than
+ * (decisions § 1866), so the help centre must answer them rather than
  * bounce them to /login. Waiting past the auth guard's first effect is what
  * gives a redirect the chance to happen.
  */

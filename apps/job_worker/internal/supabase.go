@@ -2500,6 +2500,17 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 			filter: "contact_user_id=eq." + uid,
 			sel:    "id,owner_id,contact_user_id,contact_email,confirmed_at,created_at,updated_at",
 		},
+		// run_shares / route_shares — named-person read grants (migration
+		// 20270730000002). The subject is on both legs: grants they made
+		// (owner_id — whom they shared which run or route with) and grants
+		// made to them (recipient_id — who shared with them). Keyed by
+		// owner_id / recipient_id, which the guard's owner-FK scan reaches
+		// through owner_id only, so all four are wired in explicitly. A revoked
+		// grant is deleted, so there is no history to ship.
+		{name: "run_shares_owned.json", table: schema.TableRunShares, filter: "owner_id=eq." + uid, sel: "*"},
+		{name: "run_shares_received.json", table: schema.TableRunShares, filter: "recipient_id=eq." + uid, sel: "*"},
+		{name: "route_shares_owned.json", table: schema.TableRouteShares, filter: "owner_id=eq." + uid, sel: "*"},
+		{name: "route_shares_received.json", table: schema.TableRouteShares, filter: "recipient_id=eq." + uid, sel: "*"},
 		// session_plans (+ blocks + items via nested embeds). The yoga/pilates
 		// session-planner P1 authored content (migration 20270103_001). Keyed by
 		// author_id (NOT user_id), so the export-completeness guard's user_id-column

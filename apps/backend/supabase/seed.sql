@@ -3028,3 +3028,13 @@ INSERT INTO global_segments (name, description, waypoints, distance_m, elevation
   ('Tiergarten — Straße des 17. Juni', 'Brandenburg Gate west along the marathon finishing straight through the Tiergarten.',
    '[{"lat":52.5163,"lng":13.3777,"ele":38},{"lat":52.5145,"lng":13.369,"ele":37},{"lat":52.514,"lng":13.36,"ele":37},{"lat":52.5138,"lng":13.351,"ele":36},{"lat":52.5137,"lng":13.345,"ele":36}]',
    2249, 0, 'road', 'Berlin, DE', 'DE');
+
+-- ─────────────────── Audience sharing gate (20270730000001) ───────────────────
+--
+-- The followers level and named-person run / route shares are fail-closed
+-- behind a row in private.feature_flags that no migration writes, so prod
+-- stays off until the CISO / Security Analyst sign-off in
+-- docs/features/sharing.md. Local stacks and CI open it here so the web
+-- audience control, the Playwright specs and manual testing exercise it.
+insert into private.feature_flags (name, enabled) values ('audience_sharing', true)
+  on conflict (name) do update set enabled = excluded.enabled, updated_at = now();

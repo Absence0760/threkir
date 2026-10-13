@@ -5263,6 +5263,61 @@ class RouteReviewRow {
   );
 }
 
+/// Row shape for the `route_shares` table. Mirrors the Supabase schema
+/// exactly — field names are snake_case to match the JSON wire format.
+class RouteShareRow {
+  static const String table = 'route_shares';
+  static const String colId = 'id';
+  static const String colRouteId = 'route_id';
+  static const String colOwnerId = 'owner_id';
+  static const String colRecipientId = 'recipient_id';
+  static const String colCreatedAt = 'created_at';
+
+  final String id;
+  final String routeId;
+  final String ownerId;
+  final String recipientId;
+  final DateTime createdAt;
+
+  const RouteShareRow({
+    required this.id,
+    required this.routeId,
+    required this.ownerId,
+    required this.recipientId,
+    required this.createdAt,
+  });
+
+  factory RouteShareRow.fromJson(Map<String, dynamic> json) => RouteShareRow(
+    id: json['id'] as String,
+    routeId: json['route_id'] as String,
+    ownerId: json['owner_id'] as String,
+    recipientId: json['recipient_id'] as String,
+    createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
+  );
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    colId: id,
+    colRouteId: routeId,
+    colOwnerId: ownerId,
+    colRecipientId: recipientId,
+    colCreatedAt: createdAt.toIso8601String(),
+  };
+
+  RouteShareRow copyWith({
+    String? id,
+    String? routeId,
+    String? ownerId,
+    String? recipientId,
+    DateTime? createdAt,
+  }) => RouteShareRow(
+    id: id ?? this.id,
+    routeId: routeId ?? this.routeId,
+    ownerId: ownerId ?? this.ownerId,
+    recipientId: recipientId ?? this.recipientId,
+    createdAt: createdAt ?? this.createdAt,
+  );
+}
+
 /// Row shape for the `routes` table. Mirrors the Supabase schema
 /// exactly — field names are snake_case to match the JSON wire format.
 class RouteRow {
@@ -5289,6 +5344,7 @@ class RouteRow {
   static const String colIsFeatured = 'is_featured';
   static const String colShadowHidden = 'shadow_hidden';
   static const String colGeomPublic = 'geom_public';
+  static const String colFollowersOnly = 'followers_only';
 
   final String id;
   final String userId;
@@ -5312,6 +5368,7 @@ class RouteRow {
   final bool isFeatured;
   final bool shadowHidden;
   final dynamic geomPublic;
+  final bool followersOnly;
 
   const RouteRow({
     required this.id,
@@ -5336,6 +5393,7 @@ class RouteRow {
     required this.isFeatured,
     required this.shadowHidden,
     this.geomPublic,
+    required this.followersOnly,
   });
 
   factory RouteRow.fromJson(Map<String, dynamic> json) => RouteRow(
@@ -5361,6 +5419,7 @@ class RouteRow {
     isFeatured: (json['is_featured'] as bool?) ?? false,
     shadowHidden: (json['shadow_hidden'] as bool?) ?? false,
     geomPublic: json['geom_public'],
+    followersOnly: (json['followers_only'] as bool?) ?? false,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -5386,6 +5445,7 @@ class RouteRow {
     colIsFeatured: isFeatured,
     colShadowHidden: shadowHidden,
     colGeomPublic: geomPublic,
+    colFollowersOnly: followersOnly,
   };
 
   RouteRow copyWith({
@@ -5411,6 +5471,7 @@ class RouteRow {
     bool? isFeatured,
     bool? shadowHidden,
     dynamic geomPublic,
+    bool? followersOnly,
   }) => RouteRow(
     id: id ?? this.id,
     userId: userId ?? this.userId,
@@ -5434,6 +5495,7 @@ class RouteRow {
     isFeatured: isFeatured ?? this.isFeatured,
     shadowHidden: shadowHidden ?? this.shadowHidden,
     geomPublic: geomPublic ?? this.geomPublic,
+    followersOnly: followersOnly ?? this.followersOnly,
   );
 }
 
@@ -5775,6 +5837,61 @@ class RunPhotoRow {
   );
 }
 
+/// Row shape for the `run_shares` table. Mirrors the Supabase schema
+/// exactly — field names are snake_case to match the JSON wire format.
+class RunShareRow {
+  static const String table = 'run_shares';
+  static const String colId = 'id';
+  static const String colRunId = 'run_id';
+  static const String colOwnerId = 'owner_id';
+  static const String colRecipientId = 'recipient_id';
+  static const String colCreatedAt = 'created_at';
+
+  final String id;
+  final String runId;
+  final String ownerId;
+  final String recipientId;
+  final DateTime createdAt;
+
+  const RunShareRow({
+    required this.id,
+    required this.runId,
+    required this.ownerId,
+    required this.recipientId,
+    required this.createdAt,
+  });
+
+  factory RunShareRow.fromJson(Map<String, dynamic> json) => RunShareRow(
+    id: json['id'] as String,
+    runId: json['run_id'] as String,
+    ownerId: json['owner_id'] as String,
+    recipientId: json['recipient_id'] as String,
+    createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
+  );
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    colId: id,
+    colRunId: runId,
+    colOwnerId: ownerId,
+    colRecipientId: recipientId,
+    colCreatedAt: createdAt.toIso8601String(),
+  };
+
+  RunShareRow copyWith({
+    String? id,
+    String? runId,
+    String? ownerId,
+    String? recipientId,
+    DateTime? createdAt,
+  }) => RunShareRow(
+    id: id ?? this.id,
+    runId: runId ?? this.runId,
+    ownerId: ownerId ?? this.ownerId,
+    recipientId: recipientId ?? this.recipientId,
+    createdAt: createdAt ?? this.createdAt,
+  );
+}
+
 /// Row shape for the `runs` table. Mirrors the Supabase schema
 /// exactly — field names are snake_case to match the JSON wire format.
 class RunRow {
@@ -5803,6 +5920,7 @@ class RunRow {
   static const String colFastestHalfMarathonS = 'fastest_half_marathon_s';
   static const String colFastestMarathonS = 'fastest_marathon_s';
   static const String colConcludedAt = 'concluded_at';
+  static const String colFollowersOnly = 'followers_only';
 
   final String id;
   final String userId;
@@ -5828,6 +5946,7 @@ class RunRow {
   final int? fastestHalfMarathonS;
   final int? fastestMarathonS;
   final DateTime? concludedAt;
+  final bool followersOnly;
 
   const RunRow({
     required this.id,
@@ -5854,6 +5973,7 @@ class RunRow {
     this.fastestHalfMarathonS,
     this.fastestMarathonS,
     this.concludedAt,
+    required this.followersOnly,
   });
 
   factory RunRow.fromJson(Map<String, dynamic> json) => RunRow(
@@ -5881,6 +6001,7 @@ class RunRow {
     fastestHalfMarathonS: (json['fastest_half_marathon_s'] as num?)?.toInt(),
     fastestMarathonS: (json['fastest_marathon_s'] as num?)?.toInt(),
     concludedAt: parseIsoStrictValue(json['concluded_at']),
+    followersOnly: (json['followers_only'] as bool?) ?? false,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -5908,6 +6029,7 @@ class RunRow {
     colFastestHalfMarathonS: fastestHalfMarathonS,
     colFastestMarathonS: fastestMarathonS,
     colConcludedAt: concludedAt?.toIso8601String(),
+    colFollowersOnly: followersOnly,
   };
 
   RunRow copyWith({
@@ -5935,6 +6057,7 @@ class RunRow {
     int? fastestHalfMarathonS,
     int? fastestMarathonS,
     DateTime? concludedAt,
+    bool? followersOnly,
   }) => RunRow(
     id: id ?? this.id,
     userId: userId ?? this.userId,
@@ -5960,6 +6083,7 @@ class RunRow {
     fastestHalfMarathonS: fastestHalfMarathonS ?? this.fastestHalfMarathonS,
     fastestMarathonS: fastestMarathonS ?? this.fastestMarathonS,
     concludedAt: concludedAt ?? this.concludedAt,
+    followersOnly: followersOnly ?? this.followersOnly,
   );
 }
 

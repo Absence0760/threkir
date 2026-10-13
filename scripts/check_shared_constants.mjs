@@ -765,6 +765,27 @@ export function publicRunsViewSites(ctx) {
 }
 
 /**
+ * The same denylist read off `shared_runs`, the redacted read a follower or a
+ * named recipient gets for a run that is not public (20270730000003). It is a
+ * second copy of public_runs' projection, so a key stripped from one and not
+ * the other would show a recipient what a stranger reading a public run is
+ * refused (decisions § R7SHARE-1).
+ * @param {Ctx} ctx @returns {Site[]}
+ */
+export function sharedRunsViewSites(ctx) {
+	const view = ctx.sql.views.get('shared_runs');
+	if (view === undefined) {
+		throw new Error(
+			'check_shared_constants: the migration set defines no `shared_runs` view. ' +
+				'It is the non-owner read for a followers-only or shared run and must ' +
+				'strip what public_runs strips; with none found this rail carries nothing.',
+		);
+	}
+	const where = `shared_runs in ${view.file}`;
+	return [{ key: 'metadata denylist', where, values: parseMetadataDenylist(view.sql, where) }];
+}
+
+/**
  * The arguments of a call at `open` (the index of its `(`), balanced across
  * nesting and blind to parentheses inside string literals.
  * @param {string} sql @param {number} open @returns {string | null}
@@ -2008,6 +2029,7 @@ export const REGISTRY = [
 		compare: 'set',
 		rails: [
 			{ label: 'sql (the live public_runs projection)', sites: publicRunsViewSites },
+			{ label: 'sql (the live shared_runs projection)', sites: sharedRunsViewSites },
 			{ label: `pgtap (${PUBLIC_RUNS_DENYLIST_TEST})`, sites: pgtapDenylistSites },
 			{ label: `seed (${PUBLIC_RUNS_SEED})`, sites: seedDenylistSites },
 		],

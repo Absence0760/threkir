@@ -1321,11 +1321,30 @@ test('MUTATION: a view redefined without a strip line fails, naming the key only
 			}),
 		},
 	});
-	// One error per rail that still strips the key: the pgtap array and the
-	// seed's assertion each disagree with the view independently, which is the
-	// point of holding three homes rather than two.
-	assert.equal(errors.length, 2);
+	// One error per rail that still strips the key: the shared_runs view, the
+	// pgtap array and the seed's assertion each disagree with the view
+	// independently, which is the point of holding several homes rather than two.
+	assert.equal(errors.length, 3);
 	for (const error of errors) assert.match(error, /only there: {4}watch_workout/);
+});
+
+test('MUTATION: shared_runs dropping a strip line fails, so a recipient never reads more than a stranger', () => {
+	const real = defaultContext();
+	const live = /** @type {{ file: string, sql: string }} */ (real.sql.views.get('shared_runs'));
+	const entry = /** @type {any} */ (REGISTRY.find((e) => e.name === 'public_runs metadata denylist'));
+	const { errors } = checkEntry(entry, {
+		read: real.read,
+		sql: {
+			live: real.sql.live,
+			statements: real.sql.statements,
+			views: new Map(real.sql.views).set('shared_runs', {
+				file: live.file,
+				sql: live.sql.replace(/^\s*- 'plan_workout_id'\n/m, ''),
+			}),
+		},
+	});
+	assert.ok(errors.length >= 1);
+	assert.ok(errors.some((e) => /shared_runs/.test(e) && /plan_workout_id/.test(e)));
 });
 
 test('a fold table is read the same way from the TypeScript and the Dart rail', () => {

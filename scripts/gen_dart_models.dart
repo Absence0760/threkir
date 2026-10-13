@@ -96,6 +96,8 @@ const _tables = <String>{
   'run_kudos',
   'run_comments',
   'run_photos',
+  'run_shares',
+  'route_shares',
   'saved_routes',
   'segments',
   'segment_efforts',

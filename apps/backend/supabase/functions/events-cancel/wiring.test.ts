@@ -52,11 +52,12 @@ Deno.test('the refund params come from buildRefundParams, not an inline literal'
       '`RefundParamsAreStripeParams` alias checks against the SDK and whose ' +
       `flags lib.test.ts pins. Got: ${call[1]}`,
   );
-  // The SDK transport passes the params through untouched; a literal spread or
-  // an extra key there would bypass the builder as surely as an inline object.
+  // The one transport encodes the params it is handed, key for key; a literal
+  // spread or an extra key there would bypass the builder as surely as an
+  // inline object.
   assert(
-    /stripe\.refunds\.create\(params, \{ idempotencyKey \}\)/.test(SRC),
-    'sdkRefundCreator must hand the params and the key to Stripe unchanged',
+    /body: refundFormBody\(params\),/.test(REFUND),
+    'stripeRestRefundCreator must send the params it was handed, encoded by refundFormBody',
   );
 });
 
@@ -87,17 +88,20 @@ Deno.test('the refund stamp is guarded on the status read, not a hardcoded paid'
   }
 });
 
-Deno.test('every refund in the tier goes through ONE refundOrder', async () => {
+Deno.test('every refund in the tier goes through ONE refundOrder over ONE transport', async () => {
   // A second place that builds the params or the key is a second place for
   // them to drift; the host path reaching Stripe by its own route is exactly
-  // how § 769 shipped. Two transports exist on purpose (the webhook cannot
-  // bundle the SDK, decisions § 1833), and each one only forwards what
-  // refundOrder built.
+  // how § 769 shipped. A second TRANSPORT is the same hazard one layer down:
+  // the SDK's `refunds.create` and the REST post shared one idempotency key,
+  // Stripe refuses a key replayed with different parameters, and nothing ever
+  // showed the two encodings were one request (decisions § 1839).
   const files = await functionSources();
   const count = (re: RegExp) =>
     Object.entries(files).flatMap(([path, src]) => (src.match(re) ?? []).map(() => path));
-  assertEquals(count(/stripe\.refunds\.create\(/g), ['events-cancel/index.ts']);
+  assertEquals(count(/\brefunds\s*\.\s*create\s*\(/g), [], 'no SDK refund anywhere; use stripeRestRefundCreator');
+  assertEquals([...new Set(count(/\/v1\/refunds/g))], ['events-cancel/refund.ts']);
   assertEquals(count(/api\.stripe\.com\/v1\/refunds/g), ['events-cancel/refund.ts']);
+  assertEquals(count(/\): CreateRefund \{/g), ['events-cancel/refund.ts'], 'refund.ts holds the only CreateRefund');
   assertEquals(count(/buildRefundParams\(paymentIntent\)/g), ['events-cancel/refund.ts']);
   const helper = REFUND.indexOf('export async function refundOrder(');
   const call = REFUND.indexOf('createRefund(buildRefundParams(');
@@ -105,7 +109,11 @@ Deno.test('every refund in the tier goes through ONE refundOrder', async () => {
   assert(helper >= 0 && call > helper && call < next, 'the refund must be created inside refundOrder');
   // Both cancel paths reach it, and so does the webhook's cancelled-occurrence arm.
   assert(/results\.push\(await refundOrder\(createRefund, service, order\)\)/.test(occurrenceBody()));
-  assert(/const result = await refundOrder\(sdkRefundCreator\(stripe\), service, order\)/.test(SRC));
+  assert(/const createRefund = stripeRestRefundCreator\(stripeSecretKey!\);/.test(occurrenceBody()));
+  assert(
+    /const result = await refundOrder\(stripeRestRefundCreator\(stripeSecretKey!\), service, order\)/
+      .test(SRC),
+  );
   assert(
     /refundOrder\(stripeRestRefundCreator\(stripeSecretKey\), service, order\)/
       .test(files['stripe-events-webhook/index.ts']),

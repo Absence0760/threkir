@@ -33,9 +33,9 @@
 ///     window) -> 409 policy_no_refund; the buyer keeps the seat (we never
 ///     free a seat without refunding the money).
 ///
-/// Every refund, from both scopes, goes through `refundOrder` (refund.ts, which
-/// the webhook shares) and is keyed
-/// `refundIdempotencyKey(order.id)`: a retried or doubled cancel, or a buyer
+/// Every refund, from both scopes, goes through `refundOrder` over the one REST
+/// transport (refund.ts, which the webhook and the reconciliation sweep share,
+/// decisions § 1839) and is keyed `refundIdempotencyKey(order.id)`: a retried or doubled cancel, or a buyer
 /// cancel followed by the host's, replays one refund instead of making two.
 ///
 /// Validation gates (each fails closed):
@@ -73,13 +73,14 @@ import {
   type RefundPolicy,
   summarizeOccurrenceRefunds,
 } from './lib.ts';
-import { type CreateRefund, refundOrder } from './refund.ts';
+import { refundOrder, stripeRestRefundCreator } from './refund.ts';
 import { publishableKey, secretKey } from '../_shared/api_keys.ts';
 
 /// Every key of the hand-shaped params must be one Stripe declares. This is
 /// the only money-MOVING call in the tier and was the one call site without
-/// the guard: what is handed to `create` is a function return, not a fresh
-/// object literal, so no excess-property check runs and a misspelled
+/// the guard: what reaches Stripe is a function return, not a fresh object
+/// literal (and, since § 1839, a form body encoded from it by the one REST
+/// transport in refund.ts), so no excess-property check runs and a misspelled
 /// `reverse_transfers` would compile and come back from Stripe as `Received
 /// unknown parameter` — leaving the transfer un-reversed, which is exactly the
 /// state this refund exists to stop being in. Nothing references the alias;
@@ -232,7 +233,7 @@ Deno.serve(withSentry('events-cancel', async (req: Request) => {
     return Response.json({ ok: true, action: 'noop' });
   }
 
-  const result = await refundOrder(sdkRefundCreator(stripe), service, order);
+  const result = await refundOrder(stripeRestRefundCreator(stripeSecretKey!), service, order);
   if (result.outcome === 'failed') {
     return result.code === 'stripe_refund_failed'
       ? Response.json({ error: 'stripe_refund_failed' }, { status: 502 })
@@ -317,7 +318,7 @@ async function cancelOccurrence(args: {
   const results: OrderRefundResult[] = [];
   if (planned.length > 0) {
     const stripe = newStripe(stripeSecretKey!);
-    const createRefund = sdkRefundCreator(stripe);
+    const createRefund = stripeRestRefundCreator(stripeSecretKey!);
     // Sequential on purpose: a class is tens of orders, and one at a time keeps
     // a Stripe rate-limit from turning into a burst of half-recorded failures.
     for (const { order, action } of planned) {
@@ -339,13 +340,6 @@ async function cancelOccurrence(args: {
     action: 'occurrence_cancelled',
     refunds: summarizeOccurrenceRefunds(results),
   });
-}
-
-/// The SDK transport for `refundOrder`. This is the tier's one
-/// `stripe.refunds.create`; the webhook reaches the same endpoint with the same
-/// params and key through `stripeRestRefundCreator` (refund.ts).
-function sdkRefundCreator(stripe: Stripe): CreateRefund {
-  return (params, idempotencyKey) => stripe.refunds.create(params, { idempotencyKey });
 }
 
 /// Expire a pending order's Checkout Session; the resulting

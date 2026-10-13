@@ -1,17 +1,22 @@
 /// Refund one charged event order: the one shape, the one key, the one stamp.
 ///
-/// Two functions return a buyer's money. `events-cancel` does it for a buyer
+/// Three functions return a buyer's money. `events-cancel` does it for a buyer
 /// cancel and for a host calling an occurrence off; `stripe-events-webhook`
 /// does it for a checkout that completed on an occurrence already called off
-/// (decisions § 1833). Both go through `refundOrder` below, so the params
-/// (`buildRefundParams`), the idempotency key (`refundIdempotencyKey`) and the
-/// `refund_initiated_at` stamp discipline exist once. What differs is only how
-/// the request reaches Stripe, which is the `CreateRefund` the caller passes:
-/// `events-cancel` already carries the SDK, and the webhook must not — a value
-/// import of the SDK is 4.4x its eszip on an endpoint Stripe retries on
-/// timeout — so it posts the same form body to the REST endpoint instead.
+/// (decisions § 1833); `events-refund-sweep` retries whatever a cancelled
+/// occurrence still owes (§ 1839). All three go through `refundOrder` below,
+/// so the params (`buildRefundParams`), the idempotency key
+/// (`refundIdempotencyKey`) and the `refund_initiated_at` stamp discipline
+/// exist once — and so does the request: every caller passes
+/// `stripeRestRefundCreator`, the one transport. There used to be two (the
+/// SDK's `refunds.create` in `events-cancel`, this REST post in the webhook)
+/// sharing one idempotency key, and Stripe refuses a key replayed with
+/// different parameters; nobody had shown the two encodings were the same
+/// request, so § 1839 deleted the SDK one rather than prove it.
 ///
-/// Keep this file free of a value import of Stripe: the webhook bundles it.
+/// Keep this file free of a value import of Stripe: the webhook bundles it, and
+/// a value import of the SDK is 4.4x its eszip on an endpoint Stripe retries on
+/// timeout.
 
 import type { DbClient } from '../_shared/database.ts';
 import {
@@ -111,17 +116,16 @@ export class StripeRefundError extends Error {
   }
 }
 
-/// The form body the SDK would send for these params: every key, booleans as
-/// `true`. It must match key for key what `stripe.refunds.create` sends,
-/// because the two transports share one idempotency key and Stripe refuses a
-/// key replayed with different params.
+/// The form body for these params: every key, booleans as `true`. This is the
+/// only encoding a refund ever has, so a replay under the order's key is the
+/// same request whichever function sends it.
 export function refundFormBody(params: RefundParams): URLSearchParams {
   const body = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) body.append(key, String(value));
   return body;
 }
 
-/// The SDK-free transport, for a caller that cannot bundle the SDK.
+/// The tier's one refund transport (decisions § 1839).
 export function stripeRestRefundCreator(
   secretKey: string,
   fetchImpl: typeof fetch = fetch,

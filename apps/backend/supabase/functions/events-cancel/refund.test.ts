@@ -127,7 +127,7 @@ Deno.test('refundOrder — an already-refunded charge is done, and keeps its sta
   assertEquals(writes.length, 1, 'no rollback: "refund in progress" is the truth');
 });
 
-// ── the SDK-free transport the webhook uses ──────────────────────────────────
+// ── the one refund transport (decisions § 1839) ──────────────────────────────
 
 function recordingFetch(response: Response) {
   const requests: Array<{ url: string; init: RequestInit }> = [];
@@ -138,7 +138,7 @@ function recordingFetch(response: Response) {
   return { requests, impl };
 }
 
-Deno.test('refundFormBody — exactly the builder keys, booleans as the SDK sends them', () => {
+Deno.test('refundFormBody — exactly the builder keys, booleans as true', () => {
   const body = refundFormBody(buildRefundParams('pi_abc'));
   assertEquals([...body.entries()].sort(), [
     ['payment_intent', 'pi_abc'],
@@ -200,7 +200,7 @@ Deno.test('stripeRestRefundCreator — any other non-2xx fails, with or without 
   }
 });
 
-Deno.test('the webhook path end to end: a REST refund through refundOrder', async () => {
+Deno.test('every caller end to end: a REST refund through refundOrder', async () => {
   const { writes, client } = fakeService();
   const { requests, impl } = recordingFetch(Response.json({ id: 're_1' }));
   const result = await refundOrder(stripeRestRefundCreator('sk_test_x', impl), client, ORDER);

@@ -1121,6 +1121,13 @@ jobs:
             echo "Fix with: pnpm gen:help-guides (node scripts/gen_help_guides.mjs) and commit both JSON files."
             exit 1
           fi
+      - name: Unit-test the help-guide JSON generator
+        run: |
+          if ! node --test scripts/gen_help_guides.test.mjs; then
+            echo "::error::The help-guide JSON generator's own unit tests failed, so the freshness check above cannot be trusted to fire. Nothing here is about the Svelte build or the bundle."
+            echo "Reproduce with: node --test scripts/gen_help_guides.test.mjs (stdlib only, no install needed)."
+            exit 1
+          fi
       - run: npm ci
       # The icon font apps/web ships is a SUBSET, cut to the icons the sources
       # name (decisions § 780). Nothing in a build can tell that an icon is

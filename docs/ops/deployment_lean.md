@@ -147,6 +147,9 @@ done
   gets on this tier, and it does not carry the personal-data table set. `race-results-import` +
   `race-listings-sync` — the parkrun and manual-paste legs work keyless; the
   RunSignUp / UltraSignup / ChronoTrack legs answer 503 `provider_not_configured`.
+  UltraSignup needs no key — it is opted in with `ULTRASIGNUP_RESULTS_ENABLED=true`, which
+  sends the runner's name to UltraSignup, so it waits on CISO/counsel sign-off
+  ([decisions § 1841](../architecture/decisions.md)).
 - **Skip**: `strava-import` (needs Strava OAuth creds, and token refresh lives on the
   deferred worker — connections would go stale; Strava re-attaches with the worker rung),
   `refresh-tokens` + `strava-webhook` (deprecated worker rollback paths, nothing calls

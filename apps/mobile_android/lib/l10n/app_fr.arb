@@ -1306,6 +1306,8 @@
   "profileNotifPlanAssigned": "{name} vous a attribué un plan d'entraînement",
   "profileNotifEventCancelTitled": "Une occurrence de « {title} » a été annulée",
   "profileNotifEventCancel": "Une occurrence d'événement à laquelle vous avez répondu a été annulée",
+  "profileNotifEventCancelRefundedTitled": "Une occurrence de « {title} » a été annulée — ton paiement est en cours de remboursement",
+  "profileNotifEventCancelRefunded": "Une occurrence d'événement que tu avais payée a été annulée — ton paiement est en cours de remboursement",
   "profileNotifEventReminderTitled": "« {title} » approche",
   "profileNotifEventReminder": "Un événement auquel vous participez approche",
   "profileNotifAchievement": "Vous avez obtenu un nouveau succès",

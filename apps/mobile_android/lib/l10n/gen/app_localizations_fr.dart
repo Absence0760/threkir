@@ -4687,6 +4687,15 @@ class AppLocalizationsFr extends AppLocalizations {
       'Une occurrence d\'événement à laquelle vous avez répondu a été annulée';
 
   @override
+  String profileNotifEventCancelRefundedTitled(String title) {
+    return 'Une occurrence de « $title » a été annulée — ton paiement est en cours de remboursement';
+  }
+
+  @override
+  String get profileNotifEventCancelRefunded =>
+      'Une occurrence d\'événement que tu avais payée a été annulée — ton paiement est en cours de remboursement';
+
+  @override
   String profileNotifEventReminderTitled(String title) {
     return '« $title » approche';
   }

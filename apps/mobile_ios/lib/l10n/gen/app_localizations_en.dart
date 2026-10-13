@@ -4630,6 +4630,15 @@ class AppLocalizationsEn extends AppLocalizations {
       'An event occurrence you RSVP\'d to was cancelled';
 
   @override
+  String profileNotifEventCancelRefundedTitled(String title) {
+    return 'An occurrence of \"$title\" was cancelled — your payment is being refunded';
+  }
+
+  @override
+  String get profileNotifEventCancelRefunded =>
+      'An event occurrence you paid for was cancelled — your payment is being refunded';
+
+  @override
   String profileNotifEventReminderTitled(String title) {
     return '\"$title\" is coming up';
   }

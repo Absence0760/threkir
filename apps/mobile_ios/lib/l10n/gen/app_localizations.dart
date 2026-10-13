@@ -7666,6 +7666,18 @@ abstract class AppLocalizations {
   /// **'An event occurrence you RSVP\'d to was cancelled'**
   String get profileNotifEventCancel;
 
+  /// Notification text for a cancelled event occurrence the recipient had paid for, when the event title is known. The refund has been issued, not necessarily received, so say it is being refunded.
+  ///
+  /// In en, this message translates to:
+  /// **'An occurrence of \"{title}\" was cancelled — your payment is being refunded'**
+  String profileNotifEventCancelRefundedTitled(String title);
+
+  /// Notification text for a cancelled event occurrence the recipient had paid for, when the title is unavailable. The refund has been issued, not necessarily received.
+  ///
+  /// In en, this message translates to:
+  /// **'An event occurrence you paid for was cancelled — your payment is being refunded'**
+  String get profileNotifEventCancelRefunded;
+
   /// Notification text for an upcoming event reminder, when the event title is known
   ///
   /// In en, this message translates to:

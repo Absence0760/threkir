@@ -6226,6 +6226,19 @@
   "@profileNotifEventCancel": {
     "description": "Notification text for a cancelled event occurrence, when the title is unavailable"
   },
+  "profileNotifEventCancelRefundedTitled": "An occurrence of \"{title}\" was cancelled — your payment is being refunded",
+  "@profileNotifEventCancelRefundedTitled": {
+    "description": "Notification text for a cancelled event occurrence the recipient had paid for, when the event title is known. The refund has been issued, not necessarily received, so say it is being refunded.",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "profileNotifEventCancelRefunded": "An event occurrence you paid for was cancelled — your payment is being refunded",
+  "@profileNotifEventCancelRefunded": {
+    "description": "Notification text for a cancelled event occurrence the recipient had paid for, when the title is unavailable. The refund has been issued, not necessarily received."
+  },
   "profileNotifEventReminderTitled": "\"{title}\" is coming up",
   "@profileNotifEventReminderTitled": {
     "description": "Notification text for an upcoming event reminder, when the event title is known",

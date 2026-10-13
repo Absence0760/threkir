@@ -29,6 +29,7 @@ NotificationRow _refundFailed({String? eventId}) => NotificationRow(
   kind: 'refund_failed',
   eventId: eventId,
   createdAt: DateTime.utc(2026, 8, 30, 9),
+  refunded: false,
 );
 
 class _NotifApi extends ApiClient {

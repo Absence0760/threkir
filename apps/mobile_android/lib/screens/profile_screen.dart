@@ -536,6 +536,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                       readAt: now,
                       createdAt: n.row.createdAt,
                       eventId: n.row.eventId,
+                      refunded: n.row.refunded,
                     ),
                     actor: n.actor,
                     runDistanceM: n.runDistanceM,
@@ -573,6 +574,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                   readAt: n.row.readAt ?? now,
                   createdAt: n.row.createdAt,
                   eventId: n.row.eventId,
+                  refunded: n.row.refunded,
                 ),
                 actor: n.actor,
                 runDistanceM: n.runDistanceM,
@@ -1278,6 +1280,14 @@ class _ProfileScreenState extends State<ProfileScreen>
             ? l10n.profileNotifEventRsvpTitled(name, item.eventTitle!)
             : l10n.profileNotifEventRsvp(name);
       case 'event_cancel':
+        // `refunded` is a paid registrant's cancel (migration
+        // 20270725000002): the refund was issued in the same request that
+        // cancelled the class, so the line says it is on its way.
+        if (item.row.refunded) {
+          return item.eventTitle != null
+              ? l10n.profileNotifEventCancelRefundedTitled(item.eventTitle!)
+              : l10n.profileNotifEventCancelRefunded;
+        }
         return item.eventTitle != null
             ? l10n.profileNotifEventCancelTitled(item.eventTitle!)
             : l10n.profileNotifEventCancel;

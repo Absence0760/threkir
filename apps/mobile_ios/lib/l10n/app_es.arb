@@ -1306,6 +1306,8 @@
   "profileNotifPlanAssigned": "{name} te asignó un plan de entrenamiento",
   "profileNotifEventCancelTitled": "Se canceló una ocurrencia de \"{title}\"",
   "profileNotifEventCancel": "Se canceló una ocurrencia de un evento al que confirmaste asistencia",
+  "profileNotifEventCancelRefundedTitled": "Se canceló una ocurrencia de «{title}»: te estamos reembolsando el pago",
+  "profileNotifEventCancelRefunded": "Se canceló una ocurrencia de un evento que pagaste: te estamos reembolsando el pago",
   "profileNotifEventReminderTitled": "\"{title}\" está por comenzar",
   "profileNotifEventReminder": "Un evento al que vas a asistir está por comenzar",
   "profileNotifAchievement": "Has conseguido un nuevo logro",

@@ -4404,6 +4404,15 @@ class AppLocalizationsJa extends AppLocalizations {
   String get profileNotifEventCancel => '参加表明していたイベントの開催がキャンセルされました';
 
   @override
+  String profileNotifEventCancelRefundedTitled(String title) {
+    return '「$title」の開催が1回キャンセルされました。お支払いは返金手続き中です';
+  }
+
+  @override
+  String get profileNotifEventCancelRefunded =>
+      'お支払い済みのイベントの開催がキャンセルされました。お支払いは返金手続き中です';
+
+  @override
   String profileNotifEventReminderTitled(String title) {
     return '「$title」がもうすぐ始まります';
   }

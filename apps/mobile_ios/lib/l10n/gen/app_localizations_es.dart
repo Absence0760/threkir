@@ -4668,6 +4668,15 @@ class AppLocalizationsEs extends AppLocalizations {
       'Se canceló una ocurrencia de un evento al que confirmaste asistencia';
 
   @override
+  String profileNotifEventCancelRefundedTitled(String title) {
+    return 'Se canceló una ocurrencia de «$title»: te estamos reembolsando el pago';
+  }
+
+  @override
+  String get profileNotifEventCancelRefunded =>
+      'Se canceló una ocurrencia de un evento que pagaste: te estamos reembolsando el pago';
+
+  @override
   String profileNotifEventReminderTitled(String title) {
     return '\"$title\" está por comenzar';
   }

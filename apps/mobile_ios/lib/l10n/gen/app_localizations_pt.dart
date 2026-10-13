@@ -4671,6 +4671,15 @@ class AppLocalizationsPt extends AppLocalizations {
       'Uma ocorrência de um evento que confirmaste foi cancelada';
 
   @override
+  String profileNotifEventCancelRefundedTitled(String title) {
+    return 'Uma ocorrência de \"$title\" foi cancelada — o seu pagamento está a ser reembolsado';
+  }
+
+  @override
+  String get profileNotifEventCancelRefunded =>
+      'Uma ocorrência de um evento que pagou foi cancelada — o seu pagamento está a ser reembolsado';
+
+  @override
   String profileNotifEventReminderTitled(String title) {
     return '\"$title\" está a chegar';
   }
@@ -19278,6 +19287,15 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get profileNotifEventCancel =>
       'Uma ocorrência de evento que você confirmou foi cancelada';
+
+  @override
+  String profileNotifEventCancelRefundedTitled(String title) {
+    return 'Uma ocorrência de \"$title\" foi cancelada — seu pagamento está sendo reembolsado';
+  }
+
+  @override
+  String get profileNotifEventCancelRefunded =>
+      'Uma ocorrência de evento que você pagou foi cancelada — seu pagamento está sendo reembolsado';
 
   @override
   String profileNotifEventReminderTitled(String title) {

@@ -4687,6 +4687,15 @@ class AppLocalizationsDe extends AppLocalizations {
       'Ein Event-Termin, für den du zugesagt hattest, wurde abgesagt';
 
   @override
+  String profileNotifEventCancelRefundedTitled(String title) {
+    return 'Ein Termin von \"$title\" wurde abgesagt – deine Zahlung wird erstattet';
+  }
+
+  @override
+  String get profileNotifEventCancelRefunded =>
+      'Ein bezahlter Event-Termin wurde abgesagt – deine Zahlung wird erstattet';
+
+  @override
   String profileNotifEventReminderTitled(String title) {
     return '\"$title\" steht bevor';
   }

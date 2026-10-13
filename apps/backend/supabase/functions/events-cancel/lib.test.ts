@@ -11,6 +11,8 @@ import {
   normalizeCancelReason,
   parseCancelScope,
   resolveRefundEligibility,
+  seriesCancelInstances,
+  seriesEndUntil,
 } from './lib.ts';
 
 const HOUR = 60 * 60 * 1000;
@@ -135,14 +137,15 @@ Deno.test('buildRefundParams — sends no amount, so Stripe refunds what is stil
   assertStrictEquals('amount' in buildRefundParams('pi_123'), false);
 });
 
-Deno.test('parseCancelScope — absent is the buyer path, the two scopes pass, anything else is refused', () => {
+Deno.test('parseCancelScope — absent is the buyer path, the three scopes pass, anything else is refused', () => {
   assertStrictEquals(parseCancelScope(undefined), 'self');
   assertStrictEquals(parseCancelScope(null), 'self');
   assertStrictEquals(parseCancelScope('self'), 'self');
   assertStrictEquals(parseCancelScope('occurrence'), 'occurrence');
+  assertStrictEquals(parseCancelScope('series'), 'series');
   // A typo must not fall back to `self`: the host would be told their class
   // was handled while nobody was refunded.
-  for (const bad of ['Occurrence', 'instance', 'all', '', 1, true, {}, []]) {
+  for (const bad of ['Occurrence', 'Series', 'instance', 'all', '', 1, true, {}, []]) {
     assertStrictEquals(parseCancelScope(bad), null, JSON.stringify(bad));
   }
 });
@@ -163,4 +166,39 @@ Deno.test('normalizeCancelReason — trims, blank is none, the column cap is a r
   for (const bad of [42, true, {}, ['x']]) {
     assertStrictEquals(normalizeCancelReason(bad), undefined, JSON.stringify(bad));
   }
+});
+
+Deno.test('seriesCancelInstances — every signed-up occurrence from the cutoff on, once, oldest first', () => {
+  const cutoff = Date.parse('2026-09-01T12:00:00Z');
+  const rows = [
+    { instance_start: '2026-09-15T18:00:00+00:00' },
+    // The same occurrence from another table, in the other rendering.
+    { instance_start: '2026-09-15T18:00:00.000Z' },
+    { instance_start: '2026-09-08T18:00:00+00:00' },
+    // Before the cutoff: an occurrence that has already happened stays.
+    { instance_start: '2026-08-25T18:00:00+00:00' },
+    // Already cancelled: no second row.
+    { instance_start: '2026-09-22T18:00:00+00:00' },
+    { instance_start: 'garbage' },
+  ];
+  assertEquals(
+    seriesCancelInstances(rows, ['2026-09-22T18:00:00.000Z'], cutoff),
+    ['2026-09-08T18:00:00+00:00', '2026-09-15T18:00:00+00:00'],
+  );
+});
+
+Deno.test('seriesCancelInstances — an occurrence starting exactly at the cutoff is called off', () => {
+  const at = '2026-09-01T12:00:00Z';
+  assertEquals(seriesCancelInstances([{ instance_start: at }], [], Date.parse(at)), [at]);
+  assertEquals(seriesCancelInstances([], [], Date.parse(at)), []);
+});
+
+Deno.test('seriesEndUntil — ends an open series at the cutoff and never lengthens one', () => {
+  const cutoff = '2026-09-01T12:00:00.000Z';
+  assertStrictEquals(seriesEndUntil(null, cutoff), cutoff);
+  assertStrictEquals(seriesEndUntil('2027-01-01T00:00:00+00:00', cutoff), cutoff);
+  // Already ending sooner: left alone.
+  assertStrictEquals(seriesEndUntil('2026-08-01T00:00:00+00:00', cutoff), null);
+  assertStrictEquals(seriesEndUntil(cutoff, cutoff), null);
+  assertStrictEquals(seriesEndUntil('not a date', cutoff), cutoff);
 });

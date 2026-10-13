@@ -2516,7 +2516,7 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 			sel:    "id,owner_id,contact_user_id,contact_email,confirmed_at,created_at,updated_at",
 		},
 		// run_shares / route_shares — named-person read grants (migration
-		// 20270730000002). The subject is on both legs: grants they made
+		// 20270802000002). The subject is on both legs: grants they made
 		// (owner_id — whom they shared which run or route with) and grants
 		// made to them (recipient_id — who shared with them). Keyed by
 		// owner_id / recipient_id, which the guard's owner-FK scan reaches

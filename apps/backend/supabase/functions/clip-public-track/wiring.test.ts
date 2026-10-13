@@ -73,7 +73,7 @@ Deno.test('the owner bypass demands an identified caller', () => {
 });
 
 Deno.test('an audience member is only ever a caller shared_runs returned the row for', () => {
-  // The followers level and named-person grants (20270730000003) admit a
+  // The followers level and named-person grants (20270802000003) admit a
   // non-owner to a non-public run. The EF's own gate must name that branch
   // by where the row came from — `shared_runs`, evaluated as the caller —
   // and never by a flag a request could carry, and it must not admit an

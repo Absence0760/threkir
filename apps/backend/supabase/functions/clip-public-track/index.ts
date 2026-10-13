@@ -22,7 +22,7 @@ import {
 } from '../_shared/smoothed_sidecar.ts';
 
 // Serves a privacy-zone-clipped track for a run the caller may see but does
-// not own: a public run, or (audience sharing, 20270730000003) a run whose
+// not own: a public run, or (audience sharing, 20270802000003) a run whose
 // followers level or named-person grant admits the caller. Replaces
 // direct Storage download for non-owner viewers (audit/storage High,
 // migration 20260619_001 dropped the public-runs Storage policy).
@@ -116,7 +116,7 @@ Deno.serve(withSentry('clip-public-track', async (req: Request) => {
   // the base `runs` table, whose public SELECT policy was dropped in
   // 20260701_001. `public_runs` first; then, for an identified caller only,
   // `shared_runs` — the non-public runs whose audience admits THIS caller
-  // (20270730000003). Both run as their owner, filter on their own WHERE, and
+  // (20270802000003). Both run as their owner, filter on their own WHERE, and
   // expose the columns read here (user_id, is_public, and the redacted
   // metadata the smoothed-sidecar hash reads). `track_url` is in neither
   // (20260924_001), so the Storage path is derived below from user_id + runId,

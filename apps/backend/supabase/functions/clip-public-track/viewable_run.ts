@@ -1,7 +1,7 @@
 /// Which non-owner read admitted a run, and the row it returned.
 ///
 /// `public_runs` holds every public run and nothing else; `shared_runs`
-/// (migration 20270730000003) holds the non-public runs whose audience — the
+/// (migration 20270802000003) holds the non-public runs whose audience — the
 /// owner's followers, or a named-person grant — admits THIS caller, and never
 /// the caller's own. Both are column-redacted views evaluated as the caller,
 /// so a row from either is the database's own answer to "may this caller see

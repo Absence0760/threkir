@@ -49,7 +49,7 @@ Deno.test('buildBackupSpecs covers the Go worker table set', () => {
 	// ingredients), and the exercise-catalogue batch (migration
 	// 20270222_001) added exercises filtered to the subject's OWN custom
 	// entries (author_id = uid) — seeded global rows are shared reference
-	// data, not personal data. Audience sharing (migration 20270730000002)
+	// data, not personal data. Audience sharing (migration 20270802000002)
 	// added run_shares + route_shares, each on both legs (owner + recipient).
 	assertEquals(specs.length, 65, `expected 65 specs, got ${specs.length}`);
 	const entries = new Set(specs.map((s) => s.entry));

@@ -766,7 +766,7 @@ export function publicRunsViewSites(ctx) {
 
 /**
  * The same denylist read off `shared_runs`, the redacted read a follower or a
- * named recipient gets for a run that is not public (20270730000003). It is a
+ * named recipient gets for a run that is not public (20270802000003). It is a
  * second copy of public_runs' projection, so a key stripped from one and not
  * the other would show a recipient what a stranger reading a public run is
  * refused (decisions § R7SHARE-1).

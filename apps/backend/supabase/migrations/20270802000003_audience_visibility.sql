@@ -3,7 +3,7 @@
 -- Two oracles answer "does this run's / route's narrower audience admit this
 -- viewer", and every read path that already asks "may this viewer see it"
 -- gains them as one more OR'd branch. All of it is gated on
--- private.audience_sharing_enabled() (20270730000001), so until the flag row
+-- private.audience_sharing_enabled() (20270802000001), so until the flag row
 -- is written the four helpers below answer exactly what they did before.
 --
 -- What changes for an admitted viewer (a follower of a followers_only entity,

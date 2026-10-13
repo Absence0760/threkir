@@ -5,7 +5,7 @@
 // `privacyDefaultToAudience`): `public` publishes, `followers` — and an unset
 // pref, whose registered fallback is `followers` — writes `followers_only`,
 // and anything else is owner-only. `followers_only` is stored as owner-only by
-// the server until audience sharing is switched on (migration 20270730000001,
+// the server until audience sharing is switched on (migration 20270802000001,
 // decisions § R7SHARE-2), and a followers-only run is never in a feed or a
 // notification, so importing history with the default never publishes it.
 // A failed settings read falls closed to owner-only.

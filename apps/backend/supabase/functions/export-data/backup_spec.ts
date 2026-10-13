@@ -347,7 +347,7 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 			select: 'id,owner_id,contact_user_id,contact_email,confirmed_at,created_at,updated_at',
 		},
 		// run_shares / route_shares — named-person read grants (migration
-		// 20270730000002), both legs: grants the subject made (owner_id) and
+		// 20270802000002), both legs: grants the subject made (owner_id) and
 		// grants made to them (recipient_id). Revoked grants are deleted, so
 		// there is no history to ship. Mirrors the Go worker's entries.
 		{ entry: 'run_shares_owned.json', table: 'run_shares', filter: `owner_id=eq.${uid}`, select: '*' },

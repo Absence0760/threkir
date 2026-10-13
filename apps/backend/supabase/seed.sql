@@ -3028,7 +3028,7 @@ INSERT INTO global_segments (name, description, waypoints, distance_m, elevation
    '[{"lat":52.5163,"lng":13.3777,"ele":38},{"lat":52.5145,"lng":13.369,"ele":37},{"lat":52.514,"lng":13.36,"ele":37},{"lat":52.5138,"lng":13.351,"ele":36},{"lat":52.5137,"lng":13.345,"ele":36}]',
    2249, 0, 'road', 'Berlin, DE', 'DE');
 
--- ─────────────────── Audience sharing gate (20270730000001) ───────────────────
+-- ─────────────────── Audience sharing gate (20270802000001) ───────────────────
 --
 -- The followers level and named-person run / route shares are fail-closed
 -- behind a row in private.feature_flags that no migration writes, so prod

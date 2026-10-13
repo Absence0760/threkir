@@ -1045,7 +1045,7 @@ export async function fetchPublicRun(
 
 /// The non-owner read of a run that is NOT public but whose audience admits
 /// the caller — the owner's followers for a followers-only run, or a named
-/// recipient of a `run_shares` grant (migration 20270730000003). `shared_runs`
+/// recipient of a `run_shares` grant (migration 20270802000003). `shared_runs`
 /// carries exactly `public_runs`' redacted projection, never a public run and
 /// never the caller's own, so everything said about `fetchPublicRun` holds
 /// here: no track (the clipped one comes from `fetchClippedTrackForRun`), and
@@ -1117,7 +1117,7 @@ export async function fetchPublicRunAttribution(
 	if (!ownerId) {
 		// Not public: the run may still be shared with this viewer — a
 		// followers-only run they follow the owner for, or a named-person grant
-		// (20270730000003). Same projection, same single column.
+		// (20270802000003). Same projection, same single column.
 		const { data: shared, error: sharedError } = await supabase
 			.from('shared_runs')
 			.select('user_id')
@@ -1329,7 +1329,7 @@ export async function fetchShares(kind: ShareableKind, id: string): Promise<Shar
 
 /// Share one run or route with one person. The INSERT policy admits only the
 /// owner, only while audience sharing is on, and only for a recipient with a
-/// follow edge either way and no block (20270730000002) — the same set the
+/// follow edge either way and no block (20270802000002) — the same set the
 /// picker offers. A repeat share of the same person is a no-op, not an error.
 export async function addShare(kind: ShareableKind, id: string, recipientId: string): Promise<void> {
 	const ownerId = await currentViewerId();
@@ -2263,7 +2263,7 @@ export async function fetchRouteById(id: string): Promise<Route | null> {
 	//
 	// A route that is not public may still be shared with this viewer — a
 	// followers-only route whose owner they follow, or a named-person grant
-	// (20270730000003). `shared_routes` has `public_routes`' projection, and
+	// (20270802000003). `shared_routes` has `public_routes`' projection, and
 	// `clip_route_for_viewer` admits the same audience, so the assembled
 	// shape is identical and the polyline is clipped exactly as for a public
 	// route.

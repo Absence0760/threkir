@@ -5,7 +5,7 @@
 -- notification or a listing: those surfaces all key on `is_public`, which a
 -- grant does not touch. What the recipient reads is decided at READ time by
 -- private.is_run_visible_to / is_route_visible_to and the shared_* views
--- (20270730000003), so a revoke ends access on the next request.
+-- (20270802000003), so a revoke ends access on the next request.
 --
 -- Revocation is a hard DELETE, not a `revoked_at` stamp (§ R7SHARE-3). Access
 -- is the row's existence, so a stamped row would need every one of the read

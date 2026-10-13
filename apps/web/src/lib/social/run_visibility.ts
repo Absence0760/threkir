@@ -1,5 +1,5 @@
 /// Who can see a run or a route, as the owner chooses it and as the row
-/// stores it (migrations 20270730000001..3, decisions § R7SHARE-1).
+/// stores it (migrations 20270802000001..3, decisions § R7SHARE-1).
 ///
 /// Three columns' worth of state reach the owner as one of four levels:
 /// `is_public` is Public, `followers_only` is Followers, a live grant in

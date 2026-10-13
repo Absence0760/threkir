@@ -3,7 +3,7 @@
 -- A run or route is either public (`is_public`) or owner-only today, and every
 -- share button flips it public first. The owner asked (2026-10-13) for two
 -- narrower audiences that do not make anything public: the owner's followers,
--- and named people (the grant tables in 20270730000002). This file adds the
+-- and named people (the grant tables in 20270802000002). This file adds the
 -- gate both of them sit behind and the followers level itself.
 --
 -- 1. private.feature_flags + private.audience_sharing_enabled(). Who can read

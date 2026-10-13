@@ -293,3 +293,16 @@ export function summarizeOccurrenceRefunds(
   if (summary.failed > 0) summary.outcome = 'incomplete';
   return summary;
 }
+
+/// The instant a series cancel works from. Normally now; but a series this
+/// cancel already ended (a retry after a failure part-way through) keeps the
+/// FIRST call's cutoff, its `recurrence_until`, so an occurrence that started
+/// between the two calls is still called off and refunded rather than falling
+/// into the gap between them.
+export function seriesCancelCutoff(currentUntil: string | null, nowIso: string): string {
+  if (currentUntil === null) return nowIso;
+  const until = Date.parse(currentUntil);
+  if (!Number.isFinite(until) || until > Date.parse(nowIso)) return nowIso;
+  return new Date(until).toISOString();
+}
+

@@ -305,6 +305,22 @@ void main() {
       expect(find.byKey(const Key('series-cancelled')), findsOneWidget);
       expect(find.text('This series was cancelled.'), findsOneWidget);
     });
+
+    realtimeWidgetTest(
+        'an occurrence past a cancelled series\' end offers no reinstate',
+        (tester) async {
+      final past = aheadBy(5);
+      await pump(
+        tester,
+        _CancelSocial(
+          startsAt: past,
+          freq: 'weekly',
+          until: aheadBy(-2),
+          cancelled: {past},
+        ),
+      );
+      expect(find.byKey(const Key('reinstate-occurrence')), findsNothing);
+    });
   });
 
   group('EventDetailScreen — waitlist offer', () {

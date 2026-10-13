@@ -1996,6 +1996,7 @@ class EventRow {
   static const String colSessionPlanId = 'session_plan_id';
   static const String colTimezone = 'timezone';
   static const String colIsPublic = 'is_public';
+  static const String colGymRoutineId = 'gym_routine_id';
 
   final String id;
   final String clubId;
@@ -2024,6 +2025,7 @@ class EventRow {
   final String? sessionPlanId;
   final String? timezone;
   final bool isPublic;
+  final String? gymRoutineId;
 
   const EventRow({
     required this.id,
@@ -2053,6 +2055,7 @@ class EventRow {
     this.sessionPlanId,
     this.timezone,
     required this.isPublic,
+    this.gymRoutineId,
   });
 
   factory EventRow.fromJson(Map<String, dynamic> json) => EventRow(
@@ -2083,6 +2086,7 @@ class EventRow {
     sessionPlanId: json['session_plan_id'] as String?,
     timezone: json['timezone'] as String?,
     isPublic: (json['is_public'] as bool?) ?? false,
+    gymRoutineId: json['gym_routine_id'] as String?,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -2113,6 +2117,7 @@ class EventRow {
     colSessionPlanId: sessionPlanId,
     colTimezone: timezone,
     colIsPublic: isPublic,
+    colGymRoutineId: gymRoutineId,
   };
 
   EventRow copyWith({
@@ -2143,6 +2148,7 @@ class EventRow {
     String? sessionPlanId,
     String? timezone,
     bool? isPublic,
+    String? gymRoutineId,
   }) => EventRow(
     id: id ?? this.id,
     clubId: clubId ?? this.clubId,
@@ -2171,6 +2177,7 @@ class EventRow {
     sessionPlanId: sessionPlanId ?? this.sessionPlanId,
     timezone: timezone ?? this.timezone,
     isPublic: isPublic ?? this.isPublic,
+    gymRoutineId: gymRoutineId ?? this.gymRoutineId,
   );
 }
 

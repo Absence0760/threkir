@@ -1412,6 +1412,7 @@ export type Database = {
           discipline: string | null
           distance_m: number | null
           duration_min: number | null
+          gym_routine_id: string | null
           gym_template: Json | null
           host_user_id: string | null
           id: string
@@ -1441,6 +1442,7 @@ export type Database = {
           discipline?: string | null
           distance_m?: number | null
           duration_min?: number | null
+          gym_routine_id?: string | null
           gym_template?: Json | null
           host_user_id?: string | null
           id?: string
@@ -1470,6 +1472,7 @@ export type Database = {
           discipline?: string | null
           distance_m?: number | null
           duration_min?: number | null
+          gym_routine_id?: string | null
           gym_template?: Json | null
           host_user_id?: string | null
           id?: string
@@ -1495,6 +1498,20 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_gym_routine_id_fkey"
+            columns: ["gym_routine_id"]
+            isOneToOne: false
+            referencedRelation: "gym_routines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_gym_routine_id_fkey"
+            columns: ["gym_routine_id"]
+            isOneToOne: false
+            referencedRelation: "public_gym_routines"
             referencedColumns: ["id"]
           },
           {

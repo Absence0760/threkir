@@ -59,8 +59,10 @@ test('the gate is fail-closed and routed through the canonical parse', () => {
 	);
 	// `$app/env/public` serves both kinds of variable; whether one is baked in
 	// at build is declared in src/env.ts, so that is where "deploy-time" lives.
+	const envDecl = read('src/env.ts');
+	assert.match(envDecl, /\bPUBLIC_OFF_ROUTE_ESCALATION_ENABLED:\s*\{\s*public:\s*true/, 'PUBLIC_OFF_ROUTE_ESCALATION_ENABLED must be declared public in src/env.ts');
 	assert.doesNotMatch(
-		read('src/env.ts'),
+		envDecl,
 		/\bPUBLIC_OFF_ROUTE_ESCALATION_ENABLED:[^}]*\bstatic:\s*true/,
 		'PUBLIC_OFF_ROUTE_ESCALATION_ENABLED must not be declared `static: true` in src/env.ts — that bakes it in at build',
 	);

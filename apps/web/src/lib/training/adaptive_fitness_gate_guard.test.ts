@@ -37,8 +37,10 @@ test('the P2 fitness gate is fail-closed and reads PUBLIC_ADAPTIVE_FITNESS_GATE'
 		'the flag must read the deploy-time public env, not a build-time constant');
 	// `$app/env/public` serves both kinds of variable; whether one is baked in
 	// at build is declared in src/env.ts, so that is where "deploy-time" lives.
+	const envDecl = read('src/env.ts');
+	assert.match(envDecl, /\bPUBLIC_ADAPTIVE_FITNESS_GATE:\s*\{\s*public:\s*true/, 'PUBLIC_ADAPTIVE_FITNESS_GATE must be declared public in src/env.ts');
 	assert.doesNotMatch(
-		read('src/env.ts'),
+		envDecl,
 		/\bPUBLIC_ADAPTIVE_FITNESS_GATE:[^}]*\bstatic:\s*true/,
 		'PUBLIC_ADAPTIVE_FITNESS_GATE must not be declared `static: true` in src/env.ts — that bakes it in at build',
 	);

@@ -47,6 +47,7 @@ const REF: RenderRunRow = {
 	hr_series_url:
 		'22222222-2222-2222-2222-222222222222/11111111-1111-1111-1111-111111111111.hr.json.gz',
 	is_public: false,
+	followers_only: false,
 	event_id: null,
 	route_id: null,
 	race_listing_id: null,

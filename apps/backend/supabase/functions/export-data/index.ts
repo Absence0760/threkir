@@ -106,7 +106,7 @@ const EXPORT_BUCKET = 'exports';
 /// The Go worker's own select is held to this one by
 /// `TestExportRunProjectionCoversEveryRunsColumn`.
 const RUNS_SELECT =
-	'id, user_id, started_at, concluded_at, duration_s, distance_m, elevation_gain_m, source, activity_type, is_dnf, external_id, metadata, track_url, hr_series_url, is_public, event_id, route_id, race_listing_id, fastest_5k_s, fastest_10k_s, fastest_half_marathon_s, fastest_marathon_s, created_at, updated_at';
+	'id, user_id, started_at, concluded_at, duration_s, distance_m, elevation_gain_m, source, activity_type, is_dnf, external_id, metadata, track_url, hr_series_url, is_public, followers_only, event_id, route_id, race_listing_id, fastest_5k_s, fastest_10k_s, fastest_half_marathon_s, fastest_marathon_s, created_at, updated_at';
 
 type RunRow = RenderRunRow;
 

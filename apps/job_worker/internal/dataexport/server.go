@@ -354,23 +354,24 @@ func (e *ExportCompleteness) Merge(other ExportCompleteness) {
 // `routes.json`. `user_id` deliberately omitted — the caller strips
 // it for re-homeability; restore stamps the new owner's uid.
 type ExportRoute struct {
-	ID          string                 `json:"id"`
-	Name        string                 `json:"name"`
-	Waypoints   interface{}            `json:"waypoints"`
-	DistanceM   *float64               `json:"distance_m,omitempty"`
-	ElevationM  *float64               `json:"elevation_m,omitempty"`
-	Surface     *string                `json:"surface,omitempty"`
-	IsPublic    *bool                  `json:"is_public,omitempty"`
-	Slug        *string                `json:"slug,omitempty"`
-	Tags        []string               `json:"tags,omitempty"`
-	Featured    *bool                  `json:"is_featured,omitempty"`
-	RunCount    *int                   `json:"run_count,omitempty"`
-	IsStarred   *bool                  `json:"is_starred,omitempty"`
-	Description *string                `json:"description,omitempty"`
-	ClubID      *string                `json:"club_id,omitempty"`
-	CreatedAt   *string                `json:"created_at,omitempty"`
-	UpdatedAt   *string                `json:"updated_at,omitempty"`
-	Extra       map[string]interface{} `json:"-"`
+	ID            string                 `json:"id"`
+	Name          string                 `json:"name"`
+	Waypoints     interface{}            `json:"waypoints"`
+	DistanceM     *float64               `json:"distance_m,omitempty"`
+	ElevationM    *float64               `json:"elevation_m,omitempty"`
+	Surface       *string                `json:"surface,omitempty"`
+	IsPublic      *bool                  `json:"is_public,omitempty"`
+	FollowersOnly *bool                  `json:"followers_only,omitempty"`
+	Slug          *string                `json:"slug,omitempty"`
+	Tags          []string               `json:"tags,omitempty"`
+	Featured      *bool                  `json:"is_featured,omitempty"`
+	RunCount      *int                   `json:"run_count,omitempty"`
+	IsStarred     *bool                  `json:"is_starred,omitempty"`
+	Description   *string                `json:"description,omitempty"`
+	ClubID        *string                `json:"club_id,omitempty"`
+	CreatedAt     *string                `json:"created_at,omitempty"`
+	UpdatedAt     *string                `json:"updated_at,omitempty"`
+	Extra         map[string]interface{} `json:"-"`
 }
 
 // ExportRun is the row projection the export builder consumes: every
@@ -395,6 +396,7 @@ type ExportRun struct {
 	TrackURL             *string                `json:"track_url"`
 	HrSeriesURL          *string                `json:"hr_series_url"`
 	IsPublic             *bool                  `json:"is_public"`
+	FollowersOnly        bool                   `json:"followers_only"`
 	EventID              *string                `json:"event_id"`
 	RouteID              *string                `json:"route_id"`
 	RaceListingID        *string                `json:"race_listing_id"`
@@ -543,6 +545,7 @@ var csvColumns = []string{
 	"race_listing_id",
 	"external_id",
 	"is_public",
+	"followers_only",
 	"metadata",
 	"created_at",
 	"updated_at",
@@ -627,6 +630,7 @@ func csvRow(r ExportRun) []string {
 		deref(r.RaceListingID),
 		deref(r.ExternalID),
 		derefBool(r.IsPublic),
+		strconv.FormatBool(r.FollowersOnly),
 		string(mdJSON),
 		r.CreatedAt,
 		r.UpdatedAt,
@@ -1375,6 +1379,9 @@ func routeRow(r ExportRoute) map[string]interface{} {
 	}
 	if r.IsPublic != nil {
 		row["is_public"] = *r.IsPublic
+	}
+	if r.FollowersOnly != nil {
+		row["followers_only"] = *r.FollowersOnly
 	}
 	if r.Slug != nil {
 		row["slug"] = *r.Slug

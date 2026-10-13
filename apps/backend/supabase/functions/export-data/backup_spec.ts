@@ -466,6 +466,7 @@ const ROUTE_OPTIONAL_COLUMNS = [
 	'elevation_m',
 	'surface',
 	'is_public',
+	'followers_only',
 	'slug',
 	'tags',
 	'is_featured',

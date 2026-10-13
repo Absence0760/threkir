@@ -2,7 +2,6 @@ import type { GuideTranslation } from '../../types';
 
 export const translation: GuideTranslation = {
 	id: 'waitlist-and-claim-window',
-	source: 'd01f2b1f78e23484',
 	title: 'Wartelisten und die 12-Stunden-Frist',
 	summary: 'Wie das Beitreten zu einem vollen Kurs funktioniert, wie ein frei gewordener Platz bei einem bezahlten Kurs 12 Stunden für dich reserviert wird und was passiert, wenn du ihn nicht sicherst.',
 	sections: [
@@ -84,4 +83,30 @@ export const translation: GuideTranslation = {
 			],
 		},
 	],
+	sources: {
+		title: 'ff29dd616c432abb',
+		summary: 'afd5b04d5200ae72',
+		's0.heading': '1a4ad94ad3a45f95',
+		's0.b0': 'cc59a78b4fa99e3d',
+		's1.heading': '45a160f0c13ecbad',
+		's1.b0': '360073628758585f',
+		's1.b1': '572cda34a27eb2a9',
+		's1.b2.i0': '5ee5608e87186c87',
+		's1.b2.i1': '8e62e44aa4cb3c4c',
+		's1.b2.i2': '2411acbf338bf29b',
+		's1.b2.i3': '3fc20f1431c75da8',
+		's1.b3': 'ac88ce64fbfe661e',
+		's2.heading': '3120ebc77dff029c',
+		's2.b0.i0': 'ac867875f2d6559e',
+		's2.b0.i1': '10c7227bdd74a7f7',
+		's2.b0.i2': 'ec3aaee401a8d661',
+		's2.b0.i3': '115c393a06a875a2',
+		's3.heading': '1c4542c4b4456638',
+		's3.b0': '5f2b4c5d07b65be4',
+		's3.b1': '080220c843290021',
+		's4.heading': '3475448cc5eb2d77',
+		's4.b0.i0': '9fc9b8683d8e30fd',
+		's4.b0.i1': 'f602296c6993b85f',
+		's4.b0.i2': '4d6cf70ea800fae3',
+	},
 };

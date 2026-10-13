@@ -2,7 +2,6 @@ import type { GuideTranslation } from '../../types';
 
 export const translation: GuideTranslation = {
 	id: 'cancel-a-class',
-	source: '8ee15ec25324129c',
 	title: 'Cancelar una clase y reembolsar a quienes pagaron',
 	summary: 'Cancela una ocurrencia de una clase que se repite; a quienes pagaron se les reembolsa todo automáticamente, con un reintento cada hora y la opción Reembolsar ahora.',
 	sections: [
@@ -88,4 +87,29 @@ export const translation: GuideTranslation = {
 			],
 		},
 	],
+	sources: {
+		title: '539c07215344e21b',
+		summary: '3cde6837a6c4e13c',
+		's0.heading': '74e492d5d0df0bab',
+		's0.b0': 'ae0f2cd6ce9f9514',
+		's0.b1': '62f19ee1e9fb34c3',
+		's1.heading': 'f95356ca142cc32c',
+		's1.b0.i0': '98e1807ee36d2ae0',
+		's1.b0.i1': '63ef622195f62b11',
+		's1.b0.i2': '876f86b1b4e1070e',
+		's1.b0.i3': '4aa8c04940065d46',
+		's1.b1': '0d59321bed0664c0',
+		's2.heading': '3fb0e8cd8d1ab1a9',
+		's2.b0': '7fa0c327762bc337',
+		's3.heading': '9ea612affe97dc23',
+		's3.b0': '734dd195583da93f',
+		's3.b1.i0': 'a63f61852a0c3de7',
+		's3.b1.i1': '7f81dbe53b5fa733',
+		's3.b1.i2': '17e04336cbe74225',
+		's3.b2': '28dcde6e29894cdf',
+		's4.heading': '335c84d82f12cfd6',
+		's4.b0': 'bf92582fcb35608a',
+		's4.b1': 'ccac613bf1514e51',
+		's4.b2': '79b6ac5d2f43064a',
+	},
 };

@@ -1741,7 +1741,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Dar la salida no inicia la grabación de nadie. Los corredores pulsan Iniciar en su propio móvil o reloj, ya sea en la línea mientras la carrera está preparada (la grabación se une a la carrera en la salida) o después de ver **Carrera EN VIVO**. Recuérdales que inicien una."
+            "text": "Dar la salida no inicia la grabación de nadie. Los corredores pulsan Iniciar en su propio móvil o reloj, ya sea en la línea de salida mientras la carrera está preparada (la grabación se une a la carrera en la salida) o después de ver **Carrera EN VIVO**. Recuérdales que inicien la grabación."
           }
         ]
       },
@@ -1789,7 +1789,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Solo puedes cancelar mientras la carrera está preparada: elige **Cancelar** junto a **YA** (**Dar la salida** en la app del móvil) y luego **Cancelar carrera**. Una vez dada la salida, la carrera solo se puede terminar."
+            "text": "Solo puedes cancelar mientras la carrera está preparada: elige **Cancelar** junto a **YA** (**Dar la salida** en la app del móvil) y luego **Cancelar carrera**. Una vez dada la salida, la carrera solo se puede finalizar."
           },
           {
             "type": "p",
@@ -1946,7 +1946,7 @@
     "id": "racing-in-a-race",
     "lang": "es",
     "title": "Competir en una carrera en directo",
-    "summary": "Apúntate, elige tu recorrido, empieza a grabar en la línea o después de la salida y deja que tu móvil o tu reloj te cronometre al cruzar la meta.",
+    "summary": "Apúntate, elige tu recorrido, empieza a grabar en la línea de salida o después de la salida y deja que tu móvil o tu reloj te cronometre al cruzar la meta.",
     "kind": "how-to",
     "category": "races",
     "audience": [
@@ -2006,7 +2006,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Tu móvil o tu reloj no empieza a grabar por sí solo: pulsa Iniciar tú mismo. Puedes empezar en la línea mientras la carrera muestra **Carrera lista**, o cuando veas **Carrera EN VIVO**. Una grabación iniciada antes de tiempo se une a la carrera en la salida, en el móvil y en un reloj Wear OS, y tu tiempo chip cuenta entonces desde la salida y no desde que pulsaste Iniciar."
+            "text": "Tu móvil o tu reloj no empieza a grabar por sí solo: pulsa Iniciar tú mismo. Puedes empezar en la línea de salida mientras la carrera muestra **Carrera lista**, o cuando veas **Carrera EN VIVO**. Una grabación iniciada antes de tiempo se une a la carrera en la salida, en el móvil y en un reloj Wear OS, y tu tiempo chip cuenta entonces desde la salida y no desde que pulsaste Iniciar."
           },
           {
             "type": "p",

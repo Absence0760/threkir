@@ -7,32 +7,35 @@ import type { Block, Guide, GuideSection, GuideTranslation, LocalizedGuide } fro
 
 export const SOURCE_LANG = 'en';
 
-function canonicalBlock(block: Block): Block {
-	switch (block.type) {
-		case 'p':
-			return { type: 'p', text: block.text };
-		case 'note':
-			return { type: 'note', tone: block.tone, text: block.text };
-		case 'steps':
-			return { type: 'steps', items: [...block.items] };
-		case 'list':
-			return { type: 'list', items: [...block.items] };
-	}
+/// Every string a translation translates, each with its path: `title`,
+/// `summary`, `s<n>.heading`, `s<n>.b<m>` for a paragraph or note, and
+/// `s<n>.b<m>.i<k>` for a step or list item, all counted from 0. A
+/// translation records a hash of the English at each path (`sources`), so an
+/// English edit stales only the strings it touched. The same paths key the
+/// translator batches, as `web:help.<guide id>.<path>`.
+export function translatableStrings(guide: Pick<Guide, 'title' | 'summary' | 'sections'>): [path: string, text: string][] {
+	const out: [string, string][] = [
+		['title', guide.title],
+		['summary', guide.summary],
+	];
+	guide.sections.forEach((section, si) => {
+		out.push([`s${si}.heading`, section.heading]);
+		section.blocks.forEach((block, bi) => {
+			if (block.type === 'p' || block.type === 'note') out.push([`s${si}.b${bi}`, block.text]);
+			else block.items.forEach((item, ii) => out.push([`s${si}.b${bi}.i${ii}`, item]));
+		});
+	});
+	return out;
 }
 
-/// Everything a translation translates, in a fixed key order: the input to
-/// the `source` hash, so a change to any word of the English, and to nothing
-/// else, makes every translation of the guide stale.
-export function translatableText(guide: Pick<Guide, 'title' | 'summary' | 'sections'>): {
-	title: string;
-	summary: string;
-	sections: GuideSection[];
-} {
-	return {
-		title: guide.title,
-		summary: guide.summary,
-		sections: guide.sections.map((s) => ({ heading: s.heading, blocks: s.blocks.map(canonicalBlock) })),
-	};
+/// Where a path from `translatableStrings` sits, for a person: "section 2
+/// block 1 item 3", or the path itself for the title and summary.
+export function describePath(path: string): string {
+	const m = /^s(\d+)\.(?:heading|b(\d+)(?:\.i(\d+))?)$/.exec(path);
+	if (!m) return path;
+	const [, s, b, i] = m;
+	if (b === undefined) return `section ${Number(s) + 1} heading`;
+	return `section ${Number(s) + 1} block ${Number(b) + 1}${i === undefined ? '' : ` item ${Number(i) + 1}`}`;
 }
 
 /// Where a translation's shape departs from its guide's: one message per
@@ -128,7 +131,7 @@ export function mergeFetchedGuides(english: readonly Guide[], raw: unknown, lang
 				Array.isArray(g.sections) &&
 				g.sections.every(isSection)
 			) {
-				fetched.set(g.id, { id: g.id, source: '', title: g.title, summary: g.summary, sections: g.sections });
+				fetched.set(g.id, { id: g.id, sources: {}, title: g.title, summary: g.summary, sections: g.sections });
 			}
 		}
 	}

@@ -3,7 +3,7 @@
 //   npx tsx --test src/lib/help/translate.test.ts
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { localizeGuide, mergeFetchedGuides, structureProblems, translatableText } from './translate';
+import { describePath, localizeGuide, mergeFetchedGuides, structureProblems, translatableStrings } from './translate';
 import type { Guide, GuideTranslation } from './types';
 
 const guide: Guide = {
@@ -30,7 +30,6 @@ const guide: Guide = {
 
 const translation: GuideTranslation = {
 	id: 'g',
-	source: '0000000000000000',
 	title: 'Titel',
 	summary: 'Zusammenfassung.',
 	sections: [
@@ -43,6 +42,7 @@ const translation: GuideTranslation = {
 			],
 		},
 	],
+	sources: {},
 };
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
@@ -84,11 +84,26 @@ test('structureProblems names each way a translation departs from its guide', ()
 	assert.deepEqual(structureProblems(guide, { ...translation, sections: [] }), ['0 sections, the guide has 1']);
 });
 
-test('translatableText holds the words in a fixed shape and nothing else', () => {
+test('translatableStrings lists every translated string by path, in reading order, and nothing else', () => {
+	assert.deepEqual(translatableStrings(guide), [
+		['title', 'Title'],
+		['summary', 'Summary.'],
+		['s0.heading', 'One'],
+		['s0.b0', 'Press **Save**.'],
+		['s0.b1.i0', 'a'],
+		['s0.b1.i1', 'b'],
+		['s0.b2', 'n'],
+	]);
 	const noisy = clone(guide) as Guide & { sections: { blocks: Record<string, unknown>[] }[] };
 	noisy.sections[0]!.blocks[0]!.debug = true;
-	assert.deepEqual(translatableText(noisy), translatableText(guide));
-	assert.deepEqual(Object.keys(translatableText(guide)), ['title', 'summary', 'sections']);
+	assert.deepEqual(translatableStrings(noisy), translatableStrings(guide));
+});
+
+test('describePath names a string the way the structure messages do', () => {
+	assert.equal(describePath('title'), 'title');
+	assert.equal(describePath('s0.heading'), 'section 1 heading');
+	assert.equal(describePath('s2.b0'), 'section 3 block 1');
+	assert.equal(describePath('s0.b1.i3'), 'section 1 block 2 item 4');
 });
 
 test('mergeFetchedGuides keeps one guide per English guide, words from the file where they line up', () => {

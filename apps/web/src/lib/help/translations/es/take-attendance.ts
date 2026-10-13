@@ -2,7 +2,6 @@ import type { GuideTranslation } from '../../types';
 
 export const translation: GuideTranslation = {
 	id: 'take-attendance',
-	source: '2db822cc90717a7a',
 	title: 'Pasar lista en una clase',
 	summary: 'Marca quién vino de verdad a cada ocurrencia de una clase, aparte de quién dijo que vendría, en la web o en la app móvil.',
 	sections: [
@@ -52,4 +51,20 @@ export const translation: GuideTranslation = {
 			],
 		},
 	],
+	sources: {
+		title: '8e94f2c520c4725e',
+		summary: '19234d07e67c5a4f',
+		's0.heading': 'faee9310c256dbe3',
+		's0.b0': 'f196a1f6af265a97',
+		's0.b1': '4e5ee5d97f6345cd',
+		's1.heading': '606dabb8e1030b7c',
+		's1.b0.i0': 'd74050897fbc9e6d',
+		's1.b0.i1': '2d151dfb1f62d0b0',
+		's1.b0.i2': 'aee700bc763c5ade',
+		's1.b0.i3': '3222de96fadf77f6',
+		's1.b1': '1ca4fbd7f7608965',
+		's2.heading': '7e87e01018106f7c',
+		's2.b0': '83dbaf9e7ca920df',
+		's2.b1': '1195e880106739dc',
+	},
 };

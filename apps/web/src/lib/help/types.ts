@@ -47,11 +47,11 @@ export type GuideCategory = Guide['category'];
 export interface GuideTranslation {
 	/** the English guide's id, equal to the file name */
 	id: string;
-	/** `node scripts/check_help_translations.mjs --hash <id>` of the English text this was translated from */
-	source: string;
 	title: string;
 	summary: string;
 	sections: GuideSection[];
+	/** per translated string, keyed by its `translatableStrings` path: the hash of the English it was translated from (`node scripts/check_help_translations.mjs --hash <id>`) */
+	sources: Record<string, string>;
 }
 
 /// A guide as a reader sees it: the English guide with a translation's words

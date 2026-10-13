@@ -92,10 +92,10 @@ test('loadGuides loads one guide per guide file, each named after its file', asy
 
 const translation = (/** @type {Record<string, unknown>} */ over) => ({
 	id: 'b',
-	source: '0000000000000000',
 	title: 'Tb',
 	summary: 'Sb',
 	sections: [{ heading: 'Hb', blocks: [{ type: 'p', text: 'xb' }] }],
+	sources: {},
 	...over,
 });
 

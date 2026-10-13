@@ -2,7 +2,6 @@ import type { GuideTranslation } from '../../types';
 
 export const translation: GuideTranslation = {
 	id: 'build-a-gym-routine',
-	source: 'ad63af66f1933ab0',
 	title: 'Eine Gym-Routine erstellen',
 	summary: 'Mach ein Training, das du leitest oder wiederholst, zur wiederverwendbaren Routine mit Sätzen, Wiederholungen, Gewicht, Pausen und Supersätzen, die du geführt absolvierst oder mit deinem Club teilst.',
 	sections: [
@@ -71,4 +70,28 @@ export const translation: GuideTranslation = {
 			],
 		},
 	],
+	sources: {
+		title: 'e154719ab6c6db3a',
+		summary: 'c15dfd024f683826',
+		's0.heading': 'a52411b1c11cf590',
+		's0.b0.i0': '83c54adc1d0ea60f',
+		's0.b0.i1': 'eecbf0bc154dab9e',
+		's0.b1': '8f85ecd63a29a0a3',
+		's1.heading': 'd222e97495049181',
+		's1.b0.i0': '81da95efe111f60e',
+		's1.b0.i1': '2d229299f8d76acb',
+		's1.b0.i2': '82dd1ff342d922c0',
+		's1.b0.i3': '5361d720e294f93d',
+		's1.b0.i4': 'eadce6bf2e1f99a2',
+		's1.b0.i5': '8e0bc50c1d08b6c7',
+		's1.b0.i6': '47f7b227af1d250a',
+		's1.b0.i7': '2a9bb2561495600e',
+		's1.b1': '52bd55355e109053',
+		's2.heading': '958ca26c6a61f02f',
+		's2.b0': 'f393e332c6ec9a52',
+		's3.heading': 'aab7baa90c561d6b',
+		's3.b0.i0': 'd51e222a02a3c044',
+		's3.b0.i1': 'fc99e8218cc68a71',
+		's3.b1': '28cc92b70c319919',
+	},
 };

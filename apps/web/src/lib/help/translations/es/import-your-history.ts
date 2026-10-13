@@ -2,7 +2,6 @@ import type { GuideTranslation } from '../../types';
 
 export const translation: GuideTranslation = {
 	id: 'import-your-history',
-	source: 'ffbec728934ee1d4',
 	title: 'Importar tu historial de carreras',
 	summary: 'Trae tus carreras anteriores desde Strava, una exportación de Garmin o la app de salud de tu móvil, y descubre qué pasa con los archivos GPX.',
 	sections: [
@@ -90,4 +89,30 @@ export const translation: GuideTranslation = {
 			],
 		},
 	],
+	sources: {
+		title: '078b29389d32808d',
+		summary: '440ddd94eca0b542',
+		's0.heading': '69858eb69781e59e',
+		's0.b0.i0': '92767a2a2bf7c191',
+		's0.b0.i1': '8c05e0ad16ddb8c2',
+		's0.b0.i2': '828e8880f5239f1c',
+		's0.b1': '4302ec5e7767e8ab',
+		's1.heading': '8abf228027d2a4fd',
+		's1.b0': 'cf7faaa4679e66f2',
+		's1.b1.i0': '9e771e203c299ace',
+		's1.b1.i1': 'a6d02ee139faa051',
+		's1.b1.i2': '0212bc406356fd62',
+		's2.heading': 'f3f586814898940a',
+		's2.b0': '25c859eb00073fae',
+		's2.b1.i0': 'f82bc798e8ec1b4e',
+		's2.b1.i1': '21d706b389df8c6a',
+		's2.b1.i2': '69a212e6bb305cfc',
+		's2.b2': '7d501c5e8de3d96e',
+		's3.heading': '8b42dffcf7f0d635',
+		's3.b0': '0dba61c98d441dad',
+		's3.b1': '5dbef244bd55926e',
+		's4.heading': '35509c7701b9dabc',
+		's4.b0': '26a0daac64b29af6',
+		's4.b1': '69e6cfdbe0110cea',
+	},
 };

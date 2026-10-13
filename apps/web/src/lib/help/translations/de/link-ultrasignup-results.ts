@@ -2,7 +2,6 @@ import type { GuideTranslation } from '../../types';
 
 export const translation: GuideTranslation = {
 	id: 'link-ultrasignup-results',
-	source: '0ad8552abbcc91f8',
 	title: 'Deine UltraSignup-Ergebnisse verknüpfen',
 	summary: 'Finde dein UltraSignup-Profil über deinen Namen, bestätige, welche Person du bist, und importiere dann ein Ultra- oder Trail-Ergebnis aus dem Rennkalender.',
 	sections: [
@@ -70,4 +69,25 @@ export const translation: GuideTranslation = {
 			],
 		},
 	],
+	sources: {
+		title: '1c3d3ccace74b014',
+		summary: 'f2fca5922e80c09a',
+		's0.heading': '74e492d5d0df0bab',
+		's0.b0': '0c7ce54419de8a75',
+		's0.b1': '44ce80029649ec21',
+		's1.heading': '9585e27668c04a9f',
+		's1.b0.i0': '5c97b00e1a40a36b',
+		's1.b0.i1': 'c74c3876783d3d3e',
+		's1.b0.i2': 'a2c9f8d1aa769e71',
+		's1.b0.i3': '583ce1f06db5e7a3',
+		's1.b1': '75c4a2aecaf4f626',
+		's1.b2': 'a780f42937b826b1',
+		's2.heading': '2beec2f1afabca9b',
+		's2.b0.i0': 'b25aba40145c665f',
+		's2.b0.i1': 'bd2e53852db627ea',
+		's2.b0.i2': '6dce444ee6e264da',
+		's2.b1': 'e5693507bec3f21c',
+		's2.b2': '041b5d6a68e26cfe',
+		's2.b3': '01220bce8ab2d8b5',
+	},
 };

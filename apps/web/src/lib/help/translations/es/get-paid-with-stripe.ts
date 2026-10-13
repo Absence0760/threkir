@@ -2,7 +2,6 @@ import type { GuideTranslation } from '../../types';
 
 export const translation: GuideTranslation = {
 	id: 'get-paid-with-stripe',
-	source: 'd4950e6117ea250a',
 	title: 'Cobrar por los eventos que organizas',
 	summary: 'Conecta una vez una cuenta de pagos de Stripe para que las clases y eventos que organizas puedan cobrar, y el dinero vaya a ti y no al club.',
 	sections: [
@@ -87,4 +86,30 @@ export const translation: GuideTranslation = {
 			],
 		},
 	],
+	sources: {
+		title: 'f9207157d1280332',
+		summary: '790080559509072a',
+		's0.heading': '74e492d5d0df0bab',
+		's0.b0': '94bdd45ffa45992b',
+		's0.b1': 'a2c35333af5a1b69',
+		's1.heading': '3f872765a64cbf87',
+		's1.b0.i0': 'e50bbd6128265cce',
+		's1.b0.i1': '0f46885c40eac7c9',
+		's1.b0.i2': '5c865b5f5c133459',
+		's1.b0.i3': '8dda9f151d4fc524',
+		's2.heading': '1efee8cc7e563d7a',
+		's2.b0.i0': '02332a68186a1ac7',
+		's2.b0.i1': '7215a841b76d02d7',
+		's2.b0.i2': '482a0774b06a0a05',
+		's2.b1': '97218ad8cd1cbafc',
+		's3.heading': 'dd310d8f72e99c50',
+		's3.b0': '67194d07a6c76aca',
+		's3.b1': 'b0ca08b2dbcff463',
+		's4.heading': 'e819e6fcb745f74c',
+		's4.b0': '158c0402a17ba033',
+		's4.b1.i0': '1f9a53c012335688',
+		's4.b1.i1': '69d92aabe5b8e3c6',
+		's4.b1.i2': 'da7f4f45de54e110',
+		's4.b2': 'e6e13ff04eb65dc4',
+	},
 };

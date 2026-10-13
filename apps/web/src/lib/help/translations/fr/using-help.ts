@@ -2,7 +2,6 @@ import type { GuideTranslation } from '../../types';
 
 export const translation: GuideTranslation = {
 	id: 'using-help',
-	source: 'a9e53ac06c08edd3',
 	title: 'Trouver de l\'aide dans l\'app',
 	summary: 'Où se trouvent les guides d\'aide, comment les rechercher et comment passer d\'un écran au guide qui l\'explique.',
 	sections: [
@@ -68,4 +67,23 @@ export const translation: GuideTranslation = {
 			],
 		},
 	],
+	sources: {
+		title: '24b24e04778319f0',
+		summary: 'a48673503416ac4b',
+		's0.heading': '7a1c4fbaadb140c8',
+		's0.b0.i0': '30e5295b4da5ba3c',
+		's0.b0.i1': 'e71dfa25299f1bfd',
+		's0.b1': 'cad6c1b6c1df821e',
+		's1.heading': '04ea92e3c4004802',
+		's1.b0': 'e2a5a0ec166b1e7e',
+		's1.b1': '335fc384cdbd905d',
+		's2.heading': '2c9250315085b9f5',
+		's2.b0': '956cf1fffb9b9281',
+		's2.b1': '77c2e5882892db56',
+		's3.heading': 'e8cea7066700293f',
+		's3.b0.i0': 'ba5bfc36d130445d',
+		's3.b0.i1': '542a777c6fe5c9c7',
+		's3.b0.i2': '71fa810fa8981b8e',
+		's3.b1': 'e8aa5e2de0ab9bdb',
+	},
 };

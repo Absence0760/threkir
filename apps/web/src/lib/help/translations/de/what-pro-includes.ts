@@ -2,7 +2,6 @@ import type { GuideTranslation } from '../../types';
 
 export const translation: GuideTranslation = {
 	id: 'what-pro-includes',
-	source: 'd06d482fd22c314b',
 	title: 'Was Pro umfasst',
 	summary: 'Jeder Bildschirm in Threkir ist kostenlos; Pro erhöht dein Kontingent beim KI-Coach und stellt einige Hintergrundaufgaben in der Warteschlange nach vorn.',
 	sections: [
@@ -75,4 +74,28 @@ export const translation: GuideTranslation = {
 			],
 		},
 	],
+	sources: {
+		title: '4267811678bae9e8',
+		summary: '959c30d7818df50f',
+		's0.heading': '1319c99f2d10de2f',
+		's0.b0': '4512e0ee677c9a74',
+		's1.heading': '28933395a25968d0',
+		's1.b0.i0': '719256df99c524da',
+		's1.b0.i1': '2cc8c412ba418164',
+		's1.b0.i2': '3be7590bced0492d',
+		's1.b0.i3': 'a120796543f347bd',
+		's1.b0.i4': 'abbb1f922ffbfa10',
+		's1.b0.i5': 'dd0fa90eed200d7c',
+		's1.b1': '076479f3bd42d0b5',
+		's2.heading': '912eb19f965419db',
+		's2.b0': 'ee79a267ee574aa9',
+		's2.b1.i0': 'd455f1337a2fbaed',
+		's2.b1.i1': 'f74f301604c6ba73',
+		's2.b2': 'fd72c472718d9474',
+		's2.b3': '0e5dc12fffad6bf9',
+		's3.heading': '797ca5cca61c8cd4',
+		's3.b0.i0': 'bb4062dcb71c0913',
+		's3.b0.i1': '736765a7a1193432',
+		's3.b0.i2': '1d83469669e327f0',
+	},
 };

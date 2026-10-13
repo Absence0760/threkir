@@ -1129,15 +1129,15 @@ jobs:
             echo "Reproduce with: node --test scripts/gen_help_guides.test.mjs (stdlib only, no install needed)."
             exit 1
           fi
-      # Each translated help guide records a hash of the English text it was
-      # translated from; an English edit without a re-translation (or the
-      # stale file's deletion, which falls back to English) fails here
-      # (decisions § R7I18N-1).
+      # Each string of a translated help guide records a hash of the English
+      # it was translated from; an English edit without a re-translation of
+      # the strings it touched (or the file's deletion, which falls back to
+      # English) fails here (decisions § R8I18N-1, § R8I18N-3).
       - name: Verify no help-guide translation is stale against its English guide
         run: |
           if ! node scripts/check_help_translations.mjs; then
-            echo "::error::A translation under apps/web/src/lib/help/translations was made from older English than its guide now holds, or does not line up with it. Nothing here is about the Svelte build or the bundle. The lines above name each file and the guide's current hash."
-            echo "Fix: re-translate the changed text and set source: to the hash printed above (node scripts/check_help_translations.mjs --hash <id>), or delete the stale file so the guide falls back to English."
+            echo "::error::A translated string under apps/web/src/lib/help/translations was made from older English than its guide now holds, or a translation does not line up with its guide. Nothing here is about the Svelte build or the bundle. The lines above name each file, each stale string's path and its new hash."
+            echo "Fix: re-translate each named string and set its entry in the file's sources: to the 'now' hash printed above (node scripts/check_help_translations.mjs --hash <id> [path]), or delete the file so the guide falls back to English."
             exit 1
           fi
       - name: Unit-test the help-guide translation guard

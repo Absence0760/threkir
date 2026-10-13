@@ -2,7 +2,6 @@ import type { GuideTranslation } from '../../types';
 
 export const translation: GuideTranslation = {
 	id: 'refund-policies',
-	source: 'be8b580dfc980abf',
 	title: 'Politiques de remboursement et annulation de votre inscription',
 	summary: 'Le fonctionnement des trois politiques de remboursement, comment un participant annule une inscription payée et ce qu\'il voit lorsqu\'il le fait.',
 	sections: [
@@ -82,4 +81,27 @@ export const translation: GuideTranslation = {
 			],
 		},
 	],
+	sources: {
+		title: 'c4fa256f459076d1',
+		summary: '9baf65491beccb1b',
+		's0.heading': '74e492d5d0df0bab',
+		's0.b0': '30a11867ccf5b3d2',
+		's1.heading': '9b547a04e62b40db',
+		's1.b0': 'ac02c018440619c7',
+		's1.b1.i0': '78212cc5dd0fc966',
+		's1.b1.i1': '109e0ad8958dff1d',
+		's1.b1.i2': 'c0df4938a31c7529',
+		's1.b2': 'f6431402b8fb3d47',
+		's1.b3': '2ba18e4b6ad11943',
+		's2.heading': '75a59fd46f7b58e9',
+		's2.b0.i0': '6acdfa50019e0f37',
+		's2.b0.i1': '46cf562b1c2b6db6',
+		's2.b0.i2': '769ffd95161fd1d5',
+		's2.b1': '36a76c72aba97bcd',
+		's2.b2': '3cd5377cc8a2bfcf',
+		's3.heading': '41bf02bef2f3e906',
+		's3.b0': '79864fedf6e2a3a4',
+		's4.heading': '9bc91646456ca461',
+		's4.b0': '99e677611ddc18a9',
+	},
 };

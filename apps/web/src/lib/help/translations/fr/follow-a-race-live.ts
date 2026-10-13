@@ -2,7 +2,6 @@ import type { GuideTranslation } from '../../types';
 
 export const translation: GuideTranslation = {
 	id: 'follow-a-race-live',
-	source: 'e0211e5c39173f51',
 	title: 'Suivre une course en direct',
 	summary: 'Suivez une course en temps réel sur sa page en direct : les coureurs sur une carte, qui est sur le parcours et qui a terminé sur chaque parcours.',
 	sections: [
@@ -83,4 +82,29 @@ export const translation: GuideTranslation = {
 			],
 		},
 	],
+	sources: {
+		title: '2c62c5274378a304',
+		summary: '6907f1876e7b883e',
+		's0.heading': '9e53c8e8fdd29829',
+		's0.b0': '386a683bed4bd1dd',
+		's0.b1': 'c2d62153581d81fa',
+		's0.b2.i0': '3a6d56e541fe4565',
+		's0.b2.i1': 'c3dd12cae69c5cf5',
+		's0.b2.i2': '120d1d8d969ced75',
+		's0.b2.i3': 'fbe2e397efb8ef5e',
+		's0.b2.i4': '1709d9ad712d85d2',
+		's1.heading': 'dc711bb38f5066a7',
+		's1.b0': 'f40d0503826f0955',
+		's2.heading': '46db515d7f1689a7',
+		's2.b0': '3316e288511685d1',
+		's2.b1': 'cff7f7798a6785c9',
+		's3.heading': '7804f7a79a9eee32',
+		's3.b0': '4355700d3a60d89c',
+		's3.b1': 'ea613ba62f6ba84a',
+		's4.heading': '54a57c3147c49f33',
+		's4.b0.i0': 'b8c1ad08a0dc3387',
+		's4.b0.i1': '7cf40c647db03cc3',
+		's4.b0.i2': 'edbbe7f08d1cf63e',
+		's4.b1': '1bb7132a7305e850',
+	},
 };

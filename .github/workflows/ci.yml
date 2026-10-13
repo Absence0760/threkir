@@ -1110,6 +1110,17 @@ jobs:
             echo "Reproduce with: node --test scripts/check_web_bundle_budget.test.mjs (stdlib only, no install needed)."
             exit 1
           fi
+      # The phone apps render the in-app help guides from a JSON copy of the
+      # TypeScript guides under apps/web/src/lib/help/guides (docs/features/
+      # help.md). Node strips the guide files' types itself, so this needs no
+      # install and runs before one.
+      - name: Verify the mobile help-guide JSON matches the web guides
+        run: |
+          if ! node scripts/gen_help_guides.mjs --check; then
+            echo "::error::apps/mobile_{android,ios}/assets/help/guides.en.json is stale against apps/web/src/lib/help/guides. Nothing here is about the Svelte build or the bundle — the phone apps would show different help text from the web."
+            echo "Fix with: pnpm gen:help-guides (node scripts/gen_help_guides.mjs) and commit both JSON files."
+            exit 1
+          fi
       - run: npm ci
       # The icon font apps/web ships is a SUBSET, cut to the icons the sources
       # name (decisions § 780). Nothing in a build can tell that an icon is

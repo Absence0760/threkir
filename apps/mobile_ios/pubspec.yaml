@@ -151,3 +151,6 @@ flutter:
   generate: true
   assets:
     - .env.development
+    # In-app help guides, generated from apps/web/src/lib/help/guides by
+    # scripts/gen_help_guides.mjs (docs/features/help.md). Never hand-edit.
+    - assets/help/

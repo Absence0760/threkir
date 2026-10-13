@@ -206,6 +206,7 @@ func TestRenderNotificationEmail_AllKinds(t *testing.T) {
 		{"event_reminder", NotificationRow{Kind: "event_reminder", EventID: &ev}, base + "/events/evt-1"},
 		{"event_cancel", NotificationRow{Kind: "event_cancel", EventID: &ev}, base + "/events/evt-1"},
 		{"event_rsvp", NotificationRow{Kind: "event_rsvp", EventID: &ev}, base + "/events/evt-1"},
+		{"event_waitlist_slot", NotificationRow{Kind: "event_waitlist_slot", EventID: &ev}, base + "/events/evt-1"},
 		{"plan_update", NotificationRow{Kind: "plan_update"}, base + "/plans"},
 		{"plan_assigned", NotificationRow{Kind: "plan_assigned"}, base + "/plans"},
 		{"message", NotificationRow{Kind: "message"}, base + "/messages"},

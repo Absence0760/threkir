@@ -97,7 +97,7 @@ export const translation: GuideTranslation = {
 				},
 				{
 					type: 'p',
-					text: 'Num relógio Wear OS, o ecrã de pausa oferece “Vai” para retomar, e mantém premido **Fim** para terminar.',
+					text: 'Num relógio Wear OS, o ecrã de pausa oferece “Vai” para retomar, e mantenha premido **Fim** para terminar.',
 				},
 				{
 					type: 'note',

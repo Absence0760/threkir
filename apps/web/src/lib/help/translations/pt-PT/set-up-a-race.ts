@@ -93,7 +93,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Mesmo antes de preparar a prova, escolhe se os resultados vão diretamente para a classificação. **Aprovar automaticamente os resultados enviados** vem assinalado por predefinição. Desmarque-o se quiser verificar cada resultado primeiro; cada um aparece então como **PENDENTE** até o aprovar.',
+					text: 'Mesmo antes de preparar a prova, escolha se os resultados vão diretamente para a classificação. **Aprovar automaticamente os resultados enviados** vem assinalado por predefinição. Desmarque-o se quiser verificar cada resultado primeiro; cada um aparece então como **PENDENTE** até o aprovar.',
 				},
 			],
 		},

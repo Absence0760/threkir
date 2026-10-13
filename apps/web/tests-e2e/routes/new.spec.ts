@@ -95,7 +95,7 @@ test.describe('/routes/new — save round-trip', () => {
 		await expect(page.getByRole('heading', { level: 1, name: uniqueName }))
 			.toBeVisible({ timeout: 10_000 });
 		await expect(page.locator('.route-description')).toHaveText(description);
-		await expect(page.locator('.btn', { hasText: 'Public' })).toBeVisible();
+		await expect(page.getByTestId('route-audience-btn')).toContainText('Public');
 
 		const admin = getAdminClient();
 		const row = await readMaybeRow(

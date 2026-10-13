@@ -1783,15 +1783,13 @@
 								: audienceSharingOn && audienceLevel !== 'private'
 									? m('audience.copyLink')
 									: audienceSharingOn
-										? m('audience.button')
+										? m('runDetail.shareLink')
 										: m('runDetail.makePublicCopyLink')}
 							title={run.is_public
 								? m('runDetail.copyShareLink')
 								: audienceSharingOn && audienceLevel !== 'private'
 									? m('audience.copyLink')
-									: audienceSharingOn
-										? m('audience.button')
-										: m('runDetail.shareLink')}
+									: m('runDetail.shareLink')}
 							onclick={handleShare}
 							disabled={shareBusy}
 							data-testid="run-share-btn"

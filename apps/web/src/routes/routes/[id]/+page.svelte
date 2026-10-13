@@ -734,7 +734,7 @@
 							{m('routeDetail.exportGpxMarkers')}
 						</button>
 					{/if}
-					{#if isOwner}
+					{#if isOwner && !audienceSharingOn}
 						<button
 							class="btn btn-outline btn-sm"
 							onclick={togglePublic}

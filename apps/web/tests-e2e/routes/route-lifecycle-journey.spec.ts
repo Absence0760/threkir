@@ -175,16 +175,13 @@ test.describe('Routes — create → list → detail → publish → anon share 
 			});
 		});
 
-		await test.step('4. the public toggle confirms the route is published', async () => {
-			// The route was seeded is_public=true, so the owner toggle reads
-			// "Public — tap to make private". (Same title-attribute selector
-			// the detail spec uses; the button label text includes the icon
-			// ligature, so target by the title prefix.)
-			const toggleBtn = page.locator(
-				'button[title^="Public"], button[title^="Private"]'
-			);
-			await expect(toggleBtn).toBeVisible({ timeout: 10_000 });
-			await expect(toggleBtn).toHaveAttribute('title', /^Public/);
+		await test.step('4. the audience control confirms the route is published', async () => {
+			// The route was seeded is_public=true. With audience sharing on (the
+			// seed opens the gate) the owner's visibility control is the audience
+			// button, which names the current level.
+			await expect(page.getByTestId('route-audience-btn')).toContainText('Public', {
+				timeout: 10_000
+			});
 		});
 
 		await test.step('5. an anonymous (logged-out) visitor sees the public share page', async () => {

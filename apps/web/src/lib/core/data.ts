@@ -26,6 +26,7 @@ import { challengesToRecomputeForRun } from '../social/challenge_progress';
 import { mergeMyProgress } from '../social/challenge_list';
 import { selectEffectivePricing } from '../social/event_instance';
 import {
+	applyCourseSave,
 	planCourseSave,
 	sortCourses,
 	type CourseDraft,
@@ -4826,30 +4827,33 @@ export async function fetchEventCourses(eventId: string): Promise<EventCourse[]>
 	return sortCourses(data ?? []);
 }
 
-/// Persist the event editor's course list: delete dropped courses (their
-/// RSVPs and results fall back to no course), then update changed ones, then
-/// insert new ones. Organiser-only through the `event_courses_organiser_*`
-/// policies.
+/// Persist the event editor's course list (a dropped course's RSVPs and
+/// results fall back to no course). The write order and the refused-write
+/// check live in `applyCourseSave`; each statement returns its ids so a write
+/// RLS filtered to nothing is reported, not taken for success. Organiser-only
+/// through the `event_courses_organiser_*` policies.
 export async function saveEventCourses(
 	eventId: string,
 	existing: EventCourse[],
 	drafts: CourseDraft[]
 ): Promise<void> {
-	const plan = planCourseSave(existing, drafts);
-	if (plan.deletes.length > 0) {
-		const { error } = await supabase.from(TABLES.event_courses).delete().in('id', plan.deletes);
-		if (error) throw error;
-	}
-	for (const u of plan.updates) {
-		const { error } = await supabase.from(TABLES.event_courses).update(u.patch).eq('id', u.id);
-		if (error) throw error;
-	}
-	if (plan.inserts.length > 0) {
-		const { error } = await supabase
-			.from(TABLES.event_courses)
-			.insert(plan.inserts.map((w) => ({ ...w, event_id: eventId })));
-		if (error) throw error;
-	}
+	const table = () => supabase.from(TABLES.event_courses);
+	await applyCourseSave(planCourseSave(existing, drafts), {
+		delete: async (ids) => {
+			const { data, error } = await table().delete().in('id', ids).select('id');
+			return { error, rows: data?.length ?? 0 };
+		},
+		update: async (id, patch) => {
+			const { data, error } = await table().update(patch).eq('id', id).select('id');
+			return { error, rows: data?.length ?? 0 };
+		},
+		insert: async (rows) => {
+			const { data, error } = await table()
+				.insert(rows.map((w) => ({ ...w, event_id: eventId })))
+				.select('id');
+			return { error, rows: data?.length ?? 0 };
+		}
+	});
 }
 
 /// The signed-in viewer's chosen course for one occurrence, or null.

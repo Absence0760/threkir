@@ -386,19 +386,33 @@
 	};
 
 	// Persist the course list once the event row exists. Returns the failure
-	// message, or null.
+	// message, or null. The stored list is re-read on failure too: a save that
+	// stopped part-way may already have deleted or updated rows, and a retry
+	// planned against the old list would try to delete a course that is gone.
+	// The main course stays first so the retry still edits it in place.
 	async function persistCourses(eventId: string): Promise<string | null> {
 		if (coursesLoadFailed) return null;
+		const mainId = storedCourses[0]?.id;
+		let failure: string | null = null;
 		try {
 			await saveEventCourses(eventId, storedCourses, courseDrafts());
-			storedCourses = await fetchEventCourses(eventId);
-			return null;
 		} catch (ce: unknown) {
 			console.error('saveEventCourses failed', ce);
-			return m('eventEditor.coursesSaveFailed', {
+			failure = m('eventEditor.coursesSaveFailed', {
 				error: ce instanceof Error ? ce.message : String(ce)
 			});
 		}
+		try {
+			const fresh = await fetchEventCourses(eventId);
+			const main = fresh.find((c) => c.id === mainId);
+			storedCourses = main ? [main, ...fresh.filter((c) => c !== main)] : fresh;
+		} catch (fe: unknown) {
+			// Without the stored list the next save could not tell an existing
+			// course from a new one, so the section locks as it does on load.
+			console.error('fetchEventCourses failed', fe);
+			coursesLoadFailed = true;
+		}
+		return failure;
 	}
 
 	$effect(() => {

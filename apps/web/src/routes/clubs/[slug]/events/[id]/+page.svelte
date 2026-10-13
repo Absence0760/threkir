@@ -990,7 +990,7 @@
 		try {
 			const seconds = parsed ?? editingResult.duration_s;
 			await editEventResultAsHost(editingResult.id, {
-				...hostTimeEditPatch(seconds, !!raceSession?.started_at),
+				...hostTimeEditPatch(seconds, editingResult.gun_time_s),
 				finisher_status: editStatus
 			});
 			editingResult = null;

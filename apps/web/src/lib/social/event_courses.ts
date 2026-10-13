@@ -111,6 +111,52 @@ export function planCourseSave(
 	return plan;
 }
 
+/// A stored-row write as the course save sees it: the error PostgREST
+/// returned, if any, and how many rows the statement touched. RLS filters a
+/// refused UPDATE or DELETE down to zero rows with no error, so the count is
+/// the only way to tell a write that landed from one that was refused.
+export interface CourseWriteResult {
+	error: { message?: string } | null;
+	rows: number;
+}
+
+export interface CourseWriter {
+	delete(ids: string[]): Promise<CourseWriteResult>;
+	update(id: string, patch: CourseWrite): Promise<CourseWriteResult>;
+	insert(rows: CourseWrite[]): Promise<CourseWriteResult>;
+}
+
+export type CourseSaveStep = 'delete' | 'update' | 'insert';
+
+export class CourseSaveError extends Error {
+	readonly step: CourseSaveStep;
+
+	constructor(step: CourseSaveStep, message: string) {
+		super(message);
+		this.name = 'CourseSaveError';
+		this.step = step;
+	}
+}
+
+/// Run a plan against the store. Deletes, then updates, then every insert in
+/// ONE statement, stopping at the first failure: an insert is the only write
+/// that is not idempotent on a retry (the editor's draft has no id for it
+/// until it is re-read), so it goes last and all-or-nothing, and a retry after
+/// any earlier failure re-runs only writes that are safe to repeat. A refused
+/// write (an error, or fewer rows than asked for) throws a CourseSaveError
+/// carrying PostgREST's message, so the editor can show why.
+export async function applyCourseSave(plan: CourseSavePlan, writer: CourseWriter): Promise<void> {
+	const check = (step: CourseSaveStep, r: CourseWriteResult, expected: number) => {
+		if (r.error) throw new CourseSaveError(step, r.error.message || `course ${step} failed`);
+		if (r.rows < expected) {
+			throw new CourseSaveError(step, `course ${step} changed ${r.rows} of ${expected} rows`);
+		}
+	};
+	if (plan.deletes.length > 0) check('delete', await writer.delete(plan.deletes), plan.deletes.length);
+	for (const u of plan.updates) check('update', await writer.update(u.id, u.patch), 1);
+	if (plan.inserts.length > 0) check('insert', await writer.insert(plan.inserts), plan.inserts.length);
+}
+
 export interface CourseBoard<R> {
 	course: EventCourse | null;
 	results: R[];
@@ -151,12 +197,14 @@ export function finishMethodBadge(method: FinishMethod | null): 'manual' | 'host
 }
 
 /// The columns an organiser's time edit writes. `duration_s` is the ranked
-/// time; on a race that had a GO it IS the gun time, so the gun time moves
-/// with it and the chip time (the device's own clock) is left as measured.
+/// time; on a row that carries a gun time it IS the gun time, so the gun time
+/// moves with it and the chip time (the device's own clock) is left as
+/// measured. A row with no gun time (a web chip-time submit, a pre-race row)
+/// keeps none: the race having had a GO does not make an edit a gun reading.
 export function hostTimeEditPatch(
 	durationS: number,
-	raceHadGun: boolean
+	priorGunTimeS: number | null
 ): { duration_s: number; gun_time_s?: number } {
 	const d = Math.max(0, Math.round(durationS));
-	return raceHadGun ? { duration_s: d, gun_time_s: d } : { duration_s: d };
+	return priorGunTimeS != null ? { duration_s: d, gun_time_s: d } : { duration_s: d };
 }

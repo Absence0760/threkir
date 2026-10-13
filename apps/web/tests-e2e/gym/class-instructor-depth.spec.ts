@@ -104,7 +104,7 @@ test.describe('gym class instructor — recurring capacity class + session-prefi
 		await expect(page.getByRole('heading', { name: title })).toBeVisible({
 			timeout: 10_000
 		});
-		await expect(page.getByText(discipline).first()).toBeVisible();
+		await expect(page.getByText(discipline, { exact: true })).toBeVisible();
 		expect(await page.locator('.instance-chip').count()).toBeGreaterThan(1);
 		await expect(page.getByText('Submit my time')).toHaveCount(0);
 		await expect(page.getByText('Target pace')).toHaveCount(0);

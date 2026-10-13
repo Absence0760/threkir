@@ -59,7 +59,8 @@ test.describe('event notification lines — refunded cancel and waitlist slot', 
 					user_id: USER_A.id,
 					kind: 'event_waitlist_slot',
 					event_id: id,
-					event_instance_start: startsAt
+					event_instance_start: startsAt,
+					refunded: false
 				});
 			} else {
 				rows.push({

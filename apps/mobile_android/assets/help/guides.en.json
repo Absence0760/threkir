@@ -1608,7 +1608,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "The **On course** board lists every runner who has sent a position, furthest first, with distance, pace and elapsed time. Each row also says how long ago it was last updated."
+            "text": "The **On course** board lists every runner who has sent a position, furthest first, with distance, pace and elapsed time, with one board per course when the race has more than one. Each row also says how long ago it was last updated."
           },
           {
             "type": "p",
@@ -1680,7 +1680,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Race control appears on the event page for club owners, admins and members with the **Race director** role. On the web it is the **Race control** card; in the phone app it is the **RACE CONTROL** card on the event screen. Approving and editing results is web only."
+            "text": "Race control appears on the event page for club owners, admins and members with the **Race director** role. On the web it is the **Race control** card; in the phone app it is the **RACE CONTROL** card on the event screen. Both can approve and edit results."
           },
           {
             "type": "p",
@@ -1724,7 +1724,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "GO does not start anyone's recording. Racers still press Start on their own phone or watch. Remind them to start after they see **Race LIVE**."
+            "text": "GO does not start anyone's recording. Racers press Start on their own phone or watch, either on the line while the race is armed (the recording joins the race at GO) or after they see **Race LIVE**. Remind them to start one."
           }
         ]
       },
@@ -1748,7 +1748,7 @@
             "type": "steps",
             "items": [
               "When the last racer is in (or your cut-off has passed), choose **End race**.",
-              "On the web the confirmation tells you how many racers who started have no result. Those racers will be marked DNF.",
+              "The confirmation, on the web and in the phone app, tells you how many racers who started have no result. Those racers will be marked DNF.",
               "Confirm with **End race**."
             ]
           },
@@ -1772,7 +1772,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "On the web you can cancel only while the race is armed: choose **Cancel** next to **GO**, then **Cancel race**. In the phone app, **Cancel** is offered while armed and **Cancel race** while running."
+            "text": "You can cancel only while the race is armed: choose **Cancel** next to **GO** (**Fire Go** in the phone app), then **Cancel race**. Once you have fired GO the race can only be ended."
           },
           {
             "type": "p",
@@ -1790,7 +1790,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Results are on the event page under **Results**, with one board per course. This part is on the web only."
+            "text": "Results are on the event page under **Results**, with one board per course. In the phone app, each result has a menu with the same **Approve**, **Unverify** and **Edit** actions."
           },
           {
             "type": "list",
@@ -1814,7 +1814,7 @@
   {
     "id": "race-results-explained",
     "title": "Race results explained",
-    "summary": "What gun and chip time mean, how places are worked out per course, and what the Auto, Manual, Host, DNF, DNS and pending marks say.",
+    "summary": "What gun and chip time mean, how places are worked out per course, and what the Manual, Host, DNF, DNS and pending marks say.",
     "kind": "explainer",
     "category": "races",
     "audience": [
@@ -1866,7 +1866,7 @@
           {
             "type": "list",
             "items": [
-              "**Auto**: the racer's phone or watch detected the finish line. The phone app shows this badge; the web shows no badge for it, because it is the normal case.",
+              "**No badge**: the racer's phone or watch detected the finish line. This is the normal case, so neither the web nor the phone app marks it.",
               "**Manual**: the racer finished by hand, either with **Finish race** after covering at least 90% of the course, or by using **Submit my time** on the web during the race.",
               "**Host** (on the web, **Host edited**): the host entered or corrected this result, or the racer was marked DNF when the host ended the race."
             ]
@@ -1891,7 +1891,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "If the host turned off auto-approve, each new result waits for the host. On the event page it shows **PENDING** with no place yet; on the live page it shows **Pending**. Once the host chooses **Approve**, it takes its place on the board."
+            "text": "If the host turned off auto-approve, each new result waits for the host. On the web event page it shows **PENDING** with no place yet; in the phone app and on the live page it shows **Pending**. Once the host chooses **Approve**, it takes its place on the board."
           },
           {
             "type": "note",
@@ -1927,7 +1927,7 @@
   {
     "id": "racing-in-a-race",
     "title": "Racing in a live race",
-    "summary": "Sign up, pick your course, start recording after GO and let your phone or watch time you over the finish line.",
+    "summary": "Sign up, pick your course, start recording on the line or after GO and let your phone or watch time you over the finish line.",
     "kind": "how-to",
     "category": "races",
     "audience": [
@@ -1987,7 +1987,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Your phone does not start recording by itself. Press Start yourself once you see **Race LIVE**. If you start your phone's recording before GO, that run is not linked to the race: it sends no live position and no result. On a Wear OS watch, a run started early is picked up once the watch sees the race go live."
+            "text": "Your phone or watch does not start recording by itself: press Start yourself. You can start on the line while the race shows **Race armed**, or once you see **Race LIVE**. A recording started early joins the race at GO, on the phone and on a Wear OS watch, and your chip time then counts from GO rather than from when you pressed Start."
           },
           {
             "type": "p",
@@ -2062,8 +2062,8 @@
             "type": "list",
             "items": [
               "**Gun time** runs from the moment the host fired GO to your finish. It is the time you are ranked on.",
-              "**Chip time** runs from when you pressed Start to your finish, including any pauses.",
-              "If you start more than 5 minutes after GO, the phone app shows a late-start notice. Your gun time still counts from GO, so a late start makes it longer than your chip time."
+              "**Chip time** runs from when you pressed Start to your finish, including any pauses. If you pressed Start before GO, it runs from GO, so it is never longer than your gun time.",
+              "If you start more than 5 minutes after GO, or your first position is more than 200 m from the course start, the phone app shows a late-start notice. Your gun time still counts from GO, so a late start makes it longer than your chip time."
             ]
           },
           {

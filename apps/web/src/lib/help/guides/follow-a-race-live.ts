@@ -47,7 +47,7 @@ export const guide: Guide = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'The **On course** board lists every runner who has sent a position, furthest first, with distance, pace and elapsed time. Each row also says how long ago it was last updated.'
+					text: 'The **On course** board lists every runner who has sent a position, furthest first, with distance, pace and elapsed time, with one board per course when the race has more than one. Each row also says how long ago it was last updated.'
 				},
 				{
 					type: 'p',

@@ -103,11 +103,11 @@ void main() {
       expect(find.text('PAID CLASSES'), findsOneWidget);
       expect(find.text('Racing an event'), findsOneWidget);
       await tester.scrollUntilVisible(
-        find.text('MORE GUIDES'),
+        find.text('A guide in a newer category'),
         200,
         scrollable: find.byType(Scrollable).first,
       );
-      expect(find.text('A guide in a newer category'), findsOneWidget);
+      expect(find.text('MORE GUIDES'), findsOneWidget);
     });
 
     testWidgets(

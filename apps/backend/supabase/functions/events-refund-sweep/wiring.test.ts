@@ -1,12 +1,15 @@
 /// Run with `cd apps/backend && deno test --allow-read supabase/functions/events-refund-sweep/wiring.test.ts`.
 ///
 /// Source guards over the sweep's handler, its schedule and its platform
-/// config (decisions § 1839). Driving the handler needs a served function host,
-/// a seeded cancelled occurrence and operator `sk_test_` keys.
+/// config (decisions § 1839). The handler's behaviour is driven against a fake
+/// client in handler.test.ts; what stays here is positional (gate order) and
+/// what a fake cannot see (which transport index.ts injects, the SQL, the
+/// config).
 
 import { assert, assertEquals } from 'https://deno.land/std@0.224.0/assert/mod.ts';
 
-const SRC = await Deno.readTextFile(new URL('./index.ts', import.meta.url));
+const SRC = await Deno.readTextFile(new URL('./handler.ts', import.meta.url));
+const INDEX = await Deno.readTextFile(new URL('./index.ts', import.meta.url));
 const SQL = await Deno.readTextFile(
   new URL('../../migrations/20270726000001_event_refund_reconciliation.sql', import.meta.url),
 );
@@ -35,11 +38,15 @@ Deno.test('the rate limit is spent only on a wrong bearer, behind the compare', 
 });
 
 Deno.test('the sweep refunds through the shared refundOrder over the one transport', () => {
-  assert(/const createRefund = stripeRestRefundCreator\(stripeSecretKey\);/.test(SRC));
+  assert(/const createRefund = deps\.transport\(stripeSecretKey\);/.test(SRC));
+  assert(/transport: stripeRestRefundCreator,/.test(INDEX), 'index.ts must inject the tier\'s one transport');
   assert(/from '\.\.\/events-cancel\/refund\.ts'/.test(SRC));
   // Nothing of its own: no params, no key, no endpoint, no SDK.
   for (const own of ['buildRefundParams(', 'refundIdempotencyKey(', 'idempotencyKey', 'api.stripe.com', '_shared/stripe.ts']) {
-    assert(!SRC.includes(own), `the sweep builds its own refund (${own}); go through refundOrder`);
+    assert(
+      !SRC.includes(own) && !INDEX.includes(own),
+      `the sweep builds its own refund (${own}); go through refundOrder`,
+    );
   }
 });
 

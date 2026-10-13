@@ -121,9 +121,10 @@ Deno.test('every refund in the tier goes through ONE refundOrder over ONE transp
     'the webhook no longer refunds a cancelled occurrence through refundOrder over the one transport',
   );
   assert(
-    /refundOrder\(createRefund, service, order\)/.test(files['events-refund-sweep/index.ts']) &&
-      /const createRefund = stripeRestRefundCreator\(stripeSecretKey\);/
-        .test(files['events-refund-sweep/index.ts']),
+    /refundOrder\(createRefund, service, order\)/.test(files['events-refund-sweep/handler.ts']) &&
+      /const createRefund = deps\.transport\(stripeSecretKey\);/
+        .test(files['events-refund-sweep/handler.ts']) &&
+      /transport: stripeRestRefundCreator,/.test(files['events-refund-sweep/index.ts']),
     'the reconciliation sweep no longer retries through refundOrder (decisions § 1839)',
   );
 });

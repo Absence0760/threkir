@@ -40,9 +40,6 @@ class RaceSessionClient(
         val status: String,
         val startedAtIso: String?,
         val eventTitle: String?,
-        /// Server-minus-device clock offset measured on the `race_sessions`
-        /// read, or null when the response carried no usable `Date`.
-        val serverOffsetMs: Long? = null,
     )
 
     /// The runner's chosen course for a race: `event_attendees.course_id` →
@@ -78,7 +75,7 @@ class RaceSessionClient(
             val obj = el as? JsonObject ?: continue
             val eventId = obj["event_id"]?.jsonPrimitive?.content ?: continue
             val instance = obj["instance_start"]?.jsonPrimitive?.content ?: continue
-            val raceRes = getTimed(
+            val raceRes = get(
                 "$baseUrl/rest/v1/race_sessions" +
                     "?event_id=eq.${enc(eventId)}" +
                     "&instance_start=eq.${enc(instance)}" +
@@ -86,7 +83,7 @@ class RaceSessionClient(
                     "&select=status,started_at",
                 accessToken,
             )
-            val races = (json.parseToJsonElement(raceRes.body) as? JsonArray) ?: continue
+            val races = (json.parseToJsonElement(raceRes) as? JsonArray) ?: continue
             if (races.isEmpty()) continue
             val r = races[0] as JsonObject
             val status = r["status"]?.jsonPrimitive?.content ?: continue
@@ -97,7 +94,7 @@ class RaceSessionClient(
             )
             val title = (json.parseToJsonElement(titleRes) as? JsonArray)
                 ?.firstOrNull()?.let { (it as JsonObject)["title"]?.jsonPrimitive?.content }
-            return ActiveRace(eventId, instance, status, startedAt, title, raceRes.serverOffsetMs)
+            return ActiveRace(eventId, instance, status, startedAt, title)
         }
         return null
     }
@@ -138,20 +135,23 @@ class RaceSessionClient(
         accessToken: String,
         eventId: String,
         instanceStart: String,
-    ): SessionStatus? {
-        val res = getTimed(
+    ): String? {
+        val res = get(
             "$baseUrl/rest/v1/race_sessions?event_id=eq.${enc(eventId)}" +
                 "&instance_start=eq.${enc(instanceStart)}&select=status",
             accessToken,
         )
-        val row = (json.parseToJsonElement(res.body) as? JsonArray)?.firstOrNull() as? JsonObject
-        val status = row?.get("status")?.jsonPrimitive?.contentOrNull ?: return null
-        return SessionStatus(status, res.serverOffsetMs)
+        val row = (json.parseToJsonElement(res) as? JsonArray)?.firstOrNull() as? JsonObject
+        return row?.get("status")?.jsonPrimitive?.contentOrNull
     }
 
-    data class SessionStatus(val status: String, val serverOffsetMs: Long?)
+    /// One round trip answered with the server's own clock: the ping's
+    /// `at`, read back on the insert. Feeds [ServerClockOffset].
+    data class ClockSample(val sentAtMs: Long, val receivedAtMs: Long, val serverAtMs: Long)
 
-    /// Fire-and-forget ping post. Caller debounces to every 10s or so.
+    /// Ping post, read back for its server-stamped `at` so the watch's clock
+    /// offset comes from the same source the phone's does. Null when the
+    /// response carried no readable `at`. Caller debounces to every 10s or so.
     suspend fun pushPing(
         accessToken: String,
         userId: String,
@@ -162,7 +162,7 @@ class RaceSessionClient(
         distanceM: Double,
         elapsedS: Int,
         bpm: Int?,
-    ) {
+    ): ClockSample? {
         val body = buildJsonObject {
             put("event_id", eventId)
             put("instance_start", instanceStart)
@@ -173,7 +173,25 @@ class RaceSessionClient(
             put("elapsed_s", elapsedS)
             if (bpm != null) put("bpm", bpm)
         }
-        post("$baseUrl/rest/v1/race_pings", body.toString(), accessToken)
+        val req = Request.Builder()
+            .url("$baseUrl/rest/v1/race_pings?select=at")
+            .header("apikey", anonKey)
+            .header("Authorization", "Bearer $accessToken")
+            .header("Content-Type", "application/json")
+            .header("Prefer", "return=representation")
+            .post(body.toString().toRequestBody(jsonMedia))
+            .build()
+        return withContext(Dispatchers.IO) {
+            val sentAt = System.currentTimeMillis()
+            http.newCall(req).execute().use { resp ->
+                val receivedAt = System.currentTimeMillis()
+                val text = resp.body.string()
+                if (!resp.isSuccessful) {
+                    throw RuntimeException("HTTP ${resp.code}: $text")
+                }
+                parsePingAtMs(text)?.let { ClockSample(sentAt, receivedAt, it) }
+            }
+        }
     }
 
     suspend fun submitResult(accessToken: String, result: PendingRaceResult) {
@@ -196,43 +214,6 @@ class RaceSessionClient(
             .header("apikey", anonKey)
             .header("Authorization", "Bearer $token")
             .get()
-            .build()
-        return execute(req)
-    }
-
-    private class Timed(val body: String, val serverOffsetMs: Long?)
-
-    private suspend fun getTimed(url: String, token: String): Timed {
-        val req = Request.Builder()
-            .url(url)
-            .header("apikey", anonKey)
-            .header("Authorization", "Bearer $token")
-            .get()
-            .build()
-        return withContext(Dispatchers.IO) {
-            val sentAt = System.currentTimeMillis()
-            http.newCall(req).execute().use { resp ->
-                val receivedAt = System.currentTimeMillis()
-                val body = resp.body.string()
-                if (!resp.isSuccessful) {
-                    throw RuntimeException("HTTP ${resp.code}: $body")
-                }
-                val offset = resp.headers.getDate("Date")?.time?.let {
-                    RaceFinish.clockOffsetMs(it, sentAt, receivedAt)
-                }
-                Timed(body, offset)
-            }
-        }
-    }
-
-    private suspend fun post(url: String, body: String, token: String): String {
-        val req = Request.Builder()
-            .url(url)
-            .header("apikey", anonKey)
-            .header("Authorization", "Bearer $token")
-            .header("Content-Type", "application/json")
-            .header("Prefer", "return=minimal")
-            .post(body.toRequestBody(jsonMedia))
             .build()
         return execute(req)
     }
@@ -262,6 +243,12 @@ class RaceSessionClient(
 
         private fun firstRow(body: String): JsonObject? =
             (parser.parseToJsonElement(body) as? JsonArray)?.firstOrNull() as? JsonObject
+
+        /// The `at` of the inserted `race_pings` row, echoed back by
+        /// `return=representation`.
+        @JvmStatic
+        internal fun parsePingAtMs(body: String): Long? =
+            firstRow(body)?.get("at")?.jsonPrimitive?.contentOrNull?.let(::parseServerInstantMs)
 
         @JvmStatic
         internal fun parseCourseId(body: String): String? =

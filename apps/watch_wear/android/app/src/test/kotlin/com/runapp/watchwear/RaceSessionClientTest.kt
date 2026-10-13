@@ -236,4 +236,49 @@ class RaceSessionClientTest {
         assertNull(RaceFinishDetector.forCourse(course.finishLat, course.finishLng, course.distanceM))
         assertFalse(seen.any { it.contains("/rest/v1/routes") })
     }
+
+    // ───────────── ping: the clock offset's server timestamp ─────────────
+
+    private fun pingClient(body: String, seen: MutableList<okhttp3.Request>): RaceSessionClient {
+        val http = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                val req = chain.request()
+                seen += req
+                Response.Builder()
+                    .request(req)
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(201)
+                    .message("Created")
+                    .body(body.toResponseBody(null))
+                    .build()
+            }
+            .build()
+        return RaceSessionClient("https://example.test", "anon", http)
+    }
+
+    private fun ping(client: RaceSessionClient) = runBlocking {
+        client.pushPing("t", "u1", "e1", "2026-05-22T18:00:00Z", 51.1, 0.2, 1200.0, 360, null)
+    }
+
+    @Test
+    fun `pushPing reads the inserted row's at back as a clock sample`() {
+        val seen = mutableListOf<okhttp3.Request>()
+        val sample = ping(pingClient("""[{"at":"2026-05-22T18:06:00.25+00:00"}]""", seen))
+        assertNotNull(sample)
+        assertEquals(1_779_473_160_250L, sample!!.serverAtMs)
+        assertTrue(sample.receivedAtMs >= sample.sentAtMs)
+        val req = seen.single()
+        assertEquals("POST", req.method)
+        assertEquals("/rest/v1/race_pings", req.url.encodedPath)
+        assertEquals("at", req.url.queryParameter("select"))
+        assertEquals("return=representation", req.header("Prefer"))
+    }
+
+    @Test
+    fun `pushPing with no readable at gives no sample`() {
+        val seen = mutableListOf<okhttp3.Request>()
+        assertNull(ping(pingClient("[]", seen)))
+        assertNull(ping(pingClient("""[{"at":"not a time"}]""", seen)))
+        assertNull(RaceSessionClient.parsePingAtMs("""[{"at":null}]"""))
+    }
 }

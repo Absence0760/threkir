@@ -2,6 +2,7 @@ package com.runapp.watchwear
 
 import android.content.Context
 import android.util.Log
+import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -68,13 +69,24 @@ private fun decodeOrEmpty(raw: String?): List<PendingRaceResult> {
         }
 }
 
-class RaceResultStore(private val context: Context) {
+/// The queue minus [result]. Every other entry, including another account's,
+/// is left where it was.
+internal fun removeRaceResult(
+    queue: List<PendingRaceResult>,
+    result: PendingRaceResult,
+): List<PendingRaceResult> = queue - result
+
+/// The DataStore is injected so the queue's behaviour is pinned on the host
+/// JVM against a real file store; the app always takes the Context one.
+class RaceResultStore internal constructor(private val dataStore: DataStore<Preferences>) {
+
+    constructor(context: Context) : this(context.raceResultDataStore)
 
     suspend fun current(): List<PendingRaceResult> =
-        decodeOrEmpty(context.raceResultDataStore.data.first()[KEY_PENDING])
+        decodeOrEmpty(dataStore.data.first()[KEY_PENDING])
 
     suspend fun add(result: PendingRaceResult) {
-        context.raceResultDataStore.edit { prefs ->
+        dataStore.edit { prefs ->
             val list = decodeOrEmpty(prefs[KEY_PENDING])
             prefs[KEY_PENDING] = pendingJson.encodeToString(
                 pendingSerializer,
@@ -84,13 +96,16 @@ class RaceResultStore(private val context: Context) {
     }
 
     suspend fun remove(result: PendingRaceResult) {
-        context.raceResultDataStore.edit { prefs ->
+        dataStore.edit { prefs ->
             val list = decodeOrEmpty(prefs[KEY_PENDING])
-            prefs[KEY_PENDING] = pendingJson.encodeToString(pendingSerializer, list - result)
+            prefs[KEY_PENDING] = pendingJson.encodeToString(
+                pendingSerializer,
+                removeRaceResult(list, result),
+            )
         }
     }
 
     suspend fun clear() {
-        context.raceResultDataStore.edit { prefs -> prefs.remove(KEY_PENDING) }
+        dataStore.edit { prefs -> prefs.remove(KEY_PENDING) }
     }
 }

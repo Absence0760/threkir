@@ -1,6 +1,7 @@
 package com.runapp.watchwear
 
 import android.app.Application
+import android.os.SystemClock
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
@@ -325,6 +326,7 @@ internal fun buildRaceResult(
     userId: String,
     runId: String,
     runStartedAtMs: Long,
+    recordedDurationS: Int,
     serverOffsetMs: Long?,
 ): PendingRaceResult {
     val chip = RaceFinish.chipTimeS(decision.finishEpochMs, runStartedAtMs)
@@ -334,13 +336,13 @@ internal fun buildRaceResult(
         eventId = race.eventId,
         instanceStart = race.instanceStart,
         runId = runId,
-        durationS = RaceFinish.durationS(gun, chip),
+        durationS = RaceFinish.durationS(gun, chip, recordedDurationS),
         distanceM = decision.coveredM,
         finisherStatus = decision.outcome.finisherStatus,
         finishMethod = decision.outcome.finishMethod,
         courseId = race.course?.id,
         gunTimeS = gun,
-        chipTimeS = chip,
+        chipTimeS = chip ?: recordedDurationS,
     )
 }
 
@@ -530,15 +532,17 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     // Race-mode recording state. Everything below is auxiliary to the run
     // (layer L4): a fault in any of it is caught where it happens and leaves
     // the recording, the foreground service and the queued run untouched.
-    /// Server-minus-device clock offset from the last race poll.
-    private var serverClockOffsetMs: Long? = null
+    /// Server-minus-device clock offset, sampled off every race ping's
+    /// server-stamped `at`.
+    private val serverClock = ServerClockOffset()
     /// The race the current recording belongs to.
     private var boundRace: ActiveRaceState? = null
     private var boundRunId: String? = null
     /// A run the host ended the race under; it is never re-bound.
     private var raceEndedRunId: String? = null
     private var raceDetector: RaceFinishDetector? = null
-    private var lastRaceFixEpochMs: Long = Long.MIN_VALUE
+    /// The last fix offered to the detector, by its GPS time: a dedupe key.
+    private var lastRaceFixKey: Long = Long.MIN_VALUE
     private var raceStopDecision: RaceStopDecision? = null
 
     init {
@@ -657,7 +661,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         val token = supabase.currentAccessToken ?: return
         val uid = supabase.authedUserId ?: return
         racePingJob = launchGuarded {
-            try {
+            val sample = try {
                 raceClient.pushPing(
                     accessToken = token,
                     userId = uid,
@@ -671,7 +675,19 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                 )
             } catch (_: Throwable) {
                 // ignore — pings are best-effort.
+                null
             }
+            sample?.let { onClockSample(it) }
+        }
+    }
+
+    private fun onClockSample(sample: RaceSessionClient.ClockSample) {
+        serverClock.addSample(sample.sentAtMs, sample.receivedAtMs, sample.serverAtMs)
+        val race = boundRace ?: return
+        val run = _state.value.raceRun ?: return
+        val gun = gunStartDeviceMs(race.startedAtMs, serverClock.offsetMs)
+        if (gun != run.gunStartDeviceMs) {
+            _state.value = _state.value.copy(raceRun = run.copy(gunStartDeviceMs = gun))
         }
     }
 
@@ -741,7 +757,6 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         }
         try {
             val active = raceClient.fetchActive(token, uid)
-            active?.serverOffsetMs?.let { serverClockOffsetMs = it }
             val previous = _state.value.activeRace
             val newState = active?.let {
                 val sameRace = previous != null &&
@@ -784,9 +799,8 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     /// ended it and whether the course has arrived late.
     private suspend fun refreshBoundRace(token: String, uid: String, bound: ActiveRaceState) {
         try {
-            val session = raceClient.fetchSessionStatus(token, bound.eventId, bound.instanceStart)
-            session?.serverOffsetMs?.let { serverClockOffsetMs = it }
-            if (session?.status == "finished" || session?.status == "cancelled") {
+            val status = raceClient.fetchSessionStatus(token, bound.eventId, bound.instanceStart)
+            if (hostEndsRace(status, decided = raceStopDecision != null)) {
                 onRaceEndedByHost()
                 return
             }
@@ -804,9 +818,6 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun onRaceEndedByHost() {
-        // A finish already decided is a result already owed: the host's End
-        // racing the service's stop must not swallow it.
-        if (raceStopDecision != null) return
         raceEndedRunId = boundRunId
         boundRace = null
         boundRunId = null
@@ -818,32 +829,43 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun maybeBindRace(m: RecordingRepository.Metrics) {
-        if (boundRace != null) return
-        val runId = m.runId ?: return
-        if (runId == raceEndedRunId) return
-        val race = _state.value.activeRace?.takeIf { it.isRunning } ?: return
+        val race = raceToBind(
+            alreadyBound = boundRace != null,
+            runId = m.runId,
+            endedRunId = raceEndedRunId,
+            active = _state.value.activeRace,
+        ) ?: return
         boundRace = race
-        boundRunId = runId
+        boundRunId = m.runId
         raceDetector = race.course?.let {
             RaceFinishDetector.forCourse(it.finishLat, it.finishLng, it.distanceM)
         }
-        lastRaceFixEpochMs = Long.MIN_VALUE
+        lastRaceFixKey = Long.MIN_VALUE
         raceStopDecision = null
         _state.value = _state.value.copy(
             raceRun = RaceRunState(
-                gunStartDeviceMs = race.startedAtMs?.let { it - (serverClockOffsetMs ?: 0L) },
+                gunStartDeviceMs = gunStartDeviceMs(race.startedAtMs, serverClock.offsetMs),
             ),
         )
     }
 
     private fun maybeAdvanceRaceFinish(m: RecordingRepository.Metrics) {
-        if (m.stage != RecordingRepository.Stage.Recording) return
-        if (raceStopDecision != null) return
         val detector = raceDetector ?: return
         val p = m.latestPoint ?: return
-        if (p.epochMs == lastRaceFixEpochMs) return
-        lastRaceFixEpochMs = p.epochMs
-        val finish = detector.offer(RaceFinish.Fix(p.lat, p.lng, p.epochMs, m.distanceM)) ?: return
+        val offerable = raceFixOfferable(
+            recording = m.stage == RecordingRepository.Stage.Recording,
+            decided = raceStopDecision != null,
+            fixKey = p.epochMs,
+            lastFixKey = lastRaceFixKey,
+        )
+        if (!offerable) return
+        lastRaceFixKey = p.epochMs
+        val atMs = raceFixDeviceMs(
+            fixElapsedRealtimeMs = p.elapsedRealtimeMs,
+            nowWallMs = System.currentTimeMillis(),
+            nowElapsedRealtimeMs = SystemClock.elapsedRealtime(),
+        )
+        val finish = detector.offer(RaceFinish.Fix(p.lat, p.lng, atMs, m.distanceM)) ?: return
         stopForRace(RaceStopDecision(RaceFinish.Outcome.AUTO_FINISH, finish.epochMs, finish.coveredM))
     }
 
@@ -852,27 +874,22 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         RunRecordingService.stop(getApplication())
     }
 
-    /// "Finish race": a closest approach still being decided in the zone is
-    /// an automatic finish; otherwise the 90 % gate makes it a manual finish
-    /// or a DNF.
     private fun finishRaceNow(race: ActiveRaceState) {
-        val settled = try {
-            raceDetector?.finaliseNow()
-        } catch (e: Throwable) {
-            Log.w(TAG, "race finish detector failed on Finish race", e)
-            null
-        }
-        val decision = if (settled != null) {
-            RaceStopDecision(RaceFinish.Outcome.AUTO_FINISH, settled.epochMs, settled.coveredM)
-        } else {
-            val covered = _state.value.distanceM
-            RaceStopDecision(
-                RaceFinish.manualOutcome(covered, race.course?.distanceM),
-                System.currentTimeMillis(),
-                covered,
-            )
-        }
-        stopForRace(decision)
+        stopForRace(
+            raceFinishDecision(
+                settled = settleRaceDetector(raceDetector),
+                coveredM = _state.value.distanceM,
+                courseDistanceM = race.course?.distanceM,
+                nowDeviceMs = System.currentTimeMillis(),
+            ),
+        )
+    }
+
+    private fun settleRaceDetector(detector: RaceFinishDetector?): RaceFinish.Finish? = try {
+        detector?.finaliseNow()
+    } catch (e: Throwable) {
+        Log.w(TAG, "race finish detector failed to settle; judged by distance", e)
+        null
     }
 
     /// The queue is what survives a finish line with no signal; the send
@@ -913,10 +930,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
             Log.w(TAG, "pending race results unreadable", e)
             return
         }
-        for (r in pending) {
-            // Another account's result is never sent under this session.
-            if (r.userId == uid) sendRaceResult(token, r)
-        }
+        for (r in raceResultsToReplay(pending, uid)) sendRaceResult(token, r)
     }
 
     private fun bootstrapAuth() {
@@ -1541,15 +1555,16 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         val stage = _state.value.stage
         if (stage != Stage.Running && stage != Stage.Paused) return
         val race = boundRace
-        if (race != null && raceStopDecision == null) {
-            if (stage == Stage.Running) {
-                RunRecordingService.pause(getApplication())
-            } else {
-                finishRaceNow(race)
-            }
-            return
+        val action = raceStopAction(
+            paused = stage == Stage.Paused,
+            raceBound = race != null,
+            decided = raceStopDecision != null,
+        )
+        when (action) {
+            RaceStopAction.PAUSE -> RunRecordingService.pause(getApplication())
+            RaceStopAction.FINISH_RACE -> race?.let { finishRaceNow(it) }
+            RaceStopAction.STOP -> RunRecordingService.stop(getApplication())
         }
-        RunRecordingService.stop(getApplication())
     }
 
     fun pause() {
@@ -1572,11 +1587,12 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         // the next run starts unbound whatever happens to this one's result.
         val race = boundRace?.takeIf { boundRunId == runId }
         val decision = raceStopDecision
+        val detector = raceDetector
         boundRace = null
         boundRunId = null
         raceDetector = null
         raceStopDecision = null
-        lastRaceFixEpochMs = Long.MIN_VALUE
+        lastRaceFixKey = Long.MIN_VALUE
         val uidForRace = supabase.authedUserId
         val raceResult = if (race != null && uidForRace != null) {
             try {
@@ -1584,16 +1600,18 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                     race = race,
                     // A run that reached `Finished` without Stop or a finish
                     // (a recovered or system-stopped run) is judged as if
-                    // "Finish race" had been pressed at its last fix.
-                    decision = decision ?: RaceStopDecision(
-                        RaceFinish.manualOutcome(m.distanceM, race.course?.distanceM),
-                        m.latestPoint?.epochMs ?: System.currentTimeMillis(),
-                        m.distanceM,
+                    // "Finish race" had been pressed now.
+                    decision = decision ?: raceFinishDecision(
+                        settled = settleRaceDetector(detector),
+                        coveredM = m.distanceM,
+                        courseDistanceM = race.course?.distanceM,
+                        nowDeviceMs = System.currentTimeMillis(),
                     ),
                     userId = uidForRace,
                     runId = runId,
                     runStartedAtMs = m.startedAtMs,
-                    serverOffsetMs = serverClockOffsetMs,
+                    recordedDurationS = durationS,
+                    serverOffsetMs = serverClock.offsetMs,
                 )
             } catch (e: Throwable) {
                 Log.e(TAG, "race result not built; the run is still saved", e)

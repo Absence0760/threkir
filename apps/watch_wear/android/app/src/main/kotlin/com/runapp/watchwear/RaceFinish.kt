@@ -26,6 +26,9 @@ object RaceFinish {
     const val MIN_DISTANCE_FRACTION = 0.9
 
     /// One GPS fix with the covered distance the recorder credited by then.
+    /// [epochMs] is the fix's instant on the DEVICE clock — the clock the
+    /// gun offset and the runner's Start are measured on — not the GPS
+    /// time the fix carries ([raceFixDeviceMs]).
     data class Fix(
         val lat: Double,
         val lng: Double,
@@ -65,10 +68,11 @@ object RaceFinish {
 
     /// Gun time: the finish on the SERVER's clock minus `race_sessions
     /// .started_at`, which is server time. [serverOffsetMs] is server minus
-    /// device, estimated from the HTTP `Date` header of the race poll
-    /// ([clockOffsetMs]); null means no estimate yet, and the device clock is
-    /// taken as-is. Null when there is no `started_at` or the result would be
-    /// negative — a finish before the gun is a clock fault, not a time.
+    /// device ([ServerClockOffset]); null means no estimate yet, and the
+    /// device clock is taken as-is. [finishEpochMs] is on the DEVICE clock,
+    /// never a GPS fix's own time. Null when there is no `started_at` or the
+    /// result would be negative — a finish before the gun is a clock fault,
+    /// not a time.
     fun gunTimeS(finishEpochMs: Long, serverOffsetMs: Long?, startedAtMs: Long?): Int? {
         if (startedAtMs == null) return null
         val ms = finishEpochMs + (serverOffsetMs ?: 0L) - startedAtMs
@@ -78,30 +82,53 @@ object RaceFinish {
 
     /// Chip time: the finish minus the runner's own Start press, both on the
     /// device clock, so no skew enters it. Wall time, pauses included — the
-    /// race clock does not stop for a paused watch.
-    fun chipTimeS(finishEpochMs: Long, runStartedAtMs: Long): Int =
-        ((finishEpochMs - runStartedAtMs).coerceAtLeast(0L) / 1000).toInt()
+    /// race clock does not stop for a paused watch. Null when negative, as
+    /// the gun time is: a finish before the Start press is a clock fault.
+    fun chipTimeS(finishEpochMs: Long, runStartedAtMs: Long): Int? {
+        val ms = finishEpochMs - runStartedAtMs
+        if (ms < 0) return null
+        return (ms / 1000).toInt()
+    }
 
     /// The leaderboard's `duration_s`: gun time when the session has a gun,
-    /// chip time otherwise.
-    fun durationS(gunTimeS: Int?, chipTimeS: Int): Int = gunTimeS ?: chipTimeS
+    /// chip time otherwise, and the recorder's own duration when neither
+    /// could be measured.
+    fun durationS(gunTimeS: Int?, chipTimeS: Int?, recordedS: Int): Int =
+        gunTimeS ?: chipTimeS ?: recordedS
+}
 
-    /// Server-minus-device clock offset from one HTTP exchange. The `Date`
-    /// header is stamped somewhere between send and receive, so the midpoint
-    /// of the round trip is the best device-clock estimate of that instant.
-    /// The header has one-second resolution; a half-second bias is far below
-    /// what a race result is read at, and far below the skew it corrects.
-    fun clockOffsetMs(serverDateMs: Long, sentAtMs: Long, receivedAtMs: Long): Long =
-        serverDateMs - (sentAtMs + (receivedAtMs - sentAtMs) / 2)
+/// Device-to-server clock offset, estimated from request round trips — the
+/// Kotlin half of `ServerClockOffset` in `race_finish.dart`.
+///
+/// Each sample is a `race_pings` insert sent at `sentAtMs`, answered with the
+/// row's server-stamped `at`, received at `receivedAtMs`. The server stamped
+/// somewhere inside the round trip, so the midpoint is the best device-side
+/// estimate of that instant and the error is at most half the round trip.
+/// The sample with the shortest round trip wins; a tie takes the newer one.
+class ServerClockOffset {
+    /// Server minus device, or null until a sample lands.
+    var offsetMs: Long? = null
+        private set
+    private var bestRttMs: Long? = null
+
+    fun addSample(sentAtMs: Long, receivedAtMs: Long, serverAtMs: Long) {
+        val rtt = receivedAtMs - sentAtMs
+        if (rtt < 0) return
+        val best = bestRttMs
+        if (best != null && rtt > best) return
+        offsetMs = serverAtMs - (sentAtMs + rtt / 2)
+        bestRttMs = rtt
+    }
 }
 
 /// Stateful closest-approach tracker for one runner on one course. Feed it
-/// every fix while recording; it answers the [RaceFinish.Finish] once and
-/// keeps answering it.
+/// every fix while recording; it answers the [RaceFinish.Finish] once, and
+/// [finish] holds it afterwards.
 class RaceFinishDetector(
     private val finishLat: Double,
     private val finishLng: Double,
     private val courseDistanceM: Double,
+    private val zoneM: Double = RaceFinish.FINISH_RADIUS_M,
 ) {
     private var best: RaceFinish.Fix? = null
     private var bestDistanceM = Double.MAX_VALUE
@@ -113,10 +140,15 @@ class RaceFinishDetector(
     /// closest approach is still being decided.
     val isCandidate: Boolean get() = finish == null && best != null
 
+    /// Feed one fix. Returns the finish on the call that finalises it and
+    /// null on every other call, including every call after it. A fix with
+    /// a non-finite coordinate or covered distance is ignored, not judged:
+    /// read as "outside the zone" it would finalise an open approach.
     fun offer(fix: RaceFinish.Fix): RaceFinish.Finish? {
-        finish?.let { return it }
+        if (finish != null) return null
+        if (!fix.lat.isFinite() || !fix.lng.isFinite() || !fix.coveredM.isFinite()) return null
         val d = RouteMath.haversineM(fix.lat, fix.lng, finishLat, finishLng)
-        val eligible = d <= RaceFinish.FINISH_RADIUS_M &&
+        val eligible = d <= zoneM &&
             RaceFinish.meetsDistanceGate(fix.coveredM, courseDistanceM)
         val current = best
         if (current == null) {

@@ -84,6 +84,7 @@ class RaceModeWireTest {
             userId = "u1",
             runId = "run1",
             runStartedAtMs = 1_030_000L,
+            recordedDurationS = 1_900,
             serverOffsetMs = 2_000L,
         )
         assertEquals(2002, r.gunTimeS)
@@ -111,6 +112,7 @@ class RaceModeWireTest {
             userId = "u1",
             runId = "run1",
             runStartedAtMs = 1_000_000L,
+            recordedDurationS = 900,
             serverOffsetMs = null,
         )
         assertEquals("dnf", r.finisherStatus)
@@ -121,6 +123,22 @@ class RaceModeWireTest {
         assertFalse(body.containsKey("gun_time_s"))
         assertFalse(body.containsKey("course_id"))
         assertTrue(body.containsKey("chip_time_s"))
+    }
+
+    @Test
+    fun `a finish before the runner's own start falls back to the recorded duration`() {
+        val r = buildRaceResult(
+            race = race.copy(startedAtMs = null),
+            decision = RaceStopDecision(RaceFinish.Outcome.MANUAL_FINISH, 999_000L, 9_500.0),
+            userId = "u1",
+            runId = "run1",
+            runStartedAtMs = 1_000_000L,
+            recordedDurationS = 1_234,
+            serverOffsetMs = null,
+        )
+        assertNull(r.gunTimeS)
+        assertEquals(1_234, r.chipTimeS)
+        assertEquals(1_234, r.durationS)
     }
 
     @Test

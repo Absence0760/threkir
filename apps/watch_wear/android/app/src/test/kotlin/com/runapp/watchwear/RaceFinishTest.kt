@@ -53,8 +53,47 @@ class RaceFinishTest {
         assertNull(d.offer(fix(28.0, 4972.0, 3)))
         val f = d.offer(fix(31.0, 4975.0, 6))
         assertEquals(t0 + 3_000L, f!!.epochMs)
-        // Once settled, a fix that jitters back in cannot move the finish.
-        assertEquals(f, d.offer(fix(2.0, 4980.0, 9)))
+        // Once settled, a fix that jitters back in cannot move the finish:
+        // the finish is answered on the call that settles it and held after.
+        assertNull(d.offer(fix(2.0, 4980.0, 9)))
+        assertEquals(f, d.finish)
+    }
+
+    @Test
+    fun `a fix exactly on the zone edge counts`() {
+        val edge = fix(-30.0, 4970.0, 0)
+        val d = RaceFinishDetector(
+            finishLat,
+            finishLng,
+            5000.0,
+            zoneM = RouteMath.haversineM(edge.lat, edge.lng, finishLat, finishLng),
+        )
+        assertNull(d.offer(edge))
+        assertTrue(d.isCandidate)
+        assertEquals(t0, d.finaliseNow()!!.epochMs)
+    }
+
+    @Test
+    fun `a tie keeps the earlier fix and does not finalise`() {
+        val d = detector()
+        assertNull(d.offer(fix(5.0, 4990.0, 0)))
+        assertNull(d.offer(fix(5.0, 4992.0, 2)))
+        assertTrue(d.isCandidate)
+        val f = d.offer(fix(9.0, 4996.0, 4))
+        assertEquals(t0, f!!.epochMs)
+    }
+
+    @Test
+    fun `a non-finite fix is ignored, not read as leaving the zone`() {
+        val d = detector()
+        assertNull(d.offer(fix(10.0, 4990.0, 0)))
+        assertNull(d.offer(fix(10.0, Double.NaN, 1)))
+        assertNull(d.offer(RaceFinish.Fix(Double.NaN, finishLng, t0 + 2_000L, 4992.0)))
+        assertNull(d.offer(RaceFinish.Fix(finishLat, Double.POSITIVE_INFINITY, t0 + 3_000L, 4993.0)))
+        assertTrue(d.isCandidate)
+        val f = d.offer(fix(4.0, 4994.0, 4))
+        assertNull(f)
+        assertEquals(t0 + 4_000L, d.finaliseNow()!!.epochMs)
     }
 
     @Test
@@ -153,15 +192,40 @@ class RaceFinishTest {
     @Test
     fun `chip time is wall time from the runner's own start and duration prefers gun`() {
         assertEquals(1830, RaceFinish.chipTimeS(t0 + 1_830_500L, t0))
-        assertEquals(0, RaceFinish.chipTimeS(t0 - 5L, t0))
-        assertEquals(1845, RaceFinish.durationS(1845, 1830))
-        assertEquals(1830, RaceFinish.durationS(null, 1830))
+        assertEquals(0, RaceFinish.chipTimeS(t0, t0))
+        assertEquals(1845, RaceFinish.durationS(1845, 1830, 1700))
+        assertEquals(1830, RaceFinish.durationS(null, 1830, 1700))
+        assertEquals(1700, RaceFinish.durationS(null, null, 1700))
+    }
+
+    @Test
+    fun `a chip time before the runner's own start is omitted, not clamped`() {
+        assertNull(RaceFinish.chipTimeS(t0 - 5L, t0))
     }
 
     @Test
     fun `clock offset is taken against the round-trip midpoint`() {
+        val c = ServerClockOffset()
+        assertNull(c.offsetMs)
         // Sent at 1000, received at 1400, server stamped 5200: midpoint 1200.
-        assertEquals(4_000L, RaceFinish.clockOffsetMs(5_200L, 1_000L, 1_400L))
-        assertEquals(-300L, RaceFinish.clockOffsetMs(900L, 1_000L, 1_400L))
+        c.addSample(sentAtMs = 1_000L, receivedAtMs = 1_400L, serverAtMs = 5_200L)
+        assertEquals(4_000L, c.offsetMs)
+    }
+
+    @Test
+    fun `the shortest round trip wins and a negative one is discarded`() {
+        val c = ServerClockOffset()
+        c.addSample(sentAtMs = 1_000L, receivedAtMs = 1_400L, serverAtMs = 5_200L)
+        // A slower round trip says less about the instant; it is ignored.
+        c.addSample(sentAtMs = 2_000L, receivedAtMs = 3_000L, serverAtMs = 9_000L)
+        assertEquals(4_000L, c.offsetMs)
+        // A clock that stepped backwards mid-request is no sample at all.
+        c.addSample(sentAtMs = 4_000L, receivedAtMs = 3_900L, serverAtMs = 0L)
+        assertEquals(4_000L, c.offsetMs)
+        // A faster one replaces it, and so does an equal one.
+        c.addSample(sentAtMs = 5_000L, receivedAtMs = 5_100L, serverAtMs = 4_750L)
+        assertEquals(-300L, c.offsetMs)
+        c.addSample(sentAtMs = 6_000L, receivedAtMs = 6_100L, serverAtMs = 6_250L)
+        assertEquals(200L, c.offsetMs)
     }
 }

@@ -4,12 +4,16 @@
 //   - 'runsignup'   — maps the RunSignUp REST get-results JSON onto runs rows.
 //   - 'chronotrack' — maps the ChronoTrack Live (CTLive) results JSON onto runs
 //                     rows; gated fail-closed on its own CHRONOTRACK_* creds.
+//   - 'ultrasignup' — picks the runner out of UltraSignup's name-keyed history
+//                     feed and keeps only their result for the listing's race;
+//                     opt-in per deployment (ULTRASIGNUP_RESULTS_ENABLED).
 //   - 'paste'       — maps a single user-pasted result row (any timing site that
 //                     has no API) onto one runs row.
 //
 // Everything here is network-free + side-effect-free so the mapping, the field
 // caps, and the external_id shape are unit-testable without live credentials
-// (the EF itself returns 503 when a provider's creds are unset — see index.ts).
+// (the EF itself returns 503 when a provider's creds are unset or, for
+// UltraSignup, when the deployment has not opted in — see index.ts).
 
 import type { Json } from '../_shared/database.ts';
 import { isIsoCalendarDate } from '../_shared/calendar_date.ts';
@@ -379,7 +383,7 @@ export interface RaceImportGate {
   status?: number;
   error?: string;
   /// Why, when the `error` code alone would send a reader looking for the
-  /// wrong thing. Only the UltraSignup leg carries one today.
+  /// wrong thing. Only the UltraSignup probe carries one today.
   reason?: string;
 }
 
@@ -428,71 +432,6 @@ export function chronoTrackScopeGate(scope: { bib?: string }): RaceImportGate {
 }
 
 /**
- * Pre-fetch gate for the UltraSignup leg — the same fail-closed rule its two
- * siblings already had, which this branch never did.
- *
- * The UltraSignup endpoint reads ONE ATHLETE'S history rather than one race's
- * results, so the scope is an account id and there is nothing to filter by
- * afterwards. The branch used to fall back to the listing's own
- * `provider_race_id` when no athlete id was supplied — a category error: that
- * column holds a RACE id, by its name and by every other provider's use of it,
- * so the fallback would fetch a race and then stamp the CALLER's user_id onto
- * whichever finisher came back. Nothing populates UltraSignup listings today
- * (the listing sync is a stub), so the hole was closed by the absence of data
- * rather than by a check.
- */
-export function ultraSignUpScopeGate(scope: { athleteId?: string }): RaceImportGate {
-  return capField(scope.athleteId) ? GATE_OK : {
-    ok: false,
-    status: 400,
-    error: 'ultrasignup_athlete_id_required',
-  };
-}
-
-/**
- * The UltraSignup leg's availability gate, and it refuses.
- *
- * `ultraSignUpResultsUrl` builds `/service/events.svc/results/athlete?uid=` —
- * one athlete's WHOLE history, with no race parameter on it, which is what
- * makes `ultraSignUpScopeGate`'s athlete id the only scope there is to require.
- * Every row that comes back is then mapped through the ONE
- * `public_race_listings` row the request named, so a runner with twenty past
- * ultras gets twenty `runs` rows all dated on the target race's date, all at its
- * distance and all pointing at its `race_listing_id` — measured, three rows
- * differing only in bib and finishing time (decisions § 975). That is not a
- * performance defect: a 2:58 road marathon becomes a 2:58 hundred-miler, which
- * then feeds `personal_records`, `award_achievements_for_user` and every
- * challenge leaderboard.
- *
- * A result can only be recorded against a listing if the ROW says it belongs to
- * that listing, and `UltraSignUpResult` declares no field that could — the live
- * payload has not been observed from here, and guessing a field name would put
- * the wrong race on a runner's history on a hunch. So the leg refuses before it
- * reads the credential and before it fetches: a missing race is a worse import
- * than no import, a wrong one is worse than both.
- *
- * The code is `provider_not_configured` because that is the seam both clients
- * already act on — they disable the tile with an unavailable explainer — and
- * because a leg that cannot be used has no working configuration whatever env
- * vars exist. `reason` is what stops an operator who HAS set the key hunting
- * for a missing one.
- *
- * **Lifting this needs two things, not one:** UltraSignup's real athlete-feed
- * payload observed, so the race identifier's field name is a fact; and a filter
- * on it applied to the mapped rows against the listing's `provider_race_id`, so
- * a row that names a different race is dropped rather than stamped. Deleting
- * the gate on its own restores the defect exactly.
- */
-export function ultraSignUpAttributionGate(): RaceImportGate {
-  return {
-    ok: false,
-    status: 503,
-    error: 'provider_not_configured',
-    reason: 'results_unattributable',
-  };
-}
-
-/**
  * Post-fetch gate for the matchRunId (enrich) path. Enrich merges ONE result
  * onto the caller's own run, so it must resolve to exactly one mapped result;
  * more than one is ambiguous (which finisher is the caller?) and is rejected
@@ -520,35 +459,206 @@ export function filterResultsByBib(
   return mapped.filter((r) => r.metadata.bib === want);
 }
 
+
 // ── UltraSignup ──────────────────────────────────────────────────────────────
 //
-// UltraSignup powers most US trail + ultra events and exposes a per-athlete
-// results feed. Its field names differ from RunSignUp's (it spells the bib
-// `bibno`, the finishing clock `formattime`, the overall position `place`, the
-// age-group rank `agerank`, and the division string `agegroup`), so it gets its
-// own tolerant row shape + mapper rather than being forced through the
-// RunSignUp one. The mapped output is the SAME `MappedRaceRun` (source='race',
-// the race:{name}:{date}:{bib} dedup id, the owner-only race metadata) so a
-// UltraSignup-imported result dedups against a paste/recorded counterpart for
-// the same race exactly like the other providers.
+// UltraSignup has no per-athlete results endpoint: `/service/events.svc/results/
+// athlete?uid=` answers HTTP 404. The feed its own participant page reads is
+// `/service/events.svc/historybyname/{first}/{last}/` — keyless, keyed by NAME,
+// and answering with EVERY same-named person it knows (`Id`, `FirstName`,
+// `LastName`, `Age`, `Results[]`). So an import is two choices the runner makes
+// once (which name, and which of the people under it is them) plus one the
+// listing makes (which race):
+//
+//   - the person: the feed's `Id`, picked in Settings from `ultraSignUpCandidates`
+//     and stored on the runner's `integrations` row;
+//   - the race: each result names its race in `event_distance_id`, the `did`
+//     UltraSignup's own result links are built from
+//     (`/results_event.aspx?did=` + event_distance_id). A row is kept only when
+//     that id equals the listing's `provider_race_id` AND its `eventdate` is the
+//     listing's `race_date`.
+//
+// The date is the second key rather than a redundancy. `race-listings-sync`
+// reads the listing id from a field it calls `eventid` on an endpoint that has
+// never answered (decisions § 1841), and UltraSignup numbers events and
+// distances in two separate integer spaces — so a listing carrying an event id
+// could equal an unrelated race's distance id by coincidence. Two keys from two
+// sources have to agree before a stranger's race becomes this runner's history,
+// and when they do not the row is dropped, never stamped (decisions § 975).
 
-/** A finisher row as UltraSignup returns it (the fields we consume). */
-export interface UltraSignUpResult {
-  bibno?: unknown;
-  bib?: unknown;
-  formattime?: unknown; // "1:47:23" finishing clock
-  time?: unknown; // fallback time field on some feeds
-  place?: unknown; // overall place
-  agerank?: unknown; // age-group place
-  age_group_place?: unknown;
-  agegroup?: unknown; // division string, e.g. "M35-39"
-  age_group?: unknown;
+/// UltraSignup spells a finished result `status: 1`; 2 is DNF, 3 DNS, 5 DQ, and
+/// the rest are other non-finishes — the participant page's own templates.
+export const ULTRASIGNUP_STATUS_FINISHED = 1;
+/// The longest name part the import will send. Matches the
+/// `integrations.external_*_name` CHECK (20270726000003), so the column can
+/// hold nothing this refuses.
+export const ULTRASIGNUP_NAME_MAX_LEN = 60;
+/// A common name answers with many people; the picker needs the plausible few.
+export const MAX_ULTRASIGNUP_CANDIDATES = 25;
+/// How many of a candidate's races the picker shows to tell them apart.
+export const ULTRASIGNUP_RECENT_EVENTS = 2;
+
+/**
+ * Whether this deployment has opted into the UltraSignup leg.
+ *
+ * The feed is keyless, so there is no credential whose absence could gate it —
+ * but it is an undocumented feed on someone else's site, reached from OUR
+ * egress IP with the runner's name in the URL, and that is an operator's call
+ * to make, not a default. Fail-closed: anything but the literal `true` is off.
+ */
+export function ultraSignUpEnabled(getEnv: (name: string) => string | undefined): boolean {
+  return getEnv('ULTRASIGNUP_RESULTS_ENABLED') === 'true';
 }
 
 /**
- * Map one UltraSignup finisher onto a runs row for `userId`. `raceName` +
- * `raceDate` + `distanceM` come from the race_listings row being imported.
- * Returns null when there is no usable time at all (a DNS/DNF row is not a run).
+ * A name part as it may be sent: trimmed, inner whitespace collapsed, at most
+ * `ULTRASIGNUP_NAME_MAX_LEN` code points, letters (any script) with the
+ * apostrophes, hyphens, periods and spaces real names carry, and starting with
+ * a letter — which also keeps a `.` / `..` path segment out of the URL. Null
+ * when it is not one.
+ */
+export function ultraSignUpNamePart(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const s = raw.normalize('NFC').trim().replace(/\s+/g, ' ');
+  if (!s || Array.from(s).length > ULTRASIGNUP_NAME_MAX_LEN) return null;
+  return /^\p{L}[\p{L}\p{M}'’ .-]*$/u.test(s) ? s : null;
+}
+
+/**
+ * One of UltraSignup's integer ids (a person `Id`, an `event_distance_id`, or
+ * the listing's `provider_race_id`) as a canonical decimal string, or null.
+ * Canonical so `0138805` and `138805` cannot disagree, and positive because the
+ * feed's zero is "none".
+ */
+export function ultraSignUpNumericId(raw: unknown): string | null {
+  const s = typeof raw === 'number'
+    ? (Number.isSafeInteger(raw) ? String(raw) : '')
+    : typeof raw === 'string'
+    ? raw.trim()
+    : '';
+  if (!/^[0-9]{1,12}$/.test(s)) return null;
+  const n = Number(s);
+  return n > 0 ? String(n) : null;
+}
+
+/** The historybyname URL for one name. Each part is a single encoded segment. */
+export function ultraSignUpHistoryUrl(firstName: string, lastName: string): string {
+  return 'https://ultrasignup.com/service/events.svc/historybyname/' +
+    `${encodeURIComponent(firstName)}/${encodeURIComponent(lastName)}/`;
+}
+
+/** UltraSignup's `eventdate` ("9/25/2025 12:00:00 AM") as YYYY-MM-DD, or null. */
+export function parseUltraSignUpDate(raw: unknown): string | null {
+  const m = capField(raw, 40).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s|$)/);
+  if (!m) return null;
+  const iso = `${m[3]}-${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}`;
+  return isIsoCalendarDate(iso) ? iso : null;
+}
+
+/** A person as historybyname returns them (the fields we consume). */
+export interface UltraSignUpPerson {
+  Id?: unknown;
+  FirstName?: unknown;
+  LastName?: unknown;
+  Age?: unknown;
+  Results?: unknown;
+}
+
+/** One of a person's results (the fields we consume). No bib is published. */
+export interface UltraSignUpResult {
+  event_distance_id?: unknown; // the race: UltraSignup's `did`
+  eventname?: unknown;
+  eventdate?: unknown; // "9/25/2025 12:00:00 AM"
+  place?: unknown; // overall place
+  formattime?: unknown; // "8:35:11"
+  time?: unknown; // the same clock, unformatted on some rows
+  status?: unknown; // 1 = finished
+}
+
+/** The people array out of a historybyname answer, capped. Anything else is none. */
+export function extractUltraSignUpPeople(payload: unknown): UltraSignUpPerson[] {
+  if (!Array.isArray(payload)) return [];
+  const out: UltraSignUpPerson[] = [];
+  for (const p of payload) {
+    if (p && typeof p === 'object' && !Array.isArray(p)) out.push(p as UltraSignUpPerson);
+    if (out.length >= MAX_RESULTS_ROWS) break;
+  }
+  return out;
+}
+
+function resultsOf(person: UltraSignUpPerson): UltraSignUpResult[] {
+  if (!Array.isArray(person.Results)) return [];
+  return person.Results.filter((r): r is UltraSignUpResult =>
+    Boolean(r) && typeof r === 'object' && !Array.isArray(r)
+  );
+}
+
+/** One row of the Settings picker: enough to tell same-named people apart. */
+export interface UltraSignUpCandidate {
+  id: string;
+  firstName: string;
+  lastName: string;
+  /// The feed's current age, or null where it publishes 0 (unknown).
+  age: number | null;
+  resultCount: number;
+  recentEvents: { name: string; date: string | null }[];
+}
+
+/**
+ * The picker's candidates. A person with no usable `Id` is left out — it could
+ * never be stored, so offering it would only fail one step later. Order is the
+ * feed's own.
+ */
+export function ultraSignUpCandidates(people: UltraSignUpPerson[]): UltraSignUpCandidate[] {
+  const out: UltraSignUpCandidate[] = [];
+  for (const p of people) {
+    const id = ultraSignUpNumericId(p.Id);
+    if (!id) continue;
+    const results = resultsOf(p);
+    const recent = results
+      .map((r) => ({ name: capField(r.eventname), date: parseUltraSignUpDate(r.eventdate) }))
+      .filter((e) => e.name)
+      .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+      .slice(0, ULTRASIGNUP_RECENT_EVENTS);
+    const age = toPositiveInt(p.Age);
+    out.push({
+      id,
+      firstName: capField(p.FirstName, ULTRASIGNUP_NAME_MAX_LEN),
+      lastName: capField(p.LastName, ULTRASIGNUP_NAME_MAX_LEN),
+      age: age != null && age < 130 ? age : null,
+      resultCount: results.length,
+      recentEvents: recent,
+    });
+    if (out.length >= MAX_ULTRASIGNUP_CANDIDATES) break;
+  }
+  return out;
+}
+
+/**
+ * Whether one result is the listing's race: its `event_distance_id` equals the
+ * listing's `provider_race_id`, and its `eventdate` is the listing's
+ * `race_date`. Both, or it is not this race.
+ */
+export function ultraSignUpResultIsForListing(
+  r: UltraSignUpResult,
+  listing: { providerRaceId: string; raceDate: string },
+): boolean {
+  const did = ultraSignUpNumericId(r.event_distance_id);
+  const want = ultraSignUpNumericId(listing.providerRaceId);
+  if (!did || !want || did !== want) return false;
+  const date = parseUltraSignUpDate(r.eventdate);
+  return date != null && date === listing.raceDate;
+}
+
+/**
+ * Map one UltraSignup result onto a runs row. Only a finished result is a run —
+ * a DNF / DNS / DQ row carries a `time` of "0". Delegates to the shared shaping
+ * so the row, the external_id and the metadata keys match every other provider;
+ * UltraSignup publishes no bib, so the id's bib slot is empty, which is also
+ * what a bib-less paste of the same race produces — the two dedup.
+ *
+ * This does NOT decide which race the row is: call it only on rows
+ * `ultraSignUpResultIsForListing` kept, which `ultraSignUpImportRows` does.
  */
 export function mapUltraSignUpResult(
   r: UltraSignUpResult,
@@ -561,59 +671,95 @@ export function mapUltraSignUpResult(
     isPublic: boolean;
   },
 ): MappedRaceRun | null {
+  if (Number(r.status) !== ULTRASIGNUP_STATUS_FINISHED) return null;
   return mapRunSignUpResult(
-    {
-      bib_num: r.bibno ?? r.bib,
-      chip_time: r.formattime ?? r.time,
-      place: r.place,
-      age_group_place: r.agerank ?? r.age_group_place,
-      age_group: r.agegroup ?? r.age_group,
-    },
+    { chip_time: capField(r.formattime) || capField(r.time), place: r.place },
     opts,
   );
 }
 
 /**
- * Build the UltraSignup athlete-results URL. `athleteId` is the runner's
- * UltraSignup participant id (uid in the public results URL pattern). The
- * api_key/api_secret carry our credential (gated server-side); `format=json`
- * asks for the structured feed.
+ * The whole UltraSignup import, minus the network: pick the runner out of a
+ * historybyname answer, keep only their results for the listing's race, map
+ * those. `personFound: false` means the stored `Id` is not among the people
+ * that name answers with any more (a renamed profile, a typo'd link) — a
+ * different answer from "found you, you have no result for this race".
  */
-export function ultraSignUpResultsUrl(opts: {
-  athleteId: string;
-  apiKey: string;
-  apiSecret: string;
-}): string {
-  const u = new URL('https://ultrasignup.com/service/events.svc/results/athlete');
-  u.searchParams.set('format', 'json');
-  u.searchParams.set('uid', opts.athleteId);
-  u.searchParams.set('api_key', opts.apiKey);
-  u.searchParams.set('api_secret', opts.apiSecret);
-  return u.toString();
+export function ultraSignUpImportRows(
+  payload: unknown,
+  opts: {
+    personId: string;
+    providerRaceId: string;
+    userId: string;
+    listingId: string;
+    raceName: string;
+    raceDate: string;
+    distanceM: number | null;
+    isPublic: boolean;
+  },
+): { personFound: boolean; considered: number; mapped: MappedRaceRun[] } {
+  const person = extractUltraSignUpPeople(payload).find((p) =>
+    ultraSignUpNumericId(p.Id) === opts.personId
+  );
+  if (!person) return { personFound: false, considered: 0, mapped: [] };
+  const results = resultsOf(person).slice(0, MAX_RESULTS_ROWS);
+  const mapped = results
+    .filter((r) => ultraSignUpResultIsForListing(r, opts))
+    .map((r) => mapUltraSignUpResult(r, opts))
+    .filter((r): r is MappedRaceRun => r !== null);
+  return { personFound: true, considered: results.length, mapped };
+}
+
+/** A request's UltraSignup person, validated, or the 400 that refuses it. */
+export type UltraSignUpPersonScope =
+  | { ok: true; personId: string; firstName: string; lastName: string }
+  | { ok: false; status: number; error: string };
+
+/**
+ * Pre-fetch gate for the UltraSignup import: the request must name the person
+ * `Id` AND the name it was found under, because the feed is keyed by the name
+ * and the `Id` is what picks the runner out of it. Missing either is 400
+ * `ultrasignup_person_required` — never a fetch, and never a fallback onto the
+ * listing's `provider_race_id`, which is a RACE id.
+ */
+export function ultraSignUpPersonScope(raw: {
+  personId?: unknown;
+  firstName?: unknown;
+  lastName?: unknown;
+}): UltraSignUpPersonScope {
+  const personId = ultraSignUpNumericId(raw.personId);
+  const firstName = ultraSignUpNamePart(raw.firstName);
+  const lastName = ultraSignUpNamePart(raw.lastName);
+  if (!personId || !firstName || !lastName) {
+    return { ok: false, status: 400, error: 'ultrasignup_person_required' };
+  }
+  return { ok: true, personId, firstName, lastName };
 }
 
 /**
- * Pull the flat finisher array out of the UltraSignup results envelope, capped.
- * The feed is usually a bare top-level array; tolerate a `{ results: [...] }`
- * wrapper too.
+ * The UltraSignup leg's availability, as a probe answers it.
+ *
+ * `flow` is what the CLIENT says it can do. A client built before the person
+ * flow sends an athlete id the leg no longer reads, so it is told the leg is
+ * unavailable (reason `client_unsupported`) rather than shown a tile whose
+ * every import 400s — which keeps an older mobile build's tile dark until it
+ * learns the flow. A current client on a deployment that has not opted in gets
+ * the plain `provider_not_configured`.
  */
-export function extractUltraSignUpResults(payload: unknown): UltraSignUpResult[] {
-  const out: UltraSignUpResult[] = [];
-  if (Array.isArray(payload)) {
-    for (const r of payload) {
-      out.push(r as UltraSignUpResult);
-      if (out.length >= MAX_RESULTS_ROWS) return out;
-    }
-    return out;
+export function ultraSignUpProbe(
+  getEnv: (name: string) => string | undefined,
+  flow: unknown,
+): RaceImportGate {
+  if (flow !== 'person') {
+    return {
+      ok: false,
+      status: 503,
+      error: 'provider_not_configured',
+      reason: 'client_unsupported',
+    };
   }
-  if (payload && typeof payload === 'object') {
-    const rows = (payload as Record<string, unknown>).results;
-    if (Array.isArray(rows)) {
-      for (const r of rows) {
-        out.push(r as UltraSignUpResult);
-        if (out.length >= MAX_RESULTS_ROWS) return out;
-      }
-    }
+  if (!ultraSignUpEnabled(getEnv)) {
+    return { ok: false, status: 503, error: 'provider_not_configured' };
   }
-  return out;
+  return GATE_OK;
 }

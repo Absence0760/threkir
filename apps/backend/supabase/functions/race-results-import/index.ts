@@ -10,19 +10,22 @@ import {
   chronoTrackScopeGate,
   extractChronoTrackResults,
   extractRunSignUpResults,
-  extractUltraSignUpResults,
+  extractUltraSignUpPeople,
   filterResultsByBib,
   mapChronoTrackResult,
   mapRunSignUpResult,
-  mapUltraSignUpResult,
   matchResultGate,
   parseRaceResultRow,
   resultsPossiblyTruncated,
   runSignUpResultsUrl,
   runSignUpScopeGate,
-  ultraSignUpAttributionGate,
-  ultraSignUpScopeGate,
-  ultraSignUpResultsUrl,
+  ultraSignUpCandidates,
+  ultraSignUpEnabled,
+  ultraSignUpHistoryUrl,
+  ultraSignUpImportRows,
+  ultraSignUpNamePart,
+  ultraSignUpPersonScope,
+  ultraSignUpProbe,
   type MappedRaceRun,
 } from './lib.ts';
 import { publishableKey } from '../_shared/api_keys.ts';
@@ -32,7 +35,11 @@ interface RequestBody {
   provider?: unknown; // 'runsignup' | 'ultrasignup' | 'chronotrack' | 'paste'
   listingId?: unknown; // race_listings.id to import onto / link
   runSignUpUserId?: unknown; // runner's RunSignUp account id (optional filter)
-  ultraSignUpAthleteId?: unknown; // runner's UltraSignup participant uid (optional)
+  ultraSignUpPersonId?: unknown; // UltraSignup: the picked person's `Id`
+  ultraSignUpFirstName?: unknown; // UltraSignup: the name that person was found under
+  ultraSignUpLastName?: unknown;
+  ultraSignUpFlow?: unknown; // UltraSignup probe: 'person' from a client that speaks it
+  lookup?: unknown; // UltraSignup: list the people a name answers with, import nothing
   bib?: unknown; // ChronoTrack: filter results to one bib
   result?: unknown; // paste-mode single result row
   matchRunId?: unknown; // when set, enrich THIS existing run instead of inserting
@@ -59,13 +66,14 @@ Deno.serve(withSentry('race-results-import', async (req: Request) => {
   const body = (guarded.body ?? {}) as RequestBody;
   const provider = typeof body.provider === 'string' ? body.provider : '';
   const isProbe = body.probe === true;
+  const isLookup = !isProbe && provider === 'ultrasignup' && body.lookup === true;
 
-  // Two buckets, because these are two different costs wearing one name — the
+  // Separate buckets, because these are different costs wearing one name — the
   // split `race-listings-sync` already carries (decisions § 977).
   //
-  // An IMPORT makes an outbound call carrying OUR RunSignUp / ChronoTrack /
-  // UltraSignup credential, whose budget is per-application and shared by the
-  // whole deployment, and then writes the caller's `runs`. 8/hour free is right
+  // An IMPORT makes an outbound call carrying OUR RunSignUp / ChronoTrack
+  // credential (or, for UltraSignup, from OUR egress IP), whose budget is
+  // per-application and shared by the whole deployment, and then writes the caller's `runs`. 8/hour free is right
   // for that, and falling open on an RPC error would spend the credential on a
   // request whose insert is headed for the same database that just failed
   // (decisions § 974).
@@ -77,6 +85,11 @@ Deno.serve(withSentry('race-results-import', async (req: Request) => {
   // exhausted bucket answers 429, which every client grades as "provider
   // unavailable", so the failure is silent and total rather than a limit the
   // runner can see. Its own generous bucket costs nothing.
+  //
+  // An UltraSignup LOOKUP is a third cost: one outbound call to a keyless feed
+  // on our egress IP, and no write. It gets a bucket of its own so finding
+  // yourself in Settings cannot spend the imports, while still bounding how
+  // hard one account can drive our IP at UltraSignup (decisions § 1841).
   const denied = isProbe
     ? await checkRateLimitTiered(
       supabase,
@@ -84,6 +97,16 @@ Deno.serve(withSentry('race-results-import', async (req: Request) => {
       'race-results-import:probe',
       60,
       240,
+      3600,
+      { failClosed: true },
+    )
+    : isLookup
+    ? await checkRateLimitTiered(
+      supabase,
+      user.id,
+      'race-results-import:lookup',
+      20,
+      60,
       3600,
       { failClosed: true },
     )
@@ -97,7 +120,7 @@ Deno.serve(withSentry('race-results-import', async (req: Request) => {
   // The ChronoTrack Settings card uses this to disable itself with an explainer.
   if (isProbe) {
     // Every credential-gated provider has to be probed, not just ChronoTrack:
-    // reporting `configured: true` for runsignup / ultrasignup while their keys
+    // reporting `configured: true` for runsignup / chronotrack while their keys
     // are unset made the UI enable a card that 503s on the very next call.
     if (provider === 'chronotrack' && !chronoTrackConfigured((n) => Deno.env.get(n))) {
       return Response.json({ error: 'provider_not_configured' }, { status: 503 });
@@ -108,13 +131,19 @@ Deno.serve(withSentry('race-results-import', async (req: Request) => {
     ) {
       return Response.json({ error: 'provider_not_configured' }, { status: 503 });
     }
-    // UltraSignup answers unavailable whether or not its keys are set: the
-    // athlete feed carries no race identifier, so nothing it returns can be
-    // attributed to the listing a caller names (decisions § 975). Reporting it
-    // available would light up a tile whose very next call refuses.
+    // UltraSignup needs no key — its feed is keyless — so it answers on the
+    // deployment's opt-in, and on whether the CALLER speaks the person flow: a
+    // client that would send the old athlete id is told the leg is unavailable
+    // rather than shown a tile whose every import 400s (decisions § 1841).
     if (provider === 'ultrasignup') {
-      const gate = ultraSignUpAttributionGate();
-      return Response.json({ error: gate.error, reason: gate.reason }, { status: gate.status });
+      const gate = ultraSignUpProbe((n) => Deno.env.get(n), body.ultraSignUpFlow);
+      if (!gate.ok) {
+        return Response.json(
+          gate.reason ? { error: gate.error, reason: gate.reason } : { error: gate.error },
+          { status: gate.status },
+        );
+      }
+      return Response.json({ configured: true });
     }
     if (!['runsignup', 'ultrasignup', 'chronotrack', 'paste'].includes(provider)) {
       // An unrecognised provider is not "configured" — answering true for it is
@@ -122,6 +151,34 @@ Deno.serve(withSentry('race-results-import', async (req: Request) => {
       return Response.json({ error: 'unknown_provider' }, { status: 400 });
     }
     return Response.json({ configured: true });
+  }
+
+  // UltraSignup lookup: the people a name answers with, so the runner can pick
+  // themselves in Settings. Reads nothing of ours and writes nothing.
+  if (isLookup) {
+    if (!ultraSignUpEnabled((n) => Deno.env.get(n))) {
+      return Response.json({ error: 'provider_not_configured' }, { status: 503 });
+    }
+    const firstName = ultraSignUpNamePart(body.ultraSignUpFirstName);
+    const lastName = ultraSignUpNamePart(body.ultraSignUpLastName);
+    if (!firstName || !lastName) {
+      return Response.json({ error: 'ultrasignup_name_required' }, { status: 400 });
+    }
+    const upstream = await fetch(ultraSignUpHistoryUrl(firstName, lastName), {
+      headers: { 'User-Agent': Deno.env.get('RACE_IMPORT_USER_AGENT') || 'RunApp/1.0' },
+    });
+    if (!upstream.ok) {
+      return Response.json({ error: `ultrasignup upstream ${upstream.status}` }, { status: 502 });
+    }
+    let payload: unknown;
+    try {
+      payload = await upstream.json();
+    } catch (_) {
+      return Response.json({ error: 'ultrasignup upstream not JSON' }, { status: 502 });
+    }
+    return Response.json({
+      candidates: ultraSignUpCandidates(extractUltraSignUpPeople(payload)),
+    });
   }
 
   const listingId = typeof body.listingId === 'string' ? body.listingId : '';
@@ -220,37 +277,27 @@ Deno.serve(withSentry('race-results-import', async (req: Request) => {
     // without this a bib-only request would still map the whole field.
     if (runSignUpBib) mapped = filterResultsByBib(mapped, runSignUpBib);
   } else if (provider === 'ultrasignup') {
-    // Before the credential is read and before anything is fetched: the feed
-    // this leg reads is one ATHLETE'S whole history and carries no race
-    // identifier, so every row it returns would be stamped with the target
-    // listing's name, date and distance. The gate's own doc says what lifting
-    // it costs — an observed payload plus a filter on the race id, not just
-    // deleting these three lines (decisions § 975).
-    const attribution = ultraSignUpAttributionGate();
-    if (!attribution.ok) {
-      return Response.json(
-        { error: attribution.error, reason: attribution.reason },
-        { status: attribution.status },
-      );
-    }
-    // Fail closed when the provider key is unconfigured — the UltraSignup leg
-    // mirrors RunSignUp's missing-credential gate (integrations.md + the race
-    // calendar ADR). Until the key is provisioned the EF is inert and the UI
-    // shows the unavailable explainer.
-    const apiKey = Deno.env.get('ULTRASIGNUP_API_KEY');
-    const apiSecret = Deno.env.get('ULTRASIGNUP_API_SECRET');
-    if (!apiKey || !apiSecret) {
+    // Opt-in per deployment; the feed is keyless, so the switch is the gate.
+    if (!ultraSignUpEnabled((n) => Deno.env.get(n))) {
       return Response.json({ error: 'provider_not_configured' }, { status: 503 });
     }
-    const athleteId = typeof body.ultraSignUpAthleteId === 'string'
-      ? body.ultraSignUpAthleteId
-      : '';
-    const usScope = ultraSignUpScopeGate({ athleteId });
-    if (!usScope.ok) {
-      return Response.json({ error: usScope.error }, { status: usScope.status });
+    const providerRaceId = (listing.provider_race_id as string | null) ?? '';
+    if (!providerRaceId) {
+      return Response.json({ error: 'listing has no UltraSignup race id' }, { status: 400 });
     }
-    const url = ultraSignUpResultsUrl({ athleteId, apiKey, apiSecret });
-    const upstream = await fetch(url, {
+    // Scope BEFORE the fetch: the feed is keyed by name and answers with every
+    // same-named person, so without the picked `Id` there is no telling which
+    // of them is the caller (issue #360's failure mode, by name instead of by
+    // race).
+    const person = ultraSignUpPersonScope({
+      personId: body.ultraSignUpPersonId,
+      firstName: body.ultraSignUpFirstName,
+      lastName: body.ultraSignUpLastName,
+    });
+    if (!person.ok) {
+      return Response.json({ error: person.error }, { status: person.status });
+    }
+    const upstream = await fetch(ultraSignUpHistoryUrl(person.firstName, person.lastName), {
       headers: { 'User-Agent': Deno.env.get('RACE_IMPORT_USER_AGENT') || 'RunApp/1.0' },
     });
     if (!upstream.ok) {
@@ -263,11 +310,22 @@ Deno.serve(withSentry('race-results-import', async (req: Request) => {
     } catch (_) {
       return Response.json({ error: 'ultrasignup upstream not JSON' }, { status: 502 });
     }
-    const rows = extractUltraSignUpResults(payload);
-    complete = !resultsPossiblyTruncated(rows.length);
-    mapped = rows
-      .map((r) => mapUltraSignUpResult(r, mapOpts))
-      .filter((r): r is MappedRaceRun => r !== null);
+    // Attribution happens here and nowhere else: the runner's own results,
+    // and of those only the one whose `event_distance_id` and date are this
+    // listing's (decisions § 975, § 1841).
+    const rows = ultraSignUpImportRows(payload, {
+      ...mapOpts,
+      personId: person.personId,
+      providerRaceId,
+    });
+    if (!rows.personFound) {
+      // The stored person is not among the people that name answers with any
+      // more. Saying "no result for this race" would be false; the link needs
+      // redoing.
+      return Response.json({ error: 'ultrasignup_person_not_found' }, { status: 404 });
+    }
+    complete = !resultsPossiblyTruncated(rows.considered);
+    mapped = rows.mapped;
   } else if (provider === 'chronotrack') {
     // Fail closed when the ChronoTrack Live credentials are unconfigured. The
     // whole ChronoTrack leg is gated on its own CHRONOTRACK_* creds; until they

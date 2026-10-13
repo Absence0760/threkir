@@ -61,3 +61,23 @@ export function upcomingCancelledOccurrences(
 		})
 		.sort((a, b) => Date.parse(a) - Date.parse(b));
 }
+
+/// Whether an organiser cancelled this whole series. A series cancel
+/// (events-cancel `scope: 'series'`, decisions § R7PAID-2) ends the series at
+/// the moment of the cancel and calls off by name every later occurrence
+/// someone had signed up for, so those cancelled instants sit past
+/// `recurrence_until`; a series that simply ran out has none there. A series
+/// cancelled before anyone signed up for anything leaves no such instant, and
+/// reads as having ended, which is also true.
+export function isSeriesCancelled(
+	event: Pick<Event, 'recurrence_freq' | 'recurrence_until'>,
+	cancelledIso: readonly string[]
+): boolean {
+	if (!event.recurrence_freq || !event.recurrence_until) return false;
+	const until = Date.parse(event.recurrence_until);
+	if (!Number.isFinite(until)) return false;
+	return cancelledIso.some((c) => {
+		const t = Date.parse(c);
+		return Number.isFinite(t) && t > until;
+	});
+}

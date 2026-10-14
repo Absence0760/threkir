@@ -13,6 +13,7 @@
 
 import { assert, assertEquals } from 'https://deno.land/std@0.224.0/assert/mod.ts';
 import type { DbClient } from '../_shared/database.ts';
+import { storedPointEwkt } from './lib.ts';
 import { syncProviderPayload } from './write.ts';
 
 type Row = Record<string, unknown>;
@@ -22,8 +23,22 @@ type Filter = { op: 'eq' | 'in'; col: string; val: unknown };
 /// and `in`; `insert` appends with a generated id and enforces the partial
 /// unique index `race_listings_provider_uniq` the way Postgres would (23505,
 /// the whole statement refused); `update` patches by `eq`.
+/// What PostgREST hands back for a stored geography: hex EWKB, little-endian,
+/// with the SRID flag (measured against the local stack's `to_jsonb`).
+function hexEwkb(ewkt: string): string {
+  const m = /^SRID=4326;POINT\((\S+) (\S+)\)$/.exec(ewkt)!;
+  const buf = new DataView(new ArrayBuffer(25));
+  buf.setUint8(0, 1);
+  buf.setUint32(1, 0x20000001, true);
+  buf.setUint32(5, 4326, true);
+  buf.setFloat64(9, Number(m[1]), true);
+  buf.setFloat64(17, Number(m[2]), true);
+  return [...new Uint8Array(buf.buffer)].map((b) => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+}
+
 function memoryDb(zcta: Array<{ zcta: string; lat: number; lng: number }>) {
   const listings: Row[] = [];
+  const faults = { zcta: false };
   const statements: Array<{ table: string; verb: string; filters: Filter[]; payload?: unknown }> = [];
   let nextId = 1;
   const client = {
@@ -62,7 +77,16 @@ function memoryDb(zcta: Array<{ zcta: string; lat: number; lng: number }>) {
       const answer = () => {
         statements.push({ table, verb, filters: [...filters], payload });
         const source = table === 'us_zcta_points' ? zcta as unknown as Row[] : listings;
-        if (verb === 'select') return { data: source.filter(matches).map((r) => ({ ...r })), error: null };
+        if (verb === 'select' && table === 'us_zcta_points' && faults.zcta) {
+          return { data: null, error: { message: 'canceling statement due to statement timeout' } };
+        }
+        if (verb === 'select') {
+          const out = source.filter(matches).map((r) => ({ ...r }));
+          for (const r of out) {
+            if (typeof r.location_point === 'string') r.location_point = hexEwkb(r.location_point);
+          }
+          return { data: out, error: null };
+        }
         if (verb === 'insert') {
           const rows = payload as Row[];
           const key = (r: Row) => `${r.provider}|${r.provider_race_id}`;
@@ -88,7 +112,7 @@ function memoryDb(zcta: Array<{ zcta: string; lat: number; lng: number }>) {
       return builder;
     },
   };
-  return { listings, statements, client: client as unknown as DbClient };
+  return { listings, statements, faults, client: client as unknown as DbClient };
 }
 
 function race(id: number | string, over: Row = {}, address: Row = {}): Row {
@@ -243,4 +267,68 @@ Deno.test('a page with broken rows writes only the readable races, and says how 
   // no distance band rather than dropped.
   assertEquals(db.listings.map((r) => [r.provider_race_id, r.distance_m]), [['1', 5000], ['4', null], ['5', null]]);
   assertEquals(outcome.summary.synced, 3);
+});
+
+const BRIGHTON = { zcta: '02135', lat: 42.3483, lng: -71.1567 };
+const BRIGHTON_EWKT = 'SRID=4326;POINT(-71.1567 42.3483)';
+
+Deno.test('a stored point is read back from the hex EWKB PostgREST returns', () => {
+  // Measured: to_jsonb of 'SRID=4326;POINT(-71.1316 42.3586)'::geography.
+  assertEquals(storedPointEwkt('0101000020E6100000D50968226CC851C03D2CD49AE62D4540'), ALLSTON_EWKT);
+  assertEquals(storedPointEwkt('0101000020e6100000d50968226cc851c03d2cd49ae62d4540'), ALLSTON_EWKT);
+  // Big-endian, no SRID: the same point.
+  assertEquals(storedPointEwkt('0000000001C051C86C226809D540452DE69AD42C3D'), ALLSTON_EWKT);
+  assertEquals(storedPointEwkt('0101000020E6100000'), null, 'truncated');
+  assertEquals(storedPointEwkt('0101000020E7100000D50968226CC851C03D2CD49AE62D4540'), null, 'not SRID 4326');
+  assertEquals(storedPointEwkt('0102000020E6100000D50968226CC851C03D2CD49AE62D4540'), null, 'not a point');
+  assertEquals(storedPointEwkt(ALLSTON_EWKT), null);
+  assertEquals(storedPointEwkt(null), null);
+});
+
+Deno.test('a placed race that moves ZIP is re-placed, even when its city label does not change', async () => {
+  const db = memoryDb([ALLSTON, BRIGHTON]);
+  await syncProviderPayload(db.client, 'runsignup', { races: [race(1)] });
+  assertEquals(db.listings[0].location_point, ALLSTON_EWKT);
+  // Allston to Brighton: both "Boston, MA, US", so only the ZIP moved.
+  const outcome = await syncProviderPayload(db.client, 'runsignup', {
+    races: [race(1, {}, { zipcode: '02135' })],
+  });
+  assert(outcome.ok);
+  assertEquals(outcome.summary.updated, 1);
+  assertEquals(db.listings[0].location_point, BRIGHTON_EWKT);
+  assertEquals(db.listings.length, 1);
+});
+
+Deno.test('a placed race that moves somewhere no ZCTA covers loses its old point, never keeps it', async () => {
+  for (const address of [
+    { zipcode: '02123' }, // a five-digit ZIP with no ZCTA
+    { city: 'Berlin', state: 'BE', zipcode: '10115', country_code: 'DE' },
+    { zipcode: null },
+  ]) {
+    const db = memoryDb([ALLSTON, MANHATTAN]);
+    await syncProviderPayload(db.client, 'runsignup', { races: [race(1)] });
+    assertEquals(db.listings[0].location_point, ALLSTON_EWKT);
+    const outcome = await syncProviderPayload(db.client, 'runsignup', { races: [race(1, {}, address)] });
+    assert(outcome.ok);
+    assertEquals(db.listings[0].location_point, null, `moved to ${JSON.stringify(address)}`);
+    assertEquals(outcome.summary.unplaced, 1);
+  }
+});
+
+Deno.test('a failed ZIP lookup never moves or clears a stored point', async () => {
+  const db = memoryDb([ALLSTON, BRIGHTON]);
+  await syncProviderPayload(db.client, 'runsignup', { races: [race(1), race(2)] });
+  db.faults.zcta = true;
+  const before = db.statements.length;
+  // Race 1 unchanged, race 2 renamed AND moved ZIP: the rename is written, the
+  // point is not touched, because nothing answered where 02135 is.
+  const outcome = await syncProviderPayload(db.client, 'runsignup', {
+    races: [race(1), race(2, { name: 'Race 2 renamed' }, { zipcode: '02135' })],
+  });
+  assert(outcome.ok);
+  assertEquals(outcome.summary.updated, 1);
+  assertEquals(db.listings.map((r) => r.location_point), [ALLSTON_EWKT, ALLSTON_EWKT]);
+  const update = db.statements.slice(before).find((s) => s.verb === 'update')!;
+  assertEquals('location_point' in (update.payload as Row), false);
+  assertEquals((update.payload as Row).name, 'Race 2 renamed');
 });

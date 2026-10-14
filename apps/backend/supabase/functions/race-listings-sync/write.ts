@@ -43,13 +43,15 @@ export type SyncOutcome =
   | { ok: true; summary: SyncSummary }
   | { ok: false; status: number; error: string };
 
-/// The point for each ZIP the table knows. A failed lookup is logged and
-/// answers no points: the listings still get written, without one, and are
-/// counted `unplaced` — placing a race is never a reason not to list it.
+/// The point for each ZIP the table knows, or null when the lookup failed. A
+/// failure is logged and the listings still get written, without a point, and
+/// are counted `unplaced` — placing a race is never a reason not to list it —
+/// but null keeps it apart from "the table has no such ZIP", which is an
+/// answer and may clear a stale point where a failure must not.
 export async function zipPoints(
   service: DbClient,
   zips: readonly string[],
-): Promise<Map<string, string>> {
+): Promise<Map<string, string> | null> {
   const out = new Map<string, string>();
   if (zips.length === 0) return out;
   const { data, error } = await service
@@ -58,7 +60,7 @@ export async function zipPoints(
     .in('zcta', [...zips]);
   if (error) {
     console.error('race-listings-sync: zip point lookup failed', error.message);
-    return out;
+    return null;
   }
   for (const row of data ?? []) out.set(row.zcta, pointEwkt(row.lat, row.lng));
   return out;
@@ -109,9 +111,15 @@ export async function syncProviderPayload(
 
   const zips = [...new Set(races.map((r) => r.postalCode).filter((z): z is string => z !== null))];
   const points = await zipPoints(service, zips);
+  // Per race: whether its point (or its lack of one) is the table's answer. A
+  // race with no US ZIP has a known answer — none — whatever the lookup did.
+  const pointKnown = new Map<string, boolean>();
   const listings: RaceListingUpsert[] = races.map((race) => {
-    const point = race.postalCode === null ? null : points.get(race.postalCode) ?? null;
+    const point = race.postalCode === null || points === null ? null : points.get(race.postalCode) ?? null;
     if (point === null) summary.unplaced++;
+    if (race.providerRaceId !== null) {
+      pointKnown.set(race.providerRaceId, race.postalCode === null || points !== null);
+    }
     return listingUpsertFrom(provider, race, point);
   });
 
@@ -155,7 +163,8 @@ export async function syncProviderPayload(
   // every run.
   for (const row of batch.existing) {
     const current = stored.get(row.provider_race_id!)!;
-    if (!listingDiffers(current, row)) continue;
+    const known = pointKnown.get(row.provider_race_id!) === true;
+    if (!listingDiffers(current, row, known)) continue;
     const { error } = await service
       .from('race_listings')
       .update({
@@ -163,9 +172,10 @@ export async function syncProviderPayload(
         race_date: row.race_date,
         distance_m: row.distance_m,
         location_label: row.location_label,
-        // A point is written when one is known and never cleared by a lookup
-        // that found none: a failed read must not unplace a placed race.
-        ...(row.location_point !== null ? { location_point: row.location_point } : {}),
+        // The point is written whenever the ZIP table answered for this race,
+        // including "no point" for a race that moved somewhere it cannot place;
+        // a failed lookup leaves the stored point as it was.
+        ...(row.location_point !== null || known ? { location_point: row.location_point } : {}),
         entry_url: row.entry_url,
         results_url: row.results_url,
         is_verified: true,

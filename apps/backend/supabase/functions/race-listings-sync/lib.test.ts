@@ -338,10 +338,11 @@ Deno.test('an unchanged race writes nothing, and each field that moves writes', 
 Deno.test('a race gains its point once one is known, and a known point is not re-sent alone', () => {
   const placed = upsert('a', { location_point: pointEwkt(42.9836, -82.4583) });
   assertEquals(listingDiffers(storedOf(), placed), true);
-  // PostgREST hands the stored geography back as hex EWKB, never as the EWKT
-  // written, so a placed race compares on presence, not on the value.
+  // A stored value that is not a readable point is left alone rather than
+  // overwritten blind (robustness.test.ts drives the readable ones: a moved ZIP
+  // re-places, a ZIP with no ZCTA clears).
   assertEquals(listingDiffers(storedOf({ location_point: '0101000020E6100000' }), placed), false);
-  // A lookup that found nothing never reads as a change.
+  // A lookup that failed never reads as a change.
   assertEquals(listingDiffers(storedOf({ location_point: '0101000020E6100000' }), upsert('a')), false);
 });
 

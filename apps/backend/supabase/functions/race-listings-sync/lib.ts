@@ -352,6 +352,32 @@ export function pointEwkt(lat: number, lng: number): string {
   return `SRID=4326;POINT(${lng} ${lat})`;
 }
 
+/// A stored `location_point` back as the EWKT `pointEwkt` writes, or null when
+/// it is not a point this can read.
+///
+/// PostgREST renders a geography as hex EWKB (measured: `to_jsonb` of
+/// `SRID=4326;POINT(-71.1316 42.3586)` is `0101000020E6100000` + the two
+/// coordinates as little-endian doubles). The doubles round-trip exactly, so
+/// re-encoding them gives the same string the sync wrote for the same ZCTA.
+export function storedPointEwkt(raw: unknown): string | null {
+  if (typeof raw !== 'string' || !/^(?:[0-9A-Fa-f]{2})+$/.test(raw)) return null;
+  const bytes = new Uint8Array(raw.length / 2);
+  for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(raw.slice(i * 2, i * 2 + 2), 16);
+  if (bytes.length < 21) return null;
+  const view = new DataView(bytes.buffer);
+  const le = bytes[0] === 1;
+  if (!le && bytes[0] !== 0) return null;
+  const type = view.getUint32(1, le);
+  if ((type & 0xffff) !== 1) return null;
+  let at = 5;
+  if (type & 0x20000000) {
+    if (view.getUint32(at, le) !== 4326) return null;
+    at += 4;
+  }
+  if (bytes.length !== at + 16) return null;
+  return pointEwkt(view.getFloat64(at + 8, le), view.getFloat64(at, le));
+}
+
 /// An UltraSignup event row. Unverified against a live payload (see the module
 /// header), so every field is optional and a mismatch drops and counts the row.
 export interface UltraSignUpRaceRow {
@@ -511,22 +537,45 @@ export interface StoredListing {
 /// on and each rewrite is its own round trip. In steady state a feed answers the
 /// same thing it answered last hour, so comparing first makes the common case
 /// zero writes and keeps the ones that do happen meaningful in the log.
-export function listingDiffers(stored: StoredListing, next: RaceListingUpsert): boolean {
+///
+/// `pointKnown` says whether `next.location_point` is the ZIP table's answer
+/// for this race, or merely what a failed lookup left behind. Only a known
+/// answer may move or clear a stored point.
+export function listingDiffers(
+  stored: StoredListing,
+  next: RaceListingUpsert,
+  pointKnown = false,
+): boolean {
   return stored.name !== next.name ||
     stored.race_date !== next.race_date ||
     stored.distance_m !== next.distance_m ||
     stored.location_label !== next.location_label ||
     stored.entry_url !== next.entry_url ||
     stored.results_url !== next.results_url ||
-    // A race synced before its ZIP could be placed gains the point the first
-    // time one is known. An already-placed race is not re-placed on its own:
-    // the stored point comes back as hex EWKB, the centroid of a ZIP does not
-    // move, and a race that changes ZIP changes its location label with it.
-    (next.location_point !== null && stored.location_point == null) ||
+    listingPointMoved(stored.location_point, next.location_point, pointKnown) ||
     // A race a user submitted first lands unverified (the
     // `race_listings_force_unverified` trigger), and the provider catching up
     // with it is exactly when that should change.
     stored.is_verified !== true;
+}
+
+/// Whether the stored point must be rewritten: a race synced before its ZIP
+/// could be placed gains one; a race whose ZIP moved — within one city, so
+/// the label alone would not notice — is re-placed; and a race whose new
+/// address has no US ZIP, or one with no ZCTA, loses the old point, because
+/// a point at the race's previous venue is a race on the map where it is not.
+/// A failed lookup (`pointKnown` false) never moves or clears anything, and a
+/// stored value this cannot read is left alone rather than overwritten blind.
+export function listingPointMoved(
+  storedPoint: unknown,
+  nextPoint: string | null,
+  pointKnown: boolean,
+): boolean {
+  if (storedPoint == null) return nextPoint !== null;
+  const stored = storedPointEwkt(storedPoint);
+  if (stored === null) return false;
+  if (nextPoint === null) return pointKnown;
+  return stored !== nextPoint;
 }
 
 /// The optional region a sync is scoped to: a point, a postal code, or both,

@@ -303,3 +303,19 @@ Deno.test('handler — oversized body is rejected before verification', async ()
   );
   assert(res.status === 413 || res.status === 400);
 });
+
+Deno.test('handler — password changed notice is stamped with the signed hook time and links the reset form', async () => {
+  const { deps, sent } = makeDeps({ env: { APP_BASE_URL: 'https://threkir.test' } });
+  const res = await makeAuthEmailHandler(deps)(
+    await signedRequest({
+      user: { id: '11111111-1111-1111-1111-111111111111', email: 'runner@test.com' },
+      email_data: { email_action_type: 'password_changed_notification', site_url: 'http://localhost:7777' },
+    }),
+  );
+  assertEquals(res.status, 200);
+  assertEquals(sent.length, 1);
+  assertEquals(sent[0].to, 'runner@test.com');
+  assertStringIncludes(sent[0].mime, 'Subject: Your password was changed');
+  assertStringIncludes(sent[0].mime, '2025-06-15 15:06 UTC');
+  assertStringIncludes(sent[0].mime, 'https://threkir.test/login?reset=1');
+});

@@ -547,10 +547,11 @@ export const authEmailCatalogue: Record<
       subject: 'Your password was changed',
       preheader: 'The password on your account was just changed.',
       heading: 'Your password was changed',
-      cta: '',
+      cta: 'Reset password',
       body: [
-        'The password for your Threkir account was just changed.',
-        "If this was you, no action is needed. If it wasn't, reset your password from the sign-in page right away.",
+        'The password for your Threkir account was changed ({when}).',
+        'If this was you, no action is needed.',
+        "If it wasn't, reset your password from the sign-in page right away, then write to security@threkir.com so we can help secure your account.",
       ],
     },
     default: {
@@ -638,10 +639,11 @@ export const authEmailCatalogue: Record<
       subject: 'Dein Passwort wurde geändert',
       preheader: 'Das Passwort deines Kontos wurde geändert.',
       heading: 'Dein Passwort wurde geändert',
-      cta: '',
+      cta: 'Passwort zurücksetzen',
       body: [
-        'Das Passwort deines Threkir-Kontos wurde soeben geändert.',
-        'Wenn du das warst, ist nichts weiter zu tun. Wenn nicht, setze dein Passwort umgehend über die Anmeldeseite zurück.',
+        'Das Passwort deines Threkir-Kontos wurde geändert ({when}).',
+        'Wenn du das warst, ist nichts weiter zu tun.',
+        'Wenn nicht, setze dein Passwort umgehend über die Anmeldeseite zurück und schreib an security@threkir.com, damit wir dir helfen können, dein Konto zu sichern.',
       ],
     },
     default: {
@@ -729,10 +731,11 @@ export const authEmailCatalogue: Record<
       subject: 'Votre mot de passe a été modifié',
       preheader: 'Le mot de passe de votre compte a été modifié.',
       heading: 'Votre mot de passe a été modifié',
-      cta: '',
+      cta: 'Réinitialiser le mot de passe',
       body: [
-        "Le mot de passe de votre compte Threkir vient d'être modifié.",
-        "Si c'était vous, aucune action n'est requise. Sinon, réinitialisez immédiatement votre mot de passe depuis la page de connexion.",
+        'Le mot de passe de votre compte Threkir a été modifié ({when}).',
+        "Si c'était vous, aucune action n'est requise.",
+        'Sinon, réinitialisez immédiatement votre mot de passe depuis la page de connexion, puis écrivez à security@threkir.com pour que nous puissions vous aider à sécuriser votre compte.',
       ],
     },
     default: {
@@ -820,10 +823,11 @@ export const authEmailCatalogue: Record<
       subject: 'Tu contraseña ha cambiado',
       preheader: 'La contraseña de tu cuenta ha cambiado.',
       heading: 'Tu contraseña ha cambiado',
-      cta: '',
+      cta: 'Restablecer contraseña',
       body: [
-        'La contraseña de tu cuenta de Threkir se acaba de cambiar.',
-        'Si fuiste tú, no necesitas hacer nada. Si no, restablece tu contraseña de inmediato desde la página de inicio de sesión.',
+        'La contraseña de tu cuenta de Threkir se ha cambiado ({when}).',
+        'Si fuiste tú, no necesitas hacer nada.',
+        'Si no, restablece tu contraseña de inmediato desde la página de inicio de sesión y escribe a security@threkir.com para que podamos ayudarte a proteger tu cuenta.',
       ],
     },
     default: {
@@ -911,10 +915,11 @@ export const authEmailCatalogue: Record<
       subject: 'パスワードが変更されました',
       preheader: 'アカウントのパスワードが変更されました。',
       heading: 'パスワードが変更されました',
-      cta: '',
+      cta: 'パスワードをリセット',
       body: [
-        'Threkirアカウントのパスワードが変更されました。',
-        'ご自身による変更であれば、対応は不要です。心当たりがない場合は、すぐにサインインページからパスワードをリセットしてください。',
+        'Threkirアカウントのパスワードが変更されました（{when}）。',
+        'ご自身による変更であれば、対応は不要です。',
+        '心当たりがない場合は、すぐにサインインページからパスワードをリセットし、security@threkir.com までご連絡ください。アカウントの保護をお手伝いします。',
       ],
     },
     default: {
@@ -1002,10 +1007,11 @@ export const authEmailCatalogue: Record<
       subject: 'Sua senha foi alterada',
       preheader: 'A senha da sua conta foi alterada.',
       heading: 'Sua senha foi alterada',
-      cta: '',
+      cta: 'Redefinir senha',
       body: [
-        'A senha da sua conta Threkir acabou de ser alterada.',
-        'Se foi você, nenhuma ação é necessária. Caso contrário, redefina sua senha imediatamente pela página de login.',
+        'A senha da sua conta Threkir foi alterada ({when}).',
+        'Se foi você, nenhuma ação é necessária.',
+        'Caso contrário, redefina sua senha imediatamente pela página de login e escreva para security@threkir.com para que possamos ajudar a proteger sua conta.',
       ],
     },
     default: {
@@ -1093,10 +1099,11 @@ export const authEmailCatalogue: Record<
       subject: 'A sua palavra-passe foi alterada',
       preheader: 'A palavra-passe da sua conta acabou de ser alterada.',
       heading: 'A sua palavra-passe foi alterada',
-      cta: '',
+      cta: 'Redefinir palavra-passe',
       body: [
-        'A palavra-passe da sua conta Threkir acabou de ser alterada.',
-        'Se a alteração foi sua, não é preciso fazer nada. Caso contrário, redefina a palavra-passe imediatamente na página de início de sessão.',
+        'A palavra-passe da sua conta Threkir foi alterada ({when}).',
+        'Se a alteração foi sua, não é preciso fazer nada.',
+        'Caso contrário, redefina a palavra-passe imediatamente na página de início de sessão e escreva para security@threkir.com para que possamos ajudar a proteger a sua conta.',
       ],
     },
     default: {
@@ -1147,6 +1154,35 @@ function escapeHtml(s: string): string {
     .replaceAll("'", '&#39;');
 }
 
+/// Informational notices with somewhere useful to send the reader. GoTrue's
+/// security notices carry no token, so their CTA is not a verify link: the
+/// password-changed notice links the web sign-in page's reset form, the one
+/// step that helps whether or not the reader can still sign in (an intruder
+/// who changed the password has locked them out, and the reset link goes to
+/// this mailbox). Needs APP_BASE_URL, the web origin; unset, the notice goes
+/// out without a button and its copy still names the sign-in page.
+const NOTICE_CTA_PATHS: Record<string, string> = {
+  password_changed_notification: '/login?reset=1',
+};
+
+/// Numeric and explicitly UTC — the recipient's zone is unknown to the hook,
+/// and a number reads the same inside every locale's sentence. Mirrors the
+/// worker's formatInstantUTC.
+export function formatInstantUtc(ms: number): string {
+  const iso = new Date(ms).toISOString();
+  return `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
+}
+
+/// A paragraph carrying `{when}` states the time of the event. The hook's
+/// signed timestamp is that time to within GoTrue's send latency; without
+/// one the paragraph is swapped for the preheader, which says the same thing
+/// without a time, rather than rendering an empty placeholder.
+function fillWhen(p: string, sentAtMs: number | undefined, fallback: string): string {
+  if (!p.includes('{when}')) return p;
+  if (sentAtMs === undefined || !Number.isFinite(sentAtMs)) return fallback;
+  return p.replaceAll('{when}', formatInstantUtc(sentAtMs));
+}
+
 /// Layout port of the worker's renderTextBody/renderHTMLBody: hidden
 /// preheader, branded header bar, H1, paragraphs, bulletproof CTA
 /// button, muted footer. The CTA verify link is the only ANCHOR in the
@@ -1158,26 +1194,31 @@ function escapeHtml(s: string): string {
 export function renderAuthEmail(
   locale: string,
   send: PlannedSend,
-  opts: { supabaseUrl: string; redirectTo?: string; appBaseUrl?: string },
+  opts: { supabaseUrl: string; redirectTo?: string; appBaseUrl?: string; sentAtMs?: number },
 ): RenderedAuthEmail {
   const loc = normalizeEmailLocale(locale);
   const strings = lookupAuthEmailStrings(loc, send.catalogueKey);
   const shared = authEmailShared[loc] ?? authEmailShared.en;
+  const appBase = (opts.appBaseUrl ?? '').replace(/\/+$/, '');
+  const noticePath = NOTICE_CTA_PATHS[send.catalogueKey];
   const link = send.verifyType && send.tokenHash
     ? buildActionUrl(opts.supabaseUrl, send.tokenHash, send.verifyType, opts.redirectTo)
+    : noticePath && appBase
+    ? appBase + noticePath
     : '';
+  const body = strings.body.map((p) => fillWhen(p, opts.sentAtMs, strings.preheader));
   const codeOnly = !link && send.token !== '';
   const altCode = link && send.token !== '' ? send.token : '';
 
   let text = strings.heading + '\n\n';
-  for (const p of strings.body) text += p + '\n\n';
+  for (const p of body) text += p + '\n\n';
   if (codeOnly) text += send.token + '\n\n';
   if (link) text += `${strings.cta}: ${link}\n\n`;
   if (altCode) text += `${shared.altCode} ${altCode}\n\n`;
   text += '—\n' + shared.footer + '\n';
 
   let paras = '';
-  for (const p of strings.body) {
+  for (const p of body) {
     paras += `<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#374151;">${escapeHtml(p)}</p>`;
   }
   if (codeOnly) {

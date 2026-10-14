@@ -16,6 +16,7 @@ import {
   buildVerifyUrl,
   encodeHeaderWord,
   extractAddr,
+  formatInstantUtc,
   isValidRecipient,
   normalizeEmailLocale,
   planSends,
@@ -655,5 +656,54 @@ Deno.test('renderAuthEmail — the mark resolves against APP_BASE_URL, never the
   }
   if (r.html.includes('supabase.co/email-logo.png')) {
     throw new Error('the mark resolved against the Supabase project URL');
+  }
+});
+
+// The password-changed notice (GoTrue's password_changed_notification,
+// enabled by config.toml [auth.email.notification.password_changed]) states
+// when the change happened and sends the reader to the reset form — the one
+// step that helps whether or not they can still sign in.
+Deno.test('renderAuthEmail — password changed: the time, a reset CTA, and the security contact', () => {
+  const [send] = planSends(
+    { email: 'a@example.com' },
+    { email_action_type: 'password_changed_notification' },
+  );
+  const r = renderAuthEmail('en', send, {
+    supabaseUrl: 'http://127.0.0.1:24321',
+    appBaseUrl: 'https://threkir.test/',
+    sentAtMs: NOW,
+  });
+  assertStringIncludes(r.text, `(${formatInstantUtc(NOW)})`);
+  assertStringIncludes(r.text, '2025-06-15 15:06 UTC');
+  assertStringIncludes(r.html, 'href="https://threkir.test/login?reset=1"');
+  assertStringIncludes(r.text, 'security@threkir.com');
+  assert(!r.text.includes('{when}') && !r.html.includes('{when}'), 'placeholder leaked');
+});
+
+Deno.test('renderAuthEmail — password changed without a time or a web origin still reads whole', () => {
+  const [send] = planSends(
+    { email: 'a@example.com' },
+    { email_action_type: 'password_changed_notification' },
+  );
+  const r = renderAuthEmail('en', send, { supabaseUrl: 'http://127.0.0.1:24321' });
+  assert(!r.text.includes('{when}'), 'an absent time must not leave the placeholder');
+  assertStringIncludes(r.text, authEmailCatalogue.en.password_changed_notification.preheader);
+  assert(!r.html.includes('<a href'), 'no APP_BASE_URL means no reset button to point anywhere');
+});
+
+Deno.test('catalogue — every locale states the password change time exactly once', () => {
+  for (const locale of AUTH_EMAIL_LOCALES) {
+    const s = authEmailCatalogue[locale].password_changed_notification;
+    const count = s.body.join(' ').split('{when}').length - 1;
+    assertEquals(count, 1, `${locale}.password_changed_notification carries ${count} {when} placeholders`);
+    assert(s.cta.length > 0, `${locale}.password_changed_notification has no reset CTA label`);
+    assertStringIncludes(s.body.join(' '), 'security@threkir.com', `${locale} names no security contact`);
+    const r = renderAuthEmail(locale, { to: 'a@example.com', catalogueKey: 'password_changed_notification', verifyType: null, token: '', tokenHash: '' }, {
+      supabaseUrl: 'http://x',
+      appBaseUrl: 'https://threkir.test',
+      sentAtMs: NOW,
+    });
+    assertStringIncludes(r.text, '2025-06-15 15:06 UTC');
+    assertStringIncludes(r.html, 'https://threkir.test/login?reset=1');
   }
 });

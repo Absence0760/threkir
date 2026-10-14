@@ -8,11 +8,12 @@ import type { Event } from '../types';
 
 // Replays fixtures/recurrence_vectors.json, the occurrence vectors shared with
 // the Dart twin (apps/mobile_android/test/recurrence_vectors_test.dart) and
-// with the database's own membership test, private.is_event_occurrence
-// (apps/backend/supabase/tests/event_occurrence_vectors_test.sql). The photo
-// trigger refuses any event_instance_start that SQL function rejects, so a
-// client offering an occurrence the SQL disagrees with is a photo the database
-// refuses (decisions § 1905). This file is also the generator:
+// with the database (apps/backend/supabase/tests/event_occurrence_vectors_test.sql):
+// private.is_event_occurrence's membership verdict on every probe, and
+// private.event_occurrences' list for every series with a canonical set. The
+// photo and order triggers refuse any instant the SQL rejects, so a client
+// offering an occurrence the SQL disagrees with is a write the database
+// refuses (decisions § 1905, § 1918). This file is also the generator:
 //
 //   RECURRENCE_VECTORS_WRITE=1 npx tsx --test src/lib/social/recurrence_vectors.test.ts
 //
@@ -72,6 +73,17 @@ function isOccurrence(event: Event, at: Date): boolean {
 	return expandInstances(event, at, at).some((d) => d.getTime() === at.getTime());
 }
 
+// While the § 1918 transition window is open the database also accepts the
+// instant the pre-§ 1918 expansion minted for a timezoned series, which is the
+// same series read on the UTC clock.
+function utcClockOccurrence(e: SeriesInput, at: Date): boolean {
+	return isOccurrence(ev({ ...e, timezone: 'UTC' }), at);
+}
+
+function canonical(e: SeriesInput): boolean {
+	return e.recurrence_freq == null || e.timezone != null;
+}
+
 // The SQL's documented rule for a legacy (timezone-null) series: no single
 // instant is canonical, so it holds the series to its bounds and to a
 // whole-day offset from starts_at (±1 h for a DST shift). byday, biweekly
@@ -104,6 +116,14 @@ function compute(fx: Fixture, s: Series): Required<Series> {
 			const t = new Date(iso).getTime();
 			candidates.add(t);
 			for (const d of NEAR_MISSES) candidates.add(t + d);
+		}
+	}
+	// What the pre-§ 1918 expansion offered for a timezoned series: the UTC
+	// clock. Every client must refuse these now; the database accepts them only
+	// while the transition window is open.
+	if (s.event.recurrence_freq && s.event.timezone) {
+		for (const d of expandInstances(ev({ ...s.event, timezone: 'UTC' }), from, to, 1000)) {
+			candidates.add(d.getTime());
 		}
 	}
 	// The first instant each cap removes: what the series would have offered
@@ -156,22 +176,26 @@ function eventId(i: number): string {
 
 function renderPgtap(fx: Fixture): string {
 	const lines: string[] = [];
-	const asserts = fx.series.length + 1;
+	const timezoned = fx.series.filter((s) => s.event.recurrence_freq != null && s.event.timezone != null);
+	const asserts = 1 + fx.series.length + fx.series.filter((s) => canonical(s.event)).length + timezoned.length;
 	lines.push(
 		'-- GENERATED from fixtures/recurrence_vectors.json by',
 		'-- apps/web/src/lib/social/recurrence_vectors.test.ts — never hand-edit.',
 		'-- Regenerate: cd apps/web && RECURRENCE_VECTORS_WRITE=1 npx tsx --test src/lib/social/recurrence_vectors.test.ts',
 		'--',
-		'-- private.is_event_occurrence (migration 20270807000001) is a SQL port of',
-		'-- the clients\' expandInstances. Every probe below carries the web',
-		'-- expansion\'s verdict; the web and Dart suites replay the same vectors, so',
-		'-- this file is the third leg of one golden set. For a series with a',
-		'-- timezone (and every one-off) the SQL must agree with the client exactly.',
-		'-- For a legacy series with no timezone the clients expand in each viewer\'s',
-		'-- local zone, so the SQL deliberately checks only the bounds and a',
-		'-- whole-day offset (±1 h): those probes pin that documented rule, and the',
-		'-- generator refuses a fixture in which any viewer zone offers an instant',
-		'-- the rule rejects.',
+		'-- private.is_event_occurrence and private.event_occurrences (migration',
+		'-- 20270808000011) are the SQL leg of the clients\' expandInstances. Every',
+		'-- probe below carries the web expansion\'s verdict; the web and Dart suites',
+		'-- replay the same vectors, so this file is the third leg of one golden set.',
+		'-- With the § 1918 transition window CLOSED the SQL must agree with the',
+		'-- client exactly for every series with a timezone (and every one-off), and',
+		'-- event_occurrences must list exactly the client\'s instants. With the window',
+		'-- OPEN a timezoned series also admits its UTC-clock instants, the ones every',
+		'-- build before § 1918 mints. For a legacy series with no timezone the',
+		'-- clients expand in each viewer\'s local zone, so the SQL deliberately checks',
+		'-- only the bounds and a whole-day offset (±1 h): those probes pin that',
+		'-- documented rule, and the generator refuses a fixture in which any viewer',
+		'-- zone offers an instant the rule rejects.',
 		'',
 		'begin;',
 		`select plan(${asserts});`,
@@ -201,34 +225,66 @@ function renderPgtap(fx: Fixture): string {
 	});
 	lines.push(
 		'',
-		'create temp table occurrence_probes (event_id uuid, at timestamptz, expect boolean) on commit drop;',
-		'insert into occurrence_probes (event_id, at, expect) values'
+		'create temp table occurrence_probes (event_id uuid, at timestamptz, expect boolean, expect_open boolean) on commit drop;',
+		'insert into occurrence_probes (event_id, at, expect, expect_open) values'
 	);
 	const rows: string[] = [];
 	fx.series.forEach((s, i) => {
-		for (const p of s.probes ?? []) rows.push(`  (${sqlLit(eventId(i))}, ${sqlLit(p.at)}, ${p.sql})`);
+		const tz = s.event.recurrence_freq != null && s.event.timezone != null;
+		for (const p of s.probes ?? []) {
+			const open = p.sql || (tz && utcClockOccurrence(s.event, new Date(p.at)));
+			rows.push(`  (${sqlLit(eventId(i))}, ${sqlLit(p.at)}, ${p.sql}, ${open})`);
+		}
 	});
 	lines.push(rows.join(',\n') + ';', '');
 	lines.push(
 		'select is((select count(*)::int from occurrence_probes), ' +
 			`${rows.length}, 'every generated probe was loaded');`,
+		'',
+		'-- The window closed: wall-clock instants only.',
+		"insert into private.feature_flags (name, enabled) values ('recurrence_wallclock_strict', true)",
+		'on conflict (name) do update set enabled = true;',
 		''
 	);
-	fx.series.forEach((s, i) => {
-		const legacy = s.event.recurrence_freq != null && s.event.timezone == null;
-		const what = legacy
-			? 'matches the documented legacy rule (bounds + whole-day offset)'
-			: 'agrees with expandInstances on every probe';
+	const probeCheck = (i: number, column: string, label: string) => {
 		lines.push(
 			'select is(',
 			'  array(select to_char(at at time zone \'UTC\', \'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"\') || \'=\' ||',
 			'               private.is_event_occurrence(event_id, at)::text',
 			`          from occurrence_probes where event_id = ${sqlLit(eventId(i))} order by at),`,
-			'  array(select to_char(at at time zone \'UTC\', \'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"\') || \'=\' || expect::text',
+			`  array(select to_char(at at time zone \'UTC\', \'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"\') || \'=\' || ${column}::text`,
 			`          from occurrence_probes where event_id = ${sqlLit(eventId(i))} order by at),`,
-			`  ${sqlLit(`${s.name}: is_event_occurrence ${what}`)});`,
+			`  ${sqlLit(label)});`,
 			''
 		);
+	};
+	fx.series.forEach((s, i) => {
+		const legacy = s.event.recurrence_freq != null && s.event.timezone == null;
+		const what = legacy
+			? 'matches the documented legacy rule (bounds + whole-day offset)'
+			: 'agrees with expandInstances on every probe';
+		probeCheck(i, 'expect', `${s.name}: is_event_occurrence ${what}`);
+	});
+	fx.series.forEach((s, i) => {
+		if (!canonical(s.event)) return;
+		const list = s.expected![fx.viewer_zones[0]];
+		const want = list.length ? `array[${list.map((x) => sqlLit(x)).join(', ')}]::timestamptz[]` : "'{}'::timestamptz[]";
+		lines.push(
+			'select is(',
+			`  array(select private.event_occurrences(${sqlLit(eventId(i))}, ${sqlLit(s.from)}, ${sqlLit(s.to)})),`,
+			`  ${want},`,
+			`  ${sqlLit(`${s.name}: event_occurrences lists exactly the expandInstances window`)});`,
+			''
+		);
+	});
+	lines.push(
+		'-- The window open: a timezoned series also admits its UTC-clock instants.',
+		"update private.feature_flags set enabled = false where name = 'recurrence_wallclock_strict';",
+		''
+	);
+	fx.series.forEach((s, i) => {
+		if (s.event.recurrence_freq == null || s.event.timezone == null) return;
+		probeCheck(i, 'expect_open', `${s.name}: inside the transition window the UTC-clock instants are accepted too`);
 	});
 	lines.push('select * from finish();', 'rollback;', '');
 	return lines.join('\n');

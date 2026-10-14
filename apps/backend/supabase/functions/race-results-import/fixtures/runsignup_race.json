@@ -1,0 +1,38 @@
+{
+  "race": {
+    "race_id": 108839,
+    "name": "Boys & Girls Clubs of Newark 5K to Wellness",
+    "next_date": null,
+    "last_date": "09/19/2026",
+    "timezone": "America/New_York",
+    "events": [
+      {
+        "event_id": 1117350,
+        "name": "5K Run/Walk",
+        "start_time": "9/19/2026 08:00",
+        "end_time": null,
+        "distance": "5K",
+        "event_type": "running_race",
+        "volunteer": "F"
+      },
+      {
+        "event_id": 930882,
+        "name": "Boys & Girls Club of Newark 5K to Wellness",
+        "start_time": "9/20/2025 08:00",
+        "end_time": "9/20/2025 10:30",
+        "distance": "5K",
+        "event_type": "running_race",
+        "volunteer": "F"
+      },
+      {
+        "event_id": 809696,
+        "name": "Boys & Girls Club of Newark 5K to Wellness",
+        "start_time": "9/28/2024 08:00",
+        "end_time": "9/28/2024 10:30",
+        "distance": "5K",
+        "event_type": "running_race",
+        "volunteer": "F"
+      }
+    ]
+  }
+}

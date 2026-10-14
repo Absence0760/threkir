@@ -476,11 +476,33 @@ export function makeRaceResultsImportHandler(
     // existing external_ids first — the runs.external_id index is a PER-USER
     // PARTIAL unique, which PostgREST onConflict can't target (see parkrun).
     const externalIds = mapped.map((r) => r.external_id);
-    const { data: seenRows } = await supabase
+    const { data: seenRows, error: seenErr } = await supabase
       .from('runs')
       .select('external_id')
       .eq('user_id', user.id)
       .in('external_id', externalIds);
+    // ... and against the bibs already imported for THIS listing. The
+    // external_id spells the listing's name, and the race-calendar sweep
+    // rewrites that name whenever the provider does (decisions § 1902), so a
+    // runner re-importing after a rename would get an id nothing stored carries
+    // and a second copy of the same race. One listing is one race on one day,
+    // so a bib already filed under it is that result, whatever it was called.
+    const { data: listingRows, error: listingRunsErr } = await supabase
+      .from('runs')
+      .select('bib:metadata->>bib')
+      .eq('user_id', user.id)
+      .eq('race_listing_id', mapOpts.listingId);
+    if (seenErr || listingRunsErr) {
+      // A failed read is not an empty history: going on would insert a race
+      // the runner may already hold.
+      return Response.json({ error: 'race import could not check for duplicates' }, { status: 500 });
+    }
+    const filedBibs = new Set(
+      (listingRows ?? []).map((r) => r.bib).filter((b): b is string => typeof b === 'string' && b !== ''),
+    );
+    const alreadyFiled = mapped
+      .filter((r) => typeof r.metadata.bib === 'string' && filedBibs.has(r.metadata.bib))
+      .map((r) => r.external_id);
     // Reconciled against the batch itself as well as against what is stored.
     // `external_id` is `race:{name}:{date}:{bib}` and both the name and the date
     // come from the ONE listing, so two mapped results carrying the same bib
@@ -490,7 +512,10 @@ export function makeRaceResultsImportHandler(
     // loses every other result in the import rather than the duplicate.
     const batch = reconcileImportBatch(
       mapped,
-      (seenRows ?? []).map((r) => r.external_id).filter((id): id is string => id !== null),
+      [
+        ...(seenRows ?? []).map((r) => r.external_id).filter((id): id is string => id !== null),
+        ...alreadyFiled,
+      ],
     );
     const fresh = batch.fresh.map((r) => ({ ...r, id: crypto.randomUUID(), user_id: user.id }));
     const skipped = batch.skipped;

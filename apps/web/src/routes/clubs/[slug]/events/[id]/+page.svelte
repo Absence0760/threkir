@@ -130,7 +130,7 @@
 		type EventCourse
 	} from '#lib/social/event_courses.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
-	import { deferDestructive } from '#lib/stores/undo.svelte.ts';
+	import { deferDestructive, undoStore } from '#lib/stores/undo.svelte.ts';
 	import { hasEventPhotoWindowOpened } from '#lib/social/event_photo_window.ts';
 	import { consent } from '#lib/settings/consent.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
@@ -957,15 +957,25 @@
 	// Hiding is undoable (a steward can restore it), so it takes the undo bar
 	// rather than a confirm (conventions § Destructive actions). For the
 	// steward the photo stays in the list, badged, with Restore.
+	// The photo whose hide is still inside the undo window. Restore on it must
+	// cancel that pending commit rather than race it: a restore saved first
+	// would be overwritten by the hide landing when the window closed.
+	let pendingHidePhotoId = $state<string | null>(null);
+
 	function hideEventPhoto(photo: EventPhoto) {
 		const before = eventPhotos;
+		pendingHidePhotoId = photo.id;
 		eventPhotos = eventPhotos.map((p) =>
 			p.id === photo.id ? { ...p, hidden_at: new Date().toISOString() } : p
 		);
 		deferDestructive({
 			message: m('clubEvent.photoHidden'),
-			commit: () => setEventPhotoHidden(photo.id, true),
+			commit: () => {
+				if (pendingHidePhotoId === photo.id) pendingHidePhotoId = null;
+				return setEventPhotoHidden(photo.id, true);
+			},
 			restore: () => {
+				if (pendingHidePhotoId === photo.id) pendingHidePhotoId = null;
 				eventPhotos = before;
 			},
 			onCommitError: (err) =>
@@ -979,6 +989,10 @@
 	}
 
 	async function restoreEventPhoto(photo: EventPhoto) {
+		if (pendingHidePhotoId === photo.id) {
+			undoStore.undo();
+			return;
+		}
 		if (photoBusyId) return;
 		photoBusyId = photo.id;
 		try {

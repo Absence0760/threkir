@@ -343,6 +343,28 @@ void main() {
       expect(find.text('Hidden'), findsNothing);
       expect(find.text('Photos (1)'), findsOneWidget);
     });
+
+    testWidgets(
+        'Restore inside the undo window cancels the pending hide, so it never saves',
+        (tester) async {
+      final api = _PhotosApi(steward: true, seed: [_photo(id: 'a')]);
+      await tester.pumpWidget(_host(_widget(api)));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Hide'));
+      await tester.pump();
+      expect(find.text('Photos (0)'), findsOneWidget);
+
+      await tester.tap(find.text('Restore'));
+      await tester.pump();
+      expect(find.text('Hidden'), findsNothing);
+      expect(find.text('Photos (1)'), findsOneWidget);
+
+      await _drain(tester);
+      expect(api.hideCalls, isEmpty,
+          reason: 'the hide was cancelled, and there was nothing to un-hide');
+      expect(find.text('Photos (1)'), findsOneWidget);
+    });
   });
 
   testWidgets('the owner deletes their own photo behind the undo bar',

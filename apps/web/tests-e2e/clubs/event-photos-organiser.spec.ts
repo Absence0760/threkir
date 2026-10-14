@@ -227,6 +227,60 @@ test.describe('organiser', () => {
 test.describe('attendee after moderation', () => {
 	test.use({ storageState: USER_B.storageStatePath });
 
+	test('Restore inside the undo window cancels the hide instead of racing it', async ({ page }) => {
+		const title = `e2e organiser restore race ${Date.now()}`;
+		eventId = await insertEvent({
+			club_id: RICHMOND_RUN_CLUB_ID,
+			author_id: USER_A.id,
+			title,
+			starts_at: EVENT_START
+		});
+		attendeeRunId = await insertRun({
+			user_id: USER_B.id,
+			started_at: '2025-11-11T08:02:00.000Z',
+			duration_s: 1800,
+			distance_m: 5000
+		});
+		const admin = getAdminClient();
+		const { data: photo, error } = await admin
+			.from('run_photos')
+			.insert({
+				run_id: attendeeRunId,
+				owner_id: USER_B.id,
+				storage_path: `${USER_B.id}/e2e-restore-race-${Date.now()}.png`,
+				event_id: eventId,
+				event_instance_start: EVENT_START
+			})
+			.select('id')
+			.single();
+		expect(error).toBeNull();
+
+		await page.goto(`/clubs/richmond-run-club/events/${eventId}`);
+		await expect(page.getByRole('heading', { name: title })).toBeVisible({ timeout: 10_000 });
+		const tile = page.getByTestId('event-photo-tile');
+		await expect(tile).toHaveCount(1, { timeout: 10_000 });
+
+		await tile.getByRole('button', { name: /^Hide photo by/ }).click();
+		await expect(page.getByTestId('undo-bar')).toBeVisible();
+		await tile.getByRole('button', { name: 'Restore' }).click();
+
+		// The pending hide is cancelled, so the undo bar goes at once. Had
+		// Restore saved alongside it, the bar would stay for the whole window
+		// and the hide would then land over the restore.
+		await expect(page.getByTestId('undo-bar')).toBeHidden({ timeout: 2_000 });
+		await expect(tile.getByText('Hidden')).toHaveCount(0);
+
+		await page.reload();
+		await expect(tile).toHaveCount(1, { timeout: 10_000 });
+		await expect(tile.getByText('Hidden')).toHaveCount(0);
+		const { data } = await admin
+			.from('run_photos')
+			.select('hidden_at, hidden_by')
+			.eq('id', photo!.id)
+			.single();
+		expect(data).toEqual({ hidden_at: null, hidden_by: null });
+	});
+
 	test('a hidden photo is gone from the gallery, and no moderation controls show', async ({ page }) => {
 		const title = `e2e hidden for others ${Date.now()}`;
 		eventId = await insertEvent({

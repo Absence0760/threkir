@@ -214,10 +214,16 @@ class _EventPhotosState extends State<EventPhotos> {
   // Reversible (a steward can restore it), so it takes the undo bar rather
   // than a confirm (conventions § Destructive actions). The steward keeps the
   // tile, badged, with Restore.
+  // The photo whose hide is still inside the undo window. Restore on it must
+  // cancel that pending commit rather than race it: a restore saved first
+  // would be overwritten by the hide landing when the window closed.
+  String? _pendingHideId;
+
   void _hide(EventPhotoView p) {
     final l10n = AppLocalizations.of(context);
     final api = widget.api;
     final snapshot = _photos;
+    _pendingHideId = p.id;
     setState(() {
       _photos = [
         for (final x in _photos) x.id == p.id ? x.copyWithHidden(DateTime.now()) : x,
@@ -227,8 +233,12 @@ class _EventPhotosState extends State<EventPhotos> {
       context,
       DeferredDestruction(
         message: l10n.eventPhotoHidden,
-        commit: () => api.setEventPhotoHidden(p.id, hidden: true),
+        commit: () {
+          if (_pendingHideId == p.id) _pendingHideId = null;
+          return api.setEventPhotoHidden(p.id, hidden: true);
+        },
         restore: () {
+          if (_pendingHideId == p.id) _pendingHideId = null;
           if (!mounted) return;
           setState(() => _photos = snapshot);
         },
@@ -243,6 +253,10 @@ class _EventPhotosState extends State<EventPhotos> {
   }
 
   Future<void> _restore(EventPhotoView p) async {
+    if (_pendingHideId == p.id) {
+      undoQueue.undo();
+      return;
+    }
     if (_busyId != null) return;
     setState(() => _busyId = p.id);
     final l10n = AppLocalizations.of(context);

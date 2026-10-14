@@ -315,6 +315,25 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 			filter: uidEq,
 			select: '*,ingredients:recipe_ingredients(*)',
 		},
+		// nutrition_plans — the subject's authored meal plans (nutrition
+		// programming P1, migration 20270815000001). Keyed by author_id (NOT
+		// user_id), like gym_routines.
+		{
+			entry: 'nutrition_plans.json',
+			table: 'nutrition_plans',
+			filter: `author_id=eq.${uid}`,
+			select: '*',
+		},
+		// nutrition_plan_assignments — which plan governed the subject's diary
+		// days, keyed by client_id. In P1 every row is a self-assignment, so
+		// this leg is the whole table for the subject; the P3 nutritionist
+		// adds an assigner leg.
+		{
+			entry: 'nutrition_plan_assignments.json',
+			table: 'nutrition_plan_assignments',
+			filter: `client_id=eq.${uid}`,
+			select: '*',
+		},
 		// body_metrics — Phase 4 nutrition weight time-series (migration
 		// 20261216_001). Special-category health data, owner-scoped, squarely
 		// within Art 20. height_cm ships in the user_profiles export entry.

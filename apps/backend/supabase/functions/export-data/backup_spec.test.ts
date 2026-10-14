@@ -52,7 +52,9 @@ Deno.test('buildBackupSpecs covers the Go worker table set', () => {
 	// data, not personal data. Audience sharing (migration 20270802000002)
 	// added run_shares + route_shares, each on both legs (owner + recipient).
 	// New-device sign-in alerts (migration 20270804000002) added sign_in_devices.
-	assertEquals(specs.length, 66, `expected 66 specs, got ${specs.length}`);
+	// Nutrition programming P1 (migration 20270815000001) added nutrition_plans
+	// + nutrition_plan_assignments.
+	assertEquals(specs.length, 68, `expected 68 specs, got ${specs.length}`);
 	const entries = new Set(specs.map((s) => s.entry));
 	for (const expected of [
 		'coach_messages.json',
@@ -103,6 +105,8 @@ Deno.test('buildBackupSpecs covers the Go worker table set', () => {
 		'food_log.json',
 		'meal_templates.json',
 		'recipes.json',
+		'nutrition_plans.json',
+		'nutrition_plan_assignments.json',
 		'body_metrics.json',
 		'instructor_payout_accounts.json',
 		'safety_contacts_owned.json',
@@ -141,6 +145,20 @@ Deno.test('session_plans exported author-scoped with blocks + items nested (GDPR
 	assertEquals(plans.filter, `author_id=eq.${TEST_UID}`);
 	assertEquals(plans.select.includes('session_plan_blocks'), true);
 	assertEquals(plans.select.includes('session_plan_items'), true);
+});
+
+Deno.test('nutrition plans exported author-scoped, assignments client-scoped (GDPR Art 20)', () => {
+	// Nutrition programming P1 (migration 20270815000001). Neither table has a
+	// user_id: plans key on author_id, assignments on client_id.
+	const specs = buildBackupSpecs(TEST_UID);
+	const plans = specs.find((s) => s.entry === 'nutrition_plans.json');
+	assertExists(plans);
+	assertEquals(plans.table, 'nutrition_plans');
+	assertEquals(plans.filter, `author_id=eq.${TEST_UID}`);
+	const assignments = specs.find((s) => s.entry === 'nutrition_plan_assignments.json');
+	assertExists(assignments);
+	assertEquals(assignments.table, 'nutrition_plan_assignments');
+	assertEquals(assignments.filter, `client_id=eq.${TEST_UID}`);
 });
 
 Deno.test('recipes exported user-scoped with ingredients nested (GDPR Art 20)', () => {

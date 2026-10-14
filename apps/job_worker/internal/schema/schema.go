@@ -76,6 +76,8 @@ const (
 	TableFoodLog                 = "food_log"
 	TableMealTemplates           = "meal_templates"
 	TableRecipes                 = "recipes"
+	TableNutritionPlans          = "nutrition_plans"
+	TableNutritionAssignments    = "nutrition_plan_assignments"
 	TableBodyMetrics             = "body_metrics"
 	TableSafetyContacts          = "safety_contacts"
 	TableRunShares               = "run_shares"

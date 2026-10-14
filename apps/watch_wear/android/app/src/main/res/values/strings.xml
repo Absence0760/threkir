@@ -100,6 +100,7 @@
     <string name="race_finish_short">Finish</string>
     <string name="cd_finish_race">Finish race</string>
     <string name="race_ended">Race ended</string>
+    <string name="race_late_start">Late start</string>
     <string name="race_clock">Race %1$s</string>
     <string name="race_result_finished">Race finish %1$s</string>
     <string name="race_result_dnf">Race DNF</string>

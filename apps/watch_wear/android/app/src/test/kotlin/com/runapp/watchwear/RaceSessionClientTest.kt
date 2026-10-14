@@ -237,6 +237,34 @@ class RaceSessionClientTest {
         assertFalse(seen.any { it.contains("/rest/v1/routes") })
     }
 
+    @Test
+    fun `fetchCourse reads the start point off the course row for the late-start check`() {
+        val seen = mutableListOf<String>()
+        val client = recordingClient(
+            mapOf(
+                "/rest/v1/event_attendees" to """[{"course_id":"c1"}]""",
+                "/rest/v1/event_courses" to
+                    """[{"id":"c1","name":"10K","distance_m":10000,"finish_lat":51.1,"finish_lng":0.2,"start_lat":51.0,"start_lng":0.1}]""",
+            ),
+            seen,
+        )
+        val course = runBlocking { client.fetchCourse("t", "u1", "e1", "2026-05-22T18:00:00Z") }!!
+        assertTrue(course.hasStart)
+        assertEquals(51.0, course.startLat!!, 0.0)
+        assertEquals(0.1, course.startLng!!, 0.0)
+        assertTrue(seen[1].contains("start_lat") && seen[1].contains("start_lng"))
+        assertFalse("the route must not be read", seen.any { it.contains("/rest/v1/routes") })
+    }
+
+    @Test
+    fun `a missing or half start pair reads as no start point`() {
+        val missing = RaceSessionClient.parseCourse("""[{"id":"c1","finish_lat":51.1,"finish_lng":0.2}]""")!!
+        assertFalse(missing.hasStart)
+        val half = RaceSessionClient.parseCourse("""[{"id":"c1","start_lat":51.0,"start_lng":null}]""")!!
+        assertFalse(half.hasStart)
+        assertNull(half.startLat)
+    }
+
     // ───────────── ping: the clock offset's server timestamp ─────────────
 
     private fun pingClient(body: String, seen: MutableList<okhttp3.Request>): RaceSessionClient {

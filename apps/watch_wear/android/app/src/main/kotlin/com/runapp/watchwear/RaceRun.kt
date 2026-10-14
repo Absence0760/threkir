@@ -117,3 +117,27 @@ internal fun gunStartDeviceMs(startedAtMs: Long?, serverOffsetMs: Long?): Long? 
 /// The queued results a session may send: never another account's.
 internal fun raceResultsToReplay(pending: List<PendingRaceResult>, userId: String): List<PendingRaceResult> =
     pending.filter { it.userId == userId }
+
+/// The late-start flag for a bound race run, asked on its first finite fix and
+/// again when the course lands after it. Mirrors the phone's
+/// `_evaluateLateStart`: the Start is carried onto the server clock with the
+/// offset known so far, and the far-from-start arm is measured only against
+/// the course row's own start point, never the route (decisions § 1845), so a
+/// course with none checks the time arm alone. Unknown inputs never flag.
+internal fun raceLateStart(
+    gunMs: Long?,
+    recordingStartedDeviceMs: Long?,
+    serverOffsetMs: Long?,
+    firstFixLat: Double?,
+    firstFixLng: Double?,
+    course: RaceSessionClient.RaceCourse?,
+): Boolean {
+    val gun = gunMs ?: return false
+    val began = recordingStartedDeviceMs ?: return false
+    val lat = firstFixLat?.takeIf { it.isFinite() } ?: return false
+    val lng = firstFixLng?.takeIf { it.isFinite() } ?: return false
+    val fromStart = course?.takeIf { it.hasStart }?.let {
+        RaceFinish.distanceM(lat, lng, it.startLat!!, it.startLng!!)
+    }
+    return RaceFinish.startFlagged(gun, began + (serverOffsetMs ?: 0L), fromStart)
+}

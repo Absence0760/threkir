@@ -78,6 +78,7 @@
     <string name="race_finish_short">Meta</string>
     <string name="cd_finish_race">Terminar carrera</string>
     <string name="race_ended">Carrera terminada</string>
+    <string name="race_late_start">Salida tardía</string>
     <string name="race_clock">Carrera %1$s</string>
     <string name="race_result_finished">Meta %1$s</string>
     <string name="race_result_dnf">Carrera DNF</string>

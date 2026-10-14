@@ -71,6 +71,7 @@
     <string name="race_finish_short">完了</string>
     <string name="cd_finish_race">レースを終了</string>
     <string name="race_ended">レース終了</string>
+    <string name="race_late_start">遅れスタート</string>
     <string name="race_clock">レース %1$s</string>
     <string name="race_result_finished">完走 %1$s</string>
     <string name="race_result_dnf">レース DNF</string>

@@ -46,13 +46,21 @@ class RaceSessionClient(
     /// the `event_courses` row, whose finish point the server copied from
     /// the route's last waypoint. Null [finishLat]/[finishLng] (a course with
     /// no route) or a null [distanceM] leave the race to a manual finish.
+    /// [startLat]/[startLng] are the route's first point, copied and
+    /// privacy-clipped the same way (migration `20270728000001`); read only by
+    /// the late-start check, and null when the row has none or the owner's
+    /// zone clipped it away, which leaves that check to the time arm.
     data class RaceCourse(
         val id: String,
         val name: String?,
         val distanceM: Double?,
         val finishLat: Double?,
         val finishLng: Double?,
-    )
+        val startLat: Double? = null,
+        val startLng: Double? = null,
+    ) {
+        val hasStart: Boolean get() = startLat != null && startLng != null
+    }
 
     /// Return the most relevant armed/running race for the signed-in
     /// user by scanning their `going` RSVPs within a +/- 12h window and
@@ -123,7 +131,7 @@ class RaceSessionClient(
         return parseCourse(
             get(
                 "$baseUrl/rest/v1/event_courses?id=eq.${enc(courseId)}" +
-                    "&select=id,name,distance_m,finish_lat,finish_lng",
+                    "&select=id,name,distance_m,finish_lat,finish_lng,start_lat,start_lng",
                 accessToken,
             ),
         )
@@ -254,8 +262,9 @@ class RaceSessionClient(
         internal fun parseCourseId(body: String): String? =
             firstRow(body)?.get("course_id")?.jsonPrimitive?.contentOrNull
 
-        /// One `event_courses` row. The finish point is both-or-neither in
-        /// the schema; a half pair read here is treated as no finish.
+        /// One `event_courses` row. The finish and start points are each
+        /// both-or-neither in the schema; a half pair read here is treated as
+        /// no point.
         @JvmStatic
         internal fun parseCourse(body: String): RaceCourse? {
             val row = firstRow(body) ?: return null
@@ -263,12 +272,17 @@ class RaceSessionClient(
             val lat = row["finish_lat"]?.jsonPrimitive?.doubleOrNull
             val lng = row["finish_lng"]?.jsonPrimitive?.doubleOrNull
             val hasFinish = lat != null && lng != null
+            val startLat = row["start_lat"]?.jsonPrimitive?.doubleOrNull
+            val startLng = row["start_lng"]?.jsonPrimitive?.doubleOrNull
+            val hasStart = startLat != null && startLng != null
             return RaceCourse(
                 id = id,
                 name = row["name"]?.jsonPrimitive?.contentOrNull,
                 distanceM = row["distance_m"]?.jsonPrimitive?.doubleOrNull,
                 finishLat = lat.takeIf { hasFinish },
                 finishLng = lng.takeIf { hasFinish },
+                startLat = startLat.takeIf { hasStart },
+                startLng = startLng.takeIf { hasStart },
             )
         }
 

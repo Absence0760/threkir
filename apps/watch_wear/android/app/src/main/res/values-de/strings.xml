@@ -78,6 +78,7 @@
     <string name="race_finish_short">Ziel</string>
     <string name="cd_finish_race">Rennen beenden</string>
     <string name="race_ended">Rennen beendet</string>
+    <string name="race_late_start">Später Start</string>
     <string name="race_clock">Rennen %1$s</string>
     <string name="race_result_finished">Im Ziel %1$s</string>
     <string name="race_result_dnf">Rennen DNF</string>

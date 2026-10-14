@@ -78,6 +78,7 @@
     <string name="race_finish_short">Fim</string>
     <string name="cd_finish_race">Encerrar corrida</string>
     <string name="race_ended">Corrida encerrada</string>
+    <string name="race_late_start">Largada tardia</string>
     <string name="race_clock">Corrida %1$s</string>
     <string name="race_result_finished">Chegada %1$s</string>
     <string name="race_result_dnf">Corrida DNF</string>

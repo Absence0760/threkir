@@ -304,6 +304,11 @@ data class RaceRunState(
     /// The End arrived after the runner pressed Stop: the paused screen still
     /// offers Finish, filed at that Stop (decisions § 1857).
     val finishPending: Boolean = false,
+    /// Started more than five minutes after GO, or the first fix was more than
+    /// 200 m from the course's start point ([raceLateStart]). Shown on the
+    /// running screen; not carried on the result, as on the phone
+    /// (decisions § 1843).
+    val lateStart: Boolean = false,
 )
 
 /// What the PostRun screen says about a race result this run produced.
@@ -561,6 +566,11 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     private var raceStoppedAtMs: Long? = null
     /// The host ended the race after that Stop; a Resume now drops the race.
     private var raceEndedAfterStop = false
+    /// The bound run's first finite fix and Start, held so the late-start
+    /// check can run again when the course lands after that fix.
+    private var raceFirstFixLat: Double? = null
+    private var raceFirstFixLng: Double? = null
+    private var raceRecordingStartedMs: Long? = null
 
     init {
         observeRecording()
@@ -657,6 +667,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                         maybePushRacePing(m)
                         try {
                             maybeBindRace(m)
+                            maybeNoteRaceFirstFix(m)
                             maybeAdvanceRaceFinish(m)
                         } catch (e: Throwable) {
                             Log.w(TAG, "race finish tracking failed; the run records on", e)
@@ -843,6 +854,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
             boundRace = withCourse
             raceDetector =
                 RaceFinishDetector.forCourse(course.finishLat, course.finishLng, course.distanceM)
+            evaluateRaceLateStart()
         }
     }
 
@@ -883,11 +895,44 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         raceStopDecision = null
         raceStoppedAtMs = null
         raceEndedAfterStop = false
+        raceFirstFixLat = null
+        raceFirstFixLng = null
+        raceRecordingStartedMs = m.startedAtMs.takeIf { it > 0L }
         _state.value = _state.value.copy(
             raceRun = RaceRunState(
                 gunStartDeviceMs = gunStartDeviceMs(race.startedAtMs, serverClock.offsetMs),
             ),
         )
+    }
+
+    /// The first finite fix of a bound race run, recording and undecided,
+    /// whether or not the course has landed: the phone's `offerFix` takes it
+    /// the same way.
+    private fun maybeNoteRaceFirstFix(m: RecordingRepository.Metrics) {
+        if (boundRace == null || raceFirstFixLat != null || raceStopDecision != null) return
+        if (m.stage != RecordingRepository.Stage.Recording) return
+        val p = m.latestPoint ?: return
+        if (!p.lat.isFinite() || !p.lng.isFinite()) return
+        raceFirstFixLat = p.lat
+        raceFirstFixLng = p.lng
+        evaluateRaceLateStart()
+    }
+
+    /// Runs on the first fix and again when the course lands, whichever is
+    /// second. Once flagged it stays flagged for the run.
+    private fun evaluateRaceLateStart() {
+        val race = boundRace ?: return
+        val run = _state.value.raceRun ?: return
+        if (run.lateStart || run.ended || raceStopDecision != null) return
+        val late = raceLateStart(
+            gunMs = race.startedAtMs,
+            recordingStartedDeviceMs = raceRecordingStartedMs,
+            serverOffsetMs = serverClock.offsetMs,
+            firstFixLat = raceFirstFixLat,
+            firstFixLng = raceFirstFixLng,
+            course = race.course,
+        )
+        if (late) _state.value = _state.value.copy(raceRun = run.copy(lateStart = true))
     }
 
     private fun maybeAdvanceRaceFinish(m: RecordingRepository.Metrics) {

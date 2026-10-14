@@ -78,6 +78,7 @@
     <string name="race_finish_short">Fin</string>
     <string name="cd_finish_race">Terminer la course</string>
     <string name="race_ended">Course terminée</string>
+    <string name="race_late_start">Départ tardif</string>
     <string name="race_clock">Course %1$s</string>
     <string name="race_result_finished">Arrivée %1$s</string>
     <string name="race_result_dnf">Course abandon</string>

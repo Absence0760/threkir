@@ -159,8 +159,9 @@ test.describe('/routes/[id]', () => {
 			await expect(audienceBtn).toContainText('Only me', { timeout: 10_000 });
 
 			// Restore through the make-public confirm, the same path Share
-			// takes on a private route.
-			await page.waitForLoadState('networkidle');
+			// takes on a private route. No networkidle wait here: a private
+			// route page never goes quiet, and the "Only me" label above is
+			// already rendered by the hydrated page.
 			await shareChoosingPublic(page, page.getByRole('button', { name: 'Share', exact: true }));
 			const confirm = page.getByTestId('share-confirm-dialog');
 			await expect(confirm).toBeVisible();

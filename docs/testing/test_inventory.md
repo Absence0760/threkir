@@ -533,7 +533,11 @@ The Apple Watch hand-off contract ([decisions § 1801](../architecture/decisions
 
 Settings → Integrations' UltraSignup finder ([decisions § 1841](../architecture/decisions.md), § 1891): the tile names the linked person or offers the finder; Find waits for both halves of the name; a search lists every same-named person with age, result count and recent races; a pick links UltraSignup's spelling and the tile follows; no matches, a failed lookup and a failed link each say so distinctly; unlink is deferred behind the undo bar with no confirm, and Undo restores the same person without deleting anything.
 
-### `apps/mobile_ios/test/` — 619 files, byte-for-byte
+### `apps/mobile_android/test/runner_menu_test.dart` — 15 tests
+
+The centre button's long-press menu (decisions § R10MENU-1): which rows it offers when the tap starts a run and when the tap fans, that it never exceeds five rows, which plan workout counts as today's open one (not another day, a rest day, a completed, run-completed or skipped workout, or one with nothing to follow), and the sheet itself: its rows and title, a row resolving to its action, dismissal resolving to nothing, and five rows at the largest text size scrolling rather than overflowing. Each row's routing in the shell is pinned in `home_screen_test.dart`.
+
+### `apps/mobile_ios/test/` — 620 files, byte-for-byte
 
 After the April 2026 mobile-codebase unification, `apps/mobile_ios/test/` is kept identical to `apps/mobile_android/test/` via `diff -rq`. Every test file documented above runs on the iOS target too **locally** — `melos run test` has no scope filter — but **not in CI**: the `test-packages` job scopes `melos exec` to `run_recorder`, `mobile_android`, `api_client`, `gpx_parser`, `ui_kit` and `core_models`, and `mobile_ios` is not among them. That is not a gap for byte-identical Dart, but it is why a test gated on an `ios/` file being present asserts nothing on any CI run — two such groups existed and were removed in favour of `scripts/check_ios_native_declarations.mjs` (decisions.md § 742). Per-target counts: `flutter test` compiles separately, so each test file is executed twice when you run both apps locally. Don't add iOS-specific test files — every test belongs in both apps. The architecture-guard tests under `apps/mobile_android/test/architecture_guards_test.dart` read `lib/screens/run_screen.dart` from the working directory, so they pin the same invariants on both targets.
 

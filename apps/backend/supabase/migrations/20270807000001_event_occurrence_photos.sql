@@ -45,7 +45,11 @@
 --
 -- Locks: DROP NOT NULL and ADD COLUMN (no default) are catalogue-only;
 -- the CHECK is NOT VALID (no scan); CREATE TRIGGER takes SHARE ROW EXCLUSIVE
--- for an O(1) change; policy and function DDL take no table scan.
+-- for an O(1) change; policy and function DDL take no table scan. The one
+-- scan is the `hidden_by` index: CREATE INDEX holds SHARE (readers pass,
+-- writers wait) for one heap pass over `run_photos`, and every value it reads
+-- is the new column's NULL, so the partial index it writes is empty — the
+-- shape 20270214_001 used for `runs.race_listing_id`.
 
 -- ── 1. run_id becomes optional ──────────────────────────────────────────────
 
@@ -60,6 +64,12 @@ alter table public.run_photos
 alter table public.run_photos
   add column hidden_at timestamptz,
   add column hidden_by uuid references auth.users(id) on delete set null;
+
+-- Covers the FK: erasing a steward sets their `hidden_by` to NULL, which
+-- without this seq-scans every photo (fk_covering_index_test.sql). Partial,
+-- because almost no photo is ever hidden.
+create index run_photos_hidden_by on public.run_photos (hidden_by)
+  where hidden_by is not null;
 
 -- ── 3. occurrence + steward + window helpers ────────────────────────────────
 

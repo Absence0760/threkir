@@ -102,39 +102,48 @@ void main() {
     }
   });
 
-  testWidgets(
-    'the guide screen renders an illustration with its alt as the label',
-    (tester) async {
-      final library = HelpLibrary([
-        _guideWith([
-          {'type': 'p', 'text': 'Before.'},
-          {
-            'type': 'illustration',
-            'id': 'privacy-zones',
-            'alt': 'A route starting inside a circle.',
-          },
-        ]),
-      ]);
-      helpLibraryLoader = (_) => Future.value(library);
-      final handle = tester.ensureSemantics();
-      await tester.pumpWidget(
-        MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: const GuideScreen(guideId: 'zones'),
-        ),
-      );
-      await tester.pump();
-      expect(
-        find.byKey(const ValueKey('help-illustration-privacy-zones')),
-        findsOneWidget,
-      );
-      expect(
-        find.bySemanticsLabel('A route starting inside a circle.'),
-        findsOneWidget,
-      );
-      expect(find.byType(SvgPicture), findsOneWidget);
-      handle.dispose();
-    },
-  );
+  for (final (name, theme) in [
+    ('light', ThemeData.light()),
+    ('dark', ThemeData.dark()),
+  ]) {
+    testWidgets(
+      'the guide screen renders an illustration with its alt as the label '
+      '($name)',
+      (tester) async {
+        final library = HelpLibrary([
+          _guideWith([
+            {'type': 'p', 'text': 'Before.'},
+            {
+              'type': 'illustration',
+              'id': 'privacy-zones',
+              'alt': 'A route starting inside a circle.',
+            },
+          ]),
+        ]);
+        final previous = helpLibraryLoader;
+        addTearDown(() => helpLibraryLoader = previous);
+        helpLibraryLoader = (_) => Future.value(library);
+        final handle = tester.ensureSemantics();
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: theme,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: const GuideScreen(guideId: 'zones'),
+          ),
+        );
+        await tester.pump();
+        expect(
+          find.byKey(const ValueKey('help-illustration-privacy-zones')),
+          findsOneWidget,
+        );
+        expect(
+          find.bySemanticsLabel('A route starting inside a circle.'),
+          findsOneWidget,
+        );
+        expect(find.byType(SvgPicture), findsOneWidget);
+        handle.dispose();
+      },
+    );
+  }
 }

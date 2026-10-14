@@ -11,6 +11,7 @@
 	import VerifiedBadge from '#lib/components/VerifiedBadge.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { clubRoleLabel } from '#lib/i18n/enum_labels.svelte.ts';
+	import { CREATE_CLUB_GUIDE_ID, clubSetupHref } from '#lib/social/club_setup.ts';
 	import type { ClubWithMeta } from '#lib/types.ts';
 
 	let subtab = $state<'browse' | 'mine'>('mine');
@@ -87,6 +88,19 @@
 	}
 
 </script>
+
+{#snippet missingClubActions(query: string)}
+	<div class="empty-actions" data-testid="clubs-missing-club">
+		<a class="btn btn-primary" href={clubSetupHref(query)}>
+			<span class="material-symbols" aria-hidden="true">add</span>
+			{m('socialClubs.setUpYourClub')}
+		</a>
+		<a class="btn btn-outline" href="/help/{CREATE_CLUB_GUIDE_ID}">
+			<span class="material-symbols" aria-hidden="true">help</span>
+			{m('socialClubs.howToCreateClub')}
+		</a>
+	</div>
+{/snippet}
 
 {#snippet clubGrid()}
 	<div class="grid">
@@ -263,29 +277,23 @@
 				<span class="material-symbols empty-icon" aria-hidden="true">search_off</span>
 				<h3>{m('socialClubs.noClubsMatch', { query: search.trim() })}</h3>
 				<p class="empty-text">
-					{m('socialClubs.noClubsMatchText')}
+					{m('socialClubs.missingClubText')}
 				</p>
-				<div class="empty-actions">
-					<button
-						type="button"
-						class="btn btn-primary"
-						onclick={() => { search = ''; loadBrowse(); }}
-					>
-						{m('socialClubs.clearSearch')}
-					</button>
-				</div>
+				{@render missingClubActions(search)}
+				<button
+					type="button"
+					class="btn btn-secondary btn-sm"
+					onclick={() => { search = ''; loadBrowse(); }}
+				>
+					{m('socialClubs.clearSearch')}
+				</button>
 			{:else}
 				<span class="material-symbols empty-icon" aria-hidden="true">groups</span>
 				<h3>{m('socialClubs.noPublicClubsTitle')}</h3>
 				<p class="empty-text">
 					{m('socialClubs.noPublicClubsText')}
 				</p>
-				<div class="empty-actions">
-					<button class="btn btn-primary" type="button" onclick={() => (showClubModal = true)}>
-						<span class="material-symbols" aria-hidden="true">add</span>
-						{m('socialClubs.createAClub')}
-					</button>
-				</div>
+				{@render missingClubActions('')}
 			{/if}
 		</div>
 	{:else}

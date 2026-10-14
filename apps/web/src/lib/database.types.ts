@@ -3920,10 +3920,12 @@ export type Database = {
           created_at: string
           event_id: string | null
           event_instance_start: string | null
+          hidden_at: string | null
+          hidden_by: string | null
           id: string
           owner_id: string
           position_idx: number
-          run_id: string
+          run_id: string | null
           storage_path: string
           thumb_512_path: string | null
         }
@@ -3932,10 +3934,12 @@ export type Database = {
           created_at?: string
           event_id?: string | null
           event_instance_start?: string | null
+          hidden_at?: string | null
+          hidden_by?: string | null
           id?: string
           owner_id: string
           position_idx?: number
-          run_id: string
+          run_id?: string | null
           storage_path: string
           thumb_512_path?: string | null
         }
@@ -3944,10 +3948,12 @@ export type Database = {
           created_at?: string
           event_id?: string | null
           event_instance_start?: string | null
+          hidden_at?: string | null
+          hidden_by?: string | null
           id?: string
           owner_id?: string
           position_idx?: number
-          run_id?: string
+          run_id?: string | null
           storage_path?: string
           thumb_512_path?: string | null
         }
@@ -5627,6 +5633,10 @@ export type Database = {
         Args: { p_event_id: string }
         Returns: boolean
       }
+      can_steward_event_photos: {
+        Args: { p_event_id: string }
+        Returns: boolean
+      }
       challenge_leaderboard: {
         Args: { p_by_team?: boolean; p_challenge_id: string }
         Returns: {
@@ -6776,6 +6786,10 @@ export type Database = {
       set_discoverable_area: {
         Args: { p_label?: string; p_lat: number; p_lng: number }
         Returns: string
+      }
+      set_event_photo_hidden: {
+        Args: { p_hidden: boolean; p_photo_id: string }
+        Returns: undefined
       }
       set_gym_routine_public: {
         Args: { p_public: boolean; p_routine_id: string }

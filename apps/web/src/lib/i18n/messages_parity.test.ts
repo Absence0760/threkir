@@ -63,3 +63,24 @@ for (const loc of SUPPORTED_LOCALES) {
 		);
 	});
 }
+
+// Locales whose glossary (.claude/agents/i18n/languages/<loc>.md) sets the
+// curly pair “…” as the quotation mark, so a straight `"` in a message is a
+// slip -- 51 of them shipped before this guard. A straight double quote is
+// never ICU syntax (ICU escapes with the apostrophe), so every one in a
+// message value is a quotation mark. Checked on the loaded value, which sees
+// through the literal's own delimiters and `\"` escapes. The mobile twin is in
+// apps/mobile_android/test/architecture_guards_test.dart.
+const CURLY_QUOTE_LOCALES = ['pt-BR', 'pt-PT'] as const;
+
+for (const loc of CURLY_QUOTE_LOCALES) {
+	test(`${loc}: no message quotes with a straight double quote`, async () => {
+		const dict = (await CATALOGUE_LOADERS[loc]()) as Record<string, string>;
+		const straight = Object.keys(dict).filter((key) => dict[key].includes('"'));
+		assert.deepEqual(
+			straight,
+			[],
+			`${loc} quotes with a straight " in these messages; its glossary uses “…”`,
+		);
+	});
+}

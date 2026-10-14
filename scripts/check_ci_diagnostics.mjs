@@ -367,7 +367,8 @@ export const PR_ADVISORY = new Map([
 			'never turns the job red and a fold would gate on the analysis COMPLETING rather ' +
 			'than on what it found — while re-keying all four analyses, since the action ' +
 			"derives its analysis key from the RUN's workflow path. What gates a finding is a " +
-			'repo setting; docs/ops/deployment.md § Merge gates carries the ask, and the silent ' +
+			'repo setting, and it is set: the Code scanning gate ruleset (decisions § 1908, ' +
+			'docs/ops/deployment.md § Merge gates). The silent ' +
 			'half (a leg reporting clean over a tree it never read) is already inside the gate ' +
 			'as check_codeql_coverage.mjs (decisions § 1264, § 1305, § 1356).',
 	],

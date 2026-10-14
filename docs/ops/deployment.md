@@ -407,7 +407,17 @@ red row and fixed with a retitle; that is the trade
 ### CodeQL is the exception, and it is a repo setting
 
 `security.yml`'s four CodeQL analyses and two Trivy jobs are **not** in the
-gate, so a CodeQL alert on a pull request does not block its merge today. The
+gate. Since 2026-10-14 a CodeQL **finding** blocks the merge anyway, through the
+repository ruleset **Code scanning gate** on the default branch (id `25104920`):
+it requires code scanning results from the `CodeQL` tool and refuses the merge
+when the PR introduces a security alert of **high or higher** or any alert at
+**error** level; lower-severity notes do not block. Repository admins can
+bypass it, which is the escape hatch for a CodeQL outage -- the alternative,
+flipping the ruleset to *evaluate*, keeps the record without the lock
+([§ 1908](../architecture/decisions.md)). The required status-check set is still
+exactly `CI gate`. Before that ruleset, a CodeQL alert did not block a merge,
+and the reason why is kept below because it is why the gate is a ruleset and
+not a status check. The
 call trick above does not fix it, for a reason measured rather than assumed:
 `github/codeql-action/analyze` at the pinned SHA declares 18 inputs and not one
 of them is a severity threshold (re-read against the action's own `action.yml`
@@ -417,9 +427,9 @@ it would re-key every analysis in the Security tab, because the action derives
 its analysis key from the *run's* workflow path.
 
 What actually gates a CodeQL finding is a repo setting, and only a repo
-setting. In **Settings -> Rules -> Rulesets** (or Branch protection) on `main`,
-enable the **code scanning results** requirement and add the `CodeQL` tool at
-the alert threshold you want. Leave the required *status check* set at exactly
+setting -- the ruleset above. In **Settings -> Rules -> Rulesets** it is the
+**code scanning results** requirement with the `CodeQL` tool at the thresholds
+stated there. Leave the required *status check* set at exactly
 `CI gate`; do **not** add the four `analyze` job names to it as a substitute,
 because that gates on the scan running rather than on what it found. Adding
 them is still worth doing if the worry is a scanner that silently stops

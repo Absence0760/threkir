@@ -15630,4 +15630,84 @@ class AppLocalizationsDe extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get messagesTitle => 'Nachrichten';
+
+  @override
+  String get messagesEmptyTitle => 'Noch keine Unterhaltungen';
+
+  @override
+  String get messagesEmptyBody =>
+      'Öffne das Profil eines Läufers und tippe auf Nachricht, um eine Unterhaltung zu beginnen.';
+
+  @override
+  String get messagesLoadError =>
+      'Deine Unterhaltungen konnten nicht geladen werden.';
+
+  @override
+  String get messagesThreadLoadError =>
+      'Diese Unterhaltung konnte nicht geladen werden.';
+
+  @override
+  String messagesYouPrefixed(String body) {
+    return 'Du: $body';
+  }
+
+  @override
+  String messagesUnreadCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ungelesene Nachrichten',
+      one: '$count ungelesene Nachricht',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get messagesThreadEmpty => 'Noch keine Nachrichten. Sag Hallo.';
+
+  @override
+  String get messagesComposerHint => 'Nachricht…';
+
+  @override
+  String get messagesSend => 'Senden';
+
+  @override
+  String get messagesSending => 'Wird gesendet…';
+
+  @override
+  String get messagesSendFailed =>
+      'Deine Nachricht konnte nicht gesendet werden. Versuche es erneut.';
+
+  @override
+  String get messagesSendNotAllowed =>
+      'Du kannst nur Personen schreiben, denen du folgst oder die dir folgen und die dich nicht blockiert haben.';
+
+  @override
+  String get messagesLoadEarlier => 'Ältere Nachrichten laden';
+
+  @override
+  String get messagesLoadEarlierFailed =>
+      'Ältere Nachrichten konnten nicht geladen werden.';
+
+  @override
+  String get messagesViewProfile => 'Profil ansehen';
+
+  @override
+  String get messagesRouteEyebrow => 'Route';
+
+  @override
+  String get messagesRouteUntitled => 'Route ohne Namen';
+
+  @override
+  String get messagesRouteUnavailable =>
+      'Diese Route ist für dich nicht mehr verfügbar.';
+
+  @override
+  String get messagesRouteLoading => 'Route wird geladen';
+
+  @override
+  String get profileMessage => 'Nachricht';
 }

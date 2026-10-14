@@ -15654,4 +15654,84 @@ class AppLocalizationsFr extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get messagesTitle => 'Messages';
+
+  @override
+  String get messagesEmptyTitle => 'Aucune conversation pour l\'instant';
+
+  @override
+  String get messagesEmptyBody =>
+      'Ouvrez le profil d\'un coureur et appuyez sur Message pour démarrer une conversation.';
+
+  @override
+  String get messagesLoadError => 'Impossible de charger vos conversations.';
+
+  @override
+  String get messagesThreadLoadError =>
+      'Impossible de charger cette conversation.';
+
+  @override
+  String messagesYouPrefixed(String body) {
+    return 'Vous : $body';
+  }
+
+  @override
+  String messagesUnreadCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count messages non lus',
+      one: '$count message non lu',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get messagesThreadEmpty =>
+      'Aucun message pour l\'instant. Dites bonjour.';
+
+  @override
+  String get messagesComposerHint => 'Message…';
+
+  @override
+  String get messagesSend => 'Envoyer';
+
+  @override
+  String get messagesSending => 'Envoi…';
+
+  @override
+  String get messagesSendFailed =>
+      'Impossible d\'envoyer votre message. Réessayez.';
+
+  @override
+  String get messagesSendNotAllowed =>
+      'Vous ne pouvez écrire qu\'aux personnes que vous suivez ou qui vous suivent, et qui ne vous ont pas bloqué.';
+
+  @override
+  String get messagesLoadEarlier => 'Charger les messages précédents';
+
+  @override
+  String get messagesLoadEarlierFailed =>
+      'Impossible de charger les messages précédents.';
+
+  @override
+  String get messagesViewProfile => 'Voir le profil';
+
+  @override
+  String get messagesRouteEyebrow => 'Itinéraire';
+
+  @override
+  String get messagesRouteUntitled => 'Itinéraire sans titre';
+
+  @override
+  String get messagesRouteUnavailable =>
+      'Cet itinéraire n\'est plus accessible pour vous.';
+
+  @override
+  String get messagesRouteLoading => 'Chargement de l\'itinéraire';
+
+  @override
+  String get profileMessage => 'Message';
 }

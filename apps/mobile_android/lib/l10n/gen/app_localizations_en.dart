@@ -15460,4 +15460,80 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get messagesTitle => 'Messages';
+
+  @override
+  String get messagesEmptyTitle => 'No conversations yet';
+
+  @override
+  String get messagesEmptyBody =>
+      'Open a runner\'s profile and tap Message to start a conversation.';
+
+  @override
+  String get messagesLoadError => 'Couldn\'t load your conversations.';
+
+  @override
+  String get messagesThreadLoadError => 'Couldn\'t load this conversation.';
+
+  @override
+  String messagesYouPrefixed(String body) {
+    return 'You: $body';
+  }
+
+  @override
+  String messagesUnreadCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count unread messages',
+      one: '$count unread message',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get messagesThreadEmpty => 'No messages yet. Say hi.';
+
+  @override
+  String get messagesComposerHint => 'Message…';
+
+  @override
+  String get messagesSend => 'Send';
+
+  @override
+  String get messagesSending => 'Sending…';
+
+  @override
+  String get messagesSendFailed => 'Couldn\'t send your message. Try again.';
+
+  @override
+  String get messagesSendNotAllowed =>
+      'You can only message people you follow or who follow you, and who haven\'t blocked you.';
+
+  @override
+  String get messagesLoadEarlier => 'Load earlier messages';
+
+  @override
+  String get messagesLoadEarlierFailed => 'Couldn\'t load earlier messages.';
+
+  @override
+  String get messagesViewProfile => 'View profile';
+
+  @override
+  String get messagesRouteEyebrow => 'Route';
+
+  @override
+  String get messagesRouteUntitled => 'Untitled route';
+
+  @override
+  String get messagesRouteUnavailable =>
+      'This route isn\'t available to you any more.';
+
+  @override
+  String get messagesRouteLoading => 'Loading route';
+
+  @override
+  String get profileMessage => 'Message';
 }

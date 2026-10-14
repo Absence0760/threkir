@@ -25796,6 +25796,132 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, one{{count} step} other{{count} steps}}'**
   String runnerMenuWorkoutSteps(int count);
+
+  /// Messages, the direct-message inbox title (also the You tile)
+  ///
+  /// In en, this message translates to:
+  /// **'Messages'**
+  String get messagesTitle;
+
+  /// Inbox empty state title
+  ///
+  /// In en, this message translates to:
+  /// **'No conversations yet'**
+  String get messagesEmptyTitle;
+
+  /// Inbox empty state body: how a conversation starts
+  ///
+  /// In en, this message translates to:
+  /// **'Open a runner\'s profile and tap Message to start a conversation.'**
+  String get messagesEmptyBody;
+
+  /// Inbox failed to load
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your conversations.'**
+  String get messagesLoadError;
+
+  /// One conversation failed to load
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load this conversation.'**
+  String get messagesThreadLoadError;
+
+  /// Inbox preview line when the latest message is the viewer's own
+  ///
+  /// In en, this message translates to:
+  /// **'You: {body}'**
+  String messagesYouPrefixed(String body);
+
+  /// Accessible label for a conversation's unread badge
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} unread message} other{{count} unread messages}}'**
+  String messagesUnreadCount(int count);
+
+  /// A conversation with no messages yet
+  ///
+  /// In en, this message translates to:
+  /// **'No messages yet. Say hi.'**
+  String get messagesThreadEmpty;
+
+  /// Composer text field placeholder
+  ///
+  /// In en, this message translates to:
+  /// **'Message…'**
+  String get messagesComposerHint;
+
+  /// Composer send button
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get messagesSend;
+
+  /// Accessible status of a message still being sent
+  ///
+  /// In en, this message translates to:
+  /// **'Sending…'**
+  String get messagesSending;
+
+  /// A send failed for a reason the app cannot name
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send your message. Try again.'**
+  String get messagesSendFailed;
+
+  /// The server refused the send: no follow either way, or a block either way (deliberately not told apart)
+  ///
+  /// In en, this message translates to:
+  /// **'You can only message people you follow or who follow you, and who haven\'t blocked you.'**
+  String get messagesSendNotAllowed;
+
+  /// Button at the top of a conversation that loads older messages
+  ///
+  /// In en, this message translates to:
+  /// **'Load earlier messages'**
+  String get messagesLoadEarlier;
+
+  /// Loading older messages failed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load earlier messages.'**
+  String get messagesLoadEarlierFailed;
+
+  /// Conversation app-bar action opening the partner's profile
+  ///
+  /// In en, this message translates to:
+  /// **'View profile'**
+  String get messagesViewProfile;
+
+  /// Label above a route shared in a message
+  ///
+  /// In en, this message translates to:
+  /// **'Route'**
+  String get messagesRouteEyebrow;
+
+  /// Name shown for a shared route whose name is blank
+  ///
+  /// In en, this message translates to:
+  /// **'Untitled route'**
+  String get messagesRouteUntitled;
+
+  /// A route shared in a message that the reader can no longer see
+  ///
+  /// In en, this message translates to:
+  /// **'This route isn\'t available to you any more.'**
+  String get messagesRouteUnavailable;
+
+  /// Accessible label while a shared route resolves
+  ///
+  /// In en, this message translates to:
+  /// **'Loading route'**
+  String get messagesRouteLoading;
+
+  /// Profile action opening a direct-message conversation with this runner
+  ///
+  /// In en, this message translates to:
+  /// **'Message'**
+  String get profileMessage;
 }
 
 class _AppLocalizationsDelegate

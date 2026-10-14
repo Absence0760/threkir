@@ -15616,4 +15616,82 @@ class AppLocalizationsEs extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get messagesTitle => 'Mensajes';
+
+  @override
+  String get messagesEmptyTitle => 'Aún no hay conversaciones';
+
+  @override
+  String get messagesEmptyBody =>
+      'Abre el perfil de un corredor y toca Mensaje para empezar una conversación.';
+
+  @override
+  String get messagesLoadError => 'No se pudieron cargar tus conversaciones.';
+
+  @override
+  String get messagesThreadLoadError => 'No se pudo cargar esta conversación.';
+
+  @override
+  String messagesYouPrefixed(String body) {
+    return 'Tú: $body';
+  }
+
+  @override
+  String messagesUnreadCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count mensajes sin leer',
+      one: '$count mensaje sin leer',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get messagesThreadEmpty => 'Aún no hay mensajes. Saluda.';
+
+  @override
+  String get messagesComposerHint => 'Mensaje…';
+
+  @override
+  String get messagesSend => 'Enviar';
+
+  @override
+  String get messagesSending => 'Enviando…';
+
+  @override
+  String get messagesSendFailed =>
+      'No se pudo enviar tu mensaje. Inténtalo de nuevo.';
+
+  @override
+  String get messagesSendNotAllowed =>
+      'Solo puedes escribir a personas que sigues o que te siguen, y que no te han bloqueado.';
+
+  @override
+  String get messagesLoadEarlier => 'Cargar mensajes anteriores';
+
+  @override
+  String get messagesLoadEarlierFailed =>
+      'No se pudieron cargar los mensajes anteriores.';
+
+  @override
+  String get messagesViewProfile => 'Ver perfil';
+
+  @override
+  String get messagesRouteEyebrow => 'Ruta';
+
+  @override
+  String get messagesRouteUntitled => 'Ruta sin título';
+
+  @override
+  String get messagesRouteUnavailable =>
+      'Esta ruta ya no está disponible para ti.';
+
+  @override
+  String get messagesRouteLoading => 'Cargando ruta';
+
+  @override
+  String get profileMessage => 'Mensaje';
 }

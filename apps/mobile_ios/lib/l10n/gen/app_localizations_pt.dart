@@ -15622,6 +15622,86 @@ class AppLocalizationsPt extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get messagesTitle => 'Mensagens';
+
+  @override
+  String get messagesEmptyTitle => 'Ainda não há conversas';
+
+  @override
+  String get messagesEmptyBody =>
+      'Abra o perfil de um corredor e toque em Mensagem para iniciar uma conversa.';
+
+  @override
+  String get messagesLoadError =>
+      'Não foi possível carregar as suas conversas.';
+
+  @override
+  String get messagesThreadLoadError =>
+      'Não foi possível carregar esta conversa.';
+
+  @override
+  String messagesYouPrefixed(String body) {
+    return 'Eu: $body';
+  }
+
+  @override
+  String messagesUnreadCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count mensagens não lidas',
+      one: '$count mensagem não lida',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get messagesThreadEmpty => 'Ainda não há mensagens. Diga olá.';
+
+  @override
+  String get messagesComposerHint => 'Mensagem…';
+
+  @override
+  String get messagesSend => 'Enviar';
+
+  @override
+  String get messagesSending => 'A enviar…';
+
+  @override
+  String get messagesSendFailed =>
+      'Não foi possível enviar a sua mensagem. Tente novamente.';
+
+  @override
+  String get messagesSendNotAllowed =>
+      'Só pode enviar mensagens a pessoas que segue ou que o seguem, e que não o bloquearam.';
+
+  @override
+  String get messagesLoadEarlier => 'Carregar mensagens anteriores';
+
+  @override
+  String get messagesLoadEarlierFailed =>
+      'Não foi possível carregar as mensagens anteriores.';
+
+  @override
+  String get messagesViewProfile => 'Ver perfil';
+
+  @override
+  String get messagesRouteEyebrow => 'Rota';
+
+  @override
+  String get messagesRouteUntitled => 'Rota sem título';
+
+  @override
+  String get messagesRouteUnavailable =>
+      'Esta rota já não está disponível para si.';
+
+  @override
+  String get messagesRouteLoading => 'A carregar a rota';
+
+  @override
+  String get profileMessage => 'Mensagem';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -31229,4 +31309,83 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
     );
     return '$_temp0';
   }
+
+  @override
+  String get messagesTitle => 'Mensagens';
+
+  @override
+  String get messagesEmptyTitle => 'Ainda não há conversas';
+
+  @override
+  String get messagesEmptyBody =>
+      'Abra o perfil de um corredor e toque em Mensagem para começar uma conversa.';
+
+  @override
+  String get messagesLoadError => 'Não foi possível carregar suas conversas.';
+
+  @override
+  String get messagesThreadLoadError =>
+      'Não foi possível carregar esta conversa.';
+
+  @override
+  String messagesYouPrefixed(String body) {
+    return 'Você: $body';
+  }
+
+  @override
+  String messagesUnreadCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count mensagens não lidas',
+      one: '$count mensagem não lida',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get messagesThreadEmpty => 'Ainda não há mensagens. Diga oi.';
+
+  @override
+  String get messagesComposerHint => 'Mensagem…';
+
+  @override
+  String get messagesSend => 'Enviar';
+
+  @override
+  String get messagesSending => 'Enviando…';
+
+  @override
+  String get messagesSendFailed =>
+      'Não foi possível enviar sua mensagem. Tente novamente.';
+
+  @override
+  String get messagesSendNotAllowed =>
+      'Você só pode enviar mensagens para pessoas que você segue ou que seguem você, e que não bloquearam você.';
+
+  @override
+  String get messagesLoadEarlier => 'Carregar mensagens anteriores';
+
+  @override
+  String get messagesLoadEarlierFailed =>
+      'Não foi possível carregar as mensagens anteriores.';
+
+  @override
+  String get messagesViewProfile => 'Ver perfil';
+
+  @override
+  String get messagesRouteEyebrow => 'Rota';
+
+  @override
+  String get messagesRouteUntitled => 'Rota sem título';
+
+  @override
+  String get messagesRouteUnavailable =>
+      'Esta rota não está mais disponível para você.';
+
+  @override
+  String get messagesRouteLoading => 'Carregando rota';
+
+  @override
+  String get profileMessage => 'Mensagem';
 }

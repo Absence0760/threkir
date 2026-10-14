@@ -19801,5 +19801,99 @@
         "type": "int"
       }
     }
+  },
+  "messagesTitle": "Messages",
+  "@messagesTitle": {
+    "description": "Messages, the direct-message inbox title (also the You tile)"
+  },
+  "messagesEmptyTitle": "No conversations yet",
+  "@messagesEmptyTitle": {
+    "description": "Inbox empty state title"
+  },
+  "messagesEmptyBody": "Open a runner's profile and tap Message to start a conversation.",
+  "@messagesEmptyBody": {
+    "description": "Inbox empty state body: how a conversation starts"
+  },
+  "messagesLoadError": "Couldn't load your conversations.",
+  "@messagesLoadError": {
+    "description": "Inbox failed to load"
+  },
+  "messagesThreadLoadError": "Couldn't load this conversation.",
+  "@messagesThreadLoadError": {
+    "description": "One conversation failed to load"
+  },
+  "messagesYouPrefixed": "You: {body}",
+  "@messagesYouPrefixed": {
+    "description": "Inbox preview line when the latest message is the viewer's own",
+    "placeholders": {
+      "body": {
+        "type": "String"
+      }
+    }
+  },
+  "messagesUnreadCount": "{count, plural, one{{count} unread message} other{{count} unread messages}}",
+  "@messagesUnreadCount": {
+    "description": "Accessible label for a conversation's unread badge",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "messagesThreadEmpty": "No messages yet. Say hi.",
+  "@messagesThreadEmpty": {
+    "description": "A conversation with no messages yet"
+  },
+  "messagesComposerHint": "Message…",
+  "@messagesComposerHint": {
+    "description": "Composer text field placeholder"
+  },
+  "messagesSend": "Send",
+  "@messagesSend": {
+    "description": "Composer send button"
+  },
+  "messagesSending": "Sending…",
+  "@messagesSending": {
+    "description": "Accessible status of a message still being sent"
+  },
+  "messagesSendFailed": "Couldn't send your message. Try again.",
+  "@messagesSendFailed": {
+    "description": "A send failed for a reason the app cannot name"
+  },
+  "messagesSendNotAllowed": "You can only message people you follow or who follow you, and who haven't blocked you.",
+  "@messagesSendNotAllowed": {
+    "description": "The server refused the send: no follow either way, or a block either way (deliberately not told apart)"
+  },
+  "messagesLoadEarlier": "Load earlier messages",
+  "@messagesLoadEarlier": {
+    "description": "Button at the top of a conversation that loads older messages"
+  },
+  "messagesLoadEarlierFailed": "Couldn't load earlier messages.",
+  "@messagesLoadEarlierFailed": {
+    "description": "Loading older messages failed"
+  },
+  "messagesViewProfile": "View profile",
+  "@messagesViewProfile": {
+    "description": "Conversation app-bar action opening the partner's profile"
+  },
+  "messagesRouteEyebrow": "Route",
+  "@messagesRouteEyebrow": {
+    "description": "Label above a route shared in a message"
+  },
+  "messagesRouteUntitled": "Untitled route",
+  "@messagesRouteUntitled": {
+    "description": "Name shown for a shared route whose name is blank"
+  },
+  "messagesRouteUnavailable": "This route isn't available to you any more.",
+  "@messagesRouteUnavailable": {
+    "description": "A route shared in a message that the reader can no longer see"
+  },
+  "messagesRouteLoading": "Loading route",
+  "@messagesRouteLoading": {
+    "description": "Accessible label while a shared route resolves"
+  },
+  "profileMessage": "Message",
+  "@profileMessage": {
+    "description": "Profile action opening a direct-message conversation with this runner"
   }
 }

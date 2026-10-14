@@ -14889,4 +14889,77 @@ class AppLocalizationsJa extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get messagesTitle => 'メッセージ';
+
+  @override
+  String get messagesEmptyTitle => 'まだ会話がありません';
+
+  @override
+  String get messagesEmptyBody => 'ランナーのプロフィールを開いて「メッセージ」をタップすると、会話を始められます。';
+
+  @override
+  String get messagesLoadError => '会話を読み込めませんでした。';
+
+  @override
+  String get messagesThreadLoadError => 'この会話を読み込めませんでした。';
+
+  @override
+  String messagesYouPrefixed(String body) {
+    return 'あなた: $body';
+  }
+
+  @override
+  String messagesUnreadCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '未読メッセージ$count件',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get messagesThreadEmpty => 'まだメッセージがありません。あいさつしてみましょう。';
+
+  @override
+  String get messagesComposerHint => 'メッセージ…';
+
+  @override
+  String get messagesSend => '送信';
+
+  @override
+  String get messagesSending => '送信中…';
+
+  @override
+  String get messagesSendFailed => 'メッセージを送信できませんでした。もう一度お試しください。';
+
+  @override
+  String get messagesSendNotAllowed =>
+      'メッセージを送れるのは、あなたがフォローしている人か、あなたをフォローしている人のうち、あなたをブロックしていない人だけです。';
+
+  @override
+  String get messagesLoadEarlier => '以前のメッセージを読み込む';
+
+  @override
+  String get messagesLoadEarlierFailed => '以前のメッセージを読み込めませんでした。';
+
+  @override
+  String get messagesViewProfile => 'プロフィールを見る';
+
+  @override
+  String get messagesRouteEyebrow => 'ルート';
+
+  @override
+  String get messagesRouteUntitled => '名称未設定のルート';
+
+  @override
+  String get messagesRouteUnavailable => 'このルートは表示できなくなりました。';
+
+  @override
+  String get messagesRouteLoading => 'ルートを読み込み中';
+
+  @override
+  String get profileMessage => 'メッセージ';
 }

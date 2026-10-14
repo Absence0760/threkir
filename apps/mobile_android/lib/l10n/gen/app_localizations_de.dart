@@ -5237,6 +5237,60 @@ class AppLocalizationsDe extends AppLocalizations {
       'Keine aktuellen Läufe gefunden. Zeichne zuerst einen Lauf auf und komm dann zurück.';
 
   @override
+  String get eventAddOccurrencePhoto => 'Event-Foto hinzufügen';
+
+  @override
+  String get eventAddPhotoFromRun => 'Aus meinem Lauf hinzufügen';
+
+  @override
+  String get eventNoRunsInPhotoWindow =>
+      'Keiner deiner Läufe hat während dieses Events begonnen. Fotos gehören zu einem Lauf, der bis zu 2 Stunden vor und bis 24 Stunden nach dem Start begann.';
+
+  @override
+  String eventPhotoRunsLoadFailed(String error) {
+    return 'Deine Läufe konnten nicht geladen werden: $error';
+  }
+
+  @override
+  String get eventPhotosLoadFailed => 'Die Fotos konnten nicht geladen werden.';
+
+  @override
+  String get eventPhotosRetry => 'Fotos neu laden';
+
+  @override
+  String get eventPhotoHiddenBadge => 'Ausgeblendet';
+
+  @override
+  String get eventPhotoHide => 'Ausblenden';
+
+  @override
+  String eventPhotoHideLabel(String name) {
+    return 'Foto von $name ausblenden';
+  }
+
+  @override
+  String get eventPhotoRestore => 'Wiederherstellen';
+
+  @override
+  String get eventPhotoDelete => 'Löschen';
+
+  @override
+  String get eventPhotoHidden => 'Foto im Event ausgeblendet';
+
+  @override
+  String eventPhotoModerateFailed(String error) {
+    return 'Foto konnte nicht aktualisiert werden: $error';
+  }
+
+  @override
+  String get eventPhotoDeleted => 'Foto gelöscht';
+
+  @override
+  String eventPhotoDeleteFailed(String error) {
+    return 'Foto konnte nicht gelöscht werden: $error';
+  }
+
+  @override
   String get eventPhotoRunnerFallback => 'Ein Läufer';
 
   @override

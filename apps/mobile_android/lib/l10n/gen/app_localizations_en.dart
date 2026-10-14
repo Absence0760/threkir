@@ -5174,6 +5174,60 @@ class AppLocalizationsEn extends AppLocalizations {
       'No recent runs found. Record a run first, then come back.';
 
   @override
+  String get eventAddOccurrencePhoto => 'Add event photo';
+
+  @override
+  String get eventAddPhotoFromRun => 'Add from my run';
+
+  @override
+  String get eventNoRunsInPhotoWindow =>
+      'None of your runs started during this event. Photos attach to a run that started up to 2 hours before and within 24 hours after the start.';
+
+  @override
+  String eventPhotoRunsLoadFailed(String error) {
+    return 'Couldn\'t load your runs: $error';
+  }
+
+  @override
+  String get eventPhotosLoadFailed => 'Couldn\'t load the photos.';
+
+  @override
+  String get eventPhotosRetry => 'Reload photos';
+
+  @override
+  String get eventPhotoHiddenBadge => 'Hidden';
+
+  @override
+  String get eventPhotoHide => 'Hide';
+
+  @override
+  String eventPhotoHideLabel(String name) {
+    return 'Hide photo by $name';
+  }
+
+  @override
+  String get eventPhotoRestore => 'Restore';
+
+  @override
+  String get eventPhotoDelete => 'Delete';
+
+  @override
+  String get eventPhotoHidden => 'Photo hidden from the event';
+
+  @override
+  String eventPhotoModerateFailed(String error) {
+    return 'Couldn\'t update the photo: $error';
+  }
+
+  @override
+  String get eventPhotoDeleted => 'Photo deleted';
+
+  @override
+  String eventPhotoDeleteFailed(String error) {
+    return 'Couldn\'t delete the photo: $error';
+  }
+
+  @override
   String get eventPhotoRunnerFallback => 'A runner';
 
   @override

@@ -8560,6 +8560,96 @@ abstract class AppLocalizations {
   /// **'No recent runs found. Record a run first, then come back.'**
   String get eventNoRecentRuns;
 
+  /// Steward-only button: post a photo of this event occurrence with no run
+  ///
+  /// In en, this message translates to:
+  /// **'Add event photo'**
+  String get eventAddOccurrencePhoto;
+
+  /// Add-photo button label when the viewer can also post a run-less event photo
+  ///
+  /// In en, this message translates to:
+  /// **'Add from my run'**
+  String get eventAddPhotoFromRun;
+
+  /// Empty state of the event photo run picker: no run started inside the occurrence's photo window
+  ///
+  /// In en, this message translates to:
+  /// **'None of your runs started during this event. Photos attach to a run that started up to 2 hours before and within 24 hours after the start.'**
+  String get eventNoRunsInPhotoWindow;
+
+  /// Banner when the event photo run picker fails to load the viewer's runs
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your runs: {error}'**
+  String eventPhotoRunsLoadFailed(String error);
+
+  /// Event gallery error state when the photos fail to load
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the photos.'**
+  String get eventPhotosLoadFailed;
+
+  /// Retry button on the event gallery error state
+  ///
+  /// In en, this message translates to:
+  /// **'Reload photos'**
+  String get eventPhotosRetry;
+
+  /// Badge on a photo a steward hid from the event gallery (visible to stewards and the owner only)
+  ///
+  /// In en, this message translates to:
+  /// **'Hidden'**
+  String get eventPhotoHiddenBadge;
+
+  /// Steward action: hide a photo from the event gallery
+  ///
+  /// In en, this message translates to:
+  /// **'Hide'**
+  String get eventPhotoHide;
+
+  /// Accessibility label for the hide action, naming the photo's uploader
+  ///
+  /// In en, this message translates to:
+  /// **'Hide photo by {name}'**
+  String eventPhotoHideLabel(String name);
+
+  /// Steward action: put a hidden photo back in the event gallery
+  ///
+  /// In en, this message translates to:
+  /// **'Restore'**
+  String get eventPhotoRestore;
+
+  /// Owner action: delete your own photo from the event gallery
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get eventPhotoDelete;
+
+  /// Undo bar message after a steward hides a photo
+  ///
+  /// In en, this message translates to:
+  /// **'Photo hidden from the event'**
+  String get eventPhotoHidden;
+
+  /// Banner when hiding or restoring an event photo fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t update the photo: {error}'**
+  String eventPhotoModerateFailed(String error);
+
+  /// Undo bar message after deleting your own event photo
+  ///
+  /// In en, this message translates to:
+  /// **'Photo deleted'**
+  String get eventPhotoDeleted;
+
+  /// Banner when deleting your own event photo fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t delete the photo: {error}'**
+  String eventPhotoDeleteFailed(String error);
+
   /// Fallback uploader name on an event photo
   ///
   /// In en, this message translates to:

@@ -11,12 +11,14 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/preferences.dart';
 import '../lib/social_service.dart' show RecentRunRow;
 import '../lib/widgets/event_photos.dart';
+import '../lib/widgets/undo_bar.dart';
 
 EventPhotoView _photo({
   String id = 'p1',
   String owner = 'owner-1',
   String? caption,
   String? uploader = 'Dana',
+  DateTime? hiddenAt,
 }) =>
     EventPhotoView(
       id: id,
@@ -26,29 +28,53 @@ EventPhotoView _photo({
       positionIdx: 0,
       createdAt: DateTime.utc(2026, 6, 1),
       uploaderName: uploader,
+      hiddenAt: hiddenAt,
     );
 
 class _PhotosApi extends ApiClient {
-  _PhotosApi({List<EventPhotoView>? seed})
+  _PhotosApi({List<EventPhotoView>? seed, this.steward = false, this.failLoads = 0})
       : _photos = List.of(seed ?? const []);
 
   final List<EventPhotoView> _photos;
+  final bool steward;
+  int failLoads;
   int addCalls = 0;
+  bool addedWithoutRun = false;
   String? lastRunId;
   String? lastEventId;
   DateTime? lastInstance;
+  final List<(String, bool)> hideCalls = [];
+  final List<String> deleteCalls = [];
 
   @override
   Future<List<EventPhotoView>> fetchEventPhotos(
     String eventId,
     DateTime instanceStart, {
     int limit = 100,
-  }) async =>
-      List.of(_photos);
+  }) async {
+    if (failLoads > 0) {
+      failLoads--;
+      throw Exception('boom');
+    }
+    return List.of(_photos);
+  }
+
+  @override
+  Future<bool> canStewardEventPhotos(String eventId) async => steward;
+
+  @override
+  Future<void> setEventPhotoHidden(String photoId, {required bool hidden}) async {
+    hideCalls.add((photoId, hidden));
+  }
+
+  @override
+  Future<void> deleteEventPhoto(EventPhotoView photo) async {
+    deleteCalls.add(photo.id);
+  }
 
   @override
   Future<RunPhotoRow> addRunPhoto({
-    required String runId,
+    required String? runId,
     required Uint8List bytes,
     required String contentType,
     required String extension,
@@ -58,6 +84,7 @@ class _PhotosApi extends ApiClient {
     DateTime? eventInstanceStart,
   }) async {
     addCalls++;
+    addedWithoutRun = runId == null;
     lastRunId = runId;
     lastEventId = eventId;
     lastInstance = eventInstanceStart;
@@ -85,7 +112,9 @@ EventPhotos _widget(
   _PhotosApi api, {
   bool canAdd = true,
   String? myEventRunId,
+  String? currentUserId,
   List<RecentRunRow> recent = const [],
+  DateTime? now,
 }) =>
     EventPhotos(
       api: api,
@@ -93,7 +122,9 @@ EventPhotos _widget(
       instanceStart: DateTime.utc(2026, 6, 10, 8),
       canAdd: canAdd,
       myEventRunId: myEventRunId,
-      fetchRecentRuns: () async => recent,
+      currentUserId: currentUserId,
+      clock: () => now ?? DateTime.utc(2026, 6, 10, 9),
+      fetchWindowRuns: () async => recent,
       // Real JPEG magic — the upload path sniffs the bytes and refuses a
       // format its EXIF stripper doesn't understand, so a three-byte
       // placeholder never reaches the API.
@@ -102,7 +133,14 @@ EventPhotos _widget(
           name: 'shot.jpg'),
     );
 
+/// The armed undo window owns a real Timer; a test that ends with it pending
+/// fails on `!timersPending`.
+Future<void> _drain(WidgetTester tester) =>
+    tester.pump(const Duration(seconds: 9));
+
 void main() {
+  tearDown(debugResetUndo);
+
   testWidgets('empty gallery + canAdd shows title, add button, hint',
       (tester) async {
     final api = _PhotosApi();
@@ -222,5 +260,128 @@ void main() {
 
     expect(find.textContaining('5.00 mi'), findsOneWidget);
     expect(find.textContaining(' km'), findsNothing);
+  });
+
+  group('steward (#1150)', () {
+    testWidgets('a steward posts an occurrence photo with no run',
+        (tester) async {
+      final api = _PhotosApi(steward: true);
+      await tester.pumpWidget(_host(_widget(api)));
+      await tester.pumpAndSettle();
+      expect(find.text('Add from my run'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('event-photo-add-host')));
+      await tester.pumpAndSettle();
+      expect(api.addCalls, 1);
+      expect(api.addedWithoutRun, isTrue);
+      expect(api.lastEventId, 'event-1');
+      expect(api.lastInstance, DateTime.utc(2026, 6, 10, 8));
+    });
+
+    testWidgets('the run-less upload stays shut until two hours before',
+        (tester) async {
+      final api = _PhotosApi(steward: true);
+      await tester.pumpWidget(
+          _host(_widget(api, now: DateTime.utc(2026, 6, 10, 5, 59))));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('event-photo-add-host')), findsNothing);
+      expect(find.text('Add photo'), findsOneWidget);
+    });
+
+    testWidgets('a non-steward sees no run-less upload and no Hide',
+        (tester) async {
+      final api = _PhotosApi(seed: [_photo(id: 'a')]);
+      await tester.pumpWidget(_host(_widget(api)));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('event-photo-add-host')), findsNothing);
+      expect(find.text('Hide'), findsNothing);
+    });
+
+    testWidgets('Hide is deferred behind the undo bar and badges the tile',
+        (tester) async {
+      final api = _PhotosApi(steward: true, seed: [_photo(id: 'a')]);
+      await tester.pumpWidget(_host(_widget(api)));
+      await tester.pumpAndSettle();
+      expect(find.text('Photos (1)'), findsOneWidget);
+
+      await tester.tap(find.text('Hide'));
+      await tester.pump();
+      expect(find.byType(AlertDialog), findsNothing,
+          reason: 'hiding is reversible, so undo replaces a confirm');
+      expect(find.text('Hidden'), findsOneWidget);
+      expect(find.text('Restore'), findsOneWidget);
+      expect(find.text('Photos (0)'), findsOneWidget);
+      expect(api.hideCalls, isEmpty);
+
+      await _drain(tester);
+      expect(api.hideCalls, [('a', true)]);
+    });
+
+    testWidgets('Undo puts a hidden photo back without calling the server',
+        (tester) async {
+      final api = _PhotosApi(steward: true, seed: [_photo(id: 'a')]);
+      await tester.pumpWidget(_host(_widget(api)));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Hide'));
+      await tester.pump();
+      await tester.tap(find.text('Undo'));
+      await tester.pump();
+      expect(find.text('Hidden'), findsNothing);
+      await _drain(tester);
+      expect(api.hideCalls, isEmpty);
+    });
+
+    testWidgets('Restore un-hides a hidden photo', (tester) async {
+      final api = _PhotosApi(
+          steward: true,
+          seed: [_photo(id: 'a', hiddenAt: DateTime.utc(2026, 6, 10, 10))]);
+      await tester.pumpWidget(_host(_widget(api)));
+      await tester.pumpAndSettle();
+      expect(find.text('Photos (0)'), findsOneWidget);
+      await tester.tap(find.text('Restore'));
+      await tester.pumpAndSettle();
+      expect(api.hideCalls, [('a', false)]);
+      expect(find.text('Hidden'), findsNothing);
+      expect(find.text('Photos (1)'), findsOneWidget);
+    });
+  });
+
+  testWidgets('the owner deletes their own photo behind the undo bar',
+      (tester) async {
+    final api = _PhotosApi(
+        seed: [_photo(id: 'mine', owner: 'me'), _photo(id: 'theirs')]);
+    await tester.pumpWidget(_host(_widget(api, currentUserId: 'me')));
+    await tester.pumpAndSettle();
+    expect(find.text('Delete'), findsOneWidget,
+        reason: 'only the viewer\'s own photo carries Delete');
+    await tester.tap(find.text('Delete'));
+    await tester.pump();
+    expect(find.text('Photos (1)'), findsOneWidget);
+    expect(api.deleteCalls, isEmpty);
+    await _drain(tester);
+    expect(api.deleteCalls, ['mine']);
+  });
+
+  testWidgets('a failed load shows an error with reload, not an empty gallery',
+      (tester) async {
+    final api = _PhotosApi(seed: [_photo(id: 'a')], failLoads: 1);
+    await tester.pumpWidget(_host(_widget(api)));
+    await tester.pumpAndSettle();
+    expect(find.text("Couldn't load the photos."), findsOneWidget);
+    expect(find.textContaining('No photos yet.'), findsNothing);
+    await tester.tap(find.text('Reload photos'));
+    await tester.pumpAndSettle();
+    expect(find.text('Photos (1)'), findsOneWidget);
+    expect(find.text("Couldn't load the photos."), findsNothing);
+  });
+
+  testWidgets('the run picker explains the photo window when it is empty',
+      (tester) async {
+    final api = _PhotosApi();
+    await tester.pumpWidget(_host(_widget(api)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Add photo'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('None of your runs started during this event'),
+        findsOneWidget);
   });
 }

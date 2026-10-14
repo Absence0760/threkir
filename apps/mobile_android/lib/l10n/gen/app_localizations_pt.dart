@@ -5221,6 +5221,61 @@ class AppLocalizationsPt extends AppLocalizations {
       'Nenhuma corrida recente encontrada. Registe uma corrida primeiro e volte.';
 
   @override
+  String get eventAddOccurrencePhoto => 'Adicionar fotografia do evento';
+
+  @override
+  String get eventAddPhotoFromRun => 'Adicionar da minha corrida';
+
+  @override
+  String get eventNoRunsInPhotoWindow =>
+      'Nenhuma das suas corridas começou durante este evento. As fotografias ficam ligadas a uma corrida que começou até 2 horas antes e nas 24 horas seguintes ao início.';
+
+  @override
+  String eventPhotoRunsLoadFailed(String error) {
+    return 'Não foi possível carregar as suas corridas: $error';
+  }
+
+  @override
+  String get eventPhotosLoadFailed =>
+      'Não foi possível carregar as fotografias.';
+
+  @override
+  String get eventPhotosRetry => 'Recarregar fotografias';
+
+  @override
+  String get eventPhotoHiddenBadge => 'Oculta';
+
+  @override
+  String get eventPhotoHide => 'Ocultar';
+
+  @override
+  String eventPhotoHideLabel(String name) {
+    return 'Ocultar a fotografia de $name';
+  }
+
+  @override
+  String get eventPhotoRestore => 'Repor';
+
+  @override
+  String get eventPhotoDelete => 'Eliminar';
+
+  @override
+  String get eventPhotoHidden => 'Fotografia ocultada do evento';
+
+  @override
+  String eventPhotoModerateFailed(String error) {
+    return 'Não foi possível atualizar a fotografia: $error';
+  }
+
+  @override
+  String get eventPhotoDeleted => 'Fotografia eliminada';
+
+  @override
+  String eventPhotoDeleteFailed(String error) {
+    return 'Não foi possível eliminar a fotografia: $error';
+  }
+
+  @override
   String get eventPhotoRunnerFallback => 'Um corredor';
 
   @override
@@ -20715,6 +20770,60 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get eventNoRecentRuns =>
       'Nenhuma corrida recente encontrada. Registre uma corrida primeiro e volte.';
+
+  @override
+  String get eventAddOccurrencePhoto => 'Adicionar foto do evento';
+
+  @override
+  String get eventAddPhotoFromRun => 'Adicionar da minha corrida';
+
+  @override
+  String get eventNoRunsInPhotoWindow =>
+      'Nenhuma das suas corridas começou durante este evento. As fotos ficam ligadas a uma corrida que começou até 2 horas antes e em até 24 horas depois do início.';
+
+  @override
+  String eventPhotoRunsLoadFailed(String error) {
+    return 'Não foi possível carregar suas corridas: $error';
+  }
+
+  @override
+  String get eventPhotosLoadFailed => 'Não foi possível carregar as fotos.';
+
+  @override
+  String get eventPhotosRetry => 'Recarregar fotos';
+
+  @override
+  String get eventPhotoHiddenBadge => 'Oculta';
+
+  @override
+  String get eventPhotoHide => 'Ocultar';
+
+  @override
+  String eventPhotoHideLabel(String name) {
+    return 'Ocultar a foto de $name';
+  }
+
+  @override
+  String get eventPhotoRestore => 'Restaurar';
+
+  @override
+  String get eventPhotoDelete => 'Excluir';
+
+  @override
+  String get eventPhotoHidden => 'Foto ocultada do evento';
+
+  @override
+  String eventPhotoModerateFailed(String error) {
+    return 'Não foi possível atualizar a foto: $error';
+  }
+
+  @override
+  String get eventPhotoDeleted => 'Foto excluída';
+
+  @override
+  String eventPhotoDeleteFailed(String error) {
+    return 'Não foi possível excluir a foto: $error';
+  }
 
   @override
   String get eventPhotoRunnerFallback => 'Um corredor';

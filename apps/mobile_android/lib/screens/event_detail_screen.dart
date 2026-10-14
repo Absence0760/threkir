@@ -1569,8 +1569,10 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               eventId: e.row.id,
               instanceStart: active,
               canAdd: widget.social.currentUserId != null,
+              currentUserId: widget.social.currentUserId,
               myEventRunId: _myEventRunId(),
-              fetchRecentRuns: () => widget.social.fetchRecentRuns(limit: 20),
+              fetchWindowRuns: () =>
+                  widget.social.fetchRunsForEventPhoto(active),
             ),
             const SizedBox(height: 24),
             FundraiserSection(social: widget.social, eventId: e.row.id),

@@ -4909,6 +4909,60 @@ class AppLocalizationsJa extends AppLocalizations {
   String get eventNoRecentRuns => '最近のランが見つかりません。先にランを記録してから戻ってください。';
 
   @override
+  String get eventAddOccurrencePhoto => 'イベント写真を追加';
+
+  @override
+  String get eventAddPhotoFromRun => '自分のランから追加';
+
+  @override
+  String get eventNoRunsInPhotoWindow =>
+      'このイベント中に開始したランがありません。写真は、開始の2時間前から開始後24時間以内に始まったランに追加できます。';
+
+  @override
+  String eventPhotoRunsLoadFailed(String error) {
+    return 'ランを読み込めませんでした: $error';
+  }
+
+  @override
+  String get eventPhotosLoadFailed => '写真を読み込めませんでした。';
+
+  @override
+  String get eventPhotosRetry => '写真を再読み込み';
+
+  @override
+  String get eventPhotoHiddenBadge => '非表示';
+
+  @override
+  String get eventPhotoHide => '非表示にする';
+
+  @override
+  String eventPhotoHideLabel(String name) {
+    return '$nameさんの写真を非表示にする';
+  }
+
+  @override
+  String get eventPhotoRestore => '元に戻す';
+
+  @override
+  String get eventPhotoDelete => '削除';
+
+  @override
+  String get eventPhotoHidden => '写真をイベントから非表示にしました';
+
+  @override
+  String eventPhotoModerateFailed(String error) {
+    return '写真を更新できませんでした: $error';
+  }
+
+  @override
+  String get eventPhotoDeleted => '写真を削除しました';
+
+  @override
+  String eventPhotoDeleteFailed(String error) {
+    return '写真を削除できませんでした: $error';
+  }
+
+  @override
   String get eventPhotoRunnerFallback => 'ランナー';
 
   @override

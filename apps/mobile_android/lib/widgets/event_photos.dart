@@ -7,19 +7,27 @@ import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../auth_error.dart' show friendlyError;
+import '../event_photo_window.dart';
 import '../exif_strip.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../preferences.dart' show formatDistanceForPref;
 import '../social_service.dart' show RecentRunRow;
+import '../undo_queue.dart';
 import 'photo_lightbox.dart';
 import 'top_banner.dart';
+import 'undo_bar.dart';
 
 /// Mirrors the web event-detail Photos section (persona #49): the
 /// multi-attendee gallery of photos tagged to one event instance, readable
 /// even when the underlying run is private (`fetchEventPhotos` RLS). Any
 /// signed-in viewer can add: a finisher attaches to their own event run
-/// (`myEventRunId`) with zero extra taps, everyone else picks which of
-/// their recent runs the photo belongs to. Read-only for anon viewers.
+/// (`myEventRunId`) with zero extra taps, everyone else picks one of their
+/// runs that started inside the occurrence's photo window — the database
+/// refuses any other (#1150). A steward (club owner / admin / event
+/// organiser, or the event's host) also posts with no run, and hides any
+/// photo; a hidden photo leaves the gallery for everyone else. Read-only for
+/// anon viewers.
 class EventPhotos extends StatefulWidget {
   final ApiClient api;
   final String eventId;
@@ -33,9 +41,16 @@ class EventPhotos extends StatefulWidget {
   /// gallery read-only.
   final bool canAdd;
 
-  /// Recent-run source for the non-finisher "which run is this from?"
-  /// picker. Injected so the widget stays free of `SocialService`.
-  final Future<List<RecentRunRow>> Function() fetchRecentRuns;
+  /// The viewer's runs inside this occurrence's photo window, for the
+  /// non-finisher "which run is this from?" picker. Injected so the widget
+  /// stays free of `SocialService`.
+  final Future<List<RecentRunRow>> Function() fetchWindowRuns;
+
+  /// The signed-in viewer, so their own photos carry a delete action.
+  final String? currentUserId;
+
+  /// Test seam for "now" — whether a steward's run-less upload is open yet.
+  final DateTime Function()? clock;
 
   /// Test seam — inject the gallery-pick source so the picker's error paths
   /// (permission denial, generic failure) are drivable without a real photo
@@ -48,9 +63,11 @@ class EventPhotos extends StatefulWidget {
     required this.eventId,
     required this.instanceStart,
     required this.canAdd,
-    required this.fetchRecentRuns,
+    required this.fetchWindowRuns,
     this.myEventRunId,
+    this.currentUserId,
     this.pickImageOverride,
+    this.clock,
   });
 
   @override
@@ -61,6 +78,9 @@ class _EventPhotosState extends State<EventPhotos> {
   final _picker = ImagePicker();
   bool _loading = true;
   bool _uploading = false;
+  bool _loadFailed = false;
+  bool _steward = false;
+  String? _busyId;
   List<EventPhotoView> _photos = const [];
   final Map<String, _SignedEntry> _signedUrls = <String, _SignedEntry>{};
   static const int _signedUrlTtlSeconds = 15 * 60;
@@ -84,6 +104,14 @@ class _EventPhotosState extends State<EventPhotos> {
 
   Future<void> _load() async {
     setState(() => _loading = true);
+    if (widget.canAdd) {
+      try {
+        final steward = await widget.api.canStewardEventPhotos(widget.eventId);
+        if (mounted) _steward = steward;
+      } catch (e) {
+        debugPrint('event-photos steward check failed: $e');
+      }
+    }
     try {
       final ps = await widget.api
           .fetchEventPhotos(widget.eventId, widget.instanceStart);
@@ -91,13 +119,23 @@ class _EventPhotosState extends State<EventPhotos> {
       if (!mounted) return;
       setState(() {
         _photos = ps;
+        _loadFailed = false;
         _loading = false;
       });
-    } catch (_) {
+    } catch (e) {
+      debugPrint('event-photos load failed: $e');
       if (!mounted) return;
-      setState(() => _loading = false);
+      setState(() {
+        _loadFailed = true;
+        _loading = false;
+      });
     }
   }
+
+  bool get _stewardCanPost =>
+      _steward &&
+      hasEventPhotoWindowOpened(
+          widget.instanceStart, (widget.clock ?? DateTime.now)());
 
   Future<void> _signPaths(List<String> paths) async {
     final nowMs = DateTime.now().millisecondsSinceEpoch;
@@ -153,11 +191,102 @@ class _EventPhotosState extends State<EventPhotos> {
       await _pickAndUpload(direct);
       return;
     }
-    final runs = await widget.fetchRecentRuns();
+    final List<RecentRunRow> runs;
+    try {
+      runs = await widget.fetchWindowRuns();
+    } catch (e) {
+      if (!mounted) return;
+      final l10n = AppLocalizations.of(context);
+      showTopBanner(context, l10n.eventPhotoRunsLoadFailed(friendlyError(l10n, e)));
+      return;
+    }
     if (!mounted) return;
     final runId = await _showRunPicker(runs);
     if (runId == null) return;
     await _pickAndUpload(runId);
+  }
+
+  Future<void> _openHostPhotoFlow() async {
+    if (_uploading || !_stewardCanPost) return;
+    await _pickAndUpload(null);
+  }
+
+  // Reversible (a steward can restore it), so it takes the undo bar rather
+  // than a confirm (conventions § Destructive actions). The steward keeps the
+  // tile, badged, with Restore.
+  void _hide(EventPhotoView p) {
+    final l10n = AppLocalizations.of(context);
+    final api = widget.api;
+    final snapshot = _photos;
+    setState(() {
+      _photos = [
+        for (final x in _photos) x.id == p.id ? x.copyWithHidden(DateTime.now()) : x,
+      ];
+    });
+    deferDestructive(
+      context,
+      DeferredDestruction(
+        message: l10n.eventPhotoHidden,
+        commit: () => api.setEventPhotoHidden(p.id, hidden: true),
+        restore: () {
+          if (!mounted) return;
+          setState(() => _photos = snapshot);
+        },
+        onCommitError: (e) {
+          debugPrint('event-photos hide failed: $e');
+          if (!mounted) return;
+          showTopBanner(
+              context, l10n.eventPhotoModerateFailed(friendlyError(l10n, e)));
+        },
+      ),
+    );
+  }
+
+  Future<void> _restore(EventPhotoView p) async {
+    if (_busyId != null) return;
+    setState(() => _busyId = p.id);
+    final l10n = AppLocalizations.of(context);
+    try {
+      await widget.api.setEventPhotoHidden(p.id, hidden: false);
+      if (!mounted) return;
+      setState(() {
+        _photos = [
+          for (final x in _photos) x.id == p.id ? x.copyWithHidden(null) : x,
+        ];
+      });
+    } catch (e) {
+      debugPrint('event-photos restore failed: $e');
+      if (!mounted) return;
+      showTopBanner(
+          context, l10n.eventPhotoModerateFailed(friendlyError(l10n, e)));
+    } finally {
+      if (mounted) setState(() => _busyId = null);
+    }
+  }
+
+  // The owner's delete is held for the undo window, so Undo cancels a timer.
+  void _delete(EventPhotoView p) {
+    final l10n = AppLocalizations.of(context);
+    final api = widget.api;
+    final snapshot = _photos;
+    setState(() => _photos = _photos.where((x) => x.id != p.id).toList());
+    deferDestructive(
+      context,
+      DeferredDestruction(
+        message: l10n.eventPhotoDeleted,
+        commit: () => api.deleteEventPhoto(p),
+        restore: () {
+          if (!mounted) return;
+          setState(() => _photos = snapshot);
+        },
+        onCommitError: (e) {
+          debugPrint('event-photos delete failed: $e');
+          if (!mounted) return;
+          showTopBanner(
+              context, l10n.eventPhotoDeleteFailed(friendlyError(l10n, e)));
+        },
+      ),
+    );
   }
 
   Future<String?> _showRunPicker(List<RecentRunRow> runs) {
@@ -179,7 +308,7 @@ class _EventPhotosState extends State<EventPhotos> {
               if (runs.isEmpty)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-                  child: Text(l10n.eventNoRecentRuns,
+                  child: Text(l10n.eventNoRunsInPhotoWindow,
                       style: theme.textTheme.bodyMedium?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant)),
                 )
@@ -208,7 +337,8 @@ class _EventPhotosState extends State<EventPhotos> {
     );
   }
 
-  Future<void> _pickAndUpload(String runId) async {
+  /// [runId] null is a steward's run-less photo of the occurrence.
+  Future<void> _pickAndUpload(String? runId) async {
     XFile? file;
     try {
       file = await _pick();
@@ -284,7 +414,11 @@ class _EventPhotosState extends State<EventPhotos> {
     final l10n = AppLocalizations.of(context);
 
     if (_loading) return const SizedBox.shrink();
-    if (_photos.isEmpty && !widget.canAdd) return const SizedBox.shrink();
+    if (_photos.isEmpty && !_loadFailed && !widget.canAdd) {
+      return const SizedBox.shrink();
+    }
+    final visibleCount = _photos.where((p) => p.hiddenAt == null).length;
+    final stewardCanPost = _stewardCanPost;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -296,22 +430,53 @@ class _EventPhotosState extends State<EventPhotos> {
                 size: 18, color: cs.onSurfaceVariant),
             const SizedBox(width: 6),
             Expanded(
-              child: Text(l10n.eventPhotosTitle(_photos.length),
+              child: Text(l10n.eventPhotosTitle(visibleCount),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.titleMedium),
             ),
             if (widget.canAdd)
-              TextButton.icon(
-                onPressed: _uploading ? null : _openPhotoFlow,
-                icon: const Icon(Icons.add_a_photo_outlined, size: 18),
-                label: Text(
-                    _uploading ? l10n.eventPhotoUploading : l10n.eventAddPhoto),
+              Flexible(
+                child: TextButton.icon(
+                  onPressed: _uploading ? null : _openPhotoFlow,
+                  icon: const Icon(Icons.add_a_photo_outlined, size: 18),
+                  label: Text(
+                    _uploading
+                        ? l10n.eventPhotoUploading
+                        : stewardCanPost
+                            ? l10n.eventAddPhotoFromRun
+                            : l10n.eventAddPhoto,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ),
           ],
         ),
+        if (stewardCanPost)
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: TextButton.icon(
+              key: const ValueKey('event-photo-add-host'),
+              onPressed: _uploading ? null : _openHostPhotoFlow,
+              icon: const Icon(Icons.photo_camera_outlined, size: 18),
+              label: Text(l10n.eventAddOccurrencePhoto),
+            ),
+          ),
         const SizedBox(height: 8),
-        if (_photos.isEmpty)
+        if (_loadFailed)
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  l10n.eventPhotosLoadFailed,
+                  style: theme.textTheme.bodySmall?.copyWith(color: cs.error),
+                ),
+              ),
+              TextButton(onPressed: _load, child: Text(l10n.eventPhotosRetry)),
+            ],
+          )
+        else if (_photos.isEmpty)
           Text(
             widget.canAdd
                 ? '${l10n.eventNoPhotosYet} ${l10n.eventNoPhotosAddHint}'
@@ -329,7 +494,16 @@ class _EventPhotosState extends State<EventPhotos> {
                   url: _galleryUrl(p),
                   caption: p.caption,
                   uploader: p.uploaderName ?? l10n.eventPhotoRunnerFallback,
+                  hidden: p.hiddenAt != null,
+                  busy: _busyId == p.id,
                   onTap: () => _openLightbox(p),
+                  onHide: _steward && p.hiddenAt == null ? () => _hide(p) : null,
+                  onRestore:
+                      _steward && p.hiddenAt != null ? () => _restore(p) : null,
+                  onDelete: widget.currentUserId != null &&
+                          p.ownerId == widget.currentUserId
+                      ? () => _delete(p)
+                      : null,
                 ),
             ],
           ),
@@ -342,12 +516,22 @@ class _PhotoTile extends StatelessWidget {
   final String url;
   final String? caption;
   final String uploader;
+  final bool hidden;
+  final bool busy;
   final VoidCallback onTap;
+  final VoidCallback? onHide;
+  final VoidCallback? onRestore;
+  final VoidCallback? onDelete;
   const _PhotoTile({
     required this.url,
     required this.caption,
     required this.uploader,
     required this.onTap,
+    this.hidden = false,
+    this.busy = false,
+    this.onHide,
+    this.onRestore,
+    this.onDelete,
   });
 
   @override
@@ -378,15 +562,18 @@ class _PhotoTile extends StatelessWidget {
                   width: 150,
                   height: 150,
                   color: cs.surfaceContainerHighest,
-                  child: url.isEmpty
-                      ? Icon(Icons.image_outlined, color: cs.onSurfaceVariant)
-                      : Image.network(
-                          url,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Icon(
-                              Icons.broken_image_outlined,
-                              color: cs.onSurfaceVariant),
-                        ),
+                  child: Opacity(
+                    opacity: hidden ? 0.45 : 1,
+                    child: url.isEmpty
+                        ? Icon(Icons.image_outlined, color: cs.onSurfaceVariant)
+                        : Image.network(
+                            url,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Icon(
+                                Icons.broken_image_outlined,
+                                color: cs.onSurfaceVariant),
+                          ),
+                  ),
                 ),
               ),
             ),
@@ -407,6 +594,37 @@ class _PhotoTile extends StatelessWidget {
                 style: theme.textTheme.labelSmall
                     ?.copyWith(color: cs.onSurfaceVariant)),
           ),
+          if (hidden)
+            Text(l10n.eventPhotoHiddenBadge,
+                style: theme.textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.w600, color: cs.onSurfaceVariant)),
+          if (onHide != null || onRestore != null || onDelete != null)
+            Wrap(
+              spacing: 4,
+              children: [
+                if (onHide != null)
+                  Semantics(
+                    label: l10n.eventPhotoHideLabel(uploader),
+                    button: true,
+                    excludeSemantics: true,
+                    child: TextButton(
+                      onPressed: onHide,
+                      child: Text(l10n.eventPhotoHide),
+                    ),
+                  ),
+                if (onRestore != null)
+                  TextButton(
+                    onPressed: busy ? null : onRestore,
+                    child: Text(l10n.eventPhotoRestore),
+                  ),
+                if (onDelete != null)
+                  TextButton(
+                    onPressed: onDelete,
+                    style: TextButton.styleFrom(foregroundColor: cs.error),
+                    child: Text(l10n.eventPhotoDelete),
+                  ),
+              ],
+            ),
         ],
       ),
     );

@@ -1817,6 +1817,7 @@ These tables ship in the live schema but don't have a full column-by-column bloc
 | `user_blocks` | `20261012_001` | Per-user block list for the social layer. `blocker_id, blocked_id, created_at, reason`, PK `(blocker_id, blocked_id)`, CHECK `blocker_id <> blocked_id`. |
 | `coach_athletes` | `20261102_001` | Coach↔athlete roster (invite/accept). `id, coach_id, athlete_id, status ('pending'/'active'/'ended'), invite_token, note, created_at, accepted_at, ended_at`. See `redeem_coach_invite` + the coach-visibility note below. |
 | `race_listings` | `20270214_001` | Public race calendar (race_calendar.md). `id, provider ('runsignup'/'parkrun'/'manual'/'chronotrack'/'raceresult'/'ultrasignup' CHECK), provider_race_id, name, race_date, distance_m, location_label, location_point geography(Point,4326), entry_url, results_url (both http(s)-CHECKed), submitted_by (→auth.users on delete set null), is_verified, created_at, updated_at`. Indexes: `(provider, provider_race_id)` partial-unique, `(race_date)`, GiST on `location_point`, GIN trgm on `name`. **RLS (since `20270320_001`): base-table SELECT is submitter-own-rows only** (`submitted_by = auth.uid()`) — the public calendar is served by the redacted **`public_race_listings` view** (every column except `submitted_by`, granted to anon + authenticated), closing the audit/rls submitter-crosswalk leak the original `using (true)` policy carried. Authenticated INSERT (`submitted_by = auth.uid()`); submitter UPDATE only while `is_verified=false`. A `before insert or update` trigger (`force_unverified_listing`) forces `is_verified=false` on any non-service-role write — only `service_role` (the import EF / admin) may verify. Read via the `search_race_listings` RPC (below, re-pointed at the view) or the view directly (web/mobile `fetchRaceResultForRun`, the `race-results-import` EF's listing resolve). Also adds `runs.race_listing_id uuid → race_listings on delete set null` (partial index) — links a matched run to its calendar entry; passes through `public_runs` (non-sensitive). |
+| `us_zcta_points` | `20270805000001` | US ZIP centroids for placing provider races (decisions § 1901). `zcta text pk (^[0-9]{5}$), lat, lng double precision` — the Census 2024 Gazetteer ZCTA internal points, 33,791 rows, public domain, rounded to 4 dp. Reference data: RLS on with **no policy**, no grant to `anon` / `authenticated`, `select` to `service_role` only — read by `race-listings-sync/write.ts` once per batch for its distinct ZIPs. Pinned by `us_zcta_points_test.sql`. |
 
 ---
 
@@ -1958,27 +1959,26 @@ Imports an official race result onto a `source='race'` run, or enriches an exist
 
 **Request:**
 ```json
-{ "provider": "runsignup", "listingId": "<race_listings.id>", "runSignUpUserId": "optional",
+{ "provider": "runsignup", "listingId": "<race_listings.id>", "bib": "required for runsignup / chronotrack",
   "matchRunId": "optional — enrich THIS run in place",
   "result": { "bib": "128", "chip_time": "1:47:23", "gun_time": "1:48:01", "overall_place": 128, "age_group_place": 4, "age_group": "M40-44" } }
 ```
 
 **Flow:**
 1. Auth (`auth.getUser`) → 401; tiered rate limit — **two buckets**, `race-results-import` at 8/32 per hour for a real import and `race-results-import:probe` at 60/240 for a `probe=true` call, both fail-closed. A probe reads env vars and returns where an import spends a shared per-application provider credential, and charging both to the import bucket meant a few settings-screen loads cost a free runner the ability to import at all — silently, because an exhausted bucket answers 429 and both clients grade a 429 as "provider unavailable" (decisions § 1041, § 1007). Then resolve the public `race_listings` row (name/date/distance) for the metadata stamp.
-2. `provider='runsignup'`: **fail closed** — if `RUNSIGNUP_API_KEY`/`_SECRET` are unset return `503 {error:'provider_not_configured'}`; else call the RunSignUp results endpoint, map each finisher to a run row (`source='race'`, `external_id=race:{name}:{date}:{bib}`, the owner-only race metadata). Fail-loud on a non-2xx upstream (502).
+2. `provider='runsignup'`: **keyless** (decisions § 1903; the key pair is appended only when both halves are set). A request without a `bib` is `400 runsignup_bib_required` before any fetch — the feed ignores `user_id`, so a bib is the only scope. Read `GET /Rest/race/{provider_race_id}`, take the in-person running events whose start date is the listing's `race_date` (`404 runsignup_event_not_found` when none), and ask each `get-results?event_id=…&bib_num=…`, listing distance first, until one answers; map the row to a run (`source='race'`, `external_id=race:{name}:{date}:{bib}`, the owner-only race metadata, `distance_m` from the event that answered). A non-2xx, a non-JSON body, or RunSignUp's HTTP-200 error envelope is a `502`.
 3. `provider='chronotrack'`: **fail closed** — if `CHRONOTRACK_CLIENT_ID`/`CHRONOTRACK_USER_ID`/`CHRONOTRACK_PASSWORD` are unset return `503 {error:'provider_not_configured'}`; else call the ChronoTrack Live results endpoint (event id = the listing's `provider_race_id`), map each finisher with the same shaping as RunSignUp. Fail-loud on a non-2xx upstream (502).
 4. `provider='paste'`: map the single pasted result row.
 5. `provider='ultrasignup'`: **refuses unconditionally** — `503 {error:'provider_not_configured', reason:'results_unattributable'}`, before the credential read and before the fetch. The endpoint is an athlete history feed with no race identifier on a row, so every result would be stamped with the listing's race (decisions § 975).
-6. `probe=true`: report provider availability without a listing — `503 provider_not_configured` when `provider='chronotrack'` or `provider='runsignup'` is unconfigured, or `provider='ultrasignup'` (always), else `{configured:true}`. Drives every race-import Settings card: mobile probes all three legs here since decisions § 1041, web ChronoTrack + UltraSignup (its RunSignUp check still asks `race-listings-sync`).
+6. `probe=true`: report provider availability without a listing — `503 provider_not_configured` when `provider='chronotrack'` is unconfigured, or `provider='ultrasignup'` is not opted in, else `{configured:true}` — RunSignUp is always configured since decisions § 1903. Drives every race-import Settings card: mobile probes all three legs here since decisions § 1041, web ChronoTrack + UltraSignup (its RunSignUp check still asks `race-listings-sync`).
 7. `matchRunId` set → merge the metadata + set `race_listing_id` onto that owner-scoped run (no duplicate). Else dedup per-user against existing `external_id`s and insert the fresh rows.
 
 **Response:** `{ "imported": 1, "skipped": 0, "enriched": 0, "complete": true }` (the `matchRunId` path returns `enriched: 1`).
 
 `complete` is false when the provider fetch may have been cut off at
-`MAX_RESULTS_ROWS` (2000). It is reachable rather than theoretical:
-`runSignUpResultsUrl` narrows upstream by **user id only**, so a request scoped
-by bib alone fetches the whole finisher field and the bib filter runs afterwards
-— a major with 30,000 finishers truncates before it. A truncated fetch that
+`MAX_RESULTS_ROWS` (2000). RunSignUp narrows upstream by `bib_num`, so there
+it guards the day the feed stops honouring the filter and answers the whole
+field — a major with 30,000 finishers would truncate before the bib filter. A truncated fetch that
 matched nothing answers `502 {error:'upstream_results_truncated', complete:false}`
 rather than a successful import of nothing, because "we read the whole field and
 you are not in it" and "we read the first 2,000 and you were not among them" are
@@ -1994,7 +1994,9 @@ Pulls a provider's upcoming races into `race_listings`. **Fail closed**: returns
 
 **Response:** `{ "synced": 4, "updated": 1, "skipped": 0, "unusable": 0, "total": 5, "complete": true }`. `unusable` is rows the provider returned that could not yield the name and date `race_listings` requires — the field names in `lib.ts` are **unverified against a live payload** (no credential exists), so a differently-shaped feed answers `synced: 0` with `unusable` equal to the row count rather than writing junk into a public calendar (decisions § 977). A non-2xx or unparseable upstream is `502` and writes nothing.
 
-**Env:** `RUNSIGNUP_API_KEY`, `RUNSIGNUP_API_SECRET` (both required for the RunSignUp legs — unset → 503), `CHRONOTRACK_CLIENT_ID`, `CHRONOTRACK_USER_ID`, `CHRONOTRACK_PASSWORD` (all three required for the ChronoTrack leg — any unset → 503), `RACE_IMPORT_USER_AGENT` (optional, defaults `RunApp/1.0`).
+**Writes** go through `race-listings-sync/write.ts`, shared with `race-listings-sweep` (decisions § 1902), which places each RunSignUp race from its US ZIP through `us_zcta_points` (decisions § 1901) and counts a race it could not place in the response's `unplaced`.
+
+**Env:** `RUNSIGNUP_API_KEY`, `RUNSIGNUP_API_SECRET` (optional for every RunSignUp leg — sent only as a pair, never a gate), `CHRONOTRACK_CLIENT_ID`, `CHRONOTRACK_USER_ID`, `CHRONOTRACK_PASSWORD` (all three required for the ChronoTrack leg — any unset → 503), `RACE_IMPORT_USER_AGENT` (optional, defaults `RunApp/1.0`).
 
 ---
 
@@ -2233,10 +2235,10 @@ grant  execute on function public.<fn>(<args>) to authenticated;   -- and/or ser
 
 Add `authenticated` to the revoke list when no client role should hold it at all
 (the `cleanup_*` / `enqueue_*` cron family, and helpers only a SECURITY DEFINER
-trigger calls). 85 migrations write a function-level `from public, anon` revoke
-today (72 as `revoke execute`, 13 as `revoke all`); it is the house form for
+trigger calls). 86 migrations write a function-level `from public, anon` revoke
+today (73 as `revoke execute`, 13 as `revoke all`); it is the house form for
 exactly this reason, and `check_migration_function_revoke_noop.mjs` is what
-keeps it — it replays all 520 migrations in version order and fails the PR on
+keeps it — it replays all 522 migrations in version order and fails the PR on
 any EXECUTE revoke that leaves the other channel at its image-dependent
 default, in either direction. **Those four figures are derived, not typed**: the
 guard prints them and `check_migration_function_revoke_noop.test.mjs` asserts

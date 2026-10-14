@@ -332,11 +332,11 @@ Nothing here is Supabase Auth configuration — push is a consumer of the `notif
 
 **Test strategy:** mock the upstream fetch in the Edge Function via dependency injection (the function is already structured for this; `apps/backend/CLAUDE.md` § Testing without real credentials documents the pattern).
 
-### 12. RunSignUp API key — for live race-results import
+### 12. RunSignUp — no account needed (public feeds)
 
-**What's needed:** a RunSignUp REST API key + secret (`RUNSIGNUP_API_KEY` / `RUNSIGNUP_API_SECRET`), set as Edge-Function secrets on the deployed Supabase project (and in `apps/backend/.env.local` for local manual testing). Apply at <https://runsignup.com> → partner/API access.
+**What's needed:** nothing. Both RunSignUp feeds the app reads are public (measured 2026-10-14), so `race-results-import`, `race-listings-sync` and `race-listings-sweep` run keyless; `RUNSIGNUP_API_KEY` / `RUNSIGNUP_API_SECRET` are optional and sent only as a pair (decisions § 1903).
 
-**Status today:** the race-calendar + results-import feature is **shipped fail-closed** (migration `20270214_001`, race_calendar.md). With the key unset — the dev/CI default — `race-results-import` returns `503 provider_not_configured` and the UI shows the unavailable explainer. `race-listings-sync` needs no key for RunSignUp at all since 2026-10-14: `GET /Rest/races` is a public feed, so the calendar sync works on every deployment and the key only rides along when set. The e2e suite covers exactly this gated state: `races/runsignup-gate.spec.ts` asserts the Settings card shows the explainer (no crash), and `races/race-calendar-discover.spec.ts` + `races/race-result-import-manual.spec.ts` cover the calendar discovery + **manual paste** import + auto-match-on-record paths, which need no RunSignUp key. The live RunSignUp pull is the only un-e2e'd leg; provisioning the key is a deploy-time checklist item, not a code blocker.
+**Status today:** the race calendar and the RunSignUp import are live on every deployment with no key (migration `20270214_001`, race_calendar.md; decisions § 1903). `races/runsignup-keyless.spec.ts` asserts against the real local function that the Settings card and the bib-scoped import are offered, and keeps the unavailable explainer covered with a stubbed failing probe; `races/race-calendar-discover.spec.ts` + `races/race-result-import-manual.spec.ts` cover discovery, **manual paste** and auto-match-on-record. The live RunSignUp round-trip is not e2e'd — CI makes no outbound call — and is pinned instead by the Deno handler tests against recorded payloads (`race-results-import/fixtures/runsignup_{race,results}.json`).
 
 ### 12b. ChronoTrack Live (CTLive) credentials — for live race-results import
 

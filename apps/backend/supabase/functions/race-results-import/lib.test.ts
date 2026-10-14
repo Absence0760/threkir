@@ -11,6 +11,7 @@ import {
   extractUltraSignUpPeople,
   filterResultsByBib,
   mapChronoTrackResult,
+  mapRaceResult,
   mapRunSignUpResult,
   mapUltraSignUpResult,
   type MappedRaceRun,
@@ -20,6 +21,10 @@ import {
   parseClockToSeconds,
   parseRaceResultRow,
   raceExternalId,
+  runSignUpAgeGroup,
+  runSignUpErrorOf,
+  runSignUpEventsOn,
+  runSignUpRaceUrl,
   runSignUpResultsUrl,
   chronoTrackScopeGate,
   runSignUpScopeGate,
@@ -60,6 +65,13 @@ Deno.test('parseClockToSeconds handles H:MM:SS / MM:SS / SS', () => {
   assertEquals(parseClockToSeconds('45'), 45);
 });
 
+Deno.test('parseClockToSeconds rounds hundredths up to a whole second', () => {
+  // runs.duration_s is an integer; a fractional value fails the whole insert.
+  assertEquals(parseClockToSeconds('21:43.34'), 21 * 60 + 44);
+  assertEquals(parseClockToSeconds('1:02:03.01'), 3600 + 2 * 60 + 4);
+  assertEquals(parseClockToSeconds('16:20.00'), 16 * 60 + 20);
+});
+
 Deno.test('parseClockToSeconds rejects garbage as 0', () => {
   assertEquals(parseClockToSeconds('abc'), 0);
   assertEquals(parseClockToSeconds(''), 0);
@@ -77,13 +89,13 @@ Deno.test('raceExternalId is race:name:date:bib and colon-safe', () => {
   assertEquals(id, 'race:A B:2025-01-01:7 7');
 });
 
-Deno.test('mapRunSignUpResult maps a finisher onto a race run', () => {
-  const run = mapRunSignUpResult(
+Deno.test('mapRaceResult maps a finisher onto a race run', () => {
+  const run = mapRaceResult(
     {
-      bib_num: '1234',
+      bib: '1234',
       chip_time: '1:47:23',
-      clock_time: '1:48:01',
-      place: 142,
+      gun_time: '1:48:01',
+      overall_place: 142,
       age_group_place: 12,
       age_group: 'M35-39',
     },
@@ -109,57 +121,57 @@ Deno.test('mapRunSignUpResult maps a finisher onto a race run', () => {
 Deno.test('mapped metadata never carries the promoted-away activity_type key', () => {
   // activity_type is a real runs column (20261207_001); a bag copy would ride
   // the matchRunId merge path back onto stripped rows. The column write stays.
-  const run = mapRunSignUpResult({ bib_num: '1234', chip_time: '1:47:23' }, OPTS);
+  const run = mapRaceResult({ bib: '1234', chip_time: '1:47:23' }, OPTS);
   assert(run !== null);
   assertEquals(run!.activity_type, 'run');
   assertEquals('activity_type' in run!.metadata, false);
   assertEquals('is_dnf' in run!.metadata, false);
 });
 
-Deno.test('mapRunSignUpResult falls back to gun time when chip is absent', () => {
-  const run = mapRunSignUpResult({ bib_num: '5', clock_time: '0:30:00' }, OPTS);
+Deno.test('mapRaceResult falls back to gun time when chip is absent', () => {
+  const run = mapRaceResult({ bib: '5', gun_time: '0:30:00' }, OPTS);
   assert(run !== null);
   assertEquals(run!.duration_s, 30 * 60);
   assertEquals(run!.metadata.chip_time, undefined);
   assertEquals(run!.metadata.gun_time, '0:30:00');
 });
 
-Deno.test('mapRunSignUpResult returns null when there is no usable time', () => {
-  assertEquals(mapRunSignUpResult({ bib_num: '9' }, OPTS), null);
-  assertEquals(mapRunSignUpResult({ chip_time: 'DNS' }, OPTS), null);
+Deno.test('mapRaceResult returns null when there is no usable time', () => {
+  assertEquals(mapRaceResult({ bib: '9' }, OPTS), null);
+  assertEquals(mapRaceResult({ chip_time: 'DNS' }, OPTS), null);
 });
 
-Deno.test('mapRunSignUpResult honours isPublic from privacy_default', () => {
-  const priv = mapRunSignUpResult({ chip_time: '20:00' }, OPTS);
+Deno.test('mapRaceResult honours isPublic from privacy_default', () => {
+  const priv = mapRaceResult({ chip_time: '20:00' }, OPTS);
   assertEquals(priv!.is_public, false);
-  const pub = mapRunSignUpResult({ chip_time: '20:00' }, { ...OPTS, isPublic: true });
+  const pub = mapRaceResult({ chip_time: '20:00' }, { ...OPTS, isPublic: true });
   assertEquals(pub!.is_public, true);
 });
 
-Deno.test('mapRunSignUpResult writes followers_only for a followers default, and never beside is_public', () => {
-  const fol = mapRunSignUpResult({ chip_time: '20:00' }, { ...OPTS, followersOnly: true });
+Deno.test('mapRaceResult writes followers_only for a followers default, and never beside is_public', () => {
+  const fol = mapRaceResult({ chip_time: '20:00' }, { ...OPTS, followersOnly: true });
   assertEquals([fol!.is_public, fol!.followers_only], [false, true]);
-  const both = mapRunSignUpResult({ chip_time: '20:00' }, { ...OPTS, isPublic: true, followersOnly: true });
+  const both = mapRaceResult({ chip_time: '20:00' }, { ...OPTS, isPublic: true, followersOnly: true });
   assertEquals([both!.is_public, both!.followers_only], [true, false]);
-  const neither = mapRunSignUpResult({ chip_time: '20:00' }, OPTS);
+  const neither = mapRaceResult({ chip_time: '20:00' }, OPTS);
   assertEquals(neither!.followers_only, false);
 });
 
-Deno.test('mapRunSignUpResult drops non-positive places', () => {
-  const run = mapRunSignUpResult(
-    { chip_time: '20:00', place: 0, age_group_place: -1 },
+Deno.test('mapRaceResult drops non-positive places', () => {
+  const run = mapRaceResult(
+    { chip_time: '20:00', overall_place: 0, age_group_place: -1 },
     OPTS,
   );
   assertEquals(run!.metadata.overall_place, undefined);
   assertEquals(run!.metadata.age_group_place, undefined);
 });
 
-Deno.test('mapRunSignUpResult returns null when the listing has no distance', () => {
+Deno.test('mapRaceResult returns null when the listing has no distance', () => {
   // runs.distance_m is NOT NULL — a null/zero distance from a listing with no
   // stored distance can't become a valid run. Dropping it here keeps the
   // batch insert from 23502'ing on the null and silently importing nothing.
-  assertEquals(mapRunSignUpResult({ chip_time: '20:00' }, { ...OPTS, distanceM: null }), null);
-  assertEquals(mapRunSignUpResult({ chip_time: '20:00' }, { ...OPTS, distanceM: 0 }), null);
+  assertEquals(mapRaceResult({ chip_time: '20:00' }, { ...OPTS, distanceM: null }), null);
+  assertEquals(mapRaceResult({ chip_time: '20:00' }, { ...OPTS, distanceM: 0 }), null);
   // Other providers + the paste path delegate here, so they inherit the guard.
   assertEquals(parseRaceResultRow({ chip_time: '20:00' }, { ...OPTS, distanceM: null }), null);
   assertEquals(
@@ -179,38 +191,127 @@ Deno.test('parseRaceResultRow maps a pasted result with the same shape/id', () =
   assertEquals(run!.metadata.age_group, 'F40-44');
 });
 
-Deno.test('runSignUpResultsUrl includes key/secret/format and encodes raceId', () => {
-  const url = runSignUpResultsUrl({
-    raceId: '9001',
-    apiKey: 'KEY',
-    apiSecret: 'SECRET',
-    runSignUpUserId: 'rs-42',
-  });
-  assert(url.startsWith('https://runsignup.com/Rest/race/9001/results/get-results'));
-  assert(url.includes('format=json'));
-  assert(url.includes('api_key=KEY'));
-  assert(url.includes('api_secret=SECRET'));
-  assert(url.includes('user_id=rs-42'));
+const RESULTS_FIXTURE = JSON.parse(
+  Deno.readTextFileSync(new URL('./fixtures/runsignup_results.json', import.meta.url)),
+);
+const RACE_FIXTURE = JSON.parse(
+  Deno.readTextFileSync(new URL('./fixtures/runsignup_race.json', import.meta.url)),
+);
+
+Deno.test('runSignUpResultsUrl names the event and the bib, and sends no key it was not given', () => {
+  const url = new URL(runSignUpResultsUrl({ raceId: '9001', eventId: '1117350', bib: '337' }));
+  assertEquals(url.origin + url.pathname, 'https://runsignup.com/Rest/race/9001/results/get-results');
+  assertEquals(url.searchParams.get('format'), 'json');
+  assertEquals(url.searchParams.get('event_id'), '1117350');
+  assertEquals(url.searchParams.get('bib_num'), '337');
+  assertEquals(url.searchParams.get('results_per_page'), String(MAX_RESULTS_ROWS));
+  assertEquals(url.searchParams.has('api_key'), false);
+  assertEquals(url.searchParams.has('api_secret'), false);
+  assertEquals(url.searchParams.has('user_id'), false);
 });
 
-Deno.test('extractRunSignUpResults reads the nested results sets envelope', () => {
-  const payload = {
-    individual_results_sets: [
-      { results: [{ bib_num: '1', chip_time: '20:00' }, { bib_num: '2', chip_time: '21:00' }] },
-      { results: [{ bib_num: '3', chip_time: '22:00' }] },
-    ],
+Deno.test('the RunSignUp key pair is sent only when both halves are set', () => {
+  const both = new URL(runSignUpRaceUrl({ raceId: '9001', apiKey: 'KEY', apiSecret: 'SECRET' }));
+  assertEquals([both.searchParams.get('api_key'), both.searchParams.get('api_secret')], ['KEY', 'SECRET']);
+  const half = new URL(runSignUpResultsUrl({ raceId: '9001', eventId: '1', bib: '2', apiKey: 'KEY' }));
+  assertEquals(half.searchParams.has('api_key'), false);
+  assertEquals(runSignUpRaceUrl({ raceId: '9/1' }), 'https://runsignup.com/Rest/race/9%2F1?format=json');
+});
+
+Deno.test('runSignUpErrorOf reads the HTTP-200 error envelope and nothing else', () => {
+  const envelope = {
+    error: { error_code: 3, error_msg: 'Invalid parameters', param_missing: [{ param_name: 'event_id' }] },
   };
-  const rows = extractRunSignUpResults(payload);
-  assertEquals(rows.length, 3);
-  assertEquals(rows[2].bib_num, '3');
+  assertEquals(runSignUpErrorOf(envelope), 'Invalid parameters');
+  assertEquals(runSignUpErrorOf(RESULTS_FIXTURE), null);
+  assertEquals(runSignUpErrorOf(null), null);
 });
 
-Deno.test('extractRunSignUpResults tolerates a top-level results array + caps', () => {
-  assertEquals(extractRunSignUpResults({ results: [{ bib_num: 'a' }] }).length, 1);
+Deno.test('runSignUpEventsOn picks the edition run on the listing day, and only its running events', () => {
+  assertEquals(runSignUpEventsOn(RACE_FIXTURE, '2026-09-19', 5000), [
+    { eventId: '1117350', distanceM: 5000 },
+  ]);
+  assertEquals(runSignUpEventsOn(RACE_FIXTURE, '2025-09-20', null), [
+    { eventId: '930882', distanceM: 5000 },
+  ]);
+  assertEquals(runSignUpEventsOn(RACE_FIXTURE, '2020-01-01', 5000), []);
+  assertEquals(runSignUpEventsOn(null, '2026-09-19', 5000), []);
+});
+
+Deno.test('runSignUpEventsOn asks the listing distance first and never a walk or a volunteer slot', () => {
+  const race = {
+    race: {
+      events: [
+        { event_id: 1, distance: '5K', event_type: 'running_race', volunteer: 'F', start_time: '4/5/2026 08:00' },
+        { event_id: 2, distance: '13.1 Miles', event_type: 'running_race', volunteer: 'F', start_time: '4/5/2026 07:00' },
+        { event_id: 3, distance: '1 Miles', event_type: 'walking_only', volunteer: 'F', start_time: '4/5/2026 09:00' },
+        { event_id: 4, distance: null, event_type: 'running_race', volunteer: 'T', start_time: '4/5/2026 06:00' },
+      ],
+    },
+  };
+  assertEquals(
+    runSignUpEventsOn(race, '2026-04-05', 21082).map((e) => e.eventId),
+    ['2', '1'],
+  );
+});
+
+Deno.test('extractRunSignUpResults keeps each row with its set\'s headers, and caps', () => {
+  const rows = extractRunSignUpResults(RESULTS_FIXTURE);
+  assertEquals(rows.length, 6);
+  assertEquals(rows[0].result.bib, 337);
+  assertEquals(rows[0].headers['division-9553293-placement'], 'M3039');
   assertEquals(extractRunSignUpResults(null).length, 0);
-  assertEquals(extractRunSignUpResults({}).length, 0);
-  const big = { results: Array.from({ length: MAX_RESULTS_ROWS + 100 }, () => ({ bib_num: 'x' })) };
+  assertEquals(extractRunSignUpResults({ results: [{ bib: 1 }] }).length, 0);
+  const big = {
+    individual_results_sets: [{ results: Array.from({ length: MAX_RESULTS_ROWS + 100 }, () => ({ bib: 1 })) }],
+  };
   assertEquals(extractRunSignUpResults(big).length, MAX_RESULTS_ROWS);
+});
+
+Deno.test('mapRunSignUpResult reads a recorded RunSignUp finisher', () => {
+  const [first] = extractRunSignUpResults(RESULTS_FIXTURE);
+  const run = mapRunSignUpResult(first, { ...OPTS, distanceM: 5000 });
+  assert(run !== null);
+  assertEquals(run!.metadata.bib, '337');
+  assertEquals(run!.metadata.chip_time, '16:19.81');
+  assertEquals(run!.metadata.gun_time, '16:36.88');
+  assertEquals(run!.duration_s, 16 * 60 + 20);
+  assertEquals(run!.metadata.overall_place, 1);
+  assertEquals(run!.metadata.age_group, 'M3039');
+  assertEquals(run!.metadata.age_group_place, 1);
+  assertEquals(run!.external_id, 'race:Richmond Half Marathon:2025-09-21:337');
+});
+
+Deno.test('mapRunSignUpResult falls back to clock time when chip_time is the empty string', () => {
+  const run = mapRunSignUpResult(
+    { result: { bib: 58, place: 1, chip_time: '', clock_time: '17:30' }, headers: {} },
+    OPTS,
+  );
+  assertEquals(run!.duration_s, 17 * 60 + 30);
+  assertEquals(run!.metadata.chip_time, undefined);
+  assertEquals(run!.metadata.gun_time, '17:30');
+});
+
+Deno.test('runSignUpAgeGroup takes the one placed division with an age in its name', () => {
+  const headers = {
+    'division-1-placement': 'M Overall',
+    'division-2-placement': 'M 30-39',
+    'division-3-placement': 'M3039',
+    'division-4-placement': 'All Male',
+  };
+  const row = (result: Record<string, unknown>) => ({ result, headers });
+  assertEquals(
+    runSignUpAgeGroup(row({ 'division-2-placement': 4, 'division-4-placement': 20 })),
+    { label: 'M 30-39', place: 4 },
+  );
+  // An overall winner lifted out of their age group: no age group to report.
+  assertEquals(runSignUpAgeGroup(row({ 'division-1-placement': 1 })), null);
+  // Two age schemes side by side: ambiguous, so neither.
+  assertEquals(
+    runSignUpAgeGroup(row({ 'division-2-placement': 4, 'division-3-placement': 3 })),
+    null,
+  );
+  assertEquals(runSignUpAgeGroup(row({ 'division-2-placement': null })), null);
 });
 
 // ── UltraSignup ──────────────────────────────────────────────────────────────
@@ -497,7 +598,7 @@ function localDateAt(stampIso: string, offsetHours: number): string {
 
 Deno.test('started_at synthesises the shared 10:00 UTC time on a date with no clock', () => {
   assertEquals(SYNTHETIC_START_TIME_UTC, 'T10:00:00Z');
-  const run = mapRunSignUpResult({ bib_num: '1234', chip_time: '1:47:23' }, OPTS);
+  const run = mapRaceResult({ bib: '1234', chip_time: '1:47:23' }, OPTS);
   assert(run !== null);
   assertEquals(run!.started_at, '2025-09-21T10:00:00Z');
 });
@@ -506,12 +607,12 @@ Deno.test('started_at local calendar date is preserved at UTC-10 (Hawaii, the bu
   // Pre-fix at T08:00:00Z, Hawaii's UTC-10 offset wrapped a Saturday
   // race back to Friday. T10:00:00Z keeps it on Saturday. Pinned so a
   // future "back to T08" refactor breaks this test.
-  const run = mapRunSignUpResult({ bib_num: '1', chip_time: '1:00:00' }, OPTS);
+  const run = mapRaceResult({ bib: '1', chip_time: '1:00:00' }, OPTS);
   assertEquals(localDateAt(run!.started_at, -10), '2025-09-21');
 });
 
 Deno.test('started_at local calendar date is preserved at UTC+13 (NZ NZDT)', () => {
-  const run = mapRunSignUpResult({ bib_num: '1', chip_time: '1:00:00' }, OPTS);
+  const run = mapRaceResult({ bib: '1', chip_time: '1:00:00' }, OPTS);
   assertEquals(localDateAt(run!.started_at, 13), '2025-09-21');
 });
 
@@ -520,27 +621,26 @@ Deno.test('started_at known limit at UTC+14 (Samoa DST)', () => {
   // worldwide range. Samoa during DST (UTC+14) is the documented known
   // exception — same acceptable trade as parkrun-import. Pinning the
   // actual behaviour so a future "improve this" attempt has a baseline.
-  const run = mapRunSignUpResult({ bib_num: '1', chip_time: '1:00:00' }, OPTS);
+  const run = mapRaceResult({ bib: '1', chip_time: '1:00:00' }, OPTS);
   assertEquals(localDateAt(run!.started_at, 14), '2025-09-22');
 });
 
 // ── Athlete-scoping guard (issue #360) ───────────────────────────────────────
 
-Deno.test('runSignUpScopeGate rejects an unscoped request 400 runsignup_athlete_id_required', () => {
-  // No user id and no bib — the fetch would return the whole finisher field.
+Deno.test('runSignUpScopeGate rejects a request without a bib 400 runsignup_bib_required', () => {
+  // No bib: the fetch would return the whole finisher field.
   assertEquals(runSignUpScopeGate({}), {
     ok: false,
     status: 400,
-    error: 'runsignup_athlete_id_required',
+    error: 'runsignup_bib_required',
   });
-  // Blank / whitespace-only values are not a scope.
-  assertEquals(runSignUpScopeGate({ runSignUpUserId: '', bib: '  ' }).ok, false);
+  assertEquals(runSignUpScopeGate({ bib: '  ' }).ok, false);
+  // A RunSignUp user id is no scope: the feed ignores `user_id` keyless.
+  assertEquals(runSignUpScopeGate({ runSignUpUserId: 'rs-42' } as { bib?: string }).ok, false);
 });
 
-Deno.test('runSignUpScopeGate accepts a request scoped by user id or bib', () => {
-  assertEquals(runSignUpScopeGate({ runSignUpUserId: 'rs-42' }).ok, true);
+Deno.test('runSignUpScopeGate accepts a request scoped by bib', () => {
   assertEquals(runSignUpScopeGate({ bib: '1234' }).ok, true);
-  assertEquals(runSignUpScopeGate({ runSignUpUserId: 'rs-42', bib: '1234' }).ok, true);
 });
 
 Deno.test('matchResultGate rejects an ambiguous enrich 400 ambiguous_match', () => {
@@ -556,9 +656,9 @@ Deno.test('matchResultGate accepts exactly one mapped result', () => {
 
 Deno.test('filterResultsByBib narrows a mapped field to the requested bib', () => {
   const field: MappedRaceRun[] = [
-    mapRunSignUpResult({ bib_num: '1', chip_time: '20:00' }, OPTS)!,
-    mapRunSignUpResult({ bib_num: '1234', chip_time: '1:47:23' }, OPTS)!,
-    mapRunSignUpResult({ bib_num: '9', chip_time: '25:00' }, OPTS)!,
+    mapRaceResult({ bib: '1', chip_time: '20:00' }, OPTS)!,
+    mapRaceResult({ bib: '1234', chip_time: '1:47:23' }, OPTS)!,
+    mapRaceResult({ bib: '9', chip_time: '25:00' }, OPTS)!,
   ];
   const one = filterResultsByBib(field, '1234');
   assertEquals(one.length, 1);
@@ -568,7 +668,7 @@ Deno.test('filterResultsByBib narrows a mapped field to the requested bib', () =
   // No match → empty (the standalone insert then imports nothing, the match
   // path then rejects ambiguous_match on length 0).
   assertEquals(filterResultsByBib(field, 'nope').length, 0);
-  // A blank bib is a no-op (user-id narrowing already applied upstream).
+  // A blank bib is a no-op.
   assertEquals(filterResultsByBib(field, '').length, 3);
 });
 
@@ -577,12 +677,12 @@ Deno.test('filterResultsByBib narrows a mapped field to the requested bib', () =
 // bib it narrows to exactly one; that one result clears the enrich gate.
 Deno.test('EF gate flow: unscoped rejected, bib-scoped enriches exactly one', () => {
   const field: MappedRaceRun[] = [
-    mapRunSignUpResult({ bib_num: '1', chip_time: '18:00' }, OPTS)!, // the winner
-    mapRunSignUpResult({ bib_num: '77', chip_time: '55:10' }, OPTS)!, // the caller
-    mapRunSignUpResult({ bib_num: '9', chip_time: '25:00' }, OPTS)!,
+    mapRaceResult({ bib: '1', chip_time: '18:00' }, OPTS)!, // the winner
+    mapRaceResult({ bib: '77', chip_time: '55:10' }, OPTS)!, // the caller
+    mapRaceResult({ bib: '9', chip_time: '25:00' }, OPTS)!,
   ];
   // 1. Standalone import with no scope → rejected, nothing mapped/inserted.
-  assertEquals(runSignUpScopeGate({}).error, 'runsignup_athlete_id_required');
+  assertEquals(runSignUpScopeGate({}).error, 'runsignup_bib_required');
   // 2. Match import with no scope → same pre-fetch rejection.
   assertEquals(runSignUpScopeGate({ bib: '' }).ok, false);
   // 3. Scoped by the caller's bib → mapped narrows to one, enrich gate passes.
@@ -622,17 +722,17 @@ Deno.test('a race whose date is unusable maps to nothing, not to an unparseable 
   // `timestamptz` cannot parse — and because the mapped rows go in as ONE
   // batch, a single unattributable date used to 22007 the whole race rather
   // than dropping one result. Same rule the distance already had.
-  const row = { chip_time: '1:45:00', bib_num: '55' };
+  const row = { chip_time: '1:45:00', bib: '55' };
   for (const raceDate of ['', 'T10:00:00Z', '2025-9-21', '21/09/2025', '2025-02-30', '0000-01-01']) {
     assertEquals(
-      mapRunSignUpResult(row, { ...OPTS, raceDate }),
+      mapRaceResult(row, { ...OPTS, raceDate }),
       null,
       raceDate,
     );
   }
   // The positive control: the same row against a real date still maps, so the
   // refusals above are about the date and nothing else.
-  const ok = mapRunSignUpResult(row, OPTS);
+  const ok = mapRaceResult(row, OPTS);
   assert(ok);
   assertEquals(ok.started_at, `2025-09-21${SYNTHETIC_START_TIME_UTC}`);
 });

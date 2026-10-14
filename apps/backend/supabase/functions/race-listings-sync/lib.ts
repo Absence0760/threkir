@@ -207,11 +207,22 @@ const IN_PERSON_RUNNING_EVENT_TYPES = new Set([
   'ultra',
 ]);
 
-/// One event of a RunSignUp race (the `events=T` expansion).
+/// One event of a RunSignUp race (the `events=T` expansion, and the `events`
+/// of `GET /Rest/race/{race_id}`).
 export interface RunSignUpEventRow {
+  event_id?: unknown;
   event_type?: unknown;
   distance?: unknown;
   volunteer?: unknown;
+  start_time?: unknown;
+}
+
+/// Whether an event puts a runner on a course in person: a running event type,
+/// and not a volunteer slot. The listing's distance and the results import's
+/// choice of event both read it, so the two legs agree on what a race is.
+export function isInPersonRunningEvent(ev: RunSignUpEventRow): boolean {
+  if (ev.volunteer === 'T') return false;
+  return typeof ev.event_type === 'string' && IN_PERSON_RUNNING_EVENT_TYPES.has(ev.event_type);
 }
 
 /// A RunSignUp race object, as `GET /Rest/races` carries it under `races[].race`.
@@ -274,9 +285,7 @@ export function readRunSignUpRace(row: RunSignUpRaceRow): RaceReading {
     for (const raw of row.events) {
       if (!raw || typeof raw !== 'object') continue;
       const ev = raw as RunSignUpEventRow;
-      if (ev.volunteer === 'T') continue;
-      if (typeof ev.event_type !== 'string') continue;
-      if (!IN_PERSON_RUNNING_EVENT_TYPES.has(ev.event_type)) continue;
+      if (!isInPersonRunningEvent(ev)) continue;
       running++;
       const m = parseRunSignUpDistance(ev.distance);
       if (m !== null && (distanceM === null || m > distanceM)) distanceM = m;

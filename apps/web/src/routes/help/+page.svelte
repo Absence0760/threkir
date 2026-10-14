@@ -91,13 +91,13 @@
 <style>
 	.help-page {
 		padding: var(--page-padding-y) var(--page-padding-x);
-		max-width: 64rem;
 	}
 	.help-header h1 {
 		margin: 0 0 var(--space-xs);
 	}
 	.subtitle {
 		margin: 0;
+		max-width: var(--page-measure);
 		color: var(--color-text-secondary);
 	}
 	.audience-row {

@@ -116,7 +116,9 @@
 <style>
 	.help-guide-page {
 		padding: var(--page-padding-y) var(--page-padding-x);
-		max-width: 48rem;
+	}
+	.help-guide-page > * {
+		max-width: var(--page-measure);
 	}
 	.back-link {
 		display: inline-flex;

@@ -4983,6 +4983,7 @@ export const en = {
 	"clubEvent.paymentProcessingSlow": "Payment received — your spot will appear shortly. Refresh if it doesn't.",
 	"clubEvent.registerFailed": "Could not start checkout. Please try again.",
 	"clubEvent.registerHostUnavailable": "The host can't take payments for this event right now. Try again later or contact the organiser.",
+	"clubEvent.registerSessionNotFound": "This session isn't on the schedule. Refresh the page to see the current dates.",
 	"clubEvent.priceLabel": "Price",
 	"clubEvent.refundPolicyFullUntilStart": "Free cancellation until the event starts",
 	"clubEvent.refundPolicyFullUntil24h": "Free cancellation until 24 hours before the start",

@@ -4963,6 +4963,7 @@ export const messages = {
 	"clubEvent.paymentProcessingSlow": "Pagamento recebido — o seu lugar aparecerá em breve. Atualize se não aparecer.",
 	"clubEvent.registerFailed": "Não foi possível iniciar o pagamento. Tente novamente.",
 	"clubEvent.registerHostUnavailable": "O anfitrião não pode receber pagamentos deste evento neste momento. Tente mais tarde ou contacte a organização.",
+	"clubEvent.registerSessionNotFound": "Esta sessão não está no calendário. Recarregue a página para ver as datas atuais.",
 	"clubEvent.priceLabel": "Preço",
 	"clubEvent.refundPolicyFullUntilStart": "Cancelamento gratuito até o início do evento",
 	"clubEvent.refundPolicyFullUntil24h": "Cancelamento gratuito até 24 horas antes do início",

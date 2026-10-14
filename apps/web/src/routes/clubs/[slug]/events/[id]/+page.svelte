@@ -1740,19 +1740,22 @@
 		} catch (e: unknown) {
 			// The refusals only the server can know, arriving after the click:
 			// the two the page also renders for itself when it can see them
-			// coming, plus the host-capability ones, which no retry fixes.
+			// coming, a session the schedule no longer holds (decisions § 1921),
+			// plus the host-capability ones, which no retry fixes.
 			const code = appErrorMessage(e) ?? '';
 			const key =
 				code === 'event_full'
 					? 'clubEvent.registerSoldOut'
 					: code === 'sales_closed' || code === 'instance_cancelled'
 						? 'clubEvent.registerSalesClosed'
-						: code === 'host_cannot_take_payment' ||
-							  code === 'event_has_no_host' ||
-							  code === 'event_not_priced' ||
-							  code === 'stripe_not_configured'
-							? 'clubEvent.registerHostUnavailable'
-							: 'clubEvent.registerFailed';
+						: code === 'instance_not_found'
+							? 'clubEvent.registerSessionNotFound'
+							: code === 'host_cannot_take_payment' ||
+								  code === 'event_has_no_host' ||
+								  code === 'event_not_priced' ||
+								  code === 'stripe_not_configured'
+								? 'clubEvent.registerHostUnavailable'
+								: 'clubEvent.registerFailed';
 			showToast(m(key), 'error');
 			registering = false;
 		}

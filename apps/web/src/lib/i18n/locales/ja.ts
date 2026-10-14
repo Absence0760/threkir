@@ -4959,6 +4959,7 @@ export const messages = {
 	"clubEvent.paymentProcessingSlow": "支払いを受け付けました。まもなく予約枠が表示されます。表示されない場合は更新してください。",
 	"clubEvent.registerFailed": "決済を開始できませんでした。もう一度お試しください。",
 	"clubEvent.registerHostUnavailable": "このイベントの主催者は現在支払いを受け取れません。しばらくしてからもう一度試すか、主催者にお問い合わせください。",
+	"clubEvent.registerSessionNotFound": "この回はスケジュールにありません。ページを再読み込みして最新の日程を確認してください。",
 	"clubEvent.priceLabel": "価格",
 	"clubEvent.refundPolicyFullUntilStart": "イベント開始までキャンセル無料",
 	"clubEvent.refundPolicyFullUntil24h": "開始24時間前までキャンセル無料",

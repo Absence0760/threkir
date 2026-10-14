@@ -4964,6 +4964,7 @@ export const messages = {
 	"clubEvent.paymentProcessingSlow": "Zahlung erhalten – dein Platz erscheint in Kürze. Aktualisiere die Seite, falls nicht.",
 	"clubEvent.registerFailed": "Kasse konnte nicht gestartet werden. Bitte versuche es erneut.",
 	"clubEvent.registerHostUnavailable": "Der Veranstalter kann für dieses Event derzeit keine Zahlungen annehmen. Versuche es später erneut oder wende dich an die Organisation.",
+	"clubEvent.registerSessionNotFound": "Dieser Termin steht nicht im Plan. Lade die Seite neu, um die aktuellen Termine zu sehen.",
 	"clubEvent.priceLabel": "Preis",
 	"clubEvent.refundPolicyFullUntilStart": "Kostenlose Stornierung bis zum Beginn der Veranstaltung",
 	"clubEvent.refundPolicyFullUntil24h": "Kostenlose Stornierung bis 24 Stunden vor Beginn",

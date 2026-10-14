@@ -4964,6 +4964,7 @@ export const messages = {
 	"clubEvent.paymentProcessingSlow": "Paiement reçu — votre place apparaîtra bientôt. Actualisez si ce n’est pas le cas.",
 	"clubEvent.registerFailed": "Impossible de démarrer le paiement. Veuillez réessayer.",
 	"clubEvent.registerHostUnavailable": "L'organisateur ne peut pas encaisser de paiement pour cet événement pour le moment. Réessayez plus tard ou contactez-le.",
+	"clubEvent.registerSessionNotFound": "Cette séance n'est pas au programme. Actualisez la page pour voir les dates à jour.",
 	"clubEvent.priceLabel": "Prix",
 	"clubEvent.refundPolicyFullUntilStart": "Annulation gratuite jusqu'au début de l'événement",
 	"clubEvent.refundPolicyFullUntil24h": "Annulation gratuite jusqu'à 24 heures avant le début",

@@ -1,6 +1,7 @@
-import { expect, test, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
 
 import { originOf } from '../fixtures/base-url';
+import { expect, test, type MockRoute } from '../fixtures/mock-route';
 
 /**
  * Accepting error reporting must leave the app rendering (decisions § 1896).
@@ -38,8 +39,13 @@ function isSentryHost(hostname: string): boolean {
 	return hostname === 'sentry.io' || hostname.endsWith('.sentry.io');
 }
 
-async function isolate(page: Page, origin: string, seen: Observed): Promise<void> {
-	await page.route('**/*', async (route) => {
+async function isolate(
+	mockRoute: MockRoute,
+	page: Page,
+	origin: string,
+	seen: Observed
+): Promise<void> {
+	await mockRoute(page, '**/*', async (route) => {
 		const url = new URL(route.request().url());
 		if (url.origin === origin) return route.continue();
 		if (isSentryHost(url.hostname)) {
@@ -94,7 +100,8 @@ function expectNoHydrationErrors(seen: Observed, path: string): void {
 test.describe('built app with error reporting accepted', () => {
 	test('the landing page, /help and /login render with Sentry initialised', async ({
 		context,
-		baseURL
+		baseURL,
+		mockRoute
 	}) => {
 		const origin = originOf(baseURL);
 		await context.addInitScript(
@@ -113,7 +120,7 @@ test.describe('built app with error reporting accepted', () => {
 		] as const) {
 			const page = await context.newPage();
 			const seen = fresh();
-			await isolate(page, origin, seen);
+			await isolate(mockRoute, page, origin, seen);
 			observe(page, seen);
 
 			await page.goto(path);
@@ -130,10 +137,11 @@ test.describe('built app with error reporting accepted', () => {
 
 	test('accepting through the consent banner reloads into a page that still renders', async ({
 		page,
-		baseURL
+		baseURL,
+		mockRoute
 	}) => {
 		const seen = fresh();
-		await isolate(page, originOf(baseURL), seen);
+		await isolate(mockRoute, page, originOf(baseURL), seen);
 		observe(page, seen);
 
 		await page.goto('/login');

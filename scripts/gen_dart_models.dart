@@ -122,6 +122,8 @@ const _tables = <String>{
   'meal_template_items',
   'recipes',
   'recipe_ingredients',
+  'nutrition_plans',
+  'nutrition_plan_assignments',
   'body_metrics',
   'safety_contacts',
   'instructor_payout_accounts',

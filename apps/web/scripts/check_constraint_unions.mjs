@@ -623,6 +623,18 @@ export const PAIRS = [
 		],
 	},
 	{
+		tableColumn: 'nutrition_plan_assignments.status',
+		clients: [{ file: TS_TYPES, decl: 'NutritionAssignmentStatus', shape: 'union' }],
+	},
+	{
+		tableColumn: 'nutrition_plans.goal_phase',
+		clients: [{ file: TS_TYPES, decl: 'NutritionGoalPhase', shape: 'union' }],
+	},
+	{
+		tableColumn: 'nutrition_plans.progression',
+		clients: [{ file: TS_TYPES, decl: 'NutritionProgression', shape: 'union' }],
+	},
+	{
 		tableColumn: 'notifications.activity_kind',
 		clients: [],
 		note: 'stamped by the notify triggers from the activity that fired them; no client enumerates the three.',

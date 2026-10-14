@@ -39,6 +39,8 @@ export const TABLES = {
 	meal_template_items: 'meal_template_items',
 	recipes: 'recipes',
 	recipe_ingredients: 'recipe_ingredients',
+	nutrition_plans: 'nutrition_plans',
+	nutrition_plan_assignments: 'nutrition_plan_assignments',
 	body_metrics: 'body_metrics',
 	activities: 'activities',
 	club_members: 'club_members',

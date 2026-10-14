@@ -416,6 +416,8 @@ neither, and neither carries a `List-Unsubscribe` header.
 - **Email changed goes to the previous address.** By the time GoTrue fires
   it, `user.email` already holds the new one; the mailbox that needs the
   warning is `email_data.old_email` (GoTrue's own mailer sends there too).
+  A payload without `old_email` sends nothing and logs the miss: falling
+  back to `user.email` would warn only the address that took the account.
   It has **no** Reset password button — a reset requested now would mail the
   new address — so its copy sends the reader to the security contact.
   The other five carry the same `/login?reset=1` CTA as the password notice.

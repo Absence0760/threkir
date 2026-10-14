@@ -2082,7 +2082,7 @@
             "items": [
               "**Brutto-Zeit** läuft ab dem Moment, in dem der Veranstalter LOS gegeben hat, bis zu deinem Zieleinlauf. Nach ihr wirst du platziert.",
               "**Netto-Zeit** läuft ab dem Moment, in dem du auf Start gedrückt hast, bis zu deinem Zieleinlauf, einschließlich aller Pausen. Hast du vor LOS auf Start gedrückt, läuft sie ab LOS, sodass sie nie länger als deine Brutto-Zeit ist.",
-              "Startest du mehr als 5 Minuten nach LOS oder ist deine erste Position mehr als 200 m vom Start der Strecke entfernt, zeigt die Handy-App einen Hinweis auf den späten Start. Deine Brutto-Zeit zählt trotzdem ab LOS, sodass ein später Start sie länger macht als deine Netto-Zeit."
+              "Startest du mehr als 5 Minuten nach LOS oder ist deine erste Position mehr als 200 m vom Start der Strecke entfernt, zeigt die Handy-App einen Hinweis auf den späten Start, und eine Wear-OS-Uhr zeigt unter der Rennuhr dauerhaft **Später Start**. Deine Brutto-Zeit zählt trotzdem ab LOS, sodass ein später Start sie länger macht als deine Netto-Zeit."
             ]
           },
           {

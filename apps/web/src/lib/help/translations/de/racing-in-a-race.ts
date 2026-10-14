@@ -123,7 +123,7 @@ export const translation: GuideTranslation = {
 					items: [
 						'**Brutto-Zeit** läuft ab dem Moment, in dem der Veranstalter LOS gegeben hat, bis zu deinem Zieleinlauf. Nach ihr wirst du platziert.',
 						'**Netto-Zeit** läuft ab dem Moment, in dem du auf Start gedrückt hast, bis zu deinem Zieleinlauf, einschließlich aller Pausen. Hast du vor LOS auf Start gedrückt, läuft sie ab LOS, sodass sie nie länger als deine Brutto-Zeit ist.',
-						'Startest du mehr als 5 Minuten nach LOS oder ist deine erste Position mehr als 200 m vom Start der Strecke entfernt, zeigt die Handy-App einen Hinweis auf den späten Start. Deine Brutto-Zeit zählt trotzdem ab LOS, sodass ein später Start sie länger macht als deine Netto-Zeit.',
+						'Startest du mehr als 5 Minuten nach LOS oder ist deine erste Position mehr als 200 m vom Start der Strecke entfernt, zeigt die Handy-App einen Hinweis auf den späten Start, und eine Wear-OS-Uhr zeigt unter der Rennuhr dauerhaft **Später Start**. Deine Brutto-Zeit zählt trotzdem ab LOS, sodass ein später Start sie länger macht als deine Netto-Zeit.',
 					],
 				},
 				{
@@ -178,7 +178,7 @@ export const translation: GuideTranslation = {
 		's6.heading': 'b26ffa9d3d25af83',
 		's6.b0.i0': '5aa5f4e57b72adfb',
 		's6.b0.i1': '323f02b7ad1e355d',
-		's6.b0.i2': '6de66d3c548f93ae',
+		's6.b0.i2': 'ce8974750a19dc0f',
 		's6.b1': '1a0778a6029af8ae',
 		's7.heading': '8cfcf517e30f6408',
 		's7.b0': 'e103d457341fcf30',

@@ -123,7 +123,7 @@ export const translation: GuideTranslation = {
 					items: [
 						'O **Tempo bruto** vai do momento em que o organizador deu o GO até a sua chegada. É o tempo usado na sua classificação.',
 						'O **Tempo líquido** vai de quando você pressionou Iniciar até a sua chegada, incluindo as pausas. Se você pressionou Iniciar antes do GO, ele conta a partir do GO, então nunca é maior que o seu tempo bruto.',
-						'Se você largar mais de 5 minutos depois do GO, ou se sua primeira posição estiver a mais de 200 m da largada do percurso, o app do celular mostra um aviso de largada tardia. Seu tempo bruto continua contando a partir do GO, então uma largada tardia o deixa maior que o seu tempo líquido.',
+						'Se você largar mais de 5 minutos depois do GO, ou se sua primeira posição estiver a mais de 200 m da largada do percurso, o app do celular mostra um aviso de largada tardia e um relógio Wear OS mantém **Largada tardia** abaixo do relógio da prova. Seu tempo bruto continua contando a partir do GO, então uma largada tardia o deixa maior que o seu tempo líquido.',
 					],
 				},
 				{
@@ -178,7 +178,7 @@ export const translation: GuideTranslation = {
 		's6.heading': 'b26ffa9d3d25af83',
 		's6.b0.i0': '5aa5f4e57b72adfb',
 		's6.b0.i1': '323f02b7ad1e355d',
-		's6.b0.i2': '6de66d3c548f93ae',
+		's6.b0.i2': 'ce8974750a19dc0f',
 		's6.b1': '1a0778a6029af8ae',
 		's7.heading': '8cfcf517e30f6408',
 		's7.b0': 'e103d457341fcf30',

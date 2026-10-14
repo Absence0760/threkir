@@ -2082,7 +2082,7 @@
             "items": [
               "**Gun time** runs from the moment the host fired GO to your finish. It is the time you are ranked on.",
               "**Chip time** runs from when you pressed Start to your finish, including any pauses. If you pressed Start before GO, it runs from GO, so it is never longer than your gun time.",
-              "If you start more than 5 minutes after GO, or your first position is more than 200 m from the course start, the phone app shows a late-start notice. Your gun time still counts from GO, so a late start makes it longer than your chip time."
+              "If you start more than 5 minutes after GO, or your first position is more than 200 m from the course start, the phone app shows a late-start notice and a Wear OS watch keeps **Late start** under the race clock. Your gun time still counts from GO, so a late start makes it longer than your chip time."
             ]
           },
           {

@@ -123,7 +123,7 @@ export const translation: GuideTranslation = {
 					items: [
 						'Le **Temps officiel** court du moment où l\'organisateur a donné le GO jusqu\'à votre arrivée. C\'est sur ce temps que vous êtes classé.',
 						'Le **Temps puce** court du moment où vous avez appuyé sur Démarrer jusqu\'à votre arrivée, pauses comprises. Si vous avez appuyé sur Démarrer avant le GO, il court à partir du GO : il n\'est donc jamais plus long que votre temps officiel.',
-						'Si vous partez plus de 5 minutes après le GO, ou si votre première position est à plus de 200 m du départ du parcours, l\'app mobile affiche un avis de départ tardif. Votre temps officiel compte toujours à partir du GO : un départ tardif le rend donc plus long que votre temps puce.',
+						'Si vous partez plus de 5 minutes après le GO, ou si votre première position est à plus de 200 m du départ du parcours, l\'app mobile affiche un avis de départ tardif et une montre Wear OS garde **Départ tardif** sous le chrono de course. Votre temps officiel compte toujours à partir du GO : un départ tardif le rend donc plus long que votre temps puce.',
 					],
 				},
 				{
@@ -178,7 +178,7 @@ export const translation: GuideTranslation = {
 		's6.heading': 'b26ffa9d3d25af83',
 		's6.b0.i0': '5aa5f4e57b72adfb',
 		's6.b0.i1': '323f02b7ad1e355d',
-		's6.b0.i2': '6de66d3c548f93ae',
+		's6.b0.i2': 'ce8974750a19dc0f',
 		's6.b1': '1a0778a6029af8ae',
 		's7.heading': '8cfcf517e30f6408',
 		's7.b0': 'e103d457341fcf30',

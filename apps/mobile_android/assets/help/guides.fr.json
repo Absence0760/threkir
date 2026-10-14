@@ -2082,7 +2082,7 @@
             "items": [
               "Le **Temps officiel** court du moment où l'organisateur a donné le GO jusqu'à votre arrivée. C'est sur ce temps que vous êtes classé.",
               "Le **Temps puce** court du moment où vous avez appuyé sur Démarrer jusqu'à votre arrivée, pauses comprises. Si vous avez appuyé sur Démarrer avant le GO, il court à partir du GO : il n'est donc jamais plus long que votre temps officiel.",
-              "Si vous partez plus de 5 minutes après le GO, ou si votre première position est à plus de 200 m du départ du parcours, l'app mobile affiche un avis de départ tardif. Votre temps officiel compte toujours à partir du GO : un départ tardif le rend donc plus long que votre temps puce."
+              "Si vous partez plus de 5 minutes après le GO, ou si votre première position est à plus de 200 m du départ du parcours, l'app mobile affiche un avis de départ tardif et une montre Wear OS garde **Départ tardif** sous le chrono de course. Votre temps officiel compte toujours à partir du GO : un départ tardif le rend donc plus long que votre temps puce."
             ]
           },
           {

@@ -123,7 +123,7 @@ export const translation: GuideTranslation = {
 					items: [
 						'O **Tempo oficial** conta desde o momento em que o organizador deu a partida até à sua chegada. É o tempo pelo qual é classificado.',
 						'O **Tempo de chip** conta desde que premiu Iniciar até à sua chegada, incluindo eventuais pausas. Se premiu Iniciar antes da partida, conta a partir da partida, por isso nunca é maior do que o seu tempo oficial.',
-						'Se começar mais de 5 minutos depois da partida, ou se a sua primeira posição estiver a mais de 200 m do início do percurso, a app do telemóvel mostra um aviso de partida tardia. O seu tempo oficial continua a contar a partir da partida, por isso uma partida tardia torna-o maior do que o seu tempo de chip.',
+						'Se começar mais de 5 minutos depois da partida, ou se a sua primeira posição estiver a mais de 200 m do início do percurso, a app do telemóvel mostra um aviso de partida tardia e um relógio Wear OS mantém **Partida tardia** por baixo do relógio da prova. O seu tempo oficial continua a contar a partir da partida, por isso uma partida tardia torna-o maior do que o seu tempo de chip.',
 					],
 				},
 				{
@@ -178,7 +178,7 @@ export const translation: GuideTranslation = {
 		's6.heading': 'b26ffa9d3d25af83',
 		's6.b0.i0': '5aa5f4e57b72adfb',
 		's6.b0.i1': '323f02b7ad1e355d',
-		's6.b0.i2': '6de66d3c548f93ae',
+		's6.b0.i2': 'ce8974750a19dc0f',
 		's6.b1': '1a0778a6029af8ae',
 		's7.heading': '8cfcf517e30f6408',
 		's7.b0': 'e103d457341fcf30',

@@ -123,7 +123,7 @@ export const translation: GuideTranslation = {
 					items: [
 						'El **Tiempo oficial** va desde el momento en que el organizador dio la salida hasta tu llegada. Es el tiempo por el que se te clasifica.',
 						'El **Tiempo chip** va desde que pulsaste Iniciar hasta tu llegada, incluidas las pausas. Si pulsaste Iniciar antes de la salida, cuenta desde la salida, así que nunca es más largo que tu tiempo oficial.',
-						'Si empiezas más de 5 minutos después de la salida, o tu primera posición está a más de 200 m del inicio del recorrido, la app del móvil muestra un aviso de salida tardía. Tu tiempo oficial sigue contando desde la salida, así que una salida tardía lo hace más largo que tu tiempo chip.',
+						'Si empiezas más de 5 minutos después de la salida, o tu primera posición está a más de 200 m del inicio del recorrido, la app del móvil muestra un aviso de salida tardía y un reloj Wear OS mantiene **Salida tardía** bajo el reloj de carrera. Tu tiempo oficial sigue contando desde la salida, así que una salida tardía lo hace más largo que tu tiempo chip.',
 					],
 				},
 				{
@@ -178,7 +178,7 @@ export const translation: GuideTranslation = {
 		's6.heading': 'b26ffa9d3d25af83',
 		's6.b0.i0': '5aa5f4e57b72adfb',
 		's6.b0.i1': '323f02b7ad1e355d',
-		's6.b0.i2': '6de66d3c548f93ae',
+		's6.b0.i2': 'ce8974750a19dc0f',
 		's6.b1': '1a0778a6029af8ae',
 		's7.heading': '8cfcf517e30f6408',
 		's7.b0': 'e103d457341fcf30',

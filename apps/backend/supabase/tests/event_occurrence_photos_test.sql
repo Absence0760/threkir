@@ -105,6 +105,12 @@ select throws_ok($$
    where id = '11111111-0000-0000-0000-0000001150a1'
 $$, '42501', null, 'the occurrence cannot be re-pointed after upload');
 
+-- The owner's caption policy admits this UPDATE; the trigger refuses it.
+select throws_ok($$
+  update run_photos set hidden_at = now()
+   where id = '11111111-0000-0000-0000-0000001150a1'
+$$, '42501', null, 'hidden_at cannot be written directly, not even by the owner');
+
 select is(
   (select can_steward_event_photos('eeeeeeee-0000-0000-0000-0000000115e1')),
   false, 'an attendee is not a steward');
@@ -151,11 +157,6 @@ select lives_ok($$
           '99999999-9999-9999-9999-99991150a001/org.jpg',
           'eeeeeeee-0000-0000-0000-0000000115e2', '2026-06-15T07:00:00Z')
 $$, 'an organiser posts a run-less photo to one occurrence of a series');
-
-select throws_ok($$
-  update run_photos set hidden_at = now()
-   where id = '11111111-0000-0000-0000-0000001150a1'
-$$, '42501', null, 'hidden_at cannot be written directly');
 
 select lives_ok($$
   select set_event_photo_hidden('11111111-0000-0000-0000-0000001150a1', true)

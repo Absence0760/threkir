@@ -319,3 +319,20 @@ Deno.test('handler — password changed notice is stamped with the signed hook t
   assertStringIncludes(sent[0].mime, '2025-06-15 15:06 UTC');
   assertStringIncludes(sent[0].mime, 'https://threkir.test/login?reset=1');
 });
+
+Deno.test('handler — email changed notice reaches the previous address and prints neither address', async () => {
+  const { deps, sent } = makeDeps({ env: { APP_BASE_URL: 'https://threkir.test' } });
+  const res = await makeAuthEmailHandler(deps)(
+    await signedRequest({
+      user: { id: '11111111-1111-1111-1111-111111111111', email: 'new@test.com' },
+      email_data: { email_action_type: 'email_changed_notification', old_email: 'runner@test.com' },
+    }),
+  );
+  assertEquals(res.status, 200);
+  assertEquals(sent.map((s) => s.to), ['runner@test.com']);
+  assertStringIncludes(sent[0].mime, 'Subject: Your email address was changed');
+  assertStringIncludes(sent[0].mime, '2025-06-15 15:06 UTC');
+  const body = sent[0].mime.split('\r\n\r\n').slice(1).join('\r\n\r\n');
+  assert(!body.includes('new@test.com') && !body.includes('runner@test.com'), 'an address reached the body');
+  assert(!sent[0].mime.includes('/login?reset=1'), 'a reset from here would mail the new address');
+});

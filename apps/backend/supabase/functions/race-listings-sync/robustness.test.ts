@@ -205,3 +205,42 @@ Deno.test('ZIP+4, padding and a leading zero are one ZIP; a lost zero, foreign c
   assertEquals(lookups.length, 1);
   assertEquals(lookups[0].filters, [{ op: 'in', col: 'zcta', val: ['02134', '02123'] }]);
 });
+
+Deno.test('a body that is not the race feed is a 502 that touches nothing; an empty window is an honest zero', async () => {
+  // `{"races":[]}` is what RunSignUp answers for a window with no race. Any
+  // other shape is the feed having moved, and reading it as zero races would
+  // let every run report success while the calendar stops filling.
+  for (const payload of [{}, null, [], 'races', { races: null }, { data: { races: [race(1)] } }, [race(1)]]) {
+    const db = memoryDb([ALLSTON]);
+    const outcome = await syncProviderPayload(db.client, 'runsignup', payload);
+    assertEquals(outcome, { ok: false, status: 502, error: 'runsignup upstream shape' }, JSON.stringify(payload));
+    assertEquals(db.statements, []);
+  }
+  const db = memoryDb([ALLSTON]);
+  const empty = await syncProviderPayload(db.client, 'runsignup', { races: [] });
+  assert(empty.ok);
+  assertEquals([empty.summary.total, empty.summary.synced, empty.summary.complete], [0, 0, true]);
+  assertEquals(db.statements, []);
+});
+
+Deno.test('a page with broken rows writes only the readable races, and says how many it could not read', async () => {
+  const db = memoryDb([ALLSTON]);
+  const outcome = await syncProviderPayload(db.client, 'runsignup', {
+    races: [
+      race(1),
+      race(2, { name: null }),
+      race(3, { next_date: '13/40/2027', last_date: null }),
+      race(4, { events: [] }),
+      race(5, { events: undefined }),
+      'not a race',
+      race(6, { events: [{ event_type: 'virtual_race', distance: '5K' }] }),
+    ],
+  });
+  assert(outcome.ok);
+  assertEquals(outcome.summary.unusable, 2, 'no name, and a date no calendar has');
+  assertEquals(outcome.summary.excluded, 1, 'a virtual-only race has no start line');
+  // A race listed before its events are published is still a race: filed with
+  // no distance band rather than dropped.
+  assertEquals(db.listings.map((r) => [r.provider_race_id, r.distance_m]), [['1', 5000], ['4', null], ['5', null]]);
+  assertEquals(outcome.summary.synced, 3);
+});

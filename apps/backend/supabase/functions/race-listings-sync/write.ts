@@ -20,6 +20,7 @@ import {
   readProviderRace,
   reconcileListingBatch,
   extractProviderRaces,
+  isRunSignUpRaceFeed,
   runSignUpErrorOf,
   type StoredListing,
 } from './lib.ts';
@@ -71,6 +72,10 @@ export async function syncProviderPayload(
   if (provider === 'runsignup' && runSignUpErrorOf(payload) !== null) {
     console.error('race-listings-sync: runsignup refused the request', runSignUpErrorOf(payload));
     return { ok: false, status: 502, error: 'runsignup upstream error' };
+  }
+  if (provider === 'runsignup' && !isRunSignUpRaceFeed(payload)) {
+    console.error('race-listings-sync: runsignup answered without a races array');
+    return { ok: false, status: 502, error: 'runsignup upstream shape' };
   }
   const rows = extractProviderRaces(payload);
   const races: NormalisedRace[] = [];

@@ -225,6 +225,17 @@ export function runSignUpErrorOf(payload: unknown): string | null {
   return text((err as Record<string, unknown>).error_msg, 120) ?? 'error';
 }
 
+/// Whether a payload is RunSignUp's race feed at all: an object carrying a
+/// `races` array. An empty window answers `{"races":[]}` (measured 2026-10-14
+/// for a state and a date range with no race), so a body without the array is
+/// not "no races here" but a feed whose shape moved — and read through the
+/// tolerant envelope walk it would answer `total: 0` on every five-minute run,
+/// a calendar that stops filling while every sweep reports success.
+export function isRunSignUpRaceFeed(payload: unknown): boolean {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return false;
+  return Array.isArray((payload as Record<string, unknown>).races);
+}
+
 /// One event of a RunSignUp race (the `events=T` expansion, and the `events`
 /// of `GET /Rest/race/{race_id}`).
 export interface RunSignUpEventRow {

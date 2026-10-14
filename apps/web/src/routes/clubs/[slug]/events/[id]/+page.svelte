@@ -11,6 +11,7 @@
 	import { afterNavigate, goto } from '$app/navigation';
 	import { buildEventShareCanonical } from '#lib/share/share_event_meta.ts';
 	import { supabase } from '#lib/core/supabase.ts';
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import type { RealtimeChannel } from '@supabase/supabase-js';
 	import {
 		fetchEventById,
@@ -644,7 +645,7 @@
 		// With the RSVP read failed, `viewerHasPaidSlot` is false because we
 		// could not find out, not because the viewer has no slot — offering
 		// the sale again here would take a second payment for the same place.
-		if (instanceError) return 'unknown';
+		if (instanceError !== null) return 'unknown';
 		// Same for the viewer's own waitlist row: without it the page cannot
 		// tell a held seat from an open sale.
 		if (placeUnknown) return 'unknown';
@@ -742,7 +743,7 @@
 			await readInstance();
 			instanceError = null;
 		} catch (e) {
-			instanceError = e instanceof Error ? e.message : String(e);
+			instanceError = thrownMessage(e);
 		}
 	}
 
@@ -2235,12 +2236,12 @@
 				{/if}
 			</div>
 			<div class="hero-side">
-				{#if instanceError}
+				{#if instanceError !== null}
 					<div class="error-banner instance-error" role="alert" data-testid="club-event-instance-error">
 						<span class="material-symbols" aria-hidden="true">error</span>
 						<div>
 							<strong>{m('clubEvent.instanceLoadError')}</strong>
-							<span class="error-detail">{instanceError}</span>
+							{#if instanceError}<span class="error-detail">{instanceError}</span>{/if}
 						</div>
 						<button
 							class="btn btn-outline"

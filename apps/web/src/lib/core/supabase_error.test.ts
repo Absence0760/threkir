@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { supabaseErrorFields, isDuplicateKeyError } from './supabase_error';
+import { supabaseErrorFields, isDuplicateKeyError, thrownMessage } from './supabase_error';
 import { stripComments } from './strip_comments';
 
 test('supabaseErrorFields keeps only code + message, drops details/hint', () => {
@@ -88,4 +88,12 @@ test('every join-shaped write in data.ts absorbs a duplicate through the one pre
 			`${fn} must absorb a duplicate insert — re-pressing it is the success case restated.`,
 		);
 	}
+});
+
+test('thrownMessage reads a raw PostgREST error instead of printing [object Object]', () => {
+	assert.equal(thrownMessage({ message: 'permission denied for table events', code: '42501', details: 'row' }), 'permission denied for table events (42501)');
+	assert.equal(thrownMessage({ message: 'timeout', code: '' }), 'timeout');
+	assert.equal(thrownMessage(new Error('boom')), 'boom');
+	assert.equal(thrownMessage('plain'), 'plain');
+	for (const v of [{ foo: 'bar' }, null, undefined, 42, { message: 7 }]) assert.equal(thrownMessage(v), '');
 });

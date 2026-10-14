@@ -30,3 +30,18 @@ export function isDuplicateKeyError(
 ): boolean {
 	return err?.code === '23505';
 }
+
+/// The user-facing detail of a thrown value. The data layer throws PostgREST
+/// errors as they come (`if (error) throw error`), and those are plain objects,
+/// not `Error`s, so `e instanceof Error ? e.message : String(e)` renders them
+/// as "[object Object]". A value with no readable message yields '' so the
+/// caller shows its own copy rather than noise.
+export function thrownMessage(e: unknown): string {
+	if (e instanceof Error) return e.message;
+	if (typeof e === 'string') return e;
+	if (e && typeof e === 'object' && typeof (e as { message?: unknown }).message === 'string') {
+		const { message, code } = e as { message: string; code?: unknown };
+		return typeof code === 'string' && code !== '' ? `${message} (${code})` : message;
+	}
+	return '';
+}

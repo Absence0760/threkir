@@ -1,4 +1,4 @@
--- Pins migration 20270807000001 (issue #1150, decisions § 1904): run-less
+-- Pins migration 20270807000001 (issue #1150, decisions § 1905): run-less
 -- host photos per occurrence, the organiser's soft hide, and the database's
 -- integrity checks on attendee photos (real occurrence, run inside the
 -- [occurrence − 2 h, occurrence + 24 h) window).

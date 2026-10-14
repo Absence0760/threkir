@@ -2,7 +2,7 @@
 ///
 /// The database refuses an attendee photo whose run did not START inside
 /// [occurrence − 2 h, occurrence + 24 h) (`run_photos_event_integrity`,
-/// migration 20270807000001, decisions § 1904), so the run picker offers only
+/// migration 20270807000001, decisions § 1905), so the run picker offers only
 /// the runs that will be accepted rather than letting the upload fail. The two
 /// bounds are named once in SQL (`private.event_photo_window_before/after`) and
 /// mirrored here and in apps/mobile_android/lib/event_photo_window.dart.

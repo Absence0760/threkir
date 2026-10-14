@@ -1,5 +1,5 @@
 -- Event photos: organiser/host photos per occurrence, organiser moderation,
--- and integrity checks on attendee photos (issue #1150, decisions § 1904).
+-- and integrity checks on attendee photos (issue #1150, decisions § 1905).
 --
 -- Model: a host photo is a `run_photos` row with `run_id` NULL. Keeping it in
 -- the one table means the bucket, the path-shape CHECKs, the EXIF-strip +

@@ -2,7 +2,7 @@
 ///
 /// The database refuses an attendee photo whose run did not START inside
 /// [occurrence − 2 h, occurrence + 24 h) (`run_photos_event_integrity`,
-/// migration 20270807000001, decisions § 1904), so the run picker offers only
+/// migration 20270807000001, decisions § 1905), so the run picker offers only
 /// the runs that will be accepted rather than letting the upload fail. Dart
 /// twin of web's `apps/web/src/lib/social/event_photo_window.ts` — keep the two
 /// in lockstep. Web parses two ISO strings; here both sides are already

@@ -53,7 +53,7 @@ House vocabulary (verified in both catalogues): `salvar`, `registrar` /
 
 ## Typography
 
-- Quotes **“…”** (20 / 6); straight `"` is a slip. The notification family (`notificationBell.*Titled`, `notificationsList.verb*Titled`, mobile `profileNotif*Titled`) was moved to curly quotes 2026-10-14; 23 web and 30 mobile strings still use straight quotes, mostly around `{name}` / `{query}` / `{word}` (inconsistency 6).
+- Quotes **“…”**, always: a straight `"` in a message fails CI (`messages_parity.test.ts` on web, `architecture_guards_test.dart` on mobile — ARB and `app_localizations_pt.dart` getters). The last 53 straight-quoted strings moved to curly quotes 2026-10-14.
 - Ellipsis **…**; spaced em dash ` — `.
 - No space before `:` `!` `?`.
 - Literal number samples use the decimal comma ("5,0 km · 5:00 /km").
@@ -124,9 +124,6 @@ literal `1` in a `one` branch — 11 mobile strings already do (e.g.
 5. **finish action**: "Concluir" (mobile `gymSessionFinish`,
    `sessionRunFinish`) vs "Finalizar" (web `gym.session.finish`,
    `session.run.finish`).
-6. **straight quotes** in 23 web and 30 mobile strings, mostly around a placeholder
-   (`routesSaved`, `plansDeleteTitle`, `socialPeople.noMatch`, …),
-   against the curly-quote rule above.
 
 ## Don't translate
 

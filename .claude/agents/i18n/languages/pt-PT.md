@@ -73,9 +73,11 @@ House vocabulary (verified in both catalogues): `registar` / `registo`
 
 ## Typography
 
-- Quotes: the catalogues use **“…”** (19 / 6) with straight `"` slips;
-  the traditional European « » appears in 2 / 4 strings. Use “…” to match
-  the catalogue; the « » question is a finding.
+- Quotes: **“…”**, to match the catalogue. A straight `"` in a message
+  fails CI (`messages_parity.test.ts` on web, `architecture_guards_test.dart`
+  on mobile — ARB and `app_localizations_pt.dart` getters); the last 60
+  moved to curly quotes 2026-10-14. The traditional European « » appears in
+  2 / 4 strings; the « » question is a finding.
 - Ellipsis **…**; spaced em dash ` — `.
 - No space before `:` `!` `?`.
 - Literal number samples use the decimal comma ("5,0 km · 5:00 /km").

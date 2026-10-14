@@ -2779,12 +2779,12 @@ export async function updateRaceListing(
 export interface ImportRaceResultInput {
 	provider: 'runsignup' | 'ultrasignup' | 'chronotrack' | 'paste';
 	listingId: string;
-	runSignUpUserId?: string;
 	/// UltraSignup: who the runner is there. Omit it and the stored link is
 	/// read (`fetchUltraSignUpLink`); with neither, the call throws
 	/// `ULTRASIGNUP_NOT_LINKED` before reaching the function.
 	ultraSignUpPerson?: UltraSignUpPersonLink;
-	/// ChronoTrack: filter the event's results to one bib.
+	/// RunSignUp / ChronoTrack: the bib the runner wore — the only scope
+	/// either leg accepts (decisions § 1903 for RunSignUp).
 	bib?: string;
 	/// When set, enrich THIS existing run in place (the auto-match seam) instead
 	/// of inserting a new race run.
@@ -2830,7 +2830,6 @@ export async function importRaceResult(
 		body: {
 			provider: input.provider,
 			listingId: input.listingId,
-			runSignUpUserId: input.runSignUpUserId,
 			ultraSignUpPersonId: person?.personId,
 			ultraSignUpFirstName: person?.firstName,
 			ultraSignUpLastName: person?.lastName,

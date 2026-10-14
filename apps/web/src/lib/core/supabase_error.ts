@@ -25,17 +25,58 @@ export function supabaseErrorFields(
 ///
 /// One predicate rather than a comparison against the literal at each site:
 /// the sites drifted, and `joinChallenge` was the one that never got it.
-export function isDuplicateKeyError(
-	err: { code?: string | null } | null | undefined,
-): boolean {
-	return err?.code === '23505';
+export function isDuplicateKeyError(err: unknown): boolean {
+	return typeof err === 'object' && err !== null && (err as { code?: unknown }).code === '23505';
 }
 
-/// The user-facing detail of a thrown value. The data layer throws PostgREST
-/// errors as they come (`if (error) throw error`), and those are plain objects,
-/// not `Error`s, so `e instanceof Error ? e.message : String(e)` renders them
-/// as "[object Object]". A value with no readable message yields '' so the
-/// caller shows its own copy rather than noise.
+/// A failed Supabase result, thrown. postgrest-js hands back `error` as the
+/// parsed JSON body — a plain object, not an `Error` — so throwing it raw gave
+/// Sentry "Object captured as exception" with no stack and made `instanceof
+/// Error` lie. This carries the two fields callers branch on (`code` for
+/// `isDuplicateKeyError`, PGRST116, 42501 / 23514; `status` where the source
+/// had one) and nothing else: `details` and `hint` can echo row data, and the
+/// original is deliberately not kept as `cause`, because Node's
+/// `console.error` prints a `cause` — even a non-enumerable one — into
+/// CloudWatch. /audit/pii-in-logs, decisions § 1917.
+export class DbError extends Error {
+	readonly code: string | undefined;
+	readonly status: number | undefined;
+
+	constructor(message: string, code?: string, status?: number) {
+		super(code ? (message ? `${message} (${code})` : `(${code})`) : message);
+		this.name = 'DbError';
+		this.code = code;
+		this.status = status;
+	}
+}
+
+/// Turn a Supabase result's `error` into something fit to throw. An `Error`
+/// that is not postgrest-js's own `PostgrestError` (auth-js, storage-js and
+/// functions-js all throw real subclasses, and a FunctionsHttpError's
+/// `context` is read by callers) passes through as it is; a `PostgrestError`
+/// is rebuilt, since its `toJSON` serialises `details` and `hint`.
+export function dbError(e: unknown): Error {
+	if (e instanceof Error && e.name !== 'PostgrestError') return e;
+	let err: DbError;
+	if (e && typeof e === 'object') {
+		const { message, code, status } = e as { message?: unknown; code?: unknown; status?: unknown };
+		err = new DbError(
+			typeof message === 'string' ? message : '',
+			typeof code === 'string' && code !== '' ? code : undefined,
+			typeof status === 'number' ? status : undefined,
+		);
+	} else {
+		err = new DbError(typeof e === 'string' ? e : '');
+	}
+	Error.captureStackTrace?.(err, dbError);
+	return err;
+}
+
+/// The user-facing detail of a thrown value. The data layer throws `DbError`
+/// (above), but a third-party or legacy throw can still be a plain object, and
+/// `e instanceof Error ? e.message : String(e)` renders one as "[object
+/// Object]". A value with no readable message yields '' so the caller shows its
+/// own copy rather than noise.
 export function thrownMessage(e: unknown): string {
 	if (e instanceof Error) return e.message;
 	if (typeof e === 'string') return e;

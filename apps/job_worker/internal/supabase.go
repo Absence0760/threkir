@@ -1431,6 +1431,7 @@ var orderByTable = map[string]string{
 	schema.TableRunGear:                  "run_id,gear_id",
 	schema.TableRunKudos:                 "user_id,run_id",
 	schema.TableSavedRoutes:              "user_id,route_id",
+	schema.TableSignInDevices:            "user_id,browser,platform",
 	schema.TableUserBlocks:               "blocker_id,blocked_id",
 	schema.TableUserCoachUsage:           "user_id,usage_date",
 	schema.TableUserDeviceSettings:       "user_id,device_id",

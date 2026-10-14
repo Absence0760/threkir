@@ -28,6 +28,7 @@ const ORDER_BY_TABLE: Record<string, string> = {
 	run_gear: 'run_id,gear_id',
 	run_kudos: 'user_id,run_id',
 	saved_routes: 'user_id,route_id',
+	sign_in_devices: 'user_id,browser,platform',
 	user_blocks: 'blocker_id,blocked_id',
 	user_coach_usage: 'user_id,usage_date',
 	user_device_settings: 'user_id,device_id',

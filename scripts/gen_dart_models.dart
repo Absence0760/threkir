@@ -139,6 +139,7 @@ const _tables = <String>{
   'fundraisers',
   'donations',
   'race_listings',
+  'direct_messages',
 };
 
 // Tables whose pluralised name doesn't follow the strip-trailing-`s` rule

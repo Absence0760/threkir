@@ -1146,6 +1146,75 @@ class DeviceTokenRow {
   );
 }
 
+/// Row shape for the `direct_messages` table. Mirrors the Supabase schema
+/// exactly — field names are snake_case to match the JSON wire format.
+class DirectMessageRow {
+  static const String table = 'direct_messages';
+  static const String colId = 'id';
+  static const String colSenderId = 'sender_id';
+  static const String colRecipientId = 'recipient_id';
+  static const String colBody = 'body';
+  static const String colCreatedAt = 'created_at';
+  static const String colReadAt = 'read_at';
+  static const String colRouteId = 'route_id';
+
+  final String id;
+  final String senderId;
+  final String recipientId;
+  final String body;
+  final DateTime createdAt;
+  final DateTime? readAt;
+  final String? routeId;
+
+  const DirectMessageRow({
+    required this.id,
+    required this.senderId,
+    required this.recipientId,
+    required this.body,
+    required this.createdAt,
+    this.readAt,
+    this.routeId,
+  });
+
+  factory DirectMessageRow.fromJson(Map<String, dynamic> json) => DirectMessageRow(
+    id: json['id'] as String,
+    senderId: json['sender_id'] as String,
+    recipientId: json['recipient_id'] as String,
+    body: json['body'] as String,
+    createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
+    readAt: parseIsoStrictValue(json['read_at']),
+    routeId: json['route_id'] as String?,
+  );
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    colId: id,
+    colSenderId: senderId,
+    colRecipientId: recipientId,
+    colBody: body,
+    colCreatedAt: createdAt.toIso8601String(),
+    colReadAt: readAt?.toIso8601String(),
+    colRouteId: routeId,
+  };
+
+  DirectMessageRow copyWith({
+    String? id,
+    String? senderId,
+    String? recipientId,
+    String? body,
+    DateTime? createdAt,
+    DateTime? readAt,
+    String? routeId,
+  }) => DirectMessageRow(
+    id: id ?? this.id,
+    senderId: senderId ?? this.senderId,
+    recipientId: recipientId ?? this.recipientId,
+    body: body ?? this.body,
+    createdAt: createdAt ?? this.createdAt,
+    readAt: readAt ?? this.readAt,
+    routeId: routeId ?? this.routeId,
+  );
+}
+
 /// Row shape for the `donations` table. Mirrors the Supabase schema
 /// exactly — field names are snake_case to match the JSON wire format.
 class DonationRow {

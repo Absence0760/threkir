@@ -7235,7 +7235,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get parkrunBarcodeTileSubtitle =>
-      'Mostre-o na meta, mesmo sem ligação.';
+      'Mostre-o na zona de chegada, mesmo sem ligação.';
 
   @override
   String parkrunBarcodeSemantics(String number) {
@@ -7244,7 +7244,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get parkrunBarcodeHint =>
-      'Mostre-o na meta para ser lido juntamente com a sua ficha de chegada.';
+      'Mostre-o na zona de chegada para ser lido juntamente com a sua ficha de chegada.';
 
   @override
   String get parkrunBarcodePaperNote =>

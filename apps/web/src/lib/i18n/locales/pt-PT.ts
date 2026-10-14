@@ -1416,7 +1416,7 @@ export const messages = {
 	"settingsAccount.parkrunNumber": "Número de atleta do parkrun",
 	"settingsAccount.parkrunNumberInvalid": "Introduza o seu número de atleta como A seguido de dígitos, por exemplo A123456.",
 	"parkrunBarcode.title": "O seu código de barras do parkrun",
-	"parkrunBarcode.description": "Mostre-o na meta para ser lido juntamente com a sua ficha de chegada.",
+	"parkrunBarcode.description": "Mostre-o na zona de chegada para ser lido juntamente com a sua ficha de chegada.",
 	"parkrunBarcode.ariaLabel": "Código de barras do parkrun do número de atleta {number}",
 	"parkrunBarcode.fullScreen": "Mostrar em ecrã inteiro",
 	"parkrunBarcode.close": "Fechar",

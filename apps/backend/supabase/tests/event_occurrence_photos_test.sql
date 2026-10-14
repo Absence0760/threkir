@@ -4,7 +4,7 @@
 -- [occurrence − 2 h, occurrence + 24 h) window).
 
 begin;
-select plan(25);
+select plan(26);
 
 insert into auth.users (id, email, encrypted_password, email_confirmed_at,
                         instance_id, aud, role)
@@ -61,6 +61,9 @@ select ok(not private.is_event_occurrence('eeeeeeee-0000-0000-0000-0000000115e2'
   'a count-capped series rejects its seventh Monday');
 select ok(private.is_event_occurrence('eeeeeeee-0000-0000-0000-0000000115e2', '2026-07-06T07:00:00Z'),
   'a count-capped series accepts its sixth Monday');
+-- p_instance is client-supplied; the count must not be walked day by day.
+select ok(not private.is_event_occurrence('eeeeeeee-0000-0000-0000-0000000115e2', '9999-12-27T07:00:00Z'),
+  'a count-capped series rejects a Monday in year 9999 without walking to it');
 select ok(not private.is_event_occurrence('eeeeeeee-0000-0000-0000-0000000115e1', '2026-06-27T08:00:00Z'),
   'a one-off event has exactly one occurrence');
 

@@ -84,6 +84,8 @@ declare
   v_cand       timestamptz;
   v_rem        numeric;
   v_n          bigint;
+  v_i          int;
+  v_first      date;
 begin
   if p_event_id is null or p_instance is null then
     return false;
@@ -164,13 +166,20 @@ begin
     return false;
   end if;
 
+  -- Counted per weekday in O(1), never walked day by day: p_instance is
+  -- client-supplied, and a series with a count and no until would otherwise
+  -- let one insert expand a range out to year 9999. The start day itself
+  -- always qualifies on time (every occurrence shares its time of day).
   if e.recurrence_count is not null then
-    select count(*)
-      into v_n
-      from generate_series(v_start_utc::date, v_day, interval '1 day') as g(d)
-     where v_codes[extract(isodow from g.d)::int] = any (v_byday)
-       and ((g.d::date - v_anchor) / 7) % v_step_weeks = 0
-       and (g.d::date + v_start_utc::time) >= v_start_utc;
+    v_n := 0;
+    for v_i in 1..7 loop
+      continue when not (v_codes[v_i] = any (v_byday));
+      v_first := v_start_utc::date + ((v_i - extract(isodow from v_start_utc)::int + 7) % 7);
+      v_first := v_first + 7 * (((v_first - v_anchor) / 7) % v_step_weeks);
+      if v_first <= v_day then
+        v_n := v_n + (v_day - v_first) / (7 * v_step_weeks) + 1;
+      end if;
+    end loop;
     if v_n > e.recurrence_count then
       return false;
     end if;

@@ -207,7 +207,7 @@ Deno.test('a bib-less paste and a later RunSignUp import of the same finish are 
   // The runner typed the chip time as the results page rounded it.
   const pasted = await importer(state)(paste({ chip_time: '21:24' }));
   assertEquals((await pasted.json()).imported, 1);
-  assertEquals(state.runs[0].external_id, 'race:Example 5K to Wellness:2026-09-19:');
+  assertEquals(state.runs[0].external_id, 'race:Example 5K to Wellness:2026-09-19::c1284');
 
   const imported = await importer(state)(call('336'));
   assertEquals(await imported.json(), { imported: 0, skipped: 0, enriched: 1, complete: true });
@@ -265,5 +265,68 @@ Deno.test('another runner\'s identical paste is never this runner\'s finish', as
   assertEquals(state.runs.length, 2);
   const theirs = state.runs.find((r) => r.user_id === 'runner-2')!;
   assertEquals((theirs.metadata as Row).bib, undefined, 'the other runner\'s run is untouched');
-  assertEquals(theirs.external_id, 'race:Example 5K to Wellness:2026-09-19:');
+  assertEquals(theirs.external_id, 'race:Example 5K to Wellness:2026-09-19::c1284');
+});
+
+// ── Two bib-less results under one listing (decisions § 1920) ──
+
+Deno.test('two bib-less results under one listing are two runs, not one skipped as the other', async () => {
+  const state: State = { listing: { ...LISTING }, runs: [] };
+  // The 5K and the kids' mile of one morning, both pasted with no bib.
+  const fiveK = await importer(state)(paste({ chip_time: '21:24' }));
+  assertEquals(await fiveK.json(), { imported: 1, skipped: 0, enriched: 0, complete: true });
+  const mile = await importer(state)(paste({ chip_time: '7:58' }));
+  assertEquals(await mile.json(), { imported: 1, skipped: 0, enriched: 0, complete: true });
+  assertEquals(state.runs.map((r) => (r.metadata as Row).chip_time), ['21:24', '7:58']);
+});
+
+Deno.test('the same bib-less finish pasted twice is filed once, including after its listing is gone', async () => {
+  const state: State = { listing: { ...LISTING }, runs: [] };
+  await importer(state)(paste({ chip_time: '21:24', overall_place: 10 }));
+  const again = await importer(state)(paste({ chip_time: '21:24', overall_place: 10 }));
+  assertEquals(await again.json(), { imported: 0, skipped: 1, enriched: 0, complete: true });
+  // Copied with its hundredths this time: a different id, the same finish.
+  const cut = await importer(state)(paste({ chip_time: '21:24.40', overall_place: 10 }));
+  assertEquals(await cut.json(), { imported: 0, skipped: 1, enriched: 0, complete: true });
+  // A run outlives its listing (`on delete set null`); only the id reaches it.
+  state.runs[0].race_listing_id = null;
+  const orphan = await importer(state)(paste({ chip_time: '21:24', overall_place: 10 }));
+  assertEquals(await orphan.json(), { imported: 0, skipped: 1, enriched: 0, complete: true });
+  assertEquals(state.runs.length, 1);
+});
+
+Deno.test('a bib-less run stored under the old id still dedupes, and no longer blocks a second finish', async () => {
+  // Filed before the id spelled its finish; left as it was.
+  const legacy: Row = {
+    id: 'legacy-run',
+    user_id: 'runner-1',
+    source: 'race',
+    race_listing_id: LISTING_ID,
+    external_id: 'race:Example 5K to Wellness:2026-09-19:',
+    duration_s: 1284,
+    metadata: { race_name: LISTING.name, chip_time: '21:24' },
+  };
+  const state: State = { listing: { ...LISTING }, runs: [legacy] };
+  const again = await importer(state)(paste({ chip_time: '21:24' }));
+  assertEquals(await again.json(), { imported: 0, skipped: 1, enriched: 0, complete: true });
+  const mile = await importer(state)(paste({ chip_time: '7:58' }));
+  assertEquals(await mile.json(), { imported: 1, skipped: 0, enriched: 0, complete: true });
+  // The provider import of the same finish is written onto it, as § 1912 does.
+  const provider = await importer(state)(call('336'));
+  assertEquals(await provider.json(), { imported: 0, skipped: 0, enriched: 1, complete: true });
+  assertEquals(state.runs.length, 2);
+  assertEquals(legacy.external_id, 'race:Example 5K to Wellness:2026-09-19:336');
+});
+
+Deno.test('two runners on one account who share a finish second are two runs', async () => {
+  const state: State = { listing: { ...LISTING }, runs: [] };
+  // A parent and child crossing together, a place apart.
+  await importer(state)(paste({ chip_time: '31:05', overall_place: 41 }));
+  const second = await importer(state)(paste({ chip_time: '31:05', overall_place: 42 }));
+  assertEquals(second.status, 200);
+  assertEquals(await second.json(), { imported: 1, skipped: 0, enriched: 0, complete: true });
+  // And a different second with no places at all.
+  const third = await importer(state)(paste({ chip_time: '31:09' }));
+  assertEquals(await third.json(), { imported: 1, skipped: 0, enriched: 0, complete: true });
+  assertEquals(state.runs.map((r) => (r.metadata as Row).overall_place), [41, 42, undefined]);
 });

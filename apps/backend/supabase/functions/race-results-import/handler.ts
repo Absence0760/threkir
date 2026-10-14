@@ -491,11 +491,13 @@ export function makeRaceResultsImportHandler(
     // ... and against the runs already filed under THIS listing, which one id
     // cannot cover. The id spells the listing's name, and the race-calendar
     // sweep rewrites that name whenever the provider does (decisions § 1911),
-    // so a re-import after a rename gets an id nothing stored carries. And a
-    // result pasted without a bib is filed as `race:{name}:{date}:` while the
-    // provider files the same finish under its bib, so the two ids never meet
-    // (decisions § 1912). One listing is one race on one day, so a filed run
-    // with the same bib, or the same finish clock, is that result.
+    // so a re-import after a rename gets an id nothing stored carries. A
+    // bib-less id spells its finish clock and the provider's spells its bib, so
+    // a paste and the provider import of one finish never share one (decisions
+    // § 1912), nor does a paste copied a second differently, nor a bib-less run
+    // stored before the id spelled its finish (§ 1920). One listing is one race
+    // on one day, so a filed run with the same bib, or the same finish clock,
+    // is that result.
     const { data: listingRows, error: listingRunsErr } = await supabase
       .from('runs')
       .select('id, source, metadata')
@@ -509,7 +511,7 @@ export function makeRaceResultsImportHandler(
     // Reconciled against the batch itself as well as against what is stored.
     // `external_id` is `race:{name}:{date}:{bib}` and both the name and the date
     // come from the ONE listing, so two mapped results carrying the same bib
-    // collide — which the RunSignUp extractor produces whenever a runner appears
+    // (or, without one, the same finish) collide — which the RunSignUp extractor produces whenever a runner appears
     // in more than one of the race's `individual_results_sets`. The insert below
     // is a single statement against a per-user unique index, so that collision
     // loses every other result in the import rather than the duplicate.

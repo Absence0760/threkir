@@ -3,6 +3,7 @@ import {
   assertEquals,
 } from 'https://deno.land/std@0.224.0/assert/mod.ts';
 import {
+  bibLessRaceExternalId,
   capField,
   chronoTrackConfigured,
   chronoTrackResultsUrl,
@@ -345,7 +346,7 @@ Deno.test('mapUltraSignUpResult maps a finished result onto a race run', () => {
   assertEquals(run!.metadata.overall_place, 87);
   // UltraSignup publishes no bib, and the mapper does not invent one.
   assertEquals(run!.metadata.bib, undefined);
-  assertEquals(run!.external_id, 'race:Example Peaks 100 Mile:2025-06-20:');
+  assertEquals(run!.external_id, 'race:Example Peaks 100 Mile:2025-06-20::c103215p87');
 });
 
 Deno.test('mapUltraSignUpResult falls back to the unformatted time', () => {
@@ -813,4 +814,55 @@ Deno.test('reconcileFiledFinishes: a bib fills a bib-less run, a bib-less result
   assertEquals(out.skipped, 1, 'the bib-less 45:00 is the bib 500 run already filed');
   // 337 matches the pasted clock too, but that run is spoken for.
   assertEquals(out.fresh.map((r) => r.metadata.chip_time), ['21:23.90', '50:00']);
+});
+
+// ── The bib-less external_id (decisions § 1920) ──
+
+Deno.test('bibLessRaceExternalId spells the finish after an empty bib slot, each reading only when it is there', () => {
+  const id = (m: Record<string, unknown>) => bibLessRaceExternalId('Richmond Half', '2025-09-21', facts(m));
+  assertEquals(id({ chip_time: '21:23.75', gun_time: '21:41.08', overall_place: 10 }), 'race:Richmond Half:2025-09-21::c1284g1302p10');
+  assertEquals(id({ chip_time: '21:24' }), 'race:Richmond Half:2025-09-21::c1284');
+  assertEquals(id({ gun_time: '1:47:23', overall_place: 128 }), 'race:Richmond Half:2025-09-21::g6443p128');
+  // The same finish read the same way is the same id, however often it is pasted.
+  assertEquals(id({ chip_time: '21:24', overall_place: 10 }), id({ chip_time: '21:24', overall_place: 10 }));
+});
+
+Deno.test('mapRaceResult files a bib-less result under its finish, so two finishes under one listing get two ids', () => {
+  const opts = { ...OPTS, isPublic: false };
+  const fiveK = mapRaceResult({ chip_time: '21:24' }, opts)!;
+  const mile = mapRaceResult({ chip_time: '7:58' }, opts)!;
+  assert(fiveK.external_id !== mile.external_id);
+  // Two finishers on one account sharing a second are told apart by place.
+  const ninth = mapRaceResult({ chip_time: '21:24', overall_place: 9 }, opts)!;
+  const tenth = mapRaceResult({ chip_time: '21:24', overall_place: 10 }, opts)!;
+  assert(ninth.external_id !== tenth.external_id);
+  // A bib keeps the provider's id, and no bib-less id can spell one.
+  assertEquals(mapRaceResult({ bib: '1284', chip_time: '21:24' }, opts)!.external_id, raceExternalId(OPTS.raceName, OPTS.raceDate, '1284'));
+  assert(!fiveK.external_id.startsWith(raceExternalId(OPTS.raceName, OPTS.raceDate, '1284')));
+});
+
+Deno.test('two bib-less results that share an id are always one finish by isSameFinish', () => {
+  // The per-user unique index refuses a second row with a stored id, so an id
+  // that two DIFFERENT finishes could share would lose one of them.
+  const clocks = ['', '21:23', '21:23.01', '21:23.99', '21:24', '21:24.5', '7:58'];
+  const places = [undefined, 9, 10];
+  const all: Array<Record<string, unknown>> = [];
+  for (const chip_time of clocks) {
+    for (const gun_time of clocks) {
+      for (const overall_place of places) {
+        if (chip_time || gun_time) all.push({ chip_time, gun_time, overall_place });
+      }
+    }
+  }
+  let shared = 0;
+  for (const a of all) {
+    for (const b of all) {
+      const ida = bibLessRaceExternalId('R', '2025-09-21', facts(a));
+      const idb = bibLessRaceExternalId('R', '2025-09-21', facts(b));
+      if (ida !== idb) continue;
+      shared += 1;
+      assert(isSameFinish(facts(a), facts(b)), `${JSON.stringify(a)} and ${JSON.stringify(b)} share ${ida}`);
+    }
+  }
+  assert(shared > all.length, 'the grid has pairs that share an id without being identical');
 });

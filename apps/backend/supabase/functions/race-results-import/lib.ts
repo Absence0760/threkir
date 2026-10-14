@@ -103,6 +103,21 @@ export function raceExternalId(name: string, date: string, bib: string): string 
 }
 
 /**
+ * The external_id of a result with no bib: `race:{name}:{date}::{finish}`,
+ * where `{finish}` spells the facts `isSameFinish` reads — `c` chip and `g`
+ * gun seconds (rounded up, as `duration_s` is) and `p` overall place, each only
+ * when the result carries it (decisions § 1920). A bib is colon-stripped, so
+ * the extra segment can never spell a bib's id. Two results with one id agree
+ * on every reading to under a second, so `isSameFinish` would call them one
+ * finish too: the id never refuses a result the finish rule would file.
+ */
+export function bibLessRaceExternalId(name: string, date: string, finish: FinishFacts): string {
+  const reading = (tag: string, s: number | null) => (s === null ? '' : `${tag}${Math.ceil(s)}`);
+  const place = finish.place === null ? '' : `p${finish.place}`;
+  return `${raceExternalId(name, date, '')}:${reading('c', finish.chipS)}${reading('g', finish.gunS)}${place}`;
+}
+
+/**
  * One result in the provider-neutral shape every leg is read into before
  * `mapRaceResult` shapes it — and the shape a pasted result arrives in.
  */
@@ -195,7 +210,9 @@ export function mapRaceResult(
     activity_type: 'run',
     is_public: opts.isPublic,
     followers_only: !opts.isPublic && opts.followersOnly === true,
-    external_id: raceExternalId(opts.raceName, opts.raceDate, bib),
+    external_id: bib
+      ? raceExternalId(opts.raceName, opts.raceDate, bib)
+      : bibLessRaceExternalId(opts.raceName, opts.raceDate, finishFacts(metadata)),
     race_listing_id: opts.listingId,
     metadata,
   };
@@ -203,8 +220,9 @@ export function mapRaceResult(
 
 // ── One finish, two paths (decisions § 1912) ─────────────────────────────────
 //
-// A result pasted without a bib is filed as `race:{name}:{date}:` and the same
-// result imported from a provider as `race:{name}:{date}:{bib}`, so neither the
+// A result pasted without a bib is filed as `race:{name}:{date}::{finish}` and
+// the same result imported from a provider as `race:{name}:{date}:{bib}`, so
+// neither the
 // id nor the listing-and-bib skip can see that they are one finish. What both
 // paths do know is the listing (one race on one day), the finish clock and,
 // often, the overall place, and those are what decide it.
@@ -1002,8 +1020,8 @@ export function ultraSignUpResultIsForListing(
  * Map one UltraSignup result onto a runs row. Only a finished result is a run —
  * a DNF / DNS / DQ row carries a `time` of "0". Delegates to the shared shaping
  * so the row, the external_id and the metadata keys match every other provider;
- * UltraSignup publishes no bib, so the id's bib slot is empty, which is also
- * what a bib-less paste of the same race produces — the two dedup.
+ * UltraSignup publishes no bib, so the id is the bib-less one, which a bib-less
+ * paste of the same finish shares or `isSameFinish` matches — the two dedup.
  *
  * This does NOT decide which race the row is: call it only on rows
  * `ultraSignUpResultIsForListing` kept, which `ultraSignUpImportRows` does.

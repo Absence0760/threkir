@@ -596,17 +596,81 @@ export function extractRunSignUpResults(payload: unknown): RunSignUpResultRow[] 
 
 const DIVISION_COLUMN = /^division-\d+-placement$/;
 
+const MAX_AGE = 120;
+const EVENT_PREFIX = /^\d+(?:\.\d+)?(?:k|mi|m)_/;
+const SEX_LEAD =
+  /^(?:non[- ]?binary|female|male|women'?s|men'?s|women|men|girls|boys|nb|f|m|x)(?:([ _-]+)|(?=u?\d))/;
+const SEX_TRAIL = / (?:female|male|women|men)$/;
+const AGE_WORD = /^(?:age group|ages|age) /;
+const RANGE = /^(\d{1,3}) ?(?:-|\u2013|to|thru|through) ?(\d{1,3})$/;
+const COMPACT = /^(\d{4,6})$/;
+const OVER = /^(\d{1,3}) ?(?:\+|plus|and over|and older|and up|or over|or older)$|^over (\d{1,3})$/;
+const UNDER = /^(\d{1,3}) ?(?:and under|and younger|or under|or younger|and und|u|-)$|^(?:under|u) ?(\d{1,3})$/;
+const SINGLE = /^(\d{1,3})$/;
+
+function bandIsAgeGroup(lo: number, hi: number): boolean {
+  return lo <= hi && hi >= 1 && hi <= MAX_AGE && !(lo <= 1 && hi >= 99);
+}
+
+/**
+ * Whether a RunSignUp division name is an age band, read from its shape.
+ *
+ * Measured over the headers of 826 public events across 297 races
+ * (decisions § 1913): an age group is a range (`F 30-39`, `Male 20 to 29`,
+ * `Ages 18-24`, `30-39 Female`), an open end (`Female 70 and Over`, `M75+`,
+ * `F14&UND`, `MU14`, `M 10-`, `Under 18`), a sex letter fused to its bounds
+ * (`M2029`, `F0119`, `F80120`), or a single year after the word "age"
+ * (`Boys age 10`), optionally under an event code (`5K_F30-39`). Everything
+ * else that carries a digit is some other award: `M Top 3 Overall`,
+ * `Top 10 Female`, `2 Person Team`, and the weight classes, which are banded by
+ * age themselves (`Clydesdale 40 and Over`, `F Athena Under 40`) and place a
+ * runner instead of their age group. Masters tiers are awards too: they lift a
+ * runner out of the age groups exactly as an overall win does. A band covering
+ * the whole field (`M 1-99`, `F 00-00`) is a catch-all, not an age group, and a
+ * shape this does not know leaves the age group unset rather than guessed.
+ */
+function isRunSignUpAgeGroupName(name: string): boolean {
+  let s = name.toLowerCase().replace(/&/g, ' and ').replace(/\s+/g, ' ').trim();
+  s = s.replace(EVENT_PREFIX, '');
+  let sex = false;
+  let fused = false;
+  const lead = SEX_LEAD.exec(s);
+  if (lead) {
+    sex = true;
+    fused = lead[1] === undefined;
+    s = s.slice(lead[0].length);
+  }
+  const word = AGE_WORD.exec(s);
+  if (word) s = s.slice(word[0].length);
+  if (!sex) s = s.replace(SEX_TRAIL, '');
+
+  const range = RANGE.exec(s);
+  if (range) return bandIsAgeGroup(Number(range[1]), Number(range[2]));
+  const compact = fused ? COMPACT.exec(s) : null;
+  if (compact) {
+    const digits = compact[1];
+    const split = digits.length === 6 ? 3 : 2;
+    return bandIsAgeGroup(Number(digits.slice(0, split)), Number(digits.slice(split)));
+  }
+  const over = OVER.exec(s);
+  if (over) return bandIsAgeGroup(Number(over[1] ?? over[2]), MAX_AGE);
+  const under = UNDER.exec(s);
+  if (under) return bandIsAgeGroup(0, Number(under[1] ?? under[2]));
+  const single = word ? SINGLE.exec(s) : null;
+  if (single) return bandIsAgeGroup(Number(single[1]), Number(single[1]));
+  return false;
+}
+
 /**
  * The runner's age group and their place in it, or null when the row does not
  * say which one that is.
  *
  * RunSignUp has no age-group field: a row holds a placement for each division
- * it scored in, and the set's headers name them (`M2029`, `F 30-39`,
- * `M Overall`, `All Female`). An age group is the division whose name carries
- * an age, so the one placed division with a digit in its name is taken. Zero is
- * common — an overall award winner is usually lifted out of their age group —
- * and two happens where a race defines two age schemes side by side; both leave
- * the age group unset rather than pick one.
+ * it scored in, and the set's headers name them. The one placed division whose
+ * name is an age band (`isRunSignUpAgeGroupName`) is taken. Zero is common, as
+ * an overall, masters or weight-class award lifts a runner out of their age
+ * group, and two happens where a race defines two age schemes side by side
+ * (`M 20-24` beside `M2024`); both leave the age group unset rather than pick.
  */
 export function runSignUpAgeGroup(
   row: RunSignUpResultRow,
@@ -617,7 +681,7 @@ export function runSignUpAgeGroup(
     const place = toPositiveInt(value);
     if (place === null) continue;
     const label = capField(row.headers[key], 40);
-    if (!/\d/.test(label)) continue;
+    if (!isRunSignUpAgeGroupName(label)) continue;
     if (found) return null;
     found = { label, place };
   }

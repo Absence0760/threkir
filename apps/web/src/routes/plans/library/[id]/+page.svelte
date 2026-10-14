@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
@@ -90,7 +91,7 @@
 			showToast(m('planLibrary.cloneSuccess'));
 			goto(`/plans/${newId}`);
 		} catch (e) {
-			showToast(m('planLibrary.cloneFailed', { error: String(e) }), 'error');
+			showToast(m('planLibrary.cloneFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			cloning = false;
 		}

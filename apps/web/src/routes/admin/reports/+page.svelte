@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import {
@@ -53,7 +54,7 @@
 		try {
 			queue = await fetchPendingReports();
 		} catch (e) {
-			showToast(t('admin.reports.loadFailed', { error: String((e as Error)?.message ?? e) }), 'error');
+			showToast(t('admin.reports.loadFailed', { error: thrownMessage(e) }), 'error');
 		}
 	}
 
@@ -65,7 +66,7 @@
 		try {
 			detail = await fetchReportsForTarget(target.target_kind, target.target_id);
 		} catch (e) {
-			showToast(t('admin.reports.detailFailed', { error: String((e as Error)?.message ?? e) }), 'error');
+			showToast(t('admin.reports.detailFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			detailLoading = false;
 		}
@@ -92,7 +93,7 @@
 			closeDetail();
 			await loadQueue();
 		} catch (e) {
-			showToast(t('admin.reports.resolveFailed', { error: String((e as Error)?.message ?? e) }), 'error');
+			showToast(t('admin.reports.resolveFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			resolving = false;
 		}
@@ -112,7 +113,7 @@
 					: q,
 			);
 		} catch (e) {
-			showToast(t('admin.reports.unhideFailed', { error: String((e as Error)?.message ?? e) }), 'error');
+			showToast(t('admin.reports.unhideFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			unhiding = false;
 		}

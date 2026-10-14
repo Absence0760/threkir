@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount, untrack } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
@@ -321,7 +322,7 @@
 			// as an empty page indistinguishable from "nothing logged" — surface
 			// the same load-error banner the primary day's-food path uses.
 			console.warn('nutrition load failed', e);
-			if (current()) loadError = (e as Error).message;
+			if (current()) loadError = thrownMessage(e);
 		}
 		if (current()) loading = false;
 	}
@@ -393,7 +394,7 @@
 			mealName = '';
 			await loadTemplates();
 		} catch (e) {
-			showToast(m('nutrition.templateSaveFailed', { error: (e as Error).message }), 'error');
+			showToast(m('nutrition.templateSaveFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			savingMeal = false;
 		}
@@ -411,7 +412,7 @@
 			showToast(m('nutrition.templateLogged', { n, name: t.name }), 'success');
 			await load();
 		} catch (e) {
-			showToast(m('nutrition.templateLogFailed', { error: (e as Error).message }), 'error');
+			showToast(m('nutrition.templateLogFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			loggingTemplateId = null;
 		}
@@ -426,7 +427,7 @@
 			templates = templates.filter((x) => x.id !== t.id);
 			confirmDeleteTemplate = null;
 		} catch (e) {
-			showToast(m('nutrition.deleteTemplateFailed', { error: (e as Error).message }), 'error');
+			showToast(m('nutrition.deleteTemplateFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			deletingTemplate = false;
 		}
@@ -461,7 +462,7 @@
 			recipeServings = servingsBounds.min;
 			await loadRecipes();
 		} catch (e) {
-			showToast(m('nutrition.recipeSaveFailed', { error: (e as Error).message }), 'error');
+			showToast(m('nutrition.recipeSaveFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			savingRecipe = false;
 		}
@@ -479,7 +480,7 @@
 			showToast(m('nutrition.recipeLogged', { n, name: r.name }), 'success');
 			await load();
 		} catch (e) {
-			showToast(m('nutrition.recipeLogFailed', { error: (e as Error).message }), 'error');
+			showToast(m('nutrition.recipeLogFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			loggingRecipeId = null;
 		}
@@ -494,7 +495,7 @@
 			recipes = recipes.filter((x) => x.id !== r.id);
 			confirmDeleteRecipe = null;
 		} catch (e) {
-			showToast(m('nutrition.deleteRecipeFailed', { error: (e as Error).message }), 'error');
+			showToast(m('nutrition.deleteRecipeFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			deletingRecipe = false;
 		}
@@ -525,7 +526,7 @@
 			},
 			onCommitError: (e) =>
 				showToast(
-					m('nutrition.deleteFailed', { error: e instanceof Error ? e.message : String(e) }),
+					m('nutrition.deleteFailed', { error: thrownMessage(e) }),
 					'error',
 				),
 		});
@@ -667,12 +668,12 @@
 			<div class="skel skel-row"></div>
 			<div class="skel skel-block"></div>
 		</div>
-	{:else if loadError}
+	{:else if loadError !== null}
 		<div class="load-error-banner" role="alert" data-testid="nutrition-load-error">
 			<span class="material-symbols" aria-hidden="true">error</span>
 			<div>
 				<strong>{m('nutrition.loadFailed')}</strong>
-				<span class="load-error-detail">{loadError}</span>
+				{#if loadError}<span class="load-error-detail">{loadError}</span>{/if}
 			</div>
 			<button class="btn btn-outline" type="button" onclick={() => void load()}>{m('nutrition.retry')}</button>
 		</div>

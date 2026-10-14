@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import RunSurfaceTabs from '#lib/components/RunSurfaceTabs.svelte';
@@ -51,7 +52,7 @@
 			// A rejected fetch would otherwise leave `loading` false with an
 			// empty list, which reads as "the catalogue is empty" — the exact
 			// lie fetchGlobalSegmentsWithError's error contract exists to stop.
-			loadError = e instanceof Error ? e.message : String(e);
+			loadError = thrownMessage(e);
 		} finally {
 			loading = false;
 		}
@@ -83,12 +84,12 @@
 
 	{#if loading}
 		<p class="state-msg">{m('segments.loadingSegments')}</p>
-	{:else if loadError}
+	{:else if loadError !== null}
 		<div class="error-banner" role="alert" data-testid="segment-catalogue-error">
 			<span class="material-symbols" aria-hidden="true">error</span>
 			<div>
 				<strong>{m('segments.browseFailed')}</strong>
-				<span class="error-detail">{loadError}</span>
+				{#if loadError}<span class="error-detail">{loadError}</span>{/if}
 			</div>
 			<button type="button" class="btn btn-outline btn-sm" onclick={load}>
 				{m('segmentDetail.retry')}

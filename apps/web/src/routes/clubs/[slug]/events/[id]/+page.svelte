@@ -728,7 +728,7 @@
 		} catch (e) {
 			// A rejection anywhere in here used to escape and leave `loading`
 			// true, so the race-day page skeletoned forever with no way out.
-			loadError = e instanceof Error ? e.message : String(e);
+			loadError = thrownMessage(e);
 		} finally {
 			loading = false;
 		}
@@ -828,7 +828,7 @@
 			attendees = [...attendees, ...more];
 			attendeesHasMore = more.length === ROSTER_PAGE_SIZE;
 		} catch (e) {
-			showToast(m('profile.loadMoreError', { error: String(e) }), 'error');
+			showToast(m('profile.loadMoreError', { error: thrownMessage(e) }), 'error');
 		} finally {
 			attendeesLoadingMore = false;
 		}
@@ -900,7 +900,7 @@
 			photoRunOptions = await fetchRunsForEventPhoto(activeInstance);
 		} catch (err) {
 			photoRunOptions = [];
-			photoRunOptionsError = err instanceof Error ? err.message : String(err);
+			photoRunOptionsError = thrownMessage(err);
 		} finally {
 			photoRunOptionsLoading = false;
 		}
@@ -982,7 +982,7 @@
 			onCommitError: (err) =>
 				showToast(
 					m('clubEvent.photoModerateFailed', {
-						error: err instanceof Error ? err.message : String(err)
+						error: thrownMessage(err)
 					}),
 					'error'
 				)
@@ -1002,7 +1002,7 @@
 		} catch (err) {
 			showToast(
 				m('clubEvent.photoModerateFailed', {
-					error: err instanceof Error ? err.message : String(err)
+					error: thrownMessage(err)
 				}),
 				'error'
 			);
@@ -1025,7 +1025,7 @@
 			onCommitError: (err) =>
 				showToast(
 					m('clubEvent.photoDeleteFailed', {
-						error: err instanceof Error ? err.message : String(err)
+						error: thrownMessage(err)
 					}),
 					'error'
 				)
@@ -1867,7 +1867,7 @@
 				return;
 			}
 			showToast(
-				m('clubHome.deleteEventFailed', { error: e instanceof Error ? e.message : String(e) }),
+				m('clubHome.deleteEventFailed', { error: thrownMessage(e) }),
 				'error'
 			);
 			return;
@@ -2067,7 +2067,7 @@
 		</div>
 	</div>
 	<p class="sr-only" role="status">{m('clubEvent.loadingEventStatus')}</p>
-{:else if loadError}
+{:else if loadError !== null}
 	<div class="page">
 		<a class="back" href="/clubs/{slug}">
 			<span class="material-symbols" aria-hidden="true">arrow_back</span>
@@ -2077,7 +2077,7 @@
 			<span class="material-symbols" aria-hidden="true">error</span>
 			<div>
 				<strong>{m('clubEvent.loadError')}</strong>
-				<span class="error-detail">{loadError}</span>
+				{#if loadError}<span class="error-detail">{loadError}</span>{/if}
 			</div>
 			<button class="btn btn-outline" onclick={load} data-testid="club-event-load-retry"
 				>{m('clubEvent.retry')}</button
@@ -3177,7 +3177,7 @@
 					<h4>{m('clubEvent.whichRunPhoto')}</h4>
 					{#if photoRunOptionsLoading}
 						<p class="muted">{m('clubEvent.photoRunsLoading')}</p>
-					{:else if photoRunOptionsError}
+					{:else if photoRunOptionsError !== null}
 						<p class="error" role="alert">
 							{m('clubEvent.photoRunsLoadFailed', { error: photoRunOptionsError })}
 						</p>

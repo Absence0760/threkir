@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { m } from '#lib/i18n/store.svelte.ts';
@@ -190,7 +191,7 @@
 			markers = await fetchRouteMarkers(data.id);
 			showToast(m('roadbook.saveTargetsDone', { count: String(saved) }), 'success');
 		} catch (e) {
-			showToast(m('roadbook.saveTargetsFailed', { error: `${e}` }), 'error');
+			showToast(m('roadbook.saveTargetsFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			savingTargets = false;
 		}

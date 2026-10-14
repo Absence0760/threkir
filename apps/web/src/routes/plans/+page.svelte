@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { compareOrdinal } from '#lib/util/ordinal_compare.ts';
 	import { formatDuration } from '#lib/format/time.ts';
@@ -220,7 +221,7 @@
 			// Keep the dialog open so the user can retry or cancel — the
 			// plan still exists, so silently closing would be a lie.
 			showToast(
-				m('plansPage.actionFailed', { error: e instanceof Error ? e.message : String(e) }),
+				m('plansPage.actionFailed', { error: thrownMessage(e) }),
 				'error'
 			);
 			return;

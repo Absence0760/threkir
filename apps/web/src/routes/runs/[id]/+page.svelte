@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { siteOrigin } from '#lib/core/site_url.ts';
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
 	import type { MetricId } from '#lib/metrics/metric_registry.ts';
@@ -630,7 +631,7 @@
 			} as Run;
 			editing = false;
 		} catch (e) {
-			showToast(m('runDetail.saveFailed', { error: String(e) }), 'error');
+			showToast(m('runDetail.saveFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			savingEdit = false;
 		}
@@ -648,7 +649,7 @@
 			await deleteRun(run.id);
 			goto('/runs');
 		} catch (e) {
-			showToast(m('runDetail.deleteFailed', { error: String(e) }), 'error');
+			showToast(m('runDetail.deleteFailed', { error: thrownMessage(e) }), 'error');
 		}
 	}
 
@@ -721,7 +722,7 @@
 				await navigator.clipboard.writeText(`${window.location.origin}/runs/${run.id}`);
 				showToast(m('audience.linkCopied'), 'success');
 			} catch (e) {
-				showToast(m('runDetail.shareFailed', { error: String(e) }), 'error');
+				showToast(m('runDetail.shareFailed', { error: thrownMessage(e) }), 'error');
 			}
 			return;
 		}
@@ -773,7 +774,7 @@
 			await navigator.clipboard.writeText(url);
 			showToast(m('runDetail.shareLinkCopied'), 'success');
 		} catch (e) {
-			showToast(m('runDetail.shareFailed', { error: String(e) }), 'error');
+			showToast(m('runDetail.shareFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			shareBusy = false;
 		}
@@ -788,7 +789,7 @@
 			run = { ...run, is_public: false } as Run;
 			showToast(m('runDetail.madePrivate'), 'success');
 		} catch (e) {
-			showToast(m('runDetail.makePrivateFailed', { error: String(e) }), 'error');
+			showToast(m('runDetail.makePrivateFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			shareBusy = false;
 		}
@@ -822,7 +823,7 @@
 			showToast(m('runDetail.savedAsRoute'), 'success');
 			goto(`/routes/${id}`);
 		} catch (e) {
-			showToast(m('runDetail.saveFailed', { error: String(e) }), 'error');
+			showToast(m('runDetail.saveFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			savingRoute = false;
 		}
@@ -881,7 +882,7 @@
 				showToast(m('runDetail.imageSaved'), 'success');
 			}
 		} catch (e) {
-			const msg = (e as Error).message;
+			const msg = thrownMessage(e);
 			// User cancelling a Web Share sheet raises; that's fine.
 			if (!msg.includes('abort') && !msg.includes('cancel')) {
 				showToast(m('runDetail.imageGenerateFailed', { error: msg }), 'error');
@@ -905,7 +906,7 @@
 			matchInfo = await fetchRunMatchedTrack(run.id);
 			showToast(m('runDetail.reSnapping'), 'success');
 		} catch (e) {
-			const msg = (e as Error).message ?? String(e);
+			const msg = thrownMessage(e);
 			showToast(m('runDetail.rematchFailed', { error: msg }), 'error');
 		} finally {
 			rematchBusy = false;
@@ -932,7 +933,7 @@
 					: kind === 'no_track'
 						? m('runDetail.recalculateDistanceNoTrack')
 						: m('runDetail.recalculateDistanceFailed', {
-								error: (e as Error)?.message ?? String(e),
+								error: thrownMessage(e),
 							}),
 				'error',
 			);

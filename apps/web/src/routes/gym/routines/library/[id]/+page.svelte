@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
@@ -31,7 +32,7 @@
 		} catch (e) {
 			// The loadError banner below was previously unreachable — nothing
 			// ever assigned it, so a failed read showed "Routine not found".
-			loadError = e instanceof Error ? e.message : String(e);
+			loadError = thrownMessage(e);
 			loading = false;
 			return;
 		}
@@ -109,7 +110,7 @@
 
 	{#if loading}
 		<p class="state" role="status">{t('gymLibrary.loading')}</p>
-	{:else if loadError}
+	{:else if loadError !== null}
 		<div class="state error" role="alert">
 			<p>{t('gymLibrary.loadError')}</p>
 			<button class="btn btn-outline" type="button" onclick={load}>{t('gymLibrary.retry')}</button>

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
@@ -152,7 +153,7 @@
 				// `exchangeStravaCode` rethrows the function's machine code, so
 				// the not-configured build gets its own sentence instead of a
 				// code in a slot the runner cannot read.
-				const code = err instanceof Error ? err.message : String(err);
+				const code = thrownMessage(err);
 				showToast(
 					code === 'strava_not_configured'
 						? m('settingsIntegrations.stravaNotConfigured')
@@ -203,7 +204,7 @@
 		} catch (err) {
 			showToast(
 				m('settingsIntegrations.connectFailed', {
-					error: err instanceof Error ? err.message : String(err)
+					error: thrownMessage(err)
 				}),
 				'error'
 			);
@@ -228,7 +229,7 @@
 		} catch (err) {
 			showToast(
 				m('settingsIntegrations.disconnectFailed', {
-					error: err instanceof Error ? err.message : String(err)
+					error: thrownMessage(err)
 				}),
 				'error'
 			);
@@ -359,7 +360,7 @@
 				result.complete ? 'success' : 'info',
 			);
 		} catch (err) {
-			const code = err instanceof Error ? err.message : String(err);
+			const code = thrownMessage(err);
 			showToast(
 				code === 'strava_not_configured'
 					? m('settingsIntegrations.stravaNotConfigured')

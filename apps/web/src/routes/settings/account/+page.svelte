@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { parseImportCompleteness } from '#lib/integrations/import_completeness.ts';
 	import { normalizeParkrunAthleteNumber } from '#lib/integrations/parkrun_barcode.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
@@ -294,7 +295,7 @@
 				);
 			}
 		} catch (err) {
-			showToast(m('settingsAccount.parkrunImportFailed', { error: (err as Error).message }), 'error');
+			showToast(m('settingsAccount.parkrunImportFailed', { error: thrownMessage(err) }), 'error');
 		} finally {
 			parkrunImporting = false;
 		}
@@ -364,7 +365,7 @@
 			profileLoad = 'ready';
 		} catch (e) {
 			console.warn('Profile load failed', e);
-			profileLoadError = (e as Error).message;
+			profileLoadError = thrownMessage(e);
 			profileLoad = 'failed';
 		}
 	}
@@ -402,7 +403,7 @@
 			aiDisclosure = { version: null, acceptedAt: null };
 			showToast(m('settingsAccount.coachConsentWithdrawn'), 'success');
 		} catch (e) {
-			showToast(m('settingsAccount.saveFailed', { error: (e as Error).message }), 'error');
+			showToast(m('settingsAccount.saveFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			coachConsentWithdrawing = false;
 		}
@@ -426,7 +427,7 @@
 			aiDisclosure = { version: row.version, acceptedAt: row.accepted_at };
 			showToast(m('settingsAccount.aiConsentUpdatedToast'), 'success');
 		} catch (e) {
-			showToast(m('settingsAccount.saveFailed', { error: (e as Error).message }), 'error');
+			showToast(m('settingsAccount.saveFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			aiConsentAccepting = false;
 		}
@@ -452,7 +453,7 @@
 			await refreshPushState();
 			showToast(m('settingsAccount.notificationsEnabled'), 'success');
 		} catch (e) {
-			showToast(m('settingsAccount.notificationsEnableFailed', { error: (e as Error).message }), 'error');
+			showToast(m('settingsAccount.notificationsEnableFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			pushBusy = false;
 		}
@@ -470,7 +471,7 @@
 			// network drop / Service Worker hiccup on disable left the
 			// user looking at a non-changing toggle with no feedback.
 			showToast(
-				m('settingsAccount.notificationsDisableFailed', { error: (e as Error).message }),
+				m('settingsAccount.notificationsDisableFailed', { error: thrownMessage(e) }),
 				'error',
 			);
 		} finally {
@@ -505,7 +506,7 @@
 		} catch (err) {
 			showToast(
 				m('settingsAccount.avatarFailed', {
-					error: err instanceof Error ? err.message : String(err),
+					error: thrownMessage(err),
 				}),
 				'error',
 			);
@@ -530,7 +531,7 @@
 		} catch (err) {
 			showToast(
 				m('settingsAccount.avatarFailed', {
-					error: err instanceof Error ? err.message : String(err),
+					error: thrownMessage(err),
 				}),
 				'error',
 			);
@@ -795,7 +796,7 @@
 			}).join('\n');
 			downloadFile(header + rows, 'runs_export.csv', 'text/csv');
 		} catch (e) {
-			showToast(m('settingsAccount.exportFailed', { error: (e as Error).message }), 'error');
+			showToast(m('settingsAccount.exportFailed', { error: thrownMessage(e) }), 'error');
 		} finally { exporting = false; }
 	}
 
@@ -822,7 +823,7 @@
 			const ts = new Date().toISOString().replace(/[:.]/g, '-');
 			downloadFile(JSON.stringify(runs, null, 2), `runs-${ts}.json`, 'application/json');
 		} catch (e) {
-			showToast(m('settingsAccount.exportFailed', { error: (e as Error).message }), 'error');
+			showToast(m('settingsAccount.exportFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			exportingJson = false;
 		}
@@ -1023,7 +1024,7 @@
 			a.href = url; a.download = `run-app-backup-${ts}.zip`;
 			document.body.appendChild(a); a.click(); a.remove();
 			URL.revokeObjectURL(url);
-		} catch (e) { showToast(m('settingsAccount.backupFailed', { error: (e as Error).message }), 'error'); }
+		} catch (e) { showToast(m('settingsAccount.backupFailed', { error: thrownMessage(e) }), 'error'); }
 		finally { backingUp = false; backupProgress = null; }
 	}
 
@@ -1043,7 +1044,7 @@
 		try {
 			const res = await restoreBackup(file, { onProgress: (p) => (restoreProgress = p) });
 			restoreResult = res;
-		} catch (err) { restoreError = (err as Error).message; }
+		} catch (err) { restoreError = thrownMessage(err); }
 		finally { restoring = false; restoreProgress = null; restoreFileInput.value = ''; }
 	}
 
@@ -1088,7 +1089,7 @@
 			if (error) throw error;
 			identities = (data?.identities ?? []) as unknown as Identity[];
 		} catch (e) {
-			identityError = m('settingsAccount.identitiesLoadFailed', { error: e instanceof Error ? e.message : String(e) });
+			identityError = m('settingsAccount.identitiesLoadFailed', { error: thrownMessage(e) });
 		} finally {
 			identitiesLoading = false;
 		}
@@ -1105,7 +1106,7 @@
 			// Successful path navigates away to the OAuth provider. If we
 			// reach here without redirect, surface a generic failure.
 		} catch (e) {
-			identityError = m('settingsAccount.linkFailed', { provider: PROVIDER_LABEL[provider], error: e instanceof Error ? e.message : String(e) });
+			identityError = m('settingsAccount.linkFailed', { provider: PROVIDER_LABEL[provider], error: thrownMessage(e) });
 			linkingProvider = null;
 		}
 	}
@@ -1148,7 +1149,7 @@
 			showToast(m('settingsAccount.unlinked', { provider: label }));
 			await loadIdentities();
 		} catch (e) {
-			identityError = m('settingsAccount.unlinkFailed', { provider: label, error: e instanceof Error ? e.message : String(e) });
+			identityError = m('settingsAccount.unlinkFailed', { provider: label, error: thrownMessage(e) });
 		} finally {
 			unlinkingProvider = null;
 		}
@@ -1170,7 +1171,7 @@
 			// Fail closed: the local session is still live because the global
 			// revocation didn't land, so keep the user here with an error to
 			// retry rather than silently pretending they were signed out.
-			showToast(m('settingsAccount.signoutEverywhereFailed', { error: (e as Error).message }), 'error');
+			showToast(m('settingsAccount.signoutEverywhereFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			signingOutEverywhere = false;
 		}
@@ -1202,7 +1203,7 @@
 			await auth.logout();
 			goto('/login');
 		} catch (e) {
-			showToast(m('settingsAccount.deleteFailed', { error: (e as Error).message }), 'error');
+			showToast(m('settingsAccount.deleteFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			deleting = false;
 		}
@@ -1226,7 +1227,7 @@
 				<span class="material-symbols" aria-hidden="true">error</span>
 				<div>
 					<strong>{m('settingsAccount.profileLoadFailed')}</strong>
-					<span class="load-error-detail">{profileLoadError}</span>
+					{#if profileLoadError}<span class="load-error-detail">{profileLoadError}</span>{/if}
 				</div>
 				<button class="btn btn-outline" type="button" onclick={() => void loadProfile()} data-testid="profile-load-retry">{m('settingsAccount.retry')}</button>
 			</div>
@@ -1685,7 +1686,7 @@
 				{#if restoreResult.warnings.length > 0}<br /><small>{m('settingsAccount.restoreWarnings', { n: restoreResult.warnings.length })}</small>{/if}
 			</p>
 		{/if}
-		{#if restoreError}<p class="error-text" role="alert">{m('settingsAccount.restoreFailed', { error: restoreError })}</p>{/if}
+		{#if restoreError !== null}<p class="error-text" role="alert">{m('settingsAccount.restoreFailed', { error: restoreError })}</p>{/if}
 	</section>
 
 	<!-- Data Export -->

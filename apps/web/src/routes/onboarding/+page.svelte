@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { TEXT_LIMITS } from '#lib/core/text_limits.ts';
 	import { onMount, tick } from 'svelte';
 	import AuthShell from '#lib/components/auth/AuthShell.svelte';
@@ -233,7 +234,7 @@
 			await subscribeToPush();
 			pushSubscribed = true;
 		} catch (e) {
-			showToast(m('onboarding.pushEnableError', { message: (e as Error).message }), 'error');
+			showToast(m('onboarding.pushEnableError', { message: thrownMessage(e) }), 'error');
 		} finally {
 			pushBusy = false;
 		}
@@ -309,7 +310,7 @@
 			await stampProfile({ onboarded_at: new Date().toISOString() });
 			navigateToDashboard();
 		} catch (e) {
-			showToast(m('onboarding.saveError', { message: (e as Error).message }), 'error');
+			showToast(m('onboarding.saveError', { message: thrownMessage(e) }), 'error');
 			saving = false;
 		}
 		// On success the navigation tears down the page; no need to
@@ -410,7 +411,7 @@
 			// /plans/new deep-link from the "create my training plan" CTA.
 			window.location.href = dest;
 		} catch (e) {
-			showToast(m('onboarding.saveError', { message: (e as Error).message }), 'error');
+			showToast(m('onboarding.saveError', { message: thrownMessage(e) }), 'error');
 			saving = false;
 		}
 		// On success the navigation tears down the page; no need to

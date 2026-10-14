@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { supabase } from '#lib/core/supabase.ts';
@@ -137,7 +138,7 @@
 				if (error) throw error;
 			} catch (e) {
 				prefs.status = 'idle';
-				showToast(m('prefs.saveFailed', { error: (e as Error).message }), 'error');
+				showToast(m('prefs.saveFailed', { error: thrownMessage(e) }), 'error');
 				return;
 			}
 		}

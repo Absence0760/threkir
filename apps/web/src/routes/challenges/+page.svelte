@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { fetchChallenges, browsePublicChallenges } from '#lib/core/data.ts';
 	import type { ChallengeWithMeta } from '#lib/types.ts';
 	import ChallengeEditor from '#lib/components/ChallengeEditor.svelte';
@@ -31,14 +32,6 @@
 	// newer search must invalidate an older response, never be refused by it.
 	let browseGen = 0;
 
-	// The data layer rethrows PostgREST's error object, which is not an Error
-	// instance at runtime, so `String(e)` rendered the reason line as the
-	// literal "[object Object]".
-	function errorText(e: unknown): string {
-		const msg = (e as { message?: unknown } | null)?.message;
-		return typeof msg === 'string' && msg.length > 0 ? msg : String(e);
-	}
-
 	// A load *failure* is kept distinct from the genuinely-empty state so a
 	// broken fetch surfaces an error + retry instead of masquerading as
 	// "you're in no challenges" (issue #357).
@@ -48,7 +41,7 @@
 			mine = await fetchChallenges({ mine: true });
 			mineAt = Date.now();
 		} catch (e) {
-			mineError = errorText(e);
+			mineError = thrownMessage(e);
 		}
 	}
 
@@ -74,7 +67,7 @@
 			if (gen !== browseGen) return;
 			// Same reasoning as `mine` above: a failed browse must not render
 			// as "no public challenges to join", which is a different fact.
-			browseError = errorText(e);
+			browseError = thrownMessage(e);
 			if (reset) browse = [];
 			browseDone = true;
 		} finally {
@@ -138,12 +131,12 @@
 
 	<section>
 		<h2>{m('challenges.myChallenges')}</h2>
-		{#if mineError}
+		{#if mineError !== null}
 			<div class="error-banner" role="alert">
 				<span class="material-symbols" aria-hidden="true">error</span>
 				<div>
 					<strong>{m('challenges.loadFailed')}</strong>
-					<span class="error-detail">{mineError}</span>
+					{#if mineError}<span class="error-detail">{mineError}</span>{/if}
 				</div>
 				<button class="btn btn-outline btn-sm" onclick={loadMine}>{m('plansPage.retry')}</button>
 			</div>
@@ -217,12 +210,12 @@
 				/>
 			</div>
 		</div>
-		{#if browseError}
+		{#if browseError !== null}
 			<div class="error-banner" role="alert">
 				<span class="material-symbols" aria-hidden="true">error</span>
 				<div>
 					<strong>{m('challenges.loadFailed')}</strong>
-					<span class="error-detail">{browseError}</span>
+					{#if browseError}<span class="error-detail">{browseError}</span>{/if}
 				</div>
 				<button class="btn btn-outline btn-sm" onclick={() => loadBrowse(true, search.trim())}>
 					{m('plansPage.retry')}

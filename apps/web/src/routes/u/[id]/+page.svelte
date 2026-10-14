@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { siteOrigin } from '#lib/core/site_url.ts';
 	import { page } from '$app/state';
 	import { handleTablistKeydown } from '#lib/util/tablist.ts';
@@ -120,7 +121,7 @@
 	let badgesError = $state<string | null>(null);
 
 	async function loadBadges() {
-		if (badgesFor === userId && !badgesError) return;
+		if (badgesFor === userId && badgesError === null) return;
 		badgesError = null;
 		try {
 			// Capture the id this request was for: a slow response must not be
@@ -131,7 +132,7 @@
 			badges = rows;
 			badgesFor = forUser;
 		} catch (e) {
-			badgesError = e instanceof Error ? e.message : String(e);
+			badgesError = thrownMessage(e);
 		}
 	}
 
@@ -207,7 +208,7 @@
 		} catch (e) {
 			// A rejected fetch would otherwise leave the profile stuck on its
 			// loading skeleton forever — surface it with a retry instead.
-			loadError = e instanceof Error ? e.message : String(e);
+			loadError = thrownMessage(e);
 		} finally {
 			loading = false;
 		}
@@ -219,7 +220,7 @@
 		try {
 			runs = await fetchPublicRunsByUser(userId, 20);
 		} catch (e) {
-			runsError = e instanceof Error ? e.message : String(e);
+			runsError = thrownMessage(e);
 		} finally {
 			runsLoading = false;
 		}
@@ -234,7 +235,7 @@
 			followersHasMore = fr.length === FOLLOW_PAGE_SIZE;
 			hydrateViewerFollows();
 		} catch (e) {
-			followersError = e instanceof Error ? e.message : String(e);
+			followersError = thrownMessage(e);
 		} finally {
 			followersLoading = false;
 		}
@@ -249,7 +250,7 @@
 			followingHasMore = fg.length === FOLLOW_PAGE_SIZE;
 			hydrateViewerFollows();
 		} catch (e) {
-			followingError = e instanceof Error ? e.message : String(e);
+			followingError = thrownMessage(e);
 		} finally {
 			followingLoading = false;
 		}
@@ -267,7 +268,7 @@
 			followersHasMore = more.length === FOLLOW_PAGE_SIZE;
 			hydrateViewerFollows();
 		} catch (e) {
-			showToast(m('profile.loadMoreFollowersError', { error: String(e) }), 'error');
+			showToast(m('profile.loadMoreFollowersError', { error: thrownMessage(e) }), 'error');
 		} finally {
 			followersLoadingMore = false;
 		}
@@ -285,7 +286,7 @@
 			followingHasMore = more.length === FOLLOW_PAGE_SIZE;
 			hydrateViewerFollows();
 		} catch (e) {
-			showToast(m('profile.loadMoreError', { error: String(e) }), 'error');
+			showToast(m('profile.loadMoreError', { error: thrownMessage(e) }), 'error');
 		} finally {
 			followingLoadingMore = false;
 		}
@@ -357,7 +358,7 @@
 			feedExhausted = feedEntries.length < 20;
 			feedEngagement = await fetchEngagementSummaries(feedEntries.map((e) => e.id));
 		} catch (e) {
-			showToast(m('profile.loadFeedError', { error: String(e) }), 'error');
+			showToast(m('profile.loadFeedError', { error: thrownMessage(e) }), 'error');
 		} finally {
 			feedLoading = false;
 			feedLoaded = true;
@@ -384,7 +385,7 @@
 			// Without this catch the explicit "load more" scroll
 			// trigger silently swallowed network errors and the user
 			// scrolled forever waiting for entries that never arrived.
-			showToast(m('profile.loadMoreError', { error: String(e) }), 'error');
+			showToast(m('profile.loadMoreError', { error: thrownMessage(e) }), 'error');
 		} finally {
 			feedLoadingMore = false;
 		}
@@ -415,7 +416,7 @@
 				});
 			}
 		} catch (e) {
-			showToast(m('profile.updateKudosError', { error: String(e) }), 'error');
+			showToast(m('profile.updateKudosError', { error: thrownMessage(e) }), 'error');
 		} finally {
 			const next = new Set(kudosBusy);
 			next.delete(runId);
@@ -444,7 +445,7 @@
 				};
 			}
 		} catch (e) {
-			showToast(m('profile.updateFollowError', { error: String(e) }), 'error');
+			showToast(m('profile.updateFollowError', { error: thrownMessage(e) }), 'error');
 		} finally {
 			busy = false;
 		}
@@ -468,7 +469,7 @@
 			};
 			showToast(m('profile.blockedToast', { name: profile.display_name ?? m('profile.thisRunner') }), 'success');
 		} catch (e) {
-			showToast(m('profile.blockError', { error: String(e) }), 'error');
+			showToast(m('profile.blockError', { error: thrownMessage(e) }), 'error');
 		} finally {
 			blockBusy = false;
 		}
@@ -482,7 +483,7 @@
 			viewerHasBlocked = false;
 			showToast(m('profile.unblockedToast', { name: profile.display_name ?? m('profile.thisRunner') }), 'success');
 		} catch (e) {
-			showToast(m('profile.unblockError', { error: String(e) }), 'error');
+			showToast(m('profile.unblockError', { error: thrownMessage(e) }), 'error');
 		} finally {
 			blockBusy = false;
 		}
@@ -521,7 +522,7 @@
 					? profile.following_count + 1
 					: Math.max(profile.following_count - 1, 0);
 			}
-			showToast(m('profile.updateFollowError', { error: String(e) }), 'error');
+			showToast(m('profile.updateFollowError', { error: thrownMessage(e) }), 'error');
 		} finally {
 			const done = new Set(rowBusy);
 			done.delete(targetId);
@@ -593,7 +594,7 @@
 		<span class="material-symbols" aria-hidden="true">error</span>
 		<div>
 			<strong>{m('profile.sectionLoadError')}</strong>
-			<span class="error-detail">{detail}</span>
+			{#if detail}<span class="error-detail">{detail}</span>{/if}
 		</div>
 		<button class="btn btn-outline" onclick={retry}>{m('profile.retry')}</button>
 	</div>
@@ -623,12 +624,12 @@
 			</div>
 		</div>
 		<p class="sr-only" role="status">{m('profile.loadingProfile')}</p>
-	{:else if loadError}
+	{:else if loadError !== null}
 		<div class="error-banner" role="alert">
 			<span class="material-symbols" aria-hidden="true">error</span>
 			<div>
 				<strong>{m('profile.loadError')}</strong>
-				<span class="error-detail">{loadError}</span>
+				{#if loadError}<span class="error-detail">{loadError}</span>{/if}
 			</div>
 			<button class="btn btn-outline" onclick={load}>{m('profile.retry')}</button>
 		</div>
@@ -797,7 +798,7 @@
 		</div>
 
 		{#if tab === 'runs'}
-			{#if runsError}
+			{#if runsError !== null}
 				{@render sectionError(runsError, loadRuns)}
 			{:else if runsLoading}
 				{@render sectionLoading()}
@@ -865,12 +866,12 @@
 				</div>
 			{/if}
 		{:else if tab === 'achievements'}
-			{#if badgesError}
+			{#if badgesError !== null}
 				<div class="error-banner" role="alert">
 					<span class="material-symbols" aria-hidden="true">error</span>
 					<div>
 						<strong>{m('badges.loadFailed')}</strong>
-						<span class="error-detail">{badgesError}</span>
+						{#if badgesError}<span class="error-detail">{badgesError}</span>{/if}
 					</div>
 					<button class="btn btn-outline" onclick={loadBadges}>{m('profile.retry')}</button>
 				</div>
@@ -883,7 +884,7 @@
 				/>
 			{/if}
 		{:else if tab === 'followers'}
-			{#if followersError}
+			{#if followersError !== null}
 				{@render sectionError(followersError, loadFollowers)}
 			{:else if followersLoading}
 				{@render sectionLoading()}
@@ -945,7 +946,7 @@
 				{/if}
 			{/if}
 		{:else if tab === 'following'}
-			{#if followingError}
+			{#if followingError !== null}
 				{@render sectionError(followingError, loadFollowing)}
 			{:else if followingLoading}
 				{@render sectionLoading()}

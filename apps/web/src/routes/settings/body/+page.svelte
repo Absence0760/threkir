@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { supabase } from '#lib/core/supabase.ts';
 	import { effective, updateUniversal } from '#lib/settings/settings.ts';
@@ -219,7 +220,7 @@
 			showToast(m('prefs.demographicsSavedToast'), 'success');
 			setTimeout(() => (demographicsSaved = false), 2000);
 		} catch (e) {
-			showToast(m('prefs.saveFailed', { error: (e as Error).message }), 'error');
+			showToast(m('prefs.saveFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			savingDemographics = false;
 		}

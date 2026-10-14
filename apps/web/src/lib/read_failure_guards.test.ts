@@ -262,7 +262,7 @@ test('/gym/routines/[id] re-enters the loading state when Retry runs', () => {
 	);
 	assert.match(
 		source,
-		/\{:else if loadError\}[\s\S]*?\{:else if !detail\}/,
+		/\{:else if loadError !== null\}[\s\S]*?\{:else if !detail\}/,
 		'the failure branch must be tested before the not-found branch',
 	);
 });

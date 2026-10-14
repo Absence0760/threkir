@@ -12756,11 +12756,21 @@ class AppLocalizationsPt extends AppLocalizations {
       'Insira o seu número de peito para importarmos apenas o seu resultado, não a lista inteira.';
 
   @override
-  String get racesUltraSignUpAthleteId => 'ID de atleta do UltraSignup';
+  String racesUltraSignUpImportingAs(String name, String id) {
+    return 'A importar como $name (UltraSignup #$id)';
+  }
 
   @override
-  String get racesUltraSignUpAthleteHint =>
-      'Insira o seu ID de atleta do UltraSignup ou deixe em branco para usar o desta corrida.';
+  String get racesUltraSignUpLinkedHint =>
+      'Só é trazido o seu resultado desta prova, confirmado pelo ID de prova e pela data do próprio UltraSignup.';
+
+  @override
+  String get racesUltraSignUpNotLinked =>
+      'Associe primeiro o seu perfil do UltraSignup e depois importe a partir daqui.';
+
+  @override
+  String get racesUltraSignUpPersonNotFound =>
+      'O UltraSignup já não lista o seu perfil associado com esse nome. Associe-o novamente nas Definições.';
 
   @override
   String get racesPasteResultHint =>
@@ -12833,7 +12843,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get integrationsUltrasignupInfo =>
-      'O UltraSignup trata de inscrições e resultados de provas de trilho e ultra. Encontre a sua prova no calendário e indique o seu ID de atleta do UltraSignup para trazer os seus tempos de chegada.';
+      'O UltraSignup trata de inscrições e resultados de provas de trilho e ultra. Associe aqui o seu perfil do UltraSignup uma vez e depois importe o resultado de uma prova a partir do calendário.';
 
   @override
   String get integrationsChronotrackInfo =>
@@ -12856,6 +12866,80 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get integrationsUltrasignupUnavailable =>
       'A importação do UltraSignup ainda não está disponível. O parkrun e a colagem manual continuam a funcionar.';
+
+  @override
+  String get integrationsUltrasignupFindLabel =>
+      'Encontrar o seu perfil do UltraSignup';
+
+  @override
+  String get integrationsUltrasignupFirstName => 'Nome próprio';
+
+  @override
+  String get integrationsUltrasignupLastName => 'Apelido';
+
+  @override
+  String get integrationsUltrasignupNameHint =>
+      'Use o nome com que se inscreve nas provas. O UltraSignup lista todas as pessoas com esse nome e escolhe qual delas é a sua.';
+
+  @override
+  String get integrationsUltrasignupFind => 'Encontrar-me';
+
+  @override
+  String get integrationsUltrasignupSearching => 'A pesquisar no UltraSignup…';
+
+  @override
+  String get integrationsUltrasignupNoMatches =>
+      'O UltraSignup não tem ninguém com esse nome. Confirme a grafia que usa nas inscrições.';
+
+  @override
+  String get integrationsUltrasignupPickPrompt => 'Qual destes perfis é o seu?';
+
+  @override
+  String integrationsUltrasignupCandidateAge(int age) {
+    return '$age anos';
+  }
+
+  @override
+  String integrationsUltrasignupCandidateResults(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n resultados',
+      one: '$n resultado',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get integrationsUltrasignupThisIsMe => 'Sou eu';
+
+  @override
+  String integrationsUltrasignupLinkedAs(String name, String id) {
+    return 'Associado como $name (UltraSignup #$id)';
+  }
+
+  @override
+  String get integrationsUltrasignupUnlink => 'Desassociar';
+
+  @override
+  String get integrationsUltrasignupLinked =>
+      'Perfil do UltraSignup associado.';
+
+  @override
+  String get integrationsUltrasignupLinkFailed =>
+      'Não foi possível associar o seu perfil do UltraSignup. Tente novamente.';
+
+  @override
+  String get integrationsUltrasignupLookupFailed =>
+      'Não foi possível pesquisar no UltraSignup. Tente novamente dentro de momentos.';
+
+  @override
+  String get integrationsUltrasignupUnlinked =>
+      'Perfil do UltraSignup desassociado. As corridas que já importou mantêm-se.';
+
+  @override
+  String get integrationsUltrasignupUnlinkFailed =>
+      'Não foi possível desassociar o seu perfil do UltraSignup. Tente novamente.';
 
   @override
   String get integrationsChronotrack => 'ChronoTrack';
@@ -28061,11 +28145,21 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Insira seu número de peito para importarmos apenas o seu resultado, não a lista inteira.';
 
   @override
-  String get racesUltraSignUpAthleteId => 'ID de atleta do UltraSignup';
+  String racesUltraSignUpImportingAs(String name, String id) {
+    return 'Importando como $name (UltraSignup #$id)';
+  }
 
   @override
-  String get racesUltraSignUpAthleteHint =>
-      'Insira seu ID de atleta do UltraSignup ou deixe em branco para usar o desta corrida.';
+  String get racesUltraSignUpLinkedHint =>
+      'Só o seu resultado desta corrida é trazido, conferido pelo ID de corrida e pela data do próprio UltraSignup.';
+
+  @override
+  String get racesUltraSignUpNotLinked =>
+      'Vincule primeiro o seu perfil do UltraSignup e depois importe por aqui.';
+
+  @override
+  String get racesUltraSignUpPersonNotFound =>
+      'O UltraSignup não lista mais o seu perfil vinculado com esse nome. Vincule de novo em Configurações.';
 
   @override
   String get racesPasteResultHint =>
@@ -28138,7 +28232,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get integrationsUltrasignupInfo =>
-      'O UltraSignup cuida de inscrições e resultados de corridas de trail e ultra. Encontre sua corrida no calendário e informe seu ID de atleta do UltraSignup para trazer seus tempos de chegada.';
+      'O UltraSignup cuida de inscrições e resultados de corridas de trail e ultra. Vincule aqui o seu perfil do UltraSignup uma vez e depois importe o resultado de uma corrida pelo calendário.';
 
   @override
   String get integrationsChronotrackInfo =>
@@ -28161,6 +28255,80 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get integrationsUltrasignupUnavailable =>
       'A importação do UltraSignup ainda não está disponível. O parkrun e a colagem manual continuam funcionando.';
+
+  @override
+  String get integrationsUltrasignupFindLabel =>
+      'Encontre o seu perfil do UltraSignup';
+
+  @override
+  String get integrationsUltrasignupFirstName => 'Nome';
+
+  @override
+  String get integrationsUltrasignupLastName => 'Sobrenome';
+
+  @override
+  String get integrationsUltrasignupNameHint =>
+      'Use o nome com que você se inscreve nas corridas. O UltraSignup lista todas as pessoas com esse nome e você escolhe qual é você.';
+
+  @override
+  String get integrationsUltrasignupFind => 'Encontrar';
+
+  @override
+  String get integrationsUltrasignupSearching => 'Buscando no UltraSignup…';
+
+  @override
+  String get integrationsUltrasignupNoMatches =>
+      'O UltraSignup não tem ninguém com esse nome. Confira a grafia que você usa nas inscrições.';
+
+  @override
+  String get integrationsUltrasignupPickPrompt => 'Qual destas pessoas é você?';
+
+  @override
+  String integrationsUltrasignupCandidateAge(int age) {
+    return '$age anos';
+  }
+
+  @override
+  String integrationsUltrasignupCandidateResults(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n resultados',
+      one: '$n resultado',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get integrationsUltrasignupThisIsMe => 'Sou eu';
+
+  @override
+  String integrationsUltrasignupLinkedAs(String name, String id) {
+    return 'Vinculado como $name (UltraSignup #$id)';
+  }
+
+  @override
+  String get integrationsUltrasignupUnlink => 'Desvincular';
+
+  @override
+  String get integrationsUltrasignupLinked =>
+      'Perfil do UltraSignup vinculado.';
+
+  @override
+  String get integrationsUltrasignupLinkFailed =>
+      'Não foi possível vincular o seu perfil do UltraSignup. Tente de novo.';
+
+  @override
+  String get integrationsUltrasignupLookupFailed =>
+      'Não foi possível buscar no UltraSignup. Tente de novo em instantes.';
+
+  @override
+  String get integrationsUltrasignupUnlinked =>
+      'Perfil do UltraSignup desvinculado. As corridas que você já importou continuam.';
+
+  @override
+  String get integrationsUltrasignupUnlinkFailed =>
+      'Não foi possível desvincular o seu perfil do UltraSignup. Tente de novo.';
 
   @override
   String get integrationsChronotrack => 'ChronoTrack';

@@ -12765,11 +12765,21 @@ class AppLocalizationsDe extends AppLocalizations {
       'Gib deine Startnummer ein, damit wir nur dein Ergebnis importieren, nicht das ganze Feld.';
 
   @override
-  String get racesUltraSignUpAthleteId => 'UltraSignup-Athleten-ID';
+  String racesUltraSignUpImportingAs(String name, String id) {
+    return 'Import als $name (UltraSignup #$id)';
+  }
 
   @override
-  String get racesUltraSignUpAthleteHint =>
-      'Gib deine UltraSignup-Athleten-ID ein oder lass das Feld leer, um die des Eintrags zu verwenden.';
+  String get racesUltraSignUpLinkedHint =>
+      'Übernommen wird nur dein Ergebnis für diesen Lauf, abgeglichen über UltraSignups eigene Lauf-ID und das Datum.';
+
+  @override
+  String get racesUltraSignUpNotLinked =>
+      'Verknüpfe zuerst dein UltraSignup-Profil und importiere dann hier.';
+
+  @override
+  String get racesUltraSignUpPersonNotFound =>
+      'UltraSignup führt dein verknüpftes Profil unter diesem Namen nicht mehr. Verknüpfe es in den Einstellungen neu.';
 
   @override
   String get racesPasteResultHint =>
@@ -12842,7 +12852,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get integrationsUltrasignupInfo =>
-      'UltraSignup verwaltet Anmeldungen und Ergebnisse für Trail- und Ultraläufe. Such deinen Lauf im Rennkalender und gib deine UltraSignup-Athleten-ID an, um deine Zielzeiten zu übernehmen.';
+      'UltraSignup verwaltet Anmeldungen und Ergebnisse für Trail- und Ultraläufe. Verknüpfe hier einmal dein UltraSignup-Profil und importiere dann das Ergebnis eines Laufs aus dem Rennkalender.';
 
   @override
   String get integrationsChronotrackInfo =>
@@ -12865,6 +12875,79 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get integrationsUltrasignupUnavailable =>
       'UltraSignup-Import ist noch nicht verfügbar. parkrun und manuelles Einfügen funktionieren weiterhin.';
+
+  @override
+  String get integrationsUltrasignupFindLabel =>
+      'Dein UltraSignup-Profil finden';
+
+  @override
+  String get integrationsUltrasignupFirstName => 'Vorname';
+
+  @override
+  String get integrationsUltrasignupLastName => 'Nachname';
+
+  @override
+  String get integrationsUltrasignupNameHint =>
+      'Nimm den Namen, unter dem du dich zu Läufen anmeldest. UltraSignup listet alle mit diesem Namen auf, und du wählst aus, wer du bist.';
+
+  @override
+  String get integrationsUltrasignupFind => 'Mich finden';
+
+  @override
+  String get integrationsUltrasignupSearching => 'UltraSignup wird durchsucht…';
+
+  @override
+  String get integrationsUltrasignupNoMatches =>
+      'Bei UltraSignup gibt es niemanden mit diesem Namen. Prüf die Schreibweise, unter der du läufst.';
+
+  @override
+  String get integrationsUltrasignupPickPrompt => 'Wer davon bist du?';
+
+  @override
+  String integrationsUltrasignupCandidateAge(int age) {
+    return 'Alter $age';
+  }
+
+  @override
+  String integrationsUltrasignupCandidateResults(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n Ergebnisse',
+      one: '$n Ergebnis',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get integrationsUltrasignupThisIsMe => 'Das bin ich';
+
+  @override
+  String integrationsUltrasignupLinkedAs(String name, String id) {
+    return 'Verknüpft als $name (UltraSignup #$id)';
+  }
+
+  @override
+  String get integrationsUltrasignupUnlink => 'Verknüpfung lösen';
+
+  @override
+  String get integrationsUltrasignupLinked => 'UltraSignup-Profil verknüpft.';
+
+  @override
+  String get integrationsUltrasignupLinkFailed =>
+      'Dein UltraSignup-Profil konnte nicht verknüpft werden. Versuch es noch einmal.';
+
+  @override
+  String get integrationsUltrasignupLookupFailed =>
+      'UltraSignup konnte nicht durchsucht werden. Versuch es gleich noch einmal.';
+
+  @override
+  String get integrationsUltrasignupUnlinked =>
+      'UltraSignup-Profil getrennt. Bereits importierte Läufe bleiben erhalten.';
+
+  @override
+  String get integrationsUltrasignupUnlinkFailed =>
+      'Die Verknüpfung mit UltraSignup konnte nicht gelöst werden. Versuch es noch einmal.';
 
   @override
   String get integrationsChronotrack => 'ChronoTrack';

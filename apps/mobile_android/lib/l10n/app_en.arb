@@ -16603,13 +16603,29 @@
   "@racesRunSignUpBibHint": {
     "description": "Hint above the RunSignUp import action requiring a bib to scope the import"
   },
-  "racesUltraSignUpAthleteId": "UltraSignup athlete ID",
-  "@racesUltraSignUpAthleteId": {
-    "description": "Label for the UltraSignup athlete-id field in the race import sheet"
+  "racesUltraSignUpImportingAs": "Importing as {name} (UltraSignup #{id})",
+  "@racesUltraSignUpImportingAs": {
+    "description": "Line in the race import sheet naming the UltraSignup person the import will use",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "id": {
+        "type": "String"
+      }
+    }
   },
-  "racesUltraSignUpAthleteHint": "Enter your UltraSignup athlete ID, or leave it blank to use the one this listing carries.",
-  "@racesUltraSignUpAthleteHint": {
-    "description": "Hint above the UltraSignup import action explaining the optional athlete id"
+  "racesUltraSignUpLinkedHint": "Only your result for this race comes across, matched on UltraSignup's own race id and date.",
+  "@racesUltraSignUpLinkedHint": {
+    "description": "Hint under the UltraSignup importing-as line: only this race's result is imported"
+  },
+  "racesUltraSignUpNotLinked": "Link your UltraSignup profile first, then import from here.",
+  "@racesUltraSignUpNotLinked": {
+    "description": "Race import sheet, UltraSignup listing, when the runner has not linked an UltraSignup person; the find action sits beside it"
+  },
+  "racesUltraSignUpPersonNotFound": "UltraSignup no longer lists your linked profile under that name. Link it again in Settings.",
+  "@racesUltraSignUpPersonNotFound": {
+    "description": "Banner when the import could not find the linked UltraSignup person under their name any more"
   },
   "racesPasteResultHint": "Enter your finishing details from the race's results page.",
   "@racesPasteResultHint": {
@@ -16696,7 +16712,7 @@
   "@integrationsRunsignupInfo": {
     "description": "Info-tip body for the RunSignUp tile: what RunSignUp is and how to import a result"
   },
-  "integrationsUltrasignupInfo": "UltraSignup handles entries and results for trail and ultra races. Find your race in the race calendar and give your UltraSignup athlete ID to pull your finishing times across.",
+  "integrationsUltrasignupInfo": "UltraSignup handles entries and results for trail and ultra races. Link your UltraSignup profile here once, then import a race's result from the race calendar.",
   "@integrationsUltrasignupInfo": {
     "description": "Info-tip body for the UltraSignup tile: what UltraSignup is and how to import a result"
   },
@@ -16723,6 +16739,96 @@
   "integrationsUltrasignupUnavailable": "UltraSignup import isn't available yet. parkrun and manual paste still work.",
   "@integrationsUltrasignupUnavailable": {
     "description": "Explainer when the UltraSignup key is unconfigured"
+  },
+  "integrationsUltrasignupFindLabel": "Find your UltraSignup profile",
+  "@integrationsUltrasignupFindLabel": {
+    "description": "Heading of the UltraSignup person finder, and the action that opens it"
+  },
+  "integrationsUltrasignupFirstName": "First name",
+  "@integrationsUltrasignupFirstName": {
+    "description": "First-name field in the UltraSignup person finder"
+  },
+  "integrationsUltrasignupLastName": "Last name",
+  "@integrationsUltrasignupLastName": {
+    "description": "Last-name field in the UltraSignup person finder"
+  },
+  "integrationsUltrasignupNameHint": "Use the name you enter races under. UltraSignup lists everyone with that name, and you pick which one is you.",
+  "@integrationsUltrasignupNameHint": {
+    "description": "Hint under the UltraSignup person finder heading"
+  },
+  "integrationsUltrasignupFind": "Find me",
+  "@integrationsUltrasignupFind": {
+    "description": "Button that looks the typed name up on UltraSignup"
+  },
+  "integrationsUltrasignupSearching": "Searching UltraSignup…",
+  "@integrationsUltrasignupSearching": {
+    "description": "Find button label while the UltraSignup lookup runs"
+  },
+  "integrationsUltrasignupNoMatches": "UltraSignup has nobody by that name. Check the spelling you race under.",
+  "@integrationsUltrasignupNoMatches": {
+    "description": "Shown when UltraSignup knows nobody by the typed name"
+  },
+  "integrationsUltrasignupPickPrompt": "Which of these is you?",
+  "@integrationsUltrasignupPickPrompt": {
+    "description": "Prompt above the list of UltraSignup people matching the name"
+  },
+  "integrationsUltrasignupCandidateAge": "Age {age}",
+  "@integrationsUltrasignupCandidateAge": {
+    "description": "An UltraSignup candidate's age",
+    "placeholders": {
+      "age": {
+        "type": "int"
+      }
+    }
+  },
+  "integrationsUltrasignupCandidateResults": "{n, plural, one{{n} result} other{{n} results}}",
+  "@integrationsUltrasignupCandidateResults": {
+    "description": "How many results UltraSignup holds for a candidate",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "integrationsUltrasignupThisIsMe": "This is me",
+  "@integrationsUltrasignupThisIsMe": {
+    "description": "Button that links the runner to one UltraSignup candidate"
+  },
+  "integrationsUltrasignupLinkedAs": "Linked as {name} (UltraSignup #{id})",
+  "@integrationsUltrasignupLinkedAs": {
+    "description": "The UltraSignup person the runner has linked",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "integrationsUltrasignupUnlink": "Unlink",
+  "@integrationsUltrasignupUnlink": {
+    "description": "Button that forgets the linked UltraSignup person"
+  },
+  "integrationsUltrasignupLinked": "UltraSignup profile linked.",
+  "@integrationsUltrasignupLinked": {
+    "description": "Banner after an UltraSignup person was linked"
+  },
+  "integrationsUltrasignupLinkFailed": "Couldn't link your UltraSignup profile. Try again.",
+  "@integrationsUltrasignupLinkFailed": {
+    "description": "Banner when storing the UltraSignup person failed"
+  },
+  "integrationsUltrasignupLookupFailed": "Couldn't search UltraSignup. Try again in a moment.",
+  "@integrationsUltrasignupLookupFailed": {
+    "description": "Banner when the UltraSignup name lookup failed"
+  },
+  "integrationsUltrasignupUnlinked": "UltraSignup profile unlinked. Runs you already imported stay.",
+  "@integrationsUltrasignupUnlinked": {
+    "description": "Undo-bar message after the UltraSignup person was unlinked"
+  },
+  "integrationsUltrasignupUnlinkFailed": "Couldn't unlink your UltraSignup profile. Try again.",
+  "@integrationsUltrasignupUnlinkFailed": {
+    "description": "Banner when unlinking the UltraSignup person failed"
   },
   "integrationsChronotrack": "ChronoTrack",
   "@integrationsChronotrack": {

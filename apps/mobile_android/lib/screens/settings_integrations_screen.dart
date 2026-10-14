@@ -26,6 +26,7 @@ import '../strava.dart';
 import '../widgets/help_button.dart';
 import '../widgets/info_tip.dart';
 import '../widgets/top_banner.dart';
+import '../widgets/ultrasignup_link.dart';
 import 'races_screen.dart';
 import 'watch_live_screen.dart';
 
@@ -617,7 +618,7 @@ class _SettingsIntegrationsScreenState
               // import (§ 488 amendment).
               for (final spec in raceImportProviders)
                 if (_verdicts[spec.provider] ?? false)
-                  if (raceProviderLabels(l10n)[spec.provider] case final p?)
+                  if (raceProviderLabels(l10n)[spec.provider] case final p?) ...[
                     ListTile(
                       isThreeLine: true,
                       leading: Icon(p.icon),
@@ -633,6 +634,13 @@ class _SettingsIntegrationsScreenState
                       trailing: const Icon(Icons.chevron_right),
                       onTap: _openRaces,
                     ),
+                    // A person-scoped leg imports for whoever the runner says
+                    // they are there, once, here — every race's import then
+                    // uses it (decisions § 1841). Under the provider's own
+                    // tile, so it goes dark with that tile's probe.
+                    if (spec.scope == RaceImportScope.linkedPerson)
+                      UltraSignUpLinkTile(service: _raceService),
+                  ],
             ] else
               ListTile(
                 leading: const Icon(Icons.lock_outline),

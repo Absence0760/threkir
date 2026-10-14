@@ -1,4 +1,5 @@
 import adapter from "@sveltejs/adapter-static";
+import { sentrySvelteKit } from "@sentry/sveltekit/vite";
 import { sveltekit } from "@sveltejs/kit/vite";
 import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
 import { mdsvex } from "mdsvex";
@@ -34,6 +35,13 @@ function envIsolationGuard(): Plugin {
 
 export default defineConfig({
 	plugins: [
+		// Must precede sveltekit(). Without it @sentry/sveltekit's tracing
+		// falls back to its Svelte 4 variant, which subscribes to
+		// `$app/stores` -- a stub that throws on Kit 3 -- so accepting
+		// error-reporting consent blanked every page (decisions § 1896).
+		// Load-function wrapping and source-map upload stay off: this is
+		// here only for the variant resolver.
+		sentrySvelteKit({ autoInstrument: false, autoUploadSourceMaps: false }),
 		envIsolationGuard(),
 		// Splits each locale catalogue into core + per-area chunks (decisions § 1802).
 		i18nAreaCatalogues({ srcDir: fileURLToPath(new URL("./src", import.meta.url)) }),

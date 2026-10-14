@@ -25,6 +25,11 @@ export const guide: Guide = {
 						'You always see your own full track, and files you export for yourself keep the full track too.',
 					],
 				},
+				{
+					type: 'illustration',
+					id: 'privacy-zones',
+					alt: 'A route line starts at a house inside a circle. The part inside the circle is hidden from other people, so the line they see begins at the circle\'s edge.',
+				},
 			],
 		},
 		{

@@ -4909,6 +4909,60 @@ class AppLocalizationsJa extends AppLocalizations {
   String get eventNoRecentRuns => '最近のランが見つかりません。先にランを記録してから戻ってください。';
 
   @override
+  String get eventAddOccurrencePhoto => 'イベント写真を追加';
+
+  @override
+  String get eventAddPhotoFromRun => '自分のランから追加';
+
+  @override
+  String get eventNoRunsInPhotoWindow =>
+      'このイベント中に開始したランがありません。写真は、開始の2時間前から開始後24時間以内に始まったランに追加できます。';
+
+  @override
+  String eventPhotoRunsLoadFailed(String error) {
+    return 'ランを読み込めませんでした: $error';
+  }
+
+  @override
+  String get eventPhotosLoadFailed => '写真を読み込めませんでした。';
+
+  @override
+  String get eventPhotosRetry => '写真を再読み込み';
+
+  @override
+  String get eventPhotoHiddenBadge => '非表示';
+
+  @override
+  String get eventPhotoHide => '非表示にする';
+
+  @override
+  String eventPhotoHideLabel(String name) {
+    return '$nameさんの写真を非表示にする';
+  }
+
+  @override
+  String get eventPhotoRestore => '再表示';
+
+  @override
+  String get eventPhotoDelete => '削除';
+
+  @override
+  String get eventPhotoHidden => '写真をイベントから非表示にしました';
+
+  @override
+  String eventPhotoModerateFailed(String error) {
+    return '写真を更新できませんでした: $error';
+  }
+
+  @override
+  String get eventPhotoDeleted => '写真を削除しました';
+
+  @override
+  String eventPhotoDeleteFailed(String error) {
+    return '写真を削除できませんでした: $error';
+  }
+
+  @override
   String get eventPhotoRunnerFallback => 'ランナー';
 
   @override
@@ -6776,6 +6830,58 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get integrationsParkrunFieldLabel => 'アスリート番号';
+
+  @override
+  String get parkrunBarcodeTitle => 'parkrunバーコード';
+
+  @override
+  String get parkrunBarcodeTileSubtitle => 'フィニッシュで提示できます（オフラインでも）。';
+
+  @override
+  String parkrunBarcodeSemantics(String number) {
+    return 'アスリート番号$numberのparkrunバーコード';
+  }
+
+  @override
+  String get parkrunBarcodeHint => 'フィニッシュで提示し、フィニッシュトークンと一緒にスキャンしてもらいます。';
+
+  @override
+  String get parkrunBarcodePaperNote =>
+      'parkrunは画面上のバーコードを公式にはサポートしていません。スキャナーで読み取れない場合に備えて、印刷したものもお持ちください。';
+
+  @override
+  String get parkrunBarcodeEmpty => 'parkrunのアスリート番号を追加すると、ここにバーコードが表示されます。';
+
+  @override
+  String get parkrunBarcodeInvalid =>
+      '保存されているアスリート番号がparkrunの形式（Aに続く数字）ではないため、バーコードとして表示できません。';
+
+  @override
+  String get parkrunBarcodeAdd => 'アスリート番号を追加';
+
+  @override
+  String get parkrunBarcodeEdit => 'アスリート番号を変更';
+
+  @override
+  String get parkrunBarcodeSave => '保存';
+
+  @override
+  String parkrunBarcodeSaveFailed(String error) {
+    return 'アスリート番号を保存できませんでした: $error';
+  }
+
+  @override
+  String get parkrunBarcodeFieldInvalid => 'Aに続けて数字を入力してください（例：A123456）。';
+
+  @override
+  String get parkrunBarcodeLoadFailed =>
+      'アスリート番号を読み込めませんでした。接続を確認して、もう一度お試しください。';
+
+  @override
+  String get parkrunBarcodeRetry => '再試行';
+
+  @override
+  String get parkrunBarcodeOfflineCopy => 'この端末に保存されたコピーを表示しています。';
 
   @override
   String get integrationsImport => 'インポート';
@@ -14693,4 +14799,25 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get logMoreTodaysWorkout => '今日のワークアウトを開始';
+
+  @override
+  String get runnerMenuFollowRoute => 'ルートをたどる';
+
+  @override
+  String get runnerMenuAllRoutes => 'すべてのルート…';
+
+  @override
+  String runnerMenuFollowRouteNamed(String name) {
+    return '$nameをたどる';
+  }
+
+  @override
+  String runnerMenuWorkoutSteps(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countステップ',
+    );
+    return '$_temp0';
+  }
 }

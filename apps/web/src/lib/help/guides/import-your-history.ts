@@ -25,6 +25,11 @@ export const guide: Guide = {
 					type: 'p',
 					text: 'Select **Sync now** to pull again. On the web, **How far back to sync** reaches up to a year back.',
 				},
+				{
+					type: 'illustration',
+					id: 'import-your-history',
+					alt: 'Runs from a watch, a connected account and a file all flow into one list of runs.',
+				},
 			],
 		},
 		{

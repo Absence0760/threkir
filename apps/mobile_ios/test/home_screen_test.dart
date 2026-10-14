@@ -1373,8 +1373,8 @@ void main() {
       expect(_inMenu('Add past run'), findsOneWidget);
       expect(_inMenu("Start today's workout"), findsNothing,
           reason: 'no plan, so no workout row to dead-end on');
-      expect(_inMenu('Choose route'), findsNothing,
-          reason: 'no saved route, so no picker with nothing in it');
+      expect(_inMenu('Follow a route'), findsNothing,
+          reason: 'no saved route, so no route section with nothing in it');
       expect(_inMenu('Log food'), findsNothing);
       expect(_inMenu('Log lift'), findsNothing);
       expect(find.byTooltip('Log run'), findsNothing, reason: 'not the fan');
@@ -1431,32 +1431,62 @@ void main() {
       tester.takeException();
     });
 
-    testWidgets('Choose route picks a saved route and starts the recorder '
-        'on it', (tester) async {
-      final s = await _makeStores();
+    Future<void> seedRoutes(WidgetTester tester, dynamic s, int n) async {
       await tester.runAsync(() async {
         await s.routeStore.init(
             overrideDirectory:
                 Directory.systemTemp.createTempSync('home_route_store_'));
-        await s.routeStore.save(cm.Route(
-          id: 'route-1',
-          userId: 'u1',
-          name: 'Park loop',
-          waypoints: const [
-            cm.Waypoint(lat: 47.37, lng: 8.54),
-            cm.Waypoint(lat: 47.371, lng: 8.541),
-          ],
-          distanceMetres: 5000,
-          isPublic: false,
-          isStarred: false,
-        ));
+        for (var i = 1; i <= n; i++) {
+          await s.routeStore.save(cm.Route(
+            id: 'route-$i',
+            userId: 'u1',
+            name: i == 1 ? 'Park loop' : 'Route $i',
+            waypoints: const [
+              cm.Waypoint(lat: 47.37, lng: 8.54),
+              cm.Waypoint(lat: 47.371, lng: 8.541),
+            ],
+            distanceMetres: 5000,
+            isPublic: false,
+            isStarred: false,
+            createdAt: DateTime(2026, 10, i),
+          ));
+        }
       });
+    }
+
+    testWidgets('a saved route sits in the menu and one tap starts the '
+        'recorder on it', (tester) async {
+      final s = await _makeStores();
+      await seedRoutes(tester, s, 1);
       await _pump(tester, s);
 
       await tester.longPress(find.byType(FloatingActionButton));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
-      await tester.tap(_inMenu('Choose route'));
+      expect(_inMenu('All routes…'), findsNothing,
+          reason: 'the one route is already inline');
+      await tester.tap(_inMenu('Park loop'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byType(RoutePickerScreen), findsNothing,
+          reason: 'an inline route needs no second picker');
+      expect(shellPage(tester), 2, reason: 'the recorder opens on the route');
+      tester.takeException();
+    });
+
+    testWidgets('All routes opens the picker, which starts the recorder on '
+        'the pick', (tester) async {
+      final s = await _makeStores();
+      await seedRoutes(tester, s, 4);
+      await _pump(tester, s);
+
+      await tester.longPress(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(_inMenu('Park loop'), findsNothing,
+          reason: 'the oldest of four routes is past the three inline');
+      await tester.tap(_inMenu('All routes…'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.byType(RoutePickerScreen), findsOneWidget);
@@ -1565,6 +1595,28 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.byType(GymScreen), findsOneWidget);
+      expect(shellPage(tester), 1);
+    });
+
+    testWidgets('with the preference on, Log food in the long-press menu '
+        'lands on the Nutrition dwell-in page', (tester) async {
+      final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
+      await s.prefs.setShowNutrition(true);
+      await s.prefs.setKeepRunPrimary(true);
+      await _pump(tester, s);
+
+      await tester.longPress(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(_inMenu('Log food'), findsOneWidget);
+
+      await tester.tap(_inMenu('Log food'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.text('Nutrition'), findsNWidgets(2));
+      expect(find.byType(NutritionScreen), findsOneWidget);
+      expect(find.byType(BottomAppBar), findsOneWidget);
       expect(shellPage(tester), 1);
     });
   });

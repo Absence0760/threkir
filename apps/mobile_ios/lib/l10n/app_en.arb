@@ -6950,6 +6950,86 @@
   "@eventNoRecentRuns": {
     "description": "Empty state in the submit-time sheet"
   },
+  "eventAddOccurrencePhoto": "Add event photo",
+  "@eventAddOccurrencePhoto": {
+    "description": "Steward-only button: post a photo of this event occurrence with no run"
+  },
+  "eventAddPhotoFromRun": "Add from my run",
+  "@eventAddPhotoFromRun": {
+    "description": "Add-photo button label when the viewer can also post a run-less event photo"
+  },
+  "eventNoRunsInPhotoWindow": "None of your runs started during this event. Photos attach to a run that started up to 2 hours before and within 24 hours after the start.",
+  "@eventNoRunsInPhotoWindow": {
+    "description": "Empty state of the event photo run picker: no run started inside the occurrence's photo window"
+  },
+  "eventPhotoRunsLoadFailed": "Couldn't load your runs: {error}",
+  "@eventPhotoRunsLoadFailed": {
+    "description": "Banner when the event photo run picker fails to load the viewer's runs",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "eventPhotosLoadFailed": "Couldn't load the photos.",
+  "@eventPhotosLoadFailed": {
+    "description": "Event gallery error state when the photos fail to load"
+  },
+  "eventPhotosRetry": "Reload photos",
+  "@eventPhotosRetry": {
+    "description": "Retry button on the event gallery error state"
+  },
+  "eventPhotoHiddenBadge": "Hidden",
+  "@eventPhotoHiddenBadge": {
+    "description": "Badge on a photo a steward hid from the event gallery (visible to stewards and the owner only)"
+  },
+  "eventPhotoHide": "Hide",
+  "@eventPhotoHide": {
+    "description": "Steward action: hide a photo from the event gallery"
+  },
+  "eventPhotoHideLabel": "Hide photo by {name}",
+  "@eventPhotoHideLabel": {
+    "description": "Accessibility label for the hide action, naming the photo's uploader",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "eventPhotoRestore": "Restore",
+  "@eventPhotoRestore": {
+    "description": "Steward action: put a hidden photo back in the event gallery"
+  },
+  "eventPhotoDelete": "Delete",
+  "@eventPhotoDelete": {
+    "description": "Owner action: delete your own photo from the event gallery"
+  },
+  "eventPhotoHidden": "Photo hidden from the event",
+  "@eventPhotoHidden": {
+    "description": "Undo bar message after a steward hides a photo"
+  },
+  "eventPhotoModerateFailed": "Couldn't update the photo: {error}",
+  "@eventPhotoModerateFailed": {
+    "description": "Banner when hiding or restoring an event photo fails",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "eventPhotoDeleted": "Photo deleted",
+  "@eventPhotoDeleted": {
+    "description": "Undo bar message after deleting your own event photo"
+  },
+  "eventPhotoDeleteFailed": "Couldn't delete the photo: {error}",
+  "@eventPhotoDeleteFailed": {
+    "description": "Banner when deleting your own event photo fails",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "eventPhotoRunnerFallback": "A runner",
   "@eventPhotoRunnerFallback": {
     "description": "Fallback uploader name on an event photo"
@@ -9471,6 +9551,76 @@
   "integrationsParkrunFieldLabel": "Athlete number",
   "@integrationsParkrunFieldLabel": {
     "description": "Label for the parkrun athlete-number field"
+  },
+  "parkrunBarcodeTitle": "parkrun barcode",
+  "@parkrunBarcodeTitle": {
+    "description": "Title of the parkrun barcode screen and its entry tiles"
+  },
+  "parkrunBarcodeTileSubtitle": "Show it at the finish, even offline.",
+  "@parkrunBarcodeTileSubtitle": {
+    "description": "Subtitle of the integrations tile that opens the parkrun barcode"
+  },
+  "parkrunBarcodeSemantics": "parkrun barcode for athlete number {number}",
+  "@parkrunBarcodeSemantics": {
+    "description": "Screen-reader label for the drawn barcode",
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "parkrunBarcodeHint": "Show this at the finish so it can be scanned with your finish token.",
+  "@parkrunBarcodeHint": {
+    "description": "Line above the barcode saying what to do with it"
+  },
+  "parkrunBarcodePaperNote": "parkrun doesn't officially support barcodes on screens, so bring a printed copy in case a scanner can't read this one.",
+  "@parkrunBarcodePaperNote": {
+    "description": "Neutral note that parkrun does not officially support on-screen barcodes"
+  },
+  "parkrunBarcodeEmpty": "Add your parkrun athlete number to show your barcode here.",
+  "@parkrunBarcodeEmpty": {
+    "description": "Shown when no athlete number is saved"
+  },
+  "parkrunBarcodeInvalid": "Your saved athlete number isn't in parkrun's format (A followed by digits), so it can't be shown as a barcode.",
+  "@parkrunBarcodeInvalid": {
+    "description": "Shown when the saved number is not in parkrun's A-plus-digits format"
+  },
+  "parkrunBarcodeAdd": "Add athlete number",
+  "@parkrunBarcodeAdd": {
+    "description": "Button that opens the athlete-number dialog when none is saved"
+  },
+  "parkrunBarcodeEdit": "Change athlete number",
+  "@parkrunBarcodeEdit": {
+    "description": "Button that opens the athlete-number dialog to change it"
+  },
+  "parkrunBarcodeSave": "Save",
+  "@parkrunBarcodeSave": {
+    "description": "Save button on the athlete-number dialog"
+  },
+  "parkrunBarcodeSaveFailed": "Couldn't save your athlete number: {error}",
+  "@parkrunBarcodeSaveFailed": {
+    "description": "Top banner when saving the athlete number fails",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "parkrunBarcodeFieldInvalid": "Enter A followed by digits, for example A123456.",
+  "@parkrunBarcodeFieldInvalid": {
+    "description": "Field error when the typed athlete number is not A followed by digits"
+  },
+  "parkrunBarcodeLoadFailed": "Couldn't load your athlete number. Check your connection and try again.",
+  "@parkrunBarcodeLoadFailed": {
+    "description": "Shown when there is no saved copy and the number cannot be fetched"
+  },
+  "parkrunBarcodeRetry": "Try again",
+  "@parkrunBarcodeRetry": {
+    "description": "Retry button after a failed load"
+  },
+  "parkrunBarcodeOfflineCopy": "Showing the copy saved on this phone.",
+  "@parkrunBarcodeOfflineCopy": {
+    "description": "Note under the barcode when it is the device's copy because the server could not be reached"
   },
   "integrationsImport": "Import",
   "@integrationsImport": {
@@ -19581,5 +19731,31 @@
   "logMoreTodaysWorkout": "Start today's workout",
   "@logMoreTodaysWorkout": {
     "description": "Long-press menu item: load today's plan workout on the recorder"
+  },
+  "runnerMenuFollowRoute": "Follow a route",
+  "@runnerMenuFollowRoute": {
+    "description": "Long-press menu: heading over the recent saved routes, each one tap to start a run following it"
+  },
+  "runnerMenuAllRoutes": "All routes…",
+  "@runnerMenuAllRoutes": {
+    "description": "Long-press menu: opens the full saved-route picker when there are more routes than shown inline"
+  },
+  "runnerMenuFollowRouteNamed": "Follow {name}",
+  "@runnerMenuFollowRouteNamed": {
+    "description": "Screen-reader label for an inline route in the long-press menu; the route's distance follows",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "runnerMenuWorkoutSteps": "{count, plural, one{{count} step} other{{count} steps}}",
+  "@runnerMenuWorkoutSteps": {
+    "description": "Long-press menu: how many steps today's structured workout has, after its distance",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   }
 }

@@ -8,7 +8,8 @@ import type { Block, Guide, GuideSection, GuideTranslation, LocalizedGuide } fro
 export const SOURCE_LANG = 'en';
 
 /// Every string a translation translates, each with its path: `title`,
-/// `summary`, `s<n>.heading`, `s<n>.b<m>` for a paragraph or note, and
+/// `summary`, `s<n>.heading`, `s<n>.b<m>` for a paragraph, a note or an
+/// illustration's alt text, and
 /// `s<n>.b<m>.i<k>` for a step or list item, all counted from 0. A
 /// translation records a hash of the English at each path (`sources`), so an
 /// English edit stales only the strings it touched. The same paths key the
@@ -22,6 +23,7 @@ export function translatableStrings(guide: Pick<Guide, 'title' | 'summary' | 'se
 		out.push([`s${si}.heading`, section.heading]);
 		section.blocks.forEach((block, bi) => {
 			if (block.type === 'p' || block.type === 'note') out.push([`s${si}.b${bi}`, block.text]);
+			else if (block.type === 'illustration') out.push([`s${si}.b${bi}`, block.alt]);
 			else block.items.forEach((item, ii) => out.push([`s${si}.b${bi}.i${ii}`, item]));
 		});
 	});
@@ -60,6 +62,8 @@ export function structureProblems(guide: Guide, translation: GuideTranslation): 
 				problems.push(`${where}: a ${theirs.type}, the guide has a ${block.type}`);
 			} else if (block.type === 'note' && theirs.type === 'note' && theirs.tone !== block.tone) {
 				problems.push(`${where}: a ${theirs.tone} note, the guide has a ${block.tone} note`);
+			} else if (block.type === 'illustration' && theirs.type === 'illustration' && theirs.id !== block.id) {
+				problems.push(`${where}: illustration "${theirs.id}", the guide has "${block.id}"`);
 			} else if ((block.type === 'steps' || block.type === 'list') && (theirs.type === 'steps' || theirs.type === 'list')) {
 				if (theirs.items.length !== block.items.length) {
 					problems.push(`${where}: ${theirs.items.length} items, the guide has ${block.items.length}`);
@@ -91,6 +95,8 @@ export function localizeGuide(guide: Guide, translation: GuideTranslation | unde
 						return { type: 'steps', items: 'items' in theirs ? [...theirs.items] : block.items };
 					case 'list':
 						return { type: 'list', items: 'items' in theirs ? [...theirs.items] : block.items };
+					case 'illustration':
+						return { type: 'illustration', id: block.id, alt: 'alt' in theirs ? theirs.alt : block.alt };
 				}
 			}),
 		};
@@ -106,8 +112,12 @@ function isSection(value: unknown): value is GuideSection {
 		Array.isArray(s.blocks) &&
 		s.blocks.every((b: unknown) => {
 			if (!b || typeof b !== 'object') return false;
-			const block = b as { text?: unknown; items?: unknown };
-			return typeof block.text === 'string' || (Array.isArray(block.items) && block.items.every((i) => typeof i === 'string'));
+			const block = b as { text?: unknown; items?: unknown; alt?: unknown };
+			return (
+				typeof block.text === 'string' ||
+				typeof block.alt === 'string' ||
+				(Array.isArray(block.items) && block.items.every((i) => typeof i === 'string'))
+			);
 		})
 	);
 }

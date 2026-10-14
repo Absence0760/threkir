@@ -73,6 +73,20 @@ test.describe('/help — in-app help centre', () => {
 		await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex');
 	});
 
+	test('a guide illustration renders inline, themed, and is announced by its alt text', async ({ page }) => {
+		await page.goto('/help/privacy-zones');
+		const figure = page.getByTestId('help-illustration');
+		await expect(figure).toHaveAttribute('data-illustration', 'privacy-zones');
+		const art = figure.getByRole('img', { name: /A route line starts at a house inside a circle/ });
+		await expect(art).toBeVisible();
+		const svg = art.locator('svg');
+		await expect(svg).toHaveAttribute('aria-hidden', 'true');
+		await expect(svg.locator('text')).toHaveCount(0);
+		const fill = await svg.locator('circle').first().evaluate((el) => getComputedStyle(el).fill);
+		expect(fill).not.toBe('rgb(255, 0, 162)');
+		expect(fill).not.toBe('none');
+	});
+
 	test('an unknown guide id says so and links back to the contents', async ({ page }) => {
 		await page.goto('/help/no-such-guide');
 		await expect(page.getByRole('heading', { name: 'Guide not found' })).toBeVisible();
@@ -171,5 +185,67 @@ test.describe('/help — signed out', () => {
 		await page.goto('/help/search?q=race');
 		await expect(page.getByTestId('help-search-results')).toBeVisible({ timeout: 10_000 });
 		await expect(page).not.toHaveURL(/\/login/);
+	});
+});
+
+/**
+ * A guide illustration in the two contexts the light-English case above does
+ * not reach. Dark: the placeholders must resolve to the dark theme's tokens,
+ * not the light ones and never the authoring magenta (#ff00a1–#ff00a7). A
+ * translated locale: the alt text is a translated block string, carried by the
+ * fetched per-locale guide JSON, so a merge that dropped it would announce the
+ * figure in English. Signed out, so no stored theme or locale preference on an
+ * account outranks the one the spec sets.
+ */
+test.describe('/help — illustration in dark mode and German', () => {
+	test.use({ storageState: { cookies: [], origins: [] } });
+
+	const PLACEHOLDER = /^rgb\(255, 0, 16[1-7]\)$/;
+
+	test('dark: the figure keeps its alt and paints with the dark theme tokens', async ({ page }) => {
+		await page.emulateMedia({ colorScheme: 'dark' });
+		await page.goto('/help/privacy-zones');
+		const figure = page.getByTestId('help-illustration');
+		const art = figure.getByRole('img', { name: /A route line starts at a house inside a circle/ });
+		await expect(art).toBeVisible({ timeout: 10_000 });
+
+		const paint = await figure.evaluate((fig) => {
+			const resolve = (token: string) => {
+				const probe = document.createElement('span');
+				probe.style.color = `var(${token})`;
+				fig.appendChild(probe);
+				const c = getComputedStyle(probe).color;
+				probe.remove();
+				return c;
+			};
+			const circles = fig.querySelectorAll('svg circle');
+			return {
+				map: getComputedStyle(fig.querySelector('svg rect')!).fill,
+				endpoint: getComputedStyle(circles[circles.length - 1]).fill,
+				tint: resolve('--color-bg-tertiary'),
+				primary: resolve('--color-primary'),
+				surface: getComputedStyle(fig).backgroundColor
+			};
+		});
+		expect(paint.map).not.toMatch(PLACEHOLDER);
+		expect(paint.endpoint).not.toMatch(PLACEHOLDER);
+		expect(paint.map).toBe(paint.tint);
+		expect(paint.endpoint).toBe(paint.primary);
+		// The dark tokens, not the light ones: the light surface is white.
+		expect(paint.surface).not.toBe('rgb(255, 255, 255)');
+	});
+
+	test('de: the figure is announced by its German alt text', async ({ context, page }) => {
+		await context.addInitScript(() => {
+			localStorage.setItem('locale', 'de');
+		});
+		await page.goto('/help/privacy-zones');
+		const figure = page.getByTestId('help-illustration');
+		await expect(figure).toHaveAttribute('data-illustration', 'privacy-zones');
+		await expect(
+			figure.getByRole('img', { name: /Eine Routenlinie beginnt an einem Haus in einem Kreis/ })
+		).toBeVisible({ timeout: 15_000 });
+		await expect(figure.getByRole('img', { name: /A route line starts/ })).toHaveCount(0);
+		await expect(page.getByTestId('help-language-note')).toHaveCount(0);
 	});
 });

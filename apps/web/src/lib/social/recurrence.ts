@@ -177,12 +177,15 @@ export function expandInstances(event: Event, from: Date, to: Date, max = 100): 
 		// Count every real occurrence toward recurrence_count — not just the
 		// in-window ones — so a count-limited series stops at its true end even
 		// when the window starts after starts_at (see the monthly branch above).
+		// The cap is checked BEFORE counting, as the monthly loop's condition
+		// is, so a stored count of 0 yields no occurrence on either branch and
+		// agrees with the database's is_event_occurrence.
+		if (produced >= hardCap) break;
 		produced++;
 		if (stamped >= from) {
 			results.push(stamped);
 			if (results.length >= max) break;
 		}
-		if (produced >= hardCap) break;
 	}
 	return results;
 }

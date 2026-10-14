@@ -16,6 +16,11 @@ export const translation: GuideTranslation = {
 					type: 'p',
 					text: 'Asegúrate antes de que el evento tenga recorridos: consulta [[guide:set-up-a-race|Organizar una carrera]].',
 				},
+				{
+					type: 'illustration',
+					id: 'race-day-for-hosts',
+					alt: 'El día de la carrera en cuatro pasos, de izquierda a derecha: preparar la carrera, dar la salida, seguirla en directo y finalizarla en la meta.',
+				},
 			],
 		},
 		{
@@ -171,5 +176,6 @@ export const translation: GuideTranslation = {
 		's6.b1.i1': '0bada1dfb7752ded',
 		's6.b1.i2': 'dc555607c15c1ae0',
 		's6.b1.i3': '12b5ecdf863972b3',
+		's0.b2': '043bfb92b5287252',
 	},
 };

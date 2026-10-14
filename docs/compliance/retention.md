@@ -72,16 +72,18 @@ Sixteen `cron.schedule`d retention jobs are live — every row above except
 `cleanup-stale-export-blobs`, which is deliberately unscheduled and is listed
 so nobody re-derives it as missing. Each live one deletes rows, except the
 checkpoint health job (scrubs columns) and the export reap (enqueues the job
-that erases Storage bytes). The other twelve live schedules are not retention
+that erases Storage bytes). The other thirteen live schedules are not retention
 jobs and are excluded: `enqueue-token-refresh`, `enqueue-event-reminders`,
 `enqueue-weekly-digest`, `enqueue-lifecycle-drip`,
 `enqueue-safety-overdue-emails`, `sweep-challenge-completions`,
 `jobs-stuck-alert`, `jobs-failed-alert`, `jobs-backlog-alert`,
 `export-retention-overrun-alert`, `expire-event-waitlist-offers` (which
 removes a lapsed paid-waitlist offer so the seat can be offered on — a state
-change on a live registration, not a retention window) and
+change on a live registration, not a retention window),
 `event-refund-sweep` (which refunds orders still owed after a host cancel —
-it moves money and stamps orders, and deletes nothing). (`refresh-mv-weekly-mileage` is gone
+it moves money and stamps orders, and deletes nothing) and
+`race-listings-sweep` (which pulls public RunSignUp races into the race
+calendar — it inserts and updates listings, and deletes nothing). (`refresh-mv-weekly-mileage` is gone
 entirely — `20270530_001` dropped the materialized view and unscheduled it.) Window tightening is a
 single-file edit to the function body. The `gdpr_dsar_closeouts_test.sql`
 pgtap suite pins the existence of `purge-stale-jobs`; the matching pins for

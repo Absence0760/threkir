@@ -5174,6 +5174,60 @@ class AppLocalizationsEn extends AppLocalizations {
       'No recent runs found. Record a run first, then come back.';
 
   @override
+  String get eventAddOccurrencePhoto => 'Add event photo';
+
+  @override
+  String get eventAddPhotoFromRun => 'Add from my run';
+
+  @override
+  String get eventNoRunsInPhotoWindow =>
+      'None of your runs started during this event. Photos attach to a run that started up to 2 hours before and within 24 hours after the start.';
+
+  @override
+  String eventPhotoRunsLoadFailed(String error) {
+    return 'Couldn\'t load your runs: $error';
+  }
+
+  @override
+  String get eventPhotosLoadFailed => 'Couldn\'t load the photos.';
+
+  @override
+  String get eventPhotosRetry => 'Reload photos';
+
+  @override
+  String get eventPhotoHiddenBadge => 'Hidden';
+
+  @override
+  String get eventPhotoHide => 'Hide';
+
+  @override
+  String eventPhotoHideLabel(String name) {
+    return 'Hide photo by $name';
+  }
+
+  @override
+  String get eventPhotoRestore => 'Restore';
+
+  @override
+  String get eventPhotoDelete => 'Delete';
+
+  @override
+  String get eventPhotoHidden => 'Photo hidden from the event';
+
+  @override
+  String eventPhotoModerateFailed(String error) {
+    return 'Couldn\'t update the photo: $error';
+  }
+
+  @override
+  String get eventPhotoDeleted => 'Photo deleted';
+
+  @override
+  String eventPhotoDeleteFailed(String error) {
+    return 'Couldn\'t delete the photo: $error';
+  }
+
+  @override
   String get eventPhotoRunnerFallback => 'A runner';
 
   @override
@@ -7101,6 +7155,63 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get integrationsParkrunFieldLabel => 'Athlete number';
+
+  @override
+  String get parkrunBarcodeTitle => 'parkrun barcode';
+
+  @override
+  String get parkrunBarcodeTileSubtitle =>
+      'Show it at the finish, even offline.';
+
+  @override
+  String parkrunBarcodeSemantics(String number) {
+    return 'parkrun barcode for athlete number $number';
+  }
+
+  @override
+  String get parkrunBarcodeHint =>
+      'Show this at the finish so it can be scanned with your finish token.';
+
+  @override
+  String get parkrunBarcodePaperNote =>
+      'parkrun doesn\'t officially support barcodes on screens, so bring a printed copy in case a scanner can\'t read this one.';
+
+  @override
+  String get parkrunBarcodeEmpty =>
+      'Add your parkrun athlete number to show your barcode here.';
+
+  @override
+  String get parkrunBarcodeInvalid =>
+      'Your saved athlete number isn\'t in parkrun\'s format (A followed by digits), so it can\'t be shown as a barcode.';
+
+  @override
+  String get parkrunBarcodeAdd => 'Add athlete number';
+
+  @override
+  String get parkrunBarcodeEdit => 'Change athlete number';
+
+  @override
+  String get parkrunBarcodeSave => 'Save';
+
+  @override
+  String parkrunBarcodeSaveFailed(String error) {
+    return 'Couldn\'t save your athlete number: $error';
+  }
+
+  @override
+  String get parkrunBarcodeFieldInvalid =>
+      'Enter A followed by digits, for example A123456.';
+
+  @override
+  String get parkrunBarcodeLoadFailed =>
+      'Couldn\'t load your athlete number. Check your connection and try again.';
+
+  @override
+  String get parkrunBarcodeRetry => 'Try again';
+
+  @override
+  String get parkrunBarcodeOfflineCopy =>
+      'Showing the copy saved on this phone.';
 
   @override
   String get integrationsImport => 'Import';
@@ -15257,4 +15368,26 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get logMoreTodaysWorkout => 'Start today\'s workout';
+
+  @override
+  String get runnerMenuFollowRoute => 'Follow a route';
+
+  @override
+  String get runnerMenuAllRoutes => 'All routes…';
+
+  @override
+  String runnerMenuFollowRouteNamed(String name) {
+    return 'Follow $name';
+  }
+
+  @override
+  String runnerMenuWorkoutSteps(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count steps',
+      one: '$count step',
+    );
+    return '$_temp0';
+  }
 }

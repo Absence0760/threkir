@@ -33,6 +33,11 @@ export const translation: GuideTranslation = {
 					tone: 'tip',
 					text: 'Para compartir todas tus carreras sin tener que acordarte, activa **Directo automático** en **Contactos de seguridad**, dentro de la pestaña **Tú**. Solo se aplica a ese móvil, y cualquiera con el enlace puede ver la carrera en curso.',
 				},
+				{
+					type: 'illustration',
+					id: 'live-tracking-and-safety',
+					alt: 'El móvil de un corredor envía su posición en directo a dos personas, que la siguen cada una en su propia pantalla.',
+				},
 			],
 		},
 		{
@@ -125,5 +130,6 @@ export const translation: GuideTranslation = {
 		's2.b3': '0694224872716044',
 		's3.heading': '4799e1fbd28720f2',
 		's3.b0': '2557edbaef77cc2c',
+		's0.b5': 'eb575f135ac66d66',
 	},
 };

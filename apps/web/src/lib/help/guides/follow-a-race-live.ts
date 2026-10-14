@@ -39,7 +39,12 @@ export const guide: Guide = {
 				{
 					type: 'p',
 					text: "Unless you have already allowed maps in your cookie settings, the map stays off until you choose **Load map**, because loading it sends your IP address to our map tile provider. Once loaded, each runner is a coloured dot with a short trail of their recent path. Runners' phones and watches send a position about every 10 seconds, and the page updates on its own."
-				}
+				},
+				{
+					type: 'illustration',
+					id: 'follow-a-race-live',
+					alt: 'A course on a map with runners along it, each a coloured dot with a short trail of their recent path, and a flag at the finish.',
+				},
 			]
 		},
 		{

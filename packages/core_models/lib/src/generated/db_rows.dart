@@ -5768,9 +5768,11 @@ class RunPhotoRow {
   static const String colThumb512Path = 'thumb_512_path';
   static const String colEventId = 'event_id';
   static const String colEventInstanceStart = 'event_instance_start';
+  static const String colHiddenAt = 'hidden_at';
+  static const String colHiddenBy = 'hidden_by';
 
   final String id;
-  final String runId;
+  final String? runId;
   final String ownerId;
   final String storagePath;
   final String? caption;
@@ -5779,10 +5781,12 @@ class RunPhotoRow {
   final String? thumb512Path;
   final String? eventId;
   final DateTime? eventInstanceStart;
+  final DateTime? hiddenAt;
+  final String? hiddenBy;
 
   const RunPhotoRow({
     required this.id,
-    required this.runId,
+    this.runId,
     required this.ownerId,
     required this.storagePath,
     this.caption,
@@ -5791,11 +5795,13 @@ class RunPhotoRow {
     this.thumb512Path,
     this.eventId,
     this.eventInstanceStart,
+    this.hiddenAt,
+    this.hiddenBy,
   });
 
   factory RunPhotoRow.fromJson(Map<String, dynamic> json) => RunPhotoRow(
     id: json['id'] as String,
-    runId: json['run_id'] as String,
+    runId: json['run_id'] as String?,
     ownerId: json['owner_id'] as String,
     storagePath: json['storage_path'] as String,
     caption: json['caption'] as String?,
@@ -5804,6 +5810,8 @@ class RunPhotoRow {
     thumb512Path: json['thumb_512_path'] as String?,
     eventId: json['event_id'] as String?,
     eventInstanceStart: parseIsoStrictValue(json['event_instance_start']),
+    hiddenAt: parseIsoStrictValue(json['hidden_at']),
+    hiddenBy: json['hidden_by'] as String?,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -5817,6 +5825,8 @@ class RunPhotoRow {
     colThumb512Path: thumb512Path,
     colEventId: eventId,
     colEventInstanceStart: eventInstanceStart?.toIso8601String(),
+    colHiddenAt: hiddenAt?.toIso8601String(),
+    colHiddenBy: hiddenBy,
   };
 
   RunPhotoRow copyWith({
@@ -5830,6 +5840,8 @@ class RunPhotoRow {
     String? thumb512Path,
     String? eventId,
     DateTime? eventInstanceStart,
+    DateTime? hiddenAt,
+    String? hiddenBy,
   }) => RunPhotoRow(
     id: id ?? this.id,
     runId: runId ?? this.runId,
@@ -5841,6 +5853,8 @@ class RunPhotoRow {
     thumb512Path: thumb512Path ?? this.thumb512Path,
     eventId: eventId ?? this.eventId,
     eventInstanceStart: eventInstanceStart ?? this.eventInstanceStart,
+    hiddenAt: hiddenAt ?? this.hiddenAt,
+    hiddenBy: hiddenBy ?? this.hiddenBy,
   );
 }
 

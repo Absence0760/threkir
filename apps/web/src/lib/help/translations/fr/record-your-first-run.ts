@@ -25,6 +25,11 @@ export const translation: GuideTranslation = {
 					tone: 'tip',
 					text: 'Sur Android, choisissez **Toujours autoriser** pour la localisation. Si l\'accès n\'est accordé que lorsque l\'app est ouverte, la distance parcourue écran éteint n\'est pas comptée, même si le chrono continue de tourner.',
 				},
+				{
+					type: 'illustration',
+					id: 'record-your-first-run',
+					alt: 'Un téléphone doté d\'un grand bouton de démarrage rond, qui capte le signal GPS d\'un satellite dans le ciel.',
+				},
 			],
 		},
 		{
@@ -116,5 +121,6 @@ export const translation: GuideTranslation = {
 		's3.b1.i1': 'e0fd699761f32367',
 		's3.b1.i2': '1d33b3ee8d0be1b8',
 		's3.b2': 'a8054fd15c256c3c',
+		's0.b3': '21307fc19189cc42',
 	},
 };

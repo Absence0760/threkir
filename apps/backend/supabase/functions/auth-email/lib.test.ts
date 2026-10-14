@@ -386,10 +386,11 @@ Deno.test('planSends — reauthentication is code-only, no verify link', () => {
 Deno.test('planSends — unknown action type falls to the informational default, never fails', () => {
   const sends = planSends(
     { email: 'a@example.com' },
-    { email_action_type: 'mfa_factor_enrolled_notification' },
+    { email_action_type: 'some_future_notification', provider: 'google' },
   );
   assertEquals(sends.length, 1);
   assertEquals(sends[0].catalogueKey, 'default');
+  assertEquals(sends[0].detail, undefined);
   assertEquals(sends[0].verifyType, null);
 });
 
@@ -706,4 +707,140 @@ Deno.test('catalogue — every locale states the password change time exactly on
     assertStringIncludes(r.text, '2025-06-15 15:06 UTC');
     assertStringIncludes(r.html, 'https://threkir.test/login?reset=1');
   }
+});
+
+// The six other GoTrue account-change notices (supabase/auth
+// internal/mailer/mailer.go), each enabled by its own
+// config.toml [auth.email.notification.<name>] block.
+const OTHER_NOTICES = [
+  'email_changed_notification',
+  'phone_changed_notification',
+  'identity_linked_notification',
+  'identity_unlinked_notification',
+  'mfa_factor_enrolled_notification',
+  'mfa_factor_unenrolled_notification',
+] as const;
+
+Deno.test('planSends — every account-change notice plans to its own catalogue key', () => {
+  for (const action of OTHER_NOTICES) {
+    assert((AUTH_EMAIL_KEYS as readonly string[]).includes(action), `${action} missing from AUTH_EMAIL_KEYS`);
+    const sends = planSends(
+      { email: 'a@example.com' },
+      { email_action_type: action, old_email: 'old@example.com' },
+    );
+    assertEquals(sends.length, 1, action);
+    assertEquals(sends[0].catalogueKey, action);
+    assertEquals(sends[0].verifyType, null);
+    assertEquals(sends[0].token, '');
+  }
+});
+
+Deno.test('planSends — email changed goes to the PREVIOUS address, not the new one', () => {
+  const sends = planSends(
+    { email: 'new@example.com' },
+    { email_action_type: 'email_changed_notification', old_email: 'old@example.com' },
+  );
+  assertEquals(sends.map((s) => s.to), ['old@example.com']);
+  // Without old_email there is no safe recipient: user.email is already the
+  // new address, which in a takeover is the attacker's.
+  assertEquals(
+    planSends({ email: 'new@example.com' }, { email_action_type: 'email_changed_notification' }),
+    [],
+  );
+  assertEquals(planSends({}, { email_action_type: 'email_changed_notification' }), []);
+});
+
+Deno.test('planSends — identity notices carry the provider, MFA notices the factor type', () => {
+  const linked = planSends(
+    { email: 'a@example.com' },
+    { email_action_type: 'identity_linked_notification', provider: 'google', factor_type: 'totp' },
+  );
+  assertEquals(linked[0].detail, 'google');
+  const mfa = planSends(
+    { email: 'a@example.com' },
+    { email_action_type: 'mfa_factor_unenrolled_notification', provider: 'google', factor_type: 'totp' },
+  );
+  assertEquals(mfa[0].detail, 'totp');
+  const phone = planSends(
+    { email: 'a@example.com' },
+    { email_action_type: 'phone_changed_notification', old_phone: '15551234567' },
+  );
+  assertEquals(phone[0].detail, undefined);
+});
+
+Deno.test('catalogue — every account-change notice states the time once, names the contact, and leaks no address', () => {
+  for (const locale of AUTH_EMAIL_LOCALES) {
+    const shared = authEmailShared[locale];
+    for (const key of ['email', 'phone']) assert(shared.identityLabels[key]?.length > 0, `${locale} identity label ${key}`);
+    for (const key of ['totp', 'phone', 'webauthn']) assert(shared.factorLabels[key]?.length > 0, `${locale} factor label ${key}`);
+    for (const key of OTHER_NOTICES) {
+      const s = authEmailCatalogue[locale][key];
+      const joined = s.body.join(' ');
+      assertEquals(joined.split('{when}').length - 1, 1, `${locale}.${key} {when} count`);
+      assertStringIncludes(joined, 'security@threkir.com', `${locale}.${key} names no security contact`);
+      const methodLines = s.body.filter((p) => p.includes('{method}')).length;
+      const wantsMethod = key.startsWith('identity_') || key.startsWith('mfa_');
+      assertEquals(methodLines, wantsMethod ? 1 : 0, `${locale}.${key} {method} lines`);
+      if (key === 'email_changed_notification') {
+        assertEquals(s.cta, '', `${locale}.${key}: a reset would mail the new address, so no button`);
+      } else {
+        assert(s.cta.length > 0, `${locale}.${key} has no reset CTA label`);
+      }
+      const r = renderAuthEmail(
+        locale,
+        { to: 'old@example.com', catalogueKey: key, verifyType: null, token: '', tokenHash: '', detail: 'totp' },
+        { supabaseUrl: 'http://x', appBaseUrl: 'https://threkir.test', sentAtMs: NOW },
+      );
+      assertStringIncludes(r.text, '2025-06-15 15:06 UTC');
+      assert(!/\{(when|method)\}/.test(r.text + r.html), `${locale}.${key} leaked a placeholder`);
+      assert(!r.text.includes('old@example.com'), `${locale}.${key} printed the recipient address`);
+      assertEquals(
+        r.html.includes('https://threkir.test/login?reset=1'),
+        key !== 'email_changed_notification',
+        `${locale}.${key} reset button`,
+      );
+    }
+  }
+});
+
+Deno.test('renderAuthEmail — the provider and factor render by name', () => {
+  const linked = renderAuthEmail(
+    'en',
+    { to: 'a@example.com', catalogueKey: 'identity_linked_notification', verifyType: null, token: '', tokenHash: '', detail: 'google' },
+    { supabaseUrl: 'http://x', sentAtMs: NOW },
+  );
+  assertStringIncludes(linked.text, 'Sign-in method: Google');
+  const email = renderAuthEmail(
+    'de',
+    { to: 'a@example.com', catalogueKey: 'identity_unlinked_notification', verifyType: null, token: '', tokenHash: '', detail: 'email' },
+    { supabaseUrl: 'http://x', sentAtMs: NOW },
+  );
+  assertStringIncludes(email.text, 'Anmeldemethode: E-Mail und Passwort');
+  const factor = renderAuthEmail(
+    'ja',
+    { to: 'a@example.com', catalogueKey: 'mfa_factor_enrolled_notification', verifyType: null, token: '', tokenHash: '', detail: 'webauthn' },
+    { supabaseUrl: 'http://x', sentAtMs: NOW },
+  );
+  assertStringIncludes(factor.text, '方法: セキュリティキーまたはパスキー');
+});
+
+Deno.test('renderAuthEmail — an unknown or missing provider / factor drops the method line, nothing else', () => {
+  for (const detail of [undefined, 'some_new_idp', 'constructor', '<script>']) {
+    const r = renderAuthEmail(
+      'en',
+      { to: 'a@example.com', catalogueKey: 'identity_linked_notification', verifyType: null, token: '', tokenHash: '', detail },
+      { supabaseUrl: 'http://x', sentAtMs: NOW },
+    );
+    assert(!r.text.includes('Sign-in method:'), `method line kept for ${detail}`);
+    assert(!r.text.includes('{method}'), 'placeholder leaked');
+    assertStringIncludes(r.text, 'A new sign-in method was linked to your Threkir account (2025-06-15 15:06 UTC).');
+    assertStringIncludes(r.text, 'security@threkir.com');
+  }
+  const mfa = renderAuthEmail(
+    'fr',
+    { to: 'a@example.com', catalogueKey: 'mfa_factor_unenrolled_notification', verifyType: null, token: '', tokenHash: '', detail: 'google' },
+    { supabaseUrl: 'http://x' },
+  );
+  assert(!mfa.text.includes('Méthode :'), 'a provider id is not a factor type');
+  assertStringIncludes(mfa.text, authEmailCatalogue.fr.mfa_factor_unenrolled_notification.preheader);
 });

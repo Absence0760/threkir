@@ -14,7 +14,9 @@ export type Block =
 	| { type: 'p'; text: string }
 	| { type: 'steps'; items: string[] }
 	| { type: 'list'; items: string[] }
-	| { type: 'note'; tone: 'tip' | 'caution'; text: string };
+	| { type: 'note'; tone: 'tip' | 'caution'; text: string }
+	/** a text-free diagram, `illustrations/<id>.svg`; `alt` is plain text, no markup */
+	| { type: 'illustration'; id: string; alt: string };
 export interface GuideSection {
 	heading: string;
 	blocks: Block[];

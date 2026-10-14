@@ -40,6 +40,11 @@ export const translation: GuideTranslation = {
 					tone: 'tip',
 					text: 'La plaza se reclama en la web. La app móvil muestra la notificación y abre la clase, pero aún no tiene proceso de pago, así que abre la clase en un navegador para pagar.',
 				},
+				{
+					type: 'illustration',
+					id: 'waitlist-and-claim-window',
+					alt: 'Tres personas esperan en la cola. A la primera se le ofrece la plaza libre, que se le reserva durante un tiempo limitado.',
+				},
 			],
 		},
 		{
@@ -108,5 +113,6 @@ export const translation: GuideTranslation = {
 		's4.b0.i0': '9fc9b8683d8e30fd',
 		's4.b0.i1': 'f602296c6993b85f',
 		's4.b0.i2': '4d6cf70ea800fae3',
+		's1.b4': 'f0e75c06bd5e6193',
 	},
 };

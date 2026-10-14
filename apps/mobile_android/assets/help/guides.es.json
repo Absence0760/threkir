@@ -1518,6 +1518,11 @@
             "type": "note",
             "tone": "tip",
             "text": "La plaza se reclama en la web. La app móvil muestra la notificación y abre la clase, pero aún no tiene proceso de pago, así que abre la clase en un navegador para pagar."
+          },
+          {
+            "type": "illustration",
+            "id": "waitlist-and-claim-window",
+            "alt": "Tres personas esperan en la cola. A la primera se le ofrece la plaza libre, que se le reserva durante un tiempo limitado."
           }
         ]
       },
@@ -1616,6 +1621,11 @@
           {
             "type": "p",
             "text": "Salvo que ya hayas permitido los mapas en tus ajustes de cookies, el mapa permanece desactivado hasta que elijas **Cargar mapa**, porque al cargarlo se envía tu dirección IP a nuestro proveedor de teselas de mapa. Una vez cargado, cada corredor es un punto de color con una estela corta de su recorrido reciente. Los móviles y relojes de los corredores envían una posición aproximadamente cada 10 segundos, y la página se actualiza sola."
+          },
+          {
+            "type": "illustration",
+            "id": "follow-a-race-live",
+            "alt": "Un recorrido en un mapa con corredores, cada uno un punto de color con un breve rastro de su trayecto reciente, y una bandera en la meta."
           }
         ]
       },
@@ -1702,6 +1712,11 @@
           {
             "type": "p",
             "text": "Asegúrate antes de que el evento tenga recorridos: consulta [[guide:set-up-a-race|Organizar una carrera]]."
+          },
+          {
+            "type": "illustration",
+            "id": "race-day-for-hosts",
+            "alt": "El día de la carrera en cuatro pasos, de izquierda a derecha: preparar la carrera, dar la salida, seguirla en directo y finalizarla en la meta."
           }
         ]
       },
@@ -2280,6 +2295,11 @@
           {
             "type": "p",
             "text": "Selecciona **Sincronizar ahora** para volver a traerlas. En la web, **Hasta cuándo sincronizar** llega hasta un año atrás."
+          },
+          {
+            "type": "illustration",
+            "id": "import-your-history",
+            "alt": "Las carreras de un reloj, de una cuenta conectada y de un archivo llegan todas a una única lista de carreras."
           }
         ]
       },
@@ -2494,6 +2514,11 @@
             "type": "note",
             "tone": "tip",
             "text": "Para compartir todas tus carreras sin tener que acordarte, activa **Directo automático** en **Contactos de seguridad**, dentro de la pestaña **Tú**. Solo se aplica a ese móvil, y cualquiera con el enlace puede ver la carrera en curso."
+          },
+          {
+            "type": "illustration",
+            "id": "live-tracking-and-safety",
+            "alt": "El móvil de un corredor envía su posición en directo a dos personas, que la siguen cada una en su propia pantalla."
           }
         ]
       },
@@ -2599,6 +2624,11 @@
               "Se aplica tanto a las carreras que ya has grabado como a las nuevas, porque el recorrido se recorta cada vez que otra persona lo ve.",
               "Tú siempre ves tu recorrido completo, y los archivos que exportas para ti también lo conservan completo."
             ]
+          },
+          {
+            "type": "illustration",
+            "id": "privacy-zones",
+            "alt": "Una ruta empieza en una casa dentro de un círculo. La parte dentro del círculo queda oculta para los demás, así que la línea que ven empieza en el borde del círculo."
           }
         ]
       },
@@ -2698,6 +2728,11 @@
             "type": "note",
             "tone": "tip",
             "text": "En Android, elige **Permitir todo el tiempo** para la ubicación. Si solo das acceso mientras la app está abierta, no se cuenta la distancia que recorres con la pantalla apagada, aunque el reloj sigue corriendo."
+          },
+          {
+            "type": "illustration",
+            "id": "record-your-first-run",
+            "alt": "Un móvil con un gran botón redondo de inicio, que recibe la señal GPS de un satélite en el cielo."
           }
         ]
       },

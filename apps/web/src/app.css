@@ -391,6 +391,11 @@
 	--page-padding-y: var(--space-xl);
 	--page-padding-x: var(--space-2xl);
 	--page-header-gap: var(--space-xl);
+	/* The reading measure for long-form text INSIDE a page. A page wrapper
+	   itself never takes a max-width: the frame is the main column minus
+	   the two padding tokens on every route, and a capped wrapper is what
+	   left the help pages with a dead band beside them. */
+	--page-measure: 48rem;
 	--font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas,
 		'Liberation Mono', monospace;
 	--font-size-page-title: 1.5rem;
@@ -894,17 +899,6 @@ img {
 		transition-delay: 0s !important;
 		scroll-behavior: auto !important;
 	}
-}
-
-/*
- * In-page motion pause (WCAG 2.2.2), set by MotionToggle through the motion
- * store. Scoped to `.motion-scope` so a visitor who paused the landing page
- * does not also freeze the app's loading spinners after signing in.
- */
-:root[data-motion='paused'] .motion-scope *,
-:root[data-motion='paused'] .motion-scope *::before,
-:root[data-motion='paused'] .motion-scope *::after {
-	animation-play-state: paused !important;
 }
 
 /*

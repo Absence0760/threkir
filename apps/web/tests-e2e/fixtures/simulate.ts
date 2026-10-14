@@ -266,6 +266,9 @@ export async function insertRaceListing(opts: {
 	location_label?: string | null;
 	provider_race_id?: string | null;
 	is_verified?: boolean;
+	entry_url?: string | null;
+	/// EWKT, the shape race-listings-sync writes from a ZIP centroid.
+	location_point?: string | null;
 }): Promise<string> {
 	const admin = getAdminClient();
 	const { data, error } = await admin
@@ -277,7 +280,9 @@ export async function insertRaceListing(opts: {
 			distance_m: opts.distance_m ?? 21_097,
 			location_label: opts.location_label ?? null,
 			provider_race_id: opts.provider_race_id ?? null,
-			is_verified: opts.is_verified ?? true
+			is_verified: opts.is_verified ?? true,
+			entry_url: opts.entry_url ?? null,
+			location_point: opts.location_point ?? null
 		})
 		.select('id')
 		.single();

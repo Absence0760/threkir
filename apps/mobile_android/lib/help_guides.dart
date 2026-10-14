@@ -39,6 +39,14 @@ class GuideNote extends GuideBlock {
   final String text;
 }
 
+/// A text-free diagram, `assets/help/illustrations/<id>.svg`, with the alt
+/// text a screen reader announces in its place.
+class GuideIllustration extends GuideBlock {
+  const GuideIllustration(this.id, this.alt);
+  final String id;
+  final String alt;
+}
+
 class GuideSection {
   const GuideSection({required this.heading, required this.blocks});
   final String heading;
@@ -132,6 +140,7 @@ class Guide {
           GuideNote(:final text) => plainHelpText(text),
           GuideSteps(:final items) => items.map(plainHelpText).join(' '),
           GuideList(:final items) => items.map(plainHelpText).join(' '),
+          GuideIllustration(:final alt) => alt,
         },
     ],
   ].join(' ');
@@ -157,6 +166,10 @@ GuideSection? _section(Object? json) {
   );
 }
 
+/// Kebab-case, as the guard requires of the file name — so an id can never
+/// reach outside `assets/help/illustrations/`.
+final _illustrationId = RegExp(r'^[a-z0-9]+(?:-[a-z0-9]+)*$');
+
 GuideBlock? _block(Object? json) {
   if (json is! Map) return null;
   switch (json['type']) {
@@ -177,6 +190,12 @@ GuideBlock? _block(Object? json) {
         _ => null,
       };
       return text == null || tone == null ? null : GuideNote(tone, text);
+    case 'illustration':
+      final id = _string(json['id']);
+      final alt = _string(json['alt']);
+      return id == null || alt == null || !_illustrationId.hasMatch(id)
+          ? null
+          : GuideIllustration(id, alt);
     default:
       return null;
   }

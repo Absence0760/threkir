@@ -1518,6 +1518,11 @@
             "type": "note",
             "tone": "tip",
             "text": "Das Sichern geschieht im Web. Die Handy-App zeigt die Benachrichtigung und öffnet den Kurs, hat aber noch keine Kasse – öffne den Kurs also zum Bezahlen in einem Browser."
+          },
+          {
+            "type": "illustration",
+            "id": "waitlist-and-claim-window",
+            "alt": "Drei Personen stehen in der Warteschlange. Der ersten wird der frei gewordene Platz angeboten und für begrenzte Zeit für sie reserviert."
           }
         ]
       },
@@ -1616,6 +1621,11 @@
           {
             "type": "p",
             "text": "Sofern du Karten nicht schon in deinen Cookie-Einstellungen erlaubt hast, bleibt die Karte aus, bis du **Karte laden** wählst, denn beim Laden wird deine IP-Adresse an unseren Anbieter für Kartenkacheln gesendet. Nach dem Laden ist jede teilnehmende Person ein farbiger Punkt mit einer kurzen Spur ihres jüngsten Wegs. Die Handys und Uhren der Teilnehmenden senden etwa alle 10 Sekunden eine Position, und die Seite aktualisiert sich von selbst."
+          },
+          {
+            "type": "illustration",
+            "id": "follow-a-race-live",
+            "alt": "Eine Strecke auf einer Karte mit Läuferinnen und Läufern darauf, jede Person ein farbiger Punkt mit einer kurzen Spur ihres letzten Wegs, und eine Flagge im Ziel."
           }
         ]
       },
@@ -1702,6 +1712,11 @@
           {
             "type": "p",
             "text": "Sorge zuerst dafür, dass das Event Strecken hat – siehe [[guide:set-up-a-race|Ein Rennen einrichten]]."
+          },
+          {
+            "type": "illustration",
+            "id": "race-day-for-hosts",
+            "alt": "Der Renntag in vier Schritten von links nach rechts: das Rennen scharfstellen, LOS geben, live verfolgen und es dann im Ziel beenden."
           }
         ]
       },
@@ -2280,6 +2295,11 @@
           {
             "type": "p",
             "text": "Wähle **Jetzt synchronisieren**, um erneut abzurufen. Im Web reicht **Wie weit zurück synchronisieren** bis zu einem Jahr zurück."
+          },
+          {
+            "type": "illustration",
+            "id": "import-your-history",
+            "alt": "Läufe von einer Uhr, einem verbundenen Konto und aus einer Datei landen alle in einer gemeinsamen Liste von Läufen."
           }
         ]
       },
@@ -2494,6 +2514,11 @@
             "type": "note",
             "tone": "tip",
             "text": "Um jeden Lauf zu teilen, ohne daran denken zu müssen, schalte im Tab **Du** unter **Sicherheitskontakte** die Option **Automatisches Live-Teilen** ein. Sie gilt nur für dieses Handy, und der laufende Lauf kann von allen mit dem Link angesehen werden."
+          },
+          {
+            "type": "illustration",
+            "id": "live-tracking-and-safety",
+            "alt": "Das Handy einer laufenden Person sendet seine Live-Position an zwei Menschen, die sie jeweils auf ihrem eigenen Bildschirm verfolgen."
           }
         ]
       },
@@ -2599,6 +2624,11 @@
               "Sie gilt für bereits aufgezeichnete Läufe ebenso wie für neue, denn der Track wird jedes Mal gekürzt, wenn jemand anderes ihn ansieht.",
               "Du selbst siehst immer deinen vollständigen Track, und Dateien, die du für dich exportierst, enthalten ebenfalls den vollständigen Track."
             ]
+          },
+          {
+            "type": "illustration",
+            "id": "privacy-zones",
+            "alt": "Eine Routenlinie beginnt an einem Haus in einem Kreis. Der Teil innerhalb des Kreises ist für andere verborgen, sodass die Linie, die sie sehen, erst am Rand des Kreises beginnt."
           }
         ]
       },
@@ -2698,6 +2728,11 @@
             "type": "note",
             "tone": "tip",
             "text": "Wähle unter Android für den Standort **Immer zulassen**. Mit Zugriff nur bei geöffneter App wird die Distanz, die du bei ausgeschaltetem Bildschirm zurücklegst, nicht gezählt, obwohl die Uhr weiterläuft."
+          },
+          {
+            "type": "illustration",
+            "id": "record-your-first-run",
+            "alt": "Ein Handy mit einer großen runden Starttaste, das ein GPS-Signal von einem Satelliten über ihm empfängt."
           }
         ]
       },

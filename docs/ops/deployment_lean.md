@@ -131,7 +131,7 @@ Deploy the rock-bottom Edge Function subset — the functions the web app actual
 that work without gated secrets (platform-injected env only; deployed 2026-07-11):
 
 ```bash
-for fn in clip-public-track delete-account export-data race-results-import race-listings-sync; do
+for fn in clip-public-track delete-account export-data race-results-import race-listings-sync race-listings-sweep; do
   supabase functions deploy "$fn" --project-ref <ref>
 done
 ```
@@ -145,8 +145,11 @@ done
   mobile client speaks only the queued rail, so without the worker its Account export
   tile has no service to call and says so — the on-device Full backup is what mobile
   gets on this tier, and it does not carry the personal-data table set. `race-results-import` +
-  `race-listings-sync` — the parkrun and manual-paste legs work keyless; the
-  RunSignUp / UltraSignup / ChronoTrack legs answer 503 `provider_not_configured`.
+  `race-listings-sync` — the parkrun, manual-paste and RunSignUp legs work keyless
+  (RunSignUp's feeds are public, decisions § 1903); the UltraSignup / ChronoTrack
+  legs answer 503 `provider_not_configured`. `race-listings-sweep` fills the calendar
+  from RunSignUp on a five-minute schedule once its Vault URL is armed (`deployment.md`
+  § RunSignUp race calendar).
   UltraSignup needs no key — it is opted in with `ULTRASIGNUP_RESULTS_ENABLED=true`, which
   sends the runner's name to UltraSignup, so it waits on CISO/counsel sign-off
   ([decisions § 1841](../architecture/decisions.md)).

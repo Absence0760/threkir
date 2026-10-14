@@ -1,5 +1,6 @@
 // ignore_for_file: avoid_relative_lib_imports
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:api_client/api_client.dart';
@@ -13,9 +14,12 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_gear_store.dart';
 import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
+import '../lib/parkrun_barcode_cache.dart';
 import '../lib/preferences.dart';
+import '../lib/screens/parkrun_barcode_screen.dart';
 import '../lib/screens/profile_screen.dart';
 import '../lib/screens/you_screen.dart';
+import 'pump_until.dart';
 
 /// Signed-in fake so the profile header renders. The pushed ProfileScreen's
 /// own load fails gracefully against the uninitialised Supabase client (caught
@@ -62,8 +66,12 @@ void main() {
     return d;
   }
 
-  Future<void> pump(WidgetTester tester, {ApiClient? api}) async {
-    SharedPreferences.setMockInitialValues({});
+  Future<void> pump(
+    WidgetTester tester, {
+    ApiClient? api,
+    Map<String, Object> initialPrefs = const {},
+  }) async {
+    SharedPreferences.setMockInitialValues(initialPrefs);
     final prefs = Preferences();
     await prefs.init();
     final runStore = LocalRunStore();
@@ -149,5 +157,32 @@ void main() {
     // The Preferences sub-screen pushed over You — its own AppBar (with a
     // back button) is up, which a top-level tab screen never shows.
     expect(find.byType(BackButton), findsOneWidget);
+  });
+
+  testWidgets('no parkrun barcode shortcut until this device holds a number',
+      (tester) async {
+    await pump(tester);
+    await tester.pump();
+    expect(find.byKey(const ValueKey('you-parkrun-barcode')), findsNothing);
+  });
+
+  testWidgets('the parkrun barcode shortcut opens the barcode screen',
+      (tester) async {
+    await pump(tester, initialPrefs: {
+      ParkrunBarcodeCache.storageKey:
+          jsonEncode({'user_id': 'u1', 'number': 'A123456'}),
+    });
+    final tile = find.byKey(const ValueKey('you-parkrun-barcode'));
+    await pumpUntil(
+      tester,
+      () => tile.evaluate().isNotEmpty,
+      describe: 'the barcode shortcut',
+    );
+    expect(find.descendant(of: tile, matching: find.text('A123456')),
+        findsOneWidget);
+    await tester.tap(tile);
+    await tester.pump();
+    await tester.pump();
+    expect(find.byType(ParkrunBarcodeScreen), findsOneWidget);
   });
 }

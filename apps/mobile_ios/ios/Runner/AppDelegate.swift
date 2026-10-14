@@ -90,6 +90,42 @@ import workmanager_apple
       WatchIngestBridge.shared.attach(binaryMessenger: messenger)
       CalendarBridge.shared.attach(binaryMessenger: messenger)
       LiveActivityBridge.shared.attach(binaryMessenger: messenger)
+      ScreenBrightnessBridge.shared.attach(binaryMessenger: messenger)
     }
+  }
+}
+
+/// Full brightness while the parkrun barcode is on screen. iOS has no
+/// per-window override, so this saves the runner's level before raising it and
+/// puts it back on `restore`, which the Dart side also sends whenever the app
+/// leaves the foreground. Dart side: `lib/screen_brightness_bridge.dart` over
+/// `run_app/screen_brightness`. Kept in this file so it needs no new entry in
+/// the Xcode project.
+final class ScreenBrightnessBridge {
+  static let shared = ScreenBrightnessBridge()
+
+  private var channel: FlutterMethodChannel?
+  private var saved: CGFloat?
+
+  func attach(binaryMessenger: FlutterBinaryMessenger) {
+    let brightness = FlutterMethodChannel(
+      name: "run_app/screen_brightness",
+      binaryMessenger: binaryMessenger
+    )
+    brightness.setMethodCallHandler { call, result in
+      switch call.method {
+      case "setMax":
+        if self.saved == nil { self.saved = UIScreen.main.brightness }
+        UIScreen.main.brightness = 1.0
+        result(nil)
+      case "restore":
+        if let level = self.saved { UIScreen.main.brightness = level }
+        self.saved = nil
+        result(nil)
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
+    channel = brightness
   }
 }

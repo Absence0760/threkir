@@ -988,29 +988,39 @@ class _HomeScreenState extends State<HomeScreen>
       _planOverview?.workouts ?? const [],
       DateTime.now(),
     );
+    final routes = widget.routeStore.routes;
+    final inline = recentRoutes(routes, widget.runStore.runs);
     final picked = await showRunnerMenu(
       context: context,
       actions: runnerMenuActions(
         tapFans: !_runIsPrimary,
         hasTodaysWorkout: workout != null,
-        hasRoutes: widget.routeStore.routes.isNotEmpty,
+        hasRoutes: routes.isNotEmpty,
         gymShown: _gymShown,
         nutritionShown: _nutritionShown,
       ),
+      unit: widget.preferences.unit,
       todaysWorkout: workout,
+      routes: inline,
+      hasMoreRoutes: routes.length > inline.length,
     );
     if (picked == null || !mounted) return;
     switch (picked) {
-      case RunnerMenuAction.todaysWorkout:
-        _startTodaysWorkout(workout!);
-      case RunnerMenuAction.followRoute:
-        await _pickRouteToFollow();
-      case RunnerMenuAction.pastRun:
-        _openAddPastRun();
-      case RunnerMenuAction.lift:
-        await _performLogAction(LogAction.lift);
-      case RunnerMenuAction.food:
-        await _performLogAction(LogAction.food);
+      case RunnerMenuRouteChoice(:final route):
+        _followRoute(route);
+      case RunnerMenuActionChoice(:final action):
+        switch (action) {
+          case RunnerMenuAction.todaysWorkout:
+            _startTodaysWorkout(workout!);
+          case RunnerMenuAction.followRoute:
+            await _pickRouteToFollow();
+          case RunnerMenuAction.pastRun:
+            _openAddPastRun();
+          case RunnerMenuAction.lift:
+            await _performLogAction(LogAction.lift);
+          case RunnerMenuAction.food:
+            await _performLogAction(LogAction.food);
+        }
     }
   }
 
@@ -1031,8 +1041,14 @@ class _HomeScreenState extends State<HomeScreen>
       unit: widget.preferences.unit,
     );
     if (picked == null || !mounted) return;
+    _followRoute(picked);
+  }
+
+  /// The recorder takes a route only from its start screen, so a finished
+  /// run's summary is closed first.
+  void _followRoute(cm.Route route) {
     if (runSummaryShowing.value) runSummaryDismissRequests.request();
-    _startRunWithRoute(picked);
+    _startRunWithRoute(route);
   }
 
   void _openAddPastRun() {

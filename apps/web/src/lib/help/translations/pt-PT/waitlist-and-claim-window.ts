@@ -40,6 +40,11 @@ export const translation: GuideTranslation = {
 					tone: 'tip',
 					text: 'Garantir o lugar faz-se na web. A app do telemóvel mostra a notificação e abre a aula, mas ainda não tem pagamento, por isso abra a aula num navegador para pagar.',
 				},
+				{
+					type: 'illustration',
+					id: 'waitlist-and-claim-window',
+					alt: 'Três pessoas esperam na fila. À primeira é oferecido o lugar que vagou, que fica reservado para ela durante um tempo limitado.',
+				},
 			],
 		},
 		{
@@ -108,5 +113,6 @@ export const translation: GuideTranslation = {
 		's4.b0.i0': '9fc9b8683d8e30fd',
 		's4.b0.i1': 'f602296c6993b85f',
 		's4.b0.i2': '4d6cf70ea800fae3',
+		's1.b4': 'f0e75c06bd5e6193',
 	},
 };

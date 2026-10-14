@@ -1,12 +1,14 @@
 <script lang="ts">
 	/// One help guide (docs/features/help.md). Guide text is plain strings with
 	/// a small markup that `HelpRichText` renders from parsed tokens, so nothing
-	/// here is {@html}. Section anchors come from `sectionId`, the same function
+	/// here is {@html} (an illustration is a vetted static file, see
+	/// HelpIllustration). Section anchors come from `sectionId`, the same function
 	/// the guard checks for uniqueness.
 	import { page } from '$app/state';
 	import { helpIndex } from '#lib/help/localized.svelte.ts';
 	import { sectionId } from '#lib/help/markup.ts';
 	import { KIND_LABEL, PLATFORM_LABEL, REQUIREMENT_LABEL } from '#lib/help/labels.ts';
+	import HelpIllustration from '#lib/components/help/HelpIllustration.svelte';
 	import HelpRichText from '#lib/components/help/HelpRichText.svelte';
 	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
 
@@ -91,6 +93,8 @@
 								<strong class="note-tag" lang={currentLocale()}>{b.tone === 'tip' ? m('help.noteTip') : m('help.noteCaution')}</strong>
 								<p><HelpRichText text={b.text} /></p>
 							</aside>
+						{:else if b.type === 'illustration'}
+							<HelpIllustration id={b.id} alt={b.alt} />
 						{/if}
 					{/each}
 				</section>
@@ -116,7 +120,9 @@
 <style>
 	.help-guide-page {
 		padding: var(--page-padding-y) var(--page-padding-x);
-		max-width: 48rem;
+	}
+	.help-guide-page > * {
+		max-width: var(--page-measure);
 	}
 	.back-link {
 		display: inline-flex;

@@ -1116,6 +1116,13 @@ jobs:
             echo "Reproduce with: node --test scripts/check_web_bundle_budget.test.mjs (stdlib only, no install needed)."
             exit 1
           fi
+      - name: Unit-test the removed-Kit-API guard
+        run: |
+          if ! node --test scripts/check_web_removed_kit_apis.test.mjs; then
+            echo "::error::The removed-SvelteKit-API guard's own unit tests failed, so its verdict on the build below cannot be trusted."
+            echo "Reproduce with: node --test scripts/check_web_removed_kit_apis.test.mjs (stdlib only, no install needed)."
+            exit 1
+          fi
       # The phone apps render the in-app help guides, and the web its
       # translated locales, from per-locale JSON copies of the TypeScript
       # guides and translations under apps/web/src/lib/help (docs/features/
@@ -1151,6 +1158,24 @@ jobs:
           if ! node --test scripts/check_help_translations.test.mjs; then
             echo "::error::The help-guide translation guard's own unit tests failed, so the staleness check above cannot be trusted to fire. Nothing here is about the Svelte build or the bundle."
             echo "Reproduce with: node --test scripts/check_help_translations.test.mjs (stdlib only, no install needed)."
+            exit 1
+          fi
+      # The help-guide illustrations are text-free SVG painted only with
+      # currentColor and the theme-token placeholders, so one file serves
+      # every locale and both themes on web and phone (docs/features/help.md
+      # § Illustrations). A <text>, script, link or foreign colour fails here.
+      - name: Verify every help-guide illustration is text-free, themed and referenced
+        run: |
+          if ! node scripts/check_help_illustrations.mjs; then
+            echo "::error::A help-guide illustration under apps/web/src/lib/help/illustrations holds text, a script, an external reference or a colour outside the token set, or a guide's illustration block names no file, or a file is referenced by no guide. Nothing here is about the Svelte build or the bundle. The lines above name each file and problem."
+            echo "Fix: paint only with currentColor, none and the placeholders in apps/web/src/lib/help/illustration.ts, keep words out of the drawing (they belong in the block's alt), and reference or delete each file."
+            exit 1
+          fi
+      - name: Unit-test the help-guide illustration guard
+        run: |
+          if ! node --test scripts/check_help_illustrations.test.mjs; then
+            echo "::error::The help-guide illustration guard's own unit tests failed, so the check above cannot be trusted to fire. Nothing here is about the Svelte build or the bundle."
+            echo "Reproduce with: node --test scripts/check_help_illustrations.test.mjs (stdlib only, no install needed)."
             exit 1
           fi
       - run: npm ci
@@ -1208,6 +1233,17 @@ jobs:
       # (fonts, images, prerendered pages: one loaded per reader). The
       # numbers and the measurements behind them live in the script's header,
       # next to the arithmetic they govern.
+      # A removed Kit module compiles to a stub that throws on first use, so
+      # the build passes and the page dies at run time. web@1.12.0 shipped
+      # one inside @sentry/sveltekit and blanked the site for every reader
+      # who accepted error reporting (decisions § 1896).
+      - name: Assert no removed SvelteKit API ships to the client
+        run: |
+          if ! node scripts/check_web_removed_kit_apis.mjs; then
+            echo "::error::The built web client carries the throwing stub of a SvelteKit module Kit has removed. The build succeeded; the page would throw when that code first runs. The failing line names the chunk."
+            echo "Reproduce with: npm run build --workspace=apps/web && node scripts/check_web_removed_kit_apis.mjs"
+            exit 1
+          fi
       - name: Measure + assert the bundle budget
         run: |
           if ! node scripts/check_web_bundle_budget.mjs; then
@@ -4240,6 +4276,63 @@ jobs:
             apps/web/test-results
           retention-days: 7
 
+  e2e-web-built:
+    needs: changes
+    if: needs.changes.outputs.web_e2e == 'true'
+    # The only lane that runs a PRODUCTION build with error reporting on.
+    # Every other Playwright lane runs `vite dev`, and hooks.client.ts
+    # initialises Sentry only when `!dev && PUBLIC_SENTRY_DSN &&
+    # hasAcceptedConsent()` — so web@1.12.0 shipped a client that threw
+    # `svelte.dev/e/kit/app_stores_removed` at hydration for every reader
+    # who accepted error reporting, with every lane green (decisions
+    # § 1896). build-web's removed-Kit-API guard reads the build output;
+    # this lane loads it in a browser and asserts the pages render.
+    #
+    # Its own build rather than build-web's artifact: the DSN is baked into
+    # `_app/env.js` at build time, build-web deliberately builds without one,
+    # and downloading an artifact would still pay the install Playwright
+    # needs while serialising this job behind build-web. No Supabase stack,
+    # which is the dominant cost of every other e2e job: the pages are
+    # anonymous and the spec routes every off-origin request away. The
+    # playwright.built.config.ts webServer runs the build and serves it.
+    name: Web e2e — built app, error reporting accepted
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: 10
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.20.0
+          cache: pnpm
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Cache Playwright browsers
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-
+      - uses: ./.github/actions/install-playwright
+      - name: Sync SvelteKit generated types
+        working-directory: apps/web
+        run: pnpm exec svelte-kit sync
+      - name: Run the built-app Playwright suite
+        working-directory: apps/web
+        run: pnpm exec playwright test --config=tests-e2e/playwright.built.config.ts
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-report-built
+          path: |
+            apps/web/playwright-report
+            apps/web/test-results
+          retention-days: 7
+
   test-watch-ios:
     needs: changes
     if: needs.changes.outputs.code == 'true'
@@ -4402,6 +4495,7 @@ jobs:
       - e2e-web-livehub
       - e2e-web-exporthub
       - e2e-web-sso
+      - e2e-web-built
       - test-watch-ios
     steps:
       - name: Refuse to pass a draft

@@ -20,6 +20,11 @@ export const translation: GuideTranslation = {
 						'自分のトラックは常にすべて表示され、自分用にエクスポートしたファイルにもトラック全体が残ります。',
 					],
 				},
+				{
+					type: 'illustration',
+					id: 'privacy-zones',
+					alt: '円の中にある家からルートの線が始まっています。円の内側の部分は他の人には表示されないため、他の人に見える線は円の縁から始まります。',
+				},
 			],
 		},
 		{
@@ -104,5 +109,6 @@ export const translation: GuideTranslation = {
 		's3.b0.i1': '7e6aff2443fca79b',
 		's3.b0.i2': '2d441105a1624ed1',
 		's3.b1': '20c32d436fe0799c',
+		's0.b2': '9bfc49abe8494ae1',
 	},
 };

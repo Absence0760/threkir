@@ -53,7 +53,22 @@ for (const locale of existsSync(TRANSLATIONS_DIR) ? readdirSync(TRANSLATIONS_DIR
 }
 
 function blockTexts(block: Block): string[] {
+	if (block.type === 'illustration') return [block.alt];
 	return block.type === 'steps' || block.type === 'list' ? block.items : [block.text];
+}
+
+/// Every illustration's alt text, English and translated, with where it is.
+function altTexts(): { where: string; alt: string }[] {
+	const out: { where: string; alt: string }[] = [];
+	const collect = (where: string, sections: Guide['sections']) =>
+		sections.forEach((s, si) =>
+			s.blocks.forEach((b, bi) => {
+				if (b.type === 'illustration') out.push({ where: `${where} › section ${si + 1} block ${bi + 1}`, alt: b.alt });
+			}),
+		);
+	for (const { guide } of guides) collect(guide.id, guide.sections);
+	for (const { locale, translation } of translations) collect(`translations/${locale}/${translation.id}`, translation.sections);
+	return out;
 }
 
 /// Every string a guide renders through the markup parser, with where it is.
@@ -197,6 +212,25 @@ test('no stray or unknown markup, no HTML, no emoji', () => {
 		if (PICTOGRAPH.test(everything)) problems.push(`${guide.id}: emoji in guide text`);
 	}
 	assert.deepEqual(problems, []);
+});
+
+test('illustration alt text is present, short and plain, with no markup', () => {
+	const problems: string[] = [];
+	for (const { where, alt } of altTexts()) {
+		if (alt.trim().length === 0) problems.push(`${where}: empty alt`);
+		else if (plainText(alt) !== alt || alt.includes('*') || alt.includes('<')) problems.push(`${where}: alt "${alt}" may not carry markup`);
+		if (alt.length > 240) problems.push(`${where}: alt is ${alt.length} chars (keep it under 240)`);
+	}
+	assert.deepEqual(problems, []);
+});
+
+test('every illustration is a clean, referenced, text-free themed SVG', () => {
+	try {
+		execFileSync(process.execPath, [join(REPO_ROOT, 'scripts', 'check_help_illustrations.mjs')], { stdio: 'pipe' });
+	} catch (e) {
+		const err = e as { stderr?: Buffer };
+		assert.fail(`scripts/check_help_illustrations.mjs failed:\n${err.stderr ?? ''}`);
+	}
 });
 
 test('every [[guide:]] link and related id resolves to another guide', () => {

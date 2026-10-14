@@ -53,7 +53,9 @@
 <style>
 	.help-search-page {
 		padding: var(--page-padding-y) var(--page-padding-x);
-		max-width: 48rem;
+	}
+	.help-search-page > * {
+		max-width: var(--page-measure);
 	}
 	.back-link {
 		display: inline-flex;

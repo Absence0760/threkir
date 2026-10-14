@@ -20,6 +20,11 @@ export const translation: GuideTranslation = {
 						'Tú siempre ves tu recorrido completo, y los archivos que exportas para ti también lo conservan completo.',
 					],
 				},
+				{
+					type: 'illustration',
+					id: 'privacy-zones',
+					alt: 'Una ruta empieza en una casa dentro de un círculo. La parte dentro del círculo queda oculta para los demás, así que la línea que ven empieza en el borde del círculo.',
+				},
 			],
 		},
 		{
@@ -104,5 +109,6 @@ export const translation: GuideTranslation = {
 		's3.b0.i1': '7e6aff2443fca79b',
 		's3.b0.i2': '2d441105a1624ed1',
 		's3.b1': '20c32d436fe0799c',
+		's0.b2': '9bfc49abe8494ae1',
 	},
 };

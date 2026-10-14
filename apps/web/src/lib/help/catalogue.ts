@@ -53,6 +53,8 @@ function blockText(block: Block): string {
 		case 'steps':
 		case 'list':
 			return block.items.map(plainText).join(' ');
+		case 'illustration':
+			return block.alt;
 		default:
 			return plainText(block.text);
 	}

@@ -294,7 +294,7 @@ Until step 4 lands, treat the secret as compromised-if-logs-are: the channel is 
 Every deploy starts with a merge, so the merge gate is the first production
 control. Branch protection on `main` requires **exactly one status context**:
 `CI gate`, the aggregator job in `.github/workflows/ci.yml`. It waits on the
-other 35 jobs in that file and fails if any of them reports anything but
+other 37 jobs in that file and fails if any of them reports anything but
 success or skipped.
 
 `build-mobile-ios` joined the required set on 2026-09-20. It compiles
@@ -654,6 +654,15 @@ The followers level and named-person run / route shares ([sharing.md](../feature
 ### Security emails — two auth settings, no new secret
 
 The password-changed and new-device notices ([email.md § Security emails](../features/email.md#security-emails)) ship with the code, and the new-device half is live as soon as `20270804000002` applies — it rides the worker's existing `SMTP_HOST` / `APP_BASE_URL`, and its `prune-sign-in-devices` pg_cron is created by the migration. The password-changed half needs two operator settings that `config.toml` does not reach: turn on the **password changed** security notification on the hosted project (Dashboard → Auth → Emails, or the Management API `config/auth` field `mailer_notifications_password_changed_enabled`), and set `APP_BASE_URL` (the web origin) on the `auth-email` function so the notice carries its Reset password button. Neither is a credential. Verify by changing a test account's password and reading the mail.
+
+### RunSignUp race calendar — arm the sweep (one Vault entry)
+
+The RunSignUp legs need no key ([decisions § 1903](../architecture/decisions.md)), but the calendar only fills once the five-minute sweep is armed ([§ 1902](../architecture/decisions.md)). Migration `20270805000002` schedules `race-listings-sweep` and its invoker calls nothing until both Vault secrets exist, so an unarmed deploy is inert rather than broken.
+
+1. Deploy the function: `supabase functions deploy race-listings-sweep` (its `verify_jwt = false` comes from `config.toml`). `CRON_SECRET` must already be set as a function secret — `refresh-tokens` and `events-refund-sweep` use the same one.
+2. Confirm the `cron_secret` Vault entry exists (name only): `select name from vault.secrets where name = 'cron_secret';`.
+3. Add the URL entry in the SQL editor: `select vault.create_secret('https://<project-ref>.supabase.co/functions/v1/race-listings-sweep', 'race_listings_sweep_url');`.
+4. Verify one run by hand: `select public.invoke_race_listings_sweep();` returns a request id, and `select status_code, left(content::text, 200) from net._http_response order by id desc limit 1;` shows `200` with a `window` and `synced` / `unplaced` counts. A `complete: false` (and a `window filled the page` log) means a 14-day window held 500 races — narrow `SWEEP_WINDOW_DAYS`.
 
 ### Lambda secrets — one apply, before the next web deploy
 

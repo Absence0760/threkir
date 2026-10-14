@@ -22,6 +22,9 @@ import {
   matchResultGate,
   parseRaceResultRow,
   resultsPossiblyTruncated,
+  runSignUpErrorOf,
+  runSignUpEventsOn,
+  runSignUpRaceUrl,
   runSignUpResultsUrl,
   runSignUpScopeGate,
   ultraSignUpCandidates,
@@ -38,13 +41,12 @@ import { reconcileImportBatch } from '../_shared/external_id_batch.ts';
 interface RequestBody {
   provider?: unknown; // 'runsignup' | 'ultrasignup' | 'chronotrack' | 'paste'
   listingId?: unknown; // race_listings.id to import onto / link
-  runSignUpUserId?: unknown; // runner's RunSignUp account id (optional filter)
   ultraSignUpPersonId?: unknown; // UltraSignup: the picked person's `Id`
   ultraSignUpFirstName?: unknown; // UltraSignup: the name that person was found under
   ultraSignUpLastName?: unknown;
   ultraSignUpFlow?: unknown; // UltraSignup probe: 'person' from a client that speaks it
   lookup?: unknown; // UltraSignup: list the people a name answers with, import nothing
-  bib?: unknown; // ChronoTrack: filter results to one bib
+  bib?: unknown; // RunSignUp / ChronoTrack: the runner's bib, the only scope either honours
   result?: unknown; // paste-mode single result row
   matchRunId?: unknown; // when set, enrich THIS existing run instead of inserting
   probe?: unknown; // when true, only report whether `provider` is configured
@@ -129,16 +131,11 @@ export function makeRaceResultsImportHandler(
     // when the named provider's credentials are unset, without needing a listing.
     // The ChronoTrack Settings card uses this to disable itself with an explainer.
     if (isProbe) {
-      // Every credential-gated provider has to be probed, not just ChronoTrack:
-      // reporting `configured: true` for runsignup / chronotrack while their keys
-      // are unset made the UI enable a card that 503s on the very next call.
+      // Every credential-gated provider has to be probed: reporting
+      // `configured: true` for a leg whose keys are unset made the UI enable a
+      // card that 503s on the very next call. RunSignUp is not one of them any
+      // more — its results feed is public, so it answers on any deployment.
       if (provider === 'chronotrack' && !chronoTrackConfigured(deps.getEnv)) {
-        return Response.json({ error: 'provider_not_configured' }, { status: 503 });
-      }
-      if (
-        provider === 'runsignup' &&
-        !(deps.getEnv('RUNSIGNUP_API_KEY') && deps.getEnv('RUNSIGNUP_API_SECRET'))
-      ) {
         return Response.json({ error: 'provider_not_configured' }, { status: 503 });
       }
       // UltraSignup needs no key — its feed is keyless — so it answers on the
@@ -231,50 +228,73 @@ export function makeRaceResultsImportHandler(
     let complete = true;
 
     if (provider === 'runsignup') {
-      // Fail closed when the provider key is unconfigured. The whole RunSignUp
-      // leg is gated on a missing API key (integrations.md); until it is
-      // provisioned the EF is inert and the UI shows the unavailable explainer.
-      const apiKey = deps.getEnv('RUNSIGNUP_API_KEY');
-      const apiSecret = deps.getEnv('RUNSIGNUP_API_SECRET');
-      if (!apiKey || !apiSecret) {
-        return Response.json({ error: 'provider_not_configured' }, { status: 503 });
-      }
+      // Keyless: the race and results feeds are public, and the key pair is
+      // sent only when both halves are set (decisions § 1899 for listings, the
+      // same rule here).
+      const apiKey = deps.getEnv('RUNSIGNUP_API_KEY') ?? null;
+      const apiSecret = deps.getEnv('RUNSIGNUP_API_SECRET') ?? null;
       const raceId = (listing.provider_race_id as string | null) ?? '';
       if (!raceId) {
         return Response.json({ error: 'listing has no RunSignUp race id' }, { status: 400 });
       }
       // Fail closed: an unscoped fetch returns the entire finisher field, which
-      // would be imported as the caller's own runs (issue #360). Require the
-      // runner's RunSignUp user id or a bib before hitting the upstream.
-      const runSignUpUserId =
-        typeof body.runSignUpUserId === 'string' ? body.runSignUpUserId : undefined;
-      const runSignUpBib = typeof body.bib === 'string' ? body.bib : undefined;
-      const scope = runSignUpScopeGate({ runSignUpUserId, bib: runSignUpBib });
+      // would be imported as the caller's own runs (issue #360). A bib is the
+      // only scope the feed honours, so it is required before any fetch.
+      const bib = typeof body.bib === 'string' ? body.bib : undefined;
+      const scope = runSignUpScopeGate({ bib });
       if (!scope.ok) {
         return Response.json({ error: scope.error }, { status: scope.status });
       }
-      const url = runSignUpResultsUrl({ raceId, apiKey, apiSecret, runSignUpUserId });
-      const upstream = await deps.fetch(url, {
-        headers: { 'User-Agent': deps.getEnv('RACE_IMPORT_USER_AGENT') || 'RunApp/1.0' },
-      });
-      if (!upstream.ok) {
-        // Fail loud on a non-2xx upstream rather than feeding an error page in.
-        return Response.json({ error: `runsignup upstream ${upstream.status}` }, { status: 502 });
+      const headers = { 'User-Agent': deps.getEnv('RACE_IMPORT_USER_AGENT') || 'RunApp/1.0' };
+      const readFeed = async (url: string): Promise<{ payload: unknown } | { failed: Response }> => {
+        const upstream = await deps.fetch(url, { headers });
+        if (!upstream.ok) {
+          return {
+            failed: Response.json({ error: `runsignup upstream ${upstream.status}` }, { status: 502 }),
+          };
+        }
+        let payload: unknown;
+        try {
+          payload = await upstream.json();
+        } catch (_) {
+          return { failed: Response.json({ error: 'runsignup upstream not JSON' }, { status: 502 }) };
+        }
+        // RunSignUp refuses a request with HTTP 200 and an error envelope;
+        // reading that as an empty field would tell the runner they were not
+        // in a race they ran.
+        if (runSignUpErrorOf(payload) !== null) {
+          return { failed: Response.json({ error: 'runsignup upstream error' }, { status: 502 }) };
+        }
+        return { payload };
+      };
+
+      const race = await readFeed(runSignUpRaceUrl({ raceId, apiKey, apiSecret }));
+      if ('failed' in race) return race.failed;
+      // get-results needs an event id, and one race morning can hold several
+      // events. Each of the listing day's running events is asked for this bib,
+      // the listing's own distance first, until one answers.
+      const events = runSignUpEventsOn(race.payload, mapOpts.raceDate, mapOpts.distanceM);
+      if (events.length === 0) {
+        return Response.json({ error: 'runsignup_event_not_found' }, { status: 404 });
       }
-      let payload: unknown;
-      try {
-        payload = await upstream.json();
-      } catch (_) {
-        return Response.json({ error: 'runsignup upstream not JSON' }, { status: 502 });
+      for (const event of events) {
+        const results = await readFeed(
+          runSignUpResultsUrl({ raceId, eventId: event.eventId, bib: bib!, apiKey, apiSecret }),
+        );
+        if ('failed' in results) return results.failed;
+        const rows = extractRunSignUpResults(results.payload);
+        if (resultsPossiblyTruncated(rows.length)) complete = false;
+        // The run is as long as the event the runner ran, which is not the
+        // listing's headline distance when they ran its 5K.
+        const eventOpts = { ...mapOpts, distanceM: event.distanceM ?? mapOpts.distanceM };
+        mapped = filterResultsByBib(
+          rows
+            .map((r) => mapRunSignUpResult(r, eventOpts))
+            .filter((r): r is MappedRaceRun => r !== null),
+          bib!,
+        );
+        if (mapped.length > 0) break;
       }
-      const rows = extractRunSignUpResults(payload);
-      complete = !resultsPossiblyTruncated(rows.length);
-      mapped = rows
-        .map((r) => mapRunSignUpResult(r, mapOpts))
-        .filter((r): r is MappedRaceRun => r !== null);
-      // A bib-scoped request narrows here: the API filters only by user id, so
-      // without this a bib-only request would still map the whole field.
-      if (runSignUpBib) mapped = filterResultsByBib(mapped, runSignUpBib);
     } else if (provider === 'ultrasignup') {
       // Opt-in per deployment; the feed is keyless, so the switch is the gate.
       if (!ultraSignUpEnabled(deps.getEnv)) {
@@ -456,11 +476,33 @@ export function makeRaceResultsImportHandler(
     // existing external_ids first — the runs.external_id index is a PER-USER
     // PARTIAL unique, which PostgREST onConflict can't target (see parkrun).
     const externalIds = mapped.map((r) => r.external_id);
-    const { data: seenRows } = await supabase
+    const { data: seenRows, error: seenErr } = await supabase
       .from('runs')
       .select('external_id')
       .eq('user_id', user.id)
       .in('external_id', externalIds);
+    // ... and against the bibs already imported for THIS listing. The
+    // external_id spells the listing's name, and the race-calendar sweep
+    // rewrites that name whenever the provider does (decisions § 1902), so a
+    // runner re-importing after a rename would get an id nothing stored carries
+    // and a second copy of the same race. One listing is one race on one day,
+    // so a bib already filed under it is that result, whatever it was called.
+    const { data: listingRows, error: listingRunsErr } = await supabase
+      .from('runs')
+      .select('bib:metadata->>bib')
+      .eq('user_id', user.id)
+      .eq('race_listing_id', mapOpts.listingId);
+    if (seenErr || listingRunsErr) {
+      // A failed read is not an empty history: going on would insert a race
+      // the runner may already hold.
+      return Response.json({ error: 'race import could not check for duplicates' }, { status: 500 });
+    }
+    const filedBibs = new Set(
+      (listingRows ?? []).map((r) => r.bib).filter((b): b is string => typeof b === 'string' && b !== ''),
+    );
+    const alreadyFiled = mapped
+      .filter((r) => typeof r.metadata.bib === 'string' && filedBibs.has(r.metadata.bib))
+      .map((r) => r.external_id);
     // Reconciled against the batch itself as well as against what is stored.
     // `external_id` is `race:{name}:{date}:{bib}` and both the name and the date
     // come from the ONE listing, so two mapped results carrying the same bib
@@ -470,7 +512,10 @@ export function makeRaceResultsImportHandler(
     // loses every other result in the import rather than the duplicate.
     const batch = reconcileImportBatch(
       mapped,
-      (seenRows ?? []).map((r) => r.external_id).filter((id): id is string => id !== null),
+      [
+        ...(seenRows ?? []).map((r) => r.external_id).filter((id): id is string => id !== null),
+        ...alreadyFiled,
+      ],
     );
     const fresh = batch.fresh.map((r) => ({ ...r, id: crypto.randomUUID(), user_id: user.id }));
     const skipped = batch.skipped;

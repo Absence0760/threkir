@@ -35,7 +35,7 @@ class _CapturingApi extends ApiClient {
 
   @override
   Future<RunPhotoRow> addRunPhoto({
-    required String runId,
+    required String? runId,
     required Uint8List bytes,
     required String contentType,
     required String extension,

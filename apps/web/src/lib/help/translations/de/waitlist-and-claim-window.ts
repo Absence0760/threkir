@@ -40,6 +40,11 @@ export const translation: GuideTranslation = {
 					tone: 'tip',
 					text: 'Das Sichern geschieht im Web. Die Handy-App zeigt die Benachrichtigung und öffnet den Kurs, hat aber noch keine Kasse – öffne den Kurs also zum Bezahlen in einem Browser.',
 				},
+				{
+					type: 'illustration',
+					id: 'waitlist-and-claim-window',
+					alt: 'Drei Personen stehen in der Warteschlange. Der ersten wird der frei gewordene Platz angeboten und für begrenzte Zeit für sie reserviert.',
+				},
 			],
 		},
 		{
@@ -108,5 +113,6 @@ export const translation: GuideTranslation = {
 		's4.b0.i0': '9fc9b8683d8e30fd',
 		's4.b0.i1': 'f602296c6993b85f',
 		's4.b0.i2': '4d6cf70ea800fae3',
+		's1.b4': 'f0e75c06bd5e6193',
 	},
 };

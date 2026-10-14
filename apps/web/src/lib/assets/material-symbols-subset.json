@@ -20,10 +20,10 @@
 		"rclt"
 	],
 	"subset": {
-		"bytes": 71172,
-		"sha256": "53fedf0905735ca19f4e44c4c9e80271ddd2e4436fe384787675db8299433037",
-		"glyphs": 314,
-		"ligatures": 423
+		"bytes": 71240,
+		"sha256": "12fd8dab05c49bb8aeee4e39aed417b44bf03b0e6d06b520185c656e33a99890",
+		"glyphs": 315,
+		"ligatures": 424
 	},
 	"icons": [
 		"10k",
@@ -157,6 +157,7 @@
 		"hd",
 		"health_and_safety",
 		"heat",
+		"height",
 		"help",
 		"help_outline",
 		"hiking",

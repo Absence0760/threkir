@@ -5236,6 +5236,60 @@ class AppLocalizationsFr extends AppLocalizations {
       'Aucune course récente trouvée. Enregistrez d\'abord une course, puis revenez.';
 
   @override
+  String get eventAddOccurrencePhoto => 'Ajouter une photo de l\'événement';
+
+  @override
+  String get eventAddPhotoFromRun => 'Ajouter depuis ma course';
+
+  @override
+  String get eventNoRunsInPhotoWindow =>
+      'Aucune de vos courses n\'a commencé pendant cet événement. Les photos se rattachent à une course commencée jusqu\'à 2 heures avant et dans les 24 heures après le départ.';
+
+  @override
+  String eventPhotoRunsLoadFailed(String error) {
+    return 'Impossible de charger vos courses : $error';
+  }
+
+  @override
+  String get eventPhotosLoadFailed => 'Impossible de charger les photos.';
+
+  @override
+  String get eventPhotosRetry => 'Recharger les photos';
+
+  @override
+  String get eventPhotoHiddenBadge => 'Masquée';
+
+  @override
+  String get eventPhotoHide => 'Masquer';
+
+  @override
+  String eventPhotoHideLabel(String name) {
+    return 'Masquer la photo de $name';
+  }
+
+  @override
+  String get eventPhotoRestore => 'Rétablir';
+
+  @override
+  String get eventPhotoDelete => 'Supprimer';
+
+  @override
+  String get eventPhotoHidden => 'Photo masquée de l\'événement';
+
+  @override
+  String eventPhotoModerateFailed(String error) {
+    return 'Impossible de mettre à jour la photo : $error';
+  }
+
+  @override
+  String get eventPhotoDeleted => 'Photo supprimée';
+
+  @override
+  String eventPhotoDeleteFailed(String error) {
+    return 'Impossible de supprimer la photo : $error';
+  }
+
+  @override
   String get eventPhotoRunnerFallback => 'Un coureur';
 
   @override
@@ -7197,6 +7251,63 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get integrationsParkrunFieldLabel => 'Numéro d\'athlète';
+
+  @override
+  String get parkrunBarcodeTitle => 'Code-barres parkrun';
+
+  @override
+  String get parkrunBarcodeTileSubtitle =>
+      'À présenter à l\'arrivée, même hors ligne.';
+
+  @override
+  String parkrunBarcodeSemantics(String number) {
+    return 'Code-barres parkrun du numéro d\'athlète $number';
+  }
+
+  @override
+  String get parkrunBarcodeHint =>
+      'Présentez-le à l\'arrivée pour qu\'il soit scanné avec votre jeton d\'arrivée.';
+
+  @override
+  String get parkrunBarcodePaperNote =>
+      'parkrun n\'accepte pas officiellement les codes-barres sur écran : emportez une version imprimée au cas où un scanner ne lirait pas celui-ci.';
+
+  @override
+  String get parkrunBarcodeEmpty =>
+      'Ajoutez votre numéro d\'athlète parkrun pour afficher votre code-barres ici.';
+
+  @override
+  String get parkrunBarcodeInvalid =>
+      'Le numéro d\'athlète enregistré n\'est pas au format parkrun (A suivi de chiffres) et ne peut donc pas être affiché en code-barres.';
+
+  @override
+  String get parkrunBarcodeAdd => 'Ajouter un numéro d\'athlète';
+
+  @override
+  String get parkrunBarcodeEdit => 'Modifier le numéro d\'athlète';
+
+  @override
+  String get parkrunBarcodeSave => 'Enregistrer';
+
+  @override
+  String parkrunBarcodeSaveFailed(String error) {
+    return 'Impossible d\'enregistrer votre numéro d\'athlète : $error';
+  }
+
+  @override
+  String get parkrunBarcodeFieldInvalid =>
+      'Saisissez A suivi de chiffres, par exemple A123456.';
+
+  @override
+  String get parkrunBarcodeLoadFailed =>
+      'Impossible de charger votre numéro d\'athlète. Vérifiez votre connexion et réessayez.';
+
+  @override
+  String get parkrunBarcodeRetry => 'Réessayer';
+
+  @override
+  String get parkrunBarcodeOfflineCopy =>
+      'Affichage de la copie enregistrée sur ce téléphone.';
 
   @override
   String get integrationsImport => 'Importer';
@@ -15451,4 +15562,26 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get logMoreTodaysWorkout => 'Démarrer la séance du jour';
+
+  @override
+  String get runnerMenuFollowRoute => 'Suivre un parcours';
+
+  @override
+  String get runnerMenuAllRoutes => 'Tous les parcours…';
+
+  @override
+  String runnerMenuFollowRouteNamed(String name) {
+    return 'Suivre $name';
+  }
+
+  @override
+  String runnerMenuWorkoutSteps(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count étapes',
+      one: '$count étape',
+    );
+    return '$_temp0';
+  }
 }

@@ -10,7 +10,7 @@
 	import TrackPreview from '#lib/components/TrackPreview.svelte';
 	import MapBackdrop from '#lib/components/marketing/MapBackdrop.svelte';
 	import { DEMO_DISTANCE_LABEL, DEMO_HR_ZONES, DEMO_SPLITS, DEMO_TRACK } from '#lib/marketing/demo_preview.ts';
-	import { reveal, spotlight, tilt } from '#lib/motion/actions.ts';
+	import { reveal, seen, spotlight, tilt } from '#lib/motion/actions.ts';
 	import { buildOrganizationJsonLd, buildWebSiteJsonLd } from '#lib/share/site_meta.ts';
 	import { normaliseSiteUrl } from '#lib/share/share_meta.ts';
 
@@ -81,8 +81,8 @@
 		<span>{m('landing.loading')}</span>
 	</main>
 {:else}
-<div class="landing motion-scope">
-<PublicHeader motionToggle />
+<div class="landing">
+<PublicHeader />
 
 <main class="hero" id="main-content">
 	<!-- Decoration only, on its own clipped layer: .hero cannot be
@@ -169,7 +169,7 @@
 				<h3>{m('landing.featureSyncHeadline')}</h3>
 				<p>{m('landing.featureSyncBody')}</p>
 			</div>
-			<div class="feature-visual feature-visual--sync" aria-hidden="true" use:spotlight>
+			<div class="feature-visual feature-visual--sync" aria-hidden="true" use:spotlight use:seen>
 				<svg class="sync-links" viewBox="0 0 100 100" preserveAspectRatio="none">
 					<path d="M18 22 C 34 22, 38 50, 50 50" />
 					<path d="M82 22 C 66 22, 62 50, 50 50" />
@@ -222,7 +222,7 @@
 				<h3>{m('landing.featurePlansHeadline')}</h3>
 				<p>{m('landing.featurePlansBody')}</p>
 			</div>
-			<div class="feature-visual feature-visual--week" aria-hidden="true" use:spotlight>
+			<div class="feature-visual feature-visual--week" aria-hidden="true" use:spotlight use:seen>
 				{#each planWeeks as week, w (w)}
 					<div class="week">
 						{#each week as kind, d (d)}
@@ -237,7 +237,7 @@
 	</div>
 </section>
 
-<section id="apps" class="apps-section">
+<section id="apps" class="apps-section" use:seen>
 	<div class="topo topo--apps" aria-hidden="true"></div>
 	<div class="section-head" use:reveal>
 		<h2>{m('landing.appsSectionTitle')}</h2>
@@ -261,7 +261,7 @@
 	<p class="platforms-note">{m('landing.platformsNote')}</p>
 </section>
 
-<section class="closing-cta">
+<section class="closing-cta" use:seen>
 	<div class="closing-glow" aria-hidden="true">
 		<div class="topo topo--closing"></div>
 	</div>
@@ -357,8 +357,14 @@
 		pointer-events: none;
 	}
 
-	/* Two slow auroras. Same colours and peak alphas the contrast guard
-	   measures; only their position moves. */
+	/* Two auroras that drift into place once and stop. Same colours and peak
+	   alphas the contrast guard measures; only their position moves.
+
+	   Every animation on this page settles inside five seconds of starting,
+	   which is what keeps it outside WCAG 2.2.2 and the page free of a pause
+	   control (decisions § 1907). landing_motion_guard.test.ts reads every
+	   timing here and fails on a loop or a longer run. The keyframes animate
+	   FROM an offset, so the resting state is the element's own style. */
 	.hero-glow::before {
 		content: '';
 		position: absolute;
@@ -367,7 +373,7 @@
 		width: 60%;
 		height: 200%;
 		background: radial-gradient(ellipse, rgba(194, 78, 36, 0.18) 0%, transparent 70%);
-		animation: aurora-a 22s ease-in-out infinite alternate;
+		animation: aurora-a 5s var(--ease-out) backwards;
 	}
 
 	.hero-glow::after {
@@ -378,15 +384,15 @@
 		width: 55%;
 		height: 160%;
 		background: radial-gradient(ellipse, rgba(91, 75, 138, 0.18) 0%, transparent 70%);
-		animation: aurora-b 28s ease-in-out infinite alternate;
+		animation: aurora-b 5s var(--ease-out) backwards;
 	}
 
 	@keyframes aurora-a {
-		to { transform: translate(calc(-14% * var(--dir-sign)), 10%) scale(1.15); }
+		from { transform: translate(calc(-14% * var(--dir-sign)), 10%) scale(1.15); }
 	}
 
 	@keyframes aurora-b {
-		to { transform: translate(calc(18% * var(--dir-sign)), -12%) scale(1.2); }
+		from { transform: translate(calc(18% * var(--dir-sign)), -12%) scale(1.2); }
 	}
 
 	/* Contour lines traced from the same heightfield as the render
@@ -403,11 +409,11 @@
 
 	.topo--hero {
 		background: rgba(255, 255, 255, 0.07);
-		animation: topo-drift 120s linear infinite alternate;
+		animation: topo-drift 5s var(--ease-out) backwards;
 	}
 
 	@keyframes topo-drift {
-		to { mask-position: -30rem 12rem; }
+		from { mask-position: -6rem 2.4rem; }
 	}
 
 	/* Full-bleed from inside the shot's wrapper, ending exactly on the hero's
@@ -481,7 +487,7 @@
 		border-radius: var(--radius-pill);
 		background: var(--brand-coral);
 		box-shadow: 0 0 0 0 rgba(194, 78, 36, 0.6);
-		animation: beacon 2.4s ease-out infinite;
+		animation: beacon 2.4s ease-out 2;
 	}
 
 	@keyframes beacon {
@@ -926,7 +932,13 @@
 		stroke-dasharray: 2 7;
 		vector-effect: non-scaling-stroke;
 		opacity: 0.55;
-		animation: flow 1.4s linear infinite;
+	}
+
+	/* One dash period (2 + 7) per run, so the last frame is the first. Runs
+	   once the visual is on screen: started at load, it would finish before a
+	   visitor scrolled down to it. */
+	[data-seen] .sync-links path {
+		animation: flow 1.4s linear 3;
 	}
 
 	@keyframes flow {
@@ -977,7 +989,13 @@
 		inset: -0.5rem;
 		border-radius: 1.8rem;
 		border: 2px solid color-mix(in srgb, var(--color-secondary) 55%, transparent);
-		animation: core-ring 2.8s ease-out infinite;
+		opacity: 0;
+	}
+
+	/* A ripple that fades out, so it rests hidden rather than snapping back
+	   to a static ring when it ends. */
+	[data-seen] .sync-core::before {
+		animation: core-ring 2.4s ease-out 2;
 	}
 
 	@keyframes core-ring {
@@ -1090,7 +1108,10 @@
 	.day-slot.today {
 		border-color: var(--color-primary);
 		box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--color-primary) 22%, transparent);
-		animation: today-glow 2.6s ease-in-out infinite;
+	}
+
+	[data-seen] .day-slot.today {
+		animation: today-glow 2.4s ease-in-out 2;
 	}
 
 	@keyframes today-glow {
@@ -1123,7 +1144,6 @@
 	.topo--apps {
 		background: color-mix(in srgb, var(--color-text) 6%, transparent);
 		mask-size: 70rem 46.7rem;
-		animation: topo-drift 150s linear infinite alternate-reverse;
 	}
 
 	/* Five equal cards, four of them stamped COMING SOON, made "mostly
@@ -1164,7 +1184,10 @@
 		height: 0.5rem;
 		border-radius: var(--radius-pill);
 		background: var(--color-success);
-		animation: live 2s ease-in-out infinite;
+	}
+
+	[data-seen] .live-dot {
+		animation: live 2s ease-in-out 2;
 	}
 
 	@keyframes live {
@@ -1232,19 +1255,29 @@
 		top: -22rem;
 		inset-inline-start: -10rem;
 		background: radial-gradient(circle, rgba(194, 78, 36, 0.2) 0%, transparent 65%);
-		animation: aurora-b 24s ease-in-out infinite alternate;
 	}
 
 	.closing-glow::after {
 		bottom: -24rem;
 		inset-inline-end: -8rem;
 		background: radial-gradient(circle, rgba(91, 75, 138, 0.22) 0%, transparent 65%);
-		animation: aurora-a 30s ease-in-out infinite alternate;
 	}
 
 	.topo--closing {
 		background: rgba(255, 255, 255, 0.06);
-		animation: topo-drift 140s linear infinite alternate;
+	}
+
+	[data-seen] .topo--apps,
+	[data-seen] .topo--closing {
+		animation: topo-drift 5s var(--ease-out) backwards;
+	}
+
+	[data-seen] .closing-glow::before {
+		animation: aurora-b 5s var(--ease-out) backwards;
+	}
+
+	[data-seen] .closing-glow::after {
+		animation: aurora-a 5s var(--ease-out) backwards;
 	}
 
 	.closing-copy {

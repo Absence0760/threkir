@@ -3929,7 +3929,9 @@ class ApiClient {
   }
 
   Future<RunPhotoRow> addRunPhoto({
-    required String runId,
+    // Null only for an event steward's photo of an occurrence, which then
+    // requires [eventId] + [eventInstanceStart] (migration 20270807000001).
+    required String? runId,
     required Uint8List bytes,
     required String contentType,
     required String extension,
@@ -4015,43 +4017,82 @@ class ApiClient {
   /// selected so a private run's UUID can't leak to an event viewer who
   /// can't see that run — mirrors web `fetchEventPhotos`. Uploader names
   /// come from a second batched query (the run→profile join isn't
-  /// expressible when the run may be invisible to the viewer). Returns []
-  /// on error (L4 — the gallery is auxiliary to the event detail).
+  /// expressible when the run may be invisible to the viewer). Throws on a
+  /// load failure so the gallery can tell "nobody has posted yet" from "the
+  /// gallery did not load" — the widget contains it (L4). The
+  /// `event_gallery_photos` read returns a hidden photo only to its owner and
+  /// the event's stewards — RLS alone cannot, because a photo on a public run
+  /// is readable through the run path (decisions § 1906).
   Future<List<EventPhotoView>> fetchEventPhotos(
     String eventId,
     DateTime instanceStart, {
     int limit = 100,
   }) async {
+    final res = await _client.rpc(
+      'event_gallery_photos',
+      params: {
+        'p_event_id': eventId,
+        'p_instance': instanceStartKey(instanceStart),
+        'p_limit': limit,
+      },
+      get: true,
+    );
+    final rows = (res as List).cast<Map<String, dynamic>>();
+    if (rows.isEmpty) return const [];
+    final ownerIds = <String>{
+      for (final r in rows) r['owner_id'] as String,
+    }.toList();
+    final profiles = await _client
+        .from('user_profiles')
+        .select('id, display_name')
+        .inFilter('id', ownerIds);
+    final nameById = <String, String?>{
+      for (final p in profiles) p['id'] as String: p['display_name'] as String?,
+    };
+    return [
+      for (final r in rows)
+        EventPhotoView.fromJson(r, nameById[r['owner_id'] as String]),
+    ];
+  }
+
+  /// Whether the viewer is one of this event's photo stewards — a club
+  /// owner, admin or event organiser, or the event's named host — who may
+  /// post photos with no run and hide any photo in its galleries. Mirrors web
+  /// `canStewardEventPhotos`. Fails closed to false.
+  Future<bool> canStewardEventPhotos(String eventId) async {
+    if (_client.auth.currentUser == null) return false;
     try {
-      final rows = await _client
-          .from(RunPhotoRow.table)
-          .select(
-            'id, owner_id, storage_path, thumb_512_path, caption, '
-            'position_idx, created_at, event_id, event_instance_start',
-          )
-          .eq(RunPhotoRow.colEventId, eventId)
-          .eq(RunPhotoRow.colEventInstanceStart, instanceStartKey(instanceStart))
-          .order(RunPhotoRow.colCreatedAt, ascending: true)
-          .limit(limit);
-      if (rows.isEmpty) return const [];
-      final ownerIds = <String>{
-        for (final r in rows) r['owner_id'] as String,
-      }.toList();
-      final profiles = await _client
-          .from('user_profiles')
-          .select('id, display_name')
-          .inFilter('id', ownerIds);
-      final nameById = <String, String?>{
-        for (final p in profiles)
-          p['id'] as String: p['display_name'] as String?,
-      };
-      return [
-        for (final r in rows)
-          EventPhotoView.fromJson(r, nameById[r['owner_id'] as String]),
-      ];
+      final res = await _client.rpc(
+        'can_steward_event_photos',
+        params: {'p_event_id': eventId},
+        get: true,
+      );
+      return res == true;
     } catch (e) {
-      debugPrint('fetchEventPhotos failed: $e');
-      return const [];
+      debugPrint('canStewardEventPhotos failed: $e');
+      return false;
+    }
+  }
+
+  /// Hide a photo from an event gallery, or restore it. Steward-only,
+  /// enforced by the RPC. Hiding leaves an attendee's photo on their run.
+  Future<void> setEventPhotoHidden(String photoId, {required bool hidden}) async {
+    await _client.rpc(
+      'set_event_photo_hidden',
+      params: {'p_photo_id': photoId, 'p_hidden': hidden},
+    );
+  }
+
+  /// Delete the viewer's own photo from an event gallery: the row (RLS
+  /// limits it to the owner) and both stored objects.
+  Future<void> deleteEventPhoto(EventPhotoView photo) async {
+    await _client.from(RunPhotoRow.table).delete().eq(RunPhotoRow.colId, photo.id);
+    final paths = <String>[];
+    if (photo.storagePath.isNotEmpty) paths.add(photo.storagePath);
+    final thumb = photo.thumb512Path;
+    if (thumb != null && thumb.isNotEmpty) paths.add(thumb);
+    if (paths.isNotEmpty) {
+      await _client.storage.from(StorageBuckets.runPhotos).remove(paths);
     }
   }
 
@@ -8379,6 +8420,9 @@ class EventPhotoView {
   final DateTime createdAt;
   final String? uploaderName;
 
+  /// Set when an event steward hid the photo from the gallery.
+  final DateTime? hiddenAt;
+
   const EventPhotoView({
     required this.id,
     required this.ownerId,
@@ -8388,7 +8432,20 @@ class EventPhotoView {
     required this.positionIdx,
     required this.createdAt,
     this.uploaderName,
+    this.hiddenAt,
   });
+
+  EventPhotoView copyWithHidden(DateTime? hiddenAt) => EventPhotoView(
+        id: id,
+        ownerId: ownerId,
+        storagePath: storagePath,
+        thumb512Path: thumb512Path,
+        caption: caption,
+        positionIdx: positionIdx,
+        createdAt: createdAt,
+        uploaderName: uploaderName,
+        hiddenAt: hiddenAt,
+      );
 
   factory EventPhotoView.fromJson(
     Map<String, dynamic> json,
@@ -8403,6 +8460,7 @@ class EventPhotoView {
         positionIdx: (json['position_idx'] as num).toInt(),
         createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
         uploaderName: uploaderName,
+        hiddenAt: parseIsoStrictValue(json['hidden_at']),
       );
 }
 

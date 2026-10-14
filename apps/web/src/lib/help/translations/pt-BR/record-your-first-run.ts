@@ -25,6 +25,11 @@ export const translation: GuideTranslation = {
 					tone: 'tip',
 					text: 'No Android, escolha **Permitir o tempo todo** para a localização. Com acesso só enquanto o app está aberto, a distância que você percorre com a tela desligada não é contada, embora o cronômetro continue correndo.',
 				},
+				{
+					type: 'illustration',
+					id: 'record-your-first-run',
+					alt: 'Um celular com um grande botão redondo para iniciar, captando o sinal de GPS de um satélite no céu.',
+				},
 			],
 		},
 		{
@@ -116,5 +121,6 @@ export const translation: GuideTranslation = {
 		's3.b1.i1': 'e0fd699761f32367',
 		's3.b1.i2': '1d33b3ee8d0be1b8',
 		's3.b2': 'a8054fd15c256c3c',
+		's0.b3': '21307fc19189cc42',
 	},
 };

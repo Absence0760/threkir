@@ -8560,6 +8560,96 @@ abstract class AppLocalizations {
   /// **'No recent runs found. Record a run first, then come back.'**
   String get eventNoRecentRuns;
 
+  /// Steward-only button: post a photo of this event occurrence with no run
+  ///
+  /// In en, this message translates to:
+  /// **'Add event photo'**
+  String get eventAddOccurrencePhoto;
+
+  /// Add-photo button label when the viewer can also post a run-less event photo
+  ///
+  /// In en, this message translates to:
+  /// **'Add from my run'**
+  String get eventAddPhotoFromRun;
+
+  /// Empty state of the event photo run picker: no run started inside the occurrence's photo window
+  ///
+  /// In en, this message translates to:
+  /// **'None of your runs started during this event. Photos attach to a run that started up to 2 hours before and within 24 hours after the start.'**
+  String get eventNoRunsInPhotoWindow;
+
+  /// Banner when the event photo run picker fails to load the viewer's runs
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your runs: {error}'**
+  String eventPhotoRunsLoadFailed(String error);
+
+  /// Event gallery error state when the photos fail to load
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the photos.'**
+  String get eventPhotosLoadFailed;
+
+  /// Retry button on the event gallery error state
+  ///
+  /// In en, this message translates to:
+  /// **'Reload photos'**
+  String get eventPhotosRetry;
+
+  /// Badge on a photo a steward hid from the event gallery (visible to stewards and the owner only)
+  ///
+  /// In en, this message translates to:
+  /// **'Hidden'**
+  String get eventPhotoHiddenBadge;
+
+  /// Steward action: hide a photo from the event gallery
+  ///
+  /// In en, this message translates to:
+  /// **'Hide'**
+  String get eventPhotoHide;
+
+  /// Accessibility label for the hide action, naming the photo's uploader
+  ///
+  /// In en, this message translates to:
+  /// **'Hide photo by {name}'**
+  String eventPhotoHideLabel(String name);
+
+  /// Steward action: put a hidden photo back in the event gallery
+  ///
+  /// In en, this message translates to:
+  /// **'Restore'**
+  String get eventPhotoRestore;
+
+  /// Owner action: delete your own photo from the event gallery
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get eventPhotoDelete;
+
+  /// Undo bar message after a steward hides a photo
+  ///
+  /// In en, this message translates to:
+  /// **'Photo hidden from the event'**
+  String get eventPhotoHidden;
+
+  /// Banner when hiding or restoring an event photo fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t update the photo: {error}'**
+  String eventPhotoModerateFailed(String error);
+
+  /// Undo bar message after deleting your own event photo
+  ///
+  /// In en, this message translates to:
+  /// **'Photo deleted'**
+  String get eventPhotoDeleted;
+
+  /// Banner when deleting your own event photo fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t delete the photo: {error}'**
+  String eventPhotoDeleteFailed(String error);
+
   /// Fallback uploader name on an event photo
   ///
   /// In en, this message translates to:
@@ -11685,6 +11775,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Athlete number'**
   String get integrationsParkrunFieldLabel;
+
+  /// Title of the parkrun barcode screen and its entry tiles
+  ///
+  /// In en, this message translates to:
+  /// **'parkrun barcode'**
+  String get parkrunBarcodeTitle;
+
+  /// Subtitle of the integrations tile that opens the parkrun barcode
+  ///
+  /// In en, this message translates to:
+  /// **'Show it at the finish, even offline.'**
+  String get parkrunBarcodeTileSubtitle;
+
+  /// Screen-reader label for the drawn barcode
+  ///
+  /// In en, this message translates to:
+  /// **'parkrun barcode for athlete number {number}'**
+  String parkrunBarcodeSemantics(String number);
+
+  /// Line above the barcode saying what to do with it
+  ///
+  /// In en, this message translates to:
+  /// **'Show this at the finish so it can be scanned with your finish token.'**
+  String get parkrunBarcodeHint;
+
+  /// Neutral note that parkrun does not officially support on-screen barcodes
+  ///
+  /// In en, this message translates to:
+  /// **'parkrun doesn\'t officially support barcodes on screens, so bring a printed copy in case a scanner can\'t read this one.'**
+  String get parkrunBarcodePaperNote;
+
+  /// Shown when no athlete number is saved
+  ///
+  /// In en, this message translates to:
+  /// **'Add your parkrun athlete number to show your barcode here.'**
+  String get parkrunBarcodeEmpty;
+
+  /// Shown when the saved number is not in parkrun's A-plus-digits format
+  ///
+  /// In en, this message translates to:
+  /// **'Your saved athlete number isn\'t in parkrun\'s format (A followed by digits), so it can\'t be shown as a barcode.'**
+  String get parkrunBarcodeInvalid;
+
+  /// Button that opens the athlete-number dialog when none is saved
+  ///
+  /// In en, this message translates to:
+  /// **'Add athlete number'**
+  String get parkrunBarcodeAdd;
+
+  /// Button that opens the athlete-number dialog to change it
+  ///
+  /// In en, this message translates to:
+  /// **'Change athlete number'**
+  String get parkrunBarcodeEdit;
+
+  /// Save button on the athlete-number dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get parkrunBarcodeSave;
+
+  /// Top banner when saving the athlete number fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save your athlete number: {error}'**
+  String parkrunBarcodeSaveFailed(String error);
+
+  /// Field error when the typed athlete number is not A followed by digits
+  ///
+  /// In en, this message translates to:
+  /// **'Enter A followed by digits, for example A123456.'**
+  String get parkrunBarcodeFieldInvalid;
+
+  /// Shown when there is no saved copy and the number cannot be fetched
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your athlete number. Check your connection and try again.'**
+  String get parkrunBarcodeLoadFailed;
+
+  /// Retry button after a failed load
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get parkrunBarcodeRetry;
+
+  /// Note under the barcode when it is the device's copy because the server could not be reached
+  ///
+  /// In en, this message translates to:
+  /// **'Showing the copy saved on this phone.'**
+  String get parkrunBarcodeOfflineCopy;
 
   /// Import button on the parkrun dialog
   ///
@@ -25440,7 +25620,7 @@ abstract class AppLocalizations {
   /// Longer explanation of the Shared with you marker, read as its tooltip / screen-reader label
   ///
   /// In en, this message translates to:
-  /// **'Shared with you. It isn't public — only the people it's shared with can open it.'**
+  /// **'Shared with you. It isn\'t public — only the people it\'s shared with can open it.'**
   String get audienceSharedWithYouHint;
 
   /// Anonymous handle shown to a live spectator who does not follow the runner: the first four characters of the runner's id
@@ -25472,6 +25652,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Start today\'s workout'**
   String get logMoreTodaysWorkout;
+
+  /// Long-press menu: heading over the recent saved routes, each one tap to start a run following it
+  ///
+  /// In en, this message translates to:
+  /// **'Follow a route'**
+  String get runnerMenuFollowRoute;
+
+  /// Long-press menu: opens the full saved-route picker when there are more routes than shown inline
+  ///
+  /// In en, this message translates to:
+  /// **'All routes…'**
+  String get runnerMenuAllRoutes;
+
+  /// Screen-reader label for an inline route in the long-press menu; the route's distance follows
+  ///
+  /// In en, this message translates to:
+  /// **'Follow {name}'**
+  String runnerMenuFollowRouteNamed(String name);
+
+  /// Long-press menu: how many steps today's structured workout has, after its distance
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} step} other{{count} steps}}'**
+  String runnerMenuWorkoutSteps(int count);
 }
 
 class _AppLocalizationsDelegate

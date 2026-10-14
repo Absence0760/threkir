@@ -147,6 +147,27 @@ test('expandInstances — recurrence_count caps the number of instances', () => 
 	assert.equal(out.length, 3);
 });
 
+test('expandInstances — a recurrence_count of 0 yields no instance, weekly as monthly', () => {
+	// The column admits 0 (20270705000004). The monthly loop and the
+	// database's is_event_occurrence both read it as no occurrence; the weekly
+	// loop counted after emitting and so offered the first one, an instant the
+	// photo trigger then refused.
+	for (const recurrence_freq of ['weekly', 'biweekly', 'monthly'] as const) {
+		const e = ev({
+			starts_at: '2026-04-01T08:00:00Z',
+			recurrence_freq,
+			recurrence_count: 0,
+			timezone: 'UTC',
+		});
+		const out = expandInstances(
+			e,
+			new Date('2026-04-01T00:00:00Z'),
+			new Date('2026-12-31T23:59:59Z'),
+		);
+		assert.deepEqual(out, [], recurrence_freq);
+	}
+});
+
 test('expandInstances — count-limited weekly is exhausted before a later window (no phantom occurrences)', () => {
 	// Regression: recurrence_count caps TOTAL occurrences, not in-window ones. A
 	// 3-occurrence weekly series (Apr 1/8/15) viewed in a LATER window must

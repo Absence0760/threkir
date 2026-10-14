@@ -20,6 +20,11 @@ export const translation: GuideTranslation = {
 					type: 'p',
 					text: 'Selecione **Sincronizar agora** para buscar de novo. Na web, **Até quando sincronizar** alcança até um ano para trás.',
 				},
+				{
+					type: 'illustration',
+					id: 'import-your-history',
+					alt: 'As corridas de um relógio, de uma conta conectada e de um arquivo vão todas para uma única lista de corridas.',
+				},
 			],
 		},
 		{
@@ -114,5 +119,6 @@ export const translation: GuideTranslation = {
 		's4.heading': '35509c7701b9dabc',
 		's4.b0': '26a0daac64b29af6',
 		's4.b1': '69e6cfdbe0110cea',
+		's0.b2': '38746dc95049a57f',
 	},
 };

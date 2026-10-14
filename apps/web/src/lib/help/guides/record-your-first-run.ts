@@ -29,6 +29,11 @@ export const guide: Guide = {
 					tone: 'tip',
 					text: 'On Android, choose **Allow all the time** for location. With access only while the app is open, distance you cover with the screen off is not counted, although the clock keeps running.',
 				},
+				{
+					type: 'illustration',
+					id: 'record-your-first-run',
+					alt: 'A phone with a big round start button, picking up a GPS signal from a satellite overhead.',
+				},
 			],
 		},
 		{

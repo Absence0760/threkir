@@ -229,6 +229,11 @@ export const DART_ONLY = [
     const: '_goldenV4WorkoutHex',
     why: 'the v4 workout blob, as _goldenV4Hex',
   },
+  {
+    file: 'apps/mobile_android/test/parkrun_barcode_test.dart',
+    const: '_refA123456',
+    why: 'not a wire vector at all: the Code 128 B bar/space module string for the parkrun barcode, a run of 0/1 that happens to read as hex at an even length. The barcode is drawn by the phone and the web only; the firmware has no barcode to mirror',
+  },
 ];
 
 // ---------------------------------------------------------------------------

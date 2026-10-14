@@ -14,10 +14,10 @@
 	// shellless_landmark_guards reads the landmark out of each page's own
 	// source, and a shell that supplied it would make that guard vacuous.
 	//
-	// Motion here ENDS. The landing page runs continuous motion behind a pause
-	// control; a form is where a visitor is concentrating, so everything in
-	// this shell plays once on arrival and then rests. A page's own loading
-	// indicator is the one loop allowed (conventions § Web motion).
+	// Motion here ENDS, as it does on the landing page; a form is where a
+	// visitor is concentrating, so everything in this shell plays once on
+	// arrival and then rests. A page's own loading indicator is the one loop
+	// allowed (conventions § Web motion).
 
 	let {
 		children,

@@ -10,6 +10,7 @@ import 'challenge_progress.dart';
 import 'event_category.dart';
 import 'event_host_cancel.dart';
 import 'event_occurrence.dart';
+import 'event_photo_window.dart';
 import 'event_gym_template.dart';
 import 'geocoding.dart';
 import 'leaderboard_standing.dart';
@@ -2201,6 +2202,39 @@ class SocialService extends ChangeNotifier {
           activityType: (r['activity_type'] as String?) ?? 'run',
         ),
     ];
+  }
+
+  /// The viewer's runs the database will accept for an occurrence's photo
+  /// gallery: those that started inside the photo window
+  /// (`event_photo_window.dart`). Queried by the window rather than filtered
+  /// from the latest few runs, so an occurrence from months ago still offers
+  /// the run recorded at it. Mirrors web `fetchRunsForEventPhoto`.
+  Future<List<RecentRunRow>> fetchRunsForEventPhoto(
+    DateTime instanceStart, {
+    int limit = 20,
+  }) async {
+    final uid = _uid;
+    if (uid == null) return const [];
+    final rows = await _c
+        .from('runs')
+        .select('id, started_at, duration_s, distance_m, activity_type')
+        .eq('user_id', uid)
+        .gte('started_at',
+            instanceStartKey(instanceStart.subtract(kEventPhotoWindowBefore)))
+        .lt('started_at',
+            instanceStartKey(instanceStart.add(kEventPhotoWindowAfter)))
+        .order('started_at', ascending: true)
+        .limit(limit);
+    return [
+      for (final r in (rows as List).cast<Map<String, dynamic>>())
+        RecentRunRow(
+          id: r['id'] as String,
+          startedAt: parseIsoStrictRequired(r['started_at'], 'started_at'),
+          durationS: (r['duration_s'] as num).toInt(),
+          distanceM: (r['distance_m'] as num).toDouble(),
+          activityType: (r['activity_type'] as String?) ?? 'run',
+        ),
+    ].where((r) => isRunInEventPhotoWindow(r.startedAt, instanceStart)).toList();
   }
 
   Future<void> removeEventResult(String eventId, DateTime instance) async {

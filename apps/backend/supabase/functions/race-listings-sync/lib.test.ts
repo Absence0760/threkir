@@ -1,11 +1,11 @@
 /// The provider race-calendar sync's readings, caps and reconciliation.
 ///
-/// No credential exists for either provider, so the live payload has not been
-/// observed from this repo — which is exactly why these tests matter more than
-/// usual. Every reading is optional-with-drop, and what is pinned below is that
-/// a row which does not yield the two things `race_listings` requires becomes
-/// nothing and is COUNTED, rather than becoming a race on a public calendar with
-/// a guessed name or a transposed date (decisions § 977).
+/// The RunSignUp reader is pinned against a trimmed copy of the live, keyless
+/// `GET /Rest/races` payload (`fixtures/runsignup_races.json`, 2026-10-14). The
+/// UltraSignup one is still unverified, so for it what is pinned is that a row
+/// which does not yield the two things `race_listings` requires becomes nothing
+/// and is COUNTED, rather than becoming a race on a public calendar with a
+/// guessed name or a transposed date (decisions § 977).
 ///
 /// Run with `cd apps/backend && deno test --no-check --allow-read --allow-env
 /// supabase/functions/race-listings-sync/lib.test.ts`.
@@ -13,6 +13,7 @@
 import { assert, assertEquals } from 'https://deno.land/std@0.224.0/assert/mod.ts';
 import {
   DEFAULT_NEAR_RADIUS_M,
+  EXCLUDED,
   MAX_LISTING_LOCATION_LEN,
   MAX_LISTING_NAME_LEN,
   MAX_LISTING_ROWS,
@@ -23,8 +24,19 @@ import {
   extractProviderRaces,
   listingDiffers,
   listingUpsertFrom,
+  SWEEP_PERIOD_S,
+  SWEEP_STATES,
+  SWEEP_WINDOW_DAYS,
+  SWEEP_WINDOWS,
+  sweepWindowAt,
+  pointEwkt,
+  runSignUpErrorOf,
+  usZip5,
   listingUrl,
+  type NormalisedRace,
+  nearHintError,
   parseNearHint,
+  parseRunSignUpDistance,
   parseProviderRaceDate,
   providerRacesUrl,
   readProviderRace,
@@ -34,6 +46,15 @@ import {
 } from './lib.ts';
 
 const MIGRATIONS = new URL('../../migrations/', import.meta.url).pathname;
+
+const LIVE = JSON.parse(
+  await Deno.readTextFile(new URL('./fixtures/runsignup_races.json', import.meta.url)),
+);
+
+function asRace(r: unknown): NormalisedRace {
+  assert(r !== null && r !== EXCLUDED && typeof r === 'object', `expected a race, got ${r}`);
+  return r as NormalisedRace;
+}
 
 Deno.test('the field caps are the columns own CHECK constraints, not numbers picked here', () => {
   // A composer capping LOWER than the column is merely conservative; one capping
@@ -113,40 +134,97 @@ Deno.test('a url the column would refuse is dropped, not written', () => {
 });
 
 Deno.test('a RunSignUp row without a name or a date becomes nothing', () => {
-  assertEquals(readRunSignUpRace({ race_id: 1, next_date: '6/20/2027' }), null);
+  assertEquals(readRunSignUpRace({ race_id: 1, next_date: '06/20/2027' }), null);
   assertEquals(readRunSignUpRace({ race_id: 1, name: 'Bighorn' }), null);
   assertEquals(readRunSignUpRace({}), null);
 });
 
-Deno.test('a RunSignUp row is normalised, and a past-only race still files', () => {
-  const race = readRunSignUpRace({
-    race_id: 4821,
-    name: 'Bighorn Trail Run',
-    next_date: '6/20/2027',
-    url: 'https://runsignup.com/Race/WY/Sheridan/BighornTrailRun',
-    results_url: 'https://runsignup.com/Race/Results/4821',
-    address: { city: 'Sheridan', state: 'WY' },
-    distance: 100,
-    distance_units: 'miles',
-  });
-  assert(race !== null);
-  assertEquals(race!.providerRaceId, '4821');
-  assertEquals(race!.name, 'Bighorn Trail Run');
-  assertEquals(race!.date, '2027-06-20');
-  assertEquals(race!.distanceM, 160934);
-  assertEquals(race!.locationLabel, 'Sheridan, WY');
-  assertEquals(race!.entryUrl, 'https://runsignup.com/Race/WY/Sheridan/BighornTrailRun');
-  const past = readRunSignUpRace({ race_id: 7, name: 'Old Race', last_date: '2019-05-04' });
-  assertEquals(past?.date, '2019-05-04');
+Deno.test('the live RunSignUp payload maps, race by race', () => {
+  const rows = extractProviderRaces(LIVE);
+  assertEquals(rows.length, 3, 'every `races[].race` is unwrapped');
+  const [bacon, best, virtualOnly] = rows.map((r) => readProviderRace('runsignup', r));
+
+  // A 5K run beside a 1-mile walk: the walk never decides the distance, and
+  // `3.1 Miles` lands in the 5k band (4500-5500) `search_race_listings` uses.
+  const b = asRace(bacon);
+  assertEquals(b.providerRaceId, '68640');
+  assertEquals(b.date, '2027-06-12', '`next_date` 06/12/2027, a date with no zone shift');
+  assertEquals(b.distanceM, 4989);
+  assertEquals(b.locationLabel, 'Port Huron, MI, US');
+  assertEquals(b.entryUrl, 'https://runsignup.com/Race/MI/PortHuron/BaconandBubbles5k1Mile');
+  assertEquals(b.resultsUrl, null, '`external_results_url` is null in the feed');
+  assert(b.name.startsWith('"Bacon & Bubbles" 5K'));
+
+  // 5K / 10K / 13.1 Miles on one morning files under the longest.
+  assertEquals(asRace(best).distanceM, 21082);
+
+  // Both events are `virtual_race`: there is no start line to put on a map.
+  assertEquals(virtualOnly, EXCLUDED);
+});
+
+Deno.test('drafts, private races and races with no in-person running event are excluded', () => {
+  const base = { race_id: 1, name: 'R', next_date: '06/20/2027' };
+  assertEquals(readRunSignUpRace({ ...base, is_draft_race: 'T' }), EXCLUDED);
+  assertEquals(readRunSignUpRace({ ...base, is_private_race: 'T' }), EXCLUDED);
+  assertEquals(
+    readRunSignUpRace({ ...base, events: [{ event_type: 'walking_only', distance: '5K' }] }),
+    EXCLUDED,
+  );
+  assertEquals(
+    readRunSignUpRace({
+      ...base,
+      events: [{ event_type: 'running_race', distance: '50K', volunteer: 'T' }],
+    }),
+    EXCLUDED,
+    'a volunteer slot is not a race',
+  );
+  // No events expansion at all is not evidence of anything: file it with no
+  // distance rather than refuse it.
+  assertEquals(asRace(readRunSignUpRace({ ...base, is_draft_race: 'F' })).distanceM, null);
+  // A running event whose distance is unreadable still makes it a race.
+  assertEquals(
+    asRace(readRunSignUpRace({ ...base, events: [{ event_type: 'trail_race', distance: null }] }))
+      .distanceM,
+    null,
+  );
+  // A past race with no next running still files, for a results import.
+  assertEquals(
+    asRace(readRunSignUpRace({ race_id: 7, name: 'Old', last_date: '05/04/2019' })).date,
+    '2019-05-04',
+  );
+});
+
+Deno.test('a RunSignUp distance reads every spelling the live feed uses', () => {
+  assertEquals(parseRunSignUpDistance('5K'), 5000);
+  assertEquals(parseRunSignUpDistance('50K'), 50000);
+  assertEquals(parseRunSignUpDistance('3.1K'), 3100);
+  assertEquals(parseRunSignUpDistance('3.1 Miles'), 4989);
+  assertEquals(parseRunSignUpDistance('1 Miles'), 1609);
+  assertEquals(parseRunSignUpDistance('26.2 Miles'), 42165);
+  assertEquals(parseRunSignUpDistance('100 Miles'), 160934);
+  assertEquals(parseRunSignUpDistance('100 Yards'), 91);
+  assertEquals(parseRunSignUpDistance('10 Kilometers'), 10000);
+  assertEquals(parseRunSignUpDistance('Half Marathon'), 21098);
+  assertEquals(parseRunSignUpDistance('marathon'), 42195);
+  // A glued lower-case `m` is metres in this feed (`100m`, `5000m`, `1600m`);
+  // a capital `M` is still refused, since a US listing could mean miles by it.
+  assertEquals(parseRunSignUpDistance('5000m'), 5000);
+  assertEquals(parseRunSignUpDistance('1600m'), 1600);
+  assertEquals(parseRunSignUpDistance('100M'), null);
+  assertEquals(parseRunSignUpDistance('5 furlongs'), null);
+  assertEquals(parseRunSignUpDistance('Fun Run'), null);
+  assertEquals(parseRunSignUpDistance(null), null);
+  assertEquals(parseRunSignUpDistance(''), null);
 });
 
 Deno.test('an over-long name is capped rather than refused by the column', () => {
-  const race = readRunSignUpRace({
+  const reading = readRunSignUpRace({
     race_id: 1,
     name: 'x'.repeat(400),
     next_date: '2027-06-20',
     address: { city: 'y'.repeat(200), state: 'z'.repeat(200) },
   });
+  const race = reading === EXCLUDED ? null : reading;
   // `typeof` rather than a null test: a reader that answers `undefined` gives
   // `race?.name.length` the same `undefined` the cap constant would have, and
   // two absent values compare equal. The vacuity operator scored this case as
@@ -200,9 +278,10 @@ function upsert(id: string | null, over: Partial<RaceListingUpsert> = {}): RaceL
       date: '2027-06-20',
       distanceM: 42195,
       locationLabel: 'Somewhere',
+      postalCode: null,
       entryUrl: null,
       resultsUrl: null,
-    }),
+    }, null),
     ...over,
   };
 }
@@ -235,6 +314,7 @@ function storedOf(over: Partial<StoredListing> = {}): StoredListing {
     race_date: '2027-06-20',
     distance_m: 42195,
     location_label: 'Somewhere',
+    location_point: null,
     entry_url: null,
     results_url: null,
     is_verified: true,
@@ -255,19 +335,59 @@ Deno.test('an unchanged race writes nothing, and each field that moves writes', 
   assertEquals(listingDiffers(storedOf({ is_verified: false }), upsert('a')), true);
 });
 
+Deno.test('a race gains its point once one is known, and a known point is not re-sent alone', () => {
+  const placed = upsert('a', { location_point: pointEwkt(42.9836, -82.4583) });
+  assertEquals(listingDiffers(storedOf(), placed), true);
+  // A stored value that is not a readable point is left alone rather than
+  // overwritten blind (robustness.test.ts drives the readable ones: a moved ZIP
+  // re-places, a ZIP with no ZCTA clears).
+  assertEquals(listingDiffers(storedOf({ location_point: '0101000020E6100000' }), placed), false);
+  // A lookup that failed never reads as a change.
+  assertEquals(listingDiffers(storedOf({ location_point: '0101000020E6100000' }), upsert('a')), false);
+});
+
+Deno.test('a ZIP is read as its five digits, and anything else as no ZIP', () => {
+  assertEquals(usZip5('48060'), '48060');
+  assertEquals(usZip5('48060-1234'), '48060');
+  assertEquals(usZip5(' 07102 '), '07102');
+  assertEquals(usZip5(7102), null, 'a number has already lost its leading zero');
+  assertEquals(usZip5('SW1A 1AA'), null);
+  assertEquals(usZip5('4806'), null);
+  assertEquals(usZip5(null), null);
+  assertEquals(pointEwkt(42.9836, -82.4583), 'SRID=4326;POINT(-82.4583 42.9836)');
+});
+
+Deno.test('the RunSignUp error envelope is read as a refusal, and a race feed is not', () => {
+  assertEquals(
+    runSignUpErrorOf({ error: { error_code: 13, error_msg: 'You must be logged in to the API as a user' } }),
+    'You must be logged in to the API as a user',
+  );
+  assertEquals(runSignUpErrorOf({ races: [] }), null);
+  assertEquals(runSignUpErrorOf(null), null);
+});
+
 Deno.test('a region hint is validated, and a bad one is an error not a silent no-hint', () => {
   assertEquals(parseNearHint(undefined), { ok: true, near: null });
   assertEquals(parseNearHint(null), { ok: true, near: null });
   assertEquals(parseNearHint({ lng: -106.9, lat: 37.8 }), {
     ok: true,
-    near: { lng: -106.9, lat: 37.8, radiusM: DEFAULT_NEAR_RADIUS_M },
+    near: { point: { lng: -106.9, lat: 37.8 }, postalCode: null, radiusM: DEFAULT_NEAR_RADIUS_M },
   });
-  assertEquals(parseNearHint({ lng: -106.9, lat: 37.8, radius_m: 25000 }).ok, true);
+  assertEquals(parseNearHint({ postal_code: ' 10001 ', radius_m: 25000 }), {
+    ok: true,
+    near: { point: null, postalCode: '10001', radiusM: 25000 },
+  });
   // Falling back to "no hint" on a typo pulls the provider's whole national feed
   // and writes it into the calendar as if it were local.
   assertEquals(parseNearHint({ lat: 37.8 }), { ok: false, error: 'invalid_near_lng' });
   assertEquals(parseNearHint({ lng: 200, lat: 37.8 }), { ok: false, error: 'invalid_near_lng' });
   assertEquals(parseNearHint({ lng: -106.9, lat: 91 }), { ok: false, error: 'invalid_near_lat' });
+  assertEquals(parseNearHint({ postal_code: 10001 }), {
+    ok: false,
+    error: 'invalid_near_postal_code',
+  });
+  assertEquals(parseNearHint({ postal_code: '<script>' }).ok, false);
+  assertEquals(parseNearHint({ radius_m: 5000 }), { ok: false, error: 'invalid_near' });
   assertEquals(parseNearHint({ lng: 0, lat: 0, radius_m: 0 }), {
     ok: false,
     error: 'invalid_near_radius',
@@ -278,39 +398,102 @@ Deno.test('a region hint is validated, and a bad one is an error not a silent no
   assertEquals(parseNearHint('nope'), { ok: false, error: 'invalid_near' });
 });
 
-Deno.test('the provider URL carries the credential and the region, per provider', () => {
-  const rs = providerRacesUrl({
-    provider: 'runsignup',
-    apiKey: 'KEY',
-    apiSecret: 'SECRET',
-    near: { lng: -106.9, lat: 37.8, radiusM: 80467 },
-  });
-  assert(rs.startsWith('https://runsignup.com/Rest/races'));
-  assert(rs.includes('format=json'));
-  assert(rs.includes('api_key=KEY'));
-  assert(rs.includes('api_secret=SECRET'));
-  assert(rs.includes('radius=50'), '80467 m is 50 miles');
+Deno.test('RunSignUp searches by US ZIP, never by a point it would ignore', () => {
+  // Measured: RunSignUp drops lat/lng without an error, so a point hint would
+  // pull the national feed and file it as local.
+  const point = { point: { lng: -74, lat: 40.75 }, postalCode: null, radiusM: 16093 };
+  const zip = { point: null, postalCode: '10001', radiusM: 16093 };
+  assertEquals(nearHintError('runsignup', null), null);
+  assertEquals(nearHintError('runsignup', point), 'near_postal_code_required');
+  assertEquals(nearHintError('runsignup', zip), null);
+  assertEquals(
+    nearHintError('runsignup', { ...zip, postalCode: 'SW1A 1AA' }),
+    'near_postal_code_not_us',
+  );
+  assertEquals(nearHintError('ultrasignup', zip), 'near_point_required');
+  assertEquals(nearHintError('ultrasignup', point), null);
+});
+
+Deno.test('the RunSignUp URL is keyless unless both halves of a key are set', () => {
+  const zip = { point: null, postalCode: '10001', radiusM: 80467 };
+  const rs = new URL(providerRacesUrl({ provider: 'runsignup', apiKey: null, apiSecret: null, near: zip }));
+  assertEquals(rs.origin + rs.pathname, 'https://runsignup.com/Rest/races');
+  const q = rs.searchParams;
+  assertEquals(q.get('format'), 'json');
+  assertEquals(q.get('events'), 'T', 'distances live on the events expansion');
+  assertEquals(q.get('sort'), 'date ASC', 'the cap trims the far future, not the alphabet');
+  assertEquals(q.get('results_per_page'), String(MAX_LISTING_ROWS));
+  assertEquals(q.get('zipcode'), '10001');
+  assertEquals(q.get('radius'), '50', '80467 m is 50 miles');
+  assertEquals(q.has('api_key'), false);
+  assertEquals(q.has('lat') || q.has('lng'), false, 'RunSignUp ignores a point; never send one');
+
+  const half = new URL(providerRacesUrl({ provider: 'runsignup', apiKey: 'KEY', apiSecret: null, near: null }));
+  assertEquals(half.searchParams.has('api_key'), false, 'half a credential is no credential');
+  assertEquals(half.searchParams.has('zipcode'), false, 'no hint means no region params');
+
+  const keyed = new URL(providerRacesUrl({ provider: 'runsignup', apiKey: 'KEY', apiSecret: 'SECRET', near: null }));
+  assertEquals(keyed.searchParams.get('api_key'), 'KEY');
+  assertEquals(keyed.searchParams.get('api_secret'), 'SECRET');
+
   const us = providerRacesUrl({
     provider: 'ultrasignup',
     apiKey: 'K',
     apiSecret: 'S',
-    near: null,
+    near: { point: { lng: -106.9, lat: 37.8 }, postalCode: null, radiusM: 80467 },
   });
   assert(us.startsWith('https://ultrasignup.com/service/events.svc/'));
-  assert(!us.includes('radius='), 'no hint means no region params');
-  assert(us !== rs, 'the two providers must not resolve to one endpoint');
+  assert(us.includes('api_key=K') && us.includes('radius=50') && us.includes('lat=37.8'));
 });
 
 // The listings land in one batch upsert. A name capped through the middle of an
 // emoji leaves half a character, Postgres refuses the request body's JSON, and
 // every race in the batch goes with it.
 Deno.test('a capped race name never ends in half an emoji', () => {
-  const race = readRunSignUpRace({
+  const race = asRace(readRunSignUpRace({
     race_id: 9,
     name: 'a'.repeat(MAX_LISTING_NAME_LEN - 1) + '\u{1F383} Pumpkin Run',
     next_date: '2027-10-30',
-  });
-  assert(race);
+  }));
   assertEquals(race.name, 'a'.repeat(MAX_LISTING_NAME_LEN - 1));
   assertEquals(/[\uD800-\uDFFF]/.test(race.name), false);
+});
+
+Deno.test('the sweep walks every state window once per pass, nearest window first', () => {
+  const slots = SWEEP_STATES.length * SWEEP_WINDOWS;
+  assertEquals(slots, 306);
+  const pass = Array.from({ length: slots }, (_, i) => sweepWindowAt(i * SWEEP_PERIOD_S * 1000));
+  assertEquals(new Set(pass.map((w) => w.slot)).size, slots);
+  assertEquals(new Set(pass.map((w) => `${w.state}:${w.slot % SWEEP_WINDOWS}`)).size, slots);
+  // A pass is 25.5 hours; the next one starts again at the first slot.
+  assertEquals(sweepWindowAt(slots * SWEEP_PERIOD_S * 1000).slot, 0);
+  // Two runs inside one period read the same slot: a late or repeated cron
+  // re-reads a window rather than skipping one.
+  assertEquals(sweepWindowAt(1_000).slot, sweepWindowAt(SWEEP_PERIOD_S * 1000 - 1).slot);
+});
+
+Deno.test('a sweep window is 14 UTC days counted from the run\'s own day', () => {
+  const firstOfState = Date.UTC(2026, 9, 14, 23, 59, 0);
+  const slot = Math.floor(firstOfState / 1000 / SWEEP_PERIOD_S) % (SWEEP_STATES.length * SWEEP_WINDOWS);
+  const w = sweepWindowAt(firstOfState);
+  const offset = (slot % SWEEP_WINDOWS) * SWEEP_WINDOW_DAYS;
+  const start = new Date(Date.UTC(2026, 9, 14 + offset)).toISOString().slice(0, 10);
+  const end = new Date(Date.UTC(2026, 9, 14 + offset + SWEEP_WINDOW_DAYS - 1)).toISOString().slice(0, 10);
+  assertEquals([w.startDate, w.endDate], [start, end]);
+});
+
+Deno.test('a swept RunSignUp URL names the state and the window instead of today', () => {
+  const url = new URL(providerRacesUrl({
+    provider: 'runsignup',
+    apiKey: null,
+    apiSecret: null,
+    near: null,
+    window: { slot: 0, state: 'NJ', startDate: '2026-10-14', endDate: '2026-10-27' },
+  }));
+  assertEquals(url.searchParams.get('state'), 'NJ');
+  assertEquals(url.searchParams.get('country_code'), 'US');
+  assertEquals(url.searchParams.get('start_date'), '2026-10-14');
+  assertEquals(url.searchParams.get('end_date'), '2026-10-27');
+  assertEquals(url.searchParams.get('results_per_page'), String(MAX_LISTING_ROWS));
+  assertEquals(url.searchParams.has('page'), false, 'keyless pagination stops at the first page');
 });

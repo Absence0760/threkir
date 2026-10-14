@@ -3920,10 +3920,12 @@ export type Database = {
           created_at: string
           event_id: string | null
           event_instance_start: string | null
+          hidden_at: string | null
+          hidden_by: string | null
           id: string
           owner_id: string
           position_idx: number
-          run_id: string
+          run_id: string | null
           storage_path: string
           thumb_512_path: string | null
         }
@@ -3932,10 +3934,12 @@ export type Database = {
           created_at?: string
           event_id?: string | null
           event_instance_start?: string | null
+          hidden_at?: string | null
+          hidden_by?: string | null
           id?: string
           owner_id: string
           position_idx?: number
-          run_id: string
+          run_id?: string | null
           storage_path: string
           thumb_512_path?: string | null
         }
@@ -3944,10 +3948,12 @@ export type Database = {
           created_at?: string
           event_id?: string | null
           event_instance_start?: string | null
+          hidden_at?: string | null
+          hidden_by?: string | null
           id?: string
           owner_id?: string
           position_idx?: number
-          run_id?: string
+          run_id?: string | null
           storage_path?: string
           thumb_512_path?: string | null
         }
@@ -4594,6 +4600,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      us_zcta_points: {
+        Row: {
+          lat: number
+          lng: number
+          zcta: string
+        }
+        Insert: {
+          lat: number
+          lng: number
+          zcta: string
+        }
+        Update: {
+          lat?: number
+          lng?: number
+          zcta?: string
+        }
+        Relationships: []
       }
       user_blocks: {
         Row: {
@@ -5609,6 +5633,10 @@ export type Database = {
         Args: { p_event_id: string }
         Returns: boolean
       }
+      can_steward_event_photos: {
+        Args: { p_event_id: string }
+        Returns: boolean
+      }
       challenge_leaderboard: {
         Args: { p_by_team?: boolean; p_challenge_id: string }
         Returns: {
@@ -5858,6 +5886,21 @@ export type Database = {
       enqueue_safety_overdue_emails: { Args: never; Returns: undefined }
       enqueue_weekly_digests: { Args: never; Returns: number }
       escalate_run_off_route: { Args: { p_run_id: string }; Returns: boolean }
+      event_gallery_photos: {
+        Args: { p_event_id: string; p_instance: string; p_limit?: number }
+        Returns: {
+          caption: string
+          created_at: string
+          event_id: string
+          event_instance_start: string
+          hidden_at: string
+          id: string
+          owner_id: string
+          position_idx: number
+          storage_path: string
+          thumb_512_path: string
+        }[]
+      }
       event_is_athletic: { Args: { target_event: string }; Returns: boolean }
       event_next_instance_going_counts: {
         Args: { p_event_ids: string[]; p_next_starts: string[] }
@@ -6177,6 +6220,7 @@ export type Database = {
       }
       increment_coach_usage: { Args: { p_user_id: string }; Returns: number }
       invoke_event_refund_sweep: { Args: never; Returns: number }
+      invoke_race_listings_sweep: { Args: never; Returns: number }
       is_blocked_either_way: {
         Args: { a: string; b: string }
         Returns: boolean
@@ -6757,6 +6801,10 @@ export type Database = {
       set_discoverable_area: {
         Args: { p_label?: string; p_lat: number; p_lng: number }
         Returns: string
+      }
+      set_event_photo_hidden: {
+        Args: { p_hidden: boolean; p_photo_id: string }
+        Returns: undefined
       }
       set_gym_routine_public: {
         Args: { p_public: boolean; p_routine_id: string }

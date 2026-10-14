@@ -6,23 +6,36 @@ import { expect, test, type Page } from '@playwright/test';
  *   1. The resting state is the markup's own: reduced motion, or motion that
  *      has finished, leaves every word and section visible.
  *   2. Only code that can reveal an element hides it, and every reveal lands.
- *   3. Motion that starts on its own and runs past five seconds has an
- *      in-page stop (WCAG 2.2.2), and that stop reaches all of it.
+ *   3. Every animation settles within five seconds of starting, so WCAG
+ *      2.2.2 asks for no pause control and the page carries none
+ *      (decisions § 1907).
  *   4. No copy is ever set on the rendered art, so every ink stays measured
  *      against the ramp the contrast guards read.
  */
 
-async function runningInfinite(page: Page): Promise<number> {
-	return page.evaluate(
-		() =>
-			document
-				.getAnimations()
-				.filter(
-					(a) =>
-						a.playState === 'running' &&
-						a.effect?.getTiming().iterations === Infinity &&
-						(a.effect as KeyframeEffect).target?.closest?.('.motion-scope'),
-				).length,
+/// Every clock-driven animation on the page that is still running, as
+/// `target: end-time-ms`. Scroll- and view-linked ones are driven by the
+/// reader, so they are left out.
+async function runningTimed(page: Page): Promise<Array<{ target: string; endMs: number }>> {
+	return page.evaluate(() =>
+		document
+			.getAnimations()
+			.filter((a) => {
+				const target = (a.effect as KeyframeEffect | null)?.target;
+				return (
+					a.playState === 'running' &&
+					a.timeline === document.timeline &&
+					!!target?.closest?.('.landing')
+				);
+			})
+			.map((a) => {
+				const timing = a.effect!.getComputedTiming();
+				const target = (a.effect as KeyframeEffect).target as Element;
+				return {
+					target: `${target.tagName.toLowerCase()}.${target.getAttribute('class') ?? ''}`,
+					endMs: Number(timing.endTime),
+				};
+			}),
 	);
 }
 
@@ -63,83 +76,52 @@ test.describe('/ (landing) motion', () => {
 				els.filter((el) => Number(getComputedStyle(el).opacity) < 1).length,
 			);
 		expect(hidden, 'content invisible under reduced motion').toBe(0);
-		expect(await runningInfinite(page), 'a loop still runs under reduced motion').toBe(0);
-		// Nothing moves, so there is nothing to pause.
-		await expect(page.getByRole('button', { name: 'Pause animations' })).toHaveCount(0);
+		const loops = (await runningTimed(page)).filter((a) => a.endMs === Infinity);
+		expect(loops, 'a loop runs under reduced motion').toEqual([]);
 	});
 
-	test('the pause control stops every looping animation, and resumes them', async ({ page }) => {
+	test('every animation settles within five seconds of starting, and then nothing runs', async ({
+		page,
+	}) => {
 		await page.setViewportSize({ width: 1440, height: 900 });
 		await page.goto('/');
-		const toggle = page.getByRole('button', { name: 'Pause animations' });
-		// Disabled until hydrated, so a click cannot land on a dead button.
-		await expect(toggle).toBeEnabled();
-		await expect(toggle).toHaveAttribute('aria-pressed', 'false');
-		expect(await runningInfinite(page), 'the page has no loops to pause').toBeGreaterThan(0);
+		const tooLong = new Set<string>();
+		const sample = async () => {
+			const running = await runningTimed(page);
+			for (const a of running) if (a.endMs > 5000) tooLong.add(`${a.target}: ${a.endMs}ms`);
+			return running;
+		};
+		expect((await sample()).length, 'the hero runs no motion at all').toBeGreaterThan(0);
+		await scrollThrough(page);
+		// Sampled until the page is still, so an animation that only starts
+		// after hydration (the shot's runner) is read too. The bound is the
+		// assertion; the wait only has to outlast the latest start.
+		await expect
+			.poll(async () => (await sample()).map((a) => a.target), { timeout: 12_000 })
+			.toEqual([]);
+		expect([...tooLong], 'an animation runs past five seconds of starting').toEqual([]);
+	});
 
-		// The phone's recording clock is script-driven, not CSS, so the store
-		// has to reach it too. It only runs while on screen, so bring it into
-		// view and prove it runs before proving that it stops.
+	test('the phone clock ticks, then holds inside five seconds', async ({ page }) => {
+		await page.setViewportSize({ width: 1440, height: 900 });
+		await page.goto('/');
 		const clock = page.locator('figure.shot .elapsed');
 		await clock.scrollIntoViewIfNeeded();
 		const start = await clock.textContent();
+		// Generous: the ticker starts at hydration, which a cold dev server
+		// can take seconds to reach. What is under test is that it stops.
 		await expect(clock, 'the clock does not run at all').not.toHaveText(start ?? '', {
-			timeout: 4000,
+			timeout: 10_000,
 		});
-
-		await toggle.click();
-		await expect(toggle).toHaveAttribute('aria-pressed', 'true');
-		await expect(page.locator('html')).toHaveAttribute('data-motion', 'paused');
-		expect(await runningInfinite(page), 'a loop kept running while paused').toBe(0);
-		const paused = await clock.textContent();
-		await page.waitForTimeout(2300);
-		expect(await clock.textContent(), 'the clock ticked while paused').toBe(paused);
-
-		await toggle.click();
-		await expect(toggle).toHaveAttribute('aria-pressed', 'false');
-		await expect(page.locator('html')).not.toHaveAttribute('data-motion', 'paused');
-		expect(await runningInfinite(page)).toBeGreaterThan(0);
-		await expect(clock).not.toHaveText(paused ?? '', { timeout: 4000 });
+		await page.waitForTimeout(5000);
+		const held = await clock.textContent();
+		await page.waitForTimeout(2000);
+		expect(await clock.textContent(), 'the clock is still ticking').toBe(held);
 	});
 
-	test('pausing before scrolling means sections arrive at rest, not animating in', async ({
-		page,
-	}) => {
-		// The reveals are one-shot, but "Pause animations" should mean nothing
-		// starts moving — so a reveal checks the pause when it would begin, not
-		// only when it was mounted.
-		await page.setViewportSize({ width: 1440, height: 900 });
+	test('the public header carries no pause control', async ({ page }) => {
 		await page.goto('/');
-		const toggle = page.getByRole('button', { name: 'Pause animations' });
-		await expect(toggle).toBeEnabled();
-		await toggle.click();
-		await expect(toggle).toHaveAttribute('aria-pressed', 'true');
-		await scrollThrough(page);
-		const started = await page.evaluate(
-			() =>
-				document
-					.getAnimations()
-					.filter((a) => {
-						const target = (a.effect as KeyframeEffect).target;
-						// Time-based, one-shot animations only: the rail and step
-						// nodes run on a scroll timeline, which the reader drives.
-						return (
-							!!target?.closest?.('section#features, section#apps, section.closing-cta') &&
-							a.timeline === document.timeline &&
-							a.effect?.getTiming().iterations !== Infinity
-						);
-					}).length,
-		);
-		expect(started, 'a reveal animated while paused').toBe(0);
-		const hidden = await page
-			.locator('section#features article.feature, section#apps li.platform')
-			.evaluateAll((els) => els.filter((el) => getComputedStyle(el).opacity !== '1').length);
-		expect(hidden).toBe(0);
-	});
-
-	test('the pause control stays on the landing page, not on /learn', async ({ page }) => {
-		await page.goto('/learn');
-		await expect(page.getByRole('button', { name: 'Pause animations' })).toHaveCount(0);
+		await expect(page.locator('nav.landing-nav button')).toHaveCount(0);
 	});
 
 	for (const width of [1440, 390]) {

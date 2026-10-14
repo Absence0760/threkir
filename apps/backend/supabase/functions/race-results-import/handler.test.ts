@@ -1,9 +1,9 @@
 /// race-results-import's handler (handler.ts) driven with a fake caller client
 /// and a fake `fetch`: the auth gate, which rate-limit bucket each mode spends
 /// (the UltraSignup lookup's own 20/hour one above all, decisions § 1841), and
-/// the UltraSignup lookup and import error paths — each of which must answer
-/// before anything is written, and most before anything is fetched. No stack,
-/// no network.
+/// the UltraSignup lookup and import error paths, and the keyless RunSignUp
+/// leg against its recorded feed — each of which must answer before anything is
+/// written, and most before anything is fetched. No stack, no network.
 ///
 /// Run with `cd apps/backend && deno test --allow-read --allow-env
 /// supabase/functions/race-results-import/handler.test.ts`.
@@ -90,7 +90,7 @@ function fakeClient(script: Script) {
 function harness(opts: {
   script?: Script;
   env?: Record<string, string | undefined>;
-  upstream?: () => Response;
+  upstream?: (url: string) => Response;
 } = {}) {
   const env: Record<string, string | undefined> = {
     ULTRASIGNUP_RESULTS_ENABLED: 'true',
@@ -108,7 +108,7 @@ function harness(opts: {
     fetch: (input) => {
       fetched.push(String(input));
       return Promise.resolve(
-        opts.upstream ? opts.upstream() : new Response(PAYLOAD_TEXT, { status: 200 }),
+        opts.upstream ? opts.upstream(String(input)) : new Response(PAYLOAD_TEXT, { status: 200 }),
       );
     },
   });
@@ -323,4 +323,104 @@ Deno.test('import: a failed insert is a 500, not a reported import', async () =>
   const res = await h.handler(call(IMPORT));
   assertEquals(res.status, 500);
   assertEquals(await res.json(), { error: 'race import failed to save' });
+});
+
+// ── RunSignUp: keyless, bib-scoped, event-resolved ──
+
+const RSU_RACE_TEXT = Deno.readTextFileSync(new URL('./fixtures/runsignup_race.json', import.meta.url));
+const RSU_RESULTS = JSON.parse(
+  Deno.readTextFileSync(new URL('./fixtures/runsignup_results.json', import.meta.url)),
+);
+const RSU_LISTING = {
+  id: LISTING_ID,
+  provider: 'runsignup',
+  provider_race_id: '108839',
+  name: 'Example 5K to Wellness',
+  race_date: '2026-09-19',
+  distance_m: 5000,
+};
+const RSU_IMPORT = { provider: 'runsignup', listingId: LISTING_ID, bib: '336' };
+
+/// The two RunSignUp endpoints, answered as the live feed answers them: the race
+/// with its editions, and get-results narrowed by `bib_num`.
+function runSignUpFeed(url: string): Response {
+  const u = new URL(url);
+  if (u.pathname === '/Rest/race/108839') return new Response(RSU_RACE_TEXT, { status: 200 });
+  const bib = u.searchParams.get('bib_num');
+  const set = RSU_RESULTS.individual_results_sets[0];
+  const results = set.results.filter((r: { bib: number }) => String(r.bib) === bib);
+  return Response.json({ individual_results_sets: [{ ...set, results }] });
+}
+
+Deno.test('runsignup probe: configured on a deployment with no RunSignUp key', async () => {
+  const h = harness();
+  const res = await h.handler(call({ provider: 'runsignup', probe: true }));
+  assertEquals(res.status, 200);
+  assertEquals(await res.json(), { configured: true });
+});
+
+Deno.test('runsignup import: no bib is a 400 before anything is fetched', async () => {
+  const h = harness({ script: { listing: { data: RSU_LISTING, error: null } } });
+  const res = await h.handler(call({ provider: 'runsignup', listingId: LISTING_ID, runSignUpUserId: '42' }));
+  assertEquals(res.status, 400);
+  assertEquals(await res.json(), { error: 'runsignup_bib_required' });
+  assertEquals(h.fetched, []);
+});
+
+Deno.test('runsignup import: keyless, the bib\'s result from the listing-day event is inserted', async () => {
+  const h = harness({ script: { listing: { data: RSU_LISTING, error: null } }, upstream: runSignUpFeed });
+  const res = await h.handler(call(RSU_IMPORT));
+  assertEquals(res.status, 200);
+  assertEquals(await res.json(), { imported: 1, skipped: 0, enriched: 0, complete: true });
+  assertEquals(h.fetched.length, 2);
+  for (const url of h.fetched) assertEquals(new URL(url).searchParams.has('api_key'), false);
+  const results = new URL(h.fetched[1]);
+  assertEquals(results.searchParams.get('event_id'), '1117350');
+  assertEquals(results.searchParams.get('bib_num'), '336');
+  const rows = h.inserts()[0].ops[0][1] as Array<{ duration_s: number; distance_m: number; metadata: Record<string, unknown> }>;
+  assertEquals(rows.map((r) => [r.duration_s, r.distance_m, r.metadata.bib, r.metadata.age_group]), [
+    [21 * 60 + 24, 5000, '336', 'M2029'],
+  ]);
+});
+
+Deno.test('runsignup import: the key pair rides along when both halves are set', async () => {
+  const h = harness({
+    script: { listing: { data: RSU_LISTING, error: null } },
+    env: { RUNSIGNUP_API_KEY: 'k', RUNSIGNUP_API_SECRET: 's' },
+    upstream: runSignUpFeed,
+  });
+  await h.handler(call(RSU_IMPORT));
+  for (const url of h.fetched) assertEquals(new URL(url).searchParams.get('api_key'), 'k');
+});
+
+Deno.test('runsignup import: a bib nobody ran under imports nothing, honestly complete', async () => {
+  const h = harness({ script: { listing: { data: RSU_LISTING, error: null } }, upstream: runSignUpFeed });
+  const res = await h.handler(call({ ...RSU_IMPORT, bib: '99999' }));
+  assertEquals(await res.json(), { imported: 0, skipped: 0, enriched: 0, complete: true });
+  assertEquals(h.inserts(), []);
+});
+
+Deno.test('runsignup import: a listing day with no event of the race is a 404', async () => {
+  const h = harness({
+    script: { listing: { data: { ...RSU_LISTING, race_date: '2020-01-01' }, error: null } },
+    upstream: runSignUpFeed,
+  });
+  const res = await h.handler(call(RSU_IMPORT));
+  assertEquals(res.status, 404);
+  assertEquals(await res.json(), { error: 'runsignup_event_not_found' });
+  assertEquals(h.fetched.length, 1);
+});
+
+Deno.test('runsignup import: the HTTP-200 error envelope is a 502, not an empty field', async () => {
+  const h = harness({
+    script: { listing: { data: RSU_LISTING, error: null } },
+    upstream: (url) =>
+      new URL(url).pathname.endsWith('/get-results')
+        ? Response.json({ error: { error_code: 3, error_msg: 'Invalid parameters' } })
+        : runSignUpFeed(url),
+  });
+  const res = await h.handler(call(RSU_IMPORT));
+  assertEquals(res.status, 502);
+  assertEquals(await res.json(), { error: 'runsignup upstream error' });
+  assertEquals(h.inserts(), []);
 });

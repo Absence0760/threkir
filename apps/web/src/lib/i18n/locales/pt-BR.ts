@@ -4410,6 +4410,8 @@ export const messages = {
 	"prefs.emailLifecycleDripHint": "Inscreva-se para receber lembretes ocasionais de integração, reengajamento e sequência. Desativado por padrão; separado do seu resumo semanal e dos seus e-mails de notificação.",
 	"prefs.notifyDataExportReady": "Exportação de dados pronta",
 	"prefs.notifyDataExportReadyHint": "Avise por e-mail e push quando uma exportação de dados que eu pedi terminar. O link de download é criado quando você abre a página, então nada expira enquanto ele espera.",
+	"prefs.emailNewDeviceAlerts": "Alertas de login em novo dispositivo",
+	"prefs.emailNewDeviceAlertsHint": "Avise por e-mail na primeira vez que minha conta for acessada de um navegador ou dispositivo que ela ainda não usou. Os avisos de alteração de senha são sempre enviados e não podem ser desativados.",
 	// Gym (Phase 4 multi-modal, decisions §63)
 	"nav.gym": "Academia",
 	"nav.nutrition": "Nutrição",

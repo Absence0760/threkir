@@ -4411,6 +4411,8 @@ export const messages = {
 	"prefs.emailLifecycleDripHint": "Inscrivez-vous pour recevoir occasionnellement des rappels de prise en main, de réengagement et de série. Désactivé par défaut ; distinct de votre récapitulatif hebdomadaire et de vos e-mails de notification.",
 	"prefs.notifyDataExportReady": "Export de données prêt",
 	"prefs.notifyDataExportReadyHint": "Me prévenir par e-mail et notification lorsqu'un export de données que j'ai demandé est terminé. Le lien de téléchargement est créé à l'ouverture de la page : rien n'expire pendant l'attente.",
+	"prefs.emailNewDeviceAlerts": "Alertes de connexion depuis un nouvel appareil",
+	"prefs.emailNewDeviceAlertsHint": "Me prévenir par e-mail la première fois que mon compte se connecte depuis un navigateur ou un appareil qu'il n'a jamais utilisé. Les avis de changement de mot de passe sont toujours envoyés et ne peuvent pas être désactivés.",
 	// Gym (Phase 4 multi-modal, decisions §63)
 	"nav.gym": "Muscu",
 	"nav.nutrition": "Nutrition",

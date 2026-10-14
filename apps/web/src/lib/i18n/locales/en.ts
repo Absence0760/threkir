@@ -4429,6 +4429,8 @@ export const en = {
 	"prefs.emailLifecycleDripHint": "Opt in to occasional onboarding, re-engagement, and streak nudges. Off by default; separate from your weekly digest and notification emails.",
 	"prefs.notifyDataExportReady": "Data export ready",
 	"prefs.notifyDataExportReadyHint": "Email and push me when a data export I asked for has finished building. The download link is created when you open the page, so nothing expires while it waits.",
+	"prefs.emailNewDeviceAlerts": "New-device sign-in alerts",
+	"prefs.emailNewDeviceAlertsHint": "Email me the first time my account signs in from a browser or device it hasn't used before. Password-change notices always send and can't be turned off.",
 	// Gym (Phase 4 multi-modal, decisions §63)
 	"nav.gym": "Gym",
 	"nav.nutrition": "Nutrition",

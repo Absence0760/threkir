@@ -4411,6 +4411,8 @@ export const messages = {
 	"prefs.emailLifecycleDripHint": "Suscríbete para recibir recordatorios ocasionales de inicio, reactivación y rachas. Desactivado por defecto; independiente de tu resumen semanal y de tus correos de notificaciones.",
 	"prefs.notifyDataExportReady": "Exportación de datos lista",
 	"prefs.notifyDataExportReadyHint": "Avisarme por correo y notificación cuando termine una exportación de datos que haya pedido. El enlace de descarga se crea al abrir la página, así que nada caduca mientras espera.",
+	"prefs.emailNewDeviceAlerts": "Alertas de inicio de sesión en dispositivos nuevos",
+	"prefs.emailNewDeviceAlertsHint": "Avisarme por correo la primera vez que se inicie sesión en mi cuenta desde un navegador o dispositivo que no haya usado antes. Los avisos de cambio de contraseña se envían siempre y no se pueden desactivar.",
 	// Gym (Phase 4 multi-modal, decisions §63)
 	"nav.gym": "Gym",
 	"nav.nutrition": "Nutrición",

@@ -20,6 +20,10 @@
 	// unlike the engagement streams: the subject requested the export minutes
 	// earlier. It only ever subtracts — muting a channel above still silences it.
 	let notifyDataExportReady = $state(true);
+	// Opt-OUT alert for a sign-in from a device class the account has not used
+	// before (security_email new_device_sign_in). The password-changed notice
+	// has no control on purpose: it is the one mail a takeover must not mute.
+	let emailNewDeviceAlerts = $state(true);
 
 	const prefs = createPrefsPage(async ({ settings }) => {
 		emailNotifications = effective(settings, 'email_notifications', 'important') ?? 'important';
@@ -30,6 +34,7 @@
 		// chose and a corrupt one is not a decision, matching the worker's own
 		// read in mailer.go's kindMuted.
 		notifyDataExportReady = effective<string>(settings, 'notify_data_export_ready', 'on') !== 'off';
+		emailNewDeviceAlerts = effective<string>(settings, 'email_new_device_alerts', 'on') !== 'off';
 	});
 
 	// Re-opting into an engagement stream must lift any prior one-click
@@ -83,6 +88,18 @@
 			<span>
 				{m('prefs.notifyDataExportReady')}
 				<span class="hint">{m('prefs.notifyDataExportReadyHint')}</span>
+			</span>
+		</label>
+		<label class="checkbox-row">
+			<input
+				type="checkbox"
+				bind:checked={emailNewDeviceAlerts}
+				onchange={() => prefs.save({ email_new_device_alerts: emailNewDeviceAlerts ? 'on' : 'off' })}
+				data-testid="email-new-device-alerts"
+			/>
+			<span>
+				{m('prefs.emailNewDeviceAlerts')}
+				<span class="hint">{m('prefs.emailNewDeviceAlertsHint')}</span>
 			</span>
 		</label>
 	</section>

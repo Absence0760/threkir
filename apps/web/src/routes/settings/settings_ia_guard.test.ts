@@ -59,6 +59,7 @@ const HOMES: Record<string, Home> = {
 	email_weekly_digest: { page: 'notifications' },
 	email_lifecycle_drip: { page: 'notifications' },
 	notify_data_export_ready: { page: 'notifications' },
+	email_new_device_alerts: { page: 'notifications' },
 	locale: {
 		page: 'display',
 		also: { payouts: 'reads it to format earnings amounts in the reader\'s language; it has no control for it' },

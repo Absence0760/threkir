@@ -22,6 +22,12 @@
 --      function's ordering, cannot land an order the check would refuse. The
 --      function check is the friendly 404; this is the floor.
 --
+-- Both are STRICT (p_allow_legacy => false): during the § 1918 transition
+-- window the photo trigger still admits the UTC-clock instant an old build
+-- mints, but no new money path does, so no order is ever opened on an
+-- instant the wall-clock expansion does not produce. The remap moves
+-- existing orders onto wall-clock instants, which the trigger accepts.
+--
 -- Lock profile: CREATE FUNCTION takes no table lock; CREATE TRIGGER takes
 -- SHARE ROW EXCLUSIVE on event_orders for a catalogue change, no scan.
 -- Existing rows are not re-checked (the trigger fires on writes only).
@@ -33,11 +39,11 @@ stable
 security invoker
 set search_path = ''
 as $$
-  select private.is_event_occurrence(p_event_id, p_instance);
+  select private.is_event_occurrence(p_event_id, p_instance, false);
 $$;
 
 comment on function public.event_occurrence_exists(uuid, timestamptz) is
-  'Whether p_instance is an occurrence of event p_event_id (private.is_event_occurrence). Service role only: events-checkout asks it before opening a Checkout Session.';
+  'Whether p_instance is a wall-clock occurrence of event p_event_id (private.is_event_occurrence, strict: never a UTC-clock-only instant). Service role only: events-checkout asks it before opening a Checkout Session.';
 
 revoke execute on function public.event_occurrence_exists(uuid, timestamptz) from public, anon, authenticated;
 grant execute on function public.event_occurrence_exists(uuid, timestamptz) to service_role;
@@ -49,7 +55,7 @@ security definer
 set search_path = ''
 as $$
 begin
-  if not private.is_event_occurrence(new.event_id, new.instance_start) then
+  if not private.is_event_occurrence(new.event_id, new.instance_start, false) then
     raise exception 'event order instance_start is not an occurrence of its event'
       using errcode = 'check_violation',
             constraint = 'event_orders_instance_is_occurrence';

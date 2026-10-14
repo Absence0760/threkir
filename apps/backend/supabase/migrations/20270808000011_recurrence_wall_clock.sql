@@ -29,12 +29,16 @@
 --    `private.recurrence_is_occurrence` answers membership in O(1) (it is fed a
 --    client-supplied instant). `private.event_occurrences(event, from, to)` is
 --    the canonical set for one event row; a legacy series has none.
--- 2. `private.is_event_occurrence` accepts the wall-clock instant and, while
---    the transition window is open, also the UTC-clock instant the old
---    expansion produced, so builds already in the field keep working. The
---    window is the `recurrence_wallclock_strict` row in private.feature_flags:
---    absent = open. `private.close_recurrence_wallclock_transition()` closes it
---    and refuses while a keyed row still sits on a UTC-clock-only instant.
+-- 2. `private.is_event_occurrence(event, instant, p_allow_legacy default true)`
+--    accepts the wall-clock instant and, while the transition window is open
+--    and the caller allows it, also the UTC-clock instant the old expansion
+--    produced, so photos from builds already in the field keep working. Money
+--    paths pass p_allow_legacy => false (20270808000041): no new order lands
+--    on an instant only the old clock produces. The window is the
+--    `recurrence_utc_clock_legacy` row in private.feature_flags, seeded
+--    ENABLED here; absent or disabled is strict, as for every flag in that
+--    table. `private.close_recurrence_wallclock_transition()` disables it and
+--    refuses while a keyed row still sits on a UTC-clock-only instant.
 -- 3. `private.remap_recurrence_wallclock(...)` moves every instance-keyed row
 --    of a timezoned series from its UTC-clock instant to the matching
 --    wall-clock one. It is CREATED HERE AND NEVER CALLED: it runs only when an
@@ -49,10 +53,13 @@
 --    first night, pairs each Tuesday with the next day rather than with the
 --    Wednesday before it. Done series are recorded in
 --    private.recurrence_wallclock_remaps, which is what makes a second run a
---    no-op; a sweep pass moves rows an old build wrote afterwards.
+--    no-op; a sweep pass moves rows an old build wrote afterwards. A dry run
+--    records nothing, so it is single-shot: one refuses a p_max_events below
+--    the number of series it would select.
 --
--- Locks: CREATE TABLE in `private` and CREATE OR REPLACE FUNCTION take no lock
--- on any populated table. Nothing here scans or updates a row.
+-- Locks: CREATE TABLE in `private`, CREATE / DROP FUNCTION and one row into
+-- the tiny private.feature_flags take no lock on any populated table. Nothing
+-- here scans or updates a populated row.
 
 -- ── 1. zone + wall-clock helpers ────────────────────────────────────────────
 
@@ -337,8 +344,13 @@ $$;
 
 -- ── 3. the transition window ────────────────────────────────────────────────
 
--- Absent row = window open: the UTC-clock instants every build before § 1918
--- mints are still occurrences. Closed by close_recurrence_wallclock_transition.
+-- Enabled = window open: the UTC-clock instants every build before § 1918
+-- mints are still occurrences where the caller allows them. Absent or disabled
+-- = strict, so losing the row can only narrow what is accepted.
+insert into private.feature_flags (name, enabled)
+values ('recurrence_utc_clock_legacy', true)
+on conflict (name) do nothing;
+
 create or replace function private.recurrence_utc_clock_accepted()
 returns boolean
 language sql
@@ -346,13 +358,21 @@ stable
 security definer
 set search_path = ''
 as $$
-  select not coalesce(
-    (select f.enabled from private.feature_flags f where f.name = 'recurrence_wallclock_strict'),
+  select coalesce(
+    (select f.enabled from private.feature_flags f where f.name = 'recurrence_utc_clock_legacy'),
     false
   );
 $$;
 
-create or replace function private.is_event_occurrence(p_event_id uuid, p_instance timestamptz)
+-- A third, defaulted argument would make every two-argument call ambiguous
+-- beside the 20270807000001 signature, so that one goes.
+drop function private.is_event_occurrence(uuid, timestamptz);
+
+create function private.is_event_occurrence(
+  p_event_id     uuid,
+  p_instance     timestamptz,
+  p_allow_legacy boolean default true
+)
 returns boolean
 language plpgsql
 stable
@@ -400,7 +420,8 @@ begin
        e.recurrence_until, e.recurrence_count, v_zone, p_instance) then
     return true;
   end if;
-  return v_zone <> 'UTC'
+  return p_allow_legacy
+     and v_zone <> 'UTC'
      and private.recurrence_utc_clock_accepted()
      and private.recurrence_is_occurrence(e.starts_at, e.recurrence_freq, e.recurrence_byday,
            e.recurrence_until, e.recurrence_count, 'UTC', p_instance);
@@ -568,14 +589,17 @@ $$;
 
 -- Remap up to p_max_events series per call, one call per transaction.
 --   p_apply = false (the default): a dry run. Every move is made and then
---     rolled back, so the counts are the real ones; nothing is recorded.
+--     rolled back, so the counts are the real ones; nothing is recorded. That
+--     makes it single-shot: a loop of dry runs would select the same series
+--     forever, so a dry run whose p_max_events is below the number of series
+--     it would select is refused (22023) rather than silently truncated.
 --   p_swept_before null: first pass over series not yet in the ledger.
 --   p_swept_before set: a sweep over series already remapped whose last sweep
 --     is older than it, moving only rows still on a UTC-clock-only instant
 --     (written by an old build during the transition window).
 --   p_event_ids: only these series (a pilot, or one organiser's events).
--- Returns one row per series processed; an operator loops until it returns
--- none (docs/ops/recurrence_wallclock_remap.md).
+-- Returns one row per series processed; an operator loops an APPLY until it
+-- returns none (docs/ops/recurrence_wallclock_remap.md).
 create or replace function private.remap_recurrence_wallclock(
   p_max_events   int default 10,
   p_apply        boolean default false,
@@ -608,10 +632,11 @@ declare
   v_pair   record;
   v_before bigint;
   v_after  bigint;
+  v_ids    uuid[];
+  v_batch  int := greatest(coalesce(p_max_events, 0), 0);
 begin
-  for e in
-    select ev.id, ev.starts_at, ev.recurrence_freq, ev.recurrence_byday,
-           ev.recurrence_until, ev.recurrence_count, ev.timezone, l.shift as done_shift
+  v_ids := array(
+    select ev.id
       from public.events ev
       left join private.recurrence_wallclock_remaps l on l.event_id = ev.id
      where ev.recurrence_freq is not null
@@ -621,8 +646,21 @@ begin
                 then l.event_id is not null
                      and coalesce(l.last_swept_at, l.remapped_at) < p_swept_before
                 else l.event_id is null end
+     order by ev.id);
+
+  if not p_apply and cardinality(v_ids) > v_batch then
+    raise exception 'a dry run records nothing, so it cannot be batched: % series are eligible and p_max_events is %; pass p_max_events => % or narrow p_event_ids',
+      cardinality(v_ids), v_batch, cardinality(v_ids)
+      using errcode = 'invalid_parameter_value';
+  end if;
+
+  for e in
+    select ev.id, ev.starts_at, ev.recurrence_freq, ev.recurrence_byday,
+           ev.recurrence_until, ev.recurrence_count, ev.timezone, l.shift as done_shift
+      from public.events ev
+      left join private.recurrence_wallclock_remaps l on l.event_id = ev.id
+     where ev.id = any (v_ids[1:v_batch])
      order by ev.id
-     limit greatest(p_max_events, 0)
   loop
     event_id := e.id;
     moved := 0;
@@ -766,7 +804,8 @@ as $$
    order by g.t, g.e, g.i;
 $$;
 
--- Close the window: from here a UTC-clock-only instant is no occurrence.
+-- Close the window by disabling the legacy flag: from here a UTC-clock-only
+-- instant is no occurrence on any path.
 -- Refuses while any keyed row still sits on one, unless p_force. Returns the
 -- number of such rows it found.
 create or replace function private.close_recurrence_wallclock_transition(p_force boolean default false)
@@ -785,16 +824,16 @@ begin
       using errcode = 'P0001';
   end if;
   insert into private.feature_flags (name, enabled)
-  values ('recurrence_wallclock_strict', true)
-  on conflict (name) do update set enabled = true, updated_at = now();
+  values ('recurrence_utc_clock_legacy', false)
+  on conflict (name) do update set enabled = false, updated_at = now();
   return v_rows;
 end;
 $$;
 
 -- ── 5. grants ───────────────────────────────────────────────────────────────
 
-revoke execute on function private.is_event_occurrence(uuid, timestamptz) from public, anon;
-grant execute on function private.is_event_occurrence(uuid, timestamptz) to authenticated, service_role;
+revoke execute on function private.is_event_occurrence(uuid, timestamptz, boolean) from public, anon;
+grant execute on function private.is_event_occurrence(uuid, timestamptz, boolean) to authenticated, service_role;
 
 revoke execute on function private.recurrence_zone(text) from public, anon, authenticated;
 revoke execute on function private.zone_offset(timestamptz, text) from public, anon, authenticated;

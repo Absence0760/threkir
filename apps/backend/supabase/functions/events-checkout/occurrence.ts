@@ -9,6 +9,8 @@
 /// (`event_occurrence_exists` -> `private.is_event_occurrence`, the same port
 /// of `expandInstances` the event-photo trigger asks), never re-derived here,
 /// and `event_orders_validate_occurrence` refuses the order row regardless.
+/// Both ask strictly: an instant only the pre-§ 1918 UTC clock produces is a
+/// 404 here even while the transition window lets a photo land on it.
 
 import type { DbClient } from '../_shared/database.ts';
 import { isPastSeriesEnd } from './lib.ts';

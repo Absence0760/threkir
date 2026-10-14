@@ -1,7 +1,8 @@
 -- Pins migration 20270808000011 (decisions § 1918): the gated remap of
 -- instance-keyed rows from a timezoned series' UTC-clock instants onto its
 -- wall-clock ones, the transition window in which private.is_event_occurrence
--- accepts both, and the window's close.
+-- accepts both on its lenient default (and only the wall-clock one when a
+-- money path asks strictly), the window's close, and the single-shot dry run.
 --
 -- Series (all America/New_York unless noted; O = UTC-clock instants the old
 -- expansion minted, N = wall-clock instants):
@@ -18,7 +19,7 @@
 --   e7  a series in 'UTC', whose two clocks are the same.
 
 begin;
-select plan(32);
+select plan(41);
 
 insert into auth.users (id, email, encrypted_password, email_confirmed_at, instance_id, aud, role)
 values
@@ -92,6 +93,16 @@ values ('ffffffff-0000-0000-1918-000000000001', 'dddddddd-0000-0000-1918-0000000
         '99999999-9999-9999-9999-99991918a001', 'See you Tuesday',
         'eeeeeeee-0000-0000-1918-000000000001', '2026-09-09T01:30:00Z');
 
+-- A paid order an old build opened before the strict trigger existed: written
+-- with that trigger off, so the remap's move is what it has to accept.
+alter table event_orders disable trigger event_orders_validate_occurrence;
+insert into event_orders (id, event_id, instance_start, buyer_user_id, host_user_id,
+                          amount_cents, platform_fee_cents, status)
+values ('22222222-0000-0000-1918-000000000001', 'eeeeeeee-0000-0000-1918-000000000004',
+        '2026-11-04T11:00:00Z', '99999999-9999-9999-9999-99991918a002',
+        '99999999-9999-9999-9999-99991918a001', 2000, 100, 'paid');
+alter table event_orders enable trigger event_orders_validate_occurrence;
+
 insert into run_photos (id, owner_id, storage_path, event_id, event_instance_start)
 values ('11111111-0000-0000-1918-000000000001', '99999999-9999-9999-9999-99991918a001',
         '99999999-9999-9999-9999-99991918a001/e1.jpg',
@@ -129,8 +140,20 @@ select ok(
   and not exists (select 1 from cron.job where command ~ 'remap_recurrence_wallclock'),
   'nothing in the database calls the remap: no function body, trigger or cron job');
 
+select is(
+  (select enabled from private.feature_flags where name = 'recurrence_utc_clock_legacy'),
+  true,
+  'the migration seeds the legacy flag enabled');
 select ok(private.recurrence_utc_clock_accepted(),
-  'the transition window starts open');
+  'so the transition window starts open');
+
+create temp table legacy_flag on commit drop as
+  select * from private.feature_flags where name = 'recurrence_utc_clock_legacy';
+delete from private.feature_flags where name = 'recurrence_utc_clock_legacy';
+select ok(not private.recurrence_utc_clock_accepted()
+          and not private.is_event_occurrence('eeeeeeee-0000-0000-1918-000000000001', '2026-09-09T01:30:00Z'),
+  'an absent flag row is strict, as every private.feature_flags gate reads');
+insert into private.feature_flags select * from legacy_flag;
 
 -- ── inside the window, before any remap ─────────────────────────────────────
 
@@ -140,6 +163,10 @@ select ok(private.is_event_occurrence('eeeeeeee-0000-0000-1918-000000000001', '2
   'and the wall-clock instant a new build mints (Wednesday 21:30 local)');
 select ok(not private.is_event_occurrence('eeeeeeee-0000-0000-1918-000000000001', '2026-09-09T02:30:00Z'),
   'and neither clock admits an hour off either');
+select ok(not private.is_event_occurrence('eeeeeeee-0000-0000-1918-000000000001', '2026-09-09T01:30:00Z', false),
+  'a strict caller (a money path) refuses the UTC-clock instant even with the window open');
+select ok(private.is_event_occurrence('eeeeeeee-0000-0000-1918-000000000001', '2026-09-10T01:30:00Z', false),
+  'and accepts the wall-clock one');
 
 -- ── the default is a dry run ────────────────────────────────────────────────
 
@@ -152,6 +179,16 @@ select is(pg_temp.keys('eeeeeeee-0000-0000-1918-000000000001', '99999999-9999-99
   'and moves none of them');
 select ok(not exists (select 1 from private.recurrence_wallclock_remaps l join ids on ids.id = l.event_id),
   'and records nothing, so the real run still sees every series as pending');
+
+select throws_ok(
+  $$ select * from private.remap_recurrence_wallclock(1, false, null, array(select id from ids)) $$,
+  '22023',
+  'a dry run records nothing, so it cannot be batched: 6 series are eligible and p_max_events is 1; pass p_max_events => 6 or narrow p_event_ids',
+  'a dry run smaller than the series it would select is refused, so a batched dry-run loop cannot spin forever');
+select is(
+  (select count(*)::int from private.remap_recurrence_wallclock(6, false, null, array(select id from ids))),
+  6,
+  'a dry run that covers every eligible series runs in one shot');
 
 -- ── the remap ───────────────────────────────────────────────────────────────
 
@@ -203,6 +240,12 @@ select is(pg_temp.keys('eeeeeeee-0000-0000-1918-000000000006', '99999999-9999-99
   'e6: both of that member''s rows survive');
 
 select is(
+  (select to_char(instance_start at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI"Z"')
+     from event_orders where id = '22222222-0000-0000-1918-000000000001'),
+  '2026-11-04T12:00Z',
+  'e4: the paid order moves onto the wall-clock instant, through the strict occurrence trigger');
+
+select is(
   (select array[shift::bigint, moved] from run1 where event_id = 'eeeeeeee-0000-0000-1918-000000000007'),
   array[0, 0]::bigint[],
   'e7: a series in UTC has one clock and nothing to move');
@@ -237,6 +280,12 @@ values ('eeeeeeee-0000-0000-1918-000000000002', '99999999-9999-9999-9999-9999191
         '2026-10-27T01:30:00Z', 'going');
 
 create temp table sweep_at on commit drop as select clock_timestamp() as at;
+select throws_ok(
+  format('select * from private.remap_recurrence_wallclock(1, false, %L, array(select id from ids))',
+         (select at from sweep_at)),
+  '22023',
+  'a dry run records nothing, so it cannot be batched: 6 series are eligible and p_max_events is 1; pass p_max_events => 6 or narrow p_event_ids',
+  'a dry-run sweep is single-shot too');
 create temp table run2 on commit drop as
   select r.* from private.remap_recurrence_wallclock(100, true, (select at from sweep_at), array(select id from ids)) r;
 
@@ -266,6 +315,10 @@ delete from event_attendees
 
 select is(private.close_recurrence_wallclock_transition(), 0::bigint,
   'once that row is resolved the window closes');
+select is(
+  (select enabled from private.feature_flags where name = 'recurrence_utc_clock_legacy'),
+  false,
+  'by disabling the legacy flag');
 select ok(not private.is_event_occurrence('eeeeeeee-0000-0000-1918-000000000001', '2026-09-09T01:30:00Z'),
   'after the close a UTC-clock instant is no occurrence');
 select ok(private.is_event_occurrence('eeeeeeee-0000-0000-1918-000000000001', '2026-09-10T01:30:00Z'),

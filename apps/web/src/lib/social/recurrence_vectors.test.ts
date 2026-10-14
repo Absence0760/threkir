@@ -177,7 +177,7 @@ function eventId(i: number): string {
 function renderPgtap(fx: Fixture): string {
 	const lines: string[] = [];
 	const timezoned = fx.series.filter((s) => s.event.recurrence_freq != null && s.event.timezone != null);
-	const asserts = 1 + fx.series.length + fx.series.filter((s) => canonical(s.event)).length + timezoned.length;
+	const asserts = 1 + fx.series.length + fx.series.filter((s) => canonical(s.event)).length + 2 * timezoned.length;
 	lines.push(
 		'-- GENERATED from fixtures/recurrence_vectors.json by',
 		'-- apps/web/src/lib/social/recurrence_vectors.test.ts — never hand-edit.',
@@ -191,11 +191,14 @@ function renderPgtap(fx: Fixture): string {
 		'-- client exactly for every series with a timezone (and every one-off), and',
 		'-- event_occurrences must list exactly the client\'s instants. With the window',
 		'-- OPEN a timezoned series also admits its UTC-clock instants, the ones every',
-		'-- build before § 1918 mints. For a legacy series with no timezone the',
-		'-- clients expand in each viewer\'s local zone, so the SQL deliberately checks',
-		'-- only the bounds and a whole-day offset (±1 h): those probes pin that',
-		'-- documented rule, and the generator refuses a fixture in which any viewer',
-		'-- zone offers an instant the rule rejects.',
+		'-- build before § 1918 mints, on the lenient default, while a strict caller',
+		'-- (p_allow_legacy => false, the money paths) still agrees with the client',
+		'-- exactly. The window is the recurrence_utc_clock_legacy flag: the closed',
+		'-- pass deletes its row, so an absent flag is pinned strict. For a legacy',
+		'-- series with no timezone the clients expand in each viewer\'s local zone,',
+		'-- so the SQL deliberately checks only the bounds and a whole-day offset',
+		'-- (±1 h): those probes pin that documented rule, and the generator refuses',
+		'-- a fixture in which any viewer zone offers an instant the rule rejects.',
 		'',
 		'begin;',
 		`select plan(${asserts});`,
@@ -241,16 +244,15 @@ function renderPgtap(fx: Fixture): string {
 		'select is((select count(*)::int from occurrence_probes), ' +
 			`${rows.length}, 'every generated probe was loaded');`,
 		'',
-		'-- The window closed: wall-clock instants only.',
-		"insert into private.feature_flags (name, enabled) values ('recurrence_wallclock_strict', true)",
-		'on conflict (name) do update set enabled = true;',
+		'-- The window closed (no flag row): wall-clock instants only.',
+		"delete from private.feature_flags where name = 'recurrence_utc_clock_legacy';",
 		''
 	);
-	const probeCheck = (i: number, column: string, label: string) => {
+	const probeCheck = (i: number, column: string, label: string, strict = false) => {
 		lines.push(
 			'select is(',
 			'  array(select to_char(at at time zone \'UTC\', \'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"\') || \'=\' ||',
-			'               private.is_event_occurrence(event_id, at)::text',
+			`               private.is_event_occurrence(event_id, at${strict ? ', false' : ''})::text`,
 			`          from occurrence_probes where event_id = ${sqlLit(eventId(i))} order by at),`,
 			`  array(select to_char(at at time zone \'UTC\', \'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"\') || \'=\' || ${column}::text`,
 			`          from occurrence_probes where event_id = ${sqlLit(eventId(i))} order by at),`,
@@ -279,12 +281,17 @@ function renderPgtap(fx: Fixture): string {
 	});
 	lines.push(
 		'-- The window open: a timezoned series also admits its UTC-clock instants.',
-		"update private.feature_flags set enabled = false where name = 'recurrence_wallclock_strict';",
+		"insert into private.feature_flags (name, enabled) values ('recurrence_utc_clock_legacy', true)",
+		'on conflict (name) do update set enabled = true;',
 		''
 	);
 	fx.series.forEach((s, i) => {
 		if (s.event.recurrence_freq == null || s.event.timezone == null) return;
 		probeCheck(i, 'expect_open', `${s.name}: inside the transition window the UTC-clock instants are accepted too`);
+	});
+	fx.series.forEach((s, i) => {
+		if (s.event.recurrence_freq == null || s.event.timezone == null) return;
+		probeCheck(i, 'expect', `${s.name}: inside the window a strict caller still agrees with expandInstances`, true);
 	});
 	lines.push('select * from finish();', 'rollback;', '');
 	return lines.join('\n');

@@ -10,14 +10,17 @@
 -- client exactly for every series with a timezone (and every one-off), and
 -- event_occurrences must list exactly the client's instants. With the window
 -- OPEN a timezoned series also admits its UTC-clock instants, the ones every
--- build before § 1918 mints. For a legacy series with no timezone the
--- clients expand in each viewer's local zone, so the SQL deliberately checks
--- only the bounds and a whole-day offset (±1 h): those probes pin that
--- documented rule, and the generator refuses a fixture in which any viewer
--- zone offers an instant the rule rejects.
+-- build before § 1918 mints, on the lenient default, while a strict caller
+-- (p_allow_legacy => false, the money paths) still agrees with the client
+-- exactly. The window is the recurrence_utc_clock_legacy flag: the closed
+-- pass deletes its row, so an absent flag is pinned strict. For a legacy
+-- series with no timezone the clients expand in each viewer's local zone,
+-- so the SQL deliberately checks only the bounds and a whole-day offset
+-- (±1 h): those probes pin that documented rule, and the generator refuses
+-- a fixture in which any viewer zone offers an instant the rule rejects.
 
 begin;
-select plan(80);
+select plan(104);
 
 insert into auth.users (id, email, encrypted_password, email_confirmed_at, instance_id, aud, role)
 values ('99999999-9999-9999-9999-99991145b001', 'vectors-1145@example.com', '', now(),
@@ -1117,9 +1120,8 @@ insert into occurrence_probes (event_id, at, expect, expect_open) values
 
 select is((select count(*)::int from occurrence_probes), 1051, 'every generated probe was loaded');
 
--- The window closed: wall-clock instants only.
-insert into private.feature_flags (name, enabled) values ('recurrence_wallclock_strict', true)
-on conflict (name) do update set enabled = true;
+-- The window closed (no flag row): wall-clock instants only.
+delete from private.feature_flags where name = 'recurrence_utc_clock_legacy';
 
 select is(
   array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' ||
@@ -1484,7 +1486,8 @@ select is(
   'monthly from the 31st in America/New_York, evening start on the next UTC day, count 6: event_occurrences lists exactly the expandInstances window');
 
 -- The window open: a timezoned series also admits its UTC-clock instants.
-update private.feature_flags set enabled = false where name = 'recurrence_wallclock_strict';
+insert into private.feature_flags (name, enabled) values ('recurrence_utc_clock_legacy', true)
+on conflict (name) do update set enabled = true;
 
 select is(
   array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' ||
@@ -1677,6 +1680,198 @@ select is(
   array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' || expect_open::text
           from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000026' order by at),
   'monthly from the 31st in America/New_York, evening start on the next UTC day, count 6: inside the transition window the UTC-clock instants are accepted too');
+
+select is(
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' ||
+               private.is_event_occurrence(event_id, at, false)::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000003' order by at),
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' || expect::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000003' order by at),
+  'weekly, byday defaulted from the start, count 6: inside the window a strict caller still agrees with expandInstances');
+
+select is(
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' ||
+               private.is_event_occurrence(event_id, at, false)::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000004' order by at),
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' || expect::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000004' order by at),
+  'weekly MO/WE/FR from a Wednesday, until equal to an occurrence: inside the window a strict caller still agrees with expandInstances');
+
+select is(
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' ||
+               private.is_event_occurrence(event_id, at, false)::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000005' order by at),
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' || expect::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000005' order by at),
+  'biweekly TU/SA from a Thursday outside byday, count 7: inside the window a strict caller still agrees with expandInstances');
+
+select is(
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' ||
+               private.is_event_occurrence(event_id, at, false)::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000006' order by at),
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' || expect::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000006' order by at),
+  'biweekly SU/MO across the weekend, window opening after the start, count 9: inside the window a strict caller still agrees with expandInstances');
+
+select is(
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' ||
+               private.is_event_occurrence(event_id, at, false)::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000007' order by at),
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' || expect::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000007' order by at),
+  'weekly in America/New_York across the fall-back: inside the window a strict caller still agrees with expandInstances');
+
+select is(
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' ||
+               private.is_event_occurrence(event_id, at, false)::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000008' order by at),
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' || expect::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000008' order by at),
+  'weekly in America/New_York, evening start on the next UTC day: inside the window a strict caller still agrees with expandInstances');
+
+select is(
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' ||
+               private.is_event_occurrence(event_id, at, false)::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000009' order by at),
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' || expect::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000009' order by at),
+  'weekly with a millisecond start, count 3: inside the window a strict caller still agrees with expandInstances');
+
+select is(
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' ||
+               private.is_event_occurrence(event_id, at, false)::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000010' order by at),
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' || expect::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000010' order by at),
+  'weekly count 300, window at the far end: inside the window a strict caller still agrees with expandInstances');
+
+select is(
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' ||
+               private.is_event_occurrence(event_id, at, false)::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000011' order by at),
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' || expect::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000011' order by at),
+  'weekly count 0: inside the window a strict caller still agrees with expandInstances');
+
+select is(
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' ||
+               private.is_event_occurrence(event_id, at, false)::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000012' order by at),
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' || expect::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000012' order by at),
+  'monthly from the 31st, count 8: inside the window a strict caller still agrees with expandInstances');
+
+select is(
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' ||
+               private.is_event_occurrence(event_id, at, false)::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000013' order by at),
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' || expect::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000013' order by at),
+  'monthly from the 29th through a leap February: inside the window a strict caller still agrees with expandInstances');
+
+select is(
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' ||
+               private.is_event_occurrence(event_id, at, false)::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000014' order by at),
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' || expect::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000014' order by at),
+  'monthly from the 30th in America/New_York across the fall-back, count 5: inside the window a strict caller still agrees with expandInstances');
+
+select is(
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' ||
+               private.is_event_occurrence(event_id, at, false)::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000015' order by at),
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' || expect::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000015' order by at),
+  'monthly with until between two occurrences: inside the window a strict caller still agrees with expandInstances');
+
+select is(
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' ||
+               private.is_event_occurrence(event_id, at, false)::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000016' order by at),
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' || expect::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000016' order by at),
+  'monthly with a millisecond start, count 3: inside the window a strict caller still agrees with expandInstances');
+
+select is(
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' ||
+               private.is_event_occurrence(event_id, at, false)::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000017' order by at),
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' || expect::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000017' order by at),
+  'monthly count 0: inside the window a strict caller still agrees with expandInstances');
+
+select is(
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' ||
+               private.is_event_occurrence(event_id, at, false)::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000018' order by at),
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' || expect::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000018' order by at),
+  'weekly in America/Los_Angeles, evening start on the next UTC day: inside the window a strict caller still agrees with expandInstances');
+
+select is(
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' ||
+               private.is_event_occurrence(event_id, at, false)::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000019' order by at),
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' || expect::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000019' order by at),
+  'weekly in Pacific/Auckland, morning start on the previous UTC day, across the April DST end: inside the window a strict caller still agrees with expandInstances');
+
+select is(
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' ||
+               private.is_event_occurrence(event_id, at, false)::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000020' order by at),
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' || expect::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000020' order by at),
+  'weekly in Asia/Kolkata, early-morning start on the previous UTC day, count 4: inside the window a strict caller still agrees with expandInstances');
+
+select is(
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' ||
+               private.is_event_occurrence(event_id, at, false)::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000021' order by at),
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' || expect::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000021' order by at),
+  'biweekly SU/MO in America/New_York, Sunday-evening start in the next UTC week: inside the window a strict caller still agrees with expandInstances');
+
+select is(
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' ||
+               private.is_event_occurrence(event_id, at, false)::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000022' order by at),
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' || expect::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000022' order by at),
+  'weekly in America/New_York, a wall-clock inside the fall-back overlap: inside the window a strict caller still agrees with expandInstances');
+
+select is(
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' ||
+               private.is_event_occurrence(event_id, at, false)::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000023' order by at),
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' || expect::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000023' order by at),
+  'weekly in America/New_York, started in the second pass of the overlap hour, count 3: inside the window a strict caller still agrees with expandInstances');
+
+select is(
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' ||
+               private.is_event_occurrence(event_id, at, false)::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000024' order by at),
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' || expect::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000024' order by at),
+  'weekly in America/New_York, a wall-clock inside the spring-forward gap: inside the window a strict caller still agrees with expandInstances');
+
+select is(
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' ||
+               private.is_event_occurrence(event_id, at, false)::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000025' order by at),
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' || expect::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000025' order by at),
+  'weekly SA 23:30 in America/Nuuk, whose spring-forward gap crosses midnight: inside the window a strict caller still agrees with expandInstances');
+
+select is(
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' ||
+               private.is_event_occurrence(event_id, at, false)::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000026' order by at),
+  array(select to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '=' || expect::text
+          from occurrence_probes where event_id = 'eeeeeeee-0000-0000-1145-000000000026' order by at),
+  'monthly from the 31st in America/New_York, evening start on the next UTC day, count 6: inside the window a strict caller still agrees with expandInstances');
 
 select * from finish();
 rollback;

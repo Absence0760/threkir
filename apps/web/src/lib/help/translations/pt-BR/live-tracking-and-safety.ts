@@ -22,7 +22,7 @@ export const translation: GuideTranslation = {
 				},
 				{
 					type: 'p',
-					text: 'Durante o compartilhamento, um selo **Ao vivo** aparece na tela de gravação. Toque nele para **Compartilhar link novamente**, **Parar de compartilhar** ou definir um horário em **Sem voltar até…**.',
+					text: 'Durante o compartilhamento, um selo **Ao vivo** aparece na tela de gravação. Toque nele para **Compartilhar link novamente**, **Parar de compartilhar** ou definir um horário em **Sem retorno até…**.',
 				},
 				{
 					type: 'p',
@@ -73,7 +73,7 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						'**Alerta de atraso**: escolha um tempo em **Avisar os contatos após silêncio de** na web, ou **Avisar após silêncio de** no app. Se sua corrida ao vivo não enviar nada por esse tempo, seus contatos confirmados recebem por e-mail o seu link ao vivo. Fica **Desativado** até você escolher um tempo.',
-						'**Sem voltar até…**: durante uma corrida compartilhada ao vivo, toque no selo **Ao vivo** e escolha quando você espera terminar. Se a corrida ainda estiver em andamento nesse horário, seus contatos recebem um alerta. O horário fica guardado no nosso servidor, então continua valendo mesmo se a bateria do seu celular acabar. Você também pode defini-lo pela sua própria página ao vivo na web.',
+						'**Sem retorno até…**: durante uma corrida compartilhada ao vivo, toque no selo **Ao vivo** e escolha quando você espera terminar. Se a corrida ainda estiver em andamento nesse horário, seus contatos recebem um alerta. O horário fica guardado no nosso servidor, então continua valendo mesmo se a bateria do seu celular acabar. Você também pode defini-lo pela sua própria página ao vivo na web.',
 					],
 				},
 				{

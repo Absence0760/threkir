@@ -38,16 +38,16 @@ export const translation: GuideTranslation = {
 			],
 		},
 		{
-			heading: 'Prova pronta e Prova AO VIVO',
+			heading: 'Prova preparada e Prova AO VIVO',
 			blocks: [
 				{
 					type: 'p',
-					text: 'Quando o organizador prepara a prova, a aba Corrida do app do celular mostra **Prova pronta** com “aguardando a largada”. O relógio Wear OS mostra “RACE ARMED” acima do botão Start. Quando o organizador dá o GO, isso muda para **Prova AO VIVO** (“RACE LIVE” no relógio), com o tempo decorrido e “toque em Iniciar”.',
+					text: 'Quando o organizador prepara a prova, a aba Corrida do app do celular mostra **Prova preparada** com “aguardando a largada”. O relógio Wear OS mostra “PROVA PREPARADA” acima do botão Start. Quando o organizador dá o GO, isso muda para **Prova AO VIVO** (“PROVA AO VIVO” no relógio), com o tempo decorrido e “toque em Iniciar”.',
 				},
 				{
 					type: 'note',
 					tone: 'caution',
-					text: 'Seu celular ou relógio não começa a gravar sozinho: pressione Iniciar você mesmo. Você pode começar na linha de largada enquanto a prova mostra **Prova pronta**, ou quando vir **Prova AO VIVO**. Uma gravação iniciada antes entra na prova no GO, no celular e no relógio Wear OS, e seu tempo líquido passa a contar a partir do GO, e não de quando você pressionou Iniciar.',
+					text: 'Seu celular ou relógio não começa a gravar sozinho: pressione Iniciar você mesmo. Você pode começar na linha de largada enquanto a prova mostra **Prova preparada**, ou quando vir **Prova AO VIVO**. Uma gravação iniciada antes entra na prova no GO, no celular e no relógio Wear OS, e seu tempo líquido passa a contar a partir do GO, e não de quando você pressionou Iniciar.',
 				},
 				{
 					type: 'p',
@@ -123,7 +123,7 @@ export const translation: GuideTranslation = {
 					items: [
 						'O **Tempo bruto** vai do momento em que o organizador deu o GO até a sua chegada. É o tempo usado na sua classificação.',
 						'O **Tempo líquido** vai de quando você pressionou Iniciar até a sua chegada, incluindo as pausas. Se você pressionou Iniciar antes do GO, ele conta a partir do GO, então nunca é maior que o seu tempo bruto.',
-						'Se você largar mais de 5 minutos depois do GO, ou se sua primeira posição estiver a mais de 200 m da largada do percurso, o app do celular mostra um aviso de largada atrasada. Seu tempo bruto continua contando a partir do GO, então uma largada atrasada o deixa maior que o seu tempo líquido.',
+						'Se você largar mais de 5 minutos depois do GO, ou se sua primeira posição estiver a mais de 200 m da largada do percurso, o app do celular mostra um aviso de largada tardia. Seu tempo bruto continua contando a partir do GO, então uma largada tardia o deixa maior que o seu tempo líquido.',
 					],
 				},
 				{

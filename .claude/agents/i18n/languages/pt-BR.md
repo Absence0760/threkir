@@ -53,7 +53,7 @@ House vocabulary (verified in both catalogues): `salvar`, `registrar` /
 
 ## Typography
 
-- Quotes **“…”** (20 / 6); straight `"` is a slip.
+- Quotes **“…”** (20 / 6); straight `"` is a slip. The notification family (`notificationBell.*Titled`, `notificationsList.verb*Titled`, mobile `profileNotif*Titled`) was moved to curly quotes 2026-10-14; 23 web and 30 mobile strings still use straight quotes, mostly around `{name}` / `{query}` / `{word}` (inconsistency 6).
 - Ellipsis **…**; spaced em dash ` — `.
 - No space before `:` `!` `?`.
 - Literal number samples use the decimal comma ("5,0 km · 5:00 /km").
@@ -102,6 +102,11 @@ literal `1` in a `one` branch — 11 mobile strings already do (e.g.
 | activity discipline (yoga, pilates…) | **Modalidade** | `eventEditor.discipline`, `session.discipline` |
 | yoga | **ioga** (lower case; "Ioga vinyasa" at a sentence start) | never "yoga" |
 | Pro & support | **Pro e apoio** | *support* here is supporting the app ("apoiar o app"); "suporte" is tech support |
+| arm / armed (race control) | **Preparar** / **preparada** — "Preparar corrida", "Corrida preparada", "Prova preparada", the watch's "PROVA PREPARADA", the spectator status "Preparada" | settled 2026-10-14 (decisions R9WEAR-2); never "Armar" / "armado" or "Prova pronta" |
+| End race (the host's control) | **Encerrar corrida** / "Encerrar a corrida?" | settled 2026-10-14; *Finalizar* is the runner's own **Finalizar prova** (Finish race), so the two never share a verb |
+| gun time / chip time | **Tempo bruto** / **Tempo líquido**; the short split "bruto {gun} · líquido {chip}" | settled 2026-10-14; never "Tempo oficial" for gun time — *oficial* stays for an imported official result |
+| Not back by… (return-time alert) | **Sem retorno até…**; the alert is the **alerta de horário de retorno** | settled 2026-10-14; never "Sem voltar até…", "aviso de horário de volta" |
+| late start | **Largada tardia** | phone `runRaceLateStart`, Wear `race_late_start` |
 | auto-pause | — | no catalogue string yet; build from "Corrida pausada" / "Pausar" → "Pausa automática", and flag it as a new term |
 | kudos | kudos ("dar kudos", "remover kudos") | |
 | workout | Treino | |
@@ -119,6 +124,9 @@ literal `1` in a `one` branch — 11 mobile strings already do (e.g.
 5. **finish action**: "Concluir" (mobile `gymSessionFinish`,
    `sessionRunFinish`) vs "Finalizar" (web `gym.session.finish`,
    `session.run.finish`).
+6. **straight quotes** in 23 web and 30 mobile strings, mostly around a placeholder
+   (`routesSaved`, `plansDeleteTitle`, `socialPeople.noMatch`, …),
+   against the curly-quote rule above.
 
 ## Don't translate
 

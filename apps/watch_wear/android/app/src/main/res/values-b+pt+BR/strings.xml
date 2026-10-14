@@ -70,13 +70,13 @@
     </plurals>
     <string name="offline">Off-line</string>
     <string name="not_signed_in">Sem sessão iniciada</string>
-    <string name="race_armed">PROVA PRONTA</string>
+    <string name="race_armed">PROVA PREPARADA</string>
     <string name="race_live">PROVA AO VIVO</string>
     <string name="event">Evento</string>
     <string name="race_wait_for_go">%1$s · aguarde o GO</string>
     <string name="race_tap_start">%1$s · toque em Iniciar</string>
     <string name="race_finish_short">Fim</string>
-    <string name="cd_finish_race">Encerrar corrida</string>
+    <string name="cd_finish_race">Finalizar prova</string>
     <string name="race_ended">Corrida encerrada</string>
     <string name="race_late_start">Largada tardia</string>
     <string name="race_clock">Corrida %1$s</string>

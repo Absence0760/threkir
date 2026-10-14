@@ -16961,10 +16961,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get runLiveShareStop => 'Parar de compartilhar';
 
   @override
-  String get runLiveShareExpectedReturn => 'Sem voltar até…';
+  String get runLiveShareExpectedReturn => 'Sem retorno até…';
 
   @override
-  String get runExpectedReturnTitle => 'Sem voltar até…';
+  String get runExpectedReturnTitle => 'Sem retorno até…';
 
   @override
   String get runExpectedReturnIntro =>
@@ -16992,31 +16992,32 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String runExpectedReturnBy(String time) {
-    return 'De volta às $time';
+    return 'Retorno até $time';
   }
 
   @override
   String runExpectedReturnActive(String time) {
-    return 'Aviso definido para $time.';
+    return 'Alerta definido para $time.';
   }
 
   @override
-  String get runExpectedReturnClear => 'Limpar o aviso';
+  String get runExpectedReturnClear => 'Limpar o alerta';
 
   @override
-  String get runExpectedReturnSetToast => 'Aviso de horário de volta definido.';
+  String get runExpectedReturnSetToast =>
+      'Alerta de horário de retorno ativado.';
 
   @override
   String get runExpectedReturnClearedToast =>
-      'Aviso de horário de volta limpo.';
+      'Alerta de horário de retorno removido.';
 
   @override
   String get runExpectedReturnFailed =>
-      'Não foi possível atualizar o aviso de horário de volta.';
+      'Não foi possível atualizar o alerta de horário de retorno.';
 
   @override
   String get runExpectedReturnUnavailable =>
-      'Servidor inacessível — não é possível definir o aviso de horário de volta.';
+      'Servidor inacessível — não é possível definir o alerta de horário de retorno.';
 
   @override
   String get runLiveShareStopped => 'Compartilhamento ao vivo encerrado';
@@ -17057,7 +17058,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get runRaceFallbackTitle => 'Prova';
 
   @override
-  String get runRaceArmed => 'Prova pronta';
+  String get runRaceArmed => 'Prova preparada';
 
   @override
   String get runRaceLive => 'Prova AO VIVO';
@@ -19946,7 +19947,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String profileNotifEventRsvpTitled(String name, String title) {
-    return '$name confirmou presença no seu evento \"$title\"';
+    return '$name confirmou presença no seu evento “$title”';
   }
 
   @override
@@ -19991,7 +19992,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String profileNotifEventCancelTitled(String title) {
-    return 'Uma ocorrência de \"$title\" foi cancelada';
+    return 'Uma ocorrência de “$title” foi cancelada';
   }
 
   @override
@@ -20000,7 +20001,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String profileNotifEventCancelRefundedTitled(String title) {
-    return 'Uma ocorrência de \"$title\" foi cancelada — seu pagamento está sendo reembolsado';
+    return 'Uma ocorrência de “$title” foi cancelada — seu pagamento está sendo reembolsado';
   }
 
   @override
@@ -20009,7 +20010,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String profileNotifWaitlistSlotTitled(String title) {
-    return 'Abriu uma vaga em \"$title\" e ela está reservada para você — pague para garanti-la';
+    return 'Abriu uma vaga em “$title” e ela está reservada para você — pague para garanti-la';
   }
 
   @override
@@ -20018,7 +20019,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String profileNotifEventReminderTitled(String title) {
-    return '\"$title\" está chegando';
+    return '“$title” está chegando';
   }
 
   @override
@@ -20588,7 +20589,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get eventRsvpDeclined => 'Não posso ir';
 
   @override
-  String get eventRaceArmed => 'Armado — aguardando o GO';
+  String get eventRaceArmed => 'Preparada — aguardando o GO';
 
   @override
   String get eventRaceRunning => 'Em andamento — ao vivo';
@@ -20600,7 +20601,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get eventRaceCancelled => 'Cancelado';
 
   @override
-  String get eventRaceNotArmed => 'Não armado';
+  String get eventRaceNotArmed => 'Não preparada';
 
   @override
   String get eventRaceControlLabel => 'CONTROLE DA CORRIDA';
@@ -20610,11 +20611,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Aprovar automaticamente os tempos enviados';
 
   @override
-  String get eventRaceArm => 'Armar corrida';
+  String get eventRaceArm => 'Preparar corrida';
 
   @override
   String get eventRaceArmedHint =>
-      'Toque em Disparar o Go quando a corrida começar. Os relógios dos participantes mostram agora o aviso de armado.';
+      'Toque em Disparar o Go quando a corrida começar. Os relógios dos participantes mostram agora o aviso de prova preparada.';
 
   @override
   String get eventRaceFireGo => 'Disparar o Go';
@@ -29968,7 +29969,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String runRaceFinishedAuto(String time) {
-    return 'Chegada! Tempo oficial $time';
+    return 'Chegada! Tempo bruto $time';
   }
 
   @override

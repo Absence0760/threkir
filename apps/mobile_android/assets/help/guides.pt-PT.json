@@ -1518,6 +1518,11 @@
             "type": "note",
             "tone": "tip",
             "text": "Garantir o lugar faz-se na web. A app do telemóvel mostra a notificação e abre a aula, mas ainda não tem pagamento, por isso abra a aula num navegador para pagar."
+          },
+          {
+            "type": "illustration",
+            "id": "waitlist-and-claim-window",
+            "alt": "Três pessoas esperam na fila. À primeira é oferecido o lugar que vagou, que fica reservado para ela durante um tempo limitado."
           }
         ]
       },
@@ -1616,6 +1621,11 @@
           {
             "type": "p",
             "text": "A menos que já tenha permitido mapas nas definições de cookies, o mapa fica desligado até escolher **Carregar mapa**, porque carregá-lo envia o seu endereço IP ao nosso fornecedor de mosaicos de mapa. Depois de carregado, cada corredor é um ponto colorido com um pequeno rasto do seu trajeto recente. Os telemóveis e relógios dos corredores enviam uma posição mais ou menos a cada 10 segundos, e a página atualiza-se sozinha."
+          },
+          {
+            "type": "illustration",
+            "id": "follow-a-race-live",
+            "alt": "Um percurso num mapa com corredores ao longo dele, cada um um ponto colorido com um pequeno rasto do seu trajeto recente, e uma bandeira na meta."
           }
         ]
       },
@@ -1702,6 +1712,11 @@
           {
             "type": "p",
             "text": "Certifique-se primeiro de que o evento tem percursos — consulte [[guide:set-up-a-race|Configurar uma prova]]."
+          },
+          {
+            "type": "illustration",
+            "id": "race-day-for-hosts",
+            "alt": "O dia da prova em quatro passos, da esquerda para a direita: preparar a prova, dar a partida, acompanhá-la em direto e encerrá-la na meta."
           }
         ]
       },
@@ -2280,6 +2295,11 @@
           {
             "type": "p",
             "text": "Selecione **Sincronizar agora** para voltar a importar. Na web, **Até quando sincronizar** permite recuar até um ano."
+          },
+          {
+            "type": "illustration",
+            "id": "import-your-history",
+            "alt": "As corridas de um relógio, de uma conta ligada e de um ficheiro vão todas parar a uma única lista de corridas."
           }
         ]
       },
@@ -2494,6 +2514,11 @@
             "type": "note",
             "tone": "tip",
             "text": "Para partilhar todas as corridas sem ter de se lembrar, ative **Partilha em direto automática** em **Contactos de segurança**, no separador **Tu**. Aplica-se apenas a esse telemóvel, e a corrida em curso pode ser vista por qualquer pessoa com o link."
+          },
+          {
+            "type": "illustration",
+            "id": "live-tracking-and-safety",
+            "alt": "O telemóvel de um corredor envia a sua posição em direto a duas pessoas, que a acompanham cada uma no seu próprio ecrã."
           }
         ]
       },
@@ -2599,6 +2624,11 @@
               "Aplica-se às corridas que já gravou, e não só às novas, porque o trajeto é cortado sempre que outra pessoa o vê.",
               "Vê sempre o seu trajeto completo, e os ficheiros que exporta para si também mantêm o trajeto completo."
             ]
+          },
+          {
+            "type": "illustration",
+            "id": "privacy-zones",
+            "alt": "Uma linha de percurso começa numa casa dentro de um círculo. A parte dentro do círculo fica oculta para as outras pessoas, por isso a linha que veem começa na borda do círculo."
           }
         ]
       },
@@ -2698,6 +2728,11 @@
             "type": "note",
             "tone": "tip",
             "text": "No Android, escolha **Permitir sempre** para a localização. Com acesso apenas enquanto a app está aberta, a distância que percorre com o ecrã desligado não é contada, embora o relógio continue a contar."
+          },
+          {
+            "type": "illustration",
+            "id": "record-your-first-run",
+            "alt": "Um telemóvel com um grande botão redondo para iniciar, a captar o sinal GPS de um satélite no céu."
           }
         ]
       },

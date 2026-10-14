@@ -16,6 +16,11 @@ export const translation: GuideTranslation = {
 					type: 'p',
 					text: 'Sorge zuerst dafür, dass das Event Strecken hat – siehe [[guide:set-up-a-race|Ein Rennen einrichten]].',
 				},
+				{
+					type: 'illustration',
+					id: 'race-day-for-hosts',
+					alt: 'Der Renntag in vier Schritten von links nach rechts: das Rennen scharfstellen, LOS geben, live verfolgen und es dann im Ziel beenden.',
+				},
 			],
 		},
 		{
@@ -171,5 +176,6 @@ export const translation: GuideTranslation = {
 		's6.b1.i1': '0bada1dfb7752ded',
 		's6.b1.i2': 'dc555607c15c1ae0',
 		's6.b1.i3': '12b5ecdf863972b3',
+		's0.b2': '043bfb92b5287252',
 	},
 };

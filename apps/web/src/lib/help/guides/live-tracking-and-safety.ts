@@ -38,6 +38,11 @@ export const guide: Guide = {
 					tone: 'tip',
 					text: 'To share every run without remembering to, turn on **Auto live share** under **Safety contacts** in the **You** tab. It applies to that phone only, and the run in progress can be viewed by anyone with the link.',
 				},
+				{
+					type: 'illustration',
+					id: 'live-tracking-and-safety',
+					alt: 'A runner\'s phone sends its live position to two people, who each watch it on their own screen.',
+				},
 			],
 		},
 		{

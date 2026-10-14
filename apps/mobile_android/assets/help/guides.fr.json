@@ -1518,6 +1518,11 @@
             "type": "note",
             "tone": "tip",
             "text": "La réclamation se fait sur le web. L'app mobile affiche la notification et ouvre le cours, mais n'a pas encore de paiement : ouvrez donc le cours dans un navigateur pour payer."
+          },
+          {
+            "type": "illustration",
+            "id": "waitlist-and-claim-window",
+            "alt": "Trois personnes attendent dans la file. La première se voit proposer la place libérée, qui lui est réservée pendant un temps limité."
           }
         ]
       },
@@ -1616,6 +1621,11 @@
           {
             "type": "p",
             "text": "Sauf si vous avez déjà autorisé les cartes dans vos paramètres de cookies, la carte reste désactivée jusqu'à ce que vous choisissiez **Charger la carte**, car son chargement envoie votre adresse IP à notre fournisseur de tuiles cartographiques. Une fois la carte chargée, chaque coureur est un point de couleur suivi d'une courte trace de son parcours récent. Les téléphones et montres des coureurs envoient une position environ toutes les 10 secondes, et la page se met à jour d'elle-même."
+          },
+          {
+            "type": "illustration",
+            "id": "follow-a-race-live",
+            "alt": "Un parcours sur une carte avec des coureurs, chacun représenté par un point de couleur suivi d'une courte trace de son trajet récent, et un drapeau à l'arrivée."
           }
         ]
       },
@@ -1702,6 +1712,11 @@
           {
             "type": "p",
             "text": "Vérifiez d'abord que l'événement a des parcours — voir [[guide:set-up-a-race|Organiser une course]]."
+          },
+          {
+            "type": "illustration",
+            "id": "race-day-for-hosts",
+            "alt": "Le jour de course en quatre étapes, de gauche à droite : armer la course, donner le GO, la suivre en direct, puis la terminer à l'arrivée."
           }
         ]
       },
@@ -2280,6 +2295,11 @@
           {
             "type": "p",
             "text": "Sélectionnez **Synchroniser** pour relancer la récupération. Sur le web, **Jusqu'où remonter** permet de remonter jusqu'à un an en arrière."
+          },
+          {
+            "type": "illustration",
+            "id": "import-your-history",
+            "alt": "Les courses d'une montre, d'un compte connecté et d'un fichier arrivent toutes dans une seule liste de courses."
           }
         ]
       },
@@ -2494,6 +2514,11 @@
             "type": "note",
             "tone": "tip",
             "text": "Pour partager chaque course sans avoir à y penser, activez **Partage en direct automatique** sous **Contacts de sécurité** dans l'onglet **Vous**. Ce réglage ne s'applique qu'à ce téléphone, et la course en cours peut être vue par toute personne qui a le lien."
+          },
+          {
+            "type": "illustration",
+            "id": "live-tracking-and-safety",
+            "alt": "Le téléphone d'un coureur envoie sa position en direct à deux personnes, qui la suivent chacune sur leur propre écran."
           }
         ]
       },
@@ -2599,6 +2624,11 @@
               "Elle s'applique aux courses déjà enregistrées comme aux nouvelles, car le tracé est rogné chaque fois que quelqu'un d'autre le consulte.",
               "Vous voyez toujours votre propre tracé complet, et les fichiers que vous exportez pour vous-même conservent aussi le tracé complet."
             ]
+          },
+          {
+            "type": "illustration",
+            "id": "privacy-zones",
+            "alt": "Un tracé part d'une maison située dans un cercle. La partie à l'intérieur du cercle est masquée aux autres, si bien que la ligne qu'ils voient commence au bord du cercle."
           }
         ]
       },
@@ -2698,6 +2728,11 @@
             "type": "note",
             "tone": "tip",
             "text": "Sur Android, choisissez **Toujours autoriser** pour la localisation. Si l'accès n'est accordé que lorsque l'app est ouverte, la distance parcourue écran éteint n'est pas comptée, même si le chrono continue de tourner."
+          },
+          {
+            "type": "illustration",
+            "id": "record-your-first-run",
+            "alt": "Un téléphone doté d'un grand bouton de démarrage rond, qui capte le signal GPS d'un satellite dans le ciel."
           }
         ]
       },

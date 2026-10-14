@@ -25,6 +25,11 @@ export const translation: GuideTranslation = {
 					tone: 'tip',
 					text: 'Wähle unter Android für den Standort **Immer zulassen**. Mit Zugriff nur bei geöffneter App wird die Distanz, die du bei ausgeschaltetem Bildschirm zurücklegst, nicht gezählt, obwohl die Uhr weiterläuft.',
 				},
+				{
+					type: 'illustration',
+					id: 'record-your-first-run',
+					alt: 'Ein Handy mit einer großen runden Starttaste, das ein GPS-Signal von einem Satelliten über ihm empfängt.',
+				},
 			],
 		},
 		{
@@ -116,5 +121,6 @@ export const translation: GuideTranslation = {
 		's3.b1.i1': 'e0fd699761f32367',
 		's3.b1.i2': '1d33b3ee8d0be1b8',
 		's3.b2': 'a8054fd15c256c3c',
+		's0.b3': '21307fc19189cc42',
 	},
 };

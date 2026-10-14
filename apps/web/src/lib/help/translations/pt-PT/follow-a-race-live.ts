@@ -35,6 +35,11 @@ export const translation: GuideTranslation = {
 					type: 'p',
 					text: 'A menos que já tenha permitido mapas nas definições de cookies, o mapa fica desligado até escolher **Carregar mapa**, porque carregá-lo envia o seu endereço IP ao nosso fornecedor de mosaicos de mapa. Depois de carregado, cada corredor é um ponto colorido com um pequeno rasto do seu trajeto recente. Os telemóveis e relógios dos corredores enviam uma posição mais ou menos a cada 10 segundos, e a página atualiza-se sozinha.',
 				},
+				{
+					type: 'illustration',
+					id: 'follow-a-race-live',
+					alt: 'Um percurso num mapa com corredores ao longo dele, cada um um ponto colorido com um pequeno rasto do seu trajeto recente, e uma bandeira na meta.',
+				},
 			],
 		},
 		{
@@ -106,5 +111,6 @@ export const translation: GuideTranslation = {
 		's4.b0.i1': '7cf40c647db03cc3',
 		's4.b0.i2': 'edbbe7f08d1cf63e',
 		's4.b1': '1bb7132a7305e850',
+		's1.b1': '1afba2a8fcb03c42',
 	},
 };

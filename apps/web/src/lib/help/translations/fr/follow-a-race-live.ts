@@ -35,6 +35,11 @@ export const translation: GuideTranslation = {
 					type: 'p',
 					text: 'Sauf si vous avez déjà autorisé les cartes dans vos paramètres de cookies, la carte reste désactivée jusqu\'à ce que vous choisissiez **Charger la carte**, car son chargement envoie votre adresse IP à notre fournisseur de tuiles cartographiques. Une fois la carte chargée, chaque coureur est un point de couleur suivi d\'une courte trace de son parcours récent. Les téléphones et montres des coureurs envoient une position environ toutes les 10 secondes, et la page se met à jour d\'elle-même.',
 				},
+				{
+					type: 'illustration',
+					id: 'follow-a-race-live',
+					alt: 'Un parcours sur une carte avec des coureurs, chacun représenté par un point de couleur suivi d\'une courte trace de son trajet récent, et un drapeau à l\'arrivée.',
+				},
 			],
 		},
 		{
@@ -106,5 +111,6 @@ export const translation: GuideTranslation = {
 		's4.b0.i1': '7cf40c647db03cc3',
 		's4.b0.i2': 'edbbe7f08d1cf63e',
 		's4.b1': '1bb7132a7305e850',
+		's1.b1': '1afba2a8fcb03c42',
 	},
 };

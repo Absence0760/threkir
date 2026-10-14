@@ -21,7 +21,12 @@ export const guide: Guide = {
 				{
 					type: 'p',
 					text: 'Make sure the event has courses first — see [[guide:set-up-a-race|Set up a race]].'
-				}
+				},
+				{
+					type: 'illustration',
+					id: 'race-day-for-hosts',
+					alt: 'Race day in four steps, from left to right: arm the race, fire GO, watch it live, then end it at the finish.',
+				},
 			]
 		},
 		{

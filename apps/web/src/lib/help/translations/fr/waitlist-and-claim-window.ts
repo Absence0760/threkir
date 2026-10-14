@@ -40,6 +40,11 @@ export const translation: GuideTranslation = {
 					tone: 'tip',
 					text: 'La réclamation se fait sur le web. L\'app mobile affiche la notification et ouvre le cours, mais n\'a pas encore de paiement : ouvrez donc le cours dans un navigateur pour payer.',
 				},
+				{
+					type: 'illustration',
+					id: 'waitlist-and-claim-window',
+					alt: 'Trois personnes attendent dans la file. La première se voit proposer la place libérée, qui lui est réservée pendant un temps limité.',
+				},
 			],
 		},
 		{
@@ -108,5 +113,6 @@ export const translation: GuideTranslation = {
 		's4.b0.i0': '9fc9b8683d8e30fd',
 		's4.b0.i1': 'f602296c6993b85f',
 		's4.b0.i2': '4d6cf70ea800fae3',
+		's1.b4': 'f0e75c06bd5e6193',
 	},
 };

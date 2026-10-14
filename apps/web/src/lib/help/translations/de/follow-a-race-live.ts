@@ -35,6 +35,11 @@ export const translation: GuideTranslation = {
 					type: 'p',
 					text: 'Sofern du Karten nicht schon in deinen Cookie-Einstellungen erlaubt hast, bleibt die Karte aus, bis du **Karte laden** wählst, denn beim Laden wird deine IP-Adresse an unseren Anbieter für Kartenkacheln gesendet. Nach dem Laden ist jede teilnehmende Person ein farbiger Punkt mit einer kurzen Spur ihres jüngsten Wegs. Die Handys und Uhren der Teilnehmenden senden etwa alle 10 Sekunden eine Position, und die Seite aktualisiert sich von selbst.',
 				},
+				{
+					type: 'illustration',
+					id: 'follow-a-race-live',
+					alt: 'Eine Strecke auf einer Karte mit Läuferinnen und Läufern darauf, jede Person ein farbiger Punkt mit einer kurzen Spur ihres letzten Wegs, und eine Flagge im Ziel.',
+				},
 			],
 		},
 		{
@@ -106,5 +111,6 @@ export const translation: GuideTranslation = {
 		's4.b0.i1': '7cf40c647db03cc3',
 		's4.b0.i2': 'edbbe7f08d1cf63e',
 		's4.b1': '1bb7132a7305e850',
+		's1.b1': '1afba2a8fcb03c42',
 	},
 };

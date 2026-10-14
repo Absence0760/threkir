@@ -33,6 +33,11 @@ export const translation: GuideTranslation = {
 					tone: 'tip',
 					text: 'Para compartilhar todas as corridas sem precisar lembrar, ative **Compartilhamento ao vivo automático** em **Contatos de segurança**, na aba **Você**. Vale só para aquele celular, e a corrida em andamento pode ser vista por qualquer pessoa com o link.',
 				},
+				{
+					type: 'illustration',
+					id: 'live-tracking-and-safety',
+					alt: 'O celular de um corredor envia sua posição ao vivo para duas pessoas, que a acompanham cada uma na própria tela.',
+				},
 			],
 		},
 		{
@@ -125,5 +130,6 @@ export const translation: GuideTranslation = {
 		's2.b3': '0694224872716044',
 		's3.heading': '4799e1fbd28720f2',
 		's3.b0': '2557edbaef77cc2c',
+		's0.b5': 'eb575f135ac66d66',
 	},
 };

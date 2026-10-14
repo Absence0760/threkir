@@ -20,6 +20,11 @@ export const translation: GuideTranslation = {
 						'Du selbst siehst immer deinen vollständigen Track, und Dateien, die du für dich exportierst, enthalten ebenfalls den vollständigen Track.',
 					],
 				},
+				{
+					type: 'illustration',
+					id: 'privacy-zones',
+					alt: 'Eine Routenlinie beginnt an einem Haus in einem Kreis. Der Teil innerhalb des Kreises ist für andere verborgen, sodass die Linie, die sie sehen, erst am Rand des Kreises beginnt.',
+				},
 			],
 		},
 		{
@@ -104,5 +109,6 @@ export const translation: GuideTranslation = {
 		's3.b0.i1': '7e6aff2443fca79b',
 		's3.b0.i2': '2d441105a1624ed1',
 		's3.b1': '20c32d436fe0799c',
+		's0.b2': '9bfc49abe8494ae1',
 	},
 };

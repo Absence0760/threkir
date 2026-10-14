@@ -35,6 +35,11 @@ export const translation: GuideTranslation = {
 					type: 'p',
 					text: 'Cookieの設定ですでに地図を許可していない限り、**地図を読み込む**を選ぶまで地図は表示されません。地図を読み込むと、あなたのIPアドレスが地図タイルの提供元に送信されるためです。読み込むと、各ランナーは色付きの点と、最近の経路を示す短い軌跡で表示されます。ランナーのスマートフォンやウォッチは約10秒ごとに位置を送信し、ページは自動的に更新されます。',
 				},
+				{
+					type: 'illustration',
+					id: 'follow-a-race-live',
+					alt: '地図上のコースにランナーが並び、それぞれが色付きの点と最近の経路を示す短い軌跡で表され、ゴールには旗があります。',
+				},
 			],
 		},
 		{
@@ -106,5 +111,6 @@ export const translation: GuideTranslation = {
 		's4.b0.i1': '7cf40c647db03cc3',
 		's4.b0.i2': 'edbbe7f08d1cf63e',
 		's4.b1': '1bb7132a7305e850',
+		's1.b1': '1afba2a8fcb03c42',
 	},
 };

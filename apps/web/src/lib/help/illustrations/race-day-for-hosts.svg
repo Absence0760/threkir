@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <!-- The order of race day: arm, GO, watch live, end -->
+  <path d="M80 100 H88 M159 100 H162 M233 100 H240" stroke="#ff00a3" stroke-width="3"/>
+  <path d="M83 94 L89 100 L83 106 M157 94 L163 100 L157 106 M235 94 L241 100 L235 106" stroke="#ff00a3" stroke-width="3"/>
+  <!-- 1. Arm: the timer is ready -->
+  <circle cx="44" cy="100" r="30" fill="#ff00a2" stroke="currentColor" stroke-width="3"/>
+  <circle cx="44" cy="104" r="14" fill="#ff00a4" stroke="currentColor" stroke-width="3"/>
+  <path d="M44 104 V96 M40 84 H48 M44 84 V90" stroke="currentColor" stroke-width="3"/>
+  <!-- 2. GO -->
+  <circle cx="123" cy="100" r="30" fill="#ff00a1"/>
+  <path d="M115 87 L135 100 L115 113 Z" fill="#ff00a4" stroke="#ff00a4" stroke-width="3"/>
+  <!-- 3. Watch it live -->
+  <circle cx="197" cy="100" r="30" fill="#ff00a2" stroke="currentColor" stroke-width="3"/>
+  <path d="M197 116 C187 104 185 99 185 94 A12 12 0 0 1 209 94 C209 99 207 104 197 116 Z" fill="#ff00a1"/>
+  <circle cx="197" cy="94" r="4" fill="#ff00a4"/>
+  <!-- 4. End: the finish -->
+  <circle cx="276" cy="100" r="30" fill="#ff00a6" fill-opacity="0.25" stroke="currentColor" stroke-width="3"/>
+  <path d="M266 118 V82" stroke="currentColor" stroke-width="3"/>
+  <rect x="266" y="82" width="20" height="16" fill="#ff00a4" stroke="currentColor" stroke-width="2"/>
+  <path d="M266 82 H271 V86 H266 Z M276 82 H281 V86 H276 Z M271 86 H276 V90 H271 Z M281 86 H286 V90 H281 Z M266 90 H271 V94 H266 Z M276 90 H281 V94 H276 Z M271 94 H276 V98 H271 Z M281 94 H286 V98 H281 Z" fill="currentColor"/>
+</svg>

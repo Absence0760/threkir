@@ -73,6 +73,20 @@ test.describe('/help — in-app help centre', () => {
 		await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex');
 	});
 
+	test('a guide illustration renders inline, themed, and is announced by its alt text', async ({ page }) => {
+		await page.goto('/help/privacy-zones');
+		const figure = page.getByTestId('help-illustration');
+		await expect(figure).toHaveAttribute('data-illustration', 'privacy-zones');
+		const art = figure.getByRole('img', { name: /A route line starts at a house inside a circle/ });
+		await expect(art).toBeVisible();
+		const svg = art.locator('svg');
+		await expect(svg).toHaveAttribute('aria-hidden', 'true');
+		await expect(svg.locator('text')).toHaveCount(0);
+		const fill = await svg.locator('circle').first().evaluate((el) => getComputedStyle(el).fill);
+		expect(fill).not.toBe('rgb(255, 0, 162)');
+		expect(fill).not.toBe('none');
+	});
+
 	test('an unknown guide id says so and links back to the contents', async ({ page }) => {
 		await page.goto('/help/no-such-guide');
 		await expect(page.getByRole('heading', { name: 'Guide not found' })).toBeVisible();

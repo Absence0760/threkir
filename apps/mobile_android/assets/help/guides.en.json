@@ -1518,6 +1518,11 @@
             "type": "note",
             "tone": "tip",
             "text": "Claiming happens on the web. The phone app shows the notification and opens the class, but it has no checkout yet, so open the class in a browser to pay."
+          },
+          {
+            "type": "illustration",
+            "id": "waitlist-and-claim-window",
+            "alt": "Three people wait in line. The first is offered the open place, which is held for them for a limited time."
           }
         ]
       },
@@ -1616,6 +1621,11 @@
           {
             "type": "p",
             "text": "Unless you have already allowed maps in your cookie settings, the map stays off until you choose **Load map**, because loading it sends your IP address to our map tile provider. Once loaded, each runner is a coloured dot with a short trail of their recent path. Runners' phones and watches send a position about every 10 seconds, and the page updates on its own."
+          },
+          {
+            "type": "illustration",
+            "id": "follow-a-race-live",
+            "alt": "A course on a map with runners along it, each a coloured dot with a short trail of their recent path, and a flag at the finish."
           }
         ]
       },
@@ -1702,6 +1712,11 @@
           {
             "type": "p",
             "text": "Make sure the event has courses first — see [[guide:set-up-a-race|Set up a race]]."
+          },
+          {
+            "type": "illustration",
+            "id": "race-day-for-hosts",
+            "alt": "Race day in four steps, from left to right: arm the race, fire GO, watch it live, then end it at the finish."
           }
         ]
       },
@@ -2280,6 +2295,11 @@
           {
             "type": "p",
             "text": "Select **Sync now** to pull again. On the web, **How far back to sync** reaches up to a year back."
+          },
+          {
+            "type": "illustration",
+            "id": "import-your-history",
+            "alt": "Runs from a watch, a connected account and a file all flow into one list of runs."
           }
         ]
       },
@@ -2494,6 +2514,11 @@
             "type": "note",
             "tone": "tip",
             "text": "To share every run without remembering to, turn on **Auto live share** under **Safety contacts** in the **You** tab. It applies to that phone only, and the run in progress can be viewed by anyone with the link."
+          },
+          {
+            "type": "illustration",
+            "id": "live-tracking-and-safety",
+            "alt": "A runner's phone sends its live position to two people, who each watch it on their own screen."
           }
         ]
       },
@@ -2599,6 +2624,11 @@
               "It applies to runs you have already recorded as well as new ones, because the track is trimmed each time someone else views it.",
               "You always see your own full track, and files you export for yourself keep the full track too."
             ]
+          },
+          {
+            "type": "illustration",
+            "id": "privacy-zones",
+            "alt": "A route line starts at a house inside a circle. The part inside the circle is hidden from other people, so the line they see begins at the circle's edge."
           }
         ]
       },
@@ -2698,6 +2728,11 @@
             "type": "note",
             "tone": "tip",
             "text": "On Android, choose **Allow all the time** for location. With access only while the app is open, distance you cover with the screen off is not counted, although the clock keeps running."
+          },
+          {
+            "type": "illustration",
+            "id": "record-your-first-run",
+            "alt": "A phone with a big round start button, picking up a GPS signal from a satellite overhead."
           }
         ]
       },

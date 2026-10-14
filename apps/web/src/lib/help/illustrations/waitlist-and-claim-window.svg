@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <!-- The waitlist: first in line is offered the place -->
+  <g stroke="#ff00a3" stroke-width="3">
+    <circle cx="34" cy="96" r="12" fill="#ff00a5"/>
+    <path d="M16 134 C18 116 50 116 52 134"/>
+    <circle cx="80" cy="96" r="12" fill="#ff00a5"/>
+    <path d="M62 134 C64 116 96 116 98 134"/>
+  </g>
+  <circle cx="132" cy="90" r="14" fill="#ff00a2" stroke="currentColor" stroke-width="3"/>
+  <path d="M110 134 C112 112 152 112 154 134" stroke="currentColor" stroke-width="3"/>
+  <path d="M120 152 H144" stroke="#ff00a1" stroke-width="5"/>
+  <path d="M166 110 H190" stroke="#ff00a1" stroke-width="3" stroke-dasharray="2 8"/>
+  <path d="M184 104 L192 110 L184 116" stroke="#ff00a1" stroke-width="3"/>
+  <!-- The place, held for them -->
+  <rect x="204" y="70" width="96" height="80" rx="14" fill="#ff00a4" stroke="currentColor" stroke-width="3"/>
+  <path d="M226 128 V108 C226 100 230 96 238 96 H266 C274 96 278 100 278 108 V128" stroke="currentColor" stroke-width="3"/>
+  <path d="M220 128 H284 M230 128 V138 M274 128 V138" stroke="currentColor" stroke-width="3"/>
+  <!-- ...for a limited time -->
+  <circle cx="290" cy="64" r="22" fill="#ff00a7" stroke="currentColor" stroke-width="3"/>
+  <path d="M290 52 V64 L298 70" stroke="currentColor" stroke-width="3"/>
+  <path d="M290 42 V38 M284 36 H296" stroke="currentColor" stroke-width="3"/>
+</svg>

@@ -44,7 +44,12 @@ export const guide: Guide = {
 					type: 'note',
 					tone: 'tip',
 					text: 'Claiming happens on the web. The phone app shows the notification and opens the class, but it has no checkout yet, so open the class in a browser to pay.'
-				}
+				},
+				{
+					type: 'illustration',
+					id: 'waitlist-and-claim-window',
+					alt: 'Three people wait in line. The first is offered the open place, which is held for them for a limited time.',
+				},
 			]
 		},
 		{

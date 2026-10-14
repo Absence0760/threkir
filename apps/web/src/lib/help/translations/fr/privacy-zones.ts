@@ -20,6 +20,11 @@ export const translation: GuideTranslation = {
 						'Vous voyez toujours votre propre tracé complet, et les fichiers que vous exportez pour vous-même conservent aussi le tracé complet.',
 					],
 				},
+				{
+					type: 'illustration',
+					id: 'privacy-zones',
+					alt: 'Un tracé part d\'une maison située dans un cercle. La partie à l\'intérieur du cercle est masquée aux autres, si bien que la ligne qu\'ils voient commence au bord du cercle.',
+				},
 			],
 		},
 		{
@@ -104,5 +109,6 @@ export const translation: GuideTranslation = {
 		's3.b0.i1': '7e6aff2443fca79b',
 		's3.b0.i2': '2d441105a1624ed1',
 		's3.b1': '20c32d436fe0799c',
+		's0.b2': '9bfc49abe8494ae1',
 	},
 };

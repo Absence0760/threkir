@@ -20,6 +20,11 @@ export const translation: GuideTranslation = {
 						'Você sempre vê o seu trajeto completo, e os arquivos que você exporta para si mesmo também mantêm o trajeto completo.',
 					],
 				},
+				{
+					type: 'illustration',
+					id: 'privacy-zones',
+					alt: 'Uma linha de percurso começa em uma casa dentro de um círculo. A parte dentro do círculo fica oculta para as outras pessoas, então a linha que elas veem começa na borda do círculo.',
+				},
 			],
 		},
 		{
@@ -104,5 +109,6 @@ export const translation: GuideTranslation = {
 		's3.b0.i1': '7e6aff2443fca79b',
 		's3.b0.i2': '2d441105a1624ed1',
 		's3.b1': '20c32d436fe0799c',
+		's0.b2': '9bfc49abe8494ae1',
 	},
 };

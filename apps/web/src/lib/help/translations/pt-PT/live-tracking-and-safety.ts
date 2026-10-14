@@ -33,6 +33,11 @@ export const translation: GuideTranslation = {
 					tone: 'tip',
 					text: 'Para partilhar todas as corridas sem ter de se lembrar, ative **Partilha em direto automática** em **Contactos de segurança**, no separador **Tu**. Aplica-se apenas a esse telemóvel, e a corrida em curso pode ser vista por qualquer pessoa com o link.',
 				},
+				{
+					type: 'illustration',
+					id: 'live-tracking-and-safety',
+					alt: 'O telemóvel de um corredor envia a sua posição em direto a duas pessoas, que a acompanham cada uma no seu próprio ecrã.',
+				},
 			],
 		},
 		{
@@ -125,5 +130,6 @@ export const translation: GuideTranslation = {
 		's2.b3': '0694224872716044',
 		's3.heading': '4799e1fbd28720f2',
 		's3.b0': '2557edbaef77cc2c',
+		's0.b5': 'eb575f135ac66d66',
 	},
 };

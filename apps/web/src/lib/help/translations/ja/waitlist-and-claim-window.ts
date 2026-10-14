@@ -40,6 +40,11 @@ export const translation: GuideTranslation = {
 					tone: 'tip',
 					text: '確定はWebで行います。スマートフォンアプリでは通知が表示され、クラスも開けますが、まだ決済機能がないため、支払うにはブラウザでクラスを開いてください。',
 				},
+				{
+					type: 'illustration',
+					id: 'waitlist-and-claim-window',
+					alt: '3人が順番を待っています。先頭の人に空いた枠が提示され、一定時間その人のために確保されます。',
+				},
 			],
 		},
 		{
@@ -108,5 +113,6 @@ export const translation: GuideTranslation = {
 		's4.b0.i0': '9fc9b8683d8e30fd',
 		's4.b0.i1': 'f602296c6993b85f',
 		's4.b0.i2': '4d6cf70ea800fae3',
+		's1.b4': 'f0e75c06bd5e6193',
 	},
 };

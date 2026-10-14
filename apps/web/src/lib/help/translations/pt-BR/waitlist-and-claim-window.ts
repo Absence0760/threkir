@@ -40,6 +40,11 @@ export const translation: GuideTranslation = {
 					tone: 'tip',
 					text: 'A vaga é garantida na web. O app do celular mostra a notificação e abre a aula, mas ainda não tem checkout, então abra a aula em um navegador para pagar.',
 				},
+				{
+					type: 'illustration',
+					id: 'waitlist-and-claim-window',
+					alt: 'Três pessoas esperam na fila. A primeira recebe a oferta da vaga que abriu, que fica reservada para ela por um tempo limitado.',
+				},
 			],
 		},
 		{
@@ -108,5 +113,6 @@ export const translation: GuideTranslation = {
 		's4.b0.i0': '9fc9b8683d8e30fd',
 		's4.b0.i1': 'f602296c6993b85f',
 		's4.b0.i2': '4d6cf70ea800fae3',
+		's1.b4': 'f0e75c06bd5e6193',
 	},
 };

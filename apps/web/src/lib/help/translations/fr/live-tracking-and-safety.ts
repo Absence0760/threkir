@@ -33,6 +33,11 @@ export const translation: GuideTranslation = {
 					tone: 'tip',
 					text: 'Pour partager chaque course sans avoir à y penser, activez **Partage en direct automatique** sous **Contacts de sécurité** dans l\'onglet **Vous**. Ce réglage ne s\'applique qu\'à ce téléphone, et la course en cours peut être vue par toute personne qui a le lien.',
 				},
+				{
+					type: 'illustration',
+					id: 'live-tracking-and-safety',
+					alt: 'Le téléphone d\'un coureur envoie sa position en direct à deux personnes, qui la suivent chacune sur leur propre écran.',
+				},
 			],
 		},
 		{
@@ -125,5 +130,6 @@ export const translation: GuideTranslation = {
 		's2.b3': '0694224872716044',
 		's3.heading': '4799e1fbd28720f2',
 		's3.b0': '2557edbaef77cc2c',
+		's0.b5': 'eb575f135ac66d66',
 	},
 };

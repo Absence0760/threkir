@@ -33,6 +33,11 @@ export const translation: GuideTranslation = {
 					tone: 'tip',
 					text: 'Um jeden Lauf zu teilen, ohne daran denken zu müssen, schalte im Tab **Du** unter **Sicherheitskontakte** die Option **Automatisches Live-Teilen** ein. Sie gilt nur für dieses Handy, und der laufende Lauf kann von allen mit dem Link angesehen werden.',
 				},
+				{
+					type: 'illustration',
+					id: 'live-tracking-and-safety',
+					alt: 'Das Handy einer laufenden Person sendet seine Live-Position an zwei Menschen, die sie jeweils auf ihrem eigenen Bildschirm verfolgen.',
+				},
 			],
 		},
 		{
@@ -125,5 +130,6 @@ export const translation: GuideTranslation = {
 		's2.b3': '0694224872716044',
 		's3.heading': '4799e1fbd28720f2',
 		's3.b0': '2557edbaef77cc2c',
+		's0.b5': 'eb575f135ac66d66',
 	},
 };

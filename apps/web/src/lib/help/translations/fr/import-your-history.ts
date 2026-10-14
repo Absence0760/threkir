@@ -20,6 +20,11 @@ export const translation: GuideTranslation = {
 					type: 'p',
 					text: 'Sélectionnez **Synchroniser** pour relancer la récupération. Sur le web, **Jusqu\'où remonter** permet de remonter jusqu\'à un an en arrière.',
 				},
+				{
+					type: 'illustration',
+					id: 'import-your-history',
+					alt: 'Les courses d\'une montre, d\'un compte connecté et d\'un fichier arrivent toutes dans une seule liste de courses.',
+				},
 			],
 		},
 		{
@@ -114,5 +119,6 @@ export const translation: GuideTranslation = {
 		's4.heading': '35509c7701b9dabc',
 		's4.b0': '26a0daac64b29af6',
 		's4.b1': '69e6cfdbe0110cea',
+		's0.b2': '38746dc95049a57f',
 	},
 };

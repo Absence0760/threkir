@@ -20,6 +20,11 @@ export const translation: GuideTranslation = {
 					type: 'p',
 					text: 'もう一度取り込むには**今すぐ同期**を選択します。Webでは、**さかのぼる期間**で最大1年前までさかのぼれます。',
 				},
+				{
+					type: 'illustration',
+					id: 'import-your-history',
+					alt: '時計、連携したアカウント、ファイルからのランがすべて1つのラン一覧にまとまります。',
+				},
 			],
 		},
 		{
@@ -114,5 +119,6 @@ export const translation: GuideTranslation = {
 		's4.heading': '35509c7701b9dabc',
 		's4.b0': '26a0daac64b29af6',
 		's4.b1': '69e6cfdbe0110cea',
+		's0.b2': '38746dc95049a57f',
 	},
 };

@@ -33,6 +33,11 @@ export const translation: GuideTranslation = {
 					tone: 'tip',
 					text: '毎回操作しなくてもすべてのランを共有するには、**あなた**タブの**緊急連絡先**で**自動ライブ共有**をオンにします。この設定はそのスマートフォンにのみ適用され、進行中のランはリンクを持つ誰でも見ることができます。',
 				},
+				{
+					type: 'illustration',
+					id: 'live-tracking-and-safety',
+					alt: 'ランナーのスマートフォンがライブ位置を2人に送り、2人はそれぞれ自分の画面でそれを見守ります。',
+				},
 			],
 		},
 		{
@@ -125,5 +130,6 @@ export const translation: GuideTranslation = {
 		's2.b3': '0694224872716044',
 		's3.heading': '4799e1fbd28720f2',
 		's3.b0': '2557edbaef77cc2c',
+		's0.b5': 'eb575f135ac66d66',
 	},
 };

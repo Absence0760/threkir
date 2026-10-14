@@ -1518,6 +1518,11 @@
             "type": "note",
             "tone": "tip",
             "text": "A vaga é garantida na web. O app do celular mostra a notificação e abre a aula, mas ainda não tem checkout, então abra a aula em um navegador para pagar."
+          },
+          {
+            "type": "illustration",
+            "id": "waitlist-and-claim-window",
+            "alt": "Três pessoas esperam na fila. A primeira recebe a oferta da vaga que abriu, que fica reservada para ela por um tempo limitado."
           }
         ]
       },
@@ -1616,6 +1621,11 @@
           {
             "type": "p",
             "text": "A menos que você já tenha permitido mapas nas suas configurações de cookies, o mapa fica desligado até você escolher **Carregar mapa**, porque carregá-lo envia o seu endereço IP ao nosso provedor de tiles de mapa. Depois de carregado, cada corredor é um ponto colorido com um pequeno rastro do caminho recente. Os celulares e relógios dos corredores enviam uma posição mais ou menos a cada 10 segundos, e a página se atualiza sozinha."
+          },
+          {
+            "type": "illustration",
+            "id": "follow-a-race-live",
+            "alt": "Um percurso em um mapa com corredores ao longo dele, cada um um ponto colorido com um pequeno rastro do trajeto recente, e uma bandeira na chegada."
           }
         ]
       },
@@ -1702,6 +1712,11 @@
           {
             "type": "p",
             "text": "Antes, garanta que o evento tenha percursos — veja [[guide:set-up-a-race|Configurar uma prova]]."
+          },
+          {
+            "type": "illustration",
+            "id": "race-day-for-hosts",
+            "alt": "O dia da prova em quatro passos, da esquerda para a direita: preparar a prova, dar o GO, acompanhar ao vivo e encerrá-la na chegada."
           }
         ]
       },
@@ -2280,6 +2295,11 @@
           {
             "type": "p",
             "text": "Selecione **Sincronizar agora** para buscar de novo. Na web, **Até quando sincronizar** alcança até um ano para trás."
+          },
+          {
+            "type": "illustration",
+            "id": "import-your-history",
+            "alt": "As corridas de um relógio, de uma conta conectada e de um arquivo vão todas para uma única lista de corridas."
           }
         ]
       },
@@ -2494,6 +2514,11 @@
             "type": "note",
             "tone": "tip",
             "text": "Para compartilhar todas as corridas sem precisar lembrar, ative **Compartilhamento ao vivo automático** em **Contatos de segurança**, na aba **Você**. Vale só para aquele celular, e a corrida em andamento pode ser vista por qualquer pessoa com o link."
+          },
+          {
+            "type": "illustration",
+            "id": "live-tracking-and-safety",
+            "alt": "O celular de um corredor envia sua posição ao vivo para duas pessoas, que a acompanham cada uma na própria tela."
           }
         ]
       },
@@ -2599,6 +2624,11 @@
               "Ela vale para as corridas que você já gravou e também para as novas, porque o trajeto é cortado toda vez que outra pessoa o visualiza.",
               "Você sempre vê o seu trajeto completo, e os arquivos que você exporta para si mesmo também mantêm o trajeto completo."
             ]
+          },
+          {
+            "type": "illustration",
+            "id": "privacy-zones",
+            "alt": "Uma linha de percurso começa em uma casa dentro de um círculo. A parte dentro do círculo fica oculta para as outras pessoas, então a linha que elas veem começa na borda do círculo."
           }
         ]
       },
@@ -2698,6 +2728,11 @@
             "type": "note",
             "tone": "tip",
             "text": "No Android, escolha **Permitir o tempo todo** para a localização. Com acesso só enquanto o app está aberto, a distância que você percorre com a tela desligada não é contada, embora o cronômetro continue correndo."
+          },
+          {
+            "type": "illustration",
+            "id": "record-your-first-run",
+            "alt": "Um celular com um grande botão redondo para iniciar, captando o sinal de GPS de um satélite no céu."
           }
         ]
       },

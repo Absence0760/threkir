@@ -16,6 +16,11 @@ export const translation: GuideTranslation = {
 					type: 'p',
 					text: 'Vérifiez d\'abord que l\'événement a des parcours — voir [[guide:set-up-a-race|Organiser une course]].',
 				},
+				{
+					type: 'illustration',
+					id: 'race-day-for-hosts',
+					alt: 'Le jour de course en quatre étapes, de gauche à droite : armer la course, donner le GO, la suivre en direct, puis la terminer à l\'arrivée.',
+				},
 			],
 		},
 		{
@@ -171,5 +176,6 @@ export const translation: GuideTranslation = {
 		's6.b1.i1': '0bada1dfb7752ded',
 		's6.b1.i2': 'dc555607c15c1ae0',
 		's6.b1.i3': '12b5ecdf863972b3',
+		's0.b2': '043bfb92b5287252',
 	},
 };

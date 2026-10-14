@@ -16,6 +16,11 @@ export const translation: GuideTranslation = {
 					type: 'p',
 					text: 'Antes, garanta que o evento tenha percursos — veja [[guide:set-up-a-race|Configurar uma prova]].',
 				},
+				{
+					type: 'illustration',
+					id: 'race-day-for-hosts',
+					alt: 'O dia da prova em quatro passos, da esquerda para a direita: preparar a prova, dar o GO, acompanhar ao vivo e encerrá-la na chegada.',
+				},
 			],
 		},
 		{
@@ -171,5 +176,6 @@ export const translation: GuideTranslation = {
 		's6.b1.i1': '0bada1dfb7752ded',
 		's6.b1.i2': 'dc555607c15c1ae0',
 		's6.b1.i3': '12b5ecdf863972b3',
+		's0.b2': '043bfb92b5287252',
 	},
 };

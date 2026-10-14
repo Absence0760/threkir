@@ -473,7 +473,7 @@ class _EventPhotosState extends State<EventPhotos> {
             child: TextButton.icon(
               key: const ValueKey('event-photo-add-host'),
               onPressed: _uploading ? null : _openHostPhotoFlow,
-              icon: const Icon(Icons.photo_camera_outlined, size: 18),
+              icon: const Icon(Icons.photo_camera, size: 18),
               label: Text(l10n.eventAddOccurrencePhoto),
             ),
           ),

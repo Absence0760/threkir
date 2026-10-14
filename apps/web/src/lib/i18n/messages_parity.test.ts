@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { en } from './locales/en';
-import { SUPPORTED_LOCALES } from './locale';
+import { SUPPORTED_LOCALES, type Locale } from './locale';
 import { CATALOGUE_LOADERS } from './catalogues';
 
 // `satisfies Messages` already enforces key parity at compile time; this
@@ -64,23 +64,34 @@ for (const loc of SUPPORTED_LOCALES) {
 	});
 }
 
-// Locales whose glossary (.claude/agents/i18n/languages/<loc>.md) sets the
-// curly pair “…” as the quotation mark, so a straight `"` in a message is a
-// slip -- 51 of them shipped before this guard. A straight double quote is
-// never ICU syntax (ICU escapes with the apostrophe), so every one in a
-// message value is a quotation mark. Checked on the loaded value, which sees
-// through the literal's own delimiters and `\"` escapes. The mobile twin is in
+// Every translated locale quotes with its own typographic marks, which its
+// glossary (.claude/agents/i18n/languages/<loc>.md) sets, so a straight `"` in
+// one of its messages is a slip -- 68 of them shipped across pt-BR, pt-PT, de,
+// es and fr before this guard. A straight double quote is never ICU syntax (ICU
+// escapes with the apostrophe), so every one in a message value is a quotation
+// mark. Typed on the locale, so a new locale cannot ship without naming its
+// marks here. English is left out: its catalogue quotes with the straight pair
+// throughout. Checked on the loaded value, which sees through the literal's own
+// delimiters and `\"` escapes. The mobile twin is in
 // apps/mobile_android/test/architecture_guards_test.dart.
-const CURLY_QUOTE_LOCALES = ['pt-BR', 'pt-PT'] as const;
+const QUOTATION_MARKS: Record<Exclude<Locale, 'en'>, string> = {
+	de: '„…“',
+	fr: '« … »',
+	es: '«…»',
+	ja: '「…」',
+	'pt-PT': '“…”',
+	'pt-BR': '“…”',
+};
 
-for (const loc of CURLY_QUOTE_LOCALES) {
+for (const loc of SUPPORTED_LOCALES) {
+	if (loc === 'en') continue;
 	test(`${loc}: no message quotes with a straight double quote`, async () => {
 		const dict = (await CATALOGUE_LOADERS[loc]()) as Record<string, string>;
 		const straight = Object.keys(dict).filter((key) => dict[key].includes('"'));
 		assert.deepEqual(
 			straight,
 			[],
-			`${loc} quotes with a straight " in these messages; its glossary uses “…”`,
+			`${loc} quotes with a straight " in these messages; its glossary uses ${QUOTATION_MARKS[loc]}`,
 		);
 	});
 }

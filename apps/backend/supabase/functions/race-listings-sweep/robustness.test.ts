@@ -11,7 +11,14 @@
 import { assert, assertEquals } from 'https://deno.land/std@0.224.0/assert/mod.ts';
 import type { DbClient } from '../_shared/database.ts';
 import { CRON_SECRET_MIN_CHARS } from '../events-refund-sweep/lib.ts';
-import { UPSTREAM_TIMEOUT_MS } from '../race-listings-sync/lib.ts';
+import {
+  SWEEP_PERIOD_S,
+  SWEEP_STATES,
+  SWEEP_WINDOW_DAYS,
+  SWEEP_WINDOWS,
+  sweepWindowAt,
+  UPSTREAM_TIMEOUT_MS,
+} from '../race-listings-sync/lib.ts';
 import { makeRaceListingsSweepHandler } from './handler.ts';
 
 const SECRET = 's'.repeat(CRON_SECRET_MIN_CHARS);
@@ -120,4 +127,39 @@ Deno.test('valid JSON that is not the race feed is a 502, not a window with no r
   assertEquals(res.status, 200);
   const body = await res.json();
   assertEquals([body.total, body.synced, body.complete], [0, 0, true]);
+});
+
+Deno.test('each state\'s six windows tile 84 unbroken days, because no state\'s run straddles a UTC midnight', () => {
+  // Every window counts its dates from the day the run fires. If a state's six
+  // runs straddled 00:00 UTC, the windows after midnight would start a day
+  // later and one day of that state's horizon would never be asked for in that
+  // pass. It cannot happen only because a day (288 periods) and a pass (306)
+  // are both whole multiples of a state's block of six, so a midnight always
+  // falls between two states. Changing the period or the window count can break
+  // that silently, so the premise and its consequence are both pinned.
+  assertEquals((86_400 / SWEEP_PERIOD_S) % SWEEP_WINDOWS, 0, 'a day must hold whole state blocks');
+  assertEquals((SWEEP_STATES.length * SWEEP_WINDOWS) % SWEEP_WINDOWS, 0);
+  const day = 86_400_000;
+  const slots = SWEEP_STATES.length * SWEEP_WINDOWS;
+  // Two passes from an arbitrary minute: each crosses at least one midnight.
+  const start = Date.UTC(2026, 11, 31, 17, 3, 0);
+  const runs = Array.from({ length: 2 * slots }, (_, i) => sweepWindowAt(start + i * SWEEP_PERIOD_S * 1000));
+  let blocks = 0;
+  for (let i = 0; i < runs.length; i++) {
+    if (runs[i].slot % SWEEP_WINDOWS !== 0 || i + SWEEP_WINDOWS > runs.length) continue;
+    const block = runs.slice(i, i + SWEEP_WINDOWS);
+    assert(block.every((w) => w.state === block[0].state));
+    for (let k = 1; k < SWEEP_WINDOWS; k++) {
+      const prevEnd = Date.parse(`${block[k - 1].endDate}T00:00:00Z`);
+      assertEquals(
+        Date.parse(`${block[k].startDate}T00:00:00Z`),
+        prevEnd + day,
+        `${block[0].state} window ${k} must start the day after window ${k - 1} ends`,
+      );
+    }
+    const span = (Date.parse(`${block[5].endDate}T00:00:00Z`) - Date.parse(`${block[0].startDate}T00:00:00Z`)) / day + 1;
+    assertEquals(span, SWEEP_WINDOWS * SWEEP_WINDOW_DAYS);
+    blocks++;
+  }
+  assert(blocks >= 2 * SWEEP_STATES.length - 1, 'the walk must have seen every state twice');
 });

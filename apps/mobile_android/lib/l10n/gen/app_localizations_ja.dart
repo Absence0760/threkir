@@ -2498,7 +2498,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String addRunPickerNoMatch(String query) {
-    return '\"$query\" に一致するルートはありません';
+    return '「$query」に一致するルートはありません';
   }
 
   @override
@@ -2815,7 +2815,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String runDetailRouteSaved(String name, int kept, int smoothed) {
-    return '\"$name\" を保存しました — $kept 個のウェイポイント（$smoothed 個を平滑化）';
+    return '「$name」を保存しました — $kept 個のウェイポイント（$smoothed 個を平滑化）';
   }
 
   @override

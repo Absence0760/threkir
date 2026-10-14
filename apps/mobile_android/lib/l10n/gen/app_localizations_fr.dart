@@ -2646,7 +2646,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String addRunPickerNoMatch(String query) {
-    return 'Aucun itinéraire ne correspond à \"$query\"';
+    return 'Aucun itinéraire ne correspond à « $query »';
   }
 
   @override
@@ -2974,7 +2974,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String runDetailRouteSaved(String name, int kept, int smoothed) {
-    return '\"$name\" enregistré — $kept points de cheminement ($smoothed lissés)';
+    return '« $name » enregistré — $kept points de cheminement ($smoothed lissés)';
   }
 
   @override
@@ -5930,7 +5930,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String planNewReplaceActiveNamed(String name) {
-    return 'Vous avez déjà un plan actif : \"$name\". Créer un nouveau plan marquera l\'actuel comme terminé (vous le retrouverez dans Gérer les plans). Continuer ?';
+    return 'Vous avez déjà un plan actif : « $name ». Créer un nouveau plan marquera l\'actuel comme terminé (vous le retrouverez dans Gérer les plans). Continuer ?';
   }
 
   @override
@@ -10858,7 +10858,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String gymLibraryEmptySearch(String query) {
-    return 'Aucune routine ne correspond à \"$query\".';
+    return 'Aucune routine ne correspond à « $query ».';
   }
 
   @override

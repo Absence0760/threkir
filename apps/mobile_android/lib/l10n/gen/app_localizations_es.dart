@@ -166,7 +166,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String routePickerEmptyNoMatch(Object query) {
-    return 'Ninguna ruta coincide con \"$query\"';
+    return 'Ninguna ruta coincide con «$query»';
   }
 
   @override
@@ -491,7 +491,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String peopleEmptySearchTitle(Object query) {
-    return 'Ningún corredor coincide con \"$query\"';
+    return 'Ningún corredor coincide con «$query»';
   }
 
   @override
@@ -2636,7 +2636,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String addRunPickerNoMatch(String query) {
-    return 'Ninguna ruta coincide con \"$query\"';
+    return 'Ninguna ruta coincide con «$query»';
   }
 
   @override
@@ -2965,12 +2965,12 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String runDetailRouteSaved(String name, int kept, int smoothed) {
-    return '\"$name\" guardada — $kept puntos de paso ($smoothed suavizados)';
+    return '«$name» guardada — $kept puntos de paso ($smoothed suavizados)';
   }
 
   @override
   String runDetailRouteSaveFailed(String name) {
-    return 'No se pudo guardar \"$name\" como ruta.';
+    return 'No se pudo guardar «$name» como ruta.';
   }
 
   @override
@@ -3134,7 +3134,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String routesImported(String name) {
-    return '\"$name\" importada';
+    return '«$name» importada';
   }
 
   @override
@@ -3153,7 +3153,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String routesSaved(String name) {
-    return '\"$name\" guardada';
+    return '«$name» guardada';
   }
 
   @override
@@ -4086,7 +4086,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String exploreRoutesSaved(String name) {
-    return '\"$name\" guardada en tu biblioteca';
+    return '«$name» guardada en tu biblioteca';
   }
 
   @override
@@ -4097,7 +4097,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String exploreRoutesRemoved(String name) {
-    return '\"$name\" quitada de tu biblioteca';
+    return '«$name» quitada de tu biblioteca';
   }
 
   @override
@@ -4629,7 +4629,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String profileNotifEventRsvpTitled(String name, String title) {
-    return '$name confirmó asistencia a tu evento \"$title\"';
+    return '$name confirmó asistencia a tu evento «$title»';
   }
 
   @override
@@ -4674,7 +4674,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String profileNotifEventCancelTitled(String title) {
-    return 'Se canceló una ocurrencia de \"$title\"';
+    return 'Se canceló una ocurrencia de «$title»';
   }
 
   @override
@@ -4701,7 +4701,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String profileNotifEventReminderTitled(String title) {
-    return '\"$title\" está por comenzar';
+    return '«$title» está por comenzar';
   }
 
   @override
@@ -5079,7 +5079,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String clubDetailRouteSaved(String name) {
-    return '\"$name\" guardada';
+    return '«$name» guardada';
   }
 
   @override
@@ -5912,7 +5912,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String planNewReplaceActiveNamed(String name) {
-    return 'Ya tienes un plan activo: \"$name\". Crear un plan nuevo marcará el actual como completado (podrás encontrarlo en Gestionar planes). ¿Continuar?';
+    return 'Ya tienes un plan activo: «$name». Crear un plan nuevo marcará el actual como completado (podrás encontrarlo en Gestionar planes). ¿Continuar?';
   }
 
   @override
@@ -10830,7 +10830,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String gymLibraryEmptySearch(String query) {
-    return 'Ninguna rutina coincide con \"$query\".';
+    return 'Ninguna rutina coincide con «$query».';
   }
 
   @override

@@ -2643,7 +2643,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String addRunPickerNoMatch(String query) {
-    return 'Keine Routen passen zu \"$query\"';
+    return 'Keine Routen passen zu „$query“';
   }
 
   @override
@@ -2971,12 +2971,12 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String runDetailRouteSaved(String name, int kept, int smoothed) {
-    return '\"$name\" gespeichert — $kept Wegpunkte ($smoothed geglättet)';
+    return '„$name“ gespeichert — $kept Wegpunkte ($smoothed geglättet)';
   }
 
   @override
   String runDetailRouteSaveFailed(String name) {
-    return '\"$name\" konnte nicht als Route gespeichert werden.';
+    return '„$name“ konnte nicht als Route gespeichert werden.';
   }
 
   @override
@@ -3143,7 +3143,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String routesImported(String name) {
-    return '\"$name\" importiert';
+    return '„$name“ importiert';
   }
 
   @override
@@ -3162,7 +3162,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String routesSaved(String name) {
-    return '\"$name\" gespeichert';
+    return '„$name“ gespeichert';
   }
 
   @override
@@ -4102,7 +4102,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String exploreRoutesSaved(String name) {
-    return '\"$name\" in deiner Bibliothek gespeichert';
+    return '„$name“ in deiner Bibliothek gespeichert';
   }
 
   @override
@@ -4114,7 +4114,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String exploreRoutesRemoved(String name) {
-    return '\"$name\" aus deiner Bibliothek entfernt';
+    return '„$name“ aus deiner Bibliothek entfernt';
   }
 
   @override
@@ -4648,7 +4648,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String profileNotifEventRsvpTitled(String name, String title) {
-    return '$name hat für dein Event \"$title\" zugesagt';
+    return '$name hat für dein Event „$title“ zugesagt';
   }
 
   @override
@@ -4693,7 +4693,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String profileNotifEventCancelTitled(String title) {
-    return 'Ein Termin von \"$title\" wurde abgesagt';
+    return 'Ein Termin von „$title“ wurde abgesagt';
   }
 
   @override
@@ -4702,7 +4702,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String profileNotifEventCancelRefundedTitled(String title) {
-    return 'Ein Termin von \"$title\" wurde abgesagt – deine Zahlung wird erstattet';
+    return 'Ein Termin von „$title“ wurde abgesagt – deine Zahlung wird erstattet';
   }
 
   @override
@@ -4720,7 +4720,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String profileNotifEventReminderTitled(String title) {
-    return '\"$title\" steht bevor';
+    return '„$title“ steht bevor';
   }
 
   @override
@@ -5098,7 +5098,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String clubDetailRouteSaved(String name) {
-    return '\"$name\" gespeichert';
+    return '„$name“ gespeichert';
   }
 
   @override
@@ -5558,7 +5558,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String plansDeleteTitle(String name) {
-    return '\"$name\" löschen?';
+    return '„$name“ löschen?';
   }
 
   @override
@@ -5930,7 +5930,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String planNewReplaceActiveNamed(String name) {
-    return 'Du hast bereits einen aktiven Plan: \"$name\". Wenn du einen neuen Plan erstellst, wird der aktuelle als abgeschlossen markiert (du findest ihn weiterhin unter „Pläne verwalten“). Fortfahren?';
+    return 'Du hast bereits einen aktiven Plan: „$name“. Wenn du einen neuen Plan erstellst, wird der aktuelle als abgeschlossen markiert (du findest ihn weiterhin unter „Pläne verwalten“). Fortfahren?';
   }
 
   @override
@@ -6160,7 +6160,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String planDetailPublishSuccess(String name) {
-    return '\"$name\" als Vereinsvorlage veröffentlicht.';
+    return '„$name“ als Vereinsvorlage veröffentlicht.';
   }
 
   @override
@@ -10847,7 +10847,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String gymLibraryEmptySearch(String query) {
-    return 'Keine Routinen passen zu \"$query\".';
+    return 'Keine Routinen passen zu „$query“.';
   }
 
   @override

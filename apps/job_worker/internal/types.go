@@ -300,6 +300,26 @@ type SafetyEmailPayload struct {
 	LastSeenAt    string  `json:"last_seen_at,omitempty"`
 }
 
+// SecurityEmailPayload is the payload for `kind='security_email'` jobs
+// (migration 20270804000001): account-security mail that is neither a
+// notification mirror nor lifecycle mail. One template today:
+//   - "new_device_sign_in": enqueued by the auth.sessions triggers in
+//     20270804000002 the first time a (browser, platform) class signs in to
+//     an account that already had one. Browser and Platform are the
+//     sign_in_devices CHECK vocabularies — coarse classes, never a raw
+//     User-Agent — and SignedInAt is an RFC 3339 UTC instant. No IP and no
+//     location ever reach the payload.
+//
+// The password-changed notice is NOT a job: GoTrue emits it through the
+// send-email hook (auth-email Edge Function), decisions 1893.
+type SecurityEmailPayload struct {
+	UserID     string `json:"user_id"`
+	Template   string `json:"template"`
+	Browser    string `json:"browser"`
+	Platform   string `json:"platform"`
+	SignedInAt string `json:"signed_in_at"`
+}
+
 // SafetySmsPayload is the payload for `kind='safety_sms'` jobs (migration
 // 20270410_001). The SMS escalation channel is a NEW transport behind a
 // provider abstraction; the enqueue happens in the same overdue scan that

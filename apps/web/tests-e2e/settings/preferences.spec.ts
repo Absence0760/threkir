@@ -364,6 +364,50 @@ test.describe('settings preference pages', () => {
 		await expect(page.getByTestId('email-lifecycle-drip')).not.toBeChecked();
 	});
 
+	test('New-device sign-in alert opt-out toggle save round-trip persists across reload', async ({
+		page
+	}) => {
+		// email_new_device_alerts is an OPT-OUT security alert (default on), the
+		// reverse of the two engagement opt-ins above: only the literal 'off'
+		// mutes it, and the Go worker's security_email handler reads it at send
+		// time. The password-changed notice has no control at all, so this is the
+		// only security toggle on the page.
+		await page.goto('/settings/notifications');
+		await page.waitForLoadState('networkidle');
+
+		const toggle = page.getByTestId('email-new-device-alerts');
+		// Default when the key is absent: on (checked).
+		await expect(toggle).toBeChecked();
+
+		const optOut = page.waitForRequest(
+			(req) =>
+				req.method() === 'POST' &&
+				req.url().includes('/rest/v1/user_settings') &&
+				(req.postData() ?? '').includes('"email_new_device_alerts":"off"'),
+			{ timeout: 8_000 }
+		);
+		await toggle.uncheck();
+		await optOut; // throws if the opt-out write never fires
+		await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
+
+		await page.reload();
+		await expect(page.getByTestId('email-new-device-alerts')).not.toBeChecked();
+
+		// Turn it back on so later specs see the default; the write is 'on'.
+		const optIn = page.waitForRequest(
+			(req) =>
+				req.method() === 'POST' &&
+				req.url().includes('/rest/v1/user_settings') &&
+				(req.postData() ?? '').includes('"email_new_device_alerts":"on"'),
+			{ timeout: 8_000 }
+		);
+		await page.getByTestId('email-new-device-alerts').check();
+		await optIn;
+		await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
+		await page.reload();
+		await expect(page.getByTestId('email-new-device-alerts')).toBeChecked();
+	});
+
 	test('changing language writes locale to the settings bag (email localization)', async ({
 		page
 	}) => {

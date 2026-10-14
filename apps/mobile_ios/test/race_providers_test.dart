@@ -1,8 +1,34 @@
 import 'dart:io';
 
+import 'package:api_client/api_client.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show FunctionException;
 
 import '../lib/race_service.dart';
+
+/// The link half of the person flow without a Supabase: what the service does
+/// with the stored link and with a lookup refusal is the subject here, so the
+/// ApiClient underneath answers whatever the case needs.
+class _LinkApi extends ApiClient {
+  Object? lookupError;
+  int linkReads = 0;
+
+  _LinkApi({this.lookupError});
+
+  @override
+  Future<UltraSignUpPersonLink?> fetchUltraSignUpLink() async {
+    linkReads++;
+    return null;
+  }
+
+  @override
+  Future<List<UltraSignUpCandidate>> lookupUltraSignUpPeople(
+      String firstName, String lastName) async {
+    final error = lookupError;
+    if (error != null) throw error;
+    return const [];
+  }
+}
 
 /// The import-provider vocabulary. `race-results-import` is the third rail
 /// here — the phone can only reach a leg it names, and can only name a token
@@ -278,5 +304,97 @@ void main() {
             'opening Settings still spends imports');
     expect(probe[1], greaterThan(import[1]),
         reason: 'the Pro probe bucket is no more generous than the import one');
+  });
+
+  group('UltraSignup is scoped by the linked person (decisions § 1841)', () {
+    test('the probe says this client speaks the person flow', () {
+      // The function answers 503 `client_unsupported` to a probe without the
+      // flag, on purpose, so a build still sending the retired athlete id
+      // stays dark. This build does not, so it must say so or its tile never
+      // lights.
+      final body = raceImportProviderFor('ultrasignup')!.probeBody;
+      expect(body['ultraSignUpFlow'], 'person');
+      final lib = File('../backend/supabase/functions/race-results-import/lib.ts')
+          .readAsStringSync();
+      expect(lib.contains("if (flow !== 'person')"), isTrue,
+          reason: 'ultraSignUpProbe no longer gates on the person flow token — '
+              'reread it and re-anchor this guard');
+    });
+
+    test('the person scope asks for nothing typed per race', () {
+      expect(raceImportProviderFor('ultrasignup')!.scope,
+          RaceImportScope.linkedPerson);
+    });
+
+    test('an unlinked runner is refused before any call is made', () async {
+      final api = _LinkApi();
+      // No Supabase is initialised, so reaching the function would throw a
+      // StateError rather than the refusal asserted here.
+      final service = RaceService(api: api);
+      await expectLater(
+        service.importRaceResult(provider: 'ultrasignup', listingId: 'l1'),
+        throwsA(isA<UltraSignUpNotLinked>()),
+      );
+      expect(api.linkReads, 1,
+          reason: 'with no person handed in, the stored link is read first');
+    });
+
+    test('a person handed in is used without reading the stored link', () async {
+      final api = _LinkApi();
+      final service = RaceService(api: api);
+      await expectLater(
+        service.importRaceResult(
+          provider: 'ultrasignup',
+          listingId: 'l1',
+          ultraSignUpPerson: const UltraSignUpPersonLink(
+              personId: '1', firstName: 'A', lastName: 'B'),
+        ),
+        throwsA(isA<StateError>()),
+        reason: 'past the link gate the call reaches for Supabase, which this '
+            'test has not initialised',
+      );
+      expect(api.linkReads, 0);
+    });
+
+    test('another provider never reads the UltraSignup link', () async {
+      final api = _LinkApi();
+      final service = RaceService(api: api);
+      await expectLater(
+        service.importRaceResult(provider: 'runsignup', listingId: 'l1', bib: '7'),
+        throwsA(isA<StateError>()),
+      );
+      expect(api.linkReads, 0);
+    });
+
+    test('a lookup the deployment has switched off is UltraSignup\'s explainer',
+        () async {
+      final service = RaceService(
+        api: _LinkApi(
+          lookupError: const FunctionException(
+            status: 503,
+            details: {'error': 'provider_not_configured'},
+          ),
+        ),
+      );
+      await expectLater(
+        service.lookupUltraSignUpPeople('Ada', 'Lovelace'),
+        throwsA(same(raceImportProviderFor('ultrasignup')!.unavailable)),
+      );
+    });
+
+    test('any other lookup refusal is passed through, not relabelled', () async {
+      final service = RaceService(
+        api: _LinkApi(
+          lookupError: const FunctionException(
+            status: 400,
+            details: {'error': 'ultrasignup_name_required'},
+          ),
+        ),
+      );
+      await expectLater(
+        service.lookupUltraSignUpPeople('Ada', ''),
+        throwsA(isA<FunctionException>()),
+      );
+    });
   });
 }

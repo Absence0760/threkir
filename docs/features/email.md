@@ -66,6 +66,16 @@ drive the worker:
   then renders the fixed per-template copy with an RFC 8058 one-click
   unsubscribe scoped to the drip stream. `decisions.md § 177`.
 
+- **`security_email`** — account-security mail (`{user_id, template, browser,
+  platform, signed_in_at}`, migration `20270804000001`). One template,
+  `new_device_sign_in`, enqueued by the `auth.sessions` triggers the first time
+  a coarse device class signs in to an account that already had one. Neither
+  of the kinds above: it carries per-sign-in context, so not `lifecycle_email`,
+  and it has its OWN opt-out (`email_new_device_alerts`), which lifecycle mail
+  does not. Transactional, so `email_notifications` never mutes it. The
+  password-changed notice is **not** this kind — GoTrue sends it through the
+  `auth-email` hook. § Security emails below; decisions 1893 / 1894.
+
 A **non-email** job kind reuses the same notifications rows over a
 different transport:
 
@@ -233,6 +243,8 @@ Shared pieces:
 | **Web push** (browser system notification, same notification rows) | `web_push` | `notifications` AFTER INSERT, gated on a registered `push_subscription` + the separate `push_notifications` pref | n/a (title/body from the shared catalogue) | §133 |
 | **Native push** (locked-phone FCM/APNs, same notification rows) | `native_push` | `notifications` AFTER INSERT, gated on an enabled `device_tokens` row + the same `push_notifications` pref | gated on operator FCM/APNs creds (title/body from the shared catalogue) | §166 |
 | **Lifecycle drip** (onboarding / first-week / re-engagement / streak nudges) | `lifecycle_drip` (`drip_onboarding`, `drip_first_week`, `drip_reengagement`, `drip_streak`) | daily pg_cron `enqueue_lifecycle_drip()` selects the cohort in SQL; handler gates on the opt-IN `email_lifecycle_drip` pref + `email_suppressions` + a working opt-out (unset `WEEKLY_DIGEST_UNSUB_SECRET` → no unsubscribe URL → log + skip); RFC 8058 one-click unsubscribe (`/unsubscribe/lifecycle-drip`). Enqueue dedupe excludes `done` for onboarding + first-week + re-engagement (`20270423_001`, issue #376) so the daily cron can't re-send a completed nudge; streak stays daily-repeating by design. **SEND fail-closed on the unset SMTP credential + CISO/counsel sign-off** (built, migration `20270223_001`) | ✓ | §177 |
+| **Password changed** (security notice, not optional) | GoTrue `password_changed_notification` → `auth-email` hook | every password change a user makes — settings change and recovery reset alike; enabled by `config.toml [auth.email.notification.password_changed]` locally, the Auth → Emails security-notification toggle in prod | ✓ | 1893 |
+| **New-device sign-in** (security notice, opt-out) | `security_email` (`new_device_sign_in`) | `auth.sessions` AFTER INSERT / first-known `user_agent` UPDATE, when the `(browser, platform)` class is new to an account that already had one; gated at send time on `email_new_device_alerts != 'off'` | ✓ | 1894 |
 | Branded HTML + inbox preview text | — | all email of the above | ✓ | — |
 
 All shipped emails are end-to-end tested against the local Docker Mailpit
@@ -288,7 +300,9 @@ Dashboard → Auth → Hooks in prod):
   invocation — the current address pairs `token` + `token_hash_new`, the new
   address `token_new` + `token_hash`; the field names are reversed upstream
   for backwards compatibility), `reauthentication` (code-only, no link), and
-  `password_changed_notification`. Unknown/future action types fall through
+  `password_changed_notification` (no token; states the change time from the
+  signed `webhook-timestamp` and links `APP_BASE_URL/login?reset=1` — § Security
+  emails). Unknown/future action types fall through
   to an informational default and never fail the hook — a hook failure
   surfaces as a GoTrue API error to the user mid-signup/reset.
 - **Action link** — for an http(s) landing (every web flow) the link points
@@ -340,6 +354,87 @@ Dashboard → Auth → Hooks in prod):
   send reset link for `runner@test.com`), and check Mailpit at
   `http://127.0.0.1:24324` for the branded, localized message whose verify
   link round-trips.
+
+## Security emails
+
+Two account-security notices, both **shipped** (round 10, closing the
+followups entry). Both are transactional: muting `email_notifications` mutes
+neither, and neither carries a `List-Unsubscribe` header.
+
+### Password changed — GoTrue's notice, through the existing hook
+
+- **Trigger: GoTrue itself**, not a database trigger (decisions 1893).
+  GoTrue sends `password_changed_notification` from `PUT /user` whenever a
+  user's password changes — the Settings change-password form and the
+  recovery-link reset both go through that endpoint — once
+  `[auth.email.notification.password_changed] enabled = true` is set (local
+  `config.toml`) or the matching security-notification toggle is on (prod).
+  An admin password update (service role, `PUT /admin/users`) does not send
+  it; nothing in the product does that.
+- **Render:** the send-email hook (`auth-email`) already had the catalogue
+  entry; it now states **when** (`2026-10-14 09:30 UTC`, from the signed
+  `webhook-timestamp` — the hook's own clock-checked time, within GoTrue's send
+  latency of the change), what to do if it was not you (reset from the sign-in
+  page, then write to `security@threkir.com`), and a **Reset password** CTA to
+  `APP_BASE_URL/login?reset=1`. Unset `APP_BASE_URL` → the mail goes out
+  without a button and its copy still names the sign-in page; a missing
+  timestamp → the time paragraph falls back to the preheader rather than
+  rendering an empty placeholder. Seven locales.
+- **No opt-out, by design.** It is the one mail an account takeover must not
+  be able to silence; there is no settings key for it on any surface.
+- Pinned by `auth-email/lib.test.ts` (time, CTA, contact, every locale's
+  placeholder count) + `handler.test.ts` (the signed hook time reaches the
+  MIME).
+
+### New-device sign-in — `sign_in_devices` + `security_email`
+
+- **What counts as a device:** a `(browser family, platform family)` pair —
+  `chrome|edge|firefox|safari|opera|samsung|threkir_app|other` ×
+  `android|ios|windows|macos|linux|chromeos|other` — computed inside the
+  trigger by `sign_in_browser_class` / `sign_in_platform_class` from the
+  session's User-Agent. The mobile apps reach GoTrue over dart:io
+  (`Dart/x (dart:io)`), so the app is its own class with platform `other`.
+  Coarse on purpose: a browser upgrade, a new phone of the same kind or a new
+  IP is not a new device, so the alert stays rare enough to be read.
+- **Privacy:** only the two enum values and first/last-seen times are stored
+  (`sign_in_devices`); never the raw User-Agent, never an IP, never a
+  location — GoTrue's own `auth.sessions.ip` is not read at all. The values are
+  not hashed, because hashing a ~60-value space would be a privacy claim
+  anyone holding the table could undo by hashing all sixty. The job payload
+  carries the same two classes and a UTC time, and so does the email.
+  Retention: 180 days unseen, refreshed from live sessions first, never below
+  one class per account; exported in the Art 20 archive
+  (`sign_in_devices.json`); cascades on deletion. decisions 1894;
+  `derived_state.md § sign_in_devices`.
+- **When it fires:** the `auth.sessions` AFTER INSERT trigger (one row per
+  sign-in — password, OTP, magic link, OAuth) plus an AFTER UPDATE OF
+  `user_agent` trigger for a session whose User-Agent GoTrue fills in after
+  the insert. A **token refresh never fires it** — it updates an existing
+  session, and the update trigger's `old.user_agent is null` guard excludes
+  every refresh that rewrites the same value.
+- **Who is not emailed:** the account's **first-ever** sign-in (signing up
+  signs the new user straight in — that session becomes the silent baseline);
+  anonymous users; anyone with `email_new_device_alerts = 'off'`; a class the
+  account has used before. Existing accounts were baselined from their live
+  sessions by the migration, so the deploy mails no one.
+- **Send:** `handler_security_email.go` reads prefs at send time (a failed read
+  retries the job — it carries the opt-out, so the worker never guesses),
+  resolves the address, and renders the subject, the device phrase (`Firefox
+  on Linux`, `the Threkir app`, `an unrecognised device`), the UTC time, a
+  **Reset password** CTA to `/login?reset=1`, `security@threkir.com`, and a
+  footer link to the email preferences that hold the opt-out. Seven locales,
+  with Japanese ordering platform before browser through indexed verbs.
+- **Opt-out:** `email_new_device_alerts` (`docs/backend/settings.md`), opt-OUT
+  and default on; only the literal `'off'` mutes. Web Settings → Notifications
+  and mobile Settings → Preferences.
+- **Layered resilience:** the trigger traps every error and returns, so the
+  bookkeeping can never fail a sign-in; the worst case is one missed alert.
+- **Volume bound:** at most one mail per class per account per retention
+  window — the class space is ~60 values, so a hostile sign-in loop cannot
+  turn this into a mail cannon.
+- Pinned by `sign_in_devices_test.sql` (pgtap) and
+  `handler_security_email_test.go` (send, opt-out, channel-mute independence,
+  prefs-read retry, skips, device phrases, every locale renders).
 
 ## Planned / not built
 
@@ -550,11 +645,12 @@ Dashboard → Auth → Hooks in prod):
 
 ### Not planned (with reason)
 
-- **New-device sign-in alerts** — there's no sign-in/device tracking to key
-  them off. The send-email hook IS now configured (§ GoTrue auth emails) and
-  its catalogue already carries `password_changed_notification` copy, so if
-  GoTrue's security-notification sends are ever enabled they arrive localized
-  — but we don't enable them today.
+- **Other GoTrue security notices** (email changed, phone changed, identity
+  linked/unlinked, MFA factor enrolled/unenrolled) — GoTrue can send each of
+  these through the same hook, but only `password_changed` is enabled today;
+  the others fall through `planSends` to the informational `default` copy, so
+  turning one on without adding its catalogue entry would send a generic
+  notice. Each is a catalogue entry plus a config line when wanted.
 
 ## Production ops (required before any email actually sends)
 
@@ -621,6 +717,18 @@ None of this sends in prod until an operator:
      localhost. **Confirm email** (Auth → Providers → Email) is off on a fresh
      project *and* in local `config.toml`, so the signup-confirmation path is
      prod-only — see web_app_auth.md § Email confirmation redirect.
+2e. (For the **security emails**, § Security emails) turns on the
+   **password-changed** security notification on the hosted project (Dashboard
+   → Auth → Emails → security notifications, or the Management API
+   `config/auth` field `mailer_notifications_password_changed_enabled: true`)
+   — `config.toml` does not reach prod — and sets `APP_BASE_URL` (the web
+   origin, `https://threkir.com`) as an `auth-email` function secret so the
+   notice carries its Reset password button. With the send-email hook enabled
+   the hook renders it localized; without it GoTrue sends its built-in English
+   template over the project SMTP. The **new-device** alert needs no new
+   credential: it rides the worker's existing `SMTP_HOST` + `APP_BASE_URL`,
+   and its schedule (`prune-sign-in-devices`, daily) is created by the
+   migration — confirm it with the other pg_cron jobs in step 2.
 3. **Sets up domain auth** — SPF / DKIM / DMARC for `threkir.com` so mail isn't
    spam-filed. **Already done for Resend** — the record set is Terraformed in
    `infra/dns` (`email_auth_records`), so a DR rebuild restores deliverability;
@@ -728,7 +836,8 @@ The code side is built and committed:
   render incl. `renderWeeklyDigest`, `renderBrandLockup` + `emailLogoURL`; also `importantKinds` / `inAppOnlyKinds` /
   `kindMutePrefKey` + `pathForKind`), `email_i18n.go` (catalogue),
   `handler_notification_email.go`, `handler_lifecycle_email.go`,
-  `handler_safety_email.go`. Data-export-ready: the announcement hook is
+  `handler_safety_email.go`, `handler_security_email.go` (+ `renderSecurityEmail` /
+  `deviceLabel` in `mailer.go`). Data-export-ready: the announcement hook is
   `handler_data_export.go`'s `announceExportReady` over
   `SupabaseClient.NotifyDataExportReady` (`supabase_dataexport_jobs.go`) — it
   runs on BOTH the fresh-build path and the already-built early return, and
@@ -774,7 +883,11 @@ The code side is built and committed:
   `20270726000002` + `20270726000022` (waitlist seat offer — the
   `event_waitlist_slot` notifications kind, widened `NOT VALID` in the first and
   validated in the second so the scan runs outside the DROP's lock, decisions
-  § 1840).
+  § 1840), `20270804000001` + `20270804000002` (security emails — the
+  `security_email` jobs.kind, then `sign_in_devices`, the two classifiers, the
+  `auth.sessions` triggers, the baseline backfill and the
+  `prune-sign-in-devices` pg_cron; the opt-OUT `email_new_device_alerts` pref
+  is a jsonb key with no migration).
 - Native-push client leg: the mobile device-token registration —
   `apps/mobile_android/lib/push_messaging_bridge.dart` +
   `firebase_push_messaging.dart` (byte-identical iOS twins), wired in `main.dart`,
@@ -800,4 +913,6 @@ The code side is built and committed:
   the committed `supabase/functions/.env`.
 - ADRs: `decisions.md` §117 (channel), §119 (lifecycle kind), §120 (i18n),
   §121 (subscription emails), §131 (safety-contact alerts), §203 (auth-email
-  hook), §729 (data-export-ready + the per-kind mute), §825 (reversed refund).
+  hook), §729 (data-export-ready + the per-kind mute), §825 (reversed refund),
+  1893 (password-changed through GoTrue's hook) + 1894 (new-device
+  detection and its privacy design).

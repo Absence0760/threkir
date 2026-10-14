@@ -2498,7 +2498,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String addRunPickerNoMatch(String query) {
-    return '\"$query\" に一致するルートはありません';
+    return '「$query」に一致するルートはありません';
   }
 
   @override
@@ -2815,7 +2815,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String runDetailRouteSaved(String name, int kept, int smoothed) {
-    return '\"$name\" を保存しました — $kept 個のウェイポイント（$smoothed 個を平滑化）';
+    return '「$name」を保存しました — $kept 個のウェイポイント（$smoothed 個を平滑化）';
   }
 
   @override
@@ -7759,6 +7759,13 @@ class AppLocalizationsJa extends AppLocalizations {
       'オンボーディング、再開、連続記録のリマインダーを時々受け取ります。初期設定はオフで、週刊ダイジェストや通知メールとは別です。';
 
   @override
+  String get prefsEmailNewDeviceAlerts => '新しいデバイスでのサインイン通知';
+
+  @override
+  String get prefsEmailNewDeviceAlertsHint =>
+      'これまで使われたことのないブラウザやデバイスからアカウントにサインインがあったときに、メールで知らせます。パスワード変更の通知は常に送信され、オフにすることはできません。';
+
+  @override
   String get prefsEmailReOptInFailed =>
       '以前の配信停止を解除できませんでした。メールがブロックされたままの可能性があります。もう一度お試しください。';
 
@@ -12156,11 +12163,21 @@ class AppLocalizationsJa extends AppLocalizations {
       '全体ではなくあなたの結果だけをインポートするため、ゼッケン番号を入力してください。';
 
   @override
-  String get racesUltraSignUpAthleteId => 'UltraSignupアスリートID';
+  String racesUltraSignUpImportingAs(String name, String id) {
+    return '$name（UltraSignup #$id）としてインポート';
+  }
 
   @override
-  String get racesUltraSignUpAthleteHint =>
-      'UltraSignupのアスリートIDを入力してください。空欄のままにすると、このレースに登録されたIDを使います。';
+  String get racesUltraSignUpLinkedHint =>
+      'このレースのあなたの結果だけを、UltraSignup のレース ID と日付で照合して取り込みます。';
+
+  @override
+  String get racesUltraSignUpNotLinked =>
+      '先に UltraSignup のプロフィールを連携してから、ここでインポートしてください。';
+
+  @override
+  String get racesUltraSignUpPersonNotFound =>
+      '連携した UltraSignup のプロフィールがその名前で見つからなくなりました。設定でもう一度連携してください。';
 
   @override
   String get racesPasteResultHint => 'レースの結果ページから完走の詳細を入力してください。';
@@ -12229,7 +12246,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get integrationsUltrasignupInfo =>
-      'UltraSignup はトレイル・ウルトラレースのエントリーと結果を扱っています。レースカレンダーでレースを探し、UltraSignup のアスリート ID を入力すると、フィニッシュタイムを取り込めます。';
+      'UltraSignup はトレイル・ウルトラレースのエントリーと結果を扱っています。ここで UltraSignup のプロフィールを一度連携すると、レースカレンダーからレースの結果をインポートできます。';
 
   @override
   String get integrationsChronotrackInfo =>
@@ -12252,6 +12269,77 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get integrationsUltrasignupUnavailable =>
       'UltraSignupのインポートはまだ利用できません。parkrunと手動での貼り付けは引き続き利用できます。';
+
+  @override
+  String get integrationsUltrasignupFindLabel => 'UltraSignup のプロフィールを探す';
+
+  @override
+  String get integrationsUltrasignupFirstName => '名';
+
+  @override
+  String get integrationsUltrasignupLastName => '姓';
+
+  @override
+  String get integrationsUltrasignupNameHint =>
+      'レースのエントリーに使っている名前を入力してください。UltraSignup にその名前で登録されている全員が表示されるので、あなた自身を選んでください。';
+
+  @override
+  String get integrationsUltrasignupFind => '検索';
+
+  @override
+  String get integrationsUltrasignupSearching => 'UltraSignup を検索中…';
+
+  @override
+  String get integrationsUltrasignupNoMatches =>
+      'UltraSignup にその名前の人は見つかりませんでした。エントリー時のつづりを確認してください。';
+
+  @override
+  String get integrationsUltrasignupPickPrompt => 'どれがあなたですか？';
+
+  @override
+  String integrationsUltrasignupCandidateAge(int age) {
+    return '$age歳';
+  }
+
+  @override
+  String integrationsUltrasignupCandidateResults(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n件の結果',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get integrationsUltrasignupThisIsMe => 'これが自分';
+
+  @override
+  String integrationsUltrasignupLinkedAs(String name, String id) {
+    return '$name（UltraSignup #$id）として連携済み';
+  }
+
+  @override
+  String get integrationsUltrasignupUnlink => '連携を解除';
+
+  @override
+  String get integrationsUltrasignupLinked => 'UltraSignup のプロフィールを連携しました。';
+
+  @override
+  String get integrationsUltrasignupLinkFailed =>
+      'UltraSignup のプロフィールを連携できませんでした。もう一度お試しください。';
+
+  @override
+  String get integrationsUltrasignupLookupFailed =>
+      'UltraSignup を検索できませんでした。しばらくしてからもう一度お試しください。';
+
+  @override
+  String get integrationsUltrasignupUnlinked =>
+      'UltraSignup のプロフィールの連携を解除しました。インポート済みのランはそのまま残ります。';
+
+  @override
+  String get integrationsUltrasignupUnlinkFailed =>
+      'UltraSignup のプロフィールの連携を解除できませんでした。もう一度お試しください。';
 
   @override
   String get integrationsChronotrack => 'ChronoTrack';
@@ -14596,4 +14684,13 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get liveRunnerAnonymous => 'ランナー';
+
+  @override
+  String get logMoreTitle => 'その他のオプション';
+
+  @override
+  String get logMoreLongPressHint => 'その他のオプションを表示';
+
+  @override
+  String get logMoreTodaysWorkout => '今日のワークアウトを開始';
 }

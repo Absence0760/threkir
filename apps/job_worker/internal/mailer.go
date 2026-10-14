@@ -775,6 +775,121 @@ func renderSafetyEmail(p SafetyEmailPayload, baseURL, locale string) (Email, boo
 	}
 }
 
+// ─────────────────── account-security templates (pure) ───────────────────
+
+// securityTemplates is the closed set renderSecurityEmail knows.
+var securityTemplates = map[string]bool{
+	"new_device_sign_in": true,
+}
+
+// securityResetPath is the CTA of every security notice: the sign-in page's
+// password-reset form. It is the one step that helps whether or not the reader
+// can still sign in — an intruder who changed the password has locked them
+// out, and the reset link goes to this mailbox, not to whoever is in the
+// account.
+const securityResetPath = "/login?reset=1"
+
+// renderSecurityEmail renders an account-security notice. Transactional, so
+// no List-Unsubscribe header; the footer still links the email preferences,
+// because that page holds this alert's own opt-out.
+//
+// The device line is built from the payload's coarse classes and the sign-in
+// time is rendered in explicit UTC — the recipient's zone is not known to the
+// worker. No IP and no location: the payload carries neither, by design.
+func renderSecurityEmail(p SecurityEmailPayload, baseURL, locale string) (Email, bool) {
+	if !securityTemplates[p.Template] {
+		return Email{}, false
+	}
+	base := strings.TrimRight(baseURL, "/")
+	loc := normalizeEmailLocale(locale)
+	shared := lookupEmailShared(loc)
+	s := lookupEmailStrings(loc, "new_device_sign_in")
+	return composeEmail(emailContent{
+		logoURL:   emailLogoURL(baseURL),
+		lang:      loc,
+		subject:   s.subject,
+		preheader: s.preheader,
+		heading:   s.heading,
+		body: []string{
+			fmt.Sprintf(s.body[0], deviceLabel(p.Browser, p.Platform, shared), formatInstantUTC(p.SignedInAt)),
+			s.body[1],
+			s.body[2],
+		},
+		ctaLabel:        s.cta,
+		ctaURL:          base + securityResetPath,
+		footer:          shared.footerSecurity,
+		prefsURL:        base + notificationPrefsPath,
+		prefsLabel:      shared.managePrefsLabel,
+		prefsTextPrefix: shared.managePrefsTextPrefix,
+	}), true
+}
+
+// deviceBrowserLabel names a sign_in_devices.browser class. Browser names are
+// proper nouns and stay untranslated; "" means the class has no name to give.
+func deviceBrowserLabel(browser string) string {
+	switch browser {
+	case "chrome":
+		return "Chrome"
+	case "edge":
+		return "Edge"
+	case "firefox":
+		return "Firefox"
+	case "safari":
+		return "Safari"
+	case "opera":
+		return "Opera"
+	case "samsung":
+		return "Samsung Internet"
+	default:
+		return ""
+	}
+}
+
+// devicePlatformLabel names a sign_in_devices.platform class, "" for `other`.
+func devicePlatformLabel(platform string) string {
+	switch platform {
+	case "android":
+		return "Android"
+	case "ios":
+		return "iOS"
+	case "windows":
+		return "Windows"
+	case "macos":
+		return "macOS"
+	case "linux":
+		return "Linux"
+	case "chromeos":
+		return "ChromeOS"
+	default:
+		return ""
+	}
+}
+
+// deviceLabel composes the localized device phrase. The mobile app's
+// User-Agent names no OS, so its class stands alone; a known platform with an
+// unnamed browser still says which platform; nothing recognisable at all says
+// so rather than inventing a name.
+func deviceLabel(browser, platform string, shared emailShared) string {
+	pl := devicePlatformLabel(platform)
+	if browser == "threkir_app" {
+		if pl == "" {
+			return shared.deviceApp
+		}
+		return fmt.Sprintf(shared.deviceOnPlatform, shared.deviceApp, pl)
+	}
+	br := deviceBrowserLabel(browser)
+	switch {
+	case br != "" && pl != "":
+		return fmt.Sprintf(shared.deviceOnPlatform, br, pl)
+	case br != "":
+		return br
+	case pl != "":
+		return fmt.Sprintf(shared.deviceOnPlatform, shared.deviceUnknownBrowser, pl)
+	default:
+		return shared.deviceUnknown
+	}
+}
+
 // ─────────────────── weekly-digest template (pure) ───────────────────
 
 // renderWeeklyDigest renders the opt-in weekly engagement digest. The copy
@@ -919,6 +1034,18 @@ func formatTimeUTC(iso string) string {
 		return iso
 	}
 	return t.UTC().Format("15:04 UTC on 2 Jan")
+}
+
+// formatInstantUTC renders an RFC 3339 instant as "2006-01-02 15:04 UTC" —
+// numeric, so it reads the same in every locale's sentence, and explicitly
+// UTC because the recipient's zone is unknown here. Unparseable input falls
+// back to the raw string rather than dropping the fact.
+func formatInstantUTC(iso string) string {
+	t, err := time.Parse(time.RFC3339, iso)
+	if err != nil {
+		return iso
+	}
+	return t.UTC().Format("2006-01-02 15:04 UTC")
 }
 
 // formatDurationHM renders seconds as "Hh MMm" (or "Mm" under an hour).

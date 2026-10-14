@@ -641,6 +641,10 @@ Before flipping any service from "Plan" to live in the table at the top:
 
 The followers level and named-person run / route shares ([sharing.md](../features/sharing.md), decisions § 1874) ship closed: no migration writes the `audience_sharing` row of `private.feature_flags`, so prod answers exactly as before. Open it only after the CISO / Security Analyst has reviewed the audience oracles, the `shared_runs` / `shared_routes` projections, and the `clip-public-track` branch — then, in the prod SQL editor: `insert into private.feature_flags (name, enabled) values ('audience_sharing', true) on conflict (name) do update set enabled = true, updated_at = now();`. Closing it again is the same statement with `false`; every read path falls back at once, and existing grants stay inert until it reopens.
 
+### Security emails — two auth settings, no new secret
+
+The password-changed and new-device notices ([email.md § Security emails](../features/email.md#security-emails)) ship with the code, and the new-device half is live as soon as `20270804000002` applies — it rides the worker's existing `SMTP_HOST` / `APP_BASE_URL`, and its `prune-sign-in-devices` pg_cron is created by the migration. The password-changed half needs two operator settings that `config.toml` does not reach: turn on the **password changed** security notification on the hosted project (Dashboard → Auth → Emails, or the Management API `config/auth` field `mailer_notifications_password_changed_enabled`), and set `APP_BASE_URL` (the web origin) on the `auth-email` function so the notice carries its Reset password button. Neither is a credential. Verify by changing a test account's password and reading the mail.
+
 ### Lambda secrets — one apply, before the next web deploy
 
 [decisions § 1671](../architecture/decisions.md) moved the coach and

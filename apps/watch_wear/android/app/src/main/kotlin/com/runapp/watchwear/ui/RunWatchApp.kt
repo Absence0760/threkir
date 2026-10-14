@@ -2099,6 +2099,8 @@ private fun RoutePickerScreen(
 /// The race line on the running screen: the gun clock while the race is
 /// live, ticking from the device clock against the offset-corrected gun so it
 /// keeps counting through a pause; "Race ended" once the host has ended it.
+/// A late start stays on the screen for the rest of the race rather than
+/// flashing past as the phone's banner does: a glance can land at any time.
 @Composable
 private fun RaceCaption(raceRun: com.runapp.watchwear.RaceRunState, shadow: Shadow) {
     if (raceRun.ended) {
@@ -2108,6 +2110,13 @@ private fun RaceCaption(raceRun: com.runapp.watchwear.RaceRunState, shadow: Shad
             color = DuskPalette.warning,
         )
         return
+    }
+    if (raceRun.lateStart) {
+        Text(
+            stringResource(R.string.race_late_start),
+            style = MaterialTheme.typography.caption3.copy(shadow = shadow),
+            color = DuskPalette.warning,
+        )
     }
     val gun = raceRun.gunStartDeviceMs ?: return
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }

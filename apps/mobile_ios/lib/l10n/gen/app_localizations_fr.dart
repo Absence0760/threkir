@@ -2646,7 +2646,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String addRunPickerNoMatch(String query) {
-    return 'Aucun itinéraire ne correspond à \"$query\"';
+    return 'Aucun itinéraire ne correspond à « $query »';
   }
 
   @override
@@ -2974,7 +2974,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String runDetailRouteSaved(String name, int kept, int smoothed) {
-    return '\"$name\" enregistré — $kept points de cheminement ($smoothed lissés)';
+    return '« $name » enregistré — $kept points de cheminement ($smoothed lissés)';
   }
 
   @override
@@ -5930,7 +5930,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String planNewReplaceActiveNamed(String name) {
-    return 'Vous avez déjà un plan actif : \"$name\". Créer un nouveau plan marquera l\'actuel comme terminé (vous le retrouverez dans Gérer les plans). Continuer ?';
+    return 'Vous avez déjà un plan actif : « $name ». Créer un nouveau plan marquera l\'actuel comme terminé (vous le retrouverez dans Gérer les plans). Continuer ?';
   }
 
   @override
@@ -8224,6 +8224,14 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get prefsEmailLifecycleDripHint =>
       'Inscrivez-vous pour recevoir occasionnellement des rappels de prise en main, de réengagement et de série. Désactivé par défaut ; distinct de votre récapitulatif hebdomadaire et de vos e-mails de notification.';
+
+  @override
+  String get prefsEmailNewDeviceAlerts =>
+      'Alertes de connexion depuis un nouvel appareil';
+
+  @override
+  String get prefsEmailNewDeviceAlertsHint =>
+      'Me prévenir par e-mail la première fois que mon compte se connecte depuis un navigateur ou un appareil qu\'il n\'a jamais utilisé. Les avis de changement de mot de passe sont toujours envoyés et ne peuvent pas être désactivés.';
 
   @override
   String get prefsEmailReOptInFailed =>
@@ -10858,7 +10866,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String gymLibraryEmptySearch(String query) {
-    return 'Aucune routine ne correspond à \"$query\".';
+    return 'Aucune routine ne correspond à « $query ».';
   }
 
   @override
@@ -12779,11 +12787,21 @@ class AppLocalizationsFr extends AppLocalizations {
       'Saisissez votre dossard pour n\'importer que votre résultat, pas tout le classement.';
 
   @override
-  String get racesUltraSignUpAthleteId => 'Identifiant athlète UltraSignup';
+  String racesUltraSignUpImportingAs(String name, String id) {
+    return 'Import en tant que $name (UltraSignup #$id)';
+  }
 
   @override
-  String get racesUltraSignUpAthleteHint =>
-      'Saisissez votre identifiant athlète UltraSignup, ou laissez le champ vide pour utiliser celui de cette course.';
+  String get racesUltraSignUpLinkedHint =>
+      'Seul ton résultat pour cette course est importé, rapproché grâce à l\'identifiant de course et à la date d\'UltraSignup.';
+
+  @override
+  String get racesUltraSignUpNotLinked =>
+      'Associe d\'abord ton profil UltraSignup, puis importe depuis ici.';
+
+  @override
+  String get racesUltraSignUpPersonNotFound =>
+      'UltraSignup ne liste plus ton profil associé sous ce nom. Associe-le à nouveau dans les Réglages.';
 
   @override
   String get racesPasteResultHint =>
@@ -12856,7 +12874,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get integrationsUltrasignupInfo =>
-      'UltraSignup gère les inscriptions et les résultats des courses de trail et d\'ultra. Retrouve ta course dans le calendrier et indique ton identifiant d\'athlète UltraSignup pour récupérer tes temps d\'arrivée.';
+      'UltraSignup gère les inscriptions et les résultats des courses de trail et d\'ultra. Associe ici ton profil UltraSignup une fois, puis importe le résultat d\'une course depuis le calendrier.';
 
   @override
   String get integrationsChronotrackInfo =>
@@ -12879,6 +12897,80 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get integrationsUltrasignupUnavailable =>
       'L\'import UltraSignup n\'est pas encore disponible. parkrun et le collage manuel fonctionnent toujours.';
+
+  @override
+  String get integrationsUltrasignupFindLabel =>
+      'Retrouver ton profil UltraSignup';
+
+  @override
+  String get integrationsUltrasignupFirstName => 'Prénom';
+
+  @override
+  String get integrationsUltrasignupLastName => 'Nom';
+
+  @override
+  String get integrationsUltrasignupNameHint =>
+      'Utilise le nom sous lequel tu t\'inscris aux courses. UltraSignup liste toutes les personnes portant ce nom, et tu choisis laquelle est toi.';
+
+  @override
+  String get integrationsUltrasignupFind => 'Me trouver';
+
+  @override
+  String get integrationsUltrasignupSearching => 'Recherche sur UltraSignup…';
+
+  @override
+  String get integrationsUltrasignupNoMatches =>
+      'UltraSignup ne connaît personne sous ce nom. Vérifie l\'orthographe sous laquelle tu cours.';
+
+  @override
+  String get integrationsUltrasignupPickPrompt =>
+      'Laquelle de ces personnes est toi ?';
+
+  @override
+  String integrationsUltrasignupCandidateAge(int age) {
+    return '$age ans';
+  }
+
+  @override
+  String integrationsUltrasignupCandidateResults(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n résultats',
+      one: '$n résultat',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get integrationsUltrasignupThisIsMe => 'C\'est moi';
+
+  @override
+  String integrationsUltrasignupLinkedAs(String name, String id) {
+    return 'Associé en tant que $name (UltraSignup #$id)';
+  }
+
+  @override
+  String get integrationsUltrasignupUnlink => 'Dissocier';
+
+  @override
+  String get integrationsUltrasignupLinked => 'Profil UltraSignup associé.';
+
+  @override
+  String get integrationsUltrasignupLinkFailed =>
+      'Impossible d\'associer ton profil UltraSignup. Réessaie.';
+
+  @override
+  String get integrationsUltrasignupLookupFailed =>
+      'Impossible de chercher sur UltraSignup. Réessaie dans un instant.';
+
+  @override
+  String get integrationsUltrasignupUnlinked =>
+      'Profil UltraSignup dissocié. Les courses déjà importées restent.';
+
+  @override
+  String get integrationsUltrasignupUnlinkFailed =>
+      'Impossible de dissocier ton profil UltraSignup. Réessaie.';
 
   @override
   String get integrationsChronotrack => 'ChronoTrack';
@@ -15350,4 +15442,13 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get liveRunnerAnonymous => 'Coureur';
+
+  @override
+  String get logMoreTitle => 'Plus d\'options';
+
+  @override
+  String get logMoreLongPressHint => 'afficher plus d\'options';
+
+  @override
+  String get logMoreTodaysWorkout => 'Démarrer la séance du jour';
 }

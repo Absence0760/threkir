@@ -426,7 +426,7 @@ test.describe('/settings/account', () => {
 				await expect(page.locator('html')).toHaveAttribute('lang', 'de');
 				await page.getByRole('button', { name: 'Konto löschen' }).click();
 				const dialog = page.getByRole('dialog');
-				await expect(dialog).toContainText('"LÖSCHEN"');
+				await expect(dialog).toContainText('„LÖSCHEN“');
 
 				const confirmBtn = dialog.getByRole('button', { name: /Mein Konto löschen/ });
 				const input = page.getByTestId('confirm-challenge-input');

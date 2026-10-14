@@ -286,15 +286,25 @@ internal fun formatStatRow(
     locale: Locale = Locale.getDefault(),
 ): String {
     val unit = metrics.preferredUnit
-    val unitWord = unitWord(unit)
-    val displayValue = when (unit) {
-        DistanceUnit.KM -> metrics.distanceM / 1000.0
-        DistanceUnit.MI -> metrics.distanceM / com.runapp.watchwear.recording.METRES_PER_MILE
-    }
-    val decimals = if (displayValue >= 10.0) 1 else 2
-    val distLabel = "${formatDistance(metrics.distanceM, unit, decimals, locale)} $unitWord"
+    val distLabel = formatDistanceLabel(metrics.distanceM, unit, locale)
     val paceLabel = formatPaceSecPerUnit(metrics.paceSecPerKm, unit)
     return "$distLabel · $paceLabel"
+}
+
+/// Distance with its unit word, e.g. "5.21 km" / "12.3 mi": two decimals
+/// below the 10-unit mark and one from it, so a long run still fits a
+/// glanceable slot. Shared by the tile and the watch-face complication.
+internal fun formatDistanceLabel(
+    distanceM: Double,
+    unit: DistanceUnit,
+    locale: Locale = Locale.getDefault(),
+): String {
+    val displayValue = when (unit) {
+        DistanceUnit.KM -> distanceM / 1000.0
+        DistanceUnit.MI -> distanceM / com.runapp.watchwear.recording.METRES_PER_MILE
+    }
+    val decimals = if (displayValue >= 10.0) 1 else 2
+    return "${formatDistance(distanceM, unit, decimals, locale)} ${unitWord(unit)}"
 }
 
 internal fun formatPaceSecPerUnit(secPerKm: Double?, unit: DistanceUnit): String {

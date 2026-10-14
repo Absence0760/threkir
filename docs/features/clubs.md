@@ -157,8 +157,7 @@ Platform status: web ✓ (editor, RSVP course pick, per-course boards, End previ
 
 - Remote auto-start of the recorder on the `running` signal, on any device. The racer taps Start; a recording started while the race is armed joins it at GO (phone, Wear OS), but nothing starts one. Plumbing the permission flow + countdown into a remote trigger is per-platform engineering.
 - Apple Watch auto-finish. The wrist shows Race armed / Race LIVE (`RaceBannerView`), pings while it runs and relays one finisher time through the phone at Stop, but it does not read the course, detect the finish or file gun / chip time or a finish method — see [parity.md](../product/parity.md).
-- The late start is a run-screen banner only; it is not carried on the result.
-- Wear OS computes no late-start flag: `RaceFinish.startFlagged` is in the `race_finish` pair, but the watch never calls it and its course read selects no start point (see [followups.md](../product/followups.md)).
+- The late start is shown on the run screen only (a banner on the phone, a caption kept under the race clock on Wear OS); it is not carried on the result.
 
 ### Event results
 

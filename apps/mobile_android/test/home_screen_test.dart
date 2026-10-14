@@ -18,13 +18,14 @@ import '../lib/local_gear_store.dart';
 import '../lib/local_gym_store.dart';
 import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
-import '../lib/main.dart' show pendingArmGuidedRun;
+import '../lib/main.dart' show pendingArmGuidedRun, pendingStartWorkout;
 import '../lib/preferences.dart';
 import '../lib/race_controller.dart';
 import '../lib/run_stop_dock.dart';
 import '../lib/settings_destination.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
+import '../lib/screens/add_run_screen.dart';
 import '../lib/screens/confirm_age_screen.dart';
 import '../lib/screens/gym_screen.dart';
 import '../lib/fab_clearance.dart';
@@ -32,6 +33,7 @@ import '../lib/screens/home_screen.dart';
 import '../lib/screens/nutrition_screen.dart';
 import '../lib/screens/public_route_screen.dart';
 import '../lib/screens/public_run_screen.dart';
+import '../lib/screens/route_picker_screen.dart';
 import '../lib/screens/run_screen.dart';
 import '../lib/screens/settings_about_screen.dart';
 import '../lib/screens/settings_account_screen.dart';
@@ -89,6 +91,48 @@ class _WizardApi extends ApiClient {
 
 Directory? _runsDir;
 
+/// Answers the active-plan read with [overview] instead of reaching Supabase.
+class _PlanTraining extends TrainingService {
+  final ActivePlanOverview? overview;
+  _PlanTraining(this.overview);
+  @override
+  Future<ActivePlanOverview?> fetchActiveOverview() async => overview;
+}
+
+/// An active plan with one open easy run scheduled for today.
+ActivePlanOverview _planWithWorkoutToday() {
+  final now = DateTime.now();
+  final today = cm.PlanWorkoutRow(
+    id: 'wo-today',
+    weekId: 'wk-1',
+    scheduledDate: DateTime(now.year, now.month, now.day),
+    kind: 'easy',
+    targetDistanceM: 5000,
+    manuallyCompleted: false,
+  );
+  return ActivePlanOverview(
+    plan: cm.TrainingPlanRow(
+      id: 'plan-1',
+      userId: 'u1',
+      name: 'Spring 10k',
+      goalEvent: '10k',
+      goalDistanceM: 10000,
+      startDate: now.subtract(const Duration(days: 28)),
+      endDate: now.add(const Duration(days: 56)),
+      daysPerWeek: 4,
+      status: 'active',
+      source: 'app',
+      isTemplate: false,
+      isPublicTemplate: false,
+    ),
+    weeks: const [],
+    workouts: [today],
+    todayWorkout: today,
+    completionPct: 0,
+    currentWeekIndex: 0,
+  );
+}
+
 Future<({
   LocalRunStore runStore,
   LocalRouteStore routeStore,
@@ -102,7 +146,7 @@ Future<({
   BleTreadmill treadmill,
   AudioCues audioCues,
   RaceController raceController,
-})> _makeStores() async {
+})> _makeStores({TrainingService? training}) async {
   SharedPreferences.setMockInitialValues({});
   final prefs = Preferences();
   await prefs.init();
@@ -124,7 +168,7 @@ Future<({
       overrideDirectory:
           Directory.systemTemp.createTempSync('food_store_test_'));
   final social = SocialService();
-  final training = TrainingService();
+  final trainingService = training ?? TrainingService();
   final heartRate = BleHeartRate();
   final treadmill = BleTreadmill();
   final audioCues = AudioCues();
@@ -138,7 +182,7 @@ Future<({
     foodStore: foodStore,
     prefs: prefs,
     social: social,
-    training: training,
+    training: trainingService,
     heartRate: heartRate,
     treadmill: treadmill,
     audioCues: audioCues,
@@ -182,6 +226,11 @@ Future<void> _seedLoggedLift(WidgetTester tester, dynamic s) async {
     await s.gymStore.createLocal(title: 'Push day', startedAt: DateTime.now());
   });
 }
+
+/// [text] inside the long-press menu's sheet, so a page's own copy of the
+/// same label cannot answer for it.
+Finder _inMenu(String text) =>
+    find.descendant(of: find.byType(BottomSheet), matching: find.text(text));
 
 /// The centre button's `Semantics` wrapper carrying [label] — read off the widget, so the test
 /// needs no semantics tree.
@@ -1306,13 +1355,12 @@ void main() {
       await tester.pump(const Duration(seconds: 8));
     });
 
-    testWidgets('long-press for a pure runner starts the run, as a tap does',
-        (tester) async {
-      // With Gym and Nutrition hidden the fan had one item, Log run — the tap
-      // with an animation in front of it. The long-press used to navigate
-      // straight to the last-logged modality with nothing announced, which
-      // landed someone on Nutrition; Nutrition is hidden here, so the
-      // last-logged type does not bring that back either.
+    testWidgets('long-press for a pure runner opens the runner menu, not a '
+        'second start', (tester) async {
+      // With Gym and Nutrition hidden the fan had one item, Log run, so the
+      // long-press was the tap (decisions § 1739). It now opens what the tap
+      // does not: here, with no plan and no saved route, the past-run entry.
+      // The last-logged type does not bring a hidden Nutrition back.
       final s = await _makeStores();
       await s.prefs.setLastLogType('food');
       await _pump(tester, s);
@@ -1321,15 +1369,118 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
-      expect(find.byTooltip('Log run'), findsNothing,
-          reason: 'no fan of one');
-      expect(find.byTooltip('Log food'), findsNothing);
-      expect(shellPage(tester), 2, reason: 'the long-press landed on the '
-          'recorder, exactly as a tap does');
+      expect(_inMenu('More options'), findsOneWidget);
+      expect(_inMenu('Add past run'), findsOneWidget);
+      expect(_inMenu("Start today's workout"), findsNothing,
+          reason: 'no plan, so no workout row to dead-end on');
+      expect(_inMenu('Choose route'), findsNothing,
+          reason: 'no saved route, so no picker with nothing in it');
+      expect(_inMenu('Log food'), findsNothing);
+      expect(_inMenu('Log lift'), findsNothing);
+      expect(find.byTooltip('Log run'), findsNothing, reason: 'not the fan');
+      expect(shellPage(tester), 0,
+          reason: 'a long press opens a menu, it never navigates on its own');
+    });
+
+    testWidgets('Add past run opens the manual entry', (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+
+      await tester.longPress(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(_inMenu('Add past run'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byType(AddRunScreen), findsOneWidget);
+    });
+
+    testWidgets("today's plan workout is offered, and loads on the recorder",
+        (tester) async {
+      final loaded = <String>[];
+      void record() {
+        final w = pendingStartWorkout.value;
+        if (w != null) loaded.add(w.id);
+      }
+
+      pendingStartWorkout.addListener(record);
+      addTearDown(() {
+        pendingStartWorkout.removeListener(record);
+        pendingStartWorkout.value = null;
+      });
+      final s =
+          await _makeStores(training: _PlanTraining(_planWithWorkoutToday()));
+      await _pump(tester, s);
+      // The shell reads the plan once its first frame is up.
+      await tester.pump();
+
+      await tester.longPress(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(_inMenu("Start today's workout"), findsOneWidget);
+      expect(_inMenu('Easy'), findsOneWidget,
+          reason: 'the row names the session');
+
+      await tester.tap(_inMenu("Start today's workout"));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(loaded, ['wo-today']);
+      expect(shellPage(tester), 2, reason: 'the workout loads on the recorder');
       tester.takeException();
     });
 
-    testWidgets('long-press still fans the menu once there are two actions',
+    testWidgets('Choose route picks a saved route and starts the recorder '
+        'on it', (tester) async {
+      final s = await _makeStores();
+      await tester.runAsync(() async {
+        await s.routeStore.init(
+            overrideDirectory:
+                Directory.systemTemp.createTempSync('home_route_store_'));
+        await s.routeStore.save(cm.Route(
+          id: 'route-1',
+          userId: 'u1',
+          name: 'Park loop',
+          waypoints: const [
+            cm.Waypoint(lat: 47.37, lng: 8.54),
+            cm.Waypoint(lat: 47.371, lng: 8.541),
+          ],
+          distanceMetres: 5000,
+          isPublic: false,
+          isStarred: false,
+        ));
+      });
+      await _pump(tester, s);
+
+      await tester.longPress(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(_inMenu('Choose route'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byType(RoutePickerScreen), findsOneWidget);
+
+      // The shell behind the picker may also show the route's name, so the
+      // tap is scoped to the picker's own row.
+      await tester.tap(find.descendant(
+        of: find.byType(RoutePickerScreen),
+        matching: find.text('Park loop'),
+      ));
+      // A popped route stays in the tree until its exit transition ends, so
+      // advance the clock until it is gone (bounded) instead of a fixed pump.
+      for (var i = 0;
+          i < 30 && find.byType(RoutePickerScreen).evaluate().isNotEmpty;
+          i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+
+      expect(find.byType(RoutePickerScreen), findsNothing);
+      expect(shellPage(tester), 2, reason: 'the recorder opens on the route');
+      tester.takeException();
+    });
+
+    testWidgets('when the tap fans, the long-press does not repeat its items',
         (tester) async {
       final s = await _makeStores();
       await s.prefs.setShowNutrition(true);
@@ -1339,10 +1490,31 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
-      expect(find.byTooltip('Log run'), findsOneWidget);
-      expect(find.byTooltip('Log food'), findsOneWidget);
-      expect(shellPage(tester), 0,
-          reason: 'a long press picks, it never navigates on its own');
+      expect(_inMenu('Add past run'), findsOneWidget);
+      expect(_inMenu('Log food'), findsNothing,
+          reason: 'a tap already fans Log food');
+      expect(find.byTooltip('Log food'), findsNothing, reason: 'not the fan');
+      expect(shellPage(tester), 0);
+    });
+
+    testWidgets('a screen reader reaches the menu through a custom action, '
+        'with the long-press announced', (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+
+      final semantics =
+          tester.widget<Semantics>(_semanticsLabelled('Start a run'));
+      expect(semantics.properties.hintOverrides?.onLongPressHint,
+          'show more options');
+      final actions = semantics.properties.customSemanticsActions!;
+      final open = actions.entries
+          .singleWhere((e) => e.key.label == 'More options')
+          .value;
+      open();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(_inMenu('Add past run'), findsOneWidget);
     });
 
     testWidgets('switching Nutrition on with nothing logged brings the fan '
@@ -1376,8 +1548,8 @@ void main() {
       tester.takeException();
     });
 
-    testWidgets('long-press opens the menu with the preference on too',
-        (tester) async {
+    testWidgets('with the preference on, the long-press is the way to a '
+        'shown modality', (tester) async {
       final s = await _makeStores();
       await _seedLoggedLift(tester, s);
       await s.prefs.setKeepRunPrimary(true);
@@ -1386,8 +1558,14 @@ void main() {
       await tester.longPress(find.byType(FloatingActionButton));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
+      expect(_inMenu('Log lift'), findsOneWidget);
+      expect(_inMenu('Log food'), findsNothing, reason: 'Nutrition is hidden');
 
-      expect(find.byTooltip('Log lift'), findsOneWidget);
+      await tester.tap(_inMenu('Log lift'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byType(GymScreen), findsOneWidget);
+      expect(shellPage(tester), 1);
     });
   });
 

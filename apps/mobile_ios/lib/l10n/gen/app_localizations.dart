@@ -13330,6 +13330,18 @@ abstract class AppLocalizations {
   /// **'Opt in to occasional onboarding, re-engagement, and streak nudges. Off by default; separate from your weekly digest and notification emails.'**
   String get prefsEmailLifecycleDripHint;
 
+  /// Toggle title for the opt-out email sent when the account signs in from a device class it has not used before
+  ///
+  /// In en, this message translates to:
+  /// **'New-device sign-in alerts'**
+  String get prefsEmailNewDeviceAlerts;
+
+  /// Subtitle for the new-device sign-in alert toggle; says the password-change notice cannot be turned off
+  ///
+  /// In en, this message translates to:
+  /// **'Email me the first time my account signs in from a browser or device it hasn\'t used before. Password-change notices always send and can\'t be turned off.'**
+  String get prefsEmailNewDeviceAlertsHint;
+
   /// Shown when lifting a prior one-click unsubscribe block fails after re-opting into an email stream
   ///
   /// In en, this message translates to:
@@ -21045,17 +21057,29 @@ abstract class AppLocalizations {
   /// **'Enter your bib number so we import only your result, not the whole field.'**
   String get racesRunSignUpBibHint;
 
-  /// Label for the UltraSignup athlete-id field in the race import sheet
+  /// Line in the race import sheet naming the UltraSignup person the import will use
   ///
   /// In en, this message translates to:
-  /// **'UltraSignup athlete ID'**
-  String get racesUltraSignUpAthleteId;
+  /// **'Importing as {name} (UltraSignup #{id})'**
+  String racesUltraSignUpImportingAs(String name, String id);
 
-  /// Hint above the UltraSignup import action explaining the optional athlete id
+  /// Hint under the UltraSignup importing-as line: only this race's result is imported
   ///
   /// In en, this message translates to:
-  /// **'Enter your UltraSignup athlete ID, or leave it blank to use the one this listing carries.'**
-  String get racesUltraSignUpAthleteHint;
+  /// **'Only your result for this race comes across, matched on UltraSignup\'s own race id and date.'**
+  String get racesUltraSignUpLinkedHint;
+
+  /// Race import sheet, UltraSignup listing, when the runner has not linked an UltraSignup person; the find action sits beside it
+  ///
+  /// In en, this message translates to:
+  /// **'Link your UltraSignup profile first, then import from here.'**
+  String get racesUltraSignUpNotLinked;
+
+  /// Banner when the import could not find the linked UltraSignup person under their name any more
+  ///
+  /// In en, this message translates to:
+  /// **'UltraSignup no longer lists your linked profile under that name. Link it again in Settings.'**
+  String get racesUltraSignUpPersonNotFound;
 
   /// Hint above the manual result paste form
   ///
@@ -21180,7 +21204,7 @@ abstract class AppLocalizations {
   /// Info-tip body for the UltraSignup tile: what UltraSignup is and how to import a result
   ///
   /// In en, this message translates to:
-  /// **'UltraSignup handles entries and results for trail and ultra races. Find your race in the race calendar and give your UltraSignup athlete ID to pull your finishing times across.'**
+  /// **'UltraSignup handles entries and results for trail and ultra races. Link your UltraSignup profile here once, then import a race\'s result from the race calendar.'**
   String get integrationsUltrasignupInfo;
 
   /// Info-tip body for the ChronoTrack tile: what ChronoTrack is and how to import a result
@@ -21218,6 +21242,114 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'UltraSignup import isn\'t available yet. parkrun and manual paste still work.'**
   String get integrationsUltrasignupUnavailable;
+
+  /// Heading of the UltraSignup person finder, and the action that opens it
+  ///
+  /// In en, this message translates to:
+  /// **'Find your UltraSignup profile'**
+  String get integrationsUltrasignupFindLabel;
+
+  /// First-name field in the UltraSignup person finder
+  ///
+  /// In en, this message translates to:
+  /// **'First name'**
+  String get integrationsUltrasignupFirstName;
+
+  /// Last-name field in the UltraSignup person finder
+  ///
+  /// In en, this message translates to:
+  /// **'Last name'**
+  String get integrationsUltrasignupLastName;
+
+  /// Hint under the UltraSignup person finder heading
+  ///
+  /// In en, this message translates to:
+  /// **'Use the name you enter races under. UltraSignup lists everyone with that name, and you pick which one is you.'**
+  String get integrationsUltrasignupNameHint;
+
+  /// Button that looks the typed name up on UltraSignup
+  ///
+  /// In en, this message translates to:
+  /// **'Find me'**
+  String get integrationsUltrasignupFind;
+
+  /// Find button label while the UltraSignup lookup runs
+  ///
+  /// In en, this message translates to:
+  /// **'Searching UltraSignup…'**
+  String get integrationsUltrasignupSearching;
+
+  /// Shown when UltraSignup knows nobody by the typed name
+  ///
+  /// In en, this message translates to:
+  /// **'UltraSignup has nobody by that name. Check the spelling you race under.'**
+  String get integrationsUltrasignupNoMatches;
+
+  /// Prompt above the list of UltraSignup people matching the name
+  ///
+  /// In en, this message translates to:
+  /// **'Which of these is you?'**
+  String get integrationsUltrasignupPickPrompt;
+
+  /// An UltraSignup candidate's age
+  ///
+  /// In en, this message translates to:
+  /// **'Age {age}'**
+  String integrationsUltrasignupCandidateAge(int age);
+
+  /// How many results UltraSignup holds for a candidate
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one{{n} result} other{{n} results}}'**
+  String integrationsUltrasignupCandidateResults(int n);
+
+  /// Button that links the runner to one UltraSignup candidate
+  ///
+  /// In en, this message translates to:
+  /// **'This is me'**
+  String get integrationsUltrasignupThisIsMe;
+
+  /// The UltraSignup person the runner has linked
+  ///
+  /// In en, this message translates to:
+  /// **'Linked as {name} (UltraSignup #{id})'**
+  String integrationsUltrasignupLinkedAs(String name, String id);
+
+  /// Button that forgets the linked UltraSignup person
+  ///
+  /// In en, this message translates to:
+  /// **'Unlink'**
+  String get integrationsUltrasignupUnlink;
+
+  /// Banner after an UltraSignup person was linked
+  ///
+  /// In en, this message translates to:
+  /// **'UltraSignup profile linked.'**
+  String get integrationsUltrasignupLinked;
+
+  /// Banner when storing the UltraSignup person failed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t link your UltraSignup profile. Try again.'**
+  String get integrationsUltrasignupLinkFailed;
+
+  /// Banner when the UltraSignup name lookup failed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t search UltraSignup. Try again in a moment.'**
+  String get integrationsUltrasignupLookupFailed;
+
+  /// Undo-bar message after the UltraSignup person was unlinked
+  ///
+  /// In en, this message translates to:
+  /// **'UltraSignup profile unlinked. Runs you already imported stay.'**
+  String get integrationsUltrasignupUnlinked;
+
+  /// Banner when unlinking the UltraSignup person failed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t unlink your UltraSignup profile. Try again.'**
+  String get integrationsUltrasignupUnlinkFailed;
 
   /// ChronoTrack integration name
   ///
@@ -25322,6 +25454,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Runner'**
   String get liveRunnerAnonymous;
+
+  /// Title of the menu a long-press on the centre button opens, and the screen-reader custom action that opens it
+  ///
+  /// In en, this message translates to:
+  /// **'More options'**
+  String get logMoreTitle;
+
+  /// Screen-reader long-press hint on the centre button; TalkBack reads it after "double-tap and hold to"
+  ///
+  /// In en, this message translates to:
+  /// **'show more options'**
+  String get logMoreLongPressHint;
+
+  /// Long-press menu item: load today's plan workout on the recorder
+  ///
+  /// In en, this message translates to:
+  /// **'Start today\'s workout'**
+  String get logMoreTodaysWorkout;
 }
 
 class _AppLocalizationsDelegate

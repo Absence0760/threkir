@@ -30,6 +30,13 @@
     <string name="tile_tap_to_start">Toque para iniciar</string>
     <string name="tile_running">CORRENDO</string>
     <string name="tile_paused">PAUSADO</string>
+    <!-- Watch-face complication -->
+    <string name="complication_label">Dados da corrida</string>
+    <string name="complication_last_short">Última</string>
+    <string name="complication_last_run">Última corrida</string>
+    <string name="complication_desc_recording">Gravando, %1$s decorridos, %2$s</string>
+    <string name="complication_desc_paused">Pausado em %1$s, %2$s</string>
+    <string name="complication_desc_last_run">Última corrida: %1$s em %2$s</string>
 
     <string name="notif_recording_run">Registrando corrida</string>
     <string name="notif_paused">Pausado</string>
@@ -70,14 +77,15 @@
     </plurals>
     <string name="offline">Off-line</string>
     <string name="not_signed_in">Sem sessão iniciada</string>
-    <string name="race_armed">PROVA PRONTA</string>
+    <string name="race_armed">PROVA PREPARADA</string>
     <string name="race_live">PROVA AO VIVO</string>
     <string name="event">Evento</string>
     <string name="race_wait_for_go">%1$s · aguarde o GO</string>
     <string name="race_tap_start">%1$s · toque em Iniciar</string>
     <string name="race_finish_short">Fim</string>
-    <string name="cd_finish_race">Encerrar corrida</string>
+    <string name="cd_finish_race">Finalizar prova</string>
     <string name="race_ended">Corrida encerrada</string>
+    <string name="race_late_start">Largada tardia</string>
     <string name="race_clock">Corrida %1$s</string>
     <string name="race_result_finished">Chegada %1$s</string>
     <string name="race_result_dnf">Corrida DNF</string>

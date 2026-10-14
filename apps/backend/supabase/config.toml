@@ -39,6 +39,18 @@ minimum_password_length = 8
 [auth.email]
 enable_confirmations = false
 
+# GoTrue's own password-changed security notice: sent on every password
+# change a user makes (settings change and the recovery reset alike — both go
+# through PUT /user), never on an admin update. With the send-email hook below
+# enabled it reaches auth-email as `password_changed_notification`, which
+# renders it localized with the time and a reset CTA; the template fields are
+# left unset because the hook owns the copy. Prod enables the same notice in
+# Dashboard → Auth → Emails (docs/features/email.md § Security emails).
+# Not optional for the user: it is the one mail an account takeover cannot
+# be allowed to silence.
+[auth.email.notification.password_changed]
+enabled = true
+
 # Every GoTrue auth email (signup confirmation, recovery, magic link,
 # email change, reauthentication) is rendered + sent by the auth-email
 # Edge Function — localized six-locale catalogue, same SMTP transport

@@ -1142,6 +1142,50 @@ Indexes: `device_tokens_active` (partial index on `user_id` where
 writes to `auth.uid() = user_id`; the push worker reads with the
 service-role key to fan out. A trigger touches `updated_at` on update.
 
+#### `sign_in_devices`
+
+The coarse device classes that have signed in to each account, kept only to
+detect a sign-in from a class the account has not used before (migration
+`20270804000002`, [email.md § Security emails](../features/email.md#security-emails),
+[decisions 1894](../architecture/decisions.md)). A class is a
+`(browser, platform)` pair computed by `sign_in_browser_class(text)` /
+`sign_in_platform_class(text)` from the session's User-Agent inside the
+trigger: **no raw User-Agent, no version, no IP is ever written.** The values
+are stored in the clear because hashing a ~60-value space hides nothing.
+
+```sql
+create table sign_in_devices (
+  user_id        uuid not null references auth.users (id) on delete cascade,
+  browser        text not null check (browser in ('chrome','edge','firefox','safari','opera','samsung','threkir_app','other')),
+  platform       text not null check (platform in ('android','ios','windows','macos','linux','chromeos','other')),
+  first_seen_at  timestamptz not null default now(),
+  last_seen_at   timestamptz not null default now(),
+  primary key (user_id, browser, platform)
+);
+```
+
+- **Writer:** only `record_sign_in_device()`, a SECURITY DEFINER trigger
+  function on **`auth.sessions`** — `AFTER INSERT` (`when new.user_agent is not
+  null`) and `AFTER UPDATE OF user_agent` (`when old.user_agent is null and
+  new.user_agent is not null`), so a sign-in is evaluated once and a token
+  refresh never is. An unseen class on an account that already had a row
+  enqueues one `security_email` job (`{user_id, template:
+  'new_device_sign_in', browser, platform, signed_in_at}`); the first-ever
+  class is a silent baseline; anonymous users are skipped. The body traps every
+  error and returns, so the bookkeeping can never fail a sign-in.
+- **RLS:** owner SELECT only (`"sign_in_devices: owner reads own"`). No client
+  INSERT/UPDATE/DELETE grant, so a client cannot pre-register a class to mute a
+  future alert.
+- **Retention:** `prune_sign_in_devices()`, pg_cron `prune-sign-in-devices`
+  daily at 04:23 UTC — first refreshes `last_seen_at` from still-live
+  `auth.sessions`, then deletes classes unseen for 180 days, never an
+  account's most recently seen one ([derived_state.md](derived_state.md#sign_in_devices)).
+- **Backfill:** the migration seeds every account with a live session as its
+  baseline.
+- **Export:** `sign_in_devices.json` in the Art 20 archive. **Erasure:** cascades
+  with `auth.users`.
+- Pinned by `sign_in_devices_test.sql`.
+
 #### `safety_contacts`
 
 Opt-in contacts emailed when their owner finishes a run — **even a private
@@ -1466,7 +1510,7 @@ provided — `exportGuardExclusions` in the Go worker records why.
 
 #### `jobs`
 
-Generic Postgres-backed job queue. First tenant was map matching (`kind = 'map_match'`); it now also hosts the Strava webhook ingest (`kind = 'strava_event'`), hourly token rotation (`kind = 'token_refresh'`), the run-photo EXIF-strip + thumbnail (`kind = 'photo_process'`), and the club-photo EXIF-strip + thumbnail (`kind = 'club_photo_process'`, migration `20270301_001`) that moved off / never lived in Edge Functions (see `roadmap.md` Phase 2 backend bullets). The `kind` CHECK allowlist is maintained by ALTER migrations (latest adds `data_export`, `20270603_001`); a new kind must extend the CHECK + the Go dispatch switch + the pgtap kind test together. Data export is a job kind as of [decisions § 717](../architecture/decisions.md) — `kind = 'data_export'`, enqueued by `enqueue_data_export` alongside its `data_export_jobs` state row, with `max_attempts = 2` (every attempt past the tus Finish uploads a whole archive) and a 15-minute per-attempt worker clock instead of the generic five. The subject no longer blocks on the signed URL: they poll `GET /v1/export/jobs/latest`, which mints it at read time. The GPS distance recompute is a job kind as of migration `20270719000001` — `kind = 'distance_recompute'`, payload `{run_id, user_id}` (the `map_match` shape; `jobs` has no `run_id` column), enqueued only by the owner-only `request_distance_recompute` RPC below and deduped per run by the partial unique index `jobs_dedupe_distance_recompute` (same predicate as `jobs_dedupe_map_match`). The worker re-derives `runs.distance_m` from the stored track with the GPS distance estimator, keeping the original in `metadata.distance_recorded_m` ([gps_distance.md § Server recompute](../features/gps_distance.md#server-recompute)).
+Generic Postgres-backed job queue. First tenant was map matching (`kind = 'map_match'`); it now also hosts the Strava webhook ingest (`kind = 'strava_event'`), hourly token rotation (`kind = 'token_refresh'`), the run-photo EXIF-strip + thumbnail (`kind = 'photo_process'`), and the club-photo EXIF-strip + thumbnail (`kind = 'club_photo_process'`, migration `20270301_001`) that moved off / never lived in Edge Functions (see `roadmap.md` Phase 2 backend bullets). The `kind` CHECK allowlist is maintained by ALTER migrations (latest adds `data_export`, `20270603_001`); a new kind must extend the CHECK + the Go dispatch switch + the pgtap kind test together. Data export is a job kind as of [decisions § 717](../architecture/decisions.md) — `kind = 'data_export'`, enqueued by `enqueue_data_export` alongside its `data_export_jobs` state row, with `max_attempts = 2` (every attempt past the tus Finish uploads a whole archive) and a 15-minute per-attempt worker clock instead of the generic five. The subject no longer blocks on the signed URL: they poll `GET /v1/export/jobs/latest`, which mints it at read time. The GPS distance recompute is a job kind as of migration `20270719000001` — `kind = 'distance_recompute'`, payload `{run_id, user_id}` (the `map_match` shape; `jobs` has no `run_id` column), enqueued only by the owner-only `request_distance_recompute` RPC below and deduped per run by the partial unique index `jobs_dedupe_distance_recompute` (same predicate as `jobs_dedupe_map_match`). The worker re-derives `runs.distance_m` from the stored track with the GPS distance estimator, keeping the original in `metadata.distance_recorded_m` ([gps_distance.md § Server recompute](../features/gps_distance.md#server-recompute)). The account-security mail is a job kind as of migration `20270804000001` — `kind = 'security_email'`, payload `{user_id, template, browser, platform, signed_in_at}`, enqueued by the `auth.sessions` triggers documented under `sign_in_devices` and drained by the Go worker's `handleSecurityEmail` ([email.md § Security emails](../features/email.md#security-emails)).
 
 ```sql
 create table jobs (
@@ -2189,10 +2233,10 @@ grant  execute on function public.<fn>(<args>) to authenticated;   -- and/or ser
 
 Add `authenticated` to the revoke list when no client role should hold it at all
 (the `cleanup_*` / `enqueue_*` cron family, and helpers only a SECURITY DEFINER
-trigger calls). 84 migrations write a function-level `from public, anon` revoke
-today (71 as `revoke execute`, 13 as `revoke all`); it is the house form for
+trigger calls). 85 migrations write a function-level `from public, anon` revoke
+today (72 as `revoke execute`, 13 as `revoke all`); it is the house form for
 exactly this reason, and `check_migration_function_revoke_noop.mjs` is what
-keeps it — it replays all 518 migrations in version order and fails the PR on
+keeps it — it replays all 520 migrations in version order and fails the PR on
 any EXECUTE revoke that leaves the other channel at its image-dependent
 default, in either direction. **Those four figures are derived, not typed**: the
 guard prints them and `check_migration_function_revoke_noop.test.mjs` asserts

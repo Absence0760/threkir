@@ -1431,6 +1431,7 @@ var orderByTable = map[string]string{
 	schema.TableRunGear:                  "run_id,gear_id",
 	schema.TableRunKudos:                 "user_id,run_id",
 	schema.TableSavedRoutes:              "user_id,route_id",
+	schema.TableSignInDevices:            "user_id,browser,platform",
 	schema.TableUserBlocks:               "blocker_id,blocked_id",
 	schema.TableUserCoachUsage:           "user_id,usage_date",
 	schema.TableUserDeviceSettings:       "user_id,device_id",
@@ -2272,6 +2273,10 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 		{name: "personal_records.json", table: schema.TablePersonalRecords, filter: uidEq, sel: "*"},
 		// device_tokens — redact the raw token below.
 		{name: "device_tokens.json", table: schema.TableDeviceTokens, filter: uidEq, sel: "*"},
+		// sign_in_devices — the coarse (browser, platform) classes that have
+		// signed in, kept for the new-device alert. Observed data about the
+		// subject, so it ships; it holds no User-Agent and no IP to redact.
+		{name: "sign_in_devices.json", table: schema.TableSignInDevices, filter: uidEq, sel: "*"},
 		// live_run_pings — short-TTL but in-flight rows may exist
 		// when an export is taken.
 		{name: "live_run_pings.json", table: schema.TableLiveRunPings, filter: uidEq, sel: "*"},

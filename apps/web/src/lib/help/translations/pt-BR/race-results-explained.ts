@@ -18,7 +18,7 @@ export const translation: GuideTranslation = {
 				},
 				{
 					type: 'p',
-					text: 'Na web, a linha menor abaixo de um tempo aparece como “oficial 41:58 · chip 41:20”. No app do celular, um “Tempo líquido” aparece abaixo do tempo principal quando é diferente dele. Se você largou atrasado, seu tempo bruto é maior que o seu tempo líquido.',
+					text: 'Na web, a linha menor abaixo de um tempo aparece como “bruto 41:58 · líquido 41:20”. No app do celular, um “Tempo líquido” aparece abaixo do tempo principal quando é diferente dele. Se você largou atrasado, seu tempo bruto é maior que o seu tempo líquido.',
 				},
 			],
 		},

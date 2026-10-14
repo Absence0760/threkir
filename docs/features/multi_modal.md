@@ -258,13 +258,27 @@ becomes an **action button**, not a tab.
   either modality has data, the tap fans. `keep_run_primary` stays as the
   explicit override for someone who logs other modalities and still wants
   the one-tap start.
-- **Long-press `Log` = open the capture fan.** One gesture, one
-  meaning: it used to open the menu under `keep_run_primary` and navigate
-  silently to the last-logged modality without it, so a press half a beat
-  too long landed a runner on Nutrition. Two exceptions, both where a fan
-  would offer nothing (decisions § 1739 run-only amendment): with only one
-  action left (Gym and Nutrition both hidden) a long-press is the tap, and
-  while a run records both gestures return to the recorder.
+- **Long-press `Log` = the runner's menu: what the tap does not do**
+  (decisions § 1892, replacing § 1644's "long-press opens the fan").
+  A bottom sheet of list rows, at most five:
+  - **Start today's workout**, captioned with the session's kind, only when
+    the active plan has a workout today that is not a rest day, not done,
+    not skipped, and has a structure or a target distance to follow. It
+    loads on the recorder through the same handoff as the plan's own Start.
+  - **Choose route**, only when a route is saved: the route picker, then
+    the recorder with that route selected.
+  - **Add past run**, always: the manual entry, which is what web's Log run
+    is from its History Log menu.
+  - **Log lift / Log food**, only when that modality is shown **and the tap
+    starts a run** (`keep_run_primary`). When the tap fans Run / Lift / Food
+    they are already one tap away and are not repeated.
+
+  A rest day, a finished workout or an empty route list would each open onto
+  a dead end, so those rows are left out rather than disabled. The recorder's
+  idle page keeps all of its controls (activity type, route, guided run,
+  plan): the menu is a shortcut set, and a long-press cannot be the only way
+  to anything. While a run records both gestures still return to the
+  recorder.
 - **The centre button says what a tap does.** When the tap starts a run it
   shows a play icon, the caption "Start run" and the spoken label "Start a
   run" instead of "+ Log"; while a run records it turns the error colour,
@@ -291,6 +305,11 @@ becomes an **action button**, not a tab.
 - **Accessibility:** the `Log` button has an explicit `Semantics` label
   ("Log an activity"); the sheet items are a single focus group; the
   raised button keeps a ≥48 dp touch target.
+  The long-press is announced: TalkBack reads "double-tap and hold to show
+  more options", and since VoiceOver has no long-press the menu is also a
+  "More options" custom action on the button. The menu's rows are one focus
+  group titled "More options", and they scroll rather than overflow at the
+  largest text size.
 
 ## Home — a prioritised, self-hiding card stack
 

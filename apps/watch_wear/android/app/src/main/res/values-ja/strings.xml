@@ -29,6 +29,13 @@
     <string name="tile_tap_to_start">タップして開始</string>
     <string name="tile_running">実行中</string>
     <string name="tile_paused">一時停止</string>
+    <!-- Watch-face complication -->
+    <string name="complication_label">ランの記録</string>
+    <string name="complication_last_short">前回</string>
+    <string name="complication_last_run">前回のラン</string>
+    <string name="complication_desc_recording">記録中、経過 %1$s、%2$s</string>
+    <string name="complication_desc_paused">一時停止 %1$s、%2$s</string>
+    <string name="complication_desc_last_run">前回のラン %1$s、%2$s</string>
 
     <string name="notif_recording_run">ランを記録中</string>
     <string name="notif_paused">一時停止中</string>
@@ -71,6 +78,7 @@
     <string name="race_finish_short">完了</string>
     <string name="cd_finish_race">レースを終了</string>
     <string name="race_ended">レース終了</string>
+    <string name="race_late_start">遅れスタート</string>
     <string name="race_clock">レース %1$s</string>
     <string name="race_result_finished">完走 %1$s</string>
     <string name="race_result_dnf">レース DNF</string>

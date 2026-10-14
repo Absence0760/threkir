@@ -31,7 +31,7 @@ export const translation: GuideTranslation = {
 				},
 				{
 					type: 'p',
-					text: 'Os corredores que disseram **Eu vou** agora veem **Prova pronta** na aba Corrida do celular e “RACE ARMED” no relógio Wear OS.',
+					text: 'Os corredores que disseram **Eu vou** agora veem **Prova preparada** na aba Corrida do celular e “PROVA PREPARADA” no relógio Wear OS.',
 				},
 				{
 					type: 'note',
@@ -77,9 +77,9 @@ export const translation: GuideTranslation = {
 				{
 					type: 'steps',
 					items: [
-						'Quando o último corredor chegar (ou o seu tempo de corte tiver passado), escolha **Finalizar corrida**.',
+						'Quando o último corredor chegar (ou o seu tempo de corte tiver passado), escolha **Encerrar corrida**.',
 						'A confirmação, na web e no app do celular, informa quantos corredores que largaram estão sem resultado. Esses corredores serão marcados como DNF.',
-						'Confirme com **Finalizar corrida**.',
+						'Confirme com **Encerrar corrida**.',
 					],
 				},
 				{
@@ -111,7 +111,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'note',
 					tone: 'caution',
-					text: 'O cancelamento não pode ser desfeito. Use **Finalizar corrida** se as pessoas realmente correram e você quer os resultados delas.',
+					text: 'O cancelamento não pode ser desfeito. Use **Encerrar corrida** se as pessoas realmente correram e você quer os resultados delas.',
 				},
 			],
 		},

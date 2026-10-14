@@ -30,6 +30,13 @@
     <string name="tile_tap_to_start">Zum Starten tippen</string>
     <string name="tile_running">LÄUFT</string>
     <string name="tile_paused">PAUSIERT</string>
+    <!-- Watch-face complication -->
+    <string name="complication_label">Laufdaten</string>
+    <string name="complication_last_short">Zuletzt</string>
+    <string name="complication_last_run">Letzter Lauf</string>
+    <string name="complication_desc_recording">Aufzeichnung, %1$s vergangen, %2$s</string>
+    <string name="complication_desc_paused">Pausiert bei %1$s, %2$s</string>
+    <string name="complication_desc_last_run">Letzter Lauf: %1$s in %2$s</string>
 
     <string name="notif_recording_run">Lauf wird aufgezeichnet</string>
     <string name="notif_paused">Pausiert</string>
@@ -78,6 +85,7 @@
     <string name="race_finish_short">Ziel</string>
     <string name="cd_finish_race">Rennen beenden</string>
     <string name="race_ended">Rennen beendet</string>
+    <string name="race_late_start">Später Start</string>
     <string name="race_clock">Rennen %1$s</string>
     <string name="race_result_finished">Im Ziel %1$s</string>
     <string name="race_result_dnf">Rennen DNF</string>

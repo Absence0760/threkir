@@ -1602,7 +1602,7 @@
             "type": "list",
             "items": [
               "**Pré-corrida**: o organizador ainda não preparou o cronômetro da prova.",
-              "**Armado**: o cronômetro está preparado e aguardando a largada.",
+              "**Preparada**: o cronômetro está preparado e aguardando a largada.",
               "**Em andamento**: a prova começou, com o tempo decorrido.",
               "**Concluído**: a prova terminou.",
               "**Cancelado**: o organizador cancelou a prova."
@@ -1718,7 +1718,7 @@
           },
           {
             "type": "p",
-            "text": "Os corredores que disseram **Eu vou** agora veem **Prova pronta** na aba Corrida do celular e “RACE ARMED” no relógio Wear OS."
+            "text": "Os corredores que disseram **Eu vou** agora veem **Prova preparada** na aba Corrida do celular e “PROVA PREPARADA” no relógio Wear OS."
           },
           {
             "type": "note",
@@ -1764,9 +1764,9 @@
           {
             "type": "steps",
             "items": [
-              "Quando o último corredor chegar (ou o seu tempo de corte tiver passado), escolha **Finalizar corrida**.",
+              "Quando o último corredor chegar (ou o seu tempo de corte tiver passado), escolha **Encerrar corrida**.",
               "A confirmação, na web e no app do celular, informa quantos corredores que largaram estão sem resultado. Esses corredores serão marcados como DNF.",
-              "Confirme com **Finalizar corrida**."
+              "Confirme com **Encerrar corrida**."
             ]
           },
           {
@@ -1798,7 +1798,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "O cancelamento não pode ser desfeito. Use **Finalizar corrida** se as pessoas realmente correram e você quer os resultados delas."
+            "text": "O cancelamento não pode ser desfeito. Use **Encerrar corrida** se as pessoas realmente correram e você quer os resultados delas."
           }
         ]
       },
@@ -1861,7 +1861,7 @@
           },
           {
             "type": "p",
-            "text": "Na web, a linha menor abaixo de um tempo aparece como “oficial 41:58 · chip 41:20”. No app do celular, um “Tempo líquido” aparece abaixo do tempo principal quando é diferente dele. Se você largou atrasado, seu tempo bruto é maior que o seu tempo líquido."
+            "text": "Na web, a linha menor abaixo de um tempo aparece como “bruto 41:58 · líquido 41:20”. No app do celular, um “Tempo líquido” aparece abaixo do tempo principal quando é diferente dele. Se você largou atrasado, seu tempo bruto é maior que o seu tempo líquido."
           }
         ]
       },
@@ -1997,16 +1997,16 @@
         ]
       },
       {
-        "heading": "Prova pronta e Prova AO VIVO",
+        "heading": "Prova preparada e Prova AO VIVO",
         "blocks": [
           {
             "type": "p",
-            "text": "Quando o organizador prepara a prova, a aba Corrida do app do celular mostra **Prova pronta** com “aguardando a largada”. O relógio Wear OS mostra “RACE ARMED” acima do botão Start. Quando o organizador dá o GO, isso muda para **Prova AO VIVO** (“RACE LIVE” no relógio), com o tempo decorrido e “toque em Iniciar”."
+            "text": "Quando o organizador prepara a prova, a aba Corrida do app do celular mostra **Prova preparada** com “aguardando a largada”. O relógio Wear OS mostra “PROVA PREPARADA” acima do botão Start. Quando o organizador dá o GO, isso muda para **Prova AO VIVO** (“PROVA AO VIVO” no relógio), com o tempo decorrido e “toque em Iniciar”."
           },
           {
             "type": "note",
             "tone": "caution",
-            "text": "Seu celular ou relógio não começa a gravar sozinho: pressione Iniciar você mesmo. Você pode começar na linha de largada enquanto a prova mostra **Prova pronta**, ou quando vir **Prova AO VIVO**. Uma gravação iniciada antes entra na prova no GO, no celular e no relógio Wear OS, e seu tempo líquido passa a contar a partir do GO, e não de quando você pressionou Iniciar."
+            "text": "Seu celular ou relógio não começa a gravar sozinho: pressione Iniciar você mesmo. Você pode começar na linha de largada enquanto a prova mostra **Prova preparada**, ou quando vir **Prova AO VIVO**. Uma gravação iniciada antes entra na prova no GO, no celular e no relógio Wear OS, e seu tempo líquido passa a contar a partir do GO, e não de quando você pressionou Iniciar."
           },
           {
             "type": "p",
@@ -2082,7 +2082,7 @@
             "items": [
               "O **Tempo bruto** vai do momento em que o organizador deu o GO até a sua chegada. É o tempo usado na sua classificação.",
               "O **Tempo líquido** vai de quando você pressionou Iniciar até a sua chegada, incluindo as pausas. Se você pressionou Iniciar antes do GO, ele conta a partir do GO, então nunca é maior que o seu tempo bruto.",
-              "Se você largar mais de 5 minutos depois do GO, ou se sua primeira posição estiver a mais de 200 m da largada do percurso, o app do celular mostra um aviso de largada atrasada. Seu tempo bruto continua contando a partir do GO, então uma largada atrasada o deixa maior que o seu tempo líquido."
+              "Se você largar mais de 5 minutos depois do GO, ou se sua primeira posição estiver a mais de 200 m da largada do percurso, o app do celular mostra um aviso de largada tardia e um relógio Wear OS mantém **Largada tardia** abaixo do relógio da prova. Seu tempo bruto continua contando a partir do GO, então uma largada tardia o deixa maior que o seu tempo líquido."
             ]
           },
           {
@@ -2484,7 +2484,7 @@
           },
           {
             "type": "p",
-            "text": "Durante o compartilhamento, um selo **Ao vivo** aparece na tela de gravação. Toque nele para **Compartilhar link novamente**, **Parar de compartilhar** ou definir um horário em **Sem voltar até…**."
+            "text": "Durante o compartilhamento, um selo **Ao vivo** aparece na tela de gravação. Toque nele para **Compartilhar link novamente**, **Parar de compartilhar** ou definir um horário em **Sem retorno até…**."
           },
           {
             "type": "p",
@@ -2535,7 +2535,7 @@
             "type": "list",
             "items": [
               "**Alerta de atraso**: escolha um tempo em **Avisar os contatos após silêncio de** na web, ou **Avisar após silêncio de** no app. Se sua corrida ao vivo não enviar nada por esse tempo, seus contatos confirmados recebem por e-mail o seu link ao vivo. Fica **Desativado** até você escolher um tempo.",
-              "**Sem voltar até…**: durante uma corrida compartilhada ao vivo, toque no selo **Ao vivo** e escolha quando você espera terminar. Se a corrida ainda estiver em andamento nesse horário, seus contatos recebem um alerta. O horário fica guardado no nosso servidor, então continua valendo mesmo se a bateria do seu celular acabar. Você também pode defini-lo pela sua própria página ao vivo na web."
+              "**Sem retorno até…**: durante uma corrida compartilhada ao vivo, toque no selo **Ao vivo** e escolha quando você espera terminar. Se a corrida ainda estiver em andamento nesse horário, seus contatos recebem um alerta. O horário fica guardado no nosso servidor, então continua valendo mesmo se a bateria do seu celular acabar. Você também pode defini-lo pela sua própria página ao vivo na web."
             ]
           },
           {

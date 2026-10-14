@@ -282,6 +282,83 @@ class RaceRunStateTest {
         }
     }
 
+    // ───────────── Late start ─────────────
+
+    private val startLat = 51.4
+    private val startLng = -0.2
+    private val withStart = RaceSessionClient.RaceCourse("c1", "5K", 5000.0, 51.5, -0.1, startLat, startLng)
+
+    private fun late(
+        startedAfterGoMs: Long,
+        northOfStartM: Double = 0.0,
+        course: RaceSessionClient.RaceCourse? = withStart,
+        offsetMs: Long? = null,
+        gunMs: Long? = t0,
+    ) = raceLateStart(
+        gunMs = gunMs,
+        recordingStartedDeviceMs = t0 + startedAfterGoMs,
+        serverOffsetMs = offsetMs,
+        firstFixLat = startLat + northOfStartM / metresPerDegLat,
+        firstFixLng = startLng,
+        course = course,
+    )
+
+    @Test
+    fun `a start on the line within five minutes of GO is not late`() {
+        assertFalse(late(startedAfterGoMs = 300_000L, northOfStartM = 199.0))
+    }
+
+    @Test
+    fun `a start more than five minutes after GO is late`() {
+        assertTrue(late(startedAfterGoMs = 300_001L))
+    }
+
+    @Test
+    fun `a first fix more than 200 m from the course start is late`() {
+        assertTrue(late(startedAfterGoMs = 0L, northOfStartM = 201.0))
+    }
+
+    @Test
+    fun `a course with no start point checks the time arm alone`() {
+        val noStart = withStart.copy(startLat = null, startLng = null)
+        assertFalse(late(startedAfterGoMs = 0L, northOfStartM = 5_000.0, course = noStart))
+        assertFalse(late(startedAfterGoMs = 0L, northOfStartM = 5_000.0, course = null))
+        assertTrue(late(startedAfterGoMs = 300_001L, course = null))
+    }
+
+    @Test
+    fun `the Start is carried onto the server clock before it is compared with GO`() {
+        // Device runs 2 min slow: a device-clock Start 4 min after GO is 6 min on the server clock.
+        assertTrue(late(startedAfterGoMs = 240_000L, offsetMs = 120_000L))
+        assertFalse(late(startedAfterGoMs = 360_000L, offsetMs = -120_000L))
+    }
+
+    @Test
+    fun `no gun, no Start or no finite first fix never flags`() {
+        assertFalse(late(startedAfterGoMs = 3_600_000L, gunMs = null))
+        assertFalse(
+            raceLateStart(t0, null, null, startLat, startLng, withStart),
+        )
+        assertFalse(
+            raceLateStart(t0, t0 + 3_600_000L, null, Double.NaN, startLng, withStart),
+        )
+        assertFalse(
+            raceLateStart(t0, t0 + 3_600_000L, null, null, null, withStart),
+        )
+    }
+
+    @Test
+    fun `the late-start check runs on the first fix and again when the course lands`() {
+        val src = File("src/main/kotlin/com/runapp/watchwear/RunViewModel.kt").readText()
+        assertTrue(src.contains("maybeNoteRaceFirstFix(m)"))
+        assertTrue(src.contains("raceLateStart("))
+        val courseLands = src.substringAfter("RaceFinishDetector.forCourse(course.finishLat, course.finishLng, course.distanceM)")
+            .substringBefore("}")
+        assertTrue("the course landing re-runs the check", courseLands.contains("evaluateRaceLateStart()"))
+        val ui = File("src/main/kotlin/com/runapp/watchwear/ui/RunWatchApp.kt").readText()
+        assertTrue("the running screen surfaces the flag", ui.contains("R.string.race_late_start"))
+    }
+
     // ───────────── Wiring ─────────────
 
     @Test

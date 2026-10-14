@@ -8118,6 +8118,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Opt in to occasional onboarding, re-engagement, and streak nudges. Off by default; separate from your weekly digest and notification emails.';
 
   @override
+  String get prefsEmailNewDeviceAlerts => 'New-device sign-in alerts';
+
+  @override
+  String get prefsEmailNewDeviceAlertsHint =>
+      'Email me the first time my account signs in from a browser or device it hasn\'t used before. Password-change notices always send and can\'t be turned off.';
+
+  @override
   String get prefsEmailReOptInFailed =>
       'Couldn\'t lift your earlier unsubscribe. Emails may still be blocked — try again.';
 
@@ -12625,11 +12632,21 @@ class AppLocalizationsEn extends AppLocalizations {
       'Enter your bib number so we import only your result, not the whole field.';
 
   @override
-  String get racesUltraSignUpAthleteId => 'UltraSignup athlete ID';
+  String racesUltraSignUpImportingAs(String name, String id) {
+    return 'Importing as $name (UltraSignup #$id)';
+  }
 
   @override
-  String get racesUltraSignUpAthleteHint =>
-      'Enter your UltraSignup athlete ID, or leave it blank to use the one this listing carries.';
+  String get racesUltraSignUpLinkedHint =>
+      'Only your result for this race comes across, matched on UltraSignup\'s own race id and date.';
+
+  @override
+  String get racesUltraSignUpNotLinked =>
+      'Link your UltraSignup profile first, then import from here.';
+
+  @override
+  String get racesUltraSignUpPersonNotFound =>
+      'UltraSignup no longer lists your linked profile under that name. Link it again in Settings.';
 
   @override
   String get racesPasteResultHint =>
@@ -12701,7 +12718,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get integrationsUltrasignupInfo =>
-      'UltraSignup handles entries and results for trail and ultra races. Find your race in the race calendar and give your UltraSignup athlete ID to pull your finishing times across.';
+      'UltraSignup handles entries and results for trail and ultra races. Link your UltraSignup profile here once, then import a race\'s result from the race calendar.';
 
   @override
   String get integrationsChronotrackInfo =>
@@ -12724,6 +12741,79 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get integrationsUltrasignupUnavailable =>
       'UltraSignup import isn\'t available yet. parkrun and manual paste still work.';
+
+  @override
+  String get integrationsUltrasignupFindLabel =>
+      'Find your UltraSignup profile';
+
+  @override
+  String get integrationsUltrasignupFirstName => 'First name';
+
+  @override
+  String get integrationsUltrasignupLastName => 'Last name';
+
+  @override
+  String get integrationsUltrasignupNameHint =>
+      'Use the name you enter races under. UltraSignup lists everyone with that name, and you pick which one is you.';
+
+  @override
+  String get integrationsUltrasignupFind => 'Find me';
+
+  @override
+  String get integrationsUltrasignupSearching => 'Searching UltraSignup…';
+
+  @override
+  String get integrationsUltrasignupNoMatches =>
+      'UltraSignup has nobody by that name. Check the spelling you race under.';
+
+  @override
+  String get integrationsUltrasignupPickPrompt => 'Which of these is you?';
+
+  @override
+  String integrationsUltrasignupCandidateAge(int age) {
+    return 'Age $age';
+  }
+
+  @override
+  String integrationsUltrasignupCandidateResults(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n results',
+      one: '$n result',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get integrationsUltrasignupThisIsMe => 'This is me';
+
+  @override
+  String integrationsUltrasignupLinkedAs(String name, String id) {
+    return 'Linked as $name (UltraSignup #$id)';
+  }
+
+  @override
+  String get integrationsUltrasignupUnlink => 'Unlink';
+
+  @override
+  String get integrationsUltrasignupLinked => 'UltraSignup profile linked.';
+
+  @override
+  String get integrationsUltrasignupLinkFailed =>
+      'Couldn\'t link your UltraSignup profile. Try again.';
+
+  @override
+  String get integrationsUltrasignupLookupFailed =>
+      'Couldn\'t search UltraSignup. Try again in a moment.';
+
+  @override
+  String get integrationsUltrasignupUnlinked =>
+      'UltraSignup profile unlinked. Runs you already imported stay.';
+
+  @override
+  String get integrationsUltrasignupUnlinkFailed =>
+      'Couldn\'t unlink your UltraSignup profile. Try again.';
 
   @override
   String get integrationsChronotrack => 'ChronoTrack';
@@ -15158,4 +15248,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get liveRunnerAnonymous => 'Runner';
+
+  @override
+  String get logMoreTitle => 'More options';
+
+  @override
+  String get logMoreLongPressHint => 'show more options';
+
+  @override
+  String get logMoreTodaysWorkout => 'Start today\'s workout';
 }

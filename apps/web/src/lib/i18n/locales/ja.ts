@@ -4406,6 +4406,8 @@ export const messages = {
 	"prefs.emailLifecycleDripHint": "オンボーディング、再開、連続記録のリマインダーを時々受け取ります。初期設定はオフで、週刊ダイジェストや通知メールとは別です。",
 	"prefs.notifyDataExportReady": "データエクスポートの完了",
 	"prefs.notifyDataExportReadyHint": "リクエストしたデータのエクスポートが完了したら、メールとプッシュで知らせます。ダウンロードリンクはページを開いた時点で作成されるため、待っている間に期限切れになることはありません。",
+	"prefs.emailNewDeviceAlerts": "新しいデバイスでのサインイン通知",
+	"prefs.emailNewDeviceAlertsHint": "これまで使われたことのないブラウザやデバイスからアカウントにサインインがあったときに、メールで知らせます。パスワード変更の通知は常に送信され、オフにすることはできません。",
 	// Gym (Phase 4 multi-modal, decisions §63)
 	"nav.gym": "ジム",
 	"nav.nutrition": "栄養",

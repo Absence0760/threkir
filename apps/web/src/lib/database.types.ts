@@ -4481,6 +4481,30 @@ export type Database = {
           },
         ]
       }
+      sign_in_devices: {
+        Row: {
+          browser: string
+          first_seen_at: string
+          last_seen_at: string
+          platform: string
+          user_id: string
+        }
+        Insert: {
+          browser: string
+          first_seen_at?: string
+          last_seen_at?: string
+          platform: string
+          user_id: string
+        }
+        Update: {
+          browser?: string
+          first_seen_at?: string
+          last_seen_at?: string
+          platform?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       training_plans: {
         Row: {
           assigned_by_coach_id: string | null
@@ -6339,6 +6363,7 @@ export type Database = {
         Args: { lat: number; lng: number; zones_json: Json }
         Returns: boolean
       }
+      prune_sign_in_devices: { Args: never; Returns: number }
       public_profile_by_id: {
         Args: { p_id: string }
         Returns: {
@@ -6776,6 +6801,8 @@ export type Database = {
         Args: { p_id: string; p_opt_in: boolean }
         Returns: boolean
       }
+      sign_in_browser_class: { Args: { p_ua: string }; Returns: string }
+      sign_in_platform_class: { Args: { p_ua: string }; Returns: string }
       submit_report: {
         Args: {
           p_notes?: string

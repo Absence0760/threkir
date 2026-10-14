@@ -14,6 +14,7 @@ import 'effort_rank.dart';
 import 'paged_read.dart';
 import 'segments_rank.dart';
 import 'smoothed_sidecar.dart';
+import 'ultrasignup_person.dart';
 
 // Column-level grant lockdowns: see migrations 20260801_001 +
 // 20260818_001 (clubs.invite_token) and 20260723_001 + 20260806_001 +
@@ -6366,6 +6367,77 @@ class ApiClient {
         .delete()
         .eq(IntegrationRow.colUserId, viewerId)
         .eq(IntegrationRow.colProvider, provider);
+  }
+
+  /// The runner's stored UltraSignup person, or null when they have not linked
+  /// one (or are signed out). Owner-only by RLS, like every `integrations`
+  /// row, and scoped to the caller here as well. Mirrors web
+  /// `fetchUltraSignUpLink` (decisions § 1841).
+  Future<UltraSignUpPersonLink?> fetchUltraSignUpLink() async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) return null;
+    final row = await _client
+        .from(IntegrationRow.table)
+        .select('${IntegrationRow.colId}, ${IntegrationRow.colUserId}, '
+            '${IntegrationRow.colProvider}, ${IntegrationRow.colExternalId}, '
+            '${IntegrationRow.colExternalFirstName}, '
+            '${IntegrationRow.colExternalLastName}')
+        .eq(IntegrationRow.colUserId, viewerId)
+        .eq(IntegrationRow.colProvider, ultraSignUpProvider)
+        .maybeSingle();
+    return ultraSignUpLinkFromRow(
+        row == null ? null : IntegrationRow.fromJson(row));
+  }
+
+  /// Store the person the runner picked. One row per runner per provider, so
+  /// a re-pick replaces the last one. Mirrors web `linkUltraSignUpPerson`.
+  Future<void> linkUltraSignUpPerson(UltraSignUpPersonLink link) async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) throw Exception('Not authenticated');
+    await _client.from(IntegrationRow.table).upsert(
+      {
+        IntegrationRow.colUserId: viewerId,
+        IntegrationRow.colProvider: ultraSignUpProvider,
+        IntegrationRow.colExternalId: link.personId,
+        IntegrationRow.colExternalFirstName: link.firstName,
+        IntegrationRow.colExternalLastName: link.lastName,
+      },
+      onConflict: '${IntegrationRow.colUserId},${IntegrationRow.colProvider}',
+    );
+  }
+
+  /// Forget the stored person. Results already imported stay — they are the
+  /// runner's runs, not the link's. Mirrors web `unlinkUltraSignUpPerson`.
+  Future<void> unlinkUltraSignUpPerson() async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) throw Exception('Not authenticated');
+    await _client
+        .from(IntegrationRow.table)
+        .delete()
+        .eq(IntegrationRow.colUserId, viewerId)
+        .eq(IntegrationRow.colProvider, ultraSignUpProvider);
+  }
+
+  /// The people UltraSignup knows by this name, for the runner to pick
+  /// themselves from — `race-results-import`'s `lookup` mode, which reads
+  /// nothing of ours and writes nothing. A refusal surfaces as the
+  /// [FunctionException] the function answered with (503
+  /// `provider_not_configured` when the leg is off on this deployment), so the
+  /// caller decides what each one means. Mirrors web `lookupUltraSignUpPeople`.
+  Future<List<UltraSignUpCandidate>> lookupUltraSignUpPeople(
+    String firstName,
+    String lastName,
+  ) async {
+    final res = await _client.functions.invoke(
+      'race-results-import',
+      body: {
+        'provider': ultraSignUpProvider,
+        'lookup': true,
+        'ultraSignUpFirstName': firstName.trim(),
+        'ultraSignUpLastName': lastName.trim(),
+      },
+    );
+    return parseUltraSignUpCandidates(res.data);
   }
 
   /// Trigger a manual Strava backfill via the `strava-import` Edge

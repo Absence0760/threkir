@@ -50,6 +50,11 @@ class SignOutLifecycleWiringTest {
             "must clear the tile cache",
             Regex("""TileSource\.get\(.*\)\.clear\(\)""").containsMatchIn(body),
         )
+        assertTrue(
+            "must clear the complication's last run, or the next account's watch " +
+                "face shows the previous one's distance",
+            body.contains("lastRunStore.clear()"),
+        )
     }
 
     /// The checkpoint is the same run payload as a queued run, reached by a

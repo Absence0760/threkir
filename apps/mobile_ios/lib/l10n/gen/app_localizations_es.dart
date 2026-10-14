@@ -166,7 +166,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String routePickerEmptyNoMatch(Object query) {
-    return 'Ninguna ruta coincide con \"$query\"';
+    return 'Ninguna ruta coincide con «$query»';
   }
 
   @override
@@ -491,7 +491,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String peopleEmptySearchTitle(Object query) {
-    return 'Ningún corredor coincide con \"$query\"';
+    return 'Ningún corredor coincide con «$query»';
   }
 
   @override
@@ -2636,7 +2636,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String addRunPickerNoMatch(String query) {
-    return 'Ninguna ruta coincide con \"$query\"';
+    return 'Ninguna ruta coincide con «$query»';
   }
 
   @override
@@ -2965,12 +2965,12 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String runDetailRouteSaved(String name, int kept, int smoothed) {
-    return '\"$name\" guardada — $kept puntos de paso ($smoothed suavizados)';
+    return '«$name» guardada — $kept puntos de paso ($smoothed suavizados)';
   }
 
   @override
   String runDetailRouteSaveFailed(String name) {
-    return 'No se pudo guardar \"$name\" como ruta.';
+    return 'No se pudo guardar «$name» como ruta.';
   }
 
   @override
@@ -3134,7 +3134,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String routesImported(String name) {
-    return '\"$name\" importada';
+    return '«$name» importada';
   }
 
   @override
@@ -3153,7 +3153,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String routesSaved(String name) {
-    return '\"$name\" guardada';
+    return '«$name» guardada';
   }
 
   @override
@@ -4086,7 +4086,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String exploreRoutesSaved(String name) {
-    return '\"$name\" guardada en tu biblioteca';
+    return '«$name» guardada en tu biblioteca';
   }
 
   @override
@@ -4097,7 +4097,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String exploreRoutesRemoved(String name) {
-    return '\"$name\" quitada de tu biblioteca';
+    return '«$name» quitada de tu biblioteca';
   }
 
   @override
@@ -4629,7 +4629,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String profileNotifEventRsvpTitled(String name, String title) {
-    return '$name confirmó asistencia a tu evento \"$title\"';
+    return '$name confirmó asistencia a tu evento «$title»';
   }
 
   @override
@@ -4674,7 +4674,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String profileNotifEventCancelTitled(String title) {
-    return 'Se canceló una ocurrencia de \"$title\"';
+    return 'Se canceló una ocurrencia de «$title»';
   }
 
   @override
@@ -4701,7 +4701,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String profileNotifEventReminderTitled(String title) {
-    return '\"$title\" está por comenzar';
+    return '«$title» está por comenzar';
   }
 
   @override
@@ -5079,7 +5079,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String clubDetailRouteSaved(String name) {
-    return '\"$name\" guardada';
+    return '«$name» guardada';
   }
 
   @override
@@ -5912,7 +5912,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String planNewReplaceActiveNamed(String name) {
-    return 'Ya tienes un plan activo: \"$name\". Crear un plan nuevo marcará el actual como completado (podrás encontrarlo en Gestionar planes). ¿Continuar?';
+    return 'Ya tienes un plan activo: «$name». Crear un plan nuevo marcará el actual como completado (podrás encontrarlo en Gestionar planes). ¿Continuar?';
   }
 
   @override
@@ -8200,6 +8200,14 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get prefsEmailLifecycleDripHint =>
       'Suscríbete para recibir recordatorios ocasionales de inicio, reactivación y rachas. Desactivado por defecto; independiente de tu resumen semanal y de tus correos de notificaciones.';
+
+  @override
+  String get prefsEmailNewDeviceAlerts =>
+      'Alertas de inicio de sesión en dispositivos nuevos';
+
+  @override
+  String get prefsEmailNewDeviceAlertsHint =>
+      'Avisarme por correo la primera vez que se inicie sesión en mi cuenta desde un navegador o dispositivo que no haya usado antes. Los avisos de cambio de contraseña se envían siempre y no se pueden desactivar.';
 
   @override
   String get prefsEmailReOptInFailed =>
@@ -10830,7 +10838,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String gymLibraryEmptySearch(String query) {
-    return 'Ninguna rutina coincide con \"$query\".';
+    return 'Ninguna rutina coincide con «$query».';
   }
 
   @override
@@ -12752,11 +12760,21 @@ class AppLocalizationsEs extends AppLocalizations {
       'Introduce tu dorsal para importar solo tu resultado, no toda la clasificación.';
 
   @override
-  String get racesUltraSignUpAthleteId => 'ID de atleta de UltraSignup';
+  String racesUltraSignUpImportingAs(String name, String id) {
+    return 'Importando como $name (UltraSignup #$id)';
+  }
 
   @override
-  String get racesUltraSignUpAthleteHint =>
-      'Introduce tu ID de atleta de UltraSignup, o déjalo en blanco para usar el de esta carrera.';
+  String get racesUltraSignUpLinkedHint =>
+      'Solo se trae tu resultado de esta carrera, cotejado con el ID de carrera y la fecha de UltraSignup.';
+
+  @override
+  String get racesUltraSignUpNotLinked =>
+      'Primero vincula tu perfil de UltraSignup y luego importa desde aquí.';
+
+  @override
+  String get racesUltraSignUpPersonNotFound =>
+      'UltraSignup ya no muestra tu perfil vinculado con ese nombre. Vuelve a vincularlo en Ajustes.';
 
   @override
   String get racesPasteResultHint =>
@@ -12829,7 +12847,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get integrationsUltrasignupInfo =>
-      'UltraSignup gestiona inscripciones y resultados de carreras de trail y ultra. Busca tu carrera en el calendario e indica tu ID de atleta de UltraSignup para traer tus tiempos de meta.';
+      'UltraSignup gestiona inscripciones y resultados de carreras de trail y ultra. Vincula aquí tu perfil de UltraSignup una vez y luego importa el resultado de una carrera desde el calendario.';
 
   @override
   String get integrationsChronotrackInfo =>
@@ -12852,6 +12870,81 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get integrationsUltrasignupUnavailable =>
       'La importación de UltraSignup aún no está disponible. parkrun y el pegado manual siguen funcionando.';
+
+  @override
+  String get integrationsUltrasignupFindLabel =>
+      'Encuentra tu perfil de UltraSignup';
+
+  @override
+  String get integrationsUltrasignupFirstName => 'Nombre';
+
+  @override
+  String get integrationsUltrasignupLastName => 'Apellido';
+
+  @override
+  String get integrationsUltrasignupNameHint =>
+      'Usa el nombre con el que te inscribes en las carreras. UltraSignup muestra a todas las personas con ese nombre y tú eliges cuál eres.';
+
+  @override
+  String get integrationsUltrasignupFind => 'Buscarme';
+
+  @override
+  String get integrationsUltrasignupSearching => 'Buscando en UltraSignup…';
+
+  @override
+  String get integrationsUltrasignupNoMatches =>
+      'UltraSignup no tiene a nadie con ese nombre. Revisa cómo lo escribes al inscribirte.';
+
+  @override
+  String get integrationsUltrasignupPickPrompt =>
+      '¿Cuál de estas personas eres tú?';
+
+  @override
+  String integrationsUltrasignupCandidateAge(int age) {
+    return 'Edad $age';
+  }
+
+  @override
+  String integrationsUltrasignupCandidateResults(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n resultados',
+      one: '$n resultado',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get integrationsUltrasignupThisIsMe => 'Soy yo';
+
+  @override
+  String integrationsUltrasignupLinkedAs(String name, String id) {
+    return 'Vinculado como $name (UltraSignup #$id)';
+  }
+
+  @override
+  String get integrationsUltrasignupUnlink => 'Desvincular';
+
+  @override
+  String get integrationsUltrasignupLinked =>
+      'Perfil de UltraSignup vinculado.';
+
+  @override
+  String get integrationsUltrasignupLinkFailed =>
+      'No se pudo vincular tu perfil de UltraSignup. Inténtalo de nuevo.';
+
+  @override
+  String get integrationsUltrasignupLookupFailed =>
+      'No se pudo buscar en UltraSignup. Inténtalo de nuevo en un momento.';
+
+  @override
+  String get integrationsUltrasignupUnlinked =>
+      'Perfil de UltraSignup desvinculado. Las carreras que ya importaste se quedan.';
+
+  @override
+  String get integrationsUltrasignupUnlinkFailed =>
+      'No se pudo desvincular tu perfil de UltraSignup. Inténtalo de nuevo.';
 
   @override
   String get integrationsChronotrack => 'ChronoTrack';
@@ -15310,4 +15403,13 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get liveRunnerAnonymous => 'Corredor';
+
+  @override
+  String get logMoreTitle => 'Más opciones';
+
+  @override
+  String get logMoreLongPressHint => 'mostrar más opciones';
+
+  @override
+  String get logMoreTodaysWorkout => 'Iniciar el entrenamiento de hoy';
 }

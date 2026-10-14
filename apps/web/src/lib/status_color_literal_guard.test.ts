@@ -614,9 +614,8 @@ const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
 		FFFFFF: [1, 'fixed-canvas'],
 	},
 	// Header over that same hero: white hover ink, 5.699:1 on the ramp's
-	// palest stop. The motion toggle sits in the same bar with the same two.
+	// palest stop.
 	'lib/components/PublicHeader.svelte': { FFFFFF: [2, 'fixed-canvas'] },
-	'lib/components/marketing/MotionToggle.svelte': { FFFFFF: [2, 'fixed-canvas'] },
 	// The auth shell's brand panel paints --brand-ramp, so its stops are an
 	// app.css declaration and are not listed. What is left is the panel's white
 	// copy and the recording readout's peach label and white figure on its

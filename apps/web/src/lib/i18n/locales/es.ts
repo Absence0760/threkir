@@ -2546,7 +2546,6 @@ export const messages = {
 	"landing.closingBody": "Crea una cuenta gratis: sin tarjeta de crédito ni muros de pago.",
 	"landing.featuresTitle": "De la primera ruta al día de la carrera",
 	"landing.featuresSub": "Planifícala, trae tu historial, lee cada parcial y entrena hacia un objetivo, todo ya en la web.",
-	"motion.pause": "Pausar animaciones",
 	"landing.footerTagline": "registra donde sea, analiza donde sea.",
 	"landing.footerPrivacy": "Privacidad",
 	"landing.footerTerms": "Términos",

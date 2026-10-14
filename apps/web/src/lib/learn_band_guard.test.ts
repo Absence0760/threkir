@@ -71,12 +71,11 @@ test('the scan reaches the routes and can see a real mount', () => {
 // Once the page scrolls, the bar stays on screen over whatever content passes
 // under it, so it paints its own glass and the ramp above no longer vouches for
 // its inks. The worst ground that glass can sit on is white, the lightest
-// surface any theme puts on a page, so every ink the bar draws — its own and
-// the motion toggle's — is measured over the glass composited on white. The
-// alpha and the inks are read from the source, so lightening either fails here.
+// surface any theme puts on a page, so every ink the bar draws is measured
+// over the glass composited on white. The alpha and the inks are read from the
+// source, so lightening either fails here.
 
 const HEADER = join(HERE, 'components', 'PublicHeader.svelte');
-const TOGGLE = join(HERE, 'components', 'marketing', 'MotionToggle.svelte');
 
 type Rgb = [number, number, number];
 
@@ -118,8 +117,8 @@ test('every ink on the scrolled header glass clears AA over the lightest ground'
 
 	const white: Rgb = [255, 255, 255];
 	const ground = over([+glass[1], +glass[2], +glass[3]], +glass[4], white);
-	const all = [...inks(header), ...inks(readFileSync(TOGGLE, 'utf-8'))];
-	assert.ok(all.length >= 5, `expected the bar's inks, parsed ${all.length}`);
+	const all = inks(header);
+	assert.ok(all.length >= 4, `expected the bar's inks, parsed ${all.length}`);
 
 	for (const [rgb, alpha, source] of all) {
 		const ink = over(rgb, alpha, ground);

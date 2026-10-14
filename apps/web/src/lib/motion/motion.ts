@@ -57,6 +57,11 @@ export function readingAt(final: string, progress: number): string {
 		.join(':');
 }
 
+/// How many one-second ticks the landing phone's clock runs before it stops.
+/// Four seconds of ticking keeps it inside WCAG 2.2.2's five-second allowance
+/// for auto-updating content, so it needs no pause control.
+export const LIVE_CLOCK_TICKS = 4;
+
 /// Advances a clock reading by whole seconds, for the phone's live timer.
 export function tickClock(text: string, seconds = 1): string {
 	const reading = parseReading(text);

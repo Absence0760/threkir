@@ -8,8 +8,10 @@ import { easeOutCubic, readingAt, parseReading, staggerDelay } from './motion';
 //      element away from where it already is and back, so no JS, a failed
 //      hydration, or reduced motion all leave the finished page.
 //   2. Only code that can reveal an element may hide it — never a stylesheet.
-//   3. Nothing starts while `motion.still` — checked when the motion would
-//      begin, not only at mount, so pausing before scrolling holds too.
+//   3. Nothing starts under reduced motion — checked when the motion would
+//      begin, not only at mount, so flipping the OS setting mid-visit holds.
+//   4. Everything settles within five seconds of starting (WCAG 2.2.2), which
+//      is why the public pages carry no pause control.
 
 const EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
 
@@ -17,7 +19,7 @@ function canAnimate(): boolean {
 	return (
 		typeof window !== 'undefined' &&
 		typeof IntersectionObserver !== 'undefined' &&
-		!motion.still
+		!motion.reduced
 	);
 }
 
@@ -53,8 +55,8 @@ export function reveal(node: HTMLElement, options: RevealOptions = {}) {
 			arriving.forEach((el, i) => {
 				observer.unobserve(el);
 				el.style.opacity = '';
-				// Paused after mount: arrive at rest rather than animate in.
-				if (motion.still) return;
+				// Reduced motion asked for after mount: arrive at rest.
+				if (motion.reduced) return;
 				const start = delay + staggerDelay(i, 90);
 				plays.push(
 					el.animate(
@@ -120,6 +122,25 @@ export function reveal(node: HTMLElement, options: RevealOptions = {}) {
 	};
 }
 
+/// Marks the node `data-seen` the first time it scrolls into view, so a CSS
+/// animation scoped under `[data-seen]` plays when the visitor gets there
+/// rather than finishing, unseen, while they are still reading the hero. No
+/// script leaves the attribute off, which is the resting state.
+export function seen(node: HTMLElement) {
+	if (typeof IntersectionObserver === 'undefined') return;
+	const observer = new IntersectionObserver((entries) => {
+		if (!entries.some((e) => e.isIntersecting)) return;
+		observer.disconnect();
+		node.dataset.seen = '';
+	});
+	observer.observe(node);
+	return {
+		destroy() {
+			observer.disconnect();
+		},
+	};
+}
+
 /// Counts a printed figure up from zero the first time it is seen, landing on
 /// the markup's own text. Only readings `parseReading` understands move.
 export function countUp(node: HTMLElement, options: { delay?: number; duration?: number } = {}) {
@@ -143,7 +164,7 @@ export function countUp(node: HTMLElement, options: { delay?: number; duration?:
 		if (started || !entries.some((e) => e.isIntersecting)) return;
 		started = true;
 		observer.disconnect();
-		if (!motion.still) run();
+		if (!motion.reduced) run();
 	});
 	observer.observe(node);
 
@@ -193,7 +214,7 @@ export function tilt(node: HTMLElement, options: { max?: number } = {}) {
 		node.style.setProperty('--tilt-y', '0deg');
 	};
 	const onMove = (event: PointerEvent) => {
-		if (motion.still) return reset();
+		if (motion.reduced) return reset();
 		cancelAnimationFrame(frame);
 		frame = requestAnimationFrame(() => {
 			const box = area.getBoundingClientRect();

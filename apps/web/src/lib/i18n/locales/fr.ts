@@ -2546,7 +2546,6 @@ export const messages = {
 	"landing.closingBody": "Crée un compte gratuit — sans carte bancaire, sans paywall.",
 	"landing.featuresTitle": "Du premier parcours au jour de la course",
 	"landing.featuresSub": "Planifiez-le, importez votre historique, lisez chaque intermédiaire et entraînez-vous vers un objectif — dès aujourd’hui sur le web.",
-	"motion.pause": "Mettre les animations en pause",
 	"landing.footerTagline": "enregistre partout, analyse partout.",
 	"landing.footerPrivacy": "Confidentialité",
 	"landing.footerTerms": "Conditions",

@@ -2545,7 +2545,6 @@ export const messages = {
 	"landing.closingBody": "Crie uma conta grátis — sem cartão de crédito, sem paywall.",
 	"landing.featuresTitle": "Da primeira rota ao dia da prova",
 	"landing.featuresSub": "Planeje, traga seu histórico, leia cada parcial e treine rumo a uma meta — tudo já na web.",
-	"motion.pause": "Pausar animações",
 	"landing.footerTagline": "registre em qualquer lugar, analise em qualquer lugar.",
 	"landing.footerPrivacy": "Privacidade",
 	"landing.footerTerms": "Termos",

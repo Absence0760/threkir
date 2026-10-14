@@ -902,17 +902,6 @@ img {
 }
 
 /*
- * In-page motion pause (WCAG 2.2.2), set by MotionToggle through the motion
- * store. Scoped to `.motion-scope` so a visitor who paused the landing page
- * does not also freeze the app's loading spinners after signing in.
- */
-:root[data-motion='paused'] .motion-scope *,
-:root[data-motion='paused'] .motion-scope *::before,
-:root[data-motion='paused'] .motion-scope *::after {
-	animation-play-state: paused !important;
-}
-
-/*
  * Skip-to-main-content link — keyboard users Tab past the sidebar
  * straight into <main>. WCAG 2.4.1 (Bypass Blocks). Hidden until
  * focused; reveals as a high-contrast pill at the top-left when a

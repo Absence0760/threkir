@@ -2559,7 +2559,6 @@ export const en = {
 	"landing.closingBody": "Create a free account — no credit card, no paywall.",
 	"landing.featuresTitle": "From the first route to race day",
 	"landing.featuresSub": "Plan it, bring your history in, read every split, and train toward a goal — all on the web today.",
-	"motion.pause": "Pause animations",
 	"landing.footerTagline": "track anywhere, review everywhere.",
 	"landing.footerPrivacy": "Privacy",
 	"landing.footerTerms": "Terms",

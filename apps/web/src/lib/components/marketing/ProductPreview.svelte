@@ -6,7 +6,7 @@
 	import { DEFAULT_SITE_URL } from '#lib/core/site_url.ts';
 	import { countUp } from '#lib/motion/actions.ts';
 	import { motion } from '#lib/motion/motion.svelte.ts';
-	import { tickClock } from '#lib/motion/motion.ts';
+	import { LIVE_CLOCK_TICKS, tickClock } from '#lib/motion/motion.ts';
 	import {
 		DEMO_DISTANCE_KM,
 		DEMO_DISTANCE_LABEL,
@@ -82,31 +82,40 @@
 		return 22 + ((slowest - seconds) / span) * 78;
 	}
 
-	// The phone is mid-run, so its clock runs. Markup carries the starting
-	// reading, which is what a visitor without script, or with motion off,
-	// sees; the ticker only advances it while the phone is on screen, the tab
-	// is visible, and nothing asked for stillness. 302 s/km is the 5:02 pace
-	// printed beside it, so the distance agrees with the clock.
+	// The phone is mid-run, so its clock runs — for LIVE_CLOCK_TICKS seconds
+	// from the first time the phone is on screen, then it holds. Markup carries
+	// the starting reading, which is what a visitor without script, or with
+	// reduced motion, sees. A tick that lands while the tab is hidden is
+	// skipped, not banked. 302 s/km is the 5:02 pace printed beside it, so the
+	// distance agrees with the clock.
 	let elapsed = $state('24:17');
 	let distanceKm = $state(4.82);
 	const PACE_S_PER_KM = 302;
 
 	function liveClock(node: HTMLElement) {
 		if (!browser || typeof IntersectionObserver === 'undefined') return;
-		let onScreen = false;
+		let timer: ReturnType<typeof setTimeout> | undefined;
+		const tick = (left: number) => {
+			if (left <= 0) return;
+			timer = setTimeout(() => {
+				if (motion.reduced) return;
+				if (!document.hidden) {
+					elapsed = tickClock(elapsed);
+					distanceKm += 1 / PACE_S_PER_KM;
+				}
+				tick(left - 1);
+			}, 1000);
+		};
 		const observer = new IntersectionObserver((entries) => {
-			onScreen = entries.some((e) => e.isIntersecting);
+			if (!entries.some((e) => e.isIntersecting)) return;
+			observer.disconnect();
+			if (!motion.reduced) tick(LIVE_CLOCK_TICKS);
 		});
 		observer.observe(node);
-		const timer = setInterval(() => {
-			if (!onScreen || motion.still || document.hidden) return;
-			elapsed = tickClock(elapsed);
-			distanceKm += 1 / PACE_S_PER_KM;
-		}, 1000);
 		return {
 			destroy() {
 				observer.disconnect();
-				clearInterval(timer);
+				clearTimeout(timer);
 			},
 		};
 	}
@@ -187,10 +196,10 @@
 			}
 			if (!drew) continue;
 
-			// A runner travelling the loop, rather than the static end cap
-			// standing in for one. CSS offset-path does the work, so the
-			// browser owns the timing and throttles it offscreen and in a
-			// background tab — an rAF loop would run forever at full rate.
+			// A runner travelling the loop once, rather than the static end
+			// cap standing in for one. CSS offset-path does the work, so the
+			// browser owns the timing. The loop closes, so the lap ends where
+			// the marker rests.
 			const route = paths[paths.length - 1];
 			const d = route.getAttribute('d');
 			if (d) {
@@ -943,11 +952,11 @@
 		height: 0.4rem;
 		border-radius: var(--radius-pill);
 		background: var(--color-danger);
-		animation: rec-pulse 2s ease-in-out infinite;
+		animation: rec-pulse 2s ease-in-out 2;
 	}
 
-	/* The one looping animation in the shot, and the cheapest possible one:
-	   it says "this is recording right now" without a repaint budget. */
+	/* Two blinks that say "this is recording right now", then the dot holds
+	   lit: nothing on the landing page runs past five seconds. */
 	@keyframes rec-pulse {
 		0%, 100% { opacity: 1; }
 		50% { opacity: 0.25; }
@@ -1137,7 +1146,7 @@
 		   marker is created in JS and carries no scoping class), but the
 		   REFERENCE drops the prefix -- with it, the name resolves to nothing
 		   and the marker sits still at the start of the route. */
-		animation: pace 16s linear infinite;
+		animation: pace 5s ease-in-out;
 		/* offset-rotate defaults to `auto`, which turns the element to follow
 		   the path tangent -- a runner upside down at the top of the loop.
 		   He travels the route; he does not cartwheel around it. */

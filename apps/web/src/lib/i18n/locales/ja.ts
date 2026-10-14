@@ -2541,7 +2541,6 @@ export const messages = {
 	"landing.closingBody": "無料アカウントを作成——クレジットカード不要、課金の壁なし。",
 	"landing.featuresTitle": "最初のルートからレース当日まで",
 	"landing.featuresSub": "ルートを計画し、これまでの記録を取り込み、すべてのスプリットを読み解き、目標に向けてトレーニング。すべて今日からウェブで。",
-	"motion.pause": "アニメーションを一時停止",
 	"landing.footerTagline": "どこでも記録、どこでも振り返り。",
 	"landing.footerPrivacy": "プライバシー",
 	"landing.footerTerms": "利用規約",

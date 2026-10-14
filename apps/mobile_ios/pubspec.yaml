@@ -143,6 +143,7 @@ dependencies:
   intl: any
   in_app_update: ^4.2.5
   flutter_timezone: ^5.1.0
+  timezone: ^0.11.0
 
 dev_dependencies:
   flutter_test:

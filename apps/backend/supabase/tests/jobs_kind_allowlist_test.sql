@@ -48,7 +48,7 @@
 
 begin;
 
-select plan(21);
+select plan(22);
 
 -- The one list: each row is both an INSERT the CHECK must accept and a
 -- kind the CHECK must admit. The payloads are representative of what the
@@ -91,7 +91,12 @@ insert into job_kind (kind, payload) values
                                               'format', 'backup')),
   ('export_blob_reap',     '{}'::jsonb),
   ('distance_recompute',   jsonb_build_object('run_id', gen_random_uuid(),
-                                              'user_id', gen_random_uuid()));
+                                              'user_id', gen_random_uuid())),
+  ('security_email',       jsonb_build_object('user_id', gen_random_uuid(),
+                                              'template', 'new_device_sign_in',
+                                              'browser', 'firefox',
+                                              'platform', 'linux',
+                                              'signed_in_at', '2026-10-14T09:30:00Z'));
 
 -- (1) Accepted kinds round-trip cleanly. We're not asserting any particular
 -- id; just that the INSERT doesn't throw. One TAP line per fixture row,

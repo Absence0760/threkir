@@ -47,6 +47,14 @@ type emailShared struct {
 	digestStatKudos    string // e.g. "%d kudos"
 	digestStatPBs      string // e.g. "%d new personal bests"
 	digestQuietWeek    string // shown when nothing happened in the window
+	// Account-security mail (security_email). The device line is built from
+	// the sign_in_devices classes: deviceOnPlatform takes (browser, platform)
+	// labels, the other three stand in for a class with no proper name.
+	footerSecurity       string // footer for the opt-out new-device alert
+	deviceOnPlatform     string // e.g. "%s on %s" → "Firefox on Linux"
+	deviceApp            string // the mobile app's own class
+	deviceUnknownBrowser string // browser class `other` on a known platform
+	deviceUnknown        string // nothing recognisable at all
 }
 
 // emailLocales is DERIVED from the catalogue rather than restated beside it.
@@ -185,6 +193,11 @@ var emailSharedByLocale = map[string]emailShared{
 		digestStatKudos:       "%d kudos",
 		digestStatPBs:         "%d new personal bests",
 		digestQuietWeek:       "A quiet week — no runs logged. Lace up and we'll see you out there.",
+		footerSecurity:        "You're receiving this security notice because new-device alerts are on for your Threkir account.",
+		deviceOnPlatform:      "%s on %s",
+		deviceApp:             "the Threkir app",
+		deviceUnknownBrowser:  "an unrecognised browser",
+		deviceUnknown:         "an unrecognised device",
 	},
 	"de": {
 		footerNotification:    "Du erhältst diese E-Mail aufgrund deiner Benachrichtigungseinstellungen.",
@@ -202,6 +215,11 @@ var emailSharedByLocale = map[string]emailShared{
 		digestStatKudos:       "%d Kudos",
 		digestStatPBs:         "%d neue Bestzeiten",
 		digestQuietWeek:       "Eine ruhige Woche — keine Läufe aufgezeichnet. Schnür die Schuhe, wir sehen uns draußen.",
+		footerSecurity:        "Du erhältst diesen Sicherheitshinweis, weil Benachrichtigungen über neue Geräte für dein Threkir-Konto aktiviert sind.",
+		deviceOnPlatform:      "%s unter %s",
+		deviceApp:             "die Threkir-App",
+		deviceUnknownBrowser:  "einen unbekannten Browser",
+		deviceUnknown:         "ein unbekanntes Gerät",
 	},
 	"fr": {
 		footerNotification:    "Vous recevez cet e-mail en raison de vos paramètres de notification.",
@@ -219,6 +237,11 @@ var emailSharedByLocale = map[string]emailShared{
 		digestStatKudos:       "%d kudos",
 		digestStatPBs:         "%d nouveaux records personnels",
 		digestQuietWeek:       "Une semaine tranquille — aucune course enregistrée. Enfilez vos chaussures, on se retrouve dehors.",
+		footerSecurity:        "Vous recevez cet avis de sécurité parce que les alertes de nouvel appareil sont activées pour votre compte Threkir.",
+		deviceOnPlatform:      "%s sous %s",
+		deviceApp:             "l'application Threkir",
+		deviceUnknownBrowser:  "un navigateur inconnu",
+		deviceUnknown:         "un appareil inconnu",
 	},
 	"es": {
 		footerNotification:    "Recibes este correo por tus ajustes de notificaciones.",
@@ -236,6 +259,11 @@ var emailSharedByLocale = map[string]emailShared{
 		digestStatKudos:       "%d kudos",
 		digestStatPBs:         "%d nuevas marcas personales",
 		digestQuietWeek:       "Una semana tranquila: ninguna carrera registrada. Átate las zapatillas y nos vemos en la calle.",
+		footerSecurity:        "Recibes este aviso de seguridad porque las alertas de dispositivos nuevos están activadas en tu cuenta de Threkir.",
+		deviceOnPlatform:      "%s en %s",
+		deviceApp:             "la aplicación Threkir",
+		deviceUnknownBrowser:  "un navegador desconocido",
+		deviceUnknown:         "un dispositivo desconocido",
 	},
 	"ja": {
 		footerNotification:    "通知設定に基づいてこのメールをお送りしています。",
@@ -253,6 +281,11 @@ var emailSharedByLocale = map[string]emailShared{
 		digestStatKudos:       "%d 件の称賛",
 		digestStatPBs:         "%d 件の自己ベスト更新",
 		digestQuietWeek:       "静かな一週間でした。ランの記録はありません。シューズを履いて、また走りに出ましょう。",
+		footerSecurity:        "Threkir アカウントで新しいデバイスの通知がオンになっているため、このセキュリティ通知をお送りしています。",
+		deviceOnPlatform:      "%[2]s の %[1]s",
+		deviceApp:             "Threkir アプリ",
+		deviceUnknownBrowser:  "不明なブラウザ",
+		deviceUnknown:         "不明なデバイス",
 	},
 	"pt-BR": {
 		footerNotification:    "Você está recebendo este e-mail por causa das suas configurações de notificação.",
@@ -270,6 +303,11 @@ var emailSharedByLocale = map[string]emailShared{
 		digestStatKudos:       "%d kudos",
 		digestStatPBs:         "%d novos recordes pessoais",
 		digestQuietWeek:       "Uma semana tranquila — nenhuma corrida registrada. Calce o tênis e a gente se vê por aí.",
+		footerSecurity:        "Você está recebendo este aviso de segurança porque os alertas de novo dispositivo estão ativados na sua conta Threkir.",
+		deviceOnPlatform:      "%s no %s",
+		deviceApp:             "aplicativo Threkir",
+		deviceUnknownBrowser:  "navegador desconhecido",
+		deviceUnknown:         "dispositivo desconhecido",
 	},
 	"pt-PT": {
 		footerNotification:    "Está a receber este e-mail por causa das suas definições de notificação.",
@@ -287,6 +325,11 @@ var emailSharedByLocale = map[string]emailShared{
 		digestStatKudos:       "%d kudos",
 		digestStatPBs:         "%d novos recordes pessoais",
 		digestQuietWeek:       "Uma semana tranquila — nenhuma corrida registada. Calce as sapatilhas e até breve.",
+		footerSecurity:        "Está a receber este aviso de segurança porque os alertas de novo dispositivo estão ativados na sua conta Threkir.",
+		deviceOnPlatform:      "%s no %s",
+		deviceApp:             "aplicação Threkir",
+		deviceUnknownBrowser:  "navegador desconhecido",
+		deviceUnknown:         "dispositivo desconhecido",
 	},
 }
 
@@ -323,6 +366,7 @@ var emailCatalogue = map[string]map[string]emailStrings{
 		"drip_reengagement":  {"We've missed you on Threkir", "It's been a while — your shoes are waiting.", "Time to lace up again", "Open Threkir", []string{"It's been a while since your last run. No pressure — every runner takes a break.", "When you're ready, we're here. A short, easy run is a great way back in."}},
 		"drip_streak":        {"Keep your run streak alive", "You're on a roll — don't let it slip today.", "Don't break the streak", "Record a run", []string{"You've run two days running. One more keeps the streak alive.", "A quick, easy effort is all it takes today. Open Threkir and bank it."}},
 		"account_deleted":    {"Your Threkir account has been deleted", "Your account and personal data have been erased.", "Your account has been deleted", "Visit Threkir", []string{"Your Threkir account has been deleted, and your runs, routes, and personal data have been erased from our systems.", "We've also asked the third-party services connected to your account (such as your payment provider) to remove your data. If you didn't request this, contact us right away.", "Thanks for running with us. You're welcome back any time."}},
+		"new_device_sign_in": {"New sign-in to your Threkir account", "Your account was signed in to from a device we haven't seen before.", "New sign-in to your account", "Reset password", []string{"Your Threkir account was just signed in to from %s (%s). We haven't seen a sign-in from this kind of device on your account before.", "If this was you, there's nothing to do.", "If it wasn't you, reset your password now with the button below, then write to security@threkir.com so we can help secure your account."}},
 
 		// Not a kind: an event_cancel row whose `refunded` column is set (a paid
 		// registrant). copyKeyFor picks it; kept apart so gofmt leaves the
@@ -363,6 +407,7 @@ var emailCatalogue = map[string]map[string]emailStrings{
 		"drip_reengagement":  {"Wir haben dich bei Threkir vermisst", "Es ist eine Weile her — deine Schuhe warten.", "Zeit, wieder die Schuhe zu schnüren", "Threkir öffnen", []string{"Dein letzter Lauf ist eine Weile her. Kein Druck — jede Läuferin und jeder Läufer macht mal Pause.", "Wenn du bereit bist, sind wir da. Ein kurzer, lockerer Lauf ist ein guter Wiedereinstieg."}},
 		"drip_streak":        {"Halte deine Lauf-Serie am Leben", "Du bist in Schwung — lass es heute nicht abreißen.", "Brich die Serie nicht ab", "Lauf aufzeichnen", []string{"Du bist zwei Tage hintereinander gelaufen. Noch einer hält die Serie am Leben.", "Heute reicht ein kurzer, lockerer Lauf. Öffne Threkir und sichere ihn dir."}},
 		"account_deleted":    {"Dein Threkir-Konto wurde gelöscht", "Dein Konto und deine personenbezogenen Daten wurden gelöscht.", "Dein Konto wurde gelöscht", "Threkir besuchen", []string{"Dein Threkir-Konto wurde gelöscht, und deine Läufe, Routen und personenbezogenen Daten wurden aus unseren Systemen entfernt.", "Wir haben außerdem die mit deinem Konto verbundenen Drittanbieter-Dienste (etwa deinen Zahlungsanbieter) gebeten, deine Daten zu löschen. Falls du das nicht angefordert hast, melde dich bitte umgehend bei uns.", "Danke, dass du mit uns gelaufen bist. Du bist jederzeit wieder willkommen."}},
+		"new_device_sign_in": {"Neue Anmeldung bei deinem Threkir-Konto", "Dein Konto wurde auf einem Gerät angemeldet, das wir noch nicht kennen.", "Neue Anmeldung bei deinem Konto", "Passwort zurücksetzen", []string{"Bei deinem Threkir-Konto hat sich gerade jemand über %s angemeldet (%s). Von dieser Art Gerät gab es bei deinem Konto bisher keine Anmeldung.", "Wenn du das warst, ist nichts weiter zu tun.", "Wenn nicht, setze dein Passwort jetzt über die Schaltfläche unten zurück und schreib an security@threkir.com, damit wir dir helfen können, dein Konto zu sichern."}},
 
 		"event_cancel_refunded": {"Ein bezahltes Event wurde abgesagt – du bekommst dein Geld zurück", "Deine Zahlung für den abgesagten Termin wird erstattet.", "Event abgesagt, Erstattung unterwegs", "Event ansehen", []string{"Ein Event, für das du bezahlt hattest, wurde abgesagt, und wir erstatten dir deine Zahlung.", "Das Geld geht auf die Karte zurück, mit der du bezahlt hast. Wie lange die Gutschrift dauert, hängt von deiner Bank ab – meist ein paar Werktage."}},
 		"event_waitlist_slot":   {"Ein Platz ist frei geworden – er ist für dich reserviert", "Bezahle, bevor die Reservierung abläuft, um deinen Platz zu sichern.", "Ein Platz ist für dich reserviert", "Platz sichern", []string{"Bei einem Event, auf dessen Warteliste du stehst, ist ein Platz frei geworden, und wir halten ihn für dich frei.", "Bezahle, bevor die Reservierung abläuft – wann genau, steht auf der Event-Seite. Sonst geht der Platz an die nächste Person auf der Warteliste, und du wirst von der Warteliste genommen. Es wird nichts abgebucht, solange du nicht bezahlst."}},
@@ -397,6 +442,7 @@ var emailCatalogue = map[string]map[string]emailStrings{
 		"drip_reengagement":  {"Vous nous avez manqué sur Threkir", "Ça fait un moment — vos chaussures vous attendent.", "Il est temps de relacer vos chaussures", "Ouvrir Threkir", []string{"Votre dernière course remonte à un moment. Sans pression — chaque coureur fait une pause.", "Quand vous serez prêt, nous serons là. Une course courte et facile est une belle façon de reprendre."}},
 		"drip_streak":        {"Gardez votre série de courses en vie", "Vous êtes lancé — ne laissez pas filer aujourd'hui.", "Ne brisez pas la série", "Enregistrer une course", []string{"Vous avez couru deux jours de suite. Une de plus garde la série en vie.", "Un effort court et facile suffit aujourd'hui. Ouvrez Threkir et validez-le."}},
 		"account_deleted":    {"Votre compte Threkir a été supprimé", "Votre compte et vos données personnelles ont été effacés.", "Votre compte a été supprimé", "Visiter Threkir", []string{"Votre compte Threkir a été supprimé, et vos courses, itinéraires et données personnelles ont été effacés de nos systèmes.", "Nous avons également demandé aux services tiers liés à votre compte (comme votre prestataire de paiement) de supprimer vos données. Si vous n'êtes pas à l'origine de cette demande, contactez-nous immédiatement.", "Merci d'avoir couru avec nous. Vous êtes le bienvenu à tout moment."}},
+		"new_device_sign_in": {"Nouvelle connexion à votre compte Threkir", "Une connexion à votre compte a eu lieu depuis un appareil que nous ne connaissions pas.", "Nouvelle connexion à votre compte", "Réinitialiser le mot de passe", []string{"Une connexion à votre compte Threkir vient d'avoir lieu depuis %s (%s). Nous n'avions encore jamais vu de connexion depuis ce type d'appareil sur votre compte.", "Si c'était vous, vous n'avez rien à faire.", "Sinon, réinitialisez votre mot de passe dès maintenant avec le bouton ci-dessous, puis écrivez à security@threkir.com pour que nous puissions vous aider à sécuriser votre compte."}},
 
 		"event_cancel_refunded": {"Un événement payé a été annulé — vous allez être remboursé", "Votre paiement pour la séance annulée est en cours de remboursement.", "Événement annulé, remboursement en cours", "Voir l'événement", []string{"Un événement pour lequel vous aviez payé a été annulé, et nous vous remboursons votre paiement.", "Le remboursement est versé sur la carte utilisée pour payer. Le délai dépend de votre banque, généralement quelques jours ouvrés."}},
 		"event_waitlist_slot":   {"Une place s'est libérée — elle vous est réservée", "Payez avant la fin de la réservation pour obtenir votre place.", "Une place vous est réservée", "Obtenir ma place", []string{"Une place s'est libérée pour un événement sur la liste d'attente duquel vous êtes inscrit, et nous la gardons pour vous.", "Payez avant la fin de la réservation — l'heure exacte figure sur la page de l'événement. Sinon, la place revient à la personne suivante sur la liste d'attente et vous en êtes retiré. Rien ne vous est prélevé tant que vous ne payez pas."}},
@@ -431,6 +477,7 @@ var emailCatalogue = map[string]map[string]emailStrings{
 		"drip_reengagement":  {"Te hemos echado de menos en Threkir", "Ha pasado un tiempo: tus zapatillas te esperan.", "Hora de volver a atarte las zapatillas", "Abrir Threkir", []string{"Ha pasado un tiempo desde tu última carrera. Sin presión: todo corredor se toma un descanso.", "Cuando estés listo, aquí estamos. Una carrera corta y suave es una gran forma de volver."}},
 		"drip_streak":        {"Mantén viva tu racha de carreras", "Vas con buen ritmo: no lo dejes escapar hoy.", "No rompas la racha", "Registrar una carrera", []string{"Has corrido dos días seguidos. Una más mantiene viva la racha.", "Hoy basta con un esfuerzo corto y suave. Abre Threkir y guárdalo."}},
 		"account_deleted":    {"Tu cuenta de Threkir se ha eliminado", "Tu cuenta y tus datos personales se han borrado.", "Tu cuenta se ha eliminado", "Visitar Threkir", []string{"Tu cuenta de Threkir se ha eliminado, y tus carreras, rutas y datos personales se han borrado de nuestros sistemas.", "También hemos pedido a los servicios de terceros vinculados a tu cuenta (como tu proveedor de pago) que eliminen tus datos. Si no solicitaste esto, contáctanos de inmediato.", "Gracias por correr con nosotros. Puedes volver cuando quieras."}},
+		"new_device_sign_in": {"Nuevo inicio de sesión en tu cuenta de Threkir", "Se ha iniciado sesión en tu cuenta desde un dispositivo que no conocíamos.", "Nuevo inicio de sesión en tu cuenta", "Restablecer contraseña", []string{"Se acaba de iniciar sesión en tu cuenta de Threkir desde %s (%s). Es la primera vez que vemos un inicio de sesión desde este tipo de dispositivo en tu cuenta.", "Si fuiste tú, no tienes que hacer nada.", "Si no fuiste tú, restablece tu contraseña ahora con el botón de abajo y escribe a security@threkir.com para que podamos ayudarte a proteger tu cuenta."}},
 
 		"event_cancel_refunded": {"Se canceló un evento que pagaste: te estamos reembolsando", "Tu pago por la sesión cancelada se está reembolsando.", "Evento cancelado, reembolso en camino", "Ver evento", []string{"Se ha cancelado un evento por el que habías pagado y te estamos reembolsando el pago.", "El dinero vuelve a la tarjeta con la que pagaste. El plazo depende de tu banco; suele ser de unos pocos días hábiles."}},
 		"event_waitlist_slot":   {"Se ha liberado una plaza: te la estamos guardando", "Paga antes de que venza la reserva para quedarte con tu plaza.", "Tienes una plaza reservada", "Conseguir mi plaza", []string{"Se ha liberado una plaza en un evento en cuya lista de espera estás, y te la estamos guardando.", "Paga antes de que venza la reserva; la hora exacta aparece en la página del evento. Si no, la plaza pasará a la siguiente persona de la lista de espera y saldrás de ella. No se te cobrará nada a menos que pagues."}},
@@ -465,6 +512,7 @@ var emailCatalogue = map[string]map[string]emailStrings{
 		"drip_reengagement":  {"Threkir はあなたを待っています", "しばらくぶりですね。シューズが待っています。", "もう一度シューズを履きましょう", "Threkir を開く", []string{"前回のランからしばらく経ちました。プレッシャーは不要です。誰でも休む時期があります。", "準備ができたら、私たちはここにいます。短くゆるやかなランは、再開にぴったりです。"}},
 		"drip_streak":        {"ランの連続記録を絶やさないで", "いい流れです。今日で途切れさせないようにしましょう。", "連続記録を途切れさせない", "ランを記録", []string{"2 日連続で走りました。あと 1 回で連続記録が続きます。", "今日は短くゆるやかな一本で十分です。Threkir を開いて記録しましょう。"}},
 		"account_deleted":    {"Threkir アカウントが削除されました", "アカウントと個人データが消去されました。", "アカウントが削除されました", "Threkir を見る", []string{"Threkir アカウントが削除され、ラン・ルート・個人データが当社のシステムから消去されました。", "アカウントに連携されていた外部サービス（お支払いプロバイダーなど）にも、データの削除を依頼しました。心当たりがない場合は、すぐに当社までご連絡ください。", "ご利用ありがとうございました。いつでもまた戻ってきてください。"}},
+		"new_device_sign_in": {"Threkir アカウントへの新しいサインイン", "これまでにないデバイスからアカウントにサインインがありました。", "アカウントへの新しいサインイン", "パスワードをリセット", []string{"%s から Threkir アカウントにサインインがありました（%s）。この種類のデバイスからこのアカウントにサインインがあったのは初めてです。", "ご自身によるものであれば、対応は不要です。", "心当たりがない場合は、下のボタンからすぐにパスワードをリセットし、security@threkir.com までご連絡ください。アカウントの保護をお手伝いします。"}},
 
 		"event_cancel_refunded": {"支払い済みのイベントが中止されました（返金手続き中）", "中止された回のお支払いを返金しています。", "イベント中止・返金手続き中", "イベントを見る", []string{"お支払い済みのイベントが中止されたため、お支払い金額を返金しています。", "返金はお支払いに使用したカードに戻ります。反映までの期間はカード会社によって異なりますが、通常は数営業日です。"}},
 		"event_waitlist_slot":   {"空きが出ました（あなたのために確保中）", "確保期限までにお支払いいただくと参加が確定します。", "あなたの枠を確保しています", "枠を確定する", []string{"キャンセル待ちに登録しているイベントに空きが出たため、あなたのために枠を確保しています。", "確保期限までにお支払いください。正確な期限はイベントページに表示されています。期限までにお支払いがない場合、枠は次の方に回り、あなたはキャンセル待ちから外れます。お支払いいただくまで料金は発生しません。"}},
@@ -499,6 +547,7 @@ var emailCatalogue = map[string]map[string]emailStrings{
 		"drip_reengagement":  {"Sentimos sua falta no Threkir", "Já faz um tempo — seus tênis estão esperando.", "Hora de calçar os tênis de novo", "Abrir Threkir", []string{"Já faz um tempo desde a sua última corrida. Sem pressão — todo corredor faz uma pausa.", "Quando estiver pronto, estamos aqui. Uma corrida curta e leve é um ótimo jeito de voltar."}},
 		"drip_streak":        {"Mantenha viva a sua sequência de corridas", "Você está embalado — não deixe escapar hoje.", "Não quebre a sequência", "Registrar uma corrida", []string{"Você correu dois dias seguidos. Mais uma mantém a sequência viva.", "Hoje basta um esforço curto e leve. Abra o Threkir e garanta."}},
 		"account_deleted":    {"Sua conta do Threkir foi excluída", "Sua conta e seus dados pessoais foram apagados.", "Sua conta foi excluída", "Visitar o Threkir", []string{"Sua conta do Threkir foi excluída, e suas corridas, rotas e dados pessoais foram apagados dos nossos sistemas.", "Também pedimos aos serviços de terceiros vinculados à sua conta (como o seu provedor de pagamento) que removam seus dados. Se você não solicitou isso, entre em contato conosco imediatamente.", "Obrigado por correr com a gente. Você é bem-vindo de volta a qualquer momento."}},
+		"new_device_sign_in": {"Novo login na sua conta Threkir", "Sua conta foi acessada de um dispositivo que ainda não conhecíamos.", "Novo login na sua conta", "Redefinir senha", []string{"Houve um novo login na sua conta Threkir. Dispositivo: %s (%s). É a primeira vez que vemos um login desse tipo de dispositivo na sua conta.", "Se foi você, não é preciso fazer nada.", "Se não foi você, redefina sua senha agora pelo botão abaixo e escreva para security@threkir.com para que possamos ajudar a proteger sua conta."}},
 
 		"event_cancel_refunded": {"Um evento que você pagou foi cancelado — você será reembolsado", "Seu pagamento pela sessão cancelada está sendo reembolsado.", "Evento cancelado, reembolso a caminho", "Ver evento", []string{"Um evento pelo qual você pagou foi cancelado, e estamos reembolsando seu pagamento.", "O valor volta para o cartão usado no pagamento. O prazo depende do seu banco — normalmente alguns dias úteis."}},
 		"event_waitlist_slot":   {"Abriu uma vaga — ela está reservada para você", "Pague antes que a reserva expire para garantir sua vaga.", "Uma vaga está reservada para você", "Garantir minha vaga", []string{"Abriu uma vaga em um evento em cuja lista de espera você está, e estamos guardando-a para você.", "Pague antes que a reserva expire — o horário exato está na página do evento. Caso contrário, a vaga passa para a próxima pessoa da lista de espera e você sai dela. Nada é cobrado a menos que você pague."}},
@@ -533,6 +582,7 @@ var emailCatalogue = map[string]map[string]emailStrings{
 		"drip_reengagement":  {"Temos sentido a sua falta no Threkir", "Já passou algum tempo — as sapatilhas estão à espera.", "Hora de calçar outra vez as sapatilhas", "Abrir o Threkir", []string{"Já passou algum tempo desde a sua última corrida. Sem pressão — todos os corredores fazem uma pausa.", "Quando estiver pronto, estamos aqui. Uma corrida curta e leve é uma ótima forma de voltar."}},
 		"drip_streak":        {"Mantenha viva a sua sequência de corridas", "Está embalado — não deixe escapar hoje.", "Não quebre a sequência", "Registar uma corrida", []string{"Correu dois dias seguidos. Mais um mantém a sequência viva.", "Hoje basta um esforço curto e leve. Abra o Threkir e garanta-o."}},
 		"account_deleted":    {"A sua conta do Threkir foi eliminada", "A sua conta e os seus dados pessoais foram apagados.", "A sua conta foi eliminada", "Visitar o Threkir", []string{"A sua conta do Threkir foi eliminada, e as suas corridas, rotas e dados pessoais foram apagados dos nossos sistemas.", "Também pedimos aos serviços de terceiros associados à sua conta (como o seu fornecedor de pagamentos) que removam os seus dados. Se não solicitou isto, contacte-nos imediatamente.", "Obrigado por ter corrido connosco. É bem-vindo de volta quando quiser."}},
+		"new_device_sign_in": {"Novo início de sessão na sua conta Threkir", "Foi iniciada sessão na sua conta num dispositivo que ainda não conhecíamos.", "Novo início de sessão na sua conta", "Redefinir palavra-passe", []string{"Foi iniciada sessão na sua conta Threkir. Dispositivo: %s (%s). É a primeira vez que vemos um início de sessão a partir deste tipo de dispositivo na sua conta.", "Se este início de sessão foi seu, não é preciso fazer nada.", "Caso contrário, redefina já a palavra-passe com o botão abaixo e escreva para security@threkir.com para que possamos ajudar a proteger a sua conta."}},
 
 		"event_cancel_refunded": {"Um evento que pagou foi cancelado — vai ser reembolsado", "O seu pagamento pela sessão cancelada está a ser reembolsado.", "Evento cancelado, reembolso a caminho", "Ver evento", []string{"Um evento pelo qual pagou foi cancelado e estamos a reembolsar o seu pagamento.", "O valor volta para o cartão com que pagou. O prazo depende do seu banco — normalmente alguns dias úteis."}},
 		"event_waitlist_slot":   {"Abriu um lugar — está reservado para si", "Pague antes de a reserva expirar para garantir o seu lugar.", "Tem um lugar reservado", "Garantir o meu lugar", []string{"Abriu um lugar num evento em cuja lista de espera está, e estamos a guardá-lo para si.", "Pague antes de a reserva expirar — a hora exata está na página do evento. Caso contrário, o lugar passa para a pessoa seguinte da lista de espera e sai da lista. Nada lhe é cobrado se não pagar."}},

@@ -134,6 +134,7 @@ test.describe('/routes/[id]', () => {
 		await expect(page.locator('button[title^="Public —"], button[title^="Private —"]')).toHaveCount(0);
 
 		await audienceBtn.click();
+		await expect(page.getByTestId('audience-dialog')).toBeVisible();
 		await page.getByTestId('audience-level-private').click();
 		await expect(audienceBtn).toContainText('Only me', { timeout: 5_000 });
 		await page.keyboard.press('Escape');
@@ -142,11 +143,12 @@ test.describe('/routes/[id]', () => {
 		await page.reload();
 		await expect(audienceBtn).toContainText('Only me', { timeout: 10_000 });
 
-		// Restore through the make-public confirm.
+		// Restore through the make-public confirm, the same path Share takes on
+		// a private route.
 		await page.waitForLoadState('networkidle');
-		await audienceBtn.click();
-		await page.getByTestId('audience-level-public').click();
+		await shareChoosingPublic(page, page.getByRole('button', { name: 'Share', exact: true }));
 		const confirm = page.getByTestId('share-confirm-dialog');
+		await expect(confirm).toBeVisible();
 		await confirm.getByRole('button', { name: 'Make public & share' }).click();
 		await expect(audienceBtn).toContainText('Public', { timeout: 5_000 });
 	});

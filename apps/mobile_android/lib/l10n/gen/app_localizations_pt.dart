@@ -166,7 +166,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String routePickerEmptyNoMatch(Object query) {
-    return 'Nenhuma rota corresponde a \"$query\"';
+    return 'Nenhuma rota corresponde a “$query”';
   }
 
   @override
@@ -274,7 +274,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get importStravaHowToSteps =>
-      '1. Abra o Strava → Definições → A minha conta\n2. Desloque até \"Transferir ou eliminar a sua conta\"\n3. Toque em \"Começar\" → \"Solicitar o seu ficheiro\"\n4. Receberá um e-mail com um link de download em algumas horas\n5. Transfira o .zip e toque em Importar abaixo';
+      '1. Abra o Strava → Definições → A minha conta\n2. Desloque até “Transferir ou eliminar a sua conta”\n3. Toque em “Começar” → “Solicitar o seu ficheiro”\n4. Receberá um e-mail com um link de download em algumas horas\n5. Transfira o .zip e toque em Importar abaixo';
 
   @override
   String get importStravaButton => 'Importar ZIP do Strava';
@@ -494,7 +494,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String peopleEmptySearchTitle(Object query) {
-    return 'Nenhum corredor corresponde a \"$query\"';
+    return 'Nenhum corredor corresponde a “$query”';
   }
 
   @override
@@ -2091,7 +2091,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get runBackgroundLocationPaused =>
-      'O registo foi pausado enquanto esteve fora — o tempo continuou a contar e nada se perdeu, mas a distância percorrida fora do ecrã não foi contabilizada. Defina a Localização como \"Permitir sempre\" para continuar a registar em segundo plano.';
+      'O registo foi pausado enquanto esteve fora — o tempo continuou a contar e nada se perdeu, mas a distância percorrida fora do ecrã não foi contabilizada. Defina a Localização como “Permitir sempre” para continuar a registar em segundo plano.';
 
   @override
   String get runGpsSensorFailed =>
@@ -2636,7 +2636,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String addRunPickerNoMatch(String query) {
-    return 'Nenhuma rota corresponde a \"$query\"';
+    return 'Nenhuma rota corresponde a “$query”';
   }
 
   @override
@@ -2963,12 +2963,12 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String runDetailRouteSaved(String name, int kept, int smoothed) {
-    return '\"$name\" guardada — $kept pontos de passagem ($smoothed suavizados)';
+    return '“$name” guardada — $kept pontos de passagem ($smoothed suavizados)';
   }
 
   @override
   String runDetailRouteSaveFailed(String name) {
-    return 'Não foi possível guardar \"$name\" como rota.';
+    return 'Não foi possível guardar “$name” como rota.';
   }
 
   @override
@@ -3132,7 +3132,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String routesImported(String name) {
-    return '\"$name\" importada';
+    return '“$name” importada';
   }
 
   @override
@@ -3151,7 +3151,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String routesSaved(String name) {
-    return '\"$name\" guardada';
+    return '“$name” guardada';
   }
 
   @override
@@ -4088,7 +4088,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String exploreRoutesSaved(String name) {
-    return '\"$name\" guardada na sua biblioteca';
+    return '“$name” guardada na sua biblioteca';
   }
 
   @override
@@ -4099,7 +4099,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String exploreRoutesRemoved(String name) {
-    return '\"$name\" removida da sua biblioteca';
+    return '“$name” removida da sua biblioteca';
   }
 
   @override
@@ -4632,7 +4632,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String profileNotifEventRsvpTitled(String name, String title) {
-    return '$name confirmou presença no seu evento \"$title\"';
+    return '$name confirmou presença no seu evento “$title”';
   }
 
   @override
@@ -4677,7 +4677,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String profileNotifEventCancelTitled(String title) {
-    return 'Uma ocorrência de \"$title\" foi cancelada';
+    return 'Uma ocorrência de “$title” foi cancelada';
   }
 
   @override
@@ -4686,7 +4686,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String profileNotifEventCancelRefundedTitled(String title) {
-    return 'Uma ocorrência de \"$title\" foi cancelada — o seu pagamento está a ser reembolsado';
+    return 'Uma ocorrência de “$title” foi cancelada — o seu pagamento está a ser reembolsado';
   }
 
   @override
@@ -4695,7 +4695,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String profileNotifWaitlistSlotTitled(String title) {
-    return 'Abriu um lugar em \"$title\" e está reservado para si — pague para o garantir';
+    return 'Abriu um lugar em “$title” e está reservado para si — pague para o garantir';
   }
 
   @override
@@ -4704,7 +4704,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String profileNotifEventReminderTitled(String title) {
-    return '\"$title\" está a chegar';
+    return '“$title” está a chegar';
   }
 
   @override
@@ -5082,7 +5082,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String clubDetailRouteSaved(String name) {
-    return '\"$name\" guardada';
+    return '“$name” guardada';
   }
 
   @override
@@ -5544,7 +5544,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String plansDeleteTitle(String name) {
-    return 'Eliminar \"$name\"?';
+    return 'Eliminar “$name”?';
   }
 
   @override
@@ -5561,7 +5561,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String plansAbandonTitle(String name) {
-    return 'Abandonar \"$name\"?';
+    return 'Abandonar “$name”?';
   }
 
   @override
@@ -5914,7 +5914,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String planNewReplaceActiveNamed(String name) {
-    return 'Já tem um plano ativo: \"$name\". Criar um novo plano marcará o atual como concluído (ainda poderá encontrá-lo em Gerir planos). Continuar?';
+    return 'Já tem um plano ativo: “$name”. Criar um novo plano marcará o atual como concluído (ainda poderá encontrá-lo em Gerir planos). Continuar?';
   }
 
   @override
@@ -6145,7 +6145,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String planDetailPublishSuccess(String name) {
-    return '\"$name\" publicado como modelo do clube.';
+    return '“$name” publicado como modelo do clube.';
   }
 
   @override
@@ -6291,7 +6291,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get workoutAdviceTempo =>
-      '\"Confortavelmente difícil\". deve sentir que conseguiria manter o ritmo por cerca de uma hora em esforço máximo, mas não mais.';
+      '“Confortavelmente difícil”. deve sentir que conseguiria manter o ritmo por cerca de uma hora em esforço máximo, mas não mais.';
 
   @override
   String get workoutAdviceInterval =>
@@ -6353,7 +6353,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get coachConsentAction =>
-      'Toque em \"Eu consinto\" para continuar. Toque em cancelar para sair da página sem enviar dados.';
+      'Toque em “Eu consinto” para continuar. Toque em cancelar para sair da página sem enviar dados.';
 
   @override
   String get coachConsentCancel => 'Cancelar';
@@ -6693,7 +6693,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String settingsAccountDeleteChallengeText(String word) {
-    return 'Introduza \"$word\" para confirmar';
+    return 'Introduza “$word” para confirmar';
   }
 
   @override
@@ -6914,11 +6914,11 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get settingsAccountDisplayNameHint =>
-      'O nome que outros corredores veem. Deixe em branco para utilizar \"Runner\".';
+      'O nome que outros corredores veem. Deixe em branco para utilizar “Runner”.';
 
   @override
   String get settingsAccountDisplayNameUnset =>
-      'Não definido — aparece como \"Runner\"';
+      'Não definido — aparece como “Runner”';
 
   @override
   String get settingsAccountDisplayNameUpdated => 'Nome de exibição atualizado';
@@ -7767,7 +7767,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String gearDeleteBody(String name) {
-    return 'Eliminar \"$name\"? O histórico de quilometragem das corridas anteriores será perdido. Aposente em vez disto para manter os registos.';
+    return 'Eliminar “$name”? O histórico de quilometragem das corridas anteriores será perdido. Aposente em vez disto para manter os registos.';
   }
 
   @override
@@ -7841,7 +7841,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get gearRotationsHint =>
-      'Agrupe os equipamentos que reveza — um conjunto de \"Treino diário\", um conjunto de \"Dia de prova\". Um rodízio é apenas um agrupamento nomeado; ele não muda qual par marca automaticamente as novas corridas.';
+      'Agrupe os equipamentos que reveza — um conjunto de “Treino diário”, um conjunto de “Dia de prova”. Um rodízio é apenas um agrupamento nomeado; ele não muda qual par marca automaticamente as novas corridas.';
 
   @override
   String get gearRotationsEmpty =>
@@ -7864,7 +7864,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String gearRotationManageTitle(String name) {
-    return 'Equipamentos em \"$name\"';
+    return 'Equipamentos em “$name”';
   }
 
   @override
@@ -7872,7 +7872,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String gearRotationDeleteBody(String name) {
-    return 'Eliminar o rodízio \"$name\"? O seu equipamento não é afetado — apenas o agrupamento é removido.';
+    return 'Eliminar o rodízio “$name”? O seu equipamento não é afetado — apenas o agrupamento é removido.';
   }
 
   @override
@@ -10260,7 +10260,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get runBackgroundLocationNudgeBody =>
-      'O Android só concedeu a localização enquanto a app está aberta. Para uma distância precisa com o ecrã desligado, defina o acesso à localização como \"Permitir o tempo todo\" nas Definições. Pode começar mesmo assim — a gravação continua a funcionar enquanto a app estiver no ecrã.';
+      'O Android só concedeu a localização enquanto a app está aberta. Para uma distância precisa com o ecrã desligado, defina o acesso à localização como “Permitir o tempo todo” nas Definições. Pode começar mesmo assim — a gravação continua a funcionar enquanto a app estiver no ecrã.';
 
   @override
   String get runBatteryOptHintTitle =>
@@ -10835,7 +10835,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String gymLibraryEmptySearch(String query) {
-    return 'Nenhuma rotina corresponde a \"$query\".';
+    return 'Nenhuma rotina corresponde a “$query”.';
   }
 
   @override
@@ -15562,7 +15562,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String routePickerEmptyNoMatch(Object query) {
-    return 'Nenhuma rota corresponde a \"$query\"';
+    return 'Nenhuma rota corresponde a “$query”';
   }
 
   @override
@@ -15669,7 +15669,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get importStravaHowToSteps =>
-      '1. Abra o Strava → Configurações → Minha conta\n2. Role até \"Baixar ou excluir sua conta\"\n3. Toque em \"Começar\" → \"Solicitar seu arquivo\"\n4. Você receberá um e-mail com um link de download em algumas horas\n5. Baixe o .zip e toque em Importar abaixo';
+      '1. Abra o Strava → Configurações → Minha conta\n2. Role até “Baixar ou excluir sua conta”\n3. Toque em “Começar” → “Solicitar seu arquivo”\n4. Você receberá um e-mail com um link de download em algumas horas\n5. Baixe o .zip e toque em Importar abaixo';
 
   @override
   String get importStravaButton => 'Importar ZIP do Strava';
@@ -15889,7 +15889,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String peopleEmptySearchTitle(Object query) {
-    return 'Nenhum corredor corresponde a \"$query\"';
+    return 'Nenhum corredor corresponde a “$query”';
   }
 
   @override
@@ -16230,14 +16230,14 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get prefsShowGymSubtitle =>
-      'Adiciona a aba Academia, \"Registrar musculação\" e seus treinos no Início';
+      'Adiciona a aba Academia, “Registrar musculação” e seus treinos no Início';
 
   @override
   String get prefsShowNutrition => 'Mostrar Nutrição';
 
   @override
   String get prefsShowNutritionSubtitle =>
-      'Adiciona a aba Nutrição, \"Registrar comida\" e as refeições de hoje no Início';
+      'Adiciona a aba Nutrição, “Registrar comida” e as refeições de hoje no Início';
 
   @override
   String get bodyMetricsTitle => 'Dados corporais';
@@ -16741,7 +16741,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get onboardingLocationBodyAndroid =>
-      'O Threkir coleta sua localização GPS para gravar uma corrida, inclusive com a tela desligada — uma notificação mostra que há uma gravação em andamento. Sua localização fica neste dispositivo enquanto você não sincronizar nem compartilhar uma corrida. A próxima solicitação concede o acesso durante o uso do app, que é tudo o que a primeira solicitação do Android pode dar; antes da sua primeira corrida, o Threkir oferece a mudança para \"Permitir sempre\", que mantém o rastreamento confiável quando você troca de app. Se recusar, as corridas continuam registrando tempo e passos — mas sem mapa, distância ou ritmo.';
+      'O Threkir coleta sua localização GPS para gravar uma corrida, inclusive com a tela desligada — uma notificação mostra que há uma gravação em andamento. Sua localização fica neste dispositivo enquanto você não sincronizar nem compartilhar uma corrida. A próxima solicitação concede o acesso durante o uso do app, que é tudo o que a primeira solicitação do Android pode dar; antes da sua primeira corrida, o Threkir oferece a mudança para “Permitir sempre”, que mantém o rastreamento confiável quando você troca de app. Se recusar, as corridas continuam registrando tempo e passos — mas sem mapa, distância ou ritmo.';
 
   @override
   String get onboardingLocationBodyIos =>
@@ -17487,7 +17487,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runBackgroundLocationPaused =>
-      'O rastreamento pausou enquanto você esteve fora — o tempo continuou correndo e nada foi perdido, mas a distância percorrida fora da tela não foi contada. Defina a Localização como \"Permitir o tempo todo\" para continuar rastreando em segundo plano.';
+      'O rastreamento pausou enquanto você esteve fora — o tempo continuou correndo e nada foi perdido, mas a distância percorrida fora da tela não foi contada. Defina a Localização como “Permitir o tempo todo” para continuar rastreando em segundo plano.';
 
   @override
   String get runGpsSensorFailed =>
@@ -18033,7 +18033,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String addRunPickerNoMatch(String query) {
-    return 'Nenhuma rota corresponde a \"$query\"';
+    return 'Nenhuma rota corresponde a “$query”';
   }
 
   @override
@@ -18360,12 +18360,12 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String runDetailRouteSaved(String name, int kept, int smoothed) {
-    return '\"$name\" salva — $kept pontos de passagem ($smoothed suavizados)';
+    return '“$name” salva — $kept pontos de passagem ($smoothed suavizados)';
   }
 
   @override
   String runDetailRouteSaveFailed(String name) {
-    return 'Não foi possível salvar \"$name\" como rota.';
+    return 'Não foi possível salvar “$name” como rota.';
   }
 
   @override
@@ -18529,7 +18529,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String routesImported(String name) {
-    return '\"$name\" importada';
+    return '“$name” importada';
   }
 
   @override
@@ -18548,7 +18548,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String routesSaved(String name) {
-    return '\"$name\" salva';
+    return '“$name” salva';
   }
 
   @override
@@ -19486,7 +19486,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String exploreRoutesSaved(String name) {
-    return '\"$name\" salva na sua biblioteca';
+    return '“$name” salva na sua biblioteca';
   }
 
   @override
@@ -19497,7 +19497,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String exploreRoutesRemoved(String name) {
-    return '\"$name\" removida da sua biblioteca';
+    return '“$name” removida da sua biblioteca';
   }
 
   @override
@@ -20482,7 +20482,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String clubDetailRouteSaved(String name) {
-    return '\"$name\" salva';
+    return '“$name” salva';
   }
 
   @override
@@ -20944,7 +20944,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String plansDeleteTitle(String name) {
-    return 'Excluir \"$name\"?';
+    return 'Excluir “$name”?';
   }
 
   @override
@@ -20961,7 +20961,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String plansAbandonTitle(String name) {
-    return 'Abandonar \"$name\"?';
+    return 'Abandonar “$name”?';
   }
 
   @override
@@ -21313,7 +21313,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String planNewReplaceActiveNamed(String name) {
-    return 'Você já tem um plano ativo: \"$name\". Criar um novo plano marcará o atual como concluído (você ainda poderá encontrá-lo em Gerenciar planos). Continuar?';
+    return 'Você já tem um plano ativo: “$name”. Criar um novo plano marcará o atual como concluído (você ainda poderá encontrá-lo em Gerenciar planos). Continuar?';
   }
 
   @override
@@ -21544,7 +21544,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String planDetailPublishSuccess(String name) {
-    return '\"$name\" publicado como modelo do clube.';
+    return '“$name” publicado como modelo do clube.';
   }
 
   @override
@@ -21690,7 +21690,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get workoutAdviceTempo =>
-      '\"Confortavelmente difícil\". Você deve sentir que conseguiria manter o ritmo por cerca de uma hora em esforço máximo, mas não mais.';
+      '“Confortavelmente difícil”. Você deve sentir que conseguiria manter o ritmo por cerca de uma hora em esforço máximo, mas não mais.';
 
   @override
   String get workoutAdviceInterval =>
@@ -21751,7 +21751,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get coachConsentAction =>
-      'Toque em \"Eu consinto\" para continuar. Toque em cancelar para sair da página sem enviar dados.';
+      'Toque em “Eu consinto” para continuar. Toque em cancelar para sair da página sem enviar dados.';
 
   @override
   String get coachConsentCancel => 'Cancelar';
@@ -22088,7 +22088,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String settingsAccountDeleteChallengeText(String word) {
-    return 'Digite \"$word\" para confirmar';
+    return 'Digite “$word” para confirmar';
   }
 
   @override
@@ -22308,11 +22308,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get settingsAccountDisplayNameHint =>
-      'O nome que outros corredores veem. Deixe em branco para usar \"Runner\".';
+      'O nome que outros corredores veem. Deixe em branco para usar “Runner”.';
 
   @override
   String get settingsAccountDisplayNameUnset =>
-      'Não definido — você aparece como \"Runner\"';
+      'Não definido — você aparece como “Runner”';
 
   @override
   String get settingsAccountDisplayNameUpdated => 'Nome de exibição atualizado';
@@ -23159,7 +23159,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String gearDeleteBody(String name) {
-    return 'Excluir \"$name\"? O histórico de quilometragem das corridas anteriores será perdido. Aposente em vez disso para manter os registros.';
+    return 'Excluir “$name”? O histórico de quilometragem das corridas anteriores será perdido. Aposente em vez disso para manter os registros.';
   }
 
   @override
@@ -23233,7 +23233,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get gearRotationsHint =>
-      'Agrupe os equipamentos que você reveza — um conjunto de \"Treino diário\", um conjunto de \"Dia de prova\". Um rodízio é apenas um agrupamento nomeado; ele não muda qual par marca automaticamente as novas corridas.';
+      'Agrupe os equipamentos que você reveza — um conjunto de “Treino diário”, um conjunto de “Dia de prova”. Um rodízio é apenas um agrupamento nomeado; ele não muda qual par marca automaticamente as novas corridas.';
 
   @override
   String get gearRotationsEmpty =>
@@ -23256,7 +23256,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String gearRotationManageTitle(String name) {
-    return 'Equipamentos em \"$name\"';
+    return 'Equipamentos em “$name”';
   }
 
   @override
@@ -23264,7 +23264,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String gearRotationDeleteBody(String name) {
-    return 'Excluir o rodízio \"$name\"? Seu equipamento não é afetado — apenas o agrupamento é removido.';
+    return 'Excluir o rodízio “$name”? Seu equipamento não é afetado — apenas o agrupamento é removido.';
   }
 
   @override
@@ -25651,7 +25651,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runBackgroundLocationNudgeBody =>
-      'O Android só concedeu a localização enquanto o app está aberto. Para uma distância precisa com a tela desligada, defina o acesso à localização como \"Permitir o tempo todo\" nas Configurações. Você pode começar mesmo assim — a gravação continua funcionando enquanto o app estiver na tela.';
+      'O Android só concedeu a localização enquanto o app está aberto. Para uma distância precisa com a tela desligada, defina o acesso à localização como “Permitir o tempo todo” nas Configurações. Você pode começar mesmo assim — a gravação continua funcionando enquanto o app estiver na tela.';
 
   @override
   String get runBatteryOptHintTitle =>
@@ -26226,7 +26226,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String gymLibraryEmptySearch(String query) {
-    return 'Nenhuma rotina corresponde a \"$query\".';
+    return 'Nenhuma rotina corresponde a “$query”.';
   }
 
   @override

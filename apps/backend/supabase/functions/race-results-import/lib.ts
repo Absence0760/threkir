@@ -79,10 +79,18 @@ function parseClock(time: unknown): number {
   if (!s) return 0;
   const parts = s.split(':').map((p) => Number(p));
   if (parts.some((n) => !Number.isFinite(n) || n < 0)) return 0;
-  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
-  if (parts.length === 2) return parts[0] * 60 + parts[1];
-  if (parts.length === 1) return parts[0];
-  return 0;
+  let total: number;
+  if (parts.length === 3) total = parts[0] * 3600 + parts[1] * 60 + parts[2];
+  else if (parts.length === 2) total = parts[0] * 60 + parts[1];
+  else if (parts.length === 1) total = parts[0];
+  else return 0;
+  return Math.ceil(total);
+}
+
+/** A result field that may arrive as a number (RunSignUp's `bib`) or text. */
+function resultText(raw: unknown, max: number = MAX_FIELD_LEN): string {
+  if (typeof raw === 'number' && Number.isFinite(raw)) return String(raw);
+  return capField(raw, max);
 }
 
 /** A result field that may arrive as a number (RunSignUp's `bib`) or text. */

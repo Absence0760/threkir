@@ -515,7 +515,10 @@ export function makeRaceResultsImportHandler(
     // loses every other result in the import rather than the duplicate.
     const batch = reconcileImportBatch(
       mapped,
-      (seenRows ?? []).map((r) => r.external_id).filter((id): id is string => id !== null),
+      [
+        ...(seenRows ?? []).map((r) => r.external_id).filter((id): id is string => id !== null),
+        ...alreadyFiled,
+      ],
     );
     const filed = reconcileFiledFinishes(
       batch.fresh,

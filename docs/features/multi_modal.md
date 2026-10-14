@@ -259,7 +259,7 @@ becomes an **action button**, not a tab.
   explicit override for someone who logs other modalities and still wants
   the one-tap start.
 - **Long-press `Log` = the runner's menu: what the tap does not do**
-  (decisions § R10MENU-1, replacing § 1644's "long-press opens the fan").
+  (decisions § 1892, replacing § 1644's "long-press opens the fan").
   A bottom sheet of list rows, at most five:
   - **Start today's workout**, captioned with the session's kind, only when
     the active plan has a workout today that is not a rest day, not done,

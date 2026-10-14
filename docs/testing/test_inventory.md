@@ -535,7 +535,7 @@ Settings → Integrations' UltraSignup finder ([decisions § 1841](../architectu
 
 ### `apps/mobile_android/test/runner_menu_test.dart` — 15 tests
 
-The centre button's long-press menu (decisions § R10MENU-1): which rows it offers when the tap starts a run and when the tap fans, that it never exceeds five rows, which plan workout counts as today's open one (not another day, a rest day, a completed, run-completed or skipped workout, or one with nothing to follow), and the sheet itself: its rows and title, a row resolving to its action, dismissal resolving to nothing, and five rows at the largest text size scrolling rather than overflowing. Each row's routing in the shell is pinned in `home_screen_test.dart`.
+The centre button's long-press menu (decisions § 1892): which rows it offers when the tap starts a run and when the tap fans, that it never exceeds five rows, which plan workout counts as today's open one (not another day, a rest day, a completed, run-completed or skipped workout, or one with nothing to follow), and the sheet itself: its rows and title, a row resolving to its action, dismissal resolving to nothing, and five rows at the largest text size scrolling rather than overflowing. Each row's routing in the shell is pinned in `home_screen_test.dart`.
 
 ### `apps/mobile_ios/test/` — 620 files, byte-for-byte
 

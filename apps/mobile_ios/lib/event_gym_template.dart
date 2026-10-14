@@ -159,6 +159,19 @@ class RoutineWorkoutDraft {
   final List<RoutineDraftItem> sets;
 }
 
+// Twins of web's `finiteOrNull` / `wholeOrNull`: `double.tryParse` answers NaN
+// and Infinity rather than null, and a whole number may be written `5.0`.
+double? _finiteOrNull(String input) {
+  if (input.isEmpty) return null;
+  final n = double.tryParse(input.trim());
+  return n != null && n.isFinite ? n : null;
+}
+
+int? _wholeOrNull(String input) {
+  final n = _finiteOrNull(input);
+  return n != null && n == n.truncateToDouble() ? n.toInt() : null;
+}
+
 /// Produce the gym-log prefill from a class's attached gym routine. The
 /// routine is the club's template and stays theirs: this only seeds the
 /// attendee's own new workout (decisions § 1869). Goes through
@@ -178,9 +191,9 @@ RoutineWorkoutDraft workoutDraftFromRoutine(
     for (final s in block.sets) {
       sets.add(RoutineDraftItem(
         exerciseName: block.name,
-        reps: s.reps.isEmpty ? null : int.tryParse(s.reps),
+        reps: _wholeOrNull(s.reps),
         weightKg: s.weightKg?.toDouble(),
-        rpe: s.rpe.isEmpty ? null : double.tryParse(s.rpe),
+        rpe: _finiteOrNull(s.rpe),
       ));
     }
   }

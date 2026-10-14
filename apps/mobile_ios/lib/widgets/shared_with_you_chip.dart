@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show StatusPill;
 
 import '../l10n/gen/app_localizations.dart';
 
@@ -13,34 +14,17 @@ class SharedWithYouChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    final colour = theme.colorScheme.onSecondaryContainer;
     return Tooltip(
       message: l10n.audienceSharedWithYouHint,
       child: Semantics(
         label: l10n.audienceSharedWithYouHint,
         excludeSemantics: true,
-        child: Container(
+        child: StatusPill(
           key: const Key('shared-with-you'),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.secondaryContainer,
-            borderRadius: BorderRadius.circular(999),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.group_outlined, size: 16, color: colour),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  l10n.audienceSharedWithYou,
-                  style: theme.textTheme.labelMedium?.copyWith(color: colour),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
+          label: l10n.audienceSharedWithYou,
+          foreground: theme.colorScheme.onSecondaryContainer,
+          fill: theme.colorScheme.secondaryContainer,
+          icon: Icons.group,
         ),
       ),
     );

@@ -41,6 +41,7 @@ import '../lib/screens/settings_preferences_screen.dart';
 import '../lib/screens/settings_pro_screen.dart';
 import '../lib/screens/settings_safety_screen.dart';
 import '../lib/screens/setup_wizard_screen.dart';
+import 'pump_until.dart';
 
 /// Drives auth transitions for the setup-wizard gate (#232): a fresh
 /// account (onboarded_at null) signs in after launch.
@@ -1607,7 +1608,13 @@ void main() {
       final s = await _makeStores();
       await _pump(tester, s, api: _LinkApi());
       pendingEntityLink.value = const EntityLink(EntityLinkKind.run, id);
-      await settle(tester);
+      // The own-run lookup reads the run store from disk, which the fake
+      // clock never completes on its own.
+      await pumpUntil(
+        tester,
+        () => find.byType(PublicRunScreen).evaluate().isNotEmpty,
+        describe: 'the non-owner run view',
+      );
 
       expect(find.byType(PublicRunScreen), findsOneWidget);
       expect(pendingEntityLink.value, isNull);
@@ -1628,7 +1635,11 @@ void main() {
       final s = await _makeStores();
       pendingEntityLink.value = const EntityLink(EntityLinkKind.run, id);
       await _pump(tester, s, api: _LinkApi());
-      await settle(tester);
+      await pumpUntil(
+        tester,
+        () => find.byType(PublicRunScreen).evaluate().isNotEmpty,
+        describe: 'the non-owner run view',
+      );
 
       expect(find.byType(PublicRunScreen), findsOneWidget);
     });

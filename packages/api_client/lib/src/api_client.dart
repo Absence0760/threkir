@@ -4019,23 +4019,25 @@ class ApiClient {
   /// come from a second batched query (the run→profile join isn't
   /// expressible when the run may be invisible to the viewer). Throws on a
   /// load failure so the gallery can tell "nobody has posted yet" from "the
-  /// gallery did not load" — the widget contains it (L4). RLS returns a
-  /// hidden photo only to its owner and the event's stewards.
+  /// gallery did not load" — the widget contains it (L4). The
+  /// `event_gallery_photos` read returns a hidden photo only to its owner and
+  /// the event's stewards — RLS alone cannot, because a photo on a public run
+  /// is readable through the run path (decisions § 1906).
   Future<List<EventPhotoView>> fetchEventPhotos(
     String eventId,
     DateTime instanceStart, {
     int limit = 100,
   }) async {
-    final rows = await _client
-        .from(RunPhotoRow.table)
-        .select(
-          'id, owner_id, storage_path, thumb_512_path, caption, '
-          'position_idx, created_at, event_id, event_instance_start, hidden_at',
-        )
-        .eq(RunPhotoRow.colEventId, eventId)
-        .eq(RunPhotoRow.colEventInstanceStart, instanceStartKey(instanceStart))
-        .order(RunPhotoRow.colCreatedAt, ascending: true)
-        .limit(limit);
+    final res = await _client.rpc(
+      'event_gallery_photos',
+      params: {
+        'p_event_id': eventId,
+        'p_instance': instanceStartKey(instanceStart),
+        'p_limit': limit,
+      },
+      get: true,
+    );
+    final rows = (res as List).cast<Map<String, dynamic>>();
     if (rows.isEmpty) return const [];
     final ownerIds = <String>{
       for (final r in rows) r['owner_id'] as String,

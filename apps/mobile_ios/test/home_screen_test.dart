@@ -1597,6 +1597,28 @@ void main() {
       expect(find.byType(GymScreen), findsOneWidget);
       expect(shellPage(tester), 1);
     });
+
+    testWidgets('with the preference on, Log food in the long-press menu '
+        'lands on the Nutrition dwell-in page', (tester) async {
+      final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
+      await s.prefs.setShowNutrition(true);
+      await s.prefs.setKeepRunPrimary(true);
+      await _pump(tester, s);
+
+      await tester.longPress(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(_inMenu('Log food'), findsOneWidget);
+
+      await tester.tap(_inMenu('Log food'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.text('Nutrition'), findsNWidgets(2));
+      expect(find.byType(NutritionScreen), findsOneWidget);
+      expect(find.byType(BottomAppBar), findsOneWidget);
+      expect(shellPage(tester), 1);
+    });
   });
 
   group('the guided-run handoff brings the Run tab forward', () {

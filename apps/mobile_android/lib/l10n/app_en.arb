@@ -3750,6 +3750,8 @@
   "@runDetailStrategyNotReached": {"description": "Run detail pacing strategy — a phase the run ended before reaching"},
   "runDetailStrategyPartial": "partial",
   "@runDetailStrategyPartial": {"description": "Run detail pacing strategy — a phase the run ended part-way through"},
+  "runDetailStrategyOnPace": "on pace",
+  "@runDetailStrategyOnPace": {"description": "Run detail pacing strategy — delta cell when a phase ran exactly at its target pace"},
   "runDetailStrategyVerdictOnPlan": "On plan",
   "@runDetailStrategyVerdictOnPlan": {"description": "Run detail pacing strategy verdict — every phase on target"},
   "runDetailStrategyVerdictWentOutTooFast": "Went out too fast",

@@ -2763,6 +2763,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runDetailStrategyPartial => '一部';
 
   @override
+  String get runDetailStrategyOnPace => 'ペース通り';
+
+  @override
   String get runDetailStrategyVerdictOnPlan => '計画どおり';
 
   @override

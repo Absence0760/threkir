@@ -4895,6 +4895,12 @@ abstract class AppLocalizations {
   /// **'partial'**
   String get runDetailStrategyPartial;
 
+  /// Run detail pacing strategy — delta cell when a phase ran exactly at its target pace
+  ///
+  /// In en, this message translates to:
+  /// **'on pace'**
+  String get runDetailStrategyOnPace;
+
   /// Run detail pacing strategy verdict — every phase on target
   ///
   /// In en, this message translates to:

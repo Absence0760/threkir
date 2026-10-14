@@ -797,6 +797,7 @@
   "runDetailStrategyColTarget": "Objetivo",
   "runDetailStrategyNotReached": "no alcanzada",
   "runDetailStrategyPartial": "parcial",
+  "runDetailStrategyOnPace": "en ritmo",
   "runDetailStrategyVerdictOnPlan": "Según el plan",
   "runDetailStrategyVerdictWentOutTooFast": "Salida demasiado rápida",
   "runDetailStrategyVerdictFaded": "Bajón final",

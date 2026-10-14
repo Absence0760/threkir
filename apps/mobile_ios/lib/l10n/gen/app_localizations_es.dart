@@ -2908,6 +2908,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get runDetailStrategyPartial => 'parcial';
 
   @override
+  String get runDetailStrategyOnPace => 'en ritmo';
+
+  @override
   String get runDetailStrategyVerdictOnPlan => 'Según el plan';
 
   @override

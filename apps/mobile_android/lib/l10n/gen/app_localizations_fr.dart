@@ -2917,6 +2917,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get runDetailStrategyPartial => 'partielle';
 
   @override
+  String get runDetailStrategyOnPace => 'dans le rythme';
+
+  @override
   String get runDetailStrategyVerdictOnPlan => 'Conforme au plan';
 
   @override

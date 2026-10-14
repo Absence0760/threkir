@@ -2906,6 +2906,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get runDetailStrategyPartial => 'parcial';
 
   @override
+  String get runDetailStrategyOnPace => 'no ritmo';
+
+  @override
   String get runDetailStrategyVerdictOnPlan => 'Conforme o plano';
 
   @override
@@ -18515,6 +18518,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runDetailStrategyPartial => 'parcial';
+
+  @override
+  String get runDetailStrategyOnPace => 'no ritmo';
 
   @override
   String get runDetailStrategyVerdictOnPlan => 'Conforme o plano';

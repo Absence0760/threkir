@@ -2,7 +2,7 @@
 -- in to each account, and enqueue a `security_email` (template
 -- `new_device_sign_in`) the first time a class appears on an account that
 -- already had one. docs/features/email.md § Security emails; the privacy
--- design is decisions R10MAIL-2.
+-- design is decisions 1894.
 --
 -- What "device" means here, and what is deliberately NOT kept:
 --

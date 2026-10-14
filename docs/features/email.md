@@ -74,7 +74,7 @@ drive the worker:
   and it has its OWN opt-out (`email_new_device_alerts`), which lifecycle mail
   does not. Transactional, so `email_notifications` never mutes it. The
   password-changed notice is **not** this kind — GoTrue sends it through the
-  `auth-email` hook. § Security emails below; decisions R10MAIL-1 / R10MAIL-2.
+  `auth-email` hook. § Security emails below; decisions 1893 / 1894.
 
 A **non-email** job kind reuses the same notifications rows over a
 different transport:
@@ -243,8 +243,8 @@ Shared pieces:
 | **Web push** (browser system notification, same notification rows) | `web_push` | `notifications` AFTER INSERT, gated on a registered `push_subscription` + the separate `push_notifications` pref | n/a (title/body from the shared catalogue) | §133 |
 | **Native push** (locked-phone FCM/APNs, same notification rows) | `native_push` | `notifications` AFTER INSERT, gated on an enabled `device_tokens` row + the same `push_notifications` pref | gated on operator FCM/APNs creds (title/body from the shared catalogue) | §166 |
 | **Lifecycle drip** (onboarding / first-week / re-engagement / streak nudges) | `lifecycle_drip` (`drip_onboarding`, `drip_first_week`, `drip_reengagement`, `drip_streak`) | daily pg_cron `enqueue_lifecycle_drip()` selects the cohort in SQL; handler gates on the opt-IN `email_lifecycle_drip` pref + `email_suppressions` + a working opt-out (unset `WEEKLY_DIGEST_UNSUB_SECRET` → no unsubscribe URL → log + skip); RFC 8058 one-click unsubscribe (`/unsubscribe/lifecycle-drip`). Enqueue dedupe excludes `done` for onboarding + first-week + re-engagement (`20270423_001`, issue #376) so the daily cron can't re-send a completed nudge; streak stays daily-repeating by design. **SEND fail-closed on the unset SMTP credential + CISO/counsel sign-off** (built, migration `20270223_001`) | ✓ | §177 |
-| **Password changed** (security notice, not optional) | GoTrue `password_changed_notification` → `auth-email` hook | every password change a user makes — settings change and recovery reset alike; enabled by `config.toml [auth.email.notification.password_changed]` locally, the Auth → Emails security-notification toggle in prod | ✓ | R10MAIL-1 |
-| **New-device sign-in** (security notice, opt-out) | `security_email` (`new_device_sign_in`) | `auth.sessions` AFTER INSERT / first-known `user_agent` UPDATE, when the `(browser, platform)` class is new to an account that already had one; gated at send time on `email_new_device_alerts != 'off'` | ✓ | R10MAIL-2 |
+| **Password changed** (security notice, not optional) | GoTrue `password_changed_notification` → `auth-email` hook | every password change a user makes — settings change and recovery reset alike; enabled by `config.toml [auth.email.notification.password_changed]` locally, the Auth → Emails security-notification toggle in prod | ✓ | 1893 |
+| **New-device sign-in** (security notice, opt-out) | `security_email` (`new_device_sign_in`) | `auth.sessions` AFTER INSERT / first-known `user_agent` UPDATE, when the `(browser, platform)` class is new to an account that already had one; gated at send time on `email_new_device_alerts != 'off'` | ✓ | 1894 |
 | Branded HTML + inbox preview text | — | all email of the above | ✓ | — |
 
 All shipped emails are end-to-end tested against the local Docker Mailpit
@@ -363,7 +363,7 @@ neither, and neither carries a `List-Unsubscribe` header.
 
 ### Password changed — GoTrue's notice, through the existing hook
 
-- **Trigger: GoTrue itself**, not a database trigger (decisions R10MAIL-1).
+- **Trigger: GoTrue itself**, not a database trigger (decisions 1893).
   GoTrue sends `password_changed_notification` from `PUT /user` whenever a
   user's password changes — the Settings change-password form and the
   recovery-link reset both go through that endpoint — once
@@ -404,7 +404,7 @@ neither, and neither carries a `List-Unsubscribe` header.
   carries the same two classes and a UTC time, and so does the email.
   Retention: 180 days unseen, refreshed from live sessions first, never below
   one class per account; exported in the Art 20 archive
-  (`sign_in_devices.json`); cascades on deletion. decisions R10MAIL-2;
+  (`sign_in_devices.json`); cascades on deletion. decisions 1894;
   `derived_state.md § sign_in_devices`.
 - **When it fires:** the `auth.sessions` AFTER INSERT trigger (one row per
   sign-in — password, OTP, magic link, OAuth) plus an AFTER UPDATE OF
@@ -914,5 +914,5 @@ The code side is built and committed:
 - ADRs: `decisions.md` §117 (channel), §119 (lifecycle kind), §120 (i18n),
   §121 (subscription emails), §131 (safety-contact alerts), §203 (auth-email
   hook), §729 (data-export-ready + the per-kind mute), §825 (reversed refund),
-  R10MAIL-1 (password-changed through GoTrue's hook) + R10MAIL-2 (new-device
+  1893 (password-changed through GoTrue's hook) + 1894 (new-device
   detection and its privacy design).

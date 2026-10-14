@@ -311,7 +311,7 @@ type SafetyEmailPayload struct {
 //     location ever reach the payload.
 //
 // The password-changed notice is NOT a job: GoTrue emits it through the
-// send-email hook (auth-email Edge Function), decisions R10MAIL-1.
+// send-email hook (auth-email Edge Function), decisions 1893.
 type SecurityEmailPayload struct {
 	UserID     string `json:"user_id"`
 	Template   string `json:"template"`

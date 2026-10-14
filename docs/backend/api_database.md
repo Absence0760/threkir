@@ -1147,7 +1147,7 @@ service-role key to fan out. A trigger touches `updated_at` on update.
 The coarse device classes that have signed in to each account, kept only to
 detect a sign-in from a class the account has not used before (migration
 `20270804000002`, [email.md § Security emails](../features/email.md#security-emails),
-[decisions R10MAIL-2](../architecture/decisions.md)). A class is a
+[decisions 1894](../architecture/decisions.md)). A class is a
 `(browser, platform)` pair computed by `sign_in_browser_class(text)` /
 `sign_in_platform_class(text)` from the session's User-Agent inside the
 trigger: **no raw User-Agent, no version, no IP is ever written.** The values

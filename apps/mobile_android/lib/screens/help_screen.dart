@@ -4,6 +4,7 @@ import 'package:ui_kit/ui_kit.dart';
 
 import '../help_destination.dart';
 import '../help_guides.dart';
+import '../help_illustration.dart';
 import '../help_loader.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../widgets/error_state.dart';
@@ -484,6 +485,8 @@ class _GuideBlockView extends StatelessWidget {
     switch (block) {
       case GuideParagraph(:final text):
         return HelpRichText(text, style: body);
+      case GuideIllustration(:final id, :final alt):
+        return HelpIllustration(id: id, alt: alt);
       case GuideSteps(:final items):
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

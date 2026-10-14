@@ -11,7 +11,7 @@ import { join } from 'node:path';
 import { illustrationBlocks, illustrationGuardProblems } from './check_help_illustrations.mjs';
 import { REPO_ROOT } from './gen_help_guides.mjs';
 
-const SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><circle cx="5" cy="5" r="4" fill="#ff00a1" stroke="currentColor"/></svg>\n';
+const SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200"><circle cx="5" cy="5" r="4" fill="#ff00a1" stroke="currentColor"/></svg>\n';
 const guide = (/** @type {Record<string, unknown>[]} */ blocks) => ({ id: 'g', sections: [{ heading: 'H', blocks }] });
 const ill = (id = 'a', alt = 'A diagram.') => ({ type: 'illustration', id, alt });
 const check = (/** @type {Record<string, unknown>[]} */ blocks, files = [{ name: 'a.svg', source: SVG }]) =>

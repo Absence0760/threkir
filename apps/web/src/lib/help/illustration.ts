@@ -26,6 +26,8 @@ export type IllustrationToken = keyof typeof ILLUSTRATION_PALETTE;
 
 export const ILLUSTRATION_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export const ILLUSTRATION_MAX_BYTES = 4096;
+/** one frame for every drawing, so web and mobile lay them out alike (16:10) */
+export const ILLUSTRATION_VIEWBOX = '0 0 320 200';
 
 const ELEMENTS = new Set(['svg', 'g', 'path', 'circle', 'ellipse', 'rect', 'line', 'polyline', 'polygon']);
 const ATTRIBUTES = new Set([
@@ -103,7 +105,7 @@ export function illustrationProblems(source: string): string[] {
 		}
 		if (name === 'svg' && depth === 0) {
 			if (seen.get('xmlns') !== 'http://www.w3.org/2000/svg') problems.push('the <svg> root needs xmlns="http://www.w3.org/2000/svg"');
-			if (!/^0 0 \d+ \d+$/.test(seen.get('viewBox') ?? '')) problems.push('the <svg> root needs a viewBox="0 0 <w> <h>"');
+			if (seen.get('viewBox') !== ILLUSTRATION_VIEWBOX) problems.push(`the <svg> root needs viewBox="${ILLUSTRATION_VIEWBOX}"`);
 			if (seen.has('width') || seen.has('height')) problems.push('the <svg> root takes no width or height, so it scales to its container');
 		}
 		if (!selfClosing) depth++;

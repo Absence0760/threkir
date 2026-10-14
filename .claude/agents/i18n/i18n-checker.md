@@ -125,6 +125,13 @@ would fail one:
   (scans the two-space top-level indent; gen-l10n takes a duplicate's
   position from the first and its value from the last). The parent must
   **replace a changed key in place, never append a second copy**.
+- **No straight double quote** — every translated locale quotes with its
+  glossary's marks, so a straight `"` in any non-English message fails
+  `messages_parity.test.ts` › "no message quotes with a straight double
+  quote" and `apps/mobile_android/test/architecture_guards_test.dart` ›
+  "translated catalogues quote with their own marks" (every non-`en` ARB
+  and `gen/` getter file). File a `guard` finding for any `"` in a
+  translation, whatever it wraps.
 - **Generated code is current** —
   `apps/mobile_android/test/l10n_generated_parity_test.dart` reads the ARBs
   against the committed `lib/l10n/gen/` output, so an ARB edit without

@@ -47,9 +47,10 @@ naturalised are capitalised nouns: `Workout`, `Feed`, `Follower`,
 
 ## Typography
 
-- Quotes: German low-high **„…“** (41 / 39 strings), e.g.
-  `routePickerEmptyNoMatch` "Keine Routen passen zu „{query}“". Straight
-  `"` is a slip (16 / 7 strings).
+- Quotes: German low-high **„…“**, always, e.g.
+  `routePickerEmptyNoMatch` "Keine Routen passen zu „{query}“";
+  a straight `"` in a message fails CI (`messages_parity.test.ts` on web, `architecture_guards_test.dart` on mobile — ARBs and the `gen/` getters). The last 8 web and 16 mobile straight-quoted strings moved to „…“
+  2026-10-14.
 - Ellipsis: **…** (U+2026); `...` appears only where the English has it.
 - Dashes: the English em dash is kept spaced ("— "), and many strings use
   the spaced en dash ` – ` (74 / 129) for the same job; either is

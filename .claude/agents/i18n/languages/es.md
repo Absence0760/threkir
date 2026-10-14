@@ -42,8 +42,9 @@ no accent on `solo` or demonstratives; opening `¿` and `¡` always (106 /
 
 ## Typography
 
-- Quotes: **« … »** without inner spaces (43 / 30); straight `"` survives in
-  some strings and is a slip.
+- Quotes: **«…»** without inner spaces, always;
+  a straight `"` in a message fails CI (`messages_parity.test.ts` on web, `architecture_guards_test.dart` on mobile — ARBs and the `gen/` getters). The last 6 web and 15 mobile straight-quoted strings moved to «…»
+  2026-10-14.
 - Ellipsis **…**. Spaced em dash ` — ` as in English, or a colon where
   Spanish reads better (the catalogues do both).
 - Literal number samples use the decimal comma ("5,0 km · 5:00 /km").

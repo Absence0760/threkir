@@ -42,8 +42,10 @@ names stay in Latin script.
 
 - Full stop 「。」, comma 「、」; question 「？」 and exclamation 「！」 full-width
   (6 / 10 `！`; ASCII `!` is a slip).
-- Quotes **「…」** (64 / 66), e.g. `routePickerEmptyNoMatch`
-  「「{query}」に一致するルートはありません」; 『』 only inside 「」.
+- Quotes **「…」**, always, with no space between 」 and the particle after it, e.g.
+  `routePickerEmptyNoMatch` 「「{query}」に一致するルートはありません」; 『』 only
+  inside 「」. A straight `"` in a message fails CI (`messages_parity.test.ts` on web, `architecture_guards_test.dart` on mobile — ARBs and the `gen/` getters); the last 2 mobile straight-quoted strings
+  (`addRunPickerNoMatch`, `runDetailRouteSaved`) moved to 「…」 2026-10-14.
 - Parentheses full-width **（…）** (92 / 167).
 - Ellipsis **…**.
 - Colon: the catalogues mostly use ASCII `: ` after kana/kanji (136 / 176)

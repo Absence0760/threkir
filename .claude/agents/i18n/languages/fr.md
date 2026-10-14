@@ -43,8 +43,9 @@ vocabulary is a good tiebreaker. `e-mail` (30 / 38; `courriel` is unused),
 
 ## Typography
 
-- Quotes: **« … »** with a space inside (55 / 34 uses; nearly all a plain
-  space, one non-breaking).
+- Quotes: **« … »** with a space inside (nearly all a plain space, one
+  non-breaking — see the spacing note below), always; a straight `"` in a message fails CI (`messages_parity.test.ts` on web, `architecture_guards_test.dart` on mobile — ARBs and the `gen/` getters). The last 3 web
+  and 4 mobile straight-quoted strings moved to « … » 2026-10-14.
 - Space before `;` `:` `!` `?` and `»` — the catalogues use a **plain
   space** (333 / 413 strings) and a non-breaking one only in 10 / 4. Follow
   the majority; a narrow no-break space (U+202F) is better typography and

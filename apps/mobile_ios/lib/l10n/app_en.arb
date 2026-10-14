@@ -19581,5 +19581,31 @@
   "logMoreTodaysWorkout": "Start today's workout",
   "@logMoreTodaysWorkout": {
     "description": "Long-press menu item: load today's plan workout on the recorder"
+  },
+  "runnerMenuFollowRoute": "Follow a route",
+  "@runnerMenuFollowRoute": {
+    "description": "Long-press menu: heading over the recent saved routes, each one tap to start a run following it"
+  },
+  "runnerMenuAllRoutes": "All routes…",
+  "@runnerMenuAllRoutes": {
+    "description": "Long-press menu: opens the full saved-route picker when there are more routes than shown inline"
+  },
+  "runnerMenuFollowRouteNamed": "Follow {name}",
+  "@runnerMenuFollowRouteNamed": {
+    "description": "Screen-reader label for an inline route in the long-press menu; the route's distance follows",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "runnerMenuWorkoutSteps": "{count, plural, one{{count} step} other{{count} steps}}",
+  "@runnerMenuWorkoutSteps": {
+    "description": "Long-press menu: how many steps today's structured workout has, after its distance",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   }
 }

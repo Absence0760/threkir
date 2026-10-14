@@ -25440,7 +25440,7 @@ abstract class AppLocalizations {
   /// Longer explanation of the Shared with you marker, read as its tooltip / screen-reader label
   ///
   /// In en, this message translates to:
-  /// **'Shared with you. It isn't public — only the people it's shared with can open it.'**
+  /// **'Shared with you. It isn\'t public — only the people it\'s shared with can open it.'**
   String get audienceSharedWithYouHint;
 
   /// Anonymous handle shown to a live spectator who does not follow the runner: the first four characters of the runner's id
@@ -25472,6 +25472,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Start today\'s workout'**
   String get logMoreTodaysWorkout;
+
+  /// Long-press menu: heading over the recent saved routes, each one tap to start a run following it
+  ///
+  /// In en, this message translates to:
+  /// **'Follow a route'**
+  String get runnerMenuFollowRoute;
+
+  /// Long-press menu: opens the full saved-route picker when there are more routes than shown inline
+  ///
+  /// In en, this message translates to:
+  /// **'All routes…'**
+  String get runnerMenuAllRoutes;
+
+  /// Screen-reader label for an inline route in the long-press menu; the route's distance follows
+  ///
+  /// In en, this message translates to:
+  /// **'Follow {name}'**
+  String runnerMenuFollowRouteNamed(String name);
+
+  /// Long-press menu: how many steps today's structured workout has, after its distance
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} step} other{{count} steps}}'**
+  String runnerMenuWorkoutSteps(int count);
 }
 
 class _AppLocalizationsDelegate

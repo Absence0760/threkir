@@ -14693,4 +14693,20 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get logMoreTodaysWorkout => '今日のワークアウトを開始';
+
+  @override
+  String get runnerMenuFollowRoute => 'ルートをたどる';
+
+  @override
+  String get runnerMenuAllRoutes => 'すべてのルート…';
+
+  @override
+  String runnerMenuFollowRouteNamed(String name) {
+    return '$nameをたどる';
+  }
+
+  @override
+  String runnerMenuWorkoutSteps(int count) {
+    return '$countステップ';
+  }
 }

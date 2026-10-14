@@ -4433,5 +4433,9 @@
   "liveRunnerAnonymous": "ランナー",
   "logMoreTitle": "その他のオプション",
   "logMoreLongPressHint": "その他のオプションを表示",
-  "logMoreTodaysWorkout": "今日のワークアウトを開始"
+  "logMoreTodaysWorkout": "今日のワークアウトを開始",
+  "runnerMenuFollowRoute": "ルートをたどる",
+  "runnerMenuAllRoutes": "すべてのルート…",
+  "runnerMenuFollowRouteNamed": "{name}をたどる",
+  "runnerMenuWorkoutSteps": "{count}ステップ"
 }

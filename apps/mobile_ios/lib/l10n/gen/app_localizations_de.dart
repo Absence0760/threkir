@@ -15428,4 +15428,26 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get logMoreTodaysWorkout => 'Heutiges Training starten';
+
+  @override
+  String get runnerMenuFollowRoute => 'Einer Route folgen';
+
+  @override
+  String get runnerMenuAllRoutes => 'Alle Routen …';
+
+  @override
+  String runnerMenuFollowRouteNamed(String name) {
+    return '$name folgen';
+  }
+
+  @override
+  String runnerMenuWorkoutSteps(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Schritte',
+      one: '$count Schritt',
+    );
+    return '$_temp0';
+  }
 }

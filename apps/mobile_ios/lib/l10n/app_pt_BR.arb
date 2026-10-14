@@ -4433,5 +4433,9 @@
   "liveRunnerAnonymous": "Corredor",
   "logMoreTitle": "Mais opções",
   "logMoreLongPressHint": "mostrar mais opções",
-  "logMoreTodaysWorkout": "Iniciar o treino de hoje"
+  "logMoreTodaysWorkout": "Iniciar o treino de hoje",
+  "runnerMenuFollowRoute": "Seguir uma rota",
+  "runnerMenuAllRoutes": "Todas as rotas…",
+  "runnerMenuFollowRouteNamed": "Seguir {name}",
+  "runnerMenuWorkoutSteps": "{count, plural, one{{count} etapa} other{{count} etapas}}"
 }

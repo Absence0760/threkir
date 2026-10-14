@@ -15415,6 +15415,28 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get logMoreTodaysWorkout => 'Iniciar o treino de hoje';
+
+  @override
+  String get runnerMenuFollowRoute => 'Seguir uma rota';
+
+  @override
+  String get runnerMenuAllRoutes => 'Todas as rotas…';
+
+  @override
+  String runnerMenuFollowRouteNamed(String name) {
+    return 'Seguir $name';
+  }
+
+  @override
+  String runnerMenuWorkoutSteps(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count etapas',
+      one: '$count etapa',
+    );
+    return '$_temp0';
+  }
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -30819,4 +30841,26 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get logMoreTodaysWorkout => 'Iniciar o treino de hoje';
+
+  @override
+  String get runnerMenuFollowRoute => 'Seguir uma rota';
+
+  @override
+  String get runnerMenuAllRoutes => 'Todas as rotas…';
+
+  @override
+  String runnerMenuFollowRouteNamed(String name) {
+    return 'Seguir $name';
+  }
+
+  @override
+  String runnerMenuWorkoutSteps(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count etapas',
+      one: '$count etapa',
+    );
+    return '$_temp0';
+  }
 }

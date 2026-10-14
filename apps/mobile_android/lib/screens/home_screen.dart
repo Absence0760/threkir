@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart' show CustomSemanticsAction;
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:api_client/api_client.dart';
@@ -7,6 +10,7 @@ import 'package:core_models/core_models.dart' as cm;
 import '../adaptive_width.dart';
 import '../audio_cues.dart';
 import '../auth_change_aware.dart';
+import '../backend_timeout.dart';
 import '../ble_heart_rate.dart';
 import '../ble_treadmill.dart';
 import '../club_invite_link.dart' show pendingClubInviteToken;
@@ -41,7 +45,9 @@ import '../widgets/billing_issue_banner.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/log_sheet.dart';
 import '../widgets/log_speed_dial.dart';
+import '../widgets/runner_menu.dart';
 import '../widgets/top_banner.dart';
+import 'add_run_screen.dart';
 import 'challenges_screen.dart';
 import 'club_detail_screen.dart';
 import 'club_invite_screen.dart';
@@ -58,6 +64,7 @@ import 'public_route_screen.dart';
 import 'public_run_screen.dart';
 import 'races_screen.dart';
 import 'route_detail_screen.dart';
+import 'route_picker_screen.dart';
 import 'run_detail_screen.dart';
 import 'run_screen.dart';
 import 'settings_about_screen.dart';
@@ -231,6 +238,7 @@ class _HomeScreenState extends State<HomeScreen>
     pendingStartWorkout.addListener(_onPendingStartWorkout);
     pendingArmGuidedRun.addListener(_onPendingArmGuidedRun);
     pendingStartRunWithRoute.addListener(_onPendingStartRunWithRoute);
+    widget.training.addListener(_onTrainingChange);
     incomingRouteImport.addListener(_onIncomingRouteImport);
     pendingPushTarget.addListener(_onPendingPushTarget);
     pendingSettingsDestination.addListener(_onPendingSettingsDestination);
@@ -243,6 +251,7 @@ class _HomeScreenState extends State<HomeScreen>
     // A notification tap that cold-started the app lands the same way — the
     // push bridge reads the launch message with no Navigator yet in the tree.
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshPlanOverview();
       _onIncomingRouteImport();
       _onPendingPushTarget();
       _onPendingSettingsDestination();
@@ -810,6 +819,8 @@ class _HomeScreenState extends State<HomeScreen>
     pendingStartWorkout.removeListener(_onPendingStartWorkout);
     pendingArmGuidedRun.removeListener(_onPendingArmGuidedRun);
     pendingStartRunWithRoute.removeListener(_onPendingStartRunWithRoute);
+    widget.training.removeListener(_onTrainingChange);
+    _trainingDebounce?.cancel();
     incomingRouteImport.removeListener(_onIncomingRouteImport);
     pendingPushTarget.removeListener(_onPendingPushTarget);
     pendingSettingsDestination
@@ -932,30 +943,109 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  /// Long-press on the centre Log button opens the full capture menu.
-  /// It used to mean one of two opposite things depending on a preference —
-  /// open the menu, or navigate straight to the last-logged modality with
-  /// nothing announced — so a press half a beat too long landed a runner on
-  /// Nutrition. One gesture, one meaning.
+  /// Long-press on the centre Log button opens the runner's menu: what the
+  /// tap does not already do (decisions § R10MENU-1). One gesture, one
+  /// meaning — it used to open the same fan as the tap, and with Gym and
+  /// Nutrition hidden that fan had one item, so the long-press was the tap.
   ///
   /// Except mid-run: the button is then "return to your run" for both
   /// gestures, so a press held half a beat too long at a traffic light does
   /// not open a picker over the run.
-  ///
-  /// And with only one action left to offer — Gym and Nutrition both hidden
-  /// — a fan of one is the tap with an animation in front of it, so it is
-  /// the tap.
-  void _onLogLongPress({Offset? anchor}) {
-    final offered = LogAction.values
-        .where((a) => !_hiddenLogActions.contains(a))
-        .toList();
+  void _onLogLongPress() {
     if (runRecordingActive.value) {
       _performLogAction(LogAction.run);
-    } else if (offered.length == 1) {
-      _performLogAction(offered.single);
     } else {
-      _openLogMenu(anchor: anchor);
+      _openRunnerMenu();
     }
+  }
+
+  /// The active plan, cached so the menu opens at once rather than after a
+  /// plan read; [todaysOpenWorkout] re-derives today from it at menu time.
+  /// Null until the first read lands, and after any read that fails, which
+  /// costs the menu its workout row and nothing else.
+  ActivePlanOverview? _planOverview;
+  Timer? _trainingDebounce;
+
+  Future<void> _refreshPlanOverview() async {
+    try {
+      final p =
+          await widget.training.fetchActiveOverview().timeout(kBackendLoadTimeout);
+      if (mounted) _planOverview = p;
+    } catch (e) {
+      debugPrint('home: plan overview for the runner menu failed: $e');
+    }
+  }
+
+  void _onTrainingChange() {
+    _trainingDebounce?.cancel();
+    _trainingDebounce = Timer(const Duration(milliseconds: 500), () {
+      if (mounted) _refreshPlanOverview();
+    });
+  }
+
+  Future<void> _openRunnerMenu() async {
+    final workout = todaysOpenWorkout(
+      _planOverview?.workouts ?? const [],
+      DateTime.now(),
+    );
+    final picked = await showRunnerMenu(
+      context: context,
+      actions: runnerMenuActions(
+        tapFans: !_runIsPrimary,
+        hasTodaysWorkout: workout != null,
+        hasRoutes: widget.routeStore.routes.isNotEmpty,
+        gymShown: _gymShown,
+        nutritionShown: _nutritionShown,
+      ),
+      todaysWorkout: workout,
+    );
+    if (picked == null || !mounted) return;
+    switch (picked) {
+      case RunnerMenuAction.todaysWorkout:
+        _startTodaysWorkout(workout!);
+      case RunnerMenuAction.followRoute:
+        await _pickRouteToFollow();
+      case RunnerMenuAction.pastRun:
+        _openAddPastRun();
+      case RunnerMenuAction.lift:
+        await _performLogAction(LogAction.lift);
+      case RunnerMenuAction.food:
+        await _performLogAction(LogAction.food);
+    }
+  }
+
+  /// The recorder loads a workout only from its start screen, so a finished
+  /// run's summary is closed first, as a Start run tap closes it.
+  void _startTodaysWorkout(cm.PlanWorkoutRow workout) {
+    if (runSummaryShowing.value) runSummaryDismissRequests.request();
+    // Cleared first: the recorder leaves a handoff it could not honour in
+    // place, and writing the same row again would notify nobody.
+    pendingStartWorkout.value = null;
+    pendingStartWorkout.value = workout;
+  }
+
+  Future<void> _pickRouteToFollow() async {
+    final picked = await pickRoute(
+      context,
+      routes: widget.routeStore.routes,
+      unit: widget.preferences.unit,
+    );
+    if (picked == null || !mounted) return;
+    if (runSummaryShowing.value) runSummaryDismissRequests.request();
+    _startRunWithRoute(picked);
+  }
+
+  void _openAddPastRun() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (_) => AddRunScreen(
+          runStore: widget.runStore,
+          routeStore: widget.routeStore,
+          preferences: widget.preferences,
+        ),
+      ),
+    );
   }
 
   Set<LogAction> get _hiddenLogActions => hiddenLogActions(
@@ -1354,10 +1444,23 @@ class _HomeScreenState extends State<HomeScreen>
         final look = _centreLook(l10n);
         final scheme = Theme.of(fabContext).colorScheme;
         return GestureDetector(
-          onLongPress: () => _onLogLongPress(anchor: anchorOf()),
+          onLongPress: _onLogLongPress,
           child: Semantics(
             button: true,
             label: look.semantics,
+            // The long-press is otherwise found only by holding the button.
+            // TalkBack announces the hint ("double-tap and hold to show more
+            // options"); VoiceOver has no long-press, so the menu is also a
+            // custom action in its actions rotor. Mid-run both gestures
+            // return to the run, so there is no menu to announce.
+            onLongPress: look.recording ? null : _onLogLongPress,
+            onLongPressHint: look.recording ? null : l10n.logMoreLongPressHint,
+            customSemanticsActions: look.recording
+                ? null
+                : {
+                    CustomSemanticsAction(label: l10n.logMoreTitle):
+                        _onLogLongPress,
+                  },
             // The tooltip is OURS and manually triggered, never the
             // FloatingActionButton's own: a `tooltip:` builds a Tooltip
             // INSIDE the button, whose long-press recognizer enters the

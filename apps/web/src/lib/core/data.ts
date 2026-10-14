@@ -7360,11 +7360,15 @@ export async function fetchEventPhotos(
 ): Promise<{ photos: EventPhoto[]; error: string | null }> {
 	// `event_gallery_photos` returns no `run_id`, so a private run's UUID can't
 	// leak to an event viewer who can't see that run.
-	const { data, error } = await supabase.rpc('event_gallery_photos', {
-		p_event_id: eventId,
-		p_instance: instanceStart,
-		p_limit: limit,
-	});
+	const { data, error } = await supabase.rpc(
+		'event_gallery_photos',
+		{
+			p_event_id: eventId,
+			p_instance: instanceStart,
+			p_limit: limit,
+		},
+		{ get: true },
+	);
 	if (error) {
 		console.error('fetchEventPhotos failed', error);
 		return { photos: [], error: `${error.message}${error.code ? ` (${error.code})` : ''}` };

@@ -1,5 +1,5 @@
 -- US ZIP centroids for geocoding provider race listings at sync time
--- (decisions § 1900).
+-- (decisions § 1901).
 --
 -- RunSignUp's race feed carries an address and no coordinates, and its street
 -- line is free text ("DoubleTree by Hilton"), so a synced race had no
@@ -32,7 +32,7 @@ grant select on table public.us_zcta_points to service_role;
 comment on table public.us_zcta_points is
   'Census 2024 Gazetteer ZCTA internal points (public domain), read by '
   'race-listings-sync to give a provider race a location_point from its ZIP '
-  '(decisions 1900). Service role only.';
+  '(decisions 1901). Service role only.';
 
 insert into public.us_zcta_points (zcta, lat, lng) values
 ('00601',18.1806,-66.7500),

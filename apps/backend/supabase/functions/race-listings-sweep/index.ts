@@ -1,4 +1,4 @@
-/// The scheduled RunSignUp race-calendar sweep (decisions § 1901): pg_cron
+/// The scheduled RunSignUp race-calendar sweep (decisions § 1902): pg_cron
 /// calls it every five minutes through pg_net with the CRON_SECRET bearer, and
 /// each run syncs one state over one 14-day window into `race_listings`.
 ///

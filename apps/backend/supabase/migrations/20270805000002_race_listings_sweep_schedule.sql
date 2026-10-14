@@ -1,4 +1,4 @@
--- Schedule the RunSignUp race-calendar sweep (decisions § 1901).
+-- Schedule the RunSignUp race-calendar sweep (decisions § 1902).
 --
 -- Nothing called `race-listings-sync`, so `race_listings` never received a
 -- RunSignUp race. The `race-listings-sweep` Edge Function reads one state over
@@ -50,7 +50,7 @@ grant execute on function public.invoke_race_listings_sweep() to service_role;
 
 comment on function public.invoke_race_listings_sweep() is
   'Five-minute pg_cron entry for the RunSignUp race-calendar sweep (decisions '
-  '1901). POSTs to race-listings-sweep with the cron bearer, only when the Vault '
+  '1902). POSTs to race-listings-sweep with the cron bearer, only when the Vault '
   'secrets race_listings_sweep_url and cron_secret both exist. Service-role grant '
   'lets an operator run it by hand.';
 

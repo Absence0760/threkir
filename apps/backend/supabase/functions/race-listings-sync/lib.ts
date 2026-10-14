@@ -47,7 +47,7 @@ export interface NormalisedRace {
   distanceM: number | null;
   locationLabel: string | null;
   /// The US ZIP the race is held in, when the feed names one: the key its
-  /// `location_point` is looked up by (`us_zcta_points`, decisions § 1900).
+  /// `location_point` is looked up by (`us_zcta_points`, decisions § 1901).
   postalCode: string | null;
   entryUrl: string | null;
   resultsUrl: string | null;
@@ -624,7 +624,7 @@ export function providerRacesUrl(opts: {
   apiSecret: string | null;
   near: NearHint | null;
   /// RunSignUp only: one state over one date window — the scheduled sweep's
-  /// unit (`race-listings-sweep`, decisions § 1901). Replaces `start_date=today`.
+  /// unit (`race-listings-sweep`, decisions § 1902). Replaces `start_date=today`.
   window?: SweepWindow;
 }): string {
   const radiusMi = opts.near
@@ -667,7 +667,7 @@ export function providerRacesUrl(opts: {
   return u.toString();
 }
 
-// ── The scheduled sweep (race-listings-sweep, decisions § 1901) ─────────────
+// ── The scheduled sweep (race-listings-sweep, decisions § 1902) ─────────────
 
 /// The jurisdictions RunSignUp's `state` filter is swept over: the fifty states
 /// and DC, as the feed spells them in `address.state`.

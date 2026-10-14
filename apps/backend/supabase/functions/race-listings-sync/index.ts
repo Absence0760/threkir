@@ -24,7 +24,7 @@ import { syncProviderPayload } from './write.ts';
 // for every other role. The caller's own client is still what identifies them
 // and spends their rate-limit bucket. The write itself — reading the payload,
 // placing each race from its ZIP, reconciling — is ./write.ts, which the
-// scheduled `race-listings-sweep` shares (decisions § 1901).
+// scheduled `race-listings-sweep` shares (decisions § 1902).
 
 interface RequestBody {
   near?: unknown; // { postal_code?, lng?, lat?, radius_m? } region hint, see NearHint

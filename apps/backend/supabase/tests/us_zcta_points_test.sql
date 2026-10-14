@@ -1,5 +1,5 @@
 -- Pins migration 20270805000001 — the ZIP centroids race-listings-sync places
--- a provider race with (decisions § 1900).
+-- a provider race with (decisions § 1901).
 --
 -- The table is reference data read only by the service role: a client has no
 -- reason to read 33,791 centroids, and none to write one, so neither app role

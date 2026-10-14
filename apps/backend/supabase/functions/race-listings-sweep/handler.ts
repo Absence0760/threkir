@@ -1,7 +1,7 @@
 /// Request handler for the scheduled RunSignUp race-calendar sweep, factored
 /// out of index.ts behind injected deps (env lookup, the service client,
 /// `fetch`, the clock) so handler.test.ts can drive every gate and the write
-/// against fakes (decisions § 1901).
+/// against fakes (decisions § 1902).
 ///
 /// pg_cron (`invoke_race_listings_sweep`, through pg_net) calls it every five
 /// minutes with the CRON_SECRET bearer. Each run reads ONE slot — one state

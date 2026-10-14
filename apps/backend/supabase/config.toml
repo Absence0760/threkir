@@ -193,7 +193,7 @@ verify_jwt = false
 
 # race-listings-sweep is invoked by pg_cron (invoke_race_listings_sweep, through
 # pg_net) with the CRON_SECRET bearer; the platform gate would 401 it before the
-# bearer check runs (decisions § 1901).
+# bearer check runs (decisions § 1902).
 [functions.race-listings-sweep]
 verify_jwt = false
 

@@ -103,6 +103,10 @@ apps/watch_wear/
             │   │   └── NetworkWatcher.kt        # ConnectivityManager.NetworkCallback flow
             │   ├── tiles/
             │   │   └── ActiveRunTileService.kt  # active-run tile (Wear Tiles + ProtoLayout)
+            │   ├── complications/
+            │   │   ├── ActiveRunComplicationService.kt  # watch-face complication data source
+            │   │   ├── RunComplicationContent.kt        # pure: what the slot shows + push cadence
+            │   │   └── LastRunStore.kt                  # last run kept for the idle slot (DataStore)
             │   └── generated/DbRows.kt      # GENERATED — do not edit
             └── res/mipmap-*/ic_launcher.png
 ```
@@ -510,6 +514,16 @@ Updates flow from `RunRecordingService`: every stage transition (`startRecording
 **The updater is always bound through the application context.** `requestUpdate` takes any `Context` but hands `TileService.getUpdater` its `applicationContext`. `SysUiTileUpdateRequester` keeps the context it is given and unbinds SysUI through it later, on its own executor thread; given the recording Service, that unbind ran after `stopRecording`'s `stopSelf()` had torn the Service's bindings down, threw `IllegalArgumentException: Service not registered`, and killed the app on every Stop. The `try/catch` cannot reach that thread, so the context is the only fix. `ActiveRunTileResilienceTest` reads every `getUpdater(` in the main source set and fails on any argument that is not an application context.
 
 Manifest: `<service android:name=".tiles.ActiveRunTileService">` with `permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER"` (only the Wear OS Tiles host can bind; `exported=true` is required because the host is a separate process). Preview drawable `res/drawable/tile_active_run_preview.xml` is what the watch face's tile picker shows when the user adds the tile; the live tile re-renders dynamically at request time. `res/values/strings.xml`'s `tile_active_run_label` is the picker chip text.
+
+## Watch-face complication
+
+`complications/ActiveRunComplicationService.kt` is a `ComplicationDataSourceService` (`androidx.wear.watchface:watchface-complications-data-source`) a runner can put in any free slot on any watch face. It serves `SHORT_TEXT`, `LONG_TEXT` and `ICON` (the manifest spelling of `MONOCHROMATIC_IMAGE`), answers from `RecordingRepository.metrics` or one DataStore read, and makes no network call. Three states, chosen by the pure `complicationContent` in `RunComplicationContent.kt`:
+
+- **Recording** — elapsed time as a count-up `TimeDifferenceComplicationText` the face ticks every second itself, plus distance; the long form adds pace ("5.12 km · 5:30/km").
+- **Paused** — the frozen elapsed time and distance, labelled PAUSED.
+- **Idle** — the last run this watch recorded ("Last" / "5.21 km"), or a start prompt. `LastRunStore` holds it: written in `handleFinishedRun` after the queue write, cleared by that run's discard and by sign-out (a watch face is on show to anyone). Weekly distance was rejected because the watch keeps no run history and never sees phone-recorded runs, which is also why there is no `RANGED_VALUE`.
+
+Updates: `RunRecordingService` calls `ActiveRunComplicationService.requestUpdate(this)` beside every tile push and once a minute while recording (`isComplicationPushTick`, 120 ticker ticks); `RunViewModel` pushes when the last-run entry changes. `UPDATE_PERIOD_SECONDS = 3600` is only a safety net. `requestUpdate` is guarded and bound through the application context, like the tile's. Tapping opens `MainActivity`. The icon is `res/drawable/ic_complication_mark.xml`, the thorn mark from `apps/web/static/logo-mark.svg`. Tests: `RunComplicationContentTest`, `LastRunStoreTest`, `ComplicationWiringTest`; the `ComplicationData` mapping is compile-only. See [decisions § R10COMP-1](../../docs/architecture/decisions.md).
 
 ## Recording UX — what's shipped on the Running screen
 

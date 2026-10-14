@@ -1160,6 +1160,24 @@ jobs:
             echo "Reproduce with: node --test scripts/check_help_translations.test.mjs (stdlib only, no install needed)."
             exit 1
           fi
+      # The help-guide illustrations are text-free SVG painted only with
+      # currentColor and the theme-token placeholders, so one file serves
+      # every locale and both themes on web and phone (docs/features/help.md
+      # § Illustrations). A <text>, script, link or foreign colour fails here.
+      - name: Verify every help-guide illustration is text-free, themed and referenced
+        run: |
+          if ! node scripts/check_help_illustrations.mjs; then
+            echo "::error::A help-guide illustration under apps/web/src/lib/help/illustrations holds text, a script, an external reference or a colour outside the token set, or a guide's illustration block names no file, or a file is referenced by no guide. Nothing here is about the Svelte build or the bundle. The lines above name each file and problem."
+            echo "Fix: paint only with currentColor, none and the placeholders in apps/web/src/lib/help/illustration.ts, keep words out of the drawing (they belong in the block's alt), and reference or delete each file."
+            exit 1
+          fi
+      - name: Unit-test the help-guide illustration guard
+        run: |
+          if ! node --test scripts/check_help_illustrations.test.mjs; then
+            echo "::error::The help-guide illustration guard's own unit tests failed, so the check above cannot be trusted to fire. Nothing here is about the Svelte build or the bundle."
+            echo "Reproduce with: node --test scripts/check_help_illustrations.test.mjs (stdlib only, no install needed)."
+            exit 1
+          fi
       - run: npm ci
       # The icon font apps/web ships is a SUBSET, cut to the icons the sources
       # name (decisions § 780). Nothing in a build can tell that an icon is

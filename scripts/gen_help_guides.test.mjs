@@ -14,12 +14,14 @@ import { join } from 'node:path';
 
 import {
 	GUIDES_DIR,
+	ILLUSTRATION_OUTPUT_DIRS,
 	LOCALES,
 	OUTPUT_DIRS,
 	REPO_ROOT,
 	SOURCE_LOCALE,
 	TRANSLATED_LOCALES,
 	loadGuides,
+	loadIllustrations,
 	loadTranslations,
 	renderAll,
 	renderJson,
@@ -137,8 +139,22 @@ test('renderAll writes every locale to both twins and every translated locale to
 	}
 });
 
+test('renderAll copies each illustration, byte for byte, into both twins', () => {
+	const source = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"/>\n';
+	const all = renderAll([guide({})], [], [{ name: 'a.svg', source }]);
+	assert.equal(all.get(join(ILLUSTRATION_OUTPUT_DIRS.android, 'a.svg')), source);
+	assert.equal(all.get(join(ILLUSTRATION_OUTPUT_DIRS.ios, 'a.svg')), source);
+});
+
+test('renderJson carries an illustration block\'s id and alt', () => {
+	const g = guide({ sections: [{ heading: 'H', blocks: [{ alt: 'A map.', id: 'a', type: 'illustration', extra: 1 }] }] });
+	const [out] = JSON.parse(renderJson([g]));
+	assert.deepEqual(out.sections[0].blocks, [{ type: 'illustration', id: 'a', alt: 'A map.' }]);
+	assert.deepEqual(Object.keys(out.sections[0].blocks[0]), ['type', 'id', 'alt']);
+});
+
 test('staleOutputs names a changed file, a missing one and an orphan', async () => {
-	const expected = renderAll(await loadGuides(), await loadTranslations());
+	const expected = renderAll(await loadGuides(), await loadTranslations(), loadIllustrations());
 	assert.deepEqual(staleOutputs(expected), [], 'the committed JSON is stale; run pnpm gen:help-guides');
 	const [first] = expected.keys();
 	const changed = new Map(expected);

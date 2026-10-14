@@ -13,6 +13,10 @@
 //   apps/mobile_ios/assets/help/guides.<locale>.json       byte-identical
 //   apps/web/static/help-guides/guides.<locale>.json       every locale but en,
 //                                                          which web bundles
+//   apps/mobile_{android,ios}/assets/help/illustrations/<id>.svg
+//                                                          a byte copy of each
+//                                                          illustration (web
+//                                                          imports its own)
 //
 // Guide and translation files import nothing but types, so Node loads them
 // directly with its built-in type stripping; no tsx, no install. Each array is
@@ -30,10 +34,15 @@ export const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 export const HELP_DIR = join(REPO_ROOT, 'apps', 'web', 'src', 'lib', 'help');
 export const GUIDES_DIR = join(HELP_DIR, 'guides');
 export const TRANSLATIONS_DIR = join(HELP_DIR, 'translations');
+export const ILLUSTRATIONS_DIR = join(HELP_DIR, 'illustrations');
 export const OUTPUT_DIRS = {
 	android: join(REPO_ROOT, 'apps', 'mobile_android', 'assets', 'help'),
 	ios: join(REPO_ROOT, 'apps', 'mobile_ios', 'assets', 'help'),
 	web: join(REPO_ROOT, 'apps', 'web', 'static', 'help-guides'),
+};
+export const ILLUSTRATION_OUTPUT_DIRS = {
+	android: join(OUTPUT_DIRS.android, 'illustrations'),
+	ios: join(OUTPUT_DIRS.ios, 'illustrations'),
 };
 
 /** @type {{ SUPPORTED_LOCALES: readonly string[], DEFAULT_LOCALE: string }} */
@@ -47,6 +56,7 @@ export const TRANSLATED_LOCALES = LOCALES.filter((l) => l !== SOURCE_LOCALE);
 
 export const GUIDE_FILE = /^[a-z0-9]+(?:-[a-z0-9]+)*\.ts$/;
 const OUTPUT_FILE = /^guides\.[A-Za-z-]+\.json$/;
+const ILLUSTRATION_FILE = /\.svg$/;
 const GUIDE_KEYS = [
 	'id',
 	'lang',
@@ -61,7 +71,7 @@ const GUIDE_KEYS = [
 	'sections',
 	'related',
 ];
-const BLOCK_KEYS = ['type', 'tone', 'text', 'items'];
+const BLOCK_KEYS = ['type', 'tone', 'id', 'text', 'items', 'alt'];
 
 /**
  * @param {Record<string, unknown>} value
@@ -141,6 +151,21 @@ export async function loadTranslations() {
 }
 
 /**
+ * Every file in the illustrations directory, by name.
+ *
+ * @returns {{ name: string, source: string }[]}
+ */
+export function loadIllustrations() {
+	let names = [];
+	try {
+		names = readdirSync(ILLUSTRATIONS_DIR).filter((name) => ILLUSTRATION_FILE.test(name)).sort();
+	} catch {
+		return [];
+	}
+	return names.map((name) => ({ name, source: readFileSync(join(ILLUSTRATIONS_DIR, name), 'utf8') }));
+}
+
+/**
  * The guides in `lang`, as one JSON array.
  *
  * @param {readonly Record<string, unknown>[]} guides
@@ -163,9 +188,10 @@ export function renderJson(guides, translations = [], lang = SOURCE_LOCALE) {
  *
  * @param {readonly Record<string, unknown>[]} guides
  * @param {readonly { locale: string, translation: Record<string, unknown> | undefined }[]} translations
+ * @param {readonly { name: string, source: string }[]} [illustrations]
  * @returns {Map<string, string>}
  */
-export function renderAll(guides, translations) {
+export function renderAll(guides, translations, illustrations = []) {
 	/** @type {Map<string, string>} */
 	const out = new Map();
 	for (const locale of LOCALES) {
@@ -175,12 +201,17 @@ export function renderAll(guides, translations) {
 		out.set(join(OUTPUT_DIRS.ios, name), json);
 		if (locale !== SOURCE_LOCALE) out.set(join(OUTPUT_DIRS.web, name), json);
 	}
+	for (const { name, source } of illustrations) {
+		out.set(join(ILLUSTRATION_OUTPUT_DIRS.android, name), source);
+		out.set(join(ILLUSTRATION_OUTPUT_DIRS.ios, name), source);
+	}
 	return out;
 }
 
 /**
  * The owned files whose content differs from `expected`, plus any
- * `guides.*.json` in an output directory that `expected` does not name.
+ * `guides.*.json` or illustration `.svg` in an output directory that
+ * `expected` does not name.
  *
  * @param {Map<string, string>} expected
  * @returns {string[]}
@@ -196,7 +227,12 @@ export function staleOutputs(expected) {
 		}
 		if (current !== content) stale.push(path);
 	}
-	for (const dir of Object.values(OUTPUT_DIRS)) {
+	/** @type {[string, RegExp][]} */
+	const owned = [
+		...Object.values(OUTPUT_DIRS).map((dir) => /** @type {[string, RegExp]} */ ([dir, OUTPUT_FILE])),
+		...Object.values(ILLUSTRATION_OUTPUT_DIRS).map((dir) => /** @type {[string, RegExp]} */ ([dir, ILLUSTRATION_FILE])),
+	];
+	for (const [dir, pattern] of owned) {
 		let names = [];
 		try {
 			names = readdirSync(dir);
@@ -205,14 +241,14 @@ export function staleOutputs(expected) {
 		}
 		for (const name of names) {
 			const path = join(dir, name);
-			if (OUTPUT_FILE.test(name) && !expected.has(path)) stale.push(path);
+			if (pattern.test(name) && !expected.has(path)) stale.push(path);
 		}
 	}
 	return stale;
 }
 
 async function main() {
-	const expected = renderAll(await loadGuides(), await loadTranslations());
+	const expected = renderAll(await loadGuides(), await loadTranslations(), loadIllustrations());
 	if (process.argv.includes('--check')) {
 		const stale = staleOutputs(expected);
 		if (stale.length > 0) {

@@ -127,3 +127,38 @@ test('mergeFetchedGuides ignores a file that is not guides, or guides in another
 	const broken = [{ ...localizeGuide(guide, translation, 'de'), sections: [{ heading: 'Eins', blocks: [{ type: 'p' }] }] }];
 	assert.equal(mergeFetchedGuides([guide], broken, 'de')[0]?.lang, 'en');
 });
+
+const illustrated: Guide = {
+	...guide,
+	sections: [{ heading: 'One', blocks: [{ type: 'p', text: 'x' }, { type: 'illustration', id: 'map', alt: 'A map.' }] }],
+};
+const illustratedDe: GuideTranslation = {
+	...translation,
+	sections: [{ heading: 'Eins', blocks: [{ type: 'p', text: 'X' }, { type: 'illustration', id: 'map', alt: 'Eine Karte.' }] }],
+};
+
+test('an illustration translates only its alt text, at a block path', () => {
+	assert.deepEqual(translatableStrings(illustrated).slice(3), [
+		['s0.b0', 'x'],
+		['s0.b1', 'A map.'],
+	]);
+	const out = localizeGuide(illustrated, illustratedDe, 'de');
+	assert.deepEqual(out.sections[0]!.blocks[1], { type: 'illustration', id: 'map', alt: 'Eine Karte.' });
+});
+
+test('a translation that names another illustration does not line up, and falls back to English', () => {
+	const other = clone(illustratedDe);
+	other.sections[0]!.blocks[1] = { type: 'illustration', id: 'chart', alt: 'Eine Karte.' };
+	assert.deepEqual(structureProblems(illustrated, other), ['section 1 block 2: illustration "chart", the guide has "map"']);
+	assert.equal(localizeGuide(illustrated, other, 'de').lang, 'en');
+});
+
+test('mergeFetchedGuides reads an illustration block, and a fetched file cannot swap the picture', () => {
+	const fetched = [localizeGuide(illustrated, illustratedDe, 'de')];
+	const [g] = mergeFetchedGuides([illustrated], clone(fetched), 'de');
+	assert.equal(g?.lang, 'de');
+	assert.deepEqual(g?.sections[0]?.blocks[1], { type: 'illustration', id: 'map', alt: 'Eine Karte.' });
+	const swapped = clone(fetched);
+	(swapped[0]!.sections[0]!.blocks[1] as { id: string }).id = 'other';
+	assert.equal(mergeFetchedGuides([illustrated], swapped, 'de')[0]?.lang, 'en');
+});

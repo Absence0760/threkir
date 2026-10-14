@@ -75,6 +75,7 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
   bool _hasMore = false;
   bool _loadingEarlier = false;
   bool _refreshing = false;
+  int _refreshTick = 0;
 
   final List<_PendingMessage> _pending = [];
   bool _sending = false;
@@ -162,7 +163,10 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
     try {
       final page = await widget.api.fetchDmThread(widget.partnerId);
       if (!mounted) return;
-      setState(() => _messages = _merge(_messages, page.messages));
+      setState(() {
+        _refreshTick++;
+        _messages = _merge(_messages, page.messages);
+      });
       await _markReadIfUnread();
     } catch (e) {
       debugPrint('message thread poll failed: $e');
@@ -370,6 +374,7 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
               ? DmRouteAttachment(
                   api: widget.api,
                   routeId: m.routeId!,
+                  refreshTick: _refreshTick,
                   onOpen: widget.onOpenRoute,
                 )
               : null,

@@ -24,35 +24,63 @@ class DmRouteAttachment extends StatefulWidget {
     super.key,
     required this.api,
     required this.routeId,
+    this.refreshTick = 0,
     this.onOpen,
+    this.now = DateTime.now,
   });
 
   final ApiClient api;
   final String routeId;
 
+  /// Bumped by the conversation each time it re-reads. A card with no fresh
+  /// answer, because its read threw or its cached answer expired, reads again
+  /// on the next bump, so it recovers at the conversation's own poll cadence.
+  final int refreshTick;
+
   /// Opens the route. Defaults to the shared-route screen, the same surface a
   /// `/routes/{id}` link opens.
   final void Function(BuildContext context, String routeId)? onOpen;
+
+  final DateTime Function() now;
 
   @override
   State<DmRouteAttachment> createState() => _DmRouteAttachmentState();
 }
 
+/// How long an answer is trusted. A route the reader may not see can become
+/// visible (the sender shares or publishes it), and a card drawn from a
+/// fail-closed empty clip is indistinguishable here from a route clipped to
+/// nothing, so no answer is kept for the life of the process.
+const Duration kDmRouteAttachmentCacheTtl = Duration(minutes: 5);
+
+typedef _Cached = ({DmRouteCard? card, DateTime at});
+
 class _DmRouteAttachmentState extends State<DmRouteAttachment> {
   // Bounded LRU like RouteTrackPreview's. Keyed by viewer as well as route:
   // what fetchRouteById answers IS that viewer's clip, so a cache shared across
-  // a sign-out would serve one reader another reader's line.
+  // a sign-out would serve one reader another reader's line. Only an answer
+  // the read gave is stored; a read that threw is not an answer.
   static const int _cacheMax = 100;
-  static final Map<String, DmRouteCard?> _cache = {};
+  static final Map<String, _Cached> _cache = {};
 
-  static void _cacheSet(String key, DmRouteCard? value) {
-    if (_cache.length >= _cacheMax && !_cache.containsKey(key)) {
-      _cache.remove(_cache.keys.first);
+  static void _cacheSet(String key, DmRouteCard? card, DateTime at) {
+    _cache.remove(key);
+    if (_cache.length >= _cacheMax) _cache.remove(_cache.keys.first);
+    _cache[key] = (card: card, at: at);
+  }
+
+  _Cached? _fresh(String key) {
+    final hit = _cache[key];
+    if (hit == null) return null;
+    if (widget.now().difference(hit.at) < kDmRouteAttachmentCacheTtl) {
+      return hit;
     }
-    _cache[key] = value;
+    _cache.remove(key);
+    return null;
   }
 
   DmAttachmentResolution _resolution = const DmAttachmentPending();
+  String? _reading;
 
   String get _key => '${widget.api.userId ?? 'anon'}:${widget.routeId}';
 
@@ -62,12 +90,26 @@ class _DmRouteAttachmentState extends State<DmRouteAttachment> {
     _resolve();
   }
 
+  @override
+  void didUpdateWidget(DmRouteAttachment old) {
+    super.didUpdateWidget(old);
+    if (old.routeId != widget.routeId) {
+      _resolution = const DmAttachmentPending();
+      _resolve();
+    } else if (old.refreshTick != widget.refreshTick && _fresh(_key) == null) {
+      _resolve();
+    }
+  }
+
   Future<void> _resolve() async {
     final key = _key;
-    if (_cache.containsKey(key)) {
-      _resolution = DmAttachmentResolved(_cache[key]);
+    final hit = _fresh(key);
+    if (hit != null) {
+      _resolution = DmAttachmentResolved(hit.card);
       return;
     }
+    if (_reading == key) return;
+    _reading = key;
     DmRouteCard? card;
     try {
       final read = await widget.api.fetchRouteById(widget.routeId);
@@ -82,14 +124,19 @@ class _DmRouteAttachmentState extends State<DmRouteAttachment> {
                 for (final w in route.waypoints) (lat: w.lat, lng: w.lng),
               ],
             );
+      _cacheSet(key, card, widget.now());
     } catch (e) {
-      // A route we could not resolve and a route the reader may not see are
-      // the same answer as far as what may be claimed about it.
-      debugPrint('dm route attachment read failed: $e');
+      // Drawn as unavailable for now, which is all that may be claimed about
+      // a route we could not resolve, but not cached: the next refresh reads
+      // it again.
+      debugPrint('dm route attachment read failed: ${safeErrorLabel(e)}');
       card = null;
+    } finally {
+      if (_reading == key) _reading = null;
     }
-    _cacheSet(key, card);
-    if (mounted) setState(() => _resolution = DmAttachmentResolved(card));
+    if (mounted && key == _key) {
+      setState(() => _resolution = DmAttachmentResolved(card));
+    }
   }
 
   void _open(DmRouteCard card) {

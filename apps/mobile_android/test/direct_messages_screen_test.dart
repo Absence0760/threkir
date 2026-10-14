@@ -14,6 +14,7 @@ import '../lib/rate_limit_message.dart';
 import '../lib/screens/message_thread_screen.dart';
 import '../lib/screens/messages_screen.dart';
 import '../lib/screens/profile_screen.dart';
+import '../lib/widgets/dm_route_attachment.dart';
 import '../lib/widgets/error_state.dart';
 import '../lib/widgets/sign_in_required_state.dart';
 
@@ -608,6 +609,73 @@ void main() {
 
       expect(find.text(l10n.messagesRouteUnavailable), findsOneWidget);
       expect(find.byKey(const ValueKey('dm-route-attachment')), findsNothing);
+    });
+
+    testWidgets('a failed read is retried on the next refresh, not cached',
+        (tester) async {
+      final api = _FakeApi()
+        ..routeError = StateError('offline')
+        ..newest = [_msg('m1', routeId: 'route-e', body: 'look')];
+      await _pumpThread(tester, api, poll: const Duration(seconds: 10));
+      await tester.pump();
+      expect(find.text(l10n.messagesRouteUnavailable), findsOneWidget);
+
+      api
+        ..routeError = null
+        ..routes['route-e'] = _route('route-e', name: 'River');
+      await tester.pump(const Duration(seconds: 10));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('River'), findsOneWidget);
+      expect(api.routeReads, ['route-e', 'route-e']);
+    });
+
+    testWidgets('a route the reader may not see is cached across refreshes',
+        (tester) async {
+      final api = _FakeApi()
+        ..routes['route-f'] = null
+        ..newest = [_msg('m1', routeId: 'route-f', body: 'look')];
+      await _pumpThread(tester, api, poll: const Duration(seconds: 10));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 10));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 10));
+      await tester.pump();
+
+      expect(find.text(l10n.messagesRouteUnavailable), findsOneWidget);
+      expect(api.routeReads, ['route-f']);
+    });
+
+    testWidgets('a cached answer expires, so a route shared later recovers',
+        (tester) async {
+      final api = _FakeApi()..routes['route-g'] = null;
+      var now = DateTime.utc(2026, 10, 14, 8);
+      Future<void> pumpCard(int tick) async {
+        await tester.pumpWidget(_app(Scaffold(
+          body: DmRouteAttachment(
+            api: api,
+            routeId: 'route-g',
+            refreshTick: tick,
+            now: () => now,
+          ),
+        )));
+        await tester.pump();
+      }
+
+      await pumpCard(0);
+      expect(find.text(l10n.messagesRouteUnavailable), findsOneWidget);
+
+      api.routes['route-g'] = _route('route-g', name: 'Shared later');
+      now = now.add(const Duration(minutes: 1));
+      await pumpCard(1);
+      expect(find.text(l10n.messagesRouteUnavailable), findsOneWidget);
+      expect(api.routeReads, ['route-g']);
+
+      now = now.add(kDmRouteAttachmentCacheTtl);
+      await pumpCard(2);
+      expect(find.text('Shared later'), findsOneWidget);
+      expect(api.routeReads, ['route-g', 'route-g']);
     });
 
     test('the card reads the route only through the owner-aware path', () {

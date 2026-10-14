@@ -3,7 +3,7 @@
  */
 import { supabase } from './supabase';
 import { edgeFunctionErrorCode, edgeFunctionErrorMessage } from './edge_function_error';
-import { isDuplicateKeyError, supabaseErrorFields } from './supabase_error';
+import { isDuplicateKeyError, supabaseErrorFields, thrownMessage } from './supabase_error';
 import { singleEmbed, fitnessSnapshotDue, publicRouteListFill } from './data_normalise';
 import { TABLES, BUCKETS, METADATA_KEYS } from './schema';
 import type { Database, Json } from '../database.types';
@@ -381,7 +381,7 @@ export async function fetchRunsWithError(
 		const runs = await fetchRuns({ ...opts, throwOnError: true });
 		return { runs, error: null };
 	} catch (e) {
-		return { runs: [], error: (e as Error)?.message ?? 'Failed to load runs' };
+		return { runs: [], error: thrownMessage(e) || 'Failed to load runs' };
 	}
 }
 
@@ -1733,7 +1733,7 @@ export async function saveRun(input: {
 				}
 			}
 		} catch (e) {
-			trackError = e instanceof Error ? e.message : String(e);
+			trackError = thrownMessage(e);
 		}
 	}
 

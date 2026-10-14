@@ -22,6 +22,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 import type { TrackPoint } from '../types';
 import { isEntityId } from '../core/entity_id';
+import { thrownMessage } from '../core/supabase_error';
 
 export interface SharedRoute {
 	id: string;
@@ -110,7 +111,7 @@ export async function lookupSharedRoute(
 	} catch (err) {
 		console.error(
 			'[share-route] upstream_unreachable',
-			err instanceof Error ? err.message : String(err),
+			thrownMessage(err),
 		);
 		return { route: null, track: [] };
 	}

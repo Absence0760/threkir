@@ -23,7 +23,7 @@ import {
 	aiDisclosureFromProfileRow,
 	checkAiDisclosure,
 } from '../core/ai_disclosure';
-import { supabaseErrorFields } from '../core/supabase_error';
+import { supabaseErrorFields, thrownMessage } from '../core/supabase_error';
 import { buildContext, type CoachProfileRow } from './context';
 import {
 	clampRunsLimit,
@@ -342,7 +342,7 @@ export async function handleCoach(
 		} catch (e) {
 			console.error('[coach] decrement_coach_usage failed', {
 				reason,
-				err: e instanceof Error ? e.message : String(e),
+				err: thrownMessage(e),
 			});
 		}
 	}
@@ -441,7 +441,7 @@ export async function handleCoach(
 			return data?.id ?? null;
 		} catch (e) {
 			console.error('[coach] persist assistant exception', {
-				message: e instanceof Error ? e.message : String(e),
+				message: thrownMessage(e),
 			});
 			return null;
 		}

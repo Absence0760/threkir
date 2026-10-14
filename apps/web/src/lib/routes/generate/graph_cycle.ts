@@ -18,6 +18,7 @@
  */
 
 import { ROUTE_PREFERENCES, type Fetcher, type LoopCandidate, type RoutePreference } from './graphhopper';
+import { thrownMessage } from '../../core/supabase_error';
 
 /// Typed transport failure so the handler can distinguish "URL not set" from
 /// "sidecar down". Either way the handler falls back to round_trip — graph-cycle
@@ -169,7 +170,7 @@ export async function fetchGraphCycle(
 	} catch (e) {
 		throw new GraphCycleError(
 			'upstream',
-			`graph_cycle request failed: ${e instanceof Error ? e.message : String(e)}`,
+			`graph_cycle request failed: ${thrownMessage(e)}`,
 		);
 	} finally {
 		clearTimeout(timer);
@@ -183,7 +184,7 @@ export async function fetchGraphCycle(
 	} catch (e) {
 		throw new GraphCycleError(
 			'upstream',
-			`graph_cycle returned non-JSON: ${e instanceof Error ? e.message : String(e)}`,
+			`graph_cycle returned non-JSON: ${thrownMessage(e)}`,
 		);
 	}
 	return {

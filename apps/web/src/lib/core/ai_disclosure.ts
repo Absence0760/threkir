@@ -1,3 +1,4 @@
+import { thrownMessage } from './supabase_error';
 // Versioned AI-disclosure consent — the gate every endpoint that ships a
 // user's data to Anthropic runs before it fans out. GDPR Art 6(1)(a).
 //
@@ -124,7 +125,7 @@ export async function gateAiDisclosure(
 		res = await loadProfile();
 	} catch (e) {
 		console.error(`[${logTag}] ai disclosure lookup threw`, {
-			message: e instanceof Error ? e.message : String(e),
+			message: thrownMessage(e),
 		});
 		return { ok: false, status: 500, reason: 'lookup_failed' };
 	}

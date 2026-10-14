@@ -13,6 +13,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { isEntityId } from '../core/entity_id';
+import { thrownMessage } from '../core/supabase_error';
 
 export interface SharedRace {
 	id: string;
@@ -77,7 +78,7 @@ export async function lookupSharedRace(
 	} catch (err) {
 		console.error(
 			'[share-race] upstream_unreachable',
-			err instanceof Error ? err.message : String(err),
+			thrownMessage(err),
 		);
 		return { race: null };
 	}

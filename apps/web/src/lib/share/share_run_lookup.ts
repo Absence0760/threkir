@@ -14,6 +14,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { isEntityId } from '../core/entity_id';
+import { thrownMessage } from '../core/supabase_error';
 
 export interface SharedRun {
 	id: string;
@@ -101,7 +102,7 @@ export async function lookupSharedRun(
 	} catch (err) {
 		console.error(
 			'[share-run] upstream_unreachable',
-			err instanceof Error ? err.message : String(err),
+			thrownMessage(err),
 		);
 		return { run: null, displayName: null };
 	}

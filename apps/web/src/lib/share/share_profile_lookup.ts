@@ -11,6 +11,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { isEntityId } from '../core/entity_id';
+import { thrownMessage } from '../core/supabase_error';
 
 export interface SharedProfile {
 	id: string;
@@ -65,7 +66,7 @@ export async function lookupSharedProfile(
 	} catch (err) {
 		console.error(
 			'[share-profile] upstream_unreachable',
-			err instanceof Error ? err.message : String(err),
+			thrownMessage(err),
 		);
 		return { profile: null };
 	}

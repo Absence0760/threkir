@@ -5886,6 +5886,21 @@ export type Database = {
       enqueue_safety_overdue_emails: { Args: never; Returns: undefined }
       enqueue_weekly_digests: { Args: never; Returns: number }
       escalate_run_off_route: { Args: { p_run_id: string }; Returns: boolean }
+      event_gallery_photos: {
+        Args: { p_event_id: string; p_instance: string; p_limit?: number }
+        Returns: {
+          caption: string
+          created_at: string
+          event_id: string
+          event_instance_start: string
+          hidden_at: string
+          id: string
+          owner_id: string
+          position_idx: number
+          storage_path: string
+          thumb_512_path: string
+        }[]
+      }
       event_is_athletic: { Args: { target_event: string }; Returns: boolean }
       event_next_instance_going_counts: {
         Args: { p_event_ids: string[]; p_next_starts: string[] }

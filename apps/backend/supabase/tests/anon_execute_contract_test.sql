@@ -78,6 +78,7 @@ insert into anon_callable (fn, why) values
   ('clubs_in_bbox',                   'logged-out map discovery'),
   ('confirm_safety_contact_by_token', 'a trusted contact confirms from an emailed link with no account'),
   ('discoverable_routes_in_bbox',     'logged-out map discovery'),
+  ('event_gallery_photos',            'public event page'),
   ('event_next_instance_going_counts','public event page'),
   ('fundraiser_anchor_visible',       'public fundraiser page'),
   ('fundraiser_feed',                 'public fundraiser page'),

@@ -958,6 +958,16 @@ export const PAIRS = [
 		],
 	},
 	{
+		tableColumn: 'sign_in_devices.browser',
+		clients: [],
+		note: 'written only by the record_sign_in_device trigger from sign_in_browser_class(); no TS or Dart client reads it. The Go worker labels the value in the new-device email (deviceBrowserLabel, mailer.go), outside this guard.',
+	},
+	{
+		tableColumn: 'sign_in_devices.platform',
+		clients: [],
+		note: 'written only by the record_sign_in_device trigger from sign_in_platform_class(); no TS or Dart client reads it. The Go worker labels the value in the new-device email (devicePlatformLabel, mailer.go), outside this guard.',
+	},
+	{
 		tableColumn: 'training_plans.source',
 		clients: [],
 		note: 'each creation path stamps its own literal (`generated` from the wizard, `manual` otherwise); no client enumerates the three.',

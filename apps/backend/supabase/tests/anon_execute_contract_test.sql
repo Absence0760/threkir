@@ -180,6 +180,7 @@ insert into server_only (fn, keeps_service_role) values
   ('privacy_coarsen_coord', false),
   ('privacy_distance_m', false),
   ('privacy_in_any_zone', false),
+  ('prune_sign_in_devices', true),
   ('recompute_event_ranks', false),
   ('record_map_match_result', true),
   ('refresh_club_member_count', false),
@@ -188,6 +189,8 @@ insert into server_only (fn, keeps_service_role) values
   ('revoke_unmet_distance_achievements', false),
   ('runs_track_object_version', true),
   ('set_apple_refresh_token', true),
+  ('sign_in_browser_class', true),
+  ('sign_in_platform_class', true),
   ('sweep_challenge_completions', false),
   ('try_consume_strava_quota', true);
 

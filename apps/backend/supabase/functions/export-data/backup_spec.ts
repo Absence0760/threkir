@@ -124,6 +124,7 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 			select: '*',
 			redact: (row) => ({ ...row, token: '<redacted>' }),
 		},
+		{ entry: 'sign_in_devices.json', table: 'sign_in_devices', filter: uidEq, select: '*' },
 		{ entry: 'live_run_pings.json', table: 'live_run_pings', filter: uidEq, select: '*' },
 		{
 			entry: 'following.json',

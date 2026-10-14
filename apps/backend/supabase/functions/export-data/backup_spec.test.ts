@@ -51,7 +51,8 @@ Deno.test('buildBackupSpecs covers the Go worker table set', () => {
 	// entries (author_id = uid) — seeded global rows are shared reference
 	// data, not personal data. Audience sharing (migration 20270802000002)
 	// added run_shares + route_shares, each on both legs (owner + recipient).
-	assertEquals(specs.length, 65, `expected 65 specs, got ${specs.length}`);
+	// New-device sign-in alerts (migration 20270804000002) added sign_in_devices.
+	assertEquals(specs.length, 66, `expected 66 specs, got ${specs.length}`);
 	const entries = new Set(specs.map((s) => s.entry));
 	for (const expected of [
 		'coach_messages.json',
@@ -70,6 +71,7 @@ Deno.test('buildBackupSpecs covers the Go worker table set', () => {
 		'fitness_snapshots.json',
 		'personal_records.json',
 		'device_tokens.json',
+		'sign_in_devices.json',
 		'live_run_pings.json',
 		'following.json',
 		'followers.json',

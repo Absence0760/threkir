@@ -57,6 +57,7 @@ const (
 	TableFitnessSnapshots        = "fitness_snapshots"
 	TablePersonalRecords         = "personal_records"
 	TableDeviceTokens            = "device_tokens"
+	TableSignInDevices           = "sign_in_devices"
 	TableLiveRunPings            = "live_run_pings"
 	TableRacePings               = "race_pings"
 	TableEventAttendees          = "event_attendees"

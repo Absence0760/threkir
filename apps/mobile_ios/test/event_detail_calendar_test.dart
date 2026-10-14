@@ -203,6 +203,7 @@ void main() {
       expect(args['description'], 'Meet by the bridge');
       expect(args['url'], endsWith('/share/event/e1'));
       expect(args['rrule'], isNull);
+      expect(args['timeZone'], isNull);
     });
 
     realtimeWidgetTest('a recurring event also offers the whole series', (
@@ -219,6 +220,8 @@ void main() {
       final args = calls.single.arguments as Map;
       expect(args['startMs'], start.millisecondsSinceEpoch);
       expect(args['rrule'], startsWith('FREQ=WEEKLY;BYDAY='));
+      // The rule is the event's wall clock, so its zone rides with it.
+      expect(args['timeZone'], 'UTC');
     });
 
     realtimeWidgetTest(

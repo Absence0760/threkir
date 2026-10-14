@@ -76,6 +76,11 @@ import UIKit
         event.location = args["location"] as? String
         if let link = args["url"] as? String { event.url = URL(string: link) }
         event.calendar = store.defaultCalendarForNewEvents
+        // The rule's weekdays and time of day are the event's own wall clock,
+        // so EventKit has to expand it in the event's zone, not the phone's.
+        if let zone = Self.eventTimeZone(args["timeZone"]) {
+            event.timeZone = zone
+        }
         if let rrule = args["rrule"] as? String,
            let rule = Self.recurrenceRule(from: rrule) {
             event.recurrenceRules = [rule]
@@ -107,6 +112,13 @@ import UIKit
             top = presented
         }
         return top
+    }
+
+    /// The event's zone from its IANA name. An absent or unknown name leaves
+    /// EventKit's default (the device zone) rather than guessing one.
+    static func eventTimeZone(_ value: Any?) -> TimeZone? {
+        guard let name = value as? String, !name.isEmpty else { return nil }
+        return TimeZone(identifier: name)
     }
 
     // MARK: - RRULE -> EKRecurrenceRule

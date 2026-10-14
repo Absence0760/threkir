@@ -867,6 +867,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       location: e.row.meetLabel,
       url: _eventShareUrl(e.row.id),
       rrule: series?.rrule,
+      timeZone: series?.timeZone,
     );
     if (!opened && mounted) {
       showTopBanner(

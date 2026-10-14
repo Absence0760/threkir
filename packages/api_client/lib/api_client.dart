@@ -17,3 +17,4 @@ export 'src/paged_read.dart';
 export 'src/segments_rank.dart';
 export 'src/settings_service.dart';
 export 'src/smoothed_sidecar.dart';
+export 'src/ultrasignup_person.dart';

@@ -4,6 +4,7 @@
 // on every event-detail render; no need to materialise instances.
 
 import type { Event, Weekday, RecurrenceFreq } from '../types';
+import { isKnownTimeZone, zoneOffsetMs } from './zoned_time';
 
 const WEEKDAY_LABEL: Record<Weekday, string> = {
 	MO: 'Mon',
@@ -43,39 +44,9 @@ const utcZone: Zone = { offset: () => 0 };
 
 const localZone: Zone = { offset: (t) => -new Date(t).getTimezoneOffset() * 60_000 };
 
-const formatters = new Map<string, Intl.DateTimeFormat | null>();
-
 function namedZone(name: string): Zone | null {
-	let f = formatters.get(name);
-	if (f === undefined) {
-		try {
-			f = new Intl.DateTimeFormat('en-US', {
-				timeZone: name,
-				hourCycle: 'h23',
-				year: 'numeric',
-				month: 'numeric',
-				day: 'numeric',
-				hour: 'numeric',
-				minute: 'numeric',
-				second: 'numeric'
-			});
-		} catch {
-			f = null;
-		}
-		formatters.set(name, f);
-	}
-	if (!f) return null;
-	const fmt = f;
-	return {
-		offset: (t) => {
-			const sec = Math.floor(t / 1000) * 1000;
-			const p: Record<string, number> = {};
-			for (const part of fmt.formatToParts(sec)) {
-				if (part.type !== 'literal') p[part.type] = Number(part.value);
-			}
-			return Date.UTC(p.year, p.month - 1, p.day, p.hour % 24, p.minute, p.second) - sec;
-		}
-	};
+	if (!isKnownTimeZone(name)) return null;
+	return { offset: (t) => zoneOffsetMs(t, name) };
 }
 
 function eventZone(timezone: string | null | undefined): Zone {

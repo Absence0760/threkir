@@ -82,7 +82,7 @@ function matchClose(src: string, open: number): number {
 }
 
 function escape(s: string): string {
-	return s.replace(/[$]/g, '\\$');
+	return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 /// Each catch scope in `src` as `[binding, body]`.

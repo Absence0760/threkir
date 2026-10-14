@@ -22,6 +22,7 @@ class MainActivity : FlutterFragmentActivity() {
         RunNotificationBridge(applicationContext, flutterEngine.dartExecutor.binaryMessenger)
         BatterySettingsBridge(applicationContext, flutterEngine.dartExecutor.binaryMessenger)
         CalendarBridge(applicationContext, flutterEngine.dartExecutor.binaryMessenger)
+        ScreenBrightnessBridge(this, flutterEngine.dartExecutor.binaryMessenger)
         healthRoutePermission.attach(flutterEngine.dartExecutor.binaryMessenger)
     }
 }

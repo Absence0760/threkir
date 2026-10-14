@@ -16,6 +16,8 @@ import '../ble_readiness_labels.dart';
 import '../ble_treadmill.dart';
 import '../health_connect_exporter.dart';
 import '../l10n/gen/app_localizations.dart';
+import '../parkrun_barcode.dart';
+import '../parkrun_barcode_cache.dart';
 import '../parkrun_regions.dart';
 import '../preferences.dart';
 import '../race_provider_labels.dart';
@@ -27,6 +29,7 @@ import '../widgets/help_button.dart';
 import '../widgets/info_tip.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/ultrasignup_link.dart';
+import 'parkrun_barcode_screen.dart';
 import 'races_screen.dart';
 import 'watch_live_screen.dart';
 
@@ -353,6 +356,14 @@ class _SettingsIntegrationsScreenState
     ));
   }
 
+  void _openParkrunBarcode() {
+    final api = widget.apiClient;
+    if (api == null) return;
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => ParkrunBarcodeScreen(api: api),
+    ));
+  }
+
   Future<void> _importParkrun() async {
     final l10n = AppLocalizations.of(context);
     final api = widget.apiClient;
@@ -395,15 +406,22 @@ class _SettingsIntegrationsScreenState
             child: Text(l10n.integrationsCancel),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+            onPressed: () => Navigator.pop(ctx, ctrl.text),
             child: Text(l10n.integrationsImport),
           ),
         ],
       ),
     );
     if (mounted) FocusScope.of(context).unfocus();
-    if (athleteNumber == null || athleteNumber.isEmpty) return;
+    if (athleteNumber == null || athleteNumber.trim().isEmpty) return;
     if (!mounted) return;
+    // The same rule the import enforces, applied before the round trip so
+    // the runner hears what is wrong instead of a bare 400.
+    final canonical = normalizeParkrunAthleteNumber(athleteNumber);
+    if (canonical == null) {
+      showTopBanner(context, l10n.parkrunBarcodeFieldInvalid);
+      return;
+    }
 
     showDialog<void>(
       context: context,
@@ -420,8 +438,9 @@ class _SettingsIntegrationsScreenState
     );
 
     try {
-      await api.setParkrunAthleteNumber(athleteNumber);
-      final result = await api.importParkrunResults(athleteNumber);
+      await api.setParkrunAthleteNumber(canonical);
+      await const ParkrunBarcodeCache().write(api.userId!, canonical);
+      final result = await api.importParkrunResults(canonical);
       if (!mounted) return;
       Navigator.of(context).pop();
       // A capped history and a whole one both arrive as a positive count, so
@@ -607,6 +626,16 @@ class _SettingsIntegrationsScreenState
                     trailing: const Icon(Icons.chevron_right),
                     onTap: _importParkrun,
                   ),
+              // Not behind parkrun's probe: showing a runner their own barcode
+              // needs only their number, not the import function.
+              ListTile(
+                key: const ValueKey('integrations-parkrun-barcode'),
+                leading: const Icon(Icons.badge_outlined),
+                title: Text(l10n.parkrunBarcodeTitle),
+                subtitle: Text(l10n.parkrunBarcodeTileSubtitle),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: _openParkrunBarcode,
+              ),
               // Each race tile used to stay tappable whatever its probe said,
               // on the reasoning that it is a secondary deep link into the race
               // calendar and the calendar's search never needed a provider key

@@ -25,6 +25,7 @@ import 'local_gym_store.dart';
 import 'local_route_store.dart';
 import 'local_run_store.dart';
 import 'offline_store_wipe.dart';
+import 'parkrun_barcode_cache.dart';
 import 'offline_sync_store.dart';
 import 'preferences.dart';
 import 'push_messaging_bridge.dart';
@@ -558,6 +559,10 @@ void main() async {
         // Queued race finisher times are filed under whoever is signed in
         // when they replay; the departing account's go with it, as on Wear.
         clearPendingRaceResults();
+        // The device's copy of the parkrun athlete number is the departing
+        // runner's; the next account reads only its own, but sign-out is the
+        // boundary where none of it should remain.
+        const ParkrunBarcodeCache().clear();
       }
     });
     WearAuthBridge().attach(url: supabaseUrl, anonKey: anonKey);

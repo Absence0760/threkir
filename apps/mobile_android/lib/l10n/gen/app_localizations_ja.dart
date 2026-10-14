@@ -6778,6 +6778,58 @@ class AppLocalizationsJa extends AppLocalizations {
   String get integrationsParkrunFieldLabel => 'アスリート番号';
 
   @override
+  String get parkrunBarcodeTitle => 'parkrun バーコード';
+
+  @override
+  String get parkrunBarcodeTileSubtitle => 'フィニッシュで提示できます(オフラインでも)。';
+
+  @override
+  String parkrunBarcodeSemantics(String number) {
+    return 'アスリート番号 $number の parkrun バーコード';
+  }
+
+  @override
+  String get parkrunBarcodeHint => 'フィニッシュで提示し、フィニッシュトークンと一緒にスキャンしてもらいます。';
+
+  @override
+  String get parkrunBarcodePaperNote =>
+      'parkrun は画面上のバーコードを公式にはサポートしていません。スキャナーで読み取れない場合に備えて、印刷したものもお持ちください。';
+
+  @override
+  String get parkrunBarcodeEmpty => 'parkrun のアスリート番号を追加すると、ここにバーコードが表示されます。';
+
+  @override
+  String get parkrunBarcodeInvalid =>
+      '保存されているアスリート番号が parkrun の形式(A に続く数字)ではないため、バーコードとして表示できません。';
+
+  @override
+  String get parkrunBarcodeAdd => 'アスリート番号を追加';
+
+  @override
+  String get parkrunBarcodeEdit => 'アスリート番号を変更';
+
+  @override
+  String get parkrunBarcodeSave => '保存';
+
+  @override
+  String parkrunBarcodeSaveFailed(String error) {
+    return 'アスリート番号を保存できませんでした: $error';
+  }
+
+  @override
+  String get parkrunBarcodeFieldInvalid => 'A に続けて数字を入力してください(例: A123456)。';
+
+  @override
+  String get parkrunBarcodeLoadFailed =>
+      'アスリート番号を読み込めませんでした。接続を確認して、もう一度お試しください。';
+
+  @override
+  String get parkrunBarcodeRetry => '再試行';
+
+  @override
+  String get parkrunBarcodeOfflineCopy => 'この端末に保存されたコピーを表示しています。';
+
+  @override
   String get integrationsImport => 'インポート';
 
   @override

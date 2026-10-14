@@ -7103,6 +7103,63 @@ class AppLocalizationsEn extends AppLocalizations {
   String get integrationsParkrunFieldLabel => 'Athlete number';
 
   @override
+  String get parkrunBarcodeTitle => 'parkrun barcode';
+
+  @override
+  String get parkrunBarcodeTileSubtitle =>
+      'Show it at the finish, even offline.';
+
+  @override
+  String parkrunBarcodeSemantics(String number) {
+    return 'parkrun barcode for athlete number $number';
+  }
+
+  @override
+  String get parkrunBarcodeHint =>
+      'Show this at the finish so it can be scanned with your finish token.';
+
+  @override
+  String get parkrunBarcodePaperNote =>
+      'parkrun doesn\'t officially support barcodes on screens, so bring a printed copy in case a scanner can\'t read this one.';
+
+  @override
+  String get parkrunBarcodeEmpty =>
+      'Add your parkrun athlete number to show your barcode here.';
+
+  @override
+  String get parkrunBarcodeInvalid =>
+      'Your saved athlete number isn\'t in parkrun\'s format (A followed by digits), so it can\'t be shown as a barcode.';
+
+  @override
+  String get parkrunBarcodeAdd => 'Add athlete number';
+
+  @override
+  String get parkrunBarcodeEdit => 'Change athlete number';
+
+  @override
+  String get parkrunBarcodeSave => 'Save';
+
+  @override
+  String parkrunBarcodeSaveFailed(String error) {
+    return 'Couldn\'t save your athlete number: $error';
+  }
+
+  @override
+  String get parkrunBarcodeFieldInvalid =>
+      'Enter A followed by digits, for example A123456.';
+
+  @override
+  String get parkrunBarcodeLoadFailed =>
+      'Couldn\'t load your athlete number. Check your connection and try again.';
+
+  @override
+  String get parkrunBarcodeRetry => 'Try again';
+
+  @override
+  String get parkrunBarcodeOfflineCopy =>
+      'Showing the copy saved on this phone.';
+
+  @override
   String get integrationsImport => 'Import';
 
   @override

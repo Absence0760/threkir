@@ -10,8 +10,10 @@ import '../local_food_store.dart';
 import '../local_gym_store.dart';
 import '../local_route_store.dart';
 import '../local_run_store.dart';
+import '../parkrun_barcode_cache.dart';
 import '../preferences.dart';
 import '../settings_sync.dart';
+import 'parkrun_barcode_screen.dart';
 import 'profile_screen.dart';
 import 'settings_screen.dart';
 
@@ -54,8 +56,37 @@ class _YouScreenState extends State<YouScreen>
   @override
   ApiClient? get authApi => widget.apiClient;
 
+  /// The runner's barcode, when this device holds one. The shortcut is
+  /// derived from that rather than shown to everyone: most runners never go
+  /// to a parkrun, and the integrations screen is where one is first added.
+  String? _barcodeNumber;
+
   @override
-  void onAuthUserChanged(String? userId) => setState(() {});
+  void initState() {
+    super.initState();
+    ParkrunBarcodeCache.changes.addListener(_refreshBarcode);
+    _refreshBarcode();
+  }
+
+  @override
+  void dispose() {
+    ParkrunBarcodeCache.changes.removeListener(_refreshBarcode);
+    super.dispose();
+  }
+
+  Future<void> _refreshBarcode() async {
+    final userId = widget.apiClient?.userId;
+    final number =
+        userId == null ? null : await const ParkrunBarcodeCache().read(userId);
+    if (!mounted) return;
+    setState(() => _barcodeNumber = number);
+  }
+
+  @override
+  void onAuthUserChanged(String? userId) {
+    setState(() {});
+    _refreshBarcode();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -79,6 +110,20 @@ class _YouScreenState extends State<YouScreen>
                   context,
                   MaterialPageRoute<void>(
                     builder: (_) => ProfileScreen(api: api, userId: viewerId),
+                  ),
+                ),
+              ),
+            if (api != null && viewerId != null && _barcodeNumber != null)
+              ListTile(
+                key: const ValueKey('you-parkrun-barcode'),
+                leading: const Icon(Icons.badge_outlined),
+                title: Text(l10n.parkrunBarcodeTitle),
+                subtitle: Text(_barcodeNumber!),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => ParkrunBarcodeScreen(api: api),
                   ),
                 ),
               ),

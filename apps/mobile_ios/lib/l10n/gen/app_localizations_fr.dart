@@ -7199,6 +7199,62 @@ class AppLocalizationsFr extends AppLocalizations {
   String get integrationsParkrunFieldLabel => 'Numéro d\'athlète';
 
   @override
+  String get parkrunBarcodeTitle => 'Code-barres parkrun';
+
+  @override
+  String get parkrunBarcodeTileSubtitle =>
+      'À présenter à l\'arrivée, même hors ligne.';
+
+  @override
+  String parkrunBarcodeSemantics(String number) {
+    return 'Code-barres parkrun du numéro d\'athlète $number';
+  }
+
+  @override
+  String get parkrunBarcodeHint =>
+      'Présentez-le à l\'arrivée pour qu\'il soit scanné avec votre jeton d\'arrivée.';
+
+  @override
+  String get parkrunBarcodePaperNote =>
+      'parkrun n\'accepte pas officiellement les codes-barres sur écran : emportez une version imprimée au cas où un scanner ne lirait pas celui-ci.';
+
+  @override
+  String get parkrunBarcodeEmpty =>
+      'Ajoutez votre numéro d\'athlète parkrun pour afficher votre code-barres ici.';
+
+  @override
+  String get parkrunBarcodeInvalid =>
+      'Le numéro d\'athlète enregistré n\'est pas au format parkrun (A suivi de chiffres) et ne peut donc pas être affiché en code-barres.';
+
+  @override
+  String get parkrunBarcodeAdd => 'Ajouter un numéro d\'athlète';
+
+  @override
+  String get parkrunBarcodeEdit => 'Modifier le numéro d\'athlète';
+
+  @override
+  String get parkrunBarcodeSave => 'Enregistrer';
+
+  @override
+  String parkrunBarcodeSaveFailed(String error) {
+    return 'Impossible d\'enregistrer votre numéro d\'athlète : $error';
+  }
+
+  @override
+  String get parkrunBarcodeFieldInvalid =>
+      'Saisissez A suivi de chiffres, par exemple A123456.';
+
+  @override
+  String get parkrunBarcodeLoadFailed =>
+      'Impossible de charger votre numéro d\'athlète. Vérifiez votre connexion et réessayez.';
+
+  @override
+  String get parkrunBarcodeRetry => 'Réessayer';
+
+  @override
+  String get parkrunBarcodeOfflineCopy => 'Copie enregistrée sur ce téléphone.';
+
+  @override
   String get integrationsImport => 'Importer';
 
   @override

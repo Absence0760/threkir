@@ -9472,6 +9472,76 @@
   "@integrationsParkrunFieldLabel": {
     "description": "Label for the parkrun athlete-number field"
   },
+  "parkrunBarcodeTitle": "parkrun barcode",
+  "@parkrunBarcodeTitle": {
+    "description": "Title of the parkrun barcode screen and its entry tiles"
+  },
+  "parkrunBarcodeTileSubtitle": "Show it at the finish, even offline.",
+  "@parkrunBarcodeTileSubtitle": {
+    "description": "Subtitle of the integrations tile that opens the parkrun barcode"
+  },
+  "parkrunBarcodeSemantics": "parkrun barcode for athlete number {number}",
+  "@parkrunBarcodeSemantics": {
+    "description": "Screen-reader label for the drawn barcode",
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "parkrunBarcodeHint": "Show this at the finish so it can be scanned with your finish token.",
+  "@parkrunBarcodeHint": {
+    "description": "Line above the barcode saying what to do with it"
+  },
+  "parkrunBarcodePaperNote": "parkrun doesn't officially support barcodes on screens, so bring a printed copy in case a scanner can't read this one.",
+  "@parkrunBarcodePaperNote": {
+    "description": "Neutral note that parkrun does not officially support on-screen barcodes"
+  },
+  "parkrunBarcodeEmpty": "Add your parkrun athlete number to show your barcode here.",
+  "@parkrunBarcodeEmpty": {
+    "description": "Shown when no athlete number is saved"
+  },
+  "parkrunBarcodeInvalid": "Your saved athlete number isn't in parkrun's format (A followed by digits), so it can't be shown as a barcode.",
+  "@parkrunBarcodeInvalid": {
+    "description": "Shown when the saved number is not in parkrun's A-plus-digits format"
+  },
+  "parkrunBarcodeAdd": "Add athlete number",
+  "@parkrunBarcodeAdd": {
+    "description": "Button that opens the athlete-number dialog when none is saved"
+  },
+  "parkrunBarcodeEdit": "Change athlete number",
+  "@parkrunBarcodeEdit": {
+    "description": "Button that opens the athlete-number dialog to change it"
+  },
+  "parkrunBarcodeSave": "Save",
+  "@parkrunBarcodeSave": {
+    "description": "Save button on the athlete-number dialog"
+  },
+  "parkrunBarcodeSaveFailed": "Couldn't save your athlete number: {error}",
+  "@parkrunBarcodeSaveFailed": {
+    "description": "Snackbar when saving the athlete number fails",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "parkrunBarcodeFieldInvalid": "Enter A followed by digits, for example A123456.",
+  "@parkrunBarcodeFieldInvalid": {
+    "description": "Field error when the typed athlete number is not A followed by digits"
+  },
+  "parkrunBarcodeLoadFailed": "Couldn't load your athlete number. Check your connection and try again.",
+  "@parkrunBarcodeLoadFailed": {
+    "description": "Shown when there is no saved copy and the number cannot be fetched"
+  },
+  "parkrunBarcodeRetry": "Try again",
+  "@parkrunBarcodeRetry": {
+    "description": "Retry button after a failed load"
+  },
+  "parkrunBarcodeOfflineCopy": "Showing the copy saved on this phone.",
+  "@parkrunBarcodeOfflineCopy": {
+    "description": "Note under the barcode when it is the device's copy because the server could not be reached"
+  },
   "integrationsImport": "Import",
   "@integrationsImport": {
     "description": "Import button on the parkrun dialog"

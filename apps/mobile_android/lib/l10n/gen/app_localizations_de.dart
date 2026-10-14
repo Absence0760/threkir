@@ -7188,6 +7188,62 @@ class AppLocalizationsDe extends AppLocalizations {
   String get integrationsParkrunFieldLabel => 'Athletennummer';
 
   @override
+  String get parkrunBarcodeTitle => 'parkrun-Barcode';
+
+  @override
+  String get parkrunBarcodeTileSubtitle => 'Im Ziel vorzeigen, auch offline.';
+
+  @override
+  String parkrunBarcodeSemantics(String number) {
+    return 'parkrun-Barcode für die Athletennummer $number';
+  }
+
+  @override
+  String get parkrunBarcodeHint =>
+      'Zeig ihn im Ziel vor, damit er zusammen mit deiner Zielmarke gescannt werden kann.';
+
+  @override
+  String get parkrunBarcodePaperNote =>
+      'parkrun unterstützt Barcodes auf Bildschirmen nicht offiziell. Nimm einen ausgedruckten Barcode mit, falls ein Scanner diesen nicht lesen kann.';
+
+  @override
+  String get parkrunBarcodeEmpty =>
+      'Füge deine parkrun-Athletennummer hinzu, um deinen Barcode hier anzuzeigen.';
+
+  @override
+  String get parkrunBarcodeInvalid =>
+      'Deine gespeicherte Athletennummer hat nicht das parkrun-Format (A gefolgt von Ziffern) und kann daher nicht als Barcode angezeigt werden.';
+
+  @override
+  String get parkrunBarcodeAdd => 'Athletennummer hinzufügen';
+
+  @override
+  String get parkrunBarcodeEdit => 'Athletennummer ändern';
+
+  @override
+  String get parkrunBarcodeSave => 'Speichern';
+
+  @override
+  String parkrunBarcodeSaveFailed(String error) {
+    return 'Athletennummer konnte nicht gespeichert werden: $error';
+  }
+
+  @override
+  String get parkrunBarcodeFieldInvalid =>
+      'Gib A gefolgt von Ziffern ein, zum Beispiel A123456.';
+
+  @override
+  String get parkrunBarcodeLoadFailed =>
+      'Deine Athletennummer konnte nicht geladen werden. Prüfe deine Verbindung und versuch es erneut.';
+
+  @override
+  String get parkrunBarcodeRetry => 'Erneut versuchen';
+
+  @override
+  String get parkrunBarcodeOfflineCopy =>
+      'Die auf diesem Telefon gespeicherte Kopie wird angezeigt.';
+
+  @override
   String get integrationsImport => 'Importieren';
 
   @override

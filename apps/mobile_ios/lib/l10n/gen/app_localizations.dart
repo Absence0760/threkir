@@ -11686,6 +11686,96 @@ abstract class AppLocalizations {
   /// **'Athlete number'**
   String get integrationsParkrunFieldLabel;
 
+  /// Title of the parkrun barcode screen and its entry tiles
+  ///
+  /// In en, this message translates to:
+  /// **'parkrun barcode'**
+  String get parkrunBarcodeTitle;
+
+  /// Subtitle of the integrations tile that opens the parkrun barcode
+  ///
+  /// In en, this message translates to:
+  /// **'Show it at the finish, even offline.'**
+  String get parkrunBarcodeTileSubtitle;
+
+  /// Screen-reader label for the drawn barcode
+  ///
+  /// In en, this message translates to:
+  /// **'parkrun barcode for athlete number {number}'**
+  String parkrunBarcodeSemantics(String number);
+
+  /// Line above the barcode saying what to do with it
+  ///
+  /// In en, this message translates to:
+  /// **'Show this at the finish so it can be scanned with your finish token.'**
+  String get parkrunBarcodeHint;
+
+  /// Neutral note that parkrun does not officially support on-screen barcodes
+  ///
+  /// In en, this message translates to:
+  /// **'parkrun doesn\'t officially support barcodes on screens, so bring a printed copy in case a scanner can\'t read this one.'**
+  String get parkrunBarcodePaperNote;
+
+  /// Shown when no athlete number is saved
+  ///
+  /// In en, this message translates to:
+  /// **'Add your parkrun athlete number to show your barcode here.'**
+  String get parkrunBarcodeEmpty;
+
+  /// Shown when the saved number is not in parkrun's A-plus-digits format
+  ///
+  /// In en, this message translates to:
+  /// **'Your saved athlete number isn\'t in parkrun\'s format (A followed by digits), so it can\'t be shown as a barcode.'**
+  String get parkrunBarcodeInvalid;
+
+  /// Button that opens the athlete-number dialog when none is saved
+  ///
+  /// In en, this message translates to:
+  /// **'Add athlete number'**
+  String get parkrunBarcodeAdd;
+
+  /// Button that opens the athlete-number dialog to change it
+  ///
+  /// In en, this message translates to:
+  /// **'Change athlete number'**
+  String get parkrunBarcodeEdit;
+
+  /// Save button on the athlete-number dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get parkrunBarcodeSave;
+
+  /// Snackbar when saving the athlete number fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save your athlete number: {error}'**
+  String parkrunBarcodeSaveFailed(String error);
+
+  /// Field error when the typed athlete number is not A followed by digits
+  ///
+  /// In en, this message translates to:
+  /// **'Enter A followed by digits, for example A123456.'**
+  String get parkrunBarcodeFieldInvalid;
+
+  /// Shown when there is no saved copy and the number cannot be fetched
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your athlete number. Check your connection and try again.'**
+  String get parkrunBarcodeLoadFailed;
+
+  /// Retry button after a failed load
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get parkrunBarcodeRetry;
+
+  /// Note under the barcode when it is the device's copy because the server could not be reached
+  ///
+  /// In en, this message translates to:
+  /// **'Showing the copy saved on this phone.'**
+  String get parkrunBarcodeOfflineCopy;
+
   /// Import button on the parkrun dialog
   ///
   /// In en, this message translates to:

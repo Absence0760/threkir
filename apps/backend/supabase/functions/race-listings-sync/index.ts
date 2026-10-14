@@ -5,34 +5,31 @@ import { readJsonWithLimit } from '../_shared/body_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';
 import { publishableKey, secretKey } from '../_shared/api_keys.ts';
 import {
+  EXCLUDED,
   MAX_LISTING_ROWS,
   type RaceListingUpsert,
   type StoredListing,
   extractProviderRaces,
   listingDiffers,
   listingUpsertFrom,
+  nearHintError,
   parseNearHint,
   providerRacesUrl,
   readProviderRace,
   reconcileListingBatch,
 } from './lib.ts';
 
-// Pull a provider's upcoming races into race_listings. GATED on the provider's
-// API key: until one is provisioned this returns 503 and writes nothing — the
-// fail-closed default the missing-credential rule requires.
+// Pull a provider's upcoming races into race_listings.
 //
-// The fetch + reconcile used to be a stub returning `{ synced: 0 }`, deferred
-// on the grounds that the response shape could not be observed without a key.
-// That deferral cost more than it saved: no provider race could enter the
-// calendar at all, so a fully provisioned deployment still held only parkrun,
-// crowd submissions and hand inserts. The whole path is written now, with the
-// gate staying in config — the shape this repo already prescribes for a feature
-// blocked on a credential (decisions § 977). What the missing key genuinely
-// prevents is VERIFYING the provider's field names and endpoint, so every
-// reading in ./lib.ts is optional-with-drop and the response reports what it
-// could not read: a payload shaped differently answers `synced: 0` with
-// `unusable` equal to the row count on the first call, rather than writing junk
-// into a calendar every user reads.
+// RunSignUp's listings feed is public, so its leg runs with or without
+// `RUNSIGNUP_API_KEY` / `_SECRET`: they are sent when both are set and are not
+// a gate (measured 2026-10-14 — `GET /Rest/races` answers 200 keyless). The
+// UltraSignup leg stays GATED on its own key pair and returns 503 until one is
+// provisioned, because its endpoint and field names are still unverified. The
+// RunSignUp reader in ./lib.ts is built against the observed payload; the
+// UltraSignup one keeps the optional-with-drop rule, so a payload shaped
+// differently answers `synced: 0` with `unusable` equal to the row count rather
+// than writing junk into a calendar every user reads (decisions § 977).
 //
 // It writes as the SERVICE ROLE, not as the caller: a provider race is
 // `is_verified`, and the `race_listings_force_unverified` trigger forces false
@@ -40,7 +37,7 @@ import {
 // and spends their rate-limit bucket.
 
 interface RequestBody {
-  near?: unknown; // { lng, lat, radius_m } region hint
+  near?: unknown; // { postal_code?, lng?, lat?, radius_m? } region hint, see NearHint
   provider?: unknown; // 'runsignup' (default) | 'ultrasignup' — which leg to gate/sync
   sync?: unknown; // true to actually walk the feed; anything else is a credential probe
 }
@@ -74,7 +71,7 @@ Deno.serve(withSentry('race-listings-sync', async (req: Request) => {
   // A PROBE reads two env vars and returns. Charging it to the sync's bucket was
   // a live defect and web's own client comment describes the symptom without
   // naming the cause: both `isRunSignUpConfigured` and `isUltraSignUpConfigured`
-  // hit this function, so ONE page load spends a free user's whole 2/hour
+  // hit this function back then, so ONE page load spent a free user's whole 2/hour
   // allowance and the next load 429s — which `isProviderNotConfigured` then
   // fail-closes into "provider unavailable" for a provider that is configured
   // and working (decisions § 977). Its own generous bucket costs nothing and
@@ -88,9 +85,6 @@ Deno.serve(withSentry('race-listings-sync', async (req: Request) => {
     });
   if (denied) return denied;
 
-  // Fail closed on the missing provider key — the chosen leg is inert until its
-  // credential lands (integrations.md + decisions ADR). Defaults to RunSignUp so
-  // the existing probe is unchanged; UltraSignup is gated symmetrically.
   // An unrecognised provider is refused, not silently read as the default.
   // Coercing it to RunSignUp gated the caller's request on a credential for a
   // provider they never asked for — a 503 when RunSignUp's key is missing, and
@@ -108,21 +102,19 @@ Deno.serve(withSentry('race-listings-sync', async (req: Request) => {
   const apiSecret = provider === 'ultrasignup'
     ? Deno.env.get('ULTRASIGNUP_API_SECRET')
     : Deno.env.get('RUNSIGNUP_API_SECRET');
-  if (!apiKey || !apiSecret) {
+  // UltraSignup fails closed on a missing key pair; RunSignUp's feed is public
+  // and needs none, so its key is optional and never a gate.
+  const credentialRequired = provider === 'ultrasignup';
+  if (credentialRequired && (!apiKey || !apiSecret)) {
     return Response.json({ error: 'provider_not_configured' }, { status: 503 });
   }
 
-  // Every caller in the tree today is a CREDENTIAL PROBE, not a sync: web's
-  // `isRunSignUpConfigured` / `isUltraSignUpConfigured` invoke this with `{}`
-  // and `{ provider: 'ultrasignup' }` to decide whether to offer the affordance
-  // or the unavailable explainer, and mobile's `raceImportProviders` names it as
-  // two `probeFunction`s. Nothing anywhere reads `synced`. While the leg was a
-  // stub that cost nothing; now that it walks a provider feed and writes the
-  // shared calendar, a page load must not trigger one — it would also spend the
-  // 2/hour bucket, so the second probe in an hour would 429 and the tile would
-  // read unavailable for the rest of it. So a sync is opt-IN, the same shape
-  // `race-results-import` already uses for its own probe mode, and the default
-  // answer is the credential verdict alone (decisions § 977).
+  // A call that does not ask for a sync is a PROBE and gets the availability
+  // verdict alone: walking the feed would write the shared calendar and spend
+  // the 2/hour bucket on a page load. No client probes this function today —
+  // web and mobile ask `race-results-import`, the leg their tiles gate
+  // (decisions § 1041) — but the opt-in stays so one never triggers a sync by
+  // accident (decisions § 977).
   if (!isSync) {
     return Response.json({ configured: true });
   }
@@ -131,9 +123,18 @@ Deno.serve(withSentry('race-listings-sync', async (req: Request) => {
   if (!nearHint.ok) {
     return Response.json({ error: nearHint.error }, { status: 400 });
   }
+  const nearError = nearHintError(provider, nearHint.near);
+  if (nearError) {
+    return Response.json({ error: nearError }, { status: 400 });
+  }
 
   const upstream = await fetch(
-    providerRacesUrl({ provider, apiKey, apiSecret, near: nearHint.near }),
+    providerRacesUrl({
+      provider,
+      apiKey: apiKey ?? null,
+      apiSecret: apiSecret ?? null,
+      near: nearHint.near,
+    }),
     { headers: { 'User-Agent': Deno.env.get('RACE_IMPORT_USER_AGENT') || 'RunApp/1.0' } },
   );
   if (!upstream.ok) {
@@ -152,8 +153,13 @@ Deno.serve(withSentry('race-listings-sync', async (req: Request) => {
   const rows = extractProviderRaces(payload);
   const listings: RaceListingUpsert[] = [];
   let unusable = 0;
+  let excluded = 0;
   for (const row of rows) {
     const race = readProviderRace(provider, row);
+    if (race === EXCLUDED) {
+      excluded++;
+      continue;
+    }
     if (!race) {
       unusable++;
       continue;
@@ -168,6 +174,7 @@ Deno.serve(withSentry('race-listings-sync', async (req: Request) => {
       updated: 0,
       skipped: 0,
       unusable,
+      excluded,
       total: rows.length,
       complete,
     });
@@ -241,6 +248,7 @@ Deno.serve(withSentry('race-listings-sync', async (req: Request) => {
     updated,
     skipped: batch.skipped,
     unusable,
+    excluded,
     total: rows.length,
     complete,
   });

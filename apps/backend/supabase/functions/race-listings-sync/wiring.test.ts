@@ -49,26 +49,40 @@ Deno.test('an omitted provider still defaults, so the refusal costs nothing', ()
   );
 });
 
-Deno.test('both legs are gated on their own credential pair, fail-closed', () => {
-  // A leg whose key or secret is unset must not reach the network; the 503 is
-  // the missing-credential rule, and it is per-provider so provisioning one
-  // does not open the other.
+Deno.test('UltraSignup is gated on its own key pair; RunSignUp listings are keyless', () => {
+  // RunSignUp's `GET /Rest/races` answers 200 with no key (measured
+  // 2026-10-14), so gating the leg on RUNSIGNUP_API_KEY kept a public feed out
+  // of the calendar on every deployment without a partner key — which is all of
+  // them. UltraSignup's endpoint is still unverified and stays fail-closed.
   assert(SRC.includes("Deno.env.get('ULTRASIGNUP_API_KEY')"), 'the ultrasignup key is not read');
   assert(SRC.includes("Deno.env.get('RUNSIGNUP_API_KEY')"), 'the runsignup key is not read');
   assert(
-    /if \(!apiKey \|\| !apiSecret\) \{[\s\S]{0,140}status: 503/.test(SRC),
-    'a missing key OR secret must answer 503 provider_not_configured',
+    /const credentialRequired = provider === 'ultrasignup';/.test(SRC),
+    'only UltraSignup may require a credential',
   );
-  const gate = SRC.indexOf('if (!apiKey || !apiSecret)');
-  // Against the outbound FETCH, not against a success answer. The leg used to
-  // be a stub whose whole body was `return Response.json({ synced: 0 })`, so
-  // ordering the gate before it was the strongest claim available; now that the
-  // sync is written, the thing a missing credential must stop is the request
-  // going out at all (decisions § 977).
+  assert(
+    /if \(credentialRequired && \(!apiKey \|\| !apiSecret\)\) \{[\s\S]{0,140}status: 503/.test(SRC),
+    'a missing UltraSignup key OR secret must answer 503 provider_not_configured',
+  );
+  assert(
+    !/if \(!apiKey \|\| !apiSecret\) \{/.test(SRC),
+    'an unconditional key gate would close the public RunSignUp feed again',
+  );
+  const gate = SRC.indexOf('if (credentialRequired && (!apiKey || !apiSecret))');
+  // Against the outbound FETCH: the thing a missing credential must stop is the
+  // request going out at all (decisions § 977).
   const out = SRC.indexOf('await fetch(');
   assert(gate !== -1, 'the credential gate is gone');
   assert(out !== -1, 'the leg makes no outbound call at all — is it a stub again?');
   assert(gate < out, 'the credential gate must precede the outbound fetch');
+});
+
+Deno.test('a region hint the provider cannot search by is refused before the fetch', () => {
+  const check = SRC.indexOf('nearHintError(provider, nearHint.near)');
+  const out = SRC.indexOf('await fetch(');
+  assert(check !== -1, 'the per-provider hint check is gone');
+  assert(check < out, 'an unsearchable hint must be refused before the request goes out');
+  assert(/if \(nearError\) \{[\s\S]{0,80}status: 400/.test(SRC), 'it must answer 400');
 });
 
 Deno.test('the caller is identified and throttled before the gate is spent', () => {
@@ -131,12 +145,13 @@ Deno.test('an upstream that is not 2xx or not JSON fails loud, and writes nothin
 });
 
 Deno.test('the response says what it could not read, so a wrong shape is visible at once', () => {
-  // No credential exists for either provider, so the field names in lib.ts are
-  // unverified. A payload shaped differently must answer `synced: 0` with
-  // `unusable` equal to the row count rather than writing junk into a calendar
-  // every user of the deployment reads.
+  // A payload shaped differently must answer `synced: 0` with `unusable` equal
+  // to the row count rather than writing junk into a calendar every user of the
+  // deployment reads. Deliberate exclusions (drafts, virtual-only races) are
+  // counted apart, so they never read as a shape change.
   assert(SRC.includes('unusable++;'), 'nothing counts the rows that could not be read');
-  for (const field of ['synced', 'updated', 'skipped', 'unusable', 'total', 'complete']) {
+  assert(SRC.includes('excluded++;'), 'exclusions are folded into unusable');
+  for (const field of ['synced', 'updated', 'skipped', 'unusable', 'excluded', 'total', 'complete']) {
     assert(
       new RegExp(`\\b${field}[,:]`).test(SRC),
       `the response omits ${field}`,
@@ -145,18 +160,11 @@ Deno.test('the response says what it could not read, so a wrong shape is visible
 });
 
 Deno.test('a call that did not ask for a sync performs none', () => {
-  // Every caller in the tree is a credential probe, and nothing reads `synced`.
-  // There is exactly ONE such caller left — web's `isRunSignUpConfigured` — and
-  // it is on its way out: § 1008 moved mobile's two `probeFunction` entries and
-  // web's `isUltraSignUpConfigured` onto the results leg, § 1041 finished the
-  // mobile half, and the RunSignUp web probe is filed to follow. When it does,
-  // this function's probe branch has no caller and the
-  // `race-listings-sync:probe` bucket below charges nothing. The assertions
-  // stand either way: they are about `index.ts` refusing to walk the provider
-  // feed for a caller that did not ask for a sync, which would write the shared
-  // calendar on a page load and spend the 2/hour bucket, so the second probe in
-  // an hour would 429 and the tile would read unavailable for the rest of it
-  // (decisions § 977).
+  // No client probes this function any more — web and mobile ask
+  // `race-results-import`, the leg their tiles gate (§ 1041). The assertions
+  // are about `index.ts` refusing to walk the provider feed for a caller that
+  // did not ask for a sync, which would write the shared calendar on a page
+  // load and spend the 2/hour bucket (decisions § 977).
   const gate = SRC.indexOf('if (!isSync) {');
   const out = SRC.indexOf('await fetch(');
   const write = SRC.indexOf('.insert(');
@@ -166,11 +174,11 @@ Deno.test('a call that did not ask for a sync performs none', () => {
   assert(gate < write, 'the opt-in must precede any write');
   assert(
     /if \(!isSync\) \{\s*return Response\.json\(\{ configured: true \}\);/.test(SRC),
-    'a probe must answer the credential verdict, not a sync result',
+    'a probe must answer the availability verdict, not a sync result',
   );
-  // And it must sit BEHIND the credential gate, or an unprovisioned deploy
-  // would report itself configured.
-  const cred = SRC.indexOf('if (!apiKey || !apiSecret)');
+  // And it must sit BEHIND the UltraSignup credential gate, or an
+  // unprovisioned deploy would report that leg configured.
+  const cred = SRC.indexOf('if (credentialRequired && (!apiKey || !apiSecret))');
   assert(cred !== -1 && cred < gate, 'the probe answer must follow the credential gate');
 });
 
@@ -178,10 +186,9 @@ Deno.test('a probe does not spend the sync bucket', () => {
   // Both web probes hit this function when the split was written, so charging
   // them to the sync's 2/hour free ceiling meant ONE page load exhausted it and
   // the next load 429'd — which `isProviderNotConfigured` fail-closes into
-  // "provider unavailable" for a provider that is configured and working. Only
-  // the RunSignUp probe reaches here now (§ 1008), which halves the pressure
-  // without removing the cause; the separate bucket is what fixed it (decisions
-  // § 977).
+  // "provider unavailable" for a provider that is configured and working. The
+  // separate bucket is what fixed it (decisions § 977); no probe reaches here
+  // today, and it keeps a future one off the sync's allowance.
   assert(
     /checkRateLimitTiered\(supabase, user\.id, 'race-listings-sync', 2, 8, 3600/.test(SRC),
     'the sync ceiling moved',

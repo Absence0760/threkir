@@ -3,20 +3,19 @@
 // The function pulls a provider's upcoming-races feed and reconciles it into
 // `race_listings`. Everything here is network-free and side-effect-free, so the
 // envelope walk, the date and distance readings, the constraint-shaped field
-// caps and the batch reconciliation are testable without a credential — which
-// matters more here than usual, because no credential exists for either
-// provider and the live payload has therefore not been observed from this repo.
+// caps and the batch reconciliation are testable offline.
 //
-// **What that means for the field names below, stated rather than implied.**
-// Each provider's reader is the ONLY place its spellings appear, and every one
-// of them is optional-with-drop: a row that does not yield a name and a date
-// becomes nothing, and the response reports how many did that. So a payload
-// whose shape differs from the one declared here produces `synced: 0` with an
-// `unusable` count equal to the row count — an operator sees it on the first
-// call — rather than junk in a calendar every user of the deployment reads.
-// The alternative, refusing to write the leg until a key arrives, is what left
-// `{ synced: 0 }` hardcoded here for three months while the calendar could hold
-// nothing but crowd submissions.
+// **What each provider's reader is built against, stated rather than implied.**
+// The RunSignUp reader is built against the live `GET /Rest/races` payload,
+// observed 2026-10-14 and recorded in `fixtures/runsignup_races.json`. That feed
+// is public — no API key — so observing it never needed a credential; the
+// earlier reader was written against invented spellings (a race-level
+// `distance`, `results_url`, `address.country`) and would have filed every race
+// with no distance. The UltraSignup reader is still unverified, so it keeps
+// the optional-with-drop rule: a row that does not yield a name and a date
+// becomes nothing, and the response counts it, so a payload shaped differently
+// answers `synced: 0` with `unusable` equal to the row count rather than writing
+// junk into a calendar every user of the deployment reads.
 
 import { isIsoCalendarDate } from '../_shared/calendar_date.ts';
 import { clipText } from '../_shared/text_clip.ts';
@@ -136,6 +135,9 @@ const UNIT_METRES: Record<string, number> = {
   mi: 1609.344,
   mile: 1609.344,
   miles: 1609.344,
+  yd: 0.9144,
+  yard: 0.9144,
+  yards: 0.9144,
 };
 
 /// A nominal race distance in whole metres, or null when it cannot be read.
@@ -164,44 +166,141 @@ function joinLocation(city: unknown, state: unknown, country: unknown): string |
   return text(parts.join(', '), MAX_LISTING_LOCATION_LEN);
 }
 
-/// A RunSignUp race object, as the `/Rest/races` envelope carries it.
+/// Named distances, read whole. RunSignUp's own feed writes every distance as a
+/// number and a unit (`5K`, `13.1 Miles`); these cover a race director who typed
+/// the name instead, which the field is free text enough to allow.
+const NAMED_DISTANCE_M: Record<string, number> = {
+  marathon: 42195,
+  'half marathon': 21098,
+};
+
+/// A RunSignUp event's `distance` string in whole metres, or null.
 ///
-/// **Unverified against a live payload** — see the module header. Every field is
-/// optional and the two required ones are checked, so a mismatch drops the row
-/// and is counted rather than guessed around.
+/// The spellings the live feed uses (2026-10-14, 500 races around New York):
+/// `5K`, `10K`, `50K`, `3.1K` (kilometres, capital K glued to the number),
+/// `3.1 Miles`, `1 Miles`, `26.2 Miles`, `100 Yards`, and `100m` / `5000m` /
+/// `1600m` — metres, LOWER-case `m` glued to the number. That last one is why
+/// this reader exists beside `distanceMetresFrom`, whose shared table refuses a
+/// bare `m` because a US listing could mean miles by it. In THIS feed miles are
+/// always spelled `Miles`, so a glued lower-case `m` has been observed to mean
+/// metres and is read so here and nowhere else. A capital `M` stays refused.
+export function parseRunSignUpDistance(raw: unknown): number | null {
+  const v = text(raw, 32)?.trim();
+  if (!v) return null;
+  const named = NAMED_DISTANCE_M[v.toLowerCase().replace(/\s+/g, ' ')];
+  if (named !== undefined) return named;
+  const m = /^(\d+(?:\.\d+)?)\s*([A-Za-z]+)$/.exec(v);
+  if (!m) return null;
+  const unit = m[2] === 'm' ? 'metres' : m[2];
+  return distanceMetresFrom(m[1], unit);
+}
+
+/// The event types that put a runner on a course in person. `running_race`,
+/// `running_only`, `trail_race` and `ultra` are the observed running spellings;
+/// `virtual_race`, `walking_only`, `fundraising_ride`, `paddle_sports`,
+/// `nonprofit_event`, `other` and the rest are what a race calendar for runners
+/// should not file a distance from.
+const IN_PERSON_RUNNING_EVENT_TYPES = new Set([
+  'running_race',
+  'running_only',
+  'trail_race',
+  'ultra',
+]);
+
+/// One event of a RunSignUp race (the `events=T` expansion).
+export interface RunSignUpEventRow {
+  event_type?: unknown;
+  distance?: unknown;
+  volunteer?: unknown;
+}
+
+/// A RunSignUp race object, as `GET /Rest/races` carries it under `races[].race`.
+/// Only the fields read below; the live object carries many more.
 export interface RunSignUpRaceRow {
   race_id?: unknown;
   name?: unknown;
   next_date?: unknown;
   last_date?: unknown;
+  is_draft_race?: unknown;
+  is_private_race?: unknown;
   url?: unknown;
-  results_url?: unknown;
+  external_results_url?: unknown;
   address?: unknown;
-  distance?: unknown;
-  distance_units?: unknown;
+  events?: unknown;
 }
 
-export function readRunSignUpRace(row: RunSignUpRaceRow): NormalisedRace | null {
+/// A deliberate refusal — a race the feed describes correctly that the calendar
+/// should not hold — as distinct from `null`, a row this reader could not read.
+/// The response counts the two apart, so `unusable` keeps meaning "the shape
+/// moved" and is not diluted by every walk-only fun run.
+export const EXCLUDED = 'excluded' as const;
+export type RaceReading = NormalisedRace | typeof EXCLUDED | null;
+
+/// Normalise one RunSignUp race.
+///
+/// - **One listing per RACE, not per event.** `provider_race_id` is the
+///   RunSignUp race id and `race-results-import` fetches
+///   `/Rest/race/{race_id}/results` with it; a per-event row would need a
+///   composite id that endpoint cannot take.
+/// - **The distance is the longest in-person running event.** A race carries
+///   several (`5K RUN` + `1 Mile WALK`, or 5K / 10K / half on one morning), and
+///   `distance_m` holds one number that `search_race_listings` bands. The
+///   headline event is the longest one in practice, and a walk or a virtual
+///   option never decides it. An event whose distance cannot be read is
+///   skipped, not guessed; no readable one leaves the distance null.
+/// - **Drafts, private races, and races with events but no in-person running
+///   event are excluded.** The last covers virtual-only challenges, whose
+///   address is the organiser's office rather than a start line.
+/// - **The date is `next_date`, read as the race's own local calendar day.**
+///   `race_date` is a `date`, and RunSignUp's `MM/DD/YYYY` is already the day in
+///   the race's `timezone`, so no zone conversion applies — converting it would
+///   move an early-morning race onto the previous day for anyone west of it.
+///   `last_date` is the fallback for a race with no next running, so a past race
+///   still files for a results import.
+/// - **No `location_point`.** The feed carries an address and no coordinates,
+///   and `search_race_listings`' proximity gate requires a point, so a synced
+///   race is found by name, date and distance band, not by a "near me" search,
+///   until something geocodes the address. That gap is recorded in decisions,
+///   not papered over with the hint's centre, which is not where the race is.
+export function readRunSignUpRace(row: RunSignUpRaceRow): RaceReading {
   const name = text(row.name, MAX_LISTING_NAME_LEN);
-  // `next_date` is the upcoming running; `last_date` is what a race that has
-  // already happened carries. A calendar wants the first and can still file the
-  // second, so the fallback is deliberate — but only one of them is read, never
-  // merged.
   const date = parseProviderRaceDate(row.next_date) ?? parseProviderRaceDate(row.last_date);
   if (!name || !date) return null;
-  const address = (row.address ?? {}) as Record<string, unknown>;
+  if (row.is_draft_race === 'T' || row.is_private_race === 'T') return EXCLUDED;
+
+  let distanceM: number | null = null;
+  if (Array.isArray(row.events) && row.events.length > 0) {
+    let running = 0;
+    for (const raw of row.events) {
+      if (!raw || typeof raw !== 'object') continue;
+      const ev = raw as RunSignUpEventRow;
+      if (ev.volunteer === 'T') continue;
+      if (typeof ev.event_type !== 'string') continue;
+      if (!IN_PERSON_RUNNING_EVENT_TYPES.has(ev.event_type)) continue;
+      running++;
+      const m = parseRunSignUpDistance(ev.distance);
+      if (m !== null && (distanceM === null || m > distanceM)) distanceM = m;
+    }
+    if (running === 0) return EXCLUDED;
+  }
+
+  const address = (row.address && typeof row.address === 'object' ? row.address : {}) as Record<
+    string,
+    unknown
+  >;
   return {
     providerRaceId: text(row.race_id, 200),
     name,
     date,
-    distanceM: distanceMetresFrom(row.distance, row.distance_units),
-    locationLabel: joinLocation(address.city, address.state, address.country),
+    distanceM,
+    locationLabel: joinLocation(address.city, address.state, address.country_code),
     entryUrl: listingUrl(row.url),
-    resultsUrl: listingUrl(row.results_url),
+    resultsUrl: listingUrl(row.external_results_url),
   };
 }
 
-/// An UltraSignup event row. Same unverified status, same drop-and-count rule.
+/// An UltraSignup event row. Unverified against a live payload (see the module
+/// header), so every field is optional and a mismatch drops and counts the row.
 export interface UltraSignUpRaceRow {
   eventid?: unknown;
   eventname?: unknown;
@@ -266,7 +365,7 @@ export function extractProviderRaces(payload: unknown): Record<string, unknown>[
 export function readProviderRace(
   provider: ListingSyncProvider,
   row: Record<string, unknown>,
-): NormalisedRace | null {
+): RaceReading {
   return provider === 'ultrasignup' ? readUltraSignUpRace(row) : readRunSignUpRace(row);
 }
 
@@ -367,9 +466,24 @@ export function listingDiffers(stored: StoredListing, next: RaceListingUpsert): 
     stored.is_verified !== true;
 }
 
+/// The optional region a sync is scoped to: a point, a postal code, or both,
+/// plus a radius. The two forms exist because the providers search differently.
+///
+/// RunSignUp has NO coordinate search. Its documented location parameters
+/// (`GET /Rest/races`, read 2026-10-14) are `city`, `state`, `country`, and
+/// `zipcode` + `radius` in miles — US only. `lat` / `lng` / `radius` are
+/// ignored without an error: measured, a New York point returned races in
+/// Michigan, Florida and Pennsylvania, while `zipcode=10001&radius=10` returned
+/// New York and Jersey City. The response carries no coordinates either, so
+/// "fetch nationally, filter by distance here" has nothing to filter on. A
+/// point hint for RunSignUp is therefore refused rather than sent — sending it
+/// is a national pull filed as if it were local, which is exactly what
+/// `parseNearHint` exists to stop. The caller that has a location is a client
+/// with the device's postal code or the runner's profile region; nothing in the
+/// tree calls the sync today, so the contract is set here, not inherited.
 export interface NearHint {
-  lng: number;
-  lat: number;
+  point: { lng: number; lat: number } | null;
+  postalCode: string | null;
   radiusM: number;
 }
 
@@ -392,14 +506,27 @@ export function parseNearHint(
     return { ok: false, error: 'invalid_near' };
   }
   const o = raw as Record<string, unknown>;
-  const lng = o.lng;
-  const lat = o.lat;
-  if (typeof lng !== 'number' || !Number.isFinite(lng) || lng < -180 || lng > 180) {
-    return { ok: false, error: 'invalid_near_lng' };
+  let point: NearHint['point'] = null;
+  if (o.lng !== undefined || o.lat !== undefined) {
+    const lng = o.lng;
+    const lat = o.lat;
+    if (typeof lng !== 'number' || !Number.isFinite(lng) || lng < -180 || lng > 180) {
+      return { ok: false, error: 'invalid_near_lng' };
+    }
+    if (typeof lat !== 'number' || !Number.isFinite(lat) || lat < -90 || lat > 90) {
+      return { ok: false, error: 'invalid_near_lat' };
+    }
+    point = { lng, lat };
   }
-  if (typeof lat !== 'number' || !Number.isFinite(lat) || lat < -90 || lat > 90) {
-    return { ok: false, error: 'invalid_near_lat' };
+  let postalCode: string | null = null;
+  if (o.postal_code !== undefined) {
+    const pc = typeof o.postal_code === 'string' ? o.postal_code.trim() : '';
+    if (!/^[A-Za-z0-9][A-Za-z0-9 -]{1,9}$/.test(pc)) {
+      return { ok: false, error: 'invalid_near_postal_code' };
+    }
+    postalCode = pc;
   }
+  if (point === null && postalCode === null) return { ok: false, error: 'invalid_near' };
   let radiusM = DEFAULT_NEAR_RADIUS_M;
   if (o.radius_m !== undefined) {
     const r = o.radius_m;
@@ -408,36 +535,72 @@ export function parseNearHint(
     }
     radiusM = Math.round(r);
   }
-  return { ok: true, near: { lng, lat, radiusM } };
+  return { ok: true, near: { point, postalCode, radiusM } };
 }
+
+/// Whether `provider` can search by the hint it was given. RunSignUp needs a
+/// US ZIP (see `NearHint`); UltraSignup's endpoint is declared with a point.
+export function nearHintError(
+  provider: ListingSyncProvider,
+  near: NearHint | null,
+): string | null {
+  if (near === null) return null;
+  if (provider === 'runsignup') {
+    if (near.postalCode === null) return 'near_postal_code_required';
+    return /^\d{5}$/.test(near.postalCode) ? null : 'near_postal_code_not_us';
+  }
+  return near.point === null ? 'near_point_required' : null;
+}
+
+/// RunSignUp's `results_per_page` accepts the whole cap in one request
+/// (measured: 500 races, ~2.9 MB with `events=T`), so a sync is ONE upstream
+/// call. Further pages are deliberately not walked: the response's `complete`
+/// says when the cap was hit, and a sync is bounded at 2 per caller per hour.
+const MILES_M = 1609.344;
 
 /// Build the provider's upcoming-races URL.
 ///
-/// **The endpoints are unverified from here**, like the field names above, and
-/// for the same reason — no credential exists for either provider. The failure
-/// mode is the safe one and it is loud: a wrong path answers a non-2xx, which
-/// the caller reports as `502 <provider> upstream <status>` and writes nothing,
-/// exactly as its two sibling importers already do. A wrong URL costs one
-/// request and announces itself; that is why writing the leg against a declared
-/// endpoint is better than leaving `{ synced: 0 }` hardcoded.
+/// RunSignUp's listings feed is PUBLIC: `GET /Rest/races` answers 200 with no
+/// key (2026-10-14). The key and secret are sent only when BOTH are set — they
+/// buy partner-scoped extras, not access — so a deployment without them still
+/// syncs. Results are sorted by date so the cap trims the far future, not an
+/// alphabetical slice. UltraSignup's endpoint stays unverified and keyed; the
+/// caller refuses it without a credential before this is built.
 export function providerRacesUrl(opts: {
   provider: ListingSyncProvider;
-  apiKey: string;
-  apiSecret: string;
+  apiKey: string | null;
+  apiSecret: string | null;
   near: NearHint | null;
 }): string {
-  const u = opts.provider === 'ultrasignup'
-    ? new URL('https://ultrasignup.com/service/events.svc/upcomingevents')
-    : new URL('https://runsignup.com/Rest/races');
+  const radiusMi = opts.near
+    ? String(Math.max(1, Math.round(opts.near.radiusM / MILES_M)))
+    : null;
+  if (opts.provider === 'ultrasignup') {
+    const u = new URL('https://ultrasignup.com/service/events.svc/upcomingevents');
+    u.searchParams.set('format', 'json');
+    if (opts.apiKey) u.searchParams.set('api_key', opts.apiKey);
+    if (opts.apiSecret) u.searchParams.set('api_secret', opts.apiSecret);
+    u.searchParams.set('results_per_page', String(MAX_LISTING_ROWS));
+    if (opts.near?.point && radiusMi) {
+      u.searchParams.set('lat', String(opts.near.point.lat));
+      u.searchParams.set('lng', String(opts.near.point.lng));
+      u.searchParams.set('radius', radiusMi);
+    }
+    return u.toString();
+  }
+  const u = new URL('https://runsignup.com/Rest/races');
   u.searchParams.set('format', 'json');
-  u.searchParams.set('api_key', opts.apiKey);
-  u.searchParams.set('api_secret', opts.apiSecret);
+  if (opts.apiKey && opts.apiSecret) {
+    u.searchParams.set('api_key', opts.apiKey);
+    u.searchParams.set('api_secret', opts.apiSecret);
+  }
+  u.searchParams.set('events', 'T');
+  u.searchParams.set('start_date', 'today');
+  u.searchParams.set('sort', 'date ASC');
   u.searchParams.set('results_per_page', String(MAX_LISTING_ROWS));
-  if (opts.near) {
-    u.searchParams.set('lat', String(opts.near.lat));
-    u.searchParams.set('lng', String(opts.near.lng));
-    // Both platforms are US and quote radii in miles.
-    u.searchParams.set('radius', String(Math.max(1, Math.round(opts.near.radiusM / 1609.344))));
+  if (opts.near?.postalCode && radiusMi) {
+    u.searchParams.set('zipcode', opts.near.postalCode);
+    u.searchParams.set('radius', radiusMi);
   }
   return u.toString();
 }

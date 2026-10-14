@@ -1367,6 +1367,7 @@ tests-e2e/
     invite.spec.ts             — /clubs/join/[token] redeems a Friends-of-Jared invite link → lands on the private club
     invite-rotation.spec.ts    — backend boundary: admin Rotate-invite-token → old token rejected by join_club_by_token, new token accepted
     join.spec.ts               — /clubs/[slug] open-policy join from Browse → post on feed → leave
+    missing-club.spec.ts       — /social?tab=clubs Browse (issue #1151 step 5): a search that finds nothing offers Set up your club (→ /clubs/new prefilled with the searched name) + the create-a-club guide; a failed search shows the error card with no set-up offer; a signed-out visitor following the set-up link goes through /login?return_to and lands on the prefilled form
     members.spec.ts            — /clubs/[slug] Members tab: admin role-change dropdown + admin Remove-member kick
     post-delete.spec.ts        — /clubs/[slug] admin posts to feed → deletes via row icon
     posts.spec.ts              — /clubs/[slug] threaded reply: top-level post by runner → reply by alex → both render

@@ -292,6 +292,12 @@ dependencies {
     implementation("androidx.wear.protolayout:protolayout-expression:1.4.2")
     debugImplementation("androidx.wear.tiles:tiles-renderer:1.6.2")
 
+    // Watch-face complication data source (the active-run / last-run
+    // complication). The `-data` artefact with the ComplicationData builders
+    // comes in through this one's api scope; the `-ktx` suspending wrapper is
+    // not used, the service runs its own scope.
+    implementation("androidx.wear.watchface:watchface-complications-data-source:1.3.0")
+
     // Health Services (live HR). 1.1.0-rc01 is the latest pre-stable; 1.0.0
     // is the last stable tag but lacks the flow helpers we want. Move to
     // 1.1.0 stable when it ships.

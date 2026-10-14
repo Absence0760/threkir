@@ -289,6 +289,7 @@ class RunRecordingService : Service() {
             )
         }
         com.runapp.watchwear.tiles.ActiveRunTileService.requestUpdate(this)
+        com.runapp.watchwear.complications.ActiveRunComplicationService.requestUpdate(this)
 
         subscribeToGps()
         // Self-healing GPS retry loop. Mirrors Android's
@@ -404,6 +405,16 @@ class RunRecordingService : Service() {
                 if (tickIndex % NOTIFICATION_THROTTLE_TICKS == 0) {
                     refreshNotification(elapsed, RecordingRepository.metrics.value.distanceM)
                 }
+                // Elapsed needs no push — the face ticks it from the anchor the
+                // complication hands over. Distance does, once a minute.
+                if (com.runapp.watchwear.complications.isComplicationPushTick(
+                        tickIndex,
+                        RecordingRepository.metrics.value.stage,
+                    )
+                ) {
+                    com.runapp.watchwear.complications.ActiveRunComplicationService
+                        .requestUpdate(this@RunRecordingService)
+                }
             }
         }
         checkpointJob = scope.launch {
@@ -434,6 +445,7 @@ class RunRecordingService : Service() {
         val elapsed = activeElapsedMs()
         refreshNotification(elapsed, RecordingRepository.metrics.value.distanceM, paused = true)
         com.runapp.watchwear.tiles.ActiveRunTileService.requestUpdate(this)
+        com.runapp.watchwear.complications.ActiveRunComplicationService.requestUpdate(this)
     }
 
     private fun resumeRecording() {
@@ -444,6 +456,7 @@ class RunRecordingService : Service() {
         }
         RecordingRepository.update { it.copy(stage = RecordingRepository.Stage.Recording) }
         com.runapp.watchwear.tiles.ActiveRunTileService.requestUpdate(this)
+        com.runapp.watchwear.complications.ActiveRunComplicationService.requestUpdate(this)
     }
 
     private fun stopRecording() {
@@ -504,6 +517,7 @@ class RunRecordingService : Service() {
         releaseWakeLock()
         stopForeground(STOP_FOREGROUND_REMOVE)
         com.runapp.watchwear.tiles.ActiveRunTileService.requestUpdate(this)
+        com.runapp.watchwear.complications.ActiveRunComplicationService.requestUpdate(this)
         stopSelf()
     }
 

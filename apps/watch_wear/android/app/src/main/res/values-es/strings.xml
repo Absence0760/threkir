@@ -30,6 +30,13 @@
     <string name="tile_tap_to_start">Toca para empezar</string>
     <string name="tile_running">EN MARCHA</string>
     <string name="tile_paused">EN PAUSA</string>
+    <!-- Watch-face complication -->
+    <string name="complication_label">Datos de carrera</string>
+    <string name="complication_last_short">Última</string>
+    <string name="complication_last_run">Última carrera</string>
+    <string name="complication_desc_recording">Grabando, %1$s transcurrido, %2$s</string>
+    <string name="complication_desc_paused">En pausa en %1$s, %2$s</string>
+    <string name="complication_desc_last_run">Última carrera: %1$s en %2$s</string>
 
     <string name="notif_recording_run">Registrando carrera</string>
     <string name="notif_paused">En pausa</string>

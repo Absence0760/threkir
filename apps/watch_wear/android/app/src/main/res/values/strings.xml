@@ -42,6 +42,13 @@
     <string name="tile_tap_to_start">Tap to start</string>
     <string name="tile_running">RUNNING</string>
     <string name="tile_paused">PAUSED</string>
+    <!-- Watch-face complication -->
+    <string name="complication_label">Run stats</string>
+    <string name="complication_last_short">Last</string>
+    <string name="complication_last_run">Last run</string>
+    <string name="complication_desc_recording">Recording, %1$s elapsed, %2$s</string>
+    <string name="complication_desc_paused">Paused at %1$s, %2$s</string>
+    <string name="complication_desc_last_run">Last run %1$s in %2$s</string>
 
     <!-- ───────────── Notification ───────────── -->
     <string name="notif_recording_run">Recording run</string>

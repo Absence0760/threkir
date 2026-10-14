@@ -107,5 +107,30 @@
                 android:name="androidx.wear.tiles.PREVIEW"
                 android:resource="@drawable/tile_active_run_preview" />
         </service>
+
+        <!-- Watch-face complication: the live run, or the last run this watch
+             recorded. BIND_COMPLICATION_PROVIDER is enforced by the platform,
+             so only the complication host can bind and exported=true is safe
+             (and required). UPDATE_PERIOD_SECONDS is an hourly safety net: the
+             recording service and RunViewModel push every real change through
+             ActiveRunComplicationService.requestUpdate, and the face ticks the
+             live elapsed time itself. Not directBootAware: the last-run entry
+             lives in credential-encrypted DataStore. -->
+        <service
+            android:name=".complications.ActiveRunComplicationService"
+            android:exported="true"
+            android:icon="@drawable/ic_complication_mark"
+            android:label="@string/complication_label"
+            android:permission="com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER">
+            <intent-filter>
+                <action android:name="android.support.wearable.complications.ACTION_COMPLICATION_UPDATE_REQUEST" />
+            </intent-filter>
+            <meta-data
+                android:name="android.support.wearable.complications.SUPPORTED_TYPES"
+                android:value="SHORT_TEXT,LONG_TEXT,ICON" />
+            <meta-data
+                android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS"
+                android:value="3600" />
+        </service>
     </application>
 </manifest>

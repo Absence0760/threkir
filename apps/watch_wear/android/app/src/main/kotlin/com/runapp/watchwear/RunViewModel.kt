@@ -486,6 +486,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         anonKey = BuildConfig.SUPABASE_ANON_KEY,
     )
     private val raceResults = RaceResultStore(application)
+    private val lastRunStore = com.runapp.watchwear.complications.LastRunStore(application)
 
     private val _state = MutableStateFlow(UiState())
     val state: StateFlow<UiState> = _state.asStateFlow()
@@ -1147,6 +1148,9 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
             // silent failure left no trace that it had happened.
             Log.w(TAG, "tile cache not cleared on sign-out", e)
         }
+        // The watch face shows the last run to anyone who looks at the wrist,
+        // so it goes with the account that ran it.
+        forgetLastRun { lastRunStore.clear() }
         authReady.value = false
         _state.value = _state.value.copy(
             authed = false,
@@ -1785,6 +1789,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                     distanceStepFilledM = m.distanceStepFilledM,
                 )
             )
+            rememberLastRun(m, runId, durationS)
             // Only now is the run recorded somewhere the checkpoint is no
             // longer needed for, so only now may the checkpoint go. The
             // service used to clear it as it tore itself down, in parallel
@@ -1807,6 +1812,40 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                 supabase.currentAccessToken?.let { sendRaceResult(it, raceResult) }
             }
         }
+    }
+
+    /// Bank the finished run for the watch-face complication's idle state and
+    /// ask the face to re-read it. Called only after the queue write, so the
+    /// complication never names a run the watch failed to keep. An L4 effect:
+    /// a failure here costs the complication its last-run line, never the run.
+    private suspend fun rememberLastRun(
+        m: RecordingRepository.Metrics,
+        runId: String,
+        durationS: Int,
+    ) {
+        try {
+            lastRunStore.save(
+                com.runapp.watchwear.complications.LastRun(
+                    runId = runId,
+                    distanceM = m.distanceM,
+                    durationS = durationS,
+                    unit = if (m.preferredUnit == com.runapp.watchwear.recording.DistanceUnit.MI) "mi" else "km",
+                    finishedAtMs = System.currentTimeMillis(),
+                ),
+            )
+        } catch (e: Throwable) {
+            Log.w(TAG, "last run not kept for the complication", e)
+        }
+        com.runapp.watchwear.complications.ActiveRunComplicationService.requestUpdate(getApplication())
+    }
+
+    private suspend fun forgetLastRun(clear: suspend () -> Unit) {
+        try {
+            clear()
+        } catch (e: Throwable) {
+            Log.w(TAG, "last run not cleared from the complication", e)
+        }
+        com.runapp.watchwear.complications.ActiveRunComplicationService.requestUpdate(getApplication())
     }
 
     fun sync() {
@@ -1850,6 +1889,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     fun discard() {
         val id = _state.value.thisRunId
         launchGuarded {
+            if (id != null) forgetLastRun { lastRunStore.clearIfFor(id) }
             val outcome = discardRun(id) { dropQueuedRun(it, store.queue.first()) }
             if (outcome is DiscardOutcome.Failed) {
                 Log.e(TAG, "discard could not drop the queued run", outcome.error)

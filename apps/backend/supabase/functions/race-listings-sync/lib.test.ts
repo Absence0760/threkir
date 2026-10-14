@@ -24,6 +24,11 @@ import {
   extractProviderRaces,
   listingDiffers,
   listingUpsertFrom,
+  SWEEP_PERIOD_S,
+  SWEEP_STATES,
+  SWEEP_WINDOW_DAYS,
+  SWEEP_WINDOWS,
+  sweepWindowAt,
   pointEwkt,
   runSignUpErrorOf,
   usZip5,
@@ -451,4 +456,43 @@ Deno.test('a capped race name never ends in half an emoji', () => {
   }));
   assertEquals(race.name, 'a'.repeat(MAX_LISTING_NAME_LEN - 1));
   assertEquals(/[\uD800-\uDFFF]/.test(race.name), false);
+});
+
+Deno.test('the sweep walks every state window once per pass, nearest window first', () => {
+  const slots = SWEEP_STATES.length * SWEEP_WINDOWS;
+  assertEquals(slots, 306);
+  const pass = Array.from({ length: slots }, (_, i) => sweepWindowAt(i * SWEEP_PERIOD_S * 1000));
+  assertEquals(new Set(pass.map((w) => w.slot)).size, slots);
+  assertEquals(new Set(pass.map((w) => `${w.state}:${w.slot % SWEEP_WINDOWS}`)).size, slots);
+  // A pass is 25.5 hours; the next one starts again at the first slot.
+  assertEquals(sweepWindowAt(slots * SWEEP_PERIOD_S * 1000).slot, 0);
+  // Two runs inside one period read the same slot: a late or repeated cron
+  // re-reads a window rather than skipping one.
+  assertEquals(sweepWindowAt(1_000).slot, sweepWindowAt(SWEEP_PERIOD_S * 1000 - 1).slot);
+});
+
+Deno.test('a sweep window is 14 UTC days counted from the run\'s own day', () => {
+  const firstOfState = Date.UTC(2026, 9, 14, 23, 59, 0);
+  const slot = Math.floor(firstOfState / 1000 / SWEEP_PERIOD_S) % (SWEEP_STATES.length * SWEEP_WINDOWS);
+  const w = sweepWindowAt(firstOfState);
+  const offset = (slot % SWEEP_WINDOWS) * SWEEP_WINDOW_DAYS;
+  const start = new Date(Date.UTC(2026, 9, 14 + offset)).toISOString().slice(0, 10);
+  const end = new Date(Date.UTC(2026, 9, 14 + offset + SWEEP_WINDOW_DAYS - 1)).toISOString().slice(0, 10);
+  assertEquals([w.startDate, w.endDate], [start, end]);
+});
+
+Deno.test('a swept RunSignUp URL names the state and the window instead of today', () => {
+  const url = new URL(providerRacesUrl({
+    provider: 'runsignup',
+    apiKey: null,
+    apiSecret: null,
+    near: null,
+    window: { slot: 0, state: 'NJ', startDate: '2026-10-14', endDate: '2026-10-27' },
+  }));
+  assertEquals(url.searchParams.get('state'), 'NJ');
+  assertEquals(url.searchParams.get('country_code'), 'US');
+  assertEquals(url.searchParams.get('start_date'), '2026-10-14');
+  assertEquals(url.searchParams.get('end_date'), '2026-10-27');
+  assertEquals(url.searchParams.get('results_per_page'), String(MAX_LISTING_ROWS));
+  assertEquals(url.searchParams.has('page'), false, 'keyless pagination stops at the first page');
 });

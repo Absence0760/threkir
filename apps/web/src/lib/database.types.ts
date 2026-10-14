@@ -6195,6 +6195,7 @@ export type Database = {
       }
       increment_coach_usage: { Args: { p_user_id: string }; Returns: number }
       invoke_event_refund_sweep: { Args: never; Returns: number }
+      invoke_race_listings_sweep: { Args: never; Returns: number }
       is_blocked_either_way: {
         Args: { a: string; b: string }
         Returns: boolean

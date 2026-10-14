@@ -17,6 +17,7 @@ const ANON_REACHABLE = [
   'clip-public-track',
   'donations-checkout',
   'events-refund-sweep',
+  'race-listings-sweep',
   'refresh-tokens',
   'revenuecat-webhook',
   'strava-webhook',

@@ -91,6 +91,11 @@ export const EXCLUDED_JOBS = [
 		reason:
 			'Calls events-refund-sweep to refund orders still owed after a host cancel; moves money and stamps orders, deletes nothing.',
 	},
+	{
+		name: 'race-listings-sweep',
+		reason:
+			'Calls race-listings-sweep to pull one state-window of public RunSignUp races into race_listings; inserts and updates listings, deletes nothing.',
+	},
 ];
 
 /** A pg_cron job name as this repo writes them: lowercase words joined by `-`. */

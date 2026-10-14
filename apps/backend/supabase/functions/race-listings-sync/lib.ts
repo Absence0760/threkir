@@ -623,6 +623,9 @@ export function providerRacesUrl(opts: {
   apiKey: string | null;
   apiSecret: string | null;
   near: NearHint | null;
+  /// RunSignUp only: one state over one date window — the scheduled sweep's
+  /// unit (`race-listings-sweep`, decisions § 1901). Replaces `start_date=today`.
+  window?: SweepWindow;
 }): string {
   const radiusMi = opts.near
     ? String(Math.max(1, Math.round(opts.near.radiusM / MILES_M)))
@@ -647,7 +650,14 @@ export function providerRacesUrl(opts: {
     u.searchParams.set('api_secret', opts.apiSecret);
   }
   u.searchParams.set('events', 'T');
-  u.searchParams.set('start_date', 'today');
+  if (opts.window) {
+    u.searchParams.set('country_code', 'US');
+    u.searchParams.set('state', opts.window.state);
+    u.searchParams.set('start_date', opts.window.startDate);
+    u.searchParams.set('end_date', opts.window.endDate);
+  } else {
+    u.searchParams.set('start_date', 'today');
+  }
   u.searchParams.set('sort', 'date ASC');
   u.searchParams.set('results_per_page', String(MAX_LISTING_ROWS));
   if (opts.near?.postalCode && radiusMi) {
@@ -655,4 +665,61 @@ export function providerRacesUrl(opts: {
     u.searchParams.set('radius', radiusMi);
   }
   return u.toString();
+}
+
+// ── The scheduled sweep (race-listings-sweep, decisions § 1901) ─────────────
+
+/// The jurisdictions RunSignUp's `state` filter is swept over: the fifty states
+/// and DC, as the feed spells them in `address.state`.
+export const SWEEP_STATES = [
+  'AK', 'AL', 'AR', 'AZ', 'CA', 'CO', 'CT', 'DC', 'DE', 'FL', 'GA', 'HI', 'IA',
+  'ID', 'IL', 'IN', 'KS', 'KY', 'LA', 'MA', 'MD', 'ME', 'MI', 'MN', 'MO', 'MS',
+  'MT', 'NC', 'ND', 'NE', 'NH', 'NJ', 'NM', 'NV', 'NY', 'OH', 'OK', 'OR', 'PA',
+  'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VA', 'VT', 'WA', 'WI', 'WV', 'WY',
+] as const;
+
+/// Each state's horizon is cut into windows short enough that one window's
+/// races fit one keyless request. Keyless pagination stops at the first page
+/// (`page=2` answers "Pagination beyond 1,000 results requires authentication"),
+/// and `MAX_LISTING_ROWS` caps a page at 500: measured 2026-10-14, California
+/// carries 576 races over three months, so a 14-day window holds ~100 and
+/// leaves the cap far off. Six windows reach 84 days out.
+export const SWEEP_WINDOW_DAYS = 14;
+export const SWEEP_WINDOWS = 6;
+
+/// The cron's period, in seconds, which is also the width of one slot: every
+/// run computes its slot from the clock, so the sweep needs no cursor table,
+/// a late or repeated run re-reads the same slot rather than skipping one, and
+/// no window can be asked for twice inside one period. 51 × 6 = 306 slots at
+/// five minutes is a full pass every 25.5 hours — one request per run.
+export const SWEEP_PERIOD_S = 300;
+
+export interface SweepWindow {
+  slot: number;
+  state: string;
+  startDate: string;
+  endDate: string;
+}
+
+function isoDay(ms: number): string {
+  return new Date(ms).toISOString().slice(0, 10);
+}
+
+/// The state and date window the run at `nowMs` sweeps. A state's six windows
+/// run back to back, nearest first, and the dates are UTC calendar days
+/// counted from the run's own day, so the horizon rolls forward with the clock.
+export function sweepWindowAt(nowMs: number): SweepWindow {
+  const slots = SWEEP_STATES.length * SWEEP_WINDOWS;
+  const slot = Math.floor(nowMs / 1000 / SWEEP_PERIOD_S) % slots;
+  const state = SWEEP_STATES[Math.floor(slot / SWEEP_WINDOWS)];
+  const window = slot % SWEEP_WINDOWS;
+  const today = Date.UTC(
+    new Date(nowMs).getUTCFullYear(),
+    new Date(nowMs).getUTCMonth(),
+    new Date(nowMs).getUTCDate(),
+  );
+  const day = 86_400_000;
+  const start = today + window * SWEEP_WINDOW_DAYS * day;
+  const end = start + (SWEEP_WINDOW_DAYS - 1) * day;
+  return { slot, state, startDate: isoDay(start), endDate: isoDay(end) };
 }

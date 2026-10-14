@@ -125,7 +125,7 @@ const REFUSAL_PAIRS = [
 		// This function templates none of its codes.
 		minPrefixes: 0,
 		generic: 'clubEvent.registerFailed',
-		distinct: ['event_full', 'sales_closed', 'host_cannot_take_payment'],
+		distinct: ['event_full', 'sales_closed', 'instance_not_found', 'host_cannot_take_payment'],
 		keyWindow: 240,
 	},
 ];
@@ -150,11 +150,15 @@ function handlerBlock(source: string, from: string, to: string): string {
 }
 
 for (const pair of REFUSAL_PAIRS) {
-	const efSource = () =>
-		readFileSync(
-			resolve(repoRoot, 'apps/backend/supabase/functions', pair.fn, 'index.ts'),
-			'utf8',
-		);
+	// index.ts plus the sibling modules it imports: a gate extracted into its
+	// own module (events-checkout's occurrence.ts) still answers with codes
+	// the caller's page has to map.
+	const efSource = () => {
+		const dir = resolve(repoRoot, 'apps/backend/supabase/functions', pair.fn);
+		const index = readFileSync(resolve(dir, 'index.ts'), 'utf8');
+		const siblings = [...index.matchAll(/from '\.\/([a-z0-9_]+\.ts)'/g)].map((m) => m[1]);
+		return [index, ...siblings.map((f) => readFileSync(resolve(dir, f), 'utf8'))].join('\n');
+	};
 	const block = () =>
 		handlerBlock(
 			readFileSync(resolve(repoRoot, pair.page), 'utf8'),

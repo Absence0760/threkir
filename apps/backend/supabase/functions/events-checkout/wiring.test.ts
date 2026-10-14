@@ -104,3 +104,34 @@ Deno.test('an unreadable hold refuses the sale instead of selling the seat', () 
     'the refusal must come before a session is opened',
   );
 });
+
+Deno.test('the occurrence gate runs on the request instant before pricing, any hold or any session', () => {
+  // `instance_start` is client-supplied. Pricing resolves to the series
+  // default for any instant, so the gate has to stand ahead of it, and ahead
+  // of the capacity count, the Stripe create and the order write (§ 1921).
+  // The gate's own behaviour is driven against a fake client in
+  // occurrence.test.ts; where it is called is what a fake cannot see.
+  const call = SRC.match(/await gateOccurrence\(([^)]*)\)/);
+  assert(call, 'events-checkout no longer asks whether the instant is an occurrence');
+  assert(
+    call[1].replace(/\s+/g, ' ').trim() ===
+      'service, eventId, instanceStart, event.recurrence_until',
+    `the gate must grade the requested instant, got: ${call[1]}`,
+  );
+  const at = SRC.indexOf('await gateOccurrence(');
+  for (const later of [
+    "from('event_pricing')",
+    'precheckCapacity(',
+    'checkout.sessions.create(',
+    "from('event_orders')",
+  ]) {
+    const idx = SRC.indexOf(later);
+    assert(idx !== -1, `${later} is gone from the handler — has the flow changed?`);
+    assert(at < idx, `the occurrence gate must run before ${later}`);
+  }
+  assert(
+    /if \(refusal\) \{\s*return Response\.json\(\{ error: refusal\.error \}, \{ status: refusal\.status \}\);/
+      .test(SRC),
+    'a refusal from the gate must end the request',
+  );
+});

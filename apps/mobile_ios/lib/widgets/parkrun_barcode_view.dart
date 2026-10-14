@@ -69,7 +69,10 @@ class ParkrunBarcodePainter extends CustomPainter {
     final total = modules.length + 2 * kCode128QuietZoneModules;
     final exact = size.width / total;
     final module = exact >= 1 ? exact.floorToDouble() : exact;
-    final left = (size.width - module * modules.length) / 2;
+    // Centring an odd leftover would put every bar edge on a half pixel,
+    // and antialiasing then greys a pixel either side of each bar.
+    final margin = (size.width - module * modules.length) / 2;
+    final left = exact >= 1 ? margin.floorToDouble() : margin;
     final ink = Paint()..color = Colors.black;
     for (final bar in bars) {
       canvas.drawRect(

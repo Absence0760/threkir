@@ -6488,6 +6488,46 @@ void main() {
     });
   });
 
+  group('Portuguese catalogues quote with “…”', () {
+    // Both Portuguese glossaries (.claude/agents/i18n/languages/pt-BR.md,
+    // pt-PT.md) set the curly pair as the quotation mark, so a straight `"`
+    // in a message is a slip — 62 of them shipped before this guard. A
+    // straight double quote is never ICU syntax (ICU escapes with the
+    // apostrophe), so every one in a message value is a quotation mark. The
+    // web twin is in apps/web/src/lib/i18n/messages_parity.test.ts.
+    for (final arb in ['app_pt.arb', 'app_pt_BR.arb']) {
+      test('$arb has no straight double quote in a message', () {
+        final messages = jsonDecode(File('lib/l10n/$arb').readAsStringSync())
+            as Map<String, dynamic>;
+        final straight = [
+          for (final e in messages.entries)
+            if (!e.key.startsWith('@') &&
+                e.value is String &&
+                (e.value as String).contains('"'))
+              e.key,
+        ];
+        expect(straight, isEmpty,
+            reason: '$arb quotes with a straight " in these messages; its '
+                'glossary uses “…”');
+      });
+    }
+
+    test('the hand-written pt getters carry no straight double quote', () {
+      // The ARBs above are not what ships: these getters are, and they are
+      // kept in step with the ARBs by hand.
+      final lines =
+          File('lib/l10n/gen/app_localizations_pt.dart').readAsLinesSync();
+      final straight = [
+        for (var i = 0; i < lines.length; i++)
+          if (!lines[i].trimLeft().startsWith('//') && lines[i].contains('"'))
+            i + 1,
+      ];
+      expect(straight, isEmpty,
+          reason: 'app_localizations_pt.dart quotes with a straight " on '
+              'these lines; the Portuguese glossaries use “…”');
+    });
+  });
+
   group('a header that names its web twin names a file that exists', () {
     // A doc comment pointing at a path the counterpart moved out of is a
     // claim the next reader cannot follow, and it is invisible to

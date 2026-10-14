@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { audienceSharingEnabled, createManualRun, fetchRoutes } from '#lib/core/data.ts';
 	import { loadSettings, effective } from '#lib/settings/settings.ts';
@@ -131,7 +132,7 @@
 			dirty.rebaseline();
 			oncreated?.({ id });
 		} catch (err) {
-			showToast(m('runEditor.addRunFailed', { error: err instanceof Error ? err.message : String(err) }), 'error');
+			showToast(m('runEditor.addRunFailed', { error: thrownMessage(err) }), 'error');
 		} finally {
 			submitting = false;
 		}

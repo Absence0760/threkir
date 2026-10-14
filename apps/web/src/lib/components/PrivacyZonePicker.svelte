@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import type * as GeoJSON from 'geojson';
 	import { onMount, onDestroy } from 'svelte';
 	import maplibregl from '#lib/routes/maplibre.ts';
@@ -180,7 +181,7 @@
 			geoError =
 				e instanceof GeolocationPositionError
 					? m('privacyZonePicker.geoDenied')
-					: m('privacyZonePicker.geoError', { error: String(e) });
+					: m('privacyZonePicker.geoError', { error: thrownMessage(e) });
 		} finally {
 			geoBusy = false;
 		}

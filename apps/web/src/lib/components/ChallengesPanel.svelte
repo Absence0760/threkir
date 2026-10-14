@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { myActiveChallenges } from '#lib/core/data.ts';
 	import type { ChallengeWithMeta, ChallengeMetric } from '#lib/types.ts';
 	import ChallengeProgressBar from './ChallengeProgressBar.svelte';
@@ -39,7 +40,7 @@
 		try {
 			challenges = await myActiveChallenges();
 		} catch (e) {
-			loadError = e instanceof Error ? e.message : String(e);
+			loadError = thrownMessage(e);
 		}
 	}
 
@@ -48,13 +49,13 @@
 	});
 </script>
 
-{#if loadError}
+{#if loadError !== null}
 	<section class="challenges-strip card-elevated" aria-label={m('challenges.myChallenges')}>
 		<div class="error-banner" role="alert">
 			<span class="material-symbols" aria-hidden="true">error</span>
 			<div>
 				<strong>{m('challenges.loadFailed')}</strong>
-				<span class="error-detail">{loadError}</span>
+				{#if loadError}<span class="error-detail">{loadError}</span>{/if}
 			</div>
 			<button class="btn btn-outline btn-sm" onclick={load}>{m('plansPage.retry')}</button>
 		</div>

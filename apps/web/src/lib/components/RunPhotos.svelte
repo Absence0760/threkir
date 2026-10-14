@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import {
 		fetchRunPhotosWithError,
@@ -45,7 +46,7 @@
 			}
 			photos = res.photos;
 		} catch (e) {
-			loadError = e instanceof Error ? e.message : String(e);
+			loadError = thrownMessage(e);
 		} finally {
 			loading = false;
 		}
@@ -77,7 +78,7 @@
 			pendingCaption = '';
 			if (fileInput) fileInput.value = '';
 		} catch (e: any) {
-			showToast(m('runPhotos.uploadFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(m('runPhotos.uploadFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			uploading = false;
 		}
@@ -98,7 +99,7 @@
 			photos = photos.filter((p) => p.id !== target.id);
 			if (lightbox?.id === target.id) lightbox = null;
 		} catch (e: any) {
-			showToast(m('runPhotos.deleteFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(m('runPhotos.deleteFailed', { error: thrownMessage(e) }), 'error');
 		}
 	}
 
@@ -116,12 +117,12 @@
 			await updateRunPhotoCaption(id, next);
 			photos = photos.map((p) => (p.id === id ? { ...p, caption: next } : p));
 		} catch (e: any) {
-			showToast(m('runPhotos.captionUpdateFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(m('runPhotos.captionUpdateFailed', { error: thrownMessage(e) }), 'error');
 		}
 	}
 </script>
 
-{#if canManage || loading || photos.length > 0 || loadError}
+{#if canManage || loading || photos.length > 0 || loadError !== null}
 <section class={wrapperClass}>
 <div class="photos">
 	<header class="hd">
@@ -174,12 +175,12 @@
 
 	{#if loading}
 		<p class="muted">{m('runPhotos.loadingPhotos')}</p>
-	{:else if loadError}
+	{:else if loadError !== null}
 		<div class="error-banner" role="alert">
 			<span class="material-symbols" aria-hidden="true">error</span>
 			<div>
 				<strong>{m('runs.loadFailed')}</strong>
-				<span class="error-detail">{loadError}</span>
+				{#if loadError}<span class="error-detail">{loadError}</span>{/if}
 			</div>
 			<button class="btn btn-outline btn-sm" onclick={load}>{m('runs.retry')}</button>
 		</div>

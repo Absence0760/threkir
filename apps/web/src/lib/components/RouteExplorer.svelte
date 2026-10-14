@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { formatDistance } from '#lib/core/mock-data.ts';
 	import { getUnit } from '#lib/format/units.svelte.ts';
@@ -91,7 +92,7 @@
 			searchError = false;
 		} catch (e) {
 			searchError = true;
-			showToast(t('routeExplorer.searchError', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(t('routeExplorer.searchError', { error: thrownMessage(e) }), 'error');
 		} finally {
 			loading = false;
 		}
@@ -105,7 +106,7 @@
 			routes = [...routes, ...more];
 			hasMore = more.length >= PAGE_SIZE;
 		} catch (e) {
-			showToast(t('routeExplorer.searchError', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(t('routeExplorer.searchError', { error: thrownMessage(e) }), 'error');
 		} finally {
 			loading = false;
 		}
@@ -151,7 +152,7 @@
 				showToast(t('routeExplorer.toastSaved', { name: route.name ?? '' }), 'success');
 			}
 		} catch (e) {
-			showToast(t('routeExplorer.toastBookmarkError', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(t('routeExplorer.toastBookmarkError', { error: thrownMessage(e) }), 'error');
 		} finally {
 			const next = new Set(bookmarkBusy);
 			next.delete(route.id);
@@ -188,7 +189,7 @@
 		} catch (e) {
 			locationError = e instanceof GeolocationPositionError
 				? t('routeExplorer.locationDenied')
-				: t('routeExplorer.locationError', { error: e instanceof Error ? e.message : String(e) });
+				: t('routeExplorer.locationError', { error: thrownMessage(e) });
 		}
 		loading = false;
 	}

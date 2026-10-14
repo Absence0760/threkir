@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import { onMount } from 'svelte';
@@ -37,7 +38,7 @@
 			}
 			items = res.notifications;
 		} catch (e) {
-			loadError = e instanceof Error ? e.message : String(e);
+			loadError = thrownMessage(e);
 		} finally {
 			loading = false;
 		}
@@ -122,7 +123,7 @@
 			onCommitError: (e) => {
 				showToast(
 					m('notificationsList.deleteFailed', {
-						error: e instanceof Error ? e.message : String(e),
+						error: thrownMessage(e),
 					}),
 					'error',
 				);
@@ -157,7 +158,7 @@
 				row: { ...x.row, read_at: x.row.read_at ?? new Date().toISOString() },
 			}));
 		} catch (e) {
-			showToast(m('notificationsList.markAllFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(m('notificationsList.markAllFailed', { error: thrownMessage(e) }), 'error');
 		}
 	}
 
@@ -271,12 +272,12 @@
 
 	{#if loading}
 		<p class="muted">{m('shell.loading')}</p>
-	{:else if loadError}
+	{:else if loadError !== null}
 		<div class="error-banner" role="alert">
 			<span class="material-symbols" aria-hidden="true">error</span>
 			<div>
 				<strong>{m('profile.loadError')}</strong>
-				<span class="error-detail">{loadError}</span>
+				{#if loadError}<span class="error-detail">{loadError}</span>{/if}
 			</div>
 			<button class="btn btn-outline" onclick={load}>{m('profile.retry')}</button>
 		</div>

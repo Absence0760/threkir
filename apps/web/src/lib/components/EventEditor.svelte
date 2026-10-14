@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount, untrack } from 'svelte';
 	import { lengthLimit } from '#lib/core/column_limits.ts';
 	import { formatISO } from '#lib/training/training.ts';
@@ -419,7 +420,7 @@
 		} catch (ce: unknown) {
 			console.error('saveEventCourses failed', ce);
 			failure = m('eventEditor.coursesSaveFailed', {
-				error: ce instanceof Error ? ce.message : String(ce)
+				error: thrownMessage(ce)
 			});
 		}
 		try {
@@ -558,7 +559,7 @@
 					// The event exists; surface the pricing failure without
 					// losing it. The host can re-price from the editor.
 					error = m('eventEditor.pricingFailed', {
-						error: pe instanceof Error ? pe.message : String(pe)
+						error: thrownMessage(pe)
 					});
 					busy = false;
 					return;

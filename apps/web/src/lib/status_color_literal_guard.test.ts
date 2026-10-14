@@ -525,6 +525,15 @@ const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
 		'7C5A3A': [1, 'svg-art'], '4FB477': [1, 'svg-art'],
 		FF6B5B: [1, 'svg-art'], FF8C7E: [1, 'svg-art'],
 	},
+	// Help-guide illustration placeholders: never painted. Each is the sentinel
+	// a text-free illustration SVG uses for one theme token, and the renderer
+	// swaps it for that theme's colour before anything is drawn, so no contrast
+	// bar lands on the literal itself.
+	'lib/help/illustration.ts': {
+		FF00A1: [1, 'svg-art'], FF00A2: [1, 'svg-art'], FF00A3: [1, 'svg-art'],
+		FF00A4: [1, 'svg-art'], FF00A5: [1, 'svg-art'], FF00A6: [1, 'svg-art'],
+		FF00A7: [1, 'svg-art'],
+	},
 	// Badge tier metals: bronze / silver / gold / platinum, a four-rung
 	// ladder where the rung IS the datum.
 	'lib/components/BadgeGrid.svelte': {

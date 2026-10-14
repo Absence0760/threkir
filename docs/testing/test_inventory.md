@@ -537,7 +537,7 @@ Settings → Integrations' UltraSignup finder ([decisions § 1841](../architectu
 
 The centre button's long-press start-options sheet (decisions § 1892, § 1897): which items it offers when the tap starts a run and when the tap fans, that it never exceeds five, which plan workout counts as today's open one (not another day, a rest day, a completed, run-completed or skipped workout, or one with nothing to follow), the workout card's summary (target distance, or the summed distance steps, and the step count), and which saved routes sit inline (most recently run first, then newest saved, undated last, at most three). The sheet itself: its sections and title in one screen-reader group, the workout card naming kind, distance and steps and resolving in one tap, no route section with no saved route, one route inline with no "All routes…", three inline with "All routes…" resolving to the picker, a route tile resolving to that route, a row resolving to its action, dismissal resolving to nothing, and the full sheet at the largest text size scrolling rather than overflowing. Each item's routing in the shell, including an inline route starting the recorder without a second picker, is pinned in `home_screen_test.dart`.
 
-### `apps/mobile_ios/test/` — 624 files, byte-for-byte
+### `apps/mobile_ios/test/` — 625 files, byte-for-byte
 
 After the April 2026 mobile-codebase unification, `apps/mobile_ios/test/` is kept identical to `apps/mobile_android/test/` via `diff -rq`. Every test file documented above runs on the iOS target too **locally** — `melos run test` has no scope filter — but **not in CI**: the `test-packages` job scopes `melos exec` to `run_recorder`, `mobile_android`, `api_client`, `gpx_parser`, `ui_kit` and `core_models`, and `mobile_ios` is not among them. That is not a gap for byte-identical Dart, but it is why a test gated on an `ios/` file being present asserts nothing on any CI run — two such groups existed and were removed in favour of `scripts/check_ios_native_declarations.mjs` (decisions.md § 742). Per-target counts: `flutter test` compiles separately, so each test file is executed twice when you run both apps locally. Don't add iOS-specific test files — every test belongs in both apps. The architecture-guard tests under `apps/mobile_android/test/architecture_guards_test.dart` read `lib/screens/run_screen.dart` from the working directory, so they pin the same invariants on both targets.
 
@@ -1226,7 +1226,7 @@ Run the pure-helper slices with `cd apps/backend && deno test --no-check supabas
 
 The happy-path 200s with valid HMAC / freshness / dedupe still need real secrets to drive and are exercised manually only — see [apps/backend/CLAUDE.md § Testing without real credentials](../../apps/backend/CLAUDE.md#testing-without-real-credentials).
 
-### `apps/web/tests-e2e/**/*.spec.ts` — 2,024 declared tests across 532 spec files (Playwright suite)
+### `apps/web/tests-e2e/**/*.spec.ts` — 2,027 declared tests across 533 spec files (Playwright suite)
 
 End-to-end browser tests that drive the real SvelteKit app against a real local Supabase. Unit tests pin pure helpers and SQL pins RLS at the database; this suite catches the next failure mode — **a UI fetch path that bypasses or misuses an otherwise-correct policy** (a wrong join, a dropped filter, a client-side lookup that trusts the URL, an optimistic update that never round-trips). Browser-only on purpose — mobile / watch don't have an equivalent harness (Flutter `integration_test` is too slow + flaky on CI to be worth the cycles right now).
 

@@ -4955,7 +4955,14 @@ class AppLocalizationsPt extends AppLocalizations {
   String get clubsEmptyMineTitle => 'Ainda não entrou em nenhum clube.';
 
   @override
-  String get clubsEmptyBrowseBody => 'Tente outro nome ou local.';
+  String get clubsMissingClubBody =>
+      'O seu clube não aparece? Talvez ainda não esteja no Threkir. Crie a página do clube e convide os seus membros a aderir.';
+
+  @override
+  String get clubsSetUpYourClub => 'Configurar o seu clube';
+
+  @override
+  String get clubsHowToCreateClub => 'Como criar um clube';
 
   @override
   String get clubsEmptyMineBody => 'Vá em Explorar para encontrar um.';
@@ -20569,7 +20576,14 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get clubsEmptyMineTitle => 'Você ainda não entrou em nenhum clube.';
 
   @override
-  String get clubsEmptyBrowseBody => 'Tente outro nome ou local.';
+  String get clubsMissingClubBody =>
+      'Seu clube não aparece? Talvez ele ainda não esteja no Threkir. Crie a página dele e convide seus membros para entrar.';
+
+  @override
+  String get clubsSetUpYourClub => 'Configurar seu clube';
+
+  @override
+  String get clubsHowToCreateClub => 'Como criar um clube';
 
   @override
   String get clubsEmptyMineBody => 'Vá em Explorar para encontrar um.';

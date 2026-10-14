@@ -8,6 +8,7 @@ import 'package:ui_kit/ui_kit.dart';
 import '../lib/geocoding.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/clubs_screen.dart';
+import '../lib/screens/help_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
 import '../lib/widgets/error_state.dart';
@@ -301,6 +302,76 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
 
       expect(social.lastSearchTerm, 'Virginia');
+    });
+  });
+  group('ClubsScreen — missing club (issue #1151)', () {
+    Future<void> searchNothing(WidgetTester tester, String term) async {
+      await _pump(tester, _FakeSocial());
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.tap(find.text('Browse'));
+      await tester.pump();
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Search by name or location'), term);
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    testWidgets('a search that finds nothing offers to set the club up',
+        (tester) async {
+      await searchNothing(tester, 'Nowhere Harriers');
+      expect(find.textContaining('Is your club missing?'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Set up your club'),
+          findsOneWidget);
+      expect(find.widgetWithText(TextButton, 'How to create a club'),
+          findsOneWidget);
+    });
+
+    testWidgets('Set up your club opens the new-club form prefilled',
+        (tester) async {
+      await searchNothing(tester, '  Nowhere Harriers  ');
+      await tester.tap(find.widgetWithText(FilledButton, 'Set up your club'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.widgetWithText(TextField, 'Nowhere Harriers'),
+          findsOneWidget);
+    });
+
+    testWidgets('How to create a club opens the create-a-club guide',
+        (tester) async {
+      await searchNothing(tester, 'Nowhere Harriers');
+      await tester.tap(find.widgetWithText(TextButton, 'How to create a club'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      final guide = tester.widget<GuideScreen>(find.byType(GuideScreen));
+      expect(guide.guideId, 'create-a-club');
+    });
+
+    testWidgets('a failed load shows the error, not the set-up offer',
+        (tester) async {
+      await _pump(tester, _ThrowingSocial());
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.tap(find.text('Browse'));
+      await tester.pump();
+      expect(find.byType(ErrorState), findsOneWidget);
+      expect(find.text('Set up your club'), findsNothing);
+      expect(find.text('How to create a club'), findsNothing);
+    });
+
+    testWidgets('a load still in flight does not show the set-up offer',
+        (tester) async {
+      final social = _SlowSocial();
+      await _pump(tester, social);
+      await tester.pump();
+      await tester.tap(find.text('Browse'));
+      await tester.pump();
+      expect(find.byType(ListSkeleton), findsOneWidget);
+      expect(find.text('Set up your club'), findsNothing);
+      social.gate.complete(const []);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
     });
   });
 }

@@ -8152,11 +8152,23 @@ abstract class AppLocalizations {
   /// **'You haven\'t joined a club yet.'**
   String get clubsEmptyMineTitle;
 
-  /// Empty-state hint for the browse tab
+  /// Browse-tab empty state: the club the user searched for may not be on the app yet, so they can set it up
   ///
   /// In en, this message translates to:
-  /// **'Try a different name or location.'**
-  String get clubsEmptyBrowseBody;
+  /// **'Is your club missing? It may not be on Threkir yet. Set up its page and invite your members to join.'**
+  String get clubsMissingClubBody;
+
+  /// Browse-tab empty-state button: opens the new-club form prefilled with the searched name
+  ///
+  /// In en, this message translates to:
+  /// **'Set up your club'**
+  String get clubsSetUpYourClub;
+
+  /// Browse-tab empty-state button: opens the in-app help guide on creating a club
+  ///
+  /// In en, this message translates to:
+  /// **'How to create a club'**
+  String get clubsHowToCreateClub;
 
   /// Empty-state hint for the my-clubs tab
   ///

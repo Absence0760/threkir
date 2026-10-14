@@ -4949,7 +4949,14 @@ class AppLocalizationsEs extends AppLocalizations {
   String get clubsEmptyMineTitle => 'Aún no te has unido a ningún club.';
 
   @override
-  String get clubsEmptyBrowseBody => 'Prueba con otro nombre o ubicación.';
+  String get clubsMissingClubBody =>
+      '¿Falta tu club? Puede que aún no esté en Threkir. Crea su página e invita a tus miembros a unirse.';
+
+  @override
+  String get clubsSetUpYourClub => 'Configurar tu club';
+
+  @override
+  String get clubsHowToCreateClub => 'Cómo crear un club';
 
   @override
   String get clubsEmptyMineBody => 'Ve a Explorar para encontrar uno.';

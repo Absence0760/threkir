@@ -6539,9 +6539,17 @@
   "@clubsEmptyMineTitle": {
     "description": "Empty state for the my-clubs tab"
   },
-  "clubsEmptyBrowseBody": "Try a different name or location.",
-  "@clubsEmptyBrowseBody": {
-    "description": "Empty-state hint for the browse tab"
+  "clubsMissingClubBody": "Is your club missing? It may not be on Threkir yet. Set up its page and invite your members to join.",
+  "@clubsMissingClubBody": {
+    "description": "Browse-tab empty state: the club the user searched for may not be on the app yet, so they can set it up"
+  },
+  "clubsSetUpYourClub": "Set up your club",
+  "@clubsSetUpYourClub": {
+    "description": "Browse-tab empty-state button: opens the new-club form prefilled with the searched name"
+  },
+  "clubsHowToCreateClub": "How to create a club",
+  "@clubsHowToCreateClub": {
+    "description": "Browse-tab empty-state button: opens the in-app help guide on creating a club"
   },
   "clubsEmptyMineBody": "Head to Browse to find one.",
   "@clubsEmptyMineBody": {

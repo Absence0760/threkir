@@ -170,6 +170,7 @@ insert into server_only (fn, keeps_service_role) values
   ('finish_job', true),
   ('get_apple_refresh_token', true),
   ('invoke_event_refund_sweep', true),
+  ('invoke_race_listings_sweep', true),
   ('jobs_backlog_summary', true),
   ('jobs_failed_summary', true),
   ('jobs_stuck_summary', true),

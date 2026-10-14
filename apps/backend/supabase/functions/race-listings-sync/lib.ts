@@ -698,6 +698,15 @@ export const SWEEP_STATES = [
 export const SWEEP_WINDOW_DAYS = 14;
 export const SWEEP_WINDOWS = 6;
 
+/// How long one request to a provider feed may take, headers and body
+/// together. Nothing else bounds it: the runtime's wall clock is minutes, and
+/// pg_net drops its side of the sweep call after 60 s while the worker keeps
+/// waiting, so a feed that accepts the connection and never answers would hold
+/// a worker per five-minute run until the runtime killed it, writing nothing
+/// and saying nothing. A 500-race page with events is ~2.9 MB and answers in
+/// seconds; a run that has not finished in this long is not going to.
+export const UPSTREAM_TIMEOUT_MS = 30_000;
+
 /// The cron's period, in seconds, which is also the width of one slot: every
 /// run computes its slot from the clock, so the sweep needs no cursor table,
 /// a late or repeated run re-reads the same slot rather than skipping one, and

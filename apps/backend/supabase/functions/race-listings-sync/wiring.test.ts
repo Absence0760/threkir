@@ -180,3 +180,15 @@ Deno.test('a probe does not spend the sync bucket', () => {
     'one of the two arms falls open',
   );
 });
+
+Deno.test('the caller sync bounds its upstream request the way the sweep does', () => {
+  // A feed that accepts the connection and never answers held the caller's
+  // request until the runtime killed it; the sweep's handler.test.ts drives the
+  // same bound behaviourally, and this pins that the caller path shares it.
+  assert(SRC.includes('const signal = AbortSignal.timeout(UPSTREAM_TIMEOUT_MS);'), 'the bound is gone');
+  assert(
+    /await fetch\([\s\S]{0,400}?'RunApp\/1\.0' \}, signal \}/.test(SRC),
+    'the signal must ride on the outbound fetch',
+  );
+  assert(/upstream timeout` \}, \{ status: 504 \}/.test(SRC), 'a timeout must answer 504');
+});

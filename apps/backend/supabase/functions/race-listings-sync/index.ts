@@ -4,7 +4,7 @@ import { checkRateLimitTiered } from '../_shared/rate_limit.ts';
 import { readJsonWithLimit } from '../_shared/body_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';
 import { publishableKey, secretKey } from '../_shared/api_keys.ts';
-import { nearHintError, parseNearHint, providerRacesUrl } from './lib.ts';
+import { nearHintError, parseNearHint, providerRacesUrl, UPSTREAM_TIMEOUT_MS } from './lib.ts';
 import { syncProviderPayload } from './write.ts';
 
 // Pull a provider's upcoming races into race_listings.
@@ -118,15 +118,25 @@ Deno.serve(withSentry('race-listings-sync', async (req: Request) => {
     return Response.json({ error: nearError }, { status: 400 });
   }
 
-  const upstream = await fetch(
-    providerRacesUrl({
-      provider,
-      apiKey: apiKey ?? null,
-      apiSecret: apiSecret ?? null,
-      near: nearHint.near,
-    }),
-    { headers: { 'User-Agent': Deno.env.get('RACE_IMPORT_USER_AGENT') || 'RunApp/1.0' } },
-  );
+  // One bound over the headers and the body, the sweep's (UPSTREAM_TIMEOUT_MS).
+  const signal = AbortSignal.timeout(UPSTREAM_TIMEOUT_MS);
+  const timedOut = (err: unknown) => err instanceof DOMException && err.name === 'TimeoutError';
+  let upstream: Response;
+  try {
+    upstream = await fetch(
+      providerRacesUrl({
+        provider,
+        apiKey: apiKey ?? null,
+        apiSecret: apiSecret ?? null,
+        near: nearHint.near,
+      }),
+      { headers: { 'User-Agent': Deno.env.get('RACE_IMPORT_USER_AGENT') || 'RunApp/1.0' }, signal },
+    );
+  } catch (err) {
+    return timedOut(err)
+      ? Response.json({ error: `${provider} upstream timeout` }, { status: 504 })
+      : Response.json({ error: `${provider} upstream unreachable` }, { status: 502 });
+  }
   if (!upstream.ok) {
     // Fail loud on a non-2xx rather than feeding an error page into the parser
     // and reporting `synced: 0`, which is indistinguishable from a region with
@@ -136,8 +146,10 @@ Deno.serve(withSentry('race-listings-sync', async (req: Request) => {
   let payload: unknown;
   try {
     payload = await upstream.json();
-  } catch (_) {
-    return Response.json({ error: `${provider} upstream not JSON` }, { status: 502 });
+  } catch (err) {
+    return timedOut(err)
+      ? Response.json({ error: `${provider} upstream timeout` }, { status: 504 })
+      : Response.json({ error: `${provider} upstream not JSON` }, { status: 502 });
   }
 
   const service = createClient<Database>(Deno.env.get('SUPABASE_URL')!, secretKey());

@@ -12,14 +12,16 @@
 ///
 /// Gates, each fail-closed, in this order: the cron bearer (503 when
 /// CRON_SECRET is unset or short, 403 otherwise, a rate limit spent only on a
-/// wrong bearer), then the upstream (502 on a non-2xx, a non-JSON body, or
-/// RunSignUp's HTTP-200 error envelope), then the write (500).
+/// wrong bearer), then the upstream (504 when it has not answered in
+/// `UPSTREAM_TIMEOUT_MS`; 502 when it cannot be reached, on a non-2xx, a
+/// non-JSON body, a body that is not the race feed, or RunSignUp's HTTP-200
+/// error envelope), then the write (500).
 
 import type { DbClient } from '../_shared/database.ts';
 import { discardBody } from '../_shared/body_limit.ts';
 import { checkRateLimit, ipBucketKey } from '../_shared/rate_limit.ts';
 import { cronGate } from '../events-refund-sweep/lib.ts';
-import { providerRacesUrl, sweepWindowAt } from '../race-listings-sync/lib.ts';
+import { providerRacesUrl, sweepWindowAt, UPSTREAM_TIMEOUT_MS } from '../race-listings-sync/lib.ts';
 import { syncProviderPayload } from '../race-listings-sync/write.ts';
 
 export interface RaceListingsSweepDeps {
@@ -27,6 +29,13 @@ export interface RaceListingsSweepDeps {
   serviceClient: () => DbClient;
   fetch: (input: string, init?: RequestInit) => Promise<Response>;
   now: () => number;
+  /// Overrides `UPSTREAM_TIMEOUT_MS`, so a test can watch the bound fire.
+  upstreamTimeoutMs?: number;
+}
+
+/// Whether a rejected fetch or body read is the request bound firing.
+function timedOut(err: unknown): boolean {
+  return err instanceof DOMException && err.name === 'TimeoutError';
 }
 
 export function makeRaceListingsSweepHandler(
@@ -62,18 +71,31 @@ export function makeRaceListingsSweepHandler(
     const window = sweepWindowAt(deps.now());
     const apiKey = deps.getEnv('RUNSIGNUP_API_KEY') ?? null;
     const apiSecret = deps.getEnv('RUNSIGNUP_API_SECRET') ?? null;
-    const upstream = await deps.fetch(
-      providerRacesUrl({ provider: 'runsignup', apiKey, apiSecret, near: null, window }),
-      { headers: { 'User-Agent': deps.getEnv('RACE_IMPORT_USER_AGENT') || 'RunApp/1.0' } },
-    );
+    // One signal bounds the headers AND the body: a feed that sends its headers
+    // and then trickles the 2.9 MB page is as stuck as one that never answers.
+    const signal = AbortSignal.timeout(deps.upstreamTimeoutMs ?? UPSTREAM_TIMEOUT_MS);
+    let upstream: Response;
+    try {
+      upstream = await deps.fetch(
+        providerRacesUrl({ provider: 'runsignup', apiKey, apiSecret, near: null, window }),
+        { headers: { 'User-Agent': deps.getEnv('RACE_IMPORT_USER_AGENT') || 'RunApp/1.0' }, signal },
+      );
+    } catch (err) {
+      return timedOut(err)
+        ? Response.json({ error: 'runsignup upstream timeout', window }, { status: 504 })
+        : Response.json({ error: 'runsignup upstream unreachable', window }, { status: 502 });
+    }
     if (!upstream.ok) {
+      upstream.body?.cancel().catch(() => {});
       return Response.json({ error: `runsignup upstream ${upstream.status}`, window }, { status: 502 });
     }
     let payload: unknown;
     try {
       payload = await upstream.json();
-    } catch (_) {
-      return Response.json({ error: 'runsignup upstream not JSON', window }, { status: 502 });
+    } catch (err) {
+      return timedOut(err)
+        ? Response.json({ error: 'runsignup upstream timeout', window }, { status: 504 })
+        : Response.json({ error: 'runsignup upstream not JSON', window }, { status: 502 });
     }
 
     const outcome = await syncProviderPayload(deps.serviceClient(), 'runsignup', payload);

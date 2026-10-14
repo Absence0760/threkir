@@ -2000,7 +2000,7 @@
   "parkrunBarcodeFieldInvalid": "Saisissez A suivi de chiffres, par exemple A123456.",
   "parkrunBarcodeLoadFailed": "Impossible de charger votre numéro d'athlète. Vérifiez votre connexion et réessayez.",
   "parkrunBarcodeRetry": "Réessayer",
-  "parkrunBarcodeOfflineCopy": "Copie enregistrée sur ce téléphone.",
+  "parkrunBarcodeOfflineCopy": "Affichage de la copie enregistrée sur ce téléphone.",
   "integrationsImport": "Importer",
   "integrationsParkrunImporting": "Import des résultats parkrun…",
   "integrationsParkrunImported": "{count, plural, one{{count} résultat parkrun importé.} other{{count} résultats parkrun importés.}}",

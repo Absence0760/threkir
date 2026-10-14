@@ -4941,7 +4941,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get eventPhotoRestore => '元に戻す';
+  String get eventPhotoRestore => '再表示';
 
   @override
   String get eventPhotoDelete => '削除';
@@ -6832,14 +6832,14 @@ class AppLocalizationsJa extends AppLocalizations {
   String get integrationsParkrunFieldLabel => 'アスリート番号';
 
   @override
-  String get parkrunBarcodeTitle => 'parkrun バーコード';
+  String get parkrunBarcodeTitle => 'parkrunバーコード';
 
   @override
-  String get parkrunBarcodeTileSubtitle => 'フィニッシュで提示できます(オフラインでも)。';
+  String get parkrunBarcodeTileSubtitle => 'フィニッシュで提示できます（オフラインでも）。';
 
   @override
   String parkrunBarcodeSemantics(String number) {
-    return 'アスリート番号 $number の parkrun バーコード';
+    return 'アスリート番号$numberのparkrunバーコード';
   }
 
   @override
@@ -6847,14 +6847,14 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get parkrunBarcodePaperNote =>
-      'parkrun は画面上のバーコードを公式にはサポートしていません。スキャナーで読み取れない場合に備えて、印刷したものもお持ちください。';
+      'parkrunは画面上のバーコードを公式にはサポートしていません。スキャナーで読み取れない場合に備えて、印刷したものもお持ちください。';
 
   @override
-  String get parkrunBarcodeEmpty => 'parkrun のアスリート番号を追加すると、ここにバーコードが表示されます。';
+  String get parkrunBarcodeEmpty => 'parkrunのアスリート番号を追加すると、ここにバーコードが表示されます。';
 
   @override
   String get parkrunBarcodeInvalid =>
-      '保存されているアスリート番号が parkrun の形式(A に続く数字)ではないため、バーコードとして表示できません。';
+      '保存されているアスリート番号がparkrunの形式（Aに続く数字）ではないため、バーコードとして表示できません。';
 
   @override
   String get parkrunBarcodeAdd => 'アスリート番号を追加';
@@ -6871,7 +6871,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get parkrunBarcodeFieldInvalid => 'A に続けて数字を入力してください(例: A123456)。';
+  String get parkrunBarcodeFieldInvalid => 'Aに続けて数字を入力してください（例：A123456）。';
 
   @override
   String get parkrunBarcodeLoadFailed =>
@@ -14813,6 +14813,11 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String runnerMenuWorkoutSteps(int count) {
-    return '$countステップ';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countステップ',
+    );
+    return '$_temp0';
   }
 }

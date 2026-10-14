@@ -7306,7 +7306,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get parkrunBarcodeRetry => 'Réessayer';
 
   @override
-  String get parkrunBarcodeOfflineCopy => 'Copie enregistrée sur ce téléphone.';
+  String get parkrunBarcodeOfflineCopy =>
+      'Affichage de la copie enregistrée sur ce téléphone.';
 
   @override
   String get integrationsImport => 'Importer';

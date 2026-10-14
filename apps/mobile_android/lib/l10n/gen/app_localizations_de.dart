@@ -15543,7 +15543,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get runnerMenuFollowRoute => 'Einer Route folgen';
 
   @override
-  String get runnerMenuAllRoutes => 'Alle Routen …';
+  String get runnerMenuAllRoutes => 'Alle Routen…';
 
   @override
   String runnerMenuFollowRouteNamed(String name) {

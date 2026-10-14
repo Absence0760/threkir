@@ -245,6 +245,10 @@ Shared pieces:
 | **Lifecycle drip** (onboarding / first-week / re-engagement / streak nudges) | `lifecycle_drip` (`drip_onboarding`, `drip_first_week`, `drip_reengagement`, `drip_streak`) | daily pg_cron `enqueue_lifecycle_drip()` selects the cohort in SQL; handler gates on the opt-IN `email_lifecycle_drip` pref + `email_suppressions` + a working opt-out (unset `WEEKLY_DIGEST_UNSUB_SECRET` → no unsubscribe URL → log + skip); RFC 8058 one-click unsubscribe (`/unsubscribe/lifecycle-drip`). Enqueue dedupe excludes `done` for onboarding + first-week + re-engagement (`20270423_001`, issue #376) so the daily cron can't re-send a completed nudge; streak stays daily-repeating by design. **SEND fail-closed on the unset SMTP credential + CISO/counsel sign-off** (built, migration `20270223_001`) | ✓ | §177 |
 | **Password changed** (security notice, not optional) | GoTrue `password_changed_notification` → `auth-email` hook | every password change a user makes — settings change and recovery reset alike; enabled by `config.toml [auth.email.notification.password_changed]` locally, the Auth → Emails security-notification toggle in prod | ✓ | 1893 |
 | **New-device sign-in** (security notice, opt-out) | `security_email` (`new_device_sign_in`) | `auth.sessions` AFTER INSERT / first-known `user_agent` UPDATE, when the `(browser, platform)` class is new to an account that already had one; gated at send time on `email_new_device_alerts != 'off'` | ✓ | 1894 |
+| **Email address changed** (security notice, not optional) | GoTrue `email_changed_notification` → `auth-email` hook | a confirmed email change; sent to the **previous** address (`email_data.old_email`); `config.toml [auth.email.notification.email_changed]` locally — **prod: enable in the dashboard Security list** | ✓ | 1900 |
+| **Phone number changed** (security notice, not optional) | GoTrue `phone_changed_notification` → `auth-email` hook | a confirmed phone change; `config.toml [auth.email.notification.phone_changed]` locally — **prod: enable in the dashboard Security list** | ✓ | 1900 |
+| **Sign-in method linked / removed** (security notice, not optional) | GoTrue `identity_linked_notification` / `identity_unlinked_notification` → `auth-email` hook | an identity (Google, Apple, email…) linked to or unlinked from the account; names the provider; `config.toml [auth.email.notification.identity_linked]` / `identity_unlinked` locally — **prod: enable in the dashboard Security list** | ✓ | 1900 |
+| **MFA method added / removed** (security notice, not optional) | GoTrue `mfa_factor_enrolled_notification` / `mfa_factor_unenrolled_notification` → `auth-email` hook | an MFA factor enrolled or unenrolled; names the factor type; `config.toml [auth.email.notification.mfa_factor_enrolled]` / `mfa_factor_unenrolled` locally — **prod: enable in the dashboard Security list** | ✓ | 1900 |
 | Branded HTML + inbox preview text | — | all email of the above | ✓ | — |
 
 All shipped emails are end-to-end tested against the local Docker Mailpit
@@ -302,7 +306,10 @@ Dashboard → Auth → Hooks in prod):
   for backwards compatibility), `reauthentication` (code-only, no link), and
   `password_changed_notification` (no token; states the change time from the
   signed `webhook-timestamp` and links `APP_BASE_URL/login?reset=1` — § Security
-  emails). Unknown/future action types fall through
+  emails), and the six other account-change notices (`email_changed`,
+  `phone_changed`, `identity_linked`, `identity_unlinked`,
+  `mfa_factor_enrolled`, `mfa_factor_unenrolled` + `_notification`, same
+  shape — § Security emails). Unknown/future action types fall through
   to an informational default and never fail the hook — a hook failure
   surfaces as a GoTrue API error to the user mid-signup/reset.
 - **Action link** — for an http(s) landing (every web flow) the link points
@@ -357,8 +364,9 @@ Dashboard → Auth → Hooks in prod):
 
 ## Security emails
 
-Two account-security notices, both **shipped** (round 10, closing the
-followups entry). Both are transactional: muting `email_notifications` mutes
+Account-security notices, all **shipped**: the password-changed and
+new-device notices (round 10, closing the followups entry), and GoTrue's six
+other account-change notices (decisions 1900). Both are transactional: muting `email_notifications` mutes
 neither, and neither carries a `List-Unsubscribe` header.
 
 ### Password changed — GoTrue's notice, through the existing hook
@@ -385,6 +393,42 @@ neither, and neither carries a `List-Unsubscribe` header.
 - Pinned by `auth-email/lib.test.ts` (time, CTA, contact, every locale's
   placeholder count) + `handler.test.ts` (the signed hook time reaches the
   MIME).
+
+### The other account-change notices — GoTrue's, through the same hook
+
+- **Trigger: GoTrue itself**, like the password notice. Action types and
+  payload fields are GoTrue's own (`internal/mailer/mailer.go`,
+  `EmailData`): `email_changed_notification` (+ `old_email`),
+  `phone_changed_notification` (+ `old_phone`),
+  `identity_linked_notification` / `identity_unlinked_notification`
+  (+ `provider`), `mfa_factor_enrolled_notification` /
+  `mfa_factor_unenrolled_notification` (+ `factor_type`). Each is enabled by
+  its `config.toml [auth.email.notification.<name>]` block locally and by its
+  toggle under Dashboard → Authentication → Emails → Templates → **Security**
+  in prod.
+- **Render:** one catalogue entry per action in all seven locales, the
+  password notice's shape — what changed, when (UTC), "if this was you,
+  nothing to do", and the not-you path with `security@threkir.com`. A
+  `{method}` line names the provider (`Google`, `Apple`, "Email and
+  password"…) or factor (`totp` → "Authenticator app", `phone` → SMS code,
+  `webauthn` → "Security key or passkey"); an unknown or missing value drops
+  that line and nothing else, so a raw id never reaches the mail.
+- **Email changed goes to the previous address.** By the time GoTrue fires
+  it, `user.email` already holds the new one; the mailbox that needs the
+  warning is `email_data.old_email` (GoTrue's own mailer sends there too).
+  It has **no** Reset password button — a reset requested now would mail the
+  new address — so its copy sends the reader to the security contact.
+  The other five carry the same `/login?reset=1` CTA as the password notice.
+- **Privacy:** no notice prints an email address or phone number — not the
+  new one, not the old one. The old mailbox may be one the user deliberately
+  left (a former employer, a shared inbox), so telling it where the account
+  went is a disclosure; the account holder already knows, and an intruder's
+  address is something the security contact can look up.
+- **No opt-out**, same reasoning as the password notice.
+- Pinned by `auth-email/lib.test.ts` (routing, `old_email` recipient,
+  provider / factor labels and their fallback, every locale's `{when}` +
+  contact + no-address) + `handler.test.ts` (the email-changed send reaches
+  the old address without printing either).
 
 ### New-device sign-in — `sign_in_devices` + `security_email`
 
@@ -645,12 +689,9 @@ neither, and neither carries a `List-Unsubscribe` header.
 
 ### Not planned (with reason)
 
-- **Other GoTrue security notices** (email changed, phone changed, identity
-  linked/unlinked, MFA factor enrolled/unenrolled) — GoTrue can send each of
-  these through the same hook, but only `password_changed` is enabled today;
-  the others fall through `planSends` to the informational `default` copy, so
-  turning one on without adding its catalogue entry would send a generic
-  notice. Each is a catalogue entry plus a config line when wanted.
+- Nothing open in this section. The last entry — GoTrue's other security
+  notices falling through to the generic default — closed with decisions
+  1900; new-device sign-in alerts shipped with 1894.
 
 ## Production ops (required before any email actually sends)
 
@@ -725,7 +766,13 @@ None of this sends in prod until an operator:
    origin, `https://threkir.com`) as an `auth-email` function secret so the
    notice carries its Reset password button. With the send-email hook enabled
    the hook renders it localized; without it GoTrue sends its built-in English
-   template over the project SMTP. The **new-device** alert needs no new
+   template over the project SMTP. The **six other account-change notices**
+   (email address changed, phone number changed, sign-in method linked /
+   removed, MFA method added / removed) need the same flip, each its own
+   toggle under Authentication → Emails → Templates → **Security** (Management
+   API: `mailer_notifications_{email_changed,phone_changed,identity_linked,identity_unlinked,mfa_factor_enrolled,mfa_factor_unenrolled}_enabled`).
+   Flip them only **after** the `auth-email` deploy carrying decisions 1900
+   is live — before it, each would render the generic default. The **new-device** alert needs no new
    credential: it rides the worker's existing `SMTP_HOST` + `APP_BASE_URL`,
    and its schedule (`prune-sign-in-devices`, daily) is created by the
    migration — confirm it with the other pg_cron jobs in step 2.
@@ -915,4 +962,5 @@ The code side is built and committed:
   §121 (subscription emails), §131 (safety-contact alerts), §203 (auth-email
   hook), §729 (data-export-ready + the per-kind mute), §825 (reversed refund),
   1893 (password-changed through GoTrue's hook) + 1894 (new-device
-  detection and its privacy design).
+  detection and its privacy design) + 1900 (GoTrue's other account-change
+  notices).

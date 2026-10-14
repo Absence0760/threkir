@@ -303,11 +303,16 @@ void main() {
   });
 
   group('markDmThreadRead', () {
-    test('stamps only the unread messages the partner sent the viewer',
+    final shown = DirectMessageRow.fromJson(_message('m-9',
+        sender: 'other-1',
+        recipient: 'user-1',
+        createdAt: '2026-10-14T08:09:00.654321Z'));
+
+    test('stamps only the partner\'s unread messages up to the newest shown',
         () async {
       await _signIn(client);
 
-      await api.markDmThreadRead('other-1');
+      await api.markDmThreadRead('other-1', through: shown);
 
       final req = fake.to(_messagesPath).single as http.Request;
       expect(req.method, 'PATCH');
@@ -315,12 +320,14 @@ void main() {
         'sender_id': 'eq.other-1',
         'recipient_id': 'eq.user-1',
         'read_at': 'is.null',
+        'or': '(created_at.lt."2026-10-14T08:09:00.654321Z",'
+            'and(created_at.eq."2026-10-14T08:09:00.654321Z",id.lte.m-9))',
       });
       expect((jsonDecode(req.body) as Map).keys, ['read_at']);
     });
 
     test('signed out throws without a wire call', () async {
-      expect(api.markDmThreadRead('other-1'), throwsStateError);
+      expect(api.markDmThreadRead('other-1', through: shown), throwsStateError);
       expect(fake.requests, isEmpty);
     });
   });

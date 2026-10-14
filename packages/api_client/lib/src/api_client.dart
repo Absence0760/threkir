@@ -8523,11 +8523,21 @@ class ApiClient {
     }
   }
 
-  /// Mark every message [otherId] sent the viewer as read. Mirrors web
-  /// `markDmThreadRead`; RLS lets only the recipient stamp `read_at`.
-  Future<void> markDmThreadRead(String otherId) async {
+  /// Mark the messages [otherId] sent the viewer as read, up to and including
+  /// [through] on the thread's `(created_at, id)` order. RLS lets only the
+  /// recipient stamp `read_at`.
+  ///
+  /// [through] is the newest message the reader has on screen. Web's
+  /// `markDmThreadRead` has no bound and stamps everything, so a reply that
+  /// lands between the read that drew the conversation and this write is
+  /// marked read without ever having been shown.
+  Future<void> markDmThreadRead(
+    String otherId, {
+    required DirectMessageRow through,
+  }) async {
     final me = _client.auth.currentUser?.id;
     if (me == null) throw StateError('not signed in');
+    final at = through.createdAt.toUtc().toIso8601String();
     await _client
         .from(DirectMessageRow.table)
         .update({
@@ -8535,7 +8545,12 @@ class ApiClient {
         })
         .eq(DirectMessageRow.colSenderId, otherId)
         .eq(DirectMessageRow.colRecipientId, me)
-        .isFilter(DirectMessageRow.colReadAt, null);
+        .isFilter(DirectMessageRow.colReadAt, null)
+        .or(
+          '${DirectMessageRow.colCreatedAt}.lt."$at",'
+          'and(${DirectMessageRow.colCreatedAt}.eq."$at",'
+          '${DirectMessageRow.colId}.lte.${through.id})',
+        );
   }
 
   static String _isoDate(DateTime d) =>

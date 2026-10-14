@@ -40,6 +40,21 @@ DirectMessageRow _msg(
       routeId: routeId,
     );
 
+/// One of a burst, stamped a second apart so the thread order is the index.
+DirectMessageRow _burst(int i, {bool read = false}) => DirectMessageRow(
+      id: 'b${i.toString().padLeft(3, '0')}',
+      senderId: _partner,
+      recipientId: _me,
+      body: 'burst $i',
+      createdAt: DateTime.utc(2026, 10, 14, 8).add(Duration(seconds: i)),
+      readAt: read ? DateTime.utc(2026, 10, 14, 7) : null,
+    );
+
+int _order(DirectMessageRow x, DirectMessageRow y) {
+  final at = x.createdAt.compareTo(y.createdAt);
+  return at != 0 ? at : x.id.compareTo(y.id);
+}
+
 DmThread _thread(String id, {String? name, int unread = 0, bool mine = false}) =>
     DmThread(
       partnerId: id,
@@ -65,11 +80,20 @@ class _FakeApi extends ApiClient {
   Object? threadError;
   final List<DirectMessageRow?> befores = [];
 
+  /// When set, the thread is this list and is paged the way the table is:
+  /// newest first on `(created_at, id)`, [limit] at a time, before a cursor.
+  List<DirectMessageRow>? server;
+
+  /// Runs after a newest-page read has been answered, to land a message in
+  /// the window between that read and whatever the screen does next.
+  void Function()? afterNewestRead;
+
   Completer<DirectMessageRow>? sendGate;
   Object? sendError;
   final List<String> sent = [];
 
   int markReadCalls = 0;
+  final List<DirectMessageRow> throughs = [];
 
   final Map<String, Route?> routes = {};
   Object? routeError;
@@ -99,6 +123,19 @@ class _FakeApi extends ApiClient {
   }) async {
     befores.add(before);
     if (threadError != null) throw threadError!;
+    final all = server;
+    if (all != null) {
+      final sorted = [...all]..sort(_order);
+      final eligible = [
+        for (final m in sorted)
+          if (before == null || _order(m, before) < 0) m,
+      ];
+      final hasMore = eligible.length > limit;
+      final page =
+          hasMore ? eligible.sublist(eligible.length - limit) : eligible;
+      if (before == null) afterNewestRead?.call();
+      return DmThreadPage(messages: page, hasMore: hasMore);
+    }
     if (before != null) {
       return DmThreadPage(messages: older, hasMore: false);
     }
@@ -115,8 +152,23 @@ class _FakeApi extends ApiClient {
   }
 
   @override
-  Future<void> markDmThreadRead(String otherId) async {
+  Future<void> markDmThreadRead(
+    String otherId, {
+    required DirectMessageRow through,
+  }) async {
     markReadCalls++;
+    throughs.add(through);
+    final all = server;
+    if (all != null) {
+      for (var i = 0; i < all.length; i++) {
+        final m = all[i];
+        if (m.senderId == otherId &&
+            m.readAt == null &&
+            _order(m, through) <= 0) {
+          all[i] = m.copyWith(readAt: DateTime.utc(2026, 10, 14, 10));
+        }
+      }
+    }
     threads = [
       for (final t in threads) t.partnerId == otherId ? t.copyWith(unread: 0) : t,
     ];
@@ -527,6 +579,50 @@ void main() {
       expect(find.text('first'), findsOneWidget);
       expect(find.text('reply'), findsOneWidget);
       expect(api.markReadCalls, 1);
+    });
+
+    testWidgets('a burst larger than a page leaves no gap in the conversation',
+        (tester) async {
+      tester.view.physicalSize = const Size(1000, 12000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final api = _FakeApi()
+        ..server = [for (var i = 0; i < 3; i++) _burst(i, read: true)];
+      await _pumpThread(tester, api, poll: const Duration(seconds: 10));
+      expect(find.text('burst 2'), findsOneWidget);
+
+      api.server!.addAll([for (var i = 3; i < 63; i++) _burst(i)]);
+      await tester.pump(const Duration(seconds: 10));
+      await tester.pump();
+
+      expect(find.text('burst 62'), findsOneWidget);
+      await tester.tap(find.text(l10n.messagesLoadEarlier));
+      await tester.pump();
+      await tester.pump();
+
+      for (var i = 0; i < 63; i++) {
+        expect(find.text('burst $i'), findsOneWidget, reason: 'burst $i');
+      }
+      expect(find.text(l10n.messagesLoadEarlier), findsNothing);
+    });
+
+    testWidgets('a reply that lands after the read is not marked read',
+        (tester) async {
+      final api = _FakeApi()..server = [_burst(0)];
+      var landed = false;
+      api.afterNewestRead = () {
+        if (landed) return;
+        landed = true;
+        api.server!.add(_burst(1));
+      };
+      await _pumpThread(tester, api);
+
+      expect(find.text('burst 0'), findsOneWidget);
+      expect(find.text('burst 1'), findsNothing);
+      expect(api.throughs.map((m) => m.id), ['b000']);
+      expect(api.server!.firstWhere((m) => m.id == 'b000').readAt, isNotNull);
+      expect(api.server!.firstWhere((m) => m.id == 'b001').readAt, isNull,
+          reason: 'never drawn, so never read');
     });
 
     testWidgets('older messages load above the oldest one shown',

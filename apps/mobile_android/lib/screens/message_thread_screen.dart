@@ -75,6 +75,7 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
   bool _hasMore = false;
   bool _loadingEarlier = false;
   bool _refreshing = false;
+  int _window = 0;
   int _refreshTick = 0;
 
   final List<_PendingMessage> _pending = [];
@@ -122,7 +123,7 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
       if (!mounted || profile?.displayName == null) return;
       setState(() => _partnerName = profile!.displayName);
     } catch (e) {
-      debugPrint('message thread partner name read failed: $e');
+      debugPrint('message thread partner name read failed: ${safeErrorLabel(e)}');
     }
   }
 
@@ -155,6 +156,12 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
   /// and while another screen covers this one. A failed poll keeps what is
   /// on screen: the next tick is the retry, and a banner every ten seconds
   /// would be noise.
+  ///
+  /// A page that does not reach back to the newest message on screen means
+  /// more than a page arrived since the last read. Merging it would leave the
+  /// messages between the two out of the list for good, since "load earlier"
+  /// pages back from the oldest message shown, so the page replaces the list
+  /// instead and the older history is one "load earlier" away again.
   Future<void> _refresh() async {
     if (_loading || _refreshing || _loadError != null) return;
     if (!_appInForeground) return;
@@ -165,11 +172,25 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
       if (!mounted) return;
       setState(() {
         _refreshTick++;
-        _messages = _merge(_messages, page.messages);
+        final fresh = page.messages;
+        final gap = page.hasMore &&
+            fresh.isNotEmpty &&
+            _messages.isNotEmpty &&
+            _compareOrder(fresh.first, _messages.last) > 0;
+        if (!gap) {
+          _messages = _merge(_messages, fresh);
+          return;
+        }
+        _window++;
+        _messages = _merge(fresh, [
+          for (final m in _messages)
+            if (_compareOrder(m, fresh.last) > 0) m,
+        ]);
+        _hasMore = true;
       });
       await _markReadIfUnread();
     } catch (e) {
-      debugPrint('message thread poll failed: $e');
+      debugPrint('message thread poll failed: ${safeErrorLabel(e)}');
     } finally {
       _refreshing = false;
     }
@@ -177,17 +198,18 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
 
   Future<void> _loadEarlier() async {
     if (_loadingEarlier || _messages.isEmpty) return;
+    final window = _window;
     setState(() => _loadingEarlier = true);
     try {
       final page = await widget.api
           .fetchDmThread(widget.partnerId, before: _messages.first);
-      if (!mounted) return;
+      if (!mounted || window != _window) return;
       setState(() {
         _messages = _merge(_messages, page.messages);
         _hasMore = page.hasMore;
       });
     } catch (e) {
-      debugPrint('message thread older page failed: $e');
+      debugPrint('message thread older page failed: ${safeErrorLabel(e)}');
       if (mounted) {
         showTopBanner(
           context,
@@ -207,35 +229,40 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
       for (final m in a) m.id: m,
       for (final m in b) m.id: m,
     };
-    return byId.values.toList()
-      ..sort((x, y) {
-        final at = x.createdAt.compareTo(y.createdAt);
-        return at != 0 ? at : x.id.compareTo(y.id);
-      });
+    return byId.values.toList()..sort(_compareOrder);
+  }
+
+  /// The thread's `(created_at, id)` order, the one `fetchDmThread` pages on.
+  static int _compareOrder(DirectMessageRow x, DirectMessageRow y) {
+    final at = x.createdAt.compareTo(y.createdAt);
+    return at != 0 ? at : x.id.compareTo(y.id);
   }
 
   /// Opening the conversation marks it read, as does a poll that brings in a
-  /// new message from the partner. An auxiliary effect: a failure leaves the
+  /// new message from the partner. Only up to the newest unread message on
+  /// screen: one that arrived after the read that drew the list stays unread
+  /// until a poll shows it. An auxiliary effect: a failure leaves the
   /// conversation on screen and the next poll tries again.
   Future<void> _markReadIfUnread() async {
-    final hasUnread = _messages.any(
-      (m) => m.senderId == widget.partnerId && m.readAt == null,
-    );
-    if (!hasUnread) return;
+    bool unread(DirectMessageRow m) =>
+        m.senderId == widget.partnerId && m.readAt == null;
+    final shown = _messages.where(unread);
+    if (shown.isEmpty) return;
+    final through = shown.last;
     try {
-      await widget.api.markDmThreadRead(widget.partnerId);
+      await widget.api.markDmThreadRead(widget.partnerId, through: through);
       if (!mounted) return;
       final now = DateTime.now().toUtc();
       setState(() {
         _messages = [
           for (final m in _messages)
-            m.senderId == widget.partnerId && m.readAt == null
+            unread(m) && _compareOrder(m, through) <= 0
                 ? m.copyWith(readAt: now)
                 : m,
         ];
       });
     } catch (e) {
-      debugPrint('message thread mark-read failed: $e');
+      debugPrint('message thread mark-read failed: ${safeErrorLabel(e)}');
     }
   }
 
@@ -257,7 +284,7 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
         _messages = _merge(_messages, [row]);
       });
     } catch (e) {
-      debugPrint('message send failed: $e');
+      debugPrint('message send failed: ${safeErrorLabel(e)}');
       if (!mounted) return;
       final l10n = AppLocalizations.of(context);
       setState(() => _pending.remove(pending));

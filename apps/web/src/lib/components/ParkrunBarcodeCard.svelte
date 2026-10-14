@@ -178,7 +178,7 @@
 	.close {
 		position: absolute;
 		top: var(--space-md);
-		right: var(--space-md);
+		inset-inline-end: var(--space-md);
 		display: inline-flex;
 		align-items: center;
 		gap: var(--space-xs);

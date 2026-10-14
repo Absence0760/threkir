@@ -2894,6 +2894,66 @@ class AppLocalizationsDe extends AppLocalizations {
       'Höhenkorrigiert bist du in der zweiten Hälfte langsamer geworden.';
 
   @override
+  String get runDetailStrategyTitle => 'Tempostrategie';
+
+  @override
+  String runDetailStrategyGoal(String time) {
+    return 'Ziel $time';
+  }
+
+  @override
+  String get runDetailStrategyColPhase => 'Phase';
+
+  @override
+  String get runDetailStrategyColTarget => 'Vorgabe';
+
+  @override
+  String get runDetailStrategyNotReached => 'nicht erreicht';
+
+  @override
+  String get runDetailStrategyPartial => 'teilweise';
+
+  @override
+  String get runDetailStrategyVerdictOnPlan => 'Nach Plan';
+
+  @override
+  String get runDetailStrategyVerdictWentOutTooFast => 'Zu schnell angegangen';
+
+  @override
+  String get runDetailStrategyVerdictFaded => 'Eingebrochen';
+
+  @override
+  String get runDetailStrategyVerdictNegativeSplit =>
+      'Stärker beendet als geplant';
+
+  @override
+  String get runDetailStrategyVerdictFasterThanPlan => 'Schneller als geplant';
+
+  @override
+  String get runDetailStrategyVerdictSlowerThanPlan => 'Langsamer als geplant';
+
+  @override
+  String get runDetailStrategyAverageBasis =>
+      'Keine Zielzeit gesetzt – jede Vorgabe ist der Planverlauf bei deinem Durchschnittstempo.';
+
+  @override
+  String get runDetailStrategyNoTrack =>
+      'Dieser Lauf hat keinen GPS-Track mit Zeitstempeln, daher lassen sich die Phasen nicht bewerten.';
+
+  @override
+  String get runDetailStrategyNoGoal =>
+      'Keine Zielzeit gesetzt – ein einphasiger gleichmäßiger Plan hat keinen Vergleichswert.';
+
+  @override
+  String runDetailStrategyStoppedShort(String distance, String planned) {
+    return 'Beendet bei $distance von geplanten $planned – die späteren Phasen wurden nicht gelaufen.';
+  }
+
+  @override
+  String get runDetailStrategyBand =>
+      'Eine Phase innerhalb von 1,5 % ihres Vorgabetempos gilt als im Ziel; Stopps sind nicht eingerechnet.';
+
+  @override
   String get runDetailGapColumn => 'Höhenkorr.';
 
   @override

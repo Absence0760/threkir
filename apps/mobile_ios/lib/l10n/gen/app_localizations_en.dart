@@ -2861,6 +2861,66 @@ class AppLocalizationsEn extends AppLocalizations {
       'Adjusted for the terrain, you slowed over the second half.';
 
   @override
+  String get runDetailStrategyTitle => 'Pacing strategy';
+
+  @override
+  String runDetailStrategyGoal(String time) {
+    return 'Goal $time';
+  }
+
+  @override
+  String get runDetailStrategyColPhase => 'Phase';
+
+  @override
+  String get runDetailStrategyColTarget => 'Target';
+
+  @override
+  String get runDetailStrategyNotReached => 'not reached';
+
+  @override
+  String get runDetailStrategyPartial => 'partial';
+
+  @override
+  String get runDetailStrategyVerdictOnPlan => 'On plan';
+
+  @override
+  String get runDetailStrategyVerdictWentOutTooFast => 'Went out too fast';
+
+  @override
+  String get runDetailStrategyVerdictFaded => 'Faded';
+
+  @override
+  String get runDetailStrategyVerdictNegativeSplit =>
+      'Finished stronger than planned';
+
+  @override
+  String get runDetailStrategyVerdictFasterThanPlan => 'Faster than plan';
+
+  @override
+  String get runDetailStrategyVerdictSlowerThanPlan => 'Slower than plan';
+
+  @override
+  String get runDetailStrategyAverageBasis =>
+      'No goal time was set, so each target is the plan\'s shape at your average pace.';
+
+  @override
+  String get runDetailStrategyNoTrack =>
+      'This run has no timed GPS track, so its phases can\'t be graded.';
+
+  @override
+  String get runDetailStrategyNoGoal =>
+      'No goal time was set, so a one-phase even plan has nothing to grade against.';
+
+  @override
+  String runDetailStrategyStoppedShort(String distance, String planned) {
+    return 'Ended at $distance of the planned $planned, so the later phases weren\'t run.';
+  }
+
+  @override
+  String get runDetailStrategyBand =>
+      'A phase within 1.5% of its target pace counts as on target; paces exclude stops.';
+
+  @override
   String get runDetailGapColumn => 'Grade-adj.';
 
   @override

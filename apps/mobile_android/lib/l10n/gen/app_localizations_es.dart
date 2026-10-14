@@ -2888,6 +2888,67 @@ class AppLocalizationsEs extends AppLocalizations {
       'Ajustado por el desnivel, bajaste el ritmo en la segunda mitad.';
 
   @override
+  String get runDetailStrategyTitle => 'Estrategia de ritmo';
+
+  @override
+  String runDetailStrategyGoal(String time) {
+    return 'Objetivo $time';
+  }
+
+  @override
+  String get runDetailStrategyColPhase => 'Fase';
+
+  @override
+  String get runDetailStrategyColTarget => 'Objetivo';
+
+  @override
+  String get runDetailStrategyNotReached => 'no alcanzada';
+
+  @override
+  String get runDetailStrategyPartial => 'parcial';
+
+  @override
+  String get runDetailStrategyVerdictOnPlan => 'Según el plan';
+
+  @override
+  String get runDetailStrategyVerdictWentOutTooFast =>
+      'Salida demasiado rápida';
+
+  @override
+  String get runDetailStrategyVerdictFaded => 'Bajón final';
+
+  @override
+  String get runDetailStrategyVerdictNegativeSplit =>
+      'Final más fuerte de lo previsto';
+
+  @override
+  String get runDetailStrategyVerdictFasterThanPlan => 'Más rápido que el plan';
+
+  @override
+  String get runDetailStrategyVerdictSlowerThanPlan => 'Más lento que el plan';
+
+  @override
+  String get runDetailStrategyAverageBasis =>
+      'No se fijó un tiempo objetivo, así que cada objetivo es la forma del plan a tu ritmo medio.';
+
+  @override
+  String get runDetailStrategyNoTrack =>
+      'Esta carrera no tiene un track GPS con tiempos, así que sus fases no se pueden evaluar.';
+
+  @override
+  String get runDetailStrategyNoGoal =>
+      'No se fijó un tiempo objetivo, así que un plan de ritmo uniforme de una sola fase no tiene con qué compararse.';
+
+  @override
+  String runDetailStrategyStoppedShort(String distance, String planned) {
+    return 'Terminó en $distance de los $planned previstos, así que las fases posteriores no se corrieron.';
+  }
+
+  @override
+  String get runDetailStrategyBand =>
+      'Una fase a menos del 1,5 % de su ritmo objetivo cuenta como en objetivo; las paradas no se incluyen.';
+
+  @override
   String get runDetailGapColumn => 'Ajustado';
 
   @override

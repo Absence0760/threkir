@@ -2897,6 +2897,66 @@ class AppLocalizationsFr extends AppLocalizations {
       'Corrigé du dénivelé, vous avez ralenti sur la seconde moitié.';
 
   @override
+  String get runDetailStrategyTitle => 'Stratégie d\'allure';
+
+  @override
+  String runDetailStrategyGoal(String time) {
+    return 'Objectif $time';
+  }
+
+  @override
+  String get runDetailStrategyColPhase => 'Phase';
+
+  @override
+  String get runDetailStrategyColTarget => 'Cible';
+
+  @override
+  String get runDetailStrategyNotReached => 'non atteinte';
+
+  @override
+  String get runDetailStrategyPartial => 'partielle';
+
+  @override
+  String get runDetailStrategyVerdictOnPlan => 'Conforme au plan';
+
+  @override
+  String get runDetailStrategyVerdictWentOutTooFast => 'Départ trop rapide';
+
+  @override
+  String get runDetailStrategyVerdictFaded => 'Fin en baisse';
+
+  @override
+  String get runDetailStrategyVerdictNegativeSplit =>
+      'Fin plus forte que prévu';
+
+  @override
+  String get runDetailStrategyVerdictFasterThanPlan => 'Plus rapide que prévu';
+
+  @override
+  String get runDetailStrategyVerdictSlowerThanPlan => 'Plus lent que prévu';
+
+  @override
+  String get runDetailStrategyAverageBasis =>
+      'Aucun temps visé n\'a été défini : chaque cible reprend le profil du plan à votre allure moyenne.';
+
+  @override
+  String get runDetailStrategyNoTrack =>
+      'Cette sortie n\'a pas de trace GPS horodatée : ses phases ne peuvent pas être évaluées.';
+
+  @override
+  String get runDetailStrategyNoGoal =>
+      'Aucun temps visé n\'a été défini : un plan à allure régulière en une seule phase n\'a rien à quoi se comparer.';
+
+  @override
+  String runDetailStrategyStoppedShort(String distance, String planned) {
+    return 'Terminée à $distance sur les $planned prévus : les phases suivantes n\'ont pas été courues.';
+  }
+
+  @override
+  String get runDetailStrategyBand =>
+      'Une phase à moins de 1,5 % de son allure cible est considérée dans la cible ; les arrêts sont exclus.';
+
+  @override
   String get runDetailGapColumn => 'Corrigée';
 
   @override

@@ -2886,6 +2886,69 @@ class AppLocalizationsPt extends AppLocalizations {
       'Ajustado pelo relevo, desacelerou na segunda metade.';
 
   @override
+  String get runDetailStrategyTitle => 'Estratégia de ritmo';
+
+  @override
+  String runDetailStrategyGoal(String time) {
+    return 'Objetivo $time';
+  }
+
+  @override
+  String get runDetailStrategyColPhase => 'Fase';
+
+  @override
+  String get runDetailStrategyColTarget => 'Alvo';
+
+  @override
+  String get runDetailStrategyNotReached => 'não alcançada';
+
+  @override
+  String get runDetailStrategyPartial => 'parcial';
+
+  @override
+  String get runDetailStrategyVerdictOnPlan => 'Conforme o plano';
+
+  @override
+  String get runDetailStrategyVerdictWentOutTooFast =>
+      'Arranque demasiado rápido';
+
+  @override
+  String get runDetailStrategyVerdictFaded => 'Quebra no final';
+
+  @override
+  String get runDetailStrategyVerdictNegativeSplit =>
+      'Final mais forte do que o previsto';
+
+  @override
+  String get runDetailStrategyVerdictFasterThanPlan =>
+      'Mais rápido do que o plano';
+
+  @override
+  String get runDetailStrategyVerdictSlowerThanPlan =>
+      'Mais lento do que o plano';
+
+  @override
+  String get runDetailStrategyAverageBasis =>
+      'Não foi definido um tempo objetivo, por isso cada alvo segue o perfil do plano ao ritmo médio.';
+
+  @override
+  String get runDetailStrategyNoTrack =>
+      'Esta corrida não tem um trajeto GPS com tempos, por isso as fases não podem ser avaliadas.';
+
+  @override
+  String get runDetailStrategyNoGoal =>
+      'Não foi definido um tempo objetivo, por isso um plano de ritmo constante com uma só fase não tem com que se comparar.';
+
+  @override
+  String runDetailStrategyStoppedShort(String distance, String planned) {
+    return 'Terminou aos $distance dos $planned previstos, por isso as fases seguintes não foram corridas.';
+  }
+
+  @override
+  String get runDetailStrategyBand =>
+      'Uma fase a menos de 1,5 % do ritmo alvo conta como no alvo; as paragens não são contadas.';
+
+  @override
   String get runDetailGapColumn => 'Ajustado';
 
   @override
@@ -18432,6 +18495,67 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get runDetailPacingGapPositive =>
       'Ajustado pelo relevo, você desacelerou na segunda metade.';
+
+  @override
+  String get runDetailStrategyTitle => 'Estratégia de ritmo';
+
+  @override
+  String runDetailStrategyGoal(String time) {
+    return 'Meta $time';
+  }
+
+  @override
+  String get runDetailStrategyColPhase => 'Fase';
+
+  @override
+  String get runDetailStrategyColTarget => 'Alvo';
+
+  @override
+  String get runDetailStrategyNotReached => 'não alcançada';
+
+  @override
+  String get runDetailStrategyPartial => 'parcial';
+
+  @override
+  String get runDetailStrategyVerdictOnPlan => 'Conforme o plano';
+
+  @override
+  String get runDetailStrategyVerdictWentOutTooFast => 'Largada rápida demais';
+
+  @override
+  String get runDetailStrategyVerdictFaded => 'Quebra no final';
+
+  @override
+  String get runDetailStrategyVerdictNegativeSplit =>
+      'Final mais forte que o planejado';
+
+  @override
+  String get runDetailStrategyVerdictFasterThanPlan =>
+      'Mais rápido que o plano';
+
+  @override
+  String get runDetailStrategyVerdictSlowerThanPlan => 'Mais lento que o plano';
+
+  @override
+  String get runDetailStrategyAverageBasis =>
+      'Nenhum tempo alvo foi definido, então cada alvo segue o formato do plano no seu ritmo médio.';
+
+  @override
+  String get runDetailStrategyNoTrack =>
+      'Esta corrida não tem um trajeto GPS com horários, então as fases não podem ser avaliadas.';
+
+  @override
+  String get runDetailStrategyNoGoal =>
+      'Nenhum tempo alvo foi definido, então um plano de ritmo constante com uma única fase não tem com o que ser comparado.';
+
+  @override
+  String runDetailStrategyStoppedShort(String distance, String planned) {
+    return 'Terminou em $distance dos $planned planejados, então as fases seguintes não foram corridas.';
+  }
+
+  @override
+  String get runDetailStrategyBand =>
+      'Uma fase a menos de 1,5% do ritmo alvo conta como no alvo; as paradas não são contadas.';
 
   @override
   String get runDetailGapColumn => 'Ajustado';

@@ -2743,6 +2743,65 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runDetailPacingGapPositive => '勾配を調整すると、後半はペースが落ちています。';
 
   @override
+  String get runDetailStrategyTitle => 'ペース戦略';
+
+  @override
+  String runDetailStrategyGoal(String time) {
+    return '目標 $time';
+  }
+
+  @override
+  String get runDetailStrategyColPhase => 'フェーズ';
+
+  @override
+  String get runDetailStrategyColTarget => '目標';
+
+  @override
+  String get runDetailStrategyNotReached => '未到達';
+
+  @override
+  String get runDetailStrategyPartial => '一部';
+
+  @override
+  String get runDetailStrategyVerdictOnPlan => '計画どおり';
+
+  @override
+  String get runDetailStrategyVerdictWentOutTooFast => '入りが速すぎ';
+
+  @override
+  String get runDetailStrategyVerdictFaded => '終盤失速';
+
+  @override
+  String get runDetailStrategyVerdictNegativeSplit => '計画より強く終えた';
+
+  @override
+  String get runDetailStrategyVerdictFasterThanPlan => '計画より速い';
+
+  @override
+  String get runDetailStrategyVerdictSlowerThanPlan => '計画より遅い';
+
+  @override
+  String get runDetailStrategyAverageBasis =>
+      '目標タイムが未設定のため、各目標は平均ペースに計画の配分を当てはめたものです。';
+
+  @override
+  String get runDetailStrategyNoTrack =>
+      'このランには時刻付きのGPSトラックがないため、フェーズを評価できません。';
+
+  @override
+  String get runDetailStrategyNoGoal =>
+      '目標タイムが未設定のため、1フェーズのイーブンペース計画には比較対象がありません。';
+
+  @override
+  String runDetailStrategyStoppedShort(String distance, String planned) {
+    return '予定 $planned のうち $distance で終了したため、後半のフェーズは走っていません。';
+  }
+
+  @override
+  String get runDetailStrategyBand =>
+      '目標ペースとの差が1.5%以内のフェーズは目標どおりとみなします。停止時間は含みません。';
+
+  @override
   String get runDetailGapColumn => '勾配調整';
 
   @override

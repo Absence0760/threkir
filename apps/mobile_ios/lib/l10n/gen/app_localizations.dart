@@ -4859,6 +4859,108 @@ abstract class AppLocalizations {
   /// **'Adjusted for the terrain, you slowed over the second half.'**
   String get runDetailPacingGapPositive;
 
+  /// Run detail — heading of the pacing-strategy review section
+  ///
+  /// In en, this message translates to:
+  /// **'Pacing strategy'**
+  String get runDetailStrategyTitle;
+
+  /// Run detail pacing strategy — the goal time the runner set; time is h:mm:ss
+  ///
+  /// In en, this message translates to:
+  /// **'Goal {time}'**
+  String runDetailStrategyGoal(String time);
+
+  /// Run detail pacing strategy — table column: the phase
+  ///
+  /// In en, this message translates to:
+  /// **'Phase'**
+  String get runDetailStrategyColPhase;
+
+  /// Run detail pacing strategy — table column: the target pace for the phase
+  ///
+  /// In en, this message translates to:
+  /// **'Target'**
+  String get runDetailStrategyColTarget;
+
+  /// Run detail pacing strategy — a phase the run ended before reaching
+  ///
+  /// In en, this message translates to:
+  /// **'not reached'**
+  String get runDetailStrategyNotReached;
+
+  /// Run detail pacing strategy — a phase the run ended part-way through
+  ///
+  /// In en, this message translates to:
+  /// **'partial'**
+  String get runDetailStrategyPartial;
+
+  /// Run detail pacing strategy verdict — every phase on target
+  ///
+  /// In en, this message translates to:
+  /// **'On plan'**
+  String get runDetailStrategyVerdictOnPlan;
+
+  /// Run detail pacing strategy verdict — the first phase ran too fast and the finish lost ground
+  ///
+  /// In en, this message translates to:
+  /// **'Went out too fast'**
+  String get runDetailStrategyVerdictWentOutTooFast;
+
+  /// Run detail pacing strategy verdict — the final phase ran slower than its target
+  ///
+  /// In en, this message translates to:
+  /// **'Faded'**
+  String get runDetailStrategyVerdictFaded;
+
+  /// Run detail pacing strategy verdict — the finish ran stronger against its target than the start
+  ///
+  /// In en, this message translates to:
+  /// **'Finished stronger than planned'**
+  String get runDetailStrategyVerdictNegativeSplit;
+
+  /// Run detail pacing strategy verdict — faster than the targets overall
+  ///
+  /// In en, this message translates to:
+  /// **'Faster than plan'**
+  String get runDetailStrategyVerdictFasterThanPlan;
+
+  /// Run detail pacing strategy verdict — slower than the targets overall
+  ///
+  /// In en, this message translates to:
+  /// **'Slower than plan'**
+  String get runDetailStrategyVerdictSlowerThanPlan;
+
+  /// Run detail pacing strategy — note when no goal time was set and targets come from the run average
+  ///
+  /// In en, this message translates to:
+  /// **'No goal time was set, so each target is the plan\'s shape at your average pace.'**
+  String get runDetailStrategyAverageBasis;
+
+  /// Run detail pacing strategy — note when the run has no timed GPS track
+  ///
+  /// In en, this message translates to:
+  /// **'This run has no timed GPS track, so its phases can\'t be graded.'**
+  String get runDetailStrategyNoTrack;
+
+  /// Run detail pacing strategy — note when an even plan had no goal time
+  ///
+  /// In en, this message translates to:
+  /// **'No goal time was set, so a one-phase even plan has nothing to grade against.'**
+  String get runDetailStrategyNoGoal;
+
+  /// Run detail pacing strategy — note when the run ended well short of the planned distance; both are formatted distances such as 28.1 km
+  ///
+  /// In en, this message translates to:
+  /// **'Ended at {distance} of the planned {planned}, so the later phases weren\'t run.'**
+  String runDetailStrategyStoppedShort(String distance, String planned);
+
+  /// Run detail pacing strategy — footnote stating the on-target band and that stops are excluded
+  ///
+  /// In en, this message translates to:
+  /// **'A phase within 1.5% of its target pace counts as on target; paces exclude stops.'**
+  String get runDetailStrategyBand;
+
   /// Header of the grade-adjusted pace column in the splits list
   ///
   /// In en, this message translates to:

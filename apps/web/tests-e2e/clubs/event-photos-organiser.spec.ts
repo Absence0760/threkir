@@ -223,10 +223,6 @@ test.describe('organiser', () => {
 			await viewerContext.close();
 		}
 	});
-});
-
-test.describe('attendee after moderation', () => {
-	test.use({ storageState: USER_B.storageStatePath });
 
 	test('Restore inside the undo window cancels the hide instead of racing it', async ({ page }) => {
 		const title = `e2e organiser restore race ${Date.now()}`;
@@ -280,6 +276,10 @@ test.describe('attendee after moderation', () => {
 		);
 		expect(row).toEqual({ hidden_at: null, hidden_by: null });
 	});
+});
+
+test.describe('attendee after moderation', () => {
+	test.use({ storageState: USER_B.storageStatePath });
 
 	test('a hidden photo is gone from the gallery, and no moderation controls show', async ({ page }) => {
 		const title = `e2e hidden for others ${Date.now()}`;

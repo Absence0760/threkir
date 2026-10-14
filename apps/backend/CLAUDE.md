@@ -369,7 +369,7 @@ Two pgtap catch-alls enforce the performance-advisor posture (decisions §245): 
 
 ### A migration that re-keys populated rows ships the function, never the call
 
-`db push` applies every pending file the moment a release runs, so a data move that needs an owner's go-ahead cannot live in a migration body. `20270808000011` (decisions § 1918) is the pattern: the migration creates `private.remap_recurrence_wallclock`, revokes it from every API role, defaults it to a dry run, and widens the read side (`is_event_occurrence` accepts both instants) so nothing breaks while the rows have not moved; the operator calls it from [docs/ops/recurrence_wallclock_remap.md](../../docs/ops/recurrence_wallclock_remap.md). Its pgTAP file asserts nothing in the database calls it.
+`db push` applies every pending file the moment a release runs, so a data move that needs an owner's go-ahead cannot live in a migration body. `20270808000011` (decisions § 1918) is the pattern: the migration creates `private.remap_recurrence_wallclock`, revokes it from every API role, defaults it to a dry run, and widens the read side (`is_event_occurrence` accepts both instants on its lenient default, behind a `private.feature_flags` row the migration seeds enabled, so a missing row is strict; money paths ask strictly) so nothing breaks while the rows have not moved; its dry run records nothing and so refuses to be batched; the operator calls it from [docs/ops/recurrence_wallclock_remap.md](../../docs/ops/recurrence_wallclock_remap.md). Its pgTAP file asserts nothing in the database calls it.
 
 ### CI green ≠ migration applied
 

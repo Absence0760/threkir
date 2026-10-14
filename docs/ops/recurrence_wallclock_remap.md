@@ -18,10 +18,20 @@ meant, so they keep the looser server rule (bounds plus a whole-day offset).
 
 - `private.is_event_occurrence` accepts the wall-clock instant **and**, while
   the transition window is open, the UTC-clock instant every pre-§ 1918 build
-  mints. Old app builds keep writing photos and orders.
-- The window is the `recurrence_wallclock_strict` row in
-  `private.feature_flags`. **Absent = open.** Nothing inserts it but the close
-  function below.
+  mints. Old app builds keep writing photos and RSVPs.
+- **Money paths are strict from the push.** `event_occurrence_exists` (what
+  `events-checkout` asks) and the `event_orders_validate_occurrence` trigger
+  call it with `p_allow_legacy => false` (migration `20270808000041`, decisions
+  § 1921), so no new order is opened on an instant only the old clock
+  produces: an old build buying a session of a series whose two clocks
+  disagree gets `404 instance_not_found` until it updates. Orders already on
+  old instants are moved by the remap; the trigger accepts the move because
+  the target is a wall-clock instant.
+- The window is the `recurrence_utc_clock_legacy` row in
+  `private.feature_flags`, which the migration seeds **enabled**. Enabled =
+  open; **absent or disabled = strict**, the rule every row in that table
+  follows, so a lost row can only narrow what is accepted. Nothing writes it
+  afterwards but the close function below.
 - `private.remap_recurrence_wallclock(...)` exists and has never been called.
   No API role can execute it; connect as `postgres`.
 
@@ -35,8 +45,13 @@ meant, so they keep the looser server rule (bounds plus a whole-day offset).
    It prints, per table, how many keyed rows survive unchanged and how many
    would move (future vs past, wrong weekday vs one-hour DST drift), and lists
    the live series that change so organisers can be told first.
-3. **Dry run.** Every move is made and rolled back inside the function, so the
-   counts are real: `psql "$PROD_DB_URL" -c "select * from private.remap_recurrence_wallclock(100000, false)"`.
+3. **Dry run, in one shot.** Every move is made and rolled back inside the
+   function, so the counts are real — and nothing is recorded, so a dry run
+   cannot be batched: a loop of them would select the same series forever. The
+   function enforces that: a dry run whose `p_max_events` is below the number
+   of series it would select is refused (`22023`, naming the count to pass).
+   Pass a ceiling at least that large, or narrow with `p_event_ids`:
+   `psql "$PROD_DB_URL" -c "select * from private.remap_recurrence_wallclock(100000, false)"`.
    Read `shift` (the pairing offset chosen per series), `moved`, `conflicts`
    (rows whose target the same identity already holds — they stay put),
    `unmapped` (rows with no counterpart, e.g. the last occurrence of a
@@ -44,7 +59,8 @@ meant, so they keep the looser server rule (bounds plus a whole-day offset).
    neither clock produces) and `refused` (trigger messages). Stop here unless
    the owner has approved.
 4. **Apply, in batches.** Each call is one transaction and remaps up to N
-   series; loop until a call returns no rows. Small batches keep row locks
+   series and records them, so the next call selects the rest; loop until a
+   call returns no rows. Only an apply (`p_apply => true`) can be looped. Small batches keep row locks
    short on `race_pings` and `notifications`:
    `until [ "$(psql "$PROD_DB_URL" -Atc "select count(*) from private.remap_recurrence_wallclock(10, true)")" = 0 ]; do sleep 1; done`.
    A pilot can pass `p_event_ids => array['<uuid>']::uuid[]` to remap only
@@ -54,19 +70,21 @@ meant, so they keep the looser server rule (bounds plus a whole-day offset).
 6. **Sweep during the window.** Old mobile builds keep writing UTC-clock
    instants until they are updated. A sweep moves only rows still on a
    UTC-clock-only instant, over series already remapped and not swept since the
-   cutoff; loop it with one fixed cutoff:
+   cutoff; loop it with one fixed cutoff (a dry-run sweep is single-shot too):
    `T=$(psql "$PROD_DB_URL" -Atc "select clock_timestamp()") && until [ "$(psql "$PROD_DB_URL" -Atc "select count(*) from private.remap_recurrence_wallclock(10, true, '$T')")" = 0 ]; do sleep 1; done`.
 7. **Close the window** once the minimum supported mobile build carries § 1918
    (or a fixed 30 days after the mobile release, whichever is later): run a
-   last sweep, then `psql "$PROD_DB_URL" -c "select private.close_recurrence_wallclock_transition()"`.
+   last sweep, then `psql "$PROD_DB_URL" -c "select private.close_recurrence_wallclock_transition()"`,
+   which disables `recurrence_utc_clock_legacy`.
    It refuses while any keyed row still sits on a UTC-clock-only instant and
    says how many; `select * from private.recurrence_wallclock_old_only_rows()`
    lists them. Resolve each (usually a conflict: the member already holds the
    target row, so the old one can be deleted) or pass `p_force => true` to
    close anyway and leave them orphaned.
 8. **Retire the branch.** After the close has held through a release, a later
-   migration drops the UTC-clock acceptance from `is_event_occurrence`, the
-   remap functions and `private.recurrence_wallclock_remaps`.
+   migration drops the UTC-clock acceptance (and `p_allow_legacy`) from
+   `is_event_occurrence`, the `recurrence_utc_clock_legacy` row, the remap
+   functions and `private.recurrence_wallclock_remaps`.
 
 ## How a row's new instant is chosen
 

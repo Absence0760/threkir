@@ -102,7 +102,7 @@ literal `1` in a `one` branch — 11 mobile strings already do (e.g.
 | activity discipline (yoga, pilates…) | **Modalidade** | `eventEditor.discipline`, `session.discipline` |
 | yoga | **ioga** (lower case; "Ioga vinyasa" at a sentence start) | never "yoga" |
 | Pro & support | **Pro e apoio** | *support* here is supporting the app ("apoiar o app"); "suporte" is tech support |
-| arm / armed (race control) | **Preparar** / **preparada** — "Preparar corrida", "Corrida preparada", "Prova preparada", the watch's "PROVA PREPARADA", the spectator status "Preparada" | settled 2026-10-14 (decisions R9WEAR-2); never "Armar" / "armado" or "Prova pronta" |
+| arm / armed (race control) | **Preparar** / **preparada** — "Preparar corrida", "Corrida preparada", "Prova preparada", the watch's "PROVA PREPARADA", the spectator status "Preparada" | settled 2026-10-14 (decisions 1890); never "Armar" / "armado" or "Prova pronta" |
 | End race (the host's control) | **Encerrar corrida** / "Encerrar a corrida?" | settled 2026-10-14; *Finalizar* is the runner's own **Finalizar prova** (Finish race), so the two never share a verb |
 | gun time / chip time | **Tempo bruto** / **Tempo líquido**; the short split "bruto {gun} · líquido {chip}" | settled 2026-10-14; never "Tempo oficial" for gun time — *oficial* stays for an imported official result |
 | Not back by… (return-time alert) | **Sem retorno até…**; the alert is the **alerta de horário de retorno** | settled 2026-10-14; never "Sem voltar até…", "aviso de horário de volta" |

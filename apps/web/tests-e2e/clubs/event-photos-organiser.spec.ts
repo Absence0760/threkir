@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 
+import { readCount, readRow, readRows } from '../fixtures/db-read';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { deleteEvent, deleteRun, insertEvent, insertRun } from '../fixtures/simulate';
 import { USER_A, USER_B, USER_C_PRO } from '../fixtures/users';
@@ -67,11 +68,14 @@ test.describe('organiser', () => {
 		await expect
 			.poll(
 				async () => {
-					const { data } = await getAdminClient()
-						.from('run_photos')
-						.select('run_id, owner_id, event_instance_start')
-						.eq('event_id', eventId);
-					return (data ?? []).map((r) => [r.run_id, r.owner_id]);
+					const rows = await readRows(
+						'run_photos by event_id',
+						getAdminClient()
+							.from('run_photos')
+							.select('run_id, owner_id, event_instance_start')
+							.eq('event_id', eventId)
+					);
+					return rows.map((r) => [r.run_id, r.owner_id]);
 				},
 				{ timeout: 15_000 }
 			)
@@ -124,22 +128,21 @@ test.describe('organiser', () => {
 		await expect
 			.poll(
 				async () => {
-					const { data } = await getAdminClient()
-						.from('run_photos')
-						.select('hidden_by')
-						.eq('id', photo!.id)
-						.single();
-					return data?.hidden_by ?? null;
+					const row = await readRow(
+						'run_photos.hidden_by by id',
+						getAdminClient().from('run_photos').select('hidden_by').eq('id', photo!.id).single()
+					);
+					return row.hidden_by;
 				},
 				{ timeout: 20_000 }
 			)
 			.toBe(USER_A.id);
 
 		// Not an organiser delete: the attendee's row survives.
-		const { count } = await getAdminClient()
-			.from('run_photos')
-			.select('id', { count: 'exact', head: true })
-			.eq('id', photo!.id);
+		const count = await readCount(
+			'run_photos by id',
+			getAdminClient().from('run_photos').select('id', { count: 'exact', head: true }).eq('id', photo!.id)
+		);
 		expect(count).toBe(1);
 	});
 
@@ -174,12 +177,10 @@ test.describe('organiser', () => {
 			.single();
 		expect(error).toBeNull();
 		const moderation = async () => {
-			const { data } = await admin
-				.from('run_photos')
-				.select('hidden_at, hidden_by')
-				.eq('id', photo!.id)
-				.single();
-			return data;
+			return readRow(
+				'run_photos moderation by id',
+				admin.from('run_photos').select('hidden_at, hidden_by').eq('id', photo!.id).single()
+			);
 		};
 
 		await page.goto(`/clubs/richmond-run-club/events/${eventId}`);
@@ -189,7 +190,7 @@ test.describe('organiser', () => {
 		await expect(tile).toHaveCount(1, { timeout: 10_000 });
 		await tile.getByRole('button', { name: /^Hide photo by/ }).click();
 		await expect
-			.poll(async () => (await moderation())?.hidden_by ?? null, { timeout: 20_000 })
+			.poll(async () => (await moderation()).hidden_by, { timeout: 20_000 })
 			.toBe(USER_A.id);
 
 		// From the committed state, not the optimistic one: the hidden photo the
@@ -273,12 +274,11 @@ test.describe('attendee after moderation', () => {
 		await page.reload();
 		await expect(tile).toHaveCount(1, { timeout: 10_000 });
 		await expect(tile.getByText('Hidden')).toHaveCount(0);
-		const { data } = await admin
-			.from('run_photos')
-			.select('hidden_at, hidden_by')
-			.eq('id', photo!.id)
-			.single();
-		expect(data).toEqual({ hidden_at: null, hidden_by: null });
+		const row = await readRow(
+			'run_photos moderation by id',
+			admin.from('run_photos').select('hidden_at, hidden_by').eq('id', photo!.id).single()
+		);
+		expect(row).toEqual({ hidden_at: null, hidden_by: null });
 	});
 
 	test('a hidden photo is gone from the gallery, and no moderation controls show', async ({ page }) => {
@@ -290,7 +290,7 @@ test.describe('attendee after moderation', () => {
 			starts_at: EVENT_START
 		});
 		const admin = getAdminClient();
-		const { data: hostPhoto } = await admin
+		const { data: hostPhoto, error: insertError } = await admin
 			.from('run_photos')
 			.insert({
 				owner_id: USER_A.id,
@@ -300,10 +300,12 @@ test.describe('attendee after moderation', () => {
 			})
 			.select('id')
 			.single();
-		await admin
+		expect(insertError).toBeNull();
+		const { error: hideError } = await admin
 			.from('run_photos')
 			.update({ hidden_at: new Date().toISOString(), hidden_by: USER_A.id })
 			.eq('id', hostPhoto!.id);
+		expect(hideError).toBeNull();
 
 		await page.goto(`/clubs/richmond-run-club/events/${eventId}`);
 		await expect(page.getByRole('heading', { name: title })).toBeVisible({ timeout: 10_000 });

@@ -68,6 +68,26 @@ test.describe('parkrun barcode card', () => {
 		await expect(page.getByTestId('parkrun-barcode-overlay')).toHaveCount(0);
 	});
 
+	test('Enter on the focused close button dismisses the view and returns focus to its opener', async ({
+		page,
+	}) => {
+		await withParkrunNumber(page, 'A123456');
+		await page.goto('/settings/integrations');
+
+		const open = page.getByTestId('parkrun-barcode-fullscreen');
+		await expect(open).toBeVisible({ timeout: 10_000 });
+		await open.focus();
+		await page.keyboard.press('Enter');
+
+		const close = page.getByTestId('parkrun-barcode-close');
+		await expect(close).toBeFocused();
+		await page.keyboard.press('Enter');
+		await expect(page.getByTestId('parkrun-barcode-overlay')).toHaveCount(0);
+		// Escape and the button share one close path; focus must land back on
+		// the opener either way, not on the document body.
+		await expect(open).toBeFocused();
+	});
+
 	test('with no number saved it offers to add one, and draws nothing', async ({ page }) => {
 		await withParkrunNumber(page, null);
 		await page.goto('/settings/integrations');

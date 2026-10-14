@@ -72,6 +72,17 @@ export function dbError(e: unknown): Error {
 	return err;
 }
 
+/// The message of an `Error` the app raised on purpose, or null for a database
+/// failure or a value that is not an `Error`. For a surface whose fallback is
+/// its own localised copy (`appErrorMessage(e) ?? m('x.saveFailed')`): before
+/// the data layer threw `DbError`, a failed query arrived as a plain object and
+/// fell through `e instanceof Error ? e.message : m(…)` to that copy, so this
+/// keeps "invalid invite token (P0001)" from replacing "This invite link is
+/// invalid or expired". Use `thrownMessage` where the detail is the point.
+export function appErrorMessage(e: unknown): string | null {
+	return e instanceof Error && !(e instanceof DbError) ? e.message : null;
+}
+
 /// The user-facing detail of a thrown value. The data layer throws `DbError`
 /// (above), but a third-party or legacy throw can still be a plain object, and
 /// `e instanceof Error ? e.message : String(e)` renders one as "[object

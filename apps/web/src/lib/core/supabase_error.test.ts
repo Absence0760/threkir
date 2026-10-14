@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { inspect } from 'node:util';
 
-import { DbError, dbError, supabaseErrorFields, isDuplicateKeyError, thrownMessage } from './supabase_error';
+import { appErrorMessage, DbError, dbError, supabaseErrorFields, isDuplicateKeyError, thrownMessage } from './supabase_error';
 import { stripComments } from './strip_comments';
 
 test('supabaseErrorFields keeps only code + message, drops details/hint', () => {
@@ -187,4 +187,18 @@ test('thrownMessage formats a DbError exactly as it formatted the raw object', (
 	assert.equal(thrownMessage(dbError(PII_ERROR)), thrownMessage(PII_ERROR));
 	assert.equal(thrownMessage(dbError({ message: 'timeout', code: '' })), 'timeout');
 	assert.equal(thrownMessage(dbError({ foo: 1 })), '');
+});
+
+test('appErrorMessage reads an app-raised Error and leaves a database failure to the surface copy', () => {
+	// Reason: `e instanceof Error ? e.message : m('copy')` used to send a failed
+	// query (a plain object) to the localised copy. A DbError is an Error, so
+	// that idiom would now print "invalid invite token (P0001)" where the page
+	// said "This invite link is invalid or expired". The helper keeps the old
+	// split: the app's own machine codes still read through, a DbError does not.
+	assert.equal(appErrorMessage(new Error('event_full')), 'event_full');
+	assert.equal(appErrorMessage(Object.assign(new Error('Edge Function returned a non-2xx status code'), { name: 'FunctionsHttpError' })), 'Edge Function returned a non-2xx status code');
+	assert.equal(appErrorMessage(dbError({ code: 'P0001', message: 'invalid invite token' })), null);
+	assert.equal(appErrorMessage({ message: 'invalid invite token', code: 'P0001' }), null);
+	assert.equal(appErrorMessage('x'), null);
+	assert.equal(appErrorMessage(undefined), null);
 });

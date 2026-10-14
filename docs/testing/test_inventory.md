@@ -529,7 +529,11 @@ The seven ARB catalogues against the checked-in `lib/l10n/gen/` ([decisions § 8
 
 The Apple Watch hand-off contract ([decisions § 1801](../architecture/decisions.md)). `WatchIngestBridge.swift` lets go of a run when the channel answers `true`, so `WatchIngest.handle` must say `true` only once the run is on disk, and it must say it in every state: signed out, no Supabase, signed in and online (queued first, then uploaded and deleted), signed in with the signed-in user as the stamp, offline (stays queued, not quarantined), and a `TrackTooLargeException` (quarantined, never re-sent). `false` is pinned for the three disk-failure shapes: signed out, signed in with a failed direct save, and the one rescue where the direct save lands and answers `true`. Also: `enqueue` reports whether the write landed, a NaN payload lands (encoded as null) and is quarantined by the drain rather than failing every write, overlapping `drain` calls join one pass and upload each run once, and `SyncService` drains the queue on a connectivity trigger when signed in and leaves it alone when not.
 
-### `apps/mobile_ios/test/` — 618 files, byte-for-byte
+### `apps/mobile_android/test/ultrasignup_link_test.dart` — 10 tests
+
+Settings → Integrations' UltraSignup finder ([decisions § 1841](../architecture/decisions.md), § R9ULTRA-1): the tile names the linked person or offers the finder; Find waits for both halves of the name; a search lists every same-named person with age, result count and recent races; a pick links UltraSignup's spelling and the tile follows; no matches, a failed lookup and a failed link each say so distinctly; unlink is deferred behind the undo bar with no confirm, and Undo restores the same person without deleting anything.
+
+### `apps/mobile_ios/test/` — 619 files, byte-for-byte
 
 After the April 2026 mobile-codebase unification, `apps/mobile_ios/test/` is kept identical to `apps/mobile_android/test/` via `diff -rq`. Every test file documented above runs on the iOS target too **locally** — `melos run test` has no scope filter — but **not in CI**: the `test-packages` job scopes `melos exec` to `run_recorder`, `mobile_android`, `api_client`, `gpx_parser`, `ui_kit` and `core_models`, and `mobile_ios` is not among them. That is not a gap for byte-identical Dart, but it is why a test gated on an `ios/` file being present asserts nothing on any CI run — two such groups existed and were removed in favour of `scripts/check_ios_native_declarations.mjs` (decisions.md § 742). Per-target counts: `flutter test` compiles separately, so each test file is executed twice when you run both apps locally. Don't add iOS-specific test files — every test belongs in both apps. The architecture-guard tests under `apps/mobile_android/test/architecture_guards_test.dart` read `lib/screens/run_screen.dart` from the working directory, so they pin the same invariants on both targets.
 
@@ -540,6 +544,10 @@ The first on-device suite ([decisions § 1820](../architecture/decisions.md)). I
 ### `apps/mobile_android/integration_test/home_navigation_test.dart` — 1 test
 
 The same harness with `onboarded` set. It waits for the Home shell and for `DashboardScreen` to be the hit-testable page, then taps You, the hub and Home on the bottom nav, waiting each time for `YouScreen`, `FitnessHubScreen` and `DashboardScreen` to become hit-testable. The hub caption is read off the bar, because it is "Training" rather than "Fitness" while Gym and Nutrition are hidden. It leaves out Run, which asks for location. A debug run may be signed in to the seed account, through `.env.development`'s auto-login, or signed out; nothing asserted depends on which. `app_harness.dart` (the launcher, the real-clock `pumpUntilFound`, `l10nOf`) and `driver.dart` (the `flutter drive --profile` entry) sit beside the two suites and declare no tests.
+
+### `packages/api_client/test/ultrasignup_person_test.dart` — 18 tests
+
+The UltraSignup person link's Dart half (decisions § 1841): the name-ready check (code points, the 60 cap), the lookup reader (drops a candidate that could never be stored; an unknown age or count is null / zero), the stored-row reader, and the four wire calls at the http boundary — signed out answers null or refuses before any request, the read is scoped to the caller and provider, linking upserts on `user_id,provider`, unlinking deletes only the caller's row, and the lookup sends the trimmed name in lookup mode and surfaces a refusal's status.
 
 ### `packages/api_client/test/api_client_di_test.dart` — 4 tests
 

@@ -92,7 +92,7 @@
 
 {#if fullScreen && number}
 	<div
-		class="fullscreen"
+		class="scan-view"
 		role="dialog"
 		aria-modal="true"
 		aria-label={m('parkrunBarcode.title')}
@@ -155,7 +155,7 @@
 	}
 	/* Fixed white whatever the theme — the point of the view is a code a
 	   scanner can read, so the whole viewport is the light the code needs. */
-	.fullscreen {
+	.scan-view {
 		position: fixed;
 		inset: 0;
 		z-index: 1000;

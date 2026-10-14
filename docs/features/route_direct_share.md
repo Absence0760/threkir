@@ -25,7 +25,7 @@ Built exactly as specced, no migration, no new RLS, no new column — it is a no
 
 **Abuse posture: the rail's, unchanged.** v1 adds no new insert path, so it inherits the `direct_messages` INSERT policy (no block either way + a follow edge) plus the rail's own send throttle. That throttle arrived after this feature and is exactly the shape the feature declined to build locally: a `before insert` trigger over the existing `check_rate_limit` (migration `20270608_001`, [decisions § 737](../architecture/decisions.md)) debiting 30/minute and 250/hour per sender, so `/messages` and this dialog are covered by one mechanism rather than two. A refused send surfaces through `sendDm`'s shared `rateLimitErrorMessage` branch, beside the 42501 one — localized per reader since [decisions § 744](../architecture/decisions.md).
 
-Web-only. **Not a parity pair** — `dm_recipients.ts` has no Dart twin and is owed none while mobile has no DM surface; see Mobile below.
+`dm_recipients.ts` is web-only — mobile has the inbox but no route-send picker yet; see Mobile below.
 
 Pinned by `tests-e2e/routes/send-to-follower.spec.ts` (5 specs: the full send → recipient-opens-it journey across two browser contexts, the one-way-follow candidate, the private-route confirm in both directions, the failed-load retry, the refused send).
 
@@ -45,11 +45,11 @@ Pinned by `tests-e2e/messages/dm-route-attachment.spec.ts` (3 specs: the send st
 
 **Not taken, and measured rather than forgotten.** The inbox preview line still shows the URL — `dm_threads()` returns `last_body` and nothing else, so changing it means changing the RPC's return type, and the URL being visible there is consistent with what the send discloses. And the public flip stays on the send path even though a **club** route could now be sent to a club-mate without publishing anything: deciding that needs `is_route_visible_to(route, recipient)` per candidate at picker time, which no client-reachable RPC offers, and a silently unrenderable card is worse for the sender than a route they chose to publish.
 
-## Mobile — still gated, re-verified 2026-08-28
+## Mobile — the inbox shipped, the send has not
 
-Mirror **after** web ships, per §24 — the DM surface itself isn't on mobile yet, so the mobile leg is gated on a mobile `/messages` twin existing first. Re-checked when v2 landed: **no mobile DM surface exists**. Nothing under `apps/mobile_android/lib/` or `packages/` references `direct_messages`, `sendDm` or `DirectMessage` — the only two filename matches are `ble_treadmill.dart` and `rate_limit_message.dart`, neither a DM surface — and `parity.md`'s "Direct messages (1:1)" row is `✗` on both device columns. `social/dm_attachment.ts` is therefore **not** a parity pair and is owed no Dart twin. So the gate holds and this feature is web-only for now — do **not** build a route-detail send button on mobile ahead of the inbox it would deliver into.
+The gate this section used to hold closed on 2026-10-14 ([decisions § 1916](../architecture/decisions.md)): the phone has a direct-message inbox and conversation (`messages_screen.dart`, `message_thread_screen.dart`), and a received route attachment draws as the same card web draws, through `widgets/dm_route_attachment.dart`, which resolves via the owner-aware `ApiClient.fetchRouteById` — so a non-owner recipient's thumbnail is privacy-zone-clipped server-side exactly as on web. `social/dm_attachment.ts` is therefore now a parity pair with `apps/mobile_android/lib/dm_attachment.dart`.
 
-Until then, mobile's "send to a follower" is the shipped **Share link → OS share sheet** (pick the messaging app), which already reaches any follower through WhatsApp / SMS / etc.
+What mobile does **not** have yet is the sending half: route detail carries no Send-to-a-follower action, so mobile's targeted send is still the **Share link → OS share sheet**. Building it is now a route-detail button plus a DM-eligible picker (the Dart twin of `social/dm_recipients.ts`), with nothing left to gate it.
 
 ## Privacy — a targeted send widens nothing the link share didn't
 
@@ -62,7 +62,7 @@ A route polyline can start at someone's front door, so "who can now see this lin
 
 ## Private send
 
-Built with audience sharing ([sharing.md](sharing.md), decisions § 1874), and only while its server gate is on. When the owner sends a **non-public** route to a follower, the send no longer goes through the public flip: `SendRouteDialog` first writes a `route_shares` grant for that one recipient, then sends the in-app `/routes/{id}` link, which opens only for the people the route is shared with. The dialog says so ("It stays private"), a refused grant stops the send, and the owner can revoke it from **Who can see this**. With the gate off, the public-flip path above is unchanged. The phone has no DM screen, so on mobile the same narrowing is reached through Specific people in the audience sheet.
+Built with audience sharing ([sharing.md](sharing.md), decisions § 1874), and only while its server gate is on. When the owner sends a **non-public** route to a follower, the send no longer goes through the public flip: `SendRouteDialog` first writes a `route_shares` grant for that one recipient, then sends the in-app `/routes/{id}` link, which opens only for the people the route is shared with. The dialog says so ("It stays private"), a refused grant stops the send, and the owner can revoke it from **Who can see this**. With the gate off, the public-flip path above is unchanged. The phone has no route-send action yet, so on mobile the same narrowing is reached through Specific people in the audience sheet.
 
 ## Non-goals
 

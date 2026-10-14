@@ -10,6 +10,7 @@ import {
 	type RecomputeCandidate,
 } from './distance_recompute';
 import type { RunSource } from '../types';
+import { dbError } from '../core/supabase_error';
 
 const OWNER = '00000000-0000-0000-0000-000000000001';
 const OTHER = '00000000-0000-0000-0000-000000000002';
@@ -139,6 +140,10 @@ test('classifyRecomputeError maps the RPC refusals by SQLSTATE', () => {
 	assert.equal(classifyRecomputeError({ code: '500', message: 'boom' }), 'other');
 	assert.equal(classifyRecomputeError(new Error('network')), 'other');
 	assert.equal(classifyRecomputeError(null), 'other');
+	// recomputeRunDistance throws the result through dbError, so the page's
+	// catch sees a DbError; the SQLSTATE must survive the conversion.
+	assert.equal(classifyRecomputeError(dbError({ code: '42501', message: 'not authorized' })), 'not_authorized');
+	assert.equal(classifyRecomputeError(dbError({ code: '22000', message: 'no track' })), 'no_track');
 });
 
 test('mapMatchedDistanceM returns only a usable positive number', () => {

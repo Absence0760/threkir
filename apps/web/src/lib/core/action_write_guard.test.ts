@@ -28,13 +28,13 @@ function fnBody(source: string, decl: string): string {
 test('linkRunToRoute error-checks the runs.route_id update (#236)', () => {
 	const body = fnBody(data, 'export async function linkRunToRoute(');
 	assert.match(body, /const \{ error \}/, 'must destructure { error } from the update');
-	assert.match(body, /if \(error\) throw error;/, 'must throw on a resolved error');
+	assert.match(body, /if \(error\) throw dbError\(error\);/, 'must throw on a resolved error');
 });
 
 test('replaceSessionPlanChildren error-checks both child deletes (#236)', () => {
 	const body = fnBody(data, 'async function replaceSessionPlanChildren(');
-	assert.match(body, /itemsError\) throw itemsError/, 'items delete must throw on error');
-	assert.match(body, /blocksError\) throw blocksError/, 'blocks delete must throw on error');
+	assert.match(body, /itemsError\) throw dbError\(itemsError\)/, 'items delete must throw on error');
+	assert.match(body, /blocksError\) throw dbError\(blocksError\)/, 'blocks delete must throw on error');
 	assert.doesNotMatch(
 		body,
 		/^\s*await supabase\.from\('session_plan_(items|blocks)'\)\.delete\(\)/m,
@@ -51,5 +51,5 @@ test('coach refundCapSlot surfaces a resolved rpc error (#236)', () => {
 		/const \{ error \} = await supabase\.rpc\('decrement_coach_usage'/,
 		'the refund rpc must destructure { error }',
 	);
-	assert.match(body, /if \(error\) throw error;/, 'a resolved error must reach the catch/log');
+	assert.match(body, /if \(error\) throw dbError\(error\);/, 'a resolved error must reach the catch/log');
 });

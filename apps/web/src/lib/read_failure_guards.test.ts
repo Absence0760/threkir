@@ -29,12 +29,12 @@ test('fetchRouteById throws on a failed read instead of returning null', () => {
 	assert.ok(fn, 'fetchRouteById body missing — rename?');
 	assert.match(
 		fn![0],
-		/if \(ownerRead\.error\) throw ownerRead\.error;/,
+		/if \(ownerRead\.error\) throw dbError\(ownerRead\.error\);/,
 		'the owner read must surface its error rather than falling through to the public branch',
 	);
 	assert.match(
 		fn![0],
-		/if \(read\.error\) throw read\.error;/,
+		/if \(read\.error\) throw dbError\(read\.error\);/,
 		'the public_routes read must surface its error, not collapse it into a null row',
 	);
 });
@@ -46,7 +46,7 @@ test('fetchFundraiserById throws on a failed read instead of returning null', ()
 	const source = read('src/lib/core/data.ts');
 	const fn = source.match(/export async function fetchFundraiserById[\s\S]*?\n}/);
 	assert.ok(fn, 'fetchFundraiserById body missing — rename?');
-	assert.match(fn![0], /if \(error\) throw error;/, 'a failed read must throw');
+	assert.match(fn![0], /if \(error\) throw dbError\(error\);/, 'a failed read must throw');
 	assert.doesNotMatch(
 		fn![0],
 		/if \(error \|\| !data\) return null;/,
@@ -131,7 +131,7 @@ test('the fundraiser totals + feed reads throw instead of reporting an empty cam
 	for (const name of ['fetchFundraiserTotals', 'fetchFundraiserFeed']) {
 		const fn = source.match(new RegExp(`export async function ${name}[\\s\\S]*?\\n}`));
 		assert.ok(fn, `${name} body missing — rename?`);
-		assert.match(fn![0], /if \(error\) throw error;/, `${name} must surface a failed read`);
+		assert.match(fn![0], /if \(error\) throw dbError\(error\);/, `${name} must surface a failed read`);
 		assert.doesNotMatch(
 			fn![0],
 			/if \(error \|\|/,
@@ -150,7 +150,7 @@ test('fetchChallengeById fails the whole read when the participants read fails',
 	assert.ok(fn, 'fetchChallengeById body missing — rename?');
 	assert.match(
 		fn![0],
-		/if \(partsError\) throw partsError;/,
+		/if \(partsError\) throw dbError\(partsError\);/,
 		'the participants read must surface its error',
 	);
 	assert.doesNotMatch(
@@ -394,7 +394,7 @@ test('fetchRouteMarkers throws on a failed read, and asks for the markers with a
 	const source = read('src/lib/core/data.ts');
 	const fn = source.match(/export async function fetchRouteMarkers[\s\S]*?\n}/);
 	assert.ok(fn, 'fetchRouteMarkers body missing — rename?');
-	assert.match(fn![0], /if \(error\) throw error;/, 'a failed read must throw');
+	assert.match(fn![0], /if \(error\) throw dbError\(error\);/, 'a failed read must throw');
 	assert.doesNotMatch(fn![0], /return \[\];/, 'a failure must not be reported as no markers');
 	assert.match(
 		fn![0],

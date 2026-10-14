@@ -168,9 +168,11 @@ function halfPace(slice: TrackPoint[]): HalfPace | null {
  * cumulative horizontal distances, inserting an interpolated point at each
  * cut that both adjacent slices share — so no metre and no second of the run
  * falls between two slices. Always returns exactly that many slices; a
- * boundary past the end of the track yields an empty trailing slice.
+ * boundary past the end of the track yields an empty trailing slice. Also the
+ * phase cutter `gradePhases` in `race_phases.ts` uses, so a race phase and a
+ * pacing half are cut by the same rule.
  */
-function sliceTrackAtDistances(track: TrackPoint[], boundariesM: number[]): TrackPoint[][] {
+export function sliceTrackAtDistances(track: TrackPoint[], boundariesM: number[]): TrackPoint[][] {
 	const slices: TrackPoint[][] = [];
 	if (track.length < 2) {
 		slices.push(track.slice());

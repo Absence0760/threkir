@@ -90,7 +90,7 @@ PacingAnalysis? analysePacing(List<Waypoint>? track) {
   }
   if (total <= 0) return null;
 
-  final slices = _sliceTrackAtDistances(track, [total / 2]);
+  final slices = sliceTrackAtDistances(track, [total / 2]);
   final firstSlice = slices[0];
   final secondSlice = slices[1];
   final first = _halfPace(firstSlice);
@@ -141,7 +141,7 @@ List<int?> gradeAdjustedSplitPaces(
     cum += d;
     boundaries.add(cum);
   }
-  final slices = _sliceTrackAtDistances(track, boundaries);
+  final slices = sliceTrackAtDistances(track, boundaries);
   return List<int?>.generate(
       splitDistancesM.length, (i) => gradeAdjustedPaceSecPerKm(slices[i]));
 }
@@ -184,8 +184,10 @@ HalfPace? _halfPace(List<Waypoint> slice) {
 /// cumulative horizontal distances, inserting an interpolated point at each
 /// cut that both adjacent slices share — so no metre and no second of the run
 /// falls between two slices. Always returns exactly that many slices; a
-/// boundary past the end of the track yields an empty trailing slice.
-List<List<Waypoint>> _sliceTrackAtDistances(
+/// boundary past the end of the track yields an empty trailing slice. Also the
+/// phase cutter [gradePhases] in `race_phases.dart` uses, so a race phase and
+/// a pacing half are cut by the same rule.
+List<List<Waypoint>> sliceTrackAtDistances(
     List<Waypoint> track, List<double> boundariesM) {
   final slices = <List<Waypoint>>[];
   if (track.length < 2) {

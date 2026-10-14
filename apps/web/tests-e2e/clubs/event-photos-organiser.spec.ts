@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { deleteEvent, deleteRun, insertEvent, insertRun } from '../fixtures/simulate';
-import { USER_A, USER_B } from '../fixtures/users';
+import { USER_A, USER_B, USER_C_PRO } from '../fixtures/users';
 
 /**
  * /clubs/[slug]/events/[id] — organiser photos and moderation (#1150).
@@ -141,6 +141,86 @@ test.describe('organiser', () => {
 			.select('id', { count: 'exact', head: true })
 			.eq('id', photo!.id);
 		expect(count).toBe(1);
+	});
+
+	test('restores a hidden photo; it is back in the gallery for a non-organiser', async ({
+		page,
+		browser
+	}) => {
+		const title = `e2e organiser restore ${Date.now()}`;
+		eventId = await insertEvent({
+			club_id: RICHMOND_RUN_CLUB_ID,
+			author_id: USER_A.id,
+			title,
+			starts_at: EVENT_START
+		});
+		attendeeRunId = await insertRun({
+			user_id: USER_B.id,
+			started_at: '2025-11-11T08:02:00.000Z',
+			duration_s: 1800,
+			distance_m: 5000
+		});
+		const admin = getAdminClient();
+		const { data: photo, error } = await admin
+			.from('run_photos')
+			.insert({
+				run_id: attendeeRunId,
+				owner_id: USER_B.id,
+				storage_path: `${USER_B.id}/e2e-restore-${Date.now()}.png`,
+				event_id: eventId,
+				event_instance_start: EVENT_START
+			})
+			.select('id')
+			.single();
+		expect(error).toBeNull();
+		const moderation = async () => {
+			const { data } = await admin
+				.from('run_photos')
+				.select('hidden_at, hidden_by')
+				.eq('id', photo!.id)
+				.single();
+			return data;
+		};
+
+		await page.goto(`/clubs/richmond-run-club/events/${eventId}`);
+		await expect(page.getByRole('heading', { name: title })).toBeVisible({ timeout: 10_000 });
+
+		const tile = page.getByTestId('event-photo-tile');
+		await expect(tile).toHaveCount(1, { timeout: 10_000 });
+		await tile.getByRole('button', { name: /^Hide photo by/ }).click();
+		await expect
+			.poll(async () => (await moderation())?.hidden_by ?? null, { timeout: 20_000 })
+			.toBe(USER_A.id);
+
+		// From the committed state, not the optimistic one: the hidden photo the
+		// page reloads is the one the server answers.
+		await page.reload();
+		await expect(tile.getByText('Hidden')).toBeVisible({ timeout: 10_000 });
+		await tile.getByRole('button', { name: 'Restore' }).click();
+
+		await expect(tile.getByText('Hidden')).toHaveCount(0);
+		await expect(tile.getByRole('button', { name: /^Hide photo by/ })).toBeVisible();
+		await expect(page.getByText('Photos (1)')).toBeVisible();
+		await expect
+			.poll(moderation, { timeout: 15_000 })
+			.toEqual({ hidden_at: null, hidden_by: null });
+
+		// USER_C_PRO neither owns the photo nor stewards the event, so the RLS
+		// hidden filter is what decides whether they see it.
+		const viewerContext = await browser.newContext({ storageState: USER_C_PRO.storageStatePath });
+		try {
+			const viewer = await viewerContext.newPage();
+			await viewer.goto(`/clubs/richmond-run-club/events/${eventId}`);
+			await expect(viewer.getByRole('heading', { name: title })).toBeVisible({
+				timeout: 10_000
+			});
+			const section = viewer.getByTestId('event-photos');
+			await expect(section.getByText('Photos (1)')).toBeVisible({ timeout: 10_000 });
+			await expect(viewer.getByTestId('event-photo-tile')).toHaveCount(1);
+			await expect(section.getByRole('button', { name: /^Hide photo by/ })).toHaveCount(0);
+		} finally {
+			await viewerContext.close();
+		}
 	});
 });
 

@@ -32,6 +32,11 @@ import { challengesToRecomputeForRun } from '../social/challenge_progress';
 import { mergeMyProgress } from '../social/challenge_list';
 import { selectEffectivePricing } from '../social/event_instance';
 import {
+	EVENT_PHOTO_WINDOW_AFTER_MS,
+	EVENT_PHOTO_WINDOW_BEFORE_MS,
+	isRunInEventPhotoWindow,
+} from '../social/event_photo_window';
+import {
 	applyCourseSave,
 	planCourseSave,
 	sortCourses,
@@ -7219,7 +7224,9 @@ export async function deleteRunComment(commentId: string): Promise<void> {
 
 export interface RunPhoto {
 	id: string;
-	run_id: string;
+	/// Null for an event steward's photo of an occurrence, which belongs to
+	/// no run (migration 20270807000001). Every photo read by run has one.
+	run_id: string | null;
 	owner_id: string;
 	storage_path: string;
 	/// Server-generated 512w thumbnail path, populated by the
@@ -7246,8 +7253,14 @@ export interface RunPhoto {
 /// anyone who can see the event (even when the underlying run is
 /// private), so surfacing the run's UUID would bridge a public event to
 /// a private run's id. The gallery never needs it.
+///
+/// `hidden_at` is set when an event steward hid the photo from the gallery
+/// (`set_event_photo_hidden`, migration 20270807000001). RLS returns a hidden
+/// photo only to its owner and the event's stewards, so a regular viewer
+/// never receives one.
 export interface EventPhoto extends Omit<RunPhoto, 'run_id'> {
 	uploader_name: string | null;
+	hidden_at: string | null;
 }
 
 // Every key must be a format `stripImageExif` can clean — an accepted-but-
@@ -7336,26 +7349,29 @@ export async function fetchRunPhotosWithError(
 /// are fetched in a second batched query (the `run_photos` → `runs` →
 /// `user_profiles` join isn't expressible through PostgREST resource
 /// embedding because the run may be invisible to the viewer).
+///
+/// Surfaces the load error rather than collapsing it to `[]`, so the gallery
+/// can tell "nobody has posted yet" from "the gallery did not load".
 export async function fetchEventPhotos(
 	eventId: string,
 	instanceStart: string,
 	limit = 100,
-): Promise<EventPhoto[]> {
+): Promise<{ photos: EventPhoto[]; error: string | null }> {
 	const { data, error } = await supabase
 		.from(TABLES.run_photos)
 		// Enumerate columns — `run_id` is NOT selected so a private run's
 		// UUID can't leak to an event viewer who can't see that run.
-		.select('id, owner_id, storage_path, thumb_512_path, caption, position_idx, created_at, event_id, event_instance_start')
+		.select('id, owner_id, storage_path, thumb_512_path, caption, position_idx, created_at, event_id, event_instance_start, hidden_at')
 		.eq('event_id', eventId)
 		.eq('event_instance_start', instanceStart)
 		.order('created_at', { ascending: true })
 		.limit(limit);
 	if (error) {
 		console.error('fetchEventPhotos failed', error);
-		return [];
+		return { photos: [], error: `${error.message}${error.code ? ` (${error.code})` : ''}` };
 	}
 	const rows = data ?? [];
-	if (rows.length === 0) return [];
+	if (rows.length === 0) return { photos: [], error: null };
 	const paths: string[] = [];
 	for (const r of rows) {
 		paths.push(r.storage_path);
@@ -7369,16 +7385,81 @@ export async function fetchEventPhotos(
 	const nameById = new Map<string, string | null>(
 		(profiles.data ?? []).map((p) => [p.id as string, (p.display_name as string | null) ?? null]),
 	);
-	return rows.map((r) => ({
-		...r,
-		url: signed[r.storage_path] ?? '',
-		thumbUrl: r.thumb_512_path ? (signed[r.thumb_512_path] ?? null) : null,
-		uploader_name: nameById.get(r.owner_id) ?? null,
-	}));
+	return {
+		photos: rows.map((r) => ({
+			...r,
+			url: signed[r.storage_path] ?? '',
+			thumbUrl: r.thumb_512_path ? (signed[r.thumb_512_path] ?? null) : null,
+			uploader_name: nameById.get(r.owner_id) ?? null,
+		})),
+		error: null,
+	};
+}
+
+/// Whether the viewer is one of this event's photo stewards — a club owner,
+/// admin or event organiser, or the event's named host — who may post photos
+/// with no run and hide any photo in its galleries. The host column is not
+/// client-readable, so the server answers. Fails closed to false.
+export async function canStewardEventPhotos(eventId: string): Promise<boolean> {
+	if (!auth.user) return false;
+	const { data, error } = await supabase.rpc(
+		'can_steward_event_photos',
+		{ p_event_id: eventId },
+		{ get: true },
+	);
+	if (error) {
+		console.error('canStewardEventPhotos failed', error);
+		return false;
+	}
+	return data === true;
+}
+
+/// Hide a photo from an event gallery, or restore it. Steward-only, enforced
+/// by the RPC. Hiding leaves an attendee's photo on their own run.
+export async function setEventPhotoHidden(photoId: string, hidden: boolean): Promise<void> {
+	const { error } = await supabase.rpc('set_event_photo_hidden', {
+		p_photo_id: photoId,
+		p_hidden: hidden,
+	});
+	if (error) throw error;
+}
+
+/// The viewer's runs the database will accept for an occurrence's gallery:
+/// those that started inside the photo window (`event_photo_window.ts`).
+/// Queried by the window rather than filtered from the latest few runs, so an
+/// occurrence from months ago still offers the run recorded at it.
+export async function fetchRunsForEventPhoto(
+	instanceStart: string,
+	limit = 20,
+): Promise<RecentRunOption[]> {
+	const userId = auth.user?.id;
+	const occ = Date.parse(instanceStart);
+	if (!userId || !Number.isFinite(occ)) return [];
+	const { data, error } = await supabase
+		.from(TABLES.runs)
+		.select('id, started_at, duration_s, distance_m, activity_type')
+		.eq('user_id', userId)
+		.gte('started_at', new Date(occ - EVENT_PHOTO_WINDOW_BEFORE_MS).toISOString())
+		.lt('started_at', new Date(occ + EVENT_PHOTO_WINDOW_AFTER_MS).toISOString())
+		.order('started_at', { ascending: true })
+		.limit(limit);
+	if (error) throw error;
+	return (data ?? [])
+		.filter((r) => isRunInEventPhotoWindow(r.started_at, instanceStart))
+		.map((r) => ({
+			id: r.id,
+			started_at: r.started_at,
+			duration_s: r.duration_s,
+			distance_m: r.distance_m,
+			activity_type: r.activity_type ?? 'run',
+		}));
 }
 
 export async function addRunPhoto(input: {
-	run_id: string;
+	/// Null only for an event steward's photo of an occurrence (no run), which
+	/// then requires `event_id` + `event_instance_start` (migration
+	/// 20270807000001).
+	run_id: string | null;
 	file: File;
 	caption?: string | null;
 	/// When set, the photo joins the event's gallery (#49). The DB
@@ -7412,14 +7493,17 @@ export async function addRunPhoto(input: {
 		});
 	if (upErr) throw upErr;
 
-	const { data: posData } = await supabase
-		.from(TABLES.run_photos)
-		.select('position_idx')
-		.eq('run_id', input.run_id)
-		.order('position_idx', { ascending: false })
-		.limit(1)
-		.maybeSingle();
-	const nextIdx = (posData?.position_idx ?? -1) + 1;
+	let nextIdx = 0;
+	if (input.run_id) {
+		const { data: posData } = await supabase
+			.from(TABLES.run_photos)
+			.select('position_idx')
+			.eq('run_id', input.run_id)
+			.order('position_idx', { ascending: false })
+			.limit(1)
+			.maybeSingle();
+		nextIdx = (posData?.position_idx ?? -1) + 1;
+	}
 
 	const { data, error } = await supabase
 		.from(TABLES.run_photos)

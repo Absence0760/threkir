@@ -55,6 +55,10 @@
 		reinstateEventInstance,
 		fetchEventPhotos,
 		addRunPhoto,
+		deleteRunPhoto,
+		canStewardEventPhotos,
+		setEventPhotoHidden,
+		fetchRunsForEventPhoto,
 		fetchEventMeetPoint,
 		fetchEventPricing,
 		startEventCheckout,
@@ -126,6 +130,8 @@
 		type EventCourse
 	} from '#lib/social/event_courses.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { deferDestructive } from '#lib/stores/undo.svelte.ts';
+	import { hasEventPhotoWindowOpened } from '#lib/social/event_photo_window.ts';
 	import { consent } from '#lib/settings/consent.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { rsvpStatusLabel } from '#lib/i18n/enum_labels.svelte.ts';
@@ -227,7 +233,13 @@
 	let editError = $state<string | null>(null);
 	let editBusy = $state(false);
 	let eventPhotos = $state<EventPhoto[]>([]);
+	let eventPhotosError = $state<string | null>(null);
 	let photoUploading = $state(false);
+	let photoSteward = $state(false);
+	let photoRunOptions = $state<RecentRunOption[]>([]);
+	let photoRunOptionsError = $state<string | null>(null);
+	let photoRunOptionsLoading = $state(false);
+	let photoBusyId = $state<string | null>(null);
 	let showResultPicker = $state(false);
 	let runOptions = $state<RecentRunOption[]>([]);
 	let submitting = $state(false);
@@ -743,7 +755,8 @@
 			fetchEventResults(event.id, activeInstance),
 			fetchRaceSession(event.id, activeInstance),
 			fetchEventPhotos(event.id, activeInstance),
-			fetchEventRsvpSummary(event.id, activeInstance)
+			fetchEventRsvpSummary(event.id, activeInstance),
+			canStewardEventPhotos(event.id)
 		]);
 		attendees = res[0];
 		attendeesHasMore = res[0].length === ROSTER_PAGE_SIZE;
@@ -760,8 +773,10 @@
 		} catch (ce) {
 			console.warn('fetchMyEventCourse failed', ce);
 		}
-		eventPhotos = res[5];
+		eventPhotos = res[5].photos;
+		eventPhotosError = res[5].error;
 		rsvpSummary = res[6];
+		photoSteward = res[7];
 		pricing = await fetchEventPricing(event.id, activeInstance);
 		// The buyer's own order for this instance, so the registered-state
 		// surface can offer Cancel + reflect an in-flight refund (P2). Only
@@ -854,32 +869,61 @@
 	// photo attaches to that run with zero extra clicks. Group runs and other
 	// non-race events have no result rows, so any signed-in attendee instead
 	// picks which of their own runs the photo belongs to (persona round-5
-	// runner-social-group) — addRunPhoto needs a run_id the uploader owns.
+	// runner-social-group). The picker offers only runs that started inside
+	// the occurrence's photo window, because the database refuses any other
+	// (#1150). A steward (organiser or host) posts with no run at all, from
+	// two hours before the occurrence onwards.
 	let myEventRunId = $derived(
 		results.find((r) => r.user_id === myUserId && r.run_id)?.run_id ?? null
 	);
 	let canAddPhoto = $derived(auth.user != null);
+	let stewardCanPost = $derived(
+		photoSteward && hasEventPhotoWindowOpened(activeInstance, Date.now())
+	);
 	let showPhotoRunPicker = $state(false);
 	let pendingPhotoRunId = $state<string | null>(null);
+	let pendingHostPhoto = $state(false);
 	let photoFileInput: HTMLInputElement | null = $state(null);
 
 	async function openPhotoFlow() {
-		if (!canAddPhoto || photoUploading) return;
+		if (!canAddPhoto || photoUploading || !activeInstance) return;
 		if (myEventRunId) {
 			pendingPhotoRunId = myEventRunId;
 			photoFileInput?.click();
 			return;
 		}
-		if (runOptions.length === 0) {
-			runOptions = await fetchRecentRunsForPicker(20);
-		}
 		showPhotoRunPicker = true;
+		photoRunOptionsLoading = true;
+		photoRunOptionsError = null;
+		try {
+			photoRunOptions = await fetchRunsForEventPhoto(activeInstance);
+		} catch (err) {
+			photoRunOptions = [];
+			photoRunOptionsError = err instanceof Error ? err.message : String(err);
+		} finally {
+			photoRunOptionsLoading = false;
+		}
+	}
+
+	function openHostPhotoFlow() {
+		if (!stewardCanPost || photoUploading) return;
+		pendingHostPhoto = true;
+		pendingPhotoRunId = null;
+		photoFileInput?.click();
 	}
 
 	function pickRunForPhoto(runId: string) {
 		pendingPhotoRunId = runId;
+		pendingHostPhoto = false;
 		showPhotoRunPicker = false;
 		photoFileInput?.click();
+	}
+
+	async function reloadEventPhotos() {
+		if (!event || !activeInstance) return;
+		const res = await fetchEventPhotos(event.id, activeInstance);
+		eventPhotos = res.photos;
+		eventPhotosError = res.error;
 	}
 
 	async function handleAddEventPhoto(e: Event) {
@@ -887,22 +931,90 @@
 		const file = input.files?.[0];
 		input.value = '';
 		const runId = pendingPhotoRunId;
+		const asHost = pendingHostPhoto;
 		pendingPhotoRunId = null;
-		if (!file || !event || !runId || photoUploading) return;
+		pendingHostPhoto = false;
+		if (!file || !event || !activeInstance || (!runId && !asHost) || photoUploading) return;
 		photoUploading = true;
 		try {
 			await addRunPhoto({
-				run_id: runId,
+				run_id: asHost ? null : runId,
 				file,
 				event_id: event.id,
 				event_instance_start: activeInstance
 			});
-			eventPhotos = await fetchEventPhotos(event.id, activeInstance!);
+			await reloadEventPhotos();
 		} catch (err) {
-			error = err instanceof Error ? err.message : m('clubEvent.photoUploadFailed');
+			showToast(
+				err instanceof Error ? err.message : m('clubEvent.photoUploadFailed'),
+				'error'
+			);
 		} finally {
 			photoUploading = false;
 		}
+	}
+
+	// Hiding is undoable (a steward can restore it), so it takes the undo bar
+	// rather than a confirm (conventions § Destructive actions). For the
+	// steward the photo stays in the list, badged, with Restore.
+	function hideEventPhoto(photo: EventPhoto) {
+		const before = eventPhotos;
+		eventPhotos = eventPhotos.map((p) =>
+			p.id === photo.id ? { ...p, hidden_at: new Date().toISOString() } : p
+		);
+		deferDestructive({
+			message: m('clubEvent.photoHidden'),
+			commit: () => setEventPhotoHidden(photo.id, true),
+			restore: () => {
+				eventPhotos = before;
+			},
+			onCommitError: (err) =>
+				showToast(
+					m('clubEvent.photoModerateFailed', {
+						error: err instanceof Error ? err.message : String(err)
+					}),
+					'error'
+				)
+		});
+	}
+
+	async function restoreEventPhoto(photo: EventPhoto) {
+		if (photoBusyId) return;
+		photoBusyId = photo.id;
+		try {
+			await setEventPhotoHidden(photo.id, false);
+			eventPhotos = eventPhotos.map((p) => (p.id === photo.id ? { ...p, hidden_at: null } : p));
+		} catch (err) {
+			showToast(
+				m('clubEvent.photoModerateFailed', {
+					error: err instanceof Error ? err.message : String(err)
+				}),
+				'error'
+			);
+		} finally {
+			photoBusyId = null;
+		}
+	}
+
+	// The owner's delete is held for the undo window, so Undo cancels a timer
+	// rather than re-uploading anything.
+	function deleteMyEventPhoto(photo: EventPhoto) {
+		const before = eventPhotos;
+		eventPhotos = eventPhotos.filter((p) => p.id !== photo.id);
+		deferDestructive({
+			message: m('clubEvent.photoDeleted'),
+			commit: () => deleteRunPhoto(photo.id),
+			restore: () => {
+				eventPhotos = before;
+			},
+			onCommitError: (err) =>
+				showToast(
+					m('clubEvent.photoDeleteFailed', {
+						error: err instanceof Error ? err.message : String(err)
+					}),
+					'error'
+				)
+		});
 	}
 
 	/**
@@ -3004,19 +3116,37 @@
 			</section>
 		{/if}
 
-		<section class="card">
+		<section class="card" data-testid="event-photos">
 			<div class="results-head">
-				<h3>{m('clubEvent.photosTitle', { n: eventPhotos.length })}</h3>
-				{#if canAddPhoto}
-					<button
-						type="button"
-						class="btn-link photo-add"
-						onclick={openPhotoFlow}
-						disabled={photoUploading}
-					>
-						{photoUploading ? m('clubEvent.uploading') : m('clubEvent.addPhoto')}
-					</button>
-				{/if}
+				<h3>{m('clubEvent.photosTitle', { n: eventPhotos.filter((p) => !p.hidden_at).length })}</h3>
+				<div class="photo-actions">
+					{#if stewardCanPost}
+						<button
+							type="button"
+							class="btn-link photo-add"
+							onclick={openHostPhotoFlow}
+							disabled={photoUploading}
+							data-testid="event-photo-add-host"
+						>
+							{photoUploading ? m('clubEvent.uploading') : m('clubEvent.addOccurrencePhoto')}
+						</button>
+					{/if}
+					{#if canAddPhoto}
+						<button
+							type="button"
+							class="btn-link photo-add"
+							onclick={openPhotoFlow}
+							disabled={photoUploading}
+							data-testid="event-photo-add-run"
+						>
+							{photoUploading
+								? m('clubEvent.uploading')
+								: stewardCanPost
+									? m('clubEvent.addPhotoFromRun')
+									: m('clubEvent.addPhoto')}
+						</button>
+					{/if}
+				</div>
 			</div>
 			<input
 				bind:this={photoFileInput}
@@ -3025,15 +3155,22 @@
 				onchange={handleAddEventPhoto}
 				disabled={photoUploading}
 				hidden
+				data-testid="event-photo-file"
 			/>
 			{#if showPhotoRunPicker}
 				<div class="picker">
 					<h4>{m('clubEvent.whichRunPhoto')}</h4>
-					{#if runOptions.length === 0}
-						<p class="muted">{m('clubEvent.noRecentRuns')}</p>
+					{#if photoRunOptionsLoading}
+						<p class="muted">{m('clubEvent.photoRunsLoading')}</p>
+					{:else if photoRunOptionsError}
+						<p class="error" role="alert">
+							{m('clubEvent.photoRunsLoadFailed', { error: photoRunOptionsError })}
+						</p>
+					{:else if photoRunOptions.length === 0}
+						<p class="muted">{m('clubEvent.noRunsInPhotoWindow')}</p>
 					{:else}
 						<ul class="run-options">
-							{#each runOptions as run (run.id)}
+							{#each photoRunOptions as run (run.id)}
 								<li>
 									<button
 										type="button"
@@ -3054,18 +3191,50 @@
 					</div>
 				</div>
 			{/if}
-			{#if eventPhotos.length === 0}
+			{#if eventPhotosError}
+				<p class="error" role="alert" data-testid="event-photos-error">
+					{m('clubEvent.photosLoadFailed', { error: eventPhotosError })}
+					<button type="button" class="btn-link" onclick={reloadEventPhotos}>{m('clubEvent.retry')}</button>
+				</p>
+			{:else if eventPhotos.length === 0}
 				<p class="muted">
 					{m('clubEvent.noPhotosYet')}{canAddPhoto ? ` ${m('clubEvent.noPhotosAddHint')}` : ''}
 				</p>
 			{:else}
 				<div class="photo-gallery">
 					{#each eventPhotos as p (p.id)}
-						<figure class="photo-tile">
+						<figure class="photo-tile" class:hidden-photo={!!p.hidden_at} data-testid="event-photo-tile">
 							<img src={p.thumbUrl ?? p.url} alt={p.caption ?? m('clubEvent.eventPhotoAlt')} loading="lazy" />
 							<figcaption>
+								{#if p.hidden_at}<span class="hidden-badge">{m('clubEvent.photoHiddenBadge')}</span>{/if}
 								{#if p.caption}<span class="cap">{p.caption}</span>{/if}
 								<span class="by">{p.uploader_name ?? m('clubEvent.runnerFallback')}</span>
+								{#if photoSteward || p.owner_id === myUserId}
+									<span class="photo-tile-actions">
+										{#if photoSteward && p.hidden_at}
+											<button
+												type="button"
+												class="btn-link"
+												onclick={() => restoreEventPhoto(p)}
+												disabled={photoBusyId === p.id}
+											>{m('clubEvent.photoRestore')}</button>
+										{:else if photoSteward}
+											<button
+												type="button"
+												class="btn-link"
+												onclick={() => hideEventPhoto(p)}
+												aria-label={m('clubEvent.photoHideLabel', { name: p.uploader_name ?? m('clubEvent.runnerFallback') })}
+											>{m('clubEvent.photoHide')}</button>
+										{/if}
+										{#if p.owner_id === myUserId}
+											<button
+												type="button"
+												class="btn-link danger"
+												onclick={() => deleteMyEventPhoto(p)}
+											>{m('clubEvent.photoDelete')}</button>
+										{/if}
+									</span>
+								{/if}
 							</figcaption>
 						</figure>
 					{/each}
@@ -4701,6 +4870,26 @@
 	.btn-link.approve { color: var(--color-success-text); }
 	.btn-link.reject { color: var(--color-danger-text); }
 
+	.photo-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+	}
+	.photo-tile.hidden-photo img {
+		opacity: 0.45;
+	}
+	.photo-tile .hidden-badge {
+		font-weight: 600;
+		color: var(--color-text-secondary);
+	}
+	.photo-tile-actions .danger {
+		color: var(--color-danger-text);
+	}
+	.photo-tile-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+	}
 	.photo-add {
 		cursor: pointer;
 	}

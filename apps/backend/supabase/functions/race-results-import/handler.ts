@@ -21,6 +21,7 @@ import {
   mapRunSignUpResult,
   matchResultGate,
   parseRaceResultRow,
+  reconcileFiledFinishes,
   resultsPossiblyTruncated,
   runSignUpErrorOf,
   runSignUpEventsOn,
@@ -487,15 +488,17 @@ export function makeRaceResultsImportHandler(
       .select('external_id')
       .eq('user_id', user.id)
       .in('external_id', externalIds);
-    // ... and against the bibs already imported for THIS listing. The
-    // external_id spells the listing's name, and the race-calendar sweep
-    // rewrites that name whenever the provider does (decisions § 1902), so a
-    // runner re-importing after a rename would get an id nothing stored carries
-    // and a second copy of the same race. One listing is one race on one day,
-    // so a bib already filed under it is that result, whatever it was called.
+    // ... and against the runs already filed under THIS listing, which one id
+    // cannot cover. The id spells the listing's name, and the race-calendar
+    // sweep rewrites that name whenever the provider does (decisions § 1911),
+    // so a re-import after a rename gets an id nothing stored carries. And a
+    // result pasted without a bib is filed as `race:{name}:{date}:` while the
+    // provider files the same finish under its bib, so the two ids never meet
+    // (decisions § 1912). One listing is one race on one day, so a filed run
+    // with the same bib, or the same finish clock, is that result.
     const { data: listingRows, error: listingRunsErr } = await supabase
       .from('runs')
-      .select('bib:metadata->>bib')
+      .select('id, source, metadata')
       .eq('user_id', user.id)
       .eq('race_listing_id', mapOpts.listingId);
     if (seenErr || listingRunsErr) {
@@ -503,12 +506,6 @@ export function makeRaceResultsImportHandler(
       // the runner may already hold.
       return Response.json({ error: 'race import could not check for duplicates' }, { status: 500 });
     }
-    const filedBibs = new Set(
-      (listingRows ?? []).map((r) => r.bib).filter((b): b is string => typeof b === 'string' && b !== ''),
-    );
-    const alreadyFiled = mapped
-      .filter((r) => typeof r.metadata.bib === 'string' && filedBibs.has(r.metadata.bib))
-      .map((r) => r.external_id);
     // Reconciled against the batch itself as well as against what is stored.
     // `external_id` is `race:{name}:{date}:{bib}` and both the name and the date
     // come from the ONE listing, so two mapped results carrying the same bib
@@ -518,13 +515,44 @@ export function makeRaceResultsImportHandler(
     // loses every other result in the import rather than the duplicate.
     const batch = reconcileImportBatch(
       mapped,
-      [
-        ...(seenRows ?? []).map((r) => r.external_id).filter((id): id is string => id !== null),
-        ...alreadyFiled,
-      ],
+      (seenRows ?? []).map((r) => r.external_id).filter((id): id is string => id !== null),
     );
-    const fresh = batch.fresh.map((r) => ({ ...r, id: crypto.randomUUID(), user_id: user.id }));
-    const skipped = batch.skipped;
+    const filed = reconcileFiledFinishes(
+      batch.fresh,
+      (listingRows ?? []).map((r) => ({ id: r.id, source: r.source, metadata: r.metadata })),
+    );
+    const fresh = filed.fresh.map((r) => ({ ...r, id: crypto.randomUUID(), user_id: user.id }));
+    const skipped = batch.skipped + filed.skipped;
+
+    // A bib-less run this import names is given the provider's result rather
+    // than a second row beside it. An imported race run takes the result's id,
+    // time and distance (the event the runner ran, which a paste could only
+    // guess from the listing); a recorded run keeps its own and gains the
+    // metadata, the same write the matchRunId enrich makes.
+    for (const { run, result } of filed.merges) {
+      const prior = run.metadata;
+      const metadata = {
+        ...(prior !== null && typeof prior === 'object' && !Array.isArray(prior) ? prior : {}),
+        ...result.metadata,
+      };
+      const patch = run.source === 'race'
+        ? {
+          metadata,
+          race_listing_id: result.race_listing_id,
+          external_id: result.external_id,
+          duration_s: result.duration_s,
+          distance_m: result.distance_m,
+        }
+        : { metadata, race_listing_id: result.race_listing_id };
+      const { error } = await supabase
+        .from('runs')
+        .update(patch)
+        .eq('id', run.id)
+        .eq('user_id', user.id);
+      if (error) {
+        return Response.json({ error: 'race import failed to save' }, { status: 500 });
+      }
+    }
 
     let imported = 0;
     if (fresh.length > 0) {
@@ -535,6 +563,6 @@ export function makeRaceResultsImportHandler(
       imported = fresh.length;
     }
 
-    return Response.json({ imported, skipped, enriched: 0, complete });
+    return Response.json({ imported, skipped, enriched: filed.merges.length, complete });
   };
 }

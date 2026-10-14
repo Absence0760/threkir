@@ -70,16 +70,19 @@ export function capField(raw: unknown, max: number = MAX_FIELD_LEN): string {
  * round UP to the next whole second, which is how road-race times are reported.
  */
 export function parseClockToSeconds(time: unknown): number {
+  return Math.ceil(parseClock(time));
+}
+
+/** The clock reading in seconds, fraction kept. 0 on garbage. */
+function parseClock(time: unknown): number {
   const s = capField(time);
   if (!s) return 0;
   const parts = s.split(':').map((p) => Number(p));
   if (parts.some((n) => !Number.isFinite(n) || n < 0)) return 0;
-  let total: number;
-  if (parts.length === 3) total = parts[0] * 3600 + parts[1] * 60 + parts[2];
-  else if (parts.length === 2) total = parts[0] * 60 + parts[1];
-  else if (parts.length === 1) total = parts[0];
-  else return 0;
-  return Math.ceil(total);
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  if (parts.length === 2) return parts[0] * 60 + parts[1];
+  if (parts.length === 1) return parts[0];
+  return 0;
 }
 
 /** A result field that may arrive as a number (RunSignUp's `bib`) or text. */
@@ -198,13 +201,127 @@ export function mapRaceResult(
   };
 }
 
+// ── One finish, two paths (decisions § 1912) ─────────────────────────────────
+//
+// A result pasted without a bib is filed as `race:{name}:{date}:` and the same
+// result imported from a provider as `race:{name}:{date}:{bib}`, so neither the
+// id nor the listing-and-bib skip can see that they are one finish. What both
+// paths do know is the listing (one race on one day), the finish clock and,
+// often, the overall place, and those are what decide it.
+
+/**
+ * How far apart two readings of one finish clock can be. A runner copies
+ * `21:43.34` as `21:43` or `21:44`, and a feed that publishes hundredths is
+ * stored rounded up (`parseClockToSeconds`), so one finish reads up to a
+ * second apart; two different finishes by one runner on one morning — a 5K and
+ * a 10K — are minutes apart.
+ */
+export const SAME_FINISH_TOLERANCE_S = 1;
+
+/** What a result's metadata says about the finish it records. */
+export interface FinishFacts {
+  bib: string;
+  chipS: number | null;
+  gunS: number | null;
+  place: number | null;
+}
+
+export function finishFacts(metadata: unknown): FinishFacts {
+  const m = metadata !== null && typeof metadata === 'object' && !Array.isArray(metadata)
+    ? metadata as Record<string, unknown>
+    : {};
+  const clock = (raw: unknown) => {
+    const s = parseClock(typeof raw === 'number' ? String(raw) : raw);
+    return s > 0 ? s : null;
+  };
+  return {
+    bib: resultText(m.bib),
+    chipS: clock(m.chip_time),
+    gunS: clock(m.gun_time),
+    place: toPositiveInt(m.overall_place),
+  };
+}
+
+/**
+ * Whether two results under ONE listing for ONE runner are the same finish.
+ *
+ * Two bibs decide it alone. Otherwise the overall places, when both carry one,
+ * must agree, and the clocks must agree to within `SAME_FINISH_TOLERANCE_S` —
+ * chip against chip and gun against gun wherever both sides have that reading,
+ * and only when no reading is shared, the one each side has (RunSignUp's
+ * `chip_time` is often empty, and a runner pastes their time into whichever
+ * box). Two results with nothing to compare are not the same finish: a missed
+ * merge files a race twice, which the runner can delete, while a false merge
+ * writes one race's result over another's.
+ */
+export function isSameFinish(a: FinishFacts, b: FinishFacts): boolean {
+  if (a.bib && b.bib) return a.bib === b.bib;
+  if (a.place !== null && b.place !== null && a.place !== b.place) return false;
+  const pairs: Array<[number, number]> = [];
+  if (a.chipS !== null && b.chipS !== null) pairs.push([a.chipS, b.chipS]);
+  if (a.gunS !== null && b.gunS !== null) pairs.push([a.gunS, b.gunS]);
+  if (pairs.length === 0) {
+    const x = a.chipS ?? a.gunS;
+    const y = b.chipS ?? b.gunS;
+    if (x === null || y === null) return false;
+    pairs.push([x, y]);
+  }
+  return pairs.every(([x, y]) => Math.abs(x - y) < SAME_FINISH_TOLERANCE_S);
+}
+
+/** A run the caller already holds under the listing being imported onto. */
+export interface FiledRaceRun {
+  id: string;
+  source: string;
+  metadata: unknown;
+}
+
+/** A filed result that an incoming one names, to be written onto it. */
+export interface FinishMerge {
+  run: FiledRaceRun;
+  result: MappedRaceRun;
+}
+
+/**
+ * Reconcile incoming results against the runs already filed under the same
+ * listing. A result is dropped when a filed run is the same finish
+ * (`isSameFinish`) and carries everything the result knows; when the result
+ * carries a bib the filed run lacks — a bib-less paste, then the provider
+ * import of the same race — it is written onto that run instead, so the run
+ * gains its bib and later imports skip it by the cheaper rules. Each filed run
+ * absorbs at most one result. Pure; the handler does the writes.
+ */
+export function reconcileFiledFinishes(
+  incoming: readonly MappedRaceRun[],
+  filed: readonly FiledRaceRun[],
+): { fresh: MappedRaceRun[]; skipped: number; merges: FinishMerge[] } {
+  const facts = filed.map((f) => finishFacts(f.metadata));
+  const claimed = new Set<number>();
+  const fresh: MappedRaceRun[] = [];
+  const merges: FinishMerge[] = [];
+  let skipped = 0;
+  for (const result of incoming) {
+    const mine = finishFacts(result.metadata);
+    const at = facts.findIndex((f, i) => !claimed.has(i) && isSameFinish(mine, f));
+    if (at === -1) {
+      fresh.push(result);
+      continue;
+    }
+    claimed.add(at);
+    if (mine.bib && !facts[at].bib) merges.push({ run: filed[at], result });
+    else skipped += 1;
+  }
+  return { fresh, skipped, merges };
+}
+
 /** A single user-pasted result (the no-API path). */
 export type PasteResultInput = RaceResultFields;
 
 /**
- * Map a single pasted result onto a runs row. Same shape + dedup id as the
- * RunSignUp path so a later provider sync of the same race can't create a
- * duplicate. Returns null when the paste has no usable time.
+ * Map a single pasted result onto a runs row, in the same shape as every
+ * provider leg. A pasted bib gives it the provider's dedup id; without one it
+ * is matched to a provider import of the same race by `reconcileFiledFinishes`.
+ * Returns null when the paste has no usable time.
  */
 export function parseRaceResultRow(
   input: PasteResultInput,

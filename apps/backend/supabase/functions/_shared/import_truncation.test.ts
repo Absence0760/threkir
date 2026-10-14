@@ -86,7 +86,7 @@ Deno.test('race-results refuses instead of reporting a successful import of noth
     'a truncated fetch that matched nothing must refuse, not answer imported: 0',
   );
   // And every success answer states the claim rather than leaving it inferred.
-  for (const shape of [/enriched: 1, complete \}/, /enriched: 0, complete \}/]) {
+  for (const shape of [/enriched: 1, complete \}/, /enriched: filed\.merges\.length, complete \}/]) {
     assert(shape.test(RACE_SRC), `a success response omits complete: ${shape}`);
   }
 });

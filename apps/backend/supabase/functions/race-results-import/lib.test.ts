@@ -10,6 +10,8 @@ import {
   extractRunSignUpResults,
   extractUltraSignUpPeople,
   filterResultsByBib,
+  finishFacts,
+  isSameFinish,
   mapChronoTrackResult,
   mapRaceResult,
   mapRunSignUpResult,
@@ -21,6 +23,7 @@ import {
   parseClockToSeconds,
   parseRaceResultRow,
   raceExternalId,
+  reconcileFiledFinishes,
   runSignUpAgeGroup,
   runSignUpErrorOf,
   runSignUpEventsOn,
@@ -759,4 +762,55 @@ Deno.test('capField never leaves half a surrogate pair, at the cap or in the inp
   const capped = capField('a'.repeat(MAX_FIELD_LEN - 1) + '\u{1F3C3}xyz');
   assertEquals(capped, 'a'.repeat(MAX_FIELD_LEN - 1));
   assertEquals(capField('Ana\uD83C Silva'), 'Ana Silva');
+});
+
+// ── isSameFinish / reconcileFiledFinishes (decisions § 1912) ──
+
+const facts = (m: Record<string, unknown>) => finishFacts(m);
+
+Deno.test('isSameFinish: a clock copied to the second matches the hundredths it came from, and a second more does not', () => {
+  const feed = facts({ bib: '336', chip_time: '21:23.75', gun_time: '21:41.08', overall_place: 10 });
+  assert(isSameFinish(facts({ chip_time: '21:23' }), feed), 'cut to the second');
+  assert(isSameFinish(facts({ chip_time: '21:24' }), feed), 'rounded up');
+  assert(isSameFinish(facts({ chip_time: '21:23', gun_time: '21:41' }), feed), 'both readings');
+  assert(!isSameFinish(facts({ chip_time: '21:22' }), feed), '1.75 s off is another finish');
+  assert(!isSameFinish(facts({ chip_time: '21:25' }), feed), '1.25 s off is another finish');
+  // Every shared reading has to agree, not just one of them.
+  assert(!isSameFinish(facts({ chip_time: '21:24', gun_time: '21:50' }), feed));
+});
+
+Deno.test('isSameFinish: with no shared reading the one time each side has is compared', () => {
+  // RunSignUp often leaves chip_time empty; the runner typed into the chip box.
+  const gunOnly = facts({ bib: '336', gun_time: '21:41.08' });
+  assert(isSameFinish(facts({ chip_time: '21:41' }), gunOnly));
+  assert(!isSameFinish(facts({ chip_time: '21:23' }), gunOnly));
+  // Nothing to compare is not a match.
+  assert(!isSameFinish(facts({ bib: '' }), gunOnly));
+  assert(!isSameFinish(facts({}), facts({})));
+});
+
+Deno.test('isSameFinish: two bibs decide it alone, and two places that differ veto a matching clock', () => {
+  assert(isSameFinish(facts({ bib: '336', chip_time: '1:00' }), facts({ bib: '336', chip_time: '9:00' })));
+  assert(!isSameFinish(facts({ bib: '336', chip_time: '21:24' }), facts({ bib: '337', chip_time: '21:24' })));
+  assert(!isSameFinish(facts({ chip_time: '21:24', overall_place: 9 }), facts({ bib: '336', chip_time: '21:24', overall_place: 10 })));
+  assert(isSameFinish(facts({ chip_time: '21:24', overall_place: 10 }), facts({ bib: '336', chip_time: '21:24', overall_place: 10 })));
+  // A number bib and a text bib are the same bib.
+  assert(isSameFinish(facts({ bib: 336 }), facts({ bib: '336' })));
+});
+
+Deno.test('reconcileFiledFinishes: a bib fills a bib-less run, a bib-less result is dropped, and a run absorbs one result', () => {
+  const result = (bib: string, chip: string) =>
+    mapRaceResult({ bib, chip_time: chip }, { ...OPTS, isPublic: false })!;
+  const filed = [
+    { id: 'pasted', source: 'race', metadata: { chip_time: '21:24' } },
+    { id: 'imported', source: 'race', metadata: { bib: '500', chip_time: '45:00' } },
+  ];
+  const out = reconcileFiledFinishes(
+    [result('336', '21:23.75'), result('', '45:00.40'), result('337', '21:23.90'), result('', '50:00')],
+    filed,
+  );
+  assertEquals(out.merges.map((m) => [m.run.id, m.result.metadata.bib]), [['pasted', '336']]);
+  assertEquals(out.skipped, 1, 'the bib-less 45:00 is the bib 500 run already filed');
+  // 337 matches the pasted clock too, but that run is spoken for.
+  assertEquals(out.fresh.map((r) => r.metadata.chip_time), ['21:23.90', '50:00']);
 });

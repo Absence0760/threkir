@@ -32,12 +32,21 @@ const LISTING = {
 
 type Row = Record<string, unknown>;
 
-/// `runs` keeps what was inserted. A select honours `eq` / `in`, including
-/// the JSON-path alias `bib:metadata->>bib`; an insert that repeats a stored
-/// `(user_id, external_id)` is refused whole with 23505.
-function memoryClient(state: { listing: Row; runs: Row[]; failRunsRead?: boolean }) {
+interface State {
+  listing: Row;
+  runs: Row[];
+  failRunsRead?: boolean;
+  /// The caller; `runner-1` unless a test signs in as someone else.
+  userId?: string;
+}
+
+/// `runs` keeps what was inserted. A select honours `eq` / `in` and returns the
+/// columns it names; an insert or an update that would repeat a stored
+/// `(user_id, external_id)` is refused whole with 23505, and an update writes
+/// only the rows its `eq` filters reach.
+function memoryClient(state: State) {
   const client = {
-    auth: { getUser: () => Promise.resolve({ data: { user: { id: 'runner-1' } } }) },
+    auth: { getUser: () => Promise.resolve({ data: { user: { id: state.userId ?? 'runner-1' } } }) },
     rpc: () => Promise.resolve({ data: [{ allowed: true, retry_after_seconds: 0, tier: 'free' }], error: null }),
     from(table: string) {
       let verb = 'select';
@@ -52,6 +61,11 @@ function memoryClient(state: { listing: Row; runs: Row[]; failRunsRead?: boolean
         insert: (rows: unknown) => {
           verb = 'insert';
           payload = rows;
+          return builder;
+        },
+        update: (patch: unknown) => {
+          verb = 'update';
+          payload = patch;
           return builder;
         },
         eq: (col: string, val: unknown) => {
@@ -77,16 +91,30 @@ function memoryClient(state: { listing: Row; runs: Row[]; failRunsRead?: boolean
           state.runs.push(...rows);
           return { data: null, error: null };
         }
-        if (state.failRunsRead) return { data: null, error: { code: '57014', message: 'canceling statement' } };
         const hit = state.runs.filter((r) =>
           filters.every(([op, col, val]) =>
             op === 'eq' ? r[col] === val : (val as unknown[]).includes(r[col])
           )
         );
-        if (columns === 'bib:metadata->>bib') {
-          return { data: hit.map((r) => ({ bib: (r.metadata as Row).bib ?? null })), error: null };
+        if (verb === 'update') {
+          const patch = payload as Row;
+          const others = state.runs.filter((r) => !hit.includes(r));
+          const clash = hit.some((r) =>
+            'external_id' in patch &&
+            others.some((o) => o.user_id === r.user_id && o.external_id === patch.external_id)
+          );
+          if (clash) return { data: null, error: { code: '23505', message: 'runs_user_external_id' } };
+          for (const r of hit) Object.assign(r, patch);
+          return { data: null, error: null };
         }
-        if (columns === 'external_id') return { data: hit.map((r) => ({ external_id: r.external_id })), error: null };
+        if (state.failRunsRead) return { data: null, error: { code: '57014', message: 'canceling statement' } };
+        const cols = columns.split(',').map((c) => c.trim());
+        if (cols.every((c) => /^[a-z_]+$/.test(c))) {
+          return {
+            data: hit.map((r) => Object.fromEntries(cols.map((c) => [c, r[c] ?? null]))),
+            error: null,
+          };
+        }
         throw new Error(`unscripted runs select ${columns}`);
       };
       builder.maybeSingle = () => Promise.resolve(answer());
@@ -106,7 +134,7 @@ function feed(url: string): Response {
   return Response.json({ individual_results_sets: [{ ...set, results }] });
 }
 
-function importer(state: { listing: Row; runs: Row[]; failRunsRead?: boolean }) {
+function importer(state: State) {
   return makeRaceResultsImportHandler({
     getEnv: () => undefined,
     userClient: () => memoryClient(state),
@@ -160,4 +188,82 @@ Deno.test('a history that cannot be read refuses the import rather than risk a d
   assertEquals(res.status, 500);
   assertEquals(await res.json(), { error: 'race import could not check for duplicates' });
   assertEquals(state.runs.length, 1);
+});
+
+// ── A pasted result and a provider import of the same race (decisions § 1912) ──
+
+function paste(result: Record<string, unknown>): Request {
+  return new Request('http://localhost/race-results-import', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer user-jwt' },
+    body: JSON.stringify({ provider: 'paste', listingId: LISTING_ID, result }),
+  });
+}
+
+// Bib 336 in the recorded feed: place 10, chip 21:23.75, clock 21:41.08.
+
+Deno.test('a bib-less paste and a later RunSignUp import of the same finish are one run, which gains the bib', async () => {
+  const state: State = { listing: { ...LISTING }, runs: [] };
+  // The runner typed the chip time as the results page rounded it.
+  const pasted = await importer(state)(paste({ chip_time: '21:24' }));
+  assertEquals((await pasted.json()).imported, 1);
+  assertEquals(state.runs[0].external_id, 'race:Example 5K to Wellness:2026-09-19:');
+
+  const imported = await importer(state)(call('336'));
+  assertEquals(await imported.json(), { imported: 0, skipped: 0, enriched: 1, complete: true });
+  assertEquals(state.runs.length, 1, 'one finish, one run');
+  const run = state.runs[0];
+  assertEquals(run.external_id, 'race:Example 5K to Wellness:2026-09-19:336');
+  assertEquals((run.metadata as Row).bib, '336');
+  assertEquals((run.metadata as Row).chip_time, '21:23.75');
+  assertEquals((run.metadata as Row).overall_place, 10);
+  assertEquals(run.duration_s, 21 * 60 + 24);
+
+  // From here the run is the provider's, and the cheap rules see it.
+  const again = await importer(state)(call('336'));
+  assertEquals(await again.json(), { imported: 0, skipped: 1, enriched: 0, complete: true });
+  assertEquals(state.runs.length, 1);
+});
+
+Deno.test('a bib-less paste after the RunSignUp import of the same finish is skipped, not filed again', async () => {
+  const state: State = { listing: { ...LISTING }, runs: [] };
+  await importer(state)(call('336'));
+  // The clock time, cut to the second, in the gun box.
+  const res = await importer(state)(paste({ gun_time: '21:41', overall_place: 10 }));
+  assertEquals(await res.json(), { imported: 0, skipped: 1, enriched: 0, complete: true });
+  assertEquals(state.runs.length, 1);
+  assertEquals((state.runs[0].metadata as Row).bib, '336', 'the provider result is left as it was');
+});
+
+Deno.test('the same runner in two events of one race morning is two runs, whichever path each came by', async () => {
+  const state: State = { listing: { ...LISTING }, runs: [] };
+  // The kids' mile at 07:30, pasted with no bib, then the 5K by bib.
+  await importer(state)(paste({ chip_time: '7:58', overall_place: 10 }));
+  const res = await importer(state)(call('336'));
+  assertEquals(await res.json(), { imported: 1, skipped: 0, enriched: 0, complete: true });
+  assertEquals(state.runs.length, 2);
+  assertEquals((state.runs[0].metadata as Row).bib, undefined, 'the mile keeps no bib it never had');
+  assertEquals((state.runs[0].metadata as Row).chip_time, '7:58');
+});
+
+Deno.test('a matching clock under a different place is a different finisher, not this one', async () => {
+  const state: State = { listing: { ...LISTING }, runs: [] };
+  // A dead heat a place apart: same second, different finisher.
+  await importer(state)(paste({ chip_time: '21:24', overall_place: 9 }));
+  const res = await importer(state)(call('336'));
+  assertEquals((await res.json()).imported, 1);
+  assertEquals(state.runs.length, 2);
+  assertEquals((state.runs[0].metadata as Row).overall_place, 9);
+});
+
+Deno.test('another runner\'s identical paste is never this runner\'s finish', async () => {
+  const state: State = { listing: { ...LISTING }, runs: [], userId: 'runner-2' };
+  await importer(state)(paste({ chip_time: '21:24' }));
+  state.userId = 'runner-1';
+  const res = await importer(state)(call('336'));
+  assertEquals(await res.json(), { imported: 1, skipped: 0, enriched: 0, complete: true });
+  assertEquals(state.runs.length, 2);
+  const theirs = state.runs.find((r) => r.user_id === 'runner-2')!;
+  assertEquals((theirs.metadata as Row).bib, undefined, 'the other runner\'s run is untouched');
+  assertEquals(theirs.external_id, 'race:Example 5K to Wellness:2026-09-19:');
 });

@@ -2362,6 +2362,7 @@ export const messages = {
 	"eventEditor.minLabel": "min",
 	"eventEditor.durationPlaceholder": "p. ej. 60",
 	"eventEditor.whenHint": "El inicio se toma de tu propio reloj y se guarda con tu zona horaria, que es lo que coloca el evento en la franja de mañana o de tarde al explorar. La duración solo es lo que anuncia la ficha; no se cronometra nada con ella.",
+	"eventEditor.whenHintEventZone": "La fecha y la hora están en la zona horaria del evento, {zone}, así que guardar desde otro reloj no mueve ninguna sesión. La duración solo es lo que anuncia la ficha; no se cronometra nada con ella.",
 	"eventEditor.meetingPoint": "Punto de encuentro",
 	"eventEditor.meetingPointPlaceholder": "p. ej. Puerta Norte, Central Park",
 	"eventEditor.meetingPointHint": "Aparece en la página del evento tal cual lo escribas. Es texto libre, no una chincheta en el mapa, así que nombra algo que un desconocido pueda encontrar.",

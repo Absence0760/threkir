@@ -2361,6 +2361,7 @@ export const messages = {
 	"eventEditor.minLabel": "min",
 	"eventEditor.durationPlaceholder": "ex.: 60",
 	"eventEditor.whenHint": "O início é lido do seu próprio relógio e guardado com o seu fuso, e é isso que coloca o evento na faixa da manhã ou da noite para quem está a explorar. A duração é só o que o anúncio informa; nada é cronometrado por ela.",
+	"eventEditor.whenHintEventZone": "A data e a hora estão no fuso do próprio evento, {zone}, por isso guardar a partir de outro relógio não mexe em nenhuma sessão. A duração é só o que o anúncio informa; nada é cronometrado por ela.",
 	"eventEditor.meetingPoint": "Ponto de encontro",
 	"eventEditor.meetingPointPlaceholder": "ex.: Portão Norte, Central Park",
 	"eventEditor.meetingPointHint": "Aparece na página do evento exatamente como o escrever. É texto livre, não um alfinete no mapa, por isso indique algo que um estranho consiga encontrar.",

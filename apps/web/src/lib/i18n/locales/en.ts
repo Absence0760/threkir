@@ -2375,6 +2375,7 @@ export const en = {
 	"eventEditor.minLabel": "min",
 	"eventEditor.durationPlaceholder": "e.g. 60",
 	"eventEditor.whenHint": "The start is read from your own clock and saved with your time zone, which is what sorts the event into the right morning or evening slot for people browsing. Duration is only what the listing advertises; nothing is timed against it.",
+	"eventEditor.whenHintEventZone": "The date and time are in the event's own time zone, {zone}, so saving from another clock leaves every occurrence where it was. Duration is only what the listing advertises; nothing is timed against it.",
 	"eventEditor.meetingPoint": "Meeting point",
 	"eventEditor.meetingPointPlaceholder": "e.g. North Gate, Central Park",
 	"eventEditor.meetingPointHint": "Shown on the event page word for word. It is free text rather than a map pin, so name something a stranger could find.",

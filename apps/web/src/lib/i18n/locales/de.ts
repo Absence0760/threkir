@@ -2362,6 +2362,7 @@ export const messages = {
 	"eventEditor.minLabel": "Min.",
 	"eventEditor.durationPlaceholder": "z. B. 60",
 	"eventEditor.whenHint": "Der Start wird von deiner eigenen Uhr gelesen und mit deiner Zeitzone gespeichert — daraus ergibt sich, ob die Veranstaltung beim Stöbern als Morgen- oder Abendtermin einsortiert wird. Die Dauer ist nur eine Angabe im Eintrag; nichts wird danach gestoppt.",
+	"eventEditor.whenHintEventZone": "Datum und Uhrzeit gelten in der Zeitzone der Veranstaltung, {zone} — speichern von einer anderen Uhr aus verschiebt also keinen Termin. Die Dauer ist nur eine Angabe im Eintrag; nichts wird danach gestoppt.",
 	"eventEditor.meetingPoint": "Treffpunkt",
 	"eventEditor.meetingPointPlaceholder": "z. B. Nordtor, Stadtpark",
 	"eventEditor.meetingPointHint": "Erscheint wortwörtlich auf der Veranstaltungsseite. Es ist freier Text und keine Kartenmarkierung — nenne also etwas, das auch Ortsfremde finden.",

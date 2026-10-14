@@ -35,6 +35,7 @@
 	import { WEEKDAY_CHOICES } from '#lib/social/recurrence.ts';
 	import { EVENT_CATEGORIES, isAthleticCategory } from '#lib/social/event_category.ts';
 	import { gymTemplateFromInputs } from '#lib/social/event_gym_template.ts';
+	import { editorZone, startFieldsFor, startIsoFor } from '#lib/social/event_start_fields.ts';
 	import { formatDistance, getUnit } from '#lib/format/units.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import type { Route, RecurrenceFreq, Weekday, EventCategory, RefundPolicy, Event as ClubEvent } from '#lib/types.ts';
@@ -94,8 +95,14 @@
 	let gymRoutineId = $state<string>('');
 	let title = $state(untrack(() => existing?.title ?? ''));
 	let description = $state(untrack(() => existing?.description ?? ''));
-	let date = $state(untrack(() => initDate(existing?.starts_at)));
-	let time = $state(untrack(() => initTime(existing?.starts_at)));
+	// An edit reads and writes the start on the event's own clock; a new event
+	// (and a legacy row with no stored zone) uses the organiser's.
+	const startZone = untrack(() => (existing ? editorZone(existing.timezone) : null));
+	const initialStart = untrack(() =>
+		existing?.starts_at ? startFieldsFor(existing.starts_at, startZone) : null
+	);
+	let date = $state(initialStart?.date ?? defaultDate());
+	let time = $state(initialStart?.time ?? '07:00');
 	let durationMin = $state<number | null>(untrack(() => existing?.duration_min ?? null));
 	let meetLabel = $state(untrack(() => existing?.meet_label ?? ''));
 	let routeId = $state<string>(untrack(() => existing?.route_id ?? ''));
@@ -246,20 +253,6 @@
 		return formatISO(d);
 	}
 
-	// Split a stored ISO instant back into the local date + time the two form
-	// inputs bind to (mirrors the `${date}T${time}` reassembly at save time).
-	function initDate(iso: string | undefined): string {
-		if (!iso) return defaultDate();
-		const d = new Date(iso);
-		const pad = (n: number) => String(n).padStart(2, '0');
-		return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-	}
-	function initTime(iso: string | undefined): string {
-		if (!iso) return '07:00';
-		const d = new Date(iso);
-		const pad = (n: number) => String(n).padStart(2, '0');
-		return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-	}
 	// Stored pace is seconds per kilometre; the form edits minutes:seconds per
 	// the user's unit, so convert back through the snapshotted unit factor.
 	function initPaceSecPerUnit(paceSecPerKm: number | null | undefined): number | null {
@@ -469,7 +462,7 @@
 		busy = true;
 		error = null;
 		try {
-			const startsAt = new Date(`${date}T${time}`).toISOString();
+			const startsAt = startIsoFor({ date, time }, startZone);
 			// Pace input is per the user's unit; the DB stores
 			// `pace_target_sec` as seconds per kilometre (the schema
 			// is unit-agnostic — pace_target_sec is always per-km).
@@ -765,7 +758,11 @@
 				/>
 			</label>
 		</div>
-		<span class="hint" id="event-when-hint">{m('eventEditor.whenHint')}</span>
+		<span class="hint" id="event-when-hint" data-testid="event-when-hint"
+			>{startZone
+				? m('eventEditor.whenHintEventZone', { zone: startZone })
+				: m('eventEditor.whenHint')}</span
+		>
 	</div>
 
 	<div class="field">

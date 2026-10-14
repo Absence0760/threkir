@@ -2357,6 +2357,7 @@ export const messages = {
 	"eventEditor.minLabel": "分",
 	"eventEditor.durationPlaceholder": "例: 60",
 	"eventEditor.whenHint": "開始時刻は端末の時計から読み取られ、タイムゾーンと一緒に保存されます。これが、一覧を眺めたときに朝のイベントか夜のイベントかを振り分ける基準になります。所要時間は案内のための目安で、これを基準に計測されるものはありません。",
+	"eventEditor.whenHintEventZone": "日付と時刻はイベント自体のタイムゾーン（{zone}）で表示されます。別のタイムゾーンから保存しても、各回の日時は変わりません。所要時間は案内のための目安で、これを基準に計測されるものはありません。",
 	"eventEditor.meetingPoint": "集合場所",
 	"eventEditor.meetingPointPlaceholder": "例: ノースゲート、セントラルパーク",
 	"eventEditor.meetingPointHint": "イベントページに書いたままの文字で表示されます。地図上のピンではなく自由記述なので、初めて来る人でも見つけられる目印を書いてください。",

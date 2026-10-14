@@ -2362,6 +2362,7 @@ export const messages = {
 	"eventEditor.minLabel": "min",
 	"eventEditor.durationPlaceholder": "p. ex. 60",
 	"eventEditor.whenHint": "Le début est lu sur ta propre horloge et enregistré avec ton fuseau, ce qui range l'événement dans la plage du matin ou du soir lors de la navigation. La durée n'est qu'une indication de l'annonce ; rien n'est chronométré dessus.",
+	"eventEditor.whenHintEventZone": "La date et l'heure sont dans le fuseau de l'événement, {zone} : enregistrer depuis une autre horloge ne déplace donc aucune occurrence. La durée n'est qu'une indication de l'annonce ; rien n'est chronométré dessus.",
 	"eventEditor.meetingPoint": "Point de rendez-vous",
 	"eventEditor.meetingPointPlaceholder": "p. ex. Porte Nord, Central Park",
 	"eventEditor.meetingPointHint": "Affiché mot pour mot sur la page de l'événement. C'est du texte libre, pas un point sur la carte : nomme un repère qu'un inconnu peut trouver.",

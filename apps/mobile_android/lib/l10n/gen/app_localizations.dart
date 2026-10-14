@@ -11836,7 +11836,7 @@ abstract class AppLocalizations {
   /// **'Save'**
   String get parkrunBarcodeSave;
 
-  /// Snackbar when saving the athlete number fails
+  /// Top banner when saving the athlete number fails
   ///
   /// In en, this message translates to:
   /// **'Couldn\'t save your athlete number: {error}'**

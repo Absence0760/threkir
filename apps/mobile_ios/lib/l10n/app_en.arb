@@ -9599,7 +9599,7 @@
   },
   "parkrunBarcodeSaveFailed": "Couldn't save your athlete number: {error}",
   "@parkrunBarcodeSaveFailed": {
-    "description": "Snackbar when saving the athlete number fails",
+    "description": "Top banner when saving the athlete number fails",
     "placeholders": {
       "error": {
         "type": "String"

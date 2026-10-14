@@ -15,10 +15,11 @@ import '../lib/widgets/parkrun_barcode_view.dart';
 import 'pump_until.dart';
 
 class _FakeApi extends ApiClient {
-  _FakeApi({this.number, this.offline = false});
+  _FakeApi({this.number, this.offline = false, this.saveFails = false});
 
   String? number;
   final bool offline;
+  final bool saveFails;
   final saved = <String?>[];
 
   @override
@@ -32,6 +33,7 @@ class _FakeApi extends ApiClient {
 
   @override
   Future<void> setParkrunAthleteNumber(String? athleteNumber) async {
+    if (saveFails) throw Exception('refused');
     saved.add(athleteNumber);
     number = athleteNumber;
   }
@@ -141,6 +143,36 @@ void main() {
     expect(api.saved, ['A42']);
     final cached = await tester.runAsync(() => const ParkrunBarcodeCache().read('u1'));
     expect(cached, 'A42');
+  });
+
+  testWidgets('a failed save says so and keeps the code already shown',
+      (tester) async {
+    final api = _FakeApi(number: 'A1', saveFails: true);
+    await pump(tester, api);
+    await pumpUntil(
+      tester,
+      () => find.byType(ParkrunBarcodeView).evaluate().isNotEmpty,
+      describe: 'the barcode',
+    );
+
+    await tester.tap(find.widgetWithText(TextButton, 'Change athlete number'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.enterText(
+        find.byKey(const ValueKey('parkrun-barcode-field')), 'A2');
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await pumpUntil(
+      tester,
+      () => find
+          .text("Couldn't save your athlete number: Exception: refused")
+          .evaluate()
+          .isNotEmpty,
+      describe: 'the save-failed banner',
+    );
+    expect(find.byType(SnackBar), findsNothing);
+    expect(find.text('A1'), findsOneWidget);
+    expect(api.saved, isEmpty);
+    await tester.pump(const Duration(seconds: 4)); // drain banner timer
   });
 
   testWidgets('a stored value outside parkrun format is not drawn',

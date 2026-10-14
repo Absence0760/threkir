@@ -5482,6 +5482,9 @@ void main() {
       'screens/settings_integrations_screen.dart::l10n.integrationsParkrunTitle': 1,
       'screens/settings_integrations_screen.dart::l10n.integrationsStravaDisconnectTitle': 1,
       'screens/settings_integrations_screen.dart::l10n.integrationsTreadmillTitle': 1,
+      // The athlete-number form on the barcode screen: it opens prefilled with
+      // the current number, so the same dialog puts back whatever it replaced.
+      'screens/parkrun_barcode_screen.dart::l10n.parkrunBarcodeTitle': 1,
       // Chooses how far back a Strava sync reaches. Imports are additive and
       // deduped against what is already there, so a wider window can only add
       // runs — there is nothing here to lose.

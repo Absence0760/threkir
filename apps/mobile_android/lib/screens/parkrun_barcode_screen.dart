@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show ActivityLoaderKind, FullBodyLoader;
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../column_limits.dart';
@@ -10,6 +11,7 @@ import '../parkrun_barcode.dart';
 import '../parkrun_barcode_cache.dart';
 import '../screen_brightness_bridge.dart';
 import '../widgets/parkrun_barcode_view.dart';
+import '../widgets/top_banner.dart';
 
 /// The runner's parkrun barcode, full screen, for the finish funnel.
 ///
@@ -125,9 +127,7 @@ class _ParkrunBarcodeScreenState extends State<ParkrunBarcodeScreen>
     } catch (e) {
       debugPrint('parkrun barcode: save failed: $e');
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.parkrunBarcodeSaveFailed('$e'))),
-      );
+      showTopBanner(context, l10n.parkrunBarcodeSaveFailed('$e'));
     }
   }
 
@@ -161,7 +161,10 @@ class _ParkrunBarcodeScreenState extends State<ParkrunBarcodeScreen>
     final Widget content;
     switch (load.kind) {
       case ParkrunBarcodeLoadKind.loading:
-        content = const Center(child: CircularProgressIndicator());
+        content = FullBodyLoader(
+          kind: ActivityLoaderKind.run,
+          label: l10n.commonLoading,
+        );
       case ParkrunBarcodeLoadKind.unavailable:
         content = _message(
           text,

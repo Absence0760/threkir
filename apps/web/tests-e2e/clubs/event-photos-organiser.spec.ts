@@ -316,4 +316,49 @@ test.describe('attendee after moderation', () => {
 		await expect(section.getByRole('button', { name: /^Hide photo by/ })).toHaveCount(0);
 		await expect(page.getByTestId('event-photo-add-host')).toHaveCount(0);
 	});
+
+	// The run path still admits a photo on a PUBLIC run, so a plain table read
+	// would return it; the gallery read is what drops it (decisions § 1906).
+	test('a hidden photo on a public run is gone from the gallery', async ({ page }) => {
+		const title = `e2e hidden public run ${Date.now()}`;
+		eventId = await insertEvent({
+			club_id: RICHMOND_RUN_CLUB_ID,
+			author_id: USER_A.id,
+			title,
+			starts_at: EVENT_START
+		});
+		attendeeRunId = await insertRun({
+			user_id: USER_C_PRO.id,
+			started_at: '2025-11-11T08:03:00.000Z',
+			duration_s: 1500,
+			distance_m: 5000,
+			is_public: true
+		});
+		const admin = getAdminClient();
+		const { data: photo, error: insertError } = await admin
+			.from('run_photos')
+			.insert({
+				run_id: attendeeRunId,
+				owner_id: USER_C_PRO.id,
+				storage_path: `${USER_C_PRO.id}/e2e-public-${Date.now()}.png`,
+				event_id: eventId,
+				event_instance_start: EVENT_START
+			})
+			.select('id')
+			.single();
+		expect(insertError).toBeNull();
+		const { error: hideError } = await admin
+			.from('run_photos')
+			.update({ hidden_at: new Date().toISOString(), hidden_by: USER_A.id })
+			.eq('id', photo!.id);
+		expect(hideError).toBeNull();
+
+		await page.goto(`/clubs/richmond-run-club/events/${eventId}`);
+		await expect(page.getByRole('heading', { name: title })).toBeVisible({ timeout: 10_000 });
+
+		const section = page.getByTestId('event-photos');
+		await expect(section.getByText('Photos (0)')).toBeVisible({ timeout: 10_000 });
+		await expect(page.getByTestId('event-photo-tile')).toHaveCount(0);
+		await expect(section.getByText('Hidden')).toHaveCount(0);
+	});
 });

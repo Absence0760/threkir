@@ -7255,9 +7255,10 @@ export interface RunPhoto {
 /// a private run's id. The gallery never needs it.
 ///
 /// `hidden_at` is set when an event steward hid the photo from the gallery
-/// (`set_event_photo_hidden`, migration 20270807000001). RLS returns a hidden
-/// photo only to its owner and the event's stewards, so a regular viewer
-/// never receives one.
+/// (`set_event_photo_hidden`, migration 20270807000001). The gallery read,
+/// `event_gallery_photos` (20270807000003), returns a hidden photo only to its
+/// owner and the event's stewards — RLS alone cannot, because a photo on a
+/// public run is readable through the run path.
 export interface EventPhoto extends Omit<RunPhoto, 'run_id'> {
 	uploader_name: string | null;
 	hidden_at: string | null;
@@ -7357,20 +7358,24 @@ export async function fetchEventPhotos(
 	instanceStart: string,
 	limit = 100,
 ): Promise<{ photos: EventPhoto[]; error: string | null }> {
-	const { data, error } = await supabase
-		.from(TABLES.run_photos)
-		// Enumerate columns — `run_id` is NOT selected so a private run's
-		// UUID can't leak to an event viewer who can't see that run.
-		.select('id, owner_id, storage_path, thumb_512_path, caption, position_idx, created_at, event_id, event_instance_start, hidden_at')
-		.eq('event_id', eventId)
-		.eq('event_instance_start', instanceStart)
-		.order('created_at', { ascending: true })
-		.limit(limit);
+	// `event_gallery_photos` returns no `run_id`, so a private run's UUID can't
+	// leak to an event viewer who can't see that run.
+	const { data, error } = await supabase.rpc('event_gallery_photos', {
+		p_event_id: eventId,
+		p_instance: instanceStart,
+		p_limit: limit,
+	});
 	if (error) {
 		console.error('fetchEventPhotos failed', error);
 		return { photos: [], error: `${error.message}${error.code ? ` (${error.code})` : ''}` };
 	}
-	const rows = data ?? [];
+	// The generator types a RETURNS TABLE column as non-null; these three are nullable.
+	const rows = (data ?? []).map((r) => ({
+		...r,
+		caption: r.caption as string | null,
+		thumb_512_path: r.thumb_512_path as string | null,
+		hidden_at: r.hidden_at as string | null,
+	}));
 	if (rows.length === 0) return { photos: [], error: null };
 	const paths: string[] = [];
 	for (const r of rows) {

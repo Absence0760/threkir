@@ -921,7 +921,7 @@ create table user_profiles (
   display_name             text,                                -- <= 60 chars (20270502_001) + rejects control chars (20270423_001)
   avatar_url               text,
   handle                   text,                                -- public @username (issue #465, 20270424000002); lowercase [a-z0-9_]{3,30}, case-insensitively unique, world-readable
-  parkrun_number           text,                                -- e.g. 'A123456' (world-readable)
+  parkrun_number           text,                                -- e.g. 'A123456'; owner-only (column-locked 20260707_001, read via get_my_profile); clients save it canonical (A + 1-12 digits); drawn as the parkrun barcode
   preferred_unit           text default 'km',                   -- 'km' | 'mi'
   subscription_tier        text default 'free',                 -- 'free' | 'pro' | 'lifetime' (world-readable)
   subscription_at          timestamptz,

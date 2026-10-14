@@ -4595,6 +4595,24 @@ export type Database = {
           },
         ]
       }
+      us_zcta_points: {
+        Row: {
+          lat: number
+          lng: number
+          zcta: string
+        }
+        Insert: {
+          lat: number
+          lng: number
+          zcta: string
+        }
+        Update: {
+          lat?: number
+          lng?: number
+          zcta?: string
+        }
+        Relationships: []
+      }
       user_blocks: {
         Row: {
           blocked_id: string

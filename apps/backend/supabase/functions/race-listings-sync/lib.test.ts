@@ -24,6 +24,9 @@ import {
   extractProviderRaces,
   listingDiffers,
   listingUpsertFrom,
+  pointEwkt,
+  runSignUpErrorOf,
+  usZip5,
   listingUrl,
   type NormalisedRace,
   nearHintError,
@@ -270,9 +273,10 @@ function upsert(id: string | null, over: Partial<RaceListingUpsert> = {}): RaceL
       date: '2027-06-20',
       distanceM: 42195,
       locationLabel: 'Somewhere',
+      postalCode: null,
       entryUrl: null,
       resultsUrl: null,
-    }),
+    }, null),
     ...over,
   };
 }
@@ -305,6 +309,7 @@ function storedOf(over: Partial<StoredListing> = {}): StoredListing {
     race_date: '2027-06-20',
     distance_m: 42195,
     location_label: 'Somewhere',
+    location_point: null,
     entry_url: null,
     results_url: null,
     is_verified: true,
@@ -323,6 +328,36 @@ Deno.test('an unchanged race writes nothing, and each field that moves writes', 
   // A race a user submitted first lands unverified; the provider catching up
   // with it is exactly when that should change.
   assertEquals(listingDiffers(storedOf({ is_verified: false }), upsert('a')), true);
+});
+
+Deno.test('a race gains its point once one is known, and a known point is not re-sent alone', () => {
+  const placed = upsert('a', { location_point: pointEwkt(42.9836, -82.4583) });
+  assertEquals(listingDiffers(storedOf(), placed), true);
+  // PostgREST hands the stored geography back as hex EWKB, never as the EWKT
+  // written, so a placed race compares on presence, not on the value.
+  assertEquals(listingDiffers(storedOf({ location_point: '0101000020E6100000' }), placed), false);
+  // A lookup that found nothing never reads as a change.
+  assertEquals(listingDiffers(storedOf({ location_point: '0101000020E6100000' }), upsert('a')), false);
+});
+
+Deno.test('a ZIP is read as its five digits, and anything else as no ZIP', () => {
+  assertEquals(usZip5('48060'), '48060');
+  assertEquals(usZip5('48060-1234'), '48060');
+  assertEquals(usZip5(' 07102 '), '07102');
+  assertEquals(usZip5(7102), null, 'a number has already lost its leading zero');
+  assertEquals(usZip5('SW1A 1AA'), null);
+  assertEquals(usZip5('4806'), null);
+  assertEquals(usZip5(null), null);
+  assertEquals(pointEwkt(42.9836, -82.4583), 'SRID=4326;POINT(-82.4583 42.9836)');
+});
+
+Deno.test('the RunSignUp error envelope is read as a refusal, and a race feed is not', () => {
+  assertEquals(
+    runSignUpErrorOf({ error: { error_code: 13, error_msg: 'You must be logged in to the API as a user' } }),
+    'You must be logged in to the API as a user',
+  );
+  assertEquals(runSignUpErrorOf({ races: [] }), null);
+  assertEquals(runSignUpErrorOf(null), null);
 });
 
 Deno.test('a region hint is validated, and a bad one is an error not a silent no-hint', () => {

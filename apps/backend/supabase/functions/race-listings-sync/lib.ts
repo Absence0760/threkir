@@ -46,6 +46,9 @@ export interface NormalisedRace {
   date: string;
   distanceM: number | null;
   locationLabel: string | null;
+  /// The US ZIP the race is held in, when the feed names one: the key its
+  /// `location_point` is looked up by (`us_zcta_points`, decisions § 1900).
+  postalCode: string | null;
   entryUrl: string | null;
   resultsUrl: string | null;
 }
@@ -61,6 +64,9 @@ export interface RaceListingUpsert {
   race_date: string;
   distance_m: number | null;
   location_label: string | null;
+  /// EWKT (`SRID=4326;POINT(lng lat)`), which PostgREST hands to the
+  /// `geography` input function, or null when the race has no known point.
+  location_point: string | null;
   entry_url: string | null;
   results_url: string | null;
   is_verified: true;
@@ -207,6 +213,18 @@ const IN_PERSON_RUNNING_EVENT_TYPES = new Set([
   'ultra',
 ]);
 
+/// The message of a RunSignUp error envelope, or null when the payload is not
+/// one. RunSignUp refuses a request with HTTP 200 and `{"error": {...}}` —
+/// get-results without an `event_id`, a keyless `page` past the first 1,000
+/// races — so a status check alone reads a refusal as a region, or a race,
+/// with nothing in it.
+export function runSignUpErrorOf(payload: unknown): string | null {
+  if (!payload || typeof payload !== 'object') return null;
+  const err = (payload as Record<string, unknown>).error;
+  if (!err || typeof err !== 'object') return null;
+  return text((err as Record<string, unknown>).error_msg, 120) ?? 'error';
+}
+
 /// One event of a RunSignUp race (the `events=T` expansion, and the `events`
 /// of `GET /Rest/race/{race_id}`).
 export interface RunSignUpEventRow {
@@ -303,9 +321,24 @@ export function readRunSignUpRace(row: RunSignUpRaceRow): RaceReading {
     date,
     distanceM,
     locationLabel: joinLocation(address.city, address.state, address.country_code),
+    postalCode: address.country_code === 'US' ? usZip5(address.zipcode) : null,
     entryUrl: listingUrl(row.url),
     resultsUrl: listingUrl(row.external_results_url),
   };
+}
+
+/// A US ZIP as its five digits: `48060` and `48060-1234` both read as `48060`,
+/// anything else as null. The feed writes the field as free text.
+export function usZip5(raw: unknown): string | null {
+  const v = text(raw, 16)?.trim();
+  if (!v) return null;
+  const m = /^(\d{5})(?:-\d{4})?$/.exec(v);
+  return m ? m[1] : null;
+}
+
+/// A ZIP centroid as the EWKT `race_listings.location_point` accepts.
+export function pointEwkt(lat: number, lng: number): string {
+  return `SRID=4326;POINT(${lng} ${lat})`;
 }
 
 /// An UltraSignup event row. Unverified against a live payload (see the module
@@ -331,6 +364,7 @@ export function readUltraSignUpRace(row: UltraSignUpRaceRow): NormalisedRace | n
     date,
     distanceM: distanceMetresFrom(row.distance, row.distance_units),
     locationLabel: joinLocation(row.city, row.state, null),
+    postalCode: null,
     entryUrl: listingUrl(row.url),
     resultsUrl: null,
   };
@@ -381,6 +415,7 @@ export function readProviderRace(
 export function listingUpsertFrom(
   provider: ListingSyncProvider,
   race: NormalisedRace,
+  locationPoint: string | null,
 ): RaceListingUpsert {
   return {
     provider,
@@ -389,6 +424,7 @@ export function listingUpsertFrom(
     race_date: race.date,
     distance_m: race.distanceM,
     location_label: race.locationLabel,
+    location_point: locationPoint,
     entry_url: race.entryUrl,
     results_url: race.resultsUrl,
     is_verified: true,
@@ -448,6 +484,8 @@ export interface StoredListing {
   race_date: string | null;
   distance_m: number | null;
   location_label: string | null;
+  /// PostgREST renders a geography as hex EWKB, so only null-or-not is read.
+  location_point: unknown;
   entry_url: string | null;
   results_url: string | null;
   is_verified: boolean | null;
@@ -469,6 +507,11 @@ export function listingDiffers(stored: StoredListing, next: RaceListingUpsert): 
     stored.location_label !== next.location_label ||
     stored.entry_url !== next.entry_url ||
     stored.results_url !== next.results_url ||
+    // A race synced before its ZIP could be placed gains the point the first
+    // time one is known. An already-placed race is not re-placed on its own:
+    // the stored point comes back as hex EWKB, the centroid of a ZIP does not
+    // move, and a race that changes ZIP changes its location label with it.
+    (next.location_point !== null && stored.location_point == null) ||
     // A race a user submitted first lands unverified (the
     // `race_listings_force_unverified` trigger), and the provider catching up
     // with it is exactly when that should change.

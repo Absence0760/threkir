@@ -104,31 +104,20 @@ Deno.test('the calendar write runs as the service role, not as the caller', () =
   // `is_verified` false for every role but service_role, and the INSERT policy
   // requires `submitted_by = auth.uid()` — so a provider race written on the
   // caller's client would land as an unverified crowd submission attributed to
-  // whoever happened to trigger the sync (decisions § 977).
+  // whoever happened to trigger the sync (decisions § 977). The write itself
+  // lives in write.ts (write.test.ts drives it); this pins the client it gets.
   assert(SRC.includes("import { publishableKey, secretKey }"), 'the secret key is not imported');
   const service = SRC.indexOf('const service = createClient<Database>(Deno.env.get(\'SUPABASE_URL\')!, secretKey());');
   assert(service !== -1, 'the write client is not the service role');
-  const insert = SRC.indexOf("service\n    .from('race_listings')");
-  const insertShort = SRC.indexOf("service.from('race_listings').insert(");
-  assert(insert !== -1 || insertShort !== -1, 'the insert does not go through the service client');
+  assert(
+    SRC.includes('await syncProviderPayload(service, provider, payload)'),
+    'the write does not go through the service client',
+  );
+  assert(!/syncProviderPayload\(supabase/.test(SRC), 'the caller-scoped client must never write');
   assert(
     !/supabase\s*\n?\s*\.from\('race_listings'\)/.test(SRC),
     'the caller-scoped client must never write race_listings',
   );
-  assert(SRC.includes('is_verified: true'), 'the update path drops the verified flag');
-});
-
-Deno.test('a failed read of what is stored is an error, not an empty calendar', () => {
-  // Treating a read error as "nothing stored" re-inserts every race in the feed
-  // and duplicates the calendar on the next sync.
-  const read = SRC.indexOf("const { data: storedRows, error: readErr }");
-  assert(read !== -1, 'the existing-listing read is gone');
-  assert(
-    /if \(readErr\) \{[\s\S]{0,400}?status: 500/.test(SRC.slice(read)),
-    'a failed existing-listing read must refuse rather than proceed',
-  );
-  const reconcile = SRC.indexOf('reconcileListingBatch(');
-  assert(reconcile !== -1 && read < reconcile, 'the batch must be reconciled against a real read');
 });
 
 Deno.test('an upstream that is not 2xx or not JSON fails loud, and writes nothing', () => {
@@ -140,23 +129,8 @@ Deno.test('an upstream that is not 2xx or not JSON fails loud, and writes nothin
     'an unparseable body is not refused',
   );
   const bad = SRC.indexOf('if (!upstream.ok)');
-  const write = SRC.indexOf('.insert(');
+  const write = SRC.indexOf('syncProviderPayload(service');
   assert(bad !== -1 && write !== -1 && bad < write, 'the upstream check must precede any write');
-});
-
-Deno.test('the response says what it could not read, so a wrong shape is visible at once', () => {
-  // A payload shaped differently must answer `synced: 0` with `unusable` equal
-  // to the row count rather than writing junk into a calendar every user of the
-  // deployment reads. Deliberate exclusions (drafts, virtual-only races) are
-  // counted apart, so they never read as a shape change.
-  assert(SRC.includes('unusable++;'), 'nothing counts the rows that could not be read');
-  assert(SRC.includes('excluded++;'), 'exclusions are folded into unusable');
-  for (const field of ['synced', 'updated', 'skipped', 'unusable', 'excluded', 'total', 'complete']) {
-    assert(
-      new RegExp(`\\b${field}[,:]`).test(SRC),
-      `the response omits ${field}`,
-    );
-  }
 });
 
 Deno.test('a call that did not ask for a sync performs none', () => {
@@ -167,7 +141,7 @@ Deno.test('a call that did not ask for a sync performs none', () => {
   // load and spend the 2/hour bucket (decisions § 977).
   const gate = SRC.indexOf('if (!isSync) {');
   const out = SRC.indexOf('await fetch(');
-  const write = SRC.indexOf('.insert(');
+  const write = SRC.indexOf('syncProviderPayload(service');
   assert(gate !== -1, 'a sync runs without the caller asking for one');
   assert(out !== -1 && write !== -1);
   assert(gate < out, 'the opt-in must precede the outbound fetch');

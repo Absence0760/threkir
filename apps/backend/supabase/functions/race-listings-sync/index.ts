@@ -4,20 +4,8 @@ import { checkRateLimitTiered } from '../_shared/rate_limit.ts';
 import { readJsonWithLimit } from '../_shared/body_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';
 import { publishableKey, secretKey } from '../_shared/api_keys.ts';
-import {
-  EXCLUDED,
-  MAX_LISTING_ROWS,
-  type RaceListingUpsert,
-  type StoredListing,
-  extractProviderRaces,
-  listingDiffers,
-  listingUpsertFrom,
-  nearHintError,
-  parseNearHint,
-  providerRacesUrl,
-  readProviderRace,
-  reconcileListingBatch,
-} from './lib.ts';
+import { nearHintError, parseNearHint, providerRacesUrl } from './lib.ts';
+import { syncProviderPayload } from './write.ts';
 
 // Pull a provider's upcoming races into race_listings.
 //
@@ -34,7 +22,9 @@ import {
 // It writes as the SERVICE ROLE, not as the caller: a provider race is
 // `is_verified`, and the `race_listings_force_unverified` trigger forces false
 // for every other role. The caller's own client is still what identifies them
-// and spends their rate-limit bucket.
+// and spends their rate-limit bucket. The write itself — reading the payload,
+// placing each race from its ZIP, reconciling — is ./write.ts, which the
+// scheduled `race-listings-sweep` shares (decisions § 1901).
 
 interface RequestBody {
   near?: unknown; // { postal_code?, lng?, lat?, radius_m? } region hint, see NearHint
@@ -150,106 +140,8 @@ Deno.serve(withSentry('race-listings-sync', async (req: Request) => {
     return Response.json({ error: `${provider} upstream not JSON` }, { status: 502 });
   }
 
-  const rows = extractProviderRaces(payload);
-  const listings: RaceListingUpsert[] = [];
-  let unusable = 0;
-  let excluded = 0;
-  for (const row of rows) {
-    const race = readProviderRace(provider, row);
-    if (race === EXCLUDED) {
-      excluded++;
-      continue;
-    }
-    if (!race) {
-      unusable++;
-      continue;
-    }
-    listings.push(listingUpsertFrom(provider, race));
-  }
-
-  const complete = rows.length < MAX_LISTING_ROWS;
-  if (listings.length === 0) {
-    return Response.json({
-      synced: 0,
-      updated: 0,
-      skipped: 0,
-      unusable,
-      excluded,
-      total: rows.length,
-      complete,
-    });
-  }
-
   const service = createClient<Database>(Deno.env.get('SUPABASE_URL')!, secretKey());
-
-  const ids = listings
-    .map((l) => l.provider_race_id)
-    .filter((id): id is string => id !== null);
-  // One string literal: a concatenated column list infers as `string` and
-  // silently degrades the typed client to `any`.
-  const { data: storedRows, error: readErr } = await service
-    .from('race_listings')
-    .select('id, provider_race_id, name, race_date, distance_m, location_label, entry_url, results_url, is_verified')
-    .eq('provider', provider)
-    .in('provider_race_id', ids);
-  if (readErr) {
-    // A read that failed is not an empty calendar. Proceeding would insert every
-    // race again and duplicate the whole feed.
-    console.error('race-listings-sync: existing-listing read failed', readErr.message);
-    return Response.json({ error: 'listing_read_failed' }, { status: 500 });
-  }
-
-  const stored = new Map<string, StoredListing>();
-  for (const row of (storedRows ?? []) as StoredListing[]) {
-    if (row.provider_race_id !== null) stored.set(row.provider_race_id, row);
-  }
-
-  const batch = reconcileListingBatch(listings, [...stored.keys()]);
-
-  let synced = 0;
-  if (batch.fresh.length > 0) {
-    const { error } = await service.from('race_listings').insert(batch.fresh);
-    if (error) {
-      console.error('race-listings-sync: insert failed', error.message);
-      return Response.json({ error: 'listing_insert_failed' }, { status: 500 });
-    }
-    synced = batch.fresh.length;
-  }
-
-  // Only the rows whose stored answer actually differs. The partial unique index
-  // cannot arbitrate an ON CONFLICT through PostgREST, so each rewrite is its own
-  // round trip and a sync that rewrote everything would issue one per race every
-  // hour.
-  let updated = 0;
-  for (const row of batch.existing) {
-    const current = stored.get(row.provider_race_id!)!;
-    if (!listingDiffers(current, row)) continue;
-    const { error } = await service
-      .from('race_listings')
-      .update({
-        name: row.name,
-        race_date: row.race_date,
-        distance_m: row.distance_m,
-        location_label: row.location_label,
-        entry_url: row.entry_url,
-        results_url: row.results_url,
-        is_verified: true,
-      })
-      .eq('id', current.id);
-    if (error) {
-      console.error('race-listings-sync: update failed', error.message);
-      return Response.json({ error: 'listing_update_failed' }, { status: 500 });
-    }
-    updated++;
-  }
-
-  return Response.json({
-    synced,
-    updated,
-    skipped: batch.skipped,
-    unusable,
-    excluded,
-    total: rows.length,
-    complete,
-  });
+  const outcome = await syncProviderPayload(service, provider, payload);
+  if (!outcome.ok) return Response.json({ error: outcome.error }, { status: outcome.status });
+  return Response.json(outcome.summary);
 }));

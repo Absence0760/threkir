@@ -26,7 +26,10 @@ import {
   parseProviderRaceDate,
   parseRunSignUpDistance,
   type RunSignUpEventRow,
+  runSignUpErrorOf,
 } from '../race-listings-sync/lib.ts';
+
+export { runSignUpErrorOf };
 
 export const MAX_FIELD_LEN = 200;
 export const MAX_RESULTS_ROWS = 2000;
@@ -390,18 +393,6 @@ export function runSignUpResultsUrl(opts: {
   u.searchParams.set('bib_num', opts.bib);
   u.searchParams.set('results_per_page', String(MAX_RESULTS_ROWS));
   return withRunSignUpKey(u, opts.apiKey, opts.apiSecret).toString();
-}
-
-/**
- * The message of a RunSignUp error envelope, or null when the payload is not
- * one. The feed reports a bad request with HTTP 200, so this is the check that
- * separates "the request was refused" from "nobody in this race has that bib".
- */
-export function runSignUpErrorOf(payload: unknown): string | null {
-  if (!payload || typeof payload !== 'object') return null;
-  const err = (payload as Record<string, unknown>).error;
-  if (!err || typeof err !== 'object') return null;
-  return capField((err as Record<string, unknown>).error_msg, 120) || 'error';
 }
 
 /** A RunSignUp event a listing's results may sit under. */

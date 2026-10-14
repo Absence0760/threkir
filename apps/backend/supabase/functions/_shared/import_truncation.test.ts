@@ -10,11 +10,11 @@
 /// — and the same rule applies here: one transport, shipped alongside its
 /// callers, and the same asymmetry of costs (decisions § 976).
 ///
-/// The race-results half is the reachable one. `runSignUpResultsUrl` narrows
-/// upstream by USER ID only, so a request scoped by bib alone fetches the whole
-/// finisher field and `filterResultsByBib` narrows afterwards — a major with
-/// 30,000 finishers truncates at 2,000 BEFORE the bib filter, and the runner is
-/// told nothing was found.
+/// The race-results half is the one a feed change reaches. RunSignUp narrows
+/// upstream by `bib_num` today, but a feed that stopped honouring the filter
+/// would answer the whole finisher field, and `filterResultsByBib` narrows only
+/// afterwards — a major with 30,000 finishers truncates at 2,000 BEFORE the bib
+/// filter, and the runner would be told nothing was found.
 ///
 /// Run with `cd apps/backend && deno test --no-check --allow-read --allow-env
 /// supabase/functions/_shared/import_truncation.test.ts`.
@@ -48,14 +48,16 @@ Deno.test('a field bigger than the cap is reported as possibly truncated', () =>
 });
 
 Deno.test('the bib a caller asked for can sit past the cap, and the fetch cannot see it', () => {
-  // The reachable shape, driven rather than described: 30,000 finishers, the
-  // caller is bib 25000, the request is bib-scoped (no RunSignUp user id) so
-  // the API returned the whole field.
+  // The shape, driven rather than described: 30,000 finishers, the caller is
+  // bib 25000, and the feed ignored `bib_num` and returned the whole field.
   const field = {
-    results: Array.from({ length: 30_000 }, (_, i) => ({
-      bib_num: String(i + 1),
-      chip_time: '3:11:22',
-    })),
+    individual_results_sets: [{
+      results_headers: {},
+      results: Array.from({ length: 30_000 }, (_, i) => ({
+        bib: i + 1,
+        chip_time: '3:11:22',
+      })),
+    }],
   };
   const rows = extractRunSignUpResults(field);
   assertEquals(rows.length, MAX_RESULTS_ROWS);

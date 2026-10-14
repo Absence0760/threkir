@@ -28,6 +28,12 @@ import { assemblePublicRoute } from '../routes/public_route_assembly';
 import { stripExifFromFile } from '../util/exif_strip';
 import { entriesFromTemplate } from '../nutrition/meal_template';
 import { logInputFromRecipe } from '../nutrition/recipe';
+import {
+	assignmentsToEnd,
+	stopFollowingAction,
+	type PlanAssignment,
+	type PlanTargets,
+} from '../nutrition/meal_plan';
 import { challengesToRecomputeForRun } from '../social/challenge_progress';
 import { mergeMyProgress } from '../social/challenge_list';
 import { selectEffectivePricing } from '../social/event_instance';
@@ -116,9 +122,15 @@ import {
 	parseActivityType,
 	parseIntegrationProvider,
 	parseJoinPolicy,
+	parseNutritionAssignmentStatus,
+	parseNutritionGoalPhase,
+	parseNutritionProgression,
 	parseRouteSurface,
 	parseRunMetadata,
 	parseRunSource,
+	type NutritionGoalPhase,
+	type NutritionPlan,
+	type NutritionPlanAssignment,
 	type RunSource,
 } from '../types';
 import type { RaceImportLeg } from '../integrations/race_import_providers';
@@ -11695,6 +11707,221 @@ export async function recordWeightKg(weightKg: number): Promise<void> {
 		.from(TABLES.body_metrics)
 		.insert({ user_id: userId, weight_kg: weightKg });
 	if (error) throw dbError(error);
+}
+
+// --- Nutrition plans: prescribed targets + self-assignment (nutrition_programming.md P1) ---
+//
+// nutrition_plans is author-scoped; nutrition_plan_assignments says which plan
+// governs which run of diary days (migration 20270815000001). Adherence is
+// never stored: the day view computes it from food_log and the governing plan.
+// last_modified_at is client-stamped (newer-wins, no trigger), like gym_routines.
+
+const NUTRITION_PLAN_COLS =
+	'id, author_id, title, notes, goal_phase, target_calories, target_protein_g, target_carbs_g, target_fat_g, training_calories, training_carbs_g, progression, progression_params, external_id, last_modified_at, created_at';
+const NUTRITION_ASSIGNMENT_COLS =
+	'id, plan_id, client_id, assigned_by, start_date, end_date, status, last_modified_at, created_at';
+
+type NutritionPlanRow = Database['public']['Tables']['nutrition_plans']['Row'];
+type NutritionAssignmentRow = Database['public']['Tables']['nutrition_plan_assignments']['Row'];
+
+function asNutritionPlan(row: NutritionPlanRow): NutritionPlan {
+	const params = row.progression_params;
+	return {
+		...row,
+		goal_phase: parseNutritionGoalPhase(row.goal_phase),
+		progression: parseNutritionProgression(row.progression),
+		progression_params:
+			params !== null && typeof params === 'object' && !Array.isArray(params) ? params : {},
+	};
+}
+
+function asNutritionAssignment(row: NutritionAssignmentRow): NutritionPlanAssignment {
+	return { ...row, status: parseNutritionAssignmentStatus(row.status) };
+}
+
+/// The pure meal_plan shape of an assignment row.
+export function planAssignmentOf(a: NutritionPlanAssignment): PlanAssignment {
+	return {
+		id: a.id,
+		planId: a.plan_id,
+		startDate: a.start_date,
+		endDate: a.end_date,
+		status: a.status,
+		createdAt: a.created_at,
+	};
+}
+
+/// The pure meal_plan prescription columns of a plan row.
+export function planTargetsOf(p: NutritionPlan): PlanTargets {
+	return {
+		targetCalories: p.target_calories,
+		targetProteinG: p.target_protein_g,
+		targetCarbsG: p.target_carbs_g,
+		targetFatG: p.target_fat_g,
+		trainingCalories: p.training_calories,
+		trainingCarbsG: p.training_carbs_g,
+	};
+}
+
+/// What the editor hands the create / update calls.
+export interface NutritionPlanInput {
+	title: string;
+	notes: string | null;
+	goal_phase: NutritionGoalPhase;
+	target_calories: number;
+	target_protein_g: number | null;
+	target_carbs_g: number | null;
+	target_fat_g: number | null;
+	training_calories: number | null;
+	training_carbs_g: number | null;
+}
+
+/// The signed-in user's authored plans, most-recently-modified first. The
+/// error is reported beside the list so "couldn't load" is never drawn as
+/// "no plans yet".
+export async function fetchNutritionPlansWithError(
+	limit = 100,
+): Promise<{ plans: NutritionPlan[]; error: string | null }> {
+	const userId = auth.user?.id;
+	if (!userId) return { plans: [], error: null };
+	const { data, error } = await supabase
+		.from(TABLES.nutrition_plans)
+		.select(NUTRITION_PLAN_COLS)
+		.eq('author_id', userId)
+		.order('last_modified_at', { ascending: false })
+		.limit(limit);
+	if (error) return { plans: [], error: thrownMessage(dbError(error)) };
+	return { plans: (data ?? []).map(asNutritionPlan), error: null };
+}
+
+/// One plan by id. `plan: null, error: null` is a genuine miss (deleted, or
+/// RLS hides it); a failed read carries its error instead.
+export async function fetchNutritionPlan(
+	id: string,
+): Promise<{ plan: NutritionPlan | null; error: string | null }> {
+	const { data, error } = await supabase
+		.from(TABLES.nutrition_plans)
+		.select(NUTRITION_PLAN_COLS)
+		.eq('id', id)
+		.maybeSingle();
+	if (error) return { plan: null, error: thrownMessage(dbError(error)) };
+	return { plan: data ? asNutritionPlan(data) : null, error: null };
+}
+
+/// Plans by id, for resolving the plans the caller's assignments point at.
+export async function fetchNutritionPlansByIds(ids: string[]): Promise<NutritionPlan[]> {
+	if (ids.length === 0) return [];
+	const { data, error } = await supabase
+		.from(TABLES.nutrition_plans)
+		.select(NUTRITION_PLAN_COLS)
+		.in('id', ids);
+	if (error) throw dbError(error);
+	return (data ?? []).map(asNutritionPlan);
+}
+
+export async function createNutritionPlan(input: NutritionPlanInput): Promise<NutritionPlan> {
+	const userId = auth.user?.id;
+	if (!userId) throw new Error('Not signed in');
+	const { data, error } = await supabase
+		.from(TABLES.nutrition_plans)
+		.insert({
+			...input,
+			title: input.title.trim(),
+			author_id: userId,
+			last_modified_at: new Date().toISOString(),
+		})
+		.select(NUTRITION_PLAN_COLS)
+		.single();
+	if (error || !data) throw error ? dbError(error) : new Error('createNutritionPlan failed');
+	return asNutritionPlan(data);
+}
+
+export async function updateNutritionPlan(id: string, input: NutritionPlanInput): Promise<NutritionPlan> {
+	const { data, error } = await supabase
+		.from(TABLES.nutrition_plans)
+		.update({ ...input, title: input.title.trim(), last_modified_at: new Date().toISOString() })
+		.eq('id', id)
+		.select(NUTRITION_PLAN_COLS)
+		.single();
+	if (error || !data) throw error ? dbError(error) : new Error('updateNutritionPlan failed');
+	return asNutritionPlan(data);
+}
+
+/// Delete a plan; its assignments cascade, and the days it governed revert to
+/// the computed target. food_log is untouched — the link is date-based.
+export async function deleteNutritionPlan(id: string): Promise<void> {
+	const { error } = await supabase.from(TABLES.nutrition_plans).delete().eq('id', id);
+	if (error) throw dbError(error);
+}
+
+/// Every assignment naming the signed-in user as the client, ended ones
+/// included: an ended assignment still governs the days inside its range.
+export async function fetchMyNutritionAssignmentsWithError(): Promise<{
+	assignments: NutritionPlanAssignment[];
+	error: string | null;
+}> {
+	const userId = auth.user?.id;
+	if (!userId) return { assignments: [], error: null };
+	const { data, error } = await supabase
+		.from(TABLES.nutrition_plan_assignments)
+		.select(NUTRITION_ASSIGNMENT_COLS)
+		.eq('client_id', userId)
+		.order('start_date', { ascending: false })
+		.limit(200);
+	if (error) return { assignments: [], error: thrownMessage(dbError(error)) };
+	return { assignments: (data ?? []).map(asNutritionAssignment), error: null };
+}
+
+async function endNutritionAssignment(a: NutritionPlanAssignment, today: string): Promise<void> {
+	const action = stopFollowingAction(planAssignmentOf(a), today);
+	const nowIso = new Date().toISOString();
+	const { error } =
+		action.kind === 'delete'
+			? await supabase.from(TABLES.nutrition_plan_assignments).delete().eq('id', a.id)
+			: await supabase
+					.from(TABLES.nutrition_plan_assignments)
+					.update({ status: 'ended', end_date: action.endDate, last_modified_at: nowIso })
+					.eq('id', a.id);
+	if (error) throw dbError(error);
+}
+
+/// Start following `planId` from `today`. The new assignment is written
+/// before the old ones are ended, so a failure part-way leaves an overlap the
+/// newest-start rule already resolves to the new plan — never a day with no
+/// plan the user asked for.
+export async function followNutritionPlan(
+	planId: string,
+	today: string,
+	current: NutritionPlanAssignment[],
+): Promise<void> {
+	const userId = auth.user?.id;
+	if (!userId) throw new Error('Not signed in');
+	const { data, error } = await supabase
+		.from(TABLES.nutrition_plan_assignments)
+		.insert({
+			plan_id: planId,
+			client_id: userId,
+			assigned_by: userId,
+			start_date: today,
+			status: 'active',
+			last_modified_at: new Date().toISOString(),
+		})
+		.select('id')
+		.single();
+	if (error || !data) throw error ? dbError(error) : new Error('followNutritionPlan failed');
+	const toEnd = assignmentsToEnd(current.map(planAssignmentOf), today);
+	for (const a of current) {
+		if (a.id === data.id || !toEnd.some((t) => t.id === a.id)) continue;
+		await endNutritionAssignment(a, today);
+	}
+}
+
+/// Stop following: today reverts to the computed target.
+export async function stopFollowingNutritionPlan(
+	assignment: NutritionPlanAssignment,
+	today: string,
+): Promise<void> {
+	await endNutritionAssignment(assignment, today);
 }
 
 // --- Unified activities timeline (Phase 4 multi-modal History) ---

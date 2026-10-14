@@ -5909,6 +5909,10 @@ export type Database = {
           going_count: number
         }[]
       }
+      event_occurrence_exists: {
+        Args: { p_event_id: string; p_instance: string }
+        Returns: boolean
+      }
       event_orders_owed_refund: {
         Args: { p_limit: number }
         Returns: {

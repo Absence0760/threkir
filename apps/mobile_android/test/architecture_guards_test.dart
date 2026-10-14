@@ -6488,17 +6488,43 @@ void main() {
     });
   });
 
-  group('Portuguese catalogues quote with “…”', () {
-    // Both Portuguese glossaries (.claude/agents/i18n/languages/pt-BR.md,
-    // pt-PT.md) set the curly pair as the quotation mark, so a straight `"`
-    // in a message is a slip — 62 of them shipped before this guard. A
-    // straight double quote is never ICU syntax (ICU escapes with the
-    // apostrophe), so every one in a message value is a quotation mark. The
-    // web twin is in apps/web/src/lib/i18n/messages_parity.test.ts.
-    for (final arb in ['app_pt.arb', 'app_pt_BR.arb']) {
-      test('$arb has no straight double quote in a message', () {
-        final messages = jsonDecode(File('lib/l10n/$arb').readAsStringSync())
-            as Map<String, dynamic>;
+  group('translated catalogues quote with their own marks, never "', () {
+    // Every translated locale's glossary (.claude/agents/i18n/languages/)
+    // sets its quotation marks, so a straight `"` in one of its messages is a
+    // slip — 99 of them shipped across pt, pt_BR, de, es, fr and ja before
+    // this guard. A straight double quote is never ICU syntax (ICU escapes
+    // with the apostrophe), so every one in a message value is a quotation
+    // mark. Keyed on the ARB suffix and checked against the tree in both
+    // directions, so a new locale cannot ship without naming its marks here.
+    // English quotes with the straight pair and is left out. The web twin is
+    // in apps/web/src/lib/i18n/messages_parity.test.ts.
+    const marks = {
+      'de': '„…“',
+      'es': '«…»',
+      'fr': '« … »',
+      'ja': '「…」',
+      'pt': '“…”',
+      'pt_BR': '“…”',
+    };
+    final arbLocales = [
+      for (final f in Directory('lib/l10n').listSync().whereType<File>())
+        ...RegExp(r'^app_(\w+)\.arb$')
+            .allMatches(f.uri.pathSegments.last)
+            .map((m) => m.group(1)!)
+            .where((l) => l != 'en'),
+    ]..sort();
+
+    test('every translated ARB names its quotation marks', () {
+      expect(arbLocales, unorderedEquals(marks.keys),
+          reason: 'add the locale\'s glossary marks to `marks` (or drop a '
+              'locale that no longer ships)');
+    });
+
+    for (final loc in arbLocales) {
+      test('app_$loc.arb has no straight double quote in a message', () {
+        final messages =
+            jsonDecode(File('lib/l10n/app_$loc.arb').readAsStringSync())
+                as Map<String, dynamic>;
         final straight = [
           for (final e in messages.entries)
             if (!e.key.startsWith('@') &&
@@ -6507,25 +6533,47 @@ void main() {
               e.key,
         ];
         expect(straight, isEmpty,
-            reason: '$arb quotes with a straight " in these messages; its '
-                'glossary uses “…”');
+            reason: 'app_$loc.arb quotes with a straight " in these messages; '
+                'its glossary uses ${marks[loc]}');
       });
     }
 
-    test('the hand-written pt getters carry no straight double quote', () {
-      // The ARBs above are not what ships: these getters are, and they are
-      // kept in step with the ARBs by hand.
-      final lines =
-          File('lib/l10n/gen/app_localizations_pt.dart').readAsLinesSync();
-      final straight = [
-        for (var i = 0; i < lines.length; i++)
-          if (!lines[i].trimLeft().startsWith('//') && lines[i].contains('"'))
-            i + 1,
-      ];
-      expect(straight, isEmpty,
-          reason: 'app_localizations_pt.dart quotes with a straight " on '
-              'these lines; the Portuguese glossaries use “…”');
+    final getterFiles = [
+      for (final f in Directory('lib/l10n/gen').listSync().whereType<File>())
+        if (RegExp(r'^app_localizations_\w+\.dart$')
+                .hasMatch(f.uri.pathSegments.last) &&
+            f.uri.pathSegments.last != 'app_localizations_en.dart')
+          f.path,
+    ]..sort();
+
+    test('a getter file exists for every translated language', () {
+      // pt and pt_BR share app_localizations_pt.dart, so the language part
+      // of each ARB suffix is what must have a file.
+      final languages = {for (final l in arbLocales) l.split('_').first};
+      expect(
+          getterFiles.map((p) => RegExp(r'app_localizations_(\w+)\.dart$')
+              .firstMatch(p)!
+              .group(1)),
+          unorderedEquals(languages));
     });
+
+    for (final path in getterFiles) {
+      final name = File(path).uri.pathSegments.last;
+      test('$name carries no straight double quote', () {
+        // The ARBs above are not what ships: these getters are, and they are
+        // kept in step with the ARBs by hand.
+        final lines = File(path).readAsLinesSync();
+        final straight = [
+          for (var i = 0; i < lines.length; i++)
+            if (!lines[i].trimLeft().startsWith('//') &&
+                lines[i].contains('"'))
+              i + 1,
+        ];
+        expect(straight, isEmpty,
+            reason: '$name quotes with a straight " on these lines; its '
+                'glossary sets its own quotation marks');
+      });
+    }
   });
 
   group('a header that names its web twin names a file that exists', () {

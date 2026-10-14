@@ -1461,7 +1461,12 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.byType(RoutePickerScreen), findsOneWidget);
 
-      await tester.tap(find.text('Park loop').last);
+      // The shell behind the picker may also show the route's name, so the
+      // tap is scoped to the picker's own row.
+      await tester.tap(find.descendant(
+        of: find.byType(RoutePickerScreen),
+        matching: find.text('Park loop'),
+      ));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 

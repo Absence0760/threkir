@@ -724,7 +724,10 @@ const OTHER_NOTICES = [
 Deno.test('planSends — every account-change notice plans to its own catalogue key', () => {
   for (const action of OTHER_NOTICES) {
     assert((AUTH_EMAIL_KEYS as readonly string[]).includes(action), `${action} missing from AUTH_EMAIL_KEYS`);
-    const sends = planSends({ email: 'a@example.com' }, { email_action_type: action });
+    const sends = planSends(
+      { email: 'a@example.com' },
+      { email_action_type: action, old_email: 'old@example.com' },
+    );
     assertEquals(sends.length, 1, action);
     assertEquals(sends[0].catalogueKey, action);
     assertEquals(sends[0].verifyType, null);
@@ -738,12 +741,12 @@ Deno.test('planSends — email changed goes to the PREVIOUS address, not the new
     { email_action_type: 'email_changed_notification', old_email: 'old@example.com' },
   );
   assertEquals(sends.map((s) => s.to), ['old@example.com']);
-  // A payload without old_email still reaches the account.
-  const fallback = planSends(
-    { email: 'new@example.com' },
-    { email_action_type: 'email_changed_notification' },
+  // Without old_email there is no safe recipient: user.email is already the
+  // new address, which in a takeover is the attacker's.
+  assertEquals(
+    planSends({ email: 'new@example.com' }, { email_action_type: 'email_changed_notification' }),
+    [],
   );
-  assertEquals(fallback.map((s) => s.to), ['new@example.com']);
   assertEquals(planSends({}, { email_action_type: 'email_changed_notification' }), []);
 });
 

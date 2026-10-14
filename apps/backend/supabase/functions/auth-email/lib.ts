@@ -339,11 +339,15 @@ export function planSends(
   // GoTrue's own mailer sends this one to the PREVIOUS address — by the time
   // it fires, user.email already holds the new one, and the whole point is
   // to reach the mailbox that just lost the account. The hook payload
-  // carries it as email_data.old_email; user.email is only the fallback for
-  // a payload without it.
+  // carries it as email_data.old_email. There is no fallback: user.email is
+  // the NEW address, so in an account takeover a fallback would tell the
+  // attacker and never the owner.
   if (action === 'email_changed_notification') {
-    const to = emailData.old_email || email;
-    if (!to) return [];
+    const to = emailData.old_email;
+    if (!to) {
+      console.error('auth-email: email_changed_notification without old_email; notice not sent');
+      return [];
+    }
     return [{
       to,
       catalogueKey: action,

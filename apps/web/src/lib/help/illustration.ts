@@ -64,6 +64,18 @@ const COLOUR_ATTRIBUTES = new Set(['fill', 'stroke']);
 const COLOURS = new Set<string>(['none', 'currentColor', ...Object.values(ILLUSTRATION_PALETTE)]);
 
 const COMMENT = /<!--[\s\S]*?-->/g;
+
+/// Comments removed to a fixed point: one pass over `<!<!-- -->-- -->` leaves a
+/// fresh `<!--` behind, so a single replace is not a strip.
+function stripComments(source: string): string {
+	let prev: string;
+	let out = source;
+	do {
+		prev = out;
+		out = out.replace(COMMENT, '');
+	} while (out !== prev);
+	return out;
+}
 const TAG = /<(\/?)([A-Za-z][\w:-]*)((?:\s+[^\s="'<>/]+="[^"<>]*")*)\s*(\/?)>/g;
 const ATTRIBUTE = /([^\s="'<>/]+)="([^"<>]*)"/g;
 
@@ -76,9 +88,9 @@ export function illustrationProblems(source: string): string[] {
 	const problems: string[] = [];
 	const bytes = new TextEncoder().encode(source).length;
 	if (bytes > ILLUSTRATION_MAX_BYTES) problems.push(`${bytes} bytes, over the ${ILLUSTRATION_MAX_BYTES}-byte budget`);
-	if (source.includes('<!') && source.replace(COMMENT, '').includes('<!')) problems.push('a DOCTYPE, CDATA or other <! declaration');
+	const body = stripComments(source);
+	if (body.includes('<!')) problems.push('a DOCTYPE, CDATA or other <! declaration');
 	if (source.includes('<?')) problems.push('an XML declaration or processing instruction (start with <svg)');
-	const body = source.replace(COMMENT, '');
 	const rest = body.replace(TAG, '').trim();
 	if (rest !== '') problems.push(`text or a malformed tag outside the elements: "${rest.slice(0, 40)}"`);
 	let depth = 0;
@@ -118,9 +130,11 @@ export function illustrationProblems(source: string): string[] {
 /// The file as web paints it inline: each placeholder becomes its token's CSS
 /// variable (`--illus-<token>`, set by HelpIllustration.svelte from the app
 /// theme), comments go, and the drawing is hidden from assistive technology —
-/// the figure around it carries the guide's alt text.
+/// the figure around it carries the guide's alt text. The result goes to
+/// {@html}, so a `<!` that survives the strip throws rather than renders.
 export function themeIllustration(source: string): string {
-	let out = source.replace(COMMENT, '').trim();
+	let out = stripComments(source).trim();
+	if (out.includes('<!')) throw new Error('help illustration still holds a <! declaration after comments were stripped');
 	for (const [token, placeholder] of Object.entries(ILLUSTRATION_PALETTE)) {
 		out = out.replaceAll(`"${placeholder}"`, `"var(--illus-${token})"`);
 	}

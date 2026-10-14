@@ -66,3 +66,20 @@ test('themeIllustration swaps each placeholder for its token variable and hides 
 	assert.ok(!out.includes('#ff00a'));
 	assert.ok(!out.includes('<!--'));
 });
+
+// One replace over `<!<!-- x -->-- y -->` leaves `<!-- y -->` behind; the strip
+// runs to a fixed point, so it is gone, and anything else opening `<!` after
+// the strip fails both the allow-list and the renderer.
+const RECT = '<rect x="1" y="1" width="2" height="2" fill="none"/>';
+
+test('a comment nested to survive one strip is stripped whole', () => {
+	const nested = wrap(`<!<!-- x -->-- y -->${RECT}`);
+	assert.deepEqual(illustrationProblems(nested), []);
+	assert.ok(!themeIllustration(nested).includes('<!'));
+});
+
+test('a declaration revealed by the strip fails and never renders', () => {
+	const revealed = wrap(`<!<!-- x -->DOCTYPE svg>${RECT}`);
+	assert.match(illustrationProblems(revealed).join('\n'), /<! declaration/);
+	assert.throws(() => themeIllustration(revealed), /<! declaration/);
+});

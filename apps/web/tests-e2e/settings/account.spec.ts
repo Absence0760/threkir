@@ -123,6 +123,55 @@ test.describe('/settings/account', () => {
 		await expect(page.getByRole('button', { name: /Save Profile/ })).toBeEnabled();
 	});
 
+	test('a saved athlete number is the one the parkrun import sends and the barcode shows', async ({
+		page,
+		mockRoute
+	}) => {
+		// Web has no separate import field: the import button beside the saved
+		// number IS the parkrun import, so "prefilled" means it sends the stored
+		// number in canonical form, and the Integrations barcode card reads the
+		// same stored value. The function is stubbed so the test never reaches
+		// parkrun.org.uk.
+		await page.goto('/settings/account');
+		await page.waitForLoadState('networkidle');
+		const input = page.getByTestId('parkrun-number');
+		const before = await input.inputValue();
+		const digits = String(Date.now()).slice(-7);
+		const canonical = `A${digits}`;
+
+		try {
+			await input.fill(` a${digits} `);
+			await page.getByRole('button', { name: /Save Profile/ }).click();
+			await expect(page.getByRole('button', { name: 'Saved!' })).toBeVisible({ timeout: 5_000 });
+
+			await page.reload();
+			await expect(page.getByTestId('parkrun-number')).toHaveValue(canonical);
+
+			const sent: unknown[] = [];
+			await mockRoute(page, '**/functions/v1/parkrun-import', async (route) => {
+				sent.push(route.request().postDataJSON());
+				await route.fulfill({
+					status: 200,
+					contentType: 'application/json',
+					body: JSON.stringify({ imported: 0, skipped: 0, total: 0, complete: true })
+				});
+			});
+			await page.getByRole('button', { name: 'Pull latest parkrun results' }).click();
+			await expect(page.getByText('No new parkrun results since last import.')).toBeVisible();
+			expect(sent).toEqual([{ athleteNumber: canonical }]);
+
+			await page.goto('/settings/integrations');
+			const card = page.getByTestId('parkrun-barcode-card');
+			await expect(card.locator('figcaption')).toHaveText(canonical, { timeout: 10_000 });
+		} finally {
+			await page.goto('/settings/account');
+			await page.waitForLoadState('networkidle');
+			await page.getByTestId('parkrun-number').fill(before);
+			await page.getByRole('button', { name: /Save Profile/ }).click();
+			await expect(page.getByRole('button', { name: 'Saved!' })).toBeVisible({ timeout: 5_000 });
+		}
+	});
+
 	test('Resting HR save persists across reload', async ({ page }) => {
 		// resting_hr_bpm lives in user_settings.prefs, not user_profiles.
 		// The Save handler stitches the two writes together; a regression

@@ -502,6 +502,7 @@ export async function insertEvent(opts: {
 	category?: 'run' | 'cycle' | 'class' | 'social';
 	discipline?: string | null;
 	gym_template?: { discipline: string | null; duration_min: number | null } | null;
+	timezone?: string | null;
 }): Promise<string> {
 	const { data, error } = await getAdminClient()
 		.from('events')
@@ -522,7 +523,8 @@ export async function insertEvent(opts: {
 			capacity: opts.capacity ?? null,
 			distance_m: opts.distance_m ?? null,
 			pace_target_sec: opts.pace_target_sec ?? null,
-			gym_template: opts.gym_template ?? null
+			gym_template: opts.gym_template ?? null,
+			timezone: opts.timezone ?? null
 		})
 		.select('id')
 		.single();

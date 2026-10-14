@@ -8,6 +8,8 @@
 
 import type { Event, RecurrenceFreq, Weekday } from '../types';
 import { expandInstances } from './recurrence';
+import { buildVtimezone } from './ics_timezone';
+import { instantForWallClock, isKnownTimeZone, wallClockIn } from './zoned_time';
 
 // The app's Weekday codes ARE the RFC 5545 weekday abbreviations, so the RRULE
 // needs no translation table — only these two orderings of them.
@@ -15,13 +17,14 @@ const WEEKDAY_BY_UTC_DAY: readonly Weekday[] = ['SU', 'MO', 'TU', 'WE', 'TH', 'F
 const WEEKDAY_ORDER: Weekday[] = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
 
 /** The app's (freq, byday[], until, count) recurrence model, restated in the
- * terms an RRULE needs. Every field is expressed against the UTC clock the
- * DTSTART is written in — see `buildEventSeriesIcs`. */
+ * terms an RRULE needs. The weekdays and day-of-month are read on the clock the
+ * DTSTART is written in — the event's own zone for a series (see
+ * `buildEventSeriesIcs`), UTC for a bare `startIso`. */
 export interface IcsRecurrence {
 	freq: RecurrenceFreq;
-	/** UTC weekdays the series lands on. Weekly / biweekly only. */
+	/** Weekdays the series lands on. Weekly / biweekly only. */
 	byday?: readonly Weekday[] | null;
-	/** UTC day-of-month. Monthly only. */
+	/** Day-of-month. Monthly only. */
 	monthDay?: number | null;
 	/** Inclusive end instant. Ignored when `count` is set — RFC 5545 §3.3.10
 	 * forbids UNTIL and COUNT in the same rule. */
@@ -50,9 +53,26 @@ export interface IcsEventInput {
 	 * that silently disagrees with the app is worse than no calendar entry. */
 	recurrence?: IcsRecurrence | null;
 	/** Occurrences to subtract from the series (cancelled `event_exceptions`).
-	 * Only emitted alongside `recurrence`. */
+	 * Only emitted alongside `recurrence`, and only when `local` is unset. */
 	exdatesIso?: readonly string[] | null;
+	/** Writes DTSTART and EXDATE as wall-clock readings in a named zone and
+	 * defines that zone with a VTIMEZONE, so an RRULE expands on the zone's
+	 * clock — same local time across DST — rather than at a fixed UTC offset.
+	 * `startIso` then only bounds the VTIMEZONE; DTSTART comes from here. */
+	local?: IcsLocalStart | null;
 }
+
+export interface IcsLocalStart {
+	/** IANA zone name, cited as TZID. */
+	tzid: string;
+	/** DTSTART's reading, `YYYYMMDDTHHMMSS`. A reading a DST gap skips is
+	 * legal and resolves forward (RFC 5545 §3.3.5). */
+	dtstart: string;
+	/** EXDATE readings in the same form. */
+	exdates?: readonly string[] | null;
+}
+
+const LOCAL_DATE_TIME = /^\d{8}T\d{6}$/;
 
 /** Escape a TEXT value per RFC 5545 §3.3.11 (backslash, semicolon, comma,
  * newline). Colon needs no escaping in a TEXT value. The grammar's TSAFE-CHAR
@@ -70,8 +90,9 @@ function escapeText(value: string): string {
 }
 
 /** Format an ISO instant as a UTC iCalendar date-time (`YYYYMMDDTHHMMSSZ`).
- * Emitting UTC sidesteps VTIMEZONE — the instant is unambiguous regardless of
- * the event's stored timezone. Returns null for an unparseable input. */
+ * A single occurrence is one instant, so it needs no VTIMEZONE; a series is
+ * written on its zone's wall clock instead (`IcsEventInput.local`). Returns
+ * null for an unparseable input. */
 export function toIcsUtc(iso: string): string | null {
 	const d = new Date(iso);
 	const ms = d.getTime();
@@ -158,19 +179,33 @@ export function buildEventIcs(input: IcsEventInput): string | null {
 	const dtStamp = toIcsUtc(new Date(input.nowMs ?? Date.now()).toISOString());
 	if (!dtStamp) return null;
 
+	const local = input.local ?? null;
+	if (local) {
+		if (!isKnownTimeZone(local.tzid) || !LOCAL_DATE_TIME.test(local.dtstart)) return null;
+		if ((local.exdates ?? []).some((v) => !LOCAL_DATE_TIME.test(v))) return null;
+	}
+
 	const lines: string[] = [
 		'BEGIN:VCALENDAR',
 		'VERSION:2.0',
 		'PRODID:-//Threkir//Run App//EN',
 		'CALSCALE:GREGORIAN',
 		'METHOD:PUBLISH',
+		...(local ? buildVtimezone(local.tzid, new Date(input.startIso).getTime()) : []),
 		'BEGIN:VEVENT',
 		`UID:${input.uid}`,
 		`DTSTAMP:${dtStamp}`,
-		`DTSTART:${dtStart}`
+		local ? `DTSTART;TZID=${local.tzid}:${local.dtstart}` : `DTSTART:${dtStart}`
 	];
 
-	if (input.durationMin != null && input.durationMin > 0) {
+	if (local) {
+		// A wall-clock DTEND would be nominal time and stretch or shrink the
+		// occurrence that crosses a DST change; DURATION is exact for every
+		// member of the set (RFC 5545 §3.8.5.3).
+		if (input.durationMin != null && input.durationMin > 0) {
+			lines.push(`DURATION:PT${Math.round(input.durationMin)}M`);
+		}
+	} else if (input.durationMin != null && input.durationMin > 0) {
 		const end = toIcsUtc(
 			new Date(new Date(input.startIso).getTime() + input.durationMin * 60_000).toISOString()
 		);
@@ -181,7 +216,9 @@ export function buildEventIcs(input: IcsEventInput): string | null {
 		const rrule = buildRrule(input.recurrence);
 		if (!rrule) return null;
 		lines.push(`RRULE:${rrule}`);
-		const exdates = [
+		const exdates = local
+			? [...new Set(local.exdates ?? [])].sort()
+			: [
 			...new Set(
 				(input.exdatesIso ?? [])
 					.map(toIcsUtc)
@@ -190,7 +227,13 @@ export function buildEventIcs(input: IcsEventInput): string | null {
 		].sort();
 		// EXDATE takes a value list whose type must match DTSTART's (UTC
 		// date-time here), so these are raw values, never TEXT-escaped.
-		if (exdates.length) lines.push(`EXDATE:${exdates.join(',')}`);
+		if (exdates.length) {
+			lines.push(
+				local
+					? `EXDATE;TZID=${local.tzid}:${exdates.join(',')}`
+					: `EXDATE:${exdates.join(',')}`
+			);
+		}
 	}
 
 	lines.push(`SUMMARY:${escapeText(input.title)}`);
@@ -209,55 +252,149 @@ export interface EventSeriesIcsOptions {
 	cancelledIso?: readonly string[] | null;
 	url?: string | null;
 	nowMs?: number;
+	/** The zone a legacy series with no stored `timezone` is written in.
+	 * Defaults to the browser's, which is the zone the page expands it in. */
+	viewerZone?: string | null;
 }
 
-// A weekly series' first occurrence is at most 7 days past starts_at, a
-// biweekly's 14, a monthly's 0 — but a series bounded by recurrence_until can
-// legitimately have none at all, so the search window is generous and the
-// no-occurrence case is handled rather than assumed away.
-const SERIES_ANCHOR_WINDOW_MS = 400 * 24 * 3600 * 1000;
+function browserZone(): string {
+	try {
+		return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+	} catch {
+		return 'UTC';
+	}
+}
+
+interface LocalDate {
+	year: number;
+	month: number;
+	day: number;
+	weekday: number;
+}
+
+function addLocalDays(d: LocalDate, n: number): LocalDate {
+	const u = new Date(Date.UTC(d.year, d.month - 1, d.day + n));
+	return {
+		year: u.getUTCFullYear(),
+		month: u.getUTCMonth() + 1,
+		day: u.getUTCDate(),
+		weekday: u.getUTCDay()
+	};
+}
+
+function localDateText(d: LocalDate): string {
+	const p2 = (n: number) => String(n).padStart(2, '0');
+	return `${String(d.year).padStart(4, '0')}${p2(d.month)}${p2(d.day)}`;
+}
+
+/** The series' candidate dates in its own zone, in order: every date carrying
+ * a stored weekday (in the even weeks counted from the Monday of the start's
+ * week, for a biweekly series), or the start's day-of-month each month. */
+function* seriesDates(
+	freq: RecurrenceFreq,
+	byday: readonly Weekday[],
+	start: LocalDate
+): Generator<LocalDate> {
+	if (freq === 'monthly') {
+		for (let i = 0; i < 2; i++) {
+			const u = new Date(Date.UTC(start.year, start.month - 1 + i, start.day));
+			yield {
+				year: u.getUTCFullYear(),
+				month: u.getUTCMonth() + 1,
+				day: u.getUTCDate(),
+				weekday: u.getUTCDay()
+			};
+		}
+		return;
+	}
+	const sinceMonday = (start.weekday + 6) % 7;
+	const monday = addLocalDays(start, -sinceMonday);
+	for (let offset = sinceMonday; offset < 35; offset++) {
+		if (freq === 'biweekly' && Math.floor(offset / 7) % 2 !== 0) continue;
+		const d = addLocalDays(monday, offset);
+		if (byday.includes(WEEKDAY_BY_UTC_DAY[d.weekday])) yield d;
+	}
+}
 
 /** Build a whole-series .ics for a recurring club event: one VEVENT carrying an
  * RRULE, so the member's calendar maintains every future occurrence itself.
  * Returns null for a one-off event, or when the series cannot be expressed as
- * an RRULE without diverging from what the app shows. */
+ * an RRULE without diverging from what the app shows.
+ *
+ * The stored recurrence fields are wall-clock in the event's own zone — the
+ * weekday codes are the organiser's local weekdays and every occurrence keeps
+ * `starts_at`'s local time-of-day across DST — so the file speaks that clock:
+ * DTSTART and EXDATE carry the event's TZID, a VTIMEZONE defines it, and the
+ * RRULE restates the stored codes verbatim. RFC 5545 resolves a DST-gap
+ * reading forward and an ambiguous one to its earlier instant, which is the
+ * rule the app expands by. A legacy series with no stored zone expands in
+ * each viewer's own zone, so it is written in the viewer's zone and the file
+ * agrees with the page that viewer downloaded it from. */
 export function buildEventSeriesIcs(
 	event: Event,
 	opts: EventSeriesIcsOptions = {}
 ): string | null {
-	if (!event.recurrence_freq) return null;
-	const seriesStart = new Date(event.starts_at);
-	if (Number.isNaN(seriesStart.getTime())) return null;
+	const freq = event.recurrence_freq;
+	if (!freq) return null;
+	const startMs = new Date(event.starts_at).getTime();
+	if (Number.isNaN(startMs)) return null;
+	const zone = event.timezone || opts.viewerZone || browserZone();
+	if (!isKnownTimeZone(zone)) return null;
+
+	const start = wallClockIn(startMs, zone);
+	const stored = event.recurrence_byday ?? [];
+	if (stored.some((d) => !WEEKDAY_ORDER.includes(d))) return null;
+	const byday: Weekday[] = stored.length
+		? WEEKDAY_ORDER.filter((d) => stored.includes(d))
+		: [WEEKDAY_BY_UTC_DAY[start.weekday]];
 
 	// DTSTART has to be a real member of the recurrence set (RFC 5545 §3.8.5.3):
 	// when starts_at falls on a weekday outside recurrence_byday the series
-	// begins at the first expanded occurrence, and anchoring on starts_at would
-	// add a phantom occurrence the club page never shows.
-	const [anchor] = expandInstances(
-		event,
-		seriesStart,
-		new Date(seriesStart.getTime() + SERIES_ANCHOR_WINDOW_MS),
-		1
-	);
-	if (!anchor) return null;
+	// begins at the first date that carries one, and anchoring on starts_at
+	// would add a phantom occurrence the club page never shows.
+	const startSecond = startMs - (((startMs % 1000) + 1000) % 1000);
+	let anchorDate: LocalDate | null = null;
+	let anchorMs = 0;
+	for (const d of seriesDates(freq, byday, start)) {
+		const t = instantForWallClock(
+			{ ...d, hour: start.hour, minute: start.minute, second: start.second },
+			zone
+		).getTime();
+		if (t >= startSecond) {
+			anchorDate = d;
+			anchorMs = t;
+			break;
+		}
+	}
+	if (!anchorDate) return null;
+	if (event.recurrence_until != null) {
+		const untilMs = new Date(event.recurrence_until).getTime();
+		if (!Number.isNaN(untilMs) && anchorMs > untilMs) return null;
+	}
+
+	const p2 = (n: number) => String(n).padStart(2, '0');
+	const timeText = `T${p2(start.hour)}${p2(start.minute)}${p2(start.second)}`;
+	const exdates = (opts.cancelledIso ?? []).flatMap((iso) => {
+		const ms = new Date(iso).getTime();
+		if (Number.isNaN(ms)) return [];
+		return [localDateText(wallClockIn(ms, zone)) + timeText];
+	});
 
 	return buildEventIcs({
 		uid: `event-${event.id}-series@threkir.com`,
 		title: event.title,
-		startIso: anchor.toISOString(),
+		startIso: new Date(anchorMs).toISOString(),
 		durationMin: event.duration_min,
 		description: event.description,
 		location: event.meet_label,
 		url: opts.url ?? null,
 		nowMs: opts.nowMs,
+		local: { tzid: zone, dtstart: localDateText(anchorDate) + timeText, exdates },
 		recurrence: {
-			freq: event.recurrence_freq,
-			...resolveSeriesEnd(event, seriesStart),
-			...(event.recurrence_freq === 'monthly'
-				? { monthDay: anchor.getUTCDate() }
-				: { byday: seriesWeekdays(event, seriesStart, anchor) })
-		},
-		exdatesIso: opts.cancelledIso ?? null
+			freq,
+			...resolveSeriesEnd(event, new Date(startMs)),
+			...(freq === 'monthly' ? { monthDay: start.day } : { byday })
+		}
 	});
 }
 
@@ -277,26 +414,6 @@ function resolveSeriesEnd(
 	if (count != null) return { count };
 	if (untilIso != null) return { untilIso };
 	return {};
-}
-
-/** The BYDAY set, read off the expansion rather than translated from
- * `recurrence_byday`: the stored codes are wall-clock in the event's own zone
- * while DTSTART is UTC, so a late-evening event sits on a different UTC weekday
- * than the code the organiser picked. One cycle is enough to see every weekday
- * the series lands on. */
-function seriesWeekdays(event: Event, seriesStart: Date, anchor: Date): Weekday[] {
-	const cycleDays = event.recurrence_freq === 'biweekly' ? 15 : 8;
-	const cycle = expandInstances(
-		event,
-		seriesStart,
-		new Date(anchor.getTime() + cycleDays * 24 * 3600 * 1000),
-		20
-	);
-	const seen = new Set<Weekday>(
-		cycle.map((d) => WEEKDAY_BY_UTC_DAY[d.getUTCDay()])
-	);
-	if (seen.size === 0) seen.add(WEEKDAY_BY_UTC_DAY[anchor.getUTCDay()]);
-	return WEEKDAY_ORDER.filter((d) => seen.has(d));
 }
 
 /** A filesystem-safe .ics filename derived from the event title. */

@@ -131,6 +131,24 @@ void main() {
       expect(instances, hasLength(2));
     });
 
+    test('a count of 0 yields no instance, weekly as monthly', () {
+      // The column admits 0 (20270705000004). The monthly loop and the
+      // database's is_event_occurrence both read it as no occurrence; the
+      // weekly loop counted after emitting and so offered the first one, an
+      // instant the photo trigger then refused.
+      for (final freq in RecurrenceFreq.values) {
+        final e = EventRecurrence(
+          startsAt: DateTime.utc(2026, 4, 1, 8, 0, 0),
+          freq: freq,
+          count: 0,
+          timezone: 'UTC',
+        );
+        final instances = expandInstances(
+            e, DateTime.utc(2026, 4, 1), DateTime.utc(2026, 12, 31, 23, 59, 59));
+        expect(instances, isEmpty, reason: freq.name);
+      }
+    });
+
     test('count-limited weekly is exhausted before a later window (no phantom occurrences)', () {
       // Regression: count caps TOTAL occurrences, not in-window ones. A
       // 3-occurrence weekly series (Apr 1/8/15) viewed in a LATER window must

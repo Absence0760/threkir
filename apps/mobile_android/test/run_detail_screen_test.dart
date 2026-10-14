@@ -823,6 +823,24 @@ void main() {
       expect(find.text('55.42%'), findsOneWidget);
     });
 
+    testWidgets('mounts the pacing-strategy review for a run recorded under one',
+        (tester) async {
+      final run = _run(metadata: {
+        'activity_type': 'run',
+        'pacing_strategy': {
+          'preset': 'negative_split',
+          'distance_m': 5000,
+          'goal_time_s': 1500,
+        },
+      });
+      await _pump(tester, run);
+      final section = find.byKey(const Key('pacing-strategy-section'));
+      await tester.scrollUntilVisible(section, 300,
+          scrollable: find.byType(Scrollable).first);
+      expect(section, findsOneWidget);
+      expect(find.text('Pacing strategy'), findsOneWidget);
+    });
+
     testWidgets('renders the Garmin discipline chip from sub_sport',
         (tester) async {
       final run = _run(metadata: {'activity_type': 'run', 'sub_sport': 'trail'});

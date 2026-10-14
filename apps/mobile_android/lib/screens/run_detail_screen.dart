@@ -56,6 +56,7 @@ import '../widgets/run_segment_efforts.dart';
 import '../widgets/audience_sheet.dart';
 import '../widgets/run_share_card.dart';
 import '../widgets/run_social_section.dart';
+import '../widgets/pacing_strategy_section.dart';
 import '../widgets/workout_review_section.dart';
 import '../widgets/top_banner.dart';
 
@@ -1479,6 +1480,11 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       // Structured-workout review — only when the recorder linked
       // this run to a planned plan_workouts row.
       WorkoutReviewSection(metadata: run.metadata),
+
+      // Race-strategy review — only when the run was recorded under a
+      // pacing strategy this build can read (metadata.pacing_strategy).
+      PacingStrategySection(
+          metadata: run.metadata, track: run.track, unit: unit),
 
       // HR zone breakdown — only when the track carries per-point bpm
       // (Strava streams, FIT/TCX imports, future watch recorders).

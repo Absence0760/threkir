@@ -5773,7 +5773,7 @@ export const messages = {
 	"deleteAccount.s1WebLink": "Definições → Conta",
 	"deleteAccount.s1WebMiddle": " e escolha ",
 	"deleteAccount.s1WebAction": "Eliminar conta",
-	"deleteAccount.s1WebSuffix": ". Para confirmar, ser-lhe-á pedido que escreva o e-mail da sua conta. (Se abrir essa ligação sem sessão iniciada, passa pelo início de sessão e regressa aqui.)",
+	"deleteAccount.s1WebSuffix": ". Para confirmar, ser-lhe-á pedido que escreva o e-mail da sua conta. (Se abrir a ligação sem sessão iniciada, passa pelo início de sessão e regressa aqui.)",
 	"deleteAccount.s1MobileLabel": "Na app do telemóvel",
 	"deleteAccount.s1MobileBody": ": Definições → Conta → Eliminar conta, com a mesma confirmação escrita.",
 	"deleteAccount.s1PermanentPrefix": "A eliminação é ",

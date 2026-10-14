@@ -72,7 +72,7 @@ select is((select count(*)::int from hit where id = 'eeee1921-0000-0000-0000-000
 select is((select count(*)::int from hit where id = 'eeee1921-0000-0000-0000-0000000000d3' and day = 'SU'),
   1, 'a biweekly series with a null byday is listed under its start''s local weekday');
 select is((select count(*)::int from hit where id = 'eeee1921-0000-0000-0000-0000000000d3'),
-  1, 'and under no other day');
+  1, 'the null-byday biweekly series is under no other day');
 
 select is((select count(*)::int from hit where id = 'eeee1921-0000-0000-0000-0000000000d4'),
   0, 'a monthly series is under no weekday — its day of the month moves across them');
@@ -82,12 +82,12 @@ select is((select count(*)::int from hit where id = 'eeee1921-0000-0000-0000-000
 select is((select count(*)::int from hit where id = 'eeee1921-0000-0000-0000-0000000000d6' and day = 'SU'),
   1, 'a one-off is listed under its local weekday');
 select is((select count(*)::int from hit where id = 'eeee1921-0000-0000-0000-0000000000d6'),
-  1, 'and under no other day');
+  1, 'the one-off is under no other day');
 
 select is((select count(*)::int from hit where id = 'eeee1921-0000-0000-0000-0000000000d7' and day = 'MO'),
   1, 'a zone-less legacy series with no byday reads its weekday on UTC');
 select is((select count(*)::int from hit where id = 'eeee1921-0000-0000-0000-0000000000d7'),
-  1, 'and under no other day');
+  1, 'the zone-less legacy series is under no other day');
 
 -- Positive control for every zero above: with no day filter, all seven rows
 -- are returned to anon, so a zero is the filter and not a hidden row.

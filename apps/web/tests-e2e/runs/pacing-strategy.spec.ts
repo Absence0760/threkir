@@ -37,7 +37,7 @@ function track(startedAt: string, legs: { m: number; pace: number }[]) {
 }
 
 /// A 5K run under the 10-10-10 preset with a 25:00 goal: targets 5:06, 5:00
-/// and 4:49 /km. The first phase runs at 4:50 and the last at 5:15 — the
+/// and 4:50 /km. The first phase runs at 4:50 and the last at 5:15 — the
 /// went-out-too-fast shape.
 async function seedTooFastFiveK(startedAt: string, metadata?: Record<string, unknown>) {
 	const f = 5_000 * TEN_MILE_FRACTION;

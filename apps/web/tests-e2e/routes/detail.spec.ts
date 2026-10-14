@@ -5,6 +5,7 @@ import { RUNNER_PUBLIC_ROUTE_ID } from '../fixtures/seeded-data';
 import { USER_A } from '../fixtures/users';
 import { readRow } from '../fixtures/db-read';
 import { shareChoosingPublic } from '../fixtures/share';
+import { deleteRoute, insertRoute } from '../fixtures/simulate';
 
 /**
  * /routes/[id] — owner-only route detail page.
@@ -122,35 +123,52 @@ test.describe('/routes/[id]', () => {
 		// With audience sharing on (the seed opens the gate) the owner's one
 		// visibility control is the audience picker; the old public toggle is
 		// gone so two buttons never disagree. Only me writes is_public=false;
-		// Public goes back through the make-public confirm. Pinned route starts
-		// public; cleanup leaves it public.
-		await page.goto(`/routes/${RUNNER_PUBLIC_ROUTE_ID}`);
-		// The control is gated on `isOwner`, which derives from auth.user and
-		// the fetched route; a click before hydration is a no-op.
-		await page.waitForLoadState('networkidle');
+		// Public goes back through the make-public confirm. The test owns its
+		// route: the seeded one is flipped by other spec files running in
+		// parallel workers, which raced this round trip.
+		const routeId = await insertRoute({
+			user_id: USER_A.id,
+			name: `Audience round trip ${Date.now()}`,
+			waypoints: [
+				{ lat: 51.5007, lng: -0.1246 },
+				{ lat: 51.5033, lng: -0.1195 }
+			],
+			distance_m: 450,
+			is_public: true
+		});
+		try {
+			await page.goto(`/routes/${routeId}`);
+			// The control is gated on `isOwner`, which derives from auth.user
+			// and the fetched route; a click before hydration is a no-op.
+			await page.waitForLoadState('networkidle');
 
-		const audienceBtn = page.getByTestId('route-audience-btn');
-		await expect(audienceBtn).toContainText('Public', { timeout: 10_000 });
-		await expect(page.locator('button[title^="Public —"], button[title^="Private —"]')).toHaveCount(0);
+			const audienceBtn = page.getByTestId('route-audience-btn');
+			await expect(audienceBtn).toContainText('Public', { timeout: 10_000 });
+			await expect(
+				page.locator('button[title^="Public —"], button[title^="Private —"]')
+			).toHaveCount(0);
 
-		await audienceBtn.click();
-		await expect(page.getByTestId('audience-dialog')).toBeVisible();
-		await page.getByTestId('audience-level-private').click();
-		await expect(audienceBtn).toContainText('Only me', { timeout: 5_000 });
-		await page.keyboard.press('Escape');
+			await audienceBtn.click();
+			await expect(page.getByTestId('audience-dialog')).toBeVisible();
+			await page.getByTestId('audience-level-private').click();
+			await expect(audienceBtn).toContainText('Only me', { timeout: 5_000 });
+			await page.keyboard.press('Escape');
 
-		// Reload — server-side state must agree.
-		await page.reload();
-		await expect(audienceBtn).toContainText('Only me', { timeout: 10_000 });
+			// Reload — server-side state must agree.
+			await page.reload();
+			await expect(audienceBtn).toContainText('Only me', { timeout: 10_000 });
 
-		// Restore through the make-public confirm, the same path Share takes on
-		// a private route.
-		await page.waitForLoadState('networkidle');
-		await shareChoosingPublic(page, page.getByRole('button', { name: 'Share', exact: true }));
-		const confirm = page.getByTestId('share-confirm-dialog');
-		await expect(confirm).toBeVisible();
-		await confirm.getByRole('button', { name: 'Make public & share' }).click();
-		await expect(audienceBtn).toContainText('Public', { timeout: 5_000 });
+			// Restore through the make-public confirm, the same path Share
+			// takes on a private route.
+			await page.waitForLoadState('networkidle');
+			await shareChoosingPublic(page, page.getByRole('button', { name: 'Share', exact: true }));
+			const confirm = page.getByTestId('share-confirm-dialog');
+			await expect(confirm).toBeVisible();
+			await confirm.getByRole('button', { name: 'Make public & share' }).click();
+			await expect(audienceBtn).toContainText('Public', { timeout: 5_000 });
+		} finally {
+			await deleteRoute(routeId);
+		}
 	});
 
 	// `toggleStar` is optimistic, so the button's class says nothing about

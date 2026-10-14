@@ -531,7 +531,7 @@ The Apple Watch hand-off contract ([decisions § 1801](../architecture/decisions
 
 ### `apps/mobile_android/test/ultrasignup_link_test.dart` — 10 tests
 
-Settings → Integrations' UltraSignup finder ([decisions § 1841](../architecture/decisions.md), § R9ULTRA-1): the tile names the linked person or offers the finder; Find waits for both halves of the name; a search lists every same-named person with age, result count and recent races; a pick links UltraSignup's spelling and the tile follows; no matches, a failed lookup and a failed link each say so distinctly; unlink is deferred behind the undo bar with no confirm, and Undo restores the same person without deleting anything.
+Settings → Integrations' UltraSignup finder ([decisions § 1841](../architecture/decisions.md), § 1891): the tile names the linked person or offers the finder; Find waits for both halves of the name; a search lists every same-named person with age, result count and recent races; a pick links UltraSignup's spelling and the tile follows; no matches, a failed lookup and a failed link each say so distinctly; unlink is deferred behind the undo bar with no confirm, and Undo restores the same person without deleting anything.
 
 ### `apps/mobile_ios/test/` — 619 files, byte-for-byte
 

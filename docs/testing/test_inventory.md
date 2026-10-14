@@ -1226,7 +1226,11 @@ Run the pure-helper slices with `cd apps/backend && deno test --no-check supabas
 
 The happy-path 200s with valid HMAC / freshness / dedupe still need real secrets to drive and are exercised manually only — see [apps/backend/CLAUDE.md § Testing without real credentials](../../apps/backend/CLAUDE.md#testing-without-real-credentials).
 
-### `apps/web/tests-e2e/**/*.spec.ts` — 2,027 declared tests across 533 spec files (Playwright suite)
+### `apps/web/tests-e2e/built/sentry-consent.spec.ts` — 2 tests
+
+The runtime half of the guard `build-web` runs over the build output (`scripts/check_web_removed_kit_apis.mjs`). web@1.12.0 resolved @sentry/sveltekit's Svelte 4 tracing variant, which subscribes to `$app/stores` — a stub that throws on Kit 3 — and `hooks.client.ts` runs `Sentry.init` only when `!dev && PUBLIC_SENTRY_DSN && hasAcceptedConsent()`, so every reader who accepted error reporting got a blank page while every `vite dev` lane stayed green ([decisions § 1896](../architecture/decisions.md)). Runs under `playwright.built.config.ts`: a production build with a dummy DSN, served as CloudFront serves it by `tests-e2e/scripts/serve-build.mjs`. One case seeds consent the way `consent.set('accepted')` stores it and loads `/` (prerendered — the uncaught-error check is what fails there), `/help` and `/login` (the SPA shell — a throw leaves them blank); the other accepts through the banner itself, which reloads the page, and asserts it still renders. Both require a `*.sentry.io` request to have been answered, so neither can pass without `Sentry.init` having run. Against the pre-fix `vite.config.ts` (no `sentrySvelteKit()` plugin) both fail on the `app_stores_removed` page error.
+
+### `apps/web/tests-e2e/**/*.spec.ts` — 2,029 declared tests across 534 spec files (Playwright suite)
 
 End-to-end browser tests that drive the real SvelteKit app against a real local Supabase. Unit tests pin pure helpers and SQL pins RLS at the database; this suite catches the next failure mode — **a UI fetch path that bypasses or misuses an otherwise-correct policy** (a wrong join, a dropped filter, a client-side lookup that trusts the URL, an optimistic update that never round-trips). Browser-only on purpose — mobile / watch don't have an equivalent harness (Flutter `integration_test` is too slow + flaky on CI to be worth the cycles right now).
 
@@ -1363,6 +1367,8 @@ tests-e2e/
     run.spec.ts                — /share/run/[id] anon + authed-non-owner view; private-run not-found for anon; sign-up CTA click-through; run-meta render
     route.spec.ts              — /share/route/[id] anon view
     badge.spec.ts              — /share/badge/[id] share-page chrome: header logo + footer home/sign-in links on both the found and not-available states
+  built/                       — NOT run by the sharded suite (testIgnore'd); only by `playwright.built.config.ts`, the one lane on a PRODUCTION build (CI job `e2e-web-built`, unsharded, no Supabase)
+    sentry-consent.spec.ts     — error reporting accepted on a build carrying a dummy PUBLIC_SENTRY_DSN: `/`, /help and /login render with no uncaught error and no `svelte.dev/e/kit` console error, and accepting through the consent banner reloads into a page that still renders (decisions § 1896). Every off-origin request is answered in-test; each case requires Sentry to have sent, so it cannot pass without Sentry.init having run. Run locally: `pnpm test:e2e:built`.
   u/
     profile.spec.ts            — /u/[id] (self vs cross-user view, Followers + Following tab list rendering + click-through)
     notifications.spec.ts      — /u/[me]?tab=notifications inbox: list renders, Mark all read empties Unread filter

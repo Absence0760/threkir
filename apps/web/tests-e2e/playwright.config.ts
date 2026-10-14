@@ -78,7 +78,11 @@ export default defineConfig({
 		'**/settings/export_job.spec.ts',
 		// The SSO/OAuth lane (tests-e2e/sso) needs the mock OIDC provider +
 		// GoTrue wired to it, which only playwright.sso.config.ts boots.
-		'**/sso/**'
+		'**/sso/**',
+		// The built-app lane (tests-e2e/built) needs a production build with a
+		// Sentry DSN, which only playwright.built.config.ts makes. Under
+		// `vite dev` Sentry never initialises and every case there fails.
+		'**/built/**'
 	],
 
 	// Stable on CI even with the dev server taking a beat to warm up.

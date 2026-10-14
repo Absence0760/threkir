@@ -106,6 +106,7 @@ here.
 
 **Top-level (`lib/`):**
 - `help_guides.dart` — pure model for the in-app help guides: `Guide` / blocks, the tolerant markup tokenizer (`tokenizeHelpMarkup`), `HelpLibrary` (route lookup, category order, search ranking) and `helpRouteToScreen` (web route id → `HelpDestination`).
+- `help_illustration.dart` — `HelpIllustration`, one guide illustration drawn with flutter_svg from `assets/help/illustrations/<id>.svg`: `currentColor` from `onSurface` and a `ColorMapper` swapping each placeholder colour for its ColorScheme / semantic colour (`helpIllustrationPalette`, pinned to the web contract), announced by its alt text.
 - `help_loader.dart` — reads `assets/help/guides.en.json` once per process; null on any failure (the screens show an unavailable state). `helpLibraryLoader` is the test seam.
 - `help_destination.dart` — `pendingHelpDestination`, the parked intent a guide's route link sets and `home_screen.dart` drains (decisions § 1847).
 - `main.dart` — app entry, Supabase init, service wiring; calls `WearAuthBridge().attach(...)` so the paired Wear OS watch inherits the Supabase session, plus `WearRoutesBridge().attach(routeStore)` so the watch's route picker reflects the user's starred subset without needing its own network

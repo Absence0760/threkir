@@ -125,7 +125,7 @@ Deno.test('the attribution gate is gone and the import goes through the attribut
   assert(branch !== -1 && end !== -1, 'the ultrasignup branch is gone — re-anchor this guard');
   const body = SRC.slice(branch, end);
   const scope = body.indexOf('ultraSignUpScopeGate(');
-  const fetchAt = body.indexOf('await deps.fetch(');
+  const fetchAt = body.indexOf('await readUpstream(');
   assert(scope !== -1 && fetchAt !== -1 && scope < fetchAt, 'the person must be scoped before the fetch');
   assert(body.includes('ultraSignUpImportRows('), 'the branch no longer maps through the attributing helper');
   assert(!body.includes('mapUltraSignUpResult('), 'the branch maps rows without attributing them');

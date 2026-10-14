@@ -37,6 +37,7 @@ import {
   type MappedRaceRun,
 } from './lib.ts';
 import { reconcileImportBatch } from '../_shared/external_id_batch.ts';
+import { isUpstreamTimeout, UPSTREAM_TIMEOUT_MS } from '../_shared/upstream_deadline.ts';
 
 interface RequestBody {
   provider?: unknown; // 'runsignup' | 'ultrasignup' | 'chronotrack' | 'paste'
@@ -57,7 +58,11 @@ export interface RaceResultsImportDeps {
   /// A client that acts as the caller: their JWT, the publishable key.
   userClient: (authHeader: string) => DbClient;
   fetch: typeof fetch;
+  /// Overrides `UPSTREAM_TIMEOUT_MS`, so a test can watch the deadline fire.
+  upstreamTimeoutMs?: number;
 }
+
+type UpstreamRead = { payload: unknown } | { failed: Response };
 
 export function makeRaceResultsImportHandler(
   deps: RaceResultsImportDeps,
@@ -76,6 +81,47 @@ export function makeRaceResultsImportHandler(
     if (!user) return Response.json({ error: 'unauthorized' }, { status: 401 });
 
     const body = (guarded.body ?? {}) as RequestBody;
+
+    // Every provider call in this request reads through here and shares ONE
+    // deadline, started at the first call: the RunSignUp leg can make nine in
+    // sequence, and a bound per call would let them sum past the runtime's
+    // 150 s clock, which answers a bare 500 (decisions § 1912). A timeout is a
+    // 504 and an unreachable feed a 502. Nothing is written until every call
+    // has answered, so a deadline that fires mid-leg inserts nothing.
+    let deadline: AbortSignal | null = null;
+    const userAgent = deps.getEnv('RACE_IMPORT_USER_AGENT') || 'RunApp/1.0';
+    const readUpstream = async (provider: string, url: string): Promise<UpstreamRead> => {
+      deadline ??= AbortSignal.timeout(deps.upstreamTimeoutMs ?? UPSTREAM_TIMEOUT_MS);
+      const timeout = () =>
+        Response.json({ error: `${provider} upstream timeout` }, { status: 504 });
+      let upstream: Response;
+      try {
+        deadline.throwIfAborted();
+        upstream = await deps.fetch(url, { headers: { 'User-Agent': userAgent }, signal: deadline });
+      } catch (err) {
+        return {
+          failed: isUpstreamTimeout(err)
+            ? timeout()
+            : Response.json({ error: `${provider} upstream unreachable` }, { status: 502 }),
+        };
+      }
+      if (!upstream.ok) {
+        // Fail loud on a non-2xx upstream rather than feeding an error page in.
+        upstream.body?.cancel().catch(() => {});
+        return {
+          failed: Response.json({ error: `${provider} upstream ${upstream.status}` }, { status: 502 }),
+        };
+      }
+      try {
+        return { payload: await upstream.json() };
+      } catch (err) {
+        return {
+          failed: isUpstreamTimeout(err)
+            ? timeout()
+            : Response.json({ error: `${provider} upstream not JSON` }, { status: 502 }),
+        };
+      }
+    };
     const provider = typeof body.provider === 'string' ? body.provider : '';
     const isProbe = body.probe === true;
     const isLookup = !isProbe && provider === 'ultrasignup' && body.lookup === true;
@@ -170,20 +216,10 @@ export function makeRaceResultsImportHandler(
       if (!firstName || !lastName) {
         return Response.json({ error: 'ultrasignup_name_required' }, { status: 400 });
       }
-      const upstream = await deps.fetch(ultraSignUpHistoryUrl(firstName, lastName), {
-        headers: { 'User-Agent': deps.getEnv('RACE_IMPORT_USER_AGENT') || 'RunApp/1.0' },
-      });
-      if (!upstream.ok) {
-        return Response.json({ error: `ultrasignup upstream ${upstream.status}` }, { status: 502 });
-      }
-      let payload: unknown;
-      try {
-        payload = await upstream.json();
-      } catch (_) {
-        return Response.json({ error: 'ultrasignup upstream not JSON' }, { status: 502 });
-      }
+      const people = await readUpstream('ultrasignup', ultraSignUpHistoryUrl(firstName, lastName));
+      if ('failed' in people) return people.failed;
       return Response.json({
-        candidates: ultraSignUpCandidates(extractUltraSignUpPeople(payload)),
+        candidates: ultraSignUpCandidates(extractUltraSignUpPeople(people.payload)),
       });
     }
 
@@ -245,27 +281,15 @@ export function makeRaceResultsImportHandler(
       if (!scope.ok) {
         return Response.json({ error: scope.error }, { status: scope.status });
       }
-      const headers = { 'User-Agent': deps.getEnv('RACE_IMPORT_USER_AGENT') || 'RunApp/1.0' };
-      const readFeed = async (url: string): Promise<{ payload: unknown } | { failed: Response }> => {
-        const upstream = await deps.fetch(url, { headers });
-        if (!upstream.ok) {
-          return {
-            failed: Response.json({ error: `runsignup upstream ${upstream.status}` }, { status: 502 }),
-          };
-        }
-        let payload: unknown;
-        try {
-          payload = await upstream.json();
-        } catch (_) {
-          return { failed: Response.json({ error: 'runsignup upstream not JSON' }, { status: 502 }) };
-        }
+      const readFeed = async (url: string): Promise<UpstreamRead> => {
+        const read = await readUpstream('runsignup', url);
         // RunSignUp refuses a request with HTTP 200 and an error envelope;
         // reading that as an empty field would tell the runner they were not
         // in a race they ran.
-        if (runSignUpErrorOf(payload) !== null) {
+        if ('payload' in read && runSignUpErrorOf(read.payload) !== null) {
           return { failed: Response.json({ error: 'runsignup upstream error' }, { status: 502 }) };
         }
-        return { payload };
+        return read;
       };
 
       const race = await readFeed(runSignUpRaceUrl({ raceId, apiKey, apiSecret }));
@@ -316,19 +340,12 @@ export function makeRaceResultsImportHandler(
       if (!person.ok) {
         return Response.json({ error: person.error }, { status: person.status });
       }
-      const upstream = await deps.fetch(ultraSignUpHistoryUrl(person.firstName, person.lastName), {
-        headers: { 'User-Agent': deps.getEnv('RACE_IMPORT_USER_AGENT') || 'RunApp/1.0' },
-      });
-      if (!upstream.ok) {
-        // Fail loud on a non-2xx upstream rather than feeding an error page in.
-        return Response.json({ error: `ultrasignup upstream ${upstream.status}` }, { status: 502 });
-      }
-      let payload: unknown;
-      try {
-        payload = await upstream.json();
-      } catch (_) {
-        return Response.json({ error: 'ultrasignup upstream not JSON' }, { status: 502 });
-      }
+      const history = await readUpstream(
+        'ultrasignup',
+        ultraSignUpHistoryUrl(person.firstName, person.lastName),
+      );
+      if ('failed' in history) return history.failed;
+      const payload = history.payload;
       // Attribution happens here and nowhere else: the runner's own results,
       // and of those only the one whose `event_distance_id` and date are this
       // listing's (decisions § 975, § 1841).
@@ -375,20 +392,9 @@ export function makeRaceResultsImportHandler(
         password,
         bib: ctBib,
       });
-      const upstream = await deps.fetch(url, {
-        headers: { 'User-Agent': deps.getEnv('RACE_IMPORT_USER_AGENT') || 'RunApp/1.0' },
-      });
-      if (!upstream.ok) {
-        // Fail loud on a non-2xx upstream rather than feeding an error page in.
-        return Response.json({ error: `chronotrack upstream ${upstream.status}` }, { status: 502 });
-      }
-      let payload: unknown;
-      try {
-        payload = await upstream.json();
-      } catch (_) {
-        return Response.json({ error: 'chronotrack upstream not JSON' }, { status: 502 });
-      }
-      const rows = extractChronoTrackResults(payload);
+      const feed = await readUpstream('chronotrack', url);
+      if ('failed' in feed) return feed.failed;
+      const rows = extractChronoTrackResults(feed.payload);
       complete = !resultsPossiblyTruncated(rows.length);
       mapped = rows
         .map((r) => mapChronoTrackResult(r, mapOpts))

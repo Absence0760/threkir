@@ -17,8 +17,8 @@ import {
   SWEEP_WINDOW_DAYS,
   SWEEP_WINDOWS,
   sweepWindowAt,
-  UPSTREAM_TIMEOUT_MS,
 } from '../race-listings-sync/lib.ts';
+import { UPSTREAM_TIMEOUT_MS } from '../_shared/upstream_deadline.ts';
 import { makeRaceListingsSweepHandler } from './handler.ts';
 
 const SECRET = 's'.repeat(CRON_SECRET_MIN_CHARS);

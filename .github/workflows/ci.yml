@@ -1116,6 +1116,13 @@ jobs:
             echo "Reproduce with: node --test scripts/check_web_bundle_budget.test.mjs (stdlib only, no install needed)."
             exit 1
           fi
+      - name: Unit-test the removed-Kit-API guard
+        run: |
+          if ! node --test scripts/check_web_removed_kit_apis.test.mjs; then
+            echo "::error::The removed-SvelteKit-API guard's own unit tests failed, so its verdict on the build below cannot be trusted."
+            echo "Reproduce with: node --test scripts/check_web_removed_kit_apis.test.mjs (stdlib only, no install needed)."
+            exit 1
+          fi
       # The phone apps render the in-app help guides, and the web its
       # translated locales, from per-locale JSON copies of the TypeScript
       # guides and translations under apps/web/src/lib/help (docs/features/
@@ -1208,6 +1215,17 @@ jobs:
       # (fonts, images, prerendered pages: one loaded per reader). The
       # numbers and the measurements behind them live in the script's header,
       # next to the arithmetic they govern.
+      # A removed Kit module compiles to a stub that throws on first use, so
+      # the build passes and the page dies at run time. web@1.12.0 shipped
+      # one inside @sentry/sveltekit and blanked the site for every reader
+      # who accepted error reporting (decisions § 1896).
+      - name: Assert no removed SvelteKit API ships to the client
+        run: |
+          if ! node scripts/check_web_removed_kit_apis.mjs; then
+            echo "::error::The built web client carries the throwing stub of a SvelteKit module Kit has removed. The build succeeded; the page would throw when that code first runs. The failing line names the chunk."
+            echo "Reproduce with: npm run build --workspace=apps/web && node scripts/check_web_removed_kit_apis.mjs"
+            exit 1
+          fi
       - name: Measure + assert the bundle budget
         run: |
           if ! node scripts/check_web_bundle_budget.mjs; then

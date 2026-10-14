@@ -177,7 +177,7 @@ Pin the listener-attach / push-on-change / starred-only filter contract on the p
 
 **integration with LocalRouteStore (3 tests):** `saveBatch` triggers exactly one push (single listener notification); `delete` of a starred route triggers a fresh push without the deleted id; starring an existing route triggers a push that includes it.
 
-### `apps/job_worker/internal/supabase_dataexport_test.go` — 33 tests
+### `apps/job_worker/internal/supabase_dataexport_test.go` — 34 tests
 
 HTTP-level coverage for the four `SupabaseClient` methods added in the May 2026 backup work: `FetchExportRoutes`, `FetchExportProfile`, `FetchUserSettingsPrefs`, `DownloadRawTrackBytes`. Uses `httptest.NewServer` to mimic the Supabase REST + Storage surface; asserts that requests are shaped correctly (path, query params, headers) AND decoded responses match the wire contract.
 
@@ -537,7 +537,7 @@ Settings → Integrations' UltraSignup finder ([decisions § 1841](../architectu
 
 The centre button's long-press start-options sheet (decisions § 1892, § 1897): which items it offers when the tap starts a run and when the tap fans, that it never exceeds five, which plan workout counts as today's open one (not another day, a rest day, a completed, run-completed or skipped workout, or one with nothing to follow), the workout card's summary (target distance, or the summed distance steps, and the step count), and which saved routes sit inline (most recently run first, then newest saved, undated last, at most three). The sheet itself: its sections and title in one screen-reader group, the workout card naming kind, distance and steps and resolving in one tap, no route section with no saved route, one route inline with no "All routes…", three inline with "All routes…" resolving to the picker, a route tile resolving to that route, a row resolving to its action, dismissal resolving to nothing, and the full sheet at the largest text size scrolling rather than overflowing. Each item's routing in the shell, including an inline route starting the recorder without a second picker, is pinned in `home_screen_test.dart`.
 
-### `apps/mobile_ios/test/` — 633 files, byte-for-byte
+### `apps/mobile_ios/test/` — 635 files, byte-for-byte
 
 After the April 2026 mobile-codebase unification, `apps/mobile_ios/test/` is kept identical to `apps/mobile_android/test/` via `diff -rq`. Every test file documented above runs on the iOS target too **locally** — `melos run test` has no scope filter — but **not in CI**: the `test-packages` job scopes `melos exec` to `run_recorder`, `mobile_android`, `api_client`, `gpx_parser`, `ui_kit` and `core_models`, and `mobile_ios` is not among them. That is not a gap for byte-identical Dart, but it is why a test gated on an `ios/` file being present asserts nothing on any CI run — two such groups existed and were removed in favour of `scripts/check_ios_native_declarations.mjs` (decisions.md § 742). Per-target counts: `flutter test` compiles separately, so each test file is executed twice when you run both apps locally. Don't add iOS-specific test files — every test belongs in both apps. The architecture-guard tests under `apps/mobile_android/test/architecture_guards_test.dart` read `lib/screens/run_screen.dart` from the working directory, so they pin the same invariants on both targets.
 
@@ -1008,7 +1008,7 @@ Three source-level resilience guards were added on 2026-09-03 in the same idiom 
 
 The handful of Wear OS surfaces NOT covered (need instrumentation): `Pedometer` sensor binding itself, `HeartRateMonitor.MeasureCallback` registration with Health Services, `GpsRecorder` `FusedLocationProviderClient` callback, foreground-service lifecycle, Compose UI screen rendering (the team deliberately stayed off Robolectric — `ScreenWiringTest`'s source-grep approach is the cheap-but-effective alternative).
 
-### `apps/job_worker/internal/**/*_test.go` — 951 tests across 87 files (Go unit tests)
+### `apps/job_worker/internal/**/*_test.go` — 952 tests across 87 files (Go unit tests)
 
 Run with `go test ./...` from `apps/job_worker`. No network or Postgres dependency — the worker tests use a fake `Backend`, the matcher tests use `httptest.Server` to stand in for OSRM. Gated in CI by the `test-worker` job (`go vet` + `go test ./...`), so a Go-side guard like `internal/personal_data_export_guard_test.go` (the GDPR Art 20 export-completeness tripwire — fails the build when a new `user_id`-bearing table isn't wired into `exportPersonalDataSpecs` or the reasoned exclusion list) now fails a PR, not just a local run. Files:
 
@@ -1225,7 +1225,7 @@ The behavioural guard on the § 1286 / § 1489 negative: no uniqueness on `gym_r
 
 Pins migration `20270808000011` (decisions § 1918). The gate: no API role can run `private.remap_recurrence_wallclock` or close the transition window, nothing in the database calls the remap, and its default call is a dry run that reports the real counts and moves and records nothing. The window: before the close `is_event_occurrence` accepts both the UTC-clock and the wall-clock instant, and after it only the wall-clock one; the close refuses while a row still sits on a UTC-clock-only instant. The remap: a New York Wednesday-evening series pairs each Tuesday row with the Wednesday after it (shift 1) across attendees, the cancellation, the reminder, the event post and the host photo; an adjacent MO/TU series moves seven rows through a chain of instants without a primary-key or result unique-key collision; the monthly 28 February clamp and the April EDT move; the 07:00 fall-back move; a row whose target its owner already holds stays and is counted while the others at that instant move; a UTC series moves nothing. A second run is a no-op, and a sweep moves only the rows an old build wrote afterwards, leaving a wall-clock RSVP whose instant is also a UTC-clock one where it is. Every one of the eleven mutations recorded in § 1918 fails it or the vectors file.
 
-### `apps/backend/supabase/functions/**/*.test.ts` — 1334 deno tests across 100 files
+### `apps/backend/supabase/functions/**/*.test.ts` — 1335 deno tests across 100 files
 
 Run the pure-helper slices with `cd apps/backend && deno test --no-check supabase/functions/_shared/*.test.ts` plus the per-function `lib.test.ts` / `wiring.test.ts` / `handler.test.ts` files (`auth-email`, `delete-account`, `donations-checkout`, `events-cancel`, `events-checkout`, `events-connect-onboard`, `events-refund-sweep`, `export-data`, `parkrun-import`, `race-results-import`, `refresh-tokens`, `revenuecat-webhook`, `strava-import`, `strava-webhook`, `stripe-events-webhook`); the network-touching ones (e.g. `_shared/handler_envelope.test.ts`) need `SUPABASE_TEST_URL=http://127.0.0.1:24321 supabase functions serve --env-file .env.local` and the `--allow-net --allow-env` flags. The `edge-functions` CI job runs all of them on every PR.
 
@@ -1276,7 +1276,7 @@ The happy-path 200s with valid HMAC / freshness / dedupe still need real secrets
 
 The runtime half of the guard `build-web` runs over the build output (`scripts/check_web_removed_kit_apis.mjs`). web@1.12.0 resolved @sentry/sveltekit's Svelte 4 tracing variant, which subscribes to `$app/stores` — a stub that throws on Kit 3 — and `hooks.client.ts` runs `Sentry.init` only when `!dev && PUBLIC_SENTRY_DSN && hasAcceptedConsent()`, so every reader who accepted error reporting got a blank page while every `vite dev` lane stayed green ([decisions § 1896](../architecture/decisions.md)). Runs under `playwright.built.config.ts`: a production build with a dummy DSN, served as CloudFront serves it by `tests-e2e/scripts/serve-build.mjs`. One case seeds consent the way `consent.set('accepted')` stores it and loads `/` (prerendered — the uncaught-error check is what fails there), `/help` and `/login` (the SPA shell — a throw leaves them blank); the other accepts through the banner itself, which reloads the page, and asserts it still renders. Both require a `*.sentry.io` request to have been answered, so neither can pass without `Sentry.init` having run. Against the pre-fix `vite.config.ts` (no `sentrySvelteKit()` plugin) both fail on the `app_stores_removed` page error.
 
-### `apps/web/tests-e2e/**/*.spec.ts` — 2,053 declared tests across 539 spec files (Playwright suite)
+### `apps/web/tests-e2e/**/*.spec.ts` — 2,058 declared tests across 542 spec files (Playwright suite)
 
 End-to-end browser tests that drive the real SvelteKit app against a real local Supabase. Unit tests pin pure helpers and SQL pins RLS at the database; this suite catches the next failure mode — **a UI fetch path that bypasses or misuses an otherwise-correct policy** (a wrong join, a dropped filter, a client-side lookup that trusts the URL, an optimistic update that never round-trips). Browser-only on purpose — mobile / watch don't have an equivalent harness (Flutter `integration_test` is too slow + flaky on CI to be worth the cycles right now).
 

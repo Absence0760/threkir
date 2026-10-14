@@ -493,6 +493,28 @@ The `monthly_funding` table stays in the schema but is no longer read by the pag
 
 ---
 
+## Meal plans and day adherence (nutrition programming P1)
+
+**Phase:** 4 (P1 shipped web) | **Platform:** Web (mobile is P4) | **Parity:** [see matrix](parity.md)
+
+**Why:** Runners who already log food hand-tune the computed calorie target; a prescribed plan with a "did I hit it" verdict is the structured version of that behaviour, and P1's uptake is the signal that decides whether the professional console (P3) is built. Full design: [nutrition_programming.md](../features/nutrition_programming.md); decisions: [§ 1922](../architecture/decisions.md).
+
+**Spec:**
+
+- A plan is a name, a goal phase, a daily calorie target with optional protein / carbs / fat, and an optional training-day override for calories and carbs.
+- Following a plan from today makes it govern every day until stopped; on a governed day `/nutrition`'s rings use the plan's numbers instead of the computed target, the training override applies on a day a run or gym session is logged, and the card names the plan.
+- The adherence panel judges each prescribed macro met / under / over — ceilings (calories, fat) at up to +10 %, floors (protein, carbs) from −10 % — and the day on target / off target, or partial when under half the calories were logged. Glyph and label carry each verdict, never colour alone.
+- Everything self-hides until a plan exists. Before then the only entry is Save as plan (seeded from the rest-day target) or, without body metrics, a blank plan.
+- `/nutrition/plans/[id]` follows, stops following (today reverts to the computed target), edits, and deletes behind a confirm; deleting never touches the food diary.
+
+**Done when:**
+- A plan built and followed today seeds today's rings and shows the panel; stopping removes both.
+- A past governed day is judged against the plan it was lived under; a day before the plan started shows no panel.
+- A failed plan read shows the load error, never the computed target in its place.
+- Plans and assignments are in the Art 20 export and erased with the account.
+
+---
+
 ## Custom dialogs and toast system
 
 **Phase:** 3 (shipped) | **Platform:** Web | **Parity:** not in matrix — shared-UI infrastructure, not a user-facing feature row.

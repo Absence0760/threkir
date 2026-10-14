@@ -537,7 +537,7 @@ Settings → Integrations' UltraSignup finder ([decisions § 1841](../architectu
 
 The centre button's long-press start-options sheet (decisions § 1892, § 1897): which items it offers when the tap starts a run and when the tap fans, that it never exceeds five, which plan workout counts as today's open one (not another day, a rest day, a completed, run-completed or skipped workout, or one with nothing to follow), the workout card's summary (target distance, or the summed distance steps, and the step count), and which saved routes sit inline (most recently run first, then newest saved, undated last, at most three). The sheet itself: its sections and title in one screen-reader group, the workout card naming kind, distance and steps and resolving in one tap, no route section with no saved route, one route inline with no "All routes…", three inline with "All routes…" resolving to the picker, a route tile resolving to that route, a row resolving to its action, dismissal resolving to nothing, and the full sheet at the largest text size scrolling rather than overflowing. Each item's routing in the shell, including an inline route starting the recorder without a second picker, is pinned in `home_screen_test.dart`.
 
-### `apps/mobile_ios/test/` — 629 files, byte-for-byte
+### `apps/mobile_ios/test/` — 631 files, byte-for-byte
 
 After the April 2026 mobile-codebase unification, `apps/mobile_ios/test/` is kept identical to `apps/mobile_android/test/` via `diff -rq`. Every test file documented above runs on the iOS target too **locally** — `melos run test` has no scope filter — but **not in CI**: the `test-packages` job scopes `melos exec` to `run_recorder`, `mobile_android`, `api_client`, `gpx_parser`, `ui_kit` and `core_models`, and `mobile_ios` is not among them. That is not a gap for byte-identical Dart, but it is why a test gated on an `ios/` file being present asserts nothing on any CI run — two such groups existed and were removed in favour of `scripts/check_ios_native_declarations.mjs` (decisions.md § 742). Per-target counts: `flutter test` compiles separately, so each test file is executed twice when you run both apps locally. Don't add iOS-specific test files — every test belongs in both apps. The architecture-guard tests under `apps/mobile_android/test/architecture_guards_test.dart` read `lib/screens/run_screen.dart` from the working directory, so they pin the same invariants on both targets.
 
@@ -816,6 +816,22 @@ Mirror of `apps/mobile_android/test/recurrence_test.dart`. Pure tests for `lib/r
 ### `apps/web/src/lib/social/recurrence_vectors.test.ts` — 4 tests
 
 Replays `fixtures/recurrence_vectors.json`, the occurrence golden set shared with `apps/mobile_android/test/recurrence_vectors_test.dart` (likewise one case per series, mirrored into `mobile_ios`) and `apps/backend/supabase/tests/event_occurrence_vectors_test.sql`. Four declarations, 23 cases at run time: one declared in a loop runs per series and recomputes `expandInstances` in the three fixture viewer zones and every membership probe (each occurrence ±1 s, ±30 min, ±1 day, the first instant past `recurrence_count` / `recurrence_until`) and requires the fixture unchanged; the other three require a timezoned series to expand identically in every viewer zone, hold the SQL verdict to the client's (or, for a legacy timezone-null series, prove the documented bounds-plus-whole-day-offset rule accepts every instant any viewer zone is offered), and require the committed pgTAP file to be exactly what the fixture renders. `RECURRENCE_VECTORS_WRITE=1` regenerates both files. The Dart reader runs the legacy series only when the host zone is one the fixture carries (UTC in CI).
+
+### `apps/web/src/lib/runs/race_phases.test.ts` — 19 tests
+
+Mirror of `apps/mobile_android/test/race_phases_test.dart` (19 each). The 11 phase-plan cases (`buildPhasePlan` boundaries + derived closing factor, `phaseAt`, `phaseTargetPaceSecPerKm`, `goalPaceSecPerKm`, wire names) plus 8 for the post-run half (decisions § 1915): `parsePacingStrategy` accepting the writer shape and refusing an unknown preset / bad distance / non-object, and `gradePhases` grading on moving time across a 4-minute stop, keeping goal targets with no track, calling a fast-then-slow run *went out too fast*, marking a short run incomplete with the last phase unreached, refusing to grade a one-phase even plan without a goal, and pinning the 1.5 % band from both sides.
+
+### `apps/web/src/lib/runs/race_phase_vectors.test.ts` — 3 tests
+
+Replays `fixtures/race_phase_vectors.json` — 12 `parsePacingStrategy` bags and 14 `gradePhases` cases (every verdict and both ungraded reasons reached) — shared with `apps/mobile_android/test/race_phase_vectors_test.dart` (3, mirrored into `mobile_ios`). Also the generator: `RACE_PHASE_VECTORS_WRITE=1` rebuilds each case's track from its spec and refuses to write a verdict that disagrees with the hand-written `expect_verdict`.
+
+### `apps/web/tests-e2e/runs/pacing-strategy.spec.ts` — 4 tests
+
+The run-detail Pacing strategy section: a 10-10-10 5K that went out too fast (verdict pill, preset + goal line, three phase rows, target pace, signed and toned gaps, the band footnote); the same run in miles via a rewritten profile + settings read (no shared preference written); a trackless run keeping its targets with the no-track note; and no section for an unknown preset or no strategy.
+
+### `apps/mobile_android/test/pacing_strategy_section_test.dart` — 5 tests
+
+The Dart twin of the spec above for `widgets/pacing_strategy_section.dart`: hidden without a strategy and for an unknown preset, the went-out-too-fast 5K phase by phase, the miles conversion of pace and gap, and the trackless run's note.
 
 ### `apps/web/src/lib/social/event_occurrence.test.ts` — 16 tests
 
@@ -1235,7 +1251,7 @@ The happy-path 200s with valid HMAC / freshness / dedupe still need real secrets
 
 The runtime half of the guard `build-web` runs over the build output (`scripts/check_web_removed_kit_apis.mjs`). web@1.12.0 resolved @sentry/sveltekit's Svelte 4 tracing variant, which subscribes to `$app/stores` — a stub that throws on Kit 3 — and `hooks.client.ts` runs `Sentry.init` only when `!dev && PUBLIC_SENTRY_DSN && hasAcceptedConsent()`, so every reader who accepted error reporting got a blank page while every `vite dev` lane stayed green ([decisions § 1896](../architecture/decisions.md)). Runs under `playwright.built.config.ts`: a production build with a dummy DSN, served as CloudFront serves it by `tests-e2e/scripts/serve-build.mjs`. One case seeds consent the way `consent.set('accepted')` stores it and loads `/` (prerendered — the uncaught-error check is what fails there), `/help` and `/login` (the SPA shell — a throw leaves them blank); the other accepts through the banner itself, which reloads the page, and asserts it still renders. Both require a `*.sentry.io` request to have been answered, so neither can pass without `Sentry.init` having run. Against the pre-fix `vite.config.ts` (no `sentrySvelteKit()` plugin) both fail on the `app_stores_removed` page error.
 
-### `apps/web/tests-e2e/**/*.spec.ts` — 2,043 declared tests across 537 spec files (Playwright suite)
+### `apps/web/tests-e2e/**/*.spec.ts` — 2,047 declared tests across 538 spec files (Playwright suite)
 
 End-to-end browser tests that drive the real SvelteKit app against a real local Supabase. Unit tests pin pure helpers and SQL pins RLS at the database; this suite catches the next failure mode — **a UI fetch path that bypasses or misuses an otherwise-correct policy** (a wrong join, a dropped filter, a client-side lookup that trusts the URL, an optimistic update that never round-trips). Browser-only on purpose — mobile / watch don't have an equivalent harness (Flutter `integration_test` is too slow + flaky on CI to be worth the cycles right now).
 

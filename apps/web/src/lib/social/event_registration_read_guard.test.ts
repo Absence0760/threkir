@@ -55,7 +55,7 @@ test('the event page keeps a failed instance read apart from a loaded one', () =
 	assert.match(page, /let instanceError = \$state<string \| null>\(null\)/);
 	assert.match(
 		page,
-		/if \(instanceError\) return 'unknown';/,
+		/if \(instanceError !== null\) return 'unknown';/,
 		'regState must not fall through to registrationOpen with an unknown RSVP state',
 	);
 	const unknownAt = page.indexOf("regState === 'unknown'");

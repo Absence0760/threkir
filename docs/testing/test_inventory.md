@@ -1265,7 +1265,7 @@ tests-e2e/
   fixtures/                    — globalSetup, helpers, browser-zone dates, route-mock liveness, seeded constants, users
   landing/                     — / (anon storageState)
     page.spec.ts               — hero + CTAs, SEO head, product shot drawn by the real renderer (a runner travels it; its glyph carries no route-glow stroke), feature steps, platforms strip, header, one-line CTAs at 390px
-    motion.spec.ts             — the motion contract (conventions § Web motion): reveals settle opaque; reduced motion hides nothing and loops nothing; the pause control stops every loop and the phone clock, then resumes; pausing before scrolling means sections arrive at rest; no copy on the rendered terrain at 1440/390px; h1→h2→h3 outline; no sideways scroll at 390px
+    motion.spec.ts             — the motion contract (conventions § Web motion): reveals settle opaque; reduced motion hides nothing and loops nothing; every clock-driven animation ends within five seconds of starting and then nothing runs; the phone clock ticks and then holds; the header carries no pause control; no copy on the rendered terrain at 1440/390px; h1→h2→h3 outline; no sideways scroll at 390px
   explore.spec.ts              — /explore (redirects to /routes?tab=explore)
   learn/                       — public Learn/guides surface (anon storageState; learn.md, decisions §161)
     hub.spec.ts                — /learn renders the hub heading + ≥1 guide card; a card link resolves to /learn/[slug] (no 404)

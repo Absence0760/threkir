@@ -510,18 +510,21 @@ test('buildEventSeriesIcs takes the earlier instant of a repeated fall-back read
 	]);
 });
 
-test('buildEventSeriesIcs skips a start on the later fall-back instant, which no occurrence takes', () => {
-	// 06:30Z is the SECOND 01:30 on 1 Nov; the series' 01:30 that day is the
-	// earlier one, before the start, so the first occurrence is a week on.
-	const ics = buildEventSeriesIcs(
-		ev({
-			timezone: 'America/New_York',
-			starts_at: '2026-11-01T06:30:00Z',
-			recurrence_freq: 'weekly'
-		}),
-		SERIES_OPTS
-	)!;
-	assert.match(ics, /DTSTART;TZID=America\/New_York:20261108T013000\r\n/);
+test('buildEventSeriesIcs withholds a series that starts on the second pass of a fall-back hour', () => {
+	// 06:30Z is the SECOND 01:30 on 1 Nov. The app keeps it as the first
+	// occurrence, but DTSTART;TZID=…:20261101T013000 names the first pass
+	// (05:30Z), so no file can state the series without moving that one.
+	assert.equal(
+		buildEventSeriesIcs(
+			ev({
+				timezone: 'America/New_York',
+				starts_at: '2026-11-01T06:30:00Z',
+				recurrence_freq: 'weekly'
+			}),
+			SERIES_OPTS
+		),
+		null
+	);
 });
 
 test('buildEventSeriesIcs writes a legacy zoneless series in the viewer zone', () => {

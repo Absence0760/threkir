@@ -287,24 +287,17 @@ function localDateText(d: LocalDate): string {
 	return `${String(d.year).padStart(4, '0')}${p2(d.month)}${p2(d.day)}`;
 }
 
-/** The series' candidate dates in its own zone, in order: every date carrying
- * a stored weekday (in the even weeks counted from the Monday of the start's
- * week, for a biweekly series), or the start's day-of-month each month. */
+/** The series' dates in its own zone from the start's date on, in order:
+ * every date carrying a stored weekday (in the even weeks counted from the
+ * Monday of the start's week, for a biweekly series); a monthly series opens
+ * on the start's own date. */
 function* seriesDates(
 	freq: RecurrenceFreq,
 	byday: readonly Weekday[],
 	start: LocalDate
 ): Generator<LocalDate> {
 	if (freq === 'monthly') {
-		for (let i = 0; i < 2; i++) {
-			const u = new Date(Date.UTC(start.year, start.month - 1 + i, start.day));
-			yield {
-				year: u.getUTCFullYear(),
-				month: u.getUTCMonth() + 1,
-				day: u.getUTCDate(),
-				weekday: u.getUTCDay()
-			};
-		}
+		yield start;
 		return;
 	}
 	const sinceMonday = (start.weekday + 6) % 7;
@@ -353,20 +346,16 @@ export function buildEventSeriesIcs(
 	// begins at the first date that carries one, and anchoring on starts_at
 	// would add a phantom occurrence the club page never shows.
 	const startSecond = startMs - (((startMs % 1000) + 1000) % 1000);
-	let anchorDate: LocalDate | null = null;
-	let anchorMs = 0;
-	for (const d of seriesDates(freq, byday, start)) {
-		const t = instantForWallClock(
-			{ ...d, hour: start.hour, minute: start.minute, second: start.second },
-			zone
-		).getTime();
-		if (t >= startSecond) {
-			anchorDate = d;
-			anchorMs = t;
-			break;
-		}
-	}
+	const anchorDate = seriesDates(freq, byday, start).next().value;
 	if (!anchorDate) return null;
+	const anchorMs = instantForWallClock(
+		{ ...anchorDate, hour: start.hour, minute: start.minute, second: start.second },
+		zone
+	).getTime();
+	// A start in the second pass of a fall-back hour is its own first
+	// occurrence, and a TZID reading names the first pass (RFC 5545 §3.3.5), so
+	// no DTSTART can state it — withheld rather than moved an hour.
+	if (anchorMs < startSecond) return null;
 	if (event.recurrence_until != null) {
 		const untilMs = new Date(event.recurrence_until).getTime();
 		if (!Number.isNaN(untilMs) && anchorMs > untilMs) return null;

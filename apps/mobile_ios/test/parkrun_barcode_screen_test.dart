@@ -195,6 +195,85 @@ void main() {
     expect(brightness.calls, ['setMax', 'restore']);
   });
 
+  group('a bad device copy', () {
+    testWidgets('a truncated copy, offline, fails to the retry state',
+        (tester) async {
+      await pump(tester, _FakeApi(offline: true), prefs: {
+        ParkrunBarcodeCache.storageKey: '{"user_id":"u1","number":"A12',
+      });
+      await pumpUntil(
+        tester,
+        () => find.text('Try again').evaluate().isNotEmpty,
+        describe: 'the load-failed state',
+      );
+      expect(find.byType(ParkrunBarcodeView), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a truncated copy is replaced by the server number',
+        (tester) async {
+      await pump(tester, _FakeApi(number: 'A123456'), prefs: {
+        ParkrunBarcodeCache.storageKey: '{"user_id":"u1","number":"A12',
+      });
+      await pumpUntil(
+        tester,
+        () => find.text('A123456').evaluate().isNotEmpty,
+        describe: 'the server number',
+      );
+      expect(find.byKey(const ValueKey('parkrun-barcode-offline')), findsNothing);
+      final cached = await tester.runAsync(() => const ParkrunBarcodeCache().read('u1'));
+      expect(cached, 'A123456');
+    });
+
+    testWidgets('a copy holding a non-athlete number is never drawn',
+        (tester) async {
+      await pump(tester, _FakeApi(offline: true), prefs: {
+        ParkrunBarcodeCache.storageKey: _cacheEntry('u1', 'B123456'),
+      });
+      await pumpUntil(
+        tester,
+        () => find.text('Try again').evaluate().isNotEmpty,
+        describe: 'the load-failed state',
+      );
+      expect(find.byType(ParkrunBarcodeView), findsNothing);
+    });
+
+    testWidgets(
+        'a number removed on another device takes the copy down with it',
+        (tester) async {
+      // The copy shows first; the server then says there is no number. The
+      // stale code must not stay on screen or survive for the next offline
+      // open.
+      await pump(tester, _FakeApi(), prefs: {
+        ParkrunBarcodeCache.storageKey: _cacheEntry('u1', 'A123456'),
+      });
+      await pumpUntil(
+        tester,
+        () => find.byKey(const ValueKey('parkrun-barcode-add')).evaluate().isNotEmpty,
+        describe: 'the add button',
+      );
+      expect(find.byType(ParkrunBarcodeView), findsNothing);
+      final cached = await tester.runAsync(() => const ParkrunBarcodeCache().read('u1'));
+      expect(cached, isNull);
+    });
+
+    testWidgets('a server value outside parkrun format clears a valid copy',
+        (tester) async {
+      await pump(tester, _FakeApi(number: '1234 5678'), prefs: {
+        ParkrunBarcodeCache.storageKey: _cacheEntry('u1', 'A123456'),
+      });
+      await pumpUntil(
+        tester,
+        () => find.text('Change athlete number').evaluate().isNotEmpty &&
+            find.byType(ParkrunBarcodeView).evaluate().isEmpty,
+        describe: 'the invalid state',
+      );
+      expect(find.text('A123456'), findsNothing);
+      final cached = await tester.runAsync(() => const ParkrunBarcodeCache().read('u1'));
+      expect(cached, isNull);
+    });
+  });
+
   group('ParkrunBarcodeLoad', () {
     test('the server value decides ready, none or invalid', () {
       expect(ParkrunBarcodeLoad.fromServer('a 1').number, 'A1');

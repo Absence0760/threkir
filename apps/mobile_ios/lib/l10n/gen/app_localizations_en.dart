@@ -15241,4 +15241,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get liveRunnerAnonymous => 'Runner';
+
+  @override
+  String get logMoreTitle => 'More options';
+
+  @override
+  String get logMoreLongPressHint => 'show more options';
+
+  @override
+  String get logMoreTodaysWorkout => 'Start today\'s workout';
 }

@@ -4428,5 +4428,8 @@
   "audienceSharedWithYou": "Partagé avec vous",
   "audienceSharedWithYouHint": "Partagé avec vous. Ce n'est pas public : seules les personnes avec qui c'est partagé peuvent l'ouvrir.",
   "liveRunnerHandle": "Coureur #{slug}",
-  "liveRunnerAnonymous": "Coureur"
+  "liveRunnerAnonymous": "Coureur",
+  "logMoreTitle": "Plus d'options",
+  "logMoreLongPressHint": "afficher plus d'options",
+  "logMoreTodaysWorkout": "Démarrer la séance du jour"
 }

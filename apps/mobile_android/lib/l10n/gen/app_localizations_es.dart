@@ -15395,4 +15395,13 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get liveRunnerAnonymous => 'Corredor';
+
+  @override
+  String get logMoreTitle => 'Más opciones';
+
+  @override
+  String get logMoreLongPressHint => 'mostrar más opciones';
+
+  @override
+  String get logMoreTodaysWorkout => 'Iniciar el entrenamiento de hoy';
 }

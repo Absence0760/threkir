@@ -25442,6 +25442,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Runner'**
   String get liveRunnerAnonymous;
+
+  /// Title of the menu a long-press on the centre button opens, and the screen-reader custom action that opens it
+  ///
+  /// In en, this message translates to:
+  /// **'More options'**
+  String get logMoreTitle;
+
+  /// Screen-reader long-press hint on the centre button; TalkBack reads it after "double-tap and hold to"
+  ///
+  /// In en, this message translates to:
+  /// **'show more options'**
+  String get logMoreLongPressHint;
+
+  /// Long-press menu item: load today's plan workout on the recorder
+  ///
+  /// In en, this message translates to:
+  /// **'Start today\'s workout'**
+  String get logMoreTodaysWorkout;
 }
 
 class _AppLocalizationsDelegate

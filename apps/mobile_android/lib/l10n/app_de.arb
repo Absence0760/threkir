@@ -4428,5 +4428,8 @@
   "audienceSharedWithYou": "Mit dir geteilt",
   "audienceSharedWithYouHint": "Mit dir geteilt. Nicht öffentlich – nur die Personen, mit denen es geteilt ist, können es öffnen.",
   "liveRunnerHandle": "Läufer #{slug}",
-  "liveRunnerAnonymous": "Läufer"
+  "liveRunnerAnonymous": "Läufer",
+  "logMoreTitle": "Weitere Optionen",
+  "logMoreLongPressHint": "weitere Optionen anzeigen",
+  "logMoreTodaysWorkout": "Heutiges Training starten"
 }

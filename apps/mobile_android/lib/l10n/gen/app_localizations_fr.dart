@@ -15434,4 +15434,13 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get liveRunnerAnonymous => 'Coureur';
+
+  @override
+  String get logMoreTitle => 'Plus d\'options';
+
+  @override
+  String get logMoreLongPressHint => 'afficher plus d\'options';
+
+  @override
+  String get logMoreTodaysWorkout => 'Démarrer la séance du jour';
 }

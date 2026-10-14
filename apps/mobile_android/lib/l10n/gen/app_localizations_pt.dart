@@ -15398,6 +15398,15 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get liveRunnerAnonymous => 'Corredor';
+
+  @override
+  String get logMoreTitle => 'Mais opções';
+
+  @override
+  String get logMoreLongPressHint => 'mostrar mais opções';
+
+  @override
+  String get logMoreTodaysWorkout => 'Iniciar o treino de hoje';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -30785,4 +30794,13 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get liveRunnerAnonymous => 'Corredor';
+
+  @override
+  String get logMoreTitle => 'Mais opções';
+
+  @override
+  String get logMoreLongPressHint => 'mostrar mais opções';
+
+  @override
+  String get logMoreTodaysWorkout => 'Iniciar o treino de hoje';
 }

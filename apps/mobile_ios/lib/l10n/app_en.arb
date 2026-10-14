@@ -19561,5 +19561,17 @@
   "liveRunnerAnonymous": "Runner",
   "@liveRunnerAnonymous": {
     "description": "Anonymous handle for a live runner whose id is missing, so no four-character suffix can be shown"
+  },
+  "logMoreTitle": "More options",
+  "@logMoreTitle": {
+    "description": "Title of the menu a long-press on the centre button opens, and the screen-reader custom action that opens it"
+  },
+  "logMoreLongPressHint": "show more options",
+  "@logMoreLongPressHint": {
+    "description": "Screen-reader long-press hint on the centre button; TalkBack reads it after \"double-tap and hold to\""
+  },
+  "logMoreTodaysWorkout": "Start today's workout",
+  "@logMoreTodaysWorkout": {
+    "description": "Long-press menu item: load today's plan workout on the recorder"
   }
 }

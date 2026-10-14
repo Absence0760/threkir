@@ -4428,5 +4428,8 @@
   "audienceSharedWithYou": "Compartido contigo",
   "audienceSharedWithYouHint": "Compartido contigo. No es público: solo las personas con las que se ha compartido pueden abrirlo.",
   "liveRunnerHandle": "Corredor #{slug}",
-  "liveRunnerAnonymous": "Corredor"
+  "liveRunnerAnonymous": "Corredor",
+  "logMoreTitle": "Más opciones",
+  "logMoreLongPressHint": "mostrar más opciones",
+  "logMoreTodaysWorkout": "Iniciar el entrenamiento de hoy"
 }

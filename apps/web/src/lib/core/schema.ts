@@ -115,6 +115,7 @@ export const METADATA_KEYS = {
 	notes: 'notes',
 	title: 'title',
 	plan_workout_id: 'plan_workout_id',
+	pacing_strategy: 'pacing_strategy',
 	guided_run_id: 'guided_run_id',
 	workout_step_results: 'workout_step_results',
 	workout_adherence: 'workout_adherence',

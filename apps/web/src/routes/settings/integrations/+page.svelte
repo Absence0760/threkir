@@ -41,6 +41,7 @@
 	} from '#lib/integrations/integration_visibility.ts';
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import UltraSignUpLinkPanel from '#lib/components/UltraSignUpLinkPanel.svelte';
+	import ParkrunBarcodeCard from '#lib/components/ParkrunBarcodeCard.svelte';
 
 	interface IntegrationUI {
 		provider: string;
@@ -504,6 +505,8 @@
 			</div>
 		</section>
 		{/if}
+
+		<ParkrunBarcodeCard storedNumber={auth.user?.parkrun_number ?? null} />
 
 		<section class="card bulk-import">
 			<div class="title-row">

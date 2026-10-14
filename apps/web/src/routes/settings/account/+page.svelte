@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { parseImportCompleteness } from '#lib/integrations/import_completeness.ts';
+	import { normalizeParkrunAthleteNumber } from '#lib/integrations/parkrun_barcode.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { onDestroy, onMount } from 'svelte';
 	import { goto } from '$app/navigation';
@@ -112,6 +113,10 @@
 		restingHrParsed !== null && !isUsableRestingHrBpm(restingHrParsed)
 	);
 	const restingHrBounds = { min: RESTING_HR_BPM_MIN, max: RESTING_HR_BPM_MAX };
+	// The same rule `parkrun-import` enforces, so a number saved here is one the
+	// import and the barcode can both use.
+	const parkrunNormalized = $derived(normalizeParkrunAthleteNumber(parkrunNumber));
+	const parkrunNumberInvalid = $derived(parkrunNumber.trim().length > 0 && parkrunNormalized === null);
 	// Cycle/pregnancy-aware training inputs (persona runner-woman, decisions
 	// §231). Art 9 reproductive-health data — persistence is gated on the
 	// SAME health-data consent as DOB below, AND the whole section is hidden
@@ -249,7 +254,7 @@
 	/// runs insert; we just surface a status toast with what came
 	/// back. One-button import — no OAuth, no tokens to manage.
 	async function handleParkrunImport() {
-		if (!parkrunNumber || parkrunNumber.trim().length === 0 || parkrunImporting) return;
+		if (!parkrunNormalized || parkrunImporting) return;
 		parkrunImporting = true;
 		try {
 			const { data: { session } } = await supabase.auth.getSession();
@@ -261,7 +266,7 @@
 					Authorization: `Bearer ${session.access_token}`,
 					'Content-Type': 'application/json',
 				},
-				body: JSON.stringify({ athleteNumber: parkrunNumber.trim() }),
+				body: JSON.stringify({ athleteNumber: parkrunNormalized }),
 			});
 			if (!resp.ok) {
 				const body = await resp.json().catch(() => ({}));
@@ -572,6 +577,10 @@
 			showToast(m('limits.restingHrOutOfRange', restingHrBounds), 'error');
 			return;
 		}
+		if (parkrunNumberInvalid) {
+			showToast(m('settingsAccount.parkrunNumberInvalid'), 'error');
+			return;
+		}
 		saving = true;
 		saved = false;
 
@@ -621,7 +630,7 @@
 		}
 		const profileUpdate: Updatable<'user_profiles'> = {
 			display_name: displayName || null,
-			parkrun_number: parkrunNumber || null,
+			parkrun_number: parkrunNormalized,
 			// The age record, carrying no consent term (§ 718) — ending the
 			// Art 9 processing does not end the under-18 discoverability
 			// floor, and since § 721 the withdrawal RPC leaves the column
@@ -654,6 +663,11 @@
 				return;
 			}
 		}
+
+		// The integrations page's barcode card reads the number from the auth
+		// store, which only loads it at sign-in.
+		auth.user.parkrun_number = parkrunNormalized;
+		parkrunNumber = parkrunNormalized ?? '';
 
 		// Persist DOB + HR into user_settings.prefs. DOB only when consented;
 		// on withdrawal it is explicitly nulled so the stored value is cleared.
@@ -1355,8 +1369,14 @@
 						bind:value={parkrunNumber}
 						maxlength={lengthLimit('user_profiles.parkrun_number')}
 						placeholder="A123456"
+						autocomplete="off"
+						spellcheck="false"
+						aria-invalid={parkrunNumberInvalid}
+						data-testid="parkrun-number"
 					/>
-					{#if parkrunNumber && parkrunNumber.trim().length > 0}
+					{#if parkrunNumberInvalid}
+						<span class="field-error" data-testid="parkrun-number-error">{m('settingsAccount.parkrunNumberInvalid')}</span>
+					{:else if parkrunNormalized}
 						<button
 							type="button"
 							class="btn btn-outline btn-sm parkrun-import-btn"
@@ -1438,7 +1458,7 @@
 					{/if}
 				</div>
 			{/if}
-			<button class="btn btn-primary btn-save" onclick={handleSave} disabled={saving || maxHrOutOfRange || restingHrOutOfRange}>
+			<button class="btn btn-primary btn-save" onclick={handleSave} disabled={saving || maxHrOutOfRange || restingHrOutOfRange || parkrunNumberInvalid}>
 				{saving ? m('settingsAccount.saving') : saved ? m('settingsAccount.savedDone') : m('settingsAccount.saveProfile')}
 			</button>
 		</fieldset>

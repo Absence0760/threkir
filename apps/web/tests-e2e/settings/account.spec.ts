@@ -105,6 +105,24 @@ test.describe('/settings/account', () => {
 		});
 	});
 
+	test('a parkrun athlete number outside A-plus-digits blocks the save', async ({ page }) => {
+		// The import and the barcode both need `A` + digits, so the field
+		// refuses anything else rather than storing a number neither can use.
+		// Nothing is saved, so the seed user's number is left alone.
+		await page.goto('/settings/account');
+		await page.waitForLoadState('networkidle');
+
+		const input = page.getByTestId('parkrun-number');
+		await input.fill('123456');
+		await expect(page.getByTestId('parkrun-number-error')).toBeVisible();
+		await expect(input).toHaveAttribute('aria-invalid', 'true');
+		await expect(page.getByRole('button', { name: /Save Profile/ })).toBeDisabled();
+
+		await input.fill(' a123456 ');
+		await expect(page.getByTestId('parkrun-number-error')).toHaveCount(0);
+		await expect(page.getByRole('button', { name: /Save Profile/ })).toBeEnabled();
+	});
+
 	test('Resting HR save persists across reload', async ({ page }) => {
 		// resting_hr_bpm lives in user_settings.prefs, not user_profiles.
 		// The Save handler stitches the two writes together; a regression

@@ -65,7 +65,7 @@ test('no registered parity-pair half orders with a collation', () => {
 	assert.deepEqual(
 		offenders,
 		[],
-		'Order a pair half with compareFoldedNames from $lib/segments/catalogue_browse, ' +
+		'Order a pair half with compareFoldedNames from #lib/segments/catalogue_browse, ' +
 			'never a collation — Dart has no collator, so the phone cannot reproduce the ' +
 			'answer at all and the two platforms then order one list two ways ' +
 			'(decisions 1337, 1383, 1400):\n' +

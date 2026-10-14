@@ -5,10 +5,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/ble_heart_rate.dart';
 import '../lib/ble_treadmill.dart';
+import '../lib/help_guides.dart';
+import '../lib/help_loader.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_gear_store.dart';
 import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
+import '../lib/screens/help_screen.dart';
 import '../lib/screens/settings_account_screen.dart';
 import '../lib/screens/settings_about_screen.dart';
 import '../lib/screens/settings_preferences_screen.dart';
@@ -91,6 +94,7 @@ void main() {
         'Gear',
         'Pro & support',
         'About & updates',
+        'Help',
       ]) {
         await tester.scrollUntilVisible(find.text(label), 200,
             scrollable: list);
@@ -184,6 +188,31 @@ void main() {
       await tester.tap(find.text('About & updates'));
       await tester.pumpAndSettle();
       expect(find.byType(SettingsAboutScreen), findsOneWidget);
+    });
+  });
+
+  group('SettingsScreen Help entry', () {
+    tearDown(() => helpLibraryLoader = loadHelpLibraryCached);
+
+    testWidgets('the Help tile opens the guide list', (tester) async {
+      final library = HelpLibrary.parse(
+          File('test/fixtures/help_guides.json').readAsStringSync())!;
+      helpLibraryLoader = (_) => Future.value(library);
+      final s = await _makeStores();
+      await _pump(tester, prefs: s.prefs, heartRate: s.heartRate);
+      await tester.scrollUntilVisible(
+        find.text('Help'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text('How races, classes, clubs and the app work'),
+          findsOneWidget);
+      await tester.tap(find.text('Help'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump();
+      expect(find.byType(HelpScreen), findsOneWidget);
+      expect(find.text('Racing an event'), findsOneWidget);
     });
   });
 

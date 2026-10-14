@@ -377,7 +377,7 @@ void main() {
     });
   });
 
-  group('Preferences.privacyDefault + newRunsArePublic', () {
+  group('Preferences.privacyDefault + newRunsArePublic + newRunsAreFollowersOnly', () {
     // privacy_default drives the initial is_public flag at run-save
     // time. The setting was previously stranded — set in the UI but
     // never read at save time. Pinning the contract here keeps the
@@ -400,18 +400,26 @@ void main() {
       expect(prefs.newRunsArePublic, isTrue);
     });
 
-    test('"followers" is treated as private (no DB shape today)',
-        () async {
-      // No followers-only column on `runs` — `is_public` is a bool.
-      // The setter accepts 'followers' as a valid value (mirrors the
-      // web settings UI) but `newRunsArePublic` returns false so the
-      // run lands private. When the schema gains a third visibility
-      // state, this is the test that flips.
+    test('"followers" writes the followers level, not public', () async {
+      // `followers` used to collapse to private because `runs` had only
+      // `is_public`. The followers level gives it a column of its own
+      // (decisions § 1875); the server stores it private until audience
+      // sharing is switched on.
       SharedPreferences.setMockInitialValues({'privacy_default': 'followers'});
       final prefs = Preferences();
       await prefs.init();
       expect(prefs.privacyDefault, 'followers');
       expect(prefs.newRunsArePublic, isFalse);
+      expect(prefs.newRunsAreFollowersOnly, isTrue);
+    });
+
+    test('only "followers" asks for the followers level', () async {
+      for (final value in ['public', 'private']) {
+        SharedPreferences.setMockInitialValues({'privacy_default': value});
+        final prefs = Preferences();
+        await prefs.init();
+        expect(prefs.newRunsAreFollowersOnly, isFalse, reason: value);
+      }
     });
 
     test('setter accepts public / followers / private + persists', () async {

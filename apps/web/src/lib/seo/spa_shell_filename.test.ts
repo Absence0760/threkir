@@ -1,7 +1,7 @@
 // One filename, named in three trees, and what happens when they disagree.
 //
 // adapter-static writes the prerendered pages first and then generates the SPA
-// fallback -- to whatever name `svelte.config.js` gives it, over whatever is
+// fallback -- to whatever name `vite.config.ts` gives it, over whatever is
 // already at that path. So while the fallback was called `index.html`, the
 // prerendered landing page was written to `build/index.html` and then replaced
 // by a component-less shell: `/` shipped with no title, no canonical, no
@@ -9,7 +9,7 @@
 // separation only holds while every consumer of the shell reads the SAME new
 // name:
 //
-//   - `svelte.config.js`               -- writes it
+//   - `vite.config.ts`                 -- writes it
 //   - `lambda/*/build.mjs`             -- embeds it in each share Lambda
 //   - `infra/modules/web-stack/main.tf` -- CloudFront's 403 -> shell mapping,
 //                                          the body of every deep link
@@ -32,7 +32,7 @@ import { relative, resolve } from 'node:path';
 
 const webRoot = resolve(import.meta.dirname, '..', '..', '..');
 const repoRoot = resolve(webRoot, '..', '..');
-const SVELTE_CONFIG = resolve(webRoot, 'svelte.config.js');
+const VITE_CONFIG = resolve(webRoot, 'vite.config.ts');
 const LAMBDA_DIR = resolve(webRoot, 'lambda');
 const WEB_STACK_TF = resolve(repoRoot, 'infra', 'modules', 'web-stack', 'main.tf');
 const ROOT_PAGE = resolve(webRoot, 'src', 'routes', '+page.ts');
@@ -42,12 +42,12 @@ const ROOT_PAGE = resolve(webRoot, 'src', 'routes', '+page.ts');
 /// renaming the shell stays a one-line change and the guard reports the rails
 /// that did not follow.
 function fallbackName(): string {
-	const source = readFileSync(SVELTE_CONFIG, 'utf8');
+	const source = readFileSync(VITE_CONFIG, 'utf8');
 	const found = [...source.matchAll(/\bfallback:\s*["']([^"']+)["']/g)].map((m) => m[1]);
 	assert.equal(
 		found.length,
 		1,
-		`svelte.config.js should set the adapter fallback exactly once, found ${found.length}`,
+		`vite.config.ts should set the adapter fallback exactly once, found ${found.length}`,
 	);
 	return found[0];
 }

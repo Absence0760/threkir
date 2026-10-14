@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { myActiveChallenges } from '$lib/core/data';
-	import type { ChallengeWithMeta, ChallengeMetric } from '$lib/types';
+	import { myActiveChallenges } from '#lib/core/data.ts';
+	import type { ChallengeWithMeta, ChallengeMetric } from '#lib/types.ts';
 	import ChallengeProgressBar from './ChallengeProgressBar.svelte';
-	import { m } from '$lib/i18n/store.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
 
 	const METRIC_ICON: Record<ChallengeMetric, string> = {
 		distance: 'straighten',

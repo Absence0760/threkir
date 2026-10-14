@@ -20,6 +20,7 @@ import '../widgets/live_run_map.dart';
 import '../widgets/route_conditions.dart';
 import '../widgets/route_photos.dart';
 import '../widgets/segments_panel.dart';
+import '../widgets/shared_with_you_chip.dart';
 import '../widgets/top_banner.dart';
 
 /// Build the route a public / shared route starts a run against — carrying
@@ -41,10 +42,11 @@ cm.Route publicRouteStartTarget(cm.Route source, List<cm.Waypoint> clipped) {
   );
 }
 
-/// Read-only public view of a single route. Mirrors the web
-/// `/share/route/[id]` route — anyone with the link can view a public
-/// route. Private routes (or club-only routes the viewer can't see)
-/// fall through to a "not available" empty state via RLS.
+/// Read-only non-owner view of a single route. Mirrors the web
+/// `/share/route/[id]` route for a public route, and the non-owner branch of
+/// `/routes/[id]` for a club route or one shared with the viewer through its
+/// owner's followers level or a named-person grant (decisions § 1874).
+/// Anything else falls through to a "not available" empty state via RLS.
 class PublicRouteScreen extends StatefulWidget {
   final ApiClient api;
   final String routeId;
@@ -256,6 +258,9 @@ class _PublicRouteScreenState extends State<PublicRouteScreen> {
 
   Widget _buildBody(ThemeData theme, cm.Route route, double viewportHeight) {
     final l10n = AppLocalizations.of(context);
+    // Web's derivation: neither the viewer's, public, nor a club route, so it
+    // can only have come through `shared_routes`.
+    final sharedWithMe = !_isOwner && !route.isPublic && route.clubId == null;
     return ListView(
       children: [
         SizedBox(
@@ -266,6 +271,14 @@ class _PublicRouteScreenState extends State<PublicRouteScreen> {
             followRunner: false,
           ),
         ),
+        if (sharedWithMe)
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 16, 20, 0),
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: SharedWithYouChip(),
+            ),
+          ),
         if (route.description != null && route.description!.isNotEmpty)
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),

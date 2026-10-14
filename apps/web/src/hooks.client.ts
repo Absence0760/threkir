@@ -1,18 +1,18 @@
 import * as Sentry from "@sentry/sveltekit";
-import { dev } from "$app/environment";
-import { env } from "$env/dynamic/public";
-import type { HandleClientError } from "@sveltejs/kit";
+import { dev } from "$app/env";
+import { PUBLIC_APP_RELEASE, PUBLIC_SENTRY_DSN } from "$app/env/public";
+import type { HandleClientError } from "@sveltejs/kit/hooks";
 import {
 	redactBreadcrumb,
 	redactEventSignedUrls,
 	redactStreamedSpan,
 	type SentryEventWithSpans,
-} from "$lib/sentry/redact";
-import { SENTRY_DATA_COLLECTION } from "$lib/sentry/data_collection";
-import { hasAcceptedConsent } from "$lib/settings/consent.svelte";
+} from "#lib/sentry/redact.ts";
+import { SENTRY_DATA_COLLECTION } from "#lib/sentry/data_collection.ts";
+import { hasAcceptedConsent } from "#lib/settings/consent.svelte.ts";
 
-const dsn = env.PUBLIC_SENTRY_DSN ?? "";
-const release = env.PUBLIC_APP_RELEASE || "dev";
+const dsn = PUBLIC_SENTRY_DSN ?? "";
+const release = PUBLIC_APP_RELEASE || "dev";
 
 if (!dev && dsn && hasAcceptedConsent()) {
 	Sentry.init({

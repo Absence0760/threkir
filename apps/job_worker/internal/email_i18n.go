@@ -135,6 +135,18 @@ func keyForKind(kind string) string {
 	return kind
 }
 
+// copyKeyFor picks the catalogue entry for one notification row: keyForKind's,
+// except where a column on the row changes what the reader must be told. An
+// event_cancel for a registrant who paid (notifications.refunded, migration
+// 20270725000002) carries the refund line on email, web push and native push
+// alike, so all three renders resolve their copy through here.
+func copyKeyFor(n NotificationRow) string {
+	if n.Kind == "event_cancel" && n.Refunded {
+		return "event_cancel_refunded"
+	}
+	return keyForKind(n.Kind)
+}
+
 // lookupEmailStrings resolves (locale, key) with English + "default"
 // fallbacks so a missing translation never produces a blank email.
 func lookupEmailStrings(locale, key string) emailStrings {
@@ -311,6 +323,15 @@ var emailCatalogue = map[string]map[string]emailStrings{
 		"drip_reengagement":  {"We've missed you on Threkir", "It's been a while — your shoes are waiting.", "Time to lace up again", "Open Threkir", []string{"It's been a while since your last run. No pressure — every runner takes a break.", "When you're ready, we're here. A short, easy run is a great way back in."}},
 		"drip_streak":        {"Keep your run streak alive", "You're on a roll — don't let it slip today.", "Don't break the streak", "Record a run", []string{"You've run two days running. One more keeps the streak alive.", "A quick, easy effort is all it takes today. Open Threkir and bank it."}},
 		"account_deleted":    {"Your Threkir account has been deleted", "Your account and personal data have been erased.", "Your account has been deleted", "Visit Threkir", []string{"Your Threkir account has been deleted, and your runs, routes, and personal data have been erased from our systems.", "We've also asked the third-party services connected to your account (such as your payment provider) to remove your data. If you didn't request this, contact us right away.", "Thanks for running with us. You're welcome back any time."}},
+
+		// Not a kind: an event_cancel row whose `refunded` column is set (a paid
+		// registrant). copyKeyFor picks it; kept apart so gofmt leaves the
+		// table above aligned.
+		"event_cancel_refunded": {"An event you paid for was cancelled — you're being refunded", "Your payment for the cancelled occurrence is on its way back to you.", "Event cancelled, refund on its way", "View event", []string{"An event you'd paid to attend has been cancelled, and we're refunding your payment.", "It goes back to the card you paid with. Your bank decides how long it takes to show up — usually a few business days."}},
+
+		// A paid occurrence's freed seat offered to a waitlister (migration
+		// 20270726000002). Its own block for the same gofmt reason as above.
+		"event_waitlist_slot": {"A place opened up — it's held for you", "Pay before the hold runs out to claim your place.", "A place is held for you", "Claim your place", []string{"A place has opened in an event you're on the waitlist for, and we're holding it for you.", "Pay to claim it before the hold runs out — the event page shows exactly when. If you don't, the place goes to the next person on the waitlist and you leave the waitlist. You won't be charged unless you pay."}},
 	},
 	"de": {
 		"event_reminder":     {"Erinnerung: dein Event steht bevor", "Ein Event, für das du zugesagt hast, beginnt bald.", "Dein Event steht bevor", "Event ansehen", []string{"Ein Event, für das du zugesagt hast, beginnt bald.", "Öffne es für Treffpunkt, Uhrzeit und wer noch dabei ist."}},
@@ -342,6 +363,9 @@ var emailCatalogue = map[string]map[string]emailStrings{
 		"drip_reengagement":  {"Wir haben dich bei Threkir vermisst", "Es ist eine Weile her — deine Schuhe warten.", "Zeit, wieder die Schuhe zu schnüren", "Threkir öffnen", []string{"Dein letzter Lauf ist eine Weile her. Kein Druck — jede Läuferin und jeder Läufer macht mal Pause.", "Wenn du bereit bist, sind wir da. Ein kurzer, lockerer Lauf ist ein guter Wiedereinstieg."}},
 		"drip_streak":        {"Halte deine Lauf-Serie am Leben", "Du bist in Schwung — lass es heute nicht abreißen.", "Brich die Serie nicht ab", "Lauf aufzeichnen", []string{"Du bist zwei Tage hintereinander gelaufen. Noch einer hält die Serie am Leben.", "Heute reicht ein kurzer, lockerer Lauf. Öffne Threkir und sichere ihn dir."}},
 		"account_deleted":    {"Dein Threkir-Konto wurde gelöscht", "Dein Konto und deine personenbezogenen Daten wurden gelöscht.", "Dein Konto wurde gelöscht", "Threkir besuchen", []string{"Dein Threkir-Konto wurde gelöscht, und deine Läufe, Routen und personenbezogenen Daten wurden aus unseren Systemen entfernt.", "Wir haben außerdem die mit deinem Konto verbundenen Drittanbieter-Dienste (etwa deinen Zahlungsanbieter) gebeten, deine Daten zu löschen. Falls du das nicht angefordert hast, melde dich bitte umgehend bei uns.", "Danke, dass du mit uns gelaufen bist. Du bist jederzeit wieder willkommen."}},
+
+		"event_cancel_refunded": {"Ein bezahltes Event wurde abgesagt – du bekommst dein Geld zurück", "Deine Zahlung für den abgesagten Termin wird erstattet.", "Event abgesagt, Erstattung unterwegs", "Event ansehen", []string{"Ein Event, für das du bezahlt hattest, wurde abgesagt, und wir erstatten dir deine Zahlung.", "Das Geld geht auf die Karte zurück, mit der du bezahlt hast. Wie lange die Gutschrift dauert, hängt von deiner Bank ab – meist ein paar Werktage."}},
+		"event_waitlist_slot":   {"Ein Platz ist frei geworden – er ist für dich reserviert", "Bezahle, bevor die Reservierung abläuft, um deinen Platz zu sichern.", "Ein Platz ist für dich reserviert", "Platz sichern", []string{"Bei einem Event, auf dessen Warteliste du stehst, ist ein Platz frei geworden, und wir halten ihn für dich frei.", "Bezahle, bevor die Reservierung abläuft – wann genau, steht auf der Event-Seite. Sonst geht der Platz an die nächste Person auf der Warteliste, und du wirst von der Warteliste genommen. Es wird nichts abgebucht, solange du nicht bezahlst."}},
 	},
 	"fr": {
 		"event_reminder":     {"Rappel : votre événement approche", "Un événement auquel vous avez répondu présent commence bientôt.", "Votre événement approche", "Voir l'événement", []string{"Un événement auquel vous avez répondu présent commence bientôt.", "Ouvrez-le pour le point de rendez-vous, l'horaire et les autres participants."}},
@@ -373,6 +397,9 @@ var emailCatalogue = map[string]map[string]emailStrings{
 		"drip_reengagement":  {"Vous nous avez manqué sur Threkir", "Ça fait un moment — vos chaussures vous attendent.", "Il est temps de relacer vos chaussures", "Ouvrir Threkir", []string{"Votre dernière course remonte à un moment. Sans pression — chaque coureur fait une pause.", "Quand vous serez prêt, nous serons là. Une course courte et facile est une belle façon de reprendre."}},
 		"drip_streak":        {"Gardez votre série de courses en vie", "Vous êtes lancé — ne laissez pas filer aujourd'hui.", "Ne brisez pas la série", "Enregistrer une course", []string{"Vous avez couru deux jours de suite. Une de plus garde la série en vie.", "Un effort court et facile suffit aujourd'hui. Ouvrez Threkir et validez-le."}},
 		"account_deleted":    {"Votre compte Threkir a été supprimé", "Votre compte et vos données personnelles ont été effacés.", "Votre compte a été supprimé", "Visiter Threkir", []string{"Votre compte Threkir a été supprimé, et vos courses, itinéraires et données personnelles ont été effacés de nos systèmes.", "Nous avons également demandé aux services tiers liés à votre compte (comme votre prestataire de paiement) de supprimer vos données. Si vous n'êtes pas à l'origine de cette demande, contactez-nous immédiatement.", "Merci d'avoir couru avec nous. Vous êtes le bienvenu à tout moment."}},
+
+		"event_cancel_refunded": {"Un événement payé a été annulé — vous allez être remboursé", "Votre paiement pour la séance annulée est en cours de remboursement.", "Événement annulé, remboursement en cours", "Voir l'événement", []string{"Un événement pour lequel vous aviez payé a été annulé, et nous vous remboursons votre paiement.", "Le remboursement est versé sur la carte utilisée pour payer. Le délai dépend de votre banque, généralement quelques jours ouvrés."}},
+		"event_waitlist_slot":   {"Une place s'est libérée — elle vous est réservée", "Payez avant la fin de la réservation pour obtenir votre place.", "Une place vous est réservée", "Obtenir ma place", []string{"Une place s'est libérée pour un événement sur la liste d'attente duquel vous êtes inscrit, et nous la gardons pour vous.", "Payez avant la fin de la réservation — l'heure exacte figure sur la page de l'événement. Sinon, la place revient à la personne suivante sur la liste d'attente et vous en êtes retiré. Rien ne vous est prélevé tant que vous ne payez pas."}},
 	},
 	"es": {
 		"event_reminder":     {"Recordatorio: tu evento se acerca", "Un evento al que confirmaste asistencia empieza pronto.", "Tu evento se acerca", "Ver evento", []string{"Tienes un evento que empieza pronto y al que confirmaste asistencia.", "Ábrelo para ver el punto de encuentro, la hora y quién más va."}},
@@ -404,6 +431,9 @@ var emailCatalogue = map[string]map[string]emailStrings{
 		"drip_reengagement":  {"Te hemos echado de menos en Threkir", "Ha pasado un tiempo: tus zapatillas te esperan.", "Hora de volver a atarte las zapatillas", "Abrir Threkir", []string{"Ha pasado un tiempo desde tu última carrera. Sin presión: todo corredor se toma un descanso.", "Cuando estés listo, aquí estamos. Una carrera corta y suave es una gran forma de volver."}},
 		"drip_streak":        {"Mantén viva tu racha de carreras", "Vas con buen ritmo: no lo dejes escapar hoy.", "No rompas la racha", "Registrar una carrera", []string{"Has corrido dos días seguidos. Una más mantiene viva la racha.", "Hoy basta con un esfuerzo corto y suave. Abre Threkir y guárdalo."}},
 		"account_deleted":    {"Tu cuenta de Threkir se ha eliminado", "Tu cuenta y tus datos personales se han borrado.", "Tu cuenta se ha eliminado", "Visitar Threkir", []string{"Tu cuenta de Threkir se ha eliminado, y tus carreras, rutas y datos personales se han borrado de nuestros sistemas.", "También hemos pedido a los servicios de terceros vinculados a tu cuenta (como tu proveedor de pago) que eliminen tus datos. Si no solicitaste esto, contáctanos de inmediato.", "Gracias por correr con nosotros. Puedes volver cuando quieras."}},
+
+		"event_cancel_refunded": {"Se canceló un evento que pagaste: te estamos reembolsando", "Tu pago por la sesión cancelada se está reembolsando.", "Evento cancelado, reembolso en camino", "Ver evento", []string{"Se ha cancelado un evento por el que habías pagado y te estamos reembolsando el pago.", "El dinero vuelve a la tarjeta con la que pagaste. El plazo depende de tu banco; suele ser de unos pocos días hábiles."}},
+		"event_waitlist_slot":   {"Se ha liberado una plaza: te la estamos guardando", "Paga antes de que venza la reserva para quedarte con tu plaza.", "Tienes una plaza reservada", "Conseguir mi plaza", []string{"Se ha liberado una plaza en un evento en cuya lista de espera estás, y te la estamos guardando.", "Paga antes de que venza la reserva; la hora exacta aparece en la página del evento. Si no, la plaza pasará a la siguiente persona de la lista de espera y saldrás de ella. No se te cobrará nada a menos que pagues."}},
 	},
 	"ja": {
 		"event_reminder":     {"リマインダー：イベントがもうすぐ始まります", "参加予定のイベントがまもなく始まります。", "イベントがもうすぐ始まります", "イベントを見る", []string{"参加予定のイベントがまもなく始まります。", "集合場所・時間・参加者を確認しましょう。"}},
@@ -435,6 +465,9 @@ var emailCatalogue = map[string]map[string]emailStrings{
 		"drip_reengagement":  {"Threkir はあなたを待っています", "しばらくぶりですね。シューズが待っています。", "もう一度シューズを履きましょう", "Threkir を開く", []string{"前回のランからしばらく経ちました。プレッシャーは不要です。誰でも休む時期があります。", "準備ができたら、私たちはここにいます。短くゆるやかなランは、再開にぴったりです。"}},
 		"drip_streak":        {"ランの連続記録を絶やさないで", "いい流れです。今日で途切れさせないようにしましょう。", "連続記録を途切れさせない", "ランを記録", []string{"2 日連続で走りました。あと 1 回で連続記録が続きます。", "今日は短くゆるやかな一本で十分です。Threkir を開いて記録しましょう。"}},
 		"account_deleted":    {"Threkir アカウントが削除されました", "アカウントと個人データが消去されました。", "アカウントが削除されました", "Threkir を見る", []string{"Threkir アカウントが削除され、ラン・ルート・個人データが当社のシステムから消去されました。", "アカウントに連携されていた外部サービス（お支払いプロバイダーなど）にも、データの削除を依頼しました。心当たりがない場合は、すぐに当社までご連絡ください。", "ご利用ありがとうございました。いつでもまた戻ってきてください。"}},
+
+		"event_cancel_refunded": {"支払い済みのイベントが中止されました（返金手続き中）", "中止された回のお支払いを返金しています。", "イベント中止・返金手続き中", "イベントを見る", []string{"お支払い済みのイベントが中止されたため、お支払い金額を返金しています。", "返金はお支払いに使用したカードに戻ります。反映までの期間はカード会社によって異なりますが、通常は数営業日です。"}},
+		"event_waitlist_slot":   {"空きが出ました（あなたのために確保中）", "確保期限までにお支払いいただくと参加が確定します。", "あなたの枠を確保しています", "枠を確定する", []string{"キャンセル待ちに登録しているイベントに空きが出たため、あなたのために枠を確保しています。", "確保期限までにお支払いください。正確な期限はイベントページに表示されています。期限までにお支払いがない場合、枠は次の方に回り、あなたはキャンセル待ちから外れます。お支払いいただくまで料金は発生しません。"}},
 	},
 	"pt-BR": {
 		"event_reminder":     {"Lembrete: seu evento está chegando", "Um evento que você confirmou presença começa em breve.", "Seu evento está chegando", "Ver evento", []string{"Você tem um evento que começa em breve e que você confirmou presença.", "Abra para ver o ponto de encontro, o horário e quem mais vai."}},
@@ -466,6 +499,9 @@ var emailCatalogue = map[string]map[string]emailStrings{
 		"drip_reengagement":  {"Sentimos sua falta no Threkir", "Já faz um tempo — seus tênis estão esperando.", "Hora de calçar os tênis de novo", "Abrir Threkir", []string{"Já faz um tempo desde a sua última corrida. Sem pressão — todo corredor faz uma pausa.", "Quando estiver pronto, estamos aqui. Uma corrida curta e leve é um ótimo jeito de voltar."}},
 		"drip_streak":        {"Mantenha viva a sua sequência de corridas", "Você está embalado — não deixe escapar hoje.", "Não quebre a sequência", "Registrar uma corrida", []string{"Você correu dois dias seguidos. Mais uma mantém a sequência viva.", "Hoje basta um esforço curto e leve. Abra o Threkir e garanta."}},
 		"account_deleted":    {"Sua conta do Threkir foi excluída", "Sua conta e seus dados pessoais foram apagados.", "Sua conta foi excluída", "Visitar o Threkir", []string{"Sua conta do Threkir foi excluída, e suas corridas, rotas e dados pessoais foram apagados dos nossos sistemas.", "Também pedimos aos serviços de terceiros vinculados à sua conta (como o seu provedor de pagamento) que removam seus dados. Se você não solicitou isso, entre em contato conosco imediatamente.", "Obrigado por correr com a gente. Você é bem-vindo de volta a qualquer momento."}},
+
+		"event_cancel_refunded": {"Um evento que você pagou foi cancelado — você será reembolsado", "Seu pagamento pela sessão cancelada está sendo reembolsado.", "Evento cancelado, reembolso a caminho", "Ver evento", []string{"Um evento pelo qual você pagou foi cancelado, e estamos reembolsando seu pagamento.", "O valor volta para o cartão usado no pagamento. O prazo depende do seu banco — normalmente alguns dias úteis."}},
+		"event_waitlist_slot":   {"Abriu uma vaga — ela está reservada para você", "Pague antes que a reserva expire para garantir sua vaga.", "Uma vaga está reservada para você", "Garantir minha vaga", []string{"Abriu uma vaga em um evento em cuja lista de espera você está, e estamos guardando-a para você.", "Pague antes que a reserva expire — o horário exato está na página do evento. Caso contrário, a vaga passa para a próxima pessoa da lista de espera e você sai dela. Nada é cobrado a menos que você pague."}},
 	},
 	"pt-PT": {
 		"event_reminder":     {"Lembrete: o seu evento está a chegar", "Um evento a que confirmou presença começa em breve.", "O seu evento está a chegar", "Ver evento", []string{"Tem um evento a começar em breve a que confirmou presença.", "Abra-o para ver o ponto de encontro, o horário e quem mais vai."}},
@@ -497,5 +533,8 @@ var emailCatalogue = map[string]map[string]emailStrings{
 		"drip_reengagement":  {"Temos sentido a sua falta no Threkir", "Já passou algum tempo — as sapatilhas estão à espera.", "Hora de calçar outra vez as sapatilhas", "Abrir o Threkir", []string{"Já passou algum tempo desde a sua última corrida. Sem pressão — todos os corredores fazem uma pausa.", "Quando estiver pronto, estamos aqui. Uma corrida curta e leve é uma ótima forma de voltar."}},
 		"drip_streak":        {"Mantenha viva a sua sequência de corridas", "Está embalado — não deixe escapar hoje.", "Não quebre a sequência", "Registar uma corrida", []string{"Correu dois dias seguidos. Mais um mantém a sequência viva.", "Hoje basta um esforço curto e leve. Abra o Threkir e garanta-o."}},
 		"account_deleted":    {"A sua conta do Threkir foi eliminada", "A sua conta e os seus dados pessoais foram apagados.", "A sua conta foi eliminada", "Visitar o Threkir", []string{"A sua conta do Threkir foi eliminada, e as suas corridas, rotas e dados pessoais foram apagados dos nossos sistemas.", "Também pedimos aos serviços de terceiros associados à sua conta (como o seu fornecedor de pagamentos) que removam os seus dados. Se não solicitou isto, contacte-nos imediatamente.", "Obrigado por ter corrido connosco. É bem-vindo de volta quando quiser."}},
+
+		"event_cancel_refunded": {"Um evento que pagou foi cancelado — vai ser reembolsado", "O seu pagamento pela sessão cancelada está a ser reembolsado.", "Evento cancelado, reembolso a caminho", "Ver evento", []string{"Um evento pelo qual pagou foi cancelado e estamos a reembolsar o seu pagamento.", "O valor volta para o cartão com que pagou. O prazo depende do seu banco — normalmente alguns dias úteis."}},
+		"event_waitlist_slot":   {"Abriu um lugar — está reservado para si", "Pague antes de a reserva expirar para garantir o seu lugar.", "Tem um lugar reservado", "Garantir o meu lugar", []string{"Abriu um lugar num evento em cuja lista de espera está, e estamos a guardá-lo para si.", "Pague antes de a reserva expirar — a hora exata está na página do evento. Caso contrário, o lugar passa para a pessoa seguinte da lista de espera e sai da lista. Nada lhe é cobrado se não pagar."}},
 	},
 }

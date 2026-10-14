@@ -34,6 +34,8 @@ import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'settings_cache.dart';
 import 'settings_sync.dart';
+import 'club_invite_link.dart';
+import 'entity_link.dart';
 import 'shared_file_import.dart';
 import 'social_service.dart';
 import 'sync_service.dart';
@@ -553,6 +555,9 @@ void main() async {
         // account keeps its own history), but the in-progress snapshot is
         // not tagged and would be adopted by whoever signs in next.
         wipeInProgressRecording(store);
+        // Queued race finisher times are filed under whoever is signed in
+        // when they replay; the departing account's go with it, as on Wear.
+        clearPendingRaceResults();
       }
     });
     WearAuthBridge().attach(url: supabaseUrl, anonKey: anonKey);
@@ -678,6 +683,26 @@ void main() async {
     unawaited(sharedFileImport.processInitial());
   } catch (e) {
     debugPrint('shared-file import init failed: $e');
+  }
+
+  // Club invite links (`/clubs/join/<token>` on the web host, or the
+  // `com.threkir.app://clubs/join/<token>` scheme): HomeScreen drains
+  // pendingClubInviteToken into ClubInviteScreen. Guarded the same way.
+  try {
+    final inviteLinks = ClubInviteLinkService()..start();
+    unawaited(inviteLinks.processInitial());
+  } catch (e) {
+    debugPrint('club invite link init failed: $e');
+  }
+
+  // Run and route links (`/runs/<id>`, `/routes/<id>` on the web host, or the
+  // `com.threkir.app://runs|routes/<id>` scheme), the links an owner hands out
+  // to followers and named people: HomeScreen drains pendingEntityLink.
+  try {
+    final entityLinks = EntityLinkService()..start();
+    unawaited(entityLinks.processInitial());
+  } catch (e) {
+    debugPrint('entity link init failed: $e');
   }
 }
 

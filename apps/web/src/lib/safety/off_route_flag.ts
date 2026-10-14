@@ -14,9 +14,9 @@
  * contact AND an active live broadcast — so a granted flag alone never
  * notifies anyone who hasn't opted in.
  */
-import { env } from '$env/dynamic/public';
+import { PUBLIC_OFF_ROUTE_ESCALATION_ENABLED } from '$app/env/public';
 import { offRouteEscalationEnabled } from './off_route_alert';
 
 export function isOffRouteEscalationEnabled(): boolean {
-	return offRouteEscalationEnabled(env.PUBLIC_OFF_ROUTE_ESCALATION_ENABLED);
+	return offRouteEscalationEnabled(PUBLIC_OFF_ROUTE_ESCALATION_ENABLED);
 }

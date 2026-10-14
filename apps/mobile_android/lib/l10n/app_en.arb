@@ -12,7 +12,7 @@
   "@clubInviteTitle": {
     "description": "App bar title for the club-invite redemption screen"
   },
-  "clubInviteIntro": "Paste the invite code your club admin shared with you.",
+  "clubInviteIntro": "Paste the invite link or code your club admin shared with you.",
   "@clubInviteIntro": {
     "description": "Instruction text above the invite-code field"
   },
@@ -23,6 +23,22 @@
   "clubInviteJoinButton": "Join",
   "@clubInviteJoinButton": {
     "description": "Button to redeem the club invite code"
+  },
+  "clubWaiverTitle": "One thing before you join",
+  "@clubWaiverTitle": {
+    "description": "Title of the dialog asking for a club's activity-risk acknowledgement before joining"
+  },
+  "clubWaiverBody": "This club asks every member to acknowledge the physical risks of running together before joining.",
+  "@clubWaiverBody": {
+    "description": "Body of the activity-risk acknowledgement dialog"
+  },
+  "clubWaiverAck": "I understand the physical risks of group running and join at my own risk.",
+  "@clubWaiverAck": {
+    "description": "Checkbox label: the member acknowledges the physical risk of group running (same text as web clubHome.waiverAck)"
+  },
+  "clubWaiverAccept": "Accept and join",
+  "@clubWaiverAccept": {
+    "description": "Dialog button that records the acknowledgement and joins the club; enabled only once the box is ticked"
   },
   "recapShareHeadline": "My {year} in running:",
   "@recapShareHeadline": {
@@ -567,7 +583,7 @@
   "@importHealthDescriptionIos": {
     "description": "iOS body copy explaining what is imported from Apple Health and the no-track caveat"
   },
-  "importHealthDescriptionAndroid": "Reads workout summaries (date, distance, duration, type) from the last year. GPS routes are not exposed by Health Connect — runs imported this way won't have a map trace.",
+  "importHealthDescriptionAndroid": "Reads workout summaries (date, distance, duration, type) from the last year. A workout's GPS map comes too when Health Connect lets Threkir read it; if it holds some back, you can allow map access after the import.",
   "@importHealthDescriptionAndroid": {
     "description": "Android body copy explaining what is imported from Health Connect and the no-track caveat"
   },
@@ -6226,6 +6242,32 @@
   "@profileNotifEventCancel": {
     "description": "Notification text for a cancelled event occurrence, when the title is unavailable"
   },
+  "profileNotifEventCancelRefundedTitled": "An occurrence of \"{title}\" was cancelled — your payment is being refunded",
+  "@profileNotifEventCancelRefundedTitled": {
+    "description": "Notification text for a cancelled event occurrence the recipient had paid for, when the event title is known. The refund has been issued, not necessarily received, so say it is being refunded.",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "profileNotifEventCancelRefunded": "An event occurrence you paid for was cancelled — your payment is being refunded",
+  "@profileNotifEventCancelRefunded": {
+    "description": "Notification text for a cancelled event occurrence the recipient had paid for, when the title is unavailable. The refund has been issued, not necessarily received."
+  },
+  "profileNotifWaitlistSlotTitled": "A place opened in \"{title}\" and is held for you — pay to claim it",
+  "@profileNotifWaitlistSlotTitled": {
+    "description": "Notification text when a place has opened in a paid event the recipient is waitlisted for and is being held for them until a deadline (event title known). They must pay to claim it; nothing has been charged.",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "profileNotifWaitlistSlot": "A place opened in an event you're waitlisted for and is held for you — pay to claim it",
+  "@profileNotifWaitlistSlot": {
+    "description": "Notification text when a place has opened in a paid event the recipient is waitlisted for and is being held for them, when the title is unavailable. They must pay to claim it."
+  },
   "profileNotifEventReminderTitled": "\"{title}\" is coming up",
   "@profileNotifEventReminderTitled": {
     "description": "Notification text for an upcoming event reminder, when the event title is known",
@@ -9148,7 +9190,7 @@
   "@settingsAccountImport": {
     "description": "Tile title for importing runs"
   },
-  "settingsAccountImportSubtitle": "Strava, GPX, TCX",
+  "settingsAccountImportSubtitle": "Strava export, health app, CSV or backup",
   "@settingsAccountImportSubtitle": {
     "description": "Subtitle of the Import tile"
   },
@@ -18577,5 +18619,841 @@
   "dashboardLeadAddRun": "Add a run",
   "@dashboardLeadAddRun": {
     "description": "Button on the dashboard week card that opens the manual add-a-run form"
+  },
+  "runRaceStopTitle": "Race paused",
+  "@runRaceStopTitle": {
+    "description": "Title of the sheet shown when a runner presses Stop during a live race; the recording is paused, not stopped"
+  },
+  "runRaceStopBody": "The race clock keeps running. Resume to carry on, or finish the race now.",
+  "@runRaceStopBody": {
+    "description": "Body of the race-stop sheet: the gun clock keeps running while paused"
+  },
+  "runRaceStopBodyDnf": "You've covered less than 90% of the course, so finishing now records a DNF.",
+  "@runRaceStopBodyDnf": {
+    "description": "Extra line on the race-stop sheet when the runner has covered less than 90% of the course"
+  },
+  "runRaceResume": "Resume race",
+  "@runRaceResume": {
+    "description": "Race-stop sheet action that resumes the paused race recording"
+  },
+  "runRaceFinish": "Finish race",
+  "@runRaceFinish": {
+    "description": "Race-stop sheet action that ends the race recording and records a finish"
+  },
+  "runRaceFinishDnf": "Finish as DNF",
+  "@runRaceFinishDnf": {
+    "description": "Race-stop sheet action when the runner has covered under 90%: ends the race recording and records a DNF"
+  },
+  "runRaceFinishedAuto": "Finished! Gun time {time}",
+  "@runRaceFinishedAuto": {
+    "description": "Banner when the runner reaches the finish line and the race recording stops automatically",
+    "placeholders": {
+      "time": {
+        "type": "String",
+        "example": "25:04"
+      }
+    }
+  },
+  "runRaceFinishRecorded": "Race finish recorded",
+  "@runRaceFinishRecorded": {
+    "description": "Banner when a race finish is recorded but no gun time is known"
+  },
+  "runRaceEnded": "The host ended the race. Your run keeps recording, but no result will be submitted.",
+  "@runRaceEnded": {
+    "description": "Banner when the race host ends the race before this runner finished"
+  },
+  "runRaceLateStart": "Late start: you began more than 5 minutes after GO or away from the start line.",
+  "@runRaceLateStart": {
+    "description": "Banner when the runner started recording more than 5 minutes after GO or more than 200 m from the course start"
+  },
+  "eventCoursesTitle": "Courses",
+  "@eventCoursesTitle": {
+    "description": "Section label above the list of courses a race event offers"
+  },
+  "eventCoursePickTitle": "Pick your course",
+  "@eventCoursePickTitle": {
+    "description": "Title of the course picker shown when RSVPing to a race with more than one course, and the button that opens it"
+  },
+  "eventChangeCourse": "Change course",
+  "@eventChangeCourse": {
+    "description": "Button that lets a racer who already RSVPed pick a different course"
+  },
+  "eventYourCourse": "Your course",
+  "@eventYourCourse": {
+    "description": "Marker on the course the viewer picked at RSVP"
+  },
+  "eventCourseChangeFailed": "Couldn't save your course. Try again.",
+  "@eventCourseChangeFailed": {
+    "description": "Banner when saving the racer's course pick fails"
+  },
+  "eventResultChipTime": "Chip {time}",
+  "@eventResultChipTime": {
+    "description": "Secondary time on a race result row: the runner's own start-to-finish time, beside the gun time",
+    "placeholders": {
+      "time": {
+        "type": "String",
+        "example": "24:51"
+      }
+    }
+  },
+  "eventResultsOtherCourse": "Other results",
+  "@eventResultsOtherCourse": {
+    "description": "Group heading for race results not tied to any of the event's courses"
+  },
+  "eventFinishMethodManual": "Manual",
+  "@eventFinishMethodManual": {
+    "description": "Badge on a race result the runner recorded by pressing Finish race"
+  },
+  "eventFinishMethodHost": "Host",
+  "@eventFinishMethodHost": {
+    "description": "Badge on a race result the race host recorded"
+  },
+  "helpTitle": "Help",
+  "@helpTitle": {
+    "description": "Help screen title and Settings row label"
+  },
+  "helpSettingsSubtitle": "How races, classes, clubs and the app work",
+  "@helpSettingsSubtitle": {
+    "description": "Subtitle of the Help row in Settings"
+  },
+  "helpSearchHint": "Search help",
+  "@helpSearchHint": {
+    "description": "Hint in the Help search field"
+  },
+  "helpSearchClear": "Clear search",
+  "@helpSearchClear": {
+    "description": "Tooltip of the button clearing the Help search"
+  },
+  "helpAudienceLabel": "Show guides for",
+  "@helpAudienceLabel": {
+    "description": "Label above the Help audience filter chips"
+  },
+  "helpAudienceAll": "All",
+  "@helpAudienceAll": {
+    "description": "Help audience filter chip: no filter"
+  },
+  "helpAudienceRunner": "Runners",
+  "@helpAudienceRunner": {
+    "description": "Help audience filter chip"
+  },
+  "helpAudienceOrganiser": "Organisers",
+  "@helpAudienceOrganiser": {
+    "description": "Help audience filter chip: people who organise events"
+  },
+  "helpAudienceParticipant": "Participants",
+  "@helpAudienceParticipant": {
+    "description": "Help audience filter chip: people taking part in an event"
+  },
+  "helpAudienceSpectator": "Spectators",
+  "@helpAudienceSpectator": {
+    "description": "Help audience filter chip: people following someone live"
+  },
+  "helpAudienceInstructor": "Instructors",
+  "@helpAudienceInstructor": {
+    "description": "Help audience filter chip: class instructors"
+  },
+  "helpAudienceClubAdmin": "Club admins",
+  "@helpAudienceClubAdmin": {
+    "description": "Help audience filter chip: club administrators"
+  },
+  "helpCategoryRaces": "Races",
+  "@helpCategoryRaces": {
+    "description": "Help category heading"
+  },
+  "helpCategoryPaidClasses": "Paid classes",
+  "@helpCategoryPaidClasses": {
+    "description": "Help category heading"
+  },
+  "helpCategoryInstructors": "Instructors",
+  "@helpCategoryInstructors": {
+    "description": "Help category heading"
+  },
+  "helpCategoryClubs": "Clubs",
+  "@helpCategoryClubs": {
+    "description": "Help category heading"
+  },
+  "helpCategoryRunning": "Running",
+  "@helpCategoryRunning": {
+    "description": "Help category heading"
+  },
+  "helpCategoryAccount": "Account",
+  "@helpCategoryAccount": {
+    "description": "Help category heading"
+  },
+  "helpCategoryOther": "More guides",
+  "@helpCategoryOther": {
+    "description": "Help category heading for guides in a category this app version does not know"
+  },
+  "helpRequiresPro": "Needs Pro",
+  "@helpRequiresPro": {
+    "description": "Chip on a guide whose feature needs a Pro subscription"
+  },
+  "helpRequiresClubAdmin": "Club admins only",
+  "@helpRequiresClubAdmin": {
+    "description": "Chip on a guide whose feature is for club admins only"
+  },
+  "helpRequiresRaceDirector": "Race directors only",
+  "@helpRequiresRaceDirector": {
+    "description": "Chip on a guide whose feature is for race directors only"
+  },
+  "helpRequiresStripeConnected": "Needs Stripe connected",
+  "@helpRequiresStripeConnected": {
+    "description": "Chip on a guide whose feature needs the host's Stripe account connected"
+  },
+  "helpRequiresPaidRailLive": "Needs paid registration on",
+  "@helpRequiresPaidRailLive": {
+    "description": "Chip on a guide whose feature needs paid registration switched on"
+  },
+  "helpPlatformsLabel": "Works on",
+  "@helpPlatformsLabel": {
+    "description": "Label before the platform chips on a guide"
+  },
+  "helpPlatformWeb": "Web",
+  "@helpPlatformWeb": {
+    "description": "Platform chip on a guide: the website"
+  },
+  "helpPlatformAndroid": "Android",
+  "@helpPlatformAndroid": {
+    "description": "Platform chip on a guide"
+  },
+  "helpPlatformIos": "iPhone",
+  "@helpPlatformIos": {
+    "description": "Platform chip on a guide: the iPhone app"
+  },
+  "helpPlatformWear": "Wear OS",
+  "@helpPlatformWear": {
+    "description": "Platform chip on a guide: the Wear OS watch app"
+  },
+  "helpPlatformAppleWatch": "Apple Watch",
+  "@helpPlatformAppleWatch": {
+    "description": "Platform chip on a guide: the Apple Watch app"
+  },
+  "helpNoteTip": "Tip",
+  "@helpNoteTip": {
+    "description": "Label of a tip note inside a guide"
+  },
+  "helpNoteCaution": "Caution",
+  "@helpNoteCaution": {
+    "description": "Label of a caution note inside a guide"
+  },
+  "helpRelated": "Related guides",
+  "@helpRelated": {
+    "description": "Heading above links to related guides"
+  },
+  "helpResultsHeader": "Results",
+  "@helpResultsHeader": {
+    "description": "Heading above Help search results"
+  },
+  "helpNoResultsTitle": "No matching guides",
+  "@helpNoResultsTitle": {
+    "description": "Empty state when a Help search finds nothing"
+  },
+  "helpNoResultsBody": "Try another word, or show guides for all.",
+  "@helpNoResultsBody": {
+    "description": "Body of the empty Help search state"
+  },
+  "helpLoading": "Loading guides",
+  "@helpLoading": {
+    "description": "Loading label while the Help guides load"
+  },
+  "helpUnavailable": "Help guides could not be loaded.",
+  "@helpUnavailable": {
+    "description": "Shown when the Help guides cannot be loaded"
+  },
+  "helpGuideMissing": "This guide is not available.",
+  "@helpGuideMissing": {
+    "description": "Shown when a linked guide does not exist"
+  },
+  "helpGuideInEnglish": "This guide has not been translated into your language yet, so it is shown in English.",
+  "@helpGuideInEnglish": {
+    "description": "Note under a help guide's summary, shown only when the guide has no translation in the app language and its English text is shown instead"
+  },
+  "helpHowThisWorks": "How this works",
+  "@helpHowThisWorks": {
+    "description": "Button and tooltip opening the guides about the current screen"
+  },
+  "helpForThisScreen": "Guides for this screen",
+  "@helpForThisScreen": {
+    "description": "Heading above the guides about the screen Help was opened from"
+  },
+  "helpBrowseAll": "Browse all guides",
+  "@helpBrowseAll": {
+    "description": "Row opening the full Help guide list"
+  },
+  "helpStepLabel": "Step {n}",
+  "@helpStepLabel": {
+    "description": "Screen-reader label for a numbered step in a guide",
+    "placeholders": {"n": {"type": "int"}}
+  },
+  "infoTipReadGuide": "Read the guide",
+  "@infoTipReadGuide": {
+    "description": "Action in an info dialog opening the full guide"
+  },
+  "eventRaceEndConfirmBodyDnf": "{count, plural, one{End the race? {count} racer who started has no result and will be marked DNF. This can't be undone.} other{End the race? {count} racers who started have no result and will be marked DNF. This can't be undone.}}",
+  "@eventRaceEndConfirmBodyDnf": {
+    "description": "End-race confirmation when some racers who started have no result and End will mark them DNF",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "eventResultPending": "Pending",
+  "@eventResultPending": {
+    "description": "Pill on a race result the race director has not approved yet; it holds no place"
+  },
+  "eventResultActions": "Result actions for {name}",
+  "@eventResultActions": {
+    "description": "Tooltip / screen-reader label of a race director's per-result actions menu",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "eventResultApprove": "Approve",
+  "@eventResultApprove": {
+    "description": "Race director action publishing a pending result"
+  },
+  "eventResultUnverify": "Unverify",
+  "@eventResultUnverify": {
+    "description": "Race director action putting an approved result back into pending"
+  },
+  "eventResultEdit": "Edit",
+  "@eventResultEdit": {
+    "description": "Race director action opening the result edit dialog"
+  },
+  "eventResultEditTitle": "Edit result: {name}",
+  "@eventResultEditTitle": {
+    "description": "Title of the race director's result edit dialog",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "eventResultEditHelp": "Your edit replaces this time on the leaderboard and is marked as host edited.",
+  "@eventResultEditHelp": {
+    "description": "Explanation in the result edit dialog"
+  },
+  "eventResultEditTime": "Time (h:mm:ss)",
+  "@eventResultEditTime": {
+    "description": "Label of the finish time field in the result edit dialog"
+  },
+  "eventResultEditStatus": "Status",
+  "@eventResultEditStatus": {
+    "description": "Label of the status picker in the result edit dialog"
+  },
+  "eventResultStatusFinished": "Finished",
+  "@eventResultStatusFinished": {
+    "description": "Result status option: finished"
+  },
+  "eventResultStatusDnf": "DNF",
+  "@eventResultStatusDnf": {
+    "description": "Result status option: did not finish"
+  },
+  "eventResultStatusDns": "DNS",
+  "@eventResultStatusDns": {
+    "description": "Result status option: did not start"
+  },
+  "eventResultEditSave": "Save result",
+  "@eventResultEditSave": {
+    "description": "Save button of the result edit dialog"
+  },
+  "eventResultEditTimeInvalid": "Enter a finish time like 42:10 or 1:02:03.",
+  "@eventResultEditTimeInvalid": {
+    "description": "Error under the time field when a finished result has no valid time"
+  },
+  "eventResultActionFailed": "Couldn't update the result: {error}",
+  "@eventResultActionFailed": {
+    "description": "Banner when approving, unverifying or editing a result fails",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "eventCancelOccurrence": "Cancel this occurrence",
+  "@eventCancelOccurrence": {
+    "description": "Organiser action calling off the selected occurrence of a recurring event"
+  },
+  "eventCancelEvent": "Cancel event",
+  "@eventCancelEvent": {
+    "description": "Organiser action calling off a one-off event"
+  },
+  "eventCancelSeries": "Cancel the whole series",
+  "@eventCancelSeries": {
+    "description": "Organiser action ending a recurring event and calling off every upcoming occurrence"
+  },
+  "eventCancelOccurrenceBody": "Only this occurrence is called off — the rest of the series is unaffected. Everyone who RSVP'd to it (going, maybe, or waitlisted) is notified.",
+  "@eventCancelOccurrenceBody": {
+    "description": "Confirmation body when cancelling one occurrence of a series"
+  },
+  "eventCancelEventBody": "The event is called off. Everyone who RSVP'd (going, maybe, or waitlisted) is notified.",
+  "@eventCancelEventBody": {
+    "description": "Confirmation body when cancelling a one-off event"
+  },
+  "eventCancelSeriesBody": "The series ends now and no later occurrences are scheduled. Every upcoming occurrence someone RSVP'd to is called off, and they are notified.",
+  "@eventCancelSeriesBody": {
+    "description": "Confirmation body when cancelling a whole series"
+  },
+  "eventCancelPaidNote": "Anyone who paid is refunded in full, whatever the refund policy says.",
+  "@eventCancelPaidNote": {
+    "description": "Confirmation note that a host cancel refunds everyone who paid"
+  },
+  "eventCancelReasonLabel": "Reason (optional)",
+  "@eventCancelReasonLabel": {
+    "description": "Label of the optional cancel reason field"
+  },
+  "eventCancelKeep": "Keep it",
+  "@eventCancelKeep": {
+    "description": "Dismiss the cancel confirmation without cancelling"
+  },
+  "eventCancelRefundsStarted": "{count, plural, one{Cancelled. 1 registrant is being refunded in full.} other{Cancelled. {count} registrants are being refunded in full.}}",
+  "@eventCancelRefundsStarted": {
+    "description": "Banner after a host cancel started refunds",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "eventCancelRefundsIncomplete": "Cancelled, but {count, plural, one{1 refund couldn't be started. Retry it} other{{count} refunds couldn't be started. Retry them}} from the event on the web.",
+  "@eventCancelRefundsIncomplete": {
+    "description": "Banner after a host cancel where some refunds could not be started",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "eventCancelledToast": "Cancelled.",
+  "@eventCancelledToast": {
+    "description": "Banner after a host cancelled an occurrence or event with no refunds involved"
+  },
+  "eventSeriesCancelledToast": "Series cancelled.",
+  "@eventSeriesCancelledToast": {
+    "description": "Banner after a host cancelled a whole series with no refunds involved"
+  },
+  "eventCancelNotConfigured": "There are paid registrations and payments aren't available right now, so this can't be cancelled yet. Nothing has changed.",
+  "@eventCancelNotConfigured": {
+    "description": "Error when a paid cancel cannot run because payments are unavailable"
+  },
+  "eventCancelNotOrganiser": "Only an organiser of this club can cancel an occurrence.",
+  "@eventCancelNotOrganiser": {
+    "description": "Error when the viewer may not cancel"
+  },
+  "eventCancelFailed": "Couldn't cancel. Please try again.",
+  "@eventCancelFailed": {
+    "description": "Generic cancel failure"
+  },
+  "eventReinstateOccurrence": "Reinstate this occurrence",
+  "@eventReinstateOccurrence": {
+    "description": "Organiser action putting a cancelled occurrence back"
+  },
+  "eventReinstateEvent": "Reinstate this event",
+  "@eventReinstateEvent": {
+    "description": "Organiser action putting a cancelled one-off event back"
+  },
+  "eventReinstateFailed": "Could not reinstate this occurrence",
+  "@eventReinstateFailed": {
+    "description": "Error when reinstating fails"
+  },
+  "eventEventCancelled": "This event was cancelled.",
+  "@eventEventCancelled": {
+    "description": "Banner on a cancelled one-off event"
+  },
+  "eventSeriesWasCancelled": "This series was cancelled.",
+  "@eventSeriesWasCancelled": {
+    "description": "Banner on a series its organiser cancelled"
+  },
+  "eventWaitlistOfferHeld": "A place is held for you until {time}. Pay to claim it, or it goes to the next person on the waitlist.",
+  "@eventWaitlistOfferHeld": {
+    "description": "A waitlist seat is held for the viewer until the given time",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "eventWaitlistOfferClaimHint": "Payment happens on the web.",
+  "@eventWaitlistOfferClaimHint": {
+    "description": "The held seat is paid for on the web"
+  },
+  "eventWaitlistOfferClaim": "Claim on the web",
+  "@eventWaitlistOfferClaim": {
+    "description": "Button opening the event on the web to pay for the held seat"
+  },
+  "eventFormCapacity": "Capacity",
+  "@eventFormCapacity": {
+    "description": "Event form capacity field label"
+  },
+  "eventFormCapacityHint": "Once this many people are going, the next person to say yes joins a waitlist instead of being turned away. Leave it empty for no limit.",
+  "@eventFormCapacityHint": {
+    "description": "Event form capacity helper text"
+  },
+  "eventFormErrCapacity": "Enter a whole number of 1 or more, or leave it empty.",
+  "@eventFormErrCapacity": {
+    "description": "Event form capacity validation error"
+  },
+  "eventFormEndsOn": "Ends on",
+  "@eventFormEndsOn": {
+    "description": "Event form label of the optional series end date"
+  },
+  "eventFormEndsOnNone": "No end date",
+  "@eventFormEndsOnNone": {
+    "description": "Shown when no series end date is set"
+  },
+  "eventFormEndsOnClear": "Clear end date",
+  "@eventFormEndsOnClear": {
+    "description": "Tooltip clearing the series end date"
+  },
+  "eventFormEndAfter": "End after",
+  "@eventFormEndAfter": {
+    "description": "Event form label of the optional occurrence count"
+  },
+  "eventFormRepeatEndHint": "Where the series stops. Set either, or both — whichever comes first wins. Leave both empty and it keeps repeating.",
+  "@eventFormRepeatEndHint": {
+    "description": "Helper text explaining the series end fields"
+  },
+  "eventFormErrCount": "Enter a whole number from 1 to 520, or leave it empty.",
+  "@eventFormErrCount": {
+    "description": "Event form occurrence count validation error"
+  },
+  "eventFormSessionPlan": "Session plan",
+  "@eventFormSessionPlan": {
+    "description": "Event form session plan picker label"
+  },
+  "eventFormSessionPlanNone": "None",
+  "@eventFormSessionPlanNone": {
+    "description": "Session plan picker option for no plan"
+  },
+  "eventFormSessionPlanEmpty": "No session plans yet. Build one on the web.",
+  "@eventFormSessionPlanEmpty": {
+    "description": "Helper text when the host has no session plans"
+  },
+  "eventFormCharge": "Charge for this event",
+  "@eventFormCharge": {
+    "description": "Event form toggle to charge for the event"
+  },
+  "eventFormChargeHint": "Takes a fee at registration. The money settles into your own payout account rather than the club's, and only an in-person event can charge.",
+  "@eventFormChargeHint": {
+    "description": "Helper text of the charge toggle"
+  },
+  "eventFormChargeNeedsPayout": "Set up payouts on the web to charge for events.",
+  "@eventFormChargeNeedsPayout": {
+    "description": "Shown when the host cannot take payments yet"
+  },
+  "eventFormPrice": "Price",
+  "@eventFormPrice": {
+    "description": "Event form price field label"
+  },
+  "eventFormCurrency": "Currency",
+  "@eventFormCurrency": {
+    "description": "Event form currency field label"
+  },
+  "eventFormErrPrice": "Enter a price of at least 0.50.",
+  "@eventFormErrPrice": {
+    "description": "Event form price validation error"
+  },
+  "eventFormErrCurrency": "Use a three-letter currency code, like USD.",
+  "@eventFormErrCurrency": {
+    "description": "Event form currency validation error"
+  },
+  "eventFormSalesClose": "Stop sales (minutes before start)",
+  "@eventFormSalesClose": {
+    "description": "Event form sales close field label"
+  },
+  "eventFormSalesCloseHint": "How long before the start registration shuts. Zero keeps it open right up to the start time.",
+  "@eventFormSalesCloseHint": {
+    "description": "Helper text of the sales close field"
+  },
+  "eventFormErrSalesClose": "Enter a whole number of minutes from 0 to 10080.",
+  "@eventFormErrSalesClose": {
+    "description": "Event form sales close validation error"
+  },
+  "eventFormRefundPolicy": "Refund policy",
+  "@eventFormRefundPolicy": {
+    "description": "Event form refund policy picker label"
+  },
+  "eventFormRefundFullUntilStart": "Full refund until start time",
+  "@eventFormRefundFullUntilStart": {
+    "description": "Refund policy: full refund until the start"
+  },
+  "eventFormRefundFullUntil24h": "Full refund until 24h before",
+  "@eventFormRefundFullUntil24h": {
+    "description": "Refund policy: full refund until 24 hours before"
+  },
+  "eventFormRefundNone": "No refunds",
+  "@eventFormRefundNone": {
+    "description": "Refund policy: no refunds"
+  },
+  "eventFormPricingFailed": "Event created, but saving the price failed. Set the price from the event on the web.",
+  "@eventFormPricingFailed": {
+    "description": "Banner when the event was created but its price was not saved"
+  },
+  "eventFormSessionPlanFailed": "Event created, but the session plan couldn't be attached. Attach it from the event page.",
+  "@eventFormSessionPlanFailed": {
+    "description": "Banner when the event was created but its session plan was not attached"
+  },
+  "eventFormGymRoutine": "Gym routine",
+  "@eventFormGymRoutine": {
+    "description": "Label of the event form's picker for a club gym routine template to attach to a class"
+  },
+  "eventFormGymRoutineNone": "None",
+  "@eventFormGymRoutineNone": {
+    "description": "Gym routine picker option for a class with no routine attached"
+  },
+  "eventFormGymRoutineHint": "One of this club's routine templates. Attendees log the class pre-filled from it. A class carries a routine or a session plan, not both.",
+  "@eventFormGymRoutineHint": {
+    "description": "Helper text under the gym routine picker on the event form"
+  },
+  "eventFormGymRoutineEmpty": "This club has no routine templates yet. Publish a routine to the club first.",
+  "@eventFormGymRoutineEmpty": {
+    "description": "Helper text under the gym routine picker when the club has no routine templates"
+  },
+  "eventFormGymRoutineFailed": "Event created, but the routine couldn't be attached. Attach it from the event page.",
+  "@eventFormGymRoutineFailed": {
+    "description": "Banner when the event was created but its gym routine was not attached"
+  },
+  "clubEventGymRoutineTitle": "Class routine",
+  "@clubEventGymRoutineTitle": {
+    "description": "Heading of the class routine card on the event page"
+  },
+  "clubEventGymRoutineAttach": "Attach a routine",
+  "@clubEventGymRoutineAttach": {
+    "description": "Organiser's button on the class routine card that opens the routine picker, and that sheet's title"
+  },
+  "clubEventGymRoutineNone": "No routine attached.",
+  "@clubEventGymRoutineNone": {
+    "description": "Class routine card line when no readable routine is attached (organiser only)"
+  },
+  "clubEventGymRoutineSets": "{count, plural, =1{1 set} other{{count} sets}}",
+  "@clubEventGymRoutineSets": {
+    "description": "Planned set count beside an exercise on the class routine card",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "clubEventGymRoutineSave": "Save",
+  "@clubEventGymRoutineSave": {
+    "description": "Save button of the class routine attach sheet"
+  },
+  "clubEventGymRoutineSaved": "Class routine updated.",
+  "@clubEventGymRoutineSaved": {
+    "description": "Banner after the organiser attaches, changes or clears the class routine"
+  },
+  "clubEventGymRoutineSaveFailed": "Couldn't update the class routine.",
+  "@clubEventGymRoutineSaveFailed": {
+    "description": "Banner when attaching, changing or clearing the class routine failed"
+  },
+  "clubEventGymRoutineReplacesPlan": "Attaching a routine removes the session plan — a class carries one or the other.",
+  "@clubEventGymRoutineReplacesPlan": {
+    "description": "Note in the routine attach sheet when the class already carries a session plan"
+  },
+  "clubEventSessionPlanTitle": "Session sequence",
+  "@clubEventSessionPlanTitle": {
+    "description": "Heading of the session sequence card on a class event page"
+  },
+  "clubEventSessionPlanAttach": "Attach to a class event",
+  "@clubEventSessionPlanAttach": {
+    "description": "Organiser's button on the session sequence card that opens the session plan picker, and that sheet's title"
+  },
+  "clubEventSessionPlanSave": "Save",
+  "@clubEventSessionPlanSave": {
+    "description": "Save button of the session plan attach sheet"
+  },
+  "clubEventSessionPlanSaved": "Session plan updated.",
+  "@clubEventSessionPlanSaved": {
+    "description": "Banner after the organiser attaches, changes or clears the class session plan"
+  },
+  "clubEventSessionPlanSaveFailed": "Couldn't update the session plan.",
+  "@clubEventSessionPlanSaveFailed": {
+    "description": "Banner when attaching, changing or clearing the class session plan failed"
+  },
+  "clubEventSessionPlanReplacesRoutine": "Attaching a session plan removes the gym routine — a class carries one or the other.",
+  "@clubEventSessionPlanReplacesRoutine": {
+    "description": "Note in the session plan attach sheet when the class already carries a gym routine"
+  },
+  "audienceTitle": "Who can see this",
+  "@audienceTitle": {
+    "description": "Title of the sheet where the owner chooses who can see a run or route"
+  },
+  "audienceLevelPrivate": "Only me",
+  "@audienceLevelPrivate": {
+    "description": "Audience level: only the owner"
+  },
+  "audienceLevelPrivateHint": "Nobody else can open it.",
+  "@audienceLevelPrivateHint": {
+    "description": "Hint under the Only me level"
+  },
+  "audienceLevelFollowers": "Followers",
+  "@audienceLevelFollowers": {
+    "description": "Audience level: the owner's followers"
+  },
+  "audienceLevelFollowersHint": "People who follow you can open it from a link. It stays out of feeds, notifications and search.",
+  "@audienceLevelFollowersHint": {
+    "description": "Hint under the Followers level"
+  },
+  "audienceLevelSpecific": "Specific people",
+  "@audienceLevelSpecific": {
+    "description": "Audience level: people the owner picks"
+  },
+  "audienceLevelSpecificHint": "Only the people you pick can open it. You can stop sharing with anyone at any time.",
+  "@audienceLevelSpecificHint": {
+    "description": "Hint under the Specific people level"
+  },
+  "audienceLevelPublic": "Public",
+  "@audienceLevelPublic": {
+    "description": "Audience level: anyone with the link"
+  },
+  "audienceLevelPublicHint": "Anyone with the link can open it, and it can appear in feeds and search.",
+  "@audienceLevelPublicHint": {
+    "description": "Hint under the Public level"
+  },
+  "audienceClipNote": "Everyone but you sees the map with your privacy zones trimmed off.",
+  "@audienceClipNote": {
+    "description": "Note that every non-owner sees the map with privacy zones trimmed"
+  },
+  "audienceSharedWith": "Shared with",
+  "@audienceSharedWith": {
+    "description": "Heading over the list of people a run or route is shared with"
+  },
+  "audienceSharedWithNobody": "Not shared with anyone yet.",
+  "@audienceSharedWithNobody": {
+    "description": "Empty state of the shared-with list"
+  },
+  "audienceRevokeTooltip": "Stop sharing with {name}",
+  "@audienceRevokeTooltip": {
+    "description": "Tooltip / accessible label of the button that stops sharing with one person",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "audienceRevoked": "{name} can no longer open it.",
+  "@audienceRevoked": {
+    "description": "Banner after the owner stops sharing with one person",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "audienceRevokeFailed": "Couldn't stop sharing: {error}",
+  "@audienceRevokeFailed": {
+    "description": "Banner when stopping a share fails",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "audienceAddPeople": "Add people",
+  "@audienceAddPeople": {
+    "description": "Heading over the list of people the owner can share with"
+  },
+  "audienceSearchHint": "Search people you follow or who follow you",
+  "@audienceSearchHint": {
+    "description": "Hint text of the people search field"
+  },
+  "audienceShareAction": "Share",
+  "@audienceShareAction": {
+    "description": "Button that shares with one person"
+  },
+  "audienceAlreadyShared": "Shared",
+  "@audienceAlreadyShared": {
+    "description": "Label shown instead of the share button for someone already shared with"
+  },
+  "audienceShared": "{name} can now open it.",
+  "@audienceShared": {
+    "description": "Banner after sharing with one person",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "audienceShareFailed": "Couldn't share: {error}",
+  "@audienceShareFailed": {
+    "description": "Banner when sharing with a person fails",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "audienceLoadFailed": "Couldn't load who this is shared with.",
+  "@audienceLoadFailed": {
+    "description": "Shown when the shared-with list cannot be loaded"
+  },
+  "audiencePeopleLoadFailed": "Couldn't load the people you can share with.",
+  "@audiencePeopleLoadFailed": {
+    "description": "Shown when the people to share with cannot be loaded"
+  },
+  "audienceNoPeople": "You can share with people you follow or who follow you, and you don't have any yet.",
+  "@audienceNoPeople": {
+    "description": "Empty state when the owner has no followers or followees"
+  },
+  "audienceNoMatches": "No one matches that name.",
+  "@audienceNoMatches": {
+    "description": "Empty state when the people search matches no one"
+  },
+  "audienceRetry": "Retry",
+  "@audienceRetry": {
+    "description": "Retry button"
+  },
+  "audienceUpdateFailed": "Couldn't change who can see this: {error}",
+  "@audienceUpdateFailed": {
+    "description": "Banner when changing the audience fails",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "audienceUpdated": "Updated who can see this.",
+  "@audienceUpdated": {
+    "description": "Banner after the audience changed"
+  },
+  "audienceRevokeAllTitle": "Stop sharing with everyone?",
+  "@audienceRevokeAllTitle": {
+    "description": "Title of the confirm before Only me revokes every share"
+  },
+  "audienceRevokeAllBody": "Everyone you shared it with will no longer be able to open it.",
+  "@audienceRevokeAllBody": {
+    "description": "Body of the confirm before Only me revokes every share"
+  },
+  "audienceRevokeAllConfirm": "Only me",
+  "@audienceRevokeAllConfirm": {
+    "description": "Confirm button that moves to Only me and revokes every share"
+  },
+  "audienceShareLink": "Share link",
+  "@audienceShareLink": {
+    "description": "Button that hands the in-app link (it opens only for the people who can see it) to the share sheet"
+  },
+  "audienceSharedWithYou": "Shared with you",
+  "@audienceSharedWithYou": {
+    "description": "Marker on a run or route someone else shared with the viewer through their followers level or by name; it is not public"
+  },
+  "audienceSharedWithYouHint": "Shared with you. It isn't public — only the people it's shared with can open it.",
+  "@audienceSharedWithYouHint": {
+    "description": "Longer explanation of the Shared with you marker, read as its tooltip / screen-reader label"
+  },
+  "liveRunnerHandle": "Runner #{slug}",
+  "@liveRunnerHandle": {
+    "description": "Anonymous handle shown to a live spectator who does not follow the runner: the first four characters of the runner's id",
+    "placeholders": {
+      "slug": {
+        "type": "String"
+      }
+    }
+  },
+  "liveRunnerAnonymous": "Runner",
+  "@liveRunnerAnonymous": {
+    "description": "Anonymous handle for a live runner whose id is missing, so no four-character suffix can be shown"
   }
 }

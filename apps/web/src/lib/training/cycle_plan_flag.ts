@@ -12,9 +12,9 @@
  * health-data consent (`user_profiles.health_data_consent_at`), so a granted
  * flag alone never collects data without consent.
  */
-import { env } from '$env/dynamic/public';
+import { PUBLIC_CYCLE_PLANS_ENABLED } from '$app/env/public';
 import { isTruthyFlagValue } from '../core/env_flag';
 
 export function isCyclePlansEnabled(): boolean {
-	return isTruthyFlagValue(env.PUBLIC_CYCLE_PLANS_ENABLED);
+	return isTruthyFlagValue(PUBLIC_CYCLE_PLANS_ENABLED);
 }

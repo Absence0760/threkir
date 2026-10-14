@@ -1,7 +1,8 @@
 <script lang="ts">
-	import { activeFormatLocale } from '$lib/format/time';
+	import { activeFormatLocale } from '#lib/format/time.ts';
+	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import { onMount } from 'svelte';
-	import Avatar from '$lib/components/Avatar.svelte';
+	import Avatar from '#lib/components/Avatar.svelte';
 	import { goto } from '$app/navigation';
 	import {
 		fetchNotificationsWithError,
@@ -9,14 +10,16 @@
 		markAllNotificationsRead,
 		deleteNotifications,
 		type NotificationView,
-	} from '$lib/core/data';
-	import { notificationStore } from '$lib/stores/notifications.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { deferDestructive } from '$lib/stores/undo.svelte';
-	import { fmtKm } from '$lib/format/units.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { notificationLinkFor } from '$lib/social/notification_link';
-	import { groupNotifications, type NotificationGroup } from '$lib/social/notification_groups';
+	} from '#lib/core/data.ts';
+	import { notificationStore } from '#lib/stores/notifications.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { deferDestructive } from '#lib/stores/undo.svelte.ts';
+	import { fmtKm } from '#lib/format/units.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { eventCancelMessage } from '#lib/social/event_cancel_copy.ts';
+	import { waitlistSlotMessage } from '#lib/social/event_waitlist_offer.ts';
+	import { notificationLinkFor } from '#lib/social/notification_link.ts';
+	import { groupNotifications, type NotificationGroup } from '#lib/social/notification_groups.ts';
 
 	let items = $state<NotificationView[]>([]);
 	let loading = $state(true);
@@ -192,10 +195,14 @@
 				return item.event_title
 					? m('notificationsList.verbEventRsvpTitled', { name, title: item.event_title })
 					: m('notificationsList.verbEventRsvp', { name });
-			case 'event_cancel':
-				return item.event_title
-					? m('notificationsList.verbEventCancelTitled', { title: item.event_title })
-					: m('notificationsList.verbEventCancel');
+			case 'event_cancel': {
+				const msg = eventCancelMessage('notificationsList', item.row, item.event_title);
+				return m(msg.key, msg.params);
+			}
+			case 'event_waitlist_slot': {
+				const msg = waitlistSlotMessage('notificationsList', item.event_title);
+				return m(msg.key, msg.params);
+			}
 			case 'event_reminder':
 				return item.event_title
 					? m('notificationsList.verbEventReminderTitled', { title: item.event_title })
@@ -243,6 +250,7 @@
 
 <div class="wrap">
 	<header class="head">
+		<HelpLink route="/notifications" />
 		<div class="filter-tabs">
 			<button class="filter" class:active={filter === 'all'} onclick={() => (filter = 'all')}>
 				{m('notificationsList.tabAll')}

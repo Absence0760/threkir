@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { auth } from '$lib/stores/auth.svelte';
-	import { m } from '$lib/i18n/store.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
 </script>
 
 <footer class="landing-footer">

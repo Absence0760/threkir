@@ -1,5 +1,5 @@
 import { createBrowserClient } from '@supabase/ssr';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
+import { PUBLIC_SUPABASE_ANON_KEY, PUBLIC_SUPABASE_URL } from '$app/env/public';
 import type { AppDatabase } from './database';
 
 export const supabase = createBrowserClient<AppDatabase>(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);

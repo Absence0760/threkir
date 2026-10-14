@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { consent } from '$lib/settings/consent.svelte';
+	import { consent } from '#lib/settings/consent.svelte.ts';
 
 	const lastUpdated = '2026-07-14';
 

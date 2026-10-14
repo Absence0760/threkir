@@ -153,7 +153,7 @@ test('the account page routes its disclosure through this grader', () => {
 	);
 	assert.match(
 		page,
-		/from '\$lib\/backup\/shortfall'/,
+		/from '#lib\/backup\/shortfall\.ts'/,
 		'the page must import the grader',
 	);
 	const alias =

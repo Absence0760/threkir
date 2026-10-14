@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { toastStore } from '$lib/stores/toast.svelte';
+	import { toastStore } from '#lib/stores/toast.svelte.ts';
 
 	// A live region only announces changes that happen INSIDE it while it is
 	// already in the accessibility tree. The stack used to be mounted by an

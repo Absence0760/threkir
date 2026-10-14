@@ -1,0 +1,2772 @@
+[
+  {
+    "id": "using-help",
+    "lang": "pt-PT",
+    "title": "Encontrar ajuda na app",
+    "summary": "Onde ficam os guias de ajuda, como pesquisá-los e como passar de um ecrã para o guia que o explica.",
+    "kind": "start",
+    "category": "account",
+    "audience": [
+      "everyone"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "routes": [
+      "/help",
+      "/help/search"
+    ],
+    "sections": [
+      {
+        "heading": "Abrir a ajuda",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Selecione o seu nome no fundo da barra lateral. Numa janela estreita, a barra lateral reduz-se a ícones, por isso selecione antes o avatar redondo com a sua inicial.",
+              "Escolha **Ajuda** no menu que se abre."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "A página de conteúdos lista todos os guias por tema. Os chips em **Mostrar guias para** restringem a lista aos guias escritos para si, como **Organizadores** ou **Espectadores**; **Todos** volta a mostrar tudo."
+          }
+        ]
+      },
+      {
+        "heading": "Pesquisar nos guias",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Escreva uma ou duas palavras em **Pesquisar nos guias** no topo de [[route:/help|Ajuda]] e prima **Pesquisar**. Os guias com as suas palavras no título aparecem primeiro, depois os que as mencionam no resumo e depois os restantes."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Maiúsculas e acentos não contam, por isso *cafe* encontra *Café*. Cada palavra que escrever tem de aparecer algures num guia para que este seja listado."
+          }
+        ]
+      },
+      {
+        "heading": "Ajuda a partir do ecrã em que está",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Um ecrã que tem um guia mostra uma ligação **Como funciona** junto ao título. Abre o guia desse ecrã; quando há vários guias sobre ele, abre uma pequena lista para escolher."
+          },
+          {
+            "type": "p",
+            "text": "Alguns cartões e definições têm um pequeno botão redondo *i*. Explica a funcionalidade numa ou duas frases e, quando um guia vai mais longe, termina com **Ler o guia**."
+          }
+        ]
+      },
+      {
+        "heading": "Ler um guia",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Os distintivos por baixo do título indicam a que apps o guia se aplica e se precisa de algo antes, como o Pro ou uma função de administrador de clube.",
+              "**Nesta página** lista as secções de um guia mais longo e salta para a que escolher.",
+              "**Guias relacionados**, no fim, aponta para o que provavelmente vai precisar a seguir."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Os guias são mostrados no idioma definido na app. Um guia que ainda não foi traduzido para esse idioma é mostrado em inglês, com uma nota no topo a indicá-lo."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "what-pro-includes",
+    "lang": "pt-PT",
+    "title": "O que o Pro inclui",
+    "summary": "Todos os ecrãs do Threkir são gratuitos; o Pro aumenta o seu limite do Coach de IA e passa algum trabalho em segundo plano para a frente da fila.",
+    "kind": "explainer",
+    "category": "account",
+    "audience": [
+      "everyone"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/settings/upgrade",
+      "/coach"
+    ],
+    "sections": [
+      {
+        "heading": "O que continua gratuito",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Nada na app está bloqueado pelo Pro. As contas gratuitas têm gravação ilimitada no telemóvel e no relógio, rotas, planos de treino e os números por trás deles, clubes e eventos, o feed social, contactos de segurança, importações e backups."
+          }
+        ]
+      },
+      {
+        "heading": "O que o Pro acrescenta",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "**Coach de IA — 10/dia**: dez mensagens do Coach de IA por dia em vez de duas. A contagem é reposta à meia-noite UTC.",
+              "Respostas do Coach de IA mais longas e completas, que podem ter em conta mais das suas corridas.",
+              "**Map-matching prioritário**: os seus trajetos GPS são ajustados às estradas antes dos das contas gratuitas, por isso ficam prontos mais cedo.",
+              "**Exportações para a nuvem prioritárias**: até 8 exportações de pacotes GPX por hora em vez de 2.",
+              "**Geração de rotas no servidor**: circuitos traçados na rede viária real quando gera uma rota por distância. As contas gratuitas continuam a ter geração de circuitos, calculada no navegador.",
+              "Descrições de rotas mais ricas: na página de uma rota, **Melhorar com IA** transforma a descrição normal num parágrafo mais completo."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Algumas destas funcionalidades dependem de serviços que podem ainda não estar ativados. O cartão Pro em [[route:/settings/upgrade|Pro e apoio]] só lista o que funciona hoje; se disser **O Pro desbloqueia o Coach de IA — em breve.**, o Pro ainda não pode ser comprado."
+          }
+        ]
+      },
+      {
+        "heading": "Como obter o Pro",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "O Pro é uma subscrição mensal ou anual; o cartão Pro mostra os preços atuais. Onde o pode comprar depende do seu dispositivo:"
+          },
+          {
+            "type": "list",
+            "items": [
+              "Num iPhone, abra **Pro e apoio** no separador **Tu** e subscreva através da App Store.",
+              "Na web, abra [[route:/settings/upgrade|Pro e apoio]] nas Definições. Se disser **A subscrição pela web chega em breve.**, subscreva antes na app para iPhone."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "O Pro pertence à sua conta, não ao seu dispositivo, por isso uma subscrição comprada num dispositivo funciona em todos os dispositivos onde iniciar sessão."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Os preços estão em dólares americanos, e a App Store cobra o preço definido para o seu país. Alguns países e métodos de pagamento não podem ser servidos pelo nosso processador de pagamentos."
+          }
+        ]
+      },
+      {
+        "heading": "Gerir ou cancelar",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Cancele ou altere o seu plano onde o iniciou: na App Store, na Play Store ou no portal de faturação da web. **Gerir subscrição** leva-o até lá.",
+              "Num telemóvel novo, toque em **Restaurar compras** em **Pro e apoio** para transferir uma subscrição existente.",
+              "Prefere fazer uma contribuição única? **Doar** está na mesma página."
+            ]
+          }
+        ]
+      }
+    ],
+    "related": [
+      "your-data-and-privacy",
+      "using-help"
+    ]
+  },
+  {
+    "id": "your-data-and-privacy",
+    "lang": "pt-PT",
+    "title": "Os seus dados e a sua privacidade",
+    "summary": "Veja o que as outras pessoas podem ver, escolha quem vê as novas corridas, transfira tudo o que guardamos sobre si e elimine a sua conta.",
+    "kind": "explainer",
+    "category": "account",
+    "audience": [
+      "everyone"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/settings/privacy",
+      "/settings/account",
+      "/delete-account",
+      "/u/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "O que as outras pessoas podem ver",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "A sua página de perfil, com o seu nome de apresentação, fotografia, número de seguidores e as suas corridas públicas, pode ser aberta por qualquer pessoa que tenha o link.",
+              "As corridas que tornar públicas aparecem no seu perfil e no feed. As corridas privadas só são visíveis para si.",
+              "A sua participação num clube público, e tudo o que publicar nele, pode ser vista por quem pode ver o clube.",
+              "Enquanto partilha um link em direto, a corrida em curso pode ser vista por qualquer pessoa com o link."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "As zonas de privacidade cortam o início e o fim dos seus trajetos sempre que outra pessoa os vê. Consulte [[guide:privacy-zones|Esconder a sua casa com zonas de privacidade]]."
+          }
+        ]
+      },
+      {
+        "heading": "Escolher quem vê as novas corridas",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Na web, abra [[route:/settings/privacy|Privacidade e partilha]] nas Definições e escolha uma **Visibilidade predefinida para novas corridas**. Na app do telemóvel, é **Privacidade predefinida das corridas** em **Preferências**, no separador **Tu**.",
+              "Para alterar uma única corrida mais tarde, abra-a e use **Tornar pública** ou **Tornar privada**."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Só **Público** torna as novas corridas visíveis para os outros. As corridas ainda não têm uma opção só para seguidores, por isso escolher seguidores como predefinição mantém as novas corridas privadas, e os seus seguidores não as verão."
+          },
+          {
+            "type": "list",
+            "items": [
+              "**Mostrar-me na pesquisa por nome**: desative para manter a sua conta fora das pesquisas por nome. O seu perfil e as suas corridas públicas continuam a poder ser abertos por qualquer pessoa que tenha o link.",
+              "**Mostrar-me em Corredores por perto**, onde estiver disponível: desativado por predefinição. Quando está ativado, os corredores perto da área que definir podem encontrá-lo. Só é guardada uma área aproximada, nunca a sua localização em direto."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Transferir os seus dados",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Na web, abra **Conta** nas Definições. A app do telemóvel tem as mesmas opções em **Conta**, no separador **Tu**."
+          },
+          {
+            "type": "list",
+            "items": [
+              "**Transferir ficheiro completo da conta** (no telemóvel, **Exportação da conta**): tudo o que guardamos sobre si, incluindo conversas com o treinador, mensagens, integrações e contactos de segurança, num único zip. É gerado no nosso servidor, por isso pode fechar a página e voltar mais tarde para o obter. Uma exportação concluída é mantida durante 7 dias.",
+              "**Transferir backup completo** (no telemóvel, **Backup completo**): todas as corridas com o respetivo trajeto GPS, mais as suas rotas, perfil e preferências, num ficheiro que pode restaurar mais tarde com **Restaurar de um backup**.",
+              "**Exportação na nuvem (zip GPX)**: um ficheiro GPX por corrida, com frequência cardíaca, pronto a importar noutras apps. As contas gratuitas podem exportar duas vezes por hora; as contas Pro, oito vezes.",
+              "**Exportar todas as corridas (CSV)** (no telemóvel, **Exportar corridas como CSV**): uma linha por corrida para uma folha de cálculo, sem trajetos GPS."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Eliminar a sua conta",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Transfira primeiro tudo o que quiser guardar. A eliminação não pode ser desfeita.",
+              "Na web, abra **Conta** nas Definições e selecione **Eliminar conta** em **Zona de perigo**. Na app do telemóvel, abra **Conta** no separador **Tu** e toque em **Eliminar conta**.",
+              "Escreva ELIMINAR para confirmar e depois selecione **Eliminar a minha conta** na web ou **Eliminar** na app."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Isto remove permanentemente a sua conta, corridas, rotas, trajetos, participações em clubes e preferências dos nossos servidores. Num telemóvel, as corridas guardadas no próprio dispositivo ficam lá até iniciar sessão como outra pessoa ou remover a app."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Não consegue entrar na app? [[route:/delete-account|Eliminar a sua conta]] explica como pedir a eliminação sem ela."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "privacy-zones",
+      "live-tracking-and-safety",
+      "what-pro-includes"
+    ]
+  },
+  {
+    "id": "create-a-club",
+    "lang": "pt-PT",
+    "title": "Criar um clube",
+    "summary": "Crie um clube para o seu grupo de corrida, escolha quem o pode encontrar e como as pessoas entram, e publique o seu primeiro evento.",
+    "kind": "how-to",
+    "category": "clubs",
+    "audience": [
+      "organiser",
+      "club-admin"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/social",
+      "/clubs/new",
+      "/clubs/[slug]"
+    ],
+    "sections": [
+      {
+        "heading": "Na web",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Abra [[route:/social|Social]] e escolha o separador **Clubes**.",
+              "Selecione **Criar clube**.",
+              "Preencha o **Nome**. Os membros procuram o clube por este nome, e o endereço web do clube é criado a partir dele quando cria o clube. Mudar o nome do clube mais tarde não altera esse endereço.",
+              "Adicione uma **Descrição** e uma **Localização**, se quiser. Ambas são opcionais, mas uma localidade e um país em **Localização** ajudam os corredores das redondezas a encontrá-lo quando pesquisam na sua própria região.",
+              "Escolha uma **Visibilidade**: com **Público**, o clube aparece em **Explorar**; com **Privado**, fica oculto e as pessoas só podem entrar através de um link de convite.",
+              "Em **Quem pode entrar?**, escolha **Qualquer pessoa pode entrar**, **Requer aprovação** ou **Apenas por convite**.",
+              "Assinale **Exigir o reconhecimento dos riscos da atividade para entrar** se quiser que cada novo membro confirme que compreende os riscos das corridas em grupo. Isto só pode ser definido agora, enquanto o clube está a ser criado.",
+              "Selecione **Criar clube**. É levado para a página do novo clube, e passa a ser o seu proprietário."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Na app do telemóvel",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Abra o separador **Social** e escolha **Clubes**.",
+              "Toque em **Novo clube**.",
+              "Introduza um **Nome** e, opcionalmente, uma **Descrição (opcional)** e uma **Localização (opcional)**.",
+              "Escolha **Público** ou **Privado** e depois uma **Política de adesão**: **Aberto — qualquer um entra**, **Pedido — os administradores aprovam** ou **Apenas por convite**.",
+              "Toque em **Criar**."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "O reconhecimento dos riscos da atividade e os links para o site e as redes sociais do clube só podem ser definidos na web."
+          }
+        ]
+      },
+      {
+        "heading": "Depois de o criar",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "A página do seu clube tem separadores para **Feed**, **Eventos**, **Rotas**, **Modelos**, **Fotografias** e **Membros**. Como proprietário, pode publicar atualizações no feed, adicionar eventos e gerir os membros."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Para alterar mais tarde o nome, a descrição, a visibilidade, a política de adesão ou os links, abra o clube na web e selecione **Editar clube**.",
+              "Para adicionar a sua primeira corrida em grupo, selecione **Novo evento** na web, ou toque em **Criar evento** no separador **Eventos** na app do telemóvel.",
+              "Para trazer pessoas, consulte [[guide:invite-members-and-roles|Convidar membros e atribuir-lhes papéis]]."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Eliminar um clube remove todos os seus eventos, publicações e membros para toda a gente, e não pode ser desfeito."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "invite-members-and-roles",
+      "recurring-events",
+      "set-up-a-race"
+    ]
+  },
+  {
+    "id": "invite-members-and-roles",
+    "lang": "pt-PT",
+    "title": "Convidar membros e atribuir-lhes papéis",
+    "summary": "Partilhe um link de convite, aprove pedidos de adesão e atribua a membros de confiança o papel de administrador, organizador de eventos ou diretor de prova.",
+    "kind": "how-to",
+    "category": "clubs",
+    "audience": [
+      "club-admin",
+      "organiser"
+    ],
+    "requires": [
+      "club-admin"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/clubs/[slug]",
+      "/clubs/join/[token]"
+    ],
+    "sections": [
+      {
+        "heading": "Como as pessoas entram",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "A forma como alguém entra depende da política de adesão do clube, que escolheu ao criá-lo e pode alterar com **Editar clube** na web."
+          },
+          {
+            "type": "list",
+            "items": [
+              "**Qualquer pessoa pode entrar**: as pessoas selecionam **Entrar no clube** na página do clube e ficam logo dentro.",
+              "**Requer aprovação**: as pessoas selecionam **Solicitar entrada** e aguardam numa fila até um administrador as aprovar.",
+              "**Apenas por convite**: as pessoas precisam de um link de convite de um administrador."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Partilhar um link de convite",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Abra o seu clube na web. Quando o clube é **Apenas por convite**, os administradores veem um painel **Link de convite** na página do clube.",
+              "Selecione **Gerar link de convite** da primeira vez e depois **Copiar** para pôr o link na área de transferência.",
+              "Envie o link como quiser. Quem o abrir e iniciar sessão entra no clube como membro."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Se um link se espalhou mais do que queria, selecione **Renovar**. É criado um novo link e o antigo deixa de funcionar imediatamente."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Um link de convite deixa as pessoas entrar diretamente: salta a fila de aprovação, por isso partilhe-o apenas com pessoas que tem gosto em admitir. Se o clube exigir o reconhecimento dos riscos da atividade, o link pede-o antes de deixar alguém entrar."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Na app do telemóvel, um membro também pode tocar em **Entrar com código de convite** no separador **Clubes** de **Social** e colar o link completo ou apenas o código depois de /clubs/join/. Abrir o link no navegador do telemóvel também funciona."
+          }
+        ]
+      },
+      {
+        "heading": "Aprovar ou rejeitar pedidos de adesão",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Quando o clube exige aprovação, os administradores veem **Pedidos pendentes** com uma contagem ao lado."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Na web, selecione **Aprovar** ou **Rejeitar** em cada pedido, ou **Aprovar todas** quando houver vários à espera. Rejeitar pede-lhe primeiro uma confirmação.",
+              "Na app do telemóvel, abra o separador **Membros** do clube e toque em **Aprovar** ou **Recusar** em cada pedido."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Atribuir um papel aos membros",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Cada clube tem um **Proprietário**, a pessoa que o criou. As outras pessoas podem ter um destes papéis:"
+          },
+          {
+            "type": "list",
+            "items": [
+              "**Administrador**: altera as definições do clube, gere os membros e os seus papéis, gere eventos e provas e aprova resultados.",
+              "**Organizador de eventos**: cria, edita e elimina eventos e adiciona participantes, sem acesso às definições nem aos membros do clube.",
+              "**Diretor de prova**: prepara, dá a partida e termina provas, e aprova ou rejeita resultados.",
+              "**Membro**: publica respostas, confirma presença em eventos e envia os seus próprios resultados de provas."
+            ]
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Abra o seu clube na web e escolha o separador **Membros**.",
+              "Use o menu de papéis ao lado de um membro para escolher o novo papel. A alteração é guardada de imediato.",
+              "Para retirar alguém do clube, use o botão de remover ao lado dessa pessoa e confirme."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Por agora, alterar papéis e remover membros só é possível na web. O separador **Membros** da app do telemóvel mostra o número de membros e os pedidos pendentes, não a lista completa."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "create-a-club",
+      "recurring-events",
+      "set-up-a-race"
+    ]
+  },
+  {
+    "id": "recurring-events",
+    "lang": "pt-PT",
+    "title": "Configurar um evento recorrente do clube",
+    "summary": "Transforme um evento do clube numa série semanal, quinzenal ou mensal, confirme presença numa só data e cancele uma ocorrência sem mexer nas restantes.",
+    "kind": "how-to",
+    "category": "clubs",
+    "audience": [
+      "organiser",
+      "club-admin",
+      "participant"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/clubs/[slug]",
+      "/clubs/[slug]/events/new",
+      "/clubs/[slug]/events/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Criar a série",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Os proprietários, administradores e organizadores de eventos de um clube podem criar eventos. Um evento recorrente é um único evento que se repete, por isso tudo o que preencher aplica-se a todas as datas."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Abra o seu clube na web e selecione **Novo evento**.",
+              "Preencha o **Título**, a **Hora de início** e os restantes detalhes como faria num evento único. A hora de início que escolher é a primeira data da série.",
+              "Em **Repetição**, escolha **Semanal**, **A cada 2 semanas** ou **Mensal** em vez de **Único**.",
+              "Numa série semanal ou quinzenal, escolha os dias da semana em **Nestes dias:**. Uma série mensal repete-se no mesmo dia do mês da data de início.",
+              "Decida quando a série termina: defina uma data em **Termina em**, um número de ocorrências em **Termina após**, ou ambos, e vale o que chegar primeiro. Se deixar ambos vazios, a série continua a repetir-se.",
+              "Selecione **Criar evento**."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "A frequência de repetição só pode ser escolhida enquanto o evento está a ser criado. **Editar evento** altera o título, a hora, o ponto de encontro e outros detalhes de toda a série, mas não a frequência com que se repete."
+          },
+          {
+            "type": "p",
+            "text": "Na app do telemóvel, toque em **Criar evento** no separador **Eventos** do clube e escolha **Semanal**, **Quinzenal** ou **Mensal** em **Recorrência**. O telemóvel repete o evento no dia da semana da data de início e não tem data de fim nem número de ocorrências, por isso use a web se a série tiver de terminar."
+          }
+        ]
+      },
+      {
+        "heading": "Confirmar presença numa data",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Cada data de uma série tem as suas próprias confirmações de presença, lista de participantes, capacidade e resultados."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Abra o evento e use **Escolha uma ocorrência** para escolher a data. São mostradas as próximas datas, e **Mostrar as 12 próximas** (o número indica quantas datas faltam) expande a lista a todas as datas do próximo ano.",
+              "Escolha **Eu vou**, **Talvez** ou **Não posso** para essa data."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Para pôr as datas no seu próprio calendário, selecione **Adicionar ao calendário**. Numa série, pode escolher **Adicionar esta ocorrência** para uma só data ou **Adicionar toda a série** para todas as datas."
+          }
+        ]
+      },
+      {
+        "heading": "Cancelar uma ocorrência",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Se uma data não se puder realizar, cancele apenas essa data e deixe o resto da série como está."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Abra o evento na web e escolha a data que precisa de cancelar.",
+              "Selecione **Cancelar esta ocorrência**.",
+              "Adicione um **Motivo (opcional)**, como um percurso inundado ou um feriado, e confirme. Selecione **Manter** se mudar de ideias."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Todas as pessoas que confirmaram presença nessa data, seja como confirmadas, talvez ou na lista de espera, recebem uma notificação. A data mostra **Esta ocorrência foi cancelada.** e ninguém pode confirmar presença nela. Para a repor, abra a data e selecione **Restabelecer esta ocorrência**."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Cancelar e restabelecer uma data só é possível na web. **Eliminar evento** remove todas as ocorrências da série, não apenas uma."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Se o evento for uma aula paga, cancelar uma ocorrência reembolsa na totalidade todas as pessoas inscritas nela. Consulte [[guide:host-a-paid-yoga-class|Organizar uma aula paga de ioga]]."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "create-a-club",
+      "invite-members-and-roles",
+      "host-a-paid-yoga-class"
+    ]
+  },
+  {
+    "id": "build-a-gym-routine",
+    "lang": "pt-PT",
+    "title": "Criar uma rotina de ginásio",
+    "summary": "Transforme um treino que ensina ou repete numa rotina reutilizável com séries, repetições, carga, descanso e superséries, e depois execute-a com orientação ou partilhe-a com o seu clube.",
+    "kind": "how-to",
+    "category": "instructors",
+    "audience": [
+      "instructor",
+      "runner"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/gym/routines",
+      "/gym/routines/new",
+      "/gym/routines/[id]",
+      "/gym/session/[routineId]",
+      "/plans/new",
+      "/gym/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Duas formas de começar",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Do zero: abra [[route:/gym/routines|Rotinas]] e prima **Nova rotina**. Na web, também pode ir a [[route:/plans/new|Novo plano]] e escolher **Rotina de ginásio**.",
+              "A partir de um treino que já registou: abra-o no seu registo de ginásio e prima **Guardar como rotina**. Os exercícios e as séries passam a ser os objetivos da rotina. **Repetir o último**, por sua vez, inicia um novo registo a partir do mesmo treino."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Na app do telemóvel, abra o ecrã do ginásio e toque em **Rotinas** e depois em **Nova rotina**."
+          }
+        ]
+      },
+      {
+        "heading": "Preencher a rotina",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Dê-lhe um **Nome da rotina** que identifique o dia e não o primeiro exercício, por exemplo “Bootcamp A”.",
+              "Escreva o nome do primeiro exercício. Reutilize um nome que já usa nos seus registos, para que os seus recordes desse exercício fiquem num só lugar.",
+              "Escolha em **Medido por** como o exercício é medido: peso e repetições, peso corporal, tempo ou distância. As linhas das séries mudam para pedir o objetivo correspondente.",
+              "Para cada série, indique um **Tipo de série** e os seus objetivos, como **Repetições-alvo** e peso, e um **Descanso (s)**. Prima **Adicionar série** para acrescentar séries.",
+              "Para fazer dois exercícios seguidos, sem pausa, ative **Supersérie com o próximo exercício** no primeiro.",
+              "Prima **Adicionar exercício** para o seguinte e repita.",
+              "Se quiser, abra **Avançado** e escolha uma regra de **Progressão**, que sugere os números da sessão seguinte a partir do resultado desta. Se ficar em Nenhuma, os seus objetivos mantêm-se exatamente como os escreveu.",
+              "Adicione **Notas (opcional)** se quiser e prima **Guardar rotina**."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Cada linha de série é um objetivo, não um registo. É com isso que é preenchida uma sessão iniciada a partir da rotina, e pode continuar a alterar os números à medida que avança."
+          }
+        ]
+      },
+      {
+        "heading": "Executar a rotina",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Abra a rotina e prima **Iniciar rotina** (na app do telemóvel, **Iniciar sessão**). É guiado uma série de cada vez, com o seu objetivo à vista: registe o que fez e prima **Concluir série**, ou **Ignorar série**, com um temporizador de descanso entre séries. Prima **Finalizar** no fim e a sessão é guardada no seu registo de ginásio, com a comparação com o plano."
+          }
+        ]
+      },
+      {
+        "heading": "Partilhar a rotina com uma aula",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "**Publicar num clube**: escolha o clube em **Escolha um clube…** e prima **Publicar**. Aparece no separador **Modelos** desse clube, em **Modelos de rotina de ginásio**, onde os membros premem **Adotar** para obter a sua própria cópia. As alterações a uma cópia não mudam o seu original.",
+              "**Publicar na biblioteca pública**: qualquer pessoa com sessão iniciada pode pré-visualizá-la e adotá-la. Os seus treinos registados continuam privados."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Vai dar uma aula paga com base na rotina? Consulte [[guide:host-a-paid-gym-class|Organizar uma aula paga de HIIT, força ou bootcamp]]."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "host-a-paid-gym-class",
+      "build-a-session-plan",
+      "take-attendance"
+    ]
+  },
+  {
+    "id": "build-a-session-plan",
+    "lang": "pt-PT",
+    "title": "Criar um plano de sessão de ioga, pilates ou mobilidade",
+    "summary": "Escreva uma sequência cronometrada de posturas, fluxos e repetições, com movimentos por lado e indicações, e depois dê aulas com ela, associe-a a uma aula e siga-a.",
+    "kind": "how-to",
+    "category": "instructors",
+    "audience": [
+      "instructor",
+      "runner"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/plans/new",
+      "/sessions",
+      "/sessions/[id]",
+      "/clubs/[slug]",
+      "/clubs/[slug]/events/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Onde criar o plano",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Os planos de sessão escrevem-se na web. A app do telemóvel lista-os e executa-os, mas ainda não tem editor."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Para si: abra [[route:/plans/new|Novo plano]] e escolha **Plano de sessão**, ou prima **Nova sessão** em [[route:/sessions|Sessões]].",
+              "Para o seu clube: no separador **Modelos** do clube, prima **Adicionar modelo** e escolha **Plano de sessão**. Fica imediatamente guardado como modelo do clube."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Preencher o plano",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Dê-lhe um **Título** que identifique a sequência, como “Fluxo de abertura da anca, 45 min”.",
+              "Adicione uma **Disciplina** (por exemplo, ioga vinyasa) e o **Equipamento** que as pessoas devem ter à mão, como um tapete ou um reformer.",
+              "Se quiser, prima **Adicionar bloco** para o dividir em secções como Aquecimento, De pé e Desaquecimento. Um plano sem blocos é executado de seguida, do início ao fim.",
+              "Prima **Adicionar movimento** para cada postura ou exercício e escreva o nome em **Movimento**.",
+              "Escolha o **Tipo**: **Sustentar** para uma postura cronometrada, **Flow** para uma sequência de movimento cronometrada, ou **Reps.** para um exercício contado. Depois introduza os **Segundos** ou as **Repetições** e o **Bloco** a que pertence.",
+              "Marque **Por lado (esquerdo e direito)** para tudo o que se faz de cada lado. É executado uma vez para cada lado, por isso demora o dobro.",
+              "Se quiser, adicione um **Tempo** e uma **Indicação**, a instrução de respiração ou alinhamento mostrada junto ao movimento enquanto alguém segue a sessão.",
+              "Verifique a duração estimada que o editor calcula por si e prima **Guardar**."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Os nomes dos movimentos são sugeridos a partir dos seus planos anteriores à medida que escreve. Escolher uma sugestão mantém a mesma postura escrita da mesma forma em todo o lado."
+          }
+        ]
+      },
+      {
+        "heading": "Associar o plano a uma aula",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Ao criar uma aula, escolha o plano em **Plano de sessão**.",
+              "Já criou a aula? Na página da aula, os organizadores premem **Vincular a um evento de aula** no cartão **Sequência da sessão**."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Os participantes veem então a sequência completa na página da aula. Um plano privado continua privado para todos os outros, mas as pessoas de uma aula à qual o associe podem vê-lo."
+          }
+        ]
+      },
+      {
+        "heading": "Seguir a sessão",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Abra o plano e prima **Iniciar sessão**. As posturas e os fluxos cronometrados avançam sozinhos; nas repetições, prima **Pronto** quando terminar. Pode **Pausar**, **Retomar**, **Saltar** um passo ou **Abandonar**. Quando termina, a sessão fica guardada no seu registo de ginásio como treino."
+          },
+          {
+            "type": "p",
+            "text": "A app do telemóvel faz o mesmo acompanhamento, lê as indicações em voz alta, mantém o ecrã ligado e continua a contar o tempo se mudar para outra app."
+          }
+        ]
+      },
+      {
+        "heading": "Partilhar o plano",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "**Tornar pública** permite que qualquer pessoa o encontre e siga. **Copiar link de partilha** torna o plano público e copia um link que funciona sem iniciar sessão.",
+              "**Publicar num clube**: escolha o clube em **Escolha um clube…** e prima **Publicar**. Aparece em **Modelos de sessão** no separador **Modelos** do clube, e os membros premem **Adotar** para obter a sua própria cópia."
+            ]
+          }
+        ]
+      }
+    ],
+    "related": [
+      "host-a-paid-yoga-class",
+      "build-a-gym-routine",
+      "take-attendance"
+    ]
+  },
+  {
+    "id": "take-attendance",
+    "lang": "pt-PT",
+    "title": "Registar presenças numa aula",
+    "summary": "Marque quem veio realmente a cada ocorrência de uma aula, separadamente de quem disse que vinha, na web ou na app do telemóvel.",
+    "kind": "how-to",
+    "category": "instructors",
+    "audience": [
+      "instructor",
+      "organiser"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/clubs/[slug]/events/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Quem pode registar e onde",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "As presenças aplicam-se a eventos do tipo **Aula**, e só os administradores e organizadores de eventos do clube as podem marcar. Funciona da mesma forma na web e na app do telemóvel, por isso pode fazê-lo a partir do telemóvel, à frente da sala."
+          },
+          {
+            "type": "p",
+            "text": "É independente da confirmação de presença. Alguém pode estar **Confirmado**, ou inscrito e com pagamento feito, e mesmo assim ser marcado como ausente; marcar presenças nunca altera a inscrição de ninguém nem reembolsa ninguém."
+          }
+        ]
+      },
+      {
+        "heading": "Marcar quem veio",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Abra a aula. Se se repetir, use **Escolha uma ocorrência** para escolher a data de hoje, porque as presenças são registadas por ocorrência.",
+              "Desloque-se até à lista de participantes.",
+              "Junto a cada pessoa, prima **Marcar como presente** ou **Marcar como ausente**.",
+              "Premiu o botão errado? Prima o mesmo botão outra vez para limpar a marcação."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Não tem de marcar toda a gente. Quem ficar por marcar simplesmente não tem presença registada."
+          }
+        ]
+      },
+      {
+        "heading": "O que os outros veem",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "As outras pessoas que consultam a aula veem uma etiqueta **Presente** ou **Ausente** junto a cada nome que marcou, mas não a podem alterar."
+          },
+          {
+            "type": "p",
+            "text": "As presenças não acrescentam a aula ao histórico de treino de ninguém. Os participantes fazem-no eles próprios com **Registar como treino** na página da aula, ou ao seguir o plano de sessão da aula: consulte [[guide:build-a-session-plan|Criar um plano de sessão]]."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "host-a-paid-yoga-class",
+      "host-a-paid-gym-class",
+      "build-a-session-plan",
+      "build-a-gym-routine"
+    ]
+  },
+  {
+    "id": "cancel-a-class",
+    "lang": "pt-PT",
+    "title": "Cancelar uma aula e reembolsar todos os que pagaram",
+    "summary": "Cancele uma ocorrência de uma aula recorrente; todos os que pagaram são reembolsados na totalidade automaticamente, com nova tentativa a cada hora e a opção Reembolsar agora.",
+    "kind": "how-to",
+    "category": "paid-classes",
+    "audience": [
+      "organiser",
+      "instructor"
+    ],
+    "requires": [
+      "stripe-connected",
+      "paid-rail-live"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "routes": [
+      "/clubs/[slug]/events/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Antes de começar",
+        "blocks": [
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "As aulas pagas ainda não estão disponíveis: precisam da conta Stripe do organizador ligada e da inscrição paga ativada pela plataforma. Se os pagamentos não estiverem disponíveis quando tentar cancelar uma ocorrência com inscrições pagas, verá **Esta ocorrência tem inscrições pagas e os pagamentos não estão disponíveis neste momento, por isso ainda não pode ser cancelada. Nada foi alterado.** A aula mantém-se, para que ninguém fique com um pagamento feito por uma aula que não se vai realizar."
+          },
+          {
+            "type": "p",
+            "text": "Cancelar cabe aos administradores e organizadores de eventos do clube, e faz-se na web. As aulas gratuitas cancelam-se da mesma forma, apenas sem reembolsos."
+          }
+        ]
+      },
+      {
+        "heading": "Cancelar uma ocorrência",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Abra a aula na web. Se se repetir, use **Escolha uma ocorrência** para escolher a data que vai cancelar.",
+              "Prima **Cancelar esta ocorrência**.",
+              "A caixa de diálogo explica que só esta ocorrência é cancelada e que o resto da série não é afetado. Numa aula paga, acrescenta: **Todas as pessoas inscritas nesta ocorrência são reembolsadas na totalidade, seja qual for a política de reembolso.**",
+              "Se quiser, adicione um **Motivo (opcional)** e prima de novo **Cancelar esta ocorrência** para confirmar, ou **Manter** para desistir."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Quando termina, vê quantas pessoas estão a ser reembolsadas, por exemplo *Ocorrência cancelada. 8 pessoas inscritas estão a ser reembolsadas na totalidade.* Quem estava a meio do pagamento vê o seu lugar reservado libertado e não é cobrado. Ninguém da lista de espera passa para uma aula cancelada."
+          }
+        ]
+      },
+      {
+        "heading": "O que é dito aos participantes",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Todas as pessoas que confirmaram presença nessa ocorrência (confirmadas, talvez ou na lista de espera) são notificadas. Quem pagou recebe uma notificação como *Uma ocorrência de “Reformer de terça” foi cancelada — o seu pagamento está a ser reembolsado*, e a mesma mensagem é enviada por email ou notificação push a quem as recebe. Diz *está a ser* reembolsado porque o reembolso é iniciado nesse momento e pode demorar alguns dias a chegar ao banco da pessoa."
+          }
+        ]
+      },
+      {
+        "heading": "Se um reembolso falhar",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "A ocorrência fica cancelada mesmo que o Stripe recuse um reembolso. Verá uma mensagem a indicar quantos reembolsos não puderam ser iniciados, e a página da aula passa a ter um cartão **Reembolsos de ocorrências canceladas** que lista, por cada data cancelada, quem ainda não foi reembolsado, que reembolsos estão em curso e os que o banco devolveu."
+          },
+          {
+            "type": "list",
+            "items": [
+              "A app volta a tentar automaticamente, uma vez por hora, todos os reembolsos ainda em dívida numa aula cancelada.",
+              "Não precisa de esperar: prima **Reembolsar agora** junto à ocorrência para tentar de novo de imediato. Nunca reembolsa ninguém duas vezes.",
+              "Um reembolso que o banco devolve não pode ser repetido desta forma; o valor é devolvido à pessoa por outra via."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Não reembolse as pessoas manualmente a partir de um painel do Stripe. Um reembolso feito aí pode não reverter o valor que lhe foi pago nem a taxa da plataforma, e a app pode depois reembolsar o restante por cima. Use antes **Reembolsar agora**."
+          }
+        ]
+      },
+      {
+        "heading": "Aulas únicas e séries completas",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "**Cancelar esta ocorrência** só é oferecido numa aula recorrente. Não há um botão único para cancelar uma série inteira: cancele cada ocorrência futura que tenha inscrições."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "**Eliminar evento** não é um cancelamento. Remove o evento e todas as suas ocorrências e não reembolsa ninguém que tenha pago. Não elimine uma aula paga que ainda tenha inscrições."
+          },
+          {
+            "type": "p",
+            "text": "Mudou de ideias? **Restabelecer esta ocorrência** volta a pôr uma data cancelada no calendário, mas os reembolsos já feitos não são anulados, pelo que as pessoas terão de se inscrever novamente."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "refund-policies",
+      "waitlist-and-claim-window",
+      "get-paid-with-stripe",
+      "host-a-paid-yoga-class",
+      "host-a-paid-gym-class"
+    ]
+  },
+  {
+    "id": "get-paid-with-stripe",
+    "lang": "pt-PT",
+    "title": "Receber pagamento pelos eventos que organiza",
+    "summary": "Ligue uma conta de pagamentos Stripe uma única vez para que as aulas e eventos que organiza possam cobrar, com o dinheiro a ir para si e não para o clube.",
+    "kind": "how-to",
+    "category": "paid-classes",
+    "audience": [
+      "organiser",
+      "instructor"
+    ],
+    "requires": [
+      "stripe-connected",
+      "paid-rail-live"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "routes": [
+      "/settings/payouts",
+      "/clubs/[slug]"
+    ],
+    "sections": [
+      {
+        "heading": "Antes de começar",
+        "blocks": [
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "A inscrição paga ainda não está disponível. Cobrar por um evento exige duas coisas: a sua própria conta Stripe ligada aqui e a plataforma ativar a inscrição paga. Enquanto não se verificarem ambas, ninguém pode ser cobrado. Se, ao premir **Configurar pagamentos**, aparecer **Os pagamentos ainda não estão configurados nesta versão.**, é a segunda que ainda falta e, por agora, não há nada que tenha de fazer."
+          },
+          {
+            "type": "p",
+            "text": "Os pagamentos pertencem a *si*, não a um clube. O dinheiro de um evento vai para a pessoa que o organiza, por isso quem coorganiza um clube mas nunca organiza uma aula nunca vê dinheiro que não lhe pertence, e mantém as suas receitas se deixar de organizar para um clube. Uma só conta de pagamentos cobre todos os clubes para os quais organiza e todos os tipos de evento, incluindo uma [[guide:set-up-a-race|prova]]."
+          }
+        ]
+      },
+      {
+        "heading": "Ligar a sua conta de pagamentos",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Abra [[route:/settings/payouts|Definições, Pagamentos]] na web.",
+              "Prima **Configurar pagamentos**. É encaminhado para o Stripe para introduzir os seus dados e a conta bancária onde quer receber.",
+              "Conclua os passos do Stripe. Quando voltar, a página mostra o seu estado.",
+              "Se indicar **Registo incompleto — conclua para começar a cobrar** ou **A sua conta de pagamentos precisa de atenção antes de poder receber**, prima **Concluir a configuração de pagamentos** para voltar ao Stripe e continuar onde ficou."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "O que significa o estado",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "**Pronto para receber pagamentos**: o Stripe ativou as cobranças na sua conta, e **Abrir o painel do Stripe** leva-o à sua conta Stripe. É isto que significa “cobranças ativadas”, e é o único estado em que o interruptor **Cobrar por este evento** de um novo evento pode ser ativado.",
+              "**Registo incompleto — conclua para começar a cobrar**: o Stripe ainda precisa de algo da sua parte antes de aceitar uma cobrança.",
+              "**A sua conta de pagamentos precisa de atenção antes de poder receber**: o Stripe restringiu a conta, normalmente porque quer mais informações. **Concluir a configuração de pagamentos** leva-o ao que está a ser pedido."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Enquanto não estiver pronto para receber pagamentos, o formulário do evento mostra **Configure os pagamentos para cobrar por eventos.** com uma ligação **Configurar pagamentos** de volta a esta página."
+          }
+        ]
+      },
+      {
+        "heading": "Taxas e quem trata de quê",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "A plataforma cobra uma pequena taxa por cada inscrição, apresentada como **Taxa da plataforma** nas suas receitas. A plataforma é o comerciante responsável: a cobrança aparece com o nome dela no extrato de quem compra, os reembolsos são emitidos pela plataforma de acordo com a política de reembolso que definir em cada evento, e uma cobrança contestada é debitada da conta Stripe da plataforma, não da sua. Quando um pedido é totalmente reembolsado, a taxa da plataforma sobre ele também é devolvida."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Não reembolse um comprador manualmente no Stripe. Use os caminhos da própria app ([[guide:refund-policies|o cancelamento por parte do comprador]] ou [[guide:cancel-a-class|o cancelamento de uma ocorrência]]), que revertem em conjunto o valor que lhe foi pago e a taxa da plataforma e mantêm corretos os valores das suas receitas."
+          }
+        ]
+      },
+      {
+        "heading": "Ver o que recebeu",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "A secção **Receitas** na mesma página mostra o que recebeu pelas suas aulas, com um bloco por mês e por moeda. Uma aula é contabilizada no mês em que decorreu, no fuso horário da própria aula, e não no mês em que alguém pagou, por isso “as minhas aulas de outubro” são as aulas que aconteceram em outubro."
+          },
+          {
+            "type": "list",
+            "items": [
+              "**Inscrições**, **Bruto**, **Reembolsado** e **Taxa da plataforma** do mês e, no fim, **Líquido para si**.",
+              "Uma discriminação por aula, com as colunas **Aula** e **Quando**.",
+              "Um reembolso que o banco devolveu fica fora dos totais até ser resolvido, e a secção indica quantos há."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Antes de alguém pagar, aparece **Ainda não há inscrições pagas. Assim que alguém pagar uma das suas aulas, ela aparece aqui.** Por agora, as receitas só estão disponíveis na web."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "host-a-paid-yoga-class",
+      "host-a-paid-gym-class",
+      "refund-policies",
+      "cancel-a-class",
+      "set-up-a-race"
+    ]
+  },
+  {
+    "id": "host-a-paid-gym-class",
+    "lang": "pt-PT",
+    "title": "Organizar uma aula paga de HIIT, força ou bootcamp",
+    "summary": "Agende uma aula de ginásio recorrente com limite de vagas e preço por aula, partilhe o treino como rotina do clube e deixe os participantes registá-lo no seu próprio histórico.",
+    "kind": "how-to",
+    "category": "paid-classes",
+    "audience": [
+      "instructor",
+      "organiser"
+    ],
+    "requires": [
+      "stripe-connected",
+      "paid-rail-live"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "routes": [
+      "/clubs/[slug]",
+      "/clubs/[slug]/events/new",
+      "/clubs/[slug]/events/[id]",
+      "/gym/routines/[id]",
+      "/plans/new"
+    ],
+    "sections": [
+      {
+        "heading": "Antes de começar",
+        "blocks": [
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "As aulas pagas ainda não estão disponíveis. Receber dinheiro exige a sua própria conta Stripe ligada ([[guide:get-paid-with-stripe|Receber pagamento pelos eventos que organiza]]) e a inscrição paga ativada pela plataforma. Até lá, o interruptor **Cobrar por este evento** fica desligado e pode continuar a dar a aula gratuitamente."
+          },
+          {
+            "type": "p",
+            "text": "Tem de ser administrador ou organizador de eventos do clube. O preço, a capacidade e o calendário de repetição definem-se na web; a app do telemóvel pode criar uma aula, mas não tem campos para estes dados."
+          }
+        ]
+      },
+      {
+        "heading": "Criar a aula",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Abra o seu clube, vá ao separador **Eventos** e prima **Novo evento**.",
+              "Em **Tipo de evento**, escolha **Aula**. O percurso, a distância, o ritmo e os resultados de prova ficam ocultos numa aula.",
+              "Preencha a **Disciplina**, por exemplo “HIIT” ou “Bootcamp”, e um **Título** que as pessoas reconheçam no calendário.",
+              "Defina a **Duração predefinida do treino** com a duração da aula em minutos. É isto que permite aos participantes registar a aula com um só toque depois.",
+              "Defina a **Data**, a **Hora de início**, a **Duração** e o **Ponto de encontro**.",
+              "Em **Repetição**, escolha **Semanal**, **A cada 2 semanas** ou **Mensal** e os dias. Só pode escolher isto ao criar o evento.",
+              "Defina a **Capacidade** de acordo com os seus racks, bicicletas ou vagas.",
+              "Ative **Cobrar por este evento** e depois defina o **Preço**, a **Moeda**, **Encerrar vendas (minutos antes do início)** e uma **Política de reembolso**. O preço e a moeda não podem ser alterados depois de o evento ser criado.",
+              "Prima **Criar evento**."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Partilhar o treino com a sua aula",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Uma aula ainda não pode ter uma rotina de ginásio associada diretamente. Em vez disso, publique a sua rotina no clube, onde os membros a podem copiar para as suas próprias rotinas e executá-la."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Crie a rotina: consulte [[guide:build-a-gym-routine|Criar uma rotina de ginásio]].",
+              "Abra a rotina e, em **Publicar num clube**, escolha o seu clube em **Escolha um clube…** e prima **Publicar**.",
+              "Aparece no separador **Modelos** do clube, em **Modelos de rotina de ginásio**, marcada como **Modelo do clube**. Os membros premem **Adotar** para obter a sua própria cópia."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Os administradores do clube também podem ir diretamente ao separador **Modelos**, premir **Adicionar modelo** e escolher **Rotina de ginásio**. Fica guardada como modelo do clube num só passo."
+          }
+        ]
+      },
+      {
+        "heading": "Os participantes registam a aula no seu histórico",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Na página da aula, qualquer participante com sessão iniciada vê **Registar como treino**. Abre um registo de ginásio já com o nome da aula, que a pessoa pode ajustar com as suas próprias séries e pesos antes de guardar. Depois vê **Adicionado ao seu registo de ginásio**, e a aula conta no seu histórico de treino como qualquer outro treino. Funciona na web e na app do telemóvel."
+          },
+          {
+            "type": "p",
+            "text": "Quem adotou a sua rotina pode, em vez disso, abri-la e premir **Iniciar rotina** para ser guiado série a série; essa sessão também fica guardada no seu registo de ginásio."
+          }
+        ]
+      },
+      {
+        "heading": "Inscrição, o próprio dia e alterações",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Os participantes inscrevem-se e pagam na web, veem **Está inscrito** e podem cancelar de acordo com a sua [[guide:refund-policies|política de reembolso]].",
+              "Quando as vagas se esgotam, aparece **Esgotado** e a opção **Entrar na lista de espera**: consulte [[guide:waitlist-and-claim-window|Listas de espera e o prazo de 12 horas para garantir o lugar]].",
+              "Marque quem compareceu: [[guide:take-attendance|Registar presenças]].",
+              "Cancelar uma sessão reembolsa todos os que pagaram: [[guide:cancel-a-class|Cancelar uma aula]]."
+            ]
+          }
+        ]
+      }
+    ],
+    "related": [
+      "get-paid-with-stripe",
+      "build-a-gym-routine",
+      "refund-policies",
+      "waitlist-and-claim-window",
+      "cancel-a-class",
+      "take-attendance"
+    ]
+  },
+  {
+    "id": "host-a-paid-yoga-class",
+    "lang": "pt-PT",
+    "title": "Organizar uma aula paga de ioga ou pilates",
+    "summary": "Agende uma aula recorrente para o seu clube, limite os tapetes, defina um preço por aula e uma política de reembolso e associe uma sequência cronometrada que as pessoas podem seguir.",
+    "kind": "how-to",
+    "category": "paid-classes",
+    "audience": [
+      "instructor",
+      "organiser"
+    ],
+    "requires": [
+      "stripe-connected",
+      "paid-rail-live"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "routes": [
+      "/clubs/[slug]",
+      "/clubs/[slug]/events/new",
+      "/clubs/[slug]/events/[id]",
+      "/settings/payouts",
+      "/sessions/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Antes de começar",
+        "blocks": [
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "As aulas pagas ainda não estão disponíveis. Receber dinheiro exige a sua própria conta Stripe ligada ([[guide:get-paid-with-stripe|Receber pagamento pelos eventos que organiza]]) e a inscrição paga ativada pela plataforma. Até lá, o interruptor **Cobrar por este evento** fica desligado e pode continuar a dar a aula gratuitamente."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Tem de ser administrador ou organizador de eventos do clube. A página do clube indica qual dos dois é com **É administrador** ou **É organizador de eventos**.",
+              "O preço, a capacidade, o calendário de repetição e o plano de sessão definem-se todos na web. A app do telemóvel pode criar uma aula e mostra-a aos membros, mas não tem campos de preço, capacidade nem plano de sessão.",
+              "Se quiser associar uma sequência, crie-a primeiro: consulte [[guide:build-a-session-plan|Criar um plano de sessão]]."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Criar a aula",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Abra o seu clube, vá ao separador **Eventos** e prima **Novo evento**.",
+              "Em **Tipo de evento**, escolha **Aula**. O percurso, a distância, o ritmo e os resultados de prova desaparecem, porque uma aula não precisa deles.",
+              "Preencha a **Disciplina**, por exemplo “Pilates reformer”. É o nome do estilo na listagem.",
+              "Se quiser, defina a **Duração predefinida do treino** em minutos. Com uma disciplina ou uma duração definida, os participantes têm um botão **Registar como treino** na página da aula.",
+              "Se quiser, escolha um **Plano de sessão** para associar a sua sequência cronometrada. Se ficar em **Nenhum**, a aula decorre sem plano.",
+              "Dê-lhe um **Título** e depois a **Data**, a **Hora de início**, a **Duração** e um **Ponto de encontro** que um desconhecido consiga encontrar, como a morada do estúdio."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Calendário, capacidade e preço",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Em **Repetição**, escolha **Semanal**, **A cada 2 semanas** ou **Mensal**, depois os dias e quando a série termina, com **Termina em** ou **Termina após**. O calendário só pode ser escolhido enquanto está a criar o evento.",
+              "Defina a **Capacidade** com o número de tapetes. Quando estiver inscrito esse número de pessoas, a pessoa seguinte entra numa lista de espera.",
+              "Ative **Cobrar por este evento** e introduza o **Preço** e a **Moeda**. Ambos ficam fixos depois de o evento ser criado, por isso confirme-os agora.",
+              "Defina **Encerrar vendas (minutos antes do início)**. Com zero, a inscrição fica aberta até ao início.",
+              "Escolha uma **Política de reembolso**: **Reembolso total até à hora de início**, **Reembolso total até 24h antes** ou **Sem reembolsos**. Consulte [[guide:refund-policies|Políticas de reembolso]].",
+              "Prima **Criar evento**."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "A inscrição paga é apenas para aulas presenciais. Cada ocorrência de uma aula recorrente é paga em separado, como uma aula avulsa."
+          }
+        ]
+      },
+      {
+        "heading": "O que os participantes veem",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "A disciplina, a hora, o local, o **Preço** e uma linha sobre o cancelamento, como **Cancelamento gratuito até 24 horas antes do início**.",
+              "Um botão com *Inscrever-se · 22,00 US$* (com o seu preço) que os leva ao pagamento. Quando voltam, aparece **Pagamento confirmado — está inscrito.**",
+              "**Esgotado** quando os tapetes estão todos ocupados, com **Entrar na lista de espera** enquanto as vendas estão abertas ([[guide:waitlist-and-claim-window|como funciona a lista de espera]]), e **Inscrições encerradas** quando as vendas terminam.",
+              "A sua sequência em **Sequência da sessão**. Podem abri-la e premir **Iniciar sessão** para a seguir em casa."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "A inscrição e o pagamento fazem-se na web. A app do telemóvel mostra a aula, mas ainda não tem botão de inscrição."
+          }
+        ]
+      },
+      {
+        "heading": "No dia e depois",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Marque quem veio: [[guide:take-attendance|Registar presenças]].",
+              "Precisa de cancelar uma? [[guide:cancel-a-class|Cancelar uma aula]] reembolsa todos os que pagaram.",
+              "O dinheiro vai para a sua própria conta de pagamentos, descontada a taxa da plataforma, e aparece em **Receitas** em [[route:/settings/payouts|Pagamentos]]."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Esqueceu-se do plano ao criar a aula? Na página da aula, os organizadores podem usar **Vincular a um evento de aula** no cartão **Sequência da sessão** para escolher um mais tarde."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "get-paid-with-stripe",
+      "build-a-session-plan",
+      "refund-policies",
+      "waitlist-and-claim-window",
+      "cancel-a-class",
+      "take-attendance"
+    ]
+  },
+  {
+    "id": "refund-policies",
+    "lang": "pt-PT",
+    "title": "Políticas de reembolso e cancelar a sua inscrição",
+    "summary": "Como funcionam as três políticas de reembolso, como um participante cancela uma inscrição paga e o que vê quando o faz.",
+    "kind": "explainer",
+    "category": "paid-classes",
+    "audience": [
+      "organiser",
+      "instructor",
+      "participant"
+    ],
+    "requires": [
+      "stripe-connected",
+      "paid-rail-live"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "routes": [
+      "/clubs/[slug]/events/[id]",
+      "/clubs/[slug]/events/new"
+    ],
+    "sections": [
+      {
+        "heading": "Antes de começar",
+        "blocks": [
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "A inscrição paga ainda não está disponível. Precisa da conta Stripe do organizador ligada e da inscrição paga ativada pela plataforma. Até lá, nenhum evento pode ser cobrado, por isso não há nada a reembolsar."
+          }
+        ]
+      },
+      {
+        "heading": "As três políticas",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "O organizador escolhe uma **Política de reembolso** ao criar um evento pago. Ela determina o que alguém recebe de volta se for *essa pessoa* a cancelar, e é mostrada na página do evento antes de alguém pagar."
+          },
+          {
+            "type": "list",
+            "items": [
+              "**Reembolso total até à hora de início**: mostrada aos participantes como **Cancelamento gratuito até o início do evento**.",
+              "**Reembolso total até 24h antes**: mostrada como **Cancelamento gratuito até 24 horas antes do início**. É a predefinição.",
+              "**Sem reembolsos**: mostrada como **Sem reembolso em caso de cancelamento**."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Um reembolso é tudo ou nada: dentro do prazo recebe o preço total de volta, fora dele não recebe nada. O prazo é contado em relação ao início da ocorrência em que se inscreveu."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "A política só abrange o cancelamento por parte de um participante. Se o organizador cancelar uma aula, todos os que pagaram são reembolsados na totalidade, seja qual for a política: consulte [[guide:cancel-a-class|Cancelar uma aula]]."
+          }
+        ]
+      },
+      {
+        "heading": "Cancelar a sua própria inscrição",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Abra o evento na web. Onde diz **Está inscrito**, prima **Cancelar inscrição**.",
+              "Leia a caixa de diálogo. Dentro do prazo de reembolso, indica que será reembolsado no seu método de pagamento original e que o seu lugar fica disponível para alguém na lista de espera.",
+              "Prima **Cancelar inscrição** para avançar, ou **Manter o meu lugar** para desistir."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Depois de concluído, vê **Reembolso iniciado — pode levar alguns dias para aparecer. O seu lugar foi libertado.** Até o seu banco o confirmar, a página mostra **Reembolso a decorrer**."
+          },
+          {
+            "type": "p",
+            "text": "Se saiu da página de pagamento antes de pagar, o mesmo botão cancela a inscrição pendente: o seu lugar reservado é libertado e não é cobrado qualquer pagamento."
+          }
+        ]
+      },
+      {
+        "heading": "Fora do prazo de reembolso",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Depois do prazo, ou num evento com **Sem reembolsos**, a app não pode cancelar a sua inscrição por si. A caixa de diálogo avisa-o antes de tentar, mantém o seu lugar e, se avançar, verá **Esta inscrição está fora do prazo de reembolso. Fale com o organizador para cancelar.**"
+          }
+        ]
+      },
+      {
+        "heading": "Se um reembolso não chegar",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Ocasionalmente, um banco devolve um reembolso. A página do evento mostra então **O seu reembolso não chegou** e uma notificação diz **Um reembolso não foi concluído — entraremos em contacto**. Não precisa de pagar novamente; use **Contactar a faturação** e o valor ser-lhe-á devolvido por outra via."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "cancel-a-class",
+      "waitlist-and-claim-window",
+      "host-a-paid-yoga-class",
+      "host-a-paid-gym-class",
+      "get-paid-with-stripe"
+    ]
+  },
+  {
+    "id": "waitlist-and-claim-window",
+    "lang": "pt-PT",
+    "title": "Listas de espera e o prazo de 12 horas para garantir o lugar",
+    "summary": "Como funciona entrar numa aula cheia, como um lugar libertado fica reservado para si durante 12 horas numa aula paga e o que acontece se não o garantir.",
+    "kind": "explainer",
+    "category": "paid-classes",
+    "audience": [
+      "participant",
+      "organiser",
+      "instructor"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/clubs/[slug]/events/[id]",
+      "/notifications"
+    ],
+    "sections": [
+      {
+        "heading": "Aulas gratuitas: entra automaticamente",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Quando uma aula gratuita com **Capacidade** está cheia, premir **Eu vou** coloca-o na lista de espera e a sua confirmação mostra **Na lista de espera**. Quando alguém desiste, a primeira pessoa da lista de espera passa automaticamente para **Confirmado**; não há nada a garantir. Funciona na web e na app do telemóvel."
+          }
+        ]
+      },
+      {
+        "heading": "Aulas pagas: o lugar é reservado e depois paga",
+        "blocks": [
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "As aulas pagas ainda não estão disponíveis: precisam da conta Stripe do organizador ligada e da inscrição paga ativada pela plataforma. Tudo o que está nesta secção aplica-se quando estiverem."
+          },
+          {
+            "type": "p",
+            "text": "Ninguém é cobrado só por estar numa lista de espera. Em vez disso, quando abre um lugar, este é-lhe oferecido e paga para o garantir."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Numa aula paga cheia, a página mostra **Esgotado**. Enquanto as vendas estiverem abertas, prima **Entrar na lista de espera**. Verá **Está na lista de espera. Se abrir um lugar, reservamo-lo para si e avisamos.**",
+              "Quando abre um lugar e é o primeiro da fila, recebe uma notificação: *Abriu um lugar em “Reformer de terça” e está reservado para si — pague para o garantir*.",
+              "Abra a aula na web. Indica quando termina a sua reserva, por exemplo *Tem um lugar reservado até terça-feira, 6 de maio às 18:00. Pague para o garantir, ou passa para a pessoa seguinte da lista de espera.*",
+              "Prima o botão para garantir o lugar (diz *Garantir o meu lugar* com o preço) e pague na página de pagamento. Depois de pagar, fica inscrito como todos os outros."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Garantir o lugar faz-se na web. A app do telemóvel mostra a notificação e abre a aula, mas ainda não tem pagamento, por isso abra a aula num navegador para pagar."
+          }
+        ]
+      },
+      {
+        "heading": "Quanto tempo dura a reserva",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Tem 12 horas para garantir o lugar, tempo suficiente para que ninguém perca um lugar por estar a dormir.",
+              "A reserva é encurtada quando as vendas dessa aula encerram (a hora de encerramento de vendas definida pelo organizador antes do início). Nenhum lugar é oferecido depois de as vendas encerrarem, porque ninguém o poderia pagar.",
+              "Enquanto o seu lugar estiver reservado, mais ninguém o pode comprar, mesmo que a aula pareça cheia a essas pessoas.",
+              "Se estiver a meio do pagamento quando o tempo acabar, a reserva mantém-se enquanto esse pagamento estiver aberto."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Se não o garantir",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Quando a reserva expira, o lugar é oferecido à pessoa seguinte da lista de espera e sai da lista de espera. Se ainda quiser entrar, prima novamente **Entrar na lista de espera**; passa para o fim da fila."
+          },
+          {
+            "type": "p",
+            "text": "Mudou de ideias enquanto ainda espera? Prima **Sair da lista de espera**. É avisado de que perderá o seu lugar na fila; se voltar a entrar mais tarde, passa para o fim. Se já tiver um lugar reservado e não o quiser, basta deixar a reserva expirar."
+          }
+        ]
+      },
+      {
+        "heading": "Para organizadores",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "A lista de espera funciona sozinha. Defina uma **Capacidade** na aula e o resto acontece automaticamente; o prazo de 12 horas não pode ser alterado por aula.",
+              "Um lugar reservado conta para a sua capacidade, por isso nunca acaba com mais pessoas do que tapetes.",
+              "Se alguém cancelar com reembolso, o seu lugar passa para a lista de espera. Se cancelar uma ocorrência, ninguém da lista de espera é colocado nela: consulte [[guide:cancel-a-class|Cancelar uma aula]]."
+            ]
+          }
+        ]
+      }
+    ],
+    "related": [
+      "refund-policies",
+      "cancel-a-class",
+      "host-a-paid-yoga-class",
+      "host-a-paid-gym-class"
+    ]
+  },
+  {
+    "id": "follow-a-race-live",
+    "lang": "pt-PT",
+    "title": "Acompanhar uma prova em direto",
+    "summary": "Veja uma prova enquanto decorre na página da prova em direto: corredores num mapa, quem está no percurso e quem já terminou em cada percurso.",
+    "kind": "how-to",
+    "category": "races",
+    "audience": [
+      "spectator",
+      "everyone"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "routes": [
+      "/live/event/[id]/[instance]"
+    ],
+    "sections": [
+      {
+        "heading": "Abrir a página em direto",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "O organizador partilha um link para a página da prova em direto ou, se conseguir ver o evento, abra-o e escolha **Visão do espectador**. Não precisa de conta. Se o evento for **Apenas membros**, tem de ser membro do clube para o ver."
+          },
+          {
+            "type": "p",
+            "text": "O topo da página mostra o estado da prova:"
+          },
+          {
+            "type": "list",
+            "items": [
+              "**Pré-prova**: o organizador ainda não preparou o cronómetro da prova.",
+              "**Preparada**: o cronómetro está preparado e à espera da partida.",
+              "**A decorrer**: a prova está em curso, com o tempo decorrido.",
+              "**Concluído**: a prova terminou.",
+              "**Cancelado**: o organizador cancelou a prova."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "O mapa",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "A menos que já tenha permitido mapas nas definições de cookies, o mapa fica desligado até escolher **Carregar mapa**, porque carregá-lo envia o seu endereço IP ao nosso fornecedor de mosaicos de mapa. Depois de carregado, cada corredor é um ponto colorido com um pequeno rasto do seu trajeto recente. Os telemóveis e relógios dos corredores enviam uma posição mais ou menos a cada 10 segundos, e a página atualiza-se sozinha."
+          }
+        ]
+      },
+      {
+        "heading": "No percurso",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "O quadro **No percurso** lista todos os corredores que enviaram uma posição, do mais adiantado para o mais atrasado, com distância, ritmo e tempo decorrido, e há um quadro por percurso quando a prova tem mais do que um. Cada linha diz também há quanto tempo foi atualizada pela última vez."
+          },
+          {
+            "type": "p",
+            "text": "Não existe uma indicação “em pausa” à parte. Um corredor que parou (para apertar um atacador, num abastecimento ou porque pausou a gravação) ou que perdeu o sinal simplesmente deixa de ser atualizado. Ao fim de cerca de 90 segundos sem atualização, a sua linha é marcada como **ATRASADO**. Isso não significa que algo esteja mal; muitas vezes é só falta de sinal."
+          }
+        ]
+      },
+      {
+        "heading": "Quem já terminou",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Quem termina aparece em **Concluído** à medida que os resultados chegam, com um quadro por percurso quando a prova tem mais do que um. Os corredores que não terminaram aparecem em **Não concluiu**. Um resultado que o organizador ainda não aprovou é marcado como **Pendente**."
+          },
+          {
+            "type": "p",
+            "text": "O que significam os tempos e as marcas está explicado em [[guide:race-results-explained|Perceber os resultados das provas]]."
+          }
+        ]
+      },
+      {
+        "heading": "Privacidade",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Os nomes reais dos corredores só são mostrados a pessoas ligadas a eles por um seguimento, em qualquer dos sentidos. Todas as outras pessoas veem um identificador anónimo, como Corredor #A1B2.",
+              "Perto da zona de privacidade de um corredor, a sua posição exata fica oculta. Em vez disso, vê **Visto pela última vez perto daqui · aproximado**, mostrado como um anel vazio em vez de um ponto.",
+              "Os corredores que o organizador importou de uma lista de dorsais não têm conta, por isso mantêm o nome que o organizador introduziu."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Qualquer pessoa com o link pode ver. Se vai correr a prova e prefere não ser acompanhado em direto, fale com o organizador antes da prova."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "race-results-explained",
+      "racing-in-a-race",
+      "race-day-for-hosts"
+    ]
+  },
+  {
+    "id": "race-day-for-hosts",
+    "lang": "pt-PT",
+    "title": "Dia de prova para organizadores",
+    "summary": "Prepare a prova, dê a partida, acompanhe-a em direto, encerre-a e depois aprove e corrija os resultados.",
+    "kind": "how-to",
+    "category": "races",
+    "audience": [
+      "organiser"
+    ],
+    "requires": [
+      "race-director"
+    ],
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "routes": [
+      "/clubs/[slug]/events/[id]",
+      "/live/event/[id]/[instance]"
+    ],
+    "sections": [
+      {
+        "heading": "Quem pode gerir uma prova",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "O controlo da prova aparece na página do evento para os proprietários e administradores do clube e para os membros com o papel **Diretor de prova**. Na web é o cartão **Controlo da prova**; na app do telemóvel é o cartão **CONTROLO DA PROVA** no ecrã do evento. Ambos permitem aprovar e editar resultados."
+          },
+          {
+            "type": "p",
+            "text": "Certifique-se primeiro de que o evento tem percursos — consulte [[guide:set-up-a-race|Configurar uma prova]]."
+          }
+        ]
+      },
+      {
+        "heading": "1. Preparar a prova",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Abra o evento e escolha a ocorrência de hoje, se o evento se repetir.",
+              "Deixe **Aprovar automaticamente os resultados enviados** assinalado para publicar os resultados à medida que chegam, ou desmarque-o para aprovar cada um. (Na app do telemóvel diz **Aprovar automaticamente os tempos enviados**.)",
+              "Escolha **Preparar prova** quando estiverem todos reunidos."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Os corredores que disseram **Eu vou** veem agora **Prova preparada** no separador Corrida do telemóvel e “PROVA PRONTA” no relógio Wear OS."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Uma prova preparada está em espera. Nada é cronometrado e nenhum resultado pode ser guardado até dar a partida."
+          }
+        ]
+      },
+      {
+        "heading": "2. Dar a partida",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Prima **JÁ** na web (**Disparar o Go** na app do telemóvel) no momento em que a prova começa."
+          },
+          {
+            "type": "p",
+            "text": "A hora de partida é registada pelo nosso servidor, não pelo seu dispositivo, por isso é a mesma hora de partida oficial para todos os corredores, mesmo que o relógio do seu telemóvel esteja alguns segundos desacertado. O tempo oficial de cada corredor é medido a partir dela."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Dar a partida não inicia a gravação de ninguém. Os corredores premem Iniciar no próprio telemóvel ou relógio, seja na linha de partida enquanto a prova está preparada (a gravação entra na prova no momento da partida), seja depois de verem **Prova EM DIRETO**. Lembre-os de iniciar a gravação."
+          }
+        ]
+      },
+      {
+        "heading": "3. Acompanhar em direto",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "O cartão de controlo da prova mostra **A decorrer** com o tempo decorrido.",
+              "Escolha **Visão do espectador** para ver o mapa em direto, o quadro **No percurso** e o quadro **Concluído**. Consulte [[guide:follow-a-race-live|Acompanhar uma prova em direto]].",
+              "Os dispositivos dos corredores registam a chegada automaticamente na linha de meta, por isso os resultados aparecem na página do evento enquanto a prova ainda decorre."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "4. Encerrar a prova",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Quando o último corredor tiver chegado (ou o seu tempo limite tiver passado), escolha **Encerrar prova**.",
+              "A confirmação, na web e na app do telemóvel, diz-lhe quantos corredores que partiram não têm resultado. Esses corredores ficarão como DNF.",
+              "Confirme com **Encerrar prova**."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Encerrar a prova regista um DNF para cada corredor que enviou pelo menos uma posição em direto mas não tem resultado, usando a distância e o tempo da sua última posição. Estes DNF levam a marca do organizador. Os corredores que nunca começaram a gravar não ficam com nada registado."
+          },
+          {
+            "type": "p",
+            "text": "Um corredor cujo telemóvel ou relógio estava sem sinal na chegada pode ainda enviar um resultado em fila de espera até 24 horas depois de encerrar a prova, e esse resultado substitui o DNF."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Encerrar a prova não pode ser desfeito. Depois de encerrada, os dispositivos dos corredores deixam de esperar um resultado. Para voltar a disputar a mesma ocorrência, prepare uma nova sessão."
+          }
+        ]
+      },
+      {
+        "heading": "Cancelar",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Só pode cancelar enquanto a prova está preparada: escolha **Cancelar** ao lado de **JÁ** (**Disparar o Go** na app do telemóvel) e depois **Cancelar prova**. Depois de dar a partida, a prova só pode ser encerrada."
+          },
+          {
+            "type": "p",
+            "text": "Cancelar não regista nenhum DNF. A página do espectador diz que a prova foi cancelada pelo organizador, e os corredores veem que a prova terminou."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Cancelar não pode ser desfeito. Use antes **Encerrar prova** se as pessoas chegaram a correr e quer os seus resultados."
+          }
+        ]
+      },
+      {
+        "heading": "Aprovar e editar resultados",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Os resultados estão na página do evento em **Resultados**, com um quadro por percurso. Na app do telemóvel, cada resultado tem um menu com as mesmas ações **Aprovar**, **Remover verificação** e **Editar**."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Se a aprovação automática estava desligada, os novos resultados mostram **PENDENTE** e nenhuma posição. Escolha **Aprovar** para publicar um. **Remover verificação** devolve um resultado aprovado ao estado pendente.",
+              "Para corrigir um resultado, escolha **Editar**, introduza um **Tempo (h:mm:ss)** e um **Estado** (**Terminou**, **DNF** ou **DNS**) e depois **Guardar resultado**.",
+              "Um resultado editado é marcado como **Editado pelo organizador**, para que todos vejam que foi alterado pelo organizador. A edição altera também o tempo oficial do corredor.",
+              "**Transferir resultados CSV** exporta os quadros."
+            ]
+          }
+        ]
+      }
+    ],
+    "related": [
+      "set-up-a-race",
+      "follow-a-race-live",
+      "race-results-explained",
+      "racing-in-a-race"
+    ]
+  },
+  {
+    "id": "race-results-explained",
+    "lang": "pt-PT",
+    "title": "Perceber os resultados das provas",
+    "summary": "O que significam o tempo oficial e o tempo de chip, como as posições são calculadas por percurso e o que dizem as marcas Manual, Organizador, DNF, DNS e pendente.",
+    "kind": "explainer",
+    "category": "races",
+    "audience": [
+      "everyone"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/clubs/[slug]/events/[id]",
+      "/live/event/[id]/[instance]"
+    ],
+    "sections": [
+      {
+        "heading": "Tempo oficial e tempo de chip",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "O **Tempo oficial** é medido desde o momento em que o organizador deu a partida até ao momento em que cruzou a meta. A partida é registada pelo nosso servidor, por isso todos os participantes da prova partilham a mesma partida.",
+              "O **Tempo de chip** é medido desde que premiu Iniciar no seu próprio dispositivo até à sua chegada, incluindo eventuais pausas.",
+              "O tempo grande no quadro é o seu tempo oficial quando o organizador deu a partida na prova; caso contrário, é o seu tempo de chip. As posições são calculadas a partir desse tempo grande."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Na web, a linha mais pequena por baixo de um tempo diz algo como “oficial 41:58 · chip 41:20”. Na app do telemóvel, aparece um tempo “Chip” por baixo do tempo principal quando é diferente dele. Se partiu tarde, o seu tempo oficial é maior do que o seu tempo de chip."
+          }
+        ]
+      },
+      {
+        "heading": "As posições são por percurso",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Quando uma prova tem mais do que um percurso, cada percurso tem o seu próprio quadro e as suas próprias posições. Quem termina os 5K nunca é classificado contra quem termina os 10K. Os resultados sem percurso são agrupados (**Sem percurso** na página do evento, **Outros** na página em direto)."
+          },
+          {
+            "type": "p",
+            "text": "Só quem termina recebe uma posição. Os empates são desfeitos a favor do resultado que chegou primeiro."
+          }
+        ]
+      },
+      {
+        "heading": "Como a chegada foi registada",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "**Sem marca**: o telemóvel ou o relógio do corredor detetou a linha de meta. É o caso normal, por isso nem a web nem a app do telemóvel o assinalam.",
+              "**Manual**: o corredor terminou à mão, com **Terminar prova** depois de percorrer pelo menos 90% do percurso, ou usando **Enviar o meu tempo** na web durante a prova.",
+              "**Organizador** (na web, **Editado pelo organizador**): o organizador introduziu ou corrigiu este resultado, ou o corredor ficou como DNF quando o organizador encerrou a prova."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "DNF e DNS",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "**DNF** (não terminou): o corredor partiu mas não terminou. Acontece quando alguém escolhe **Terminar como DNF** antes de percorrer 90% do percurso, quando o organizador encerra a prova enquanto essa pessoa ainda está em prova, ou quando o organizador o regista.",
+              "**DNS** (não partiu): registado pelo corredor com **Registar DNS** ou pelo organizador.",
+              "Nenhum dos dois recebe posição. Na página em direto, aparecem em **Não concluiu**."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Resultados pendentes",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Se o organizador desligou a aprovação automática, cada novo resultado fica à espera do organizador. Na página do evento na web aparece **PENDENTE**, ainda sem posição; na app do telemóvel e na página em direto aparece **Pendente**. Assim que o organizador escolhe **Aprovar**, o resultado ocupa o seu lugar no quadro."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "O **Certificado** de chegada só pode ser transferido depois de um resultado de chegada ter sido aprovado."
+          }
+        ]
+      },
+      {
+        "heading": "Algo parece estar errado",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Não há resultado nenhum? Se o seu dispositivo não tinha sinal na chegada, envia o resultado quando voltar a ligar-se, no prazo de 24 horas após o fim da prova.",
+              "Um DNF que acha que está errado, ou um tempo que não bate certo? Fale com o organizador. Pode corrigi-lo na web, e o resultado passa então a mostrar a marca do organizador."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Para o lado de quem corre, consulte [[guide:racing-in-a-race|Correr numa prova em direto]]. Organizadores: [[guide:race-day-for-hosts|Dia de prova para organizadores]]."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "racing-in-a-race",
+      "race-day-for-hosts",
+      "follow-a-race-live",
+      "using-help"
+    ]
+  },
+  {
+    "id": "racing-in-a-race",
+    "lang": "pt-PT",
+    "title": "Correr numa prova em direto",
+    "summary": "Inscreva-se, escolha o seu percurso, comece a gravar na linha de partida ou depois da partida e deixe o telemóvel ou o relógio cronometrá-lo até à meta.",
+    "kind": "how-to",
+    "category": "races",
+    "audience": [
+      "participant",
+      "runner"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios",
+      "wear",
+      "apple-watch"
+    ],
+    "routes": [
+      "/clubs/[slug]/events/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Com que dispositivos pode competir",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "App do telemóvel Android: suporte total. Mostra o aviso da prova, envia a sua posição em direto e regista a sua chegada automaticamente.",
+              "App para iPhone: executa o mesmo código que a do Android, mas ainda não foi testada num iPhone numa prova real.",
+              "Relógio Wear OS: suporte total no pulso, incluindo a chegada automática. A inscrição e a escolha do percurso continuam a ser feitas na web ou no telemóvel.",
+              "Apple Watch: apenas suporte inicial. Mostra o aviso da prova, envia a sua posição e comunica o seu tempo através do iPhone, mas não tem chegada automática e ainda não foi comprovado numa prova real. Leve o telemóvel como alternativa.",
+              "Web: use-a para se inscrever, escolher um percurso e ver resultados. Um navegador não consegue gravar uma corrida."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Inscrever-se e escolher um percurso",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Abra o evento da prova.",
+              "Se houver mais do que um percurso, escolha o seu em **O seu percurso** na web. Na app do telemóvel, aparece **Escolha o seu percurso** quando toca em **Eu vou**.",
+              "Toque em **Eu vou**. Só uma inscrição **Eu vou** recebe os avisos da prova no seu dispositivo; **Talvez** não."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Mudou de ideias? Na web, escolha outro percurso em **O seu percurso** (verá “Percurso atualizado.”). Na app do telemóvel, toque em **Mudar de percurso**. Decida o seu percurso antes de começar a gravar: o telemóvel ou o relógio lê-o quando a gravação da prova começa, e o seu resultado vai para o quadro desse percurso."
+          }
+        ]
+      },
+      {
+        "heading": "Prova pronta e Prova EM DIRETO",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Quando o organizador prepara a prova, o separador Corrida da app do telemóvel mostra **Prova preparada** com “a aguardar a partida”. O relógio Wear OS mostra “PROVA PRONTA” por cima do botão Iniciar. Quando o organizador dá a partida, passa a **Prova EM DIRETO** (“PROVA EM DIRETO” no relógio), com o tempo decorrido e “toque em Iniciar”."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "O telemóvel ou o relógio não começa a gravar sozinho: tem de premir Iniciar. Pode começar na linha de partida enquanto a prova mostra **Prova preparada**, ou quando vir **Prova EM DIRETO**. Uma gravação iniciada antes entra na prova no momento da partida, no telemóvel e num relógio Wear OS, e o seu tempo de chip passa a contar a partir da partida e não de quando premiu Iniciar."
+          },
+          {
+            "type": "p",
+            "text": "A app do telemóvel procura as provas a que disse **Eu vou** e que começam no prazo de um dia. Se o aviso demorar a aparecer, mantenha a app aberta no separador Corrida durante um minuto."
+          }
+        ]
+      },
+      {
+        "heading": "Chegada automática",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Não precisa de premir nada na meta. O telemóvel ou o relógio Wear OS regista a sua chegada quando estas duas condições se verificam:"
+          },
+          {
+            "type": "list",
+            "items": [
+              "está a 30 m ou menos da linha de meta, e",
+              "percorreu pelo menos 90% da distância do seu percurso."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "O seu tempo é registado no momento em que esteve mais perto da meta, não no primeiro momento em que ficou a 30 m. A regra dos 90% impede que um percurso em circuito, que começa onde termina, registe a sua chegada logo no primeiro segundo. O telemóvel mostra “Meta cortada!” com o seu tempo oficial, e a gravação para."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Se o seu percurso não tiver rota ou não tiver distância, não há chegada automática. Use Parar e depois **Terminar prova** quando cruzar a linha."
+          }
+        ]
+      },
+      {
+        "heading": "Parar durante a prova",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Durante uma prova em direto, Parar não termina a sua prova. Pausa a gravação e mostra **Prova em pausa**. O relógio da prova continua a contar."
+          },
+          {
+            "type": "list",
+            "items": [
+              "**Retomar prova** continua a gravação.",
+              "**Terminar prova** termina a sua prova agora. Se percorreu pelo menos 90% do percurso, é uma chegada manual nesse momento.",
+              "Abaixo dos 90%, o botão diz **Terminar como DNF**, e terminar regista um DNF."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Num relógio Wear OS, o ecrã de pausa oferece “Vai” para retomar, e mantenha premido **Fim** para terminar."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Terminar antes de 90% do percurso regista um DNF. Se só parou para apertar um atacador, escolha **Retomar prova**."
+          }
+        ]
+      },
+      {
+        "heading": "Sem sinal na meta",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "As linhas de meta têm muitas vezes pouco sinal. O telemóvel e o relógio Wear OS guardam primeiro o seu resultado e enviam-no assim que voltam a ligar-se, por isso não se perde. Tem de nos chegar no prazo de 24 horas depois de o organizador encerrar a prova. Não termine sessão na app antes de o resultado ser enviado."
+          }
+        ]
+      },
+      {
+        "heading": "Tempo oficial, tempo de chip e partidas tardias",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "O **Tempo oficial** conta desde o momento em que o organizador deu a partida até à sua chegada. É o tempo pelo qual é classificado.",
+              "O **Tempo de chip** conta desde que premiu Iniciar até à sua chegada, incluindo eventuais pausas. Se premiu Iniciar antes da partida, conta a partir da partida, por isso nunca é maior do que o seu tempo oficial.",
+              "Se começar mais de 5 minutos depois da partida, ou se a sua primeira posição estiver a mais de 200 m do início do percurso, a app do telemóvel mostra um aviso de partida tardia. O seu tempo oficial continua a contar a partir da partida, por isso uma partida tardia torna-o maior do que o seu tempo de chip."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Mais sobre como ler o quadro em [[guide:race-results-explained|Perceber os resultados das provas]]."
+          }
+        ]
+      },
+      {
+        "heading": "Se o organizador encerrar a prova primeiro",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Se o organizador encerrar a prova antes de chegar à meta, o telemóvel avisa-o e o relógio mostra “Corrida terminada”. A sua corrida continua a ser gravada como uma corrida normal, mas o dispositivo não envia nenhum resultado da prova. Se já tinha enviado uma posição em direto, a prova marca-o como DNF."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "set-up-a-race",
+      "race-results-explained",
+      "follow-a-race-live",
+      "using-help"
+    ]
+  },
+  {
+    "id": "set-up-a-race",
+    "lang": "pt-PT",
+    "title": "Configurar uma prova",
+    "summary": "Crie um evento de clube com um ou mais percursos para que os corredores possam escolher uma distância, ser cronometrados em direto e entrar numa classificação por percurso.",
+    "kind": "how-to",
+    "category": "races",
+    "audience": [
+      "organiser",
+      "club-admin"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "routes": [
+      "/clubs/[slug]",
+      "/clubs/[slug]/events/new",
+      "/clubs/[slug]/events/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Antes de começar",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Uma prova é um evento de clube normal com percursos associados. Os proprietários e administradores do clube e os organizadores de eventos podem criar eventos. Gerir a prova no dia (preparar, dar a partida, terminar) exige um proprietário, um administrador ou um **Diretor de prova** — consulte [[guide:race-day-for-hosts|Dia de prova para organizadores]]."
+          },
+          {
+            "type": "p",
+            "text": "Os percursos são criados na web. A app do telemóvel consegue criar um evento simples, mas não tem editor de percursos, por isso adicione ou altere percursos a partir de um navegador."
+          }
+        ]
+      },
+      {
+        "heading": "Criar o evento",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Abra o seu clube e escolha **Novo evento**.",
+              "Em **Tipo de evento**, escolha **Corrida em grupo** (ou **Ciclismo**). Os eventos de aula e os sociais não têm rota, distância, controlos de prova nem resultados.",
+              "Dê-lhe um **Título** e uma **Data**. Defina uma repetição apenas se a prova se repetir mesmo; cada ocorrência é disputada separadamente.",
+              "Escolha uma **Rota** e preencha a **Distância**. Juntas, formam o seu *percurso principal*.",
+              "Opcionalmente, escreva um **Nome do percurso principal** em **Percursos da prova** (por exemplo, “Meia maratona”). Se o deixar em branco, é usado o nome da rota.",
+              "Escolha **Criar evento**."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "A linha de meta em que os corredores são cronometrados é o último ponto da rota do percurso. Desenhe a rota de modo a que termine exatamente onde vai ficar o seu pórtico de meta."
+          }
+        ]
+      },
+      {
+        "heading": "Adicionar mais percursos",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Vai haver mais do que uma distância no mesmo dia? Adicione cada distância extra como um percurso próprio. Cada percurso tem a sua própria classificação."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "No editor do evento, encontre **Percursos da prova** e escolha **Adicionar um percurso**.",
+              "Dê-lhe um **Nome do percurso**, escolha a respetiva **Rota** e introduza a sua distância.",
+              "Use as setas para cima e para baixo para reordenar os percursos, ou remova um de que já não precise.",
+              "Guarde o evento."
+            ]
+          },
+          {
+            "type": "list",
+            "items": [
+              "Cada percurso precisa de um nome, e dois percursos não podem ter o mesmo.",
+              "Um percurso sem rota não tem ponto de chegada, por isso a chegada dos seus corredores não é registada automaticamente; terminam à mão a partir do dispositivo.",
+              "Um percurso sem distância não consegue verificar se um corredor percorreu a maior parte do percurso, por isso os seus corredores também terminam à mão."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Associar uma rota mostra o respetivo ponto de chegada a todos os que podem ver o evento, mesmo que a rota em si seja privada. Só pode associar rotas que tem permissão para ver."
+          }
+        ]
+      },
+      {
+        "heading": "O que os corredores veem",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Na página do evento, os corredores veem os percursos. Quando há mais do que um, têm de escolher um em **O seu percurso** antes de **Eu vou** funcionar; caso contrário, veem “Escolha primeiro o seu percurso.”",
+              "Na app do telemóvel, tocar em **Eu vou** numa prova com vários percursos mostra **Escolha o seu percurso**, e mais tarde podem usar **Mudar de percurso**.",
+              "Com um único percurso, ninguém tem de escolher nada.",
+              "As inscrições pagas ainda não pedem um percurso. Um corredor que pagou escolhe-o depois no mesmo menu **O seu percurso**."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "O lado de quem corre é explicado em [[guide:racing-in-a-race|Correr numa prova em direto]]."
+          }
+        ]
+      },
+      {
+        "heading": "Aprovar resultados automaticamente",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Mesmo antes de preparar a prova, escolha se os resultados vão diretamente para a classificação. **Aprovar automaticamente os resultados enviados** vem assinalado por predefinição. Desmarque-o se quiser verificar cada resultado primeiro; cada um aparece então como **PENDENTE** até o aprovar."
+          }
+        ]
+      },
+      {
+        "heading": "Partilhar o link para espectadores",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Cada ocorrência de uma prova tem uma página em direto com um mapa e quadros. Na página do evento, o cartão de controlo da prova tem um link **Visão do espectador** que a abre num novo separador. Copie esse endereço e partilhe-o com a família, os amigos e o canal da sua prova."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Num evento **Apenas para membros**, só os membros do clube podem ver o evento, por isso a página do espectador não funciona para pessoas de fora do clube."
+          },
+          {
+            "type": "p",
+            "text": "O que os espectadores veem é explicado em [[guide:follow-a-race-live|Acompanhar uma prova em direto]]."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "race-day-for-hosts",
+      "racing-in-a-race",
+      "follow-a-race-live",
+      "race-results-explained"
+    ]
+  },
+  {
+    "id": "import-your-history",
+    "lang": "pt-PT",
+    "title": "Importar o seu histórico de corridas",
+    "summary": "Traga as suas corridas antigas do Strava, de uma exportação da Garmin ou da app de saúde do telemóvel, e saiba o que acontece aos ficheiros GPX.",
+    "kind": "how-to",
+    "category": "running",
+    "audience": [
+      "runner"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/settings/integrations",
+      "/routes"
+    ],
+    "sections": [
+      {
+        "heading": "Ligar o Strava para corridas recentes e novas",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Na web, abra [[route:/settings/integrations|Integrações]] nas Definições e selecione **Ligar** no cartão do Strava; na app do telemóvel, abra **Integrações** no separador **Tu** e toque em Strava.",
+              "Inicie sessão no Strava e permita o acesso.",
+              "As suas corridas, caminhadas e trails dos últimos 90 dias são copiados, e as novas atividades do Strava chegam automaticamente."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Selecione **Sincronizar agora** para voltar a importar. Na web, **Até quando sincronizar** permite recuar até um ano."
+          }
+        ]
+      },
+      {
+        "heading": "Trazer todo o seu histórico do Strava",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Ligar o Strava só alcança a atividade recente. Para anos de histórico, use uma exportação de dados do Strava."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "No Strava, vá a “Definições”, “A minha conta” e peça a exportação dos seus dados. O Strava envia-lhe por e-mail um link para um ficheiro zip.",
+              "Na web, abra [[route:/settings/integrations|Integrações]], encontre **Importação em lote de uma exportação do Strava** e selecione **Escolher zip de exportação do Strava**. Na app do telemóvel, abra **Conta** no separador **Tu**, depois **Importar de outra app**, e toque em **Importar ZIP do Strava**.",
+              "Aguarde que a importação termine. As corridas que já tem, por exemplo da sua ligação ao Strava, são ignoradas, por isso pode repeti-la em segurança."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Garmin e ficheiros FIT",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Ainda não existe uma ligação automática ao Garmin Connect, porque a Garmin tem de a aprovar. Até lá, pode importar ficheiros da Garmin na web."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "No Garmin Connect, exporte uma atividade com “Export Original”, que lhe dá um ficheiro .fit, ou peça a exportação completa dos seus dados em Garmin Account Management.",
+              "Na web, abra [[route:/settings/integrations|Integrações]], encontre **Importação em lote de uma exportação da Garmin** e selecione **Escolher exportação da Garmin**.",
+              "Escolha o ficheiro .fit ou o zip. As atividades que já importou são ignoradas."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "No Android, os treinos que a app da Garmin, da Samsung ou da Fitbit escreve no Health Connect também podem entrar através de **Importar de outra app**. Num iPhone, o mesmo cartão lê o Apple Saúde."
+          }
+        ]
+      },
+      {
+        "heading": "GPX e outros ficheiros individuais",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Um único ficheiro GPX, KML, KMZ, GeoJSON ou TCX é importado como uma rota que pode seguir, não como uma corrida no seu histórico. Abra [[route:/routes|Rotas]] na web ou a lista de rotas na app e importe-o aí."
+          },
+          {
+            "type": "p",
+            "text": "Os ficheiros GPX e TCX dentro de um zip de exportação do Strava ou da Garmin são lidos como corridas, por isso as importações em lote acima são a forma de adicionar um histórico de atividades GPX."
+          }
+        ]
+      },
+      {
+        "heading": "Se algo não for importado",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Quando algumas atividades ficam de fora, a importação lista cada uma e o motivo, como uma ligação que caiu ou um ficheiro que não foi possível ler. Volte a executar a importação para as tentar de novo: tudo o que já entrou é ignorado, por isso nada fica duplicado."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "As corridas importadas seguem a privacidade predefinida das suas corridas, por isso verifique-a antes de uma importação grande se não quiser que anos de corridas apareçam publicamente de uma só vez. Consulte [[guide:your-data-and-privacy|Os seus dados e a sua privacidade]]."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "record-your-first-run",
+      "link-ultrasignup-results",
+      "your-data-and-privacy"
+    ]
+  },
+  {
+    "id": "link-ultrasignup-results",
+    "lang": "pt-PT",
+    "title": "Associar os seus resultados do UltraSignup",
+    "summary": "Encontre o seu perfil do UltraSignup pelo nome, confirme qual das pessoas corresponde a si e importe um resultado de ultra ou trail a partir do calendário de provas.",
+    "kind": "how-to",
+    "category": "running",
+    "audience": [
+      "runner"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "routes": [
+      "/settings/integrations",
+      "/races",
+      "/runs/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Antes de começar",
+        "blocks": [
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "A importação do UltraSignup só existe na web e está desligada até ser ativada. Se o cartão do UltraSignup não aparecer em Integrações, ou disser **A importação do UltraSignup ainda não está disponível. parkrun e a colagem manual continuam a funcionar.**, pode na mesma adicionar um resultado colando-o no calendário de provas."
+          },
+          {
+            "type": "p",
+            "text": "O UltraSignup gere as inscrições e os resultados de muitas provas de trail e ultra. Associar o seu perfil uma vez significa que nunca mais tem de escrever o seu nome ou dorsal ao importar um resultado."
+          }
+        ]
+      },
+      {
+        "heading": "Associar o seu perfil",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Abra [[route:/settings/integrations|Integrações]] nas Definições e encontre o cartão do UltraSignup.",
+              "Em **Encontrar o seu perfil do UltraSignup**, introduza o seu **Nome próprio** e **Apelido** exatamente como se inscreve nas provas e, depois, selecione **Encontrar-me**.",
+              "O UltraSignup lista todas as pessoas com esse nome. Use a idade, o número de resultados e as provas mais recentes de cada pessoa para se identificar.",
+              "Em **Qual destes perfis é o seu?**, selecione **Sou eu** na sua entrada."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "O cartão mostra agora **Associado como** com o seu nome e o seu número do UltraSignup. Se escolheu a pessoa errada, selecione **Desassociar** e pesquise de novo. As corridas que já importou mantêm-se quando desassocia."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Se vir **O UltraSignup não tem ninguém com esse nome. Confirme a grafia que usa nas inscrições.**, experimente a grafia exata das suas inscrições, incluindo qualquer nome do meio ou hífen."
+          }
+        ]
+      },
+      {
+        "heading": "Importar um resultado do calendário de provas",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Abra [[route:/races|Provas]] e encontre a prova em que correu.",
+              "Selecione **Importar o meu resultado**. O importador mostra em nome de quem está a importar.",
+              "Confirme a importação. Só chega o seu próprio resultado nessa prova, identificado pelo id da prova no UltraSignup e pela data da prova."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "O resultado chega como uma corrida com o seu tempo oficial e as suas classificações. Se gravou a prova, abra antes essa corrida: quando corresponde a uma prova do calendário, a corrida pergunta se foi essa prova, e selecionar **Importar resultado** adiciona o resultado oficial à corrida que já tem, em vez de criar uma segunda."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Só são importados resultados de quem terminou, e uma prova cujo id ou data não coincida é ignorada em vez de adivinhada. Ainda há muito poucas provas do UltraSignup no calendário, por isso a sua pode não estar listada; use antes **Colar o seu resultado** no calendário de provas."
+          },
+          {
+            "type": "p",
+            "text": "Se vir **Associe primeiro o seu perfil do UltraSignup nas Definições e depois importe a partir daqui.**, associe o seu perfil como acima e volte."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "import-your-history",
+      "racing-in-a-race",
+      "your-data-and-privacy"
+    ]
+  },
+  {
+    "id": "live-tracking-and-safety",
+    "lang": "pt-PT",
+    "title": "Acompanhamento em direto e contactos de segurança",
+    "summary": "Deixe alguém seguir a sua corrida em direto e faça com que contactos de confiança recebam um e-mail quando termina, deixa de dar sinal ou não regressa a tempo.",
+    "kind": "how-to",
+    "category": "running",
+    "audience": [
+      "runner",
+      "spectator"
+    ],
+    "platforms": [
+      "android",
+      "ios",
+      "web"
+    ],
+    "routes": [
+      "/live/[id]",
+      "/settings/safety",
+      "/safety/confirm"
+    ],
+    "sections": [
+      {
+        "heading": "Partilhar um link em direto",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Inicie sessão na app do telemóvel. Um link em direto só funciona para quem corre com sessão iniciada.",
+              "No ecrã de corrida, antes de começar, toque em **Partilhar link em direto** e envie-o com qualquer app do seu telemóvel.",
+              "Toque em **INICIAR**. O link fica ativo quando a corrida começa."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Quem tiver o link pode abri-lo num navegador e ver a sua posição e as suas estatísticas, sem precisar de conta. As zonas de privacidade continuam a aplicar-se ao mapa em direto."
+          },
+          {
+            "type": "p",
+            "text": "Durante a partilha, aparece um selo **Em direto** no ecrã de gravação. Toque nele para **Partilhar link novamente**, **Parar partilha** ou definir uma hora em **Se não regressar até…**."
+          },
+          {
+            "type": "p",
+            "text": "Quando a corrida termina, o link deixa de ser atualizado. Se as suas corridas normalmente não são públicas, é-lhe perguntado se quer **Manter pública** a corrida guardada para quem tem o link; caso contrário, volta à privacidade habitual das suas corridas."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Para partilhar todas as corridas sem ter de se lembrar, ative **Partilha em direto automática** em **Contactos de segurança**, no separador **Tu**. Aplica-se apenas a esse telemóvel, e a corrida em curso pode ser vista por qualquer pessoa com o link."
+          }
+        ]
+      },
+      {
+        "heading": "Adicionar contactos de segurança",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Um contacto de segurança é alguém em quem confia, como o seu companheiro, um amigo ou um familiar. Sempre que termina uma corrida, mesmo que seja privada, essa pessoa recebe um e-mail e fica a saber que regressou."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Na web, abra [[route:/settings/safety|Segurança]] nas Definições ou, na app do telemóvel, abra **Contactos de segurança** no separador **Tu**.",
+              "Introduza o **E-mail do contacto**. Também pode adicionar um **Telemóvel para SMS (opcional)** em formato internacional, como +447700900123.",
+              "Selecione **Adicionar contacto**. A pessoa recebe um e-mail a pedir-lhe que confirme.",
+              "O estado mostra **Pendente — a aguardar a confirmação** até a pessoa aceitar e, depois, **Confirmado**. Só os contactos confirmados são alertados."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Se alguém o adicionar como contacto, o pedido aparece em **Pedidos para si**, onde pode **Confirmar** ou **Recusar**. Mais tarde, em **É contacto de segurança**, pode alterar a forma como é alertado ou **Sair**."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Os alertas por e-mail são sempre enviados. As mensagens de texto também exigem que o contacto concorde quando confirma, e o envio de SMS ainda não está ativo em todo o lado, por isso não confie apenas no SMS."
+          }
+        ]
+      },
+      {
+        "heading": "Alertas quando algo parece errado",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Estes alertas só abrangem corridas com a partilha em direto ativa, porque é o link em direto que nos diz onde está. Cada contacto recebe no máximo um alerta por corrida."
+          },
+          {
+            "type": "list",
+            "items": [
+              "**Alerta de atraso**: escolha um tempo em **Avisar os contactos após silêncio de** na web, ou em **Avisar após silêncio de** na app. Se a sua corrida em direto não enviar nada durante esse tempo, os seus contactos confirmados recebem por e-mail o seu link em direto. Fica **Desativado** até escolher um tempo.",
+              "**Se não regressar até…**: durante uma corrida com partilha em direto, toque no selo **Em direto** e escolha quando espera terminar. Se a corrida ainda estiver a decorrer nessa altura, os seus contactos são alertados. A hora fica guardada no nosso servidor, por isso continua a contar mesmo que o telemóvel fique sem bateria. Também a pode definir na sua própria página em direto, na web."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Ficar sem rede no telemóvel tem o mesmo aspeto que deixar de dar sinal, e uma corrida que termina sem rede pode ainda disparar um alerta até ser carregada. O e-mail diz aos seus contactos que a falta de rede é uma causa possível."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Um alerta automático para os seus contactos quando sai da rota planeada já está construído, mas ainda não está ativo. Até lá, a definição **Alerta de saída de rota** continua oculta."
+          }
+        ]
+      },
+      {
+        "heading": "Avisos de saída de rota durante a corrida",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Se seguir uma rota guardada, o ecrã de corrida avisa-o quando se afasta dela, mostrando a que distância está, e pode dizê-lo em voz alta se as indicações de áudio estiverem ativas. Este aviso é para si; não contacta ninguém."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "privacy-zones",
+      "record-your-first-run",
+      "racing-in-a-race"
+    ]
+  },
+  {
+    "id": "privacy-zones",
+    "lang": "pt-PT",
+    "title": "Esconder a sua casa com zonas de privacidade",
+    "summary": "Desenhe um círculo à volta de casa, do trabalho ou de qualquer outro sítio para que o início e o fim das corridas e rotas dentro dele fiquem ocultos para todos menos para si.",
+    "kind": "how-to",
+    "category": "running",
+    "audience": [
+      "runner"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/settings/privacy"
+    ],
+    "sections": [
+      {
+        "heading": "O que faz uma zona de privacidade",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Uma zona de privacidade é um círculo no mapa. Quando uma corrida ou rota começa ou termina dentro de uma, essa parte do trajeto é cortada antes de qualquer outra pessoa a ver, por isso a linha parece começar e terminar na orla do círculo."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Aplica-se ao que as outras pessoas veem: corridas e rotas partilhadas, o seu perfil público, o feed, os mapas de calor e a página de acompanhamento em direto.",
+              "Aplica-se às corridas que já gravou, e não só às novas, porque o trajeto é cortado sempre que outra pessoa o vê.",
+              "Vê sempre o seu trajeto completo, e os ficheiros que exporta para si também mantêm o trajeto completo."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Adicionar uma zona na web",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Abra [[route:/settings/privacy|Privacidade e partilha]] nas Definições.",
+              "Em **Zonas de privacidade**, selecione **Adicionar uma zona**.",
+              "Clique no mapa onde a zona deve ficar centrada, ou selecione **Utilizar localização atual**, e depois arraste o marcador para afinar a posição.",
+              "Defina o **Raio**. Tudo o que estiver dentro do círculo vermelho fica oculto nas partilhas públicas.",
+              "Selecione **Adicionar zona**. A zona é guardada de imediato."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Para eliminar uma zona, selecione **Remover** ao lado dela e confirme. Remover uma zona volta a mostrar essa área nas partilhas públicas."
+          }
+        ]
+      },
+      {
+        "heading": "Adicionar uma zona na app do telemóvel",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Abra o separador **Tu**, depois **Preferências** e, em **Privacidade e partilha**, toque em **Zonas de privacidade**.",
+              "Toque no mapa para colocar uma zona. Use **Procurar lugares…** ou **Localizar-me** para mover o mapa primeiro.",
+              "Ajuste o controlo deslizante **Raio**.",
+              "Toque em **Guardar**. Nada muda até guardar."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Para eliminar uma zona, toque no respetivo marcador e confirme, ou use **Limpar tudo** para remover todas as zonas de uma vez. Depois toque em **Guardar**; remover uma zona volta a mostrar essa área nas partilhas públicas."
+          }
+        ]
+      },
+      {
+        "heading": "Escolher uma boa zona",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Centre a zona perto da sua porta de casa, e não exatamente nela, para que a orla do círculo não aponte diretamente para a sua casa.",
+              "Faça-a suficientemente grande para cobrir algumas ruas. Um círculo minúsculo pode ainda revelar onde vive.",
+              "Adicione uma para qualquer sítio de onde parte com regularidade, como o trabalho ou a casa de um amigo."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "As zonas cortam apenas a linha no mapa. O título, a descrição e as fotografias de uma corrida são mostrados tal como os escreveu, por isso não inclua moradas neles."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "your-data-and-privacy",
+      "live-tracking-and-safety",
+      "record-your-first-run"
+    ]
+  },
+  {
+    "id": "record-your-first-run",
+    "lang": "pt-PT",
+    "title": "Gravar a sua primeira corrida",
+    "summary": "Inicie uma corrida no telemóvel, pause-a e pare-a em segurança, obtenha um bom sinal de GPS e veja o que fica guardado no fim.",
+    "kind": "start",
+    "category": "running",
+    "audience": [
+      "runner"
+    ],
+    "platforms": [
+      "android",
+      "ios"
+    ],
+    "sections": [
+      {
+        "heading": "Começar a gravar",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "As corridas são gravadas na app do telemóvel ou num relógio. A aplicação web mostra as suas corridas, mas não consegue gravar nenhuma."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Toque no botão grande no meio da barra inferior. Diz **Correr**, ou **Registar** se tiver ativado o ginásio ou a nutrição; nesse caso, escolha **Registar corrida**.",
+              "Toque em **INICIAR**. Da primeira vez, o telemóvel pede acesso à localização: permita-o, caso contrário a corrida grava apenas o tempo, sem distância nem mapa.",
+              "Uma contagem decrescente de três segundos decorre enquanto o GPS aquece e, depois, o relógio começa a contar."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "No Android, escolha **Permitir sempre** para a localização. Com acesso apenas enquanto a app está aberta, a distância que percorre com o ecrã desligado não é contada, embora o relógio continue a contar."
+          }
+        ]
+      },
+      {
+        "heading": "Pausar e parar",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Não há pausa automática: o relógio conta até o pausar. Use o botão de pausa para uma paragem que quer deixar fora do seu tempo, e o botão de retomar para continuar."
+          },
+          {
+            "type": "p",
+            "text": "Ficar parado num cruzamento sem pausar não faz mal. Depois da corrida, o tempo **Em movimento** deixa de fora os troços em que esteve parado, e o seu ritmo é calculado a partir do tempo em movimento."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Para terminar, mantenha premido o botão de parar. A indicação diz **Mantenha premido para parar**, para que um toque acidental no bolso não termine a corrida.",
+              "O resumo **Corrida concluída** mostra a distância, o **Tempo**, o tempo **Em movimento**, o ritmo e quaisquer outras estatísticas que o telemóvel tenha medido.",
+              "Toque em **Concluído** para voltar ao ecrã inicial."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Obter um bom sinal de GPS",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Comece ao ar livre, longe de prédios altos e de copas de árvores densas, para que a contagem decrescente tenha uma vista desimpedida do céu.",
+              "Se vir **Sinal de GPS perdido — vá para um local aberto**, continue: o relógio continua a contar e a distância volta a ser contada quando o sinal regressa.",
+              "**GPS fraco — distância pausada** significa que a sua posição é demasiado incerta para contar. A distância retoma assim que o sinal melhora.",
+              "Mantenha os serviços de localização ativos e a poupança de bateria desativada para a app, para que o telemóvel não pare a gravação em segundo plano."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Se a app fechar a meio da corrida, abra-a de novo: é-lhe perguntado **Retomar a sua corrida?** e pode retomá-la, terminá-la já ou descartá-la."
+          }
+        ]
+      },
+      {
+        "heading": "O que fica guardado",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Quando para, a corrida é guardada primeiro no telemóvel e depois carregada para a sua conta. O resumo mostra **Sincronizada** quando já está em segurança na nuvem, ou **Guardada offline.** se não tiver sessão iniciada. Uma corrida que não foi possível carregar fica no telemóvel e volta a ser tentada mais tarde."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Distância, tempo decorrido, tempo em movimento e ritmo.",
+              "O seu trajeto GPS, que desenha o mapa e os parciais.",
+              "Elevação, passos e frequência cardíaca, se tiver emparelhado uma cinta de frequência cardíaca."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Quem pode ver a corrida segue a sua definição **Privacidade predefinida das corridas**, que pode alterar depois para qualquer corrida individual. Para esconder onde vive, configure [[guide:privacy-zones|zonas de privacidade]] antes de partilhar o que quer que seja."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "privacy-zones",
+      "live-tracking-and-safety",
+      "import-your-history"
+    ]
+  }
+]

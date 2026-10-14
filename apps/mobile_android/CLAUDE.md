@@ -77,6 +77,10 @@ Nearly everything under Phase 1 "Android" in `roadmap.md` is implemented. Specif
 
 **The per-file inventory is [`files.md`](files.md)** — what each of the 230 files under `lib/` is for, by folder. Grep it for a screen, store or widget before adding one, so you extend the existing file rather than minting a second one beside it.
 
+## In-app help
+
+Guides are web's (`apps/web/src/lib/help/guides/`), generated into `assets/help/guides.en.json` by `scripts/gen_help_guides.mjs` — never edit the JSON or the pubspec asset entry by hand. `lib/help_guides.dart` parses it (tolerant: a bad guide, block or markup degrades, never throws) and holds `helpRouteToScreen`; `screens/help_screen.dart` renders it; a guide's route link parks a `HelpDestination` that `home_screen.dart` drains ([decisions § 1847](../../docs/architecture/decisions.md)). To add a contextual entry, put `HelpButton(routes: [<web route id>])` in the screen's AppBar. Widget tests swap `helpLibraryLoader` for `test/fixtures/help_guides.json` instead of loading the asset.
+
 ## Dart analyzer policy — treat `info` as noise
 
 `dart analyze` on this package reports ~2100 issues. **Every remaining entry is `info`-level** — the package is clean of `warning`/`error` as of this pass. The noise buckets (top categories from `dart analyze | grep -oE ' - [a-z_]+$' | sort | uniq -c | sort -rn`):

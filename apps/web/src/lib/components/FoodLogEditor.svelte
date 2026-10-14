@@ -1,19 +1,19 @@
 <script lang="ts">
-	import { searchFoodSources, scalePortion, type FoodSearchResult } from '$lib/nutrition/food_search';
-	import { entryTimestampFor } from '$lib/nutrition/diary_day';
-	import { createFoodEntry } from '$lib/core/data';
-	import { MEAL_SLOTS, type MealSlot } from '$lib/nutrition/nutrition_totals';
-	import { m, currentLocale } from '$lib/i18n/store.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { env } from '$env/dynamic/public';
-	import { trackDirty } from '$lib/core/form_dirty';
+	import { searchFoodSources, scalePortion, type FoodSearchResult } from '#lib/nutrition/food_search.ts';
+	import { entryTimestampFor } from '#lib/nutrition/diary_day.ts';
+	import { createFoodEntry } from '#lib/core/data.ts';
+	import { MEAL_SLOTS, type MealSlot } from '#lib/nutrition/nutrition_totals.ts';
+	import { m, currentLocale } from '#lib/i18n/store.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { PUBLIC_USDA_FDC_API_KEY } from '$app/env/public';
+	import { trackDirty } from '#lib/core/form_dirty.ts';
 	import UnsavedChangesGuard from './UnsavedChangesGuard.svelte';
-	import { noteModalityData } from '$lib/stores/modality_visibility.svelte';
+	import { noteModalityData } from '#lib/stores/modality_visibility.svelte.ts';
 
 	// Fail-closed USDA gate: with PUBLIC_USDA_FDC_API_KEY unset the USDA source
 	// is simply not queried — Open Food Facts still works, no error, no broken
-	// UI. Read via $env/dynamic/public so an unconfigured build doesn't 500.
-	const usdaApiKey = env.PUBLIC_USDA_FDC_API_KEY ?? '';
+	// UI. Declared optional in src/env.ts so an unconfigured build doesn't fail.
+	const usdaApiKey = PUBLIC_USDA_FDC_API_KEY ?? '';
 
 	interface Props {
 		oncreated: () => void;

@@ -89,7 +89,7 @@ run-app/
 │   ├── watch_garmin/        # Native Monkey C / Connect IQ data field for existing Garmin watches (research-tier Vector 1 spike)
 │   ├── custom_watch/        # Rust + Embassy firmware for the ultra-marathon watch (research-tier, tier-1 bench prototype)
 │   ├── graph_cycle/         # Go street-graph cycle-search sidecar for route loop generation
-│   ├── web/                 # SvelteKit 2 + Svelte 5 runes
+│   ├── web/                 # SvelteKit 3 + Svelte 5 runes
 │   ├── backend/             # Supabase project — migrations, functions, seed
 │   └── job_worker/          # Go background worker (Fly.io)
 ├── packages/

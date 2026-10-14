@@ -431,8 +431,13 @@ test.describe('saga: race director runs a race day end-to-end', () => {
 					timeout: 15_000
 				});
 				await director.getByRole('button', { name: 'End race' }).click();
-				// The end-race ConfirmDialog confirms with the End race action.
-				await director.getByRole('button', { name: 'End race' }).last().click();
+				// The end-race ConfirmDialog confirms with the End race action. It opens
+				// only after the DNF preview loads, so a page-wide `.last()` can resolve
+				// to the trigger behind the backdrop; address the dialog's own button.
+				await director
+					.getByRole('dialog', { name: 'End race' })
+					.getByRole('button', { name: 'End race' })
+					.click();
 
 				await expect
 					.poll(

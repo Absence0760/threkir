@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { motion } from '$lib/motion/motion.svelte';
-	import { m } from '$lib/i18n/store.svelte';
+	import { motion } from '#lib/motion/motion.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
 
 	// WCAG 2.2.2: motion that starts by itself and runs past five seconds needs
 	// a way to stop it. The accessible name stays constant and the state rides

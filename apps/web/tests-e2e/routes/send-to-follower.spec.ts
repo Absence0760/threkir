@@ -26,6 +26,7 @@ const SHARE_PATH = `/share/route/${RUNNER_PUBLIC_ROUTE_ID}`;
 
 async function clearSentDms() {
 	await getAdminClient().from('direct_messages').delete().eq('sender_id', USER_A.id);
+	await getAdminClient().from('route_shares').delete().eq('route_id', RUNNER_PUBLIC_ROUTE_ID);
 }
 
 test.describe('/routes/[id] — send to a follower', () => {
@@ -114,49 +115,42 @@ test.describe('/routes/[id] — send to a follower', () => {
 		expect(data[0].recipient_id).toBe(USER_C_PRO.id);
 	});
 
-	test('a private route confirms the public flip before the picker opens', async ({ page }) => {
-		// Sending a link to one person must not silently widen the route's
-		// exposure: it goes through the same confirm the copy-link share does.
+	test('a private route is shared with the recipient instead of being flipped public', async ({ page }) => {
+		// Sending to one person must not widen the route's exposure. With
+		// audience sharing on (the seed opens it), the send grants that one
+		// person access and carries the in-app link; the route stays private
+		// and no public-flip confirm appears (decisions § 1874).
 		const admin = getAdminClient();
 		await admin.from('routes').update({ is_public: false }).eq('id', RUNNER_PUBLIC_ROUTE_ID);
 
 		await page.goto(`/routes/${RUNNER_PUBLIC_ROUTE_ID}`);
 		await page.waitForLoadState('networkidle');
 
-		const confirm = page.locator('[data-testid="share-confirm-dialog"]');
 		await page.getByTestId('route-send-dm-btn').click();
-		await expect(confirm).toBeVisible();
-		await expect(page.getByTestId('send-route-dialog')).toBeHidden();
+		await expect(page.locator('[data-testid="share-confirm-dialog"]')).toBeHidden();
+		const dialog = page.getByTestId('send-route-dialog');
+		await expect(dialog).toBeVisible({ timeout: 10_000 });
+		await expect(dialog.getByTestId('send-route-note')).toContainText('It stays private');
 
-		await confirm.getByRole('button', { name: 'Cancel' }).click();
-		await expect(page.getByTestId('send-route-dialog')).toBeHidden();
-		{
-			const data = await readRow(
-				'routes by id',
-				admin
-					.from('routes')
-					.select('is_public')
-					.eq('id', RUNNER_PUBLIC_ROUTE_ID)
-					.single()
-			);
-			expect(data.is_public).toBe(false);
-		}
+		await dialog.getByRole('button', { name: /Alex Chen/ }).click();
+		await expect(page.getByTestId('send-route-sent')).toContainText('Alex Chen');
 
-		// Confirming flips it public and then opens the picker.
-		await page.getByTestId('route-send-dm-btn').click();
-		await confirm.getByRole('button', { name: 'Make public & share' }).click();
-		await expect(page.getByTestId('send-route-dialog')).toBeVisible({ timeout: 10_000 });
-		{
-			const data = await readRow(
-				'routes by id',
-				admin
-					.from('routes')
-					.select('is_public')
-					.eq('id', RUNNER_PUBLIC_ROUTE_ID)
-					.single()
-			);
-			expect(data.is_public).toBe(true);
-		}
+		const route = await readRow(
+			'routes by id',
+			admin.from('routes').select('is_public').eq('id', RUNNER_PUBLIC_ROUTE_ID).single()
+		);
+		expect(route.is_public).toBe(false);
+		const grants = await readRows(
+			'route_shares by route_id',
+			admin.from('route_shares').select('recipient_id').eq('route_id', RUNNER_PUBLIC_ROUTE_ID)
+		);
+		expect(grants).toEqual([{ recipient_id: USER_B.id }]);
+		const sent = await readRows(
+			'direct_messages by sender_id',
+			admin.from('direct_messages').select('body').eq('sender_id', USER_A.id)
+		);
+		expect(sent[0].body).toContain(`/routes/${RUNNER_PUBLIC_ROUTE_ID}`);
+		expect(sent[0].body).not.toContain(SHARE_PATH);
 	});
 
 	test('a failed recipient load surfaces a retry, not an empty picker', async ({ page, mockRoute }) => {

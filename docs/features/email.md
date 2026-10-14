@@ -514,6 +514,40 @@ Dashboard → Auth → Hooks in prod):
   no account to reach and is skipped in the trigger. Goes live with the shared
   `SMTP_HOST` worker gate; no new credential.
 
+- [x] **The cancel email says a paid registrant is being refunded** — SHIPPED
+  2026-10-13 (migration `20270725000002`, `decisions.md § 1834`). Not a new
+  kind: an `event_cancel` row carries `notifications.refunded`, set by
+  `notify_event_cancel` for a recipient holding a `paid` / `partially_refunded`
+  order on the occurrence. `copyKeyFor(row)` resolves such a row to the
+  `event_cancel_refunded` catalogue entry, and the email, web-push and
+  native-push renders all go through it, so one flag changes all three. The
+  key sits apart from the kind table (it is not a kind, so the
+  kind-coverage guards ignore it) and carries copy in all seven locales. The
+  wording is "is being refunded", never "has been": `events-cancel` records the
+  cancel before it calls Stripe, so the row is written while the refund is
+  still owed. Deep link and `importantKinds` membership are the plain
+  `event_cancel`'s.
+
+- [x] **A held waitlist seat is announced on every channel** — SHIPPED
+  2026-10-13 (migration `20270726000002`, `event_waitlist_slot` notification
+  kind; `decisions.md § 1840`). When a seat frees on a paid occurrence, the
+  earliest unpaid waitlister is offered it for 12 hours (clamped to sales
+  close) and told so by one `notifications` row that `private.fill_event_seats`
+  inserts with `event_id` + `event_instance_start`. The message is the one
+  whose value lapses if it is not delivered — an unclaimed offer passes to the
+  next person — so the kind is in `importantKinds` (the default `important`
+  mode emails and pushes it) and has no `kindMutePrefKey` entry;
+  `email_notifications = off` / `push_notifications = off` still silence it.
+  Copy in all seven locales on email, web push and native push says the place
+  is HELD and must be paid for, never that it is booked, and that nothing is
+  charged unless they pay; the deadline itself lives on the event page, which
+  `pathForKind` links to (`/events/{id}`, the event family's arm). No stamp
+  column: each offer is a distinct seat event, made under the occurrence's
+  advisory lock, and a row is never offered twice (`offer_expires_at is null`
+  is the candidate filter). The kind widen is the `NOT VALID` half in
+  `20270726000002` and the `VALIDATE` in `20270726000022`. Goes live with the
+  shared `SMTP_HOST` worker gate; no new credential.
+
 ### Not planned (with reason)
 
 - **New-device sign-in alerts** — there's no sign-in/device tracking to key
@@ -736,7 +770,11 @@ The code side is built and committed:
   service-role RPC; the opt-OUT `notify_data_export_ready` pref is a jsonb key
   with no migration), `20270701000001` (reversed refund — the `refund_failed`
   notifications kind on the same two-step, plus one `after update of status`
-  trigger per money ledger; no stamp column and no pref, decisions § 825).
+  trigger per money ledger; no stamp column and no pref, decisions § 825),
+  `20270726000002` + `20270726000022` (waitlist seat offer — the
+  `event_waitlist_slot` notifications kind, widened `NOT VALID` in the first and
+  validated in the second so the scan runs outside the DROP's lock, decisions
+  § 1840).
 - Native-push client leg: the mobile device-token registration —
   `apps/mobile_android/lib/push_messaging_bridge.dart` +
   `firebase_push_messaging.dart` (byte-identical iOS twins), wired in `main.dart`,

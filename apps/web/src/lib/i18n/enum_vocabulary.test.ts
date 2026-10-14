@@ -36,9 +36,6 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// Relative, not `$lib`: this suite runs under `tsx --test`, which resolves the
-// alias only from the `.svelte-kit/tsconfig.json` a `svelte-kit sync` writes,
-// and CI's drift job runs the tests without syncing first.
 import { SUPPORTED_LOCALES } from './locale.js';
 import { CATALOGUE_LOADERS } from './catalogues.js';
 import {

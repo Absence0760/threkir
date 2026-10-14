@@ -14,6 +14,7 @@ import {
 } from './lib.ts';
 import { publishableKey } from '../_shared/api_keys.ts';
 import { reconcileImportBatch } from '../_shared/external_id_batch.ts';
+import { resolveImportAudience } from '../_shared/privacy_default.ts';
 
 Deno.serve(withSentry('parkrun-import', async (req: Request) => {
   const guarded = await readJsonWithLimit<{ athleteNumber?: unknown; probe?: unknown }>(
@@ -66,20 +67,8 @@ Deno.serve(withSentry('parkrun-import', async (req: Request) => {
 
   // Honour the user's privacy_default for imported runs — parity with the
   // web createManualRun/saveRun + Strava/Garmin ZIP-import paths (persona
-  // #27). Only an explicit 'public' default publishes; followers/private/
-  // unset stay private, and any read error falls closed to private.
-  let importIsPublic = false;
-  try {
-    const { data: settings } = await supabase
-      .from('user_settings')
-      .select('prefs')
-      .eq('user_id', user.id)
-      .maybeSingle();
-    const prefs = (settings?.prefs ?? null) as Record<string, unknown> | null;
-    importIsPublic = prefs?.privacy_default === 'public';
-  } catch (_) {
-    importIsPublic = false;
-  }
+  // #27). Any read error falls closed to owner-only.
+  const audience = await resolveImportAudience(supabase, user.id);
 
   // Per-user limit: free 4/h, pro 16/h. parkrun.org doesn't publish
   // a crawl rate; the free ceiling errs on polite scraping while
@@ -184,7 +173,8 @@ Deno.serve(withSentry('parkrun-import', async (req: Request) => {
       // parkrun is always 5K running — no walking-only events.
       // activity_type is a real column now (F3 / 20261207_001).
       activity_type: 'run',
-      is_public: importIsPublic,
+      is_public: audience.isPublic,
+      followers_only: audience.followersOnly,
       external_id: `parkrun:${event}:${date}`,
       metadata: {
         event,

@@ -3,7 +3,7 @@
 //
 // Named for the builders, not for the Lambdas: the register of `PUBLIC_SITE_URL`
 // callers that made `lambda_` the right prefix moved to `core/site_url.test.ts`
-// in decisions § 970, and what is left drives `$lib/share` directly. The
+// in decisions § 970, and what is left drives `#lib/share` directly. The
 // production Lambdas are the reason it matters — nothing else renders these
 // surfaces — but a name that says `lambda` about a test reading no Lambda
 // source over-narrows it exactly as the body-cap guard's did in § 968

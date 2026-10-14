@@ -1,5 +1,5 @@
 // Tests for the pure RevenueCat hosted-checkout URL builder.
-// `revenuecat.ts` (which imports `$env/dynamic/public`) can't be imported
+// `revenuecat.ts` (which imports `$app/env/public`) can't be imported
 // under node:test — this helper carries the testable behaviour.
 //   npx tsx --test src/lib/billing/revenuecat_links.test.ts
 

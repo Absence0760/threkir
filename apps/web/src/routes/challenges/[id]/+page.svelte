@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import {
 		fetchChallengeById,
@@ -9,22 +9,22 @@
 		deleteChallenge,
 		fetchMyClubs,
 		fetchClubNames
-	} from '$lib/core/data';
-	import type { ChallengeWithMeta, ChallengeLeaderboardRow, ClubWithMeta } from '$lib/types';
-	import ChallengeProgressBar from '$lib/components/ChallengeProgressBar.svelte';
-	import ChallengeLeaderboard from '$lib/components/ChallengeLeaderboard.svelte';
-	import ChallengeEditor from '$lib/components/ChallengeEditor.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import DangerZone from '$lib/components/DangerZone.svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { formatDistance, formatElevation } from '$lib/format/units.svelte';
-	import { formatDuration } from '$lib/format/time';
-	import type { ChallengeMetric } from '$lib/types';
+	} from '#lib/core/data.ts';
+	import type { ChallengeWithMeta, ChallengeLeaderboardRow, ClubWithMeta } from '#lib/types.ts';
+	import ChallengeProgressBar from '#lib/components/ChallengeProgressBar.svelte';
+	import ChallengeLeaderboard from '#lib/components/ChallengeLeaderboard.svelte';
+	import ChallengeEditor from '#lib/components/ChallengeEditor.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import DangerZone from '#lib/components/DangerZone.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { formatDistance, formatElevation } from '#lib/format/units.svelte.ts';
+	import { formatDuration } from '#lib/format/time.ts';
+	import type { ChallengeMetric } from '#lib/types.ts';
 
-	const id = $derived($page.params.id ?? '');
+	const id = $derived(page.params.id ?? '');
 
 	function formatGoal(metric: ChallengeMetric, v: number): string {
 		switch (metric) {

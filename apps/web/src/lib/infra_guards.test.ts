@@ -334,7 +334,7 @@ test('both CSP layers allow MapLibre blob: workers (worker-src)', () => {
 		/worker-src[^"]*blob:/,
 		'CloudFront header CSP must allow worker-src blob: for MapLibre.',
 	);
-	const sv = read('svelte.config.js');
+	const sv = read('vite.config.ts');
 	const directives = sv.match(/directives:\s*\{([\s\S]*?)\}/);
 	assert.ok(directives, 'Could not locate the SvelteKit csp.directives block.');
 	assert.match(

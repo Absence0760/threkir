@@ -564,7 +564,7 @@ test('no web surface folds an exercise name with the runtime case mapping', () =
 	assert.deepEqual(
 		offenders,
 		[],
-		'Fold an exercise name with normaliseExerciseName from $lib/gym/gym_prs, ' +
+		'Fold an exercise name with normaliseExerciseName from #lib/gym/gym_prs, ' +
 			'never the runtime case mapping — it splits an internal whitespace run ' +
 			'and answers a different letter from the frozen table:\n' +
 			offenders.map((h) => `  ${h.path}:${h.line}  ${h.text}`).join('\n'),
@@ -676,7 +676,7 @@ test('no web surface compares two exercise spellings raw', () => {
 		offenders,
 		[],
 		'Compare exercise spellings through sameExerciseName / normaliseExerciseName ' +
-			'from $lib/gym/gym_prs, never with ===. Adjacency measured on the display ' +
+			'from #lib/gym/gym_prs, never with ===. Adjacency measured on the display ' +
 			'spelling renders one lift as two blocks beside a header stat that counts ' +
 			'one, and in routineFromWorkout it PERSISTED two rows under one key ' +
 			'(decisions 1322):\n' +
@@ -762,7 +762,7 @@ test('no web surface decides an exercise name is blank on the display spelling',
 	assert.deepEqual(
 		offenders,
 		[],
-		'Decide blankness with namesAnExercise from $lib/gym/gym_prs, never with ' +
+		'Decide blankness with namesAnExercise from #lib/gym/gym_prs, never with ' +
 			"`name.trim() === ''`. The two answers differ on U+0085 (in the shared " +
 			'whitespace class, not in the set JS trim() strips), so a name made of ' +
 			'one is saved as a set every keyed surface counts as nothing and both ' +

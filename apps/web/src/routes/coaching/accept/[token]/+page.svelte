@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { redeemCoachInvite } from '$lib/core/data';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { m } from '$lib/i18n/store.svelte';
+	import { redeemCoachInvite } from '#lib/core/data.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
 
-	let token = $derived($page.params.token as string);
+	let token = $derived(page.params.token as string);
 	let status = $state<'joining' | 'error' | 'not-authed'>('joining');
 	let errorMsg = $state<string | null>(null);
 
@@ -52,7 +52,7 @@
 		}
 	}
 
-	let returnTo = $derived(encodeURIComponent($page.url.pathname));
+	let returnTo = $derived(encodeURIComponent(page.url.pathname));
 </script>
 
 <div class="invite-page">

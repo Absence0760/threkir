@@ -4,12 +4,12 @@ import {
 	explicitModalityChoice,
 	modalityShown,
 	type Modality,
-} from '$lib/settings/modality_visibility';
-import type { LoadedSettings } from '$lib/settings/settings_overlay';
-import { updateUniversal } from '$lib/settings/settings';
-import { fetchModalityHasData } from '$lib/core/data';
-import { showToast } from '$lib/stores/toast.svelte';
-import { m } from '$lib/i18n/store.svelte';
+} from '#lib/settings/modality_visibility.ts';
+import type { LoadedSettings } from '#lib/settings/settings_overlay.ts';
+import { updateUniversal } from '#lib/settings/settings.ts';
+import { fetchModalityHasData } from '#lib/core/data.ts';
+import { showToast } from '#lib/stores/toast.svelte.ts';
+import { m } from '#lib/i18n/store.svelte.ts';
 import { goto } from '$app/navigation';
 
 /// Session-wide answer to "is Gym / Nutrition surfaced?", read by the sidebar,

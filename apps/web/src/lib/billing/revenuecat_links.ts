@@ -1,5 +1,5 @@
 /// Pure URL-building helpers for the RevenueCat hosted-checkout flow,
-/// split out of `revenuecat.ts` so they carry no `$env/dynamic/public`
+/// split out of `revenuecat.ts` so they carry no `$app/env/public`
 /// import and stay node:test-runnable (the env-reading shell can't be
 /// imported under `npx tsx --test`). Same split as
 /// `live_hub.ts` ↔ `live_hub_helpers.ts`.

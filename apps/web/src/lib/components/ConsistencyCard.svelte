@@ -3,8 +3,8 @@
 		computeConsistency,
 		type ConsistencyActivity,
 		type WeekStart,
-	} from '$lib/training/consistency';
-	import { m } from '$lib/i18n/store.svelte';
+	} from '#lib/training/consistency.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
 
 	interface Props {
 		activities: readonly ConsistencyActivity[];

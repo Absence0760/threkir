@@ -69,7 +69,7 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 			// `20261004_001` introduced these columns; GDPR Art 15
 			// requires the export to reflect them.
 			select:
-				'id,provider,external_id,scope,last_sync_at,sync_cursor,disconnected_at,disconnected_reason,created_at,updated_at',
+				'id,provider,external_id,scope,last_sync_at,sync_cursor,disconnected_at,disconnected_reason,external_first_name,external_last_name,created_at,updated_at',
 		},
 		{ entry: 'run_kudos.json', table: 'run_kudos', filter: uidEq, select: '*' },
 		{
@@ -346,6 +346,14 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 			filter: `contact_user_id=eq.${uid}`,
 			select: 'id,owner_id,contact_user_id,contact_email,confirmed_at,created_at,updated_at',
 		},
+		// run_shares / route_shares — named-person read grants (migration
+		// 20270802000002), both legs: grants the subject made (owner_id) and
+		// grants made to them (recipient_id). Revoked grants are deleted, so
+		// there is no history to ship. Mirrors the Go worker's entries.
+		{ entry: 'run_shares_owned.json', table: 'run_shares', filter: `owner_id=eq.${uid}`, select: '*' },
+		{ entry: 'run_shares_received.json', table: 'run_shares', filter: `recipient_id=eq.${uid}`, select: '*' },
+		{ entry: 'route_shares_owned.json', table: 'route_shares', filter: `owner_id=eq.${uid}`, select: '*' },
+		{ entry: 'route_shares_received.json', table: 'route_shares', filter: `recipient_id=eq.${uid}`, select: '*' },
 		// session_plans (+ blocks + items via nested embeds). The yoga/pilates
 		// session-planner P1 authored content (migration 20270103_001).
 		// Author-scoped; session_plan_blocks / session_plan_items have no owner
@@ -458,6 +466,7 @@ const ROUTE_OPTIONAL_COLUMNS = [
 	'elevation_m',
 	'surface',
 	'is_public',
+	'followers_only',
 	'slug',
 	'tags',
 	'is_featured',

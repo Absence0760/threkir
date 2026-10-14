@@ -12,9 +12,9 @@
  * Mirrors the coach_flag.ts fail-closed pattern; local dev + e2e turn it on via
  * `PUBLIC_GOOGLE_AUTH_ENABLED=true` in .env.development.
  */
-import { env } from '$env/dynamic/public';
+import { PUBLIC_GOOGLE_AUTH_ENABLED } from '$app/env/public';
 import { isTruthyFlagValue } from './env_flag';
 
 export function googleAuthEnabled(): boolean {
-	return isTruthyFlagValue(env.PUBLIC_GOOGLE_AUTH_ENABLED);
+	return isTruthyFlagValue(PUBLIC_GOOGLE_AUTH_ENABLED);
 }

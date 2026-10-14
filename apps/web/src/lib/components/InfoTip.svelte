@@ -10,7 +10,7 @@
 	/// it can sit on a surface whose copy lives in a catalogue it knows nothing
 	/// about.
 	import { onDestroy, onMount } from 'svelte';
-	import { m } from '$lib/i18n/store.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
 
 	interface Props {
 		/// Accessible name for the trigger. Must name the SUBJECT ("About
@@ -23,9 +23,13 @@
 		/// Optional deep link to the fuller guide.
 		learnHref?: string;
 		learnLabel?: string;
+		/// Id of the in-app help guide that explains this further
+		/// (`lib/help/guides/<id>.ts`); adds a "Read the guide" link to it.
+		/// `help_guides_guard.test.ts` fails the unit job when it names no guide.
+		guide?: string;
 		testId?: string;
 	}
-	let { label, title, body, learnHref, learnLabel, testId }: Props = $props();
+	let { label, title, body, learnHref, learnLabel, guide, testId }: Props = $props();
 
 	let open = $state(false);
 	let trigger: HTMLButtonElement | null = $state(null);
@@ -105,6 +109,9 @@
 			{/each}
 			{#if learnHref && learnLabel}
 				<a class="info-tip-learn" href={learnHref}>{learnLabel}</a>
+			{/if}
+			{#if guide}
+				<a class="info-tip-learn" href="/help/{guide}">{m('help.readGuide')}</a>
 			{/if}
 		</div>
 	{/if}
@@ -219,6 +226,7 @@
 
 	.info-tip-learn {
 		display: inline-block;
+		margin-inline-end: var(--space-md);
 		margin-top: var(--space-sm);
 		font-size: 0.85rem;
 		font-weight: 600;

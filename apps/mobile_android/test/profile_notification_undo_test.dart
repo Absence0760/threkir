@@ -25,6 +25,7 @@ NotificationRow _row(String id, {String actorId = 'a1'}) => NotificationRow(
       actorId: actorId,
       kind: 'follow',
       createdAt: DateTime.utc(2026, 8, 5, 12),
+      refunded: false,
     );
 
 class _NotifApi extends ApiClient {

@@ -34,7 +34,7 @@ import { resolveBaseUrl } from './fixtures/base-url';
  *   `paths.base` and absolute `_app/` URLs, so `/runs/<id>` cannot
  *   break them. The claim also named `fallback: "index.html"`, which
  *   the build has not produced since the shell was renamed to
- *   `200.html` (svelte.config.js, decisions § 1268).
+ *   `200.html` (vite.config.ts, decisions § 1268).
  *
  * Local dev: `cd apps/web && pnpm test:e2e` (auto-boots dev server).
  * Or `pnpm test:e2e:ui` for the UI picker.

@@ -7,7 +7,7 @@
 // (graph search owns correctness). A hallucinated or malicious value is
 // dropped to a safe default, not executed.
 //
-// Kept free of the Anthropic SDK and the `$env` graph so the clamp logic
+// Kept free of the Anthropic SDK and the `$app/env` graph so the clamp logic
 // is unit-testable in isolation (constraints.test.ts).
 
 import {

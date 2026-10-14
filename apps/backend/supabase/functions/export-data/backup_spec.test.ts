@@ -49,8 +49,9 @@ Deno.test('buildBackupSpecs covers the Go worker table set', () => {
 	// ingredients), and the exercise-catalogue batch (migration
 	// 20270222_001) added exercises filtered to the subject's OWN custom
 	// entries (author_id = uid) — seeded global rows are shared reference
-	// data, not personal data.
-	assertEquals(specs.length, 61, `expected 61 specs, got ${specs.length}`);
+	// data, not personal data. Audience sharing (migration 20270802000002)
+	// added run_shares + route_shares, each on both legs (owner + recipient).
+	assertEquals(specs.length, 65, `expected 65 specs, got ${specs.length}`);
 	const entries = new Set(specs.map((s) => s.entry));
 	for (const expected of [
 		'coach_messages.json',
@@ -114,6 +115,10 @@ Deno.test('buildBackupSpecs covers the Go worker table set', () => {
 		'challenge_participants.json',
 		'challenge_badges.json',
 		'public_recaps.json',
+		'run_shares_owned.json',
+		'run_shares_received.json',
+		'route_shares_owned.json',
+		'route_shares_received.json',
 	]) {
 		assertEquals(entries.has(expected), true, `missing entry: ${expected}`);
 	}
@@ -424,6 +429,16 @@ Deno.test('integrations spec includes disconnect timestamps (GDPR Art 15)', () =
 	assertExists(integ);
 	assertEquals(integ.select.includes('disconnected_at'), true);
 	assertEquals(integ.select.includes('disconnected_reason'), true);
+});
+
+Deno.test('integrations spec includes the provider-side name an identity was found by', () => {
+	// 20270726000003 stores the name an UltraSignup person was looked up under
+	// beside its id. It is the runner's own name as they typed it, so it is
+	// personal data the right-of-access export must carry.
+	const integ = buildBackupSpecs(TEST_UID).find((s) => s.entry === 'integrations.json');
+	assertExists(integ);
+	assertEquals(integ.select.includes('external_first_name'), true);
+	assertEquals(integ.select.includes('external_last_name'), true);
 });
 
 Deno.test('device_tokens spec carries a token-redactor', () => {

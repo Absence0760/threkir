@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { activeFormatLocale } from '$lib/format/time';
-	import { fmtKm, fmtPace } from '$lib/format/units.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
-	import type { YearInRunningRecap } from '$lib/runs/recap';
+	import { activeFormatLocale } from '#lib/format/time.ts';
+	import { fmtKm, fmtPace } from '#lib/format/units.svelte.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import type { YearInRunningRecap } from '#lib/runs/recap.ts';
 
 	interface Props {
 		recap: YearInRunningRecap;

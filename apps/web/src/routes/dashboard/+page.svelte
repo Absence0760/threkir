@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { formatPace, formatDistance, sourceLabel } from '$lib/core/mock-data';
-	import { sourceColor, sourceInk } from '$lib/runs/source_badge';
-	import { formatDate, formatDateShort, formatDuration, activeFormatLocale } from '$lib/format/time';
+	import { formatPace, formatDistance, sourceLabel } from '#lib/core/mock-data.ts';
+	import { sourceColor, sourceInk } from '#lib/runs/source_badge.ts';
+	import { formatDate, formatDateShort, formatDuration, activeFormatLocale } from '#lib/format/time.ts';
 	import {
 		fetchRunsForDashboard,
 		fetchRunAllTimeStats,
@@ -16,83 +16,83 @@
 		insertFitnessSnapshot,
 		type FitnessSnapshotRow,
 		type PeriodSummaryRun,
-	} from '$lib/core/data';
-	import { dashboardRunsWindowStart, visibleRunSources } from '$lib/core/dashboard_runs';
-	import { bucketWeeklyMileage } from '$lib/core/weekly_mileage';
+	} from '#lib/core/data.ts';
+	import { dashboardRunsWindowStart, visibleRunSources } from '#lib/core/dashboard_runs.ts';
+	import { bucketWeeklyMileage } from '#lib/core/weekly_mileage.ts';
 	import {
 		computeSnapshot,
 		recoveryAdvice,
 		daysUntilNextHardSession,
 		isReturningFromLayoff,
 		isReturningFromGap,
-	} from '$lib/training/fitness';
-	import { computeRunStreaks, type RunStreaks } from '$lib/runs/streaks';
-	import { streakCardState } from '$lib/runs/streak_card';
-	import { ageGradeForRun, formatAgeGradePercent } from '$lib/runs/age_grade';
-	import { coachEnabled } from '$lib/coach/coach_flag';
+	} from '#lib/training/fitness.ts';
+	import { computeRunStreaks, type RunStreaks } from '#lib/runs/streaks.ts';
+	import { streakCardState } from '#lib/runs/streak_card.ts';
+	import { ageGradeForRun, formatAgeGradePercent } from '#lib/runs/age_grade.ts';
+	import { coachEnabled } from '#lib/coach/coach_flag.ts';
 
 	// Hide the "Ask the Coach" promo when the Coach is off (rock-bottom deploy).
 	const coachOn = coachEnabled();
-	import { computeReadiness, type ReadinessContributorKind } from '$lib/training/readiness';
-	import { computeTrainingLoadSeries, hasTrimpSignal } from '$lib/training/training_load';
+	import { computeReadiness, type ReadinessContributorKind } from '#lib/training/readiness.ts';
+	import { computeTrainingLoadSeries, hasTrimpSignal } from '#lib/training/training_load.ts';
 	import {
 		DISCLOSURE_LEVEL_KEY,
 		resolveDisclosureLevel,
-	} from '$lib/settings/disclosure';
-	import { PRIMARY_GOAL_KEY } from '$lib/settings/onboarding';
-	import { fetchGymSetHistory, fetchGymWorkouts } from '$lib/core/data';
-	import { fetchFoodLog, fetchLatestWeightKg, type FoodEntry } from '$lib/core/data';
-	import { supabase } from '$lib/core/supabase';
-	import type { GymWorkout, GymSetWithDate, DashboardRun } from '$lib/core/data';
-	import { liftsFromSetHistory } from '$lib/gym/lift_load';
-	import { distinctExerciseCount } from '$lib/gym/gym_prs';
+	} from '#lib/settings/disclosure.ts';
+	import { PRIMARY_GOAL_KEY } from '#lib/settings/onboarding.ts';
+	import { fetchGymSetHistory, fetchGymWorkouts } from '#lib/core/data.ts';
+	import { fetchFoodLog, fetchLatestWeightKg, type FoodEntry } from '#lib/core/data.ts';
+	import { supabase } from '#lib/core/supabase.ts';
+	import type { GymWorkout, GymSetWithDate, DashboardRun } from '#lib/core/data.ts';
+	import { liftsFromSetHistory } from '#lib/gym/lift_load.ts';
+	import { distinctExerciseCount } from '#lib/gym/gym_prs.ts';
 	import {
 		computeNutritionTargets,
 		ageFromDob,
 		type ActivityLevel,
 		type WeightGoal,
 		type NutritionTargets,
-	} from '$lib/nutrition/nutrition_targets';
-	import { healthUseDob } from '$lib/core/health_consent';
-	import { exerciseCaloriesForDay } from '$lib/nutrition/exercise_calories';
-	import { isWithinWindow } from '$lib/nutrition/diary_day';
-	import { sumMacros } from '$lib/nutrition/nutrition_totals';
-	import NutritionRingsCard from '$lib/components/NutritionRingsCard.svelte';
-	import TrainingLoadChart from '$lib/components/TrainingLoadChart.svelte';
-	import RacePredictorCard from '$lib/components/RacePredictorCard.svelte';
-	import ConsistencyCard from '$lib/components/ConsistencyCard.svelte';
-	import IntensityBalanceCard from '$lib/components/IntensityBalanceCard.svelte';
-	import TrendDeltasCard from '$lib/components/TrendDeltasCard.svelte';
-	import LoadRampCard from '$lib/components/LoadRampCard.svelte';
-	import ComebackCard from '$lib/components/ComebackCard.svelte';
-	import DashboardFirstRun from '$lib/components/DashboardFirstRun.svelte';
+	} from '#lib/nutrition/nutrition_targets.ts';
+	import { healthUseDob } from '#lib/core/health_consent.ts';
+	import { exerciseCaloriesForDay } from '#lib/nutrition/exercise_calories.ts';
+	import { isWithinWindow } from '#lib/nutrition/diary_day.ts';
+	import { sumMacros } from '#lib/nutrition/nutrition_totals.ts';
+	import NutritionRingsCard from '#lib/components/NutritionRingsCard.svelte';
+	import TrainingLoadChart from '#lib/components/TrainingLoadChart.svelte';
+	import RacePredictorCard from '#lib/components/RacePredictorCard.svelte';
+	import ConsistencyCard from '#lib/components/ConsistencyCard.svelte';
+	import IntensityBalanceCard from '#lib/components/IntensityBalanceCard.svelte';
+	import TrendDeltasCard from '#lib/components/TrendDeltasCard.svelte';
+	import LoadRampCard from '#lib/components/LoadRampCard.svelte';
+	import ComebackCard from '#lib/components/ComebackCard.svelte';
+	import DashboardFirstRun from '#lib/components/DashboardFirstRun.svelte';
 	import {
 		modalityExplicit,
 		modalityVisible,
 		revealOnNavigate,
-	} from '$lib/stores/modality_visibility.svelte';
-	import DashboardWeekLead from '$lib/components/DashboardWeekLead.svelte';
-	import { weeklyGoalTarget } from '$lib/training/week_lead';
-	import MetricLabel from '$lib/components/MetricLabel.svelte';
-	import { workoutKindLabel } from '$lib/training/workout_labels';
-	import WorkoutEditor from '$lib/components/WorkoutEditor.svelte';
-	import PeriodSummary from '$lib/components/PeriodSummary.svelte';
-	import ThisWeekStrip from '$lib/components/ThisWeekStrip.svelte';
-	import ChallengesPanel from '$lib/components/ChallengesPanel.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import UnsavedChangesGuard from '$lib/components/UnsavedChangesGuard.svelte';
-	import { trackDirty } from '$lib/core/form_dirty';
-	import type { PlanWorkout } from '$lib/types';
-	import { loadSettings, peekCachedSettings, effective, updateUniversal } from '$lib/settings/settings';
-	import { relativeAge } from '$lib/runs/pr_recency';
-	import type { LoadedSettings } from '$lib/settings/settings';
-	import { fmtKm, fmtPace, formatElevation, formatWeight, setUnit } from '$lib/format/units.svelte';
-	import { paceMinutesSeconds } from '$lib/format/pace_format';
-	import { currentLocale, m } from '$lib/i18n/store.svelte';
-	import type { MessageKey } from '$lib/i18n/messages';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
+	} from '#lib/stores/modality_visibility.svelte.ts';
+	import DashboardWeekLead from '#lib/components/DashboardWeekLead.svelte';
+	import { weeklyGoalTarget } from '#lib/training/week_lead.ts';
+	import MetricLabel from '#lib/components/MetricLabel.svelte';
+	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
+	import WorkoutEditor from '#lib/components/WorkoutEditor.svelte';
+	import PeriodSummary from '#lib/components/PeriodSummary.svelte';
+	import ThisWeekStrip from '#lib/components/ThisWeekStrip.svelte';
+	import ChallengesPanel from '#lib/components/ChallengesPanel.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import UnsavedChangesGuard from '#lib/components/UnsavedChangesGuard.svelte';
+	import { trackDirty } from '#lib/core/form_dirty.ts';
+	import type { PlanWorkout } from '#lib/types.ts';
+	import { loadSettings, peekCachedSettings, effective, updateUniversal } from '#lib/settings/settings.ts';
+	import { relativeAge } from '#lib/runs/pr_recency.ts';
+	import type { LoadedSettings } from '#lib/settings/settings.ts';
+	import { fmtKm, fmtPace, formatElevation, formatWeight, setUnit } from '#lib/format/units.svelte.ts';
+	import { paceMinutesSeconds } from '#lib/format/pace_format.ts';
+	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
+	import type { MessageKey } from '#lib/i18n/messages.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import {
 		loadGoals,
 		saveGoals,
@@ -102,8 +102,8 @@
 		periodLabel,
 		weekStartLocal,
 		type RunGoal,
-	} from '$lib/training/goals';
-	import type { Run, RunSource, ActivePlanOverview } from '$lib/types';
+	} from '#lib/training/goals.ts';
+	import type { Run, RunSource, ActivePlanOverview } from '#lib/types.ts';
 
 	// Recent runs only (~2-year window, column-narrowed) — the dashboard's
 	// cards are all recency-scoped. Lifetime totals come from `allTimeStats`.
@@ -817,7 +817,7 @@
 	/// Calendar-position helpers for the active-plan hero card. Match
 	/// the shape of the corresponding helpers on /plans/+page.svelte so
 	/// the two surfaces line up (week index, calendar percentage, time
-	/// relation). Inlined here rather than lifted to $lib so the only
+	/// relation). Inlined here rather than lifted to #lib so the only
 	/// other caller — the plan list — keeps owning its own copy until a
 	/// third surface needs them.
 	/// Locale-aware goal-event label. 5K / 10K are language-neutral

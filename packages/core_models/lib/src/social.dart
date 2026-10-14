@@ -156,6 +156,21 @@ class NotificationView {
     this.clubName,
     this.clubSlug,
   });
+
+  /// This notification with its row stamped read at [at]. The row half goes
+  /// through the generated `copyWith`, so no column — the link to the
+  /// notification's target among them — can be dropped by the rebuild
+  /// (decisions § 1836). An already-read row keeps its original stamp.
+  NotificationView markedRead(DateTime at) => NotificationView(
+        row: row.readAt != null ? row : row.copyWith(readAt: at),
+        actor: actor,
+        runDistanceM: runDistanceM,
+        commentExcerpt: commentExcerpt,
+        eventTitle: eventTitle,
+        eventClubSlug: eventClubSlug,
+        clubName: clubName,
+        clubSlug: clubSlug,
+      );
 }
 
 /// Per-run kudos + comment count rollup with the viewer's own

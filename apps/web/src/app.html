@@ -2,7 +2,7 @@
 <!-- Prerender default only. The web app is statically prerendered with no
      per-request SSR (adapter-static), so lang/dir are baked as en/ltr at
      build time and then updated client-side before the first render by the
-     i18n runtime ($lib/i18n/store.svelte loadRouteCatalogues → document.documentElement),
+     i18n runtime (#lib/i18n/store.svelte loadRouteCatalogues → document.documentElement),
      mirroring the theme + unit signals. dir is the single RTL switch-point:
      the app shell uses CSS logical properties so flipping it to "rtl"
      mirrors the frame with no further plumbing. audit/i18n-readiness W-2. -->
@@ -14,7 +14,7 @@
 		     paints the correct default background (and form-control /
 		     scrollbar colours) BEFORE app.css loads. This is the earliest,
 		     CSP-safe mitigation for the dark/auto first-paint flash: the
-		     hash-based CSP (svelte.config.js) forbids a hand-written inline
+		     hash-based CSP (vite.config.ts) forbids a hand-written inline
 		     bootstrap <script>, so this meta is the tool that runs before
 		     paint. The theme reconciles to the persisted [data-theme] on
 		     first mount (settings/theme.ts). -->

@@ -12,6 +12,7 @@ import '../event_gym_template.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../fab_clearance.dart';
 import '../local_gym_store.dart';
+import '../session_step_label.dart';
 import '../session_steps.dart';
 import '../widgets/error_state.dart';
 import '../widgets/top_banner.dart';
@@ -133,29 +134,6 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
     }
   }
 
-  String _stepName(AppLocalizations l10n, SessionStep s) {
-    switch (s.side) {
-      case SessionSide.left:
-        return l10n.sessionSideLeft(s.movementName);
-      case SessionSide.right:
-        return l10n.sessionSideRight(s.movementName);
-      case null:
-        return s.movementName;
-    }
-  }
-
-  String _stepLabel(AppLocalizations l10n, SessionStep s) {
-    final name = _stepName(l10n, s);
-    switch (s.kind) {
-      case SessionItemKind.reps:
-        return l10n.sessionStepReps(name, s.reps ?? 0);
-      case SessionItemKind.flow:
-        return l10n.sessionStepFlow(name, s.durationS ?? 0);
-      case SessionItemKind.hold:
-        return l10n.sessionStepHold(name, s.durationS ?? 0);
-    }
-  }
-
   Future<void> _play() async {
     if (widget.gymStore == null) return;
     final l10n = AppLocalizations.of(context);
@@ -248,7 +226,7 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
                     for (final s in _steps)
                       ListTile(
                         dense: true,
-                        title: Text(_stepLabel(l10n, s)),
+                        title: Text(sessionStepLabel(l10n, s)),
                         subtitle: s.cue == null ? null : Text(s.cue!),
                       ),
                   ],

@@ -44,6 +44,7 @@ RunRow _run({
   source: 'app',
   activityType: 'run',
   isDnf: isDnf,
+  followersOnly: false,
   concludedAt: concludedAt,
 );
 

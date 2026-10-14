@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import { formatDuration } from '$lib/format/time';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import { formatDuration } from '#lib/format/time.ts';
 	import {
 		fetchSegmentsForRouteWithError,
 		fetchSegmentLeaderboardTieredWithError,
@@ -12,12 +12,12 @@
 		type SegmentLeaderboardEntry,
 		type SegmentGenderFilter,
 		type SegmentAgeBand,
-	} from '$lib/core/data';
-	import { crownLabel } from '$lib/segments/segments';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { distanceInPreferred } from '$lib/format/units.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
+	} from '#lib/core/data.ts';
+	import { crownLabel } from '#lib/segments/segments.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { distanceInPreferred } from '#lib/format/units.svelte.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
 	import ConfirmDialog from './ConfirmDialog.svelte';
 
 	interface Props {

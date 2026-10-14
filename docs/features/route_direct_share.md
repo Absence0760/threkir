@@ -60,6 +60,10 @@ A route polyline can start at someone's front door, so "who can now see this lin
 - **Only the owner can flip it.** The button is gated to `is_public || isOwner`, and `setRoutePublic` is owner-scoped by RLS regardless — a non-owner can send a link to an already-public route and nothing else.
 - **Targeted is not narrower than public, and the copy says so.** The dialog states outright that the recipient gets the public share link, so anyone they forward it to can open it too. Sending to one person is a delivery choice, not an access-control one; pretending otherwise would be the actual privacy failure here. Narrowing that — a per-recipient grant on a route that stays private — is a different feature and would need its own table and RLS, not a DM body.
 
+## Private send
+
+Built with audience sharing ([sharing.md](sharing.md), decisions § 1874), and only while its server gate is on. When the owner sends a **non-public** route to a follower, the send no longer goes through the public flip: `SendRouteDialog` first writes a `route_shares` grant for that one recipient, then sends the in-app `/routes/{id}` link, which opens only for the people the route is shared with. The dialog says so ("It stays private"), a refused grant stops the send, and the owner can revoke it from **Who can see this**. With the gate off, the public-flip path above is unchanged. The phone has no DM screen, so on mobile the same narrowing is reached through Specific people in the audience sheet.
+
 ## Non-goals
 
 - A separate route-shares table or a bespoke notification kind — the DM rail already carries delivery + unread + the inbox.

@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { computeIntensity } from '$lib/training/intensity';
-	import type { RunForFitness } from '$lib/training/fitness';
-	import { fmtPace } from '$lib/format/units.svelte';
-	import { m } from '$lib/i18n/store.svelte';
+	import { computeIntensity } from '#lib/training/intensity.ts';
+	import type { RunForFitness } from '#lib/training/fitness.ts';
+	import { fmtPace } from '#lib/format/units.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
 
 	interface Props {
 		runs: readonly RunForFitness[];

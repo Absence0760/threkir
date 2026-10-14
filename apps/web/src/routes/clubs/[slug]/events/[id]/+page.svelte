@@ -1,15 +1,16 @@
 <script lang="ts">
-	import { siteOrigin } from '$lib/core/site_url';
-	import { lengthLimit } from '$lib/core/column_limits';
+	import { siteOrigin } from '#lib/core/site_url.ts';
+	import HelpLink from '#lib/components/help/HelpLink.svelte';
+	import { lengthLimit } from '#lib/core/column_limits.ts';
 	import { onMount, onDestroy } from 'svelte';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import StaticMapImage from '$lib/components/StaticMapImage.svelte';
-	import { initial, hashHue } from '$lib/format/avatar';
-	import { formatDuration as baseDuration, activeFormatLocale } from '$lib/format/time';
-	import { page } from '$app/stores';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import StaticMapImage from '#lib/components/StaticMapImage.svelte';
+	import { initial, hashHue } from '#lib/format/avatar.ts';
+	import { formatDuration as baseDuration, activeFormatLocale } from '#lib/format/time.ts';
+	import { page } from '$app/state';
 	import { afterNavigate, goto } from '$app/navigation';
-	import { buildEventShareCanonical } from '$lib/share/share_event_meta';
-	import { supabase } from '$lib/core/supabase';
+	import { buildEventShareCanonical } from '#lib/share/share_event_meta.ts';
+	import { supabase } from '#lib/core/supabase.ts';
 	import type { RealtimeChannel } from '@supabase/supabase-js';
 	import {
 		fetchEventById,
@@ -35,6 +36,10 @@
 		endRace,
 		approveEventResult,
 		approveEventResultById,
+		editEventResultAsHost,
+		fetchRaceDnfPreview,
+		fetchEventCourses,
+		fetchMyEventCourse,
 		bulkImportEventResults,
 		requestEventResultClaim,
 		fetchMyEventResultClaims,
@@ -43,7 +48,9 @@
 		type EventResultClaimWithUser,
 		fetchEventExceptions,
 		cancelEventInstance,
+		cancelEventSeries,
 		cancelPaidEventInstance,
+		PAID_EVENT_DELETE_REFUSAL,
 		fetchCancelledOccurrenceRefunds,
 		reinstateEventInstance,
 		fetchEventPhotos,
@@ -52,6 +59,7 @@
 		fetchEventPricing,
 		startEventCheckout,
 		fetchMyOrder,
+		fetchMyWaitlistPlace,
 		cancelEventOrder,
 		type EventResultWithUser,
 		type RecentRunOption,
@@ -61,44 +69,67 @@
 		fetchSessionPlan,
 		fetchSessionPlans,
 		setEventSessionPlan,
+		fetchGymRoutineDetail,
+		fetchClubGymRoutineTemplates,
+		setEventGymRoutine,
+		type GymRoutineDetail,
+		type GymRoutineSummary,
 		type SessionPlan,
 		type SessionPlanWithItems
-	} from '$lib/core/data';
-	import { auth } from '$lib/stores/auth.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import EventEditor from '$lib/components/EventEditor.svelte';
-	import GymEditor from '$lib/components/GymEditor.svelte';
-	import CheckpointManager from '$lib/components/CheckpointManager.svelte';
-	import FundraiserSection from '$lib/components/FundraiserSection.svelte';
-	import { expandInstances, describeRecurrence } from '$lib/social/recurrence';
-	import { isAthleticCategory } from '$lib/social/event_category';
-	import type { FinisherStatus } from '$lib/types';
-	import { sameInstant } from '$lib/social/event_instance';
-	import { upcomingCancelledOccurrences } from '$lib/social/event_occurrence';
-	import { workoutDraftFromTemplate, workoutDraftFromSession } from '$lib/social/event_gym_template';
-	import { expandSessionSteps, type SessionPlanInput } from '$lib/social/session_steps';
-	import { formatDistance, getUnit, fmtPace } from '$lib/format/units.svelte';
-	import { formatPrice } from '$lib/format/format_price';
-	import { fromMinorUnits } from '$lib/format/minor_units';
+	} from '#lib/core/data.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import EventEditor from '#lib/components/EventEditor.svelte';
+	import GymEditor from '#lib/components/GymEditor.svelte';
+	import CheckpointManager from '#lib/components/CheckpointManager.svelte';
+	import FundraiserSection from '#lib/components/FundraiserSection.svelte';
+	import { expandInstances, describeRecurrence } from '#lib/social/recurrence.ts';
+	import { isAthleticCategory } from '#lib/social/event_category.ts';
+	import type { FinisherStatus } from '#lib/types.ts';
+	import { sameInstant } from '#lib/social/event_instance.ts';
+	import { isSeriesCancelled, upcomingCancelledOccurrences } from '#lib/social/event_occurrence.ts';
+	import {
+		workoutDraftFromTemplate,
+		workoutDraftFromSession,
+		workoutDraftFromRoutine
+	} from '#lib/social/event_gym_template.ts';
+	import type { PlannedRoutine } from '#lib/gym/gym_routine.ts';
+	import { expandSessionSteps, type SessionPlanInput } from '#lib/social/session_steps.ts';
+	import { formatDistance, getUnit, fmtPace } from '#lib/format/units.svelte.ts';
+	import { formatPrice } from '#lib/format/format_price.ts';
+	import { fromMinorUnits } from '#lib/format/minor_units.ts';
 	import {
 		registrationOpen,
 		resolveRefundEligibility,
 		type OccurrenceRefundState,
 		type OccurrenceRefundSummary
-	} from '$lib/social/paid_registration';
-	import { buildEventIcs, buildEventSeriesIcs, icsFilename } from '$lib/social/event_ics';
-	import { env } from '$env/dynamic/public';
-	import { buildStaticMarkerMapUrl, mapsDirectionsUrl, geoUri } from '$lib/routes/static_map';
-	import { staticMapSlugFromPreference } from '$lib/routes/map-style.svelte';
-	import { buildFinisherCertificateSvg, CERT_WIDTH, CERT_HEIGHT } from '$lib/runs/finisher_certificate';
-	import { rasterizeSvgToPng, downloadBlob } from '$lib/format/svg_raster';
-	import { parseChipTimingCsv, resultsToCsv, type ParsedResultRow } from '$lib/runs/event_results_csv';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { consent } from '$lib/settings/consent.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { rsvpStatusLabel } from '$lib/i18n/enum_labels.svelte';
-	import { activityTypeLabel } from '$lib/runs/activity_type.svelte';
+	} from '#lib/social/paid_registration.ts';
+	import { waitlistOfferState } from '#lib/social/event_waitlist_offer.ts';
+	import { buildEventIcs, buildEventSeriesIcs, icsFilename } from '#lib/social/event_ics.ts';
+	import { PUBLIC_MAPTILER_KEY, PUBLIC_SITE_URL } from '$app/env/public';
+	import { buildStaticMarkerMapUrl, mapsDirectionsUrl, geoUri } from '#lib/routes/static_map.ts';
+	import { staticMapSlugFromPreference } from '#lib/routes/map-style.svelte.ts';
+	import { buildFinisherCertificateSvg, CERT_WIDTH, CERT_HEIGHT } from '#lib/runs/finisher_certificate.ts';
+	import { rasterizeSvgToPng, downloadBlob, fileNamePart } from '#lib/format/svg_raster.ts';
+	import {
+		parseChipTimingCsv,
+		parseDurationToSeconds,
+		resultsToCsv,
+		type ParsedResultRow
+	} from '#lib/runs/event_results_csv.ts';
+	import {
+		finishMethodBadge,
+		groupResultsByCourse,
+		hostTimeEditPatch,
+		needsCoursePick,
+		type EventCourse
+	} from '#lib/social/event_courses.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { consent } from '#lib/settings/consent.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { rsvpStatusLabel } from '#lib/i18n/enum_labels.svelte.ts';
+	import { activityTypeLabel } from '#lib/runs/activity_type.svelte.ts';
 	import type {
 		EventWithMeta,
 		ClubWithMeta,
@@ -109,15 +140,15 @@
 		EventAttendance,
 		EventPricing,
 		EventOrder
-	} from '$lib/types';
+	} from '#lib/types.ts';
 
-	let slug = $derived($page.params.slug as string);
-	let eventId = $derived($page.params.id as string);
+	let slug = $derived(page.params.slug as string);
+	let eventId = $derived(page.params.id as string);
 	// Fold this in-app (CSR) event page onto the public, crawlable
 	// /share/event/[id] twin so search engines consolidate ranking signal
 	// there rather than splitting it across two URLs.
 	let canonicalUrl = $derived(
-		buildEventShareCanonical(siteOrigin(env.PUBLIC_SITE_URL), eventId)
+		buildEventShareCanonical(siteOrigin(PUBLIC_SITE_URL), eventId)
 	);
 
 	let club = $state<ClubWithMeta | null>(null);
@@ -152,7 +183,7 @@
 					w: 320,
 					h: 180,
 					style: staticMapSlugFromPreference(prefersDark),
-					key: env.PUBLIC_MAPTILER_KEY ?? ''
+					key: PUBLIC_MAPTILER_KEY ?? ''
 				})
 			: null
 	);
@@ -180,6 +211,21 @@
 	let error = $state<string | null>(null);
 	let draftPost = $state('');
 	let results = $state<EventResultWithUser[]>([]);
+	// Race courses (decisions § 1842). `courseChoice` is the viewer's pick in
+	// the RSVP course select — seeded from their stored RSVP and written with
+	// the next RSVP (or straight away when they already have one).
+	let courses = $state<EventCourse[]>([]);
+	let courseChoice = $state('');
+	let courseError = $state<string | null>(null);
+	let resultBoards = $derived(groupResultsByCourse(results, courses));
+	// End-race preview: how many racers End will mark DNF (null = unknown).
+	let dnfPreview = $state<number | null>(null);
+	// Organiser time edit.
+	let editingResult = $state<EventResultWithUser | null>(null);
+	let editTime = $state('');
+	let editStatus = $state<FinisherStatus>('finished');
+	let editError = $state<string | null>(null);
+	let editBusy = $state(false);
 	let eventPhotos = $state<EventPhoto[]>([]);
 	let photoUploading = $state(false);
 	let showResultPicker = $state(false);
@@ -199,6 +245,8 @@
 	let exceptions = $state<EventException[]>([]);
 	let showCancelInstance = $state(false);
 	let cancelReason = $state('');
+	let showCancelSeries = $state(false);
+	let seriesCancelReason = $state('');
 	// What cancelled occurrences still owe their registrants (M8), for the
 	// event's organisers: one entry per cancelled occurrence with anything
 	// unsettled. Empty when nothing is owed, for a non-organiser, or unreadable.
@@ -225,6 +273,14 @@
 	let myOrder = $state<EventOrder | null>(null);
 	let cancellingRegistration = $state(false);
 	let showCancelRegistration = $state(false);
+	// The viewer's own place on a paid occurrence's waitlist, and whether a
+	// seat is being held for them (migration 20270726000002). `placeUnknown`
+	// is a failed read: the page then says it cannot tell, rather than
+	// offering a place in a queue the viewer may already be in.
+	let myPlace = $state<{ status: RsvpStatus; offer_expires_at: string | null } | null>(null);
+	let placeUnknown = $state(false);
+	let waitlistBusy = $state(false);
+	let showLeaveWaitlist = $state(false);
 
 	/** The instance the user is currently RSVPing to. For one-off events this
 	 * stays equal to `event.starts_at`; for recurring events, the user can
@@ -270,11 +326,25 @@
 	// list an organiser could only ever reinstate the one they happened to be
 	// looking at — calling off anything beyond the next occurrence was
 	// irreversible.
+	// A one-off event's only occurrence is the page itself, which carries the
+	// cancelled banner and its own Reinstate. An occurrence past the end of a
+	// series the host cancelled no longer exists, so reinstating it would bring
+	// nothing back.
 	let cancelledUpcoming = $derived(
-		upcomingCancelledOccurrences(exceptions.map((e) => e.instance_start)).map((iso) => ({
-			iso,
-			reason: exceptions.find((e) => sameInstant(e.instance_start, iso))?.reason ?? null
-		}))
+		event && event.recurrence_freq
+			? upcomingCancelledOccurrences(exceptions.map((e) => e.instance_start))
+					.filter(
+						(iso) =>
+							!event?.recurrence_until || Date.parse(iso) <= Date.parse(event.recurrence_until)
+					)
+					.map((iso) => ({
+						iso,
+						reason: exceptions.find((e) => sameInstant(e.instance_start, iso))?.reason ?? null
+					}))
+			: []
+	);
+	let seriesCancelled = $derived(
+		event ? isSeriesCancelled(event, exceptions.map((e) => e.instance_start)) : false
 	);
 	let showAllInstances = $state(false);
 	const INSTANCE_PREVIEW_COUNT = 8;
@@ -304,7 +374,10 @@
 	// AND a non-null gym_template AND a signed-in viewer — a run/cycle/social
 	// event never offers it.
 	let canLogAsWorkout = $derived(
-		!!event && event.category === 'class' && event.gym_template != null && auth.user != null
+		!!event &&
+			event.category === 'class' &&
+			(event.gym_template != null || event.gym_routine_id != null) &&
+			auth.user != null
 	);
 	let showLogWorkout = $state(false);
 
@@ -345,12 +418,45 @@
 	});
 	let sessionSteps = $derived(sessionExpansion?.steps ?? []);
 
-	// Log-as-workout prefill: with an attached session plan the attendee logs
-	// the class CONTENT (one row per expanded step, workoutDraftFromSession);
+	// A class may instead carry one of its club's gym routine templates
+	// (decisions § 1869). It is read, never cloned: the seed below fills the
+	// attendee's own new workout, and the routine stays the club's.
+	let gymRoutine = $state<GymRoutineDetail | null>(null);
+	let clubRoutines = $state<GymRoutineSummary[]>([]);
+	let showRoutineAttach = $state(false);
+	let routineChoice = $state<string>('');
+	let plannedRoutine = $derived.by((): PlannedRoutine | null => {
+		if (!gymRoutine) return null;
+		return {
+			title: gymRoutine.routine.title,
+			exercises: gymRoutine.exercises.map((e) => ({
+				exerciseName: e.exercise_name,
+				position: e.position,
+				supersetGroup: e.superset_group,
+				supersetOrder: e.superset_order,
+				sets: e.sets.map((st) => ({
+					setIndex: st.set_index,
+					setType: st.set_type,
+					targetRepsMin: st.target_reps_min,
+					targetRepsMax: st.target_reps_max,
+					targetWeightKg: st.target_weight_kg,
+					targetRpe: st.target_rpe
+				}))
+			}))
+		};
+	});
+
+	// Log-as-workout prefill: with an attached gym routine or session plan the
+	// attendee logs the class CONTENT (one row per planned set,
+	// workoutDraftFromRoutine; one per expanded step, workoutDraftFromSession);
 	// otherwise just the flat gym_template title.
 	let logWorkoutPrefill = $derived.by(() => {
 		if (!event) return null;
 		const base = workoutDraftFromTemplate(event.gym_template, event.title);
+		if (plannedRoutine) {
+			const draft = workoutDraftFromRoutine(plannedRoutine, event.discipline ?? null);
+			return { title: draft.title ?? base.title, sets: draft.sets };
+		}
 		if (!sessionPlan || !sessionExpansion) return { title: base.title };
 		const draft = workoutDraftFromSession(
 			sessionExpansion,
@@ -377,6 +483,47 @@
 		}
 	}
 
+	// L4 auxiliary read, as loadSessionPlan: a routine the viewer cannot read
+	// (a non-member of the club, or a template since unpublished) reads as no
+	// routine, and Log-as-workout falls back to the gym_template title.
+	async function loadGymRoutine() {
+		const routineId = event?.gym_routine_id ?? null;
+		if (!routineId) {
+			gymRoutine = null;
+			return;
+		}
+		try {
+			gymRoutine = await fetchGymRoutineDetail(routineId);
+		} catch (e) {
+			console.warn('gym routine read failed', e);
+			gymRoutine = null;
+		}
+	}
+
+	async function openRoutineAttach() {
+		if (!event) return;
+		clubRoutines = await fetchClubGymRoutineTemplates(event.club_id);
+		routineChoice = event.gym_routine_id ?? '';
+		showRoutineAttach = true;
+	}
+
+	async function saveRoutineAttach() {
+		if (!event) return;
+		try {
+			await setEventGymRoutine(event.id, routineChoice || null);
+			event = {
+				...event,
+				gym_routine_id: routineChoice || null,
+				session_plan_id: routineChoice ? null : event.session_plan_id
+			};
+			await Promise.all([loadGymRoutine(), loadSessionPlan()]);
+			showRoutineAttach = false;
+			showToast(m('clubEvent.gymRoutineSaved'), 'success');
+		} catch (e) {
+			showToast(e instanceof Error ? e.message : m('clubEvent.gymRoutineSaveFailed'), 'error');
+		}
+	}
+
 	async function openAttach() {
 		try {
 			myPlans = await fetchSessionPlans();
@@ -393,8 +540,12 @@
 		if (!event) return;
 		try {
 			await setEventSessionPlan(event.id, attachChoice || null);
-			event = { ...event, session_plan_id: attachChoice || null };
-			await loadSessionPlan();
+			event = {
+				...event,
+				session_plan_id: attachChoice || null,
+				gym_routine_id: attachChoice ? null : event.gym_routine_id
+			};
+			await Promise.all([loadSessionPlan(), loadGymRoutine()]);
 			showAttach = false;
 			showToast(m('session.attached'), 'success');
 		} catch (e) {
@@ -446,9 +597,25 @@
 	});
 
 	// A paid registration is the order-backed `going` row (not maybe/declined).
+	// A `waitlisted` row is one only when an order backs it — a buyer the
+	// capacity trigger demoted after paying. Since 20270726000002 a priced
+	// occurrence also has an UNPAID waitlist, and those rows hold no seat.
 	let viewerHasPaidSlot = $derived(
 		pricing != null &&
-			(viewerRsvpForActive === 'going' || viewerRsvpForActive === 'waitlisted')
+			(viewerRsvpForActive === 'going' ||
+				(viewerRsvpForActive === 'waitlisted' &&
+					(myOrder?.status === 'paid' || myOrder?.status === 'partially_refunded')))
+	);
+
+	let offerState = $derived(waitlistOfferState(myPlace, nowTick));
+
+	// Whether the occurrence still sells at all, capacity aside — joining a
+	// waitlist for a class nobody can pay for any more promises nothing.
+	let salesOpen = $derived(
+		pricing != null &&
+			activeInstance != null &&
+			registrationOpen(new Date(nowTick), activeInstance, pricing.sales_close_offset_minutes, null, 0, false) ===
+				'open'
 	);
 
 	let priceFormatted = $derived(
@@ -466,6 +633,9 @@
 		// could not find out, not because the viewer has no slot — offering
 		// the sale again here would take a second payment for the same place.
 		if (instanceError) return 'unknown';
+		// Same for the viewer's own waitlist row: without it the page cannot
+		// tell a held seat from an open sale.
+		if (placeUnknown) return 'unknown';
 		return registrationOpen(
 			new Date(nowTick),
 			activeInstance,
@@ -531,7 +701,16 @@
 			activeInstance = prevInstance ?? event.next_instance_start ?? event.starts_at;
 			// Members-only meetup coordinates (null for non-members / no point set).
 			meetPoint = await fetchEventMeetPoint(event.id);
-			await loadSessionPlan();
+			// Courses are a layer over the event, not the event: a failed read
+			// leaves the page working as a single-course event rather than
+			// failing the whole load.
+			try {
+				courses = await fetchEventCourses(event.id);
+			} catch (ce) {
+				console.warn('fetchEventCourses failed', ce);
+				courses = [];
+			}
+			await Promise.all([loadSessionPlan(), loadGymRoutine()]);
 			await reloadInstance();
 		} catch (e) {
 			// A rejection anywhere in here used to escape and leave `loading`
@@ -576,6 +755,11 @@
 		);
 		results = res[3];
 		raceSession = res[4];
+		try {
+			courseChoice = (await fetchMyEventCourse(event.id, activeInstance)) ?? '';
+		} catch (ce) {
+			console.warn('fetchMyEventCourse failed', ce);
+		}
 		eventPhotos = res[5];
 		rsvpSummary = res[6];
 		pricing = await fetchEventPricing(event.id, activeInstance);
@@ -583,6 +767,14 @@
 		// surface can offer Cancel + reflect an in-flight refund (P2). Only
 		// meaningful on a priced event with a signed-in viewer.
 		myOrder = pricing && myUserId ? await fetchMyOrder(event.id, activeInstance) : null;
+		placeUnknown = false;
+		try {
+			myPlace = pricing && myUserId ? await fetchMyWaitlistPlace(event.id, activeInstance) : null;
+		} catch (e) {
+			console.error('waitlist place read failed:', e);
+			myPlace = null;
+			placeUnknown = true;
+		}
 		// A cancelled occurrence can still owe registrants money (a refund that
 		// failed, or a buyer who paid in the moment before the cancel), so its
 		// organisers see what is left and can re-run the refunds. Read
@@ -759,8 +951,9 @@
 		}
 	}
 
-	function handleEnd(status: 'finished' | 'cancelled') {
+	async function handleEnd(status: 'finished' | 'cancelled') {
 		if (!event || !activeInstance || raceBusy) return;
+		dnfPreview = status === 'finished' ? await fetchRaceDnfPreview(event.id, activeInstance) : null;
 		showEndRaceConfirm = status;
 	}
 
@@ -772,6 +965,8 @@
 		try {
 			raceSession = await endRace(event.id, activeInstance, status);
 			broadcastRaceStateChanged();
+			// Ending files the host DNFs server-side; show them.
+			if (status === 'finished') await reloadInstance();
 		} catch (e: unknown) {
 			error = e instanceof Error ? e.message : m('clubEvent.endFailed');
 		} finally {
@@ -843,7 +1038,11 @@
 				durationS: run.duration_s,
 				distanceM: run.distance_m,
 				runId: run.id,
-				finisherStatus: 'finished'
+				finisherStatus: 'finished',
+				// On a raced occurrence this is the racer's own submission and
+				// the run's clock is the chip time; the gun time only exists
+				// where a device recorded the finish against the GO.
+				...(raceSession ? { finishMethod: 'manual' as const, chipTimeS: run.duration_s } : {})
 			});
 			showResultPicker = false;
 			await reloadInstance();
@@ -863,6 +1062,8 @@
 				instanceStart: activeInstance,
 				durationS: 0,
 				distanceM: 0,
+				// A non-finish carries no finish method: there is no finish time
+				// whose provenance the badge would describe.
 				finisherStatus: status
 			});
 			showResultPicker = false;
@@ -877,6 +1078,46 @@
 		} finally {
 			submitting = false;
 		}
+	}
+
+	function openEditResult(r: EventResultWithUser) {
+		editingResult = r;
+		editTime = r.duration_s > 0 ? baseDuration(r.duration_s) : '';
+		editStatus = r.finisher_status;
+		editError = null;
+	}
+
+	async function saveEditResult() {
+		if (!editingResult || editBusy) return;
+		const parsed = parseDurationToSeconds(editTime);
+		if (editStatus === 'finished' && (parsed == null || parsed <= 0)) {
+			editError = m('clubEvent.editResultTimeInvalid');
+			return;
+		}
+		editBusy = true;
+		editError = null;
+		try {
+			const seconds = parsed ?? editingResult.duration_s;
+			await editEventResultAsHost(editingResult.id, {
+				...hostTimeEditPatch(seconds, editingResult.gun_time_s),
+				finisher_status: editStatus
+			});
+			editingResult = null;
+			await reloadInstance();
+		} catch (e: unknown) {
+			editError = e instanceof Error ? e.message : m('clubEvent.editResultFailed');
+		} finally {
+			editBusy = false;
+		}
+	}
+
+	function timeSplit(r: EventResultWithUser): string | null {
+		const gun = r.gun_time_s != null ? baseDuration(r.gun_time_s) : null;
+		const chip = r.chip_time_s != null ? baseDuration(r.chip_time_s) : null;
+		if (gun && chip) return m('clubEvent.timeSplitGunChip', { gun, chip });
+		if (chip && r.chip_time_s !== r.duration_s) return m('clubEvent.timeSplitChip', { chip });
+		if (gun) return m('clubEvent.timeSplitGun', { gun });
+		return null;
 	}
 
 	async function removeMyResult() {
@@ -980,7 +1221,7 @@
 				clubName: club?.name ?? null,
 			});
 			const blob = await rasterizeSvgToPng(svg, CERT_WIDTH, CERT_HEIGHT);
-			const safe = event.title.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+			const safe = fileNamePart(event.title);
 			downloadBlob(blob, `threkir-certificate-${safe}.png`);
 		} catch (e) {
 			console.error('certificate generation failed', e);
@@ -1003,7 +1244,7 @@
 			}))
 		);
 		const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-		const safe = event.title.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+		const safe = fileNamePart(event.title);
 		downloadBlob(blob, `threkir-results-${safe}.csv`);
 	}
 
@@ -1088,7 +1329,7 @@
 		await auth.ready();
 		await load();
 		// Returned from Stripe Checkout: reconcile the order (?paid=1).
-		if ($page.url.searchParams.get('paid') === '1') {
+		if (page.url.searchParams.get('paid') === '1') {
 			void pollForPaidOrder();
 		}
 		// Guard each side-effect: if subscribeRealtime throws (the
@@ -1298,7 +1539,12 @@
 			if (shouldClear) {
 				await clearRsvp(event.id, activeInstance);
 			} else {
-				await rsvpEvent(event.id, status, activeInstance);
+				if (status === 'going' && needsCoursePick(courses) && !courseChoice) {
+					courseError = m('clubEvent.pickCourseFirst');
+					return;
+				}
+				courseError = null;
+				await rsvpEvent(event.id, status, activeInstance, rsvpCourseId());
 			}
 			await load();
 		} catch (e: unknown) {
@@ -1306,6 +1552,35 @@
 		} finally {
 			busy = false;
 		}
+	}
+
+	// The course an RSVP write carries: the viewer's pick, or the only course
+	// when there is no choice; undefined leaves the stored course alone.
+	function rsvpCourseId(): string | undefined {
+		if (courseChoice) return courseChoice;
+		if (courses.length === 1) return courses[0].id;
+		return undefined;
+	}
+
+	// Changing course with an RSVP already on file rewrites it straight away;
+	// without one the pick is held for the next RSVP click.
+	async function chooseCourse(id: string) {
+		courseChoice = id;
+		courseError = null;
+		if (!event || !activeInstance || !viewerRsvpForActive || viewerRsvpForActive === 'declined') return;
+		busy = true;
+		try {
+			await rsvpEvent(event.id, viewerRsvpForActive, activeInstance, id);
+			showToast(m('clubEvent.courseChanged'), 'success');
+		} catch (e: unknown) {
+			error = e instanceof Error ? e.message : m('clubEvent.rsvpFailed');
+		} finally {
+			busy = false;
+		}
+	}
+
+	function courseLabel(c: EventCourse): string {
+		return c.distance_m != null ? `${c.name} · ${formatDistance(c.distance_m)}` : c.name;
 	}
 
 	async function setAttendance(userId: string, current: EventAttendance | null, value: EventAttendance) {
@@ -1328,7 +1603,7 @@
 	async function register() {
 		if (!event || !activeInstance || registering) return;
 		if (!auth.user) {
-			goto(`/login?next=${encodeURIComponent($page.url.pathname)}`);
+			goto(`/login?next=${encodeURIComponent(page.url.pathname)}`);
 			return;
 		}
 		registering = true;
@@ -1353,6 +1628,42 @@
 							: 'clubEvent.registerFailed';
 			showToast(m(key), 'error');
 			registering = false;
+		}
+	}
+
+	/// Join a paid occurrence's waitlist. A waitlist row on a priced event
+	/// needs no order (20270726000002): it is a request to be offered a seat,
+	/// and the offer is what Register then claims.
+	async function joinWaitlist() {
+		if (!event || !activeInstance || waitlistBusy) return;
+		waitlistBusy = true;
+		try {
+			if (needsCoursePick(courses) && !courseChoice) {
+				courseError = m('clubEvent.pickCourseFirst');
+				return;
+			}
+			courseError = null;
+			await rsvpEvent(event.id, 'waitlisted', activeInstance, rsvpCourseId());
+			showToast(m('clubEvent.waitlistJoined'), 'success');
+			await load();
+		} catch (e: unknown) {
+			showToast(e instanceof Error ? e.message : m('clubEvent.rsvpFailed'), 'error');
+		} finally {
+			waitlistBusy = false;
+		}
+	}
+
+	async function confirmLeaveWaitlist() {
+		if (!event || !activeInstance || waitlistBusy) return;
+		waitlistBusy = true;
+		try {
+			await clearRsvp(event.id, activeInstance);
+			showLeaveWaitlist = false;
+			await load();
+		} catch (e: unknown) {
+			showToast(e instanceof Error ? e.message : m('clubEvent.rsvpFailed'), 'error');
+		} finally {
+			waitlistBusy = false;
 		}
 	}
 
@@ -1424,6 +1735,10 @@
 		try {
 			await deleteEvent(event.id);
 		} catch (e) {
+			if (e instanceof Error && e.message === PAID_EVENT_DELETE_REFUSAL) {
+				showToast(m('clubEvent.deleteEventHasPayments'), 'error');
+				return;
+			}
 			showToast(
 				m('clubHome.deleteEventFailed', { error: e instanceof Error ? e.message : String(e) }),
 				'error'
@@ -1465,23 +1780,76 @@
 	}
 
 	/// A failed refund is an error toast, never folded into the success one.
-	function reportOccurrenceRefunds(refunds: OccurrenceRefundSummary) {
+	/// `scope` picks the sentence: an occurrence of a series, a one-off event,
+	/// or the whole series.
+	function reportOccurrenceRefunds(
+		refunds: OccurrenceRefundSummary,
+		scope: 'occurrence' | 'event' | 'series' = event?.recurrence_freq ? 'occurrence' : 'event'
+	) {
 		if (refunds.outcome === 'incomplete') {
-			showToast(m('clubEvent.occurrenceRefundsIncomplete', { n: refunds.failed }), 'error');
+			const key =
+				scope === 'series'
+					? 'clubEvent.seriesRefundsIncomplete'
+					: scope === 'event'
+						? 'clubEvent.eventRefundsIncomplete'
+						: 'clubEvent.occurrenceRefundsIncomplete';
+			showToast(m(key, { n: refunds.failed }), 'error');
 			return;
 		}
 		const refunded = refunds.initiated + refunds.already_refunded;
 		if (refunded > 0) {
-			showToast(m('clubEvent.occurrenceRefundsStarted', { n: refunded }), 'success');
+			const key =
+				scope === 'series'
+					? 'clubEvent.seriesRefundsStarted'
+					: scope === 'event'
+						? 'clubEvent.eventRefundsStarted'
+						: 'clubEvent.occurrenceRefundsStarted';
+			showToast(m(key, { n: refunded }), 'success');
+		} else if (scope === 'series') {
+			showToast(m('clubEvent.seriesCancelledToast'), 'success');
 		}
 	}
 
-	function occurrenceCancelError(e: unknown): string {
+	function occurrenceCancelError(
+		e: unknown,
+		scope: 'occurrence' | 'event' | 'series' = event?.recurrence_freq ? 'occurrence' : 'event'
+	): string {
 		const code = e instanceof Error ? e.message : '';
-		if (code === 'stripe_not_configured') return m('clubEvent.occurrenceCancelNotConfigured');
+		if (code === 'stripe_not_configured') {
+			return m(
+				scope === 'series'
+					? 'clubEvent.seriesCancelNotConfigured'
+					: scope === 'event'
+						? 'clubEvent.eventCancelNotConfigured'
+						: 'clubEvent.occurrenceCancelNotConfigured'
+			);
+		}
 		if (code === 'not_event_organiser') return m('clubEvent.occurrenceCancelNotOrganiser');
 		console.error('occurrence cancel failed:', e);
-		return m('clubEvent.cancelOccurrenceFailed');
+		return m(
+			scope === 'series'
+				? 'clubEvent.cancelSeriesFailed'
+				: scope === 'event'
+					? 'clubEvent.cancelEventFailed'
+					: 'clubEvent.cancelOccurrenceFailed'
+		);
+	}
+
+	async function confirmCancelSeries() {
+		if (!event || busy) return;
+		busy = true;
+		try {
+			const { refunds } = await cancelEventSeries(event.id, seriesCancelReason || null);
+			seriesCancelReason = '';
+			showCancelSeries = false;
+			reportOccurrenceRefunds(refunds, 'series');
+			activeInstance = null;
+			await load();
+		} catch (e: unknown) {
+			error = occurrenceCancelError(e, 'series');
+		} finally {
+			busy = false;
+		}
 	}
 
 	async function reinstateInstance(instanceIso: string | null = activeInstance) {
@@ -1631,6 +1999,7 @@
 					{/if}
 				</span>
 				<h1>{event.title}</h1>
+				<HelpLink route="/clubs/[slug]/events/[id]" />
 				{#if event.is_public === false}
 					<p class="members-only-badge" data-testid="members-only-badge">
 						<span class="material-symbols" aria-hidden="true">lock</span>
@@ -1710,7 +2079,7 @@
 									</a>
 								{/snippet}
 							</StaticMapImage>
-						{:else if (env.PUBLIC_MAPTILER_KEY ?? '') && !consent.accepted && !meetMapConsented}
+						{:else if (PUBLIC_MAPTILER_KEY ?? '') && !consent.accepted && !meetMapConsented}
 							<div class="meet-map-consent" data-testid="meet-map-consent">
 								<h3>{m('runMap.consentTitle')}</h3>
 								<p>
@@ -1767,11 +2136,23 @@
 						</div>
 					</div>
 				{/if}
+				{#if seriesCancelled && !activeException}
+					<div class="cancelled-banner" role="status" data-testid="series-cancelled">
+						<span class="material-symbols" aria-hidden="true">event_busy</span>
+						<div>
+							<strong>{m('clubEvent.seriesWasCancelled')}</strong>
+						</div>
+					</div>
+				{/if}
 				{#if activeException}
 					<div class="cancelled-banner" role="status">
 						<span class="material-symbols" aria-hidden="true">event_busy</span>
 						<div>
-							<strong>{m('clubEvent.occurrenceCancelled')}</strong>
+							<strong>
+								{event.recurrence_freq
+									? m('clubEvent.occurrenceCancelled')
+									: m('clubEvent.eventCancelled')}
+							</strong>
 							{#if activeException.reason}
 								<span class="cancel-reason">{activeException.reason}</span>
 							{/if}
@@ -1785,7 +2166,9 @@
 							disabled={busy}
 						>
 							<span class="material-symbols" aria-hidden="true">event_available</span>
-							{m('clubEvent.reinstateOccurrence')}
+							{event.recurrence_freq
+								? m('clubEvent.reinstateOccurrence')
+								: m('clubEvent.reinstateEvent')}
 						</button>
 					{/if}
 				{:else if !isPast && pricing}
@@ -1813,7 +2196,7 @@
 							</p>
 						{/if}
 						{#if !auth.user}
-							<a class="btn btn-primary register-cta" href={`/login?next=${encodeURIComponent($page.url.pathname)}`}>
+							<a class="btn btn-primary register-cta" href={`/login?next=${encodeURIComponent(page.url.pathname)}`}>
 								{m('clubEvent.registerSignInFirst')}
 							</a>
 						{:else if regState === 'unknown'}
@@ -1850,11 +2233,52 @@
 									{m('clubEvent.cancelRegistration')}
 								</button>
 							{/if}
+						{:else if offerState.kind === 'offered'}
+							<div class="register-status offered" role="status" data-testid="waitlist-offer">
+								<span class="material-symbols" aria-hidden="true">hourglass_top</span>
+								{m('clubEvent.waitlistOfferHeld', { time: fmtDate(offerState.deadline) })}
+							</div>
+							<button
+								type="button"
+								class="btn btn-primary register-cta"
+								onclick={register}
+								disabled={registering}
+								data-testid="claim-cta"
+							>
+								{registering
+									? m('clubEvent.registering')
+									: m('clubEvent.claimForPrice', { price: priceFormatted })}
+							</button>
 						{:else if regState === 'sold_out'}
 							<div class="register-status closed" role="status">
 								<span class="material-symbols" aria-hidden="true">block</span>
 								{m('clubEvent.registerSoldOut')}
 							</div>
+							{#if offerState.kind === 'waiting'}
+								<p class="register-status processing" role="status" data-testid="waitlist-waiting">
+									<span class="material-symbols" aria-hidden="true">schedule</span>
+									{m('clubEvent.waitlistJoined')}
+								</p>
+								<button
+									type="button"
+									class="btn btn-secondary register-cancel"
+									onclick={() => (showLeaveWaitlist = true)}
+									disabled={waitlistBusy}
+									data-testid="leave-waitlist"
+								>
+									{m('clubEvent.leaveWaitlist')}
+								</button>
+							{:else if offerState.kind === 'none' && salesOpen}
+								<button
+									type="button"
+									class="btn btn-outline register-cta"
+									onclick={joinWaitlist}
+									disabled={waitlistBusy}
+									data-testid="join-waitlist"
+								>
+									{m('clubEvent.joinWaitlist')}
+								</button>
+							{/if}
 						{:else if regState === 'sales_closed'}
 							<div class="register-status closed" role="status">
 								<span class="material-symbols" aria-hidden="true">lock_clock</span>
@@ -1875,6 +2299,26 @@
 						{/if}
 					</div>
 				{:else if !isPast && auth.user}
+					{#if courses.length > 1}
+						<label class="course-pick">
+							<span>{m('clubEvent.yourCourse')}</span>
+							<select
+								value={courseChoice}
+								onchange={(e) => chooseCourse(e.currentTarget.value)}
+								disabled={busy}
+								data-testid="rsvp-course-select"
+								aria-describedby={courseError ? 'rsvp-course-error' : undefined}
+							>
+								<option value="" disabled>{m('clubEvent.pickCourse')}</option>
+								{#each courses as c (c.id)}
+									<option value={c.id}>{courseLabel(c)}</option>
+								{/each}
+							</select>
+						</label>
+						{#if courseError}
+							<p class="course-error" id="rsvp-course-error" role="alert">{courseError}</p>
+						{/if}
+					{/if}
 					<div
 						class="rsvp-tri"
 						role="group"
@@ -1974,15 +2418,29 @@
 						</button>
 					</div>
 				{/if}
-				{#if isEventOrganiser && event.recurrence_freq && activeInstance && !activeException}
+				{#if isEventOrganiser && activeInstance && !activeException && (event.recurrence_freq ? liveInstances.length > 0 : !isPast)}
 					<div class="admin-actions">
 						<button
 							type="button"
 							class="btn-ghost danger"
 							onclick={() => (showCancelInstance = true)}
+							data-testid="cancel-occurrence"
 						>
 							<span class="material-symbols" aria-hidden="true">event_busy</span>
-							{m('clubEvent.cancelOccurrence')}
+							{event.recurrence_freq ? m('clubEvent.cancelOccurrence') : m('clubEvent.cancelEvent')}
+						</button>
+					</div>
+				{/if}
+				{#if isEventOrganiser && event.recurrence_freq && liveInstances.length > 0}
+					<div class="admin-actions">
+						<button
+							type="button"
+							class="btn-ghost danger"
+							onclick={() => (showCancelSeries = true)}
+							data-testid="cancel-series"
+						>
+							<span class="material-symbols" aria-hidden="true">event_repeat</span>
+							{m('clubEvent.cancelSeries')}
 						</button>
 					</div>
 				{/if}
@@ -2255,8 +2713,17 @@
 			{#if results.length === 0}
 				<p class="muted">{m('clubEvent.noResultsYet')}</p>
 			{:else}
-				<ol class="results">
-					{#each results as r (rowKey(r))}
+				{#each resultBoards as board (board.course?.id ?? 'none')}
+				{#if resultBoards.length > 1}
+					<h4 class="course-board-title" data-testid="course-board-title">
+						{board.course ? courseLabel(board.course) : m('clubEvent.noCourseBoard')}
+					</h4>
+				{/if}
+				{#if board.results.length === 0}
+					<p class="muted">{m('clubEvent.noCourseResultsYet')}</p>
+				{:else}
+				<ol class="results" data-testid="course-board">
+					{#each board.results as r (rowKey(r))}
 						<li class="result" class:me={r.user_id !== null && r.user_id === myUserId} class:pending={!r.organiser_approved}>
 							<span class="rank">{r.organiser_approved ? (r.rank ?? '—') : '…'}</span>
 							<Avatar name={r.display_name} size="2rem" font="0.85rem" bg="seed" seedHue={hashHue(rowKey(r))} />
@@ -2267,9 +2734,17 @@
 								{#if r.finisher_status !== 'finished'}
 									<span class="dnf-tag">{r.finisher_status.toUpperCase()}</span>
 								{/if}
+								{#if finishMethodBadge(r.finish_method) === 'manual'}
+									<span class="method-tag" data-testid="finish-method-badge">{m('clubEvent.finishManual')}</span>
+								{:else if finishMethodBadge(r.finish_method) === 'host'}
+									<span class="method-tag host" data-testid="finish-method-badge">{m('clubEvent.finishHostEdited')}</span>
+								{/if}
 							</div>
 							{#if r.finisher_status === 'finished'}
-								<span class="time">{formatDuration(r.duration_s)}</span>
+								<span class="time">
+									{formatDuration(r.duration_s)}
+									{#if timeSplit(r)}<small class="time-split muted">{timeSplit(r)}</small>{/if}
+								</span>
 								<span class="dist muted">{formatDistance(r.distance_m)}</span>
 							{/if}
 							{#if r.finisher_status === 'finished' && r.organiser_approved}
@@ -2292,6 +2767,15 @@
 							{:else if isRaceDirector && r.user_id === null && r.organiser_approved}
 								<button type="button" class="btn-link reject" disabled={resultActionBusy !== null} onclick={() => handleApproveById(r.id, false)}>{m('clubEvent.unverify')}</button>
 							{/if}
+							{#if isRaceDirector || (isEventOrganiser && r.user_id === null)}
+								<button
+									type="button"
+									class="btn-link edit-result"
+									disabled={editBusy}
+									onclick={() => openEditResult(r)}
+									data-testid="edit-result"
+								>{m('clubEvent.editResult')}</button>
+							{/if}
 							{#if myUserId && r.user_id === null && !hasMyResult}
 								{#if myClaims.get(r.id) === 'pending'}
 									<span class="claim-pending">{m('clubEvent.claimPending')}</span>
@@ -2302,6 +2786,42 @@
 						</li>
 					{/each}
 				</ol>
+				{/if}
+				{/each}
+			{/if}
+
+			{#if editingResult}
+				<div class="picker edit-result-panel" data-testid="edit-result-panel">
+					<h4>{m('clubEvent.editResultTitle', { name: editingResult.display_name ?? m('clubEvent.runnerFallback') })}</h4>
+					<p class="muted">{m('clubEvent.editResultHelp')}</p>
+					<div class="edit-result-fields">
+						<label>
+							<span>{m('clubEvent.editResultTime')}</span>
+							<input
+								type="text"
+								inputmode="numeric"
+								bind:value={editTime}
+								placeholder="1:02:03"
+								data-testid="edit-result-time"
+							/>
+						</label>
+						<label>
+							<span>{m('clubEvent.editResultStatus')}</span>
+							<select bind:value={editStatus} data-testid="edit-result-status">
+								<option value="finished">{m('clubEvent.statusFinished')}</option>
+								<option value="dnf">{m('clubEvent.statusDnf')}</option>
+								<option value="dns">{m('clubEvent.statusDns')}</option>
+							</select>
+						</label>
+					</div>
+					{#if editError}<p class="course-error" role="alert">{editError}</p>{/if}
+					<div class="picker-actions">
+						<button type="button" class="btn btn-primary-sm" onclick={saveEditResult} disabled={editBusy} data-testid="edit-result-save">
+							{editBusy ? m('clubEvent.submitting') : m('clubEvent.editResultSave')}
+						</button>
+						<button type="button" class="btn-link" onclick={() => (editingResult = null)} disabled={editBusy}>{m('clubEvent.cancel')}</button>
+					</div>
+				</div>
 			{/if}
 
 			{#if isEventOrganiser && pendingClaims.length > 0}
@@ -2424,6 +2944,36 @@
 				</div>
 			{/if}
 		</section>
+		{/if}
+
+		{#if isClass && (gymRoutine || isEventOrganiser)}
+			<section class="card" data-testid="class-routine">
+				<div class="results-head">
+					<h3>{m('clubEvent.gymRoutineTitle')}</h3>
+					{#if isEventOrganiser}
+						<button type="button" class="btn-link" onclick={openRoutineAttach}>
+							{m('clubEvent.gymRoutineAttach')}
+						</button>
+					{/if}
+				</div>
+				{#if gymRoutine}
+					<p class="session-plan-name">{gymRoutine.routine.title}</p>
+					<ol class="session-steps">
+						{#each gymRoutine.exercises as ex (ex.id)}
+							<li>
+								<span>{ex.exercise_name}</span>
+								<span class="muted session-cue">
+									{m(ex.sets.length === 1 ? 'clubEvent.gymRoutineSetsOne' : 'clubEvent.gymRoutineSetsMany', {
+										n: ex.sets.length
+									})}
+								</span>
+							</li>
+						{/each}
+					</ol>
+				{:else}
+					<p class="muted">{m('clubEvent.gymRoutineNone')}</p>
+				{/if}
+			</section>
 		{/if}
 
 		{#if isClass && (sessionPlan || isEventOrganiser)}
@@ -2601,7 +3151,11 @@
 <ConfirmDialog
 	open={showEndRaceConfirm !== null}
 	title={showEndRaceConfirm === 'cancelled' ? m('clubEvent.cancelRaceTitle') : m('clubEvent.endRaceTitle')}
-	message={showEndRaceConfirm === 'cancelled' ? m('clubEvent.cancelRaceMessage') : m('clubEvent.endRaceMessage')}
+	message={showEndRaceConfirm === 'cancelled'
+		? m('clubEvent.cancelRaceMessage')
+		: dnfPreview != null && dnfPreview > 0
+			? m('clubEvent.endRaceMessageDnf', { n: dnfPreview })
+			: m('clubEvent.endRaceMessage')}
 	confirmLabel={showEndRaceConfirm === 'cancelled' ? m('clubEvent.cancelRaceTitle') : m('clubEvent.endRaceTitle')}
 	onconfirm={confirmEndRace}
 	oncancel={() => showEndRaceConfirm = null}
@@ -2616,6 +3170,17 @@
 	onconfirm={removeMyResult}
 	oncancel={() => (showRemoveResultConfirm = false)}
 	danger
+/>
+
+<ConfirmDialog
+	open={showLeaveWaitlist}
+	title={m('clubEvent.leaveWaitlistTitle')}
+	message={m('clubEvent.leaveWaitlistMessage')}
+	confirmLabel={m('clubEvent.leaveWaitlist')}
+	onconfirm={confirmLeaveWaitlist}
+	oncancel={() => (showLeaveWaitlist = false)}
+	danger
+	data-testid="leave-waitlist-dialog"
 />
 
 <ConfirmDialog
@@ -2668,15 +3233,19 @@
 
 <Modal
 	open={showCancelInstance}
-	title={m('clubEvent.cancelOccurrence')}
+	title={event?.recurrence_freq ? m('clubEvent.cancelOccurrence') : m('clubEvent.cancelEvent')}
 	onclose={() => (showCancelInstance = false)}
 >
 	<div class="cancel-instance-form">
 		<p>
-			{m('clubEvent.cancelInstanceBody')}
+			{event?.recurrence_freq ? m('clubEvent.cancelInstanceBody') : m('clubEvent.cancelEventBody')}
 		</p>
 		{#if pricing}
-			<p data-testid="cancel-instance-refund-note">{m('clubEvent.cancelInstancePaidBody')}</p>
+			<p data-testid="cancel-instance-refund-note">
+				{event?.recurrence_freq
+					? m('clubEvent.cancelInstancePaidBody')
+					: m('clubEvent.cancelEventPaidBody')}
+			</p>
 		{/if}
 		<label>
 			<span>{m('clubEvent.reasonOptional')}</span>
@@ -2702,7 +3271,51 @@
 				onclick={confirmCancelInstance}
 				disabled={busy}
 			>
-				{busy ? m('clubEvent.cancelling') : m('clubEvent.cancelOccurrence')}
+				{busy
+					? m('clubEvent.cancelling')
+					: event?.recurrence_freq
+						? m('clubEvent.cancelOccurrence')
+						: m('clubEvent.cancelEvent')}
+			</button>
+		</div>
+	</div>
+</Modal>
+
+<Modal
+	open={showCancelSeries}
+	title={m('clubEvent.cancelSeries')}
+	onclose={() => (showCancelSeries = false)}
+>
+	<div class="cancel-instance-form">
+		<p>{m('clubEvent.cancelSeriesBody')}</p>
+		{#if pricing}
+			<p data-testid="cancel-series-refund-note">{m('clubEvent.cancelSeriesPaidBody')}</p>
+		{/if}
+		<label>
+			<span>{m('clubEvent.reasonOptional')}</span>
+			<textarea
+				bind:value={seriesCancelReason}
+				rows="2"
+				maxlength="300"
+				placeholder={m('clubEvent.cancelReasonPlaceholder')}
+			></textarea>
+		</label>
+		<div class="cancel-instance-actions">
+			<button
+				type="button"
+				class="btn btn-secondary"
+				onclick={() => (showCancelSeries = false)}
+				disabled={busy}
+			>
+				{m('clubEvent.keepIt')}
+			</button>
+			<button
+				type="button"
+				class="btn btn-danger"
+				onclick={confirmCancelSeries}
+				disabled={busy}
+			>
+				{busy ? m('clubEvent.cancelling') : m('clubEvent.cancelSeries')}
 			</button>
 		</div>
 	</div>
@@ -2737,6 +3350,9 @@
 					{/each}
 				</select>
 			</label>
+			{#if event.gym_routine_id && attachChoice}
+				<p class="muted">{m('clubEvent.planReplacesRoutine')}</p>
+			{/if}
 			<div class="attach-actions">
 				<button type="button" class="btn btn-secondary" onclick={() => (showAttach = false)}>
 					{m('session.cancel')}
@@ -2746,6 +3362,42 @@
 					class="btn btn-primary"
 					data-testid="attach-plan-save"
 					onclick={saveAttach}
+				>
+					{m('session.attachSave')}
+				</button>
+			</div>
+		</div>
+	</Modal>
+	<Modal
+		open={showRoutineAttach}
+		title={m('clubEvent.gymRoutineAttach')}
+		onclose={() => (showRoutineAttach = false)}
+	>
+		<div class="attach-body">
+			<label class="attach-field">
+				<span>{m('clubEvent.gymRoutineTitle')}</span>
+				<select bind:value={routineChoice} data-testid="attach-routine-select">
+					<option value="">{m('session.attachNone')}</option>
+					{#each clubRoutines as r (r.id)}
+						<option value={r.id}>{r.title}</option>
+					{/each}
+				</select>
+			</label>
+			{#if clubRoutines.length === 0}
+				<p class="muted">{m('clubEvent.gymRoutineEmpty')}</p>
+			{/if}
+			{#if event.session_plan_id && routineChoice}
+				<p class="muted">{m('clubEvent.gymRoutineReplacesPlan')}</p>
+			{/if}
+			<div class="attach-actions">
+				<button type="button" class="btn btn-secondary" onclick={() => (showRoutineAttach = false)}>
+					{m('session.cancel')}
+				</button>
+				<button
+					type="button"
+					class="btn btn-primary"
+					data-testid="attach-routine-save"
+					onclick={saveRoutineAttach}
 				>
 					{m('session.attachSave')}
 				</button>
@@ -3239,6 +3891,9 @@
 	}
 	.register-status.processing {
 		color: var(--color-text-secondary);
+	}
+	.register-status.offered {
+		color: var(--color-text);
 	}
 	.rsvp-tri {
 		display: grid;
@@ -3839,6 +4494,59 @@
 	.time {
 		font-weight: 600;
 		font-variant-numeric: tabular-nums;
+	}
+	.time-split {
+		display: block;
+		font-weight: 400;
+		font-size: 0.78rem;
+	}
+	.method-tag {
+		background: var(--color-bg-tertiary);
+		color: var(--color-text-secondary);
+		font-size: var(--font-size-section-label);
+		font-weight: 700;
+		padding: 0.1rem 0.35rem;
+		border-radius: var(--radius-sm);
+	}
+	.method-tag.host {
+		background: var(--color-warning-light);
+		color: var(--color-warning-text);
+	}
+	.course-board-title {
+		margin: 1rem 0 0.4rem;
+		font-size: 0.95rem;
+	}
+	.course-pick {
+		display: flex;
+		flex-direction: column;
+		gap: 0.3rem;
+		margin-bottom: 0.6rem;
+		font-size: 0.88rem;
+		font-weight: 600;
+	}
+	.course-pick select {
+		min-height: 2.75rem;
+	}
+	.course-error {
+		color: var(--color-danger-text);
+		font-size: 0.85rem;
+		margin: 0 0 0.6rem;
+	}
+	.edit-result-fields {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-sm);
+		margin: 0.5rem 0;
+	}
+	.edit-result-fields label {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		font-size: 0.85rem;
+	}
+	.edit-result-fields input,
+	.edit-result-fields select {
+		min-height: 2.75rem;
 	}
 	.dist {
 		font-size: 0.8rem;

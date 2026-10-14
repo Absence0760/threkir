@@ -6,6 +6,7 @@ import { deleteRun, insertRun } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
 import type { TrackPoint } from '../../src/lib/types';
 import { readMaybeRow, readRow, readRows } from '../fixtures/db-read';
+import { shareChoosingPublic } from '../fixtures/share';
 
 /**
  * /runs/[id] — owner-only run detail page.
@@ -263,7 +264,7 @@ test.describe('/runs/[id]', () => {
 			await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 
 			await page.goto(`/runs/${planted}`);
-			await page.locator('button[title="Share link"]').click();
+			await shareChoosingPublic(page, page.getByTestId('run-share-btn'));
 
 			// Consent dialog gates the public-flip. Confirm it explicitly.
 			const dialog = page.locator('[data-testid="share-confirm-dialog"]');
@@ -371,7 +372,7 @@ test.describe('/runs/[id]', () => {
 			await expect(zonesUnknown).toBeVisible({ timeout: 15_000 });
 			await expect(zonesUnknown).toHaveCount(0, { timeout: 10_000 });
 
-			await page.locator('button[title="Share link"]').click();
+			await shareChoosingPublic(page, page.getByTestId('run-share-btn'));
 			await expect(zonesUnknown).toBeVisible({ timeout: 15_000 });
 			await expect(page.locator('[data-testid="share-confirm-dialog"]')).toHaveCount(0);
 
@@ -404,7 +405,7 @@ test.describe('/runs/[id]', () => {
 		try {
 			await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 			await page.goto(`/runs/${planted}`);
-			await page.locator('button[title="Share link"]').click();
+			await shareChoosingPublic(page, page.getByTestId('run-share-btn'));
 
 			const dialog = page.locator('[data-testid="share-confirm-dialog"]');
 			await expect(dialog).toBeVisible({ timeout: 5_000 });
@@ -904,9 +905,9 @@ test.describe('/runs/[id]', () => {
 			await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 			await page.goto(`/runs/${planted}`);
 
-			const shareBtn = page.locator('button[title="Share link"]');
+			const shareBtn = page.getByTestId('run-share-btn');
 			await expect(shareBtn).toBeVisible({ timeout: 10_000 });
-			await shareBtn.click();
+			await shareChoosingPublic(page, shareBtn);
 
 			// Confirm the consent dialog — this kicks the held PATCH.
 			const dialog = page.locator('[data-testid="share-confirm-dialog"]');

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { NOT_PROVIDED, OPERATOR, OPERATOR_FACTS_COMPLETE } from '$lib/legal/operator';
+	import { NOT_PROVIDED, OPERATOR, OPERATOR_FACTS_COMPLETE } from '#lib/legal/operator.ts';
 
 	const lastUpdated = '2026-10-06';
 </script>

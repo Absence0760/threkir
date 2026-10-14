@@ -2,7 +2,7 @@
 /// real thing that decides it.
 ///
 /// Split from `integration_visibility.ts` on purpose: the rules live there and
-/// are unit-testable, while this half reaches for `$env` and supabase-js and so
+/// are unit-testable, while this half reaches for `$app/env` and supabase-js and so
 /// can only be exercised through the browser. Keep decisions out of here — this
 /// file should read as a table plus four calls.
 
@@ -11,7 +11,7 @@ import {
 	isParkrunConfigured,
 	isRunSignUpConfigured,
 	isUltraSignUpConfigured
-} from '$lib/core/data';
+} from '#lib/core/data.ts';
 import { isStravaConfigured } from './strava';
 import type { GateVerdict, IntegrationGate } from './integration_visibility';
 

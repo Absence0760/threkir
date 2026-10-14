@@ -4,6 +4,7 @@ import { isInAnyZone } from '../../src/lib/routes/privacy';
 import { originOf } from '../fixtures/base-url';
 import { insertRun, deleteRun } from '../fixtures/simulate';
 import { USER_A, USER_B } from '../fixtures/users';
+import { shareChoosingPublic } from '../fixtures/share';
 
 /**
  * Privacy-zone share guardrail.
@@ -79,9 +80,8 @@ test.describe('privacy-zone share guardrail', () => {
 			page.getByRole('heading', { level: 1 })
 		).toBeVisible({ timeout: 10_000 });
 
-		// Click Share. The button is icon-only with title="Share link";
-		// playwright matches by accessible name (title attr).
-		await page.locator('button[title="Share link"]').click();
+		// Click Share, then pick Public in the audience dialog it opens.
+		await shareChoosingPublic(page, page.getByTestId('run-share-btn'));
 
 		// The privacy-zone ConfirmDialog must appear with the warning
 		// text. The dialog title is "Make this run public?" — was
@@ -100,7 +100,7 @@ test.describe('privacy-zone share guardrail', () => {
 		await dialog.getByRole('button', { name: 'Cancel' }).click();
 		await expect(dialog).toHaveCount(0);
 
-		await page.locator('button[title="Share link"]').click();
+		await shareChoosingPublic(page, page.getByTestId('run-share-btn'));
 		await expect(
 			page.locator('.modal', { hasText: 'Make this run public?' })
 		).toBeVisible({ timeout: 5_000 });
@@ -142,7 +142,7 @@ test.describe('privacy-zone share guardrail', () => {
 			page.getByRole('heading', { level: 1 })
 		).toBeVisible({ timeout: 10_000 });
 
-		await page.locator('button[title="Share link"]').click();
+		await shareChoosingPublic(page, page.getByTestId('run-share-btn'));
 		const dialog = page.locator('.modal', { hasText: 'Make this run public?' });
 		await expect(dialog).toBeVisible({ timeout: 5_000 });
 

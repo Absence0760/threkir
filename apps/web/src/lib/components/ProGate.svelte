@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { featureLabel, featureDescription } from '$lib/settings/features';
-	import { m } from '$lib/i18n/store.svelte';
+	import { featureLabel, featureDescription } from '#lib/settings/features.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
 
 	interface Props {
 		feature: string;

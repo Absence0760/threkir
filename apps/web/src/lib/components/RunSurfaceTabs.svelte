@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { m } from '$lib/i18n/store.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
 
 	// Run-surface sub-tab strip: Runs · Routes · Segments · Plans · Races. These
 	// are distinct surfaces at distinct URLs, so the strip is a set of links (not

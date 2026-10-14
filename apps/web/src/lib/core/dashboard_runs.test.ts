@@ -13,7 +13,7 @@
 // answer the full history would — that's the safety contract.
 //
 // Runs with cwd = apps/web (`test:unit`). data.ts can't be imported here
-// (it pulls the supabase singleton + `$env`), so the window contract is
+// (it pulls the supabase singleton + `$app/env`), so the window contract is
 // imported from the pure `./dashboard_runs` sibling that data.ts uses.
 
 import { test } from 'node:test';

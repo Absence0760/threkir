@@ -24,7 +24,7 @@ import { USER_A } from '../fixtures/users';
 test.describe('sidebar account popover — ARIA menu semantics', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
-	test('role="menu" owns the four menuitems (aria-required-children)', async ({ page }) => {
+	test('role="menu" owns the five menuitems (aria-required-children)', async ({ page }) => {
 		await page.goto('/dashboard');
 		await page.locator('.profile-btn').click();
 
@@ -33,10 +33,11 @@ test.describe('sidebar account popover — ARIA menu semantics', () => {
 
 		// The menu must own operable menuitem children — the property
 		// aria-required-children checks. Fails before the fix (0 menuitems).
-		await expect(menu.getByRole('menuitem')).toHaveCount(4);
+		await expect(menu.getByRole('menuitem')).toHaveCount(5);
 		await expect(menu.getByRole('menuitem', { name: 'View profile' })).toBeVisible();
 		await expect(menu.getByRole('menuitem', { name: 'Athletes & coaches' })).toBeVisible();
 		await expect(menu.getByRole('menuitem', { name: 'Settings' })).toBeVisible();
+		await expect(menu.getByRole('menuitem', { name: 'Help' })).toBeVisible();
 		await expect(menu.getByRole('menuitem', { name: 'Sign out' })).toBeVisible();
 	});
 
@@ -47,6 +48,7 @@ test.describe('sidebar account popover — ARIA menu semantics', () => {
 		const viewProfile = page.getByRole('menuitem', { name: 'View profile' });
 		const coaching = page.getByRole('menuitem', { name: 'Athletes & coaches' });
 		const settings = page.getByRole('menuitem', { name: 'Settings' });
+		const help = page.getByRole('menuitem', { name: 'Help' });
 		const signOut = page.getByRole('menuitem', { name: 'Sign out' });
 
 		// Opening the popover moves focus to the first item.
@@ -57,6 +59,9 @@ test.describe('sidebar account popover — ARIA menu semantics', () => {
 
 		await page.keyboard.press('ArrowDown');
 		await expect(settings).toBeFocused();
+
+		await page.keyboard.press('ArrowDown');
+		await expect(help).toBeFocused();
 
 		await page.keyboard.press('End');
 		await expect(signOut).toBeFocused();

@@ -16,7 +16,13 @@ import { markListsStale } from './list_freshness';
 import { probeSaysConfigured } from './provider_probe';
 import { loadSettings, effective } from '../settings/settings';
 import type { Modality } from '../settings/modality_visibility';
-import { privacyDefaultToIsPublic } from '../social/run_visibility';
+import {
+	audienceColumns,
+	levelRevokesGrants,
+	privacyDefaultToAudience,
+	type AudienceColumns,
+	type AudienceLevel,
+} from '../social/run_visibility';
 import { bandsToRanges, type DistanceBandKey } from '../routes/distance_bands';
 import { assemblePublicRoute } from '../routes/public_route_assembly';
 import { stripExifFromFile } from '../util/exif_strip';
@@ -25,6 +31,13 @@ import { logInputFromRecipe } from '../nutrition/recipe';
 import { challengesToRecomputeForRun } from '../social/challenge_progress';
 import { mergeMyProgress } from '../social/challenge_list';
 import { selectEffectivePricing } from '../social/event_instance';
+import {
+	applyCourseSave,
+	planCourseSave,
+	sortCourses,
+	type CourseDraft,
+	type EventCourse,
+} from '../social/event_courses';
 import { parseHostEarningsRow, type HostEarningsInstance } from '../social/host_earnings';
 import {
 	cancelledOccurrenceRefunds,
@@ -105,6 +118,12 @@ import {
 } from '../types';
 import type { RaceImportLeg } from '../integrations/race_import_providers';
 import {
+	parseUltraSignUpCandidates,
+	ultraSignUpLinkFromRow,
+	type UltraSignUpCandidate,
+	type UltraSignUpPersonLink
+} from '../integrations/ultrasignup_person';
+import {
 	filterRelinkCandidates,
 	DEFAULT_RELINK_WINDOW_DAYS,
 	type RelinkCandidateRun
@@ -132,6 +151,7 @@ import { mergeRecapRuns, recapYearWindow } from '../runs/recap_window';
 import type {
 	CoachAthleteStatus,
 	FinisherStatus,
+	FinishMethod,
 	RaceSessionStatus,
 	SessionPlan,
 	SessionPlanBlock,
@@ -862,7 +882,7 @@ export type RouteMatchCandidate = {
 /// with that distance match is auto-link-worthy; multiple candidates
 /// or a length mismatch should defer to user confirmation.
 export async function fetchRoutesIntersectingTrack(
-	track: import('$lib/types').TrackPoint[],
+	track: import('#lib/types.ts').TrackPoint[],
 	toleranceM = 100,
 	maxResults = 10,
 ): Promise<RouteMatchCandidate[]> {
@@ -910,7 +930,7 @@ export type RunMatchInfo = {
 	algorithm: string | null;
 	algorithmVersion: string | null;
 	matchedAt: string | null;
-	track: import('$lib/types').TrackPoint[] | null;
+	track: import('#lib/types.ts').TrackPoint[] | null;
 };
 
 /// Fetch the run_matched_tracks row for a run + lazily download the
@@ -930,10 +950,10 @@ export async function fetchRunMatchedTrack(
 		.maybeSingle();
 	if (error || !data) return null;
 
-	let track: import('$lib/types').TrackPoint[] | null = null;
+	let track: import('#lib/types.ts').TrackPoint[] | null = null;
 	if (data.status === 'matched' && data.matched_track_url) {
 		try {
-			track = (await fetchTrack(data.matched_track_url)) as import('$lib/types').TrackPoint[];
+			track = (await fetchTrack(data.matched_track_url)) as import('#lib/types.ts').TrackPoint[];
 		} catch (e) {
 			console.warn('Failed to fetch matched track', e);
 		}
@@ -1023,6 +1043,39 @@ export async function fetchPublicRun(
 	return { run: { ...data, track: null } as Run, error: null };
 }
 
+/// The non-owner read of a run that is NOT public but whose audience admits
+/// the caller — the owner's followers for a followers-only run, or a named
+/// recipient of a `run_shares` grant (migration 20270802000003). `shared_runs`
+/// carries exactly `public_runs`' redacted projection, never a public run and
+/// never the caller's own, so everything said about `fetchPublicRun` holds
+/// here: no track (the clipped one comes from `fetchClippedTrackForRun`), and
+/// a failed read is reported apart from "not shared with you".
+export async function fetchSharedRun(
+	id: string,
+): Promise<{ run: Run | null; error: string | null }> {
+	const { data, error } = await supabase
+		.from('shared_runs')
+		.select('*')
+		.eq('id', id)
+		.maybeSingle();
+	if (error) return { run: null, error: error.message };
+	if (!data) return { run: null, error: null };
+	return { run: { ...data, track: null } as Run, error: null };
+}
+
+/// Every non-owner read of a run in one call: public first, then shared with
+/// this caller. Anonymous callers stop at public — they belong to no audience,
+/// and `shared_runs` is not granted to anon.
+export async function fetchViewableRun(
+	id: string,
+): Promise<{ run: Run | null; error: string | null; shared: boolean }> {
+	const pub = await fetchPublicRun(id);
+	if (pub.error || pub.run) return { ...pub, shared: false };
+	if (!(await currentViewerId())) return { run: null, error: null, shared: false };
+	const shared = await fetchSharedRun(id);
+	return { ...shared, shared: shared.run !== null };
+}
+
 export interface PublicRunAttribution {
 	ownerId: string;
 	displayName: string | null;
@@ -1060,7 +1113,19 @@ export async function fetchPublicRunAttribution(
 		.eq('id', runId)
 		.maybeSingle();
 	if (error) return { attribution: null, error: error.message };
-	const ownerId = (run as { user_id?: string | null } | null)?.user_id;
+	let ownerId = (run as { user_id?: string | null } | null)?.user_id;
+	if (!ownerId) {
+		// Not public: the run may still be shared with this viewer — a
+		// followers-only run they follow the owner for, or a named-person grant
+		// (20270802000003). Same projection, same single column.
+		const { data: shared, error: sharedError } = await supabase
+			.from('shared_runs')
+			.select('user_id')
+			.eq('id', runId)
+			.maybeSingle();
+		if (sharedError) return { attribution: null, error: sharedError.message };
+		ownerId = (shared as { user_id?: string | null } | null)?.user_id;
+	}
 	if (!ownerId) return { attribution: null, error: null };
 	// The display name is decoration on an entitlement already established by
 	// the row above, so its own failure degrades to an unnamed owner rather
@@ -1189,6 +1254,140 @@ export async function setRunPublic(id: string, isPublic: boolean): Promise<void>
 		.update({ is_public: isPublic })
 		.eq('id', id);
 	if (error) throw error;
+}
+
+/// Which entity an audience control is acting on. The two grant tables and
+/// the two base tables have the same shape, so one set of helpers serves both.
+export type ShareableKind = 'run' | 'route';
+
+/// One named person a run or route is shared with, for the owner's list.
+export interface ShareRecipient {
+	recipientId: string;
+	displayName: string | null;
+	avatarUrl: string | null;
+	createdAt: string;
+}
+
+/// Whether the followers level and named-person shares are live (the server's
+/// `private.feature_flags` row, decisions § 1874). The audience control
+/// renders only when this is true. Fail-closed: any read failure is "off", and
+/// is not cached, so a later mount can find out.
+let audienceSharingProbe: Promise<boolean> | null = null;
+export function audienceSharingEnabled(): Promise<boolean> {
+	if (audienceSharingProbe) return audienceSharingProbe;
+	const probe = (async () => {
+		try {
+			const { data, error } = await supabase.rpc('audience_sharing_enabled', undefined, { get: true });
+			if (error) {
+				audienceSharingProbe = null;
+				return false;
+			}
+			return data === true;
+		} catch {
+			audienceSharingProbe = null;
+			return false;
+		}
+	})();
+	audienceSharingProbe = probe;
+	return probe;
+}
+
+/// The owner's live grants on one run or route, oldest first, with each
+/// recipient's display name. RLS returns only the owner's own grants (and a
+/// recipient's own), so a non-owner calling this gets at most their own row.
+export async function fetchShares(kind: ShareableKind, id: string): Promise<ShareRecipient[]> {
+	const { data: rows, error } =
+		kind === 'run'
+			? await supabase
+					.from('run_shares')
+					.select('recipient_id, created_at')
+					.eq('run_id', id)
+					.order('created_at', { ascending: true })
+					.order('recipient_id', { ascending: true })
+			: await supabase
+					.from('route_shares')
+					.select('recipient_id, created_at')
+					.eq('route_id', id)
+					.order('created_at', { ascending: true })
+					.order('recipient_id', { ascending: true });
+	if (error) throw error;
+	const ids = (rows ?? []).map((r) => r.recipient_id);
+	if (ids.length === 0) return [];
+	const { data: profiles, error: profilesError } = await supabase
+		.from('user_profiles')
+		.select('id, display_name, avatar_url')
+		.in('id', ids);
+	if (profilesError) throw profilesError;
+	const byId = new Map((profiles ?? []).map((p) => [p.id, p] as const));
+	return (rows ?? []).map((r) => ({
+		recipientId: r.recipient_id,
+		displayName: byId.get(r.recipient_id)?.display_name ?? null,
+		avatarUrl: byId.get(r.recipient_id)?.avatar_url ?? null,
+		createdAt: r.created_at,
+	}));
+}
+
+/// Share one run or route with one person. The INSERT policy admits only the
+/// owner, only while audience sharing is on, and only for a recipient with a
+/// follow edge either way and no block (20270802000002) — the same set the
+/// picker offers. A repeat share of the same person is a no-op, not an error.
+export async function addShare(kind: ShareableKind, id: string, recipientId: string): Promise<void> {
+	const ownerId = await currentViewerId();
+	if (!ownerId) throw new Error('Not authenticated');
+	const { error } =
+		kind === 'run'
+			? await supabase.from('run_shares').insert({ run_id: id, owner_id: ownerId, recipient_id: recipientId })
+			: await supabase
+					.from('route_shares')
+					.insert({ route_id: id, owner_id: ownerId, recipient_id: recipientId });
+	if (error && !isDuplicateKeyError(error)) throw error;
+}
+
+/// Revoke one person's access. It ends on their next read: nothing is copied
+/// to them, so there is nothing to recall. A delete RLS refused comes back as
+/// zero rows rather than an error, so the row count is checked and a refusal
+/// is reported instead of being shown as a revoke.
+export async function revokeShare(kind: ShareableKind, id: string, recipientId: string): Promise<void> {
+	const { data, error } =
+		kind === 'run'
+			? await supabase
+					.from('run_shares')
+					.delete()
+					.eq('run_id', id)
+					.eq('recipient_id', recipientId)
+					.select('recipient_id')
+			: await supabase
+					.from('route_shares')
+					.delete()
+					.eq('route_id', id)
+					.eq('recipient_id', recipientId)
+					.select('recipient_id');
+	if (error) throw error;
+	if (!data || data.length === 0) throw new Error(m('audience.revokeRefused'));
+}
+
+/// Move a run or route to a level. Only me revokes every grant first, so the
+/// row never claims "only me" while a named reader is still admitted; the
+/// other levels leave grants in place (moot while wider, back in force if the
+/// owner narrows again). Specific people writes the same columns as Only me —
+/// its audience is the grants the caller adds with [addShare].
+export async function setAudience(kind: ShareableKind, id: string, level: AudienceLevel): Promise<void> {
+	if (kind === 'run') markListsStale('runs', 'history', 'routes');
+	else markListsStale('routes');
+	if (levelRevokesGrants(level)) {
+		const { error } =
+			kind === 'run'
+				? await supabase.from('run_shares').delete().eq('run_id', id)
+				: await supabase.from('route_shares').delete().eq('route_id', id);
+		if (error) throw error;
+	}
+	const columns = audienceColumns(level);
+	const { data, error } =
+		kind === 'run'
+			? await supabase.from(TABLES.runs).update(columns).eq('id', id).select('id')
+			: await supabase.from('routes').update(columns).eq('id', id).select('id');
+	if (error) throw error;
+	if (!data || data.length === 0) throw new Error(m('audience.updateRefused'));
 }
 
 /// Persist at most one fitness snapshot per user per UTC day. The dashboard
@@ -1334,21 +1533,34 @@ export async function saveRunAsRoute(
 /// `'app'` so the run picks up the "Recorded" label in the UI; the
 /// `metadata.manual_entry = true` flag lets the detail page show
 /// "Manual entry" instead of the map.
-/// Map the user's `privacy_default` preference to the `runs.is_public`
-/// boolean for a newly-created run. Only `public` yields a public run;
-/// `followers` and `private` stay private (runs have no followers-only
-/// visibility tier — see docs/backend/settings.md). Mirrors mobile
-/// `Preferences.newRunsArePublic`. Web previously ignored this entirely
-/// (runs always landed at the `is_public default false`), so a runner who
-/// chose `public` still got private runs from web saves + imports
-/// (comeback persona #27). Fail-closed: any settings-read failure → private.
-async function defaultRunIsPublic(userId: string): Promise<boolean> {
+/// Map the user's `privacy_default` preference to the visibility columns of a
+/// newly-created run: `public` → public, `followers` → `followers_only`, else
+/// owner-only (`social/run_visibility.ts`, decisions § 1875). Web once
+/// ignored the preference entirely, so a runner who chose `public` still got
+/// private runs from web saves + imports (comeback persona #27); until the
+/// followers level existed, `followers` collapsed to owner-only. Fail-closed:
+/// any settings-read failure → owner-only.
+async function defaultRunAudience(userId: string): Promise<AudienceColumns> {
 	try {
 		const settings = await loadSettings(userId);
-		return privacyDefaultToIsPublic(effective<string>(settings, 'privacy_default', 'followers'));
+		return privacyDefaultToAudience(effective<string>(settings, 'privacy_default', 'private'));
 	} catch {
-		return false;
+		return audienceColumns('private');
 	}
+}
+
+/// The columns a writer stores: an explicit per-run choice wins, otherwise the
+/// runner's default. A caller that passes only `isPublic` (the importers'
+/// historical shape) chose between public and owner-only.
+async function runAudienceFor(
+	userId: string,
+	input: { isPublic?: boolean; followersOnly?: boolean },
+): Promise<AudienceColumns> {
+	if (input.isPublic === undefined && input.followersOnly === undefined) {
+		return defaultRunAudience(userId);
+	}
+	const isPublic = input.isPublic === true;
+	return { is_public: isPublic, followers_only: !isPublic && input.followersOnly === true };
 }
 
 export async function createManualRun(input: {
@@ -1358,14 +1570,16 @@ export async function createManualRun(input: {
 	activityType?: 'run' | 'walk' | 'hike' | 'cycle' | 'stroller';
 	notes?: string | null;
 	routeId?: string | null;
-	/// Per-run visibility override. When omitted, falls back to the user's
-	/// `privacy_default` preference (`public` → public, else private).
+	/// Per-run visibility override. When both are omitted, falls back to the
+	/// user's `privacy_default` preference (`public` → public, `followers` →
+	/// followers-only, else owner-only).
 	isPublic?: boolean;
+	followersOnly?: boolean;
 }): Promise<{ id: string }> {
 	const { data: authUser } = await supabase.auth.getUser();
 	const userId = authUser.user?.id;
 	if (!userId) throw new Error('Not authenticated');
-	const isPublic = input.isPublic ?? (await defaultRunIsPublic(userId));
+	const audience = await runAudienceFor(userId, input);
 
 	const metadata: JsonObject = {
 		[METADATA_KEYS.manual_entry]: true,
@@ -1384,7 +1598,8 @@ export async function createManualRun(input: {
 			activity_type: input.activityType ?? 'run',
 			metadata,
 			route_id: input.routeId ?? null,
-			is_public: isPublic,
+			is_public: audience.is_public,
+			followers_only: audience.followers_only,
 		})
 		.select('id')
 		.single();
@@ -1433,15 +1648,16 @@ export async function saveRun(input: {
 	/// Saved into runs.external_id so a subsequent import of the same
 	/// activity by any path can detect + skip. /audit/strava M3.
 	external_id?: string | null;
-	/// Per-run visibility override. When omitted, falls back to the user's
-	/// `privacy_default` preference. Importers omit it so a bulk import
-	/// honours the runner's default visibility.
+	/// Per-run visibility override. When both are omitted, falls back to the
+	/// user's `privacy_default` preference. Importers omit them so a bulk
+	/// import honours the runner's default visibility.
 	isPublic?: boolean;
+	followersOnly?: boolean;
 }): Promise<{ id: string; trackUploaded: boolean; trackError?: string }> {
 	const { data: authUser } = await supabase.auth.getUser();
 	const userId = authUser.user?.id;
 	if (!userId) throw new Error('Not authenticated');
-	const isPublic = input.isPublic ?? (await defaultRunIsPublic(userId));
+	const audience = await runAudienceFor(userId, input);
 
 	// `title` has no DB column, so it survives the round-trip in metadata only.
 	// `elevation_m` is different: migration 20270302_001 promoted total ascent to
@@ -1462,7 +1678,8 @@ export async function saveRun(input: {
 		source: input.source,
 		activity_type: input.activity_type ?? 'run',
 		metadata: mergedMetadata,
-		is_public: isPublic,
+		is_public: audience.is_public,
+		followers_only: audience.followers_only,
 	};
 	if (input.elevation_m != null) row.elevation_gain_m = input.elevation_m;
 	if (input.embedded_bests) Object.assign(row, input.embedded_bests);
@@ -2043,11 +2260,21 @@ export async function fetchRouteById(id: string): Promise<Route | null> {
 
 	// The metadata read and the server-clip RPC both key only on `id`, so
 	// fire them concurrently instead of serialising two round trips.
+	//
+	// A route that is not public may still be shared with this viewer — a
+	// followers-only route whose owner they follow, or a named-person grant
+	// (20270802000003). `shared_routes` has `public_routes`' projection, and
+	// `clip_route_for_viewer` admits the same audience, so the assembled
+	// shape is identical and the polyline is clipped exactly as for a public
+	// route.
 	const assembled = await assemblePublicRoute(
 		async () => {
 			const read = await supabase.from('public_routes').select('*').eq('id', id).maybeSingle();
 			if (read.error) throw read.error;
-			return read.data;
+			if (read.data || !viewerId) return read.data;
+			const shared = await supabase.from('shared_routes').select('*').eq('id', id).maybeSingle();
+			if (shared.error) throw shared.error;
+			return shared.data;
 		},
 		() => fetchClippedRouteForViewer(id),
 	);
@@ -2298,7 +2525,7 @@ const CLUB_SELECT_COLS =
 // enumerates these safe columns; the two coords are write-only
 // today (no UI consumer).
 const EVENT_SELECT_COLS =
-	'id, club_id, title, description, starts_at, timezone, duration_min, meet_label, route_id, distance_m, pace_target_sec, capacity, author_id, created_at, updated_at, recurrence_freq, recurrence_byday, recurrence_until, recurrence_count, category, discipline, gym_template, session_plan_id, is_public' as const;
+	'id, club_id, title, description, starts_at, timezone, duration_min, meet_label, route_id, distance_m, pace_target_sec, capacity, author_id, created_at, updated_at, recurrence_freq, recurrence_byday, recurrence_until, recurrence_count, category, discipline, gym_template, session_plan_id, gym_routine_id, is_public' as const;
 
 /** Browse public clubs. Most recently created first. */
 export async function browseClubsWithError(
@@ -2553,7 +2780,10 @@ export interface ImportRaceResultInput {
 	provider: 'runsignup' | 'ultrasignup' | 'chronotrack' | 'paste';
 	listingId: string;
 	runSignUpUserId?: string;
-	ultraSignUpAthleteId?: string;
+	/// UltraSignup: who the runner is there. Omit it and the stored link is
+	/// read (`fetchUltraSignUpLink`); with neither, the call throws
+	/// `ULTRASIGNUP_NOT_LINKED` before reaching the function.
+	ultraSignUpPerson?: UltraSignUpPersonLink;
 	/// ChronoTrack: filter the event's results to one bib.
 	bib?: string;
 	/// When set, enrich THIS existing run in place (the auto-match seam) instead
@@ -2587,13 +2817,23 @@ export interface ImportRaceResultOutcome {
 export async function importRaceResult(
 	input: ImportRaceResultInput
 ): Promise<ImportRaceResultOutcome> {
+	// UltraSignup's feed is keyed by name and the import is scoped by the
+	// person the runner picked in Settings (decisions § 1841). Without one there
+	// is nothing to send, and the honest answer is "link yourself first".
+	let person: UltraSignUpPersonLink | null = null;
+	if (input.provider === 'ultrasignup') {
+		person = input.ultraSignUpPerson ?? (await fetchUltraSignUpLink());
+		if (!person) throw new Error(ULTRASIGNUP_NOT_LINKED);
+	}
 	markListsStale('runs', 'history', 'routes');
 	const { data, error } = await supabase.functions.invoke('race-results-import', {
 		body: {
 			provider: input.provider,
 			listingId: input.listingId,
 			runSignUpUserId: input.runSignUpUserId,
-			ultraSignUpAthleteId: input.ultraSignUpAthleteId,
+			ultraSignUpPersonId: person?.personId,
+			ultraSignUpFirstName: person?.firstName,
+			ultraSignUpLastName: person?.lastName,
 			bib: input.bib,
 			matchRunId: input.matchRunId,
 			result: input.result
@@ -2606,9 +2846,88 @@ export async function importRaceResult(
 		if (input.provider !== 'paste' && (await isProviderGateRefusal(error))) {
 			throw new Error(RACE_IMPORT_UNAVAILABLE[input.provider]);
 		}
-		throw error;
+		// The function's own code, not supabase-js's fixed non-2xx sentence, so a
+		// caller can branch on what the function refused (decisions § 904).
+		const code = await edgeFunctionErrorMessage(error, 'race_import_failed');
+		// The stored person is no longer among the people their name answers
+		// with. That is a link to redo, not a race with no result in it.
+		throw new Error(code === 'ultrasignup_person_not_found' ? ULTRASIGNUP_PERSON_NOT_FOUND : code);
 	}
 	return data as ImportRaceResultOutcome;
+}
+
+/// `importRaceResult` refuses an UltraSignup import before the call when the
+/// runner has not picked themselves in Settings.
+export const ULTRASIGNUP_NOT_LINKED = 'ULTRASIGNUP_NOT_LINKED';
+/// The function could not find the linked person under their name any more.
+export const ULTRASIGNUP_PERSON_NOT_FOUND = 'ULTRASIGNUP_PERSON_NOT_FOUND';
+
+/// The people UltraSignup knows by this name, for the runner to pick
+/// themselves from. Throws `ULTRASIGNUP_UNAVAILABLE` when the leg is off on
+/// this deployment, otherwise the function's own error code.
+export async function lookupUltraSignUpPeople(
+	firstName: string,
+	lastName: string
+): Promise<UltraSignUpCandidate[]> {
+	const { data, error } = await supabase.functions.invoke('race-results-import', {
+		body: {
+			provider: 'ultrasignup',
+			lookup: true,
+			ultraSignUpFirstName: firstName.trim(),
+			ultraSignUpLastName: lastName.trim()
+		}
+	});
+	if (error) {
+		if (await isProviderGateRefusal(error)) throw new Error(RACE_IMPORT_UNAVAILABLE.ultrasignup);
+		throw new Error(await edgeFunctionErrorMessage(error, 'ultrasignup_lookup_failed'));
+	}
+	return parseUltraSignUpCandidates(data);
+}
+
+/// The runner's stored UltraSignup person, or null when they have not linked
+/// one. Owner-only by RLS, like every `integrations` row.
+export async function fetchUltraSignUpLink(): Promise<UltraSignUpPersonLink | null> {
+	const userId = auth.user?.id;
+	if (!userId) return null;
+	const { data, error } = await supabase
+		.from(TABLES.integrations)
+		.select('external_id, external_first_name, external_last_name')
+		.eq('user_id', userId)
+		.eq('provider', 'ultrasignup')
+		.maybeSingle();
+	if (error) throw error;
+	return ultraSignUpLinkFromRow(data);
+}
+
+/// Store the person the runner picked. One row per runner per provider, so a
+/// re-pick replaces the last one.
+export async function linkUltraSignUpPerson(link: UltraSignUpPersonLink): Promise<void> {
+	const userId = auth.user?.id;
+	if (!userId) throw new Error('Not authenticated');
+	const { error } = await supabase.from(TABLES.integrations).upsert(
+		{
+			user_id: userId,
+			provider: 'ultrasignup',
+			external_id: link.personId,
+			external_first_name: link.firstName,
+			external_last_name: link.lastName
+		},
+		{ onConflict: 'user_id,provider' }
+	);
+	if (error) throw error;
+}
+
+/// Forget the stored person. Results already imported stay — they are the
+/// runner's runs, not the link's.
+export async function unlinkUltraSignUpPerson(): Promise<void> {
+	const userId = auth.user?.id;
+	if (!userId) throw new Error('Not authenticated');
+	const { error } = await supabase
+		.from(TABLES.integrations)
+		.delete()
+		.eq('user_id', userId)
+		.eq('provider', 'ultrasignup');
+	if (error) throw error;
 }
 
 /// The error `importRaceResult` throws when a leg's credentials are unset
@@ -2654,16 +2973,15 @@ export async function isRunSignUpConfigured(): Promise<boolean> {
 /// fail-closed shape as isRunSignUpConfigured.
 ///
 /// Probes `race-results-import`, not `race-listings-sync`. The two legs are
-/// separately gated and no longer agree: the sync answers on
-/// ULTRASIGNUP_API_KEY alone, while the results leg refuses unconditionally
-/// since decisions § 975 — an athlete feed carries no race identifier, so
-/// nothing it returns can be attributed to the listing a caller names. The card
-/// this gates says "Import trail and ultra results", so it has to ask the leg
-/// that would run; asking the sync advertises an import whose very next call
-/// 503s the moment the key is provisioned.
+/// separately gated: the sync answers on ULTRASIGNUP_API_KEY, while the results
+/// leg reads a keyless feed and answers on the deployment's
+/// ULTRASIGNUP_RESULTS_ENABLED opt-in (decisions § 1841). The card this gates
+/// says "Import trail and ultra results", so it has to ask the leg that would
+/// run. `ultraSignUpFlow: 'person'` says this client speaks the person flow; a
+/// client that does not is told the leg is unavailable.
 export async function isUltraSignUpConfigured(): Promise<boolean> {
 	const { error } = await supabase.functions.invoke('race-results-import', {
-		body: { provider: 'ultrasignup', probe: true }
+		body: { provider: 'ultrasignup', probe: true, ultraSignUpFlow: 'person' }
 	});
 	return probeSaysConfigured(error);
 }
@@ -3070,9 +3388,14 @@ export function normaliseClubLink(raw: string | null | undefined): string | null
 	return /^https?:\/\//i.test(v) ? v : null;
 }
 
+/// A club delete cascades into its events, so a club holding an event that has
+/// taken payments is refused by the same guard as `deleteEvent`.
 export async function deleteClub(id: string): Promise<void> {
 	const { error } = await supabase.from('clubs').delete().eq('id', id);
-	if (error) throw error;
+	if (error) {
+		if (error.message === PAID_EVENT_DELETE_REFUSAL) throw new Error(PAID_EVENT_DELETE_REFUSAL);
+		throw error;
+	}
 }
 
 export async function joinClub(
@@ -3096,11 +3419,26 @@ export async function joinClub(
 	return status;
 }
 
+/** Raised by `join_club_by_token` when the club requires the activity-risk
+ * acknowledgement and the call did not carry it (§ 1864). */
+export const ACTIVITY_WAIVER_REQUIRED = 'activity_waiver_required';
+
+export function isActivityWaiverRequired(e: unknown): boolean {
+	return (
+		typeof e === 'object' &&
+		e !== null &&
+		(e as { message?: unknown }).message === ACTIVITY_WAIVER_REQUIRED
+	);
+}
+
 /** Redeem a shareable invite token. Returns the joined club id. */
-export async function joinClubByToken(token: string): Promise<string> {
-	const { data, error } = await supabase.rpc('join_club_by_token', { token });
+export async function joinClubByToken(token: string, ackWaiver = false): Promise<string> {
+	const { data, error } = await supabase.rpc('join_club_by_token', {
+		token,
+		activity_waiver_ack: ackWaiver,
+	});
 	if (error) throw error;
-	return data as string;
+	return data;
 }
 
 /// Fetch `display_name` + `avatar_url` for a set of user ids, chunked.
@@ -3648,9 +3986,19 @@ export async function eventHasAthleticData(eventId: string): Promise<boolean> {
 	}
 }
 
+/// The message `guard_paid_event_delete` (20270731000001) raises when a client
+/// deletes an event, or a club holding one, that has taken payments. The event
+/// is cancelled instead, and its payment records stay (decisions § 1867).
+export const PAID_EVENT_DELETE_REFUSAL = 'paid_event_has_orders';
+
+/// Throws `Error(PAID_EVENT_DELETE_REFUSAL)` when the event has taken payments,
+/// so the page can say why rather than show the database's raw message.
 export async function deleteEvent(id: string): Promise<void> {
 	const { error } = await supabase.from('events').delete().eq('id', id);
-	if (error) throw error;
+	if (error) {
+		if (error.message === PAID_EVENT_DELETE_REFUSAL) throw new Error(PAID_EVENT_DELETE_REFUSAL);
+		throw error;
+	}
 }
 
 export interface EventException {
@@ -3865,6 +4213,30 @@ export async function fetchMyOrder(
 	return data[0] as EventOrder;
 }
 
+/// The viewer's own attendee row for one occurrence, as far as the paid
+/// waitlist needs it: whether they are queued, and whether a seat is being
+/// held for them (`offer_expires_at`, migration 20270726000002). Read through
+/// RLS, which shows every user their own RSVP. A failed read throws rather
+/// than answering "not on the waitlist", which would offer the viewer a
+/// second place in a queue they are already in.
+export async function fetchMyWaitlistPlace(
+	eventId: string,
+	instanceStart: string
+): Promise<{ status: RsvpStatus; offer_expires_at: string | null } | null> {
+	const userId = auth.user?.id;
+	if (!userId) return null;
+	const { data, error } = await supabase
+		.from(TABLES.event_attendees)
+		.select('status, offer_expires_at')
+		.eq('event_id', eventId)
+		.eq('instance_start', instanceStart)
+		.eq('user_id', userId)
+		.maybeSingle();
+	if (error) throw error;
+	if (!data) return null;
+	return { status: data.status as RsvpStatus, offer_expires_at: data.offer_expires_at };
+}
+
 /// Buyer self-cancel of their OWN paid/pending registration for an event
 /// instance (club_events.md slice P2). Calls the events-cancel Edge
 /// Function, which initiates the Stripe refund (paid order, refund-eligible
@@ -3894,7 +4266,8 @@ export async function cancelEventOrder(
 }
 
 /// Cancel a single occurrence of a recurring event (the rest of the series
-/// is untouched). Organiser-only via RLS; the fan-out trigger notifies every
+/// is untouched), or a one-off event, whose only occurrence is its
+/// `starts_at`. Organiser-only via RLS; the fan-out trigger notifies every
 /// going / maybe / waitlisted attendee of this instance.
 ///
 /// An occurrence that still holds money (a pending, paid or partially
@@ -3964,6 +4337,31 @@ export async function cancelPaidEventInstance(
 	return refunds;
 }
 
+/// End a recurring series now and call off every remaining occurrence anyone
+/// signed up for, refunding all of their registrations, through the
+/// events-cancel function's `series` scope (decisions § 1868). The function
+/// moves `recurrence_until` to the moment of the cancel, so later occurrences
+/// stop existing rather than each being cancelled. Re-running it resumes any
+/// refund that failed, exactly as an occurrence cancel does. Throws an Error
+/// whose message is the function's machine code on a non-2xx.
+export async function cancelEventSeries(
+	eventId: string,
+	reason: string | null
+): Promise<{ cancelledOccurrences: number; refunds: OccurrenceRefundSummary }> {
+	const { data, error } = await supabase.functions.invoke('events-cancel', {
+		body: { event_id: eventId, scope: 'series', reason: reason?.trim() || null }
+	});
+	if (error) {
+		const code = await edgeFunctionErrorCode(error);
+		throw new Error(code ?? (error instanceof Error ? error.message : 'cancel_failed'));
+	}
+	const body = data as { refunds?: unknown; cancelled_occurrences?: unknown } | null;
+	const refunds = parseOccurrenceRefundSummary(body?.refunds);
+	if (!refunds) throw new Error('cancel_failed');
+	const n = body?.cancelled_occurrences;
+	return { cancelledOccurrences: typeof n === 'number' && n >= 0 ? n : 0, refunds };
+}
+
 /// What is still owed on each cancelled occurrence of an event, for its
 /// organisers: one entry per occurrence with anything unsettled, in date
 /// order, past occurrences included (a class called off last week can still
@@ -4002,19 +4400,29 @@ export async function reinstateEventInstance(
 /// 'waitlisted', so the persisted status can differ from what was requested —
 /// we read it back via the upsert's returning row so the UI can show the
 /// waitlist state without a second fetch.
+///
+/// `courseId` is the racer's chosen course on a multi-course event
+/// (`event_courses`). Leaving it undefined omits the column from the upsert,
+/// so a status change keeps the course already on the row; the server refuses
+/// a going / waitlisted RSVP with no course when the event has more than one.
 export async function rsvpEvent(
 	eventId: string,
 	status: RsvpStatus,
-	instanceStart: string
+	instanceStart: string,
+	courseId?: string | null
 ): Promise<RsvpStatus> {
 	const userId = auth.user?.id;
 	if (!userId) throw new Error('Not authenticated');
+	const row: Insertable<'event_attendees'> = {
+		event_id: eventId,
+		user_id: userId,
+		status,
+		instance_start: instanceStart,
+	};
+	if (courseId !== undefined) row.course_id = courseId;
 	const { data, error } = await supabase
 		.from(TABLES.event_attendees)
-		.upsert(
-			{ event_id: eventId, user_id: userId, status, instance_start: instanceStart },
-			{ onConflict: 'event_id,user_id,instance_start' }
-		)
+		.upsert(row, { onConflict: 'event_id,user_id,instance_start' })
 		.select('status')
 		.single();
 	if (error) throw error;
@@ -4176,6 +4584,13 @@ export interface EventResultRow {
 	note: string | null;
 	created_at: string;
 	organiser_approved: boolean;
+	// Race provenance (migration 20270727000001). `course_id` picks the
+	// leaderboard; `duration_s` stays the ranked time, which on a gun-started
+	// race is `gun_time_s`.
+	course_id: string | null;
+	gun_time_s: number | null;
+	chip_time_s: number | null;
+	finish_method: FinishMethod | null;
 	// organiser_approved_by / organiser_approved_at are admin-side
 	// columns; intentionally omitted from `fetchEventResults`'s public
 	// read path. Add them back via a service-role-only fetcher if/when
@@ -4204,7 +4619,7 @@ export async function fetchEventResults(
 	const { data: results } = await supabase
 		.from('event_results_redacted')
 		.select(
-			'id, user_id, bib, finisher_name, run_id, duration_s, distance_m, rank, finisher_status, age_grade_pct, note, created_at, organiser_approved'
+			'id, user_id, bib, finisher_name, run_id, duration_s, distance_m, rank, finisher_status, age_grade_pct, note, created_at, organiser_approved, course_id, gun_time_s, chip_time_s, finish_method'
 		)
 		.eq('event_id', eventId)
 		.eq('instance_start', instanceStart)
@@ -4241,6 +4656,11 @@ export async function submitEventResult(params: {
 	finisherStatus?: FinisherStatus;
 	ageGradePct?: number | null;
 	note?: string | null;
+	// Set on a raced occurrence: a time the racer submitted themselves is
+	// `manual`, and its run's own duration is the chip time.
+	finishMethod?: FinishMethod | null;
+	chipTimeS?: number | null;
+	courseId?: string | null;
 }): Promise<void> {
 	const userId = auth.user?.id;
 	if (!userId) throw new Error('Not authenticated');
@@ -4260,6 +4680,9 @@ export async function submitEventResult(params: {
 			// DB. Mobile's `SocialService.submitEventResult` applies the
 			// same normalisation.
 			note: noteTrimmed && noteTrimmed.length > 0 ? noteTrimmed : null,
+			...(params.finishMethod !== undefined ? { finish_method: params.finishMethod } : {}),
+			...(params.chipTimeS !== undefined ? { chip_time_s: params.chipTimeS } : {}),
+			...(params.courseId !== undefined ? { course_id: params.courseId } : {}),
 			updated_at: new Date().toISOString(),
 		},
 		{ onConflict: 'event_id,instance_start,user_id' }
@@ -4617,6 +5040,127 @@ export async function approveEventResultById(
 		// (the director RLS policy already bounds it to their own events).
 		.is('user_id', null);
 	if (error) throw error;
+}
+
+/// Organiser edit of one result's time and / or status. Gated by the
+/// `event_results_update_self_or_director` policy (race director) or, for a
+/// bib-only row, `event_results_update_organiser_bib`; the
+/// `event_results_race_guard` trigger stamps `finish_method = 'host'` because
+/// the editor is not the result's runner.
+export async function editEventResultAsHost(
+	resultId: string,
+	patch: { duration_s: number; gun_time_s?: number; finisher_status: FinisherStatus }
+): Promise<void> {
+	const update: Updatable<'event_results'> = {
+		duration_s: patch.duration_s,
+		finisher_status: patch.finisher_status,
+		updated_at: new Date().toISOString(),
+	};
+	if (patch.gun_time_s !== undefined) update.gun_time_s = patch.gun_time_s;
+	const { error } = await supabase.from(TABLES.event_results).update(update).eq('id', resultId);
+	if (error) throw error;
+}
+
+/// How many racers End would mark DNF (pinged the race, filed no result).
+/// Null when the caller is not a race director for the event's club, or the
+/// count could not be read — the End dialog then omits the figure rather than
+/// stating a wrong one.
+export async function fetchRaceDnfPreview(
+	eventId: string,
+	instanceStart: string
+): Promise<number | null> {
+	const { data, error } = await supabase.rpc(
+		'race_pending_dnf_count',
+		{ p_event_id: eventId, p_instance_start: instanceStart },
+		{ get: true }
+	);
+	if (error) {
+		console.warn('fetchRaceDnfPreview failed', error);
+		return null;
+	}
+	return typeof data === 'number' ? data : null;
+}
+
+// --- Event courses (multi-course races) ---
+
+/// An event's courses in display order. Empty for an event with no route and
+/// no courses — a plain club run.
+export async function fetchEventCourses(eventId: string): Promise<EventCourse[]> {
+	const { data, error } = await supabase
+		.from(TABLES.event_courses)
+		.select('id, event_id, route_id, name, distance_m, sort_order')
+		.eq('event_id', eventId)
+		.order('sort_order', { ascending: true })
+		.order('name', { ascending: true });
+	if (error) throw error;
+	return sortCourses(data ?? []);
+}
+
+/// Persist the event editor's course list (a dropped course's RSVPs and
+/// results fall back to no course). The write order and the refused-write
+/// check live in `applyCourseSave`; each statement returns its ids so a write
+/// RLS filtered to nothing is reported, not taken for success. Organiser-only
+/// through the `event_courses_organiser_*` policies.
+export async function saveEventCourses(
+	eventId: string,
+	existing: EventCourse[],
+	drafts: CourseDraft[]
+): Promise<void> {
+	const table = () => supabase.from(TABLES.event_courses);
+	await applyCourseSave(planCourseSave(existing, drafts), {
+		delete: async (ids) => {
+			const { data, error } = await table().delete().in('id', ids).select('id');
+			return { error, rows: data?.length ?? 0 };
+		},
+		update: async (id, patch) => {
+			const { data, error } = await table().update(patch).eq('id', id).select('id');
+			return { error, rows: data?.length ?? 0 };
+		},
+		insert: async (rows) => {
+			const { data, error } = await table()
+				.insert(rows.map((w) => ({ ...w, event_id: eventId })))
+				.select('id');
+			return { error, rows: data?.length ?? 0 };
+		}
+	});
+}
+
+/// Each attendee's chosen course for one occurrence, keyed by user id; an
+/// attendee with no pick is absent. Read under the same club-visibility gate
+/// as `race_pings`, so whoever can see a runner on course can see their
+/// course. Throws on a failed read so the spectator page can keep the split
+/// it already has rather than collapse every runner into "no course".
+export async function fetchAttendeeCourses(
+	eventId: string,
+	instanceStart: string
+): Promise<Map<string, string>> {
+	const { data, error } = await supabase
+		.from(TABLES.event_attendees)
+		.select('user_id, course_id')
+		.eq('event_id', eventId)
+		.eq('instance_start', instanceStart)
+		.not('course_id', 'is', null);
+	if (error) throw error;
+	const out = new Map<string, string>();
+	for (const r of data ?? []) if (r.course_id) out.set(r.user_id, r.course_id);
+	return out;
+}
+
+/// The signed-in viewer's chosen course for one occurrence, or null.
+export async function fetchMyEventCourse(
+	eventId: string,
+	instanceStart: string
+): Promise<string | null> {
+	const userId = auth.user?.id;
+	if (!userId) return null;
+	const { data } = await supabase
+		.from(TABLES.event_attendees)
+		.select('course_id')
+		.eq('event_id', eventId)
+		.eq('instance_start', instanceStart)
+		.eq('user_id', userId)
+		.maybeSingle();
+	return data?.course_id ?? null;
 }
 
 export interface RacePingRow {
@@ -8472,7 +9016,7 @@ export async function computeSegmentEffortsForRun(input: {
 	if (segments.length === 0) return 0;
 
 	const { buildSegmentEffortRows } = await import('../segments/auto_segment_effort');
-	const rows = buildSegmentEffortRows(segments, input.track as import('$lib/types').TrackPoint[], {
+	const rows = buildSegmentEffortRows(segments, input.track as import('#lib/types.ts').TrackPoint[], {
 		run_id: input.run_id,
 		user_id: userId,
 	});
@@ -8807,6 +9351,7 @@ export interface NotificationRow {
 	achievement_id: string | null;
 	challenge_id: string | null;
 	read_at: string | null;
+	refunded: boolean;
 	created_at: string;
 }
 
@@ -10233,7 +10778,7 @@ export interface GymRoutineDetail {
 }
 
 /// The shape routineFromWorkout / the RoutineEditor produce. Mirrors the
-/// RoutineDraft from $lib/gym/gym_routine.ts.
+/// RoutineDraft from #lib/gym/gym_routine.ts.
 export interface GymRoutineInput {
 	title: string;
 	notes?: string | null;
@@ -10682,7 +11227,7 @@ export interface MealTemplateDetail {
 }
 
 /// The shape templateFromEntries / the save-as-meal flow hand to the create
-/// call. Mirrors MealTemplateDraft from $lib/nutrition/meal_template.ts.
+/// call. Mirrors MealTemplateDraft from #lib/nutrition/meal_template.ts.
 export interface MealTemplateInput {
 	name: string;
 	meal_slot?: MealSlot | null;
@@ -10877,7 +11422,7 @@ export interface RecipeDetail {
 }
 
 /// The shape recipeFromEntries / the save-as-recipe flow hand to the create
-/// call. Mirrors RecipeDraft from $lib/nutrition/recipe.ts.
+/// call. Mirrors RecipeDraft from #lib/nutrition/recipe.ts.
 export interface RecipeInput {
 	name: string;
 	servings?: number;
@@ -11340,14 +11885,39 @@ export async function fetchSessionMovementNames(): Promise<string[]> {
 }
 
 /** Attach (or detach with null) a session plan to a class event. Organiser-only
- *  at the DB layer (the events_session_plan_organiser trigger). */
+ *  at the DB layer (the events_session_plan_organiser trigger). A class carries
+ *  a session plan or a gym routine, never both (events_one_class_content), so
+ *  attaching a plan detaches any routine in the same write. */
 export async function setEventSessionPlan(
 	eventId: string,
 	sessionPlanId: string | null
 ): Promise<void> {
 	const { error } = await supabase
 		.from('events')
-		.update({ session_plan_id: sessionPlanId })
+		.update(
+			sessionPlanId == null
+				? { session_plan_id: null }
+				: { session_plan_id: sessionPlanId, gym_routine_id: null }
+		)
+		.eq('id', eventId);
+	if (error) throw error;
+}
+
+/** Attach (or detach with null) a gym routine to a class event (decisions
+ *  § 1869). The events_gym_routine_organiser trigger admits only an organiser
+ *  and only a template of the event's own club or a public template; attaching
+ *  one detaches any session plan in the same write, as above. */
+export async function setEventGymRoutine(
+	eventId: string,
+	gymRoutineId: string | null
+): Promise<void> {
+	const { error } = await supabase
+		.from('events')
+		.update(
+			gymRoutineId == null
+				? { gym_routine_id: null }
+				: { gym_routine_id: gymRoutineId, session_plan_id: null }
+		)
 		.eq('id', eventId);
 	if (error) throw error;
 }

@@ -1,6 +1,6 @@
 // Transport-agnostic handler for the AI route-description enhancement.
 //
-// The templated describer (`$lib/routes/route_description`) is the
+// The templated describer (`#lib/routes/route_description`) is the
 // always-works L1 baseline and is rendered for everyone, free or Pro,
 // with no network call. This handler is the strictly-additive L4
 // enhancement: a Pro perk that asks Claude to turn the templated facts

@@ -25,10 +25,10 @@
 ///      lookup by email), so no per-user SDK `getCustomerInfo()` call is
 ///      needed to derive a management URL.
 ///
-/// URL construction lives in the `$env`-free `revenuecat_links.ts` so it
+/// URL construction lives in the `$app/env`-free `revenuecat_links.ts` so it
 /// stays unit-testable; this module is the thin env-reading shell.
 
-import { env } from '$env/dynamic/public';
+import { PUBLIC_REVENUECAT_WEB_CHECKOUT_URL, PUBLIC_REVENUECAT_WEB_PORTAL_URL } from '$app/env/public';
 
 import {
 	buildCheckoutUrl,
@@ -37,17 +37,17 @@ import {
 	type ProPlan,
 } from './revenuecat_links';
 
-// Read via `$env/dynamic/public` rather than `static/public` so an
-// unconfigured build returns an empty string and `webCheckoutAvailable()`
-// reports false, instead of failing the SvelteKit build with a 500.
+// Declared optional in src/env.ts rather than required, so an unconfigured
+// build returns an empty string and `webCheckoutAvailable()` reports false,
+// instead of failing the SvelteKit build with `env_invalid`.
 //
 // The checkout base is the project's Web Paywall Link of the form
 // `https://pay.rev.cat/<token>`; `<token>` is a public, per-project value
 // from the RevenueCat dashboard. The portal base is the no-code customer
 // portal link. Both are public by design (they're URLs a browser is
 // redirected to), so the PUBLIC_ prefix is correct.
-const CHECKOUT_BASE = env.PUBLIC_REVENUECAT_WEB_CHECKOUT_URL ?? '';
-const PORTAL_URL = env.PUBLIC_REVENUECAT_WEB_PORTAL_URL ?? '';
+const CHECKOUT_BASE = PUBLIC_REVENUECAT_WEB_CHECKOUT_URL ?? '';
+const PORTAL_URL = PUBLIC_REVENUECAT_WEB_PORTAL_URL ?? '';
 
 /// Whether this build can take a Pro payment on the web. Fail-closed: an
 /// unset link and a malformed one (not https, not pay.rev.cat, a placeholder

@@ -1,24 +1,24 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { formatDistance } from '$lib/core/mock-data';
-	import { fetchRouteById } from '$lib/core/data';
-	import { auth } from '$lib/stores/auth.svelte';
-	import RunMap from '$lib/components/RunMap.svelte';
-	import ElevationProfile from '$lib/components/ElevationProfile.svelte';
-	import { routeElevation } from '$lib/routes/route_elevation';
-	import RoutePhotos from '$lib/components/RoutePhotos.svelte';
-	import RouteConditions from '$lib/components/RouteConditions.svelte';
-	import SharePageShell from '$lib/components/SharePageShell.svelte';
+	import { formatDistance } from '#lib/core/mock-data.ts';
+	import { fetchRouteById } from '#lib/core/data.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import RunMap from '#lib/components/RunMap.svelte';
+	import ElevationProfile from '#lib/components/ElevationProfile.svelte';
+	import { routeElevation } from '#lib/routes/route_elevation.ts';
+	import RoutePhotos from '#lib/components/RoutePhotos.svelte';
+	import RouteConditions from '#lib/components/RouteConditions.svelte';
+	import SharePageShell from '#lib/components/SharePageShell.svelte';
 	import {
 		buildRouteJsonLd,
 		buildRouteOgImageUrl,
 		buildRouteShareCanonical,
 		buildRouteShareDescription,
 		buildRouteShareTitle,
-	} from '$lib/share/share_meta';
-	import { m } from '$lib/i18n/store.svelte';
-	import { routeSurfaceLabel } from '$lib/i18n/enum_labels.svelte';
-	import type { Route, TrackPoint } from '$lib/types';
+	} from '#lib/share/share_meta.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { routeSurfaceLabel } from '#lib/i18n/enum_labels.svelte.ts';
+	import type { Route, TrackPoint } from '#lib/types.ts';
 
 	let { data } = $props();
 

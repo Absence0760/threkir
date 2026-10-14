@@ -91,7 +91,7 @@ export function buildImportGraph(srcDir: string, files: readonly string[]): Map<
 			for (const match of text.matchAll(pattern)) {
 				const spec = match[1];
 				let base: string | null = null;
-				if (spec.startsWith('$lib/') || spec === '$lib') base = join(lib, spec.slice(5));
+				if (spec.startsWith('#lib/') || spec === '#lib') base = join(lib, spec.slice(5));
 				else if (spec.startsWith('.')) base = resolve(dirname(file), spec);
 				if (!base) continue;
 				const hit = resolveFile(base, known);

@@ -1,13 +1,13 @@
 <script lang="ts">
-	import { activeFormatLocale } from '$lib/format/time';
-	import { m as tr } from '$lib/i18n/store.svelte';
+	import { activeFormatLocale } from '#lib/format/time.ts';
+	import { m as tr } from '#lib/i18n/store.svelte.ts';
 	import { onMount } from 'svelte';
-	import { initial } from '$lib/format/avatar';
-	import { page } from '$app/stores';
+	import { initial } from '#lib/format/avatar.ts';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { auth } from '$lib/stores/auth.svelte';
-	import DmRouteAttachment from '$lib/components/DmRouteAttachment.svelte';
-	import { bodyRestatesAttachment, hasDmRouteAttachment } from '$lib/social/dm_attachment';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import DmRouteAttachment from '#lib/components/DmRouteAttachment.svelte';
+	import { bodyRestatesAttachment, hasDmRouteAttachment } from '#lib/social/dm_attachment.ts';
 	import {
 		fetchDmThreads,
 		fetchDmThread,
@@ -15,7 +15,7 @@
 		markDmThreadRead,
 		type DmThread,
 		type DirectMessage
-	} from '$lib/core/data';
+	} from '#lib/core/data.ts';
 
 	let ready = $state(false);
 	let threads = $state<DmThread[]>([]);
@@ -33,7 +33,7 @@
 	let threadsError = $state(false);
 	let threadError = $state(false);
 
-	let activeId = $derived($page.params.id ?? null);
+	let activeId = $derived(page.params.id ?? null);
 	const draft = $derived(activeId ? (drafts[activeId] ?? '') : '');
 	let me = $derived(auth.user?.id ?? null);
 	let activeThread = $derived(threads.find((t) => t.partnerId === activeId) ?? null);
@@ -54,10 +54,19 @@
 		void loadThreads();
 	});
 
+	// When each conversation was last marked read. A thread-list fetch that
+	// started before that answers with the count from before the mark, and
+	// assigning it as-is put the badge back on the conversation just opened.
+	const markedReadAt = new Map<string, number>();
+
 	async function loadThreads() {
 		threadsError = false;
+		const startedAt = Date.now();
 		try {
-			threads = await fetchDmThreads();
+			const rows = await fetchDmThreads();
+			threads = rows.map((t) =>
+				(markedReadAt.get(t.partnerId) ?? -Infinity) >= startedAt ? { ...t, unread: 0 } : t
+			);
 		} catch {
 			threadsError = true;
 		}
@@ -101,6 +110,7 @@
 		}
 		try {
 			await markDmThreadRead(id);
+			markedReadAt.set(id, Date.now());
 			// Zero the unread badge locally without a full refetch.
 			threads = threads.map((t) => (t.partnerId === id ? { ...t, unread: 0 } : t));
 		} catch {

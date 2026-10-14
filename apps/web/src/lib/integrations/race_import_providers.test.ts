@@ -67,8 +67,8 @@ test('every leg has a pre-fetch scope gate, and the record says it is required',
 	// other provider's use of it, read as an athlete account id.
 	//
 	// The scope FIELD differs by leg (a bib narrows a race's results; UltraSignup
-	// reads one athlete's history, so its scope is an account id) — that is not
-	// the invariant. The invariant is that every leg has a gate and the UI knows
+	// is scoped by the person the runner linked in Settings) — that is not the
+	// invariant. The invariant is that every leg has a gate and the UI knows
 	// to demand the field before submitting.
 	const lib = readFileSync(
 		join(REPO_ROOT, 'apps/backend/supabase/functions/race-results-import/lib.ts'),
@@ -92,7 +92,7 @@ test('every credential-gated leg the Edge Function ships has a row here', () => 
 	// runsignup alone, so provisioning either credential lit up a Settings card
 	// linking to a page where the built leg could not be reached.
 	const source = readFileSync(
-		join(REPO_ROOT, 'apps/backend/supabase/functions/race-results-import/index.ts'),
+		join(REPO_ROOT, 'apps/backend/supabase/functions/race-results-import/handler.ts'),
 		'utf-8'
 	);
 	// The bare local, not `body.provider` — `typeof body.provider === 'string'`
@@ -100,7 +100,7 @@ test('every credential-gated leg the Edge Function ships has a row here', () => 
 	const named = new Set(
 		[...source.matchAll(/(?<![.\w])provider === '([a-z]+)'/g)].map((match) => match[1])
 	);
-	assert.ok(named.size > 0, 'read no provider dispatch out of race-results-import/index.ts');
+	assert.ok(named.size > 0, 'read no provider dispatch out of race-results-import/handler.ts');
 	named.delete('paste');
 	assert.deepEqual(
 		[...named].sort(),
@@ -110,29 +110,25 @@ test('every credential-gated leg the Edge Function ships has a row here', () => 
 	);
 });
 
-test('the leg with a refusal beyond its credential is probed on its own leg', () => {
-	// `race-listings-sync` gates UltraSignup on ULTRASIGNUP_API_KEY alone.
-	// `race-results-import` refuses the same provider unconditionally (decisions
-	// § 975): an athlete feed carries no race identifier, so nothing it returns
-	// can be attributed to the listing a caller names. The two legs no longer
-	// agree, and the card is about the results one — probing the sync
-	// advertises an import whose very next call 503s once the key is
-	// provisioned.
+test('the UltraSignup card probes the results leg, as a client that speaks the person flow', () => {
+	// `race-listings-sync` gates UltraSignup on ULTRASIGNUP_API_KEY; the results
+	// leg reads a keyless feed and answers on its own opt-in (decisions § 1841),
+	// so the two can disagree and the card — which is about the results leg —
+	// must ask that one. It must also say it speaks the person flow: the probe
+	// keeps a client that would send the retired athlete id dark.
 	const index = readFileSync(
-		join(REPO_ROOT, 'apps/backend/supabase/functions/race-results-import/index.ts'),
+		join(REPO_ROOT, 'apps/backend/supabase/functions/race-results-import/handler.ts'),
 		'utf8'
 	);
-	const probeAt = index.indexOf('body.probe === true');
+	const probeAt = index.indexOf('if (isProbe) {');
 	assert.ok(
 		probeAt > -1,
 		'race-results-import no longer has a probe branch — reread it and re-anchor this guard'
 	);
-	const branch = index.slice(probeAt, index.indexOf('listingId required', probeAt));
+	const branch = index.slice(probeAt, index.indexOf("error: 'unknown_provider'", probeAt));
 	assert.ok(
-		branch.includes('ultraSignUpAttributionGate()'),
-		'the probe branch no longer refuses UltraSignup independently of its credential. ' +
-			'If § 975 was lifted, this guard has lost its premise — re-decide which function ' +
-			'the card should probe rather than deleting the assertion below'
+		/provider === 'ultrasignup'[\s\S]*ultraSignUpProbe\(/.test(branch),
+		'the probe no longer answers UltraSignup through its own gate'
 	);
 
 	const data = readFileSync(join(REPO_ROOT, 'apps/web/src/lib/core/data.ts'), 'utf8');
@@ -149,5 +145,9 @@ test('the leg with a refusal beyond its credential is probed on its own leg', ()
 		fn.includes('probe: true'),
 		'race-results-import only reports configuration in probe mode; without the flag ' +
 			'this becomes a real import with no listing'
+	);
+	assert.ok(
+		fn.includes("ultraSignUpFlow: 'person'"),
+		'without the flow flag the probe answers client_unsupported and the card never lights'
 	);
 });

@@ -578,7 +578,7 @@ last-match-wins, so it uploads with the 60 s HTML cache like any other page.
 section was written the repo was mid-move and the paragraph here warned that
 the five share Lambdas still embedded `build/index.html` at bundle time, so
 step 3 would bake the landing page into every share handler whatever the
-ordering. That is no longer the state. Verified in the tree: `svelte.config.js`
+ordering. That is no longer the state. Verified in the tree: `vite.config.ts`
 emits `fallback: "200.html"`, all five `apps/web/lambda/share-*/build.mjs`
 resolve `build/200.html`, `spa_shell_head_signals.test.ts` reads that artifact,
 and the `custom_error_response` in `infra/modules/web-stack/main.tf` names
@@ -636,6 +636,10 @@ Before flipping any service from "Plan" to live in the table at the top:
 6. Update the row at the top of this file from "Plan" to "Live (region)".
 7. Tick the corresponding box in [roadmap.md](../product/roadmap.md).
 8. If this enables a feature, flip the cell in [parity.md](../product/parity.md).
+
+### Audience sharing — after the CISO / Security Analyst review
+
+The followers level and named-person run / route shares ([sharing.md](../features/sharing.md), decisions § 1874) ship closed: no migration writes the `audience_sharing` row of `private.feature_flags`, so prod answers exactly as before. Open it only after the CISO / Security Analyst has reviewed the audience oracles, the `shared_runs` / `shared_routes` projections, and the `clip-public-track` branch — then, in the prod SQL editor: `insert into private.feature_flags (name, enabled) values ('audience_sharing', true) on conflict (name) do update set enabled = true, updated_at = now();`. Closing it again is the same statement with `false`; every read path falls back at once, and existing grants stay inert until it reopens.
 
 ### Lambda secrets — one apply, before the next web deploy
 

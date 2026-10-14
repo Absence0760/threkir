@@ -1,19 +1,21 @@
 <script lang="ts">
-	import { activeFormatLocale } from '$lib/format/time';
+	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { goto } from '$app/navigation';
-	import Avatar from '$lib/components/Avatar.svelte';
+	import Avatar from '#lib/components/Avatar.svelte';
 	import {
 		fetchNotifications,
 		markNotificationRead,
 		markAllNotificationsRead,
 		type NotificationView,
-	} from '$lib/core/data';
-	import { notificationStore } from '$lib/stores/notifications.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { fmtKm } from '$lib/format/units.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { notificationLinkFor } from '$lib/social/notification_link';
+	} from '#lib/core/data.ts';
+	import { notificationStore } from '#lib/stores/notifications.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { fmtKm } from '#lib/format/units.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { eventCancelMessage } from '#lib/social/event_cancel_copy.ts';
+	import { waitlistSlotMessage } from '#lib/social/event_waitlist_offer.ts';
+	import { notificationLinkFor } from '#lib/social/notification_link.ts';
 
 	let open = $state(false);
 	let loading = $state(false);
@@ -136,10 +138,14 @@
 				return item.event_title
 					? m('notificationBell.eventRsvpTitled', { name, title: item.event_title })
 					: m('notificationBell.eventRsvp', { name });
-			case 'event_cancel':
-				return item.event_title
-					? m('notificationBell.eventCancelTitled', { title: item.event_title })
-					: m('notificationBell.eventCancel');
+			case 'event_cancel': {
+				const msg = eventCancelMessage('notificationBell', item.row, item.event_title);
+				return m(msg.key, msg.params);
+			}
+			case 'event_waitlist_slot': {
+				const msg = waitlistSlotMessage('notificationBell', item.event_title);
+				return m(msg.key, msg.params);
+			}
 			case 'event_reminder':
 				return item.event_title
 					? m('notificationBell.eventReminderTitled', { title: item.event_title })

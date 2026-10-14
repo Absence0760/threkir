@@ -24,6 +24,8 @@ src/
     components/settings/PrefsPage.svelte  # Shell every preference page renders through: kicker/h1/tagline, the Saving…/Saved status, the loading skeleton, and the fail-closed load alert with Retry that replaces the form (never defaults). Also carries the shared field chrome, scoped under `.prefs-page` (decisions §1640).
     components/auth/AuthShell.svelte  # Split-screen shell for /login, /auth/{reset,confirm-age,callback} and /onboarding (`wide`): fixed plum panel + rendered terrain + a form side that styles the page's own `<main class="auth-card">`. `panel` snippet for copy; omit it for brand-only. Motion ends (decisions §1626).
     components/marketing/  # Landing-page pieces: ProductPreview (the hero product shot, TrackPreview over demo data; count-up stats + a live phone clock), MapBackdrop (drawn, consent-free basemap), MotionToggle (the WCAG 2.2.2 pause, mounted via `<PublicHeader motionToggle />`).
+    components/help/  # In-app help (features/help.md): HelpRichText (renders one guide string from parsed markup tokens, never {@html}), HelpLink ("How this works" for a route id — one guide links straight, several open a disclosure; help_guides_guard.test.ts fails a route no guide lists), HelpSearchForm (GET form to /help/search).
+    help/           # In-app help guides (features/help.md, decisions §1846). types.ts = the contract shared with mobile; guides/<id>.ts = one typed guide per file (imports only `type { Guide }`); markup.ts = parser + routeHref + sectionId; catalogue.ts = pure createHelpIndex (lookup, grouping, route match, search); index.ts = import.meta.glob binding; labels.ts = enum → catalogue key. scripts/gen_help_guides.mjs writes the mobile twins' guides.en.json from guides/.
                     # AvatarCropDialog (the crop + rotate step between picking a profile photo and uploadAvatar; square stage with a circular guide, pan / zoom / quarter turns, re-encodes a <=512 px JPEG), ConfirmDialog, DangerZone (the labelled after-content region every whole-entity delete lives in — /settings/account, /clubs/[slug], /challenges/[id]; decisions §1634), ToastContainer, ProGate, WorkoutEditor, RunTrackPreview, TrackPreview, StaticMapImage (every static-map `<img>` renders through it — a failed request swaps to its fallback snippet, the SVG track preview on the route/run thumbnails, so a MapTiler outage never leaves a broken image; `static_map_image_guard.test.ts` pins the consumer set), PlanCalendar, CurrentWeekStrip (focused current-week 7-day planned-vs-completed ribbon on /plans/[id], above the month calendar; window anchored to start_date + currentWeek.week_index*7 so its done/active count matches the week card, re-ordered for display by the week_start pref), RouteExplorer,
                     # PersonalHeatmap (geographic heatmap of the user's own tracks on /runs/heatmap — distinct from RouteHeatmap's public community map), LicenseList, ClubEditor, EventEditor, PlanEditor (editable preview), PlanMetaEditor, RunEditor
                     # (modal-hosted creation forms), GymEditor (Phase 4 gym composer — modal-hosted, free-text exercise + inline sets, used by /gym + /gym/[id]), FoodLogEditor (Phase 4 nutrition composer — modal-hosted on /nutrition + page-hosted on /nutrition/log; OFF search → inline confirm-portion step + manual-macro fallback), PrivacyZonePicker (MapLibre map picker for owner zones, decisions §33),
@@ -32,6 +34,7 @@ src/
                     # DashboardWeekLead (the /dashboard opening card for an account with runs — this calendar week's distance + count against the plan's distance for the week, else the runner's weekly goal, else their recent weekly average (decisions §1792), the active plan's next open session, and the Add a run + Import actions above the fold; pure derivation in training/week_lead.ts, #905),
                     # ThisWeekStrip (dashboard current-calendar-week activity ribbon below the stat grid — 7 day cells of the REAL calendar week containing today, honouring week_start_day + the source filter; pure derivation in training/current_week.ts. Distinct from CurrentWeekStrip, which is plan-anchored on /plans/[id]),
                     # RunSocial (kudos + comments on a run — mounted on /share/run/[id], /runs/[id]; feed uses fetchEngagementSummaries chips instead),
+                    # AudienceDialog (the owner's "who can see this" control for a run or route — Only me / Followers / Specific people / Public, the people picker over social/dm_recipients and each share's revoke; decisions § 1874),
                     # RunShareView (the public run share body — extracted so /share/run/[id] (standalone page) and the /feed modal can both render it without duplicating layout),
                     # RunPhotos (gallery for run_photos — mounted on /runs/[id] and /share/run/[id]; owner gates upload + delete; decisions §36),
                     # RoutePhotos (gallery for route_photos — same shape as RunPhotos, mounted on /routes/[id] and /share/route/[id]; owner gates upload/caption/delete; backlog C1),
@@ -141,6 +144,7 @@ src/
     share/run/[id]/ # Public run share page (no auth required)
     share/route/[id]/ # Public route share page (no auth required)
     learn/          # Public, no-auth, PRERENDERED Learn/guides surface (decisions §161, features/learn.md). /learn hub + /learn/[slug] articles (mdsvex .md bodies) + /learn/category/[category]. All prerender=true (+ entries()); SEO mirrors share/route (canonical / OG / Article+BreadcrumbList JSON-LD via lib/learn/learn_meta.ts). Shell-less + anon in +layout.svelte (path.startsWith('/learn')). All three routes wear the shared `LearnPage.svelte` shell (wrapper + PublicHeader + PublicFooter + the ONE column definition — add `class="learn-column"` to a band, never a local `max-width`; `width="prose"` narrows a guide to 44rem) plus `LearnBreadcrumb.svelte`. Don't hand-roll a header or a column here — three hand-rolled copies drifted until the hub's heading stopped lining up with its own card grid; `tests-e2e/learn/layout.spec.ts` pins the geometry (issue #212 did the same for the chrome). Content authored in lib/learn/guides/*.md, indexed by import.meta.glob in lib/learn/guides.ts. Web-only (no twin).
+    help/           # Signed-in in-app help centre (features/help.md, decisions §1846) — NOT /learn. /help contents (categories + audience chips + search), /help/[id] guide (badges, On this page, sections, related), /help/search?q=. Not prerendered, noindex, Disallow in robots.txt. Reached from the account menu's Help item and per-page HelpLinks.
     share/event/[id]/ share/profile/[id]/ share/club/[slug]/ share/race/[id]/ # Public, anon, shell-less entity share pages (prerender=false), served in prod by the ONE shared lambda/share-entity Lambda. Per-entity canonical/OG/JSON-LD via lib/share/share_{event,profile,club,race}_meta.ts over anon-readable rows. See docs/features/seo.md + decisions §205.
     share/badge/[id]/ # Public achievement-badge share page (no auth). Mirrors share/run: +page.ts SSR via lib/share/share_badge_lookup (public-row-safe columns only, is_public=true), og/badge/[id].png renders the card via lib/share/og_badge_png; the lambda/share-badge/ handler owns it in prod. Badge catalogue + thresholds live in lib/social/badges.ts (the TS source of truth the SQL award fn duplicates). See features/achievements.md + decisions §164.
     live/[id]/      # Live spectator tracking. Real Go live-hub WebSocket path via lib/runs/live_hub.ts when PUBLIC_LIVE_HUB_URL is set; Supabase Realtime channel as fallback when unset. NO synthesised data: a real run with no pings resolves via the pure lib/runs/live_spectator_status.ts helpers to Finished (frozen saved totals) or an honest waiting state — the old demo loop is deleted (decisions §283). Follow-cam latches off on user pan / viewer geolocate, with a re-center-on-runner control mirroring mobile LiveRunMap. WS path e2e-tested by tests-e2e/live/spectator_websocket.spec.ts (dedicated playwright.livehub.config.ts — boots the real hub binary).
@@ -150,7 +154,7 @@ src/
   app.d.ts          # App-level TypeScript declarations
 lambda/
   coach/            # AWS Lambda Function URL handler for /api/coach in production.
-                    # src/index.ts wraps $lib/coach/handler with awslambda.streamifyResponse +
+                    # src/index.ts wraps #lib/coach/handler with awslambda.streamifyResponse +
                     # HttpResponseStream so SSE streams pass through CloudFront. build.mjs
                     # bundles via esbuild → dist/coach.zip (Anthropic SDK + supabase-js
                     # inlined, ~537 KB). CI's release-web.yml updates the Lambda code on every
@@ -200,15 +204,15 @@ lambda/
                     # + docs/features/seo.md.
   generate-route/   # Non-streaming JSON Lambda for POST /api/routes/generate — the
                     # server-side loop generator (graph-cycle first, GraphHopper
-                    # round_trip fallback). Wraps $lib/routes/generate/handler; the
+                    # round_trip fallback). Wraps #lib/routes/generate/handler; the
                     # SvelteKit /api/routes/generate/+server.ts owns the path in dev.
                     # GRAPH_CYCLE_URL/GRAPHHOPPER_URL are server-only. Enforces a
                     # DB-backed per-user throttle (check_rate_limit, bucket
                     # 'generate-route', 60/h, fail-closed) on top of the per-IP WAF —
-                    # issue #339, $lib/routes/rate_limit.ts. Decisions §575/§204/§260.
+                    # issue #339, #lib/routes/rate_limit.ts. Decisions §575/§204/§260.
   osrm-proxy/       # GET-only JSON Lambda for /api/routes/osrm/* — the server hop for
                     # the route builder's OSRM waypoint snapping/routing (issue #198,
-                    # decisions §243). Wraps $lib/routes/osrm_proxy/handler (validates +
+                    # decisions §243). Wraps #lib/routes/osrm_proxy/handler (validates +
                     # rebuilds every upstream URL, requires a signed-in user + a
                     # DB-backed per-user throttle: check_rate_limit, bucket 'osrm-proxy',
                     # 1200/h, fail-closed — issue #339/§260); the

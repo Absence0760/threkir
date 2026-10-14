@@ -29,7 +29,7 @@ import { readRow } from '../fixtures/db-read';
  * assertion between create and delete is driven through the real UI.
  *
  * The export is fully CLIENT-SIDE: src/routes/routes/[id]/+page.svelte builds
- * the GPX in-page (toGpx / toRouteGpxWithMarkers from $lib/routes) and triggers
+ * the GPX in-page (toGpx / toRouteGpxWithMarkers from #lib/routes) and triggers
  * a Blob download via downloadFile(). So there is no network response to
  * capture — the GPX is read off the browser `download` event's stream.
  *

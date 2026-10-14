@@ -8,7 +8,7 @@
 	// The strings keep their `coachPage.consent*` keys — the Coach remains
 	// the surface that first presents them, and renaming a shipped key set
 	// across six catalogues buys nothing behavioural.
-	import { m } from '$lib/i18n/store.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
 </script>
 
 <p>

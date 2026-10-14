@@ -22,6 +22,7 @@ import '../roadbook.dart';
 import '../route_geometry.dart';
 import '../widgets/cutoff_card.dart';
 import '../widgets/error_state.dart';
+import '../widgets/help_button.dart';
 import '../widgets/live_run_map.dart';
 import 'public_run_screen.dart';
 
@@ -456,6 +457,9 @@ class _LiveSpectatorScreenState extends State<LiveSpectatorScreen> {
       appBar: AppBar(
         title: Text(l10n.liveSpectatorTitle),
         actions: [
+          const HelpButton(
+            routes: ['/live/[id]', '/live/event/[id]/[instance]'],
+          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Center(

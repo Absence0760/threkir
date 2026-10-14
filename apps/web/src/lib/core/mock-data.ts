@@ -21,6 +21,7 @@ function makeRun(overrides: Partial<Run> & { started_at: string; duration_s: num
 		fastest_half_marathon_s: null,
 		fastest_marathon_s: null,
 		is_public: false,
+		followers_only: false,
 		concluded_at: null,
 		metadata: null,
 		created_at: overrides.started_at,
@@ -54,6 +55,7 @@ function makeRoute(overrides: Partial<Route> & { name: string; distance_m: numbe
 		elevation_m: null,
 		surface: 'road',
 		is_public: false,
+		followers_only: false,
 		slug: null,
 		start_point: null,
 		geom: null,
@@ -107,7 +109,7 @@ export const mockPersonalRecords = [
 
 // Formatters were moved to `lib/format/units.svelte.ts` so they can honor the
 // user's `preferred_unit` setting reactively. Re-exported here to avoid
-// breaking the many existing importers from `$lib/core/mock-data`.
+// breaking the many existing importers from `#lib/core/mock-data`.
 export { formatPace, formatSpeed, formatDistance, formatPaceNoSuffix } from '../format/units.svelte';
 
 export function sourceLabel(source: RunSource): string {

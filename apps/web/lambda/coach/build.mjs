@@ -6,7 +6,7 @@
 // Output: apps/web/lambda/coach/dist/coach.zip
 //
 // Strategy: esbuild bundles src/index.ts (and everything it imports
-// transitively from $lib/coach/) into a single index.mjs. Anthropic
+// transitively from #lib/coach/) into a single index.mjs. Anthropic
 // SDK + supabase-js are inlined because the Lambda runtime doesn't
 // ship them. The createRequire shim keeps any CJS-only transitive
 // deps importable from ESM.

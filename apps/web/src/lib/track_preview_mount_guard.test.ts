@@ -31,11 +31,11 @@ const SRC = join(HERE, '..');
  */
 const CLIPPING_WRAPPERS: Record<string, RegExp> = {
 	'lib/components/RunTrackPreview.svelte':
-		/import \{[^}]*\bfetchClippedTrackForRun\b[^}]*\} from '\$lib\/core\/data'/,
+		/import \{[^}]*\bfetchClippedTrackForRun\b[^}]*\} from '#lib\/core\/data\.ts'/,
 	'lib/components/RouteTrackPreview.svelte':
-		/import \{[^}]*\bfetchClippedRouteForViewer\b[^}]*\} from '\$lib\/core\/data'/,
+		/import \{[^}]*\bfetchClippedRouteForViewer\b[^}]*\} from '#lib\/core\/data\.ts'/,
 	'lib/components/DmRouteAttachment.svelte':
-		/import \{[^}]*\bfetchRouteById\b[^}]*\} from '\$lib\/core\/data'/,
+		/import \{[^}]*\bfetchRouteById\b[^}]*\} from '#lib\/core\/data\.ts'/,
 };
 
 /**
@@ -54,9 +54,9 @@ const CLIPPING_WRAPPERS: Record<string, RegExp> = {
  */
 const STATIC_DEMO_MOUNTS: Record<string, RegExp> = {
 	'routes/+page.svelte':
-		/import \{[^}]*\bDEMO_TRACK\b[^}]*\} from '\$lib\/marketing\/demo_preview'/,
+		/import \{[^}]*\bDEMO_TRACK\b[^}]*\} from '#lib\/marketing\/demo_preview\.ts'/,
 	'lib/components/marketing/ProductPreview.svelte':
-		/import \{[^}]*\bDEMO_TRACK\b[^}]*\} from '\$lib\/marketing\/demo_preview'/,
+		/import \{[^}]*\bDEMO_TRACK\b[^}]*\} from '#lib\/marketing\/demo_preview\.ts'/,
 };
 
 function svelteFiles(dir: string, out: string[] = []): string[] {

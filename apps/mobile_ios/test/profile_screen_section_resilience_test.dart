@@ -39,6 +39,7 @@ class _FakeApi extends ApiClient {
           source: 'app',
           activityType: 'run',
           isDnf: false,
+          followersOnly: false,
         ),
       ];
 

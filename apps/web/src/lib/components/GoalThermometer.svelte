@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { m } from '$lib/i18n/store.svelte';
-	import { formatPrice } from '$lib/format/format_price';
-	import { fromMinorUnits } from '$lib/format/minor_units';
-	import { fundraiserProgress } from '$lib/social/fundraiser_progress';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { formatPrice } from '#lib/format/format_price.ts';
+	import { fromMinorUnits } from '#lib/format/minor_units.ts';
+	import { fundraiserProgress } from '#lib/social/fundraiser_progress.ts';
 
 	let {
 		raisedCents,

@@ -1,7 +1,7 @@
 import type { PageLoad } from './$types';
-import { env } from '$env/dynamic/public';
-import { listGuides, nonEmptyCategories } from '$lib/learn/guides';
-import { siteOrigin } from '$lib/core/site_url';
+import { PUBLIC_SITE_URL } from '$app/env/public';
+import { listGuides, nonEmptyCategories } from '#lib/learn/guides.ts';
+import { siteOrigin } from '#lib/core/site_url.ts';
 
 // The Learn hub is finite, evergreen, and known at build time, so it
 // prerenders to a single static HTML file served by CloudFront from S3
@@ -11,7 +11,7 @@ export const prerender = true;
 
 
 export const load: PageLoad = () => {
-	const siteUrl = siteOrigin(env.PUBLIC_SITE_URL);
+	const siteUrl = siteOrigin(PUBLIC_SITE_URL);
 	return {
 		siteUrl,
 		guides: listGuides(),

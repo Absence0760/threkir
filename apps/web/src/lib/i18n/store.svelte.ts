@@ -1,9 +1,9 @@
-import { browser, dev } from '$app/environment';
+import { browser, dev } from '$app/env';
 import { CORE_LOADERS, FALLBACK_CORE, GROUPS, PART_LOADERS } from 'virtual:i18n-catalogues';
 import { partsForRoute } from './areas';
 import { CatalogueSet, holdsServerMarkup, type Catalogue } from './catalogue_set';
 import { interpolate } from './interpolate';
-import { setActiveFormatLocale } from '$lib/format/time';
+import { setActiveFormatLocale } from '#lib/format/time.ts';
 import type { MessageKey } from './messages';
 import {
 	DEFAULT_LOCALE,

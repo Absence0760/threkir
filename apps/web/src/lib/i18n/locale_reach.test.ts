@@ -1,8 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { SUPPORTED_LOCALES, LOCALE_LABELS } from "./locale";
 import { CATALOGUE_LOADERS } from "./catalogues";
@@ -205,6 +205,14 @@ const BRAZILIAN_ONLY = [
 	// Brazilian proparoxytone that takes ô/ê where Portugal takes ó/é.
 	"cronômetro", "oxigênio", "autônomo", "autônoma",
 	"planilha", "usuário", "deletar", "esporte",
+	// Brazil's progressive gerund, which Portugal writes as `a` + infinitive
+	// (`A carregar…`), and three nouns Portugal says another way.
+	"carregando", "aguardando", "procurando", "enviando", "criando", "salvando",
+	"desconectar", "provedor", "treinamento",
+	// Bluetooth pairing is `emparelhar` in Portugal, and to monitor is
+	// `monitorizar`; signing in is `iniciar sessão`, so the English loanword
+	// `login` is how a string copied from the Brazilian catalogue shows.
+	"pareado", "pareada", "pareamento", "monitorar", "monitoramento", "login",
 ];
 const EUROPEAN_ONLY = [
 	"palavra-passe", "ecrã", "ficheiro", "telemóvel", "passadeira", "partilhar",
@@ -611,6 +619,45 @@ test("a Portuguese Learn guide reads as its own variant, in the catalogue's regi
 	);
 });
 
+test("a Portuguese help guide reads as its own variant, in the catalogue's register", async () => {
+	// The in-app help guides are prose outside the catalogues too
+	// (lib/help/translations/<locale>/<id>.ts, docs/features/help.md), long texts
+	// written in one sitting like the Learn guides above. Only the strings are
+	// scanned: the ids, route ids and block types around them are English.
+	const offenders: string[] = [];
+	let scanned = 0;
+	for (const tag of PORTUGUESE) {
+		const dir = join(SRC, "lib", "help", "translations", tag);
+		if (!existsSync(dir)) continue;
+		for (const file of readdirSync(dir).filter((f) => f.endsWith(".ts")).sort()) {
+			const mod = (await import(pathToFileURL(join(dir, file)).href)) as {
+				translation?: { title: string; summary: string; sections: { heading: string; blocks: { text?: string; items?: string[] }[] }[] };
+			};
+			const t = mod.translation;
+			if (!t) continue;
+			scanned++;
+			const text = [
+				t.title,
+				t.summary,
+				...t.sections.flatMap((s) => [s.heading, ...s.blocks.flatMap((b) => b.items ?? [b.text ?? ""])]),
+			].join("\n");
+			for (const word of VARIANT_WORDS[tag]) {
+				if (new RegExp(`(?<![a-zà-ÿ])${word}(s|es)?(?![a-zà-ÿ])`, "iu").test(text)) {
+					offenders.push(`${tag}/${file}: "${word}"`);
+				}
+			}
+			for (const marker of tuMarkersIn(text, tag)) offenders.push(`${tag}/${file}: ${marker}`);
+		}
+	}
+	assert.ok(scanned > 0, "found no Portuguese help guide translation — has lib/help/translations moved?");
+	assert.deepEqual(
+		offenders,
+		[],
+		"a Portuguese help guide uses the other variant's word, or addresses its reader " +
+			"as `tu` where every catalogue string uses the third person (decisions § 755).",
+	);
+});
+
 test("every register exemption still needs its exemption", async () => {
 	// An exemption that covers nothing has stopped being a decision and become
 	// noise — the shape SENSE_SPLIT above already uses for its named sites.
@@ -903,6 +950,9 @@ const INTERPOLATED_CAPITAL_EXEMPT: Record<string, string> = {
 	"coachingAthlete.runnerFallback":
 		"stands in for a person's display name. What normally lands in that slot is " +
 		"`Alice`, so the stand-in takes a name's case, not the sentence's.",
+	"clubEvent.runnerFallback":
+		"stands in for a racer's display name in a result row and in `Edit result: " +
+		"{name}`, where the slot normally holds `Alice`, so it takes a name's case.",
 	"liveEvent.eventFallback":
 		"stands in for an event's title, the same way — the slot normally holds " +
 		"whatever the organiser typed, which is capitalised.",

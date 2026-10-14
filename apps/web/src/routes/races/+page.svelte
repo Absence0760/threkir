@@ -1,26 +1,31 @@
 <script lang="ts">
-	import { parseImportCompleteness } from '$lib/integrations/import_completeness';
-	import { m } from '$lib/i18n/store.svelte';
-	import type { MessageKey } from '$lib/i18n/messages';
+	import { parseImportCompleteness } from '#lib/integrations/import_completeness.ts';
+	import HelpLink from '#lib/components/help/HelpLink.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import {
 		searchRaceListings,
 		importRaceResult,
 		isRaceImportProviderConfigured,
+		fetchUltraSignUpLink,
 		RACE_IMPORT_UNAVAILABLE,
+		ULTRASIGNUP_NOT_LINKED,
+		ULTRASIGNUP_PERSON_NOT_FOUND,
 		type RaceListingResult,
 		type RaceListingFilters,
 		type RaceDistanceBand
-	} from '$lib/core/data';
+	} from '#lib/core/data.ts';
 	import {
 		RACE_IMPORT_LEGS,
 		raceImportLegFor,
 		type RaceImportLeg
-	} from '$lib/integrations/race_import_providers';
-	import RunSurfaceTabs from '$lib/components/RunSurfaceTabs.svelte';
-	import RaceCalendarCard from '$lib/components/RaceCalendarCard.svelte';
-	import RaceListingEditor from '$lib/components/RaceListingEditor.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
+	} from '#lib/integrations/race_import_providers.ts';
+	import RunSurfaceTabs from '#lib/components/RunSurfaceTabs.svelte';
+	import RaceCalendarCard from '#lib/components/RaceCalendarCard.svelte';
+	import RaceListingEditor from '#lib/components/RaceListingEditor.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import type { UltraSignUpPersonLink } from '#lib/integrations/ultrasignup_person.ts';
 
 	let query = $state('');
 	let distance = $state<'' | RaceDistanceBand>('');
@@ -49,6 +54,10 @@
 	// (issue #360 — an unscoped fetch imports the whole finisher field). Which
 	// field that is differs per leg; the spec says which.
 	let scopeValue = $state('');
+	// A linked-person leg (UltraSignup) is scoped by who the runner picked in
+	// Settings, not by anything typed here. `undefined` = not read yet, `null`
+	// = no link, so the modal can say which rather than offer a dead button.
+	let linkedPerson = $state<UltraSignUpPersonLink | null | undefined>(undefined);
 	let pasteBib = $state('');
 	let pasteChip = $state('');
 	let pasteGun = $state('');
@@ -133,7 +142,7 @@
 			return;
 		}
 		placeTimer = setTimeout(async () => {
-			const { geocodePlace } = await import('$lib/routes/geocoding');
+			const { geocodePlace } = await import('#lib/routes/geocoding.ts');
 			const place = await geocodePlace(term);
 			if (place) {
 				center = place.center;
@@ -179,9 +188,20 @@
 		geoError = '';
 	}
 
+	async function loadLinkedPerson() {
+		linkedPerson = undefined;
+		try {
+			linkedPerson = await fetchUltraSignUpLink();
+		} catch {
+			linkedPerson = null;
+		}
+	}
+
 	function openImport(race: RaceListingResult) {
 		importing = race;
 		scopeValue = '';
+		const leg = raceImportLegFor(race.provider);
+		if (leg && RACE_IMPORT_LEGS[leg].scopeField === 'linkedPerson') void loadLinkedPerson();
 		pasteBib = '';
 		pasteChip = '';
 		pasteGun = '';
@@ -200,8 +220,8 @@
 				provider: importLeg,
 				listingId: importing.id,
 				bib: importSpec.scopeField === 'bib' ? scoped : undefined,
-				ultraSignUpAthleteId:
-					importSpec.scopeField === 'ultraSignUpAthleteId' ? scoped : undefined
+				ultraSignUpPerson:
+					importSpec.scopeField === 'linkedPerson' ? (linkedPerson ?? undefined) : undefined
 			});
 			// A field read only as far as the cap still imports what it found,
 			// so a truncated import used to close the modal looking like a whole
@@ -221,6 +241,11 @@
 				// the modal as well as saying so, or it keeps offering the form.
 				legAvailable = { ...legAvailable, [importLeg]: false };
 				showToast(m(importSpec.unavailableKey), 'error');
+			} else if (message === ULTRASIGNUP_NOT_LINKED) {
+				linkedPerson = null;
+				showToast(m('races.ultraSignUpNotLinked'), 'error');
+			} else if (message === ULTRASIGNUP_PERSON_NOT_FOUND) {
+				showToast(m('races.ultraSignUpPersonNotFound'), 'error');
 			} else if (message.includes('upstream_results_truncated')) {
 				// "We read the whole field and you are not in it" and "we read the
 				// first 2,000 finishers and you were not among them" are different
@@ -270,6 +295,7 @@
 	<header class="races-header">
 		<div>
 			<h1>{m('races.title')}</h1>
+			<HelpLink route="/races" />
 			<p class="subtitle">{m('races.subtitle')}</p>
 		</div>
 		<button
@@ -378,7 +404,31 @@
 >
 	{#if importing}
 		<div class="import-body">
-			{#if importLeg && importSpec && legAvailable[importLeg] === true}
+			{#if importLeg && importSpec && legAvailable[importLeg] === true && importSpec.scopeField === 'linkedPerson'}
+				{#if linkedPerson}
+					<p data-testid={importSpec.inputTestId}>
+						{m(importSpec.labelKey, {
+							name: `${linkedPerson.firstName} ${linkedPerson.lastName}`,
+							id: linkedPerson.personId
+						})}
+					</p>
+					<p class="paste-hint">{m(importSpec.hintKey)}</p>
+				{:else if linkedPerson === null}
+					<p class="paste-hint" data-testid="ultrasignup-not-linked">
+						{m('races.ultraSignUpNotLinked')}
+						<a href="/settings/integrations#ultrasignup-link">{m('races.ultraSignUpLinkInSettings')}</a>
+					</p>
+				{/if}
+				<button
+					type="button"
+					class="btn btn-primary"
+					disabled={importBusy || !linkedPerson}
+					onclick={doProviderImport}
+					data-testid={importSpec.submitTestId}
+				>
+					{m('races.importResult')}
+				</button>
+			{:else if importLeg && importSpec && legAvailable[importLeg] === true}
 				<label>
 					<span>{m(importSpec.labelKey)}</span>
 					<input

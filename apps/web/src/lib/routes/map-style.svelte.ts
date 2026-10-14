@@ -7,7 +7,7 @@
 /// when saving, and the root layout calls it once on mount with the
 /// effective value from the settings bag.
 
-import { env } from '$env/dynamic/public';
+import { PUBLIC_TILE_STYLE_URL } from '$app/env/public';
 import {
 	basemapIsDark,
 	buildMapStyleUrl,
@@ -56,7 +56,7 @@ export function mapStyleUrl(
 }
 
 /// Convenience used by every map-rendering component: reads the dev
-/// override from `$env/dynamic/public` (the SvelteKit-canonical way
+/// override from `$app/env/public` (the SvelteKit-canonical way
 /// to access PUBLIC_* env vars at runtime) and threads it through
 /// [mapStyleUrl]. Always returns a usable URL — falls back to
 /// MapTiler when the override is missing.
@@ -65,7 +65,7 @@ export function mapStyleUrl(
 /// `import.meta.env.PUBLIC_TILE_STYLE_URL` which DOESN'T resolve
 /// at runtime in dev (vite's transform doesn't rewrite that access
 /// pattern in `.svelte.ts` files; SvelteKit handles env via its
-/// own `$env/*` modules). The override silently came back
+/// own `$app/env/*` modules). The override silently came back
 /// `undefined`, the resolver returned `''`, and every map fell
 /// through to the empty-key MapTiler 403. Caught by the May 2026
 /// audit pass.
@@ -75,7 +75,7 @@ export function mapStyleUrl(
 export function mapStyleUrlFromEnv(
 	key: string,
 	prefersDark: boolean,
-	envGetter: () => string | undefined = () => env.PUBLIC_TILE_STYLE_URL,
+	envGetter: () => string | undefined = () => PUBLIC_TILE_STYLE_URL,
 ): string {
 	return mapStyleUrl(key, prefersDark, resolveStyleOverride(envGetter));
 }
@@ -87,7 +87,7 @@ export function mapStyleUrlFromEnv(
 export function basemapIsDarkFromEnv(
 	key: string,
 	prefersDark: boolean,
-	envGetter: () => string | undefined = () => env.PUBLIC_TILE_STYLE_URL,
+	envGetter: () => string | undefined = () => PUBLIC_TILE_STYLE_URL,
 ): boolean {
 	const chosen = style.value ?? (prefersDark ? 'dark' : 'streets');
 	return basemapIsDark(chosen, key, prefersDark, resolveStyleOverride(envGetter));
@@ -101,7 +101,7 @@ export function basemapIsDarkFromEnv(
 export function trackThumbnailUrlFromEnv(
 	pts: { lat: number; lng: number }[],
 	opts: { w: number; h: number; key: string; prefersDark: boolean; allowThirdParty: boolean },
-	envGetter: () => string | undefined = () => env.PUBLIC_TILE_STYLE_URL,
+	envGetter: () => string | undefined = () => PUBLIC_TILE_STYLE_URL,
 ): string | null {
 	return buildTrackThumbnailUrl(pts, {
 		...opts,

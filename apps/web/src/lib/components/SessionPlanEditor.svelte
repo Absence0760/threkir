@@ -6,16 +6,16 @@
 		fetchSessionMovementNames,
 		type SessionPlanInput,
 		type SessionPlanItemInput
-	} from '$lib/core/data';
-	import type { SessionPlanWithItems } from '$lib/types';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
+	} from '#lib/core/data.ts';
+	import type { SessionPlanWithItems } from '#lib/types.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
 	import {
 		expandSessionSteps,
 		type SessionItemKind,
 		type SessionPlanInput as ExpandInput
-	} from '$lib/social/session_steps';
-	import { trackDirty } from '$lib/core/form_dirty';
+	} from '#lib/social/session_steps.ts';
+	import { trackDirty } from '#lib/core/form_dirty.ts';
 	import UnsavedChangesGuard from './UnsavedChangesGuard.svelte';
 
 	interface Props {

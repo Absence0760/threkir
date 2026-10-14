@@ -1,12 +1,12 @@
 <script lang="ts">
-	import { m } from '$lib/i18n/store.svelte';
-	import type { MessageKey } from '$lib/i18n/messages';
-	import { activeFormatLocale } from '$lib/format/time';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import type { MessageKey } from '#lib/i18n/messages.ts';
+	import { activeFormatLocale } from '#lib/format/time.ts';
 	import {
 		groupImportFailures,
 		importFailureReportCsv,
 		type ImportFailureLog,
-	} from '$lib/integrations/import_failures';
+	} from '#lib/integrations/import_failures.ts';
 
 	interface Props {
 		log: ImportFailureLog;

@@ -1,5 +1,5 @@
 // Tests for the pure helpers backing the web live-hub client.
-// `live_hub.ts` (which imports `$env/dynamic/public`) can't be
+// `live_hub.ts` (which imports `$app/env/public`) can't be
 // imported under node:test — these helpers carry the testable
 // behaviour: URL building + reconnect backoff math.
 

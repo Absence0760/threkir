@@ -1,14 +1,14 @@
 <script lang="ts">
-	import { siteOrigin } from '$lib/core/site_url';
-	import { page } from '$app/stores';
-	import { handleTablistKeydown } from '$lib/util/tablist';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import { formatDuration, formatRelativeTime, activeFormatLocale } from '$lib/format/time';
-	import { currentLocale, m } from '$lib/i18n/store.svelte';
-	import { ACTIVITY_TYPE_ICONS } from '$lib/runs/activity_type';
-	import { activityTypeLabel } from '$lib/runs/activity_type.svelte';
+	import { siteOrigin } from '#lib/core/site_url.ts';
+	import { page } from '$app/state';
+	import { handleTablistKeydown } from '#lib/util/tablist.ts';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import { formatDuration, formatRelativeTime, activeFormatLocale } from '#lib/format/time.ts';
+	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
+	import { ACTIVITY_TYPE_ICONS } from '#lib/runs/activity_type.ts';
+	import { activityTypeLabel } from '#lib/runs/activity_type.svelte.ts';
 	import { goto } from '$app/navigation';
-	import { supabase } from '$lib/core/supabase';
+	import { supabase } from '#lib/core/supabase.ts';
 	import {
 		fetchPublicProfile,
 		fetchPublicRunsByUser,
@@ -30,31 +30,31 @@
 		type FeedEntry,
 		type ProfileSummary,
 		type PublicProfile,
-	} from '$lib/core/data';
-	import BadgeGrid from '$lib/components/BadgeGrid.svelte';
-	import type { Achievement } from '$lib/types';
+	} from '#lib/core/data.ts';
+	import BadgeGrid from '#lib/components/BadgeGrid.svelte';
+	import type { Achievement } from '#lib/types.ts';
 	
-	import { formatDistance, formatPace } from '$lib/format/units.svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { env } from '$env/dynamic/public';
-	import { buildBadgeShareCanonical } from '$lib/share/share_badge_meta';
-	import { buildProfileShareCanonical } from '$lib/share/share_profile_meta';
-	import RunShareView from '$lib/components/RunShareView.svelte';
-	import RunTrackPreview from '$lib/components/RunTrackPreview.svelte';
-	import NotificationsList from '$lib/components/NotificationsList.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import ReportDialog from '$lib/components/ReportDialog.svelte';
-	import { notificationStore } from '$lib/stores/notifications.svelte';
-	import type { Run } from '$lib/types';
+	import { formatDistance, formatPace } from '#lib/format/units.svelte.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { PUBLIC_SITE_URL } from '$app/env/public';
+	import { buildBadgeShareCanonical } from '#lib/share/share_badge_meta.ts';
+	import { buildProfileShareCanonical } from '#lib/share/share_profile_meta.ts';
+	import RunShareView from '#lib/components/RunShareView.svelte';
+	import RunTrackPreview from '#lib/components/RunTrackPreview.svelte';
+	import NotificationsList from '#lib/components/NotificationsList.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import ReportDialog from '#lib/components/ReportDialog.svelte';
+	import { notificationStore } from '#lib/stores/notifications.svelte.ts';
+	import type { Run } from '#lib/types.ts';
 
-	let userId = $derived($page.params.id as string);
+	let userId = $derived(page.params.id as string);
 	// Fold this in-app (CSR, often login-gated) profile onto the public,
 	// crawlable /share/profile/[id] twin so search engines consolidate
 	// ranking signal there rather than splitting it across two URLs.
 	let canonicalUrl = $derived(
-		buildProfileShareCanonical(siteOrigin(env.PUBLIC_SITE_URL), userId)
+		buildProfileShareCanonical(siteOrigin(PUBLIC_SITE_URL), userId)
 	);
 	let profile = $state<ProfileSummary | null>(null);
 	let loadError = $state<string | null>(null);
@@ -319,11 +319,11 @@
 	// tab — it's now hosted at /social?tab=feed, so any legacy ?tab=feed
 	// link bounces over there.
 	$effect(() => {
-		const t = $page.url.searchParams.get('tab');
+		const t = page.url.searchParams.get('tab');
 		if (t === 'feed') {
 			// Out-of-band navigation — defer so we don't fire during the
 			// initial $effect chain.
-			queueMicrotask(() => goto('/social?tab=feed', { replaceState: true }));
+			queueMicrotask(() => goto('/social?tab=feed', { replace: true }));
 			return;
 		}
 		if (t === 'followers' || t === 'following' || t === 'runs' || t === 'achievements') tab = t;

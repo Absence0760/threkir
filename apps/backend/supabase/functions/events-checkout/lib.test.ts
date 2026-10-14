@@ -10,6 +10,8 @@ import {
   checkoutExpiresAtUnix,
   checkoutIdempotencyKey,
   computeApplicationFeeCents,
+  heldOfferCount,
+  isPastSeriesEnd,
   isSalesWindowOpen,
   type PendingOrderRow,
   reservationExpiry,
@@ -235,4 +237,76 @@ Deno.test('isSalesWindowOpen — an unparseable instant refuses the sale', () =>
   // would rather refuse a sale than open one against an instant we cannot
   // place.
   assertEquals(isSalesWindowOpen(NaN, 0, Date.parse('2026-02-27T09:00:00Z')), false);
+});
+
+// ── waitlist offers (migration 20270726000002) ──
+
+const NOW = Date.parse('2026-10-13T12:00:00Z');
+const LATER = '2026-10-13T20:00:00Z';
+const EARLIER = '2026-10-13T11:00:00Z';
+
+Deno.test('heldOfferCount: someone else\'s live offer holds a seat against the caller', () => {
+  const held = heldOfferCount([{ user_id: 'w1', offer_expires_at: LATER }], new Set(), 'stranger', NOW);
+  assertStrictEquals(held, 1);
+  // With one seat left, that hold makes the class full for the stranger.
+  assertStrictEquals(capacityDecision(9, held, 10), 'full');
+});
+
+Deno.test('heldOfferCount: the offered caller is not blocked by their own offer', () => {
+  const held = heldOfferCount([{ user_id: 'w1', offer_expires_at: LATER }], new Set(), 'w1', NOW);
+  assertStrictEquals(held, 0);
+  assertStrictEquals(capacityDecision(9, held, 10), 'available');
+});
+
+Deno.test('heldOfferCount: a lapsed offer holds nothing', () => {
+  assertStrictEquals(
+    heldOfferCount([{ user_id: 'w1', offer_expires_at: EARLIER }], new Set(), 'stranger', NOW),
+    0,
+  );
+});
+
+Deno.test('heldOfferCount: a holder mid-checkout is counted once, through the pending count', () => {
+  // Their pending order already holds the seat, deadline or not.
+  assertStrictEquals(
+    heldOfferCount(
+      [
+        { user_id: 'w1', offer_expires_at: LATER },
+        { user_id: 'w2', offer_expires_at: EARLIER },
+      ],
+      new Set(['w1', 'w2']),
+      'stranger',
+      NOW,
+    ),
+    0,
+  );
+});
+
+Deno.test('heldOfferCount: an unreadable deadline holds the seat (fail closed)', () => {
+  assertStrictEquals(
+    heldOfferCount([{ user_id: 'w1', offer_expires_at: 'not-a-date' }], new Set(), 'stranger', NOW),
+    1,
+  );
+});
+
+Deno.test('heldOfferCount: a row with no offer is ignored', () => {
+  assertStrictEquals(
+    heldOfferCount([{ user_id: 'w1', offer_expires_at: null }], new Set(), 'stranger', NOW),
+    0,
+  );
+});
+
+Deno.test('isPastSeriesEnd — an instant after an ended series is not for sale', () => {
+  const until = '2026-09-01T12:00:00+00:00';
+  const untilMs = Date.parse(until);
+  assertStrictEquals(isPastSeriesEnd(until, untilMs + 1), true);
+  // The series' last occurrence is still its own.
+  assertStrictEquals(isPastSeriesEnd(until, untilMs), false);
+  assertStrictEquals(isPastSeriesEnd(until, untilMs - 7 * 24 * HOUR), false);
+  // The same instant in the other rendering decides the same way.
+  assertStrictEquals(isPastSeriesEnd('2026-09-01T12:00:00.000Z', untilMs + 1), true);
+});
+
+Deno.test('isPastSeriesEnd — no end, or an unreadable one, is not past it', () => {
+  assertStrictEquals(isPastSeriesEnd(null, Date.parse('2099-01-01T00:00:00Z')), false);
+  assertStrictEquals(isPastSeriesEnd('not a date', Date.parse('2099-01-01T00:00:00Z')), false);
 });

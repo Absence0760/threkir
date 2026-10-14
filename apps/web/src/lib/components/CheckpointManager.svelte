@@ -1,17 +1,17 @@
 <script lang="ts">
 	import Modal from './Modal.svelte';
 	import ConfirmDialog from './ConfirmDialog.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { getUnit } from '$lib/format/units.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { getUnit } from '#lib/format/units.svelte.ts';
 	import {
 		fetchEventCheckpoints,
 		createEventCheckpoint,
 		updateEventCheckpoint,
 		deleteEventCheckpoint,
 		type EventCheckpoint
-	} from '$lib/core/data';
-	import { swapCheckpointOrdinals } from '$lib/runs/checkpoint_reorder';
+	} from '#lib/core/data.ts';
+	import { swapCheckpointOrdinals } from '#lib/runs/checkpoint_reorder.ts';
 
 	interface Props {
 		eventId: string;

@@ -37,7 +37,7 @@ func pushPrefs(mode string) map[string]interface{} {
 }
 
 func TestShouldEmail_Matrix(t *testing.T) {
-	important := []string{"event_reminder", "event_cancel", "plan_update", "message", "data_export_ready", "refund_failed"}
+	important := []string{"event_reminder", "event_cancel", "plan_update", "message", "data_export_ready", "refund_failed", "event_waitlist_slot"}
 	social := []string{"kudos", "comment", "comment_reply", "follow", "club_post", "run_completed", "event_rsvp"}
 
 	for _, k := range important {
@@ -206,6 +206,7 @@ func TestRenderNotificationEmail_AllKinds(t *testing.T) {
 		{"event_reminder", NotificationRow{Kind: "event_reminder", EventID: &ev}, base + "/events/evt-1"},
 		{"event_cancel", NotificationRow{Kind: "event_cancel", EventID: &ev}, base + "/events/evt-1"},
 		{"event_rsvp", NotificationRow{Kind: "event_rsvp", EventID: &ev}, base + "/events/evt-1"},
+		{"event_waitlist_slot", NotificationRow{Kind: "event_waitlist_slot", EventID: &ev}, base + "/events/evt-1"},
 		{"plan_update", NotificationRow{Kind: "plan_update"}, base + "/plans"},
 		{"plan_assigned", NotificationRow{Kind: "plan_assigned"}, base + "/plans"},
 		{"message", NotificationRow{Kind: "message"}, base + "/messages"},
@@ -304,6 +305,7 @@ func TestPathForKind(t *testing.T) {
 		{"event_reminder", "event_reminder", NotificationRow{EventID: &ev}, base + "/events/e1"},
 		{"event_cancel", "event_cancel", NotificationRow{EventID: &ev}, base + "/events/e1"},
 		{"event_rsvp", "event_rsvp", NotificationRow{EventID: &ev}, base + "/events/e1"},
+		{"event_waitlist_slot", "event_waitlist_slot", NotificationRow{EventID: &ev}, base + "/events/e1"},
 		{"event nil id → /clubs", "event_reminder", NotificationRow{}, base + "/clubs"},
 		// Plan family → /plans (there is NO /training route — the old target
 		// was a dead deep link).

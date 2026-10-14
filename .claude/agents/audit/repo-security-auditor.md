@@ -14,7 +14,7 @@ This project has four trust boundaries; every finding maps to one:
 1. **DB ↔ client** — Postgres RLS, `SECURITY DEFINER` RPCs, narrow-union CHECK constraints. Migrations live in `apps/backend/supabase/migrations/`. Documented surface: `docs/backend/api_database.md`.
 2. **Edge Function ↔ caller** — Deno serverless functions under `apps/backend/supabase/functions/`. Per-function `verify_jwt` lives in `apps/backend/supabase/config.toml`. Functions that touch external APIs need HMAC verification on incoming webhooks. The canonical "I forgot to JWT-check" fix is commit `b3373c6` (`refresh-tokens`).
 3. **Storage ↔ object URL** — buckets `runs`, `run-photos`, `avatars`. Path convention `{user_id}/{resource_id}.ext`. Bucket policies must read-through to the row's `is_public`/owner state.
-4. **Client bundle ↔ runtime** — secrets that should be server-only must not appear in `+page.svelte` / `$lib/*.ts` (non-server) bundles. The Svelte env split: `PUBLIC_*` is inlined; everything else is server-only and must only appear under `+server.ts` / `*.server.ts` / `apps/web/src/routes/api/`.
+4. **Client bundle ↔ runtime** — secrets that should be server-only must not appear in `+page.svelte` / `#lib/*.ts` (non-server) bundles. The Svelte env split: `PUBLIC_*` is inlined; everything else is server-only and must only appear under `+server.ts` / `*.server.ts` / `apps/web/src/routes/api/`.
 
 Cross-cutting:
 - **Privacy zones (decisions §33)** — `clip_track_for_user` is a SECURITY DEFINER RPC. Every track render site for non-owner viewers must route through it. Owner views bypass.

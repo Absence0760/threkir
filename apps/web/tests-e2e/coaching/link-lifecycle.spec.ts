@@ -212,7 +212,7 @@ test.describe('/coaching/accept/[token] — already redeemed', () => {
 		await expect(page.getByRole('heading', { name: 'Invite problem' })).toBeVisible({
 			timeout: 10_000
 		});
-		await expect(page.getByRole('link', { name: 'Go to coaching' })).toBeVisible();
+		await expect(page.getByRole('link', { name: 'Go to Athletes & coaches' })).toBeVisible();
 		await expect(page).toHaveURL(/\/coaching\/accept\//);
 
 		// The existing link is untouched — USER_A did not get linked.

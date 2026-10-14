@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { countUp } from '$lib/motion/actions';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { countUp } from '#lib/motion/actions.ts';
 
 	// The split screen every page between the landing page and the app shares:
 	// sign-in, sign-up and the reset request on /login, then /auth/reset,

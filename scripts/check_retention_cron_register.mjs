@@ -81,6 +81,16 @@ export const EXCLUDED_JOBS = [
 		name: 'export-retention-overrun-alert',
 		reason: 'Alerts when the Art 20 window is overrun; the reap job is what deletes.',
 	},
+	{
+		name: 'expire-event-waitlist-offers',
+		reason:
+			'Lapses unclaimed paid-waitlist seat offers and offers the seat on; a state change on a live registration, not a retention purge.',
+	},
+	{
+		name: 'event-refund-sweep',
+		reason:
+			'Calls events-refund-sweep to refund orders still owed after a host cancel; moves money and stamps orders, deletes nothing.',
+	},
 ];
 
 /** A pg_cron job name as this repo writes them: lowercase words joined by `-`. */

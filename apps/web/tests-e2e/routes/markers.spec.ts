@@ -4,6 +4,7 @@ import { getAdminClient } from '../fixtures/local-supabase';
 import { deleteRoute } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
 import { readRows } from '../fixtures/db-read';
+import { shareChoosingPublic } from '../fixtures/share';
 
 /**
  * /routes/[id] — course markers (aid stations, cutoffs, …) via the
@@ -391,7 +392,7 @@ test.describe('/routes/[id] — course markers', () => {
 
 		// The share affordance on a private route opens the make-public
 		// confirm, which passes no cancelLabel.
-		await page.getByTestId('route-share-btn').click();
+		await shareChoosingPublic(page, page.getByTestId('route-share-btn'));
 		const dialog = page.getByTestId('share-confirm-dialog');
 		await expect(dialog).toBeVisible({ timeout: 10_000 });
 

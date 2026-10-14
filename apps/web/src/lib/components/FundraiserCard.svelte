@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { m } from '$lib/i18n/store.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
 	import GoalThermometer from './GoalThermometer.svelte';
-	import type { Fundraiser, FundraiserTotals } from '$lib/types';
+	import type { Fundraiser, FundraiserTotals } from '#lib/types.ts';
 
 	let {
 		fundraiser,

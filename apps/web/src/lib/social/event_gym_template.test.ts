@@ -4,7 +4,8 @@ import {
 	parseGymTemplate,
 	gymTemplateFromInputs,
 	workoutDraftFromTemplate,
-	workoutDraftFromSession
+	workoutDraftFromSession,
+	workoutDraftFromRoutine
 } from './event_gym_template';
 import type { SessionStep } from './session_steps';
 
@@ -176,4 +177,74 @@ test('workoutDraftFromSession: reps step carries reps, null duration', () => {
 	};
 	const draft = workoutDraftFromSession(expanded, 'Flow', 'Yoga');
 	assert.deepEqual(draft.sets, [{ exercise_name: 'Push-up', duration_s: null, reps: 12 }]);
+});
+
+const ROUTINE = {
+	title: 'Lower Body',
+	exercises: [
+		{
+			exerciseName: 'Romanian Deadlift',
+			position: 1,
+			sets: [{ setIndex: 0, targetRepsMin: 8, targetRepsMax: 10, targetWeightKg: 50, targetRpe: null }]
+		},
+		{
+			exerciseName: 'Back Squat',
+			position: 0,
+			sets: [
+				{ setIndex: 1, targetRepsMin: 5, targetRepsMax: 5, targetWeightKg: 62.5, targetRpe: 8 },
+				{ setIndex: 0, targetRepsMin: 5, targetRepsMax: 5, targetWeightKg: 60, targetRpe: 7.5 }
+			]
+		}
+	]
+};
+
+test('workoutDraftFromRoutine: title from discipline when present', () => {
+	const draft = workoutDraftFromRoutine(ROUTINE, 'Strength 101');
+	assert.equal(draft.title, 'Strength 101');
+	assert.equal(draft.duration_s, null);
+});
+
+test('workoutDraftFromRoutine: whitespace-only discipline falls back to the routine title', () => {
+	assert.equal(workoutDraftFromRoutine(ROUTINE, '  ').title, 'Lower Body');
+	assert.equal(workoutDraftFromRoutine(ROUTINE, null).title, 'Lower Body');
+});
+
+test('workoutDraftFromRoutine: one set per planned set, by position then set index', () => {
+	assert.deepEqual(workoutDraftFromRoutine(ROUTINE, null).sets, [
+		{ exercise_name: 'Back Squat', reps: 5, weight_kg: 60, rpe: 7.5 },
+		{ exercise_name: 'Back Squat', reps: 5, weight_kg: 62.5, rpe: 8 },
+		{ exercise_name: 'Romanian Deadlift', reps: 8, weight_kg: 50, rpe: null }
+	]);
+});
+
+test('workoutDraftFromRoutine: a fractional rep target reads as no reps', () => {
+	const draft = workoutDraftFromRoutine(
+		{
+			title: 'T',
+			exercises: [
+				{
+					exerciseName: 'Plank',
+					position: 0,
+					sets: [{ setIndex: 0, targetRepsMin: 7.5, targetRepsMax: null, targetWeightKg: null, targetRpe: null }]
+				}
+			]
+		},
+		null
+	);
+	assert.deepEqual(draft.sets, [{ exercise_name: 'Plank', reps: null, weight_kg: null, rpe: null }]);
+});
+
+test('workoutDraftFromRoutine: empty routine has no sets; a set-less exercise keeps one blank row', () => {
+	assert.deepEqual(workoutDraftFromRoutine({ title: 'Empty', exercises: [] }, null).sets, []);
+	const draft = workoutDraftFromRoutine(
+		{
+			title: 'T',
+			exercises: [
+				{ exerciseName: '  ', position: 0, sets: [] },
+				{ exerciseName: 'Burpee', position: 1, sets: [] }
+			]
+		},
+		null
+	);
+	assert.deepEqual(draft.sets, [{ exercise_name: 'Burpee', reps: null, weight_kg: null, rpe: null }]);
 });

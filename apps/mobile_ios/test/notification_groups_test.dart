@@ -35,6 +35,7 @@ NotificationRow n({
     challengeId: challengeId,
     readAt: readAt,
     createdAt: createdAt ?? ago(0),
+    refunded: false,
   );
 }
 

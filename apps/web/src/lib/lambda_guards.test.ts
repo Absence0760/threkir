@@ -152,7 +152,7 @@ test('every two-wrapper endpoint enforces one shared body cap, on both wrappers'
 	// a multi-byte payload ~3x the cap through. The two wrappers had diverged
 	// because each owned its own copy of the check.
 	//
-	// The fix put one constant and one helper in $lib/coach/body.ts — but the
+	// The fix put one constant and one helper in #lib/coach/body.ts — but the
 	// guard that pinned it named only the coach PATH, so the same shape sat
 	// untouched one endpoint over for as long: /api/routes/generate spelled a
 	// 4 KB cap twice and re-implemented the decode, and the coach's own two
@@ -166,7 +166,7 @@ test('every two-wrapper endpoint enforces one shared body cap, on both wrappers'
 	assert.match(
 		body,
 		/COACH_BODY_LIMIT_BYTES\s*=\s*256\s*\*\s*1024/,
-		'$lib/coach/body.ts must declare COACH_BODY_LIMIT_BYTES = 256 * 1024.',
+		'#lib/coach/body.ts must declare COACH_BODY_LIMIT_BYTES = 256 * 1024.',
 	);
 
 	const wrappers: string[] = [];
@@ -359,7 +359,7 @@ test('every production Lambda gates its own HTTP method', () => {
 		ungated.sort(),
 		[],
 		'these Lambda handlers do work on any method their CloudFront behaviour ' +
-			'lets through. Call `methodRefusal` from $lib/core/method_gate with the ' +
+			'lets through. Call `methodRefusal` from #lib/core/method_gate with the ' +
 			'set this handler allows — it carries the `Allow` header RFC 9110 15.5.6 ' +
 			'requires and the `no-store` a refusal needs.',
 	);

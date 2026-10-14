@@ -4,7 +4,7 @@
 //
 // Output: apps/web/lambda/osrm-proxy/dist/osrm-proxy.zip
 //
-// esbuild bundles src/index.ts (and the pure $lib/routes/osrm_proxy/ core it
+// esbuild bundles src/index.ts (and the pure #lib/routes/osrm_proxy/ core it
 // imports, plus supabase-js for the auth gate) into a single index.mjs. No
 // native deps, so nothing is marked external.
 

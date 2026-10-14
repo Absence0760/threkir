@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import FoodLogEditor from '$lib/components/FoodLogEditor.svelte';
-	import { m } from '$lib/i18n/store.svelte';
+	import FoodLogEditor from '#lib/components/FoodLogEditor.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
 </script>
 
 <svelte:head><title>{m('nutrition.logHeading')} — Threkir</title></svelte:head>

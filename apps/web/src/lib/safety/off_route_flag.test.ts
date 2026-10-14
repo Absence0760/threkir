@@ -10,7 +10,7 @@
 // than value tests, because the accepted-affirmative set itself belongs to
 // `core/env_flag.ts` and is pinned there.
 //
-// `isOffRouteEscalationEnabled` reads `$env/dynamic/public`, so the module
+// `isOffRouteEscalationEnabled` reads `$app/env/public`, so the module
 // cannot be imported under `tsx --test`. What matters more than the parse is
 // the half nothing covered: that the escalation surface is UNREACHABLE while
 // the flag is off. The flag exists so no runner's off-route departure can
@@ -54,15 +54,24 @@ test('the gate is fail-closed and routed through the canonical parse', () => {
 	assert.match(source, /PUBLIC_OFF_ROUTE_ESCALATION_ENABLED/);
 	assert.match(
 		source,
-		/from\s+'\$env\/dynamic\/public'/,
+		/from\s+'\$app\/env\/public'/,
 		'the gate must read the deploy-time public env, not a build-time constant baked at build',
+	);
+	// `$app/env/public` serves both kinds of variable; whether one is baked in
+	// at build is declared in src/env.ts, so that is where "deploy-time" lives.
+	const envDecl = read('src/env.ts');
+	assert.match(envDecl, /\bPUBLIC_OFF_ROUTE_ESCALATION_ENABLED:\s*\{\s*public:\s*true/, 'PUBLIC_OFF_ROUTE_ESCALATION_ENABLED must be declared public in src/env.ts');
+	assert.doesNotMatch(
+		envDecl,
+		/\bPUBLIC_OFF_ROUTE_ESCALATION_ENABLED:[^}]*\bstatic:\s*true/,
+		'PUBLIC_OFF_ROUTE_ESCALATION_ENABLED must not be declared `static: true` in src/env.ts — that bakes it in at build',
 	);
 	// Delegating is what keeps web and mobile from accepting different values
 	// for the same documented flag (decisions § 709). The named function is
 	// `off_route_alert`'s, which delegates in turn to `env_flag`.
 	assert.match(
 		source,
-		/offRouteEscalationEnabled\(env\.PUBLIC_OFF_ROUTE_ESCALATION_ENABLED\)/,
+		/offRouteEscalationEnabled\(PUBLIC_OFF_ROUTE_ESCALATION_ENABLED\)/,
 		'the gate must delegate to offRouteEscalationEnabled rather than carry a parse',
 	);
 	assert.doesNotMatch(source, /\?\?\s*(true|'1'|'true')/, 'the gate must not default to on');

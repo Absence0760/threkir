@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { fetchSessionPlans, type SessionPlan } from '$lib/core/data';
-	import Modal from '$lib/components/Modal.svelte';
-	import SessionPlanEditor from '$lib/components/SessionPlanEditor.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { fetchSessionPlans, type SessionPlan } from '#lib/core/data.ts';
+	import Modal from '#lib/components/Modal.svelte';
+	import SessionPlanEditor from '#lib/components/SessionPlanEditor.svelte';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
 
 	let plans = $state<SessionPlan[]>([]);
 	let loading = $state(true);

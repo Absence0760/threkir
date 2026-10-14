@@ -118,4 +118,29 @@ void main() {
           DateTime.utc(2026, 4, 1, 8));
     });
   });
+  group('isSeriesCancelled', () {
+    test('a cancelled instant past the series end means the host ended it',
+        () {
+      final ended = EventRecurrence(
+        startsAt: DateTime.utc(2026, 4, 1, 8),
+        freq: RecurrenceFreq.weekly,
+        timezone: 'UTC',
+        until: DateTime.utc(2026, 4, 10, 12),
+      );
+      expect(isSeriesCancelled(ended, [DateTime.utc(2026, 4, 15, 8)]), isTrue);
+      expect(isSeriesCancelled(ended, [DateTime.utc(2026, 4, 8, 8)]), isFalse);
+      expect(isSeriesCancelled(ended, const []), isFalse);
+    });
+
+    test('an open series and a one-off are never cancelled series', () {
+      expect(isSeriesCancelled(_weekly, [DateTime.utc(2026, 4, 15, 8)]),
+          isFalse);
+      final oneOff = EventRecurrence(
+        startsAt: DateTime.utc(2026, 4, 1, 8),
+        until: DateTime.utc(2026, 4, 1),
+      );
+      expect(isSeriesCancelled(oneOff, [DateTime.utc(2026, 4, 15, 8)]),
+          isFalse);
+    });
+  });
 }

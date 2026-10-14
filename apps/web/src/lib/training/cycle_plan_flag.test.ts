@@ -28,7 +28,7 @@ test('cycle_plan_flag is fail-closed (defaults off)', () => {
 	// the affirmative set (decisions § 709).
 	assert.match(
 		source,
-		/isTruthyFlagValue\(env\.PUBLIC_CYCLE_PLANS_ENABLED\)/,
+		/isTruthyFlagValue\(PUBLIC_CYCLE_PLANS_ENABLED\)/,
 		'flag must delegate to the canonical isTruthyFlagValue (fail-closed default)',
 	);
 });

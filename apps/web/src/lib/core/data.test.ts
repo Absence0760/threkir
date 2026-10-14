@@ -13,7 +13,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { stripComments } from './strip_comments';
-// Type-only, so nothing in `data.ts` (the supabase singleton, `$env/static/public`)
+// Type-only, so nothing in `data.ts` (the supabase singleton, `$app/env/public`)
 // is evaluated when this file runs under `tsx --test`.
 import type { PeriodSummaryRun, RunColumns } from './data';
 
@@ -469,7 +469,7 @@ test('live spectator next-cutoff card sources waypoints through the clipped rout
 	assert.doesNotMatch(
 		source,
 		/\.from\('public_routes'\)/,
-		'Route reads on this page go through $lib/core/data, not inline view queries.',
+		'Route reads on this page go through #lib/core/data, not inline view queries.',
 	);
 });
 

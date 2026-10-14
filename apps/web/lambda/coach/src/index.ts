@@ -157,7 +157,7 @@ export const handler = awslambda.streamifyResponse<LambdaFunctionURLEvent>(
 		// Parse the request body. Function URL events deliver `body` as
 		// a string, base64-encoded for binary content types. The size
 		// cap is enforced against the decoded byte count, not the JS
-		// string length — see $lib/coach/body.ts for the regression
+		// string length — see #lib/coach/body.ts for the regression
 		// this guards against (multi-byte UTF-8 chars).
 		const decoded = decodeLambdaBody(
 			event.body,

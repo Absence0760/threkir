@@ -595,7 +595,7 @@ test('RouteBuilder.svelte: findInsertIndex delegates to nearestInsertIndex', () 
 	const src = read('src/lib/components/RouteBuilder.svelte');
 	assert.match(
 		src,
-		/import \{ nearestInsertIndex \} from '\$lib\/routes\/insert_index'/,
+		/import \{ nearestInsertIndex \} from '#lib\/routes\/insert_index\.ts'/,
 		'RouteBuilder must import the pure nearestInsertIndex helper.',
 	);
 	const fn = src.match(/function findInsertIndex\([^)]*\)[^{]*\{[\s\S]*?\n\t\}/);

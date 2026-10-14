@@ -1,12 +1,12 @@
 <script lang="ts">
-	import { m } from '$lib/i18n/store.svelte';
-	import { buildLearnCanonical, buildLearnCollectionJsonLd } from '$lib/learn/learn_meta';
-	import { guidesByCategory } from '$lib/learn/guides';
-	import GuideCard from '$lib/components/GuideCard.svelte';
-	import LearnCategoryNav from '$lib/components/LearnCategoryNav.svelte';
-	import LearnSignupCta from '$lib/components/LearnSignupCta.svelte';
-	import LearnPage from '$lib/components/LearnPage.svelte';
-	import LearnBreadcrumb from '$lib/components/LearnBreadcrumb.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { buildLearnCanonical, buildLearnCollectionJsonLd } from '#lib/learn/learn_meta.ts';
+	import { guidesByCategory } from '#lib/learn/guides.ts';
+	import GuideCard from '#lib/components/GuideCard.svelte';
+	import LearnCategoryNav from '#lib/components/LearnCategoryNav.svelte';
+	import LearnSignupCta from '#lib/components/LearnSignupCta.svelte';
+	import LearnPage from '#lib/components/LearnPage.svelte';
+	import LearnBreadcrumb from '#lib/components/LearnBreadcrumb.svelte';
 
 	let { data } = $props();
 

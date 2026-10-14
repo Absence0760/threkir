@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { createHash, generateKeyPairSync, verify } from 'node:crypto';
+import { createHash, createHmac, generateKeyPairSync, verify } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -14,6 +14,7 @@ import {
 	describeReadBack,
 	firstClientId,
 	holdsSecret,
+	secretDigest,
 	missingEnv,
 	normalizePem,
 	rotate,
@@ -115,6 +116,15 @@ const ENV = {
 const noSleep = async () => {};
 
 /**
+ * What the Management API returns for a secret auth setting: HMAC-SHA256 of
+ * the value keyed with the project ref, the digest the Supabase CLI's
+ * `config push` compares against (decisions.md § 1835).
+ *
+ * @param {unknown} v
+ */
+const apiDigest = (v) => createHmac('sha256', ENV.SUPABASE_PROJECT_REF).update(String(v)).digest('hex');
+
+/**
  * A stand-in Management API holding one auth config. `failOn` makes the
  * named method answer with that status; the body it returns then carries a
  * sentinel the error message must not repeat.
@@ -181,6 +191,18 @@ test('rotate fails closed, naming every missing secret, before any request', asy
 	assert.equal(api.calls.length, 0);
 });
 
+for (const ref of [undefined, '', '   ']) {
+	test(`rotate with SUPABASE_PROJECT_REF ${JSON.stringify(ref) ?? 'unset'} names it and sends no request at all`, async () => {
+		const api = fakeApi();
+		await assert.rejects(
+			rotate({ env: { ...ENV, SUPABASE_PROJECT_REF: ref }, fetcher: api.fetcher, nowS: NOW, sleep: noSleep }),
+			(err) => err instanceof Error && /unset: SUPABASE_PROJECT_REF\./.test(err.message),
+		);
+		assert.deepEqual(api.calls, [], 'no GET, and above all no PATCH, may go out without a project to address');
+		assert.equal(api.state.external_apple_secret, 'old');
+	});
+}
+
 test('rotate refuses to write when the web Services ID is not the first client id', async () => {
 	const api = fakeApi({ config: { external_apple_client_id: 'com.threkir.app' } });
 	await assert.rejects(rotate({ env: ENV, fetcher: api.fetcher, nowS: NOW, sleep: noSleep }), /first Client ID is not com\.threkir\.web/);
@@ -204,20 +226,46 @@ for (const [method, status] of /** @type {const} */ ([['GET', 401], ['PATCH', 50
 	});
 }
 
-test('a read-back of the secret as its SHA-256 digest confirms the write', async () => {
-	const api = fakeApi({ readBack: (v) => createHash('sha256').update(String(v)).digest('hex') });
+test('a read-back of the secret as its project-keyed HMAC-SHA256 confirms the write', async () => {
+	const api = fakeApi({ readBack: apiDigest });
 	await rotate({ env: ENV, fetcher: api.fetcher, nowS: NOW, sleep: noSleep });
 	assert.deepEqual(api.calls.map((c) => c.method), ['GET', 'PATCH', 'GET']);
 });
 
-test('holdsSecret accepts the value or its digest and nothing else', () => {
-	const digest = createHash('sha256').update('s3cret').digest('hex');
-	assert.equal(holdsSecret('s3cret', 's3cret'), true);
-	assert.equal(holdsSecret(digest, 's3cret'), true);
-	assert.equal(holdsSecret(digest.toUpperCase(), 's3cret'), true);
-	assert.equal(holdsSecret(createHash('sha256').update('other').digest('hex'), 's3cret'), false);
-	assert.equal(holdsSecret('******', 's3cret'), false);
-	assert.equal(holdsSecret(undefined, 's3cret'), false);
+test('a read-back of the bare SHA-256 of the secret is not proof of the write', async () => {
+	const api = fakeApi({ readBack: (v) => createHash('sha256').update(String(v)).digest('hex') });
+	await assert.rejects(rotate({ env: ENV, fetcher: api.fetcher, nowS: NOW, sleep: noSleep }), /does not hold the secret/);
+});
+
+test('secretDigest is HMAC-SHA256 keyed with the project ref, as lowercase hex', () => {
+	// RFC 4231 test case 2: key "Jefe", data "what do ya want for nothing?".
+	assert.equal(
+		secretDigest('what do ya want for nothing?', 'Jefe'),
+		'5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843',
+	);
+});
+
+test('holdsSecret accepts the value or its keyed digest for this project and nothing else', () => {
+	const ref = 'abcdefghijklmnopqrst';
+	const digest = createHmac('sha256', ref).update('s3cret').digest('hex');
+	assert.equal(holdsSecret('s3cret', 's3cret', ref), true);
+	assert.equal(holdsSecret(digest, 's3cret', ref), true);
+	assert.equal(holdsSecret(digest.toUpperCase(), 's3cret', ref), true);
+	assert.equal(holdsSecret(createHash('sha256').update('s3cret').digest('hex'), 's3cret', ref), false);
+	assert.equal(holdsSecret(createHmac('sha256', 'tsrqponmlkjihgfedcba').update('s3cret').digest('hex'), 's3cret', ref), false);
+	assert.equal(holdsSecret(createHmac('sha256', ref).update('other').digest('hex'), 's3cret', ref), false);
+	assert.equal(holdsSecret('******', 's3cret', ref), false);
+	assert.equal(holdsSecret(undefined, 's3cret', ref), false);
+});
+
+test('holdsSecret without a project ref answers false instead of throwing', () => {
+	const digest = createHmac('sha256', 'abcdefghijklmnopqrst').update('s3cret').digest('hex');
+	for (const ref of [undefined, '', '  ']) {
+		assert.doesNotThrow(() => holdsSecret(digest, 's3cret', ref));
+		assert.equal(holdsSecret(digest, 's3cret', ref), false);
+		assert.equal(holdsSecret('s3cret', 's3cret', ref), false);
+		assert.equal(holdsSecret(undefined, 's3cret', ref), false);
+	}
 });
 
 test('a failed read-back is described by shape, never by content', async () => {
@@ -228,11 +276,11 @@ test('a failed read-back is described by shape, never by content', async () => {
 	);
 	assert.equal(describeReadBack(''), 'empty');
 	assert.equal(describeReadBack('****'), 'masked');
-	assert.equal(describeReadBack('a'.repeat(64)), 'as a SHA-256 digest of a different value');
+	assert.equal(describeReadBack('a'.repeat(64)), "as a 64-hex-digit digest that is not this secret's project-keyed HMAC-SHA256");
 });
 
 test('a read-back that lags the write is polled until it matches', async () => {
-	const api = fakeApi({ staleReads: 3, readBack: (v) => createHash('sha256').update(String(v)).digest('hex') });
+	const api = fakeApi({ staleReads: 3, readBack: apiDigest });
 	/** @type {number[]} */
 	const slept = [];
 	await rotate({ env: ENV, fetcher: api.fetcher, nowS: NOW, sleep: async (ms) => void slept.push(ms) });
@@ -241,7 +289,7 @@ test('a read-back that lags the write is polled until it matches', async () => {
 });
 
 test('a read-back that never changes says the update did not take effect', async () => {
-	const api = fakeApi({ ignorePatch: true, readBack: (v) => createHash('sha256').update(String(v)).digest('hex') });
+	const api = fakeApi({ ignorePatch: true, readBack: apiDigest });
 	await assert.rejects(
 		rotate({ env: ENV, fetcher: api.fetcher, nowS: NOW, sleep: noSleep }),
 		/after 7 reads over 60s .*still reads back the value from before the write/,
@@ -250,10 +298,10 @@ test('a read-back that never changes says the update did not take effect', async
 });
 
 test('a read-back that changed to an unknown form says so, without the value', async () => {
-	const api = fakeApi({ readBack: (v) => createHash('sha256').update(`salt:${String(v)}`).digest('hex') });
+	const api = fakeApi({ readBack: (v) => apiDigest(`salt:${String(v)}`) });
 	await assert.rejects(
 		rotate({ env: ENV, fetcher: api.fetcher, nowS: NOW, sleep: noSleep }),
-		(err) => err instanceof Error && /changed from the value before the write/.test(err.message) && /SHA-256 digest of a different value/.test(err.message),
+		(err) => err instanceof Error && /changed from the value before the write/.test(err.message) && /not this secret's project-keyed HMAC-SHA256/.test(err.message),
 	);
 });
 

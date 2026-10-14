@@ -8,11 +8,12 @@ import { USER_A } from '../fixtures/users';
 
 /**
  * The race calendar's import modal is provider-driven, not RunSignUp-only
- * (race_calendar.md). Every leg the `race-results-import` Edge Function ships —
- * RunSignUp, UltraSignup, ChronoTrack — is reachable from a listing of that
- * provider once its credentials are configured, and each asks for the field its
- * own leg is scoped by: a bib for the two whose scope gate demands one, an
- * athlete id for UltraSignup, which reads one athlete's history.
+ * (race_calendar.md). The two bib-scoped legs the `race-results-import` Edge
+ * Function ships — RunSignUp and ChronoTrack — are reachable from a listing of
+ * that provider once their credentials are configured, and each asks for the
+ * bib its own scope gate demands. UltraSignup asks for nothing here: it is
+ * scoped by the person linked in Settings, and `ultrasignup-person-import.spec.ts`
+ * covers it end to end (decisions § 1841).
  *
  * Dev and CI ship no provider credentials, so the configured branch is reached
  * by stubbing the two availability probes. Only the probes are stubbed —
@@ -30,14 +31,6 @@ const LEGS = [
 		submit: 'race-import-runsignup',
 		value: '1471',
 		body: { bib: '1471' }
-	},
-	{
-		provider: 'ultrasignup',
-		label: 'UltraSignup',
-		input: 'ultrasignup-athlete',
-		submit: 'race-import-ultrasignup',
-		value: 'athlete-902',
-		body: { ultraSignUpAthleteId: 'athlete-902' }
 	},
 	{
 		provider: 'chronotrack',

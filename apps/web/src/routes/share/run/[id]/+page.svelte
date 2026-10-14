@@ -1,9 +1,9 @@
 <script lang="ts">
-	import RunShareView from '$lib/components/RunShareView.svelte';
-	import SharePageShell from '$lib/components/SharePageShell.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { isLiveBroadcast } from '$lib/runs/live_broadcast';
-	import { auth } from '$lib/stores/auth.svelte';
+	import RunShareView from '#lib/components/RunShareView.svelte';
+	import SharePageShell from '#lib/components/SharePageShell.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { isLiveBroadcast } from '#lib/runs/live_broadcast.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
 	import {
 		buildRunJsonLd,
 		buildRunOgImageUrl,
@@ -12,7 +12,7 @@
 		buildRunShareTitle,
 		formatKmStable,
 		formatDateStable,
-	} from '$lib/share/share_meta';
+	} from '#lib/share/share_meta.ts';
 
 	let { data } = $props();
 

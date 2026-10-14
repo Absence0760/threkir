@@ -15,7 +15,7 @@ import { readRow } from '../fixtures/db-read';
  * hand-capitalisation the activity vocabulary replaced — `hike` renders as
  * "Trail run", so the derived "Hike" matched no chip and the click timed out.
  * Read by regex rather than imported: this file runs under Playwright, where the
- * `$lib` alias the catalogue module uses internally does not resolve.
+ * `#lib` alias the catalogue module uses internally does not resolve.
  */
 function activityLabel(value: string): string {
 	const catalogue = readFileSync(
@@ -85,7 +85,7 @@ test.describe('/runs/new', () => {
 		const numberInputs = page.locator('input[type="number"]');
 		await numberInputs.nth(0).fill('6');
 		await numberInputs.nth(1).fill('30');
-		await page.getByRole('checkbox', { name: /Make this run public/ }).check();
+		await page.getByTestId('run-editor-audience').selectOption('public');
 		await page.getByRole('button', { name: /Save/ }).click();
 		const newId = await captureCreatedRunId(page);
 		await page.waitForLoadState('networkidle');
@@ -114,10 +114,8 @@ test.describe('/runs/new', () => {
 		await expect(
 			page.getByRole('heading', { level: 1, name: 'Add a run' })
 		).toBeVisible({ timeout: 10_000 });
-		// Toggle reflects the standing preference.
-		await expect(
-			page.getByRole('checkbox', { name: /Make this run public/ })
-		).toBeChecked();
+		// The audience control reflects the standing preference.
+		await expect(page.getByTestId('run-editor-audience')).toHaveValue('public');
 
 		const numberInputs = page.locator('input[type="number"]');
 		await numberInputs.nth(0).fill('7');
@@ -138,6 +136,8 @@ test.describe('/runs/new', () => {
 	});
 
 	test('default (no privacy_default set) keeps a manual run private', async ({ page }) => {
+		// The unset default is `private` (decisions § 1881), so the seed's open
+		// audience_sharing flag does not widen it to followers.
 		const admin = getAdminClient();
 		await clearUserSettingKey(USER_A.id, 'privacy_default');
 
@@ -145,9 +145,7 @@ test.describe('/runs/new', () => {
 		await expect(
 			page.getByRole('heading', { level: 1, name: 'Add a run' })
 		).toBeVisible({ timeout: 10_000 });
-		await expect(
-			page.getByRole('checkbox', { name: /Make this run public/ })
-		).not.toBeChecked();
+		await expect(page.getByTestId('run-editor-audience')).toHaveValue('private');
 
 		const numberInputs = page.locator('input[type="number"]');
 		await numberInputs.nth(0).fill('8');
@@ -160,11 +158,12 @@ test.describe('/runs/new', () => {
 			'runs by id',
 			admin
 				.from('runs')
-				.select('is_public')
+				.select('is_public, followers_only')
 				.eq('id', newId)
 				.single()
 		);
 		expect(row.is_public).toBe(false);
+		expect(row.followers_only).toBe(false);
 	});
 
 	test('renders page chrome (kicker, h1, tagline, back link)', async ({ page }) => {
@@ -511,9 +510,7 @@ test.describe('/runs/new', () => {
 
 		const routesLoaded = page.waitForResponse(/\/rest\/v1\/routes\b/);
 		releaseSettings();
-		await expect(
-			page.getByRole('checkbox', { name: /Make this run public/ })
-		).toBeChecked();
+		await expect(page.getByTestId('run-editor-audience')).toHaveValue('public');
 		await routesLoaded;
 
 		await page.getByRole('link', { name: /Back to runs/ }).click();

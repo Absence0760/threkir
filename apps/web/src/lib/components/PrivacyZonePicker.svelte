@@ -1,18 +1,18 @@
 <script lang="ts">
 	import type * as GeoJSON from 'geojson';
 	import { onMount, onDestroy } from 'svelte';
-	import maplibregl from '$lib/routes/maplibre';
-	import { env } from '$env/dynamic/public';
-	const PUBLIC_MAPTILER_KEY = env.PUBLIC_MAPTILER_KEY ?? '';
+	import maplibregl from '#lib/routes/maplibre.ts';
+	import { PUBLIC_MAPTILER_KEY as PUBLIC_MAPTILER_KEY_ENV } from '$app/env/public';
+	const PUBLIC_MAPTILER_KEY = PUBLIC_MAPTILER_KEY_ENV ?? '';
 	import {
 		basemapIsDarkFromEnv,
 		mapStyleUrlFromEnv as mapStyleUrl,
-	} from '$lib/routes/map-style.svelte';
-	import { mapZoneBoundary } from '$lib/routes/basemap_contrast';
-	import { watchMapResize } from '$lib/routes/map_resize';
-	import type { PrivacyZone } from '$lib/routes/privacy';
-	import { m } from '$lib/i18n/store.svelte';
-	import { hasAcceptedConsent } from '$lib/settings/consent.svelte';
+	} from '#lib/routes/map-style.svelte.ts';
+	import { mapZoneBoundary } from '#lib/routes/basemap_contrast.ts';
+	import { watchMapResize } from '#lib/routes/map_resize.ts';
+	import type { PrivacyZone } from '#lib/routes/privacy.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { hasAcceptedConsent } from '#lib/settings/consent.svelte.ts';
 
 	interface Props {
 		oncreated: (zone: PrivacyZone) => void;

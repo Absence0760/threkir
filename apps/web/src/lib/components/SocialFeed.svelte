@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import { formatDuration, formatRelativeTime } from '$lib/format/time';
-	import { currentLocale, m } from '$lib/i18n/store.svelte';
-	import type { MessageKey } from '$lib/i18n/messages';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import { formatDuration, formatRelativeTime } from '#lib/format/time.ts';
+	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
+	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import {
 		fetchFollowingActivityFeed,
 		fetchEngagementSummaries,
@@ -15,14 +15,14 @@
 		type RunFeedEntry,
 		type LiftFeedEntry,
 		type BadgeAwardFeedEntry,
-	} from '$lib/core/data';
+	} from '#lib/core/data.ts';
 
-	import { formatDistance, formatPace, formatWeight } from '$lib/format/units.svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import RunTrackPreview from '$lib/components/RunTrackPreview.svelte';
-	import { tierFor, type AchievementTier } from '$lib/social/badges';
-	import { ACTIVITY_TYPE_ICONS, activityTypeKey } from '$lib/runs/activity_type';
+	import { formatDistance, formatPace, formatWeight } from '#lib/format/units.svelte.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import RunTrackPreview from '#lib/components/RunTrackPreview.svelte';
+	import { tierFor, type AchievementTier } from '#lib/social/badges.ts';
+	import { ACTIVITY_TYPE_ICONS, activityTypeKey } from '#lib/runs/activity_type.ts';
 
 	// `all` and `lift` are not `activity_type` values — they are feed scopes, so
 	// they keep their own keys. The four real activity values resolve through the
@@ -90,7 +90,7 @@
 			return;
 		}
 		const { count } = await (
-			await import('$lib/core/supabase')
+			await import('#lib/core/supabase.ts')
 		).supabase
 			.from('user_follows')
 			.select('followee_id', { count: 'exact', head: true })

@@ -1,19 +1,20 @@
 <script lang="ts">
-	import { siteOrigin } from '$lib/core/site_url';
-	import { lengthLimit } from '$lib/core/column_limits';
-	import { activeFormatLocale } from '$lib/format/time';
-	import { m as tr } from '$lib/i18n/store.svelte';
-	import { clubRoleLabel, joinPolicyLabel, routeSurfaceLabel, rsvpStatusLabel } from '$lib/i18n/enum_labels.svelte';
+	import { siteOrigin } from '#lib/core/site_url.ts';
+	import HelpLink from '#lib/components/help/HelpLink.svelte';
+	import { lengthLimit } from '#lib/core/column_limits.ts';
+	import { activeFormatLocale } from '#lib/format/time.ts';
+	import { m as tr } from '#lib/i18n/store.svelte.ts';
+	import { clubRoleLabel, joinPolicyLabel, routeSurfaceLabel, rsvpStatusLabel } from '#lib/i18n/enum_labels.svelte.ts';
 	import { onMount, onDestroy } from 'svelte';
-	import { handleTablistKeydown } from '$lib/util/tablist';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import { hashHue } from '$lib/format/avatar';
-	import { page } from '$app/stores';
+	import { handleTablistKeydown } from '#lib/util/tablist.ts';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import { hashHue } from '#lib/format/avatar.ts';
+	import { page } from '$app/state';
 	import { goto, afterNavigate } from '$app/navigation';
-	import { env } from '$env/dynamic/public';
-	import { buildClubShareCanonical } from '$lib/share/share_club_meta';
-	import { supabase } from '$lib/core/supabase';
-	import { isEntityId } from '$lib/core/entity_id';
+	import { PUBLIC_SITE_URL } from '$app/env/public';
+	import { buildClubShareCanonical } from '#lib/share/share_club_meta.ts';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { isEntityId } from '#lib/core/entity_id.ts';
 	import type { RealtimeChannel } from '@supabase/supabase-js';
 	import {
 		fetchClubBySlug,
@@ -44,36 +45,37 @@
 		leaveClub,
 		createClubPost,
 		deleteClubPost,
-		deleteClub
-	} from '$lib/core/data';
-	import { formatDistance } from '$lib/core/mock-data';
-	import { auth } from '$lib/stores/auth.svelte';
-	import RouteTrackPreview from '$lib/components/RouteTrackPreview.svelte';
-	import type { GymRoutineSummary } from '$lib/core/data';
-	import type { Route, TrainingPlan, SessionPlan } from '$lib/types';
-	import type { RouteListItem } from '$lib/routes/route_list_columns';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import DangerZone from '$lib/components/DangerZone.svelte';
-	import EventEditor from '$lib/components/EventEditor.svelte';
-	import ClubEditor from '$lib/components/ClubEditor.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import ReportDialog from '$lib/components/ReportDialog.svelte';
-	import VerifiedBadge from '$lib/components/VerifiedBadge.svelte';
-	import ClubPhotos from '$lib/components/ClubPhotos.svelte';
+		deleteClub,
+		PAID_EVENT_DELETE_REFUSAL
+	} from '#lib/core/data.ts';
+	import { formatDistance } from '#lib/core/mock-data.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import RouteTrackPreview from '#lib/components/RouteTrackPreview.svelte';
+	import type { GymRoutineSummary } from '#lib/core/data.ts';
+	import type { Route, TrainingPlan, SessionPlan } from '#lib/types.ts';
+	import type { RouteListItem } from '#lib/routes/route_list_columns.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import DangerZone from '#lib/components/DangerZone.svelte';
+	import EventEditor from '#lib/components/EventEditor.svelte';
+	import ClubEditor from '#lib/components/ClubEditor.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import ReportDialog from '#lib/components/ReportDialog.svelte';
+	import VerifiedBadge from '#lib/components/VerifiedBadge.svelte';
+	import ClubPhotos from '#lib/components/ClubPhotos.svelte';
 	import type {
 		ClubWithMeta,
 		EventWithMeta,
 		ClubPostWithAuthor,
 		ClubMember
-	} from '$lib/types';
+	} from '#lib/types.ts';
 
-	let slug = $derived($page.params.slug as string);
+	let slug = $derived(page.params.slug as string);
 	// Fold this in-app (CSR) club page onto the public, crawlable
 	// /share/club/[slug] twin so search engines consolidate ranking
 	// signal there rather than splitting it across two URLs.
 	let canonicalUrl = $derived(
-		buildClubShareCanonical(siteOrigin(env.PUBLIC_SITE_URL), slug)
+		buildClubShareCanonical(siteOrigin(PUBLIC_SITE_URL), slug)
 	);
 	let club = $state<ClubWithMeta | null>(null);
 	let upcoming = $state<EventWithMeta[]>([]);
@@ -93,7 +95,7 @@
 	function setTab(next: Tab) {
 		tab = next;
 		const path = next === 'feed' ? `/clubs/${slug}` : `/clubs/${slug}?tab=${next}`;
-		goto(path, { replaceState: true, noScroll: true, keepFocus: true });
+		goto(path, { replace: true, reset: false });
 	}
 
 	/// Back-link wiring: if the user landed here from /clubs, fire
@@ -195,7 +197,7 @@
 			// canonical slug URL rather than showing "club not found".
 			const canonical = isEntityId(target) ? await fetchClubSlugById(target) : null;
 			if (canonical && canonical !== target) {
-				await goto(`/clubs/${canonical}`, { replaceState: true });
+				await goto(`/clubs/${canonical}`, { replace: true });
 				// Same route, different param: SvelteKit reuses this component
 				// rather than remounting it, so onMount — the only thing that
 				// calls load() on arrival — never fires again and the page
@@ -346,7 +348,7 @@
 	let realtimeReady = $state(false);
 
 	onMount(async () => {
-		const initial = $page.url.searchParams.get('tab');
+		const initial = page.url.searchParams.get('tab');
 		if (initial && (TABS as readonly string[]).includes(initial)) {
 			tab = initial as Tab;
 		}
@@ -736,6 +738,10 @@
 		try {
 			await deleteClub(club.id);
 		} catch (e) {
+			if (e instanceof Error && e.message === PAID_EVENT_DELETE_REFUSAL) {
+				showToast(tr('clubHome.deleteClubHasPayments'), 'error');
+				return;
+			}
 			showToast(
 				tr('clubHome.deleteClubFailed', { error: e instanceof Error ? e.message : String(e) }),
 				'error'
@@ -758,7 +764,7 @@
 	}
 
 	function fmtKm(m: number | null | undefined): string {
-		// Defers to the unit-aware formatter in $lib/format/units.svelte so a
+		// Defers to the unit-aware formatter in #lib/format/units.svelte so a
 		// km → mi preference flip on /settings/display re-renders
 		// every distance string on this page. The previous local
 		// implementation hardcoded " km" — the audit caught it.
@@ -855,6 +861,7 @@
 						<span class="badge">{tr('clubHome.privateBadge')}</span>
 					{/if}
 				</div>
+				<HelpLink route="/clubs/[slug]" />
 				{#if club.location_label}
 					<p class="location">
 						<span class="material-symbols" aria-hidden="true">place</span>

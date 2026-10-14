@@ -123,6 +123,26 @@ class _SlowShareApi extends ApiClient {
   }
 }
 
+/// Signed-in fake with audience sharing switched on and a private run that
+/// is shared with nobody, so Share opens the "Who can see this" sheet.
+class _AudienceShareApi extends _SlowShareApi {
+  @override
+  Future<bool> audienceSharingEnabled() async => true;
+
+  @override
+  Future<({bool isPublic, bool followersOnly})?> fetchAudienceColumns(
+          ShareableKind kind, String id) async =>
+      (isPublic: false, followersOnly: false);
+
+  @override
+  Future<List<ShareRecipient>> fetchShares(
+          ShareableKind kind, String id) async =>
+      const [];
+
+  @override
+  Future<List<UserProfileRow>> fetchShareCandidates() async => const [];
+}
+
 /// Signed-in fake that records makeRunPrivate calls; optionally throws
 /// so the failure banner path can be driven without a backend.
 class _MakePrivateApi extends ApiClient {
@@ -379,6 +399,49 @@ void main() {
       // unrelated to the guard under test). gate.complete() lets the
       // awaited makeRunPublic settle cleanly.
       api.gate.complete();
+      await tester.runAsync(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+      });
+    });
+
+    testWidgets(
+        'with audience sharing on, Share asks who can see the run before '
+        'anything is made public (decisions § 1879)', (tester) async {
+      final api = _AudienceShareApi();
+      await _pump(tester, _run(title: 'Morning Tempo'),
+          apiClient: api,
+          settingsSync:
+              _FakeSettingsSync(Preferences(), _FakeSettingsService({})));
+
+      await tester.runAsync(() async {
+        await tester.tap(find.widgetWithIcon(IconButton, Icons.share_outlined));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+      });
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.byKey(const ValueKey('audience-sheet')), findsOneWidget);
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(api.calls, 0);
+
+      final public = find.byKey(const ValueKey('audience-level-public'));
+      await tester.ensureVisible(public);
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.runAsync(() async {
+        await tester.tap(public);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+      });
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.widgetWithText(FilledButton, 'Make public'),
+        ),
+        findsOneWidget,
+        reason: 'Public goes through the same privacy-zone confirm as before',
+      );
+      expect(api.calls, 0);
       await tester.runAsync(() async {
         await tester.pumpWidget(const SizedBox.shrink());
         await tester.pump();

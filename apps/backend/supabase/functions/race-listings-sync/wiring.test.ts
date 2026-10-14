@@ -13,7 +13,7 @@ import { assert } from 'https://deno.land/std@0.224.0/assert/mod.ts';
 
 const SRC = await Deno.readTextFile(new URL('./index.ts', import.meta.url));
 const SIBLING = await Deno.readTextFile(
-  new URL('../race-results-import/index.ts', import.meta.url),
+  new URL('../race-results-import/handler.ts', import.meta.url),
 );
 
 Deno.test('an unrecognised provider is refused, not read as the default', () => {

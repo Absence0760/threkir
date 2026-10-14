@@ -1,14 +1,15 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import HelpLink from '#lib/components/help/HelpLink.svelte';
+	import { page } from '$app/state';
 	import { afterNavigate, goto } from '$app/navigation';
-	import { fetchClubBySlug } from '$lib/core/data';
-	import { auth } from '$lib/stores/auth.svelte';
-	import EventEditor from '$lib/components/EventEditor.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import type { ClubWithMeta } from '$lib/types';
+	import { fetchClubBySlug } from '#lib/core/data.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import EventEditor from '#lib/components/EventEditor.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import type { ClubWithMeta } from '#lib/types.ts';
 
-	let slug = $derived($page.params.slug as string);
+	let slug = $derived(page.params.slug as string);
 	let club = $state<ClubWithMeta | null>(null);
 	let loading = $state(true);
 
@@ -90,6 +91,7 @@
 		<header class="page-header">
 			<span class="kicker">{club.name}</span>
 			<h1>{m('eventNew.title')}</h1>
+			<HelpLink route="/clubs/[slug]/events/new" />
 			<p class="tagline">
 				{m('eventNew.tagline')}
 			</p>

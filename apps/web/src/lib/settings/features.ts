@@ -1,5 +1,4 @@
-import { env } from '$env/dynamic/public';
-import { PUBLIC_SUPABASE_URL } from '$env/static/public';
+import { PUBLIC_BYPASS_PAYWALL, PUBLIC_SUPABASE_URL } from '$app/env/public';
 
 import { auth } from '../stores/auth.svelte';
 import { TIER_LIMITS } from '../coach/types';
@@ -86,7 +85,7 @@ function bypassEnabled(): boolean {
 	const envBypass =
 		import.meta.env.DEV &&
 		isLocalSupabase &&
-		env.PUBLIC_BYPASS_PAYWALL === 'true';
+		PUBLIC_BYPASS_PAYWALL === 'true';
 	if (!envBypass) return false;
 	if (
 		import.meta.env.DEV &&

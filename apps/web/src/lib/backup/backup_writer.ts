@@ -3,7 +3,7 @@
  *
  * Extracted from `backup.ts` so the writer is unit-testable without
  * importing supabase-js (which transitively pulls in SvelteKit's
- * `$env` virtual module, unavailable to `node --test` / `tsx --test`).
+ * `$app/env` virtual module, unavailable to `node --test` / `tsx --test`).
  *
  * Mirrors the mobile fix in
  * [decisions.md § 66](../../../docs/architecture/decisions.md#66-backup-zip-writes-stream-to-disk-and-download-tracks-in-bounded-batches):

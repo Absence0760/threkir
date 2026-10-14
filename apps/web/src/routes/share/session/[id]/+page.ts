@@ -1,8 +1,7 @@
 import type { PageLoad } from './$types';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
-import { env } from '$env/dynamic/public';
-import { lookupSharedSession } from '$lib/share/share_session_lookup';
-import { siteOrigin } from '$lib/core/site_url';
+import { PUBLIC_SITE_URL, PUBLIC_SUPABASE_ANON_KEY, PUBLIC_SUPABASE_URL } from '$app/env/public';
+import { lookupSharedSession } from '#lib/share/share_session_lookup.ts';
+import { siteOrigin } from '#lib/core/site_url.ts';
 
 // Per-request SSR via the production entity-SSR Lambda — CloudFront routes
 // /share/session/* to the Lambda Function URL, which bakes the per-plan
@@ -25,7 +24,7 @@ export const load: PageLoad = async ({ params }) => {
 			? { supabaseUrl: PUBLIC_SUPABASE_URL, supabaseAnonKey: PUBLIC_SUPABASE_ANON_KEY }
 			: null,
 	);
-	const siteUrl = siteOrigin(env.PUBLIC_SITE_URL);
+	const siteUrl = siteOrigin(PUBLIC_SITE_URL);
 	return {
 		id: params.id,
 		session: lookup.session,

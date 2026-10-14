@@ -1,29 +1,29 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { compareOrdinal } from '$lib/util/ordinal_compare';
-	import { formatPace, formatDistance, sourceLabel } from '$lib/core/mock-data';
-	import { RUN_SOURCES, sourceColor, sourceInk } from '$lib/runs/source_badge';
-	import { formatDate, formatDuration } from '$lib/format/time';
-	import { fetchRunsWithError, deleteRuns } from '$lib/core/data';
-	import { loadSettings, effective } from '$lib/settings/settings';
-	import { periodStart } from '$lib/training/goals';
-	import { auth } from '$lib/stores/auth.svelte';
-	import RunEditor from '$lib/components/RunEditor.svelte';
-	import RunSurfaceTabs from '$lib/components/RunSurfaceTabs.svelte';
-	import Modal from '$lib/components/Modal.svelte';
+	import { compareOrdinal } from '#lib/util/ordinal_compare.ts';
+	import { formatPace, formatDistance, sourceLabel } from '#lib/core/mock-data.ts';
+	import { RUN_SOURCES, sourceColor, sourceInk } from '#lib/runs/source_badge.ts';
+	import { formatDate, formatDuration } from '#lib/format/time.ts';
+	import { fetchRunsWithError, deleteRuns } from '#lib/core/data.ts';
+	import { loadSettings, effective } from '#lib/settings/settings.ts';
+	import { periodStart } from '#lib/training/goals.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import RunEditor from '#lib/components/RunEditor.svelte';
+	import RunSurfaceTabs from '#lib/components/RunSurfaceTabs.svelte';
+	import Modal from '#lib/components/Modal.svelte';
 	import { goto } from '$app/navigation';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import RunTrackPreview from '$lib/components/RunTrackPreview.svelte';
-	import DateRangePicker from '$lib/components/DateRangePicker.svelte';
-	import type { Run, RunSource } from '$lib/types';
-	import { formatElevation } from '$lib/format/units.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { ACTIVITY_TYPE_ICONS } from '$lib/runs/activity_type';
-	import { activityTypeLabel } from '$lib/runs/activity_type.svelte';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import RunTrackPreview from '#lib/components/RunTrackPreview.svelte';
+	import DateRangePicker from '#lib/components/DateRangePicker.svelte';
+	import type { Run, RunSource } from '#lib/types.ts';
+	import { formatElevation } from '#lib/format/units.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { ACTIVITY_TYPE_ICONS } from '#lib/runs/activity_type.ts';
+	import { activityTypeLabel } from '#lib/runs/activity_type.svelte.ts';
 	import type { Snapshot } from './$types';
 	import { runsFetchMode } from './fetch_mode';
-	import { isListStale, listToken } from '$lib/core/list_freshness';
+	import { isListStale, listToken } from '#lib/core/list_freshness.ts';
 
 	// The full run list — filters, pagination, bulk-delete, manual entry.
 	// Split out of /history (which is now the unified cross-modal timeline)

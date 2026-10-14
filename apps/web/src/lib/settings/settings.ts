@@ -28,7 +28,7 @@ import { SettingsWriteError, drainQueue, pushOrQueue } from './settings_write';
 /// helpers (`effective`, `LoadedSettings`, `PrefsBag`) live in
 /// `./settings_overlay`; the offline-first cache primitive lives in
 /// `./settings_cache`. Both are re-exported below so existing
-/// `import { loadSettings, effective } from '$lib/settings/settings'` callers
+/// `import { loadSettings, effective } from '#lib/settings/settings.ts'` callers
 /// keep working unchanged.
 
 export { effective, effectivePreferredUnit, knownEffective };

@@ -113,7 +113,7 @@ Deno.test('reconcileImportBatch — the stored set may be any iterable, and is n
 // guard is on the shape, not merely on the import: an index.ts that re-derives
 // `fresh` from a `Set` of its own is the pre-fix code back again.
 
-const IMPORTERS = ['../parkrun-import/index.ts', '../race-results-import/index.ts'] as const;
+const IMPORTERS = ['../parkrun-import/index.ts', '../race-results-import/handler.ts'] as const;
 
 Deno.test('both run importers reconcile through this helper, not inline', async () => {
   for (const rel of IMPORTERS) {

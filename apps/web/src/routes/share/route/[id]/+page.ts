@@ -1,8 +1,7 @@
 import type { PageLoad } from './$types';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
-import { env } from '$env/dynamic/public';
-import { lookupSharedRoute } from '$lib/share/share_route_lookup';
-import { siteOrigin } from '$lib/core/site_url';
+import { PUBLIC_SITE_URL, PUBLIC_SUPABASE_ANON_KEY, PUBLIC_SUPABASE_URL } from '$app/env/public';
+import { lookupSharedRoute } from '#lib/share/share_route_lookup.ts';
+import { siteOrigin } from '#lib/core/site_url.ts';
 
 // Canonical host for the absolute <link rel="canonical"> + og:url +
 // JSON-LD URLs. Same source + fallback as /sitemap.xml so the host
@@ -30,7 +29,7 @@ import { siteOrigin } from '$lib/core/site_url';
 export const prerender = false;
 
 export const load: PageLoad = async ({ params }) => {
-	const siteUrl = siteOrigin(env.PUBLIC_SITE_URL);
+	const siteUrl = siteOrigin(PUBLIC_SITE_URL);
 	const lookup = await lookupSharedRoute(
 		params.id,
 		PUBLIC_SUPABASE_URL && PUBLIC_SUPABASE_ANON_KEY

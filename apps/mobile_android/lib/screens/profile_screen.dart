@@ -523,28 +523,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     final now = DateTime.now();
     setState(() {
       _notifications = _notifications
-          .map(
-            (n) => n.row.id == item.row.id
-                ? NotificationView(
-                    row: NotificationRow(
-                      id: n.row.id,
-                      userId: n.row.userId,
-                      actorId: n.row.actorId,
-                      kind: n.row.kind,
-                      runId: n.row.runId,
-                      commentId: n.row.commentId,
-                      readAt: now,
-                      createdAt: n.row.createdAt,
-                      eventId: n.row.eventId,
-                    ),
-                    actor: n.actor,
-                    runDistanceM: n.runDistanceM,
-                    commentExcerpt: n.commentExcerpt,
-                    eventTitle: n.eventTitle,
-                    eventClubSlug: n.eventClubSlug,
-                  )
-                : n,
-          )
+          .map((n) => n.row.id == item.row.id ? n.markedRead(now) : n)
           .toList();
     });
     try {
@@ -560,28 +539,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       if (!mounted) return;
       final now = DateTime.now();
       setState(() {
-        _notifications = _notifications
-            .map(
-              (n) => NotificationView(
-                row: NotificationRow(
-                  id: n.row.id,
-                  userId: n.row.userId,
-                  actorId: n.row.actorId,
-                  kind: n.row.kind,
-                  runId: n.row.runId,
-                  commentId: n.row.commentId,
-                  readAt: n.row.readAt ?? now,
-                  createdAt: n.row.createdAt,
-                  eventId: n.row.eventId,
-                ),
-                actor: n.actor,
-                runDistanceM: n.runDistanceM,
-                commentExcerpt: n.commentExcerpt,
-                eventTitle: n.eventTitle,
-                eventClubSlug: n.eventClubSlug,
-              ),
-            )
-            .toList();
+        _notifications = _notifications.map((n) => n.markedRead(now)).toList();
       });
     } catch (e) {
       debugPrint('profile mark all read failed: $e');
@@ -1199,7 +1157,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     await _markNotifRead(item);
     if (!mounted) return;
     final kind = item.row.kind;
-    if (kind == 'event_rsvp' &&
+    if ((kind == 'event_rsvp' || kind == 'event_waitlist_slot') &&
         item.row.eventId != null &&
         item.eventClubSlug != null) {
       await Navigator.of(context).push(
@@ -1278,6 +1236,13 @@ class _ProfileScreenState extends State<ProfileScreen>
             ? l10n.profileNotifEventRsvpTitled(name, item.eventTitle!)
             : l10n.profileNotifEventRsvp(name);
       case 'event_cancel':
+        // `refunded` marks a refund that is owed, not one Stripe has
+        // confirmed, so the copy says it is being refunded.
+        if (item.row.refunded) {
+          return item.eventTitle != null
+              ? l10n.profileNotifEventCancelRefundedTitled(item.eventTitle!)
+              : l10n.profileNotifEventCancelRefunded;
+        }
         return item.eventTitle != null
             ? l10n.profileNotifEventCancelTitled(item.eventTitle!)
             : l10n.profileNotifEventCancel;
@@ -1285,6 +1250,12 @@ class _ProfileScreenState extends State<ProfileScreen>
         return item.eventTitle != null
             ? l10n.profileNotifEventReminderTitled(item.eventTitle!)
             : l10n.profileNotifEventReminder;
+      case 'event_waitlist_slot':
+        // A paid occurrence's freed seat, held for this waitlister until a
+        // deadline (migration 20270726000002). Claiming it is a web checkout.
+        return item.eventTitle != null
+            ? l10n.profileNotifWaitlistSlotTitled(item.eventTitle!)
+            : l10n.profileNotifWaitlistSlot;
       case 'plan_update':
         return l10n.profileNotifPlanUpdate(name);
       case 'plan_assigned':

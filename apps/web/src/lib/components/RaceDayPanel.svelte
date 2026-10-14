@@ -7,11 +7,11 @@
 		raceChecklist,
 		fmtSplitTime,
 		goalFeasibility,
-	} from '$lib/runs/race_day';
-	import { riegelPredict, predictionConfidence } from '$lib/training/training';
-	import { fmtKm, getUnit } from '$lib/format/units.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import type { Run } from '$lib/types';
+	} from '#lib/runs/race_day.ts';
+	import { riegelPredict, predictionConfidence } from '#lib/training/training.ts';
+	import { fmtKm, getUnit } from '#lib/format/units.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import type { Run } from '#lib/types.ts';
 
 	interface Props {
 		raceDate: string;

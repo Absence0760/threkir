@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { selfLoad, shouldSurfaceSelfLoad } from '$lib/training/self_load';
-	import type { RunForVolume } from '$lib/training/plan_ramp';
-	import { fmtKm } from '$lib/format/units.svelte';
-	import { activeFormatLocale } from '$lib/format/time';
-	import { m } from '$lib/i18n/store.svelte';
+	import { selfLoad, shouldSurfaceSelfLoad } from '#lib/training/self_load.ts';
+	import type { RunForVolume } from '#lib/training/plan_ramp.ts';
+	import { fmtKm } from '#lib/format/units.svelte.ts';
+	import { activeFormatLocale } from '#lib/format/time.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
 
 	interface Props {
 		runs: RunForVolume[];

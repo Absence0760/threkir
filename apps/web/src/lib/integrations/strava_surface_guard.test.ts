@@ -3,7 +3,7 @@
 // Invocation:
 //   npx tsx --test src/lib/integrations/strava_surface_guard.test.ts
 //
-// `strava.ts` imports `$env/dynamic/public` and supabase-js, so it cannot
+// `strava.ts` imports `$app/env/public` and supabase-js, so it cannot
 // be executed under `tsx --test`; the grading it delegates to is pinned in
 // `strava_sync_result.test.ts`. What no test could see is the thing that
 // was actually wrong before decisions § 766: both call sites CAST the

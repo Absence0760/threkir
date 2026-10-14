@@ -21,7 +21,7 @@ import { ENUM_VOCABULARIES } from '../i18n/enum_labels';
 
 /**
  * The catalogue fields the browse surface reads. Structurally satisfied by
- * `GlobalSegment` from `core/data`, without dragging the `$env`-bound client
+ * `GlobalSegment` from `core/data`, without dragging the `$app/env`-bound client
  * into a unit test.
  *
  * `distance_m` / `elevation_m` accept a string because they are Postgres

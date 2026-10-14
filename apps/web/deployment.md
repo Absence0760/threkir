@@ -1,6 +1,6 @@
 # Web app deployment plan
 
-How `apps/web/` (SvelteKit 2 + Svelte 5) ships to production.
+How `apps/web/` (SvelteKit 3 + Svelte 5) ships to production.
 
 Operational counterpart of [`apps/web/CLAUDE.md`](CLAUDE.md) (stack, conventions, file layout) and [`apps/web/local_testing.md`](local_testing.md) (running it locally). For the cross-service overview see [`docs/ops/deployment.md`](../../docs/ops/deployment.md). For the rationale behind hosting choices see [`docs/architecture/decisions.md § 53`](../../docs/architecture/decisions.md#53-web-app--domain-on-aws-s3--cloudfront--lambda--route-53-not-vercel-or-cloudflare-pages).
 
@@ -238,7 +238,7 @@ The only SSR route in the app, and the only one that costs money to run.
 
 ## Generate-route `/api/routes/generate` specifics — Lambda
 
-Distance-targeted loop generation (decisions §575). `apps/web/lambda/generate-route/` wraps `$lib/routes/generate/handler` as a non-streaming JSON Function URL handler (mirroring `lambda/coach` + `lambda/share-route`); `build.mjs` bundles via esbuild → `dist/generate-route.zip`. CloudFront routes `/api/routes/generate*` to it; CI's `release-web.yml` updates the Lambda code on every published `web@*` GitHub Release.
+Distance-targeted loop generation (decisions §575). `apps/web/lambda/generate-route/` wraps `#lib/routes/generate/handler` as a non-streaming JSON Function URL handler (mirroring `lambda/coach` + `lambda/share-route`); `build.mjs` bundles via esbuild → `dist/generate-route.zip`. CloudFront routes `/api/routes/generate*` to it; CI's `release-web.yml` updates the Lambda code on every published `web@*` GitHub Release.
 
 **Why a server-side hop at all.** The browser must never call GraphHopper directly — the request carries the user's start coordinates, and `GRAPHHOPPER_URL` is a server-only env (never `PUBLIC_`) so those coordinates stay inside our infra. The Lambda is the only thing that talks to the engine. The same posture now holds on the OSRM side: the route builder's manual snapping/routing rides the osrm-proxy Lambda below (issue #198), so no routing engine is reachable from the browser.
 
@@ -264,7 +264,7 @@ A spike in `502`s is the engine-down signal — the alarms above plus a Better S
 
 ## OSRM proxy `/api/routes/osrm/*` specifics — Lambda
 
-The server hop for the route builder's manual waypoint snapping (`/nearest/v1/...`) and per-segment routing (`/route/v1/...`) against the self-hosted OSRM engine (issue #198). `apps/web/lambda/osrm-proxy/` wraps `$lib/routes/osrm_proxy/handler` as a GET-only JSON Function URL handler (same two-wrapper shape as generate-route); CloudFront routes `/api/routes/osrm*` to it; CI's `release-web.yml` updates the code on every published `web@*` Release.
+The server hop for the route builder's manual waypoint snapping (`/nearest/v1/...`) and per-segment routing (`/route/v1/...`) against the self-hosted OSRM engine (issue #198). `apps/web/lambda/osrm-proxy/` wraps `#lib/routes/osrm_proxy/handler` as a GET-only JSON Function URL handler (same two-wrapper shape as generate-route); CloudFront routes `/api/routes/osrm*` to it; CI's `release-web.yml` updates the code on every published `web@*` Release.
 
 **Why it exists.** The builder used to fetch the OSRM host directly from the browser over `PUBLIC_OSRM_URL`, shipping the user's pin coordinates (routinely their home) + client IP with no server boundary — the exact exposure the GraphHopper hop closed on the generate path. `OSRM_URL` is server-only; the browser only ever sees the same-origin proxy path.
 
@@ -298,7 +298,7 @@ Both run Node 24 / arm64 / 512 MB (the @resvg PNG rasteriser needs the headroom)
 `apps/web/static/sw.js` registers as the push-notification service worker (decisions §38). Two prerequisites for it to work in production:
 
 1. **HTTPS only.** CloudFront + ACM handle this — the distribution forces `redirect-to-https` and serves a valid cert.
-2. **VAPID keys.** Generated once with `npx web-push generate-vapid-keys`. The public half is a build input, not a checked-in constant: `PUBLIC_VAPID_PUBLIC_KEY` (a repo secret, read by `src/lib/util/push.ts` through `$env/static/public`), and an unset one leaves `isPushConfigured()` false so no browser ever subscribes. The private half is a **Fly secret on the worker** (`VAPID_PRIVATE_KEY`, beside `VAPID_PUBLIC_KEY` + `VAPID_SUBJECT`) — no Edge Function signs push; the sender is `apps/job_worker/internal/webpush`. The worker refuses to boot on a mismatched pair, but it cannot see a web build carrying a third key, so rotate the two ends together. Runbook: [`docs/features/native_push.md` § Operator provisioning](../../docs/features/native_push.md#operator-provisioning-the-credential-gate).
+2. **VAPID keys.** Generated once with `npx web-push generate-vapid-keys`. The public half is a build input, not a checked-in constant: `PUBLIC_VAPID_PUBLIC_KEY` (a repo secret, declared in `src/env.ts` and read by `src/lib/util/push.ts` from `$app/env/public`), and an unset one leaves `isPushConfigured()` false so no browser ever subscribes. The private half is a **Fly secret on the worker** (`VAPID_PRIVATE_KEY`, beside `VAPID_PUBLIC_KEY` + `VAPID_SUBJECT`) — no Edge Function signs push; the sender is `apps/job_worker/internal/webpush`. The worker refuses to boot on a mismatched pair, but it cannot see a web build carrying a third key, so rotate the two ends together. Runbook: [`docs/features/native_push.md` § Operator provisioning](../../docs/features/native_push.md#operator-provisioning-the-credential-gate).
 
 A subscription is stored per device on `user_device_settings.prefs.push_subscription` (written by the `set_push_subscription` RPC). Delivery is a **sibling consumer of the `notifications` table**, not a trigger that POSTs: an insert enqueues a `web_push` job, the Go worker drains it, gates on the `push_notifications` pref, sends, and prunes a dead endpoint (404/410) via `clear_push_subscription`.
 

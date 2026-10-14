@@ -15,8 +15,8 @@
 
 import { assert } from 'https://deno.land/std@0.224.0/assert/mod.ts';
 
-async function read(fn: string): Promise<string> {
-  return await Deno.readTextFile(new URL(`../${fn}/index.ts`, import.meta.url));
+async function read(fn: string, file = 'index.ts'): Promise<string> {
+  return await Deno.readTextFile(new URL(`../${fn}/${file}`, import.meta.url));
 }
 
 /// Assert `guard` appears in `src` and appears before `consumer`.
@@ -90,7 +90,7 @@ Deno.test('donations-checkout validates fundraiser_id before the rate limit', as
 });
 
 Deno.test('race-results-import validates listingId + matchRunId before querying', async () => {
-  const src = await read('race-results-import');
+  const src = await read('race-results-import', 'handler.ts');
   assert(
     src.includes("from '../_shared/input_validation.ts'"),
     'race-results-import must import the shared validators',

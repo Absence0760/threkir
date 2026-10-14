@@ -49,6 +49,7 @@ import '../preferences.dart';
 import '../privacy.dart';
 import '../off_route_alert.dart';
 import '../race_controller.dart';
+import '../race_finish.dart';
 import '../reactive_ble_watch_transport.dart';
 import '../race_phases.dart';
 import '../roadbook.dart';
@@ -82,6 +83,7 @@ import '../widgets/ghost_pacer.dart';
 import '../widgets/live_run_map.dart';
 import '../widgets/expected_return_dialog.dart';
 import '../widgets/live_share_indicator.dart';
+import '../widgets/race_stop_sheet.dart';
 import '../widgets/safety_nudge_banner.dart';
 import '../widgets/todays_workout_card.dart';
 import '../widgets/top_banner.dart';
@@ -753,6 +755,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     pendingArmGuidedRun.addListener(_onPendingArmGuidedRun);
     runStopRequests.addListener(_onDockedStopRequest);
     runSummaryDismissRequests.addListener(_onSummaryDismissRequest);
+    widget.raceController?.addListener(_onRaceChange);
     _activityType =
         ActivityType.fromName(widget.preferences.defaultActivityType);
     _selectedRoute = widget.initialRoute;
@@ -857,7 +860,76 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   /// panel's own on the phone layout ([RunStopDock]).
   void _onDockedStopRequest() {
     if (_state != _ScreenState.recording) return;
-    unawaited(_stop());
+    unawaited(_requestStop());
+  }
+
+  bool _raceEndedShown = false;
+  bool _raceLateShown = false;
+
+  /// The race moved under the recording: GO for a recording started while
+  /// it was armed (joined here), the host ended it, or the start was judged
+  /// late. Each is said once; none touches L0/L1.
+  void _onRaceChange() {
+    final rc = widget.raceController;
+    if (rc == null || !mounted || _state != _ScreenState.recording) return;
+    if (!_stopRequested) _attachToRunningRace();
+    if (rc.raceEnded && !_raceEndedShown) {
+      _raceEndedShown = true;
+      _showTopBanner(_l10n.runRaceEnded, duration: const Duration(seconds: 8));
+      _announceA11yState(_l10n.runRaceEnded);
+    }
+    if (rc.lateStart && !_raceLateShown) {
+      _raceLateShown = true;
+      _showTopBanner(_l10n.runRaceLateStart,
+          duration: const Duration(seconds: 6));
+    }
+  }
+
+  bool _raceStopSheetOpen = false;
+
+  /// Every Stop entry point lands here. During a live race with no outcome
+  /// yet, Stop is a pause: the recorder pauses and the runner picks Resume
+  /// race or Finish race (decisions § 1843). Anything else stops outright.
+  /// A Finish race is timed at this Stop, not at the later tap that chose
+  /// it, and is still filed if the host ends the race while the choice is
+  /// open (decisions § 1857).
+  Future<void> _requestStop() async {
+    final rc = widget.raceController;
+    if (rc == null || !rc.stopNeedsRaceChoice) return _stop();
+    if (_raceStopSheetOpen || _stopRequested || _recorder == null) return;
+    final stoppedAt = DateTime.now();
+    if (!_manualPaused) _toggleManualPause();
+    _raceStopSheetOpen = true;
+    final RaceStopChoice? choice;
+    try {
+      choice = await showRaceStopSheet(context,
+          coverageMet: rc.coverageMet(_distanceMetres));
+    } finally {
+      _raceStopSheetOpen = false;
+    }
+    if (!mounted || _stopRequested) return;
+    switch (choice) {
+      case RaceStopChoice.resume:
+        if (_manualPaused) _toggleManualPause();
+      case RaceStopChoice.finish:
+        rc.decideStop(coveredM: _distanceMetres, now: stoppedAt);
+        await _stop();
+      case null:
+        break;
+    }
+  }
+
+  /// The runner reached the finish: stop the recorder, which submits the
+  /// auto result through [RaceController.submitResult].
+  Future<void> _onRaceAutoFinish(RaceFinish finish) async {
+    if (!mounted || _stopRequested) return;
+    final gun = widget.raceController?.gunTimeTo(finish.at);
+    final message = gun == null
+        ? _l10n.runRaceFinishRecorded
+        : _l10n.runRaceFinishedAuto(_formatDuration(Duration(seconds: gun)));
+    _showTopBanner(message, duration: const Duration(seconds: 6));
+    _announceA11yState(message);
+    await _stop();
   }
 
   /// A Log-run action over the finished summary: the same exit as its Done.
@@ -1350,7 +1422,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     };
     _lockScreen.onStop = () {
       if (!mounted || _recorder == null) return;
-      _stop();
+      _requestStop();
     };
   }
 
@@ -2071,14 +2143,17 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     );
 
     // If a live race is running, attach this recorder so pings flow and
-    // the finished run auto-submits to the leaderboard.
-    final race = widget.raceController?.active;
-    if (race != null && race.isRunning) {
-      widget.raceController!.attachRecorder(
-        eventId: race.eventId,
-        instance: race.instanceStart,
-      );
-    }
+    // the finished run auto-submits to the leaderboard. A race still armed
+    // is joined at GO, by [_onRaceChange].
+    _raceEndedShown = false;
+    _raceLateShown = false;
+    _attachToRunningRace();
+  }
+
+  void _attachToRunningRace() {
+    final started = _runStartedAtWall;
+    if (started == null) return;
+    widget.raceController?.attachIfRaceRunning(recordingStartedAt: started);
   }
 
   /// Prompt the user to Resume / Finish / Discard a process-killed partial
@@ -2585,6 +2660,31 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         }
       } catch (e) {
         debugPrint('raceController.pushPing failed: $e');
+      }
+
+      // L4 — Live-race finish detection. A paused runner is not racing, so
+      // a paused pass through the zone is not a finish. The device clock at
+      // receipt is the fix's instant: it is the clock the server offset is
+      // measured against.
+      try {
+        final rc = widget.raceController;
+        final pos = snapshot.currentPosition;
+        if (rc != null &&
+            rc.isHosting &&
+            pos != null &&
+            positionFresh &&
+            !_manualPaused &&
+            !_stopRequested) {
+          final finish = rc.offerFix(
+            lat: pos.lat,
+            lng: pos.lng,
+            coveredM: snapshot.distanceMetres,
+            at: DateTime.now(),
+          );
+          if (finish != null) unawaited(_onRaceAutoFinish(finish));
+        }
+      } catch (e) {
+        debugPrint('raceController.offerFix failed: $e');
       }
 
       // L4 — Live spectator broadcast (separate from race-mode pings).
@@ -3498,9 +3598,10 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       try {
         // Honour the user's privacy_default setting. `public` →
         // is_public=true at insert time so the user doesn't have to
-        // tap "share" on every run. `followers` / `private` /
-        // unknown → leave is_public null (the legacy default; reads
-        // as "not public" everywhere). A live broadcast does NOT
+        // tap "share" on every run. `followers` → followers_only, the
+        // followers level (stored private until audience sharing is on,
+        // decisions § 1875). `private` / unknown → leave is_public
+        // null (reads as "not public" everywhere). A live broadcast does NOT
         // override this: the live window's public opt-in ends with
         // the run, and keeping the saved run public is an explicit
         // post-stop choice (_resolvePostLiveVisibility, issue #664).
@@ -3514,6 +3615,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
             .saveRun(
               run,
               isPublic: widget.preferences.newRunsArePublic ? true : null,
+              followersOnly: widget.preferences.newRunsAreFollowersOnly,
             )
             .timeout(kBackendLoadTimeout);
         await widget.runStore.markSynced(run.id);
@@ -3772,6 +3874,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     pendingArmGuidedRun.removeListener(_onPendingArmGuidedRun);
     runStopRequests.removeListener(_onDockedStopRequest);
     runSummaryDismissRequests.removeListener(_onSummaryDismissRequest);
+    widget.raceController?.removeListener(_onRaceChange);
     widget.preferences.removeListener(_onPrefsChange);
     widget.runStore.removeListener(_onPrefsChange);
     widget.social.removeListener(_onSocialChange);
@@ -4867,7 +4970,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                 valueListenable: _statsNotifier,
                 builder: (context, _, _) => _CollapsedStatsBar(
                   time: _formattedTime,
-                  onHoldComplete: dockedStop ? null : _stop,
+                  onHoldComplete: dockedStop ? null : _requestStop,
                 ),
               ),
               // Expanded panel reads every stat — wrap once so the whole
@@ -4901,7 +5004,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                   bpm: _currentBpm,
                   lapCount: _lapCount,
                   paused: _manualPaused,
-                  onHoldComplete: dockedStop ? null : _stop,
+                  onHoldComplete: dockedStop ? null : _requestStop,
                   onDiscard: _confirmDiscardMidRun,
                   onPauseToggle: _toggleManualPause,
                   onLap: _markLap,

@@ -1,17 +1,16 @@
 import type { RequestHandler } from './$types';
 import { createClient } from '@supabase/supabase-js';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
-import { env } from '$env/dynamic/public';
+import { PUBLIC_SITE_URL, PUBLIC_SUPABASE_ANON_KEY, PUBLIC_SUPABASE_URL } from '$app/env/public';
 import {
 	buildRunCountByRouteId,
 	buildSitemap,
 	composeEntries,
 	entityEntries,
 	learnEntries,
-} from '$lib/share/sitemap';
-import { listGuides } from '$lib/learn/guides';
-import { CATEGORIES } from '$lib/learn/categories';
-import { siteOrigin } from '$lib/core/site_url';
+} from '#lib/share/sitemap.ts';
+import { listGuides } from '#lib/learn/guides.ts';
+import { CATEGORIES } from '#lib/learn/categories.ts';
+import { siteOrigin } from '#lib/core/site_url.ts';
 
 // Build-time sitemap. `adapter-static` runs this once during the
 // production build because of `prerender = true`; the resulting
@@ -22,7 +21,7 @@ import { siteOrigin } from '$lib/core/site_url';
 // readable per their grant statements). Anon JWT only — the
 // service-role key never enters the static bundle.
 //
-// PUBLIC_SITE_URL (`$env/dynamic/public`) lets preview vs prod use
+// PUBLIC_SITE_URL (`$app/env/public`) lets preview vs prod use
 // different canonical hosts; defaults to https://threkir.com when
 // unset so the local prerender still emits sensible URLs.
 export const prerender = true;
@@ -45,7 +44,7 @@ const MAX_ENTITIES = 10_000;
 const SITEMAP_MAX_URLS = 50_000;
 
 export const GET: RequestHandler = async () => {
-	const base = siteOrigin(env.PUBLIC_SITE_URL);
+	const base = siteOrigin(PUBLIC_SITE_URL);
 	// Tolerate a missing or unreachable Supabase instance at build
 	// time — preview / local builds shouldn't hard-fail the static
 	// build over a sitemap. Fall through to a top-level-only sitemap

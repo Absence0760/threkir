@@ -139,7 +139,13 @@ jobs:
             exit 0
           fi
           echo "$files"
-          if echo "$files" | grep -qvE '^(docs/|\.claude/)|\.md$'; then
+          # Every test below reads the list from a here-string, never
+          # `echo "$files" | grep -q`: under pipefail, grep -q exits on its
+          # first match, echo dies of SIGPIPE once the list outgrows the pipe
+          # buffer, and the pipeline reads as NO match — which classified a
+          # 1,118-file PR as docs-only and skipped every heavy job green
+          # (decisions § 1880).
+          if grep -qvE '^(docs/|\.claude/)|\.md$' <<<"$files"; then
             echo "code=true" >> "$GITHUB_OUTPUT"
           else
             echo "::notice::docs-only diff — heavy jobs skip, CI gate still reports"
@@ -170,7 +176,7 @@ jobs:
           # scripts/, and the sim CI job replicates bin/watch-sim.sh rather
           # than calling it) — a bin/ edit alongside firmware work was pulling
           # the full Playwright suite back in.
-          if echo "$files" | grep -qvE '^(docs/|\.claude/|infra/|bin/|packages/|apps/(custom_watch|watch_wear|watch_ios|watch_garmin|mobile_android|mobile_ios)/)|\.md$|^(analysis_options\.yaml|melos\.yaml|pubspec\.yaml)$'; then
+          if grep -qvE '^(docs/|\.claude/|infra/|bin/|packages/|apps/(custom_watch|watch_wear|watch_ios|watch_garmin|mobile_android|mobile_ios)/)|\.md$|^(analysis_options\.yaml|melos\.yaml|pubspec\.yaml)$' <<<"$files"; then
             echo "web_e2e=true" >> "$GITHUB_OUTPUT"
           else
             echo "::notice::nothing the web suite can reach changed — web e2e skips"
@@ -195,7 +201,7 @@ jobs:
           # wiring without ever exercising it. actionlint catches a reference
           # that does not resolve; it cannot catch a permission that is too
           # narrow, which only shows up when the call actually runs.
-          if echo "$files" | grep -qE '^(infra/|\.trivyignore$|\.github/workflows/(terraform|ci)\.yml$)'; then
+          if grep -qE '^(infra/|\.trivyignore$|\.github/workflows/(terraform|ci)\.yml$)' <<<"$files"; then
             echo "infra=true" >> "$GITHUB_OUTPUT"
           else
             echo "::notice::nothing under infra/ changed — the Terraform checks skip"
@@ -229,7 +235,7 @@ jobs:
           # decisions § 39: lib/ and test/ are byte-identical to
           # apps/mobile_ios/, so a mirrored change touches this tree too, and
           # an unmirrored one is `twin-parity`'s red rather than this lane's.
-          if echo "$files" | grep -qvE '^(docs/|\.claude/|infra/|bin/|apps/(web|backend|job_worker|graph_cycle|custom_watch|watch_wear|watch_ios|watch_garmin|mobile_android)/)|\.md$'; then
+          if grep -qvE '^(docs/|\.claude/|infra/|bin/|apps/(web|backend|job_worker|graph_cycle|custom_watch|watch_wear|watch_ios|watch_garmin|mobile_android)/)|\.md$' <<<"$files"; then
             echo "mobile_ios=true" >> "$GITHUB_OUTPUT"
           else
             echo "::notice::nothing the iOS toolchain can reach changed — the macOS iOS build skips"
@@ -979,7 +985,7 @@ jobs:
             echo "Reproduce locally with: npm ci && npm run test:unit --workspace=apps/web."
             exit 1
           fi
-      # The Playwright tree is outside `.svelte-kit/tsconfig.json`'s include, so
+      # The Playwright tree is outside apps/web/tsconfig.json's include, so
       # `npm run check` (svelte-check, in build-web) never saw it, and Playwright
       # transpiles specs with esbuild without type-checking them — a spec could
       # carry a real type error indefinitely, and ten did. `tsconfig.tests-e2e.json`
@@ -993,14 +999,14 @@ jobs:
           fi
       # The same hole as the Playwright tree, in three more places at once:
       # apps/web/scripts, apps/web/lambda (eight production handlers) and
-      # static/sw.js are outside `.svelte-kit/tsconfig.json`'s include too, so
+      # static/sw.js are outside apps/web/tsconfig.json's include too, so
       # `npm run check` has never read any of them. Two roots because a
       # service worker's globals come from the WebWorker lib, which cannot
       # share a program with DOM; decisions § 752.
       - name: Node + service-worker tree typecheck
         run: |
           if ! npm run check:node-types --workspace=apps/web; then
-            echo "::error::apps/web's Node side (scripts/, lambda/, svelte.config.js) does not typecheck. Nothing here involves the migrations, the schema or the generated row types — read the TS error above."
+            echo "::error::apps/web's Node side (scripts/, lambda/) does not typecheck. Nothing here involves the migrations, the schema or the generated row types — read the TS error above."
             echo "Reproduce locally with: npm ci && npm run check:node-types --workspace=apps/web."
             exit 1
           fi
@@ -1110,6 +1116,43 @@ jobs:
             echo "Reproduce with: node --test scripts/check_web_bundle_budget.test.mjs (stdlib only, no install needed)."
             exit 1
           fi
+      # The phone apps render the in-app help guides, and the web its
+      # translated locales, from per-locale JSON copies of the TypeScript
+      # guides and translations under apps/web/src/lib/help (docs/features/
+      # help.md). Node strips the files' types itself, so this needs no
+      # install and runs before one.
+      - name: Verify the per-locale help-guide JSON matches the guide files
+        run: |
+          if ! node scripts/gen_help_guides.mjs --check; then
+            echo "::error::A per-locale help-guide JSON (apps/mobile_{android,ios}/assets/help/guides.<locale>.json or apps/web/static/help-guides/guides.<locale>.json) is stale against apps/web/src/lib/help/guides and translations. Nothing here is about the Svelte build or the bundle — the phone apps or a translated web locale would show different help text from the guide files."
+            echo "Fix with: pnpm gen:help-guides (node scripts/gen_help_guides.mjs) and commit every file it writes or removes."
+            exit 1
+          fi
+      - name: Unit-test the help-guide JSON generator
+        run: |
+          if ! node --test scripts/gen_help_guides.test.mjs; then
+            echo "::error::The help-guide JSON generator's own unit tests failed, so the freshness check above cannot be trusted to fire. Nothing here is about the Svelte build or the bundle."
+            echo "Reproduce with: node --test scripts/gen_help_guides.test.mjs (stdlib only, no install needed)."
+            exit 1
+          fi
+      # Each string of a translated help guide records a hash of the English
+      # it was translated from; an English edit without a re-translation of
+      # the strings it touched (or the file's deletion, which falls back to
+      # English) fails here (decisions § 1871, § 1873).
+      - name: Verify no help-guide translation is stale against its English guide
+        run: |
+          if ! node scripts/check_help_translations.mjs; then
+            echo "::error::A translated string under apps/web/src/lib/help/translations was made from older English than its guide now holds, or a translation does not line up with its guide. Nothing here is about the Svelte build or the bundle. The lines above name each file, each stale string's path and its new hash."
+            echo "Fix: re-translate each named string and set its entry in the file's sources: to the 'now' hash printed above (node scripts/check_help_translations.mjs --hash <id> [path]), or delete the file so the guide falls back to English."
+            exit 1
+          fi
+      - name: Unit-test the help-guide translation guard
+        run: |
+          if ! node --test scripts/check_help_translations.test.mjs; then
+            echo "::error::The help-guide translation guard's own unit tests failed, so the staleness check above cannot be trusted to fire. Nothing here is about the Svelte build or the bundle."
+            echo "Reproduce with: node --test scripts/check_help_translations.test.mjs (stdlib only, no install needed)."
+            exit 1
+          fi
       - run: npm ci
       # The icon font apps/web ships is a SUBSET, cut to the icons the sources
       # name (decisions § 780). Nothing in a build can tell that an icon is
@@ -1143,11 +1186,11 @@ jobs:
           fi
       # This is a COMPILE GATE, not a deploy — it never uploads or
       # releases anything (the prod/preview release is tag-gated in
-      # release-web.yml). The SvelteKit build resolves the PUBLIC_* keys
-      # through `$env/static/public` at build time, so without them every
-      # importing module fails with MISSING_EXPORT before the compiler is
-      # even reached. Feed placeholder values — real secrets are irrelevant
-      # to a compile check and must never appear here.
+      # release-web.yml). apps/web/src/env.ts declares the two Supabase
+      # PUBLIC_* keys required and inlined at build time, so without them the
+      # build stops at `env_invalid` before the compiler is even reached.
+      # Feed placeholder values — real secrets are irrelevant to a compile
+      # check and must never appear here.
       - name: Build web (production)
         run: |
           if ! npm run build --workspace=apps/web; then
@@ -2738,6 +2781,108 @@ jobs:
       - working-directory: apps/mobile_android/android
         run: ./gradlew :app:testDebugUnitTest --no-daemon
 
+  mobile-android-e2e:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    name: mobile_android integration_test (emulator)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    # Runs the `integration_test/` harness (decisions § 1820) on a real
+    # Android emulator: the real `main()`, real plugins, real
+    # SharedPreferences — the layer `test-packages`' headless widget tests
+    # cannot reach. No Supabase stack is started, on purpose. Neither suite
+    # touches the backend: onboarding is device-local, and Home is reachable
+    # without a session (main.dart routes on the device-scoped `onboarded`
+    # flag, not on auth). `.env.example` replaces `.env.development` exactly
+    # as in build-mobile-android, so the debug build carries no seed
+    # credentials and dev auto-login never fires; its SUPABASE_URL points at
+    # 10.0.2.2, where nothing listens, so every sync call takes the offline
+    # path the app already ships. A suite that needs the backend adds
+    # `.github/actions/start-supabase` here and says so (decisions § 1838).
+    #
+    # API 34 x86_64 `google_apis`: inside minSdk 26..targetSdk 36, a
+    # KVM-accelerated x86_64 image (an arm64 image on an x86 runner is
+    # emulated and an order of magnitude slower), and Google APIs present so
+    # plugins that probe for Play services find what a real phone has.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      # Same key shape as build-mobile-android, for the same reason: the
+      # runner OS in the key AND the restore key (decisions § 1702).
+      - name: Cache pub-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.pub-cache
+          key: pub-cache-${{ runner.os }}-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: pub-cache-${{ runner.os }}-
+      - run: dart pub global activate melos 7.8.2
+      - run: melos bootstrap
+      - name: Cache Gradle
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-mobile-android-${{ hashFiles('apps/mobile_android/android/**/*.gradle*', 'apps/mobile_android/android/gradle/wrapper/gradle-wrapper.properties', 'pubspec.lock') }}
+          restore-keys: |
+            gradle-mobile-android-
+      - run: cp apps/mobile_android/.env.example apps/mobile_android/.env.development
+      # GitHub's Ubuntu runners expose /dev/kvm but not to the runner user;
+      # without this rule the emulator falls back to software emulation and
+      # the boot alone outlasts the timeout.
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      # The AVD and its cold-boot snapshot are cached so a run restores a
+      # booted image instead of creating one and cold-booting it (minutes).
+      # The key names everything the image is built from, so changing the
+      # API level, target or arch below starts a fresh AVD rather than
+      # restoring a mismatched one.
+      - name: Cache AVD
+        id: avd-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-${{ runner.os }}-34-google_apis-x86_64
+      - name: Create AVD and snapshot it for the cache
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          script: echo "AVD snapshot generated for the cache."
+      # `-d emulator-5554` names the device: the runner also offers Linux
+      # desktop as a Flutter device, and with two attached `flutter test`
+      # refuses to pick. `-no-snapshot-save` keeps the cached snapshot clean,
+      # so one run's SharedPreferences cannot leak into the next.
+      - name: Run integration_test on the emulator
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          working-directory: apps/mobile_android
+          script: flutter test integration_test -d emulator-5554
+
   build-mobile-ios:
     needs: changes
     if: needs.changes.outputs.mobile_ios == 'true'
@@ -3767,10 +3912,10 @@ jobs:
             # unset so paywall-wire.spec.ts still exercises the 429.
             echo "PUBLIC_BYPASS_PAYWALL=true"
           } > ../web/.env
-      # Playwright resolves apps/web/tsconfig.json, which extends the
-      # `svelte-kit sync`-generated ./.svelte-kit/tsconfig.json. That file is
-      # gitignored, so a fresh checkout doesn't have it and Playwright >= 1.62
-      # hard-errors on the unresolvable `extends` instead of ignoring it.
+      # Playwright resolves apps/web/tsconfig.json, which extends
+      # `$app/tsconfig` — node_modules/$app/tsconfig.json, written by
+      # `svelte-kit sync`. A fresh install doesn't have it, and Playwright
+      # >= 1.62 hard-errors on the unresolvable `extends` instead of ignoring it.
       - name: Sync SvelteKit generated types
         working-directory: apps/web
         run: pnpm exec svelte-kit sync
@@ -4245,6 +4390,7 @@ jobs:
       - sim-firmware
       - sim-scenarios
       - build-mobile-android
+      - mobile-android-e2e
       - build-mobile-ios
       - twin-parity
       - schema-codegen-drift

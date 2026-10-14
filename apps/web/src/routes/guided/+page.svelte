@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { afterNavigate } from '$app/navigation';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { guidedRunLibrary } from '$lib/training/guided_runs';
-	import { m as t } from '$lib/i18n/store.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { guidedRunLibrary } from '#lib/training/guided_runs.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
 
 	// $derived so the library re-renders when the active locale changes.
 	let guidedLibrary = $derived(guidedRunLibrary(t));

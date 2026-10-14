@@ -1,21 +1,21 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import { markWorkoutCompleted, markWorkoutSkipped, updatePlanWorkout } from '$lib/core/data';
+	import { markWorkoutCompleted, markWorkoutSkipped, updatePlanWorkout } from '#lib/core/data.ts';
 	import {
 		isWorkoutCompleted,
 		isWorkoutSkipped,
 		type WorkoutKind,
 		type WorkoutStructure
-	} from '$lib/training/training';
-	import { workoutKindLabel } from '$lib/training/workout_labels';
-	import { getUnit } from '$lib/format/units.svelte';
-	import { paceParts } from '$lib/format/pace_format';
-	import { m as t } from '$lib/i18n/store.svelte';
-	import type { PlanWorkout } from '$lib/types';
-	import type { JsonObject } from '$lib/types';
+	} from '#lib/training/training.ts';
+	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
+	import { getUnit } from '#lib/format/units.svelte.ts';
+	import { paceParts } from '#lib/format/pace_format.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import type { PlanWorkout } from '#lib/types.ts';
+	import type { JsonObject } from '#lib/types.ts';
 	import Modal from './Modal.svelte';
 	import UnsavedChangesGuard from './UnsavedChangesGuard.svelte';
-	import { trackDirty } from '$lib/core/form_dirty';
+	import { trackDirty } from '#lib/core/form_dirty.ts';
 
 	interface Props {
 		workout: PlanWorkout;

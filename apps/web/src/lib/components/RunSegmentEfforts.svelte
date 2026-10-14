@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { formatDuration } from '$lib/format/time';
-	import { m } from '$lib/i18n/store.svelte';
+	import { formatDuration } from '#lib/format/time.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
 	import {
 		fetchEffortsForRunWithError,
 		computeSegmentEffortsForRun,
@@ -10,13 +10,13 @@
 		fetchGlobalEffortsForRun,
 		type SegmentEffortWithSegment,
 		type GlobalSegmentEffortWithSegment,
-	} from '$lib/core/data';
-	import { pickAutoEffortRoute } from '$lib/segments/auto_segment_effort';
-	import { rankPillClass, rankPillText } from '$lib/segments/effort_rank';
-	import { distanceInPreferred } from '$lib/format/units.svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { haversineMetres } from '$lib/runs/run_stats';
-	import type { TrackPoint } from '$lib/types';
+	} from '#lib/core/data.ts';
+	import { pickAutoEffortRoute } from '#lib/segments/auto_segment_effort.ts';
+	import { rankPillClass, rankPillText } from '#lib/segments/effort_rank.ts';
+	import { distanceInPreferred } from '#lib/format/units.svelte.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { haversineMetres } from '#lib/runs/run_stats.ts';
+	import type { TrackPoint } from '#lib/types.ts';
 
 	function trackLengthM(pts: TrackPoint[]): number {
 		let total = 0;

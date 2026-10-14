@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { effective } from '$lib/settings/settings';
-	import { m } from '$lib/i18n/store.svelte';
-	import { ACTIVITY_TYPES } from '$lib/runs/activity_type';
-	import { activityTypeLabel } from '$lib/runs/activity_type.svelte';
+	import { effective } from '#lib/settings/settings.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { ACTIVITY_TYPES } from '#lib/runs/activity_type.ts';
+	import { activityTypeLabel } from '#lib/runs/activity_type.svelte.ts';
 	import {
 		VOICE_CUE_IDS,
 		VOICE_FEEDBACK_ENABLED_DEFAULT,
@@ -11,10 +11,10 @@
 		setVoiceCueEnabled,
 		type VoiceCueId,
 		type VoiceCueMap,
-	} from '$lib/settings/voice_cues';
-	import type { MessageKey } from '$lib/i18n/messages';
-	import { createPrefsPage } from '$lib/settings/prefs_page.svelte';
-	import PrefsPage from '$lib/components/settings/PrefsPage.svelte';
+	} from '#lib/settings/voice_cues.ts';
+	import type { MessageKey } from '#lib/i18n/messages.ts';
+	import { createPrefsPage } from '#lib/settings/prefs_page.svelte.ts';
+	import PrefsPage from '#lib/components/settings/PrefsPage.svelte';
 
 	let preferredUnit = $state<'km' | 'mi'>('km');
 	let defaultActivity = $state<'run' | 'walk' | 'hike' | 'cycle' | 'stroller'>('run');

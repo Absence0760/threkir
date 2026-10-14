@@ -44,8 +44,12 @@ var (
 	// a type. Anchored per line, so a table-level `constraint …` or
 	// `primary key (…)` clause cannot be read as a column.
 	reExportColDecl = regexp.MustCompile(`^"?([a-z_][a-z0-9_]*)"?\s+(uuid|text|citext|integer|int|int4|int8|bigint|smallint|boolean|bool|timestamptz|timestamp|date|numeric|jsonb|json|real|double|bytea|interval|serial|bigserial)\b`)
-	reExportAddCol  = regexp.MustCompile(`(?is)alter\s+table\s+(?:only\s+)?(?:if\s+exists\s+)?(?:public\.)?"?([a-z_][a-z0-9_]*)"?\s+add\s+column\s+(?:if\s+not\s+exists\s+)?"?([a-z_][a-z0-9_]*)"?`)
-	reExportDropCol = regexp.MustCompile(`(?is)alter\s+table\s+(?:only\s+)?(?:if\s+exists\s+)?(?:public\.)?"?([a-z_][a-z0-9_]*)"?\s+drop\s+column\s+(?:if\s+exists\s+)?"?([a-z_][a-z0-9_]*)"?`)
+	// One `alter table` statement up to its semicolon; its add / drop
+	// clauses are read separately, because one statement may carry
+	// several (`add column a text, add column b text`).
+	reExportAlter   = regexp.MustCompile(`(?is)alter\s+table\s+(?:only\s+)?(?:if\s+exists\s+)?(?:public\.)?"?([a-z_][a-z0-9_]*)"?\s+([^;]*)`)
+	reExportAddCol  = regexp.MustCompile(`(?is)\badd\s+column\s+(?:if\s+not\s+exists\s+)?"?([a-z_][a-z0-9_]*)"?`)
+	reExportDropCol = regexp.MustCompile(`(?is)\bdrop\s+column\s+(?:if\s+exists\s+)?"?([a-z_][a-z0-9_]*)"?`)
 	reExportRenCol  = regexp.MustCompile(`(?is)alter\s+table\s+(?:only\s+)?(?:if\s+exists\s+)?(?:public\.)?"?([a-z_][a-z0-9_]*)"?\s+rename\s+column\s+"?([a-z_][a-z0-9_]*)"?\s+to\s+"?([a-z_][a-z0-9_]*)"?`)
 	// An embed in a select clause: `alias:table(…)`, `table!inner(…)` or
 	// a bare `table(…)`. Only the leading segment before `(` is read.
@@ -88,11 +92,14 @@ func migrationTableColumns(t *testing.T) map[string]map[string]bool {
 				}
 			}
 		}
-		for _, m := range reExportAddCol.FindAllStringSubmatch(lower, -1) {
-			if out[m[1]] == nil {
-				out[m[1]] = map[string]bool{}
+		alters := reExportAlter.FindAllStringSubmatch(lower, -1)
+		for _, a := range alters {
+			for _, m := range reExportAddCol.FindAllStringSubmatch(a[2], -1) {
+				if out[a[1]] == nil {
+					out[a[1]] = map[string]bool{}
+				}
+				out[a[1]][m[1]] = true
 			}
-			out[m[1]][m[2]] = true
 		}
 		for _, m := range reExportRenCol.FindAllStringSubmatch(lower, -1) {
 			if cols, ok := out[m[1]]; ok {
@@ -100,9 +107,11 @@ func migrationTableColumns(t *testing.T) map[string]map[string]bool {
 				cols[m[3]] = true
 			}
 		}
-		for _, m := range reExportDropCol.FindAllStringSubmatch(lower, -1) {
-			if cols, ok := out[m[1]]; ok {
-				delete(cols, m[2])
+		for _, a := range alters {
+			if cols, ok := out[a[1]]; ok {
+				for _, m := range reExportDropCol.FindAllStringSubmatch(a[2], -1) {
+					delete(cols, m[1])
+				}
 			}
 		}
 	}

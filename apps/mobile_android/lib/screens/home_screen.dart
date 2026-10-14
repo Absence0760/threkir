@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
 
@@ -8,6 +9,8 @@ import '../audio_cues.dart';
 import '../auth_change_aware.dart';
 import '../ble_heart_rate.dart';
 import '../ble_treadmill.dart';
+import '../club_invite_link.dart' show pendingClubInviteToken;
+import '../entity_link.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../local_food_store.dart';
 import '../local_gear_store.dart';
@@ -23,6 +26,7 @@ import '../main.dart'
 import '../preferences.dart';
 import '../push_target.dart';
 import '../race_controller.dart';
+import '../race_service.dart';
 import '../run_stop_dock.dart';
 import '../settings_destination.dart';
 import '../settings_sync.dart';
@@ -31,6 +35,8 @@ import '../shared_file_import.dart' show incomingRouteImport;
 import '../social_service.dart';
 import '../training_service.dart';
 import '../fab_clearance.dart';
+import '../help_destination.dart';
+import '../help_guides.dart';
 import '../widgets/billing_issue_banner.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/log_sheet.dart';
@@ -38,6 +44,7 @@ import '../widgets/log_speed_dial.dart';
 import '../widgets/top_banner.dart';
 import 'challenges_screen.dart';
 import 'club_detail_screen.dart';
+import 'club_invite_screen.dart';
 import 'clubs_screen.dart';
 import 'confirm_age_screen.dart';
 import 'dashboard_screen.dart';
@@ -47,8 +54,11 @@ import '../onboarding.dart';
 import 'plan_new_screen.dart';
 import 'plans_screen.dart';
 import 'profile_screen.dart';
+import 'public_route_screen.dart';
 import 'public_run_screen.dart';
+import 'races_screen.dart';
 import 'route_detail_screen.dart';
+import 'run_detail_screen.dart';
 import 'run_screen.dart';
 import 'settings_about_screen.dart';
 import 'settings_account_screen.dart';
@@ -224,6 +234,9 @@ class _HomeScreenState extends State<HomeScreen>
     incomingRouteImport.addListener(_onIncomingRouteImport);
     pendingPushTarget.addListener(_onPendingPushTarget);
     pendingSettingsDestination.addListener(_onPendingSettingsDestination);
+    pendingHelpDestination.addListener(_onPendingHelpDestination);
+    pendingClubInviteToken.addListener(_onPendingClubInvite);
+    pendingEntityLink.addListener(_onPendingEntityLink);
     // A GPX/KML opened while the app was closed sets the notifier during
     // main() before this screen mounts, so drain any already-present value
     // once the first frame is up (the listener only fires on later shares).
@@ -233,6 +246,9 @@ class _HomeScreenState extends State<HomeScreen>
       _onIncomingRouteImport();
       _onPendingPushTarget();
       _onPendingSettingsDestination();
+      _onPendingHelpDestination();
+      _onPendingClubInvite();
+      _onPendingEntityLink();
     });
     // Surface the recovery banner from main.dart's in-progress
     // evaluation. Casual #3: this also fires on DISCARD ("Discarded a
@@ -529,6 +545,65 @@ class _HomeScreenState extends State<HomeScreen>
             SettingsProScreen(apiClient: widget.apiClient),
       };
 
+  /// A help guide's route link asked for a surface. Drain the parked intent
+  /// and open it with the dependencies the shell holds (decisions § 710's
+  /// seam). L4: a guide link failing to navigate must not take the shell
+  /// with it.
+  Future<void> _onPendingHelpDestination() async {
+    final destination = pendingHelpDestination.value;
+    if (destination == null || !mounted) return;
+    pendingHelpDestination.value = null;
+    try {
+      await _openHelpDestination(destination);
+    } catch (e) {
+      debugPrint('help destination navigation failed: $e');
+    }
+  }
+
+  Future<void> _openHelpDestination(HelpDestination destination) async {
+    final api = widget.apiClient;
+    switch (destination) {
+      case HelpDestination.clubs:
+        if (api != null) {
+          await _openPushTarget(api, const PushTarget(PushTargetKind.clubs));
+        }
+      case HelpDestination.notifications:
+        if (api != null) await _openPushTarget(api, PushTarget.inbox);
+      case HelpDestination.runs:
+        // The run list is a Fitness hub tab, not a pushable screen: return to
+        // the shell and select it, as the Log action does for Gym/Nutrition.
+        final shell = ModalRoute.of(context);
+        Navigator.of(context).popUntil((route) => route == shell);
+        _fitnessTab.value = FitnessTab.runs;
+        _goToPage(_pageFitness);
+      case HelpDestination.races:
+        String? key;
+        try {
+          final raw = (dotenv.env['MAPTILER_KEY'] ?? '').trim();
+          if (raw.isNotEmpty) key = raw;
+        } catch (e) {
+          debugPrint('home: MAPTILER_KEY unreadable: $e');
+        }
+        await _pushScreen(
+            RacesScreen(service: RaceService(), mapTilerKey: key));
+      case HelpDestination.integrations:
+        await _pushScreen(
+            _settingsDestinationScreen(SettingsDestination.integrations));
+      case HelpDestination.preferences:
+        await _pushScreen(
+            _settingsDestinationScreen(SettingsDestination.preferences));
+      case HelpDestination.safety:
+        await _pushScreen(
+            _settingsDestinationScreen(SettingsDestination.safety));
+      case HelpDestination.account:
+        await _pushScreen(
+            _settingsDestinationScreen(SettingsDestination.account));
+      case HelpDestination.pro:
+        await _pushScreen(
+            _settingsDestinationScreen(SettingsDestination.pro));
+    }
+  }
+
   Future<void> _pushClubsHub(ApiClient api) => _pushScreen(ClubsScreen(
         social: widget.social,
         training: widget.training,
@@ -540,6 +615,72 @@ class _HomeScreenState extends State<HomeScreen>
     if (!mounted) return Future<void>.value();
     return Navigator.of(context)
         .push(MaterialPageRoute<void>(builder: (_) => screen));
+  }
+
+  /// An invite link the OS opened the app with: hand the token to the invite
+  /// screen, which redeems it on mount (and asks for the activity-risk
+  /// acknowledgement when the club requires it).
+  Future<void> _onPendingClubInvite() async {
+    final token = pendingClubInviteToken.value;
+    if (token == null || !mounted) return;
+    pendingClubInviteToken.value = null;
+    await _pushScreen(ClubInviteScreen(
+      social: widget.social,
+      training: widget.training,
+      initialToken: token,
+    ));
+  }
+
+  /// A run or route link the OS opened the app with. The runner's own run or
+  /// route opens its owner screen from the device; anything else opens the
+  /// non-owner view, which reads public first and then what the owner shared
+  /// with this viewer (decisions § 1874), with the clipped track only. An L4
+  /// effect: a failure is logged, never thrown into the shell.
+  Future<void> _onPendingEntityLink() async {
+    final link = pendingEntityLink.value;
+    if (link == null || !mounted) return;
+    pendingEntityLink.value = null;
+    try {
+      await _openEntityLink(link);
+    } catch (e) {
+      debugPrint('entity link navigation failed: $e');
+    }
+  }
+
+  Future<void> _openEntityLink(EntityLink link) async {
+    final api = widget.apiClient;
+    switch (link.kind) {
+      case EntityLinkKind.run:
+        final own = await widget.runStore.runById(link.id);
+        if (!mounted) return;
+        if (own != null) {
+          return _pushScreen(RunDetailScreen(
+            run: own,
+            runStore: widget.runStore,
+            routeStore: widget.routeStore,
+            preferences: widget.preferences,
+            apiClient: api,
+            settingsSync: widget.settingsSync,
+          ));
+        }
+        if (api == null) return;
+        await _pushScreen(PublicRunScreen(api: api, runId: link.id));
+      case EntityLinkKind.route:
+        final own = widget.routeStore.routes
+            .where((r) => r.id == link.id)
+            .firstOrNull;
+        if (own != null) {
+          return _pushScreen(RouteDetailScreen(
+            route: own,
+            routeStore: widget.routeStore,
+            preferences: widget.preferences,
+            apiClient: api,
+            isOwner: true,
+          ));
+        }
+        if (api == null) return;
+        await _pushScreen(PublicRouteScreen(api: api, routeId: link.id));
+    }
   }
 
   /// A GPX/KML handed to the app by another app (WhatsApp "Open with" /
@@ -673,6 +814,9 @@ class _HomeScreenState extends State<HomeScreen>
     pendingPushTarget.removeListener(_onPendingPushTarget);
     pendingSettingsDestination
         .removeListener(_onPendingSettingsDestination);
+    pendingHelpDestination.removeListener(_onPendingHelpDestination);
+    pendingClubInviteToken.removeListener(_onPendingClubInvite);
+    pendingEntityLink.removeListener(_onPendingEntityLink);
     _pageController.dispose();
     _currentIndex.dispose();
     _fitnessTab.dispose();

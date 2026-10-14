@@ -25,8 +25,8 @@ import { normaliseExerciseName } from '../gym/gym_prs';
 import { compareFoldedNames } from '../segments/catalogue_browse';
 
 /// The three fields the picker's decisions read. Declared structurally rather
-/// than as `$lib/types`' `Exercise`, so this module stays importable by the
-/// unit runner (which resolves no `$lib` alias) and testable without a
+/// than as `#lib/types`' `Exercise`, so this module stays importable by the
+/// unit runner (which resolves no `#lib` alias) and testable without a
 /// twenty-column fixture.
 export interface CatalogueEntry {
 	id: string;

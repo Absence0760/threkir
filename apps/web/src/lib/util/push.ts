@@ -20,7 +20,7 @@
 /// private half of `PUBLIC_VAPID_PUBLIC_KEY`). Keep `StoredPushSubscription`
 /// in lockstep with that handler's `FetchPushSubscriptions` projection.
 
-import { env } from '$env/dynamic/public';
+import { PUBLIC_VAPID_PUBLIC_KEY as PUBLIC_VAPID_PUBLIC_KEY_ENV } from '$app/env/public';
 import { supabase } from '../core/supabase';
 import { auth } from '../stores/auth.svelte';
 import { detectPlatform, deviceLabel, getDeviceId } from '../settings/settings';
@@ -28,7 +28,7 @@ import type { Json } from '../database.types';
 
 // Pulled via dynamic env so the build doesn't fail when the key
 // isn't set — the UI then renders the "not configured" hint.
-const PUBLIC_VAPID_PUBLIC_KEY = env.PUBLIC_VAPID_PUBLIC_KEY ?? '';
+const PUBLIC_VAPID_PUBLIC_KEY = PUBLIC_VAPID_PUBLIC_KEY_ENV ?? '';
 
 export interface StoredPushSubscription {
 	endpoint: string;

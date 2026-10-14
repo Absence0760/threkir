@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
-	import { lengthLimit } from '$lib/core/column_limits';
-	import { formatISO } from '$lib/training/training';
+	import { lengthLimit } from '#lib/core/column_limits.ts';
+	import { formatISO } from '#lib/training/training.ts';
 	import {
 		fetchRoutes,
 		fetchClubRoutes,
@@ -12,20 +12,32 @@
 		setEventPricing,
 		fetchSessionPlans,
 		setEventSessionPlan,
+		fetchClubGymRoutineTemplates,
+		setEventGymRoutine,
+		type GymRoutineSummary,
+		fetchEventCourses,
+		saveEventCourses,
 		type SessionPlan
-	} from '$lib/core/data';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import UnsavedChangesGuard from '$lib/components/UnsavedChangesGuard.svelte';
-	import { trackDirty } from '$lib/core/form_dirty';
-	import { toMinorUnits } from '$lib/format/minor_units';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { WEEKDAY_CHOICES } from '$lib/social/recurrence';
-	import { EVENT_CATEGORIES, isAthleticCategory } from '$lib/social/event_category';
-	import { gymTemplateFromInputs } from '$lib/social/event_gym_template';
-	import { formatDistance, getUnit } from '$lib/format/units.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import type { Route, RecurrenceFreq, Weekday, EventCategory, RefundPolicy, Event as ClubEvent } from '$lib/types';
-	import type { RouteListItem } from '$lib/routes/route_list_columns';
+	} from '#lib/core/data.ts';
+	import {
+		COURSE_NAME_MAX,
+		validateCourseDrafts,
+		type CourseDraft,
+		type CourseDraftError,
+		type EventCourse
+	} from '#lib/social/event_courses.ts';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import UnsavedChangesGuard from '#lib/components/UnsavedChangesGuard.svelte';
+	import { trackDirty } from '#lib/core/form_dirty.ts';
+	import { toMinorUnits } from '#lib/format/minor_units.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { WEEKDAY_CHOICES } from '#lib/social/recurrence.ts';
+	import { EVENT_CATEGORIES, isAthleticCategory } from '#lib/social/event_category.ts';
+	import { gymTemplateFromInputs } from '#lib/social/event_gym_template.ts';
+	import { formatDistance, getUnit } from '#lib/format/units.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import type { Route, RecurrenceFreq, Weekday, EventCategory, RefundPolicy, Event as ClubEvent } from '#lib/types.ts';
+	import type { RouteListItem } from '#lib/routes/route_list_columns.ts';
 
 	// Conversion factor for the unit label / pace target. The form
 	// keeps its working value in the user's preferred unit (km or mi)
@@ -75,6 +87,10 @@
 	// Optional follow-along session plan to attach to a class event (M5).
 	let sessionPlans = $state<SessionPlan[]>([]);
 	let sessionPlanId = $state<string>('');
+	// Or one of this club's gym routine templates for a strength / HIIT class
+	// (decisions § 1869). A class carries one or the other, never both.
+	let gymRoutines = $state<GymRoutineSummary[]>([]);
+	let gymRoutineId = $state<string>('');
 	let title = $state(untrack(() => existing?.title ?? ''));
 	let description = $state(untrack(() => existing?.description ?? ''));
 	let date = $state(untrack(() => initDate(existing?.starts_at)));
@@ -96,6 +112,23 @@
 	let paceUnitLabel = $derived(getUnit() === 'mi' ? 'per mi' : 'per km');
 	let metresPerUnit = $derived(getUnit() === 'mi' ? METRES_PER_MILE : 1000);
 	let capacity = $state<number | null>(untrack(() => existing?.capacity ?? null));
+	// Race courses (decisions § 1842). The route + distance fields above
+	// describe the MAIN course; `extraCourses` are the alternatives a racer can
+	// pick instead. `storedCourses` is what the database held when the editor
+	// opened, so a save writes only the difference.
+	interface ExtraCourse {
+		key: number;
+		id?: string;
+		name: string;
+		routeId: string;
+		distanceInUnit: number | null;
+		storedDistanceM: number | null;
+	}
+	let storedCourses = $state<EventCourse[]>([]);
+	let coursesLoadFailed = $state(false);
+	let mainCourseName = $state('');
+	let extraCourses = $state<ExtraCourse[]>([]);
+	let nextCourseKey = 0;
 	let busy = $state(false);
 	let error = $state<string | null>(null);
 	// Set on mount for an athletic event being edited: true when it carries
@@ -131,6 +164,7 @@
 		discipline,
 		gymTemplateDurationMin,
 		sessionPlanId,
+		gymRoutineId,
 		title,
 		description,
 		date,
@@ -142,6 +176,13 @@
 		paceMin,
 		paceSec,
 		capacity,
+		mainCourseName,
+		extraCourses: extraCourses.map((c) => ({
+			id: c.id,
+			name: c.name,
+			routeId: c.routeId,
+			distanceInUnit: c.distanceInUnit
+		})),
 		charge,
 		priceMajor,
 		currency,
@@ -177,12 +218,25 @@
 			distanceInUnit = null;
 			paceMin = null;
 			paceSec = null;
+			mainCourseName = '';
+			extraCourses = [];
 		}
 		if (next !== 'class') {
 			discipline = '';
 			gymTemplateDurationMin = null;
 			sessionPlanId = '';
+			gymRoutineId = '';
 		}
+	}
+
+	function pickSessionPlan(next: string) {
+		sessionPlanId = next;
+		if (next) gymRoutineId = '';
+	}
+
+	function pickGymRoutine(next: string) {
+		gymRoutineId = next;
+		if (next) sessionPlanId = '';
 	}
 
 	function defaultDate(): string {
@@ -244,10 +298,142 @@
 			} catch (e) {
 				console.error('fetchSessionPlans failed', e);
 			}
+			gymRoutines = await fetchClubGymRoutineTemplates(clubId);
 		} else if (isAthleticCategory(existing.category)) {
+			try {
+				const loaded = await fetchEventCourses(existing.id);
+				dirty.seed(() => {
+					storedCourses = loaded;
+					mainCourseName = loaded[0]?.name ?? '';
+					extraCourses = loaded.slice(1).map((c) => ({
+						key: nextCourseKey++,
+						id: c.id,
+						name: c.name,
+						routeId: c.route_id ?? '',
+						distanceInUnit: c.distance_m != null ? +(c.distance_m / metresPerUnit).toFixed(2) : null,
+						storedDistanceM: c.distance_m
+					}));
+				});
+			} catch (e) {
+				// Without the stored list a save could not tell an existing
+				// course from a new one, so the course section stays read-only
+				// for this edit rather than duplicating every course.
+				console.error('fetchEventCourses failed', e);
+				coursesLoadFailed = true;
+			}
 			athleticDataAtRisk = await eventHasAthleticData(existing.id);
 		}
 	});
+
+	function routeById(id: string): { name: string; distance_m: number } | undefined {
+		if (!id) return undefined;
+		return myRoutes.find((x) => x.id === id) ?? clubRoutes.find((x) => x.id === id);
+	}
+
+	function addCourse() {
+		extraCourses = [
+			...extraCourses,
+			{ key: nextCourseKey++, name: '', routeId: '', distanceInUnit: null, storedDistanceM: null }
+		];
+	}
+
+	function removeCourse(i: number) {
+		extraCourses = extraCourses.filter((_, j) => j !== i);
+	}
+
+	function moveCourse(i: number, dir: -1 | 1) {
+		const j = i + dir;
+		if (j < 0 || j >= extraCourses.length) return;
+		const next = [...extraCourses];
+		[next[i], next[j]] = [next[j], next[i]];
+		extraCourses = next;
+	}
+
+	function pickCourseRoute(i: number, id: string) {
+		const r = routeById(id);
+		extraCourses = extraCourses.map((c, j) =>
+			j === i
+				? {
+						...c,
+						routeId: id,
+						name: c.name.trim() ? c.name : (r?.name ?? '').slice(0, COURSE_NAME_MAX),
+						distanceInUnit: r ? +(r.distance_m / metresPerUnit).toFixed(2) : c.distanceInUnit
+					}
+				: c
+		);
+	}
+
+	// The unit field round-trips through 2 decimals, so a stored distance the
+	// organiser did not touch is written back as stored, not re-derived — a
+	// miles user would otherwise nudge every course by a few metres per save.
+	function courseMetres(inUnit: number | null, stored: number | null): number | null {
+		if (inUnit == null || !(inUnit > 0)) return null;
+		if (stored != null && +(stored / metresPerUnit).toFixed(2) === inUnit) return stored;
+		return inUnit * metresPerUnit;
+	}
+
+	function courseDrafts(): CourseDraft[] {
+		if (!isAthleticCategory(category)) return [];
+		if (!routeId && extraCourses.length === 0) return [];
+		const main = routeById(routeId);
+		const drafts: CourseDraft[] = [
+			{
+				id: storedCourses[0]?.id,
+				name:
+					mainCourseName.trim() ||
+					(main?.name ?? '').trim().slice(0, COURSE_NAME_MAX) ||
+					m('eventEditor.courseDefaultName'),
+				routeId: routeId || null,
+				distanceM: courseMetres(distanceInUnit, storedCourses[0]?.distance_m ?? null)
+			}
+		];
+		for (const c of extraCourses) {
+			drafts.push({
+				id: c.id,
+				name: c.name,
+				routeId: c.routeId || null,
+				distanceM: courseMetres(c.distanceInUnit, c.storedDistanceM)
+			});
+		}
+		return drafts;
+	}
+
+	const COURSE_ERRORS: Record<CourseDraftError, () => string> = {
+		name_required: () => m('eventEditor.courseNameRequired'),
+		name_too_long: () => m('eventEditor.courseNameTooLong', { max: COURSE_NAME_MAX }),
+		name_duplicate: () => m('eventEditor.courseNameDuplicate'),
+		distance_invalid: () => m('eventEditor.courseDistanceInvalid')
+	};
+
+	// Persist the course list once the event row exists. Returns the failure
+	// message, or null. The stored list is re-read on failure too: a save that
+	// stopped part-way may already have deleted or updated rows, and a retry
+	// planned against the old list would try to delete a course that is gone.
+	// The main course stays first so the retry still edits it in place.
+	async function persistCourses(eventId: string): Promise<string | null> {
+		if (coursesLoadFailed) return null;
+		const mainId = storedCourses[0]?.id;
+		let failure: string | null = null;
+		try {
+			await saveEventCourses(eventId, storedCourses, courseDrafts());
+		} catch (ce: unknown) {
+			console.error('saveEventCourses failed', ce);
+			failure = m('eventEditor.coursesSaveFailed', {
+				error: ce instanceof Error ? ce.message : String(ce)
+			});
+		}
+		try {
+			const fresh = await fetchEventCourses(eventId);
+			const main = fresh.find((c) => c.id === mainId);
+			storedCourses = main ? [main, ...fresh.filter((c) => c !== main)] : fresh;
+		} catch (fe: unknown) {
+			// Without the stored list the next save could not tell an existing
+			// course from a new one, so the section locks as it does on load.
+			console.error('fetchEventCourses failed', fe);
+			coursesLoadFailed = true;
+		}
+		return failure;
+	}
 
 	$effect(() => {
 		if (routeId) {
@@ -260,6 +446,11 @@
 	function submit(e: Event) {
 		e.preventDefault();
 		if (!title.trim() || busy) return;
+		const badCourse = coursesLoadFailed ? null : validateCourseDrafts(courseDrafts());
+		if (badCourse) {
+			error = COURSE_ERRORS[badCourse.error]();
+			return;
+		}
 		// Switching an athletic event that already has race sessions / results
 		// to a class or social type hides its leaderboard + race controls (they
 		// gate on isAthleticCategory) and orphans those rows. Warn first;
@@ -309,6 +500,11 @@
 					capacity: capacity ?? null,
 					is_public: showVisibilityToggle ? isPublic : true
 				});
+				const courseFailure = await persistCourses(existing.id);
+				if (courseFailure) {
+					error = courseFailure;
+					return;
+				}
 				dirty.rebaseline();
 				onsaved?.();
 				return;
@@ -335,7 +531,11 @@
 				recurrence_freq: recurrenceFreq,
 				recurrence_byday:
 					recurrenceFreq && recurrenceFreq !== 'monthly' && byday.length > 0 ? byday : null,
-				recurrence_until: recurrenceFreq && until ? new Date(until).toISOString() : null,
+				// The end date is inclusive: the series runs to the END of that
+				// local day. `new Date('YYYY-MM-DD')` is UTC midnight, which put the
+				// last day's own occurrence past the end and dropped it.
+				recurrence_until:
+					recurrenceFreq && until ? new Date(`${until}T23:59:59`).toISOString() : null,
 				recurrence_count:
 					recurrenceFreq && count && count > 0 ? Math.floor(count) : null,
 				// In a private club every event is members-only regardless, so the
@@ -374,7 +574,19 @@
 					console.error('setEventSessionPlan failed', se);
 					showToast(m('session.event.planFailed'), 'error');
 				}
+			} else if (category === 'class' && gymRoutineId) {
+				try {
+					await setEventGymRoutine(event.id, gymRoutineId);
+				} catch (ge) {
+					console.error('setEventGymRoutine failed', ge);
+					showToast(m('eventEditor.gymRoutineFailed'), 'error');
+				}
 			}
+			// The event exists either way, so a course failure is reported and
+			// the host still lands on the new event, where Edit can retry it —
+			// returning here would invite a second submit and a duplicate event.
+			const courseFailure = await persistCourses(event.id);
+			if (courseFailure) showToast(courseFailure, 'error');
 			dirty.rebaseline();
 			oncreated?.(event);
 		} catch (e: unknown) {
@@ -388,6 +600,24 @@
 </script>
 
 <UnsavedChangesGuard isDirty={dirty.isDirty} />
+
+{#snippet routeOptions()}
+	<option value="">{m('eventEditor.noRoute')}</option>
+	{#if clubRoutes.length > 0}
+		<optgroup label={m('eventEditor.clubRoutes', { clubName })}>
+			{#each clubRoutes as r}
+				<option value={r.id}>{r.name} ({formatDistance(r.distance_m)})</option>
+			{/each}
+		</optgroup>
+	{/if}
+	{#if myRoutes.length > 0}
+		<optgroup label={m('eventEditor.myRoutes')}>
+			{#each myRoutes as r}
+				<option value={r.id}>{r.name} ({formatDistance(r.distance_m)})</option>
+			{/each}
+		</optgroup>
+	{/if}
+{/snippet}
 
 <form onsubmit={submit} class="editor-form event-editor">
 	<p class="sub">{existing ? m('eventEditor.editSub', { clubName }) : m('eventEditor.sub', { clubName })}</p>
@@ -450,7 +680,8 @@
 				<label>
 					<span>{m('session.event.planPicker')} <span class="optional">{m('eventEditor.optional')}</span></span>
 					<select
-						bind:value={sessionPlanId}
+						value={sessionPlanId}
+						onchange={(e) => pickSessionPlan(e.currentTarget.value)}
 						data-testid="session-plan-picker"
 						aria-describedby="event-session-plan-hint"
 					>
@@ -463,6 +694,26 @@
 				<span class="hint" id="event-session-plan-hint">{m('session.event.planPickerHint')}</span>
 				{#if sessionPlans.length === 0}
 					<span class="hint">{m('session.event.planEmptyHint')}</span>
+				{/if}
+			</div>
+			<div class="field">
+				<label>
+					<span>{m('eventEditor.gymRoutinePicker')} <span class="optional">{m('eventEditor.optional')}</span></span>
+					<select
+						value={gymRoutineId}
+						onchange={(e) => pickGymRoutine(e.currentTarget.value)}
+						data-testid="gym-routine-picker"
+						aria-describedby="event-gym-routine-hint"
+					>
+						<option value="">{m('eventEditor.gymRoutineNone')}</option>
+						{#each gymRoutines as r (r.id)}
+							<option value={r.id}>{r.title}</option>
+						{/each}
+					</select>
+				</label>
+				<span class="hint" id="event-gym-routine-hint">{m('eventEditor.gymRoutineHint')}</span>
+				{#if gymRoutines.length === 0}
+					<span class="hint">{m('eventEditor.gymRoutineEmptyHint')}</span>
 				{/if}
 			</div>
 		{/if}
@@ -541,25 +792,107 @@
 					data-testid="event-route-select"
 					aria-describedby="event-route-hint"
 				>
-					<option value="">{m('eventEditor.noRoute')}</option>
-					{#if clubRoutes.length > 0}
-						<optgroup label={m('eventEditor.clubRoutes', { clubName })}>
-							{#each clubRoutes as r}
-								<option value={r.id}>{r.name} ({formatDistance(r.distance_m)})</option>
-							{/each}
-						</optgroup>
-					{/if}
-					{#if myRoutes.length > 0}
-						<optgroup label={m('eventEditor.myRoutes')}>
-							{#each myRoutes as r}
-								<option value={r.id}>{r.name} ({formatDistance(r.distance_m)})</option>
-							{/each}
-						</optgroup>
-					{/if}
+					{@render routeOptions()}
 				</select>
 			</label>
 			<span class="hint" id="event-route-hint">{m('eventEditor.routeHint')}</span>
 		</div>
+
+		<fieldset class="courses" data-testid="event-courses" disabled={coursesLoadFailed}>
+			<legend>{m('eventEditor.coursesLegend')} <span class="optional">{m('eventEditor.optional')}</span></legend>
+			<span class="hint" id="event-courses-hint">
+				{coursesLoadFailed ? m('eventEditor.coursesLoadFailed') : m('eventEditor.coursesHint')}
+			</span>
+			{#if extraCourses.length > 0}
+				<label class="course-main">
+					<span>{m('eventEditor.mainCourseName')}</span>
+					<input
+						type="text"
+						bind:value={mainCourseName}
+						maxlength={COURSE_NAME_MAX}
+						placeholder={routeById(routeId)?.name ?? m('eventEditor.courseDefaultName')}
+						data-testid="event-main-course-name"
+						aria-describedby="event-courses-hint"
+					/>
+				</label>
+				<ol class="course-list">
+					{#each extraCourses as c, i (c.key)}
+						<li class="course-row" data-testid="event-course-row">
+							<label>
+								<span>{m('eventEditor.courseName')}</span>
+								<input
+									type="text"
+									bind:value={c.name}
+									maxlength={COURSE_NAME_MAX}
+									data-testid="event-course-name"
+									aria-describedby="event-courses-hint"
+								/>
+							</label>
+							<label>
+								<span>{m('eventEditor.courseRoute')}</span>
+								<select
+									value={c.routeId}
+									onchange={(e) => pickCourseRoute(i, e.currentTarget.value)}
+									data-testid="event-course-route"
+									aria-describedby="event-courses-hint"
+								>
+									{@render routeOptions()}
+								</select>
+							</label>
+							<label>
+								<span>{m('eventEditor.courseDistance', { unit: distanceUnitLabel })}</span>
+								<input
+									type="number"
+									step="0.1"
+									min="0"
+									bind:value={c.distanceInUnit}
+									data-testid="event-course-distance"
+									aria-describedby="event-courses-hint"
+								/>
+							</label>
+							<div class="course-actions">
+								<button
+									type="button"
+									class="course-icon"
+									aria-label={m('eventEditor.moveCourseUp', { name: c.name || m('eventEditor.courseDefaultName') })}
+									disabled={i === 0}
+									onclick={() => moveCourse(i, -1)}
+								>
+									<span class="material-symbols" aria-hidden="true">arrow_upward</span>
+								</button>
+								<button
+									type="button"
+									class="course-icon"
+									aria-label={m('eventEditor.moveCourseDown', { name: c.name || m('eventEditor.courseDefaultName') })}
+									disabled={i === extraCourses.length - 1}
+									onclick={() => moveCourse(i, 1)}
+								>
+									<span class="material-symbols" aria-hidden="true">arrow_downward</span>
+								</button>
+								<button
+									type="button"
+									class="course-icon"
+									aria-label={m('eventEditor.removeCourse', { name: c.name || m('eventEditor.courseDefaultName') })}
+									onclick={() => removeCourse(i)}
+									data-testid="event-remove-course"
+								>
+									<span class="material-symbols" aria-hidden="true">delete</span>
+								</button>
+							</div>
+						</li>
+					{/each}
+				</ol>
+			{/if}
+			<button
+				type="button"
+				class="btn btn-secondary btn-sm add-course"
+				onclick={addCourse}
+				data-testid="event-add-course"
+			>
+				<span class="material-symbols" aria-hidden="true">add</span>
+				{m('eventEditor.addCourse')}
+			</button>
+		</fieldset>
 	{/if}
 
 	{#if !existing}
@@ -924,5 +1257,59 @@
 		font-weight: 400;
 		color: var(--color-text-secondary);
 		line-height: 1.45;
+	}
+	.courses .hint {
+		display: block;
+		margin-bottom: 0.6rem;
+	}
+	.course-main {
+		margin-bottom: 0.6rem;
+	}
+	.course-list {
+		list-style: none;
+		margin: 0 0 0.6rem;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.6rem;
+	}
+	.course-row {
+		display: grid;
+		grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.4fr) minmax(0, 0.7fr) auto;
+		gap: var(--space-sm);
+		align-items: end;
+		padding: 0.6rem;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+	}
+	.course-actions {
+		display: flex;
+		gap: 0.25rem;
+	}
+	.course-icon {
+		background: transparent;
+		border: 1px solid var(--color-border);
+		color: var(--color-text);
+		border-radius: var(--radius-md);
+		min-width: 2.75rem;
+		min-height: 2.75rem;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		cursor: pointer;
+	}
+	.course-icon:disabled {
+		opacity: 0.4;
+		cursor: default;
+	}
+	.add-course {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+	}
+	@media (max-width: 40rem) {
+		.course-row {
+			grid-template-columns: minmax(0, 1fr);
+		}
 	}
 </style>

@@ -25,6 +25,23 @@ export function isSalesWindowOpen(
   return nowMs < closeAtMs;
 }
 
+/// Is the instant being bought past the end of its series? A series cancel
+/// (events-cancel `scope: 'series'`, decisions § 1868) ends a recurring
+/// event by moving `recurrence_until` to the moment it was cancelled, and only
+/// the occurrences someone had signed up for get an `event_exceptions` row; the
+/// rest stop existing. Checkout names its instant directly, so without this an
+/// ended series still sold every later week. A series with no end, or an
+/// unparseable one, is not past its end (the exception guard still applies).
+export function isPastSeriesEnd(
+  recurrenceUntil: string | null,
+  instanceStartMs: number,
+): boolean {
+  if (recurrenceUntil === null) return false;
+  const untilMs = Date.parse(recurrenceUntil);
+  if (!Number.isFinite(untilMs)) return false;
+  return instanceStartMs > untilMs;
+}
+
 /// The platform's application fee in cents. Floor (never charge a
 /// fractional cent), clamped so it can never exceed the amount (a
 /// misconfigured 10000 bps = 100% would otherwise leave the host $0; we
@@ -100,6 +117,43 @@ export function checkoutExpiresAtUnix(
   ttlMinutes = 30,
 ): number {
   return Math.floor(orderCreatedAtMs / 1000) + ttlMinutes * 60;
+}
+
+export interface WaitlistOfferRow {
+  user_id: string;
+  offer_expires_at: string | null;
+}
+
+/// Seats held for SOMEONE ELSE by a waitlist offer on a paid occurrence
+/// (migration 20270726000002), to be added to the pending count before
+/// `capacityDecision`. The database counts the same holds in
+/// `enforce_event_capacity`; this is the half that stops a stranger from
+/// starting to pay for the seat in the first place.
+///
+///   - The caller's own offer is never counted: it is the seat they are
+///     here to claim.
+///   - A holder with a live pending order is already in the pending count,
+///     whether or not their deadline has passed, so they are not counted twice.
+///   - A lapsed deadline with no checkout in flight holds nothing; the mover
+///     removes it within minutes and offers the seat on.
+///   - An unreadable deadline holds the seat. Over-counting refuses one sale;
+///     under-counting sells a seat promised to someone else.
+export function heldOfferCount(
+  offers: readonly WaitlistOfferRow[],
+  livePendingBuyerIds: ReadonlySet<string>,
+  callerId: string,
+  nowMs: number,
+): number {
+  let held = 0;
+  for (const offer of offers) {
+    if (offer.offer_expires_at === null) continue;
+    if (offer.user_id === callerId) continue;
+    if (livePendingBuyerIds.has(offer.user_id)) continue;
+    const deadlineMs = Date.parse(offer.offer_expires_at);
+    if (Number.isFinite(deadlineMs) && deadlineMs <= nowMs) continue;
+    held += 1;
+  }
+  return held;
 }
 
 export interface PendingOrderRow {

@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { supabase } from '$lib/core/supabase';
-	import { m } from '$lib/i18n/store.svelte';
-	import { BODY_METRICS_PAGE, PREFERENCES_PAGES } from '$lib/settings/preferences_ia';
+	import { page } from '$app/state';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { BODY_METRICS_PAGE, PREFERENCES_PAGES } from '#lib/settings/preferences_ia.ts';
 
 	type Tab = { href: string; label: string; icon: string };
 	type Section = { label: string; tabs: Tab[] };
@@ -81,7 +81,7 @@
 				<a
 					href={tab.href}
 					class="nav-item"
-					class:active={$page.url.pathname.startsWith(tab.href)}
+					class:active={page.url.pathname.startsWith(tab.href)}
 				>
 					<span class="material-symbols">{tab.icon}</span>
 					{tab.label}

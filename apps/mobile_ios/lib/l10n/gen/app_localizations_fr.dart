@@ -20,13 +20,27 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get clubInviteIntro =>
-      'Collez le code d\'invitation que l\'administrateur du club vous a communiqué.';
+      'Collez le lien ou le code d\'invitation que l\'administrateur du club vous a communiqué.';
 
   @override
   String get clubInviteCodeLabel => 'Code d\'invitation';
 
   @override
   String get clubInviteJoinButton => 'Rejoindre';
+
+  @override
+  String get clubWaiverTitle => 'Une dernière chose avant de rejoindre le club';
+
+  @override
+  String get clubWaiverBody =>
+      'Ce club demande à chaque membre de reconnaître les risques physiques de la course en groupe avant de le rejoindre.';
+
+  @override
+  String get clubWaiverAck =>
+      'Je comprends les risques physiques de la course en groupe et participe à mes propres risques.';
+
+  @override
+  String get clubWaiverAccept => 'Accepter et rejoindre';
 
   @override
   String recapShareHeadline(Object year) {
@@ -394,7 +408,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get importHealthDescriptionAndroid =>
-      'Lit les résumés de séances (date, distance, durée, type) de la dernière année. Les itinéraires GPS ne sont pas exposés par Health Connect — les courses importées ainsi n\'auront pas de tracé sur la carte.';
+      'Lit les résumés de séances (date, distance, durée, type) de la dernière année. La carte GPS d\'une séance est aussi importée quand Health Connect autorise Threkir à la lire ; s\'il en retient, vous pouvez autoriser l\'accès aux cartes après l\'import.';
 
   @override
   String importHealthRoutesWithheld(int count) {
@@ -4687,6 +4701,24 @@ class AppLocalizationsFr extends AppLocalizations {
       'Une occurrence d\'événement à laquelle vous avez répondu a été annulée';
 
   @override
+  String profileNotifEventCancelRefundedTitled(String title) {
+    return 'Une occurrence de « $title » a été annulée — ton paiement est en cours de remboursement';
+  }
+
+  @override
+  String get profileNotifEventCancelRefunded =>
+      'Une occurrence d\'événement que tu avais payée a été annulée — ton paiement est en cours de remboursement';
+
+  @override
+  String profileNotifWaitlistSlotTitled(String title) {
+    return 'Une place s’est libérée pour « $title » et vous est réservée — payez pour l’obtenir';
+  }
+
+  @override
+  String get profileNotifWaitlistSlot =>
+      'Une place s’est libérée pour un événement sur la liste d’attente duquel vous êtes inscrit, et elle vous est réservée — payez pour l’obtenir';
+
+  @override
   String profileNotifEventReminderTitled(String title) {
     return '« $title » approche';
   }
@@ -6935,7 +6967,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsAccountImport => 'Importer depuis une autre app';
 
   @override
-  String get settingsAccountImportSubtitle => 'Strava, GPX, TCX';
+  String get settingsAccountImportSubtitle =>
+      'Export Strava, app de santé, CSV ou sauvegarde';
 
   @override
   String get settingsAccountAccountExport => 'Export du compte';
@@ -14641,4 +14674,680 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get dashboardLeadAddRun => 'Ajouter une course';
+
+  @override
+  String get runRaceStopTitle => 'Course en pause';
+
+  @override
+  String get runRaceStopBody =>
+      'Le chrono de la course continue de tourner. Reprenez pour continuer ou terminez la course maintenant.';
+
+  @override
+  String get runRaceStopBodyDnf =>
+      'Vous avez parcouru moins de 90 % du parcours : terminer maintenant enregistre un abandon (DNF).';
+
+  @override
+  String get runRaceResume => 'Reprendre la course';
+
+  @override
+  String get runRaceFinish => 'Terminer la course';
+
+  @override
+  String get runRaceFinishDnf => 'Terminer en abandon (DNF)';
+
+  @override
+  String runRaceFinishedAuto(String time) {
+    return 'Arrivée ! Temps officiel $time';
+  }
+
+  @override
+  String get runRaceFinishRecorded => 'Arrivée enregistrée';
+
+  @override
+  String get runRaceEnded =>
+      'L\'organisateur a clôturé la course. Votre course continue d\'être enregistrée, mais aucun résultat ne sera envoyé.';
+
+  @override
+  String get runRaceLateStart =>
+      'Départ tardif : vous êtes parti plus de 5 minutes après le départ ou loin de la ligne de départ.';
+
+  @override
+  String get eventCoursesTitle => 'Parcours';
+
+  @override
+  String get eventCoursePickTitle => 'Choisissez votre parcours';
+
+  @override
+  String get eventChangeCourse => 'Changer de parcours';
+
+  @override
+  String get eventYourCourse => 'Votre parcours';
+
+  @override
+  String get eventCourseChangeFailed =>
+      'Impossible d\'enregistrer votre parcours. Réessayez.';
+
+  @override
+  String eventResultChipTime(String time) {
+    return 'Temps réel $time';
+  }
+
+  @override
+  String get eventResultsOtherCourse => 'Autres résultats';
+
+  @override
+  String get eventFinishMethodManual => 'Manuel';
+
+  @override
+  String get eventFinishMethodHost => 'Organisateur';
+
+  @override
+  String get helpTitle => 'Aide';
+
+  @override
+  String get helpSettingsSubtitle =>
+      'Comment fonctionnent les courses, les cours, les clubs et l\'app';
+
+  @override
+  String get helpSearchHint => 'Rechercher dans l\'aide';
+
+  @override
+  String get helpSearchClear => 'Effacer la recherche';
+
+  @override
+  String get helpAudienceLabel => 'Afficher les guides pour';
+
+  @override
+  String get helpAudienceAll => 'Tous';
+
+  @override
+  String get helpAudienceRunner => 'Coureurs';
+
+  @override
+  String get helpAudienceOrganiser => 'Organisateurs';
+
+  @override
+  String get helpAudienceParticipant => 'Participants';
+
+  @override
+  String get helpAudienceSpectator => 'Spectateurs';
+
+  @override
+  String get helpAudienceInstructor => 'Instructeurs';
+
+  @override
+  String get helpAudienceClubAdmin => 'Admins de club';
+
+  @override
+  String get helpCategoryRaces => 'Courses';
+
+  @override
+  String get helpCategoryPaidClasses => 'Cours payants';
+
+  @override
+  String get helpCategoryInstructors => 'Instructeurs';
+
+  @override
+  String get helpCategoryClubs => 'Clubs';
+
+  @override
+  String get helpCategoryRunning => 'Course à pied';
+
+  @override
+  String get helpCategoryAccount => 'Compte';
+
+  @override
+  String get helpCategoryOther => 'Autres guides';
+
+  @override
+  String get helpRequiresPro => 'Nécessite Pro';
+
+  @override
+  String get helpRequiresClubAdmin => 'Réservé aux admins de club';
+
+  @override
+  String get helpRequiresRaceDirector => 'Réservé aux directeurs de course';
+
+  @override
+  String get helpRequiresStripeConnected =>
+      'Nécessite un compte Stripe connecté';
+
+  @override
+  String get helpRequiresPaidRailLive =>
+      'L\'inscription payante doit être activée';
+
+  @override
+  String get helpPlatformsLabel => 'Disponible sur';
+
+  @override
+  String get helpPlatformWeb => 'Web';
+
+  @override
+  String get helpPlatformAndroid => 'Android';
+
+  @override
+  String get helpPlatformIos => 'iPhone';
+
+  @override
+  String get helpPlatformWear => 'Wear OS';
+
+  @override
+  String get helpPlatformAppleWatch => 'Apple Watch';
+
+  @override
+  String get helpNoteTip => 'Astuce';
+
+  @override
+  String get helpNoteCaution => 'Attention';
+
+  @override
+  String get helpRelated => 'Guides associés';
+
+  @override
+  String get helpResultsHeader => 'Résultats';
+
+  @override
+  String get helpNoResultsTitle => 'Aucun guide correspondant';
+
+  @override
+  String get helpNoResultsBody =>
+      'Essayez un autre mot ou affichez les guides pour tous.';
+
+  @override
+  String get helpLoading => 'Chargement des guides';
+
+  @override
+  String get helpUnavailable => 'Impossible de charger les guides d\'aide.';
+
+  @override
+  String get helpGuideMissing => 'Ce guide n\'est pas disponible.';
+
+  @override
+  String get helpGuideInEnglish =>
+      'Ce guide n\'a pas encore été traduit dans votre langue : il est donc affiché en anglais.';
+
+  @override
+  String get helpHowThisWorks => 'Comment ça marche';
+
+  @override
+  String get helpForThisScreen => 'Guides pour cet écran';
+
+  @override
+  String get helpBrowseAll => 'Parcourir tous les guides';
+
+  @override
+  String helpStepLabel(int n) {
+    return 'Étape $n';
+  }
+
+  @override
+  String get infoTipReadGuide => 'Lire le guide';
+
+  @override
+  String eventRaceEndConfirmBodyDnf(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Terminer la course ? $count coureurs partis n\'ont pas de résultat et seront marqués DNF. Cette action est irréversible.',
+      one:
+          'Terminer la course ? $count coureur parti n\'a pas de résultat et sera marqué DNF. Cette action est irréversible.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get eventResultPending => 'En attente';
+
+  @override
+  String eventResultActions(String name) {
+    return 'Actions sur le résultat de $name';
+  }
+
+  @override
+  String get eventResultApprove => 'Approuver';
+
+  @override
+  String get eventResultUnverify => 'Retirer la validation';
+
+  @override
+  String get eventResultEdit => 'Modifier';
+
+  @override
+  String eventResultEditTitle(String name) {
+    return 'Modifier le résultat : $name';
+  }
+
+  @override
+  String get eventResultEditHelp =>
+      'Ta modification remplace ce temps au classement et est marquée comme modifiée par l\'organisateur.';
+
+  @override
+  String get eventResultEditTime => 'Temps (h:mm:ss)';
+
+  @override
+  String get eventResultEditStatus => 'Statut';
+
+  @override
+  String get eventResultStatusFinished => 'Arrivé';
+
+  @override
+  String get eventResultStatusDnf => 'DNF';
+
+  @override
+  String get eventResultStatusDns => 'DNS';
+
+  @override
+  String get eventResultEditSave => 'Enregistrer le résultat';
+
+  @override
+  String get eventResultEditTimeInvalid =>
+      'Saisis un temps d\'arrivée comme 42:10 ou 1:02:03.';
+
+  @override
+  String eventResultActionFailed(String error) {
+    return 'Impossible de mettre à jour le résultat : $error';
+  }
+
+  @override
+  String get eventCancelOccurrence => 'Annuler cette occurrence';
+
+  @override
+  String get eventCancelEvent => 'Annuler l’événement';
+
+  @override
+  String get eventCancelSeries => 'Annuler toute la série';
+
+  @override
+  String get eventCancelOccurrenceBody =>
+      'Seule cette occurrence est annulée — le reste de la série n\'est pas affecté. Toutes les personnes ayant répondu (présent, peut-être ou en liste d\'attente) sont prévenues.';
+
+  @override
+  String get eventCancelEventBody =>
+      'L’événement est annulé. Toutes les personnes ayant répondu (présent, peut-être ou en liste d’attente) sont prévenues.';
+
+  @override
+  String get eventCancelSeriesBody =>
+      'La série s’arrête maintenant et aucune occurrence ultérieure n’est prévue. Chaque occurrence à venir à laquelle quelqu’un a répondu est annulée, et les personnes concernées sont prévenues.';
+
+  @override
+  String get eventCancelPaidNote =>
+      'Toute personne ayant payé est remboursée intégralement, quelle que soit la politique de remboursement.';
+
+  @override
+  String get eventCancelReasonLabel => 'Motif (facultatif)';
+
+  @override
+  String get eventCancelKeep => 'Conserver';
+
+  @override
+  String eventCancelRefundsStarted(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Annulé. $count personnes inscrites sont remboursées intégralement.',
+      one: 'Annulé. 1 personne inscrite est remboursée intégralement.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String eventCancelRefundsIncomplete(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count remboursements n’ont pas pu être lancés',
+      one: '1 remboursement n’a pas pu être lancé',
+    );
+    return 'Annulé, mais $_temp0. Réessayez depuis la page de l’événement sur le web.';
+  }
+
+  @override
+  String get eventCancelledToast => 'Annulé.';
+
+  @override
+  String get eventSeriesCancelledToast => 'Série annulée.';
+
+  @override
+  String get eventCancelNotConfigured =>
+      'Il y a des inscriptions payées et les paiements ne sont pas disponibles pour le moment : l’annulation n’est donc pas encore possible. Rien n’a été modifié.';
+
+  @override
+  String get eventCancelNotOrganiser =>
+      'Seuls les organisateurs de ce club peuvent annuler une occurrence.';
+
+  @override
+  String get eventCancelFailed => 'Impossible d’annuler. Veuillez réessayer.';
+
+  @override
+  String get eventReinstateOccurrence => 'Rétablir cette occurrence';
+
+  @override
+  String get eventReinstateEvent => 'Rétablir cet événement';
+
+  @override
+  String get eventReinstateFailed => 'Impossible de rétablir cette occurrence';
+
+  @override
+  String get eventEventCancelled => 'Cet événement a été annulé.';
+
+  @override
+  String get eventSeriesWasCancelled => 'Cette série a été annulée.';
+
+  @override
+  String eventWaitlistOfferHeld(String time) {
+    return 'Une place vous est réservée jusqu’à $time. Payez pour l’obtenir, sinon elle revient à la personne suivante sur la liste d’attente.';
+  }
+
+  @override
+  String get eventWaitlistOfferClaimHint => 'Le paiement se fait sur le web.';
+
+  @override
+  String get eventWaitlistOfferClaim => 'Réserver sur le web';
+
+  @override
+  String get eventFormCapacity => 'Capacité';
+
+  @override
+  String get eventFormCapacityHint =>
+      'Une fois ce nombre de participants atteint, la personne suivante passe sur liste d\'attente au lieu d\'être refusée. Laisse vide pour aucune limite.';
+
+  @override
+  String get eventFormErrCapacity =>
+      'Saisissez un nombre entier supérieur ou égal à 1, ou laissez le champ vide.';
+
+  @override
+  String get eventFormEndsOn => 'Se termine le';
+
+  @override
+  String get eventFormEndsOnNone => 'Pas de date de fin';
+
+  @override
+  String get eventFormEndsOnClear => 'Effacer la date de fin';
+
+  @override
+  String get eventFormEndAfter => 'Se termine après';
+
+  @override
+  String get eventFormRepeatEndHint =>
+      'Où s\'arrête la série. Renseigne l\'un, l\'autre ou les deux : le premier atteint l\'emporte. Si les deux restent vides, elle se répète indéfiniment.';
+
+  @override
+  String get eventFormErrCount =>
+      'Saisissez un nombre entier entre 1 et 520, ou laissez le champ vide.';
+
+  @override
+  String get eventFormSessionPlan => 'Plan de séance';
+
+  @override
+  String get eventFormSessionPlanNone => 'Aucun';
+
+  @override
+  String get eventFormSessionPlanEmpty =>
+      'Aucun plan de séance pour le moment. Créez-en un sur le web.';
+
+  @override
+  String get eventFormCharge => 'Faire payer cet événement';
+
+  @override
+  String get eventFormChargeHint =>
+      'Prélève des frais à l\'inscription. L\'argent arrive sur ton propre compte de versement, pas sur celui du club, et seul un événement en présentiel peut facturer.';
+
+  @override
+  String get eventFormChargeNeedsPayout =>
+      'Configurez les versements sur le web pour faire payer vos événements.';
+
+  @override
+  String get eventFormPrice => 'Prix';
+
+  @override
+  String get eventFormCurrency => 'Devise';
+
+  @override
+  String get eventFormErrPrice => 'Saisissez un prix d’au moins 0,50.';
+
+  @override
+  String get eventFormErrCurrency =>
+      'Utilisez un code de devise à trois lettres, comme EUR.';
+
+  @override
+  String get eventFormSalesClose =>
+      'Clôturer les ventes (minutes avant le début)';
+
+  @override
+  String get eventFormSalesCloseHint =>
+      'Combien de temps avant le début les inscriptions ferment. Zéro les laisse ouvertes jusqu\'à l\'heure de départ.';
+
+  @override
+  String get eventFormErrSalesClose =>
+      'Saisissez un nombre entier de minutes entre 0 et 10080.';
+
+  @override
+  String get eventFormRefundPolicy => 'Politique de remboursement';
+
+  @override
+  String get eventFormRefundFullUntilStart =>
+      'Remboursement intégral jusqu’à l’heure de début';
+
+  @override
+  String get eventFormRefundFullUntil24h =>
+      'Remboursement intégral jusqu’à 24 h avant';
+
+  @override
+  String get eventFormRefundNone => 'Aucun remboursement';
+
+  @override
+  String get eventFormPricingFailed =>
+      'Événement créé, mais l’enregistrement du prix a échoué. Définissez le prix depuis la page de l’événement sur le web.';
+
+  @override
+  String get eventFormSessionPlanFailed =>
+      'Événement créé, mais le plan de séance n’a pas pu être associé. Associez-le depuis la page de l’événement.';
+
+  @override
+  String get eventFormGymRoutine => 'Routine de gym';
+
+  @override
+  String get eventFormGymRoutineNone => 'Aucune';
+
+  @override
+  String get eventFormGymRoutineHint =>
+      'Un modèle de routine de ce club. Les participants enregistrent le cours prérempli à partir de celui-ci. Un cours porte une routine ou un plan de séance, pas les deux.';
+
+  @override
+  String get eventFormGymRoutineEmpty =>
+      'Ce club n’a pas encore de modèle de routine. Publiez d’abord une routine dans le club.';
+
+  @override
+  String get eventFormGymRoutineFailed =>
+      'Événement créé, mais la routine n’a pas pu être associée. Associez-la depuis la page de l’événement.';
+
+  @override
+  String get clubEventGymRoutineTitle => 'Routine du cours';
+
+  @override
+  String get clubEventGymRoutineAttach => 'Associer une routine';
+
+  @override
+  String get clubEventGymRoutineNone => 'Aucune routine associée.';
+
+  @override
+  String clubEventGymRoutineSets(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count séries',
+      one: '1 série',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get clubEventGymRoutineSave => 'Enregistrer';
+
+  @override
+  String get clubEventGymRoutineSaved => 'Routine du cours mise à jour.';
+
+  @override
+  String get clubEventGymRoutineSaveFailed =>
+      'Impossible de mettre à jour la routine du cours.';
+
+  @override
+  String get clubEventGymRoutineReplacesPlan =>
+      'Associer une routine retire le plan de séance — un cours porte l\'un ou l\'autre.';
+
+  @override
+  String get clubEventSessionPlanTitle => 'Séquence de la séance';
+
+  @override
+  String get clubEventSessionPlanAttach => 'Associer à un événement de cours';
+
+  @override
+  String get clubEventSessionPlanSave => 'Enregistrer';
+
+  @override
+  String get clubEventSessionPlanSaved => 'Plan de séance mis à jour.';
+
+  @override
+  String get clubEventSessionPlanSaveFailed =>
+      'Impossible de mettre à jour le plan de séance.';
+
+  @override
+  String get clubEventSessionPlanReplacesRoutine =>
+      'Associer un plan de séance retire la routine de gym — un cours porte l\'un ou l\'autre.';
+
+  @override
+  String get audienceTitle => 'Qui peut voir ceci';
+
+  @override
+  String get audienceLevelPrivate => 'Moi uniquement';
+
+  @override
+  String get audienceLevelPrivateHint => 'Personne d\'autre ne peut l\'ouvrir.';
+
+  @override
+  String get audienceLevelFollowers => 'Abonnés';
+
+  @override
+  String get audienceLevelFollowersHint =>
+      'Les personnes qui vous suivent peuvent l\'ouvrir via un lien. Il n\'apparaît ni dans les fils, ni dans les notifications, ni dans la recherche.';
+
+  @override
+  String get audienceLevelSpecific => 'Personnes choisies';
+
+  @override
+  String get audienceLevelSpecificHint =>
+      'Seules les personnes que vous choisissez peuvent l\'ouvrir. Vous pouvez arrêter le partage avec n\'importe qui à tout moment.';
+
+  @override
+  String get audienceLevelPublic => 'Public';
+
+  @override
+  String get audienceLevelPublicHint =>
+      'Toute personne disposant du lien peut l\'ouvrir, et il peut apparaître dans les fils et la recherche.';
+
+  @override
+  String get audienceClipNote =>
+      'Tout le monde sauf vous voit la carte sans vos zones de confidentialité.';
+
+  @override
+  String get audienceSharedWith => 'Partagé avec';
+
+  @override
+  String get audienceSharedWithNobody =>
+      'Partagé avec personne pour l\'instant.';
+
+  @override
+  String audienceRevokeTooltip(String name) {
+    return 'Arrêter le partage avec $name';
+  }
+
+  @override
+  String audienceRevoked(String name) {
+    return '$name ne peut plus l\'ouvrir.';
+  }
+
+  @override
+  String audienceRevokeFailed(String error) {
+    return 'Impossible d\'arrêter le partage : $error';
+  }
+
+  @override
+  String get audienceAddPeople => 'Ajouter des personnes';
+
+  @override
+  String get audienceSearchHint =>
+      'Rechercher des personnes que vous suivez ou qui vous suivent';
+
+  @override
+  String get audienceShareAction => 'Partager';
+
+  @override
+  String get audienceAlreadyShared => 'Partagé';
+
+  @override
+  String audienceShared(String name) {
+    return '$name peut maintenant l\'ouvrir.';
+  }
+
+  @override
+  String audienceShareFailed(String error) {
+    return 'Impossible de partager : $error';
+  }
+
+  @override
+  String get audienceLoadFailed =>
+      'Impossible de charger les personnes avec qui c\'est partagé.';
+
+  @override
+  String get audiencePeopleLoadFailed =>
+      'Impossible de charger les personnes avec qui vous pouvez partager.';
+
+  @override
+  String get audienceNoPeople =>
+      'Vous pouvez partager avec les personnes que vous suivez ou qui vous suivent, et vous n\'en avez pas encore.';
+
+  @override
+  String get audienceNoMatches => 'Personne ne correspond à ce nom.';
+
+  @override
+  String get audienceRetry => 'Réessayer';
+
+  @override
+  String audienceUpdateFailed(String error) {
+    return 'Impossible de modifier qui peut voir ceci : $error';
+  }
+
+  @override
+  String get audienceUpdated => 'Visibilité mise à jour.';
+
+  @override
+  String get audienceRevokeAllTitle =>
+      'Arrêter le partage avec tout le monde ?';
+
+  @override
+  String get audienceRevokeAllBody =>
+      'Toutes les personnes avec qui vous l\'avez partagé ne pourront plus l\'ouvrir.';
+
+  @override
+  String get audienceRevokeAllConfirm => 'Moi uniquement';
+
+  @override
+  String get audienceShareLink => 'Lien de partage';
+
+  @override
+  String get audienceSharedWithYou => 'Partagé avec vous';
+
+  @override
+  String get audienceSharedWithYouHint =>
+      'Partagé avec vous. Ce n\'est pas public : seules les personnes avec qui c\'est partagé peuvent l\'ouvrir.';
+
+  @override
+  String liveRunnerHandle(String slug) {
+    return 'Coureur #$slug';
+  }
+
+  @override
+  String get liveRunnerAnonymous => 'Coureur';
 }

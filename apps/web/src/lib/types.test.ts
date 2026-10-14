@@ -99,7 +99,7 @@ test('parseActivityType — an unknown, empty, null or mis-cased value reads as 
 });
 
 test('parseIntegrationProvider — every valid IntegrationProvider passes through', () => {
-	const all: IntegrationProvider[] = ['strava', 'garmin', 'parkrun', 'runsignup'];
+	const all: IntegrationProvider[] = ['strava', 'garmin', 'parkrun', 'runsignup', 'ultrasignup'];
 	for (const p of all) assert.equal(parseIntegrationProvider(p), p);
 });
 

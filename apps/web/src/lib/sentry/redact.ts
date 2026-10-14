@@ -2,7 +2,7 @@
 // before they land in a Sentry breadcrumb / span / event. Extracted
 // from `apps/web/src/hooks.client.ts` so the logic can be unit-
 // tested under `tsx --test` (the hooks file imports `$app/environment`
-// + `$env/dynamic/public`, which are SvelteKit-only).
+// + `$app/env/public`, which are SvelteKit-only).
 //
 // Signed URLs embed an HMAC token in the query that grants access to
 // a bucket object; we don't want them in the error-reporting tail.

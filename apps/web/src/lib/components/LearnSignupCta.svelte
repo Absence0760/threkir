@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { m } from '$lib/i18n/store.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
 
 	// The closing band the hub and every category page end on. Distinct from
 	// LearnCta, which is the per-article CTA pointing at the app feature a

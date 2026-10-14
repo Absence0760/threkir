@@ -817,6 +817,13 @@ export type Database = {
             referencedRelation: "routes"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "direct_messages_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "shared_routes"
+            referencedColumns: ["id"]
+          },
         ]
       }
       donations: {
@@ -911,32 +918,45 @@ export type Database = {
       event_attendees: {
         Row: {
           attendance: string | null
+          course_id: string | null
           event_id: string
           instance_start: string
           joined_at: string | null
+          offer_expires_at: string | null
           order_id: string | null
           status: string
           user_id: string
         }
         Insert: {
           attendance?: string | null
+          course_id?: string | null
           event_id: string
           instance_start: string
           joined_at?: string | null
+          offer_expires_at?: string | null
           order_id?: string | null
           status?: string
           user_id: string
         }
         Update: {
           attendance?: string | null
+          course_id?: string | null
           event_id?: string
           instance_start?: string
           joined_at?: string | null
+          offer_expires_at?: string | null
           order_id?: string | null
           status?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "event_attendees_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "event_courses"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "event_attendees_event_id_fkey"
             columns: ["event_id"]
@@ -1009,6 +1029,77 @@ export type Database = {
             columns: ["route_marker_id"]
             isOneToOne: false
             referencedRelation: "route_markers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_courses: {
+        Row: {
+          created_at: string
+          distance_m: number | null
+          event_id: string
+          finish_lat: number | null
+          finish_lng: number | null
+          id: string
+          name: string
+          route_id: string | null
+          sort_order: number
+          start_lat: number | null
+          start_lng: number | null
+        }
+        Insert: {
+          created_at?: string
+          distance_m?: number | null
+          event_id: string
+          finish_lat?: number | null
+          finish_lng?: number | null
+          id?: string
+          name: string
+          route_id?: string | null
+          sort_order?: number
+          start_lat?: number | null
+          start_lng?: number | null
+        }
+        Update: {
+          created_at?: string
+          distance_m?: number | null
+          event_id?: string
+          finish_lat?: number | null
+          finish_lng?: number | null
+          id?: string
+          name?: string
+          route_id?: string | null
+          sort_order?: number
+          start_lat?: number | null
+          start_lng?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_courses_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_courses_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "public_routes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_courses_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "routes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_courses_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "shared_routes"
             referencedColumns: ["id"]
           },
         ]
@@ -1203,12 +1294,16 @@ export type Database = {
         Row: {
           age_grade_pct: number | null
           bib: string | null
+          chip_time_s: number | null
+          course_id: string | null
           created_at: string
           distance_m: number
           duration_s: number
           event_id: string
+          finish_method: string | null
           finisher_name: string | null
           finisher_status: string
+          gun_time_s: number | null
           id: string
           instance_start: string
           note: string | null
@@ -1223,12 +1318,16 @@ export type Database = {
         Insert: {
           age_grade_pct?: number | null
           bib?: string | null
+          chip_time_s?: number | null
+          course_id?: string | null
           created_at?: string
           distance_m: number
           duration_s: number
           event_id: string
+          finish_method?: string | null
           finisher_name?: string | null
           finisher_status?: string
+          gun_time_s?: number | null
           id?: string
           instance_start: string
           note?: string | null
@@ -1243,12 +1342,16 @@ export type Database = {
         Update: {
           age_grade_pct?: number | null
           bib?: string | null
+          chip_time_s?: number | null
+          course_id?: string | null
           created_at?: string
           distance_m?: number
           duration_s?: number
           event_id?: string
+          finish_method?: string | null
           finisher_name?: string | null
           finisher_status?: string
+          gun_time_s?: number | null
           id?: string
           instance_start?: string
           note?: string | null
@@ -1261,6 +1364,13 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "event_results_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "event_courses"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "event_results_event_id_fkey"
             columns: ["event_id"]
@@ -1282,6 +1392,13 @@ export type Database = {
             referencedRelation: "runs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "event_results_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "shared_runs"
+            referencedColumns: ["id"]
+          },
         ]
       }
       events: {
@@ -1295,6 +1412,7 @@ export type Database = {
           discipline: string | null
           distance_m: number | null
           duration_min: number | null
+          gym_routine_id: string | null
           gym_template: Json | null
           host_user_id: string | null
           id: string
@@ -1324,6 +1442,7 @@ export type Database = {
           discipline?: string | null
           distance_m?: number | null
           duration_min?: number | null
+          gym_routine_id?: string | null
           gym_template?: Json | null
           host_user_id?: string | null
           id?: string
@@ -1353,6 +1472,7 @@ export type Database = {
           discipline?: string | null
           distance_m?: number | null
           duration_min?: number | null
+          gym_routine_id?: string | null
           gym_template?: Json | null
           host_user_id?: string | null
           id?: string
@@ -1381,6 +1501,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "events_gym_routine_id_fkey"
+            columns: ["gym_routine_id"]
+            isOneToOne: false
+            referencedRelation: "gym_routines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_gym_routine_id_fkey"
+            columns: ["gym_routine_id"]
+            isOneToOne: false
+            referencedRelation: "public_gym_routines"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "events_route_id_fkey"
             columns: ["route_id"]
             isOneToOne: false
@@ -1392,6 +1526,13 @@ export type Database = {
             columns: ["route_id"]
             isOneToOne: false
             referencedRelation: "routes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "shared_routes"
             referencedColumns: ["id"]
           },
           {
@@ -1618,6 +1759,13 @@ export type Database = {
             referencedRelation: "runs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fundraisers_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "shared_runs"
+            referencedColumns: ["id"]
+          },
         ]
       }
       gear: {
@@ -1828,6 +1976,13 @@ export type Database = {
             columns: ["run_id"]
             isOneToOne: false
             referencedRelation: "runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "global_segment_efforts_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "shared_runs"
             referencedColumns: ["id"]
           },
         ]
@@ -2197,7 +2352,9 @@ export type Database = {
           created_at: string | null
           disconnected_at: string | null
           disconnected_reason: string | null
+          external_first_name: string | null
           external_id: string | null
+          external_last_name: string | null
           id: string
           last_sync_at: string | null
           provider: string
@@ -2213,7 +2370,9 @@ export type Database = {
           created_at?: string | null
           disconnected_at?: string | null
           disconnected_reason?: string | null
+          external_first_name?: string | null
           external_id?: string | null
+          external_last_name?: string | null
           id?: string
           last_sync_at?: string | null
           provider: string
@@ -2229,7 +2388,9 @@ export type Database = {
           created_at?: string | null
           disconnected_at?: string | null
           disconnected_reason?: string | null
+          external_first_name?: string | null
           external_id?: string | null
+          external_last_name?: string | null
           id?: string
           last_sync_at?: string | null
           provider?: string
@@ -2363,6 +2524,13 @@ export type Database = {
             referencedRelation: "runs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "live_run_pings_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "shared_runs"
+            referencedColumns: ["id"]
+          },
         ]
       }
       meal_template_items: {
@@ -2484,6 +2652,7 @@ export type Database = {
           native_push_sent_at: string | null
           plan_id: string | null
           read_at: string | null
+          refunded: boolean
           run_id: string | null
           user_id: string
           web_push_sent_at: string | null
@@ -2505,6 +2674,7 @@ export type Database = {
           native_push_sent_at?: string | null
           plan_id?: string | null
           read_at?: string | null
+          refunded?: boolean
           run_id?: string | null
           user_id: string
           web_push_sent_at?: string | null
@@ -2526,6 +2696,7 @@ export type Database = {
           native_push_sent_at?: string | null
           plan_id?: string | null
           read_at?: string | null
+          refunded?: boolean
           run_id?: string | null
           user_id?: string
           web_push_sent_at?: string | null
@@ -2585,6 +2756,13 @@ export type Database = {
             columns: ["run_id"]
             isOneToOne: false
             referencedRelation: "runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "shared_runs"
             referencedColumns: ["id"]
           },
         ]
@@ -2678,6 +2856,13 @@ export type Database = {
             columns: ["run_id"]
             isOneToOne: false
             referencedRelation: "runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personal_records_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "shared_runs"
             referencedColumns: ["id"]
           },
         ]
@@ -2791,6 +2976,13 @@ export type Database = {
             columns: ["completed_run_id"]
             isOneToOne: false
             referencedRelation: "runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_workouts_completed_run_id_fkey"
+            columns: ["completed_run_id"]
+            isOneToOne: false
+            referencedRelation: "shared_runs"
             referencedColumns: ["id"]
           },
           {
@@ -3193,6 +3385,13 @@ export type Database = {
             referencedRelation: "routes"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "route_conditions_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "shared_routes"
+            referencedColumns: ["id"]
+          },
         ]
       }
       route_markers: {
@@ -3250,6 +3449,13 @@ export type Database = {
             referencedRelation: "routes"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "route_markers_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "shared_routes"
+            referencedColumns: ["id"]
+          },
         ]
       }
       route_photos: {
@@ -3298,6 +3504,13 @@ export type Database = {
             referencedRelation: "routes"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "route_photos_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "shared_routes"
+            referencedColumns: ["id"]
+          },
         ]
       }
       route_reviews: {
@@ -3343,6 +3556,59 @@ export type Database = {
             referencedRelation: "routes"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "route_reviews_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "shared_routes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      route_shares: {
+        Row: {
+          created_at: string
+          id: string
+          owner_id: string
+          recipient_id: string
+          route_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          owner_id: string
+          recipient_id: string
+          route_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          owner_id?: string
+          recipient_id?: string
+          route_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "route_shares_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "public_routes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "route_shares_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "routes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "route_shares_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "shared_routes"
+            referencedColumns: ["id"]
+          },
         ]
       }
       routes: {
@@ -3353,6 +3619,7 @@ export type Database = {
           distance_m: number
           elevation_m: number | null
           featured_at: string | null
+          followers_only: boolean
           geom: unknown
           geom_public: unknown
           id: string
@@ -3377,6 +3644,7 @@ export type Database = {
           distance_m: number
           elevation_m?: number | null
           featured_at?: string | null
+          followers_only?: boolean
           geom?: unknown
           geom_public?: unknown
           id?: string
@@ -3401,6 +3669,7 @@ export type Database = {
           distance_m?: number
           elevation_m?: number | null
           featured_at?: string | null
+          followers_only?: boolean
           geom?: unknown
           geom_public?: unknown
           id?: string
@@ -3478,6 +3747,13 @@ export type Database = {
             referencedRelation: "runs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "run_comments_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "shared_runs"
+            referencedColumns: ["id"]
+          },
         ]
       }
       run_gear: {
@@ -3525,6 +3801,13 @@ export type Database = {
             referencedRelation: "runs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "run_gear_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "shared_runs"
+            referencedColumns: ["id"]
+          },
         ]
       }
       run_kudos: {
@@ -3556,6 +3839,13 @@ export type Database = {
             columns: ["run_id"]
             isOneToOne: false
             referencedRelation: "runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "run_kudos_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "shared_runs"
             referencedColumns: ["id"]
           },
         ]
@@ -3613,6 +3903,13 @@ export type Database = {
             columns: ["run_id"]
             isOneToOne: true
             referencedRelation: "runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "run_matched_tracks_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: true
+            referencedRelation: "shared_runs"
             referencedColumns: ["id"]
           },
         ]
@@ -3676,6 +3973,59 @@ export type Database = {
             referencedRelation: "runs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "run_photos_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "shared_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      run_shares: {
+        Row: {
+          created_at: string
+          id: string
+          owner_id: string
+          recipient_id: string
+          run_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          owner_id: string
+          recipient_id: string
+          run_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          owner_id?: string
+          recipient_id?: string
+          run_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "run_shares_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "public_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "run_shares_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "run_shares_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "shared_runs"
+            referencedColumns: ["id"]
+          },
         ]
       }
       runs: {
@@ -3692,6 +4042,7 @@ export type Database = {
           fastest_5k_s: number | null
           fastest_half_marathon_s: number | null
           fastest_marathon_s: number | null
+          followers_only: boolean
           hr_series_url: string | null
           id: string
           is_dnf: boolean
@@ -3718,6 +4069,7 @@ export type Database = {
           fastest_5k_s?: number | null
           fastest_half_marathon_s?: number | null
           fastest_marathon_s?: number | null
+          followers_only?: boolean
           hr_series_url?: string | null
           id?: string
           is_dnf?: boolean
@@ -3744,6 +4096,7 @@ export type Database = {
           fastest_5k_s?: number | null
           fastest_half_marathon_s?: number | null
           fastest_marathon_s?: number | null
+          followers_only?: boolean
           hr_series_url?: string | null
           id?: string
           is_dnf?: boolean
@@ -3791,6 +4144,13 @@ export type Database = {
             columns: ["route_id"]
             isOneToOne: false
             referencedRelation: "routes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "runs_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "shared_routes"
             referencedColumns: ["id"]
           },
         ]
@@ -3865,6 +4225,13 @@ export type Database = {
             referencedRelation: "routes"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "saved_routes_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "shared_routes"
+            referencedColumns: ["id"]
+          },
         ]
       }
       segment_efforts: {
@@ -3908,6 +4275,13 @@ export type Database = {
             columns: ["run_id"]
             isOneToOne: false
             referencedRelation: "runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "segment_efforts_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "shared_runs"
             referencedColumns: ["id"]
           },
           {
@@ -3963,6 +4337,13 @@ export type Database = {
             columns: ["route_id"]
             isOneToOne: false
             referencedRelation: "routes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "segments_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "shared_routes"
             referencedColumns: ["id"]
           },
         ]
@@ -4408,12 +4789,16 @@ export type Database = {
         Row: {
           age_grade_pct: number | null
           bib: string | null
+          chip_time_s: number | null
+          course_id: string | null
           created_at: string | null
           distance_m: number | null
           duration_s: number | null
           event_id: string | null
+          finish_method: string | null
           finisher_name: string | null
           finisher_status: string | null
+          gun_time_s: number | null
           id: string | null
           instance_start: string | null
           note: string | null
@@ -4426,12 +4811,16 @@ export type Database = {
         Insert: {
           age_grade_pct?: never
           bib?: string | null
+          chip_time_s?: number | null
+          course_id?: string | null
           created_at?: string | null
           distance_m?: number | null
           duration_s?: number | null
           event_id?: string | null
+          finish_method?: string | null
           finisher_name?: string | null
           finisher_status?: string | null
+          gun_time_s?: number | null
           id?: string | null
           instance_start?: string | null
           note?: never
@@ -4444,12 +4833,16 @@ export type Database = {
         Update: {
           age_grade_pct?: never
           bib?: string | null
+          chip_time_s?: number | null
+          course_id?: string | null
           created_at?: string | null
           distance_m?: number | null
           duration_s?: number | null
           event_id?: string | null
+          finish_method?: string | null
           finisher_name?: string | null
           finisher_status?: string | null
+          gun_time_s?: number | null
           id?: string | null
           instance_start?: string | null
           note?: never
@@ -4460,6 +4853,13 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "event_results_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "event_courses"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "event_results_event_id_fkey"
             columns: ["event_id"]
@@ -4889,6 +5289,147 @@ export type Database = {
           },
         ]
       }
+      shared_routes: {
+        Row: {
+          club_id: string | null
+          created_at: string | null
+          distance_m: number | null
+          elevation_m: number | null
+          featured_at: string | null
+          id: string | null
+          is_featured: boolean | null
+          is_public: boolean | null
+          name: string | null
+          run_count: number | null
+          slug: string | null
+          surface: string | null
+          tags: string[] | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          club_id?: never
+          created_at?: string | null
+          distance_m?: number | null
+          elevation_m?: number | null
+          featured_at?: string | null
+          id?: string | null
+          is_featured?: boolean | null
+          is_public?: boolean | null
+          name?: string | null
+          run_count?: number | null
+          slug?: string | null
+          surface?: string | null
+          tags?: string[] | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          club_id?: never
+          created_at?: string | null
+          distance_m?: number | null
+          elevation_m?: number | null
+          featured_at?: string | null
+          id?: string | null
+          is_featured?: boolean | null
+          is_public?: boolean | null
+          name?: string | null
+          run_count?: number | null
+          slug?: string | null
+          surface?: string | null
+          tags?: string[] | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      shared_runs: {
+        Row: {
+          activity_type: string | null
+          concluded_at: string | null
+          created_at: string | null
+          distance_m: number | null
+          duration_s: number | null
+          elevation_gain_m: number | null
+          event_id: string | null
+          fastest_10k_s: number | null
+          fastest_5k_s: number | null
+          fastest_half_marathon_s: number | null
+          fastest_marathon_s: number | null
+          has_track: boolean | null
+          id: string | null
+          is_dnf: boolean | null
+          is_public: boolean | null
+          metadata: Json | null
+          race_listing_id: string | null
+          route_id: string | null
+          source: string | null
+          started_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          activity_type?: string | null
+          concluded_at?: string | null
+          created_at?: string | null
+          distance_m?: number | null
+          duration_s?: number | null
+          elevation_gain_m?: number | null
+          event_id?: never
+          fastest_10k_s?: number | null
+          fastest_5k_s?: number | null
+          fastest_half_marathon_s?: number | null
+          fastest_marathon_s?: number | null
+          has_track?: never
+          id?: string | null
+          is_dnf?: boolean | null
+          is_public?: boolean | null
+          metadata?: never
+          race_listing_id?: string | null
+          route_id?: never
+          source?: string | null
+          started_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          activity_type?: string | null
+          concluded_at?: string | null
+          created_at?: string | null
+          distance_m?: number | null
+          duration_s?: number | null
+          elevation_gain_m?: number | null
+          event_id?: never
+          fastest_10k_s?: number | null
+          fastest_5k_s?: number | null
+          fastest_half_marathon_s?: number | null
+          fastest_marathon_s?: number | null
+          has_track?: never
+          id?: string | null
+          is_dnf?: boolean | null
+          is_public?: boolean | null
+          metadata?: never
+          race_listing_id?: string | null
+          route_id?: never
+          source?: string | null
+          started_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "runs_race_listing_id_fkey"
+            columns: ["race_listing_id"]
+            isOneToOne: false
+            referencedRelation: "public_race_listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "runs_race_listing_id_fkey"
+            columns: ["race_listing_id"]
+            isOneToOne: false
+            referencedRelation: "race_listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       _privacy_downsample: {
@@ -4956,12 +5497,16 @@ export type Database = {
         Returns: {
           age_grade_pct: number | null
           bib: string | null
+          chip_time_s: number | null
+          course_id: string | null
           created_at: string
           distance_m: number
           duration_s: number
           event_id: string
+          finish_method: string | null
           finisher_name: string | null
           finisher_status: string
+          gun_time_s: number | null
           id: string
           instance_start: string
           note: string | null
@@ -4988,6 +5533,7 @@ export type Database = {
         }
         Returns: string
       }
+      audience_sharing_enabled: { Args: never; Returns: boolean }
       auto_hide_target: {
         Args: { p_target_id: string; p_target_kind: string }
         Returns: undefined
@@ -5296,6 +5842,14 @@ export type Database = {
           going_count: number
         }[]
       }
+      event_orders_owed_refund: {
+        Args: { p_limit: number }
+        Returns: {
+          id: string
+          status: string
+          stripe_payment_intent_id: string
+        }[]
+      }
       exercise_fold_case: { Args: { p_name: string }; Returns: string }
       expire_stale_export_jobs: { Args: never; Returns: number }
       export_retention_overrun: { Args: { p_grace?: string }; Returns: Json }
@@ -5598,6 +6152,7 @@ export type Database = {
         }[]
       }
       increment_coach_usage: { Args: { p_user_id: string }; Returns: number }
+      invoke_event_refund_sweep: { Args: never; Returns: number }
       is_blocked_either_way: {
         Args: { a: string; b: string }
         Returns: boolean
@@ -5618,7 +6173,10 @@ export type Database = {
       jobs_backlog_summary: { Args: { p_queued_after?: string }; Returns: Json }
       jobs_failed_summary: { Args: { p_failed_within?: string }; Returns: Json }
       jobs_stuck_summary: { Args: { p_stuck_after?: string }; Returns: Json }
-      join_club_by_token: { Args: { token: string }; Returns: string }
+      join_club_by_token: {
+        Args: { activity_waiver_ack?: boolean; token: string }
+        Returns: string
+      }
       latest_fitness_snapshot: {
         Args: never
         Returns: {
@@ -5819,6 +6377,10 @@ export type Database = {
       publish_gym_routine_as_template: {
         Args: { p_club_id: string; p_routine_id: string }
         Returns: string
+      }
+      race_pending_dnf_count: {
+        Args: { p_event_id: string; p_instance_start: string }
+        Returns: number
       }
       recompute_challenge_completion: {
         Args: { p_challenge_id: string; p_user_id: string }

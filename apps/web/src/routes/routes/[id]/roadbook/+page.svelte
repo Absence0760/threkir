@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { m } from '$lib/i18n/store.svelte';
-	import MetricLabel from '$lib/components/MetricLabel.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { fetchRouteById, fetchRouteMarkers, updateRouteMarker } from '$lib/core/data';
-	import type { Route, RouteMarker } from '$lib/types';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import MetricLabel from '#lib/components/MetricLabel.svelte';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { fetchRouteById, fetchRouteMarkers, updateRouteMarker } from '#lib/core/data.ts';
+	import type { Route, RouteMarker } from '#lib/types.ts';
 	import {
 		buildRoadbook,
 		type RoadbookWaypoint,
@@ -13,21 +13,21 @@
 		type PacingModel,
 		type CutoffStatus,
 		type TargetStatus
-	} from '$lib/routes/roadbook';
-	import { kindSpec } from '$lib/routes/route_markers';
-	import { toRouteGpxWithMarkers, type RouteGpxMarker } from '$lib/routes/route_gpx';
-	import { downloadFile } from '$lib/routes/gpx';
+	} from '#lib/routes/roadbook.ts';
+	import { kindSpec } from '#lib/routes/route_markers.ts';
+	import { toRouteGpxWithMarkers, type RouteGpxMarker } from '#lib/routes/route_gpx.ts';
+	import { downloadFile } from '#lib/routes/gpx.ts';
 	import {
 		buildFuelPlan,
 		DEFAULT_CARBS_PER_HOUR_G,
 		DEFAULT_FLUID_PER_HOUR_ML,
 		HEAT_FLUID_FACTOR
-	} from '$lib/routes/fuel_plan';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { loadSettings, effective } from '$lib/settings/settings';
-	import { fetchElevations } from '$lib/routes/elevation';
-	import { fmtSplitTime } from '$lib/runs/race_day';
-	import { formatDistance, formatElevation, formatPace } from '$lib/format/units.svelte';
+	} from '#lib/routes/fuel_plan.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { loadSettings, effective } from '#lib/settings/settings.ts';
+	import { fetchElevations } from '#lib/routes/elevation.ts';
+	import { fmtSplitTime } from '#lib/runs/race_day.ts';
+	import { formatDistance, formatElevation, formatPace } from '#lib/format/units.svelte.ts';
 
 	let { data }: { data: { id: string } } = $props();
 
@@ -85,7 +85,7 @@
 	}
 
 	// ---- URL-backed controls (shareable) ----
-	const params = $derived($page.url.searchParams);
+	const params = $derived(page.url.searchParams);
 
 	let goalSeconds = $derived.by(() => {
 		// The `goal` param is raw seconds (the input below converts H:MM:SS → s).
@@ -122,10 +122,10 @@
 	});
 
 	function updateParam(key: string, value: string | null) {
-		const url = new URL($page.url);
+		const url = new URL(page.url.href);
 		if (value == null || value === '') url.searchParams.delete(key);
 		else url.searchParams.set(key, value);
-		goto(`${url.pathname}${url.search}`, { replaceState: true, keepFocus: true, noScroll: true });
+		goto(`${url.pathname}${url.search}`, { replace: true, reset: false });
 	}
 
 	// ---- roadbook computation ----

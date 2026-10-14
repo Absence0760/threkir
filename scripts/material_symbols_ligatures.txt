@@ -1972,7 +1972,6 @@ imagesmode
 immunology
 import_contacts
 import_export
-import_spark
 important_devices
 in_home_mode
 inactive_order
@@ -2244,10 +2243,14 @@ login
 logo_dev
 logout
 looks
+looks_0
 looks_3
 looks_4
 looks_5
 looks_6
+looks_7
+looks_8
+looks_9
 looks_one
 looks_two
 loop
@@ -2306,7 +2309,6 @@ markdown_convert
 markdown_copy
 markdown_document
 markdown_paste
-markdown_spark
 markunread
 markunread_mailbox
 masked_transitions

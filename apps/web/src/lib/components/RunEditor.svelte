@@ -1,17 +1,17 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { createManualRun, fetchRoutes } from '$lib/core/data';
-	import { loadSettings, effective } from '$lib/settings/settings';
-	import { privacyDefaultToIsPublic } from '$lib/social/run_visibility';
-	import { supabase } from '$lib/core/supabase';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { getUnit } from '$lib/format/units.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { ACTIVITY_TYPES } from '$lib/runs/activity_type';
-	import { activityTypeLabel } from '$lib/runs/activity_type.svelte';
-	import type { ActivityType, Route } from '$lib/types';
-	import type { RouteListItem } from '$lib/routes/route_list_columns';
-	import { trackDirty } from '$lib/core/form_dirty';
+	import { audienceSharingEnabled, createManualRun, fetchRoutes } from '#lib/core/data.ts';
+	import { loadSettings, effective } from '#lib/settings/settings.ts';
+	import { audienceOf, privacyDefaultToAudience } from '#lib/social/run_visibility.ts';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { getUnit } from '#lib/format/units.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { ACTIVITY_TYPES } from '#lib/runs/activity_type.ts';
+	import { activityTypeLabel } from '#lib/runs/activity_type.svelte.ts';
+	import type { ActivityType, Route } from '#lib/types.ts';
+	import type { RouteListItem } from '#lib/routes/route_list_columns.ts';
+	import { trackDirty } from '#lib/core/form_dirty.ts';
 	import UnsavedChangesGuard from './UnsavedChangesGuard.svelte';
 
 	interface Props {
@@ -38,12 +38,17 @@
 	let routeId = $state('');
 	let routes = $state<RouteListItem[]>([]);
 	let submitting = $state(false);
-	// Seeded from the user's privacy_default on mount so the toggle reflects
+	// Seeded from the user's privacy_default on mount so the control reflects
 	// their standing preference; a per-run change overrides it for this run.
 	// `touched` guards against the async settings load (below) clobbering a
-	// choice the user made before it resolved.
-	let isPublic = $state(false);
+	// choice the user made before it resolved. While audience sharing is off
+	// the control is the old public checkbox, and a `followers` default still
+	// writes followers_only — the server stores that as owner-only until the
+	// feature is switched on (decisions § 1875).
+	type RunAudience = 'private' | 'followers' | 'public';
+	let audience = $state<RunAudience>('private');
 	let touched = $state(false);
+	let audienceSharingOn = $state(false);
 
 	const dirty = trackDirty(() => ({
 		unit,
@@ -54,7 +59,7 @@
 		activityType,
 		notes,
 		routeId,
-		isPublic,
+		audience,
 	}));
 
 	let distanceLabel = $derived(m('runEditor.distanceLabel', { unit }));
@@ -73,17 +78,22 @@
 			const { data: authData } = await supabase.auth.getUser();
 			const userId = authData.user?.id;
 			if (userId) {
-				const settings = await loadSettings(userId);
-				const seeded = privacyDefaultToIsPublic(
-					effective<string>(settings, 'privacy_default', 'followers')
-				);
+				const [settings, sharingOn] = await Promise.all([
+					loadSettings(userId),
+					audienceSharingEnabled(),
+				]);
+				audienceSharingOn = sharingOn;
+				const seeded = audienceOf(
+					privacyDefaultToAudience(effective<string>(settings, 'privacy_default', 'private')),
+					0,
+				) as RunAudience;
 				dirty.seed(() => {
-					if (!touched) isPublic = seeded;
+					if (!touched) audience = seeded;
 				});
 			}
 		} catch (_) {
 			dirty.seed(() => {
-				if (!touched) isPublic = false;
+				if (!touched) audience = 'private';
 			});
 		}
 		try {
@@ -114,7 +124,8 @@
 				activityType,
 				notes: notes.trim() || null,
 				routeId: routeId || null,
-				isPublic
+				isPublic: audience === 'public',
+				followersOnly: audience === 'followers'
 			});
 			showToast(m('runEditor.runAdded'), 'success');
 			dirty.rebaseline();
@@ -239,20 +250,40 @@
 		<span class="field-hint" id="run-notes-hint">{m('runEditor.notesHint')}</span>
 	</div>
 
-	<label class="field toggle-field">
-		<input
-			type="checkbox"
-			bind:checked={isPublic}
-			onchange={() => (touched = true)}
-			class="toggle-input"
-		/>
-		<span>
-			<span class="field-label toggle-label">{m('runEditor.makePublic')}</span>
-			<span class="field-hint">
-				{m('runEditor.makePublicHint')}
+	{#if audienceSharingOn}
+		<label class="field">
+			<span class="field-label">{m('audience.title')}</span>
+			<select
+				bind:value={audience}
+				onchange={() => (touched = true)}
+				aria-describedby="run-audience-hint"
+				data-testid="run-editor-audience"
+			>
+				<option value="private">{m('audience.levelPrivate')}</option>
+				<option value="followers">{m('audience.levelFollowers')}</option>
+				<option value="public">{m('audience.levelPublic')}</option>
+			</select>
+			<span class="field-hint" id="run-audience-hint">{m('runEditor.audienceHint')}</span>
+		</label>
+	{:else}
+		<label class="field toggle-field">
+			<input
+				type="checkbox"
+				checked={audience === 'public'}
+				onchange={(e) => {
+					touched = true;
+					audience = e.currentTarget.checked ? 'public' : 'private';
+				}}
+				class="toggle-input"
+			/>
+			<span>
+				<span class="field-label toggle-label">{m('runEditor.makePublic')}</span>
+				<span class="field-hint">
+					{m('runEditor.makePublicHint')}
+				</span>
 			</span>
-		</span>
-	</label>
+		</label>
+	{/if}
 
 	<div class="actions">
 		{#if oncancel}

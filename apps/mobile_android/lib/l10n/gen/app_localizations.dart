@@ -128,7 +128,7 @@ abstract class AppLocalizations {
   /// Instruction text above the invite-code field
   ///
   /// In en, this message translates to:
-  /// **'Paste the invite code your club admin shared with you.'**
+  /// **'Paste the invite link or code your club admin shared with you.'**
   String get clubInviteIntro;
 
   /// Text field label for the club invite code
@@ -142,6 +142,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Join'**
   String get clubInviteJoinButton;
+
+  /// Title of the dialog asking for a club's activity-risk acknowledgement before joining
+  ///
+  /// In en, this message translates to:
+  /// **'One thing before you join'**
+  String get clubWaiverTitle;
+
+  /// Body of the activity-risk acknowledgement dialog
+  ///
+  /// In en, this message translates to:
+  /// **'This club asks every member to acknowledge the physical risks of running together before joining.'**
+  String get clubWaiverBody;
+
+  /// Checkbox label: the member acknowledges the physical risk of group running (same text as web clubHome.waiverAck)
+  ///
+  /// In en, this message translates to:
+  /// **'I understand the physical risks of group running and join at my own risk.'**
+  String get clubWaiverAck;
+
+  /// Dialog button that records the acknowledgement and joins the club; enabled only once the box is ticked
+  ///
+  /// In en, this message translates to:
+  /// **'Accept and join'**
+  String get clubWaiverAccept;
 
   /// First line of the shared year-in-running recap summary
   ///
@@ -692,7 +716,7 @@ abstract class AppLocalizations {
   /// Android body copy explaining what is imported from Health Connect and the no-track caveat
   ///
   /// In en, this message translates to:
-  /// **'Reads workout summaries (date, distance, duration, type) from the last year. GPS routes are not exposed by Health Connect — runs imported this way won\'t have a map trace.'**
+  /// **'Reads workout summaries (date, distance, duration, type) from the last year. A workout\'s GPS map comes too when Health Connect lets Threkir read it; if it holds some back, you can allow map access after the import.'**
   String get importHealthDescriptionAndroid;
 
   /// Offer shown after a Health Connect import found routes it was refused
@@ -7666,6 +7690,30 @@ abstract class AppLocalizations {
   /// **'An event occurrence you RSVP\'d to was cancelled'**
   String get profileNotifEventCancel;
 
+  /// Notification text for a cancelled event occurrence the recipient had paid for, when the event title is known. The refund has been issued, not necessarily received, so say it is being refunded.
+  ///
+  /// In en, this message translates to:
+  /// **'An occurrence of \"{title}\" was cancelled — your payment is being refunded'**
+  String profileNotifEventCancelRefundedTitled(String title);
+
+  /// Notification text for a cancelled event occurrence the recipient had paid for, when the title is unavailable. The refund has been issued, not necessarily received.
+  ///
+  /// In en, this message translates to:
+  /// **'An event occurrence you paid for was cancelled — your payment is being refunded'**
+  String get profileNotifEventCancelRefunded;
+
+  /// Notification text when a place has opened in a paid event the recipient is waitlisted for and is being held for them until a deadline (event title known). They must pay to claim it; nothing has been charged.
+  ///
+  /// In en, this message translates to:
+  /// **'A place opened in \"{title}\" and is held for you — pay to claim it'**
+  String profileNotifWaitlistSlotTitled(String title);
+
+  /// Notification text when a place has opened in a paid event the recipient is waitlisted for and is being held for them, when the title is unavailable. They must pay to claim it.
+  ///
+  /// In en, this message translates to:
+  /// **'A place opened in an event you\'re waitlisted for and is held for you — pay to claim it'**
+  String get profileNotifWaitlistSlot;
+
   /// Notification text for an upcoming event reminder, when the event title is known
   ///
   /// In en, this message translates to:
@@ -11304,7 +11352,7 @@ abstract class AppLocalizations {
   /// Subtitle of the Import tile
   ///
   /// In en, this message translates to:
-  /// **'Strava, GPX, TCX'**
+  /// **'Strava export, health app, CSV or backup'**
   String get settingsAccountImportSubtitle;
 
   /// Tile title for the queued server-built GDPR Art 20 export
@@ -24152,6 +24200,1128 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Add a run'**
   String get dashboardLeadAddRun;
+
+  /// Title of the sheet shown when a runner presses Stop during a live race; the recording is paused, not stopped
+  ///
+  /// In en, this message translates to:
+  /// **'Race paused'**
+  String get runRaceStopTitle;
+
+  /// Body of the race-stop sheet: the gun clock keeps running while paused
+  ///
+  /// In en, this message translates to:
+  /// **'The race clock keeps running. Resume to carry on, or finish the race now.'**
+  String get runRaceStopBody;
+
+  /// Extra line on the race-stop sheet when the runner has covered less than 90% of the course
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve covered less than 90% of the course, so finishing now records a DNF.'**
+  String get runRaceStopBodyDnf;
+
+  /// Race-stop sheet action that resumes the paused race recording
+  ///
+  /// In en, this message translates to:
+  /// **'Resume race'**
+  String get runRaceResume;
+
+  /// Race-stop sheet action that ends the race recording and records a finish
+  ///
+  /// In en, this message translates to:
+  /// **'Finish race'**
+  String get runRaceFinish;
+
+  /// Race-stop sheet action when the runner has covered under 90%: ends the race recording and records a DNF
+  ///
+  /// In en, this message translates to:
+  /// **'Finish as DNF'**
+  String get runRaceFinishDnf;
+
+  /// Banner when the runner reaches the finish line and the race recording stops automatically
+  ///
+  /// In en, this message translates to:
+  /// **'Finished! Gun time {time}'**
+  String runRaceFinishedAuto(String time);
+
+  /// Banner when a race finish is recorded but no gun time is known
+  ///
+  /// In en, this message translates to:
+  /// **'Race finish recorded'**
+  String get runRaceFinishRecorded;
+
+  /// Banner when the race host ends the race before this runner finished
+  ///
+  /// In en, this message translates to:
+  /// **'The host ended the race. Your run keeps recording, but no result will be submitted.'**
+  String get runRaceEnded;
+
+  /// Banner when the runner started recording more than 5 minutes after GO or more than 200 m from the course start
+  ///
+  /// In en, this message translates to:
+  /// **'Late start: you began more than 5 minutes after GO or away from the start line.'**
+  String get runRaceLateStart;
+
+  /// Section label above the list of courses a race event offers
+  ///
+  /// In en, this message translates to:
+  /// **'Courses'**
+  String get eventCoursesTitle;
+
+  /// Title of the course picker shown when RSVPing to a race with more than one course, and the button that opens it
+  ///
+  /// In en, this message translates to:
+  /// **'Pick your course'**
+  String get eventCoursePickTitle;
+
+  /// Button that lets a racer who already RSVPed pick a different course
+  ///
+  /// In en, this message translates to:
+  /// **'Change course'**
+  String get eventChangeCourse;
+
+  /// Marker on the course the viewer picked at RSVP
+  ///
+  /// In en, this message translates to:
+  /// **'Your course'**
+  String get eventYourCourse;
+
+  /// Banner when saving the racer's course pick fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save your course. Try again.'**
+  String get eventCourseChangeFailed;
+
+  /// Secondary time on a race result row: the runner's own start-to-finish time, beside the gun time
+  ///
+  /// In en, this message translates to:
+  /// **'Chip {time}'**
+  String eventResultChipTime(String time);
+
+  /// Group heading for race results not tied to any of the event's courses
+  ///
+  /// In en, this message translates to:
+  /// **'Other results'**
+  String get eventResultsOtherCourse;
+
+  /// Badge on a race result the runner recorded by pressing Finish race
+  ///
+  /// In en, this message translates to:
+  /// **'Manual'**
+  String get eventFinishMethodManual;
+
+  /// Badge on a race result the race host recorded
+  ///
+  /// In en, this message translates to:
+  /// **'Host'**
+  String get eventFinishMethodHost;
+
+  /// Help screen title and Settings row label
+  ///
+  /// In en, this message translates to:
+  /// **'Help'**
+  String get helpTitle;
+
+  /// Subtitle of the Help row in Settings
+  ///
+  /// In en, this message translates to:
+  /// **'How races, classes, clubs and the app work'**
+  String get helpSettingsSubtitle;
+
+  /// Hint in the Help search field
+  ///
+  /// In en, this message translates to:
+  /// **'Search help'**
+  String get helpSearchHint;
+
+  /// Tooltip of the button clearing the Help search
+  ///
+  /// In en, this message translates to:
+  /// **'Clear search'**
+  String get helpSearchClear;
+
+  /// Label above the Help audience filter chips
+  ///
+  /// In en, this message translates to:
+  /// **'Show guides for'**
+  String get helpAudienceLabel;
+
+  /// Help audience filter chip: no filter
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get helpAudienceAll;
+
+  /// Help audience filter chip
+  ///
+  /// In en, this message translates to:
+  /// **'Runners'**
+  String get helpAudienceRunner;
+
+  /// Help audience filter chip: people who organise events
+  ///
+  /// In en, this message translates to:
+  /// **'Organisers'**
+  String get helpAudienceOrganiser;
+
+  /// Help audience filter chip: people taking part in an event
+  ///
+  /// In en, this message translates to:
+  /// **'Participants'**
+  String get helpAudienceParticipant;
+
+  /// Help audience filter chip: people following someone live
+  ///
+  /// In en, this message translates to:
+  /// **'Spectators'**
+  String get helpAudienceSpectator;
+
+  /// Help audience filter chip: class instructors
+  ///
+  /// In en, this message translates to:
+  /// **'Instructors'**
+  String get helpAudienceInstructor;
+
+  /// Help audience filter chip: club administrators
+  ///
+  /// In en, this message translates to:
+  /// **'Club admins'**
+  String get helpAudienceClubAdmin;
+
+  /// Help category heading
+  ///
+  /// In en, this message translates to:
+  /// **'Races'**
+  String get helpCategoryRaces;
+
+  /// Help category heading
+  ///
+  /// In en, this message translates to:
+  /// **'Paid classes'**
+  String get helpCategoryPaidClasses;
+
+  /// Help category heading
+  ///
+  /// In en, this message translates to:
+  /// **'Instructors'**
+  String get helpCategoryInstructors;
+
+  /// Help category heading
+  ///
+  /// In en, this message translates to:
+  /// **'Clubs'**
+  String get helpCategoryClubs;
+
+  /// Help category heading
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get helpCategoryRunning;
+
+  /// Help category heading
+  ///
+  /// In en, this message translates to:
+  /// **'Account'**
+  String get helpCategoryAccount;
+
+  /// Help category heading for guides in a category this app version does not know
+  ///
+  /// In en, this message translates to:
+  /// **'More guides'**
+  String get helpCategoryOther;
+
+  /// Chip on a guide whose feature needs a Pro subscription
+  ///
+  /// In en, this message translates to:
+  /// **'Needs Pro'**
+  String get helpRequiresPro;
+
+  /// Chip on a guide whose feature is for club admins only
+  ///
+  /// In en, this message translates to:
+  /// **'Club admins only'**
+  String get helpRequiresClubAdmin;
+
+  /// Chip on a guide whose feature is for race directors only
+  ///
+  /// In en, this message translates to:
+  /// **'Race directors only'**
+  String get helpRequiresRaceDirector;
+
+  /// Chip on a guide whose feature needs the host's Stripe account connected
+  ///
+  /// In en, this message translates to:
+  /// **'Needs Stripe connected'**
+  String get helpRequiresStripeConnected;
+
+  /// Chip on a guide whose feature needs paid registration switched on
+  ///
+  /// In en, this message translates to:
+  /// **'Needs paid registration on'**
+  String get helpRequiresPaidRailLive;
+
+  /// Label before the platform chips on a guide
+  ///
+  /// In en, this message translates to:
+  /// **'Works on'**
+  String get helpPlatformsLabel;
+
+  /// Platform chip on a guide: the website
+  ///
+  /// In en, this message translates to:
+  /// **'Web'**
+  String get helpPlatformWeb;
+
+  /// Platform chip on a guide
+  ///
+  /// In en, this message translates to:
+  /// **'Android'**
+  String get helpPlatformAndroid;
+
+  /// Platform chip on a guide: the iPhone app
+  ///
+  /// In en, this message translates to:
+  /// **'iPhone'**
+  String get helpPlatformIos;
+
+  /// Platform chip on a guide: the Wear OS watch app
+  ///
+  /// In en, this message translates to:
+  /// **'Wear OS'**
+  String get helpPlatformWear;
+
+  /// Platform chip on a guide: the Apple Watch app
+  ///
+  /// In en, this message translates to:
+  /// **'Apple Watch'**
+  String get helpPlatformAppleWatch;
+
+  /// Label of a tip note inside a guide
+  ///
+  /// In en, this message translates to:
+  /// **'Tip'**
+  String get helpNoteTip;
+
+  /// Label of a caution note inside a guide
+  ///
+  /// In en, this message translates to:
+  /// **'Caution'**
+  String get helpNoteCaution;
+
+  /// Heading above links to related guides
+  ///
+  /// In en, this message translates to:
+  /// **'Related guides'**
+  String get helpRelated;
+
+  /// Heading above Help search results
+  ///
+  /// In en, this message translates to:
+  /// **'Results'**
+  String get helpResultsHeader;
+
+  /// Empty state when a Help search finds nothing
+  ///
+  /// In en, this message translates to:
+  /// **'No matching guides'**
+  String get helpNoResultsTitle;
+
+  /// Body of the empty Help search state
+  ///
+  /// In en, this message translates to:
+  /// **'Try another word, or show guides for all.'**
+  String get helpNoResultsBody;
+
+  /// Loading label while the Help guides load
+  ///
+  /// In en, this message translates to:
+  /// **'Loading guides'**
+  String get helpLoading;
+
+  /// Shown when the Help guides cannot be loaded
+  ///
+  /// In en, this message translates to:
+  /// **'Help guides could not be loaded.'**
+  String get helpUnavailable;
+
+  /// Shown when a linked guide does not exist
+  ///
+  /// In en, this message translates to:
+  /// **'This guide is not available.'**
+  String get helpGuideMissing;
+
+  /// Note under a help guide's summary, shown only when the guide has no translation in the app language and its English text is shown instead
+  ///
+  /// In en, this message translates to:
+  /// **'This guide has not been translated into your language yet, so it is shown in English.'**
+  String get helpGuideInEnglish;
+
+  /// Button and tooltip opening the guides about the current screen
+  ///
+  /// In en, this message translates to:
+  /// **'How this works'**
+  String get helpHowThisWorks;
+
+  /// Heading above the guides about the screen Help was opened from
+  ///
+  /// In en, this message translates to:
+  /// **'Guides for this screen'**
+  String get helpForThisScreen;
+
+  /// Row opening the full Help guide list
+  ///
+  /// In en, this message translates to:
+  /// **'Browse all guides'**
+  String get helpBrowseAll;
+
+  /// Screen-reader label for a numbered step in a guide
+  ///
+  /// In en, this message translates to:
+  /// **'Step {n}'**
+  String helpStepLabel(int n);
+
+  /// Action in an info dialog opening the full guide
+  ///
+  /// In en, this message translates to:
+  /// **'Read the guide'**
+  String get infoTipReadGuide;
+
+  /// End-race confirmation when some racers who started have no result and End will mark them DNF
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{End the race? {count} racer who started has no result and will be marked DNF. This can\'t be undone.} other{End the race? {count} racers who started have no result and will be marked DNF. This can\'t be undone.}}'**
+  String eventRaceEndConfirmBodyDnf(int count);
+
+  /// Pill on a race result the race director has not approved yet; it holds no place
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get eventResultPending;
+
+  /// Tooltip / screen-reader label of a race director's per-result actions menu
+  ///
+  /// In en, this message translates to:
+  /// **'Result actions for {name}'**
+  String eventResultActions(String name);
+
+  /// Race director action publishing a pending result
+  ///
+  /// In en, this message translates to:
+  /// **'Approve'**
+  String get eventResultApprove;
+
+  /// Race director action putting an approved result back into pending
+  ///
+  /// In en, this message translates to:
+  /// **'Unverify'**
+  String get eventResultUnverify;
+
+  /// Race director action opening the result edit dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get eventResultEdit;
+
+  /// Title of the race director's result edit dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Edit result: {name}'**
+  String eventResultEditTitle(String name);
+
+  /// Explanation in the result edit dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Your edit replaces this time on the leaderboard and is marked as host edited.'**
+  String get eventResultEditHelp;
+
+  /// Label of the finish time field in the result edit dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Time (h:mm:ss)'**
+  String get eventResultEditTime;
+
+  /// Label of the status picker in the result edit dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get eventResultEditStatus;
+
+  /// Result status option: finished
+  ///
+  /// In en, this message translates to:
+  /// **'Finished'**
+  String get eventResultStatusFinished;
+
+  /// Result status option: did not finish
+  ///
+  /// In en, this message translates to:
+  /// **'DNF'**
+  String get eventResultStatusDnf;
+
+  /// Result status option: did not start
+  ///
+  /// In en, this message translates to:
+  /// **'DNS'**
+  String get eventResultStatusDns;
+
+  /// Save button of the result edit dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Save result'**
+  String get eventResultEditSave;
+
+  /// Error under the time field when a finished result has no valid time
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a finish time like 42:10 or 1:02:03.'**
+  String get eventResultEditTimeInvalid;
+
+  /// Banner when approving, unverifying or editing a result fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t update the result: {error}'**
+  String eventResultActionFailed(String error);
+
+  /// Organiser action calling off the selected occurrence of a recurring event
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel this occurrence'**
+  String get eventCancelOccurrence;
+
+  /// Organiser action calling off a one-off event
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel event'**
+  String get eventCancelEvent;
+
+  /// Organiser action ending a recurring event and calling off every upcoming occurrence
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel the whole series'**
+  String get eventCancelSeries;
+
+  /// Confirmation body when cancelling one occurrence of a series
+  ///
+  /// In en, this message translates to:
+  /// **'Only this occurrence is called off — the rest of the series is unaffected. Everyone who RSVP\'d to it (going, maybe, or waitlisted) is notified.'**
+  String get eventCancelOccurrenceBody;
+
+  /// Confirmation body when cancelling a one-off event
+  ///
+  /// In en, this message translates to:
+  /// **'The event is called off. Everyone who RSVP\'d (going, maybe, or waitlisted) is notified.'**
+  String get eventCancelEventBody;
+
+  /// Confirmation body when cancelling a whole series
+  ///
+  /// In en, this message translates to:
+  /// **'The series ends now and no later occurrences are scheduled. Every upcoming occurrence someone RSVP\'d to is called off, and they are notified.'**
+  String get eventCancelSeriesBody;
+
+  /// Confirmation note that a host cancel refunds everyone who paid
+  ///
+  /// In en, this message translates to:
+  /// **'Anyone who paid is refunded in full, whatever the refund policy says.'**
+  String get eventCancelPaidNote;
+
+  /// Label of the optional cancel reason field
+  ///
+  /// In en, this message translates to:
+  /// **'Reason (optional)'**
+  String get eventCancelReasonLabel;
+
+  /// Dismiss the cancel confirmation without cancelling
+  ///
+  /// In en, this message translates to:
+  /// **'Keep it'**
+  String get eventCancelKeep;
+
+  /// Banner after a host cancel started refunds
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Cancelled. 1 registrant is being refunded in full.} other{Cancelled. {count} registrants are being refunded in full.}}'**
+  String eventCancelRefundsStarted(int count);
+
+  /// Banner after a host cancel where some refunds could not be started
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled, but {count, plural, one{1 refund couldn\'t be started. Retry it} other{{count} refunds couldn\'t be started. Retry them}} from the event on the web.'**
+  String eventCancelRefundsIncomplete(int count);
+
+  /// Banner after a host cancelled an occurrence or event with no refunds involved
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled.'**
+  String get eventCancelledToast;
+
+  /// Banner after a host cancelled a whole series with no refunds involved
+  ///
+  /// In en, this message translates to:
+  /// **'Series cancelled.'**
+  String get eventSeriesCancelledToast;
+
+  /// Error when a paid cancel cannot run because payments are unavailable
+  ///
+  /// In en, this message translates to:
+  /// **'There are paid registrations and payments aren\'t available right now, so this can\'t be cancelled yet. Nothing has changed.'**
+  String get eventCancelNotConfigured;
+
+  /// Error when the viewer may not cancel
+  ///
+  /// In en, this message translates to:
+  /// **'Only an organiser of this club can cancel an occurrence.'**
+  String get eventCancelNotOrganiser;
+
+  /// Generic cancel failure
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t cancel. Please try again.'**
+  String get eventCancelFailed;
+
+  /// Organiser action putting a cancelled occurrence back
+  ///
+  /// In en, this message translates to:
+  /// **'Reinstate this occurrence'**
+  String get eventReinstateOccurrence;
+
+  /// Organiser action putting a cancelled one-off event back
+  ///
+  /// In en, this message translates to:
+  /// **'Reinstate this event'**
+  String get eventReinstateEvent;
+
+  /// Error when reinstating fails
+  ///
+  /// In en, this message translates to:
+  /// **'Could not reinstate this occurrence'**
+  String get eventReinstateFailed;
+
+  /// Banner on a cancelled one-off event
+  ///
+  /// In en, this message translates to:
+  /// **'This event was cancelled.'**
+  String get eventEventCancelled;
+
+  /// Banner on a series its organiser cancelled
+  ///
+  /// In en, this message translates to:
+  /// **'This series was cancelled.'**
+  String get eventSeriesWasCancelled;
+
+  /// A waitlist seat is held for the viewer until the given time
+  ///
+  /// In en, this message translates to:
+  /// **'A place is held for you until {time}. Pay to claim it, or it goes to the next person on the waitlist.'**
+  String eventWaitlistOfferHeld(String time);
+
+  /// The held seat is paid for on the web
+  ///
+  /// In en, this message translates to:
+  /// **'Payment happens on the web.'**
+  String get eventWaitlistOfferClaimHint;
+
+  /// Button opening the event on the web to pay for the held seat
+  ///
+  /// In en, this message translates to:
+  /// **'Claim on the web'**
+  String get eventWaitlistOfferClaim;
+
+  /// Event form capacity field label
+  ///
+  /// In en, this message translates to:
+  /// **'Capacity'**
+  String get eventFormCapacity;
+
+  /// Event form capacity helper text
+  ///
+  /// In en, this message translates to:
+  /// **'Once this many people are going, the next person to say yes joins a waitlist instead of being turned away. Leave it empty for no limit.'**
+  String get eventFormCapacityHint;
+
+  /// Event form capacity validation error
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a whole number of 1 or more, or leave it empty.'**
+  String get eventFormErrCapacity;
+
+  /// Event form label of the optional series end date
+  ///
+  /// In en, this message translates to:
+  /// **'Ends on'**
+  String get eventFormEndsOn;
+
+  /// Shown when no series end date is set
+  ///
+  /// In en, this message translates to:
+  /// **'No end date'**
+  String get eventFormEndsOnNone;
+
+  /// Tooltip clearing the series end date
+  ///
+  /// In en, this message translates to:
+  /// **'Clear end date'**
+  String get eventFormEndsOnClear;
+
+  /// Event form label of the optional occurrence count
+  ///
+  /// In en, this message translates to:
+  /// **'End after'**
+  String get eventFormEndAfter;
+
+  /// Helper text explaining the series end fields
+  ///
+  /// In en, this message translates to:
+  /// **'Where the series stops. Set either, or both — whichever comes first wins. Leave both empty and it keeps repeating.'**
+  String get eventFormRepeatEndHint;
+
+  /// Event form occurrence count validation error
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a whole number from 1 to 520, or leave it empty.'**
+  String get eventFormErrCount;
+
+  /// Event form session plan picker label
+  ///
+  /// In en, this message translates to:
+  /// **'Session plan'**
+  String get eventFormSessionPlan;
+
+  /// Session plan picker option for no plan
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get eventFormSessionPlanNone;
+
+  /// Helper text when the host has no session plans
+  ///
+  /// In en, this message translates to:
+  /// **'No session plans yet. Build one on the web.'**
+  String get eventFormSessionPlanEmpty;
+
+  /// Event form toggle to charge for the event
+  ///
+  /// In en, this message translates to:
+  /// **'Charge for this event'**
+  String get eventFormCharge;
+
+  /// Helper text of the charge toggle
+  ///
+  /// In en, this message translates to:
+  /// **'Takes a fee at registration. The money settles into your own payout account rather than the club\'s, and only an in-person event can charge.'**
+  String get eventFormChargeHint;
+
+  /// Shown when the host cannot take payments yet
+  ///
+  /// In en, this message translates to:
+  /// **'Set up payouts on the web to charge for events.'**
+  String get eventFormChargeNeedsPayout;
+
+  /// Event form price field label
+  ///
+  /// In en, this message translates to:
+  /// **'Price'**
+  String get eventFormPrice;
+
+  /// Event form currency field label
+  ///
+  /// In en, this message translates to:
+  /// **'Currency'**
+  String get eventFormCurrency;
+
+  /// Event form price validation error
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a price of at least 0.50.'**
+  String get eventFormErrPrice;
+
+  /// Event form currency validation error
+  ///
+  /// In en, this message translates to:
+  /// **'Use a three-letter currency code, like USD.'**
+  String get eventFormErrCurrency;
+
+  /// Event form sales close field label
+  ///
+  /// In en, this message translates to:
+  /// **'Stop sales (minutes before start)'**
+  String get eventFormSalesClose;
+
+  /// Helper text of the sales close field
+  ///
+  /// In en, this message translates to:
+  /// **'How long before the start registration shuts. Zero keeps it open right up to the start time.'**
+  String get eventFormSalesCloseHint;
+
+  /// Event form sales close validation error
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a whole number of minutes from 0 to 10080.'**
+  String get eventFormErrSalesClose;
+
+  /// Event form refund policy picker label
+  ///
+  /// In en, this message translates to:
+  /// **'Refund policy'**
+  String get eventFormRefundPolicy;
+
+  /// Refund policy: full refund until the start
+  ///
+  /// In en, this message translates to:
+  /// **'Full refund until start time'**
+  String get eventFormRefundFullUntilStart;
+
+  /// Refund policy: full refund until 24 hours before
+  ///
+  /// In en, this message translates to:
+  /// **'Full refund until 24h before'**
+  String get eventFormRefundFullUntil24h;
+
+  /// Refund policy: no refunds
+  ///
+  /// In en, this message translates to:
+  /// **'No refunds'**
+  String get eventFormRefundNone;
+
+  /// Banner when the event was created but its price was not saved
+  ///
+  /// In en, this message translates to:
+  /// **'Event created, but saving the price failed. Set the price from the event on the web.'**
+  String get eventFormPricingFailed;
+
+  /// Banner when the event was created but its session plan was not attached
+  ///
+  /// In en, this message translates to:
+  /// **'Event created, but the session plan couldn\'t be attached. Attach it from the event page.'**
+  String get eventFormSessionPlanFailed;
+
+  /// Label of the event form's picker for a club gym routine template to attach to a class
+  ///
+  /// In en, this message translates to:
+  /// **'Gym routine'**
+  String get eventFormGymRoutine;
+
+  /// Gym routine picker option for a class with no routine attached
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get eventFormGymRoutineNone;
+
+  /// Helper text under the gym routine picker on the event form
+  ///
+  /// In en, this message translates to:
+  /// **'One of this club\'s routine templates. Attendees log the class pre-filled from it. A class carries a routine or a session plan, not both.'**
+  String get eventFormGymRoutineHint;
+
+  /// Helper text under the gym routine picker when the club has no routine templates
+  ///
+  /// In en, this message translates to:
+  /// **'This club has no routine templates yet. Publish a routine to the club first.'**
+  String get eventFormGymRoutineEmpty;
+
+  /// Banner when the event was created but its gym routine was not attached
+  ///
+  /// In en, this message translates to:
+  /// **'Event created, but the routine couldn\'t be attached. Attach it from the event page.'**
+  String get eventFormGymRoutineFailed;
+
+  /// Heading of the class routine card on the event page
+  ///
+  /// In en, this message translates to:
+  /// **'Class routine'**
+  String get clubEventGymRoutineTitle;
+
+  /// Organiser's button on the class routine card that opens the routine picker, and that sheet's title
+  ///
+  /// In en, this message translates to:
+  /// **'Attach a routine'**
+  String get clubEventGymRoutineAttach;
+
+  /// Class routine card line when no readable routine is attached (organiser only)
+  ///
+  /// In en, this message translates to:
+  /// **'No routine attached.'**
+  String get clubEventGymRoutineNone;
+
+  /// Planned set count beside an exercise on the class routine card
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 set} other{{count} sets}}'**
+  String clubEventGymRoutineSets(int count);
+
+  /// Save button of the class routine attach sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get clubEventGymRoutineSave;
+
+  /// Banner after the organiser attaches, changes or clears the class routine
+  ///
+  /// In en, this message translates to:
+  /// **'Class routine updated.'**
+  String get clubEventGymRoutineSaved;
+
+  /// Banner when attaching, changing or clearing the class routine failed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t update the class routine.'**
+  String get clubEventGymRoutineSaveFailed;
+
+  /// Note in the routine attach sheet when the class already carries a session plan
+  ///
+  /// In en, this message translates to:
+  /// **'Attaching a routine removes the session plan — a class carries one or the other.'**
+  String get clubEventGymRoutineReplacesPlan;
+
+  /// Heading of the session sequence card on a class event page
+  ///
+  /// In en, this message translates to:
+  /// **'Session sequence'**
+  String get clubEventSessionPlanTitle;
+
+  /// Organiser's button on the session sequence card that opens the session plan picker, and that sheet's title
+  ///
+  /// In en, this message translates to:
+  /// **'Attach to a class event'**
+  String get clubEventSessionPlanAttach;
+
+  /// Save button of the session plan attach sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get clubEventSessionPlanSave;
+
+  /// Banner after the organiser attaches, changes or clears the class session plan
+  ///
+  /// In en, this message translates to:
+  /// **'Session plan updated.'**
+  String get clubEventSessionPlanSaved;
+
+  /// Banner when attaching, changing or clearing the class session plan failed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t update the session plan.'**
+  String get clubEventSessionPlanSaveFailed;
+
+  /// Note in the session plan attach sheet when the class already carries a gym routine
+  ///
+  /// In en, this message translates to:
+  /// **'Attaching a session plan removes the gym routine — a class carries one or the other.'**
+  String get clubEventSessionPlanReplacesRoutine;
+
+  /// Title of the sheet where the owner chooses who can see a run or route
+  ///
+  /// In en, this message translates to:
+  /// **'Who can see this'**
+  String get audienceTitle;
+
+  /// Audience level: only the owner
+  ///
+  /// In en, this message translates to:
+  /// **'Only me'**
+  String get audienceLevelPrivate;
+
+  /// Hint under the Only me level
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody else can open it.'**
+  String get audienceLevelPrivateHint;
+
+  /// Audience level: the owner's followers
+  ///
+  /// In en, this message translates to:
+  /// **'Followers'**
+  String get audienceLevelFollowers;
+
+  /// Hint under the Followers level
+  ///
+  /// In en, this message translates to:
+  /// **'People who follow you can open it from a link. It stays out of feeds, notifications and search.'**
+  String get audienceLevelFollowersHint;
+
+  /// Audience level: people the owner picks
+  ///
+  /// In en, this message translates to:
+  /// **'Specific people'**
+  String get audienceLevelSpecific;
+
+  /// Hint under the Specific people level
+  ///
+  /// In en, this message translates to:
+  /// **'Only the people you pick can open it. You can stop sharing with anyone at any time.'**
+  String get audienceLevelSpecificHint;
+
+  /// Audience level: anyone with the link
+  ///
+  /// In en, this message translates to:
+  /// **'Public'**
+  String get audienceLevelPublic;
+
+  /// Hint under the Public level
+  ///
+  /// In en, this message translates to:
+  /// **'Anyone with the link can open it, and it can appear in feeds and search.'**
+  String get audienceLevelPublicHint;
+
+  /// Note that every non-owner sees the map with privacy zones trimmed
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone but you sees the map with your privacy zones trimmed off.'**
+  String get audienceClipNote;
+
+  /// Heading over the list of people a run or route is shared with
+  ///
+  /// In en, this message translates to:
+  /// **'Shared with'**
+  String get audienceSharedWith;
+
+  /// Empty state of the shared-with list
+  ///
+  /// In en, this message translates to:
+  /// **'Not shared with anyone yet.'**
+  String get audienceSharedWithNobody;
+
+  /// Tooltip / accessible label of the button that stops sharing with one person
+  ///
+  /// In en, this message translates to:
+  /// **'Stop sharing with {name}'**
+  String audienceRevokeTooltip(String name);
+
+  /// Banner after the owner stops sharing with one person
+  ///
+  /// In en, this message translates to:
+  /// **'{name} can no longer open it.'**
+  String audienceRevoked(String name);
+
+  /// Banner when stopping a share fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t stop sharing: {error}'**
+  String audienceRevokeFailed(String error);
+
+  /// Heading over the list of people the owner can share with
+  ///
+  /// In en, this message translates to:
+  /// **'Add people'**
+  String get audienceAddPeople;
+
+  /// Hint text of the people search field
+  ///
+  /// In en, this message translates to:
+  /// **'Search people you follow or who follow you'**
+  String get audienceSearchHint;
+
+  /// Button that shares with one person
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get audienceShareAction;
+
+  /// Label shown instead of the share button for someone already shared with
+  ///
+  /// In en, this message translates to:
+  /// **'Shared'**
+  String get audienceAlreadyShared;
+
+  /// Banner after sharing with one person
+  ///
+  /// In en, this message translates to:
+  /// **'{name} can now open it.'**
+  String audienceShared(String name);
+
+  /// Banner when sharing with a person fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t share: {error}'**
+  String audienceShareFailed(String error);
+
+  /// Shown when the shared-with list cannot be loaded
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load who this is shared with.'**
+  String get audienceLoadFailed;
+
+  /// Shown when the people to share with cannot be loaded
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the people you can share with.'**
+  String get audiencePeopleLoadFailed;
+
+  /// Empty state when the owner has no followers or followees
+  ///
+  /// In en, this message translates to:
+  /// **'You can share with people you follow or who follow you, and you don\'t have any yet.'**
+  String get audienceNoPeople;
+
+  /// Empty state when the people search matches no one
+  ///
+  /// In en, this message translates to:
+  /// **'No one matches that name.'**
+  String get audienceNoMatches;
+
+  /// Retry button
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get audienceRetry;
+
+  /// Banner when changing the audience fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t change who can see this: {error}'**
+  String audienceUpdateFailed(String error);
+
+  /// Banner after the audience changed
+  ///
+  /// In en, this message translates to:
+  /// **'Updated who can see this.'**
+  String get audienceUpdated;
+
+  /// Title of the confirm before Only me revokes every share
+  ///
+  /// In en, this message translates to:
+  /// **'Stop sharing with everyone?'**
+  String get audienceRevokeAllTitle;
+
+  /// Body of the confirm before Only me revokes every share
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone you shared it with will no longer be able to open it.'**
+  String get audienceRevokeAllBody;
+
+  /// Confirm button that moves to Only me and revokes every share
+  ///
+  /// In en, this message translates to:
+  /// **'Only me'**
+  String get audienceRevokeAllConfirm;
+
+  /// Button that hands the in-app link (it opens only for the people who can see it) to the share sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Share link'**
+  String get audienceShareLink;
+
+  /// Marker on a run or route someone else shared with the viewer through their followers level or by name; it is not public
+  ///
+  /// In en, this message translates to:
+  /// **'Shared with you'**
+  String get audienceSharedWithYou;
+
+  /// Longer explanation of the Shared with you marker, read as its tooltip / screen-reader label
+  ///
+  /// In en, this message translates to:
+  /// **'Shared with you. It isn't public — only the people it's shared with can open it.'**
+  String get audienceSharedWithYouHint;
+
+  /// Anonymous handle shown to a live spectator who does not follow the runner: the first four characters of the runner's id
+  ///
+  /// In en, this message translates to:
+  /// **'Runner #{slug}'**
+  String liveRunnerHandle(String slug);
+
+  /// Anonymous handle for a live runner whose id is missing, so no four-character suffix can be shown
+  ///
+  /// In en, this message translates to:
+  /// **'Runner'**
+  String get liveRunnerAnonymous;
 }
 
 class _AppLocalizationsDelegate

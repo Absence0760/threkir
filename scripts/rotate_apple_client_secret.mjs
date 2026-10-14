@@ -22,7 +22,7 @@
 // every provider's secret. Failures name a status code and what to check.
 //
 // Usage: node scripts/rotate_apple_client_secret.mjs
-import { createHash, createPrivateKey, sign } from 'node:crypto';
+import { createHmac, createPrivateKey, sign } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 /** The Services ID the web flow presents to Apple; it is the JWT's `sub`. */
@@ -228,8 +228,8 @@ export async function rotate({
 		);
 	}
 
-	// The auth config is applied asynchronously: a read straight after the
-	// PATCH can still return the previous secret's digest, so poll.
+	// A read straight after the PATCH can still return the previous secret's
+	// digest, so poll rather than judge the first read.
 	const previous = config.external_apple_secret;
 	/** @type {unknown} */
 	let readBack;
@@ -240,7 +240,7 @@ export async function rotate({
 			throw new Error(`The write returned success, but reading it back failed with HTTP ${after.status}, so the rotation is unconfirmed.`);
 		}
 		readBack = (/** @type {Record<string, unknown>} */ (await after.json())).external_apple_secret;
-		if (holdsSecret(readBack, jwt)) return { expiresAtS };
+		if (holdsSecret(readBack, jwt, ref)) return { expiresAtS };
 	}
 	const waitedS = Math.round(((readBackAttempts - 1) * readBackDelayMs) / 1000);
 	const verdict =
@@ -253,16 +253,34 @@ export async function rotate({
 }
 
 /**
- * The Management API reads a secret setting back as its SHA-256 hex digest
- * rather than the value (the same form `supabase secrets list` prints), so the
- * read-back proves the write when it is either the value or that digest.
+ * The Management API never returns a secret auth setting. It returns
+ * HMAC-SHA256 of the value keyed with the project ref, as lowercase hex: the
+ * digest the Supabase CLI computes (`sha256Hmac(projectRef, value)`) and
+ * compares against that same field to decide whether `config push` would
+ * change it. A bare SHA-256 of the value never matches. So the read-back
+ * proves the write exactly when it is that keyed digest of the secret this run
+ * signed; the plain value is accepted too, in case the API ever returns it.
+ * Without a project ref there is no project the read-back can be proof for, so
+ * that answers false rather than throwing out of the HMAC.
+ * decisions.md § 1835.
  *
  * @param {unknown} readBack
  * @param {string} secret
+ * @param {string | undefined} projectRef
  */
-export function holdsSecret(readBack, secret) {
-	if (typeof readBack !== 'string') return false;
-	return readBack === secret || readBack.toLowerCase() === createHash('sha256').update(secret).digest('hex');
+export function holdsSecret(readBack, secret, projectRef) {
+	if (typeof readBack !== 'string' || typeof projectRef !== 'string' || !projectRef.trim()) return false;
+	return readBack === secret || readBack.toLowerCase() === secretDigest(secret, projectRef);
+}
+
+/**
+ * The form the Management API reports `secret` in for the project `projectRef`.
+ *
+ * @param {string} secret
+ * @param {string} projectRef
+ */
+export function secretDigest(secret, projectRef) {
+	return createHmac('sha256', projectRef).update(secret).digest('hex');
 }
 
 /**
@@ -273,7 +291,7 @@ export function holdsSecret(readBack, secret) {
 export function describeReadBack(readBack) {
 	if (readBack === undefined || readBack === null || readBack === '') return 'empty';
 	if (typeof readBack !== 'string') return `as a ${typeof readBack}`;
-	if (/^[0-9a-f]{64}$/i.test(readBack)) return 'as a SHA-256 digest of a different value';
+	if (/^[0-9a-f]{64}$/i.test(readBack)) return "as a 64-hex-digit digest that is not this secret's project-keyed HMAC-SHA256";
 	if (/^\*+$/.test(readBack)) return 'masked';
 	return `as a ${readBack.length}-character string that is neither this secret nor its digest`;
 }

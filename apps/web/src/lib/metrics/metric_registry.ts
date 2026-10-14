@@ -12,7 +12,7 @@
  * but through `<MetricLabel>`, a registered term typed straight into markup,
  * or English copy that carries a term with no expansion fails the unit job.
  */
-import type { MessageKey } from '$lib/i18n/messages';
+import type { MessageKey } from '#lib/i18n/messages.ts';
 
 export interface MetricEntry {
 	/** The short on-screen name. Resolved only by `<MetricLabel>`. */

@@ -1,6 +1,6 @@
 // The generate-route Lambda's own wrapper layer.
 //
-// `$lib/routes/generate/handler.ts` is the transport-agnostic core; this is
+// `#lib/routes/generate/handler.ts` is the transport-agnostic core; this is
 // the production Function URL wrapper around it, and nothing had ever executed
 // it (decisions § 896). Its own responsibilities are the ones measured here:
 // the method gate, the 4 KB body cap enforced against decoded BYTES, the

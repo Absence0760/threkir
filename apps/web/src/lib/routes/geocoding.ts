@@ -1,5 +1,5 @@
-import { dev } from '$app/environment';
-import { env } from '$env/dynamic/public';
+import { dev } from '$app/env';
+import { PUBLIC_MAPTILER_KEY as PUBLIC_MAPTILER_KEY_ENV } from '$app/env/public';
 
 import {
 	geocodePlaceWithKey,
@@ -16,7 +16,7 @@ export type {
 	PlaceSearchResult,
 } from './geocoding_math';
 
-const PUBLIC_MAPTILER_KEY = env.PUBLIC_MAPTILER_KEY ?? '';
+const PUBLIC_MAPTILER_KEY = PUBLIC_MAPTILER_KEY_ENV ?? '';
 
 // audit/third-party-data-flows (2026-05-25): a missing
 // PUBLIC_MAPTILER_KEY in production silently falls through to

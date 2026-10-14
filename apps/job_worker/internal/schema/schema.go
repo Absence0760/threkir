@@ -77,6 +77,8 @@ const (
 	TableRecipes                 = "recipes"
 	TableBodyMetrics             = "body_metrics"
 	TableSafetyContacts          = "safety_contacts"
+	TableRunShares               = "run_shares"
+	TableRouteShares             = "route_shares"
 	TableSessionPlans            = "session_plans"
 	TableRoutePhotos             = "route_photos"
 	TableEventOrders             = "event_orders"

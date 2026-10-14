@@ -134,7 +134,7 @@ test('the run-detail elevation cell is gated on a track that measured altitude',
 	);
 	assert.match(
 		page,
-		/import \{[^}]*\belevationSourceTrack\b[^}]*\} from '\$lib\/runs\/key_stats'/,
+		/import \{[^}]*\belevationSourceTrack\b[^}]*\} from '#lib\/runs\/key_stats\.ts'/,
 		'the samples test belongs to the gate helper, not to a second copy on the page',
 	);
 	assert.match(
@@ -144,7 +144,7 @@ test('the run-detail elevation cell is gated on a track that measured altitude',
 	);
 	assert.match(
 		page,
-		/import \{[^}]*\bstoredElevationGainM\b[^}]*\} from '\$lib\/runs\/key_stats'/,
+		/import \{[^}]*\bstoredElevationGainM\b[^}]*\} from '#lib\/runs\/key_stats\.ts'/,
 		'the fall-back to the run row\'s own ascent goes through the one reader — the /runs card, ' +
 			'the recap total and the vert board all count a column this page used to ignore.',
 	);

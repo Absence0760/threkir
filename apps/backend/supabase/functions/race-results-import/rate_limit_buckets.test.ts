@@ -9,11 +9,12 @@
 // which both clients grade as "provider unavailable", so the failure is silent
 // and total rather than a limit anyone can see.
 //
-// Source-level rather than behavioural because the limiter needs a database:
-// the claim is about which bucket the code selects, which is readable.
+// Source-level: the claim is about the RELATIVE sizes of the three buckets as
+// written. handler.test.ts drives which bucket each mode actually spends, and
+// the lookup's exact 20/60, against a fake limiter.
 import { assert, assertEquals } from 'https://deno.land/std@0.224.0/assert/mod.ts';
 
-const SRC = await Deno.readTextFile(new URL('./index.ts', import.meta.url));
+const SRC = await Deno.readTextFile(new URL('./handler.ts', import.meta.url));
 
 function limits(bucket: string): [number, number] {
   const re = new RegExp(
@@ -47,9 +48,25 @@ Deno.test('a probe is charged to a bucket of its own, more generous than the imp
   );
 });
 
-Deno.test('both buckets fail closed', () => {
+Deno.test('an UltraSignup lookup has a bucket of its own, between the two', () => {
+  // A lookup makes one outbound call from our IP and writes nothing (§ 1841):
+  // finding yourself in Settings must not spend imports, but it is not the
+  // free env-var read a probe is either.
+  const [lookupFree, lookupPro] = limits('race-results-import:lookup');
+  const [importFree, importPro] = limits('race-results-import');
+  const [probeFree, probePro] = limits('race-results-import:probe');
+  assert(lookupFree > importFree && lookupFree < probeFree, `lookup free ${lookupFree}/h`);
+  assert(lookupPro > importPro && lookupPro < probePro, `lookup Pro ${lookupPro}/h`);
+  assert(
+    /: isLookup\s*\?\s*await checkRateLimitTiered\(\s*supabase,\s*user\.id,\s*'race-results-import:lookup'/
+      .test(SRC),
+    'the lookup bucket is not selected on the lookup flag',
+  );
+});
+
+Deno.test('every bucket fails closed', () => {
   // Falling open on an RPC blip drops the only bound on how often one account
-  // can drive either path (§ 974), and the probe path is the cheaper one to
+  // can drive any path (§ 974), and the probe path is the cheaper one to
   // hammer.
-  assertEquals(SRC.match(/failClosed: true/g)?.length, 2);
+  assertEquals(SRC.match(/failClosed: true/g)?.length, 3);
 });

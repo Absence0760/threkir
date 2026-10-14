@@ -54,6 +54,22 @@ void main() {
     });
   });
 
+  group('runs upsert never clears a followers level', () {
+    // `followers_only` is NOT NULL, so `RunRow.toJson()` always carries a bool
+    // and the null strip cannot protect it: a batch re-sync would write false
+    // over a followers level chosen on another device (decisions § 1875).
+    test('_runUpsertBody drops a false followers_only', () {
+      final start = src.indexOf('Map<String, dynamic> _runUpsertBody(');
+      final body = src.substring(start);
+      expect(
+        body.contains('if (body[RunRow.colFollowersOnly] == false)'),
+        isTrue,
+        reason: 'a false followers_only must never reach an upsert',
+      );
+      expect(body.contains('body.remove(RunRow.colFollowersOnly)'), isTrue);
+    });
+  });
+
   group('the live-ping backlog is newest-first under the row cap', () {
     // PostgREST caps a result at 1000 rows. At the broadcaster's 5 s interval
     // that is 83 minutes, so an ascending fetch returns the OLDEST 83 minutes

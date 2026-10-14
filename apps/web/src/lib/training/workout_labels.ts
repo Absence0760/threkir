@@ -1,5 +1,5 @@
-import { m } from '$lib/i18n/store.svelte';
-import type { MessageKey } from '$lib/i18n/messages';
+import { m } from '#lib/i18n/store.svelte.ts';
+import type { MessageKey } from '#lib/i18n/messages.ts';
 import type { WorkoutKind, PlanPhase } from './training';
 
 // Presentation-layer labels for the training enums. They live here rather

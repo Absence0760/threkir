@@ -1,22 +1,22 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
-	import { auth } from '$lib/stores/auth.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
 	import {
 		amIAdmin,
 		fetchPlatformFeeMonths,
 		fetchPlatformFeesByHost,
 		type PlatformFeeHostRow,
-	} from '$lib/core/data';
+	} from '#lib/core/data.ts';
 	import {
 		feeTotalsByCurrency,
 		formatFeeMonth,
 		summarizeFeeMonths,
 		type PlatformFeeCurrencyTotal,
 		type PlatformFeeMonthSummary,
-	} from '$lib/billing/platform_fee_summary';
-	import { formatPrice } from '$lib/format/format_price';
-	import { fromMinorUnits } from '$lib/format/minor_units';
-	import { m as t, currentLocale } from '$lib/i18n/store.svelte';
+	} from '#lib/billing/platform_fee_summary.ts';
+	import { formatPrice } from '#lib/format/format_price.ts';
+	import { fromMinorUnits } from '#lib/format/minor_units.ts';
+	import { m as t, currentLocale } from '#lib/i18n/store.svelte.ts';
 
 	let isAdmin = $state<boolean | null>(null);
 	let loading = $state(true);

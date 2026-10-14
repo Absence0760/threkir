@@ -11,10 +11,15 @@
 -- transaction, so promotion order falls to the user_id tiebreak — the
 -- fixture's user ids are ordered aa01 < aa02 < ... so aa03 promotes before
 -- aa04 deterministically.
+--
+-- A cancelled occurrence (an event_exceptions row) promotes nobody
+-- (20270725000001): host-cancel refunds delete each refunded buyer's seat,
+-- and a waitlisted member must not be promoted into a class that is not
+-- happening.
 
 begin;
 
-select plan(8);
+select plan(10);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -107,6 +112,36 @@ select is(
    where event_id = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeee01'
      and user_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa05'),
   'maybe', 'maybe RSVP is left untouched (never counts toward / hits capacity)');
+
+-- ── Cancelled occurrence (20270725000001) ──
+-- A second occurrence of the capped event: aa01 + aa02 going, aa05
+-- waitlisted. The occurrence is then called off, and a freed seat (the
+-- refund webhook's delete) must not promote aa05 into it.
+insert into event_attendees (event_id, user_id, status, instance_start) values
+  ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee01', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01', 'going', '2026-06-27 09:00:00+00'),
+  ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee01', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa02', 'going', '2026-06-27 09:00:00+00'),
+  ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee01', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa05', 'going', '2026-06-27 09:00:00+00');
+
+insert into event_exceptions (event_id, instance_start, cancelled_by, reason)
+values ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee01', '2026-06-27 09:00:00+00',
+        'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01', 'venue closed');
+
+delete from event_attendees
+  where event_id = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeee01'
+    and instance_start = '2026-06-27 09:00:00+00'
+    and user_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01';
+select is(
+  (select status from event_attendees
+   where event_id = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeee01'
+     and instance_start = '2026-06-27 09:00:00+00'
+     and user_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa05'),
+  'waitlisted', 'a freed seat on a cancelled occurrence promotes nobody');
+select is(
+  (select count(*)::int from event_attendees
+   where event_id = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeee01'
+     and instance_start = '2026-06-27 09:00:00+00'
+     and status = 'going'),
+  1, 'the cancelled occurrence keeps the freed seat empty');
 
 select * from finish();
 

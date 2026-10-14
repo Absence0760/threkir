@@ -10,6 +10,8 @@
 /// (same parse tolerance, same build rules, same draft shape).
 library;
 
+import 'gym_prs.dart' show namesAnExercise;
+import 'gym_routine.dart';
 import 'session_steps.dart';
 
 class EventGymTemplate {
@@ -125,5 +127,79 @@ SessionWorkoutDraft workoutDraftFromSession(
           reps: step.reps,
         ),
     ],
+  );
+}
+
+/// One logged set per planned routine set (the class -> gym log seam).
+class RoutineDraftItem {
+  const RoutineDraftItem({
+    required this.exerciseName,
+    required this.reps,
+    required this.weightKg,
+    required this.rpe,
+  });
+
+  final String exerciseName;
+  final int? reps;
+  final double? weightKg;
+  final double? rpe;
+}
+
+/// The gym-log prefill from a class's attached gym routine: the draft head
+/// plus one set per planned set.
+class RoutineWorkoutDraft {
+  const RoutineWorkoutDraft({
+    required this.title,
+    required this.durationS,
+    required this.sets,
+  });
+
+  final String? title;
+  final int? durationS;
+  final List<RoutineDraftItem> sets;
+}
+
+// Twins of web's `finiteOrNull` / `wholeOrNull`: `double.tryParse` answers NaN
+// and Infinity rather than null, and a whole number may be written `5.0`.
+double? _finiteOrNull(String input) {
+  if (input.isEmpty) return null;
+  final n = double.tryParse(input.trim());
+  return n != null && n.isFinite ? n : null;
+}
+
+int? _wholeOrNull(String input) {
+  final n = _finiteOrNull(input);
+  return n != null && n == n.truncateToDouble() ? n.toInt() : null;
+}
+
+/// Produce the gym-log prefill from a class's attached gym routine. The
+/// routine is the club's template and stays theirs: this only seeds the
+/// attendee's own new workout (decisions § 1869). Goes through
+/// [prefillFromRoutine], so the order and target-to-field mapping are exactly
+/// the "Start routine" ones: one set per planned set, its reps from the target
+/// minimum (a fractional target reads as no reps), weight from the target
+/// load, RPE from the target RPE. An exercise with no planned sets keeps one
+/// blank row; a blank-named exercise is dropped. The title prefers the class
+/// discipline, then the routine title.
+RoutineWorkoutDraft workoutDraftFromRoutine(
+  PlannedRoutine routine,
+  String? discipline,
+) {
+  final sets = <RoutineDraftItem>[];
+  for (final block in prefillFromRoutine(routine)) {
+    if (!namesAnExercise(block.name)) continue;
+    for (final s in block.sets) {
+      sets.add(RoutineDraftItem(
+        exerciseName: block.name,
+        reps: _wholeOrNull(s.reps),
+        weightKg: s.weightKg?.toDouble(),
+        rpe: _finiteOrNull(s.rpe),
+      ));
+    }
+  }
+  return RoutineWorkoutDraft(
+    title: _asString(discipline) ?? _asString(routine.title),
+    durationS: null,
+    sets: sets,
   );
 }

@@ -4,7 +4,7 @@ import {
 	DEFAULT_UNDO_WINDOW_S,
 	type DeferredDestruction,
 	type PendingUndo,
-} from '$lib/core/undo_queue';
+} from '#lib/core/undo_queue.ts';
 
 /// Reactive shell around the deferred-commit undo queue. The contract,
 /// the one-slot rule, and the WCAG rationale all live in

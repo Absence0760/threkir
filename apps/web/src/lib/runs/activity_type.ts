@@ -1,5 +1,5 @@
-import type { ActivityType } from '$lib/types';
-import type { MessageKey } from '$lib/i18n/messages';
+import type { ActivityType } from '#lib/types.ts';
+import type { MessageKey } from '#lib/i18n/messages.ts';
 
 /// The `runs.activity_type` value domain, in the order every picker shows it.
 ///

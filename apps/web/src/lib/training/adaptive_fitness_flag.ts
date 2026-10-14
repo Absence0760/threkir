@@ -14,9 +14,9 @@
  * Flipping the flag on for a prod build IS the sign-off-gated action; the code
  * path is complete and reviewable on `main` either way.
  */
-import { env } from '$env/dynamic/public';
+import { PUBLIC_ADAPTIVE_FITNESS_GATE } from '$app/env/public';
 import { adaptiveFitnessGateEnabled } from './plan_adaptive_replan';
 
 export function isAdaptiveFitnessGateEnabled(): boolean {
-	return adaptiveFitnessGateEnabled(env.PUBLIC_ADAPTIVE_FITNESS_GATE);
+	return adaptiveFitnessGateEnabled(PUBLIC_ADAPTIVE_FITNESS_GATE);
 }

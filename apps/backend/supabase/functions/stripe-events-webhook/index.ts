@@ -4,7 +4,9 @@
 /// Handles nine event types; everything else is 200-ignored:
 ///   checkout.session.completed -> only once `payment_status` says the money
 ///     arrived: CAS pending->paid, confirm-time capacity recheck, seat the
-///     'going' attendee with order_id. If the class filled via another path,
+///     'going' attendee with order_id. If the host cancelled the occurrence
+///     while the buyer was paying, seat nothing and refund through the shared
+///     `refundOrder` (events-cancel/refund.ts); completed.ts holds this arm. If the class filled via another path,
 ///     the order is left paid + logged + flagged for MANUAL refund (P1 has no
 ///     automated refund).
 ///   checkout.session.async_payment_succeeded -> the same path, for the
@@ -45,9 +47,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.110.0';
 import type { Database, DbClient } from '../_shared/database.ts';
 import { readTextWithLimit } from '../_shared/body_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';
-import { capacityDecision } from '../events-checkout/lib.ts';
 import {
-  attendeeRowFromSession,
   type Charge,
   type CheckoutSession,
   type ConnectAccount,
@@ -74,6 +74,8 @@ import {
   verifyStripeSignature,
 } from './lib.ts';
 import { secretKey } from '../_shared/api_keys.ts';
+import { stripeRestRefundCreator } from '../events-cancel/refund.ts';
+import { handleCompleted } from './completed.ts';
 
 const WEBHOOK_PROVIDER = 'stripe';
 
@@ -173,7 +175,10 @@ async function dispatchStripeEvent(
     const session = readCheckoutSession(obj);
     return isDonationSession(session)
       ? await handleDonationCompleted(service, session, event.type)
-      : await handleCompleted(service, session, event.type);
+      : await handleCompleted(service, session, event.type, {
+        stripeSecretKey: Deno.env.get('STRIPE_SECRET_KEY') || null,
+        transport: stripeRestRefundCreator,
+      });
   }
   if (
     event.type === STRIPE_EVENT.checkoutExpired ||
@@ -749,155 +754,6 @@ async function handleOrderRefundReversed(
     refund.failureReason ?? 'unknown',
   );
   return Response.json({ ok: true, order_refund_failed: true, order_id: order.id });
-}
-
-async function handleCompleted(
-  service: DbClient,
-  session: CheckoutSession,
-  eventType: string,
-): Promise<Response> {
-  if (!isPaymentSettled(session.paymentStatus)) {
-    // `checkout.session.completed` is not a payment. For a delayed-
-    // notification method the money is still in flight and the outcome lands
-    // days later as async_payment_succeeded / _failed. Seating here gives a
-    // place away for money that may never arrive — and once seated there is
-    // no event that takes it back, because the failure arm below transitions
-    // out of `pending`, not out of `paid`.
-    console.error(
-      'checkout session completed unpaid; awaiting async outcome. payment_status:',
-      session.paymentStatus ?? 'absent',
-    );
-    return Response.json({ ok: true, skipped: 'payment_not_settled' });
-  }
-
-  const attendee = attendeeRowFromSession(session);
-  if (!attendee) {
-    // No metadata to seat against — record + 200 so Stripe stops
-    // retrying; logged for reconciliation.
-    console.error('checkout.session.completed missing metadata');
-    return Response.json({ ok: true, skipped: 'missing_metadata' });
-  }
-
-  // Resolve the order and CAS its status. Only pending->paid transitions.
-  const { data: order, error: orderErr } = await service
-    .from('event_orders')
-    .select('id, status, event_id, instance_start, buyer_user_id, stripe_payment_intent_id')
-    .eq('id', attendee.order_id)
-    .maybeSingle();
-  if (orderErr) {
-    console.error('order read failed (code):', orderErr?.code ?? 'unknown');
-    return Response.json({ ok: false, error: 'order_read_failed' }, { status: 500 });
-  }
-  if (!order) {
-    console.error('checkout.session.completed for unknown order');
-    return Response.json({ ok: true, skipped: 'unknown_order' });
-  }
-
-  const next = orderStatusTransition(order.status, eventType);
-  if (next === null) {
-    // Already paid / terminal — idempotent no-op.
-    return Response.json({ ok: true, skipped: 'no_transition' });
-  }
-
-  const paymentIntent = session.paymentIntentId;
-
-  // Mark the order paid (compound match on status='pending' makes the
-  // UPDATE itself a CAS — a concurrent webhook can't both flip it).
-  const { data: updated, error: updErr } = await service
-    .from('event_orders')
-    .update({
-      status: 'paid',
-      paid_at: new Date().toISOString(),
-      stripe_payment_intent_id: paymentIntent,
-    })
-    .eq('id', order.id)
-    .eq('status', 'pending')
-    .select('id')
-    .maybeSingle();
-  if (updErr) {
-    console.error('order paid update failed (code):', updErr?.code ?? 'unknown');
-    return Response.json({ ok: false, error: 'order_update_failed' }, { status: 500 });
-  }
-  if (!updated) {
-    // Lost the CAS race to a concurrent delivery — that one seated it.
-    return Response.json({ ok: true, skipped: 'cas_lost' });
-  }
-
-  // Confirm-time capacity recheck against the event's hard cap.
-  const { data: event } = await service
-    .from('events')
-    .select('capacity')
-    .eq('id', attendee.event_id)
-    .maybeSingle();
-  const capacity = event?.capacity ?? null;
-
-  if (capacity !== null) {
-    const { count: goingCount } = await service
-      .from('event_attendees')
-      .select('event_id', { count: 'exact', head: true })
-      .eq('event_id', attendee.event_id)
-      .eq('instance_start', attendee.instance_start)
-      .eq('status', 'going')
-      .neq('user_id', attendee.user_id);
-    // Best-effort fast path only. This recheck is NOT authoritative: it counts
-    // only seated 'going' rows and holds no lock, so a competing paid order
-    // that hasn't seated yet is invisible and N webhooks racing the last seat
-    // all read 'available'. The advisory-locked enforce_event_capacity trigger
-    // below is the real never-oversell guard; this just shortcuts the obvious
-    // already-full case.
-    if (capacityDecision(goingCount ?? 0, 0, capacity) === 'full') {
-      // Oversold against another path. P1 has NO automated refund: leave
-      // the order paid, do NOT seat, and flag for a manual Stripe-
-      // dashboard refund. Logged with the order id so ops can act.
-      console.error(
-        'OVERSOLD: paid order seats no slot, flag for manual refund. order:',
-        order.id,
-      );
-      return Response.json({ ok: true, oversold: true, order_id: order.id });
-    }
-  }
-
-  // Seat the attendee (the paid order_id satisfies the
-  // enforce_paid_order_for_priced_event trigger). Upsert on the PK so a
-  // retry is idempotent. Read the PERSISTED status back: the advisory-locked
-  // enforce_event_capacity BEFORE trigger silently rewrites NEW.status to
-  // 'waitlisted' when the seat is over capacity (it demotes rather than
-  // raising), and that trigger — not the lock-free recheck above — is the
-  // authoritative guard. RETURNING reflects the BEFORE-trigger mutation.
-  const { data: seated, error: seatErr } = await service
-    .from('event_attendees')
-    .upsert({
-      event_id: attendee.event_id,
-      user_id: attendee.user_id,
-      instance_start: attendee.instance_start,
-      status: 'going',
-      order_id: attendee.order_id,
-    }, { onConflict: 'event_id,user_id,instance_start' })
-    .select('status')
-    .maybeSingle();
-  if (seatErr) {
-    console.error('attendee seat failed (code):', seatErr?.code ?? 'unknown');
-    return Response.json({ ok: false, error: 'seat_failed' }, { status: 500 });
-  }
-
-  // The buyer paid but the capacity trigger demoted them to the waitlist
-  // (lost the last seat to a concurrent paid order the recheck couldn't see).
-  // P1 has no automated refund — report oversold + order_id so ops can refund,
-  // instead of falsely telling the caller the seat was confirmed.
-  if (seated?.status === 'waitlisted') {
-    console.error(
-      'OVERSOLD: paid order demoted to waitlist by capacity trigger, flag for manual refund. order:',
-      order.id,
-    );
-    return Response.json({
-      ok: true,
-      oversold: true,
-      waitlisted: true,
-      order_id: order.id,
-    });
-  }
-
-  return Response.json({ ok: true, seated: true, order_id: order.id });
 }
 
 async function handleNotPaid(

@@ -295,6 +295,21 @@ export async function deleteRaceListing(listingId: string): Promise<void> {
 	}
 }
 
+/// Service-role delete of one of a user's `integrations` rows. A spec that
+/// links a provider through the real UI removes the row afterwards, so the
+/// seeded user does not carry the link into another spec.
+export async function deleteIntegration(userId: string, provider: string): Promise<void> {
+	const admin = getAdminClient();
+	const { error } = await admin
+		.from('integrations')
+		.delete()
+		.eq('user_id', userId)
+		.eq('provider', provider);
+	if (error) {
+		throw new Error(`simulate.deleteIntegration failed: ${error.message}`);
+	}
+}
+
 /// Service-role upsert for `user_settings.prefs.<key>`. Used by tests
 /// that need to plant a setting (e.g. privacy zones) without driving
 /// through the canonical UI — appropriate when the UI requires

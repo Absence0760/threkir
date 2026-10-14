@@ -169,7 +169,7 @@ Talks to Supabase **directly** (standalone — no paired-phone dependency). Sche
 
 A standalone SvelteKit app at `apps/web/`, deployed to AWS (S3 + CloudFront + Lambda + Route 53 — see [decisions.md § 53](decisions.md#53-web-app--domain-on-aws-s3--cloudfront--lambda--route-53-not-vercel-or-cloudflare-pages)). It is intentionally not a full-featured clone of the mobile app — its purpose is the things that are genuinely better on a large screen.
 
-**Stack:** SvelteKit 2 · Svelte 5 · TypeScript · Supabase JS client · MapLibre GL JS
+**Stack:** SvelteKit 3 · Svelte 5 · TypeScript · Supabase JS client · MapLibre GL JS
 
 **Key responsibilities:**
 - Full-screen route builder (the best route planning experience in the product)
@@ -552,7 +552,7 @@ High-level sequence on the phone. The full detail — filter chain, auto-pause g
 | iOS + Android UI | Flutter 3.x + Dart | Single codebase, ~80% shared |
 | Apple Watch | Swift 5 + SwiftUI + WatchKit | Separate Xcode project in monorepo |
 | Wear OS | Native Kotlin + Jetpack Compose-for-Wear | Separate Gradle project in monorepo, schema-codegen'd Kotlin row classes — see [decisions.md § 15](decisions.md) |
-| Web app | SvelteKit 2 + Svelte 5 + TypeScript | File-based routing, deployed to AWS S3 + CloudFront with `/api/coach` on Lambda — see [decisions.md § 53](decisions.md#53-web-app--domain-on-aws-s3--cloudfront--lambda--route-53-not-vercel-or-cloudflare-pages) |
+| Web app | SvelteKit 3 + Svelte 5 + TypeScript | File-based routing, deployed to AWS S3 + CloudFront with `/api/coach` on Lambda — see [decisions.md § 53](decisions.md#53-web-app--domain-on-aws-s3--cloudfront--lambda--route-53-not-vercel-or-cloudflare-pages) |
 | Web maps | MapLibre GL JS | Route builder, run GPS trace, live spectator |
 | Web icons | Self-hosted Material Symbols webfont, rendered as ligatures | Subset to the 324 icons the tree names by `scripts/gen_web_icon_font.mjs` — see [decisions.md § 780](decisions.md). |
 | Web auth | Supabase Auth + `@supabase/ssr` | Cookie-based sessions |

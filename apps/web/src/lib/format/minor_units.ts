@@ -8,6 +8,9 @@
 /// runtime's ISO 4217 data: ISO gives 0 decimals to COP, IDR, HUF, ISK, UGX
 /// and others that Stripe takes as two-decimal, so asking `Intl` first put a
 /// 50,000 COP price on the wire as 500.00 COP.
+///
+/// Dart twin: apps/mobile_android/lib/minor_units.dart, which the phone's event
+/// price write uses (docs/architecture/parity_pairs.md); keep the two in lockstep.
 const ZERO_DECIMAL_CURRENCIES = new Set([
 	'BIF',
 	'CLP',

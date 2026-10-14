@@ -1,53 +1,53 @@
 <script lang="ts">
-	import { parseImportCompleteness } from '$lib/integrations/import_completeness';
-	import { activeFormatLocale } from '$lib/format/time';
+	import { parseImportCompleteness } from '#lib/integrations/import_completeness.ts';
+	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { onDestroy, onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import DangerZone from '$lib/components/DangerZone.svelte';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import AvatarCropDialog from '$lib/components/AvatarCropDialog.svelte';
-	import { AVATAR_SOURCE_MAX_BYTES } from '$lib/util/avatar_render';
-	import AiDisclosureNotice from '$lib/components/AiDisclosureNotice.svelte';
-	import { supabase } from '$lib/core/supabase';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import DangerZone from '#lib/components/DangerZone.svelte';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import AvatarCropDialog from '#lib/components/AvatarCropDialog.svelte';
+	import { AVATAR_SOURCE_MAX_BYTES } from '#lib/util/avatar_render.ts';
+	import AiDisclosureNotice from '#lib/components/AiDisclosureNotice.svelte';
+	import { supabase } from '#lib/core/supabase.ts';
 	import {
 		AI_DISCLOSURE_CURRENT_VERSION,
 		aiDisclosureFromProfileRow,
 		checkAiDisclosure,
 		type AiDisclosureRecord,
-	} from '$lib/core/ai_disclosure';
-	import { changePassword, type PasswordChangeReason } from '$lib/core/password_change';
-	import { PASSWORD_MIN_LENGTH } from '$lib/core/auth_rules';
-	import { TEXT_LIMITS } from '$lib/core/text_limits';
-	import { lengthLimit } from '$lib/core/column_limits';
-	import { TABLES } from '$lib/core/schema';
-	import { PUBLIC_SUPABASE_URL } from '$env/static/public';
-	import { downloadFile } from '$lib/routes/gpx';
-	import { fetchRunsWithError, uploadAvatar, removeAvatar } from '$lib/core/data';
+	} from '#lib/core/ai_disclosure.ts';
+	import { changePassword, type PasswordChangeReason } from '#lib/core/password_change.ts';
+	import { PASSWORD_MIN_LENGTH } from '#lib/core/auth_rules.ts';
+	import { TEXT_LIMITS } from '#lib/core/text_limits.ts';
+	import { lengthLimit } from '#lib/core/column_limits.ts';
+	import { TABLES } from '#lib/core/schema.ts';
+	import { PUBLIC_SUPABASE_URL } from '$app/env/public';
+	import { downloadFile } from '#lib/routes/gpx.ts';
+	import { fetchRunsWithError, uploadAvatar, removeAvatar } from '#lib/core/data.ts';
 	import {
 		createBackup,
 		restoreBackup,
 		type BackupProgress,
 		type RestoreProgress,
 		type RestoreResult,
-	} from '$lib/backup/backup';
-	import { transferStageKey } from '$lib/backup/stage_labels';
-	import { backupShortfall as gradeBackupShortfall, type BackupShortfall } from '$lib/backup/shortfall';
+	} from '#lib/backup/backup.ts';
+	import { transferStageKey } from '#lib/backup/stage_labels.ts';
+	import { backupShortfall as gradeBackupShortfall, type BackupShortfall } from '#lib/backup/shortfall.ts';
 	import {
 		isPushSupported,
 		pushPermission,
 		subscribeToPush,
 		unsubscribeFromPush,
 		getCurrentSubscription,
-	} from '$lib/util/push';
+	} from '#lib/util/push.ts';
 	import {
 		CloudExportError,
 		fetchCloudExportJob,
 		startCloudExport
-	} from '$lib/backup/cloud_export';
-	import { rateLimitWait } from '$lib/i18n/rate_limit_message';
+	} from '#lib/backup/cloud_export.ts';
+	import { rateLimitWait } from '#lib/i18n/rate_limit_message.ts';
 	import {
 		type CloudExportFormat,
 		type CloudExportJob,
@@ -56,13 +56,13 @@
 		cloudExportPollDelayMs,
 		cloudExportShortfall,
 		isCloudExportJobActive,
-	} from '$lib/backup/cloud_export_helpers';
-	import { m } from '$lib/i18n/store.svelte';
-	import PasswordInput from '$lib/components/PasswordInput.svelte';
-	import { isCyclePlansEnabled } from '$lib/training/cycle_plan_flag';
-	import { numberInputValue } from '$lib/settings/number_input';
-	import type { PrefsBag } from '$lib/settings/settings';
-	import type { Updatable } from '$lib/core/database';
+	} from '#lib/backup/cloud_export_helpers.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import PasswordInput from '#lib/components/PasswordInput.svelte';
+	import { isCyclePlansEnabled } from '#lib/training/cycle_plan_flag.ts';
+	import { numberInputValue } from '#lib/settings/number_input.ts';
+	import type { PrefsBag } from '#lib/settings/settings.ts';
+	import type { Updatable } from '#lib/core/database.ts';
 	import {
 		MAX_HR_BPM_MIN,
 		MAX_HR_BPM_MAX,
@@ -70,11 +70,11 @@
 		RESTING_HR_BPM_MIN,
 		RESTING_HR_BPM_MAX,
 		isUsableRestingHrBpm
-	} from '$lib/training/hr_zones';
+	} from '#lib/training/hr_zones.ts';
 	import {
 		MIN_CYCLE_LENGTH_DAYS,
 		MAX_CYCLE_LENGTH_DAYS,
-	} from '$lib/training/cycle_plan';
+	} from '#lib/training/cycle_plan.ts';
 
 	let displayName = $state(auth.user?.display_name ?? '');
 	// Public @handle (issue #465). Claimed / edited through the set_my_handle

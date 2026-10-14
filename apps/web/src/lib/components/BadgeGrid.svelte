@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { m } from '$lib/i18n/store.svelte';
-	import { formatDate } from '$lib/format/time';
-	import { tierFor, type AchievementTier } from '$lib/social/badges';
-	import type { Achievement } from '$lib/types';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { formatDate } from '#lib/format/time.ts';
+	import { tierFor, type AchievementTier } from '#lib/social/badges.ts';
+	import type { Achievement } from '#lib/types.ts';
 
 	interface Props {
 		badges: Achievement[];

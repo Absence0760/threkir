@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 
 import { sortRoster, type RosterSortKey } from './roster_sort';
-import type { CoachRosterRow } from '$lib/core/data';
+import type { CoachRosterRow } from '#lib/core/data.ts';
 
 function row(over: Partial<CoachRosterRow> & { athlete_id: string }): CoachRosterRow {
 	return {

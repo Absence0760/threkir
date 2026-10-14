@@ -1,29 +1,29 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import CoachChat from '$lib/components/CoachChat.svelte';
-	import { fetchActivePlanOverview, fetchMyPlans } from '$lib/core/data';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { supabase } from '$lib/core/supabase';
-	import { guidedRunLibrary, type GuidedRun } from '$lib/training/guided_runs';
-	import { coachEnabled } from '$lib/coach/coach_flag';
-	import AiDisclosureNotice from '$lib/components/AiDisclosureNotice.svelte';
+	import CoachChat from '#lib/components/CoachChat.svelte';
+	import { fetchActivePlanOverview, fetchMyPlans } from '#lib/core/data.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { guidedRunLibrary, type GuidedRun } from '#lib/training/guided_runs.ts';
+	import { coachEnabled } from '#lib/coach/coach_flag.ts';
+	import AiDisclosureNotice from '#lib/components/AiDisclosureNotice.svelte';
 	import {
 		AI_DISCLOSURE_CURRENT_VERSION,
 		AI_DISCLOSURE_VERSION_COACH,
 		aiDisclosureFromProfileRow,
 		checkAiDisclosure,
 		type AiDisclosureRecord,
-	} from '$lib/core/ai_disclosure';
+	} from '#lib/core/ai_disclosure.ts';
 
 	// When the Coach is off (rock-bottom deploy, ANTHROPIC_API_KEY unset → the
 	// chat would 503) the chat surface is replaced by a "coming soon" notice.
 	// The guided-runs rail below is fully static (local TTS cue scripts, no
 	// Anthropic) so it stays visible. paywall.md.
 	const coachOn = coachEnabled();
-	import type { TrainingPlan } from '$lib/types';
-	import { m } from '$lib/i18n/store.svelte';
+	import type { TrainingPlan } from '#lib/types.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
 
 	let plans = $state<TrainingPlan[]>([]);
 	let planId = $state<string | null>(null);
@@ -55,7 +55,7 @@
 	// Read `?plan=<id>` from the URL on first load and whenever the param
 	// changes (e.g. via the deep link from /plans/[id]). When absent, we
 	// fall back to the user's active plan.
-	let urlPlanParam = $derived($page.url.searchParams.get('plan'));
+	let urlPlanParam = $derived(page.url.searchParams.get('plan'));
 
 	onMount(async () => {
 		// Wait for auth so the RLS-scoped fetches return the right rows.
@@ -177,11 +177,11 @@
 		// the strip dropdown; we encode that as `?plan=none` so a
 		// reload re-reads the explicit choice instead of falling back
 		// to the active plan.
-		const params = new URLSearchParams($page.url.searchParams);
+		const params = new URLSearchParams(page.url.search);
 		if (next === '') params.set('plan', 'none');
 		else params.set('plan', next);
 		const qs = params.toString();
-		goto(qs ? `/coach?${qs}` : '/coach', { replaceState: true, noScroll: true });
+		goto(qs ? `/coach?${qs}` : '/coach', { replace: true, reset: false });
 	}
 
 	function fmtMinutes(seconds: number): string {

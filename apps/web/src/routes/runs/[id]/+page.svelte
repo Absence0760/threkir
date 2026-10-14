@@ -1,36 +1,36 @@
 <script lang="ts">
-	import { siteOrigin } from '$lib/core/site_url';
-	import MetricLabel from '$lib/components/MetricLabel.svelte';
-	import type { MetricId } from '$lib/metrics/metric_registry';
+	import { siteOrigin } from '#lib/core/site_url.ts';
+	import MetricLabel from '#lib/components/MetricLabel.svelte';
+	import type { MetricId } from '#lib/metrics/metric_registry.ts';
 	import { onMount, tick } from 'svelte';
-	import { fmtPace, getUnit, formatPaceNoSuffix } from '$lib/format/units.svelte';
+	import { fmtPace, getUnit, formatPaceNoSuffix } from '#lib/format/units.svelte.ts';
 
 	const METRES_PER_MILE = 1609.344;
-	import { env } from '$env/dynamic/public';
-	import RunMap, { type SelectedSegment } from '$lib/components/RunMap.svelte';
-	import RoutePreviewScrubber from '$lib/components/RoutePreviewScrubber.svelte';
-	import { interpolateAlongRoute } from '$lib/routes/route_geometry';
-	import { buildLocalStaticMapUrl, buildStaticMapUrl } from '$lib/routes/static_map';
-	import { mapTrackLine } from '$lib/routes/basemap_contrast';
-	const PUBLIC_MAPTILER_KEY = env.PUBLIC_MAPTILER_KEY ?? '';
-	const PUBLIC_TILE_STYLE_URL = env.PUBLIC_TILE_STYLE_URL ?? '';
-	import ElevationProfile from '$lib/components/ElevationProfile.svelte';
-	import { cumulativeMetres, smoothElevation } from '$lib/runs/elevation_profile';
-	import RunSocial from '$lib/components/RunSocial.svelte';
-	import RunShareView from '$lib/components/RunShareView.svelte';
-	import StaticMapImage from '$lib/components/StaticMapImage.svelte';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import ReportDialog from '$lib/components/ReportDialog.svelte';
-	import RunPhotos from '$lib/components/RunPhotos.svelte';
-	import FundraiserSection from '$lib/components/FundraiserSection.svelte';
-	import RunGearChips from '$lib/components/RunGearChips.svelte';
-	import RunRaceResult from '$lib/components/RunRaceResult.svelte';
-	import RunSegmentEfforts from '$lib/components/RunSegmentEfforts.svelte';
-	import RouteHistory from '$lib/components/RouteHistory.svelte';
-	import SplitPane from '$lib/components/SplitPane.svelte';
-	import { formatPace, formatSpeed, formatDistance, sourceLabel } from '$lib/core/mock-data';
-	import { sourceColor } from '$lib/runs/source_badge';
-	import { formatDate, formatDuration } from '$lib/format/time';
+	import { PUBLIC_MAPTILER_KEY as PUBLIC_MAPTILER_KEY_ENV, PUBLIC_SITE_URL, PUBLIC_TILE_STYLE_URL as PUBLIC_TILE_STYLE_URL_ENV } from '$app/env/public';
+	import RunMap, { type SelectedSegment } from '#lib/components/RunMap.svelte';
+	import RoutePreviewScrubber from '#lib/components/RoutePreviewScrubber.svelte';
+	import { interpolateAlongRoute } from '#lib/routes/route_geometry.ts';
+	import { buildLocalStaticMapUrl, buildStaticMapUrl } from '#lib/routes/static_map.ts';
+	import { mapTrackLine } from '#lib/routes/basemap_contrast.ts';
+	const PUBLIC_MAPTILER_KEY = PUBLIC_MAPTILER_KEY_ENV ?? '';
+	const PUBLIC_TILE_STYLE_URL = PUBLIC_TILE_STYLE_URL_ENV ?? '';
+	import ElevationProfile from '#lib/components/ElevationProfile.svelte';
+	import { cumulativeMetres, smoothElevation } from '#lib/runs/elevation_profile.ts';
+	import RunSocial from '#lib/components/RunSocial.svelte';
+	import RunShareView from '#lib/components/RunShareView.svelte';
+	import StaticMapImage from '#lib/components/StaticMapImage.svelte';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import ReportDialog from '#lib/components/ReportDialog.svelte';
+	import RunPhotos from '#lib/components/RunPhotos.svelte';
+	import FundraiserSection from '#lib/components/FundraiserSection.svelte';
+	import RunGearChips from '#lib/components/RunGearChips.svelte';
+	import RunRaceResult from '#lib/components/RunRaceResult.svelte';
+	import RunSegmentEfforts from '#lib/components/RunSegmentEfforts.svelte';
+	import RouteHistory from '#lib/components/RouteHistory.svelte';
+	import SplitPane from '#lib/components/SplitPane.svelte';
+	import { formatPace, formatSpeed, formatDistance, sourceLabel } from '#lib/core/mock-data.ts';
+	import { sourceColor } from '#lib/runs/source_badge.ts';
+	import { formatDate, formatDuration } from '#lib/format/time.ts';
 	import {
 		fetchRunById,
 		fetchPublicRunAttribution,
@@ -46,64 +46,68 @@
 		enqueueRunRematch,
 		requestDistanceRecompute,
 		fetchHrSeries,
+		audienceSharingEnabled,
+		fetchShares,
 		type RunMatchInfo,
 		type RouteMatchCandidate,
-	} from '$lib/core/data';
-	import { applyRunMetadataPatch } from '$lib/core/data_normalise';
-	import { ageFromDob } from '$lib/nutrition/nutrition_targets';
-	import type { PlanWorkout } from '$lib/types';
-	import { toRunGpx, downloadFile } from '$lib/routes/gpx';
-	import { movingTimeSeconds, computeRealSplits } from '$lib/runs/run_stats';
-	import { lineLat, lineLng } from '$lib/runs/track_line';
-	import { computeElevationGain } from '$lib/routes/route_simplify';
+	} from '#lib/core/data.ts';
+	import AudienceDialog from '#lib/components/AudienceDialog.svelte';
+	import { audienceOf, type AudienceColumns } from '#lib/social/run_visibility.ts';
+	import { applyRunMetadataPatch } from '#lib/core/data_normalise.ts';
+	import { ageFromDob } from '#lib/nutrition/nutrition_targets.ts';
+	import type { PlanWorkout } from '#lib/types.ts';
+	import { toRunGpx, downloadFile } from '#lib/routes/gpx.ts';
+	import { movingTimeSeconds, computeRealSplits } from '#lib/runs/run_stats.ts';
+	import { lineLat, lineLng } from '#lib/runs/track_line.ts';
+	import { computeElevationGain } from '#lib/routes/route_simplify.ts';
 	import {
 		cadenceSpm,
 		elevationSeries,
 		elevationSourceTrack,
 		stepCount,
 		storedElevationGainM,
-	} from '$lib/runs/key_stats';
-	import { gradeAdjustedPaceSecPerKm } from '$lib/runs/grade_adjusted_pace';
+	} from '#lib/runs/key_stats.ts';
+	import { gradeAdjustedPaceSecPerKm } from '#lib/runs/grade_adjusted_pace.ts';
 	import {
 		analysePacing,
 		gradeAdjustedSplitPaces,
 		type PacingVerdict,
-	} from '$lib/runs/pace_analysis';
-	import { defaultZoneCutoffs } from '$lib/training/hr_zones';
-	import { findGuidedRun } from '$lib/training/guided_runs';
+	} from '#lib/runs/pace_analysis.ts';
+	import { defaultZoneCutoffs } from '#lib/training/hr_zones.ts';
+	import { findGuidedRun } from '#lib/training/guided_runs.ts';
 	import { afterNavigate, goto } from '$app/navigation';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { consent } from '$lib/settings/consent.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import Modal from '$lib/components/Modal.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { consent } from '#lib/settings/consent.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import Modal from '#lib/components/Modal.svelte';
 	import {
 		trackEntersAnyZone,
 		PRIVACY_ZONES_KEY,
 		type PrivacyZone,
-	} from '$lib/routes/privacy';
-	import { knownEffective, type LoadedSettings } from '$lib/settings/settings_overlay';
-	import { SHARE_CARD_MAP, shareCardTrack } from '$lib/share/share_card_track';
+	} from '#lib/routes/privacy.ts';
+	import { knownEffective, type LoadedSettings } from '#lib/settings/settings_overlay.ts';
+	import { SHARE_CARD_MAP, shareCardTrack } from '#lib/share/share_card_track.ts';
 	import {
 		estimateRunCalories,
 		ACTIVITY_KCAL_PER_KG_PER_KM,
 		type CalorieGender,
-	} from '$lib/runs/calories';
-	import { ageGradeForRun, formatAgeGradePercent } from '$lib/runs/age_grade';
-	import { hrCoveragePercent } from '$lib/runs/hr_coverage';
+	} from '#lib/runs/calories.ts';
+	import { ageGradeForRun, formatAgeGradePercent } from '#lib/runs/age_grade.ts';
+	import { hrCoveragePercent } from '#lib/runs/hr_coverage.ts';
 	import {
 		canRecomputeDistance,
 		classifyRecomputeError,
 		mapMatchedDistanceM,
 		recordedDistanceM,
-	} from '$lib/runs/distance_recompute';
-	import { supabase } from '$lib/core/supabase';
-	import { METADATA_KEYS } from '$lib/core/schema';
-	import { m } from '$lib/i18n/store.svelte';
-	import { activityTypeIcon, activityUsesSpeed } from '$lib/runs/activity_type';
-	import { activityTypeLabel } from '$lib/runs/activity_type.svelte';
-	import { buildRunShareCanonical } from '$lib/share/share_meta';
-	import type { Run } from '$lib/types';
+	} from '#lib/runs/distance_recompute.ts';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { METADATA_KEYS } from '#lib/core/schema.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { activityTypeIcon, activityUsesSpeed } from '#lib/runs/activity_type.ts';
+	import { activityTypeLabel } from '#lib/runs/activity_type.svelte.ts';
+	import { buildRunShareCanonical } from '#lib/share/share_meta.ts';
+	import type { Run } from '#lib/types.ts';
 
 	let { data: pageData } = $props();
 
@@ -114,7 +118,7 @@
 	// copy, exactly as /routes/[id], /u/[id], and /clubs/* already do. Derived
 	// from the param so it is present before any client fetch resolves.
 	let canonicalUrl = $derived(
-		buildRunShareCanonical(siteOrigin(env.PUBLIC_SITE_URL), pageData.id)
+		buildRunShareCanonical(siteOrigin(PUBLIC_SITE_URL), pageData.id)
 	);
 
 	/// The OWNER's run row, with its unclipped track. Every owner-only
@@ -192,6 +196,13 @@
 	let shareConfirmIntersectsZone = $state(false);
 	let shareConfirmHasZones = $state(false);
 	let shareBusy = $state(false);
+	/// Audience sharing (followers level + named people, decisions
+	/// § 1874) is a server-gated feature; the control and the narrower
+	/// share link render only when the server says it is on.
+	let audienceSharingOn = $state(false);
+	let shareCount = $state(0);
+	let showAudience = $state(false);
+	let audienceLevel = $derived(run ? audienceOf(run, shareCount) : 'private');
 	let bodyWeightKg = $state<number | null>(null);
 	// Hide-calories opt-out (universal `show_calories` pref, default on) —
 	// hunt-newrunner: a weight-conscious runner can suppress the estimate.
@@ -268,6 +279,7 @@
 			return;
 		}
 		loading = false;
+		void loadAudience();
 		// Best-effort matched-track fetch in the background. The map
 		// will swap to the matched line once it lands; until then it
 		// shows the raw track.
@@ -299,7 +311,7 @@
 		try {
 			const uid = auth.user?.id;
 			if (uid) {
-				const { loadSettings, effective } = await import('$lib/settings/settings');
+				const { loadSettings, effective } = await import('#lib/settings/settings.ts');
 				const settings = await loadSettings(uid);
 				const zones = effective<Record<string, number>>(settings, 'hr_zones');
 				if (zones) {
@@ -657,12 +669,40 @@
 		const uid = auth.user?.id;
 		if (!uid) return null;
 		try {
-			const { loadSettings } = await import('$lib/settings/settings');
+			const { loadSettings } = await import('#lib/settings/settings.ts');
 			ownerZones = zonesFrom(await loadSettings(uid));
 		} catch (e) {
 			console.warn('privacy zones unknown', e);
 		}
 		return ownerZones;
+	}
+
+	/// Whether audience sharing is live, and how many named people this run is
+	/// shared with. Both decorate the owner view; a failure leaves the page on
+	/// the public / private controls it had before the feature existed.
+	async function loadAudience() {
+		audienceSharingOn = await audienceSharingEnabled();
+		if (!audienceSharingOn || !run) return;
+		try {
+			shareCount = (await fetchShares('run', run.id)).length;
+		} catch (e) {
+			console.warn('run shares unknown', e);
+		}
+	}
+
+	function applyAudienceColumns(columns: AudienceColumns) {
+		if (!run) return;
+		run = { ...run, ...columns } as Run;
+	}
+
+	async function closeAudience() {
+		showAudience = false;
+		await loadAudience();
+	}
+
+	function requestPublicFromAudience() {
+		showAudience = false;
+		void requestMakePublic();
 	}
 
 	async function handleShare() {
@@ -673,6 +713,29 @@
 			await proceedShare();
 			return;
 		}
+		// A run whose owner chose a narrower audience is shared as the in-app
+		// link, which opens only for that audience. Making it public is the
+		// audience control's job, never a side effect of Share.
+		if (audienceSharingOn && audienceLevel !== 'private') {
+			try {
+				await navigator.clipboard.writeText(`${window.location.origin}/runs/${run.id}`);
+				showToast(m('audience.linkCopied'), 'success');
+			} catch (e) {
+				showToast(m('runDetail.shareFailed', { error: String(e) }), 'error');
+			}
+			return;
+		}
+		if (audienceSharingOn) {
+			// Share asks who should see the run; public is one answer of four,
+			// never a side effect of the button.
+			showAudience = true;
+			return;
+		}
+		await requestMakePublic();
+	}
+
+	async function requestMakePublic() {
+		if (!run || !auth.user || shareBusy) return;
 		// Visibility-change consent: making a previously-private run
 		// public is a non-trivial state change. A first-time / casual
 		// user has typically never set up a privacy zone, so without
@@ -705,7 +768,7 @@
 			// Reflect the flip in-page immediately — the visibility chip and
 			// the share button both read `run.is_public` and would otherwise
 			// keep showing "Private" / "Make public" until a reload.
-			run = { ...run, is_public: true } as Run;
+			run = { ...run, is_public: true, followers_only: false } as Run;
 			const url = buildRunShareCanonical(window.location.origin, run.id);
 			await navigator.clipboard.writeText(url);
 			showToast(m('runDetail.shareLinkCopied'), 'success');
@@ -1654,9 +1717,19 @@
 							<span class="meta-source-dot"></span>
 							{sourceLabel(run.source)}
 						</span>
-						<span class="meta-item visibility-chip" class:is-public={run.is_public}>
-							<span class="material-symbols">{run.is_public ? 'public' : 'lock'}</span>
-							{run.is_public ? m('runDetail.public') : m('runDetail.private')}
+						<span
+							class="meta-item visibility-chip"
+							class:is-public={run.is_public}
+							data-testid="run-visibility-chip"
+						>
+							<span class="material-symbols">{audienceLevel === 'public' ? 'public' : audienceLevel === 'followers' ? 'group' : audienceLevel === 'specific' ? 'person_add' : 'lock'}</span>
+							{audienceLevel === 'public'
+								? m('runDetail.public')
+								: audienceLevel === 'followers'
+									? m('audience.chipFollowers')
+									: audienceLevel === 'specific'
+										? m('audience.chipShared')
+										: m('runDetail.private')}
 						</span>
 						{#if guidedRunId}
 							{#if guidedRun}
@@ -1705,13 +1778,35 @@
 						</button>
 						<button
 							class="icon-btn"
-							aria-label={run.is_public ? m('runDetail.copyShareLink') : m('runDetail.makePublicCopyLink')}
-							title={run.is_public ? m('runDetail.copyShareLink') : m('runDetail.shareLink')}
+							aria-label={run.is_public
+								? m('runDetail.copyShareLink')
+								: audienceSharingOn && audienceLevel !== 'private'
+									? m('audience.copyLink')
+									: audienceSharingOn
+										? m('runDetail.shareLink')
+										: m('runDetail.makePublicCopyLink')}
+							title={run.is_public
+								? m('runDetail.copyShareLink')
+								: audienceSharingOn && audienceLevel !== 'private'
+									? m('audience.copyLink')
+									: m('runDetail.shareLink')}
 							onclick={handleShare}
 							disabled={shareBusy}
+							data-testid="run-share-btn"
 						>
 							<span class="material-symbols">share</span>
 						</button>
+						{#if audienceSharingOn}
+							<button
+								class="icon-btn"
+								aria-label={m('audience.button')}
+								title={m('audience.button')}
+								onclick={() => (showAudience = true)}
+								data-testid="run-audience-btn"
+							>
+								<span class="material-symbols">group</span>
+							</button>
+						{/if}
 						{#if run.is_public}
 							<button
 								class="icon-btn"
@@ -2331,6 +2426,19 @@
 	oncancel={() => (showShareConfirm = false)}
 	data-testid="share-confirm-dialog"
 />
+
+{#if run}
+	<AudienceDialog
+		open={showAudience}
+		kind="run"
+		entityId={run.id}
+		isPublic={run.is_public === true}
+		followersOnly={run.followers_only === true}
+		onlevel={applyAudienceColumns}
+		onrequestpublic={requestPublicFromAudience}
+		onclose={closeAudience}
+	/>
+{/if}
 
 <ConfirmDialog
 	open={showMakePrivateConfirm}

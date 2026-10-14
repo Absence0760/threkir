@@ -10,7 +10,7 @@ Deployed to AWS — S3 (static SvelteKit build) + CloudFront + Route 53 for ever
 
 ## Stack
 
-- **Framework**: SvelteKit 2 with Svelte 5 (runes/next)
+- **Framework**: SvelteKit 3 with Svelte 5 (runes/next)
 - **Language**: TypeScript
 - **Package manager**: npm via the root workspace (`npm run <script> --workspace=apps/web`). The repo bootstrapped with pnpm originally and a root `pnpm-lock.yaml` is still maintained beside `package-lock.json` — most CI jobs install with `npm ci`, the Playwright / live-hub / SSO lanes with `pnpm install --frozen-lockfile`, so both lockfiles are committed and the security overrides must agree across them ([decisions § 730](../../docs/architecture/decisions.md)). There is no `apps/web/pnpm-lock.yaml`. The canonical build path is npm — see [decisions.md § 7](../../docs/architecture/decisions.md). Either works locally; just don't mix.
 - **Adapter**: `@sveltejs/adapter-static` for the bulk; `/api/coach/+server.ts` is reused as the body of a hand-rolled Node 24 Lambda handler (no SvelteKit AWS adapter — see [decisions.md § 53](../../docs/architecture/decisions.md#53-web-app--domain-on-aws-s3--cloudfront--lambda--route-53-not-vercel-or-cloudflare-pages))
@@ -32,16 +32,17 @@ npm run build --workspace=apps/web       # Production build
 npm run preview --workspace=apps/web     # Preview build on :8888
 npm run check --workspace=apps/web       # Type-check src/ + .svelte (svelte-check)
 npm run check:e2e-types --workspace=apps/web  # Type-check tests-e2e/ (tsc; § 749)
-npm run check:node-types --workspace=apps/web # Type-check scripts/ + lambda/ + svelte.config.js (§ 752)
+npm run check:node-types --workspace=apps/web # Type-check scripts/ + lambda/ (§ 752)
 npm run check:sw-types --workspace=apps/web   # Type-check static/sw.js under the WebWorker lib (§ 752)
 npm run test:tsconfig-coverage --workspace=apps/web  # No compilable file under apps/web is outside all four roots
 ```
 
-`apps/web` has four `tsc` roots and needs them: SvelteKit generates the app's
-`include` (`src/`, `test/`, `tests/`, `vite.config.*`) and TypeScript does not
-merge `include` across `extends`, so anything outside it belongs to no program
-until a root says so. `tsconfig.tests-e2e.json` covers the Playwright tree,
-`tsconfig.node.json` the scripts, the Lambda handlers and `svelte.config.js`,
+`apps/web` has four `tsc` roots and needs them: the app's `tsconfig.json`
+includes `src`, `test` and the root files (`vite.config.ts`), extends the
+`$app/tsconfig` that `svelte-kit sync` writes into node_modules, and
+TypeScript does not merge `include` across `extends`, so anything outside it
+belongs to no program until a root says so. `tsconfig.tests-e2e.json` covers
+the Playwright tree, `tsconfig.node.json` the scripts and the Lambda handlers,
 and `tsconfig.service-worker.json` `static/sw.js` — separate from the Node one
 because a service worker's globals come from the `WebWorker` lib, which cannot
 share a program with `DOM`. A new tree under `apps/web` fails

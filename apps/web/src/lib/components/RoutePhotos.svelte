@@ -6,12 +6,12 @@
 		deleteRoutePhoto,
 		updateRoutePhotoCaption,
 		type RoutePhoto,
-	} from '$lib/core/data';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { m } from '$lib/i18n/store.svelte';
+	} from '#lib/core/data.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
 	import ConfirmDialog from './ConfirmDialog.svelte';
-	import { safeImageSrc } from '$lib/util/safe_image_src';
+	import { safeImageSrc } from '#lib/util/safe_image_src.ts';
 
 	interface Props {
 		routeId: string;

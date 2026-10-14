@@ -1,23 +1,23 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { auth } from '$lib/stores/auth.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
 	import {
 		fetchGymRoutineDetail,
 		fetchGymSessionDraft,
 		fetchExerciseSetHistoryBatch,
 		type GymRoutineDetail,
 		type GymWorkout,
-	} from '$lib/core/data';
-	import { expandRoutineSteps, type RoutineStep, type PlannedRoutine } from '$lib/gym/gym_routine';
-	import { nextPrescription } from '$lib/gym/gym_progression';
-	import { lastSessionSets, progressionParamsWithStreak } from '$lib/gym/progression_prefill';
-	import { normaliseExerciseName } from '$lib/gym/gym_prs';
-	import GymSessionRunner from '$lib/components/GymSessionRunner.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
+	} from '#lib/core/data.ts';
+	import { expandRoutineSteps, type RoutineStep, type PlannedRoutine } from '#lib/gym/gym_routine.ts';
+	import { nextPrescription } from '#lib/gym/gym_progression.ts';
+	import { lastSessionSets, progressionParamsWithStreak } from '#lib/gym/progression_prefill.ts';
+	import { normaliseExerciseName } from '#lib/gym/gym_prs.ts';
+	import GymSessionRunner from '#lib/components/GymSessionRunner.svelte';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
 
-	const routineId = $derived($page.params.routineId ?? '');
+	const routineId = $derived(page.params.routineId ?? '');
 
 	let detail = $state<GymRoutineDetail | null>(null);
 	let steps = $state<RoutineStep[]>([]);

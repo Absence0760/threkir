@@ -1,35 +1,35 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { supabase } from '$lib/core/supabase';
-	import { effective } from '$lib/settings/settings';
-	import { applyTheme, loadTheme, type Theme } from '$lib/settings/theme';
-	import { m, currentLocale, setLocale } from '$lib/i18n/store.svelte';
-	import { SUPPORTED_LOCALES, LOCALE_LABELS, type Locale } from '$lib/i18n/locale';
-	import { setUnit, setWeightUnit } from '$lib/format/units.svelte';
-	import { defaultWeekStartForLocale } from '$lib/format/locale_defaults';
-	import { defaultWeightUnitForDistanceUnit } from '$lib/format/weight';
-	import { setMapStyle } from '$lib/routes/map-style.svelte';
-	import { setUndoWindowS } from '$lib/stores/undo.svelte';
-	import { undoWindowSFromPref, DEFAULT_UNDO_WINDOW_S } from '$lib/core/undo_queue';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { createPrefsPage } from '$lib/settings/prefs_page.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { effective } from '#lib/settings/settings.ts';
+	import { applyTheme, loadTheme, type Theme } from '#lib/settings/theme.ts';
+	import { m, currentLocale, setLocale } from '#lib/i18n/store.svelte.ts';
+	import { SUPPORTED_LOCALES, LOCALE_LABELS, type Locale } from '#lib/i18n/locale.ts';
+	import { setUnit, setWeightUnit } from '#lib/format/units.svelte.ts';
+	import { defaultWeekStartForLocale } from '#lib/format/locale_defaults.ts';
+	import { defaultWeightUnitForDistanceUnit } from '#lib/format/weight.ts';
+	import { setMapStyle } from '#lib/routes/map-style.svelte.ts';
+	import { setUndoWindowS } from '#lib/stores/undo.svelte.ts';
+	import { undoWindowSFromPref, DEFAULT_UNDO_WINDOW_S } from '#lib/core/undo_queue.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { createPrefsPage } from '#lib/settings/prefs_page.svelte.ts';
 	import {
 		DISCLOSURE_LEVEL_KEY,
 		disclosureLevel,
 		isDisclosureLevel,
 		type DisclosureLevel,
-	} from '$lib/settings/disclosure';
-	import { PRIMARY_GOAL_KEY } from '$lib/settings/onboarding';
-	import { fetchRunAllTimeStats } from '$lib/core/data';
-	import type { MessageKey } from '$lib/i18n/messages';
-	import PrefsPage from '$lib/components/settings/PrefsPage.svelte';
+	} from '#lib/settings/disclosure.ts';
+	import { PRIMARY_GOAL_KEY } from '#lib/settings/onboarding.ts';
+	import { fetchRunAllTimeStats } from '#lib/core/data.ts';
+	import type { MessageKey } from '#lib/i18n/messages.ts';
+	import PrefsPage from '#lib/components/settings/PrefsPage.svelte';
 	import {
 		hydrateModalityVisibility,
 		modalityVisible,
 		setModalityChoice,
-	} from '$lib/stores/modality_visibility.svelte';
-	import type { Modality } from '$lib/settings/modality_visibility';
+	} from '#lib/stores/modality_visibility.svelte.ts';
+	import type { Modality } from '#lib/settings/modality_visibility.ts';
 
 	let preferredUnit = $state<'km' | 'mi'>('km');
 	let weightUnit = $state<'kg' | 'lbs'>('kg');

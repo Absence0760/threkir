@@ -1129,6 +1129,50 @@ $neutralised$;`,
       },
     },
   ],
+  [
+    'shared_runs',
+    {
+      why: "drops `private.run_audience_admits(...)` — the followers level, the named-person grant, the block check, the self exclusion and the audience-sharing gate. Keeps `is_public = false`, which says which runs the view is about (the public ones are public_runs')",
+      sql: `create or replace view public.shared_runs as
+ select r.id, r.user_id, r.started_at, r.duration_s, r.distance_m, r.elevation_gain_m,
+        r.source, r.activity_type, r.is_dnf, r.is_public, r.created_at,
+        case when is_public_route_by_id(r.route_id) then r.route_id else null::uuid end as route_id,
+        case when is_public_event_by_id(r.event_id) then r.event_id else null::uuid end as event_id,
+        r.race_listing_id, (r.track_url is not null) as has_track,
+        r.fastest_5k_s, r.fastest_10k_s, r.fastest_half_marathon_s, r.fastest_marathon_s,
+        coalesce(r.metadata, '{}'::jsonb) as metadata, r.concluded_at
+   from runs r
+  where r.is_public = false
+    and ${mine('r')};`,
+      subject: 'runs r — the run whose audience check was dropped',
+      witness: {
+        setup: `update runs set is_public = false, followers_only = false
+                 where id = (select id from runs order by id limit 1);`,
+        probe: `select count(*) from shared_runs
+                 where id = (select id from runs order by id limit 1);`,
+      },
+    },
+  ],
+  [
+    'shared_routes',
+    {
+      why: "drops `shadow_hidden = false` and `private.route_audience_admits(...)` — the followers level, the named-person grant, the block check, the self exclusion and the audience-sharing gate. Keeps `is_public = false` and the club-visibility mask on club_id",
+      sql: `create or replace view public.shared_routes as
+ select id, user_id, name, distance_m, elevation_m, surface, is_public, slug,
+        created_at, updated_at, tags, is_featured, featured_at, run_count,
+        case when is_public_club_by_id(club_id) then club_id else null::uuid end as club_id
+   from routes r
+  where r.is_public = false
+    and ${mine('r')};`,
+      subject: 'routes r — the route whose audience check was dropped',
+      witness: {
+        setup: `update routes set is_public = false, followers_only = false
+                 where id = (select id from routes order by id limit 1);`,
+        probe: `select count(*) from shared_routes
+                 where id = (select id from routes order by id limit 1);`,
+      },
+    },
+  ],
 ]);
 
 // Definer relations a zero-or-empty assertion reads and that deliberately have

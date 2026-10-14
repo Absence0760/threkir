@@ -4,6 +4,7 @@ import { getAdminClient } from '../fixtures/local-supabase';
 import { RUNNER_PUBLIC_ROUTE_ID } from '../fixtures/seeded-data';
 import { USER_A } from '../fixtures/users';
 import { readRow } from '../fixtures/db-read';
+import { shareChoosingPublic } from '../fixtures/share';
 
 /**
  * /routes/[id] — owner-only route detail page.
@@ -74,7 +75,7 @@ test.describe('/routes/[id]', () => {
 		const shareBtn = page.getByRole('button', { name: 'Share', exact: true });
 
 		// First Share click opens the confirm — it must NOT flip the route yet.
-		await shareBtn.click();
+		await shareChoosingPublic(page, shareBtn);
 		await expect(dialog).toBeVisible();
 		await expect(shareBar).toBeHidden();
 
@@ -95,7 +96,7 @@ test.describe('/routes/[id]', () => {
 		}
 
 		// Confirm flips it public, discloses the flip, and reveals the link.
-		await shareBtn.click();
+		await shareChoosingPublic(page, shareBtn);
 		await expect(dialog).toBeVisible();
 		await dialog.getByRole('button', { name: 'Make public & share' }).click();
 		await expect(
@@ -115,49 +116,41 @@ test.describe('/routes/[id]', () => {
 		}
 	});
 
-	test('public toggle: Public → Private, reload persists, back to Public', async ({
+	test('audience control: Public → Only me, reload persists, back to Public', async ({
 		page
 	}) => {
-		// `togglePublic` calls setRoutePublic which updates `is_public`
-		// on the routes row. Owner-only button — gated on `isOwner`.
-		// The button text flips between "Public" / "Private". Catches
-		// regressions in either the write (RLS dropping the update)
-		// or the optimistic rollback (button text reverts on error).
-		// Pinned route starts public; cleanup leaves it public.
+		// With audience sharing on (the seed opens the gate) the owner's one
+		// visibility control is the audience picker; the old public toggle is
+		// gone so two buttons never disagree. Only me writes is_public=false;
+		// Public goes back through the make-public confirm. Pinned route starts
+		// public; cleanup leaves it public.
 		await page.goto(`/routes/${RUNNER_PUBLIC_ROUTE_ID}`);
-		// Needed: togglePublic is gated on `isOwner`, which derives from
-		// auth.user + the fetched route. Clicking the toggle before both
-		// have resolved (i.e. before Svelte finishes hydrating with auth
-		// loaded) is a no-op — Playwright's actionability check on
-		// .click() doesn't cover Svelte hydration.
+		// The control is gated on `isOwner`, which derives from auth.user and
+		// the fetched route; a click before hydration is a no-op.
 		await page.waitForLoadState('networkidle');
 
-		// The button text content is "public Public" (icon ligature +
-		// label) so a plain text regex pulls in the icon span. Target
-		// by the `title` attribute which is unique to this button —
-		// "Public — tap to make private" / "Private — tap to make
-		// public".
-		const toggleBtn = () =>
-			page.locator('button[title^="Public"], button[title^="Private"]');
-		await expect(toggleBtn()).toBeVisible({ timeout: 10_000 });
-		await expect(toggleBtn()).toHaveAttribute('title', /^Public/);
+		const audienceBtn = page.getByTestId('route-audience-btn');
+		await expect(audienceBtn).toContainText('Public', { timeout: 10_000 });
+		await expect(page.locator('button[title^="Public —"], button[title^="Private —"]')).toHaveCount(0);
 
-		await toggleBtn().click();
-		await expect(toggleBtn()).toHaveAttribute('title', /^Private/, {
-			timeout: 5_000
-		});
+		await audienceBtn.click();
+		await expect(page.getByTestId('audience-dialog')).toBeVisible();
+		await page.getByTestId('audience-level-private').click();
+		await expect(audienceBtn).toContainText('Only me', { timeout: 5_000 });
+		await page.keyboard.press('Escape');
 
 		// Reload — server-side state must agree.
 		await page.reload();
-		await expect(toggleBtn()).toHaveAttribute('title', /^Private/, {
-			timeout: 10_000
-		});
+		await expect(audienceBtn).toContainText('Only me', { timeout: 10_000 });
 
-		// Restore.
-		await toggleBtn().click();
-		await expect(toggleBtn()).toHaveAttribute('title', /^Public/, {
-			timeout: 5_000
-		});
+		// Restore through the make-public confirm, the same path Share takes on
+		// a private route.
+		await page.waitForLoadState('networkidle');
+		await shareChoosingPublic(page, page.getByRole('button', { name: 'Share', exact: true }));
+		const confirm = page.getByTestId('share-confirm-dialog');
+		await expect(confirm).toBeVisible();
+		await confirm.getByRole('button', { name: 'Make public & share' }).click();
+		await expect(audienceBtn).toContainText('Public', { timeout: 5_000 });
 	});
 
 	// `toggleStar` is optimistic, so the button's class says nothing about

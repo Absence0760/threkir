@@ -8,10 +8,17 @@
 /// `occurrence` — an ORGANISER calls off one occurrence, which cancels it and
 /// refunds every registrant of it in full, whatever the refund policy says (the
 /// host cancelled; the buyers did not). This is `refund_orders_for_instance`
-/// from the spec. A direct client insert into `event_exceptions` over an
+/// from the spec. A one-off event is its own single occurrence and is cancelled
+/// the same way. A direct client insert into `event_exceptions` over an
 /// occurrence that still holds money is refused by
 /// `guard_paid_occurrence_cancel` (20270723000003), so this is the only way a
 /// paid occurrence can be called off.
+/// `series` — an ORGANISER ends a recurring event: `recurrence_until` moves to
+/// now, so no later occurrence exists or can be bought (events-checkout refuses
+/// an instant past it), every remaining occurrence that holds an order or an
+/// RSVP is called off by name (so each is told, through `notify_event_cancel`),
+/// and every one of their orders is refunded exactly as an occurrence cancel
+/// refunds (decisions § 1868).
 ///
 /// Either way this EF only INITIATES. The stripe-events-webhook — still the
 /// SOLE, idempotent, service-role-only writer of event_orders.status —
@@ -33,8 +40,9 @@
 ///     window) -> 409 policy_no_refund; the buyer keeps the seat (we never
 ///     free a seat without refunding the money).
 ///
-/// Every refund, from both scopes, goes through `refundOrder` and is keyed
-/// `refundIdempotencyKey(order.id)`: a retried or doubled cancel, or a buyer
+/// Every refund, from both scopes, goes through `refundOrder` over the one REST
+/// transport (refund.ts, which the webhook and the reconciliation sweep share,
+/// decisions § 1839) and is keyed `refundIdempotencyKey(order.id)`: a retried or doubled cancel, or a buyer
 /// cancel followed by the host's, replays one refund instead of making two.
 ///
 /// Validation gates (each fails closed):
@@ -64,22 +72,26 @@ import {
   buildRefundParams,
   cancelAction,
   hostCancelAction,
-  isAlreadyRefundedError,
   normalizeCancelReason,
   OCCURRENCE_CANCEL_STATUSES,
   type OrderRefundResult,
   parseCancelScope,
-  refundIdempotencyKey,
   resolveRefundEligibility,
   type RefundPolicy,
+  SERIES_CANCEL_RSVP_STATUSES,
+  seriesCancelCutoff,
+  seriesCancelInstances,
+  seriesEndUntil,
   summarizeOccurrenceRefunds,
 } from './lib.ts';
+import { refundOrder, stripeRestRefundCreator } from './refund.ts';
 import { publishableKey, secretKey } from '../_shared/api_keys.ts';
 
 /// Every key of the hand-shaped params must be one Stripe declares. This is
 /// the only money-MOVING call in the tier and was the one call site without
-/// the guard: what is handed to `create` is a function return, not a fresh
-/// object literal, so no excess-property check runs and a misspelled
+/// the guard: what reaches Stripe is a function return, not a fresh object
+/// literal (and, since § 1839, a form body encoded from it by the one REST
+/// transport in refund.ts), so no excess-property check runs and a misspelled
 /// `reverse_transfers` would compile and come back from Stripe as `Received
 /// unknown parameter` — leaving the transfer un-reversed, which is exactly the
 /// state this refund exists to stop being in. Nothing references the alias;
@@ -93,12 +105,6 @@ interface CancelBody {
   instance_start?: string;
   scope?: unknown;
   reason?: unknown;
-}
-
-interface RefundableOrder {
-  id: string;
-  status: string;
-  stripe_payment_intent_id: string | null;
 }
 
 Deno.serve(withSentry('events-cancel', async (req: Request) => {
@@ -123,8 +129,11 @@ Deno.serve(withSentry('events-cancel', async (req: Request) => {
   }
 
   const eventId = typeof body.event_id === 'string' ? body.event_id : null;
-  const instanceStart = typeof body.instance_start === 'string' ? body.instance_start : null;
-  if (!eventId || !instanceStart) {
+  // A series cancel names no occurrence: it ends every one from now on.
+  const instanceStart = scope === 'series'
+    ? ''
+    : typeof body.instance_start === 'string' ? body.instance_start : null;
+  if (!eventId || instanceStart === null) {
     return Response.json({ error: 'missing_event_or_instance' }, { status: 400 });
   }
   // Both go straight into `.eq()` on typed columns below — an unchecked
@@ -132,7 +141,7 @@ Deno.serve(withSentry('events-cancel', async (req: Request) => {
   if (!isValidUuid(eventId)) {
     return Response.json({ error: 'invalid_event_id' }, { status: 400 });
   }
-  if (!isValidTimestamptz(instanceStart)) {
+  if (scope !== 'series' && !isValidTimestamptz(instanceStart)) {
     return Response.json({ error: 'invalid_instance_start' }, { status: 400 });
   }
   const reason = normalizeCancelReason(body.reason);
@@ -161,12 +170,23 @@ Deno.serve(withSentry('events-cancel', async (req: Request) => {
   const denied = await checkRateLimit(
     service,
     user.id,
-    scope === 'occurrence' ? 'events-cancel-occurrence' : 'events-cancel',
+    scope === 'self' ? 'events-cancel' : 'events-cancel-occurrence',
     20,
     3600,
     { failClosed: true },
   );
   if (denied) return denied;
+
+  if (scope === 'series') {
+    return await cancelSeries({
+      userClient,
+      service,
+      userId: user.id,
+      eventId,
+      reason,
+      stripeSecretKey,
+    });
+  }
 
   if (scope === 'occurrence') {
     return await cancelOccurrence({
@@ -238,7 +258,7 @@ Deno.serve(withSentry('events-cancel', async (req: Request) => {
     return Response.json({ ok: true, action: 'noop' });
   }
 
-  const result = await refundOrder(stripe, service, order);
+  const result = await refundOrder(stripeRestRefundCreator(stripeSecretKey!), service, order);
   if (result.outcome === 'failed') {
     return result.code === 'stripe_refund_failed'
       ? Response.json({ error: 'stripe_refund_failed' }, { status: 502 })
@@ -320,20 +340,7 @@ async function cancelOccurrence(args: {
     return Response.json({ error: 'cancel_failed' }, { status: 500 });
   }
 
-  const results: OrderRefundResult[] = [];
-  if (planned.length > 0) {
-    const stripe = newStripe(stripeSecretKey!);
-    // Sequential on purpose: a class is tens of orders, and one at a time keeps
-    // a Stripe rate-limit from turning into a burst of half-recorded failures.
-    for (const { order, action } of planned) {
-      if (action === 'release_reservation') {
-        await expireReservation(stripe, order.stripe_checkout_session_id);
-        results.push({ orderId: order.id, outcome: 'released' });
-        continue;
-      }
-      results.push(await refundOrder(stripe, service, order));
-    }
-  }
+  const results = await settleOrders(planned, service, stripeSecretKey);
 
   // 200 even when a refund failed: the occurrence IS cancelled, and the body
   // says exactly which orders still hold money. `outcome: 'incomplete'` is the
@@ -346,71 +353,180 @@ async function cancelOccurrence(args: {
   });
 }
 
-/// Refund one charged order through the one shape and the one key. Returns the
-/// outcome instead of a Response so the occurrence cancel can fold many of
-/// them; the buyer path maps it to its own status codes.
-///
-/// The `refund_initiated_at` stamp is written only when absent and rolled back
-/// only when it is still the one this call wrote, so a failed retry cannot wipe
-/// the "refund in progress" mark an earlier, successful refund left behind.
-/// Both writes are guarded on the status we READ, not a hardcoded 'paid': a
-/// refundable order may be 'partially_refunded', and matching only 'paid'
-/// silently stamped nothing while reporting success.
-async function refundOrder(
-  stripe: Stripe,
+type CancelableOrder = {
+  id: string;
+  status: string;
+  stripe_checkout_session_id: string | null;
+  stripe_payment_intent_id: string | null;
+};
+
+/// Release or refund each planned order of a host cancel. Sequential on
+/// purpose: a class is tens of orders, and one at a time keeps a Stripe
+/// rate-limit from turning into a burst of half-recorded failures. The caller
+/// has already refused to start without a key when anything is planned.
+async function settleOrders(
+  planned: ReadonlyArray<{ order: CancelableOrder; action: ReturnType<typeof hostCancelAction> }>,
   service: DbClient,
-  order: RefundableOrder,
-): Promise<OrderRefundResult> {
-  const paymentIntent = order.stripe_payment_intent_id;
-  if (!paymentIntent) {
-    console.error('charged order missing payment_intent; cannot refund. order:', order.id);
-    return { orderId: order.id, outcome: 'failed', code: 'missing_payment_intent' };
-  }
-
-  // NOT a status write — status stays where it is until the webhook confirms
-  // (sole-writer invariant).
-  const orderStatus = order.status;
-  const stampedAt = new Date().toISOString();
-  const { error: stampErr } = await service
-    .from('event_orders')
-    .update({ refund_initiated_at: stampedAt })
-    .eq('id', order.id)
-    .eq('status', orderStatus)
-    .is('refund_initiated_at', null);
-  if (stampErr) {
-    console.error('refund stamp failed (code):', stampErr?.code ?? 'unknown', 'order:', order.id);
-    return { orderId: order.id, outcome: 'failed', code: 'stamp_failed' };
-  }
-
-  try {
-    await stripe.refunds.create(
-      buildRefundParams(paymentIntent),
-      { idempotencyKey: refundIdempotencyKey(order.id) },
-    );
-  } catch (e) {
-    if (isAlreadyRefundedError(e)) {
-      // The money is already on its way back; charge.refunded reconciles the
-      // order. Keep the stamp — "refund in progress" is the truth.
-      return { orderId: order.id, outcome: 'already_refunded' };
+  stripeSecretKey: string | null,
+): Promise<OrderRefundResult[]> {
+  const results: OrderRefundResult[] = [];
+  if (planned.length === 0) return results;
+  const stripe = newStripe(stripeSecretKey!);
+  const createRefund = stripeRestRefundCreator(stripeSecretKey!);
+  for (const { order, action } of planned) {
+    if (action === 'release_reservation') {
+      await expireReservation(stripe, order.stripe_checkout_session_id);
+      results.push({ orderId: order.id, outcome: 'released' });
+      continue;
     }
-    // Clear our optimistic stamp so the UI doesn't show "refund in progress"
-    // forever, and report the failure (the order is untouched — status stays
-    // charged, the seat is held, and a retry resumes here).
-    await service
-      .from('event_orders')
-      .update({ refund_initiated_at: null })
-      .eq('id', order.id)
-      .eq('status', orderStatus)
-      .eq('refund_initiated_at', stampedAt);
-    console.error(
-      'stripe refund create failed:',
-      e instanceof Error ? e.message : 'unknown',
-      'order:',
-      order.id,
-    );
-    return { orderId: order.id, outcome: 'failed', code: 'stripe_refund_failed' };
+    results.push(await refundOrder(createRefund, service, order));
   }
-  return { orderId: order.id, outcome: 'initiated' };
+  return results;
+}
+
+/// The organiser path for a whole recurring series: end it now, call off every
+/// remaining occurrence someone signed up for, and refund all of their orders.
+async function cancelSeries(args: {
+  userClient: DbClient;
+  service: DbClient;
+  userId: string;
+  eventId: string;
+  reason: string | null;
+  stripeSecretKey: string | null;
+}): Promise<Response> {
+  const { userClient, service, userId, eventId, reason, stripeSecretKey } = args;
+
+  const { data: allowed, error: authzErr } = await userClient.rpc(
+    'can_cancel_event_occurrence',
+    { p_event_id: eventId },
+  );
+  if (authzErr) {
+    console.error('organiser check failed (code):', authzErr?.code ?? 'unknown');
+    return Response.json({ error: 'cancel_failed' }, { status: 500 });
+  }
+  if (allowed !== true) {
+    return Response.json({ error: 'not_event_organiser' }, { status: 403 });
+  }
+
+  const { data: event, error: eventErr } = await service
+    .from('events')
+    .select('recurrence_freq, recurrence_until')
+    .eq('id', eventId)
+    .maybeSingle();
+  if (eventErr) {
+    console.error('series event read failed (code):', eventErr?.code ?? 'unknown');
+    return Response.json({ error: 'cancel_failed' }, { status: 500 });
+  }
+  if (!event) {
+    return Response.json({ error: 'event_not_found' }, { status: 404 });
+  }
+  if (!event.recurrence_freq) {
+    return Response.json({ error: 'not_a_series' }, { status: 400 });
+  }
+
+  const cutoff = seriesCancelCutoff(event.recurrence_until, new Date().toISOString());
+  const cutoffMs = Date.parse(cutoff);
+
+  const readOrders = () =>
+    service
+      .from('event_orders')
+      .select('id, instance_start, status, stripe_checkout_session_id, stripe_payment_intent_id')
+      .eq('event_id', eventId)
+      .gte('instance_start', cutoff)
+      .in('status', [...OCCURRENCE_CANCEL_STATUSES])
+      .order('created_at', { ascending: true });
+
+  const first = await readOrders();
+  if (first.error) {
+    console.error('series orders read failed (code):', first.error?.code ?? 'unknown');
+    return Response.json({ error: 'cancel_failed' }, { status: 500 });
+  }
+  if (!stripeSecretKey && (first.data ?? []).some((o) => hostCancelAction(o.status) !== 'noop')) {
+    return Response.json({ error: 'stripe_not_configured' }, { status: 503 });
+  }
+
+  // End the series FIRST: events-checkout refuses an instant past
+  // recurrence_until, so no order can start behind the cancels below.
+  const until = seriesEndUntil(event.recurrence_until, cutoff);
+  if (until !== null) {
+    const { error: endErr } = await service
+      .from('events')
+      .update({ recurrence_until: until })
+      .eq('id', eventId);
+    if (endErr) {
+      console.error('series end write failed (code):', endErr?.code ?? 'unknown');
+      return Response.json({ error: 'cancel_failed' }, { status: 500 });
+    }
+  }
+
+  // Call off by name every remaining occurrence that holds an order or an
+  // RSVP. Read twice: a checkout that read the series before it ended can
+  // still land its pending order after the first pass, and the second pass
+  // catches it with its occurrence then cancelled behind it.
+  let cancelledOccurrences = 0;
+  for (let pass = 0; pass < 2; pass++) {
+    const [orders, attendees, exceptions] = await Promise.all([
+      readOrders(),
+      service
+        .from('event_attendees')
+        .select('instance_start')
+        .eq('event_id', eventId)
+        .gte('instance_start', cutoff)
+        .in('status', [...SERIES_CANCEL_RSVP_STATUSES]),
+      service
+        .from('event_exceptions')
+        .select('instance_start')
+        .eq('event_id', eventId)
+        .gte('instance_start', cutoff),
+    ]);
+    if (orders.error || attendees.error || exceptions.error) {
+      const code = (orders.error ?? attendees.error ?? exceptions.error)?.code ?? 'unknown';
+      console.error('series occurrence read failed (code):', code);
+      return Response.json({ error: 'cancel_failed' }, { status: 500 });
+    }
+    const instances = seriesCancelInstances(
+      [...(orders.data ?? []), ...(attendees.data ?? [])],
+      (exceptions.data ?? []).map((e) => e.instance_start),
+      cutoffMs,
+    );
+    if (instances.length === 0) break;
+    const { error: exceptionErr } = await service
+      .from('event_exceptions')
+      .upsert(
+        instances.map((instance_start) => ({
+          event_id: eventId,
+          instance_start,
+          cancelled_by: userId,
+          reason,
+        })),
+        { onConflict: 'event_id,instance_start', ignoreDuplicates: true },
+      );
+    if (exceptionErr) {
+      console.error('series cancel insert failed (code):', exceptionErr?.code ?? 'unknown');
+      return Response.json({ error: 'cancel_failed' }, { status: 500 });
+    }
+    cancelledOccurrences += instances.length;
+  }
+
+  const final = await readOrders();
+  if (final.error) {
+    console.error('series orders re-read failed (code):', final.error?.code ?? 'unknown');
+    return Response.json({ error: 'cancel_failed' }, { status: 500 });
+  }
+  const planned = (final.data ?? [])
+    .map((order) => ({ order, action: hostCancelAction(order.status) }))
+    .filter((p) => p.action !== 'noop');
+  if (planned.length > 0 && !stripeSecretKey) {
+    return Response.json({ error: 'stripe_not_configured' }, { status: 503 });
+  }
+  const results = await settleOrders(planned, service, stripeSecretKey);
+
+  return Response.json({
+    ok: true,
+    action: 'series_cancelled',
+    cancelled_occurrences: cancelledOccurrences,
+    refunds: summarizeOccurrenceRefunds(results),
+  });
 }
 
 /// Expire a pending order's Checkout Session; the resulting

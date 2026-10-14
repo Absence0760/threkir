@@ -26,7 +26,7 @@ Any one user can have **multiple identities linked**. A user who signed up with 
 A Svelte 5 runes module that wraps Supabase's `supabase.auth.*` and exposes a reactive `user` / `loggedIn` / `loading` triple. Import it anywhere:
 
 ```typescript
-import { auth } from '$lib/stores/auth.svelte';
+import { auth } from '#lib/stores/auth.svelte';
 ```
 
 ### Reactive properties
@@ -90,6 +90,8 @@ Public routes (no auth, no sidebar):
 - `/share/run/[id]/`, `/share/route/[id]/`
 - `/live/...` — public spectator pages
 - `/clubs/join/[token]/` — public invite-link landing
+
+Public routes that keep the sidebar for a signed-in visitor (`isAnonAllowed` in the root layout) also include the legal pages, `/compare`, `/segments`, public clubs and events, `/fundraisers/[id]`, and the help centre `/help`, `/help/[id]`, `/help/search` (decisions § 1866: the public live-event page links spectators into it).
 
 Everything else renders inside the authenticated app shell (sidebar + main content).
 

@@ -1,42 +1,42 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import maplibregl from '$lib/routes/maplibre';
+	import maplibregl from '#lib/routes/maplibre.ts';
 	import 'maplibre-gl/dist/maplibre-gl.css';
-	import { env } from '$env/dynamic/public';
-	const PUBLIC_MAPTILER_KEY = env.PUBLIC_MAPTILER_KEY ?? '';
-	import { basemapIsDarkFromEnv, mapStyleUrlFromEnv } from '$lib/routes/map-style.svelte';
-	import { mapLiveLine } from '$lib/routes/basemap_contrast';
-	import { watchMapResize } from '$lib/routes/map_resize';
-	import { formatPace, formatDistance } from '$lib/core/mock-data';
-	import { formatDuration } from '$lib/format/time';
-	import { fetchRouteById, fetchRouteMarkers, setRunExpectedReturn } from '$lib/core/data';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { buildRoadbook, type RoadbookLeg } from '$lib/routes/roadbook';
+	import { PUBLIC_MAPTILER_KEY as PUBLIC_MAPTILER_KEY_ENV } from '$app/env/public';
+	const PUBLIC_MAPTILER_KEY = PUBLIC_MAPTILER_KEY_ENV ?? '';
+	import { basemapIsDarkFromEnv, mapStyleUrlFromEnv } from '#lib/routes/map-style.svelte.ts';
+	import { mapLiveLine } from '#lib/routes/basemap_contrast.ts';
+	import { watchMapResize } from '#lib/routes/map_resize.ts';
+	import { formatPace, formatDistance } from '#lib/core/mock-data.ts';
+	import { formatDuration } from '#lib/format/time.ts';
+	import { fetchRouteById, fetchRouteMarkers, setRunExpectedReturn } from '#lib/core/data.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { buildRoadbook, type RoadbookLeg } from '#lib/routes/roadbook.ts';
 	import {
 		polylineLengthMetres,
 		progressAlongRoute,
 		type RouteWaypoint,
-	} from '$lib/routes/route_geometry';
-	import { nextCutoffEta } from '$lib/runs/live_cutoff_eta';
-	import { supabase } from '$lib/core/supabase';
-	import { TABLES } from '$lib/core/schema';
-	import { hasAcceptedConsent } from '$lib/settings/consent.svelte';
+	} from '#lib/routes/route_geometry.ts';
+	import { nextCutoffEta } from '#lib/runs/live_cutoff_eta.ts';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { TABLES } from '#lib/core/schema.ts';
+	import { hasAcceptedConsent } from '#lib/settings/consent.svelte.ts';
 	import {
 		isLiveHubConfigured,
 		fetchLiveSnapshot,
 		openLiveWebSocket,
 		type LivePing,
-	} from '$lib/runs/live_hub';
-	import { runnerHandle, shouldRevealDisplayName } from '$lib/social/runner_handle';
+	} from '#lib/runs/live_hub.ts';
+	import { runnerHandle, shouldRevealDisplayName } from '#lib/social/runner_handle.ts';
 	import {
 		freshnessFor,
 		liveElapsedS,
 		raceClockS,
 		type Freshness,
-	} from '$lib/runs/live_freshness';
-	import { motionFor } from '$lib/safety/live_motion';
-	import { isFinishedStale, statusAfterHydrate } from '$lib/runs/live_spectator_status';
-	import { m } from '$lib/i18n/store.svelte';
+	} from '#lib/runs/live_freshness.ts';
+	import { motionFor } from '#lib/safety/live_motion.ts';
+	import { isFinishedStale, statusAfterHydrate } from '#lib/runs/live_spectator_status.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
 
 	// audit/cookie-consent (2026-05-25): MapTiler tile fetches log
 	// requester IPs per tile, so initialising MapLibre before consent
@@ -525,7 +525,13 @@
 				viewerFollowsRunner,
 				runnerFollowsViewer,
 			});
-			runnerName = reveal && dn ? dn : runnerHandle(row.user_id as string);
+			runnerName =
+				reveal && dn
+					? dn
+					: runnerHandle(row.user_id as string, {
+							handle: (slug) => m('live.runnerHandle', { slug }),
+							anonymous: m('live.runnerAnonymous')
+						});
 
 			isOwner = viewerId != null && viewerId === row.user_id;
 			if (isOwner) {
@@ -643,7 +649,7 @@
 	}
 
 	// Finished/waiting boundaries live in the pure, unit-tested
-	// $lib/runs/live_spectator_status helpers (issue #603).
+	// #lib/runs/live_spectator_status helpers (issue #603).
 	function freezeOnSavedTotals(run: VisibleRun) {
 		distance = run.distance_m;
 		elapsed = run.duration_s;

@@ -1136,26 +1136,39 @@ func (c *SupabaseClient) FetchRunIdentitiesNear(ctx context.Context, userID stri
 	return out, nil
 }
 
-// privacyDefaultIsPublic resolves whether a newly-imported run for this
-// user should be public, from the universal `privacy_default` pref in
-// user_settings.prefs. Only an explicit 'public' default publishes;
-// followers/private/unset — and any read error — fall closed to private.
-// Mirrors the web `privacyDefaultToIsPublic` mapping + the EF parkrun /
-// strava-import paths (persona #27).
-func (c *SupabaseClient) privacyDefaultIsPublic(ctx context.Context, userID string) bool {
+// privacyDefaultAudience resolves the visibility columns of a newly-imported
+// run for this user from the universal `privacy_default` pref in
+// user_settings.prefs: 'public' publishes, 'followers' writes followers_only,
+// and anything else is owner-only, including an unset pref, whose registered
+// fallback is 'private' (decisions § 1881). A read error falls closed to owner-only. Mirrors the web
+// `privacyDefaultToAudience` mapping and the EF importers'
+// `_shared/privacy_default.ts` (persona #27, decisions § 1875). The
+// server stores followers_only as owner-only until audience sharing is on.
+func (c *SupabaseClient) privacyDefaultAudience(ctx context.Context, userID string) (isPublic, followersOnly bool) {
 	prefs, err := c.FetchUserSettingsPrefs(ctx, userID)
 	if err != nil {
-		return false
+		return false, false
 	}
-	return prefs["privacy_default"] == "public"
+	pref, ok := prefs["privacy_default"]
+	if !ok || pref == nil {
+		pref = "private"
+	}
+	switch pref {
+	case "public":
+		return true, false
+	case "followers":
+		return false, true
+	default:
+		return false, false
+	}
 }
 
 // InsertStravaRun inserts a runs row sourced from a Strava activity.
 // Mirrors the EF `ingestActivity` row shape (apps/backend/supabase/
 // functions/_shared/strava.ts) — fields, source='strava', metadata
 // keys all in lockstep so dashboard queries that read across both
-// writers see one consistent shape. is_public honours the user's
-// privacy_default (persona #27), fail-closed to private.
+// writers see one consistent shape. is_public / followers_only honour the
+// user's privacy_default (persona #27), fail-closed to owner-only.
 //
 // Returns the inserted row's id (so the caller can subsequently
 // upload the gzipped track + PATCH track_url).
@@ -1197,16 +1210,18 @@ func (c *SupabaseClient) InsertStravaRun(ctx context.Context, userID string, act
 		duration = act.ElapsedTime
 	}
 
+	isPublic, followersOnly := c.privacyDefaultAudience(ctx, userID)
 	row := map[string]any{
 		"user_id": userID,
 		// activity_type is a real column now (F3 / 20261207_001), no
 		// longer a metadata key. is_dnf defaults to false at the DB.
-		"activity_type": activityType,
-		"started_at":    act.StartDate,
-		"distance_m":    int(math.Round(act.Distance)),
-		"duration_s":    duration,
-		"source":        "strava",
-		"is_public":     c.privacyDefaultIsPublic(ctx, userID),
+		"activity_type":  activityType,
+		"started_at":     act.StartDate,
+		"distance_m":     int(math.Round(act.Distance)),
+		"duration_s":     duration,
+		"source":         "strava",
+		"is_public":      isPublic,
+		"followers_only": followersOnly,
 		// `external_id = 'strava:<id>'` is the cross-source dedupe key
 		// — same shape mobile ZIP writes. /audit/strava M3.
 		"external_id": "strava:" + stravaIDStr,
@@ -1569,7 +1584,7 @@ func (c *SupabaseClient) StreamExportRuns(ctx context.Context, userID string, em
 // TestExportRunProjectionCoversEveryRunsColumn.
 const exportRunsSelect = "id,user_id,started_at,concluded_at,duration_s,distance_m," +
 	"elevation_gain_m,source,activity_type,is_dnf,external_id,metadata,track_url," +
-	"hr_series_url,is_public,event_id,route_id,race_listing_id,fastest_5k_s," +
+	"hr_series_url,is_public,followers_only,event_id,route_id,race_listing_id,fastest_5k_s," +
 	"fastest_10k_s,fastest_half_marathon_s,fastest_marathon_s,created_at,updated_at"
 
 // ExportRunRow mirrors dataexport.ExportRun. We don't import the
@@ -1592,6 +1607,7 @@ type ExportRunRow struct {
 	TrackURL             *string                `json:"track_url"`
 	HrSeriesURL          *string                `json:"hr_series_url"`
 	IsPublic             *bool                  `json:"is_public"`
+	FollowersOnly        bool                   `json:"followers_only"`
 	EventID              *string                `json:"event_id"`
 	RouteID              *string                `json:"route_id"`
 	RaceListingID        *string                `json:"race_listing_id"`
@@ -1675,22 +1691,23 @@ func (c *SupabaseClient) StreamExportRoutes(ctx context.Context, userID string, 
 // reasoning as `ExportRunRow` — keep `internal` from importing
 // `dataexport`.
 type ExportRouteRow struct {
-	ID          string      `json:"id"`
-	Name        string      `json:"name"`
-	Waypoints   interface{} `json:"waypoints"`
-	DistanceM   *float64    `json:"distance_m,omitempty"`
-	ElevationM  *float64    `json:"elevation_m,omitempty"`
-	Surface     *string     `json:"surface,omitempty"`
-	IsPublic    *bool       `json:"is_public,omitempty"`
-	Slug        *string     `json:"slug,omitempty"`
-	Tags        []string    `json:"tags,omitempty"`
-	Featured    *bool       `json:"is_featured,omitempty"`
-	RunCount    *int        `json:"run_count,omitempty"`
-	IsStarred   *bool       `json:"is_starred,omitempty"`
-	Description *string     `json:"description,omitempty"`
-	ClubID      *string     `json:"club_id,omitempty"`
-	CreatedAt   *string     `json:"created_at,omitempty"`
-	UpdatedAt   *string     `json:"updated_at,omitempty"`
+	ID            string      `json:"id"`
+	Name          string      `json:"name"`
+	Waypoints     interface{} `json:"waypoints"`
+	DistanceM     *float64    `json:"distance_m,omitempty"`
+	ElevationM    *float64    `json:"elevation_m,omitempty"`
+	Surface       *string     `json:"surface,omitempty"`
+	IsPublic      *bool       `json:"is_public,omitempty"`
+	FollowersOnly *bool       `json:"followers_only,omitempty"`
+	Slug          *string     `json:"slug,omitempty"`
+	Tags          []string    `json:"tags,omitempty"`
+	Featured      *bool       `json:"is_featured,omitempty"`
+	RunCount      *int        `json:"run_count,omitempty"`
+	IsStarred     *bool       `json:"is_starred,omitempty"`
+	Description   *string     `json:"description,omitempty"`
+	ClubID        *string     `json:"club_id,omitempty"`
+	CreatedAt     *string     `json:"created_at,omitempty"`
+	UpdatedAt     *string     `json:"updated_at,omitempty"`
 }
 
 // FetchExportProfile reads the user's profile with a direct
@@ -1792,7 +1809,7 @@ func (c *SupabaseClient) FetchUserSettingsPrefs(ctx context.Context, userID stri
 func (c *SupabaseClient) FetchNotificationForEmail(ctx context.Context, notificationID string) (*NotificationRow, error) {
 	q := url.Values{}
 	q.Set("id", "eq."+notificationID)
-	q.Set("select", "id,user_id,kind,run_id,event_id,club_id,comment_id,plan_id,achievement_id,challenge_id,email_sent_at")
+	q.Set("select", "id,user_id,kind,run_id,event_id,club_id,comment_id,plan_id,achievement_id,challenge_id,refunded,email_sent_at")
 	q.Set("limit", "1")
 	u := c.BaseURL + "/rest/v1/" + schema.TableNotifications + "?" + q.Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
@@ -1867,7 +1884,7 @@ func (c *SupabaseClient) MarkNotificationEmailed(ctx context.Context, notificati
 func (c *SupabaseClient) FetchNotificationForWebPush(ctx context.Context, notificationID string) (*NotificationRow, error) {
 	q := url.Values{}
 	q.Set("id", "eq."+notificationID)
-	q.Set("select", "id,user_id,kind,run_id,event_id,club_id,comment_id,plan_id,achievement_id,challenge_id,web_push_sent_at")
+	q.Set("select", "id,user_id,kind,run_id,event_id,club_id,comment_id,plan_id,achievement_id,challenge_id,refunded,web_push_sent_at")
 	q.Set("limit", "1")
 	u := c.BaseURL + "/rest/v1/" + schema.TableNotifications + "?" + q.Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
@@ -1977,7 +1994,7 @@ func (c *SupabaseClient) ClearPushSubscription(ctx context.Context, userID, devi
 func (c *SupabaseClient) FetchNotificationForNativePush(ctx context.Context, notificationID string) (*NotificationRow, error) {
 	q := url.Values{}
 	q.Set("id", "eq."+notificationID)
-	q.Set("select", "id,user_id,kind,run_id,event_id,club_id,comment_id,plan_id,achievement_id,challenge_id,native_push_sent_at")
+	q.Set("select", "id,user_id,kind,run_id,event_id,club_id,comment_id,plan_id,achievement_id,challenge_id,refunded,native_push_sent_at")
 	q.Set("limit", "1")
 	u := c.BaseURL + "/rest/v1/" + schema.TableNotifications + "?" + q.Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
@@ -2196,7 +2213,7 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 		// (right of access), so the export must reflect them.
 		{
 			name: "integrations.json", table: schema.TableIntegrations, filter: uidEq,
-			sel: "id,provider,external_id,scope,last_sync_at,sync_cursor,disconnected_at,disconnected_reason,created_at,updated_at",
+			sel: "id,provider,external_id,scope,last_sync_at,sync_cursor,disconnected_at,disconnected_reason,external_first_name,external_last_name,created_at,updated_at",
 		},
 		// run_kudos given BY the user (the row where user_id = me).
 		{name: "run_kudos.json", table: schema.TableRunKudos, filter: uidEq, sel: "*"},
@@ -2500,6 +2517,17 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 			filter: "contact_user_id=eq." + uid,
 			sel:    "id,owner_id,contact_user_id,contact_email,confirmed_at,created_at,updated_at",
 		},
+		// run_shares / route_shares — named-person read grants (migration
+		// 20270802000002). The subject is on both legs: grants they made
+		// (owner_id — whom they shared which run or route with) and grants
+		// made to them (recipient_id — who shared with them). Keyed by
+		// owner_id / recipient_id, which the guard's owner-FK scan reaches
+		// through owner_id only, so all four are wired in explicitly. A revoked
+		// grant is deleted, so there is no history to ship.
+		{name: "run_shares_owned.json", table: schema.TableRunShares, filter: "owner_id=eq." + uid, sel: "*"},
+		{name: "run_shares_received.json", table: schema.TableRunShares, filter: "recipient_id=eq." + uid, sel: "*"},
+		{name: "route_shares_owned.json", table: schema.TableRouteShares, filter: "owner_id=eq." + uid, sel: "*"},
+		{name: "route_shares_received.json", table: schema.TableRouteShares, filter: "recipient_id=eq." + uid, sel: "*"},
 		// session_plans (+ blocks + items via nested embeds). The yoga/pilates
 		// session-planner P1 authored content (migration 20270103_001). Keyed by
 		// author_id (NOT user_id), so the export-completeness guard's user_id-column

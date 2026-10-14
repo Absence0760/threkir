@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { afterNavigate } from '$app/navigation';
-	import { findGuidedRun } from '$lib/training/guided_runs';
-	import { m as t } from '$lib/i18n/store.svelte';
+	import { findGuidedRun } from '#lib/training/guided_runs.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
 
-	let id = $derived($page.params.id ?? '');
+	let id = $derived(page.params.id ?? '');
 	// findGuidedRun reads the catalogue via `t`, so the $derived re-runs
 	// on a locale switch and the script re-localizes.
 	let run = $derived(findGuidedRun(t, id));

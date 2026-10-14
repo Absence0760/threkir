@@ -54,7 +54,7 @@ What the Pro tier changes:
 - **AI route descriptions.** On a route's detail page, every user can
   tap "Describe this route" to get an instant, offline templated
   description built from the route's stats (`localisedTemplate` in
-  `$lib/routes/route_description.ts`). Pro users' tap additionally calls
+  `#lib/routes/route_description.ts`). Pro users' tap additionally calls
   `/api/coach/route-describe`, which asks Claude (`claude-opus-4-8`,
   adaptive thinking) to turn those facts into a richer paragraph. The
   gate is server-side (`is_pro()`, fail-closed) and the enhancement is
@@ -67,7 +67,7 @@ What the Pro tier changes:
   The engine-backed "Generate a route by distance" path
   (`/api/routes/generate` → graph_cycle + GraphHopper) requires a user
   JWT and a true `is_pro()` in the shared handler
-  (`$lib/routes/generate/handler.ts`), fail-closed exactly like
+  (`#lib/routes/generate/handler.ts`), fail-closed exactly like
   route-describe: a missing Supabase env or a failed RPC denies (500),
   never grants. Free / anonymous callers get 403
   `{error:'pro_required', upgrade:true}` **before any engine fetch** and
@@ -94,8 +94,8 @@ are gone — see [decisions.md § 23](../architecture/decisions.md#23-pro-tier-r
 
 **The Pro storefront is gated on a live perk** — sellable when
 `coachEnabled() || routeGenEnabled()`, i.e. when either
-`PUBLIC_COACH_ENABLED` (`$lib/coach/coach_flag.ts`) or
-`PUBLIC_ROUTE_GEN_ENABLED` (`$lib/routes/route_gen_flag.ts`, decisions
+`PUBLIC_COACH_ENABLED` (`#lib/coach/coach_flag.ts`) or
+`PUBLIC_ROUTE_GEN_ENABLED` (`#lib/routes/route_gen_flag.ts`, decisions
 §204) is set; both flags are fail-closed like `weigh_in_flag.ts`. On a
 deploy with both perks off — the rock-bottom deploy leaves
 `ANTHROPIC_API_KEY` unset so `/api/coach` 503s, and both rock-bottom and
@@ -117,7 +117,7 @@ either way.
 **Selling Pro and selling it on the web are separate questions**
 ([decisions.md § 1826](../architecture/decisions.md)). The web card reads a
 three-state storefront, `proStorefront(proSellable, webCheckoutAvailable())`
-in `$lib/billing/revenuecat_links.ts`:
+in `#lib/billing/revenuecat_links.ts`:
 
 | Storefront | When | Web Pro card (free user) |
 |---|---|---|
@@ -125,7 +125,7 @@ in `$lib/billing/revenuecat_links.ts`:
 | `app_only` | a perk is live, no usable web checkout link | `upgrade.proInIosApp` ("Pro is available now as a subscription in the Threkir app for iPhone…") + `upgrade.webCheckoutComingSoon`, the price note swapped for `upgrade.appPriceNote`, Donate becomes the primary button, **no buy button** |
 | `coming_soon` | no perk is live | `upgrade.proComingSoon` teaser |
 
-`webCheckoutAvailable()` (`$lib/billing/revenuecat.ts`) fails closed
+`webCheckoutAvailable()` (`#lib/billing/revenuecat.ts`) fails closed
 through `checkoutBaseProblem()`: unset, unparseable, non-https, a host
 other than `pay.rev.cat`, a bare host, and a placeholder token all answer
 false. The release guard applies the same function, so a link the guard
@@ -330,8 +330,8 @@ server-side with the `is_pro()` RPC.
      <ActualFeatureComponent />
    {/if}
    ```
-   Import `isLocked` from `$lib/settings/features` and `ProGate` from
-   `$lib/components/ProGate.svelte`.
+   Import `isLocked` from `#lib/settings/features` and `ProGate` from
+   `#lib/components/ProGate.svelte`.
 
 4. **Android gate.** In the Flutter app, read the tier from the
    profile and gate the feature on it. **Do not branch on
@@ -504,7 +504,7 @@ watch inherits the phone's subscription via the paired Supabase session
 | `REVENUECAT_WEBHOOK_SECRET` | Supabase function env | HMAC signing secret from RevenueCat |
 | `REVENUECAT_API_KEY_IOS` | iOS app `.env` / CI secrets | RevenueCat project API key for iOS |
 | `REVENUECAT_API_KEY_ANDROID` | Android app `.env` / CI secrets | RevenueCat project API key for Android |
-| `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL` | `apps/web/.env.local` / CI public env | Hosted Web Paywall Link base `https://pay.rev.cat/<token>` (read by `$lib/billing/revenuecat.ts`); unset or malformed → no web buy button, the `app_only` storefront. **Public** — no secret/API key ships in the web bundle anymore |
+| `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL` | `apps/web/.env.local` / CI public env | Hosted Web Paywall Link base `https://pay.rev.cat/<token>` (read by `#lib/billing/revenuecat.ts`); unset or malformed → no web buy button, the `app_only` storefront. **Public** — no secret/API key ships in the web bundle anymore |
 | `PUBLIC_REVENUECAT_WEB_PORTAL_URL` | `apps/web/.env.local` / CI public env | No-code customer-portal link for managing/cancelling a web subscription; optional, unset → "Manage subscription" shows a hint |
 
 ### Regional availability & international payments

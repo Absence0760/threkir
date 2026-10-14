@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto, replaceState } from '$app/navigation';
-	import { supabase } from '$lib/core/supabase';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { defaultUnitForLocale } from '$lib/format/locale_defaults';
-	import { emailOtpLink, verifyConsentStamped } from '$lib/core/auth_confirmation';
-	import AuthShell from '$lib/components/auth/AuthShell.svelte';
-	import { OAUTH_PROVIDER_STASH_KEY, keepAppleRevocationCredential } from '$lib/core/apple_revocation';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { defaultUnitForLocale } from '#lib/format/locale_defaults.ts';
+	import { emailOtpLink, verifyConsentStamped } from '#lib/core/auth_confirmation.ts';
+	import AuthShell from '#lib/components/auth/AuthShell.svelte';
+	import { OAUTH_PROVIDER_STASH_KEY, keepAppleRevocationCredential } from '#lib/core/apple_revocation.ts';
 
 	let error = $state('');
 

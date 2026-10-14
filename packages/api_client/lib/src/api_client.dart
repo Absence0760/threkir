@@ -972,7 +972,11 @@ class ApiClient {
   /// The upsert body is built from a generated [RunRow], so renaming a column
   /// in a migration forces `scripts/gen_dart_models.dart` to regenerate the
   /// row class — any stale field reference fails to compile here.
-  Future<void> saveRun(Run run, {bool? isPublic}) async {
+  ///
+  /// [followersOnly] is the followers level a new run is born at (the
+  /// `followers` privacy default, decisions § 1875). Only `true` is ever
+  /// sent: see [_runUpsertBody].
+  Future<void> saveRun(Run run, {bool? isPublic, bool followersOnly = false}) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw Exception('Not authenticated');
 
@@ -989,6 +993,7 @@ class ApiClient {
       userId: userId,
       trackUrl: trackUrl,
       isPublic: isPublic,
+      followersOnly: followersOnly,
     );
     final json = _runUpsertBody(row.toJson());
     await _upsertRunRows(
@@ -2144,6 +2149,7 @@ class ApiClient {
       distanceM: route.distanceMetres,
       elevationM: route.elevationGainMetres,
       isPublic: route.isPublic,
+      followersOnly: false,
       surface: route.surface,
       tags: route.tags,
       isFeatured: route.featured,
@@ -2157,9 +2163,12 @@ class ApiClient {
     // `id` is NOT dropped — we want the client UUID to flow through
     // so local and server agree on row identity (matches `saveRun`).
     // `shadow_hidden` is a moderation column owned by the auto-hide
-    // trigger — never written from the client.
+    // trigger — never written from the client. `followers_only` is left to
+    // its default: a new route starts at Only me, and the audience is chosen
+    // afterwards through [setRouteAudience].
     return Map<String, dynamic>.from(row.toJson())
       ..remove('shadow_hidden')
+      ..remove(RouteRow.colFollowersOnly)
       ..removeWhere((k, v) => v == null);
   }
 
@@ -2434,6 +2443,193 @@ class ApiClient {
         .from(RouteRow.table)
         .update({RouteRow.colIsPublic: isPublic})
         .eq(RouteRow.colId, routeId);
+  }
+
+  // ────────────────── Audience sharing ──────────────────
+  //
+  // Mirror of `apps/web/src/lib/core/data.ts` `audienceSharingEnabled` /
+  // `fetchShares` / `addShare` / `revokeShare` / `setAudience`
+  // (decisions § 1874). The server gates all of it on the
+  // `audience_sharing` flag, so these calls only ever narrow what the
+  // existing public / private controls could already do.
+
+  /// Whether the followers level and named-person shares are live. Fail
+  /// closed: any read failure is "off", and the caller hides the control.
+  Future<bool> audienceSharingEnabled() async {
+    try {
+      final result = await _client
+          .rpc('audience_sharing_enabled', params: const {}, get: true);
+      return result == true;
+    } catch (e) {
+      debugPrint('audience_sharing_enabled failed: $e');
+      return false;
+    }
+  }
+
+  /// The two stored visibility columns of the caller's own run or route, or
+  /// null when RLS returns no row (not the caller's, or deleted).
+  Future<({bool isPublic, bool followersOnly})?> fetchAudienceColumns(
+    ShareableKind kind,
+    String id,
+  ) async {
+    final table = kind == ShareableKind.run ? RunRow.table : RouteRow.table;
+    final row = await _client
+        .from(table)
+        .select('${RunRow.colIsPublic}, ${RunRow.colFollowersOnly}')
+        .eq(RunRow.colId, id)
+        .maybeSingle();
+    if (row == null) return null;
+    return (
+      isPublic: row[RunRow.colIsPublic] == true,
+      followersOnly: row[RunRow.colFollowersOnly] == true,
+    );
+  }
+
+  /// The live named-person grants on one run or route, oldest first, with
+  /// each recipient's display name. RLS returns only the owner's grants.
+  Future<List<ShareRecipient>> fetchShares(ShareableKind kind, String id) async {
+    final rows = kind == ShareableKind.run
+        ? await _client
+            .from(RunShareRow.table)
+            .select('${RunShareRow.colRecipientId}, ${RunShareRow.colCreatedAt}')
+            .eq(RunShareRow.colRunId, id)
+            .order(RunShareRow.colCreatedAt, ascending: true)
+            .order(RunShareRow.colRecipientId, ascending: true)
+        : await _client
+            .from(RouteShareRow.table)
+            .select(
+                '${RouteShareRow.colRecipientId}, ${RouteShareRow.colCreatedAt}')
+            .eq(RouteShareRow.colRouteId, id)
+            .order(RouteShareRow.colCreatedAt, ascending: true)
+            .order(RouteShareRow.colRecipientId, ascending: true);
+    final ids = rows
+        .map<String>((r) => r[RunShareRow.colRecipientId] as String)
+        .toList();
+    if (ids.isEmpty) return const [];
+    final profiles = await readChunked(
+      ids,
+      (chunk) async => _client
+          .from(UserProfileRow.table)
+          .select('id, display_name, avatar_url')
+          .inFilter(UserProfileRow.colId, chunk),
+    );
+    final byId = {for (final p in profiles) p['id'] as String: p};
+    return [
+      for (final id in ids)
+        ShareRecipient(
+          recipientId: id,
+          displayName: byId[id]?['display_name'] as String?,
+          avatarUrl: byId[id]?['avatar_url'] as String?,
+        ),
+    ];
+  }
+
+  /// The people the caller may name on a share: anyone with a follow edge
+  /// either way, the same set the INSERT policy admits (it also drops a
+  /// block either way, which it enforces itself). De-duplicated, by name.
+  Future<List<UserProfileRow>> fetchShareCandidates() async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) throw StateError('not signed in');
+    final lists = await Future.wait([
+      fetchFollowers(userId, limit: 500),
+      fetchFollowing(userId, limit: 500),
+    ]);
+    final byId = <String, UserProfileRow>{};
+    for (final p in [...lists[0], ...lists[1]]) {
+      byId[p.id] = p;
+    }
+    final people = byId.values.toList()
+      ..sort((a, b) => (a.displayName ?? '')
+          .toLowerCase()
+          .compareTo((b.displayName ?? '').toLowerCase()));
+    return people;
+  }
+
+  /// Share one run or route with one person. A repeat share of the same
+  /// person is a no-op, not an error.
+  Future<void> addShare(
+    ShareableKind kind,
+    String id,
+    String recipientId,
+  ) async {
+    final ownerId = _client.auth.currentUser?.id;
+    if (ownerId == null) throw StateError('not signed in');
+    try {
+      if (kind == ShareableKind.run) {
+        await _client.from(RunShareRow.table).insert({
+          RunShareRow.colRunId: id,
+          RunShareRow.colOwnerId: ownerId,
+          RunShareRow.colRecipientId: recipientId,
+        });
+      } else {
+        await _client.from(RouteShareRow.table).insert({
+          RouteShareRow.colRouteId: id,
+          RouteShareRow.colOwnerId: ownerId,
+          RouteShareRow.colRecipientId: recipientId,
+        });
+      }
+    } on PostgrestException catch (e) {
+      if (e.code != '23505') rethrow;
+    }
+  }
+
+  /// Revoke one person's access; it ends on their next read. A delete RLS
+  /// refused comes back as zero rows rather than an error, so the count is
+  /// checked and a refusal is thrown instead of being shown as a revoke.
+  Future<void> revokeShare(
+    ShareableKind kind,
+    String id,
+    String recipientId,
+  ) async {
+    final List<dynamic> rows = kind == ShareableKind.run
+        ? await _client
+            .from(RunShareRow.table)
+            .delete()
+            .eq(RunShareRow.colRunId, id)
+            .eq(RunShareRow.colRecipientId, recipientId)
+            .select(RunShareRow.colRecipientId)
+        : await _client
+            .from(RouteShareRow.table)
+            .delete()
+            .eq(RouteShareRow.colRouteId, id)
+            .eq(RouteShareRow.colRecipientId, recipientId)
+            .select(RouteShareRow.colRecipientId);
+    if (rows.isEmpty) throw StateError('share not revoked');
+  }
+
+  /// Move a run or route to a stored level. [revokeGrants] deletes every
+  /// grant first, so a row never claims "only me" while a named reader is
+  /// still admitted. Zero rows updated means RLS refused, and is thrown.
+  Future<void> setAudienceColumns(
+    ShareableKind kind,
+    String id, {
+    required bool isPublic,
+    required bool followersOnly,
+    required bool revokeGrants,
+  }) async {
+    if (revokeGrants) {
+      if (kind == ShareableKind.run) {
+        await _client
+            .from(RunShareRow.table)
+            .delete()
+            .eq(RunShareRow.colRunId, id);
+      } else {
+        await _client
+            .from(RouteShareRow.table)
+            .delete()
+            .eq(RouteShareRow.colRouteId, id);
+      }
+    }
+    final table = kind == ShareableKind.run ? RunRow.table : RouteRow.table;
+    final List<dynamic> rows = await _client
+        .from(table)
+        .update({
+          RunRow.colIsPublic: isPublic,
+          RunRow.colFollowersOnly: followersOnly,
+        })
+        .eq(RunRow.colId, id)
+        .select(RunRow.colId);
+    if (rows.isEmpty) throw StateError('audience not updated');
   }
 
   // ────────────────── Following + public profiles ──────────────────
@@ -2962,6 +3158,38 @@ class ApiClient {
     return row == null ? null : RunRow.fromJson(row);
   }
 
+  /// The non-owner read of a run that is NOT public but whose audience admits
+  /// the caller: the owner's followers for a followers-only run, or a named
+  /// recipient of a `run_shares` grant (decisions § 1874). `shared_runs`
+  /// carries `public_runs`' redacted projection column for column, never a
+  /// public run and never the caller's own, so the row has no track: the
+  /// clipped one comes from [fetchClippedTrackForRun]. With the server's
+  /// `audience_sharing` gate closed the view returns nothing. Mirrors web
+  /// `fetchSharedRun`.
+  Future<RunRow?> fetchSharedRunById(String runId) async {
+    final row = await _client
+        .from('shared_runs')
+        .select()
+        .eq(RunRow.colId, runId)
+        .maybeSingle();
+    return row == null ? null : RunRow.fromJson(row);
+  }
+
+  /// Every non-owner read of a run in one call: public first, then shared
+  /// with this caller. A signed-out caller stops at public, because it is in
+  /// no audience and `shared_runs` is not granted to anon. A failed read
+  /// throws rather than answering "not shared with you". Mirrors web
+  /// `fetchViewableRun`.
+  Future<({RunRow? row, bool shared})> fetchViewableRunById(
+    String runId,
+  ) async {
+    final public = await fetchPublicRunById(runId);
+    if (public != null) return (row: public, shared: false);
+    if (userId == null) return (row: null, shared: false);
+    final shared = await fetchSharedRunById(runId);
+    return (row: shared, shared: shared != null);
+  }
+
   /// Toggle the owner's `is_starred` flag on a route. Drives the
   /// watch's starred-only route picker (see watch_wear/SupabaseClient).
   /// RLS restricts updates to the owner.
@@ -2985,7 +3213,8 @@ class ApiClient {
   ///    active club members see the full row, which carries the
   ///    unclipped polyline for owners' own surfaces.
   /// 2. If that returns nothing (anon, or non-owner viewing a public
-  ///    route), falls back to the `public_routes` view (which strips
+  ///    route), falls back to the `public_routes` view, then for a
+  ///    signed-in caller the `shared_routes` view (both strip
   ///    `waypoints` / `geom` / `start_point` / `is_starred` server-
   ///    side) and overlays the polyline from `clip_route_for_viewer`
   ///    so the runner's privacy zones are respected.
@@ -3021,17 +3250,29 @@ class ApiClient {
       return (route: _routeFromRow(routeRow), ownerId: ownerId);
     }
 
-    final publicRow = await _client
+    // A route that is not public may still be shared with this viewer: a
+    // followers-only route whose owner they follow, or a named-person grant
+    // (decisions § 1874). `shared_routes` has `public_routes`' projection and
+    // `clip_route_for_viewer` admits the same audience, so the assembled shape
+    // is identical. Mirrors web `fetchRouteById`.
+    var viewRow = await _client
         .from('public_routes')
         .select()
         .eq(RouteRow.colId, routeId)
         .maybeSingle();
-    if (publicRow == null) return (route: null, ownerId: null);
+    if (viewRow == null && viewerId != null) {
+      viewRow = await _client
+          .from('shared_routes')
+          .select()
+          .eq(RouteRow.colId, routeId)
+          .maybeSingle();
+    }
+    if (viewRow == null) return (route: null, ownerId: null);
 
-    // public_routes carries no `waypoints`; fetch the clipped polyline
+    // Neither view carries `waypoints`; fetch the clipped polyline
     // separately so the response respects the owner's privacy zones.
-    final ownerId = publicRow[RouteRow.colUserId] as String?;
-    final routeRow = Map<String, dynamic>.from(publicRow);
+    final ownerId = viewRow[RouteRow.colUserId] as String?;
+    final routeRow = Map<String, dynamic>.from(viewRow);
     routeRow['waypoints'] =
         _waypointsToJson(await _clipRouteForViewer(routeId));
     return (route: _routeFromRow(routeRow), ownerId: ownerId);
@@ -5071,13 +5312,6 @@ class ApiClient {
     if (joinPolicy != null) patch[ClubRow.colJoinPolicy] = joinPolicy;
     if (patch.isEmpty) return;
     await _client.from(ClubRow.table).update(patch).eq(ClubRow.colId, clubId);
-  }
-
-  /// Redeem a join token from a public invite link.
-  Future<String> joinClubByToken(String token) async {
-    final result =
-        await _client.rpc('join_club_by_token', params: {'p_token': token});
-    return result as String;
   }
 
   /// Request to join a club whose policy is `request`. Status starts
@@ -8334,6 +8568,23 @@ typedef SessionPlanItemInput = ({
 /// screens load the full underlying row. Migration 20261204_001. Mirrors the
 /// web `ActivityRow` (core/data.ts); `kind` stays a raw string ('run' |
 /// 'lift' | 'meal') like the web union.
+/// Which entity an audience control acts on. The two grant tables and the
+/// two base tables share a shape, so one set of calls serves both.
+enum ShareableKind { run, route }
+
+/// One named person a run or route is shared with, for the owner's list.
+class ShareRecipient {
+  final String recipientId;
+  final String? displayName;
+  final String? avatarUrl;
+
+  const ShareRecipient({
+    required this.recipientId,
+    this.displayName,
+    this.avatarUrl,
+  });
+}
+
 class ActivityRow {
   /// The `kind` discriminator, one literal per UNION branch of the view.
   /// Named because a consumer comparing against a string the view never
@@ -8393,5 +8644,16 @@ class ActivityRow {
 /// clear one. That is the same trade-off `buildSaveRouteBody` already takes,
 /// and targeted clears go through `updateRunFields`, which sends only the keys
 /// it means to write.
-Map<String, dynamic> _runUpsertBody(Map<String, dynamic> json) =>
-    Map<String, dynamic>.from(json)..removeWhere((k, v) => v == null);
+///
+/// `followers_only` is NOT NULL, so the row always carries a value and the
+/// null strip cannot protect it: a re-sync would write `false` over a
+/// followers level the owner chose on another device. A `false` is therefore
+/// dropped too — it is the column default, never a choice an upsert makes.
+/// Narrowing a run goes through [ApiClient.setRunAudience].
+Map<String, dynamic> _runUpsertBody(Map<String, dynamic> json) {
+  final body = Map<String, dynamic>.from(json)..removeWhere((k, v) => v == null);
+  if (body[RunRow.colFollowersOnly] == false) {
+    body.remove(RunRow.colFollowersOnly);
+  }
+  return body;
+}

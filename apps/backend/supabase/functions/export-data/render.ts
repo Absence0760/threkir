@@ -43,6 +43,7 @@ export type RenderRunRow = {
 	track_url: string | null;
 	hr_series_url: string | null;
 	is_public: boolean | null;
+	followers_only: boolean;
 	event_id: string | null;
 	route_id: string | null;
 	race_listing_id: string | null;
@@ -137,6 +138,7 @@ export const CSV_COLS = [
 	'race_listing_id',
 	'external_id',
 	'is_public',
+	'followers_only',
 	'metadata',
 	'created_at',
 	'updated_at',
@@ -224,6 +226,7 @@ export function csvRow(r: RenderRunRow): string {
 		csvEscape(r.race_listing_id ?? ''),
 		csvEscape(r.external_id ?? ''),
 		csvEscape(String(r.is_public ?? false)),
+		csvEscape(String(r.followers_only ?? false)),
 		csvEscape(JSON.stringify(md)),
 		csvEscape(r.created_at),
 		csvEscape(r.updated_at),

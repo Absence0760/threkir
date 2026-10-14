@@ -11,7 +11,7 @@ The Supabase anon key is fine in the client bundle by design. The service-role k
 ## What to check
 
 1. **`.env*` and `.envrc` files.** They should be in `.gitignore`. Run `git log --all --full-history -- '.env*' '.envrc'` to confirm none have ever been committed. If one has, the key is permanently exposed regardless of removal — flag for rotation, not deletion.
-2. **Client-bundle leakage (web).** Vite / SvelteKit env vars prefixed `PUBLIC_` are inlined into the client bundle. Anything else in `import.meta.env` is server-only. Grep the codebase for `process.env.SECRET_*`, `process.env.SERVICE_ROLE`, etc. — anything referenced from a `+page.svelte` / `+layout.svelte` / `$lib/*.ts` (non-server) file is in the client bundle. Confirm only `PUBLIC_*` vars are touched there.
+2. **Client-bundle leakage (web).** Vite / SvelteKit env vars prefixed `PUBLIC_` are inlined into the client bundle. Anything else in `import.meta.env` is server-only. Grep the codebase for `process.env.SECRET_*`, `process.env.SERVICE_ROLE`, etc. — anything referenced from a `+page.svelte` / `+layout.svelte` / `#lib/*.ts` (non-server) file is in the client bundle. Confirm only `PUBLIC_*` vars are touched there.
 3. **`+server.ts` vs `+page.ts`.** Server-only env should only be referenced in `+server.ts`, `+layout.server.ts`, `+page.server.ts`, `hooks.server.ts`, and `apps/web/src/routes/api/*/+server.ts`. Anywhere else is a client bundle.
 4. **Edge Function env.** `apps/backend/supabase/functions/*/index.ts` has access to function secrets via `Deno.env.get(...)`. Confirm function-local secrets are set in the function dashboard, not committed to `config.toml`.
 5. **Mobile client config.** `apps/mobile_android/lib/main.dart` initialises Supabase with `url` + `anonKey`. Confirm no service-role key is hardcoded. Check `android/app/google-services.json`, `ios/Runner/GoogleService-Info.plist` for legitimacy — those are public-by-design but still warrant a glance.
@@ -33,7 +33,7 @@ For each: the literal env var or filename, where it's referenced, what should ch
 - `apps/web/src/routes/api/coach/+server.ts` — the canonical server-only-key pattern (ANTHROPIC_API_KEY)
 - `apps/backend/supabase/config.toml`
 - `.github/workflows/*.yml`
-- `apps/web/.env.example` if it exists, otherwise `apps/web/svelte.config.js` for env access patterns
+- `apps/web/.env.example` if it exists, otherwise `apps/web/vite.config.ts` for env access patterns
 
 ## Delegate to
 

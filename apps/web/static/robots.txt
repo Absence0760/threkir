@@ -18,6 +18,9 @@ Disallow: /coach
 Disallow: /plans
 Disallow: /runs
 Disallow: /clubs
+# In-app help (readable signed out, but noindex and not for search). The
+# public, indexable guides are /learn.
+Disallow: /help
 Disallow: /auth
 
 # Sitemap — prerendered at build time from `public_routes` + `public_runs`

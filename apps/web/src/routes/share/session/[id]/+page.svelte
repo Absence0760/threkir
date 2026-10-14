@@ -1,15 +1,15 @@
 <script lang="ts">
-	import { m } from '$lib/i18n/store.svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import SharePageShell from '$lib/components/SharePageShell.svelte';
-	import { expandSessionSteps, type SessionStep } from '$lib/social/session_steps';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import SharePageShell from '#lib/components/SharePageShell.svelte';
+	import { expandSessionSteps, type SessionStep } from '#lib/social/session_steps.ts';
 	import {
 		buildSessionJsonLd,
 		buildSessionShareCanonical,
 		buildSessionShareDescription,
 		buildSessionShareTitle,
 		sessionEstimatedMinutes
-	} from '$lib/share/share_session_meta';
+	} from '#lib/share/share_session_meta.ts';
 
 	let { data } = $props();
 

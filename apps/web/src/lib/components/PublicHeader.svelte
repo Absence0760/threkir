@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { auth } from '$lib/stores/auth.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import MotionToggle from '$lib/components/marketing/MotionToggle.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import MotionToggle from '#lib/components/marketing/MotionToggle.svelte';
 
 	/// The landing page runs continuous motion and owes it a pause control
 	/// (WCAG 2.2.2); /learn runs none, so only the page that moves asks for it.

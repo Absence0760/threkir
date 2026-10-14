@@ -132,7 +132,7 @@ Deno.test('the four importers that spend a third-party resource are among them',
     const file of [
       'strava-import/index.ts',
       'parkrun-import/index.ts',
-      'race-results-import/index.ts',
+      'race-results-import/handler.ts',
       'race-listings-sync/index.ts',
     ]
   ) {

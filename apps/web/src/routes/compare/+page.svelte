@@ -3,10 +3,10 @@
 		COMPARE_SECTIONS,
 		COMPARE_HEADLINE,
 		type FeatureSupport,
-	} from '$lib/settings/compare_features';
-	import { m } from '$lib/i18n/store.svelte';
-	import MetricLabel from '$lib/components/MetricLabel.svelte';
-	import { coachEnabled } from '$lib/coach/coach_flag';
+	} from '#lib/settings/compare_features.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import MetricLabel from '#lib/components/MetricLabel.svelte';
+	import { coachEnabled } from '#lib/coach/coach_flag.ts';
 
 	// Drop the "AI Coach" explore link when the Coach is off (rock-bottom).
 	const coachOn = coachEnabled();

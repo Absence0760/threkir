@@ -1,23 +1,23 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import GoalThermometer from '$lib/components/GoalThermometer.svelte';
-	import DonationFeed from '$lib/components/DonationFeed.svelte';
-	import FundraiserEditor from '$lib/components/FundraiserEditor.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import Modal from '#lib/components/Modal.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import GoalThermometer from '#lib/components/GoalThermometer.svelte';
+	import DonationFeed from '#lib/components/DonationFeed.svelte';
+	import FundraiserEditor from '#lib/components/FundraiserEditor.svelte';
 	import {
 		fetchFundraiserById,
 		fetchFundraiserTotals,
 		fetchFundraiserFeed,
 		startDonationCheckout,
 		closeFundraiser
-	} from '$lib/core/data';
-	import { fundraisingEnabled } from '$lib/social/fundraising_flag';
-	import { toMinorUnits } from '$lib/format/minor_units';
-	import type { Fundraiser, FundraiserFeedEntry, FundraiserTotals } from '$lib/types';
+	} from '#lib/core/data.ts';
+	import { fundraisingEnabled } from '#lib/social/fundraising_flag.ts';
+	import { toMinorUnits } from '#lib/format/minor_units.ts';
+	import type { Fundraiser, FundraiserFeedEntry, FundraiserTotals } from '#lib/types.ts';
 
 	let { data }: { data: { id: string; donated: string | null } } = $props();
 

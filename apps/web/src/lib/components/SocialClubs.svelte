@@ -1,17 +1,17 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import { hashHue } from '$lib/format/avatar';
-	import { page } from '$app/stores';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import { hashHue } from '#lib/format/avatar.ts';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { browseClubsWithError, fetchMyClubsWithError, searchClubsWithError } from '$lib/core/data';
-	import { auth } from '$lib/stores/auth.svelte';
-	import ClubEditor from '$lib/components/ClubEditor.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import VerifiedBadge from '$lib/components/VerifiedBadge.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { clubRoleLabel } from '$lib/i18n/enum_labels.svelte';
-	import type { ClubWithMeta } from '$lib/types';
+	import { browseClubsWithError, fetchMyClubsWithError, searchClubsWithError } from '#lib/core/data.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import ClubEditor from '#lib/components/ClubEditor.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import VerifiedBadge from '#lib/components/VerifiedBadge.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { clubRoleLabel } from '#lib/i18n/enum_labels.svelte.ts';
+	import type { ClubWithMeta } from '#lib/types.ts';
 
 	let subtab = $state<'browse' | 'mine'>('mine');
 	let loading = $state(true);
@@ -56,14 +56,14 @@
 		subtab = next;
 		// /social hosts this tab, so the subtab URL key is `clubs-sub` to
 		// avoid colliding with the top-level `?tab=clubs`.
-		const url = new URL($page.url);
+		const url = new URL(page.url.href);
 		if (next === 'mine') url.searchParams.delete('clubs-sub');
 		else url.searchParams.set('clubs-sub', next);
-		goto(url, { replaceState: true, noScroll: true, keepFocus: true });
+		goto(url, { replace: true, reset: false });
 	}
 
 	onMount(async () => {
-		const initial = $page.url.searchParams.get('clubs-sub');
+		const initial = page.url.searchParams.get('clubs-sub');
 		if (initial === 'browse') subtab = 'browse';
 
 		for (let i = 0; i < 20 && (auth.loading || !auth.user); i++) {

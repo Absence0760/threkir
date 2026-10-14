@@ -1,6 +1,6 @@
 import type { RequestHandler } from './$types';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
-import { renderBadgeOgPng } from '$lib/share/og_badge_png';
+import { PUBLIC_SUPABASE_ANON_KEY, PUBLIC_SUPABASE_URL } from '$app/env/public';
+import { renderBadgeOgPng } from '#lib/share/og_badge_png.ts';
 
 // Per-badge og:image PNG renderer, served at REQUEST time, never prerendered.
 // In prod CloudFront routes /og/badge/* to the share-badge Lambda (same

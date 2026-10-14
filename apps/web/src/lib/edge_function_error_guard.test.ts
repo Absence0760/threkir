@@ -34,11 +34,6 @@ const REDTHROW_EXEMPT = new Map<string, string>([
 			'callers that fall back to the unclipped-refused state rather than ' +
 			'showing the message.',
 	],
-	[
-		'data.ts::race-results-import',
-		'Rethrown only after isProviderGateRefusal() has already read the ' +
-			'envelope off `context`, which is the unwrap this rule is about.',
-	],
 ]);
 
 const SRC = resolve(import.meta.dirname, '..');

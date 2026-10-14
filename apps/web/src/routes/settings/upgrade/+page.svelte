@@ -1,20 +1,20 @@
 <script lang="ts">
-	import { auth } from '$lib/stores/auth.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { formatPrice } from '$lib/format/format_price';
-	import { m } from '$lib/i18n/store.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { formatPrice } from '#lib/format/format_price.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
 	import {
 		proCheckoutUrl,
 		managementUrl,
 		webCheckoutAvailable,
-	} from '$lib/billing/revenuecat';
+	} from '#lib/billing/revenuecat.ts';
 	import {
 		annualSavingPercent,
 		proStorefront,
 		type ProPlan,
-	} from '$lib/billing/revenuecat_links';
-	import { coachEnabled } from '$lib/coach/coach_flag';
-	import { routeGenEnabled } from '$lib/routes/route_gen_flag';
+	} from '#lib/billing/revenuecat_links.ts';
+	import { coachEnabled } from '#lib/coach/coach_flag.ts';
+	import { routeGenEnabled } from '#lib/routes/route_gen_flag.ts';
 
 	// Pro is sellable only when at least one perk is actually live: the AI
 	// Coach (PUBLIC_COACH_ENABLED) or server route generation

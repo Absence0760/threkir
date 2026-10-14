@@ -32,7 +32,7 @@ class _FakePathProvider extends PathProviderPlatform with MockPlatformInterfaceM
 /// classification.
 class _FailingUploadApi extends _FakeApiClient {
   @override
-  Future<void> saveRun(Run run, {bool? isPublic}) async {
+  Future<void> saveRun(Run run, {bool? isPublic, bool followersOnly = false}) async {
     throw StateError('network down');
   }
 }
@@ -46,7 +46,7 @@ class _FakeApiClient extends ApiClient {
   String? get userId => fakeUserId;
 
   @override
-  Future<void> saveRun(Run run, {bool? isPublic}) async {
+  Future<void> saveRun(Run run, {bool? isPublic, bool followersOnly = false}) async {
     saved.add(run);
     savedIsPublic.add(isPublic);
   }

@@ -1,25 +1,25 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { afterNavigate, goto } from '$app/navigation';
 	import { onMount } from 'svelte';
-	import { fetchRunsForPeriodSummary, type PeriodSummaryRun } from '$lib/core/data';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { effective, loadSettings, peekCachedSettings } from '$lib/settings/settings';
-	import type { LoadedSettings } from '$lib/settings/settings';
-	import { formatISO } from '$lib/training/training';
-	import { m } from '$lib/i18n/store.svelte';
-	import PeriodSummary from '$lib/components/PeriodSummary.svelte';
+	import { fetchRunsForPeriodSummary, type PeriodSummaryRun } from '#lib/core/data.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { effective, loadSettings, peekCachedSettings } from '#lib/settings/settings.ts';
+	import type { LoadedSettings } from '#lib/settings/settings.ts';
+	import { formatISO } from '#lib/training/training.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import PeriodSummary from '#lib/components/PeriodSummary.svelte';
 
 	type PeriodType = 'week' | 'month' | 'all';
 
 	let type = $derived<PeriodType>(
-		$page.params.type === 'month'
+		page.params.type === 'month'
 			? 'month'
-			: $page.params.type === 'all'
+			: page.params.type === 'all'
 				? 'all'
 				: 'week',
 	);
-	let initialDate = $derived<Date>(parsePeriodDate($page.params.date ?? ''));
+	let initialDate = $derived<Date>(parsePeriodDate(page.params.date ?? ''));
 
 	// Resolve the heading copy in the script rather than inline in the
 	// markup. A text-expression tag whose body starts with the bare
@@ -94,7 +94,7 @@
 	}
 
 	function handlePeriodChange(t: PeriodType, d: Date) {
-		goto(`/dashboard/period/${t}/${formatISO(d)}`, { replaceState: true });
+		goto(`/dashboard/period/${t}/${formatISO(d)}`, { replace: true });
 	}
 </script>
 

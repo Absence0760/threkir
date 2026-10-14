@@ -88,6 +88,9 @@ test.describe('/clubs/[slug]/events/new — recurrence', () => {
 		expect(row.recurrence_byday).toEqual(expect.arrayContaining(['MO', 'WE', 'FR']));
 		expect(row.recurrence_byday).toHaveLength(3);
 		expect(row.recurrence_until).not.toBeNull();
+		// "Ends on" is inclusive: the series runs to the end of that day in the
+		// browser's zone, which playwright.config.ts pins to UTC.
+		expect(Date.parse(row.recurrence_until!)).toBe(Date.parse(`${untilIso}T23:59:59Z`));
 
 		const recurrenceLabel = page.locator('.hero-eyebrow', {
 			hasText: /every week/i

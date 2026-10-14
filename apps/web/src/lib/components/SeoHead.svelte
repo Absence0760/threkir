@@ -11,7 +11,7 @@
 	///
 	/// `jsonLd` entries must already be serialised and escaped for the
 	/// script-element context (use the builders in site_meta.ts /
-	/// share_meta.ts, which run `serialiseJsonLd` from $lib/util/json_ld,
+	/// share_meta.ts, which run `serialiseJsonLd` from #lib/util/json_ld,
 	/// which does both) — they're injected via {@html} because a literal
 	/// <script> in Svelte markup would be hoisted and compiled away.
 

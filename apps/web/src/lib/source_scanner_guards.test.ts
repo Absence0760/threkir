@@ -170,7 +170,7 @@ test('every source-scanning guard blanks comments through the one shared strippe
 		offenders.sort(),
 		[],
 		'a comment delimiter spelled outside the register. If the file blanks ' +
-			'comments, import `stripComments` from $lib/core/strip_comments — it is ' +
+			'comments, import `stripComments` from #lib/core/strip_comments — it is ' +
 			'the only copy that survives a `/*` inside a line comment, a string or a ' +
 			'regex literal. A CSS scanner, a route glob or a URL check goes in the ' +
 			'register with the reason it is not comment handling.',

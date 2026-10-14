@@ -5,24 +5,32 @@
 		updateGymWorkout,
 		type GymWorkoutWithSets,
 		type GymSetInput,
-	} from '$lib/core/data';
-	import type { Exercise, GymSetType } from '$lib/types';
-	import { dedupeShadowedExercises } from '$lib/gym/exercise_catalogue';
+	} from '#lib/core/data.ts';
+	import type { Exercise, GymSetType } from '#lib/types.ts';
+	import { dedupeShadowedExercises } from '#lib/gym/exercise_catalogue.ts';
 	import {
 		namesAnExercise,
 		normaliseExerciseName,
 		sameExerciseName as sameExercise,
-	} from '$lib/gym/gym_prs';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
-	import { parseWeight, weightInputValue, weightUnitLabel } from '$lib/format/units.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import MetricLabel from '$lib/components/MetricLabel.svelte';
-	import { metricName } from '$lib/metrics/metric_name';
-	import ExerciseCataloguePicker from '$lib/components/ExerciseCataloguePicker.svelte';
-	import UnsavedChangesGuard from '$lib/components/UnsavedChangesGuard.svelte';
-	import { trackDirty } from '$lib/core/form_dirty';
-	import { noteModalityData } from '$lib/stores/modality_visibility.svelte';
+	} from '#lib/gym/gym_prs.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { parseWeight, weightInputValue, weightUnitLabel } from '#lib/format/units.svelte.ts';
+	import Modal from '#lib/components/Modal.svelte';
+	import MetricLabel from '#lib/components/MetricLabel.svelte';
+	import { metricName } from '#lib/metrics/metric_name.ts';
+	import ExerciseCataloguePicker from '#lib/components/ExerciseCataloguePicker.svelte';
+	import UnsavedChangesGuard from '#lib/components/UnsavedChangesGuard.svelte';
+	import { trackDirty } from '#lib/core/form_dirty.ts';
+	import { noteModalityData } from '#lib/stores/modality_visibility.svelte.ts';
+
+	interface PrefillSetRow {
+		exercise_name: string;
+		reps: number | null;
+		duration_s?: number | null;
+		weight_kg?: number | null;
+		rpe?: number | null;
+	}
 
 	interface Props {
 		existing?: GymWorkoutWithSets | null;
@@ -31,11 +39,12 @@
 		/// is set (an edit owns its own values).
 		prefill?: {
 			title?: string | null;
-			/// Session-plan-derived rows (class -> gym seam,
-			/// workoutDraftFromSession): pre-populate the exercise blocks of a
-			/// NEW log so an attendee logs the class content, not just its
-			/// title. Ignored when `existing` / `seed` carries real sets.
-			sets?: { exercise_name: string; reps: number | null; duration_s: number | null }[];
+			/// Class-content rows (class -> gym seam: workoutDraftFromSession for
+			/// a session plan, workoutDraftFromRoutine for a gym routine):
+			/// pre-populate the exercise blocks of a NEW log so an attendee logs
+			/// the class content, not just its title. Ignored when `existing` /
+			/// `seed` carries real sets.
+			sets?: PrefillSetRow[];
 		} | null;
 		/// Prefill the editor with these sets/title but save as a NEW workout
 		/// (the "Repeat last" / "Start routine" path) — distinct from `existing`,
@@ -163,16 +172,14 @@
 		return blocks;
 	}
 
-	function initFromPrefillSets(
-		sets: { exercise_name: string; reps: number | null; duration_s: number | null }[] | undefined,
-	): EditExercise[] {
+	function initFromPrefillSets(sets: PrefillSetRow[] | undefined): EditExercise[] {
 		if (!sets || sets.length === 0) return [{ name: '', sets: [emptySet()] }];
 		const blocks: EditExercise[] = [];
 		for (const s of sets) {
 			const row: EditSet = {
 				reps: s.reps == null ? '' : String(s.reps),
-				weight: '',
-				rpe: '',
+				weight: weightInputValue(s.weight_kg),
+				rpe: s.rpe == null ? '' : String(s.rpe),
 				duration: s.duration_s == null ? '' : String(s.duration_s),
 				setType: 'working',
 			};

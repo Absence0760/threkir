@@ -11,6 +11,7 @@ import {
 	setUserSetting,
 	clearUserSettingKey,
 } from '../fixtures/simulate';
+import { shareChoosingPublic } from '../fixtures/share';
 
 /**
  * Run-LEVEL visibility (public / private) propagation across surfaces.
@@ -27,10 +28,11 @@ import {
  *
  *   A. DEFAULT-VISIBILITY pref governs NEW runs. The universal
  *      `privacy_default` pref (`public` | `followers` | `private`) maps
- *      to `runs.is_public` via `privacyDefaultToIsPublic` (only
- *      `public` → public). The owner's Add-run editor (RunEditor) seeds
- *      its "Make this run public" checkbox from that pref — assert
- *      checked when `public`, unchecked when `private`.
+ *      to `runs.is_public` / `runs.followers_only` via
+ *      `privacyDefaultToAudience`. The owner's Add-run editor (RunEditor)
+ *      seeds its audience selector from that pref — the seed stack has
+ *      audience sharing switched on, so it is the three-level select
+ *      rather than the old public checkbox. Asserted for all three.
  *
  *   B. A PRIVATE run is invisible to the follower everywhere:
  *        - the follower's /social feed (fetchFollowingFeed → public_runs)
@@ -113,39 +115,30 @@ test.describe('run visibility (public/private) propagation across surfaces', () 
 		const admin = getAdminClient();
 
 		// ── A. Default-visibility pref governs new runs (owner UI) ──
-		await test.step('privacy_default=public seeds the Add-run editor checkbox CHECKED', async () => {
-			await setUserSetting(owner.id, 'privacy_default', 'public');
-			const ctx = await browser.newContext({ storageState: owner.storageStatePath });
-			await ctx.addInitScript(setConsentAccepted);
-			const page = await ctx.newPage();
-			try {
-				await page.goto('/runs');
-				// Open the Add-run modal — RunEditor seeds isPublic from the
-				// freshly-read privacy_default pref in onMount.
-				await page.getByRole('button', { name: '+ Add run' }).click();
-				const publicToggle = page.getByLabel('Make this run public');
-				await expect(publicToggle).toBeVisible({ timeout: 10_000 });
-				await expect(publicToggle).toBeChecked();
-			} finally {
-				await ctx.close();
-			}
-		});
-
-		await test.step('privacy_default=private seeds the Add-run editor checkbox UNCHECKED', async () => {
-			await setUserSetting(owner.id, 'privacy_default', 'private');
-			const ctx = await browser.newContext({ storageState: owner.storageStatePath });
-			await ctx.addInitScript(setConsentAccepted);
-			const page = await ctx.newPage();
-			try {
-				await page.goto('/runs');
-				await page.getByRole('button', { name: '+ Add run' }).click();
-				const publicToggle = page.getByLabel('Make this run public');
-				await expect(publicToggle).toBeVisible({ timeout: 10_000 });
-				await expect(publicToggle).not.toBeChecked();
-			} finally {
-				await ctx.close();
-			}
-		});
+		for (const [pref, level] of [
+			['public', 'public'],
+			['followers', 'followers'],
+			['private', 'private'],
+		] as const) {
+			await test.step(`privacy_default=${pref} seeds the Add-run audience selector to ${level}`, async () => {
+				await setUserSetting(owner.id, 'privacy_default', pref);
+				const ctx = await browser.newContext({ storageState: owner.storageStatePath });
+				await ctx.addInitScript(setConsentAccepted);
+				const page = await ctx.newPage();
+				try {
+					await page.goto('/runs');
+					// Open the Add-run modal — RunEditor seeds the audience from
+					// the freshly-read privacy_default pref in onMount.
+					await page.getByRole('button', { name: '+ Add run' }).click();
+					const selector = page.getByTestId('run-editor-audience');
+					await expect(selector).toBeVisible({ timeout: 10_000 });
+					await expect(selector).toHaveValue(level);
+				} finally {
+					await ctx.close();
+				}
+			});
+		}
+		await setUserSetting(owner.id, 'privacy_default', 'private');
 
 		// Plant the journey's run as PRIVATE (matching the runner's now-
 		// default-private pref). started_at within the 14-day feed window
@@ -252,10 +245,8 @@ test.describe('run visibility (public/private) propagation across surfaces', () 
 				const chip = page.locator('.visibility-chip');
 				await expect(chip).toBeVisible({ timeout: 10_000 });
 				await expect(chip).toContainText('Private');
-				// Share button on a private run opens the make-public confirm.
-				await page
-					.getByRole('button', { name: 'Make public and copy share link' })
-					.click();
+				// Share on a private run asks who can see it; Public opens the make-public confirm.
+				await shareChoosingPublic(page, page.getByTestId('run-share-btn'));
 				const dialog = page.getByTestId('share-confirm-dialog');
 				await expect(dialog).toBeVisible({ timeout: 10_000 });
 				await dialog.getByRole('button', { name: 'Make public & copy link' }).click();

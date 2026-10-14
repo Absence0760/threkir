@@ -1,17 +1,16 @@
-// `npm run test:unit` is raw `tsx --test` over `src/**/*.test.ts`. tsx resolves
-// path aliases from tsconfig, and `apps/web/tsconfig.json` gets `$lib` / `$app`
-// only by extending `./.svelte-kit/tsconfig.json`, which `svelte-kit sync`
-// generates and CI never runs before this job. So an aliased import in a unit
-// test passes in a worktree where some earlier `svelte-check` happened to
-// generate that file, and fails in CI with ERR_MODULE_NOT_FOUND. Relative
-// imports resolve either way.
+// `npm run test:unit` is raw `tsx --test` over `src/**/*.test.ts`, with no Vite
+// in the loop. `#lib` is a subpath import in `package.json`'s `imports`, so
+// Node resolves it on its own. `$app/*` and `$env/*` are different: they are
+// virtual modules that only SvelteKit's Vite plugin serves, so tsx cannot load
+// them at all — a unit-suite module that imports one fails with
+// ERR_MODULE_NOT_FOUND. Keep those behind a module the suite does not load.
 //
-// The alias does not have to be in the test file to break it. tsx loads every
+// The import does not have to be in the test file to break it. tsx loads every
 // module the test reaches, so a relative import of a module that itself imports
-// `$lib/format/time` fails the same way — which is how `demo_preview.ts` went
-// red on PR #915 while this guard, then reading only the test files' own import
-// lines, passed. The check is therefore over the modules each suite actually
-// LOADS, found by following its relative imports.
+// `$app/env` fails the same way — which is how `demo_preview.ts` went red on
+// PR #915 while this guard, then reading only the test files' own import lines,
+// passed. The check is therefore over the modules each suite actually LOADS,
+// found by following its relative and `#lib` imports.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
@@ -20,6 +19,7 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { stripComments } from './core/strip_comments';
 
 const WEB_ROOT = resolve(import.meta.dirname, '..', '..');
+const LIB_DIR = join(WEB_ROOT, 'src', 'lib');
 
 const GLOB_TAIL = '/**/*.test.ts';
 
@@ -76,10 +76,10 @@ function importSites(source: string): ImportSite[] {
 	return out;
 }
 
-const ALIAS = /^\$(?:lib|app|env)(?:\/|$)/;
+const ALIAS = /^\$(?:app|env)(?:\/|$)/;
 
-function resolveRelative(from: string, specifier: string): string | null {
-	const base = resolve(dirname(from), specifier);
+function resolveFrom(dir: string, specifier: string): string | null {
+	const base = resolve(dir, specifier);
 	for (const candidate of [base, `${base}.ts`, `${base}.js`, join(base, 'index.ts')]) {
 		try {
 			if (statSync(candidate).isFile() && /\.(ts|js|mjs)$/.test(candidate)) return candidate;
@@ -101,8 +101,12 @@ function loadedModules(): Map<string, string> {
 				if (reachedFrom.has(file)) continue;
 				reachedFrom.set(file, testFile);
 				for (const { specifier, typeOnly } of importSites(readFileSync(file, 'utf-8'))) {
-					if (typeOnly || !specifier.startsWith('.')) continue;
-					const next = resolveRelative(file, specifier);
+					if (typeOnly) continue;
+					const next = specifier.startsWith('.')
+						? resolveFrom(dirname(file), specifier)
+						: specifier.startsWith('#lib/')
+							? resolveFrom(LIB_DIR, specifier.slice('#lib/'.length))
+							: null;
 					if (next) queue.push(next);
 				}
 			}
@@ -117,18 +121,18 @@ test('importSites reads a multi-line clause and skips a type-only one', () => {
 			`import {`,
 			`\tformatDuration,`,
 			`\tformatPace`,
-			`} from '$lib/format/time';`,
-			`import type { TrackPoint } from '$lib/types';`,
+			`} from '#lib/format/time.ts';`,
+			`import type { TrackPoint } from '#lib/types.ts';`,
 			`export { x } from './x';`,
 			`import './side_effect';`,
 			`const lazy = await import('../lazy');`,
-			`\timport { indented } from '$lib/format/pace_format';`,
+			`\timport { indented } from '#lib/format/pace_format.ts';`,
 			`export const label = 'from';`,
 		].join('\n')
 	);
 	assert.deepEqual(sites, [
-		{ specifier: '$lib/format/time', typeOnly: false },
-		{ specifier: '$lib/types', typeOnly: true },
+		{ specifier: '#lib/format/time.ts', typeOnly: false },
+		{ specifier: '#lib/types.ts', typeOnly: true },
 		{ specifier: './x', typeOnly: false },
 		{ specifier: './side_effect', typeOnly: false },
 		{ specifier: '../lazy', typeOnly: false },
@@ -144,7 +148,7 @@ test('the suite roots come from the test:unit script', () => {
 	for (const root of roots) assert.ok(statSync(root).isDirectory(), `${root} is not a directory`);
 });
 
-test('no module the unit suite loads imports through a SvelteKit path alias', () => {
+test('no module the unit suite loads imports a SvelteKit virtual module', () => {
 	const modules = loadedModules();
 	const offenders: string[] = [];
 	for (const [file, testFile] of modules) {
@@ -167,11 +171,10 @@ test('no module the unit suite loads imports through a SvelteKit path alias', ()
 	assert.deepEqual(
 		offenders,
 		[],
-		`These modules are loaded by \`npm run test:unit\` and import through a ` +
-			`SvelteKit alias, which resolves only after \`svelte-kit sync\` has written ` +
-			`.svelte-kit/tsconfig.json. CI does not run it before the suite, so each ` +
-			`fails there with ERR_MODULE_NOT_FOUND while passing locally. Use a ` +
-			`relative import:\n  ` +
+		`These modules are loaded by \`npm run test:unit\` and import a SvelteKit ` +
+			`virtual module (\`$app/*\` or \`$env/*\`), which only the Vite plugin ` +
+			`serves, so each fails under tsx with ERR_MODULE_NOT_FOUND. Move the ` +
+			`virtual-module read behind a module the suite does not load:\n  ` +
 			offenders.join('\n  ')
 	);
 });

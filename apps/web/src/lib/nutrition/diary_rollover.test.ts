@@ -5,7 +5,7 @@
 // dashboard's mount sequence.
 //
 // The bug: `todayIso` / `yesterdayIso` were recomputed only inside the `$effect`,
-// which fires on a `$page.url` or `authReady` change and never on the clock. A
+// which fires on a `page.url` or `authReady` change and never on the clock. A
 // tab left open past local midnight kept labelling the previous day "Today" and
 // kept the Next-day step disabled. No write path was affected — every write
 // resolves `entryTimestampFor(viewDate, new Date())` at save time (decisions
@@ -81,10 +81,10 @@ test('the rollover re-resolves the day from the URL, and cannot re-arm the URL e
 	const body = SRC.slice(start, SRC.indexOf('\n\tonMount(() => {', start));
 	assert.match(
 		body,
-		/resolveDiaryDate\(\$page\.url\.searchParams\.get\(DIARY_DATE_PARAM\), now\)/,
+		/resolveDiaryDate\(page\.url\.searchParams\.get\(DIARY_DATE_PARAM\), now\)/,
 		'a bare /nutrition must follow the clock onto the new day; an explicit past ?date= must stay put.',
 	);
-	// The $effect that owns the URL reads `$page.url` and `authReady`. The
+	// The $effect that owns the URL reads `page.url` and `authReady`. The
 	// rollover writes neither, which is what keeps it from re-arming the effect
 	// that the § 591 round already had to wrap in `untrack`.
 	assert.doesNotMatch(body, /\bauthReady\s*=/, 'syncDay must not write authReady — the URL effect reads it.');

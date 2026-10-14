@@ -135,8 +135,8 @@ test('the unit-test glob covers every suite under src', () => {
 	}
 });
 
-test('every $lib/<segment> reference in src resolves to a real lib folder or root module', () => {
-	// First path segment after `$lib/` must be an existing subfolder of src/lib
+test('every #lib/<segment> reference in src resolves to a real lib folder or root module', () => {
+	// First path segment after `#lib/` must be an existing subfolder of src/lib
 	// or one of the root modules. Catches stale references (imports AND comments)
 	// left behind when a module moves into a topical subfolder.
 	const entries = readdirSync(libRoot, { withFileTypes: true });
@@ -144,7 +144,8 @@ test('every $lib/<segment> reference in src resolves to a real lib folder or roo
 	for (const e of entries) {
 		if (e.isDirectory()) valid.add(e.name);
 		else if (e.isFile() && !e.name.endsWith('.test.ts') && !e.name.endsWith('.d.ts')) {
-			valid.add(e.name.endsWith('.ts') ? e.name.slice(0, -3) : e.name);
+			valid.add(e.name);
+			if (e.name.endsWith('.ts')) valid.add(e.name.slice(0, -3));
 		}
 	}
 
@@ -156,9 +157,9 @@ test('every $lib/<segment> reference in src resolves to a real lib folder or roo
 	const offenders: string[] = [];
 	for (const file of files) {
 		const text = readFileSync(file, 'utf-8');
-		for (const m of text.matchAll(/\$lib\/([\w.-]+)/g)) {
+		for (const m of text.matchAll(/#lib\/([\w.-]+)/g)) {
 			if (!valid.has(m[1])) {
-				offenders.push(`${file.replace(srcRoot, 'src')}: $lib/${m[1]}`);
+				offenders.push(`${file.replace(srcRoot, 'src')}: #lib/${m[1]}`);
 			}
 		}
 	}
@@ -166,7 +167,7 @@ test('every $lib/<segment> reference in src resolves to a real lib folder or roo
 	assert.deepEqual(
 		[...new Set(offenders)],
 		[],
-		`Stale $lib reference(s) — the first path segment doesn't match a src/lib ` +
+		`Stale #lib reference(s) — the first path segment doesn't match a src/lib ` +
 			`subfolder or root module (a module probably moved):\n  ${[...new Set(offenders)].join('\n  ')}`,
 	);
 });

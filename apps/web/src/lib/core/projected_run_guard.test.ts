@@ -42,6 +42,8 @@ const UNNARROWED_READERS = [
 	'fetchRunById',
 	'fetchRunsOnRoute',
 	'fetchPublicRun',
+	'fetchSharedRun',
+	'fetchViewableRun',
 	'fetchTrack',
 ];
 

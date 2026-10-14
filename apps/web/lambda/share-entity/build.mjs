@@ -5,7 +5,7 @@
 // Output: apps/web/lambda/share-entity/dist/share-entity.zip
 //
 // Strategy: esbuild bundles src/index.ts (and everything it imports
-// transitively from $lib/*) into a single index.mjs. supabase-js is
+// transitively from #lib/*) into a single index.mjs. supabase-js is
 // inlined. Unlike share-run/route/badge/recap this Lambda serves HTML
 // ONLY (no per-entity og:image PNG), so there is NO native @resvg addon
 // to keep external + copy — the whole handler bundles cleanly. The
@@ -46,7 +46,7 @@ await build({
 	format: 'esm',
 	outfile: resolve(distDir, 'index.mjs'),
 	// Lambda's managed runtime only ships AWS SDK v3, which we don't use,
-	// so supabase-js + $lib helpers get inlined.
+	// so supabase-js + #lib helpers get inlined.
 	external: [],
 	// Some transitive deps (e.g. inside @supabase/realtime-js) still ship
 	// CJS. Provide a `require` in the ESM bundle so they load.

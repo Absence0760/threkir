@@ -68,7 +68,7 @@ test('the targets peer does not become a second Art 9 entry point', () => {
 });
 
 test('the targets peer reuses the parity-paired engine instead of re-deriving it', () => {
-	assert.match(TARGETS, /from '\$lib\/nutrition\/nutrition_targets'/);
+	assert.match(TARGETS, /from '#lib\/nutrition\/nutrition_targets\.ts'/);
 	for (const named of [
 		'computeNutritionTargets',
 		'mifflinStJeorBmr',

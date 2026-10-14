@@ -12,9 +12,9 @@
  * coach_flag.ts; set PUBLIC_ROUTE_GEN_ENABLED=true only once the engines are
  * actually standing.
  */
-import { env } from '$env/dynamic/public';
+import { PUBLIC_ROUTE_GEN_ENABLED } from '$app/env/public';
 import { isTruthyFlagValue } from '../core/env_flag';
 
 export function routeGenEnabled(): boolean {
-	return isTruthyFlagValue(env.PUBLIC_ROUTE_GEN_ENABLED);
+	return isTruthyFlagValue(PUBLIC_ROUTE_GEN_ENABLED);
 }

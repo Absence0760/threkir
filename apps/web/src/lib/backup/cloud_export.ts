@@ -25,7 +25,7 @@
 /// reject anon). Caller is expected to gate on `auth.user` before
 /// invoking.
 
-import { env } from '$env/dynamic/public';
+import { PUBLIC_EXPORT_HUB_URL } from '$app/env/public';
 import { edgeFunctionErrorCode } from '../core/edge_function_error';
 import { supabase } from '../core/supabase';
 import {
@@ -116,7 +116,7 @@ function throwForStatus(res: Response, body: string): never {
 export async function startCloudExport(
 	format: CloudExportFormat,
 ): Promise<CloudExportStart> {
-	const hubUrl = (env.PUBLIC_EXPORT_HUB_URL ?? '').trim();
+	const hubUrl = (PUBLIC_EXPORT_HUB_URL ?? '').trim();
 	if (!hubUrl) {
 		return { kind: 'ready', response: await edgeFunctionExport(format) };
 	}
@@ -141,7 +141,7 @@ export async function startCloudExport(
 /// is unconfigured (the Edge Function rail has no job to watch) so a
 /// caller can run this on mount without branching on the transport.
 export async function fetchCloudExportJob(): Promise<CloudExportJob> {
-	const hubUrl = (env.PUBLIC_EXPORT_HUB_URL ?? '').trim();
+	const hubUrl = (PUBLIC_EXPORT_HUB_URL ?? '').trim();
 	if (!hubUrl) return { status: 'none' };
 	const token = await hubSession();
 	const res = await fetch(buildCloudExportJobStatusUrl(hubUrl), {

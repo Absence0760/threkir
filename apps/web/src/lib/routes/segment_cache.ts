@@ -1,6 +1,6 @@
 /**
  * Per-segment routing cache for the route builder's incremental
- * auto-routing. Kept in its own module (no `$app` / `$env` imports) so
+ * auto-routing. Kept in its own module (no `$app` / `$app/env` imports) so
  * the pure logic is node:test-runnable — see segment_cache.test.ts.
  */
 

@@ -1,42 +1,44 @@
 <script lang="ts">
-	import { siteOrigin } from '$lib/core/site_url';
+	import { siteOrigin } from '#lib/core/site_url.ts';
 	import { onMount } from 'svelte';
-	import { formatDistance } from '$lib/core/mock-data';
-	import { toGpx, toKml, downloadFile } from '$lib/routes/gpx';
-	import { toRouteGpxWithMarkers, type RouteGpxMarker } from '$lib/routes/route_gpx';
-	import { fetchRouteById, fetchRouteMarkers, getRouteReviews, upsertRouteReview, deleteRouteReview, updateRouteTags, setRoutePublic, setRouteStar } from '$lib/core/data';
-	import type { RouteMarker } from '$lib/types';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { deferDestructive } from '$lib/stores/undo.svelte';
-	import RunMap from '$lib/components/RunMap.svelte';
-	import ElevationProfile from '$lib/components/ElevationProfile.svelte';
-	import SplitPane from '$lib/components/SplitPane.svelte';
-	import SegmentsPanel from '$lib/components/SegmentsPanel.svelte';
-	import RouteMarkerEditor from '$lib/components/RouteMarkerEditor.svelte';
-	import type { MapMarkerPin } from '$lib/components/RunMap.svelte';
-	import RoutePhotos from '$lib/components/RoutePhotos.svelte';
-	import RouteConditions from '$lib/components/RouteConditions.svelte';
-	import ReportDialog from '$lib/components/ReportDialog.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import SendRouteDialog from '$lib/components/SendRouteDialog.svelte';
-	import RoutePreviewScrubber from '$lib/components/RoutePreviewScrubber.svelte';
-	import { interpolateAlongRoute } from '$lib/routes/route_geometry';
-	import { routeElevation } from '$lib/routes/route_elevation';
-	import { buildRouteShareCanonical } from '$lib/share/share_meta';
-	import { describeRoute, localisedTemplate } from '$lib/routes/route_description';
-	import { requestAiDescription } from '$lib/routes/route_describe_client';
-	import { AI_DISCLOSURE_ERROR } from '$lib/core/ai_disclosure';
-	import { coachEnabled } from '$lib/coach/coach_flag';
+	import { formatDistance } from '#lib/core/mock-data.ts';
+	import { toGpx, toKml, downloadFile } from '#lib/routes/gpx.ts';
+	import { toRouteGpxWithMarkers, type RouteGpxMarker } from '#lib/routes/route_gpx.ts';
+	import { fetchRouteById, fetchRouteMarkers, getRouteReviews, upsertRouteReview, deleteRouteReview, updateRouteTags, setRoutePublic, setRouteStar, audienceSharingEnabled, fetchShares } from '#lib/core/data.ts';
+	import AudienceDialog from '#lib/components/AudienceDialog.svelte';
+	import { audienceOf, type AudienceColumns } from '#lib/social/run_visibility.ts';
+	import type { RouteMarker } from '#lib/types.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { deferDestructive } from '#lib/stores/undo.svelte.ts';
+	import RunMap from '#lib/components/RunMap.svelte';
+	import ElevationProfile from '#lib/components/ElevationProfile.svelte';
+	import SplitPane from '#lib/components/SplitPane.svelte';
+	import SegmentsPanel from '#lib/components/SegmentsPanel.svelte';
+	import RouteMarkerEditor from '#lib/components/RouteMarkerEditor.svelte';
+	import type { MapMarkerPin } from '#lib/components/RunMap.svelte';
+	import RoutePhotos from '#lib/components/RoutePhotos.svelte';
+	import RouteConditions from '#lib/components/RouteConditions.svelte';
+	import ReportDialog from '#lib/components/ReportDialog.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import SendRouteDialog from '#lib/components/SendRouteDialog.svelte';
+	import RoutePreviewScrubber from '#lib/components/RoutePreviewScrubber.svelte';
+	import { interpolateAlongRoute } from '#lib/routes/route_geometry.ts';
+	import { routeElevation } from '#lib/routes/route_elevation.ts';
+	import { buildRouteShareCanonical } from '#lib/share/share_meta.ts';
+	import { describeRoute, localisedTemplate } from '#lib/routes/route_description.ts';
+	import { requestAiDescription } from '#lib/routes/route_describe_client.ts';
+	import { AI_DISCLOSURE_ERROR } from '#lib/core/ai_disclosure.ts';
+	import { coachEnabled } from '#lib/coach/coach_flag.ts';
 
 	// The "Describe this route" button always works (offline template); the
 	// AI-enhancement upsell below it only makes sense when the Coach is live.
 	const coachOn = coachEnabled();
-	import { env } from '$env/dynamic/public';
-	import { m } from '$lib/i18n/store.svelte';
-	import { routeSurfaceLabel } from '$lib/i18n/enum_labels.svelte';
-	import type { MessageKey } from '$lib/i18n/messages';
-	import type { Route } from '$lib/types';
+	import { PUBLIC_SITE_URL } from '$app/env/public';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { routeSurfaceLabel } from '#lib/i18n/enum_labels.svelte.ts';
+	import type { MessageKey } from '#lib/i18n/messages.ts';
+	import type { Route } from '#lib/types.ts';
 
 	let { data } = $props();
 
@@ -46,7 +48,7 @@
 	// sitemap-listed, anon-readable copy. No own SEO meta otherwise:
 	// the app shell is behind the SPA and not meant to be indexed.
 	let canonicalUrl = $derived(
-		buildRouteShareCanonical(siteOrigin(env.PUBLIC_SITE_URL), data.id)
+		buildRouteShareCanonical(siteOrigin(PUBLIC_SITE_URL), data.id)
 	);
 
 	let route = $state<Route | null>(null);
@@ -122,6 +124,7 @@
 		// public route aren't stalled.
 		await auth.ready();
 		await loadRoute();
+		void loadAudience();
 	});
 
 	async function submitReview() {
@@ -175,6 +178,52 @@
 	let tagsSaving = $state(false);
 
 	let isOwner = $derived(route !== null && auth.user?.id === route.user_id);
+	/// Audience sharing (followers level + named people, decisions
+	/// § 1874) is server-gated; the owner's audience control and the
+	/// narrower share link render only when the server says it is on.
+	let audienceSharingOn = $state(false);
+	let shareCount = $state(0);
+	let showAudience = $state(false);
+	let audienceLevel = $derived(route ? audienceOf(route, shareCount) : 'private');
+	/// A viewer who is not the owner reading a route that is not public got
+	/// it through its followers level or a share made to them.
+	let sharedWithMe = $derived(route !== null && !isOwner && route.is_public !== true && !route.club_id);
+
+	async function loadAudience() {
+		audienceSharingOn = await audienceSharingEnabled();
+		if (!audienceSharingOn || !route || !isOwner) return;
+		try {
+			shareCount = (await fetchShares('route', route.id)).length;
+		} catch (e) {
+			console.warn('route shares unknown', e);
+		}
+	}
+
+	function applyAudienceColumns(columns: AudienceColumns) {
+		if (!route) return;
+		route = { ...route, ...columns };
+		if (!columns.is_public) {
+			shareLink = '';
+			shareCopied = false;
+		}
+	}
+
+	async function closeAudience() {
+		showAudience = false;
+		await loadAudience();
+	}
+
+	function requestPublicFromAudience() {
+		showAudience = false;
+		shareIntent = 'link';
+		showShareConfirm = true;
+	}
+
+	/// The in-app link for a route shared with a narrower audience: it opens
+	/// only for that audience, so it is safe to hand out without a public flip.
+	function inAppRouteLink(id: string): string {
+		return `${window.location.origin}/routes/${id}`;
+	}
 	let showReportDialog = $state(false);
 	let reportReviewId = $state<string | null>(null);
 
@@ -354,6 +403,19 @@
 	async function handleShare() {
 		if (!route || sharing) return;
 		shareIntent = 'link';
+		if (!route.is_public && audienceSharingOn && audienceLevel !== 'private') {
+			// The owner chose a narrower audience: hand out the in-app link,
+			// which opens only for that audience. Never flip it public here.
+			shareLink = inAppRouteLink(route.id);
+			shareCopied = false;
+			return;
+		}
+		if (!route.is_public && isOwner && audienceSharingOn) {
+			// Share asks who should see the route; public is one answer of
+			// four, never a side effect of the button.
+			showAudience = true;
+			return;
+		}
 		if (!route.is_public) {
 			showShareConfirm = true;
 			return;
@@ -361,9 +423,21 @@
 		await runShare();
 	}
 
+	/// Whether a send to one person grants THAT person access instead of
+	/// flipping the route public (route_direct_share.md § Private send).
+	let sendGrantsAccess = $state(false);
+
 	async function handleSendToFollower() {
 		if (!route || sharing) return;
 		shareIntent = 'dm';
+		if (!route.is_public && isOwner && audienceSharingOn) {
+			sendGrantsAccess = true;
+			shareLink = inAppRouteLink(route.id);
+			shareCopied = false;
+			showSendDm = true;
+			return;
+		}
+		sendGrantsAccess = false;
 		if (!route.is_public) {
 			showShareConfirm = true;
 			return;
@@ -396,7 +470,7 @@
 		if (!route.is_public) {
 			try {
 				await setRoutePublic(route.id, true);
-				route = { ...route, is_public: true };
+				route = { ...route, is_public: true, followers_only: false };
 				showToast(m('routeDetail.madePublicForLink'), 'info');
 			} catch (e) {
 				showToast(m('routeDetail.makePublicFailed', { error: `${e}` }), 'error');
@@ -414,8 +488,9 @@
 	async function togglePublic() {
 		if (!route) return;
 		const next = !route.is_public;
-		// Optimistic flip so the icon changes immediately.
-		route = { ...route, is_public: next };
+		// Optimistic flip so the icon changes immediately. Public clears the
+		// followers level server-side (normalize_audience), so mirror that.
+		route = next ? { ...route, is_public: true, followers_only: false } : { ...route, is_public: false };
 		try {
 			await setRoutePublic(route.id, next);
 			showToast(next ? m('routeDetail.nowPublic') : m('routeDetail.nowPrivate'), 'success');
@@ -659,7 +734,7 @@
 							{m('routeDetail.exportGpxMarkers')}
 						</button>
 					{/if}
-					{#if isOwner}
+					{#if isOwner && !audienceSharingOn}
 						<button
 							class="btn btn-outline btn-sm"
 							onclick={togglePublic}
@@ -673,12 +748,39 @@
 							{route.is_public ? m('routeDetail.public') : m('routeDetail.private')}
 						</button>
 					{/if}
-					<button
-						class="btn btn-primary btn-sm"
-						data-testid="route-share-btn"
-						onclick={handleShare}
-						disabled={sharing}>{m('routeDetail.share')}</button
-					>
+					{#if isOwner && audienceSharingOn}
+						<button
+							class="btn btn-outline btn-sm"
+							onclick={() => (showAudience = true)}
+							title={m('audience.button')}
+							data-testid="route-audience-btn"
+						>
+							<span class="material-symbols" aria-hidden="true">
+								{audienceLevel === 'followers' ? 'group' : audienceLevel === 'specific' ? 'person_add' : audienceLevel === 'public' ? 'public' : 'lock'}
+							</span>
+							{audienceLevel === 'public'
+								? m('routeDetail.public')
+								: audienceLevel === 'followers'
+									? m('audience.chipFollowers')
+									: audienceLevel === 'specific'
+										? m('audience.chipShared')
+										: m('audience.levelPrivate')}
+						</button>
+					{/if}
+					{#if sharedWithMe}
+						<span class="shared-with-you" data-testid="route-shared-with-you" title={m('audience.sharedWithYouHint')}>
+							<span class="material-symbols" aria-hidden="true">group</span>
+							{m('audience.sharedWithYou')}
+						</span>
+					{/if}
+					{#if route.is_public || isOwner}
+						<button
+							class="btn btn-primary btn-sm"
+							data-testid="route-share-btn"
+							onclick={handleShare}
+							disabled={sharing}>{m('routeDetail.share')}</button
+						>
+					{/if}
 					{#if auth.user && (route.is_public || isOwner)}
 						<button
 							class="btn btn-outline btn-sm"
@@ -986,7 +1088,21 @@
 		open={showSendDm}
 		shareUrl={shareLink}
 		routeId={route.id}
-		onclose={() => (showSendDm = false)}
+		grantAccess={sendGrantsAccess}
+		onclose={() => {
+			showSendDm = false;
+			if (sendGrantsAccess) void loadAudience();
+		}}
+	/>
+	<AudienceDialog
+		open={showAudience}
+		kind="route"
+		entityId={route.id}
+		isPublic={route.is_public === true}
+		followersOnly={route.followers_only === true}
+		onlevel={applyAudienceColumns}
+		onrequestpublic={requestPublicFromAudience}
+		onclose={closeAudience}
 	/>
 {/if}
 
@@ -1626,5 +1742,12 @@
 	}
 	.elev-chart {
 		margin-top: var(--space-sm);
+	}
+	.shared-with-you {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+		color: var(--color-text-secondary);
+		font-size: 0.85rem;
 	}
 </style>

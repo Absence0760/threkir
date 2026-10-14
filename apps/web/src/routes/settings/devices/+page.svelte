@@ -1,24 +1,24 @@
 <script lang="ts">
-	import { activeFormatLocale } from '$lib/format/time';
+	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { onMount } from 'svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { supabase } from '$lib/core/supabase';
-	import { getDeviceId } from '$lib/settings/settings';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { getDeviceId } from '#lib/settings/settings.ts';
 	import {
 		isPushSupported,
 		pushPermission,
 		subscribeToPush,
 		unsubscribeFromPush,
 		getCurrentSubscription,
-	} from '$lib/util/push';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { ACTIVITY_TYPES } from '$lib/runs/activity_type';
-	import { activityTypeLabel } from '$lib/runs/activity_type.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import type { PrefsBag } from '$lib/settings/settings';
-	import type { Json } from '$lib/database.types';
+	} from '#lib/util/push.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { ACTIVITY_TYPES } from '#lib/runs/activity_type.ts';
+	import { activityTypeLabel } from '#lib/runs/activity_type.svelte.ts';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import type { PrefsBag } from '#lib/settings/settings.ts';
+	import type { Json } from '#lib/database.types.ts';
 
 	interface DeviceRow {
 		device_id: string;

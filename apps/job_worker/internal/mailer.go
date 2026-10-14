@@ -328,6 +328,9 @@ var importantKinds = map[string]bool{
 	"message":           true,
 	"data_export_ready": true,
 	"refund_failed":     true,
+	// A seat held for the recipient that lapses to the next person if they
+	// don't act: the definition of something they are waiting on.
+	"event_waitlist_slot": true,
 }
 
 // kindMutePrefKey maps a notification kind to the user_settings.prefs key
@@ -436,7 +439,7 @@ func shouldEmail(kind string, prefs map[string]interface{}) bool {
 func renderNotificationEmail(n NotificationRow, baseURL, locale string) Email {
 	base := strings.TrimRight(baseURL, "/")
 	loc := normalizeEmailLocale(locale)
-	s := lookupEmailStrings(loc, keyForKind(n.Kind))
+	s := lookupEmailStrings(loc, copyKeyFor(n))
 	shared := lookupEmailShared(loc)
 	return composeEmail(emailContent{
 		logoURL:         emailLogoURL(baseURL),
@@ -474,7 +477,7 @@ const notificationPrefsPath = "/settings/notifications"
 // UUID fallback on /clubs/[slug].
 func pathForKind(kind, base string, n NotificationRow) string {
 	switch kind {
-	case "event_reminder", "event_cancel", "event_rsvp":
+	case "event_reminder", "event_cancel", "event_rsvp", "event_waitlist_slot":
 		return eventPath(base, n)
 	case "plan_update", "plan_assigned":
 		// Training plans live at /plans — there is no /training route, so the

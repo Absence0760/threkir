@@ -16,9 +16,9 @@
  * stack's `[auth.external.apple]` is `enabled = false` — so a dev build with
  * this on would surface exactly the opaque error the flag exists to prevent.
  */
-import { env } from '$env/dynamic/public';
+import { PUBLIC_APPLE_AUTH_ENABLED } from '$app/env/public';
 import { isTruthyFlagValue } from './env_flag';
 
 export function appleAuthEnabled(): boolean {
-	return isTruthyFlagValue(env.PUBLIC_APPLE_AUTH_ENABLED);
+	return isTruthyFlagValue(PUBLIC_APPLE_AUTH_ENABLED);
 }

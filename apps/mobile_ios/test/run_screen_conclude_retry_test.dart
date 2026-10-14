@@ -74,7 +74,7 @@ class _LiveApi extends ApiClient {
       const [];
 
   @override
-  Future<void> saveRun(Run run, {bool? isPublic}) async {
+  Future<void> saveRun(Run run, {bool? isPublic, bool followersOnly = false}) async {
     calls.add('saveRun(isPublic: $isPublic)');
   }
 

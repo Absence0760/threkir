@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { m } from '$lib/i18n/store.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
 
 	onMount(() => {
-		goto('/routes?tab=explore', { replaceState: true });
+		goto('/routes?tab=explore', { replace: true });
 	});
 </script>
 

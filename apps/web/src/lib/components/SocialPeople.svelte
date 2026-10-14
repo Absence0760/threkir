@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import { hashHue } from '$lib/format/avatar';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import { hashHue } from '#lib/format/avatar.ts';
 	import {
 		searchPeople,
 		fetchSuggestedPeople,
@@ -10,13 +10,13 @@
 		unfollowUser,
 		type PeopleSuggestion,
 		type NearbyRunner,
-	} from '$lib/core/data';
-	import { NEARBY_RUNNERS_ENABLED } from '$lib/social/nearby_flag';
-	import { NEARBY_BUCKET_BOUNDS_M, nearbyBucketUpperBoundM } from '$lib/social/nearby';
-	import { formatDistance } from '$lib/format/units.svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { m } from '$lib/i18n/store.svelte';
+	} from '#lib/core/data.ts';
+	import { NEARBY_RUNNERS_ENABLED } from '#lib/social/nearby_flag.ts';
+	import { NEARBY_BUCKET_BOUNDS_M, nearbyBucketUpperBoundM } from '#lib/social/nearby.ts';
+	import { formatDistance } from '#lib/format/units.svelte.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
 
 	let query = $state('');
 	let results = $state<PeopleSuggestion[]>([]);

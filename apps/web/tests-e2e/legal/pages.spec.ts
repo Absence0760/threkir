@@ -185,6 +185,25 @@ test.describe('Legal pages', () => {
 		expect(body).toContain('permanent and cannot be undone');
 	});
 
+	test('/delete-account reads in the browser language, not only in English', async ({
+		browser
+	}) => {
+		// The page is where a reader who cannot sign in learns how to leave,
+		// so a German reader must get the instructions in German.
+		const context = await browser.newContext({ locale: 'de-DE' });
+		const page = await context.newPage();
+		await page.goto('/delete-account');
+		await expect(page.getByRole('heading', { level: 1, name: 'Konto löschen' })).toBeVisible();
+		await expect(page.getByRole('link', { name: 'Einstellungen → Konto' })).toHaveAttribute(
+			'href',
+			'/settings/account'
+		);
+		await expect(page.locator('.legal-page')).toContainText(
+			'endgültig und kann nicht rückgängig gemacht werden'
+		);
+		await context.close();
+	});
+
 	test('/privacy links the /delete-account page from the erasure clause', async ({ page }) => {
 		await page.goto('/privacy');
 		await expect(

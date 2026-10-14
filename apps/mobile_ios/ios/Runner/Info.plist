@@ -143,6 +143,12 @@
 	     GoogleService-Info.plist, after these entries. A build without that file
 	     registers nothing and google_auth.dart renders no Google button, so
 	     the claim and the capability arrive together. decisions.md. -->
+	<!-- Incoming URLs are routed by app_links listeners (the auth callback
+	     and club invites, both on the com.threkir.app scheme below), never by
+	     Flutter's own deep-link handler, which would push the URL path as a
+	     named route the app does not define. -->
+	<key>FlutterDeepLinkingEnabled</key>
+	<false/>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

@@ -1,18 +1,18 @@
 <script lang="ts">
-	import { browser } from '$app/environment';
+	import { browser } from '$app/env';
 	import { goto } from '$app/navigation';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import SeoHead from '$lib/components/SeoHead.svelte';
-	import PublicHeader from '$lib/components/PublicHeader.svelte';
-	import PublicFooter from '$lib/components/PublicFooter.svelte';
-	import ProductPreview from '$lib/components/marketing/ProductPreview.svelte';
-	import TrackPreview from '$lib/components/TrackPreview.svelte';
-	import MapBackdrop from '$lib/components/marketing/MapBackdrop.svelte';
-	import { DEMO_DISTANCE_LABEL, DEMO_HR_ZONES, DEMO_SPLITS, DEMO_TRACK } from '$lib/marketing/demo_preview';
-	import { reveal, spotlight, tilt } from '$lib/motion/actions';
-	import { buildOrganizationJsonLd, buildWebSiteJsonLd } from '$lib/share/site_meta';
-	import { normaliseSiteUrl } from '$lib/share/share_meta';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import SeoHead from '#lib/components/SeoHead.svelte';
+	import PublicHeader from '#lib/components/PublicHeader.svelte';
+	import PublicFooter from '#lib/components/PublicFooter.svelte';
+	import ProductPreview from '#lib/components/marketing/ProductPreview.svelte';
+	import TrackPreview from '#lib/components/TrackPreview.svelte';
+	import MapBackdrop from '#lib/components/marketing/MapBackdrop.svelte';
+	import { DEMO_DISTANCE_LABEL, DEMO_HR_ZONES, DEMO_SPLITS, DEMO_TRACK } from '#lib/marketing/demo_preview.ts';
+	import { reveal, spotlight, tilt } from '#lib/motion/actions.ts';
+	import { buildOrganizationJsonLd, buildWebSiteJsonLd } from '#lib/share/site_meta.ts';
+	import { normaliseSiteUrl } from '#lib/share/share_meta.ts';
 
 	let { data } = $props();
 
@@ -28,7 +28,7 @@
 
 	$effect(() => {
 		if (browser && !auth.loading && auth.loggedIn) {
-			goto('/dashboard', { replaceState: true });
+			goto('/dashboard', { replace: true });
 		}
 	});
 

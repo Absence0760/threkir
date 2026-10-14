@@ -1,5 +1,5 @@
 <script lang="ts" module>
-	import type { DmRouteCard } from '$lib/social/dm_attachment';
+	import type { DmRouteCard } from '#lib/social/dm_attachment.ts';
 
 	// Same bounded-LRU shape as RunTrackPreview / RouteTrackPreview. Keyed by
 	// viewer as well as route: what `fetchRouteById` hands back IS the viewer's
@@ -19,16 +19,16 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import TrackPreview from './TrackPreview.svelte';
-	import { m as tr } from '$lib/i18n/store.svelte';
-	import { formatDistance } from '$lib/format/units.svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { fetchRouteById } from '$lib/core/data';
+	import { m as tr } from '#lib/i18n/store.svelte.ts';
+	import { formatDistance } from '#lib/format/units.svelte.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { fetchRouteById } from '#lib/core/data.ts';
 	import {
 		dmAttachmentView,
 		dmRouteCardFrom,
 		dmRouteCardHasTrace,
 		type DmAttachmentResolution
-	} from '$lib/social/dm_attachment';
+	} from '#lib/social/dm_attachment.ts';
 
 	let { routeId }: { routeId: string } = $props();
 

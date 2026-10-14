@@ -6,7 +6,8 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import java.net.URLEncoder
@@ -14,6 +15,12 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+
+/// Epoch millis of a PostgREST `timestamptz`, which arrives as
+/// `2026-05-22T18:00:00+00:00` (an offset, not `Z`) with optional fractional
+/// seconds. Null when unparseable: a race with no readable gun has no gun time.
+internal fun parseServerInstantMs(iso: String): Long? =
+    runCatching { java.time.OffsetDateTime.parse(iso).toInstant().toEpochMilli() }.getOrNull()
 
 /// Thin REST client for the `race_sessions`, `race_pings`, and
 /// `event_results` endpoints. Shares the wire format with
@@ -33,6 +40,18 @@ class RaceSessionClient(
         val status: String,
         val startedAtIso: String?,
         val eventTitle: String?,
+    )
+
+    /// The runner's chosen course for a race: `event_attendees.course_id` →
+    /// the `event_courses` row, whose finish point the server copied from
+    /// the route's last waypoint. Null [finishLat]/[finishLng] (a course with
+    /// no route) or a null [distanceM] leave the race to a manual finish.
+    data class RaceCourse(
+        val id: String,
+        val name: String?,
+        val distanceM: Double?,
+        val finishLat: Double?,
+        val finishLng: Double?,
     )
 
     /// Return the most relevant armed/running race for the signed-in
@@ -80,7 +99,59 @@ class RaceSessionClient(
         return null
     }
 
-    /// Fire-and-forget ping post. Caller debounces to every 10s or so.
+    /// The course the runner picked at RSVP. Null when they picked none.
+    /// Two hops rather than an embedded select, so nothing here depends on
+    /// a foreign-key name PostgREST would have to resolve. The route itself
+    /// is never read: a non-owner is served it privacy-clipped (moving the
+    /// finish) and a private route not at all, so the finish comes off the
+    /// course row and a course without one finishes by hand.
+    suspend fun fetchCourse(
+        accessToken: String,
+        userId: String,
+        eventId: String,
+        instanceStart: String,
+    ): RaceCourse? {
+        val courseId = parseCourseId(
+            get(
+                "$baseUrl/rest/v1/event_attendees?user_id=eq.${enc(userId)}" +
+                    "&event_id=eq.${enc(eventId)}" +
+                    "&instance_start=eq.${enc(instanceStart)}" +
+                    "&select=course_id",
+                accessToken,
+            ),
+        ) ?: return null
+        return parseCourse(
+            get(
+                "$baseUrl/rest/v1/event_courses?id=eq.${enc(courseId)}" +
+                    "&select=id,name,distance_m,finish_lat,finish_lng",
+                accessToken,
+            ),
+        )
+    }
+
+    /// Status of one race session regardless of phase, so a host's End can be
+    /// told apart from "no race found". Null when the row is not readable.
+    suspend fun fetchSessionStatus(
+        accessToken: String,
+        eventId: String,
+        instanceStart: String,
+    ): String? {
+        val res = get(
+            "$baseUrl/rest/v1/race_sessions?event_id=eq.${enc(eventId)}" +
+                "&instance_start=eq.${enc(instanceStart)}&select=status",
+            accessToken,
+        )
+        val row = (json.parseToJsonElement(res) as? JsonArray)?.firstOrNull() as? JsonObject
+        return row?.get("status")?.jsonPrimitive?.contentOrNull
+    }
+
+    /// One round trip answered with the server's own clock: the ping's
+    /// `at`, read back on the insert. Feeds [ServerClockOffset].
+    data class ClockSample(val sentAtMs: Long, val receivedAtMs: Long, val serverAtMs: Long)
+
+    /// Ping post, read back for its server-stamped `at` so the watch's clock
+    /// offset comes from the same source the phone's does. Null when the
+    /// response carried no readable `at`. Caller debounces to every 10s or so.
     suspend fun pushPing(
         accessToken: String,
         userId: String,
@@ -91,7 +162,7 @@ class RaceSessionClient(
         distanceM: Double,
         elapsedS: Int,
         bpm: Int?,
-    ) {
+    ): ClockSample? {
         val body = buildJsonObject {
             put("event_id", eventId)
             put("instance_start", instanceStart)
@@ -102,34 +173,35 @@ class RaceSessionClient(
             put("elapsed_s", elapsedS)
             if (bpm != null) put("bpm", bpm)
         }
-        post("$baseUrl/rest/v1/race_pings", body.toString(), accessToken)
+        val req = Request.Builder()
+            .url("$baseUrl/rest/v1/race_pings?select=at")
+            .header("apikey", anonKey)
+            .header("Authorization", "Bearer $accessToken")
+            .header("Content-Type", "application/json")
+            .header("Prefer", "return=representation")
+            .post(body.toString().toRequestBody(jsonMedia))
+            .build()
+        return withContext(Dispatchers.IO) {
+            val sentAt = System.currentTimeMillis()
+            http.newCall(req).execute().use { resp ->
+                val receivedAt = System.currentTimeMillis()
+                val text = resp.body.string()
+                if (!resp.isSuccessful) {
+                    throw RuntimeException("HTTP ${resp.code}: $text")
+                }
+                parsePingAtMs(text)?.let { ClockSample(sentAt, receivedAt, it) }
+            }
+        }
     }
 
-    suspend fun submitResult(
-        accessToken: String,
-        userId: String,
-        eventId: String,
-        instanceStart: String,
-        runId: String,
-        durationS: Int,
-        distanceM: Double,
-    ) {
-        val body = buildJsonObject {
-            put("event_id", eventId)
-            put("instance_start", instanceStart)
-            put("user_id", userId)
-            put("run_id", runId)
-            put("duration_s", durationS)
-            put("distance_m", distanceM)
-            put("finisher_status", "finished")
-        }
+    suspend fun submitResult(accessToken: String, result: PendingRaceResult) {
         val req = Request.Builder()
-            .url("$baseUrl/rest/v1/event_results")
+            .url("$baseUrl/rest/v1/event_results?on_conflict=event_id,instance_start,user_id")
             .header("apikey", anonKey)
             .header("Authorization", "Bearer $accessToken")
             .header("Content-Type", "application/json")
             .header("Prefer", "resolution=merge-duplicates,return=minimal")
-            .post(body.toString().toRequestBody(jsonMedia))
+            .post(resultBody(result).toString().toRequestBody(jsonMedia))
             .build()
         execute(req)
     }
@@ -142,18 +214,6 @@ class RaceSessionClient(
             .header("apikey", anonKey)
             .header("Authorization", "Bearer $token")
             .get()
-            .build()
-        return execute(req)
-    }
-
-    private suspend fun post(url: String, body: String, token: String): String {
-        val req = Request.Builder()
-            .url(url)
-            .header("apikey", anonKey)
-            .header("Authorization", "Bearer $token")
-            .header("Content-Type", "application/json")
-            .header("Prefer", "return=minimal")
-            .post(body.toRequestBody(jsonMedia))
             .build()
         return execute(req)
     }
@@ -179,6 +239,57 @@ class RaceSessionClient(
     private fun enc(s: String): String = encodeQueryValue(s)
 
     companion object {
+        private val parser = Json { ignoreUnknownKeys = true }
+
+        private fun firstRow(body: String): JsonObject? =
+            (parser.parseToJsonElement(body) as? JsonArray)?.firstOrNull() as? JsonObject
+
+        /// The `at` of the inserted `race_pings` row, echoed back by
+        /// `return=representation`.
+        @JvmStatic
+        internal fun parsePingAtMs(body: String): Long? =
+            firstRow(body)?.get("at")?.jsonPrimitive?.contentOrNull?.let(::parseServerInstantMs)
+
+        @JvmStatic
+        internal fun parseCourseId(body: String): String? =
+            firstRow(body)?.get("course_id")?.jsonPrimitive?.contentOrNull
+
+        /// One `event_courses` row. The finish point is both-or-neither in
+        /// the schema; a half pair read here is treated as no finish.
+        @JvmStatic
+        internal fun parseCourse(body: String): RaceCourse? {
+            val row = firstRow(body) ?: return null
+            val id = row["id"]?.jsonPrimitive?.contentOrNull ?: return null
+            val lat = row["finish_lat"]?.jsonPrimitive?.doubleOrNull
+            val lng = row["finish_lng"]?.jsonPrimitive?.doubleOrNull
+            val hasFinish = lat != null && lng != null
+            return RaceCourse(
+                id = id,
+                name = row["name"]?.jsonPrimitive?.contentOrNull,
+                distanceM = row["distance_m"]?.jsonPrimitive?.doubleOrNull,
+                finishLat = lat.takeIf { hasFinish },
+                finishLng = lng.takeIf { hasFinish },
+            )
+        }
+
+        /// The `event_results` upsert body. The race-mode columns are written
+        /// only when known, so a result with no course or no gun says nothing
+        /// about them rather than writing nulls over a host's correction.
+        @JvmStatic
+        internal fun resultBody(r: PendingRaceResult): JsonObject = buildJsonObject {
+            put("event_id", r.eventId)
+            put("instance_start", r.instanceStart)
+            put("user_id", r.userId)
+            put("run_id", r.runId)
+            put("duration_s", r.durationS)
+            put("distance_m", r.distanceM)
+            put("finisher_status", r.finisherStatus)
+            r.finishMethod?.let { put("finish_method", it) }
+            r.courseId?.let { put("course_id", it) }
+            r.gunTimeS?.let { put("gun_time_s", it) }
+            r.chipTimeS?.let { put("chip_time_s", it) }
+        }
+
         /// URL-encode a value for interpolation into a PostgREST query
         /// string. Critically defensive for `instance_start` values
         /// that come BACK from PostgREST as timestamptz — Postgres

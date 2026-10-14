@@ -1,4 +1,4 @@
-import { browser } from '$app/environment';
+import { browser } from '$app/env';
 
 // Whether the public pages may move right now. Two inputs: the OS setting,
 // which is authoritative and live, and the in-page pause, which WCAG 2.2.2

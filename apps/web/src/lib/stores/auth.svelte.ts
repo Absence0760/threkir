@@ -1,15 +1,15 @@
-import { browser } from '$app/environment';
-import { supabase } from '$lib/core/supabase';
-import { dropUserCache } from '$lib/settings/settings';
-import { setUnit } from '$lib/format/units.svelte';
-import { defaultUnitForLocale } from '$lib/format/locale_defaults';
-import { showToast } from '$lib/stores/toast.svelte';
-import { m } from '$lib/i18n/store.svelte';
-import { parsePreferredUnit, parseSubscriptionTier } from '$lib/types';
+import { browser } from '$app/env';
+import { supabase } from '#lib/core/supabase.ts';
+import { dropUserCache } from '#lib/settings/settings.ts';
+import { setUnit } from '#lib/format/units.svelte.ts';
+import { defaultUnitForLocale } from '#lib/format/locale_defaults.ts';
+import { showToast } from '#lib/stores/toast.svelte.ts';
+import { m } from '#lib/i18n/store.svelte.ts';
+import { parsePreferredUnit, parseSubscriptionTier } from '#lib/types.ts';
 import { createReadyGate, isAuthSettled } from './auth_ready';
 import { signOutWithScope } from './sign_out';
-import { OAUTH_PROVIDER_STASH_KEY } from '$lib/core/apple_revocation';
-import { consentRecorded } from '$lib/core/auth_confirmation';
+import { OAUTH_PROVIDER_STASH_KEY } from '#lib/core/apple_revocation.ts';
+import { consentRecorded } from '#lib/core/auth_confirmation.ts';
 
 /// Longest QUIET gap a `ready()` waiter tolerates before resolving
 /// anyway — the deadline re-arms on every unsettled auth lifecycle

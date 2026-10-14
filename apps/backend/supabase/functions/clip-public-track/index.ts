@@ -10,6 +10,7 @@ import { checkRateLimit, ipBucketKey } from '../_shared/rate_limit.ts';
 import { readJsonWithLimit } from '../_shared/body_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';
 import { isValidUuid } from '../_shared/input_validation.ts';
+import { findViewableRun } from './viewable_run.ts';
 import { gunzipCapped, InflateLimitError } from '../_shared/gunzip_capped.ts';
 import { publishableKey, secretKey } from '../_shared/api_keys.ts';
 import {
@@ -20,7 +21,9 @@ import {
   smoothedSidecarPath,
 } from '../_shared/smoothed_sidecar.ts';
 
-// Serves a privacy-zone-clipped track for a public run. Replaces
+// Serves a privacy-zone-clipped track for a run the caller may see but does
+// not own: a public run, or (audience sharing, 20270802000003) a run whose
+// followers level or named-person grant admits the caller. Replaces
 // direct Storage download for non-owner viewers (audit/storage High,
 // migration 20260619_001 dropped the public-runs Storage policy).
 //
@@ -109,27 +112,33 @@ Deno.serve(withSentry('clip-public-track', async (req: Request) => {
     if (denied) return denied;
   }
 
-  // Look the row up via the column-redacted `public_runs` view rather
-  // than the base `runs` table. The base-table SELECT policy
-  // `public runs are readable by anyone` was dropped in 20260701_001,
-  // so a non-owner querying `runs.id = ?` now returns zero rows and
-  // every clip request would 404. The view's underlying definer-owned
-  // query bypasses runs RLS, returns only `is_public = true` rows,
-  // and exposes the columns we need (user_id, is_public, and the redacted
-  // metadata, for the smoothed-sidecar hash). The
-  // `track_url` column was removed from the view in migration
-  // 20260924_001 per audit/storage (2026-05-25); we derive the path
-  // from `user_id + runId` below using the same shape the
-  // 20260621_001 CHECK constraint enforces on writes. Owner reads
-  // still return the row because the view is is-public-filtered
-  // and the EF only ever runs on public runs (the share page
-  // renders nothing for a private run).
-  const { data: run, error: runErr } = await userClient
-    .from('public_runs')
-    .select('user_id, is_public, metadata')
-    .eq('id', runId)
-    .maybeSingle();
-  // `user_id` is NOT NULL on `runs`, but `public_runs` is a view and Postgres
+  // Look the row up through the column-redacted non-owner views rather than
+  // the base `runs` table, whose public SELECT policy was dropped in
+  // 20260701_001. `public_runs` first; then, for an identified caller only,
+  // `shared_runs` — the non-public runs whose audience admits THIS caller
+  // (20270802000003). Both run as their owner, filter on their own WHERE, and
+  // expose the columns read here (user_id, is_public, and the redacted
+  // metadata the smoothed-sidecar hash reads). `track_url` is in neither
+  // (20260924_001), so the Storage path is derived below from user_id + runId,
+  // the shape the 20260621_001 CHECK enforces on writes. Neither view returns
+  // the caller's own private run; the owner reads that straight from Storage.
+  const lookup = await findViewableRun(
+    async (view) => {
+      const { data, error } = await userClient
+        .from(view)
+        .select('user_id, is_public, metadata')
+        .eq('id', runId)
+        .maybeSingle();
+      return { data, error };
+    },
+    callerId,
+  );
+  if (lookup.kind === 'failed') {
+    return Response.json({ error: 'run lookup failed' }, { status: 502 });
+  }
+  const run = lookup.kind === 'found' ? lookup.run : null;
+  const audience = lookup.kind === 'found' ? lookup.audience : null;
+  // `user_id` is NOT NULL on `runs`, but both reads are views and Postgres
   // cannot carry the constraint through one, so the generated row type says
   // `string | null` and every use below has to answer for it. Both would fail
   // late and wrong: the Storage path would read `null/<id>.json.gz` and 502,
@@ -137,7 +146,7 @@ Deno.serve(withSentry('clip-public-track', async (req: Request) => {
   // AFTER the track was already decompressed in memory. Fail closed to the
   // same 404 the missing-row branch gives — a row we cannot attribute to an
   // owner is a row we will not serve a track for.
-  if (runErr || !run || run.user_id === null) {
+  if (!run || run.user_id === null) {
     return Response.json({ error: 'not found' }, { status: 404 });
   }
   const ownerId = run.user_id;
@@ -147,22 +156,19 @@ Deno.serve(withSentry('clip-public-track', async (req: Request) => {
   // CHECK on runs.track_url (migration 20260621_001).
   const trackPath = `${ownerId}/${runId}.json.gz`;
 
-  // Explicit visibility gate. RLS already filters this row lookup —
-  // a non-owner asking for a private run lands in the !run branch
-  // above. But the implicit RLS gate is fragile: if a future policy
-  // change loosens runs SELECT (e.g. club-visibility) the EF would
-  // silently start serving non-public rows to clients that
-  // shouldn't get them. Make the contract loud instead — a
-  // non-owner caller must be hitting an explicitly-public run.
-  // audit/auth (2026-05-25) flagged the fragile null!==<uuid>
-  // shape: it works today because callerId is `string | null`
-  // and a null compared with any UUID falls to the non-owner
-  // branch, but a future refactor that normalises callerId to
-  // `''` or a sentinel would silently treat an anon caller as
-  // the owner of a private run. The explicit null check makes
-  // the contract loud.
+  // Explicit visibility gate. The views already filter this lookup — a
+  // non-owner asking for a private run they are not in the audience of lands
+  // in the !run branch above. But that implicit gate is fragile: if a future
+  // change loosened one of the views, the EF would silently start serving
+  // rows to clients that shouldn't get them. Make the contract loud instead —
+  // a non-owner caller must be hitting a run that is explicitly public, or one
+  // `shared_runs` returned for this caller. `callerId` is `string | null`; the
+  // explicit null test keeps a future refactor that normalises it to `''` or a
+  // sentinel from ever reading an anon caller as the owner of a private run
+  // (audit/auth 2026-05-25).
   const isOwnerBypass = callerId !== null && callerId === ownerId;
-  if (!run.is_public && !isOwnerBypass) {
+  const isAudienceMember = audience === 'shared' && callerId !== null && callerId !== ownerId;
+  if (!run.is_public && !isAudienceMember && !isOwnerBypass) {
     return Response.json({ error: 'not found' }, { status: 404 });
   }
 

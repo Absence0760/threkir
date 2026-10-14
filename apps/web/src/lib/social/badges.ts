@@ -21,8 +21,8 @@
  * shared-library-syncer agent watches the pair.
  */
 
-import type { MessageKey } from '$lib/i18n/messages';
-import type { AchievementTier, AchievementSourceKind } from '$lib/types';
+import type { MessageKey } from '#lib/i18n/messages.ts';
+import type { AchievementTier, AchievementSourceKind } from '#lib/types.ts';
 import { en } from '../i18n/locales/en';
 
 export type { AchievementTier, AchievementSourceKind };

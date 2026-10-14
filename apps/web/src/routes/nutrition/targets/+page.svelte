@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { supabase } from '$lib/core/supabase';
-	import { fetchLatestWeightKg, fetchRuns, fetchGymWorkouts } from '$lib/core/data';
-	import { loadSettings, effective, updateUniversal } from '$lib/settings/settings';
-	import type { PrefsBag } from '$lib/settings/settings';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { fetchLatestWeightKg, fetchRuns, fetchGymWorkouts } from '#lib/core/data.ts';
+	import { loadSettings, effective, updateUniversal } from '#lib/settings/settings.ts';
+	import type { PrefsBag } from '#lib/settings/settings.ts';
 	import {
 		computeNutritionTargets,
 		ageFromDob,
@@ -17,16 +17,16 @@
 		type ActivityLevel,
 		type WeightGoal,
 		type NutritionTargets,
-	} from '$lib/nutrition/nutrition_targets';
+	} from '#lib/nutrition/nutrition_targets.ts';
 	import {
 		healthUseDob,
 		healthUseDobState,
 		type HealthUseDobState,
-	} from '$lib/core/health_consent';
-	import { exerciseCaloriesForDay } from '$lib/nutrition/exercise_calories';
-	import { diaryWindow, isoDateOf } from '$lib/nutrition/diary_day';
-	import { formatWeight } from '$lib/format/units.svelte';
-	import { m } from '$lib/i18n/store.svelte';
+	} from '#lib/core/health_consent.ts';
+	import { exerciseCaloriesForDay } from '#lib/nutrition/exercise_calories.ts';
+	import { diaryWindow, isoDateOf } from '#lib/nutrition/diary_day.ts';
+	import { formatWeight } from '#lib/format/units.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
 
 	let loading = $state(true);
 	let loadError = $state<string | null>(null);

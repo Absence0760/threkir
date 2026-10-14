@@ -1,8 +1,15 @@
 package com.runapp.watchwear
 
 import java.io.File
+import kotlinx.coroutines.runBlocking
+import okhttp3.OkHttpClient
+import okhttp3.Protocol
+import okhttp3.Response
+import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -165,5 +172,113 @@ class RaceSessionClientTest {
             "raw `=eq.\$eventId` interpolation regressed the fix",
             src.contains("=eq.\$eventId"),
         )
+    }
+
+    // ───────────── course read: the finish comes off the course row ─────────────
+
+    /// A client whose every request is answered from [bodies] by path, with
+    /// the URLs it was asked for recorded — no socket is opened.
+    private fun recordingClient(
+        bodies: Map<String, String>,
+        seen: MutableList<String>,
+    ): RaceSessionClient {
+        val http = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                val req = chain.request()
+                seen += req.url.toString()
+                val body = bodies[req.url.encodedPath] ?: "[]"
+                Response.Builder()
+                    .request(req)
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(200)
+                    .message("OK")
+                    .body(body.toResponseBody(null))
+                    .build()
+            }
+            .build()
+        return RaceSessionClient("https://example.test", "anon", http)
+    }
+
+    @Test
+    fun `fetchCourse reads the finish point from the course row and never the route`() {
+        val seen = mutableListOf<String>()
+        val client = recordingClient(
+            mapOf(
+                "/rest/v1/event_attendees" to """[{"course_id":"c1"}]""",
+                "/rest/v1/event_courses" to
+                    """[{"id":"c1","name":"10K","distance_m":10000,"finish_lat":51.1,"finish_lng":0.2}]""",
+            ),
+            seen,
+        )
+        val course = runBlocking { client.fetchCourse("t", "u1", "e1", "2026-05-22T18:00:00Z") }
+        assertNotNull(course)
+        assertEquals(51.1, course!!.finishLat!!, 0.0)
+        assertEquals(0.2, course.finishLng!!, 0.0)
+        assertEquals(10_000.0, course.distanceM!!, 0.0)
+        assertEquals(2, seen.size)
+        assertTrue(seen[1].contains("finish_lat") && seen[1].contains("finish_lng"))
+        assertFalse("the route must not be read", seen.any { it.contains("/rest/v1/routes") })
+    }
+
+    @Test
+    fun `fetchCourse with no finish point returns the course for a manual finish, no route read`() {
+        val seen = mutableListOf<String>()
+        val client = recordingClient(
+            mapOf(
+                "/rest/v1/event_attendees" to """[{"course_id":"c1"}]""",
+                "/rest/v1/event_courses" to
+                    """[{"id":"c1","name":"10K","distance_m":10000,"finish_lat":null,"finish_lng":null}]""",
+            ),
+            seen,
+        )
+        val course = runBlocking { client.fetchCourse("t", "u1", "e1", "2026-05-22T18:00:00Z") }!!
+        assertEquals("c1", course.id)
+        assertNull(RaceFinishDetector.forCourse(course.finishLat, course.finishLng, course.distanceM))
+        assertFalse(seen.any { it.contains("/rest/v1/routes") })
+    }
+
+    // ───────────── ping: the clock offset's server timestamp ─────────────
+
+    private fun pingClient(body: String, seen: MutableList<okhttp3.Request>): RaceSessionClient {
+        val http = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                val req = chain.request()
+                seen += req
+                Response.Builder()
+                    .request(req)
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(201)
+                    .message("Created")
+                    .body(body.toResponseBody(null))
+                    .build()
+            }
+            .build()
+        return RaceSessionClient("https://example.test", "anon", http)
+    }
+
+    private fun ping(client: RaceSessionClient) = runBlocking {
+        client.pushPing("t", "u1", "e1", "2026-05-22T18:00:00Z", 51.1, 0.2, 1200.0, 360, null)
+    }
+
+    @Test
+    fun `pushPing reads the inserted row's at back as a clock sample`() {
+        val seen = mutableListOf<okhttp3.Request>()
+        val sample = ping(pingClient("""[{"at":"2026-05-22T18:06:00.25+00:00"}]""", seen))
+        assertNotNull(sample)
+        assertEquals(1_779_473_160_250L, sample!!.serverAtMs)
+        assertTrue(sample.receivedAtMs >= sample.sentAtMs)
+        val req = seen.single()
+        assertEquals("POST", req.method)
+        assertEquals("/rest/v1/race_pings", req.url.encodedPath)
+        assertEquals("at", req.url.queryParameter("select"))
+        assertEquals("return=representation", req.header("Prefer"))
+    }
+
+    @Test
+    fun `pushPing with no readable at gives no sample`() {
+        val seen = mutableListOf<okhttp3.Request>()
+        assertNull(ping(pingClient("[]", seen)))
+        assertNull(ping(pingClient("""[{"at":"not a time"}]""", seen)))
+        assertNull(RaceSessionClient.parsePingAtMs("""[{"at":null}]"""))
     }
 }

@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { compareOrdinal } from '$lib/util/ordinal_compare';
-	import { page } from '$app/stores';
-	import Avatar from '$lib/components/Avatar.svelte';
+	import { compareOrdinal } from '#lib/util/ordinal_compare.ts';
+	import { page } from '$app/state';
+	import Avatar from '#lib/components/Avatar.svelte';
 	import {
 		fetchMyAthletesWithError,
 		fetchAthleteRuns,
@@ -11,18 +11,18 @@
 		assignPlanToAthlete,
 		type CoachAthleteLink,
 		type AthleteRunSummary
-	} from '$lib/core/data';
-	import type { ActivePlanOverview, PlanWorkout, TrainingPlan } from '$lib/types';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { formatDistance, formatPace } from '$lib/format/units.svelte';
-	import { formatDuration, formatDate } from '$lib/format/time';
-	import { m } from '$lib/i18n/store.svelte';
-	import { activityTypeLabel } from '$lib/runs/activity_type.svelte';
-	import { isWorkoutSkipped } from '$lib/training/training';
-	import { workoutKindLabel } from '$lib/training/workout_labels';
+	} from '#lib/core/data.ts';
+	import type { ActivePlanOverview, PlanWorkout, TrainingPlan } from '#lib/types.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { formatDistance, formatPace } from '#lib/format/units.svelte.ts';
+	import { formatDuration, formatDate } from '#lib/format/time.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { activityTypeLabel } from '#lib/runs/activity_type.svelte.ts';
+	import { isWorkoutSkipped } from '#lib/training/training.ts';
+	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
 
-	const athleteId = $derived($page.params.id);
+	const athleteId = $derived(page.params.id);
 
 	let loading = $state(true);
 	let loadError = $state<string | null>(null);

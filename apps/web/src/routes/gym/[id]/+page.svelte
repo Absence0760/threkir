@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { siteOrigin } from '$lib/core/site_url';
+	import { siteOrigin } from '#lib/core/site_url.ts';
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { auth } from '$lib/stores/auth.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
 	import {
 		fetchGymWorkoutWithSets,
 		fetchExerciseSetHistoryBatch,
@@ -13,40 +13,40 @@
 		type GymWorkoutWithSets,
 		type GymSet,
 		type GymSetWithDate,
-	} from '$lib/core/data';
+	} from '#lib/core/data.ts';
 	import {
 		workoutPrs,
 		normaliseExerciseName,
 		distinctExerciseCount,
 		type GymSetLike,
 		type PrKind,
-	} from '$lib/gym/gym_prs';
-	import { previousExerciseSession, type ExerciseSession } from '$lib/gym/exercise_history';
-	import { progressionParamsWithStreak } from '$lib/gym/progression_prefill';
-	import { nextPrescription, type ProgressionSetLike } from '$lib/gym/gym_progression';
+	} from '#lib/gym/gym_prs.ts';
+	import { previousExerciseSession, type ExerciseSession } from '#lib/gym/exercise_history.ts';
+	import { progressionParamsWithStreak } from '#lib/gym/progression_prefill.ts';
+	import { nextPrescription, type ProgressionSetLike } from '#lib/gym/gym_progression.ts';
 	import {
 		routineFromWorkout,
 		prefillFromRoutine,
 		type PrefillExercise,
-	} from '$lib/gym/gym_routine';
-	import { formatDate } from '$lib/format/time';
-	import { formatWeight, weightUnitLabel } from '$lib/format/units.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import GymEditor from '$lib/components/GymEditor.svelte';
-	import RoutineEditor from '$lib/components/RoutineEditor.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import GymWorkoutReview from '$lib/components/GymWorkoutReview.svelte';
-	import type { NextTargetHint } from '$lib/gym/gym_session_types';
-	import { reviewFromMetadata } from '$lib/gym/gym_workout_review';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
-	import MetricLabel from '$lib/components/MetricLabel.svelte';
-	import { env } from '$env/dynamic/public';
-	import { buildWorkoutShareCanonical } from '$lib/share/share_workout_meta';
+	} from '#lib/gym/gym_routine.ts';
+	import { formatDate } from '#lib/format/time.ts';
+	import { formatWeight, weightUnitLabel } from '#lib/format/units.svelte.ts';
+	import Modal from '#lib/components/Modal.svelte';
+	import GymEditor from '#lib/components/GymEditor.svelte';
+	import RoutineEditor from '#lib/components/RoutineEditor.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import GymWorkoutReview from '#lib/components/GymWorkoutReview.svelte';
+	import type { NextTargetHint } from '#lib/gym/gym_session_types.ts';
+	import { reviewFromMetadata } from '#lib/gym/gym_workout_review.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import MetricLabel from '#lib/components/MetricLabel.svelte';
+	import { PUBLIC_SITE_URL } from '$app/env/public';
+	import { buildWorkoutShareCanonical } from '#lib/share/share_workout_meta.ts';
 
-	const id = $derived($page.params.id ?? '');
+	const id = $derived(page.params.id ?? '');
 	const canonicalUrl = $derived(
-		buildWorkoutShareCanonical(siteOrigin(env.PUBLIC_SITE_URL), id)
+		buildWorkoutShareCanonical(siteOrigin(PUBLIC_SITE_URL), id)
 	);
 
 	let data = $state<GymWorkoutWithSets | null>(null);

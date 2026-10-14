@@ -1,25 +1,25 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
-	import { formatDistance } from '$lib/core/mock-data';
-	import { formatDate, formatDuration } from '$lib/format/time';
+	import { formatDistance } from '#lib/core/mock-data.ts';
+	import { formatDate, formatDuration } from '#lib/format/time.ts';
 	import {
 		fetchActivities,
 		fetchActivitiesWithError,
 		fetchGymExerciseNames,
 		type ActivityRow,
-	} from '$lib/core/data';
-	import { auth } from '$lib/stores/auth.svelte';
-	import RunEditor from '$lib/components/RunEditor.svelte';
-	import GymEditor from '$lib/components/GymEditor.svelte';
-	import FoodLogEditor from '$lib/components/FoodLogEditor.svelte';
-	import Modal from '$lib/components/Modal.svelte';
+	} from '#lib/core/data.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import RunEditor from '#lib/components/RunEditor.svelte';
+	import GymEditor from '#lib/components/GymEditor.svelte';
+	import FoodLogEditor from '#lib/components/FoodLogEditor.svelte';
+	import Modal from '#lib/components/Modal.svelte';
 	import { goto } from '$app/navigation';
-	import { formatWeight } from '$lib/format/units.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { modalityVisible } from '$lib/stores/modality_visibility.svelte';
-	import type { MessageKey } from '$lib/i18n/messages';
+	import { formatWeight } from '#lib/format/units.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { modalityVisible } from '#lib/stores/modality_visibility.svelte.ts';
+	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import type { Snapshot } from './$types';
-	import { isListStale, listToken } from '$lib/core/list_freshness';
+	import { isListStale, listToken } from '#lib/core/list_freshness.ts';
 
 	// The unified, cross-modal History timeline (multi_modal.md § History).
 	// The full run-list management surface lives at /runs (parallel to /gym +

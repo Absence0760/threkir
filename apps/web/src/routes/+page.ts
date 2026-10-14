@@ -1,6 +1,6 @@
 import type { PageLoad } from './$types';
-import { env } from '$env/dynamic/public';
-import { siteOrigin } from '$lib/core/site_url';
+import { PUBLIC_SITE_URL } from '$app/env/public';
+import { siteOrigin } from '#lib/core/site_url.ts';
 
 // Canonical host for the landing page's <link rel="canonical"> + og:url
 // + JSON-LD URLs. Same source + fallback as /sitemap.xml, /learn, and
@@ -9,7 +9,7 @@ import { siteOrigin } from '$lib/core/site_url';
 // the prod host).
 
 export const load: PageLoad = () => {
-	return { siteUrl: siteOrigin(env.PUBLIC_SITE_URL) };
+	return { siteUrl: siteOrigin(PUBLIC_SITE_URL) };
 };
 
 // `/` is the site's only indexable non-Learn surface, and everything
@@ -17,7 +17,7 @@ export const load: PageLoad = () => {
 // og/twitter, Organization + WebSite JSON-LD -- is built by components, which
 // a client-rendered route contributes to no artifact. Prerendering is what
 // writes them into `build/index.html`, the file CloudFront serves as the site
-// root. It is load-bearing with `svelte.config.js`'s `fallback: "200.html"`:
+// root. It is load-bearing with `vite.config.ts`'s `fallback: "200.html"`:
 // adapter-static writes the fallback AFTER the prerendered pages and to the
 // name it is given, so a fallback still called `index.html` silently replaces
 // this page with the component-less shell. decisions § 1268.

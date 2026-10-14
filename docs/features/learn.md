@@ -2,6 +2,8 @@
 
 > **Status:** Shipped web (2026-06-19). Implementation-handoff spec: [learn_pages.md](learn_pages.md). ADR: [decisions.md § 161](../architecture/decisions.md#161-learn-guides-are-repo-committed-markdownmdsvex-prerendered-to-static-html-not-a-db-backed-cms).
 
+Not to be confused with the signed-in **in-app help** at `/help` ([help.md](help.md), [decisions.md § 1846](../architecture/decisions.md)), which documents the app's own screens and is a separate surface.
+
 A public, no-auth **Learn** surface of evergreen new-runner guides that lives alongside the landing page. Each guide teaches a topic and funnels the reader into the matching in-app feature plus a sign-up CTA. Read-only, anonymous, **statically prerendered** — zero DB, zero runtime cost, served by CloudFront from S3 ([decisions.md § 53](../architecture/decisions.md)).
 
 ## Content-source decision

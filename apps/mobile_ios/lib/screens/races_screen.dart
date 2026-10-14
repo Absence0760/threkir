@@ -13,6 +13,7 @@ import '../race_service.dart';
 import '../training.dart' show toIsoDate;
 import '../training_service.dart';
 import '../widgets/error_state.dart';
+import '../widgets/help_button.dart';
 import '../widgets/top_banner.dart';
 import 'plan_new_screen.dart';
 
@@ -168,7 +169,10 @@ class _RacesScreenState extends State<RacesScreen> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(l.racesTitle)),
+      appBar: AppBar(
+        title: Text(l.racesTitle),
+        actions: const [HelpButton(routes: ['/races'])],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _openSubmit,
         icon: const Icon(Icons.add),

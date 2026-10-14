@@ -11,6 +11,7 @@ import { assert, assertEquals } from 'https://deno.land/std@0.224.0/assert/mod.t
 
 const SRC = await Deno.readTextFile(new URL('./index.ts', import.meta.url));
 const LIB = await Deno.readTextFile(new URL('./lib.ts', import.meta.url));
+const COMPLETED = await Deno.readTextFile(new URL('./completed.ts', import.meta.url));
 
 function donationRefundHandler(): string {
   const start = SRC.indexOf('async function handleDonationRefunded');
@@ -31,7 +32,7 @@ function refundHandler(): string {
 function reversalHandlers(): string {
   const start = SRC.indexOf('async function handleDonationRefundReversed');
   assert(start !== -1, 'handleDonationRefundReversed is gone — has the reversal arm moved?');
-  const end = SRC.indexOf('async function handleCompleted', start);
+  const end = SRC.indexOf('async function handleNotPaid', start);
   assert(end > start, 'could not find the end of the refund-reversal handlers');
   return SRC.slice(start, end);
 }
@@ -246,7 +247,7 @@ Deno.test('every ledger read fails loudly instead of reading as "no such row"', 
   // is the authoritative guard — so a failed read degrades to the slow path,
   // not to a wrong answer.
   const EXEMPT = ['event'];
-  const dropped = [...SRC.matchAll(/const \{ data: (\w+) \} = await/g)].map((m) => m[1]);
+  const dropped = [...(SRC + COMPLETED).matchAll(/const \{ data: (\w+) \} = await/g)].map((m) => m[1]);
   assertEquals(
     dropped.filter((name) => !EXEMPT.includes(name)),
     [],
@@ -266,15 +267,15 @@ Deno.test('nothing is written until the money has arrived', () => {
   // handler, not beside it: the CAS is `pending -> paid`, so a write that
   // lands first has already spent the only transition the async outcome could
   // have used, and the seat follows immediately after it.
-  for (const [name, end] of [
-    ['handleDonationCompleted', 'async function handleDonationNotPaid'],
-    ['handleCompleted', 'async function handleNotPaid'],
+  for (const [file, name, end] of [
+    [SRC, 'handleDonationCompleted', 'async function handleDonationNotPaid'],
+    [COMPLETED, 'handleCompleted', 'async function recheckOccurrenceCancelled'],
   ] as const) {
-    const start = SRC.indexOf(`async function ${name}`);
+    const start = file.indexOf(`async function ${name}`);
     assert(start !== -1, `${name} is gone — has the confirm arm moved?`);
-    const stop = SRC.indexOf(end, start);
+    const stop = file.indexOf(end, start);
     assert(stop > start, `could not find the end of ${name}`);
-    const src = SRC.slice(start, stop);
+    const src = file.slice(start, stop);
 
     const gate = src.indexOf('isPaymentSettled(session.paymentStatus)');
     const firstWrite = src.indexOf('.update(');
@@ -485,5 +486,47 @@ Deno.test('the refund branch records which API era the endpoint is pinned to', (
   assert(
     LIB.includes('apiVersion: typeof apiVersion === \'string\' ? apiVersion : null'),
     'parseStripeEventEnvelope no longer carries api_version',
+  );
+});
+
+// ── a checkout that completes on a cancelled occurrence (§ 1833) ─────────────
+//
+// Every branch of that arm is driven behaviourally in completed.test.ts (the
+// reads on both sides of the CAS, each refund outcome, the read errors). What
+// is left here is what a fake cannot see: which transport index.ts hands it,
+// and that neither file builds a refund of its own.
+
+const REFUND = await Deno.readTextFile(new URL('../events-cancel/refund.ts', import.meta.url));
+
+Deno.test('the confirm arm is handed the real key and the tier\'s one refund transport', () => {
+  assert(
+    /handleCompleted\(service, session, event\.type, \{\s*stripeSecretKey: Deno\.env\.get\('STRIPE_SECRET_KEY'\) \|\| null,\s*transport: stripeRestRefundCreator,\s*\}\)/
+      .test(SRC),
+    'index.ts no longer passes STRIPE_SECRET_KEY and stripeRestRefundCreator to handleCompleted',
+  );
+  assert(
+    COMPLETED.includes('refundOrder(refunds.transport(stripeSecretKey), service, order)'),
+    'the cancelled-occurrence refund must go through refundOrder, not a call of its own',
+  );
+  assert(!COMPLETED.includes('Deno.env'), 'completed.ts reads no environment; index.ts injects it');
+  // The webhook builds no refund itself: no params, no key, no endpoint.
+  for (const own of ['buildRefundParams(', 'refundIdempotencyKey(', 'idempotencyKey', 'api.stripe.com']) {
+    assert(!SRC.includes(own) && !COMPLETED.includes(own), `the webhook builds its own refund (${own}); go through refundOrder`);
+  }
+});
+
+Deno.test('the shared refund module stays SDK-free, because the webhook bundles it', () => {
+  // The positive first: both files are read as real source with real imports,
+  // so the negatives below cannot pass on an empty or stubbed file.
+  assert(REFUND.includes("from './lib.ts';"), 'events-cancel/refund.ts no longer imports its lib');
+  assert(COMPLETED.includes("from '../events-cancel/refund.ts';"), 'completed.ts no longer imports refund.ts');
+  assert(
+    !/^import(?! type)[^\n]*_shared\/stripe\.ts';$/m.test(REFUND),
+    'events-cancel/refund.ts value-imports the Stripe SDK, which now lands in the webhook eszip',
+  );
+  assert(!/esm\.sh\/stripe@/.test(REFUND), 'events-cancel/refund.ts imports Stripe from a URL');
+  assert(
+    !/^import(?! type)[^\n]*_shared\/stripe\.ts';$/m.test(COMPLETED) && !/esm\.sh\/stripe@/.test(COMPLETED),
+    'completed.ts value-imports the Stripe SDK, which lands in the webhook eszip',
   );
 });

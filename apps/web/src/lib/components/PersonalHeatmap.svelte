@@ -1,22 +1,22 @@
 <script lang="ts">
 	import type * as GeoJSON from 'geojson';
 	import { onMount, onDestroy } from 'svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import maplibregl from '$lib/routes/maplibre';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import maplibregl from '#lib/routes/maplibre.ts';
 	import 'maplibre-gl/dist/maplibre-gl.css';
-	import { env } from '$env/dynamic/public';
-	const PUBLIC_MAPTILER_KEY = env.PUBLIC_MAPTILER_KEY ?? '';
+	import { PUBLIC_MAPTILER_KEY as PUBLIC_MAPTILER_KEY_ENV } from '$app/env/public';
+	const PUBLIC_MAPTILER_KEY = PUBLIC_MAPTILER_KEY_ENV ?? '';
 	import {
 		basemapIsDarkFromEnv,
 		mapStyleUrlFromEnv as mapStyleUrl,
-	} from '$lib/routes/map-style.svelte';
-	import { mapTrackLine } from '$lib/routes/basemap_contrast';
-	import { watchMapResize } from '$lib/routes/map_resize';
-	import { fetchRuns, fetchTrackByPath } from '$lib/core/data';
-	import { toLinePoint } from '$lib/runs/track_line';
-	import { buildHeatCells, heatBounds, toHeatGeoJSON, toTrackLinesGeoJSON, MAX_CELL_WEIGHT } from '$lib/routes/run_heatmap';
-	import { hasAcceptedConsent } from '$lib/settings/consent.svelte';
-	import type { TrackPoint } from '$lib/types';
+	} from '#lib/routes/map-style.svelte.ts';
+	import { mapTrackLine } from '#lib/routes/basemap_contrast.ts';
+	import { watchMapResize } from '#lib/routes/map_resize.ts';
+	import { fetchRuns, fetchTrackByPath } from '#lib/core/data.ts';
+	import { toLinePoint } from '#lib/runs/track_line.ts';
+	import { buildHeatCells, heatBounds, toHeatGeoJSON, toTrackLinesGeoJSON, MAX_CELL_WEIGHT } from '#lib/routes/run_heatmap.ts';
+	import { hasAcceptedConsent } from '#lib/settings/consent.svelte.ts';
+	import type { TrackPoint } from '#lib/types.ts';
 
 	// Cap the number of tracks downloaded so a runner with thousands of
 	// runs doesn't pull every blob on first paint. Newest-first; the

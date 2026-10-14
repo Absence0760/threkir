@@ -34,7 +34,7 @@ const PARKRUN_SRC = Deno.readTextFileSync(
   new URL('../parkrun-import/index.ts', import.meta.url),
 );
 const RACE_SRC = Deno.readTextFileSync(
-  new URL('../race-results-import/index.ts', import.meta.url),
+  new URL('../race-results-import/handler.ts', import.meta.url),
 );
 
 Deno.test('a field bigger than the cap is reported as possibly truncated', () => {

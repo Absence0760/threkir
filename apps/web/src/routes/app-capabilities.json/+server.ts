@@ -1,7 +1,7 @@
 import type { RequestHandler } from './$types';
-import { webCheckoutAvailable } from '$lib/billing/revenuecat';
-import { coachEnabled } from '$lib/coach/coach_flag';
-import { routeGenEnabled } from '$lib/routes/route_gen_flag';
+import { webCheckoutAvailable } from '#lib/billing/revenuecat.ts';
+import { coachEnabled } from '#lib/coach/coach_flag.ts';
+import { routeGenEnabled } from '#lib/routes/route_gen_flag.ts';
 
 // Build-time capability manifest for the native clients. `adapter-static`
 // prerenders this once (like /sitemap.xml) into a plain file in `build/`,

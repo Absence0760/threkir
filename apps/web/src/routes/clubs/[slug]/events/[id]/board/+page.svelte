@@ -1,15 +1,15 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { formatDuration } from '$lib/format/time';
-	import { formatDistance, formatWeight, parseWeight, getUnit, getWeightUnit } from '$lib/format/units.svelte';
-	import { weightBoundsIn } from '$lib/format/weight';
-	import { isWeighInEnabled } from '$lib/runs/weigh_in_flag';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import Modal from '$lib/components/Modal.svelte';
+	import { page } from '$app/state';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { formatDuration } from '#lib/format/time.ts';
+	import { formatDistance, formatWeight, parseWeight, getUnit, getWeightUnit } from '#lib/format/units.svelte.ts';
+	import { weightBoundsIn } from '#lib/format/weight.ts';
+	import { isWeighInEnabled } from '#lib/runs/weigh_in_flag.ts';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import Modal from '#lib/components/Modal.svelte';
 	import {
 		fetchEventById,
 		fetchEventCheckpoints,
@@ -19,13 +19,13 @@
 		markCheckpointDnf,
 		type EventCheckpoint,
 		type OrganiserCrossing
-	} from '$lib/core/data';
-	import { buildBoard, type BoardCheckpoint, type BoardRunner } from '$lib/runs/checkpoint_board';
-	import type { EventWithMeta } from '$lib/types';
+	} from '#lib/core/data.ts';
+	import { buildBoard, type BoardCheckpoint, type BoardRunner } from '#lib/runs/checkpoint_board.ts';
+	import type { EventWithMeta } from '#lib/types.ts';
 
-	let slug = $derived($page.params.slug as string);
-	let eventId = $derived($page.params.id as string);
-	let instanceStart = $derived($page.url.searchParams.get('instance') ?? '');
+	let slug = $derived(page.params.slug as string);
+	let eventId = $derived(page.params.id as string);
+	let instanceStart = $derived(page.url.searchParams.get('instance') ?? '');
 
 	let event = $state<EventWithMeta | null>(null);
 	let checkpoints = $state<EventCheckpoint[]>([]);

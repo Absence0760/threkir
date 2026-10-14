@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { m } from '$lib/i18n/store.svelte';
-	import { activeFormatLocale } from '$lib/format/time';
-	import { fmtKm, formatDistance } from '$lib/format/units.svelte';
-	import { workoutKindLabel } from '$lib/training/workout_labels';
-	import { weekLead, type LeadActivity, type WeeklyGoalTarget } from '$lib/training/week_lead';
-	import type { WeekStart } from '$lib/training/current_week';
-	import type { PlanWorkout } from '$lib/types';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { activeFormatLocale } from '#lib/format/time.ts';
+	import { fmtKm, formatDistance } from '#lib/format/units.svelte.ts';
+	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
+	import { weekLead, type LeadActivity, type WeeklyGoalTarget } from '#lib/training/week_lead.ts';
+	import type { WeekStart } from '#lib/training/current_week.ts';
+	import type { PlanWorkout } from '#lib/types.ts';
 
 	interface Props {
 		activities: LeadActivity[];

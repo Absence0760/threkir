@@ -1,14 +1,14 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import { formatDistance, formatPace, sourceLabel } from '$lib/core/mock-data';
-	import { sourceColor, sourceInk } from '$lib/runs/source_badge';
-	import { formatDate, formatDuration, activeFormatLocale } from '$lib/format/time';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { formatISO } from '$lib/training/training';
-	import { weekStartLocal } from '$lib/training/goals';
-	import { m } from '$lib/i18n/store.svelte';
-	import { periodNeedsFullHistory, type PeriodType } from '$lib/core/dashboard_runs';
-	import type { PeriodSummaryRun } from '$lib/core/data';
+	import { formatDistance, formatPace, sourceLabel } from '#lib/core/mock-data.ts';
+	import { sourceColor, sourceInk } from '#lib/runs/source_badge.ts';
+	import { formatDate, formatDuration, activeFormatLocale } from '#lib/format/time.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { formatISO } from '#lib/training/training.ts';
+	import { weekStartLocal } from '#lib/training/goals.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { periodNeedsFullHistory, type PeriodType } from '#lib/core/dashboard_runs.ts';
+	import type { PeriodSummaryRun } from '#lib/core/data.ts';
 
 	interface Props {
 		runs: PeriodSummaryRun[];

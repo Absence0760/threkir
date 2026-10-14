@@ -432,6 +432,37 @@ retention cron referenced in a comment that was never created.
   double increment followed by a double decrement on one club cancels out and
   lets a broken trigger pass.
 
+## `sign_in_devices`
+
+- **What it stores:** per account, the coarse `(browser, platform)` classes
+  that have signed in, with first/last seen times — a projection of
+  `auth.sessions` reduced to two enum values per session (migration
+  `20270804000002`). It exists to tell a sign-in from an unseen class apart
+  from a familiar one, for the new-device alert (email.md § Security emails).
+- **Authoritative read:** for the classes with a live session, `select
+  user_id, sign_in_browser_class(user_agent), sign_in_platform_class(user_agent),
+  max(greatest(created_at, updated_at)) from auth.sessions group by 1, 2, 3`.
+  The table is **deliberately not** a pure cache of that query: it remembers
+  classes whose sessions have ended (that memory is the point — a laptop you
+  signed out of last month is still yours), and GoTrue deletes ended sessions.
+  So the table is the source of truth for "seen before", and auth.sessions is
+  the source of truth for "seen recently".
+- **Writers:** `record_sign_in_device()` (the two auth.sessions triggers) and
+  `prune_sign_in_devices()`, nothing else. No client verb reaches it — there is
+  no INSERT/UPDATE/DELETE grant to `authenticated` — because a class a client
+  could pre-register is an alert an intruder could pre-silence.
+- **Retention:** `prune_sign_in_devices()`, pg_cron `prune-sign-in-devices`
+  daily. It first refreshes `last_seen_at` from the authoritative read above
+  (a session that stays signed in for months only refreshes, so without this a
+  phone used every day would age out), then deletes classes unseen for 180
+  days — **never an account's most recently seen class**, because an account
+  with no rows reads as a first-ever sign-in, which the trigger keeps silent.
+- **Manual rebuild:** none needed and none safe — rebuilding from auth.sessions
+  would forget every ended session's class and make each one "new" again. The
+  migration's one-time backfill from auth.sessions is the only bulk write.
+- **Pinned by:** `sign_in_devices_test.sql` (baseline, repeat, new class,
+  refresh, late User-Agent, anonymous, RLS, prune refresh + floor).
+
 ---
 
 ## Adding a new derived cache

@@ -18,7 +18,10 @@ roadmap Phase 4b, `decisions.md § 117`), `lifecycle_email`
 (transactional/relationship mail with no notifications row — the welcome
 on signup today, weekly digest / re-engagement later; keyed by a template
 name, `decisions.md § 119`), `safety_email` (safety-contact confirm +
-finish alerts, `decisions.md § 131`), and `web_push` (the browser Web Push
+finish alerts, `decisions.md § 131`), `security_email` (the new-device
+sign-in alert, enqueued by the `auth.sessions` triggers of migration
+`20270804000002`, gated at send time on the opt-out
+`email_new_device_alerts` — decisions R10MAIL-2), and `web_push` (the browser Web Push
 delivery channel — sibling of `notification_email` over the same
 notifications rows; encrypted RFC 8291 messages signed with a VAPID key,
 `decisions.md § 133` / migration `20261219_001`), and `distance_recompute`
@@ -296,6 +299,8 @@ apps/job_worker/
 │   ├── notification_copy_guard_test.go # TS↔Go lockstep: every NotificationKind has catalogue copy or a recorded inAppOnlyKinds exemption, renders something other than "default", and deep-links the same entity web does
 │   ├── notification_link_guard_test.go # every pathForKind target resolves against the real apps/web route tree, in every FK-presence permutation
 │   ├── handler_safety_email.go # kind='safety_email' confirm + finish alerts (decisions §131)
+│   ├── handler_security_email.go # kind='security_email' new-device sign-in alert; opt-out email_new_device_alerts read at send time (decisions R10MAIL-2)
+│   ├── handler_security_email_test.go # send + device phrase + UTC time + reset CTA, opt-out, channel-mute independence, prefs-read retry, every locale
 │   ├── handler_web_push.go  # kind='web_push' — send-or-skip over the notifications rows; prune dead subs
 │   ├── handler_web_push_test.go # 14 tests on gating / opt-out / no-sub / prune / transient / idempotency
 │   ├── push_render.go       # pushMode / shouldPush (push_notifications pref) + webPushPayload JSON render

@@ -1467,8 +1467,13 @@ void main() {
         of: find.byType(RoutePickerScreen),
         matching: find.text('Park loop'),
       ));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 400));
+      // A popped route stays in the tree until its exit transition ends, so
+      // advance the clock until it is gone (bounded) instead of a fixed pump.
+      for (var i = 0;
+          i < 30 && find.byType(RoutePickerScreen).evaluate().isNotEmpty;
+          i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
 
       expect(find.byType(RoutePickerScreen), findsNothing);
       expect(shellPage(tester), 2, reason: 'the recorder opens on the route');

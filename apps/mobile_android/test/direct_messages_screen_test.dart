@@ -13,6 +13,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/rate_limit_message.dart';
 import '../lib/screens/message_thread_screen.dart';
 import '../lib/screens/messages_screen.dart';
+import '../lib/screens/profile_screen.dart';
 import '../lib/widgets/error_state.dart';
 import '../lib/widgets/sign_in_required_state.dart';
 
@@ -653,6 +654,97 @@ void main() {
         };
         expect(sentences, hasLength(4), reason: '$locale');
       }
+    });
+  });
+
+  group('entry points', () {
+    const other = ProfileSummary(
+      id: 'p-1',
+      displayName: 'Ada',
+      followerCount: 0,
+      followingCount: 0,
+      viewerFollows: false,
+    );
+
+    testWidgets('another runner\'s profile offers Message and opens the thread',
+        (tester) async {
+      final api = _FakeApi()..summary = other;
+      await tester.pumpWidget(_app(ProfileScreen(api: api, userId: 'p-1')));
+      await tester.pump();
+      await tester.pump();
+
+      final button = find.byKey(const ValueKey('profile-message'));
+      expect(button, findsOneWidget);
+      expect(find.byTooltip(l10n.profileMessage), findsOneWidget);
+      await tester.tap(button);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      final thread = tester.widget<MessageThreadScreen>(
+          find.byType(MessageThreadScreen));
+      expect(thread.partnerId, 'p-1');
+      expect(thread.partnerName, 'Ada');
+    });
+
+    testWidgets('your own profile has no Message action', (tester) async {
+      final api = _FakeApi()
+        ..summary = const ProfileSummary(
+          id: _me,
+          displayName: 'Me',
+          followerCount: 0,
+          followingCount: 0,
+          viewerFollows: false,
+        );
+      await tester.pumpWidget(_app(ProfileScreen(api: api, userId: _me)));
+      await tester.pump();
+      await tester.pump();
+      expect(find.byKey(const ValueKey('profile-message')), findsNothing);
+    });
+
+    testWidgets('signed out, a profile has no Message action', (tester) async {
+      final api = _FakeApi(signedIn: false)..summary = other;
+      await tester.pumpWidget(_app(ProfileScreen(api: api, userId: 'p-1')));
+      await tester.pump();
+      await tester.pump();
+      expect(find.byKey(const ValueKey('profile-message')), findsNothing);
+    });
+
+    testWidgets('a message notification opens the conversation with its sender',
+        (tester) async {
+      final api = _FakeApi()
+        ..summary = const ProfileSummary(
+          id: _me,
+          displayName: 'Me',
+          followerCount: 0,
+          followingCount: 0,
+          viewerFollows: false,
+        )
+        ..notifications = [
+          NotificationView(
+            row: NotificationRow(
+              id: 'n1',
+              userId: _me,
+              actorId: 'p-7',
+              kind: 'message',
+              createdAt: DateTime.utc(2026, 10, 14, 8),
+              refunded: false,
+            ),
+            actor: const PublicProfile(id: 'p-7', displayName: 'Grace'),
+          ),
+        ];
+      await tester.pumpWidget(_app(ProfileScreen(
+          api: api, userId: _me, initialTab: ProfileTab.notifications)));
+      await tester.pump();
+      await tester.pump();
+
+      await tester.tap(find.text(l10n.profileNotifMessage('Grace')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      final thread = tester.widget<MessageThreadScreen>(
+          find.byType(MessageThreadScreen));
+      expect(thread.partnerId, 'p-7');
+      expect(thread.partnerName, 'Grace');
     });
   });
 }

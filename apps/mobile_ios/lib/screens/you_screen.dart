@@ -13,6 +13,7 @@ import '../local_run_store.dart';
 import '../parkrun_barcode_cache.dart';
 import '../preferences.dart';
 import '../settings_sync.dart';
+import 'messages_screen.dart';
 import 'parkrun_barcode_screen.dart';
 import 'profile_screen.dart';
 import 'settings_screen.dart';
@@ -110,6 +111,19 @@ class _YouScreenState extends State<YouScreen>
                   context,
                   MaterialPageRoute<void>(
                     builder: (_) => ProfileScreen(api: api, userId: viewerId),
+                  ),
+                ),
+              ),
+            if (api != null && viewerId != null)
+              ListTile(
+                key: const ValueKey('you-messages'),
+                leading: const Icon(Icons.chat_bubble_outline),
+                title: Text(l10n.messagesTitle),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => MessagesScreen(api: api),
                   ),
                 ),
               ),

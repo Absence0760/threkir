@@ -122,8 +122,8 @@ test.describe('built app with error reporting accepted', () => {
 				page.getByRole('heading', heading ? { level: 1, name: heading } : { level: 1 }).first()
 			).toBeVisible();
 
-			await expectSentryInitialised(page, seen);
 			expectNoHydrationErrors(seen, path);
+			await expectSentryInitialised(page, seen);
 			await page.close();
 		}
 	});
@@ -154,7 +154,7 @@ test.describe('built app with error reporting accepted', () => {
 		await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
 		await expect(banner).toHaveCount(0);
 
-		await expectSentryInitialised(page, seen);
 		expectNoHydrationErrors(seen, '/login after accepting');
+		await expectSentryInitialised(page, seen);
 	});
 });

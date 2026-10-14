@@ -1832,6 +1832,15 @@ export const FILTERED_RPC_ARGUMENTS = [
       'refused by the first one\'s open job. `p_user_id` reaches `jobs.payload` only inside a ' +
       '`jsonb_build_object`, so the payload was never this assertion\'s claim, and the ' +
       '`data_export_jobs` row it IS about is read back by the assertions around it.',
+  },  {
+    file: 'event_occurrence_photos_test.sql',
+    description: 'the organiser hides an attendee photo',
+    columns: ['run_photos.hidden_at', 'run_photos.hidden_by'],
+    readBack: 'the hide stored hidden_at and the organiser as hidden_by',
+    reason:
+      'The `lives_ok` measures the PRIVILEGE -- a steward\'s hide not raising 42501 where the ' +
+      'non-steward and attendee calls do. `set_event_photo_hidden` derives both columns from ' +
+      '`p_hidden` (`now()` / the caller), so the named read-back states what landed.',
   },
 ];
 

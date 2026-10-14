@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { activeFormatLocale } from '#lib/format/time.ts';
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { lengthLimit } from '#lib/core/column_limits.ts';
 	import { onMount, untrack } from 'svelte';
 	import { createTrainingPlan, fetchActivePlanOverview, fetchRuns } from '#lib/core/data.ts';
@@ -246,16 +247,7 @@
 	}
 
 	function describeError(e: unknown): string {
-		if (e instanceof Error) return e.message;
-		if (e && typeof e === 'object') {
-			const obj = e as { message?: unknown; code?: unknown; details?: unknown };
-			const parts: string[] = [];
-			if (typeof obj.message === 'string') parts.push(obj.message);
-			if (typeof obj.code === 'string') parts.push(`(${obj.code})`);
-			if (typeof obj.details === 'string') parts.push(obj.details);
-			if (parts.length) return parts.join(' ');
-		}
-		return t('planEditor.errorCreateFailed');
+		return thrownMessage(e) || t('planEditor.errorCreateFailed');
 	}
 
 	// A brand-new runner ticking the walk-run box is not training for a half

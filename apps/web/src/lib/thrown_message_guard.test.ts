@@ -9,23 +9,30 @@ import { stripComments, stripSvelteComments } from './core/strip_comments';
  * Guard-rail: a caught value is formatted through `thrownMessage`
  * (`core/supabase_error.ts`), never by hand.
  *
- * The data layer throws PostgREST errors as they come (`if (error) throw
- * error`), and those are plain objects, not `Error`s. So the idiom
+ * The data layer used to throw PostgREST errors as they came (`if (error)
+ * throw error`), and those are plain objects, not `Error`s. So the idiom
  * `e instanceof Error ? e.message : String(e)` — and its cousins `${e}`,
  * `String(e)`, `(e as Error).message`, `e?.message` — showed the reader
  * "[object Object]" (or nothing, or threw on `undefined.includes`) every time a
  * read failed at the database. § 1914 moved every site in `src/` onto the
  * helper; this file fails the PR on the next one.
  *
+ * Since § 1917 the data layer throws `DbError`, a real `Error`, so
+ * `e instanceof Error ? e.message : m('copy')` no longer falls back to the
+ * surface's copy on a database failure — it prints "invalid invite token
+ * (P0001)" where the page said "This invite link is invalid or expired". That
+ * shape is banned too: `appErrorMessage(e) ?? m('copy')` keeps the old split,
+ * `thrownMessage(e) || 'x'` is for where the detail is the point.
+ *
  * What is banned, after comments are stripped:
- *   1. `x instanceof Error ? x.message : String(x)` / `` : `${x}` `` anywhere;
+ *   1. `x instanceof Error ? x.message : <anything>` anywhere;
  *   2. `(x as Error).message` / `(x as Error)?.message` anywhere;
  *   3. inside a `catch (x)` block or a `.catch((x) => …)` callback, the bare
  *      binding stringified — `String(x)`, `${x}` — or read as `x?.message` /
  *      an unguarded `x.message` (the `: any` binding that lets it compile).
  *
- * `e instanceof Error ? e.message : m('copy')` is NOT banned: it never prints
- * "[object Object]", it falls back to the surface's own copy.
+ * `e instanceof Error && e.message === REFUSAL` is NOT banned: it compares an
+ * app-raised machine code, which a `DbError`'s message never equals.
  *
  * Invocation:
  *   npx tsx --test src/lib/thrown_message_guard.test.ts
@@ -94,7 +101,7 @@ function catchScopes(src: string): Array<[string, string]> {
 
 function findHandFormatters(src: string): string[] {
 	const hits: string[] = [];
-	for (const m of src.matchAll(/\b([\w$]+) instanceof Error\s*\?\s*\1\.message\s*:\s*(String\(\s*\1\s*\)|`\$\{\1\}`)/g)) {
+	for (const m of src.matchAll(/\b([\w$]+)\s+instanceof\s+Error\s*\?\s*\1\.message\s*:/g)) {
 		hits.push(m[0]);
 	}
 	for (const m of src.matchAll(/\(\s*[\w$]+ as Error\s*\)\??\.message/g)) hits.push(m[0]);
@@ -152,12 +159,15 @@ test('the scanner bites on every banned shape and passes the helper', () => {
 		'try { a() } catch (e: any) { showToast(e.message); }',
 		'p.catch((e) => toast(String(e)));',
 		'p.catch(err => { log(`failed: ${err}`); });',
+		'try { a() } catch (e) { x = e instanceof Error ? e.message : m("fallback"); }',
+		'try { a() } catch (e) { const code = e instanceof Error ? e.message : ""; }',
+		'try { a() } catch (e) { error = e instanceof Error\n\t? e.message\n\t: m("fallback"); }',
 	];
 	for (const src of bites) assert.ok(findHandFormatters(src).length > 0, `must flag: ${src}`);
 	const passes = [
 		'try { a() } catch (e) { x = thrownMessage(e); }',
-		'try { a() } catch (e) { x = e instanceof Error ? e.message : m("fallback"); }',
-		'try { a() } catch (e) { const code = e instanceof Error ? e.message : ""; }',
+		'try { a() } catch (e) { x = appErrorMessage(e) ?? m("fallback"); }',
+		'try { a() } catch (e) { const code = appErrorMessage(e) ?? ""; }',
 		'try { a() } catch (e) { console.warn("failed", e); }',
 		'try { a() } catch (e) { if (e instanceof Error && e.message === REFUSAL) return; }',
 		'try { a() } catch (e) { x = thrownMessage(e) || "{"; } const s = String(e);',

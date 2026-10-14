@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
+	import { appErrorMessage, thrownMessage } from '#lib/core/supabase_error.ts';
 	import { siteOrigin } from '#lib/core/site_url.ts';
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import { lengthLimit } from '#lib/core/column_limits.ts';
@@ -539,7 +539,7 @@
 			}
 			await load();
 		} catch (e: unknown) {
-			error = e instanceof Error ? e.message : tr('clubHome.failedToJoin');
+			error = appErrorMessage(e) ?? tr('clubHome.failedToJoin');
 		} finally {
 			joinBusy = false;
 		}
@@ -558,7 +558,7 @@
 			await leaveClub(club.id);
 			await load();
 		} catch (e: unknown) {
-			error = e instanceof Error ? e.message : tr('clubHome.failedToLeave');
+			error = appErrorMessage(e) ?? tr('clubHome.failedToLeave');
 		} finally {
 			joinBusy = false;
 		}
@@ -702,7 +702,7 @@
 			draftPost = '';
 			posts = await fetchClubPosts(club.id, 20);
 		} catch (e: unknown) {
-			error = e instanceof Error ? e.message : tr('clubHome.failedToPost');
+			error = appErrorMessage(e) ?? tr('clubHome.failedToPost');
 		} finally {
 			postingBusy = false;
 		}

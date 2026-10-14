@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
+	import { appErrorMessage } from '#lib/core/supabase_error.ts';
 	import maplibregl from '#lib/routes/maplibre.ts';
 	import 'maplibre-gl/dist/maplibre-gl.css';
 	import { PUBLIC_MAPTILER_KEY as PUBLIC_MAPTILER_KEY_ENV, PUBLIC_TILE_STYLE_URL } from '$app/env/public';
@@ -967,9 +968,7 @@
 				// Suppress here and let the caller emit its own.
 				if (!opts.suppressSoftWarnings) {
 					onerror(
-						err instanceof Error
-							? err.message
-							: t('routeBuilder.routingFailed'),
+						appErrorMessage(err) ?? t('routeBuilder.routingFailed'),
 						'error',
 					);
 				}

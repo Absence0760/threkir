@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { activeFormatLocale } from '#lib/format/time.ts';
+	import { appErrorMessage } from '#lib/core/supabase_error.ts';
 	import { m as tr } from '#lib/i18n/store.svelte.ts';
 	import { onMount } from 'svelte';
 	import { initial } from '#lib/format/avatar.ts';
@@ -138,7 +139,7 @@
 				// previews are fine until the next load.
 			}
 		} catch (e) {
-			sendError = e instanceof Error ? e.message : tr('messages.sendFailed');
+			sendError = appErrorMessage(e) ?? tr('messages.sendFailed');
 		} finally {
 			sending = false;
 		}

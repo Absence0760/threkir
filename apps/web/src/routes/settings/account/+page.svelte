@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
+	import { appErrorMessage, dbError, thrownMessage } from '#lib/core/supabase_error.ts';
 	import { parseImportCompleteness } from '#lib/integrations/import_completeness.ts';
 	import { normalizeParkrunAthleteNumber } from '#lib/integrations/parkrun_barcode.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
@@ -815,7 +815,7 @@
 				.select('*')
 				.eq('user_id', userId)
 				.order('started_at', { ascending: false });
-			if (error) throw error;
+			if (error) throw dbError(error);
 			const runs = (data ?? []).map((r) => {
 				const { user_id: _uid, ...rest } = r as Record<string, unknown>;
 				return rest;
@@ -916,7 +916,7 @@
 			// slot used to carry supabase-js's "Edge Function returned a
 			// non-2xx status code" — a sentence about our transport, in
 			// English, in front of a subject asking for their own data.
-			const code = e instanceof Error ? e.message : '';
+			const code = appErrorMessage(e) ?? '';
 			const reason =
 				code === 'unauthorized'
 					? m('settingsAccount.exportReasonSignedOut')
@@ -1086,7 +1086,7 @@
 		identityError = null;
 		try {
 			const { data, error } = await supabase.auth.getUserIdentities();
-			if (error) throw error;
+			if (error) throw dbError(error);
 			identities = (data?.identities ?? []) as unknown as Identity[];
 		} catch (e) {
 			identityError = m('settingsAccount.identitiesLoadFailed', { error: thrownMessage(e) });
@@ -1102,7 +1102,7 @@
 				provider,
 				options: { redirectTo: `${window.location.origin}/auth/callback` },
 			});
-			if (error) throw error;
+			if (error) throw dbError(error);
 			// Successful path navigates away to the OAuth provider. If we
 			// reach here without redirect, surface a generic failure.
 		} catch (e) {
@@ -1145,7 +1145,7 @@
 			const { error } = await supabase.auth.unlinkIdentity(
 				identity as unknown as Parameters<typeof supabase.auth.unlinkIdentity>[0]
 			);
-			if (error) throw error;
+			if (error) throw dbError(error);
 			showToast(m('settingsAccount.unlinked', { provider: label }));
 			await loadIdentities();
 		} catch (e) {

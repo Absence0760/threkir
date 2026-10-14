@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { appErrorMessage } from '#lib/core/supabase_error.ts';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { isActivityWaiverRequired, joinClubByToken } from '#lib/core/data.ts';
@@ -24,7 +25,7 @@
 				return;
 			}
 			status = 'error';
-			errorMsg = e instanceof Error ? e.message : m('clubJoin.invalidOrExpired');
+			errorMsg = appErrorMessage(e) ?? m('clubJoin.invalidOrExpired');
 		}
 	}
 

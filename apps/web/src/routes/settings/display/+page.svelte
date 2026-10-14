@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
+	import { dbError, thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { supabase } from '#lib/core/supabase.ts';
@@ -135,7 +135,7 @@
 					.from('user_profiles')
 					.update({ preferred_unit: next })
 					.eq('id', auth.user.id);
-				if (error) throw error;
+				if (error) throw dbError(error);
 			} catch (e) {
 				prefs.status = 'idle';
 				showToast(m('prefs.saveFailed', { error: thrownMessage(e) }), 'error');

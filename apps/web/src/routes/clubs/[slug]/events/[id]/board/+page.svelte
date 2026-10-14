@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { appErrorMessage, thrownMessage } from '#lib/core/supabase_error.ts';
 	import { page } from '$app/state';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
@@ -94,8 +95,7 @@
 			// The organiser RPC throws 42501 for non-organisers.
 			crossings = await fetchOrganiserCrossings(eventId, instanceStart);
 		} catch (e) {
-			const msg = e instanceof Error ? e.message : '';
-			if (/42501|organiser|permission/i.test(msg)) {
+			if (/42501|organiser|permission/i.test(thrownMessage(e))) {
 				denied = true;
 			} else {
 				showToast(m('checkpoint.loadFailed'), 'error');
@@ -160,7 +160,7 @@
 			showToast(m('checkpoint.statusDnf'), 'success');
 			await load();
 		} catch (e) {
-			showToast(e instanceof Error ? e.message : m('checkpoint.markDnfFailed'), 'error');
+			showToast(appErrorMessage(e) ?? m('checkpoint.markDnfFailed'), 'error');
 		} finally {
 			busy = null;
 		}
@@ -220,7 +220,7 @@
 			showToast(m('checkpoint.weighInSaved'), 'success');
 			await load();
 		} catch (e) {
-			showToast(e instanceof Error ? e.message : m('checkpoint.weighInFailed'), 'error');
+			showToast(appErrorMessage(e) ?? m('checkpoint.weighInFailed'), 'error');
 		} finally {
 			busy = null;
 		}

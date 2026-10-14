@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
+	import { dbError, thrownMessage } from '#lib/core/supabase_error.ts';
 	import { TEXT_LIMITS } from '#lib/core/text_limits.ts';
 	import { onMount, tick } from 'svelte';
 	import AuthShell from '#lib/components/auth/AuthShell.svelte';
@@ -263,12 +263,12 @@
 			.update(profileUpdate)
 			.eq('id', auth.user!.id)
 			.select('id');
-		if (error) throw error;
+		if (error) throw dbError(error);
 		if (!updatedRows?.length) {
 			const { error: insertError } = await supabase
 				.from('user_profiles')
 				.insert({ id: auth.user!.id, ...profileUpdate });
-			if (insertError) throw insertError;
+			if (insertError) throw dbError(insertError);
 		}
 	}
 
@@ -392,7 +392,7 @@
 			// set health_data_consent_at to a non-null value.
 			if (healthDataConsent) {
 				const { error: consentErr } = await supabase.rpc('grant_health_data_consent');
-				if (consentErr) throw consentErr;
+				if (consentErr) throw dbError(consentErr);
 			}
 
 			// Issue both writes in parallel — the bag write doesn't

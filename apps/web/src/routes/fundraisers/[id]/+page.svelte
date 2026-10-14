@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { appErrorMessage } from '#lib/core/supabase_error.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
@@ -140,7 +141,7 @@
 			// A donor told only "couldn't start the donation" cannot tell a
 			// fundraiser that has ENDED from a blip, and retries something
 			// that can never open. Same shape as the event-register map.
-			const code = e instanceof Error ? e.message : '';
+			const code = appErrorMessage(e) ?? '';
 			const key =
 				code === 'fundraiser_closed'
 					? 'fundraiser.donateClosed'

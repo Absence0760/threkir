@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
+	import { appErrorMessage, thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { compareOrdinal } from '#lib/util/ordinal_compare.ts';
 	import { page } from '$app/state';
@@ -110,7 +110,7 @@
 		} catch (e) {
 			// The RPC raises a specific message (e.g. already has an active plan);
 			// surface it rather than a swallowed failure.
-			showToast(e instanceof Error ? e.message : m('coachingAthlete.assignError'), 'error');
+			showToast(appErrorMessage(e) ?? m('coachingAthlete.assignError'), 'error');
 		} finally {
 			assigning = false;
 		}

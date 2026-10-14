@@ -11,7 +11,7 @@
 	import { afterNavigate, goto } from '$app/navigation';
 	import { buildEventShareCanonical } from '#lib/share/share_event_meta.ts';
 	import { supabase } from '#lib/core/supabase.ts';
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
+	import { appErrorMessage, thrownMessage } from '#lib/core/supabase_error.ts';
 	import type { RealtimeChannel } from '@supabase/supabase-js';
 	import {
 		fetchEventById,
@@ -533,7 +533,7 @@
 			showRoutineAttach = false;
 			showToast(m('clubEvent.gymRoutineSaved'), 'success');
 		} catch (e) {
-			showToast(e instanceof Error ? e.message : m('clubEvent.gymRoutineSaveFailed'), 'error');
+			showToast(appErrorMessage(e) ?? m('clubEvent.gymRoutineSaveFailed'), 'error');
 		}
 	}
 
@@ -542,7 +542,7 @@
 			myPlans = await fetchSessionPlans();
 		} catch (e) {
 			// Without this the modal simply never opened, with no message.
-			showToast(e instanceof Error ? e.message : m('session.loadFailed'), 'error');
+			showToast(appErrorMessage(e) ?? m('session.loadFailed'), 'error');
 			return;
 		}
 		attachChoice = event?.session_plan_id ?? '';
@@ -562,7 +562,7 @@
 			showAttach = false;
 			showToast(m('session.attached'), 'success');
 		} catch (e) {
-			showToast(e instanceof Error ? e.message : m('session.saveFailed'), 'error');
+			showToast(appErrorMessage(e) ?? m('session.saveFailed'), 'error');
 		}
 	}
 
@@ -845,7 +845,7 @@
 			showToast(m('clubEvent.claimSubmitted'), 'success');
 			await reloadInstance();
 		} catch (err) {
-			showToast(err instanceof Error ? err.message : m('clubEvent.claimSubmitFailed'), 'error');
+			showToast(appErrorMessage(err) ?? m('clubEvent.claimSubmitFailed'), 'error');
 		} finally {
 			resultActionBusy = null;
 		}
@@ -859,7 +859,7 @@
 			showToast(approve ? m('clubEvent.claimApproved') : m('clubEvent.claimRejected'), 'success');
 			await reloadInstance();
 		} catch (err) {
-			showToast(err instanceof Error ? err.message : m('clubEvent.claimUpdateFailed'), 'error');
+			showToast(appErrorMessage(err) ?? m('clubEvent.claimUpdateFailed'), 'error');
 		} finally {
 			resultActionBusy = null;
 		}
@@ -947,7 +947,7 @@
 			await reloadEventPhotos();
 		} catch (err) {
 			showToast(
-				err instanceof Error ? err.message : m('clubEvent.photoUploadFailed'),
+				appErrorMessage(err) ?? m('clubEvent.photoUploadFailed'),
 				'error'
 			);
 		} finally {
@@ -1059,7 +1059,7 @@
 			raceSession = await armRace(event.id, activeInstance, autoApproveOnArm);
 			broadcastRaceStateChanged();
 		} catch (e: unknown) {
-			error = e instanceof Error ? e.message : m('clubEvent.armFailed');
+			error = appErrorMessage(e) ?? m('clubEvent.armFailed');
 		} finally {
 			raceBusy = false;
 		}
@@ -1072,7 +1072,7 @@
 			raceSession = await startRace(event.id, activeInstance);
 			broadcastRaceStateChanged();
 		} catch (e: unknown) {
-			error = e instanceof Error ? e.message : m('clubEvent.startFailed');
+			error = appErrorMessage(e) ?? m('clubEvent.startFailed');
 		} finally {
 			raceBusy = false;
 		}
@@ -1095,7 +1095,7 @@
 			// Ending files the host DNFs server-side; show them.
 			if (status === 'finished') await reloadInstance();
 		} catch (e: unknown) {
-			error = e instanceof Error ? e.message : m('clubEvent.endFailed');
+			error = appErrorMessage(e) ?? m('clubEvent.endFailed');
 		} finally {
 			raceBusy = false;
 		}
@@ -1108,7 +1108,7 @@
 			await approveEventResult(event.id, activeInstance, userId, approve);
 			await reloadInstance();
 		} catch (e: unknown) {
-			error = e instanceof Error ? e.message : m('clubEvent.approvalFailed');
+			error = appErrorMessage(e) ?? m('clubEvent.approvalFailed');
 		} finally {
 			resultActionBusy = null;
 		}
@@ -1124,7 +1124,7 @@
 			await approveEventResultById(resultId, approve);
 			await reloadInstance();
 		} catch (e: unknown) {
-			error = e instanceof Error ? e.message : m('clubEvent.approvalFailed');
+			error = appErrorMessage(e) ?? m('clubEvent.approvalFailed');
 		} finally {
 			resultActionBusy = null;
 		}
@@ -1174,7 +1174,7 @@
 			showResultPicker = false;
 			await reloadInstance();
 		} catch (e: unknown) {
-			error = e instanceof Error ? e.message : m('clubEvent.submitFailed');
+			error = appErrorMessage(e) ?? m('clubEvent.submitFailed');
 		} finally {
 			submitting = false;
 		}
@@ -1201,7 +1201,7 @@
 			// propagate uncaught. Pre-fix, a network drop on DNF / DNS
 			// left the picker open with no feedback and the user
 			// guessing whether their non-finish was recorded.
-			error = e instanceof Error ? e.message : m('clubEvent.resultSubmitFailed');
+			error = appErrorMessage(e) ?? m('clubEvent.resultSubmitFailed');
 		} finally {
 			submitting = false;
 		}
@@ -1232,7 +1232,7 @@
 			editingResult = null;
 			await reloadInstance();
 		} catch (e: unknown) {
-			editError = e instanceof Error ? e.message : m('clubEvent.editResultFailed');
+			editError = appErrorMessage(e) ?? m('clubEvent.editResultFailed');
 		} finally {
 			editBusy = false;
 		}
@@ -1255,7 +1255,7 @@
 			showRemoveResultConfirm = false;
 			await reloadInstance();
 		} catch (e) {
-			error = e instanceof Error ? e.message : m('clubEvent.resultRemoveFailed');
+			error = appErrorMessage(e) ?? m('clubEvent.resultRemoveFailed');
 		} finally {
 			submitting = false;
 		}
@@ -1675,7 +1675,7 @@
 			}
 			await load();
 		} catch (e: unknown) {
-			error = e instanceof Error ? e.message : m('clubEvent.rsvpFailed');
+			error = appErrorMessage(e) ?? m('clubEvent.rsvpFailed');
 		} finally {
 			busy = false;
 		}
@@ -1700,7 +1700,7 @@
 			await rsvpEvent(event.id, viewerRsvpForActive, activeInstance, id);
 			showToast(m('clubEvent.courseChanged'), 'success');
 		} catch (e: unknown) {
-			error = e instanceof Error ? e.message : m('clubEvent.rsvpFailed');
+			error = appErrorMessage(e) ?? m('clubEvent.rsvpFailed');
 		} finally {
 			busy = false;
 		}
@@ -1721,7 +1721,7 @@
 			await markAttendance(event.id, userId, activeInstance, next);
 			attendees = attendees.map((a) => (a.user_id === userId ? { ...a, attendance: next } : a));
 		} catch (e: unknown) {
-			showToast(e instanceof Error ? e.message : m('clubEvent.attendanceFailed'), 'error');
+			showToast(appErrorMessage(e) ?? m('clubEvent.attendanceFailed'), 'error');
 		} finally {
 			markingAttendance = null;
 		}
@@ -1741,7 +1741,7 @@
 			// The refusals only the server can know, arriving after the click:
 			// the two the page also renders for itself when it can see them
 			// coming, plus the host-capability ones, which no retry fixes.
-			const code = e instanceof Error ? e.message : '';
+			const code = appErrorMessage(e) ?? '';
 			const key =
 				code === 'event_full'
 					? 'clubEvent.registerSoldOut'
@@ -1774,7 +1774,7 @@
 			showToast(m('clubEvent.waitlistJoined'), 'success');
 			await load();
 		} catch (e: unknown) {
-			showToast(e instanceof Error ? e.message : m('clubEvent.rsvpFailed'), 'error');
+			showToast(appErrorMessage(e) ?? m('clubEvent.rsvpFailed'), 'error');
 		} finally {
 			waitlistBusy = false;
 		}
@@ -1788,7 +1788,7 @@
 			showLeaveWaitlist = false;
 			await load();
 		} catch (e: unknown) {
-			showToast(e instanceof Error ? e.message : m('clubEvent.rsvpFailed'), 'error');
+			showToast(appErrorMessage(e) ?? m('clubEvent.rsvpFailed'), 'error');
 		} finally {
 			waitlistBusy = false;
 		}
@@ -1836,7 +1836,7 @@
 			);
 			await load();
 		} catch (e: unknown) {
-			const code = e instanceof Error ? e.message : '';
+			const code = appErrorMessage(e) ?? '';
 			const key =
 				code === 'policy_no_refund'
 					? 'clubEvent.cancelPolicyNoRefund'
@@ -1941,7 +1941,7 @@
 		e: unknown,
 		scope: 'occurrence' | 'event' | 'series' = event?.recurrence_freq ? 'occurrence' : 'event'
 	): string {
-		const code = e instanceof Error ? e.message : '';
+		const code = appErrorMessage(e) ?? '';
 		if (code === 'stripe_not_configured') {
 			return m(
 				scope === 'series'
@@ -1986,7 +1986,7 @@
 			await reinstateEventInstance(event.id, instanceIso);
 			await load();
 		} catch (e: unknown) {
-			error = e instanceof Error ? e.message : m('clubEvent.reinstateOccurrenceFailed');
+			error = appErrorMessage(e) ?? m('clubEvent.reinstateOccurrenceFailed');
 		} finally {
 			busy = false;
 		}
@@ -2006,7 +2006,7 @@
 			draftPost = '';
 			await reloadInstance();
 		} catch (e: unknown) {
-			error = e instanceof Error ? e.message : m('clubEvent.postUpdateFailed');
+			error = appErrorMessage(e) ?? m('clubEvent.postUpdateFailed');
 		} finally {
 			busy = false;
 		}

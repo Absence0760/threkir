@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { activeFormatLocale } from '#lib/format/time.ts';
+	import { appErrorMessage } from '#lib/core/supabase_error.ts';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import Avatar from '#lib/components/Avatar.svelte';
@@ -128,7 +129,7 @@
 			await copyLink(token);
 			pending = await fetchPendingCoachInvites();
 		} catch (e: unknown) {
-			showToast(e instanceof Error ? e.message : m('coaching.createInviteFailed'), 'error');
+			showToast(appErrorMessage(e) ?? m('coaching.createInviteFailed'), 'error');
 		} finally {
 			minting = false;
 		}
@@ -190,7 +191,7 @@
 					: a.kind === 'remove'
 						? m('coaching.removeAthleteFailed')
 						: m('coaching.endLinkFailed');
-			showToast(e instanceof Error ? e.message : fallback, 'error');
+			showToast(appErrorMessage(e) ?? fallback, 'error');
 		} finally {
 			acting = false;
 		}

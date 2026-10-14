@@ -6345,6 +6345,8 @@ void main() {
     const variantWordPairs = <String, String>{
       'equipa': 'equipe',
       'este': 'esta',
+      'esta': 'este',
+      'nesta': 'neste',
       'deste': 'desta',
     };
 

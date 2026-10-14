@@ -85,6 +85,13 @@ class SettingsKeys {
   /// Go worker's `lifecycle_drip` handler; the send is gated separately
   /// (migration 20270223_001).
   static const emailLifecycleDrip = 'email_lifecycle_drip';
+  /// Opt-OUT for the new-device sign-in alert — `'on'` | `'off'` (default
+  /// `'on'`; only the literal `'off'` mutes). A security notice, so unlike the
+  /// two engagement opt-ins an absent choice means the runner hears about it.
+  /// Read at send time by the Go worker's `security_email` handler (migration
+  /// 20270804000002). The password-changed notice has no key: it cannot be
+  /// turned off.
+  static const emailNewDeviceAlerts = 'email_new_device_alerts';
   /// The user's preferred language for server-sent email, as a BCP-47 tag
   /// (`en`/`de`/`fr`/`es`/`ja`/`pt-BR`). Written by the clients as a side
   /// effect of the language picker so the Go worker can localize email

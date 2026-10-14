@@ -8205,6 +8205,14 @@ class AppLocalizationsPt extends AppLocalizations {
       'Inscreva-se para receber lembretes ocasionais de integração, reengajamento e sequência. Desativado por predefinição; separado do seu resumo semanal e dos seus e-mails de notificação.';
 
   @override
+  String get prefsEmailNewDeviceAlerts =>
+      'Alertas de início de sessão num novo dispositivo';
+
+  @override
+  String get prefsEmailNewDeviceAlertsHint =>
+      'Avise por e-mail na primeira vez que for iniciada sessão na minha conta a partir de um navegador ou dispositivo ainda não utilizado. Os avisos de alteração da palavra-passe são sempre enviados e não podem ser desativados.';
+
+  @override
   String get prefsEmailReOptInFailed =>
       'Não foi possível anular o seu cancelamento anterior. Os e-mails podem continuar bloqueados; tente novamente.';
 
@@ -23603,6 +23611,14 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get prefsEmailLifecycleDripHint =>
       'Inscreva-se para receber lembretes ocasionais de integração, reengajamento e sequência. Desativado por padrão; separado do seu resumo semanal e dos seus e-mails de notificação.';
+
+  @override
+  String get prefsEmailNewDeviceAlerts =>
+      'Alertas de login em novo dispositivo';
+
+  @override
+  String get prefsEmailNewDeviceAlertsHint =>
+      'Avise por e-mail na primeira vez que minha conta for acessada de um navegador ou dispositivo que ela ainda não usou. Os avisos de alteração de senha são sempre enviados e não podem ser desativados.';
 
   @override
   String get prefsEmailReOptInFailed =>

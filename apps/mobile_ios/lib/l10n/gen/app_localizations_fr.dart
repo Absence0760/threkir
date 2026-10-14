@@ -8226,6 +8226,14 @@ class AppLocalizationsFr extends AppLocalizations {
       'Inscrivez-vous pour recevoir occasionnellement des rappels de prise en main, de réengagement et de série. Désactivé par défaut ; distinct de votre récapitulatif hebdomadaire et de vos e-mails de notification.';
 
   @override
+  String get prefsEmailNewDeviceAlerts =>
+      'Alertes de connexion depuis un nouvel appareil';
+
+  @override
+  String get prefsEmailNewDeviceAlertsHint =>
+      'Me prévenir par e-mail la première fois que mon compte se connecte depuis un navigateur ou un appareil qu\'il n\'a jamais utilisé. Les avis de changement de mot de passe sont toujours envoyés et ne peuvent pas être désactivés.';
+
+  @override
   String get prefsEmailReOptInFailed =>
       'Impossible d\'annuler votre désabonnement précédent. Les e-mails peuvent rester bloqués ; réessayez.';
 

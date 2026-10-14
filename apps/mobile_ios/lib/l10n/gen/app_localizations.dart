@@ -13330,6 +13330,18 @@ abstract class AppLocalizations {
   /// **'Opt in to occasional onboarding, re-engagement, and streak nudges. Off by default; separate from your weekly digest and notification emails.'**
   String get prefsEmailLifecycleDripHint;
 
+  /// Toggle title for the opt-out email sent when the account signs in from a device class it has not used before
+  ///
+  /// In en, this message translates to:
+  /// **'New-device sign-in alerts'**
+  String get prefsEmailNewDeviceAlerts;
+
+  /// Subtitle for the new-device sign-in alert toggle; says the password-change notice cannot be turned off
+  ///
+  /// In en, this message translates to:
+  /// **'Email me the first time my account signs in from a browser or device it hasn\'t used before. Password-change notices always send and can\'t be turned off.'**
+  String get prefsEmailNewDeviceAlertsHint;
+
   /// Shown when lifting a prior one-click unsubscribe block fails after re-opting into an email stream
   ///
   /// In en, this message translates to:

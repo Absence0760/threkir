@@ -2258,6 +2258,8 @@
   "prefsEmailWeeklyDigestHint": "トレーニングとコミュニティのハイライトをまとめた週刊メールを受け取ります。初期設定はオフで、通知メールとは別です。",
   "prefsEmailLifecycleDrip": "ヒントと応援メール",
   "prefsEmailLifecycleDripHint": "オンボーディング、再開、連続記録のリマインダーを時々受け取ります。初期設定はオフで、週刊ダイジェストや通知メールとは別です。",
+  "prefsEmailNewDeviceAlerts": "新しいデバイスでのサインイン通知",
+  "prefsEmailNewDeviceAlertsHint": "これまで使われたことのないブラウザやデバイスからアカウントにサインインがあったときに、メールで知らせます。パスワード変更の通知は常に送信され、オフにすることはできません。",
   "prefsEmailReOptInFailed": "以前の配信停止を解除できませんでした。メールがブロックされたままの可能性があります。もう一度お試しください。",
   "prefsWeekStart": "週の開始曜日",
   "prefsWeekStartMonday": "月曜日",

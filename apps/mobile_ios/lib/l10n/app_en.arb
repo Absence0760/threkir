@@ -10817,6 +10817,14 @@
   "@prefsEmailLifecycleDripHint": {
     "description": "Subtitle for the lifecycle-drip opt-in toggle"
   },
+  "prefsEmailNewDeviceAlerts": "New-device sign-in alerts",
+  "@prefsEmailNewDeviceAlerts": {
+    "description": "Toggle title for the opt-out email sent when the account signs in from a device class it has not used before"
+  },
+  "prefsEmailNewDeviceAlertsHint": "Email me the first time my account signs in from a browser or device it hasn't used before. Password-change notices always send and can't be turned off.",
+  "@prefsEmailNewDeviceAlertsHint": {
+    "description": "Subtitle for the new-device sign-in alert toggle; says the password-change notice cannot be turned off"
+  },
   "prefsEmailReOptInFailed": "Couldn't lift your earlier unsubscribe. Emails may still be blocked — try again.",
   "@prefsEmailReOptInFailed": {
     "description": "Shown when lifting a prior one-click unsubscribe block fails after re-opting into an email stream"

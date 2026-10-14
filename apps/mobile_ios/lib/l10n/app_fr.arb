@@ -2258,6 +2258,8 @@
   "prefsEmailWeeklyDigestHint": "Inscrivez-vous à un récapitulatif hebdomadaire de votre entraînement et des temps forts de la communauté. Désactivé par défaut ; distinct de vos e-mails de notification.",
   "prefsEmailLifecycleDrip": "E-mail de conseils et encouragements",
   "prefsEmailLifecycleDripHint": "Inscrivez-vous pour recevoir occasionnellement des rappels de prise en main, de réengagement et de série. Désactivé par défaut ; distinct de votre récapitulatif hebdomadaire et de vos e-mails de notification.",
+  "prefsEmailNewDeviceAlerts": "Alertes de connexion depuis un nouvel appareil",
+  "prefsEmailNewDeviceAlertsHint": "Me prévenir par e-mail la première fois que mon compte se connecte depuis un navigateur ou un appareil qu'il n'a jamais utilisé. Les avis de changement de mot de passe sont toujours envoyés et ne peuvent pas être désactivés.",
   "prefsEmailReOptInFailed": "Impossible d'annuler votre désabonnement précédent. Les e-mails peuvent rester bloqués ; réessayez.",
   "prefsWeekStart": "La semaine commence le",
   "prefsWeekStartMonday": "Lundi",

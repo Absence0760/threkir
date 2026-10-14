@@ -8118,6 +8118,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Opt in to occasional onboarding, re-engagement, and streak nudges. Off by default; separate from your weekly digest and notification emails.';
 
   @override
+  String get prefsEmailNewDeviceAlerts => 'New-device sign-in alerts';
+
+  @override
+  String get prefsEmailNewDeviceAlertsHint =>
+      'Email me the first time my account signs in from a browser or device it hasn\'t used before. Password-change notices always send and can\'t be turned off.';
+
+  @override
   String get prefsEmailReOptInFailed =>
       'Couldn\'t lift your earlier unsubscribe. Emails may still be blocked — try again.';
 

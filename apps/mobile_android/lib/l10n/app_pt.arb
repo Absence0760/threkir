@@ -2258,6 +2258,8 @@
   "prefsEmailWeeklyDigestHint": "Inscreva-se para receber um resumo semanal do seu treino e dos destaques da comunidade. Desativado por predefinição; separado dos seus e-mails de notificação.",
   "prefsEmailLifecycleDrip": "E-mail de dicas e incentivo",
   "prefsEmailLifecycleDripHint": "Inscreva-se para receber lembretes ocasionais de integração, reengajamento e sequência. Desativado por predefinição; separado do seu resumo semanal e dos seus e-mails de notificação.",
+  "prefsEmailNewDeviceAlerts": "Alertas de início de sessão num novo dispositivo",
+  "prefsEmailNewDeviceAlertsHint": "Avise por e-mail na primeira vez que for iniciada sessão na minha conta a partir de um navegador ou dispositivo ainda não utilizado. Os avisos de alteração da palavra-passe são sempre enviados e não podem ser desativados.",
   "prefsEmailReOptInFailed": "Não foi possível anular o seu cancelamento anterior. Os e-mails podem continuar bloqueados; tente novamente.",
   "prefsWeekStart": "A semana começa em",
   "prefsWeekStartMonday": "Segunda-feira",

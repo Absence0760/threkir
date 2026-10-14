@@ -2258,6 +2258,8 @@
   "prefsEmailWeeklyDigestHint": "Abonniere eine wöchentliche Übersicht über dein Training und Community-Highlights. Standardmäßig aus; getrennt von deinen Benachrichtigungs-E-Mails.",
   "prefsEmailLifecycleDrip": "E-Mail mit Tipps & Motivation",
   "prefsEmailLifecycleDripHint": "Erhalte gelegentliche Einstiegs-, Reaktivierungs- und Serien-Erinnerungen. Standardmäßig aus; getrennt von deiner wöchentlichen Zusammenfassung und deinen Benachrichtigungs-E-Mails.",
+  "prefsEmailNewDeviceAlerts": "Anmeldungen auf neuen Geräten",
+  "prefsEmailNewDeviceAlertsHint": "Per E-Mail benachrichtigen, wenn sich mein Konto zum ersten Mal über einen Browser oder ein Gerät anmeldet, das es bisher nicht verwendet hat. Hinweise zu Passwortänderungen werden immer gesendet und lassen sich nicht abschalten.",
   "prefsEmailReOptInFailed": "Deine frühere Abmeldung konnte nicht aufgehoben werden. E-Mails werden möglicherweise weiterhin blockiert – bitte erneut versuchen.",
   "prefsWeekStart": "Woche beginnt am",
   "prefsWeekStartMonday": "Montag",

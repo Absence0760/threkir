@@ -8202,6 +8202,14 @@ class AppLocalizationsEs extends AppLocalizations {
       'Suscríbete para recibir recordatorios ocasionales de inicio, reactivación y rachas. Desactivado por defecto; independiente de tu resumen semanal y de tus correos de notificaciones.';
 
   @override
+  String get prefsEmailNewDeviceAlerts =>
+      'Alertas de inicio de sesión en dispositivos nuevos';
+
+  @override
+  String get prefsEmailNewDeviceAlertsHint =>
+      'Avisarme por correo la primera vez que se inicie sesión en mi cuenta desde un navegador o dispositivo que no haya usado antes. Los avisos de cambio de contraseña se envían siempre y no se pueden desactivar.';
+
+  @override
   String get prefsEmailReOptInFailed =>
       'No se pudo anular tu baja anterior. Es posible que los correos sigan bloqueados; inténtalo de nuevo.';
 

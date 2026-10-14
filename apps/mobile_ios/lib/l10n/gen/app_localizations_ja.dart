@@ -7759,6 +7759,13 @@ class AppLocalizationsJa extends AppLocalizations {
       'オンボーディング、再開、連続記録のリマインダーを時々受け取ります。初期設定はオフで、週刊ダイジェストや通知メールとは別です。';
 
   @override
+  String get prefsEmailNewDeviceAlerts => '新しいデバイスでのサインイン通知';
+
+  @override
+  String get prefsEmailNewDeviceAlertsHint =>
+      'これまで使われたことのないブラウザやデバイスからアカウントにサインインがあったときに、メールで知らせます。パスワード変更の通知は常に送信され、オフにすることはできません。';
+
+  @override
   String get prefsEmailReOptInFailed =>
       '以前の配信停止を解除できませんでした。メールがブロックされたままの可能性があります。もう一度お試しください。';
 

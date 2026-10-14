@@ -8215,6 +8215,13 @@ class AppLocalizationsDe extends AppLocalizations {
       'Erhalte gelegentliche Einstiegs-, Reaktivierungs- und Serien-Erinnerungen. Standardmäßig aus; getrennt von deiner wöchentlichen Zusammenfassung und deinen Benachrichtigungs-E-Mails.';
 
   @override
+  String get prefsEmailNewDeviceAlerts => 'Anmeldungen auf neuen Geräten';
+
+  @override
+  String get prefsEmailNewDeviceAlertsHint =>
+      'Per E-Mail benachrichtigen, wenn sich mein Konto zum ersten Mal über einen Browser oder ein Gerät anmeldet, das es bisher nicht verwendet hat. Hinweise zu Passwortänderungen werden immer gesendet und lassen sich nicht abschalten.';
+
+  @override
   String get prefsEmailReOptInFailed =>
       'Deine frühere Abmeldung konnte nicht aufgehoben werden. E-Mails werden möglicherweise weiterhin blockiert – bitte erneut versuchen.';
 

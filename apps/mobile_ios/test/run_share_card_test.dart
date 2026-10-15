@@ -212,5 +212,24 @@ void main() {
       final track = [away(1), nearHome, away(2)];
       expect(runShareCardTrack(_run(track: track), const [home]), track);
     });
+
+    test('an off-track fix is never drawn, in a zone or out of one', () {
+      // Distance input the recorder stored for the server replay; the public
+      // run page never serves one, so the posted image must not either. One
+      // just outside the zone must not end the clip early.
+      final a2 = away(2);
+      final a4 = away(4);
+      final track = [
+        nearHome,
+        away(1).withOffTrack(true),
+        nearHome,
+        a2,
+        away(3).withOffTrack(true),
+        a4,
+      ];
+      expect(runShareCardTrack(_run(track: track), const [home]), [a2, a4]);
+      expect(runShareCardTrack(_run(track: track), const []),
+          [nearHome, nearHome, a2, a4]);
+    });
   });
 }

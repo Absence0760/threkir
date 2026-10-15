@@ -129,7 +129,9 @@ class _RunTrackPreviewState extends State<RunTrackPreview> {
           }
           track = await widget.api.fetchClippedTrackForRun(id);
         } else {
-          track = await widget.api.fetchTrackByPath(url);
+          // The owner's stored blob keeps the off-track fixes the server
+          // replay reads; the thumbnail draws the line ([trackLine]).
+          track = trackLine(await widget.api.fetchTrackByPath(url));
         }
         final renderable = isTrackRenderable(track) ? track : <Waypoint>[];
         _cacheSet(key, renderable);

@@ -125,6 +125,21 @@ void main() {
       expect(baro.baroElevationMetres, 300);
     });
 
+    test('an off-track fix is no altitude sample and no line point', () {
+      // A 30-50 m canopy fix the recorder stored only for the distance
+      // replay: its 60 m spike would read as climb on the route band.
+      Waypoint off(Waypoint w) => w.withOffTrack(true);
+      final track = [pt(0, 400), off(pt(1, 460)), pt(2, 401), pt(3, 402)];
+      final alt = runAltitude(track, RunSource.watch);
+      expect([for (final w in alt.track) w.elevationMetres], [400, 401, 402]);
+      expect(computeRunElevationGain(track, RunSource.watch), 0);
+      final baro = [pt(0, 400, 300), off(pt(1, 460, 360)), pt(2, 401, 301)];
+      expect(
+        [for (final w in runAltitude(baro, RunSource.app).track) w.elevationMetres],
+        [300, 301],
+      );
+    });
+
     test('hasBarometricAltitude: a non-finite reading is no reading', () {
       expect(hasBarometricAltitude(const []), isFalse);
       expect(hasBarometricAltitude(gpsWander), isFalse);

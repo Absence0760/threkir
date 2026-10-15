@@ -103,7 +103,9 @@ class _PublicRunScreenState extends State<PublicRunScreen> {
         trackFuture,
         widget.api.fetchPublicProfile(row.userId),
       ]);
-      final track = results[0] as List<Waypoint>;
+      // The owner's blob keeps its off-track fixes (the clipped path
+      // never serves one); this page draws the line.
+      final track = trackLine(results[0] as List<Waypoint>);
       if (!mounted) return;
       setState(() {
         _row = row;

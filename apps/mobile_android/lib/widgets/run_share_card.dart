@@ -29,10 +29,12 @@ import '../widgets/top_banner.dart';
 /// run (raw OR smoothed position in a zone, interior passes kept). Always
 /// applied when the owner has zones, with no opt-out: the PNG leaves the
 /// device and is posted where anyone can read it, so it must withhold exactly
-/// what the public run page withholds.
+/// what the public run page withholds. Drawn from [trackLine]: an off-track
+/// fix is distance input the recorder stored for the server replay, and the
+/// public run page never serves one either.
 List<Waypoint> runShareCardTrack(Run run, List<PrivacyZone> zones) =>
     clipPointsToZones<Waypoint>(
-      run.track,
+      trackLine(run.track),
       zones,
       latOf: (w) => w.lat,
       lngOf: (w) => w.lng,
@@ -587,6 +589,8 @@ class RunShareCard extends StatelessWidget {
   }
 }
 
+/// The GPX, TCX and FIT exports carry the run's line ([trackLine]), as every
+/// server export does: off-track fixes are distance input, not path.
 String _runToGpx(Run r, String title) {
   String esc(String s) => s
       .replaceAll('&', '&amp;')
@@ -605,7 +609,7 @@ String _runToGpx(Run r, String title) {
   buf.writeln('  <trk>');
   buf.writeln('    <name>${esc(title)}</name>');
   buf.writeln('    <trkseg>');
-  for (final w in r.track) {
+  for (final w in trackLine(r.track)) {
     buf.write('      <trkpt lat="${w.lat}" lon="${w.lng}">');
     if (w.elevationMetres != null) {
       buf.write('<ele>${w.elevationMetres}</ele>');
@@ -642,7 +646,7 @@ String _runToTcx(Run r, String title) {
   buf.writeln(
       '        <DistanceMeters>${r.distanceMetres.toStringAsFixed(1)}</DistanceMeters>');
   buf.writeln('        <Track>');
-  for (final w in r.track) {
+  for (final w in trackLine(r.track)) {
     buf.writeln('          <Trackpoint>');
     if (w.timestamp != null) {
       buf.writeln(
@@ -733,7 +737,7 @@ List<int> _runToFitBytes(Run r) {
     [1, 4, 133],   // position_lng: sint32
     [2, 2, 132],   // altitude: uint16 (scale 5, offset 500)
   ]);
-  for (final w in r.track) {
+  for (final w in trackLine(r.track)) {
     writeDataHeader(1);
     writeU32LE(fitTimestamp(w.timestamp ?? r.startedAt));
     writeSint32LE(semicircles(w.lat));

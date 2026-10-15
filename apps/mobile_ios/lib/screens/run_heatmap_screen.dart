@@ -113,8 +113,11 @@ class _RunHeatmapScreenState extends State<RunHeatmapScreen> {
   }
 
   Future<List<cm.Waypoint>> _fetchTrack(String path) {
-    if (widget.fetchTrackFn != null) return widget.fetchTrackFn!(path);
-    return widget.api.fetchTrackByPath(path);
+    // The heatmap draws lines: off-track fixes are distance input only.
+    if (widget.fetchTrackFn != null) {
+      return widget.fetchTrackFn!(path).then(cm.trackLine);
+    }
+    return widget.api.fetchTrackByPath(path).then(cm.trackLine);
   }
 
   Future<List<List<cm.Waypoint>>> _downloadTracks(List<String> paths) async {
@@ -158,8 +161,9 @@ class _RunHeatmapScreenState extends State<RunHeatmapScreen> {
       final localTracks = <List<cm.Waypoint>>[];
       final localIds = <String>{};
       for (final r in widget.runStore?.runs ?? const <cm.Run>[]) {
-        if (r.track.length < 2) continue;
-        localTracks.add(r.track);
+        final line = cm.trackLine(r.track);
+        if (line.length < 2) continue;
+        localTracks.add(line);
         localIds.add(r.id);
         if (localTracks.length >= _maxTracks) break;
       }

@@ -114,7 +114,7 @@ class RunListTile extends StatelessWidget {
   String? get _trackUrl =>
       _row?.trackUrl ?? _metadata?['track_url'] as String?;
 
-  List<Waypoint> get _inlineTrack => _run?.track ?? const [];
+  List<Waypoint> get _inlineTrack => trackLine(_run?.track ?? const []);
 
   /// Metres of gain, from the promoted column when there is one and the
   /// metadata bag otherwise. Zero and null both mean "no elevation signal", so

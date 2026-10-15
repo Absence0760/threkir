@@ -33,10 +33,15 @@ const double kElevationGainGpsMinDeltaM = 10;
 /// 3. Anything else — an import or a watch, whose altitude may already be
 ///    barometric (Garmin, Apple Watch, the custom watch) and whose device we
 ///    cannot see from here — keeps the route band, exactly as before.
+///
+/// Off-track fixes ([Waypoint.offTrack], the canopy fixes the recorder stored
+/// only for the distance replay) are left out of every case: `track` is the
+/// line ([trackLine]), and a 30-50 m fix's altitude is worse than its position.
 ({List<Waypoint> track, double minDeltaM, bool barometric}) runAltitude(
-  List<Waypoint> track,
+  List<Waypoint> stored,
   RunSource? source,
 ) {
+  final track = trackLine(stored);
   if (hasBarometricAltitude(track)) {
     return (
       track: [for (final w in track) _withBarometricElevation(w)],

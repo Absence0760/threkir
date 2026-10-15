@@ -311,9 +311,9 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     final api = widget.apiClient;
     if (api == null) return;
     if (run.routeId != null) return;
-    if (run.track.length < 2) return;
+    if (_line.length < 2) return;
     try {
-      final candidates = await api.fetchRoutesIntersectingTrack(run.track);
+      final candidates = await api.fetchRoutesIntersectingTrack(_line);
       if (candidates.isEmpty) return;
       final best = candidates.first;
       final lengthRatio = (best.distanceM - run.distanceMetres).abs() /
@@ -487,13 +487,13 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   void _toggleReplay() {
     final ctl = _replayController;
     if (ctl == null) {
-      if (run.track.length < 2) return;
+      if (_line.length < 2) return;
       final c = AnimationController(
         vsync: this,
         duration: const Duration(seconds: 15),
       );
       c.addListener(() {
-        final len = run.track.length;
+        final len = _line.length;
         final idx = (c.value * (len - 1)).floor().clamp(0, len - 1);
         if (idx != _replayIndex.value) {
           _replayIndex.value = idx;
@@ -595,7 +595,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
           await api.smoothedLocalTrack(run).timeout(kBackendLoadTimeout);
       if (line == null || !mounted || !identical(source, run.track)) return;
       setState(() {
-        _sidecarLine = line;
+        _sidecarLine = trackLine(line);
         _sidecarLineSource = source;
       });
     } catch (e) {
@@ -604,13 +604,32 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   }
 
   /// The track the map line draws when no matched line replaces it:
-  /// [_sidecarLine] while it is still over `run.track`, else `run.track`.
-  /// Never the sidecar under "Show raw GPS track".
+  /// [_sidecarLine] while it is still over `run.track`, else [_line]. Never
+  /// the sidecar under "Show raw GPS track". Either way, only on-track fixes.
   List<Waypoint> get _lineTrack => !widget.preferences.showRawTrack &&
           _sidecarLine != null &&
           identical(_sidecarLineSource, run.track)
       ? _sidecarLine!
-      : run.track;
+      : _line;
+
+  /// The run's line: `run.track` without its off-track fixes ([trackLine]),
+  /// the canopy fixes the recorder stored only for the server's distance
+  /// replay. The map, replay, route match, race phases, segments and best
+  /// efforts read it; splits, moving time and heart rate keep `run.track`,
+  /// because they measure on the credited distance every point carries.
+  /// Memoised on `run.track`'s identity: the replay builder reads it every
+  /// tick.
+  List<Waypoint> get _line {
+    final source = run.track;
+    if (!identical(source, _lineSource)) {
+      _lineSource = source;
+      _lineCache = trackLine(source);
+    }
+    return _lineCache;
+  }
+
+  List<Waypoint>? _lineSource;
+  List<Waypoint> _lineCache = const [];
 
   /// The line the map draws ([displayedRunTrack]), memoised on its inputs:
   /// the replay builder reads it every tick, and the raw view of a smoothed
@@ -1130,7 +1149,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
             // alter the numbers. The "Show raw GPS track"
             // preference forces the raw line for verification.
             final mapTrack = _mapTrack;
-            // The replay index advances over `run.track`, but
+            // The replay index advances over [_line], but
             // the line on screen is `mapTrack` — the matched
             // line when the worker produced one, with a
             // different length + coords. Feed the dot a point
@@ -1141,7 +1160,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
             // map is showing the raw track.
             final dotIndex = replayDotIndex(
               replayIndex,
-              run.track.length,
+              _line.length,
               mapTrack.length,
             );
             return LiveRunMap(
@@ -1170,12 +1189,13 @@ class _RunDetailScreenState extends State<RunDetailScreen>
               // Linked cursor: paints a pulsing marker at
               // the elevation chart's current pointer index
               // on the live track. Gated on index alignment —
-              // the chart reads run.track, but the map
-              // sometimes shows the matched track, which has
-              // a different index space. The sidecar line and
-              // the raw view are run.track point for point.
+              // the chart reads the line ([_altitudeTrack]),
+              // but the map sometimes shows the matched track,
+              // which has a different index space. The sidecar
+              // line and the raw view are the line point for
+              // point.
               hoverIdx: !identical(mapTrack, _matchInfo?.track) &&
-                      mapTrack.length == run.track.length
+                      mapTrack.length == _line.length
                   ? _chartHoverIdx
                   : null,
             );
@@ -1487,7 +1507,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       // Race-strategy review — only when the run was recorded under a
       // pacing strategy this build can read (metadata.pacing_strategy).
       PacingStrategySection(
-          metadata: run.metadata, track: run.track, unit: unit),
+          metadata: run.metadata, track: _line, unit: unit),
 
       // HR zone breakdown — only when the track carries per-point bpm
       // (Strava streams, FIT/TCX imports, future watch recorders).
@@ -1516,7 +1536,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
           runId: run.id,
           runOwnerId: widget.apiClient!.userId,
           routeId: run.routeId,
-          track: run.track,
+          track: _line,
         ),
       ],
 
@@ -1988,7 +2008,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   List<MapEntry<String, Duration>> _computeBestEfforts() {
     final out = <MapEntry<String, Duration>>[];
     for (final e in _bestEffortDistances.entries) {
-      final best = fastestWindowOf(run.track, e.value);
+      final best = fastestWindowOf(_line, e.value);
       if (best != null) out.add(MapEntry(e.key, best));
     }
     return out;
@@ -2814,7 +2834,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     showTopBanner(
         context,
         l10n.runDetailRouteSaved(
-            name, simplified.length, run.track.length - simplified.length));
+            name, simplified.length, _line.length - simplified.length));
   }
 
   /// Open the share sheet — lets the user share an image of the run card or
@@ -2994,8 +3014,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   Future<bool> _confirmMakePublic(List<PrivacyZone> zones) async {
     final l10n = AppLocalizations.of(context);
     final hasZones = zones.isNotEmpty;
-    final track = run.track;
-    final intersectsZone = trackEntersAnyZone(track, zones);
+    final intersectsZone = trackEntersAnyZone(_line, zones);
     final body = intersectsZone
         ? l10n.runDetailMakePublicBodyZone
         : hasZones

@@ -112,8 +112,20 @@ function report(testInfo: TestInfo, lines: string[], label: string): void {
 	}
 }
 
-export const test = mockRouteTest.extend<{ crashNet: CrashNetOptions }>({
+export const test = mockRouteTest.extend<{ crashNet: CrashNetOptions; crashNetArmed: void }>({
 	crashNet: [{}, { option: true }],
+
+	// Fixtures are lazy: a test that asks only for `browser` (most saga specs,
+	// which make their own context) never instantiates `context`, so without
+	// this the net below never ran for them and `browser.newContext` was
+	// never intercepted.
+	crashNetArmed: [
+		async ({ context }, use) => {
+			void context;
+			await use();
+		},
+		{ auto: true }
+	],
 
 	// `context` is overridden (rather than the net being an auto fixture) so
 	// its teardown runs after every page the test used has closed, which is

@@ -38,6 +38,18 @@ test('an uncaught exception fails the test', async ({ page }) => {
 	await throwUncaught(page, PROBE);
 });
 
+// Asks for `browser` alone, the shape of most saga specs. Fixtures are lazy,
+// so this goes red only while the net arms itself without being asked for.
+test('a test that never asks for page or context is still watched', async ({ browser }) => {
+	test.fail();
+	const context = await browser.newContext();
+	try {
+		await throwUncaught(await context.newPage(), PROBE);
+	} finally {
+		await context.close();
+	}
+});
+
 test.describe('each detector records its crash', () => {
 	test.describe('pageerror', () => {
 		test.use({ crashNet: { mode: 'fail', allow: [{ match: PROBE, reason: 'thrown by this case' }] } });

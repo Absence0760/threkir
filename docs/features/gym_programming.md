@@ -520,7 +520,7 @@ Flutter (byte-identical twin) mirrors the web surfaces — strictly **downstream
 | `widgets/routine_builder_sheet.dart` (new) | `RoutineEditor` | Reuse the `gym_compose_sheet.dart` block model; add target fields (sets, rep range, weight or %1RM, RPE), drag-reorder, superset toggle; `gym_exercise_names` autocomplete; `normaliseExerciseName` key binds plan → log. |
 | `screens/routine_execute_screen.dart` (new) | `/gym/session/[routineId]` | The "dwell-in capture page" — owns the foreground for the session; set checklist + rest sheet. |
 | `widgets/gym_execution_band.dart` (new) | `GymExecutionBand` | Mirrors `workout_execution_band.dart` structure: line 1 label + reps/load-hit pip; line 2 rest countdown; line 3 collapsible skip/rewind/abandon. Routed through a `ValueNotifier`. No pace pip. |
-| `widgets/gym_summary_card.dart` / `gym_detail_screen.dart` (extend) | `GymWorkoutReview` | Prescribed-vs-actual adherence + a "next target" suggestion; self-hides for ad-hoc workouts. |
+| `widgets/gym_summary_card.dart` / `gym_detail_screen.dart` (extend) | `GymWorkoutReview` | Prescribed-vs-actual adherence + a "next target" suggestion — one per lift, never one per routine block (`next_target_hints` parity pair, `buildNextTargetHints`); self-hides for ad-hoc workouts. |
 
 Weight display/entry stays kg-canonical via the Dart weight formatter (byte-for-byte mirror of `format/weight.ts`); %1RM resolves to kg at instantiation via `estimatedOneRepMax`.
 

@@ -734,6 +734,9 @@ create table clubs (
                                                        -- `clubs_freeze_managed_columns`. Written only by
                                                        -- `set_club_strava_link` (service role) and cleared by
                                                        -- `unlink_club_strava`. `search_clubs` returns it.
+                                                       -- `clubs_strava_club_id_check` bounds it to
+                                                       -- `> 0` when set (20270829000041, validated in
+                                                       -- 20270829000042).
   created_at    timestamptz default now(),
   updated_at    timestamptz default now()
 );

@@ -8,7 +8,7 @@
 -- the Threkir club, once per Strava club.
 
 begin;
-select plan(17);
+select plan(18);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -125,6 +125,15 @@ select is(
   'invalid_strava_club',
   'a missing Strava club id is refused rather than read as an unlink');
 reset role;
+
+-- The RPC's own refusal above is one function body; the CHECK is what holds
+-- for every other privileged writer.
+select throws_ok(
+  $$ update clubs set strava_club_id = 0
+      where id = '5c5c5c5c-0000-0000-0000-0000000000c2' $$,
+  '23514',
+  'new row for relation "clubs" violates check constraint "clubs_strava_club_id_check"',
+  'a direct privileged write of a non-positive Strava club id is refused by the column CHECK');
 
 -- ── unlinking is a client RPC, for the club's admins only ───────────────────
 set local role authenticated;

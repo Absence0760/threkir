@@ -109,8 +109,10 @@
 		} finally {
 			if (id === activeId) loadingThread = false;
 		}
+		const newestShown = messages.findLast((m) => m.sender_id === id);
+		if (!newestShown) return;
 		try {
-			await markDmThreadRead(id);
+			await markDmThreadRead(id, newestShown);
 			markedReadAt.set(id, Date.now());
 			// Zero the unread badge locally without a full refetch.
 			threads = threads.map((t) => (t.partnerId === id ? { ...t, unread: 0 } : t));

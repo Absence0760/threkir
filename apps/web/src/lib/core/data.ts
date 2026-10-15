@@ -9813,15 +9813,24 @@ export async function sendDm(
 }
 
 /// Mark every message from `otherId` to the viewer as read.
-export async function markDmThreadRead(otherId: string): Promise<void> {
+/// Marks the partner's unread messages read up to and including `through`, the
+/// newest one on screen (created_at, then id, the thread's own order). A reply
+/// that lands after the thread was read stays unread until it is shown.
+export async function markDmThreadRead(
+	otherId: string,
+	through: Pick<DirectMessage, 'id' | 'created_at'>,
+): Promise<void> {
 	const me = auth.user?.id;
 	if (!me) return;
-	await supabase
+	const at = through.created_at;
+	const { error } = await supabase
 		.from(TABLES.direct_messages)
 		.update({ read_at: new Date().toISOString() })
 		.eq('sender_id', otherId)
 		.eq('recipient_id', me)
-		.is('read_at', null);
+		.is('read_at', null)
+		.or(`created_at.lt."${at}",and(created_at.eq."${at}",id.lte.${through.id})`);
+	if (error) throw dbError(error);
 }
 
 // --- Coach-athlete roster (persona #46) -------------------------------------

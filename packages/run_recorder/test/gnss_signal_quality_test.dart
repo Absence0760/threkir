@@ -87,7 +87,9 @@ void main() {
         GnssStatusSample(meanTopCn0DbHz: cn0, usedInFix: 9, l5Used: false);
 
     test('summarises readings taken while recording and not paused', () async {
-      final status = StreamController<GnssStatusSample>();
+      // Broadcast, like the platform channel: a reading sent before begin()
+      // subscribes is dropped, not buffered and replayed into the recording.
+      final status = StreamController<GnssStatusSample>.broadcast();
       final r = RunRecorder(gnssStatus: () => status.stream)
         ..debugPrepareWithoutStream();
       status.add(at(10));

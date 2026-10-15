@@ -202,4 +202,66 @@ test.describe('run reactions, comment likes and mentions', () => {
 			await ctx.close();
 		}
 	});
+
+	test('un-reacting and unliking delete the rows and clear the counts', async ({ browser, mockRoute }) => {
+		const commentId = await insertComment({
+			run_id: RUNNER_PUBLIC_RUN_ID,
+			author_id: USER_A.id,
+			body: 'see you at the track [e2e-rlm]',
+		});
+		const admin = getAdminClient();
+		const seeded = await Promise.all([
+			admin.from('run_reactions').insert({ user_id: USER_B.id, run_id: RUNNER_PUBLIC_RUN_ID, reaction: 'wave' }),
+			admin.from('run_comment_likes').insert({ user_id: USER_B.id, comment_id: commentId }),
+		]);
+		for (const { error } of seeded) if (error) throw new Error(`seed failed: ${error.message}`);
+
+		const ctx = await browser.newContext({ storageState: USER_B.storageStatePath });
+		await ctx.addInitScript(setConsentAccepted);
+		const page = await ctx.newPage();
+		try {
+			await mockRoute(page, '**/functions/v1/clip-public-track', (route) =>
+				route.fulfill({ status: 200, contentType: 'application/json', body: '{"points":[]}' }),
+			);
+			await page.goto(`/share/run/${RUNNER_PUBLIC_RUN_ID}`);
+
+			const wave = page.locator('[data-testid="run-reactions"] [data-reaction="wave"]');
+			await expect(wave).toHaveAttribute('aria-pressed', 'true', { timeout: 10_000 });
+			await expect(wave.locator('.reaction-count')).toHaveText('1');
+			await wave.click();
+			await expect(wave).toHaveAttribute('aria-pressed', 'false', { timeout: 10_000 });
+			await expect(wave.locator('.reaction-count')).toHaveCount(0);
+
+			const like = page
+				.locator('.comment')
+				.filter({ hasText: 'see you at the track' })
+				.locator('[data-testid="comment-like"]')
+				.first();
+			await expect(like).toHaveAttribute('aria-pressed', 'true', { timeout: 10_000 });
+			await expect(like.locator('.like-count')).toHaveText('1');
+			await like.click();
+			await expect(like).toHaveAttribute('aria-pressed', 'false', { timeout: 10_000 });
+			await expect(like.locator('.like-count')).toHaveCount(0);
+
+			const reactionsLeft = await readCount(
+				'alex wave reactions',
+				admin
+				.from('run_reactions')
+				.select('user_id', { count: 'exact', head: true })
+				.eq('run_id', RUNNER_PUBLIC_RUN_ID)
+				.eq('user_id', USER_B.id)
+				.eq('reaction', 'wave'));
+			expect(reactionsLeft).toBe(0);
+			const likesLeft = await readCount(
+				'alex comment likes',
+				admin
+				.from('run_comment_likes')
+				.select('user_id', { count: 'exact', head: true })
+				.eq('comment_id', commentId)
+				.eq('user_id', USER_B.id));
+			expect(likesLeft).toBe(0);
+		} finally {
+			await ctx.close();
+		}
+	});
 });

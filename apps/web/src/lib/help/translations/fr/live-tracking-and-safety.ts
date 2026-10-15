@@ -31,7 +31,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'note',
 					tone: 'tip',
-					text: 'Pour partager chaque course sans avoir à y penser, activez **Partage en direct automatique** sous **Contacts de sécurité** dans l\'onglet **Vous**. Ce réglage ne s\'applique qu\'à ce téléphone, et la course en cours peut être vue par toute personne qui a le lien.',
+					text: 'Pour partager chaque course sans avoir à y penser, activez **Partage en direct automatique** sous **Contacts de sécurité** dans l\'onglet **Vous**. Ce réglage ne s\'applique qu\'à ce téléphone. Sa description indique qui peut suivre : toute personne qui a le lien, ou seulement vos contacts de sécurité (voir la dernière section).',
 				},
 				{
 					type: 'illustration',
@@ -102,6 +102,28 @@ export const translation: GuideTranslation = {
 				},
 			],
 		},
+		{
+			heading: 'Partager uniquement avec vos contacts de sécurité',
+			blocks: [
+				{
+					type: 'p',
+					text: 'Là où le partage réservé aux contacts de sécurité est activé, la description sous **Partage en direct automatique** indique que le partage n\'est jamais public. La course en cours est alors cachée à tous sauf vous, jusqu\'à ce qu\'une alerte de retard ou de sortie d\'itinéraire se déclenche. C\'est seulement à ce moment que chaque contact confirmé reçoit son propre lien, dans l\'e-mail ou le SMS d\'alerte.',
+				},
+				{
+					type: 'list',
+					items: [
+						'**Partage en direct automatique** s\'active tout seul dès que vous réglez une alerte de retard, sauf si vous l\'avez vous-même désactivé.',
+						'Toucher **Partager le lien en direct** crée toujours un lien public, comme décrit plus haut.',
+						'Le lien d\'un contact affiche **Contacts de sécurité uniquement**. Il est réservé à cette personne : demandez-lui de ne pas le transférer. Il cesse de fonctionner à la fin de la course, quand vous arrêtez le partage, ou après 48 heures.',
+					],
+				},
+				{
+					type: 'note',
+					tone: 'caution',
+					text: 'Le partage réservé aux contacts de sécurité n\'est peut-être pas encore activé. D\'ici là, un partage en direct automatique peut être vu par toute personne qui a le lien.',
+				},
+			],
+		},
 	],
 	sources: {
 		title: 'cee4d0a20867ed19',
@@ -113,7 +135,8 @@ export const translation: GuideTranslation = {
 		's0.b1': 'f45b4fcfccc4fb7e',
 		's0.b2': '7845c9dd61f6fcbd',
 		's0.b3': '21b6940abd1d8d09',
-		's0.b4': '822ce03c51253ce8',
+		's0.b4': '5ac2ca8e766db07b',
+		's0.b5': 'eb575f135ac66d66',
 		's1.heading': '7fe0f3d3bca83ca6',
 		's1.b0': '8983069471135762',
 		's1.b1.i0': '6675420e0916edbb',
@@ -130,6 +153,11 @@ export const translation: GuideTranslation = {
 		's2.b3': '0694224872716044',
 		's3.heading': '4799e1fbd28720f2',
 		's3.b0': '2557edbaef77cc2c',
-		's0.b5': 'eb575f135ac66d66',
+		's4.heading': '77cc43259f01d7cd',
+		's4.b0': '5486560d83005e0c',
+		's4.b1.i0': '263589d27a310489',
+		's4.b1.i1': '5d8ab8e5ec1ecd1c',
+		's4.b1.i2': 'de89e5227402c8e0',
+		's4.b2': 'd3861ef7e8756240',
 	},
 };

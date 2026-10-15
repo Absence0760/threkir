@@ -217,7 +217,7 @@ test.describe('/plans/[id] — Adjust with AI', () => {
 
 		const error = box.getByRole('alert');
 		await expect(error).toContainText('updated AI disclosure', { timeout: 10_000 });
-		await expect(error.getByRole('link')).toHaveAttribute('href', '/settings/account');
+		await expect(error.getByRole('link')).toHaveAttribute('href', '/settings/account#ai-consent');
 		await expect(box.getByRole('button', { name: 'Apply AI-suggested changes' })).toHaveCount(0);
 	});
 

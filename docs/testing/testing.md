@@ -392,6 +392,8 @@ test.use({ crashNet: { allow: [{ match: 'each_key_duplicate', reason: '#1234, fi
 
 Prefer `allow` — it excuses only the matching crash, and an entry that excused nothing in the test fails it, so it cannot outlive the bug it was written for. `CRASH_NET=report` logs instead of failing (a `crash-net` test annotation, plus a `::warning` annotation on GitHub Actions); unset or `fail` fails, anything else throws. CI runs every Playwright lane with `CRASH_NET=report` for the report-only pass of #1161; flip it by deleting those `env` lines in `ci.yml` ([decisions § 1943](../architecture/decisions.md)). `cross-cutting/crash-net.spec.ts` pins `mode: 'fail'` and proves each detector bites; `fixtures/crash-net.test.ts` (web unit suite) covers the classification and the opt-out validation.
 
+**A surface that derives from activity is also swept at the minimum.** `cross-cutting/minimal-activity-sweep.spec.ts` (#1161 round 3) seeds one account through `fixtures/minimal-activity.ts` — `seedMinimalActivity(user)`: a 3 m / 10 s run with a 2-point track, a 0 m run with one fix, a one-set gym session and a 2-point route — and visits every authenticated page that reads runs, gym sessions or routes, with the net pinned to `fail`. Each page must also print no NaN, infinity or negative zero, by the pattern the mobile sweep (`apps/mobile_android/test/rendered_text_sweep.dart`) uses, held in `fixtures/degenerate-text.ts` and pinned to the Dart source by its unit test. The routes are a table in the spec; a new page that derives from activity is one line there.
+
 ---
 
 ## How to add a new test

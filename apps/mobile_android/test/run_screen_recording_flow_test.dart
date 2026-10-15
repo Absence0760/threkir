@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:core_models/core_models.dart' as cm;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -1150,6 +1151,106 @@ void main() {
       }
       tester.takeException();
       await reduced.dispose();
+    });
+  });
+
+  group('RunScreen — pre-run Android permission dialogs', () {
+    // permission_handler values: location = 3, locationAlways = 4; status
+    // denied = 0, granted = 1.
+    final settingsCalls = <String>[];
+
+    void mockPermissions({required bool alwaysGranted}) {
+      settingsCalls.clear();
+      mockMethodChannel('flutter.baseflow.com/permissions/methods',
+          (call) async {
+        switch (call.method) {
+          case 'checkPermissionStatus':
+            return call.arguments == 4 && !alwaysGranted ? 0 : 1;
+          case 'requestPermissions':
+            return {for (final p in (call.arguments as List)) p: 1};
+          case 'openAppSettings':
+            settingsCalls.add('app');
+            return true;
+          default:
+            return null;
+        }
+      });
+      mockMethodChannel('run_app/battery_settings', (call) async {
+        settingsCalls.add('battery');
+        return true;
+      });
+    }
+
+    Future<void> tapStartToDialog(WidgetTester tester) async {
+      await tester.tap(find.text('START'));
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    Future<void> leaveDialog(WidgetTester tester, String label) async {
+      await tester.tap(find.widgetWithText(FilledButton, label).last);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      // Longer than the 3 s countdown, so a start that was not held would
+      // already be recording.
+      for (var i = 0; i < 5; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+    }
+
+    Future<void> unmount(WidgetTester tester) async {
+      await tester.pumpWidget(const SizedBox());
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      tester.takeException();
+    }
+
+    testWidgets(
+        'Open settings on "Allow location all the time" holds the start '
+        'instead of recording behind Settings', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      try {
+        mockPermissions(alwaysGranted: false);
+        await pumpRunScreen(tester);
+        await tapStartToDialog(tester);
+        expect(find.text('Allow location all the time'), findsOneWidget);
+
+        await leaveDialog(tester, 'Open settings');
+
+        expect(settingsCalls, ['app']);
+        expect(find.text('START'), findsOneWidget,
+            reason: 'the runner is in Settings; the run must wait for them '
+                'to come back and tap START again');
+        expect(find.text('Keep recording alive in the background'),
+            findsNothing);
+        await unmount(tester);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    testWidgets(
+        'Open settings on the battery-optimisation hint holds the start too',
+        (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      try {
+        mockPermissions(alwaysGranted: true);
+        await pumpRunScreen(tester);
+        await tapStartToDialog(tester);
+        expect(find.text('Keep recording alive in the background'),
+            findsOneWidget);
+
+        await leaveDialog(tester, 'Open settings');
+
+        expect(settingsCalls, ['battery']);
+        expect(find.text('START'), findsOneWidget);
+        await unmount(tester);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
     });
   });
 

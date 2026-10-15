@@ -7,6 +7,7 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
 import 'package:core_models/core_models.dart'
     show ActivityType, DistanceUnit, PlanWorkoutRow, TrainingPlanRow;
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderProxyBox;
 import 'package:flutter/scheduler.dart';
@@ -1257,11 +1258,13 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   /// run starts (persona #57). Non-blocking — the run proceeds either
   /// way; recording still works while the app is on screen. Shows once:
   /// a dismissal persists (issue #266) and only re-arms if always-on is
-  /// later granted then revoked. Returns false when the runner chose to read
-  /// the location guide instead, so the start is abandoned rather than the
-  /// countdown running out behind the guide.
+  /// later granted then revoked. Returns false when the runner left for the
+  /// location guide or for Settings, so the start is abandoned rather than
+  /// the countdown and recording running out behind them; they tap START
+  /// again on their return.
   Future<bool> _maybeNudgeBackgroundLocation() async {
-    if (!Platform.isAndroid) return true;
+    final isAndroid = defaultTargetPlatform == TargetPlatform.android;
+    if (!isAndroid) return true;
     final foreground = await Permission.location.isGranted;
     final always = await Permission.locationAlways.isGranted;
     if (shouldRearmBackgroundLocationNudge(
@@ -1275,7 +1278,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       }
     }
     if (!shouldNudgeBackgroundLocation(
-      isAndroid: Platform.isAndroid,
+      isAndroid: isAndroid,
       foregroundGranted: foreground,
       alwaysGranted: always,
       alreadyDismissed: widget.preferences.backgroundLocationNudgeDismissed,
@@ -1320,8 +1323,12 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         if (mounted) await openGuide(context, 'location-permission');
         return false;
       case _BackgroundLocationChoice.openSettings:
-        await openAppSettings();
-        return true;
+        try {
+          await openAppSettings();
+        } catch (e) {
+          debugPrint('openAppSettings (background location) failed: $e');
+        }
+        return false;
       case _BackgroundLocationChoice.startAnyway:
       case null:
         return true;
@@ -1333,14 +1340,16 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   /// service mid-run unless the app is exempted from battery optimisation,
   /// silently truncating a long effort. Surface a single dismissible hint
   /// deep-linking to the battery-optimisation settings (App Info as the
-  /// fallback). Android-only, non-blocking — the run proceeds either way.
-  /// Wrapped so a settings-deep-link failure can't abort the run start.
-  Future<void> _maybeShowBatteryOptHint() async {
+  /// fallback). Android-only and never a gate on the run itself. Returns
+  /// false when the runner went to Settings, so the start is abandoned
+  /// rather than recording behind the settings screen.
+  Future<bool> _maybeShowBatteryOptHint() async {
+    final isAndroid = defaultTargetPlatform == TargetPlatform.android;
     if (!shouldShowBatteryOptHint(
-      isAndroid: Platform.isAndroid,
+      isAndroid: isAndroid,
       alreadyShown: widget.preferences.batteryOptHintShown,
     )) {
-      return;
+      return true;
     }
     // Mark shown up front so a crash / early-dismiss can't re-trigger it on
     // the next run — the hint is informational, once is enough.
@@ -1349,7 +1358,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     } catch (e) {
       debugPrint('setBatteryOptHintShown failed: $e');
     }
-    if (!mounted) return;
+    if (!mounted) return false;
     final openSettings = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -1367,12 +1376,12 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         ],
       ),
     );
-    if (openSettings == true) {
-      await openBatteryOptimisationExemption(
-        isAndroid: Platform.isAndroid,
-        openAppSettingsFallback: openAppSettings,
-      );
-    }
+    if (openSettings != true) return true;
+    await openBatteryOptimisationExemption(
+      isAndroid: isAndroid,
+      openAppSettingsFallback: openAppSettings,
+    );
+    return false;
   }
 
   Future<void> _selectRoute() async {
@@ -1405,8 +1414,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       _startRequested = false;
       return;
     }
-    await _maybeShowBatteryOptHint();
-    if (!mounted) {
+    final proceedAfterBatteryHint = await _maybeShowBatteryOptHint();
+    if (!mounted || !proceedAfterBatteryHint) {
       _startRequested = false;
       return;
     }

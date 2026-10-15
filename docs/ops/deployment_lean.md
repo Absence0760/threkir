@@ -55,6 +55,9 @@ Fully functional web launch with backups intact.
   the Coach's key and daily counter) stays unset until its decisions §12
   liability sign-off and the v3 AI-disclosure copy sign-off land; it is not a
   Pro storefront gate, and on its own it changes nothing without the Coach flag.
+  `PUBLIC_AI_PLAN_EDIT_ENABLED` (Adjust with AI on `/plans/[id]`, same key and
+  counter) stays unset the same way until its decisions § 1979 sign-off and the
+  v4 disclosure copy sign-off land.
 - No mobile stores.
 
 ### Rock-bottom — ~$10–11/mo (coach off) — SELECTED 2026-07-02, DEPLOYED 2026-07-11

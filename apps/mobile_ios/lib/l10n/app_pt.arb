@@ -3236,7 +3236,7 @@
   "platePhotoFat": "Gordura (g)",
   "platePhotoSave": "Guardar entradas ({count})",
   "platePhotoSaving": "A guardar…",
-  "platePhotoErrorConsent": "O registo por fotografia do prato precisa das informações atualizadas sobre IA. Abra o Coach para as rever e aceitar.",
+  "platePhotoErrorConsent": "O registo por fotografia do prato precisa das informações atualizadas sobre IA. Aceite-as em Definições → Conta.",
   "platePhotoErrorPro": "Registar a partir de uma fotografia é uma funcionalidade Pro.",
   "platePhotoErrorRate": "Registou muitas fotografias nesta hora. Tente mais tarde ou adicione a refeição manualmente.",
   "platePhotoErrorInvalid": "Não foi possível ler essa imagem. Tente outra fotografia.",

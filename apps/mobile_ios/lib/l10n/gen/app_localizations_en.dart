@@ -11454,7 +11454,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get platePhotoErrorConsent =>
-      'The plate-photo logger needs the updated AI disclosure. Open the Coach to review and accept it.';
+      'The plate-photo logger needs the updated AI disclosure. Accept it in Settings → Account.';
 
   @override
   String get platePhotoErrorPro => 'Logging from a photo is a Pro feature.';

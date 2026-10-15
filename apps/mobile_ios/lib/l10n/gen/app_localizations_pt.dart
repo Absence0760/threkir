@@ -11575,7 +11575,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get platePhotoErrorConsent =>
-      'O registo por fotografia do prato precisa das informações atualizadas sobre IA. Abra o Coach para as rever e aceitar.';
+      'O registo por fotografia do prato precisa das informações atualizadas sobre IA. Aceite-as em Definições → Conta.';
 
   @override
   String get platePhotoErrorPro =>
@@ -27755,7 +27755,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get platePhotoErrorConsent =>
-      'O registro por foto do prato precisa das informações atualizadas sobre IA. Abra o Coach para revisar e aceitar.';
+      'O registro por foto do prato precisa das informações atualizadas sobre IA. Aceite-as em Configurações → Conta.';
 
   @override
   String get platePhotoErrorPro =>

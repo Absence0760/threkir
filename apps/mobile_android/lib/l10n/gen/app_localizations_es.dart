@@ -11569,7 +11569,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get platePhotoErrorConsent =>
-      'El registro con foto del plato necesita la información actualizada sobre IA. Abre el Coach para revisarla y aceptarla.';
+      'El registro con foto del plato necesita la información actualizada sobre IA. Acéptala en Ajustes → Cuenta.';
 
   @override
   String get platePhotoErrorPro =>

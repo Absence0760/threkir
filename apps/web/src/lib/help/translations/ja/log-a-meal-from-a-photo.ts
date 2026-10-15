@@ -12,7 +12,7 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						'写真からの記録はProの機能です。手入力での食事記録は引き続き無料です。',
-						'AIを使うため、最新のAIに関する説明への同意が必要です。同意を求められたら、コーチを開いて同意してください。',
+						'AIを使うため、最新のAIに関する説明への同意が必要です。同意を求められたら、設定 → アカウントを開いて同意してください。',
 						'写真は、お皿に何があるかを推定するためだけに使われます。送信前に位置情報とカメラの情報は削除され、Threkirが写真を保存することはありません。',
 					],
 				},
@@ -79,7 +79,7 @@ export const translation: GuideTranslation = {
 		summary: 'aeef5fef4857acdc',
 		's0.heading': '74e492d5d0df0bab',
 		's0.b0.i0': 'd03e553125a96101',
-		's0.b0.i1': 'd8c1c7bda37cffa1',
+		's0.b0.i1': 'ad91a1f646fd4777',
 		's0.b0.i2': '63338ba4abc28ffc',
 		's0.b1': '6791908473990cc8',
 		's1.heading': '1e1b85a2667ca4d5',

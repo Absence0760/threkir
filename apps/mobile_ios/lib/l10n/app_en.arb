@@ -15159,7 +15159,7 @@
   "@platePhotoSaving": {
     "description": "Button label while saving"
   },
-  "platePhotoErrorConsent": "The plate-photo logger needs the updated AI disclosure. Open the Coach to review and accept it.",
+  "platePhotoErrorConsent": "The plate-photo logger needs the updated AI disclosure. Accept it in Settings → Account.",
   "@platePhotoErrorConsent": {
     "description": "The endpoint refused for want of AI disclosure v5"
   },

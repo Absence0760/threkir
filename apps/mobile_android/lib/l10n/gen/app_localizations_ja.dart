@@ -11002,7 +11002,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get platePhotoErrorConsent =>
-      '食事写真による記録には、更新されたAIに関する説明への同意が必要です。コーチを開いて確認・同意してください。';
+      '食事写真による記録には、更新されたAIに関する説明への同意が必要です。設定 → アカウントで同意してください。';
 
   @override
   String get platePhotoErrorPro => '写真からの記録はProの機能です。';

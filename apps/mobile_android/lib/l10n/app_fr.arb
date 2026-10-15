@@ -3236,7 +3236,7 @@
   "platePhotoFat": "Lipides (g)",
   "platePhotoSave": "Enregistrer les entrées ({count})",
   "platePhotoSaving": "Enregistrement…",
-  "platePhotoErrorConsent": "La saisie par photo de repas nécessite l'information mise à jour sur l'IA. Ouvrez le Coach pour la consulter et l'accepter.",
+  "platePhotoErrorConsent": "La saisie par photo de repas nécessite l'information mise à jour sur l'IA. Acceptez-la dans Réglages → Compte.",
   "platePhotoErrorPro": "La saisie depuis une photo est une fonctionnalité Pro.",
   "platePhotoErrorRate": "Vous avez saisi beaucoup de photos cette heure-ci. Réessayez plus tard ou saisissez le repas à la main.",
   "platePhotoErrorInvalid": "Cette image n'a pas pu être lue. Essayez une autre photo.",

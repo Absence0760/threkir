@@ -12,7 +12,7 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						'Registrar desde una foto forma parte de Pro. Registrar alimentos a mano sigue siendo gratis.',
-						'Usa IA, así que necesita el aviso de IA más reciente. Si se te pide aceptarlo, abre el Entrenador y acéptalo allí.',
+						'Usa IA, así que necesita el aviso de IA más reciente. Si se te pide aceptarlo, abre Ajustes → Cuenta y acéptalo allí.',
 						'La foto solo se usa para calcular qué hay en el plato. Los datos de ubicación y de la cámara se eliminan antes de enviarla, y Threkir no guarda la foto.',
 					],
 				},
@@ -79,7 +79,7 @@ export const translation: GuideTranslation = {
 		summary: 'aeef5fef4857acdc',
 		's0.heading': '74e492d5d0df0bab',
 		's0.b0.i0': 'd03e553125a96101',
-		's0.b0.i1': 'd8c1c7bda37cffa1',
+		's0.b0.i1': 'ad91a1f646fd4777',
 		's0.b0.i2': '63338ba4abc28ffc',
 		's0.b1': '6791908473990cc8',
 		's1.heading': '1e1b85a2667ca4d5',

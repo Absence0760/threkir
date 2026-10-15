@@ -3236,7 +3236,7 @@
   "platePhotoFat": "脂質 (g)",
   "platePhotoSave": "項目を保存（{count}件）",
   "platePhotoSaving": "保存中…",
-  "platePhotoErrorConsent": "食事写真による記録には、更新されたAIに関する説明への同意が必要です。コーチを開いて確認・同意してください。",
+  "platePhotoErrorConsent": "食事写真による記録には、更新されたAIに関する説明への同意が必要です。設定 → アカウントで同意してください。",
   "platePhotoErrorPro": "写真からの記録はProの機能です。",
   "platePhotoErrorRate": "この1時間に多くの写真を記録しました。後でもう一度試すか、手動で追加してください。",
   "platePhotoErrorInvalid": "その画像を読み込めませんでした。別の写真を試してください。",

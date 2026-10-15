@@ -18978,7 +18978,7 @@ abstract class AppLocalizations {
   /// The endpoint refused for want of AI disclosure v5
   ///
   /// In en, this message translates to:
-  /// **'The plate-photo logger needs the updated AI disclosure. Open the Coach to review and accept it.'**
+  /// **'The plate-photo logger needs the updated AI disclosure. Accept it in Settings → Account.'**
   String get platePhotoErrorConsent;
 
   /// The endpoint refused because the runner is not Pro

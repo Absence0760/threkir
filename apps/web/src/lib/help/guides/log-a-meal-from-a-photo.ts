@@ -18,7 +18,7 @@ export const guide: Guide = {
 					type: 'list',
 					items: [
 						'Logging from a photo is part of Pro. Logging food by hand stays free.',
-						'It uses AI, so it needs the latest AI disclosure. If you are asked to accept it, open the Coach and accept it there.',
+						'It uses AI, so it needs the latest AI disclosure. If you are asked to accept it, open Settings → Account and accept it there.',
 						'The photo is used only to estimate what is on the plate. Location and camera details are removed before it is sent, and Threkir does not keep the photo.',
 					],
 				},

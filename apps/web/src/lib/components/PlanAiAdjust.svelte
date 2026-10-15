@@ -10,6 +10,7 @@
 	import { onMount, tick } from 'svelte';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import { markWorkoutSkipped, updatePlanWeek, updatePlanWorkout } from '#lib/core/data.ts';
+	import { AI_CONSENT_HREF } from '#lib/core/ai_disclosure.ts';
 	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { fmtKm } from '#lib/format/units.svelte.ts';
@@ -202,7 +203,7 @@
 		<p class="error" role="alert">
 			{error.message}
 			{#if error.consent}
-				<a href="/settings/account">{m('planDetail.aiAdjustErrorConsentLink')}</a>
+				<a href={AI_CONSENT_HREF}>{m('planDetail.aiAdjustErrorConsentLink')}</a>
 			{/if}
 		</p>
 	{/if}

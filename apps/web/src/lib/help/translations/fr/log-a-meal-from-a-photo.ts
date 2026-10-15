@@ -12,7 +12,7 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						'La saisie depuis une photo fait partie de Pro. Saisir ses aliments à la main reste gratuit.',
-						'Elle utilise l\'IA et nécessite donc la dernière version de l\'avis sur l\'IA. Si on vous demande de l\'accepter, ouvrez le Coach et acceptez-la là.',
+						'Elle utilise l\'IA et nécessite donc la dernière version de l\'avis sur l\'IA. Si on vous demande de l\'accepter, ouvrez Réglages → Compte et acceptez-la là.',
 						'La photo sert uniquement à estimer ce qu\'il y a dans l\'assiette. Les données de lieu et d\'appareil sont retirées avant l\'envoi, et Threkir ne conserve pas la photo.',
 					],
 				},
@@ -79,7 +79,7 @@ export const translation: GuideTranslation = {
 		summary: 'aeef5fef4857acdc',
 		's0.heading': '74e492d5d0df0bab',
 		's0.b0.i0': 'd03e553125a96101',
-		's0.b0.i1': 'd8c1c7bda37cffa1',
+		's0.b0.i1': 'ad91a1f646fd4777',
 		's0.b0.i2': '63338ba4abc28ffc',
 		's0.b1': '6791908473990cc8',
 		's1.heading': '1e1b85a2667ca4d5',

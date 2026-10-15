@@ -6,7 +6,7 @@
 
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { stripComments } from './core/strip_comments';
@@ -570,4 +570,46 @@ test('the plate-photo logger gates on the v5 disclosure before Pro, the throttle
 		.slice(gateIdx, source.indexOf('Paywall', gateIdx))
 		.includes('bypassPaywallEnabled');
 	assert.ok(!bypassInGate, `${file} must not let bypassPaywallEnabled skip the consent gate.`);
+});
+
+test('every AI consent prompt sends the runner to the one place that can record it', () => {
+	// The AI features used to point at two places: the plate-photo logger and
+	// the plan assistant at /coach, AI plan edits at /settings/account. /coach
+	// only asks a runner with NO record, so a stale acceptance sent there met a
+	// working chat and nothing to accept. Every `*ConsentLink` anchor now
+	// takes AI_CONSENT_HREF, and that target must accept from every state.
+	const gate = read('src/lib/core/ai_disclosure.ts');
+	const href = gate.match(/export const AI_CONSENT_HREF = '([^']+)'/)?.[1];
+	assert.ok(href, 'ai_disclosure.ts must export AI_CONSENT_HREF');
+	const [path, anchor] = href.split('#');
+	assert.equal(path, '/settings/account');
+
+	const settings = stripComments(read('src/routes/settings/account/+page.svelte'));
+	assert.ok(settings.includes(`id="${anchor}"`), `the ${path} consent section must carry id="${anchor}"`);
+	const accepts = settings.match(/onclick=\{acceptAiDisclosure\}/g) ?? [];
+	assert.equal(accepts.length, 2, `${path} must offer acceptance both for a stale record and for none`);
+
+	const files = [
+		'src/lib/components/PlatePhotoLogger.svelte',
+		'src/lib/components/PlanAiAdjust.svelte',
+		'src/lib/components/PlanEditor.svelte',
+	];
+	const found = new Set<string>();
+	const walk = (dir: string) => {
+		for (const e of readdirSync(dir, { withFileTypes: true })) {
+			const p = `${dir}/${e.name}`;
+			if (e.isDirectory()) walk(p);
+			else if (e.name.endsWith('.svelte') && /ConsentLink'\)/.test(read(p))) found.add(p);
+		}
+	};
+	walk('src');
+	assert.deepEqual([...found].sort(), [...files].sort(), 'a new AI consent link must be added to this guard');
+	for (const file of files) {
+		const source = read(file);
+		const links = source.match(/<a [^>]*>\{[mt]\('[\w.]+ConsentLink'\)\}<\/a>/g) ?? [];
+		assert.ok(links.length > 0, `${file}: consent link not found`);
+		for (const a of links) {
+			assert.ok(a.startsWith('<a href={AI_CONSENT_HREF}>'), `${file}: ${a} must use AI_CONSENT_HREF`);
+		}
+	}
 });

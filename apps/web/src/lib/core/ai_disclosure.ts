@@ -72,6 +72,15 @@ export const AI_DISCLOSURE_VERSION_FOOD_PHOTO_AI = 5;
 export const AI_DISCLOSURE_CURRENT_VERSION = AI_DISCLOSURE_VERSION_FOOD_PHOTO_AI;
 
 /**
+ * Where every AI feature sends a runner its endpoint refused for consent.
+ * Settings → Account records the disclosure from every state — never
+ * accepted, withdrawn, or accepted at an older version — while /coach only
+ * asks a runner with no record at all, so a stale acceptance sent there would
+ * land in a working chat with nothing to accept.
+ */
+export const AI_CONSENT_HREF = '/settings/account#ai-consent';
+
+/**
  * Machine-readable marker on every AI-consent denial. It rides a `code`
  * field rather than `error` because the three endpoints already use `error`
  * for their own (differently-shaped) strings — clients branch on `code`.

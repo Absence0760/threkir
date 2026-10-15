@@ -132,6 +132,28 @@ void main() {
     expect(store.saved, isEmpty);
   });
 
+  testWidgets('a consent refusal points at Settings → Account, not the Coach', (tester) async {
+    // The Coach only asks a runner with no record, so a stale acceptance sent
+    // there finds nothing to accept; Settings → Account accepts from both.
+    await _pump(
+      tester,
+      PlatePhotoForm(
+        store: _FakeStore(),
+        picker: _picker,
+        estimator: (_, _) async => throw const PlatePhotoError(PlatePhotoErrorKind.consent),
+      ),
+    );
+    await tester.tap(find.byKey(const ValueKey('plate-photo-camera')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('plate-photo-estimate')));
+    await tester.pump();
+    await tester.pump();
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    expect(find.text(l10n.platePhotoErrorConsent), findsOneWidget);
+    expect(l10n.platePhotoErrorConsent, contains('Settings → Account'));
+    expect(l10n.platePhotoErrorConsent, isNot(contains('Coach')));
+  });
+
   testWidgets('estimate stays disabled until a picture is chosen', (tester) async {
     await _pump(tester, PlatePhotoForm(store: _FakeStore(), picker: (_) async => null));
     final button = tester.widget<FilledButton>(find.byKey(const ValueKey('plate-photo-estimate')));

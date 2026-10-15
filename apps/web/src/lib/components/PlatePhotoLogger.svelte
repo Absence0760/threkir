@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { AI_CONSENT_HREF } from '#lib/core/ai_disclosure.ts';
 	import { createFoodEntry } from '#lib/core/data.ts';
 	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { entryTimestampFor } from '#lib/nutrition/diary_day.ts';
@@ -264,7 +265,7 @@
 	{#if error}
 		<p class="error" role="alert" data-testid="plate-photo-error">
 			{m(ERROR_KEYS[error])}
-			{#if error === 'consent'}<a href="/coach">{m('nutrition.platePhotoErrorConsentLink')}</a>{/if}
+			{#if error === 'consent'}<a href={AI_CONSENT_HREF}>{m('nutrition.platePhotoErrorConsentLink')}</a>{/if}
 			{#if error === 'pro_required'}<a href="/settings/upgrade">{m('nutrition.platePhotoErrorProLink')}</a>{/if}
 		</p>
 	{/if}

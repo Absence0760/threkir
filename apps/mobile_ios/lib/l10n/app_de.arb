@@ -3236,7 +3236,7 @@
   "platePhotoFat": "Fett (g)",
   "platePhotoSave": "Einträge speichern ({count})",
   "platePhotoSaving": "Wird gespeichert…",
-  "platePhotoErrorConsent": "Die Mahlzeiten-Fotoerfassung benötigt die aktualisierten KI-Hinweise. Öffne den Coach, um sie zu lesen und zu bestätigen.",
+  "platePhotoErrorConsent": "Die Mahlzeiten-Fotoerfassung benötigt die aktualisierten KI-Hinweise. Akzeptiere sie unter Einstellungen → Konto.",
   "platePhotoErrorPro": "Das Eintragen aus einem Foto ist eine Pro-Funktion.",
   "platePhotoErrorRate": "Du hast in dieser Stunde viele Fotos eingetragen. Versuch es später erneut oder trag die Mahlzeit von Hand ein.",
   "platePhotoErrorInvalid": "Dieses Bild konnte nicht gelesen werden. Versuch ein anderes Foto.",

@@ -11597,7 +11597,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get platePhotoErrorConsent =>
-      'La saisie par photo de repas nécessite l\'information mise à jour sur l\'IA. Ouvrez le Coach pour la consulter et l\'accepter.';
+      'La saisie par photo de repas nécessite l\'information mise à jour sur l\'IA. Acceptez-la dans Réglages → Compte.';
 
   @override
   String get platePhotoErrorPro =>

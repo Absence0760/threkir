@@ -11582,7 +11582,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get platePhotoErrorConsent =>
-      'Die Mahlzeiten-Fotoerfassung benötigt die aktualisierten KI-Hinweise. Öffne den Coach, um sie zu lesen und zu bestätigen.';
+      'Die Mahlzeiten-Fotoerfassung benötigt die aktualisierten KI-Hinweise. Akzeptiere sie unter Einstellungen → Konto.';
 
   @override
   String get platePhotoErrorPro =>

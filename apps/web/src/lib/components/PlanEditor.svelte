@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { AI_CONSENT_HREF } from '#lib/core/ai_disclosure.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { lengthLimit } from '#lib/core/column_limits.ts';
@@ -702,7 +703,7 @@
 						<p class="error ai-error" role="alert">
 							{aiError.message}
 							{#if aiError.consent}
-								<a href="/coach">{t('planEditor.aiErrorConsentLink')}</a>
+								<a href={AI_CONSENT_HREF}>{t('planEditor.aiErrorConsentLink')}</a>
 							{/if}
 						</p>
 					{/if}

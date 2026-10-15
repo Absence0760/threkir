@@ -3086,6 +3086,7 @@
       "ios"
     ],
     "routes": [
+      "/nutrition",
       "/nutrition/log"
     ],
     "sections": [
@@ -3096,7 +3097,7 @@
             "type": "list",
             "items": [
               "Registrar desde una foto forma parte de Pro. Registrar alimentos a mano sigue siendo gratis.",
-              "Usa IA, así que necesita el aviso de IA más reciente. Si se te pide aceptarlo, abre el Entrenador y acéptalo allí.",
+              "Usa IA, así que necesita el aviso de IA más reciente. Si se te pide aceptarlo, abre Ajustes → Cuenta y acéptalo allí.",
               "La foto solo se usa para calcular qué hay en el plato. Los datos de ubicación y de la cámara se eliminan antes de enviarla, y Threkir no guarda la foto."
             ]
           },
@@ -3113,8 +3114,8 @@
           {
             "type": "steps",
             "items": [
-              "Abre la página [[route:/nutrition/log|Registrar comida]].",
-              "En **Registrar desde una foto**, selecciona **Elegir una foto** y escoge una imagen de tu comida.",
+              "Abre [[route:/nutrition|Nutrición]] y selecciona **Registrar comida** y luego **Registrar desde una foto**.",
+              "Selecciona **Elegir una foto** y escoge una imagen de tu comida.",
               "Añade una **Nota (opcional)** si ayuda, por ejemplo media ración.",
               "Selecciona **Estimar**."
             ]

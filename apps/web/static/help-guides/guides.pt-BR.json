@@ -401,7 +401,7 @@
               "As corridas que você torna públicas aparecem no seu perfil e no feed. As corridas privadas ficam visíveis só para você.",
               "A participação em um clube público, e tudo o que você publica nele, pode ser vista por quem pode ver o clube.",
               "Enquanto você compartilha um link ao vivo, a corrida em andamento pode ser vista por qualquer pessoa que tenha o link.",
-              "Uma foto que você marca com **Mostrar na página da corrida**, em uma corrida pública vinculada a uma prova, aparece na página pública dessa prova com a legenda e o seu nome. Desmarque-a, ou deixe a corrida privada, para tirá-la de lá."
+              "Uma foto que você marca com **Mostrar na página da prova**, em uma corrida pública vinculada a uma prova, aparece na página pública dessa prova com a legenda e o seu nome. Desmarque-a, ou deixe a corrida privada, para tirá-la de lá."
             ]
           },
           {
@@ -3086,6 +3086,7 @@
       "ios"
     ],
     "routes": [
+      "/nutrition",
       "/nutrition/log"
     ],
     "sections": [
@@ -3096,7 +3097,7 @@
             "type": "list",
             "items": [
               "Registrar a partir de uma foto faz parte do Pro. Registrar alimentos manualmente continua gratuito.",
-              "Ele usa IA, então precisa do aviso de IA mais recente. Se pedirem que você o aceite, abra o Coach e aceite lá.",
+              "Ele usa IA, então precisa do aviso de IA mais recente. Se pedirem que você o aceite, abra Configurações → Conta e aceite lá.",
               "A foto só é usada para estimar o que está no prato. Os dados de localização e da câmera são removidos antes do envio, e o Threkir não guarda a foto."
             ]
           },
@@ -3113,8 +3114,8 @@
           {
             "type": "steps",
             "items": [
-              "Abra a página [[route:/nutrition/log|Registrar comida]].",
-              "Em **Registrar a partir de uma foto**, selecione **Escolher uma foto** e escolha uma imagem da sua refeição.",
+              "Abra [[route:/nutrition|Nutrição]] e selecione **Registrar comida** e depois **Registrar a partir de uma foto**.",
+              "Selecione **Escolher uma foto** e escolha uma imagem da sua refeição.",
               "Adicione uma **Observação (opcional)** se ajudar, por exemplo meia porção.",
               "Selecione **Estimar**."
             ]

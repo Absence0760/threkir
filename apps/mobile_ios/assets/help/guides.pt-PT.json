@@ -2551,7 +2551,7 @@
             "type": "list",
             "items": [
               "Cada pedido gasta uma das suas mensagens diárias do Coach de IA, o mesmo limite do Coach.",
-              "Precisa do aviso de IA mais recente. Se lhe pedirem para o aceitar, selecione **Reveja-as nas Definições** e aceite-o aí.",
+              "Precisa do aviso de IA mais recente. Se lhe pedirem para o aceitar, selecione **Reveja-o nas Definições** e aceite-o aí.",
               "Só os próximos treinos do seu plano e a alteração que escreveu são enviados para a IA."
             ]
           },
@@ -3086,6 +3086,7 @@
       "ios"
     ],
     "routes": [
+      "/nutrition",
       "/nutrition/log"
     ],
     "sections": [
@@ -3096,7 +3097,7 @@
             "type": "list",
             "items": [
               "Registar a partir de uma fotografia faz parte do Pro. Registar alimentos à mão continua gratuito.",
-              "Usa IA, por isso precisa do aviso de IA mais recente. Se lhe pedirem para o aceitar, abra o Coach e aceite-o aí.",
+              "Usa IA, por isso precisa do aviso de IA mais recente. Se lhe pedirem para o aceitar, abra Definições → Conta e aceite-o aí.",
               "A fotografia só é usada para estimar o que está no prato. Os dados de localização e da câmara são removidos antes do envio, e o Threkir não guarda a fotografia."
             ]
           },
@@ -3113,8 +3114,8 @@
           {
             "type": "steps",
             "items": [
-              "Abra a página [[route:/nutrition/log|Registar comida]].",
-              "Em **Registar a partir de uma fotografia**, selecione **Escolher uma fotografia** e escolha uma imagem da sua refeição.",
+              "Abra [[route:/nutrition|Nutrição]] e selecione **Registar comida** e depois **Registar a partir de uma fotografia**.",
+              "Selecione **Escolher uma fotografia** e escolha uma imagem da sua refeição.",
               "Acrescente uma **Nota (opcional)** se ajudar, por exemplo meia dose.",
               "Selecione **Estimar**."
             ]

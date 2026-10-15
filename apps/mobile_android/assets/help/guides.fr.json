@@ -569,13 +569,13 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Si votre compte Strava est connecté, ouvrez [[route:/social|Social]] sur le web, choisissez **Clubs** puis **Mes clubs**. Sous **Tes clubs Strava**, vous voyez les clubs Strava dont vous êtes membre. Vous seul voyez cette liste."
+            "text": "Si votre compte Strava est connecté, ouvrez [[route:/social|Social]] sur le web, choisissez **Clubs** puis **Mes clubs**. Sous **Vos clubs Strava**, vous voyez les clubs Strava dont vous êtes membre. Vous seul voyez cette liste."
           },
           {
             "type": "list",
             "items": [
               "**Créer sur Threkir** ouvre le formulaire d'un nouveau club avec son nom et son lieu déjà remplis, et lie les deux dès que vous créez le club.",
-              "**Lier à mon club** le relie à un club que vous gérez déjà ici : choisissez-le sous **Lequel de tes clubs est-ce ?** puis sélectionnez **Lier**.",
+              "**Lier à mon club** le relie à un club que vous gérez déjà ici : choisissez-le sous **Lequel de vos clubs est-ce ?** puis sélectionnez **Lier**.",
               "**Délier** supprime le lien. Aucun des deux clubs n'est modifié."
             ]
           },
@@ -3086,6 +3086,7 @@
       "ios"
     ],
     "routes": [
+      "/nutrition",
       "/nutrition/log"
     ],
     "sections": [
@@ -3096,7 +3097,7 @@
             "type": "list",
             "items": [
               "La saisie depuis une photo fait partie de Pro. Saisir ses aliments à la main reste gratuit.",
-              "Elle utilise l'IA et nécessite donc la dernière version de l'avis sur l'IA. Si on vous demande de l'accepter, ouvrez le Coach et acceptez-la là.",
+              "Elle utilise l'IA et nécessite donc la dernière version de l'avis sur l'IA. Si on vous demande de l'accepter, ouvrez Réglages → Compte et acceptez-la là.",
               "La photo sert uniquement à estimer ce qu'il y a dans l'assiette. Les données de lieu et d'appareil sont retirées avant l'envoi, et Threkir ne conserve pas la photo."
             ]
           },
@@ -3113,8 +3114,8 @@
           {
             "type": "steps",
             "items": [
-              "Ouvrez la page [[route:/nutrition/log|Enregistrer un aliment]].",
-              "Sous **Saisir depuis une photo**, sélectionnez **Choisir une photo** et choisissez une image de votre repas.",
+              "Ouvrez [[route:/nutrition|Nutrition]] et sélectionnez **Enregistrer un aliment**, puis **Saisir depuis une photo**.",
+              "Sélectionnez **Choisir une photo** et choisissez une image de votre repas.",
               "Ajoutez une **Note (facultatif)** si c'est utile, par exemple demi-portion.",
               "Sélectionnez **Estimer**."
             ]

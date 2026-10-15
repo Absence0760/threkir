@@ -1096,7 +1096,11 @@ class UnitFormat {
 
   /// Format pace: "5:30" (per km/mi based on unit).
   static String pace(double? secondsPerKm, DistanceUnit unit) {
-    if (secondsPerKm == null || secondsPerKm <= 0) return '--:--';
+    // `.round()` below throws on NaN and Infinity, and Infinity is what a
+    // 0 m distance divides to — a crash in the widget's build, not a label.
+    if (secondsPerKm == null || !secondsPerKm.isFinite || secondsPerKm <= 0) {
+      return '--:--';
+    }
     final secondsPerUnit = paceSecPerUnit(secondsPerKm, unit);
     // Round to whole seconds first, then split. Truncating the seconds field
     // in isolation diverged from web's formatPace (which rounds) on a
@@ -1128,7 +1132,9 @@ class UnitFormat {
 
   /// Format speed: "12.5 km/h" or "7.8 mph" (localised separator).
   static String speed(double? secondsPerKm, DistanceUnit unit) {
-    if (secondsPerKm == null || secondsPerKm <= 0) return '--';
+    if (secondsPerKm == null || !secondsPerKm.isFinite || secondsPerKm <= 0) {
+      return '--';
+    }
     final kmh = 3600 / secondsPerKm;
     final value = unit == DistanceUnit.mi ? kmh / 1.609344 : kmh;
     return formatFixed(value, 1, activeLocaleTag);
@@ -1285,8 +1291,9 @@ String formatElevationForPref(double? metres) =>
 /// Format a pace (seconds per km) using the active user unit pref,
 /// including the unit label (`/km` or `/mi`). Drop-in for surfaces that
 /// don't carry a Preferences dep — fixes feed/spectator/profile cards
-/// hard-coding `/km` for mile-unit users. Non-positive → em-dash.
-String formatPaceForPref(double secPerKm) => secPerKm <= 0
+/// hard-coding `/km` for mile-unit users. Non-positive or non-finite →
+/// em-dash.
+String formatPaceForPref(double secPerKm) => !secPerKm.isFinite || secPerKm <= 0
     ? '—'
     : '${UnitFormat.pace(secPerKm, activeDistanceUnit)} ${UnitFormat.paceLabel(activeDistanceUnit)}';
 

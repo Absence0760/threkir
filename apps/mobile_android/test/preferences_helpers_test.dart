@@ -135,6 +135,31 @@ void main() {
       expect(UnitFormat.pace(330.4, DistanceUnit.km), '5:30');
       expect(UnitFormat.pace(330.5, DistanceUnit.km), '5:31');
     });
+
+    test('degenerate input gets the placeholder, never NaN, Infinity or a throw',
+        () {
+      // What a brand-new account's minimal data divides to: seconds over a
+      // 0 m run is Infinity, 0 s over 0 m is NaN, and a 10 s / 3 m run is a
+      // real (slow) 55:33. Mirrors the degenerate table in web's
+      // pace_format.test.ts, except that 0 is already '--:--' here.
+      const cases = <(double, String, String, String)>[
+        (double.infinity, '--:--', '--', '—'),
+        (double.negativeInfinity, '--:--', '--', '—'),
+        (double.nan, '--:--', '--', '—'),
+        (-1.0, '--:--', '--', '—'),
+        (-0.0, '--:--', '--', '—'),
+        (0.0, '--:--', '--', '—'),
+        (3333.3, '55:33', '1.1', '55:33 /km'),
+      ];
+      for (final (input, pace, speed, forPref) in cases) {
+        expect(UnitFormat.pace(input, DistanceUnit.km), pace,
+            reason: 'UnitFormat.pace($input)');
+        expect(UnitFormat.speed(input, DistanceUnit.km), speed,
+            reason: 'UnitFormat.speed($input)');
+        expect(formatPaceForPref(input), forPref,
+            reason: 'formatPaceForPref($input)');
+      }
+    });
   });
 
   group('UnitFormat.paceLabel', () {

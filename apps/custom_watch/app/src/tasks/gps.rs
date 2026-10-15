@@ -48,6 +48,20 @@
 //! in `gnss_power`). The receiver's *actual* power state is bench-gated
 //! until the dev kit lands.
 //!
+//! **The receiver is configured by the firmware, not by u-center.** Once at
+//! boot and again after every wake from a power-down window, the first bytes
+//! the receiver streams (proof it is awake and listening) trigger one
+//! UBX-CFG-VALSET (`ublox_nmea::ubx::cfg_valset_runner`): the pedestrian
+//! dynamic model in place of the factory portable one, and a UBX-NAV-PVT per
+//! epoch whose `hAcc` / `sAcc` the fix accumulator hands the distance
+//! estimator (`watch_core::fix`). It is written to RAM and BBR, and resent
+//! after each wake anyway because the breakout's backup cell is not
+//! guaranteed to hold BBR. The ACK or NAK is logged. Best-effort (L4): a lost
+//! or NAK'd frame leaves the receiver on portable with no PVT, i.e. fixes
+//! without an accuracy and the estimator on its own floor — the behaviour
+//! before this existed, never a lost fix. A failed write retries on the next
+//! buffer.
+//!
 //! The link runs at the receiver's factory-default **38400 baud** (decisions.md
 //! § 622), not a configured rate: the breakout's backup cell holds a u-center
 //! setting for about a fortnight, so a firmware that assumed anything else would
@@ -114,7 +128,8 @@ use crate::state;
 pub const RX_RING_LEN: usize = 2048;
 
 /// Transmit ring. Only ever carries one UBX frame at a time: a 24-byte
-/// `pmreq_backup` or the single wake byte, at most one per fix interval.
+/// `pmreq_backup`, the 22-byte `cfg_valset_runner` or the single wake byte,
+/// at most one per fix interval.
 pub const TX_RING_LEN: usize = 32;
 
 /// How much of the ring one `read` copies out. Not a DMA transfer size any
@@ -160,6 +175,17 @@ impl Pipeline {
                     self.signal.fix_type = fix_type;
                     self.publish_signal();
                 }
+                Sentence::UbxAck {
+                    class: ubx::CLASS_CFG,
+                    id: ubx::ID_VALSET,
+                    acked,
+                } => {
+                    if acked {
+                        info!("gps: receiver config acknowledged");
+                    } else {
+                        warn!("gps: receiver config NAK'd; staying on its defaults");
+                    }
+                }
                 _ => {}
             }
             if let Some(fix) = self.acc.apply(&sentence, uptime_s) {
@@ -176,11 +202,14 @@ impl Pipeline {
                 // GNSS chain is debugged against and identify no one.
                 #[cfg(feature = "log-personal-data")]
                 debug!(
-                    "gps: fix lat={} lon={} speed={} sats={}",
-                    fix.lat_deg, fix.lon_deg, fix.speed_mps, fix.sats
+                    "gps: fix lat={} lon={} speed={} sats={} hacc={} sacc={}",
+                    fix.lat_deg, fix.lon_deg, fix.speed_mps, fix.sats, fix.h_acc_m, fix.s_acc_mps
                 );
                 #[cfg(not(feature = "log-personal-data"))]
-                debug!("gps: fix speed={} sats={}", fix.speed_mps, fix.sats);
+                debug!(
+                    "gps: fix speed={} sats={} hacc={} sacc={}",
+                    fix.speed_mps, fix.sats, fix.h_acc_m, fix.s_acc_mps
+                );
                 self.fix_tx.send(fix);
                 published = Some(uptime_s);
             }
@@ -207,6 +236,24 @@ async fn write_frame(tx: &mut BufferedUarteTx<'static>, frame: &[u8]) -> Result<
         sent += tx.write(&frame[sent..]).await?;
     }
     Ok(())
+}
+
+/// Send the receiver configuration; returns whether it went out. Best-effort
+/// — see the module header.
+async fn configure_receiver(tx: &mut BufferedUarteTx<'static>) -> bool {
+    match write_frame(tx, &ubx::cfg_valset_runner()).await {
+        Ok(()) => {
+            info!("gps: receiver config sent (pedestrian model, NAV-PVT on)");
+            true
+        }
+        Err(e) => {
+            warn!(
+                "gps: receiver config send failed {:?}; retrying on the next buffer",
+                e
+            );
+            false
+        }
+    }
 }
 
 /// Wake a sleeping receiver: any RX-line activity does it, and 0xFF is the
@@ -243,6 +290,9 @@ pub async fn run(mut tx: BufferedUarteTx<'static>, mut rx: BufferedUarteRx<'stat
     // on. The mode is frozen mid-run (BTN3 cycles pages then), so a window
     // never spans a mode change.
     let mut sleep: Option<SleepWindow> = None;
+    // Owed at boot and after every wake; paid on the first buffer the
+    // receiver streams, which is what proves it is awake to take it.
+    let mut configure_due = true;
     info!("gps: listening on UARTE0");
     loop {
         // Pick up run start/stop and mode changes without blocking on them;
@@ -279,6 +329,7 @@ pub async fn run(mut tx: BufferedUarteTx<'static>, mut rx: BufferedUarteRx<'stat
                 Either3::First(()) => {
                     wake_receiver(&mut tx, "window over").await;
                     sleep = None;
+                    configure_due = true;
                 }
                 Either3::Second(Ok(n)) => {
                     pipe.feed(&buf[..n], min_interval_s(rec_state, mode));
@@ -295,6 +346,7 @@ pub async fn run(mut tx: BufferedUarteTx<'static>, mut rx: BufferedUarteRx<'stat
                         // not at the next scheduled wake.
                         wake_receiver(&mut tx, "run state changed").await;
                         sleep = None;
+                        configure_due = true;
                     }
                 }
             }
@@ -303,6 +355,9 @@ pub async fn run(mut tx: BufferedUarteTx<'static>, mut rx: BufferedUarteRx<'stat
 
         match rx.read(&mut buf).await {
             Ok(n) => {
+                if configure_due && n > 0 {
+                    configure_due = !configure_receiver(&mut tx).await;
+                }
                 let published = pipe.feed(&buf[..n], min_interval_s(rec_state, mode));
                 let window = published.and_then(|at_s| earned_sleep_window(rec_state, mode, at_s));
                 if let Some(w) = window {

@@ -920,6 +920,17 @@ export const PAIRS = [
 		],
 	},
 	{
+		// The key list and both icon maps: a key with no icon would render a
+		// blank chip, so the maps are rails as much as the list is.
+		tableColumn: 'run_reactions.reaction',
+		clients: [
+			{ file: 'apps/web/src/lib/social/reactions.ts', decl: 'REACTION_KEYS', shape: 'strings' },
+			{ file: 'apps/web/src/lib/social/reactions.ts', decl: 'REACTION_ICONS', shape: 'keys' },
+			{ file: 'apps/mobile_android/lib/run_reactions.dart', decl: 'reactionKeys', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/run_reactions.dart', decl: 'reactionIcons', shape: 'keys' },
+		],
+	},
+	{
 		tableColumn: 'run_matched_tracks.status',
 		clients: [{ file: DATA_TS, decl: 'MatchStatus', shape: 'union' }],
 	},

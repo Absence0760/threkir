@@ -7410,6 +7410,124 @@ export async function deleteRunComment(commentId: string): Promise<void> {
 	if (error) throw dbError(error);
 }
 
+// ─────────── Reactions, comment likes, mentions (decisions § 1971) ───────────
+
+export interface ReactionSummaryRow {
+	reaction: string;
+	reaction_count: number;
+	viewer_reacted: boolean;
+}
+
+/// Per-reaction counts on a run plus the viewer's own. The RPC is INVOKER, so
+/// RLS decides what is counted and a run the viewer cannot read returns no
+/// rows. A failed read is reported, not folded into "no reactions".
+export async function fetchRunReactionSummary(
+	runId: string,
+): Promise<{ rows: ReactionSummaryRow[]; error: string | null }> {
+	const { data, error } = await supabase.rpc('run_reaction_summary', { p_run_id: runId });
+	if (error) return { rows: [], error: `${error.message}${error.code ? ` (${error.code})` : ''}` };
+	return { rows: (data ?? []) as ReactionSummaryRow[], error: null };
+}
+
+/// `true` when a new row was inserted, `false` when the viewer already had
+/// this reaction (a 23505 no-op) — the same contract as `giveKudos`.
+export async function addRunReaction(runId: string, reaction: string): Promise<boolean> {
+	const userId = await currentViewerId();
+	if (!userId) throw new Error('Not signed in');
+	const { error } = await supabase
+		.from(TABLES.run_reactions)
+		.insert({ user_id: userId, run_id: runId, reaction });
+	if (error) {
+		if (isDuplicateKeyError(error)) return false;
+		throw dbError(error);
+	}
+	return true;
+}
+
+/// `true` when a row was deleted, `false` when there was nothing to remove.
+export async function removeRunReaction(runId: string, reaction: string): Promise<boolean> {
+	const userId = await currentViewerId();
+	if (!userId) throw new Error('Not signed in');
+	const { data, error } = await supabase
+		.from(TABLES.run_reactions)
+		.delete()
+		.eq('run_id', runId)
+		.eq('user_id', userId)
+		.eq('reaction', reaction)
+		.select('user_id');
+	if (error) throw dbError(error);
+	return (data ?? []).length > 0;
+}
+
+export interface CommentLikeSummary {
+	count: number;
+	viewer_liked: boolean;
+}
+
+/// Like counts for every liked comment on a run, keyed by comment id. A
+/// comment absent from the map has no likes.
+export async function fetchRunCommentLikeSummary(
+	runId: string,
+): Promise<{ likes: Map<string, CommentLikeSummary>; error: string | null }> {
+	const { data, error } = await supabase.rpc('run_comment_like_summary', { p_run_id: runId });
+	const likes = new Map<string, CommentLikeSummary>();
+	if (error) return { likes, error: `${error.message}${error.code ? ` (${error.code})` : ''}` };
+	for (const row of data ?? []) {
+		likes.set(row.comment_id, {
+			count: Math.max(0, Number(row.like_count) || 0),
+			viewer_liked: row.viewer_liked === true,
+		});
+	}
+	return { likes, error: null };
+}
+
+/// `true` on a new like, `false` when the viewer had already liked it.
+export async function likeRunComment(commentId: string): Promise<boolean> {
+	const userId = await currentViewerId();
+	if (!userId) throw new Error('Not signed in');
+	const { error } = await supabase
+		.from(TABLES.run_comment_likes)
+		.insert({ user_id: userId, comment_id: commentId });
+	if (error) {
+		if (isDuplicateKeyError(error)) return false;
+		throw dbError(error);
+	}
+	return true;
+}
+
+/// `true` when a like was removed, `false` when there was none.
+export async function unlikeRunComment(commentId: string): Promise<boolean> {
+	const userId = await currentViewerId();
+	if (!userId) throw new Error('Not signed in');
+	const { data, error } = await supabase
+		.from(TABLES.run_comment_likes)
+		.delete()
+		.eq('comment_id', commentId)
+		.eq('user_id', userId)
+		.select('user_id');
+	if (error) throw dbError(error);
+	return (data ?? []).length > 0;
+}
+
+/// Resolve mentioned handles to profile ids, so a comment can link the ones
+/// that name a real runner and leave the rest as plain text. Handles are
+/// stored lowercase (decisions § 269), so the lookup is an exact match.
+export async function resolveMentionHandles(handles: string[]): Promise<Map<string, string>> {
+	const out = new Map<string, string>();
+	const wanted = Array.from(new Set(handles.map((h) => h.toLowerCase()))).slice(0, 200);
+	if (wanted.length === 0) return out;
+	const { data, error } = await supabase
+		.from('user_profiles')
+		.select('id, handle')
+		.in('handle', wanted);
+	if (error) {
+		console.error('resolveMentionHandles failed', error);
+		return out;
+	}
+	for (const row of data ?? []) if (row.handle) out.set(row.handle, row.id);
+	return out;
+}
+
 // --- Run photos (decisions §36) ---
 
 export interface RunPhoto {

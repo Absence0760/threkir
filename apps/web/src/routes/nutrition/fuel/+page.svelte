@@ -14,6 +14,7 @@
 	import { fetchLatestWeightKg } from '#lib/core/data.ts';
 	import { healthUseWeightKg } from '#lib/core/health_consent.ts';
 	import { coachFuelEnabled } from '#lib/nutrition/coach_fuel_flag.ts';
+	import { weightFluidEnabled } from '#lib/nutrition/weight_fluid_flag.ts';
 	import {
 		buildFuelPlan,
 		DEFAULT_CARBS_PER_HOUR_G,
@@ -32,6 +33,8 @@
 	} from '#lib/routes/fuel_params.ts';
 
 	const enabled = coachFuelEnabled();
+	// Off, no body weight is read and the flat rate stands (decisions § 1976).
+	const weightFluid = weightFluidEnabled();
 
 	let carbsPrefG = $state<number | null>(null);
 	let fluidPrefMl = $state<number | null>(null);
@@ -47,14 +50,16 @@
 		await auth.ready();
 		if (!auth.user) return;
 		try {
-			const [settings, weight, profileRes] = await Promise.all([
-				loadSettings(auth.user.id),
-				fetchLatestWeightKg(),
-				supabase.rpc('get_my_profile', undefined, { get: true }).maybeSingle(),
-			]);
+			const settings = await loadSettings(auth.user.id);
 			carbsPrefG = effective<number>(settings, 'carbs_per_hour') ?? null;
 			fluidPrefMl = effective<number>(settings, 'fluid_per_hour') ?? null;
-			consentedWeightKg = healthUseWeightKg(profileRes.data, weight);
+			if (weightFluid) {
+				const [weight, profileRes] = await Promise.all([
+					fetchLatestWeightKg(),
+					supabase.rpc('get_my_profile', undefined, { get: true }).maybeSingle(),
+				]);
+				consentedWeightKg = healthUseWeightKg(profileRes.data, weight);
+			}
 		} catch (e) {
 			// The defaults still give a plan; the source label says which rate
 			// the totals used, so a failed read is visible rather than silent.
@@ -67,7 +72,7 @@
 	const carbs = $derived(resolveFuelRate(handoff.carbsPerHourG, carbsPrefG, DEFAULT_CARBS_PER_HOUR_G));
 	const fluid = $derived(
 		resolveFluidRate({
-			useWeight: handoff.useWeight,
+			useWeight: weightFluid && handoff.useWeight,
 			weightKg: consentedWeightKg,
 			linkValue: handoff.fluidPerHourMl,
 			pref: fluidPrefMl,
@@ -185,20 +190,22 @@
 				/>
 				{m('fuelPlan.heat', { factor: String(HEAT_FLUID_FACTOR) })}
 			</label>
-			<label class="heat-toggle">
-				<input
-					type="checkbox"
-					checked={handoff.useWeight}
-					disabled={consentedWeightKg == null}
-					aria-describedby="fuel-weight-hint"
-					onchange={(e) => updateParam('bw', (e.currentTarget as HTMLInputElement).checked ? '1' : null)}
-					data-testid="fuel-weight"
-				/>
-				{m('fuelPlan.weightToggle')}
-			</label>
-			<p class="section-hint" id="fuel-weight-hint" data-testid="fuel-weight-hint">
-				{consentedWeightKg == null ? m('fuelPlan.weightUnavailable') : m('fuelPlan.weightHint')}
-			</p>
+			{#if weightFluid}
+				<label class="heat-toggle">
+					<input
+						type="checkbox"
+						checked={handoff.useWeight}
+						disabled={consentedWeightKg == null}
+						aria-describedby="fuel-weight-hint"
+						onchange={(e) => updateParam('bw', (e.currentTarget as HTMLInputElement).checked ? '1' : null)}
+						data-testid="fuel-weight"
+					/>
+					{m('fuelPlan.weightToggle')}
+				</label>
+				<p class="section-hint" id="fuel-weight-hint" data-testid="fuel-weight-hint">
+					{consentedWeightKg == null ? m('fuelPlan.weightUnavailable') : m('fuelPlan.weightHint')}
+				</p>
+			{/if}
 		</section>
 
 		{#if plan == null}

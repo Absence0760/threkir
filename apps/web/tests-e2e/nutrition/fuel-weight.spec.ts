@@ -9,7 +9,10 @@ import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/sag
  * is Art 9 data, so the rate is offered only when a weight is on record AND the
  * health-data consent is; without either the toggle is disabled with the
  * reason, and the flat rate stands. Saga users, because planting consent on
- * the shared seed user would change every other spec's surfaces.
+ * the shared seed user would change every other spec's surfaces. The toggle is
+ * behind the fail-closed PUBLIC_WEIGHT_FLUID_ENABLED, which is on in
+ * .env.development; its off state (no weight read, no toggle) is pinned by
+ * src/lib/nutrition/weight_fluid_flag.test.ts.
  */
 test.describe('/nutrition/fuel — fluid from body weight', () => {
 	test.describe.configure({ timeout: 120_000 });

@@ -9,7 +9,9 @@ import { deleteRoute } from '../fixtures/simulate';
  * The roadbook's weight-based fluid toggle (decisions § 1976), the roadbook
  * twin of nutrition/fuel-weight.spec.ts. Saga users, because planting
  * health-data consent on the shared seed user would change every other spec's
- * surfaces.
+ * surfaces. The toggle is behind the fail-closed PUBLIC_WEIGHT_FLUID_ENABLED,
+ * which is on in .env.development; its off state (no weight read, no toggle)
+ * is pinned by src/lib/nutrition/weight_fluid_flag.test.ts.
  */
 test.describe('/routes/[id]/roadbook — fluid from body weight', () => {
 	test.describe.configure({ timeout: 120_000 });

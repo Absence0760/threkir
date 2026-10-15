@@ -18,6 +18,7 @@ import '../preferences.dart';
 import '../roadbook.dart';
 import '../share_sheet.dart';
 import '../route_markers.dart' show kindSpec;
+import '../weight_fluid_flag.dart';
 import '../widgets/metric_label.dart';
 import '../widgets/top_banner.dart';
 
@@ -257,7 +258,9 @@ class _RoadbookScreenState extends State<RoadbookScreen> {
   bool _heat = false;
   // Opt-in weight-based fluid rate (decisions § 1976). It applies only when
   // [_consentedWeightKg] is set: the runner's own latest body-metrics weight,
-  // passed through the Art 9 consent gate. Screen-local, like [_heat].
+  // passed through the Art 9 consent gate. Screen-local, like [_heat]. With
+  // the deploy gate off ([_weightFluidOffered]) no weight is read at all.
+  final bool _weightFluidOffered = weightFluidGate;
   bool _weightFluid = false;
   double? _consentedWeightKg;
   late final TextEditingController _goal;
@@ -269,7 +272,7 @@ class _RoadbookScreenState extends State<RoadbookScreen> {
     _goalSeconds = (km * _defaultSecPerKm).round().clamp(60, 1 << 30);
     _goal = TextEditingController(text: _elapsedLabel(_goalSeconds.toDouble()));
     unawaited(_loadPlan());
-    unawaited(_loadConsentedWeight());
+    if (_weightFluidOffered) unawaited(_loadConsentedWeight());
     if (widget.initialMarkers != null) {
       _markers = widget.initialMarkers!;
     } else {
@@ -308,7 +311,9 @@ class _RoadbookScreenState extends State<RoadbookScreen> {
   /// The per-hour fluid rate the plan uses: the weight-based baseline when the
   /// runner opted in and a consented weight is on record, else the flat pref.
   double? get _weightFluidMl =>
-      _weightFluid ? weightFluidPerHourMl(_consentedWeightKg) : null;
+      _weightFluidOffered && _weightFluid
+          ? weightFluidPerHourMl(_consentedWeightKg)
+          : null;
 
   void _persistPlan() {
     unawaited(saveRoadbookPlan(
@@ -563,7 +568,7 @@ class _RoadbookScreenState extends State<RoadbookScreen> {
                 ),
             ],
           ),
-          if (_fueling) ...[
+          if (_fueling && _weightFluidOffered) ...[
             SwitchListTile(
               key: const Key('roadbook-weight-fluid'),
               contentPadding: EdgeInsets.zero,

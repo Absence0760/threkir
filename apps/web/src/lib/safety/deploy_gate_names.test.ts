@@ -42,6 +42,10 @@ const GATES: readonly { web: string; dart: string }[] = [
 		web: 'src/lib/training/adaptive_fitness_flag.ts',
 		dart: '../mobile_android/lib/adaptive_fitness_flag.dart',
 	},
+	{
+		web: 'src/lib/nutrition/weight_fluid_flag.ts',
+		dart: '../mobile_android/lib/weight_fluid_flag.dart',
+	},
 ];
 
 /// Gates that exist on web and nowhere else, so there is no second name to

@@ -166,6 +166,7 @@ void main() async {
       String.fromEnvironment('OFF_ROUTE_ESCALATION_ENABLED');
   const adaptiveFitnessGateDef = String.fromEnvironment('ADAPTIVE_FITNESS_GATE');
   const weighInGateDef = String.fromEnvironment('WEIGH_IN_GATE');
+  const weightFluidDef = String.fromEnvironment('WEIGHT_FLUID_ENABLED');
   const tileUrlTemplateDef = String.fromEnvironment('TILE_URL_TEMPLATE');
   const usdaFdcApiKeyDef = String.fromEnvironment('USDA_FDC_API_KEY');
   dotenv.loadFromString(
@@ -194,6 +195,7 @@ void main() async {
       if (adaptiveFitnessGateDef.isNotEmpty)
         'ADAPTIVE_FITNESS_GATE=$adaptiveFitnessGateDef',
       if (weighInGateDef.isNotEmpty) 'WEIGH_IN_GATE=$weighInGateDef',
+      if (weightFluidDef.isNotEmpty) 'WEIGHT_FLUID_ENABLED=$weightFluidDef',
       if (tileUrlTemplateDef.isNotEmpty) 'TILE_URL_TEMPLATE=$tileUrlTemplateDef',
       if (usdaFdcApiKeyDef.isNotEmpty) 'USDA_FDC_API_KEY=$usdaFdcApiKeyDef',
     ].join('\n'),

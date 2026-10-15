@@ -33,6 +33,7 @@
 	import { supabase } from '#lib/core/supabase.ts';
 	import { fetchLatestWeightKg } from '#lib/core/data.ts';
 	import { healthUseWeightKg } from '#lib/core/health_consent.ts';
+	import { weightFluidEnabled } from '#lib/nutrition/weight_fluid_flag.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { loadSettings, effective } from '#lib/settings/settings.ts';
 	import { fetchElevations } from '#lib/routes/elevation.ts';
@@ -53,6 +54,8 @@
 	// A weight the Art 9 gate lets the fluid rate use, or null (decisions
 	// § 1976): the runner's own latest body-metrics weight, only under consent.
 	let consentedWeightKg = $state<number | null>(null);
+	// Off, no body weight is read and the flat rate stands.
+	const weightFluid = weightFluidEnabled();
 	// Open-Meteo elevations fetched on demand when the route lacks stored ele.
 	let fetchedEle = $state<number[] | null>(null);
 	let fetchingEle = $state(false);
@@ -89,12 +92,14 @@
 		await auth.ready();
 		if (!auth.user) return;
 		try {
-			const [settings, weight, profileRes] = await Promise.all([
-				loadSettings(auth.user.id),
-				fetchLatestWeightKg(),
-				supabase.rpc('get_my_profile', undefined, { get: true }).maybeSingle()
-			]);
-			consentedWeightKg = healthUseWeightKg(profileRes.data, weight);
+			const settings = await loadSettings(auth.user.id);
+			if (weightFluid) {
+				const [weight, profileRes] = await Promise.all([
+					fetchLatestWeightKg(),
+					supabase.rpc('get_my_profile', undefined, { get: true }).maybeSingle()
+				]);
+				consentedWeightKg = healthUseWeightKg(profileRes.data, weight);
+			}
 			carbsPrefG = effective<number>(settings, 'carbs_per_hour', DEFAULT_CARBS_PER_HOUR_G) ?? DEFAULT_CARBS_PER_HOUR_G;
 			fluidPrefMl = effective<number>(settings, 'fluid_per_hour', DEFAULT_FLUID_PER_HOUR_ML) ?? DEFAULT_FLUID_PER_HOUR_ML;
 		} catch {
@@ -125,9 +130,9 @@
 	// `?heat=1` bumps fluid by the heat factor.
 	let fuelOn = $derived(params.get('fuel') === '1');
 	let heatOn = $derived(params.get('heat') === '1');
-	// `?bw=1` asks for the weight-based fluid rate; it applies only when a
-	// consented weight is on record, otherwise the flat rate stands.
-	let weightOn = $derived(params.get('bw') === '1');
+	// `?bw=1` asks for the weight-based fluid rate; it applies only with the
+	// deploy gate on and a consented weight on record, else the flat rate stands.
+	let weightOn = $derived(weightFluid && params.get('bw') === '1');
 
 	// Effective intake rates: a per-page ?carbs= / ?fluid= override wins, then
 	// the user's settings pref, then the fuel_plan.ts default. The override is
@@ -467,19 +472,21 @@
 					>
 						{m('roadbook.heat')}
 					</button>
-					<button
-						class:active={weightOn && consentedWeightKg != null}
-						aria-pressed={weightOn && consentedWeightKg != null}
-						disabled={consentedWeightKg == null}
-						aria-describedby="roadbook-weight-hint"
-						data-testid="roadbook-fuel-weight"
-						onclick={() => updateParam('bw', weightOn ? null : '1')}
-					>
-						{m('fuelPlan.weightToggle')}
-					</button>
+					{#if weightFluid}
+						<button
+							class:active={weightOn && consentedWeightKg != null}
+							aria-pressed={weightOn && consentedWeightKg != null}
+							disabled={consentedWeightKg == null}
+							aria-describedby="roadbook-weight-hint"
+							data-testid="roadbook-fuel-weight"
+							onclick={() => updateParam('bw', weightOn ? null : '1')}
+						>
+							{m('fuelPlan.weightToggle')}
+						</button>
+					{/if}
 				{/if}
 			</div>
-			{#if fuelOn}
+			{#if fuelOn && weightFluid}
 				<p class="weight-hint" id="roadbook-weight-hint" data-testid="roadbook-weight-hint">
 					{#if consentedWeightKg == null}
 						{m('fuelPlan.weightUnavailable')}

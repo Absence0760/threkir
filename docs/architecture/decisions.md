@@ -31015,7 +31015,6 @@ Consent and cost reuse existing rails rather than adding new ones. The request s
 **Prod gate.** `PUBLIC_AI_PLAN_ENABLED` defaults off; the box renders only when it and `PUBLIC_COACH_ENABLED` are both on. Turning it on in a production build is the action gated on owner + counsel sign-off of the liability surface § 12 named and of the v3 disclosure copy (the § 150 rule: the code is complete on `main`, the gate is config). Because `ai_disclosure_current_version()` moves to 3 for every AI surface, the v3 copy is what `/coach` and Settings present from the deploy that carries the migration, flag or no flag, so that copy needs its sign-off before that deploy, not before the flag flip.
 
 **Don't re-litigate unless** a future change wants the model to emit workouts or volumes directly. The § 12 trade-off then applies in full: let the model propose a delta against generator output, re-grade the delta with the generator's own checks, and gate it on an explicit "this is AI-generated" confirmation.
-||||||| 3421aa4cb
 
 ## 1931. The AI plan assistant is v3 of the AI disclosure, not a widening of v2
 

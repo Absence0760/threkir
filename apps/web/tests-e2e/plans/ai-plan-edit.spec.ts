@@ -109,6 +109,60 @@ test.describe('/plans/[id] — Adjust with AI', () => {
 		await expect(page.getByTestId('ai-adjust')).toHaveCount(0);
 	});
 
+	test('a skip and an eased week are saved on Apply', async ({ page, mockRoute }) => {
+		// Only week 1 stays, so easing it cannot raise a later week's load band
+		// against whatever recent runs the shared user carries.
+		const { data: weeks } = await admin
+			.from('plan_weeks')
+			.select('id, week_index')
+			.eq('plan_id', planId)
+			.order('week_index');
+		const [week0, week1] = weeks ?? [];
+		await admin.from('plan_workouts').delete().eq('week_id', week1.id);
+		await admin.from('plan_weeks').delete().eq('id', week1.id);
+
+		await mockRoute(page, '**/api/coach/plan-edit', async (route) => {
+			await route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					ops: [
+						{ op: 'scale_week', weekIndex: 0, factor: 0.8 },
+						{ op: 'skip_workout', workoutId: tempoId },
+					],
+					dropped: 0,
+					notes: [],
+					today: browserDate(0),
+				}),
+			});
+		});
+
+		const box = await openAiAdjust(page);
+		await box.getByRole('textbox', { name: 'Adjust with AI' }).fill('make this week easier and drop the tempo');
+		await box.getByRole('button', { name: 'Suggest changes' }).click();
+		await expect(box).toContainText('Suggested changes', { timeout: 10_000 });
+		await expect(box).toContainText('Skipped');
+		await expect(box).toContainText('Week 1 target');
+
+		await box.getByRole('button', { name: 'Apply AI-suggested changes' }).click();
+		await expect(page.getByTestId('ai-adjust')).toHaveCount(0, { timeout: 10_000 });
+
+		const { data: rows } = await admin
+			.from('plan_workouts')
+			.select('id, target_distance_m, skipped_at')
+			.in('id', [easyId, tempoId, longId]);
+		const byId = new Map((rows ?? []).map((r) => [r.id, r]));
+		expect(byId.get(easyId)?.target_distance_m).toBe(6_400);
+		expect(byId.get(longId)?.target_distance_m).toBe(12_800);
+		expect(byId.get(tempoId)?.skipped_at).not.toBeNull();
+		const { data: week } = await admin
+			.from('plan_weeks')
+			.select('target_volume_m')
+			.eq('id', week0.id)
+			.single();
+		expect(week?.target_volume_m).toBe(25_600);
+	});
+
 	test('an edit that stacks hard days needs a second confirmation', async ({ page, mockRoute }) => {
 		await mockRoute(page, '**/api/coach/plan-edit', async (route) => {
 			await route.fulfill({

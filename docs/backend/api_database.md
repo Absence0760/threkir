@@ -687,6 +687,13 @@ create table clubs (
   instagram_url text,                                  -- Each has an http(s)-scheme CHECK (XSS backstop) and
   strava_url    text,                                  -- an explicit `grant select` (the clubs SELECT lockdown
   facebook_url  text,                                  -- 20260801_001 denies new columns by default).
+  strava_club_id bigint,                               -- The Strava club this club IS (migration 20270819001953,
+                                                       -- decisions § 1953). Unique where not null
+                                                       -- (`clubs_strava_club_id_key`); granted SELECT to anon +
+                                                       -- authenticated; discarded on any client write by
+                                                       -- `clubs_freeze_managed_columns`. Written only by
+                                                       -- `set_club_strava_link` (service role) and cleared by
+                                                       -- `unlink_club_strava`. `search_clubs` returns it.
   created_at    timestamptz default now(),
   updated_at    timestamptz default now()
 );
@@ -2480,6 +2487,14 @@ SECURITY DEFINER boolean — `select user_profiles.subscription_tier in ('pro','
 SECURITY DEFINER. Looks the club up by `clubs.invite_token`, raises `invalid invite token` when none matches, and upserts an **active** `club_members` row for the caller (an existing pending or rejected row flips to active). Returns the club id. Granted to `authenticated`; revoked from `public, anon`. Migration `20260417_001_phase2_social.sql`, rewritten by `20270801000001`.
 
 **Activity-risk acknowledgement** (§ 1864). When `clubs.requires_activity_waiver` is true, the call raises `activity_waiver_required` (`P0001`) and plants nothing unless `activity_waiver_ack` is true or the caller's existing membership row already carries `activity_waiver_ack_at`. An admitted join server-stamps `activity_waiver_ack_at = now()` and never overwrites an earlier one. The same rule binds the direct self-join path: the `self-join open clubs` and `self-request join request-policy clubs` INSERT policies refuse a waiver club's row whose `activity_waiver_ack_at` is null. Pinned by `club_join_activity_waiver_test.sql`.
+
+### `set_club_strava_link(p_actor uuid, p_club_id uuid, p_strava_club_id bigint) → text`
+
+SECURITY DEFINER, EXECUTE granted to `service_role` only (revoked from `public, anon, authenticated`; in the `server_only` fixture). The one writer of `clubs.strava_club_id`, called by the `strava-clubs` Edge Function's `link` action after Strava has confirmed the caller administers that Strava club. Answers a reason rather than raising: `invalid_strava_club` (null or not positive), `not_club_admin` (`p_actor` is not an active `owner`/`admin` of `p_club_id`), `already_linked` (the unique index refused: another club holds that Strava id) or `ok`. Migration `20270819001953`, decisions § 1953. Pinned by `club_strava_link_test.sql`.
+
+### `unlink_club_strava(p_club_id uuid) → boolean`
+
+SECURITY DEFINER. Clears `clubs.strava_club_id` when the caller passes `private.is_club_admin(p_club_id)` and returns `true`; returns `false` and changes nothing otherwise. Unlinking asks nothing of Strava, so it is a client RPC (granted to `authenticated` + `service_role`, revoked from `public, anon`) rather than an Edge Function action. Migration `20270819001953`. Pinned by `club_strava_link_test.sql`.
 
 ### `redeem_coach_invite(token text)`
 

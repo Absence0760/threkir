@@ -208,10 +208,14 @@ test.describe('AI-processing consent — gate, record, withdraw, re-engage', () 
 		// only asks a runner with no record, so a stale one sent there had
 		// nothing to accept.
 		const ctx = await browser.newContext({ storageState: user.storageStatePath });
-		const page = await ctx.newPage();
 		try {
 			for (const start of [null, CURRENT_VERSION - 1]) {
 				await setConsent(start);
+				// A fresh page per state: AI_CONSENT_HREF carries a fragment, so a
+				// second goto from the same page is a same-document hash change
+				// that never reloads, and the section would still show the record
+				// the first pass accepted.
+				const page = await ctx.newPage();
 				await page.goto(AI_CONSENT_HREF);
 				const section = page.getByTestId('ai-consent');
 				await expect(section).toContainText('For the plate-photo logger:', { timeout: 15_000 });
@@ -225,6 +229,7 @@ test.describe('AI-processing consent — gate, record, withdraw, re-engage', () 
 				const rec = await consentRecord();
 				expect(rec.ai_disclosure_version).toBe(CURRENT_VERSION);
 				expect(rec.coach_consent_at).not.toBeNull();
+				await page.close();
 			}
 		} finally {
 			await ctx.close();

@@ -13,6 +13,7 @@ import type { Insertable, Updatable } from './database';
 import type { JsonObject, TrackPoint } from '../types';
 import { isEntityId } from './entity_id';
 import { markListsStale } from './list_freshness';
+import { keysetAfter, nextCursor, type KeysetCursor, type KeysetKey, type KeysetPage } from './keyset_page';
 import { probeSaysConfigured } from './provider_probe';
 import { loadSettings, effective } from '../settings/settings';
 import type { Modality } from '../settings/modality_visibility';
@@ -6683,69 +6684,92 @@ async function hydratePeopleSuggestions(
 	}));
 }
 
-/// People who follow `userId`, paginated client-side after fetch.
 /// Default page size for the follower / following lists. The /u/[id]
 /// tabs request one page at a time and load more on demand, so a user
 /// with hundreds of followers is fully reachable rather than truncated.
 export const FOLLOW_PAGE_SIZE = 50;
 
-export async function fetchFollowers(
-	userId: string,
-	opts?: { limit?: number; offset?: number }
-): Promise<PublicProfile[]> {
-	const limit = opts?.limit ?? FOLLOW_PAGE_SIZE;
-	const offset = opts?.offset ?? 0;
-	const { data: edges, error } = await supabase
-		.from('user_follows')
-		.select('follower_id, followed_at')
-		.eq('followee_id', userId)
-		.order('followed_at', { ascending: false })
-		// Secondary key so offset pages are stable when two follows share a
-		// followed_at timestamp — without it a row on a page boundary can be
-		// duplicated or skipped on load-more.
-		.order('follower_id', { ascending: true })
-		.range(offset, offset + limit - 1);
-	if (error) throw dbError(error);
-	const ids = (edges ?? []).map((e) => e.follower_id as string);
+/// Newest follow first. The other party's id breaks a `followed_at` tie, which
+/// makes the order total — a keyset over a non-unique order skips a tied row.
+/// Served by `user_follows_followee` / `user_follows_follower`
+/// (`(<anchor>, followed_at desc)`) up to the tie-break.
+const FOLLOWERS_ORDER: readonly KeysetKey[] = [
+	{ column: 'followed_at', ascending: false, nullsFirst: true },
+	{ column: 'follower_id', ascending: false, nullsFirst: true },
+];
+const FOLLOWING_ORDER: readonly KeysetKey[] = [
+	{ column: 'followed_at', ascending: false, nullsFirst: true },
+	{ column: 'followee_id', ascending: false, nullsFirst: true },
+];
+
+/// Resolve follow-edge ids to profiles, in edge order. An id with no readable
+/// profile row is dropped here, AFTER the cursor was taken from the edge, so
+/// it neither ends the list early nor shifts the next page.
+async function profilesInEdgeOrder(ids: string[]): Promise<PublicProfile[]> {
 	if (ids.length === 0) return [];
-	const { data: profiles, error: profilesError } = await supabase
+	const { data: profiles, error } = await supabase
 		.from('user_profiles')
 		.select('id, display_name, avatar_url')
 		.in('id', ids);
-	if (profilesError) throw dbError(profilesError);
+	if (error) throw dbError(error);
 	const byId = new Map<string, PublicProfile>();
 	for (const p of profiles ?? []) byId.set(p.id, p);
-	// Preserve the followed_at ordering.
 	return ids.map((id) => byId.get(id)).filter((p): p is PublicProfile => p != null);
 }
 
-/// People `userId` follows, ordered by most-recently followed.
+/// People who follow `userId`, newest follow first, one keyset page at a time:
+/// pass the previous page's `next` as `after` to load more. A cursor rather
+/// than an offset because an offset is a position — a follower who unfollows
+/// between two reads moves every later row up one, and offset 50 then starts a
+/// row late, so one follower is never shown.
+export async function fetchFollowers(
+	userId: string,
+	opts?: { limit?: number; after?: KeysetCursor | null }
+): Promise<KeysetPage<PublicProfile>> {
+	const limit = opts?.limit ?? FOLLOW_PAGE_SIZE;
+	const after = opts?.after ? keysetAfter(FOLLOWERS_ORDER, opts.after) : undefined;
+	if (after === null) return { rows: [], next: null };
+	let q = supabase
+		.from('user_follows')
+		.select('follower_id, followed_at')
+		.eq('followee_id', userId);
+	if (after) q = q.or(after);
+	for (const k of FOLLOWERS_ORDER) {
+		q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+	}
+	const { data: edges, error } = await q.limit(limit);
+	if (error) throw dbError(error);
+	const rows = edges ?? [];
+	return {
+		rows: await profilesInEdgeOrder(rows.map((e) => e.follower_id)),
+		next: nextCursor(FOLLOWERS_ORDER, rows, limit),
+	};
+}
+
+/// People `userId` follows, newest follow first, one keyset page at a time
+/// (see `fetchFollowers`).
 export async function fetchFollowing(
 	userId: string,
-	opts?: { limit?: number; offset?: number }
-): Promise<PublicProfile[]> {
+	opts?: { limit?: number; after?: KeysetCursor | null }
+): Promise<KeysetPage<PublicProfile>> {
 	const limit = opts?.limit ?? FOLLOW_PAGE_SIZE;
-	const offset = opts?.offset ?? 0;
-	const { data: edges, error } = await supabase
+	const after = opts?.after ? keysetAfter(FOLLOWING_ORDER, opts.after) : undefined;
+	if (after === null) return { rows: [], next: null };
+	let q = supabase
 		.from('user_follows')
 		.select('followee_id, followed_at')
-		.eq('follower_id', userId)
-		.order('followed_at', { ascending: false })
-		// Secondary key so offset pages are stable when two follows share a
-		// followed_at timestamp (see fetchFollowers).
-		.order('followee_id', { ascending: true })
-		.range(offset, offset + limit - 1);
+		.eq('follower_id', userId);
+	if (after) q = q.or(after);
+	for (const k of FOLLOWING_ORDER) {
+		q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+	}
+	const { data: edges, error } = await q.limit(limit);
 	if (error) throw dbError(error);
-	const ids = (edges ?? []).map((e) => e.followee_id as string);
-	if (ids.length === 0) return [];
-	const { data: profiles, error: profilesError } = await supabase
-		.from('user_profiles')
-		.select('id, display_name, avatar_url')
-		.in('id', ids);
-	if (profilesError) throw dbError(profilesError);
-	const byId = new Map<string, PublicProfile>();
-	for (const p of profiles ?? []) byId.set(p.id, p);
-	return ids.map((id) => byId.get(id)).filter((p): p is PublicProfile => p != null);
+	const rows = edges ?? [];
+	return {
+		rows: await profilesInEdgeOrder(rows.map((e) => e.followee_id)),
+		next: nextCursor(FOLLOWING_ORDER, rows, limit),
+	};
 }
 
 export interface FeedEntry extends Run {

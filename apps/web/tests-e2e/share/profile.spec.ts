@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 /**
  * `/share/profile/[id]` — the public, anon, SSR profile share page.

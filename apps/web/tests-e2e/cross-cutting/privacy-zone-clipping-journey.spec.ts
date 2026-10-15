@@ -1,6 +1,7 @@
 import { gunzipSync } from 'node:zlib';
 
-import { expect, test, type BrowserContext } from '@playwright/test';
+import type { BrowserContext } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { clipPointsToZones, isInAnyZone } from '../../src/lib/routes/privacy';
 import { getAdminClient, getUserClient, loadSupabaseEnv } from '../fixtures/local-supabase';

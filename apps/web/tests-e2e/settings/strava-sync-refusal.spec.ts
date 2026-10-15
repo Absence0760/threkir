@@ -1,4 +1,4 @@
-import { expect, test } from '../fixtures/mock-route';
+import { expect, test } from '../fixtures/test';
 import type { MockRoute } from '../fixtures/mock-route';
 
 import { getAdminClient } from '../fixtures/local-supabase';

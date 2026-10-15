@@ -1,4 +1,4 @@
-import { test } from '@playwright/test';
+import { test } from '../fixtures/test';
 
 import { expectReflows } from '../fixtures/reflow';
 import { USER_A } from '../fixtures/users';

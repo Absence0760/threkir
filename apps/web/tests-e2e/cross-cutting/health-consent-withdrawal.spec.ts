@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { noonOnBrowserDay } from '../fixtures/dates';
 import { readRow, readRows } from '../fixtures/db-read';

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { browserDate } from '../fixtures/dates';
 import { USER_A } from '../fixtures/users';

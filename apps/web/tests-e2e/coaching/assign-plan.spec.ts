@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_B, USER_C_PRO } from '../fixtures/users';
 import { readMaybeRow } from '../fixtures/db-read';

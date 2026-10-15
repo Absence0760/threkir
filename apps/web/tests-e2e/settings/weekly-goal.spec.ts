@@ -1,4 +1,5 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { readRow } from '../fixtures/db-read';
 import { getAdminClient } from '../fixtures/local-supabase';

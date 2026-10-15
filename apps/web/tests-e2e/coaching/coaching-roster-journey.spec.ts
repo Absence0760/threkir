@@ -1,4 +1,5 @@
-import { expect, test, type BrowserContext, type Page } from '@playwright/test';
+import type { BrowserContext, Page } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { resolveBaseUrl } from '../fixtures/base-url';
 import { getAdminClient } from '../fixtures/local-supabase';

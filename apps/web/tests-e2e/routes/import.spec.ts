@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { deleteRoute } from '../fixtures/simulate';
 import { getAdminClient, resetRateLimit } from '../fixtures/local-supabase';

@@ -1,4 +1,4 @@
-import { expect, test } from '../fixtures/mock-route';
+import { expect, test } from '../fixtures/test';
 
 import { browserDayAt } from '../fixtures/dates';
 import { readRows } from '../fixtures/db-read';

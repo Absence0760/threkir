@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { readRow } from '../fixtures/db-read';
 import { signIn } from '../fixtures/helpers';

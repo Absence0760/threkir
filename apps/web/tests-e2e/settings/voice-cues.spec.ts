@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { VOICE_CUE_IDS } from '../../src/lib/settings/voice_cues';
 import { USER_A } from '../fixtures/users';

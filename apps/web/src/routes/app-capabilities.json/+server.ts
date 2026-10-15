@@ -2,6 +2,7 @@ import type { RequestHandler } from './$types';
 import { webCheckoutAvailable } from '#lib/billing/revenuecat.ts';
 import { coachEnabled } from '#lib/coach/coach_flag.ts';
 import { routeGenEnabled } from '#lib/routes/route_gen_flag.ts';
+import { aiPlanEnabled } from '#lib/training/ai_plan_flag.ts';
 
 // Build-time capability manifest for the native clients. `adapter-static`
 // prerenders this once (like /sitemap.xml) into a plain file in `build/`,
@@ -25,6 +26,11 @@ import { routeGenEnabled } from '#lib/routes/route_gen_flag.ts';
 // when this is true; otherwise that page could only point at the iPhone app
 // (decisions § 1826). It is not a perk and sells nothing on its own.
 //
+// `ai_plan` is whether the AI plan assistant is live — the same
+// `coachEnabled() && aiPlanEnabled()` the web plan wizard renders its box
+// under. A native client reads it to decide whether to offer the assistant
+// and the coach's `/plans/new?describe=` handoff; it is not a Pro perk.
+//
 // Public by construction: every value derives from a PUBLIC_ var present in
 // the client bundle every visitor downloads. Nothing here is a secret.
 //
@@ -38,6 +44,7 @@ export const GET: RequestHandler = () =>
 			coach: coachEnabled(),
 			route_gen: routeGenEnabled(),
 			web_checkout: webCheckoutAvailable(),
+			ai_plan: coachEnabled() && aiPlanEnabled(),
 		}),
 		{
 			headers: {

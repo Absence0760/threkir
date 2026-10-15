@@ -19,7 +19,8 @@ const source = stripComments(readFileSync(resolve(import.meta.dirname, 'data.ts'
 
 /** The body of `export async function <name>(`, to the next top-level export. */
 function body(name: string): string {
-	const start = source.indexOf(`export async function ${name}(`);
+	// The LAST declaration: an overloaded reader declares its signatures first.
+	const start = source.lastIndexOf(`export async function ${name}(`);
 	assert.ok(start >= 0, `Could not locate ${name} — rename?`);
 	const next = source.indexOf('\nexport ', start + 1);
 	return source.slice(start, next === -1 ? undefined : next);
@@ -37,3 +38,18 @@ for (const name of READERS) {
 		assert.doesNotMatch(fn, /\.range\(/, `${name} must not page with .range()`);
 	});
 }
+
+test('fetchRuns takes a keyset cursor and its load-more page starts at the cursor', () => {
+	// The whole-history walk (no `limit`) still pages with `.range()` from 0
+	// to the end, which is not a load-more list; the limited branch must not
+	// take a position.
+	const fn = body('fetchRuns');
+	assert.match(fn, /keysetAfter\(RUN_ORDER, opts\.after\)/, 'fetchRuns must filter to the runs after the cursor');
+	assert.match(fn, /page\(0, opts\.limit - 1\)/, 'the limited page must start at the cursor, not at an offset');
+	assert.doesNotMatch(fn, /opts\.offset|opts\?\.offset/, 'fetchRuns must not page by offset');
+	assert.match(
+		body('fetchRunsWithError'),
+		/nextCursor\(RUN_ORDER, runs, opts\.limit\)/,
+		'fetchRunsWithError must hand back the cursor of the last run it read',
+	);
+});

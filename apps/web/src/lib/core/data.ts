@@ -250,10 +250,15 @@ import {
 export type RunColumns = readonly (keyof Run & keyof RunRow)[];
 
 export interface FetchRunsOptions<C extends RunColumns = RunColumns> {
-	/** Cap the number of rows returned. Pair with `offset` for paging. */
+	/** Cap the number of rows returned. Pair with `after` for paging. */
 	limit?: number;
-	/** Skip this many rows before the page (for paged loads). */
-	offset?: number;
+	/**
+	 * Only the runs strictly after this cursor in `RUN_ORDER` — the previous
+	 * page's `next` from `fetchRunsWithError`. A cursor rather than an offset:
+	 * a run deleted or synced in between two reads moves every later position,
+	 * and an offset then skips or repeats a run.
+	 */
+	after?: KeysetCursor | null;
 	/**
 	 * Re-throw a hard fetch error instead of degrading to `[]`. Default off:
 	 * most callers want a resilient empty list. The personal heatmap opts in
@@ -281,6 +286,15 @@ export interface FetchRunsOptions<C extends RunColumns = RunColumns> {
 	startedAtBefore?: string;
 }
 
+/// Newest run first; `id` breaks a `started_at` tie so the order is total.
+/// Served by `runs_user_started_at (user_id, started_at desc)` up to the
+/// tie-break. Both columns are NOT NULL, so the null placement is the
+/// Postgres default and only spelt out because a keyset key must say it.
+const RUN_ORDER: readonly KeysetKey[] = [
+	{ column: 'started_at', ascending: false, nullsFirst: true },
+	{ column: 'id', ascending: false, nullsFirst: true },
+];
+
 export async function fetchRuns(opts?: Omit<FetchRunsOptions, 'columns'>): Promise<Run[]>;
 export async function fetchRuns<C extends RunColumns>(
 	opts: FetchRunsOptions<C> & { columns: C },
@@ -294,6 +308,8 @@ export async function fetchRuns(
 	// `/tmp/data-isolation-audit/client-realtime.md` M2.
 	const userId = auth.user?.id;
 	if (!userId) return [];
+	const after = opts?.after ? keysetAfter(RUN_ORDER, opts.after) : undefined;
+	if (after === null) return [];
 	const build = <S extends string>(select: S) => {
 		let q = supabase
 			.from(TABLES.runs)
@@ -308,11 +324,13 @@ export async function fetchRuns(
 			.eq('user_id', userId);
 		if (opts?.startedAtFrom != null) q = q.gte('started_at', opts.startedAtFrom);
 		if (opts?.startedAtBefore != null) q = q.lt('started_at', opts.startedAtBefore);
-		// Secondary key so the paged branch below composes into the whole
-		// history: two runs sharing a `started_at` straddling a page boundary
-		// can otherwise be returned twice or dropped. Same rule
-		// `fetchClubMembers` states for its load-more pages.
-		return q.order('started_at', { ascending: false }).order('id', { ascending: false });
+		if (after) q = q.or(after);
+		// RUN_ORDER, spelt out so paged_read_guards can read it: the `id`
+		// tie-break is what lets the whole-history walk below compose and a
+		// keyset cursor name exactly one row.
+		return q
+			.order('started_at', { ascending: false, nullsFirst: true })
+			.order('id', { ascending: false, nullsFirst: true });
 	};
 
 	// The paging, the `limit`/`offset` window, the `throwOnError` contract and
@@ -323,8 +341,9 @@ export async function fetchRuns(
 		page: (from: number, to: number) => PromiseLike<{ data: R[] | null; error: unknown }>,
 	): Promise<R[]> => {
 		if (opts?.limit != null) {
-			const from = opts.offset ?? 0;
-			const { data, error } = await page(from, from + opts.limit - 1);
+			// One keyset page: `after` already moved the window, so it always
+			// starts at the first row the filter admits.
+			const { data, error } = await page(0, opts.limit - 1);
 			if (error || !data) {
 				if (opts?.throwOnError && error) throw dbError(error);
 				return [];
@@ -387,14 +406,19 @@ export async function fetchRuns(
 /// genuinely-empty result is `{ runs: [], error: null }`. Mirrors the
 /// `fetchFoodLogWithError` convention. A signed-out caller is empty, not an
 /// error (nothing to load yet).
+///
+/// With a `limit` it is one load-more page, and `next` is the cursor to pass
+/// back as `after` for the page that follows — null once a short page says
+/// the history is exhausted, and always null for an unlimited read.
 export async function fetchRunsWithError(
 	opts?: Omit<FetchRunsOptions, 'columns'>,
-): Promise<{ runs: Run[]; error: string | null }> {
+): Promise<{ runs: Run[]; error: string | null; next: KeysetCursor | null }> {
 	try {
 		const runs = await fetchRuns({ ...opts, throwOnError: true });
-		return { runs, error: null };
+		const next = opts?.limit != null ? nextCursor(RUN_ORDER, runs, opts.limit) : null;
+		return { runs, error: null, next };
 	} catch (e) {
-		return { runs: [], error: thrownMessage(e) || 'Failed to load runs' };
+		return { runs: [], error: thrownMessage(e) || 'Failed to load runs', next: null };
 	}
 }
 

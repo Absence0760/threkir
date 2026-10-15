@@ -10801,7 +10801,7 @@ abstract class AppLocalizations {
   /// Consent gate intro paragraph
   ///
   /// In en, this message translates to:
-  /// **'Threkir's AI features forward a slice of your data to Anthropic, our AI model provider in the United States. Depending on which feature you use, that slice includes:'**
+  /// **'Threkir\'s AI features forward a slice of your data to Anthropic, our AI model provider in the United States. Depending on which feature you use, that slice includes:'**
   String get coachConsentIntro;
 
   /// Consent gate bullet: profile data
@@ -15012,7 +15012,7 @@ abstract class AppLocalizations {
   /// Banner when toggling a reaction fails
   ///
   /// In en, this message translates to:
-  /// **'Couldn't update your reaction: {error}'**
+  /// **'Couldn\'t update your reaction: {error}'**
   String runSocialReactionError(String error);
 
   /// Accessibility label for liking a comment
@@ -15030,7 +15030,7 @@ abstract class AppLocalizations {
   /// Banner when toggling a comment like fails
   ///
   /// In en, this message translates to:
-  /// **'Couldn't update your like: {error}'**
+  /// **'Couldn\'t update your like: {error}'**
   String runSocialLikeError(String error);
 
   /// Accessibility label for the list of people offered while typing an @mention
@@ -18852,7 +18852,7 @@ abstract class AppLocalizations {
   /// Explains the plate-photo logger above the photo buttons
   ///
   /// In en, this message translates to:
-  /// **'Take or choose a photo of your meal. Threkir estimates what's on the plate, and you check and edit every entry before anything is saved.'**
+  /// **'Take or choose a photo of your meal. Threkir estimates what\'s on the plate, and you check and edit every entry before anything is saved.'**
   String get platePhotoIntro;
 
   /// Button that opens the camera
@@ -18912,7 +18912,7 @@ abstract class AppLocalizations {
   /// Hint under the review heading
   ///
   /// In en, this message translates to:
-  /// **'These are estimates. Edit anything that looks wrong and remove anything that isn't there.'**
+  /// **'These are estimates. Edit anything that looks wrong and remove anything that isn\'t there.'**
   String get platePhotoReviewHint;
 
   /// Label for the meal slot picker on the review
@@ -18990,25 +18990,25 @@ abstract class AppLocalizations {
   /// The per-user hourly throttle refused
   ///
   /// In en, this message translates to:
-  /// **'You've logged a lot of photos this hour. Try again later, or add the meal by hand.'**
+  /// **'You\'ve logged a lot of photos this hour. Try again later, or add the meal by hand.'**
   String get platePhotoErrorRate;
 
   /// The picture could not be read or sent
   ///
   /// In en, this message translates to:
-  /// **'That picture couldn't be read. Try another photo.'**
+  /// **'That picture couldn\'t be read. Try another photo.'**
   String get platePhotoErrorInvalid;
 
   /// The model could not make out the food
   ///
   /// In en, this message translates to:
-  /// **'Couldn't make out the food in that photo. Try another, or add it by hand.'**
+  /// **'Couldn\'t make out the food in that photo. Try another, or add it by hand.'**
   String get platePhotoErrorNotUnderstood;
 
   /// The endpoint is off or failed
   ///
   /// In en, this message translates to:
-  /// **'Logging from a photo isn't available right now. Add the meal by hand.'**
+  /// **'Logging from a photo isn\'t available right now. Add the meal by hand.'**
   String get platePhotoErrorUnavailable;
 
   /// No description provided for @nutritionCalories.

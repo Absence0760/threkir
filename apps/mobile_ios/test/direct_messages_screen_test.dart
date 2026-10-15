@@ -843,7 +843,10 @@ void main() {
 
       final button = find.byKey(const ValueKey('profile-message'));
       expect(button, findsOneWidget);
-      expect(find.byTooltip(l10n.profileMessage), findsOneWidget);
+      // A labelled button since the profile header redesign (decisions
+      // § 1952), not an icon whose name lived only in a tooltip.
+      expect(find.descendant(of: button, matching: find.text(l10n.profileMessage)),
+          findsOneWidget);
       await tester.tap(button);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));

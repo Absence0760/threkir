@@ -232,7 +232,7 @@ void main() {
       workouts: _week(dstStart),
     );
     await _expectSevenDistinctDays(tester);
-  });
+  }, tags: 'tz');
 
   testWidgets('anchors the window correctly when the plan start is weeks back',
       (tester) async {
@@ -248,5 +248,5 @@ void main() {
       workouts: _week(weekOneDay),
     );
     await _expectSevenDistinctDays(tester);
-  });
+  }, tags: 'tz');
 }

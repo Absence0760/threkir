@@ -1381,7 +1381,8 @@ void main() {
           () {
         // One run at local noon on each day of 2026 (both DST changes) and the
         // leap day of 2028. Each must land on a key of its own, one day after
-        // the last, and on that date's own UTC calendar index.
+        // the last, and on that date's own UTC calendar index. The old key
+        // only failed east of UTC, so the `tz` tag is what lets CI see it.
         final days = [
           for (var d = DateTime(2026, 1, 1);
               d.year == 2026;
@@ -1405,7 +1406,7 @@ void main() {
               1,
               reason: '$d');
         }
-      });
+      }, tags: 'tz');
     });
   });
 

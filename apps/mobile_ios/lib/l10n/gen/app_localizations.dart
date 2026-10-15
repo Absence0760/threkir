@@ -9544,6 +9544,150 @@ abstract class AppLocalizations {
   /// **'We couldn\'t read that race\'s date, so the dates below are the usual defaults.'**
   String get planNewRaceUnreadable;
 
+  /// Heading of the AI plan-assistant box at the top of the new-plan wizard
+  ///
+  /// In en, this message translates to:
+  /// **'Describe the plan you want'**
+  String get planNewAiTitle;
+
+  /// Hint under the AI plan-assistant heading explaining that the AI only fills the form and the app generator builds the plan
+  ///
+  /// In en, this message translates to:
+  /// **'Write it in plain English and the form below is filled in for you. The app\'s own generator still builds the plan — check every field before you create it.'**
+  String get planNewAiHint;
+
+  /// Example text shown in the empty AI plan-assistant description field
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. A sub-2 half marathon on 14 March. I can train 4 days a week and my last 5K was 26:30.'**
+  String get planNewAiPlaceholder;
+
+  /// Button that sends the description to the AI plan assistant to fill the wizard form
+  ///
+  /// In en, this message translates to:
+  /// **'Fill in the form'**
+  String get planNewAiButton;
+
+  /// AI plan-assistant button label while the description is being read
+  ///
+  /// In en, this message translates to:
+  /// **'Reading…'**
+  String get planNewAiWorking;
+
+  /// Heading of the status card shown after the AI plan assistant filled the wizard form
+  ///
+  /// In en, this message translates to:
+  /// **'Filled in from your description — check each field.'**
+  String get planNewAiAppliedTitle;
+
+  /// Status-card line saying the plan is built by the app generator, not the AI
+  ///
+  /// In en, this message translates to:
+  /// **'The plan is built by the app\'s own generator from these fields, not by the AI.'**
+  String get planNewAiAppliedGenerator;
+
+  /// Status-card line shown when the AI filled a recent 5K time, which the runner still has to confirm with the checkbox
+  ///
+  /// In en, this message translates to:
+  /// **'Your 5K time was added but not confirmed. Tick the box only if it reflects your fitness today.'**
+  String get planNewAiAppliedRecent5k;
+
+  /// Status-card line when the start date and plan length were set around the race date from the description; date is a formatted calendar date
+  ///
+  /// In en, this message translates to:
+  /// **'Start date and plan length set so race week includes {date}.'**
+  String planNewAiRaceApplied(String date);
+
+  /// Status-card line when the race date from the description has already passed
+  ///
+  /// In en, this message translates to:
+  /// **'That race date has already passed, so the start date was left as it was.'**
+  String get planNewAiRacePast;
+
+  /// Status-card line when the race date from the description is under four weeks away
+  ///
+  /// In en, this message translates to:
+  /// **'Race day is less than four weeks away, so the start date was left as it was — a plan needs at least four weeks.'**
+  String get planNewAiRaceTooSoon;
+
+  /// Status-card line when the race date from the description could not be read
+  ///
+  /// In en, this message translates to:
+  /// **'That race date couldn\'t be read, so the start date was left as it was.'**
+  String get planNewAiRaceInvalid;
+
+  /// AI plan-assistant assumption: no race distance was mentioned, so the goal defaulted to a half marathon
+  ///
+  /// In en, this message translates to:
+  /// **'No race distance was mentioned, so the goal is set to a half marathon.'**
+  String get planNewAiAssumptionGoalEventDefault;
+
+  /// AI plan-assistant assumption: no training days were mentioned, so 4 days a week was set
+  ///
+  /// In en, this message translates to:
+  /// **'No training days were mentioned, so it\'s set to 4 days a week.'**
+  String get planNewAiAssumptionDaysDefault;
+
+  /// AI plan-assistant assumption: training days were clamped to the supported range
+  ///
+  /// In en, this message translates to:
+  /// **'Training days were set to the nearest the planner supports (3 to 7 a week).'**
+  String get planNewAiAssumptionDaysClamped;
+
+  /// AI plan-assistant assumption: plan length was clamped to the supported range
+  ///
+  /// In en, this message translates to:
+  /// **'Plan length was set to the nearest the planner supports (4 to 24 weeks).'**
+  String get planNewAiAssumptionWeeksClamped;
+
+  /// AI plan-assistant assumption: the race date was unusable and dropped
+  ///
+  /// In en, this message translates to:
+  /// **'The race date couldn\'t be used — it has to be a future date within two years.'**
+  String get planNewAiAssumptionRaceDateDropped;
+
+  /// AI plan-assistant assumption: the goal time was out of range and left blank
+  ///
+  /// In en, this message translates to:
+  /// **'The goal time looked out of range for that distance, so it was left blank.'**
+  String get planNewAiAssumptionGoalTimeDropped;
+
+  /// AI plan-assistant assumption: the 5K time was out of range and left blank
+  ///
+  /// In en, this message translates to:
+  /// **'The 5K time looked out of range, so it was left blank.'**
+  String get planNewAiAssumptionRecent5kDropped;
+
+  /// AI plan-assistant assumption: a beginner walk-run plan always targets a 5K with no goal time
+  ///
+  /// In en, this message translates to:
+  /// **'A walk-run plan for new runners builds to a 5K, so the goal was set to 5K with no goal time.'**
+  String get planNewAiAssumptionBeginner5k;
+
+  /// Error when the AI plan assistant needs the runner to accept the updated AI disclosure first
+  ///
+  /// In en, this message translates to:
+  /// **'The plan assistant needs the updated AI disclosure.'**
+  String get planNewAiErrorConsent;
+
+  /// Button under the AI plan-assistant consent error that opens the AI disclosure
+  ///
+  /// In en, this message translates to:
+  /// **'Review disclosure'**
+  String get planNewAiReviewDisclosure;
+
+  /// Error when the runner has used up today's AI requests
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve used today\'s AI requests. Fill in the form yourself, or try again tomorrow.'**
+  String get planNewAiErrorDailyLimit;
+
+  /// Error when the AI plan assistant could not fill the form; the manual form still works
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t read that — fill in the form yourself.'**
+  String get planNewAiErrorFallback;
+
   /// Cancel button in the new-plan wizard
   ///
   /// In en, this message translates to:
@@ -10869,6 +11013,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Is it OK to walk during my runs?'**
   String get coachSuggestNewWalkRun;
+
+  /// Coach empty-state suggestion asking the coach to build a half marathon plan; shown when the AI plan assistant is available
+  ///
+  /// In en, this message translates to:
+  /// **'Build me a half marathon training plan'**
+  String get coachSuggestBuildHalfPlan;
+
+  /// Coach empty-state suggestion for a new runner asking for a beginner plan to a first 5K; shown when the AI plan assistant is available
+  ///
+  /// In en, this message translates to:
+  /// **'Build me a beginner plan to run my first 5K'**
+  String get coachSuggestBuildFirst5kPlan;
+
+  /// Coach empty-state suggestion for a runner with a plan asking for help planning the next race; shown when the AI plan assistant is available
+  ///
+  /// In en, this message translates to:
+  /// **'Help me plan my next race'**
+  String get coachSuggestPlanNextRace;
 
   /// Accessible label for the inline message-edit text field
   ///

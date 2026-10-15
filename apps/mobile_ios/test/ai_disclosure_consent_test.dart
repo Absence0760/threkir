@@ -199,6 +199,16 @@ void main() {
       expect(find.text(_reviewTile), findsNothing);
     });
 
+    testWidgets('a v3 plan-assistant acceptance is offered the plan-edit '
+        'disclosure and keeps its withdrawal', (tester) async {
+      final api = _ConsentApi(storedVersion: kAiDisclosureVersionPlanAi);
+      await _pumpSettings(tester, api);
+
+      await _scrollTo(tester, find.text(_updateTile));
+      expect(find.text(_withdrawTile), findsOneWidget);
+      expect(find.text(_reviewTile), findsNothing);
+    });
+
     testWidgets('a current acceptance has no acceptance left to make',
         (tester) async {
       final api = _ConsentApi(storedVersion: kAiDisclosureCurrentVersion);

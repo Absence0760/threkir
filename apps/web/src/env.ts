@@ -17,6 +17,7 @@ export const variables = defineEnvVars({
 	PUBLIC_APP_RELEASE: { public: true, schema: optional },
 	PUBLIC_BYPASS_PAYWALL: { public: true, schema: optional },
 	PUBLIC_COACH_ENABLED: { public: true, schema: optional },
+	PUBLIC_COACH_FUEL_ENABLED: { public: true, schema: optional },
 	PUBLIC_CYCLE_PLANS_ENABLED: { public: true, schema: optional },
 	PUBLIC_EXPORT_HUB_URL: { public: true, schema: optional },
 	PUBLIC_FUNDRAISING_ENABLED: { public: true, schema: optional },

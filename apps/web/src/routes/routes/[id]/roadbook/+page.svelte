@@ -24,6 +24,11 @@
 		DEFAULT_FLUID_PER_HOUR_ML,
 		HEAT_FLUID_FACTOR
 	} from '#lib/routes/fuel_plan.ts';
+	import {
+		FUEL_MAX_CARBS_PER_HOUR_G,
+		FUEL_MAX_FLUID_PER_HOUR_ML,
+		parseFuelRate
+	} from '#lib/routes/fuel_params.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { loadSettings, effective } from '#lib/settings/settings.ts';
 	import { fetchElevations } from '#lib/routes/elevation.ts';
@@ -110,17 +115,15 @@
 	let heatOn = $derived(params.get('heat') === '1');
 
 	// Effective intake rates: a per-page ?carbs= / ?fluid= override wins, then
-	// the user's settings pref, then the fuel_plan.ts default.
-	let carbsPerHourG = $derived.by(() => {
-		const raw = params.get('carbs');
-		const n = raw ? Number(raw) : NaN;
-		return Number.isFinite(n) && n >= 0 ? n : carbsPrefG;
-	});
-	let fluidPerHourMl = $derived.by(() => {
-		const raw = params.get('fluid');
-		const n = raw ? Number(raw) : NaN;
-		return Number.isFinite(n) && n >= 0 ? n : fluidPrefMl;
-	});
+	// the user's settings pref, then the fuel_plan.ts default. The override is
+	// a pasted or Coach-written link, so it goes through parseFuelRate and an
+	// out-of-range value falls back to the pref rather than reaching the plan.
+	let carbsPerHourG = $derived(
+		parseFuelRate(params.get('carbs'), FUEL_MAX_CARBS_PER_HOUR_G) ?? carbsPrefG
+	);
+	let fluidPerHourMl = $derived(
+		parseFuelRate(params.get('fluid'), FUEL_MAX_FLUID_PER_HOUR_ML) ?? fluidPrefMl
+	);
 
 	function updateParam(key: string, value: string | null) {
 		const url = new URL(page.url.href);

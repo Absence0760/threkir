@@ -85,6 +85,13 @@ export interface CoachConfig {
 	// builder — so the coach never points at a box the runner cannot see.
 	aiPlanEnabled: boolean;
 
+	// The coach fuelling handoff's server flag (coach_fuel_flag.ts is the
+	// client half): PUBLIC_COACH_FUEL_ENABLED in the dev wrapper,
+	// COACH_FUEL_ENABLED in the Lambda. On, the system prompt carries the
+	// fuelHandoffAddendum and the coach answers a fuelling question with a link
+	// to /nutrition/fuel; off, the addendum is empty (decisions § 1975).
+	fuelHandoffEnabled: boolean;
+
 	// Test seam only. Injects the Supabase-client factory so the handler's
 	// post-auth branches (notably the regenerate/edit anchor-miss fail-
 	// closed path) can be unit-tested without a live Supabase. Prod callers

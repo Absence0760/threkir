@@ -87,6 +87,10 @@ locals {
     # 503 unless this is truthy (decisions § 1930). Unset in the sops file
     # means off.
     "AI_PLAN_ENABLED",
+    # Server half of PUBLIC_COACH_FUEL_ENABLED: the coach system prompt carries
+    # the fuelling handoff only when this is truthy (decisions § 1975). Unset
+    # in the sops file means off.
+    "COACH_FUEL_ENABLED",
   ]
 
   # The two X-Engine-Key credentials the generate-route handler sends. Same

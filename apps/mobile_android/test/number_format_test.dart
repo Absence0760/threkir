@@ -33,6 +33,30 @@ void main() {
       expect(formatFixed(-3.5, 1, 'en'), '-3.5');
       expect(formatFixed(-3.5, 1, 'de'), '-3,5');
     });
+
+    test('degenerate input never reaches the label as NaN, ∞ or a signed zero',
+        () {
+      // A training-stress balance of -0.04 rendered "-0.0"; a 0 m distance
+      // divided to NaN rendered "NaN km". Same table as the formatDecimal
+      // degenerate test in web's number.test.ts.
+      const cases = <(double, int, String)>[
+        (double.nan, 1, '—'),
+        (double.infinity, 1, '—'),
+        (double.negativeInfinity, 1, '—'),
+        (-0.0, 1, '0.0'),
+        (-0.04, 1, '0.0'),
+        (-0.05, 1, '-0.1'),
+        (-0.3, 1, '-0.3'),
+        (-0.004, 2, '0.00'),
+        (-0.3, 0, '0'),
+        (-0.5, 0, '-1'),
+      ];
+      for (final (value, digits, expected) in cases) {
+        expect(formatFixed(value, digits, 'en'), expected,
+            reason: 'formatFixed($value, $digits)');
+      }
+      expect(formatFixed(-0.04, 1, 'de'), '0,0');
+    });
   });
 
   group('UnitFormat respects the active locale', () {

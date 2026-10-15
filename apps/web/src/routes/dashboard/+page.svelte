@@ -90,6 +90,7 @@
 	import type { LoadedSettings } from '#lib/settings/settings.ts';
 	import { fmtKm, fmtPace, formatElevation, formatWeight, setUnit } from '#lib/format/units.svelte.ts';
 	import { paceMinutesSeconds } from '#lib/format/pace_format.ts';
+	import { formatSignedInteger } from '#lib/format/number.ts';
 	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
@@ -1579,7 +1580,7 @@
 									class:tsb-neg={loadNow.tsb < -10}
 									class:tsb-pos={loadNow.tsb > 10}
 								>
-									{(loadNow.tsb > 0 ? '+' : '') + loadNow.tsb.toFixed(0)}
+									{formatSignedInteger(loadNow.tsb, currentLocale())}
 								</span>
 								<span class="fitness-unit">{m('dash.tsbUnit')}</span>
 							</div>

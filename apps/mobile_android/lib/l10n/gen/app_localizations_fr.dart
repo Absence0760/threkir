@@ -1137,7 +1137,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get safetyAutoLiveShareSafetySubtitle =>
-      'Démarre automatiquement un partage en direct quand une course commence sur ce téléphone. Il n\'est jamais public : seuls tes contacts de sécurité confirmés peuvent le suivre, via le lien qu\'une alerte de retard ou de sortie d\'itinéraire leur envoie. Activé par défaut dès qu\'une alerte est configurée.';
+      'Démarre automatiquement un partage en direct quand une course commence sur ce téléphone. Il n\'est jamais public : seuls vos contacts de sécurité confirmés peuvent le suivre, via le lien qu\'une alerte de retard ou de sortie d\'itinéraire leur envoie. Activé par défaut dès qu\'une alerte est configurée.';
 
   @override
   String get safetyOffRouteTitle => 'Alerte hors itinéraire';
@@ -1156,7 +1156,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get runSafetyLiveShareStarted =>
-      'Partage de sécurité actif — seuls tes contacts de sécurité peuvent suivre, et seulement après une alerte';
+      'Partage de sécurité actif — seuls vos contacts de sécurité peuvent suivre, et seulement après une alerte';
 
   @override
   String get runSafetyNudgeSolo =>
@@ -12883,16 +12883,16 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get roadbookWeightHint =>
-      'Ajuste la quantité de fluide à ton poids, dans la fourchette de 400 à 800 ml par heure que la médecine du sport indique pour la course. Une base de planification, pas un test de sudation.';
+      'Ajuste la quantité de fluide à votre poids, dans la fourchette de 400 à 800 ml par heure que la médecine du sport indique pour la course. Une base de planification, pas un test de sudation.';
 
   @override
   String roadbookWeightUsing(String ml) {
-    return 'Fluide : $ml ml par heure d\'après ton poids.';
+    return 'Fluide : $ml ml par heure d\'après votre poids.';
   }
 
   @override
   String get roadbookWeightUnavailable =>
-      'Pour baser le fluide sur ton poids, ajoute ton poids dans Données corporelles et donne ton consentement aux données de santé à cet endroit.';
+      'Pour baser le fluide sur votre poids, ajoutez votre poids dans Données corporelles et donnez votre consentement aux données de santé à cet endroit.';
 
   @override
   String get roadbookColTarget => 'Objectif';

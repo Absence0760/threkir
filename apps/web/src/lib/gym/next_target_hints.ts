@@ -3,7 +3,7 @@
 // session's logged sets. Pure suggestion — never auto-applied.
 //
 // Pure — no Svelte / Supabase dependencies, so it runs under `npx tsx --test`.
-// Web-only: no Dart twin (the mobile detail screen shows no hint chips).
+// Web-only: no Dart twin.
 
 import { normaliseExerciseName } from './gym_prs';
 import { nextPrescription, type ProgressionScheme, type ProgressionSetLike } from './gym_progression';

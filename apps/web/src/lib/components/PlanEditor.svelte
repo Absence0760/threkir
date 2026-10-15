@@ -3,6 +3,8 @@
 	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { lengthLimit } from '#lib/core/column_limits.ts';
 	import { onMount, untrack } from 'svelte';
+	import { replaceState } from '$app/navigation';
+	import { page } from '$app/state';
 	import { createTrainingPlan, fetchActivePlanOverview, fetchRuns } from '#lib/core/data.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
@@ -136,6 +138,10 @@
 		initialName?: string;
 		initialStartDate?: string;
 		initialWeeks?: number;
+		// A plain-English plan description handed over by a deep link (the
+		// coach's plan handoff). With the assistant live it prefills the box
+		// and runs one fill on mount; with it off it is ignored.
+		initialDescription?: string;
 	}
 	let {
 		oncreated,
@@ -145,6 +151,7 @@
 		initialName,
 		initialStartDate,
 		initialWeeks,
+		initialDescription,
 	}: Props = $props();
 
 	// The initial* props seed the form once; the fields are edited locally after.
@@ -176,7 +183,9 @@
 	// them exactly as it does for a hand-filled form. Every failure leaves the
 	// manual form as it was.
 	const showAiPlan = coachEnabled() && aiPlanEnabled();
-	let aiRequest = $state('');
+	const handedDescription = untrack(() => (showAiPlan ? (initialDescription?.trim() ?? '') : ''));
+	let aiRequest = $state(handedDescription);
+	let aiBox = $state<HTMLDetailsElement | null>(null);
 	let aiBusy = $state(false);
 	let aiError = $state<{ message: string; consent: boolean } | null>(null);
 	let aiApplied = $state<{
@@ -284,6 +293,31 @@
 		if (kind === 'daily_limit') return { message: t('planEditor.aiErrorDailyLimit'), consent: false };
 		return { message: t('planEditor.aiErrorFallback'), consent: false };
 	}
+
+	// A deep-linked description spends a Coach message, so it runs once and
+	// leaves the URL: a reload or a back-navigation must not run it again.
+	// The strip waits a macrotask because SvelteKit refuses replaceState until
+	// its router has finished starting, which is after the first mount.
+	function stripDescribeParam() {
+		const url = new URL(page.url.href);
+		if (!url.searchParams.has('describe')) return;
+		url.searchParams.delete('describe');
+		try {
+			replaceState(`${url.pathname}${url.search}${url.hash}`, page.state);
+		} catch (e) {
+			console.error('Clearing the plan description from the URL failed', { message: thrownMessage(e) });
+		}
+	}
+
+	onMount(() => {
+		if (!handedDescription) return;
+		if (aiBox) {
+			aiBox.open = true;
+			aiBox.scrollIntoView({ block: 'start' });
+		}
+		void fillFromDescription();
+		setTimeout(stripDescribeParam, 0);
+	});
 
 	async function fillFromDescription() {
 		const text = aiRequest.trim();
@@ -641,7 +675,7 @@
 	<div class="grid">
 		<section class="form">
 			{#if showAiPlan}
-				<details class="import-box ai-box" open>
+				<details class="import-box ai-box" id="ai-plan" bind:this={aiBox} open>
 					<summary>{t('planEditor.aiTitle')}</summary>
 					<p class="hint" id="plan-ai-hint">{t('planEditor.aiHint')}</p>
 					<label class="visually-hidden" for="plan-ai-request">{t('planEditor.aiTitle')}</label>

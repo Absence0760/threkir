@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
 
 import { browserDate } from '../fixtures/dates';
 import { USER_A } from '../fixtures/users';
@@ -117,6 +117,59 @@ test.describe('/plans/new — AI plan request', () => {
 		});
 		await expect(weeksInput).toHaveValue('');
 		await expect(goalTime.nth(0)).toHaveValue('');
+	});
+
+	test('a ?describe= deep link fills once on arrival and then leaves the URL', async ({
+		page,
+		mockRoute
+	}) => {
+		// The coach's plan handoff lands here. The fill spends a Coach
+		// message, so it must run exactly once and the param must be gone
+		// before a reload could run it again.
+		const bodies: Array<{ request?: string }> = [];
+		await mockRoute(page, '**/api/coach/plan-request', async (route) => {
+			bodies.push(route.request().postDataJSON());
+			await route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					inputs: {
+						goalEvent: 'distance_half',
+						raceDate: null,
+						goalTimeSec: null,
+						recent5kSec: null,
+						daysPerWeek: 4,
+						weeks: 12,
+						beginnerWalkRun: false,
+						planName: null,
+						assumptions: []
+					}
+				})
+			});
+		});
+
+		const description = 'A half marathon in twelve weeks, 4 days a week';
+		await page.goto(`/plans/new?describe=${encodeURIComponent(description)}`);
+
+		const editor = page.locator('form.plan-editor');
+		await expect(editor.locator('.ai-applied')).toBeVisible({ timeout: 10_000 });
+		const box = editor.getByRole('textbox', { name: 'Describe the plan you want' });
+		await expect(box).toHaveValue(description);
+		await expect(editor.getByRole('combobox', { name: /Goal race/ })).toHaveValue('distance_half');
+		await expect(editor.getByRole('combobox', { name: /Days per week/ })).toHaveValue('4');
+
+		// A describe link is a training-plan request: no kind chooser.
+		await expect(page.getByTestId('kind-training')).toHaveCount(0);
+
+		await expect(page).not.toHaveURL(/describe=/);
+		expect(bodies).toHaveLength(1);
+		expect(bodies[0].request).toBe(description);
+
+		await page.reload();
+		await expect(box).toBeVisible({ timeout: 10_000 });
+		await expect(box).toHaveValue('');
+		await expect(editor.locator('.ai-applied')).toHaveCount(0);
+		expect(bodies).toHaveLength(1);
 	});
 
 	test('a consent refusal links to /coach to accept the updated disclosure', async ({ page }) => {

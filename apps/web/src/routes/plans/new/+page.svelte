@@ -31,7 +31,15 @@
 
 	type PlanKind = 'training' | 'session' | 'gym';
 
+	// `?describe=<text>` (the coach's plan handoff) hands the AI plan box a
+	// description to fill from. It is a training-plan request by definition,
+	// so it picks that kind and skips the chooser. Capped to the box's own
+	// maxlength; PlanEditor ignores it while the assistant is off.
+	const describeParam =
+		page.url.searchParams.get('describe')?.trim().slice(0, 600).trim() || undefined;
+
 	function initialKind(): PlanKind {
+		if (describeParam) return 'training';
 		const t = page.url.searchParams.get('type');
 		return t === 'session' || t === 'gym' ? t : 'training';
 	}
@@ -46,9 +54,9 @@
 	// contextual "New …" link) — skip the chooser so we don't ask twice. The
 	// bare /plans/new entry (no type) shows the chooser to disambiguate.
 	const explicitType = page.url.searchParams.get('type');
-	const showChooser = !(
-		explicitType === 'training' || explicitType === 'session' || explicitType === 'gym'
-	);
+	const showChooser =
+		!describeParam &&
+		!(explicitType === 'training' || explicitType === 'session' || explicitType === 'gym');
 
 	// `?goal=<primary_goal>` (the onboarding "create my training plan" CTA)
 	// preselects the goal distance + walk-run toggle so a brand-new runner
@@ -440,6 +448,7 @@
 		{initialName}
 		initialStartDate={racePreset?.ok ? racePreset.preset.startDate : undefined}
 		initialWeeks={racePreset?.ok ? racePreset.preset.weeks : undefined}
+		initialDescription={describeParam}
 	/>
 	{:else if kind === 'session'}
 		<div class="form-branch">

@@ -52,6 +52,9 @@ data class QueuedRun(
     /// without claiming an estimator it never ran.
     val distanceEstimator: String? = null,
     val distanceStepFilledM: Double? = null,
+    /// `metadata.location_provider`. Null on a run queued before the watch
+    /// recorded on the receiver, or with no track, and the key is omitted.
+    val locationProvider: String? = null,
 )
 
 private val Context.dataStore by preferencesDataStore(name = "watch_wear")

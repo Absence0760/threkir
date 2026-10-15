@@ -271,6 +271,7 @@ class NextRunLifecycleTest {
             "hrAvailableMs = 0",
             "trackOverlay.clear()",
             "lastAnnouncedSplit = 0",
+            "sourceArbiter.reset()",
         )) {
             assertTrue("startRecording must reset `$reset` or the next run inherits it", fn.contains(reset))
         }

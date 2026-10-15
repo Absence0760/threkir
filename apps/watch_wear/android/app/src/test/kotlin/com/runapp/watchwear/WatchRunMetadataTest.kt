@@ -370,4 +370,21 @@ class WatchRunMetadataTest {
         assertFalse(md.containsKey("distance_estimator"))
         assertFalse(md.containsKey("distance_step_filled_m"))
     }
+
+    @Test
+    fun `location_provider is written when the run names one and omitted otherwise`() {
+        fun md(provider: String?) = buildRunMetadata(
+            activityType = "run",
+            avgBpm = null,
+            hrCoverage = null,
+            steps = null,
+            laps = emptyList(),
+            lastModifiedAtIso = isoStamp,
+            locationProvider = provider,
+        )
+        for (provider in listOf("gps", "fused", "mixed")) {
+            assertEquals(provider, md(provider)["location_provider"]!!.jsonPrimitive.content)
+        }
+        assertFalse(md(null).containsKey("location_provider"))
+    }
 }

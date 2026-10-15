@@ -29,6 +29,7 @@ fun buildRunMetadata(
     lastModifiedAtIso: String,
     distanceEstimator: String? = null,
     distanceStepFilledM: Double? = null,
+    locationProvider: String? = null,
 ): JsonObject = buildJsonObject {
     put("activity_type", activityType)
     if (avgBpm != null) put("avg_bpm", avgBpm)
@@ -48,6 +49,7 @@ fun buildRunMetadata(
     if (distanceEstimator != null && distanceStepFilledM != null && distanceStepFilledM > 0) {
         put("distance_step_filled_m", distanceStepFilledM)
     }
+    if (locationProvider != null) put("location_provider", locationProvider)
     if (laps.isNotEmpty()) {
         put("laps", buildJsonArray {
             var prevMs = 0L

@@ -56,6 +56,7 @@ class RunRecordingService : Service() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var gpsJob: Job? = null
+    private var gnssJob: Job? = null
     private var gpsRetryJob: Job? = null
     private var hrJob: Job? = null
     private var stepsJob: Job? = null
@@ -91,6 +92,13 @@ class RunRecordingService : Service() {
     /// every new segment, so it never spans a pause. Guarded by [distanceLock].
     private val livePace = LivePaceWindow()
     private val distanceLock = Any()
+    /// Which stream feeds the run: the satellite receiver while it delivers,
+    /// fused while it is silent. The fused and receiver collectors run on
+    /// different `Dispatchers.Default` threads, so [fixLock] serialises both
+    /// the arbitration and the [onGps] it gates; it is taken before
+    /// [distanceLock], never inside it.
+    private val sourceArbiter = LocationSourceArbiter()
+    private val fixLock = Any()
     /// Wall-clock timestamp of the most recent GPS point delivered while
     /// Recording. Used by the self-heal watchdog to re-subscribe if the
     /// FusedLocationProviderClient stream goes silent despite availability
@@ -250,6 +258,7 @@ class RunRecordingService : Service() {
             bankedStepDistanceM = 0.0
             livePace.seal()
         }
+        synchronized(fixLock) { sourceArbiter.reset() }
         lastPointAtMs = 0L
         trackOverlay.clear()
         bpmSum = 0
@@ -292,6 +301,7 @@ class RunRecordingService : Service() {
         com.runapp.watchwear.complications.ActiveRunComplicationService.requestUpdate(this)
 
         subscribeToGps()
+        subscribeToGnss()
         // Self-healing GPS retry loop. Mirrors Android's
         // `_startGpsRetryLoop` in `packages/run_recorder/lib/src/run_recorder.dart`:
         // a periodic timer that (re-)opens the stream whenever the
@@ -334,6 +344,11 @@ class RunRecordingService : Service() {
                     // to start emitting.
                     if (decision.triggeredByStall) lastPointAtMs = now
                 }
+                // The receiver stream ends rather than erroring when the
+                // watch has no receiver or the provider is off; fused keeps
+                // the run going meanwhile, so it is reopened alone and at
+                // most every GNSS_REOPEN_INTERVAL_MS.
+                if (gnssJob?.isActive != true) subscribeToGnss()
             }
         }
         if (BuildConfig.ENABLE_HR) {
@@ -461,6 +476,7 @@ class RunRecordingService : Service() {
 
     private fun stopRecording() {
         gpsJob?.cancel(); gpsJob = null
+        gnssJob?.cancel(); gnssJob = null
         gpsRetryJob?.cancel(); gpsRetryJob = null
         hrJob?.cancel(); hrJob = null
         stepsJob?.cancel(); stepsJob = null
@@ -487,6 +503,7 @@ class RunRecordingService : Service() {
             activeElapsedMs = finalElapsed,
         )
 
+        val locationProvider = locationProviderForTrack(trackWriter?.pointCount ?: 0)
         val file = trackWriter?.close()
         trackWriter = null
 
@@ -496,6 +513,7 @@ class RunRecordingService : Service() {
                 elapsedMs = finalElapsed,
                 distanceM = finishDistanceM,
                 distanceStepFilledM = stepFilledM,
+                locationProvider = locationProvider,
                 finishedHr = hr,
                 trackFilePath = file?.absolutePath,
                 laps = laps.toList(),
@@ -566,7 +584,7 @@ class RunRecordingService : Service() {
                 }
                 .collect { event ->
                     when (event) {
-                        is GpsEvent.Point -> if (!isPaused()) onGps(event.point)
+                        is GpsEvent.Point -> onFix(event.point, fromReceiver = false)
                         is GpsEvent.Availability -> RecordingRepository.update {
                             it.copy(locationAvailable = event.available)
                         }
@@ -574,6 +592,46 @@ class RunRecordingService : Service() {
                 }
         }
     }
+
+    /// Open the satellite receiver's stream unless it is already open or was
+    /// opened within GNSS_REOPEN_INTERVAL_MS. Its fixes go through the same
+    /// [onFix] as fused's; its end is not "GPS lost", because fused may be
+    /// delivering, so it touches no availability state.
+    private fun subscribeToGnss() {
+        if (gnssJob?.isActive == true) return
+        val mayOpen = synchronized(fixLock) {
+            sourceArbiter.mayOpenReceiver(SystemClock.elapsedRealtime())
+        }
+        if (!mayOpen) return
+        gnssJob = scope.launch {
+            gps.gnssStream()
+                .catch { e -> android.util.Log.w(TAG, "receiver stream failed", e) }
+                .collect { event ->
+                    if (event is GpsEvent.Point) onFix(event.point, fromReceiver = true)
+                }
+        }
+    }
+
+    /// Arbitrate one fix between the receiver and fused, end the estimator
+    /// segment when the run changes source, and record the fix if it feeds.
+    /// A paused fix is still arbitrated but never recorded.
+    private fun onFix(p: GpsPoint, fromReceiver: Boolean) {
+        synchronized(fixLock) {
+            val live = !isPaused()
+            val now = SystemClock.elapsedRealtime()
+            val verdict = if (fromReceiver) {
+                sourceArbiter.onGnssFix(p.accuracyM, now, live)
+            } else {
+                sourceArbiter.onFusedFix(now, live)
+            }
+            if (verdict.rollSegment) synchronized(distanceLock) { closeDistanceSegment() }
+            if (verdict.feed) onGps(p)
+        }
+    }
+
+    /// `metadata.location_provider`, written only for a run with a track.
+    private fun locationProviderForTrack(pointCount: Int): String? =
+        if (pointCount > 0) synchronized(fixLock) { sourceArbiter.locationProvider() } else null
 
     private fun onGps(p: GpsPoint) {
         lastPointAtMs = System.currentTimeMillis()
@@ -699,6 +757,7 @@ class RunRecordingService : Service() {
                 pausedAccumulatedMs = pausedAccumulatedMs + currentPauseMs,
                 distanceEstimator = GpsDistanceEstimator.SPEC_ID,
                 distanceStepFilledM = stepFilledM,
+                locationProvider = locationProviderForTrack(file.pointCount),
             )
         )
     }

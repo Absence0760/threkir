@@ -1321,6 +1321,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                     isPublic = isPublicFromPrivacyDefault(cp.privacyDefault),
                     distanceEstimator = cp.distanceEstimator,
                     distanceStepFilledM = cp.distanceStepFilledM,
+                    locationProvider = cp.locationProvider,
                 )
             )
             checkpoints.clear()
@@ -1787,6 +1788,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                     isPublic = snapshotIsPublic(),
                     distanceEstimator = GpsDistanceEstimator.SPEC_ID,
                     distanceStepFilledM = m.distanceStepFilledM,
+                    locationProvider = m.locationProvider,
                 )
             )
             rememberLastRun(m, runId, durationS)
@@ -2180,6 +2182,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
             lastModifiedAtIso = Instant.now().toString(),
             distanceEstimator = run.distanceEstimator,
             distanceStepFilledM = run.distanceStepFilledM,
+            locationProvider = run.locationProvider,
         )
         // A queued run whose payload is gone is uploaded without one rather
         // than left in the queue promising a sync that can never happen. The

@@ -38,6 +38,11 @@ object RecordingRepository {
         /// from pedometer steps across GPS gaps rather than from fixes. Written
         /// once, at the `Finished` transition, and null at every other stage.
         val distanceStepFilledM: Double? = null,
+        /// Which stream recorded a FINISHED run's track (`gps` / `fused` /
+        /// `mixed`, see `LocationSourceArbiter`). Written once, at the
+        /// `Finished` transition, and null at every other stage or when the
+        /// run has no track.
+        val locationProvider: String? = null,
         val paceSecPerKm: Double? = null,
         val bpm: Int? = null,
         /// What the FINISHED run may claim about its heart rate: the graded

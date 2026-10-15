@@ -21,6 +21,7 @@ import 'package:ui_kit/ui_kit.dart'
         syncMotionLoop;
 
 import '../ai_disclosure.dart';
+import '../ai_disclosure_memo.dart';
 import '../backend_timeout.dart';
 import '../auth_error.dart';
 import '../payload_hash.dart';
@@ -233,6 +234,15 @@ class _CoachScreenState extends State<CoachScreen> {
   void initState() {
     super.initState();
     _planId = widget.initialPlanId;
+    // A remembered grant opens the chat at once; _bootstrap still re-reads
+    // the record and swaps to the disclosure if the server disagrees, and the
+    // endpoint grades consent on every turn regardless (ai_disclosure_memo).
+    final remembered = AiDisclosureMemo.peek(widget.api.userId);
+    if (remembered != null &&
+        checkAiDisclosure(remembered, kAiDisclosureVersionCoach).ok) {
+      _disclosure = remembered;
+      _consentChecked = true;
+    }
     _bootstrap();
     _loadAiPlanAvailability();
   }
@@ -267,11 +277,15 @@ class _CoachScreenState extends State<CoachScreen> {
     try {
       _disclosure =
           aiDisclosureFromProfileRow(await widget.api.fetchAiDisclosure());
+      final uid = widget.api.userId;
+      if (uid != null) AiDisclosureMemo.remember(uid, _disclosure);
     } catch (e) {
       // Fail closed — a lookup error means the disclosure stays up.
       debugPrint('coach_screen: consent lookup failed: $e');
       _disclosure = const AiDisclosureRecord();
     }
+    // setState even when the memo already opened the chat: the fresh record
+    // may have withdrawn what the memo granted.
     if (mounted) setState(() => _consentChecked = true);
     try {
       _plans = await widget.training.fetchMyPlans();
@@ -306,9 +320,12 @@ class _CoachScreenState extends State<CoachScreen> {
       // (decisions § 560).
       final row = await widget.api
           .recordAiDisclosureConsent(kAiDisclosureCurrentVersion);
+      final record = aiDisclosureFromProfileRow(row);
+      final uid = widget.api.userId;
+      if (uid != null) AiDisclosureMemo.remember(uid, record);
       if (!mounted) return;
       setState(() {
-        _disclosure = aiDisclosureFromProfileRow(row);
+        _disclosure = record;
         _consentSaving = false;
       });
     } catch (e) {

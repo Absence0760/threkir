@@ -2,6 +2,7 @@ import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 
 import '../ai_disclosure.dart';
+import '../ai_disclosure_memo.dart';
 import '../auth_error.dart';
 import '../l10n/gen/app_localizations.dart';
 
@@ -91,8 +92,11 @@ class _AiDisclosureDialogState extends State<_AiDisclosureDialog> {
     try {
       final row = await widget.api
           .recordAiDisclosureConsent(kAiDisclosureCurrentVersion);
+      final record = aiDisclosureFromProfileRow(row);
+      final uid = widget.api.userId;
+      if (uid != null) AiDisclosureMemo.remember(uid, record);
       if (!mounted) return;
-      Navigator.of(context).pop(aiDisclosureFromProfileRow(row));
+      Navigator.of(context).pop(record);
     } catch (e) {
       debugPrint('ai_disclosure: record failed: $e');
       if (!mounted) return;

@@ -13,6 +13,8 @@ import 'package:ui_kit/ui_kit.dart'
 
 import '../adaptive_width.dart';
 import '../age_grade.dart';
+import '../ai_disclosure.dart' show AiDisclosureRecord;
+import '../ai_disclosure_memo.dart';
 import '../auth_change_aware.dart';
 import '../current_week.dart' show WeekStart;
 import '../device_timezone.dart';
@@ -290,6 +292,18 @@ class _DashboardScreenState extends State<DashboardScreen>
     if (api == null) return;
     try {
       final p = await api.fetchMyProfile();
+      // The same row carries the AI-consent record, so remembering it here
+      // lets "Ask your coach" open straight into the chat.
+      final uid = api.userId;
+      if (p != null && uid != null) {
+        AiDisclosureMemo.remember(
+          uid,
+          AiDisclosureRecord(
+            version: p.aiDisclosureVersion,
+            acceptedAt: p.coachConsentAt?.toUtc().toIso8601String(),
+          ),
+        );
+      }
       if (mounted) setState(() => _viewerProfile = p);
     } catch (e) {
       debugPrint('dashboard: profile fetch failed: $e');

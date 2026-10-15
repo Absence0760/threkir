@@ -6,7 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:ui_kit/ui_kit.dart' show ListSkeleton;
+import 'package:ui_kit/ui_kit.dart' show FullBodyLoader, ListSkeleton;
+import '../lib/ai_disclosure.dart';
+import '../lib/ai_disclosure_memo.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/coach_screen.dart';
 import '../lib/screens/guided_runs_screen.dart';
@@ -45,6 +47,19 @@ class _HangingThreadApi extends _ConsentedApi {
 
   @override
   Future<bool> isPro() async => false;
+}
+
+/// The consent read never answers (or answers [answer] once released), so
+/// the frame the screen draws BEFORE the server speaks stays observable.
+class _SlowConsentApi extends _HangingThreadApi {
+  _SlowConsentApi({this.answer});
+  final Map<String, dynamic>? answer;
+  final release = Completer<void>();
+  @override
+  Future<Map<String, dynamic>?> fetchAiDisclosure() async {
+    await release.future;
+    return answer;
+  }
 }
 
 bool _supabaseReady = false;
@@ -178,6 +193,9 @@ Future<void> _pump(WidgetTester tester, {ApiClient? api}) {
 
 void main() {
   setUpAll(_ensureSupabase);
+  // The consent memo is process-wide; a grant one case records must not open
+  // the chat in the next.
+  setUp(AiDisclosureMemo.forget);
 
   group('CoachScreen — initial render', () {
     testWidgets('the thread pane stands message blocks while it loads',
@@ -297,6 +315,74 @@ void main() {
         reason:
             'the I-consent CTA must be reachable from the '
             'gate so the user can accept.',
+      );
+      await _drain(tester);
+    });
+  });
+
+  group('CoachScreen — remembered consent', () {
+    const granted = AiDisclosureRecord(
+      version: 2,
+      acceptedAt: '2026-01-01T00:00:00Z',
+    );
+
+    testWidgets('a remembered grant opens the chat before the server answers',
+        (tester) async {
+      AiDisclosureMemo.remember('u-viewer', granted);
+      final api = _SlowConsentApi(answer: const {
+        'ai_disclosure_version': 2,
+        'coach_consent_at': '2026-01-01T00:00:00Z',
+      });
+      await _pump(tester, api: api);
+      expect(find.byType(FullBodyLoader), findsNothing);
+      expect(find.text("Before you use Threkir's AI features"), findsNothing);
+      expect(find.byType(ListSkeleton), findsOneWidget,
+          reason: 'the chat surface is up, waiting on its thread');
+      api.release.complete();
+      await tester.pump();
+      await _drain(tester);
+    });
+
+    testWidgets('with nothing remembered it waits for the server',
+        (tester) async {
+      final api = _SlowConsentApi();
+      await _pump(tester, api: api);
+      expect(find.byType(FullBodyLoader), findsOneWidget);
+      api.release.complete();
+      await tester.pump();
+      await _drain(tester);
+    });
+
+    testWidgets('a grant someone else remembered does not open it',
+        (tester) async {
+      AiDisclosureMemo.remember('another-user', granted);
+      final api = _SlowConsentApi();
+      await _pump(tester, api: api);
+      expect(find.byType(FullBodyLoader), findsOneWidget);
+      api.release.complete();
+      await tester.pump();
+      await _drain(tester);
+    });
+
+    testWidgets('the server withdrawing a remembered grant swaps to the '
+        'disclosure', (tester) async {
+      AiDisclosureMemo.remember('u-viewer', granted);
+      final api = _SlowConsentApi(answer: const {
+        'ai_disclosure_version': null,
+        'coach_consent_at': null,
+      });
+      await _pump(tester, api: api);
+      expect(find.text("Before you use Threkir's AI features"), findsNothing);
+      api.release.complete();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text("Before you use Threkir's AI features"), findsOneWidget);
+      expect(
+        checkAiDisclosure(
+                AiDisclosureMemo.peek('u-viewer')!, kAiDisclosureVersionCoach)
+            .ok,
+        isFalse,
+        reason: 'the fresh record replaces the memo, so the next open waits',
       );
       await _drain(tester);
     });

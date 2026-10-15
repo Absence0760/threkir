@@ -24,6 +24,7 @@ import '../lib/screens/run_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
 import 'pump_until.dart';
+import 'pre_run_dialogs.dart';
 
 /// Pins the issue #664 fix: a run whose live share is active when the
 /// runner stops must NOT be silently left `is_public = true`. The stop
@@ -274,6 +275,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final prefs = Preferences();
     await prefs.init();
+    await markPreRunDialogsSeen(prefs);
     await prefs.setPrivacyDefault(privacyDefault);
 
     final api = _LiveApi();

@@ -28,6 +28,7 @@ import '../lib/social_service.dart';
 import '../lib/training_service.dart';
 import '../lib/watch_settings.dart';
 import 'pump_until.dart';
+import 'pre_run_dialogs.dart';
 
 /// Drives the REAL RunScreen through the REAL guided-run affordance and the
 /// REAL recorder tick — not a replica of the screen's wiring beside it
@@ -269,6 +270,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final prefs = Preferences();
     await prefs.init();
+    await markPreRunDialogsSeen(prefs);
     await configure?.call(prefs);
 
     final runStore = _CapturingRunStore();

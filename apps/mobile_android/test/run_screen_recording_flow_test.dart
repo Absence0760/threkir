@@ -31,6 +31,7 @@ import '../lib/widgets/live_run_map.dart';
 import '../lib/widgets/map_attribution.dart';
 import '../lib/widgets/race_stop_sheet.dart';
 import 'pump_until.dart';
+import 'pre_run_dialogs.dart';
 
 /// Drives the full RunScreen UI flow: tap START → countdown → recording.
 ///
@@ -452,10 +453,11 @@ void main() {
     BleTreadmill treadmill,
     AudioCues audioCues,
     RaceController raceController,
-  })> makeStores() async {
+  })> makeStores({bool preRunDialogsSeen = true}) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = Preferences();
     await prefs.init();
+    if (preRunDialogsSeen) await markPreRunDialogsSeen(prefs);
 
     final runStore = LocalRunStore();
     await runStore.init(overrideDirectory: runsDir);
@@ -475,8 +477,11 @@ void main() {
     );
   }
 
-  Future<LocalRunStore> pumpRunScreen(WidgetTester tester) async {
-    final s = await makeStores();
+  Future<LocalRunStore> pumpRunScreen(
+    WidgetTester tester, {
+    bool preRunDialogsSeen = true,
+  }) async {
+    final s = await makeStores(preRunDialogsSeen: preRunDialogsSeen);
     await tester.pumpWidget(
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -1266,7 +1271,7 @@ void main() {
       debugDefaultTargetPlatformOverride = TargetPlatform.android;
       try {
         mockPermissions(alwaysGranted: false);
-        await pumpRunScreen(tester);
+        await pumpRunScreen(tester, preRunDialogsSeen: false);
         await tapStartToDialog(tester);
         expect(find.text('Allow location all the time'), findsOneWidget);
 
@@ -1290,7 +1295,7 @@ void main() {
       debugDefaultTargetPlatformOverride = TargetPlatform.android;
       try {
         mockPermissions(alwaysGranted: true);
-        await pumpRunScreen(tester);
+        await pumpRunScreen(tester, preRunDialogsSeen: false);
         await tapStartToDialog(tester);
         expect(find.text('Keep recording alive in the background'),
             findsOneWidget);
@@ -1312,7 +1317,7 @@ void main() {
       debugDefaultTargetPlatformOverride = TargetPlatform.android;
       try {
         mockPermissions(alwaysGranted: true);
-        await pumpRunScreen(tester);
+        await pumpRunScreen(tester, preRunDialogsSeen: false);
         await tapStartToDialog(tester);
         expect(find.text('Keep recording alive in the background'),
             findsOneWidget,

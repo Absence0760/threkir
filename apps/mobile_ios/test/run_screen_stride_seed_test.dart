@@ -24,6 +24,7 @@ import '../lib/screens/run_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
 import 'pump_until.dart';
+import 'pre_run_dialogs.dart';
 
 /// Pins the run screen's stride persistence end to end: the stride the
 /// estimator learned on this runner's earlier runs of an activity seeds the
@@ -261,6 +262,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final prefs = Preferences();
     await prefs.init();
+    await markPreRunDialogsSeen(prefs);
     return prefs;
   }
 

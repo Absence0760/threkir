@@ -905,7 +905,7 @@ Pure tests for the Open Food Facts client (`food_search.ts`, injectable-fetcher 
 
 Pure tests for the daily nutrition aggregation (`nutrition_totals.ts`; Dart twin `nutrition_totals_test.dart`). `sumMacros` sums fields treating null as zero (zeros for an empty day); `groupByMealSlot` orders slots and omits empty ones (null slot folds into snack); `ringFraction` clamps to [0,1] and returns null on a missing/zero target.
 
-### Mobile nutrition tests (Dart) — `apps/mobile_android/test/food_search_test.dart` (43) · `nutrition_totals_test.dart` (4) · `nutrition_targets_test.dart` (19, mirror) · `nutrition_screen_test.dart` (28 widget) · `nutrition_log_sheet_test.dart` (11 widget)
+### Mobile nutrition tests (Dart) — `apps/mobile_android/test/food_search_test.dart` (43) · `nutrition_totals_test.dart` (4) · `nutrition_targets_test.dart` (19, mirror) · `nutrition_screen_test.dart` (30 widget) · `nutrition_log_sheet_test.dart` (11 widget)
 
 Dart twins of the web nutrition pure logic (equal counts) plus the mobile-only screen/widget coverage: `nutrition_screen_test.dart` (empty state with rings + water cards, a logged meal under its slot with calories, water increment via the `SharedPreferences` mock) and `nutrition_log_sheet_test.dart` (manual entry logs to the store, Open Food Facts results render via the injected fetcher). The iOS twin runs the same files byte-for-byte.
 ### `apps/web/src/lib/runs/age_grade.test.ts` — 12 tests

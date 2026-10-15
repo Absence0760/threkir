@@ -154,12 +154,12 @@ WatchApp/
 
 ### Wear OS app (Kotlin + Compose-for-Wear)
 
-Native Kotlin Android app targeting Wear OS 3+ (minSdk 30). Uses Jetpack Compose-for-Wear (`androidx.wear.compose:*`) for UI, `FusedLocationProviderClient` for GPS, `androidx.health:health-services-client` for HR, DataStore for local queue persistence, and OkHttp for Supabase REST calls. **Not Flutter** — see [decisions.md § 15](decisions.md).
+Native Kotlin Android app targeting Wear OS 3+ (minSdk 30). Uses Jetpack Compose-for-Wear (`androidx.wear.compose:*`) for UI, `LocationManager.GPS_PROVIDER` for GPS (with `FusedLocationProviderClient` as fallback, decisions § 1984), `androidx.health:health-services-client` for HR, DataStore for local queue persistence, and OkHttp for Supabase REST calls. **Not Flutter** — see [decisions.md § 15](decisions.md).
 
 Talks to Supabase **directly** (standalone — no paired-phone dependency). Schema drift is caught by the Kotlin row classes generated from Supabase migrations via `scripts/gen_dart_models.dart`'s Kotlin emitter, same source-of-truth that drives the Dart `db_rows.dart`. Renaming a column regenerates both and breaks `watch_wear`'s `SupabaseClient.saveRun` at compile time.
 
 **Key responsibilities:**
-- Standalone GPS workout recording (`GpsRecorder` wrapping `FusedLocationProviderClient`)
+- Standalone GPS workout recording (`GpsRecorder` opening the `GPS_PROVIDER` receiver and the fused fallback, arbitrated by `recording/LocationSourceArbiter.kt`)
 - Live HR via Health Services `MeasureClient`, averaged into `run.metadata.avg_bpm` on stop
 - DataStore-backed retry queue (`LocalRunStore`) — runs stay local until `SupabaseClient.saveRun` succeeds
 - Compose-for-Wear UI with `TimeText`, `Vignette`, `PositionIndicator`, `ScalingLazyColumn`

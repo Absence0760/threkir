@@ -15,7 +15,8 @@ is **not** trying to mirror web's feature surface.
 **Build here:**
 
 - **Wrist-only capabilities**: standalone `HKWorkoutSession`-equivalent via
-  Health Services, `FusedLocationProviderClient` background recording,
+  Health Services, background recording from the watch's own satellite
+  receiver (`GPS_PROVIDER`, with `FusedLocationProviderClient` as fallback),
   on-device crash recovery, on-watch HR via Health Services `MeasureClient`,
   haptic pace alerts, route preview on-watch, ambient-mode rendering, watch
   faces / tiles / complications.
@@ -64,7 +65,7 @@ apps/watch_wear/
             │   ├── WatchWearApplication.kt  # the only Sentry init (manifest auto-init is off)
             │   ├── RunViewModel.kt          # single source of UI state
             │   ├── SupabaseClient.kt        # OkHttp REST + Storage client
-            │   ├── GpsRecorder.kt           # FusedLocationProviderClient wrapper
+            │   ├── GpsRecorder.kt           # GPS_PROVIDER receiver + fused fallback streams
             │   ├── HeartRateMonitor.kt      # Health Services MeasureClient
             │   ├── Pedometer.kt             # Sensor.TYPE_STEP_COUNTER wrapper
             │   ├── LocalRunStore.kt         # DataStore-backed retry queue (`queued_runs_v2`)
@@ -91,6 +92,7 @@ apps/watch_wear/
             │   │   ├── CheckpointStore.kt       # in-progress recovery snapshot
             │   │   ├── CheckpointRecovery.kt    # grade a survivor before offering it
             │   │   ├── GpsDistanceEstimator.kt  # spec-v1.2 forward Kalman distance (shared vectors)
+            │   │   ├── LocationSourceArbiter.kt # receiver-vs-fused arbitration, mirrors the phone's RunRecorder
             │   │   ├── LivePace.kt              # live pace over the estimator's last ~200 m
             │   │   ├── TrackWriter.kt           # streaming GPS to disk JSON
             │   │   ├── TrackStorage.kt          # durable track dir + cache migration + orphan sweep
@@ -609,6 +611,27 @@ steal focus from typing). `RotaryScrollWiringTest` pins the call sites.
   registered while silently emitting nothing — a failure mode
   Geolocator surfaces as a stream error. Initial no-fix
   (`lastPointAtMs == 0L`) is explicitly not a stall; that's indoor mode.
+  The loop reopens the `GPS_PROVIDER` receiver stream as well, at most
+  once per 30 s, so a watch with no receiver isn't asked every tick.
+- **The watch records from its own receiver; fused is the fallback.**
+  `GpsRecorder` opens two streams: `LocationManager.GPS_PROVIDER` at
+  1 Hz and `FusedLocationProviderClient` (`PRIORITY_HIGH_ACCURACY`, 1 s).
+  Fused alone was the old source, and on Wear OS it can feed the watch the
+  paired phone's location, so the track need not come from the wrist; on
+  a phone the same provider read +10.4% long (decisions § 1960, § 1984).
+  `recording/LocationSourceArbiter.kt` applies the phone `RunRecorder`'s
+  rules unchanged: the receiver takes the run after 3 consecutive usable
+  fixes (past the 30 m gate) each arriving within 12 s of the last; fused
+  feeds the run only after > 12 s with no usable receiver fix; the fused
+  stream stays open throughout; arbitration is on arrival time
+  (monotonic), never fix timestamps. Each switch starts a new
+  `GpsDistanceEstimator` segment with the stride carried over, so no
+  learned Doppler or cross-check state crosses sources. A watch with no
+  GPS chip, or a disabled or erroring provider, simply never gets receiver
+  fixes and fused carries the run. The saved run records which stream it
+  came from in `metadata.location_provider` (`gps` / `fused` / `mixed`).
+  Not yet verified on a device: one run on a Wear watch beside the Garmin,
+  checking it saves `location_provider: gps`.
 - **Distance is the shared estimator, not a hop sum.**
   `recording/GpsDistanceEstimator.kt` is the Kotlin port of the spec-v1.2
   forward filter in `scripts/gps_distance/reference.py` (gate, adaptive R,
@@ -616,8 +639,8 @@ steal focus from typing). `RotaryScrollWiringTest` pins the call sites.
   [docs/features/gps_distance.md](../../docs/features/gps_distance.md)),
   held to `fixtures/gps_distance_vectors.json` after every event by
   `GpsDistanceEstimatorTest`. Change it only together with the reference and
-  every other port. `onGps` feeds it every fix that passes `GpsRecorder`'s
-  30 m accuracy gate, stamped with the fix's own `elapsedRealtimeNanos`
+  every other port. `onGps` feeds it every fix from the current source that
+  passes `GpsRecorder`'s 30 m accuracy gate, stamped with the fix's own `elapsedRealtimeNanos`
   (never the wall-clock `time`), plus `Location.speed` / `speedAccuracy` /
   `bearing` only when the matching `has*()` is true; the pedometer feeds
   `addSteps`. A pause closes the estimator segment (`finish` + bank the

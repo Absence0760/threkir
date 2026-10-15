@@ -29,7 +29,7 @@ export const translation: GuideTranslation = {
 					type: 'steps',
 					items: [
 						'No pedido, deixe **Precisa** selecionada e toque em **Enquanto estiver a utilizar a app**.',
-						'Antes da sua primeira corrida, a app mostra **Permitir localização o tempo todo**. Toque em **Abrir definições**.',
+						'Antes da sua primeira corrida, a app mostra **Permitir sempre a localização**. Toque em **Abrir definições**.',
 						'Em **Autorizações**, toque em **Localização**, escolha **Permitir sempre** e depois volte à app.',
 					],
 				},

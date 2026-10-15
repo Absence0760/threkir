@@ -1390,7 +1390,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get onboardingLocationBodyAndroid =>
-      'Threkir toma tu ubicación GPS para registrar una carrera, incluso con la pantalla apagada: una notificación indica que hay un registro en curso. Tu ubicación se queda en este dispositivo mientras no sincronices ni compartas una carrera. La siguiente solicitud concede el acceso mientras usas la app, que es todo lo que puede dar la primera solicitud de Android; antes de tu primera carrera, Threkir te ofrece pasar a «Permitir siempre», que mantiene el seguimiento fiable cuando cambias a otra app. Si lo rechazas, las carreras siguen registrando tiempo y pasos, pero sin mapa, distancia ni ritmo.';
+      'Threkir toma tu ubicación GPS para registrar una carrera, incluso con la pantalla apagada: una notificación indica que hay un registro en curso. Tu ubicación se queda en este dispositivo mientras no sincronices ni compartas una carrera. La siguiente solicitud concede el acceso mientras usas la app, que es todo lo que puede dar la primera solicitud de Android; antes de tu primera carrera, Threkir te ofrece pasar a «Permitir todo el tiempo», que mantiene el seguimiento fiable cuando cambias a otra app. Si lo rechazas, las carreras siguen registrando tiempo y pasos, pero sin mapa, distancia ni ritmo.';
 
   @override
   String get onboardingLocationBodyIos =>
@@ -2141,7 +2141,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get runBackgroundLocationPaused =>
-      'El seguimiento se pausó mientras no estabas — el tiempo siguió corriendo y no se perdió nada, pero la distancia fuera de pantalla no se contó. Configura la Ubicación en «Permitir siempre» para seguir registrando en segundo plano.';
+      'El seguimiento se pausó mientras no estabas — el tiempo siguió corriendo y no se perdió nada, pero la distancia fuera de pantalla no se contó. Configura la Ubicación en «Permitir todo el tiempo» para seguir registrando en segundo plano.';
 
   @override
   String get runPreciseLocationOff =>

@@ -124,10 +124,17 @@ class RunRecorder {
   /// [clock] exists so tests can drive the monotonic gap the re-anchor escape
   /// in [_onPosition] gates on without waiting out real seconds. Production
   /// always takes the default.
+  ///
+  /// [gnssPositions] opens a stream of the satellite receiver's own fixes
+  /// (Android's `GPS_PROVIDER`), which the recorder prefers over the
+  /// platform's location stream whenever it is delivering. Null where the
+  /// platform stream is the only source (iOS). See [_onGnssPosition].
   RunRecorder({
     Stopwatch? clock,
+    Stream<Position> Function()? gnssPositions,
     @visibleForTesting int maxSmoothedStretchEvents = defaultMaxSmoothedStretchEvents,
   })  : _stopwatch = clock ?? Stopwatch(),
+        _gnssPositions = gnssPositions,
         _maxSmoothedStretchEvents = maxSmoothedStretchEvents;
 
   /// The most estimator inputs one stretch keeps for [stop]'s smoother replay.
@@ -161,6 +168,16 @@ class RunRecorder {
   // the closed snapshot sink.
   bool _disposed = false;
   StreamSubscription<Position>? _positionSub;
+  final Stream<Position> Function()? _gnssPositions;
+  StreamSubscription<Position>? _gnssSub;
+  // Source arbitration between the GNSS stream and the platform stream. See
+  // [_onGnssPosition]. Times are the fixes' own timestamps, so the decision
+  // does not depend on when the platform delivered them.
+  DateTime? _lastGnssFixAt;
+  int _gnssStreak = 0;
+  bool _onGnss = false;
+  int _gnssFixesRecorded = 0;
+  int _platformFixesRecorded = 0;
   Timer? _timer;
   Timer? _gpsRetryTimer;
   final List<LapSplit> _laps = [];
@@ -316,7 +333,12 @@ class RunRecorder {
   // Remembered so the retry loop can re-open the position stream with the
   // same accuracy setting the caller passed to [prepare].
   LocationAccuracy _locationAccuracy = LocationAccuracy.bestForNavigation;
-  bool _rawGpsProvider = false;
+  // GNSS silent this long (by fix timestamps) hands the run to the platform
+  // stream; it takes the run back after this many consecutive fixes, each
+  // within the same window of the last, so a receiver flickering under
+  // canopy doesn't interleave two sources fix by fix.
+  static const Duration _gnssStaleAfter = Duration(seconds: 5);
+  static const int _gnssRetakeFixes = 3;
   // The fix interval requested from Android, and the interval the estimator
   // scales its gap and freshness windows by. geolocator_android otherwise
   // falls back to 5000 ms, and on Android 13+ also sets that as the minimum
@@ -400,15 +422,16 @@ class RunRecorder {
   bool get backgroundLocationLimited => _backgroundLocationLimited;
   bool _backgroundLocationLimited = false;
 
-  /// The Android location provider the position stream asks for: `'gps'`
-  /// (raw `GPS_PROVIDER` through `LocationManager`) when [prepare] was given
-  /// `rawGpsProvider`, else `'fused'`. Null off Android, which has one
-  /// provider. Saved as `metadata.location_provider` so a run recorded for the
-  /// GPS corpus says which stream produced it.
-  String? get locationProvider =>
-      defaultTargetPlatform == TargetPlatform.android
-          ? (_rawGpsProvider ? 'gps' : 'fused')
-          : null;
+  /// Which Android stream fed this recording: `'gps'` when every fix came
+  /// from the satellite receiver, `'fused'` when every fix came from the
+  /// fused provider (no GNSS stream, or the receiver never delivered),
+  /// `'mixed'` when the run fell back to fused for part of it. Null off
+  /// Android, which has one provider. Saved as `metadata.location_provider`.
+  String? get locationProvider {
+    if (defaultTargetPlatform != TargetPlatform.android) return null;
+    if (_gnssFixesRecorded > 0 && _platformFixesRecorded > 0) return 'mixed';
+    return _gnssFixesRecorded > 0 ? 'gps' : 'fused';
+  }
 
   /// Whether [begin] has been called and time/distance are accumulating.
   bool get recording => _recording;
@@ -440,12 +463,6 @@ class RunRecorder {
   /// error — it records fine while the app is on screen, and only background
   /// delivery is at risk. It sets [backgroundLocationLimited] so the caller
   /// can disclose the limitation.
-  ///
-  /// [rawGpsProvider] is a developer diagnostic for #1090 item 6: on Android
-  /// it asks geolocator for the platform `LocationManager` (raw
-  /// `GPS_PROVIDER`) instead of the fused provider, which already smooths
-  /// before our filter sees a fix. Ignored on iOS. The saved run names the
-  /// provider it used in `metadata.location_provider`.
   Future<void> prepare({
     Route? route,
     int distanceFilterMetres = 3,
@@ -453,7 +470,6 @@ class RunRecorder {
     double maxSpeedMps = 10,
     LocationAccuracy accuracy = LocationAccuracy.bestForNavigation,
     double accuracyGateMetres = 20,
-    bool rawGpsProvider = false,
   }) async {
     if (_disposed) {
       throw StateError('RunRecorder.prepare() called after dispose()');
@@ -494,7 +510,7 @@ class RunRecorder {
     _resetDistance(0);
     _accuracyGateMetres = accuracyGateMetres;
     _locationAccuracy = accuracy;
-    _rawGpsProvider = rawGpsProvider;
+    _resetSourceArbitration();
     _lastAccuracyDropLogAt = null;
     _backgroundLocationLimited = false;
     _resetTreadmill();
@@ -552,24 +568,94 @@ class RunRecorder {
       permission != LocationPermission.deniedForever;
 
   /// Subscribe to [Geolocator.getPositionStream] with the accuracy settings
-  /// remembered from the last [prepare] call. Any stream error (commonly
-  /// thrown when the user toggles Location off mid-run) cancels the
-  /// subscription and clears [_positionSub] — the retry loop picks it back
-  /// up once services are available again.
+  /// remembered from the last [prepare] call, and to [_gnssPositions] where
+  /// there is one. Any stream error (commonly thrown when the user toggles
+  /// Location off mid-run) cancels that subscription and clears it — the
+  /// retry loop picks it back up once services are available again.
   void _openPositionStream() {
     if (_disposed) return;
-    _positionSub?.cancel();
-    _positionSub = Geolocator.getPositionStream(
-      locationSettings: _platformLocationSettings(),
-    ).listen(
-      _onPosition,
-      onError: (Object e, StackTrace st) {
-        debugPrint('RunRecorder: position stream error — $e');
-        _positionSub?.cancel();
-        _positionSub = null;
-      },
-      cancelOnError: true,
-    );
+    if (_positionSub == null) {
+      _positionSub = Geolocator.getPositionStream(
+        locationSettings: _platformLocationSettings(),
+      ).listen(
+        _onPlatformPosition,
+        onError: (Object e, StackTrace st) {
+          debugPrint('RunRecorder: position stream error — $e');
+          _positionSub?.cancel();
+          _positionSub = null;
+        },
+        cancelOnError: true,
+      );
+    }
+    _openGnssStream();
+  }
+
+  /// The GNSS half of [_openPositionStream]. Separate so the retry loop can
+  /// reopen it alone: the platform stream also carries the foreground
+  /// service that keeps the process alive, so it stays open regardless.
+  void _openGnssStream() {
+    final open = _gnssPositions;
+    if (_disposed || open == null || _gnssSub != null) return;
+    try {
+      _gnssSub = open().listen(
+        _onGnssPosition,
+        onError: (Object e, StackTrace st) {
+          debugPrint('RunRecorder: GNSS stream error — $e');
+          _gnssSub?.cancel();
+          _gnssSub = null;
+        },
+        cancelOnError: true,
+      );
+    } catch (e) {
+      debugPrint('RunRecorder: GNSS stream failed to open — $e');
+      _gnssSub = null;
+    }
+  }
+
+  void _resetSourceArbitration() {
+    _lastGnssFixAt = null;
+    _gnssStreak = 0;
+    _onGnss = false;
+    _gnssFixesRecorded = 0;
+    _platformFixesRecorded = 0;
+  }
+
+  /// A fix from the satellite receiver. Android's fused provider blends
+  /// Wi-Fi, cell and step-based estimates into both its position and its
+  /// speed, and on a field run (2026-10-15, issue #1106) its speed read 25%
+  /// over truth for the whole run while its positions read long as well, so
+  /// no filter downstream could recover the distance. The receiver's speed
+  /// is its own Doppler measurement, which is what [GpsDistanceEstimator] is
+  /// built around. Its fixes therefore win whenever it is delivering
+  /// steadily: it takes over (or back) after [_gnssRetakeFixes] consecutive
+  /// fixes, and [_onPlatformPosition] stands aside until it falls silent.
+  void _onGnssPosition(Position pos) {
+    final last = _lastGnssFixAt;
+    final steady = last != null &&
+        !pos.timestamp.isBefore(last) &&
+        pos.timestamp.difference(last) <= _gnssStaleAfter;
+    _gnssStreak = steady ? _gnssStreak + 1 : 1;
+    _lastGnssFixAt = pos.timestamp;
+    if (!_onGnss) {
+      if (_gnssStreak < _gnssRetakeFixes) return;
+      _onGnss = true;
+    }
+    if (_recording && !_paused) _gnssFixesRecorded++;
+    _onPosition(pos);
+  }
+
+  /// A fix from the platform's location stream: the only source on iOS, the
+  /// fallback on Android while the receiver is silent (cold start, deep
+  /// canopy, a phone without a usable GPS_PROVIDER).
+  void _onPlatformPosition(Position pos) {
+    if (_onGnss) {
+      final last = _lastGnssFixAt!;
+      if (pos.timestamp.difference(last) <= _gnssStaleAfter) return;
+      _onGnss = false;
+      _gnssStreak = 0;
+    }
+    if (_recording && !_paused) _platformFixesRecorded++;
+    _onPosition(pos);
   }
 
   /// Build the per-platform [LocationSettings] for the live position stream.
@@ -594,7 +680,10 @@ class RunRecorder {
   /// service, and an explicit 1 s [_fixInterval]. `distanceFilter: 0` keeps
   /// every fix flowing so software filtering can drive the blue dot at
   /// sensor rate. On Android `high`, `best` and `bestForNavigation` are the
-  /// same fused-provider request (`PRIORITY_HIGH_ACCURACY`).
+  /// same fused-provider request (`PRIORITY_HIGH_ACCURACY`). This stream is
+  /// the fallback there, not the primary source: see [_onGnssPosition].
+  /// geolocator's own `forceLocationManager` is no route to the receiver,
+  /// because on Android 12+ it asks `LocationManager` for `FUSED_PROVIDER`.
   LocationSettings _platformLocationSettings() {
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       return AppleSettings(
@@ -609,7 +698,6 @@ class RunRecorder {
     return AndroidSettings(
       accuracy: _locationAccuracy,
       intervalDuration: _fixInterval,
-      forceLocationManager: _rawGpsProvider,
       // Receive every fix from the OS; movement filtering happens in
       // software so the blue dot can refresh without inflating the track.
       distanceFilter: 0,
@@ -635,7 +723,9 @@ class RunRecorder {
     _gpsRetryTimer?.cancel();
     _gpsRetryTimer = Timer.periodic(_gpsRetryInterval, (_) async {
       if (!_prepared) return;
-      if (_positionSub != null) return;
+      if (_positionSub != null && (_gnssPositions == null || _gnssSub != null)) {
+        return;
+      }
       try {
         if (!await Geolocator.isLocationServiceEnabled()) return;
         final p = await Geolocator.checkPermission();
@@ -644,7 +734,7 @@ class RunRecorder {
         debugPrint('RunRecorder: GPS retry precheck failed — $e');
         return;
       }
-      if (!_prepared || _positionSub != null) return;
+      if (!_prepared) return;
       _openPositionStream();
     });
   }
@@ -691,7 +781,6 @@ class RunRecorder {
     double maxSpeedMps = 10,
     LocationAccuracy accuracy = LocationAccuracy.bestForNavigation,
     double accuracyGateMetres = 20,
-    bool rawGpsProvider = false,
   }) async {
     await prepare(
       route: route,
@@ -700,7 +789,6 @@ class RunRecorder {
       maxSpeedMps: maxSpeedMps,
       accuracy: accuracy,
       accuracyGateMetres: accuracyGateMetres,
-      rawGpsProvider: rawGpsProvider,
     );
     begin();
   }
@@ -742,7 +830,6 @@ class RunRecorder {
     double maxSpeedMps = 10,
     LocationAccuracy accuracy = LocationAccuracy.bestForNavigation,
     double accuracyGateMetres = 20,
-    bool rawGpsProvider = false,
   }) async {
     Object? prepareError;
     try {
@@ -753,7 +840,6 @@ class RunRecorder {
         maxSpeedMps: maxSpeedMps,
         accuracy: accuracy,
         accuracyGateMetres: accuracyGateMetres,
-        rawGpsProvider: rawGpsProvider,
       );
     } catch (e) {
       // prepare() reset state, flipped _prepared true, and started the retry
@@ -896,7 +982,6 @@ class RunRecorder {
     double minMovementMetres = 2,
     double maxSpeedMps = 10,
     double accuracyGateMetres = 20,
-    bool rawGpsProvider = false,
   }) {
     _startTime = null;
     _elapsedOffset = Duration.zero;
@@ -927,7 +1012,7 @@ class RunRecorder {
     _maxSpeedMps = maxSpeedMps;
     _resetDistance(0);
     _accuracyGateMetres = accuracyGateMetres;
-    _rawGpsProvider = rawGpsProvider;
+    _resetSourceArbitration();
     _resetTreadmill();
     _prepared = true;
   }
@@ -939,7 +1024,11 @@ class RunRecorder {
   /// Test-only: push a simulated [Position] through the same filter chain
   /// the live geolocator subscription would use.
   @visibleForTesting
-  void debugInjectPosition(Position pos) => _onPosition(pos);
+  void debugInjectPosition(Position pos) => _onPlatformPosition(pos);
+
+  /// Test-only: push a simulated fix as though the GNSS stream delivered it.
+  @visibleForTesting
+  void debugInjectGnssPosition(Position pos) => _onGnssPosition(pos);
 
   /// Test-only: read-only view of the track built so far.
   @visibleForTesting
@@ -1893,6 +1982,8 @@ class RunRecorder {
     _gpsRetryTimer = null;
     await _positionSub?.cancel();
     _positionSub = null;
+    await _gnssSub?.cancel();
+    _gnssSub = null;
     _finishEstimatorSegment();
 
     final startedAt = _startTime ?? DateTime.now();
@@ -2061,6 +2152,8 @@ class RunRecorder {
     _gpsRetryTimer = null;
     _positionSub?.cancel();
     _positionSub = null;
+    _gnssSub?.cancel();
+    _gnssSub = null;
     _controller.close();
   }
 }

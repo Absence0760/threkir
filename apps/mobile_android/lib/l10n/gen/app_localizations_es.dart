@@ -13478,13 +13478,6 @@ class AppLocalizationsEs extends AppLocalizations {
       'Estado en vivo del reloj personalizado simulado';
 
   @override
-  String get settingsDevRawGps => 'GPS sin procesar';
-
-  @override
-  String get settingsDevRawGpsSubtitle =>
-      'Registra solo con el chip GPS en lugar del servicio de ubicación combinado, para comparar la precisión de la distancia. Se aplica desde la próxima carrera.';
-
-  @override
   String get simWatchTitle => 'Enlace del reloj simulado';
 
   @override

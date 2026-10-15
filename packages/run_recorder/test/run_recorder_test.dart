@@ -1540,24 +1540,19 @@ void main() {
       expect(sum, closeTo(run.distanceMetres, 1e-6));
     });
 
-    test('android asks the fused provider unless raw gps is requested', () {
-      final fused = RunRecorder()..debugPrepareWithoutStream();
-      final fusedSettings = fused.debugLocationSettings as AndroidSettings;
-      expect(fusedSettings.forceLocationManager, isFalse);
-      expect(fused.locationProvider, 'fused');
-      final raw = RunRecorder()
-        ..debugPrepareWithoutStream(rawGpsProvider: true);
-      final rawSettings = raw.debugLocationSettings as AndroidSettings;
-      expect(rawSettings.forceLocationManager, isTrue);
-      expect(rawSettings.intervalDuration, const Duration(seconds: 1));
-      expect(raw.locationProvider, 'gps');
+    test('android asks the fused provider for its fallback stream at 1 Hz', () {
+      final r = RunRecorder()..debugPrepareWithoutStream();
+      final settings = r.debugLocationSettings as AndroidSettings;
+      expect(settings.forceLocationManager, isFalse,
+          reason: 'on Android 12+ forceLocationManager selects FUSED_PROVIDER '
+              'anyway; the receiver arrives through gnssPositions');
+      expect(settings.intervalDuration, const Duration(seconds: 1));
     });
 
-    test('ios ignores the raw gps request and names no provider', () {
+    test('ios names no provider', () {
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
       try {
-        final r = RunRecorder()
-          ..debugPrepareWithoutStream(rawGpsProvider: true);
+        final r = RunRecorder()..debugPrepareWithoutStream();
         expect(r.debugLocationSettings, isA<AppleSettings>());
         expect(r.locationProvider, isNull);
       } finally {
@@ -1565,17 +1560,78 @@ void main() {
       }
     });
 
-    test('a saved gps run names the location provider it used', () async {
-      Future<Map<String, dynamic>?> record({required bool raw}) async {
-        final r = RunRecorder()..debugPrepareWithoutStream(rawGpsProvider: raw);
+    // GNSS fixes are told apart from fused ones by their stated accuracy.
+    const gnssAcc = 3.0;
+    const fusedAcc = 7.0;
+    Position gnssAt(int s) =>
+        makePosition(metresEast: 5.0 * s, secondsFromStart: s, accuracy: gnssAcc);
+    Position fusedAt(int s) => makePosition(
+        metresEast: 5.0 * s, secondsFromStart: s, accuracy: fusedAcc);
+    List<double?> sources(RunRecorder r) =>
+        r.debugTrack.map((w) => w.accuracyMetres).toList();
+
+    test('the receiver takes the run after three steady fixes and fused stands aside',
+        () {
+      final r = RunRecorder()..debugPrepareWithoutStream();
+      r.begin();
+      r.debugInjectPosition(fusedAt(0));
+      r.debugInjectGnssPosition(gnssAt(0));
+      r.debugInjectGnssPosition(gnssAt(1));
+      r.debugInjectGnssPosition(gnssAt(2));
+      r.debugInjectPosition(fusedAt(3));
+      r.debugInjectGnssPosition(gnssAt(4));
+      expect(sources(r), [fusedAcc, gnssAcc, gnssAcc]);
+      expect(r.locationProvider, 'mixed');
+    });
+
+    test('a silent receiver hands the run to fused, and takes it back steady',
+        () {
+      final r = RunRecorder()..debugPrepareWithoutStream();
+      r.begin();
+      for (final s in [0, 1, 2]) {
+        r.debugInjectGnssPosition(gnssAt(s));
+      }
+      r.debugInjectPosition(fusedAt(3)); // receiver fresh: dropped
+      r.debugInjectPosition(fusedAt(8)); // 6 s of silence: fused takes over
+      r.debugInjectGnssPosition(gnssAt(9)); // one fix is not steady yet
+      r.debugInjectPosition(fusedAt(10));
+      r.debugInjectGnssPosition(gnssAt(11));
+      r.debugInjectGnssPosition(gnssAt(12)); // third in a row: back on GNSS
+      r.debugInjectPosition(fusedAt(13));
+      r.debugInjectGnssPosition(gnssAt(14));
+      expect(sources(r), [gnssAcc, fusedAcc, fusedAcc, gnssAcc, gnssAcc]);
+    });
+
+    test('a saved gps run names the stream that recorded it', () async {
+      Future<Map<String, dynamic>?> record(
+          void Function(RunRecorder r) feed) async {
+        final r = RunRecorder()..debugPrepareWithoutStream();
         r.begin();
-        r.debugInjectPosition(makePosition(metresEast: 0, secondsFromStart: 0));
-        r.debugInjectPosition(makePosition(metresEast: 5, secondsFromStart: 2));
+        feed(r);
         return (await r.stop()).metadata;
       }
 
-      expect((await record(raw: false))?['location_provider'], 'fused');
-      expect((await record(raw: true))?['location_provider'], 'gps');
+      expect(
+          (await record((r) {
+            for (var s = 0; s < 6; s++) {
+              r.debugInjectGnssPosition(gnssAt(s));
+            }
+          }))?['location_provider'],
+          'gps');
+      expect(
+          (await record((r) {
+            r.debugInjectPosition(fusedAt(0));
+            r.debugInjectPosition(fusedAt(2));
+          }))?['location_provider'],
+          'fused');
+      expect(
+          (await record((r) {
+            r.debugInjectPosition(fusedAt(0));
+            for (var s = 1; s < 6; s++) {
+              r.debugInjectGnssPosition(gnssAt(s));
+            }
+          }))?['location_provider'],
+          'mixed');
 
       final empty = RunRecorder()..debugPrepareWithoutStream();
       empty.begin();

@@ -23,6 +23,7 @@ class MainActivity : FlutterFragmentActivity() {
         BatterySettingsBridge(applicationContext, flutterEngine.dartExecutor.binaryMessenger)
         CalendarBridge(applicationContext, flutterEngine.dartExecutor.binaryMessenger)
         ScreenBrightnessBridge(this, flutterEngine.dartExecutor.binaryMessenger)
+        GnssLocationBridge(applicationContext, flutterEngine.dartExecutor.binaryMessenger)
         healthRoutePermission.attach(flutterEngine.dartExecutor.binaryMessenger)
     }
 }

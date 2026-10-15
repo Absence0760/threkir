@@ -13486,13 +13486,6 @@ class AppLocalizationsDe extends AppLocalizations {
       'Live-Status der simulierten Custom Watch';
 
   @override
-  String get settingsDevRawGps => 'Rohes GPS';
-
-  @override
-  String get settingsDevRawGpsSubtitle =>
-      'Zeichnet nur mit dem GPS-Chip auf statt mit dem kombinierten Standortdienst, um die Distanzgenauigkeit zu vergleichen. Gilt ab dem nächsten Lauf.';
-
-  @override
   String get simWatchTitle => 'Sim-Watch-Verbindung';
 
   @override

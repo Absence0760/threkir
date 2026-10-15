@@ -29,7 +29,7 @@ import '../ble_heart_rate.dart';
 import '../ble_readiness_labels.dart';
 import '../ble_treadmill.dart';
 import '../dev_auto_login.dart' show isLocalSupabaseUrl;
-import '../raw_gps_diagnostic.dart';
+import '../gnss_location_bridge.dart';
 import '../embedded_bests.dart';
 import '../goal_time.dart';
 import '../guided_runs.dart';
@@ -1427,7 +1427,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   }
 
   void _preload() {
-    _recorder = RunRecorder();
+    _recorder = RunRecorder(gnssPositions: gnssPositionsForPlatform());
     _snapshotSub = _recorder!.snapshots.listen(_onSnapshot);
 
     _wireLockScreenControls();
@@ -1461,7 +1461,6 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       distanceFilterMetres: adv ? 2 : _activityType.gpsDistanceFilter,
       minMovementMetres: adv ? 1 : _activityType.minMovementMetres,
       maxSpeedMps: _activityType.maxSpeedMps,
-      rawGpsProvider: _rawGpsProvider,
     )
         .catchError((Object e) {
       _prepareError = e;
@@ -2294,7 +2293,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     _lastTickNotified = UnitFormat.activityTicks(
         _displayDistanceMetres, resumeTickInterval);
 
-    _recorder = RunRecorder();
+    _recorder = RunRecorder(gnssPositions: gnssPositionsForPlatform());
     _snapshotSub = _recorder!.snapshots.listen(_onSnapshot);
     _wireLockScreenControls();
     _subscribeToPedometer();
@@ -2314,7 +2313,6 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         distanceFilterMetres: adv ? 2 : _activityType.gpsDistanceFilter,
         minMovementMetres: adv ? 1 : _activityType.minMovementMetres,
         maxSpeedMps: _activityType.maxSpeedMps,
-        rawGpsProvider: _rawGpsProvider,
       );
     } catch (e) {
       _notifyGpsUnavailable(e);
@@ -3104,11 +3102,6 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // can last a day. The bridge swallows its own failures (L4).
     _liveActivity.update(frame);
   }
-
-  bool get _rawGpsProvider =>
-      widget.preferences.devRawGpsProvider &&
-      rawGpsDiagnosticAvailable(
-          backendUrl: widget.devBackendUrl ?? maybeDevBackendUrl());
 
   /// Serialise the in-progress run to disk. Runs every 10s via
   /// [_incrementalSaveTimer] so a crash mid-run is recoverable.

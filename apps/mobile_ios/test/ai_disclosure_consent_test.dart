@@ -156,14 +156,18 @@ void main() {
       await tester.tap(find.text(_reviewTile));
       await tester.pumpAndSettle();
 
-      // The dialog must show the WIDENED copy — the route and plan bullets
-      // are the whole reason a v1 or v2 acceptance is not enough.
+      // The dialog must show the WIDENED copy — the route, plan and plan-edit
+      // bullets are the whole reason an older acceptance is not enough.
       expect(
         find.textContaining('For the AI route assistant:'),
         findsOneWidget,
       );
       expect(
         find.textContaining('For the AI plan assistant:'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('For AI plan edits:'),
         findsOneWidget,
       );
 
@@ -290,6 +294,10 @@ void main() {
       );
       expect(
         find.textContaining('For the AI plan assistant:'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('For AI plan edits:'),
         findsOneWidget,
       );
 

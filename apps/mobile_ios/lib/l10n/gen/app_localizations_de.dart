@@ -6586,7 +6586,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get coachConsentIntro =>
-      'Die KI-Funktionen von Threkir — der Coach, der KI-Routenassistent und der KI-Planassistent — leiten einen Teil deiner Daten an Anthropic weiter, unseren KI-Modellanbieter in den USA. Je nach genutzter Funktion umfasst dieser Teil:';
+      'Die KI-Funktionen von Threkir — der Coach, der KI-Routenassistent, der KI-Planassistent und die KI-Planänderungen — leiten einen Teil deiner Daten an Anthropic weiter, unseren KI-Modellanbieter in den USA. Je nach genutzter Funktion umfasst dieser Teil:';
 
   @override
   String get coachConsentBulletProfile =>
@@ -6610,6 +6610,10 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get coachConsentBulletPlanRequest =>
       'Für den KI-Planassistenten: deine eingegebene Planbeschreibung (Zielrennen, Ziel- und aktuelle Zeiten, an wie vielen Tagen du trainieren kannst), nur um die Planeinstellungen auszufüllen — den Plan selbst erstellt Threkirs eigener Generator, nicht die KI.';
+
+  @override
+  String get coachConsentBulletPlanEdit =>
+      'Für KI-Planänderungen: die anstehenden Einheiten des Plans, den du änderst (Datum, Art und Distanz), und die Änderung, die du eingibst, nur um Änderungen vorzuschlagen, die du prüfst, bevor etwas gespeichert wird — die KI kann keine Einheiten hinzufügen und keine Pace festlegen.';
 
   @override
   String get coachConsentProcessing =>
@@ -7006,7 +7010,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get settingsAccountAiConsentUpdateSubtitle =>
-      'Die Hinweise decken jetzt mehr Funktionen ab. Lies sie und stimme zu, um den KI-Routen- und den KI-Planassistenten zu nutzen.';
+      'Die Hinweise decken jetzt mehr Funktionen ab. Lies sie und stimme zu, um den KI-Routen- und den KI-Planassistenten sowie die KI-Planänderungen zu nutzen.';
 
   @override
   String get settingsAccountAiConsentGrantTitle => 'KI-Hinweise ansehen';

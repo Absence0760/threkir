@@ -6509,7 +6509,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get coachConsentIntro =>
-      'Threkir\'s AI features — the Coach, the AI route assistant and the AI plan assistant — forward a slice of your data to Anthropic, our AI model provider in the United States. Depending on which feature you use, that slice includes:';
+      'Threkir\'s AI features — the Coach, the AI route assistant, the AI plan assistant and AI plan edits — forward a slice of your data to Anthropic, our AI model provider in the United States. Depending on which feature you use, that slice includes:';
 
   @override
   String get coachConsentBulletProfile =>
@@ -6533,6 +6533,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get coachConsentBulletPlanRequest =>
       'For the AI plan assistant: the plan description you type (goal race, target and recent times, how many days you can train), used only to fill in the plan settings — the plan itself is built by Threkir\'s own generator, not the AI.';
+
+  @override
+  String get coachConsentBulletPlanEdit =>
+      'For AI plan edits: the upcoming workouts in the plan you are changing (dates, types and distances) and the change you type, used only to suggest edits you review before anything is saved — the AI cannot add workouts or set paces.';
 
   @override
   String get coachConsentProcessing =>
@@ -6921,7 +6925,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsAccountAiConsentUpdateSubtitle =>
-      'The disclosure now covers more features. Review and accept it to use the AI route and plan assistants.';
+      'The disclosure now covers more features. Review and accept it to use the AI route and plan assistants and AI plan edits.';
 
   @override
   String get settingsAccountAiConsentGrantTitle => 'Review the AI disclosure';

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import '../lib/payload_hash.dart';
 import '../lib/plate_photo_client.dart';
 
 Uint8List _jpeg({bool exif = false}) {
@@ -95,5 +96,71 @@ void main() {
           post: _respond(200, {}), currentToken: () async => null, baseUrl: 'https://e.test'),
       throwsA(isA<PlatePhotoError>().having((e) => e.kind, 'kind', PlatePhotoErrorKind.notAuthenticated)),
     );
+  });
+
+  test('a 200 posts the stripped body to the plate-photo path with its own payload hash', () async {
+    Uri? url;
+    String? sent;
+    Map<String, String>? headers;
+    final e = await requestPlateEstimate(
+      _jpeg(exif: true),
+      ' half portion ',
+      post: (u, h, b) async {
+        url = u;
+        headers = h;
+        sent = b;
+        return PlatePhotoHttpResponse(
+            200,
+            jsonEncode({
+              'meal_slot': 'breakfast',
+              'items': [
+                {'item_name': '2 fried eggs', 'calories': 180, 'protein_g': 12.5},
+              ],
+            }));
+      },
+      currentToken: _token,
+      baseUrl: 'https://example.test',
+    );
+    expect(url.toString(), 'https://example.test/api/coach/plate-photo');
+    expect(headers!['x-amz-content-sha256'], payloadSha256Hex(sent!));
+    expect(headers!['content-type'], 'application/json');
+    final body = jsonDecode(sent!) as Map;
+    expect(body['note'], 'half portion');
+    expect(String.fromCharCodes(base64Decode(body['image'] as String)).contains('GPS-51.5074N'), isFalse);
+    expect(e.mealSlot, 'breakfast');
+    expect(e.items.single.proteinG, 12.5);
+  });
+
+  test('a 401 refreshes the session once and retries with the new token', () async {
+    final seen = <Map<String, String>>[];
+    var calls = 0;
+    final e = await requestPlateEstimate(
+      _jpeg(),
+      '',
+      post: (url, headers, body) async {
+        seen.add(headers);
+        calls += 1;
+        return calls == 1
+            ? PlatePhotoHttpResponse(401, jsonEncode({'error': 'not authenticated'}))
+            : PlatePhotoHttpResponse(200, jsonEncode({'items': [{'item_name': 'Toast'}]}));
+      },
+      currentToken: _token,
+      refreshToken: () async => 'fresh',
+      baseUrl: 'https://e.test',
+    );
+    expect(e.items.single.itemName, 'Toast');
+    expect(seen.map((h) => h['x-supabase-authorization']), ['Bearer tok', 'Bearer fresh']);
+  });
+
+  test('an empty plate resolves to an estimate with no items, not an error', () async {
+    final e = await requestPlateEstimate(
+      _jpeg(),
+      '',
+      post: _respond(200, {'items': [], 'meal_slot': null}),
+      currentToken: _token,
+      baseUrl: 'https://e.test',
+    );
+    expect(e.items, isEmpty);
+    expect(e.mealSlot, isNull);
   });
 }

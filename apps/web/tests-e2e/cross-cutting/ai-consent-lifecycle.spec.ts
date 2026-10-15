@@ -1,3 +1,4 @@
+import { AI_DISCLOSURE_CURRENT_VERSION } from '../../src/lib/core/ai_disclosure';
 import { expect, test } from '../fixtures/mock-route';
 
 import { readRow } from '../fixtures/db-read';
@@ -41,8 +42,7 @@ test.describe('AI-processing consent — gate, record, withdraw, re-engage', () 
 
 	const admin = getAdminClient();
 
-	/** Must equal AI_DISCLOSURE_CURRENT_VERSION / ai_disclosure_current_version(). */
-	const CURRENT_VERSION = 2;
+	const CURRENT_VERSION = AI_DISCLOSURE_CURRENT_VERSION;
 
 	let user: SagaUser;
 	let routeId: string;

@@ -117,8 +117,8 @@ export interface ProviderStream {
 
 // Both tiers carry a finite daily cap. Pro was previously uncapped;
 // it was lowered to 10/day in May 2026 to bound worst-case Anthropic
-// spend per stolen Pro session token (~$0.50/day at 10×2048 output
-// tokens + ~50k input tokens). Free at 2/day is generous enough to
+// spend per stolen Pro session token (~$0.30/day at 10×2048 output
+// tokens + ~50k input tokens on claude-sonnet-5-5's $2/$10 per MTok). Free at 2/day is generous enough to
 // let a new user have a real exchange with the coach (one prompt +
 // one clarifying follow-up) before deciding whether to upgrade.
 // Pro `maxRunsLimit` was lowered from 200 to 75 in audit pass 3.

@@ -4,8 +4,39 @@
 	import ClubEditor from '#lib/components/ClubEditor.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { prefilledClubName } from '#lib/social/club_setup.ts';
+	import {
+		STRAVA_CLUB_LINK_ERROR_KEYS,
+		parseStravaClubParam,
+		prefilledClubLocation,
+	} from '#lib/integrations/strava_clubs.ts';
+	import { isStravaConfigured, linkStravaClub, StravaClubLinkFailure } from '#lib/integrations/strava.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
 
 	const initialName = prefilledClubName(page.url.searchParams.get('name'));
+	const initialLocation = prefilledClubLocation(page.url.searchParams.get('location'));
+	// Set by "Set up on Threkir" in Your Strava clubs: the new club is linked to
+	// that Strava club once it exists (decisions § 1953).
+	const stravaClubId = isStravaConfigured()
+		? parseStravaClubParam(page.url.searchParams.get('strava_club'))
+		: null;
+
+	async function handleCreated(club: { slug: string; id: string }): Promise<void> {
+		if (stravaClubId !== null) {
+			try {
+				await linkStravaClub(club.id, stravaClubId);
+				showToast(m('stravaClubs.linkedNew'), 'success');
+			} catch (e) {
+				console.warn('clubs/new: strava link failed', e);
+				const reason = e instanceof StravaClubLinkFailure ? e.reason : 'generic';
+				showToast(
+					m('stravaClubs.createdNotLinked', { reason: m(STRAVA_CLUB_LINK_ERROR_KEYS[reason]) }),
+					'error',
+					8000
+				);
+			}
+		}
+		await goto(`/clubs/${club.slug}`);
+	}
 
 	let cameFromClubs = $state(false);
 	afterNavigate(({ from }) => {
@@ -45,11 +76,15 @@
 		<p class="tagline">
 			{m('clubsNewPage.tagline')}
 		</p>
+		{#if stravaClubId !== null}
+			<p class="tagline" data-testid="clubs-new-strava-note">{m('stravaClubs.setUpNote')}</p>
+		{/if}
 	</header>
 
 	<ClubEditor
 		{initialName}
-		oncreated={(club) => goto(`/clubs/${club.slug}`)}
+		{initialLocation}
+		oncreated={handleCreated}
 		oncancel={handleCancel}
 	/>
 </div>

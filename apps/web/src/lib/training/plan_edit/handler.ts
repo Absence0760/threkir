@@ -210,9 +210,10 @@ function userTurn(requestText: string, today: string, planText: string): string 
 
 const PLAN_COLUMNS = 'id, start_date, end_date, is_template';
 const WEEK_COLUMNS = 'id, week_index, phase, target_volume_m';
+// One string literal, not a concatenation: supabase-js types the rows only
+// from a literal select, and a widened `string` reads them as GenericStringError.
 const WORKOUT_COLUMNS =
-	'id, week_id, scheduled_date, kind, target_distance_m, target_duration_seconds, ' +
-	'structure, completed_run_id, manually_completed, skipped_at';
+	'id, week_id, scheduled_date, kind, target_distance_m, target_duration_seconds, structure, completed_run_id, manually_completed, skipped_at';
 
 type LoadedPlan = { ok: true; snapshot: PlanEditSnapshot } | { ok: false; status: 404 | 500 };
 

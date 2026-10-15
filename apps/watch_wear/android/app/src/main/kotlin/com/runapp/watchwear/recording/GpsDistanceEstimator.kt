@@ -9,7 +9,7 @@ import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-/// GPS distance estimator, spec v1.3 (forward filter) — the Wear OS port of
+/// GPS distance estimator, spec v1.4 (forward filter) — the Wear OS port of
 /// `scripts/gps_distance/reference.py`, which is the spec. Read
 /// `docs/features/gps_distance.md` before changing anything here: every port
 /// replays `fixtures/gps_distance_vectors.json` to 1e-3 m, so a change to one
@@ -19,6 +19,8 @@ import kotlin.math.sqrt
 /// is the interval the recorder samples GPS at on purpose: it scales the gap
 /// and fresh-fix windows. `initialStrideM` carries a stride learned earlier
 /// (e.g. before a pause) and is ignored outside the stride bounds.
+/// `learnStride` is false for a segment on a source whose speed is not its own
+/// Doppler (the fused provider): its stride is used, never learned.
 ///
 /// The watch runs only the forward (causal) filter; the spec's smoother is
 /// ported where the saved figure is computed from a whole run (phone, web,
@@ -27,6 +29,7 @@ class GpsDistanceEstimator(
     val maxSpeedMps: Double = 10.0,
     val expectedIntervalS: Double = 1.0,
     initialStrideM: Double? = null,
+    val learnStride: Boolean = true,
 ) {
 
     private val intervalScale = if (expectedIntervalS.isFinite() && expectedIntervalS > 1.0) expectedIntervalS else 1.0
@@ -63,6 +66,7 @@ class GpsDistanceEstimator(
     private var lastSteps: Long? = null
     private var lastStepT: Double? = null
     private var pendingStepM = 0.0
+    private var strideOk = false
 
     private var rejectStreak = 0
     private var xcDoppler = 0.0
@@ -112,6 +116,7 @@ class GpsDistanceEstimator(
         bearingDeg: Double? = null,
     ): Double {
         if (!valid(t) || !valid(lat) || !valid(lng)) return 0.0
+        if (accuracyM != null && accuracyM.isFinite() && accuracyM > MAX_POS_SIGMA_M) return 0.0
         if (lat0 == null) {
             lat0 = lat
             lng0 = lng
@@ -127,9 +132,28 @@ class GpsDistanceEstimator(
         val doppler = dopplerSpeed(speedMps, speedAccuracyMps, maxSpeedMps)
         val dop = doppler?.first
         if (prevT == null || t - prevT > gapS) {
-            // (Re-)anchor. Steps buffered across a real gap are committed now.
-            if (prevT != null) stepDistanceM += pendingStepM
+            // (Re-)anchor. Steps buffered across a real gap are committed now,
+            // and the straight line across it, less its 1-sigma uncertainty, is
+            // a lower bound on the distance covered: the GPS credit makes up
+            // whatever the steps fall short of it.
+            var gapM = 0.0
+            val px = x
+            val py = y
+            if (prevT != null && px != null && py != null) {
+                stepDistanceM += pendingStepM
+                val d = hypot(zx - px.p, zy - py.p)
+                val lower = min(d - sqrt(px.a + py.a + 2.0 * r), maxSpeedMps * (t - prevT))
+                if (lower > pendingStepM) {
+                    gapM = lower - pendingStepM
+                    gpsDistanceM += gapM
+                }
+            }
             pendingStepM = 0.0
+            strideOk = strideGrade(accuracyM, doppler?.second)
+            if (!strideOk) {
+                winSteps = 0
+                winM = 0.0
+            }
             x = Axis(zx, r)
             y = Axis(zy, r)
             lastT = t
@@ -139,7 +163,7 @@ class GpsDistanceEstimator(
             setDsLast(zx, zy, t, dop, bearingDeg)
             rejectStreak = 0
             zuptAnchorX = null
-            return 0.0
+            return gapM
         }
         // The gap closed inside the gap window, so the filter integrates it: drop the buffer.
         pendingStepM = 0.0
@@ -210,7 +234,8 @@ class GpsDistanceEstimator(
         // 4. Doppler-vs-position cross-check: Doppler speed against the raw
         //    fixes' displacement projected on the Doppler bearing.
         val bearing = bearingDeg?.takeIf { it.isFinite() }
-        if (accepted) {
+        val checkable = !(accuracyM != null && accuracyM.isFinite() && accuracyM > CHECK_MAX_POS_SIGMA_M)
+        if (accepted && checkable) {
             val span = t - xcLastT
             if (dop != null && !zupt && bearing != null &&
                 dop >= POS_ONLY_STATIONARY_SPEED_MPS && span <= XCHECK_MAX_SPAN_S
@@ -301,8 +326,22 @@ class GpsDistanceEstimator(
             }
         }
         gpsDistanceM += inc
-        winM += inc
+        strideOk = strideGrade(accuracyM, if (useDop != null && chord == null) doppler!!.second else null)
+        if (strideOk) {
+            winM += inc
+        } else {
+            winSteps = 0
+            winM = 0.0
+        }
         return inc
+    }
+
+    /// Whether a fix may teach stride: by its Doppler sigma when its credit
+    /// came from Doppler ([dopplerSa] non-null), else by its position accuracy.
+    private fun strideGrade(accuracyM: Double?, dopplerSa: Double?): Boolean {
+        if (!learnStride) return false
+        if (dopplerSa != null) return dopplerSa <= STRIDE_MAX_SPEED_SIGMA_MPS
+        return !(accuracyM != null && accuracyM.isFinite() && accuracyM > STRIDE_MAX_POS_SIGMA_M)
     }
 
     fun addSteps(t: Double, cumulativeSteps: Long?) {
@@ -320,6 +359,7 @@ class GpsDistanceEstimator(
         }
         val fixT = lastT
         if (fixT != null && t - fixT <= freshFixS) {
+            if (!strideOk) return
             winSteps += d
             if (winSteps >= STRIDE_WINDOW_STEPS) {
                 val stride = winM / winSteps
@@ -342,11 +382,12 @@ class GpsDistanceEstimator(
         pendingStepM += min(d * stride, maxSpeedMps * (t - prevT))
     }
 
-    /// A fresh estimator for the segment after a pause: same configuration,
-    /// seeded with this one's stride, which is itself the carried stride when
-    /// this segment learned none.
-    fun nextSegment(): GpsDistanceEstimator =
-        GpsDistanceEstimator(maxSpeedMps, expectedIntervalS, strideM)
+    /// A fresh estimator for the segment after a pause or a source switch:
+    /// same speed and interval, seeded with this one's stride, which is itself
+    /// the carried stride when this segment learned none. [learnStride] is the
+    /// next segment's source's, not this one's.
+    fun nextSegment(learnStride: Boolean = this.learnStride): GpsDistanceEstimator =
+        GpsDistanceEstimator(maxSpeedMps, expectedIntervalS, strideM, learnStride)
 
     fun finish(t: Double) {
         val fixT = lastT
@@ -410,11 +451,12 @@ class GpsDistanceEstimator(
 
     companion object {
         const val SPEC_ID = "kalman_v1"
-        const val SPEC_VERSION = "1.3"
+        const val SPEC_VERSION = "1.4"
 
         private const val EARTH_RADIUS_M = 6371008.8
         private const val Q_ACCEL = 0.6
         private const val MIN_POS_SIGMA_M = 3.0
+        private const val MAX_POS_SIGMA_M = 50.0
         private const val INIT_VEL_VAR = 25.0
         private const val MIN_SPEED_SIGMA_MPS = 0.3
         private const val DEFAULT_SPEED_SIGMA_MPS = 0.5
@@ -427,6 +469,9 @@ class GpsDistanceEstimator(
         private const val MIN_STRIDE_M = 0.4
         private const val MAX_STRIDE_M = 2.5
         private const val STRIDE_EMA_ALPHA = 0.2
+        private const val STRIDE_MAX_SPEED_SIGMA_MPS = 1.0
+        private const val STRIDE_MAX_POS_SIGMA_M = 20.0
+        private const val CHECK_MAX_POS_SIGMA_M = 20.0
         private const val GATE_CHI2 = 13.8155
         private const val GATE_MAX_REJECTS = 5
         private const val R_SCALE_ALPHA = 0.05
@@ -482,6 +527,7 @@ class GpsDistanceEstimator(
             "EARTH_RADIUS_M" to EARTH_RADIUS_M,
             "Q_ACCEL" to Q_ACCEL,
             "MIN_POS_SIGMA_M" to MIN_POS_SIGMA_M,
+            "MAX_POS_SIGMA_M" to MAX_POS_SIGMA_M,
             "INIT_VEL_VAR" to INIT_VEL_VAR,
             "MIN_SPEED_SIGMA_MPS" to MIN_SPEED_SIGMA_MPS,
             "DEFAULT_SPEED_SIGMA_MPS" to DEFAULT_SPEED_SIGMA_MPS,
@@ -494,6 +540,9 @@ class GpsDistanceEstimator(
             "MIN_STRIDE_M" to MIN_STRIDE_M,
             "MAX_STRIDE_M" to MAX_STRIDE_M,
             "STRIDE_EMA_ALPHA" to STRIDE_EMA_ALPHA,
+            "STRIDE_MAX_SPEED_SIGMA_MPS" to STRIDE_MAX_SPEED_SIGMA_MPS,
+            "STRIDE_MAX_POS_SIGMA_M" to STRIDE_MAX_POS_SIGMA_M,
+            "CHECK_MAX_POS_SIGMA_M" to CHECK_MAX_POS_SIGMA_M,
             "GATE_CHI2" to GATE_CHI2,
             "GATE_MAX_REJECTS" to GATE_MAX_REJECTS.toDouble(),
             "R_SCALE_ALPHA" to R_SCALE_ALPHA,

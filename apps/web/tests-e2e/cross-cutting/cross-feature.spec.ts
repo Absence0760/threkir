@@ -4,6 +4,7 @@ import { getAdminClient } from '../fixtures/local-supabase';
 import { RUNNER_PUBLIC_RUN_ID } from '../fixtures/seeded-data';
 import { deleteRun, insertRun } from '../fixtures/simulate';
 import { USER_A, USER_B } from '../fixtures/users';
+import { setStorageOnLoad } from '../fixtures/helpers';
 
 /**
  * Inter-feature interaction tests — surfaces where two product
@@ -56,12 +57,7 @@ test.describe('runs ↔ goals on /dashboard', () => {
 		const goalJson = JSON.stringify([
 			{ id: goalId, period: 'week', distance_m: 25_000 }
 		]);
-		await context.addInitScript(
-			(args: { key: string; value: string }) => {
-				localStorage.setItem(args.key, args.value);
-			},
-			{ key: GOAL_KEY, value: goalJson }
-		);
+		await setStorageOnLoad(context, { local: { [GOAL_KEY]: goalJson } });
 
 		// Plant a 30 km run RIGHT NOW so it lands in the current week
 		// regardless of week-start preference (Mon vs Sun). 30 km

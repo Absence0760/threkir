@@ -2,6 +2,7 @@ import { test } from '../fixtures/test';
 
 import { expectReflows } from '../fixtures/reflow';
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * WCAG 1.4.10 reflow over the STATIC routes: no route may make the document
@@ -31,12 +32,7 @@ test.describe('no horizontal document scroll at 300 / 320 / 360 px', () => {
 		test.use({ storageState: USER_A.storageStatePath });
 
 		test.beforeEach(async ({ context }) => {
-			await context.addInitScript(() => {
-				localStorage.setItem(
-					'cookie_consent',
-					JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-				);
-			});
+			await acceptCookieConsent(context);
 		});
 
 		// /dashboard is the route the audit named; the rest are the other

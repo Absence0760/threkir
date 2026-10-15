@@ -12,6 +12,7 @@ import {
 } from '../fixtures/simulate';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { readCount, readRows } from '../fixtures/db-read';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Multi-source notifications inbox lifecycle — the STITCHED journey the
@@ -72,13 +73,6 @@ import { readCount, readRows } from '../fixtures/db-read';
  */
 
 const RICHMOND_RUN_CLUB_ID = 'c1111111-0000-0000-0000-000000000001';
-
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-	);
-}
 
 test.describe('notifications multi-source journey — four triggers → one inbox', () => {
 	test.describe.configure({ timeout: 120_000 });
@@ -146,7 +140,7 @@ test.describe('notifications multi-source journey — four triggers → one inbo
 		const ctx = await browser.newContext({ storageState: recipient.storageStatePath });
 		// Pre-accept the cookie banner so the fixed dialog can't intercept
 		// pointer events on the bell, filter tabs, dismiss, or mark-all-read.
-		await ctx.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 
 		try {

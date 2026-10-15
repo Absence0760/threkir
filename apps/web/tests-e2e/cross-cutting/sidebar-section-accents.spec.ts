@@ -3,6 +3,7 @@ import { expect, test } from '../fixtures/test';
 
 import { settleTransitions } from '../fixtures/transitions';
 import { USER_A } from '../fixtures/users';
+import { setStorageOnLoad } from '../fixtures/helpers';
 
 /**
  * The sidebar's seven per-section identity accents (decisions § 529).
@@ -72,10 +73,7 @@ test.describe('sidebar section accents', () => {
 
 	for (const theme of ['light', 'dark'] as const) {
 		test(`each nav glyph resolves its own section ink — ${theme}`, async ({ page }) => {
-			await page.addInitScript(
-				(t) => window.localStorage.setItem('run_app.theme', t),
-				theme,
-			);
+			await setStorageOnLoad(page, { local: { 'run_app.theme': theme } });
 			await page.goto('/dashboard');
 			await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
 			await navSettled(page);
@@ -122,7 +120,7 @@ test.describe('sidebar section accents', () => {
 	}
 
 	test('the ink half flips with the theme while the accents stay put', async ({ page }) => {
-		await page.addInitScript(() => window.localStorage.setItem('run_app.theme', 'light'));
+		await setStorageOnLoad(page, { local: { 'run_app.theme': 'light' } });
 		await page.goto('/dashboard');
 		await navSettled(page);
 		const light = await glyphColours(page);

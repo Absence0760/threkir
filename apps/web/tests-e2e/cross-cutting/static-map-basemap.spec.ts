@@ -3,6 +3,7 @@ import type { MockRoute } from '../fixtures/mock-route';
 import type { Page } from '@playwright/test';
 
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * A list thumbnail requests the basemap the live maps resolve (decisions
@@ -24,11 +25,8 @@ const MAPTILER_HOST = 'api.maptiler.com';
 
 async function recordStaticMapRequests(mockRoute: MockRoute, page: Page): Promise<string[]> {
 	const urls: string[] = [];
+	await acceptCookieConsent(page);
 	await page.addInitScript(() => {
-		localStorage.setItem(
-			'cookie_consent',
-			JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-		);
 		let bootstrap: { env: Record<string, string> } | undefined;
 		Object.defineProperty(window, '__sveltekit_dev', {
 			configurable: true,

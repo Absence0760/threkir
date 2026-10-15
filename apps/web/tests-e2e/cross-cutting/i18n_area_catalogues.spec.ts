@@ -1,6 +1,7 @@
 import type { BrowserContext, Page } from '@playwright/test';
 import { expect, test } from '../fixtures/test';
 import { USER_A } from '../fixtures/users';
+import { setStorageOnLoad } from '../fixtures/helpers';
 
 /**
  * Area-scoped message catalogues (decisions § 1802).
@@ -122,13 +123,7 @@ test.describe('area catalogues on a cold deep link', () => {
 		});
 		// A stored choice wins over the browser language, and the seeded storage
 		// state may carry one from the picker specs; pin it so this reads German.
-		await context.addInitScript(() => {
-			try {
-				localStorage.setItem('locale', 'de');
-			} catch {
-				/* storage unavailable — the browser locale above still says de */
-			}
-		});
+		await setStorageOnLoad(context, { local: { locale: 'de' } });
 		const page = await context.newPage();
 
 		await page.goto('/gym');

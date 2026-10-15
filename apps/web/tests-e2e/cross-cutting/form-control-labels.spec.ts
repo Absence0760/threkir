@@ -4,6 +4,7 @@ import { expect, test } from '../fixtures/test';
 import { getAdminClient, getUserClient } from '../fixtures/local-supabase';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Accessible-name pins for form controls that had a visible-but-not-
@@ -158,12 +159,7 @@ test.describe('form-control accessible names', () => {
 			const userQ = `label ${marker}: how hard should my long run be?`;
 
 			const ctx = await browser.newContext({ storageState: user.storageStatePath });
-			await ctx.addInitScript(() => {
-				localStorage.setItem(
-					'cookie_consent',
-					JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-				);
-			});
+			await acceptCookieConsent(ctx);
 			const page = await ctx.newPage();
 
 			try {

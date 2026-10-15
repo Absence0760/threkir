@@ -2,6 +2,7 @@ import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A, USER_C_PRO } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Paywall — per-feature UI gates and tier-aware behaviour.
@@ -39,12 +40,7 @@ const TODAY = new Date().toISOString().slice(0, 10);
 
 test.describe('paywall — per-feature gates', () => {
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-			);
-		});
+		await acceptCookieConsent(context);
 	});
 
 	test.describe('AI Coach — free tier', () => {
@@ -144,12 +140,7 @@ test.describe('paywall — per-feature gates', () => {
 			const ctx = await browser.newContext({ storageState: USER_A.storageStatePath });
 			const page = await ctx.newPage();
 			try {
-				await ctx.addInitScript(() => {
-					localStorage.setItem(
-						'cookie_consent',
-						JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-					);
-				});
+				await acceptCookieConsent(ctx);
 				await page.goto('/settings/upgrade');
 				const proCard = page.locator('.tier-pro');
 				await expect(proCard).toBeVisible({ timeout: 10_000 });
@@ -171,12 +162,7 @@ test.describe('paywall — per-feature gates', () => {
 			});
 			const page = await ctx.newPage();
 			try {
-				await ctx.addInitScript(() => {
-					localStorage.setItem(
-						'cookie_consent',
-						JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-					);
-				});
+				await acceptCookieConsent(ctx);
 				await page.goto('/settings/upgrade');
 				const proCard = page.locator('.tier-pro');
 				await expect(proCard).toBeVisible({ timeout: 10_000 });
@@ -209,13 +195,7 @@ test.describe('paywall — per-feature gates', () => {
 			});
 			const page = await ctx.newPage();
 			try {
-				await ctx.addInitScript(() => {
-					localStorage.setItem(
-						'cookie_consent',
-						JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-					);
-					localStorage.setItem('paywall_force_locked', '1');
-				});
+				await acceptCookieConsent(ctx, { paywall_force_locked: '1' });
 				await page.goto('/coach');
 
 				await expect(page.locator('.pro-gate')).toHaveCount(0);

@@ -2,6 +2,7 @@ import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * The two week ribbons at a phone-width viewport, against the 11 px
@@ -68,12 +69,7 @@ test.describe('week ribbons — 11px micro-label floor at phone width', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	test.beforeEach(async ({ context, page }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(context);
 		await page.setViewportSize(PHONE);
 	});
 

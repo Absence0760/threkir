@@ -2,6 +2,7 @@ import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Gear auto-tag end-to-end: the `auto_tag_default_gear` trigger
@@ -28,12 +29,7 @@ test.describe('Gear auto-tag flow', () => {
 	let plantedRunIds: string[] = [];
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-			);
-		});
+		await acceptCookieConsent(context);
 	});
 
 	test.afterEach(async () => {

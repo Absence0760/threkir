@@ -2,7 +2,7 @@ import type { Page } from '@playwright/test';
 import { expect, test } from '../fixtures/test';
 
 import { browserDatetimeLocal } from '../fixtures/dates';
-import { switchRunsToAllTime } from '../fixtures/helpers';
+import { setStorageOnLoad, switchRunsToAllTime } from '../fixtures/helpers';
 import { withCleanCurrentWeek } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
 
@@ -87,12 +87,7 @@ test.describe('dashboard end-to-end journey', () => {
 			const goalJson = JSON.stringify([
 				{ id: GOAL_ID, period: 'week', distance_m: 25_000 }
 			]);
-			await context.addInitScript(
-				(args: { key: string; value: string }) => {
-					localStorage.setItem(args.key, args.value);
-				},
-				{ key: GOAL_KEY, value: goalJson }
-			);
+			await setStorageOnLoad(context, { local: { [GOAL_KEY]: goalJson } });
 		});
 
 		// ── Phase 1: snapshot initial dashboard state ──────────────

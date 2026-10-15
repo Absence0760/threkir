@@ -3,6 +3,7 @@ import { expect, test } from '../fixtures/test';
 import { getAdminClient, getUserClient } from '../fixtures/local-supabase';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { readRow } from '../fixtures/db-read';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Paywall — full tier LIFECYCLE on one user: gated → upgrade →
@@ -55,13 +56,6 @@ import { readRow } from '../fixtures/db-read';
 
 const TODAY = new Date().toISOString().slice(0, 10);
 
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-	);
-}
-
 test.describe('paywall — tier lifecycle (gated → upgrade → unlocked → downgrade → re-locked)', () => {
 	test('one user walks the full tier round-trip across the real gated surfaces', async ({
 		browser,
@@ -105,7 +99,7 @@ test.describe('paywall — tier lifecycle (gated → upgrade → unlocked → do
 			});
 			// Saga users have not accepted the cookie banner — pre-accept so
 			// the GDPR banner can't float over the composer / usage bar.
-			await ctx.addInitScript(setConsentAccepted);
+			await acceptCookieConsent(ctx);
 			const page = await ctx.newPage();
 
 			try {

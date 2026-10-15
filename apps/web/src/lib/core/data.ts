@@ -9028,6 +9028,62 @@ export async function setRunExpectedReturn(
 	return data === true;
 }
 
+/// The run a safety contact's escalation link admits (decisions § 1964), or
+/// null when it admits nothing: a wrong token, an ended or concluded run, an
+/// expired link and a closed gate all read the same. POST, never `get: true`,
+/// so the token travels in the body and stays out of request-URL logs.
+export async function fetchSafetyLiveRun(
+	runId: string,
+	token: string,
+): Promise<{
+	started_at: string;
+	duration_s: number;
+	distance_m: number;
+	route_id: string | null;
+	owner_name: string;
+} | null> {
+	const { data, error } = await supabase.rpc('safety_live_run', {
+		p_run_id: runId,
+		p_token: token,
+	});
+	if (error) throw dbError(error);
+	const row = Array.isArray(data) ? data[0] : null;
+	if (!row) return null;
+	return {
+		started_at: row.started_at,
+		duration_s: Number(row.duration_s ?? 0),
+		distance_m: Number(row.distance_m ?? 0),
+		route_id: row.route_id ?? null,
+		owner_name: row.owner_name ?? '',
+	};
+}
+
+/// Privacy-clipped pings for a safety contact's link. Without `since` the
+/// newest 1000, newest first (the backlog); with it, what arrived after it,
+/// oldest first (the poll). Empty when the link admits nothing.
+export async function fetchSafetyLivePings(
+	runId: string,
+	token: string,
+	since: string | null = null,
+): Promise<
+	Array<{
+		lat: number;
+		lng: number;
+		distance_m: number | null;
+		elapsed_s: number | null;
+		at: string;
+		coarse: boolean;
+	}>
+> {
+	const { data, error } = await supabase.rpc('safety_live_pings', {
+		p_run_id: runId,
+		p_token: token,
+		...(since ? { p_since: since } : {}),
+	});
+	if (error) throw dbError(error);
+	return Array.isArray(data) ? data : [];
+}
+
 /// Decline a pending request / withdraw from a confirmed one.
 export async function declineSafetyRequest(id: string): Promise<boolean> {
 	const { data, error } = await supabase.rpc('decline_safety_contact', { p_id: id });

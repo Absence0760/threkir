@@ -7424,7 +7424,7 @@ export interface ReactionSummaryRow {
 export async function fetchRunReactionSummary(
 	runId: string,
 ): Promise<{ rows: ReactionSummaryRow[]; error: string | null }> {
-	const { data, error } = await supabase.rpc('run_reaction_summary', { p_run_id: runId });
+	const { data, error } = await supabase.rpc('run_reaction_summary', { p_run_id: runId }, { get: true });
 	if (error) return { rows: [], error: `${error.message}${error.code ? ` (${error.code})` : ''}` };
 	return { rows: (data ?? []) as ReactionSummaryRow[], error: null };
 }
@@ -7469,7 +7469,7 @@ export interface CommentLikeSummary {
 export async function fetchRunCommentLikeSummary(
 	runId: string,
 ): Promise<{ likes: Map<string, CommentLikeSummary>; error: string | null }> {
-	const { data, error } = await supabase.rpc('run_comment_like_summary', { p_run_id: runId });
+	const { data, error } = await supabase.rpc('run_comment_like_summary', { p_run_id: runId }, { get: true });
 	const likes = new Map<string, CommentLikeSummary>();
 	if (error) return { likes, error: `${error.message}${error.code ? ` (${error.code})` : ''}` };
 	for (const row of data ?? []) {

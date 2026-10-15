@@ -1,7 +1,14 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import FoodLogEditor from '#lib/components/FoodLogEditor.svelte';
+	import PlatePhotoLogger from '#lib/components/PlatePhotoLogger.svelte';
+	import { coachEnabled } from '#lib/coach/coach_flag.ts';
+	import { platePhotoEnabled } from '#lib/nutrition/plate_photo_flag.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+
+	// The photo logger runs on the Coach's Anthropic key, so it needs both
+	// gates (decisions § 1972); the manual composer below never does.
+	const showPlatePhoto = coachEnabled() && platePhotoEnabled();
 </script>
 
 <svelte:head><title>{m('nutrition.logHeading')} — Threkir</title></svelte:head>
@@ -15,6 +22,9 @@
 		<h1>{m('nutrition.logHeading')}</h1>
 	</header>
 
+	{#if showPlatePhoto}
+		<PlatePhotoLogger oncreated={() => goto('/nutrition')} />
+	{/if}
 	<FoodLogEditor oncreated={() => goto('/nutrition')} />
 </div>
 

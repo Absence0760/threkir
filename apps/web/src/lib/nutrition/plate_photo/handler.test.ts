@@ -6,8 +6,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
+import { MAX_PLATE_NOTE_CHARS } from './upload';
 import {
-	MAX_PLATE_NOTE_CHARS,
 	PLATE_PHOTO_RATE_BUCKET,
 	PROPOSE_TOOL,
 	handlePlatePhoto,

@@ -9201,12 +9201,12 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String runSocialReactWith(String label) {
-    return 'Reagir com "$label"';
+    return 'Reagir com “$label”';
   }
 
   @override
   String runSocialRemoveReaction(String label) {
-    return 'Remover a sua reação "$label"';
+    return 'Remover a sua reação “$label”';
   }
 
   @override
@@ -25145,12 +25145,12 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String runSocialReactWith(String label) {
-    return 'Reagir com "$label"';
+    return 'Reagir com “$label”';
   }
 
   @override
   String runSocialRemoveReaction(String label) {
-    return 'Remover sua reação "$label"';
+    return 'Remover sua reação “$label”';
   }
 
   @override

@@ -35,6 +35,7 @@ import { supabaseErrorFields } from '../../core/supabase_error';
 import { providerErrorFields } from '../../core/provider_error';
 import { checkRouteRateLimit } from '../../routes/rate_limit';
 import { preparePlateImage } from './image';
+import { MAX_PLATE_NOTE_CHARS } from './upload';
 import {
 	MAX_PLATE_ITEMS,
 	PLATE_ITEM_LIMITS,
@@ -59,9 +60,6 @@ export const PLATE_PHOTO_RATE_BUCKET = 'plate-photo';
 export const PLATE_PHOTO_RATE_MAX = 20;
 export const PLATE_PHOTO_RATE_WINDOW_S = 3600;
 
-/// The optional free-text hint ("half portion", "no dressing"). The only text
-/// the runner types into the prompt; truncated, never rejected.
-export const MAX_PLATE_NOTE_CHARS = 200;
 
 export interface PlatePhotoModelClient {
 	messages: {

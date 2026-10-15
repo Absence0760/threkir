@@ -9,6 +9,10 @@ import { AI_DISCLOSURE_ERROR } from '../../core/ai_disclosure';
 export const PLATE_UPLOAD_LONG_EDGE_PX = 1568;
 export const PLATE_UPLOAD_JPEG_QUALITY = 0.85;
 
+/// The optional free-text hint ("half portion", "no dressing"). The only text
+/// the runner types into the prompt; the server truncates rather than rejects.
+export const MAX_PLATE_NOTE_CHARS = 200;
+
 export type PlatePhotoErrorKind =
 	| 'not_authenticated'
 	| 'consent'

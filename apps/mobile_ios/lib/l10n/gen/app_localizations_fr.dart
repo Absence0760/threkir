@@ -12693,6 +12693,22 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get roadbookWeightToggle => 'Fluide selon le poids';
+
+  @override
+  String get roadbookWeightHint =>
+      'Ajuste la quantité de fluide à ton poids, dans la fourchette de 400 à 800 ml par heure que la médecine du sport indique pour la course. Une base de planification, pas un test de sudation.';
+
+  @override
+  String roadbookWeightUsing(String ml) {
+    return 'Fluide : $ml ml par heure d\'après ton poids.';
+  }
+
+  @override
+  String get roadbookWeightUnavailable =>
+      'Pour baser le fluide sur ton poids, ajoute ton poids dans Données corporelles et donne ton consentement aux données de santé à cet endroit.';
+
+  @override
   String get roadbookColTarget => 'Objectif';
 
   @override

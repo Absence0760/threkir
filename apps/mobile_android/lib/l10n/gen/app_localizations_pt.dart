@@ -12672,6 +12672,22 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get roadbookWeightToggle => 'Líquido pelo peso corporal';
+
+  @override
+  String get roadbookWeightHint =>
+      'Ajusta a quantidade de líquido ao seu peso corporal, dentro do intervalo de 400–800 ml por hora que a medicina desportiva indica para a corrida. É uma base de planeamento, não um teste de suor.';
+
+  @override
+  String roadbookWeightUsing(String ml) {
+    return 'Líquido: $ml ml por hora com base no seu peso corporal.';
+  }
+
+  @override
+  String get roadbookWeightUnavailable =>
+      'Para basear o líquido no seu peso corporal, adicione o seu peso em Dados corporais e dê aí o consentimento para dados de saúde.';
+
+  @override
   String get roadbookColTarget => 'Meta';
 
   @override
@@ -28546,6 +28562,22 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String roadbookCarryHint(String gels, String fluid) {
     return 'levar $gels géis · $fluid ml';
   }
+
+  @override
+  String get roadbookWeightToggle => 'Líquido pelo peso corporal';
+
+  @override
+  String get roadbookWeightHint =>
+      'Ajusta a quantidade de líquido ao seu peso corporal, dentro da faixa de 400–800 ml por hora que a medicina esportiva indica para a corrida. É uma base de planejamento, não um teste de suor.';
+
+  @override
+  String roadbookWeightUsing(String ml) {
+    return 'Líquido: $ml ml por hora com base no seu peso corporal.';
+  }
+
+  @override
+  String get roadbookWeightUnavailable =>
+      'Para basear o líquido no seu peso corporal, adicione seu peso em Dados corporais e dê ali o consentimento para dados de saúde.';
 
   @override
   String get roadbookColTarget => 'Meta';

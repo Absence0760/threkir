@@ -237,4 +237,33 @@ class QueuedRunSerializationTest {
         assertNull(decoded.distanceEstimator)
         assertNull(decoded.distanceStepFilledM)
     }
+
+    @Test
+    fun `location provider round-trips through the queue`() {
+        for (provider in listOf("gps", "fused", "mixed")) {
+            val queued = sample.copy(locationProvider = provider)
+            val decoded = json.decodeFromString(
+                QueuedRun.serializer(),
+                json.encodeToString(QueuedRun.serializer(), queued),
+            )
+            assertEquals(queued, decoded)
+        }
+    }
+
+    @Test
+    fun `a run queued before the receiver decodes with no location provider`() {
+        val preReceiver = """
+        {
+            "id": "old-run",
+            "startedAtIso": "2026-05-01T08:00:00Z",
+            "durationS": 1800,
+            "distanceM": 5000.0,
+            "trackFilePath": "/old/path.json",
+            "distanceEstimator": "kalman_v1"
+        }
+        """.trimIndent()
+        val decoded = json.decodeFromString(QueuedRun.serializer(), preReceiver)
+        assertEquals("kalman_v1", decoded.distanceEstimator)
+        assertNull(decoded.locationProvider)
+    }
 }

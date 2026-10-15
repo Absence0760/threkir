@@ -424,4 +424,33 @@ class CheckpointSerializationTest {
         assertEquals("kalman_v1", decoded.distanceEstimator)
         assertEquals(78.4, decoded.distanceStepFilledM!!, 0.0)
     }
+
+    @Test
+    fun `location provider round-trips so a recovered run names its stream`() {
+        for (provider in listOf("gps", "fused", "mixed")) {
+            val decoded = json.decodeFromString(
+                Checkpoint.serializer(),
+                json.encodeToString(Checkpoint.serializer(), sample.copy(locationProvider = provider)),
+            )
+            assertEquals(provider, decoded.locationProvider)
+        }
+    }
+
+    @Test
+    fun `a checkpoint from before the receiver decodes with no location provider`() {
+        val preReceiver = """
+        {
+            "runId": "old-run",
+            "startedAtMs": 1700000000000,
+            "savedAtMs": 1700000900000,
+            "distanceM": 5000.0,
+            "trackFilePath": "/old/path.json",
+            "trackPointCount": 1200,
+            "distanceEstimator": "kalman_v1"
+        }
+        """.trimIndent()
+        val decoded = json.decodeFromString(Checkpoint.serializer(), preReceiver)
+        assertEquals("kalman_v1", decoded.distanceEstimator)
+        assertNull(decoded.locationProvider)
+    }
 }

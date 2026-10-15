@@ -755,6 +755,7 @@ class ClubRow {
   static const String colStravaUrl = 'strava_url';
   static const String colFacebookUrl = 'facebook_url';
   static const String colShadowHidden = 'shadow_hidden';
+  static const String colStravaClubId = 'strava_club_id';
 
   final String id;
   final String ownerId;
@@ -777,6 +778,7 @@ class ClubRow {
   final String? stravaUrl;
   final String? facebookUrl;
   final bool shadowHidden;
+  final int? stravaClubId;
 
   const ClubRow({
     required this.id,
@@ -800,6 +802,7 @@ class ClubRow {
     this.stravaUrl,
     this.facebookUrl,
     required this.shadowHidden,
+    this.stravaClubId,
   });
 
   factory ClubRow.fromJson(Map<String, dynamic> json) => ClubRow(
@@ -824,6 +827,7 @@ class ClubRow {
     stravaUrl: json['strava_url'] as String?,
     facebookUrl: json['facebook_url'] as String?,
     shadowHidden: (json['shadow_hidden'] as bool?) ?? false,
+    stravaClubId: (json['strava_club_id'] as num?)?.toInt(),
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -848,6 +852,7 @@ class ClubRow {
     colStravaUrl: stravaUrl,
     colFacebookUrl: facebookUrl,
     colShadowHidden: shadowHidden,
+    colStravaClubId: stravaClubId,
   };
 
   ClubRow copyWith({
@@ -872,6 +877,7 @@ class ClubRow {
     String? stravaUrl,
     String? facebookUrl,
     bool? shadowHidden,
+    int? stravaClubId,
   }) => ClubRow(
     id: id ?? this.id,
     ownerId: ownerId ?? this.ownerId,
@@ -894,6 +900,7 @@ class ClubRow {
     stravaUrl: stravaUrl ?? this.stravaUrl,
     facebookUrl: facebookUrl ?? this.facebookUrl,
     shadowHidden: shadowHidden ?? this.shadowHidden,
+    stravaClubId: stravaClubId ?? this.stravaClubId,
   );
 }
 

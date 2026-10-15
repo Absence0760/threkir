@@ -191,6 +191,7 @@ insert into server_only (fn, keeps_service_role) values
   ('revoke_unmet_distance_achievements', false),
   ('runs_track_object_version', true),
   ('set_apple_refresh_token', true),
+  ('set_club_strava_link', true),
   ('sign_in_browser_class', true),
   ('sign_in_platform_class', true),
   ('sweep_challenge_completions', false),

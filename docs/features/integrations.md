@@ -303,6 +303,15 @@ Important properties of the real implementation:
 - **Sport-type filter narrows to run / walk / hike.** A user's bike ride or swim is acknowledged but not ingested.
 - **An athlete deauthorization disconnects the integration.** When an athlete revokes our access from their Strava settings, Strava pushes `object_type: "athlete"`, `aspect_type: "update"`, `updates: { authorized: "false" }`, and its API terms require acting on it. Both receivers do: the Edge Function calls `disconnectDeauthorizedAthlete` (`_shared/strava_disconnect.ts`), and the Go endpoint enqueues a `strava_event` job whose handler does the same work. Either way the Vault tokens are dropped (`delete_user_provider_secrets`) and the row is stamped `disconnected_at` with `disconnected_reason = 'athlete_deauthorized'` — the same teardown as the user-initiated Disconnect (`disconnectStravaLocally`, reason `user_initiated`), minus the `/oauth/deauthorize` call, since the grant is already dead at Strava. The event is freshness-gated but not deduped (disconnecting is idempotent), and every exit is a 200. The Go decoder now also declares `subscription_id` and `updates`, which Strava sends on every event and which its refuse-unknown-fields decoder used to answer with a 400.
 
+### Your Strava clubs (web)
+
+A connected runner sees their own Strava clubs on **My clubs** and can set each up on Threkir or link it to a club they run there (issue #1151 step 4, [decisions § 1953](../architecture/decisions.md); the surface is described in [clubs.md § Your Strava clubs](clubs.md#your-strava-clubs)). The `strava-clubs` Edge Function serves it, for the caller only:
+
+- `{ action: 'list' }` calls `GET /athlete/clubs` (100 per page, at most 3 pages) with the caller's stored token, refreshed through `refreshStravaToken` when it is within 5 minutes of expiry, and answers `{ status: 'connected', clubs }` — Strava club id, name, city / state / country, sport type, member count, https profile image, whether Strava said the caller administers it, and the Threkir club linked to it when the caller can see that club. Not connected is `{ status: 'not_connected' }` and a refused refresh or a Strava 401 is `{ status: 'reconnect_required' }`, both 200s. Strava 429 is a 503, any other failure a 502. Nothing is stored: Strava's terms allow showing an athlete their own clubs, not collecting them into a directory.
+- `{ action: 'link', club_id, strava_club_id }` calls `GET /clubs/{id}` and proceeds only when the body says `membership: 'member'` with `admin` or `owner` true, then records the link through the service-role-only `set_club_strava_link` RPC.
+
+Both endpoints are readable with the `read` scope, which the connect flow has always requested alongside `activity:read_all`, so no reconnect is needed. The web half is gated on `isStravaConfigured()` and is inert on a build without `PUBLIC_STRAVA_CLIENT_ID`. Mobile does not have it yet (followups).
+
 ### Key endpoints
 
 | Endpoint | Method | Purpose |
@@ -310,6 +319,8 @@ Important properties of the real implementation:
 | `/athlete/activities` | GET | Backfill historical activities (paginated) |
 | `/activities/{id}` | GET | Full activity detail (splits, gear, HR) |
 | `/activities/{id}/streams` | GET | Raw GPS track, altitude, HR timeseries |
+| `/athlete/clubs` | GET | The caller's own clubs (`strava-clubs` `list`) |
+| `/clubs/{id}` | GET | One club, with the caller's `membership` / `admin` / `owner` (`strava-clubs` `link`) |
 | `/push_subscriptions` | POST | Register webhook endpoint |
 | `/oauth/token` | POST | Exchange auth code or refresh token |
 

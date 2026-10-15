@@ -16,15 +16,16 @@
 		/// When set, the editor edits this club instead of creating a new one.
 		existing?: Club;
 		initialName?: string;
+		initialLocation?: string;
 		oncreated?: (club: { slug: string; id: string }) => void;
 		onsaved?: () => void;
 		oncancel?: () => void;
 	}
-	let { existing, initialName, oncreated, onsaved, oncancel }: Props = $props();
+	let { existing, initialName, initialLocation, oncreated, onsaved, oncancel }: Props = $props();
 
 	let name = $state(untrack(() => existing?.name ?? initialName ?? ''));
 	let description = $state(untrack(() => existing?.description ?? ''));
-	let location = $state(untrack(() => existing?.location_label ?? ''));
+	let location = $state(untrack(() => existing?.location_label ?? initialLocation ?? ''));
 	let visibility = $state<'public' | 'private'>(
 		untrack(() => (existing && !existing.is_public ? 'private' : 'public'))
 	);

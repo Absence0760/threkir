@@ -10,13 +10,19 @@
 
 import { PUBLIC_STRAVA_CLIENT_ID as PUBLIC_STRAVA_CLIENT_ID_ENV } from '$app/env/public';
 import { supabase } from '../core/supabase';
-import { edgeFunctionErrorMessage } from '../core/edge_function_error';
+import { edgeFunctionErrorCode, edgeFunctionErrorMessage } from '../core/edge_function_error';
 import { markListsStale } from '../core/list_freshness';
 import {
 	STRAVA_LOOKBACK_DEFAULT_DAYS,
 	parseStravaSyncResult,
 	type StravaSyncResult,
 } from './strava_sync_result';
+import {
+	parseStravaClubsResult,
+	stravaClubLinkError,
+	type StravaClubLinkError,
+	type StravaClubsResult,
+} from './strava_clubs';
 
 // Declared optional in src/env.ts so a build without
 // `PUBLIC_STRAVA_CLIENT_ID` set falls back gracefully to "not configured".
@@ -156,4 +162,42 @@ export async function syncStrava(
 	});
 	if (error) throw new Error(await edgeFunctionErrorMessage(error, 'sync_failed'));
 	return parseStravaSyncResult(data);
+}
+
+/// The signed-in runner's own Strava clubs (decisions § 1953). Only called
+/// where `isStravaConfigured()` holds; not being connected comes back as a
+/// status, so the caller renders nothing rather than an error.
+export async function fetchMyStravaClubs(): Promise<StravaClubsResult> {
+	const { data, error } = await supabase.functions.invoke('strava-clubs', {
+		body: { action: 'list' },
+	});
+	if (error) throw new Error(await edgeFunctionErrorMessage(error, 'strava_clubs_failed'));
+	return parseStravaClubsResult(data);
+}
+
+export class StravaClubLinkFailure extends Error {
+	readonly reason: StravaClubLinkError;
+	constructor(reason: StravaClubLinkError) {
+		super(reason);
+		this.reason = reason;
+	}
+}
+
+/// Record that a Threkir club IS this Strava club. The function checks on
+/// Strava that the caller administers the Strava club, and in SQL that they
+/// administer the Threkir one; a refusal throws `StravaClubLinkFailure`
+/// naming which.
+export async function linkStravaClub(clubId: string, stravaClubId: number): Promise<void> {
+	const { error } = await supabase.functions.invoke('strava-clubs', {
+		body: { action: 'link', club_id: clubId, strava_club_id: stravaClubId },
+	});
+	if (error) throw new StravaClubLinkFailure(stravaClubLinkError(await edgeFunctionErrorCode(error)));
+}
+
+/// Clear a club's Strava link. Needs no Strava call, so it is a plain RPC
+/// gated on the caller administering the Threkir club.
+export async function unlinkStravaClub(clubId: string): Promise<void> {
+	const { data, error: rpcError } = await supabase.rpc('unlink_club_strava', { p_club_id: clubId });
+	if (rpcError) throw rpcError;
+	if (data !== true) throw new StravaClubLinkFailure('not_club_admin');
 }

@@ -108,7 +108,10 @@ when `bpm` is absent.
 A phone-recorded track also carries the raw fix quality (`accuracyMetres`,
 `speedMps`, `speedAccuracyMps`, `bearingDeg`) and, from GPS distance spec v1.2,
 the smoother's position for the fix (`smoothedLat`, `smoothedLng`, degrees),
-written by `RunRecorder.stop()`. Each is omitted when absent; the smoothed pair
+written by `RunRecorder.stop()`, and `distM`, the run's credited distance
+through the fix (also written by the Wear OS and watchOS recorders), which
+splits and moving time measure on ([gps_distance.md § Splits and moving
+time](../features/gps_distance.md#splits-and-moving-time)). Each is omitted when absent; the smoothed pair
 is written as both halves or neither, and `lat` / `lng` are never altered.
 Readers that draw the run line or route-match it prefer the smoothed pair when
 both are present (`lineLat` / `lineLng`: `Waypoint` in core_models, web

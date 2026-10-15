@@ -661,7 +661,9 @@ steal focus from typing). `RotaryScrollWiringTest` pins the call sites.
   match take only fixes within 30 m (`SourceVerdict.track`): a 30-50 m
   canopy fix moves distance and pace and nothing else; each point now also carries the optional `accuracyMetres`,
   `speedMps`, `speedAccuracyMps`, `bearingDeg` keys so the server can
-  recompute. Uploads stamp `metadata.distance_estimator = "kalman_v1"` and,
+  recompute, plus `distM`, the run's credited distance through that fix
+  (`TrackWriter.append(point, distM)`, written after the estimator has
+  taken it), which splits and moving time measure on (decisions § 1997). Uploads stamp `metadata.distance_estimator = "kalman_v1"` and,
   when > 0, `distance_step_filled_m`; a run queued or checkpointed by an
   older hop-summing build carries neither. The stamp is what queues the
   server's smoother: once the row has its `track_url`, the

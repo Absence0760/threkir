@@ -4321,6 +4321,40 @@ class ApiClient {
     }
   }
 
+  /// Opt one of the viewer's run photos into the public race-listing page
+  /// of the race its run is linked to, or withdraw it. Owner-only and
+  /// run-photo-only, enforced by the RPC; the column refuses direct writes.
+  /// The page also requires the run to be public, so a private run's opted-in
+  /// photo stays off it until the run is made public (decisions § 1961).
+  Future<void> setRunPhotoRaceGallery(
+    String photoId, {
+    required bool shared,
+  }) async {
+    await _client.rpc(
+      'set_run_photo_race_gallery',
+      params: {'p_photo_id': photoId, 'p_shared': shared},
+    );
+  }
+
+  /// Runners' opted-in photos for a public race listing, newest first. The
+  /// RPC returns no run, owner, route or track — only what the public page
+  /// shows — and caps [limit] server-side. Mirrors web
+  /// `fetchRaceListingPhotos`; throws on a load failure.
+  Future<List<RaceListingPhotoView>> fetchRaceListingPhotos(
+    String listingId, {
+    int limit = 24,
+  }) async {
+    final res = await _client.rpc(
+      'race_listing_photos',
+      params: {'p_listing_id': listingId, 'p_limit': limit},
+      get: true,
+    );
+    return [
+      for (final r in (res as List).cast<Map<String, dynamic>>())
+        RaceListingPhotoView.fromJson(r),
+    ];
+  }
+
   // ──────────────────── Route photos (backlog C1) ────────────────────
   //
   // The run_photos capability applied to routes. Metadata in
@@ -8863,6 +8897,37 @@ class EventPhotoView {
         createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
         uploaderName: uploaderName,
         hiddenAt: parseIsoStrictValue(json['hidden_at']),
+      );
+}
+
+/// One runner's photo on a public race-listing page — the mobile mirror of
+/// web's `RaceListingPhoto`, before signing. Carries no run, owner, route or
+/// track: the page is public and indexed.
+class RaceListingPhotoView {
+  final String id;
+  final String storagePath;
+  final String? thumb512Path;
+  final String? caption;
+  final DateTime createdAt;
+  final String? displayName;
+
+  const RaceListingPhotoView({
+    required this.id,
+    required this.storagePath,
+    this.thumb512Path,
+    this.caption,
+    required this.createdAt,
+    this.displayName,
+  });
+
+  factory RaceListingPhotoView.fromJson(Map<String, dynamic> json) =>
+      RaceListingPhotoView(
+        id: json['id'] as String,
+        storagePath: json['storage_path'] as String,
+        thumb512Path: json['thumb_512_path'] as String?,
+        caption: json['caption'] as String?,
+        createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
+        displayName: json['display_name'] as String?,
       );
 }
 

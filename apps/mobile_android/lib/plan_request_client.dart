@@ -17,9 +17,11 @@ import 'training.dart';
 ///
 /// The manual wizard is the fallback, so every failure throws a typed
 /// [PlanRequestError] and the caller keeps the form working. Refreshes the
-/// JWT once on a 401. Twin of web's `training/plan_request_client.ts` — keep
-/// the body shape, the status-to-kind mapping and the single refresh-and-
-/// replay in lockstep.
+/// JWT once on a 401. The web counterpart is the client module of the same
+/// name under `training/`; the two are network glue rather than a registered
+/// parity pair, since every field is validated server-side — keep the body
+/// shape, the status-to-kind mapping and the single refresh-and-replay
+/// matching it.
 
 enum PlanRequestErrorKind {
   notAuthenticated,

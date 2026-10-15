@@ -676,3 +676,50 @@ func TestTrackPoint_RoundTripsRecordedDistance(t *testing.T) {
 		t.Errorf("encoded %s", got)
 	}
 }
+
+// A track as the phone uploads it (api_client's _waypointToJson): `ts` in
+// UTC ISO-8601 with microseconds, `ele` null, accuracy on most fixes. The
+// request carries one radius and one whole-second timestamp per point, in
+// track order. The raw query is split by hand: net/url drops any pair whose
+// value holds OSRM's `;` list separator.
+func TestOSRMMatcher_RecorderTrackSendsRadiusesAndTimestampsInOrder(t *testing.T) {
+	raw := `[
+		{"lat":51.50000,"lng":-0.10000,"ele":null,"ts":"2026-10-15T07:00:00.000Z","accuracyMetres":3.2},
+		{"lat":51.50002,"lng":-0.10000,"ele":null,"ts":"2026-10-15T07:00:00.950123Z","accuracyMetres":8.6},
+		{"lat":51.50004,"lng":-0.10000,"ele":null,"ts":"2026-10-15T07:00:02.010000Z","accuracyMetres":27.5},
+		{"lat":51.50006,"lng":-0.10000,"ele":null,"ts":"2026-10-15T07:00:03.000Z"},
+		{"lat":51.50008,"lng":-0.10000,"ele":null,"ts":"2026-10-15T07:00:04.500Z","accuracyMetres":64}
+	]`
+	var in []TrackPoint
+	if err := json.Unmarshal([]byte(raw), &in); err != nil {
+		t.Fatal(err)
+	}
+	var rawQueries []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rawQueries = append(rawQueries, r.URL.RawQuery)
+		fmt.Fprint(w, osrmSnapped(make([][2]float64, len(in))))
+	}))
+	defer srv.Close()
+	if _, err := NewOSRMMatcher(srv.URL).Match(context.Background(), in); err != nil {
+		t.Fatal(err)
+	}
+	if len(rawQueries) != 1 {
+		t.Fatalf("calls=%d, want 1", len(rawQueries))
+	}
+	q := map[string]string{}
+	for _, kv := range strings.Split(rawQueries[0], "&") {
+		k, v, _ := strings.Cut(kv, "=")
+		q[k] = v
+	}
+	if got, want := q["radiuses"], "5;9;28;5;50"; got != want {
+		t.Errorf("radiuses=%q, want %q", got, want)
+	}
+	t0 := time.Date(2026, 10, 15, 7, 0, 0, 0, time.UTC).Unix()
+	want := fmt.Sprintf("%d;%d;%d;%d;%d", t0, t0, t0+2, t0+3, t0+4)
+	if got := q["timestamps"]; got != want {
+		t.Errorf("timestamps=%q, want %q", got, want)
+	}
+	if q["gaps"] != "ignore" {
+		t.Errorf("gaps=%q, want ignore", q["gaps"])
+	}
+}

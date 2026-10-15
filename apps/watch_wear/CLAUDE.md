@@ -657,9 +657,13 @@ steal focus from typing). `RotaryScrollWiringTest` pins the call sites.
   step-filled. Fixes arrive at 1 s, so `expectedIntervalS` stays 1. The
   ceiling is per activity (`maxSpeedMpsFor`, the phone's
   `ActivityType.maxSpeedMps` values, stroller included, held to
-  `fixtures/activity_speed_caps.json` by `ActivitySpeedCapsTest`). The track, the overlay and the route
-  match take only fixes within 30 m (`SourceVerdict.track`): a 30-50 m
-  canopy fix moves distance and pace and nothing else; each point now also carries the optional `accuracyMetres`,
+  `fixtures/activity_speed_caps.json` by `ActivitySpeedCapsTest`). The overlay, the latest point, the route
+  match and the post-run map take only fixes within 30 m (`SourceVerdict.track`): a 30-50 m
+  canopy fix moves distance and pace and is stored in the track file flagged
+  `"offTrack":true` (`TrackWriter.append(point, distM, offTrack)`), so the
+  server's replay sees every fix the estimator took; the finished run and the
+  checkpoint carry `trackComplete` into `metadata.track_complete`
+  (docs/features/gps_distance.md § Stored track). Each point now also carries the optional `accuracyMetres`,
   `speedMps`, `speedAccuracyMps`, `bearingDeg` keys so the server can
   recompute, plus `distM`, the run's credited distance through that fix
   (`TrackWriter.append(point, distM)`, written after the estimator has

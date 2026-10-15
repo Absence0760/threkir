@@ -173,11 +173,13 @@
             <!-- Club invite links (lib/club_invite_link.dart). The app scheme
                  `com.threkir.app://clubs/join/<token>` needs no verification.
                  The web link `https://threkir.com/clubs/join/<token>` is an
-                 App Link: it opens here without a chooser only once
-                 https://threkir.com/.well-known/assetlinks.json names this
-                 package and its Play app-signing SHA-256 fingerprint
-                 (decisions § 1865); until then Android leaves it to the
-                 browser unless the user enables the link in app settings. -->
+                 App Link: it opens here without a chooser because
+                 https://threkir.com/.well-known/assetlinks.json (source:
+                 apps/web/static/.well-known/) names this package and its
+                 Play app-signing SHA-256 fingerprint (decisions § 1865,
+                 § 1923). Android checks it at install; if verification
+                 fails it leaves the link to the browser unless the user
+                 enables the link in app settings. -->
             <intent-filter android:autoVerify="false">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />

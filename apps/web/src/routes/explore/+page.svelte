@@ -10,5 +10,5 @@
 
 <svelte:head>
 	<title>{m('shell.redirecting')}</title>
-	<meta http-equiv="refresh" content="0;url=/routes?tab=explore" />
+	<noscript><meta http-equiv="refresh" content="0;url=/routes?tab=explore" /></noscript>
 </svelte:head>

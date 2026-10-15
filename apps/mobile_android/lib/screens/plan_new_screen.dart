@@ -1,3 +1,4 @@
+import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart';
@@ -5,18 +6,22 @@ import 'package:ui_kit/ui_kit.dart';
 import '../column_limits.dart';
 import '../backend_timeout.dart';
 import '../auth_error.dart';
+import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../l10n/number_format.dart';
 import '../metrics.dart';
 import '../plan_ramp.dart';
+import '../plan_request_client.dart';
 import '../plan_start.dart';
+import '../pro_sellable.dart';
 import '../race_plan_preset.dart';
 import '../social_service.dart' show ClubView, SocialService;
 import '../starter_plans.dart';
 import '../training.dart';
 import '../training_labels.dart';
 import '../training_service.dart';
+import '../widgets/ai_disclosure_notice.dart';
 import '../widgets/metric_label.dart';
 import '../widgets/top_banner.dart';
 import 'plan_detail_screen.dart';
@@ -28,6 +33,30 @@ class _TemplateOption {
   final TrainingPlanRow template;
   final String clubName;
   const _TemplateOption(this.template, this.clubName);
+}
+
+/// The description box's input budget, matching web's `maxlength`.
+const int kPlanDescriptionMaxChars = 600;
+
+/// What the last AI fill did to the form, kept as facts and localized at
+/// build time.
+class _AiApplied {
+  final List<PlanRequestAssumption> assumptions;
+  final bool recent5kFilled;
+
+  /// Set when the description named a race date the dates were sized to.
+  final DateTime? raceDate;
+
+  /// Set when the description named a race date the dates could not be sized
+  /// to; the start date was left alone.
+  final RacePlanRefusal? raceRefusal;
+
+  const _AiApplied({
+    required this.assumptions,
+    required this.recent5kFilled,
+    this.raceDate,
+    this.raceRefusal,
+  });
 }
 
 /// Wizard: goal race + goal time + recent 5K + days/week. Live preview of
@@ -55,6 +84,22 @@ class PlanNewScreen extends StatefulWidget {
   final String? raceName;
   final num? raceDistanceM;
 
+  /// A plain-English description to prefill the "Describe the plan you want"
+  /// box with (the Coach's "Build this plan" link). When the box is
+  /// available it fills the form once after the first frame.
+  final String? initialDescription;
+
+  /// Used to open the AI disclosure when the plan assistant is refused for
+  /// consent. Null resolves the global client at tap time.
+  final ApiClient? apiClient;
+
+  /// Test seams for the AI plan assistant: whether the deploy has it live,
+  /// and the request itself. Production uses the capability manifest and
+  /// [requestPlanInputs].
+  final Future<bool> Function()? loadAiPlanAvailable;
+  final Future<PlanRequestInputs> Function(String request, String todayIso)?
+      requestPlanInputsFn;
+
   const PlanNewScreen({
     super.key,
     required this.training,
@@ -64,6 +109,10 @@ class PlanNewScreen extends StatefulWidget {
     this.raceDateIso,
     this.raceName,
     this.raceDistanceM,
+    this.initialDescription,
+    this.apiClient,
+    this.loadAiPlanAvailable,
+    this.requestPlanInputsFn,
   });
 
   @override
@@ -81,6 +130,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
   final _recent5kMinCtrl = TextEditingController();
   final _recent5kSecCtrl = TextEditingController();
   final _weekOverrideCtrl = TextEditingController();
+  final _aiCtrl = TextEditingController();
 
   GoalEvent _goal = GoalEvent.distanceHalf;
   DateTime _startDate = _nextSunday();
@@ -123,6 +173,25 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
   bool _cloning = false;
   bool _creatingStarter = false;
   bool _nameDefaulted = false;
+  // The runner's own plan name always beats the extracted one.
+  bool _nameTouched = false;
+
+  // "Describe the plan you want". The AI is the interface, never the planner:
+  // it only fills the fields below, and the generator builds the plan from
+  // them exactly as it does for a hand-filled form. Every failure leaves the
+  // manual form as it was.
+  bool _aiPlanAvailable = false;
+  bool _aiBusy = false;
+  PlanRequestErrorKind? _aiError;
+  _AiApplied? _aiApplied;
+  // The start date the last AI fill derived from a race date. A later fill
+  // without a race date puts it back, so the plan stops being sized for a
+  // race the new description no longer mentions; a date the runner picked by
+  // hand is left alone.
+  DateTime? _aiRaceStart;
+  // Bumped per fill so the dropdowns, which only read their initial value,
+  // rebuild showing what the fill chose.
+  int _aiFillCount = 0;
 
   static DateTime _nextSunday() =>
       nextSunday(DateTime.now().add(const Duration(days: 7)));
@@ -133,6 +202,13 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
     if (widget.initialGoal != null) _goal = widget.initialGoal!;
     _beginnerWalkRun = widget.initialBeginnerWalkRun;
     _applyRacePreset();
+    final description = widget.initialDescription?.trim();
+    if (description != null && description.isNotEmpty) {
+      _aiCtrl.text = description.length > kPlanDescriptionMaxChars
+          ? description.substring(0, kPlanDescriptionMaxChars)
+          : description;
+    }
+    _loadAiPlanAvailability();
     widget.training.fetchViewerGender().then((g) {
       if (!mounted) return;
       setState(() => _viewerGender = g);
@@ -146,6 +222,167 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
       setState(() => _recentVolume = v);
     });
     _loadTemplates();
+  }
+
+  Future<void> _loadAiPlanAvailability() async {
+    var available = false;
+    try {
+      available =
+          await (widget.loadAiPlanAvailable ?? fetchAiPlanAvailable)();
+    } catch (e) {
+      debugPrint('PlanNewScreen: AI plan capability lookup failed: $e');
+    }
+    if (!mounted || !available) return;
+    setState(() => _aiPlanAvailable = true);
+    if (_aiCtrl.text.trim().isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _fillFromDescription();
+    });
+  }
+
+  Future<void> _fillFromDescription() async {
+    final text = _aiCtrl.text.trim();
+    if (text.isEmpty || _aiBusy) return;
+    setState(() {
+      _aiBusy = true;
+      _aiError = null;
+      _aiApplied = null;
+    });
+    PlanRequestInputs inputs;
+    try {
+      inputs = await (widget.requestPlanInputsFn ?? requestPlanInputs)(
+          text, toIsoDate(DateTime.now()));
+    } catch (e) {
+      if (e is! PlanRequestError) {
+        debugPrint('PlanNewScreen: plan assistant request failed: $e');
+      }
+      if (!mounted) return;
+      setState(() {
+        _aiError = e is PlanRequestError
+            ? e.kind
+            : PlanRequestErrorKind.unavailable;
+        _aiBusy = false;
+      });
+      return;
+    }
+    if (!mounted) return;
+    // Its own catch: a fill that throws part-way must not take the wizard
+    // down with it — the fields already set stay, the runner edits the rest.
+    try {
+      _applyPlanInputs(inputs);
+    } catch (e) {
+      debugPrint('PlanNewScreen: applying plan assistant inputs failed: $e');
+      _aiError = PlanRequestErrorKind.unavailable;
+    }
+    setState(() => _aiBusy = false);
+  }
+
+  void _setWeekOverride(int? weeks) {
+    _weekOverride = weeks;
+    _weekOverrideCtrl.text = weeks == null ? '' : '$weeks';
+  }
+
+  /// Mirrors web PlanEditor's `applyPlanInputs`. Mutates state without a
+  /// `setState`; the caller rebuilds once afterwards.
+  void _applyPlanInputs(PlanRequestInputs inputs) {
+    _aiFillCount++;
+    // The fill replaces the plan's shape, so a note about the race the wizard
+    // was opened from would now describe dates it no longer holds.
+    _racePreset = null;
+    _beginnerWalkRun = inputs.beginnerWalkRun;
+    _goal = inputs.goalEvent;
+    _daysPerWeek = inputs.daysPerWeek;
+    // A fill replaces the shape of the plan, not just the fields this
+    // description happened to name: a second fill must not inherit the first
+    // one's length, race start or goal time.
+    _setWeekOverride(inputs.weeks);
+    if (inputs.raceDate == null &&
+        _aiRaceStart != null &&
+        _startDate == _aiRaceStart) {
+      _startDate = _nextSunday();
+    }
+    _aiRaceStart = null;
+    final goal = inputs.goalTimeSec;
+    _goalHours = goal == null ? null : goal ~/ 3600;
+    _goalMinutes = goal == null ? null : (goal % 3600) ~/ 60;
+    _goalSeconds = goal == null ? null : goal % 60;
+    _goalHoursCtrl.text = _goalHours?.toString() ?? '';
+    _goalMinutesCtrl.text = _goalMinutes?.toString() ?? '';
+    _goalSecondsCtrl.text = _goalSeconds?.toString() ?? '';
+    final recent = inputs.recent5kSec;
+    if (recent != null) {
+      _recent5kMin = recent ~/ 60;
+      _recent5kSec = recent % 60;
+      _recent5kMinCtrl.text = '$_recent5kMin';
+      _recent5kSecCtrl.text = '$_recent5kSec';
+      // Never ticked for the runner: whether the time reflects their fitness
+      // today is theirs to confirm, and an unconfirmed time keeps the paces
+      // on the conservative goal-based fallback.
+      _recent5kConfirmed = false;
+    }
+    final planName = inputs.planName?.trim();
+    if (planName != null &&
+        planName.isNotEmpty &&
+        (!_nameTouched || _nameCtrl.text.trim().isEmpty)) {
+      final cap = columnLength('training_plans.name');
+      _nameCtrl.text =
+          planName.length > cap ? planName.substring(0, cap) : planName;
+    }
+    final raceDate = inputs.raceDate;
+    RacePlanRefusal? refusal;
+    if (raceDate != null) refusal = _applyAiRaceDate(raceDate, inputs.weeks);
+    _aiApplied = _AiApplied(
+      assumptions: inputs.assumptions,
+      recent5kFilled: recent != null,
+      raceDate: raceDate != null && refusal == null
+          ? DateTime.tryParse(raceDate)
+          : null,
+      raceRefusal: refusal,
+    );
+  }
+
+  /// Presets the start date + length so race week contains race day, or
+  /// returns why it could not (leaving the dates alone).
+  RacePlanRefusal? _applyAiRaceDate(String raceDate, int? requestedWeeks) {
+    final result = racePlanPreset(
+      raceDateIso: raceDate,
+      distanceM: kGoalDistancesM[_goal],
+      todayIso: toIsoDate(DateTime.now()),
+    );
+    final preset = result.preset;
+    if (preset == null) return result.reason ?? RacePlanRefusal.invalid;
+    final parsed = DateTime.tryParse(preset.startDate);
+    if (parsed == null) return RacePlanRefusal.invalid;
+    var start = DateTime(parsed.year, parsed.month, parsed.day);
+    var weeks = preset.weeks;
+    // A shorter plan the runner asked for still ends on race week: start
+    // later rather than earlier. A longer one cannot fit, so the preset wins.
+    if (requestedWeeks != null && requestedWeeks < weeks) {
+      start = DateTime(
+          start.year, start.month, start.day + (weeks - requestedWeeks) * 7);
+      weeks = requestedWeeks;
+    }
+    _startDate = start;
+    _aiRaceStart = start;
+    _setWeekOverride(weeks);
+    return null;
+  }
+
+  /// Opens the AI disclosure from the consent error and, when the runner
+  /// accepts, re-runs the fill they were refused. A cancelled or failed
+  /// dialog leaves the error and the manual form as they were.
+  Future<void> _reviewAiDisclosure() async {
+    try {
+      final api =
+          widget.apiClient ?? (ApiClient.isInitialized ? ApiClient() : null);
+      if (api == null) return;
+      final recorded = await showAiDisclosureDialog(context, api);
+      if (recorded == null || !mounted) return;
+      setState(() => _aiError = null);
+      await _fillFromDescription();
+    } catch (e) {
+      debugPrint('PlanNewScreen: AI disclosure review failed: $e');
+    }
   }
 
   /// Size the wizard around the race it was opened from. A distance matching
@@ -444,6 +681,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
     _recent5kMinCtrl.dispose();
     _recent5kSecCtrl.dispose();
     _weekOverrideCtrl.dispose();
+    _aiCtrl.dispose();
     super.dispose();
   }
 
@@ -462,6 +700,10 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
       body: ListView(
         padding: EdgeInsets.fromLTRB(16, 12, 16, 32 + bottomInset),
         children: [
+          if (_aiPlanAvailable) ...[
+            _aiCard(theme, l10n),
+            const SizedBox(height: 20),
+          ],
           _starterCard(theme, l10n),
           const SizedBox(height: 20),
           if (_templates.isNotEmpty) ...[
@@ -488,7 +730,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
             // Re-evaluate the Create button's enabled state as the name is
             // typed — without this the button (which gates on a non-empty
             // name) only un-disables on the next unrelated rebuild.
-            onChanged: (_) => setState(() {}),
+            onChanged: (_) => setState(() => _nameTouched = true),
           ),
           if (_nameCtrl.text.trim().isEmpty)
             Padding(
@@ -502,6 +744,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
             ),
           const SizedBox(height: 12),
           DropdownButtonFormField<GoalEvent>(
+            key: ValueKey('plan-new-goal-$_aiFillCount'),
             initialValue: _goal,
             decoration: InputDecoration(labelText: l10n.planNewGoalRace),
             items: const [
@@ -543,6 +786,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
             },
           ),
           DropdownButtonFormField<int>(
+            key: ValueKey('plan-new-days-$_aiFillCount'),
             initialValue: _daysPerWeek,
             decoration: InputDecoration(labelText: l10n.planNewDaysPerWeek),
             items: [3, 4, 5, 6, 7]
@@ -686,6 +930,189 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
               ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+
+  String _aiAssumptionLabel(AppLocalizations l10n, PlanRequestAssumption a) =>
+      switch (a) {
+        PlanRequestAssumption.goalEventDefault =>
+          l10n.planNewAiAssumptionGoalEventDefault,
+        PlanRequestAssumption.daysPerWeekDefault =>
+          l10n.planNewAiAssumptionDaysDefault,
+        PlanRequestAssumption.daysPerWeekClamped =>
+          l10n.planNewAiAssumptionDaysClamped,
+        PlanRequestAssumption.weeksClamped =>
+          l10n.planNewAiAssumptionWeeksClamped,
+        PlanRequestAssumption.raceDateDropped =>
+          l10n.planNewAiAssumptionRaceDateDropped,
+        PlanRequestAssumption.goalTimeDropped =>
+          l10n.planNewAiAssumptionGoalTimeDropped,
+        PlanRequestAssumption.recent5kDropped =>
+          l10n.planNewAiAssumptionRecent5kDropped,
+        PlanRequestAssumption.beginner5k => l10n.planNewAiAssumptionBeginner5k,
+      };
+
+  String? _aiRaceLine(AppLocalizations l10n, _AiApplied applied) {
+    final refusal = applied.raceRefusal;
+    if (refusal != null) {
+      return switch (refusal) {
+        RacePlanRefusal.past => l10n.planNewAiRacePast,
+        RacePlanRefusal.tooSoon => l10n.planNewAiRaceTooSoon,
+        RacePlanRefusal.invalid => l10n.planNewAiRaceInvalid,
+      };
+    }
+    final date = applied.raceDate;
+    if (date == null) return null;
+    return l10n.planNewAiRaceApplied(formatDateMed(
+        date, localeToTag(Localizations.localeOf(context))));
+  }
+
+  Widget _aiCard(ThemeData theme, AppLocalizations l10n) {
+    final cs = theme.colorScheme;
+    final applied = _aiApplied;
+    final error = _aiError;
+    final muted = theme.textTheme.bodySmall?.copyWith(
+      color: cs.onSurfaceVariant,
+    );
+    return Container(
+      key: const Key('plan-new-ai-card'),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: cs.outlineVariant),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.auto_awesome, size: 18, color: cs.primary),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(l10n.planNewAiTitle,
+                    style: theme.textTheme.titleSmall
+                        ?.copyWith(fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(l10n.planNewAiHint, style: muted),
+          const SizedBox(height: 10),
+          TextField(
+            key: const Key('plan-new-ai-field'),
+            controller: _aiCtrl,
+            enabled: !_aiBusy,
+            minLines: 3,
+            maxLines: 6,
+            maxLength: kPlanDescriptionMaxChars,
+            keyboardType: TextInputType.multiline,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: InputDecoration(
+              labelText: l10n.planNewAiTitle,
+              hintText: l10n.planNewAiPlaceholder,
+              hintMaxLines: 3,
+              border: const OutlineInputBorder(),
+              alignLabelWithHint: true,
+            ),
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: 4),
+          FilledButton.tonalIcon(
+            key: const Key('plan-new-ai-fill'),
+            onPressed: (_aiBusy || _aiCtrl.text.trim().isEmpty)
+                ? null
+                : _fillFromDescription,
+            icon: _aiBusy
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.edit_note, size: 18),
+            label: Text(_aiBusy ? l10n.planNewAiWorking : l10n.planNewAiButton),
+          ),
+          if (error != null) ...[
+            const SizedBox(height: 10),
+            Semantics(
+              liveRegion: true,
+              child: Container(
+                key: const Key('plan-new-ai-error'),
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: cs.errorContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      switch (error) {
+                        PlanRequestErrorKind.consent =>
+                          l10n.planNewAiErrorConsent,
+                        PlanRequestErrorKind.dailyLimit =>
+                          l10n.planNewAiErrorDailyLimit,
+                        _ => l10n.planNewAiErrorFallback,
+                      },
+                      style: TextStyle(color: cs.onErrorContainer),
+                    ),
+                    if (error == PlanRequestErrorKind.consent)
+                      TextButton(
+                        key: const Key('plan-new-ai-review-disclosure'),
+                        onPressed: _reviewAiDisclosure,
+                        child: Text(l10n.planNewAiReviewDisclosure),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          if (applied != null) ...[
+            const SizedBox(height: 10),
+            Semantics(
+              liveRegion: true,
+              child: Container(
+                key: const Key('plan-new-ai-status'),
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: cs.secondaryContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.planNewAiAppliedTitle,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: cs.onSecondaryContainer,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    for (final line in [
+                      l10n.planNewAiAppliedGenerator,
+                      ?_aiRaceLine(l10n, applied),
+                      if (applied.recent5kFilled) l10n.planNewAiAppliedRecent5k,
+                      for (final a in applied.assumptions)
+                        _aiAssumptionLabel(l10n, a),
+                    ])
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          '\u2022 $line',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: cs.onSecondaryContainer,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

@@ -237,6 +237,21 @@ export const ENTITLEMENTS = [
 			'code at all, so deleting the extension obliges deleting the ' +
 			'entitlement with it.',
 	},
+	{
+		key: 'com.apple.developer.associated-domains',
+		source: 'dart',
+		pattern: /uri\.host == 'threkir\.com'/,
+		needed_by: 'the app parses https://threkir.com links it is opened with',
+		accepts: (v) => Array.isArray(v) && v.includes('applinks:threkir.com'),
+		shape: '<array><string>applinks:threkir.com</string></array>',
+		why:
+			'iOS hands an https link to the app only when the signed binary ' +
+			'claims the domain and the domain serves an apple-app-site-association ' +
+			'naming the app; without the entitlement every threkir.com link opens ' +
+			'Safari and the parser never sees it. The file is ' +
+			'`apps/web/static/.well-known/apple-app-site-association` ' +
+			'(decisions § 1924).',
+	},
 ];
 
 /// Purpose strings the OS demands before it will grant the permission. A

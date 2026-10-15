@@ -56,6 +56,34 @@ void main() {
     });
   });
 
+  group('learnedStrideM', () {
+    test('persists per account and activity across a cold start', () async {
+      SharedPreferences.setMockInitialValues({});
+      final a = Preferences();
+      await a.init();
+      expect(a.learnedStrideM('u1', 'run'), isNull);
+      await a.setLearnedStrideM('u1', 'run', 1.12);
+      await a.setLearnedStrideM('u1', 'walk', 0.74);
+
+      final b = Preferences();
+      await b.init();
+      expect(b.learnedStrideM('u1', 'run'), 1.12);
+      expect(b.learnedStrideM('u1', 'walk'), 0.74);
+      expect(b.learnedStrideM('u2', 'run'), isNull,
+          reason: 'a second account never inherits the first one\'s stride');
+    });
+
+    test('a non-finite or non-positive stride is not written', () async {
+      SharedPreferences.setMockInitialValues({});
+      final p = Preferences();
+      await p.init();
+      await p.setLearnedStrideM('u1', 'run', 1.0);
+      await p.setLearnedStrideM('u1', 'run', double.nan);
+      await p.setLearnedStrideM('u1', 'run', 0);
+      expect(p.learnedStrideM('u1', 'run'), 1.0);
+    });
+  });
+
   group('ActivityType has no hardcoded label', () {
     // The display name used to be a `label` getter returning English, read by
     // eight render sites, so every non-English locale printed "Run" / "Walk" /

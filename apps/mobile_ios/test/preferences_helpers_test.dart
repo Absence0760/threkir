@@ -214,6 +214,27 @@ void main() {
     });
   });
 
+  group('formatEffortTime', () {
+    test('degenerate input gets the em dash, never NaN, Infinity or a throw',
+        () {
+      // Mirrors the formatDuration degenerate table in web's time.test.ts.
+      const cases = <(double, String)>[
+        (double.infinity, '—'),
+        (double.negativeInfinity, '—'),
+        (double.nan, '—'),
+        (-90.0, '—'),
+        (-0.0, '0:00'),
+        (0.0, '0:00'),
+        (0.4, '0:00'),
+        (10.0, '0:10'),
+      ];
+      for (final (input, expected) in cases) {
+        expect(formatEffortTime(input), expected,
+            reason: 'formatEffortTime($input)');
+      }
+    });
+  });
+
   group('UnitFormat.speedLabel', () {
     test('returns "km/h" or "mph"', () {
       expect(UnitFormat.speedLabel(DistanceUnit.km), 'km/h');

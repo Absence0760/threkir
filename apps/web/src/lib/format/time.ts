@@ -80,6 +80,10 @@ export function formatDuration(seconds: number): string {
 	// Rounded here rather than at each call site: several callers derive their
 	// value from a projection (cut-off ETA, pace margin) and a fractional second
 	// otherwise reaches the field verbatim — `padStart` cannot pad `8.3999…`.
+	// A non-finite or negative value is not a duration: it rendered as
+	// "NaN:NaN" / "Infinity:NaN:NaN" / "-1:-30". Callers wanting a signed
+	// margin pass `Math.abs` and say ahead / behind in their own words.
+	if (!Number.isFinite(seconds) || seconds < 0) return '—';
 	const total = Math.round(seconds);
 	const h = Math.floor(total / 3600);
 	const m = Math.floor((total % 3600) / 60);

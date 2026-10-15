@@ -1302,6 +1302,9 @@ String formatPaceForPref(double secPerKm) => !secPerKm.isFinite || secPerKm <= 0
 /// the other pref-free formatters because every surface that shows an effort
 /// time also shows a distance from here.
 String formatEffortTime(double seconds) {
+  // `.round()` throws on NaN and Infinity; a negative renders as "-1:-30".
+  // Mirrors the guard in web's formatDuration.
+  if (!seconds.isFinite || seconds < 0) return '—';
   final total = seconds.round();
   final h = total ~/ 3600;
   final m = (total % 3600) ~/ 60;

@@ -57,7 +57,7 @@ import '../roadbook.dart';
 import '../route_geometry.dart';
 import '../route_markers.dart' show parseTarget;
 import '../route_match.dart';
-import '../route_simplify.dart';
+import '../run_altitude.dart';
 import '../run_stop_dock.dart';
 import '../safety_live_audience.dart';
 import '../safety_nudge.dart';
@@ -510,9 +510,11 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   // in _onSnapshot. The naive O(n) rescan of the full track on every
   // build was the hottest per-frame work in the run screen — a 60-minute
   // run rescans 3600+ points every tween tick (~60 Hz). This is the same
-  // noise gate + dropout carry computeElevationGain applies to the
-  // finished track, so the live figure and the run-detail figure agree.
-  final ElevationGainAccumulator _elevationGain = ElevationGainAccumulator();
+  // noise gate + dropout carry computeRunElevationGain applies to the
+  // finished track, over the same barometer-or-GPS series, so the live
+  // figure and the run-detail figure agree.
+  final RunElevationGainAccumulator _elevationGain =
+      RunElevationGainAccumulator();
   int _elevationProcessedCount = 0;
 
   // Reentrancy guard on start — prevents rapid taps from spawning

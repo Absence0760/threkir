@@ -744,5 +744,31 @@ func TestOSRMMatcher_RecorderTrackSendsRadiusesAndTimestampsInOrder(t *testing.T
 	}
 	if q["gaps"] != "ignore" {
 		t.Errorf("gaps=%q, want ignore", q["gaps"])
+
+// A matched track keeps one point per stored fix, so the recorder's credited
+// distance rides through a snap with the sample it belongs to.
+func TestOSRMMatcher_CarriesRecordedDistanceAcross(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, osrmSnapped([][2]float64{{-0.1001, 51.5001}, {-0.1101, 51.5101}}, 1))
+	}))
+	defer srv.Close()
+
+	d0, d1 := 0.0, 1402.5
+	out, err := NewOSRMMatcher(srv.URL).Match(context.Background(), []TrackPoint{
+		{Lat: 51.5, Lng: -0.1, DistM: &d0},
+		{Lat: 51.51, Lng: -0.11, DistM: &d1},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(out) != 2 {
+		t.Fatalf("len out=%d want 2", len(out))
+	}
+	if out[0].DistM == nil || *out[0].DistM != d0 || out[0].Lat != 51.5001 {
+		t.Errorf("snapped point lost distM: %+v", out[0])
+	}
+	if out[1].DistM == nil || *out[1].DistM != d1 || out[1].Lat != 51.51 {
+		t.Errorf("raw-carried point lost distM: %+v", out[1])
 	}
 }

@@ -101,6 +101,12 @@ const _register = <String, int>{
   // TEXT, `onInverseSurface@0.75` on the opaque inverse-surface card —
   // 7.295/5.135. 0.75 rather than 0.70 was already a computed choice.
   'lib/widgets/safety_nudge_banner.dart': 1,
+  // The given-reaction chip fill, `primary@0.12` on the page (1.173/1.191).
+  // Not the cue: the count beside the glyph goes w700, the border goes full
+  // `primary` (3.869/6.382 on the fill) and the chip is `Semantics(toggled:)`.
+  // The count stays `onSurfaceVariant` (6.828/9.026): `primary` type on this
+  // fill reads 3.869 in light, under AA.
+  'lib/widgets/run_social_section.dart': 1,
   // The viewer's own leaderboard row (1.078/1.013 re-derived). Not the cue: the
   // row carries a `navYou` label beside the name and the name goes w700.
   'lib/widgets/segments_panel.dart': 1,

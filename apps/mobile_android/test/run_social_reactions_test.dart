@@ -158,6 +158,27 @@ void main() {
     );
   });
 
+  testWidgets('a given reaction says so by weight, not by a primary count', (tester) async {
+    await _pump(tester, _Api());
+    Text count() => tester.widget<Text>(
+          find.descendant(of: find.byKey(const ValueKey('reaction-fire')), matching: find.byType(Text)),
+        );
+    final before = count();
+    expect(before.style?.fontWeight, isNot(FontWeight.w700));
+
+    await tester.tap(find.byKey(const ValueKey('reaction-fire')));
+    await tester.pump();
+    await tester.pump();
+
+    final after = count();
+    final scheme = Theme.of(tester.element(find.byKey(const ValueKey('reaction-fire')))).colorScheme;
+    expect(after.data, '3');
+    expect(after.style?.fontWeight, FontWeight.w700,
+        reason: 'the tint under the chip is too faint to be the cue');
+    expect(after.style?.color, scheme.onSurfaceVariant,
+        reason: 'primary type on the given fill reads under AA in light');
+  });
+
   testWidgets('a no-op add flips the chip without moving the count', (tester) async {
     final api = _Api(addReturnsNoOp: true);
     await _pump(tester, api);

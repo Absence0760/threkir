@@ -899,7 +899,13 @@ class _ReactionChip extends StatelessWidget {
               Icon(reactionIcons[tally.key], size: 18, color: accent),
               if (tally.count > 0) ...[
                 const SizedBox(width: 4),
-                Text('${tally.count}', style: theme.textTheme.bodyMedium?.copyWith(color: accent)),
+                Text(
+                  '${tally.count}',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontWeight: on ? FontWeight.w700 : null,
+                  ),
+                ),
               ],
             ],
           ),

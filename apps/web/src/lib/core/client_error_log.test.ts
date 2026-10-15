@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-import { test } from 'node:test';
+import { mock, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import { CLIENT_ERROR_LOG_PREFIX, logClientError } from './client_error_log.ts';
@@ -19,6 +19,22 @@ test('logs the prefix, status, message, route and the error itself', () => {
 	assert.equal(calls[0][0], CLIENT_ERROR_LOG_PREFIX);
 	assert.equal(calls[0][1], '500 Internal Error on /dashboard');
 	assert.equal(calls[0][2], error);
+});
+
+test('writes to console.error when no sink is passed, as the hook calls it', () => {
+	const spy = mock.method(console, 'error', () => {});
+	try {
+		const error = new Error('boom');
+		logClientError({ error, status: 500, message: 'Internal Error', event: { route: { id: '/runs/[id]' } } });
+		assert.equal(spy.mock.callCount(), 1);
+		assert.deepEqual(spy.mock.calls[0].arguments, [
+			CLIENT_ERROR_LOG_PREFIX,
+			'500 Internal Error on /runs/[id]',
+			error,
+		]);
+	} finally {
+		spy.mock.restore();
+	}
 });
 
 test('names an unmatched route instead of throwing on it', () => {

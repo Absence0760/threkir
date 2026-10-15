@@ -1385,6 +1385,13 @@ export type Database = {
             foreignKeyName: "event_results_run_id_fkey"
             columns: ["run_id"]
             isOneToOne: false
+            referencedRelation: "coached_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_results_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
             referencedRelation: "public_runs"
             referencedColumns: ["id"]
           },
@@ -1770,6 +1777,13 @@ export type Database = {
             foreignKeyName: "fundraisers_run_id_fkey"
             columns: ["run_id"]
             isOneToOne: false
+            referencedRelation: "coached_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fundraisers_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
             referencedRelation: "public_runs"
             referencedColumns: ["id"]
           },
@@ -1983,6 +1997,13 @@ export type Database = {
             columns: ["global_segment_id"]
             isOneToOne: false
             referencedRelation: "global_segments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "global_segment_efforts_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "coached_runs"
             referencedColumns: ["id"]
           },
           {
@@ -2535,6 +2556,13 @@ export type Database = {
             foreignKeyName: "live_run_pings_run_id_fkey"
             columns: ["run_id"]
             isOneToOne: false
+            referencedRelation: "coached_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_run_pings_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
             referencedRelation: "public_runs"
             referencedColumns: ["id"]
           },
@@ -2769,6 +2797,13 @@ export type Database = {
             foreignKeyName: "notifications_run_id_fkey"
             columns: ["run_id"]
             isOneToOne: false
+            referencedRelation: "coached_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
             referencedRelation: "public_runs"
             referencedColumns: ["id"]
           },
@@ -2970,6 +3005,13 @@ export type Database = {
             foreignKeyName: "personal_records_run_id_fkey"
             columns: ["run_id"]
             isOneToOne: false
+            referencedRelation: "coached_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personal_records_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
             referencedRelation: "public_runs"
             referencedColumns: ["id"]
           },
@@ -3086,6 +3128,13 @@ export type Database = {
           week_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "plan_workouts_completed_run_id_fkey"
+            columns: ["completed_run_id"]
+            isOneToOne: false
+            referencedRelation: "coached_runs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "plan_workouts_completed_run_id_fkey"
             columns: ["completed_run_id"]
@@ -3888,6 +3937,13 @@ export type Database = {
             foreignKeyName: "run_comments_run_id_fkey"
             columns: ["run_id"]
             isOneToOne: false
+            referencedRelation: "coached_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "run_comments_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
             referencedRelation: "public_runs"
             referencedColumns: ["id"]
           },
@@ -3942,6 +3998,13 @@ export type Database = {
             foreignKeyName: "run_gear_run_id_fkey"
             columns: ["run_id"]
             isOneToOne: false
+            referencedRelation: "coached_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "run_gear_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
             referencedRelation: "public_runs"
             referencedColumns: ["id"]
           },
@@ -3978,6 +4041,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "run_kudos_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "coached_runs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "run_kudos_run_id_fkey"
             columns: ["run_id"]
@@ -4042,6 +4112,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "run_matched_tracks_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: true
+            referencedRelation: "coached_runs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "run_matched_tracks_run_id_fkey"
             columns: ["run_id"]
@@ -4123,6 +4200,13 @@ export type Database = {
             foreignKeyName: "run_photos_run_id_fkey"
             columns: ["run_id"]
             isOneToOne: false
+            referencedRelation: "coached_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "run_photos_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
             referencedRelation: "public_runs"
             referencedColumns: ["id"]
           },
@@ -4162,6 +4246,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "run_reactions_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "coached_runs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "run_reactions_run_id_fkey"
             columns: ["run_id"]
@@ -4208,6 +4299,13 @@ export type Database = {
           run_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "run_shares_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "coached_runs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "run_shares_run_id_fkey"
             columns: ["run_id"]
@@ -4469,6 +4567,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "segment_efforts_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "coached_runs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "segment_efforts_run_id_fkey"
             columns: ["run_id"]
@@ -4923,8 +5028,8 @@ export type Database = {
           id: string
           onboarded_at: string | null
           parkrun_number: string | null
-          profile_private: boolean
           preferred_unit: string | null
+          profile_private: boolean
           shadow_hidden: boolean
           subscription_at: string | null
           subscription_tier: string | null
@@ -4947,8 +5052,8 @@ export type Database = {
           id: string
           onboarded_at?: string | null
           parkrun_number?: string | null
-          profile_private?: boolean
           preferred_unit?: string | null
+          profile_private?: boolean
           shadow_hidden?: boolean
           subscription_at?: string | null
           subscription_tier?: string | null
@@ -4971,8 +5076,8 @@ export type Database = {
           id?: string
           onboarded_at?: string | null
           parkrun_number?: string | null
-          profile_private?: boolean
           preferred_unit?: string | null
+          profile_private?: boolean
           shadow_hidden?: boolean
           subscription_at?: string | null
           subscription_tier?: string | null
@@ -5042,6 +5147,18 @@ export type Database = {
           is_public: boolean | null
           metadata: Json | null
           user_id: string | null
+        }
+        Insert: {
+          id?: string | null
+          is_public?: boolean | null
+          metadata?: never
+          user_id?: string | null
+        }
+        Update: {
+          id?: string | null
+          is_public?: boolean | null
+          metadata?: never
+          user_id?: string | null
         }
         Relationships: []
       }

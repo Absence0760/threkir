@@ -101,6 +101,8 @@ insert into anon_callable (fn, why) values
   ('route_conditions_for_viewer',     'public route page'),
   ('route_markers_for_viewer',        'public route page'),
   ('routes_within_box',               'logged-out map discovery'),
+  ('safety_live_pings',               'a safety contact with no account follows an overdue runner from the emailed link; the token argument is the capability'),
+  ('safety_live_run',                 'a safety contact with no account follows an overdue runner from the emailed link; the token argument is the capability'),
   ('run_engagement_counts',           'public run page'),
   ('search_clubs',                    'logged-out search'),
   ('search_public_events',            'logged-out search'),

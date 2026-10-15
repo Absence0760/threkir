@@ -9182,10 +9182,15 @@ class ActivityRow {
 /// followers level the owner chose on another device. A `false` is therefore
 /// dropped too — it is the column default, never a choice an upsert makes.
 /// Narrowing a run goes through [ApiClient.setRunAudience].
+///
+/// `safety_audience` is never an upsert's to write, in either direction: only
+/// [ApiClient.beginLiveBroadcast] sets it, on the live stub, and the finishing
+/// save of that same run must not flip it mid-escalation (decisions § 1964).
 Map<String, dynamic> _runUpsertBody(Map<String, dynamic> json) {
   final body = Map<String, dynamic>.from(json)..removeWhere((k, v) => v == null);
   if (body[RunRow.colFollowersOnly] == false) {
     body.remove(RunRow.colFollowersOnly);
   }
+  body.remove(RunRow.colSafetyAudience);
   return body;
 }

@@ -70,6 +70,18 @@ void main() {
     });
   });
 
+  group('runs upsert never writes the live audience', () {
+    // Only beginLiveBroadcast writes `safety_audience`; a save carrying the
+    // NOT NULL default would write false over the live stub's safety audience
+    // (decisions § 1964).
+    test('_runUpsertBody always drops safety_audience', () {
+      final start = src.indexOf('Map<String, dynamic> _runUpsertBody(');
+      final body = src.substring(start, src.indexOf('\n}\n', start));
+      expect(body.contains('body.remove(RunRow.colSafetyAudience);'), isTrue,
+          reason: 'a save must never write the live audience');
+    });
+  });
+
   group('the live-ping backlog is newest-first under the row cap', () {
     // PostgREST caps a result at 1000 rows. At the broadcaster's 5 s interval
     // that is 83 minutes, so an ascending fetch returns the OLDEST 83 minutes

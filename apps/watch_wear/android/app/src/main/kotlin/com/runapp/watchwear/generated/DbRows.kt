@@ -48,7 +48,8 @@ data class RunRow(
     val fastestHalfMarathonS: Int? = null,
     val fastestMarathonS: Int? = null,
     val concludedAt: Instant? = null,
-    val followersOnly: Boolean
+    val followersOnly: Boolean,
+    val safetyAudience: Boolean
 ) {
     companion object {
         const val TABLE = "runs"
@@ -77,6 +78,7 @@ data class RunRow(
         const val COL_FASTEST_MARATHON_S = "fastest_marathon_s"
         const val COL_CONCLUDED_AT = "concluded_at"
         const val COL_FOLLOWERS_ONLY = "followers_only"
+        const val COL_SAFETY_AUDIENCE = "safety_audience"
 
         fun fromJson(json: JsonObject): RunRow = RunRow(
             id = json["id"]!!.jsonPrimitive.content,
@@ -103,7 +105,8 @@ data class RunRow(
             fastestHalfMarathonS = json["fastest_half_marathon_s"]?.jsonPrimitive?.int,
             fastestMarathonS = json["fastest_marathon_s"]?.jsonPrimitive?.int,
             concludedAt = json["concluded_at"]?.jsonPrimitive?.contentOrNull?.let { Instant.parse(it) },
-            followersOnly = json["followers_only"]!!.jsonPrimitive.boolean
+            followersOnly = json["followers_only"]!!.jsonPrimitive.boolean,
+            safetyAudience = json["safety_audience"]!!.jsonPrimitive.boolean
         )
     }
 
@@ -132,7 +135,8 @@ data class RunRow(
         COL_FASTEST_HALF_MARATHON_S to fastestHalfMarathonS,
         COL_FASTEST_MARATHON_S to fastestMarathonS,
         COL_CONCLUDED_AT to concludedAt?.toString(),
-        COL_FOLLOWERS_ONLY to followersOnly
+        COL_FOLLOWERS_ONLY to followersOnly,
+        COL_SAFETY_AUDIENCE to safetyAudience
     )
 }
 

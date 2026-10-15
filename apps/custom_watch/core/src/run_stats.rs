@@ -137,7 +137,9 @@ struct SplitStart {
 /// track has no elevation data.
 pub fn compute_real_splits(track: &[TrackPoint], tick_metres: f64) -> Vec<Split, MAX_SPLITS> {
     let mut splits: Vec<Split, MAX_SPLITS> = Vec::new();
-    if track.len() < 2 {
+    // A non-positive tick puts every boundary at or behind 0 m, so each
+    // segment would close a split of its own. Same guard as web and mobile.
+    if track.len() < 2 || tick_metres.is_nan() || tick_metres <= 0.0 {
         return splits;
     }
     if !track.iter().any(|p| p.ts.is_some()) {
@@ -493,6 +495,14 @@ mod tests {
             KM_TICK_METRES
         )
         .is_empty());
+    }
+
+    #[test]
+    fn splits_non_positive_tick_yields_none() {
+        let pts = track(10.0, 3.0, 400, TrackOpts::default());
+        assert!(compute_real_splits(&pts, 0.0).is_empty());
+        assert!(compute_real_splits(&pts, -1000.0).is_empty());
+        assert!(compute_real_splits(&pts, f64::NAN).is_empty());
     }
 
     #[test]

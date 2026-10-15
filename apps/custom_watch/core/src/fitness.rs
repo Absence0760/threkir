@@ -303,7 +303,15 @@ pub fn vo2_max_from_vdot(vdot: Option<f64>) -> Option<f64> {
 /// Training stress score for a single run: `duration_h x intensity^2 x 100`,
 /// intensity = threshold_pace / run_pace.
 pub fn run_tss(distance_m: f64, duration_s: f64, threshold_pace_sec_per_km: f64) -> f64 {
-    if distance_m < 100.0 || duration_s < 30.0 || threshold_pace_sec_per_km <= 0.0 {
+    // NaN spelled out: `NaN < 100.0` is false, so the floors alone let it
+    // through, and one NaN TSS poisons every later day of the CTL/ATL EWMA.
+    if distance_m.is_nan()
+        || distance_m < 100.0
+        || duration_s.is_nan()
+        || duration_s < 30.0
+        || threshold_pace_sec_per_km.is_nan()
+        || threshold_pace_sec_per_km <= 0.0
+    {
         return 0.0;
     }
     let run_pace_sec_per_km = duration_s / (distance_m / 1000.0);
@@ -771,6 +779,25 @@ mod tests {
         assert_eq!(run_tss(50.0, 60.0, 300.0), 0.0);
         assert_eq!(run_tss(1000.0, 10.0, 300.0), 0.0);
         assert_eq!(run_tss(5000.0, 1500.0, 0.0), 0.0);
+    }
+
+    #[test]
+    fn run_tss_degenerate_input_is_zero_never_nan() {
+        let cases = [
+            (0.0, 0.0, 300.0),
+            (3.0, 10.0, 300.0),
+            (1000.0, 0.0, 300.0),
+            (f64::NAN, 600.0, 300.0),
+            (1000.0, f64::NAN, 300.0),
+            (500.0, 600.0, f64::NAN),
+        ];
+        for (distance_m, duration_s, threshold) in cases {
+            assert_eq!(
+                run_tss(distance_m, duration_s, threshold),
+                0.0,
+                "{distance_m} m / {duration_s} s / {threshold}"
+            );
+        }
     }
 
     #[test]

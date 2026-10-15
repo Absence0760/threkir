@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { trainingLoadTickValues } from '#lib/training/load_chart_ticks.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
+	import { formatInteger } from '#lib/format/number.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
 	import type { TrainingLoadPoint } from '#lib/training/training_load.ts';
@@ -79,7 +80,7 @@
 
 	function fmtNum(n: number | undefined): string {
 		if (n == null) return '—';
-		return n.toFixed(0);
+		return formatInteger(n, activeFormatLocale());
 	}
 
 	function fmtDateLabel(iso: string): string {

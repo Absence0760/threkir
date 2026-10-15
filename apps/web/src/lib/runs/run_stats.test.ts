@@ -301,3 +301,34 @@ test('computeRealSplits — the dropped tail is bounded by the named floor', () 
 		assert.ok(summed <= covered + 1, 'the splits may never total more than the track');
 	}
 });
+
+test('degenerate tracks — no moving time, no splits, never NaN', () => {
+	// The tracks a brand-new account's first recordings reach: nothing, a
+	// single fix, a 10 s / 3 m blip (slower than the moving floor, and far
+	// under the split tail), a stand-still pair, and an untimed pair. Same
+	// table as `degenerate tracks` in run_stats_test.dart.
+	const p = (lngM: number, s: number | null): TrackPoint => ({
+		lat: 0,
+		lng: lngM / 111_320,
+		...(s == null
+			? {}
+			: { ts: new Date(Date.parse('2026-04-01T07:00:00Z') + s * 1000).toISOString() }),
+	});
+	const cases: Array<[string, TrackPoint[]]> = [
+		['empty', []],
+		['one fix', [p(0, 0)]],
+		['10 s / 3 m', [p(0, 0), p(3, 10)]],
+		['stand-still', [p(0, 0), p(0, 10)]],
+		['untimed', [p(0, null), p(3000, null)]],
+	];
+	for (const [name, t] of cases) {
+		assert.equal(movingTimeSeconds(t), 0, name);
+		assert.deepEqual(computeRealSplits(t), [], name);
+		assert.deepEqual(computeRealSplits(t, 1609.344), [], name);
+	}
+	// A non-positive tick length is no tick at all; 0 used to loop forever.
+	const real = track(10, 3, 400);
+	assert.deepEqual(computeRealSplits(real, 0), []);
+	assert.deepEqual(computeRealSplits(real, -1000), []);
+	assert.deepEqual(computeRealSplits(real, Number.NaN), []);
+});

@@ -163,7 +163,9 @@ double? thresholdPaceSecPerKmFromVdot(double? vdot) {
 
 /// Training stress score for a single run.
 double runTss(double distanceM, int durationS, double thresholdPaceSecPerKm) {
-  if (distanceM < 100 || durationS < 30 || thresholdPaceSecPerKm <= 0) {
+  // Negated so a NaN fails the floor: `NaN < 100` is false, and one NaN TSS
+  // poisons every later day of the CTL/ATL EWMA.
+  if (!(distanceM >= 100) || durationS < 30 || !(thresholdPaceSecPerKm > 0)) {
     return 0;
   }
   final runPaceSecPerKm = durationS / (distanceM / 1000);

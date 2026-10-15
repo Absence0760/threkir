@@ -196,6 +196,10 @@ List<RunSplit> computeSplitDurations(
   DateTime startedAt,
 ) {
   if (track.length < 2 || tickLengthM <= 0) return const [];
+  // A track with no timestamp at all (a GPX route, a manual run's drawn
+  // line) has no split times: every boundary fell back to [startedAt], so it
+  // emitted one 0:00 split per tick. Web's computeRealSplits returns [] here.
+  if (!track.any((w) => w.timestamp != null)) return const [];
   final splits = <RunSplit>[];
   var cumulative = 0.0;
   var nextTick = 1;

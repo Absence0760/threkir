@@ -630,6 +630,12 @@ steal focus from typing). `RotaryScrollWiringTest` pins the call sites.
   GPS chip, or a disabled or erroring provider, simply never gets receiver
   fixes and fused carries the run. The saved run records which stream it
   came from in `metadata.location_provider` (`gps` / `fused` / `mixed`).
+  `GpsRecorder.gnssStatusStream()` registers a `GnssStatus.Callback`
+  (at most 1 Hz) and the service folds each unpaused reading into
+  `recording/GnssSignalQuality.kt`'s `GnssSignalAccumulator`, saved as
+  `metadata.gnss_signal` through the finished metrics, the upload queue and
+  the checkpoint. A port of the phone's summariser, pinned by
+  `fixtures/gnss_signal_vectors.json`; nothing reads it live.
   Not yet verified on a device: one run on a Wear watch beside the Garmin,
   checking it saves `location_provider: gps`.
 - **Distance is the shared estimator, not a hop sum.**

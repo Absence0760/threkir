@@ -39,7 +39,9 @@ import { isoEpochDay, validatePlanInputs, type PlanRequestInputs } from './input
 /// Matches the model used by the route assistant + the coach.
 const PLAN_REQUEST_MODEL = 'claude-opus-4-8';
 
-/// One small tool_use object plus an adaptive thinking block.
+/// One small tool_use object. No thinking block: the API refuses extended
+/// thinking alongside a forced tool_choice, and the forced tool is what keeps
+/// the output a typed object rather than prose.
 const PLAN_REQUEST_MAX_TOKENS = 1024;
 
 const PLAN_REQUEST_TIMEOUT_MS = 12_000;
@@ -304,7 +306,6 @@ export async function handlePlanRequest(
 			{
 				model: PLAN_REQUEST_MODEL,
 				max_tokens: PLAN_REQUEST_MAX_TOKENS,
-				thinking: { type: 'adaptive' },
 				system: SYSTEM_PROMPT,
 				tools: [EXTRACT_TOOL],
 				tool_choice: { type: 'tool', name: EXTRACT_TOOL.name },

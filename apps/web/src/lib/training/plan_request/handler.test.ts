@@ -397,7 +397,7 @@ test('the request forces the extraction tool, delimits the runner text, and name
 	);
 	const body = model.seen.body!;
 	assert.equal(body.model, 'claude-opus-4-8');
-	assert.deepEqual(body.thinking, { type: 'adaptive' });
+	assert.equal(body.thinking, undefined);
 	assert.deepEqual(body.tool_choice, { type: 'tool', name: 'extract_plan_inputs' });
 	assert.deepEqual(model.seen.options, { timeout: 12_000 });
 	const user = (body.messages as Array<{ content: string }>)[0].content;

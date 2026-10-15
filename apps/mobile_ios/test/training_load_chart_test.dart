@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import '../lib/l10n/gen/app_localizations.dart';
@@ -5,7 +7,7 @@ import '../lib/training_load.dart';
 import 'package:ui_kit/ui_kit.dart';
 
 import '../lib/widgets/training_load_chart.dart'
-    show TrainingLoadChart, trainingLoadTickStep;
+    show TrainingLoadChart, trainingLoadTickStep, trainingLoadTickValues;
 
 TrainingLoadPoint _point({
   required DateTime date,
@@ -188,6 +190,49 @@ void main() {
         ),
         findsOneWidget,
       );
+    });
+  });
+
+  group('trainingLoadTickValues', () {
+    // Spans from a single 10 s run to a heavy block, on ranges that straddle
+    // zero the way TSB does and ones that don't. Hand-picked spans are how the
+    // 0..2 band that crashed web /dashboard went untested (#1155).
+    List<(double, double)> sweep() {
+      final out = <(double, double)>[];
+      for (var exp = -6; exp <= 6; exp++) {
+        for (final m in [1.0, 1.3, 2.0, 2.5, 3.9, 5.0, 7.7]) {
+          final span = m * math.pow(10, exp);
+          out
+            ..add((0, span))
+            ..add((-span / 2, span / 2))
+            ..add((-span, span * 0.1))
+            ..add((span * 3, span * 4));
+        }
+      }
+      return out;
+    }
+
+    test('the near-zero range that crashed web /dashboard yields -1, 0, 1', () {
+      expect(trainingLoadTickValues(-1, 1), [-1, 0, 1]);
+    });
+
+    test('every swept range gives distinct, ascending ticks inside it', () {
+      for (final (min, max) in sweep()) {
+        final ticks = trainingLoadTickValues(min, max);
+        final where = '[$min, $max] -> $ticks';
+        expect(ticks.length, lessThanOrEqualTo(6), reason: where);
+        for (var i = 0; i < ticks.length; i++) {
+          expect(ticks[i], inInclusiveRange(min.floor(), max.ceil()),
+              reason: where);
+          if (i > 0) expect(ticks[i], greaterThan(ticks[i - 1]), reason: where);
+        }
+      }
+    });
+
+    test('returns nothing for an unusable range', () {
+      expect(trainingLoadTickValues(double.nan, 5), isEmpty);
+      expect(trainingLoadTickValues(0, double.infinity), isEmpty);
+      expect(trainingLoadTickValues(5, 1), isEmpty);
     });
   });
 

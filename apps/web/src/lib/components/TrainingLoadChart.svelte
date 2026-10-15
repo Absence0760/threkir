@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { trainingLoadTickValues } from '#lib/training/load_chart_ticks.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
@@ -60,32 +61,12 @@
 
 	let zeroY = $derived(yAt(0));
 
-	/// Round tick step on the 1 / 2 / 5 x 10^n ladder. The plot is
-	/// min/max-normalised, so without labelled ticks CTL 45 and CTL 450 draw
-	/// pixel-identically — shape without magnitude. Mirrors mobile's
-	/// `trainingLoadTickStep`.
-	function tickStep(span: number, maxTicks = 4): number {
-		if (!Number.isFinite(span) || span <= 0) return 1;
-		const raw = span / maxTicks;
-		const mag = 10 ** Math.floor(Math.log10(raw));
-		const norm = raw / mag;
-		const mult = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10;
-		// Labels are whole numbers and double as the keyed-each key, so a
-		// sub-1 step (a near-zero load, e.g. one 10 s run) rounds two ticks
-		// to the same value: -0.5 and 0 both key as 0 and Svelte throws,
-		// taking the whole dashboard down with it.
-		return Math.max(1, mult * mag);
-	}
-
-	let ticks = $derived.by(() => {
-		const { min, max } = valueRange;
-		const step = tickStep(max - min);
-		const out: Array<{ value: number; y: number }> = [];
-		for (let v = Math.ceil(min / step) * step; v <= max + step * 0.001; v += step) {
-			out.push({ value: Math.round(v), y: yAt(v) });
-		}
-		return out;
-	});
+	let ticks = $derived(
+		trainingLoadTickValues(valueRange.min, valueRange.max).map((value) => ({
+			value,
+			y: yAt(value),
+		})),
+	);
 
 	let last = $derived(points.at(-1));
 	// Honest signal that gym load is folded into these curves — the

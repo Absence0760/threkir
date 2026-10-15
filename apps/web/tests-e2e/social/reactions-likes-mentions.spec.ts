@@ -1,5 +1,7 @@
 import { expect, test } from '../fixtures/test';
 
+import { readCount, readRows } from '../fixtures/db-read';
+
 import { getAdminClient } from '../fixtures/local-supabase';
 import { RUNNER_PUBLIC_RUN_ID } from '../fixtures/seeded-data';
 import { clearNotifications, insertComment } from '../fixtures/simulate';
@@ -85,11 +87,13 @@ test.describe('run reactions, comment likes and mentions', () => {
 			await expect(fire.locator('.reaction-count')).toHaveText('1');
 
 			const admin = getAdminClient();
-			const { data: rows } = await admin
+			const rows = await readRows(
+				'alex reactions',
+				admin
 				.from('run_reactions')
 				.select('reaction')
 				.eq('run_id', RUNNER_PUBLIC_RUN_ID)
-				.eq('user_id', USER_B.id);
+				.eq('user_id', USER_B.id));
 			expect(rows?.map((r) => r.reaction)).toEqual(['fire']);
 
 			// Toggling off and on again does not stack a second notification.
@@ -97,12 +101,14 @@ test.describe('run reactions, comment likes and mentions', () => {
 			await expect(fire).toHaveAttribute('aria-pressed', 'false', { timeout: 10_000 });
 			await fire.click();
 			await expect(fire).toHaveAttribute('aria-pressed', 'true', { timeout: 10_000 });
-			const { count } = await admin
+			const count = await readCount(
+				'reaction notifications',
+				admin
 				.from('notifications')
 				.select('id', { count: 'exact', head: true })
 				.eq('user_id', USER_A.id)
 				.eq('actor_id', USER_B.id)
-				.eq('kind', 'reaction');
+				.eq('kind', 'reaction'));
 			expect(count).toBe(1);
 		} finally {
 			await ctx.close();
@@ -131,18 +137,22 @@ test.describe('run reactions, comment likes and mentions', () => {
 			await expect(like).toHaveAttribute('aria-pressed', 'true', { timeout: 10_000 });
 
 			const admin = getAdminClient();
-			const { count: likes } = await admin
+			const likes = await readCount(
+				'comment likes',
+				admin
 				.from('run_comment_likes')
 				.select('user_id', { count: 'exact', head: true })
 				.eq('comment_id', commentId)
-				.eq('user_id', USER_B.id);
+				.eq('user_id', USER_B.id));
 			expect(likes).toBe(1);
-			const { count: notes } = await admin
+			const notes = await readCount(
+				'comment-like notifications',
+				admin
 				.from('notifications')
 				.select('id', { count: 'exact', head: true })
 				.eq('user_id', USER_A.id)
 				.eq('kind', 'comment_like')
-				.eq('comment_id', commentId);
+				.eq('comment_id', commentId));
 			expect(notes).toBe(1);
 		} finally {
 			await ctx.close();
@@ -178,13 +188,15 @@ test.describe('run reactions, comment likes and mentions', () => {
 			await expect(link).toBeVisible({ timeout: 10_000 });
 			await expect(link).toHaveAttribute('href', `/u/${USER_C_PRO.id}`);
 
-			const { count } = await getAdminClient()
+			const count = await readCount(
+				'mention notifications',
+				getAdminClient()
 				.from('notifications')
 				.select('id', { count: 'exact', head: true })
 				.eq('user_id', USER_C_PRO.id)
 				.eq('actor_id', USER_B.id)
 				.eq('kind', 'mention')
-				.eq('run_id', RUNNER_PUBLIC_RUN_ID);
+				.eq('run_id', RUNNER_PUBLIC_RUN_ID));
 			expect(count).toBe(1);
 		} finally {
 			await ctx.close();

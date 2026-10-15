@@ -1,4 +1,6 @@
-import { expect, test } from '../fixtures/mock-route';
+import { expect, test } from '../fixtures/test';
+
+import { readCount, readRows } from '../fixtures/db-read';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
@@ -75,12 +77,14 @@ test.describe('/nutrition/log — plate photo', () => {
 		expect(seen.body?.note).toBe('half portion');
 
 		// Nothing is written before the runner saves.
-		const before = await getAdminClient()
+		const before = await readCount(
+			'plate-photo rows before save',
+			getAdminClient()
 			.from('food_log')
 			.select('id', { count: 'exact', head: true })
 			.eq('user_id', USER_A.id)
-			.like('item_name', `%${MARK}%`);
-		expect(before.count).toBe(0);
+			.like('item_name', `%${MARK}%`));
+		expect(before).toBe(0);
 
 		await panel.getByRole('button', { name: `Remove Napkin ${MARK}` }).click();
 		await expect(items).toHaveCount(2);
@@ -89,12 +93,14 @@ test.describe('/nutrition/log — plate photo', () => {
 		await panel.getByTestId('plate-photo-save').click();
 		await page.waitForURL('**/nutrition', { timeout: 10_000 });
 
-		const { data } = await getAdminClient()
+		const data = await readRows(
+			'plate-photo rows after save',
+			getAdminClient()
 			.from('food_log')
 			.select('item_name, calories, meal_slot')
 			.eq('user_id', USER_A.id)
 			.like('item_name', `%${MARK}%`)
-			.order('item_name');
+			.order('item_name'));
 		expect(data).toEqual([
 			{ item_name: `Rice ${MARK}`, calories: 205, meal_slot: 'dinner' },
 			{ item_name: `Salmon ${MARK}`, calories: 300, meal_slot: 'dinner' },

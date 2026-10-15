@@ -237,8 +237,7 @@ function sameCursor(a: KeysetCursor, b: KeysetCursor): boolean {
 /// server that ignores the window and answers the same page forever) is caught
 /// instead by the cursor: a page whose last row is the cursor it was asked to
 /// pass has not advanced, and the walk stops short rather than looping.
-/// Mirrors `walkKeyset` in `core_models` `keyset_page.dart`, which throws
-/// where this returns, per each side's error contract.
+/// The Dart half throws where this returns, per each side's error contract.
 export async function walkKeyset<T extends object>(
 	keys: readonly KeysetKey[],
 	fetchPage: (

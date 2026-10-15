@@ -260,9 +260,9 @@ bool _sameCursor(List<Object?> a, List<Object?> b) {
 /// ceiling — a ceiling would silently truncate. A server that ignores the
 /// window and answers the same page forever is caught by the cursor instead:
 /// a page whose last row is the cursor it was asked to pass has not advanced,
-/// and the walk throws a [StateError] rather than looping. Mirrors `walkKeyset`
-/// in apps/web/src/lib/core/keyset_page.ts, which returns `complete: false`
-/// where this throws, per each side's error contract.
+/// and the walk throws a [StateError] rather than looping. The web half
+/// returns `complete: false` where this throws, per each side's error
+/// contract.
 Future<List<Map<String, dynamic>>> walkKeyset(
   List<KeysetKey> keys,
   Future<List<Map<String, dynamic>>> Function(String? after, int limit)

@@ -3,6 +3,7 @@ import { expect, test } from '../fixtures/test';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { insertRun, setUserSetting } from '../fixtures/simulate';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * /dashboard says what its numbers mean (#902 section 1).
@@ -21,13 +22,6 @@ import { insertRun, setUserSetting } from '../fixtures/simulate';
  * so this week is empty whatever day the suite runs — plus zones, a heart
  * rate on that run, and one weighted lift.
  */
-
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-	);
-}
 
 test.describe('dashboard legibility', () => {
 	let runner: SagaUser;
@@ -68,7 +62,7 @@ test.describe('dashboard legibility', () => {
 
 	test('every number on the page says what it is', async ({ browser }) => {
 		const ctx = await browser.newContext({ storageState: runner.storageStatePath });
-		await ctx.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
 			await page.goto('/dashboard');

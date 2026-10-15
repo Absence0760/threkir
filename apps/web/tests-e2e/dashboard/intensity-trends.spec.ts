@@ -2,6 +2,7 @@ import { expect, test } from '../fixtures/test';
 
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { insertRun } from '../fixtures/simulate';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Easy/hard balance + week/month trend-delta cards on /dashboard (backlog #11,
@@ -17,13 +18,6 @@ import { insertRun } from '../fixtures/simulate';
  * week-distance delta. A runner with too few classified runs never sees the
  * balance card (the < 4-classified-runs self-hide).
  */
-
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-	);
-}
 
 test.describe('dashboard intensity-balance + trend-delta cards', () => {
 	let balanced: SagaUser;
@@ -76,7 +70,7 @@ test.describe('dashboard intensity-balance + trend-delta cards', () => {
 		browser,
 	}) => {
 		const ctx = await browser.newContext({ storageState: balanced.storageStatePath });
-		await ctx.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
 			await page.goto('/dashboard');
@@ -108,7 +102,7 @@ test.describe('dashboard intensity-balance + trend-delta cards', () => {
 		browser,
 	}) => {
 		const ctx = await browser.newContext({ storageState: sparse.storageStatePath });
-		await ctx.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
 			await page.goto('/dashboard');

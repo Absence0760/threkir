@@ -3,6 +3,7 @@ import { expect, test } from '../fixtures/test';
 import { expandTrainingLoad } from '../fixtures/dashboard';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { insertRun } from '../fixtures/simulate';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * A near-zero training load must not take the dashboard down.
@@ -14,13 +15,6 @@ import { insertRun } from '../fixtures/simulate';
  * page rendered "500 Internal Error". A new account's first short test run hit
  * it in prod.
  */
-
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-	);
-}
 
 test.describe('dashboard with a near-zero training load', () => {
 	let user: SagaUser;
@@ -42,7 +36,7 @@ test.describe('dashboard with a near-zero training load', () => {
 
 	test('renders the training-load chart with distinct whole-number ticks', async ({ browser }) => {
 		const ctx = await browser.newContext({ storageState: user.storageStatePath });
-		await ctx.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		const errors: string[] = [];
 		page.on('pageerror', (e) => errors.push(e.message));
@@ -91,7 +85,7 @@ test.describe('dashboard whose only run is 0 m', () => {
 	// 0 / 0 and rendered as `height: NaN%`.
 	test('mileage bars carry a finite height', async ({ browser }) => {
 		const ctx = await browser.newContext({ storageState: user.storageStatePath });
-		await ctx.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 
 		try {

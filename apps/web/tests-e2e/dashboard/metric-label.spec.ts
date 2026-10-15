@@ -4,6 +4,7 @@ import { expect, test } from '../fixtures/test';
 import { expandTrainingLoad } from '../fixtures/dashboard';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { insertRun } from '../fixtures/simulate';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * A derived metric's definition is reachable without a mouse (#902 §1).
@@ -15,13 +16,6 @@ import { insertRun } from '../fixtures/simulate';
  * button. This pins the three ways in that a hover-only tooltip did not have:
  * a keyboard, a tap, and a screen reader's view of the same markup.
  */
-
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-	);
-}
 
 const CTL_DEFINITION = /Fitness \(CTL\) — your rolling 42-day training load/;
 
@@ -65,7 +59,7 @@ test.describe('dashboard metric definitions', () => {
 		browser,
 	}) => {
 		const ctx = await browser.newContext({ storageState: runner.storageStatePath });
-		await ctx.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
 			const card = await openDashboard(page);
@@ -114,7 +108,7 @@ test.describe('dashboard metric definitions', () => {
 
 	test('a term named mid-sentence renders in place, with its disclosure', async ({ browser }) => {
 		const ctx = await browser.newContext({ storageState: runner.storageStatePath });
-		await ctx.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
 			await openDashboard(page);
@@ -140,7 +134,7 @@ test.describe('dashboard metric definitions', () => {
 			hasTouch: true,
 			isMobile: true,
 		});
-		await ctx.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
 			const card = await openDashboard(page);

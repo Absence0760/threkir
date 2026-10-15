@@ -512,7 +512,7 @@ func capturedQueries(t *testing.T, in []TrackPoint) []url.Values {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		n := strings.Count(r.URL.Path[len("/match/v1/foot/"):], ";") + 1
 		mu.Lock()
-		qs = append(qs, r.URL.Query())
+		qs = append(qs, osrmQuery(t, r.URL.RawQuery))
 		mu.Unlock()
 		locs := make([][2]float64, n)
 		for i := range locs {
@@ -525,6 +525,29 @@ func capturedQueries(t *testing.T, in []TrackPoint) []url.Values {
 		t.Fatal(err)
 	}
 	return qs
+}
+
+// osrmQuery parses a raw query the way OSRM reads it. url.ParseQuery drops
+// any pair whose value holds ';', and OSRM separates list items with ';'.
+func osrmQuery(t *testing.T, raw string) url.Values {
+	t.Helper()
+	q := url.Values{}
+	for _, pair := range strings.Split(raw, "&") {
+		if pair == "" {
+			continue
+		}
+		k, v, _ := strings.Cut(pair, "=")
+		key, err := url.QueryUnescape(k)
+		if err != nil {
+			t.Fatalf("query key %q: %v", k, err)
+		}
+		val, err := url.PathUnescape(v)
+		if err != nil {
+			t.Fatalf("query value %q: %v", v, err)
+		}
+		q.Add(key, val)
+	}
+	return q
 }
 
 func fptr(v float64) *float64 { return &v }
@@ -622,7 +645,7 @@ func TestOSRMMatcher_HintsArePerChunkAndFitTheURL(t *testing.T) {
 			t.Fatal(err)
 		}
 		coords := strings.Count(u.Path[len("/match/v1/foot/"):], ";") + 1
-		q := u.Query()
+		q := osrmQuery(t, u.RawQuery)
 		if r := strings.Count(q.Get("radiuses"), ";") + 1; r != coords {
 			t.Errorf("chunk %d: %d radiuses for %d coordinates", i, r, coords)
 		}
@@ -633,8 +656,8 @@ func TestOSRMMatcher_HintsArePerChunkAndFitTheURL(t *testing.T) {
 			t.Errorf("chunk %d: request URI is %d bytes", i, len(raw))
 		}
 	}
-	if !strings.HasPrefix(mustQuery(t, urls[1]).Get("timestamps"), "1800000100;") {
-		t.Errorf("second chunk does not start at point 100: %s", mustQuery(t, urls[1]).Get("timestamps")[:24])
+	if got := mustQuery(t, urls[1]).Get("timestamps"); !strings.HasPrefix(got, "1800000100;") {
+		t.Errorf("second chunk does not start at point 100: %.24s", got)
 	}
 }
 
@@ -644,7 +667,7 @@ func mustQuery(t *testing.T, raw string) url.Values {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return u.Query()
+	return osrmQuery(t, u.RawQuery)
 }
 
 func TestTrackPoint_DecodesRecorderAccuracy(t *testing.T) {

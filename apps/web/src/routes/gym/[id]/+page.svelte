@@ -23,6 +23,7 @@
 		type PrKind,
 	} from '#lib/gym/gym_prs.ts';
 	import { previousExerciseSession, type ExerciseSession } from '#lib/gym/exercise_history.ts';
+	import { groupExerciseBlocks } from '#lib/gym/exercise_blocks.ts';
 	import { progressionParamsWithStreak } from '#lib/gym/progression_prefill.ts';
 	import { nextPrescription, type ProgressionSetLike } from '#lib/gym/gym_progression.ts';
 	import {
@@ -240,16 +241,7 @@
 	// block carries the canonical grouping key alongside its display spelling,
 	// so every lookup below is keyed on the same thing the PR engine and the
 	// server-stamped `exercise_key` are — never on the block's own spelling.
-	const blocks = $derived.by(() => {
-		const out: { name: string; key: string; sets: GymSet[] }[] = [];
-		for (const s of data?.sets ?? []) {
-			const last = out[out.length - 1];
-			const key = normaliseExerciseName(s.exercise_name);
-			if (last && last.key === key) last.sets.push(s);
-			else out.push({ name: s.exercise_name, key, sets: [s] });
-		}
-		return out;
-	});
+	const blocks = $derived(groupExerciseBlocks(data?.sets ?? []));
 
 	// PR kinds this workout achieved, per exercise, judged against all of
 	// the user's OTHER (earlier) sets.

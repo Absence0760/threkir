@@ -44,14 +44,14 @@ class _FakeApi extends ApiClient {
       ];
 
   @override
-  Future<List<UserProfileRow>> fetchFollowers(String userId,
-          {int limit = 20, int offset = 0}) async =>
-      const [UserProfileRow(id: 'f1', displayName: 'Follower One', shadowHidden: false)];
+  Future<KeysetPage<UserProfileRow>> fetchFollowers(String userId,
+          {int limit = 20, List<Object?>? after}) async =>
+      const KeysetPage(<UserProfileRow>[UserProfileRow(id: 'f1', displayName: 'Follower One', shadowHidden: false)], null);
 
   @override
-  Future<List<UserProfileRow>> fetchFollowing(String userId,
-          {int limit = 20, int offset = 0}) async =>
-      const [UserProfileRow(id: 'g1', displayName: 'Followed One', shadowHidden: false)];
+  Future<KeysetPage<UserProfileRow>> fetchFollowing(String userId,
+          {int limit = 20, List<Object?>? after}) async =>
+      const KeysetPage(<UserProfileRow>[UserProfileRow(id: 'g1', displayName: 'Followed One', shadowHidden: false)], null);
 
   @override
   Future<List<AchievementRow>> fetchUserBadges(String userId) async {

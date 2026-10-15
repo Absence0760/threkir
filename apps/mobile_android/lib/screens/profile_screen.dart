@@ -103,6 +103,9 @@ class _ProfileScreenState extends State<ProfileScreen>
   // footer's visibility and the in-flight spinner.
   bool _followersHasMore = true;
   bool _followingHasMore = true;
+  // The keyset cursor for each tab's next page (see ApiClient.fetchFollowers).
+  List<Object?>? _followersNext;
+  List<Object?>? _followingNext;
   bool _loadingMoreFollowers = false;
   bool _loadingMoreFollowing = false;
 
@@ -226,8 +229,9 @@ class _ProfileScreenState extends State<ProfileScreen>
       );
       if (!mounted) return;
       setState(() {
-        _followers = followers;
-        _followersHasMore = followers.length == _kFollowsPageSize;
+        _followers = followers.rows;
+        _followersNext = followers.next;
+        _followersHasMore = followers.next != null;
         _followersLoading = false;
       });
     } catch (e) {
@@ -252,8 +256,9 @@ class _ProfileScreenState extends State<ProfileScreen>
       );
       if (!mounted) return;
       setState(() {
-        _following = following;
-        _followingHasMore = following.length == _kFollowsPageSize;
+        _following = following.rows;
+        _followingNext = following.next;
+        _followingHasMore = following.next != null;
         _followingLoading = false;
       });
     } catch (e) {
@@ -310,18 +315,20 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Future<void> _loadMoreFollowers() async {
-    if (_loadingMoreFollowers || !_followersHasMore) return;
+    final after = _followersNext;
+    if (_loadingMoreFollowers || !_followersHasMore || after == null) return;
     setState(() => _loadingMoreFollowers = true);
     try {
       final more = await widget.api.fetchFollowers(
         widget.userId,
         limit: _kFollowsPageSize,
-        offset: _followers.length,
+        after: after,
       );
       if (!mounted) return;
       setState(() {
-        _followers = [..._followers, ...more];
-        _followersHasMore = more.length == _kFollowsPageSize;
+        _followers = appendPage(_followers, more.rows, (p) => p.id);
+        _followersNext = more.next;
+        _followersHasMore = more.next != null;
       });
     } catch (e) {
       debugPrint('Load more followers failed: $e');
@@ -337,18 +344,20 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Future<void> _loadMoreFollowing() async {
-    if (_loadingMoreFollowing || !_followingHasMore) return;
+    final after = _followingNext;
+    if (_loadingMoreFollowing || !_followingHasMore || after == null) return;
     setState(() => _loadingMoreFollowing = true);
     try {
       final more = await widget.api.fetchFollowing(
         widget.userId,
         limit: _kFollowsPageSize,
-        offset: _following.length,
+        after: after,
       );
       if (!mounted) return;
       setState(() {
-        _following = [..._following, ...more];
-        _followingHasMore = more.length == _kFollowsPageSize;
+        _following = appendPage(_following, more.rows, (p) => p.id);
+        _followingNext = more.next;
+        _followingHasMore = more.next != null;
       });
     } catch (e) {
       debugPrint('Load more following failed: $e');

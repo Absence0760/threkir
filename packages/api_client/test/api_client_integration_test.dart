@@ -430,14 +430,34 @@ void main() {
       // (fetchFollowing is inside the feed's Future.wait) and the
       // profile Followers/Following tabs. The seed user follows two
       // accounts, so a successful narrowed read returns both.
-      final following = await api.fetchFollowing(userId!);
+      final following = (await api.fetchFollowing(userId!)).rows;
       expect(following, hasLength(greaterThanOrEqualTo(2)),
           reason: 'fetchFollowing must succeed for the seed user; a '
               '42501 here means the profile hydrate drifted back onto '
               'a revoked user_profiles column.');
       expect(following.first.displayName, isNotEmpty);
-      final followers = await api.fetchFollowers(userId!);
+      final followers = (await api.fetchFollowers(userId!)).rows;
       expect(followers, isNotNull);
+    });
+
+    test('fetchFollowing pages by keyset cursor without a gap or a repeat',
+        () async {
+      // The seed user follows two accounts. One-row pages walked by the
+      // returned cursor must visit exactly the rows of a single wide read, in
+      // order — the property an offset loses when an edge is removed between
+      // two reads (that half is pinned against in-memory rows by
+      // core_models' keyset_page_test.dart).
+      final whole = (await api.fetchFollowing(userId!)).rows;
+      expect(whole, hasLength(greaterThanOrEqualTo(2)));
+      final walked = <String>[];
+      List<Object?>? after;
+      for (var guard = 0; guard < whole.length + 2; guard++) {
+        final page = await api.fetchFollowing(userId!, limit: 1, after: after);
+        walked.addAll(page.rows.map((p) => p.id));
+        if (page.next == null) break;
+        after = page.next;
+      }
+      expect(walked, whole.map((p) => p.id).toList());
     });
 
     test('fetchProfileSummary loads for the seed user (profile screen '

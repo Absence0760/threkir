@@ -2537,7 +2537,7 @@ class ApiClient {
       fetchFollowing(userId, limit: 500),
     ]);
     final byId = <String, UserProfileRow>{};
-    for (final p in [...lists[0], ...lists[1]]) {
+    for (final p in [...lists[0].rows, ...lists[1].rows]) {
       byId[p.id] = p;
     }
     final people = byId.values.toList()
@@ -2702,24 +2702,55 @@ class ApiClient {
     return rows.isNotEmpty;
   }
 
-  /// People who follow `userId`. `limit` is a protective cap, not a
-  /// pagination cursor — promote to cursor pagination if any user
-  /// approaches the ceiling in practice.
-  Future<List<UserProfileRow>> fetchFollowers(
-    String userId, {
-    int limit = 100,
-    int offset = 0,
+  /// Newest follow first; the other party's id breaks a `followed_at` tie so
+  /// the order is total. Mirrors `FOLLOWERS_ORDER` / `FOLLOWING_ORDER` in web
+  /// `core/data.ts`.
+  static const List<KeysetKey> _followersOrder = [
+    KeysetKey(UserFollowRow.colFollowedAt, ascending: false, nullsFirst: true),
+    KeysetKey(UserFollowRow.colFollowerId, ascending: false, nullsFirst: true),
+  ];
+  static const List<KeysetKey> _followingOrder = [
+    KeysetKey(UserFollowRow.colFollowedAt, ascending: false, nullsFirst: true),
+    KeysetKey(UserFollowRow.colFolloweeId, ascending: false, nullsFirst: true),
+  ];
+
+  /// The `.order()` calls of a keyset order, so the sort and the cursor
+  /// filter are read off one spec and cannot drift apart.
+  static PostgrestTransformBuilder<T> _orderBy<T>(
+    PostgrestTransformBuilder<T> query,
+    List<KeysetKey> keys,
+  ) {
+    var q = query;
+    for (final k in keys) {
+      q = q.order(k.column, ascending: k.ascending, nullsFirst: k.nullsFirst);
+    }
+    return q;
+  }
+
+  /// One keyset page of follow edges anchored on `userId`, resolved to
+  /// profiles in edge order. The cursor is taken from the last EDGE read, so
+  /// an edge whose profile is unreadable neither ends the list early nor
+  /// shifts the next page.
+  Future<KeysetPage<UserProfileRow>> _followPage({
+    required String anchorColumn,
+    required String otherColumn,
+    required List<KeysetKey> order,
+    required String userId,
+    required int limit,
+    required List<Object?>? after,
   }) async {
-    final edges = await _client
+    final filter = after == null ? null : keysetAfter(order, after);
+    if (after != null && filter == null) {
+      return const KeysetPage(<UserProfileRow>[], null);
+    }
+    var query = _client
         .from(UserFollowRow.table)
-        .select(UserFollowRow.colFollowerId)
-        .eq(UserFollowRow.colFolloweeId, userId)
-        .order(UserFollowRow.colFollowedAt, ascending: false)
-        .range(offset, offset + limit - 1);
-    final ids = edges
-        .map<String>((e) => e[UserFollowRow.colFollowerId] as String)
-        .toList();
-    if (ids.isEmpty) return const [];
+        .select('$otherColumn, ${UserFollowRow.colFollowedAt}')
+        .eq(anchorColumn, userId);
+    if (filter != null) query = query.or(filter);
+    final edges = await _orderBy(query, order).limit(limit);
+    final ids = edges.map<String>((e) => e[otherColumn] as String).toList();
+    if (ids.isEmpty) return KeysetPage(const [], nextCursor(order, edges, limit));
     // Cross-user reads must stay inside the granted column set
     // (migration 20260707_001) — a bare select() requests revoked
     // columns and PostgREST rejects the whole read with 42501.
@@ -2730,41 +2761,53 @@ class ApiClient {
           .select('id, display_name, avatar_url, created_at')
           .inFilter(UserProfileRow.colId, chunk),
     );
-    return profiles
-        .map<UserProfileRow>((row) => UserProfileRow.fromJson(row))
-        .toList();
+    final byId = <String, UserProfileRow>{
+      for (final row in profiles)
+        row[UserProfileRow.colId] as String: UserProfileRow.fromJson(row),
+    };
+    return KeysetPage(
+      [
+        for (final id in ids)
+          if (byId[id] != null) byId[id]!,
+      ],
+      nextCursor(order, edges, limit),
+    );
   }
 
-  /// People `userId` follows.
-  Future<List<UserProfileRow>> fetchFollowing(
+  /// People who follow `userId`, newest follow first, one keyset page at a
+  /// time: pass the previous page's `next` as `after` to load more. A cursor
+  /// rather than an offset because an offset is a position — a follower who
+  /// unfollows between two reads moves every later row up one, and the next
+  /// offset then starts a row late, so one follower is never shown.
+  Future<KeysetPage<UserProfileRow>> fetchFollowers(
     String userId, {
     int limit = 100,
-    int offset = 0,
-  }) async {
-    final edges = await _client
-        .from(UserFollowRow.table)
-        .select(UserFollowRow.colFolloweeId)
-        .eq(UserFollowRow.colFollowerId, userId)
-        .order(UserFollowRow.colFollowedAt, ascending: false)
-        .range(offset, offset + limit - 1);
-    final ids = edges
-        .map<String>((e) => e[UserFollowRow.colFolloweeId] as String)
-        .toList();
-    if (ids.isEmpty) return const [];
-    // Same granted-column constraint as fetchFollowers — a bare
-    // select() here broke the entire feed (42501) once 20260707_001
-    // locked the cross-user grant down.
-    final profiles = await readChunked(
-      ids,
-      (chunk) async => _client
-          .from(UserProfileRow.table)
-          .select('id, display_name, avatar_url, created_at')
-          .inFilter(UserProfileRow.colId, chunk),
-    );
-    return profiles
-        .map<UserProfileRow>((row) => UserProfileRow.fromJson(row))
-        .toList();
-  }
+    List<Object?>? after,
+  }) =>
+      _followPage(
+        anchorColumn: UserFollowRow.colFolloweeId,
+        otherColumn: UserFollowRow.colFollowerId,
+        order: _followersOrder,
+        userId: userId,
+        limit: limit,
+        after: after,
+      );
+
+  /// People `userId` follows, newest follow first, one keyset page at a time
+  /// (see [fetchFollowers]).
+  Future<KeysetPage<UserProfileRow>> fetchFollowing(
+    String userId, {
+    int limit = 100,
+    List<Object?>? after,
+  }) =>
+      _followPage(
+        anchorColumn: UserFollowRow.colFollowerId,
+        otherColumn: UserFollowRow.colFolloweeId,
+        order: _followingOrder,
+        userId: userId,
+        limit: limit,
+        after: after,
+      );
 
   /// Free-text people search. Routes through the
   /// `search_user_profiles` SECURITY DEFINER RPC so the search

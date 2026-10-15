@@ -154,8 +154,9 @@ List<Object?>? nextCursor(
 /// is no longer what stops a repeat on an ordinary insert. It stays because a
 /// row can still MOVE past the cursor between two reads when its own sort
 /// value changes: a public route whose `run_count` drops re-sorts below the
-/// cursor of a "popular" list, and a follow that is undone and redone between
-/// reads is a new edge. Appended blindly, that row renders twice.
+/// cursor of a "popular" list. Appended blindly, that row renders twice. (A
+/// follow undone and redone between reads cannot: the new edge sorts to the
+/// TOP of a newest-first list, before the cursor.)
 List<T> appendPage<T>(
   List<T> shown,
   List<T> page,

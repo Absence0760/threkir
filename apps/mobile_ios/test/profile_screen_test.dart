@@ -32,14 +32,14 @@ class _SelfApi extends ApiClient {
       const [];
 
   @override
-  Future<List<UserProfileRow>> fetchFollowers(String userId,
-          {int limit = 20, int offset = 0}) async =>
-      const [];
+  Future<KeysetPage<UserProfileRow>> fetchFollowers(String userId,
+          {int limit = 20, List<Object?>? after}) async =>
+      const KeysetPage(<UserProfileRow>[], null);
 
   @override
-  Future<List<UserProfileRow>> fetchFollowing(String userId,
-          {int limit = 20, int offset = 0}) async =>
-      const [];
+  Future<KeysetPage<UserProfileRow>> fetchFollowing(String userId,
+          {int limit = 20, List<Object?>? after}) async =>
+      const KeysetPage(<UserProfileRow>[], null);
 
   @override
   Future<List<AchievementRow>> fetchUserBadges(String userId) async => const [];

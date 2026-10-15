@@ -709,7 +709,11 @@ neither, and neither carries a `List-Unsubscribe` header.
   owner can let the asker in, so the default `important` mode emails and pushes
   it, where a plain `follow` stays under `all`. Deep link `/follow-requests`.
   Its own opt-OUT mute is `notify_follow_request` (web Settings →
-  Notifications), subtract-only like the other per-kind mutes.
+  Notifications), subtract-only like the other per-kind mutes. A requester
+  who asks, withdraws and asks again raises one notification (so one email
+  and push) per owner per 24 h, not one per ask: the trigger claims a row in
+  `private.follow_request_notices` before inserting, which the withdrawal does
+  not clear (migration `20270829000012`).
   Copy in all seven locales; no new credential. The kind widen is the
   `NOT VALID` half in `20270826000001` and the `VALIDATE` in `20270826000002`.
 

@@ -18,6 +18,7 @@ void main() {
       expect(MetadataKeys.distanceRecordedM, 'distance_recorded_m');
       expect(MetadataKeys.distanceStepFilledM, 'distance_step_filled_m');
       expect(MetadataKeys.locationProvider, 'location_provider');
+      expect(MetadataKeys.gnssSignal, 'gnss_signal');
       expect(MetadataKeys.isDnf, 'is_dnf');
       expect(MetadataKeys.recoveredFromCrash, 'recovered_from_crash');
       expect(MetadataKeys.workoutStepResults, 'workout_step_results');

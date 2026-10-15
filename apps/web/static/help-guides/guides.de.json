@@ -2592,6 +2592,153 @@
     ]
   },
   {
+    "id": "location-permission",
+    "lang": "de",
+    "title": "Standortzugriff für die Laufaufzeichnung",
+    "summary": "Welche Standortoption du unter Android und auf dem iPhone wählen solltest, was jede für deine Läufe bedeutet und wie du sie später in den Einstellungen änderst.",
+    "kind": "how-to",
+    "category": "running",
+    "audience": [
+      "runner"
+    ],
+    "platforms": [
+      "android",
+      "ios"
+    ],
+    "sections": [
+      {
+        "heading": "Warum die App nach deinem Standort fragt",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Dein Standort zeichnet die Karte eines Laufs und misst Distanz und Pace. Ohne ihn zeichnet ein Lauf weiterhin Zeit und Schritte auf, aber keine Karte, Distanz oder Pace."
+          },
+          {
+            "type": "p",
+            "text": "Du wirst bei der Einrichtung gefragt: Nach der Seite **Standortzugriff** öffnet ein Tippen auf **Berechtigung erteilen** die Abfrage deines Handys. Lehnst du ab, sagt dir die App das und bietet **Einstellungen öffnen** an. Hast du den Zugriff noch nicht erlaubt, wenn du auf **START** tippst, fragt dein Handy möglicherweise erneut."
+          }
+        ]
+      },
+      {
+        "heading": "Unter Android",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Androids erste Abfrage kann den Zugriff nur während der Nutzung der App erteilen. Damit der Lauf auch bei ausgeschaltetem Bildschirm erfasst wird, brauchst du **Immer zulassen**, und das lässt Android nur in den Einstellungen auswählen."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Lass in der Abfrage **Genau** ausgewählt und tippe auf **Während der Nutzung der App**.",
+              "Vor deinem ersten Lauf zeigt die App **Standort immer zulassen**. Tippe auf **Einstellungen öffnen**.",
+              "Tippe unter **Berechtigungen** auf **Standort**, wähle **Immer zulassen** und kehre dann zur App zurück."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Tippst du auf **Trotzdem starten**, zeichnet der Lauf ganz normal auf, solange die App im Vordergrund ist. Bei ausgeschaltetem Bildschirm oder in einer anderen App sendet Android deinen Standort möglicherweise nicht mehr: Die Uhr läuft weiter und nichts bereits Aufgezeichnetes geht verloren, aber die Distanz, die du in der Zeit zurücklegst, wird nicht gezählt. In dem Fall erscheint bei deiner Rückkehr eine Meldung, die mit **Die Aufzeichnung pausierte, während du weg warst** beginnt, mit einer Schaltfläche **Einstellungen**."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Der Hinweis vor einem Lauf erscheint einmal. Er kommt nur zurück, wenn du den Zugriff immer erlaubt hattest und dieser später entfernt wurde, zum Beispiel weil Android die Berechtigungen von Apps zurücksetzt, die du länger nicht geöffnet hast."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Mit **Ungefähr** ist der Standort zu grob, um einen Lauf zu messen: Du siehst den ganzen Lauf über **Schwaches GPS — Distanz pausiert**.",
+              "**Nur dieses Mal** gilt für den Lauf, den du gleich startest, und beim nächsten Mal wirst du erneut gefragt.",
+              "Mit **Nicht zulassen** zeichnen Läufe nur Zeit und Schritte auf."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Auf dem iPhone",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Auf dem iPhone reicht der Zugriff während der Nutzung der App: Ein Lauf zeichnet weiter auf, wenn der Bildschirm gesperrt ist oder du eine andere App verwendest. Die App fragt nie nach **Immer**, und du brauchst es nicht."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Tippe in der Abfrage auf **Beim Verwenden der App erlauben**.",
+              "Lass den genauen Standort in der Abfrage eingeschaltet. Ohne ihn ist deine Position zu grob, um die Distanz zu messen, und der Lauf zeigt **Schwaches GPS — Distanz pausiert**."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "**Einmal erlauben** gilt nur für diesen Lauf, und beim nächsten Mal wirst du erneut gefragt. Mit **Nicht erlauben** zeichnen Läufe nur Zeit und Schritte auf."
+          }
+        ]
+      },
+      {
+        "heading": "Energiesparfunktionen",
+        "blocks": [
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Manche Android-Handys (Samsung, Xiaomi, OnePlus und andere) versetzen Apps in den Ruhezustand, um Akku zu sparen. Das kann die Aufzeichnung eines langen Laufs bei ausgeschaltetem Bildschirm stoppen, selbst mit **Immer zulassen**. Vor deinem ersten Lauf zeigt die App einmal **Aufzeichnung im Hintergrund aktiv halten**: Tippe auf **Einstellungen öffnen** und nimm Threkir von der Akkuoptimierung aus. Hast du auf **Nicht jetzt** getippt, öffne die Seite der App in den Einstellungen deines Handys, tippe auf **Akku** und wähle **Nicht eingeschränkt**. Die Bezeichnungen unterscheiden sich je nach Hersteller etwas."
+          }
+        ]
+      },
+      {
+        "heading": "Später ändern",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Unter Android:"
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Öffne die **Einstellungen** deines Handys und tippe auf **Apps** und dann auf **Threkir**.",
+              "Tippe auf **Berechtigungen** und dann auf **Standort**.",
+              "Wähle **Immer zulassen** und schalte **Genauen Standort verwenden** ein."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Auf dem iPhone:"
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Öffne **Einstellungen** › **Datenschutz & Sicherheit** › **Ortungsdienste** und prüfe, ob die **Ortungsdienste** eingeschaltet sind.",
+              "Tippe auf **Threkir** und wähle **Beim Verwenden der App**.",
+              "Schalte **Genauer Standort** ein."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Ist der Standort beim Start eines Laufs aus oder blockiert, weist der Laufbildschirm darauf hin, und seine Schaltfläche **Einstellungen** bringt dich an die richtige Stelle."
+          }
+        ]
+      },
+      {
+        "heading": "Was die App mit deinem Standort macht",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Sie liest deinen Standort, während du einen Lauf aufzeichnest und wenn sich eine Karte auf dich zentriert, etwa wenn du eine Route erstellst oder eine Datenschutzzone setzt. Zwischen den Läufen verfolgt sie dich nicht.",
+              "Unter Android zeigt eine Benachrichtigung an, dass ein Lauf aufgezeichnet wird, sofern du Benachrichtigungen erlaubst.",
+              "Der Track eines Laufs bleibt auf deinem Handy, bis er mit deinem Konto synchronisiert wird oder du ihn teilst, und wer ihn sehen kann, richtet sich nach deinen Datenschutzeinstellungen: siehe [[guide:your-data-and-privacy|deine Daten und Datenschutz]].",
+              "Um zu verbergen, wo du wohnst, richte [[guide:privacy-zones|Datenschutzzonen]] ein. Deine Live-Position wird nur geteilt, wenn du [[guide:live-tracking-and-safety|Live-Tracking]] einschaltest."
+            ]
+          }
+        ]
+      }
+    ],
+    "related": [
+      "record-your-first-run",
+      "privacy-zones",
+      "your-data-and-privacy",
+      "live-tracking-and-safety"
+    ]
+  },
+  {
     "id": "privacy-zones",
     "lang": "de",
     "title": "Dein Zuhause mit Datenschutzzonen verbergen",
@@ -2727,7 +2874,7 @@
           {
             "type": "note",
             "tone": "tip",
-            "text": "Wähle unter Android für den Standort **Immer zulassen**. Mit Zugriff nur bei geöffneter App wird die Distanz, die du bei ausgeschaltetem Bildschirm zurücklegst, nicht gezählt, obwohl die Uhr weiterläuft."
+            "text": "Wähle unter Android für den Standort **Immer zulassen**. Mit Zugriff nur bei geöffneter App wird die Distanz, die du bei ausgeschaltetem Bildschirm zurücklegst, möglicherweise nicht gezählt, obwohl die Uhr weiterläuft. Lies, [[guide:location-permission|welche Standortoption du wählen solltest]]."
           },
           {
             "type": "illustration",
@@ -2799,6 +2946,7 @@
       }
     ],
     "related": [
+      "location-permission",
       "privacy-zones",
       "live-tracking-and-safety",
       "import-your-history"

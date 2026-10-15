@@ -2592,6 +2592,153 @@
     ]
   },
   {
+    "id": "location-permission",
+    "lang": "es",
+    "title": "Acceso a la ubicación para registrar carreras",
+    "summary": "Qué opción de ubicación elegir en Android y en iPhone, qué supone cada una para tus carreras y cómo cambiarla más adelante en los ajustes.",
+    "kind": "how-to",
+    "category": "running",
+    "audience": [
+      "runner"
+    ],
+    "platforms": [
+      "android",
+      "ios"
+    ],
+    "sections": [
+      {
+        "heading": "Por qué la app pide tu ubicación",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Tu ubicación dibuja el mapa de una carrera y mide su distancia y su ritmo. Sin ella, una carrera sigue registrando tiempo y pasos, pero sin mapa, distancia ni ritmo."
+          },
+          {
+            "type": "p",
+            "text": "Se te pregunta durante la configuración: después de la página **Acceso a la ubicación**, al tocar **Conceder permiso** se abre la solicitud de tu teléfono. Si la rechazas, la app te lo indica y te ofrece **Abrir ajustes**. Si aún no lo has permitido cuando tocas **INICIAR**, puede que tu teléfono vuelva a preguntar."
+          }
+        ]
+      },
+      {
+        "heading": "En Android",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "La primera solicitud de Android solo puede dar acceso mientras usas la app. Para que la carrera se siga registrando con la pantalla apagada hace falta **Permitir todo el tiempo**, y Android solo deja elegirlo en los ajustes."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "En la solicitud, deja seleccionada **Precisa** y toca **Mientras la aplicación está en uso**.",
+              "Antes de tu primera carrera, la app muestra **Permitir la ubicación todo el tiempo**. Toca **Abrir ajustes**.",
+              "En **Permisos**, toca **Ubicación**, elige **Permitir todo el tiempo** y vuelve a la app."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Si tocas **Iniciar de todos modos**, la carrera se registra con normalidad mientras la app está en pantalla. Con la pantalla apagada o en otra app, Android puede dejar de enviar tu ubicación: el reloj sigue corriendo y no se pierde nada de lo ya registrado, pero la distancia que recorres mientras tanto no se cuenta. Cuando ocurre, al volver aparece un mensaje que empieza por **El seguimiento se pausó mientras no estabas**, con un botón **Ajustes**."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "El aviso antes de una carrera aparece una sola vez. Solo vuelve si habías permitido el acceso todo el tiempo y después se retiró, por ejemplo porque Android restablece los permisos de las apps que no abres desde hace tiempo."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Con **Aproximada**, la ubicación es demasiado imprecisa para medir una carrera: verás **GPS débil — distancia en pausa** durante toda la carrera.",
+              "**Solo esta vez** sirve para la carrera que vas a empezar, y la próxima vez se te vuelve a preguntar.",
+              "Con **No permitir**, las carreras solo registran tiempo y pasos."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "En iPhone",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "En iPhone basta con el acceso mientras usas la app: una carrera sigue registrándose con la pantalla bloqueada o mientras usas otra app. La app nunca pide **Siempre**, y no lo necesitas."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "En la solicitud, toca **Permitir al usar la app**.",
+              "Deja activada la ubicación exacta en la solicitud. Sin ella, tu posición es demasiado imprecisa para medir la distancia, y la carrera muestra **GPS débil — distancia en pausa**."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "**Permitir una vez** sirve solo para esta carrera, y la próxima vez se te vuelve a preguntar. Con **No permitir**, las carreras solo registran tiempo y pasos."
+          }
+        ]
+      },
+      {
+        "heading": "Ahorro de batería",
+        "blocks": [
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Algunos teléfonos Android (Samsung, Xiaomi, OnePlus y otros) suspenden las apps para ahorrar batería, lo que puede detener el registro de una carrera larga con la pantalla apagada, incluso con **Permitir todo el tiempo**. Antes de tu primera carrera, la app muestra una vez **Mantener la grabación activa en segundo plano**: toca **Abrir ajustes** y excluye Threkir de la optimización de batería. Si tocaste **Ahora no**, abre la página de la app en los ajustes de tu teléfono, toca **Batería** y elige **Sin restricciones**. Los nombres cambian un poco según el fabricante."
+          }
+        ]
+      },
+      {
+        "heading": "Cambiarlo más adelante",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "En Android:"
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Abre los **Ajustes** de tu teléfono y toca **Aplicaciones** y luego **Threkir**.",
+              "Toca **Permisos** y luego **Ubicación**.",
+              "Elige **Permitir todo el tiempo** y activa **Usar ubicación precisa**."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "En iPhone:"
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Abre **Ajustes** › **Privacidad y seguridad** › **Localización** y comprueba que **Localización** está activada.",
+              "Toca **Threkir** y elige **Cuando se use la app**.",
+              "Activa **Ubicación exacta**."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Si la ubicación está desactivada o bloqueada cuando empiezas una carrera, la pantalla de carrera te lo indica y su botón **Ajustes** te lleva al sitio adecuado."
+          }
+        ]
+      },
+      {
+        "heading": "Qué hace la app con tu ubicación",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "La lee mientras registras una carrera y cuando un mapa se centra en ti, por ejemplo al crear una ruta o colocar una zona de privacidad. No te sigue entre carreras.",
+              "En Android, una notificación se muestra mientras se registra una carrera, si permites las notificaciones.",
+              "El recorrido de una carrera se queda en tu teléfono hasta que se sincroniza con tu cuenta o lo compartes, y quién puede verlo depende de tus ajustes de privacidad: consulta [[guide:your-data-and-privacy|tus datos y tu privacidad]].",
+              "Para ocultar dónde vives, configura [[guide:privacy-zones|zonas de privacidad]]. Tu posición en directo solo se comparte si activas el [[guide:live-tracking-and-safety|seguimiento en directo]]."
+            ]
+          }
+        ]
+      }
+    ],
+    "related": [
+      "record-your-first-run",
+      "privacy-zones",
+      "your-data-and-privacy",
+      "live-tracking-and-safety"
+    ]
+  },
+  {
     "id": "privacy-zones",
     "lang": "es",
     "title": "Ocultar tu casa con zonas de privacidad",
@@ -2727,7 +2874,7 @@
           {
             "type": "note",
             "tone": "tip",
-            "text": "En Android, elige **Permitir todo el tiempo** para la ubicación. Si solo das acceso mientras la app está abierta, no se cuenta la distancia que recorres con la pantalla apagada, aunque el reloj sigue corriendo."
+            "text": "En Android, elige **Permitir todo el tiempo** para la ubicación. Si solo das acceso mientras la app está abierta, puede que no se cuente la distancia que recorres con la pantalla apagada, aunque el reloj sigue corriendo. Consulta [[guide:location-permission|qué opción de ubicación elegir]]."
           },
           {
             "type": "illustration",
@@ -2799,6 +2946,7 @@
       }
     ],
     "related": [
+      "location-permission",
       "privacy-zones",
       "live-tracking-and-safety",
       "import-your-history"

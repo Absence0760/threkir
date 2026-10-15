@@ -2592,6 +2592,153 @@
     ]
   },
   {
+    "id": "location-permission",
+    "lang": "fr",
+    "title": "Accès à la localisation pour enregistrer vos courses",
+    "summary": "Quelle option de localisation choisir sur Android et sur iPhone, ce que chacune change pour vos courses et comment la modifier plus tard dans les réglages.",
+    "kind": "how-to",
+    "category": "running",
+    "audience": [
+      "runner"
+    ],
+    "platforms": [
+      "android",
+      "ios"
+    ],
+    "sections": [
+      {
+        "heading": "Pourquoi l'app demande votre position",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Votre position trace la carte d'une course et mesure sa distance et son allure. Sans elle, une course enregistre toujours le temps et les pas, mais ni carte, ni distance, ni allure."
+          },
+          {
+            "type": "p",
+            "text": "La demande arrive pendant la configuration : après la page **Accès à la localisation**, toucher **Accorder l'autorisation** ouvre la demande de votre téléphone. Si vous refusez, l'app vous le signale et propose **Ouvrir les réglages**. Si vous n'avez toujours pas autorisé l'accès quand vous touchez **DÉMARRER**, votre téléphone peut vous le redemander."
+          }
+        ]
+      },
+      {
+        "heading": "Sur Android",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "La première demande d'Android ne peut accorder l'accès que pendant l'utilisation de l'app. Pour que la course reste suivie écran éteint, il faut **Toujours autoriser**, qu'Android ne permet de choisir que dans les paramètres."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Dans la demande, laissez **Précise** sélectionné et touchez **Lorsque vous utilisez l'appli**.",
+              "Avant votre première course, l'app affiche **Autoriser la localisation en permanence**. Touchez **Ouvrir les réglages**.",
+              "Sous **Autorisations**, touchez **Position**, choisissez **Toujours autoriser**, puis revenez dans l'app."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Si vous touchez **Démarrer quand même**, la course s'enregistre normalement tant que l'app est à l'écran. Écran éteint ou dans une autre app, Android peut cesser d'envoyer votre position : le chrono continue et rien de ce qui est déjà enregistré n'est perdu, mais la distance parcourue pendant ce temps n'est pas comptée. Dans ce cas, un message commençant par **Le suivi a été mis en pause pendant votre absence** s'affiche à votre retour, avec un bouton **Réglages**."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Le rappel avant une course ne s'affiche qu'une fois. Il revient seulement si vous aviez autorisé l'accès en permanence et que cet accès a été retiré ensuite, par exemple quand Android réinitialise les autorisations des apps que vous n'avez pas ouvertes depuis longtemps."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Avec **Approximative**, la position est trop imprécise pour mesurer une course : vous verrez **GPS faible — distance en pause** pendant toute la course.",
+              "**Uniquement cette fois-ci** vaut pour la course que vous allez lancer, et la question vous sera reposée la prochaine fois.",
+              "Avec **Ne pas autoriser**, les courses n'enregistrent que le temps et les pas."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Sur iPhone",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Sur iPhone, l'accès pendant l'utilisation de l'app suffit : une course continue de s'enregistrer écran verrouillé ou pendant que vous utilisez une autre app. L'app ne demande jamais **Toujours**, et vous n'en avez pas besoin."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Dans la demande, touchez **Autoriser lorsque l'app est active**.",
+              "Laissez la position exacte activée dans la demande. Sans elle, votre position est trop imprécise pour mesurer la distance, et la course affiche **GPS faible — distance en pause**."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "**Autoriser une fois** ne vaut que pour cette course, et la question vous sera reposée la prochaine fois. Avec **Ne pas autoriser**, les courses n'enregistrent que le temps et les pas."
+          }
+        ]
+      },
+      {
+        "heading": "Économiseurs de batterie",
+        "blocks": [
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Certains téléphones Android (Samsung, Xiaomi, OnePlus et d'autres) mettent les apps en veille pour économiser la batterie, ce qui peut interrompre l'enregistrement d'une longue course écran éteint, même avec **Toujours autoriser**. Avant votre première course, l'app affiche une fois **Maintenir l'enregistrement actif en arrière-plan** : touchez **Ouvrir les réglages** et excluez Threkir de l'optimisation de la batterie. Si vous avez touché **Pas maintenant**, ouvrez la page de l'app dans les paramètres de votre téléphone, touchez **Batterie** et choisissez **Sans restriction**. Les noms varient un peu d'un fabricant à l'autre."
+          }
+        ]
+      },
+      {
+        "heading": "Modifier plus tard",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Sur Android :"
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Ouvrez les **Paramètres** de votre téléphone et touchez **Applications**, puis **Threkir**.",
+              "Touchez **Autorisations**, puis **Position**.",
+              "Choisissez **Toujours autoriser** et activez **Utiliser la position exacte**."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Sur iPhone :"
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Ouvrez **Réglages** › **Confidentialité et sécurité** › **Service de localisation**, et vérifiez que **Service de localisation** est activé.",
+              "Touchez **Threkir** et choisissez **Lorsque l'app est active**.",
+              "Activez **Position exacte**."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Si la localisation est désactivée ou bloquée quand vous lancez une course, l'écran de course vous le signale et son bouton **Réglages** vous mène au bon endroit."
+          }
+        ]
+      },
+      {
+        "heading": "Ce que l'app fait de votre position",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Elle lit votre position pendant que vous enregistrez une course, et quand une carte se centre sur vous, par exemple quand vous créez un itinéraire ou placez une zone de confidentialité. Elle ne vous suit pas entre les courses.",
+              "Sur Android, une notification s'affiche pendant l'enregistrement d'une course, si vous autorisez les notifications.",
+              "Le tracé d'une course reste sur votre téléphone jusqu'à sa synchronisation avec votre compte ou jusqu'à ce que vous le partagiez, et qui peut le voir dépend de vos réglages de confidentialité : voir [[guide:your-data-and-privacy|vos données et votre vie privée]].",
+              "Pour masquer votre domicile, configurez des [[guide:privacy-zones|zones de confidentialité]]. Votre position en direct n'est partagée que si vous activez le [[guide:live-tracking-and-safety|suivi en direct]]."
+            ]
+          }
+        ]
+      }
+    ],
+    "related": [
+      "record-your-first-run",
+      "privacy-zones",
+      "your-data-and-privacy",
+      "live-tracking-and-safety"
+    ]
+  },
+  {
     "id": "privacy-zones",
     "lang": "fr",
     "title": "Masquer votre domicile avec les zones de confidentialité",
@@ -2727,7 +2874,7 @@
           {
             "type": "note",
             "tone": "tip",
-            "text": "Sur Android, choisissez **Toujours autoriser** pour la localisation. Si l'accès n'est accordé que lorsque l'app est ouverte, la distance parcourue écran éteint n'est pas comptée, même si le chrono continue de tourner."
+            "text": "Sur Android, choisissez **Toujours autoriser** pour la localisation. Si l'accès n'est accordé que lorsque l'app est ouverte, la distance parcourue écran éteint risque de ne pas être comptée, même si le chrono continue de tourner. Voir [[guide:location-permission|quelle option de localisation choisir]]."
           },
           {
             "type": "illustration",
@@ -2799,6 +2946,7 @@
       }
     ],
     "related": [
+      "location-permission",
       "privacy-zones",
       "live-tracking-and-safety",
       "import-your-history"

@@ -68,3 +68,43 @@ test.describe('dashboard with a near-zero training load', () => {
 		}
 	});
 });
+
+test.describe('dashboard whose only run is 0 m', () => {
+	let user: SagaUser;
+
+	test.beforeAll(async () => {
+		[user] = await createSagaUsers(1, { displayNames: ['Zero Distance Runner'] });
+		await insertRun({
+			user_id: user.id,
+			started_at: new Date(Date.now() - 20 * 60_000).toISOString(),
+			distance_m: 0,
+			duration_s: 10,
+			source: 'app',
+		});
+	});
+
+	test.afterAll(async () => {
+		if (user) await deleteSagaUsers([user]);
+	});
+
+	// With every bar at 0 m the tallest bar was 0 too, so each height was
+	// 0 / 0 and rendered as `height: NaN%`.
+	test('mileage bars carry a finite height', async ({ browser }) => {
+		const ctx = await browser.newContext({ storageState: user.storageStatePath });
+		await ctx.addInitScript(setConsentAccepted);
+		const page = await ctx.newPage();
+
+		try {
+			await page.goto('/dashboard');
+			const bars = page.locator('.bar-col .bar');
+			await expect(bars.first()).toBeAttached({ timeout: 15_000 });
+			await expect(page.getByText('Internal Error')).toHaveCount(0);
+
+			const styles = await bars.evaluateAll((els) => els.map((e) => e.getAttribute('style') ?? ''));
+			expect(styles.length).toBeGreaterThan(0);
+			for (const s of styles) expect(s).not.toContain('NaN');
+		} finally {
+			await ctx.close();
+		}
+	});
+});

@@ -15,9 +15,11 @@ import { thrownMessage } from './supabase_error';
 //   2  The Coach plus the AI route assistant.
 //   3  v2 plus the AI plan assistant (the typed plan description, sent
 //      only to extract plan-wizard settings).
-//   4  All AI features: v3 plus AI plan edits (the active plan's upcoming
-//      workouts and the typed change request, sent only to propose edits
-//      the runner reviews before anything is saved).
+//   4  v3 plus AI plan edits (the active plan's upcoming workouts and the
+//      typed change request, sent only to propose edits the runner
+//      reviews before anything is saved).
+//   5  All AI features: v4 plus the plate-photo logger (one meal photo,
+//      sent only to propose food-log rows the runner edits before saving).
 //
 // Every AI endpoint declares its minimum. Adding the next AI feature means
 // a new version with new copy, not a new boolean column and not quietly

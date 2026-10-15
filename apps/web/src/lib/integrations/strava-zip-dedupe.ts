@@ -12,9 +12,13 @@
 /// the EF backfill + the mobile importer). Also drops the
 /// `source='strava'` filter — a Strava activity re-saved by another
 /// path still dedupes against its strava:<id> key.
-import { RUN_IDENTITY_PAGE_SIZE, RUN_IDENTITY_SAFETY_MAX } from './garmin_dedupe';
+import { KEYSET_WALK_PAGE_SIZE, walkKeyset } from '../core/keyset_page';
+import { RUN_DEDUPE_ORDER, type DedupePage } from './garmin_dedupe';
 
 export type StravaDedupeRow = { metadata?: unknown; external_id?: string | null };
+
+/// A dedupe row as the walk reads it: `id` and `started_at` are its cursor.
+export type StravaDedupeWalkRow = StravaDedupeRow & { id: string; started_at: string };
 
 export function buildStravaDedupeSet(rows: StravaDedupeRow[]): Set<string> {
 	const seen = new Set<string>();
@@ -29,24 +33,19 @@ export function buildStravaDedupeSet(rows: StravaDedupeRow[]): Set<string> {
 	return seen;
 }
 
-/// Page the existing-runs read in `RUN_IDENTITY_PAGE_SIZE` chunks before
-/// building the dedupe set. An unbounded PostgREST SELECT caps at 1000 rows,
-/// so a 1000+-run migrant re-importing a refreshed ZIP would otherwise dedupe
-/// against an arbitrary slice and silently re-import everything past the cap
-/// as full duplicates. Mirrors `collectRunIdentities`; `fetchPage` returns the
-/// rows for the inclusive `[from, to]` range, or `null` on error (stops, no
-/// throw). Pure + injectable so `npx tsx --test` can exercise the paging.
+/// Walk the existing runs before building the dedupe set. An unbounded
+/// PostgREST SELECT caps at 1000 rows, so a 1000+-run migrant re-importing a
+/// refreshed ZIP would otherwise dedupe against an arbitrary slice and
+/// silently re-import everything past the cap. Walked by keyset cursor in
+/// `RUN_DEDUPE_ORDER`, not by OFFSET: a row dropped at a page boundary by a
+/// concurrent sync or delete is an id missing from the set, which re-imports
+/// the activity (§ 1936). A page error ends the walk with what it has rather
+/// than throwing. Pure + injectable so `npx tsx --test` can exercise it.
 export async function collectStravaDedupeSet(
-	fetchPage: (from: number, to: number) => PromiseLike<StravaDedupeRow[] | null>,
-	pageSize: number = RUN_IDENTITY_PAGE_SIZE,
-	safetyMax: number = RUN_IDENTITY_SAFETY_MAX,
+	fetchPage: DedupePage<StravaDedupeWalkRow>,
+	pageSize: number = KEYSET_WALK_PAGE_SIZE,
 ): Promise<Set<string>> {
-	const seen = new Set<string>();
-	for (let from = 0; from < safetyMax; from += pageSize) {
-		const data = await fetchPage(from, from + pageSize - 1);
-		if (!data) break;
-		for (const k of buildStravaDedupeSet(data)) seen.add(k);
-		if (data.length < pageSize) break;
-	}
-	return seen;
+	const walk = await walkKeyset(RUN_DEDUPE_ORDER, fetchPage, { pageSize });
+	if (!walk.complete) console.warn('collectStravaDedupeSet: the walk ended short', walk.error);
+	return buildStravaDedupeSet(walk.rows);
 }

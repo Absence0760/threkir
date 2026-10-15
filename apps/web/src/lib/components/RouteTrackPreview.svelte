@@ -70,8 +70,8 @@
 	onMount(() => {
 		// Owner case + waypoints present: use them directly (no fetch).
 		// Some call sites (e.g. RouteExplorer cards, where the
-		// `search_public_routes` RPC returns the redacted
-		// `public_routes` view with NO waypoints column) pass
+		// public-route search reads the redacted `public_routes` view,
+		// which has NO waypoints column) pass
 		// `waypoints=[]`. Fall through to the clip RPC in that case
 		// so the card still gets a polyline — `clip_route_for_viewer`
 		// returns the unclipped polyline for the owner anyway.

@@ -218,6 +218,18 @@ test('aid services flow through to the leg', () => {
 	assert.deepEqual(rb.legs[1].services, ['water', 'food']);
 });
 
+test('aid services reach the leg as a set of strings', () => {
+	// The roadbook page keys its service chips on the name, so a duplicate in
+	// the schemaless meta bag threw each_key_duplicate and took the page down.
+	const wp = course();
+	const rb = buildRoadbook(
+		wp,
+		[marker(500, 'aid_station', 'Aid', { services: ['water', 'water', 7, 'food', 'water'] })],
+		{ goalSeconds: 3600, model: 'even' }
+	);
+	assert.deepEqual(rb.legs[1].services, ['water', 'food']);
+});
+
 // A 4 km 25 % climb then 4 km flat, sampled every `spacingM` metres. The
 // terrain is fixed; only the file's point density changes.
 function climbCourse(spacingM: number): RoadbookWaypoint[] {

@@ -56,6 +56,7 @@ void main() {
           ? 'legacy series expand in the host zone, and the fixture carries no '
               'vectors for this one (TZ=${Platform.environment['TZ']})'
           : null,
+      tags: 'tz',
     );
   }
 }

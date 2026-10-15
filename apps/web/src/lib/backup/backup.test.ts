@@ -15,7 +15,6 @@ import JSZip from 'jszip';
 
 import {
 	buildBackupZip,
-	readAllRows,
 	BACKUP_FORMAT,
 	BACKUP_VERSION
 } from './backup_writer';
@@ -266,69 +265,49 @@ test('buildBackupZip: profile id field is stripped to keep the archive re-homeab
 	assert.equal(profile.profile.id, undefined, 'id must be stripped');
 });
 
-// ─────────────────── readAllRows ───────────────────
+// ─────────────────── the row reads ───────────────────
 //
 // PostgREST answers an unranged SELECT with 200 and a silently clamped
-// 1000 rows. A backup built on that is short of the account and says
-// nothing about it — the exact failure decisions.md § 668 found on
-// mobile, and § 675 on web.
+// 1000 rows, so the reads behind a backup walk the table (decisions
+// § 668 found it on mobile, § 675 on web). They walk it by keyset
+// cursor: an OFFSET walk over a history that a sync or a delete changes
+// mid-read archives one run twice and drops another under a manifest
+// saying `complete` (§ 1936). The walk itself — paging, stop rule, a
+// mid-walk delete or insert — is pinned in `core/keyset_page.test.ts`.
 
-function pagesOf(total: number, pageSize: number) {
-	return (from: number, to: number) =>
-		Promise.resolve({
-			data: Array.from(
-				{ length: Math.max(0, Math.min(to, total - 1) - from + 1) },
-				(_, i) => ({ id: `r-${from + i}` })
-			),
-			error: null
-		});
-}
-
-test('readAllRows: 2400 rows come back whole across three pages, not clamped at 1000', async () => {
-	const read = await readAllRows(pagesOf(2400, 1000));
-	assert.equal(read.rows.length, 2400);
-	assert.equal(read.complete, true);
-	assert.equal(read.rows[2399].id, 'r-2399');
-});
-
-test('readAllRows: an exactly-full last page is followed by one more (empty) page', async () => {
-	let calls = 0;
-	const read = await readAllRows((from, to) => {
-		calls++;
-		return pagesOf(2000, 1000)(from, to);
-	});
-	assert.equal(read.rows.length, 2000);
-	assert.equal(calls, 3, 'a full final page cannot be assumed to be the last');
-	assert.equal(read.complete, true);
-});
-
-test('readAllRows: an empty table is a COMPLETE read, not a short one', async () => {
-	const read = await readAllRows(pagesOf(0, 1000));
-	assert.deepEqual(read.rows, []);
-	assert.equal(read.complete, true);
-});
-
-test('readAllRows: a page that errors returns what it has, flagged short, and never throws', async () => {
-	const read = await readAllRows((from, to) =>
-		from === 0
-			? pagesOf(3000, 1000)(from, to)
-			: Promise.resolve({ data: null, error: new Error('connection reset') })
+test('createBackup: the runs and routes reads are keyset walks over a total order, never offsets', () => {
+	const source = readFileSync(resolve('src/lib/backup/backup.ts'), 'utf-8');
+	const body = source.slice(
+		source.indexOf('export async function createBackup'),
+		source.indexOf('async function defaultTrackFetcher'),
 	);
-	assert.equal(read.rows.length, 1000);
-	assert.equal(read.complete, false);
-	assert.equal((read.error as Error).message, 'connection reset');
+	assert.ok(body.length > 0, 'createBackup body not found — did the file move?');
+	assert.doesNotMatch(body, /\.range\(/, 'a backup read must not walk by offset');
+	for (const order of ['BACKUP_RUN_ORDER', 'BACKUP_ROUTE_ORDER']) {
+		assert.match(body, new RegExp(`walkKeyset\\b[^(]*\\(${order},`), `${order} must drive a walk`);
+		assert.match(
+			body,
+			new RegExp(`for \\(const k of ${order}\\)[\\s\\S]*?\\.order\\(k\\.column`),
+			`the ${order} walk must sort by the order its cursor is taken in`,
+		);
+	}
+	const run = /const BACKUP_RUN_ORDER[^=]*= \[([^\]]*)\]/.exec(source);
+	const route = /const BACKUP_ROUTE_ORDER[^=]*= \[([^\]]*)\]/.exec(source);
+	assert.ok(run && route, 'the order constants moved — re-anchor');
+	const columns = (m: RegExpExecArray) => [...m[1].matchAll(/column: '(\w+)'/g)].map((c) => c[1]);
+	assert.deepEqual(columns(run), ['started_at', 'id'], 'runs end on the primary key');
+	assert.deepEqual(columns(route), ['id'], 'routes order on the primary key');
 });
 
-test('readAllRows: the safety ceiling reports a shortfall rather than a whole read', async () => {
-	// A server that ignores `range` never returns a short page. Terminating
-	// is not the interesting part — refusing to call the result complete is.
-	const read = await readAllRows(
-		() => Promise.resolve({ data: [{ id: 'x' }, { id: 'y' }], error: null }),
-		2,
-		6
+test('createBackup: a walk that came up short names its section in the manifest', () => {
+	const source = readFileSync(resolve('src/lib/backup/backup.ts'), 'utf-8');
+	assert.match(source, /runsRead\.complete \? \[\] : \['runs'\]/);
+	assert.match(source, /routesRead\.complete \? \[\] : \['routes'\]/);
+	assert.match(
+		source,
+		/if \(runsRead\.error && runsRead\.rows\.length === 0\) throw dbError\(runsRead\.error\)/,
+		'a runs read that returned nothing is a failed backup, not an empty one',
 	);
-	assert.equal(read.rows.length, 6);
-	assert.equal(read.complete, false);
 });
 
 test("buildBackupZip: a caller-reported short read joins the writer's own in the manifest", async () => {

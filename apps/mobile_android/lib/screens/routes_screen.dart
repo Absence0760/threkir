@@ -119,6 +119,12 @@ class RoutesScreenState extends State<RoutesScreen> {
   bool _loadingMore = false;
   bool _remoteHasMore = true;
 
+  /// The cursor after the last route the server returned — the server's own
+  /// values, so a `created_at` keeps its microseconds and the next page starts
+  /// exactly after it. Null until the first page lands, which makes a load
+  /// more before then read the first page.
+  List<Object?>? _remoteNext;
+
   // Filter state — mirrors the web `/routes` toolbar. The
   // post-filter list feeds the visible-window paging.
   String _search = '';
@@ -170,7 +176,7 @@ class RoutesScreenState extends State<RoutesScreen> {
       final starred = await api
           .getRoutes(starredOnly: true, limit: 500)
           .timeout(kBackendLoadTimeout);
-      await widget.routeStore.saveBatch(starred);
+      await widget.routeStore.saveBatch(starred.rows);
       _starredLoaded = true;
       if (mounted) setState(() {});
     } catch (e) {
@@ -201,12 +207,15 @@ class RoutesScreenState extends State<RoutesScreen> {
       // Initial sync pulls only the first page — older routes flow in
       // through Load more. Cap mirrors `_kRoutesPageSize` so a returning
       // user sees the same shape as the web `/routes` first paint.
-      final remote = await api
+      final page = await api
           .getRoutes(limit: _kRoutesPageSize)
           .timeout(kBackendLoadTimeout);
-      await widget.routeStore.saveBatch(remote);
+      await widget.routeStore.saveBatch(page.rows);
       if (!mounted) return;
-      setState(() => _remoteHasMore = remote.length == _kRoutesPageSize);
+      setState(() {
+        _remoteNext = page.next;
+        _remoteHasMore = page.next != null;
+      });
     } catch (e) {
       debugPrint('Fetch routes failed: $e');
       if (mounted) {
@@ -253,24 +262,23 @@ class RoutesScreenState extends State<RoutesScreen> {
 
     setState(() => _loadingMore = true);
     try {
-      // Cursor over the *oldest owned* route's created_at — bookmarked
-      // routes share createdAt with the original author and would
-      // produce false cursors. Owned routes are the only thing
-      // getRoutes() returns anyway.
-      final owned = widget.routeStore.routes;
-      final cursor = owned.isEmpty || owned.last.createdAt == null
-          ? DateTime.now()
-          : owned.last.createdAt!;
-      final remote = await api
+      // The cursor is the last row the SERVER returned, not the store's last
+      // route: the store keeps insertion order and also holds the starred
+      // routes `_ensureStarredLoaded` pulled from anywhere in the history, so
+      // its last row can sit pages past where this list has read, and a
+      // `created_at` round-tripped through DateTime loses the server's
+      // microseconds.
+      final page = await api
           .getRoutes(
             limit: _kRoutesPageSize,
-            before: cursor,
+            after: _remoteNext,
           )
           .timeout(kBackendLoadTimeout);
-      await widget.routeStore.saveBatch(remote);
+      await widget.routeStore.saveBatch(page.rows);
       if (!mounted) return;
       setState(() {
-        _remoteHasMore = remote.length == _kRoutesPageSize;
+        _remoteNext = page.next;
+        _remoteHasMore = page.next != null;
         _visibleCount += _kRoutesPageSize;
       });
     } catch (e) {

@@ -49,18 +49,18 @@ class _NotifApi extends ApiClient {
   }) async => const [];
 
   @override
-  Future<List<UserProfileRow>> fetchFollowers(
+  Future<KeysetPage<UserProfileRow>> fetchFollowers(
     String userId, {
     int limit = 20,
-    int offset = 0,
-  }) async => const [];
+    List<Object?>? after,
+  }) async => const KeysetPage(<UserProfileRow>[], null);
 
   @override
-  Future<List<UserProfileRow>> fetchFollowing(
+  Future<KeysetPage<UserProfileRow>> fetchFollowing(
     String userId, {
     int limit = 20,
-    int offset = 0,
-  }) async => const [];
+    List<Object?>? after,
+  }) async => const KeysetPage(<UserProfileRow>[], null);
 
   @override
   Future<List<AchievementRow>> fetchUserBadges(String userId) async => const [];

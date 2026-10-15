@@ -13,6 +13,18 @@ import type { Insertable, Updatable } from './database';
 import type { JsonObject, TrackPoint } from '../types';
 import { isEntityId } from './entity_id';
 import { markListsStale } from './list_freshness';
+import {
+	keysetAfter,
+	literalSubstringPattern,
+	literalSubstringTerm,
+	nextCursor,
+	publicRouteOrder,
+	type KeysetCursor,
+	type KeysetKey,
+	type KeysetPage,
+	type PublicRouteSort,
+	walkKeyset,
+} from './keyset_page';
 import { probeSaysConfigured } from './provider_probe';
 import { loadSettings, effective } from '../settings/settings';
 import type { Modality } from '../settings/modality_visibility';
@@ -249,10 +261,15 @@ import {
 export type RunColumns = readonly (keyof Run & keyof RunRow)[];
 
 export interface FetchRunsOptions<C extends RunColumns = RunColumns> {
-	/** Cap the number of rows returned. Pair with `offset` for paging. */
+	/** Cap the number of rows returned. Pair with `after` for paging. */
 	limit?: number;
-	/** Skip this many rows before the page (for paged loads). */
-	offset?: number;
+	/**
+	 * Only the runs strictly after this cursor in `RUN_ORDER` — the previous
+	 * page's `next` from `fetchRunsWithError`. A cursor rather than an offset:
+	 * a run deleted or synced in between two reads moves every later position,
+	 * and an offset then skips or repeats a run.
+	 */
+	after?: KeysetCursor | null;
 	/**
 	 * Re-throw a hard fetch error instead of degrading to `[]`. Default off:
 	 * most callers want a resilient empty list. The personal heatmap opts in
@@ -280,6 +297,15 @@ export interface FetchRunsOptions<C extends RunColumns = RunColumns> {
 	startedAtBefore?: string;
 }
 
+/// Newest run first; `id` breaks a `started_at` tie so the order is total.
+/// Served by `runs_user_started_at (user_id, started_at desc)` up to the
+/// tie-break. Both columns are NOT NULL, so the null placement is the
+/// Postgres default and only spelt out because a keyset key must say it.
+const RUN_ORDER: readonly KeysetKey[] = [
+	{ column: 'started_at', ascending: false, nullsFirst: true },
+	{ column: 'id', ascending: false, nullsFirst: true },
+];
+
 export async function fetchRuns(opts?: Omit<FetchRunsOptions, 'columns'>): Promise<Run[]>;
 export async function fetchRuns<C extends RunColumns>(
 	opts: FetchRunsOptions<C> & { columns: C },
@@ -293,7 +319,7 @@ export async function fetchRuns(
 	// `/tmp/data-isolation-audit/client-realtime.md` M2.
 	const userId = auth.user?.id;
 	if (!userId) return [];
-	const build = <S extends string>(select: S) => {
+	const build = <S extends string>(select: S, after: string | null) => {
 		let q = supabase
 			.from(TABLES.runs)
 			// Generic over the select list rather than a ternary over it. A
@@ -307,51 +333,46 @@ export async function fetchRuns(
 			.eq('user_id', userId);
 		if (opts?.startedAtFrom != null) q = q.gte('started_at', opts.startedAtFrom);
 		if (opts?.startedAtBefore != null) q = q.lt('started_at', opts.startedAtBefore);
-		// Secondary key so the paged branch below composes into the whole
-		// history: two runs sharing a `started_at` straddling a page boundary
-		// can otherwise be returned twice or dropped. Same rule
-		// `fetchClubMembers` states for its load-more pages.
-		return q.order('started_at', { ascending: false }).order('id', { ascending: false });
+		if (after) q = q.or(after);
+		// Sorted by the same spec the cursor is read from, so the two cannot
+		// drift: a cursor taken in one order and applied in another skips rows.
+		for (const k of RUN_ORDER) {
+			q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+		}
+		return q;
 	};
 
-	// The paging, the `limit`/`offset` window, the `throwOnError` contract and
-	// the safety ceiling, shared by both branches and generic in the row type
-	// the caller's own page function hands back. Sharing them is what the
-	// per-projection sibling § 1518 refused would have cost four copies of.
-	const collect = async <R>(
-		page: (from: number, to: number) => PromiseLike<{ data: R[] | null; error: unknown }>,
+	// One load-more page, or the whole history; the `throwOnError` contract is
+	// shared by both branches and generic in the row type the caller's own page
+	// function hands back. Sharing it is what the per-projection sibling § 1518
+	// refused would have cost four copies of.
+	const collect = async <R extends object>(
+		page: (after: string | null, limit: number) => PromiseLike<{ data: R[] | null; error: unknown }>,
 	): Promise<R[]> => {
 		if (opts?.limit != null) {
-			const from = opts.offset ?? 0;
-			const { data, error } = await page(from, from + opts.limit - 1);
+			const after = opts.after ? keysetAfter(RUN_ORDER, opts.after) : null;
+			if (opts.after && after === null) return [];
+			const { data, error } = await page(after, opts.limit);
 			if (error || !data) {
 				if (opts?.throwOnError && error) throw dbError(error);
 				return [];
 			}
 			return data;
 		}
-		// No explicit limit means "every run". PostgREST caps an unbounded
-		// SELECT at 1000 rows, which silently dropped the oldest activities
-		// of a high-volume history (a 1,500-run Strava migrant lost ~500)
-		// across recap / heatmap / dashboard / account / runs. Page through
-		// instead so nothing is truncated; the safety ceiling logs rather
-		// than dropping silently. Theme C (strava-migration / pro).
-		const PAGE = 1000;
-		const SAFETY_MAX = 50_000;
-		const rows: R[] = [];
-		for (let from = 0; from < SAFETY_MAX; from += PAGE) {
-			const { data, error } = await page(from, from + PAGE - 1);
-			if (error || !data) {
-				if (opts?.throwOnError && error) throw dbError(error);
-				break;
+		// No explicit limit means "every run" — recap, heatmap, account export.
+		// PostgREST caps an unbounded SELECT at 1000 rows, so the history is
+		// walked, and walked by cursor: an OFFSET walk over a history that a
+		// sync or a delete changes mid-read skips or repeats a run (§ 1936).
+		const walk = await walkKeyset(RUN_ORDER, page, { start: opts?.after ?? null });
+		// A history that ended short is not a shorter history: the export and
+		// the totals would present the missing runs as never having existed.
+		if (!walk.complete) {
+			if (opts?.throwOnError) {
+				throw dbError(walk.error ?? new Error('fetchRuns: the history walk ended short'));
 			}
-			rows.push(...data);
-			if (data.length < PAGE) break;
+			console.warn('fetchRuns: the history walk ended short', walk.error);
 		}
-		if (rows.length >= SAFETY_MAX) {
-			console.warn(`fetchRuns reached the ${SAFETY_MAX}-row ceiling; older runs may be omitted`);
-		}
-		return rows;
+		return walk.rows;
 	};
 
 	// Defensive narrow on read: the DB CHECK constraints stop bad `source` /
@@ -363,17 +384,28 @@ export async function fetchRuns(
 	// selects every column, and says so with a literal the parser reads for
 	// itself rather than with an assertion this function makes about itself.
 	if (opts?.columns) {
-		const columns = opts.columns;
+		const columns: readonly string[] = opts.columns;
+		// The cursor is read off the row, so a projection that leaves out an
+		// order column selects it for the walk and drops it again: the row
+		// must carry only the columns its type names (§ 1520).
+		const cursorOnly = RUN_ORDER.map((k) => k.column).filter((c) => !columns.includes(c));
 		// The joined list is `string`, so the parser answers `GenericStringError`
 		// and the rows would be walked as errors. `Partial<RunRow>` is the honest
 		// claim for a projection: which of the columns arrived is the caller's
 		// tuple to say, and the overload above says it.
-		const rows = await collect((from, to) =>
-			build(columns.join(SELECT_SEPARATOR)).range(from, to).overrideTypes<Partial<RunRow>[]>(),
+		const read = await collect((after, limit) =>
+			build([...columns, ...cursorOnly].join(SELECT_SEPARATOR), after)
+				.limit(limit)
+				.overrideTypes<Partial<RunRow>[]>(),
 		);
+		const rows = read.map((r) => {
+			const out: Record<string, unknown> = { ...r };
+			for (const c of cursorOnly) delete out[c];
+			return out as Partial<RunRow>;
+		});
 		return rows.map(asProjectedRun);
 	}
-	const rows = await collect((from, to) => build('*').range(from, to));
+	const rows = await collect((after, limit) => build('*', after).limit(limit));
 	return rows.map((r) => asRun(r, null));
 }
 
@@ -386,14 +418,19 @@ export async function fetchRuns(
 /// genuinely-empty result is `{ runs: [], error: null }`. Mirrors the
 /// `fetchFoodLogWithError` convention. A signed-out caller is empty, not an
 /// error (nothing to load yet).
+///
+/// With a `limit` it is one load-more page, and `next` is the cursor to pass
+/// back as `after` for the page that follows — null once a short page says
+/// the history is exhausted, and always null for an unlimited read.
 export async function fetchRunsWithError(
 	opts?: Omit<FetchRunsOptions, 'columns'>,
-): Promise<{ runs: Run[]; error: string | null }> {
+): Promise<{ runs: Run[]; error: string | null; next: KeysetCursor | null }> {
 	try {
 		const runs = await fetchRuns({ ...opts, throwOnError: true });
-		return { runs, error: null };
+		const next = opts?.limit != null ? nextCursor(RUN_ORDER, runs, opts.limit) : null;
+		return { runs, error: null, next };
 	} catch (e) {
-		return { runs: [], error: thrownMessage(e) || 'Failed to load runs' };
+		return { runs: [], error: thrownMessage(e) || 'Failed to load runs', next: null };
 	}
 }
 
@@ -1925,6 +1962,20 @@ export async function nearbyPublicRoutes(options: {
 	return data as PublicRouteSummary[];
 }
 
+/// The public-route catalogue search, one keyset page at a time: pass the
+/// previous page's `next` as `after` (with the SAME filters and sort) to load
+/// more.
+///
+/// Reads the `public_routes` view directly rather than through the
+/// `search_public_routes` RPC (dropped in 20270817000001). The RPC paged by
+/// `p_offset`, and an offset is a position: a route published or unpublished
+/// between two reads moves every later position, so "load more" repeated or skipped a route — and none of its
+/// three orders was total, so two routes sharing a `created_at` could swap
+/// between reads. The view is the RPC's own source (same visibility: public,
+/// not shadow-hidden, club id redacted) and is granted to anon + authenticated,
+/// so the filters move here verbatim and the order gains `id` from
+/// `publicRouteOrder`, whose prefix keeps the RPC's per-sort partial indexes
+/// (migration 20270326_001) serving it. Mirrors `ApiClient.searchPublicRoutes`.
 export async function searchPublicRoutes(options?: {
 	query?: string;
 	minDistanceM?: number;
@@ -1932,10 +1983,10 @@ export async function searchPublicRoutes(options?: {
 	surface?: string;
 	tags?: string[];
 	featuredOnly?: boolean;
-	sort?: 'newest' | 'popular' | 'featured';
+	sort?: PublicRouteSort;
 	limit?: number;
-	offset?: number;
-}): Promise<PublicRouteSummary[]> {
+	after?: KeysetCursor | null;
+}): Promise<KeysetPage<PublicRouteSummary>> {
 	const {
 		query,
 		minDistanceM,
@@ -1945,32 +1996,38 @@ export async function searchPublicRoutes(options?: {
 		featuredOnly,
 		sort = 'newest',
 		limit = 50,
-		offset = 0,
 	} = options ?? {};
 
-	const { data, error } = await supabase.rpc('search_public_routes', {
-		p_query: query && query.trim() ? query.trim() : null,
-		p_min_distance_m: minDistanceM ?? null,
-		p_max_distance_m: maxDistanceM ?? null,
-		// Treat empty-string surface the same as null (no filter) —
-		// matches mobile's `ApiClient.searchPublicRoutes`, which gates
-		// on `surface.isNotEmpty`. Previously web passed `''` straight
-		// through to the RPC, where `surface = ''` matches no rows
-		// and the user saw an empty result list rather than the full
-		// catalogue.
-		p_surface: surface && surface.length > 0 ? surface : null,
-		p_tags: tags && tags.length > 0 ? tags : null,
-		p_featured_only: featuredOnly ?? false,
-		p_sort: sort,
-		p_limit: limit,
-		p_offset: offset,
-	});
+	const order = publicRouteOrder(sort);
+	const after = options?.after ? keysetAfter(order, options.after) : undefined;
+	if (after === null) return { rows: [], next: null };
+
+	let q = supabase.from('public_routes').select('*');
+	const trimmed = query?.trim();
+	// Every character of the query matches literally: `ilike` would read `*`
+	// (PostgREST's alias for `%`), `%`, `_` and `\` as wildcards.
+	if (trimmed) q = q.regexIMatch('name', literalSubstringPattern(trimmed));
+	if (minDistanceM != null) q = q.gte('distance_m', minDistanceM);
+	if (maxDistanceM != null) q = q.lte('distance_m', maxDistanceM);
+	// Treat empty-string surface the same as no filter — matches mobile's
+	// `ApiClient.searchPublicRoutes`, which gates on `surface.isNotEmpty`.
+	// `surface = ''` matches no rows, so passing it through showed an empty
+	// result list rather than the full catalogue.
+	if (surface && surface.length > 0) q = q.eq('surface', surface);
+	if (tags && tags.length > 0) q = q.overlaps('tags', tags);
+	if (featuredOnly) q = q.eq('is_featured', true);
+	if (after) q = q.or(after);
+	for (const k of order) {
+		q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+	}
+	const { data, error } = await q.limit(limit);
 	// Throw on error rather than collapsing to []: the sole caller
 	// (RouteExplorer) needs to tell a genuine load failure apart from a
 	// legitimately empty result so it can show a retry affordance instead
 	// of a misleading "no matches" empty state.
 	if (error) throw dbError(error);
-	return (data ?? []) as PublicRouteSummary[];
+	const rows = data ?? [];
+	return { rows: rows as PublicRouteSummary[], next: nextCursor(order, rows, limit) };
 }
 
 /// The set of tags currently used across any public route, ordered by
@@ -2550,8 +2607,12 @@ export async function browseClubsWithError(
 ): Promise<{ clubs: ClubWithMeta[]; error: string | null }> {
 	let query = supabase.from('clubs').select(CLUB_SELECT_COLS).eq('is_public', true);
 	if (search && search.trim()) {
+		// Quoted per filter: the raw term inside the `or=` tree let `,` start a
+		// new filter and `)` close the tree, and ilike read `*` `%` `_` as wildcards.
 		const term = search.trim();
-		query = query.or(`name.ilike.%${term}%,location_label.ilike.%${term}%`);
+		query = query.or(
+			`${literalSubstringTerm('name', term)},${literalSubstringTerm('location_label', term)}`
+		);
 	}
 	const { data, error } = await query.order('created_at', { ascending: false }).limit(60);
 	if (error) return { clubs: [], error: error.message };
@@ -2564,8 +2625,8 @@ export async function browseClubs(search?: string): Promise<ClubWithMeta[]> {
 
 /// Region-aware club search. Tries to geocode the query first
 /// (so "Virginia" → centroid + ~470km radius → ST_DWithin against
-/// `clubs.location_point`); falls back to the same ILIKE-on-name /
-/// label path `browseClubs` uses when geocoding doesn't resolve
+/// `clubs.location_point`); falls back to the same literal name /
+/// label match `browseClubs` uses when geocoding doesn't resolve
 /// (short query, MapTiler offline, no key, etc.). See
 /// [migration 20260905_001] for the RPC.
 export async function searchClubsWithError(
@@ -2590,7 +2651,7 @@ export async function searchClubsWithError(
 		p_limit: 60,
 	}, { get: true });
 	if (error) {
-		console.warn('search_clubs RPC failed, falling back to ILIKE-only', error);
+		console.warn('search_clubs RPC failed, falling back to the name/label match', error);
 		return browseClubsWithError(term);
 	}
 	// The RPC returns `setof clubs` — strip the columns the client
@@ -3142,19 +3203,41 @@ export async function fetchMyClubsWithError(): Promise<{
 		userId = session?.user?.id;
 	}
 	if (!userId) return { clubs: [], error: null };
-	const { data, error } = await supabase
-		.from(TABLES.club_members)
-		.select(`club_id, role, clubs!inner(${CLUB_SELECT_COLS})` as const)
-		.eq('user_id', userId)
-		.order('joined_at', { ascending: false });
-	if (error) return { clubs: [], error: error.message };
+	const uid = userId;
+	// Walked by cursor: an unranged select is capped at `db.max-rows` (1000)
+	// with no flag, and nothing bounds how many clubs one user joins (§ 1940).
+	const walk = await walkKeyset(MY_CLUB_MEMBERSHIP_ORDER, (after, limit) => {
+		let q = supabase
+			.from(TABLES.club_members)
+			.select(`club_id, role, joined_at, clubs!inner(${CLUB_SELECT_COLS})` as const)
+			.eq('user_id', uid);
+		if (after) q = q.or(after);
+		for (const k of MY_CLUB_MEMBERSHIP_ORDER) {
+			q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+		}
+		return q.limit(limit);
+	});
+	if (!walk.complete) {
+		console.error('fetchMyClubs failed', walk.error);
+		const error = walk.error as { message?: unknown } | null;
+		return { clubs: [], error: typeof error?.message === 'string' ? error.message : 'unavailable' };
+	}
 	// `(row: any)` stood here and hid that this read alone skipped `asClub`:
 	// the embedded row's `join_policy` arrived as the bare `string` the
 	// generated type gives it and was handed on under a type promising the
 	// union. Typing the client is what made the gap visible.
-	const clubs = (data ?? []).map((row) => row.clubs).filter(Boolean).map(asClub);
+	const clubs = walk.rows.map((row) => row.clubs).filter(Boolean).map(asClub);
 	return enrichClubs(clubs);
 }
+
+/// Most recently joined first; `club_id` (unique within one user's
+/// memberships — the key is `(club_id, user_id)`) breaks a `joined_at` tie so
+/// the order is total. Mobile's `SocialService.myClubMembershipOrder` is the
+/// same order.
+const MY_CLUB_MEMBERSHIP_ORDER: readonly KeysetKey[] = [
+	{ column: 'joined_at', ascending: false, nullsFirst: false },
+	{ column: 'club_id', ascending: false, nullsFirst: false },
+];
 
 export async function fetchMyClubs(): Promise<ClubWithMeta[]> {
 	return (await fetchMyClubsWithError()).clubs;
@@ -3243,13 +3326,28 @@ async function enrichClubs(
 	const ids = clubs.map((c) => c.id);
 	const userId = auth.user?.id;
 
-	const rolesRes = userId
-		? await supabase
-				.from(TABLES.club_members)
-				.select('club_id, role, status')
-				.in('club_id', ids)
-				.eq('user_id', userId)
-		: { data: [] as { club_id: string; role: string; status: string }[], error: null };
+	// Chunked: a walked `fetchMyClubs` can list more clubs than one `in`
+	// filter carries before the request line overflows (decisions § 653).
+	type MembershipRow = { club_id: string; role: string; status: string };
+	let rolesRes: { data: MembershipRow[] | null; error: { message: string; code?: string | null } | null } = {
+		data: [],
+		error: null,
+	};
+	if (userId) {
+		const pages = await Promise.all(
+			chunk(ids, FEED_FOLLOWEE_CHUNK).map((part) =>
+				supabase
+					.from(TABLES.club_members)
+					.select('club_id, role, status')
+					.in('club_id', part)
+					.eq('user_id', userId)
+			)
+		);
+		const failed = pages.find((p) => p.error);
+		rolesRes = failed?.error
+			? { data: null, error: failed.error }
+			: { data: pages.flatMap((p) => p.data ?? []), error: null };
+	}
 
 	const roles = new Map<string, ClubRole>();
 	const statuses = new Map<string, MembershipStatus>();
@@ -3480,13 +3578,28 @@ export async function fetchPendingRequests(clubId: string): Promise<(ClubMember 
 	display_name: string | null;
 	avatar_url: string | null;
 })[]> {
-	const { data: rows } = await supabase
-		.from(TABLES.club_members)
-		.select('club_id, user_id, role, status, joined_at')
-		.eq('club_id', clubId)
-		.eq('status', 'pending')
-		.order('joined_at', { ascending: true });
-	if (!rows || rows.length === 0) return [];
+	// Walked by cursor: nothing bounds how many requests a request-to-join club
+	// accumulates, and an unranged select capped at `db.max-rows` (1000) hid
+	// every request past the cap from the admin with no error (§ 1940).
+	const walk = await walkKeyset(CLUB_MEMBER_ORDER, (after, limit) => {
+		let q = supabase
+			.from(TABLES.club_members)
+			.select('club_id, user_id, role, status, joined_at')
+			.eq('club_id', clubId)
+			.eq('status', 'pending');
+		if (after) q = q.or(after);
+		for (const k of CLUB_MEMBER_ORDER) {
+			q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+		}
+		return q.limit(limit);
+	});
+	// Throws rather than returning the rows it reached: a queue that failed to
+	// load must not read as "no one is waiting" to the admin approving it.
+	if (!walk.complete) {
+		throw dbError(walk.error ?? new Error('fetchPendingRequests: the walk ended short'));
+	}
+	const rows = walk.rows;
+	if (rows.length === 0) return [];
 	const userIds = (rows as ClubMember[]).map((r) => r.user_id);
 	const byId = await fetchProfilesByIds(userIds);
 	return (rows as ClubMember[]).map((r) => ({
@@ -3571,37 +3684,54 @@ export async function leaveClub(clubId: string): Promise<void> {
 /// every view — see `fetchFollowers` / `FOLLOW_PAGE_SIZE` for the same shape.
 export const ROSTER_PAGE_SIZE = 50;
 
+/// Oldest member first; `user_id` (unique within one club) breaks a
+/// `joined_at` tie so the order is total. `joined_at` is nullable, and a null
+/// sorts last as it always has. Served by `club_members_club_roster
+/// (club_id, joined_at, user_id)`, whose ascending-nulls-last keys are this
+/// order exactly.
+const CLUB_MEMBER_ORDER: readonly KeysetKey[] = [
+	{ column: 'joined_at', ascending: true, nullsFirst: false },
+	{ column: 'user_id', ascending: true, nullsFirst: false },
+];
+
+/// A club's roster, one keyset page at a time: pass the previous page's
+/// `next` as `after` to load more. A cursor rather than an offset because a
+/// member who leaves between two reads moves every later member up one, and
+/// offset 50 then starts a row late, so one member is never shown.
 export async function fetchClubMembers(
 	clubId: string,
-	opts?: { limit?: number; offset?: number }
-): Promise<(ClubMember & {
+	opts?: { limit?: number; after?: KeysetCursor | null }
+): Promise<KeysetPage<ClubMember & {
 	display_name: string | null;
 	avatar_url: string | null;
-})[]> {
+}>> {
 	const limit = opts?.limit ?? ROSTER_PAGE_SIZE;
-	const offset = opts?.offset ?? 0;
-	const { data: members } = await supabase
+	const after = opts?.after ? keysetAfter(CLUB_MEMBER_ORDER, opts.after) : undefined;
+	if (after === null) return { rows: [], next: null };
+	let q = supabase
 		.from(TABLES.club_members)
 		// Enumerate columns rather than `*`: on a public club anyone can
 		// read this list, and `activity_waiver_ack_at` (when a member
 		// signed the liability waiver) is the member's own business, not
 		// public roster data.
 		.select('club_id, user_id, role, status, joined_at')
-		.eq('club_id', clubId)
-		.order('joined_at', { ascending: true })
-		// Secondary key so offset pages are stable when two members share a
-		// joined_at timestamp — without it a row on a page boundary can be
-		// duplicated or skipped on load-more.
-		.order('user_id', { ascending: true })
-		.range(offset, offset + limit - 1);
-	if (!members) return [];
+		.eq('club_id', clubId);
+	if (after) q = q.or(after);
+	for (const k of CLUB_MEMBER_ORDER) {
+		q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+	}
+	const { data: members } = await q.limit(limit);
+	if (!members) return { rows: [], next: null };
 	const userIds = (members as ClubMember[]).map((m) => m.user_id);
 	const byId = await fetchProfilesByIds(userIds);
-	return (members as ClubMember[]).map((m) => ({
-		...m,
-		display_name: byId.get(m.user_id)?.display_name ?? null,
-		avatar_url: byId.get(m.user_id)?.avatar_url ?? null
-	}));
+	return {
+		rows: (members as ClubMember[]).map((m) => ({
+			...m,
+			display_name: byId.get(m.user_id)?.display_name ?? null,
+			avatar_url: byId.get(m.user_id)?.avatar_url ?? null
+		})),
+		next: nextCursor(CLUB_MEMBER_ORDER, members, limit),
+	};
 }
 
 // --- Events ---
@@ -4473,34 +4603,53 @@ export async function markAttendance(
 	if (error) throw dbError(error);
 }
 
+/// Earliest RSVP first; `user_id` (unique within one occurrence — the primary
+/// key is `(event_id, user_id, instance_start)`) breaks a `joined_at` tie so
+/// the order is total. `joined_at` is nullable and a null sorts last, as it
+/// always has. Served by `event_attendees_instance_roster (event_id,
+/// instance_start, joined_at, user_id)`; mobile's `ApiClient.eventAttendeeOrder`
+/// is the same order.
+const EVENT_ATTENDEE_ORDER: readonly KeysetKey[] = [
+	{ column: 'joined_at', ascending: true, nullsFirst: false },
+	{ column: 'user_id', ascending: true, nullsFirst: false },
+];
+
+/// One occurrence's attendee list, one keyset page at a time: pass the
+/// previous page's `next` as `after` to load more. A cursor rather than an
+/// offset because an RSVP withdrawn between two reads moves every later
+/// attendee up one, and offset 50 then starts a row late.
 export async function fetchEventAttendees(
 	eventId: string,
 	instanceStart: string,
-	opts?: { limit?: number; offset?: number }
-): Promise<(EventAttendee & {
+	opts?: { limit?: number; after?: KeysetCursor | null }
+): Promise<KeysetPage<EventAttendee & {
 	display_name: string | null;
 	avatar_url: string | null;
-})[]> {
+}>> {
 	const limit = opts?.limit ?? ROSTER_PAGE_SIZE;
-	const offset = opts?.offset ?? 0;
-	const { data: attendees } = await supabase
+	const after = opts?.after ? keysetAfter(EVENT_ATTENDEE_ORDER, opts.after) : undefined;
+	if (after === null) return { rows: [], next: null };
+	let q = supabase
 		.from(TABLES.event_attendees)
 		.select('*')
 		.eq('event_id', eventId)
-		.eq('instance_start', instanceStart)
-		.order('joined_at', { ascending: true })
-		// Secondary key so offset pages are stable when two RSVPs share a
-		// joined_at timestamp (see fetchClubMembers).
-		.order('user_id', { ascending: true })
-		.range(offset, offset + limit - 1);
-	if (!attendees) return [];
+		.eq('instance_start', instanceStart);
+	if (after) q = q.or(after);
+	for (const k of EVENT_ATTENDEE_ORDER) {
+		q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+	}
+	const { data: attendees } = await q.limit(limit);
+	if (!attendees) return { rows: [], next: null };
 	const userIds = (attendees as EventAttendee[]).map((a) => a.user_id);
 	const byId = await fetchProfilesByIds(userIds);
-	return (attendees as EventAttendee[]).map((a) => ({
-		...a,
-		display_name: byId.get(a.user_id)?.display_name ?? null,
-		avatar_url: byId.get(a.user_id)?.avatar_url ?? null
-	}));
+	return {
+		rows: (attendees as EventAttendee[]).map((a) => ({
+			...a,
+			display_name: byId.get(a.user_id)?.display_name ?? null,
+			avatar_url: byId.get(a.user_id)?.avatar_url ?? null
+		})),
+		next: nextCursor(EVENT_ATTENDEE_ORDER, attendees, limit),
+	};
 }
 
 /// Exact per-status RSVP tallies + the viewer's own status for an event
@@ -5478,7 +5627,8 @@ export type PublicPlanLibraryEntry = TrainingPlan & {
 };
 
 /// Browse the public plan library — published plans any user can clone
-/// (migration 20270126_001). Optional case-insensitive name search.
+/// (migration 20270126_001). Optional case-insensitive name search, every
+/// character matched literally (`literalSubstringPattern`, decisions § 1937).
 /// Each entry carries the author's public display name (handle) joined
 /// from user_profiles; no other author data is exposed. Mirrors mobile
 /// `TrainingService.fetchPublicPlanLibrary`.
@@ -5493,7 +5643,7 @@ export async function fetchPublicPlanLibrary(
 		.order('created_at', { ascending: false })
 		.limit(limit);
 	const trimmed = query.trim();
-	if (trimmed) q = q.ilike('name', `%${trimmed}%`);
+	if (trimmed) q = q.regexIMatch('name', literalSubstringPattern(trimmed));
 	const { data, error } = await q;
 	if (error) return { plans: [], error: error.message };
 	const rows = (data ?? []) as TrainingPlan[];
@@ -6683,69 +6833,92 @@ async function hydratePeopleSuggestions(
 	}));
 }
 
-/// People who follow `userId`, paginated client-side after fetch.
 /// Default page size for the follower / following lists. The /u/[id]
 /// tabs request one page at a time and load more on demand, so a user
 /// with hundreds of followers is fully reachable rather than truncated.
 export const FOLLOW_PAGE_SIZE = 50;
 
-export async function fetchFollowers(
-	userId: string,
-	opts?: { limit?: number; offset?: number }
-): Promise<PublicProfile[]> {
-	const limit = opts?.limit ?? FOLLOW_PAGE_SIZE;
-	const offset = opts?.offset ?? 0;
-	const { data: edges, error } = await supabase
-		.from('user_follows')
-		.select('follower_id, followed_at')
-		.eq('followee_id', userId)
-		.order('followed_at', { ascending: false })
-		// Secondary key so offset pages are stable when two follows share a
-		// followed_at timestamp — without it a row on a page boundary can be
-		// duplicated or skipped on load-more.
-		.order('follower_id', { ascending: true })
-		.range(offset, offset + limit - 1);
-	if (error) throw dbError(error);
-	const ids = (edges ?? []).map((e) => e.follower_id as string);
+/// Newest follow first. The other party's id breaks a `followed_at` tie, which
+/// makes the order total — a keyset over a non-unique order skips a tied row.
+/// Served by `user_follows_followee` / `user_follows_follower`
+/// (`(<anchor>, followed_at desc)`) up to the tie-break.
+const FOLLOWERS_ORDER: readonly KeysetKey[] = [
+	{ column: 'followed_at', ascending: false, nullsFirst: true },
+	{ column: 'follower_id', ascending: false, nullsFirst: true },
+];
+const FOLLOWING_ORDER: readonly KeysetKey[] = [
+	{ column: 'followed_at', ascending: false, nullsFirst: true },
+	{ column: 'followee_id', ascending: false, nullsFirst: true },
+];
+
+/// Resolve follow-edge ids to profiles, in edge order. An id with no readable
+/// profile row is dropped here, AFTER the cursor was taken from the edge, so
+/// it neither ends the list early nor shifts the next page.
+async function profilesInEdgeOrder(ids: string[]): Promise<PublicProfile[]> {
 	if (ids.length === 0) return [];
-	const { data: profiles, error: profilesError } = await supabase
+	const { data: profiles, error } = await supabase
 		.from('user_profiles')
 		.select('id, display_name, avatar_url')
 		.in('id', ids);
-	if (profilesError) throw dbError(profilesError);
+	if (error) throw dbError(error);
 	const byId = new Map<string, PublicProfile>();
 	for (const p of profiles ?? []) byId.set(p.id, p);
-	// Preserve the followed_at ordering.
 	return ids.map((id) => byId.get(id)).filter((p): p is PublicProfile => p != null);
 }
 
-/// People `userId` follows, ordered by most-recently followed.
+/// People who follow `userId`, newest follow first, one keyset page at a time:
+/// pass the previous page's `next` as `after` to load more. A cursor rather
+/// than an offset because an offset is a position — a follower who unfollows
+/// between two reads moves every later row up one, and offset 50 then starts a
+/// row late, so one follower is never shown.
+export async function fetchFollowers(
+	userId: string,
+	opts?: { limit?: number; after?: KeysetCursor | null }
+): Promise<KeysetPage<PublicProfile>> {
+	const limit = opts?.limit ?? FOLLOW_PAGE_SIZE;
+	const after = opts?.after ? keysetAfter(FOLLOWERS_ORDER, opts.after) : undefined;
+	if (after === null) return { rows: [], next: null };
+	let q = supabase
+		.from('user_follows')
+		.select('follower_id, followed_at')
+		.eq('followee_id', userId);
+	if (after) q = q.or(after);
+	for (const k of FOLLOWERS_ORDER) {
+		q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+	}
+	const { data: edges, error } = await q.limit(limit);
+	if (error) throw dbError(error);
+	const rows = edges ?? [];
+	return {
+		rows: await profilesInEdgeOrder(rows.map((e) => e.follower_id)),
+		next: nextCursor(FOLLOWERS_ORDER, rows, limit),
+	};
+}
+
+/// People `userId` follows, newest follow first, one keyset page at a time
+/// (see `fetchFollowers`).
 export async function fetchFollowing(
 	userId: string,
-	opts?: { limit?: number; offset?: number }
-): Promise<PublicProfile[]> {
+	opts?: { limit?: number; after?: KeysetCursor | null }
+): Promise<KeysetPage<PublicProfile>> {
 	const limit = opts?.limit ?? FOLLOW_PAGE_SIZE;
-	const offset = opts?.offset ?? 0;
-	const { data: edges, error } = await supabase
+	const after = opts?.after ? keysetAfter(FOLLOWING_ORDER, opts.after) : undefined;
+	if (after === null) return { rows: [], next: null };
+	let q = supabase
 		.from('user_follows')
 		.select('followee_id, followed_at')
-		.eq('follower_id', userId)
-		.order('followed_at', { ascending: false })
-		// Secondary key so offset pages are stable when two follows share a
-		// followed_at timestamp (see fetchFollowers).
-		.order('followee_id', { ascending: true })
-		.range(offset, offset + limit - 1);
+		.eq('follower_id', userId);
+	if (after) q = q.or(after);
+	for (const k of FOLLOWING_ORDER) {
+		q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+	}
+	const { data: edges, error } = await q.limit(limit);
 	if (error) throw dbError(error);
-	const ids = (edges ?? []).map((e) => e.followee_id as string);
-	if (ids.length === 0) return [];
-	const { data: profiles, error: profilesError } = await supabase
-		.from('user_profiles')
-		.select('id, display_name, avatar_url')
-		.in('id', ids);
-	if (profilesError) throw dbError(profilesError);
-	const byId = new Map<string, PublicProfile>();
-	for (const p of profiles ?? []) byId.set(p.id, p);
-	return ids.map((id) => byId.get(id)).filter((p): p is PublicProfile => p != null);
+	const rows = edges ?? [];
+	return {
+		rows: await profilesInEdgeOrder(rows.map((e) => e.followee_id)),
+		next: nextCursor(FOLLOWING_ORDER, rows, limit),
+	};
 }
 
 export interface FeedEntry extends Run {
@@ -10619,16 +10792,15 @@ export async function fetchGymExerciseNames(): Promise<string[]> {
 	return ((data ?? []) as Array<{ exercise_name: string }>).map((r) => r.exercise_name);
 }
 
-/// One page of an unbounded PostgREST read. The server caps an unranged
-/// `select()` at `db.max-rows` and answers with the truncated page and a 200
-/// — no error, no flag — so a read whose contract is "every row" has to ask
-/// for explicit ranges until the result set proves exhausted. Mirrors
-/// `packages/api_client/lib/src/paged_read.dart`, including its rule that a
-/// short page is NOT proof of exhaustion: a deployment whose cap is below the
-/// ask answers the very first range short, so the walk stops only on an empty
-/// page, or on one that is both short of the ask AND shorter than the page
-/// before it.
-const EXERCISE_PAGE = 1000;
+/// Alphabetical; `id` breaks a tie because a seeded global and a user's own
+/// custom entry can carry the same name — the two partial uniques on
+/// `name_key` (migration 20270222_001) scope uniqueness to `author_id is null`
+/// and to one author, so a custom can shadow a global. Both columns are NOT
+/// NULL. `api_client.dart` walks the catalogue in the same order.
+const EXERCISE_ORDER: readonly KeysetKey[] = [
+	{ column: 'name', ascending: true, nullsFirst: false },
+	{ column: 'id', ascending: true, nullsFirst: false },
+];
 
 /// The exercise catalogue visible to the signed-in user: every seeded global
 /// (author_id null) plus their own custom entries. RLS scopes the read; an
@@ -10655,38 +10827,25 @@ export async function fetchExerciseCatalogue(): Promise<{
 	// the next caller inherits whatever it says, and `null` here says the
 	// catalogue is known to hold nothing.
 	if (!auth.user?.id) return { catalogue: [], error: 'signed_out' };
-	const rows: Exercise[] = [];
-	let from = 0;
-	let previous: number | null = null;
-	for (;;) {
-		const { data, error } = await supabase
-			.from(TABLES.exercises)
-			.select('*')
-			.order('name', { ascending: true })
-			// A seeded global and a user's own custom entry can carry the same
-			// name: the two partial uniques on `name_key` (migration 20270222_001)
-			// scope uniqueness to `author_id is null` and to one author, so a
-			// custom can shadow a global. Ordering on `name` alone leaves that pair
-			// in an unspecified order, and a range over an ambiguous ordering lets
-			// a row on a page boundary come back twice or not at all.
-			// `api_client.dart` carries the same tiebreak, and this comment, for
-			// the same reason.
-			.order('id', { ascending: true })
-			.range(from, from + EXERCISE_PAGE - 1);
-		if (error) {
-			console.error('fetchExerciseCatalogue failed', error);
-			return {
-				catalogue: [],
-				error: `${error.message}${error.code ? ` (${error.code})` : ''}`,
-			};
+	// Walked by cursor: PostgREST caps an unranged select at `db.max-rows`, and
+	// an OFFSET walk over a catalogue someone adds a custom entry to mid-read
+	// skips or repeats a row (§ 1936).
+	const walk = await walkKeyset(EXERCISE_ORDER, (after, limit) => {
+		let q = supabase.from(TABLES.exercises).select('*');
+		if (after) q = q.or(after);
+		for (const k of EXERCISE_ORDER) {
+			q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
 		}
-		const page = (data ?? []) as Exercise[];
-		rows.push(...page);
-		if (page.length === 0) break;
-		if (page.length < EXERCISE_PAGE && previous !== null && page.length < previous) break;
-		previous = page.length;
-		from += page.length;
+		return q.limit(limit);
+	});
+	if (!walk.complete) {
+		const error = walk.error as { message?: unknown; code?: unknown } | null;
+		console.error('fetchExerciseCatalogue failed', walk.error);
+		const message = typeof error?.message === 'string' ? error.message : 'unavailable';
+		const code = typeof error?.code === 'string' && error.code ? ` (${error.code})` : '';
+		return { catalogue: [], error: `${message}${code}` };
 	}
+	const rows = walk.rows as Exercise[];
 	return { catalogue: dedupeShadowedExercises(rows), error: null };
 }
 
@@ -12540,7 +12699,8 @@ export type PublicGymRoutineEntry = GymRoutineSummary & {
 
 /// Browse the public gym-routine library — routines published as public
 /// templates that any signed-in user can adopt (migration 20270224_001).
-/// Optional case-insensitive title search. Each entry carries the author's
+/// Optional case-insensitive title search, every character matched literally
+/// (`literalSubstringPattern`, decisions § 1937). Each entry carries the author's
 /// public display name (handle) joined from user_profiles; no other author
 /// data is exposed. Mirrors fetchPublicPlanLibrary + the mobile
 /// `ApiClient.fetchPublicGymRoutineLibrary`.
@@ -12556,7 +12716,7 @@ export async function fetchPublicGymRoutineLibrary(
 		.order('created_at', { ascending: false })
 		.limit(limit);
 	const trimmed = query.trim();
-	if (trimmed) q = q.ilike('title', `%${trimmed}%`);
+	if (trimmed) q = q.regexIMatch('title', literalSubstringPattern(trimmed));
 	const { data, error } = await q;
 	if (error) return { routines: [], error: error.message };
 	const rows = ((data ?? []) as Array<Omit<GymRoutineSummary, 'last_modified_at'>>).map(

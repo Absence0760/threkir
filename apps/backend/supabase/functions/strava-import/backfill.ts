@@ -1,12 +1,12 @@
 import type { DbClient } from '../_shared/database.ts';
 import { resolveImportAudience } from '../_shared/privacy_default.ts';
 import {
-	type RawRunRow,
 	type StravaActivity,
 	collectRunIdentities,
 	ingestActivity,
 	isCrossProviderDuplicate,
 	isStravaRunFamily,
+	RUN_DEDUPE_ORDER,
 } from '../_shared/strava.ts';
 
 // The page walk behind both `connect` and `sync`, lifted out of `index.ts` so
@@ -138,20 +138,19 @@ export async function backfill(
 	// every existing run's start time + distance ACROSS ALL SOURCES so we can
 	// skip an activity that already exists under any provider.
 	//
-	// PAGE the read: PostgREST caps an unbounded SELECT at 1000 rows, so a pro
+	// WALK the read: PostgREST caps an unbounded SELECT at 1000 rows, so a pro
 	// with 1000+ runs would otherwise compare against an arbitrary slice and
 	// re-import duplicates anyway — the exact failure this guard exists to
-	// close. `collectRunIdentities` loops `.range()` in 1000-row chunks
-	// (mirrors `fetchRuns` on web).
-	const existingIdentities = await collectRunIdentities((from, to) =>
-		supabase
-			.from('runs')
-			.select('started_at, distance_m')
-			.eq('user_id', userId)
-			.order('started_at', { ascending: false })
-			.range(from, to)
-			.then(({ data, error }): RawRunRow[] | null => (error ? null : (data as RawRunRow[]))),
-	);
+	// close. `collectRunIdentities` walks the whole history by keyset cursor
+	// (mirrors the web ZIP importers).
+	const existingIdentities = await collectRunIdentities((after, limit) => {
+		let q = supabase.from('runs').select('id, started_at, distance_m').eq('user_id', userId);
+		if (after) q = q.or(after);
+		for (const k of RUN_DEDUPE_ORDER) {
+			q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+		}
+		return q.limit(limit);
+	});
 
 	// Resume where the last walk stopped. A stored cursor is honoured only when
 	// the caller has not asked to reach FURTHER BACK than it does: a runner

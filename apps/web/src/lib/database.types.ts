@@ -6799,42 +6799,6 @@ export type Database = {
           title: string
         }[]
       }
-      search_public_routes: {
-        Args: {
-          p_featured_only?: boolean
-          p_limit?: number
-          p_max_distance_m?: number
-          p_min_distance_m?: number
-          p_offset?: number
-          p_query?: string
-          p_sort?: string
-          p_surface?: string
-          p_tags?: string[]
-        }
-        Returns: {
-          club_id: string | null
-          created_at: string | null
-          distance_m: number | null
-          elevation_m: number | null
-          featured_at: string | null
-          id: string | null
-          is_featured: boolean | null
-          is_public: boolean | null
-          name: string | null
-          run_count: number | null
-          slug: string | null
-          surface: string | null
-          tags: string[] | null
-          updated_at: string | null
-          user_id: string | null
-        }[]
-        SetofOptions: {
-          from: "*"
-          to: "public_routes"
-          isOneToOne: false
-          isSetofReturn: true
-        }
-      }
       search_race_listings: {
         Args: {
           p_center_lat?: number

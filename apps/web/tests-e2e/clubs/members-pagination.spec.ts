@@ -14,6 +14,12 @@ import { USER_A } from '../fixtures/users';
  *
  * Before the fix the whole roster rendered at once (no Load more button,
  * >50 rows on first paint), so the page-1 assertions fail.
+ *
+ * The second case is the keyset cursor: a member leaving between the first
+ * page and "Load more" must not make page 2 skip the next member. Under the
+ * old `offset = rows shown` paging, removing PgMember 00 moved every later
+ * member up one, so offset 50 began at PgMember 51 and PgMember 50 was never
+ * shown.
  */
 
 const RICHMOND_CLUB_ID = 'c1111111-0000-0000-0000-000000000001';
@@ -96,5 +102,33 @@ test.describe.serial('/clubs/[slug] — members pagination', () => {
 		// Page 2 appends the remaining members.
 		await expect(page.getByText('PgMember 55')).toBeVisible();
 		expect(await rows.count()).toBeGreaterThan(PAGE_SIZE);
+	});
+
+	test('a member leaving between pages does not make Load more skip one', async ({ page }) => {
+		await page.goto('/clubs/richmond-run-club');
+		await page.getByRole('tab', { name: /^Members/ }).click();
+
+		const rows = page.locator('.member-list .member');
+		await expect(rows).toHaveCount(PAGE_SIZE, { timeout: 10_000 });
+		await expect(page.getByText('PgMember 49')).toBeVisible();
+		await expect(page.getByText('PgMember 50')).toHaveCount(0);
+
+		// PgMember 00 leaves after page 1 is on screen and before Load more.
+		const admin = getAdminClient();
+		const { error } = await admin
+			.from('club_members')
+			.delete()
+			.eq('club_id', RICHMOND_CLUB_ID)
+			.eq('user_id', seededUserIds[0]);
+		if (error) throw new Error(`members-pagination: delete failed: ${error.message}`);
+
+		await page.getByRole('button', { name: /load more/i }).click();
+
+		// The next member after the last one shown, not the one after it.
+		await expect(page.getByText('PgMember 50')).toBeVisible();
+		await expect(page.getByText('PgMember 51')).toBeVisible();
+		// And nothing shown twice.
+		const texts = await rows.allTextContents();
+		expect(new Set(texts).size).toBe(texts.length);
 	});
 });

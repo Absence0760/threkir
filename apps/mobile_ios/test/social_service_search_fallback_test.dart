@@ -131,6 +131,27 @@ void main() {
     await fake.close();
   });
 
+  // The viewer's membership rows are the only enrichment read, and they are
+  // read only for a signed-in caller, so the enrichment-failure case needs a
+  // session. `recoverSession` with an unexpired session sets it locally
+  // without a network round trip.
+  Future<void> signIn() => client.auth.recoverSession(jsonEncode({
+        'access_token': 'eyJ.local.test',
+        'token_type': 'bearer',
+        'expires_in': 3600,
+        'expires_at':
+            DateTime.now().add(const Duration(hours: 1)).millisecondsSinceEpoch ~/
+                1000,
+        'refresh_token': 'local-refresh',
+        'user': {
+          'id': 'viewer-1',
+          'aud': 'authenticated',
+          'app_metadata': <String, dynamic>{},
+          'user_metadata': <String, dynamic>{},
+          'created_at': '2026-01-01T00:00:00Z',
+        },
+      }));
+
   Future<List<ClubView>> search() => social.searchClubs(
         'richmond',
         mapTilerKey: 'unused',
@@ -143,6 +164,7 @@ void main() {
         ..rpcRows = [_clubJson('rpc-club')]
         ..failFirstEnrichment = true
         ..browseRows = [_clubJson('fallback-club')];
+      await signIn();
 
       final result = await search();
 

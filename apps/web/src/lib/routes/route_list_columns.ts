@@ -76,10 +76,10 @@ export type RouteListItem = Pick<Route, (typeof ROUTE_LIST_COLUMNS)[number]>;
 /// fill and the result is a `RouteListItem`.
 export type PublicRouteListRow = Pick<Route, (typeof PUBLIC_ROUTE_LIST_COLUMNS)[number]>;
 
-/// Everything `public_routes` serves. Not a select list — the two catalogue
-/// RPCs (`nearby_routes`, `search_public_routes`) are declared `setof
-/// public_routes`, so the server fixes the projection and the client's only
-/// job is to say what it is. Both readers used to end `as Route[]`, promising
+/// Everything `public_routes` serves. Not a select list — `nearby_routes` is
+/// declared `setof public_routes` and the catalogue search selects `*` from the
+/// view, so the server fixes the projection and the client's only job is to
+/// say what it is. Both readers used to end `as Route[]`, promising
 /// the caller seven columns the view withholds by construction, of which
 /// `waypoints` is the non-nullable `TrackPoint[]` whose absence was the whole
 /// of § 1229.

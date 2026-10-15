@@ -74,7 +74,7 @@
 		loadFailed = false;
 		try {
 			const [followers, following] = await Promise.all([fetchFollowers(me), fetchFollowing(me)]);
-			candidates = dmRecipientCandidates(followers, following, me);
+			candidates = dmRecipientCandidates(followers.rows, following.rows, me);
 		} catch {
 			// Never degrade to an empty list: "you have nobody to send to" and
 			// "we couldn't find out who you could send to" are different

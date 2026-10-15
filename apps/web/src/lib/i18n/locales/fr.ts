@@ -2080,6 +2080,7 @@ export const messages = {
 	"clubHome.rotate": "Renouveler",
 	"clubHome.generateInviteLink": "Générer un lien d'invitation",
 	"clubHome.pendingRequests": "Demandes en attente ({n})",
+	"clubHome.pendingLoadFailed": "Impossible de charger les demandes d’adhésion : {error}",
 	"clubHome.approving": "Approbation en cours…",
 	"clubHome.approveAll": "Tout approuver",
 	"clubHome.memberFallback": "Membre",

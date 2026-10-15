@@ -18,7 +18,9 @@ import { pathToFileURL } from 'node:url';
 
 import { AUDIENCES, GUIDE_CATEGORIES, GUIDE_KINDS, PLATFORMS, REQUIREMENTS } from './catalogue';
 import { markupProblems, parseMarkup, plainText, sectionId, type HelpToken } from './markup';
+import { localizeGuide } from './translate';
 import type { Block, Guide, GuideTranslation } from './types';
+import { SUPPORTED_LOCALES } from '../i18n/locale';
 
 const HELP_DIR = import.meta.dirname;
 const GUIDES_DIR = join(HELP_DIR, 'guides');
@@ -348,9 +350,38 @@ test('translated titles, summaries and headings fit, read as one sentence, and c
 		for (const value of [t.title, t.summary, ...t.sections.map((s) => s.heading)]) {
 			if (plainText(value) !== value) problems.push(`${where}: "${value}" may not carry markup`);
 		}
-		const anchors = t.sections.map((s) => sectionId(s.heading));
-		if (anchors.some((a) => a === '')) problems.push(`${where}: a heading has no usable anchor`);
-		if (new Set(anchors).size !== anchors.length) problems.push(`${where}: two section headings share an anchor`);
+	}
+	assert.deepEqual(problems, []);
+});
+
+test('in every shipped locale, a guide renders section headings that are unique keys and anchors', () => {
+	// The guide page keys its sections on the heading it renders,
+	// `{#each guide.sections as s (s.heading)}`, and links to `sectionId` of it,
+	// so two equal headings throw each_key_duplicate and take the page into the
+	// error boundary — in whichever language the reader has. What is checked is
+	// the guide AS SHOWN: `localizeGuide` lays a translation over the English
+	// only when its structure lines up, so a locale with no usable translation
+	// shows English headings and is held to them here too.
+	const problems: string[] = [];
+	for (const locale of SUPPORTED_LOCALES) {
+		const ofLocale = translations.filter((t) => t.locale === locale);
+		// A locale whose directory loads nothing would pass every check below
+		// vacuously — the shape a renamed `translation` export would take.
+		if (existsSync(join(TRANSLATIONS_DIR, locale)) && ofLocale.length === 0) {
+			problems.push(`translations/${locale}: no translation loaded, so nothing in it was checked`);
+		}
+		for (const { guide } of guides) {
+			const translation = ofLocale.find((t) => t.translation.id === guide.id)?.translation;
+			const shown = localizeGuide(guide, translation, locale);
+			const where = `${locale}/${guide.id}`;
+			const headings = shown.sections.map((s) => s.heading);
+			if (new Set(headings).size !== headings.length) {
+				problems.push(`${where}: two sections render the same heading, which the guide page keys them on`);
+			}
+			const anchors = headings.map((h) => sectionId(h));
+			if (anchors.some((a) => a === '')) problems.push(`${where}: a heading has no usable anchor`);
+			if (new Set(anchors).size !== anchors.length) problems.push(`${where}: two section headings share an anchor`);
+		}
 	}
 	assert.deepEqual(problems, []);
 });

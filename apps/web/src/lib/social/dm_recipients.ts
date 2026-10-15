@@ -21,7 +21,7 @@ import { fold } from '../segments/catalogue_browse';
 
 export type DmRelation = 'mutual' | 'follows_you' | 'you_follow';
 
-/// The profile shape both `fetchFollowers` and `fetchFollowing` return.
+/// The profile shape of the rows `fetchFollowers` and `fetchFollowing` page through.
 export interface DmCandidateProfile {
 	id: string;
 	display_name: string | null;

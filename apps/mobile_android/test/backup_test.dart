@@ -1607,13 +1607,13 @@ void main() {
 
     // The bug this whole change exists for: `fetchRunRowsRaw` issued an
     // unranged select, so PostgREST clamped it to db-max-rows (1000) and the
-    // archive silently held the newest page. The read is paged now — this
-    // pins that the WRITER carries whatever it is handed across that
+    // archive silently held the newest page. The read is a keyset walk now —
+    // this pins that the WRITER carries whatever it is handed across that
     // boundary, at a count that is genuinely past it.
     test('an archive of more than one PostgREST page holds every run',
         () async {
-      const total = kPostgrestPageSize + 500; // 1500 — two full pages and a bit
-      expect(total, greaterThan(kPostgrestPageSize),
+      const total = cm.kKeysetWalkPageSize + 500; // 1500 — two full pages and a bit
+      expect(total, greaterThan(cm.kKeysetWalkPageSize),
           reason: 'the point of this test is crossing the page boundary');
       final runs = [
         for (var i = 0; i < total; i++)
@@ -1649,17 +1649,24 @@ void main() {
 
     test('a mid-read failure produces no archive at all, never a whole-looking one',
         () async {
+      const order = [cm.KeysetKey('id', ascending: true, nullsFirst: false)];
       var page = 0;
-      Future<List<int>> failOnSecondPage(int from, int to) async {
-        if (page++ == 0) return List<int>.generate(kPostgrestPageSize, (i) => i);
+      Future<List<Map<String, dynamic>>> failOnSecondPage(
+          String? after, int limit) async {
+        if (page++ == 0) {
+          return [
+            for (var i = 0; i < limit; i++) {'id': 'r-${i.toString().padLeft(4, '0')}'},
+          ];
+        }
         throw StateError('network died mid-read');
       }
 
-      // `readAllPages` rethrows rather than returning the pages it managed,
-      // so `createBackup` never reaches the writer and no file is left behind
-      // for the runner to mistake for a backup.
+      // The walk behind `fetchRunRowsRaw` / `fetchRouteRowsRaw` rethrows
+      // rather than returning the pages it managed, so `createBackup` never
+      // reaches the writer and no file is left behind for the runner to
+      // mistake for a backup.
       await expectLater(
-        readAllPages<int>(failOnSecondPage),
+        cm.walkKeyset(order, failOnSecondPage),
         throwsA(isA<StateError>()),
       );
       expect(File('${tempDir.path}/never-written.zip').existsSync(), isFalse);

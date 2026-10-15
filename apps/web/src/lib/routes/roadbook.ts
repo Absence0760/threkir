@@ -16,7 +16,7 @@
  */
 import { haversineMetres } from '../runs/run_stats';
 import { gradeFactor, MIN_SEGMENT_M } from '../runs/grade_adjusted_pace';
-import { parseCutoff, parseTarget } from './route_markers';
+import { parseAidServices, parseCutoff, parseTarget } from './route_markers';
 
 export interface RoadbookWaypoint {
 	lat: number;
@@ -207,11 +207,10 @@ export function buildRoadbook(
 		{ pos: 0, checkpoint: 'start', services: [], meta: null, isCutoff: false },
 		...placed.map((m): Stop => {
 			const meta = (m.meta ?? {}) as Record<string, unknown>;
-			const services = Array.isArray(meta.services) ? (meta.services as string[]) : [];
 			return {
 				pos: m.position_m,
 				checkpoint: { kind: m.kind, label: m.label },
-				services,
+				services: parseAidServices(meta.services),
 				meta: m.meta,
 				isCutoff: m.kind === 'cutoff'
 			};

@@ -24,7 +24,9 @@ function dbStub(opts: DbStubOptions = {}): DbClient {
 		select: () => chain(result),
 		eq: () => chain(result),
 		order: () => chain(result),
+		or: () => chain(result),
 		range: () => chain(result),
+		limit: () => chain(result),
 		maybeSingle: () => Promise.resolve(result),
 		// deno-lint-ignore no-explicit-any
 		then: (res: any, rej: any) => Promise.resolve(result).then(res, rej),

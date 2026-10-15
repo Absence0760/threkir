@@ -46,6 +46,12 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
   List<cm.Route> _results = [];
   bool _loading = false;
   bool _hasMore = true;
+  // The search the shown results came from, and the cursor for its next
+  // page. Load more continues THAT search: the cursor is a position in one
+  // sort's order and means nothing under another, and text typed since but not
+  // submitted must not splice a different result set onto this one.
+  Future<cm.KeysetPage<cm.Route>> Function(List<Object?>? after)? _activeSearch;
+  List<Object?>? _resultsNext;
   String? _error;
 
   _DistanceFilter _distanceFilter = _DistanceFilter.any;
@@ -127,26 +133,39 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
       _error = null;
       _results = [];
       _hasMore = true;
+      _activeSearch = null;
+      _resultsNext = null;
     });
 
+    final text = _searchController.text.trim();
+    final query = text.isEmpty ? null : text;
+    final minDistanceM = _minDistance;
+    final maxDistanceM = _maxDistance;
+    final surface = _surfaceValue;
+    final tags = _selectedTags.isEmpty ? null : _selectedTags.toList();
+    final featuredOnly = _featuredOnly;
+    final sort = _sort;
+    Future<cm.KeysetPage<cm.Route>> read(List<Object?>? after) =>
+        api.searchPublicRoutes(
+          query: query,
+          minDistanceM: minDistanceM,
+          maxDistanceM: maxDistanceM,
+          surface: surface,
+          tags: tags,
+          featuredOnly: featuredOnly,
+          sort: sort,
+          limit: _pageSize,
+          after: after,
+        );
+
     try {
-      final results = await api.searchPublicRoutes(
-        query: _searchController.text.trim().isEmpty
-            ? null
-            : _searchController.text.trim(),
-        minDistanceM: _minDistance,
-        maxDistanceM: _maxDistance,
-        surface: _surfaceValue,
-        tags: _selectedTags.isEmpty ? null : _selectedTags.toList(),
-        featuredOnly: _featuredOnly,
-        sort: _sort,
-        limit: _pageSize,
-        offset: 0,
-      ).timeout(kBackendLoadTimeout);
+      final page = await read(null).timeout(kBackendLoadTimeout);
       if (!mounted) return;
       setState(() {
-        _results = results;
-        _hasMore = results.length >= _pageSize;
+        _results = page.rows;
+        _resultsNext = page.next;
+        _activeSearch = read;
+        _hasMore = page.next != null;
         _loading = false;
       });
     } on TimeoutException catch (e) {
@@ -167,28 +186,18 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
   }
 
   Future<void> _loadMore() async {
-    final api = widget.apiClient;
-    if (api == null || _loading || !_hasMore) return;
+    final read = _activeSearch;
+    final after = _resultsNext;
+    if (read == null || after == null || _loading || !_hasMore) return;
 
     setState(() => _loading = true);
     try {
-      final results = await api.searchPublicRoutes(
-        query: _searchController.text.trim().isEmpty
-            ? null
-            : _searchController.text.trim(),
-        minDistanceM: _minDistance,
-        maxDistanceM: _maxDistance,
-        surface: _surfaceValue,
-        tags: _selectedTags.isEmpty ? null : _selectedTags.toList(),
-        featuredOnly: _featuredOnly,
-        sort: _sort,
-        limit: _pageSize,
-        offset: _results.length,
-      );
+      final page = await read(after);
       if (!mounted) return;
       setState(() {
-        _results.addAll(results);
-        _hasMore = results.length >= _pageSize;
+        _results = cm.appendPage(_results, page.rows, (r) => r.id);
+        _resultsNext = page.next;
+        _hasMore = page.next != null;
         _loading = false;
       });
     } catch (e, s) {
@@ -217,6 +226,8 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
       _error = null;
       _results = [];
       _hasMore = false;
+      _activeSearch = null;
+      _resultsNext = null;
     });
 
     try {

@@ -151,7 +151,7 @@ void main() {
       // Node, so a save that silently no-op'd fails here with a Dart-side
       // message rather than as an opaque Node assertion.
       final all = await api.getRoutes(limit: 200);
-      final saved = all.where((r) => r.id == id).toList();
+      final saved = all.rows.where((r) => r.id == id).toList();
       expect(saved, hasLength(1),
           reason: 'saveRoute must persist a row visible via getRoutes');
       expect(saved.first.distanceMetres, 5123.5);

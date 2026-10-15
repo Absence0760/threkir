@@ -37,9 +37,10 @@ import {
 	compositeKey,
 	collectRunIdentities,
 	isCrossProviderDuplicate,
-	type RawRunRow,
+	RUN_DEDUPE_ORDER,
 	type RunIdentity,
 } from './garmin_dedupe';
+import { walkKeyset } from '../core/keyset_page';
 import {
 	newImportFailureLog,
 	recordImportFailure,
@@ -106,15 +107,25 @@ export async function importGarminBundle(
 	// is the canonical identity for FIT-sourced runs; the normalised
 	// `compositeKey` (started_at + distance) catches the GPX/TCX
 	// fallback path against DB rows, the FIT entries, and other entries
-	// in the same bundle.
-	const { data: existing } = await supabase
-		.from(TABLES.runs)
-		.select('metadata, started_at, distance_m')
-		.eq('user_id', uid)
-		.eq('source', 'garmin');
+	// in the same bundle. Walked like every every-row read: an unranged
+	// select is capped at 1000 rows, so a Garmin history past that
+	// compared against a slice and re-imported the rest (§ 1936).
+	const garminRuns = await walkKeyset(RUN_DEDUPE_ORDER, (after, limit) => {
+		let q = supabase
+			.from(TABLES.runs)
+			.select('id, metadata, started_at, distance_m')
+			.eq('user_id', uid)
+			.eq('source', 'garmin');
+		if (after) q = q.or(after);
+		for (const k of RUN_DEDUPE_ORDER) {
+			q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+		}
+		return q.limit(limit);
+	});
+	if (!garminRuns.complete) console.warn('importGarminBundle: the Garmin-run walk ended short', garminRuns.error);
 	const seenIds = new Set<string>();
 	const seenComposite = new Set<string>();
-	for (const r of existing ?? []) {
+	for (const r of garminRuns.rows) {
 		const md = r.metadata as Record<string, unknown> | null;
 		const gid = md?.garmin_id;
 		if (gid) seenIds.add(String(gid));
@@ -126,25 +137,20 @@ export async function importGarminBundle(
 	// arrived under another source (a Garmin watch auto-uploaded to Strava,
 	// an Apple HealthKit copy) is invisible to them and re-imports. Pull every
 	// existing run's start time + distance ACROSS ALL SOURCES so an import
-	// skips a run already present under any provider.
-	//
-	// PAGE the read: PostgREST caps an unbounded SELECT at 1000 rows, which
-	// for the high-volume pros this guard exists to protect (1000+ runs) would
-	// silently compare against an arbitrary 1000-row slice and re-create
-	// duplicates anyway. `collectRunIdentities` loops `.range()` in 1000-row
-	// chunks the same way `fetchRuns` in core/data.ts does.
-	const existingIdentities = await collectRunIdentities((from, to) =>
-		supabase
+	// skips a run already present under any provider. `collectRunIdentities`
+	// walks the whole history by keyset cursor — PostgREST caps an unbounded
+	// SELECT at 1000 rows, the very histories this guard exists to protect.
+	const existingIdentities = await collectRunIdentities((after, limit) => {
+		let q = supabase
 			.from(TABLES.runs)
-			.select('started_at, distance_m')
-			.eq('user_id', uid)
-			.order('started_at', { ascending: false })
-			// Secondary key: a row dropped at a page boundary is an identity
-			// missing from the dedupe set, which re-imports the run.
-			.order('id', { ascending: false })
-			.range(from, to)
-			.then(({ data, error }): RawRunRow[] | null => (error ? null : (data as RawRunRow[]))),
-	);
+			.select('id, started_at, distance_m')
+			.eq('user_id', uid);
+		if (after) q = q.or(after);
+		for (const k of RUN_DEDUPE_ORDER) {
+			q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+		}
+		return q.limit(limit);
+	});
 	const hrZoneCollector: HrZoneCollector = { hrZones: null };
 
 	if (lower.endsWith('.fit')) {

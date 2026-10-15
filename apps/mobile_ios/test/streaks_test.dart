@@ -203,7 +203,7 @@ void main() {
         ),
         const RunStreaks(current: 2, best: 2),
       );
-    });
+    }, tags: 'tz');
 
     test('fall-back day + next day still register as consecutive', () {
       // Nov 1 2026 is the US DST fall-back (25-hour day).
@@ -217,7 +217,7 @@ void main() {
         ),
         const RunStreaks(current: 2, best: 2),
       );
-    });
+    }, tags: 'tz');
   });
 
   group('computeRunStreaks — bestSince bounds best to a period', () {

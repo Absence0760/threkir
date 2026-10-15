@@ -243,6 +243,21 @@ double trainingLoadTickStep(double span, {int maxTicks = 4}) {
   return math.max(1.0, mult * mag);
 }
 
+/// Whole-number tick values from [min] to [max], ascending and distinct —
+/// the web `trainingLoadTickValues` pair (`load_chart_ticks.ts`).
+@visibleForTesting
+List<int> trainingLoadTickValues(double min, double max) {
+  if (!min.isFinite || !max.isFinite || max < min) return const [];
+  final step = trainingLoadTickStep(max - min);
+  final out = <int>[];
+  for (var v = (min / step).ceil() * step;
+      v <= max + step * 0.001;
+      v += step) {
+    out.add(v.round());
+  }
+  return out;
+}
+
 class _ChartPainter extends CustomPainter {
   final List<TrainingLoadPoint> points;
   final List<Color> series;
@@ -306,11 +321,8 @@ class _ChartPainter extends CustomPainter {
     final gridPaint = Paint()
       ..color = gridColor
       ..strokeWidth = 1;
-    final step = trainingLoadTickStep(maxV - minV);
-    for (var tick = (minV / step).ceil() * step;
-        tick <= maxV + step * 0.001;
-        tick += step) {
-      final y = yAt(tick);
+    for (final tick in trainingLoadTickValues(minV, maxV)) {
+      final y = yAt(tick.toDouble());
       if (tick != 0) {
         canvas.drawLine(
           Offset(padL, y),
@@ -319,7 +331,7 @@ class _ChartPainter extends CustomPainter {
         );
       }
       final label = TextPainter(
-        text: TextSpan(text: tick.round().toString(), style: labelStyle),
+        text: TextSpan(text: tick.toString(), style: labelStyle),
         textDirection: TextDirection.ltr,
       )..layout(maxWidth: padL - 4);
       label.paint(

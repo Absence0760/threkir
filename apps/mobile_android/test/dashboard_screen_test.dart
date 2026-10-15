@@ -1376,6 +1376,37 @@ void main() {
         }
         expect(guarded.values.fold<int>(0, (a, b) => a + b), naiveInWindow);
       });
+
+      test('every local calendar day of a year gets its own key, DST included',
+          () {
+        // One run at local noon on each day of 2026 (both DST changes) and the
+        // leap day of 2028. Each must land on a key of its own, one day after
+        // the last, and on that date's own UTC calendar index. The old key
+        // only failed east of UTC, so the `tz` tag is what lets CI see it.
+        final days = [
+          for (var d = DateTime(2026, 1, 1);
+              d.year == 2026;
+              d = DateTime(d.year, d.month, d.day + 1))
+            d,
+          DateTime(2028, 2, 28),
+          DateTime(2028, 2, 29),
+          DateTime(2028, 3, 1),
+        ];
+        final counts = heatmapDayCounts([
+          for (final d in days)
+            runAt('${d.year}-${d.month}-${d.day}',
+                DateTime(d.year, d.month, d.day, 12)),
+        ], DateTime(2026, 1, 1));
+        expect(counts.length, days.length);
+        expect(counts.values.every((c) => c == 1), isTrue);
+        for (final d in days) {
+          expect(counts[DateTime.utc(d.year, d.month, d.day)
+                      .millisecondsSinceEpoch ~/
+                  Duration.millisecondsPerDay],
+              1,
+              reason: '$d');
+        }
+      }, tags: 'tz');
     });
   });
 
@@ -1466,7 +1497,6 @@ void main() {
 }
 
 // Mirror of dashboard_screen's private _epochDay for assertions.
-int _epochDayForTest(DateTime d) {
-  final local = DateTime(d.year, d.month, d.day);
-  return local.millisecondsSinceEpoch ~/ Duration.millisecondsPerDay;
-}
+int _epochDayForTest(DateTime d) =>
+    DateTime.utc(d.year, d.month, d.day).millisecondsSinceEpoch ~/
+    Duration.millisecondsPerDay;

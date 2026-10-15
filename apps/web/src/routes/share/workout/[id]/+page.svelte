@@ -12,7 +12,7 @@
 		distinctExerciseCount
 	} from '#lib/share/share_workout_meta.ts';
 	import type { SharedWorkoutSet } from '#lib/share/share_workout_lookup.ts';
-	import { normaliseExerciseName } from '#lib/gym/gym_prs.ts';
+	import { groupExerciseBlocks } from '#lib/gym/exercise_blocks.ts';
 
 	let { data } = $props();
 
@@ -35,16 +35,7 @@
 	// Group the public sets into exercise blocks in set_index order — same
 	// shape as the owner's /gym/[id] detail, minus the owner-only PR / edit
 	// affordances. No notes / RPE are fetched, so nothing private leaks.
-	let blocks = $derived.by(() => {
-		const out: { name: string; key: string; sets: SharedWorkoutSet[] }[] = [];
-		for (const s of data.workout?.sets ?? []) {
-			const last = out[out.length - 1];
-			const key = normaliseExerciseName(s.exercise_name);
-			if (last && last.key === key) last.sets.push(s);
-			else out.push({ name: s.exercise_name, key, sets: [s] });
-		}
-		return out;
-	});
+	let blocks = $derived(groupExerciseBlocks(data.workout?.sets ?? []));
 
 	let exerciseCount = $derived(distinctExerciseCount(data.workout?.sets ?? []));
 
@@ -108,7 +99,7 @@
 				{/if}
 			</div>
 
-			{#each blocks as block (block.name)}
+			{#each blocks as block (block.start)}
 				<section class="exercise-block">
 					<h2>{block.name || '—'}</h2>
 					<ol class="sets">

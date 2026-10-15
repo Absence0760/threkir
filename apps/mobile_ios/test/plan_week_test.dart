@@ -14,7 +14,7 @@ import '../lib/plan_week.dart';
 void main() {
   test('DST-crossing span reports the correct week (issue #338 repro)', () {
     expect(currentPlanWeekIndex('2026-03-01', '2026-03-15', 12), 2);
-  });
+  }, tags: 'tz');
 
   test('non-DST control span reports the correct week', () {
     // 2026-06-01 → 2026-06-15 spans no DST transition: 14 whole days → week 2.

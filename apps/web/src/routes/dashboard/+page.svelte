@@ -1045,9 +1045,7 @@
 		mileageInspect === null ? null : (mileageData[mileageInspect] ?? null)
 	);
 
-	let maxBar = $derived(
-		mileageData.length > 0 ? Math.max(...mileageData.map((w) => w.distance_m)) : 1
-	);
+	let maxBar = $derived(Math.max(1, ...mileageData.map((w) => w.distance_m)));
 
 	// Once a column may be narrower than its label, a narrow chart sets the
 	// labels edge to edge and "13 20 27" reads as "132027". Which labels fit

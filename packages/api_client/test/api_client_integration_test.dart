@@ -430,14 +430,78 @@ void main() {
       // (fetchFollowing is inside the feed's Future.wait) and the
       // profile Followers/Following tabs. The seed user follows two
       // accounts, so a successful narrowed read returns both.
-      final following = await api.fetchFollowing(userId!);
+      final following = (await api.fetchFollowing(userId!)).rows;
       expect(following, hasLength(greaterThanOrEqualTo(2)),
           reason: 'fetchFollowing must succeed for the seed user; a '
               '42501 here means the profile hydrate drifted back onto '
               'a revoked user_profiles column.');
       expect(following.first.displayName, isNotEmpty);
-      final followers = await api.fetchFollowers(userId!);
+      final followers = (await api.fetchFollowers(userId!)).rows;
       expect(followers, isNotNull);
+    });
+
+    test('fetchFollowing pages by keyset cursor without a gap or a repeat',
+        () async {
+      // The seed user follows two accounts. One-row pages walked by the
+      // returned cursor must visit exactly the rows of a single wide read, in
+      // order — the property an offset loses when an edge is removed between
+      // two reads (that half is pinned against in-memory rows by
+      // core_models' keyset_page_test.dart).
+      final whole = (await api.fetchFollowing(userId!)).rows;
+      expect(whole, hasLength(greaterThanOrEqualTo(2)));
+      final walked = <String>[];
+      List<Object?>? after;
+      for (var guard = 0; guard < whole.length + 2; guard++) {
+        final page = await api.fetchFollowing(userId!, limit: 1, after: after);
+        walked.addAll(page.rows.map((p) => p.id));
+        if (page.next == null) break;
+        after = page.next;
+      }
+      expect(walked, whole.map((p) => p.id).toList());
+    });
+
+    test('getRoutes pages past two routes sharing a created_at', () async {
+      // Two routes saved in the same instant, newer than anything else the
+      // seed user owns so they lead the list. One-row pages walked by the
+      // returned cursor must visit both: the old `lt created_at` cursor
+      // excluded every row with the boundary's created_at, so the second was
+      // never read.
+      final hex = DateTime.now()
+          .microsecondsSinceEpoch
+          .toRadixString(16)
+          .padLeft(11, '0');
+      final stem = '00000000-0000-4000-8000-${hex.substring(hex.length - 11)}';
+      final ids = ['${stem}a', '${stem}b'];
+      const sameInstant = '2099-01-01T00:00:00.123456+00:00';
+      await client.from('routes').insert([
+        for (final id in ids)
+          {
+            'id': id,
+            'user_id': userId,
+            'name': 'keyset tie $id',
+            'waypoints': const <Object>[],
+            'distance_m': 1000,
+            'created_at': sameInstant,
+          },
+      ]);
+      try {
+        final walked = <String>[];
+        List<Object?>? after;
+        for (var page = 0; page < 2; page++) {
+          final got = await api.getRoutes(limit: 1, after: after);
+          walked.addAll(got.rows.map((r) => r.id));
+          if (got.next == null) break;
+          after = got.next;
+        }
+        expect(walked, ['${stem}b', '${stem}a'],
+            reason: 'both tied routes, in id desc order, one per page');
+      } finally {
+        for (final id in ids) {
+          try {
+            await api.deleteRoute(id);
+          } catch (_) {}
+        }
+      }
     });
 
     test('fetchProfileSummary loads for the seed user (profile screen '

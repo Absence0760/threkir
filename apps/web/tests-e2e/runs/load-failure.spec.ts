@@ -60,14 +60,15 @@ test.describe('/runs — load failure', () => {
 		const loadMore = page.getByRole('button', { name: /Load \d+ more/ });
 		await expect(loadMore).toBeVisible({ timeout: 15_000 });
 
-		// Fail the page-two read only. `.range()` puts the window in the
-		// query string, so `offset=50` identifies it exactly — matching on
-		// "the next runs GET" instead would fire on whichever read happened
-		// to be in flight.
+		// Fail the page-two read only. It is the one runs GET carrying the
+		// keyset cursor — an `or` filter opening on `started_at.lt.` — so
+		// that identifies it exactly; matching on "the next runs GET" instead
+		// would fire on whichever read happened to be in flight.
 		let failNext = true;
 		await page.route('**/rest/v1/runs**', async (route) => {
 			const url = new URL(route.request().url());
-			if (route.request().method() === 'GET' && url.searchParams.get('offset') === '50' && failNext) {
+			const isPageTwo = (url.searchParams.get('or') ?? '').startsWith('(started_at.lt.');
+			if (route.request().method() === 'GET' && isPageTwo && failNext) {
 				failNext = false;
 				await route.fulfill({
 					status: 500,

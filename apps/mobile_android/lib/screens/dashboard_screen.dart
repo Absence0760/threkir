@@ -2793,10 +2793,14 @@ List<RunForVolume> _runVolumeInputs(List<Run> runs) => [
         ),
     ];
 
-int _epochDay(DateTime d) {
-  final local = DateTime(d.year, d.month, d.day);
-  return local.millisecondsSinceEpoch ~/ Duration.millisecondsPerDay;
-}
+/// A calendar day's index, read off the date's fields through UTC. Dividing
+/// the LOCAL midnight's epoch milliseconds by a day instead floors a 23:00 UTC
+/// midnight into the previous day, so where the offset moves between +0 and +1
+/// (London, Lisbon, Dublin) the spring change gave Sunday and Monday one key
+/// and both tiles painted their summed count.
+int _epochDay(DateTime d) =>
+    DateTime.utc(d.year, d.month, d.day).millisecondsSinceEpoch ~/
+    Duration.millisecondsPerDay;
 
 /// Per-epoch-day run counts for the heatmap's visible window. Runs whose local
 /// day is before [gridStart] are skipped — the painter only ever reads keys

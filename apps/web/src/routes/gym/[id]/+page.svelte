@@ -23,8 +23,8 @@
 		type PrKind,
 	} from '#lib/gym/gym_prs.ts';
 	import { previousExerciseSession, type ExerciseSession } from '#lib/gym/exercise_history.ts';
-	import { progressionParamsWithStreak } from '#lib/gym/progression_prefill.ts';
-	import { nextPrescription, type ProgressionSetLike } from '#lib/gym/gym_progression.ts';
+	import { groupExerciseBlocks } from '#lib/gym/exercise_blocks.ts';
+	import { buildNextTargetHints } from '#lib/gym/next_target_hints.ts';
 	import {
 		routineFromWorkout,
 		prefillFromRoutine,
@@ -164,71 +164,17 @@
 	// logged sets. Pure suggestion — never auto-applied. The chip self-hides for
 	// ad-hoc workouts (no routine_id) and 'none'-scheme exercises.
 	async function loadNextTargets(w: GymWorkoutWithSets | null): Promise<NextTargetHint[]> {
-		const out: NextTargetHint[] = [];
-		if (!w || w.workout.user_id !== auth.user?.id) return out;
+		if (!w || w.workout.user_id !== auth.user?.id) return [];
 		const meta = (w.workout as { metadata?: Record<string, unknown> | null }).metadata;
 		const routineId = meta && typeof meta === 'object' ? meta['routine_id'] : null;
-		if (typeof routineId !== 'string' || routineId === '') return out;
+		if (typeof routineId !== 'string' || routineId === '') return [];
 
 		// L4 auxiliary: the progression hint is a suggestion chip, so a failed
 		// routine read degrades to "no hint" rather than failing the page.
 		const routine = await fetchGymRoutineDetail(routineId).catch(() => null);
-		if (!routine) return out;
+		if (!routine) return [];
 
-		const setsByKey = new Map<string, ProgressionSetLike[]>();
-		for (const s of w.sets) {
-			const key = normaliseExerciseName(s.exercise_name);
-			if (key === '') continue;
-			const list = setsByKey.get(key) ?? [];
-			list.push({ reps: s.reps, weight_kg: s.weight_kg, rpe: s.rpe, set_type: s.set_type });
-			setsByKey.set(key, list);
-		}
-
-		for (const ex of routine.exercises) {
-			if (ex.progression === 'none') continue;
-			const key = normaliseExerciseName(ex.exercise_name);
-			const lastSets = setsByKey.get(key);
-			if (!lastSets || lastSets.length === 0) continue;
-			const firstSet = ex.sets[0];
-			const sug = nextPrescription({
-				scheme: ex.progression,
-				lastSets,
-				targetRepsMin: firstSet?.target_reps_min ?? null,
-				targetRepsMax: firstSet?.target_reps_max ?? null,
-				// The 5×5 back-off needs a miss count across sessions, which no
-				// authored params bag carries — the history already fetched for the
-				// PR badges supplies it.
-				params: progressionParamsWithStreak({
-					scheme: ex.progression,
-					params: ex.progression_params,
-					targetRepsMin: firstSet?.target_reps_min ?? null,
-					targetRepsMax: firstSet?.target_reps_max ?? null,
-					history,
-					exerciseName: ex.exercise_name,
-				}),
-			});
-			if (sug.reason === 'none') continue;
-
-			let topKg: number | null = null;
-			let topReps: number | null = null;
-			for (const s of lastSets) {
-				if (s.weight_kg != null && s.weight_kg > 0 && (topKg == null || s.weight_kg > topKg)) {
-					topKg = s.weight_kg;
-					topReps = s.reps;
-				}
-			}
-			out.push({
-				exerciseKey: key,
-				exerciseName: ex.exercise_name,
-				suggestedWeightKg: sug.suggestedWeightKg,
-				suggestedRepsMin: sug.suggestedRepsMin,
-				suggestedRepsMax: sug.suggestedRepsMax,
-				currentTopKg: topKg,
-				currentTopReps: topReps,
-				reason: sug.reason,
-			});
-		}
-		return out;
+		return buildNextTargetHints({ exercises: routine.exercises, sets: w.sets, history });
 	}
 
 	onMount(async () => {
@@ -240,16 +186,7 @@
 	// block carries the canonical grouping key alongside its display spelling,
 	// so every lookup below is keyed on the same thing the PR engine and the
 	// server-stamped `exercise_key` are — never on the block's own spelling.
-	const blocks = $derived.by(() => {
-		const out: { name: string; key: string; sets: GymSet[] }[] = [];
-		for (const s of data?.sets ?? []) {
-			const last = out[out.length - 1];
-			const key = normaliseExerciseName(s.exercise_name);
-			if (last && last.key === key) last.sets.push(s);
-			else out.push({ name: s.exercise_name, key, sets: [s] });
-		}
-		return out;
-	});
+	const blocks = $derived(groupExerciseBlocks(data?.sets ?? []));
 
 	// PR kinds this workout achieved, per exercise, judged against all of
 	// the user's OTHER (earlier) sets.

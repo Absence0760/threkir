@@ -397,10 +397,13 @@ retention cron referenced in a comment that was never created.
   <club> and status = 'active'`.
 - **Consumers (read the cache, do NOT recompute):** `search_clubs` (sort key)
   and every `enrichClubs` caller in `apps/web/src/lib/core/data.ts`
-  (`browseClubs`, `searchClubs` ILIKE fallback, `fetchMyClubs`,
+  (`browseClubs`, `searchClubs` name/label fallback, `fetchMyClubs`,
   `fetchClubBySlug`) — `CLUB_SELECT_COLS` selects `member_count` and
   `enrichClubs` reads `c.member_count` (issue #331; the old post-query aggregate
-  is gone).
+  is gone), and mobile's `SocialService._enrichClubs` reads the same column off
+  `_clubSelectCols` — it re-counted `club_members` rows until § 1940, an
+  unranged select that `db.max-rows` capped at 1000 rows across every listed
+  club.
 - **Maintained by:** `clubs_member_count_trigger()` (AFTER INSERT/UPDATE OF
   status, club_id/DELETE on `club_members`), SECURITY DEFINER since
   `20270205_001` — the ON DELETE CASCADE from an owner's account deletion runs

@@ -313,6 +313,10 @@ Covers the `_trySync` loop on `SyncService` via the new `@visibleForTesting debu
 
 **start / stop (2 tests):** `start()` registers as a binding observer, fires the startup `_trySync`, and routes subsequent lifecycle events through the observer. `stop()` removes the observer so further binding-level resume events don't fire syncs.
 
+### `apps/mobile_android/test/foreign_row_cleanup_test.dart` — 16 tests
+
+The one-time foreign-row reconcile ([decisions § 1938](../architecture/decisions.md)). `planForeignRows` as a pure function: an owned row is kept synced or not; a synced row the owned set lacks is dropped unless bookmarked or pinned; an unsynced row is never dropped for being absent from the server, is dropped when the server names another owner, and keeps its row but loses its push when kept; a failed owned read or no account plans nothing. `ForeignRowCleanup` against real run and route stores in a temp dir and a fake server: foreign synced rows go durably while owned, bookmarked, pinned and offline-built rows stay; a starred club route is no longer pushed (and refused) by the `SyncService` cycle that runs it; a failed read deletes nothing and is not marked; a failure retries on the next launch, not on every sync; the marker stops a second run and is per account; signed out it reads and marks nothing.
+
 ### `apps/mobile_android/test/local_route_store_test.dart` — 65 tests
 
 Persistence tests for `LocalRouteStore` mirroring the `local_run_store_test.dart` pattern — `init(overrideDirectory: ...)` with a tempDir, real file I/O, no mocks. Covers init (directory creation, non-`.json` file filtering, corrupt-file tolerance), save (file write, round-trip across fresh instances, replace-on-same-id, newest-first ordering, single-listener-call invariant), `saveBatch` (parallel write + single notify, empty-iterable no-op, overlapping-id replace), `delete` (disk + memory + unknown-id), the unmodifiable `routes` view, and the **offline pin** group (15 tests) — `pinOffline` / `unpinOffline` idempotency, listener notification, sidecar round-trip across cold start, delete clears the pin, unmodifiable views, pin-without-route is allowed and surfaces when the route lands; pin survives saveBatch overwrite of the same id; concurrent pin/unpin pairs serialise correctly and the sidecar matches in-memory; tolerates a corrupt-JSON / wrong-shape / mixed-types sidecar on cold start without crashing; 100-pin round-trip stays well under 2 s and survives cold start intact. The local-only flag semantics are pinned by `decisions.md § 64`.
@@ -489,7 +493,7 @@ The DST date-cursor guard (`decisions.md § 589`). Scans every file under `lib/`
 
 A `DateTime.now()` or `.toUtc()` receiver is exempt structurally — an instant has no local midnight to drift off. Everything else opts out with an inline `// elapsed-time:` marker naming the reason, read from the line itself or the contiguous comment block above it; the marker is local rather than a file allowlist because several files carry both shapes. The second test proves the matcher still fires, so a refactor that breaks the regex can't pass by matching nothing.
 
-This is the timezone-independent half of the fix: the behavioural repros in `current_week_strip_test.dart` only bite under `TZ=America/New_York`, and CI runs in UTC.
+This is the timezone-independent half of the fix: the behavioural repros in `current_week_strip_test.dart` only bite under `TZ=America/New_York`. They carry the `tz` tag, so CI's `test-timezones` job runs them there too ([testing.md § Timezone-sensitive Dart tests](testing.md#timezone-sensitive-dart-tests)); this guard still catches the shape in the UTC run.
 
 ### `apps/mobile_android/test/post_await_setstate_guard_test.dart` — 2 tests
 
@@ -537,7 +541,7 @@ Settings → Integrations' UltraSignup finder ([decisions § 1841](../architectu
 
 The centre button's long-press start-options sheet (decisions § 1892, § 1897): which items it offers when the tap starts a run and when the tap fans, that it never exceeds five, which plan workout counts as today's open one (not another day, a rest day, a completed, run-completed or skipped workout, or one with nothing to follow), the workout card's summary (target distance, or the summed distance steps, and the step count), and which saved routes sit inline (most recently run first, then newest saved, undated last, at most three). The sheet itself: its sections and title in one screen-reader group, the workout card naming kind, distance and steps and resolving in one tap, no route section with no saved route, one route inline with no "All routes…", three inline with "All routes…" resolving to the picker, a route tile resolving to that route, a row resolving to its action, dismissal resolving to nothing, and the full sheet at the largest text size scrolling rather than overflowing. Each item's routing in the shell, including an inline route starting the recorder without a second picker, is pinned in `home_screen_test.dart`.
 
-### `apps/mobile_ios/test/` — 635 files, byte-for-byte
+### `apps/mobile_ios/test/` — 641 files, byte-for-byte
 
 After the April 2026 mobile-codebase unification, `apps/mobile_ios/test/` is kept identical to `apps/mobile_android/test/` via `diff -rq`. Every test file documented above runs on the iOS target too **locally** — `melos run test` has no scope filter — but **not in CI**: the `test-packages` job scopes `melos exec` to `run_recorder`, `mobile_android`, `api_client`, `gpx_parser`, `ui_kit` and `core_models`, and `mobile_ios` is not among them. That is not a gap for byte-identical Dart, but it is why a test gated on an `ios/` file being present asserts nothing on any CI run — two such groups existed and were removed in favour of `scripts/check_ios_native_declarations.mjs` (decisions.md § 742). Per-target counts: `flutter test` compiles separately, so each test file is executed twice when you run both apps locally. Don't add iOS-specific test files — every test belongs in both apps. The architecture-guard tests under `apps/mobile_android/test/architecture_guards_test.dart` read `lib/screens/run_screen.dart` from the working directory, so they pin the same invariants on both targets.
 
@@ -721,7 +725,7 @@ TypeScript unit tests for the pure privacy-zone clipper (`lib/privacy.ts`, decis
 
 The pure-JS clipper drives owner-side previews; non-owner viewers go through the `clip_track_for_user` SECURITY DEFINER RPC so zones never leave the database.
 
-### `apps/web/src/lib/backup/backup.test.ts` — 15 tests
+### `apps/web/src/lib/backup/backup.test.ts` — 12 tests
 
 TypeScript unit tests for the streaming + parallel-download backup writer (`lib/backup_writer.ts`). Run with `npx tsx --test src/lib/backup.test.ts` from `apps/web`. Exercises the pure writer seam without supabase-js: round-trip through JSZip to confirm manifest + runs + routes + profile + tracks all land; bounded-concurrency contract observed via a counter-tracking fetcher (peak in-flight ≤ `concurrency`, observable parallelism); single-track failure doesn't sink the rest (manifest counts reflect what landed); empty `runsWithTracks` produces a valid manifest-only archive; `concurrency < 1` rejected; progress events ordered (`tracks` → `writing` → `done`); profile `id` field stripped to keep the archive re-homeable.
 
@@ -918,9 +922,9 @@ Which catalogue each shipped locale actually reaches. `messages_parity.test.ts` 
 
 What `/settings/account` may say about a backup that came up short ([decisions § 845](../architecture/decisions.md)). `buildBackupZip` merges the writer's own shortfall (a track blob that would not download) with the caller's (a row read that died half-way, § 675/§ 676) into one `incomplete` list, and the page read only the blob counts off it — so an archive short of two thousand runs whose tracks all downloaded rendered "missing 0 of 0 GPS tracks". Covers: a whole archive discloses nothing; a tracks-only shortfall states the count and names no section; a short `runs` or `routes` read is disclosed with the section named and NO track sentence; both kinds together; dedupe + sort; `tracks` named with no count to state falls back to being listed rather than disclosed as silence; a table-driven case that every shortfall earns at least one sentence; nonsense counts clamp; and a source guard that the page routes through the grader and both message keys stay reachable.
 
-### `apps/web/src/lib/backup/backup.test.ts` — 15 tests
+### `apps/web/src/lib/backup/backup.test.ts` — 12 tests
 
-The streaming + parallel-download writer and its paged row reads (was 14). The added case is a source guard on `createBackup`, which needs supabase-js and cannot be executed here: every `supabase` read behind the archive must bind its `error`, and the graded errors must reach `incompleteSections`. § 675/§ 676 paged and flagged the runs + routes reads and left the `get_my_profile` RPC and the `user_settings` read discarding theirs, so a failed read shipped a null profile and an empty prefs bag under a manifest still claiming `complete: true`.
+The streaming + parallel-download writer and its walked row reads (was 14, then 15; 12 since [decisions § 1936](../architecture/decisions.md) moved the five `readAllRows` paging cases to `walkKeyset` in `core/keyset_page.test.ts` and added two source guards: both reads are `walkKeyset` walks over a total order sorted by the cursor's own key spec with no `.range()`, and a short walk names its section). The added case is a source guard on `createBackup`, which needs supabase-js and cannot be executed here: every `supabase` read behind the archive must bind its `error`, and the graded errors must reach `incompleteSections`. § 675/§ 676 paged and flagged the runs + routes reads and left the `get_my_profile` RPC and the `user_settings` read discarding theirs, so a failed read shipped a null profile and an empty prefs bag under a manifest still claiming `complete: true`.
 
 ### `apps/web/src/lib/backup/cloud_export_transport.test.ts` — 9 tests
 
@@ -1225,10 +1229,11 @@ The behavioural guard on the § 1286 / § 1489 negative: no uniqueness on `gym_r
 
 Pins migration `20270808000011` (decisions § 1918). The gate: no API role can run `private.remap_recurrence_wallclock` or close the transition window, nothing in the database calls the remap, and its default call is a dry run that reports the real counts and moves and records nothing; a dry run (or dry-run sweep) smaller than the series it would select is refused `22023`, so a batched dry-run loop cannot spin, while one covering them all runs. The window: the migration seeds `recurrence_utc_clock_legacy` enabled and a deleted row reads strict; before the close `is_event_occurrence` accepts both the UTC-clock and the wall-clock instant on its default and only the wall-clock one for a strict caller, and after it only the wall-clock one; the close refuses while a row still sits on a UTC-clock-only instant and, when it succeeds, leaves the flag disabled. The remap: a New York Wednesday-evening series pairs each Tuesday row with the Wednesday after it (shift 1) across attendees, the cancellation, the reminder, the event post and the host photo; an adjacent MO/TU series moves seven rows through a chain of instants without a primary-key or result unique-key collision; the monthly 28 February clamp and the April EDT move; the 07:00 fall-back move; a row whose target its owner already holds stays and is counted while the others at that instant move; a paid order written on an old instant moves onto the wall-clock one through the strict occurrence trigger; a UTC series moves nothing. A second run is a no-op, and a sweep moves only the rows an old build wrote afterwards, leaving a wall-clock RSVP whose instant is also a UTC-clock one where it is. Every one of the fifteen mutations recorded in § 1918 fails it, the vectors file or `event_order_occurrence_test.sql`.
 
-### `apps/backend/supabase/functions/**/*.test.ts` — 1335 deno tests across 100 files
+### `apps/backend/supabase/functions/**/*.test.ts` — 1341 deno tests across 101 files
 
 Run the pure-helper slices with `cd apps/backend && deno test --no-check supabase/functions/_shared/*.test.ts` plus the per-function `lib.test.ts` / `wiring.test.ts` / `handler.test.ts` files (`auth-email`, `delete-account`, `donations-checkout`, `events-cancel`, `events-checkout`, `events-connect-onboard`, `events-refund-sweep`, `export-data`, `parkrun-import`, `race-results-import`, `refresh-tokens`, `revenuecat-webhook`, `strava-import`, `strava-webhook`, `stripe-events-webhook`); the network-touching ones (e.g. `_shared/handler_envelope.test.ts`) need `SUPABASE_TEST_URL=http://127.0.0.1:24321 supabase functions serve --env-file .env.local` and the `--allow-net --allow-env` flags. The `edge-functions` CI job runs all of them on every PR.
 
+- **`_shared/keyset_page.test.ts`** — 5 tests. Runs the Deno copy of the keyset walk (`_shared/keyset_page.ts`) and its web source (`apps/web/src/lib/core/keyset_page.ts`) on the same inputs: the `keysetAfter` filter for three orders × four cursors (quoting, nulls, numbers, booleans), the refusals both make, `keysetCursor`, and `walkKeyset`'s page requests, rows, stop rule, no-progress stop and page-error result ([decisions § 1941](../architecture/decisions.md)).
 - **`_shared/webhook_security.test.ts`** — 27 tests. `hmacHex` against the RFC 4868 §2.7.2 case 4 reference vector (with byte-exact `Uint8Array` inputs — the function accepts `string | Uint8Array` on both `secret` and `body`); `timingSafeEqual` (equal / unequal-same-length / length-mismatch / no-short-circuit-on-first-mismatch); `validateFreshness` (recent / 7-day boundary / too-old / clock-skew tolerance / custom window + skew args); `isAnonymousAppUserId` (`$RCAnonymousID` prefix detected, others false). `isValidUuid` moved to `_shared/input_validation.ts` when the four uuid/timestamptz 500s were closed — it is a PostgREST-cast guard, not a webhook concern. The `timingSafeEqual` and `validateFreshness` helpers were extracted out of the two webhook `index.ts` files so the production code path now imports the tested module directly — no duplicate definition can drift. `verifyTimestampedHmac` refuses a zero-padded `t` whose integer was signed, since the payload is signed over the header text.
 - **`_shared/webhook_security.test.ts` (round 31 additions)** — 4 more, over `shouldReleaseDedupe` and the three insert-first dedupers that depend on it ([decisions § 915](../architecture/decisions.md)). The 5xx boundary both ways (500 releases, 499 and every 4xx keep the row); and three cross-function guards **derived from the tree rather than listed**, so a fourth webhook that reserves a dedupe row is covered the day it lands: every `index.ts` that inserts a `webhook_events` row must also delete one, and the set the sweep finds is asserted (`revenuecat-webhook`, `strava-webhook`, `stripe-events-webhook`) so an emptied loop cannot pass for a clean sweep; the two that dispatch behind a release gate on `shouldReleaseDedupe(res.status)` and may not re-spell `>= 500` inline; and both carry a rethrow arm that releases before the throw, since `withSentry`'s 500 never passes through the status check. All six mutations were verified killing them.
 - **`_shared/webhook_security.test.ts` (`verifyTimestampedHmac`)** — 5 of the 26, over the `t=<unix>,v1=<hex>` scheme RevenueCat and Stripe both sign with ([decisions § 1767](../architecture/decisions.md)): the documented header verifies against an `openssl`-computed digest; a digest over the body alone is refused, in and out of the header shape; `t` is held to five minutes either side; any `v1` passes during a rotation, and nothing passes with an empty secret or no header; and a source guard that `revenuecat-webhook` reads `X-RevenueCat-Webhook-Signature` through this verifier.
@@ -1276,7 +1281,7 @@ The happy-path 200s with valid HMAC / freshness / dedupe still need real secrets
 
 The runtime half of the guard `build-web` runs over the build output (`scripts/check_web_removed_kit_apis.mjs`). web@1.12.0 resolved @sentry/sveltekit's Svelte 4 tracing variant, which subscribes to `$app/stores` — a stub that throws on Kit 3 — and `hooks.client.ts` runs `Sentry.init` only when `!dev && PUBLIC_SENTRY_DSN && hasAcceptedConsent()`, so every reader who accepted error reporting got a blank page while every `vite dev` lane stayed green ([decisions § 1896](../architecture/decisions.md)). Runs under `playwright.built.config.ts`: a production build with a dummy DSN, served as CloudFront serves it by `tests-e2e/scripts/serve-build.mjs`. One case seeds consent the way `consent.set('accepted')` stores it and loads `/` (prerendered — the uncaught-error check is what fails there), `/help` and `/login` (the SPA shell — a throw leaves them blank); the other accepts through the banner itself, which reloads the page, and asserts it still renders. Both require a `*.sentry.io` request to have been answered, so neither can pass without `Sentry.init` having run. Against the pre-fix `vite.config.ts` (no `sentrySvelteKit()` plugin) both fail on the `app_stores_removed` page error.
 
-### `apps/web/tests-e2e/**/*.spec.ts` — 2,061 declared tests across 543 spec files (Playwright suite)
+### `apps/web/tests-e2e/**/*.spec.ts` — 2,065 declared tests across 543 spec files (Playwright suite)
 
 End-to-end browser tests that drive the real SvelteKit app against a real local Supabase. Unit tests pin pure helpers and SQL pins RLS at the database; this suite catches the next failure mode — **a UI fetch path that bypasses or misuses an otherwise-correct policy** (a wrong join, a dropped filter, a client-side lookup that trusts the URL, an optimistic update that never round-trips). Browser-only on purpose — mobile / watch don't have an equivalent harness (Flutter `integration_test` is too slow + flaky on CI to be worth the cycles right now).
 
@@ -1325,7 +1330,7 @@ tests-e2e/
   onboarding/design.spec.ts    — /onboarding on AuthShell (no writes): the named progressbar and the panel rail track the step, a build with no push key walks no notifications step (rail and count alike), a step change focuses the new question's heading (Continue and Back), each single-choice group is named by its question, reduced motion shows the new step whole on its first frame, the phone layout carries the step count with no sideways scroll
   dashboard.spec.ts            — /dashboard
   dashboard/tap-targets.spec.ts — every icon button on /dashboard measured against the 44 px bar at 1280x720 and 375x667, through fixtures/tap-targets.ts (which comment-tap-targets.spec.ts reads too). Fails a control that misses its floor OR meets it exactly — the headroom half, see decisions § 1666 — and fails a sub-bar control that is not in the inline-disclosure registry
-  dashboard/tiny-load.spec.ts — an account whose only run is 10 s (a near-zero training load) gets the dashboard and a training-load chart with distinct whole-number ticks, not 500 Internal Error from duplicate keyed-each ticks (PR #1155)
+  dashboard/tiny-load.spec.ts — an account whose only run is 10 s (a near-zero training load) gets the dashboard and a training-load chart with distinct whole-number ticks, not 500 Internal Error from duplicate keyed-each ticks (PR #1155); an account whose only run is 0 m gets mileage bars with a finite height, not `height: NaN%`
   feed.spec.ts                 — /feed
   coach.spec.ts                — /coach (mount, dropdowns, send → mocked SSE assistant bubble)
   live/
@@ -1926,7 +1931,7 @@ own typed request — are fixed in the same commit. Carries two population floor
 so a broken import walk fails rather than reporting a clean tree. See
 [decisions § 919](../architecture/decisions.md).
 
-### `apps/web/src/lib/paged_read_guards.test.ts` — 1 test (new)
+### `apps/web/src/lib/paged_read_guards.test.ts` — 2 tests
 
 Every `.range()` read in the web tree, and whether its ordering is a total
 order. PostgREST turns `.range()` into `LIMIT`/`OFFSET`, so a non-unique (or
@@ -1940,6 +1945,15 @@ pre-fix tree it names six reads: `createBackup`'s runs page (ordered on
 claiming `complete`), both `fetchRuns` branches, and both ZIP importers' dedupe
 reads. Population floor of eight `.range()` reads. See
 [decisions § 922](../architecture/decisions.md).
+
+Rewritten by [decisions § 1936](../architecture/decisions.md): a total order
+stops a tie from straddling a boundary but not a row inserted or deleted
+mid-walk from shifting every later OFFSET, so the rule is now that no `.range()`
+read exists at all (the first case names each one it finds), and the second case
+resolves every `walkKeyset(<ORDER>, …)` call to its `KeysetKey[]` literal and
+fails when the order does not end on a unique column or nothing sorts by it
+(`for (const k of <ORDER>) … .order(k.column`). Population floor of seven walks.
+Restoring the pre-change `createBackup` fails both cases.
 
 ### `apps/web/scripts/env_isolation.test.mjs` — 22 tests (3 added)
 
@@ -2757,3 +2771,35 @@ The token behind [decisions § 1822](../architecture/decisions.md): a token note
 ### `apps/web/src/lib/core/list_freshness_guard.test.ts` — 6 source guards
 
 Derives the writers rather than listing them: every `.from(<table>).insert|update|upsert|delete` on a table in `LISTS_BY_TABLE`, in `data.ts` per exported function and in every other `src/` file, must follow a `markListsStale` naming each list the table maps to. A self-check fails if the pattern stops finding the data layer's writes; the one exemption (`computeGlobalSegmentEffortsForRun`) fails once it stops existing, writing, or starts marking. The RPC and Edge Function writers (`clonePlanTemplate`, `clonePublicPlan`, `importRaceResult`, `completeStravaOAuth`, `syncStrava`) are pinned by name. Every page exporting a `snapshot` must be a registered list, note its token as its load starts, capture that load token, and check it before putting the captured list back. Mutation-verified: dropping `deletePlan`'s mark fails the data-layer sweep naming it.
+
+## Whole-table walks by keyset cursor (2026-10-14)
+
+[decisions § 1936](../architecture/decisions.md). Every read whose contract is "every row" walked with `.range()` — LIMIT/OFFSET — so a row inserted or deleted while the walk was between two pages shifted every later position and was read twice or not at all. Each now walks by keyset cursor through `walkKeyset`.
+
+### `apps/web/src/lib/core/keyset_page.test.ts` — 32 tests at run time
+
+Nine `walkKeyset` cases added (mirrored in `packages/core_models/test/keyset_page_test.dart`), run against a fake PostgREST that evaluates the walk's own filter: every row once in order across pages, for all four direction × null-placement orders; a row deleted mid-walk makes the walk skip nothing while an OFFSET walk over the same deletion loses the third row; a row inserted behind the cursor mid-walk repeats nothing while the OFFSET walk returns the second row twice; a server capping below the page size is not read as exhausted; a short first page costs one confirming read and a full last page one empty read; a page error returns what was read, flagged short (Dart: propagates); a server ignoring the filter stops short instead of looping (Dart: `StateError`); a `start` cursor; a non-positive page size refused.
+
+### `packages/core_models/test/keyset_page_test.dart` — 32 tests at run time
+
+The Dart half of the pair above, same cases, same evaluator.
+
+### `apps/web/src/lib/integrations/garmin_paged_identities.test.ts` — 5 tests
+
+`collectRunIdentities` against a fake keyset source: 1,200 runs all collected, page 2 filtered after page 1's last row; the walk order is `started_at desc, id desc`; a page error ends the walk without throwing; non-finite start times dropped; each page asks for the 1,000-row cap.
+
+### `apps/web/src/lib/integrations/strava-zip-dedupe.test.ts` — 10 tests
+
+Two `collectStravaDedupeSet` cases rewritten for the walk: 2,500 runs over three cursor-filtered pages, the first unfiltered; an error page ends the walk without throwing.
+
+### `packages/api_client/test/keyset_walks_source_test.dart` — 14 tests at run time
+
+Replaces `paged_read_test.dart` with `readAllPages`. No `.range()` or `readAllPages` in the client; `_walk` filters after the cursor and sorts by `_orderBy(q, order)`; and each of `fetchRunRowsRaw`, `fetchRouteRowsRaw`, `getRouteReviews`, `fetchEventAttendees`, `fetchCheckpointCrossings`, `fetchExerciseCatalogue`, `fetchOwnedRunIds` and `fetchOwnedRouteIds` walks its named `KeysetKey` order, which must end on a unique column. The three owned-id readers the foreign-row reconcile leans on ([decisions § 1938](../architecture/decisions.md)) — those two and `fetchSavedRouteIds`, which walks `_savedRouteIdOrder` on `route_id` alone — filter by the caller explicitly and never `.limit(` the read.
+
+### `apps/mobile_android/test/social_attendees_walk_test.dart` — 1 test
+
+`SocialService.fetchAttendees` (the event-detail attendee list) was one unranged select, capped at 1,000 rows with no flag. The guard requires a `walkKeyset` over `ApiClient.eventAttendeeOrder`, the cursor filter, a sort by that order, and no `.range()`.
+
+### `apps/backend/supabase/tests/roster_keyset_indexes_test.sql` — 5 tests
+
+Migration `20270817000021`: `club_members` has a plain ascending btree on `(club_id, joined_at, user_id)` and `event_attendees` one on `(event_id, instance_start, joined_at, user_id)`, matched by key columns, `indoption` and no predicate or expression; `event_attendees_instance_roster` exists by name; and the left-prefix `event_attendees_event_instance` is gone, by name and by shape.

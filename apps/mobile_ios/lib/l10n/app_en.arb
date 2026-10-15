@@ -20103,5 +20103,100 @@
   "routeDetailSendDmDone": "Done",
   "@routeDetailSendDmDone": {
     "description": "Closes the send-a-route sheet after a send"
+  },
+  "profileRequestToFollow": "Request to follow",
+  "@profileRequestToFollow": {
+    "description": "Follow button label on a private profile the viewer does not follow"
+  },
+  "profileRequested": "Requested",
+  "@profileRequested": {
+    "description": "Follow button label while the viewer's request to follow a private profile is pending"
+  },
+  "profileRequestSent": "Follow request sent",
+  "@profileRequestSent": {
+    "description": "Banner after the viewer asks to follow a private profile"
+  },
+  "profileRequestWithdrawn": "Follow request withdrawn",
+  "@profileRequestWithdrawn": {
+    "description": "Banner after the viewer withdraws a pending follow request"
+  },
+  "profilePrivateTitle": "This profile is private",
+  "@profilePrivateTitle": {
+    "description": "Title of the panel shown instead of runs and follower lists on a private profile"
+  },
+  "profilePrivateBody": "Follow {name} to see their runs and who they follow. They approve each request.",
+  "@profilePrivateBody": {
+    "description": "Body of the private-profile panel for a viewer with no pending request",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "profilePrivateRequestedBody": "Your request is waiting for approval. You'll see their runs once it's accepted.",
+  "@profilePrivateRequestedBody": {
+    "description": "Body of the private-profile panel while the viewer's request is pending"
+  },
+  "profileNotifFollowRequest": "{name} asked to follow you",
+  "@profileNotifFollowRequest": {
+    "description": "Notification text for a request to follow the recipient's private profile",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "prefsPrivateProfile": "Private profile",
+  "@prefsPrivateProfile": {
+    "description": "Settings switch that makes the profile private"
+  },
+  "prefsPrivateProfileSubtitle": "Only followers you approve see your runs, activities and follower lists. People can still find you by name and ask to follow.",
+  "@prefsPrivateProfileSubtitle": {
+    "description": "Explains the private-profile switch"
+  },
+  "prefsPrivateProfileFailed": "Couldn't update your profile privacy.",
+  "@prefsPrivateProfileFailed": {
+    "description": "Banner when the private-profile switch could not be saved"
+  },
+  "followRequestsTitle": "Follow requests",
+  "@followRequestsTitle": {
+    "description": "Title of the screen listing requests to follow the user's private profile"
+  },
+  "followRequestsEmptyTitle": "No pending requests",
+  "@followRequestsEmptyTitle": {
+    "description": "Empty state title on the follow requests screen"
+  },
+  "followRequestsEmptyBody": "When someone asks to follow your private profile, they'll show up here.",
+  "@followRequestsEmptyBody": {
+    "description": "Empty state body on the follow requests screen"
+  },
+  "followRequestsApprove": "Approve",
+  "@followRequestsApprove": {
+    "description": "Approve a follow request"
+  },
+  "followRequestsDecline": "Decline",
+  "@followRequestsDecline": {
+    "description": "Decline a follow request"
+  },
+  "followRequestsApproved": "{name} can now see your profile",
+  "@followRequestsApproved": {
+    "description": "Banner after approving a follow request",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "followRequestsDeclinedBanner": "Request declined",
+  "@followRequestsDeclinedBanner": {
+    "description": "Banner after declining a follow request"
+  },
+  "followRequestsLoadError": "Couldn't load follow requests.",
+  "@followRequestsLoadError": {
+    "description": "Error state when follow requests could not be loaded"
+  },
+  "followRequestsActionFailed": "Couldn't update the request.",
+  "@followRequestsActionFailed": {
+    "description": "Banner when approving or declining a follow request failed"
   }
 }

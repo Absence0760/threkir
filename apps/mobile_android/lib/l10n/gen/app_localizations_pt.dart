@@ -15889,6 +15889,78 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get routeDetailSendDmDone => 'Concluído';
+
+  @override
+  String get profileRequestToFollow => 'Pedir para seguir';
+
+  @override
+  String get profileRequested => 'Pedido enviado';
+
+  @override
+  String get profileRequestSent => 'Pedido para seguir enviado';
+
+  @override
+  String get profileRequestWithdrawn => 'Pedido para seguir retirado';
+
+  @override
+  String get profilePrivateTitle => 'Este perfil é privado';
+
+  @override
+  String profilePrivateBody(String name) {
+    return 'Siga $name para ver as corridas e quem essa pessoa segue. Cada pedido é aprovado.';
+  }
+
+  @override
+  String get profilePrivateRequestedBody =>
+      'O seu pedido aguarda aprovação. Verá as corridas quando for aprovado.';
+
+  @override
+  String profileNotifFollowRequest(String name) {
+    return '$name quer segui-lo';
+  }
+
+  @override
+  String get prefsPrivateProfile => 'Perfil privado';
+
+  @override
+  String get prefsPrivateProfileSubtitle =>
+      'Apenas os seguidores que aprovar veem as suas corridas, atividades e listas de seguidores. Continuam a poder encontrá-lo pelo nome e pedir para o seguir.';
+
+  @override
+  String get prefsPrivateProfileFailed =>
+      'Não foi possível alterar a privacidade do perfil.';
+
+  @override
+  String get followRequestsTitle => 'Pedidos para seguir';
+
+  @override
+  String get followRequestsEmptyTitle => 'Nenhum pedido pendente';
+
+  @override
+  String get followRequestsEmptyBody =>
+      'Quando alguém pedir para seguir o seu perfil privado, o pedido aparece aqui.';
+
+  @override
+  String get followRequestsApprove => 'Aprovar';
+
+  @override
+  String get followRequestsDecline => 'Recusar';
+
+  @override
+  String followRequestsApproved(String name) {
+    return '$name pode agora ver o seu perfil';
+  }
+
+  @override
+  String get followRequestsDeclinedBanner => 'Pedido recusado';
+
+  @override
+  String get followRequestsLoadError =>
+      'Não foi possível carregar os pedidos para seguir.';
+
+  @override
+  String get followRequestsActionFailed =>
+      'Não foi possível atualizar o pedido.';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -31761,4 +31833,76 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get routeDetailSendDmDone => 'Concluído';
+
+  @override
+  String get profileRequestToFollow => 'Pedir para seguir';
+
+  @override
+  String get profileRequested => 'Solicitado';
+
+  @override
+  String get profileRequestSent => 'Solicitação para seguir enviada';
+
+  @override
+  String get profileRequestWithdrawn => 'Solicitação para seguir retirada';
+
+  @override
+  String get profilePrivateTitle => 'Este perfil é privado';
+
+  @override
+  String profilePrivateBody(String name) {
+    return 'Siga $name para ver as corridas e quem essa pessoa segue. Cada solicitação é aprovada.';
+  }
+
+  @override
+  String get profilePrivateRequestedBody =>
+      'Sua solicitação aguarda aprovação. Você verá as corridas quando ela for aprovada.';
+
+  @override
+  String profileNotifFollowRequest(String name) {
+    return '$name quer seguir você';
+  }
+
+  @override
+  String get prefsPrivateProfile => 'Perfil privado';
+
+  @override
+  String get prefsPrivateProfileSubtitle =>
+      'Somente seguidores que você aprovar veem suas corridas, atividades e listas de seguidores. As pessoas ainda podem encontrar você pelo nome e pedir para seguir.';
+
+  @override
+  String get prefsPrivateProfileFailed =>
+      'Não foi possível alterar a privacidade do perfil.';
+
+  @override
+  String get followRequestsTitle => 'Solicitações para seguir';
+
+  @override
+  String get followRequestsEmptyTitle => 'Nenhuma solicitação pendente';
+
+  @override
+  String get followRequestsEmptyBody =>
+      'Quando alguém pedir para seguir seu perfil privado, a solicitação aparece aqui.';
+
+  @override
+  String get followRequestsApprove => 'Aprovar';
+
+  @override
+  String get followRequestsDecline => 'Recusar';
+
+  @override
+  String followRequestsApproved(String name) {
+    return '$name agora pode ver seu perfil';
+  }
+
+  @override
+  String get followRequestsDeclinedBanner => 'Solicitação recusada';
+
+  @override
+  String get followRequestsLoadError =>
+      'Não foi possível carregar as solicitações para seguir.';
+
+  @override
+  String get followRequestsActionFailed =>
+      'Não foi possível atualizar a solicitação.';
 }

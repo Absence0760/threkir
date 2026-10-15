@@ -46,6 +46,8 @@ String _targetKeyFor(NotificationRow n) {
     case 'follow':
       // Followers all target the recipient — collapse them together.
       return 'follow';
+    case 'follow_request':
+      return 'follow_request';
     case 'event_rsvp':
     case 'event_cancel':
     case 'event_reminder':

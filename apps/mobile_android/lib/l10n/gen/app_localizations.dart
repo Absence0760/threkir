@@ -26216,6 +26216,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Done'**
   String get routeDetailSendDmDone;
+
+  /// Follow button label on a private profile the viewer does not follow
+  ///
+  /// In en, this message translates to:
+  /// **'Request to follow'**
+  String get profileRequestToFollow;
+
+  /// Follow button label while the viewer's request to follow a private profile is pending
+  ///
+  /// In en, this message translates to:
+  /// **'Requested'**
+  String get profileRequested;
+
+  /// Banner after the viewer asks to follow a private profile
+  ///
+  /// In en, this message translates to:
+  /// **'Follow request sent'**
+  String get profileRequestSent;
+
+  /// Banner after the viewer withdraws a pending follow request
+  ///
+  /// In en, this message translates to:
+  /// **'Follow request withdrawn'**
+  String get profileRequestWithdrawn;
+
+  /// Title of the panel shown instead of runs and follower lists on a private profile
+  ///
+  /// In en, this message translates to:
+  /// **'This profile is private'**
+  String get profilePrivateTitle;
+
+  /// Body of the private-profile panel for a viewer with no pending request
+  ///
+  /// In en, this message translates to:
+  /// **'Follow {name} to see their runs and who they follow. They approve each request.'**
+  String profilePrivateBody(String name);
+
+  /// Body of the private-profile panel while the viewer's request is pending
+  ///
+  /// In en, this message translates to:
+  /// **'Your request is waiting for approval. You'll see their runs once it's accepted.'**
+  String get profilePrivateRequestedBody;
+
+  /// Notification text for a request to follow the recipient's private profile
+  ///
+  /// In en, this message translates to:
+  /// **'{name} asked to follow you'**
+  String profileNotifFollowRequest(String name);
+
+  /// Settings switch that makes the profile private
+  ///
+  /// In en, this message translates to:
+  /// **'Private profile'**
+  String get prefsPrivateProfile;
+
+  /// Explains the private-profile switch
+  ///
+  /// In en, this message translates to:
+  /// **'Only followers you approve see your runs, activities and follower lists. People can still find you by name and ask to follow.'**
+  String get prefsPrivateProfileSubtitle;
+
+  /// Banner when the private-profile switch could not be saved
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn't update your profile privacy.'**
+  String get prefsPrivateProfileFailed;
+
+  /// Title of the screen listing requests to follow the user's private profile
+  ///
+  /// In en, this message translates to:
+  /// **'Follow requests'**
+  String get followRequestsTitle;
+
+  /// Empty state title on the follow requests screen
+  ///
+  /// In en, this message translates to:
+  /// **'No pending requests'**
+  String get followRequestsEmptyTitle;
+
+  /// Empty state body on the follow requests screen
+  ///
+  /// In en, this message translates to:
+  /// **'When someone asks to follow your private profile, they'll show up here.'**
+  String get followRequestsEmptyBody;
+
+  /// Approve a follow request
+  ///
+  /// In en, this message translates to:
+  /// **'Approve'**
+  String get followRequestsApprove;
+
+  /// Decline a follow request
+  ///
+  /// In en, this message translates to:
+  /// **'Decline'**
+  String get followRequestsDecline;
+
+  /// Banner after approving a follow request
+  ///
+  /// In en, this message translates to:
+  /// **'{name} can now see your profile'**
+  String followRequestsApproved(String name);
+
+  /// Banner after declining a follow request
+  ///
+  /// In en, this message translates to:
+  /// **'Request declined'**
+  String get followRequestsDeclinedBanner;
+
+  /// Error state when follow requests could not be loaded
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn't load follow requests.'**
+  String get followRequestsLoadError;
+
+  /// Banner when approving or declining a follow request failed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn't update the request.'**
+  String get followRequestsActionFailed;
 }
 
 class _AppLocalizationsDelegate

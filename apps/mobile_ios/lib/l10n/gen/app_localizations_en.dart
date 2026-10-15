@@ -15721,4 +15721,74 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get routeDetailSendDmDone => 'Done';
+
+  @override
+  String get profileRequestToFollow => 'Request to follow';
+
+  @override
+  String get profileRequested => 'Requested';
+
+  @override
+  String get profileRequestSent => 'Follow request sent';
+
+  @override
+  String get profileRequestWithdrawn => 'Follow request withdrawn';
+
+  @override
+  String get profilePrivateTitle => 'This profile is private';
+
+  @override
+  String profilePrivateBody(String name) {
+    return 'Follow $name to see their runs and who they follow. They approve each request.';
+  }
+
+  @override
+  String get profilePrivateRequestedBody =>
+      'Your request is waiting for approval. You\'ll see their runs once it\'s accepted.';
+
+  @override
+  String profileNotifFollowRequest(String name) {
+    return '$name asked to follow you';
+  }
+
+  @override
+  String get prefsPrivateProfile => 'Private profile';
+
+  @override
+  String get prefsPrivateProfileSubtitle =>
+      'Only followers you approve see your runs, activities and follower lists. People can still find you by name and ask to follow.';
+
+  @override
+  String get prefsPrivateProfileFailed =>
+      'Couldn\'t update your profile privacy.';
+
+  @override
+  String get followRequestsTitle => 'Follow requests';
+
+  @override
+  String get followRequestsEmptyTitle => 'No pending requests';
+
+  @override
+  String get followRequestsEmptyBody =>
+      'When someone asks to follow your private profile, they\'ll show up here.';
+
+  @override
+  String get followRequestsApprove => 'Approve';
+
+  @override
+  String get followRequestsDecline => 'Decline';
+
+  @override
+  String followRequestsApproved(String name) {
+    return '$name can now see your profile';
+  }
+
+  @override
+  String get followRequestsDeclinedBanner => 'Request declined';
+
+  @override
+  String get followRequestsLoadError => 'Couldn\'t load follow requests.';
+
+  @override
+  String get followRequestsActionFailed => 'Couldn\'t update the request.';
 }

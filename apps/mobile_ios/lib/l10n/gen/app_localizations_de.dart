@@ -15896,4 +15896,76 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get routeDetailSendDmDone => 'Fertig';
+
+  @override
+  String get profileRequestToFollow => 'Folgen anfragen';
+
+  @override
+  String get profileRequested => 'Angefragt';
+
+  @override
+  String get profileRequestSent => 'Follower-Anfrage gesendet';
+
+  @override
+  String get profileRequestWithdrawn => 'Follower-Anfrage zurückgezogen';
+
+  @override
+  String get profilePrivateTitle => 'Dieses Profil ist privat';
+
+  @override
+  String profilePrivateBody(String name) {
+    return 'Folge $name, um die Läufe zu sehen und wem diese Person folgt. Jede Anfrage wird einzeln bestätigt.';
+  }
+
+  @override
+  String get profilePrivateRequestedBody =>
+      'Deine Anfrage wartet auf Bestätigung. Sobald sie angenommen ist, siehst du die Läufe.';
+
+  @override
+  String profileNotifFollowRequest(String name) {
+    return '$name möchte dir folgen';
+  }
+
+  @override
+  String get prefsPrivateProfile => 'Privates Profil';
+
+  @override
+  String get prefsPrivateProfileSubtitle =>
+      'Nur Follower, die du bestätigst, sehen deine Läufe, Aktivitäten und Follower-Listen. Andere finden dich weiterhin über deinen Namen und können anfragen.';
+
+  @override
+  String get prefsPrivateProfileFailed =>
+      'Profil-Privatsphäre konnte nicht geändert werden.';
+
+  @override
+  String get followRequestsTitle => 'Follower-Anfragen';
+
+  @override
+  String get followRequestsEmptyTitle => 'Keine offenen Anfragen';
+
+  @override
+  String get followRequestsEmptyBody =>
+      'Wenn jemand deinem privaten Profil folgen möchte, erscheint die Anfrage hier.';
+
+  @override
+  String get followRequestsApprove => 'Annehmen';
+
+  @override
+  String get followRequestsDecline => 'Ablehnen';
+
+  @override
+  String followRequestsApproved(String name) {
+    return '$name kann jetzt dein Profil sehen';
+  }
+
+  @override
+  String get followRequestsDeclinedBanner => 'Anfrage abgelehnt';
+
+  @override
+  String get followRequestsLoadError =>
+      'Follower-Anfragen konnten nicht geladen werden.';
+
+  @override
+  String get followRequestsActionFailed =>
+      'Anfrage konnte nicht aktualisiert werden.';
 }

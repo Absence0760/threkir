@@ -139,14 +139,22 @@ test.describe('owner', () => {
 		const anon = await browser.newContext({ storageState: { cookies: [], origins: [] } });
 		try {
 			const anonPage = await anon.newPage();
+			// The thumbnail is what the page shows; the original never reaches
+			// it. Asserted on the paths the page asks Storage to sign, not on
+			// <img src>: safeImageSrc admits https only, so the local stack's
+			// http signed URL renders as an empty src here by design.
+			const signed = anonPage.waitForRequest(
+				(r) =>
+					r.method() === 'POST' && new URL(r.url()).pathname.endsWith('/storage/v1/object/sign/run-photos')
+			);
 			await anonPage.goto(`/share/race/${listingId}`);
 			const gallery = anonPage.getByTestId('race-photos');
 			await expect(gallery).toBeVisible({ timeout: 15_000 });
 			await expect(gallery.getByRole('heading', { name: "Runners' photos" })).toBeVisible();
 			await expect(gallery.getByText(caption)).toBeVisible();
-			// The thumbnail is what the page shows; the original never reaches it.
-			const src = await gallery.locator('img').first().getAttribute('src');
-			expect(src).toContain('_512.png');
+			const paths = ((await signed).postDataJSON() as { paths: string[] }).paths;
+			expect(paths).toContain(`${USER_A.id}/${photoId}_512.png`);
+			expect(paths).not.toContain(`${USER_A.id}/${photoId}.png`);
 		} finally {
 			await anon.close();
 		}

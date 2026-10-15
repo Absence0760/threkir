@@ -94,16 +94,18 @@ final class WorkoutManagerDistanceTests: XCTestCase {
         XCTAssertLessThan(wm.distanceMetres, 2.8 * 60 * 1.2)
     }
 
-    func testGapOverTenSecondsCreditsNothingForTheGap() {
+    func testGapOverTenSecondsCreditsTheChordAcrossTheGap() {
         let wm = WorkoutManager()
         feed(wm, run(from: 51.5, at: 0, seconds: 20))
         let before = wm.distanceMetres
-        // 60 s later and ~170 m north: the estimator re-anchors and the
-        // un-sampled span is not invented.
+        // 60 s later and ~167 m north: the estimator re-anchors rather than
+        // integrating the jump, and credits the straight line across the gap
+        // less the 1-sigma uncertainty of both ends (spec v1.4), a lower bound
+        // on the path. 103.453 m is scripts/gps_distance/reference.py's figure.
         feed(wm, [loc(51.5 + 0.0015, at: 80)])
-        XCTAssertEqual(wm.distanceMetres, before, accuracy: 0.0001)
+        XCTAssertEqual(wm.distanceMetres, before + 103.4528, accuracy: 0.001)
         feed(wm, [loc(51.5 + 0.0015 + 2.8 / 111_195, at: 81)])
-        XCTAssertEqual(wm.distanceMetres, before + 2.8, accuracy: 0.01)
+        XCTAssertEqual(wm.distanceMetres, before + 103.4528 + 2.8, accuracy: 0.01)
     }
 
     func testACanopyStretchMovesDistanceButNotTheTrackOrTheMap() {
@@ -120,12 +122,24 @@ final class WorkoutManagerDistanceTests: XCTestCase {
         XCTAssertEqual(wm.mapPosition?.latitude ?? 0, 51.5 + 5 * degPerSecond, accuracy: 1e-12)
     }
 
-    func testBadAccuracyFixIsIgnored() {
+    func testFixPastTheAccuracyCapIsIgnored() {
+        // 51 m is past the estimator's 50 m cap: dropped before it is fed.
+        let wm = WorkoutManager()
+        feed(wm, run(from: 51.5, at: 0, seconds: 5))
+        let banked = wm.distanceMetres
+        feed(wm, [loc(51.6, at: 6, accuracy: 51)])
+        XCTAssertEqual(wm.distanceMetres, banked, accuracy: 0.0001)
+    }
+
+    func testFixAtTheAccuracyCapCreditsItsDopplerNotItsPosition() {
+        // A 50 m fix is weighted, not dropped (spec v1.4): its ~11 km jump is
+        // refused by the innovation gate, but its Doppler still credits the
+        // second, 2.8 m.
         let wm = WorkoutManager()
         feed(wm, run(from: 51.5, at: 0, seconds: 5))
         let banked = wm.distanceMetres
         feed(wm, [loc(51.6, at: 6, accuracy: 50)])
-        XCTAssertEqual(wm.distanceMetres, banked, accuracy: 0.0001)
+        XCTAssertEqual(wm.distanceMetres, banked + 2.8, accuracy: 0.0001)
     }
 
     // MARK: - The pause boundary (#371)

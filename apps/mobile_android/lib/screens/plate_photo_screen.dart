@@ -191,6 +191,7 @@ class PlatePhotoFormState extends State<PlatePhotoForm> {
           saturatedFatG: d.source.saturatedFatG,
           cholesterolMg: d.source.cholesterolMg,
         );
+        if (!mounted) return;
         setState(() => _drafts = [..._drafts!]..remove(d));
         d.dispose();
       }

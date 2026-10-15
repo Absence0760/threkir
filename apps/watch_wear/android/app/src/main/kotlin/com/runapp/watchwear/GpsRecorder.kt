@@ -13,7 +13,7 @@ import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
-import com.runapp.watchwear.recording.FIX_ACCURACY_GATE_M
+import com.runapp.watchwear.recording.ESTIMATOR_ACCURACY_CAP_M
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -102,7 +102,7 @@ class GpsRecorder(context: Context) {
         val cb = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
                 for (loc: Location in result.locations) {
-                    if (!loc.hasAccuracy() || loc.accuracy > FIX_ACCURACY_GATE_M) continue
+                    if (!loc.hasAccuracy() || loc.accuracy > ESTIMATOR_ACCURACY_CAP_M) continue
                     trySend(GpsEvent.Point(gpsPointFrom(loc)))
                 }
             }

@@ -45,6 +45,9 @@ class GpsDistanceEstimator(
 
     val distanceM: Double get() = gpsDistanceM + stepDistanceM
 
+    /// Clock of the last fix the filter took, null before the first.
+    val lastFixT: Double? get() = lastT
+
     var rScale = 1.0
         private set
     var rejectedFixes = 0

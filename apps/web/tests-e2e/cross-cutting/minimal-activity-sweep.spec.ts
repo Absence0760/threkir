@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 
 import { browserDateOf } from '../fixtures/dates';
 import { degenerateStrings } from '../fixtures/degenerate-text';
@@ -27,12 +27,21 @@ import { expect, test } from '../fixtures/test';
  * The table is enumerated from `src/routes`: a route belongs in it when its
  * page reads runs, gym sessions or routes and derives something from them.
  * Adding one is one line.
+ *
+ * A page that lands on its not-found or load-error branch, or is still on a
+ * skeleton, prints only nav text and would pass both scans. So every row waits
+ * for the signed-in shell's main region with no `*-load-error` alert in it, and
+ * a row that names one seeded item also waits for the element only its
+ * success branch draws.
  */
 
 interface SweepRoute {
 	name: string;
 	path: (s: MinimalActivity, user: SagaUser) => string;
+	ready?: (page: Page, s: MinimalActivity) => Locator;
 }
+
+const runHeading = (page: Page) => page.locator('.detail-header h1');
 
 const day = (s: MinimalActivity) => browserDateOf(s.tinyRun.startedAt);
 const year = (s: MinimalActivity) => day(s).slice(0, 4);
@@ -46,8 +55,8 @@ const ROUTES: readonly SweepRoute[] = [
 	{ name: 'history', path: () => '/history' },
 	{ name: 'runs list', path: () => '/runs' },
 	{ name: 'runs heatmap', path: () => '/runs/heatmap' },
-	{ name: 'run detail, 3 m in 10 s', path: (s) => `/runs/${s.tinyRun.id}` },
-	{ name: 'run detail, 0 m with one fix', path: (s) => `/runs/${s.zeroRun.id}` },
+	{ name: 'run detail, 3 m in 10 s', path: (s) => `/runs/${s.tinyRun.id}`, ready: runHeading },
+	{ name: 'run detail, 0 m with one fix', path: (s) => `/runs/${s.zeroRun.id}`, ready: runHeading },
 	{ name: 'recap year', path: (s) => `/recap/${year(s)}` },
 	{ name: 'recap month', path: (s) => `/recap/${year(s)}/${month(s)}` },
 	{ name: 'plans', path: () => '/plans' },
@@ -55,10 +64,22 @@ const ROUTES: readonly SweepRoute[] = [
 	{ name: 'coach', path: () => '/coach' },
 	{ name: 'races', path: () => '/races' },
 	{ name: 'routes list', path: () => '/routes' },
-	{ name: 'route detail, 2 points', path: (s) => `/routes/${s.routeId}` },
-	{ name: 'route roadbook, 2 points', path: (s) => `/routes/${s.routeId}/roadbook` },
+	{
+		name: 'route detail, 2 points',
+		path: (s) => `/routes/${s.routeId}`,
+		ready: (page, s) => page.getByRole('heading', { level: 1, name: s.routeName, exact: true })
+	},
+	{
+		name: 'route roadbook, 2 points',
+		path: (s) => `/routes/${s.routeId}/roadbook`,
+		ready: (page, s) => page.locator('.rb-header').getByRole('link', { name: s.routeName })
+	},
 	{ name: 'gym', path: () => '/gym' },
-	{ name: 'gym session, one set', path: (s) => `/gym/${s.gymWorkoutId}` },
+	{
+		name: 'gym session, one set',
+		path: (s) => `/gym/${s.gymWorkoutId}`,
+		ready: (page, s) => page.getByRole('heading', { level: 1, name: s.gymTitle, exact: true })
+	},
 	{ name: 'gym records', path: () => '/gym/records' },
 	{ name: 'gym exercise', path: (s) => `/gym/exercise?name=${encodeURIComponent(s.exerciseName)}` },
 	{ name: 'gym routines', path: () => '/gym/routines' },
@@ -153,6 +174,14 @@ test.describe('an account with minimal activity', () => {
 					/^\/(login|onboarding)\b/
 				);
 				await expect(page.getByText('Internal Error', { exact: true })).toHaveCount(0);
+				await expect(page.locator('#main-content')).toBeVisible();
+				await expect(page.locator('[data-testid$="load-error"]')).toHaveCount(0);
+				if (route.ready) {
+					await expect(
+						route.ready(page, seeded),
+						`${path} never drew its seeded item, so it is on a not-found, error or loading branch`
+					).toBeVisible();
+				}
 
 				const { text, geometry } = await renderedStrings(page);
 				expect(text, `${path} rendered no text, so the sweep proved nothing`).not.toEqual([]);

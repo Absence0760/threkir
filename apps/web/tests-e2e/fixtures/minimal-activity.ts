@@ -25,10 +25,15 @@ export interface MinimalActivity {
 	tinyRun: { id: string; startedAt: string };
 	zeroRun: { id: string; startedAt: string };
 	gymWorkoutId: string;
+	gymTitle: string;
 	exerciseName: string;
 	routeId: string;
+	routeName: string;
 	cleanup(): Promise<void>;
 }
+
+const GYM_TITLE = 'Minimal session';
+const ROUTE_NAME = 'Minimal route';
 
 const LAT = 51.5074;
 const LNG = -0.1278;
@@ -99,7 +104,7 @@ export async function seedMinimalActivity(user: { id: string }): Promise<Minimal
 			.from('gym_workouts')
 			.insert({
 				user_id: user.id,
-				title: 'Minimal session',
+				title: GYM_TITLE,
 				started_at: gymStart.toISOString(),
 				last_modified_at: gymStart.toISOString()
 			})
@@ -120,7 +125,7 @@ export async function seedMinimalActivity(user: { id: string }): Promise<Minimal
 
 		routeId = await insertRoute({
 			user_id: user.id,
-			name: 'Minimal route',
+			name: ROUTE_NAME,
 			waypoints: [
 				{ lat: LAT, lng: LNG },
 				{ lat: LAT + TEN_METRES_LAT, lng: LNG }
@@ -132,8 +137,10 @@ export async function seedMinimalActivity(user: { id: string }): Promise<Minimal
 			tinyRun: { id: tinyRunId, startedAt: tinyStart.toISOString() },
 			zeroRun: { id: zeroRunId, startedAt: zeroStart.toISOString() },
 			gymWorkoutId,
+			gymTitle: GYM_TITLE,
 			exerciseName,
 			routeId,
+			routeName: ROUTE_NAME,
 			cleanup
 		};
 	} catch (e) {

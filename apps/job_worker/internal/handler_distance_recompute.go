@@ -127,11 +127,7 @@ func (w *Worker) handleDistanceRecompute(ctx context.Context, job *Job) error {
 		if pass == EstimatorPassForward {
 			rawDistanceM, cum = replay.ForwardM, replay.ForwardCumM
 		}
-		// The replay re-anchors across a GPS gap and credits nothing for it;
-		// the recorder credited the gap from the pedometer, which the track
-		// cannot reproduce, so that share is kept as recorded. The bests stay
-		// on the replay's own cumulative, which can only make them slower.
-		rawDistanceM += metaStepFilledM(meta)
+		rawDistanceM += gapStepTopUpM(replay.GapM, metaStepFilledM(meta))
 		distanceM := math.Round(rawDistanceM*100) / 100
 
 		// The line follows the figure the run now carries, so only a
@@ -210,6 +206,20 @@ func metaStepFilledM(meta map[string]json.RawMessage) float64 {
 		return 0
 	}
 	return v
+}
+
+// gapStepTopUpM is what the recompute adds to a replayed pass for the
+// pedometer's share of the run's GPS gaps. The recorder credited each gap
+// max(chord lower bound, steps x stride) (spec v1.4 item 9); the replay has
+// no steps, so it credited each gap its chord lower bound, gapM in total,
+// and the recorder's steps arrive only as the run total stepFilledM. The
+// pair is credited max(gapM, stepFilledM): exact whenever every gap's
+// steps fall on the same side of its chord (one gap, or a run whose stride
+// is honest), and short, never long, otherwise. Adding stepFilledM on top
+// would count each gap twice. The bests stay on the replay's cumulative,
+// which holds the chords only and so can only make them slower.
+func gapStepTopUpM(gapM, stepFilledM float64) float64 {
+	return math.Max(gapM, stepFilledM) - gapM
 }
 
 func metaString(meta map[string]json.RawMessage, key string) string {

@@ -852,3 +852,102 @@ func TestDistanceRecompute_KalmanV3RecomputeIsRestampedKalmanV4(t *testing.T) {
 		t.Errorf("distance_recomputed_at = %q, want a fresh timestamp", at)
 	}
 }
+
+// A recorder credits a GPS gap max(chord lower bound, steps x stride) (spec
+// v1.4 item 9) and saves the steps' share as distance_step_filled_m. The
+// stored track carries no steps, so its replay credits each gap the chord
+// alone; adding the step-filled metres on top of that counted the gap twice
+// (gap_with_steps: +104.9 m). Every shared vector whose pedometer filled a
+// gap is recomputed from its fixes alone, plus the step-filled metres it
+// saved, and must land on the smoother's figure over the full stream.
+func TestDistanceRecompute_GapWithStepsMatchesTheRecorder(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "fixtures", "gps_distance_vectors.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var vf struct {
+		Scenarios []struct {
+			Name   string `json:"name"`
+			Events []struct {
+				Type     string   `json:"type"`
+				T        float64  `json:"t"`
+				Lat      *float64 `json:"lat"`
+				Lng      *float64 `json:"lng"`
+				Acc      *float64 `json:"acc"`
+				Speed    *float64 `json:"speed"`
+				SpeedAcc *float64 `json:"speedAcc"`
+				Bearing  *float64 `json:"bearing"`
+			} `json:"events"`
+			MaxSpeedMps       float64 `json:"maxSpeedMps"`
+			ExpectedIntervalS float64 `json:"expectedIntervalS"`
+			Smoothed          struct {
+				DistanceM     float64 `json:"distanceM"`
+				StepDistanceM float64 `json:"stepDistanceM"`
+			} `json:"smoothed"`
+		} `json:"scenarios"`
+	}
+	if err := json.Unmarshal(raw, &vf); err != nil {
+		t.Fatal(err)
+	}
+	t0 := time.Date(2026, 10, 15, 7, 0, 0, 0, time.UTC)
+	checked := map[string]bool{}
+	for _, s := range vf.Scenarios {
+		if s.Smoothed.StepDistanceM <= 0 {
+			continue
+		}
+		// The recompute replays with the run cap and the track's median
+		// interval; every step-filled vector is a 1 Hz run.
+		if s.MaxSpeedMps != maxSpeedMpsForActivity("run") || s.ExpectedIntervalS != 1 {
+			t.Fatalf("%s: maxSpeedMps %v / expectedIntervalS %v; the replay assumes a 1 Hz run", s.Name, s.MaxSpeedMps, s.ExpectedIntervalS)
+		}
+		var track []RecordedTrackPoint
+		for _, e := range s.Events {
+			if e.Type != "fix" || e.Lat == nil || e.Lng == nil {
+				continue
+			}
+			ts := t0.Add(time.Duration(math.Round(e.T*1000)) * time.Millisecond)
+			track = append(track, RecordedTrackPoint{
+				Lat: e.Lat, Lng: e.Lng, Timestamp: &ts,
+				AccuracyM: e.Acc, SpeedMps: e.Speed, SpeedAccuracyMps: e.SpeedAcc, BearingDeg: e.Bearing,
+			})
+		}
+		meta, _ := json.Marshal(map[string]any{
+			"distance_estimator":     "kalman_v4",
+			"distance_step_filled_m": s.Smoothed.StepDistanceM,
+		})
+		run := appRun(string(meta))
+		run.Source = "watch"
+		w, b := distanceWorker(t, run, track)
+		if err := w.handleDistanceRecompute(context.Background(), distanceJob(t, DistanceRecomputePayload{RunID: drRunID})); err != nil {
+			t.Fatalf("%s: handle: %v", s.Name, err)
+		}
+		if len(b.distance.updates) != 1 {
+			t.Fatalf("%s: updates = %d", s.Name, len(b.distance.updates))
+		}
+		// distance_m is written to the centimetre.
+		if got := b.distance.updates[0].DistanceM; math.Abs(got-s.Smoothed.DistanceM) > 0.006 {
+			t.Errorf("%s: recompute = %.3f m, recorder's smoothed figure = %.3f m (step-filled %.3f m)",
+				s.Name, got, s.Smoothed.DistanceM, s.Smoothed.StepDistanceM)
+		}
+		checked[s.Name] = true
+	}
+	for _, name := range []string{"gap_with_steps", "gap_chord_steps_short", "trailing_gap_with_steps"} {
+		if !checked[name] {
+			t.Errorf("vector %s no longer fills a gap from the pedometer; the test lost its case", name)
+		}
+	}
+}
+
+func TestGapStepTopUpM(t *testing.T) {
+	for _, c := range []struct{ gap, steps, want float64 }{
+		{0, 412.5, 412.5},     // no gap chord: the steps are all the replay lacks
+		{107.271, 104.903, 0}, // the chord already covers the steps
+		{76.818, 54.284, 0},   // steps fell short of the chord: the recorder credited the chord too
+		{92.625, 103.55, 10.925},
+		{50, 0, 0},
+	} {
+		if got := gapStepTopUpM(c.gap, c.steps); math.Abs(got-c.want) > 1e-9 {
+			t.Errorf("gapStepTopUpM(%v, %v) = %v, want %v", c.gap, c.steps, got, c.want)
+		}
+	}
+}

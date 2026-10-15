@@ -285,48 +285,48 @@
       }
     },
     "NSMotionUsageDescription" : {
-      "comment" : "Purpose string for the Motion & Fitness prompt raised by the pedometer, which counts steps and cadence when a run has no GPS.",
+      "comment" : "Purpose string for the Motion & Fitness prompt raised by the pedometer (steps and cadence) and the barometer (CMAltimeter, the climb on a run).",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Threkir nutzt Bewegungsdaten, um bei Laufband-Läufen ohne GPS Schritte zu zählen und die Schrittfrequenz zu schätzen."
+            "value" : "Threkir nutzt Bewegungsdaten, um Schritte zu zählen und die Schrittfrequenz zu schätzen, und das Barometer, um die Höhenmeter deiner Läufe zu messen."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Threkir uses motion data to count steps and estimate cadence on treadmill runs without GPS."
+            "value" : "Threkir uses motion data to count steps and estimate cadence, and the barometer to measure the climb on your runs."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Threkir usa los datos de movimiento para contar los pasos y estimar la cadencia en las carreras en cinta de correr sin GPS."
+            "value" : "Threkir usa los datos de movimiento para contar los pasos y estimar la cadencia, y el barómetro para medir el desnivel de tus carreras."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Threkir utilise les données de mouvement pour compter vos pas et estimer votre cadence lors des courses sur tapis de course, sans GPS."
+            "value" : "Threkir utilise les données de mouvement pour compter vos pas et estimer votre cadence, et le baromètre pour mesurer le dénivelé de vos courses."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Threkir はモーションデータを使用して、GPS を使わないトレッドミルでのランで歩数を数え、ケイデンスを推定します。"
+            "value" : "Threkir はモーションデータを使用して歩数を数えてケイデンスを推定し、気圧計を使用してランの獲得標高を測定します。"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O Threkir usa dados de movimento para contar passos e estimar a cadência em corridas na esteira sem GPS."
+            "value" : "O Threkir usa dados de movimento para contar passos e estimar a cadência, e o barômetro para medir a subida acumulada das suas corridas."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O Threkir utiliza dados de movimento para contar passos e estimar a cadência em corridas na passadeira sem GPS."
+            "value" : "O Threkir utiliza dados de movimento para contar passos e estimar a cadência, e o barómetro para medir o desnível positivo das suas corridas."
           }
         }
       }

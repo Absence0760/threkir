@@ -26,6 +26,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import '../auth_error.dart';
 import '../audio_cues.dart';
 import '../backend_timeout.dart';
+import '../barometer_bridge.dart';
 import '../ble_heart_rate.dart';
 import '../ble_readiness_labels.dart';
 import '../ble_treadmill.dart';
@@ -683,6 +684,9 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
 
   // Distance remaining on selected route
   double? _routeRemaining;
+
+  // Phone barometer, levelled against GPS altitude inside the recorder.
+  StreamSubscription<double>? _baroSub;
 
   // Step tracking
   StreamSubscription<StepCount>? _stepSub;
@@ -1475,6 +1479,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // Pedometer sensor stream. We subscribe now, but don't count steps
     // toward the run until _begin sets a baseline.
     _subscribeToPedometer();
+    _subscribeToBarometer();
 
     // Keep the screen awake from the start of the countdown onward,
     // unless the user has turned the wakelock off in Settings.
@@ -1505,6 +1510,23 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         .catchError((Object e) {
       _prepareError = e;
     });
+  }
+
+  /// Feed the phone barometer to the recorder from the countdown on, so the
+  /// anchor has levelled against GPS altitude by the time the run starts. A
+  /// phone without one errors once and the climb falls back to GPS altitude
+  /// (`run_altitude.dart`); nothing retries, because a missing sensor does not
+  /// come back mid-run.
+  void _subscribeToBarometer() {
+    _baroSub?.cancel();
+    _baroSub = barometricAltitudes().listen(
+      (m) => _recorder?.setBarometricAltitude(m),
+      onError: (Object e) {
+        debugPrint('Barometer unavailable: $e');
+        _baroSub?.cancel();
+        _baroSub = null;
+      },
+    );
   }
 
   /// Subscribe to the pedometer stream. On error, wait a bit and retry —
@@ -2369,6 +2391,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     _snapshotSub = _recorder!.snapshots.listen(_onSnapshot);
     _wireLockScreenControls();
     _subscribeToPedometer();
+    _subscribeToBarometer();
     if (widget.preferences.keepScreenOn) {
       WakelockPlus.enable();
     }
@@ -3450,6 +3473,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     final raw = await recorder.stop();
     _snapshotSub?.cancel();
     _stepSub?.cancel();
+    _baroSub?.cancel();
     _incrementalSaveTimer?.cancel();
     _gpsLostCheckTimer?.cancel();
     _permissionWatchdogTimer?.cancel();
@@ -3861,6 +3885,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   void _discard() {
     _snapshotSub?.cancel();
     _stepSub?.cancel();
+    _baroSub?.cancel();
     _treadmillSub?.cancel();
     _treadmillSub = null;
     _treadmillStatusSub?.cancel();
@@ -3967,6 +3992,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     _trainingDebounce?.cancel();
     _snapshotSub?.cancel();
     _stepSub?.cancel();
+    _baroSub?.cancel();
     _countdownTimer?.cancel();
     _incrementalSaveTimer?.cancel();
     _gpsLostCheckTimer?.cancel();

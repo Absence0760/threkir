@@ -1,3 +1,4 @@
+import CoreMotion
 import Flutter
 import UIKit
 import workmanager_apple
@@ -91,6 +92,7 @@ import workmanager_apple
       CalendarBridge.shared.attach(binaryMessenger: messenger)
       LiveActivityBridge.shared.attach(binaryMessenger: messenger)
       ScreenBrightnessBridge.shared.attach(binaryMessenger: messenger)
+      BarometerBridge.shared.attach(binaryMessenger: messenger)
     }
   }
 }
@@ -127,5 +129,57 @@ final class ScreenBrightnessBridge {
       }
     }
     channel = brightness
+  }
+}
+
+/// The barometer's relative altitude for the run recorder's elevation, over
+/// `run_app/barometer`. Dart side: `lib/barometer_bridge.dart`. CMAltimeter
+/// starts every session at 0 m, so only the shape is used; the recorder levels
+/// it against GPS altitude (`BaroAltitudeAnchor`). Rides the Motion & Fitness
+/// permission the pedometer already asks for. Kept in this file so it needs no
+/// new entry in the Xcode project.
+final class BarometerBridge: NSObject, FlutterStreamHandler {
+  static let shared = BarometerBridge()
+
+  private let altimeter = CMAltimeter()
+  private var channel: FlutterEventChannel?
+
+  func attach(binaryMessenger: FlutterBinaryMessenger) {
+    let events = FlutterEventChannel(
+      name: "run_app/barometer",
+      binaryMessenger: binaryMessenger
+    )
+    events.setStreamHandler(self)
+    channel = events
+  }
+
+  func onListen(
+    withArguments arguments: Any?,
+    eventSink events: @escaping FlutterEventSink
+  ) -> FlutterError? {
+    altimeter.stopRelativeAltitudeUpdates()
+    guard CMAltimeter.isRelativeAltitudeAvailable() else {
+      return FlutterError(code: "unavailable", message: "no barometer", details: nil)
+    }
+    switch CMAltimeter.authorizationStatus() {
+    case .denied, .restricted:
+      return FlutterError(code: "permission", message: "motion access denied", details: nil)
+    default:
+      break
+    }
+    altimeter.startRelativeAltitudeUpdates(to: OperationQueue.main) { data, error in
+      if let error = error {
+        events(FlutterError(code: "unavailable", message: error.localizedDescription, details: nil))
+        return
+      }
+      guard let data = data else { return }
+      events(["altitudeM": data.relativeAltitude.doubleValue])
+    }
+    return nil
+  }
+
+  func onCancel(withArguments arguments: Any?) -> FlutterError? {
+    altimeter.stopRelativeAltitudeUpdates()
+    return nil
   }
 }

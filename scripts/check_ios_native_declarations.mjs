@@ -297,6 +297,12 @@ export const PURPOSE_STRINGS = [
 		needed_by: 'pedometer counts steps on treadmill runs',
 	},
 	{
+		key: 'NSMotionUsageDescription',
+		source: 'swift',
+		pattern: /\bCMAltimeter\b/,
+		needed_by: 'BarometerBridge reads CMAltimeter relative altitude for run elevation',
+	},
+	{
 		key: 'NSPhotoLibraryUsageDescription',
 		source: 'dart',
 		pattern: /package:image_picker\//,

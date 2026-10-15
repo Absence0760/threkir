@@ -47,27 +47,44 @@ function relPath(file: string): string {
 export interface TestImport {
 	/** The module specifier as written. */
 	from: string;
-	/** `named` is `import { test }` (or `test as x`); `namespace` is `import * as x`. */
-	shape: 'named' | 'namespace';
+	/**
+	 * `named` is `import { test }` (or `test as x`); `namespace` is `import * as x`;
+	 * `default` is `import x from`, which is `test` for @playwright/test; `reexport`
+	 * is `export { test } from` or `export * from`; `require` is a CommonJS load.
+	 */
+	shape: 'named' | 'namespace' | 'default' | 'reexport' | 'require';
 }
 
 const NAMED = /\bimport\s+(type\s+)?\{([^}]*)\}\s*from\s*['"]([^'"]+)['"]/g;
-const NAMESPACE = /\bimport\s+\*\s+as\s+\w+\s+from\s*['"]([^'"]+)['"]/g;
+const NAMESPACE = /\bimport\s+(?:[\w$]+\s*,\s*)?\*\s+as\s+\w+\s+from\s*['"]([^'"]+)['"]/g;
+const DEFAULT = /\bimport\s+(?!type\s)([\w$]+)\s*(?:,\s*(?:\{[^}]*\}|\*\s+as\s+\w+))?\s*from\s*['"]([^'"]+)['"]/g;
+const REEXPORT_NAMED = /\bexport\s+(type\s+)?\{([^}]*)\}\s*from\s*['"]([^'"]+)['"]/g;
+const REEXPORT_ALL = /\bexport\s+\*\s+(?:as\s+\w+\s+)?from\s*['"]([^'"]+)['"]/g;
+const REQUIRE = /\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
+
+function namesTest(list: string): boolean {
+	return list
+		.split(',')
+		.map((s) => s.trim())
+		.filter((s) => s && !s.startsWith('type '))
+		.map((s) => s.split(/\s+as\s+/)[0].trim())
+		.includes('test');
+}
 
 /** Every runtime import of a `test` binding, whatever module it names. */
 export function runtimeTestImports(source: string): TestImport[] {
 	const code = stripComments(source);
 	const found: TestImport[] = [];
 	for (const m of code.matchAll(NAMED)) {
-		if (m[1]) continue;
-		const names = m[2]
-			.split(',')
-			.map((s) => s.trim())
-			.filter((s) => s && !s.startsWith('type '))
-			.map((s) => s.split(/\s+as\s+/)[0].trim());
-		if (names.includes('test')) found.push({ from: m[3], shape: 'named' });
+		if (!m[1] && namesTest(m[2])) found.push({ from: m[3], shape: 'named' });
 	}
 	for (const m of code.matchAll(NAMESPACE)) found.push({ from: m[1], shape: 'namespace' });
+	for (const m of code.matchAll(DEFAULT)) found.push({ from: m[2], shape: 'default' });
+	for (const m of code.matchAll(REEXPORT_NAMED)) {
+		if (!m[1] && namesTest(m[2])) found.push({ from: m[3], shape: 'reexport' });
+	}
+	for (const m of code.matchAll(REEXPORT_ALL)) found.push({ from: m[1], shape: 'reexport' });
+	for (const m of code.matchAll(REQUIRE)) found.push({ from: m[1], shape: 'require' });
 	return found;
 }
 
@@ -161,6 +178,34 @@ test('the import reader tells a runtime `test` from a type and from other names'
 		runtimeTestImports("import {\n\texpect,\n\ttest\n} from '@playwright/test';"),
 		[{ from: '@playwright/test', shape: 'named' }]
 	);
+});
+
+test('the import reader sees the shapes that bind `test` without naming it in braces', () => {
+	assert.deepEqual(runtimeTestImports("import test from '@playwright/test';"), [
+		{ from: '@playwright/test', shape: 'default' }
+	]);
+	assert.deepEqual(runtimeTestImports("import test, { expect } from '@playwright/test';"), [
+		{ from: '@playwright/test', shape: 'default' }
+	]);
+	assert.deepEqual(runtimeTestImports("import base, * as pw from '@playwright/test';"), [
+		{ from: '@playwright/test', shape: 'namespace' },
+		{ from: '@playwright/test', shape: 'default' }
+	]);
+	assert.deepEqual(runtimeTestImports("export { test, expect } from '@playwright/test';"), [
+		{ from: '@playwright/test', shape: 'reexport' }
+	]);
+	assert.deepEqual(runtimeTestImports("export { test as base } from '@playwright/test';"), [
+		{ from: '@playwright/test', shape: 'reexport' }
+	]);
+	assert.deepEqual(runtimeTestImports("export * from '@playwright/test';"), [
+		{ from: '@playwright/test', shape: 'reexport' }
+	]);
+	assert.deepEqual(runtimeTestImports("const { test } = require('@playwright/test');"), [
+		{ from: '@playwright/test', shape: 'require' }
+	]);
+	assert.deepEqual(runtimeTestImports("export type { test } from '@playwright/test';"), []);
+	assert.deepEqual(runtimeTestImports("export { expect } from '@playwright/test';"), []);
+	assert.deepEqual(runtimeTestImports("import type test from '@playwright/test';"), []);
 });
 
 test('the scan still finds the tree it is scanning', () => {

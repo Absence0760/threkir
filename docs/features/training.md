@@ -22,7 +22,7 @@ A Claude-powered second-opinion chat embedded below the week grid on the plan de
 
 **What it does**: critiques adherence, answers "should I run tomorrow?", explains what a workout is designed for, flags red-flag patterns in recent runs.
 
-**What it explicitly doesn't do** — captured in the system prompt and `decisions.md #12`: generate new plans, prescribe medical or nutrition changes, invent stats it doesn't have in context.
+**What it explicitly doesn't do** — captured in the system prompt and `decisions.md #12`: generate new plans, prescribe medical or nutrition changes, invent stats it doesn't have in context. Building a plan with AI help is the separate plan assistant below, not the chat.
 
 **Architecture**:
 - Server endpoint `POST /api/coach` — runs per-request (`prerender = false`), reads the caller's Supabase JWT to scope context pulls via RLS.
@@ -31,6 +31,18 @@ A Claude-powered second-opinion chat embedded below the week grid on the plan de
 - Model: `claude-sonnet-4-5`. Output tokens: 768 (free tier) / 2048 (Pro tier). Context window: 30 runs (free) / 75 runs (Pro) — `maxRunsLimit` in `apps/web/src/lib/coach/types.ts`.
 
 **Deploy requirement**: the endpoint runs as a Node 24 Lambda Function URL behind the prod CloudFront distribution (see [`apps/web/deployment.md`](../../apps/web/deployment.md) and [decisions.md § 53](../architecture/decisions.md#53-web-app--domain-on-aws-s3--cloudfront--lambda--route-53-not-vercel-or-cloudflare-pages)). The static SvelteKit build (under `adapter-static`) does not serve `/api/coach`; CloudFront routes that path to the Lambda. `ANTHROPIC_API_KEY` is sops-encrypted under `infra/envs/<env>/secrets.enc.yaml` (env-specific AWS KMS key) and wired into the Lambda's env by Terraform; missing key returns 503.
+
+## AI plan assistant (web)
+
+A "Describe the plan you want" box at the top of the `/plans/new` wizard (`PlanEditor.svelte`). The runner types something like "sub-2 half on 14 March, 4 days a week, last 5k was 26:30"; the box fills the wizard's own fields, and the deterministic generator builds the plan from them exactly as it does for a hand-filled form. **The model never writes a workout, distance, pace or weekly volume** ([decisions.md § 1930](../architecture/decisions.md), superseding § 12 in part).
+
+- **Endpoint** `POST /api/coach/plan-request` — handler `apps/web/src/lib/training/plan_request/handler.ts`, dev wrapper `src/routes/api/coach/plan-request/+server.ts`, prod routed inside the coach Lambda (`lambda/coach/src/index.ts`, segment `plan-request`). One non-streaming `claude-opus-4-8` call with forced tool use (`extract_plan_inputs`), 12 s timeout; refusal or a missing tool call returns 422.
+- **Trust boundary** `validatePlanInputs` (`plan_request/inputs.ts`) clamps or drops every field: goal race whitelisted (default half), race date must be after today and within two years, goal time dropped unless its pace is 2:30 to 15:00 per km for the distance, recent 5K kept only between 12:00 and 60:00, days per week 3 to 7 (default 4), weeks 4 to 24, walk-run forces the 5K goal and drops the goal time. Fields it had to default are returned as `assumptions` and listed under the filled form.
+- **What the client does with it**: sets the fields, routes a race date through `racePlanPreset` (the same arithmetic as the race calendar's "train for this race" link, so a too-soon or past date is refused with the same reason), and fills the recent 5K **without** ticking "this reflects my current fitness". The runner still confirms that, so an extracted time cannot anchor paces on its own. The ramp check then grades the generated plan as usual.
+- **Consent**: requires AI disclosure **v3** (`AI_DISCLOSURE_VERSION_PLAN_AI`, migration `20270816000001`); an older acceptance gets the standard `ai_disclosure_required` 403 and the box links to `/coach` to accept.
+- **Cost**: one AI Coach message from the same daily counter (`increment_coach_usage`; free 2/day, Pro 10/day), refunded on any provider failure. Over the cap the box shows the daily-limit message; the manual form keeps working on every failure path.
+- **Prod gate**: `PUBLIC_AI_PLAN_ENABLED` (default off), and the box also needs `PUBLIC_COACH_ENABLED`. Flipping it on in prod waits on owner + counsel sign-off of the § 12 liability surface and the v3 disclosure copy.
+- Web-only (web-canonical, decisions § 24); a mobile wizard twin would call the same endpoint.
 
 ## Surfaces (Android, v1)
 

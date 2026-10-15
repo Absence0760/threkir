@@ -270,6 +270,8 @@ class RunRecorder {
   /// 1-second timer re-emits the same fix forever, so this — not the
   /// snapshot's arrival — is the only honest measure of GPS liveness.
   DateTime? _currentWaypointAt;
+  // Wall-clock time the estimator last took a fix, canopy fixes included.
+  DateTime? _distanceFixAt;
   /// Last position that was appended to [_track]. Used to gate the next
   /// track append + distance accumulation on real movement.
   Position? _lastTrackedPosition;
@@ -547,6 +549,7 @@ class RunRecorder {
     _laps.clear();
     _currentWaypoint = null;
     _currentWaypointAt = null;
+    _distanceFixAt = null;
     _lastTrackedPosition = null;
     _lastTrackedPositionAt = null;
     _lastTrackedElapsed = null;
@@ -1116,6 +1119,7 @@ class RunRecorder {
     _laps.clear();
     _currentWaypoint = null;
     _currentWaypointAt = null;
+    _distanceFixAt = null;
     _lastTrackedPosition = null;
     _lastTrackedPositionAt = null;
     _lastTrackedElapsed = null;
@@ -1717,10 +1721,13 @@ class RunRecorder {
       // turned a stretch under trees into a gap, discarding the Doppler
       // speed that stays good there.
       if (_recording && _estimatorTakes(pos)) {
-        _weakGps = true;
+        _weakGps = false;
         _feedingGnss ? _gnssFixesRecorded++ : _platformFixesRecorded++;
         final t = _feedEstimator(pos, _fixQuality(pos)).t;
-        if (t != null) _addPaceSample(t, _estimator.distanceM);
+        if (t != null) {
+          _distanceFixAt = DateTime.now();
+          _addPaceSample(t, _estimator.distanceM);
+        }
         _emitSnapshot();
         return;
       }
@@ -1777,6 +1784,7 @@ class RunRecorder {
       // track keeps for the map and the route match.
       final trackLengthBefore = _track.length;
       final (t: estT, event: eventIndex) = _feedEstimator(pos, fix);
+      if (estT != null) _distanceFixAt = _currentWaypointAt;
       final last = _lastTrackedPosition;
       final lastAt = _lastTrackedPositionAt;
       final lastElapsed = _lastTrackedElapsed;
@@ -1938,6 +1946,7 @@ class RunRecorder {
       currentPaceSecondsPerKm: pace,
       currentPosition: current,
       positionFixedAt: _currentWaypointAt,
+      distanceFixedAt: _distanceFixAt,
       positionTrusted: _currentWaypointTrusted,
       track: _trackView,
       offRouteDistanceMetres: offRoute,

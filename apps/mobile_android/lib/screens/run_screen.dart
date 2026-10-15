@@ -2632,10 +2632,18 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       // a total GPS blackout would otherwise look permanently healthy.
       // Also latch _everHadGpsFix so we know whether to fall back to the
       // pedometer for distance.
+      // GPS-lost is about distance, so it reads the later of the blue dot's
+      // fix and the estimator's: under canopy the estimator keeps 20-50 m
+      // fixes that never move the dot.
       final fixedAt = snapshot.positionFixedAt;
       if (fixedAt != null) {
         _lastSnapshotAt = fixedAt;
         if (!_everHadGpsFix) _everHadGpsFix = true;
+      }
+      final distanceAt = snapshot.distanceFixedAt;
+      final lastAt = _lastSnapshotAt;
+      if (distanceAt != null && (lastAt == null || distanceAt.isAfter(lastAt))) {
+        _lastSnapshotAt = distanceAt;
       }
       final positionFresh = fixedAt != null &&
           DateTime.now().difference(fixedAt) <= _gpsLostThreshold;

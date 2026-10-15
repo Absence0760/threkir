@@ -160,7 +160,7 @@ void main() {
       expect(r.debugWeakGps, isFalse,
           reason: 'a clean fix must not raise the weak-GPS flag');
       r.debugInjectPosition(
-        makePosition(metresEast: 10, secondsFromStart: 3, accuracy: 50),
+        makePosition(metresEast: 10, secondsFromStart: 3, accuracy: 60),
       );
       expect(r.debugWeakGps, isTrue,
           reason: 'a fix above the accuracy gate stalls distance — flag it');
@@ -178,7 +178,7 @@ void main() {
       r.begin();
       r.debugInjectPosition(makePosition(metresEast: 0, secondsFromStart: 0));
       r.debugInjectPosition(
-        makePosition(metresEast: 10, secondsFromStart: 3, accuracy: 50),
+        makePosition(metresEast: 10, secondsFromStart: 3, accuracy: 60),
       );
       // The dropped fix doesn't emit; the 1 s timer carries the flag forward.
       await Future.delayed(const Duration(milliseconds: 1200));
@@ -498,6 +498,28 @@ void main() {
     // The snapshot stream is a broadcast controller: `add` delivers on a
     // microtask, so a synchronous inject is not visible to the listener yet.
     Future<void> pumpStream() => Future<void>.delayed(Duration.zero);
+
+    test('a canopy fix advances distanceFixedAt but not positionFixedAt',
+        () async {
+      final r = RunRecorder()..debugPrepareWithoutStream();
+      final received = <RunSnapshot>[];
+      final sub = r.snapshots.listen(received.add);
+      r.begin();
+      r.debugInjectPosition(makePosition(metresEast: 0, secondsFromStart: 0));
+      await pumpStream();
+      final fixedAt = received.last.positionFixedAt;
+      expect(received.last.distanceFixedAt, fixedAt);
+      await Future.delayed(const Duration(milliseconds: 5));
+      r.debugInjectPosition(
+          makePosition(metresEast: 3, secondsFromStart: 1, accuracy: 35));
+      await pumpStream();
+      expect(received.last.positionFixedAt, fixedAt,
+          reason: 'the blue dot did not move');
+      expect(received.last.distanceFixedAt!.isAfter(fixedAt!), isTrue,
+          reason: 'distance did');
+      await sub.cancel();
+      await r.stop();
+    });
 
     test('positionFixedAt does not advance on a timer-only emit', () async {
       final r = RunRecorder()..debugPrepareWithoutStream();
@@ -1826,7 +1848,8 @@ void main() {
       }
       expect(r.debugTrack, hasLength(5));
       expect(r.debugDistanceMetres, closeTo(120, 1e-6));
-      expect(r.debugWeakGps, isTrue);
+      expect(r.debugWeakGps, isFalse,
+          reason: 'distance is moving, so it is not "distance paused"');
       r.debugInjectPosition(makePosition(
           metresEast: 124, secondsFromStart: 31, speed: 4, accuracy: 60));
       expect(r.debugDistanceMetres, closeTo(120, 1e-6));

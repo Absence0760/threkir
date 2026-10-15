@@ -37,6 +37,11 @@ const _thumbnailOutsideTheRow = <String, String>{
       'a feed post, not a list row: a full-width map above the actor, the '
           'kudos and the comment count. It shares the thumbnail widget, not '
           'the row.',
+  'lib/screens/coaching_athlete_screen.dart':
+      'a coach reviewing one athlete: the clipped map sits full-width under '
+          'a compact date / activity / pace review line while the '
+          'coach_run_map gate is open, at the feed map\'s height. It shares '
+          'the thumbnail widget, not the row.',
 };
 
 /// The one surface that lists activities and must NOT take the run row, and why

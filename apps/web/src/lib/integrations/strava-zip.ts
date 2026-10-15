@@ -19,7 +19,8 @@ import { saveRun, addRunPhoto } from '../core/data';
 import type { JsonObject } from '../types';
 import { TABLES, METADATA_KEYS } from '../core/schema';
 import { parseStravaMediaPaths, STRAVA_PHOTO_MIME } from './strava_media';
-import { collectStravaDedupeSet, type StravaDedupeRow } from './strava-zip-dedupe';
+import { collectStravaDedupeSet } from './strava-zip-dedupe';
+import { RUN_DEDUPE_ORDER } from './garmin_dedupe';
 import { gunzipBlob } from '../util/gunzip';
 import { resolveStravaTrackMember } from './strava_track_member';
 import { classifyStravaRow } from './strava-zip-disposition';
@@ -108,24 +109,21 @@ export async function importStravaZip(
 		throw new ImportRefusedError('strava_zip_missing_columns', { columns: missing });
 	}
 
-	// Page the dedupe read: an unbounded PostgREST SELECT caps at 1000 rows, so
+	// Walk the dedupe read: an unbounded PostgREST SELECT caps at 1000 rows, so
 	// a high-volume migrant (1000+ existing runs) re-importing a refreshed ZIP
 	// would otherwise compare against an arbitrary slice and silently re-import
-	// everything past the cap as duplicates. Mirrors garmin-zip's paging guard.
-	const seen = await collectStravaDedupeSet((from, to) =>
-		supabase
+	// everything past the cap as duplicates. Mirrors garmin-zip's walk.
+	const seen = await collectStravaDedupeSet((after, limit) => {
+		let q = supabase
 			.from(TABLES.runs)
-			.select('metadata, external_id')
-			.eq('user_id', uid)
-			.order('started_at', { ascending: false })
-			// Secondary key: a row dropped at a page boundary is an id missing
-			// from the dedupe set, which re-imports the activity.
-			.order('id', { ascending: false })
-			.range(from, to)
-			.then(({ data, error }): StravaDedupeRow[] | null =>
-				error ? null : (data as StravaDedupeRow[]),
-			),
-	);
+			.select('id, started_at, metadata, external_id')
+			.eq('user_id', uid);
+		if (after) q = q.or(after);
+		for (const k of RUN_DEDUPE_ORDER) {
+			q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+		}
+		return q.limit(limit);
+	});
 
 	const dataRows = rows.slice(1);
 	const progress: StravaZipProgress = {

@@ -1,24 +1,25 @@
-// Every paged read composes into the whole table, or it composes into
+// Every whole-table read composes into the whole table, or it composes into
 // something nobody can name. Invocation:
 //   npx tsx --test src/lib/paged_read_guards.test.ts
 //
-// PostgREST turns `.range(from, to)` into LIMIT/OFFSET. Postgres makes no
-// promise about the order of rows that a query does not order, and none about
-// which of two equal sort keys comes first — so an OFFSET walk over a
-// non-unique ORDER BY (or none at all) can return a row on a page boundary
-// twice and another not at all. The tree already knew this: four load-more
-// readers in `core/data.ts` carry a "Secondary key so offset pages are stable"
-// note and a unique tiebreak.
+// PostgREST turns `.range(from, to)` into LIMIT/OFFSET, and an OFFSET names a
+// position. Postgres makes no promise about the order of rows a query does not
+// order, nor which of two equal sort keys comes first, so an OFFSET walk over
+// a non-unique ORDER BY can return a row on a page boundary twice and another
+// not at all. Ending the order on a unique column fixed that, and was this
+// guard's first rule. It does not fix the other half: a row inserted or
+// deleted while the walk is between two pages moves every later position, so
+// the next OFFSET starts a row early or late even over a total order.
+// `createBackup` writes a manifest saying `complete` over such a walk; the
+// account export, the recap and the heatmap read the history through one; the
+// two ZIP importers build their dedupe set from one, where a dropped row
+// re-imports a run the runner already has.
 //
-// The readers that did NOT were the ones where it costs most. `createBackup`
-// pages `runs` on `started_at` alone and paged `routes` with no order
-// whatsoever, then writes a manifest saying `complete` — the archive someone
-// wipes a device on. `fetchRuns` pages the entire history behind the recap,
-// the heatmap and the account export. The two ZIP importers page the dedupe
-// set, where a dropped row re-imports a run the runner already has.
-//
-// So the rule is a rule now: a `.range()` read's ordering has to end on a
-// column that is unique per row.
+// So the rule now is: no `.range()` read at all. A load-more list pages by
+// keyset cursor (`core/keyset_readers.test.ts`), and an every-row read walks
+// by one through `walkKeyset` (`core/keyset_page.ts`, decisions § 1927) —
+// over an order that ends on a column unique per row, and sorted by the same
+// key spec the cursor is read from.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -83,105 +84,79 @@ function chainsEndingInRange(src: string): { line: number; chain: string }[] {
 	return out;
 }
 
-/**
- * The body of a local `const <name> = ...;` declaration, balanced over
- * brackets. A paged read whose builder is a closure (`build().range(...)` in
- * `fetchRuns`) keeps its ordering there, so the chain alone says nothing.
- */
-function localDeclaration(src: string, name: string): string | null {
-	const decl = new RegExp(`\\bconst\\s+${name}\\s*=`).exec(src);
-	if (!decl) return null;
-	let depth = 0;
-	for (let i = decl.index + decl[0].length; i < src.length; i++) {
-		const c = src[i];
-		if (c === '(' || c === '[' || c === '{') depth++;
-		else if (c === ')' || c === ']' || c === '}') depth--;
-		else if (c === ';' && depth === 0) return src.slice(decl.index, i);
-	}
-	return null;
-}
-
-/**
- * The bare identifier a chain's own root call names, or null when the chain
- * roots in something else. `build().range(...)` and `build('*').range(...)`
- * both keep their ordering in the closure rather than in the chain, and the
- * arguments are walked over balanced parens so a call taking one resolves the
- * same as a call taking none — a zero-argument-only match read `fetchRuns`'
- * `select` parameter as an unordered paged read (§ 1560).
- *
- * A member call (`.select(...)`) is deliberately not a root: only a local
- * `const` declaration can be resolved, and `supabase.from(...)` is not one.
- */
-function rootCallee(chain: string): string | null {
-	const text = chain.trim();
-	if (!text.endsWith(')')) return null;
-	let depth = 0;
-	let open = -1;
-	for (let i = text.length - 1; i >= 0; i--) {
-		const c = text[i];
-		if (c === ')') depth++;
-		else if (c === '(') {
-			depth--;
-			if (depth === 0) {
-				open = i;
-				break;
-			}
-		}
-	}
-	if (open <= 0) return null;
-	const head = text.slice(0, open).trimEnd();
-	const name = /([A-Za-z_][\w]*)$/.exec(head);
-	if (!name) return null;
-	if (head.endsWith(`.${name[1]}`)) return null;
-	return name[1];
-}
-
 /** Every `.order('col'` in a chunk of source, in order. */
 function orderKeys(text: string): string[] {
 	return [...text.matchAll(/\.order\(\s*['"]([A-Za-z_][\w]*)['"]/g)].map((m) => m[1]);
 }
 
-test('every paged read ends its ordering on a column unique per row', () => {
+test('no read pages by offset: `.range()` is gone from the tree', () => {
 	const offenders: string[] = [];
-	let ranges = 0;
-
 	for (const file of sources(srcRoot)) {
 		const src = stripComments(readFileSync(file, 'utf-8'));
-		if (!src.includes('.range(')) continue;
 		for (const { line, chain } of chainsEndingInRange(src)) {
-			ranges++;
-			let orders = orderKeys(chain);
-			// `build().range(...)` — the ordering lives in the closure, not
-			// in the chain the call returns.
-			if (orders.length === 0) {
-				const callee = rootCallee(chain);
-				const body = callee ? localDeclaration(src, callee) : null;
-				if (body) orders = orderKeys(body);
-			}
 			const rel = file.slice(resolve(srcRoot, '..').length + 1);
-			if (orders.length === 0) {
-				offenders.push(`${rel}:${line}: paged read with no .order() at all`);
+			const orders = orderKeys(chain);
+			offenders.push(
+				`${rel}:${line}: an OFFSET walk${orders.length ? ` over ${orders.join(', ')}` : ''} — use walkKeyset`,
+			);
+		}
+	}
+	assert.deepEqual(
+		offenders.sort(),
+		[],
+		'`.range()` pages by OFFSET, so a row inserted or deleted between two pages ' +
+			'is skipped or repeated. Walk by keyset cursor (`walkKeyset` in core/keyset_page.ts).',
+	);
+});
+
+/** Every `const NAME: readonly KeysetKey[] = [ ... ]` in the tree, by name → file → columns. */
+function keysetOrders(): Map<string, Map<string, string[]>> {
+	const out = new Map<string, Map<string, string[]>>();
+	for (const file of sources(srcRoot)) {
+		const src = stripComments(readFileSync(file, 'utf-8'));
+		for (const m of src.matchAll(/\bconst\s+([A-Z_][A-Z0-9_]*)\s*:\s*readonly KeysetKey\[\]\s*=\s*\[([^\]]*)\]/g)) {
+			const columns = [...m[2].matchAll(/column:\s*'([a-z_][a-z0-9_]*)'/g)].map((c) => c[1]);
+			if (!out.has(m[1])) out.set(m[1], new Map());
+			out.get(m[1])!.set(file, columns);
+		}
+	}
+	return out;
+}
+
+test('every keyset walk runs over a total order that something sorts by', () => {
+	const orders = keysetOrders();
+	const offenders: string[] = [];
+	let walks = 0;
+	const allSource = sources(srcRoot)
+		.map((f) => stripComments(readFileSync(f, 'utf-8')))
+		.join('\n');
+	for (const file of sources(srcRoot)) {
+		if (file.endsWith('core/keyset_page.ts')) continue;
+		const src = stripComments(readFileSync(file, 'utf-8'));
+		const rel = file.slice(resolve(srcRoot, '..').length + 1);
+		for (const m of src.matchAll(/\bwalkKeyset\b[^(]*\(\s*([A-Z_][A-Z0-9_]*)\s*,/g)) {
+			walks++;
+			const name = m[1];
+			const declared = orders.get(name);
+			const columns = declared?.get(file) ?? (declared?.size === 1 ? [...declared.values()][0] : undefined);
+			if (!columns) {
+				offenders.push(`${rel}: walkKeyset(${name}) — order not resolvable as a KeysetKey[] literal`);
 				continue;
 			}
-			const last = orders[orders.length - 1];
+			const last = columns[columns.length - 1];
 			if (!UNIQUE_TIEBREAKS.includes(last)) {
-				offenders.push(`${rel}:${line}: paged read ends its order on \`${last}\`, which is not unique`);
+				offenders.push(`${rel}: walkKeyset(${name}) ends its order on \`${last}\`, which is not unique`);
+			}
+			const sorts = new RegExp(`for \\(const (\\w+) of ${name}\\)[\\s\\S]{0,40}?\\.order\\(\\1\\.column`);
+			if (!sorts.test(allSource)) {
+				offenders.push(`${rel}: nothing sorts by ${name}, so its cursor names a row in an order the read does not use`);
 			}
 		}
 	}
 
 	// Population: a walk that resolved nothing would satisfy the assertion
-	// below while proving nothing. The tree holds seven: the load-more
-	// readers moved to keyset cursors (`core/keyset_page.ts`,
-	// `core/keyset_readers.test.ts`), which page with `.limit()`, so what is
-	// left is the whole-table walks.
-	assert.ok(ranges >= 2, `only found ${ranges} .range() reads — walker broken?`);
-
-	assert.deepEqual(
-		offenders.sort(),
-		[],
-		'a `.range()` read is paged over an ordering that is not a total order, ' +
-			'so a row on a page boundary can be returned twice or not at all. ' +
-			'Add a unique secondary key the way fetchClubMembers does.',
-	);
+	// below while proving nothing. Seven today — fetchRuns, the exercise
+	// catalogue, the backup's runs and routes, and the three ZIP-import reads.
+	assert.ok(walks >= 7, `only found ${walks} walkKeyset calls — walker broken?`);
+	assert.deepEqual(offenders.sort(), []);
 });

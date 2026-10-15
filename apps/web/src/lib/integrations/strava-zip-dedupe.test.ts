@@ -7,7 +7,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildStravaDedupeSet, collectStravaDedupeSet, type StravaDedupeRow } from './strava-zip-dedupe';
+import { buildStravaDedupeSet, collectStravaDedupeSet, type StravaDedupeWalkRow } from './strava-zip-dedupe';
 
 test('buildStravaDedupeSet — adds metadata.strava_id', () => {
 	const seen = buildStravaDedupeSet([
@@ -96,38 +96,37 @@ test('buildStravaDedupeSet — handles mixed batch of new + legacy rows', () => 
 	assert.equal(seen.has('3'), true);
 });
 
-test('collectStravaDedupeSet — pages past the 1000-row PostgREST cap', async () => {
+test('collectStravaDedupeSet — walks past the 1000-row PostgREST cap by cursor', async () => {
 	// A high-volume migrant with 2,500 existing Strava runs. A single
 	// unbounded read would return only ~1000, so ~1500 would be re-imported
-	// as duplicates. The pager must see every one.
+	// as duplicates. The walk must see every one, and must continue from the
+	// last row read rather than from an offset (§ 1927).
 	const TOTAL = 2500;
-	const all: StravaDedupeRow[] = Array.from({ length: TOTAL }, (_, i) => ({
+	const all: StravaDedupeWalkRow[] = Array.from({ length: TOTAL }, (_, i) => ({
+		id: `r-${String(TOTAL - i).padStart(5, '0')}`,
+		started_at: new Date(Date.UTC(2026, 0, 1, 0, 0, TOTAL - i)).toISOString(),
 		metadata: { strava_id: String(i) },
 		external_id: `strava:${i}`,
 	}));
-	let calls = 0;
-	const seen = await collectStravaDedupeSet((from, to) => {
-		calls++;
-		return Promise.resolve(all.slice(from, to + 1)); // inclusive range
+	const afters: (string | null)[] = [];
+	const seen = await collectStravaDedupeSet(async (after, limit) => {
+		afters.push(after);
+		let from = 0;
+		if (after !== null) {
+			const id = /id\.lt\."([^"]+)"/.exec(after)?.[1];
+			from = all.findIndex((r) => r.id === id) + 1;
+			assert.ok(from > 0, `cursor names no row: ${after}`);
+		}
+		return { data: all.slice(from, from + limit), error: null };
 	});
 	assert.equal(seen.size, TOTAL, 'every existing run must be in the dedupe set');
 	assert.equal(seen.has('0'), true);
 	assert.equal(seen.has('2499'), true);
-	assert.equal(calls, 3, '2500 rows over a 1000-row page = 3 pages');
+	assert.equal(afters[0], null, 'the first page is unfiltered');
+	assert.equal(afters.length, 3, '2500 rows over a 1000-row page = 3 pages, the last short');
 });
 
-test('collectStravaDedupeSet — stops on a null (error) page without throwing', async () => {
-	const seen = await collectStravaDedupeSet(() => Promise.resolve(null));
+test('collectStravaDedupeSet — stops on an error page without throwing', async () => {
+	const seen = await collectStravaDedupeSet(() => Promise.resolve({ data: null, error: new Error('reset') }));
 	assert.equal(seen.size, 0);
-});
-
-test('collectStravaDedupeSet — a short final page ends the loop', async () => {
-	const page = [{ metadata: { strava_id: '7' }, external_id: 'strava:7' }];
-	let calls = 0;
-	const seen = await collectStravaDedupeSet((from, to) => {
-		calls++;
-		return Promise.resolve(page.slice(from, to + 1));
-	});
-	assert.equal(seen.has('7'), true);
-	assert.equal(calls, 1, 'a page shorter than pageSize ends paging');
 });

@@ -38,7 +38,11 @@ drive the worker:
   enqueued once per run by the `enqueue_safety_overdue_emails()` pg_cron scan
   when a live-broadcast run goes silent past the owner's
   `safety_overdue_minutes` window; carries started/last-seen **times + the
-  `/live/{run_id}` link, never coordinates**; docs/features/safety.md).
+  `/live/{run_id}` link, never coordinates**; docs/features/safety.md). On a
+  safety-audience run (decisions § 1964) the `overdue` and `off_route` payloads
+  (and the matching `safety_sms`) carry `view_token`, that contact's own link,
+  which the worker appends as `#k=<token>` — a fragment, so it never reaches a
+  server log.
   Crucially **not** gated on the runner's `email_notifications` preference — a
   safety contact opted in explicitly and must not be silenced by the runner's
   social-email setting. `decisions.md § 131`.

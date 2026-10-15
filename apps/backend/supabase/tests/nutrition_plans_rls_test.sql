@@ -2,9 +2,11 @@
 -- nutrition_plan_assignments). The contract:
 --
 --   1. A plan is written by its author only, and read by its author or by a
---      client an ACTIVE assignment links to it (the P3 branch, through the
---      private.can_read_nutrition_plan definer helper). A stranger sees and
---      writes nothing.
+--      client an assignment links to it, active or ended (the P3 branch,
+--      through the private.can_read_nutrition_plan definer helper; an ended
+--      assignment still governs its days, so the read survives the end,
+--      migration 20270819000041). A stranger sees and writes nothing, and an
+--      ended client gains no write.
 --   2. Self-assignment is a direct insert, and only of a plan the caller
 --      authors: a known plan id must not be enough to mint the assignment the
 --      client read branch would then honour.
@@ -14,7 +16,7 @@
 --      the client's assignment intact but unattributed; deleting a plan never
 --      touches food_log.
 begin;
-select plan(28);
+select plan(33);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -184,8 +186,41 @@ set local role authenticated;
 set local "request.jwt.claims" = '{"sub":"99999999-0000-0000-0000-0000000e0a03","role":"authenticated"}';
 
 select is(
+  (select title from nutrition_plans where id = '99999999-0000-0000-0000-0000000e0b01'),
+  'Marathon build',
+  'a client still reads a third-party plan once its assignment has ended, since it governs those days');
+
+select lives_ok(
+  $$ update nutrition_plans set title = 'Edited after the end' where id = '99999999-0000-0000-0000-0000000e0b01' $$,
+  'an ended client''s edit of the plan runs but is RLS-filtered');
+
+select lives_ok(
+  $$ update nutrition_plan_assignments set status = 'active', end_date = null
+      where id = '99999999-0000-0000-0000-0000000e0c01' $$,
+  'an ended client''s attempt to reopen a third-party assignment runs but is RLS-filtered');
+
+select throws_ok(
+  $$ insert into nutrition_plan_assignments (plan_id, client_id, assigned_by, start_date)
+     values ('99999999-0000-0000-0000-0000000e0b01', '99999999-0000-0000-0000-0000000e0a03',
+             '99999999-0000-0000-0000-0000000e0a03', current_date + 1) $$,
+  '42501', null,
+  'an ended client cannot self-assign the third-party plan again, so reading it opens no write');
+
+reset role;
+
+select is(
+  (select title || ' / ' || status || ' / ' || coalesce(end_date::text, 'open')
+     from nutrition_plans p join nutrition_plan_assignments a on a.plan_id = p.id
+    where a.id = '99999999-0000-0000-0000-0000000e0c01'),
+  'Marathon build / ended / ' || current_date::text,
+  'and neither the plan edit nor the reopen landed');
+
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"99999999-0000-0000-0000-0000000e0a02","role":"authenticated"}';
+
+select is(
   (select count(*)::int from nutrition_plans where id = '99999999-0000-0000-0000-0000000e0b01'),
-  0, 'the read branch closes the moment the assignment is no longer active');
+  0, 'a stranger still cannot read the plan an ended assignment keeps open to its client');
 
 -- ============================================================
 -- Erasure

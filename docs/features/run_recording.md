@@ -298,6 +298,16 @@ A location grant without precision (iOS 14+ with Precise Location off, Android 1
 - **Apple Watch.** `WorkoutManager` checks `accuracyAuthorization` at start, on recovery and on each authorization change; `GpsHealth.precisionStep` asks once per run under `PreciseRunTracking`, then shows "Precise Location is off" under the GPS banner. The run records.
 - **Wear OS.** `permissionOutcome` grades an approximate-only grant as `PermissionCost.PreciseLocation` and blocks GO, the same as a denied location grant, because the watch has nothing else to measure distance from. The app requests `ACCESS_FINE_LOCATION` and `ACCESS_COARSE_LOCATION` together: Android 12+ ignores a fine-only request without showing a dialog.
 
+### Barometric altitude
+
+GPS altitude is the quantity tree cover degrades most: the low satellites that fix the vertical drop first, so a 10-20 m vertical error is routine where the horizontal fix is still usable. Where the phone has a barometer, the recorder records its altitude beside the GPS one ([decisions § 1991](../architecture/decisions.md)).
+
+- **Bridge.** EventChannel `run_app/barometer`, Dart `lib/barometer_bridge.dart` (empty off Android and iOS). Android: `BarometerBridge.kt` reads `Sensor.TYPE_PRESSURE` at `SENSOR_DELAY_NORMAL` (~5 Hz), converts each reading with `SensorManager.getAltitude` against the standard atmosphere and sends the mean of each second. iOS: `BarometerBridge` in `AppDelegate.swift` streams `CMAltimeter` relative altitude (0 m at subscribe); it rides the Motion & Fitness grant the pedometer already asks for, and `NSMotionUsageDescription` now names the barometer (`scripts/check_ios_native_declarations.mjs` derives the requirement from `CMAltimeter` as well as from the pedometer). No barometer, or a denied grant, arrives as one stream error; `run_screen.dart` logs it and records without one. The subscription opens in `_preload` beside the pedometer, so the anchor has levelled by the time the run starts, and closes wherever the pedometer's does.
+- **Anchor.** `RunRecorder.setBarometricAltitude` feeds `BaroAltitudeAnchor` (`packages/run_recorder/lib/src/baro_altitude_anchor.dart`), and every fix that reaches `_onPosition` feeds it its GPS altitude when the platform rates the vertical at 25 m or better. The fused altitude is `barometer + offset`, where the offset is the plain mean of `gps - barometer` until 600 s of samples have arrived and an exponential average with a 600 s time constant after: the shape is the barometer's (it resolves well under a metre) and the level follows GPS, slowly enough that GPS error correlated over a few minutes averages away and fast enough to track a weather front (~1 hPa, ~8 m, an hour). Times are the recorder's monotonic source clock. Nothing is stamped before the first paired GPS altitude, or while the last barometer reading is over 5 s old.
+- **Track.** The fused value is stamped on the new waypoint as `baroElevationMetres` (`baroEle` in the uploaded track, [gps_distance.md § Waypoint fields](gps_distance.md#waypoint-fields)); `elevationMetres` stays the GPS altitude, so no old run and no GPS reader changes. It is L4: any failure drops the sample and the waypoint keeps its GPS altitude.
+- **Reading it.** `runAltitude` (web `lib/runs/run_altitude.ts` ↔ Dart `lib/run_altitude.dart`, a parity pair) picks the series the climb, the elevation profile and grade-adjusted pace read: the barometric series at the 3 m route band when any point carries one, else GPS altitude at **10 m** for a phone run (`source` `app`), else, for an import or a watch, GPS `ele` at 3 m as before. A barometric run's point without a reading is a dropout the gain rule carries across; GPS altitude is never spliced into it. The live counter is `RunElevationGainAccumulator`, which answers with the barometric series from its first reading, so the live and finished figures agree. Save-as-route writes the same series and band on both platforms. Routes from the builder or a GPX keep the 3 m band (`computeElevationGain`'s default): DEM and file altitude carry no GPS noise.
+- **Watches** are out of scope: the custom watch already prefers its BMP581 barometer for stamped altitude, and the Apple Watch and Wear OS recorders are unchanged ([parity.md](../product/parity.md) `Barometric elevation` row).
+
 ### iOS-specific settings
 
 On iOS the recorder switches to `AppleSettings` inside `_platformLocationSettings` and pins two non-default values:
@@ -579,6 +589,10 @@ All in `apps/mobile_android/lib/screens/run_screen.dart` unless noted.
 | `ActivityType.gpsDistanceFilter` (m) | run 3 / cycle 5 | Software track-append threshold (track only, not distance) |
 | `ActivityType.minMovementMetres` (m) | run 2 / cycle 4 | Minimum delta to append to the track (not distance) |
 | `GpsDistanceEstimator` constants | see [gps_distance.md](gps_distance.md) | Distance filter; fixed by the spec and the golden vectors, never tuned per port |
+| `BaroAltitudeAnchor.defaultTimeConstantS` (in `baro_altitude_anchor.dart`) | 600 s | Time constant of the barometer's GPS level; a plain mean until that much has been sampled |
+| `BaroAltitudeAnchor.defaultMaxGpsVerticalAccuracyM` | 25 m | Worst platform-rated vertical accuracy averaged into the level |
+| `BaroAltitudeAnchor.defaultBaroStaleAfterS` | 5 s | Age past which a barometer reading stamps nothing |
+| `kElevationGainGpsMinDeltaM` / `ELEVATION_GAIN_GPS_MIN_DELTA_M` (in `run_altitude`) | 10 m | Climb noise band for a phone run recorded without a barometer (3 m everywhere else) |
 
 ---
 

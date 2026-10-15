@@ -126,8 +126,9 @@ So the server can recompute distance from a stored track with the same Doppler i
 | `speedAccuracyMps` | m/s | speed accuracy (omit when not reported) |
 | `bearingDeg` | degrees clockwise from north | course over ground (omit when invalid) |
 | `smoothedLat` / `smoothedLng` | degrees | the smoother's position for that fix, written by the phone at save; both or neither, raw `lat` / `lng` never altered |
+| `baroEle` | m | the phone barometer's altitude, anchored to GPS altitude over a long window ([run_recording.md § Barometric altitude](run_recording.md#barometric-altitude)); `ele` stays the GPS altitude. Dart `Waypoint.baroElevationMetres` (`baroElevationMetres` in the local store's JSON), web `TrackPoint.baroEle`. Omitted on a phone with no barometer and before the anchor has a GPS altitude to level against |
 
-Old tracks have none of them and recompute through the position-only path, with post-hoc stop detection.
+Old tracks have none of them and recompute through the position-only path, with post-hoc stop detection. `baroEle` plays no part in distance; climb, the elevation profile and grade-adjusted pace read it through `runAltitude` ([run_recording.md § Barometric altitude](run_recording.md#barometric-altitude)).
 
 Readers that draw the line, route-match or match pace segments prefer the smoothed pair when both halves are present and finite (web `lib/runs/track_line.ts`, Dart `Waypoint.lineLat` / `lineLng`, Go `parseTrack`); the estimator always reads raw.
 

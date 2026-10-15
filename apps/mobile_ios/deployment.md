@@ -138,7 +138,7 @@ Required strings (Apple rejects without a meaningful description):
 
 - `NSLocationWhenInUseUsageDescription` — "We use your location to record your runs."
 - `NSLocationAlwaysAndWhenInUseUsageDescription` — explains why we need background access
-- `NSMotionUsageDescription` — pedometer (steps + cadence)
+- `NSMotionUsageDescription` — pedometer (steps + cadence) and the barometer (`CMAltimeter`, run elevation)
 - `NSHealthShareUsageDescription` — HealthKit reads
 - `NSHealthUpdateUsageDescription` — HealthKit writes
 - `NSBluetoothAlwaysUsageDescription` — BLE chest-strap HR

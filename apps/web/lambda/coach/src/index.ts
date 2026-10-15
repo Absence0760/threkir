@@ -218,6 +218,7 @@ export const handler = awslambda.streamifyResponse<LambdaFunctionURLEvent>(
 			supabaseSecretKey: secrets.SUPABASE_SECRET_KEY,
 			bypassPaywallEnabled: false,
 			aiPlanEnabled: isTruthyFlagValue(process.env.AI_PLAN_ENABLED),
+			fuelHandoffEnabled: isTruthyFlagValue(process.env.COACH_FUEL_ENABLED),
 		};
 
 		const result = await handleCoach(authHeader, rawBody, config);

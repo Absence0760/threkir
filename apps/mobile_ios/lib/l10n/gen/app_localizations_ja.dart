@@ -12065,6 +12065,22 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String get roadbookWeightToggle => '体重から水分量を計算';
+
+  @override
+  String get roadbookWeightHint =>
+      '水分量を体重に合わせて調整します。ランニングに対してスポーツ医学のガイドラインが示す1時間あたり400〜800 mlの範囲内です。計画用の目安であり、発汗テストではありません。';
+
+  @override
+  String roadbookWeightUsing(String ml) {
+    return '水分: 体重から1時間あたり $ml ml。';
+  }
+
+  @override
+  String get roadbookWeightUnavailable =>
+      '体重から水分量を計算するには、身体データで体重を追加し、そこで健康データの利用に同意してください。';
+
+  @override
   String get roadbookColTarget => '目標';
 
   @override

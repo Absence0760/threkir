@@ -55,6 +55,7 @@ function baseConfig(): CoachConfig {
 		publicSupabaseAnonKey: 'sb_publishable_fake_local_anon_key',
 		bypassPaywallEnabled: false,
 		aiPlanEnabled: false,
+		fuelHandoffEnabled: false,
 	};
 }
 
@@ -585,7 +586,7 @@ test('happy path persists the full reply, emits done, refunds nothing', async ()
 /// `fetch` stubbed, and return the system text the provider was handed.
 /// The stubbed upstream answers 500, so the turn ends in the mid-stream
 /// error path — only the request body matters here.
-async function systemTextFor(aiPlanEnabled: boolean): Promise<string> {
+async function systemTextFor(aiPlanEnabled: boolean, fuelHandoffEnabled = false): Promise<string> {
 	const calls = { inserts: [] as string[], deletes: [] as string[] };
 	const originalFetch = globalThis.fetch;
 	let sent: { messages?: { role: string; content: string }[] } | null = null;
@@ -604,6 +605,7 @@ async function systemTextFor(aiPlanEnabled: boolean): Promise<string> {
 					openaiBaseUrl: 'http://127.0.0.1:1/v1',
 					bypassPaywallEnabled: true,
 					aiPlanEnabled,
+					fuelHandoffEnabled,
 					createClient: () => makeSupabaseStub(calls),
 				},
 			);
@@ -631,4 +633,18 @@ test('the system text points at the bare plan builder when the AI plan assistant
 	const text = await systemTextFor(false);
 	assert.ok(text.includes('[plan builder](/plans/new)'), text.slice(-1200));
 	assert.ok(!text.includes('describe='), 'no assistant link while the flag is off');
+});
+
+// ───────────── fuelling handoff addendum (decisions § 1975) ─────────────
+
+test('the system text carries the fuelling handoff when the coach fuelling flag is on', async () => {
+	const text = await systemTextFor(false, true);
+	assert.ok(text.includes('[Plan your fuelling](/nutrition/fuel?duration=<seconds>)'), text.slice(-1600));
+	assert.match(text, /never name a food, drink, product, brand or supplement/);
+});
+
+test('the system text carries no fuelling handoff when the coach fuelling flag is off', async () => {
+	const text = await systemTextFor(true, false);
+	assert.ok(!text.includes('/nutrition/fuel'), 'no fuelling link while the flag is off');
+	assert.ok(!text.includes('Fuelling requests'), text.slice(-1600));
 });

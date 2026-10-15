@@ -16350,6 +16350,27 @@
       }
     }
   },
+  "roadbookWeightToggle": "Fluid from body weight",
+  "@roadbookWeightToggle": {
+    "description": "Roadbook fuelling toggle that bases the per-hour fluid rate on the runner's consented body weight"
+  },
+  "roadbookWeightHint": "Scales the fluid rate by your body weight, within the 400–800 ml per hour range sports-medicine guidance gives for running. A planning baseline, not a sweat test.",
+  "@roadbookWeightHint": {
+    "description": "Explains the weight-based fluid rate under the roadbook fuelling toggles"
+  },
+  "roadbookWeightUsing": "Fluid: {ml} ml per hour from your body weight.",
+  "@roadbookWeightUsing": {
+    "description": "Shown when the weight-based fluid rate is in use; ml is the per-hour fluid figure",
+    "placeholders": {
+      "ml": {
+        "type": "String"
+      }
+    }
+  },
+  "roadbookWeightUnavailable": "To base fluid on your body weight, add your weight under Body metrics and give health-data consent there.",
+  "@roadbookWeightUnavailable": {
+    "description": "Why the weight-based fluid toggle is disabled: no weight on record or no health-data consent"
+  },
   "roadbookColTarget": "Target",
   "@roadbookColTarget": {
     "description": "Label on the roadbook target-time verdict chip"

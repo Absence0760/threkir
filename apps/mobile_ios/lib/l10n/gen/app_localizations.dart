@@ -20841,6 +20841,30 @@ abstract class AppLocalizations {
   /// **'carry {gels} gels · {fluid} ml'**
   String roadbookCarryHint(String gels, String fluid);
 
+  /// Roadbook fuelling toggle that bases the per-hour fluid rate on the runner's consented body weight
+  ///
+  /// In en, this message translates to:
+  /// **'Fluid from body weight'**
+  String get roadbookWeightToggle;
+
+  /// Explains the weight-based fluid rate under the roadbook fuelling toggles
+  ///
+  /// In en, this message translates to:
+  /// **'Scales the fluid rate by your body weight, within the 400–800 ml per hour range sports-medicine guidance gives for running. A planning baseline, not a sweat test.'**
+  String get roadbookWeightHint;
+
+  /// Shown when the weight-based fluid rate is in use; ml is the per-hour fluid figure
+  ///
+  /// In en, this message translates to:
+  /// **'Fluid: {ml} ml per hour from your body weight.'**
+  String roadbookWeightUsing(String ml);
+
+  /// Why the weight-based fluid toggle is disabled: no weight on record or no health-data consent
+  ///
+  /// In en, this message translates to:
+  /// **'To base fluid on your body weight, add your weight under Body metrics and give health-data consent there.'**
+  String get roadbookWeightUnavailable;
+
   /// Label on the roadbook target-time verdict chip
   ///
   /// In en, this message translates to:

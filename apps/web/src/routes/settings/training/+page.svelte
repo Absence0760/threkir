@@ -10,6 +10,7 @@
 		isUsableRestingHrBpm,
 	} from '#lib/training/hr_zones.ts';
 	import { numberInputValue } from '#lib/settings/number_input.ts';
+	import { FUEL_MAX_CARBS_PER_HOUR_G, FUEL_MAX_FLUID_PER_HOUR_ML } from '#lib/routes/fuel_params.ts';
 	import {
 		WEEKLY_GOAL_KEY,
 		WEEKLY_GOAL_MAX,
@@ -207,7 +208,7 @@
 					<input
 						type="number"
 						min="0"
-						max="200"
+						max={FUEL_MAX_CARBS_PER_HOUR_G}
 						inputmode="numeric"
 						bind:value={carbsPerHour}
 						aria-describedby="carbs-per-hour-hint"
@@ -223,7 +224,7 @@
 					<input
 						type="number"
 						min="0"
-						max="3000"
+						max={FUEL_MAX_FLUID_PER_HOUR_ML}
 						inputmode="numeric"
 						bind:value={fluidPerHour}
 						aria-describedby="fluid-per-hour-hint"

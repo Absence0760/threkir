@@ -12666,6 +12666,22 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get roadbookWeightToggle => 'Líquido según el peso corporal';
+
+  @override
+  String get roadbookWeightHint =>
+      'Ajusta la cantidad de líquido a tu peso corporal, dentro del rango de 400–800 ml por hora que la medicina deportiva recomienda para correr. Es una base de planificación, no una prueba de sudoración.';
+
+  @override
+  String roadbookWeightUsing(String ml) {
+    return 'Líquido: $ml ml por hora según tu peso corporal.';
+  }
+
+  @override
+  String get roadbookWeightUnavailable =>
+      'Para basar el líquido en tu peso corporal, añade tu peso en Datos corporales y da allí el consentimiento para datos de salud.';
+
+  @override
   String get roadbookColTarget => 'Objetivo';
 
   @override

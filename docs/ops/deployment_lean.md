@@ -55,6 +55,10 @@ Fully functional web launch with backups intact.
   the Coach's key and daily counter) stays unset until its decisions §12
   liability sign-off and the v3 AI-disclosure copy sign-off land; it is not a
   Pro storefront gate, and on its own it changes nothing without the Coach flag.
+  `PUBLIC_COACH_FUEL_ENABLED` + the coach Lambda's `COACH_FUEL_ENABLED` (the
+  Coach's fuelling handoff to `/nutrition/fuel`, decisions § 1975) stay unset
+  until the owner + counsel sign-off in `race_fueling_plan.md` lands; they add
+  no model call, only prompt text and a deterministic page.
 - No mobile stores.
 
 ### Rock-bottom — ~$10–11/mo (coach off) — SELECTED 2026-07-02, DEPLOYED 2026-07-11

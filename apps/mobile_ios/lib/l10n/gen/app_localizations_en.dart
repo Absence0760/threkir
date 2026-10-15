@@ -12538,6 +12538,22 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get roadbookWeightToggle => 'Fluid from body weight';
+
+  @override
+  String get roadbookWeightHint =>
+      'Scales the fluid rate by your body weight, within the 400–800 ml per hour range sports-medicine guidance gives for running. A planning baseline, not a sweat test.';
+
+  @override
+  String roadbookWeightUsing(String ml) {
+    return 'Fluid: $ml ml per hour from your body weight.';
+  }
+
+  @override
+  String get roadbookWeightUnavailable =>
+      'To base fluid on your body weight, add your weight under Body metrics and give health-data consent there.';
+
+  @override
   String get roadbookColTarget => 'Target';
 
   @override

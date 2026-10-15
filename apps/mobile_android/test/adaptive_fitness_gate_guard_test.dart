@@ -97,4 +97,26 @@ void main() {
     expect(RegExp(r'\b(tsb|atl|ctl)\b').hasMatch(applyBody), false,
         reason: 'the apply path must not carry a load value');
   });
+
+  test('the plan screen is the only caller of the engine, so no second call site escapes these guards',
+      () {
+    // Every property above is pinned on ONE call site; a second caller would
+    // pass whatever it liked and none of this would see it (decisions § 1977).
+    final callers = <String>[];
+    for (final e in Directory('lib').listSync(recursive: true)) {
+      if (e is! File || !e.path.endsWith('.dart')) continue;
+      if (e.path.endsWith('plan_adaptive_replan.dart')) continue;
+      if (RegExp(r'\badaptiveReplanRemaining\(').hasMatch(e.readAsStringSync())) {
+        callers.add(e.path.replaceAll('\\', '/'));
+      }
+    }
+    expect(callers, ['lib/screens/plan_detail_screen.dart']);
+  });
+
+  test('the plan screen holds no load value outside _adaptiveFitnessInput', () {
+    final screen = _read('lib/screens/plan_detail_screen.dart');
+    final outside = screen.replaceFirst(_fitnessInputBody(screen), '');
+    expect(RegExp(r'\b(tsb|atl|ctl)\b').hasMatch(outside), false,
+        reason: 'a load value appears on the plan screen outside _adaptiveFitnessInput()');
+  });
 }

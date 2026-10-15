@@ -12677,6 +12677,22 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get roadbookWeightToggle => 'Flüssigkeit nach Körpergewicht';
+
+  @override
+  String get roadbookWeightHint =>
+      'Passt die Flüssigkeitsmenge an dein Körpergewicht an, innerhalb der 400–800 ml pro Stunde, die sportmedizinische Empfehlungen fürs Laufen nennen. Ein Planungswert, kein Schweißtest.';
+
+  @override
+  String roadbookWeightUsing(String ml) {
+    return 'Flüssigkeit: $ml ml pro Stunde nach deinem Körpergewicht.';
+  }
+
+  @override
+  String get roadbookWeightUnavailable =>
+      'Um die Flüssigkeit an deinem Körpergewicht auszurichten, trage dein Gewicht unter Körperdaten ein und erteile dort die Einwilligung für Gesundheitsdaten.';
+
+  @override
   String get roadbookColTarget => 'Zielzeit';
 
   @override

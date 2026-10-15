@@ -64,6 +64,16 @@ test('both /api/coach wrappers read the plan-handoff flag from the AI plan assis
 	assert.match(dev, /aiPlanEnabled\s*:\s*isTruthyFlagValue\(PUBLIC_AI_PLAN_ENABLED\)/);
 });
 
+test('both /api/coach wrappers read the fuelling-handoff flag from its own gate', () => {
+	// The fuelling handoff (decisions § 1975) is the server half of
+	// PUBLIC_COACH_FUEL_ENABLED. The Lambda reads the non-secret sops key; the
+	// dev wrapper reads the client flag, so local dev shows what prod will.
+	const lambda = stripComments(read('lambda/coach/src/index.ts'));
+	assert.match(lambda, /fuelHandoffEnabled\s*:\s*isTruthyFlagValue\(process\.env\.COACH_FUEL_ENABLED\)/);
+	const dev = stripComments(read('src/routes/api/coach/+server.ts'));
+	assert.match(dev, /fuelHandoffEnabled\s*:\s*isTruthyFlagValue\(PUBLIC_COACH_FUEL_ENABLED\)/);
+});
+
 test('RouteBuilder sends the generate JWT in `x-supabase-authorization`, not `Authorization`', () => {
 	// Reason: same collision as the coach clients — the production Lambda
 	// Function URL is AWS_IAM-auth and CloudFront's OAC signs `Authorization`

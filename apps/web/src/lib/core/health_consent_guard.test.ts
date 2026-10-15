@@ -34,3 +34,20 @@ for (const rel of HEALTH_USE_SURFACES) {
 		);
 	});
 }
+
+// The fuelling plan's weight-based fluid rate is an Art 9 use of body weight
+// (decisions § 1976). Each surface that offers it must hand the rate only a
+// weight that has been through healthUseWeightKg, never the raw read.
+const WEIGHT_FLUID_SURFACES = [
+	'../../routes/routes/[id]/roadbook/+page.svelte',
+	'../../routes/nutrition/fuel/+page.svelte',
+];
+
+for (const rel of WEIGHT_FLUID_SURFACES) {
+	test(`${rel} feeds the fluid rate a weight only through healthUseWeightKg`, () => {
+		const src = readFileSync(resolve(import.meta.dirname, rel), 'utf8');
+		assert.match(src, /consentedWeightKg = healthUseWeightKg\(profileRes\.data, weight\)/);
+		assert.match(src, /weightKg: consentedWeightKg/);
+		assert.ok(!/weightKg: weight\b/.test(src), `${rel} passes the raw weight to the fluid rate`);
+	});
+}

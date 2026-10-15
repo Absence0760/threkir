@@ -61,4 +61,17 @@ void main() {
       '1978-04-09',
     );
   });
+
+  test('a weight is usable for a health inference only under the Art 9 stamp',
+      () {
+    expect(healthUseWeightKg(consented, 72.5), 72.5);
+    expect(healthUseWeightKg(noConsent, 72.5), isNull);
+    expect(healthUseWeightKg(null, 72.5), isNull);
+  });
+
+  test('no usable weight on record yields none, consented or not', () {
+    for (final w in <double?>[null, 0, -1, double.nan, double.infinity]) {
+      expect(healthUseWeightKg(consented, w), isNull, reason: '$w');
+    }
+  });
 }

@@ -129,6 +129,7 @@ test('each sub-path enforces its own byte cap, measured in bytes', async () => {
 		['/api/coach', COACH_BODY_LIMIT_BYTES],
 		['/api/coach/route-describe', 32 * 1024],
 		['/api/coach/route-request', 16 * 1024],
+		['/api/coach/plan-request', 16 * 1024],
 	];
 	for (const [rawPath, limit] of cases) {
 		const over = await invoke({ rawPath, body: 'x'.repeat(limit + 1) });
@@ -225,12 +226,16 @@ test('COACH_PROVIDER=openai with no base URL refuses before the quota is spent',
 	}
 });
 
-test('the provider check does not gate the two route sub-paths', async () => {
+test('the provider check does not gate the non-streaming sub-paths', async () => {
 	// They are a Pro perk with a templated fallback and no COACH_PROVIDER of
 	// their own, so an unconfigured provider must not 503 them.
 	process.env.COACH_PROVIDER = 'not-a-provider';
 	try {
-		for (const rawPath of ['/api/coach/route-describe', '/api/coach/route-request']) {
+		for (const rawPath of [
+			'/api/coach/route-describe',
+			'/api/coach/route-request',
+			'/api/coach/plan-request',
+		]) {
 			const out = await invoke({ rawPath, body: '{}' });
 			assert.notEqual(out.status, 503, `${rawPath} was gated on COACH_PROVIDER`);
 		}
@@ -247,7 +252,12 @@ test('a missing env var answers a generic 503 and never names itself on the wire
 	const saved = process.env.PUBLIC_SUPABASE_URL;
 	delete process.env.PUBLIC_SUPABASE_URL;
 	try {
-		for (const rawPath of ['/api/coach', '/api/coach/route-describe', '/api/coach/route-request']) {
+		for (const rawPath of [
+			'/api/coach',
+			'/api/coach/route-describe',
+			'/api/coach/route-request',
+			'/api/coach/plan-request',
+		]) {
 			const out = await invoke({
 				rawPath,
 				body: rawPath === '/api/coach' ? CHAT_BODY : '{}',
@@ -272,7 +282,11 @@ test('a sub-path refusal forwards the core\'s own status, headers and body', asy
 	// behavioural half cannot tell the two shapes apart: the discriminating
 	// assertion is structural, that neither dispatcher re-derives the response
 	// from a parsed copy.
-	for (const rawPath of ['/api/coach/route-describe', '/api/coach/route-request']) {
+	for (const rawPath of [
+		'/api/coach/route-describe',
+		'/api/coach/route-request',
+		'/api/coach/plan-request',
+	]) {
 		const out = await invoke({ rawPath, body: '{}' });
 		assert.equal(out.headers?.['content-type'], 'application/json', rawPath);
 	}
@@ -292,8 +306,8 @@ test('a sub-path refusal forwards the core\'s own status, headers and body', asy
 	);
 	assert.equal(
 		(src.match(/writeResult\(responseStream, result\)/g) ?? []).length,
-		2,
-		'both non-streaming sub-dispatchers must forward the core result verbatim.',
+		3,
+		'every non-streaming sub-dispatcher must forward the core result verbatim.',
 	);
 });
 
@@ -325,6 +339,8 @@ test('a sub-path is matched by its whole path, not by a substring of it', async 
 		'/api/coach/route-describe/extra',
 		'/api/coach/route-requestX',
 		'/api/coach/route-request/extra',
+		'/api/coach/plan-requestX',
+		'/api/coach/plan-request/extra',
 	]) {
 		const out = await invoke({ rawPath, body: CHAT_BODY });
 		assert.equal(
@@ -351,7 +367,7 @@ test('an unknown path under the prefix never reaches the coach turn or its large
 	});
 	assert.equal(big.status, 404, 'an unknown path was sized against the coach cap');
 
-	// The three paths the dev table does declare still route, trailing slash
+	// The paths the dev table does declare still route, trailing slash
 	// included. The status is each handler's own first refusal — 401 for the
 	// coach's auth gate, 400 for a sub-path's input check.
 	for (const [rawPath, status] of [
@@ -361,6 +377,8 @@ test('an unknown path under the prefix never reaches the coach turn or its large
 		['/api/coach/route-describe/', 400],
 		['/api/coach/route-request', 400],
 		['/api/coach/route-request/', 400],
+		['/api/coach/plan-request', 400],
+		['/api/coach/plan-request/', 400],
 	] as Array<[string, number]>) {
 		const out = await invoke({ rawPath, body: CHAT_BODY });
 		assert.equal(out.status, status, `${rawPath} no longer routes`);

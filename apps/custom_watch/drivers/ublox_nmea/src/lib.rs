@@ -15,9 +15,13 @@
 //! horizontal-accuracy figure). Everything else returns `Sentence::Other`
 //! so callers can count-but-ignore it.
 //!
-//! The transmit side lives in [`ubx`]: UBX binary frame encoding for the
-//! messages the firmware sends back to the receiver (today just RXM-PMREQ,
-//! the power-down between duty-cycled fixes).
+//! UBX binary frames share the same UART: [`ubx`] encodes the ones the
+//! firmware sends (RXM-PMREQ, the power-down between duty-cycled fixes, and
+//! the CFG-VALSET that selects the pedestrian model and enables NAV-PVT), and
+//! [`Parser`] runs [`ubx::FrameAssembler`] beside the NMEA assembler so a
+//! UBX-NAV-PVT or ACK arrives as a [`Sentence`] too. The two assemblers see
+//! every byte independently: a UBX payload can hold `$` or CRLF and a noise
+//! burst can hold `0xB5 0x62`, and neither may cost the other its next frame.
 
 #![no_std]
 
@@ -109,6 +113,14 @@ pub enum Sentence {
     Zda(ZdaData),
     /// Position-error statistics (per-axis 1-sigma), reported by GST.
     Gst(GstData),
+    /// UBX-NAV-PVT: the receiver's own horizontal + speed accuracy estimates.
+    NavPvt(ubx::NavPvt),
+    /// UBX-ACK-ACK (`acked`) / UBX-ACK-NAK for the UBX message `class`/`id`.
+    UbxAck {
+        class: u8,
+        id: u8,
+        acked: bool,
+    },
     /// Valid checksum, but a sentence type we don't decode.
     Other,
 }
@@ -123,6 +135,7 @@ pub struct Parser {
     buf: [u8; BUF_LEN],
     len: usize,
     in_sentence: bool,
+    ubx: ubx::FrameAssembler,
 }
 
 impl Default for Parser {
@@ -137,11 +150,22 @@ impl Parser {
             buf: [0; BUF_LEN],
             len: 0,
             in_sentence: false,
+            ubx: ubx::FrameAssembler::new(),
         }
     }
 
-    /// Feed one byte; returns a parsed sentence when this byte completes one.
+    /// Feed one byte; returns a parsed sentence or UBX frame when this byte
+    /// completes one. Both assemblers see the byte; on the vanishing chance
+    /// they complete on the same byte, the NMEA sentence wins.
     pub fn feed(&mut self, byte: u8) -> Option<Sentence> {
+        let ubx = self.ubx.feed(byte).map(|frame| match frame {
+            ubx::Inbound::NavPvt(pvt) => Sentence::NavPvt(pvt),
+            ubx::Inbound::Ack { class, id, acked } => Sentence::UbxAck { class, id, acked },
+        });
+        self.feed_nmea(byte).or(ubx)
+    }
+
+    fn feed_nmea(&mut self, byte: u8) -> Option<Sentence> {
         match byte {
             b'$' => {
                 self.len = 0;

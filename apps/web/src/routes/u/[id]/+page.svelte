@@ -11,6 +11,7 @@
 	import { activityTypeLabel } from '#lib/runs/activity_type.svelte.ts';
 	import { goto } from '$app/navigation';
 	import { supabase } from '#lib/core/supabase.ts';
+	import { queryChunked } from '#lib/social/feed_merge.ts';
 	import {
 		fetchPublicProfile,
 		fetchPublicRunsByUser,
@@ -311,11 +312,15 @@
 		for (const p of followers) if (p.id !== viewerId) ids.add(p.id);
 		for (const p of following) if (p.id !== viewerId) ids.add(p.id);
 		if (ids.size === 0) return;
-		const { data, error } = await supabase
-			.from('user_follows')
-			.select('followee_id')
-			.eq('follower_id', viewerId)
-			.in('followee_id', [...ids]);
+		// Followers + Following both page in on demand, so the union outgrows
+		// one `in` filter (decisions § 653) — read it in bounded chunks.
+		const { data, error } = await queryChunked([...ids], (part) =>
+			supabase
+				.from('user_follows')
+				.select('followee_id')
+				.eq('follower_id', viewerId)
+				.in('followee_id', part)
+		);
 		if (error || !data) return;
 		viewerFollows = new Set(data.map((r) => r.followee_id as string));
 	}

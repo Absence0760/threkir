@@ -41,6 +41,7 @@ import {
 	gateAiDisclosure,
 } from '../../core/ai_disclosure';
 import { dbError, thrownMessage } from '../../core/supabase_error';
+import { queryChunked } from '../../social/feed_merge';
 import { RECOVERY_SCALE } from '../plan_bulk_ops';
 import {
 	PLAN_REQUEST_MODEL,
@@ -239,13 +240,10 @@ async function loadPlan(
 		const weeks = (weeksRes.data ?? []) as PlanEditSnapshot['weeks'];
 		let workouts: PlanEditWorkout[] = [];
 		if (weeks.length > 0) {
-			const woRes = await supabase
-				.from('plan_workouts')
-				.select(WORKOUT_COLUMNS)
-				.in(
-					'week_id',
-					weeks.map((w) => w.id),
-				);
+			const woRes = await queryChunked(
+				weeks.map((w) => w.id),
+				(part) => supabase.from('plan_workouts').select(WORKOUT_COLUMNS).in('week_id', part),
+			);
 			if (woRes.error) throw dbError(woRes.error);
 			workouts = (woRes.data ?? []) as PlanEditWorkout[];
 		}

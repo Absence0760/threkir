@@ -37,6 +37,11 @@ test.describe('/nutrition/fuel', () => {
 		await expect(page.getByTestId('fuel-carbs-source')).toHaveText('Set on this page');
 		await expect(page.getByTestId('fuel-duration')).toHaveValue('2:30');
 
+		// The totals above are server-rendered, so they pass before Svelte has
+		// bound the inputs' handlers; a click that lands first ticks the box
+		// natively and never updates the URL (the signIn helper documents the
+		// same race). Wait for hydration's network to settle before interacting.
+		await page.waitForLoadState('networkidle');
 		await page.getByTestId('fuel-heat').check();
 		await expect(page).toHaveURL(/heat=1/);
 		await expect(page.getByTestId('fuel-total-fluid')).toHaveText('1875 ml');
@@ -57,6 +62,7 @@ test.describe('/nutrition/fuel', () => {
 		await expect(page.getByTestId('fuel-needs-duration')).toBeVisible();
 		await expect(page.getByTestId('fuel-totals')).toHaveCount(0);
 
+		await page.waitForLoadState('networkidle');
 		await page.getByTestId('fuel-duration').fill('1:00');
 		await page.getByTestId('fuel-duration').blur();
 		await expect(page).toHaveURL(/duration=3600/);

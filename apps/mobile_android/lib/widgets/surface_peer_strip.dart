@@ -19,9 +19,11 @@ class SurfacePeer {
 /// only as tooltips, which is undiscoverable on a touch device (the same field
 /// finding that produced `routes_screen.dart`'s labelled Discover strip — that
 /// one fans out to sub-surfaces of Routes and has no current-peer concept, so
-/// it stays its own thing). The row scrolls horizontally rather than wrapping,
-/// so a long German or French label lengthens the strip instead of restacking
-/// it (conventions per decisions § 486).
+/// it stays its own thing). The strip WRAPS rather than scrolling sideways:
+/// measured in Manrope, the five run-surface peers need 480 dp in English and
+/// 538 dp in French against a 360-412 dp phone, so a scrolling row always hid
+/// the last peer (Races) past the edge with nothing saying it was there. A
+/// second line keeps every destination on screen (decisions § 1954).
 class SurfacePeerStrip extends StatelessWidget {
   const SurfacePeerStrip({
     super.key,
@@ -40,23 +42,24 @@ class SurfacePeerStrip extends StatelessWidget {
       container: true,
       explicitChildNodes: true,
       label: label,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
+      child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-        child: Row(
+        child: Wrap(
+          spacing: 8,
+          runSpacing: 8,
           children: [
-            for (var i = 0; i < peers.length; i++) ...[
-              if (i > 0) const SizedBox(width: 8),
+            for (final peer in peers)
               ChoiceChip(
                 label: Text(
-                  peers[i].label,
+                  peer.label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                selected: peers[i].isCurrent,
-                onSelected: (_) => peers[i].onTap?.call(),
+                selected: peer.isCurrent,
+                onSelected: (_) => peer.onTap?.call(),
+                visualDensity: VisualDensity.compact,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-            ],
           ],
         ),
       ),

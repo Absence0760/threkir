@@ -9,7 +9,7 @@
 // they have signed one platform off and not the other, silently, in exactly the
 // direction the gate exists to prevent.
 //
-// Nothing tested it, and it turned out to be false for one of the four. Web
+// Nothing tested it, and it turned out to be false for one of them. Web
 // reads `PUBLIC_WEIGH_IN_ENABLED`; mobile reads `WEIGH_IN_GATE`. The Dart
 // header meanwhile named `PUBLIC_WEIGH_IN_GATE`, a variable no file in the repo
 // reads or sets, so the one place a reader could have learned about the
@@ -17,7 +17,7 @@
 //
 // So the exception is DECLARED here and re-measured, rather than the convention
 // being weakened to fit it: a gate whose names start agreeing fails as a stale
-// exemption, and a fourth gate that quietly breaks the convention fails as a
+// exemption, and a new gate that quietly breaks the convention fails as a
 // new one. The KEYS themselves are read out of the source, never listed — a
 // list of names would go stale the same way the header did — and the census
 // walks `src/lib` for `*_flag.ts` so a gate this file has never heard of fails
@@ -174,8 +174,8 @@ test('a name the repo reads nowhere is never stated as the counterpart', () => {
 });
 
 test('the gate census names every web flag module in the tree', () => {
-	// GATES is a list, so it can go stale — a fourth gate would simply not be
-	// measured. This walks for `*_flag.ts` and fails on one the list omits, the
+	// GATES is a list, so it can go stale — a gate added later would simply not
+	// be measured. This walks for `*_flag.ts` and fails on one the list omits, the
 	// same population rule `core/env_flag.test.ts` applies to the parse.
 	const found: string[] = [];
 	const walk = (dir: string): void => {

@@ -13,7 +13,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// means they have signed one platform off and not the other, silently, in
 /// exactly the direction the gate exists to prevent.
 ///
-/// Nothing tested it, and it turned out to be false for one of the four. Web
+/// Nothing tested it, and it turned out to be false for one of them. Web
 /// reads `PUBLIC_WEIGH_IN_ENABLED`; mobile reads `WEIGH_IN_GATE`. The Dart
 /// header meanwhile named `PUBLIC_WEIGH_IN_GATE`, a variable no file in the
 /// repo reads or sets, so the one place a reader could have learned about the
@@ -124,7 +124,7 @@ void main() {
   });
 
   test('the gate census names every Dart flag module in the tree', () {
-    // `_gates` is a map, so it can go stale — a fifth mobile gate would simply
+    // `_gates` is a map, so it can go stale — a mobile gate added later would
     // not be measured. This walks for `*_flag.dart` and fails on one the map
     // omits, the same population rule env_flag_test.dart applies to the parse.
     final found = Directory('lib')

@@ -12,7 +12,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'chunk.dart';
 import 'direct_messages.dart';
 import 'effort_rank.dart';
-import 'paged_read.dart';
 import 'segments_rank.dart';
 import 'smoothed_sidecar.dart';
 import 'ultrasignup_person.dart';
@@ -1898,25 +1897,61 @@ class ApiClient {
   /// source-specific metadata, `event_id`, and anything else added to
   /// the schema later.
   ///
-  /// Paged: the backup writer consumes this as the COMPLETE history, and an
-  /// unbounded SELECT hands back only the newest [kPostgrestPageSize] rows,
-  /// so a 1,400-run account archived 1,000 and restored 1,000.
+  /// Walked: the backup writer consumes this as the COMPLETE history, and an
+  /// unbounded SELECT hands back only the newest 1000 rows, so a 1,400-run
+  /// account archived 1,000 and restored 1,000. Walked by keyset cursor
+  /// rather than by OFFSET, because a run synced or deleted while the backup
+  /// is between two pages moves every later position and an OFFSET walk then
+  /// archives one run twice and drops another (decisions § 1927).
   Future<List<Map<String, dynamic>>> fetchRunRowsRaw() async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw Exception('Not authenticated');
-    return readAllPages<Map<String, dynamic>>((from, to) async {
-      final data = await _client
-          .from(RunRow.table)
-          .select()
-          .eq(RunRow.colUserId, userId)
-          .order(RunRow.colStartedAt, ascending: false)
-          // Tiebreaker: two runs can share a start instant, and a range over
-          // an ambiguous order duplicates or drops the row on the boundary.
-          .order(RunRow.colId, ascending: true)
-          .range(from, to);
-      return (data as List).cast<Map<String, dynamic>>();
-    });
+    return _walk(
+      _runRowsOrder,
+      () => _client.from(RunRow.table).select().eq(RunRow.colUserId, userId),
+    );
   }
+
+  /// Newest run first, `id` breaking a `started_at` tie so the walk's order
+  /// is total. Both NOT NULL; nulls-first is Postgres's own placement on a
+  /// descending key, so `runs_user_started_at (user_id, started_at desc)`
+  /// serves the prefix. Web's `RUN_ORDER` is the same order.
+  static const List<KeysetKey> _runRowsOrder = [
+    KeysetKey(RunRow.colStartedAt, ascending: false, nullsFirst: true),
+    KeysetKey(RunRow.colId, ascending: false, nullsFirst: true),
+  ];
+
+  /// Every route row the caller owns, verbatim, for the backup writer —
+  /// walked by keyset cursor on the primary key (`routes` has no natural
+  /// sort), for the reason [fetchRunRowsRaw] gives.
+  Future<List<Map<String, dynamic>>> fetchRouteRowsRaw() async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) throw Exception('Not authenticated');
+    return _walk(
+      _routeRowsOrder,
+      () => _client.from('routes').select().eq('user_id', userId),
+    );
+  }
+
+  static const List<KeysetKey> _routeRowsOrder = [
+    KeysetKey('id', ascending: true, nullsFirst: false),
+  ];
+
+  /// Every row [query] selects, walked by keyset cursor in [order]: each page
+  /// is [query] narrowed to the rows strictly after the previous page's last
+  /// row, sorted by the same spec the cursor is read from. PostgREST caps an
+  /// unranged select at `db.max-rows` with a 200 and no flag, so a read whose
+  /// contract is "every row" has to walk — and an OFFSET walk skips or
+  /// repeats a row that is inserted or deleted while it runs.
+  Future<List<Map<String, dynamic>>> _walk(
+    List<KeysetKey> order,
+    PostgrestFilterBuilder<PostgrestList> Function() query,
+  ) =>
+      walkKeyset(order, (after, limit) async {
+        var q = query();
+        if (after != null) q = q.or(after);
+        return await _orderBy(q, order).limit(limit);
+      });
 
   /// Upsert a raw run row. The backup restore path builds these
   /// directly from the archive so `metadata`, `source`, and every other
@@ -2423,22 +2458,25 @@ class ApiClient {
 
   // -- Route reviews --
 
-  /// Fetch all reviews for a route, newest first.
+  /// Fetch all reviews for a route, newest first, walked by keyset cursor so
+  /// a review posted or withdrawn mid-read is neither repeated nor makes the
+  /// walk skip another.
   Future<List<RouteReviewRow>> getRouteReviews(String routeId) async {
-    return readAllPages<RouteReviewRow>((from, to) async {
-      final data = await _client
+    final rows = await _walk(
+      _routeReviewOrder,
+      () => _client
           .from(RouteReviewRow.table)
           .select()
-          .eq(RouteReviewRow.colRouteId, routeId)
-          .order(RouteReviewRow.colCreatedAt, ascending: false)
-          .order(RouteReviewRow.colId, ascending: true)
-          .range(from, to);
-      return (data as List)
-          .map<RouteReviewRow>(
-              (row) => RouteReviewRow.fromJson(row as Map<String, dynamic>))
-          .toList();
-    });
+          .eq(RouteReviewRow.colRouteId, routeId),
+    );
+    return rows.map(RouteReviewRow.fromJson).toList();
   }
+
+  /// `created_at` is nullable and a null sorts last, as it always has.
+  static const List<KeysetKey> _routeReviewOrder = [
+    KeysetKey(RouteReviewRow.colCreatedAt, ascending: false, nullsFirst: false),
+    KeysetKey(RouteReviewRow.colId, ascending: true, nullsFirst: false),
+  ];
 
   /// Submit or update a review for a route (one per user per route).
   Future<void> upsertRouteReview({
@@ -5568,27 +5606,36 @@ class ApiClient {
     );
   }
 
-  /// Per-instance attendee list.
+  /// Per-instance attendee list, earliest RSVP first, walked by keyset
+  /// cursor so an RSVP made or withdrawn mid-read is neither repeated nor
+  /// makes the walk skip another attendee.
   Future<List<EventAttendeeRow>> fetchEventAttendees({
     required String eventId,
     required DateTime instanceStart,
   }) async {
-    return readAllPages<EventAttendeeRow>((from, to) async {
-      final data = await _client
+    final rows = await _walk(
+      eventAttendeeOrder,
+      () => _client
           .from(EventAttendeeRow.table)
           .select()
           .eq(EventAttendeeRow.colEventId, eventId)
-          .eq(EventAttendeeRow.colInstanceStart, instanceStartKey(instanceStart))
-          // The table has no id; user_id is unique inside this filter (the PK
-          // is (event_id, user_id, instance_start)) so it totally orders a page.
-          .order(EventAttendeeRow.colUserId, ascending: true)
-          .range(from, to);
-      return (data as List)
-          .map<EventAttendeeRow>(
-              (r) => EventAttendeeRow.fromJson(r as Map<String, dynamic>))
-          .toList();
-    });
+          .eq(EventAttendeeRow.colInstanceStart,
+              instanceStartKey(instanceStart)),
+    );
+    return rows.map(EventAttendeeRow.fromJson).toList();
   }
+
+  /// The order an occurrence's attendees are listed and walked in: earliest
+  /// RSVP first, `user_id` (unique within one occurrence — the primary key is
+  /// `(event_id, user_id, instance_start)`) breaking a `joined_at` tie.
+  /// `joined_at` is nullable and a null sorts last. Web's
+  /// `EVENT_ATTENDEE_ORDER` is the same order, and
+  /// `event_attendees_instance_roster (event_id, instance_start, joined_at,
+  /// user_id)` serves it.
+  static const List<KeysetKey> eventAttendeeOrder = [
+    KeysetKey(EventAttendeeRow.colJoinedAt, ascending: true, nullsFirst: false),
+    KeysetKey(EventAttendeeRow.colUserId, ascending: true, nullsFirst: false),
+  ];
 
   // ──────────────── Race-director checkpoints (race_director_ops.md) ──────
 
@@ -5613,8 +5660,9 @@ class ApiClient {
     String eventId,
     DateTime instanceStart,
   ) async {
-    return readAllPages<CheckpointCrossingRow>((from, to) async {
-      final data = await _client
+    final rows = await _walk(
+      _checkpointCrossingOrder,
+      () => _client
           .from(CheckpointCrossingRow.table)
           .select(
             'id, event_id, checkpoint_id, instance_start, user_id, bib, '
@@ -5622,15 +5670,14 @@ class ApiClient {
           )
           .eq(CheckpointCrossingRow.colEventId, eventId)
           .eq(CheckpointCrossingRow.colInstanceStart,
-              instanceStartKey(instanceStart))
-          .order(CheckpointCrossingRow.colId, ascending: true)
-          .range(from, to);
-      return (data as List)
-          .map<CheckpointCrossingRow>(
-              (r) => CheckpointCrossingRow.fromJson(r as Map<String, dynamic>))
-          .toList();
-    });
+              instanceStartKey(instanceStart)),
+    );
+    return rows.map(CheckpointCrossingRow.fromJson).toList();
   }
+
+  static const List<KeysetKey> _checkpointCrossingOrder = [
+    KeysetKey(CheckpointCrossingRow.colId, ascending: true, nullsFirst: false),
+  ];
 
   /// Stamp a runner IN / OUT at a checkpoint through the single-writer RPC. The
   /// server authorises the caller as an organiser and MERGES two volunteers'
@@ -6834,24 +6881,25 @@ class ApiClient {
   /// here that answered `const []` would erase the distinction for every
   /// surface at once, and the caller's own state has to carry the third value.
   Future<List<ExerciseRow>> fetchExerciseCatalogue() async {
-    final rows = await readAllPages<ExerciseRow>((from, to) async {
-      final page = await _client
-          .from(ExerciseRow.table)
-          .select()
-          .order(ExerciseRow.colName, ascending: true)
-          // A seeded global and a user's custom entry can carry the same name.
-          .order(ExerciseRow.colId, ascending: true)
-          .range(from, to);
-      return (page as List)
-          .map((r) => ExerciseRow.fromJson(r as Map<String, dynamic>))
-          .toList();
-    });
+    final rows = (await _walk(
+      _exerciseCatalogueOrder,
+      () => _client.from(ExerciseRow.table).select(),
+    ))
+        .map(ExerciseRow.fromJson)
+        .toList();
     return dedupeShadowedExercises(
       rows,
       nameKey: (r) => r.nameKey,
       authorId: (r) => r.authorId,
     );
   }
+
+  /// Alphabetical, `id` breaking a tie: a seeded global and a user's custom
+  /// entry can carry the same name. Web's `EXERCISE_ORDER` is the same order.
+  static const List<KeysetKey> _exerciseCatalogueOrder = [
+    KeysetKey(ExerciseRow.colName, ascending: true, nullsFirst: false),
+    KeysetKey(ExerciseRow.colId, ascending: true, nullsFirst: false),
+  ];
 
   /// Create an owner-scoped custom catalogue entry (migration 20270222_001).
   ///

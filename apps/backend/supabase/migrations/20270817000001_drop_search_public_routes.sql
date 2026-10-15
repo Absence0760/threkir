@@ -1,4 +1,4 @@
--- Drop search_public_routes: no client calls it (decisions § 1925, § 1926).
+-- Drop search_public_routes: no client calls it (decisions § 1934, § 1935).
 --
 -- Web `searchPublicRoutes` and mobile `ApiClient.searchPublicRoutes` read the
 -- `public_routes` view directly — the function's own source, with the same

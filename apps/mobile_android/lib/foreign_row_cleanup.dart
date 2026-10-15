@@ -25,9 +25,9 @@ class ForeignRowPlan {
 }
 
 /// Which local rows are someone else's, decided from what the server says the
-/// caller owns (decisions § 1929).
+/// caller owns (decisions § 1938).
 ///
-/// Before § 1928 mobile `getRoutes` / `getRuns` leaned on RLS alone, so a club
+/// Before § 1937 mobile `getRoutes` / `getRuns` leaned on RLS alone, so a club
 /// member's device stored other members' club routes and a coach's device
 /// stored athletes' runs, both stamped with the active account's owner tag.
 /// Nothing on the row tells them apart locally, so the server decides:

@@ -7,7 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// and nothing in the product bounds how many clubs one user joins or how
 /// many requests a request-to-join club accumulates, so past the cap the list
 /// rendered as complete and was not. Both walk by keyset cursor now
-/// (decisions § 1931); the walk itself is pinned in core_models'
+/// (decisions § 1940); the walk itself is pinned in core_models'
 /// `keyset_page_test.dart`. A source guard because the truncation is silent.
 void main() {
   final src = File('lib/social_service.dart').readAsStringSync();

@@ -315,7 +315,7 @@ Covers the `_trySync` loop on `SyncService` via the new `@visibleForTesting debu
 
 ### `apps/mobile_android/test/foreign_row_cleanup_test.dart` — 16 tests
 
-The one-time foreign-row reconcile ([decisions § 1929](../architecture/decisions.md)). `planForeignRows` as a pure function: an owned row is kept synced or not; a synced row the owned set lacks is dropped unless bookmarked or pinned; an unsynced row is never dropped for being absent from the server, is dropped when the server names another owner, and keeps its row but loses its push when kept; a failed owned read or no account plans nothing. `ForeignRowCleanup` against real run and route stores in a temp dir and a fake server: foreign synced rows go durably while owned, bookmarked, pinned and offline-built rows stay; a starred club route is no longer pushed (and refused) by the `SyncService` cycle that runs it; a failed read deletes nothing and is not marked; a failure retries on the next launch, not on every sync; the marker stops a second run and is per account; signed out it reads and marks nothing.
+The one-time foreign-row reconcile ([decisions § 1938](../architecture/decisions.md)). `planForeignRows` as a pure function: an owned row is kept synced or not; a synced row the owned set lacks is dropped unless bookmarked or pinned; an unsynced row is never dropped for being absent from the server, is dropped when the server names another owner, and keeps its row but loses its push when kept; a failed owned read or no account plans nothing. `ForeignRowCleanup` against real run and route stores in a temp dir and a fake server: foreign synced rows go durably while owned, bookmarked, pinned and offline-built rows stay; a starred club route is no longer pushed (and refused) by the `SyncService` cycle that runs it; a failed read deletes nothing and is not marked; a failure retries on the next launch, not on every sync; the marker stops a second run and is per account; signed out it reads and marks nothing.
 
 ### `apps/mobile_android/test/local_route_store_test.dart` — 65 tests
 
@@ -924,7 +924,7 @@ What `/settings/account` may say about a backup that came up short ([decisions �
 
 ### `apps/web/src/lib/backup/backup.test.ts` — 12 tests
 
-The streaming + parallel-download writer and its walked row reads (was 14, then 15; 12 since [decisions § 1927](../architecture/decisions.md) moved the five `readAllRows` paging cases to `walkKeyset` in `core/keyset_page.test.ts` and added two source guards: both reads are `walkKeyset` walks over a total order sorted by the cursor's own key spec with no `.range()`, and a short walk names its section). The added case is a source guard on `createBackup`, which needs supabase-js and cannot be executed here: every `supabase` read behind the archive must bind its `error`, and the graded errors must reach `incompleteSections`. § 675/§ 676 paged and flagged the runs + routes reads and left the `get_my_profile` RPC and the `user_settings` read discarding theirs, so a failed read shipped a null profile and an empty prefs bag under a manifest still claiming `complete: true`.
+The streaming + parallel-download writer and its walked row reads (was 14, then 15; 12 since [decisions § 1936](../architecture/decisions.md) moved the five `readAllRows` paging cases to `walkKeyset` in `core/keyset_page.test.ts` and added two source guards: both reads are `walkKeyset` walks over a total order sorted by the cursor's own key spec with no `.range()`, and a short walk names its section). The added case is a source guard on `createBackup`, which needs supabase-js and cannot be executed here: every `supabase` read behind the archive must bind its `error`, and the graded errors must reach `incompleteSections`. § 675/§ 676 paged and flagged the runs + routes reads and left the `get_my_profile` RPC and the `user_settings` read discarding theirs, so a failed read shipped a null profile and an empty prefs bag under a manifest still claiming `complete: true`.
 
 ### `apps/web/src/lib/backup/cloud_export_transport.test.ts` — 9 tests
 
@@ -1945,7 +1945,7 @@ claiming `complete`), both `fetchRuns` branches, and both ZIP importers' dedupe
 reads. Population floor of eight `.range()` reads. See
 [decisions § 922](../architecture/decisions.md).
 
-Rewritten by [decisions § 1927](../architecture/decisions.md): a total order
+Rewritten by [decisions § 1936](../architecture/decisions.md): a total order
 stops a tie from straddling a boundary but not a row inserted or deleted
 mid-walk from shifting every later OFFSET, so the rule is now that no `.range()`
 read exists at all (the first case names each one it finds), and the second case
@@ -2773,7 +2773,7 @@ Derives the writers rather than listing them: every `.from(<table>).insert|updat
 
 ## Whole-table walks by keyset cursor (2026-10-14)
 
-[decisions § 1927](../architecture/decisions.md). Every read whose contract is "every row" walked with `.range()` — LIMIT/OFFSET — so a row inserted or deleted while the walk was between two pages shifted every later position and was read twice or not at all. Each now walks by keyset cursor through `walkKeyset`.
+[decisions § 1936](../architecture/decisions.md). Every read whose contract is "every row" walked with `.range()` — LIMIT/OFFSET — so a row inserted or deleted while the walk was between two pages shifted every later position and was read twice or not at all. Each now walks by keyset cursor through `walkKeyset`.
 
 ### `apps/web/src/lib/core/keyset_page.test.ts` — 32 tests at run time
 
@@ -2793,7 +2793,7 @@ Two `collectStravaDedupeSet` cases rewritten for the walk: 2,500 runs over three
 
 ### `packages/api_client/test/keyset_walks_source_test.dart` — 14 tests at run time
 
-Replaces `paged_read_test.dart` with `readAllPages`. No `.range()` or `readAllPages` in the client; `_walk` filters after the cursor and sorts by `_orderBy(q, order)`; and each of `fetchRunRowsRaw`, `fetchRouteRowsRaw`, `getRouteReviews`, `fetchEventAttendees`, `fetchCheckpointCrossings`, `fetchExerciseCatalogue`, `fetchOwnedRunIds` and `fetchOwnedRouteIds` walks its named `KeysetKey` order, which must end on a unique column. The three owned-id readers the foreign-row reconcile leans on ([decisions § 1929](../architecture/decisions.md)) — those two and `fetchSavedRouteIds`, which walks `_savedRouteIdOrder` on `route_id` alone — filter by the caller explicitly and never `.limit(` the read.
+Replaces `paged_read_test.dart` with `readAllPages`. No `.range()` or `readAllPages` in the client; `_walk` filters after the cursor and sorts by `_orderBy(q, order)`; and each of `fetchRunRowsRaw`, `fetchRouteRowsRaw`, `getRouteReviews`, `fetchEventAttendees`, `fetchCheckpointCrossings`, `fetchExerciseCatalogue`, `fetchOwnedRunIds` and `fetchOwnedRouteIds` walks its named `KeysetKey` order, which must end on a unique column. The three owned-id readers the foreign-row reconcile leans on ([decisions § 1938](../architecture/decisions.md)) — those two and `fetchSavedRouteIds`, which walks `_savedRouteIdOrder` on `route_id` alone — filter by the caller explicitly and never `.limit(` the read.
 
 ### `apps/mobile_android/test/social_attendees_walk_test.dart` — 1 test
 

@@ -1884,7 +1884,7 @@ test('the exercise catalogue read pages, and says so when it fails', () => {
 	const body = source.slice(start, source.indexOf('\nexport ', start + 1));
 	// Walked by keyset rather than by `.range()`: an OFFSET walk over a
 	// catalogue that gains or loses a custom entry mid-read skips or repeats
-	// a row (§ 1927).
+	// a row (§ 1936).
 	assert.match(body, /walkKeyset\(EXERCISE_ORDER,/, 'an unranged select is capped at db.max-rows with no flag');
 	assert.doesNotMatch(body, /\.range\(/, 'the catalogue must not be walked by offset');
 	assert.match(body, /if \(!walk\.complete\)[\s\S]*?error: `\$\{message\}/, 'a failed read must surface, not return []');

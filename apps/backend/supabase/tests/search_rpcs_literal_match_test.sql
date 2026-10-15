@@ -1,4 +1,4 @@
--- Pins migration 20270817000031 (decisions § 1930): every text-search RPC
+-- Pins migration 20270817000031 (decisions § 1939): every text-search RPC
 -- matches the typed term literally, through `private.like_escape`.
 --
 -- One fixture set of five names per searched table, all sharing the `Zqx`

@@ -9,7 +9,7 @@ import 'package:test/test.dart';
 /// a 1,400-run history (decisions § 668). They walked by `.range()`, i.e.
 /// LIMIT/OFFSET, and an OFFSET names a position: a run synced or deleted while
 /// the backup is between two pages moves every later row, so one run is
-/// archived twice and another not at all (§ 1927). Each read now goes through
+/// archived twice and another not at all (§ 1936). Each read now goes through
 /// `_walk`, which pages by keyset cursor (`walkKeyset` in core_models, whose
 /// paging is pinned against in-memory rows by `keyset_page_test.dart`). A
 /// source guard because the regression is static and the failure it prevents
@@ -86,7 +86,7 @@ void main() {
     });
   }
 
-  // The foreign-row reconcile (decisions § 1929) deletes a synced local row
+  // The foreign-row reconcile (decisions § 1938) deletes a synced local row
   // these sets lack, so each must be the caller's OWN rows, whole: RLS alone
   // also admits club routes and a coach's athletes' runs, and a capped read
   // would delete owned rows past the cap.

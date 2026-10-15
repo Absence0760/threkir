@@ -53,7 +53,7 @@ Stripe's **test mode** is the canonical local-testing path. RevenueCat acts as a
 
 1. <https://app.revenuecat.com> → create a project for local testing (separate from prod).
 2. Project settings → Integrations → Stripe → paste `sk_test_...`.
-3. Add two products: `pro_monthly` and `pro_annual`, each with the Stripe test-mode price you create ($9.99 / month and $79.99 / year), as packages `$rc_monthly` and `$rc_annual` of offering `default`, both attached to entitlement `pro`.
+3. Add two products: `pro_monthly` and `pro_annual`, each with the Stripe test-mode price you create ($9.99 / month and $79.99 / year), as packages `$rc_monthly` and `$rc_annual` of offering `default`, both attached to entitlement `threkir_pro` (the identifier `proEntitlementId` in `apps/mobile_android/lib/revenuecat.dart` reads; RevenueCat cannot rename one).
 4. Project settings → API keys → copy the **public web** key.
 
 ### 3. Wire into the app

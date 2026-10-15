@@ -85,7 +85,7 @@ export async function createBackup(
 	// cursor, not by OFFSET: a run synced or deleted while the backup is
 	// between two pages moves every later position, and an OFFSET walk then
 	// archives one run twice or not at all under a manifest saying `complete`
-	// (§ 1927).
+	// (§ 1936).
 	onProgress?.({ stage: 'runs', current: 0, total: 1 });
 	const runsRead = await walkKeyset<Record<string, unknown>>(BACKUP_RUN_ORDER, (after, limit) => {
 		let q = supabase.from(TABLES.runs).select('*').eq('user_id', userId);

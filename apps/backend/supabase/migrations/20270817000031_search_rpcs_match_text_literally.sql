@@ -1,4 +1,4 @@
--- The text-search RPCs match the typed term literally (decisions § 1930).
+-- The text-search RPCs match the typed term literally (decisions § 1939).
 --
 -- Five functions build `<col> ilike '%' || p_query || '%'` with the term
 -- interpolated raw: search_clubs, search_public_events, search_race_listings,
@@ -10,7 +10,7 @@
 -- k%", and a lone `\` became "contains a percent sign". (The appended `%`
 -- is also why no input reaches 22025 "LIKE pattern must not end with escape
 -- character"; the failure is a silently wrong result, not an error.) The
--- clients already match literally (§ 1926 / § 1928); this closes the server
+-- clients already match literally (§ 1935 / § 1937); this closes the server
 -- half.
 --
 --   1. `private.like_escape(text)` prefixes each `\`, `%` and `_` with `\`,

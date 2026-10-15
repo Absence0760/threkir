@@ -17,7 +17,7 @@
 //
 // So the rule now is: no `.range()` read at all. A load-more list pages by
 // keyset cursor (`core/keyset_readers.test.ts`), and an every-row read walks
-// by one through `walkKeyset` (`core/keyset_page.ts`, decisions § 1927) —
+// by one through `walkKeyset` (`core/keyset_page.ts`, decisions § 1936) —
 // over an order that ends on a column unique per row, and sorted by the same
 // key spec the cursor is read from.
 
@@ -158,7 +158,7 @@ test('every keyset walk runs over a total order that something sorts by', () => 
 	// Population: a walk that resolved nothing would satisfy the assertion
 	// below while proving nothing. Nine today — fetchRuns, the exercise
 	// catalogue, the backup's runs and routes, the three ZIP-import reads, and
-	// the caller's clubs and a club's pending requests (§ 1931).
+	// the caller's clubs and a club's pending requests (§ 1940).
 	assert.ok(walks >= 9, `only found ${walks} walkKeyset calls — walker broken?`);
 	assert.deepEqual(offenders.sort(), []);
 });

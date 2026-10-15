@@ -109,7 +109,7 @@ export async function importGarminBundle(
 	// fallback path against DB rows, the FIT entries, and other entries
 	// in the same bundle. Walked like every every-row read: an unranged
 	// select is capped at 1000 rows, so a Garmin history past that
-	// compared against a slice and re-imported the rest (§ 1927).
+	// compared against a slice and re-imported the rest (§ 1936).
 	const garminRuns = await walkKeyset(RUN_DEDUPE_ORDER, (after, limit) => {
 		let q = supabase
 			.from(TABLES.runs)

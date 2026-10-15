@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// at `db.max-rows` (1000) with a 200 and no flag, so a big race's list lost
 /// everyone past the cap, and its `joined_at`-only order left tied RSVPs in no
 /// defined order. It walks the occurrence by keyset cursor now (decisions
-/// § 1927); the walk itself is pinned in core_models' `keyset_page_test.dart`.
+/// § 1936); the walk itself is pinned in core_models' `keyset_page_test.dart`.
 /// A source guard because the truncation is silent — a capped list renders as
 /// a complete one.
 void main() {

@@ -411,7 +411,7 @@ Model to copy: **`local_run_store_test.dart`**.
 
 ### Timezone-sensitive Dart tests
 
-CI runs the Flutter suite in the runner's zone, UTC, where every local day is 24 hours long and starts at 00:00 UTC. A test whose verdict depends on the host zone — a calendar-day key, a week or day boundary, anything across a DST transition — therefore passes there whether or not the code is right. The dashboard heatmap's day key collided across the London spring change and failed only east of UTC; its test was green in CI on the broken code ([decisions § 1923](../architecture/decisions.md)).
+CI runs the Flutter suite in the runner's zone, UTC, where every local day is 24 hours long and starts at 00:00 UTC. A test whose verdict depends on the host zone — a calendar-day key, a week or day boundary, anything across a DST transition — therefore passes there whether or not the code is right. The dashboard heatmap's day key collided across the London spring change and failed only east of UTC; its test was green in CI on the broken code ([decisions § 1932](../architecture/decisions.md)).
 
 Mark such a test with the `tz` tag, declared in each package's `dart_test.yaml` (both twins carry an identical copy; `twin-parity` compares them):
 

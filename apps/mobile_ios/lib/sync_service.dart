@@ -47,7 +47,7 @@ class SyncService with WidgetsBindingObserver {
   final WatchIngestQueue? watchQueue;
   /// Optional — when provided, the first cycle with a session reconciles the
   /// local stores against the caller's owned rows, once per account
-  /// (decisions § 1929). Runs before the drains so a foreign row's refused
+  /// (decisions § 1938). Runs before the drains so a foreign row's refused
   /// push is gone before this cycle would send it.
   final ForeignRowCleanup? foreignRowCleanup;
 

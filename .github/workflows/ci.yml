@@ -541,7 +541,7 @@ jobs:
   # always 24 hours and always starts at 00:00 UTC — so a test whose verdict
   # depends on the host zone passes there whether or not the code is right.
   # The dashboard heatmap shipped a day key that collided across the London
-  # spring change and failed only east of UTC (decisions § 1923). Every test
+  # spring change and failed only east of UTC (decisions § 1932). Every test
   # tagged `tz` (declared in each package's dart_test.yaml) runs again here
   # under three zones chosen to break different things: New York for the US
   # transitions and a negative offset, London for the EU transitions and the
@@ -3198,9 +3198,9 @@ jobs:
             exit 1
           fi
           # The shared test/ tree carries tags, so the file declaring them is
-          # shared too (decisions § 1923).
+          # shared too (decisions § 1932).
           if ! diff -q apps/mobile_android/dart_test.yaml apps/mobile_ios/dart_test.yaml; then
-            echo "::error::apps/mobile_android/dart_test.yaml has diverged from apps/mobile_ios/dart_test.yaml (decisions.md §39, § 1923). The two twins run the same test files, so they declare the same tags."
+            echo "::error::apps/mobile_android/dart_test.yaml has diverged from apps/mobile_ios/dart_test.yaml (decisions.md §39, § 1932). The two twins run the same test files, so they declare the same tags."
             echo "Copy the file across."
             exit 1
           fi

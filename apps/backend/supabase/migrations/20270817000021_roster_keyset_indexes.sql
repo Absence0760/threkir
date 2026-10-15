@@ -1,4 +1,4 @@
--- Indexes for the roster keyset orders (decisions § 1925, § 1927).
+-- Indexes for the roster keyset orders (decisions § 1934, § 1936).
 --
 -- The club roster pages as
 --   where club_id = $1

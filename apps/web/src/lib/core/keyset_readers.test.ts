@@ -98,7 +98,7 @@ test('the public plan and gym-routine libraries match their search literally', (
 
 test('no web read filters with a LIKE pattern', () => {
 	// `like` / `ilike` cannot express a literal `*` through PostgREST at all
-	// (decisions § 1926), so a text search goes through imatch +
+	// (decisions § 1935), so a text search goes through imatch +
 	// literalSubstringPattern, or literalSubstringTerm inside an or= tree.
 	const offenders = webSources()
 		.filter(([, src]) => /\.i?like(AllOf|AnyOf)?\(/.test(src))
@@ -111,7 +111,7 @@ test('fetchRuns takes a keyset cursor, and its whole-history walk is a keyset wa
 	// unlimited branch reads the whole history for recap, heatmap and the
 	// account export, and used to walk it with `.range()`: an OFFSET walk
 	// over a history a sync or a delete changes mid-read skips or repeats a
-	// run (§ 1927). Both must take a position from a row, never a count.
+	// run (§ 1936). Both must take a position from a row, never a count.
 	const fn = body('fetchRuns');
 	assert.match(fn, /keysetAfter\(RUN_ORDER, opts\.after\)/, 'fetchRuns must filter to the runs after the cursor');
 	assert.match(fn, /walkKeyset\(RUN_ORDER, page/, 'the whole-history read must walk by cursor');
@@ -132,7 +132,7 @@ test('fetchRuns takes a keyset cursor, and its whole-history walk is a keyset wa
 test('the my-clubs and pending-request reads walk by keyset cursor', () => {
 	// Both were one unranged select, which PostgREST caps at `db.max-rows`
 	// (1000) with a 200 and no flag, and nothing bounds how many clubs one user
-	// joins or how many requests a club accumulates (§ 1931).
+	// joins or how many requests a club accumulates (§ 1940).
 	for (const [name, order] of [
 		['fetchMyClubsWithError', 'MY_CLUB_MEMBERSHIP_ORDER'],
 		['fetchPendingRequests', 'CLUB_MEMBER_ORDER'],

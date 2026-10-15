@@ -310,7 +310,7 @@ class TrainingService extends ChangeNotifier {
   /// Browse the public plan library — published plans any user can clone
   /// (migration 20270126_001). Optional case-insensitive name search, every
   /// character matched literally (`literalSubstringPattern`, decisions
-  /// § 1928).
+  /// § 1937).
   /// Each entry carries the author's public display name (handle) joined
   /// from user_profiles; no other author data is exposed. Mirrors web
   /// `core/data.ts:fetchPublicPlanLibrary`.

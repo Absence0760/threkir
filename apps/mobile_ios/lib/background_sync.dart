@@ -85,7 +85,7 @@ void callbackDispatcher() {
 ///
 /// [foreignRowCleanup] runs first, as it does at the head of a foreground
 /// cycle: until it has, a club route or athlete run an older build stored as
-/// owned is pushed here and refused on every wake (decisions § 1929).
+/// owned is pushed here and refused on every wake (decisions § 1938).
 Future<void> runBackgroundSyncCycle(
   ApiClient api,
   LocalRunStore store,

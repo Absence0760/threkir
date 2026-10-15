@@ -272,7 +272,7 @@ test('buildBackupZip: profile id field is stripped to keep the archive re-homeab
 // § 668 found it on mobile, § 675 on web). They walk it by keyset
 // cursor: an OFFSET walk over a history that a sync or a delete changes
 // mid-read archives one run twice and drops another under a manifest
-// saying `complete` (§ 1927). The walk itself — paging, stop rule, a
+// saying `complete` (§ 1936). The walk itself — paging, stop rule, a
 // mid-walk delete or insert — is pinned in `core/keyset_page.test.ts`.
 
 test('createBackup: the runs and routes reads are keyset walks over a total order, never offsets', () => {

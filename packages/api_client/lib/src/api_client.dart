@@ -1910,7 +1910,7 @@ class ApiClient {
   /// account archived 1,000 and restored 1,000. Walked by keyset cursor
   /// rather than by OFFSET, because a run synced or deleted while the backup
   /// is between two pages moves every later position and an OFFSET walk then
-  /// archives one run twice and drops another (decisions § 1927).
+  /// archives one run twice and drops another (decisions § 1936).
   Future<List<Map<String, dynamic>>> fetchRunRowsRaw() async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw Exception('Not authenticated');
@@ -1946,7 +1946,7 @@ class ApiClient {
   ];
 
   /// The id of every run the caller owns, for the device's one-time
-  /// foreign-row reconcile (decisions § 1929). Walked like
+  /// foreign-row reconcile (decisions § 1938). Walked like
   /// [fetchRunRowsRaw] — the reconcile drops a synced local run this set
   /// lacks, so a truncated set would delete owned runs — and filtered by
   /// `user_id` explicitly because the `runs` SELECT policy also admits the
@@ -7614,7 +7614,7 @@ class ApiClient {
   /// Browse the public gym-routine library — routines published as public
   /// templates that any signed-in user can adopt (migration 20270224_001).
   /// Optional case-insensitive title search, every character matched
-  /// literally (`literalSubstringPattern`, decisions § 1928). Each entry
+  /// literally (`literalSubstringPattern`, decisions § 1937). Each entry
   /// carries the author's public display name (handle) joined from
   /// user_profiles; no other author data is exposed. Mirrors web
   /// `data.ts#fetchPublicGymRoutineLibrary`.

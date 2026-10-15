@@ -1,6 +1,6 @@
 -- Public route search reads the `public_routes` view by keyset cursor
--- (decisions § 1925) and matches its text through an escaped `~*` regex
--- (§ 1926); the offset-paged search_public_routes RPC it replaced is dropped
+-- (decisions § 1934) and matches its text through an escaped `~*` regex
+-- (§ 1935); the offset-paged search_public_routes RPC it replaced is dropped
 -- (20270817000001). This pins what the clients now depend on: the function is
 -- gone, anon can still read the view, the view still hides shadow-hidden and
 -- private routes, the partial sort indexes 20270326_001 built still serve the

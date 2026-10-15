@@ -168,7 +168,7 @@ class Preferences extends ChangeNotifier {
   static const _kNotifDeniedHintShown = 'notif_denied_hint_shown';
 
   // Account ids this install has run the one-time foreign-row reconcile for
-  // (decisions § 1929). Device-scoped on purpose: the reconcile cleans THIS
+  // (decisions § 1938). Device-scoped on purpose: the reconcile cleans THIS
   // device's stores, and a shared device's second account needs its own run.
   static const _kForeignRowCleanupDoneFor = 'foreign_row_cleanup_done_for';
 
@@ -653,7 +653,7 @@ class Preferences extends ChangeNotifier {
   }
 
   /// Whether the one-time foreign-row reconcile has completed for [userId]
-  /// on this device (decisions § 1929).
+  /// on this device (decisions § 1938).
   bool foreignRowCleanupDone(String userId) =>
       (_prefs.getStringList(_kForeignRowCleanupDoneFor) ?? const <String>[])
           .contains(userId);

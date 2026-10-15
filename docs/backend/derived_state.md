@@ -401,7 +401,7 @@ retention cron referenced in a comment that was never created.
   `fetchClubBySlug`) — `CLUB_SELECT_COLS` selects `member_count` and
   `enrichClubs` reads `c.member_count` (issue #331; the old post-query aggregate
   is gone), and mobile's `SocialService._enrichClubs` reads the same column off
-  `_clubSelectCols` — it re-counted `club_members` rows until § 1931, an
+  `_clubSelectCols` — it re-counted `club_members` rows until § 1940, an
   unranged select that `db.max-rows` capped at 1000 rows across every listed
   club.
 - **Maintained by:** `clubs_member_count_trigger()` (AFTER INSERT/UPDATE OF

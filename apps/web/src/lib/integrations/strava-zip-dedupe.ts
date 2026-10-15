@@ -39,7 +39,7 @@ export function buildStravaDedupeSet(rows: StravaDedupeRow[]): Set<string> {
 /// silently re-import everything past the cap. Walked by keyset cursor in
 /// `RUN_DEDUPE_ORDER`, not by OFFSET: a row dropped at a page boundary by a
 /// concurrent sync or delete is an id missing from the set, which re-imports
-/// the activity (§ 1927). A page error ends the walk with what it has rather
+/// the activity (§ 1936). A page error ends the walk with what it has rather
 /// than throwing. Pure + injectable so `npx tsx --test` can exercise it.
 export async function collectStravaDedupeSet(
 	fetchPage: DedupePage<StravaDedupeWalkRow>,

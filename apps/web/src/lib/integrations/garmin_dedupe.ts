@@ -93,7 +93,7 @@ export type DedupePage<R> = (
 /// against an arbitrary slice and re-import duplicates anyway — so the read
 /// is walked, and walked by keyset cursor: an OFFSET walk over a history that
 /// a sync changes mid-import drops a row at a page boundary, and a dropped
-/// identity is a run imported twice (§ 1927). A page error ends the walk with
+/// identity is a run imported twice (§ 1936). A page error ends the walk with
 /// what it has rather than throwing, as it always has.
 export async function collectRunIdentities(
 	fetchPage: DedupePage<RawRunRow>,

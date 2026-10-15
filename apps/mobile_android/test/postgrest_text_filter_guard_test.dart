@@ -50,7 +50,7 @@ void main() {
 
   test('no read filters with a LIKE pattern', () {
     // `like` / `ilike` cannot express a literal `*` through PostgREST at all
-    // (decisions § 1926): use imatch + literalSubstringPattern, or
+    // (decisions § 1935): use imatch + literalSubstringPattern, or
     // literalSubstringTerm inside an or= tree.
     final pattern = RegExp(r'\.i?like(AllOf|AnyOf)?\(');
     final offenders = [

@@ -100,7 +100,7 @@ test('collectStravaDedupeSet — walks past the 1000-row PostgREST cap by cursor
 	// A high-volume migrant with 2,500 existing Strava runs. A single
 	// unbounded read would return only ~1000, so ~1500 would be re-imported
 	// as duplicates. The walk must see every one, and must continue from the
-	// last row read rather than from an offset (§ 1927).
+	// last row read rather than from an offset (§ 1936).
 	const TOTAL = 2500;
 	const all: StravaDedupeWalkRow[] = Array.from({ length: TOTAL }, (_, i) => ({
 		id: `r-${String(TOTAL - i).padStart(5, '0')}`,

@@ -1,11 +1,43 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:purchases_flutter/purchases_flutter.dart' show PackageType;
+import 'package:purchases_flutter/purchases_flutter.dart'
+    show CustomerInfo, EntitlementInfo, EntitlementInfos, PackageType;
 
 import '../lib/revenuecat.dart';
 import '../lib/store_links.dart';
 import 'pro_plan_fixtures.dart';
+
+CustomerInfo customerWithActive(Map<String, EntitlementInfo> active) =>
+    CustomerInfo(
+      EntitlementInfos(active, active),
+      const {},
+      const [],
+      const [],
+      const [],
+      '2026-10-01T00:00:00Z',
+      'user-1',
+      const {},
+      '2026-10-14T00:00:00Z',
+    );
+
+EntitlementInfo activeEntitlement(
+  String identifier, {
+  String productIdentifier = 'pro_monthly',
+  bool isActive = true,
+  bool willRenew = true,
+  String? expirationDate = '2026-11-14T00:00:00Z',
+}) =>
+    EntitlementInfo(
+      identifier,
+      isActive,
+      willRenew,
+      '2026-10-14T00:00:00Z',
+      '2026-10-14T00:00:00Z',
+      productIdentifier,
+      true,
+      expirationDate: expirationDate,
+    );
 
 void main() {
   setUpAll(() {
@@ -161,6 +193,52 @@ void main() {
     test('a zero or negative price states nothing', () {
       expect(annualSavingPercent(0, 79.99), isNull);
       expect(annualSavingPercent(9.99, 0), isNull);
+    });
+  });
+
+  group('proEntitlementFrom', () {
+    // The identifier the RevenueCat project defines for Pro. Spelled out
+    // rather than read from proEntitlementId: a fixture built from the
+    // constant agrees with the code whatever the constant says, which is
+    // how a wrong id once shipped with every test green.
+    const dashboardId = 'threkir_pro';
+
+    test('the code reads the entitlement the RevenueCat project defines', () {
+      expect(proEntitlementId, dashboardId);
+    });
+
+    test('an active threkir_pro entitlement is Pro, with its plan and renewal',
+        () {
+      final e = proEntitlementFrom(customerWithActive({
+        dashboardId: activeEntitlement(dashboardId,
+            productIdentifier: 'pro_annual:annual', willRenew: false),
+      }));
+      expect(e, isNotNull);
+      expect(e!.plan, ProPlan.annual);
+      expect(e.expiresAt, DateTime.utc(2026, 11, 14));
+      expect(e.willRenew, isFalse);
+    });
+
+    test('an entitlement under any other identifier is not Pro', () {
+      expect(
+        proEntitlementFrom(customerWithActive({
+          'pro': activeEntitlement('pro'),
+        })),
+        isNull,
+      );
+    });
+
+    test('no active entitlement is not Pro', () {
+      expect(proEntitlementFrom(customerWithActive(const {})), isNull);
+    });
+
+    test('an inactive entry is not Pro', () {
+      expect(
+        proEntitlementFrom(customerWithActive({
+          dashboardId: activeEntitlement(dashboardId, isActive: false),
+        })),
+        isNull,
+      );
     });
   });
 

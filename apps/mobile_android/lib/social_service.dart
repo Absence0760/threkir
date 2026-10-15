@@ -713,7 +713,7 @@ class SocialService extends ChangeNotifier {
   /// Clubs the current user is a member of (any status). Walked by keyset
   /// cursor in [myClubMembershipOrder]: an unranged select is capped at
   /// `db.max-rows` (1000) with no flag, and nothing bounds how many clubs one
-  /// user joins (decisions § 1931).
+  /// user joins (decisions § 1940).
   Future<List<ClubView>> fetchMyClubs() async {
     final uid = _uid;
     if (uid == null) return const [];
@@ -1025,7 +1025,7 @@ class SocialService extends ChangeNotifier {
   /// first. Walked by keyset cursor in [pendingRequestOrder]: nothing bounds
   /// how many requests a request-to-join club accumulates, and an unranged
   /// select capped at `db.max-rows` (1000) hid every request past the cap
-  /// from the admin with no error (decisions § 1931).
+  /// from the admin with no error (decisions § 1940).
   Future<List<ClubMemberRow>> fetchPendingRequests(String clubId) async {
     final rows = await walkKeyset(
       pendingRequestOrder,
@@ -1838,7 +1838,7 @@ class SocialService extends ChangeNotifier {
   /// in [ApiClient.eventAttendeeOrder]: an unranged select is capped at
   /// `db.max-rows` (1000) with no flag, so a big race's list silently lost
   /// everyone past the cap, and its `joined_at`-only order left tied RSVPs in
-  /// no defined order (decisions § 1927).
+  /// no defined order (decisions § 1936).
   Future<List<AttendeeView>> fetchAttendees(String eventId, DateTime instance) async {
     final attendees = await walkKeyset(
       ApiClient.eventAttendeeOrder,

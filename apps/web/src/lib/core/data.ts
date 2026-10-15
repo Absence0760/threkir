@@ -362,7 +362,7 @@ export async function fetchRuns(
 		// No explicit limit means "every run" — recap, heatmap, account export.
 		// PostgREST caps an unbounded SELECT at 1000 rows, so the history is
 		// walked, and walked by cursor: an OFFSET walk over a history that a
-		// sync or a delete changes mid-read skips or repeats a run (§ 1927).
+		// sync or a delete changes mid-read skips or repeats a run (§ 1936).
 		const walk = await walkKeyset(RUN_ORDER, page, { start: opts?.after ?? null });
 		// A history that ended short is not a shorter history: the export and
 		// the totals would present the missing runs as never having existed.
@@ -3205,7 +3205,7 @@ export async function fetchMyClubsWithError(): Promise<{
 	if (!userId) return { clubs: [], error: null };
 	const uid = userId;
 	// Walked by cursor: an unranged select is capped at `db.max-rows` (1000)
-	// with no flag, and nothing bounds how many clubs one user joins (§ 1931).
+	// with no flag, and nothing bounds how many clubs one user joins (§ 1940).
 	const walk = await walkKeyset(MY_CLUB_MEMBERSHIP_ORDER, (after, limit) => {
 		let q = supabase
 			.from(TABLES.club_members)
@@ -3580,7 +3580,7 @@ export async function fetchPendingRequests(clubId: string): Promise<(ClubMember 
 })[]> {
 	// Walked by cursor: nothing bounds how many requests a request-to-join club
 	// accumulates, and an unranged select capped at `db.max-rows` (1000) hid
-	// every request past the cap from the admin with no error (§ 1931).
+	// every request past the cap from the admin with no error (§ 1940).
 	const walk = await walkKeyset(CLUB_MEMBER_ORDER, (after, limit) => {
 		let q = supabase
 			.from(TABLES.club_members)
@@ -5628,7 +5628,7 @@ export type PublicPlanLibraryEntry = TrainingPlan & {
 
 /// Browse the public plan library — published plans any user can clone
 /// (migration 20270126_001). Optional case-insensitive name search, every
-/// character matched literally (`literalSubstringPattern`, decisions § 1928).
+/// character matched literally (`literalSubstringPattern`, decisions § 1937).
 /// Each entry carries the author's public display name (handle) joined
 /// from user_profiles; no other author data is exposed. Mirrors mobile
 /// `TrainingService.fetchPublicPlanLibrary`.
@@ -10829,7 +10829,7 @@ export async function fetchExerciseCatalogue(): Promise<{
 	if (!auth.user?.id) return { catalogue: [], error: 'signed_out' };
 	// Walked by cursor: PostgREST caps an unranged select at `db.max-rows`, and
 	// an OFFSET walk over a catalogue someone adds a custom entry to mid-read
-	// skips or repeats a row (§ 1927).
+	// skips or repeats a row (§ 1936).
 	const walk = await walkKeyset(EXERCISE_ORDER, (after, limit) => {
 		let q = supabase.from(TABLES.exercises).select('*');
 		if (after) q = q.or(after);
@@ -12700,7 +12700,7 @@ export type PublicGymRoutineEntry = GymRoutineSummary & {
 /// Browse the public gym-routine library — routines published as public
 /// templates that any signed-in user can adopt (migration 20270224_001).
 /// Optional case-insensitive title search, every character matched literally
-/// (`literalSubstringPattern`, decisions § 1928). Each entry carries the author's
+/// (`literalSubstringPattern`, decisions § 1937). Each entry carries the author's
 /// public display name (handle) joined from user_profiles; no other author
 /// data is exposed. Mirrors fetchPublicPlanLibrary + the mobile
 /// `ApiClient.fetchPublicGymRoutineLibrary`.

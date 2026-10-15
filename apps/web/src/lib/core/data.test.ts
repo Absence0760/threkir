@@ -473,7 +473,7 @@ test('live spectator next-cutoff card sources waypoints through the clipped rout
 	);
 });
 
-test('plans/new loads club templates with one batched query, not one per club', () => {
+test('plans/new loads club templates in bounded chunks, not one query per club', () => {
 	// Reason: the template picker used to call fetchClubTemplates inside a
 	// clubs.map — one round-trip per club (N+1, audit/db-performance
 	// Medium). The scope is a single training_plans read filtered on all
@@ -495,10 +495,18 @@ test('plans/new loads club templates with one batched query, not one per club', 
 		/export async function fetchClubTemplatesForClubs[\s\S]*?\n}/,
 	);
 	assert.ok(fnMatch, 'Could not locate fetchClubTemplatesForClubs — rename?');
+	// One query per FEED_FOLLOWEE_CHUNK of clubs, not one per club: the id
+	// list is the viewer's whole club set, which has no ceiling under the
+	// in-filter bound (decisions § 653).
 	assert.match(
 		fnMatch![0],
-		/\.in\('club_id', clubIds\)/,
-		'fetchClubTemplatesForClubs must filter all club ids in ONE query.',
+		/queryChunked\(clubIds, \(part\) =>[\s\S]*?\.in\('club_id', part\)/,
+		'fetchClubTemplatesForClubs must filter the club ids per bounded chunk, not per club.',
+	);
+	assert.match(
+		fnMatch![0],
+		/\.limit\(limitPerClub \* part\.length\)/,
+		'Each chunk scales its limit by the clubs IN that chunk, so no club is starved.',
 	);
 });
 

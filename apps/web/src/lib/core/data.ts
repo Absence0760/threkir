@@ -227,6 +227,7 @@ import {
 	mergeProfilePages,
 	mergeRecencyPages,
 	readChunked,
+	queryChunked,
 	FEED_FOLLOWEE_CHUNK
 } from '../social/feed_merge';
 import { deleteRunsBounded } from './bulk_delete';
@@ -1384,10 +1385,9 @@ export async function fetchShares(kind: ShareableKind, id: string): Promise<Shar
 	if (error) throw dbError(error);
 	const ids = (rows ?? []).map((r) => r.recipient_id);
 	if (ids.length === 0) return [];
-	const { data: profiles, error: profilesError } = await supabase
-		.from('user_profiles')
-		.select('id, display_name, avatar_url')
-		.in('id', ids);
+	const { data: profiles, error: profilesError } = await queryChunked(ids, (part) =>
+		supabase.from('user_profiles').select('id, display_name, avatar_url').in('id', part)
+	);
 	if (profilesError) throw dbError(profilesError);
 	const byId = new Map((profiles ?? []).map((p) => [p.id, p] as const));
 	return (rows ?? []).map((r) => ({
@@ -2180,8 +2180,12 @@ export async function fetchRoutesWithError(): Promise<{
 	let saved: RouteListItem[] = [];
 	if (savedIds.length > 0) {
 		const [savedBaseRes, savedPublicRes] = await Promise.all([
-			supabase.from('routes').select(ROUTE_LIST_COLS).in('id', savedIds),
-			supabase.from('public_routes').select(PUBLIC_ROUTE_LIST_COLS).in('id', savedIds),
+			queryChunked(savedIds, (part) =>
+				supabase.from('routes').select(ROUTE_LIST_COLS).in('id', part)
+			),
+			queryChunked(savedIds, (part) =>
+				supabase.from('public_routes').select(PUBLIC_ROUTE_LIST_COLS).in('id', part)
+			),
 		]);
 		// Either half missing is a whole class of bookmark gone: the base table
 		// carries the runner's own + club-visible saved routes, the view
@@ -3303,7 +3307,9 @@ export async function fetchClubBySlug(
 export async function fetchClubNames(ids: string[]): Promise<Record<string, string>> {
 	const wanted = [...new Set(ids.filter(isEntityId))];
 	if (wanted.length === 0) return {};
-	const { data, error } = await supabase.from('clubs').select('id, name').in('id', wanted);
+	const { data, error } = await queryChunked(wanted, (part) =>
+		supabase.from('clubs').select('id, name').in('id', part)
+	);
 	if (error) throw dbError(error);
 	const out: Record<string, string> = {};
 	for (const c of (data ?? []) as { id: string; name: string | null }[]) {
@@ -3588,8 +3594,8 @@ async function fetchProfilesByIds(
 ): Promise<Map<string, { id: string; display_name: string | null; avatar_url: string | null }>> {
 	if (userIds.length === 0) return new Map();
 	const pages = await Promise.all(
-		chunk(userIds, FEED_FOLLOWEE_CHUNK).map((ids) =>
-			supabase.from('user_profiles').select('id, display_name, avatar_url').in('id', ids)
+		chunk(userIds, FEED_FOLLOWEE_CHUNK).map((part) =>
+			supabase.from('user_profiles').select('id, display_name, avatar_url').in('id', part)
 		)
 	);
 	return mergeProfilePages(
@@ -3645,12 +3651,14 @@ export async function approveMember(clubId: string, userId: string): Promise<voi
 
 export async function bulkApproveMembers(clubId: string, userIds: string[]): Promise<void> {
 	if (userIds.length === 0) return;
-	const { error } = await supabase
-		.from(TABLES.club_members)
-		.update({ status: 'active' })
-		.eq('club_id', clubId)
-		.eq('status', 'pending')
-		.in('user_id', userIds);
+	const { error } = await queryChunked(userIds, (part) =>
+		supabase
+			.from(TABLES.club_members)
+			.update({ status: 'active' })
+			.eq('club_id', clubId)
+			.eq('status', 'pending')
+			.in('user_id', part)
+	);
 	if (error) throw dbError(error);
 }
 
@@ -3932,11 +3940,13 @@ async function enrichEvents(events: Event[]): Promise<EventWithMeta[]> {
 	// next instance is picked, so this read cannot join the parallel batch
 	// below — the counts RPC is keyed on the instant this resolves to. Only
 	// future exceptions can move the answer, so the scan stays small.
-	const { data: exceptionRows } = await supabase
-		.from('event_exceptions')
-		.select('event_id, instance_start')
-		.in('event_id', ids)
-		.gte('instance_start', now.toISOString());
+	const { data: exceptionRows } = await queryChunked(ids, (part) =>
+		supabase
+			.from('event_exceptions')
+			.select('event_id, instance_start')
+			.in('event_id', part)
+			.gte('instance_start', now.toISOString())
+	);
 	const cancelledByEvent = new Map<string, string[]>();
 	for (const row of (exceptionRows ?? []) as { event_id: string; instance_start: string }[]) {
 		const list = cancelledByEvent.get(row.event_id);
@@ -3974,11 +3984,13 @@ async function enrichEvents(events: Event[]): Promise<EventWithMeta[]> {
 		p_next_starts: nextStarts,
 	});
 	const rsvpPromise = userId
-		? supabase
-				.from(TABLES.event_attendees)
-				.select('event_id, status, instance_start')
-				.in('event_id', ids)
-				.eq('user_id', userId)
+		? queryChunked(ids, (part) =>
+				supabase
+					.from(TABLES.event_attendees)
+					.select('event_id, status, instance_start')
+					.in('event_id', part)
+					.eq('user_id', userId)
+			)
 		: Promise.resolve({ data: [] as { event_id: string; status: string; instance_start: string }[] });
 
 	const [countRes, rsvpRes] = await Promise.all([countsPromise, rsvpPromise]);
@@ -4818,10 +4830,9 @@ export async function fetchEventResults(
 	const userIds = rows.map((r) => r.user_id).filter((id): id is string => id !== null);
 	const byId = new Map<string, { display_name: string | null; avatar_url: string | null }>();
 	if (userIds.length > 0) {
-		const { data: profiles } = await supabase
-			.from('user_profiles')
-			.select('id, display_name, avatar_url')
-			.in('id', userIds);
+		const { data: profiles } = await queryChunked(userIds, (part) =>
+			supabase.from('user_profiles').select('id, display_name, avatar_url').in('id', part)
+		);
 		for (const p of profiles ?? [])
 			byId.set(p.id, { display_name: p.display_name, avatar_url: p.avatar_url });
 	}
@@ -4997,10 +5008,9 @@ export async function fetchPendingEventResultClaims(
 	const rows = data ?? [];
 	if (rows.length === 0) return [];
 	const claimantIds = [...new Set(rows.map((r) => r.claimant_id))];
-	const { data: profiles } = await supabase
-		.from('user_profiles')
-		.select('id, display_name')
-		.in('id', claimantIds);
+	const { data: profiles } = await queryChunked(claimantIds, (part) =>
+		supabase.from('user_profiles').select('id, display_name').in('id', part)
+	);
 	const byId = new Map<string, string | null>();
 	for (const p of profiles ?? []) byId.set(p.id, p.display_name);
 	return rows.map((r) => ({
@@ -5296,7 +5306,9 @@ export async function saveEventCourses(
 	const table = () => supabase.from(TABLES.event_courses);
 	await applyCourseSave(planCourseSave(existing, drafts), {
 		delete: async (ids) => {
-			const { data, error } = await table().delete().in('id', ids).select('id');
+			const { data, error } = await queryChunked(ids, (part) =>
+				table().delete().in('id', part).select('id')
+			);
 			return { error, rows: data?.length ?? 0 };
 		},
 		update: async (id, patch) => {
@@ -5465,16 +5477,17 @@ async function enrichPosts(posts: ClubPost[]): Promise<ClubPostWithAuthor[]> {
 	const topLevelIds = posts.filter((p) => !p.parent_post_id).map((p) => p.id);
 
 	const [profilesRes, repliesRes] = await Promise.all([
-		supabase
-			.from('user_profiles')
-			.select('id, display_name, avatar_url')
-			.in('id', authorIds),
+		queryChunked(authorIds, (part) =>
+			supabase.from('user_profiles').select('id, display_name, avatar_url').in('id', part)
+		),
 		topLevelIds.length > 0
-			? supabase
-					.from(TABLES.club_posts)
-					.select('parent_post_id')
-					.in('parent_post_id', topLevelIds)
-					.limit(5000)
+			? queryChunked(topLevelIds, (part) =>
+					supabase
+						.from(TABLES.club_posts)
+						.select('parent_post_id')
+						.in('parent_post_id', part)
+						.limit(5000)
+				)
 			: Promise.resolve({ data: [] as { parent_post_id: string }[] })
 	]);
 
@@ -5576,13 +5589,17 @@ export async function fetchClubTemplatesForClubs(
 ): Promise<Map<string, TrainingPlan[]>> {
 	const grouped = new Map<string, TrainingPlan[]>();
 	if (clubIds.length === 0) return grouped;
-	const { data, error } = await supabase
-		.from('training_plans')
-		.select('*')
-		.eq('is_template', true)
-		.in('club_id', clubIds)
-		.order('created_at', { ascending: false })
-		.limit(limitPerClub * clubIds.length);
+	// Each club lands in exactly one chunk, so its own created_at order
+	// survives the merge — the grouping below is per club.
+	const { data, error } = await queryChunked(clubIds, (part) =>
+		supabase
+			.from('training_plans')
+			.select('*')
+			.eq('is_template', true)
+			.in('club_id', part)
+			.order('created_at', { ascending: false })
+			.limit(limitPerClub * part.length)
+	);
 	if (error) {
 		console.error('fetchClubTemplatesForClubs failed', error);
 		return grouped;
@@ -5903,15 +5920,18 @@ export async function fetchPlan(id: string): Promise<{
 		return { plan, weeks, workouts: [], error };
 	}
 	const weekIds = weeks.map((w) => w.id);
-	const { data: woData } = await supabase
-		.from('plan_workouts')
-		.select('*')
-		.in('week_id', weekIds)
-		.order('scheduled_date', { ascending: true });
+	const { data: woData } = await queryChunked(weekIds, (part) =>
+		supabase.from('plan_workouts').select('*').in('week_id', part)
+	);
+	// Ordered here rather than per chunk: each chunk's order says nothing
+	// about where its rows sit against another chunk's.
+	const workouts = ((woData ?? []) as PlanWorkout[])
+		.slice()
+		.sort((a, b) => (a.scheduled_date < b.scheduled_date ? -1 : a.scheduled_date > b.scheduled_date ? 1 : 0));
 	return {
 		plan,
 		weeks,
-		workouts: (woData ?? []) as PlanWorkout[],
+		workouts,
 		error
 	};
 }
@@ -6213,12 +6233,14 @@ export async function autoMatchRunToPlanWorkout(
 	);
 	if (weekIds.length === 0) return null;
 
-	const { data: candidates } = await supabase
-		.from('plan_workouts')
-		.select('id, target_distance_m, completed_run_id, week_id')
-		.in('week_id', weekIds)
-		.eq('scheduled_date', runIsoDate)
-		.is('completed_run_id', null);
+	const { data: candidates } = await queryChunked(weekIds, (part) =>
+		supabase
+			.from('plan_workouts')
+			.select('id, target_distance_m, completed_run_id, week_id')
+			.in('week_id', part)
+			.eq('scheduled_date', runIsoDate)
+			.is('completed_run_id', null)
+	);
 	if (!candidates || candidates.length === 0) return null;
 	const withDistance = candidates
 		.filter((c) => c.target_distance_m != null)
@@ -6269,11 +6291,13 @@ export async function fetchRelinkCandidateRuns(
 	);
 	const linkedRunIds: string[] = [];
 	if (weekIds.length > 0) {
-		const { data: linkedRows } = await supabase
-			.from('plan_workouts')
-			.select('completed_run_id')
-			.in('week_id', weekIds)
-			.not('completed_run_id', 'is', null);
+		const { data: linkedRows } = await queryChunked(weekIds, (part) =>
+			supabase
+				.from('plan_workouts')
+				.select('completed_run_id')
+				.in('week_id', part)
+				.not('completed_run_id', 'is', null)
+		);
 		for (const row of linkedRows ?? []) {
 			const id = (row as { completed_run_id: string | null }).completed_run_id;
 			if (id) linkedRunIds.push(id);
@@ -6711,12 +6735,14 @@ export async function fetchSuggestedPeople(limit = 12): Promise<PeopleSuggestion
 		.eq('status', 'active');
 	const myClubIds = (myMemberRows ?? []).map((r) => r.club_id as string);
 	if (myClubIds.length > 0) {
-		const { data: coMemberRows } = await supabase
-			.from(TABLES.club_members)
-			.select('user_id, club_id')
-			.in('club_id', myClubIds)
-			.eq('status', 'active')
-			.neq('user_id', viewerId);
+		const { data: coMemberRows } = await queryChunked(myClubIds, (part) =>
+			supabase
+				.from(TABLES.club_members)
+				.select('user_id, club_id')
+				.in('club_id', part)
+				.eq('status', 'active')
+				.neq('user_id', viewerId)
+		);
 		for (const row of coMemberRows ?? []) {
 			const uid = row.user_id as string;
 			sharedClubs.set(uid, (sharedClubs.get(uid) ?? 0) + 1);
@@ -6735,12 +6761,14 @@ export async function fetchSuggestedPeople(limit = 12): Promise<PeopleSuggestion
 		.eq('status', 'going');
 	const myEventIds = (myRsvpRows ?? []).map((r) => r.event_id as string);
 	if (myEventIds.length > 0) {
-		const { data: coAttendeeRows } = await supabase
-			.from(TABLES.event_attendees)
-			.select('user_id, event_id')
-			.in('event_id', myEventIds)
-			.eq('status', 'going')
-			.neq('user_id', viewerId);
+		const { data: coAttendeeRows } = await queryChunked(myEventIds, (part) =>
+			supabase
+				.from(TABLES.event_attendees)
+				.select('user_id, event_id')
+				.in('event_id', part)
+				.eq('status', 'going')
+				.neq('user_id', viewerId)
+		);
 		for (const row of coAttendeeRows ?? []) {
 			const uid = row.user_id as string;
 			sharedEvents.set(uid, (sharedEvents.get(uid) ?? 0) + 1);
@@ -6750,11 +6778,13 @@ export async function fetchSuggestedPeople(limit = 12): Promise<PeopleSuggestion
 	const candidateIds = new Set<string>([...sharedClubs.keys(), ...sharedEvents.keys()]);
 	if (candidateIds.size === 0) return [];
 
-	const { data: followedRows } = await supabase
-		.from('user_follows')
-		.select('followee_id')
-		.eq('follower_id', viewerId)
-		.in('followee_id', [...candidateIds]);
+	const { data: followedRows } = await queryChunked([...candidateIds], (part) =>
+		supabase
+			.from('user_follows')
+			.select('followee_id')
+			.eq('follower_id', viewerId)
+			.in('followee_id', part)
+	);
 	for (const r of followedRows ?? []) {
 		candidateIds.delete(r.followee_id as string);
 	}
@@ -6817,11 +6847,13 @@ export async function fetchNearbyRunners(radiusM = 25000): Promise<NearbyRunner[
 	if (rows.length === 0) return [];
 
 	const ids = rows.map((r) => r.id);
-	const { data: followedRows } = await supabase
-		.from('user_follows')
-		.select('followee_id')
-		.eq('follower_id', viewerId)
-		.in('followee_id', ids);
+	const { data: followedRows } = await queryChunked(ids, (part) =>
+		supabase
+			.from('user_follows')
+			.select('followee_id')
+			.eq('follower_id', viewerId)
+			.in('followee_id', part)
+	);
 	const following = new Set((followedRows ?? []).map((r) => r.followee_id as string));
 
 	return rows.map((r) => ({
@@ -6877,11 +6909,13 @@ export async function fetchMyDiscoverableArea(): Promise<string | null> {
 /// blocks error would be a worse regression than the rare leak.
 async function filterOutBlocked(viewerId: string, candidateIds: string[]): Promise<string[]> {
 	if (candidateIds.length === 0) return candidateIds;
-	const { data, error } = await supabase
-		.from(TABLES.user_blocks)
-		.select('blocked_id')
-		.eq('blocker_id', viewerId)
-		.in('blocked_id', candidateIds);
+	const { data, error } = await queryChunked(candidateIds, (part) =>
+		supabase
+			.from(TABLES.user_blocks)
+			.select('blocked_id')
+			.eq('blocker_id', viewerId)
+			.in('blocked_id', part)
+	);
 	if (error) return candidateIds;
 	const blocked = new Set((data ?? []).map((r) => r.blocked_id as string));
 	return candidateIds.filter((id) => !blocked.has(id));
@@ -6902,10 +6936,12 @@ async function hydratePeopleSuggestions(
 	const visibleIds = viewerId ? await filterOutBlocked(viewerId, ids) : ids;
 	if (visibleIds.length === 0) return [];
 	const [profilesRes, countsRes, followsRes] = await Promise.all([
-		supabase
-			.from('user_profiles')
-			.select('id, display_name, avatar_url, handle')
-			.in('id', visibleIds),
+		queryChunked(visibleIds, (part) =>
+			supabase
+				.from('user_profiles')
+				.select('id, display_name, avatar_url, handle')
+				.in('id', part)
+		),
 		// Public-run counts via a SECURITY DEFINER GROUP BY RPC — one small row
 		// per candidate, not one row per public run (which also can't be read
 		// off the base runs table by a non-owner since 20260701_001 dropped the
@@ -6913,11 +6949,13 @@ async function hydratePeopleSuggestions(
 		// everyone but the viewer). See public_run_counts (migration 20270118_001).
 		supabase.rpc('public_run_counts', { p_user_ids: visibleIds }),
 		viewerId
-			? supabase
-					.from('user_follows')
-					.select('followee_id')
-					.eq('follower_id', viewerId)
-					.in('followee_id', visibleIds)
+			? queryChunked(visibleIds, (part) =>
+					supabase
+						.from('user_follows')
+						.select('followee_id')
+						.eq('follower_id', viewerId)
+						.in('followee_id', part)
+				)
 			: Promise.resolve({ data: [] as { followee_id: string }[] } as { data: { followee_id: string }[] }),
 	]);
 	const counts = new Map<string, number>();
@@ -7093,11 +7131,11 @@ export async function fetchFollowingFeed(
 	// Each chunk applies the same cursor + ordering + limit; the global
 	// top-`limit` is a subset of the union of per-chunk results, which
 	// mergeFeedPages collapses back down.
-	const queryChunk = async (ids: string[]) => {
+	const queryChunk = async (part: string[]) => {
 		let q = supabase
 			.from('public_runs')
 			.select('*')
-			.in('user_id', ids)
+			.in('user_id', part)
 			.gte('started_at', cutoff)
 			.order('started_at', { ascending: false })
 			.order('id', { ascending: false })
@@ -7225,12 +7263,12 @@ async function fetchFollowingLifts(
 	if (filteredAuthors.length === 0) return [];
 
 	const cutoff = new Date(Date.now() - FEED_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
-	const queryChunk = async (ids: string[]) => {
+	const queryChunk = async (part: string[]) => {
 		let q = supabase
 			.from('public_gym_workouts')
 			.select('id, user_id, started_at, title, set_count, volume_kg')
 			.eq('is_public', true)
-			.in('user_id', ids)
+			.in('user_id', part)
 			.gte('started_at', cutoff)
 			.order('started_at', { ascending: false })
 			.order('id', { ascending: false })
@@ -7326,15 +7364,18 @@ export async function fetchEngagementSummaries(
 	// Counts come from a server-side GROUP BY (run_engagement_counts) so the
 	// wire payload is one small row per run, not every kudos + comment row on
 	// the page (a popular share used to ship hundreds of rows to compute one
-	// integer). viewer_has_kudos stays a narrow per-run .in() lookup.
+	// integer). viewer_has_kudos stays a narrow per-run `in` lookup, chunked
+	// because the caller's run list has no ceiling of its own.
 	const [counts, viewerKudos] = await Promise.all([
 		supabase.rpc('run_engagement_counts', { p_run_ids: runIds }),
 		viewerId
-			? supabase
-					.from(TABLES.run_kudos)
-					.select('run_id')
-					.eq('user_id', viewerId)
-					.in('run_id', runIds)
+			? queryChunked(runIds, (part) =>
+					supabase
+						.from(TABLES.run_kudos)
+						.select('run_id')
+						.eq('user_id', viewerId)
+						.in('run_id', part)
+				)
 			: Promise.resolve({ data: [] as { run_id: string }[] }),
 	]);
 
@@ -7474,10 +7515,9 @@ export async function fetchRunCommentsWithError(
 	if (!rows || rows.length === 0) return { comments: [], error: null };
 
 	const authorIds = Array.from(new Set(rows.map((r) => r.author_id)));
-	const { data: profiles } = await supabase
-		.from('user_profiles')
-		.select('id, display_name, avatar_url')
-		.in('id', authorIds);
+	const { data: profiles } = await queryChunked(authorIds, (part) =>
+		supabase.from('user_profiles').select('id, display_name, avatar_url').in('id', part)
+	);
 	const byId = new Map<string, PublicProfile>();
 	for (const p of profiles ?? []) byId.set(p.id, p);
 
@@ -9580,10 +9620,9 @@ export async function fetchEffortsForRunWithError(
 	if (!efforts || efforts.length === 0) return { efforts: [], error: null };
 
 	const segmentIds = Array.from(new Set(efforts.map((e) => e.segment_id)));
-	const { data: segments } = await supabase
-		.from(TABLES.segments)
-		.select('*')
-		.in('id', segmentIds);
+	const { data: segments } = await queryChunked(segmentIds, (part) =>
+		supabase.from(TABLES.segments).select('*').in('id', part)
+	);
 	const bySeg = new Map<string, Segment>();
 	for (const s of segments ?? []) bySeg.set(s.id, s as Segment);
 
@@ -9934,10 +9973,9 @@ export async function fetchGlobalEffortsForRun(
 	if (error || !efforts || efforts.length === 0) return [];
 
 	const segmentIds = Array.from(new Set(efforts.map((e) => e.global_segment_id)));
-	const { data: segments } = await supabase
-		.from(TABLES.global_segments)
-		.select('*')
-		.in('id', segmentIds);
+	const { data: segments } = await queryChunked(segmentIds, (part) =>
+		supabase.from(TABLES.global_segments).select('*').in('id', part)
+	);
 	const bySeg = new Map<string, GlobalSegment>();
 	for (const s of segments ?? []) bySeg.set(s.id, asGlobalSegment(s));
 
@@ -10230,7 +10268,8 @@ export interface DmThread {
 /// conversation instead of pulling the newest 500 full message bodies and
 /// folding them in JS (which over-fetched AND silently dropped older partners
 /// once a heavy inbox's newest 500 messages spanned fewer conversations than
-/// it had). Partner name/avatar stays a single .in() profile lookup.
+/// it had). Partner name/avatar is a chunked `in` profile lookup, since the
+/// partner set has no ceiling of its own.
 export async function fetchDmThreads(): Promise<DmThread[]> {
 	const me = auth.user?.id;
 	if (!me) return [];
@@ -10258,10 +10297,9 @@ export async function fetchDmThreads(): Promise<DmThread[]> {
 	const byPartner = new Map(threads.map((t) => [t.partnerId, t]));
 	const partnerIds = [...byPartner.keys()];
 	if (partnerIds.length > 0) {
-		const { data: profiles } = await supabase
-			.from('user_profiles')
-			.select('id, display_name, avatar_url')
-			.in('id', partnerIds);
+		const { data: profiles } = await queryChunked(partnerIds, (part) =>
+			supabase.from('user_profiles').select('id, display_name, avatar_url').in('id', part)
+		);
 		for (const p of profiles ?? []) {
 			const t = byPartner.get(p.id as string);
 			if (t) {
@@ -11540,13 +11578,19 @@ export async function fetchGymRoutineDetail(id: string): Promise<GymRoutineDetai
 	if (exercises.length === 0) {
 		return { routine: routine as GymRoutineSummary, exercises: [] };
 	}
-	const { data: setRows, error: sErr } = await supabase
-		.from(TABLES.gym_routine_sets)
-		.select(
-			'routine_exercise_id, set_index, set_type, target_reps_min, target_reps_max, target_weight_kg, target_rpe, rest_s, target_duration_s, target_distance_m',
-		)
-		.in('routine_exercise_id', exercises.map((e) => e.id))
-		.order('set_index', { ascending: true });
+	// Every exercise's sets come back from one chunk, so the per-exercise
+	// set_index order the grouping below relies on survives the merge.
+	const { data: setRows, error: sErr } = await queryChunked(
+		exercises.map((e) => e.id),
+		(part) =>
+			supabase
+				.from(TABLES.gym_routine_sets)
+				.select(
+					'routine_exercise_id, set_index, set_type, target_reps_min, target_reps_max, target_weight_kg, target_rpe, rest_s, target_duration_s, target_distance_m',
+				)
+				.in('routine_exercise_id', part)
+				.order('set_index', { ascending: true }),
+	);
 	// The planned sets ARE the prescription — dropping them silently turns a
 	// 5x5 into a bare exercise list.
 	if (sErr) throw dbError(sErr);
@@ -12370,10 +12414,9 @@ export async function fetchNutritionPlan(
 /// Plans by id, for resolving the plans the caller's assignments point at.
 export async function fetchNutritionPlansByIds(ids: string[]): Promise<NutritionPlan[]> {
 	if (ids.length === 0) return [];
-	const { data, error } = await supabase
-		.from(TABLES.nutrition_plans)
-		.select(NUTRITION_PLAN_COLS)
-		.in('id', ids);
+	const { data, error } = await queryChunked(ids, (part) =>
+		supabase.from(TABLES.nutrition_plans).select(NUTRITION_PLAN_COLS).in('id', part)
+	);
 	if (error) throw dbError(error);
 	return (data ?? []).map(asNutritionPlan);
 }
@@ -13453,11 +13496,11 @@ export async function fetchFollowingBadgeAwards(opts?: {
 	// cursor + ordering + limit; the global top-`limit` is a subset of the
 	// union, which mergeRecencyPages collapses back down (earned_at desc,
 	// id desc).
-	const queryChunk = async (ids: string[]) => {
+	const queryChunk = async (part: string[]) => {
 		let q = supabase
 			.from(TABLES.achievements)
 			.select('*')
-			.in('user_id', ids)
+			.in('user_id', part)
 			.eq('is_public', true)
 			.order('earned_at', { ascending: false })
 			.order('id', { ascending: false })
@@ -13539,11 +13582,13 @@ export async function fetchChallenges(
 	const mineSet = new Set<string>();
 	const myCompletedAt = new Map<string, string | null>();
 	if (userId) {
-		const { data: parts, error: partsError } = await supabase
-			.from(TABLES.challenge_participants)
-			.select('challenge_id, completed_at')
-			.eq('user_id', userId)
-			.in('challenge_id', ids);
+		const { data: parts, error: partsError } = await queryChunked(ids, (part) =>
+			supabase
+				.from(TABLES.challenge_participants)
+				.select('challenge_id, completed_at')
+				.eq('user_id', userId)
+				.in('challenge_id', part)
+		);
 		// `joined` drives the Join affordance; a dropped error offered "Join"
 		// on every challenge the caller is already in.
 		if (partsError) throw dbError(partsError);

@@ -55,7 +55,10 @@ async function recentRunDistances(page: Page): Promise<string[]> {
 }
 
 test.describe('dashboard end-to-end journey', () => {
-	test.use({ storageState: USER_A.storageStatePath });
+	// Pinned to `fail` while CI runs the suite with CRASH_NET=report: the
+	// /runs period switch here destroyed every RunTrackPreview while auth was
+	// still settling, and each one then observed an unbound element.
+	test.use({ storageState: USER_A.storageStatePath, crashNet: { mode: 'fail' } });
 
 	// The seed gained a now()-relative 8 km run ("Morning easy 8K"), which
 	// would put a freshly planted 25 km/week goal at 32% instead of the 0%

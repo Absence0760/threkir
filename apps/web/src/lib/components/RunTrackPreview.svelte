@@ -94,13 +94,17 @@
 
 	onMount(() => {
 		let io: IntersectionObserver | null = null;
+		let destroyed = false;
 		// Wait for auth to settle before reading `cacheKey` / `shouldClip`
 		// — this component mounts on shell-less public surfaces before the
 		// root layout's auth gate resolves, and an owner whose session is
 		// still restoring would otherwise be clipped (issue #347).
 		void (async () => {
 			await auth.ready();
-			if (!cacheKey) return;
+			// A list that re-renders while auth settles (the /runs period
+			// switch) destroys this card first: `el` is unbound by then, and
+			// an observer created now would never be disconnected.
+			if (destroyed || !cacheKey) return;
 			// Hit cache synchronously if we've fetched this one before in
 			// this session — common when the user scrolls up / re-enters the
 			// list page.
@@ -123,7 +127,10 @@
 			);
 			io.observe(el);
 		})();
-		return () => io?.disconnect();
+		return () => {
+			destroyed = true;
+			io?.disconnect();
+		};
 	});
 
 	async function load() {

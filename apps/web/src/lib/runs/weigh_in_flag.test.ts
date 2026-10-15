@@ -15,6 +15,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { insideIfBranch } from '../core/svelte_if_guard';
 
 const FLAG = 'src/lib/runs/weigh_in_flag.ts';
 const BOARD = 'src/routes/clubs/[slug]/events/[id]/board/+page.svelte';
@@ -41,69 +42,19 @@ test('the gate is fail-closed and routed through the canonical parse', () => {
 	);
 });
 
-/// Svelte block nesting, resolved far enough to answer "is this character
-/// inside an `{#if}` whose condition names the flag". A token guarded by
-/// `{#if weighInEnabled}` two levels up is what the template actually
-/// relies on, and a substring search cannot see it.
-function guardedRanges(template: string, flagName: string): (i: number) => boolean {
-	type Frame = { close: string; guarded: boolean };
-	const stack: Frame[] = [];
-	const marks: { at: number; depth: number }[] = [];
-	const token = /\{#(if|each|await|key|snippet)\b([^}]*)\}|\{:else([^}]*)\}|\{\/(if|each|await|key|snippet)\}/g;
-	const flag = new RegExp(`\\b${flagName}\\b`);
-	let guardedDepth = 0;
-	let last = 0;
-	const push = (at: number) => {
-		marks.push({ at, depth: guardedDepth });
-		last = at;
-	};
-	push(0);
-	for (const m of template.matchAll(token)) {
-		const at = m.index ?? 0;
-		if (m[1]) {
-			const guarded = m[1] === 'if' && flag.test(m[2] ?? '');
-			stack.push({ close: m[1], guarded });
-			if (guarded) guardedDepth++;
-			push(at + m[0].length);
-		} else if (m[3] !== undefined) {
-			// `{:else}` leaves the guarded branch; `{:else if flag}` re-enters.
-			const top = stack[stack.length - 1];
-			if (top && top.close === 'if') {
-				if (top.guarded) guardedDepth--;
-				top.guarded = flag.test(m[3]);
-				if (top.guarded) guardedDepth++;
-			}
-			push(at + m[0].length);
-		} else {
-			const top = stack.pop();
-			if (top?.guarded) guardedDepth--;
-			push(at + m[0].length);
-		}
-	}
-	void last;
-	return (i: number) => {
-		let depth = 0;
-		for (const mark of marks) {
-			if (mark.at > i) break;
-			depth = mark.depth;
-		}
-		return depth > 0;
-	};
-}
-
 test('the block scanner sees a nested guard and refuses an unguarded sibling', () => {
 	// Fixtures, so a scanner that stopped matching the template's shape
 	// cannot pass this file by finding nothing (decisions § 762).
-	const inside = guardedRanges('{#if weighInEnabled}{#each rows as r}<X/>{/each}{/if}', 'weighInEnabled');
+	const inside = insideIfBranch('{#if weighInEnabled}{#each rows as r}<X/>{/each}{/if}', 'weighInEnabled');
 	assert.equal(inside('{#if weighInEnabled}{#each rows as r}'.length + 1), true);
 
-	const after = guardedRanges('{#if weighInEnabled}<A/>{/if}<B/>', 'weighInEnabled');
+	const after = insideIfBranch('{#if weighInEnabled}<A/>{/if}<B/>', 'weighInEnabled');
 	assert.equal(after('{#if weighInEnabled}<A/>{/if}'.length + 1), false);
 
-	const other = guardedRanges('{#if somethingElse}<A/>{/if}', 'weighInEnabled');
+	const other = insideIfBranch('{#if somethingElse}<A/>{/if}', 'weighInEnabled');
 	assert.equal(other('{#if somethingElse}'.length + 1), false);
 
-	const elseBranch = guardedRanges('{#if weighInEnabled}<A/>{:else}<B/>{/if}', 'weighInEnabled');
+	const elseBranch = insideIfBranch('{#if weighInEnabled}<A/>{:else}<B/>{/if}', 'weighInEnabled');
 	assert.equal(elseBranch('{#if weighInEnabled}<A/>{:else}'.length + 1), false);
 });
 
@@ -117,7 +68,7 @@ test('every Art 9 weigh-in affordance on the board is behind the flag', () => {
 	const templateAt = page.indexOf('</script>');
 	assert.ok(templateAt > 0, 'no template found on the board page');
 	const template = page.slice(templateAt);
-	const guarded = guardedRanges(template, 'weighInEnabled');
+	const guarded = insideIfBranch(template, 'weighInEnabled');
 
 	// Every rendered trace of the health surface: the column, the badge,
 	// the entry affordance, the modal, the consent checkbox, and the stored

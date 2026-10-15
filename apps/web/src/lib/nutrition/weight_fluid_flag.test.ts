@@ -12,6 +12,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { insideIfBranch } from '../core/svelte_if_guard';
 
 const FLAG = 'src/lib/nutrition/weight_fluid_flag.ts';
 const PAGES = {
@@ -31,38 +32,6 @@ function read(path: string): string {
 	return readFileSync(resolve(path), 'utf-8');
 }
 
-/// True for an offset inside an `{#if …}` branch whose condition names
-/// `flag`, at any depth. `{:else}` leaves the branch.
-function insideFlagBranch(template: string, flag: string): (i: number) => boolean {
-	const token = /\{#(if|each|await|key|snippet)\b([^}]*)\}|\{:else([^}]*)\}|\{\/(if|each|await|key|snippet)\}/g;
-	const named = new RegExp(`\\b${flag}\\b`);
-	const stack: boolean[] = [];
-	const marks: { at: number; depth: number }[] = [{ at: 0, depth: 0 }];
-	let depth = 0;
-	for (const m of template.matchAll(token)) {
-		if (m[1]) {
-			const guarded = m[1] === 'if' && named.test(m[2] ?? '');
-			stack.push(guarded);
-			if (guarded) depth++;
-		} else if (m[3] !== undefined) {
-			if (stack[stack.length - 1]) depth--;
-			stack[stack.length - 1] = named.test(m[3]);
-			if (stack[stack.length - 1]) depth++;
-		} else if (stack.pop()) {
-			depth--;
-		}
-		marks.push({ at: (m.index ?? 0) + m[0].length, depth });
-	}
-	return (i) => {
-		let d = 0;
-		for (const mark of marks) {
-			if (mark.at > i) break;
-			d = mark.depth;
-		}
-		return d > 0;
-	};
-}
-
 test('the gate is fail-closed and routed through the canonical parse', () => {
 	const source = read(FLAG);
 	assert.match(source, /isTruthyFlagValue\(PUBLIC_WEIGHT_FLUID_ENABLED\)/);
@@ -72,10 +41,10 @@ test('the gate is fail-closed and routed through the canonical parse', () => {
 });
 
 test('the branch scanner sees a nested guard and refuses an unguarded sibling or else branch', () => {
-	assert.equal(insideFlagBranch('{#if a && weightFluid}{#if b}<X/>{/if}{/if}', 'weightFluid')(30), true);
-	assert.equal(insideFlagBranch('{#if weightFluid}<A/>{/if}<B/>', 'weightFluid')(30), false);
-	assert.equal(insideFlagBranch('{#if weightFluid}<A/>{:else}<B/>{/if}', 'weightFluid')(33), false);
-	assert.equal(insideFlagBranch('{#if other}<A/>{/if}', 'weightFluid')(13), false);
+	assert.equal(insideIfBranch('{#if a && weightFluid}{#if b}<X/>{/if}{/if}', 'weightFluid')(30), true);
+	assert.equal(insideIfBranch('{#if weightFluid}<A/>{/if}<B/>', 'weightFluid')(30), false);
+	assert.equal(insideIfBranch('{#if weightFluid}<A/>{:else}<B/>{/if}', 'weightFluid')(33), false);
+	assert.equal(insideIfBranch('{#if other}<A/>{/if}', 'weightFluid')(13), false);
 });
 
 for (const [name, spec] of Object.entries(PAGES)) {
@@ -100,7 +69,7 @@ for (const [name, spec] of Object.entries(PAGES)) {
 	test(`${name}: every weight affordance renders only under the gate`, () => {
 		const page = read(spec.path);
 		const template = page.slice(page.indexOf('</script>'));
-		const guarded = insideFlagBranch(template, 'weightFluid');
+		const guarded = insideIfBranch(template, 'weightFluid');
 		for (const needle of spec.affordances) {
 			let at = template.indexOf(needle);
 			assert.notEqual(at, -1, `${needle} is no longer rendered — the guard is stale`);

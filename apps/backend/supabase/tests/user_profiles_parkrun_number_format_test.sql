@@ -19,7 +19,7 @@
 
 begin;
 
-select plan(29);
+select plan(31);
 
 -- ── The normaliser ──────────────────────────────────────────────────────────
 
@@ -91,6 +91,28 @@ select is(
   (select parkrun_number from get_my_profile()),
   null::text,
   'an owner can still clear the number'
+);
+
+update user_profiles set parkrun_number = 'A765432'
+where id = '00000000-0000-0000-0000-0000000a7b01';
+update user_profiles set parkrun_number = ''
+where id = '00000000-0000-0000-0000-0000000a7b01';
+
+select is(
+  (select parkrun_number from get_my_profile()),
+  null::text,
+  'an owner UPDATE of the empty string clears the number rather than being refused'
+);
+
+update user_profiles set parkrun_number = 'A765432'
+where id = '00000000-0000-0000-0000-0000000a7b01';
+update user_profiles set parkrun_number = E'  \t '
+where id = '00000000-0000-0000-0000-0000000a7b01';
+
+select is(
+  (select parkrun_number from get_my_profile()),
+  null::text,
+  'an owner UPDATE of whitespace alone clears the number'
 );
 
 reset role;

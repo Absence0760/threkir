@@ -21,7 +21,9 @@
 --      rewrites a normalisable write into its canonical form and leaves
 --      anything else as supplied, so an older client that sends `a 123 456`
 --      still saves while junk reaches the CHECK and is refused with 23514
---      rather than being silently cleared.
+--      rather than being silently cleared. A value that is empty once its
+--      whitespace is dropped is stored as NULL: a blank field is how a
+--      client clears the number, and both clients already send NULL for it.
 --   3. A backfill that rewrites every stored value through (1), NULLing what
 --      cannot be normalised: an existing value is not the runner's input in
 --      this session, so there is nobody to refuse it to, and a value the
@@ -43,6 +45,22 @@
 -- primary key. ADD CONSTRAINT … NOT VALID is a metadata flip with no scan and
 -- goes last, so its ACCESS EXCLUSIVE is held for the shortest span.
 
+create or replace function private.compact_parkrun_number(p_raw text)
+returns text
+language sql
+immutable
+parallel safe
+returns null on null input
+set search_path = ''
+as $$
+  select regexp_replace(p_raw, '[\t\n\v\f\r    -     　﻿]+', '', 'g');
+$$;
+
+comment on function private.compact_parkrun_number(text) is
+  'A typed parkrun number with every whitespace character dropped (the ECMAScript \s set). The first step of private.normalize_parkrun_number; the trigger also reads it to tell a cleared field from junk.';
+
+grant execute on function private.compact_parkrun_number(text) to public;
+
 create or replace function private.normalize_parkrun_number(p_raw text)
 returns text
 language sql
@@ -56,12 +74,7 @@ as $$
     select case when left(compact, 1) = 'a' then 'A' || substr(compact, 2) else compact end
       as canonical
     from (
-      select regexp_replace(
-        p_raw,
-        '[\t\n\v\f\r    -     　﻿]+',
-        '',
-        'g'
-      ) as compact
+      select private.compact_parkrun_number(p_raw) as compact
     ) as stripped
   ) as raised;
 $$;
@@ -77,10 +90,14 @@ language plpgsql
 set search_path = ''
 as $$
 begin
-  new.parkrun_number := coalesce(
-    private.normalize_parkrun_number(new.parkrun_number),
-    new.parkrun_number
-  );
+  if private.compact_parkrun_number(new.parkrun_number) = '' then
+    new.parkrun_number := null;
+  else
+    new.parkrun_number := coalesce(
+      private.normalize_parkrun_number(new.parkrun_number),
+      new.parkrun_number
+    );
+  end if;
   return new;
 end;
 $$;

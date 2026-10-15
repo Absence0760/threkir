@@ -1,6 +1,6 @@
 import type { TrackPoint } from '../types';
 import { computeElevationGain, ELEVATION_GAIN_MIN_DELTA_M } from '../routes/route_simplify';
-import { onTrackPoints } from './track_points';
+import { trackLine } from './track_line';
 
 /**
  * Which altitude a recorded run's climb and elevation profile are read from,
@@ -58,7 +58,7 @@ export function runAltitude(
 	stored: TrackPoint[],
 	source: string | null | undefined,
 ): RunAltitude {
-	const track = onTrackPoints(stored);
+	const track = trackLine(stored);
 	if (hasBarometricAltitude(track)) {
 		return {
 			track: track.map((p) => {

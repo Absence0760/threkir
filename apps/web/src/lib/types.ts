@@ -108,8 +108,8 @@ export type TrackPoint = {
 	/// A fix the distance estimator took that failed the recorder's track
 	/// gate (docs/features/gps_distance.md § Waypoint fields): stored for the
 	/// server's distance replay, never drawn. Absent, never `false`, on every
-	/// other point. Line readers go through `onTrackPoints`
-	/// (lib/runs/track_points.ts).
+	/// other point. Line readers go through `trackLine`
+	/// (lib/runs/track_line.ts).
 	offTrack?: boolean;
 };
 

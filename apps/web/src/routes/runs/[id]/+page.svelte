@@ -59,8 +59,7 @@
 	import type { PlanWorkout } from '#lib/types.ts';
 	import { toRunGpx, downloadFile } from '#lib/routes/gpx.ts';
 	import { movingTimeSeconds, computeRealSplits } from '#lib/runs/run_stats.ts';
-	import { lineLat, lineLng } from '#lib/runs/track_line.ts';
-	import { onTrackPoints } from '#lib/runs/track_points.ts';
+	import { lineLat, lineLng, trackLine } from '#lib/runs/track_line.ts';
 	import { computeElevationGain } from '#lib/routes/route_simplify.ts';
 	import { runAltitude } from '#lib/runs/run_altitude.ts';
 	import {
@@ -303,7 +302,7 @@
 		// Background route-suggestion. Only kicks in for runs that
 		// aren't already linked to a route AND have a usable track —
 		// silent on empty / failure paths.
-		if (run && !run.route_id && run.track && onTrackPoints(run.track).length >= 2) {
+		if (run && !run.route_id && run.track && trackLine(run.track).length >= 2) {
 			void suggestRoute(run.track, run.distance_m);
 		}
 		// If the recorder linked this run to a structured workout, pull
@@ -768,7 +767,7 @@
 			return;
 		}
 		shareConfirmIntersectsZone =
-			zones.length > 0 && !!run.track && trackEntersAnyZone(onTrackPoints(run.track), zones);
+			zones.length > 0 && !!run.track && trackEntersAnyZone(trackLine(run.track), zones);
 		shareConfirmHasZones = zones.length > 0;
 		showShareConfirm = true;
 	}
@@ -967,7 +966,7 @@
 		const gpx = toRunGpx(
 			title,
 			run.started_at,
-			onTrackPoints(run.track).map((p) => ({
+			trackLine(run.track).map((p) => ({
 				lat: p.lat,
 				lng: p.lng,
 				ele: p.ele ?? null,
@@ -1321,7 +1320,7 @@
 
 	/// Map track. Prefer the matched line when the worker has produced
 	/// one (status='matched' AND non-empty payload); fall back to the
-	/// raw recorded track's on-track fixes (`onTrackPoints`: an off-track
+	/// raw recorded track's on-track fixes (`trackLine`: an off-track
 	/// fix is distance input, never line). If neither exists (Strava sync without GPS,
 	/// manual parkrun entry, HealthKit summary without polyline), the
 	/// map panel renders an empty state — we deliberately do NOT
@@ -1331,7 +1330,7 @@
 	let baseTrack = $derived(
 		matchInfo?.track && matchInfo.track.length >= 2
 			? matchInfo.track
-			: onTrackPoints(run?.track ?? []),
+			: trackLine(run?.track ?? []),
 	);
 	let hasMapTrack = $derived(baseTrack.length >= 2);
 	// Gate the elevation chart on real samples, and carry the line across
@@ -1436,7 +1435,7 @@
 	/// this build does not know.
 	let phaseReview = $derived.by(() => {
 		const strategy = parsePacingStrategy(run?.metadata?.[METADATA_KEYS.pacing_strategy]);
-		return strategy ? gradePhases(run?.track ? onTrackPoints(run.track) : null, strategy) : null;
+		return strategy ? gradePhases(run?.track ? trackLine(run.track) : null, strategy) : null;
 	});
 
 	function strategyPresetLabel(p: RacePhasePreset): string {
@@ -2144,7 +2143,7 @@
 				runId={run.id}
 				runOwnerId={run.user_id}
 				routeId={run.route_id}
-				track={onTrackPoints(run.track ?? [])}
+				track={trackLine(run.track ?? [])}
 			/>
 		</section>
 		{#if run.route_id}

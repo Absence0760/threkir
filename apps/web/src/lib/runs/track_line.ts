@@ -45,3 +45,33 @@ export function lineLngLat(p: LinePointSource): [number, number] {
 export function toLinePoint<T extends LinePointSource>(p: T): T {
 	return hasSmoothedPosition(p) ? { ...p, lat: p.smoothedLat as number, lng: p.smoothedLng as number } : p;
 }
+
+/**
+ * Whether a stored track element is an off-track fix: one the recorder's
+ * distance estimator took that failed its track gate (`offTrack: true`, a
+ * 30-50 m canopy fix; docs/features/gps_distance.md § Waypoint fields). It is
+ * stored for the server's distance replay and is never line. Only the JSON
+ * boolean `true` on an object marks one; an absent key (every track recorded
+ * before the flag), `false` or any other value is on the line. Mirrors
+ * `Waypoint.offTrack`.
+ */
+export function isOffTrack(p: unknown): boolean {
+	return (
+		p !== null &&
+		typeof p === 'object' &&
+		!Array.isArray(p) &&
+		(p as { offTrack?: unknown }).offTrack === true
+	);
+}
+
+/**
+ * The fixes of a stored track that belong on the run's line, in order: every
+ * point not flagged off-track; the input itself when none is. The map line,
+ * route match, elevation and climb, segments, race phases, the GPX download
+ * and the share card read this. Splits, moving time and heart rate keep every
+ * point, because they measure on `distM`, which every point carries. Mirrors
+ * `trackLine` in packages/core_models/lib/src/waypoint.dart.
+ */
+export function trackLine<T>(track: readonly T[]): T[] {
+	return track.some(isOffTrack) ? track.filter((p) => !isOffTrack(p)) : (track as T[]);
+}

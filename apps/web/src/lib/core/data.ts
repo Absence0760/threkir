@@ -159,8 +159,7 @@ import {
 } from '../training/relink_candidates';
 import type { GeneratedPlan, GoalEvent, PlanPhase } from '../training/training';
 import { auth } from '../stores/auth.svelte';
-import { lineLngLat } from '../runs/track_line';
-import { onTrackPoints } from '../runs/track_points';
+import { lineLngLat, trackLine } from '../runs/track_line';
 import {
 	mergeSmoothedSidecar,
 	needsSmoothedSidecar,
@@ -857,10 +856,10 @@ async function fetchTrack(path: string) {
 /// Every caller draws the track (the runs-list thumbnail, the personal
 /// heatmap, the owner's share page), so it returns the line: the stored
 /// off-track fixes, kept only for the server's distance replay, are dropped
-/// here (`onTrackPoints`), as `clip-public-track` drops them for a non-owner.
+/// here (`trackLine`), as `clip-public-track` drops them for a non-owner.
 export async function fetchTrackByPath(path: string) {
 	const points = await fetchTrack(path);
-	return Array.isArray(points) ? onTrackPoints(points) : points;
+	return Array.isArray(points) ? trackLine(points) : points;
 }
 
 /// Owner-only fetch of the indoor/treadmill HR sidecar
@@ -957,7 +956,7 @@ export async function fetchRoutesIntersectingTrack(
 ): Promise<RouteMatchCandidate[]> {
 	const userId = auth.user?.id;
 	// Matched on the line: an off-track fix is distance input, not path.
-	const line = onTrackPoints(track);
+	const line = trackLine(track);
 	if (!userId || line.length < 2) return [];
 	const geojson = {
 		type: 'LineString' as const,

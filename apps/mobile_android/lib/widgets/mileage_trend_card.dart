@@ -144,30 +144,16 @@ class _ViewToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    // Chips rather than a SegmentedButton. § 486 exempted SegmentedButton
-    // from the narrow-width sweep because it has no knob to bind — which is
-    // also why it cannot survive text scaling: the control takes its
-    // intrinsic width whatever the parent offers, and at 2x the three
-    // French labels want 90 px more than a 360 dp card, more than a line of
-    // its own would give it. Chips in a Wrap reflow instead, and the M3
-    // checkmark the segmented control suppressed for width is kept, so
-    // selection is not signalled by fill colour alone (§ 488).
-    return Wrap(
-      spacing: 6,
-      runSpacing: 6,
-      children: [
-        for (final (value, label) in [
-          (MileageView.weekly, l10n.mileageWeek),
-          (MileageView.monthly, l10n.mileageMonth),
-          (MileageView.yearly, l10n.mileageYear),
-        ])
-          ChoiceChip(
-            label: Text(label),
-            selected: view == value,
-            onSelected: (_) => onChanged(value),
-            visualDensity: VisualDensity.compact,
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
+    // The shared reflowing single-select (§ 500), not a SegmentedButton: it
+    // keeps the checkmark, so selection is not fill colour alone (§ 488), and
+    // reserves the checkmark's slot so a switch does not resize the chips.
+    return ChoiceChipRow<MileageView>(
+      selected: view,
+      onChanged: onChanged,
+      options: [
+        ChoiceChipOption(value: MileageView.weekly, label: l10n.mileageWeek),
+        ChoiceChipOption(value: MileageView.monthly, label: l10n.mileageMonth),
+        ChoiceChipOption(value: MileageView.yearly, label: l10n.mileageYear),
       ],
     );
   }

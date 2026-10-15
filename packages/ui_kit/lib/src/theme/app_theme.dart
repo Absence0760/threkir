@@ -212,9 +212,11 @@ class AppTheme {
         // the size has to be restated here or the label falls through to
         // whatever the ambient style happens to be. These four values ARE
         // labelLarge, identical across all three of Material's locale
-        // geometries, and `inherit` stays true so the locale's own family and
-        // baseline still arrive by merge.
+        // geometries. The family is restated too: the chip applies this style
+        // without merging it into the text theme, so a family-less style
+        // rendered every chip label in the platform default font.
         labelStyle: TextStyle(
+          fontFamily: fontFamily,
           fontSize: 14,
           fontWeight: FontWeight.w500,
           letterSpacing: 0.1,
@@ -380,6 +382,7 @@ class AppTheme {
         selectedColor: coral,
         side: const BorderSide(color: mistMuted),
         labelStyle: TextStyle(
+          fontFamily: fontFamily,
           fontSize: 14,
           fontWeight: FontWeight.w500,
           letterSpacing: 0.1,

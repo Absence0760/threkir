@@ -13,7 +13,8 @@ class ChoiceChipOption<T> {
 
   /// Optional leading glyph. Material swaps it for the selection checkmark
   /// while the chip is selected, which is the behaviour that makes selection
-  /// legible without relying on the fill colour alone.
+  /// legible without relying on the fill colour alone. Without one the chip
+  /// still reserves the slot, so selecting it does not change its width.
   final IconData? icon;
 }
 
@@ -65,7 +66,14 @@ class ChoiceChipRow<T> extends StatelessWidget {
         for (final option in options)
           ChoiceChip(
             label: Text(option.label),
-            avatar: option.icon == null ? null : Icon(option.icon, size: 18),
+            // Never a null avatar. With no avatar, Material grows the chip to
+            // fit the checkmark as it animates in and shrinks the one losing
+            // it, so every selection resized two chips and slid the row
+            // sideways. With an avatar the checkmark is painted over it, and
+            // the empty slot holds an icon-less chip at its selected width.
+            avatar: option.icon == null
+                ? const SizedBox.shrink()
+                : Icon(option.icon, size: 18),
             selected: option.value == selected,
             onSelected:
                 onChanged == null ? null : (_) => onChanged!(option.value),

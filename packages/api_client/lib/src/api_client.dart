@@ -2229,8 +2229,10 @@ class ApiClient {
     }
     var q = _client.from('public_routes').select();
     final trimmed = query?.trim();
+    // Every character of the query matches literally: `ilike` would read `*`
+    // (PostgREST's alias for `%`), `%`, `_` and `\` as wildcards.
     if (trimmed != null && trimmed.isNotEmpty) {
-      q = q.ilike('name', '%$trimmed%');
+      q = q.imatchRegex('name', literalSubstringPattern(trimmed));
     }
     if (minDistanceM != null) q = q.gte('distance_m', minDistanceM);
     if (maxDistanceM != null) q = q.lte('distance_m', maxDistanceM);

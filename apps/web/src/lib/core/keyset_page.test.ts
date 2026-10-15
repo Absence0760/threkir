@@ -5,6 +5,7 @@ import {
 	appendPage,
 	keysetAfter,
 	keysetCursor,
+	literalSubstringPattern,
 	nextCursor,
 	publicRouteOrder,
 	type KeysetKey,
@@ -247,6 +248,45 @@ test('the public-route orders keep the RPC prefix and end on id', () => {
 		'created_at desc nulls first',
 		'id desc nulls last',
 	]);
+});
+
+// ── literalSubstringPattern ────────────────────────────────────────────────
+// The pattern goes to Postgres `~*`. For the metacharacters escaped here a JS
+// RegExp reads `\<char>` exactly as a Postgres advanced regex does (that
+// character, literally), so a case-insensitive JS RegExp stands in for the
+// server below.
+
+const TRICKY = ['5*5', '100%', 'a_b', 'c:\\dir', 'x,y', 'f(1)', 'a.b', '"q"', "it's", '[a]', '{2}', 'a|b', '^$', 'a+?', '***'];
+
+test('every character of the query matches literally, anywhere in the name', () => {
+	for (const text of TRICKY) {
+		const re = new RegExp(literalSubstringPattern(text), 'i');
+		assert.ok(re.test(`Route ${text.toUpperCase()} loop`), `${text} must match itself`);
+	}
+});
+
+test('a wildcard-looking character matches only itself', () => {
+	const miss: Array<[string, string]> = [
+		['5*5', '5555'],
+		['5*5', '55'],
+		['a_b', 'axb'],
+		['a.b', 'axb'],
+		['100%', '1000'],
+		['c:\\dir', 'c:dir'],
+		['a|b', 'b'],
+		['a+?', 'aa'],
+		['[a]', 'a'],
+		['{2}', 'x'],
+	];
+	for (const [text, name] of miss) {
+		assert.ok(!new RegExp(literalSubstringPattern(text), 'i').test(name), `${text} must not match ${name}`);
+	}
+});
+
+test('the regex metacharacters are escaped and nothing else is', () => {
+	assert.equal(literalSubstringPattern('5*5'), '5\\*5');
+	assert.equal(literalSubstringPattern('\\^$.|?*+()[]{}'), '\\\\\\^\\$\\.\\|\\?\\*\\+\\(\\)\\[\\]\\{\\}');
+	assert.equal(literalSubstringPattern(`100% a_b, "q" it's -#éß`), `100% a_b, "q" it's -#éß`);
 });
 
 // ── appendPage ─────────────────────────────────────────────────────────────

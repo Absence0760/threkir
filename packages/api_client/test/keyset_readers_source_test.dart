@@ -49,6 +49,21 @@ void main() {
     expect(fn.contains('offset'), isFalse);
   });
 
+  test('searchPublicRoutes matches the query literally, not as a LIKE pattern',
+      () {
+    // PostgREST rewrites every `*` in an ilike value to `%`, and `%` / `_` /
+    // `\` are LIKE metacharacters, so `ilike('name', '%$q%')` turned a search
+    // for "5*5" into "5%5". The query must reach imatch escaped.
+    final fn = body('Future<KeysetPage<Route>> searchPublicRoutes(');
+    expect(
+      fn.contains("imatchRegex('name', literalSubstringPattern(trimmed))"),
+      isTrue,
+      reason: 'the name must be matched through literalSubstringPattern',
+    );
+    expect(fn.contains('.ilike('), isFalse,
+        reason: 'an ilike pattern reads * % _ \\ as wildcards');
+  });
+
   test('_followPage filters after the cursor and returns the next one', () {
     expect(followPage, isNotEmpty, reason: '_followPage moved or was renamed');
     expect(followPage.contains('keysetAfter(order, after)'), isTrue);

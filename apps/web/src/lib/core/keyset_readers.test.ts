@@ -46,6 +46,20 @@ for (const name of READERS) {
 	});
 }
 
+test('searchPublicRoutes matches the query literally, not as a LIKE pattern', () => {
+	// PostgREST rewrites every `*` in an ilike value to `%`, and `%` / `_` /
+	// `\` are LIKE metacharacters, so `q.ilike('name', `%${q}%`)` turned a
+	// search for "5*5" into "5%5". The reader must hand the query to imatch
+	// through literalSubstringPattern, which escapes it.
+	const fn = body('searchPublicRoutes');
+	assert.match(
+		fn,
+		/\.regexIMatch\('name', literalSubstringPattern\(trimmed\)\)/,
+		'searchPublicRoutes must match the name through literalSubstringPattern',
+	);
+	assert.doesNotMatch(fn, /\.ilike\(/, 'an ilike pattern reads * % _ \\ as wildcards');
+});
+
 test('fetchRuns takes a keyset cursor and its load-more page starts at the cursor', () => {
 	// The whole-history walk (no `limit`) still pages with `.range()` from 0
 	// to the end, which is not a load-more list; the limited branch must not

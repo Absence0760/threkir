@@ -170,6 +170,27 @@ List<T> appendPage<T>(
   return out;
 }
 
+/// A pattern for PostgREST's `imatch` operator (Postgres `~*`, read through
+/// postgrest-dart `imatchRegex`) that matches `text` as a case-insensitive
+/// substring, every character literally.
+///
+/// Not `ilike`: PostgREST rewrites EVERY `*` in a like/ilike value to `%`
+/// before Postgres sees it (`star` in PostgREST's `pgFmtFilter`), with no
+/// escape, so a literal asterisk cannot be expressed in a like pattern at all —
+/// and `%`, `_` and `\` are LIKE's own metacharacters on top. `imatch` takes
+/// its value verbatim, and in a Postgres advanced regex a backslash before a
+/// non-alphanumeric character means that character, so escaping the regex
+/// metacharacters is the whole job. `%`, `_`, `,`, quotes and the rest are
+/// ordinary in a regex and pass through. A substring regex needs no anchors,
+/// and `routes_name_trgm` (gin_trgm_ops) serves `~*` as it served `ilike`.
+///
+/// For a TOP-LEVEL filter only: inside an `or=`/`and=` tree the value would
+/// also need quoting, because `,` `(` `)` are the tree's own delimiters.
+String literalSubstringPattern(String text) => text.replaceAllMapped(
+  RegExp(r'[\\^$.|?*+()[\]{}]'),
+  (m) => '\\${m[0]}',
+);
+
 /// The total order of each public-route search sort (`newest` / `popular` /
 /// `featured`). The first keys are the `search_public_routes` RPC's (migration
 /// 20270326_001), null placement included, so the partial indexes that

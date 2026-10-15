@@ -335,6 +335,74 @@ void main() {
     ]);
   });
 
+  // ── literalSubstringPattern ──────────────────────────────────────────────
+  // The pattern goes to Postgres `~*`. For the metacharacters escaped here a
+  // Dart RegExp reads `\<char>` exactly as a Postgres advanced regex does
+  // (that character, literally), so a case-insensitive RegExp stands in for
+  // the server below.
+
+  const tricky = [
+    '5*5',
+    '100%',
+    'a_b',
+    r'c:\dir',
+    'x,y',
+    'f(1)',
+    'a.b',
+    '"q"',
+    "it's",
+    '[a]',
+    '{2}',
+    'a|b',
+    r'^$',
+    'a+?',
+    '***',
+  ];
+
+  RegExp literal(String text) =>
+      RegExp(literalSubstringPattern(text), caseSensitive: false);
+
+  test('every character of the query matches literally, anywhere in the name', () {
+    for (final text in tricky) {
+      expect(
+        literal(text).hasMatch('Route ${text.toUpperCase()} loop'),
+        isTrue,
+        reason: '$text must match itself',
+      );
+    }
+  });
+
+  test('a wildcard-looking character matches only itself', () {
+    const miss = [
+      ['5*5', '5555'],
+      ['5*5', '55'],
+      ['a_b', 'axb'],
+      ['a.b', 'axb'],
+      ['100%', '1000'],
+      [r'c:\dir', 'c:dir'],
+      ['a|b', 'b'],
+      ['a+?', 'aa'],
+      ['[a]', 'a'],
+      ['{2}', 'x'],
+    ];
+    for (final [text, name] in miss) {
+      expect(literal(text).hasMatch(name), isFalse,
+          reason: '$text must not match $name');
+    }
+  });
+
+  test('the regex metacharacters are escaped and nothing else is', () {
+    expect(literalSubstringPattern('5*5'), r'5\*5');
+    expect(
+      literalSubstringPattern(r'\^$.|?*+()[]{}'),
+      r'\\\^\$\.\|\?\*\+\(\)\[\]\{\}',
+    );
+    expect(
+      literalSubstringPattern('100% a_b, "q" it\'s -#éß'),
+      '100% a_b, "q" it\'s -#éß',
+    );
+  });
+
   // ── appendPage ───────────────────────────────────────────────────────────
 
   String id(Map<String, Object> r) => r['id']! as String;

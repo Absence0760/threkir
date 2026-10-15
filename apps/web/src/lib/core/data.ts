@@ -15,6 +15,7 @@ import { isEntityId } from './entity_id';
 import { markListsStale } from './list_freshness';
 import {
 	keysetAfter,
+	literalSubstringPattern,
 	nextCursor,
 	publicRouteOrder,
 	type KeysetCursor,
@@ -2000,7 +2001,9 @@ export async function searchPublicRoutes(options?: {
 
 	let q = supabase.from('public_routes').select('*');
 	const trimmed = query?.trim();
-	if (trimmed) q = q.ilike('name', `%${trimmed}%`);
+	// Every character of the query matches literally: `ilike` would read `*`
+	// (PostgREST's alias for `%`), `%`, `_` and `\` as wildcards.
+	if (trimmed) q = q.regexIMatch('name', literalSubstringPattern(trimmed));
 	if (minDistanceM != null) q = q.gte('distance_m', minDistanceM);
 	if (maxDistanceM != null) q = q.lte('distance_m', maxDistanceM);
 	// Treat empty-string surface the same as no filter — matches mobile's

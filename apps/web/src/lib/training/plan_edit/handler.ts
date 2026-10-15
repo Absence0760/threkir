@@ -44,6 +44,7 @@ import {
 } from '../plan_request/handler';
 import {
 	MAX_PLAN_EDIT_OPS,
+	MAX_PLAN_EDIT_REQUEST_CHARS,
 	MAX_SCALE_FACTOR,
 	MIN_SCALE_FACTOR,
 	PLAN_EDIT_OP_KINDS,
@@ -63,10 +64,6 @@ import {
 const PLAN_EDIT_MAX_TOKENS = 1024;
 
 const PLAN_EDIT_TIMEOUT_MS = 15_000;
-
-/// Cap on the inbound change request — the only free text that reaches the
-/// prompt besides the plan's own facts. Truncated rather than rejected.
-export const MAX_PLAN_EDIT_REQUEST_CHARS = 400;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

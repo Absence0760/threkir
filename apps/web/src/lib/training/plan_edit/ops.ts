@@ -36,6 +36,11 @@ export type PlanEditOpKind = (typeof PLAN_EDIT_OP_KINDS)[number];
 /// not an adjustment, it is a new plan, which is the plan assistant's job.
 export const MAX_PLAN_EDIT_OPS = 12;
 
+/// Cap on the runner's change request — the only free text that reaches the
+/// prompt besides the plan's own facts. The server truncates past it; the box
+/// stops at it.
+export const MAX_PLAN_EDIT_REQUEST_CHARS = 400;
+
 /// The scale band. The floor matches the depth of a recovery week and a little
 /// beyond; the ceiling lets "a bit more this week" through while a larger
 /// step stays impossible to ask for. Anything outside is clamped and named.

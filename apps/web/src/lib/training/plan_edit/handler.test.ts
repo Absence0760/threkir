@@ -12,12 +12,11 @@ import assert from 'node:assert/strict';
 import { TIER_LIMITS } from '../../coach/types';
 import {
 	EDIT_TOOL,
-	MAX_PLAN_EDIT_REQUEST_CHARS,
 	handlePlanEdit,
 	type PlanEditConfig,
 	type PlanEditModelClient,
 } from './handler';
-import { PLAN_EDIT_OP_KINDS } from './ops';
+import { MAX_PLAN_EDIT_REQUEST_CHARS, PLAN_EDIT_OP_KINDS } from './ops';
 import { TODAY, fixture } from './test_fixture';
 
 const NOW = Date.UTC(2026, 9, 15, 12, 0, 0);

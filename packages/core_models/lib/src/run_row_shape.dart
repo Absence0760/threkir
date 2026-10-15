@@ -134,6 +134,7 @@ RunRow runRowFromRun(
     trackUrl: trackUrl,
     isPublic: isPublic,
     followersOnly: followersOnly,
+    safetyAudience: false,
     activityType: (meta?[MetadataKeys.activityType] as String?) ?? 'run',
     eventId: runPromotedId(meta, MetadataKeys.eventId),
     isDnf: meta?[MetadataKeys.isDnf] == true,

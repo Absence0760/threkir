@@ -113,7 +113,7 @@ class _JourneyApi extends ApiClient {
   Stream<String?> get authUserChanges => const Stream<String?>.empty();
 
   @override
-  Future<cm.UserProfileRow?> fetchMyProfile() async => cm.UserProfileRow(
+  Future<cm.UserProfileRow?> fetchMyProfile() async => cm.UserProfileRow(profilePrivate: false, 
     shadowHidden: false,
     id: 'journey-runner',
     displayName: null,

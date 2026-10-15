@@ -86,7 +86,7 @@ class _AvatarApi extends ApiClient {
   Future<Map<String, dynamic>?> fetchAiDisclosure() async => null;
   @override
   Future<UserProfileRow?> fetchMyProfile() async =>
-      UserProfileRow(shadowHidden: false, id: 'u1', displayName: 'Runner', avatarUrl: avatar);
+      UserProfileRow(profilePrivate: false, shadowHidden: false, id: 'u1', displayName: 'Runner', avatarUrl: avatar);
   @override
   Future<void> removeAvatar() async {
     removeCalls++;
@@ -130,7 +130,7 @@ class _AuthSwitchApi extends ApiClient {
   @override
   Future<UserProfileRow?> fetchMyProfile() async => uid == null
       ? null
-      : UserProfileRow(
+      : UserProfileRow(profilePrivate: false, 
           shadowHidden: false,
           id: uid!,
           displayName: 'Runner',

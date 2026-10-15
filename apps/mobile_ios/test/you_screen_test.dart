@@ -42,7 +42,7 @@ class _FakeApi extends ApiClient {
   @override
   Future<UserProfileRow?> fetchMyProfile() async {
     if (failProfile) throw Exception('offline');
-    return UserProfileRow(
+    return UserProfileRow(profilePrivate: false, 
         id: 'u1', displayName: displayName, shadowHidden: false);
   }
 
@@ -67,7 +67,7 @@ class _SwitchableApi extends ApiClient {
   @override
   Future<UserProfileRow?> fetchMyProfile() async => uid == null
       ? null
-      : UserProfileRow(id: uid!, displayName: name, shadowHidden: false);
+      : UserProfileRow(profilePrivate: false, id: uid!, displayName: name, shadowHidden: false);
 
   @override
   Future<int> fetchUnreadDmCount() async => 0;

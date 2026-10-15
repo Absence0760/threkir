@@ -48,6 +48,7 @@ class _LiveApi extends ApiClient {
     required String runId,
     required DateTime startedAt,
     String activityType = 'run',
+    bool safetyAudience = false,
   }) async {
     calls.add('begin');
   }

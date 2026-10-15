@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../lib/health_consent.dart';
 
-UserProfileRow _row({DateTime? dob, DateTime? consentAt}) => UserProfileRow(
+UserProfileRow _row({DateTime? dob, DateTime? consentAt}) => UserProfileRow(profilePrivate: false, 
       id: 'u1',
       shadowHidden: false,
       dateOfBirth: dob,

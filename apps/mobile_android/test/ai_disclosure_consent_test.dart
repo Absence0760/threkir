@@ -35,7 +35,7 @@ class _ConsentApi extends ApiClient {
   String? get userEmail => 'runner@test.com';
 
   @override
-  Future<UserProfileRow?> fetchMyProfile() async => UserProfileRow(
+  Future<UserProfileRow?> fetchMyProfile() async => UserProfileRow(profilePrivate: false, 
         shadowHidden: false,
         id: 'u1',
         displayName: 'Alex',

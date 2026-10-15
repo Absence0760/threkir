@@ -45,7 +45,7 @@ class _RunApi extends ApiClient {
 
   @override
   Future<cm.UserProfileRow?> fetchPublicProfile(String userId) async =>
-      cm.UserProfileRow(id: userId, displayName: 'Owner', shadowHidden: false);
+      cm.UserProfileRow(profilePrivate: false, id: userId, displayName: 'Owner', shadowHidden: false);
 
   @override
   Future<List<cm.Waypoint>> fetchTrackByPath(String path) async {
@@ -140,7 +140,7 @@ class _RouteApi extends ApiClient {
       const [];
 }
 
-cm.RunRow _runRow({bool isPublic = false}) => cm.RunRow(
+cm.RunRow _runRow({bool isPublic = false}) => cm.RunRow(safetyAudience: false, 
       id: 'run-1',
       userId: 'owner-1',
       startedAt: DateTime(2026, 10, 1, 7),

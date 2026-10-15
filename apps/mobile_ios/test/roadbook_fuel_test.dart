@@ -51,7 +51,7 @@ class _WeightApi extends ApiClient {
   String? get userId => 'owner';
 
   @override
-  Future<UserProfileRow?> fetchMyProfile() async => UserProfileRow(
+  Future<UserProfileRow?> fetchMyProfile() async => UserProfileRow(profilePrivate: false, 
         id: 'owner',
         shadowHidden: false,
         healthDataConsentAt: consentAt,

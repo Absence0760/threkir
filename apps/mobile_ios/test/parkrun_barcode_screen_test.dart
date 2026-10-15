@@ -28,7 +28,7 @@ class _FakeApi extends ApiClient {
   @override
   Future<UserProfileRow?> fetchMyProfile() async {
     if (offline) throw Exception('no network');
-    return UserProfileRow(id: 'u1', parkrunNumber: number, shadowHidden: false);
+    return UserProfileRow(profilePrivate: false, id: 'u1', parkrunNumber: number, shadowHidden: false);
   }
 
   @override

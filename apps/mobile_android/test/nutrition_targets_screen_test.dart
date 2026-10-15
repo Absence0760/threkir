@@ -34,7 +34,7 @@ class _MetricsApi extends ApiClient {
   @override
   Future<UserProfileRow?> fetchMyProfile() async {
     profileCalls++;
-    return UserProfileRow(
+    return UserProfileRow(profilePrivate: false, 
       shadowHidden: false,
       id: 'u1',
       heightCm: 175,
@@ -80,7 +80,7 @@ class _ConsentWithheldApi extends ApiClient {
   String? get userId => 'u1';
 
   @override
-  Future<UserProfileRow?> fetchMyProfile() async => UserProfileRow(
+  Future<UserProfileRow?> fetchMyProfile() async => UserProfileRow(profilePrivate: false, 
         shadowHidden: false,
         id: 'u1',
         dateOfBirth: DateTime.utc(DateTime.now().year - 30, 1, 1),

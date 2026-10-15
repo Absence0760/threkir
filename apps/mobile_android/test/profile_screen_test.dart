@@ -627,7 +627,7 @@ class _OtherApi extends _SelfApi {
           {int limit = 50}) async =>
       [
         for (var i = 0; i < runCount; i++)
-          RunRow(
+          RunRow(safetyAudience: false, 
             id: 'r$i',
             userId: 'other',
             startedAt: DateTime.utc(2026, 10, 1).add(Duration(days: i)),

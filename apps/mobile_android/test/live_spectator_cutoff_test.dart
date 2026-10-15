@@ -53,7 +53,7 @@ class _FakeApi extends ApiClient {
 /// A live, never-finished run linked to [routeId] (started 5 min ago, no
 /// saved duration) so the screen takes the predictive path, not a terminal
 /// freeze.
-RunRow _liveRun(String routeId) => RunRow(
+RunRow _liveRun(String routeId) => RunRow(safetyAudience: false, 
   id: 'r1',
   userId: 'u1',
   startedAt: DateTime.now().toUtc().subtract(const Duration(minutes: 5)),
@@ -329,7 +329,7 @@ void main() {
       // A live run without a route_id can't resolve cutoff legs, so the
       // predictive card never mounts — only the trace + freshness baseline.
       final api = _FakeApi(
-        run: RunRow(
+        run: RunRow(safetyAudience: false, 
           id: 'r1',
           userId: 'u1',
           startedAt: DateTime.now().toUtc().subtract(

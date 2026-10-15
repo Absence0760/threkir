@@ -53,7 +53,7 @@ class _SwitchableApi extends ApiClient {
   @override
   Future<UserProfileRow?> fetchMyProfile() async {
     profileFetchesAs.add(uid);
-    return uid == null ? null : UserProfileRow(id: uid!, shadowHidden: false);
+    return uid == null ? null : UserProfileRow(profilePrivate: false, id: uid!, shadowHidden: false);
   }
 
   void emit() => _controller.add(uid);
@@ -88,7 +88,7 @@ class _FakeApiPb extends ApiClient {
       ];
 
   @override
-  Future<UserProfileRow?> fetchMyProfile() async => UserProfileRow(
+  Future<UserProfileRow?> fetchMyProfile() async => UserProfileRow(profilePrivate: false, 
         id: 'u1',
         shadowHidden: false,
         gender: 'male',

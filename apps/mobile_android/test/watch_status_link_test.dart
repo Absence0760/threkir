@@ -50,6 +50,7 @@ class _FakeApi extends ApiClient {
     required String runId,
     required DateTime startedAt,
     String activityType = 'run',
+    bool safetyAudience = false,
   }) async {}
 
   @override

@@ -25,7 +25,7 @@ class _FakeApi extends ApiClient {
 
   @override
   Future<UserProfileRow?> fetchMyProfile() async =>
-      const UserProfileRow(id: 'u1', parkrunNumber: 'A123456', shadowHidden: false);
+      const UserProfileRow(profilePrivate: false, id: 'u1', parkrunNumber: 'A123456', shadowHidden: false);
 
   @override
   Future<void> setParkrunAthleteNumber(String? athleteNumber) async {}

@@ -35,7 +35,7 @@ RunRow _run({
   bool isDnf = false,
   double distanceM = 5000,
   DateTime? concludedAt,
-}) => RunRow(
+}) => RunRow(safetyAudience: false, 
   id: 'r1',
   userId: 'u1',
   startedAt: startedAt,

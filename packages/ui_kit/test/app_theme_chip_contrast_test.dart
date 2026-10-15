@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ui_kit/ui_kit.dart';
 
@@ -52,6 +53,24 @@ void main() {
           greaterThanOrEqualTo(4.5),
           reason: 'unselected chip label must meet WCAG AA over the scaffold',
         );
+      });
+
+      testWidgets('a chip label renders in the app font', (tester) async {
+        // The chip applies its resolved label style without merging it into
+        // the text theme, so the family has to be on the theme's labelStyle
+        // or every chip label falls to the platform default font.
+        await tester.pumpWidget(MaterialApp(
+          theme: theme,
+          home: Scaffold(
+            body: ChoiceChip(
+              label: const Text('Week'),
+              selected: true,
+              onSelected: (_) {},
+            ),
+          ),
+        ));
+        final paragraph = tester.renderObject<RenderParagraph>(find.text('Week'));
+        expect(paragraph.text.style?.fontFamily, AppTheme.fontFamily);
       });
 
       test('the labelStyle carries labelLarge\'s size as well as the color', () {

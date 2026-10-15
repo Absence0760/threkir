@@ -980,7 +980,7 @@ The stored-goal contract (was 16). Four added cases read the SQL rail the pair c
 
 The notification → deep-link routing (was 13). `row.kind` is typed `string` so the module stays free of a runtime import from `core/data.ts`, which also means `tsc` gives no exhaustiveness and the module is not a registered rail for `notifications.kind` in `check_constraint_unions.mjs`. Three added cases parse the live kind set from the last migration that re-adds `notifications_kind_check` and assert every value is routed by an explicit `case` rather than the `default` arm, that every routed kind reaches a destination when given its ids, and that the `DELIBERATELY_UNLINKED` register (its one entry is `content_hidden`) does not name a kind the column has dropped.
 
-### `apps/web/src/lib/social/feed_merge.test.ts` — 15 tests
+### `apps/web/src/lib/social/feed_merge.test.ts` — 18 tests
 
 The chunked following-feed reads (was 12). Three added cases: `FEED_FOLLOWEE_CHUNK` and `packages/api_client/lib/src/chunk.dart`'s `kInFilterChunk` each name the other as a mirror in their own docs and nothing compared them — the pair is in neither the parity-pair registry nor `check_shared_constants.mjs`, so bumping one alone is a silent split and the platform that went too high loses whole reads on a gateway that answers 200 with an empty match ([decisions § 653](../architecture/decisions.md)). Plus the negative-limit clamp (`slice(0, -1)` drops the last row and returns the rest) and the documented later-chunk-wins fold, which every other case cannot see because it merges disjoint ids.
 

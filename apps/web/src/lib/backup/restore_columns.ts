@@ -96,6 +96,7 @@ export const PROFILE_RESTORE_COLUMNS = {
 	onboarded_at: true,
 	parkrun_number: true,
 	preferred_unit: true,
+	profile_private: true,
 	shadow_hidden: true,
 	subscription_at: true,
 	subscription_tier: true,

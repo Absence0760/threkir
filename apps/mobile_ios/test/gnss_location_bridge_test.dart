@@ -64,4 +64,29 @@ void main() {
       expect(p.accuracy, 4.0);
     });
   });
+
+  group('gnssStatusSampleFromEvent', () {
+    test('reduces the used satellites the bridge sent', () {
+      final s = gnssStatusSampleFromEvent({
+        'cn0DbHz': [41.0, 38, 44.0, 22.0, 35.0],
+        'carrierHz': [1575.42e6, 1575.42e6, 1176.45e6, 0.0, 1561.098e6],
+      });
+      expect(s.usedInFix, 5);
+      expect(s.meanTopCn0DbHz, closeTo(39.5, 1e-9));
+      expect(s.l5Used, isTrue);
+    });
+
+    test('an empty or missing list is a reading with no fix', () {
+      for (final e in [
+        <Object?, Object?>{'cn0DbHz': <Object?>[], 'carrierHz': <Object?>[]},
+        <Object?, Object?>{},
+      ]) {
+        final s = gnssStatusSampleFromEvent(e);
+        expect(s.usedInFix, 0);
+        expect(s.meanTopCn0DbHz, isNull);
+        expect(s.l5Used, isFalse);
+      }
+    });
+  });
 }
+

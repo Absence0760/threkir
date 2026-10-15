@@ -2,6 +2,7 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:run_recorder/run_recorder.dart' show GnssStatusSample;
 
 /// The satellite receiver's own fixes on Android (`GnssLocationBridge.kt`
 /// over `run_app/gnss_location`), handed to `RunRecorder(gnssPositions:)`.
@@ -39,4 +40,25 @@ Position positionFromGnssEvent(Map<Object?, Object?> e) {
     speedAccuracy: num_('speedAccuracy') ?? 0,
     isMocked: e['mocked'] == true,
   );
+}
+
+/// The receiver's satellite status on Android (`GnssLocationBridge.kt` over
+/// `run_app/gnss_status`), handed to `RunRecorder(gnssStatus:)`. Null on iOS,
+/// which exposes no satellite status.
+Stream<GnssStatusSample> Function()? gnssStatusForPlatform() =>
+    Platform.isAndroid ? gnssStatusSamples : null;
+
+const _statusChannel = EventChannel('run_app/gnss_status');
+
+Stream<GnssStatusSample> gnssStatusSamples() => _statusChannel
+    .receiveBroadcastStream()
+    .map((e) => gnssStatusSampleFromEvent(Map<Object?, Object?>.from(e as Map)));
+
+/// One status event: the C/N0 and carrier frequency of each satellite the
+/// receiver used in its fix, in matching order.
+GnssStatusSample gnssStatusSampleFromEvent(Map<Object?, Object?> e) {
+  List<double> list(String k) => [
+        for (final v in (e[k] as List?) ?? const []) (v as num).toDouble(),
+      ];
+  return GnssStatusSample.fromUsedSatellites(list('cn0DbHz'), list('carrierHz'));
 }

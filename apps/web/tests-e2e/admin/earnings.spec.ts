@@ -31,6 +31,8 @@ test.beforeAll(async () => {
 		author_id: USER_A.id,
 		title: 'E2E platform fee class',
 		category: 'class',
+		// An order must name a real occurrence (event_orders_validate_occurrence).
+		starts_at: '2019-03-20T18:00:00Z',
 	});
 	const admin = getAdminClient();
 	const base = {

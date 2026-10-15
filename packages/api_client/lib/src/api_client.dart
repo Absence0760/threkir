@@ -2883,16 +2883,17 @@ class ApiClient {
         .map((r) => FollowRequestRow.fromJson(r as Map<String, dynamic>))
         .toList();
     if (requests.isEmpty) return const [];
-    final profiles = await _client
-        .from(UserProfileRow.table)
-        .select(
-            '${UserProfileRow.colId}, ${UserProfileRow.colDisplayName}, ${UserProfileRow.colAvatarUrl}')
-        .inFilter(UserProfileRow.colId,
-            requests.map((r) => r.requesterId).toList());
+    final profiles = await readChunked(
+      requests.map((r) => r.requesterId).toList(),
+      (chunk) async => _client
+          .from(UserProfileRow.table)
+          .select(
+              '${UserProfileRow.colId}, ${UserProfileRow.colDisplayName}, ${UserProfileRow.colAvatarUrl}')
+          .inFilter(UserProfileRow.colId, chunk),
+    );
     final byId = <String, PublicProfile>{
-      for (final p in profiles as List)
-        (p as Map<String, dynamic>)[UserProfileRow.colId] as String:
-            PublicProfile.fromJson(p),
+      for (final p in profiles)
+        p[UserProfileRow.colId] as String: PublicProfile.fromJson(p),
     };
     return [
       for (final r in requests)
@@ -4138,10 +4139,13 @@ class ApiClient {
   Future<Map<String, String>> resolveMentionHandles(List<String> handles) async {
     final wanted = handles.map((h) => h.toLowerCase()).toSet().take(200).toList();
     if (wanted.isEmpty) return const {};
-    final rows = await _client
-        .from(UserProfileRow.table)
-        .select('${UserProfileRow.colId}, ${UserProfileRow.colHandle}')
-        .inFilter(UserProfileRow.colHandle, wanted);
+    final rows = await readChunked(
+      wanted,
+      (chunk) async => _client
+          .from(UserProfileRow.table)
+          .select('${UserProfileRow.colId}, ${UserProfileRow.colHandle}')
+          .inFilter(UserProfileRow.colHandle, chunk),
+    );
     return {
       for (final r in rows)
         if (r[UserProfileRow.colHandle] is String)

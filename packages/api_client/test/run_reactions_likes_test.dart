@@ -198,6 +198,26 @@ void main() {
       expect(ids, {'ana_k': 'ana-id', 'bo_runs': 'bo-id'});
     });
 
+    test('more handles than kInFilterChunk are read in bounded chunks and merged',
+        () async {
+      final handles = [for (var i = 0; i < 150; i++) 'runner_$i'];
+      fake.bodyByPath[_profilesPath] = [
+        {'id': 'first-id', 'handle': 'runner_0'},
+        {'id': 'last-id', 'handle': 'runner_149'},
+      ];
+
+      final ids = await api.resolveMentionHandles(handles);
+
+      final reqs = fake.to(_profilesPath).toList();
+      expect(reqs, hasLength(2));
+      final sizes = [
+        for (final r in reqs)
+          r.url.queryParameters['handle']!.split(',').length,
+      ];
+      expect(sizes, [kInFilterChunk, 150 - kInFilterChunk]);
+      expect(ids, {'runner_0': 'first-id', 'runner_149': 'last-id'});
+    });
+
     test('no handles makes no request', () async {
       expect(await api.resolveMentionHandles(const []), isEmpty);
       expect(fake.to(_profilesPath), isEmpty);

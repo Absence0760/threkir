@@ -29,6 +29,7 @@ type vectorScenario struct {
 	MaxSpeedMps       float64       `json:"maxSpeedMps"`
 	ExpectedIntervalS float64       `json:"expectedIntervalS"`
 	InitialStrideM    *float64      `json:"initialStrideM"`
+	LearnStride       bool          `json:"learnStride"`
 	Events            []vectorEvent `json:"events"`
 	Expected          struct {
 		DistanceAfterEachEventM []float64 `json:"distanceAfterEachEventM"`
@@ -80,7 +81,7 @@ func loadVectors(t *testing.T) vectorFile {
 
 func TestConstantsMatchTheVectorFile(t *testing.T) {
 	vf := loadVectors(t)
-	if vf.Spec != "gps-distance-estimator v"+SpecVersion || SpecVersion != "1.3" {
+	if vf.Spec != "gps-distance-estimator v"+SpecVersion || SpecVersion != "1.4" {
 		t.Fatalf("vectors are for %q; this port implements v%s", vf.Spec, SpecVersion)
 	}
 	ours := map[string]float64{
@@ -92,6 +93,10 @@ func TestConstantsMatchTheVectorFile(t *testing.T) {
 		"MAX_SPEED_SIGMA_MPS":           MaxSpeedSigmaMps,
 		"MAX_STRIDE_M":                  MaxStrideM,
 		"MIN_POS_SIGMA_M":               MinPosSigmaM,
+		"MAX_POS_SIGMA_M":               MaxPosSigmaM,
+		"STRIDE_MAX_SPEED_SIGMA_MPS":    StrideMaxSpeedSigmaMps,
+		"STRIDE_MAX_POS_SIGMA_M":        StrideMaxPosSigmaM,
+		"CHECK_MAX_POS_SIGMA_M":         CheckMaxPosSigmaM,
 		"MIN_SPEED_SIGMA_MPS":           MinSpeedSigmaMps,
 		"MIN_STRIDE_M":                  MinStrideM,
 		"POS_ONLY_STATIONARY_SPEED_MPS": PosOnlyStationarySpeedMps,
@@ -149,6 +154,7 @@ func optionsOf(sc vectorScenario) Options {
 		MaxSpeedMps:       sc.MaxSpeedMps,
 		ExpectedIntervalS: sc.ExpectedIntervalS,
 		InitialStrideM:    sc.InitialStrideM,
+		NoStrideLearning:  !sc.LearnStride,
 	}
 }
 
@@ -339,8 +345,11 @@ func TestNewWithOptionsZeroValueIsOneHertz(t *testing.T) {
 		}
 		e.AddFix(Fix{T: 0, Lat: 40, Lng: -75})
 		e.AddFix(Fix{T: 11, Lat: 40.0003, Lng: -75})
-		if e.GpsDistanceM != 0 {
-			t.Errorf("interval %v: an 11 s gap credited %v m", it, e.GpsDistanceM)
+		// An 11 s interval is a gap at 1 s, credited only by its chord less the
+		// 1-sigma uncertainty of both ends: sqrt(9 + 9 + 2*9) = 6 m.
+		want := radians(0.0003)*EarthRadiusM - 6
+		if math.Abs(e.GpsDistanceM-want) > 1e-6 {
+			t.Errorf("interval %v: an 11 s gap credited %v m, want %v", it, e.GpsDistanceM, want)
 		}
 	}
 }
@@ -358,5 +367,35 @@ func TestNewWithOptionsSeedsOnlyAnInRangeStride(t *testing.T) {
 	}
 	if NewWithOptions(Options{}).StrideM != nil {
 		t.Error("no initial stride should leave StrideM nil")
+	}
+}
+
+func TestAFixWorseThanMaxPosSigmaIsIgnored(t *testing.T) {
+	acc := func(v float64) *float64 { return &v }
+	e := New(10)
+	if got := e.AddFix(Fix{T: 0, Lat: 40, Lng: -75, AccuracyM: acc(51)}); got != 0 {
+		t.Errorf("first fix credited %v", got)
+	}
+	e.AddFix(Fix{T: 1, Lat: 40, Lng: -75, AccuracyM: acc(50)})
+	e.AddFix(Fix{T: 2, Lat: 40.00003, Lng: -75, AccuracyM: acc(51),
+		SpeedMps: acc(3), SpeedAccuracyMps: acc(0.3), BearingDeg: acc(0)})
+	if e.DistanceM() != 0 {
+		t.Errorf("distance %v, want 0", e.DistanceM())
+	}
+}
+
+func TestNoStrideLearningKeepsTheSeed(t *testing.T) {
+	seed := 0.95
+	for _, in := range []*float64{nil, &seed} {
+		e := NewWithOptions(Options{InitialStrideM: in, NoStrideLearning: true})
+		for i := 0; i < 120; i++ {
+			acc, sp, sa, b := 4.0, 2.78, 0.3, 0.0
+			e.AddFix(Fix{T: float64(i), Lat: 40 + float64(i)*0.000025, Lng: -75,
+				AccuracyM: &acc, SpeedMps: &sp, SpeedAccuracyMps: &sa, BearingDeg: &b})
+			e.AddSteps(float64(i)+0.5, (i+1)*3)
+		}
+		if (in == nil) != (e.StrideM == nil) || (in != nil && *e.StrideM != *in) {
+			t.Errorf("seed %v: StrideM = %v", in, e.StrideM)
+		}
 	}
 }

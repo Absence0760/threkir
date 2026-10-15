@@ -1,5 +1,5 @@
 // Package gpsdistance is the Go port of the GPS distance estimator,
-// spec v1.3 (docs/features/gps_distance.md). The reference implementation
+// spec v1.4 (docs/features/gps_distance.md). The reference implementation
 // is scripts/gps_distance/reference.py and this file follows it
 // operation for operation; every port replays
 // fixtures/gps_distance_vectors.json to 1e-3 m, so a change here without
@@ -15,12 +15,13 @@ package gpsdistance
 import "math"
 
 // SpecVersion is the spec this port implements.
-const SpecVersion = "1.3"
+const SpecVersion = "1.4"
 
 const (
 	EarthRadiusM              = 6371008.8
 	QAccel                    = 0.6 // m^2/s^3, white-acceleration spectral density
 	MinPosSigmaM              = 3.0
+	MaxPosSigmaM              = 50.0
 	InitVelVar                = 25.0
 	MinSpeedSigmaMps          = 0.3
 	DefaultSpeedSigmaMps      = 0.5
@@ -33,6 +34,9 @@ const (
 	MinStrideM                = 0.4
 	MaxStrideM                = 2.5
 	StrideEMAAlpha            = 0.2
+	StrideMaxSpeedSigmaMps    = 1.0
+	StrideMaxPosSigmaM        = 20.0
+	CheckMaxPosSigmaM         = 20.0
 
 	GateChi2       = 13.8155
 	GateMaxRejects = 5
@@ -212,6 +216,8 @@ type Estimator struct {
 	DopplerScale float64
 
 	gapS, freshFixS float64
+	learnStride     bool
+	strideOK        bool
 
 	anchored   bool
 	lat0, lng0 float64
@@ -263,6 +269,9 @@ type Options struct {
 	// InitialStrideM seeds StrideM when finite and within
 	// [MinStrideM, MaxStrideM]; otherwise it is ignored.
 	InitialStrideM *float64
+	// NoStrideLearning marks a stretch on a source whose speed is not its own
+	// Doppler (Android's fused provider): its stride is used, never learned.
+	NoStrideLearning bool
 }
 
 // New returns a 1 Hz estimator with the given speed ceiling (m/s). A
@@ -287,7 +296,7 @@ func NewWithOptions(o Options) *Estimator {
 	scale := intervalScale(o.ExpectedIntervalS)
 	e := &Estimator{
 		MaxSpeedMps: maxSpeedMps, gapS: GapS * scale, freshFixS: FreshFixS * scale,
-		RScale: 1.0, DopplerTrusted: true, DopplerScale: 1.0,
+		RScale: 1.0, DopplerTrusted: true, DopplerScale: 1.0, learnStride: !o.NoStrideLearning,
 	}
 	if validPtr(o.InitialStrideM) && *o.InitialStrideM >= MinStrideM && *o.InitialStrideM <= MaxStrideM {
 		stride := *o.InitialStrideM
@@ -336,6 +345,9 @@ func (e *Estimator) AddFix(f Fix) float64 {
 	if !(finite(f.T) && finite(f.Lat) && finite(f.Lng)) {
 		return 0
 	}
+	if validPtr(f.AccuracyM) && *f.AccuracyM > MaxPosSigmaM {
+		return 0
+	}
 	if !e.anchored {
 		e.lat0, e.lng0 = f.Lat, f.Lng
 		e.anchored = true
@@ -352,11 +364,26 @@ func (e *Estimator) AddFix(f Fix) float64 {
 	}
 	dop, sa, dopOK := dopplerSpeed(f.SpeedMps, f.SpeedAccuracyMps, e.MaxSpeedMps)
 	if !e.hasT || f.T-e.t > e.gapS {
-		// (Re-)anchor. Steps buffered across a real gap are committed now.
+		// (Re-)anchor. Steps buffered across a real gap are committed now, and
+		// the straight line across it, less its 1-sigma uncertainty, is a lower
+		// bound on the distance covered: the GPS credit makes up whatever the
+		// steps fall short of it.
+		hasGap, gapM := false, 0.0
 		if e.hasT {
 			e.StepDistanceM += e.pendingStepM
+			d := math.Hypot(zx-e.x.p, zy-e.y.p)
+			lower := d - math.Sqrt(e.x.a+e.y.a+2.0*r)
+			lower = math.Min(lower, e.MaxSpeedMps*(f.T-e.t))
+			if lower > e.pendingStepM {
+				hasGap, gapM = true, lower-e.pendingStepM
+				e.GpsDistanceM += gapM
+			}
 		}
 		e.pendingStepM = 0
+		e.strideOK = e.strideGrade(f.AccuracyM, dopOK, sa)
+		if !e.strideOK {
+			e.winSteps, e.winM = 0, 0
+		}
 		e.x, e.y = newAxis(zx, r), newAxis(zy, r)
 		e.t, e.hasT = f.T, true
 		e.xcLastX, e.xcLastY, e.xcLastT = zx, zy, f.T
@@ -365,8 +392,8 @@ func (e *Estimator) AddFix(f Fix) float64 {
 		e.hasZuptAnchor = false
 		zupt := f.StoppedHint || e.zuptDue(f.T, dopOK, dop)
 		e.record(record{anchor: true, chainBreak: true, zupt: zupt,
-			hasDop: dopOK && e.DopplerTrusted, dop: dop * e.DopplerScale})
-		return 0
+			hasDop: dopOK && e.DopplerTrusted, dop: dop * e.DopplerScale, hasChord: hasGap, chord: gapM})
+		return gapM
 	}
 	// The gap closed inside the gap window, so the filter integrates it: drop the buffer.
 	e.pendingStepM = 0
@@ -434,7 +461,7 @@ func (e *Estimator) AddFix(f Fix) float64 {
 
 	// 4. Doppler-vs-position cross-check: Doppler speed against the raw
 	//    fixes' displacement projected on the Doppler bearing.
-	if accepted {
+	if accepted && !(validPtr(f.AccuracyM) && *f.AccuracyM > CheckMaxPosSigmaM) {
 		span := f.T - e.xcLastT
 		if dopOK && !zupt && validPtr(f.BearingDeg) &&
 			dop >= PosOnlyStationarySpeedMps && span <= XcheckMaxSpanS {
@@ -520,7 +547,12 @@ func (e *Estimator) AddFix(f Fix) float64 {
 		}
 	}
 	e.GpsDistanceM += inc
-	e.winM += inc
+	e.strideOK = e.strideGrade(f.AccuracyM, useDop && !hasChord, sa)
+	if e.strideOK {
+		e.winM += inc
+	} else {
+		e.winSteps, e.winM = 0, 0
+	}
 	e.record(record{dt: dt, chainBreak: chainBreak, predX: predX, predY: predY, zupt: zupt,
 		hasDop: useDop, dop: sdop, hasChord: hasChord, chord: chord})
 	return inc
@@ -533,6 +565,18 @@ func (e *Estimator) setDsLast(x, y, t float64, hasDop bool, dop float64, bearing
 	if e.dsLastHasBearing {
 		e.dsLastBearing = *bearing
 	}
+}
+
+// strideGrade says whether a fix may teach stride: by its Doppler sigma sa
+// when its credit came from Doppler, else by its position accuracy.
+func (e *Estimator) strideGrade(accuracyM *float64, fromDoppler bool, sa float64) bool {
+	if !e.learnStride {
+		return false
+	}
+	if fromDoppler {
+		return sa <= StrideMaxSpeedSigmaMps
+	}
+	return !(validPtr(accuracyM) && *accuracyM > StrideMaxPosSigmaM)
 }
 
 // AddSteps feeds a cumulative pedometer count. Learns a stride while GPS
@@ -554,6 +598,9 @@ func (e *Estimator) AddSteps(t float64, cumulativeSteps int) {
 		e.zuptReleased = false
 	}
 	if e.hasT && t-e.t <= e.freshFixS {
+		if !e.strideOK {
+			return
+		}
 		e.winSteps += d
 		if e.winSteps >= StrideWindowSteps {
 			stride := e.winM / float64(e.winSteps)

@@ -431,7 +431,10 @@ The device-led leg — token registration + foreground/background display:
     `/runs/{id}`, `/u/{id}`, `/challenges`, `/notifications`. The mobile club
     and event screens are slug-addressed while the push carries a UUID, so
     `SocialService.fetchClubSlugById` / `fetchClubSlugForEvent` resolve it and
-    degrade to the clubs hub on a miss. `/messages` opens the mobile direct-message
+    degrade to the clubs hub on a miss. `/runs/{id}` goes through the same
+    shell decision as an OS run link and an inbox row: the runner's own run on
+    the device opens `RunDetailScreen`, anything else `PublicRunScreen`.
+    `/messages` opens the mobile direct-message
     inbox and `/messages/{user id}` that conversation (decisions § 1916); any
     unrecognised or malformed URL lands on the notifications inbox — mirroring
     `pathForKind`'s own `default:` arm.

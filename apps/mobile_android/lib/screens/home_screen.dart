@@ -465,7 +465,7 @@ class _HomeScreenState extends State<HomeScreen>
       case PushTargetKind.profile:
         await _pushScreen(ProfileScreen(api: api, userId: target.id!));
       case PushTargetKind.run:
-        await _pushScreen(PublicRunScreen(api: api, runId: target.id!));
+        await _openRun(target.id!);
       case PushTargetKind.plans:
         await _pushScreen(PlansScreen(
           training: widget.training,
@@ -647,7 +647,8 @@ class _HomeScreenState extends State<HomeScreen>
     ));
   }
 
-  /// A run or route link the OS opened the app with. The runner's own run or
+  /// A run or route link the OS opened the app with, or a run an in-app
+  /// surface handed over with `openRunLink`. The runner's own run or
   /// route opens its owner screen from the device; anything else opens the
   /// non-owner view, which reads public first and then what the owner shared
   /// with this viewer (decisions § 1874), with the clipped track only. An L4
@@ -663,24 +664,34 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  /// The one decision every run link, push and inbox row shares, as web's
+  /// `/runs/[id]` makes it: the owner's detail screen when the run is on this
+  /// device, else the non-owner view. A run of the runner's own that is not on
+  /// the device (an older one the history list has not paged in) takes the
+  /// non-owner view too, which reads the owner's unclipped track for them.
+  Future<void> _openRun(String runId) async {
+    final api = widget.apiClient;
+    final own = await widget.runStore.runById(runId);
+    if (!mounted) return;
+    if (own != null) {
+      return _pushScreen(RunDetailScreen(
+        run: own,
+        runStore: widget.runStore,
+        routeStore: widget.routeStore,
+        preferences: widget.preferences,
+        apiClient: api,
+        settingsSync: widget.settingsSync,
+      ));
+    }
+    if (api == null) return;
+    await _pushScreen(PublicRunScreen(api: api, runId: runId));
+  }
+
   Future<void> _openEntityLink(EntityLink link) async {
     final api = widget.apiClient;
     switch (link.kind) {
       case EntityLinkKind.run:
-        final own = await widget.runStore.runById(link.id);
-        if (!mounted) return;
-        if (own != null) {
-          return _pushScreen(RunDetailScreen(
-            run: own,
-            runStore: widget.runStore,
-            routeStore: widget.routeStore,
-            preferences: widget.preferences,
-            apiClient: api,
-            settingsSync: widget.settingsSync,
-          ));
-        }
-        if (api == null) return;
-        await _pushScreen(PublicRunScreen(api: api, runId: link.id));
+        await _openRun(link.id);
       case EntityLinkKind.route:
         final own = widget.routeStore.routes
             .where((r) => r.id == link.id)

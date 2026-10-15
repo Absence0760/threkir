@@ -1,7 +1,9 @@
 // Tapping a row in the mobile inbox marks it read and opens what it names,
-// kind for kind with web's notificationLinkFor. Every run kind opens the run
-// view that serves owner and non-owner alike (decisions § 1971); kudos,
-// comment, comment_reply and reaction used to mark read and go nowhere.
+// kind for kind with web's notificationLinkFor. Every run kind hands the run
+// to the shell with openRunLink, which holds the run store and opens the
+// owner's detail screen for the runner's own run and the non-owner view for
+// anyone else's (home_screen_test pins that half); kudos, comment,
+// comment_reply and reaction used to mark read and go nowhere.
 
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
@@ -10,6 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../lib/entity_link.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/challenge_detail_screen.dart';
 import '../lib/screens/event_detail_screen.dart';
@@ -17,6 +20,7 @@ import '../lib/screens/plan_detail_screen.dart';
 import '../lib/screens/profile_screen.dart';
 import '../lib/screens/public_run_screen.dart';
 import '../lib/widgets/badge_grid.dart';
+import '../lib/widgets/run_list_tile.dart';
 
 NotificationView _view(String kind, {String? eventClubSlug}) => NotificationView(
       row: NotificationRow(
@@ -37,9 +41,10 @@ NotificationView _view(String kind, {String? eventClubSlug}) => NotificationView
     );
 
 class _NotifApi extends ApiClient {
-  _NotifApi(this._views);
+  _NotifApi(this._views, {this.runs = const []});
 
   final List<NotificationView> _views;
+  final List<RunRow> runs;
 
   @override
   String? get userId => 'me';
@@ -58,7 +63,7 @@ class _NotifApi extends ApiClient {
   Future<List<RunRow>> fetchPublicRunsByUser(
     String userId, {
     int limit = 50,
-  }) async => const [];
+  }) async => runs;
 
   @override
   Future<KeysetPage<UserProfileRow>> fetchFollowers(
@@ -111,7 +116,11 @@ Future<void> _ensureSupabase() async {
   _supabaseReady = true;
 }
 
-Future<void> _pump(WidgetTester tester, _NotifApi api) async {
+Future<void> _pump(
+  WidgetTester tester,
+  _NotifApi api, {
+  ProfileTab initialTab = ProfileTab.notifications,
+}) async {
   await tester.pumpWidget(
     MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -119,7 +128,7 @@ Future<void> _pump(WidgetTester tester, _NotifApi api) async {
       home: ProfileScreen(
         api: api,
         userId: 'me',
-        initialTab: ProfileTab.notifications,
+        initialTab: initialTab,
       ),
     ),
   );
@@ -129,6 +138,8 @@ Future<void> _pump(WidgetTester tester, _NotifApi api) async {
 
 void main() {
   setUpAll(_ensureSupabase);
+  setUp(() => pendingEntityLink.value = null);
+  tearDown(() => pendingEntityLink.value = null);
 
   final cases = <String, String Function(AppLocalizations)>{
     'kudos': (l) => l.profileNotifKudos('Ana', l.profileNotifYourRun),
@@ -139,7 +150,8 @@ void main() {
     'mention': (l) => l.profileNotifMention('Ana'),
   };
   for (final entry in cases.entries) {
-    testWidgets('tapping a ${entry.key} row marks it read and opens the run', (tester) async {
+    testWidgets('tapping a ${entry.key} row marks it read and hands the run '
+        'to the shell', (tester) async {
       final api = _NotifApi([_view(entry.key)]);
       await _pump(tester, api);
       final l10n = await AppLocalizations.delegate.load(const Locale('en'));
@@ -150,8 +162,12 @@ void main() {
       }
 
       expect(api.read, ['n-${entry.key}']);
-      expect(find.byType(PublicRunScreen), findsOneWidget);
-      expect(api.opened, ['r1']);
+      expect(pendingEntityLink.value,
+          const EntityLink(EntityLinkKind.run, 'r1'));
+      // The inbox no longer decides for itself: pushing the non-owner view
+      // here is what showed the runner their own run as a stranger's.
+      expect(find.byType(PublicRunScreen), findsNothing);
+      expect(api.opened, isEmpty);
     });
   }
 
@@ -252,5 +268,38 @@ void main() {
 
     expect(api.read, ['n-achievement']);
     expect(find.byType(BadgeGrid), findsOneWidget);
+  });
+
+  testWidgets('a run on the runner\'s own Runs tab is handed to the shell',
+      (tester) async {
+    // Same decision as the inbox: the own profile's runs are the runner's
+    // own, so they open the owner screen through the shell rather than the
+    // non-owner view the tab pushes for another runner's run.
+    final api = _NotifApi(const [], runs: [
+      RunRow(
+        safetyAudience: false,
+        id: 'r-own',
+        userId: 'me',
+        startedAt: DateTime.utc(2026, 10, 1, 7),
+        durationS: 1800,
+        distanceM: 5000,
+        source: 'manual',
+        activityType: 'run',
+        isDnf: false,
+        followersOnly: false,
+        isPublic: true,
+      ),
+    ]);
+    await _pump(tester, api, initialTab: ProfileTab.runs);
+
+    await tester.tap(find.byType(RunListTile));
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+
+    expect(pendingEntityLink.value,
+        const EntityLink(EntityLinkKind.run, 'r-own'));
+    expect(find.byType(PublicRunScreen), findsNothing);
+    await teardown(tester);
   });
 }

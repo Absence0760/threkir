@@ -244,10 +244,16 @@ void main() {
           reason:
               'Tapping a club_post notification must open ClubDetailScreen '
               'for the linked club slug.');
-      expect(source.contains("kind == 'run_completed'"), isTrue,
+      final runKinds = RegExp(r'_kRunNotificationKinds = \{([^}]*)\}')
+          .firstMatch(source)
+          ?.group(1);
+      expect(runKinds, contains("'run_completed'"),
+          reason: 'run_completed must be one of the run kinds a tap opens.');
+      expect(source.contains('openRunLink(item.row.runId!)'), isTrue,
           reason:
-              'run_completed tap must route to PublicRunScreen via the '
-              'row runId.');
+              'a run-kind tap hands the row runId to the shell, which opens '
+              'the owner screen for the runner\'s own run and '
+              'PublicRunScreen for anyone else\'s.');
     });
   });
 

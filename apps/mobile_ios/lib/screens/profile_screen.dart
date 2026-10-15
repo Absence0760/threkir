@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart';
 
 import '../auth_error.dart';
+import '../entity_link.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../notification_groups.dart';
 import '../preferences.dart';
@@ -1001,23 +1002,30 @@ class _ProfileScreenState extends State<ProfileScreen>
         itemCount: _runs.length,
         itemBuilder: (_, i) {
           final r = _runs[i];
-          // The run row, shared with Fitness -> Runs. Tap-into-detail routes
-          // through `PublicRunScreen` (which takes a `runId`) so this works
-          // for non-owner viewers too, and `ownerUserId` sends the thumbnail
-          // through the clipping function when the profile is not the
-          // viewer's own.
+          // The run row, shared with Fitness -> Runs. Another runner's run
+          // opens `PublicRunScreen` (which takes a `runId`); the viewer's own
+          // goes through the shell, which holds the run store and opens the
+          // owner's detail screen. `ownerUserId` sends the thumbnail through
+          // the clipping function when the profile is not the viewer's own.
           return RunListTile.public(
             key: ValueKey(r.id),
             row: r,
             ownerUserId: widget.userId,
             unit: activeDistanceUnit,
             api: widget.api,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => PublicRunScreen(api: widget.api, runId: r.id),
-              ),
-            ),
+            onTap: () {
+              if (_isSelf) {
+                openRunLink(r.id);
+                return;
+              }
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      PublicRunScreen(api: widget.api, runId: r.id),
+                ),
+              );
+            },
           );
         },
       ),
@@ -1394,14 +1402,10 @@ class _ProfileScreenState extends State<ProfileScreen>
       );
     } else if (_kRunNotificationKinds.contains(kind) && item.row.runId != null) {
       // A reply, a comment like or a mention need not be on the recipient's
-      // own run, so every run kind opens the view that serves both the owner
-      // and a non-owner, as web's /runs/[id] and the push path do.
-      await Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) =>
-              PublicRunScreen(api: widget.api, runId: item.row.runId!),
-        ),
-      );
+      // own run, and this screen holds no run store to tell, so the shell
+      // decides: the owner's detail screen for a run on this device, else the
+      // non-owner view, as web's /runs/[id] and the push path do.
+      openRunLink(item.row.runId!);
     } else if (kind == 'follow' && item.row.actorId != null) {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(

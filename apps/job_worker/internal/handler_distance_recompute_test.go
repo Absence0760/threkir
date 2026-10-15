@@ -10,6 +10,8 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -547,11 +549,35 @@ func TestDistanceRecompute_TransientReadFailureIsRetried(t *testing.T) {
 	}
 }
 
-func TestMaxSpeedMpsForActivityMirrorsTheDartVocabulary(t *testing.T) {
-	want := map[string]float64{"run": 10, "walk": 5, "cycle": 25, "hike": 6, "stroller": 9, "": 10, "unknown": 10}
-	for k, v := range want {
+// fixtures/activity_speed_caps.json is ActivityType.maxSpeedMps, the table
+// every port's tests read.
+func TestMaxSpeedMpsForActivityMatchesTheSharedFixture(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "fixtures", "activity_speed_caps.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fx struct {
+		UnknownActivityCap string             `json:"unknownActivityCap"`
+		CapsMps            map[string]float64 `json:"capsMps"`
+	}
+	if err := json.Unmarshal(raw, &fx); err != nil {
+		t.Fatal(err)
+	}
+	if len(fx.CapsMps) == 0 {
+		t.Fatal("fixture has no caps")
+	}
+	for k, v := range fx.CapsMps {
 		if got := maxSpeedMpsForActivity(k); got != v {
 			t.Errorf("maxSpeedMpsForActivity(%q) = %v, want %v", k, got, v)
+		}
+	}
+	fallback, ok := fx.CapsMps[fx.UnknownActivityCap]
+	if !ok {
+		t.Fatalf("fallback %q has no cap", fx.UnknownActivityCap)
+	}
+	for _, k := range []string{"", "unknown"} {
+		if got := maxSpeedMpsForActivity(k); got != fallback {
+			t.Errorf("maxSpeedMpsForActivity(%q) = %v, want the %s cap %v", k, got, fx.UnknownActivityCap, fallback)
 		}
 	}
 }

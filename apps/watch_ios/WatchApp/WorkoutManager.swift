@@ -141,9 +141,16 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         bankedStepFilledMetres + distanceEstimator.stepDistanceM
     }
 
-    /// A cyclist outruns the running cap, so the cap follows the picker.
+    /// The phone's `ActivityType.maxSpeedMps`
+    /// (`packages/core_models/lib/src/activity_type.dart`), held to
+    /// `fixtures/activity_speed_caps.json` by `WorkoutManagerDistanceTests`.
     static func maxSpeedMps(for activity: RunActivityType) -> Double {
-        activity == .cycle ? 25.0 : 10.0
+        switch activity {
+        case .run: return 10.0
+        case .walk: return 5.0
+        case .hike: return 6.0
+        case .cycle: return 25.0
+        }
     }
 
     /// `ProcessInfo.systemUptime` of the last fix that passed the accuracy

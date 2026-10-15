@@ -148,13 +148,4 @@ class GpsDistanceEstimatorTest {
         learnStride(est)
         assertEquals(0.96, est.strideM!!, tolerance)
     }
-
-    @Test
-    fun `a ride is not clamped to running speed`() {
-        assertEquals(10.0, GpsDistanceEstimator.maxSpeedMpsFor("run"), 0.0)
-        assertEquals(5.0, GpsDistanceEstimator.maxSpeedMpsFor("walk"), 0.0)
-        assertEquals(6.0, GpsDistanceEstimator.maxSpeedMpsFor("hike"), 0.0)
-        assertEquals(25.0, GpsDistanceEstimator.maxSpeedMpsFor("cycle"), 0.0)
-        assertEquals(10.0, GpsDistanceEstimator.maxSpeedMpsFor("something-new"), 0.0)
-    }
 }

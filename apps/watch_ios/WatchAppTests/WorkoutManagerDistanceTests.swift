@@ -175,8 +175,20 @@ final class WorkoutManagerDistanceTests: XCTestCase {
         XCTAssertEqual(wm.finishedRun?.distanceStepFilledMetres ?? -1, 0)
     }
 
-    func testCyclingRaisesTheSpeedCap() {
-        XCTAssertEqual(WorkoutManager.maxSpeedMps(for: .run), 10)
-        XCTAssertEqual(WorkoutManager.maxSpeedMps(for: .cycle), 25)
+    /// `fixtures/activity_speed_caps.json` is the phone's
+    /// `ActivityType.maxSpeedMps`, the one table every port's tests read.
+    func testEverySpeedCapMatchesTheSharedFixture() throws {
+        let url = URL(fileURLWithPath: "\(#filePath)")
+            .deletingLastPathComponent() // WatchAppTests
+            .deletingLastPathComponent() // watch_ios
+            .deletingLastPathComponent() // apps
+            .deletingLastPathComponent() // repo root
+            .appendingPathComponent("fixtures/activity_speed_caps.json")
+        struct Fixture: Decodable { let capsMps: [String: Double] }
+        let caps = try JSONDecoder().decode(Fixture.self, from: Data(contentsOf: url)).capsMps
+        for activity in RunActivityType.allCases {
+            let want = try XCTUnwrap(caps[activity.rawValue], "fixture has no cap for \(activity.rawValue)")
+            XCTAssertEqual(WorkoutManager.maxSpeedMps(for: activity), want, activity.rawValue)
+        }
     }
 }

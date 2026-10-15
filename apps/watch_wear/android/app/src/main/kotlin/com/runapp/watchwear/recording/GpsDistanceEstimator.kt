@@ -521,12 +521,13 @@ class GpsDistanceEstimator(
             "ZUPT_RELEASE_M" to ZUPT_RELEASE_M,
         )
 
-        /// Same ceilings as the phone's `ActivityType.maxSpeedMps`
-        /// (`packages/core_models/lib/src/activity_type.dart`), so a ride
-        /// recorded on the wrist is not clamped to running speed.
+        /// The phone's `ActivityType.maxSpeedMps`
+        /// (`packages/core_models/lib/src/activity_type.dart`), held to
+        /// `fixtures/activity_speed_caps.json` by `ActivitySpeedCapsTest`.
         fun maxSpeedMpsFor(activityType: String): Double = when (activityType) {
             "walk" -> 5.0
             "hike" -> 6.0
+            "stroller" -> 9.0
             "cycle" -> 25.0
             else -> 10.0
         }

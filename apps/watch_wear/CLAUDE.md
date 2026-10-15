@@ -649,7 +649,8 @@ steal focus from typing). `RotaryScrollWiringTest` pins the call sites.
   the closing segment's stride, so a GPS gap right after a resume is still
   step-filled. Fixes arrive at 1 s, so `expectedIntervalS` stays 1. The
   ceiling is per activity (`maxSpeedMpsFor`, the phone's
-  `ActivityType.maxSpeedMps` values). The track itself still appends every
+  `ActivityType.maxSpeedMps` values, stroller included, held to
+  `fixtures/activity_speed_caps.json` by `ActivitySpeedCapsTest`). The track itself still appends every
   gated fix; each point now also carries the optional `accuracyMetres`,
   `speedMps`, `speedAccuracyMps`, `bearingDeg` keys so the server can
   recompute. Uploads stamp `metadata.distance_estimator = "kalman_v1"` and,

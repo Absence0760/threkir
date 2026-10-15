@@ -11,31 +11,28 @@ import {
 	isActivityType,
 } from '../runs/activity_type';
 
-// The per-activity speed cap is where a GPS jump stops being distance. The
-// web importer and the Dart recorder must agree, or the same file measures
-// differently on each.
+// The per-activity speed cap is where a GPS jump stops being distance.
+// fixtures/activity_speed_caps.json is ActivityType.maxSpeedMps
+// (packages/core_models), the one table every port's tests read, so the web
+// importer, the recorders and the server replay measure the same file alike.
 
-const DART = fileURLToPath(
-	new URL('../../../../../packages/core_models/lib/src/activity_type.dart', import.meta.url),
-);
+const FIXTURE = JSON.parse(
+	readFileSync(
+		fileURLToPath(new URL('../../../../../fixtures/activity_speed_caps.json', import.meta.url)),
+		'utf8',
+	),
+) as { unknownActivityCap: string; capsMps: Record<string, number> };
 
-function dartCaps(): Record<string, number> {
-	const src = readFileSync(DART, 'utf8');
-	const body = src.slice(src.indexOf('double get maxSpeedMps'));
-	const end = body.indexOf('\n  }\n');
-	const caps: Record<string, number> = {};
-	for (const m of body.slice(0, end).matchAll(/case ActivityType\.(\w+):\s*return ([\d.]+);/g)) {
-		caps[m[1]] = Number(m[2]);
-	}
-	return caps;
-}
-
-test('every activity speed cap matches ActivityType.maxSpeedMps in core_models', () => {
-	const caps = dartCaps();
-	assert.deepEqual(Object.keys(caps).sort(), [...ACTIVITY_TYPES].sort());
+test('every activity speed cap matches fixtures/activity_speed_caps.json', () => {
+	assert.deepEqual(Object.keys(FIXTURE.capsMps).sort(), [...ACTIVITY_TYPES].sort());
 	for (const type of ACTIVITY_TYPES) {
-		assert.equal(maxSpeedMpsForActivity(type), caps[type], type);
+		assert.equal(maxSpeedMpsForActivity(type), FIXTURE.capsMps[type], type);
 	}
+	assert.equal(
+		maxSpeedMpsForActivity(null),
+		FIXTURE.capsMps[FIXTURE.unknownActivityCap],
+		'fallback',
+	);
 });
 
 test('an unknown or missing activity type gets the run cap, not a looser one', () => {

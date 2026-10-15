@@ -3282,6 +3282,19 @@ fn segment_distance_m(a: &Fix, b: &Fix) -> f64 {
 mod tests {
     use super::*;
 
+    /// Every run this recorder writes is synced as `activity_type: 'run'`
+    /// (`sim_watch_sync.payloadFromBlob`), so its one ceiling is the run row
+    /// of `fixtures/activity_speed_caps.json`, the table every port reads.
+    #[test]
+    fn the_speed_ceiling_is_the_shared_run_cap() {
+        let doc: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../../fixtures/activity_speed_caps.json"
+        ))
+        .expect("caps parse");
+        let run = doc["capsMps"]["run"].as_f64().expect("run cap");
+        assert_eq!(MAX_SPEED_MPS, run);
+    }
+
     fn fix(lat: f64, lon: f64, speed: f32, t: u32) -> Fix {
         Fix {
             lat_deg: lat,

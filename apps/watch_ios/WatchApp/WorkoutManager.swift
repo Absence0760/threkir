@@ -906,6 +906,11 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     /// CoreLocation reports an unknown speed, course or accuracy as a
     /// negative value; each reads as absent here, for the estimator and for
     /// the stored track point alike.
+    /// The accuracy a fix must state to enter the stored track, the mini-map
+    /// and route guidance. The estimator takes fixes up to its own
+    /// `GpsDistanceEstimator.maxPosSigmaM`.
+    static let trackAccuracyGateM = 30.0
+
     static func speed(of location: CLLocation) -> Double? {
         location.speed >= 0 ? location.speed : nil
     }
@@ -935,14 +940,17 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         // Stamped before the accuracy gate: a delivery of 100 m fixes proves
         // the subsystem is alive, and restarting CoreLocation cannot clear a
         // tree canopy. The banner reads the ACCEPTED stamp below instead,
-        // because the runner's distance is frozen either way.
+        // because past the estimator's cap the runner's distance is frozen
+        // either way.
         if !locations.isEmpty { lastGpsDeliveryUptime = ProcessInfo.processInfo.systemUptime }
         var newPoints: [TrackPointRecord] = []
         var lastAcceptedFix: CLLocation?
+        var fedEstimator = false
         let nowUptime = ProcessInfo.processInfo.systemUptime
         let now = Date()
         for location in locations {
-            guard location.horizontalAccuracy >= 0, location.horizontalAccuracy < 30 else { continue }
+            guard location.horizontalAccuracy >= 0,
+                  location.horizontalAccuracy <= GpsDistanceEstimator.maxPosSigmaM else { continue }
 
             // A gap the estimator will re-anchor over is a span it credits
             // nothing for, so the pace look-back must not time across it
@@ -954,6 +962,12 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             if lastEstimatorFixT.map({ t > $0 }) ?? true { lastEstimatorFixT = t }
             feedEstimator(location, t: t)
             paceWindow.add(t: t, distanceM: distanceEstimator.distanceM)
+            fedEstimator = true
+
+            // A canopy fix past the track gate still carries good Doppler, so
+            // it moves distance, but it stays off the track, the mini-map and
+            // route guidance.
+            guard location.horizontalAccuracy < Self.trackAccuracyGateM else { continue }
             lastAcceptedFix = location
 
             newPoints.append(TrackPointRecord(
@@ -968,7 +982,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             ))
         }
 
-        if lastAcceptedFix != nil {
+        if fedEstimator {
             lastAcceptedFixUptime = ProcessInfo.processInfo.systemUptime
         }
 

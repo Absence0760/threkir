@@ -53,6 +53,13 @@ final class WorkoutManagerMiniMapTests: XCTestCase {
         XCTAssertTrue(wm.mapTrail.points.isEmpty)
     }
 
+    func testACanopyFixFeedsDistanceButNeverTheMap() {
+        let wm = WorkoutManager()
+        feed(wm, [loc(51.5000, -0.1000, accuracy: 40)])
+        XCTAssertNil(wm.mapPosition)
+        XCTAssertTrue(wm.mapTrail.points.isEmpty)
+    }
+
     func testTheTrailSpansTheWholeRunRatherThanTheRollingWindow() {
         let wm = WorkoutManager()
         // ~33 m per fix, far more fixes than the trail's capacity.

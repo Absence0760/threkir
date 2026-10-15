@@ -344,3 +344,67 @@ fn a_pmreq_backup_never_encodes_the_sleep_forever_duration() {
         Ok(())
     });
 }
+
+#[test]
+fn a_nav_pvt_frame_round_trips_its_accuracy_through_the_parser() {
+    check(
+        512,
+        (
+            any::<u32>(),
+            any::<u32>(),
+            any::<i32>(),
+            any::<u8>(),
+            any::<u8>(),
+        ),
+        |(h_acc_mm, s_acc_mms, g_speed_mms, flags, num_sv)| {
+            let mut payload = [0u8; ubx::NAV_PVT_PAYLOAD_LEN];
+            payload[21] = flags;
+            payload[23] = num_sv;
+            payload[40..44].copy_from_slice(&h_acc_mm.to_le_bytes());
+            payload[60..64].copy_from_slice(&g_speed_mms.to_le_bytes());
+            payload[68..72].copy_from_slice(&s_acc_mms.to_le_bytes());
+            let mut frame = vec![0u8; ubx::FRAME_OVERHEAD + payload.len()];
+            ubx::write_frame(ubx::CLASS_NAV, ubx::ID_NAV_PVT, &payload, &mut frame).expect("fits");
+            let out = feed_all(&frame);
+            prop_assert_eq!(out.len(), 1);
+            let Sentence::NavPvt(pvt) = out[0] else {
+                return Err(TestCaseError::fail("not a NAV-PVT"));
+            };
+            prop_assert_eq!(pvt.h_acc_m, h_acc_mm as f32 / 1000.0);
+            prop_assert_eq!(pvt.s_acc_mps, s_acc_mms as f32 / 1000.0);
+            prop_assert_eq!(pvt.g_speed_mps, g_speed_mms as f32 / 1000.0);
+            prop_assert_eq!(pvt.gnss_fix_ok, flags & 1 != 0);
+            prop_assert_eq!(pvt.num_sv, num_sv);
+            Ok(())
+        },
+    );
+}
+
+#[test]
+fn an_rmc_after_any_well_formed_ubx_frame_still_parses() {
+    // UBX payloads are arbitrary binary, `$` and CRLF included; whatever the
+    // frame held, the NMEA sentence the receiver sends next must survive it.
+    check(
+        512,
+        (
+            any::<u8>(),
+            any::<u8>(),
+            prop::collection::vec(any::<u8>(), 0..=ubx::MAX_RX_PAYLOAD_LEN),
+            an_rmc(),
+        ),
+        |(class, id, payload, f)| {
+            let mut text = vec![0u8; ubx::FRAME_OVERHEAD + payload.len()];
+            ubx::write_frame(class, id, &payload, &mut text).expect("fits");
+            text.extend_from_slice(&f.text);
+            let sentences = feed_all(&text);
+            prop_assert!(
+                sentences
+                    .iter()
+                    .any(|s| matches!(s, Sentence::Rmc(r) if r.valid)),
+                "the RMC after a {}-byte UBX payload was lost",
+                payload.len()
+            );
+            Ok(())
+        },
+    );
+}

@@ -2239,8 +2239,9 @@ impl Recorder {
     /// Feed the estimator and bank what it credits, into the run total and
     /// into the pace bucket for the speed it credited at. RMC's speed over
     /// ground is the receiver's Doppler figure and its course the bearing;
-    /// NMEA carries no horizontal accuracy in metres, so the estimator's 3 m
-    /// floor stands in for it.
+    /// the horizontal and speed accuracies are the receiver's own UBX-NAV-PVT
+    /// `hAcc` / `sAcc` when a fresh PVT rode the fix ([`crate::fix`]), and
+    /// `None` otherwise, which leaves the estimator on its own floors.
     fn credit_estimated(&mut self, fix: &Fix) -> f64 {
         let t = f64::from(fix.uptime_s);
         let prev_t = self.gps.last_fix_t();
@@ -2248,9 +2249,9 @@ impl Recorder {
             t,
             fix.lat_deg,
             fix.lon_deg,
-            None,
+            fix.h_acc_m.map(f64::from),
             Some(f64::from(fix.speed_mps)),
-            None,
+            fix.s_acc_mps.map(f64::from),
             fix.course_deg.map(f64::from),
         );
         if inc > 0.0 {
@@ -3306,6 +3307,8 @@ mod tests {
             time_of_day: None,
             date: None,
             uptime_s: t,
+            h_acc_m: None,
+            s_acc_mps: None,
         }
     }
 

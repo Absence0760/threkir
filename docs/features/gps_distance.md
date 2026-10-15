@@ -115,6 +115,8 @@ The estimator assumes GNSS input: positions and Doppler speed measured by the sa
 
 **The estimator on true GNSS input.** Replaying the 2026-10-09 Garmin FIT tracks (GNSS-only positions) through `scripts/gps_distance/reference.py` `smooth_distance` reads -0.2% and +0.4% against the truth estimates (5,150 m / 10,450 m), where the Garmin itself read +0.9% / +0.8%. On the synthetic bench (`scripts/gps_distance/bench.py`, spec v1.3) with honest Doppler most rows stay within about ±1%. The known weak rows (forest trail -2.1%, slow walk +2.0%, canopy switchbacks) remain the measured-course tuning job in #1106. No constant changed for this: the spec stays v1.3 and the estimator `kalman_v3`.
 
+**The custom watch's input.** The firmware reads the u-blox MAX-M10S directly: positions from NMEA RMC, Doppler speed from RMC's speed over ground, bearing from its course, and the horizontal and speed accuracies from UBX-NAV-PVT `hAcc` / `sAcc`, which the firmware enables itself with a UBX-CFG-VALSET that also sets the pedestrian dynamic model (`apps/custom_watch/drivers/ublox_nmea/src/ubx.rs`). NMEA alone carries no accuracy in metres; GGA's HDOP is unitless and would need a guessed per-satellite error, so it is not used. A PVT feeds `accuracy_m` / `speed_accuracy_mps` only when it is at most one second from the RMC; otherwise both are `None` and the estimator applies its floors, which is also what the Renode sim's NMEA-only feed produces (decisions § 1992).
+
 ## Waypoint fields
 
 So the server can recompute distance from a stored track with the same Doppler input, each waypoint carries four optional keys alongside `lat` / `lng` / `elevationMetres` / `timestamp` / `bpm`:
@@ -294,3 +296,7 @@ v1.1 scenarios whose forward outputs moved in v1.2: only `walker` (154.83 to 154
 5. Drive the scenario list from the fixture rather than a hard-coded name list, so a new scenario cannot be skipped silently.
 
 Every threshold comparison in the vectors clears its threshold by at least 1.7e-3 relative (checked when the v1.2 vectors were generated; the v1.3 speed gate clears 1.5 m/s by at least 1.3e-3 relative and the turn gate 45 degrees by 1.2e-2), so float64 ports agree on every branch.
+
+### Rust (custom watch): accuracy plumbing
+
+The Rust port takes `accuracy_m` and `speed_accuracy_mps` from `Fix::h_acc_m` / `Fix::s_acc_mps` (`apps/custom_watch/core/src/fix.rs`), filled from a fresh UBX-NAV-PVT, in `Recorder::credit_estimated` (`core/src/record.rs`). The estimator itself is unchanged; a port of a spec bump changes `gps_distance.rs` only. `core/tests/prop_fix.rs` pins that the recorder's distance equals the estimator's for the same fixes with their accuracies.

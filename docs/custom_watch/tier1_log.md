@@ -1252,6 +1252,40 @@ port fidelity, and reporting any of it as a device defect would be false. The
 remaining eleven of the sixteen are filed with their measurement in
 [`followups.md`](../product/followups.md). § 82 unchanged.
 
+## 2026-10-15 — the receiver gets a dynamic model and the estimator gets a real accuracy
+
+Nothing configured the MAX-M10S's dynamic platform model, so it ran the factory
+`PORT` (portable) envelope, and `record.rs`'s `credit_estimated` passed the
+spec estimator `accuracy = None`, so every fix got the 3 m floor and was
+over-trusted under canopy (issue #1173).
+
+- `ublox_nmea::ubx::cfg_valset_runner` encodes one UBX-CFG-VALSET (RAM + BBR
+  layers): `CFG-NAVSPG-DYNMODEL` (`0x20110021`) = **PED (3)** and
+  `CFG-MSGOUT-UBX_NAV_PVT_UART1` (`0x20910007`) = 1. **Not WRIST (9):** the
+  M10 SPG 5.10 interface description (UBX-21035062) lists WRIST as "not
+  available in all products" and nothing for the MAX-M10S says it is one of
+  them; VALSET is atomic, so an unsupported value would also lose the NAV-PVT
+  enable. The gps task sends it on the first buffer after boot and after every
+  power-down wake, and logs the ACK/NAK.
+- `ublox_nmea::Parser` runs a UBX frame assembler beside the NMEA one and
+  decodes UBX-NAV-PVT (`hAcc`, `sAcc`, `gSpeed`, `numSV`, `fixType`,
+  `gnssFixOK`) and ACK/NAK. Each assembler sees every byte, so a `$` inside a
+  UBX payload or a `0xB5 0x62` inside noise costs the other nothing.
+- `watch_core::fix::Fix` carries `h_acc_m` / `s_acc_mps` from a PVT no more
+  than `PVT_MAX_AGE_S` (1 s) from the RMC on uptime and UTC; a no-fix PVT or a
+  void RMC clears it. `credit_estimated` hands both to `add_fix`. No change to
+  `gps_distance.rs`.
+
+Evidence: `cargo check` for `thumbv7em-none-eabihf` (default, `ble`,
+`log-personal-data`) and for the host with `--tests`; `cargo fmt --check`
+clean; `check_watch_doc_counts.mjs` green. The VALSET bytes are pinned against
+a hand-computed frame; NAV-PVT decode, parser interleaving, the freshness rule
+and the recorder-to-estimator hand-off have unit and property tests that run
+in CI. **Host-tested / build-verified only. Sim-verified: nothing** — the
+Renode feed is NMEA-only and ignores UBX, so on the sim every fix reads
+`None` and the estimator keeps its floor. **Bench-verified: nothing**; the
+checklist line is in [`quality_standards.md`](quality_standards.md) Step 3.
+
 ## Next entry expected
 
 Parts order + first flash (blink on the real DK) — see [`parts.md`](parts.md), now fully

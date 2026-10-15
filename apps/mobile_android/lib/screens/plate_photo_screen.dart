@@ -8,6 +8,7 @@ import '../l10n/gen/app_localizations.dart';
 import '../local_food_store.dart';
 import '../nutrition_totals.dart' show mealSlots;
 import '../plate_photo_client.dart';
+import '../typed_decimal.dart';
 import '../widgets/full_screen_form.dart';
 
 /// Picks a picture. Returns null when the runner backs out.
@@ -158,7 +159,7 @@ class PlatePhotoFormState extends State<PlatePhotoForm> {
   }
 
   double? _parse(TextEditingController c) {
-    final v = double.tryParse(c.text.trim().replaceAll(',', '.'));
+    final v = parseTypedDecimal(c.text);
     if (v == null || !v.isFinite || v < 0) return null;
     return v;
   }

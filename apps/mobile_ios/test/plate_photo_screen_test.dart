@@ -112,6 +112,34 @@ void main() {
     ]);
   });
 
+  testWidgets('a grouped comma-decimal edit is read as one number', (tester) async {
+    final store = _FakeStore();
+    await _pump(
+      tester,
+      PlatePhotoForm(
+        store: store,
+        picker: _picker,
+        estimator: (_, _) async => const PlateEstimate([
+          PlateItem(itemName: 'Pasta', calories: 900),
+        ], 'dinner'),
+      ),
+    );
+    await tester.tap(find.byKey(const ValueKey('plate-photo-gallery')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('plate-photo-estimate')));
+    await tester.pump();
+    await tester.pump();
+
+    await tester.enterText(find.widgetWithText(TextField, '900'), '1.250,5');
+    await tester.ensureVisible(find.byKey(const ValueKey('plate-photo-save')));
+    await tester.tap(find.byKey(const ValueKey('plate-photo-save')));
+    await tester.pump();
+    await tester.pump();
+    expect(store.saved, [
+      {'item_name': 'Pasta', 'meal_slot': 'dinner', 'calories': 1250.5},
+    ]);
+  });
+
   testWidgets('a Pro refusal shows the Pro message and saves nothing', (tester) async {
     final store = _FakeStore();
     await _pump(

@@ -11,6 +11,7 @@ import { readJsonWithLimit } from '../_shared/body_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';
 import { isValidUuid } from '../_shared/input_validation.ts';
 import { findViewableRun } from './viewable_run.ts';
+import { withholdFromNonOwner } from './non_owner_points.ts';
 import { gunzipCapped, InflateLimitError } from '../_shared/gunzip_capped.ts';
 import { publishableKey, secretKey } from '../_shared/api_keys.ts';
 import {
@@ -39,7 +40,8 @@ import {
 //   4. Merge the job_worker's smoothed-position sidecar onto the points
 //      when it names this exact track (watch runs, recomputed runs).
 //   5. If the caller is not the owner, route the points through
-//      clip_track_for_user. Owners receive the unclipped track.
+//      clip_track_for_user and withhold the per-point keys that measure the
+//      run from its start (`distM`). Owners receive the unclipped track.
 //   6. Return the points as JSON.
 
 Deno.serve(withSentry('clip-public-track', async (req: Request) => {
@@ -269,7 +271,8 @@ Deno.serve(withSentry('clip-public-track', async (req: Request) => {
   if (clipErr) {
     return Response.json({ error: 'clip failed' }, { status: 500 });
   }
-  return Response.json({ points: clipped ?? [] });
+  const clippedPoints = Array.isArray(clipped) ? clipped : [];
+  return Response.json({ points: withholdFromNonOwner(clippedPoints) });
 }));
 
 /// Inflate a stored track or sidecar, bounded on the OUTPUT: the 5 MB cap on

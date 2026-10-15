@@ -528,6 +528,7 @@ export type Database = {
           requires_activity_waiver: boolean
           shadow_hidden: boolean
           slug: string
+          strava_club_id: number | null
           strava_url: string | null
           updated_at: string | null
           website_url: string | null
@@ -551,6 +552,7 @@ export type Database = {
           requires_activity_waiver?: boolean
           shadow_hidden?: boolean
           slug: string
+          strava_club_id?: number | null
           strava_url?: string | null
           updated_at?: string | null
           website_url?: string | null
@@ -574,6 +576,7 @@ export type Database = {
           requires_activity_waiver?: boolean
           shadow_hidden?: boolean
           slug?: string
+          strava_club_id?: number | null
           strava_url?: string | null
           updated_at?: string | null
           website_url?: string | null
@@ -6756,6 +6759,7 @@ export type Database = {
           requires_activity_waiver: boolean
           shadow_hidden: boolean
           slug: string
+          strava_club_id: number | null
           strava_url: string | null
           updated_at: string | null
           website_url: string | null
@@ -6867,6 +6871,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      set_club_strava_link: {
+        Args: { p_actor: string; p_club_id: string; p_strava_club_id: number }
+        Returns: string
+      }
       set_discoverable_area: {
         Args: { p_label?: string; p_lat: number; p_lng: number }
         Returns: string
@@ -6935,6 +6943,7 @@ export type Database = {
         Returns: boolean
       }
       unblock_user: { Args: { p_target: string }; Returns: undefined }
+      unlink_club_strava: { Args: { p_club_id: string }; Returns: boolean }
       upsert_checkpoint_crossing: {
         Args: {
           p_bib?: string

@@ -36,7 +36,7 @@ Last moved: **2026-10-06**.
 | — | Developer Program enrollment | — | **Active** — App Store Connect reachable 2026-09-19 |
 | 1 | Team ID + renewal reminder | Bitwarden | **Done 2026-10-05** — Team ID confirmed; renewal reminder on the owner's calendar (auto-renew is on) |
 | 2 | App Groups `group.com.threkir.app.activerun` + `group.com.threkir.app.share` | Apple portal | **Done 2026-10-05** |
-| 3 | App IDs `com.threkir.app` + `com.threkir.app.ShareExtension` + `com.threkir.app.RunActivity` | Apple portal | **Done 2026-10-05** — both groups on `com.threkir.app`, the share group on `ShareExtension`, nothing on `RunActivity` |
+| 3 | App IDs `com.threkir.app` + `com.threkir.app.ShareExtension` + `com.threkir.app.RunActivity` | Apple portal | **Done 2026-10-05** — both groups on `com.threkir.app`, the share group on `ShareExtension`, nothing on `RunActivity`; **Associated Domains** added to `com.threkir.app` 2026-10-14 for universal links ([decisions § 1924](../architecture/decisions.md)) |
 | 4 | Watch App IDs `com.threkir.app.watchapp` + `com.threkir.app.watchapp.widget` | Apple portal | **Done 2026-10-05** — `.widget`, not `.complication`, which Apple reported unavailable ([decisions § 1754](../architecture/decisions.md)); `activerun` on both |
 | 5 | Services ID `com.threkir.web` | Apple portal | ☐ |
 | 6 | **APNs key** `.p8` | Firebase → Cloud Messaging | **Done 2026-09-19** |
@@ -49,7 +49,7 @@ Last moved: **2026-10-06**.
 | 12 | `mobile_android@` release (picks up the push config) | Play | **Done 2026-10-07** — `mobile_android@1.8.1` published, `release-android.yml` green (run 37551472463); a `device_tokens` row on first sign-in is still to be confirmed (`followups.md` § Push notifications) |
 | 13 | Android Apple dart-defines | `APPLE_SERVICE_CLIENT_ID` + `APPLE_REDIRECT_URI` | ☐ |
 | 14 | Apple Distribution certificate `.p12` | GitHub `production` env `IOS_BUILD_CERTIFICATE_BASE64` + `IOS_P12_PASSWORD`; estate | **Done 2026-10-05** — secrets set; `.p12` + password backed up in estate commit `b9280b6` (issue #1040); local copies and the keychain identity deleted |
-| 15 | App Store profiles, phone + share extension + Live Activity + watch + complication | GitHub `production` env `IOS_PROVISIONING_PROFILE_BASE64` + `IOS_SHARE_PROVISIONING_PROFILE_BASE64` + `IOS_RUN_ACTIVITY_PROVISIONING_PROFILE_BASE64` + `IOS_WATCH_PROVISIONING_PROFILE_BASE64` + `IOS_WATCH_COMPLICATION_PROVISIONING_PROFILE_BASE64` | **Done 2026-10-05** — all five checked against their bundle ids, App Store type, App Groups |
+| 15 | App Store profiles, phone + share extension + Live Activity + watch + complication | GitHub `production` env `IOS_PROVISIONING_PROFILE_BASE64` + `IOS_SHARE_PROVISIONING_PROFILE_BASE64` + `IOS_RUN_ACTIVITY_PROVISIONING_PROFILE_BASE64` + `IOS_WATCH_PROVISIONING_PROFILE_BASE64` + `IOS_WATCH_COMPLICATION_PROVISIONING_PROFILE_BASE64` | **Done 2026-10-05** — all five checked against their bundle ids, App Store type, App Groups. `Threkir App Store` (phone) **regenerated 2026-10-14** after Associated Domains was ticked, so it carries `com.apple.developer.associated-domains`; the owner re-uploaded it to `IOS_PROVISIONING_PROFILE_BASE64` the same day |
 | 16 | App Store Connect API key `.p8` | GitHub `production` env `APP_STORE_CONNECT_API_*`; estate | **Done 2026-10-05** — secrets set; `.p8` + Key ID backed up in estate commit `b9280b6` (issue #1040); local copy deleted |
 | 17 | App Store Connect app record | App Store Connect | **Done 2026-10-05** — Apple ID 6819364574, SKU `threkir-ios` |
 | 18 | First `mobile_ios@` release → TestFlight | GitHub Release | **Done 2026-10-06** — `mobile_ios@1.0.2` was the first green `release-ios.yml` run (37481034651), signing and uploading through `altool`; `1.0.3` and `1.0.4` followed |
@@ -239,6 +239,12 @@ Tick, under **Capabilities**:
   during registration**, and that is expected: the assignment UI needs an App ID
   that exists, so it appears when you *edit* the App ID, not when you create it.
   Assigning the group is the follow-up below.
+- **Associated Domains** — no configuration at Apple; the domain list lives in
+  `Runner.entitlements` (`applinks:threkir.com`) and the claim is proven by
+  `https://threkir.com/.well-known/apple-app-site-association`, published from
+  `apps/web/static/.well-known/` ([decisions § 1924](../architecture/decisions.md)).
+  Ticked 2026-10-14, after the profiles were first made, which is why step 15's
+  phone profile had to be regenerated.
 
 Do **not** tick:
 
@@ -410,10 +416,11 @@ callback. Two consequences:
 - **You should not be asked to verify a domain here.** Apple's
   `apple-developer-domain-association.txt` check applies to domains *you*
   control, and this one is Supabase's. If Apple demands verification you have
-  entered `threkir.com` — which would also fail, because our www→apex 301 and
-  the CloudFront behaviours do not guarantee a `.well-known` path answering 200
-  `text/plain` with no redirect, and Apple rejects all three. Step 10 is the one
-  place `threkir.com` legitimately appears.
+  entered `threkir.com`. Since decisions § 1923 / § 1924 the apex does serve
+  `.well-known/` straight from S3 with a 200 and no redirect (only `www.` is
+  301'd), and `assetlinks.json` and `apple-app-site-association` live there, but
+  no `apple-developer-domain-association.txt` is published, because nothing here
+  needs one. Step 10 is the one place `threkir.com` legitimately appears.
 
 ## Steps 6 and 7 are TWO keys, and that is the whole count
 
@@ -783,7 +790,11 @@ and for `com.threkir.app.RunActivity`, named `Threkir Run Activity App Store`.
 **Make these after steps 3 and 4 are finished — every App ID in both,
 App Group assignment included.** A profile records the App ID's capabilities when it is generated,
 so a capability enabled afterwards is missing from it until it is regenerated —
-and the build fails on the entitlement the profile lacks.
+and the build fails on the entitlement the profile lacks. That happened once:
+Associated Domains was ticked on `com.threkir.app` on 2026-10-14, so
+`Threkir App Store` was regenerated (Profiles → the profile → **Edit** →
+**Save** → **Download**) and re-uploaded with the first command below before the
+`applinks:threkir.com` entitlement could ship.
 
 ```
 base64 -i ~/Downloads/Threkir_App_Store.mobileprovision | gh secret set IOS_PROVISIONING_PROFILE_BASE64 --env production

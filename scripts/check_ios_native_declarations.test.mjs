@@ -354,6 +354,35 @@ test('the App Group container lookup obliges the application-groups entitlement'
 	assert.deepEqual(declared.warnings, []);
 });
 
+test('parsing https threkir.com links obliges the applinks entitlement', () => {
+	const parsingWebLinks = baseline({
+		dartSources: dart(
+			'IosTextToSpeechAudioCategory.playback\n' +
+				"import 'package:firebase_messaging/x.dart';\n" +
+				"if (uri.host == 'threkir.com') {}",
+		),
+	});
+	const { errors } = evaluate(parsingWebLinks);
+	assert.equal(errors.filter((e) => e.includes('associated-domains')).length, 1);
+
+	const wrongDomain = evaluate({
+		...parsingWebLinks,
+		entitlements: new Map(baseline().entitlements).set('com.apple.developer.associated-domains', [
+			'applinks:preview.threkir.com',
+		]),
+	});
+	assert.equal(wrongDomain.errors.filter((e) => e.includes('unusable')).length, 1);
+
+	const declared = evaluate({
+		...parsingWebLinks,
+		entitlements: new Map(baseline().entitlements).set('com.apple.developer.associated-domains', [
+			'applinks:threkir.com',
+		]),
+	});
+	assert.deepEqual(declared.errors, []);
+	assert.deepEqual(declared.warnings, []);
+});
+
 test('an application-groups value that is not a group. array fails', () => {
 	const { errors } = evaluate(
 		baseline({

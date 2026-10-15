@@ -376,6 +376,13 @@ jobs:
           # immutable year would pin a stale fingerprint or contact at the
           # edge. Content-Type comes from the extension (application/json,
           # text/plain), which is what Android's verifier requires.
+          #
+          # apple-app-site-association is the one file the extension rule
+          # cannot type: Apple requires the name with no extension, and
+          # `aws s3 sync` would guess a non-JSON Content-Type for it, which
+          # iOS's associated-domains fetch rejects. So pass 2 leaves it out
+          # (the exclude after the include wins) and a dedicated `cp` sets
+          # application/json with the same short cache (decisions § 1924).
           aws s3 sync apps/web/build/ "s3://${{ steps.aws.outputs.bucket }}/" \
             --delete \
             --cache-control "public,max-age=31536000,immutable" \
@@ -388,7 +395,12 @@ jobs:
             --exclude "*" \
             --include "*.html" \
             --include "app-capabilities.json" \
-            --include ".well-known/*"
+            --include ".well-known/*" \
+            --exclude ".well-known/apple-app-site-association"
+          aws s3 cp apps/web/build/.well-known/apple-app-site-association \
+            "s3://${{ steps.aws.outputs.bucket }}/.well-known/apple-app-site-association" \
+            --content-type "application/json" \
+            --cache-control "public,max-age=60,must-revalidate"
 
       - name: Update coach Lambda
         run: |

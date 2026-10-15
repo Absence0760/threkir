@@ -15,9 +15,10 @@
 // because a collation gives each reader their own correct order and a fold
 // gives everyone the English one. The second half needs no guard -- it permits
 // rather than requires -- and it stays permitted here automatically, since a
-// web-only module is not in the registry. The four surfaces 1400 examined
+// web-only module is not in the registry. Of the four surfaces 1400 examined
 // (`social/search_ranking.ts`, `social/dm_recipients.ts`, `core/data.ts`'s
-// suggested-people sort and the `/coaching` roster) are exactly those.
+// suggested-people sort and the `/coaching` roster), three still are;
+// `dm_recipients` gained a Dart twin and moved to the fold (1946).
 //
 // The pair list is READ from `.claude/agents/engineering/shared-library-syncer.md`, the
 // registry the syncer agent itself works from, so registering a new pair puts

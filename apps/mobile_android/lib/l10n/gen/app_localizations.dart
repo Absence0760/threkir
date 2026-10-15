@@ -25922,6 +25922,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Message'**
   String get profileMessage;
+
+  /// Share menu entry that sends this route to one follower as a direct message
+  ///
+  /// In en, this message translates to:
+  /// **'Send to a follower'**
+  String get routeDetailSendToFollower;
+
+  /// Title of the send-a-route sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Send this route'**
+  String get routeDetailSendDmTitle;
+
+  /// Explains who the route can be sent to
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a runner you follow, or who follows you. The route link lands in your conversation with them.'**
+  String get routeDetailSendDmIntro;
+
+  /// Shown when the recipient receives the public share link
+  ///
+  /// In en, this message translates to:
+  /// **'They get the public share link, so anyone they pass it on to can open it too.'**
+  String get routeDetailSendDmLinkNote;
+
+  /// Shown when the route stays private and only the recipient is granted access
+  ///
+  /// In en, this message translates to:
+  /// **'It stays private: only the person you send it to can open the link, and you can stop sharing at any time.'**
+  String get routeDetailSendDmPrivateNote;
+
+  /// Search field hint in the send-a-route sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Search people'**
+  String get routeDetailSendDmSearchPlaceholder;
+
+  /// The followers / following read failed, so the sheet cannot say who the route can go to
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load who you can send to.'**
+  String get routeDetailSendDmLoadFailed;
+
+  /// The sender has no follow edge in either direction
+  ///
+  /// In en, this message translates to:
+  /// **'You don\'t follow anyone yet, and nobody follows you yet.'**
+  String get routeDetailSendDmEmpty;
+
+  /// The search matched nobody
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody matches that search.'**
+  String get routeDetailSendDmNoMatches;
+
+  /// Recipient row: the two follow each other
+  ///
+  /// In en, this message translates to:
+  /// **'You follow each other'**
+  String get routeDetailSendDmRelationMutual;
+
+  /// Recipient row: this person follows the sender
+  ///
+  /// In en, this message translates to:
+  /// **'Follows you'**
+  String get routeDetailSendDmRelationFollowsYou;
+
+  /// Recipient row: the sender follows this person
+  ///
+  /// In en, this message translates to:
+  /// **'You follow them'**
+  String get routeDetailSendDmRelationYouFollow;
+
+  /// Recipient row action that sends the route
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get routeDetailSendDmSend;
+
+  /// Recipient row while the send is in flight
+  ///
+  /// In en, this message translates to:
+  /// **'Sending…'**
+  String get routeDetailSendDmSending;
+
+  /// Confirmation once the route was sent
+  ///
+  /// In en, this message translates to:
+  /// **'Route sent to {name}.'**
+  String routeDetailSendDmSent(String name);
+
+  /// Opens the conversation the route was sent into
+  ///
+  /// In en, this message translates to:
+  /// **'Open conversation'**
+  String get routeDetailSendDmOpenThread;
+
+  /// Closes the send-a-route sheet after a send
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get routeDetailSendDmDone;
 }
 
 class _AppLocalizationsDelegate

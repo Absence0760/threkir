@@ -4508,5 +4508,22 @@
   "messagesRouteUntitled": "Rota sem título",
   "messagesRouteUnavailable": "Esta rota não está mais disponível para você.",
   "messagesRouteLoading": "Carregando rota",
-  "profileMessage": "Mensagem"
+  "profileMessage": "Mensagem",
+  "routeDetailSendToFollower": "Enviar para um seguidor",
+  "routeDetailSendDmTitle": "Enviar esta rota",
+  "routeDetailSendDmIntro": "Escolha alguém que você segue ou que segue você. O link da rota chega na conversa de vocês.",
+  "routeDetailSendDmLinkNote": "A pessoa recebe o link público de compartilhamento, então qualquer um a quem ela repassar também poderá abri-lo.",
+  "routeDetailSendDmPrivateNote": "Continua privada: só a pessoa para quem você enviar pode abrir o link, e você pode parar de compartilhar a qualquer momento.",
+  "routeDetailSendDmSearchPlaceholder": "Buscar pessoas",
+  "routeDetailSendDmLoadFailed": "Não foi possível carregar para quem você pode enviar.",
+  "routeDetailSendDmEmpty": "Você ainda não segue ninguém e ninguém segue você.",
+  "routeDetailSendDmNoMatches": "Ninguém corresponde a essa busca.",
+  "routeDetailSendDmRelationMutual": "Vocês se seguem",
+  "routeDetailSendDmRelationFollowsYou": "Segue você",
+  "routeDetailSendDmRelationYouFollow": "Você segue essa pessoa",
+  "routeDetailSendDmSend": "Enviar",
+  "routeDetailSendDmSending": "Enviando…",
+  "routeDetailSendDmSent": "Rota enviada para {name}.",
+  "routeDetailSendDmOpenThread": "Abrir conversa",
+  "routeDetailSendDmDone": "Concluído"
 }

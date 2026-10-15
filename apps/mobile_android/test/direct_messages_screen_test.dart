@@ -143,7 +143,11 @@ class _FakeApi extends ApiClient {
   }
 
   @override
-  Future<DirectMessageRow> sendDm(String recipientId, String body) async {
+  Future<DirectMessageRow> sendDm(
+    String recipientId,
+    String body, {
+    String? routeId,
+  }) async {
     sent.add(body);
     final gate = sendGate;
     if (gate != null) return gate.future;

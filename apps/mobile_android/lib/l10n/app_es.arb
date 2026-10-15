@@ -4508,5 +4508,22 @@
   "messagesRouteUntitled": "Ruta sin título",
   "messagesRouteUnavailable": "Esta ruta ya no está disponible para ti.",
   "messagesRouteLoading": "Cargando ruta",
-  "profileMessage": "Mensaje"
+  "profileMessage": "Mensaje",
+  "routeDetailSendToFollower": "Enviar a un seguidor",
+  "routeDetailSendDmTitle": "Enviar esta ruta",
+  "routeDetailSendDmIntro": "Elige a alguien a quien sigues o que te sigue. El enlace de la ruta llegará a vuestra conversación.",
+  "routeDetailSendDmLinkNote": "Recibirá el enlace público para compartir, así que cualquiera a quien se lo reenvíe también podrá abrirlo.",
+  "routeDetailSendDmPrivateNote": "Sigue siendo privada: solo la persona a la que se la envías puede abrir el enlace, y puedes dejar de compartir en cualquier momento.",
+  "routeDetailSendDmSearchPlaceholder": "Buscar personas",
+  "routeDetailSendDmLoadFailed": "No se pudo cargar a quién puedes enviar la ruta.",
+  "routeDetailSendDmEmpty": "Todavía no sigues a nadie y nadie te sigue.",
+  "routeDetailSendDmNoMatches": "Nadie coincide con esa búsqueda.",
+  "routeDetailSendDmRelationMutual": "Os seguís mutuamente",
+  "routeDetailSendDmRelationFollowsYou": "Te sigue",
+  "routeDetailSendDmRelationYouFollow": "Sigues a esta persona",
+  "routeDetailSendDmSend": "Enviar",
+  "routeDetailSendDmSending": "Enviando…",
+  "routeDetailSendDmSent": "Ruta enviada a {name}.",
+  "routeDetailSendDmOpenThread": "Abrir conversación",
+  "routeDetailSendDmDone": "Listo"
 }

@@ -256,8 +256,40 @@ void main() {
         'sender_id': 'user-1',
         'recipient_id': 'other-1',
         'body': 'on my way',
+        'route_id': null,
       });
       expect(row.id, 'm-new');
+    });
+
+    test('a route attachment rides the insert as its route_id', () async {
+      await _signIn(client);
+      fake.bodyByPath[_messagesPath] = _message('m-new', routeId: 'route-9');
+
+      final row = await api.sendDm(
+        'other-1',
+        'https://threkir.com/share/route/route-9',
+        routeId: ' route-9 ',
+      );
+
+      final req = fake.to(_messagesPath).single as http.Request;
+      expect(jsonDecode(req.body), {
+        'sender_id': 'user-1',
+        'recipient_id': 'other-1',
+        'body': 'https://threkir.com/share/route/route-9',
+        'route_id': 'route-9',
+      });
+      expect(row.routeId, 'route-9');
+    });
+
+    test('a blank route id is sent as no attachment, not an empty FK',
+        () async {
+      await _signIn(client);
+      fake.bodyByPath[_messagesPath] = _message('m-new');
+
+      await api.sendDm('other-1', 'hi', routeId: '  ');
+
+      final req = fake.to(_messagesPath).single as http.Request;
+      expect((jsonDecode(req.body) as Map)['route_id'], isNull);
     });
 
     test('the follow / block refusal is a DmSendNotPermitted', () async {

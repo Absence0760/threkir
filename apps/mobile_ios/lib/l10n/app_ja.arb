@@ -4508,5 +4508,22 @@
   "messagesRouteUntitled": "名称未設定のルート",
   "messagesRouteUnavailable": "このルートは表示できなくなりました。",
   "messagesRouteLoading": "ルートを読み込み中",
-  "profileMessage": "メッセージ"
+  "profileMessage": "メッセージ",
+  "routeDetailSendToFollower": "フォロワーに送る",
+  "routeDetailSendDmTitle": "このルートを送る",
+  "routeDetailSendDmIntro": "フォローしている人、またはあなたをフォローしている人を選んでください。ルートのリンクがその人とのメッセージに届きます。",
+  "routeDetailSendDmLinkNote": "相手には公開共有リンクが届きます。転送された人も開くことができます。",
+  "routeDetailSendDmPrivateNote": "非公開のままです。送った相手だけがリンクを開け、いつでも共有を解除できます。",
+  "routeDetailSendDmSearchPlaceholder": "ユーザーを検索",
+  "routeDetailSendDmLoadFailed": "送信できる相手を読み込めませんでした。",
+  "routeDetailSendDmEmpty": "まだ誰もフォローしておらず、フォロワーもいません。",
+  "routeDetailSendDmNoMatches": "該当する人がいません。",
+  "routeDetailSendDmRelationMutual": "相互フォロー",
+  "routeDetailSendDmRelationFollowsYou": "あなたをフォロー中",
+  "routeDetailSendDmRelationYouFollow": "フォロー中",
+  "routeDetailSendDmSend": "送信",
+  "routeDetailSendDmSending": "送信中…",
+  "routeDetailSendDmSent": "{name} にルートを送信しました。",
+  "routeDetailSendDmOpenThread": "メッセージを開く",
+  "routeDetailSendDmDone": "完了"
 }

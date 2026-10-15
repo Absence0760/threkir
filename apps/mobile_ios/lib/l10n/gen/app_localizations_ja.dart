@@ -14962,4 +14962,59 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get profileMessage => 'メッセージ';
+
+  @override
+  String get routeDetailSendToFollower => 'フォロワーに送る';
+
+  @override
+  String get routeDetailSendDmTitle => 'このルートを送る';
+
+  @override
+  String get routeDetailSendDmIntro =>
+      'フォローしている人、またはあなたをフォローしている人を選んでください。ルートのリンクがその人とのメッセージに届きます。';
+
+  @override
+  String get routeDetailSendDmLinkNote => '相手には公開共有リンクが届きます。転送された人も開くことができます。';
+
+  @override
+  String get routeDetailSendDmPrivateNote =>
+      '非公開のままです。送った相手だけがリンクを開け、いつでも共有を解除できます。';
+
+  @override
+  String get routeDetailSendDmSearchPlaceholder => 'ユーザーを検索';
+
+  @override
+  String get routeDetailSendDmLoadFailed => '送信できる相手を読み込めませんでした。';
+
+  @override
+  String get routeDetailSendDmEmpty => 'まだ誰もフォローしておらず、フォロワーもいません。';
+
+  @override
+  String get routeDetailSendDmNoMatches => '該当する人がいません。';
+
+  @override
+  String get routeDetailSendDmRelationMutual => '相互フォロー';
+
+  @override
+  String get routeDetailSendDmRelationFollowsYou => 'あなたをフォロー中';
+
+  @override
+  String get routeDetailSendDmRelationYouFollow => 'フォロー中';
+
+  @override
+  String get routeDetailSendDmSend => '送信';
+
+  @override
+  String get routeDetailSendDmSending => '送信中…';
+
+  @override
+  String routeDetailSendDmSent(String name) {
+    return '$name にルートを送信しました。';
+  }
+
+  @override
+  String get routeDetailSendDmOpenThread => 'メッセージを開く';
+
+  @override
+  String get routeDetailSendDmDone => '完了';
 }

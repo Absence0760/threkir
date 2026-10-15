@@ -4508,5 +4508,22 @@
   "messagesRouteUntitled": "Itinéraire sans titre",
   "messagesRouteUnavailable": "Cet itinéraire n'est plus accessible pour vous.",
   "messagesRouteLoading": "Chargement de l'itinéraire",
-  "profileMessage": "Message"
+  "profileMessage": "Message",
+  "routeDetailSendToFollower": "Envoyer à un abonné",
+  "routeDetailSendDmTitle": "Envoyer cet itinéraire",
+  "routeDetailSendDmIntro": "Choisissez quelqu'un que vous suivez ou qui vous suit. Le lien de l'itinéraire arrivera dans votre conversation.",
+  "routeDetailSendDmLinkNote": "Cette personne reçoit le lien de partage public : quiconque le reçoit ensuite peut aussi l'ouvrir.",
+  "routeDetailSendDmPrivateNote": "Il reste privé : seule la personne à qui vous l'envoyez peut ouvrir le lien, et vous pouvez arrêter le partage à tout moment.",
+  "routeDetailSendDmSearchPlaceholder": "Rechercher des personnes",
+  "routeDetailSendDmLoadFailed": "Impossible de charger la liste des destinataires possibles.",
+  "routeDetailSendDmEmpty": "Vous ne suivez encore personne et personne ne vous suit.",
+  "routeDetailSendDmNoMatches": "Aucune personne ne correspond à cette recherche.",
+  "routeDetailSendDmRelationMutual": "Vous vous suivez mutuellement",
+  "routeDetailSendDmRelationFollowsYou": "Vous suit",
+  "routeDetailSendDmRelationYouFollow": "Vous suivez cette personne",
+  "routeDetailSendDmSend": "Envoyer",
+  "routeDetailSendDmSending": "Envoi…",
+  "routeDetailSendDmSent": "Itinéraire envoyé à {name}.",
+  "routeDetailSendDmOpenThread": "Ouvrir la conversation",
+  "routeDetailSendDmDone": "Terminé"
 }

@@ -21,6 +21,11 @@ export interface ClientErrorInput {
 export type ErrorSink = (...data: unknown[]) => void;
 
 export function logClientError(input: ClientErrorInput, sink: ErrorSink = console.error): void {
+	// SvelteKit calls the hook for a client-side navigation to an unmatched
+	// route too. A 404 is a page the reader asked for that does not exist, not
+	// something that threw, and logging it would make the crash net fail every
+	// spec that visits one on purpose.
+	if (input.status === 404) return;
 	try {
 		const route = input.event.route?.id ?? '(no route)';
 		sink(CLIENT_ERROR_LOG_PREFIX, `${input.status} ${input.message} on ${route}`, input.error);

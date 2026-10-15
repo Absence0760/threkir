@@ -24,10 +24,19 @@ test('logs the prefix, status, message, route and the error itself', () => {
 test('names an unmatched route instead of throwing on it', () => {
 	const calls: unknown[][] = [];
 	logClientError(
-		{ error: 'x', status: 404, message: 'Not Found', event: { route: { id: null } } },
+		{ error: 'x', status: 500, message: 'Internal Error', event: { route: { id: null } } },
 		(...data) => calls.push(data)
 	);
-	assert.equal(calls[0][1], '404 Not Found on (no route)');
+	assert.equal(calls[0][1], '500 Internal Error on (no route)');
+});
+
+test('a client-side 404 is not logged, so the crash net does not read it as a crash', () => {
+	const calls: unknown[][] = [];
+	logClientError(
+		{ error: new Error('Not found: /nope'), status: 404, message: 'Not Found', event: { route: { id: null } } },
+		(...data) => calls.push(data)
+	);
+	assert.equal(calls.length, 0);
 });
 
 test('a throwing sink does not escape', () => {

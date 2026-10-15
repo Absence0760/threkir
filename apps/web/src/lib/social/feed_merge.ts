@@ -91,3 +91,23 @@ export async function readChunked<T>(
 	const pages = await Promise.all(chunk(ids, FEED_FOLLOWEE_CHUNK).map(query));
 	return pages.flat();
 }
+
+/**
+ * `readChunked` for a call site that keeps supabase's `{ data, error }` shape
+ * instead of throwing: one query per FEED_FOLLOWEE_CHUNK-sized chunk of `ids`,
+ * rows concatenated in chunk order. The first failed chunk is reported with
+ * `data: null`, so a partial union is never handed back as the whole answer —
+ * the caller's existing error branch sees exactly what one query would have
+ * given it. Works for a write as well as a read (an `update` / `delete` filtered
+ * on the chunk), since each chunk is its own statement.
+ */
+export async function queryChunked<T, E>(
+	ids: readonly string[],
+	query: (part: string[]) => PromiseLike<{ data: T[] | null; error: E | null }>
+): Promise<{ data: T[] | null; error: E | null }> {
+	if (ids.length === 0) return { data: [], error: null };
+	const pages = await Promise.all(chunk([...ids], FEED_FOLLOWEE_CHUNK).map((part) => query(part)));
+	const failed = pages.find((p) => p.error != null);
+	if (failed) return { data: null, error: failed.error };
+	return { data: pages.flatMap((p) => p.data ?? []), error: null };
+}

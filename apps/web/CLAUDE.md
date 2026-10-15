@@ -67,7 +67,7 @@ share a program with `DOM`. A new tree under `apps/web` fails
 
 ## Create-flow modal pattern
 
-Every create surface (`/clubs`, `/plans`, `/runs`, `/history`, `/clubs/[slug]`, `/gym`, `/nutrition`) opens a modal hosting a reusable editor component (`ClubEditor`, `PlanEditor`, `RunEditor`, `EventEditor`, `GymEditor`, `FoodLogEditor`). `/history`'s Log menu hosts all three of RunEditor / GymEditor / FoodLogEditor; `/runs` hosts the RunEditor Add-run modal. Each editor takes an `oncreated` (and where applicable `oncancel`) callback; the host decides whether to close + refresh or navigate to the new entity.
+Every create surface (`/clubs`, `/plans`, `/runs`, `/history`, `/clubs/[slug]`, `/gym`, `/nutrition`) opens a modal hosting a reusable editor component (`ClubEditor`, `PlanEditor`, `RunEditor`, `EventEditor`, `GymEditor`, `FoodLogEditor`). `/history`'s Log menu hosts all three of RunEditor / GymEditor / FoodLogEditor (food through `LogFoodPanel`, which adds the gated "Log from a photo" entry — every Log food host uses it); `/runs` hosts the RunEditor Add-run modal. Each editor takes an `oncreated` (and where applicable `oncancel`) callback; the host decides whether to close + refresh or navigate to the new entity.
 
 The standalone `/new`-style routes (`/clubs/new`, `/plans/new`, `/runs/new`, `/clubs/[slug]/events/new`, `/nutrition/log`) are kept as **thin page wrappers** around the same editor components so deep links and browser back work unchanged. When you add a new editor, follow this same shape — never duplicate the form between the modal and the standalone route.
 

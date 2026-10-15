@@ -9,7 +9,7 @@ export const guide: Guide = {
 	audience: ['runner'],
 	requires: ['pro'],
 	platforms: ['web', 'android', 'ios'],
-	routes: ['/nutrition/log'],
+	routes: ['/nutrition', '/nutrition/log'],
 	sections: [
 		{
 			heading: 'Before you start',
@@ -35,8 +35,8 @@ export const guide: Guide = {
 				{
 					type: 'steps',
 					items: [
-						'Open the [[route:/nutrition/log|Log food]] page.',
-						'Under **Log from a photo**, select **Choose a photo** and pick a picture of your meal.',
+						'Open [[route:/nutrition|Nutrition]] and select **Log food**, then **Log from a photo**.',
+						'Select **Choose a photo** and pick a picture of your meal.',
 						'Add a **Note (optional)** if it helps, such as half portion.',
 						'Select **Estimate**.',
 					],

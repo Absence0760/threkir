@@ -29,8 +29,8 @@ export const translation: GuideTranslation = {
 				{
 					type: 'steps',
 					items: [
-						'Abre la página [[route:/nutrition/log|Registrar comida]].',
-						'En **Registrar desde una foto**, selecciona **Elegir una foto** y escoge una imagen de tu comida.',
+						'Abre [[route:/nutrition|Nutrición]] y selecciona **Registrar comida** y luego **Registrar desde una foto**.',
+						'Selecciona **Elegir una foto** y escoge una imagen de tu comida.',
 						'Añade una **Nota (opcional)** si ayuda, por ejemplo media ración.',
 						'Selecciona **Estimar**.',
 					],
@@ -83,8 +83,8 @@ export const translation: GuideTranslation = {
 		's0.b0.i2': '63338ba4abc28ffc',
 		's0.b1': '6791908473990cc8',
 		's1.heading': '1e1b85a2667ca4d5',
-		's1.b0.i0': '95844e8f3912970e',
-		's1.b0.i1': '74bd9cd2cdc290a4',
+		's1.b0.i0': '01eae5b5a4e98d0f',
+		's1.b0.i1': '29b05255de9bf718',
 		's1.b0.i2': 'e1f5d3b8c8fe13e4',
 		's1.b0.i3': '945cfae0c52315dc',
 		's2.heading': 'f21eaef94c685b5c',

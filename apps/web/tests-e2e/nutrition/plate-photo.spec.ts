@@ -6,7 +6,8 @@ import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
 
 /**
- * /nutrition/log — "Log from a photo" (decisions § 1972).
+ * "Log from a photo" on /nutrition/log and in the /nutrition Log food dialog
+ * (decisions § 1972).
  *
  * `/api/coach/plate-photo` is mocked at the network layer, so no Anthropic key
  * is needed: the endpoint's gates (v5 consent, Pro, the throttle, the forced
@@ -105,6 +106,47 @@ test.describe('/nutrition/log — plate photo', () => {
 			{ item_name: `Rice ${MARK}`, calories: 205, meal_slot: 'dinner' },
 			{ item_name: `Salmon ${MARK}`, calories: 300, meal_slot: 'dinner' },
 		]);
+	});
+
+	test('Log food on /nutrition reaches the photo logger and saves to the diary', async ({ page, mockRoute }) => {
+		// The logger once rendered only on /nutrition/log, which nothing links
+		// to; the Log food dialog is where a runner actually logs food.
+		await mockRoute(page, '**/api/coach/plate-photo', (route) =>
+			route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					meal_slot: 'lunch',
+					items: [{ item_name: `Soup ${MARK}`, confidence: 'high', calories: 180, protein_g: 6, carbs_g: 20, fat_g: 7 }],
+				}),
+			}),
+		);
+		await page.goto('/nutrition');
+		await page.getByTestId('log-food').click();
+		const dialog = page.getByRole('dialog', { name: 'Log food' });
+		await expect(dialog).toBeVisible({ timeout: 10_000 });
+		// Behind a button, so the manual composer stays the default.
+		await expect(dialog.getByTestId('plate-photo')).toHaveCount(0);
+		await expect(dialog.getByTestId('meal-slot')).toBeVisible();
+
+		await dialog.getByTestId('log-from-photo').click();
+		const panel = dialog.getByTestId('plate-photo');
+		await panel.getByTestId('plate-photo-file').setInputFiles({ name: 'soup.png', mimeType: 'image/png', buffer: PNG_2X2 });
+		await panel.getByTestId('plate-photo-estimate').click();
+		await expect(panel.getByTestId('plate-photo-item')).toHaveCount(1, { timeout: 10_000 });
+		await panel.getByTestId('plate-photo-save').click();
+
+		await expect(dialog).toHaveCount(0, { timeout: 10_000 });
+		await expect(page).toHaveURL(/\/nutrition$/);
+		const data = await readRows(
+			'plate-photo rows from the Log food dialog',
+			getAdminClient()
+				.from('food_log')
+				.select('item_name, calories, meal_slot')
+				.eq('user_id', USER_A.id)
+				.like('item_name', `%${MARK}%`),
+		);
+		expect(data).toEqual([{ item_name: `Soup ${MARK}`, calories: 180, meal_slot: 'lunch' }]);
 	});
 
 	for (const [label, status, body, text] of [

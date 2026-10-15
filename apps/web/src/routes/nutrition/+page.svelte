@@ -86,7 +86,7 @@
 	import { deferDestructive } from '#lib/stores/undo.svelte.ts';
 	import Modal from '#lib/components/Modal.svelte';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
-	import FoodLogEditor from '#lib/components/FoodLogEditor.svelte';
+	import LogFoodPanel from '#lib/components/LogFoodPanel.svelte';
 	import MealPlanEditor from '#lib/components/MealPlanEditor.svelte';
 	import NutritionPlanLibrary from '#lib/components/NutritionPlanLibrary.svelte';
 	import NutritionAdherencePanel from '#lib/components/NutritionAdherencePanel.svelte';
@@ -1228,7 +1228,7 @@
 	narrow
 	onclose={() => (showLog = false)}
 >
-	<FoodLogEditor oncreated={onLogged} diaryDate={viewDate} />
+	<LogFoodPanel oncreated={onLogged} diaryDate={viewDate} />
 </Modal>
 
 <Modal

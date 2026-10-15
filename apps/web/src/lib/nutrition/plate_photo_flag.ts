@@ -1,6 +1,7 @@
 /**
  * Fail-closed feature gate for the plate-photo logger — the "Log from a photo"
- * control on /nutrition/log (`/api/coach/plate-photo`, decisions § 1972).
+ * entry LogFoodPanel puts on every Log food surface (`/api/coach/plate-photo`,
+ * decisions § 1972).
  *
  * The deploy gate for sign-offs, not for missing code: counsel / CISO on the
  * v5 AI-disclosure copy (a meal photo is a new payload to a sub-processor) and

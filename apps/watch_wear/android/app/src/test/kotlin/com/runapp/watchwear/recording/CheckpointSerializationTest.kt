@@ -50,6 +50,7 @@ class CheckpointSerializationTest {
         steps = 6_400,
         privacyDefault = "public",
         pausedAccumulatedMs = 120_000,
+        gnssSignal = GnssSignalSummary(samples = 900, usedMedian = 12, cn0MedianDbHz = 36.4, cn0P10DbHz = 29.0, l5Fraction = 0.25),
     )
 
     @Test
@@ -213,6 +214,7 @@ class CheckpointSerializationTest {
         assertNull(decoded.steps)
         assertNull(decoded.privacyDefault)
         assertEquals(0L, decoded.pausedAccumulatedMs)
+        assertNull(decoded.gnssSignal)
     }
 
     @Test

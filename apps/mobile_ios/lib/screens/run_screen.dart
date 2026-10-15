@@ -1465,7 +1465,10 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   }
 
   void _preload() {
-    _recorder = RunRecorder(gnssPositions: gnssPositionsForPlatform());
+    _recorder = RunRecorder(
+      gnssPositions: gnssPositionsForPlatform(),
+      gnssStatus: gnssStatusForPlatform(),
+    );
     _snapshotSub = _recorder!.snapshots.listen(_onSnapshot);
 
     _wireLockScreenControls();
@@ -2363,7 +2366,10 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     _lastTickNotified = UnitFormat.activityTicks(
         _displayDistanceMetres, resumeTickInterval);
 
-    _recorder = RunRecorder(gnssPositions: gnssPositionsForPlatform());
+    _recorder = RunRecorder(
+      gnssPositions: gnssPositionsForPlatform(),
+      gnssStatus: gnssStatusForPlatform(),
+    );
     _snapshotSub = _recorder!.snapshots.listen(_onSnapshot);
     _wireLockScreenControls();
     _subscribeToPedometer();
@@ -3204,6 +3210,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       if (_steps > 0) cm.MetadataKeys.steps: _steps,
       if (_everHadGpsFix && _recorder?.locationProvider != null)
         cm.MetadataKeys.locationProvider: _recorder!.locationProvider,
+      if (_recorder?.gnssSignalMetadata != null)
+        cm.MetadataKeys.gnssSignal: _recorder!.gnssSignalMetadata,
       // The active race strategy, so a crash-recovered run resumes its
       // phases (and the final save keeps the metadata the runner actually
       // executed against).

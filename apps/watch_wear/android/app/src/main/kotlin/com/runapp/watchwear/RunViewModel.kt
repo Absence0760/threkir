@@ -1322,6 +1322,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                     distanceEstimator = cp.distanceEstimator,
                     distanceStepFilledM = cp.distanceStepFilledM,
                     locationProvider = cp.locationProvider,
+                    gnssSignal = cp.gnssSignal,
                 )
             )
             checkpoints.clear()
@@ -1789,6 +1790,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                     distanceEstimator = GpsDistanceEstimator.SPEC_ID,
                     distanceStepFilledM = m.distanceStepFilledM,
                     locationProvider = m.locationProvider,
+                    gnssSignal = m.gnssSignal,
                 )
             )
             rememberLastRun(m, runId, durationS)
@@ -2183,6 +2185,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
             distanceEstimator = run.distanceEstimator,
             distanceStepFilledM = run.distanceStepFilledM,
             locationProvider = run.locationProvider,
+            gnssSignal = run.gnssSignal,
         )
         // A queued run whose payload is gone is uploaded without one rather
         // than left in the queue promising a sync that can never happen. The

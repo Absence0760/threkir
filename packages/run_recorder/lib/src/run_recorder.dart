@@ -12,6 +12,7 @@ import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:uuid/uuid.dart';
 
+import 'gnss_signal_quality.dart';
 import 'gps_distance_estimator.dart';
 import 'run_snapshot.dart';
 
@@ -129,14 +130,20 @@ class RunRecorder {
   /// (Android's `GPS_PROVIDER`), which the recorder prefers over the
   /// platform's location stream whenever it is delivering. Null where the
   /// platform stream is the only source (iOS). See [_onGnssPosition].
+  ///
+  /// [gnssStatus] opens the receiver's satellite-status readings (Android's
+  /// `GnssStatus`), summarised into `metadata.gnss_signal` on [stop]. Null
+  /// where the platform has no such API (iOS).
   RunRecorder({
     Stopwatch? clock,
     Stream<Position> Function(Duration interval)? gnssPositions,
+    Stream<GnssStatusSample> Function()? gnssStatus,
     @visibleForTesting Stopwatch? sourceClock,
     @visibleForTesting int maxSmoothedStretchEvents = defaultMaxSmoothedStretchEvents,
   })  : _stopwatch = clock ?? Stopwatch(),
         _sourceClock = (sourceClock ?? Stopwatch())..start(),
         _gnssPositions = gnssPositions,
+        _gnssStatus = gnssStatus,
         _maxSmoothedStretchEvents = maxSmoothedStretchEvents;
 
   /// The most estimator inputs one stretch keeps for [stop]'s smoother replay.
@@ -172,6 +179,9 @@ class RunRecorder {
   StreamSubscription<Position>? _positionSub;
   final Stream<Position> Function(Duration interval)? _gnssPositions;
   StreamSubscription<Position>? _gnssSub;
+  final Stream<GnssStatusSample> Function()? _gnssStatus;
+  StreamSubscription<GnssStatusSample>? _gnssStatusSub;
+  GnssSignalAccumulator _gnssSignal = GnssSignalAccumulator();
   // Source arbitration between the GNSS stream and the platform stream, on
   // arrival time: the receiver's fix times are GNSS time and the fused
   // provider's are not, so the two cannot be compared with each other.
@@ -469,6 +479,36 @@ class RunRecorder {
     if (defaultTargetPlatform != TargetPlatform.android) return null;
     if (_gnssFixesRecorded > 0 && _platformFixesRecorded > 0) return 'mixed';
     return _gnssFixesRecorded > 0 ? 'gps' : 'fused';
+  }
+
+  /// The receiver's signal quality over the recorded, unpaused part of the
+  /// session, as `metadata.gnss_signal`; null until a status reading has
+  /// arrived. Not read by the distance estimator.
+  Map<String, dynamic>? get gnssSignalMetadata => _gnssSignal.toMetadata();
+
+  /// Subscribes to [_gnssStatus] for the recording. L4: a failure only loses
+  /// the summary, so it is caught here and never reaches the fix streams.
+  void _openGnssStatusStream() {
+    final open = _gnssStatus;
+    if (_disposed || open == null || _gnssStatusSub != null) return;
+    try {
+      _gnssStatusSub = open().listen(
+        _onGnssStatus,
+        onError: (Object e, StackTrace st) {
+          debugPrint('RunRecorder: GNSS status stream error — $e');
+          _gnssStatusSub?.cancel();
+          _gnssStatusSub = null;
+        },
+        cancelOnError: true,
+      );
+    } catch (e) {
+      debugPrint('RunRecorder: GNSS status stream failed to open — $e');
+      _gnssStatusSub = null;
+    }
+  }
+
+  void _onGnssStatus(GnssStatusSample s) {
+    if (_recording && !_paused && !_treadmillMode) _gnssSignal.add(s);
   }
 
   /// Whether [begin] has been called and time/distance are accumulating.
@@ -841,6 +881,8 @@ class RunRecorder {
     _resetTreadmillAccumulators();
     _recording = true;
     _paused = false;
+    _gnssSignal = GnssSignalAccumulator();
+    _openGnssStatusStream();
 
     // 1-second timer for elapsed time updates. Fires regardless of whether
     // we've received a GPS fix yet — during warmup or an indoor run the
@@ -1011,6 +1053,8 @@ class RunRecorder {
     _resetTreadmillAccumulators();
     _recording = true;
     _paused = false;
+    _gnssSignal = GnssSignalAccumulator();
+    _openGnssStatusStream();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!_recording) return;
       _emitSnapshot();
@@ -2072,6 +2116,8 @@ class RunRecorder {
     _positionSub = null;
     await _gnssSub?.cancel();
     _gnssSub = null;
+    await _gnssStatusSub?.cancel();
+    _gnssStatusSub = null;
     _finishEstimatorSegment();
 
     final startedAt = _startTime ?? DateTime.now();
@@ -2095,6 +2141,8 @@ class RunRecorder {
     if (provider != null && track.isNotEmpty) {
       metadata[MetadataKeys.locationProvider] = provider;
     }
+    final gnssSignal = gnssSignalMetadata;
+    if (gnssSignal != null) metadata[MetadataKeys.gnssSignal] = gnssSignal;
     if (_treadmillMode) {
       // Belt-measured distance is not GPS-measured, so the same exclusion the
       // pedometer-estimated indoor path uses applies: `indoor: true` keeps it
@@ -2242,6 +2290,8 @@ class RunRecorder {
     _positionSub = null;
     _gnssSub?.cancel();
     _gnssSub = null;
+    _gnssStatusSub?.cancel();
+    _gnssStatusSub = null;
     _controller.close();
   }
 }

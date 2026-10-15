@@ -43,6 +43,11 @@ object RecordingRepository {
         /// `Finished` transition, and null at every other stage or when the
         /// run has no track.
         val locationProvider: String? = null,
+        /// The receiver's signal quality over a FINISHED run
+        /// (`metadata.gnss_signal`). Written once, at the `Finished`
+        /// transition, and null at every other stage or when no status
+        /// reading arrived.
+        val gnssSignal: GnssSignalSummary? = null,
         val paceSecPerKm: Double? = null,
         val bpm: Int? = null,
         /// What the FINISHED run may claim about its heart rate: the graded

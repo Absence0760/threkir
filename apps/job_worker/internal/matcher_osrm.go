@@ -54,6 +54,7 @@ import (
 	"io"
 	"math"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -87,7 +88,7 @@ func NewOSRMMatcher(baseURL string) *OSRMMatcher {
 		BaseURL:    strings.TrimRight(baseURL, "/"),
 		HTTPClient: &http.Client{Timeout: 60 * time.Second},
 		ChunkSize:  100,
-		AlgVersion: "v1",
+		AlgVersion: "v2",
 	}
 }
 
@@ -215,6 +216,7 @@ func (m *OSRMMatcher) matchChunk(ctx context.Context, chunk []TrackPoint) ([]Tra
 	// redundant, and every dropped point is now a lost heart-rate
 	// sample and a lost timestamp rather than a tidier line.
 	sb.WriteString("?overview=false")
+	writeOSRMMatchHints(&sb, chunk)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, sb.String(), nil)
 	if err != nil {
@@ -272,6 +274,67 @@ func (m *OSRMMatcher) matchChunk(ctx context.Context, chunk []TrackPoint) ([]Tra
 		road = &chunkRoad{distanceM: *mt[0].Distance, confidence: mt[0].Confidence}
 	}
 	return out, true, road, nil
+}
+
+// OSRM treats a radius as the standard deviation of the fix's position
+// error. A reported accuracy is clamped into [osrmMinRadiusM,
+// osrmMaxRadiusM]: below the floor the HMM rejects a point that is a few
+// metres off a mis-drawn way, and above the ceiling every way in a
+// city block becomes a candidate and the match slows and wanders. A
+// point with no usable accuracy gets OSRM's own default, so a track
+// that never carried one matches exactly as it did before radiuses
+// were sent.
+const (
+	osrmMinRadiusM     = 5.0
+	osrmMaxRadiusM     = 50.0
+	osrmDefaultRadiusM = 5.0
+)
+
+func osrmRadiusM(p TrackPoint) float64 {
+	if p.AccuracyMetres == nil {
+		return osrmDefaultRadiusM
+	}
+	a := *p.AccuracyMetres
+	if math.IsNaN(a) || math.IsInf(a, 0) || a <= 0 {
+		return osrmDefaultRadiusM
+	}
+	return math.Min(osrmMaxRadiusM, math.Max(osrmMinRadiusM, a))
+}
+
+// writeOSRMMatchHints appends `radiuses` for every chunk, and
+// `timestamps` + `gaps=ignore` when every point carries a timestamp and
+// the whole-second values never go backwards — OSRM answers 400
+// InvalidValue to a decreasing sequence, which would fail the job
+// rather than one chunk. `gaps=ignore` keeps an auto-pause longer than
+// OSRM's 60 s split threshold from breaking the chunk into several
+// matchings, which would cost the run its road distance.
+func writeOSRMMatchHints(sb *strings.Builder, chunk []TrackPoint) {
+	sb.WriteString("&radiuses=")
+	for i, p := range chunk {
+		if i > 0 {
+			sb.WriteByte(';')
+		}
+		sb.WriteString(strconv.FormatFloat(math.Round(osrmRadiusM(p)), 'f', 0, 64))
+	}
+	secs := make([]int64, 0, len(chunk))
+	for _, p := range chunk {
+		if p.Timestamp == nil {
+			return
+		}
+		s := p.Timestamp.Unix()
+		if len(secs) > 0 && s < secs[len(secs)-1] {
+			return
+		}
+		secs = append(secs, s)
+	}
+	sb.WriteString("&timestamps=")
+	for i, s := range secs {
+		if i > 0 {
+			sb.WriteByte(';')
+		}
+		sb.WriteString(strconv.FormatInt(s, 10))
+	}
+	sb.WriteString("&gaps=ignore")
 }
 
 func isFiniteNonNeg(v float64) bool {

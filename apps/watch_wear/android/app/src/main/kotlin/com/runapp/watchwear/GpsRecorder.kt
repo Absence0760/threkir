@@ -2,10 +2,13 @@ package com.runapp.watchwear
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.location.GnssStatus
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
+import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationAvailability
 import com.google.android.gms.location.LocationCallback
@@ -14,6 +17,8 @@ import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.runapp.watchwear.recording.FIX_ACCURACY_GATE_M
+import com.runapp.watchwear.recording.GnssStatusSample
+import com.runapp.watchwear.recording.gnssStatusSample
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -163,5 +168,51 @@ class GpsRecorder(context: Context) {
             return@callbackFlow
         }
         awaitClose { lm.removeUpdates(listener) }
+    }
+
+    /// The receiver's satellite status, at most once a second, reduced to a
+    /// [GnssStatusSample] over the satellites used in the fix. Registering
+    /// the callback does not power the receiver; readings flow only while a
+    /// location request has it on. The flow ends when the watch has no
+    /// location service or the registration is refused.
+    @SuppressLint("MissingPermission")
+    fun gnssStatusStream(): Flow<GnssStatusSample> = callbackFlow {
+        val lm = locationManager
+        if (lm == null) {
+            close()
+            return@callbackFlow
+        }
+        var lastSentAt = 0L
+        val cb = object : GnssStatus.Callback() {
+            override fun onSatelliteStatusChanged(status: GnssStatus) {
+                val now = SystemClock.elapsedRealtime()
+                if (now - lastSentAt < MIN_STATUS_INTERVAL_MS) return
+                lastSentAt = now
+                trySend(sampleOf(status))
+            }
+        }
+        try {
+            lm.registerGnssStatusCallback(cb, Handler(Looper.getMainLooper()))
+        } catch (e: Exception) {
+            android.util.Log.w("GpsRecorder", "gnss status callback refused", e)
+            close()
+            return@callbackFlow
+        }
+        awaitClose { lm.unregisterGnssStatusCallback(cb) }
+    }
+
+    private fun sampleOf(status: GnssStatus): GnssStatusSample {
+        val cn0 = ArrayList<Double>()
+        val carrierHz = ArrayList<Double>()
+        for (i in 0 until status.satelliteCount) {
+            if (!status.usedInFix(i)) continue
+            cn0.add(status.getCn0DbHz(i).toDouble())
+            carrierHz.add(if (status.hasCarrierFrequencyHz(i)) status.getCarrierFrequencyHz(i).toDouble() else 0.0)
+        }
+        return gnssStatusSample(cn0.toDoubleArray(), carrierHz.toDoubleArray())
+    }
+
+    private companion object {
+        const val MIN_STATUS_INTERVAL_MS = 900L
     }
 }

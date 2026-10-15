@@ -655,7 +655,14 @@ steal focus from typing). `RotaryScrollWiringTest` pins the call sites.
   `speedMps`, `speedAccuracyMps`, `bearingDeg` keys so the server can
   recompute. Uploads stamp `metadata.distance_estimator = "kalman_v1"` and,
   when > 0, `distance_step_filled_m`; a run queued or checkpointed by an
-  older hop-summing build carries neither.
+  older hop-summing build carries neither. The stamp is what queues the
+  server's smoother: once the row has its `track_url`, the
+  `runs_enqueue_watch_distance_recompute` trigger queues a
+  `distance_recompute` job, which replays this track and replaces
+  `distance_m` with the smoothed figure (plus the step-filled metres),
+  keeping the wrist's figure as `distance_recorded_m`
+  ([gps_distance.md § Server recompute](../../docs/features/gps_distance.md#server-recompute),
+  decisions § 1991).
 - **Indoor / no-GPS mode.** The elapsed clock ticks regardless of GPS;
   distance stays 0 until the first fix lands. `TrackWriter.close()`
   produces a valid empty `[]` track, so the upload and downstream run

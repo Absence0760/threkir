@@ -77,7 +77,8 @@ function errorStatus(err: unknown): number | null {
 }
 
 function tidyDetail(code: string, message: string): string {
-	const collapsed = message.replace(/\s+/g, ' ').trim();
+	const own = code && message.endsWith(` (${code})`) ? message.slice(0, -code.length - 3) : message;
+	const collapsed = own.replace(/\s+/g, ' ').trim();
 	const prefixed = code && collapsed ? `${code}: ${collapsed}` : code || collapsed;
 	return prefixed.length > MAX_DETAIL_CHARS
 		? `${prefixed.slice(0, MAX_DETAIL_CHARS - 1)}…`

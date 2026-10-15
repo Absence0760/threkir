@@ -4,7 +4,8 @@ import { checkRateLimitTiered } from '../_shared/rate_limit.ts';
 import { readJsonWithLimit } from '../_shared/body_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';
 import { publishableKey, secretKey } from '../_shared/api_keys.ts';
-import { nearHintError, parseNearHint, providerRacesUrl, UPSTREAM_TIMEOUT_MS } from './lib.ts';
+import { isUpstreamTimeout, UPSTREAM_TIMEOUT_MS } from '../_shared/upstream_deadline.ts';
+import { nearHintError, parseNearHint, providerRacesUrl } from './lib.ts';
 import { syncProviderPayload } from './write.ts';
 
 // Pull a provider's upcoming races into race_listings.
@@ -120,7 +121,6 @@ Deno.serve(withSentry('race-listings-sync', async (req: Request) => {
 
   // One bound over the headers and the body, the sweep's (UPSTREAM_TIMEOUT_MS).
   const signal = AbortSignal.timeout(UPSTREAM_TIMEOUT_MS);
-  const timedOut = (err: unknown) => err instanceof DOMException && err.name === 'TimeoutError';
   let upstream: Response;
   try {
     upstream = await fetch(
@@ -133,7 +133,7 @@ Deno.serve(withSentry('race-listings-sync', async (req: Request) => {
       { headers: { 'User-Agent': Deno.env.get('RACE_IMPORT_USER_AGENT') || 'RunApp/1.0' }, signal },
     );
   } catch (err) {
-    return timedOut(err)
+    return isUpstreamTimeout(err)
       ? Response.json({ error: `${provider} upstream timeout` }, { status: 504 })
       : Response.json({ error: `${provider} upstream unreachable` }, { status: 502 });
   }
@@ -147,7 +147,7 @@ Deno.serve(withSentry('race-listings-sync', async (req: Request) => {
   try {
     payload = await upstream.json();
   } catch (err) {
-    return timedOut(err)
+    return isUpstreamTimeout(err)
       ? Response.json({ error: `${provider} upstream timeout` }, { status: 504 })
       : Response.json({ error: `${provider} upstream not JSON` }, { status: 502 });
   }

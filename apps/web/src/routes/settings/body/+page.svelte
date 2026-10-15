@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { dbError, thrownMessage } from '#lib/core/supabase_error.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { supabase } from '#lib/core/supabase.ts';
 	import { effective, updateUniversal } from '#lib/settings/settings.ts';
@@ -79,7 +80,7 @@
 		// as unticked/blank defaults, which an explicit Save would then
 		// round-trip back and clear the runner's real saved values.
 		const { data: prof, error: profErr } = await supabase.rpc('get_my_profile', undefined, { get: true }).maybeSingle();
-		if (profErr) throw profErr;
+		if (profErr) throw dbError(profErr);
 		if (prof) {
 			gender = prof.gender === 'male' || prof.gender === 'female' ? prof.gender : '';
 			dateOfBirth = prof.date_of_birth ?? '';
@@ -158,7 +159,7 @@
 				const { error: withdrawErr } = await supabase.rpc(
 					'withdraw_health_data_consent',
 				);
-				if (withdrawErr) throw withdrawErr;
+				if (withdrawErr) throw dbError(withdrawErr);
 				healthDataConsentAt = null;
 				loadedWeightKg = null;
 				weightInput = null;
@@ -180,12 +181,12 @@
 				.update(profileUpdate)
 				.eq('id', auth.user.id)
 				.select('id');
-			if (error) throw error;
+			if (error) throw dbError(error);
 			if (!updatedRows?.length) {
 				const { error: insertErr } = await supabase
 					.from('user_profiles')
 					.insert({ id: auth.user.id, ...profileUpdate });
-				if (insertErr) throw insertErr;
+				if (insertErr) throw dbError(insertErr);
 			}
 			// The prefs-bag mirror is the Art 9 health-use copy (coach context,
 			// HR-max derivation) — it follows consent in both directions, so a
@@ -219,7 +220,7 @@
 			showToast(m('prefs.demographicsSavedToast'), 'success');
 			setTimeout(() => (demographicsSaved = false), 2000);
 		} catch (e) {
-			showToast(m('prefs.saveFailed', { error: (e as Error).message }), 'error');
+			showToast(m('prefs.saveFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			savingDemographics = false;
 		}

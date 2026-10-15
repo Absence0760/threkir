@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { goto } from '$app/navigation';
 	import Avatar from '#lib/components/Avatar.svelte';
@@ -111,7 +112,7 @@
 				row: { ...x.row, read_at: x.row.read_at ?? new Date().toISOString() },
 			}));
 		} catch (e) {
-			showToast(m('notificationBell.markAllFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(m('notificationBell.markAllFailed', { error: thrownMessage(e) }), 'error');
 		}
 	}
 

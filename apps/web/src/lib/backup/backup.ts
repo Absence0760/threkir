@@ -1,4 +1,5 @@
 import { supabase } from '../core/supabase';
+import { dbError } from '../core/supabase_error';
 import type { JsonObject } from '../types';
 import type { Insertable } from '../core/database';
 import type { Json } from '../database.types';
@@ -88,7 +89,7 @@ export async function createBackup(
 	// Nothing at all is a failed backup, not a short one — the runner gets
 	// the error rather than a file with no runs in it. A read that died
 	// PART-way still holds runs worth keeping, so it ships flagged.
-	if (runsRead.error && runsRead.rows.length === 0) throw runsRead.error;
+	if (runsRead.error && runsRead.rows.length === 0) throw dbError(runsRead.error);
 	const runRows = runsRead.rows;
 
 	onProgress?.({ stage: 'routes', current: 0, total: 1 });
@@ -174,7 +175,7 @@ export async function createBackup(
 async function defaultTrackFetcher(trackUrl: string): Promise<Uint8Array> {
 	const { data, error } = await supabase.storage.from(BUCKETS.runs).download(trackUrl);
 	if (error || !data) {
-		throw error ?? new Error('track download returned no body');
+		throw error ? dbError(error) : new Error('track download returned no body');
 	}
 	return new Uint8Array(await data.arrayBuffer());
 }
@@ -220,7 +221,7 @@ function supabaseRestoreBackend(): RestoreBackend {
 			const { error } = await supabase
 				.from('user_profiles')
 				.upsert(row as Insertable<'user_profiles'>);
-			if (error) throw error;
+			if (error) throw dbError(error);
 		},
 		async upsertSettings(prefs) {
 			const userId = auth.user?.id;
@@ -230,7 +231,7 @@ function supabaseRestoreBackend(): RestoreBackend {
 				prefs,
 				updated_at: new Date().toISOString()
 			});
-			if (error) throw error;
+			if (error) throw dbError(error);
 		},
 		async uploadTrack(path, bytes) {
 			const { error } = await supabase.storage.from(BUCKETS.runs).upload(path, bytes, {
@@ -238,21 +239,21 @@ function supabaseRestoreBackend(): RestoreBackend {
 				upsert: true,
 				cacheControl: '0'
 			});
-			if (error) throw error;
+			if (error) throw dbError(error);
 		},
 		async upsertRun(row) {
 			markListsStale('runs', 'history', 'routes');
 			const { error } = await supabase
 				.from(TABLES.runs)
 				.upsert(row as Insertable<'runs'>, { onConflict: 'id' });
-			if (error) throw error;
+			if (error) throw dbError(error);
 		},
 		async upsertRoute(row) {
 			markListsStale('routes');
 			const { error } = await supabase
 				.from('routes')
 				.upsert(row as Insertable<'routes'>, { onConflict: 'id' });
-			if (error) throw error;
+			if (error) throw dbError(error);
 		},
 		async fetchValidEventIds(ids) {
 			const { data } = await supabase.from('events').select('id').in('id', ids);

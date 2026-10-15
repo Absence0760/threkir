@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { createChallenge, updateChallenge, fetchMyClubs } from '#lib/core/data.ts';
+	import { appErrorMessage } from '#lib/core/supabase_error.ts';
 	import type {
 		Challenge,
 		ChallengeMetric,
@@ -227,7 +228,7 @@
 			console.error(err);
 			// A PostgrestError is a plain object, so only a message data.ts
 			// deliberately wrapped in an Error reaches the reader.
-			showToast(err instanceof Error ? err.message : m('challenges.createFailed'), 'error');
+			showToast(appErrorMessage(err) ?? m('challenges.createFailed'), 'error');
 		} finally {
 			busy = false;
 		}

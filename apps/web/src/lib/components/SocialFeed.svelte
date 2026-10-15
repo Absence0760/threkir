@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import Avatar from '#lib/components/Avatar.svelte';
 	import { formatDuration, formatRelativeTime } from '#lib/format/time.ts';
@@ -111,7 +112,7 @@
 			exhausted = entries.length < 20;
 			engagement = await fetchEngagementSummaries(runIds(entries));
 		} catch (e) {
-			showToast(m('socialFeed.loadFeedError', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(m('socialFeed.loadFeedError', { error: thrownMessage(e) }), 'error');
 		} finally {
 			loading = false;
 			loaded = true;
@@ -139,7 +140,7 @@
 			// more" scroll trigger left the user scrolling forever
 			// waiting for entries that never arrived. Surface so they
 			// know to retry.
-			showToast(m('socialFeed.loadMoreError', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(m('socialFeed.loadMoreError', { error: thrownMessage(e) }), 'error');
 		} finally {
 			loadingMore = false;
 		}
@@ -170,7 +171,7 @@
 				});
 			}
 		} catch (e) {
-			showToast(m('socialFeed.kudosError', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(m('socialFeed.kudosError', { error: thrownMessage(e) }), 'error');
 		} finally {
 			const next = new Set(kudosBusy);
 			next.delete(runId);

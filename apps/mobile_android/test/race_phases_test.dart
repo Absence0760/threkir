@@ -1,3 +1,4 @@
+import 'package:core_models/core_models.dart' show Waypoint;
 import 'package:flutter_test/flutter_test.dart';
 import '../lib/race_phases.dart';
 
@@ -11,6 +12,37 @@ double weightedMeanFactor(List<RacePhase> phases) {
   }
   return sum / total;
 }
+
+const double mPerDegLat = 111320;
+
+/// A meridian-aligned track of [legs], each `(metres, pace s/km)` in 50 m
+/// steps; a `(seconds, null)` leg holds position for that many seconds.
+List<Waypoint> trackOf(List<(double, double?)> legs) {
+  var cumM = 0.0;
+  var tMs = DateTime.utc(2026, 4, 12, 7).millisecondsSinceEpoch;
+  Waypoint at() => Waypoint(
+      lat: 40 + cumM / mPerDegLat,
+      lng: -105,
+      timestamp: DateTime.fromMillisecondsSinceEpoch(tMs, isUtc: true));
+  final out = <Waypoint>[at()];
+  for (final (m, pace) in legs) {
+    if (pace == null) {
+      tMs += (m * 1000).round();
+      out.add(at());
+      continue;
+    }
+    final n = (m / 50).round() < 1 ? 1 : (m / 50).round();
+    for (var i = 0; i < n; i++) {
+      cumM += m / n;
+      tMs += (m / n * pace).round();
+      out.add(at());
+    }
+  }
+  return out;
+}
+
+const half = PacingStrategy(
+    preset: RacePhasePreset.negativeSplit, distanceM: 10000, goalTimeS: 3000);
 
 void main() {
   test('even preset is one full-distance phase at factor 1', () {
@@ -113,5 +145,89 @@ void main() {
         ['ten_ten_ten', 'negative_split', 'even']);
     expect(RacePhaseIntent.values.map((i) => i.wire).toList(),
         ['hold_back', 'settle', 'race', 'even']);
+  });
+
+  test('parsePacingStrategy reads the writer shape and drops an absent goal to null', () {
+    final full = parsePacingStrategy(
+        {'preset': 'ten_ten_ten', 'distance_m': 42195, 'goal_time_s': 12600})!;
+    expect(full.preset, RacePhasePreset.tenTenTen);
+    expect(full.distanceM, 42195);
+    expect(full.goalTimeS, 12600);
+    final even = parsePacingStrategy({'preset': 'even', 'distance_m': 5000})!;
+    expect(even.preset, RacePhasePreset.even);
+    expect(even.distanceM, 5000);
+    expect(even.goalTimeS, isNull);
+  });
+
+  test('parsePacingStrategy refuses an unknown preset, a bad distance, and a non-object', () {
+    expect(parsePacingStrategy({'preset': 'pyramid', 'distance_m': 10000}), isNull);
+    expect(parsePacingStrategy({'preset': 'even', 'distance_m': 0}), isNull);
+    expect(parsePacingStrategy({'preset': 'even', 'distance_m': '5000'}), isNull);
+    expect(parsePacingStrategy({'preset': 'even'}), isNull);
+    expect(parsePacingStrategy('even'), isNull);
+    expect(parsePacingStrategy(null), isNull);
+    expect(parsePacingStrategy(<Object>[]), isNull);
+  });
+
+  test('gradePhases grades phases on moving time, so a stop does not read as a slow phase', () {
+    final r = gradePhases(
+        trackOf([(2500, 306), (240, null), (2500, 306), (5000, 294)]), half);
+    expect(r.phases.map((p) => p.grade).toList(),
+        [PhaseGrade.onTarget, PhaseGrade.onTarget]);
+    expect(r.verdict, PhaseReviewVerdict.onPlan);
+    expect((r.phases[0].actualPaceSecPerKm! - 306).abs(), lessThanOrEqualTo(1));
+  });
+
+  test('gradePhases without a track keeps the goal targets and grades nothing', () {
+    final r = gradePhases(null, half);
+    expect(r.verdict, PhaseReviewVerdict.ungraded);
+    expect(r.ungradedReason, PhaseUngradedReason.noTrack);
+    expect(r.completed, isFalse);
+    expect(
+        r.phases
+            .map((p) => [p.coverage, p.targetPaceSecPerKm, p.actualPaceSecPerKm])
+            .toList(),
+        [
+          [PhaseCoverage.notReached, 306, null],
+          [PhaseCoverage.notReached, 294, null],
+        ]);
+  });
+
+  test('gradePhases calls a fast first phase followed by a slow finish going out too fast', () {
+    final r = gradePhases(trackOf([(5000, 290), (5000, 310)]), half);
+    expect(r.phases.map((p) => p.grade).toList(),
+        [PhaseGrade.fast, PhaseGrade.slow]);
+    expect(r.verdict, PhaseReviewVerdict.wentOutTooFast);
+    expect(r.phases[0].gapSecPerKm! < 0 && r.phases[1].gapSecPerKm! > 0, isTrue);
+  });
+
+  test('gradePhases on a run well short of the plan marks it incomplete and leaves later phases unreached', () {
+    final r = gradePhases(trackOf([(3000, 306)]), half);
+    expect(r.completed, isFalse);
+    expect(r.phases.map((p) => p.coverage).toList(),
+        [PhaseCoverage.partial, PhaseCoverage.notReached]);
+    expect(r.phases[1].actualPaceSecPerKm, isNull);
+    expect(r.verdict, PhaseReviewVerdict.onPlan);
+  });
+
+  test('gradePhases needs a goal time to grade a single-phase even plan', () {
+    final r = gradePhases(trackOf([(5000, 300)]),
+        const PacingStrategy(preset: RacePhasePreset.even, distanceM: 5000));
+    expect(r.basis, PhaseTargetBasis.average);
+    expect(r.verdict, PhaseReviewVerdict.ungraded);
+    expect(r.ungradedReason, PhaseUngradedReason.noGoal);
+    expect(r.phases[0].targetPaceSecPerKm, isNull);
+  });
+
+  test('gradePhases band: a 1.4% miss is on target, a 2.7% miss is not', () {
+    expect(phaseBandPct, 0.015);
+    const even = PacingStrategy(
+        preset: RacePhasePreset.even, distanceM: 5000, goalTimeS: 1500);
+    expect(gradePhases(trackOf([(5000, 304)]), even).phases[0].grade,
+        PhaseGrade.onTarget);
+    expect(gradePhases(trackOf([(5000, 308)]), even).phases[0].grade,
+        PhaseGrade.slow);
+    expect(gradePhases(trackOf([(5000, 292)]), even).phases[0].grade,
+        PhaseGrade.fast);
   });
 }

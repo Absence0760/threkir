@@ -15,10 +15,17 @@
 /// refusal to state a monthly series anchored past the 28th. Web's guards for
 /// an unparseable UNTIL and a non-integer COUNT have no analogue here — a
 /// `DateTime` and an `int` cannot arrive in those states.
+///
+/// The stored recurrence fields are wall-clock in the event's own zone, so the
+/// rule restates them in that zone and the zone crosses the channel with it
+/// (decisions § 1919): the platform expands BYDAY on the event's local
+/// weekdays and keeps the local time of day across DST, as the app does.
 library;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:timezone/data/latest.dart' as tzdata;
+import 'package:timezone/timezone.dart' as tz;
 
 import 'event_occurrence.dart';
 import 'recurrence.dart';
@@ -38,11 +45,6 @@ const List<Weekday> _rruleWeekdayOrder = [
   Weekday.su,
 ];
 
-/// A weekly series' first occurrence is at most 7 days past `startsAt`, a
-/// biweekly's 14, a monthly's 0 — but a series bounded by `until` can have none
-/// at all, so the search window is generous and the empty case is handled.
-const Duration _anchorWindow = Duration(days: 400);
-
 /// How far ahead cancelled occurrences are counted for the surface's note —
 /// the same one-year horizon the occurrence picker expands over.
 const Duration _cancellationHorizon = Duration(days: 365);
@@ -51,11 +53,18 @@ const Duration _cancellationHorizon = Duration(days: 365);
 class CalendarSeries {
   /// The rule's first occurrence. RFC 5545 § 3.8.5.3 requires the start to be a
   /// member of the recurrence set and `startsAt` need not be (a Tuesday-created
-  /// Saturday series), so this is the first expanded occurrence.
+  /// Saturday series), so this is the first date in the event's zone that
+  /// carries one of its weekdays, at `startsAt`'s local time of day.
   final DateTime anchor;
 
-  /// The RRULE value, with no `RRULE:` prefix.
+  /// The RRULE value, with no `RRULE:` prefix. Its weekdays and day of the
+  /// month are read in [timeZone].
   final String rrule;
+
+  /// The IANA zone the platform must expand [rrule] in — the event's own. Null
+  /// for a legacy series with no stored zone, which the app expands on the
+  /// viewer's clock and so the device calendar's default zone matches.
+  final String? timeZone;
 
   /// Called-off occurrences within the next year. Neither `ACTION_INSERT`'s
   /// extras nor `EKRecurrenceRule` carry exception dates, so the hand-off
@@ -66,6 +75,7 @@ class CalendarSeries {
   const CalendarSeries({
     required this.anchor,
     required this.rrule,
+    required this.timeZone,
     required this.unsubtractedCancellations,
   });
 }
@@ -127,23 +137,41 @@ CalendarSeries? calendarSeriesFor(
   final freq = e.freq;
   if (freq == null) return null;
 
-  final seriesStart = _wholeSecond(e.startsAt);
-  final anchors = expandInstances(
-    e,
-    seriesStart,
-    seriesStart.add(_anchorWindow),
-    max: 1,
-  );
-  if (anchors.isEmpty) return null;
-  final anchor = anchors.first;
+  final _Clock clock;
+  if (e.timezone == null) {
+    clock = const _DeviceClock();
+  } else {
+    final location = _location(e.timezone!);
+    if (location == null) return null;
+    clock = _ZoneClock(location);
+  }
+
+  final start = clock.read(_wholeSecond(e.startsAt));
+  final stored = e.byday ?? const <Weekday>[];
+  final byday = stored.isNotEmpty
+      ? [
+          for (final w in _rruleWeekdayOrder)
+            if (stored.contains(w)) w,
+        ]
+      : [_rruleWeekdayOrder[start.weekday - 1]];
+
+  final anchorDay = freq == RecurrenceFreq.monthly
+      ? start
+      : _firstSeriesDay(freq, byday, start);
+  if (anchorDay == null) return null;
+  final anchor = clock.stamp(anchorDay, start);
+  // A start in the second pass of a fall-back hour is its own first
+  // occurrence, but a zoned reading names the first pass, so no rule anchored
+  // on the platform's wall clock can state it.
+  if (anchor.isBefore(_wholeSecond(e.startsAt))) return null;
+  final until = e.until;
+  if (until != null && anchor.isAfter(until)) return null;
 
   final end = _resolveSeriesEnd(e);
   final rrule = buildRrule(
     freq: freq,
-    byday: freq == RecurrenceFreq.monthly
-        ? const []
-        : _seriesWeekdays(e, anchor),
-    monthDay: freq == RecurrenceFreq.monthly ? anchor.toUtc().day : null,
+    byday: freq == RecurrenceFreq.monthly ? const [] : byday,
+    monthDay: freq == RecurrenceFreq.monthly ? start.day : null,
     count: end.count,
     until: end.until,
   );
@@ -154,11 +182,117 @@ CalendarSeries? calendarSeriesFor(
   return CalendarSeries(
     anchor: anchor,
     rrule: rrule,
+    timeZone: e.timezone,
     unsubtractedCancellations: [
       for (final d in ahead)
         if (isOccurrenceCancelled(cancelled, d)) d,
     ],
   );
+}
+
+/// The first date on or after [start]'s date carrying one of [byday], counting
+/// a fortnightly series in the even weeks from the Monday of [start]'s week.
+DateTime? _firstSeriesDay(
+  RecurrenceFreq freq,
+  List<Weekday> byday,
+  DateTime start,
+) {
+  final sinceMonday = start.weekday - 1;
+  for (var offset = sinceMonday; offset < 35; offset++) {
+    if (freq == RecurrenceFreq.biweekly && (offset ~/ 7).isOdd) continue;
+    final day = DateTime.utc(start.year, start.month, start.day - sinceMonday + offset);
+    if (byday.contains(_rruleWeekdayOrder[day.weekday - 1])) return day;
+  }
+  return null;
+}
+
+bool _tzReady = false;
+
+tz.Location? _location(String name) {
+  if (!_tzReady) {
+    tzdata.initializeTimeZones();
+    _tzReady = true;
+  }
+  // The bundled database carries `Etc/UTC` but not the bare `UTC` the
+  // platforms and the web client report.
+  if (name == 'UTC') return tz.UTC;
+  try {
+    return tz.getLocation(name);
+  } catch (_) {
+    return null;
+  }
+}
+
+/// Reads an instant as wall-clock fields (returned in a UTC `DateTime` so the
+/// fields are the reading itself) and turns a reading back into an instant.
+abstract class _Clock {
+  DateTime read(DateTime instant);
+
+  /// The instant [day]'s date at [timeOfDay]'s time reads as.
+  DateTime stamp(DateTime day, DateTime timeOfDay);
+}
+
+/// The event's own zone. A reading a spring-forward gap skips is taken with
+/// the offset in force before the gap (02:30 -> 03:30), and one the fall-back
+/// hour repeats takes the earlier instant — RFC 5545 § 3.3.5, which is how
+/// the platform calendar will resolve the same reading.
+class _ZoneClock implements _Clock {
+  final tz.Location location;
+  const _ZoneClock(this.location);
+
+  int _offsetMs(int utcMs) => location.timeZone(utcMs).offset.inMilliseconds;
+
+  @override
+  DateTime read(DateTime instant) {
+    final ms = instant.millisecondsSinceEpoch;
+    return DateTime.fromMillisecondsSinceEpoch(ms + _offsetMs(ms), isUtc: true);
+  }
+
+  @override
+  DateTime stamp(DateTime day, DateTime timeOfDay) {
+    final naive = DateTime.utc(
+      day.year,
+      day.month,
+      day.day,
+      timeOfDay.hour,
+      timeOfDay.minute,
+      timeOfDay.second,
+    ).millisecondsSinceEpoch;
+    const dayMs = 86400000;
+    final before = _offsetMs(naive - dayMs);
+    final after = _offsetMs(naive + dayMs);
+    final matches = <int>{
+      for (final o in {before, after})
+        if (_offsetMs(naive - o) == o) naive - o,
+    }.toList()
+      ..sort();
+    return DateTime.fromMillisecondsSinceEpoch(
+      matches.isEmpty ? naive - before : matches.first,
+      isUtc: true,
+    );
+  }
+}
+
+/// The device's own clock, for a legacy series with no stored zone — the clock
+/// the app expands it on.
+class _DeviceClock implements _Clock {
+  const _DeviceClock();
+
+  @override
+  DateTime read(DateTime instant) {
+    final l = instant.toLocal();
+    return DateTime.utc(l.year, l.month, l.day, l.hour, l.minute, l.second);
+  }
+
+  @override
+  DateTime stamp(DateTime day, DateTime timeOfDay) => DateTime(
+        day.year,
+        day.month,
+        day.day,
+        timeOfDay.hour,
+        timeOfDay.minute,
+        timeOfDay.second,
+      ).toUtc();
 }
 
 /// The app applies `until` and `count` together; a rule may carry only one.
@@ -179,37 +313,12 @@ CalendarSeries? calendarSeriesFor(
 
 /// [expandInstances] stamps every occurrence at whole-second resolution, so a
 /// `starts_at` carrying sub-second precision sorts strictly after its own first
-/// occurrence — searching from the raw value silently drops it and anchors the
-/// series one period late (and counts one occurrence short).
+/// occurrence — counting from the raw value silently drops it and states the
+/// series one occurrence short.
 DateTime _wholeSecond(DateTime d) => DateTime.fromMillisecondsSinceEpoch(
       d.millisecondsSinceEpoch - d.millisecondsSinceEpoch % 1000,
       isUtc: d.isUtc,
     );
-
-/// The BYDAY set, read off the expansion rather than translated from
-/// `recurrence_byday`: the stored codes are wall-clock in the event's own zone
-/// while the rule is anchored in UTC, so a late-evening event sits on a
-/// different UTC weekday than the code the organiser picked. One cycle is
-/// enough to see every weekday the series lands on.
-List<Weekday> _seriesWeekdays(EventRecurrence e, DateTime anchor) {
-  final cycleDays = e.freq == RecurrenceFreq.biweekly ? 15 : 8;
-  final cycle = expandInstances(
-    e,
-    _wholeSecond(e.startsAt),
-    // elapsed-time: a loose upper bound on one recurrence cycle, matching the
-    // millisecond span web's twin walks — not a calendar step.
-    anchor.add(Duration(days: cycleDays)),
-    max: 20,
-  );
-  final seen = {for (final d in cycle) _utcWeekday(d)};
-  if (seen.isEmpty) seen.add(_utcWeekday(anchor));
-  return [
-    for (final w in _rruleWeekdayOrder)
-      if (seen.contains(w)) w,
-  ];
-}
-
-Weekday _utcWeekday(DateTime d) => _rruleWeekdayOrder[d.toUtc().weekday - 1];
 
 String _rruleUtc(DateTime d) {
   final u = d.toUtc();
@@ -219,7 +328,9 @@ String _rruleUtc(DateTime d) {
 }
 
 /// Open the OS calendar's own new-event editor, pre-filled from the event —
-/// one occurrence, or the whole series when [rrule] is set.
+/// one occurrence, or the whole series when [rrule] is set. [timeZone] is the
+/// IANA zone the entry lives in, which is the zone the platform expands
+/// [rrule] in; null leaves the calendar's default (the device zone).
 ///
 /// Returns false when the editor could not be opened (no calendar app,
 /// calendar access refused on iOS, no native handler) so the caller can say so.
@@ -232,6 +343,7 @@ Future<bool> addToDeviceCalendar({
   String? location,
   String? url,
   String? rrule,
+  String? timeZone,
 }) async {
   final startUtc = start.toUtc();
   try {
@@ -246,6 +358,7 @@ Future<bool> addToDeviceCalendar({
       'location': location,
       'url': url,
       'rrule': rrule,
+      'timeZone': timeZone,
     });
     return opened == true;
   } catch (e) {

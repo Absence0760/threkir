@@ -581,7 +581,7 @@ test('deleteNotifications is one delete_notifications RPC call, guards empty, su
 	);
 	assert.match(
 		body,
-		/if \(error\) throw error;/,
+		/if \(error\) throw dbError\(error\);/,
 		'deleteNotifications must throw the supabase error — a swallowed failure leaves the row gone from the UI but present in the DB. The RPC also RAISES past its 1000-id cap rather than truncating, and that refusal must reach the caller.',
 	);
 });
@@ -648,7 +648,7 @@ test('setRunPublic is a real toggle: writes the caller boolean and surfaces erro
 	);
 	assert.match(
 		body,
-		/if \(error\) throw error;/,
+		/if \(error\) throw dbError\(error\);/,
 		'setRunPublic must throw the supabase error — callers surface it as a toast, not a silent no-op.',
 	);
 	assert.doesNotMatch(
@@ -757,7 +757,7 @@ test('updateEvent scopes the write to a single event row and throws on error', (
 	);
 	assert.match(
 		body,
-		/if \(error\) throw error;/,
+		/if \(error\) throw dbError\(error\);/,
 		'updateEvent must throw on a DB error, not swallow it.',
 	);
 });
@@ -1118,7 +1118,7 @@ test('fetchGymRoutineHistory aggregates on the server, never re-windows gym_work
 	);
 	assert.match(
 		body,
-		/if \(error\) throw error;/,
+		/if \(error\) throw dbError\(error\);/,
 		'a failed read must throw so the panel offers a retry — never an empty history.'
 	);
 	// The panel asks for exactly the rows it lists, and reads the count off the
@@ -1453,7 +1453,7 @@ test('every "answered empty" read that a stranger can hit reports the failure se
 			/if \(error \|\| !data\) return null;/,
 			`${fn} must not collapse a failed read into "no campaign" — fetchFundraiserById throws and says why`,
 		);
-		assert.match(body, /if \(error\) throw error;/, `${fn} must throw on a failed read`);
+		assert.match(body, /if \(error\) throw dbError\(error\);/, `${fn} must throw on a failed read`);
 	}
 });
 
@@ -2227,4 +2227,24 @@ test('every clubs read narrows join_policy, and none of them fails open', () => 
 			`${fn} must narrow join_policy at the read boundary, not assert it`,
 		);
 	}
+});
+
+test('joinClubByToken raises the waiver refusal as an Error the join page can recognise', () => {
+	// Reason: the page asks isActivityWaiverRequired(e) to decide between the
+	// waiver step and the "invalid or expired" banner. A DbError's message
+	// carries the SQLSTATE ("activity_waiver_required (P0001)"), so comparing a
+	// thrown DbError's message to the bare code would send every waiver club to
+	// the error banner. The refusal is re-raised as its own Error before
+	// dbError, the same shape as PAID_EVENT_DELETE_REFUSAL.
+	const source = stripComments(read('src/lib/core/data.ts'));
+	const start = source.indexOf('export async function joinClubByToken(');
+	assert.ok(start > 0, 'joinClubByToken not found — rename it here too.');
+	const body = source.slice(start, source.indexOf('\nexport ', start + 1));
+	const refusal = body.indexOf('throw new Error(ACTIVITY_WAIVER_REQUIRED)');
+	assert.ok(refusal > 0, 'the waiver refusal must be raised as new Error(ACTIVITY_WAIVER_REQUIRED)');
+	assert.ok(refusal < body.indexOf('throw dbError(error)'), 'and before the generic dbError throw');
+	assert.match(
+		source,
+		/export function isActivityWaiverRequired\(e: unknown\): boolean \{\s*return e instanceof Error && e\.message === ACTIVITY_WAIVER_REQUIRED;/,
+	);
 });

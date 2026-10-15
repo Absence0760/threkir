@@ -153,6 +153,40 @@ The 1-second elapsed-time timer inside `begin()` emits snapshots unconditionally
 9.  User taps Done → _discard() resets all state → _ScreenState.idle
 ```
 
+### After the run: grading the race strategy
+
+When a race strategy was active, the final save stamps
+`metadata.pacing_strategy` (`{ preset, distance_m, goal_time_s? }`,
+[metadata.md](../backend/metadata.md)) — the plan itself is derivable, so it
+is not stored. Run detail reads it back on web (`/runs/[id]`) and on the phone
+(`widgets/pacing_strategy_section.dart`) through the `race_phases` pair's
+`parsePacingStrategy` + `gradePhases` ([decisions § 1915](../architecture/decisions.md)):
+
+- **Phases are cut by distance**, with the slicer `pace_analysis` cuts the
+  pacing halves with. When the track measured within 10 % of the planned
+  distance the boundaries scale to the track (GPS that read a marathon 300 m
+  long is cut where the runner crossed the 10-mile marks); otherwise they stay
+  at their planned metres, so a run that stopped at 28 km of 42.2 shows the
+  last phase as not reached and says it ended short.
+- **Paces are moving paces**: a segment under 0.5 m/s (the `movingTimeSeconds`
+  threshold) is a stop, so a pause, an aid station or a traffic light does not
+  grade as a phase run slow. A phase under 200 m of moving distance is shown
+  but not graded.
+- **Targets** are the goal pace times each phase's factor when a goal time was
+  set. Without one they are the plan's shape at the run's own average moving
+  pace — enough to grade a multi-phase plan's shape, nothing for a one-phase
+  even plan, which says so.
+- **Grades**: a phase within 1.5 % of its target is on target — tighter than
+  the 2 % hold-back step, or running the hold-back phase at goal pace would
+  pass. The verdict, first match wins, from the first (F) and last (L) graded
+  phases' relative gaps: all on target → *on plan*; one graded phase → *faster*
+  / *slower than plan*; F fast and L lost more than 1.5 % on it → *went out too
+  fast*; L slow and worse than F by more than 1.5 % → *faded*; F worse than L
+  by more than 1.5 % → *finished stronger than planned*; otherwise the
+  distance-weighted mean gap decides *faster* / *slower than plan*.
+- A run with no timed track keeps its targets and says why nothing is graded;
+  a preset the build does not know renders no section at all.
+
 ---
 
 ## Persistence and crash recovery

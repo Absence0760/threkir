@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { compareOrdinal } from '#lib/util/ordinal_compare.ts';
 	import { page } from '$app/state';
@@ -232,8 +233,8 @@
 			routes = routes.map((r) => (r.id === routeId ? { ...r, is_starred: !next } : r));
 			showToast(
 				next
-					? m('routesPage.starError', { error: String(e) })
-					: m('routesPage.unstarError', { error: String(e) }),
+					? m('routesPage.starError', { error: thrownMessage(e) })
+					: m('routesPage.unstarError', { error: thrownMessage(e) }),
 				'error',
 			);
 		}

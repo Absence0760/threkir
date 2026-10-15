@@ -33,6 +33,7 @@ import { createClient } from '@supabase/supabase-js';
 
 import { parseAuthHeader } from '../../coach/limits';
 import { checkRouteRateLimit } from '../rate_limit';
+import { thrownMessage } from '../../core/supabase_error';
 
 export const OSRM_DEMO_URL = 'https://router.project-osrm.org';
 
@@ -249,7 +250,7 @@ export async function handleOsrmProxy(
 		}
 		return { status: 200, body: await res.json() };
 	} catch (e) {
-		console.warn('[osrm-proxy] upstream error:', e instanceof Error ? e.message : String(e));
+		console.warn('[osrm-proxy] upstream error:', thrownMessage(e));
 		return { status: 502, body: { error: 'routing engine unavailable' } };
 	}
 }

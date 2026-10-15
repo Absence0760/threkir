@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { formatDuration } from '#lib/format/time.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
@@ -91,7 +92,7 @@
 			efforts = res.efforts;
 			globalEfforts = globals;
 		} catch (e) {
-			loadError = e instanceof Error ? e.message : String(e);
+			loadError = thrownMessage(e);
 		} finally {
 			loading = false;
 		}
@@ -112,12 +113,12 @@
 
 {#if loading}
 	<p class="muted">{m('segmentEfforts.checking')}</p>
-{:else if loadError}
+{:else if loadError !== null}
 	<div class="error-banner" role="alert">
 		<span class="material-symbols" aria-hidden="true">error</span>
 		<div>
 			<strong>{m('runs.loadFailed')}</strong>
-			<span class="error-detail">{loadError}</span>
+			{#if loadError}<span class="error-detail">{loadError}</span>{/if}
 		</div>
 		<button class="btn btn-outline btn-sm" onclick={load}>{m('runs.retry')}</button>
 	</div>

@@ -23,6 +23,7 @@ Future<String?> showClubFormSheet(
   BuildContext context, {
   required SocialService social,
   ClubRow? existing,
+  String? initialName,
 }) {
   final formKey = GlobalKey<_ClubFormScreenState>();
   return showFullScreenForm<String>(
@@ -32,21 +33,38 @@ Future<String?> showClubFormSheet(
         : AppLocalizations.of(context).clubFormEditTitle,
     isDirty: () => formKey.currentState?.isDirty ?? false,
     builder: (_) =>
-        _ClubFormScreen(key: formKey, social: social, existing: existing),
+        _ClubFormScreen(
+          key: formKey,
+          social: social,
+          existing: existing,
+          initialName: initialName,
+        ),
   );
 }
+
+String _prefilledClubName(String? raw) => String.fromCharCodes(
+      (raw ?? '').trim().runes.take(kClubNameMaxLength),
+    ).trim();
 
 class _ClubFormScreen extends StatefulWidget {
   final SocialService social;
   final ClubRow? existing;
-  const _ClubFormScreen({super.key, required this.social, this.existing});
+  final String? initialName;
+  const _ClubFormScreen({
+    super.key,
+    required this.social,
+    this.existing,
+    this.initialName,
+  });
 
   @override
   State<_ClubFormScreen> createState() => _ClubFormScreenState();
 }
 
 class _ClubFormScreenState extends State<_ClubFormScreen> {
-  late final _name = TextEditingController(text: widget.existing?.name ?? '');
+  late final _name = TextEditingController(
+    text: widget.existing?.name ?? _prefilledClubName(widget.initialName),
+  );
   late final _description =
       TextEditingController(text: widget.existing?.description ?? '');
   late final _location =

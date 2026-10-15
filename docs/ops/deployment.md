@@ -647,6 +647,10 @@ Before flipping any service from "Plan" to live in the table at the top:
 7. Tick the corresponding box in [roadmap.md](../product/roadmap.md).
 8. If this enables a feature, flip the cell in [parity.md](../product/parity.md).
 
+### Recurring events — move keyed rows onto wall-clock instants (owner-approved)
+
+Migration `20270808000011` (decisions § 1918) changes a timezoned series' occurrences to the organiser's wall-clock and accepts both the old UTC-clock instants and the new ones until the window is closed, so it is safe to push on its own and must be pushed **before** the web release that carries the matching clients. The rows keyed by the old instants do not move on push: the owner runs `apps/backend/scripts/ops/measure_recurrence_wallclock_impact.sql`, approves, and an operator then follows [recurrence_wallclock_remap.md](recurrence_wallclock_remap.md) (dry run, batched remap, web + mobile release, sweeps, close).
+
 ### Audience sharing — after the CISO / Security Analyst review
 
 The followers level and named-person run / route shares ([sharing.md](../features/sharing.md), decisions § 1874) ship closed: no migration writes the `audience_sharing` row of `private.feature_flags`, so prod answers exactly as before. Open it only after the CISO / Security Analyst has reviewed the audience oracles, the `shared_runs` / `shared_routes` projections, and the `clip-public-track` branch — then, in the prod SQL editor: `insert into private.feature_flags (name, enabled) values ('audience_sharing', true) on conflict (name) do update set enabled = true, updated_at = now();`. Closing it again is the same statement with `false`; every read path falls back at once, and existing grants stay inert until it reopens.

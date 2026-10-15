@@ -2767,6 +2767,107 @@ export type Database = {
           },
         ]
       }
+      nutrition_plan_assignments: {
+        Row: {
+          assigned_by: string | null
+          client_id: string
+          created_at: string
+          end_date: string | null
+          id: string
+          last_modified_at: string
+          plan_id: string
+          start_date: string
+          status: string
+        }
+        Insert: {
+          assigned_by?: string | null
+          client_id: string
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          last_modified_at?: string
+          plan_id: string
+          start_date: string
+          status?: string
+        }
+        Update: {
+          assigned_by?: string | null
+          client_id?: string
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          last_modified_at?: string
+          plan_id?: string
+          start_date?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nutrition_plan_assignments_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "nutrition_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nutrition_plans: {
+        Row: {
+          author_id: string
+          created_at: string
+          external_id: string | null
+          goal_phase: string
+          id: string
+          last_modified_at: string
+          notes: string | null
+          progression: string
+          progression_params: Json
+          target_calories: number
+          target_carbs_g: number | null
+          target_fat_g: number | null
+          target_protein_g: number | null
+          title: string
+          training_calories: number | null
+          training_carbs_g: number | null
+        }
+        Insert: {
+          author_id: string
+          created_at?: string
+          external_id?: string | null
+          goal_phase?: string
+          id?: string
+          last_modified_at?: string
+          notes?: string | null
+          progression?: string
+          progression_params?: Json
+          target_calories: number
+          target_carbs_g?: number | null
+          target_fat_g?: number | null
+          target_protein_g?: number | null
+          title: string
+          training_calories?: number | null
+          training_carbs_g?: number | null
+        }
+        Update: {
+          author_id?: string
+          created_at?: string
+          external_id?: string | null
+          goal_phase?: string
+          id?: string
+          last_modified_at?: string
+          notes?: string | null
+          progression?: string
+          progression_params?: Json
+          target_calories?: number
+          target_carbs_g?: number | null
+          target_fat_g?: number | null
+          target_protein_g?: number | null
+          title?: string
+          training_calories?: number | null
+          training_carbs_g?: number | null
+        }
+        Relationships: []
+      }
       payment_refunds: {
         Row: {
           amount_cents: number
@@ -5908,6 +6009,10 @@ export type Database = {
           event_id: string
           going_count: number
         }[]
+      }
+      event_occurrence_exists: {
+        Args: { p_event_id: string; p_instance: string }
+        Returns: boolean
       }
       event_orders_owed_refund: {
         Args: { p_limit: number }

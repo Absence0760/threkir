@@ -10,6 +10,7 @@ import 'package:meta/meta.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'chunk.dart';
+import 'direct_messages.dart';
 import 'effort_rank.dart';
 import 'paged_read.dart';
 import 'segments_rank.dart';
@@ -8400,6 +8401,156 @@ class ApiClient {
           authorAvatarUrl: byId[b.userId]?['avatar_url'] as String?,
         ),
     ];
+  }
+
+  /// Direct-message inbox: one row per conversation with its latest message
+  /// and the viewer's unread count, newest conversation first. Mirrors web
+  /// `fetchDmThreads`. The aggregation is the `dm_threads()` RPC, which runs
+  /// SECURITY INVOKER under the participants-only SELECT policy over the
+  /// viewer's whole message set, so no conversation drops out of a window.
+  /// Throws on a failed read so the inbox can tell "no conversations" from
+  /// "did not load". Partner names are a second read, and a failure there
+  /// leaves the names null rather than failing the inbox, as web does.
+  Future<List<DmThread>> fetchDmThreads() async {
+    if (_client.auth.currentUser == null) return const [];
+    final res = await _client.rpc('dm_threads', params: const {}, get: true);
+    final rows = (res as List).cast<Map<String, dynamic>>();
+    if (rows.isEmpty) return const [];
+    final partnerIds = <String>{
+      for (final r in rows) r['partner_id'] as String,
+    }.toList();
+    final profileById = <String, Map<String, dynamic>>{};
+    try {
+      final profiles = await readChunked(
+        partnerIds,
+        (chunk) => _client
+            .from(UserProfileRow.table)
+            .select('id, display_name, avatar_url')
+            .inFilter(UserProfileRow.colId, chunk),
+      );
+      for (final p in profiles) {
+        profileById[p['id'] as String] = p;
+      }
+    } catch (e) {
+      debugPrint('fetchDmThreads profile read failed: ${safeErrorLabel(e)}');
+    }
+    return [
+      for (final r in rows)
+        DmThread(
+          partnerId: r['partner_id'] as String,
+          partnerName:
+              profileById[r['partner_id']]?['display_name'] as String?,
+          partnerAvatarUrl:
+              profileById[r['partner_id']]?['avatar_url'] as String?,
+          lastBody: r['last_body'] as String,
+          lastAt: parseIsoStrictRequired(r['last_at'], 'last_at'),
+          lastFromMe: r['last_from_me'] == true,
+          unread: (r['unread'] as num?)?.toInt() ?? 0,
+        ),
+    ];
+  }
+
+  /// One page of the conversation with [otherId], oldest message first.
+  ///
+  /// Keyset-paged newest-first on `(created_at, id)`: [before] is the oldest
+  /// message already shown, and the page holds the [limit] messages before it.
+  /// Web reads the oldest 200 ascending and stops, so a long thread there
+  /// never reaches its latest messages; paging from the newest end is what
+  /// makes the first screen the current one. The pair is matched as both
+  /// columns IN the two ids, which with the table's `sender_id <>
+  /// recipient_id` CHECK is exactly the two directions of this conversation.
+  /// Throws on a failed read.
+  Future<DmThreadPage> fetchDmThread(
+    String otherId, {
+    DirectMessageRow? before,
+    int limit = 50,
+  }) async {
+    final me = _client.auth.currentUser?.id;
+    if (me == null) {
+      return const DmThreadPage(messages: [], hasMore: false);
+    }
+    final pair = [me, otherId];
+    var query = _client
+        .from(DirectMessageRow.table)
+        .select()
+        .inFilter(DirectMessageRow.colSenderId, pair)
+        .inFilter(DirectMessageRow.colRecipientId, pair);
+    if (before != null) {
+      final at = before.createdAt.toUtc().toIso8601String();
+      query = query.or(
+        '${DirectMessageRow.colCreatedAt}.lt."$at",'
+        'and(${DirectMessageRow.colCreatedAt}.eq."$at",'
+        '${DirectMessageRow.colId}.lt.${before.id})',
+      );
+    }
+    final rows = await query
+        .order(DirectMessageRow.colCreatedAt, ascending: false)
+        .order(DirectMessageRow.colId, ascending: false)
+        .limit(limit + 1);
+    final page = [for (final r in rows) DirectMessageRow.fromJson(r)];
+    final hasMore = page.length > limit;
+    final kept = hasMore ? page.sublist(0, limit) : page;
+    return DmThreadPage(messages: kept.reversed.toList(), hasMore: hasMore);
+  }
+
+  /// Send [body] to [recipientId]. Mirrors web `sendDm`.
+  ///
+  /// The INSERT policy refuses a send with no follow edge either way or with
+  /// a block either way; that 42501 is thrown as [DmSendNotPermitted]. The
+  /// rail's send throttle (migration 20270608_001) raises the shared P0001
+  /// every create-rate-limit raises, and is rethrown as the
+  /// `PostgrestException` it is so the caller runs the shared
+  /// `rateLimitErrorMessage` parser over it.
+  Future<DirectMessageRow> sendDm(String recipientId, String body) async {
+    final me = _client.auth.currentUser?.id;
+    if (me == null) throw StateError('not signed in');
+    final trimmed = body.trim();
+    if (trimmed.isEmpty) throw ArgumentError.value(body, 'body', 'is empty');
+    try {
+      final row = await _client
+          .from(DirectMessageRow.table)
+          .insert({
+            DirectMessageRow.colSenderId: me,
+            DirectMessageRow.colRecipientId: recipientId,
+            DirectMessageRow.colBody: trimmed,
+          })
+          .select()
+          .single();
+      return DirectMessageRow.fromJson(row);
+    } on PostgrestException catch (e) {
+      if (e.code == '42501') throw const DmSendNotPermitted();
+      rethrow;
+    }
+  }
+
+  /// Mark the messages [otherId] sent the viewer as read, up to and including
+  /// [through] on the thread's `(created_at, id)` order. RLS lets only the
+  /// recipient stamp `read_at`.
+  ///
+  /// [through] is the newest message the reader has on screen. Web's
+  /// `markDmThreadRead` has no bound and stamps everything, so a reply that
+  /// lands between the read that drew the conversation and this write is
+  /// marked read without ever having been shown.
+  Future<void> markDmThreadRead(
+    String otherId, {
+    required DirectMessageRow through,
+  }) async {
+    final me = _client.auth.currentUser?.id;
+    if (me == null) throw StateError('not signed in');
+    final at = through.createdAt.toUtc().toIso8601String();
+    await _client
+        .from(DirectMessageRow.table)
+        .update({
+          DirectMessageRow.colReadAt: DateTime.now().toUtc().toIso8601String(),
+        })
+        .eq(DirectMessageRow.colSenderId, otherId)
+        .eq(DirectMessageRow.colRecipientId, me)
+        .isFilter(DirectMessageRow.colReadAt, null)
+        .or(
+          '${DirectMessageRow.colCreatedAt}.lt."$at",'
+          'and(${DirectMessageRow.colCreatedAt}.eq."$at",'
+          '${DirectMessageRow.colId}.lte.${through.id})',
+        );
   }
 
   static String _isoDate(DateTime d) =>

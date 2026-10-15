@@ -14,6 +14,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { isEntityId } from '../core/entity_id';
 import { recapPeriodLabel } from './recap_period_label';
+import { thrownMessage } from '../core/supabase_error';
 
 export { recapPeriodLabel };
 
@@ -101,7 +102,7 @@ export async function lookupSharedRecap(
 	} catch (err) {
 		console.error(
 			'[share-recap] upstream_unreachable',
-			err instanceof Error ? err.message : String(err),
+			thrownMessage(err),
 		);
 		return { recap: null };
 	}

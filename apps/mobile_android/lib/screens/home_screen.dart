@@ -56,6 +56,8 @@ import 'confirm_age_screen.dart';
 import 'dashboard_screen.dart';
 import 'event_detail_screen.dart';
 import 'fitness_hub_screen.dart';
+import 'message_thread_screen.dart';
+import 'messages_screen.dart';
 import '../onboarding.dart';
 import 'plan_new_screen.dart';
 import 'plans_screen.dart';
@@ -494,6 +496,11 @@ class _HomeScreenState extends State<HomeScreen>
           clubSlug: slug,
           eventId: target.id!,
         ));
+      case PushTargetKind.messages:
+        final partnerId = target.id;
+        await _pushScreen(partnerId == null
+            ? MessagesScreen(api: api)
+            : MessageThreadScreen(api: api, partnerId: partnerId));
       case PushTargetKind.settingsAccount:
         await _pushScreen(
           _settingsDestinationScreen(SettingsDestination.account),

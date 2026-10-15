@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Modal from './Modal.svelte';
+	import { appErrorMessage } from '#lib/core/supabase_error.ts';
 	import {
 		submitReport,
 		type ReportReason,
@@ -99,7 +100,7 @@
 			showToast(m('reportDialog.toastSubmitted'), 'success');
 			handleClose();
 		} catch (e) {
-			error = e instanceof Error ? e.message : m('reportDialog.errorSubmitFailed');
+			error = appErrorMessage(e) ?? m('reportDialog.errorSubmitFailed');
 		} finally {
 			busy = false;
 		}

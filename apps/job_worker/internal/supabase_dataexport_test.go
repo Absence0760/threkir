@@ -1133,6 +1133,41 @@ func TestStreamExportPersonalDataTables_IncludesSafetyContactsBothWays(t *testin
 	}
 }
 
+// nutrition_programming.md § Compliance: the P1 meal plans key on author_id
+// and their assignments on client_id — neither is user_id, so both are wired
+// in explicitly and this test pins the filter each must ship under.
+func TestStreamExportPersonalDataTables_IncludesNutritionPlans(t *testing.T) {
+	queries := map[string]string{}
+	client := newSupabaseTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/rest/v1/nutrition_plans"):
+			queries["plans"] = r.URL.RawQuery
+			_, _ = w.Write([]byte(`[{"id":"np1","title":"Marathon build","target_calories":2600}]`))
+		case strings.HasSuffix(r.URL.Path, "/rest/v1/nutrition_plan_assignments"):
+			queries["assignments"] = r.URL.RawQuery
+			_, _ = w.Write([]byte(`[{"id":"na1","plan_id":"np1","start_date":"2027-03-01"}]`))
+		default:
+			_, _ = w.Write([]byte(`[]`))
+		}
+	})
+	out, _, err := collectExportTables(client, context.Background(), "user-A")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range []string{"nutrition_plans.json", "nutrition_plan_assignments.json"} {
+		if rows, ok := out[entry]; !ok || len(rows) == 0 {
+			t.Fatalf("%s must appear in the export manifest with at least one row; got out=%v", entry, extraTableKeys(out))
+		}
+	}
+	if !strings.Contains(queries["plans"], "author_id=eq.user-A") {
+		t.Errorf("nutrition_plans must be scoped to the subject's author_id; got query=%q", queries["plans"])
+	}
+	if !strings.Contains(queries["assignments"], "client_id=eq.user-A") {
+		t.Errorf("nutrition_plan_assignments must be scoped to the subject's client_id; got query=%q", queries["assignments"])
+	}
+}
+
 // gym_programming.md § DSAR export: the gym-programming P1 reusable plan
 // (migration 20270101_001) keys on author_id, NOT user_id, so the
 // export-completeness guard's user_id-column scan can't flag it — it is

@@ -33,7 +33,7 @@ import {
 	gateAiDisclosure,
 } from '../../core/ai_disclosure';
 import { checkRouteRateLimit } from '../rate_limit';
-import { supabaseErrorFields } from '../../core/supabase_error';
+import { supabaseErrorFields, thrownMessage } from '../../core/supabase_error';
 
 /// Per-user ceiling on the billed Anthropic call. Sized like the sibling
 /// `generate-route` bucket: 60/hour is far past any interactive use (one
@@ -310,7 +310,7 @@ export async function handleRouteDescribe(
 		// Normalised rather than handed over whole -- see the sibling note in
 		// route_request/handler.ts.
 		console.error('[route-describe] provider call failed — serving templated description', {
-			message: e instanceof Error ? e.message : String(e),
+			message: thrownMessage(e),
 			stack: e instanceof Error ? e.stack : undefined,
 		});
 		return json(200, { description: templated, source: 'template' });

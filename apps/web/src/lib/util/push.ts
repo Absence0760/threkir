@@ -22,6 +22,7 @@
 
 import { PUBLIC_VAPID_PUBLIC_KEY as PUBLIC_VAPID_PUBLIC_KEY_ENV } from '$app/env/public';
 import { supabase } from '../core/supabase';
+import { dbError } from '../core/supabase_error';
 import { auth } from '../stores/auth.svelte';
 import { detectPlatform, deviceLabel, getDeviceId } from '../settings/settings';
 import type { Json } from '../database.types';
@@ -152,5 +153,5 @@ async function persistSubscription(sub: StoredPushSubscription | null): Promise<
 		p_platform: detectPlatform(),
 		p_label: deviceLabel(),
 	});
-	if (error) throw error;
+	if (error) throw dbError(error);
 }

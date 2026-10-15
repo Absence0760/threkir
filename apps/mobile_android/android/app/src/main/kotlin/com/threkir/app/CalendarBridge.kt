@@ -45,6 +45,11 @@ class CalendarBridge(private val context: Context, messenger: BinaryMessenger) :
         call.argument<String>("rrule")?.let {
             intent.putExtra(CalendarContract.Events.RRULE, it)
         }
+        // The rule's weekdays and time of day are the event's own wall clock,
+        // so the calendar has to expand it in the event's zone, not the phone's.
+        call.argument<String>("timeZone")?.let {
+            intent.putExtra(CalendarContract.Events.EVENT_TIMEZONE, it)
+        }
         // The insert intent has no URL extra, so the link back to the club
         // event rides along in the notes.
         val notes = listOfNotNull(

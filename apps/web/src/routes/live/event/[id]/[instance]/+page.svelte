@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import type * as GeoJSON from 'geojson';
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import { onMount, onDestroy } from 'svelte';
@@ -185,7 +186,7 @@
 		} catch (e) {
 			// Public spectator page — a rejected fetch would otherwise hang on
 			// "Loading…" forever with no recourse. Surface it with a retry.
-			loadError = e instanceof Error ? e.message : String(e);
+			loadError = thrownMessage(e);
 		}
 		loading = false;
 	}
@@ -708,12 +709,12 @@
 	<main id="main-content">
 	{#if loading}
 		<p class="muted">{m('shell.loading')}</p>
-	{:else if loadError}
+	{:else if loadError !== null}
 		<div class="error-banner" role="alert">
 			<span class="material-symbols" aria-hidden="true">error</span>
 			<div>
 				<strong>{m('liveEvent.loadError')}</strong>
-				<span class="error-detail">{loadError}</span>
+				{#if loadError}<span class="error-detail">{loadError}</span>{/if}
 			</div>
 			<button class="btn btn-outline" onclick={load}>{m('liveEvent.retry')}</button>
 		</div>

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
@@ -32,7 +33,7 @@
 		} catch (e) {
 			// Starting a session against a half-read routine would log sets
 			// against a prescription that isn't the real one.
-			loadError = e instanceof Error ? e.message : String(e);
+			loadError = thrownMessage(e);
 			detail = null;
 			loading = false;
 			return;
@@ -159,7 +160,7 @@
 
 	{#if loading}
 		<p class="sr-only" role="status">{t('shell.loading')}</p>
-	{:else if loadError}
+	{:else if loadError !== null}
 		<div class="not-found" role="alert" data-testid="session-load-error">
 			<p>{t('gym.routine.loadError')}</p>
 			<button class="btn btn-outline" onclick={load}>{t('gym.routine.retry')}</button>

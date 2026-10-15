@@ -189,15 +189,9 @@ export const REGISTERED = [
 	},
 	{
 		kind: 'clone',
-		key: 'apps/web/src/lib/social/recurrence.ts:addDays|apps/web/src/lib/training/training.ts:addDays',
-		reason:
-			'Deliberate. Both are `Date` day arithmetic through the y/m/d constructor, and BOTH modules are halves of registered TS-Dart parity pairs whose Dart sides each carry their own. Merging them on the web side alone would break the one-file-per-pair correspondence the syncer agent reads.',
-	},
-	{
-		kind: 'clone',
 		key: 'apps/web/src/lib/training/training.ts:formatISO|apps/web/src/lib/training/training_load.ts:localDateKey',
 		reason:
-			'Deliberate, and the same parity-pair reason as `addDays` above: both modules are web halves of registered TS-Dart pairs whose Dart sides each carry their own copy, so merging them on the web side alone would break the one-file-per-pair correspondence the syncer agent reads.',
+			'Deliberate: both modules are web halves of registered TS-Dart pairs whose Dart sides each carry their own copy, so merging them on the web side alone would break the one-file-per-pair correspondence the syncer agent reads.',
 	},
 	{
 		kind: 'ops',

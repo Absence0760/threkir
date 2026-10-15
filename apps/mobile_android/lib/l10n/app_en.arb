@@ -3738,6 +3738,42 @@
   "@runDetailPacingGapPositive": {
     "description": "Pacing card note when grade-adjusted effort fell over the second half"
   },
+  "runDetailStrategyTitle": "Pacing strategy",
+  "@runDetailStrategyTitle": {"description": "Run detail — heading of the pacing-strategy review section"},
+  "runDetailStrategyGoal": "Goal {time}",
+  "@runDetailStrategyGoal": {"description": "Run detail pacing strategy — the goal time the runner set; time is h:mm:ss", "placeholders": {"time": {"type": "String"}}},
+  "runDetailStrategyColPhase": "Phase",
+  "@runDetailStrategyColPhase": {"description": "Run detail pacing strategy — table column: the phase"},
+  "runDetailStrategyColTarget": "Target",
+  "@runDetailStrategyColTarget": {"description": "Run detail pacing strategy — table column: the target pace for the phase"},
+  "runDetailStrategyNotReached": "not reached",
+  "@runDetailStrategyNotReached": {"description": "Run detail pacing strategy — a phase the run ended before reaching"},
+  "runDetailStrategyPartial": "partial",
+  "@runDetailStrategyPartial": {"description": "Run detail pacing strategy — a phase the run ended part-way through"},
+  "runDetailStrategyOnPace": "on pace",
+  "@runDetailStrategyOnPace": {"description": "Run detail pacing strategy — delta cell when a phase ran exactly at its target pace"},
+  "runDetailStrategyVerdictOnPlan": "On plan",
+  "@runDetailStrategyVerdictOnPlan": {"description": "Run detail pacing strategy verdict — every phase on target"},
+  "runDetailStrategyVerdictWentOutTooFast": "Went out too fast",
+  "@runDetailStrategyVerdictWentOutTooFast": {"description": "Run detail pacing strategy verdict — the first phase ran too fast and the finish lost ground"},
+  "runDetailStrategyVerdictFaded": "Faded",
+  "@runDetailStrategyVerdictFaded": {"description": "Run detail pacing strategy verdict — the final phase ran slower than its target"},
+  "runDetailStrategyVerdictNegativeSplit": "Finished stronger than planned",
+  "@runDetailStrategyVerdictNegativeSplit": {"description": "Run detail pacing strategy verdict — the finish ran stronger against its target than the start"},
+  "runDetailStrategyVerdictFasterThanPlan": "Faster than plan",
+  "@runDetailStrategyVerdictFasterThanPlan": {"description": "Run detail pacing strategy verdict — faster than the targets overall"},
+  "runDetailStrategyVerdictSlowerThanPlan": "Slower than plan",
+  "@runDetailStrategyVerdictSlowerThanPlan": {"description": "Run detail pacing strategy verdict — slower than the targets overall"},
+  "runDetailStrategyAverageBasis": "No goal time was set, so each target is the plan's shape at your average pace.",
+  "@runDetailStrategyAverageBasis": {"description": "Run detail pacing strategy — note when no goal time was set and targets come from the run average"},
+  "runDetailStrategyNoTrack": "This run has no timed GPS track, so its phases can't be graded.",
+  "@runDetailStrategyNoTrack": {"description": "Run detail pacing strategy — note when the run has no timed GPS track"},
+  "runDetailStrategyNoGoal": "No goal time was set, so a one-phase even plan has nothing to grade against.",
+  "@runDetailStrategyNoGoal": {"description": "Run detail pacing strategy — note when an even plan had no goal time"},
+  "runDetailStrategyStoppedShort": "Ended at {distance} of the planned {planned}, so the later phases weren't run.",
+  "@runDetailStrategyStoppedShort": {"description": "Run detail pacing strategy — note when the run ended well short of the planned distance; both are formatted distances such as 28.1 km", "placeholders": {"distance": {"type": "String"}, "planned": {"type": "String"}}},
+  "runDetailStrategyBand": "A phase within 1.5% of its target pace counts as on target; paces exclude stops.",
+  "@runDetailStrategyBand": {"description": "Run detail pacing strategy — footnote stating the on-target band and that stops are excluded"},
   "runDetailGapColumn": "Grade-adj.",
   "@runDetailGapColumn": {
     "description": "Header of the grade-adjusted pace column in the splits list"
@@ -6503,9 +6539,17 @@
   "@clubsEmptyMineTitle": {
     "description": "Empty state for the my-clubs tab"
   },
-  "clubsEmptyBrowseBody": "Try a different name or location.",
-  "@clubsEmptyBrowseBody": {
-    "description": "Empty-state hint for the browse tab"
+  "clubsMissingClubBody": "Is your club missing? It may not be on Threkir yet. Set up its page and invite your members to join.",
+  "@clubsMissingClubBody": {
+    "description": "Browse-tab empty state: the club the user searched for may not be on the app yet, so they can set it up"
+  },
+  "clubsSetUpYourClub": "Set up your club",
+  "@clubsSetUpYourClub": {
+    "description": "Browse-tab empty-state button: opens the new-club form prefilled with the searched name"
+  },
+  "clubsHowToCreateClub": "How to create a club",
+  "@clubsHowToCreateClub": {
+    "description": "Browse-tab empty-state button: opens the in-app help guide on creating a club"
   },
   "clubsEmptyMineBody": "Head to Browse to find one.",
   "@clubsEmptyMineBody": {
@@ -19757,5 +19801,99 @@
         "type": "int"
       }
     }
+  },
+  "messagesTitle": "Messages",
+  "@messagesTitle": {
+    "description": "Messages, the direct-message inbox title (also the You tile)"
+  },
+  "messagesEmptyTitle": "No conversations yet",
+  "@messagesEmptyTitle": {
+    "description": "Inbox empty state title"
+  },
+  "messagesEmptyBody": "Open a runner's profile and tap Message to start a conversation.",
+  "@messagesEmptyBody": {
+    "description": "Inbox empty state body: how a conversation starts"
+  },
+  "messagesLoadError": "Couldn't load your conversations.",
+  "@messagesLoadError": {
+    "description": "Inbox failed to load"
+  },
+  "messagesThreadLoadError": "Couldn't load this conversation.",
+  "@messagesThreadLoadError": {
+    "description": "One conversation failed to load"
+  },
+  "messagesYouPrefixed": "You: {body}",
+  "@messagesYouPrefixed": {
+    "description": "Inbox preview line when the latest message is the viewer's own",
+    "placeholders": {
+      "body": {
+        "type": "String"
+      }
+    }
+  },
+  "messagesUnreadCount": "{count, plural, one{{count} unread message} other{{count} unread messages}}",
+  "@messagesUnreadCount": {
+    "description": "Accessible label for a conversation's unread badge",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "messagesThreadEmpty": "No messages yet. Say hi.",
+  "@messagesThreadEmpty": {
+    "description": "A conversation with no messages yet"
+  },
+  "messagesComposerHint": "Message…",
+  "@messagesComposerHint": {
+    "description": "Composer text field placeholder"
+  },
+  "messagesSend": "Send",
+  "@messagesSend": {
+    "description": "Composer send button"
+  },
+  "messagesSending": "Sending…",
+  "@messagesSending": {
+    "description": "Accessible status of a message still being sent"
+  },
+  "messagesSendFailed": "Couldn't send your message. Try again.",
+  "@messagesSendFailed": {
+    "description": "A send failed for a reason the app cannot name"
+  },
+  "messagesSendNotAllowed": "You can only message people you follow or who follow you, and who haven't blocked you.",
+  "@messagesSendNotAllowed": {
+    "description": "The server refused the send: no follow either way, or a block either way (deliberately not told apart)"
+  },
+  "messagesLoadEarlier": "Load earlier messages",
+  "@messagesLoadEarlier": {
+    "description": "Button at the top of a conversation that loads older messages"
+  },
+  "messagesLoadEarlierFailed": "Couldn't load earlier messages.",
+  "@messagesLoadEarlierFailed": {
+    "description": "Loading older messages failed"
+  },
+  "messagesViewProfile": "View profile",
+  "@messagesViewProfile": {
+    "description": "Conversation app-bar action opening the partner's profile"
+  },
+  "messagesRouteEyebrow": "Route",
+  "@messagesRouteEyebrow": {
+    "description": "Label above a route shared in a message"
+  },
+  "messagesRouteUntitled": "Untitled route",
+  "@messagesRouteUntitled": {
+    "description": "Name shown for a shared route whose name is blank"
+  },
+  "messagesRouteUnavailable": "This route isn't available to you any more.",
+  "@messagesRouteUnavailable": {
+    "description": "A route shared in a message that the reader can no longer see"
+  },
+  "messagesRouteLoading": "Loading route",
+  "@messagesRouteLoading": {
+    "description": "Accessible label while a shared route resolves"
+  },
+  "profileMessage": "Message",
+  "@profileMessage": {
+    "description": "Profile action opening a direct-message conversation with this runner"
   }
 }

@@ -84,6 +84,7 @@ class _CapturingSocialService extends SocialService {
   EventGymTemplate? capturedGymTemplate;
   String? capturedRecurrenceFreq;
   bool? capturedIsPublic;
+  String? capturedTimezone;
 
   @override
   Future<EventRow> createEvent({
@@ -107,8 +108,10 @@ class _CapturingSocialService extends SocialService {
     DateTime? recurrenceUntil,
     int? recurrenceCount,
     bool isPublic = true,
+    String? timezone,
   }) async {
     createCalled = true;
+    capturedTimezone = timezone;
     capturedTitle = title;
     capturedCategory = category;
     capturedDiscipline = discipline;
@@ -136,7 +139,12 @@ class _CapturingSocialService extends SocialService {
 class _Launcher extends StatefulWidget {
   final SocialService social;
   final bool clubIsPublic;
-  const _Launcher({required this.social, this.clubIsPublic = true});
+  final Future<String?> Function() deviceTimeZone;
+  const _Launcher({
+    required this.social,
+    this.clubIsPublic = true,
+    this.deviceTimeZone = _noZone,
+  });
 
   @override
   State<_Launcher> createState() => _LauncherState();
@@ -159,6 +167,7 @@ class _LauncherState extends State<_Launcher> {
                   social: widget.social,
                   clubId: 'club-1',
                   clubIsPublic: widget.clubIsPublic,
+                  deviceTimeZone: widget.deviceTimeZone,
                 );
                 setState(() => _result = r ?? '<cancelled>');
               },
@@ -172,10 +181,13 @@ class _LauncherState extends State<_Launcher> {
   }
 }
 
+Future<String?> _noZone() async => null;
+
 Future<void> _openSheet(
   WidgetTester tester, {
   bool clubIsPublic = true,
   SocialService? social,
+  Future<String?> Function() deviceTimeZone = _noZone,
 }) async {
   // Larger viewport so the scrollable form actually paints all rows.
   await tester.binding.setSurfaceSize(const Size(600, 1200));
@@ -184,7 +196,9 @@ Future<void> _openSheet(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: _Launcher(
-          social: social ?? SocialService(), clubIsPublic: clubIsPublic)));
+          social: social ?? SocialService(),
+          clubIsPublic: clubIsPublic,
+          deviceTimeZone: deviceTimeZone)));
   await tester.tap(find.text('Open'));
   await tester.pumpAndSettle();
 }
@@ -359,6 +373,35 @@ void main() {
       await tapCreate(tester);
       expect(fake.capturedCategory, 'social');
       expect(fake.capturedDistanceM, isNull);
+    });
+
+    testWidgets('the event is stamped with the device zone it was picked in',
+        (tester) async {
+      // The picked date + time are the organiser's wall clock, and a series
+      // stays on it only if the row says which zone that is. Without it a
+      // mobile-created series expanded in every viewer's own zone.
+      final fake = _CapturingSocialService();
+      await _openSheet(
+        tester,
+        social: fake,
+        deviceTimeZone: () async => 'America/New_York',
+      );
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Title'), 'Wednesday night run');
+      await tester.tap(find.widgetWithText(ChoiceChip, 'Weekly'));
+      await tester.pumpAndSettle();
+      await tapCreate(tester);
+      expect(fake.capturedTimezone, 'America/New_York');
+    });
+
+    testWidgets('a device that cannot name its zone sends none', (tester) async {
+      final fake = _CapturingSocialService();
+      await _openSheet(tester, social: fake);
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Title'), 'Wednesday night run');
+      await tapCreate(tester);
+      expect(fake.createCalled, isTrue);
+      expect(fake.capturedTimezone, isNull);
     });
 
     testWidgets('picking Weekly threads a weekly recurrence freq',

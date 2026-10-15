@@ -12,6 +12,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { TABLES } from '../core/schema';
 import { isEntityId } from '../core/entity_id';
+import { thrownMessage } from '../core/supabase_error';
 
 export interface SharedBadge {
 	id: string;
@@ -80,7 +81,7 @@ export async function lookupSharedBadge(
 	} catch (err) {
 		console.error(
 			'[share-badge] upstream_unreachable',
-			err instanceof Error ? err.message : String(err),
+			thrownMessage(err),
 		);
 		return { badge: null, displayName: null };
 	}

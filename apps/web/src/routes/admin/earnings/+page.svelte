@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount, tick } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import {
@@ -57,7 +58,7 @@
 			months = summarizeFeeMonths(rows);
 			totals = feeTotalsByCurrency(rows);
 		} catch (e) {
-			loadError = t('admin.earnings.loadFailed', { error: String((e as Error)?.message ?? e) });
+			loadError = t('admin.earnings.loadFailed', { error: thrownMessage(e) });
 		}
 	}
 
@@ -69,7 +70,7 @@
 		try {
 			hosts = await fetchPlatformFeesByHost(month);
 		} catch (e) {
-			hostsError = t('admin.earnings.hostsFailed', { error: String((e as Error)?.message ?? e) });
+			hostsError = t('admin.earnings.hostsFailed', { error: thrownMessage(e) });
 		} finally {
 			hostsLoading = false;
 		}

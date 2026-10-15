@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { createClub, updateClub } from '#lib/core/data.ts';
+	import { appErrorMessage } from '#lib/core/supabase_error.ts';
 	import { geocodePlace } from '#lib/routes/geocoding.ts';
 	import type { Club, JoinPolicy } from '#lib/types.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
@@ -14,13 +15,14 @@
 	interface Props {
 		/// When set, the editor edits this club instead of creating a new one.
 		existing?: Club;
+		initialName?: string;
 		oncreated?: (club: { slug: string; id: string }) => void;
 		onsaved?: () => void;
 		oncancel?: () => void;
 	}
-	let { existing, oncreated, onsaved, oncancel }: Props = $props();
+	let { existing, initialName, oncreated, onsaved, oncancel }: Props = $props();
 
-	let name = $state(untrack(() => existing?.name ?? ''));
+	let name = $state(untrack(() => existing?.name ?? initialName ?? ''));
 	let description = $state(untrack(() => existing?.description ?? ''));
 	let location = $state(untrack(() => existing?.location_label ?? ''));
 	let visibility = $state<'public' | 'private'>(
@@ -114,7 +116,7 @@
 			dirty.rebaseline();
 			oncreated?.(club);
 		} catch (e: unknown) {
-			showToast(e instanceof Error ? e.message : m('clubEditor.createFailed'), 'error');
+			showToast(appErrorMessage(e) ?? m('clubEditor.createFailed'), 'error');
 		} finally {
 			busy = false;
 		}

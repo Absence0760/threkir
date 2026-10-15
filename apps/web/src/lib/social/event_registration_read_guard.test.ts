@@ -40,7 +40,7 @@ test('fetchEventRsvpSummary fails the read instead of returning a zeroed summary
 	// honest denominator. One check may cover several reads built in a loop --
 	// that is one `supabase` expression, so the arithmetic still holds.
 	const reads = [...body.matchAll(/\bsupabase\s*\n?\s*\.from\(/g)].length;
-	const raised = [...body.matchAll(/throw\s+(?:\w+\.)?error\b/g)].length;
+	const raised = [...body.matchAll(/throw\s+dbError\(\s*(?:\w+\.)?error\b/g)].length;
 	assert.ok(reads > 0, 'fetchEventRsvpSummary performs no read at all -- renamed?');
 	assert.ok(
 		raised >= reads,

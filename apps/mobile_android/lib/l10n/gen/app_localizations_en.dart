@@ -2861,6 +2861,69 @@ class AppLocalizationsEn extends AppLocalizations {
       'Adjusted for the terrain, you slowed over the second half.';
 
   @override
+  String get runDetailStrategyTitle => 'Pacing strategy';
+
+  @override
+  String runDetailStrategyGoal(String time) {
+    return 'Goal $time';
+  }
+
+  @override
+  String get runDetailStrategyColPhase => 'Phase';
+
+  @override
+  String get runDetailStrategyColTarget => 'Target';
+
+  @override
+  String get runDetailStrategyNotReached => 'not reached';
+
+  @override
+  String get runDetailStrategyPartial => 'partial';
+
+  @override
+  String get runDetailStrategyOnPace => 'on pace';
+
+  @override
+  String get runDetailStrategyVerdictOnPlan => 'On plan';
+
+  @override
+  String get runDetailStrategyVerdictWentOutTooFast => 'Went out too fast';
+
+  @override
+  String get runDetailStrategyVerdictFaded => 'Faded';
+
+  @override
+  String get runDetailStrategyVerdictNegativeSplit =>
+      'Finished stronger than planned';
+
+  @override
+  String get runDetailStrategyVerdictFasterThanPlan => 'Faster than plan';
+
+  @override
+  String get runDetailStrategyVerdictSlowerThanPlan => 'Slower than plan';
+
+  @override
+  String get runDetailStrategyAverageBasis =>
+      'No goal time was set, so each target is the plan\'s shape at your average pace.';
+
+  @override
+  String get runDetailStrategyNoTrack =>
+      'This run has no timed GPS track, so its phases can\'t be graded.';
+
+  @override
+  String get runDetailStrategyNoGoal =>
+      'No goal time was set, so a one-phase even plan has nothing to grade against.';
+
+  @override
+  String runDetailStrategyStoppedShort(String distance, String planned) {
+    return 'Ended at $distance of the planned $planned, so the later phases weren\'t run.';
+  }
+
+  @override
+  String get runDetailStrategyBand =>
+      'A phase within 1.5% of its target pace counts as on target; paces exclude stops.';
+
+  @override
   String get runDetailGapColumn => 'Grade-adj.';
 
   @override
@@ -4845,7 +4908,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get clubsEmptyMineTitle => 'You haven\'t joined a club yet.';
 
   @override
-  String get clubsEmptyBrowseBody => 'Try a different name or location.';
+  String get clubsMissingClubBody =>
+      'Is your club missing? It may not be on Threkir yet. Set up its page and invite your members to join.';
+
+  @override
+  String get clubsSetUpYourClub => 'Set up your club';
+
+  @override
+  String get clubsHowToCreateClub => 'How to create a club';
 
   @override
   String get clubsEmptyMineBody => 'Head to Browse to find one.';
@@ -15390,4 +15460,80 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get messagesTitle => 'Messages';
+
+  @override
+  String get messagesEmptyTitle => 'No conversations yet';
+
+  @override
+  String get messagesEmptyBody =>
+      'Open a runner\'s profile and tap Message to start a conversation.';
+
+  @override
+  String get messagesLoadError => 'Couldn\'t load your conversations.';
+
+  @override
+  String get messagesThreadLoadError => 'Couldn\'t load this conversation.';
+
+  @override
+  String messagesYouPrefixed(String body) {
+    return 'You: $body';
+  }
+
+  @override
+  String messagesUnreadCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count unread messages',
+      one: '$count unread message',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get messagesThreadEmpty => 'No messages yet. Say hi.';
+
+  @override
+  String get messagesComposerHint => 'Message…';
+
+  @override
+  String get messagesSend => 'Send';
+
+  @override
+  String get messagesSending => 'Sending…';
+
+  @override
+  String get messagesSendFailed => 'Couldn\'t send your message. Try again.';
+
+  @override
+  String get messagesSendNotAllowed =>
+      'You can only message people you follow or who follow you, and who haven\'t blocked you.';
+
+  @override
+  String get messagesLoadEarlier => 'Load earlier messages';
+
+  @override
+  String get messagesLoadEarlierFailed => 'Couldn\'t load earlier messages.';
+
+  @override
+  String get messagesViewProfile => 'View profile';
+
+  @override
+  String get messagesRouteEyebrow => 'Route';
+
+  @override
+  String get messagesRouteUntitled => 'Untitled route';
+
+  @override
+  String get messagesRouteUnavailable =>
+      'This route isn\'t available to you any more.';
+
+  @override
+  String get messagesRouteLoading => 'Loading route';
+
+  @override
+  String get profileMessage => 'Message';
 }

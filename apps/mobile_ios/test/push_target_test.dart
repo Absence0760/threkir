@@ -30,8 +30,14 @@ void main() {
           const PushTarget(PushTargetKind.plans));
     });
 
-    test('message → /messages degrades to the inbox (no mobile surface)', () {
-      expect(pushTargetFromUrl('$_base/messages'), PushTarget.inbox);
+    test('message → /messages opens the conversation list', () {
+      expect(pushTargetFromUrl('$_base/messages'),
+          const PushTarget(PushTargetKind.messages));
+    });
+
+    test('/messages/{id} opens that conversation', () {
+      expect(pushTargetFromUrl('$_base/messages/user-4'),
+          const PushTarget(PushTargetKind.messages, 'user-4'));
     });
 
     test('run family → /runs/{id}', () {

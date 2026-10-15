@@ -42,6 +42,10 @@ void main() {
     '.inFilter(PlanWorkoutRow.colWeekId, [for (final w in weeks) w.id])': 1,
     // Author ids off a template search with a literal `.limit(100)`.
     ".inFilter('id', authorIds);": 1,
+    // The two participants of one conversation (fetchDmThread): always
+    // exactly two ids.
+    '.inFilter(DirectMessageRow.colSenderId, pair)': 1,
+    '.inFilter(DirectMessageRow.colRecipientId, pair);': 1,
   };
 
   test('every unchunked .inFilter carries a stated bound', () {

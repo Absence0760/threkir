@@ -14,6 +14,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { SessionItemKind } from '#lib/social/session_steps.ts';
 import { isEntityId } from '../core/entity_id';
+import { thrownMessage } from '../core/supabase_error';
 
 export interface SharedSessionBlock {
 	id: string;
@@ -138,7 +139,7 @@ export async function lookupSharedSession(
 	} catch (err) {
 		console.error(
 			'[share-session] upstream_unreachable',
-			err instanceof Error ? err.message : String(err),
+			thrownMessage(err),
 		);
 		return { session: null, displayName: null };
 	}

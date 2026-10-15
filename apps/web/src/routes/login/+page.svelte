@@ -5,6 +5,7 @@
 	import { page } from '$app/state';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { supabase } from '#lib/core/supabase.ts';
+	import { dbError } from '#lib/core/supabase_error.ts';
 	import {
 		checkPasswordPair,
 		checkSignUpGates,
@@ -184,7 +185,7 @@
 				const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
 					redirectTo
 				});
-				if (resetError) throw resetError;
+				if (resetError) throw dbError(resetError);
 				info = m('login.resetEmailSent');
 				email = '';
 			} else if (isSignUp) {
@@ -207,7 +208,7 @@
 						data: { age_confirmed_at: stamp, terms_accepted_at: stamp },
 					},
 				});
-				if (signUpError) throw signUpError;
+				if (signUpError) throw dbError(signUpError);
 				if (!data.session) {
 					// Success WITHOUT a session: email confirmation is
 					// pending — or the address is already registered and
@@ -241,7 +242,7 @@
 				goto(consent === 'ok' ? safeReturnTo() : '/auth/confirm-age');
 			} else {
 				const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-				if (signInError) throw signInError;
+				if (signInError) throw dbError(signInError);
 				await auth.refreshSession();
 				goto(safeReturnTo());
 			}
@@ -277,7 +278,7 @@
 				email: resendFor,
 				options: { emailRedirectTo: `${window.location.origin}/auth/callback` }
 			});
-			if (resendError) throw resendError;
+			if (resendError) throw dbError(resendError);
 			// Privacy-preserving copy — must not confirm account existence.
 			info = m('login.confirmationResent');
 			resendFor = null;

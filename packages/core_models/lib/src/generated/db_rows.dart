@@ -1146,6 +1146,75 @@ class DeviceTokenRow {
   );
 }
 
+/// Row shape for the `direct_messages` table. Mirrors the Supabase schema
+/// exactly — field names are snake_case to match the JSON wire format.
+class DirectMessageRow {
+  static const String table = 'direct_messages';
+  static const String colId = 'id';
+  static const String colSenderId = 'sender_id';
+  static const String colRecipientId = 'recipient_id';
+  static const String colBody = 'body';
+  static const String colCreatedAt = 'created_at';
+  static const String colReadAt = 'read_at';
+  static const String colRouteId = 'route_id';
+
+  final String id;
+  final String senderId;
+  final String recipientId;
+  final String body;
+  final DateTime createdAt;
+  final DateTime? readAt;
+  final String? routeId;
+
+  const DirectMessageRow({
+    required this.id,
+    required this.senderId,
+    required this.recipientId,
+    required this.body,
+    required this.createdAt,
+    this.readAt,
+    this.routeId,
+  });
+
+  factory DirectMessageRow.fromJson(Map<String, dynamic> json) => DirectMessageRow(
+    id: json['id'] as String,
+    senderId: json['sender_id'] as String,
+    recipientId: json['recipient_id'] as String,
+    body: json['body'] as String,
+    createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
+    readAt: parseIsoStrictValue(json['read_at']),
+    routeId: json['route_id'] as String?,
+  );
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    colId: id,
+    colSenderId: senderId,
+    colRecipientId: recipientId,
+    colBody: body,
+    colCreatedAt: createdAt.toIso8601String(),
+    colReadAt: readAt?.toIso8601String(),
+    colRouteId: routeId,
+  };
+
+  DirectMessageRow copyWith({
+    String? id,
+    String? senderId,
+    String? recipientId,
+    String? body,
+    DateTime? createdAt,
+    DateTime? readAt,
+    String? routeId,
+  }) => DirectMessageRow(
+    id: id ?? this.id,
+    senderId: senderId ?? this.senderId,
+    recipientId: recipientId ?? this.recipientId,
+    body: body ?? this.body,
+    createdAt: createdAt ?? this.createdAt,
+    readAt: readAt ?? this.readAt,
+    routeId: routeId ?? this.routeId,
+  );
+}
+
 /// Row shape for the `donations` table. Mirrors the Supabase schema
 /// exactly — field names are snake_case to match the JSON wire format.
 class DonationRow {
@@ -4194,6 +4263,221 @@ class NotificationRow {
     challengeId: challengeId ?? this.challengeId,
     nativePushSentAt: nativePushSentAt ?? this.nativePushSentAt,
     refunded: refunded ?? this.refunded,
+  );
+}
+
+/// Row shape for the `nutrition_plan_assignments` table. Mirrors the Supabase schema
+/// exactly — field names are snake_case to match the JSON wire format.
+class NutritionPlanAssignmentRow {
+  static const String table = 'nutrition_plan_assignments';
+  static const String colId = 'id';
+  static const String colPlanId = 'plan_id';
+  static const String colClientId = 'client_id';
+  static const String colAssignedBy = 'assigned_by';
+  static const String colStartDate = 'start_date';
+  static const String colEndDate = 'end_date';
+  static const String colStatus = 'status';
+  static const String colLastModifiedAt = 'last_modified_at';
+  static const String colCreatedAt = 'created_at';
+
+  final String id;
+  final String planId;
+  final String clientId;
+  final String? assignedBy;
+  final DateTime startDate;
+  final DateTime? endDate;
+  final String status;
+  final DateTime lastModifiedAt;
+  final DateTime createdAt;
+
+  const NutritionPlanAssignmentRow({
+    required this.id,
+    required this.planId,
+    required this.clientId,
+    this.assignedBy,
+    required this.startDate,
+    this.endDate,
+    required this.status,
+    required this.lastModifiedAt,
+    required this.createdAt,
+  });
+
+  factory NutritionPlanAssignmentRow.fromJson(Map<String, dynamic> json) => NutritionPlanAssignmentRow(
+    id: json['id'] as String,
+    planId: json['plan_id'] as String,
+    clientId: json['client_id'] as String,
+    assignedBy: json['assigned_by'] as String?,
+    startDate: parseIsoStrictRequired(json['start_date'], 'start_date'),
+    endDate: parseIsoStrictValue(json['end_date']),
+    status: json['status'] as String,
+    lastModifiedAt: parseIsoStrictRequired(json['last_modified_at'], 'last_modified_at'),
+    createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
+  );
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    colId: id,
+    colPlanId: planId,
+    colClientId: clientId,
+    colAssignedBy: assignedBy,
+    colStartDate: startDate.toIso8601String(),
+    colEndDate: endDate?.toIso8601String(),
+    colStatus: status,
+    colLastModifiedAt: lastModifiedAt.toIso8601String(),
+    colCreatedAt: createdAt.toIso8601String(),
+  };
+
+  NutritionPlanAssignmentRow copyWith({
+    String? id,
+    String? planId,
+    String? clientId,
+    String? assignedBy,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? status,
+    DateTime? lastModifiedAt,
+    DateTime? createdAt,
+  }) => NutritionPlanAssignmentRow(
+    id: id ?? this.id,
+    planId: planId ?? this.planId,
+    clientId: clientId ?? this.clientId,
+    assignedBy: assignedBy ?? this.assignedBy,
+    startDate: startDate ?? this.startDate,
+    endDate: endDate ?? this.endDate,
+    status: status ?? this.status,
+    lastModifiedAt: lastModifiedAt ?? this.lastModifiedAt,
+    createdAt: createdAt ?? this.createdAt,
+  );
+}
+
+/// Row shape for the `nutrition_plans` table. Mirrors the Supabase schema
+/// exactly — field names are snake_case to match the JSON wire format.
+class NutritionPlanRow {
+  static const String table = 'nutrition_plans';
+  static const String colId = 'id';
+  static const String colAuthorId = 'author_id';
+  static const String colTitle = 'title';
+  static const String colNotes = 'notes';
+  static const String colGoalPhase = 'goal_phase';
+  static const String colTargetCalories = 'target_calories';
+  static const String colTargetProteinG = 'target_protein_g';
+  static const String colTargetCarbsG = 'target_carbs_g';
+  static const String colTargetFatG = 'target_fat_g';
+  static const String colTrainingCalories = 'training_calories';
+  static const String colTrainingCarbsG = 'training_carbs_g';
+  static const String colProgression = 'progression';
+  static const String colProgressionParams = 'progression_params';
+  static const String colExternalId = 'external_id';
+  static const String colLastModifiedAt = 'last_modified_at';
+  static const String colCreatedAt = 'created_at';
+
+  final String id;
+  final String authorId;
+  final String title;
+  final String? notes;
+  final String goalPhase;
+  final double targetCalories;
+  final double? targetProteinG;
+  final double? targetCarbsG;
+  final double? targetFatG;
+  final double? trainingCalories;
+  final double? trainingCarbsG;
+  final String progression;
+  final dynamic progressionParams;
+  final String? externalId;
+  final DateTime lastModifiedAt;
+  final DateTime createdAt;
+
+  const NutritionPlanRow({
+    required this.id,
+    required this.authorId,
+    required this.title,
+    this.notes,
+    required this.goalPhase,
+    required this.targetCalories,
+    this.targetProteinG,
+    this.targetCarbsG,
+    this.targetFatG,
+    this.trainingCalories,
+    this.trainingCarbsG,
+    required this.progression,
+    required this.progressionParams,
+    this.externalId,
+    required this.lastModifiedAt,
+    required this.createdAt,
+  });
+
+  factory NutritionPlanRow.fromJson(Map<String, dynamic> json) => NutritionPlanRow(
+    id: json['id'] as String,
+    authorId: json['author_id'] as String,
+    title: json['title'] as String,
+    notes: json['notes'] as String?,
+    goalPhase: json['goal_phase'] as String,
+    targetCalories: _toDouble(json['target_calories']),
+    targetProteinG: _toDoubleOrNull(json['target_protein_g']),
+    targetCarbsG: _toDoubleOrNull(json['target_carbs_g']),
+    targetFatG: _toDoubleOrNull(json['target_fat_g']),
+    trainingCalories: _toDoubleOrNull(json['training_calories']),
+    trainingCarbsG: _toDoubleOrNull(json['training_carbs_g']),
+    progression: json['progression'] as String,
+    progressionParams: json['progression_params'],
+    externalId: json['external_id'] as String?,
+    lastModifiedAt: parseIsoStrictRequired(json['last_modified_at'], 'last_modified_at'),
+    createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
+  );
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    colId: id,
+    colAuthorId: authorId,
+    colTitle: title,
+    colNotes: notes,
+    colGoalPhase: goalPhase,
+    colTargetCalories: targetCalories,
+    colTargetProteinG: targetProteinG,
+    colTargetCarbsG: targetCarbsG,
+    colTargetFatG: targetFatG,
+    colTrainingCalories: trainingCalories,
+    colTrainingCarbsG: trainingCarbsG,
+    colProgression: progression,
+    colProgressionParams: progressionParams,
+    colExternalId: externalId,
+    colLastModifiedAt: lastModifiedAt.toIso8601String(),
+    colCreatedAt: createdAt.toIso8601String(),
+  };
+
+  NutritionPlanRow copyWith({
+    String? id,
+    String? authorId,
+    String? title,
+    String? notes,
+    String? goalPhase,
+    double? targetCalories,
+    double? targetProteinG,
+    double? targetCarbsG,
+    double? targetFatG,
+    double? trainingCalories,
+    double? trainingCarbsG,
+    String? progression,
+    dynamic progressionParams,
+    String? externalId,
+    DateTime? lastModifiedAt,
+    DateTime? createdAt,
+  }) => NutritionPlanRow(
+    id: id ?? this.id,
+    authorId: authorId ?? this.authorId,
+    title: title ?? this.title,
+    notes: notes ?? this.notes,
+    goalPhase: goalPhase ?? this.goalPhase,
+    targetCalories: targetCalories ?? this.targetCalories,
+    targetProteinG: targetProteinG ?? this.targetProteinG,
+    targetCarbsG: targetCarbsG ?? this.targetCarbsG,
+    targetFatG: targetFatG ?? this.targetFatG,
+    trainingCalories: trainingCalories ?? this.trainingCalories,
+    trainingCarbsG: trainingCarbsG ?? this.trainingCarbsG,
+    progression: progression ?? this.progression,
+    progressionParams: progressionParams ?? this.progressionParams,
+    externalId: externalId ?? this.externalId,
+    lastModifiedAt: lastModifiedAt ?? this.lastModifiedAt,
+    createdAt: createdAt ?? this.createdAt,
   );
 }
 

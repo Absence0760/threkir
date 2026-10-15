@@ -22,7 +22,6 @@ const HELPER = 'lib/training/goals.ts';
 /// week window. A new entry needs a reason a reviewer can check.
 const MONDAY_ONLY_ALLOWED: Record<string, string> = {
 	'lib/runs/recap.ts': 'ISO-8601 weeks for the year recap, documented at the call site',
-	'lib/social/recurrence.ts': 'weekly-recurrence anchor, in lockstep with recurrence.dart',
 	'lib/components/DateRangePicker.svelte': 'calendar-grid column layout, not a week window',
 };
 

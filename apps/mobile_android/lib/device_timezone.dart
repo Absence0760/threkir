@@ -10,12 +10,20 @@ import 'package:flutter_timezone/flutter_timezone.dart';
 /// When the platform can't name one, degrade to `'UTC'` explicitly: the
 /// same fallback web takes when `Intl` fails, still an all-time answer
 /// over the right run set, just bucketed in UTC.
-Future<String> deviceIanaTimeZone() async {
+Future<String> deviceIanaTimeZone() async =>
+    await deviceIanaTimeZoneOrNull() ?? 'UTC';
+
+/// The device's IANA zone name, or null when the platform can't name one.
+/// A club event is stamped with this (`events.timezone`) because its
+/// recurrence is wall-clock in the organiser's zone (decisions § 1919), and
+/// for that a guessed `'UTC'` would be worse than none: a row with no zone
+/// keeps the legacy viewer-local expansion web gives the same failure.
+Future<String?> deviceIanaTimeZoneOrNull() async {
   try {
     final id = (await FlutterTimezone.getLocalTimezone()).identifier;
-    return id.isEmpty ? 'UTC' : id;
+    return id.isEmpty ? null : id;
   } catch (e) {
     debugPrint('deviceIanaTimeZone failed: $e');
-    return 'UTC';
+    return null;
   }
 }

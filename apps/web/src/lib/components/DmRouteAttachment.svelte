@@ -5,14 +5,27 @@
 	// viewer as well as route: what `fetchRouteById` hands back IS the viewer's
 	// own clipped view of the line, so a cache shared across a sign-out would
 	// serve one reader another reader's clip.
+	// Only an answer the read gave is cached, and only for five minutes, so a
+	// transient failure retries on the next mount and a route re-shared later
+	// recovers (the mobile card's rule, decisions § 1916).
 	const CACHE_MAX = 100;
-	const CACHE = new Map<string, DmRouteCard | null>();
-	function cacheSet(key: string, value: DmRouteCard | null) {
+	const CACHE_TTL_MS = 5 * 60_000;
+	const CACHE = new Map<string, { route: DmRouteCard | null; at: number }>();
+	function cacheGet(key: string): { route: DmRouteCard | null } | undefined {
+		const hit = CACHE.get(key);
+		if (!hit) return undefined;
+		if (Date.now() - hit.at >= CACHE_TTL_MS) {
+			CACHE.delete(key);
+			return undefined;
+		}
+		return hit;
+	}
+	function cacheSet(key: string, route: DmRouteCard | null) {
 		if (CACHE.size >= CACHE_MAX && !CACHE.has(key)) {
 			const oldest = CACHE.keys().next().value;
 			if (oldest !== undefined) CACHE.delete(oldest);
 		}
-		CACHE.set(key, value);
+		CACHE.set(key, { route, at: Date.now() });
 	}
 </script>
 
@@ -38,8 +51,9 @@
 
 	onMount(() => {
 		const key = `${auth.user?.id ?? 'anon'}:${routeId}`;
-		if (CACHE.has(key)) {
-			resolution = { status: 'resolved', route: CACHE.get(key) ?? null };
+		const cached = cacheGet(key);
+		if (cached) {
+			resolution = { status: 'resolved', route: cached.route };
 			return;
 		}
 		void (async () => {
@@ -53,13 +67,14 @@
 				// directly here would hand the recipient the unclipped line.
 				const row = await fetchRouteById(routeId);
 				route = row ? dmRouteCardFrom(row) : null;
+				cacheSet(key, route);
 			} catch {
 				// Fail closed to "unavailable" rather than to a bare body: a route
 				// we could not resolve and a route the reader may not see are the
-				// same answer as far as what may be claimed about it.
+				// same answer as far as what may be claimed about it. Not cached,
+				// so the next mount reads again.
 				route = null;
 			}
-			cacheSet(key, route);
 			resolution = { status: 'resolved', route };
 		})();
 	});

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { redeemCoachInvite } from '#lib/core/data.ts';
@@ -38,16 +39,8 @@
 		} catch (e: unknown) {
 			status = 'error';
 			// Surface the real reason the redeem RPC raised (self-coaching, already
-			// linked, already redeemed). A Supabase PostgrestError is a plain object,
-			// NOT an Error instance, so an `instanceof Error` gate alone always fell
-			// through to the misleading "invalid or expired" fallback — swallowing
-			// the accurate, user-actionable reason.
-			const raw =
-				e instanceof Error
-					? e.message
-					: e && typeof e === 'object' && typeof (e as { message?: unknown }).message === 'string'
-						? (e as { message: string }).message
-						: '';
+			// linked, already redeemed) rather than the generic "invalid or expired".
+			const raw = thrownMessage(e);
 			errorMsg = raw.trim() !== '' ? raw : m('coachingAccept.inviteInvalidOrExpired');
 		}
 	}

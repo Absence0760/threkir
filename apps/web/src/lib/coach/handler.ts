@@ -23,7 +23,7 @@ import {
 	aiDisclosureFromProfileRow,
 	checkAiDisclosure,
 } from '../core/ai_disclosure';
-import { supabaseErrorFields } from '../core/supabase_error';
+import { dbError, supabaseErrorFields, thrownMessage } from '../core/supabase_error';
 import { buildContext, type CoachProfileRow } from './context';
 import {
 	clampRunsLimit,
@@ -338,11 +338,11 @@ export async function handleCoach(
 		if (config.bypassPaywallEnabled) return;
 		try {
 			const { error } = await supabase.rpc('decrement_coach_usage', { p_user_id: authUserId });
-			if (error) throw error;
+			if (error) throw dbError(error);
 		} catch (e) {
 			console.error('[coach] decrement_coach_usage failed', {
 				reason,
-				err: e instanceof Error ? e.message : String(e),
+				err: thrownMessage(e),
 			});
 		}
 	}
@@ -368,7 +368,7 @@ export async function handleCoach(
 						limits,
 					);
 	} catch (e) {
-		const msg = e instanceof Error ? e.message : 'coach call failed';
+		const msg = thrownMessage(e) || 'coach call failed';
 		// Structured log line for the CloudWatch metric filter — same
 		// shape as the mid-stream branch below so a single metric
 		// captures both the sync-throw and mid-stream cases.
@@ -441,7 +441,7 @@ export async function handleCoach(
 			return data?.id ?? null;
 		} catch (e) {
 			console.error('[coach] persist assistant exception', {
-				message: e instanceof Error ? e.message : String(e),
+				message: thrownMessage(e),
 			});
 			return null;
 		}
@@ -519,7 +519,7 @@ export async function* coachSseStream(deps: CoachStreamDeps): AsyncIterable<Uint
 			yield sendEvent('token', { text: chunk });
 		}
 	} catch (e) {
-		const msg = e instanceof Error ? e.message : 'stream failed';
+		const msg = thrownMessage(e) || 'stream failed';
 		deps.logMidStreamError(accumulated.length, msg);
 		// Zero accumulated tokens = a complete failure the user got
 		// nothing from: refund the slot. A PARTIAL answer already

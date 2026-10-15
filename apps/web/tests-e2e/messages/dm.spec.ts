@@ -1,7 +1,8 @@
 import { expect, test } from '../fixtures/mock-route';
 
 import { getAdminClient } from '../fixtures/local-supabase';
-import { USER_A, USER_B } from '../fixtures/users';
+import { RUNNER_PUBLIC_ROUTE_ID } from '../fixtures/seeded-data';
+import { USER_A, USER_B, USER_C_PRO } from '../fixtures/users';
 
 /**
  * /messages — direct messages (very-social persona #55).
@@ -105,6 +106,78 @@ test.describe('/messages — direct messages', () => {
 		// The retry hits the real endpoint: either messages render or the
 		// honest empty state does — the error note is gone either way.
 		await expect(errorNote).toHaveCount(0, { timeout: 10_000 });
+	});
+
+	// Mark-read stops at the newest message the reader was shown, so a reply
+	// that lands between the thread read and the mark-read stays unread
+	// (decisions § 1916, the mobile rule).
+	test('opening a thread marks read only up to the newest message shown', async ({ page }) => {
+		const admin = getAdminClient();
+		const { data: seeded, error } = await admin
+			.from('direct_messages')
+			.insert({ sender_id: USER_B.id, recipient_id: USER_A.id, body: `e2e bound ${Date.now()}` })
+			.select('id, created_at')
+			.single();
+		expect(error).toBeNull();
+		try {
+			const patch = page.waitForRequest(
+				(r) => r.method() === 'PATCH' && r.url().includes('/rest/v1/direct_messages')
+			);
+			await page.goto(`/messages/${USER_B.id}`);
+			const url = decodeURIComponent((await patch).url());
+			expect(url).toContain(`created_at.lt."${seeded!.created_at}"`);
+			expect(url).toContain(`id.lte.${seeded!.id}`);
+		} finally {
+			await admin.from('direct_messages').delete().eq('sender_id', USER_B.id).eq('recipient_id', USER_A.id);
+		}
+	});
+
+	// A failed route read is not cached, so the card recovers the next time the
+	// bubble mounts — here, switching to another thread and back without a reload.
+	test('a route card whose read failed loads on the next mount', async ({ page, mockRoute }) => {
+		const admin = getAdminClient();
+		await admin.from('routes').update({ is_public: true }).eq('id', RUNNER_PUBLIC_ROUTE_ID);
+		await admin.from('direct_messages').insert([
+			{
+				sender_id: USER_B.id,
+				recipient_id: USER_A.id,
+				body: 'e2e route card retry',
+				route_id: RUNNER_PUBLIC_ROUTE_ID
+			},
+			{ sender_id: USER_C_PRO.id, recipient_id: USER_A.id, body: `e2e other thread ${Date.now()}` }
+		]);
+		try {
+			let failing = true;
+			const fail = async (route: import('@playwright/test').Route) => {
+				if (failing) {
+					await route.fulfill({
+						status: 500,
+						contentType: 'application/json',
+						body: JSON.stringify({ message: 'simulated transient failure' })
+					});
+				} else {
+					await route.continue();
+				}
+			};
+			// USER_A owns the seeded route, so the card reads the base table.
+			await mockRoute(page, '**/rest/v1/routes*', fail);
+
+			await page.goto(`/messages/${USER_B.id}`);
+			await expect(page.getByTestId('dm-route-attachment-unavailable')).toBeVisible({ timeout: 15_000 });
+
+			failing = false;
+			await page.locator(`a.thread[href="/messages/${USER_C_PRO.id}"]`).click();
+			await expect(page.getByText('e2e other thread', { exact: false }).first()).toBeVisible({ timeout: 10_000 });
+			await page.locator(`a.thread[href="/messages/${USER_B.id}"]`).click();
+			await expect(page.getByTestId('dm-route-attachment')).toBeVisible({ timeout: 15_000 });
+			await expect(page.getByTestId('dm-route-attachment-unavailable')).toHaveCount(0);
+		} finally {
+			await admin
+				.from('direct_messages')
+				.delete()
+				.in('sender_id', [USER_B.id, USER_C_PRO.id])
+				.eq('recipient_id', USER_A.id);
+		}
 	});
 
 	test('anon is prompted to sign in', async ({ page, context }) => {

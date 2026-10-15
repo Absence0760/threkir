@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { siteOrigin } from '#lib/core/site_url.ts';
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
 	import type { MetricId } from '#lib/metrics/metric_registry.ts';
@@ -73,6 +74,14 @@
 		gradeAdjustedSplitPaces,
 		type PacingVerdict,
 	} from '#lib/runs/pace_analysis.ts';
+	import {
+		gradePhases,
+		parsePacingStrategy,
+		type PhaseResult,
+		type PhaseReviewVerdict,
+		type RacePhaseIntent,
+		type RacePhasePreset,
+	} from '#lib/runs/race_phases.ts';
 	import { defaultZoneCutoffs } from '#lib/training/hr_zones.ts';
 	import { findGuidedRun } from '#lib/training/guided_runs.ts';
 	import { afterNavigate, goto } from '$app/navigation';
@@ -630,7 +639,7 @@
 			} as Run;
 			editing = false;
 		} catch (e) {
-			showToast(m('runDetail.saveFailed', { error: String(e) }), 'error');
+			showToast(m('runDetail.saveFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			savingEdit = false;
 		}
@@ -648,7 +657,7 @@
 			await deleteRun(run.id);
 			goto('/runs');
 		} catch (e) {
-			showToast(m('runDetail.deleteFailed', { error: String(e) }), 'error');
+			showToast(m('runDetail.deleteFailed', { error: thrownMessage(e) }), 'error');
 		}
 	}
 
@@ -721,7 +730,7 @@
 				await navigator.clipboard.writeText(`${window.location.origin}/runs/${run.id}`);
 				showToast(m('audience.linkCopied'), 'success');
 			} catch (e) {
-				showToast(m('runDetail.shareFailed', { error: String(e) }), 'error');
+				showToast(m('runDetail.shareFailed', { error: thrownMessage(e) }), 'error');
 			}
 			return;
 		}
@@ -773,7 +782,7 @@
 			await navigator.clipboard.writeText(url);
 			showToast(m('runDetail.shareLinkCopied'), 'success');
 		} catch (e) {
-			showToast(m('runDetail.shareFailed', { error: String(e) }), 'error');
+			showToast(m('runDetail.shareFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			shareBusy = false;
 		}
@@ -788,7 +797,7 @@
 			run = { ...run, is_public: false } as Run;
 			showToast(m('runDetail.madePrivate'), 'success');
 		} catch (e) {
-			showToast(m('runDetail.makePrivateFailed', { error: String(e) }), 'error');
+			showToast(m('runDetail.makePrivateFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			shareBusy = false;
 		}
@@ -822,7 +831,7 @@
 			showToast(m('runDetail.savedAsRoute'), 'success');
 			goto(`/routes/${id}`);
 		} catch (e) {
-			showToast(m('runDetail.saveFailed', { error: String(e) }), 'error');
+			showToast(m('runDetail.saveFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			savingRoute = false;
 		}
@@ -881,7 +890,7 @@
 				showToast(m('runDetail.imageSaved'), 'success');
 			}
 		} catch (e) {
-			const msg = (e as Error).message;
+			const msg = thrownMessage(e);
 			// User cancelling a Web Share sheet raises; that's fine.
 			if (!msg.includes('abort') && !msg.includes('cancel')) {
 				showToast(m('runDetail.imageGenerateFailed', { error: msg }), 'error');
@@ -905,7 +914,7 @@
 			matchInfo = await fetchRunMatchedTrack(run.id);
 			showToast(m('runDetail.reSnapping'), 'success');
 		} catch (e) {
-			const msg = (e as Error).message ?? String(e);
+			const msg = thrownMessage(e);
 			showToast(m('runDetail.rematchFailed', { error: msg }), 'error');
 		} finally {
 			rematchBusy = false;
@@ -932,7 +941,7 @@
 					: kind === 'no_track'
 						? m('runDetail.recalculateDistanceNoTrack')
 						: m('runDetail.recalculateDistanceFailed', {
-								error: (e as Error)?.message ?? String(e),
+								error: thrownMessage(e),
 							}),
 				'error',
 			);
@@ -1403,6 +1412,68 @@
 		if (v === 'positive') return m('runDetail.pacingGapPositive');
 		return m('runDetail.pacingGapEven');
 	});
+
+	/// Race-strategy review: the phases the phone planned from
+	/// `metadata.pacing_strategy`, graded against this run's track. Null — and
+	/// so no section — when the run carries no strategy, or one whose preset
+	/// this build does not know.
+	let phaseReview = $derived.by(() => {
+		const strategy = parsePacingStrategy(run?.metadata?.[METADATA_KEYS.pacing_strategy]);
+		return strategy ? gradePhases(run?.track, strategy) : null;
+	});
+
+	function strategyPresetLabel(p: RacePhasePreset): string {
+		if (p === 'ten_ten_ten') return m('runDetail.strategyTenTenTen');
+		if (p === 'negative_split') return m('runDetail.strategyNegativeSplit');
+		return m('runDetail.strategyEven');
+	}
+
+	function phaseIntentLabel(i: RacePhaseIntent): string {
+		if (i === 'hold_back') return m('runDetail.phaseHoldBack');
+		if (i === 'settle') return m('runDetail.phaseSettle');
+		if (i === 'race') return m('runDetail.phaseRace');
+		return m('runDetail.phaseEven');
+	}
+
+	function strategyVerdictLabel(v: PhaseReviewVerdict): string {
+		switch (v) {
+			case 'on_plan':
+				return m('runDetail.strategyVerdictOnPlan');
+			case 'went_out_too_fast':
+				return m('runDetail.strategyVerdictWentOutTooFast');
+			case 'faded':
+				return m('runDetail.strategyVerdictFaded');
+			case 'negative_split':
+				return m('runDetail.strategyVerdictNegativeSplit');
+			case 'faster_than_plan':
+				return m('runDetail.strategyVerdictFasterThanPlan');
+			case 'slower_than_plan':
+				return m('runDetail.strategyVerdictSlowerThanPlan');
+			default:
+				return '';
+		}
+	}
+
+	function strategyVerdictTone(v: PhaseReviewVerdict): string {
+		if (v === 'on_plan' || v === 'negative_split') return 'good';
+		if (v === 'faster_than_plan') return 'neutral';
+		return 'warn';
+	}
+
+	/// Same per-unit conversion as the workout table's delta: the pace cells
+	/// beside it read per preferred unit, so the seconds must too.
+	function phaseGapLabel(p: PhaseResult): string {
+		if (p.gapSecPerKm == null) return '—';
+		if (p.grade === 'on_target' && p.gapSecPerKm === 0) return m('runDetail.onPace');
+		const d = getUnit() === 'mi' ? p.gapSecPerKm * (METRES_PER_MILE / 1000) : p.gapSecPerKm;
+		const r = Math.round(d);
+		if (r === 0) return m('runDetail.onPace');
+		return `${r > 0 ? '+' : '−'}${Math.abs(r)}s`;
+	}
+
+	function phaseRangeLabel(p: PhaseResult): string {
+		return `${formatDistance(p.startM)}–${formatDistance(p.endM)}`;
+	}
 
 	/// Manually-marked laps. The recorder writes `metadata.laps` as an
 	/// array of `{ index, start_offset_s, distance_m, duration_s }` where
@@ -2135,6 +2206,94 @@
 						{/each}
 					</tbody>
 				</table>
+			</section>
+		{/if}
+
+		<!-- Pacing strategy review — only when the phone stamped the race
+		     strategy this run was executed under (metadata.pacing_strategy).
+		     Owner-only like the pacing summary: this whole branch is. -->
+		{#if phaseReview}
+			{@const review = phaseReview}
+			<section class="section strategy-review" data-testid="strategy-review">
+				<header class="workout-header">
+					<h2>{m('runDetail.strategyTitle')}</h2>
+					{#if review.verdict !== 'ungraded'}
+						<span class="strategy-verdict strategy-verdict-{strategyVerdictTone(review.verdict)}"
+							>{strategyVerdictLabel(review.verdict)}</span
+						>
+					{/if}
+				</header>
+				<p class="workout-name">
+					{strategyPresetLabel(review.strategy.preset)}
+					<span class="workout-target">
+						· {formatDistance(review.strategy.distanceM)}
+						{#if review.strategy.goalTimeS != null}
+							· {m('runDetail.strategyGoal', { time: formatDuration(review.strategy.goalTimeS) })}
+						{/if}
+					</span>
+				</p>
+				<table class="workout-table strategy-table">
+					<thead>
+						<tr>
+							<th>{m('runDetail.strategyColPhase')}</th>
+							<th class="num">{m('runDetail.strategyColTarget')}</th>
+							<th class="num">{m('runDetail.colActual')}</th>
+							<th class="num">Δ</th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each review.phases as p}
+							<tr class:skipped={p.coverage === 'not_reached'}>
+								<td>
+									<span class="strategy-phase">{phaseIntentLabel(p.intent)}</span>
+									<span class="strategy-range">{phaseRangeLabel(p)}</span>
+									{#if p.coverage === 'partial'}
+										<span class="strategy-range">· {m('runDetail.strategyPartial')}</span>
+									{/if}
+								</td>
+								<td class="num">
+									{p.targetPaceSecPerKm != null ? formatPace(p.targetPaceSecPerKm, 1000) : '—'}
+								</td>
+								<td class="num">
+									{#if p.actualPaceSecPerKm != null}
+										{formatPace(p.actualPaceSecPerKm, 1000)}
+									{:else if p.coverage === 'not_reached' && review.ungradedReason !== 'no_track'}
+										{m('runDetail.strategyNotReached')}
+									{:else}
+										—
+									{/if}
+								</td>
+								<td
+									class="num pace-delta pace-delta-{p.grade == null
+										? 'neutral'
+										: p.grade === 'on_target'
+											? 'on'
+											: 'amber'}"
+								>
+									{phaseGapLabel(p)}
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+				{#if review.ungradedReason === 'no_track'}
+					<p class="strategy-note">{m('runDetail.strategyNoTrack')}</p>
+				{:else if review.ungradedReason === 'no_goal'}
+					<p class="strategy-note">{m('runDetail.strategyNoGoal')}</p>
+				{:else}
+					{#if !review.completed}
+						<p class="strategy-note">
+							{m('runDetail.strategyStoppedShort', {
+								distance: formatDistance(review.trackDistanceM),
+								planned: formatDistance(review.strategy.distanceM),
+							})}
+						</p>
+					{/if}
+					{#if review.basis === 'average'}
+						<p class="strategy-note">{m('runDetail.strategyAverageBasis')}</p>
+					{/if}
+					<p class="splits-hint">{m('runDetail.strategyBand')}</p>
+				{/if}
 			</section>
 		{/if}
 
@@ -3414,6 +3573,49 @@
 	.workout-adherence-abandoned {
 		background: var(--color-danger-light);
 		color: var(--color-danger-text);
+	}
+
+	.strategy-verdict {
+		font-size: var(--font-size-section-label);
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		padding: 0.15rem 0.5rem;
+		border-radius: 9999px;
+	}
+
+	.strategy-verdict-good {
+		background: var(--color-success-light);
+		color: var(--color-success-text);
+	}
+
+	.strategy-verdict-warn {
+		background: var(--color-warning-light);
+		color: var(--color-warning-text);
+	}
+
+	.strategy-verdict-neutral {
+		background: var(--color-bg-tertiary);
+		color: var(--color-text-secondary);
+	}
+
+	.strategy-phase {
+		font-weight: 600;
+	}
+
+	.strategy-range,
+	.strategy-note {
+		color: var(--color-text-tertiary);
+	}
+
+	.strategy-range {
+		margin-inline-start: var(--space-xs);
+		font-size: 0.75rem;
+	}
+
+	.strategy-note {
+		font-size: 0.82rem;
+		margin: var(--space-sm) 0 0;
 	}
 
 	.workout-name {

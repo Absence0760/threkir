@@ -2,6 +2,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { goto, replaceState } from '$app/navigation';
 	import { supabase } from '#lib/core/supabase.ts';
+	import { appErrorMessage, dbError } from '#lib/core/supabase_error.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { checkPasswordPair } from '#lib/core/auth_gates.ts';
 	import { emailOtpLink } from '#lib/core/auth_confirmation.ts';
@@ -81,14 +82,14 @@
 		busy = true;
 		try {
 			const { error: updateError } = await supabase.auth.updateUser({ password });
-			if (updateError) throw updateError;
+			if (updateError) throw dbError(updateError);
 			// Flip BEFORE refreshSession so unmount triggered by goto
 			// doesn't sign out the freshly-set session.
 			passwordChanged = true;
 			await auth.refreshSession();
 			goto('/dashboard');
 		} catch (err) {
-			error = err instanceof Error ? err.message : m('authReset.errorGeneric');
+			error = appErrorMessage(err) ?? m('authReset.errorGeneric');
 			busy = false;
 		}
 	}

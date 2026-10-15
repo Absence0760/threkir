@@ -9,6 +9,7 @@ import {
 	newImportFailureLog,
 	recordImportFailure,
 } from './import_failures';
+import { dbError } from '../core/supabase_error';
 
 test('a dropped connection classifies as network, not unknown', () => {
 	assert.equal(classifyImportFailure(new TypeError('Failed to fetch')).reason, 'network');
@@ -122,6 +123,22 @@ test('detail carries code and message but never details or hint', () => {
 	assert.match(detail, /^42501: new row violates/);
 	assert.ok(!detail.includes('51.5074'));
 	assert.ok(!detail.includes('check the policy'));
+});
+
+test('a thrown DbError classifies on its code and does not repeat it in the detail', () => {
+	// Reason: the data layer now throws DbError, whose message already ends in
+	// " (code)". The detail prefixes the code itself, so without the strip the
+	// failure report read "42501: new row violates … (42501)".
+	const raw = {
+		code: '42501',
+		message: 'new row violates row-level security policy for table "runs"',
+		details: 'Failing row contains (uuid, 51.5074, -0.1278)',
+	};
+	const thrown = classifyImportFailure(dbError(raw));
+	assert.deepEqual(thrown, classifyImportFailure(raw));
+	assert.equal(thrown.detail, '42501: new row violates row-level security policy for table "runs"');
+	assert.equal(classifyImportFailure(dbError({ code: 'P0001', message: 'rate limit exceeded for runs, retry in 30s' })).reason, 'rate_limited');
+	assert.equal(classifyImportFailure(dbError({ code: '22P02', message: 'invalid input syntax' })).reason, 'rejected');
 });
 
 test('detail collapses whitespace and is bounded', () => {

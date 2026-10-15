@@ -223,13 +223,18 @@ Deno.test('series cancel: authority, Stripe gate, end the series, cancel by name
 
 Deno.test('checkout refuses an instant past an ended series', async () => {
   const checkout = await Deno.readTextFile(new URL('../events-checkout/index.ts', import.meta.url));
+  const gate = await Deno.readTextFile(new URL('../events-checkout/occurrence.ts', import.meta.url));
   assert(
     /\.select\('host_user_id, capacity, title, recurrence_until'\)/.test(checkout),
     'events-checkout must read recurrence_until to know a series has ended',
   );
   assert(
-    /if \(isPastSeriesEnd\(event\.recurrence_until, Date\.parse\(instanceStart\)\)\) \{\n\s+return Response\.json\(\{ error: 'instance_cancelled' \}, \{ status: 409 \}\);/
-      .test(checkout),
-    'events-checkout must refuse an instant past recurrence_until as a cancelled occurrence',
+    /await gateOccurrence\(service, eventId, instanceStart, event\.recurrence_until\)/.test(checkout),
+    'events-checkout must hand recurrence_until to its occurrence gate',
+  );
+  assert(
+    /if \(isPastSeriesEnd\(recurrenceUntil, Date\.parse\(instanceStart\)\)\) \{\n\s+return \{ status: 409, error: 'instance_cancelled' \};/
+      .test(gate),
+    'the occurrence gate must refuse an instant past recurrence_until as a cancelled occurrence',
   );
 });

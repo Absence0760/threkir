@@ -14,6 +14,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { isEntityId } from '../core/entity_id';
+import { thrownMessage } from '../core/supabase_error';
 
 export interface SharedEvent {
 	id: string;
@@ -105,7 +106,7 @@ export async function lookupSharedEvent(
 	} catch (err) {
 		console.error(
 			'[share-event] upstream_unreachable',
-			err instanceof Error ? err.message : String(err),
+			thrownMessage(err),
 		);
 		return { event: null };
 	}

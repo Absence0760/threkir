@@ -187,4 +187,52 @@ test.describe('/clubs/[slug]/events/[id] — organiser event edit', () => {
 		);
 		expect(resRows.length).toBe(1);
 	});
+
+	test('an organiser in another zone edits a New York series on the New York clock', async ({
+		page
+	}) => {
+		// The browser context runs in UTC (playwright.config.ts); the series is
+		// Wednesdays 21:30 in New York, which is 02:30 Thursday on that clock.
+		const title = `e2e-event-edit-zone ${Date.now()}`;
+		const startsAt = '2027-01-14T02:30:00.000Z';
+		eventId = await insertEvent({
+			club_id: RICHMOND_CLUB_ID,
+			author_id: USER_A.id,
+			title,
+			starts_at: startsAt,
+			timezone: 'America/New_York',
+			recurrence_freq: 'weekly',
+			recurrence_byday: ['WE']
+		});
+
+		await page.goto(`/clubs/richmond-run-club/events/${eventId}`);
+		await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible({
+			timeout: 10_000
+		});
+
+		await page.getByTestId('edit-event').click();
+		const modal = page.locator('.modal', { hasText: 'Edit event' });
+		await expect(modal).toBeVisible({ timeout: 5_000 });
+
+		const dateInput = modal.locator('input[type="date"]');
+		const timeInput = modal.locator('input[type="time"]');
+		await expect(dateInput).toHaveValue('2027-01-13');
+		await expect(timeInput).toHaveValue('21:30');
+		await expect(modal.getByTestId('event-when-hint')).toContainText('America/New_York');
+
+		// Moving the start an hour earlier is an hour earlier in New York, not
+		// 20:30 on the editor's clock, and the stored zone is left alone.
+		await timeInput.fill('20:30');
+		await modal.getByRole('button', { name: 'Save changes' }).click();
+		await expect(modal).toBeHidden({ timeout: 10_000 });
+
+		const admin = getAdminClient();
+		const row = await readRow(
+			'events by id',
+			admin.from('events').select('starts_at, timezone, recurrence_byday').eq('id', eventId).single()
+		);
+		expect(new Date(row.starts_at as string).toISOString()).toBe('2027-01-14T01:30:00.000Z');
+		expect(row.timezone).toBe('America/New_York');
+		expect(row.recurrence_byday).toEqual(['WE']);
+	});
 });

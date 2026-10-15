@@ -70,16 +70,19 @@ export function capField(raw: unknown, max: number = MAX_FIELD_LEN): string {
  * round UP to the next whole second, which is how road-race times are reported.
  */
 export function parseClockToSeconds(time: unknown): number {
+  return Math.ceil(parseClock(time));
+}
+
+/** The clock reading in seconds, fraction kept. 0 on garbage. */
+function parseClock(time: unknown): number {
   const s = capField(time);
   if (!s) return 0;
   const parts = s.split(':').map((p) => Number(p));
   if (parts.some((n) => !Number.isFinite(n) || n < 0)) return 0;
-  let total: number;
-  if (parts.length === 3) total = parts[0] * 3600 + parts[1] * 60 + parts[2];
-  else if (parts.length === 2) total = parts[0] * 60 + parts[1];
-  else if (parts.length === 1) total = parts[0];
-  else return 0;
-  return Math.ceil(total);
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  if (parts.length === 2) return parts[0] * 60 + parts[1];
+  if (parts.length === 1) return parts[0];
+  return 0;
 }
 
 /** A result field that may arrive as a number (RunSignUp's `bib`) or text. */
@@ -97,6 +100,21 @@ function resultText(raw: unknown, max: number = MAX_FIELD_LEN): string {
 export function raceExternalId(name: string, date: string, bib: string): string {
   const clean = (v: string) => capField(v, 80).replace(/:/g, ' ');
   return `race:${clean(name)}:${clean(date)}:${clean(bib)}`;
+}
+
+/**
+ * The external_id of a result with no bib: `race:{name}:{date}::{finish}`,
+ * where `{finish}` spells the facts `isSameFinish` reads — `c` chip and `g`
+ * gun seconds (rounded up, as `duration_s` is) and `p` overall place, each only
+ * when the result carries it (decisions § 1920). A bib is colon-stripped, so
+ * the extra segment can never spell a bib's id. Two results with one id agree
+ * on every reading to under a second, so `isSameFinish` would call them one
+ * finish too: the id never refuses a result the finish rule would file.
+ */
+export function bibLessRaceExternalId(name: string, date: string, finish: FinishFacts): string {
+  const reading = (tag: string, s: number | null) => (s === null ? '' : `${tag}${Math.ceil(s)}`);
+  const place = finish.place === null ? '' : `p${finish.place}`;
+  return `${raceExternalId(name, date, '')}:${reading('c', finish.chipS)}${reading('g', finish.gunS)}${place}`;
 }
 
 /**
@@ -192,19 +210,136 @@ export function mapRaceResult(
     activity_type: 'run',
     is_public: opts.isPublic,
     followers_only: !opts.isPublic && opts.followersOnly === true,
-    external_id: raceExternalId(opts.raceName, opts.raceDate, bib),
+    external_id: bib
+      ? raceExternalId(opts.raceName, opts.raceDate, bib)
+      : bibLessRaceExternalId(opts.raceName, opts.raceDate, finishFacts(metadata)),
     race_listing_id: opts.listingId,
     metadata,
   };
+}
+
+// ── One finish, two paths (decisions § 1912) ─────────────────────────────────
+//
+// A result pasted without a bib is filed as `race:{name}:{date}::{finish}` and
+// the same result imported from a provider as `race:{name}:{date}:{bib}`, so
+// neither the
+// id nor the listing-and-bib skip can see that they are one finish. What both
+// paths do know is the listing (one race on one day), the finish clock and,
+// often, the overall place, and those are what decide it.
+
+/**
+ * How far apart two readings of one finish clock can be. A runner copies
+ * `21:43.34` as `21:43` or `21:44`, and a feed that publishes hundredths is
+ * stored rounded up (`parseClockToSeconds`), so one finish reads up to a
+ * second apart; two different finishes by one runner on one morning — a 5K and
+ * a 10K — are minutes apart.
+ */
+export const SAME_FINISH_TOLERANCE_S = 1;
+
+/** What a result's metadata says about the finish it records. */
+export interface FinishFacts {
+  bib: string;
+  chipS: number | null;
+  gunS: number | null;
+  place: number | null;
+}
+
+export function finishFacts(metadata: unknown): FinishFacts {
+  const m = metadata !== null && typeof metadata === 'object' && !Array.isArray(metadata)
+    ? metadata as Record<string, unknown>
+    : {};
+  const clock = (raw: unknown) => {
+    const s = parseClock(typeof raw === 'number' ? String(raw) : raw);
+    return s > 0 ? s : null;
+  };
+  return {
+    bib: resultText(m.bib),
+    chipS: clock(m.chip_time),
+    gunS: clock(m.gun_time),
+    place: toPositiveInt(m.overall_place),
+  };
+}
+
+/**
+ * Whether two results under ONE listing for ONE runner are the same finish.
+ *
+ * Two bibs decide it alone. Otherwise the overall places, when both carry one,
+ * must agree, and the clocks must agree to within `SAME_FINISH_TOLERANCE_S` —
+ * chip against chip and gun against gun wherever both sides have that reading,
+ * and only when no reading is shared, the one each side has (RunSignUp's
+ * `chip_time` is often empty, and a runner pastes their time into whichever
+ * box). Two results with nothing to compare are not the same finish: a missed
+ * merge files a race twice, which the runner can delete, while a false merge
+ * writes one race's result over another's.
+ */
+export function isSameFinish(a: FinishFacts, b: FinishFacts): boolean {
+  if (a.bib && b.bib) return a.bib === b.bib;
+  if (a.place !== null && b.place !== null && a.place !== b.place) return false;
+  const pairs: Array<[number, number]> = [];
+  if (a.chipS !== null && b.chipS !== null) pairs.push([a.chipS, b.chipS]);
+  if (a.gunS !== null && b.gunS !== null) pairs.push([a.gunS, b.gunS]);
+  if (pairs.length === 0) {
+    const x = a.chipS ?? a.gunS;
+    const y = b.chipS ?? b.gunS;
+    if (x === null || y === null) return false;
+    pairs.push([x, y]);
+  }
+  return pairs.every(([x, y]) => Math.abs(x - y) < SAME_FINISH_TOLERANCE_S);
+}
+
+/** A run the caller already holds under the listing being imported onto. */
+export interface FiledRaceRun {
+  id: string;
+  source: string;
+  metadata: unknown;
+}
+
+/** A filed result that an incoming one names, to be written onto it. */
+export interface FinishMerge {
+  run: FiledRaceRun;
+  result: MappedRaceRun;
+}
+
+/**
+ * Reconcile incoming results against the runs already filed under the same
+ * listing. A result is dropped when a filed run is the same finish
+ * (`isSameFinish`) and carries everything the result knows; when the result
+ * carries a bib the filed run lacks — a bib-less paste, then the provider
+ * import of the same race — it is written onto that run instead, so the run
+ * gains its bib and later imports skip it by the cheaper rules. Each filed run
+ * absorbs at most one result. Pure; the handler does the writes.
+ */
+export function reconcileFiledFinishes(
+  incoming: readonly MappedRaceRun[],
+  filed: readonly FiledRaceRun[],
+): { fresh: MappedRaceRun[]; skipped: number; merges: FinishMerge[] } {
+  const facts = filed.map((f) => finishFacts(f.metadata));
+  const claimed = new Set<number>();
+  const fresh: MappedRaceRun[] = [];
+  const merges: FinishMerge[] = [];
+  let skipped = 0;
+  for (const result of incoming) {
+    const mine = finishFacts(result.metadata);
+    const at = facts.findIndex((f, i) => !claimed.has(i) && isSameFinish(mine, f));
+    if (at === -1) {
+      fresh.push(result);
+      continue;
+    }
+    claimed.add(at);
+    if (mine.bib && !facts[at].bib) merges.push({ run: filed[at], result });
+    else skipped += 1;
+  }
+  return { fresh, skipped, merges };
 }
 
 /** A single user-pasted result (the no-API path). */
 export type PasteResultInput = RaceResultFields;
 
 /**
- * Map a single pasted result onto a runs row. Same shape + dedup id as the
- * RunSignUp path so a later provider sync of the same race can't create a
- * duplicate. Returns null when the paste has no usable time.
+ * Map a single pasted result onto a runs row, in the same shape as every
+ * provider leg. A pasted bib gives it the provider's dedup id; without one it
+ * is matched to a provider import of the same race by `reconcileFiledFinishes`.
+ * Returns null when the paste has no usable time.
  */
 export function parseRaceResultRow(
   input: PasteResultInput,
@@ -479,17 +614,81 @@ export function extractRunSignUpResults(payload: unknown): RunSignUpResultRow[] 
 
 const DIVISION_COLUMN = /^division-\d+-placement$/;
 
+const MAX_AGE = 120;
+const EVENT_PREFIX = /^\d+(?:\.\d+)?(?:k|mi|m)_/;
+const SEX_LEAD =
+  /^(?:non[- ]?binary|female|male|women'?s|men'?s|women|men|girls|boys|nb|f|m|x)(?:([ _-]+)|(?=u?\d))/;
+const SEX_TRAIL = / (?:female|male|women|men)$/;
+const AGE_WORD = /^(?:age group|ages|age) /;
+const RANGE = /^(\d{1,3}) ?(?:-|\u2013|to|thru|through) ?(\d{1,3})$/;
+const COMPACT = /^(\d{4,6})$/;
+const OVER = /^(\d{1,3}) ?(?:\+|plus|and over|and older|and up|or over|or older)$|^over (\d{1,3})$/;
+const UNDER = /^(\d{1,3}) ?(?:and under|and younger|or under|or younger|and und|u|-)$|^(?:under|u) ?(\d{1,3})$/;
+const SINGLE = /^(\d{1,3})$/;
+
+function bandIsAgeGroup(lo: number, hi: number): boolean {
+  return lo <= hi && hi >= 1 && hi <= MAX_AGE && !(lo <= 1 && hi >= 99);
+}
+
+/**
+ * Whether a RunSignUp division name is an age band, read from its shape.
+ *
+ * Measured over the headers of 826 public events across 297 races
+ * (decisions § 1913): an age group is a range (`F 30-39`, `Male 20 to 29`,
+ * `Ages 18-24`, `30-39 Female`), an open end (`Female 70 and Over`, `M75+`,
+ * `F14&UND`, `MU14`, `M 10-`, `Under 18`), a sex letter fused to its bounds
+ * (`M2029`, `F0119`, `F80120`), or a single year after the word "age"
+ * (`Boys age 10`), optionally under an event code (`5K_F30-39`). Everything
+ * else that carries a digit is some other award: `M Top 3 Overall`,
+ * `Top 10 Female`, `2 Person Team`, and the weight classes, which are banded by
+ * age themselves (`Clydesdale 40 and Over`, `F Athena Under 40`) and place a
+ * runner instead of their age group. Masters tiers are awards too: they lift a
+ * runner out of the age groups exactly as an overall win does. A band covering
+ * the whole field (`M 1-99`, `F 00-00`) is a catch-all, not an age group, and a
+ * shape this does not know leaves the age group unset rather than guessed.
+ */
+function isRunSignUpAgeGroupName(name: string): boolean {
+  let s = name.toLowerCase().replace(/&/g, ' and ').replace(/\s+/g, ' ').trim();
+  s = s.replace(EVENT_PREFIX, '');
+  let sex = false;
+  let fused = false;
+  const lead = SEX_LEAD.exec(s);
+  if (lead) {
+    sex = true;
+    fused = lead[1] === undefined;
+    s = s.slice(lead[0].length);
+  }
+  const word = AGE_WORD.exec(s);
+  if (word) s = s.slice(word[0].length);
+  if (!sex) s = s.replace(SEX_TRAIL, '');
+
+  const range = RANGE.exec(s);
+  if (range) return bandIsAgeGroup(Number(range[1]), Number(range[2]));
+  const compact = fused ? COMPACT.exec(s) : null;
+  if (compact) {
+    const digits = compact[1];
+    const split = digits.length === 6 ? 3 : 2;
+    return bandIsAgeGroup(Number(digits.slice(0, split)), Number(digits.slice(split)));
+  }
+  const over = OVER.exec(s);
+  if (over) return bandIsAgeGroup(Number(over[1] ?? over[2]), MAX_AGE);
+  const under = UNDER.exec(s);
+  if (under) return bandIsAgeGroup(0, Number(under[1] ?? under[2]));
+  const single = word ? SINGLE.exec(s) : null;
+  if (single) return bandIsAgeGroup(Number(single[1]), Number(single[1]));
+  return false;
+}
+
 /**
  * The runner's age group and their place in it, or null when the row does not
  * say which one that is.
  *
  * RunSignUp has no age-group field: a row holds a placement for each division
- * it scored in, and the set's headers name them (`M2029`, `F 30-39`,
- * `M Overall`, `All Female`). An age group is the division whose name carries
- * an age, so the one placed division with a digit in its name is taken. Zero is
- * common — an overall award winner is usually lifted out of their age group —
- * and two happens where a race defines two age schemes side by side; both leave
- * the age group unset rather than pick one.
+ * it scored in, and the set's headers name them. The one placed division whose
+ * name is an age band (`isRunSignUpAgeGroupName`) is taken. Zero is common, as
+ * an overall, masters or weight-class award lifts a runner out of their age
+ * group, and two happens where a race defines two age schemes side by side
+ * (`M 20-24` beside `M2024`); both leave the age group unset rather than pick.
  */
 export function runSignUpAgeGroup(
   row: RunSignUpResultRow,
@@ -500,7 +699,7 @@ export function runSignUpAgeGroup(
     const place = toPositiveInt(value);
     if (place === null) continue;
     const label = capField(row.headers[key], 40);
-    if (!/\d/.test(label)) continue;
+    if (!isRunSignUpAgeGroupName(label)) continue;
     if (found) return null;
     found = { label, place };
   }
@@ -821,8 +1020,8 @@ export function ultraSignUpResultIsForListing(
  * Map one UltraSignup result onto a runs row. Only a finished result is a run —
  * a DNF / DNS / DQ row carries a `time` of "0". Delegates to the shared shaping
  * so the row, the external_id and the metadata keys match every other provider;
- * UltraSignup publishes no bib, so the id's bib slot is empty, which is also
- * what a bib-less paste of the same race produces — the two dedup.
+ * UltraSignup publishes no bib, so the id is the bib-less one, which a bib-less
+ * paste of the same finish shares or `isSameFinish` matches — the two dedup.
  *
  * This does NOT decide which race the row is: call it only on rows
  * `ultraSignUpResultIsForListing` kept, which `ultraSignUpImportRows` does.

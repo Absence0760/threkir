@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { fetchRunGear, fetchMyGear, setRunGear, type Gear, type GearWithDistance } from '#lib/core/data.ts';
@@ -41,7 +42,7 @@
 			assigned = await fetchRunGear(runId);
 			editing = false;
 		} catch (e) {
-			showToast(m('runGearChips.saveFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(m('runGearChips.saveFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			saving = false;
 		}

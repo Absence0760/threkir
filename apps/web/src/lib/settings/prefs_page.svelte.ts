@@ -12,6 +12,7 @@ import {
 	type PrefsBag,
 } from './settings';
 import { PrefsSaveQueue, type PrefsSaveStatus } from './prefs_save_queue';
+import { thrownMessage } from '../core/supabase_error';
 
 export type PrefsLoadPhase = 'loading' | 'ready' | 'failed';
 
@@ -74,7 +75,7 @@ export function createPrefsPage(load: (ctx: PrefsLoadContext) => Promise<void>) 
 			state.phase = 'ready';
 		} catch (e) {
 			console.warn('Settings load failed', e);
-			state.error = (e as Error).message;
+			state.error = thrownMessage(e);
 			state.phase = 'failed';
 			return;
 		}

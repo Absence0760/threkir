@@ -162,6 +162,7 @@ insert into server_only (fn, keeps_service_role) values
   ('enqueue_lifecycle_drip', true),
   ('enqueue_safety_overdue_emails', false),
   ('enqueue_weekly_digests', true),
+  ('event_occurrence_exists', true),
   ('event_orders_owed_refund', true),
   ('expire_stale_export_jobs', true),
   ('export_retention_overrun', true),

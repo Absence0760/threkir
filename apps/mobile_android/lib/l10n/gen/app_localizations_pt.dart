@@ -2886,6 +2886,72 @@ class AppLocalizationsPt extends AppLocalizations {
       'Ajustado pelo relevo, desacelerou na segunda metade.';
 
   @override
+  String get runDetailStrategyTitle => 'Estratégia de ritmo';
+
+  @override
+  String runDetailStrategyGoal(String time) {
+    return 'Objetivo $time';
+  }
+
+  @override
+  String get runDetailStrategyColPhase => 'Fase';
+
+  @override
+  String get runDetailStrategyColTarget => 'Alvo';
+
+  @override
+  String get runDetailStrategyNotReached => 'não alcançada';
+
+  @override
+  String get runDetailStrategyPartial => 'parcial';
+
+  @override
+  String get runDetailStrategyOnPace => 'no ritmo';
+
+  @override
+  String get runDetailStrategyVerdictOnPlan => 'Conforme o plano';
+
+  @override
+  String get runDetailStrategyVerdictWentOutTooFast =>
+      'Arranque demasiado rápido';
+
+  @override
+  String get runDetailStrategyVerdictFaded => 'Quebra no final';
+
+  @override
+  String get runDetailStrategyVerdictNegativeSplit =>
+      'Final mais forte do que o previsto';
+
+  @override
+  String get runDetailStrategyVerdictFasterThanPlan =>
+      'Mais rápido do que o plano';
+
+  @override
+  String get runDetailStrategyVerdictSlowerThanPlan =>
+      'Mais lento do que o plano';
+
+  @override
+  String get runDetailStrategyAverageBasis =>
+      'Não foi definido um tempo objetivo, por isso cada alvo segue o perfil do plano ao ritmo médio.';
+
+  @override
+  String get runDetailStrategyNoTrack =>
+      'Esta corrida não tem um trajeto GPS com tempos, por isso as fases não podem ser avaliadas.';
+
+  @override
+  String get runDetailStrategyNoGoal =>
+      'Não foi definido um tempo objetivo, por isso um plano de ritmo constante com uma só fase não tem com que se comparar.';
+
+  @override
+  String runDetailStrategyStoppedShort(String distance, String planned) {
+    return 'Terminou aos $distance dos $planned previstos, por isso as fases seguintes não foram corridas.';
+  }
+
+  @override
+  String get runDetailStrategyBand =>
+      'Uma fase a menos de 1,5 % do ritmo alvo conta como no alvo; as paragens não são contadas.';
+
+  @override
   String get runDetailGapColumn => 'Ajustado';
 
   @override
@@ -4889,7 +4955,14 @@ class AppLocalizationsPt extends AppLocalizations {
   String get clubsEmptyMineTitle => 'Ainda não entrou em nenhum clube.';
 
   @override
-  String get clubsEmptyBrowseBody => 'Tente outro nome ou local.';
+  String get clubsMissingClubBody =>
+      'O seu clube não aparece? Talvez ainda não esteja no Threkir. Crie a página do clube e convide os seus membros a aderir.';
+
+  @override
+  String get clubsSetUpYourClub => 'Configurar o seu clube';
+
+  @override
+  String get clubsHowToCreateClub => 'Como criar um clube';
 
   @override
   String get clubsEmptyMineBody => 'Vá em Explorar para encontrar um.';
@@ -15549,6 +15622,86 @@ class AppLocalizationsPt extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get messagesTitle => 'Mensagens';
+
+  @override
+  String get messagesEmptyTitle => 'Ainda não há conversas';
+
+  @override
+  String get messagesEmptyBody =>
+      'Abra o perfil de um corredor e toque em Mensagem para iniciar uma conversa.';
+
+  @override
+  String get messagesLoadError =>
+      'Não foi possível carregar as suas conversas.';
+
+  @override
+  String get messagesThreadLoadError =>
+      'Não foi possível carregar esta conversa.';
+
+  @override
+  String messagesYouPrefixed(String body) {
+    return 'Eu: $body';
+  }
+
+  @override
+  String messagesUnreadCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count mensagens não lidas',
+      one: '$count mensagem não lida',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get messagesThreadEmpty => 'Ainda não há mensagens. Diga olá.';
+
+  @override
+  String get messagesComposerHint => 'Mensagem…';
+
+  @override
+  String get messagesSend => 'Enviar';
+
+  @override
+  String get messagesSending => 'A enviar…';
+
+  @override
+  String get messagesSendFailed =>
+      'Não foi possível enviar a sua mensagem. Tente novamente.';
+
+  @override
+  String get messagesSendNotAllowed =>
+      'Só pode enviar mensagens a pessoas que segue ou que o seguem, e que não o bloquearam.';
+
+  @override
+  String get messagesLoadEarlier => 'Carregar mensagens anteriores';
+
+  @override
+  String get messagesLoadEarlierFailed =>
+      'Não foi possível carregar as mensagens anteriores.';
+
+  @override
+  String get messagesViewProfile => 'Ver perfil';
+
+  @override
+  String get messagesRouteEyebrow => 'Rota';
+
+  @override
+  String get messagesRouteUntitled => 'Rota sem título';
+
+  @override
+  String get messagesRouteUnavailable =>
+      'Esta rota já não está disponível para si.';
+
+  @override
+  String get messagesRouteLoading => 'A carregar a rota';
+
+  @override
+  String get profileMessage => 'Mensagem';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -18434,6 +18587,70 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Ajustado pelo relevo, você desacelerou na segunda metade.';
 
   @override
+  String get runDetailStrategyTitle => 'Estratégia de ritmo';
+
+  @override
+  String runDetailStrategyGoal(String time) {
+    return 'Meta $time';
+  }
+
+  @override
+  String get runDetailStrategyColPhase => 'Fase';
+
+  @override
+  String get runDetailStrategyColTarget => 'Alvo';
+
+  @override
+  String get runDetailStrategyNotReached => 'não alcançada';
+
+  @override
+  String get runDetailStrategyPartial => 'parcial';
+
+  @override
+  String get runDetailStrategyOnPace => 'no ritmo';
+
+  @override
+  String get runDetailStrategyVerdictOnPlan => 'Conforme o plano';
+
+  @override
+  String get runDetailStrategyVerdictWentOutTooFast => 'Largada rápida demais';
+
+  @override
+  String get runDetailStrategyVerdictFaded => 'Quebra no final';
+
+  @override
+  String get runDetailStrategyVerdictNegativeSplit =>
+      'Final mais forte que o planejado';
+
+  @override
+  String get runDetailStrategyVerdictFasterThanPlan =>
+      'Mais rápido que o plano';
+
+  @override
+  String get runDetailStrategyVerdictSlowerThanPlan => 'Mais lento que o plano';
+
+  @override
+  String get runDetailStrategyAverageBasis =>
+      'Nenhum tempo alvo foi definido, então cada alvo segue o formato do plano no seu ritmo médio.';
+
+  @override
+  String get runDetailStrategyNoTrack =>
+      'Esta corrida não tem um trajeto GPS com horários, então as fases não podem ser avaliadas.';
+
+  @override
+  String get runDetailStrategyNoGoal =>
+      'Nenhum tempo alvo foi definido, então um plano de ritmo constante com uma única fase não tem com o que ser comparado.';
+
+  @override
+  String runDetailStrategyStoppedShort(String distance, String planned) {
+    return 'Terminou em $distance dos $planned planejados, então as fases seguintes não foram corridas.';
+  }
+
+  @override
+  String get runDetailStrategyBand =>
+      'Uma fase a menos de 1,5% do ritmo alvo conta como no alvo; as paradas não são contadas.';
+
+  @override
   String get runDetailGapColumn => 'Ajustado';
 
   @override
@@ -20439,7 +20656,14 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get clubsEmptyMineTitle => 'Você ainda não entrou em nenhum clube.';
 
   @override
-  String get clubsEmptyBrowseBody => 'Tente outro nome ou local.';
+  String get clubsMissingClubBody =>
+      'Seu clube não aparece? Talvez ele ainda não esteja no Threkir. Crie a página dele e convide seus membros para entrar.';
+
+  @override
+  String get clubsSetUpYourClub => 'Configurar seu clube';
+
+  @override
+  String get clubsHowToCreateClub => 'Como criar um clube';
 
   @override
   String get clubsEmptyMineBody => 'Vá em Explorar para encontrar um.';
@@ -31085,4 +31309,83 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
     );
     return '$_temp0';
   }
+
+  @override
+  String get messagesTitle => 'Mensagens';
+
+  @override
+  String get messagesEmptyTitle => 'Ainda não há conversas';
+
+  @override
+  String get messagesEmptyBody =>
+      'Abra o perfil de um corredor e toque em Mensagem para começar uma conversa.';
+
+  @override
+  String get messagesLoadError => 'Não foi possível carregar suas conversas.';
+
+  @override
+  String get messagesThreadLoadError =>
+      'Não foi possível carregar esta conversa.';
+
+  @override
+  String messagesYouPrefixed(String body) {
+    return 'Você: $body';
+  }
+
+  @override
+  String messagesUnreadCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count mensagens não lidas',
+      one: '$count mensagem não lida',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get messagesThreadEmpty => 'Ainda não há mensagens. Diga oi.';
+
+  @override
+  String get messagesComposerHint => 'Mensagem…';
+
+  @override
+  String get messagesSend => 'Enviar';
+
+  @override
+  String get messagesSending => 'Enviando…';
+
+  @override
+  String get messagesSendFailed =>
+      'Não foi possível enviar sua mensagem. Tente novamente.';
+
+  @override
+  String get messagesSendNotAllowed =>
+      'Você só pode enviar mensagens para pessoas que você segue ou que seguem você, e que não bloquearam você.';
+
+  @override
+  String get messagesLoadEarlier => 'Carregar mensagens anteriores';
+
+  @override
+  String get messagesLoadEarlierFailed =>
+      'Não foi possível carregar as mensagens anteriores.';
+
+  @override
+  String get messagesViewProfile => 'Ver perfil';
+
+  @override
+  String get messagesRouteEyebrow => 'Rota';
+
+  @override
+  String get messagesRouteUntitled => 'Rota sem título';
+
+  @override
+  String get messagesRouteUnavailable =>
+      'Esta rota não está mais disponível para você.';
+
+  @override
+  String get messagesRouteLoading => 'Carregando rota';
+
+  @override
+  String get profileMessage => 'Mensagem';
 }

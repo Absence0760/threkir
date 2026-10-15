@@ -192,4 +192,18 @@ final class CalendarBridgeRruleTests: XCTestCase {
         XCTAssertEqual(r.recurrenceEnd?.occurrenceCount, 4)
         XCTAssertNil(r.recurrenceEnd?.endDate)
     }
+
+    func testEventTimeZoneReadsAnIanaName() {
+        XCTAssertEqual(
+            CalendarBridge.eventTimeZone("America/New_York")?.identifier,
+            "America/New_York"
+        )
+    }
+
+    func testMissingOrUnknownTimeZoneLeavesTheDefault() {
+        XCTAssertNil(CalendarBridge.eventTimeZone(nil))
+        XCTAssertNil(CalendarBridge.eventTimeZone(""))
+        XCTAssertNil(CalendarBridge.eventTimeZone("Mars/Olympus"))
+        XCTAssertNil(CalendarBridge.eventTimeZone(42))
+    }
 }

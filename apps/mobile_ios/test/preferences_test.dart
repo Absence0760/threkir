@@ -73,6 +73,29 @@ void main() {
           reason: 'a second account never inherits the first one\'s stride');
     });
 
+    test('two accounts on one phone each keep their own stride', () async {
+      SharedPreferences.setMockInitialValues({});
+      final p = Preferences();
+      await p.init();
+      await p.setLearnedStrideM('u1', 'run', 1.12);
+      await p.setLearnedStrideM('u2', 'run', 0.98);
+      expect(p.learnedStrideM('u1', 'run'), 1.12);
+      expect(p.learnedStrideM('u2', 'run'), 0.98);
+      expect(p.learnedStrideM('u2', 'walk'), isNull);
+    });
+
+    test('the latest run\'s stride replaces the earlier one', () async {
+      SharedPreferences.setMockInitialValues({});
+      final p = Preferences();
+      await p.init();
+      await p.setLearnedStrideM('u1', 'run', 1.12);
+      await p.setLearnedStrideM('u1', 'run', 1.05);
+
+      final next = Preferences();
+      await next.init();
+      expect(next.learnedStrideM('u1', 'run'), 1.05);
+    });
+
     test('a non-finite or non-positive stride is not written', () async {
       SharedPreferences.setMockInitialValues({});
       final p = Preferences();

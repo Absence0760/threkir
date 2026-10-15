@@ -603,14 +603,21 @@
 		opacity: 0.6;
 	}
 
-	.kudos-btn:not(:disabled):hover {
+	.kudos-btn:not(:disabled):not(.given):hover {
 		border-color: var(--color-primary);
 		color: var(--color-primary);
 	}
 
+	/* A given chip keeps its words in the secondary ink: primary on its own
+	 * 12% tint is 3.4-4.1:1 in light mode, under AA for text. The tint, the
+	 * primary edge and the primary glyph carry the state instead. */
 	.kudos-btn.given {
 		background: color-mix(in srgb, var(--color-primary) 12%, transparent);
 		border-color: var(--color-primary);
+		color: var(--color-text-secondary);
+	}
+
+	.kudos-btn.given .material-symbols {
 		color: var(--color-primary);
 	}
 
@@ -663,7 +670,18 @@
 	.like-btn.given {
 		background: color-mix(in srgb, var(--color-primary) 12%, transparent);
 		border-color: var(--color-primary);
+		color: var(--color-text-secondary);
+	}
+
+	.reaction-btn.given .material-symbols,
+	.like-btn.given .material-symbols {
 		color: var(--color-primary);
+	}
+
+	/* The reaction glyph is the same either way, so the count's weight marks
+	 * a given reaction for anyone who cannot tell the tint apart. */
+	.reaction-btn.given .reaction-count {
+		font-weight: 700;
 	}
 
 	.mention {

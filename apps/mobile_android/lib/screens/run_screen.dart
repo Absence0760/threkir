@@ -479,7 +479,13 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   Duration _elapsed = Duration.zero;
   double _distanceMetres = 0;
   double? _pace;
+  // The run's line, as the recorder's snapshot carries it: what the map, the
+  // elevation gain and every live reader draw from.
   List<cm.Waypoint> _track = [];
+  // Every fix the recorder stored, off-track ones included: what the crash
+  // checkpoint persists, so a resumed or recovered run keeps the input the
+  // server replays (gps_distance.md § Stored track). Nothing draws from it.
+  List<cm.Waypoint> _storedTrack = [];
   cm.Waypoint? _currentPosition;
   // Where the recorder matched the runner on the followed route, metres from
   // its start. Everything that places the runner on the route (turn cues,
@@ -2403,7 +2409,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // (below) is what carries an indoor run's distance across a resume.
     final indoorEstimateResumed =
         partial.metadata?[cm.MetadataKeys.indoorEstimated] == true;
-    _track = List<cm.Waypoint>.from(partial.track);
+    _storedTrack = List<cm.Waypoint>.from(partial.track);
+    _track = List<cm.Waypoint>.from(cm.trackLine(partial.track));
     _distanceMetres = indoorEstimateResumed ? 0 : partial.distanceMetres;
     _elapsed = partial.duration;
     _lapCount = restoredLaps.length;
@@ -2443,6 +2450,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         minMovementMetres: adv ? 1 : _activityType.minMovementMetres,
         maxSpeedMps: _activityType.maxSpeedMps,
         initialStrideM: _persistedStrideM(),
+        trackComplete:
+            partial.metadata?[cm.MetadataKeys.trackComplete] == true,
       );
     } catch (e) {
       _notifyGpsUnavailable(e);
@@ -2704,6 +2713,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       _distanceMetres = snapshot.distanceMetres;
       _pace = snapshot.currentPaceSecondsPerKm;
       _track = track;
+      _storedTrack = snapshot.storedTrack;
       _currentPosition = snapshot.currentPosition;
       _offRouteDistance = snapshot.offRouteDistanceMetres;
       _routeRemaining = snapshot.routeRemainingMetres;
@@ -3274,6 +3284,12 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         cm.MetadataKeys.locationProvider: _recorder!.locationProvider,
       if (_recorder?.gnssSignalMetadata != null)
         cm.MetadataKeys.gnssSignal: _recorder!.gnssSignalMetadata,
+      // Carried so a resume of this checkpoint can claim it again on save.
+      if (!indoorEstimate &&
+          !(_recorder?.treadmillMode ?? false) &&
+          _storedTrack.isNotEmpty &&
+          (_recorder?.storedTrackComplete ?? false))
+        cm.MetadataKeys.trackComplete: true,
       // The active race strategy, so a crash-recovered run resumes its
       // phases (and the final save keeps the metadata the runner actually
       // executed against).
@@ -3314,7 +3330,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       duration: _elapsed,
       distanceMetres:
           indoorEstimate ? _displayDistanceMetres : _distanceMetres,
-      track: List.unmodifiable(_track),
+      track: List.unmodifiable(_storedTrack),
       routeId: _selectedRoute?.id,
       source: cm.RunSource.app,
       metadata: metadata,
@@ -3618,7 +3634,9 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // the api_client save path lifts them onto the promoted fastest_*_s
     // columns (20270325_001) so the SQL `personal_records` trigger can
     // pick up a sub-20 5k inside an 18 km long run. Helper is null-safe
-    // + idempotent + a no-op for tracks under 3 points.
+    // + idempotent + a no-op for tracks under 3 points. The whole stored
+    // track, off-track fixes included: the bests replay it through the
+    // distance estimator, and those fixes are the estimator's input.
     final enrichedMetadata = enrichMetadataWithEmbeddedBests(
       track: raw.track,
       metadata: metadata,
@@ -3715,7 +3733,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         run.track.length >= 2) {
       try {
         final candidates = await api
-            .fetchRoutesIntersectingTrack(run.track, maxResults: 5)
+            .fetchRoutesIntersectingTrack(cm.trackLine(run.track),
+                maxResults: 5)
             .timeout(kBackendLoadTimeout);
         final match = bestStrongRouteMatch(
           candidates,
@@ -3994,6 +4013,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       _distanceMetres = 0;
       _pace = null;
       _track = [];
+      _storedTrack = [];
       _currentPosition = null;
       _routeAlong = null;
       _lastTickNotified = 0;
@@ -5241,7 +5261,9 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
 
   Widget _buildFinished(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final track = _finishedRun?.track ?? <cm.Waypoint>[];
+    // The line, exactly what the live map drew; off-track fixes are stored
+    // for the server's distance replay only.
+    final track = cm.trackLine(_finishedRun?.track ?? <cm.Waypoint>[]);
     // Derived metric: "moving time" — elapsed with stops excluded, computed
     // from the GPS track. Replaces the old live auto-pause.
     final movingTime = movingTimeOf(track);
@@ -6305,13 +6327,13 @@ class _LastRunCard extends StatelessWidget {
             ),
             child: Row(
               children: [
-                if (run.track.length >= 2)
+                if (cm.trackLine(run.track).length >= 2)
                   SizedBox(
                     width: 72,
                     height: 56,
                     child: CustomPaint(
                       painter: _TrackSparkPainter(
-                        track: run.track,
+                        track: cm.trackLine(run.track),
                         color: theme.colorScheme.primary,
                       ),
                     ),

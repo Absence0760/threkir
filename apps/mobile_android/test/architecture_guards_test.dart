@@ -582,6 +582,25 @@ void main() {
       );
     });
 
+    test('_saveInProgress checkpoints the stored track, not the line', () {
+      // Reason: the recorder stores every fix its distance estimator took,
+      // off-track ones flagged, so the server can replay the run's own
+      // input (gps_distance.md § Stored track). The live line drops those
+      // fixes; a checkpoint written from it would lose them on a resume or
+      // a crash recovery, and its `track_complete` would then be false.
+      final body = _extractMethodBody(
+        source,
+        r'Future<void> _saveInProgress\(\)\s*async\s*\{',
+      );
+      expect(body, contains('List.unmodifiable(_storedTrack)'),
+          reason: 'the checkpoint must persist the stored track');
+      expect(body, contains('storedTrackComplete'),
+          reason: 'the checkpoint carries track_complete for the resume');
+      expect(source, contains('trackComplete:'),
+          reason: 'the resume hands the checkpoint\'s claim back to the '
+              'recorder');
+    });
+
     test('_stop stamps workout review metadata via the same helper', () {
       // Reason: pairs with the in-progress save guard above. Both call
       // sites must use the same helper so a final save and a crash-

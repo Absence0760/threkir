@@ -77,6 +77,53 @@ void main() {
       expect(r.bannerMessage, contains('100 m'));
     });
 
+    test('off-track fixes do not count toward the 3-waypoint line', () {
+      // Two line fixes plus canopy fixes the estimator took: the stored
+      // track is longer, but the line the threshold has always counted is 2.
+      final base = _partial(
+        distanceMetres: 100,
+        duration: const Duration(seconds: 60),
+        waypoints: 4,
+      );
+      final partial = Run(
+        id: base.id,
+        startedAt: base.startedAt,
+        duration: base.duration,
+        distanceMetres: base.distanceMetres,
+        track: [
+          base.track[0],
+          base.track[1].withOffTrack(true),
+          base.track[2].withOffTrack(true),
+          base.track[3],
+        ],
+        source: base.source,
+      );
+      final r = evaluateInProgressPartial(partial);
+      expect(r.outcome, InProgressOutcome.discarded);
+    });
+
+    test('a recovered partial keeps its off-track fixes and track_complete',
+        () {
+      final base = _partial(
+        distanceMetres: 100,
+        duration: const Duration(seconds: 90),
+        waypoints: 4,
+      );
+      final partial = Run(
+        id: base.id,
+        startedAt: base.startedAt,
+        duration: base.duration,
+        distanceMetres: base.distanceMetres,
+        track: [...base.track.take(3), base.track[3].withOffTrack(true)],
+        source: base.source,
+        metadata: const {'track_complete': true},
+      );
+      final r = evaluateInProgressPartial(partial);
+      expect(r.outcome, InProgressOutcome.recovered);
+      expect(r.recovered!.track.last.offTrack, isTrue);
+      expect(r.recovered!.metadata?['track_complete'], isTrue);
+    });
+
     test('GPS partial under 50 m → discarded with distance summary', () {
       final partial = _partial(
         distanceMetres: 38,

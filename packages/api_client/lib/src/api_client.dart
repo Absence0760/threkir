@@ -6180,13 +6180,21 @@ class ApiClient {
   /// is not an approved follower (decisions § 1967). Null when the user
   /// doesn't exist or RLS hides the row. Mirrors web `fetchPublicProfile`.
   Future<ProfileSummary?> fetchProfileSummary(String userId) async {
-    final profileF = fetchPublicProfile(userId);
-    final List<dynamic> rows = await _client.rpc(
-      'profile_follow_summary',
-      params: {'p_user_id': userId},
-      get: true,
-    );
-    final profile = await profileF;
+    // Both reads are awaited together, and the client is resolved before
+    // either starts: a read left in flight with no listener — awaited later,
+    // or orphaned when the second read throws on the way in — surfaced its
+    // failure as an unhandled zone error beside the one the caller handles.
+    final client = _client;
+    final results = await Future.wait<Object?>([
+      fetchPublicProfile(userId),
+      client.rpc(
+        'profile_follow_summary',
+        params: {'p_user_id': userId},
+        get: true,
+      ),
+    ]);
+    final profile = results[0] as UserProfileRow?;
+    final rows = results[1] as List<dynamic>;
     if (profile == null) return null;
     if (rows.isEmpty) return null;
     final s = rows.first as Map<String, dynamic>;

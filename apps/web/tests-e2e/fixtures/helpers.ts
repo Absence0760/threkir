@@ -5,22 +5,74 @@ import { dirname } from 'node:path';
 import type { SeededUser } from './users';
 
 /**
- * Pre-accepts the cookie banner in every document `target` opens, before the
- * consent module reads it on first import.
+ * What `setStorageOnLoad` writes into every document before the app's own
+ * scripts run. Steps apply in this field order: the two clears, the prefix
+ * sweep, the consent record, then `local` and `session` entries in insertion
+ * order. A `null` entry removes the key.
+ */
+export interface StorageOnLoad {
+	clearLocal?: boolean;
+	clearSession?: boolean;
+	/** Every `localStorage` key starting with one of these is removed. */
+	removeLocalPrefixes?: readonly string[];
+	/**
+	 * The `cookie_consent` record, stamped with the document's own `Date.now()`
+	 * on each load — so a spec that installs a fake clock sees a stamp from it.
+	 */
+	consent?: 'accepted' | 'rejected';
+	local?: Readonly<Record<string, string | null>>;
+	session?: Readonly<Record<string, string | null>>;
+}
+
+/**
+ * The one way a spec seeds web storage from an init script.
  *
  * A context's init scripts also run in each new page's initial `about:blank`,
  * whose opaque origin has no storage: touching `localStorage` there throws a
  * SecurityError the crash net (`fixtures/test.ts`) records as a pageerror.
- * Nothing of the app runs on that document, so the script skips it.
+ * Nothing of the app runs on that document, so the script skips it. The
+ * guard in `init-storage-adoption.test.ts` keeps hand-rolled storage init
+ * scripts from coming back.
  */
-export async function acceptCookieConsent(target: BrowserContext | Page): Promise<void> {
-	await target.addInitScript(() => {
+export async function setStorageOnLoad(
+	target: BrowserContext | Page,
+	plan: StorageOnLoad
+): Promise<void> {
+	await target.addInitScript((p: StorageOnLoad) => {
 		if (location.protocol === 'about:') return;
-		localStorage.setItem(
-			'cookie_consent',
-			JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-		);
-	});
+		const apply = (store: Storage, entries: Readonly<Record<string, string | null>>) => {
+			for (const [key, value] of Object.entries(entries)) {
+				if (value === null) store.removeItem(key);
+				else store.setItem(key, value);
+			}
+		};
+		if (p.clearLocal) localStorage.clear();
+		if (p.clearSession) sessionStorage.clear();
+		for (const prefix of p.removeLocalPrefixes ?? []) {
+			for (const key of Object.keys(localStorage)) {
+				if (key.startsWith(prefix)) localStorage.removeItem(key);
+			}
+		}
+		if (p.consent) {
+			localStorage.setItem(
+				'cookie_consent',
+				JSON.stringify({ choice: p.consent, timestamp: Date.now() })
+			);
+		}
+		if (p.local) apply(localStorage, p.local);
+		if (p.session) apply(sessionStorage, p.session);
+	}, plan);
+}
+
+/**
+ * Pre-accepts the cookie banner in every document `target` opens, before the
+ * consent module reads it on first import, then writes any `local` entries.
+ */
+export async function acceptCookieConsent(
+	target: BrowserContext | Page,
+	local?: StorageOnLoad['local']
+): Promise<void> {
+	await setStorageOnLoad(target, { consent: 'accepted', local });
 }
 
 /**
@@ -53,12 +105,7 @@ export async function signIn(page: Page, user: SeededUser) {
 	// fires on every navigation in this page, so the consent module
 	// sees the accepted choice on /login AND on the post-sign-in
 	// redirect to /dashboard.
-	await page.addInitScript(() => {
-		localStorage.setItem(
-			'cookie_consent',
-			JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-		);
-	});
+	await acceptCookieConsent(page);
 
 	await page.goto('/login');
 	await page.waitForLoadState('networkidle');

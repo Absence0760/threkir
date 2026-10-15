@@ -100,6 +100,7 @@ test('every web POST through a CloudFront Lambda behavior sends the sigv4 payloa
 		'src/lib/routes/route_describe_client.ts',
 		'src/lib/routes/route_request_client.ts',
 		'src/lib/training/plan_request_client.ts',
+		'src/lib/nutrition/plate_photo_client.ts',
 	]) {
 		const source = read(path);
 		assert.match(

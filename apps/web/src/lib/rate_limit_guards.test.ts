@@ -246,6 +246,7 @@ test('every LLM-spending endpoint carries a per-user rate-limit bucket', () => {
 	for (const [file, marker] of [
 		['src/lib/routes/route_describe/handler.ts', 'anthropic.messages.create'],
 		['src/lib/routes/route_request/handler.ts', 'anthropic.messages.create'],
+		['src/lib/nutrition/plate_photo/handler.ts', 'anthropic.messages.create'],
 		['src/lib/routes/generate/handler.ts', 'const fetcher: Fetcher'],
 		['src/lib/routes/osrm_proxy/handler.ts', 'const fetcher: Fetcher'],
 	] as const) {

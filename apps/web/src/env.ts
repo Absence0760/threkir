@@ -24,6 +24,7 @@ export const variables = defineEnvVars({
 	PUBLIC_LIVE_HUB_URL: { public: true, schema: optional },
 	PUBLIC_MAPTILER_KEY: { public: true, schema: optional },
 	PUBLIC_OFF_ROUTE_ESCALATION_ENABLED: { public: true, schema: optional },
+	PUBLIC_PLATE_PHOTO_ENABLED: { public: true, schema: optional },
 	PUBLIC_REVENUECAT_WEB_CHECKOUT_URL: { public: true, schema: optional },
 	PUBLIC_REVENUECAT_WEB_PORTAL_URL: { public: true, schema: optional },
 	PUBLIC_ROUTE_GEN_ENABLED: { public: true, schema: optional },

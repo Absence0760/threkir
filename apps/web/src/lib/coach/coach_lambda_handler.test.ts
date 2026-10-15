@@ -130,6 +130,7 @@ test('each sub-path enforces its own byte cap, measured in bytes', async () => {
 		['/api/coach/route-describe', 32 * 1024],
 		['/api/coach/route-request', 16 * 1024],
 		['/api/coach/plan-request', 16 * 1024],
+		['/api/coach/plate-photo', 4 * 1024 * 1024 + 16 * 1024],
 	];
 	for (const [rawPath, limit] of cases) {
 		const over = await invoke({ rawPath, body: 'x'.repeat(limit + 1) });
@@ -229,15 +230,18 @@ test('COACH_PROVIDER=openai with no base URL refuses before the quota is spent',
 test('the provider check does not gate the non-streaming sub-paths', async () => {
 	// They are a Pro perk with a templated fallback and no COACH_PROVIDER of
 	// their own, so an unconfigured provider must not 503 them. The plan
-	// assistant's own deploy flag is switched on here: unset, it answers a
-	// fail-closed 503 of its own, which would read as this gate.
+	// assistant's and the plate-photo logger's own deploy flags are switched
+	// on here: unset, each answers a fail-closed 503 of its own, which would
+	// read as this gate.
 	process.env.COACH_PROVIDER = 'not-a-provider';
 	process.env.AI_PLAN_ENABLED = 'true';
+	process.env.PLATE_PHOTO_ENABLED = 'true';
 	try {
 		for (const rawPath of [
 			'/api/coach/route-describe',
 			'/api/coach/route-request',
 			'/api/coach/plan-request',
+			'/api/coach/plate-photo',
 		]) {
 			const out = await invoke({ rawPath, body: '{}' });
 			assert.notEqual(out.status, 503, `${rawPath} was gated on COACH_PROVIDER`);
@@ -245,6 +249,7 @@ test('the provider check does not gate the non-streaming sub-paths', async () =>
 	} finally {
 		delete process.env.COACH_PROVIDER;
 		delete process.env.AI_PLAN_ENABLED;
+		delete process.env.PLATE_PHOTO_ENABLED;
 	}
 });
 
@@ -261,6 +266,7 @@ test('a missing env var answers a generic 503 and never names itself on the wire
 			'/api/coach/route-describe',
 			'/api/coach/route-request',
 			'/api/coach/plan-request',
+			'/api/coach/plate-photo',
 		]) {
 			const out = await invoke({
 				rawPath,
@@ -290,6 +296,7 @@ test('a sub-path refusal forwards the core\'s own status, headers and body', asy
 		'/api/coach/route-describe',
 		'/api/coach/route-request',
 		'/api/coach/plan-request',
+		'/api/coach/plate-photo',
 	]) {
 		const out = await invoke({ rawPath, body: '{}' });
 		assert.equal(out.headers?.['content-type'], 'application/json', rawPath);
@@ -310,7 +317,7 @@ test('a sub-path refusal forwards the core\'s own status, headers and body', asy
 	);
 	assert.equal(
 		(src.match(/writeResult\(responseStream, result\)/g) ?? []).length,
-		3,
+		4,
 		'every non-streaming sub-dispatcher must forward the core result verbatim.',
 	);
 });
@@ -345,6 +352,8 @@ test('a sub-path is matched by its whole path, not by a substring of it', async 
 		'/api/coach/route-request/extra',
 		'/api/coach/plan-requestX',
 		'/api/coach/plan-request/extra',
+		'/api/coach/plate-photoX',
+		'/api/coach/plate-photo/extra',
 	]) {
 		const out = await invoke({ rawPath, body: CHAT_BODY });
 		assert.equal(
@@ -377,6 +386,7 @@ test('an unknown path under the prefix never reaches the coach turn or its large
 	// assistant's deploy flag is on so its first refusal is the input check
 	// rather than its fail-closed 503.
 	process.env.AI_PLAN_ENABLED = 'true';
+	process.env.PLATE_PHOTO_ENABLED = 'true';
 	try {
 	for (const [rawPath, status] of [
 		['/api/coach', 401],
@@ -387,12 +397,15 @@ test('an unknown path under the prefix never reaches the coach turn or its large
 		['/api/coach/route-request/', 400],
 		['/api/coach/plan-request', 400],
 		['/api/coach/plan-request/', 400],
+		['/api/coach/plate-photo', 400],
+		['/api/coach/plate-photo/', 400],
 	] as Array<[string, number]>) {
 		const out = await invoke({ rawPath, body: CHAT_BODY });
 		assert.equal(out.status, status, `${rawPath} no longer routes`);
 	}
 	} finally {
 		delete process.env.AI_PLAN_ENABLED;
+		delete process.env.PLATE_PHOTO_ENABLED;
 	}
 });
 

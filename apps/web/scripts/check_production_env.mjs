@@ -57,7 +57,8 @@
  *
  *   - PUBLIC_AI_PLAN_ENABLED may be on or off, but on with
  *     PUBLIC_COACH_ENABLED off is a no-op (the /plans/new box needs both),
- *     so the CLI names that state in a `::notice::`.
+ *     so the CLI names that state in a `::notice::`. The same holds for
+ *     PUBLIC_PLATE_PHOTO_ENABLED and the /nutrition/log photo control.
  *
  * NOT enforced (intentional):
  *   - PUBLIC_REVENUECAT_WEB_PORTAL_URL — the manage-subscription portal
@@ -287,6 +288,14 @@ export function checkProductionEnv(env) {
 	if (isTruthyFlagValue(env.PUBLIC_AI_PLAN_ENABLED) && !isTruthyFlagValue(env.PUBLIC_COACH_ENABLED)) {
 		notices.push(
 			'The AI plan assistant stays hidden: PUBLIC_AI_PLAN_ENABLED is on but PUBLIC_COACH_ENABLED is not, and /plans/new shows the box only when both are. Turn the Coach on as well, or unset PUBLIC_AI_PLAN_ENABLED.',
+		);
+	}
+
+	// Same shape for the plate-photo logger: it runs on the Coach's key, and
+	// /nutrition/log shows the control only when both flags are on.
+	if (isTruthyFlagValue(env.PUBLIC_PLATE_PHOTO_ENABLED) && !isTruthyFlagValue(env.PUBLIC_COACH_ENABLED)) {
+		notices.push(
+			'The plate-photo logger stays hidden: PUBLIC_PLATE_PHOTO_ENABLED is on but PUBLIC_COACH_ENABLED is not, and /nutrition/log shows the control only when both are. Turn the Coach on as well, or unset PUBLIC_PLATE_PHOTO_ENABLED.',
 		);
 	}
 

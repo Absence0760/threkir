@@ -87,6 +87,9 @@ locals {
     # 503 unless this is truthy (decisions § 1930). Unset in the sops file
     # means off.
     "AI_PLAN_ENABLED",
+    # Server half of PUBLIC_PLATE_PHOTO_ENABLED: /api/coach/plate-photo answers
+    # 503 unless this is truthy (decisions § 1972). Unset means off.
+    "PLATE_PHOTO_ENABLED",
   ]
 
   # The two X-Engine-Key credentials the generate-route handler sends. Same

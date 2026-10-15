@@ -521,3 +521,28 @@ test('the AI plan assistant gates on the plan disclosure, above the route-AI ver
 		.includes('bypassPaywallEnabled');
 	assert.ok(!bypassInGate, `${file} must not let bypassPaywallEnabled skip the consent gate.`);
 });
+
+test('the plate-photo logger gates on the v5 disclosure before Pro, the throttle and the model', () => {
+	// /api/coach/plate-photo ships a photo of the runner's meal to Anthropic, a
+	// payload no earlier disclosure described (decisions § 1972). It must
+	// require AI_DISCLOSURE_VERSION_FOOD_PHOTO_AI, ahead of every billed step,
+	// and the dev bypass must not reach the consent branch.
+	const gate = read('src/lib/core/ai_disclosure.ts');
+	assert.match(gate, /AI_DISCLOSURE_VERSION_FOOD_PHOTO_AI\s*=\s*5/);
+	const file = 'src/lib/nutrition/plate_photo/handler.ts';
+	const source = read(file);
+	assert.match(
+		source,
+		/gateAiDisclosure\([\s\S]*?AI_DISCLOSURE_VERSION_FOOD_PHOTO_AI/,
+		`${file} must gate on the plate-photo disclosure before calling Anthropic.`,
+	);
+	const gateIdx = source.indexOf('gateAiDisclosure(');
+	for (const later of ["rpc('is_pro'", 'checkRouteRateLimit(', 'new Anthropic(']) {
+		const idx = source.indexOf(later);
+		assert.ok(gateIdx > 0 && idx > gateIdx, `${file}: the consent gate must precede ${later}.`);
+	}
+	const bypassInGate = source
+		.slice(gateIdx, source.indexOf('Paywall', gateIdx))
+		.includes('bypassPaywallEnabled');
+	assert.ok(!bypassInGate, `${file} must not let bypassPaywallEnabled skip the consent gate.`);
+});

@@ -141,7 +141,8 @@ The placeholders are deliberately loud magenta, so a renderer that forgot one sh
 - a `[[route:]]` or `routes` entry is not a directory under `apps/web/src/routes` holding `+page.svelte`;
 - a `<HelpLink>` has a non-literal route, or a route no guide lists;
 - an `<InfoTip guide=…>` names no guide;
-- a translation's title is over 80 characters, its summary over 200 or more than one sentence, a title / summary / heading carries markup, two headings share an anchor, or a string has bad markup, an emoji, different links (by target, in order) or a different number of `**labels**` from the English it translates;
+- a translation's title is over 80 characters, its summary over 200 or more than one sentence, a title / summary / heading carries markup, or a string has bad markup, an emoji, different links (by target, in order) or a different number of `**labels**` from the English it translates;
+- in any shipped locale (`SUPPORTED_LOCALES`), the guide as shown — `localizeGuide`'s merge, English where no translation lines up — renders two equal section headings (the page keys its sections on them, so a duplicate throws `each_key_duplicate`) or two headings sharing an anchor, or a locale's translations directory loads nothing;
 - `scripts/check_help_translations.mjs` fails (below);
 - an illustration's alt text (English or translated) is empty, over 240 characters or carries markup;
 - `scripts/check_help_illustrations.mjs` fails: an illustration holds anything outside the allow-list (so a `<text>`, `<script>`, `<foreignObject>`, `<image>`, `<style>`, an `href`, an event handler or a `url(...)`), paints a colour outside the token set, has the wrong view box or a fixed size, is over 4 KB, or is not `<kebab-case-id>.svg`; a block names no file or has no alt; or a file is referenced by no guide;

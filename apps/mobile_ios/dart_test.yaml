@@ -1,0 +1,9 @@
+# Tags a test can carry. Declared so `flutter test --tags <tag>` selects them
+# without the runner warning about an unknown tag.
+tags:
+  # A test whose verdict depends on the host's local timezone: calendar-day
+  # keys, week and day boundaries, DST transitions. CI runs the whole suite in
+  # UTC, where most of these pass trivially, and runs every `tz`-tagged test a
+  # second time under several real zones (ci.yml `test-timezones`). See
+  # docs/testing/testing.md § Timezone-sensitive Dart tests.
+  tz:

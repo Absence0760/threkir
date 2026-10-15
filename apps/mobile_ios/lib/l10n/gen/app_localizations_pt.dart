@@ -804,6 +804,43 @@ class AppLocalizationsPt extends AppLocalizations {
   String get youProfileTitle => 'O seu perfil';
 
   @override
+  String get homeTrainingPlanLabel => 'Plano de treino';
+
+  @override
+  String homeRaceInDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Prova em $days dias',
+      one: 'Prova em $days dia',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get homeRaceTomorrow => 'Prova amanhã';
+
+  @override
+  String get homeRaceDay => 'Dia da prova';
+
+  @override
+  String homePlanStartsInDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Começa em $days dias',
+      one: 'Começa em $days dia',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get homePlanStartsTomorrow => 'Começa amanhã';
+
+  @override
+  String get youViewProfile => 'Ver perfil';
+
+  @override
   String get logSheetTitle => 'Registar';
 
   @override
@@ -1148,7 +1185,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get homeTodaysLift => 'Treino de hoje';
 
   @override
-  String get settingsSectionProfile => 'Perfil';
+  String get settingsSectionTraining => 'Treino';
+
+  @override
+  String get settingsSectionSettings => 'Definições';
 
   @override
   String get settingsSectionAppsData => 'Apps e dados';
@@ -4542,17 +4582,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get profileNotFound => 'Perfil não encontrado.';
 
   @override
-  String profileFollowStats(int followers, int following) {
-    String _temp0 = intl.Intl.pluralLogic(
-      followers,
-      locale: localeName,
-      other: '$followers seguidores',
-      one: '$followers seguidor',
-    );
-    return '$_temp0 · a seguir $following';
-  }
-
-  @override
   String get profileFollowing => 'A seguir';
 
   @override
@@ -5817,6 +5846,99 @@ class AppLocalizationsPt extends AppLocalizations {
       'Não conseguimos ler a data dessa prova, por isso as datas abaixo são as predefinidas.';
 
   @override
+  String get planNewAiTitle => 'Descreva o plano que pretende';
+
+  @override
+  String get planNewAiHint =>
+      'Escreva-o por palavras suas e o formulário abaixo é preenchido por si. O plano continua a ser criado pelo gerador da própria app — verifique cada campo antes de o criar.';
+
+  @override
+  String get planNewAiPlaceholder =>
+      'ex. Uma meia maratona abaixo de 2 horas a 14 de março. Consigo treinar 4 dias por semana e os meus últimos 5 km foram em 26:30.';
+
+  @override
+  String get planNewAiButton => 'Preencher o formulário';
+
+  @override
+  String get planNewAiWorking => 'A ler…';
+
+  @override
+  String get planNewAiAppliedTitle =>
+      'Preenchido a partir da sua descrição — verifique cada campo.';
+
+  @override
+  String get planNewAiAppliedGenerator =>
+      'O plano é criado a partir destes campos pelo gerador da própria app, não pela IA.';
+
+  @override
+  String get planNewAiAppliedRecent5k =>
+      'O seu tempo de 5 km foi adicionado, mas não confirmado. Marque a caixa apenas se refletir a sua forma atual.';
+
+  @override
+  String planNewAiRaceApplied(String date) {
+    return 'Data de início e duração do plano definidas para que a semana da prova inclua $date.';
+  }
+
+  @override
+  String get planNewAiRacePast =>
+      'Essa data de prova já passou, por isso a data de início não foi alterada.';
+
+  @override
+  String get planNewAiRaceTooSoon =>
+      'Faltam menos de quatro semanas para a prova, por isso a data de início não foi alterada — um plano precisa de pelo menos quatro semanas.';
+
+  @override
+  String get planNewAiRaceInvalid =>
+      'Não foi possível ler essa data de prova, por isso a data de início não foi alterada.';
+
+  @override
+  String get planNewAiAssumptionGoalEventDefault =>
+      'Não foi indicada nenhuma distância, por isso o objetivo é uma meia maratona.';
+
+  @override
+  String get planNewAiAssumptionDaysDefault =>
+      'Não foram indicados dias de treino, por isso ficou definido em 4 dias por semana.';
+
+  @override
+  String get planNewAiAssumptionDaysClamped =>
+      'Os dias de treino foram ajustados ao valor suportado mais próximo (3 a 7 por semana).';
+
+  @override
+  String get planNewAiAssumptionWeeksClamped =>
+      'A duração do plano foi ajustada ao valor suportado mais próximo (4 a 24 semanas).';
+
+  @override
+  String get planNewAiAssumptionRaceDateDropped =>
+      'Não foi possível usar a data da prova — tem de ser uma data futura e a menos de dois anos.';
+
+  @override
+  String get planNewAiAssumptionGoalTimeDropped =>
+      'O tempo objetivo parecia fora do intervalo para essa distância, por isso ficou em branco.';
+
+  @override
+  String get planNewAiAssumptionRecent5kDropped =>
+      'O tempo de 5 km parecia fora do intervalo, por isso ficou em branco.';
+
+  @override
+  String get planNewAiAssumptionBeginner5k =>
+      'Um plano de caminhada-corrida para principiantes leva aos 5 km, por isso o objetivo ficou em 5 km sem tempo objetivo.';
+
+  @override
+  String get planNewAiErrorConsent =>
+      'O assistente de planos precisa do aviso de IA atualizado.';
+
+  @override
+  String get planNewAiReviewDisclosure => 'Ver as informações';
+
+  @override
+  String get planNewAiErrorDailyLimit =>
+      'Já usou os seus pedidos de IA de hoje. Preencha o formulário manualmente ou tente novamente amanhã.';
+
+  @override
+  String get planNewAiErrorFallback =>
+      'Não foi possível ler isso — preencha o formulário manualmente.';
+
+  @override
   String get planNewCancel => 'Cancelar';
 
   @override
@@ -6453,7 +6575,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get coachConsentIntro =>
-      'As funcionalidades de IA da Threkir — o Coach e o assistente de rotas com IA — enviam uma parte dos seus dados à Anthropic, o nosso fornecedor de modelos de IA nos Estados Unidos. Consoante a funcionalidade utilizada, essa parte inclui:';
+      'As funcionalidades de IA da Threkir — o Coach, o assistente de rotas com IA e o assistente de planos com IA — enviam uma parte dos seus dados à Anthropic, o nosso fornecedor de modelos de IA nos Estados Unidos. Consoante a funcionalidade utilizada, essa parte inclui:';
 
   @override
   String get coachConsentBulletProfile =>
@@ -6474,6 +6596,10 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get coachConsentBulletRoutes =>
       'Para o assistente de rotas com IA: o nome e os dados da rota, o pedido que escreve e uma referência aproximada do lugar — nunca as suas coordenadas exatas.';
+
+  @override
+  String get coachConsentBulletPlanRequest =>
+      'Para o assistente de planos com IA: a descrição do plano que escreve (prova-alvo, tempos-alvo e recentes, quantos dias pode treinar), usada apenas para preencher as definições do plano — o plano em si é criado pelo gerador próprio da Threkir, não pela IA.';
 
   @override
   String get coachConsentProcessing =>
@@ -6640,6 +6766,18 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get coachSuggestNewWalkRun =>
       'Não faz mal caminhar durante as corridas?';
+
+  @override
+  String get coachSuggestBuildHalfPlan =>
+      'Crie-me um plano de treino para uma meia maratona';
+
+  @override
+  String get coachSuggestBuildFirst5kPlan =>
+      'Crie-me um plano para principiantes para correr os meus primeiros 5 km';
+
+  @override
+  String get coachSuggestPlanNextRace =>
+      'Ajude-me a planear a minha próxima prova';
 
   @override
   String get coachEditMessageLabel => 'Editar a sua mensagem';
@@ -6857,7 +6995,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get settingsAccountAiConsentUpdateSubtitle =>
-      'As informações passaram a abranger mais funcionalidades. Leia-as e aceite-as para utilizar o assistente de rotas com IA.';
+      'As informações passaram a abranger mais funcionalidades. Leia-as e aceite-as para utilizar os assistentes de rotas e de planos com IA.';
 
   @override
   String get settingsAccountAiConsentGrantTitle => 'Ver as informações de IA';
@@ -10470,9 +10608,6 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get settingsBackendNotConfigured => 'Backend não configurado';
-
-  @override
-  String get settingsAccountSignedIn => 'Conectado';
 
   @override
   String get settingsDevicesSignedOutSubtitle =>
@@ -16504,6 +16639,43 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get youProfileTitle => 'Seu perfil';
 
   @override
+  String get homeTrainingPlanLabel => 'Plano de treino';
+
+  @override
+  String homeRaceInDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Prova em $days dias',
+      one: 'Prova em $days dia',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get homeRaceTomorrow => 'Prova amanhã';
+
+  @override
+  String get homeRaceDay => 'Dia da prova';
+
+  @override
+  String homePlanStartsInDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Começa em $days dias',
+      one: 'Começa em $days dia',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get homePlanStartsTomorrow => 'Começa amanhã';
+
+  @override
+  String get youViewProfile => 'Ver perfil';
+
+  @override
   String get logSheetTitle => 'Registrar';
 
   @override
@@ -16848,7 +17020,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get homeTodaysLift => 'Treino de hoje';
 
   @override
-  String get settingsSectionProfile => 'Perfil';
+  String get settingsSectionTraining => 'Treino';
+
+  @override
+  String get settingsSectionSettings => 'Configurações';
 
   @override
   String get settingsSectionAppsData => 'Apps e dados';
@@ -20242,17 +20417,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get profileNotFound => 'Perfil não encontrado.';
 
   @override
-  String profileFollowStats(int followers, int following) {
-    String _temp0 = intl.Intl.pluralLogic(
-      followers,
-      locale: localeName,
-      other: '$followers seguidores',
-      one: '$followers seguidor',
-    );
-    return '$_temp0 · seguindo $following';
-  }
-
-  @override
   String get profileFollowing => 'Seguindo';
 
   @override
@@ -21517,6 +21681,99 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Não conseguimos ler a data dessa corrida, então as datas abaixo são as padrão.';
 
   @override
+  String get planNewAiTitle => 'Descreva o plano que você quer';
+
+  @override
+  String get planNewAiHint =>
+      'Escreva com suas palavras e o formulário abaixo é preenchido para você. O plano continua sendo criado pelo gerador do próprio app — confira cada campo antes de criá-lo.';
+
+  @override
+  String get planNewAiPlaceholder =>
+      'ex. Uma meia maratona abaixo de 2 horas em 14 de março. Consigo treinar 4 dias por semana e meus últimos 5 km foram em 26:30.';
+
+  @override
+  String get planNewAiButton => 'Preencher o formulário';
+
+  @override
+  String get planNewAiWorking => 'Lendo…';
+
+  @override
+  String get planNewAiAppliedTitle =>
+      'Preenchido a partir da sua descrição — confira cada campo.';
+
+  @override
+  String get planNewAiAppliedGenerator =>
+      'O plano é criado a partir destes campos pelo gerador do próprio app, não pela IA.';
+
+  @override
+  String get planNewAiAppliedRecent5k =>
+      'Seu tempo de 5 km foi adicionado, mas não confirmado. Marque a caixa apenas se ele refletir seu condicionamento atual.';
+
+  @override
+  String planNewAiRaceApplied(String date) {
+    return 'Data de início e duração do plano definidas para que a semana da prova inclua $date.';
+  }
+
+  @override
+  String get planNewAiRacePast =>
+      'Essa data de prova já passou, então a data de início não foi alterada.';
+
+  @override
+  String get planNewAiRaceTooSoon =>
+      'Faltam menos de quatro semanas para a prova, então a data de início não foi alterada — um plano precisa de pelo menos quatro semanas.';
+
+  @override
+  String get planNewAiRaceInvalid =>
+      'Não foi possível ler essa data de prova, então a data de início não foi alterada.';
+
+  @override
+  String get planNewAiAssumptionGoalEventDefault =>
+      'Nenhuma distância foi mencionada, então o objetivo é uma meia maratona.';
+
+  @override
+  String get planNewAiAssumptionDaysDefault =>
+      'Nenhum dia de treino foi mencionado, então ficou definido em 4 dias por semana.';
+
+  @override
+  String get planNewAiAssumptionDaysClamped =>
+      'Os dias de treino foram ajustados ao valor suportado mais próximo (3 a 7 por semana).';
+
+  @override
+  String get planNewAiAssumptionWeeksClamped =>
+      'A duração do plano foi ajustada ao valor suportado mais próximo (4 a 24 semanas).';
+
+  @override
+  String get planNewAiAssumptionRaceDateDropped =>
+      'Não foi possível usar a data da prova — ela precisa ser futura e estar a menos de dois anos.';
+
+  @override
+  String get planNewAiAssumptionGoalTimeDropped =>
+      'O tempo-alvo parecia fora da faixa para essa distância, então ficou em branco.';
+
+  @override
+  String get planNewAiAssumptionRecent5kDropped =>
+      'O tempo de 5 km parecia fora da faixa, então ficou em branco.';
+
+  @override
+  String get planNewAiAssumptionBeginner5k =>
+      'Um plano de caminhada e corrida para iniciantes leva aos 5 km, então o objetivo ficou em 5 km sem tempo-alvo.';
+
+  @override
+  String get planNewAiErrorConsent =>
+      'O assistente de planos precisa do aviso de IA atualizado.';
+
+  @override
+  String get planNewAiReviewDisclosure => 'Ver as informações';
+
+  @override
+  String get planNewAiErrorDailyLimit =>
+      'Você já usou suas solicitações de IA de hoje. Preencha o formulário por conta própria ou tente novamente amanhã.';
+
+  @override
+  String get planNewAiErrorFallback =>
+      'Não foi possível ler isso — preencha o formulário por conta própria.';
+
+  @override
   String get planNewCancel => 'Cancelar';
 
   @override
@@ -22152,7 +22409,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get coachConsentIntro =>
-      'Os recursos de IA do Threkir — o Coach e o assistente de rotas com IA — enviam uma parte dos seus dados à Anthropic, nosso provedor de modelos de IA nos Estados Unidos. Dependendo do recurso que você usa, essa parte inclui:';
+      'Os recursos de IA do Threkir — o Coach, o assistente de rotas com IA e o assistente de planos com IA — enviam uma parte dos seus dados à Anthropic, nosso provedor de modelos de IA nos Estados Unidos. Dependendo do recurso que você usa, essa parte inclui:';
 
   @override
   String get coachConsentBulletProfile =>
@@ -22173,6 +22430,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get coachConsentBulletRoutes =>
       'Para o assistente de rotas com IA: o nome e os dados da rota, o pedido que você digita e uma referência aproximada do lugar — nunca suas coordenadas exatas.';
+
+  @override
+  String get coachConsentBulletPlanRequest =>
+      'Para o assistente de planos com IA: a descrição do plano que você digita (prova-alvo, tempos-alvo e recentes, quantos dias você pode treinar), usada apenas para preencher as configurações do plano — o plano em si é criado pelo gerador próprio do Threkir, não pela IA.';
 
   @override
   String get coachConsentProcessing =>
@@ -22337,6 +22598,18 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get coachSuggestNewWalkRun => 'Tudo bem caminhar durante as corridas?';
+
+  @override
+  String get coachSuggestBuildHalfPlan =>
+      'Crie um plano de treino de meia maratona para mim';
+
+  @override
+  String get coachSuggestBuildFirst5kPlan =>
+      'Crie um plano para iniciantes para eu correr meus primeiros 5 km';
+
+  @override
+  String get coachSuggestPlanNextRace =>
+      'Me ajude a planejar minha próxima prova';
 
   @override
   String get coachEditMessageLabel => 'Edite sua mensagem';
@@ -22553,7 +22826,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get settingsAccountAiConsentUpdateSubtitle =>
-      'As informações agora cobrem mais recursos. Leia-as e aceite-as para usar o assistente de rotas com IA.';
+      'As informações agora cobrem mais recursos. Leia-as e aceite-as para usar os assistentes de rotas e de planos com IA.';
 
   @override
   String get settingsAccountAiConsentGrantTitle => 'Ver as informações de IA';
@@ -26161,9 +26434,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get settingsBackendNotConfigured => 'Backend não configurado';
-
-  @override
-  String get settingsAccountSignedIn => 'Conectado';
 
   @override
   String get settingsDevicesSignedOutSubtitle =>

@@ -12,6 +12,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, IdentityAvatar;
 
 import '../ai_disclosure.dart';
+import '../ai_disclosure_memo.dart';
 import '../auth_change_aware.dart';
 import '../auth_error.dart';
 import '../auth_validation.dart';
@@ -609,6 +610,7 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
     final l10n = AppLocalizations.of(context);
     try {
       await api.withdrawAiDisclosureConsent();
+      AiDisclosureMemo.forget();
       if (!mounted) return;
       setState(() => _disclosure = const AiDisclosureRecord());
       showTopBanner(context, l10n.settingsAccountCoachConsentWithdrawn);

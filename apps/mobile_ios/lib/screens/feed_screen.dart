@@ -145,7 +145,8 @@ class _FeedScreenState extends State<FeedScreen> {
   Future<List<UserProfileRow>> _loadFollowees() async {
     if (widget.api.userId == null) return const [];
     try {
-      return await widget.api.fetchFollowing(widget.api.userId!, limit: 200);
+      return (await widget.api.fetchFollowing(widget.api.userId!, limit: 200))
+          .rows;
     } catch (e) {
       debugPrint('feed followees load failed: $e');
       return _followees;

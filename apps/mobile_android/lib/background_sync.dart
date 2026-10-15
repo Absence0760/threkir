@@ -6,8 +6,10 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:workmanager/workmanager.dart';
 
+import 'foreign_row_cleanup.dart';
 import 'local_route_store.dart';
 import 'local_run_store.dart';
+import 'preferences.dart';
 import 'sync_service.dart'
     show
         drainPendingDeletes,
@@ -41,7 +43,18 @@ void callbackDispatcher() {
       await store.init();
       final routeStore = LocalRouteStore();
       await routeStore.init();
-      await runBackgroundSyncCycle(api, store, routeStore);
+      final prefs = Preferences();
+      await prefs.init();
+      await runBackgroundSyncCycle(
+        api,
+        store,
+        routeStore,
+        foreignRowCleanup: ForeignRowCleanup(
+          preferences: prefs,
+          runStore: store,
+          routeStore: routeStore,
+        ),
+      );
     } catch (e) {
       debugPrint('Background sync error: $e');
     }
@@ -69,11 +82,23 @@ void callbackDispatcher() {
 /// next time WorkManager fires while B is signed in — every row would
 /// land under the wrong user and RLS would silently accept them (the
 /// row embeds the caller's `user_id`, not the run's tagged owner).
+///
+/// [foreignRowCleanup] runs first, as it does at the head of a foreground
+/// cycle: until it has, a club route or athlete run an older build stored as
+/// owned is pushed here and refused on every wake (decisions § 1938).
 Future<void> runBackgroundSyncCycle(
   ApiClient api,
   LocalRunStore store,
-  LocalRouteStore routeStore,
-) async {
+  LocalRouteStore routeStore, {
+  ForeignRowCleanup? foreignRowCleanup,
+}) async {
+  if (foreignRowCleanup != null) {
+    try {
+      await foreignRowCleanup.runOnce(api);
+    } catch (e) {
+      debugPrint('Background sync foreign-row reconcile failed: $e');
+    }
+  }
   final allUnsynced = store.unsyncedRuns;
   final unsyncedForOwner = filterRunsForCurrentUser(allUnsynced, api.userId);
   final skippedForeignOwner = allUnsynced.length - unsyncedForOwner.length;

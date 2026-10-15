@@ -69,15 +69,35 @@ void main() {
       expect(find.byType(SafeArea), findsAtLeastNWidgets(1));
     });
 
-    testWidgets('renders the three section headers', (tester) async {
+    testWidgets('renders the four section headers', (tester) async {
       final s = await _makeStores();
       await _pump(tester, prefs: s.prefs, heartRate: s.heartRate);
-      for (final label in const ['Profile', 'Apps & data', 'Account & legal']) {
+      for (final label in const [
+        'Training',
+        'Settings',
+        'Apps & data',
+        'Account & legal',
+      ]) {
         await tester.scrollUntilVisible(find.text(label.toUpperCase()), 200,
             scrollable: find.byType(Scrollable).first);
         expect(find.text(label.toUpperCase()), findsOneWidget,
             reason: '$label section header must render');
       }
+    });
+
+    testWidgets(
+        'Training holds coaching + guided runs, Settings holds account rows',
+        (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, prefs: s.prefs, heartRate: s.heartRate);
+      double y(String text) => tester.getTopLeft(find.text(text)).dy;
+      // Training first, then Settings: the two features sit under their own
+      // header rather than among the account rows (the old "Profile" section
+      // mixed them).
+      expect(y('TRAINING'), lessThan(y('Athletes & coaches')));
+      expect(y('Guided runs'), lessThan(y('SETTINGS')));
+      expect(y('SETTINGS'), lessThan(y('Account')));
+      expect(y('Account'), lessThan(y('Preferences')));
     });
 
     testWidgets('renders every tab tile', (tester) async {
@@ -171,6 +191,8 @@ void main() {
         200,
         scrollable: find.byType(Scrollable).first,
       );
+      await tester.ensureVisible(find.text('Pro & support'));
+      await tester.pump();
       await tester.tap(find.text('Pro & support'));
       await tester.pumpAndSettle();
       expect(find.byType(SettingsProScreen), findsOneWidget);
@@ -185,6 +207,8 @@ void main() {
         200,
         scrollable: find.byType(Scrollable).first,
       );
+      await tester.ensureVisible(find.text('About & updates'));
+      await tester.pump();
       await tester.tap(find.text('About & updates'));
       await tester.pumpAndSettle();
       expect(find.byType(SettingsAboutScreen), findsOneWidget);
@@ -207,6 +231,8 @@ void main() {
       );
       expect(find.text('How races, classes, clubs and the app work'),
           findsOneWidget);
+      await tester.ensureVisible(find.text('Help'));
+      await tester.pump();
       await tester.tap(find.text('Help'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));

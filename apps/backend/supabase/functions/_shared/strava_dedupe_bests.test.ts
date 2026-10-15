@@ -17,6 +17,7 @@ import {
 	fastestWindowSeconds,
 	isCrossProviderDuplicate,
 	medianFixIntervalS,
+	RUN_DEDUPE_ORDER,
 	type RawRunRow,
 	type RunIdentity,
 } from './strava.ts';
@@ -91,69 +92,92 @@ Deno.test('isCrossProviderDuplicate — the server and web importers agree on ev
 	}
 });
 
+/// A fake keyset source over `rows`, which must already be in walk order
+/// (`RUN_DEDUPE_ORDER`). It answers the cursor filter `walkKeyset` sends by
+/// locating the row the cursor names — ids are unique.
 function pager(rows: RawRunRow[]) {
-	const calls: Array<[number, number]> = [];
-	const fetchPage = (from: number, to: number) => {
-		calls.push([from, to]);
-		return Promise.resolve(rows.slice(from, to + 1));
+	const calls: Array<{ after: string | null; limit: number }> = [];
+	const fetchPage = (after: string | null, limit: number) => {
+		calls.push({ after, limit });
+		let from = 0;
+		if (after !== null) {
+			const id = /id\.lt\."([^"]+)"/.exec(after)?.[1];
+			from = rows.findIndex((r) => r.id === id) + 1;
+			if (from === 0) throw new Error(`cursor names no row: ${after}`);
+		}
+		return Promise.resolve({ data: rows.slice(from, from + limit), error: null });
 	};
 	return { calls, fetchPage };
 }
 
+/// `n` runs a day apart, newest first, as the walk reads them.
 const rowsOf = (n: number): RawRunRow[] =>
-	Array.from({ length: n }, (_, i) => ({ started_at: iso(i * 86400), distance_m: 5000 + i }));
+	Array.from({ length: n }, (_, i) => {
+		const day = n - 1 - i;
+		return { id: `r-${String(day).padStart(5, '0')}`, started_at: iso(day * 86400), distance_m: 5000 + day };
+	});
 
-Deno.test('collectRunIdentities — pages past PostgREST\'s 1000-row cap with inclusive ranges', async () => {
+Deno.test('collectRunIdentities — walks past PostgREST\'s 1000-row cap by keyset cursor', async () => {
 	const { calls, fetchPage } = pager(rowsOf(2500));
 	const out = await collectRunIdentities(fetchPage);
 	assertEquals(out.length, 2500, 'a pro with 2 500 runs is compared against all of them');
-	assertEquals(calls, [[0, 999], [1000, 1999], [2000, 2999]]);
-	assertEquals(out[2499], { startedAtMs: T0 + 2499 * 86400_000, distanceM: 7499 });
+	assertEquals(calls.map((c) => c.limit), [1000, 1000, 1000]);
+	assertEquals(calls[0].after, null);
+	assertEquals(/started_at\.lt\./.test(calls[1].after ?? ''), true, 'page 2 starts after the last row of page 1');
+	assertEquals(out[0], { startedAtMs: T0 + 2499 * 86400_000, distanceM: 7499 });
+});
+
+Deno.test('collectRunIdentities — walks newest first with the id tie-break', () => {
+	assertEquals(
+		RUN_DEDUPE_ORDER.map((k) => `${k.column} ${k.ascending ? 'asc' : 'desc'}`),
+		['started_at desc', 'id desc'],
+	);
 });
 
 Deno.test('collectRunIdentities — an exactly-full last page costs one empty fetch and then stops', async () => {
 	const { calls, fetchPage } = pager(rowsOf(4));
 	const out = await collectRunIdentities(fetchPage, 2);
 	assertEquals(out.length, 4);
-	assertEquals(calls, [[0, 1], [2, 3], [4, 5]]);
+	assertEquals(calls.length, 3);
 });
 
-Deno.test('collectRunIdentities — a null page ends the walk with what was read so far', async () => {
-	const calls: number[] = [];
-	const out = await collectRunIdentities((from) => {
-		calls.push(from);
-		return Promise.resolve(from === 0 ? rowsOf(2) : null);
+Deno.test('collectRunIdentities — a page error ends the walk with what was read so far', async () => {
+	let call = 0;
+	const out = await collectRunIdentities(() => {
+		call++;
+		return Promise.resolve(call === 1 ? { data: rowsOf(2), error: null } : { data: null, error: new Error('reset') });
 	}, 2);
 	assertEquals(out.length, 2);
-	assertEquals(calls, [0, 2]);
+	assertEquals(call, 2);
 });
 
-Deno.test('collectRunIdentities — the safety ceiling bounds the number of fetches', async () => {
+Deno.test('collectRunIdentities — a server that ignores the cursor stops the walk instead of looping', async () => {
 	let fetches = 0;
 	const out = await collectRunIdentities(() => {
 		fetches++;
-		return Promise.resolve(rowsOf(10));
-	}, 10, 35);
-	assertEquals(fetches, 4, 'from = 0, 10, 20, 30 — the next would be past 35');
-	assertEquals(out.length, 40);
+		return Promise.resolve({ data: rowsOf(10), error: null });
+	}, 10);
+	assertEquals(fetches, 2, 'the second page did not advance past the cursor');
+	assertEquals(out.length, 10);
 });
 
 Deno.test('collectRunIdentities — an unparseable start is skipped and a null distance reads as 0', async () => {
 	const { fetchPage } = pager([
-		{ started_at: null, distance_m: 5000 },
-		{ started_at: 'not a date', distance_m: 5000 },
-		{ started_at: iso(0), distance_m: null },
+		{ id: 'c', started_at: null, distance_m: 5000 },
+		{ id: 'b', started_at: 'not a date', distance_m: 5000 },
+		{ id: 'a', started_at: iso(0), distance_m: null },
 	]);
 	const out = await collectRunIdentities(fetchPage);
 	assertEquals(out, [{ startedAtMs: T0, distanceM: 0 }]);
 });
 
-Deno.test('collectRunIdentities — the server and web pagers read the same rows the same way', async () => {
-	const rows = [...rowsOf(5), { started_at: 'x', distance_m: 1 }, { started_at: iso(9), distance_m: null }];
+Deno.test('collectRunIdentities — the server and web walks read the same rows the same way', async () => {
+	const rows = [...rowsOf(5), { id: 'r-x', started_at: 'x', distance_m: 1 }, { id: 'r-w', started_at: iso(-9), distance_m: null }];
 	const a = pager(rows);
 	const b = pager(rows);
-	assertEquals(await collectRunIdentities(a.fetchPage, 3, 100), await webTwin.collectRunIdentities(b.fetchPage, 3, 100));
+	assertEquals(await collectRunIdentities(a.fetchPage, 3), await webTwin.collectRunIdentities(b.fetchPage, 3));
 	assertEquals(a.calls, b.calls);
+	assertEquals(RUN_DEDUPE_ORDER, webTwin.RUN_DEDUPE_ORDER);
 });
 
 const pt = (s: number | null) => ({ lat: 0, lng: 0, ...(s == null ? {} : { ts: iso(s) }) });

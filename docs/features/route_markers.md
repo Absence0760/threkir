@@ -53,6 +53,8 @@ the registry):
 
 **Both concepts are authorable in either form.** Each editor shows ONE field per concept with a clock-vs-elapsed switch, opening in whichever form the marker was saved in, and writes only the selected one — the two are alternatives, and a marker holding both is contradictory (`_cutoffLimitS` silently prefers the elapsed value). Saving normalises a both-forms marker down to the one the readers already honoured, so nothing in use is lost. Before this, `cutoff_elapsed_s` and `target_clock` were in the registry with no input on either platform, so an ultra whose cut-offs are stated as "22 hours in" could not be described at all.
 
+**`services` is read as a set.** Neither the database nor the jsonb bag stops a duplicate or a non-string entry, and the web roadbook keys its service chips on the name, so one duplicate threw `each_key_duplicate` and took the page down; on mobile a non-string entry threw from a lazy `cast<String>()`. Every reader goes through `parseAidServices(raw)` (web `route_markers.ts` ↔ mobile `route_markers.dart`): strings only, first occurrence kept, unknown names preserved so a service added by a newer client still round-trips. `buildRoadbook` (both platforms), both editors' detail lines and the web editor's draft load use it, so opening and re-saving a malformed marker writes it back clean. Both editors already write a set (web toggles membership, mobile holds a `Set`); the database deliberately does not police `meta`, which stays a schemaless registry.
+
 The pure helpers `parseCutoff(meta)` / `parseTarget(meta)` validate / normalise
 those keys so a cut-off or target chip renders identically on both platforms.
 They are also the **write** gate: an editor asks `parseCutoff` whether a typed

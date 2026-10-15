@@ -11,6 +11,7 @@
 
 import type { DbClient, Json, TablesUpdate } from './database.ts';
 import { type GpsEvent, smoothDistance } from './gps_distance.ts';
+import { KEYSET_WALK_PAGE_SIZE, type KeysetKey, walkKeyset } from './keyset_page.ts';
 
 export type StravaTokens = {
 	access_token: string;
@@ -501,37 +502,50 @@ export function isCrossProviderDuplicate(
 	return false;
 }
 
-/// A raw `{ started_at, distance_m }` row as PostgREST returns it.
+/// A raw `{ id, started_at, distance_m }` row as PostgREST returns it; `id`
+/// and `started_at` are the walk's cursor.
 export interface RawRunRow {
+	id: string;
 	started_at: string | null;
 	distance_m: number | null;
 }
 
-/// Page size + safety ceiling for `collectRunIdentities`.
-export const RUN_IDENTITY_PAGE_SIZE = 1000;
-export const RUN_IDENTITY_SAFETY_MAX = 50_000;
+/// The order the existing runs are walked in: newest first, `id` breaking a
+/// `started_at` tie so the order is total. Both NOT NULL. The web twin's
+/// `RUN_DEDUPE_ORDER`.
+export const RUN_DEDUPE_ORDER: readonly KeysetKey[] = [
+	{ column: 'started_at', ascending: false, nullsFirst: true },
+	{ column: 'id', ascending: false, nullsFirst: true },
+];
 
-/// Pull every existing run's start + distance identity across ALL sources by
-/// paging `fetchPage` in `RUN_IDENTITY_PAGE_SIZE` chunks — PostgREST caps an
-/// unbounded SELECT at 1000 rows, so a pro with 1000+ runs would otherwise
-/// compare against an arbitrary slice and re-import duplicates anyway, the
-/// exact failure the cross-provider guard exists to close. Keep in lockstep
-/// with the web twin in `apps/web/src/lib/integrations/garmin_dedupe.ts`.
+/// One keyset page of the existing runs: apply `after` (null on the first
+/// page), sort by `RUN_DEDUPE_ORDER`, take `limit`.
+export type DedupePage<R> = (
+	after: string | null,
+	limit: number,
+) => PromiseLike<{ data: R[] | null; error: unknown }>;
+
+/// Pull every existing run's start + distance identity across ALL sources.
+/// PostgREST caps an unbounded SELECT at 1000 rows, so a pro with 1000+ runs
+/// would otherwise compare against an arbitrary slice and re-import
+/// duplicates anyway — the exact failure the cross-provider guard exists to
+/// close. The read is walked by keyset cursor rather than OFFSET: a sync
+/// changing the history mid-walk would shift an OFFSET page boundary and drop
+/// an identity, and a dropped identity is a run imported twice (decisions
+/// § 1936). A page error ends the walk with what it has rather than throwing.
+/// Keep in lockstep with the web twin in
+/// `apps/web/src/lib/integrations/garmin_dedupe.ts`.
 export async function collectRunIdentities(
-	fetchPage: (from: number, to: number) => PromiseLike<RawRunRow[] | null>,
-	pageSize: number = RUN_IDENTITY_PAGE_SIZE,
-	safetyMax: number = RUN_IDENTITY_SAFETY_MAX,
+	fetchPage: DedupePage<RawRunRow>,
+	pageSize: number = KEYSET_WALK_PAGE_SIZE,
 ): Promise<RunIdentity[]> {
+	const walk = await walkKeyset(RUN_DEDUPE_ORDER, fetchPage, { pageSize });
+	if (!walk.complete) console.warn('collectRunIdentities: the walk ended short', walk.error);
 	const out: RunIdentity[] = [];
-	for (let from = 0; from < safetyMax; from += pageSize) {
-		const data = await fetchPage(from, from + pageSize - 1);
-		if (!data) break;
-		for (const r of data) {
-			const ms = Date.parse(r.started_at ?? '');
-			if (!Number.isFinite(ms)) continue;
-			out.push({ startedAtMs: ms, distanceM: Number(r.distance_m ?? 0) });
-		}
-		if (data.length < pageSize) break;
+	for (const r of walk.rows) {
+		const ms = Date.parse(r.started_at ?? '');
+		if (!Number.isFinite(ms)) continue;
+		out.push({ startedAtMs: ms, distanceM: Number(r.distance_m ?? 0) });
 	}
 	return out;
 }

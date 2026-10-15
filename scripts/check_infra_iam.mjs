@@ -984,6 +984,9 @@ export const NON_CREDENTIAL_SOPS_KEYS = {
     'before it has a bag to read, and it authorises nothing',
   OPENAI_BASE_URL: 'an endpoint, not a credential — the OpenAI-compatible base URL',
   OPENAI_MODEL: 'a model name, not a credential',
+  AI_PLAN_ENABLED:
+    'a feature switch: /api/coach/plan-request answers 503 unless it is ' +
+    'truthy. It turns a route off or on and authorises no caller',
 };
 
 /// `name = ["A", "B"]` entries in a `locals` block, which is what a

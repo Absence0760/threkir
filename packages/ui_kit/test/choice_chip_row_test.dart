@@ -188,6 +188,39 @@ void main() {
     }
   });
 
+  testWidgets('a selection does not resize the chips on any frame',
+      (tester) async {
+    // Without an avatar slot Material animates the checkmark in by growing
+    // the chip and out by shrinking the other, so the row slid sideways on
+    // every switch (the dashboard Distance card's "glitch").
+    var selected = 'a';
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: StatefulBuilder(
+          builder: (context, setState) => ChoiceChipRow<String>(
+            selected: selected,
+            onChanged: (v) => setState(() => selected = v),
+            options: const [
+              ChoiceChipOption(value: 'a', label: 'Week'),
+              ChoiceChipOption(value: 'b', label: 'Month'),
+              ChoiceChipOption(value: 'c', label: 'Year'),
+            ],
+          ),
+        ),
+      ),
+    ));
+    final chips = find.byType(ChoiceChip);
+    List<Rect> rects() => [for (final e in chips.evaluate()) tester.getRect(find.byWidget(e.widget))];
+    final rest = rects();
+    for (final next in ['Month', 'Year', 'Week']) {
+      await tester.tap(find.text(next));
+      for (var frame = 0; frame < 20; frame++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(rects(), rest, reason: 'frame $frame of the switch to $next');
+      }
+    }
+  });
+
   testWidgets('tapping an option reports its value', (tester) async {
     int? picked;
     await tester.pumpWidget(MaterialApp(

@@ -9,7 +9,7 @@
 /// type and records only whether the parameter carries a SQL default, as a `?`.
 /// It carries no nullability at all: `mark_attendance(p_attendance text)` — a
 /// parameter whose own body branches on `p_attendance is not null` — is emitted
-/// as `p_attendance: string`, and `search_public_routes(p_query text default
+/// as `p_attendance: string`, and `search_race_listings(p_query text default
 /// null)` as `p_query?: string`. Every caller that means NULL therefore fails
 /// to compile against the generated shape.
 ///

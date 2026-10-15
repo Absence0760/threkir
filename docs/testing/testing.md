@@ -409,6 +409,26 @@ Inject the directory.
 
 Model to copy: **`local_run_store_test.dart`**.
 
+### Timezone-sensitive Dart tests
+
+CI runs the Flutter suite in the runner's zone, UTC, where every local day is 24 hours long and starts at 00:00 UTC. A test whose verdict depends on the host zone — a calendar-day key, a week or day boundary, anything across a DST transition — therefore passes there whether or not the code is right. The dashboard heatmap's day key collided across the London spring change and failed only east of UTC; its test was green in CI on the broken code ([decisions § 1932](../architecture/decisions.md)).
+
+Mark such a test with the `tz` tag, declared in each package's `dart_test.yaml` (both twins carry an identical copy; `twin-parity` compares them):
+
+```dart
+test('every local calendar day gets its own key, DST included', () {
+  // ...
+}, tags: 'tz');
+
+testWidgets('renders all seven days across a fall-back', (tester) async {
+  // ...
+}, tags: 'tz');
+```
+
+`group()` in `flutter_test` takes no `tags:`, so tag each test, or put `@Tags(['tz'])` above a `library;` directive to tag a whole file. The `test-timezones` job in `ci.yml` finds every test file under `apps/mobile_android/test` and `packages/*/test` that carries the tag and runs `flutter test --tags tz` on them under `America/New_York` (US transitions, negative offset), `Europe/London` (EU transitions, the +0/+1 flip) and `Asia/Kolkata` (+5:30, no DST), on top of the normal UTC run. There is no file list to edit: the tag is the opt-in. The job fails if no file carries the tag, so renaming it cannot quietly empty the run.
+
+Write the assertion so it holds in **every** zone (the same invariant, not a zone-specific expected value) — the tagged test runs in four. To reproduce locally: `TZ=Europe/London flutter test --tags tz test/dashboard_screen_test.dart`. The Dart VM reads the zone through the C library's `localtime_r`, which honours `TZ` from the environment, and `flutter test` passes its environment on to `flutter_tester`.
+
 ### Run the new test
 
 ```bash

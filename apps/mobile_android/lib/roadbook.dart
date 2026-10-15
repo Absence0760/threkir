@@ -18,7 +18,7 @@ import 'dart:math' as math;
 
 import 'grade_adjusted_pace.dart' show gradeFactor, minSegmentM;
 import 'run_stats.dart' show haversineMetres;
-import 'route_markers.dart' show parseCutoff, parseTarget;
+import 'route_markers.dart' show parseAidServices, parseCutoff, parseTarget;
 
 class RoadbookWaypoint {
   final double lat;
@@ -244,9 +244,7 @@ Roadbook buildRoadbook(
             math.min(totalDistM, math.max(0.0, m.positionM!)),
             m.kind,
             m.label,
-            (m.meta is Map && (m.meta as Map)['services'] is List)
-                ? ((m.meta as Map)['services'] as List).cast<String>()
-                : const <String>[],
+            parseAidServices(m.meta is Map ? (m.meta as Map)['services'] : null),
             m.meta,
             m.kind == 'cutoff',
           ))

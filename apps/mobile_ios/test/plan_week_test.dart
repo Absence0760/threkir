@@ -14,7 +14,7 @@ import '../lib/plan_week.dart';
 void main() {
   test('DST-crossing span reports the correct week (issue #338 repro)', () {
     expect(currentPlanWeekIndex('2026-03-01', '2026-03-15', 12), 2);
-  });
+  }, tags: 'tz');
 
   test('non-DST control span reports the correct week', () {
     // 2026-06-01 → 2026-06-15 spans no DST transition: 14 whole days → week 2.
@@ -38,5 +38,32 @@ void main() {
     // themselves (fetchActiveOverview used to feed this straight into
     // clamp(0, weeks.length - 1), and Dart's clamp THROWS on inverted bounds).
     expect(currentPlanWeekIndex('2026-03-01', '2026-03-15', 0), -1);
+  });
+
+  test('planRaceCountdown counts down to the start before the plan begins',
+      () {
+    expect(planRaceCountdown('2026-06-10', '2026-08-30', '2026-06-01'),
+        const PlanRaceCountdown(PlanRaceCountdownKind.startsIn, 9));
+  });
+
+  test('planRaceCountdown counts down to race day inside the plan', () {
+    expect(planRaceCountdown('2026-06-01', '2026-08-30', '2026-08-01'),
+        const PlanRaceCountdown(PlanRaceCountdownKind.raceIn, 29));
+    expect(planRaceCountdown('2026-06-01', '2026-08-30', '2026-08-29'),
+        const PlanRaceCountdown(PlanRaceCountdownKind.raceIn, 1));
+  });
+
+  test('planRaceCountdown names race day and a race already run', () {
+    expect(planRaceCountdown('2026-06-01', '2026-08-30', '2026-08-30'),
+        const PlanRaceCountdown(PlanRaceCountdownKind.raceDay, 0));
+    expect(planRaceCountdown('2026-06-01', '2026-08-30', '2026-09-02'),
+        const PlanRaceCountdown(PlanRaceCountdownKind.racePast, 0));
+  });
+
+  test('planRaceCountdown counts whole days across a DST change', () {
+    // 2026-03-01 -> 2026-03-15 crosses the US spring-forward; local-time
+    // differencing would come out an hour short of 14 days.
+    expect(planRaceCountdown('2026-01-01', '2026-03-15', '2026-03-01'),
+        const PlanRaceCountdown(PlanRaceCountdownKind.raceIn, 14));
   });
 }

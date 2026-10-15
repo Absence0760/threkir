@@ -2620,7 +2620,7 @@ void main() {
   });
 
   group('explore-screen save never copies a non-owner route', () {
-    // Reason: Explore browsing reads from `search_public_routes` /
+    // Reason: Explore browsing reads the `public_routes` view (search) /
     // `nearby_routes` / `routes_within_box`, which (after migration
     // 20260703_001_public_routes_view.sql) return rows from the
     // `public_routes` view — i.e. with no waypoints. Saving such a row

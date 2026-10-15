@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { appendPage, type KeysetCursor } from '#lib/core/keyset_page.ts';
 	import { appErrorMessage, thrownMessage } from '#lib/core/supabase_error.ts';
 	import { siteOrigin } from '#lib/core/site_url.ts';
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
@@ -84,8 +85,12 @@
 	let posts = $state<ClubPostWithAuthor[]>([]);
 	let members = $state<(ClubMember & { display_name: string | null; avatar_url: string | null })[]>([]);
 	let membersHasMore = $state(false);
+	// The keyset cursor for the roster's next page (see fetchClubMembers).
+	let membersNext = $state<KeysetCursor | null>(null);
 	let membersLoadingMore = $state(false);
 	let pending = $state<(ClubMember & { display_name: string | null; avatar_url: string | null })[]>([]);
+	let pendingError = $state<string | null>(null);
+	let pendingRetrying = $state(false);
 	let loading = $state(true);
 	let loadError = $state<string | null>(null);
 	type Tab = 'feed' | 'events' | 'routes' | 'templates' | 'photos' | 'members';
@@ -217,7 +222,7 @@
 			fetchClubPosts(club.id, 20),
 			fetchClubMembers(club.id, { limit: ROSTER_PAGE_SIZE }),
 			club.viewer_role === 'owner' || club.viewer_role === 'admin'
-				? fetchPendingRequests(club.id)
+				? loadPending(club.id)
 				: Promise.resolve([]),
 			fetchClubRoutes(club.id),
 			fetchClubTemplates(club.id),
@@ -227,8 +232,9 @@
 		upcoming = up;
 		past = pa;
 		posts = po;
-		members = me;
-		membersHasMore = me.length === ROSTER_PAGE_SIZE;
+		members = me.rows;
+		membersNext = me.next;
+		membersHasMore = me.next !== null;
 		pending = pe;
 		clubRoutes = rt;
 		clubTemplates = tp;
@@ -237,16 +243,41 @@
 		loading = false;
 	}
 
+	// The join queue is one admin card, so its failure is shown on that card
+	// with a retry rather than failing the club page or reading as "no one is
+	// waiting".
+	async function loadPending(clubId: string) {
+		try {
+			const rows = await fetchPendingRequests(clubId);
+			pendingError = null;
+			return rows;
+		} catch (e) {
+			pendingError = thrownMessage(e);
+			return [];
+		}
+	}
+
+	async function retryPending() {
+		if (!club || pendingRetrying) return;
+		pendingRetrying = true;
+		try {
+			pending = await loadPending(club.id);
+		} finally {
+			pendingRetrying = false;
+		}
+	}
+
 	async function loadMoreMembers() {
-		if (!club || membersLoadingMore || !membersHasMore) return;
+		if (!club || membersLoadingMore || !membersHasMore || !membersNext) return;
 		membersLoadingMore = true;
 		try {
 			const more = await fetchClubMembers(club.id, {
 				limit: ROSTER_PAGE_SIZE,
-				offset: members.length
+				after: membersNext
 			});
-			members = [...members, ...more];
-			membersHasMore = more.length === ROSTER_PAGE_SIZE;
+			members = appendPage(members, more.rows, (row) => row.user_id);
+			membersNext = more.next;
+			membersHasMore = more.next !== null;
 		} catch (e) {
 			showToast(tr('profile.loadMoreError', { error: thrownMessage(e) }), 'error');
 		} finally {
@@ -1015,7 +1046,17 @@
 			</section>
 		{/if}
 
-		{#if isAdmin && pending.length > 0}
+		{#if isAdmin && pendingError}
+			<section class="admin-card" role="alert">
+				<div class="admin-card-title">
+					<span class="material-symbols" aria-hidden="true">error</span>
+					<strong>{tr('clubHome.pendingLoadFailed', { error: pendingError })}</strong>
+					<button class="btn-secondary btn-sm approve-all" type="button" onclick={retryPending} disabled={pendingRetrying}>
+						{tr('clubHome.retry')}
+					</button>
+				</div>
+			</section>
+		{:else if isAdmin && pending.length > 0}
 			<section class="admin-card">
 				<div class="admin-card-title">
 					<span class="material-symbols" aria-hidden="true">hourglass_top</span>

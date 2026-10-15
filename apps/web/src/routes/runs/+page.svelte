@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { appendPage, type KeysetCursor } from '#lib/core/keyset_page.ts';
 	import { onMount } from 'svelte';
 	import { compareOrdinal } from '#lib/util/ordinal_compare.ts';
 	import { formatPace, formatDistance, sourceLabel } from '#lib/core/mock-data.ts';
@@ -60,6 +61,10 @@
 	let loadingMore = $state(false);
 	let moreError = $state<string | null>(null);
 	let hasMore = $state(false);
+	/// The keyset cursor for the next page (see fetchRunsWithError). Kept
+	/// rather than derived from the last card: a bulk delete removes cards, and
+	/// the cursor must still name the last row the server returned.
+	let runsNext = $state<KeysetCursor | null>(null);
 	/// Tracks the last fetch mode so we only refetch on `paginated` ↔
 	/// `full` transitions, not on every filter twiddle.
 	let lastFetchMode = $state<'paginated' | 'full' | ''>('');
@@ -394,14 +399,11 @@
 		loadError = null;
 		const gen = ++fetchGen;
 		const token = listToken('runs');
-		let res: { runs: Run[]; error: string | null };
-		let nextHasMore: boolean;
+		let res: { runs: Run[]; error: string | null; next: KeysetCursor | null };
 		if (fetchMode === 'paginated') {
-			res = await fetchRunsWithError({ limit: PAGE_SIZE, offset: 0 });
-			nextHasMore = res.runs.length === PAGE_SIZE;
+			res = await fetchRunsWithError({ limit: PAGE_SIZE });
 		} else {
 			res = await fetchRunsWithError();
-			nextHasMore = false;
 		}
 		if (gen !== fetchGen) return;
 		if (res.error) {
@@ -412,7 +414,8 @@
 			return;
 		}
 		runs = res.runs;
-		hasMore = nextHasMore;
+		runsNext = res.next;
+		hasMore = res.next !== null;
 		loadedToken = token;
 		loading = false;
 	}
@@ -424,17 +427,18 @@
 	/// simply gone. On failure `hasMore` is left alone so the button
 	/// survives as the retry.
 	async function loadMore() {
-		if (loadingMore || !hasMore) return;
+		if (loadingMore || !hasMore || !runsNext) return;
 		loadingMore = true;
 		moreError = null;
-		const res = await fetchRunsWithError({ limit: PAGE_SIZE, offset: runs.length });
+		const res = await fetchRunsWithError({ limit: PAGE_SIZE, after: runsNext });
 		if (res.error) {
 			moreError = res.error;
 			loadingMore = false;
 			return;
 		}
-		runs = [...runs, ...res.runs];
-		hasMore = res.runs.length === PAGE_SIZE;
+		runs = appendPage(runs, res.runs, (r) => r.id);
+		runsNext = res.next;
+		hasMore = res.next !== null;
 		loadingMore = false;
 	}
 
@@ -496,6 +500,8 @@
 	export const snapshot: Snapshot<{
 		runs: Run[];
 		hasMore: boolean;
+		/** Absent from a snapshot captured before the list paged by cursor. */
+		next?: KeysetCursor | null;
 		lastFetchMode: 'paginated' | 'full' | '';
 		sourceFilter: RunSource | 'all';
 		activityFilter: string;
@@ -510,6 +516,7 @@
 		capture: () => ({
 			runs,
 			hasMore,
+			next: runsNext,
 			lastFetchMode,
 			sourceFilter,
 			activityFilter,
@@ -537,12 +544,16 @@
 			// loadInitial under the restored filters. fetchGen is not bumped:
 			// an in-flight load is one this mount started after the write.
 			if (isListStale('runs', s.listToken)) return;
+			// A snapshot from before the cursor existed has no way to load
+			// more without an offset; reload it like a stale one.
+			if (s.next === undefined) return;
 			// Invalidate any in-flight loadInitial that the mount-time
 			// fetch-effect already kicked off. Without this the async
 			// fetch returns after restore and overwrites the captured
 			// runs with a fresh first-page-of-50.
 			fetchGen++;
 			runs = s.runs;
+			runsNext = s.next;
 			hasMore = s.hasMore;
 			lastFetchMode = s.lastFetchMode;
 			loadedToken = s.listToken;

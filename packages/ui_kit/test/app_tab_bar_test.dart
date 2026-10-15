@@ -70,6 +70,32 @@ void main() {
       expect(_bar(tester).isScrollable, isTrue);
     });
 
+    testWidgets('one long label scrolls even when the total would fit',
+        (tester) async {
+      // Filled tabs share the width equally, so the test is whether the
+      // widest label fits its share. Measured against these labels' own
+      // widths so the assertion holds under any test font.
+      const labels = ['A', 'B', 'C', 'Achievements'];
+      double w(String l) {
+        final p = TextPainter(
+          text: TextSpan(text: l, style: ThemeData().textTheme.titleSmall),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        final width = p.width + kTabLabelPadding.horizontal;
+        p.dispose();
+        return width;
+      }
+
+      final sum = labels.map(w).reduce((a, b) => a + b);
+      final share = w('Achievements') * labels.length;
+      // A width between the sum and the equal-share need: the old sum rule
+      // filled here and clipped the long label.
+      final width = (sum + share) / 2;
+      expect(sum, lessThan(width));
+      await _pump(tester, labels, width: width);
+      expect(_bar(tester).isScrollable, isTrue);
+    });
+
     testWidgets('the same labels flip with the width they are given',
         (tester) async {
       const labels = ['Feed', 'People', 'Clubs', 'Discover', 'Challenges'];
@@ -85,9 +111,11 @@ void main() {
     testWidgets('a strip that fits at 1.0x scrolls once the OS scales type up',
         (tester) async {
       const labels = ['Feed', 'People', 'Clubs', 'Discover', 'Challenges'];
-      await _pump(tester, labels, width: 700);
+      // 1000 dp: each of the five equal shares holds the widest label at 1.0x
+      // (a filled strip splits the width evenly), and not at 2.0x.
+      await _pump(tester, labels, width: 1000);
       expect(_bar(tester).isScrollable, isFalse);
-      await _pump(tester, labels, width: 700, textScale: 2.0);
+      await _pump(tester, labels, width: 1000, textScale: 2.0);
       expect(_bar(tester).isScrollable, isTrue,
           reason: 'the derivation reads the current text scale, so a strip '
               'that fits at 1.0x does not crush its labels at 2.0x');

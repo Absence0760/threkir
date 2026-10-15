@@ -31,7 +31,7 @@ interface StubOptions {
   prefs?: Record<string, unknown> | null;
   prefsThrows?: boolean;
   stravaIds?: string[];
-  existingRuns?: Array<{ started_at: string | null; distance_m: number | null }>;
+  existingRuns?: Array<{ id: string; started_at: string | null; distance_m: number | null }>;
   failInsertFor?: (row: Record<string, unknown>) => boolean;
 }
 
@@ -51,6 +51,10 @@ function dbStub(opts: StubOptions = {}): Stub {
     eq: () => chain(result),
     order: () => chain(result),
     range: () => chain(result),
+    // The identity walk's second page starts after the last row it saw, and
+    // the stub serves its runs on one page, so a cursor reads past the end.
+    or: () => chain({ data: [], error: null }),
+    limit: () => chain(result),
     maybeSingle: () => Promise.resolve(result),
     single: () => Promise.resolve(result),
     // deno-lint-ignore no-explicit-any
@@ -223,7 +227,7 @@ Deno.test('the same effort already present under another source is skipped, not 
   // activity. A Garmin watch that auto-uploaded to Strava arrives here as a
   // different id for a run the database already has.
   const start = iso(60_000);
-  const stub = dbStub({ existingRuns: [{ started_at: start, distance_m: 5000 }] });
+  const stub = dbStub({ existingRuns: [{ id: 'existing', started_at: start, distance_m: 5000 }] });
   await walk(stub, [activity({ id: 1, start_date: start, distance: 5040 })], (r) => {
     assertEquals(r.skipped, 1);
     assertEquals(r.imported, 0);
@@ -235,7 +239,7 @@ Deno.test('a different effort at a similar time is still imported', async () => 
   // The complement, so "skips everything" is not what makes the case above
   // pass: beyond the 5 % distance tolerance the two are different runs.
   const start = iso(60_000);
-  const stub = dbStub({ existingRuns: [{ started_at: start, distance_m: 5000 }] });
+  const stub = dbStub({ existingRuns: [{ id: 'existing', started_at: start, distance_m: 5000 }] });
   await walk(stub, [activity({ id: 1, start_date: start, distance: 9000 })], (r) => {
     assertEquals(r.imported, 1);
     assertEquals(r.skipped, 0);

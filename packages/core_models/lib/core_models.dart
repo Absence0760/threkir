@@ -29,6 +29,7 @@ export 'src/generated/db_rows.dart';
 export 'src/gym.dart';
 export 'src/import_completeness.dart';
 export 'src/iso_parse.dart';
+export 'src/keyset_page.dart';
 export 'src/local_store_schema.dart';
 export 'src/metadata_keys.dart';
 export 'src/profile_query.dart';

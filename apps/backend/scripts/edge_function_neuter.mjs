@@ -248,13 +248,28 @@ function skipTemplate(src, i) {
     }
     if (src[j] === '`') return j;
     if (src[j] === '$' && src[j + 1] === '{') {
+      // An interpolation is code, so a regex in it is read as one: in
+      // `${s.replace(/"/g, '\\"')}` the `"` inside the regex opened a string
+      // that swallowed the closing backtick, and every export after it in
+      // _shared/keyset_page.ts vanished from the stub.
       let depth = 1;
+      let last = '{';
       j += 2;
       for (; j < src.length && depth > 0; j++) {
-        if (src[j] === '{') depth++;
-        else if (src[j] === '}') depth--;
-        else if (src[j] === '`') j = skipTemplate(src, j);
-        else if (src[j] === '"' || src[j] === "'") j = skipQuoted(src, j, src[j]);
+        const c = src[j];
+        if (c === '{') depth++;
+        else if (c === '}') depth--;
+        else if (c === '`') j = skipTemplate(src, j);
+        else if (c === '"' || c === "'") j = skipQuoted(src, j, c);
+        else if (c === '/' && (!DIV_BEFORE.test(last) || afterOperandKeyword(src, j))) {
+          const end = skipRegex(src, j);
+          if (end !== null) {
+            j = end;
+            last = '/';
+            continue;
+          }
+        }
+        if (!/\s/.test(c)) last = c;
       }
       j--;
     }

@@ -638,8 +638,8 @@ void main() {
     // 24-hour Duration breaks in a DST zone: the boundary walks off local
     // midnight, so a run near it lands in both adjacent weeks (spring forward)
     // or in neither (fall back). Run under TZ=America/New_York to see the old
-    // code fail; the source guard in architecture_guards_test.dart is what
-    // catches a regression on a UTC CI box.
+    // code fail; the `tz` tag is how CI does that, and the source guard in
+    // architecture_guards_test.dart catches the shape in the UTC run too.
     final transitionDays = <DateTime>[
       // US spring forward (23-hour day) and fall back (25-hour day).
       DateTime(2026, 3, 8, 12),
@@ -661,7 +661,7 @@ void main() {
             expect(start.second, 0, reason: 'not midnight for $probe');
           }
         }
-      });
+      }, tags: 'tz');
 
       test('a week end is exactly the next week start — no gap, no overlap '
           '($weekStart)', () {
@@ -677,7 +677,7 @@ void main() {
             expect(nextStart, end, reason: 'seam broken for $probe');
           }
         }
-      });
+      }, tags: 'tz');
 
       test('every day of a transition week is counted exactly once '
           '($weekStart)', () {
@@ -696,7 +696,7 @@ void main() {
                     '($start .. $end)');
           }
         }
-      });
+      }, tags: 'tz');
     }
   });
 }

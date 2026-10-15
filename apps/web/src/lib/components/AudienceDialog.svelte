@@ -107,7 +107,7 @@
 		peopleFailed = false;
 		try {
 			const [followers, following] = await Promise.all([fetchFollowers(me), fetchFollowing(me)]);
-			candidates = dmRecipientCandidates(followers, following, me);
+			candidates = dmRecipientCandidates(followers.rows, following.rows, me);
 		} catch {
 			// "Nobody to share with" and "could not find out" are different
 			// answers; only the second is worth a retry.

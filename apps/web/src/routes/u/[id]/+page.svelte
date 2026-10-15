@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { appendPage, type KeysetCursor } from '#lib/core/keyset_page.ts';
 	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { siteOrigin } from '#lib/core/site_url.ts';
 	import { page } from '$app/state';
@@ -64,6 +65,9 @@
 	let following = $state<PublicProfile[]>([]);
 	let followersHasMore = $state(false);
 	let followingHasMore = $state(false);
+	// The keyset cursor for each tab's next page (see fetchFollowers).
+	let followersNext = $state<KeysetCursor | null>(null);
+	let followingNext = $state<KeysetCursor | null>(null);
 	let followersLoadingMore = $state(false);
 	let followingLoadingMore = $state(false);
 	// Each independent section owns its own loading + error so a failure in one
@@ -231,8 +235,9 @@
 		followersError = null;
 		try {
 			const fr = await fetchFollowers(userId, { limit: FOLLOW_PAGE_SIZE });
-			followers = fr;
-			followersHasMore = fr.length === FOLLOW_PAGE_SIZE;
+			followers = fr.rows;
+			followersNext = fr.next;
+			followersHasMore = fr.next !== null;
 			hydrateViewerFollows();
 		} catch (e) {
 			followersError = thrownMessage(e);
@@ -246,8 +251,9 @@
 		followingError = null;
 		try {
 			const fg = await fetchFollowing(userId, { limit: FOLLOW_PAGE_SIZE });
-			following = fg;
-			followingHasMore = fg.length === FOLLOW_PAGE_SIZE;
+			following = fg.rows;
+			followingNext = fg.next;
+			followingHasMore = fg.next !== null;
 			hydrateViewerFollows();
 		} catch (e) {
 			followingError = thrownMessage(e);
@@ -257,15 +263,16 @@
 	}
 
 	async function loadMoreFollowers() {
-		if (followersLoadingMore || !followersHasMore) return;
+		if (followersLoadingMore || !followersHasMore || !followersNext) return;
 		followersLoadingMore = true;
 		try {
 			const more = await fetchFollowers(userId, {
 				limit: FOLLOW_PAGE_SIZE,
-				offset: followers.length,
+				after: followersNext,
 			});
-			followers = [...followers, ...more];
-			followersHasMore = more.length === FOLLOW_PAGE_SIZE;
+			followers = appendPage(followers, more.rows, (p) => p.id);
+			followersNext = more.next;
+			followersHasMore = more.next !== null;
 			hydrateViewerFollows();
 		} catch (e) {
 			showToast(m('profile.loadMoreFollowersError', { error: thrownMessage(e) }), 'error');
@@ -275,15 +282,16 @@
 	}
 
 	async function loadMoreFollowing() {
-		if (followingLoadingMore || !followingHasMore) return;
+		if (followingLoadingMore || !followingHasMore || !followingNext) return;
 		followingLoadingMore = true;
 		try {
 			const more = await fetchFollowing(userId, {
 				limit: FOLLOW_PAGE_SIZE,
-				offset: following.length,
+				after: followingNext,
 			});
-			following = [...following, ...more];
-			followingHasMore = more.length === FOLLOW_PAGE_SIZE;
+			following = appendPage(following, more.rows, (p) => p.id);
+			followingNext = more.next;
+			followingHasMore = more.next !== null;
 			hydrateViewerFollows();
 		} catch (e) {
 			showToast(m('profile.loadMoreError', { error: thrownMessage(e) }), 'error');
@@ -726,7 +734,7 @@
 				{/if}
 				{#if isSelf}
 					<a
-						href="/settings"
+						href="/settings/account"
 						class="btn btn-outline btn-icon-only"
 						aria-label={m('profile.editProfile')}
 						title={m('profile.editProfile')}

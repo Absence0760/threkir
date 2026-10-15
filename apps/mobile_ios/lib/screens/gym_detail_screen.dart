@@ -15,6 +15,7 @@ import '../l10n/locale_support.dart';
 import '../local_gym_store.dart';
 import '../local_routine_store.dart';
 import '../metrics.dart';
+import '../next_target_hints.dart';
 import '../preferences.dart';
 import '../progression_prefill.dart';
 import '../widgets/gym_compose_sheet.dart';
@@ -26,24 +27,6 @@ import 'gym_screen.dart' show gymExerciseSuggestions, gymSetHistory;
 
 typedef _SetRef = ({int index, Map<String, dynamic> set});
 typedef _Block = ({String name, List<_SetRef> sets});
-
-/// One P4 "next target" hint shown on the workout review. Weights canonical kg.
-/// Built from nextPrescription against this session's logged sets; the screen
-/// only renders it.
-class _NextTargetHint {
-  final String exerciseName;
-  final double? suggestedWeightKg;
-  final double? currentTopKg;
-  final num? currentTopReps;
-  final ProgressionReason reason;
-  const _NextTargetHint({
-    required this.exerciseName,
-    required this.suggestedWeightKg,
-    required this.currentTopKg,
-    required this.currentTopReps,
-    required this.reason,
-  });
-}
 
 /// Detail view for a single gym workout — mirrors web `/gym/[id]`. Exercise
 /// blocks with per-exercise PR chips, each set's reps × weight + RPE, notes,
@@ -81,9 +64,9 @@ class _GymDetailScreenState extends State<GymDetailScreen> {
   final LocalRoutineStore _routineStore = LocalRoutineStore();
   bool _routineStoreReady = false;
 
-  // P4: per-exercise "next target" hints from nextPrescription. Only populated
+  // P4: per-lift "next target" hints (buildNextTargetHints). Only populated
   // for a from-routine session whose routine carries a progression scheme.
-  List<_NextTargetHint> _nextTargets = const [];
+  List<NextTargetHint> _nextTargets = const [];
 
   @override
   void initState() {
@@ -179,18 +162,6 @@ class _GymDetailScreenState extends State<GymDetailScreen> {
     }
     if (exes == null) return;
 
-    final setsByKey = <String, List<ProgressionSetLike>>{};
-    for (final s in w.sets) {
-      final key = normaliseExerciseName((s['exercise_name'] as String?) ?? '');
-      if (key.isEmpty) continue;
-      (setsByKey[key] ??= []).add(ProgressionSetLike(
-        reps: s['reps'] as num?,
-        weightKg: s['weight_kg'] as num?,
-        rpe: s['rpe'] as num?,
-        setType: s['set_type'] as String?,
-      ));
-    }
-
     // The 5×5 back-off needs a miss count across sessions, which no authored
     // params bag carries — the offline gym store holds the history it derives
     // from.
@@ -208,50 +179,36 @@ class _GymDetailScreenState extends State<GymDetailScreen> {
           ),
     ];
 
-    final out = <_NextTargetHint>[];
-    for (final e in exes) {
-      if (e.exercise.progression == 'none') continue;
-      final key = normaliseExerciseName(e.exercise.exerciseName);
-      final lastSets = setsByKey[key];
-      if (lastSets == null || lastSets.isEmpty) continue;
-      final firstSet = e.sets.isNotEmpty ? e.sets.first : null;
-      final params = e.exercise.progressionParams is Map
-          ? Map<String, Object?>.from(e.exercise.progressionParams as Map)
-          : <String, Object?>{};
-      final scheme = _schemeFromString(e.exercise.progression);
-      final sug = nextPrescription(ProgressionInput(
-        scheme: scheme,
-        lastSets: lastSets,
-        targetRepsMin: firstSet?.targetRepsMin,
-        targetRepsMax: firstSet?.targetRepsMax,
-        params: progressionParamsWithStreak(
-          scheme: scheme,
-          params: params,
-          targetRepsMin: firstSet?.targetRepsMin,
-          targetRepsMax: firstSet?.targetRepsMax,
-          history: history,
-          exerciseName: e.exercise.exerciseName,
-        ),
-      ));
-      if (sug.reason == ProgressionReason.none) continue;
-
-      double? topKg;
-      num? topReps;
-      for (final s in lastSets) {
-        final wt = s.weightKg;
-        if (wt != null && wt > 0 && (topKg == null || wt > topKg)) {
-          topKg = wt.toDouble();
-          topReps = s.reps;
-        }
-      }
-      out.add(_NextTargetHint(
-        exerciseName: e.exercise.exerciseName,
-        suggestedWeightKg: sug.suggestedWeightKg,
-        currentTopKg: topKg,
-        currentTopReps: topReps,
-        reason: sug.reason,
-      ));
-    }
+    final out = buildNextTargetHints(
+      exercises: [
+        for (final e in exes)
+          HintRoutineExercise(
+            exerciseName: e.exercise.exerciseName,
+            progression: _schemeFromString(e.exercise.progression),
+            progressionParams: e.exercise.progressionParams is Map
+                ? Map<String, Object?>.from(e.exercise.progressionParams as Map)
+                : null,
+            sets: [
+              for (final rs in e.sets)
+                (
+                  targetRepsMin: rs.targetRepsMin,
+                  targetRepsMax: rs.targetRepsMax,
+                ),
+            ],
+          ),
+      ],
+      sets: [
+        for (final s in w.sets)
+          HintLoggedSet(
+            exerciseName: (s['exercise_name'] as String?) ?? '',
+            reps: s['reps'] as num?,
+            weightKg: s['weight_kg'] as num?,
+            rpe: s['rpe'] as num?,
+            setType: s['set_type'] as String?,
+          ),
+      ],
+      history: history,
+    );
     if (mounted) setState(() => _nextTargets = out);
   }
 
@@ -728,7 +685,7 @@ class _GymDetailScreenState extends State<GymDetailScreen> {
   }
 
   // Neutral / positive treatment — never the red/amber adherence colours.
-  Widget _nextChip(_NextTargetHint h, ThemeData theme, AppLocalizations l10n) {
+  Widget _nextChip(NextTargetHint h, ThemeData theme, AppLocalizations l10n) {
     final delta = _hintDelta(h, l10n);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -791,7 +748,7 @@ class _GymDetailScreenState extends State<GymDetailScreen> {
     }
   }
 
-  String? _hintDelta(_NextTargetHint h, AppLocalizations l10n) {
+  String? _hintDelta(NextTargetHint h, AppLocalizations l10n) {
     if ((h.reason == ProgressionReason.increaseWeight ||
             h.reason == ProgressionReason.deload) &&
         h.suggestedWeightKg != null &&

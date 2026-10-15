@@ -197,6 +197,34 @@ void main() {
       expect(tester.getSize(label).height, lessThanOrEqualTo(grown));
     });
 
+    testWidgets('switching views does not resize the toggle mid-animation',
+        (tester) async {
+      // Field report: switching Week / Month / Year "glitched". Each chip's
+      // checkmark grew in or out over ~150 ms, so two chips changed width on
+      // every switch and the row slid sideways (20 px at 360 dp). Every chip
+      // now carries an avatar slot the checkmark paints over, so no frame of
+      // the transition moves the row.
+      tester.view.physicalSize = const Size(360, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await _pump(tester,
+          runs: [_run(startedAt: DateTime(2026, 5, 18, 7), distanceM: 5000)],
+          now: now);
+      final toggle = find
+          .ancestor(of: find.text('Week'), matching: find.byType(Wrap))
+          .first;
+      final rest = tester.getRect(toggle);
+      for (final next in ['Month', 'Year', 'Week']) {
+        await tester.tap(find.text(next));
+        for (var frame = 0; frame < 20; frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          expect(tester.getRect(toggle), rest,
+              reason: 'frame $frame of the switch to $next moved the toggle');
+        }
+        await tester.pumpAndSettle();
+      }
+    });
+
     testWidgets('the view toggle reflows instead of bursting the card',
         (tester) async {
       // Issue #666 round 9. As a SegmentedButton the toggle overflowed a

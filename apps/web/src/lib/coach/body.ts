@@ -15,13 +15,15 @@
 
 export const COACH_BODY_LIMIT_BYTES = 256 * 1024;
 
-// The two coach sub-paths carry their own, smaller caps — a route-describe body
-// is a few numbers and a name, a route-request one short sentence. Both were
+// The coach sub-paths carry their own, smaller caps — a route-describe body
+// is a few numbers and a name, a route-request or plan-request one short
+// sentence. Both were
 // spelled twice, a named constant in the dev wrapper and a bare literal in the
 // Lambda, which is the one-copy-per-wrapper shape this module exists to end
 // (decisions § 968).
 export const ROUTE_DESCRIBE_BODY_LIMIT_BYTES = 32 * 1024;
 export const ROUTE_REQUEST_BODY_LIMIT_BYTES = 16 * 1024;
+export const PLAN_REQUEST_BODY_LIMIT_BYTES = 16 * 1024;
 
 export type BodyDecodeResult =
 	| { ok: true; body: string }

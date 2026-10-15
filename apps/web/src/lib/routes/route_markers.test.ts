@@ -7,6 +7,7 @@ import {
 	sortMarkers,
 	parseCutoff,
 	parseTarget,
+	parseAidServices,
 	isOfficialMarker
 } from './route_markers';
 
@@ -35,6 +36,25 @@ test('kindSpec falls back to custom for an unknown kind', () => {
 
 test('aid services vocabulary is stable', () => {
 	assert.deepEqual(AID_SERVICES, ['water', 'food', 'medical', 'toilets', 'drop_bag']);
+});
+
+test('parseAidServices drops duplicates, keeping each service at its first position', () => {
+	assert.deepEqual(parseAidServices(['water', 'food', 'water', 'food', 'medical']), [
+		'water',
+		'food',
+		'medical'
+	]);
+});
+
+test('parseAidServices drops non-string entries and keeps unknown names', () => {
+	assert.deepEqual(parseAidServices(['water', 7, null, { s: 'food' }, 'shower']), ['water', 'shower']);
+});
+
+test('parseAidServices reads anything that is not an array as no services', () => {
+	assert.deepEqual(parseAidServices(undefined), []);
+	assert.deepEqual(parseAidServices(null), []);
+	assert.deepEqual(parseAidServices('water'), []);
+	assert.deepEqual(parseAidServices({ water: true }), []);
 });
 
 test('sortMarkers orders by position_m, nulls last, stable by created_at', () => {

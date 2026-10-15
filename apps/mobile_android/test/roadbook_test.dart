@@ -196,6 +196,23 @@ void main() {
     expect(rb.legs[1].services, ['water', 'food']);
   });
 
+  test('aid services reach the leg as a set of strings', () {
+    // A non-string entry used to throw from the lazy cast<String>() when the
+    // leg was rendered, and a duplicate read as "Water · Water".
+    final wp = course();
+    final rb = buildRoadbook(
+      wp,
+      [
+        marker(500, 'aid_station', 'Aid', {
+          'services': ['water', 'water', 7, 'food', 'water']
+        })
+      ],
+      goalSeconds: 3600,
+      model: PacingModel.even,
+    );
+    expect(rb.legs[1].services, ['water', 'food']);
+  });
+
   test('effort allocation survives a densely-sampled course', () {
     // Every point-pair is under minSegmentM here, so grading each pair on its
     // own read the whole climb as flat and effort collapsed onto even pace.

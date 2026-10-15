@@ -12,7 +12,8 @@ import { USER_A } from '../fixtures/users';
  *
  * These tests force each provider outcome at the network boundary and
  * assert the three states the dropdown now has: results, no-results, and
- * unavailable-with-retry.
+ * unavailable-with-retry — plus that a result page whose hits share a
+ * coordinate renders every row instead of crashing the keyed list.
  */
 
 // Both providers are intercepted regardless of which one the build
@@ -47,6 +48,23 @@ function oneHitBody(url: string): string {
 		})
 		: JSON.stringify([
 			{ display_name: 'Richmond, Virginia', lat: '37.5407', lon: '-77.4360' },
+		]);
+}
+
+// A place and the area it labels can share one centre, and neither provider
+// promises distinct coordinates across a result page — so two hits on one
+// point is a real response, not a contrived one.
+function twoHitsOnOnePointBody(url: string): string {
+	return isMapTiler(url)
+		? JSON.stringify({
+			features: [
+				{ place_name: 'Richmond, Virginia', center: [-77.436, 37.5407] },
+				{ place_name: 'Richmond City, Virginia', center: [-77.436, 37.5407] },
+			],
+		})
+		: JSON.stringify([
+			{ display_name: 'Richmond, Virginia', lat: '37.5407', lon: '-77.4360' },
+			{ display_name: 'Richmond City, Virginia', lat: '37.5407', lon: '-77.4360' },
 		]);
 }
 
@@ -110,6 +128,35 @@ test.describe('heatmap place-search feedback', () => {
 			.toBeVisible({ timeout: 10_000 });
 		await expect(page.getByTestId('heatmap-search-unavailable')).toHaveCount(0);
 	});
+
+	test('two hits on the same coordinates both render without crashing the page',
+		async ({ page }) => {
+			// The dropdown used to key each hit on `lat:lng`, so this response
+			// threw Svelte's each_key_duplicate and took /routes/heatmap into the
+			// 500 boundary mid-search.
+			const errors: string[] = [];
+			page.on('pageerror', (e) => errors.push(e.message));
+			page.on('console', (m) => {
+				if (m.type() === 'error' && m.text().includes('each_key_duplicate')) {
+					errors.push(m.text());
+				}
+			});
+			await page.route(GEOCODER_GLOB, (route) =>
+				route.fulfill({
+					status: 200,
+					contentType: 'application/json',
+					body: twoHitsOnOnePointBody(route.request().url()),
+				}));
+
+			await openHeatmapAndSearch(page);
+
+			const rows = page.getByTestId('heatmap-search').getByRole('listitem');
+			await expect(rows).toHaveCount(2, { timeout: 10_000 });
+			await expect(rows.nth(0)).toHaveText('Richmond, Virginia');
+			await expect(rows.nth(1)).toHaveText('Richmond City, Virginia');
+			await expect(page.getByText('Internal Error')).toHaveCount(0);
+			expect(errors, `page errors during search: ${errors.join(' | ')}`).toEqual([]);
+		});
 
 	test('retrying after the geocoder recovers shows the results', async ({ page }) => {
 		// Proves the retry control actually re-runs the lookup rather than

@@ -86,29 +86,33 @@ Deno.test('cross-provider tolerances are the documented values', () => {
 	assertEquals(CROSS_PROVIDER_DISTANCE_FRACTION, 0.05);
 });
 
-// ---- BUG 3: the dedupe fetch must page past PostgREST's 1000-row cap ----
+// ---- BUG 3: the dedupe fetch must walk past PostgREST's 1000-row cap ----
 
 Deno.test('collectRunIdentities — 1200 runs are all collected across two pages', async () => {
 	const rows: RawRunRow[] = Array.from({ length: 1200 }, (_, i) => ({
-		started_at: new Date(Date.UTC(2026, 0, 1, 0, 0, i)).toISOString(),
+		id: `r-${String(1200 - i).padStart(5, '0')}`,
+		started_at: new Date(Date.UTC(2026, 0, 1, 0, 0, 1200 - i)).toISOString(),
 		distance_m: 5000 + i,
 	}));
-	const calls: Array<[number, number]> = [];
-	const ids = await collectRunIdentities(async (from, to) => {
-		calls.push([from, to]);
-		return rows.slice(from, to + 1);
+	const calls: Array<string | null> = [];
+	const ids = await collectRunIdentities(async (after, limit) => {
+		calls.push(after);
+		const id = after === null ? null : /id\.lt\."([^"]+)"/.exec(after)?.[1];
+		const from = id == null ? 0 : rows.findIndex((r) => r.id === id) + 1;
+		return { data: rows.slice(from, from + limit), error: null };
 	});
 	assertEquals(ids.length, 1200);
 	assertEquals(calls.length, 2);
-	assertEquals(calls[0], [0, 999]);
-	assertEquals(calls[1], [1000, 1999]);
+	assertEquals(calls[0], null);
 });
 
 Deno.test('collectRunIdentities — a page error stops the loop without throwing', async () => {
 	let call = 0;
 	const ids = await collectRunIdentities(async () => {
 		call++;
-		return call === 1 ? [{ started_at: '2026-01-01T09:00:00Z', distance_m: 5000 }] : null;
+		return call === 1
+			? { data: [{ id: 'a', started_at: '2026-01-01T09:00:00Z', distance_m: 5000 }], error: null }
+			: { data: null, error: new Error('reset') };
 	}, 1);
 	assertEquals(ids.length, 1);
 });

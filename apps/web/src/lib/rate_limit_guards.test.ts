@@ -271,3 +271,26 @@ test('every LLM-spending endpoint carries a per-user rate-limit bucket', () => {
 		);
 	}
 });
+
+test('the AI plan assistant spends a coach daily-cap slot before its billed call, and refunds failures', () => {
+	// /api/coach/plan-request is open to free runners, so the per-user ceiling
+	// is the Coach's own daily counter rather than a Pro-only route bucket. It
+	// has to be taken before the Anthropic call, deny on an unreadable count
+	// (resolveUsageCount), and hand the slot back when the call yields nothing.
+	const file = 'src/lib/training/plan_request/handler.ts';
+	const source = read(file);
+	const incrIdx = source.indexOf("rpc('increment_coach_usage'");
+	const spendIdx = source.indexOf('anthropic.messages.create');
+	assert.ok(
+		incrIdx > 0 && spendIdx > 0 && incrIdx < spendIdx,
+		`${file}: increment_coach_usage must precede the billed call.`,
+	);
+	assert.match(source, /resolveUsageCount\(/, `${file} must fail closed on an unreadable count.`);
+	assert.match(source, /usedToday > dailyLimit/, `${file} must deny past the tier's daily limit.`);
+	assert.match(source, /rpc\('decrement_coach_usage'/, `${file} must refund a slot the call did not use.`);
+	const refunds = source.match(/await refundSlot\(/g) ?? [];
+	assert.ok(
+		refunds.length >= 3,
+		`${file} must refund on refusal, a missing tool call and a provider error (found ${refunds.length}).`,
+	);
+});

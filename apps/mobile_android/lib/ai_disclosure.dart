@@ -12,7 +12,9 @@
 /// which is what makes "accepted >= required" sound:
 ///
 ///   1  AI Coach only.
-///   2  All AI features: the Coach plus the AI route assistant.
+///   2  The Coach plus the AI route assistant.
+///   3  All AI features: v2 plus the AI plan assistant (the typed plan
+///      description, sent only to extract plan-wizard settings).
 ///
 /// Adding the next AI feature means a new version with new copy, not a new
 /// boolean and not quietly widening what an existing acceptance covers.
@@ -34,9 +36,16 @@ const int kAiDisclosureVersionCoach = 1;
 /// than the Coach copy described.
 const int kAiDisclosureVersionRouteAi = 2;
 
+/// Minimum disclosure version the AI plan assistant requires
+/// (`/api/coach/plan-request`). Its own rung because it sends the typed plan
+/// description (goal race, target and recent times, training days) to
+/// extract plan-wizard settings — a payload and purpose neither the Coach nor
+/// the route copy described.
+const int kAiDisclosureVersionPlanAi = 3;
+
 /// The newest disclosure this build knows how to present. Must equal the SQL
 /// `ai_disclosure_current_version()` and web's `AI_DISCLOSURE_CURRENT_VERSION`.
-const int kAiDisclosureCurrentVersion = kAiDisclosureVersionRouteAi;
+const int kAiDisclosureCurrentVersion = kAiDisclosureVersionPlanAi;
 
 /// Machine-readable marker on every AI-consent denial. It rides a `code`
 /// field rather than `error` because the endpoints already use `error` for

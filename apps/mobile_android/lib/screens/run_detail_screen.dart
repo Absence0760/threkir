@@ -3360,6 +3360,28 @@ class _MapPaceLegend extends StatelessWidget {
   }
 }
 
+/// The elevations the run-detail chart labels in its gutter: the data's
+/// rounded low and high, or a single label at the rounded middle when those
+/// two would sit closer than [minGapPx] on a [plotHeight]-tall plot of
+/// [domain]. A flat run's domain is padded to 36 m, so a 100-102 m run put
+/// its two labels 7.8 px apart on the 140 px chart and painted them over
+/// each other.
+@visibleForTesting
+List<double> elevationGutterLabels({
+  required double dataMin,
+  required double dataMax,
+  required ({double lo, double hi}) domain,
+  required double plotHeight,
+  required double minGapPx,
+}) {
+  final lo = dataMin.roundToDouble();
+  final hi = dataMax.roundToDouble();
+  final range = domain.hi - domain.lo;
+  final gapPx = (hi - lo).abs() / range * plotHeight;
+  if (lo != hi && gapPx >= minGapPx) return [lo, hi];
+  return [((dataMin + dataMax) / 2).roundToDouble()];
+}
+
 class _ElevationPainter extends CustomPainter {
   final List<double> smoothed;
   final List<double> cumulativeM;
@@ -3397,7 +3419,18 @@ class _ElevationPainter extends CustomPainter {
         .copyWith(color: theme.colorScheme.onSurfaceVariant);
     // Gridlines and labels at the data's own low and high points, in the
     // gutter rather than on the plot, so neither ever sits on the line.
-    for (final ele in {dataMin.roundToDouble(), dataMax.roundToDouble()}) {
+    final labelHeight = (TextPainter(
+      text: TextSpan(text: '0 m', style: labelStyle),
+      textDirection: TextDirection.ltr,
+    )..layout())
+        .height;
+    for (final ele in elevationGutterLabels(
+      dataMin: dataMin,
+      dataMax: dataMax,
+      domain: domain,
+      plotHeight: size.height,
+      minGapPx: labelHeight,
+    )) {
       final y = yAt(ele);
       canvas.drawLine(
         Offset(plotLeft, y),

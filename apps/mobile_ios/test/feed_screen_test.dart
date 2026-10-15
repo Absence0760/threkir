@@ -118,10 +118,10 @@ class _FakeApi extends ApiClient {
 
   int followingCalls = 0;
   @override
-  Future<List<UserProfileRow>> fetchFollowing(String userId,
-      {int limit = 100, int offset = 0}) async {
+  Future<KeysetPage<UserProfileRow>> fetchFollowing(String userId,
+      {int limit = 100, List<Object?>? after}) async {
     followingCalls++;
-    return followees;
+    return KeysetPage(followees, null);
   }
 
   @override
@@ -167,8 +167,8 @@ class _ThrowingApi extends _FakeApi {
 class _FollowingFailApi extends _FakeApi {
   _FollowingFailApi({super.entries, super.engagement});
   @override
-  Future<List<UserProfileRow>> fetchFollowing(String userId,
-          {int limit = 100, int offset = 0}) async =>
+  Future<KeysetPage<UserProfileRow>> fetchFollowing(String userId,
+          {int limit = 100, List<Object?>? after}) async =>
       throw Exception('followees down');
 }
 

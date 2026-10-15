@@ -20,6 +20,7 @@
 	<li>{m('coachPage.consentBulletPlan')}</li>
 	<li>{m('coachPage.consentBulletMessages')}</li>
 	<li>{m('coachPage.consentBulletRoutes')}</li>
+	<li>{m('coachPage.consentBulletPlanRequest')}</li>
 </ul>
 <p>
 	{m('coachPage.consentTermsPrefix')}<a href="/privacy">{m('coachPage.consentPrivacyLink')}</a>{m(

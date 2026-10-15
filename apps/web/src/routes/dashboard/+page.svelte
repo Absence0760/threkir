@@ -36,6 +36,8 @@
 	const coachOn = coachEnabled();
 	import { computeReadiness, type ReadinessContributorKind } from '#lib/training/readiness.ts';
 	import { computeTrainingLoadSeries, hasTrimpSignal } from '#lib/training/training_load.ts';
+	import { planRaceCountdown } from '#lib/training/plan_week.ts';
+	import { formatISO } from '#lib/training/training.ts';
 	import {
 		DISCLOSURE_LEVEL_KEY,
 		resolveDisclosureLevel,
@@ -865,27 +867,38 @@
 		if (todayMs <= startMs) calendarPct = 0;
 		else if (todayMs >= endMs) calendarPct = 100;
 		else calendarPct = Math.round(((todayMs - startMs) / (endMs - startMs)) * 100);
+		// The relation is the shared plan_week helper, so mobile's Home card
+		// and this one can never disagree on how many days remain.
+		const countdown = planRaceCountdown(
+			overview.plan.start_date,
+			overview.plan.end_date,
+			formatISO(todayMidnight)
+		);
 		let relation: string;
 		let raceState: 'upcoming' | 'today' | 'past';
-		if (todayMs < startMs) {
-			const d = Math.round((startMs - todayMs) / dayMs);
-			relation = d === 1 ? m('dash.planStartsTomorrow') : m('dash.planStartsInDays', { d });
-			raceState = 'upcoming';
-		} else if (todayMs > endMs) {
-			relation = m('dash.raceDayPast');
-			raceState = 'past';
-		} else {
-			const d = Math.round((endMs - todayMs) / dayMs);
-			if (d === 0) {
+		switch (countdown.kind) {
+			case 'starts_in':
+				relation =
+					countdown.days === 1
+						? m('dash.planStartsTomorrow')
+						: m('dash.planStartsInDays', { d: countdown.days });
+				raceState = 'upcoming';
+				break;
+			case 'race_past':
+				relation = m('dash.raceDayPast');
+				raceState = 'past';
+				break;
+			case 'race_day':
 				relation = m('dash.raceDay');
 				raceState = 'today';
-			} else if (d === 1) {
-				relation = m('dash.raceTomorrow');
+				break;
+			case 'race_in':
+				relation =
+					countdown.days === 1
+						? m('dash.raceTomorrow')
+						: m('dash.raceInDays', { d: countdown.days });
 				raceState = 'upcoming';
-			} else {
-				relation = m('dash.raceInDays', { d });
-				raceState = 'upcoming';
-			}
+				break;
 		}
 		return { weekIndex, totalWeeks, calendarPct, relation, raceState };
 	});
@@ -1045,9 +1058,7 @@
 		mileageInspect === null ? null : (mileageData[mileageInspect] ?? null)
 	);
 
-	let maxBar = $derived(
-		mileageData.length > 0 ? Math.max(...mileageData.map((w) => w.distance_m)) : 1
-	);
+	let maxBar = $derived(Math.max(1, ...mileageData.map((w) => w.distance_m)));
 
 	// Once a column may be narrower than its label, a narrow chart sets the
 	// labels edge to edge and "13 20 27" reads as "132027". Which labels fit

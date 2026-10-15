@@ -236,6 +236,9 @@ class LocalRunStore extends ChangeNotifier {
 
   int get unsyncedCount => unsyncedRuns.length;
 
+  /// Whether [runId] is confirmed pushed — the sidecar state, owner-blind.
+  bool isSynced(String runId) => _syncedIds.contains(runId);
+
   /// Runs whose push is parked, mapped to why. Keyed by id because a parked
   /// run is deliberately NOT resident — see [_blocked].
   Map<String, RunPushBlockReason> get blockedRuns => Map.unmodifiable(_blocked);

@@ -199,14 +199,14 @@ class _FakeApi extends ApiClient {
       const [];
 
   @override
-  Future<List<UserProfileRow>> fetchFollowers(String userId,
-          {int limit = 20, int offset = 0}) async =>
-      const [];
+  Future<KeysetPage<UserProfileRow>> fetchFollowers(String userId,
+          {int limit = 20, List<Object?>? after}) async =>
+      const KeysetPage(<UserProfileRow>[], null);
 
   @override
-  Future<List<UserProfileRow>> fetchFollowing(String userId,
-          {int limit = 20, int offset = 0}) async =>
-      const [];
+  Future<KeysetPage<UserProfileRow>> fetchFollowing(String userId,
+          {int limit = 20, List<Object?>? after}) async =>
+      const KeysetPage(<UserProfileRow>[], null);
 
   @override
   Future<List<AchievementRow>> fetchUserBadges(String userId) async =>
@@ -839,7 +839,10 @@ void main() {
 
       final button = find.byKey(const ValueKey('profile-message'));
       expect(button, findsOneWidget);
-      expect(find.byTooltip(l10n.profileMessage), findsOneWidget);
+      // A labelled button since the profile header redesign (decisions
+      // § 1952), not an icon whose name lived only in a tooltip.
+      expect(find.descendant(of: button, matching: find.text(l10n.profileMessage)),
+          findsOneWidget);
       await tester.tap(button);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));

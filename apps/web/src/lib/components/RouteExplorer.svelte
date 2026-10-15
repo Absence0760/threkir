@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { appendPage, type KeysetCursor } from '#lib/core/keyset_page.ts';
 	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { formatDistance } from '#lib/core/mock-data.ts';
@@ -11,6 +12,7 @@
 		unbookmarkRoute,
 	} from '#lib/core/data.ts';
 	import type { PublicRouteSummary } from '#lib/routes/route_list_columns.ts';
+	import { distinctTags } from '#lib/routes/route_tags.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { supabase } from '#lib/core/supabase.ts';
@@ -69,7 +71,7 @@
 		mixed: routeSurfaceLabel('mixed'),
 	});
 
-	function searchOptions(offset: number) {
+	function searchOptions() {
 		const opts = distanceOptions[distanceFilter];
 		return {
 			query: query.trim() || undefined,
@@ -80,15 +82,25 @@
 			featuredOnly,
 			sort,
 			limit: PAGE_SIZE,
-			offset,
 		};
 	}
+
+	/// The search the shown list came from, and the cursor for its next page.
+	/// Load more continues THAT search: the cursor is a position in one sort's
+	/// order and means nothing under another, and a query typed since but not
+	/// submitted must not splice a different result set onto this one.
+	let activeSearch: ReturnType<typeof searchOptions> | null = null;
+	let routesNext = $state<KeysetCursor | null>(null);
 
 	async function search() {
 		loading = true;
 		try {
-			routes = await searchPublicRoutes(searchOptions(0));
-			hasMore = routes.length >= PAGE_SIZE;
+			const opts = searchOptions();
+			const page = await searchPublicRoutes(opts);
+			routes = page.rows;
+			routesNext = page.next;
+			activeSearch = opts;
+			hasMore = page.next !== null;
 			searchError = false;
 		} catch (e) {
 			searchError = true;
@@ -99,12 +111,13 @@
 	}
 
 	async function loadMore() {
-		if (loading || !hasMore) return;
+		if (loading || !hasMore || !routesNext || !activeSearch) return;
 		loading = true;
 		try {
-			const more = await searchPublicRoutes(searchOptions(routes.length));
-			routes = [...routes, ...more];
-			hasMore = more.length >= PAGE_SIZE;
+			const more = await searchPublicRoutes({ ...activeSearch, after: routesNext });
+			routes = appendPage(routes, more.rows, (r) => r.id);
+			routesNext = more.next;
+			hasMore = more.next !== null;
 		} catch (e) {
 			showToast(t('routeExplorer.searchError', { error: thrownMessage(e) }), 'error');
 		} finally {
@@ -173,6 +186,8 @@
 		locationError = null;
 		routes = [];
 		hasMore = false;
+		routesNext = null;
+		activeSearch = null;
 		try {
 			const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
 				navigator.geolocation.getCurrentPosition(resolve, reject, {
@@ -337,6 +352,7 @@
 	{:else}
 		<div class="route-grid">
 			{#each routes as route}
+				{@const cardTags = distinctTags(route.tags).slice(0, 4)}
 				<div class="route-card">
 					<a href="/routes/{route.id}?from=explore" class="route-link">
 						<div class="route-map-placeholder">
@@ -385,9 +401,9 @@
 									</span>
 								{/if}
 							</div>
-							{#if route.tags && route.tags.length > 0}
+							{#if cardTags.length > 0}
 								<div class="card-tags">
-									{#each route.tags.slice(0, 4) as t (t)}
+									{#each cardTags as t (t)}
 										<span class="card-tag">{t}</span>
 									{/each}
 								</div>

@@ -266,9 +266,10 @@ void main() {
     });
 
     // DST safety. These invariants hold in every timezone, but they can only
-    // FAIL in one that observes a transition — CI runs UTC, so the source-level
-    // guard in architecture_guards_test.dart is what actually catches a
-    // regression. Verified failing under TZ=America/New_York before the fix.
+    // FAIL in one that observes a transition, so they carry the `tz` tag that
+    // CI re-runs under DST zones; the source-level guard in
+    // architecture_guards_test.dart catches the shape in the UTC run too.
+    // Verified failing under TZ=America/New_York before the fix.
     test('every weekly bucket starts at local midnight on a Monday', () {
       for (final anchor in [
         DateTime(2026, 3, 12, 12), // week after a US spring-forward
@@ -293,7 +294,7 @@ void main() {
           expect(out[i].startsAt, DateTime(prev.year, prev.month, prev.day + 7));
         }
       }
-    });
+    }, tags: 'tz');
 
     test('a run in a DST transition week lands in that week, exactly once', () {
       for (final day in [DateTime(2026, 3, 8, 3, 30), DateTime(2026, 11, 1, 23, 30)]) {
@@ -310,7 +311,7 @@ void main() {
         expect(start.isAfter(day), isFalse);
         expect(DateTime(start.year, start.month, start.day + 7).isAfter(day), isTrue);
       }
-    });
+    }, tags: 'tz');
   });
 
   // Field report: with week start set to Sunday, the Home "This week" tile read

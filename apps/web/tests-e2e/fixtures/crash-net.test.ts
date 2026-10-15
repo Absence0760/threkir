@@ -100,6 +100,14 @@ test('settle keeps unexcused crashes, records the excused ones with their reason
 	assert.deepEqual(out.stale, []);
 });
 
+test('settle excuses a crash through a RegExp allow entry', () => {
+	const entry = { match: /each_key_\w+/, reason: '#1234' };
+	const out = settle([crash('Svelte error: each_key_duplicate')], [entry]);
+	assert.deepEqual(out.crashes, []);
+	assert.deepEqual(out.allowed, [{ crash: crash('Svelte error: each_key_duplicate'), reason: '#1234' }]);
+	assert.deepEqual(out.stale, []);
+});
+
 test('settle reports an allow entry that excused nothing as stale', () => {
 	const entry = { match: /NaN height/, reason: 'old bug' };
 	const out = settle([crash('TypeError: a')], [entry]);

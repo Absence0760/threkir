@@ -109,6 +109,15 @@ test('an ordinary console error and a 404 page are not crashes', async ({ page }
 	await expect(page.getByText('Not Found', { exact: true })).toBeVisible();
 });
 
+test.describe('report mode', () => {
+	test.use({
+		crashNet: { mode: 'report', allow: [{ match: 'excuses nothing here', reason: 'proves a stale entry only reports' }] }
+	});
+	test('a crash and a stale allow entry are reported without failing the test', async ({ page }) => {
+		await throwUncaught(page, PROBE);
+	});
+});
+
 test.describe('opting out', () => {
 	test.use({ crashNet: { off: 'proves the opt-out: this case throws on purpose' } });
 	test('a test with the net off may crash', async ({ page }) => {

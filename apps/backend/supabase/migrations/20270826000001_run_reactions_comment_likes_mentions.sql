@@ -41,6 +41,8 @@
 -- and on, or editing a comment that keeps its mentions, does not re-notify.
 -- No new index is built on the populated notifications table.
 --
+-- The kind list is re-emitted whole, so it carries `follow_request` from the
+-- private-profile migration (20270822000001) that sorts before this one.
 -- The notifications_kind_check widen is the DROP + ADD ... NOT VALID half only;
 -- its VALIDATE is 20270826000002 in its own transaction
 -- (docs/backend/migration_locks.md § CHECK constraints).
@@ -271,6 +273,7 @@ alter table notifications
       'club_post', 'run_completed', 'event_reminder', 'plan_assigned',
       'achievement', 'challenge_complete', 'content_hidden',
       'data_export_ready', 'refund_failed', 'event_waitlist_slot',
+      'follow_request',
       'reaction', 'comment_like', 'mention'
     )
   )

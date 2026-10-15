@@ -1,5 +1,6 @@
 import { expect, test } from '../fixtures/test';
 
+import { readRow } from '../fixtures/db-read';
 import { getAdminClient, getUserClient } from '../fixtures/local-supabase';
 import {
 	clearUserSettingKey,
@@ -117,8 +118,11 @@ test.describe('/live/[id] — safety-contacts link (anon)', () => {
 
 	test('the run is never public: the bare link shows nothing', async ({ page }) => {
 		const admin = getAdminClient();
-		const { data } = await admin.from('runs').select('is_public').eq('id', runId).single();
-		expect(data?.is_public).toBe(false);
+		const data = await readRow(
+			'runs by id',
+			admin.from('runs').select('is_public').eq('id', runId).single(),
+		);
+		expect(data.is_public).toBe(false);
 
 		await page.goto(`/live/${runId}`);
 		await expect(page.getByRole('heading', { name: "This run isn't broadcasting" })).toBeVisible();

@@ -9108,7 +9108,7 @@ export async function fetchSafetyLiveRun(
 		p_token: token,
 	});
 	if (error) throw dbError(error);
-	const row = Array.isArray(data) ? data[0] : null;
+	const row = singleEmbed(data);
 	if (!row) return null;
 	return {
 		started_at: row.started_at,

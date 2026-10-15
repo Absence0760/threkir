@@ -3,6 +3,7 @@ import { expect, test } from '../fixtures/test';
 import { browserYear } from '../fixtures/dates';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A, USER_B, USER_C_PRO } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * /routes/[id] — SegmentsPanel (v2 tiered leaderboards).
@@ -46,12 +47,7 @@ test.describe('/routes/[id] — SegmentsPanel (v2 tiered leaderboards)', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(context);
 	});
 
 	test.beforeAll(async () => {

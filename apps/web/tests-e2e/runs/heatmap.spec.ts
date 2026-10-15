@@ -2,6 +2,7 @@ import { expect, test } from '../fixtures/test';
 
 import { insertRun, deleteRun } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent, setStorageOnLoad } from '../fixtures/helpers';
 
 // A short GPS track around Richmond, VA — enough distinct points to form
 // heat cells AND a polyline. The seed runs carry track_url values whose
@@ -19,12 +20,7 @@ test.describe('/runs/heatmap — anon visitor', () => {
 	test.use({ storageState: { cookies: [], origins: [] } });
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(context);
 	});
 
 	test('anon is bounced to sign-in by the runs auth guard, no map', async ({ page }) => {
@@ -180,9 +176,7 @@ test.describe('/runs/heatmap — signed-in, consent NOT accepted', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(() => {
-			localStorage.removeItem('cookie_consent');
-		});
+		await setStorageOnLoad(context, { local: { cookie_consent: null } });
 	});
 
 	test('gates the MapTiler map behind a Load-map tap (no auto-init before consent)', async ({

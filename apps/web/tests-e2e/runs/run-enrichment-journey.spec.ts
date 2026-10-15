@@ -9,6 +9,7 @@ import {
 import { deleteRun, deleteRoute, insertRun, insertRoute } from '../fixtures/simulate';
 import { readRows } from '../fixtures/db-read';
 import { shareChoosingPublic } from '../fixtures/share';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Single-run ENRICHMENT lifecycle — the arc a GPS-recorded run takes
@@ -70,16 +71,6 @@ const ONE_PIXEL_PNG = Buffer.from([
 	0x05, 0x00, 0x01, 0x0d, 0x0a, 0x2d, 0xb4, 0x00, 0x00, 0x00, 0x00, 0x49,
 	0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
 ]);
-
-// Saga-user contexts float a cookie-consent banner (role=dialog) over
-// the page; pre-accepting it keeps the banner from intercepting clicks
-// on the share icon / file input (it broke a prior spec).
-function setConsentAccepted(): void {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-	);
-}
 
 test.describe('single-run enrichment journey', () => {
 	test('track + HR run lights up /runs/[id] detail surfaces, then renders enriched + clipped on /share/run/[id]', async ({
@@ -171,7 +162,7 @@ test.describe('single-run enrichment journey', () => {
 			const ctx = await browser.newContext({
 				storageState: owner.storageStatePath,
 			});
-			await ctx.addInitScript(setConsentAccepted);
+			await acceptCookieConsent(ctx);
 			const page = await ctx.newPage();
 
 			try {
@@ -398,7 +389,7 @@ test.describe('single-run enrichment journey', () => {
 				const anonCtx = await browser.newContext({
 					storageState: { cookies: [], origins: [] },
 				});
-				await anonCtx.addInitScript(setConsentAccepted);
+				await acceptCookieConsent(anonCtx);
 				const anonPage = await anonCtx.newPage();
 				try {
 					// Non-owner track comes through the clip-public-track Edge

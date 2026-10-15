@@ -7,6 +7,7 @@ import { USER_A } from '../fixtures/users';
 import type { TrackPoint } from '../../src/lib/types';
 import { readMaybeRow, readRow, readRows } from '../fixtures/db-read';
 import { shareChoosingPublic } from '../fixtures/share';
+import { setStorageOnLoad } from '../fixtures/helpers';
 
 /**
  * /runs/[id] — owner-only run detail page.
@@ -346,11 +347,7 @@ test.describe('/runs/[id]', () => {
 			]
 		});
 		try {
-			await page.addInitScript(() => {
-				for (const key of Object.keys(localStorage)) {
-					if (key.startsWith('settings_cache_')) localStorage.removeItem(key);
-				}
-			});
+			await setStorageOnLoad(page, { removeLocalPrefixes: ['settings_cache_'] });
 			for (const table of ['user_settings', 'user_device_settings']) {
 				await mockRoute(page, `**/rest/v1/${table}*`, (route) =>
 					route.request().method() === 'GET' ? route.abort() : route.continue()

@@ -3,6 +3,7 @@ import { expect, test } from '../fixtures/test';
 import { getAdminClient, resetRateLimit } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
 import { readRow } from '../fixtures/db-read';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Routes — build → save → detail → GPX export JOURNEY (one route's life,
@@ -49,12 +50,7 @@ test.describe('Routes — build → save → detail → GPX export', () => {
 		// The seeded user's storageState carries accepted cookie consent,
 		// but inject it on every navigation too so the GDPR banner never
 		// floats over the map / actions row and eats a click.
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(context);
 
 		// create_route is rate-limited (30/hour/user, migration 20260907_001).
 		// A shared-USER_A shard can blow through the cap; reset the window so

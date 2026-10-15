@@ -4,13 +4,7 @@ import { getAdminClient } from '../fixtures/local-supabase';
 import { RUNNER_PUBLIC_ROUTE_ID } from '../fixtures/seeded-data';
 import { USER_A } from '../fixtures/users';
 import { readRow } from '../fixtures/db-read';
-
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-	);
-}
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 async function deleteAuthorReviews() {
 	await getAdminClient()
@@ -34,7 +28,7 @@ test.describe('/routes/[id] reviews — submit, edit, delete', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(context);
 		await deleteAuthorReviews();
 	});
 

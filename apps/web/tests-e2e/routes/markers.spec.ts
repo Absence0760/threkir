@@ -5,6 +5,7 @@ import { deleteRoute } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
 import { readRows } from '../fixtures/db-read';
 import { shareChoosingPublic } from '../fixtures/share';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * /routes/[id] — course markers (aid stations, cutoffs, …) via the
@@ -60,12 +61,7 @@ test.describe('/routes/[id] — course markers', () => {
 	let routeId: string | null = null;
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(context);
 	});
 
 	test.afterEach(async () => {
@@ -379,15 +375,9 @@ test.describe('/routes/[id] — course markers', () => {
 			locale: 'de-DE'
 		});
 		const page = await context.newPage();
-		await page.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-			// The seeded storageState may carry a stored locale that wins over
-			// the browser locale — force German so the fallback is exercised.
-			localStorage.setItem('locale', 'de');
-		});
+		// The seeded storageState may carry a stored locale that wins over
+		// the browser locale — force German so the fallback is exercised.
+		await acceptCookieConsent(page, { locale: 'de' });
 		await page.goto(`/routes/${routeId}`);
 
 		// The share affordance on a private route opens the make-public

@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test';
 import { expect, test } from '../fixtures/test';
 
 import { USER_A } from '../fixtures/users';
+import { setStorageOnLoad } from '../fixtures/helpers';
 
 /**
  * /routes/new — the sidebar panel must fit what it holds.
@@ -74,7 +75,7 @@ test.describe('/routes/new — sidebar rows fit the pane', () => {
 		// to survive. Seeded through the same localStorage key the drag
 		// persists to, before the first navigation so the pane mounts at
 		// that width rather than resizing after paint.
-		await page.addInitScript(() => localStorage.setItem('route-builder-split', '280'));
+		await setStorageOnLoad(page, { local: { 'route-builder-split': '280' } });
 
 		await page.goto('/routes/new');
 		await expect(page.getByRole('heading', { name: 'Route Builder', level: 1 })).toBeVisible({
@@ -97,12 +98,7 @@ test.describe('/routes/new — "use my location" before the map is consented', (
 		// either way, but a pending choice also floats the cookie banner
 		// over the sidebar. Must run before goto — consent.svelte.ts reads
 		// localStorage once on first import.
-		await page.addInitScript(() =>
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'rejected', timestamp: Date.now() })
-			)
-		);
+		await setStorageOnLoad(page, { consent: 'rejected' });
 		await context.grantPermissions(['geolocation']);
 		await context.setGeolocation({ latitude: 51.5074, longitude: -0.1278 });
 	});

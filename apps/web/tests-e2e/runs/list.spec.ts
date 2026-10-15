@@ -1,6 +1,6 @@
 import { expect, test } from '../fixtures/test';
 
-import { switchRunsToAllTime } from '../fixtures/helpers';
+import { setStorageOnLoad, switchRunsToAllTime } from '../fixtures/helpers';
 import { createSagaUsers, deleteSagaUsers } from '../fixtures/saga-users';
 import { withCleanCurrentWeek } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
@@ -253,7 +253,7 @@ test.describe('/runs', () => {
 		// Seed runs are March-April 2026 and the describe's beforeEach
 		// cleared the current week, so real-wall-clock "today" is empty;
 		// force the default filter first.
-		await page.addInitScript(() => localStorage.removeItem('runs_filters_v1'));
+		await setStorageOnLoad(page, { local: { runs_filters_v1: null } });
 		await page.goto('/runs');
 
 		const filteredEmpty = page.getByTestId('runs-empty-filtered');

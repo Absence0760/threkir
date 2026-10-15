@@ -2,6 +2,7 @@ import { expect, test } from '../fixtures/test';
 
 import { withCleanCurrentWeek } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent, setStorageOnLoad } from '../fixtures/helpers';
 
 /**
  * /runs filter toolbar — every axis pinned.
@@ -62,19 +63,11 @@ test.describe('/runs — filters', () => {
 	test.beforeEach(async ({ page, context }) => {
 		// Pre-accept cookie consent so the banner geometry doesn't
 		// interfere with select-mode / bulk-bar / Save button clicks.
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
-		// Clear runs_filters_v1 so each test starts at the page defaults
+		// Also clear runs_filters_v1 so each test starts at the page defaults
 		// (today + all activities + newest + all sources). Without this a
 		// leftover filter from a previous test in the same context can
 		// break the "default state" assumption.
-		await context.addInitScript(() => {
-			localStorage.removeItem('runs_filters_v1');
-		});
+		await acceptCookieConsent(context, { runs_filters_v1: null });
 		await page.goto('/runs');
 		// All filter tests need >1 row to be meaningful — start at
 		// "All time" so the date filter isn't masking the source /
@@ -385,18 +378,17 @@ test.describe('/runs — filters', () => {
 			// 5–15 filter before the picker even opens. Expectation:
 			// selecting Custom always opens a fresh picker; the list
 			// stays at the previous (non-custom) range until Apply.
-			await context.addInitScript(() => {
-				// Drop the SvelteKit page snapshot. The shared beforeEach
-				// selected dateRange='all', and SvelteKit captures that as a
-				// per-history-entry snapshot; on the goto below it would
-				// restore the snapshot (setting filtersHydrated=true) and the
-				// page would SKIP its localStorage read — defeating the stale-
-				// bounds setup. Clearing it makes this a genuine cold open,
-				// which is the scenario the test documents.
-				sessionStorage.clear();
-				localStorage.setItem(
-					'runs_filters_v1',
-					JSON.stringify({
+			// clearSession drops the SvelteKit page snapshot. The shared
+			// beforeEach selected dateRange='all', and SvelteKit captures that
+			// as a per-history-entry snapshot; on the goto below it would
+			// restore the snapshot (setting filtersHydrated=true) and the
+			// page would SKIP its localStorage read — defeating the stale-
+			// bounds setup. Clearing it makes this a genuine cold open,
+			// which is the scenario the test documents.
+			await setStorageOnLoad(context, {
+				clearSession: true,
+				local: {
+					runs_filters_v1: JSON.stringify({
 						sourceFilter: 'all',
 						activityFilter: 'all',
 						dateRange: 'today',
@@ -404,7 +396,7 @@ test.describe('/runs — filters', () => {
 						customTo: '2020-12-31',
 						sortKey: 'newest'
 					})
-				);
+				}
 			});
 			await page.goto('/runs');
 			// Hydrated state should be dateRange='today' + a hidden stale
@@ -458,10 +450,9 @@ test.describe('/runs — filters', () => {
 			// fetchMode derivation uses that effective range, so it
 			// stays at 'paginated' until the user actually commits
 			// custom bounds via Apply.
-			await context.addInitScript(() => {
-				localStorage.setItem(
-					'runs_filters_v1',
-					JSON.stringify({
+			await setStorageOnLoad(context, {
+				local: {
+					runs_filters_v1: JSON.stringify({
 						sourceFilter: 'all',
 						activityFilter: 'all',
 						dateRange: 'all',
@@ -469,7 +460,7 @@ test.describe('/runs — filters', () => {
 						customTo: '',
 						sortKey: 'newest'
 					})
-				);
+				}
 			});
 			await page.goto('/runs');
 			await expect(page.locator('.run-card').first()).toBeVisible({
@@ -725,10 +716,9 @@ test.describe('/runs — filters', () => {
 			// snapshot also captures + restores window.scrollY itself
 			// (via rAF after the runs are populated) so scroll doesn't
 			// fall back to 0 before the list has rendered.
-			await context.addInitScript(() => {
-				localStorage.setItem(
-					'runs_filters_v1',
-					JSON.stringify({
+			await setStorageOnLoad(context, {
+				local: {
+					runs_filters_v1: JSON.stringify({
 						sourceFilter: 'all',
 						activityFilter: 'all',
 						dateRange: 'all',
@@ -736,7 +726,7 @@ test.describe('/runs — filters', () => {
 						customTo: '',
 						sortKey: 'newest'
 					})
-				);
+				}
 			});
 			await page.goto('/runs');
 			await expect(page.locator('.run-card').first()).toBeVisible({
@@ -788,10 +778,9 @@ test.describe('/runs — filters', () => {
 			//
 			// Mirrors the user's exact flow: scroll, Load More, scroll
 			// more, open a run, click the ← back arrow.
-			await context.addInitScript(() => {
-				localStorage.setItem(
-					'runs_filters_v1',
-					JSON.stringify({
+			await setStorageOnLoad(context, {
+				local: {
+					runs_filters_v1: JSON.stringify({
 						sourceFilter: 'all',
 						activityFilter: 'all',
 						dateRange: 'all',
@@ -799,7 +788,7 @@ test.describe('/runs — filters', () => {
 						customTo: '',
 						sortKey: 'newest'
 					})
-				);
+				}
 			});
 			await page.goto('/runs');
 			await expect(page.locator('.run-card').first()).toBeVisible({

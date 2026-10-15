@@ -8,6 +8,7 @@ import {
 	type SagaUser
 } from '../fixtures/saga-users';
 import { insertRoute, deleteRoute } from '../fixtures/simulate';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Routes — CROSS-USER discover → save → review JOURNEY.
@@ -52,13 +53,6 @@ import { insertRoute, deleteRoute } from '../fixtures/simulate';
 
 const uniqueSuffix = () => `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-	);
-}
-
 /**
  * A context for a saga user with the cookie-consent choice pre-seeded —
  * the GDPR banner is a role="dialog" that floats over the explorer cards,
@@ -68,7 +62,7 @@ function setConsentAccepted() {
  */
 async function sagaContext(browser: Browser, user: SagaUser): Promise<BrowserContext> {
 	const ctx = await browser.newContext({ storageState: user.storageStatePath });
-	await ctx.addInitScript(setConsentAccepted);
+	await acceptCookieConsent(ctx);
 	return ctx;
 }
 

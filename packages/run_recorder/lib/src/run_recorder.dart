@@ -255,7 +255,20 @@ class RunRecorder {
   double? _estStepT;
 
   double get _distanceMetres => _distanceOffsetMetres + _estimator.distanceM;
+  // The run's line: the fixes that passed the accuracy and movement gates, the
+  // only ones the map, the route match, elevation and the snapshot's [track]
+  // ever see.
   final List<Waypoint> _track = [];
+  // What [stop] saves: every fix the distance estimator took, in order, with
+  // the ones not on [_track] flagged [Waypoint.offTrack], so a server replay
+  // of the stored track sees the live input (gps_distance.md § Stored track).
+  // The line's points are the same objects, stamped once.
+  final List<Waypoint> _stored = [];
+  late final UnmodifiableListView<Waypoint> _storedView =
+      UnmodifiableListView(_stored);
+  // Whether [_stored] holds every fix the estimator took this run: false only
+  // for a session resumed from a checkpoint that did not say it did.
+  bool _storedComplete = true;
   // Single read-only view handed out on every snapshot. `UnmodifiableListView`
   // wraps `_track` by reference — appending to `_track` is still visible
   // through the view, and there's no new wrapper allocated per emission
@@ -593,6 +606,8 @@ class RunRecorder {
       ..stop()
       ..reset();
     _track.clear();
+    _stored.clear();
+    _storedComplete = true;
     _laps.clear();
     _currentWaypoint = null;
     _currentWaypointAt = null;
@@ -919,6 +934,8 @@ class RunRecorder {
       ..start();
     _resetDistance(0);
     _track.clear();
+    _stored.clear();
+    _storedComplete = true;
     _laps.clear();
     _lastTrackedPosition = null;
     _lastTrackedPositionAt = null;
@@ -1002,6 +1019,7 @@ class RunRecorder {
     LocationAccuracy accuracy = LocationAccuracy.bestForNavigation,
     double accuracyGateMetres = 20,
     double? initialStrideM,
+    bool trackComplete = false,
   }) async {
     Object? prepareError;
     try {
@@ -1026,6 +1044,7 @@ class RunRecorder {
       elapsed: elapsed,
       startedAt: startedAt,
       laps: laps,
+      trackComplete: trackComplete,
     );
     _beginResumed();
     if (prepareError != null) throw prepareError;
@@ -1037,10 +1056,15 @@ class RunRecorder {
     required Duration elapsed,
     required DateTime startedAt,
     required List<LapSplit> laps,
+    required bool trackComplete,
   }) {
-    _track
+    _stored
       ..clear()
       ..addAll(track);
+    _storedComplete = trackComplete;
+    _track
+      ..clear()
+      ..addAll(trackLine(track));
     _resetDistance(distanceMetres);
     _elapsedOffset = elapsed;
     _startTime = startedAt;
@@ -1129,6 +1153,7 @@ class RunRecorder {
     double maxSpeedMps = 10,
     double accuracyGateMetres = 20,
     double? initialStrideM,
+    bool trackComplete = false,
   }) {
     debugPrepareWithoutStream(
       route: route,
@@ -1144,6 +1169,7 @@ class RunRecorder {
       elapsed: elapsed,
       startedAt: startedAt,
       laps: laps,
+      trackComplete: trackComplete,
     );
     _beginResumed();
   }
@@ -1167,6 +1193,8 @@ class RunRecorder {
       ..stop()
       ..reset();
     _track.clear();
+    _stored.clear();
+    _storedComplete = true;
     _laps.clear();
     _currentWaypoint = null;
     _currentWaypointAt = null;
@@ -1217,6 +1245,16 @@ class RunRecorder {
   /// Test-only: read-only view of the track built so far.
   @visibleForTesting
   List<Waypoint> get debugTrack => List.unmodifiable(_track);
+
+  /// Test-only: every fix stored so far, off-track ones included.
+  @visibleForTesting
+  List<Waypoint> get debugStoredTrack => List.unmodifiable(_stored);
+
+  /// Whether the track [stop] will save holds every fix the distance
+  /// estimator took this session: always, unless the session was resumed from
+  /// a checkpoint that did not carry `track_complete`. The crash checkpoint
+  /// writes it so a resume of that checkpoint can say so again.
+  bool get storedTrackComplete => _storedComplete;
 
   /// Test-only: current GPS-accumulated distance (ignores treadmill mode).
   @visibleForTesting
@@ -1802,9 +1840,15 @@ class RunRecorder {
       if (_recording && _estimatorTakes(pos)) {
         _weakGps = false;
         _feedingGnss ? _gnssFixesRecorded++ : _platformFixesRecorded++;
-        final t = _feedEstimator(pos, _fixQuality(pos)).t;
+        final fix = _fixQuality(pos);
+        final (t: t, event: event) = _feedEstimator(pos, fix);
         if (t != null) {
           _distanceFixAt = DateTime.now();
+          // Stored for the server's replay, off the line. No barometric
+          // altitude: feeding the anchor a canopy fix's GPS altitude would
+          // move the climb the line's fixes measure.
+          _storeFix(_waypointFor(pos, fix, baroElevationMetres: null),
+              onLine: false, event: event);
           _addPaceSample(t, _estimator.distanceM);
         }
         _emitSnapshot();
@@ -1833,26 +1877,8 @@ class RunRecorder {
     // synthetic injection in unit tests), and _calculatePace silently
     // returned null in those cases. Same lesson the speed-clamp learned
     // earlier in this file (see the "GPS-reported time" comment below).
-    _currentWaypoint = Waypoint(
-      lat: pos.latitude,
-      lng: pos.longitude,
-      // Keep the altitude whenever the platform reports a real vertical fix.
-      // Gating on `altitude != 0` dropped a legitimate sea-level reading; a
-      // finite positive altitudeAccuracy is the platform's signal that the
-      // vertical component is a measurement rather than the unset default
-      // (which reports 0 / non-finite accuracy).
-      elevationMetres: (pos.altitudeAccuracy.isFinite &&
-              pos.altitudeAccuracy > 0)
-          ? pos.altitude
-          : null,
-      timestamp: pos.timestamp,
-      bpm: _currentBpm,
-      accuracyMetres: _round2(fix.accuracyM),
-      speedMps: _round2(fix.speedMps),
-      speedAccuracyMps: _round2(fix.speedAccuracyMps),
-      bearingDeg: _round2(fix.bearingDeg),
-      baroElevationMetres: _baroElevationFor(pos),
-    );
+    _currentWaypoint =
+        _waypointFor(pos, fix, baroElevationMetres: _baroElevationFor(pos));
     _currentWaypointAt = DateTime.now();
 
     // Only append to the track and accumulate distance once the run has
@@ -1860,10 +1886,10 @@ class RunRecorder {
     if (_recording) {
       // Distance comes from the estimator, which sees EVERY fix that cleared
       // the gates above, and the coarser ones it keeps besides; the
-      // movement-gated rule below only decides what the
-      // track keeps for the map and the route match.
-      final trackLengthBefore = _track.length;
+      // movement-gated rule below only decides which of them join the line
+      // the map and the route match read. The stored track keeps them all.
       final (t: estT, event: eventIndex) = _feedEstimator(pos, fix);
+      var onLine = false;
       if (estT != null) _distanceFixAt = _currentWaypointAt;
       final last = _lastTrackedPosition;
       final lastAt = _lastTrackedPositionAt;
@@ -1872,7 +1898,7 @@ class RunRecorder {
         _lastTrackedPosition = pos;
         _lastTrackedPositionAt = pos.timestamp;
         _lastTrackedElapsed = _stopwatch.elapsed;
-        _track.add(_currentWaypoint!);
+        onLine = true;
         _currentWaypointTrusted = true;
       } else {
         final delta = Geolocator.distanceBetween(
@@ -1922,7 +1948,7 @@ class RunRecorder {
           _lastTrackedPosition = pos;
           _lastTrackedPositionAt = pos.timestamp;
           _lastTrackedElapsed = _stopwatch.elapsed;
-          _track.add(_currentWaypoint!);
+          onLine = true;
           _currentWaypointTrusted = true;
         } else if (dtSec >= _gpsReanchorAfterSeconds ||
             monotonicGapSec >= _gpsReanchorAfterSeconds) {
@@ -1949,18 +1975,17 @@ class RunRecorder {
           _lastTrackedPosition = pos;
           _lastTrackedPositionAt = pos.timestamp;
           _lastTrackedElapsed = _stopwatch.elapsed;
-          _track.add(_currentWaypoint!);
+          onLine = true;
           _currentWaypointTrusted = true;
         } else {
           _currentWaypointTrusted = false;
         }
       }
-      if (_track.length > trackLengthBefore) {
-        _stampCumulativeDistance(trackLengthBefore);
-        if (eventIndex != null) {
-          _stretch?.trackLinks
-              .add((track: trackLengthBefore, event: eventIndex));
-        }
+      // A fix the movement gate held back (jitter, a teleport) is still one
+      // the estimator took, so it is stored, off the line; one the estimator
+      // refused and the gate held back was never input to anything.
+      if (onLine || estT != null) {
+        _storeFix(_currentWaypoint!, onLine: onLine, event: eventIndex);
       }
       if (estT != null) _addPaceSample(estT, _estimator.distanceM);
     } else {
@@ -1970,16 +1995,56 @@ class RunRecorder {
     _emitSnapshot();
   }
 
-  /// Stamps the waypoint just appended at [index] with the distance the run
-  /// has credited so far ([Waypoint.cumulativeDistanceMetres]), the axis
-  /// splits and moving time are measured on. [stop] moves it onto the
-  /// smoothed distance.
-  void _stampCumulativeDistance(int index) {
-    final stamped =
-        _track[index].withCumulativeDistance(_round2(_reportedDistanceMetres));
-    _track[index] = stamped;
-    _currentWaypoint = stamped;
+  /// The waypoint for [pos], carrying the fix quality the server replays.
+  Waypoint _waypointFor(
+    Position pos,
+    ({
+      double? accuracyM,
+      double? speedMps,
+      double? speedAccuracyMps,
+      double? bearingDeg,
+    }) fix, {
+    required double? baroElevationMetres,
+  }) =>
+      Waypoint(
+        lat: pos.latitude,
+        lng: pos.longitude,
+        // Keep the altitude whenever the platform reports a real vertical
+        // fix. Gating on `altitude != 0` dropped a legitimate sea-level
+        // reading; a finite positive altitudeAccuracy is the platform's
+        // signal that the vertical component is a measurement rather than
+        // the unset default (which reports 0 / non-finite accuracy).
+        elevationMetres:
+            (pos.altitudeAccuracy.isFinite && pos.altitudeAccuracy > 0)
+                ? pos.altitude
+                : null,
+        timestamp: pos.timestamp,
+        bpm: _currentBpm,
+        accuracyMetres: _round2(fix.accuracyM),
+        speedMps: _round2(fix.speedMps),
+        speedAccuracyMps: _round2(fix.speedAccuracyMps),
+        bearingDeg: _round2(fix.bearingDeg),
+        baroElevationMetres: baroElevationMetres,
+      );
+
+  /// Stores [w], stamped with the distance the run has credited so far
+  /// ([Waypoint.cumulativeDistanceMetres], the axis splits and moving time
+  /// are measured on; [stop] moves it onto the smoothed distance) and linked
+  /// to the estimator [event] it came from. A line fix also joins [_track]
+  /// and becomes the current position; any other is flagged
+  /// [Waypoint.offTrack] and touches neither.
+  void _storeFix(Waypoint w, {required bool onLine, int? event}) {
+    final index = _stored.length;
+    final stamped = w
+        .withCumulativeDistance(_round2(_reportedDistanceMetres))
+        .withOffTrack(!onLine);
+    _stored.add(stamped);
     _stretch?.trackPoints.add(index);
+    if (event != null) _stretch?.trackLinks.add((track: index, event: event));
+    if (onLine) {
+      _track.add(stamped);
+      _currentWaypoint = stamped;
+    }
   }
 
   /// Headline distance: belt distance in treadmill mode, GPS-accumulated
@@ -2045,6 +2110,7 @@ class RunRecorder {
       distanceFixedAt: _distanceFixAt,
       positionTrusted: _currentWaypointTrusted,
       track: _trackView,
+      storedTrack: _storedView,
       offRouteDistanceMetres: offRoute,
       routeRemainingMetres: remaining,
       routeAlongMetres: along,
@@ -2270,7 +2336,7 @@ class RunRecorder {
 
     final startedAt = _startTime ?? DateTime.now();
     final elapsed = _stopwatch.elapsed + _elapsedOffset;
-    final track = List<Waypoint>.of(_track);
+    final track = List<Waypoint>.of(_stored);
     var distanceMetres = _reportedDistanceMetres;
     var laps = _laps;
     var everyStretchSmoothed = false;
@@ -2308,6 +2374,9 @@ class RunRecorder {
       // and smooths the whole stored track.
       if (!_distanceSeeded && everyStretchSmoothed) {
         metadata[MetadataKeys.distanceEstimator] = distanceEstimatorVersion;
+      }
+      if (_storedComplete && track.isNotEmpty) {
+        metadata[MetadataKeys.trackComplete] = true;
       }
       final stepFilled = stepFilledDistanceMetres.round();
       if (stepFilled > 0) {
@@ -2478,8 +2547,8 @@ class RunRecorder {
 }
 
 /// One estimator stretch's inputs, kept so [RunRecorder.stop] can replay them
-/// through the smoother. [trackLinks] pairs each waypoint the stretch appended
-/// to the track with the fix event it came from.
+/// through the smoother. [trackLinks] pairs each waypoint the stretch stored
+/// (on the line or off it) with the fix event it came from.
 class _DistanceStretch {
   _DistanceStretch({
     required this.forward,
@@ -2496,7 +2565,8 @@ class _DistanceStretch {
   final double? initialStrideM;
   final List<GpsEvent> events = [];
   final List<({int track, int event})> trackLinks = [];
-  /// Every track index the stretch appended, linked to an event or not.
+  /// Every stored-track index the stretch appended, linked to an event or
+  /// not.
   final List<int> trackPoints = [];
   bool smoothable = true;
   /// Reached [RunRecorder._maxSmoothedStretchEvents]: its inputs were dropped

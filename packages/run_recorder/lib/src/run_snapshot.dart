@@ -52,8 +52,17 @@ class RunSnapshot {
   /// [currentPosition] onto the whole line. Null when no route is selected.
   final double? routeAlongMetres;
 
-  /// The full GPS track recorded so far (unmodifiable).
+  /// The run's line so far (unmodifiable): the fixes that passed the
+  /// recorder's accuracy and movement gates. Everything live reads this — the
+  /// map, route progress, elevation, climb — and none of it is ever flagged
+  /// [Waypoint.offTrack].
   final List<Waypoint> track;
+
+  /// Every fix stored so far (unmodifiable): [track]'s points plus each fix
+  /// the distance estimator took off the line, flagged [Waypoint.offTrack],
+  /// in recording order. What [RunRecorder.stop] saves, so the crash
+  /// checkpoint persists this and nothing live draws from it.
+  final List<Waypoint> storedTrack;
 
   /// True when the most recent GPS fix was rejected outright (stating worse
   /// than the estimator's 50 m cap, or invalid), so distance is not
@@ -76,6 +85,7 @@ class RunSnapshot {
     this.routeRemainingMetres,
     this.routeAlongMetres,
     this.track = const [],
+    this.storedTrack = const [],
     this.weakGps = false,
   });
 }

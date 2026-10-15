@@ -1139,6 +1139,48 @@ void main() {
               timestamp: DateTime(2026, 4, 10, 10, 0, 10)),
         ];
 
+    test('a resumed off-track fix stays stored and off the line', () async {
+      final seeded = [
+        ...seededTrack().take(2),
+        Waypoint(
+            lat: lat,
+            lng: lngBase + 30 / metrePerDegLng,
+            timestamp: DateTime(2026, 4, 10, 10, 0, 7),
+            accuracyMetres: 38,
+            offTrack: true),
+        seededTrack().last,
+      ];
+      final r = RunRecorder()
+        ..debugResumeWithoutStream(
+          track: seeded,
+          distanceMetres: 40,
+          elapsed: const Duration(seconds: 10),
+          startedAt: DateTime(2026, 4, 10, 10, 0, 0),
+          trackComplete: true,
+        );
+      expect(r.debugTrack, hasLength(3),
+          reason: 'the line, and the route match replayed from it, skip it');
+      expect(r.debugStoredTrack, hasLength(4));
+      expect(r.storedTrackComplete, isTrue);
+      final run = await r.stop();
+      expect(run.track.map((w) => w.offTrack), [false, false, true, false]);
+      expect(run.metadata?['track_complete'], isTrue);
+    });
+
+    test('a resume from a checkpoint without track_complete does not claim it',
+        () async {
+      final r = RunRecorder()
+        ..debugResumeWithoutStream(
+          track: seededTrack(),
+          distanceMetres: 40,
+          elapsed: const Duration(seconds: 10),
+          startedAt: DateTime(2026, 4, 10, 10, 0, 0),
+        );
+      expect(r.storedTrackComplete, isFalse);
+      final run = await r.stop();
+      expect(run.metadata?['track_complete'], isNull);
+    });
+
     test('re-hydrates track, distance, elapsed offset, and start time',
         () async {
       final r = RunRecorder();
@@ -2036,12 +2078,13 @@ void main() {
       expect(run.metadata?['distance_step_filled_m'], 72);
     });
 
-    test('a 20-50 m fix feeds the estimator but not the track or the map',
+    test('a 20-50 m fix feeds the estimator but not the line or the map',
         () {
       // Canopy: the stated accuracy degrades past the 20 m map gate while
       // Doppler stays good. The estimator keeps every fix up to its own 50 m
-      // cap, so the stretch is 30 s of 4 m/s, not a gap; the track keeps only
-      // the five clean fixes. Past 50 m a fix is dropped outright.
+      // cap, so the stretch is 30 s of 4 m/s, not a gap; the line keeps only
+      // the five clean fixes. Past 50 m a fix is dropped outright, and not
+      // stored either.
       final clock = _FakeClock();
       final r = RunRecorder(clock: clock)..debugPrepareWithoutStream();
       r.begin();
@@ -2060,16 +2103,21 @@ void main() {
       r.debugInjectPosition(makePosition(
           metresEast: 124, secondsFromStart: 31, speed: 4, accuracy: 60));
       expect(r.debugDistanceMetres, closeTo(120, 1e-6));
+      expect(r.debugStoredTrack, hasLength(31));
     });
 
-    test('a canopy stretch is in the saved distance but not the saved track',
-        () async {
+    test('a canopy stretch is stored off the line, and the line and distance '
+        'are what they were', () async {
       // The smoother replays the canopy fixes the estimator took, so the
       // saved figure keeps the 30 s of 4 m/s (120 m by
-      // scripts/gps_distance/reference.py) while the stored track holds only
-      // the five clean fixes.
+      // scripts/gps_distance/reference.py). Since gps_distance.md § Stored
+      // track the saved track holds those 26 fixes too, flagged offTrack, so
+      // a server replay sees the same input; the live line, the blue dot and
+      // the line in the saved track are the five clean fixes, as before.
       final clock = _FakeClock();
       final r = RunRecorder(clock: clock)..debugPrepareWithoutStream();
+      final received = <RunSnapshot>[];
+      final sub = r.snapshots.listen(received.add);
       r.begin();
       for (var i = 0; i <= 30; i++) {
         r.debugInjectPosition(makePosition(
@@ -2079,10 +2127,76 @@ void main() {
             accuracy: i < 5 ? 5 : 35));
         clock.advance(const Duration(seconds: 1));
       }
+      await Future<void>.delayed(Duration.zero);
+      expect(r.debugTrack, hasLength(5));
+      expect(r.debugTrack.any((w) => w.offTrack), isFalse);
+      expect(r.debugCurrentWaypoint!.lng, r.debugTrack.last.lng,
+          reason: 'a canopy fix never moves the blue dot');
+      expect(received.last.track, hasLength(5),
+          reason: 'the live map line is unchanged');
+      expect(received.last.track.any((w) => w.offTrack), isFalse);
+      expect(received.last.storedTrack, hasLength(31));
+      expect(r.debugStoredTrack, hasLength(31));
+
       final run = await r.stop();
-      expect(run.track, hasLength(5));
+      await sub.cancel();
       expect(run.distanceMetres, closeTo(120, 1e-6));
       expect(run.metadata?['distance_estimator'], 'kalman_v4');
+      expect(run.metadata?['track_complete'], isTrue);
+      expect(run.track, hasLength(31));
+      expect(run.track.take(5).any((w) => w.offTrack), isFalse);
+      expect(run.track.skip(5).every((w) => w.offTrack), isTrue);
+      expect(trackLine(run.track), hasLength(5));
+      expect(run.track.skip(5).first.accuracyMetres, 35);
+      for (var i = 1; i < run.track.length; i++) {
+        expect(run.track[i].timestamp!.isAfter(run.track[i - 1].timestamp!),
+            isTrue, reason: 'stored in recording order');
+      }
+      final stamped = [for (final w in run.track) w.cumulativeDistanceMetres!];
+      for (var i = 1; i < stamped.length; i++) {
+        expect(stamped[i], greaterThanOrEqualTo(stamped[i - 1]));
+      }
+      expect(stamped.last, closeTo(run.distanceMetres, 0.01),
+          reason: 'distM is stamped on the off-track points too');
+      expect(() => jsonEncode(run.toJson()), returnsNormally);
+    });
+
+    test('a fix the movement gate holds back is stored off the line', () async {
+      // Jitter under the 3 m threshold never joined the line; the estimator
+      // still took it, so the saved track keeps it, flagged.
+      final r = RunRecorder()..debugPrepareWithoutStream();
+      r.begin();
+      r.debugInjectPosition(makePosition(metresEast: 0, secondsFromStart: 0));
+      r.debugInjectPosition(makePosition(metresEast: 1, secondsFromStart: 1));
+      r.debugInjectPosition(makePosition(metresEast: 6, secondsFromStart: 3));
+      expect(r.debugTrack, hasLength(2));
+      expect(r.debugStoredTrack, hasLength(3));
+      expect(r.debugStoredTrack.map((w) => w.offTrack), [false, true, false]);
+      final run = await r.stop();
+      expect(run.track.map((w) => w.offTrack), [false, true, false]);
+      expect(trackLine(run.track).map((w) => w.lng),
+          [for (final w in r.debugTrack) w.lng]);
+      expect(run.metadata?['track_complete'], isTrue);
+    });
+
+    test('a fix rejected outright is not stored at all', () async {
+      final r = RunRecorder()..debugPrepareWithoutStream();
+      r.begin();
+      r.debugInjectPosition(makePosition(metresEast: 0, secondsFromStart: 0));
+      r.debugInjectPosition(
+          makePosition(metresEast: 4, secondsFromStart: 1, accuracy: 60));
+      r.debugInjectPosition(makePosition(metresEast: 8, secondsFromStart: 2)
+          .copyWithLatitude(double.nan));
+      expect(r.debugStoredTrack, hasLength(1),
+          reason: 'past the estimator cap, or no coordinate: never an input');
+      await r.stop();
+    });
+
+    test('a track with no fixes is not stamped track_complete', () async {
+      final r = RunRecorder()..debugPrepareWithoutStream();
+      r.begin();
+      final run = await r.stop();
+      expect(run.metadata?['track_complete'], isNull);
     });
 
     test('prepare seeds the stride, which survives begin, only when in range',

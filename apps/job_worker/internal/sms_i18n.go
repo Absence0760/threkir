@@ -95,10 +95,7 @@ func renderSafetySms(p SafetySmsPayload, baseURL, locale string) (string, bool) 
 	if owner == "" {
 		owner = lookupEmailShared(loc).safetyDefaultOwner
 	}
-	link := strings.TrimRight(baseURL, "/")
-	if p.RunID != nil && *p.RunID != "" {
-		link += "/live/" + *p.RunID
-	}
+	link := safetyLiveURL(strings.TrimRight(baseURL, "/"), p.RunID, p.ViewToken)
 	s := lookupSmsStrings(loc)
 	withLastSeen, noPing := s.withLastSeen, s.noPing
 	if p.Template == "off_route" {

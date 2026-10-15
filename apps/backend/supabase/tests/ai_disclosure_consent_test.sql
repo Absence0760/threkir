@@ -19,10 +19,12 @@
 --  12. A caller whose user_profiles row has not been provisioned yet still
 --      gets a record — rows are client-provisioned with no signup trigger,
 --      so an update-only write would no-op and report success (issue #233).
+--  13. A v2 holder reaches the v3 plan-assistant rung only by accepting v3
+--      (migration 20270816000001).
 
 begin;
 
-select plan(12);
+select plan(13);
 
 -- U1: no consent on record.
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
@@ -54,8 +56,8 @@ select throws_ok(
 -- ── 2. The version the web + SQL sides agree on ──────────────────
 select is(
   (select ai_disclosure_current_version()),
-  2::smallint,
-  'ai_disclosure_current_version() is the widened all-AI-features version'
+  3::smallint,
+  'ai_disclosure_current_version() is the v3 plan-assistant version'
 );
 
 -- ── 3. No resolvable identity → refused ──────────────────────────
@@ -141,6 +143,14 @@ select is(
   (select version from record_ai_disclosure_consent(2::smallint)),
   2::smallint,
   'a caller with no provisioned profile row still gets a consent record'
+);
+
+-- ── 13. v2 -> v3 is an explicit upgrade, not inherited ───────────
+set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-0000000ccf01","role":"authenticated"}';
+select is(
+  (select version from record_ai_disclosure_consent(3::smallint)),
+  3::smallint,
+  'record_ai_disclosure_consent(3) upgrades a v2 holder to the plan-assistant rung'
 );
 
 select * from finish();

@@ -1,3 +1,4 @@
+import { AI_DISCLOSURE_CURRENT_VERSION } from '../../src/lib/core/ai_disclosure';
 import { expect, test } from '../fixtures/mock-route';
 
 import { readRow } from '../fixtures/db-read';
@@ -41,8 +42,7 @@ test.describe('AI-processing consent — gate, record, withdraw, re-engage', () 
 
 	const admin = getAdminClient();
 
-	/** Must equal AI_DISCLOSURE_CURRENT_VERSION / ai_disclosure_current_version(). */
-	const CURRENT_VERSION = 2;
+	const CURRENT_VERSION = AI_DISCLOSURE_CURRENT_VERSION;
 
 	let user: SagaUser;
 	let routeId: string;
@@ -141,6 +141,11 @@ test.describe('AI-processing consent — gate, record, withdraw, re-engage', () 
 
 			const dialog = page.locator('.coach-consent');
 			await expect(dialog).toBeVisible({ timeout: 15_000 });
+			// The rendered copy must name every rung the recorded version
+			// covers — accepting v3 over copy that omits the plan assistant
+			// would record a consent that was never actually disclosed.
+			await expect(dialog).toContainText('For the AI route assistant:');
+			await expect(dialog).toContainText('For the AI plan assistant:');
 			// Render-gated, not disabled: the composer does not exist yet.
 			await expect(page.getByPlaceholder(/Ask about today/)).toHaveCount(0);
 			expect(coachCalls).toBe(0);

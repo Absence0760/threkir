@@ -8535,7 +8535,7 @@
   "@coachConsentHeadline": {
     "description": "Consent gate headline"
   },
-  "coachConsentIntro": "Threkir's AI features — the Coach and the AI route assistant — forward a slice of your data to Anthropic, our AI model provider in the United States. Depending on which feature you use, that slice includes:",
+  "coachConsentIntro": "Threkir's AI features — the Coach, the AI route assistant and the AI plan assistant — forward a slice of your data to Anthropic, our AI model provider in the United States. Depending on which feature you use, that slice includes:",
   "@coachConsentIntro": {
     "description": "Consent gate intro paragraph"
   },
@@ -8558,6 +8558,10 @@
   "coachConsentBulletRoutes": "For the AI route assistant: the route's name and stats, the request you type, and a coarse place label — never your precise coordinates.",
   "@coachConsentBulletRoutes": {
     "description": "Consent gate bullet: AI route assistant"
+  },
+  "coachConsentBulletPlanRequest": "For the AI plan assistant: the plan description you type (goal race, target and recent times, how many days you can train), used only to fill in the plan settings — the plan itself is built by Threkir's own generator, not the AI.",
+  "@coachConsentBulletPlanRequest": {
+    "description": "Consent gate bullet: AI plan assistant (the typed plan description sent to extract plan-wizard settings)"
   },
   "coachConsentProcessing": "Anthropic processes the data on Threkir's behalf under their data-processing terms; they do not train their models on Threkir customer data by default. Full details — including transfer mechanism, retention, and your withdrawal rights — are in our privacy policy.",
   "@coachConsentProcessing": {
@@ -9060,7 +9064,7 @@
   "@settingsAccountAiConsentUpdateTitle": {
     "description": "Settings > Account tile title to accept a widened AI disclosure"
   },
-  "settingsAccountAiConsentUpdateSubtitle": "The disclosure now covers more features. Review and accept it to use the AI route assistant.",
+  "settingsAccountAiConsentUpdateSubtitle": "The disclosure now covers more features. Review and accept it to use the AI route and plan assistants.",
   "@settingsAccountAiConsentUpdateSubtitle": {
     "description": "Subtitle under the accept-updated-AI-disclosure tile"
   },

@@ -6447,7 +6447,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get coachConsentIntro =>
-      'Las funciones de IA de Threkir — el Coach y el asistente de rutas con IA — envían una parte de tus datos a Anthropic, nuestro proveedor de modelos de IA en EE. UU. Según la función que uses, esa parte incluye:';
+      'Las funciones de IA de Threkir — el Coach, el asistente de rutas con IA y el asistente de planes con IA — envían una parte de tus datos a Anthropic, nuestro proveedor de modelos de IA en EE. UU. Según la función que uses, esa parte incluye:';
 
   @override
   String get coachConsentBulletProfile =>
@@ -6468,6 +6468,10 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get coachConsentBulletRoutes =>
       'Para el asistente de rutas con IA: el nombre y los datos de la ruta, la petición que escribes y una referencia aproximada del lugar; nunca tus coordenadas exactas.';
+
+  @override
+  String get coachConsentBulletPlanRequest =>
+      'Para el asistente de planes con IA: la descripción del plan que escribes (carrera objetivo, tiempos objetivo y recientes, cuántos días puedes entrenar), solo para rellenar los ajustes del plan; el plan en sí lo crea el generador propio de Threkir, no la IA.';
 
   @override
   String get coachConsentProcessing =>
@@ -6852,7 +6856,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get settingsAccountAiConsentUpdateSubtitle =>
-      'La información ahora cubre más funciones. Léela y acéptala para usar el asistente de rutas con IA.';
+      'La información ahora cubre más funciones. Léela y acéptala para usar los asistentes de rutas y de planes con IA.';
 
   @override
   String get settingsAccountAiConsentGrantTitle =>

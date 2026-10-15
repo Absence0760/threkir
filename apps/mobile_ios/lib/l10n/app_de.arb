@@ -538,6 +538,7 @@
   "runPermissionRevoked": "Standortberechtigung entzogen",
   "runGpsLost": "GPS-Signal verloren — geh ins Freie",
   "runWeakGps": "Schwaches GPS — Distanz pausiert",
+  "runWeakGpsApproximate": "Ungefährer Standort — Distanz pausiert",
   "runA11yStarted": "Lauf gestartet",
   "runA11yResumed": "Lauf fortgesetzt",
   "runA11yPaused": "Lauf pausiert",

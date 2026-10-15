@@ -3341,6 +3341,12 @@ abstract class AppLocalizations {
   /// **'Weak GPS — distance paused'**
   String get runWeakGps;
 
+  /// Banner shown mid-run instead of runWeakGps when distance has stalled because the location grant is approximate (Precise Location off / Approximate only)
+  ///
+  /// In en, this message translates to:
+  /// **'Approximate location — distance paused'**
+  String get runWeakGpsApproximate;
+
   /// Screen-reader status announcement when recording begins
   ///
   /// In en, this message translates to:

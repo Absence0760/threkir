@@ -1942,6 +1942,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get runWeakGps => 'GPS fraco — distância pausada';
 
   @override
+  String get runWeakGpsApproximate =>
+      'Localização aproximada — distância pausada';
+
+  @override
   String get runA11yStarted => 'Corrida iniciada';
 
   @override
@@ -18126,6 +18130,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runWeakGps => 'GPS fraco — distância pausada';
+
+  @override
+  String get runWeakGpsApproximate =>
+      'Localização aproximada — distância pausada';
 
   @override
   String get runA11yStarted => 'Corrida iniciada';

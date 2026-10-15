@@ -1939,6 +1939,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get runWeakGps => 'GPS débil — distancia en pausa';
 
   @override
+  String get runWeakGpsApproximate =>
+      'Ubicación aproximada — distancia en pausa';
+
+  @override
   String get runA11yStarted => 'Carrera iniciada';
 
   @override

@@ -1924,6 +1924,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runWeakGps => 'Weak GPS — distance paused';
 
   @override
+  String get runWeakGpsApproximate => 'Approximate location — distance paused';
+
+  @override
   String get runA11yStarted => 'Run started';
 
   @override

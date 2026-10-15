@@ -449,7 +449,10 @@ class RunRecorder {
   /// coarse grant there (it bundles `ACCESS_BACKGROUND_LOCATION`, and Android
   /// 11+ ignores a request mixing it with a foreground permission), so the
   /// caller re-requests or sends the runner to settings. An unreadable
-  /// status counts as precise. Resolved by [prepare].
+  /// status counts as precise. Resolved by [prepare], and cleared by the
+  /// first fix that clears the accuracy gate: a reduced grant cannot produce
+  /// one, so it proves the runner turned precision back on mid-run and a
+  /// later [RunSnapshot.weakGps] stall is ordinary weak signal.
   bool get preciseLocationOff => _preciseLocationOff;
   bool _preciseLocationOff = false;
 
@@ -1615,6 +1618,7 @@ class RunRecorder {
       return;
     }
     _weakGps = false;
+    _preciseLocationOff = false;
     if (_recording) {
       _feedingGnss ? _gnssFixesRecorded++ : _platformFixesRecorded++;
     }

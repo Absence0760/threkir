@@ -1861,6 +1861,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runWeakGps => 'GPSが弱い — 距離は一時停止中';
 
   @override
+  String get runWeakGpsApproximate => 'おおよその位置情報 — 距離は一時停止中';
+
+  @override
   String get runA11yStarted => 'ランを開始しました';
 
   @override

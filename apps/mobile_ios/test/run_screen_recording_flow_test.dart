@@ -1145,6 +1145,19 @@ void main() {
       expect(find.text('START'), findsNothing,
           reason: 'the notice discloses — it must not stop the run');
 
+      // The grant only ever produces kilometre-wide fixes, so the gate drops
+      // every one and the in-run strip has to say why distance is stuck.
+      for (var i = 0; i < 4; i++) {
+        reduced.emit(_pos(
+            metresEast: i * 3.0, secondsFromStart: i, accuracy: 2000));
+        await tester.pump(const Duration(seconds: 1));
+      }
+      await tester.pump();
+      tester.takeException();
+      expect(find.text('Approximate location — distance paused'),
+          findsOneWidget);
+      expect(find.text('Weak GPS — distance paused'), findsNothing);
+
       await tester.pumpWidget(const SizedBox());
       for (var i = 0; i < 4; i++) {
         await tester.pump(const Duration(milliseconds: 50));

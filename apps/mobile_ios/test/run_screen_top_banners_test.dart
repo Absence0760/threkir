@@ -13,6 +13,7 @@ Future<void> _pump(
   bool permissionLost = false,
   bool gpsLost = false,
   bool weakGps = false,
+  bool weakGpsApproximate = false,
   bool safetyNudgeVisible = false,
 }) {
   return tester.pumpWidget(
@@ -27,6 +28,7 @@ Future<void> _pump(
             permissionLost: permissionLost,
             gpsLost: gpsLost,
             weakGps: weakGps,
+            weakGpsApproximate: weakGpsApproximate,
             safetyNudgeVisible: safetyNudgeVisible,
             onSafetyNudgeShare: () {},
             onSafetyNudgeDismiss: () {},
@@ -67,6 +69,18 @@ void main() {
     expect(gps.overlaps(nudge), isFalse);
     expect(offRoute.bottom, lessThanOrEqualTo(gps.top));
     expect(gps.bottom, lessThanOrEqualTo(nudge.top));
+  });
+
+  testWidgets('a weak-GPS stall under an approximate grant names the grant',
+      (tester) async {
+    await _pump(tester, weakGps: true, weakGpsApproximate: true);
+    expect(find.text('Approximate location — distance paused'),
+        findsOneWidget);
+    expect(find.text('Weak GPS — distance paused'), findsNothing);
+
+    await _pump(tester, weakGps: true);
+    expect(find.text('Weak GPS — distance paused'), findsOneWidget);
+    expect(find.text('Approximate location — distance paused'), findsNothing);
   });
 
   testWidgets('status banners stay mutually exclusive: permission wins',

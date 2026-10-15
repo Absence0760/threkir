@@ -538,6 +538,7 @@
   "runPermissionRevoked": "位置情報の権限が取り消されました",
   "runGpsLost": "GPS信号を失いました — 開けた場所へ移動してください",
   "runWeakGps": "GPSが弱い — 距離は一時停止中",
+  "runWeakGpsApproximate": "おおよその位置情報 — 距離は一時停止中",
   "runA11yStarted": "ランを開始しました",
   "runA11yResumed": "ランを再開しました",
   "runA11yPaused": "ランを一時停止しました",

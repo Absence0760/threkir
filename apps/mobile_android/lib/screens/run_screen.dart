@@ -4950,6 +4950,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                 permissionLost: _permissionLost,
                 gpsLost: _gpsLost,
                 weakGps: _weakGps,
+                weakGpsApproximate:
+                    _weakGps && _recorder?.preciseLocationOff == true,
                 safetyNudgeVisible: _safetyNudgeVisible,
                 onSafetyNudgeShare: _onSafetyNudgeShare,
                 onSafetyNudgeDismiss: _dismissSafetyNudge,
@@ -5677,6 +5679,7 @@ class RunTopBanners extends StatelessWidget {
     required this.permissionLost,
     required this.gpsLost,
     required this.weakGps,
+    this.weakGpsApproximate = false,
     required this.safetyNudgeVisible,
     required this.onSafetyNudgeShare,
     required this.onSafetyNudgeDismiss,
@@ -5688,6 +5691,10 @@ class RunTopBanners extends StatelessWidget {
   final bool permissionLost;
   final bool gpsLost;
   final bool weakGps;
+
+  /// The weak-GPS stall is the approximate location grant, not the sky, so
+  /// the strip names that cause instead of blaming the signal.
+  final bool weakGpsApproximate;
   final bool safetyNudgeVisible;
   final VoidCallback onSafetyNudgeShare;
   final VoidCallback onSafetyNudgeDismiss;
@@ -5778,7 +5785,9 @@ class RunTopBanners extends StatelessWidget {
                         color: semantic.onWarning, size: 18),
                     const SizedBox(width: 8),
                     Text(
-                      l10n.runWeakGps,
+                      weakGpsApproximate
+                          ? l10n.runWeakGpsApproximate
+                          : l10n.runWeakGps,
                       style: TextStyle(
                           color: semantic.onWarning,
                           fontWeight: FontWeight.w600),

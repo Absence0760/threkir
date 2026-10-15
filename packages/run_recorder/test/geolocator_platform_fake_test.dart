@@ -330,6 +330,36 @@ void main() {
       r.dispose();
     });
 
+    test('a fix that clears the accuracy gate clears preciseLocationOff, '
+        'a coarse one does not', () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      fake.accuracyStatus = LocationAccuracyStatus.reduced;
+      final r = RunRecorder();
+      await r.prepare();
+      await Future<void>.delayed(Duration.zero);
+      r.begin();
+
+      fake.emit(_pos(secondsFromStart: 1, accuracy: 2000));
+      await Future<void>.delayed(Duration.zero);
+      expect(r.debugWeakGps, isTrue);
+      expect(r.preciseLocationOff, isTrue,
+          reason: 'an approximate fix is what the reduced grant produces');
+
+      fake.emit(_pos(secondsFromStart: 2, accuracy: 5));
+      await Future<void>.delayed(Duration.zero);
+      expect(r.debugWeakGps, isFalse);
+      expect(r.preciseLocationOff, isFalse,
+          reason: 'a 5 m fix proves precision is back on, so a later stall '
+              'must not be blamed on an approximate grant');
+
+      fake.emit(_pos(secondsFromStart: 3, accuracy: 60));
+      await Future<void>.delayed(Duration.zero);
+      expect(r.debugWeakGps, isTrue);
+      expect(r.preciseLocationOff, isFalse);
+      r.dispose();
+    });
+
     test('does NOT request permission when already granted', () async {
       fake.permissionState = LocationPermission.always;
       // If requestPermission is hit, it would return `denied` per our

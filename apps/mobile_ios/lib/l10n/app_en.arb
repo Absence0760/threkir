@@ -2501,6 +2501,10 @@
   "@runWeakGps": {
     "description": "Banner shown when GPS accuracy is too low and distance stops advancing"
   },
+  "runWeakGpsApproximate": "Approximate location — distance paused",
+  "@runWeakGpsApproximate": {
+    "description": "Banner shown mid-run instead of runWeakGps when distance has stalled because the location grant is approximate (Precise Location off / Approximate only)"
+  },
   "runA11yStarted": "Run started",
   "@runA11yStarted": {
     "description": "Screen-reader status announcement when recording begins"

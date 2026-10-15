@@ -1949,6 +1949,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get runWeakGps => 'GPS faible — distance en pause';
 
   @override
+  String get runWeakGpsApproximate =>
+      'Position approximative — distance en pause';
+
+  @override
   String get runA11yStarted => 'Course démarrée';
 
   @override

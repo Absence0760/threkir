@@ -34,6 +34,10 @@ type TrackPoint struct {
 	Elevation *float64   `json:"ele,omitempty"`
 	Timestamp *time.Time `json:"ts,omitempty"`
 	Bpm       *int       `json:"bpm,omitempty"`
+	// AccuracyMetres is the recorder's reported horizontal accuracy,
+	// absent on imports and older recordings. The OSRM matcher turns it
+	// into a per-point search radius.
+	AccuracyMetres *float64 `json:"accuracyMetres,omitempty"`
 }
 
 // MatchOutput is what a Matcher hands back to the worker. The matched

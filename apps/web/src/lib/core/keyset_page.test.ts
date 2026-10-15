@@ -5,11 +5,12 @@ import {
 	appendPage,
 	keysetAfter,
 	keysetCursor,
+	type KeysetKey,
+	type KeysetValue,
 	literalSubstringPattern,
 	nextCursor,
 	publicRouteOrder,
-	type KeysetKey,
-	type KeysetValue,
+	walkKeyset,
 } from './keyset_page.ts';
 
 // ── A tiny evaluator for the filter grammar keysetAfter emits ──────────────
@@ -248,6 +249,148 @@ test('the public-route orders keep the RPC prefix and end on id', () => {
 		'created_at desc nulls first',
 		'id desc nulls last',
 	]);
+});
+
+// ── walkKeyset ─────────────────────────────────────────────────────────────
+
+/// A fake PostgREST over `table()` — read on every call, so a test can change
+/// the table mid-walk — that runs the walk's filter through the evaluator,
+/// sorts by `keys`, and answers at most `cap` rows however many were asked
+/// for. `beforeRead(n)` runs before the n-th read (0-based).
+function walkServer(
+	keys: readonly KeysetKey[],
+	table: () => readonly Row[],
+	opts: { cap?: number; beforeRead?: (n: number) => void } = {},
+) {
+	const calls: { after: string | null; limit: number }[] = [];
+	const fetchPage = async (after: string | null, limit: number) => {
+		opts.beforeRead?.(calls.length);
+		calls.push({ after, limit });
+		const admitted = table().filter((r) => after === null || selects(after, r));
+		const take = Math.min(limit, opts.cap ?? limit);
+		return { data: sortRows(keys, admitted).slice(0, take), error: null };
+	};
+	return { fetchPage, calls };
+}
+
+const WALK_KEYS = ORDERS['at desc nulls last'];
+const walkIds = (rows: readonly Row[]) => rows.map((r) => r.id);
+
+test('walkKeyset: every row once, in order, across pages', async () => {
+	for (const keys of Object.values(ORDERS)) {
+		const { fetchPage } = walkServer(keys, () => DATA);
+		const walk = await walkKeyset(keys, fetchPage, { pageSize: 2 });
+		assert.equal(walk.complete, true);
+		assert.deepEqual(walkIds(walk.rows), walkIds(sortRows(keys, DATA)));
+	}
+});
+
+test('walkKeyset: a row deleted mid-walk does not make the walk skip another, as an offset walk does', async () => {
+	// The data-loss bug: a backup pages runs by OFFSET, the runner deletes a
+	// run the walk already passed, every later run moves up one position, and
+	// the next OFFSET starts a row late — one run is never archived.
+	const sorted = sortRows(WALK_KEYS, DATA);
+	let table: readonly Row[] = DATA;
+	const deleteFirst = (n: number) => {
+		if (n === 1) table = table.filter((r) => r.id !== sorted[0].id);
+	};
+	const { fetchPage } = walkServer(WALK_KEYS, () => table, { beforeRead: deleteFirst });
+	const walk = await walkKeyset(WALK_KEYS, fetchPage, { pageSize: 2 });
+	assert.equal(walk.complete, true);
+	assert.deepEqual(walkIds(walk.rows), walkIds(sorted));
+
+	// The same deletion under the OFFSET walk this replaced loses sorted[2].
+	table = DATA;
+	const offsetRows: Row[] = [];
+	for (let from = 0, n = 0; ; from += 2, n++) {
+		deleteFirst(n);
+		const page = sortRows(WALK_KEYS, table).slice(from, from + 2);
+		offsetRows.push(...page);
+		if (page.length < 2) break;
+	}
+	assert.equal(offsetRows.some((r) => r.id === sorted[2].id), false);
+});
+
+test('walkKeyset: a row inserted mid-walk behind the cursor repeats nothing, as an offset walk does', async () => {
+	const sorted = sortRows(WALK_KEYS, DATA);
+	const newest: Row = { at: '2026-02-01T00:00:00+00:00', id: 'z' };
+	let table: readonly Row[] = DATA;
+	const insert = (n: number) => {
+		if (n === 1) table = [newest, ...DATA];
+	};
+	const { fetchPage } = walkServer(WALK_KEYS, () => table, { beforeRead: insert });
+	const walk = await walkKeyset(WALK_KEYS, fetchPage, { pageSize: 2 });
+	assert.deepEqual(walkIds(walk.rows), walkIds(sorted));
+
+	table = DATA;
+	const offsetRows: Row[] = [];
+	for (let from = 0, n = 0; ; from += 2, n++) {
+		insert(n);
+		const page = sortRows(WALK_KEYS, table).slice(from, from + 2);
+		offsetRows.push(...page);
+		if (page.length < 2) break;
+	}
+	assert.equal(offsetRows.filter((r) => r.id === sorted[1].id).length, 2);
+});
+
+test('walkKeyset: a server capping below the page size is not read as exhausted', async () => {
+	const { fetchPage } = walkServer(WALK_KEYS, () => DATA, { cap: 2 });
+	const walk = await walkKeyset(WALK_KEYS, fetchPage, { pageSize: 5 });
+	assert.equal(walk.complete, true);
+	assert.deepEqual(walkIds(walk.rows), walkIds(sortRows(WALK_KEYS, DATA)));
+});
+
+test('walkKeyset: a short first page costs one confirming read; a full last page one empty read', async () => {
+	const short = walkServer(WALK_KEYS, () => DATA);
+	assert.equal((await walkKeyset(WALK_KEYS, short.fetchPage, { pageSize: 10 })).rows.length, 7);
+	assert.equal(short.calls.length, 2);
+	assert.equal(short.calls[0].after, null, 'the first page is unfiltered');
+
+	const exact = walkServer(WALK_KEYS, () => DATA.slice(0, 6));
+	assert.equal((await walkKeyset(WALK_KEYS, exact.fetchPage, { pageSize: 3 })).rows.length, 6);
+	assert.equal(exact.calls.length, 3);
+
+	const empty = walkServer(WALK_KEYS, () => []);
+	const none = await walkKeyset(WALK_KEYS, empty.fetchPage);
+	assert.deepEqual(none, { rows: [], complete: true, error: null });
+	assert.equal(empty.calls[0].limit, 1000);
+});
+
+test('walkKeyset: a page error returns the rows read so far, flagged short, and never throws', async () => {
+	const { fetchPage } = walkServer(WALK_KEYS, () => DATA);
+	let n = 0;
+	const walk = await walkKeyset(
+		WALK_KEYS,
+		(after, limit) =>
+			n++ === 0 ? fetchPage(after, limit) : Promise.resolve({ data: null, error: new Error('reset') }),
+		{ pageSize: 2 },
+	);
+	assert.equal(walk.rows.length, 2);
+	assert.equal(walk.complete, false);
+	assert.equal((walk.error as Error).message, 'reset');
+});
+
+test('walkKeyset: a server that ignores the filter stops short instead of looping', async () => {
+	const first = sortRows(WALK_KEYS, DATA).slice(0, 2);
+	const walk = await walkKeyset(WALK_KEYS, async () => ({ data: first, error: null }), { pageSize: 2 });
+	assert.deepEqual(walkIds(walk.rows), walkIds(first), 'the repeated page is not appended');
+	assert.equal(walk.complete, false);
+	assert.match(String(walk.error), /stopped advancing/);
+});
+
+test('walkKeyset: a start cursor walks only the rows after it', async () => {
+	const sorted = sortRows(WALK_KEYS, DATA);
+	const { fetchPage } = walkServer(WALK_KEYS, () => DATA);
+	const walk = await walkKeyset(WALK_KEYS, fetchPage, {
+		pageSize: 2,
+		start: keysetCursor(WALK_KEYS, sorted[2]),
+	});
+	assert.deepEqual(walkIds(walk.rows), walkIds(sorted.slice(3)));
+});
+
+test('walkKeyset: a non-positive page size is refused', async () => {
+	const { fetchPage } = walkServer(WALK_KEYS, () => DATA);
+	await assert.rejects(walkKeyset(WALK_KEYS, fetchPage, { pageSize: 0 }), /positive integer/);
 });
 
 // ── literalSubstringPattern ────────────────────────────────────────────────

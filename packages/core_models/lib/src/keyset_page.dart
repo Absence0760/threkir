@@ -222,3 +222,81 @@ List<KeysetKey> publicRouteOrder(String sort) {
       throw ArgumentError('keyset: unknown public-route sort: $sort');
   }
 }
+
+/// The size a walk ASKS for: PostgREST's `db.max-rows`. Deliberately not
+/// assumed to be the size it gets — see [walkKeyset].
+const int kKeysetWalkPageSize = 1000;
+
+bool _sameCursor(List<Object?> a, List<Object?> b) {
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
+}
+
+/// Every row [fetchPage] can produce, one keyset page at a time — the walk a
+/// backup, an export or a complete list needs, where "every row" is the
+/// contract.
+///
+/// `fetchPage(after, limit)` must apply `after` (a PostgREST `or` body, null
+/// on the first page) and sort by exactly [keys], then ask for `limit` rows.
+/// Each page starts strictly after the last row the previous one returned, so
+/// a row inserted or deleted while the walk runs moves no other row across a
+/// page boundary: it is read once or (if it arrived behind the walk) not at
+/// all, and every row present for the whole walk is read exactly once. An
+/// OFFSET walk names positions instead, so the same delete skips a row and the
+/// same insert repeats one.
+///
+/// **A short page is not proof of exhaustion.** A server whose `db.max-rows`
+/// is below [pageSize] answers every page short with a 200, so the walk stops
+/// only on an empty page, or on one both short of the ask AND shorter than the
+/// page before it — the shape a genuinely exhausted result set has and a
+/// consistently-capping one does not. A short first page therefore costs one
+/// confirming read.
+///
+/// Errors propagate: a caller archiving a history would rather fail loudly
+/// than write a file that is partial but reads as complete. There is no row
+/// ceiling — a ceiling would silently truncate. A server that ignores the
+/// window and answers the same page forever is caught by the cursor instead:
+/// a page whose last row is the cursor it was asked to pass has not advanced,
+/// and the walk throws a [StateError] rather than looping. Mirrors `walkKeyset`
+/// in apps/web/src/lib/core/keyset_page.ts, which returns `complete: false`
+/// where this throws, per each side's error contract.
+Future<List<Map<String, dynamic>>> walkKeyset(
+  List<KeysetKey> keys,
+  Future<List<Map<String, dynamic>>> Function(String? after, int limit)
+      fetchPage, {
+  int pageSize = kKeysetWalkPageSize,
+  List<Object?>? start,
+}) async {
+  if (pageSize <= 0) {
+    throw ArgumentError.value(
+      pageSize,
+      'pageSize',
+      'keyset: page size must be a positive integer',
+    );
+  }
+  final rows = <Map<String, dynamic>>[];
+  var cursor = start;
+  int? previous;
+  while (true) {
+    String? after;
+    if (cursor != null) {
+      after = keysetAfter(keys, cursor);
+      if (after == null) return rows;
+    }
+    final page = await fetchPage(after, pageSize);
+    if (page.isEmpty) return rows;
+    final next = keysetCursor(keys, page.last);
+    if (cursor != null && _sameCursor(next, cursor)) {
+      throw StateError('keyset: the walk stopped advancing');
+    }
+    rows.addAll(page);
+    if (page.length < pageSize && previous != null && page.length < previous) {
+      return rows;
+    }
+    previous = page.length;
+    cursor = next;
+  }
+}

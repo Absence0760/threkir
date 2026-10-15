@@ -141,6 +141,45 @@ Map<String, List<KeysetKey>> _orders() {
 
 List<Object?> _ids(List<Row> rows) => rows.map((r) => r['id']).toList();
 
+/// A fake PostgREST over `table()` — read on every call, so a test can change
+/// the table mid-walk — that runs the walk's filter through the evaluator,
+/// sorts by `keys`, and answers at most `cap` rows however many were asked
+/// for. `beforeRead(n)` runs before the n-th read (0-based).
+class _WalkServer {
+  _WalkServer(this.keys, this.table, {this.cap, this.beforeRead});
+
+  final List<KeysetKey> keys;
+  final List<Row> Function() table;
+  final int? cap;
+  final void Function(int n)? beforeRead;
+  final List<({String? after, int limit})> calls = [];
+
+  Future<List<Row>> fetchPage(String? after, int limit) async {
+    beforeRead?.call(calls.length);
+    calls.add((after: after, limit: limit));
+    final admitted =
+        table().where((r) => after == null || _selects(after, r)).toList();
+    final take = cap == null || cap! > limit ? limit : cap!;
+    return _sortRows(keys, admitted).take(take).toList();
+  }
+}
+
+/// The OFFSET walk `walkKeyset` replaced, for contrast: `mutate(n)` runs
+/// before the n-th read.
+List<Row> _offsetWalk(
+  List<KeysetKey> keys,
+  List<Row> Function() table,
+  void Function(int n) mutate,
+) {
+  final out = <Row>[];
+  for (var from = 0, n = 0;; from += 2, n++) {
+    mutate(n);
+    final page = _sortRows(keys, table()).skip(from).take(2).toList();
+    out.addAll(page);
+    if (page.length < 2) return out;
+  }
+}
+
 void main() {
   final orders = _orders();
 
@@ -333,6 +372,137 @@ void main() {
       'created_at desc nulls first',
       'id desc nulls last',
     ]);
+  });
+
+  // ── walkKeyset ───────────────────────────────────────────────────────────
+
+  final walkKeys = orders['at desc nulls last']!;
+
+  test('walkKeyset: every row once, in order, across pages', () async {
+    for (final keys in orders.values) {
+      final server = _WalkServer(keys, () => _data);
+      final rows = await walkKeyset(keys, server.fetchPage, pageSize: 2);
+      expect(_ids(rows), _ids(_sortRows(keys, _data)));
+    }
+  });
+
+  test(
+      'walkKeyset: a row deleted mid-walk does not make the walk skip another, '
+      'as an offset walk does', () async {
+    // The data-loss bug: a backup pages runs by OFFSET, the runner deletes a
+    // run the walk already passed, every later run moves up one position, and
+    // the next OFFSET starts a row late — one run is never archived.
+    final sorted = _sortRows(walkKeys, _data);
+    var table = _data;
+    void deleteFirst(int n) {
+      if (n == 1) table = table.where((r) => r['id'] != sorted[0]['id']).toList();
+    }
+
+    final server = _WalkServer(walkKeys, () => table, beforeRead: deleteFirst);
+    final rows = await walkKeyset(walkKeys, server.fetchPage, pageSize: 2);
+    expect(_ids(rows), _ids(sorted));
+
+    table = _data;
+    final offsetRows = _offsetWalk(walkKeys, () => table, deleteFirst);
+    expect(_ids(offsetRows), isNot(contains(sorted[2]['id'])));
+  });
+
+  test(
+      'walkKeyset: a row inserted mid-walk behind the cursor repeats nothing, '
+      'as an offset walk does', () async {
+    final sorted = _sortRows(walkKeys, _data);
+    var table = _data;
+    void insert(int n) {
+      if (n == 1) {
+        table = <Row>[
+          {'at': '2026-02-01T00:00:00+00:00', 'id': 'z'},
+          ..._data,
+        ];
+      }
+    }
+
+    final server = _WalkServer(walkKeys, () => table, beforeRead: insert);
+    final rows = await walkKeyset(walkKeys, server.fetchPage, pageSize: 2);
+    expect(_ids(rows), _ids(sorted));
+
+    table = _data;
+    final offsetRows = _offsetWalk(walkKeys, () => table, insert);
+    expect(_ids(offsetRows).where((id) => id == sorted[1]['id']).length, 2);
+  });
+
+  test('walkKeyset: a server capping below the page size is not read as '
+      'exhausted', () async {
+    final server = _WalkServer(walkKeys, () => _data, cap: 2);
+    final rows = await walkKeyset(walkKeys, server.fetchPage, pageSize: 5);
+    expect(_ids(rows), _ids(_sortRows(walkKeys, _data)));
+  });
+
+  test('walkKeyset: a short first page costs one confirming read; a full last '
+      'page one empty read', () async {
+    final short = _WalkServer(walkKeys, () => _data);
+    expect(
+        (await walkKeyset(walkKeys, short.fetchPage, pageSize: 10)).length, 7);
+    expect(short.calls.length, 2);
+    expect(short.calls[0].after, isNull, reason: 'the first page is unfiltered');
+
+    final exact = _WalkServer(walkKeys, () => _data.sublist(0, 6));
+    expect(
+        (await walkKeyset(walkKeys, exact.fetchPage, pageSize: 3)).length, 6);
+    expect(exact.calls.length, 3);
+
+    final empty = _WalkServer(walkKeys, () => <Row>[]);
+    expect(await walkKeyset(walkKeys, empty.fetchPage), isEmpty);
+    expect(empty.calls[0].limit, 1000);
+  });
+
+  test('walkKeyset: a page error propagates — a partial archive must never '
+      'read as complete', () async {
+    final server = _WalkServer(walkKeys, () => _data);
+    var n = 0;
+    Future<List<Row>> failSecond(String? after, int limit) {
+      if (n++ == 0) return server.fetchPage(after, limit);
+      throw StateError('reset');
+    }
+
+    await expectLater(
+      walkKeyset(walkKeys, failSecond, pageSize: 2),
+      throwsA(isA<StateError>()),
+    );
+  });
+
+  test('walkKeyset: a server that ignores the filter stops instead of looping',
+      () async {
+    final first = _sortRows(walkKeys, _data).take(2).toList();
+    await expectLater(
+      walkKeyset(walkKeys, (after, limit) async => first, pageSize: 2),
+      throwsA(
+        isA<StateError>().having(
+          (e) => e.message,
+          'message',
+          contains('stopped advancing'),
+        ),
+      ),
+    );
+  });
+
+  test('walkKeyset: a start cursor walks only the rows after it', () async {
+    final sorted = _sortRows(walkKeys, _data);
+    final server = _WalkServer(walkKeys, () => _data);
+    final rows = await walkKeyset(
+      walkKeys,
+      server.fetchPage,
+      pageSize: 2,
+      start: keysetCursor(walkKeys, sorted[2]),
+    );
+    expect(_ids(rows), _ids(sorted.sublist(3)));
+  });
+
+  test('walkKeyset: a non-positive page size is refused', () async {
+    final server = _WalkServer(walkKeys, () => _data);
+    await expectLater(
+      walkKeyset(walkKeys, server.fetchPage, pageSize: 0),
+      throwsArgumentError,
+    );
   });
 
   // ── literalSubstringPattern ──────────────────────────────────────────────

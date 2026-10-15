@@ -186,3 +186,93 @@ export function publicRouteOrder(sort: PublicRouteSort): readonly KeysetKey[] {
 			return [{ column: 'created_at', ascending: false, nullsFirst: false }, id];
 	}
 }
+
+/// What a whole-table walk read, and whether it is all of it.
+export interface KeysetWalk<T> {
+	rows: T[];
+	/// False when a page errored or the walk stopped advancing — i.e. when
+	/// `rows` is known to be short of what the table holds.
+	complete: boolean;
+	/// The first page error, or the no-progress error; null on a whole read.
+	error: unknown;
+}
+
+/// The size a walk ASKS for: PostgREST's `db.max-rows`. Deliberately not
+/// assumed to be the size it gets — see `walkKeyset`.
+export const KEYSET_WALK_PAGE_SIZE = 1000;
+
+export interface WalkKeysetOptions {
+	pageSize?: number;
+	/// Walk only the rows strictly after this cursor.
+	start?: KeysetCursor | null;
+}
+
+function sameCursor(a: KeysetCursor, b: KeysetCursor): boolean {
+	return a.length === b.length && a.every((v, i) => v === b[i]);
+}
+
+/// Every row `fetchPage` can produce, one keyset page at a time — the walk a
+/// backup, an export or a dedupe set needs, where "every row" is the contract.
+///
+/// `fetchPage(after, limit)` must apply `after` (a PostgREST `or` body, null on
+/// the first page) and sort by exactly `keys`, then ask for `limit` rows. Each
+/// page starts strictly after the last row the previous one returned, so a row
+/// inserted or deleted while the walk runs moves no other row across a page
+/// boundary: it is read once or (if it arrived behind the walk) not at all,
+/// and every row present for the whole walk is read exactly once. An OFFSET
+/// walk names positions instead, so the same delete skips a row and the same
+/// insert repeats one.
+///
+/// **A short page is not proof of exhaustion.** A server whose `db.max-rows`
+/// is below `pageSize` answers every page short with a 200, so the walk stops
+/// only on an empty page, or on one both short of the ask AND shorter than the
+/// page before it — the shape a genuinely exhausted result set has and a
+/// consistently-capping one does not. A short first page therefore costs one
+/// confirming read.
+///
+/// Never throws for a page error: a walk that dies half-way still holds rows
+/// worth keeping, and `complete` is how the caller tells that apart from a
+/// whole read. There is no row ceiling — a ceiling would reinstate the silent
+/// truncation one order of magnitude higher. The runaway it used to guard (a
+/// server that ignores the window and answers the same page forever) is caught
+/// instead by the cursor: a page whose last row is the cursor it was asked to
+/// pass has not advanced, and the walk stops short rather than looping.
+/// Mirrors `walkKeyset` in `core_models` `keyset_page.dart`, which throws
+/// where this returns, per each side's error contract.
+export async function walkKeyset<T extends object>(
+	keys: readonly KeysetKey[],
+	fetchPage: (
+		after: string | null,
+		limit: number,
+	) => PromiseLike<{ data: T[] | null; error: unknown }>,
+	opts: WalkKeysetOptions = {},
+): Promise<KeysetWalk<T>> {
+	const pageSize = opts.pageSize ?? KEYSET_WALK_PAGE_SIZE;
+	if (!Number.isInteger(pageSize) || pageSize <= 0) {
+		throw new Error(`keyset: page size must be a positive integer: ${pageSize}`);
+	}
+	const rows: T[] = [];
+	let cursor: KeysetCursor | null = opts.start ?? null;
+	let previous: number | null = null;
+	for (;;) {
+		let after: string | null = null;
+		if (cursor !== null) {
+			after = keysetAfter(keys, cursor);
+			if (after === null) return { rows, complete: true, error: null };
+		}
+		const { data, error } = await fetchPage(after, pageSize);
+		if (error) return { rows, complete: false, error };
+		const page = data ?? [];
+		if (page.length === 0) return { rows, complete: true, error: null };
+		const next = keysetCursor(keys, page[page.length - 1]);
+		if (cursor !== null && sameCursor(next, cursor)) {
+			return { rows, complete: false, error: new Error('keyset: the walk stopped advancing') };
+		}
+		rows.push(...page);
+		if (page.length < pageSize && previous !== null && page.length < previous) {
+			return { rows, complete: true, error: null };
+		}
+		previous = page.length;
+		cursor = next;
+	}
+}

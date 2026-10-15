@@ -99,6 +99,7 @@ class _PhotosApi extends ApiClient {
       createdAt: DateTime.now(),
       eventId: eventId,
       eventInstanceStart: eventInstanceStart,
+      raceGallery: false,
     );
   }
 }

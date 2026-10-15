@@ -53,6 +53,7 @@ class _CapturingApi extends ApiClient {
       storagePath: 'owner-1/$runId/p1.$extension',
       createdAt: DateTime.utc(2026, 3, 1),
       positionIdx: positionIdx,
+      raceGallery: false,
     );
   }
 }

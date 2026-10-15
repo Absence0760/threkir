@@ -291,6 +291,7 @@ class _RunPhotosState extends State<RunPhotos> with WidgetsBindingObserver {
                     caption: value,
                     positionIdx: p.positionIdx,
                     createdAt: p.createdAt,
+                    raceGallery: p.raceGallery,
                   )
                 : p)
             .toList();

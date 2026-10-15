@@ -6061,6 +6061,7 @@ class RunPhotoRow {
   static const String colEventInstanceStart = 'event_instance_start';
   static const String colHiddenAt = 'hidden_at';
   static const String colHiddenBy = 'hidden_by';
+  static const String colRaceGallery = 'race_gallery';
 
   final String id;
   final String? runId;
@@ -6074,6 +6075,7 @@ class RunPhotoRow {
   final DateTime? eventInstanceStart;
   final DateTime? hiddenAt;
   final String? hiddenBy;
+  final bool raceGallery;
 
   const RunPhotoRow({
     required this.id,
@@ -6088,6 +6090,7 @@ class RunPhotoRow {
     this.eventInstanceStart,
     this.hiddenAt,
     this.hiddenBy,
+    required this.raceGallery,
   });
 
   factory RunPhotoRow.fromJson(Map<String, dynamic> json) => RunPhotoRow(
@@ -6103,6 +6106,7 @@ class RunPhotoRow {
     eventInstanceStart: parseIsoStrictValue(json['event_instance_start']),
     hiddenAt: parseIsoStrictValue(json['hidden_at']),
     hiddenBy: json['hidden_by'] as String?,
+    raceGallery: (json['race_gallery'] as bool?) ?? false,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -6118,6 +6122,7 @@ class RunPhotoRow {
     colEventInstanceStart: eventInstanceStart?.toIso8601String(),
     colHiddenAt: hiddenAt?.toIso8601String(),
     colHiddenBy: hiddenBy,
+    colRaceGallery: raceGallery,
   };
 
   RunPhotoRow copyWith({
@@ -6133,6 +6138,7 @@ class RunPhotoRow {
     DateTime? eventInstanceStart,
     DateTime? hiddenAt,
     String? hiddenBy,
+    bool? raceGallery,
   }) => RunPhotoRow(
     id: id ?? this.id,
     runId: runId ?? this.runId,
@@ -6146,6 +6152,7 @@ class RunPhotoRow {
     eventInstanceStart: eventInstanceStart ?? this.eventInstanceStart,
     hiddenAt: hiddenAt ?? this.hiddenAt,
     hiddenBy: hiddenBy ?? this.hiddenBy,
+    raceGallery: raceGallery ?? this.raceGallery,
   );
 }
 

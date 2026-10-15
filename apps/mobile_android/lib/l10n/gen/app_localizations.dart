@@ -10771,7 +10771,7 @@ abstract class AppLocalizations {
   /// Consent gate intro paragraph
   ///
   /// In en, this message translates to:
-  /// **'Threkir\'s AI features — the Coach, the AI route assistant and the AI plan assistant — forward a slice of your data to Anthropic, our AI model provider in the United States. Depending on which feature you use, that slice includes:'**
+  /// **'Threkir\'s AI features — the Coach, the AI route assistant, the AI plan assistant and AI plan edits — forward a slice of your data to Anthropic, our AI model provider in the United States. Depending on which feature you use, that slice includes:'**
   String get coachConsentIntro;
 
   /// Consent gate bullet: profile data
@@ -10809,6 +10809,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'For the AI plan assistant: the plan description you type (goal race, target and recent times, how many days you can train), used only to fill in the plan settings — the plan itself is built by Threkir\'s own generator, not the AI.'**
   String get coachConsentBulletPlanRequest;
+
+  /// Consent gate bullet: AI plan edits (the active plan's upcoming workouts and the typed change request, sent to propose edits the runner reviews)
+  ///
+  /// In en, this message translates to:
+  /// **'For AI plan edits: the upcoming workouts in the plan you are changing (dates, types and distances) and the change you type, used only to suggest edits you review before anything is saved — the AI cannot add workouts or set paces.'**
+  String get coachConsentBulletPlanEdit;
 
   /// Consent gate data-processing paragraph
   ///
@@ -11449,7 +11455,7 @@ abstract class AppLocalizations {
   /// Subtitle under the accept-updated-AI-disclosure tile
   ///
   /// In en, this message translates to:
-  /// **'The disclosure now covers more features. Review and accept it to use the AI route and plan assistants.'**
+  /// **'The disclosure now covers more features. Review and accept it to use the AI route and plan assistants and AI plan edits.'**
   String get settingsAccountAiConsentUpdateSubtitle;
 
   /// Settings > Account tile title to read and accept the AI disclosure for the first time

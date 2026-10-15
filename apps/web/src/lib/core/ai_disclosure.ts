@@ -13,8 +13,11 @@ import { thrownMessage } from './supabase_error';
 //
 //   1  AI Coach only.
 //   2  The Coach plus the AI route assistant.
-//   3  All AI features: v2 plus the AI plan assistant (the typed plan
-//      description, sent only to extract plan-wizard settings).
+//   3  v2 plus the AI plan assistant (the typed plan description, sent
+//      only to extract plan-wizard settings).
+//   4  All AI features: v3 plus AI plan edits (the active plan's upcoming
+//      workouts and the typed change request, sent only to propose edits
+//      the runner reviews before anything is saved).
 //
 // Every AI endpoint declares its minimum. Adding the next AI feature means
 // a new version with new copy, not a new boolean column and not quietly
@@ -45,11 +48,20 @@ export const AI_DISCLOSURE_VERSION_ROUTE_AI = 2;
 export const AI_DISCLOSURE_VERSION_PLAN_AI = 3;
 
 /**
+ * Minimum disclosure version /api/coach/plan-edit requires. Its own rung even
+ * though the v1 Coach copy already names the active plan: the Coach sends the
+ * plan so it can comment on it, while plan edits send it with the runner's
+ * change request so the model can propose changes to it — a new purpose
+ * (decisions § 571).
+ */
+export const AI_DISCLOSURE_VERSION_PLAN_EDIT_AI = 4;
+
+/**
  * The newest disclosure this build knows how to present. Must equal the
  * SQL `ai_disclosure_current_version()`; `ai_disclosure.test.ts` reads the
  * newest migration that defines it and fails if they drift.
  */
-export const AI_DISCLOSURE_CURRENT_VERSION = AI_DISCLOSURE_VERSION_PLAN_AI;
+export const AI_DISCLOSURE_CURRENT_VERSION = AI_DISCLOSURE_VERSION_PLAN_EDIT_AI;
 
 /**
  * Machine-readable marker on every AI-consent denial. It rides a `code`

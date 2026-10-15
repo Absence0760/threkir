@@ -22,7 +22,7 @@ A Claude-powered second-opinion chat embedded below the week grid on the plan de
 
 **What it does**: critiques adherence, answers "should I run tomorrow?", explains what a workout is designed for, flags red-flag patterns in recent runs.
 
-**What it explicitly doesn't do** — captured in the system prompt and `decisions.md #12`: generate new plans, prescribe medical or nutrition changes, invent stats it doesn't have in context. Building a plan with AI help is the separate plan assistant below, not the chat.
+**What it explicitly doesn't do** — captured in the system prompt and `decisions.md #12`: generate new plans, prescribe medical or nutrition changes, invent stats it doesn't have in context. Building a plan with AI help is the separate plan assistant below, and changing one is AI plan edits; the chat links to both rather than doing either.
 
 **Architecture**:
 - Server endpoint `POST /api/coach` — runs per-request (`prerender = false`), reads the caller's Supabase JWT to scope context pulls via RLS.
@@ -48,6 +48,19 @@ A "Describe the plan you want" box at the top of the `/plans/new` wizard (`PlanE
   - **From `/plans`.** A "Describe a plan with AI" link in the toolbar and the empty state goes to `/plans/new?type=training#ai-plan`.
   - **On mobile.** `PlanNewScreen` has the same box (`plan_request_client.dart` calls the same endpoint), gated on the `ai_plan` field of `/app-capabilities.json` (`coachEnabled() && aiPlanEnabled()`). The Coach screen shows the same suggestions and opens a tapped `/plans/new?describe=…` link in `PlanNewScreen` with the box prefilled and run.
 - **Coach links.** Before this, the Coach's markdown sanitiser allowed only `https` / `http` / `mailto`, so the `/runs/<id>` links its prompt asks for were rendered as plain text. App paths beginning with a single `/` are now kept and open in place (no forced `target=_blank`, which SvelteKit treats as external); `//host` and the other spellings a browser resolves off-site are still refused.
+
+## AI plan edits (web)
+
+**Adjust with AI** in the Adjust plan dialog on `/plans/[id]` (owner, non-template plans). The runner types a change such as "move my long run to Saturday" or "make next week easier"; the page shows the suggested changes as a before/after diff and saves nothing until **Apply AI-suggested changes**. **The model picks operations, never values** ([decisions.md § 1979](../architecture/decisions.md), superseding § 1930 in part).
+
+- **Endpoint** `POST /api/coach/plan-edit` with `{ plan_id, request, today }` — handler `apps/web/src/lib/training/plan_edit/handler.ts`, dev wrapper `src/routes/api/coach/plan-edit/+server.ts`, prod routed inside the coach Lambda (segment `plan-edit`). The handler reads the plan itself under the caller's JWT; the body never carries it. One `claude-opus-4-8` call with forced tool use (`propose_plan_edits`, no extended thinking), 15 s timeout, request capped at 400 characters.
+- **Operations** (`plan_edit/ops.ts`): `move_workout` (another day of the same plan week), `swap_days` (two workouts in one week), `scale_week` (factor 0.5 to 1.1, never above 1 in a taper or race week), `mark_recovery`, `skip_workout`. The model sees the open weeks with short references (`W1`…), day, type and size — no ids, notes or paces. `validatePlanEditOps` drops any reference it did not hand out, any done / skipped / past / race / rest target, a date outside the target's week or the plan, a second operation on one target and anything past 12 operations, and reports how many it dropped. A request the operations cannot express (a new workout, a pace) comes back `unsupported`.
+- **Apply + grade** (`plan_edit/apply.ts`): recovery is `recoveryWorkoutPatch` + `recoveryWeekVolume` (`plan_bulk_ops.ts`), the same as the week's button; scaling skips structured sessions. `planEditLoadCheck` bands each open week's planned volume against the four weeks before it (ACWR edges from `coach_load.ts`, the runner's recent weekly volume before week 1). A week newly in the **high** band rejects the set; a week newly **elevated**, or two hard sessions newly on adjacent days, needs a second confirmation. Saved through `updatePlanWorkout` / `updatePlanWeek` / `markWorkoutSkipped`.
+- **Consent**: AI disclosure **v4** (`AI_DISCLOSURE_VERSION_PLAN_EDIT_AI`, migration `20270825000001`, § 1980); an older acceptance gets the `ai_disclosure_required` 403 and the page links to Settings → Account.
+- **Cost**: one AI Coach message from the shared daily counter, refunded on a refusal, a missing tool call or a provider error; the consent check, the plan read (404 not yours, 409 nothing to change) come first so they spend nothing (§ 1981).
+- **Prod gate**: `PUBLIC_AI_PLAN_EDIT_ENABLED` (default off) hides the option and also needs `PUBLIC_COACH_ENABLED`; the endpoint answers 503 unless the coach Lambda's `AI_PLAN_EDIT_ENABLED` (a `coach_config_keys` entry) is truthy. **Pre-deploy sign-offs:** owner + counsel on the liability surface (a model proposing changes to a saved plan); counsel / CISO on the v4 disclosure copy and the privacy policy's Anthropic description — the copy one gates the deploy carrying the migration, not just the flag flip.
+- **From the Coach**: with the server flag on, `planEditHandoffAddendum` makes the Coach answer a plan-change request with one `[Adjust my plan](/plans/<id>?adjust=…)` link to the plan in its context. `/plans/<id>?adjust=<text>` opens Adjust with AI prefilled, runs it once and drops the parameter.
+- **Mobile**: web-only (§ 24). A Coach plan-edit link tapped on the phone opens the web plan page in the browser (`coachPlanAdjustWebUri` in `coach_screen.dart`).
 
 ## Surfaces (Android, v1)
 

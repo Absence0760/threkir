@@ -6583,7 +6583,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get coachConsentIntro =>
-      'As funcionalidades de IA da Threkir — o Coach, o assistente de rotas com IA e o assistente de planos com IA — enviam uma parte dos seus dados à Anthropic, o nosso fornecedor de modelos de IA nos Estados Unidos. Consoante a funcionalidade utilizada, essa parte inclui:';
+      'As funcionalidades de IA da Threkir — o Coach, o assistente de rotas com IA, o assistente de planos com IA e os ajustes de plano com IA — enviam uma parte dos seus dados à Anthropic, o nosso fornecedor de modelos de IA nos Estados Unidos. Consoante a funcionalidade utilizada, essa parte inclui:';
 
   @override
   String get coachConsentBulletProfile =>
@@ -6608,6 +6608,10 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get coachConsentBulletPlanRequest =>
       'Para o assistente de planos com IA: a descrição do plano que escreve (prova-alvo, tempos-alvo e recentes, quantos dias pode treinar), usada apenas para preencher as definições do plano — o plano em si é criado pelo gerador próprio da Threkir, não pela IA.';
+
+  @override
+  String get coachConsentBulletPlanEdit =>
+      'Para os ajustes de plano com IA: os próximos treinos do plano que está a alterar (datas, tipos e distâncias) e a alteração que escreve, usados apenas para sugerir alterações que revê antes de qualquer gravação — a IA não pode adicionar treinos nem definir ritmos.';
 
   @override
   String get coachConsentProcessing =>
@@ -7003,7 +7007,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get settingsAccountAiConsentUpdateSubtitle =>
-      'As informações passaram a abranger mais funcionalidades. Leia-as e aceite-as para utilizar os assistentes de rotas e de planos com IA.';
+      'As informações passaram a abranger mais funcionalidades. Leia-as e aceite-as para utilizar os assistentes de rotas e de planos com IA e os ajustes de plano com IA.';
 
   @override
   String get settingsAccountAiConsentGrantTitle => 'Ver as informações de IA';
@@ -22512,7 +22516,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get coachConsentIntro =>
-      'Os recursos de IA do Threkir — o Coach, o assistente de rotas com IA e o assistente de planos com IA — enviam uma parte dos seus dados à Anthropic, nosso provedor de modelos de IA nos Estados Unidos. Dependendo do recurso que você usa, essa parte inclui:';
+      'Os recursos de IA do Threkir — o Coach, o assistente de rotas com IA, o assistente de planos com IA e os ajustes de plano com IA — enviam uma parte dos seus dados à Anthropic, nosso provedor de modelos de IA nos Estados Unidos. Dependendo do recurso que você usa, essa parte inclui:';
 
   @override
   String get coachConsentBulletProfile =>
@@ -22537,6 +22541,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get coachConsentBulletPlanRequest =>
       'Para o assistente de planos com IA: a descrição do plano que você digita (prova-alvo, tempos-alvo e recentes, quantos dias você pode treinar), usada apenas para preencher as configurações do plano — o plano em si é criado pelo gerador próprio do Threkir, não pela IA.';
+
+  @override
+  String get coachConsentBulletPlanEdit =>
+      'Para os ajustes de plano com IA: os próximos treinos do plano que você está alterando (datas, tipos e distâncias) e a alteração que você digita, usados apenas para sugerir mudanças que você revisa antes de qualquer coisa ser salva — a IA não pode adicionar treinos nem definir ritmos.';
 
   @override
   String get coachConsentProcessing =>
@@ -22929,7 +22937,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get settingsAccountAiConsentUpdateSubtitle =>
-      'As informações agora cobrem mais recursos. Leia-as e aceite-as para usar os assistentes de rotas e de planos com IA.';
+      'As informações agora cobrem mais recursos. Leia-as e aceite-as para usar os assistentes de rotas e de planos com IA e os ajustes de plano com IA.';
 
   @override
   String get settingsAccountAiConsentGrantTitle => 'Ver as informações de IA';

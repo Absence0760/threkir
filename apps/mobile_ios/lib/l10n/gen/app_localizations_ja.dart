@@ -6217,7 +6217,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get coachConsentIntro =>
-      'ThrekirのAI機能（コーチ、AIルートアシスタント、AIプランアシスタント）は、あなたのデータの一部を、米国のAIモデルプロバイダーである Anthropic に送信します。利用する機能に応じて、その一部には以下が含まれます：';
+      'ThrekirのAI機能（コーチ、AIルートアシスタント、AIプランアシスタント、AIプラン調整）は、あなたのデータの一部を、米国のAIモデルプロバイダーである Anthropic に送信します。利用する機能に応じて、その一部には以下が含まれます：';
 
   @override
   String get coachConsentBulletProfile => '生年月日、性別、設定済みの心拍ゾーン。';
@@ -6238,6 +6238,10 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get coachConsentBulletPlanRequest =>
       'AIプランアシスタント利用時: 入力したプランの説明（目標レース、目標タイムと最近のタイム、トレーニングできる日数）。プラン設定の入力にのみ使用し、プラン自体はAIではなくThrekir独自のジェネレーターが作成します。';
+
+  @override
+  String get coachConsentBulletPlanEdit =>
+      'AIプラン調整利用時: 変更するプランの今後のワークアウト（日付、種類、距離）と入力した変更内容。保存前に確認する変更案の作成にのみ使用し、AIがワークアウトを追加したりペースを設定したりすることはありません。';
 
   @override
   String get coachConsentProcessing =>
@@ -6607,7 +6611,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get settingsAccountAiConsentUpdateSubtitle =>
-      '説明の対象となる機能が増えました。内容を確認して同意すると、AIルートアシスタントとAIプランアシスタントを利用できます。';
+      '説明の対象となる機能が増えました。内容を確認して同意すると、AIルートアシスタント、AIプランアシスタント、AIプラン調整を利用できます。';
 
   @override
   String get settingsAccountAiConsentGrantTitle => 'AIの説明を確認する';

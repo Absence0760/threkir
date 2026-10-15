@@ -156,14 +156,18 @@ void main() {
       await tester.tap(find.text(_reviewTile));
       await tester.pumpAndSettle();
 
-      // The dialog must show the WIDENED copy — the route and plan bullets
-      // are the whole reason a v1 or v2 acceptance is not enough.
+      // The dialog must show the WIDENED copy — the route, plan and plan-edit
+      // bullets are the whole reason an older acceptance is not enough.
       expect(
         find.textContaining('For the AI route assistant:'),
         findsOneWidget,
       );
       expect(
         find.textContaining('For the AI plan assistant:'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('For AI plan edits:'),
         findsOneWidget,
       );
 
@@ -192,6 +196,16 @@ void main() {
     testWidgets('a v2 route-AI acceptance is offered the plan-assistant '
         'disclosure and keeps its withdrawal', (tester) async {
       final api = _ConsentApi(storedVersion: kAiDisclosureVersionRouteAi);
+      await _pumpSettings(tester, api);
+
+      await _scrollTo(tester, find.text(_updateTile));
+      expect(find.text(_withdrawTile), findsOneWidget);
+      expect(find.text(_reviewTile), findsNothing);
+    });
+
+    testWidgets('a v3 plan-assistant acceptance is offered the plan-edit '
+        'disclosure and keeps its withdrawal', (tester) async {
+      final api = _ConsentApi(storedVersion: kAiDisclosureVersionPlanAi);
       await _pumpSettings(tester, api);
 
       await _scrollTo(tester, find.text(_updateTile));
@@ -280,6 +294,10 @@ void main() {
       );
       expect(
         find.textContaining('For the AI plan assistant:'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('For AI plan edits:'),
         findsOneWidget,
       );
 

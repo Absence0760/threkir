@@ -28,6 +28,7 @@ class AiDisclosureNotice extends StatelessWidget {
       l10n.coachConsentBulletMessages,
       l10n.coachConsentBulletRoutes,
       l10n.coachConsentBulletPlanRequest,
+      l10n.coachConsentBulletPlanEdit,
     ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

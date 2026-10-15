@@ -10,6 +10,7 @@
 
 import type { RequestHandler } from './$types';
 import {
+	PUBLIC_AI_PLAN_EDIT_ENABLED,
 	PUBLIC_AI_PLAN_ENABLED,
 	PUBLIC_COACH_FUEL_ENABLED,
 	PUBLIC_SUPABASE_ANON_KEY,
@@ -107,6 +108,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		bypassPaywallEnabled,
 		aiPlanEnabled: isTruthyFlagValue(PUBLIC_AI_PLAN_ENABLED),
 		fuelHandoffEnabled: isTruthyFlagValue(PUBLIC_COACH_FUEL_ENABLED),
+		aiPlanEditEnabled: isTruthyFlagValue(PUBLIC_AI_PLAN_EDIT_ENABLED),
 	});
 
 	if (result.kind === 'json') {

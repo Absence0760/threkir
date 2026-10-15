@@ -59,6 +59,9 @@ Fully functional web launch with backups intact.
   Coach's fuelling handoff to `/nutrition/fuel`, decisions § 1975) stay unset
   until the owner + counsel sign-off in `race_fueling_plan.md` lands; they add
   no model call, only prompt text and a deterministic page.
+  `PUBLIC_AI_PLAN_EDIT_ENABLED` (Adjust with AI on `/plans/[id]`, same key and
+  counter) stays unset the same way until its decisions § 1979 sign-off and the
+  v4 disclosure copy sign-off land.
 - No mobile stores.
 
 ### Rock-bottom — ~$10–11/mo (coach off) — SELECTED 2026-07-02, DEPLOYED 2026-07-11

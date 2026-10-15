@@ -24,6 +24,8 @@ export const COACH_BODY_LIMIT_BYTES = 256 * 1024;
 export const ROUTE_DESCRIBE_BODY_LIMIT_BYTES = 32 * 1024;
 export const ROUTE_REQUEST_BODY_LIMIT_BYTES = 16 * 1024;
 export const PLAN_REQUEST_BODY_LIMIT_BYTES = 16 * 1024;
+// A plan id and one short change request; the plan itself is read server-side.
+export const PLAN_EDIT_BODY_LIMIT_BYTES = 16 * 1024;
 
 export type BodyDecodeResult =
 	| { ok: true; body: string }

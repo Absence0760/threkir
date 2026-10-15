@@ -12,6 +12,7 @@ export const variables = defineEnvVars({
 	PUBLIC_SUPABASE_ANON_KEY: { public: true, static: true },
 
 	PUBLIC_ADAPTIVE_FITNESS_GATE: { public: true, schema: optional },
+	PUBLIC_AI_PLAN_EDIT_ENABLED: { public: true, schema: optional },
 	PUBLIC_AI_PLAN_ENABLED: { public: true, schema: optional },
 	PUBLIC_APPLE_AUTH_ENABLED: { public: true, schema: optional },
 	PUBLIC_APP_RELEASE: { public: true, schema: optional },

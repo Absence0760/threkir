@@ -142,10 +142,11 @@ test.describe('AI-processing consent — gate, record, withdraw, re-engage', () 
 			const dialog = page.locator('.coach-consent');
 			await expect(dialog).toBeVisible({ timeout: 15_000 });
 			// The rendered copy must name every rung the recorded version
-			// covers — accepting v3 over copy that omits the plan assistant
+			// covers — accepting v4 over copy that omits plan edits
 			// would record a consent that was never actually disclosed.
 			await expect(dialog).toContainText('For the AI route assistant:');
 			await expect(dialog).toContainText('For the AI plan assistant:');
+			await expect(dialog).toContainText('For AI plan edits:');
 			// Render-gated, not disabled: the composer does not exist yet.
 			await expect(page.getByPlaceholder(/Ask about today/)).toHaveCount(0);
 			expect(coachCalls).toBe(0);

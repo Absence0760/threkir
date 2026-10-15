@@ -56,7 +56,7 @@ void main() {
       }
     });
 
-    test('the v3 acceptance satisfies every scope', () {
+    test('the v3 acceptance satisfies every scope below plan edits', () {
       const record = AiDisclosureRecord(
         version: kAiDisclosureVersionPlanAi,
         acceptedAt: _accepted,
@@ -69,6 +69,42 @@ void main() {
         final check = checkAiDisclosure(record, minimum);
         expect(check.ok, isTrue);
         expect(check.version, 3);
+      }
+    });
+
+    test('no acceptance below v4 satisfies the plan-edit scope', () {
+      // Plan edits send the active plan with the runner's change request so
+      // the model can propose changes to it. The v1 copy names the plan, but
+      // for the Coach to comment on; a new purpose is a new rung
+      // (decisions § 571).
+      for (final version in [
+        kAiDisclosureVersionCoach,
+        kAiDisclosureVersionRouteAi,
+        kAiDisclosureVersionPlanAi,
+      ]) {
+        final check = checkAiDisclosure(
+          AiDisclosureRecord(version: version, acceptedAt: _accepted),
+          kAiDisclosureVersionPlanEditAi,
+        );
+        expect(check.ok, isFalse);
+        expect(check.reason, AiDisclosureDenial.stale);
+      }
+    });
+
+    test('the v4 acceptance satisfies every scope', () {
+      const record = AiDisclosureRecord(
+        version: kAiDisclosureVersionPlanEditAi,
+        acceptedAt: _accepted,
+      );
+      for (final minimum in [
+        kAiDisclosureVersionCoach,
+        kAiDisclosureVersionRouteAi,
+        kAiDisclosureVersionPlanAi,
+        kAiDisclosureVersionPlanEditAi,
+      ]) {
+        final check = checkAiDisclosure(record, minimum);
+        expect(check.ok, isTrue);
+        expect(check.version, 4);
       }
     });
 
@@ -154,7 +190,9 @@ void main() {
       expect(kAiDisclosureVersionCoach, lessThan(kAiDisclosureVersionRouteAi));
       expect(
           kAiDisclosureVersionRouteAi, lessThan(kAiDisclosureVersionPlanAi));
-      expect(kAiDisclosureCurrentVersion, kAiDisclosureVersionPlanAi);
+      expect(kAiDisclosureVersionPlanAi,
+          lessThan(kAiDisclosureVersionPlanEditAi));
+      expect(kAiDisclosureCurrentVersion, kAiDisclosureVersionPlanEditAi);
     });
 
     test('matches ai_disclosure_current_version() in SQL', () {

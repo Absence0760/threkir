@@ -63,6 +63,9 @@
  *     PUBLIC_COACH_ENABLED off renders /nutrition/fuel with nothing linking
  *     to it (the Coach writes the only link), so the CLI names that state in
  *     a `::notice::` too.
+ *   - PUBLIC_AI_PLAN_EDIT_ENABLED the same way: on with
+ *     PUBLIC_COACH_ENABLED off, the "Adjust with AI" option on /plans/[id]
+ *     stays hidden, and the CLI says so.
  *
  * NOT enforced (intentional):
  *   - PUBLIC_REVENUECAT_WEB_PORTAL_URL — the manage-subscription portal
@@ -292,6 +295,14 @@ export function checkProductionEnv(env) {
 	if (isTruthyFlagValue(env.PUBLIC_AI_PLAN_ENABLED) && !isTruthyFlagValue(env.PUBLIC_COACH_ENABLED)) {
 		notices.push(
 			'The AI plan assistant stays hidden: PUBLIC_AI_PLAN_ENABLED is on but PUBLIC_COACH_ENABLED is not, and /plans/new shows the box only when both are. Turn the Coach on as well, or unset PUBLIC_AI_PLAN_ENABLED.',
+		);
+	}
+	if (
+		isTruthyFlagValue(env.PUBLIC_AI_PLAN_EDIT_ENABLED) &&
+		!isTruthyFlagValue(env.PUBLIC_COACH_ENABLED)
+	) {
+		notices.push(
+			'AI plan edits stay hidden: PUBLIC_AI_PLAN_EDIT_ENABLED is on but PUBLIC_COACH_ENABLED is not, and /plans/[id] shows "Adjust with AI" only when both are. Turn the Coach on as well, or unset PUBLIC_AI_PLAN_EDIT_ENABLED.',
 		);
 	}
 

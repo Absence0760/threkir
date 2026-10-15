@@ -58,6 +58,7 @@ test('release-web.yml runs the production-env guard before npm run build', () =>
 		'PUBLIC_AI_PLAN_ENABLED',
 		// Same: named in a ::notice:: when on without the Coach flag.
 		'PUBLIC_COACH_FUEL_ENABLED',
+		'PUBLIC_AI_PLAN_EDIT_ENABLED',
 	]) {
 		assert.match(
 			env,

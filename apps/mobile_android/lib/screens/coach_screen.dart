@@ -156,6 +156,37 @@ String? coachFuelLinkWebUrl(String href, {String? webBase}) {
   final target = Uri.parse('$base/nutrition/fuel');
   return (kept.isEmpty ? target : target.replace(queryParameters: kept))
       .toString();
+
+final RegExp _planIdPath = RegExp(
+    r'^/plans/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+
+/// The web page a Coach plan-edit link should open, or null when [href] is not
+/// one. With AI plan edits live the Coach answers "move my long run to Sunday"
+/// with `[Adjust my plan](/plans/<id>?adjust=…)`. The feature is web-only
+/// (decisions § 24, § 1979), so the phone hands the link to the browser on
+/// [webBase] rather than tapping a dead link. Only a same-origin plan path is
+/// recognised, and only the `adjust` parameter is carried, re-encoded.
+@visibleForTesting
+Uri? coachPlanAdjustWebUri(String href, String webBase) {
+  final uri = Uri.tryParse(href);
+  if (uri == null || uri.hasScheme || uri.hasAuthority) return null;
+  if (!_planIdPath.hasMatch(uri.path)) return null;
+  String adjust;
+  try {
+    adjust = uri.queryParameters['adjust'] ?? '';
+  } catch (_) {
+    adjust = '';
+  }
+  adjust = adjust.trim();
+  if (adjust.isEmpty) return null;
+  final base = Uri.tryParse(webBase.replaceAll(RegExp(r'/$'), ''));
+  if (base == null || !(base.scheme == 'https' || base.scheme == 'http')) {
+    return null;
+  }
+  return base.replace(
+    path: uri.path,
+    queryParameters: {'adjust': adjust},
+  );
 }
 
 /// AI Coach chat. Mirrors `apps/web/src/lib/components/CoachChat.svelte`
@@ -987,6 +1018,16 @@ class _CoachScreenState extends State<CoachScreen> {
             mode: LaunchMode.externalApplication);
       } catch (e) {
         debugPrint('coach fuelling link tap failed: $e');
+      }
+      return;
+    }
+    final adjustUri = coachPlanAdjustWebUri(
+        href, dotenv.env['WEB_BASE_URL'] ?? 'https://threkir.com');
+    if (adjustUri != null) {
+      try {
+        await launchUrl(adjustUri, mode: LaunchMode.externalApplication);
+      } catch (e) {
+        debugPrint('coach plan-edit link tap failed: $e');
       }
       return;
     }

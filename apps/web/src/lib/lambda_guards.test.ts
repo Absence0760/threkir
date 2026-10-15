@@ -74,6 +74,16 @@ test('both /api/coach wrappers read the fuelling-handoff flag from its own gate'
 	assert.match(dev, /fuelHandoffEnabled\s*:\s*isTruthyFlagValue\(PUBLIC_COACH_FUEL_ENABLED\)/);
 });
 
+test('both /api/coach wrappers read the plan-edit handoff flag from the AI plan-edit gate', () => {
+	// The coach links into AI plan edits only when the edit endpoint is live;
+	// each wrapper must read the same flag that endpoint reads.
+	const lambda = stripComments(read('lambda/coach/src/index.ts'));
+	assert.match(lambda, /aiPlanEditEnabled\s*:\s*isTruthyFlagValue\(process\.env\.AI_PLAN_EDIT_ENABLED\)/);
+	assert.match(lambda, /enabled\s*:\s*isTruthyFlagValue\(process\.env\.AI_PLAN_EDIT_ENABLED\)/);
+	const dev = stripComments(read('src/routes/api/coach/+server.ts'));
+	assert.match(dev, /aiPlanEditEnabled\s*:\s*isTruthyFlagValue\(PUBLIC_AI_PLAN_EDIT_ENABLED\)/);
+});
+
 test('RouteBuilder sends the generate JWT in `x-supabase-authorization`, not `Authorization`', () => {
 	// Reason: same collision as the coach clients — the production Lambda
 	// Function URL is AWS_IAM-auth and CloudFront's OAC signs `Authorization`
@@ -110,6 +120,7 @@ test('every web POST through a CloudFront Lambda behavior sends the sigv4 payloa
 		'src/lib/routes/route_describe_client.ts',
 		'src/lib/routes/route_request_client.ts',
 		'src/lib/training/plan_request_client.ts',
+		'src/lib/training/plan_edit_client.ts',
 	]) {
 		const source = read(path);
 		assert.match(

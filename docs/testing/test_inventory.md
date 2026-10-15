@@ -97,7 +97,7 @@ Static source-level guards on the recorder package itself: no banned imports, no
 
 The structured-workout step engine — step expansion (warmup → reps → recovery → cooldown), auto-advance, halfway / last-50 m progress signals, skip / abandon, and pace-adherence "wayBehind" classification. See [workout_execution.md](../features/workout_execution.md) for the runner state machine + UI contract.
 
-### `packages/run_recorder/test/geolocator_platform_fake_test.dart` — 25 tests
+### `packages/run_recorder/test/geolocator_platform_fake_test.dart` — 26 tests
 
 Closes the documented "typed errors thrown from `prepare()`" gap. Replaces `GeolocatorPlatform.instance` with a fake that extends `GeolocatorPlatform` (so `PlatformInterface.verify` passes) and exposes setters for `serviceEnabled` / `permissionState` / `requestPermissionResult` plus an `emit(Position)` and `emitError(Object)` method that pushes through the live position stream. The error-path tests cover `LocationServiceDisabledError` when services are off, `LocationPermissionDeniedError(forever: false)` when the request returns denied, and `LocationPermissionDeniedError(forever: true)` when permission is denied-forever — plus the "already granted" path that skips the request. The happy-path tests cover `prepare()` opening the position stream, positions flowing through the filter chain (pre-begin updates the dot but not the track; post-begin first fix becomes the track anchor; subsequent fixes accumulate distance), stream `onError` not crashing the recorder, and `dispose()` cancelling the subscription so subsequent emits don't extend the track.
 
@@ -277,7 +277,7 @@ Covers the universal-bag and device-bag overlay logic on `SettingsSyncService` v
 
 **Sign-out account reset (3 tests):** issue #231 — bag-mirrored `Preferences` reset to defaults, the prior user's cached bags dropped when the id is known, idempotent with no cache / no prior id.
 
-### `apps/mobile_android/test/run_screen_recording_flow_test.dart` — 49 tests
+### `apps/mobile_android/test/run_screen_recording_flow_test.dart` — 52 tests
 
 Drives the full RunScreen UI flow on top of the existing data-pipeline integration test. Adds a mock-everything setUp that closes every platform-channel surface RunScreen touches when transitioning out of idle:
 
@@ -557,7 +557,7 @@ The centre button's long-press start-options sheet (decisions § 1892, § 1897):
 
 The minimum-data account on every mobile surface that derives a number from a run (issue #1161 round 3): run detail, a history row, the history list sorted fastest-first, and Home's card stack, each fed a 10 s / 3 m run over a two-point, one-point or empty track, a 0 m run with a one-point or empty track, and a 0 s / 0 m run, in km and in mi, as a run and as a ride, and on Home under a weekly goal on every target, once for every fixture and once for a week of only 0 m runs. Each case asserts no exception, the honest missing-value spelling (`--:--` for a pace, `--` for a speed), and a clean text sweep. The sweep is `test/rendered_text_sweep.dart`: it collects every `RichText`, `EditableText`, `Semantics` label and `Tooltip` message, offstage included, and fails on `NaN`, `Infinity`, `∞` or a negative zero (`-0`, `-0.00`, `-0:00`, U+2212 too) while letting a date, `UTC-0`, `-0.05` and a `-0:30` delta through; the suite's first two tests pin that pattern so a sweep that matches nothing cannot pass silently. The surfaces are pumped on a 400 × 9000 surface so every lazily-built list child is laid out and swept. Nine declarations, 41 cases once the fixture loops expand.
 
-### `apps/mobile_ios/test/` — 665 files, byte-for-byte
+### `apps/mobile_ios/test/` — 666 files, byte-for-byte
 
 After the April 2026 mobile-codebase unification, `apps/mobile_ios/test/` is kept identical to `apps/mobile_android/test/` via `diff -rq`. Every test file documented above runs on the iOS target too **locally** — `melos run test` has no scope filter — but **not in CI**: the `test-packages` job scopes `melos exec` to `run_recorder`, `mobile_android`, `api_client`, `gpx_parser`, `ui_kit` and `core_models`, and `mobile_ios` is not among them. That is not a gap for byte-identical Dart, but it is why a test gated on an `ios/` file being present asserts nothing on any CI run — two such groups existed and were removed in favour of `scripts/check_ios_native_declarations.mjs` (decisions.md § 742). Per-target counts: `flutter test` compiles separately, so each test file is executed twice when you run both apps locally. Don't add iOS-specific test files — every test belongs in both apps. The architecture-guard tests under `apps/mobile_android/test/architecture_guards_test.dart` read `lib/screens/run_screen.dart` from the working directory, so they pin the same invariants on both targets.
 

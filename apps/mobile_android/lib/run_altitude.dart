@@ -77,8 +77,9 @@ double computeRunElevationLoss(List<Waypoint> track, RunSource? source) {
 /// carries it — which is the batch rule run to completion, so the live figure
 /// and the finished run's agree.
 class RunElevationGainAccumulator {
-  final ElevationGainAccumulator _gps =
-      ElevationGainAccumulator(minDeltaM: kElevationGainGpsMinDeltaM);
+  final ElevationGainAccumulator _gps = ElevationGainAccumulator(
+    minDeltaM: kElevationGainGpsMinDeltaM,
+  );
   final ElevationGainAccumulator _baro = ElevationGainAccumulator();
   bool _sawBaro = false;
 

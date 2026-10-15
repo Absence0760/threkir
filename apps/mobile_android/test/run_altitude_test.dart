@@ -8,24 +8,33 @@ import '../lib/run_altitude.dart';
 // helpers are.
 void main() {
   Waypoint pt(int i, [double? ele, double? baroEle]) => Waypoint(
-        lat: 47.37,
-        lng: 8.54 + i * 0.0001,
-        elevationMetres: ele,
-        baroElevationMetres: baroEle,
-      );
+    lat: 47.37,
+    lng: 8.54 + i * 0.0001,
+    elevationMetres: ele,
+    baroElevationMetres: baroEle,
+  );
 
   // GPS altitude wandering 8 m up and back down, three times: no real climb.
   final gpsWander = [
-    for (final (i, e) in [400.0, 408.0, 400.0, 408.0, 400.0, 408.0, 400.0]
-        .indexed)
+    for (final (i, e) in [
+      400.0,
+      408.0,
+      400.0,
+      408.0,
+      400.0,
+      408.0,
+      400.0,
+    ].indexed)
       pt(i, e),
   ];
 
   group('runAltitude', () {
     test('a phone run without a barometer is gated at the GPS band', () {
       expect(kElevationGainGpsMinDeltaM, 10);
-      expect(runAltitude(gpsWander, RunSource.app).minDeltaM,
-          kElevationGainGpsMinDeltaM);
+      expect(
+        runAltitude(gpsWander, RunSource.app).minDeltaM,
+        kElevationGainGpsMinDeltaM,
+      );
       expect(computeRunElevationGain(gpsWander, RunSource.app), 0);
       final climb = [
         for (final (i, e) in [400.0, 411.0, 422.0, 433.0].indexed) pt(i, e),
@@ -40,8 +49,10 @@ void main() {
         RunSource.watch,
         null,
       ]) {
-        expect(runAltitude(gpsWander, source).minDeltaM,
-            kElevationGainMinDeltaM);
+        expect(
+          runAltitude(gpsWander, source).minDeltaM,
+          kElevationGainMinDeltaM,
+        );
         expect(computeRunElevationGain(gpsWander, source), 24);
       }
     });
@@ -60,14 +71,21 @@ void main() {
       expect(computeRunElevationGain(track, RunSource.app), 9);
     });
 
-    test('a point without a barometric reading is a dropout, not a GPS splice',
-        () {
-      final track = [pt(0, 400, 300), pt(1, 480), pt(2, 490), pt(3, 400, 305)];
-      final alt = runAltitude(track, RunSource.app);
-      expect(alt.track[1].elevationMetres, isNull);
-      expect(alt.track[2].elevationMetres, isNull);
-      expect(computeRunElevationGain(track, RunSource.app), 5);
-    });
+    test(
+      'a point without a barometric reading is a dropout, not a GPS splice',
+      () {
+        final track = [
+          pt(0, 400, 300),
+          pt(1, 480),
+          pt(2, 490),
+          pt(3, 400, 305),
+        ];
+        final alt = runAltitude(track, RunSource.app);
+        expect(alt.track[1].elevationMetres, isNull);
+        expect(alt.track[2].elevationMetres, isNull);
+        expect(computeRunElevationGain(track, RunSource.app), 5);
+      },
+    );
 
     test('without a barometer the track is the input, untouched', () {
       final alt = runAltitude(gpsWander, RunSource.app);

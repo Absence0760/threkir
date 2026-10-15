@@ -54,6 +54,24 @@ test('runAltitude — a barometric series wins over GPS at the route band', () =
 	assert.equal(computeRunElevationGain(track, 'app'), 9);
 });
 
+test('runAltitude — a realistic barometric hill reads its climb where GPS altitude overstates it', () => {
+	// Up 40 m, down 20, up 20 over 81 fixes: 60 m of real climb. The barometer
+	// jitters 0.4 m; GPS altitude sits 100 m off it and wanders 16 m over
+	// twenty-fix stretches.
+	const hill = (i: number) => (i <= 40 ? i : i <= 60 ? 80 - i : i - 40);
+	const track: TrackPoint[] = [];
+	const gpsOnly: TrackPoint[] = [];
+	for (let i = 0; i <= 80; i++) {
+		const baro = 300 + hill(i) + ((i % 3) - 1) * 0.4;
+		const gps = baro + 100 + (i % 20 < 10 ? 8 : -8);
+		track.push(pt(i, gps, baro));
+		gpsOnly.push(pt(i, gps));
+	}
+	assert.equal(runAltitude(track, 'app').barometric, true);
+	assert.ok(Math.abs(computeRunElevationGain(track, 'app') - 57) < 1e-9);
+	assert.ok(Math.abs(computeRunElevationGain(gpsOnly, 'app') - 77.8) < 1e-9);
+});
+
 test('runAltitude — a point without a barometric reading is a dropout, not a GPS splice', () => {
 	const track = [pt(0, 400, 300), pt(1, 480), pt(2, 490), pt(3, 400, 305)];
 	const alt = runAltitude(track, 'app');

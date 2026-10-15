@@ -71,6 +71,34 @@ void main() {
       expect(computeRunElevationGain(track, RunSource.app), 9);
     });
 
+    test('a realistic barometric hill reads its climb where GPS altitude '
+        'overstates it', () {
+      // Up 40 m, down 20, up 20 over 81 fixes: 60 m of real climb. The
+      // barometer jitters 0.4 m; GPS altitude sits 100 m off it and wanders
+      // 16 m over twenty-fix stretches.
+      double hill(int i) =>
+          (i <= 40
+                  ? i
+                  : i <= 60
+                  ? 80 - i
+                  : i - 40)
+              .toDouble();
+      final track = <Waypoint>[];
+      final gpsOnly = <Waypoint>[];
+      for (var i = 0; i <= 80; i++) {
+        final baro = 300 + hill(i) + ((i % 3) - 1) * 0.4;
+        final gps = baro + 100 + (i % 20 < 10 ? 8 : -8);
+        track.add(pt(i, gps, baro));
+        gpsOnly.add(pt(i, gps));
+      }
+      expect(runAltitude(track, RunSource.app).barometric, isTrue);
+      expect(computeRunElevationGain(track, RunSource.app), closeTo(57, 1e-9));
+      expect(
+        computeRunElevationGain(gpsOnly, RunSource.app),
+        closeTo(77.8, 1e-9),
+      );
+    });
+
     test(
       'a point without a barometric reading is a dropout, not a GPS splice',
       () {

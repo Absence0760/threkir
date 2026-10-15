@@ -339,10 +339,10 @@ The club side has had (2) since the cap tests were written — all four specs th
 
 Playwright compiles `**/auth/v1/user` to `^(.*/)auth/v1/user$`. It does not match `/auth/v1/user?redirect_to=…`, which is what `supabase.auth.updateUser(…, { emailRedirectTo })` actually sends. Nothing reports the miss: the request goes to the real server, the stub's body is never used, and any `expect(sawRequest).toBe(false)` beside it is scored against a handler nothing invoked.
 
-`tests-e2e/fixtures/mock-route.ts` is the instrument. Take `test` from it, take `mockRoute` off the fixture object, and pass the routing target first:
+`tests-e2e/fixtures/mock-route.ts` is the instrument. Take `test` from the crash net (`fixtures/test`, § 11), which extends it, take `mockRoute` off the fixture object, and pass the routing target first:
 
 ```ts
-import { expect, test } from '../fixtures/mock-route';
+import { expect, test } from '../fixtures/test';
 
 test('…', async ({ page, mockRoute }) => {
 	await mockRoute(page, '**/api/coach', (route) => route.fulfill({ … }));
@@ -391,6 +391,8 @@ test.use({ crashNet: { allow: [{ match: 'each_key_duplicate', reason: '#1234, fi
 ```
 
 Prefer `allow` — it excuses only the matching crash, and an entry that excused nothing in the test fails it, so it cannot outlive the bug it was written for. `CRASH_NET=report` logs instead of failing (a `crash-net` test annotation, plus a `::warning` annotation on GitHub Actions); unset or `fail` fails, anything else throws. CI runs every Playwright lane with `CRASH_NET=report` for the report-only pass of #1161; flip it by deleting those `env` lines in `ci.yml` ([decisions § 1943](../architecture/decisions.md)). `cross-cutting/crash-net.spec.ts` pins `mode: 'fail'` and proves each detector bites; `fixtures/crash-net.test.ts` (web unit suite) covers the classification and the opt-out validation.
+
+**Adoption is enforced.** Every spec in the tree takes `test` from `fixtures/test` (the codemod of #1161 round 2 moved 542 files: the specs that imported it from `@playwright/test` and the ones that imported it from `mock-route`). `fixtures/crash-net-adoption.test.ts` (web unit suite) fails the PR when any file under `tests-e2e/` imports a runtime `test` from `@playwright/test` or from `fixtures/mock-route`, and when a `.spec.ts` imports none from `fixtures/test`. Type imports (`Page`, `Locator`, `BrowserContext`, …) and other values (`chromium`, `devices`) from `@playwright/test` are fine. Its `DIRECT_IMPORT_ALLOWED` list names only the two fixture layers, each with a reason, and an entry whose file is gone or no longer imports directly fails as stale. A spec that must crash does not go on that list: it opts out in the spec with `crashNet.off` or `crashNet.allow`, where a reviewer sees it and every run annotates it ([decisions § 1946](../architecture/decisions.md)).
 
 ---
 

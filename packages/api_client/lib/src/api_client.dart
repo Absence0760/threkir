@@ -2195,6 +2195,7 @@ class ApiClient {
         if (w.baroElevationMetres != null) 'baroEle': w.baroElevationMetres,
         if (w.cumulativeDistanceMetres != null)
           'distM': w.cumulativeDistanceMetres,
+        if (w.offTrack) 'offTrack': true,
       };
 
   static Waypoint _waypointFromJson(Map<String, dynamic> m) => Waypoint(
@@ -2211,6 +2212,7 @@ class ApiClient {
         smoothedLng: (m['smoothedLng'] as num?)?.toDouble(),
         baroElevationMetres: (m['baroEle'] as num?)?.toDouble(),
         cumulativeDistanceMetres: (m['distM'] as num?)?.toDouble(),
+        offTrack: m['offTrack'] == true,
       );
 
   /// Auto-link helper: ask the DB which of the user's saved routes

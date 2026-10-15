@@ -212,6 +212,41 @@ void main() {
       );
     });
 
+    test('an off-track fix round-trips as offTrack: true, an on-track one omits it',
+        () {
+      const w = Waypoint(
+          lat: 47.37, lng: 8.54, accuracyMetres: 38, cumulativeDistanceMetres: 90,
+          offTrack: true);
+      final json = ApiClient.debugWaypointToJson(w);
+      expect(json['offTrack'], isTrue);
+      final back = ApiClient.debugWaypointFromJson(
+          jsonDecode(jsonEncode(json)) as Map<String, dynamic>);
+      expect(back.offTrack, isTrue);
+      expect(back.cumulativeDistanceMetres, 90);
+      expect(
+        ApiClient.debugWaypointToJson(const Waypoint(lat: 1, lng: 2))
+            .containsKey('offTrack'),
+        isFalse,
+      );
+      expect(
+        ApiClient.debugWaypointFromJson(const {'lat': 1, 'lng': 2}).offTrack,
+        isFalse,
+      );
+    });
+
+    test('the uploaded track blob keeps off-track fixes in order, flagged', () {
+      final blob = ApiClient.debugTrackBlobJson(const [
+        Waypoint(lat: 47.37, lng: 8.54, cumulativeDistanceMetres: 0),
+        Waypoint(
+            lat: 47.3703, lng: 8.54, cumulativeDistanceMetres: 33, offTrack: true),
+        Waypoint(lat: 47.3706, lng: 8.54, cumulativeDistanceMetres: 66),
+      ]);
+      final points = (jsonDecode(blob) as List).cast<Map<String, dynamic>>();
+      expect(points.map((p) => p['offTrack']), [null, true, null]);
+      expect(points.map((p) => p['distM']), [0, 33, 66]);
+      expect(points[0].containsKey('offTrack'), isFalse);
+    });
+
     test('the uploaded track blob carries baroEle on every fix that has one',
         () {
       final blob = ApiClient.debugTrackBlobJson(const [

@@ -1754,7 +1754,7 @@ func (c *SupabaseClient) FetchExportProfile(ctx context.Context, userID string) 
 	// archive that disagrees with the controller's own account.
 	//
 	q.Set("select", "id,display_name,handle,avatar_url,preferred_unit,created_at,onboarded_at,"+
-		"date_of_birth,gender,height_cm,parkrun_number,"+
+		"date_of_birth,gender,height_cm,parkrun_number,profile_private,"+
 		"subscription_tier,subscription_at,billing_issue_at,"+
 		"terms_accepted_at,age_confirmed_at,coach_consent_at,health_data_consent_at,ai_disclosure_version")
 	q.Set("limit", "1")

@@ -503,7 +503,7 @@ export const BACKUP_VERSION = 1;
 /// degrades to `GenericStringError[]` at the call site.
 // prettier-ignore
 export const PROFILE_SELECT =
-	'id,display_name,handle,avatar_url,preferred_unit,created_at,onboarded_at,date_of_birth,gender,height_cm,parkrun_number,subscription_tier,subscription_at,billing_issue_at,terms_accepted_at,age_confirmed_at,coach_consent_at,health_data_consent_at,ai_disclosure_version';
+	'id,display_name,handle,avatar_url,preferred_unit,created_at,onboarded_at,date_of_birth,gender,height_cm,parkrun_number,profile_private,subscription_tier,subscription_at,billing_issue_at,terms_accepted_at,age_confirmed_at,coach_consent_at,health_data_consent_at,ai_disclosure_version';
 
 /// Strip `id` from the profile so the archive is re-homeable —
 /// restore stamps the new owner's uid. Mirrors the Go worker's

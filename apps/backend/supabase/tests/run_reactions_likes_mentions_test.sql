@@ -1,4 +1,4 @@
--- Pins 20270823000001 (decisions § 1971): run reactions, comment likes and
+-- Pins 20270826000001 (decisions § 1971): run reactions, comment likes and
 -- comment @mentions.
 --
 -- Every write gate is driven through a real authenticated JWT, not by calling

@@ -54,7 +54,7 @@ Deno.test('buildBackupSpecs covers the Go worker table set', () => {
 	// New-device sign-in alerts (migration 20270804000002) added sign_in_devices.
 	// Nutrition programming P1 (migration 20270815000001) added nutrition_plans
 	// + nutrition_plan_assignments. Reactions and comment likes (migration
-	// 20270823000001) added run_reactions + run_comment_likes, each on both
+	// 20270826000001) added run_reactions + run_comment_likes, each on both
 	// legs (left by the subject + received on their runs / comments).
 	assertEquals(specs.length, 72, `expected 72 specs, got ${specs.length}`);
 	const entries = new Set(specs.map((s) => s.entry));

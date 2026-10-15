@@ -1,6 +1,6 @@
 // @mentions in run comments (decisions § 1971). TS↔Dart parity pair with
 // apps/mobile_android/lib/mentions.dart, and the client half of
-// private.extract_mention_handles (migration 20270823000001): the same rule
+// private.extract_mention_handles (migration 20270826000001): the same rule
 // decides what the server notifies and what the clients draw as a mention.
 //
 // A mention is `@` followed by a § 269 handle — 3 to 30 of [A-Za-z0-9_] — that

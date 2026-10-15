@@ -42,7 +42,7 @@
 -- No new index is built on the populated notifications table.
 --
 -- The notifications_kind_check widen is the DROP + ADD ... NOT VALID half only;
--- its VALIDATE is 20270823000002 in its own transaction
+-- its VALIDATE is 20270826000002 in its own transaction
 -- (docs/backend/migration_locks.md § CHECK constraints).
 
 -- ─────────────── 1. run_reactions ───────────────

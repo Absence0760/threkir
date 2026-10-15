@@ -1,5 +1,5 @@
 // The mobile inbox half of reactions, comment likes and mentions
-// (migration 20270823000001, decisions § 1971). Each kind must read its own
+// (migration 20270826000001, decisions § 1971). Each kind must read its own
 // sentence with the actor's name, never the generic fallback.
 
 import 'package:api_client/api_client.dart';

@@ -48,6 +48,11 @@ class _RunPhotosState extends State<RunPhotos> with WidgetsBindingObserver {
   final _pendingCaptionCtrl = TextEditingController();
   XFile? _pending;
   List<RunPhotoRow> _photos = const [];
+  // The run's race link and visibility, for the owner's "Show on race page"
+  // toggle. Null until loaded, and left null when the read fails, which
+  // hides the toggle rather than offering one that cannot reflect the run.
+  ({bool isPublic, String? raceListingId})? _raceContext;
+  final Set<String> _raceBusy = <String>{};
   // storage_path → (url, signedAtMs). Populated at _load() and after
   // _uploadPending(). The bucket is private (migration 20260712_001
   // closed the public-CDN bypass), so getPublicUrl no longer returns
@@ -109,6 +114,7 @@ class _RunPhotosState extends State<RunPhotos> with WidgetsBindingObserver {
 
   Future<void> _load() async {
     setState(() => _loading = true);
+    if (_canManage) _loadRaceContext();
     try {
       final ps = await widget.api.fetchRunPhotos(widget.runId);
       await _signPaths(_pathsToSign(ps));
@@ -120,6 +126,41 @@ class _RunPhotosState extends State<RunPhotos> with WidgetsBindingObserver {
     } catch (_) {
       if (!mounted) return;
       setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _loadRaceContext() async {
+    try {
+      final ctx = await widget.api.fetchRunRaceGalleryContext(widget.runId);
+      if (!mounted) return;
+      setState(() => _raceContext = ctx);
+    } catch (e) {
+      debugPrint('run photos race context failed: $e');
+    }
+  }
+
+  bool get _hasRaceLink => _canManage && _raceContext?.raceListingId != null;
+
+  Future<void> _toggleRaceGallery(RunPhotoRow p) async {
+    if (_raceBusy.contains(p.id)) return;
+    final next = !p.raceGallery;
+    setState(() => _raceBusy.add(p.id));
+    try {
+      await widget.api.setRunPhotoRaceGallery(p.id, shared: next);
+      if (!mounted) return;
+      setState(() {
+        _photos = _photos
+            .map((q) => q.id == p.id ? q.copyWith(raceGallery: next) : q)
+            .toList();
+      });
+    } catch (e) {
+      debugPrint('run photos race gallery error: $e');
+      if (!mounted) return;
+      final l10n = AppLocalizations.of(context);
+      showTopBanner(
+          context, l10n.runPhotosRaceGalleryError(friendlyError(l10n, e)));
+    } finally {
+      if (mounted) setState(() => _raceBusy.remove(p.id));
     }
   }
 
@@ -281,17 +322,13 @@ class _RunPhotosState extends State<RunPhotos> with WidgetsBindingObserver {
       await widget.api.updateRunPhotoCaption(photoId: id, caption: value);
       if (!mounted) return;
       setState(() {
+        // Through toJson so a cleared caption can become null (copyWith
+        // cannot express that) without dropping the thumbnail or the
+        // race-page flag.
         _photos = _photos
             .map((p) => p.id == id
-                ? RunPhotoRow(
-                    id: p.id,
-                    runId: p.runId,
-                    ownerId: p.ownerId,
-                    storagePath: p.storagePath,
-                    caption: value,
-                    positionIdx: p.positionIdx,
-                    createdAt: p.createdAt,
-                  )
+                ? RunPhotoRow.fromJson(
+                    {...p.toJson(), RunPhotoRow.colCaption: value})
                 : p)
             .toList();
       });
@@ -425,6 +462,27 @@ class _RunPhotosState extends State<RunPhotos> with WidgetsBindingObserver {
               ],
             ),
           ),
+        if (_hasRaceLink && _photos.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.emoji_events_outlined,
+                    size: 16, color: cs.onSurfaceVariant),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    _raceContext!.isPublic
+                        ? l10n.runPhotosRaceGalleryHint
+                        : l10n.runPhotosRaceGalleryPrivate,
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                ),
+              ],
+            ),
+          ),
         if (_photos.isNotEmpty)
           GridView.builder(
             shrinkWrap: true,
@@ -537,6 +595,10 @@ class _RunPhotosState extends State<RunPhotos> with WidgetsBindingObserver {
                   tooltip: l10n.runPhotosEditCaption,
                   onPressed: () => _startEdit(p),
                 ),
+                if (_hasRaceLink) ...[
+                  const SizedBox(width: 4),
+                  _raceToggle(p, l10n),
+                ],
                 const SizedBox(width: 4),
                 _circleBtn(
                   icon: Icons.delete_outline,
@@ -550,15 +612,38 @@ class _RunPhotosState extends State<RunPhotos> with WidgetsBindingObserver {
     );
   }
 
+  Widget _raceToggle(RunPhotoRow p, AppLocalizations l10n) {
+    final shared = p.raceGallery;
+    // A private run's photo can still be withdrawn; it just cannot be added.
+    final enabled =
+        !_raceBusy.contains(p.id) && (shared || _raceContext!.isPublic);
+    final tooltip = shared
+        ? l10n.runPhotosRaceGalleryHide
+        : _raceContext!.isPublic
+            ? l10n.runPhotosRaceGalleryShow
+            : l10n.runPhotosRaceGalleryPrivate;
+    return Semantics(
+      toggled: shared,
+      enabled: enabled,
+      child: _circleBtn(
+        icon: shared ? Icons.emoji_events : Icons.emoji_events_outlined,
+        tooltip: tooltip,
+        onPressed: enabled ? () => _toggleRaceGallery(p) : null,
+        color: shared ? Theme.of(context).colorScheme.primary : null,
+      ),
+    );
+  }
+
   Widget _circleBtn({
     required IconData icon,
     required String tooltip,
-    required VoidCallback onPressed,
+    required VoidCallback? onPressed,
+    Color? color,
   }) {
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: Colors.black54,
+        color: color ?? Colors.black54,
         shape: const CircleBorder(),
         child: InkWell(
           customBorder: const CircleBorder(),
@@ -566,7 +651,9 @@ class _RunPhotosState extends State<RunPhotos> with WidgetsBindingObserver {
           child: SizedBox(
             width: 30,
             height: 30,
-            child: Icon(icon, size: 16, color: Colors.white),
+            child: Icon(icon,
+                size: 16,
+                color: onPressed == null ? Colors.white54 : Colors.white),
           ),
         ),
       ),

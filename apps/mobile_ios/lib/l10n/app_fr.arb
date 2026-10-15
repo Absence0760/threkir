@@ -4563,5 +4563,10 @@
   "routeDetailSendDmSending": "Envoi…",
   "routeDetailSendDmSent": "Itinéraire envoyé à {name}.",
   "routeDetailSendDmOpenThread": "Ouvrir la conversation",
-  "routeDetailSendDmDone": "Terminé"
+  "routeDetailSendDmDone": "Terminé",
+  "runPhotosRaceGalleryShow": "Afficher sur la page de la course",
+  "runPhotosRaceGalleryHide": "Retirer de la page de la course",
+  "runPhotosRaceGalleryHint": "Touchez la médaille d'une photo pour l'afficher sur la page publique de cette course. Tout le monde peut voir cette page, et vous pouvez retirer une photo à tout moment.",
+  "runPhotosRaceGalleryPrivate": "Rendez cette activité publique pour partager ses photos sur la page de la course.",
+  "runPhotosRaceGalleryError": "Impossible de mettre à jour la page de la course : {error}"
 }

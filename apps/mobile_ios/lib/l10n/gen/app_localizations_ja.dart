@@ -15164,4 +15164,22 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get routeDetailSendDmDone => '完了';
+
+  @override
+  String get runPhotosRaceGalleryShow => 'レースページに表示';
+
+  @override
+  String get runPhotosRaceGalleryHide => 'レースページから削除';
+
+  @override
+  String get runPhotosRaceGalleryHint =>
+      '写真のメダルをタップすると、このレースの公開ページに表示されます。このページは誰でも閲覧でき、写真はいつでも取り下げられます。';
+
+  @override
+  String get runPhotosRaceGalleryPrivate => 'このランを公開すると、写真をレースページで共有できます。';
+
+  @override
+  String runPhotosRaceGalleryError(String error) {
+    return 'レースページを更新できませんでした: $error';
+  }
 }

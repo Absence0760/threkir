@@ -26252,6 +26252,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Done'**
   String get routeDetailSendDmDone;
+
+  /// Tooltip on the owner's toggle that adds a run photo to the public race-listing page
+  ///
+  /// In en, this message translates to:
+  /// **'Show on race page'**
+  String get runPhotosRaceGalleryShow;
+
+  /// Tooltip on the owner's toggle that withdraws a run photo from the public race-listing page
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from race page'**
+  String get runPhotosRaceGalleryHide;
+
+  /// Explains the race-page toggle on run photos and that the race page is public
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the medal on a photo to show it on this race\'s public page. Anyone can see that page, and you can remove a photo at any time.'**
+  String get runPhotosRaceGalleryHint;
+
+  /// Shown instead of the toggle hint, and as the disabled toggle's tooltip, while the run is private
+  ///
+  /// In en, this message translates to:
+  /// **'Make this run public to share its photos on the race page.'**
+  String get runPhotosRaceGalleryPrivate;
+
+  /// Banner when adding a photo to, or removing it from, the race page fails
+  ///
+  /// In en, this message translates to:
+  /// **'Could not update the race page: {error}'**
+  String runPhotosRaceGalleryError(String error);
 }
 
 class _AppLocalizationsDelegate

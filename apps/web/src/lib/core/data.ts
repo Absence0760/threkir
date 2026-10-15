@@ -7432,6 +7432,10 @@ export interface RunPhoto {
 	/// Set when the photo is tagged to an event gallery (#49).
 	event_id: string | null;
 	event_instance_start: string | null;
+	/// The owner opted this photo into the public race-listing page
+	/// (`set_run_photo_race_gallery`, decisions § 1961). Shown there only
+	/// while the run is public and linked to that listing.
+	race_gallery: boolean;
 	url: string;
 	thumbUrl: string | null;
 }
@@ -7449,7 +7453,7 @@ export interface RunPhoto {
 /// `event_gallery_photos` (20270807000003), returns a hidden photo only to its
 /// owner and the event's stewards — RLS alone cannot, because a photo on a
 /// public run is readable through the run path.
-export interface EventPhoto extends Omit<RunPhoto, 'run_id'> {
+export interface EventPhoto extends Omit<RunPhoto, 'run_id' | 'race_gallery'> {
 	uploader_name: string | null;
 	hidden_at: string | null;
 }
@@ -7619,6 +7623,63 @@ export async function setEventPhotoHidden(photoId: string, hidden: boolean): Pro
 	const { error } = await supabase.rpc('set_event_photo_hidden', {
 		p_photo_id: photoId,
 		p_hidden: hidden,
+	});
+	if (error) throw dbError(error);
+}
+
+/// A runner's photo on a public race-listing page. Deliberately carries no
+/// run id, owner id or original-file URL: the page is logged-out and indexed,
+/// so it shows the processed thumbnail and the uploader's public name only.
+export interface RaceListingPhoto {
+	id: string;
+	thumbUrl: string;
+	caption: string | null;
+	createdAt: string;
+	displayName: string | null;
+}
+
+/// Opted-in photos for a race listing (`race_listing_photos`, decisions
+/// § 1961). The RPC applies every visibility rule — opt-in, public run linked
+/// to this listing, processed thumbnail, not hidden — so the client filters
+/// nothing. A failure resolves to `[]` and is logged: the race page is
+/// logged-out, and an empty gallery is hidden rather than shown as an error.
+export async function fetchRaceListingPhotos(
+	listingId: string,
+	limit = 24,
+): Promise<RaceListingPhoto[]> {
+	const { data, error } = await supabase.rpc(
+		'race_listing_photos',
+		{ p_listing_id: listingId, p_limit: limit },
+		{ get: true },
+	);
+	if (error) {
+		console.error('fetchRaceListingPhotos failed', error);
+		return [];
+	}
+	const rows = data ?? [];
+	if (rows.length === 0) return [];
+	const signed = await signRunPhotoPaths(rows.map((r) => r.thumb_512_path));
+	const out: RaceListingPhoto[] = [];
+	for (const r of rows) {
+		const thumbUrl = signed[r.thumb_512_path];
+		if (!thumbUrl) continue;
+		out.push({
+			id: r.id,
+			thumbUrl,
+			caption: (r.caption as string | null) ?? null,
+			createdAt: r.created_at,
+			displayName: (r.display_name as string | null) ?? null,
+		});
+	}
+	return out;
+}
+
+/// Show one of the caller's run photos on its race-listing page, or withdraw
+/// it. Owner-only, enforced by the RPC.
+export async function setRunPhotoRaceGallery(photoId: string, shared: boolean): Promise<void> {
+	const { error } = await supabase.rpc('set_run_photo_race_gallery', {
+		p_photo_id: photoId,
+		p_shared: shared,
 	});
 	if (error) throw dbError(error);
 }

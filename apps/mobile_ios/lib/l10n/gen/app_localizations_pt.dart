@@ -6777,15 +6777,15 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get coachSuggestBuildHalfPlan =>
-      'Cria-me um plano de treino para uma meia maratona';
+      'Crie-me um plano de treino para uma meia maratona';
 
   @override
   String get coachSuggestBuildFirst5kPlan =>
-      'Cria-me um plano para principiantes para correr os meus primeiros 5 km';
+      'Crie-me um plano para principiantes para correr os meus primeiros 5 km';
 
   @override
   String get coachSuggestPlanNextRace =>
-      'Ajuda-me a planear a minha próxima prova';
+      'Ajude-me a planear a minha próxima prova';
 
   @override
   String get coachEditMessageLabel => 'Editar a sua mensagem';
@@ -15913,6 +15913,25 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get routeDetailSendDmDone => 'Concluído';
+
+  @override
+  String get runPhotosRaceGalleryShow => 'Mostrar na página da prova';
+
+  @override
+  String get runPhotosRaceGalleryHide => 'Remover da página da prova';
+
+  @override
+  String get runPhotosRaceGalleryHint =>
+      'Toque na medalha de uma fotografia para a mostrar na página pública desta prova. Qualquer pessoa pode ver essa página e pode remover uma fotografia a qualquer momento.';
+
+  @override
+  String get runPhotosRaceGalleryPrivate =>
+      'Torne esta corrida pública para partilhar as fotografias na página da prova.';
+
+  @override
+  String runPhotosRaceGalleryError(String error) {
+    return 'Não foi possível atualizar a página da prova: $error';
+  }
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -31809,4 +31828,23 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get routeDetailSendDmDone => 'Concluído';
+
+  @override
+  String get runPhotosRaceGalleryShow => 'Mostrar na página da prova';
+
+  @override
+  String get runPhotosRaceGalleryHide => 'Remover da página da prova';
+
+  @override
+  String get runPhotosRaceGalleryHint =>
+      'Toque na medalha de uma foto para mostrá-la na página pública desta prova. Qualquer pessoa pode ver essa página, e você pode remover uma foto a qualquer momento.';
+
+  @override
+  String get runPhotosRaceGalleryPrivate =>
+      'Torne esta corrida pública para compartilhar as fotos na página da prova.';
+
+  @override
+  String runPhotosRaceGalleryError(String error) {
+    return 'Não foi possível atualizar a página da prova: $error';
+  }
 }

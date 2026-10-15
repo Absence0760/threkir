@@ -4563,5 +4563,10 @@
   "routeDetailSendDmSending": "Wird gesendet…",
   "routeDetailSendDmSent": "Route an {name} gesendet.",
   "routeDetailSendDmOpenThread": "Unterhaltung öffnen",
-  "routeDetailSendDmDone": "Fertig"
+  "routeDetailSendDmDone": "Fertig",
+  "runPhotosRaceGalleryShow": "Auf der Rennseite zeigen",
+  "runPhotosRaceGalleryHide": "Von der Rennseite entfernen",
+  "runPhotosRaceGalleryHint": "Tippe auf die Medaille eines Fotos, um es auf der öffentlichen Seite dieses Rennens zu zeigen. Diese Seite kann jeder sehen, und du kannst ein Foto jederzeit wieder entfernen.",
+  "runPhotosRaceGalleryPrivate": "Mach diesen Lauf öffentlich, um seine Fotos auf der Rennseite zu teilen.",
+  "runPhotosRaceGalleryError": "Rennseite konnte nicht aktualisiert werden: {error}"
 }

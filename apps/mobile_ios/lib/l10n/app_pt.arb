@@ -1870,9 +1870,9 @@
   "coachSuggestNewFirstFeel": "Como deve ser a sensação da minha primeira corrida?",
   "coachSuggestNewHowOften": "Com que frequência devo correr como iniciante?",
   "coachSuggestNewWalkRun": "Não faz mal caminhar durante as corridas?",
-  "coachSuggestBuildHalfPlan": "Cria-me um plano de treino para uma meia maratona",
-  "coachSuggestBuildFirst5kPlan": "Cria-me um plano para principiantes para correr os meus primeiros 5 km",
-  "coachSuggestPlanNextRace": "Ajuda-me a planear a minha próxima prova",
+  "coachSuggestBuildHalfPlan": "Crie-me um plano de treino para uma meia maratona",
+  "coachSuggestBuildFirst5kPlan": "Crie-me um plano para principiantes para correr os meus primeiros 5 km",
+  "coachSuggestPlanNextRace": "Ajude-me a planear a minha próxima prova",
   "coachEditMessageLabel": "Editar a sua mensagem",
   "coachEditCancel": "Cancelar",
   "coachEditSaveResend": "Guardar e reenviar",
@@ -4563,5 +4563,10 @@
   "routeDetailSendDmSending": "A enviar…",
   "routeDetailSendDmSent": "Rota enviada para {name}.",
   "routeDetailSendDmOpenThread": "Abrir conversa",
-  "routeDetailSendDmDone": "Concluído"
+  "routeDetailSendDmDone": "Concluído",
+  "runPhotosRaceGalleryShow": "Mostrar na página da prova",
+  "runPhotosRaceGalleryHide": "Remover da página da prova",
+  "runPhotosRaceGalleryHint": "Toque na medalha de uma fotografia para a mostrar na página pública desta prova. Qualquer pessoa pode ver essa página e pode remover uma fotografia a qualquer momento.",
+  "runPhotosRaceGalleryPrivate": "Torne esta corrida pública para partilhar as fotografias na página da prova.",
+  "runPhotosRaceGalleryError": "Não foi possível atualizar a página da prova: {error}"
 }

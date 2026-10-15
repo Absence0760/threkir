@@ -299,7 +299,13 @@ e2e-tested without standing up the Lambda.
 - **Events**: JSON-LD `location` is the club's coarse `location_label`
   only — never the precise `meet_lat/meet_lng` (§147).
 - **Races**: only `location_label` is surfaced; the `location_point`
-  geometry is never selected.
+  geometry is never selected. The "Runners' photos" section is loaded in the
+  browser (`fetchRaceListingPhotos` → `race_listing_photos`), never by the
+  lookup the `share-entity` Lambda runs, so no runner's photo, caption or name
+  reaches the `<head>` or an unfurl card. A photo shows only when its owner
+  opted it in and its run is public and linked to the listing; the page gets
+  the processed thumbnail, caption, date and display name — no run id, owner
+  id, original file or track (decisions § 1961).
 - **Workouts**: read only through the redacted `public_gym_workouts` +
   `public_gym_sets` views (migrations 20270313_001 / 20270327_001), which omit
   `gym_workouts.notes` (1000 chars of free text) and per-set `rpe`. The meta

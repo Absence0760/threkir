@@ -4029,6 +4029,7 @@ export type Database = {
           id: string
           owner_id: string
           position_idx: number
+          race_gallery: boolean
           run_id: string | null
           storage_path: string
           thumb_512_path: string | null
@@ -4043,6 +4044,7 @@ export type Database = {
           id?: string
           owner_id: string
           position_idx?: number
+          race_gallery?: boolean
           run_id?: string | null
           storage_path: string
           thumb_512_path?: string | null
@@ -4057,6 +4059,7 @@ export type Database = {
           id?: string
           owner_id?: string
           position_idx?: number
+          race_gallery?: boolean
           run_id?: string | null
           storage_path?: string
           thumb_512_path?: string | null
@@ -6558,6 +6561,16 @@ export type Database = {
         Args: { p_club_id: string; p_routine_id: string }
         Returns: string
       }
+      race_listing_photos: {
+        Args: { p_limit?: number; p_listing_id: string }
+        Returns: {
+          caption: string
+          created_at: string
+          display_name: string
+          id: string
+          thumb_512_path: string
+        }[]
+      }
       race_pending_dnf_count: {
         Args: { p_event_id: string; p_instance_start: string }
         Returns: number
@@ -6946,6 +6959,10 @@ export type Database = {
       set_run_expected_return: {
         Args: { p_expected_return_at: string; p_run_id: string }
         Returns: boolean
+      }
+      set_run_photo_race_gallery: {
+        Args: { p_photo_id: string; p_shared: boolean }
+        Returns: undefined
       }
       set_safety_sms_opt_in: {
         Args: { p_id: string; p_opt_in: boolean }

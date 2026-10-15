@@ -20132,5 +20132,30 @@
   "routeDetailSendDmDone": "Done",
   "@routeDetailSendDmDone": {
     "description": "Closes the send-a-route sheet after a send"
+  },
+  "runPhotosRaceGalleryShow": "Show on race page",
+  "@runPhotosRaceGalleryShow": {
+    "description": "Tooltip on the owner's toggle that adds a run photo to the public race-listing page"
+  },
+  "runPhotosRaceGalleryHide": "Remove from race page",
+  "@runPhotosRaceGalleryHide": {
+    "description": "Tooltip on the owner's toggle that withdraws a run photo from the public race-listing page"
+  },
+  "runPhotosRaceGalleryHint": "Tap the medal on a photo to show it on this race's public page. Anyone can see that page, and you can remove a photo at any time.",
+  "@runPhotosRaceGalleryHint": {
+    "description": "Explains the race-page toggle on run photos and that the race page is public"
+  },
+  "runPhotosRaceGalleryPrivate": "Make this run public to share its photos on the race page.",
+  "@runPhotosRaceGalleryPrivate": {
+    "description": "Shown instead of the toggle hint, and as the disabled toggle's tooltip, while the run is private"
+  },
+  "runPhotosRaceGalleryError": "Could not update the race page: {error}",
+  "@runPhotosRaceGalleryError": {
+    "description": "Banner when adding a photo to, or removing it from, the race page fails",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
   }
 }

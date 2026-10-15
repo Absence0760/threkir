@@ -98,6 +98,7 @@ insert into anon_callable (fn, why) values
   ('public_profile_by_id',            '/share/profile and the logged-out /live/[id]'),
   ('public_recap_by_id',              '/share/recap'),
   ('public_run_gear',                 'public run page'),
+  ('race_listing_photos',             '/share/race page'),
   ('route_conditions_for_viewer',     'public route page'),
   ('route_markers_for_viewer',        'public route page'),
   ('routes_within_box',               'logged-out map discovery'),

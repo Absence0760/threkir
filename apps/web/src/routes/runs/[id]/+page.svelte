@@ -1375,7 +1375,9 @@
 	// when the preference flips. pace_s stays sec/km; the cell converts.
 	let splitsAreMiles = $derived(getUnit() === 'mi');
 	let splits = $derived(
-		run?.track ? computeRealSplits(run.track, splitsAreMiles ? METRES_PER_MILE : 1000) : []
+		run?.track
+			? computeRealSplits(run.track, splitsAreMiles ? METRES_PER_MILE : 1000, run.distance_m)
+			: []
 	);
 
 	/// First-half vs second-half pacing, and the same comparison on

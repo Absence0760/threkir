@@ -476,4 +476,116 @@ void main() {
     expect(computeSplitDurations(real, -1000, start), isEmpty);
     expect(computeSplitDurations(real, double.nan, start), isEmpty);
   });
+
+  // The recorder's cumulative credited distance as the split and moving-time
+  // axis. Same cases as the trackCumulativeMetres / recorded-track tests in
+  // web's run_stats.test.ts.
+  group('recorded distance axis', () {
+    final start = DateTime.utc(2026, 4, 1, 7);
+    Waypoint at(double lngM, int s, {double? distM, double? smoothedLngM}) =>
+        Waypoint(
+          lat: 0,
+          lng: lngM / 111320,
+          timestamp: start.add(Duration(seconds: s)),
+          cumulativeDistanceMetres: distM,
+          smoothedLat: smoothedLngM == null ? null : 0,
+          smoothedLng: smoothedLngM == null ? null : smoothedLngM / 111320,
+        );
+
+    test('reads the recorded distance, scaled so the last point is the run '
+        'distance', () {
+      final t = [
+        at(0, 0, distM: 0),
+        at(410, 100, distM: 400),
+        at(790, 200, distM: 800),
+        at(1010, 250, distM: 1000),
+      ];
+      expect(trackCumulativeMetres(t), [0, 400, 800, 1000]);
+      expect(trackCumulativeMetres(t, totalDistanceMetres: 1100),
+          [0, 440, 880, 1100]);
+      expect(trackCumulativeMetres(t, totalDistanceMetres: null),
+          [0, 400, 800, 1000]);
+      expect(trackCumulativeMetres(t, totalDistanceMetres: 0),
+          [0, 400, 800, 1000]);
+      expect(trackCumulativeMetres(t, totalDistanceMetres: double.nan),
+          [0, 400, 800, 1000]);
+    });
+
+    test('positions unless every point carries a non-decreasing distance', () {
+      final missing = [at(0, 0, distM: 0), at(100, 30), at(200, 60, distM: 200)];
+      final backwards = [
+        at(0, 0, distM: 0),
+        at(100, 30, distM: 120),
+        at(200, 60, distM: 110),
+      ];
+      final negative = [at(0, 0, distM: -1), at(100, 30, distM: 100)];
+      for (final t in [missing, backwards, negative]) {
+        expect(hasRecordedDistances(t), isFalse);
+        final cum = trackCumulativeMetres(t, totalDistanceMetres: 5000);
+        expect(cum.last, closeTo(haversineMetres(0, 0, 0, t.last.lng), 0.01));
+      }
+      expect(hasRecordedDistances([at(0, 0, distM: 0)]), isFalse);
+      expect(
+          hasRecordedDistances([at(0, 0, distM: 0), at(100, 30, distM: 100)]),
+          isTrue);
+      expect(trackCumulativeMetres(const []), isEmpty);
+    });
+
+    test('the position fallback measures the smoothed line, else raw', () {
+      final smoothed = [
+        at(0, 0, smoothedLngM: 0),
+        at(100, 30, smoothedLngM: 60),
+      ];
+      expect(trackCumulativeMetres(smoothed, totalDistanceMetres: 5000)[1],
+          closeTo(60, 0.1));
+      expect(trackCumulativeMetres([at(0, 0), at(100, 30)])[1],
+          closeTo(100, 0.1));
+    });
+
+    test('a recorded track splits on its distance and ends on the run '
+        'distance', () {
+      // 2.5 m/s for 2120 s, a fix every 2 s, raw positions zig-zagging 12 m
+      // across the line. The estimator credited 5300 m to the last stored fix
+      // and the run saved 5312 m.
+      final pts = [
+        for (var i = 0; i <= 1060; i++)
+          Waypoint(
+            lat: (i.isEven ? 6 : -6) / 111320,
+            lng: i * 5 / 111320,
+            timestamp: start.add(Duration(seconds: i * 2)),
+            cumulativeDistanceMetres: i * 5.0,
+          ),
+      ];
+      final splits =
+          computeSplitDurations(pts, 1000, start, totalDistanceMetres: 5312);
+      expect(splits, hasLength(5));
+      for (final s in splits) {
+        expect(s.duration.inMilliseconds / 1000, closeTo(399.1, 1));
+      }
+      final unscaled = computeSplitDurations(pts, 1000, start);
+      for (final s in unscaled) {
+        expect(s.duration.inMilliseconds / 1000, closeTo(400, 0.01));
+      }
+      final raw = computeSplitDurations(
+        [for (final w in pts) w.withCumulativeDistance(null)],
+        1000,
+        start,
+        totalDistanceMetres: 5312,
+      );
+      expect(raw.length, greaterThan(7), reason: 'raw zig-zag reads long');
+    });
+
+    test('a stop the estimator held still is not moving time', () {
+      // Raw fixes wander 5 m a second while the runner stands; the recorder
+      // credited nothing over those 60 s.
+      final pts = [
+        for (var i = 0; i <= 60; i++) at(i.isEven ? 0 : 5, i, distM: 100),
+      ];
+      expect(movingTimeOf(pts), Duration.zero);
+      expect(
+        movingTimeOf([for (final w in pts) w.withCumulativeDistance(null)]),
+        const Duration(seconds: 60),
+      );
+    });
+  });
 }

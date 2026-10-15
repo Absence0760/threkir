@@ -2362,7 +2362,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     // interpolate a boundary crossing inside a long inter-fix gap (see
     // computeSplitDurations); the previous inline loop re-used a segment's end
     // time for every boundary it crossed, emitting 0:00 phantom splits.
-    return computeSplitDurations(run.track, tickLength, run.startedAt)
+    return computeSplitDurations(run.track, tickLength, run.startedAt,
+            totalDistanceMetres: run.distanceMetres)
         .map((s) => _Split(s.tick, s.duration))
         .toList();
   }

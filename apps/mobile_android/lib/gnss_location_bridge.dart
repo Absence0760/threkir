@@ -6,7 +6,7 @@ import 'package:geolocator/geolocator.dart';
 /// The satellite receiver's own fixes on Android (`GnssLocationBridge.kt`
 /// over `run_app/gnss_location`), handed to `RunRecorder(gnssPositions:)`.
 /// Null on iOS, where CoreLocation is the only stream.
-Stream<Position> Function()? gnssPositionsForPlatform() =>
+Stream<Position> Function(Duration interval)? gnssPositionsForPlatform() =>
     Platform.isAndroid ? gnssPositions : null;
 
 const _channel = EventChannel('run_app/gnss_location');
@@ -14,9 +14,7 @@ const _channel = EventChannel('run_app/gnss_location');
 /// Opens the receiver at [interval]. A missing permission or a phone without
 /// an enabled `GPS_PROVIDER` arrives as a stream error, which the recorder
 /// treats as "no receiver" and records on the fused stream instead.
-Stream<Position> gnssPositions({
-  Duration interval = const Duration(seconds: 1),
-}) => _channel
+Stream<Position> gnssPositions(Duration interval) => _channel
     .receiveBroadcastStream(interval.inMilliseconds)
     .map((e) => positionFromGnssEvent(Map<Object?, Object?>.from(e as Map)));
 

@@ -1561,74 +1561,133 @@ void main() {
     });
 
     // GNSS fixes are told apart from fused ones by their stated accuracy.
+    // Arbitration runs on arrival time, so each helper advances the source
+    // clock to the fix's second before delivering it.
     const gnssAcc = 3.0;
     const fusedAcc = 7.0;
-    Position gnssAt(int s) =>
-        makePosition(metresEast: 5.0 * s, secondsFromStart: s, accuracy: gnssAcc);
-    Position fusedAt(int s) => makePosition(
-        metresEast: 5.0 * s, secondsFromStart: s, accuracy: fusedAcc);
+    ({RunRecorder r, void Function(int) gnss, void Function(int) fused})
+        arbitrated() {
+      final arrival = _FakeClock();
+      final r = RunRecorder(sourceClock: arrival)..debugPrepareWithoutStream();
+      void at(int s) =>
+          arrival.advance(Duration(seconds: s) - arrival.elapsed);
+      return (
+        r: r,
+        gnss: (s) {
+          at(s);
+          r.debugInjectGnssPosition(makePosition(
+              metresEast: 5.0 * s, secondsFromStart: s, accuracy: gnssAcc));
+        },
+        fused: (s) {
+          at(s);
+          r.debugInjectPosition(makePosition(
+              metresEast: 5.0 * s, secondsFromStart: s, accuracy: fusedAcc));
+        },
+      );
+    }
+
     List<double?> sources(RunRecorder r) =>
         r.debugTrack.map((w) => w.accuracyMetres).toList();
 
     test('the receiver takes the run after three steady fixes and fused stands aside',
         () {
-      final r = RunRecorder()..debugPrepareWithoutStream();
+      final (:r, :gnss, :fused) = arbitrated();
       r.begin();
-      r.debugInjectPosition(fusedAt(0));
-      r.debugInjectGnssPosition(gnssAt(0));
-      r.debugInjectGnssPosition(gnssAt(1));
-      r.debugInjectGnssPosition(gnssAt(2));
-      r.debugInjectPosition(fusedAt(3));
-      r.debugInjectGnssPosition(gnssAt(4));
+      fused(0);
+      gnss(0);
+      gnss(1);
+      gnss(2);
+      fused(3);
+      gnss(4);
       expect(sources(r), [fusedAcc, gnssAcc, gnssAcc]);
       expect(r.locationProvider, 'mixed');
     });
 
     test('a silent receiver hands the run to fused, and takes it back steady',
         () {
-      final r = RunRecorder()..debugPrepareWithoutStream();
+      final (:r, :gnss, :fused) = arbitrated();
       r.begin();
       for (final s in [0, 1, 2]) {
-        r.debugInjectGnssPosition(gnssAt(s));
+        gnss(s);
       }
-      r.debugInjectPosition(fusedAt(3)); // receiver fresh: dropped
-      r.debugInjectPosition(fusedAt(8)); // 6 s of silence: fused takes over
-      r.debugInjectGnssPosition(gnssAt(9)); // one fix is not steady yet
-      r.debugInjectPosition(fusedAt(10));
-      r.debugInjectGnssPosition(gnssAt(11));
-      r.debugInjectGnssPosition(gnssAt(12)); // third in a row: back on GNSS
-      r.debugInjectPosition(fusedAt(13));
-      r.debugInjectGnssPosition(gnssAt(14));
+      fused(10); // 8 s of silence is inside the estimator's own gap window
+      fused(15); // 13 s: fused takes over
+      gnss(16); // one fix is not steady yet
+      fused(17);
+      gnss(18);
+      gnss(19); // third in a row: back on GNSS
+      fused(20);
+      gnss(21);
       expect(sources(r), [gnssAcc, fusedAcc, fusedAcc, gnssAcc, gnssAcc]);
+    });
+
+    test('receiver fixes the accuracy gate drops do not hold fused off', () {
+      final (:r, :gnss, :fused) = arbitrated();
+      r.begin();
+      for (final s in [0, 1, 2]) {
+        gnss(s);
+      }
+      // 45 m fixes: the gate drops them, so they never count as delivering.
+      for (var s = 3; s <= 15; s++) {
+        r.debugInjectGnssPosition(makePosition(
+            metresEast: 5.0 * s, secondsFromStart: s, accuracy: 45));
+      }
+      fused(16);
+      expect(sources(r), [gnssAcc, fusedAcc]);
+    });
+
+    test('a source switch while recording opens a new estimator stretch', () {
+      final (:r, :gnss, :fused) = arbitrated();
+      r.begin();
+      expect(r.debugStretchCount, 1);
+      fused(0);
+      fused(1);
+      gnss(1);
+      gnss(2);
+      expect(r.debugStretchCount, 1);
+      gnss(3); // takes over
+      expect(r.debugStretchCount, 2);
+      fused(20); // 17 s of silence: back to fused
+      expect(r.debugStretchCount, 3);
+    });
+
+    test('the first source of a recording does not open a second stretch', () {
+      final (:r, :gnss, fused: _) = arbitrated();
+      r.begin();
+      for (var s = 0; s < 5; s++) {
+        gnss(s);
+      }
+      expect(r.debugStretchCount, 1);
     });
 
     test('a saved gps run names the stream that recorded it', () async {
       Future<Map<String, dynamic>?> record(
-          void Function(RunRecorder r) feed) async {
-        final r = RunRecorder()..debugPrepareWithoutStream();
+          void Function(void Function(int) gnss, void Function(int) fused)
+              feed) async {
+        final (:r, :gnss, :fused) = arbitrated();
         r.begin();
-        feed(r);
+        feed(gnss, fused);
         return (await r.stop()).metadata;
       }
 
       expect(
-          (await record((r) {
+          (await record((gnss, _) {
             for (var s = 0; s < 6; s++) {
-              r.debugInjectGnssPosition(gnssAt(s));
+              gnss(s);
             }
           }))?['location_provider'],
           'gps');
       expect(
-          (await record((r) {
-            r.debugInjectPosition(fusedAt(0));
-            r.debugInjectPosition(fusedAt(2));
+          (await record((_, fused) {
+            fused(0);
+            fused(2);
           }))?['location_provider'],
           'fused');
       expect(
-          (await record((r) {
-            r.debugInjectPosition(fusedAt(0));
+          (await record((gnss, fused) {
+            fused(0);
             for (var s = 1; s < 6; s++) {
-              r.debugInjectGnssPosition(gnssAt(s));
+              gnss(s);
             }
           }))?['location_provider'],
           'mixed');

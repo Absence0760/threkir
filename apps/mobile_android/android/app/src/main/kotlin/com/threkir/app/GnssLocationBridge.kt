@@ -6,28 +6,35 @@ import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
+import android.os.Build
 import android.os.Looper
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.EventChannel
 
-/// The satellite receiver's own fixes (`GPS_PROVIDER`), for the run recorder.
-/// geolocator only reaches `LocationManager` through `forceLocationManager`,
-/// which on Android 12+ picks `FUSED_PROVIDER`, and the fused provider's
-/// speed and position both blend in non-GNSS estimates (issue #1106). Dart
-/// side: `lib/gnss_location_bridge.dart` over `run_app/gnss_location`.
+/// The satellite receiver's own fixes (`GPS_PROVIDER`) for the run recorder,
+/// over `run_app/gnss_location`. The fused provider blends non-GNSS estimates
+/// into both its speed and its position, and geolocator cannot reach the
+/// receiver: its `forceLocationManager` picks `FUSED_PROVIDER` on Android 12+.
 ///
-/// The recorder keeps geolocator's fused stream open alongside this one: it
-/// carries the location foreground service that keeps the process recording
-/// in the background, and it is the fallback while the receiver is silent.
+/// The recorder keeps geolocator's fused stream open beside this one, because
+/// that stream carries the location foreground service.
 class GnssLocationBridge(private val context: Context, messenger: BinaryMessenger) :
     EventChannel.StreamHandler {
 
     private val locationManager =
         context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+    private val channel = EventChannel(messenger, "run_app/gnss_location")
     private var listener: LocationListener? = null
 
     init {
-        EventChannel(messenger, "run_app/gnss_location").setStreamHandler(this)
+        channel.setStreamHandler(this)
+    }
+
+    /// The engine going away does not guarantee an onCancel, and a listener
+    /// left registered keeps the receiver powered.
+    fun dispose() {
+        stop()
+        channel.setStreamHandler(null)
     }
 
     @SuppressLint("MissingPermission")
@@ -71,7 +78,7 @@ class GnssLocationBridge(private val context: Context, messenger: BinaryMessenge
             "lat" to l.latitude,
             "lng" to l.longitude,
             "timeMs" to l.time,
-            "mocked" to l.isFromMockProvider,
+            "mocked" to isMock(l),
         )
         if (l.hasAccuracy()) m["accuracy"] = l.accuracy.toDouble()
         if (l.hasAltitude()) m["altitude"] = l.altitude
@@ -82,4 +89,8 @@ class GnssLocationBridge(private val context: Context, messenger: BinaryMessenge
         if (l.hasBearingAccuracy()) m["bearingAccuracy"] = l.bearingAccuracyDegrees.toDouble()
         return m
     }
+
+    @Suppress("DEPRECATION")
+    private fun isMock(l: Location): Boolean =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) l.isMock else l.isFromMockProvider
 }

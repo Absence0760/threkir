@@ -131,9 +131,11 @@ class RunRecorder {
   /// platform stream is the only source (iOS). See [_onGnssPosition].
   RunRecorder({
     Stopwatch? clock,
-    Stream<Position> Function()? gnssPositions,
+    Stream<Position> Function(Duration interval)? gnssPositions,
+    @visibleForTesting Stopwatch? sourceClock,
     @visibleForTesting int maxSmoothedStretchEvents = defaultMaxSmoothedStretchEvents,
   })  : _stopwatch = clock ?? Stopwatch(),
+        _sourceClock = (sourceClock ?? Stopwatch())..start(),
         _gnssPositions = gnssPositions,
         _maxSmoothedStretchEvents = maxSmoothedStretchEvents;
 
@@ -168,16 +170,19 @@ class RunRecorder {
   // the closed snapshot sink.
   bool _disposed = false;
   StreamSubscription<Position>? _positionSub;
-  final Stream<Position> Function()? _gnssPositions;
+  final Stream<Position> Function(Duration interval)? _gnssPositions;
   StreamSubscription<Position>? _gnssSub;
-  // Source arbitration between the GNSS stream and the platform stream. See
-  // [_onGnssPosition]. Times are the fixes' own timestamps, so the decision
-  // does not depend on when the platform delivered them.
-  DateTime? _lastGnssFixAt;
+  // Source arbitration between the GNSS stream and the platform stream, on
+  // arrival time: the receiver's fix times are GNSS time and the fused
+  // provider's are not, so the two cannot be compared with each other.
+  final Stopwatch _sourceClock;
+  Duration? _lastGnssArrival;
   int _gnssStreak = 0;
   bool _onGnss = false;
   int _gnssFixesRecorded = 0;
   int _platformFixesRecorded = 0;
+  bool _feedingGnss = false;
+  DateTime? _gnssLastOpenAt;
   Timer? _timer;
   Timer? _gpsRetryTimer;
   final List<LapSplit> _laps = [];
@@ -333,12 +338,18 @@ class RunRecorder {
   // Remembered so the retry loop can re-open the position stream with the
   // same accuracy setting the caller passed to [prepare].
   LocationAccuracy _locationAccuracy = LocationAccuracy.bestForNavigation;
-  // GNSS silent this long (by fix timestamps) hands the run to the platform
-  // stream; it takes the run back after this many consecutive fixes, each
+  // A receiver silent this long hands the run to the platform stream. It is
+  // longer than the estimator's own gap window, which already bridges a
+  // shorter silence on Doppler and the pedometer, better than fused would.
+  // The receiver takes the run back after this many consecutive fixes, each
   // within the same window of the last, so a receiver flickering under
   // canopy doesn't interleave two sources fix by fix.
-  static const Duration _gnssStaleAfter = Duration(seconds: 5);
+  static const Duration _gnssStaleAfter = Duration(seconds: 12);
   static const int _gnssRetakeFixes = 3;
+  // A phone with no usable receiver errors on every open; the fused stream
+  // is already recording, so the receiver is retried slowly rather than on
+  // every retry tick.
+  static const Duration _gnssReopenInterval = Duration(seconds: 30);
   // The fix interval requested from Android, and the interval the estimator
   // scales its gap and freshness windows by. geolocator_android otherwise
   // falls back to 5000 ms, and on Android 13+ also sets that as the minimum
@@ -422,11 +433,10 @@ class RunRecorder {
   bool get backgroundLocationLimited => _backgroundLocationLimited;
   bool _backgroundLocationLimited = false;
 
-  /// Which Android stream fed this recording: `'gps'` when every fix came
-  /// from the satellite receiver, `'fused'` when every fix came from the
-  /// fused provider (no GNSS stream, or the receiver never delivered),
-  /// `'mixed'` when the run fell back to fused for part of it. Null off
-  /// Android, which has one provider. Saved as `metadata.location_provider`.
+  /// Which Android stream the recorded fixes came from: `'gps'`, `'fused'`, or
+  /// `'mixed'` when the run fell back to fused for part of it. Counts restart
+  /// at [prepare], so a resumed session describes its own fixes. Null off
+  /// Android. Saved as `metadata.location_provider`.
   String? get locationProvider {
     if (defaultTargetPlatform != TargetPlatform.android) return null;
     if (_gnssFixesRecorded > 0 && _platformFixesRecorded > 0) return 'mixed';
@@ -596,8 +606,12 @@ class RunRecorder {
   void _openGnssStream() {
     final open = _gnssPositions;
     if (_disposed || open == null || _gnssSub != null) return;
+    final now = DateTime.now();
+    final last = _gnssLastOpenAt;
+    if (last != null && now.difference(last) < _gnssReopenInterval) return;
+    _gnssLastOpenAt = now;
     try {
-      _gnssSub = open().listen(
+      _gnssSub = open(_fixInterval).listen(
         _onGnssPosition,
         onError: (Object e, StackTrace st) {
           debugPrint('RunRecorder: GNSS stream error — $e');
@@ -613,49 +627,63 @@ class RunRecorder {
   }
 
   void _resetSourceArbitration() {
-    _lastGnssFixAt = null;
+    _lastGnssArrival = null;
     _gnssStreak = 0;
     _onGnss = false;
     _gnssFixesRecorded = 0;
     _platformFixesRecorded = 0;
+    _gnssLastOpenAt = null;
   }
 
   /// A fix from the satellite receiver. Android's fused provider blends
-  /// Wi-Fi, cell and step-based estimates into both its position and its
-  /// speed, and on a field run (2026-10-15, issue #1106) its speed read 25%
-  /// over truth for the whole run while its positions read long as well, so
-  /// no filter downstream could recover the distance. The receiver's speed
-  /// is its own Doppler measurement, which is what [GpsDistanceEstimator] is
-  /// built around. Its fixes therefore win whenever it is delivering
-  /// steadily: it takes over (or back) after [_gnssRetakeFixes] consecutive
-  /// fixes, and [_onPlatformPosition] stands aside until it falls silent.
+  /// non-GNSS estimates into both its position and its speed, biased the same
+  /// way, so the estimator cannot correct one against the other; the
+  /// receiver's speed is its own Doppler. The receiver therefore wins whenever
+  /// it is delivering steadily. Only a fix the recorder would use counts as
+  /// delivering: under canopy a receiver keeps sending 30 m fixes rather than
+  /// falling silent, and those must not hold fused off.
   void _onGnssPosition(Position pos) {
-    final last = _lastGnssFixAt;
-    final steady = last != null &&
-        !pos.timestamp.isBefore(last) &&
-        pos.timestamp.difference(last) <= _gnssStaleAfter;
+    if (!_isUsableFix(pos) || !_accuracyClearsGate(pos)) {
+      if (_onGnss) _onPosition(pos);
+      return;
+    }
+    final now = _sourceClock.elapsed;
+    final last = _lastGnssArrival;
+    final steady = last != null && now - last <= _gnssStaleAfter;
     _gnssStreak = steady ? _gnssStreak + 1 : 1;
-    _lastGnssFixAt = pos.timestamp;
+    _lastGnssArrival = now;
     if (!_onGnss) {
       if (_gnssStreak < _gnssRetakeFixes) return;
-      _onGnss = true;
+      _switchSource(toGnss: true);
     }
-    if (_recording && !_paused) _gnssFixesRecorded++;
+    _feedingGnss = true;
     _onPosition(pos);
   }
 
   /// A fix from the platform's location stream: the only source on iOS, the
-  /// fallback on Android while the receiver is silent (cold start, deep
-  /// canopy, a phone without a usable GPS_PROVIDER).
+  /// fallback on Android while the receiver is silent.
   void _onPlatformPosition(Position pos) {
     if (_onGnss) {
-      final last = _lastGnssFixAt!;
-      if (pos.timestamp.difference(last) <= _gnssStaleAfter) return;
-      _onGnss = false;
-      _gnssStreak = 0;
+      final last = _lastGnssArrival!;
+      if (_sourceClock.elapsed - last <= _gnssStaleAfter) return;
+      _switchSource(toGnss: false);
     }
-    if (_recording && !_paused) _platformFixesRecorded++;
+    _feedingGnss = false;
     _onPosition(pos);
+  }
+
+  /// A source switch starts a new estimator stretch. The two sources disagree
+  /// on position by metres and on speed by up to a quarter, and the learned
+  /// Doppler scale, cross-check and accuracy scale would otherwise carry one
+  /// source's bias into the other for minutes. The stride carries over.
+  void _switchSource({required bool toGnss}) {
+    final hadFixes = _gnssFixesRecorded + _platformFixesRecorded > 0;
+    _onGnss = toGnss;
+    if (!toGnss) _gnssStreak = 0;
+    if (_recording && !_paused && hadFixes) {
+      _finishEstimatorSegment();
+      _startEstimatorSegment();
+    }
   }
 
   /// Build the per-platform [LocationSettings] for the live position stream.
@@ -1025,6 +1053,10 @@ class RunRecorder {
   /// the live geolocator subscription would use.
   @visibleForTesting
   void debugInjectPosition(Position pos) => _onPlatformPosition(pos);
+
+  /// Test-only: how many estimator stretches this recording has opened.
+  @visibleForTesting
+  int get debugStretchCount => _stretches.length;
 
   /// Test-only: push a simulated fix as though the GNSS stream delivered it.
   @visibleForTesting
@@ -1534,6 +1566,9 @@ class RunRecorder {
       return;
     }
     _weakGps = false;
+    if (_recording) {
+      _feedingGnss ? _gnssFixesRecorded++ : _platformFixesRecorded++;
+    }
     final fix = _fixQuality(pos);
 
     // Always refresh the raw current position so the blue dot updates on

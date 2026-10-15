@@ -32,7 +32,7 @@ void main() {
     final src = sources()['lib/social_service.dart']!;
     final start = src.indexOf('Future<List<ClubView>> browseClubs(');
     expect(start, greaterThanOrEqualTo(0), reason: 'browseClubs moved');
-    final fn = src.substring(start, src.indexOf('\n  /// ', start));
+    final fn = src.substring(start, src.indexOf('\n  }\n', start));
     expect(fn, contains("literalSubstringTerm('name', term)"));
     expect(fn, contains("literalSubstringTerm('location_label', term)"));
     expect(fn, isNot(contains('ilike')),

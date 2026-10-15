@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { appendPage } from '#lib/core/offset_page.ts';
 	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { siteOrigin } from '#lib/core/site_url.ts';
 	import { page } from '$app/state';
@@ -264,7 +265,7 @@
 				limit: FOLLOW_PAGE_SIZE,
 				offset: followers.length,
 			});
-			followers = [...followers, ...more];
+			followers = appendPage(followers, more, (p) => p.id);
 			followersHasMore = more.length === FOLLOW_PAGE_SIZE;
 			hydrateViewerFollows();
 		} catch (e) {
@@ -282,7 +283,7 @@
 				limit: FOLLOW_PAGE_SIZE,
 				offset: following.length,
 			});
-			following = [...following, ...more];
+			following = appendPage(following, more, (p) => p.id);
 			followingHasMore = more.length === FOLLOW_PAGE_SIZE;
 			hydrateViewerFollows();
 		} catch (e) {

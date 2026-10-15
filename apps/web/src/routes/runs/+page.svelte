@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { appendPage } from '#lib/core/offset_page.ts';
 	import { onMount } from 'svelte';
 	import { compareOrdinal } from '#lib/util/ordinal_compare.ts';
 	import { formatPace, formatDistance, sourceLabel } from '#lib/core/mock-data.ts';
@@ -433,7 +434,7 @@
 			loadingMore = false;
 			return;
 		}
-		runs = [...runs, ...res.runs];
+		runs = appendPage(runs, res.runs, (r) => r.id);
 		hasMore = res.runs.length === PAGE_SIZE;
 		loadingMore = false;
 	}

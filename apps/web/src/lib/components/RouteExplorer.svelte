@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { appendPage } from '#lib/core/offset_page.ts';
 	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { formatDistance } from '#lib/core/mock-data.ts';
@@ -103,7 +104,7 @@
 		loading = true;
 		try {
 			const more = await searchPublicRoutes(searchOptions(routes.length));
-			routes = [...routes, ...more];
+			routes = appendPage(routes, more, (r) => r.id);
 			hasMore = more.length >= PAGE_SIZE;
 		} catch (e) {
 			showToast(t('routeExplorer.searchError', { error: thrownMessage(e) }), 'error');

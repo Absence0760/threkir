@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { appendPage } from '#lib/core/offset_page.ts';
 	import { siteOrigin } from '#lib/core/site_url.ts';
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import { lengthLimit } from '#lib/core/column_limits.ts';
@@ -825,7 +826,7 @@
 				limit: ROSTER_PAGE_SIZE,
 				offset: attendees.length
 			});
-			attendees = [...attendees, ...more];
+			attendees = appendPage(attendees, more, (a) => a.user_id);
 			attendeesHasMore = more.length === ROSTER_PAGE_SIZE;
 		} catch (e) {
 			showToast(m('profile.loadMoreError', { error: thrownMessage(e) }), 'error');

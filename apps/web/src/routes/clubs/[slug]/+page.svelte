@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { appendPage } from '#lib/core/offset_page.ts';
 	import { appErrorMessage, thrownMessage } from '#lib/core/supabase_error.ts';
 	import { siteOrigin } from '#lib/core/site_url.ts';
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
@@ -245,7 +246,7 @@
 				limit: ROSTER_PAGE_SIZE,
 				offset: members.length
 			});
-			members = [...members, ...more];
+			members = appendPage(members, more, (row) => row.user_id);
 			membersHasMore = more.length === ROSTER_PAGE_SIZE;
 		} catch (e) {
 			showToast(tr('profile.loadMoreError', { error: thrownMessage(e) }), 'error');

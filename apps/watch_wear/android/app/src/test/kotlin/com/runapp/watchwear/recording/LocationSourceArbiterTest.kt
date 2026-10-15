@@ -89,6 +89,35 @@ class LocationSourceArbiterTest {
         assertTrue("25 m is inside the 30 m track gate", fix.track)
     }
 
+    @Test fun `a clean receiver fix feeds distance and enters the track`() {
+        val a = takeReceiver(LocationSourceArbiter())
+        val fix = a.onGnssFix(good, s(3), live = true)
+        assertTrue(fix.feed)
+        assertTrue(fix.track)
+    }
+
+    @Test fun `a paused canopy fix on the receiver is neither fed nor tracked`() {
+        val a = takeReceiver(LocationSourceArbiter())
+        val paused = a.onGnssFix(45.0, s(3), live = false)
+        assertFalse(paused.feed)
+        assertFalse(paused.track)
+    }
+
+    @Test fun `onReceiver follows the source holding the run, so only a receiver stretch learns stride`() {
+        val a = LocationSourceArbiter()
+        assertFalse("a session starts on fused", a.onReceiver)
+        takeReceiver(a)
+        assertTrue(a.onReceiver)
+        a.onGnssFix(45.0, s(3), live = true)
+        assertTrue("a canopy fix does not hand the run back to fused", a.onReceiver)
+        assertTrue(a.onFusedFix(s(16), live = true).feed)
+        assertFalse("fused stood in after 12 s of receiver silence", a.onReceiver)
+
+        val b = takeReceiver(LocationSourceArbiter())
+        b.reset()
+        assertFalse("a new session starts on fused again", b.onReceiver)
+    }
+
     // ─────────── fused standing in ───────────
 
     @Test fun `fused stays aside through 12 s of receiver silence and feeds after`() {

@@ -87,6 +87,36 @@ class DistanceEstimatorWiringTest {
     }
 
     @Test
+    fun `a canopy fix feeds distance and pace but stays off the track, the map and the route match`() {
+        assertTrue(gpsSrc.contains("loc.accuracy > ESTIMATOR_ACCURACY_CAP_M) continue"))
+        val onFix = body(serviceSrc, "private fun onFix(p: GpsPoint, fromReceiver: Boolean)")
+        assertTrue(onFix.contains("onGps(p, track = verdict.track)"))
+        val onGps = body(serviceSrc, "private fun onGps(p: GpsPoint, track: Boolean)")
+        val fed = onGps.indexOf("distanceEstimator.addFix(")
+        val stored = onGps.indexOf("if (track) trackWriter?.append(p, distM = newDistance)")
+        val offTrackReturn = onGps.indexOf("if (!track) {")
+        val routeMatch = onGps.indexOf("RouteMath.routeProgress(")
+        val overlay = onGps.indexOf("trackOverlay.add(posLL)")
+        assertTrue("the fix is credited before anything else", fed in 0 until stored)
+        assertTrue("an off-track fix returns before the route match", offTrackReturn in stored until routeMatch)
+        assertTrue("and before the map overlay", offTrackReturn < overlay)
+    }
+
+    @Test
+    fun `only a receiver segment learns stride`() {
+        assertTrue(
+            "every session starts on fused, which may not teach stride",
+            Regex("""GpsDistanceEstimator\(\s*GpsDistanceEstimator\.maxSpeedMpsFor\(activity\),\s*learnStride = false,""")
+                .containsMatchIn(serviceSrc),
+        )
+        val onFix = body(serviceSrc, "private fun onFix(p: GpsPoint, fromReceiver: Boolean)")
+        assertTrue(onFix.contains("closeDistanceSegment(learnStride = onReceiver)"))
+        assertTrue(onFix.contains("segment.nextSegment(learnStride = onReceiver)"))
+        val close = body(serviceSrc, "private fun closeDistanceSegment(learnStride: Boolean")
+        assertTrue(close.contains("distanceEstimator = segment.nextSegment(learnStride)"))
+    }
+
+    @Test
     fun `the finished run carries the step-filled share to the queue`() {
         val stop = body(serviceSrc, "private fun stopRecording()")
         assertTrue(stop.contains("distanceStepFilledM = stepFilledM"))

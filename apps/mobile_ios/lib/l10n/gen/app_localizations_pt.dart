@@ -11479,6 +11479,106 @@ class AppLocalizationsPt extends AppLocalizations {
   String get nutritionLogFood => 'Registar comida';
 
   @override
+  String get nutritionLogFromPhoto => 'Registar a partir de uma fotografia';
+
+  @override
+  String get platePhotoTitle => 'Registar a partir de uma fotografia';
+
+  @override
+  String get platePhotoIntro =>
+      'Tire ou escolha uma fotografia da sua refeição. O Threkir estima o que está no prato, e verifica e edita cada entrada antes de guardar.';
+
+  @override
+  String get platePhotoTakePhoto => 'Tirar fotografia';
+
+  @override
+  String get platePhotoChoosePhoto => 'Escolher fotografia';
+
+  @override
+  String get platePhotoPreviewLabel => 'A fotografia da sua refeição';
+
+  @override
+  String get platePhotoNoteLabel => 'Nota (opcional)';
+
+  @override
+  String get platePhotoNoteHint => 'p. ex.: meia dose, sem molho';
+
+  @override
+  String get platePhotoEstimate => 'Estimar';
+
+  @override
+  String get platePhotoEstimating => 'A estimar…';
+
+  @override
+  String get platePhotoEmpty =>
+      'Nenhum alimento foi reconhecido nessa fotografia. Volte atrás e tente outra, ou adicione a refeição manualmente.';
+
+  @override
+  String get platePhotoReviewHeading => 'Verifique antes de guardar';
+
+  @override
+  String get platePhotoReviewHint =>
+      'São estimativas. Edite o que parecer errado e remova o que não estiver no prato.';
+
+  @override
+  String get platePhotoMealSlot => 'Refeição';
+
+  @override
+  String get platePhotoItemName => 'Alimento';
+
+  @override
+  String platePhotoRemoveItem(String name) {
+    return 'Remover $name';
+  }
+
+  @override
+  String get platePhotoLowConfidence => 'Estimativa incerta';
+
+  @override
+  String get platePhotoCalories => 'kcal';
+
+  @override
+  String get platePhotoProtein => 'Proteínas (g)';
+
+  @override
+  String get platePhotoCarbs => 'Hidratos de carbono (g)';
+
+  @override
+  String get platePhotoFat => 'Gordura (g)';
+
+  @override
+  String platePhotoSave(int count) {
+    return 'Guardar entradas ($count)';
+  }
+
+  @override
+  String get platePhotoSaving => 'A guardar…';
+
+  @override
+  String get platePhotoErrorConsent =>
+      'O registo por fotografia do prato precisa das informações atualizadas sobre IA. Abra o Coach para as rever e aceitar.';
+
+  @override
+  String get platePhotoErrorPro =>
+      'Registar a partir de uma fotografia é uma funcionalidade Pro.';
+
+  @override
+  String get platePhotoErrorRate =>
+      'Registou muitas fotografias nesta hora. Tente mais tarde ou adicione a refeição manualmente.';
+
+  @override
+  String get platePhotoErrorInvalid =>
+      'Não foi possível ler essa imagem. Tente outra fotografia.';
+
+  @override
+  String get platePhotoErrorNotUnderstood =>
+      'Não foi possível identificar a comida nessa fotografia. Tente outra ou adicione manualmente.';
+
+  @override
+  String get platePhotoErrorUnavailable =>
+      'Registar a partir de uma fotografia não está disponível agora. Adicione a refeição manualmente.';
+
+  @override
   String get nutritionCalories => 'Calorias';
 
   @override
@@ -27421,6 +27521,106 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get nutritionLogFood => 'Registrar comida';
+
+  @override
+  String get nutritionLogFromPhoto => 'Registrar a partir de uma foto';
+
+  @override
+  String get platePhotoTitle => 'Registrar a partir de uma foto';
+
+  @override
+  String get platePhotoIntro =>
+      'Tire ou escolha uma foto da sua refeição. O Threkir estima o que há no prato, e você confere e edita cada item antes de salvar.';
+
+  @override
+  String get platePhotoTakePhoto => 'Tirar foto';
+
+  @override
+  String get platePhotoChoosePhoto => 'Escolher foto';
+
+  @override
+  String get platePhotoPreviewLabel => 'A foto da sua refeição';
+
+  @override
+  String get platePhotoNoteLabel => 'Observação (opcional)';
+
+  @override
+  String get platePhotoNoteHint => 'ex.: meia porção, sem molho';
+
+  @override
+  String get platePhotoEstimate => 'Estimar';
+
+  @override
+  String get platePhotoEstimating => 'Estimando…';
+
+  @override
+  String get platePhotoEmpty =>
+      'Nenhum alimento foi reconhecido nessa foto. Volte e tente outra, ou adicione a refeição manualmente.';
+
+  @override
+  String get platePhotoReviewHeading => 'Confira antes de salvar';
+
+  @override
+  String get platePhotoReviewHint =>
+      'São estimativas. Edite o que parecer errado e remova o que não estiver no prato.';
+
+  @override
+  String get platePhotoMealSlot => 'Refeição';
+
+  @override
+  String get platePhotoItemName => 'Alimento';
+
+  @override
+  String platePhotoRemoveItem(String name) {
+    return 'Remover $name';
+  }
+
+  @override
+  String get platePhotoLowConfidence => 'Estimativa incerta';
+
+  @override
+  String get platePhotoCalories => 'kcal';
+
+  @override
+  String get platePhotoProtein => 'Proteínas (g)';
+
+  @override
+  String get platePhotoCarbs => 'Carboidratos (g)';
+
+  @override
+  String get platePhotoFat => 'Gorduras (g)';
+
+  @override
+  String platePhotoSave(int count) {
+    return 'Salvar itens ($count)';
+  }
+
+  @override
+  String get platePhotoSaving => 'Salvando…';
+
+  @override
+  String get platePhotoErrorConsent =>
+      'O registro por foto do prato precisa das informações atualizadas sobre IA. Abra o Coach para revisar e aceitar.';
+
+  @override
+  String get platePhotoErrorPro =>
+      'Registrar a partir de uma foto é um recurso Pro.';
+
+  @override
+  String get platePhotoErrorRate =>
+      'Você registrou muitas fotos nesta hora. Tente mais tarde ou adicione a refeição manualmente.';
+
+  @override
+  String get platePhotoErrorInvalid =>
+      'Não foi possível ler essa imagem. Tente outra foto.';
+
+  @override
+  String get platePhotoErrorNotUnderstood =>
+      'Não foi possível identificar a comida nessa foto. Tente outra ou adicione manualmente.';
+
+  @override
+  String get platePhotoErrorUnavailable =>
+      'Registrar a partir de uma foto não está disponível agora. Adicione a refeição manualmente.';
 
   @override
   String get nutritionCalories => 'Calorias';

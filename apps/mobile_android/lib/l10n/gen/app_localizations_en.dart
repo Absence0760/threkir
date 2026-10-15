@@ -11358,6 +11358,105 @@ class AppLocalizationsEn extends AppLocalizations {
   String get nutritionLogFood => 'Log food';
 
   @override
+  String get nutritionLogFromPhoto => 'Log from a photo';
+
+  @override
+  String get platePhotoTitle => 'Log from a photo';
+
+  @override
+  String get platePhotoIntro =>
+      'Take or choose a photo of your meal. Threkir estimates what\'s on the plate, and you check and edit every entry before anything is saved.';
+
+  @override
+  String get platePhotoTakePhoto => 'Take a photo';
+
+  @override
+  String get platePhotoChoosePhoto => 'Choose a photo';
+
+  @override
+  String get platePhotoPreviewLabel => 'Your meal photo';
+
+  @override
+  String get platePhotoNoteLabel => 'Note (optional)';
+
+  @override
+  String get platePhotoNoteHint => 'e.g. half portion, no dressing';
+
+  @override
+  String get platePhotoEstimate => 'Estimate';
+
+  @override
+  String get platePhotoEstimating => 'Estimating…';
+
+  @override
+  String get platePhotoEmpty =>
+      'No food was recognised in that photo. Go back and try another, or add the meal by hand.';
+
+  @override
+  String get platePhotoReviewHeading => 'Check these before saving';
+
+  @override
+  String get platePhotoReviewHint =>
+      'These are estimates. Edit anything that looks wrong and remove anything that isn\'t there.';
+
+  @override
+  String get platePhotoMealSlot => 'Meal';
+
+  @override
+  String get platePhotoItemName => 'Food';
+
+  @override
+  String platePhotoRemoveItem(String name) {
+    return 'Remove $name';
+  }
+
+  @override
+  String get platePhotoLowConfidence => 'Low confidence';
+
+  @override
+  String get platePhotoCalories => 'kcal';
+
+  @override
+  String get platePhotoProtein => 'Protein (g)';
+
+  @override
+  String get platePhotoCarbs => 'Carbs (g)';
+
+  @override
+  String get platePhotoFat => 'Fat (g)';
+
+  @override
+  String platePhotoSave(int count) {
+    return 'Save entries ($count)';
+  }
+
+  @override
+  String get platePhotoSaving => 'Saving…';
+
+  @override
+  String get platePhotoErrorConsent =>
+      'The plate-photo logger needs the updated AI disclosure. Open the Coach to review and accept it.';
+
+  @override
+  String get platePhotoErrorPro => 'Logging from a photo is a Pro feature.';
+
+  @override
+  String get platePhotoErrorRate =>
+      'You\'ve logged a lot of photos this hour. Try again later, or add the meal by hand.';
+
+  @override
+  String get platePhotoErrorInvalid =>
+      'That picture couldn\'t be read. Try another photo.';
+
+  @override
+  String get platePhotoErrorNotUnderstood =>
+      'Couldn\'t make out the food in that photo. Try another, or add it by hand.';
+
+  @override
+  String get platePhotoErrorUnavailable =>
+      'Logging from a photo isn\'t available right now. Add the meal by hand.';
+
+  @override
   String get nutritionCalories => 'Calories';
 
   @override

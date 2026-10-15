@@ -35,11 +35,18 @@ class ProPerks {
   /// sellable on its own.
   final bool aiPlan;
 
+  /// The plate-photo logger is live (web's `coachEnabled() &&
+  /// platePhotoEnabled()`, decisions § 1972). A Pro perk the server checks
+  /// per call, but it rides on the Coach key, so it never makes Pro sellable
+  /// on its own either.
+  final bool platePhoto;
+
   const ProPerks({
     required this.coach,
     required this.routeGen,
     this.webCheckout = false,
     this.aiPlan = false,
+    this.platePhoto = false,
   });
 
   static const ProPerks none = ProPerks(coach: false, routeGen: false);
@@ -47,6 +54,8 @@ class ProPerks {
   bool get sellable => coach || routeGen;
 
   bool get aiPlanAvailable => coach && aiPlan;
+
+  bool get platePhotoAvailable => coach && platePhoto;
 }
 
 /// Whether this build can offer Pro for sale right now: a perk must be live,
@@ -80,6 +89,7 @@ ProPerks parseProPerks(String raw) {
       routeGen: json['route_gen'] == true,
       webCheckout: json['web_checkout'] == true,
       aiPlan: json['ai_plan'] == true,
+      platePhoto: json['plate_photo'] == true,
     );
   } catch (_) {
     return ProPerks.none;
@@ -116,3 +126,8 @@ Future<ProPerks> fetchProPerks() async {
 /// plan-building prompts should show. Never throws; unknown reads as off.
 Future<bool> fetchAiPlanAvailable() async =>
     (await fetchProPerks()).aiPlanAvailable;
+
+/// Whether the nutrition screen should offer the plate-photo logger. Never
+/// throws; unknown reads as off.
+Future<bool> fetchPlatePhotoAvailable() async =>
+    (await fetchProPerks()).platePhotoAvailable;

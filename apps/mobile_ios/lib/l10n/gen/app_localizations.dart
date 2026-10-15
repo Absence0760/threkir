@@ -18807,6 +18807,180 @@ abstract class AppLocalizations {
   /// **'Log food'**
   String get nutritionLogFood;
 
+  /// Tooltip on the nutrition screen action that opens the plate-photo logger
+  ///
+  /// In en, this message translates to:
+  /// **'Log from a photo'**
+  String get nutritionLogFromPhoto;
+
+  /// Title of the plate-photo logger screen
+  ///
+  /// In en, this message translates to:
+  /// **'Log from a photo'**
+  String get platePhotoTitle;
+
+  /// Explains the plate-photo logger above the photo buttons
+  ///
+  /// In en, this message translates to:
+  /// **'Take or choose a photo of your meal. Threkir estimates what's on the plate, and you check and edit every entry before anything is saved.'**
+  String get platePhotoIntro;
+
+  /// Button that opens the camera
+  ///
+  /// In en, this message translates to:
+  /// **'Take a photo'**
+  String get platePhotoTakePhoto;
+
+  /// Button that opens the photo gallery
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a photo'**
+  String get platePhotoChoosePhoto;
+
+  /// Accessibility label for the preview of the chosen meal photo
+  ///
+  /// In en, this message translates to:
+  /// **'Your meal photo'**
+  String get platePhotoPreviewLabel;
+
+  /// Label for the optional note sent with the meal photo
+  ///
+  /// In en, this message translates to:
+  /// **'Note (optional)'**
+  String get platePhotoNoteLabel;
+
+  /// Hint text for the optional note
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. half portion, no dressing'**
+  String get platePhotoNoteHint;
+
+  /// Button that sends the photo for an estimate
+  ///
+  /// In en, this message translates to:
+  /// **'Estimate'**
+  String get platePhotoEstimate;
+
+  /// Button label while the estimate is running
+  ///
+  /// In en, this message translates to:
+  /// **'Estimating…'**
+  String get platePhotoEstimating;
+
+  /// Shown when the photo contained no recognisable food
+  ///
+  /// In en, this message translates to:
+  /// **'No food was recognised in that photo. Go back and try another, or add the meal by hand.'**
+  String get platePhotoEmpty;
+
+  /// Heading above the proposed entries
+  ///
+  /// In en, this message translates to:
+  /// **'Check these before saving'**
+  String get platePhotoReviewHeading;
+
+  /// Hint under the review heading
+  ///
+  /// In en, this message translates to:
+  /// **'These are estimates. Edit anything that looks wrong and remove anything that isn't there.'**
+  String get platePhotoReviewHint;
+
+  /// Label for the meal slot picker on the review
+  ///
+  /// In en, this message translates to:
+  /// **'Meal'**
+  String get platePhotoMealSlot;
+
+  /// Label for a proposed food name
+  ///
+  /// In en, this message translates to:
+  /// **'Food'**
+  String get platePhotoItemName;
+
+  /// Tooltip for removing a proposed entry
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {name}'**
+  String platePhotoRemoveItem(String name);
+
+  /// Marks a proposed entry the model was unsure of
+  ///
+  /// In en, this message translates to:
+  /// **'Low confidence'**
+  String get platePhotoLowConfidence;
+
+  /// Label for the calories field of a proposed entry
+  ///
+  /// In en, this message translates to:
+  /// **'kcal'**
+  String get platePhotoCalories;
+
+  /// Label for the protein field of a proposed entry
+  ///
+  /// In en, this message translates to:
+  /// **'Protein (g)'**
+  String get platePhotoProtein;
+
+  /// Label for the carbs field of a proposed entry
+  ///
+  /// In en, this message translates to:
+  /// **'Carbs (g)'**
+  String get platePhotoCarbs;
+
+  /// Label for the fat field of a proposed entry
+  ///
+  /// In en, this message translates to:
+  /// **'Fat (g)'**
+  String get platePhotoFat;
+
+  /// Button that saves the kept entries
+  ///
+  /// In en, this message translates to:
+  /// **'Save entries ({count})'**
+  String platePhotoSave(int count);
+
+  /// Button label while saving
+  ///
+  /// In en, this message translates to:
+  /// **'Saving…'**
+  String get platePhotoSaving;
+
+  /// The endpoint refused for want of AI disclosure v5
+  ///
+  /// In en, this message translates to:
+  /// **'The plate-photo logger needs the updated AI disclosure. Open the Coach to review and accept it.'**
+  String get platePhotoErrorConsent;
+
+  /// The endpoint refused because the runner is not Pro
+  ///
+  /// In en, this message translates to:
+  /// **'Logging from a photo is a Pro feature.'**
+  String get platePhotoErrorPro;
+
+  /// The per-user hourly throttle refused
+  ///
+  /// In en, this message translates to:
+  /// **'You've logged a lot of photos this hour. Try again later, or add the meal by hand.'**
+  String get platePhotoErrorRate;
+
+  /// The picture could not be read or sent
+  ///
+  /// In en, this message translates to:
+  /// **'That picture couldn't be read. Try another photo.'**
+  String get platePhotoErrorInvalid;
+
+  /// The model could not make out the food
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn't make out the food in that photo. Try another, or add it by hand.'**
+  String get platePhotoErrorNotUnderstood;
+
+  /// The endpoint is off or failed
+  ///
+  /// In en, this message translates to:
+  /// **'Logging from a photo isn't available right now. Add the meal by hand.'**
+  String get platePhotoErrorUnavailable;
+
   /// No description provided for @nutritionCalories.
   ///
   /// In en, this message translates to:

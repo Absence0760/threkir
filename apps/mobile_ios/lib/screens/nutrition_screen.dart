@@ -38,7 +38,9 @@ import '../widgets/nutrition_log_sheet.dart';
 import '../widgets/pending_sync_banner.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/undo_bar.dart';
+import '../pro_sellable.dart';
 import 'nutrition_meal_detail_screen.dart';
+import 'plate_photo_screen.dart';
 import 'nutrition_targets_screen.dart';
 import 'settings_body_metrics_screen.dart';
 
@@ -92,11 +94,16 @@ class NutritionScreen extends StatefulWidget {
   /// target. Null in tests / signed-out — the rings then hide (anti-clutter).
   final SettingsSyncService? settingsSync;
 
+  /// Whether to offer the plate-photo logger. Defaults to the deploy's
+  /// capability manifest; tests inject an answer.
+  final Future<bool> Function()? loadPlatePhotoAvailable;
+
   const NutritionScreen({
     super.key,
     required this.api,
     required this.store,
     this.settingsSync,
+    this.loadPlatePhotoAvailable,
   });
 
   @override
@@ -139,6 +146,11 @@ class _NutritionScreenState extends State<NutritionScreen>
   String? _loggingRecipeId;
   bool _savingRecipe = false;
 
+  // Whether the deploy has the plate-photo logger live (decisions § 1972).
+  // Unknown reads as off, so the action only appears once the capability
+  // manifest says so.
+  bool _platePhotoAvailable = false;
+
   /// The viewed day's run + gym active minutes — feeds the hydration goal's
   /// sweat-replacement add (runs/gym without a duration contribute nothing).
   int _exerciseMinutes = 0;
@@ -154,6 +166,23 @@ class _NutritionScreenState extends State<NutritionScreen>
     _loadWater();
     _initOwnedStores();
     _refresh();
+    _loadPlatePhotoAvailability();
+  }
+
+  Future<void> _loadPlatePhotoAvailability() async {
+    try {
+      final available =
+          await (widget.loadPlatePhotoAvailable ?? fetchPlatePhotoAvailable)();
+      if (mounted) setState(() => _platePhotoAvailable = available);
+    } catch (e) {
+      debugPrint('nutrition_screen: capability fetch failed: $e');
+    }
+  }
+
+  Future<void> _logFromPhoto() async {
+    final saved = await showPlatePhotoScreen(
+        context: context, store: widget.store, diaryDate: _viewDate);
+    if (saved == true) await _maybeSync();
   }
 
   /// `init()`, never a bare `loadAll()`: `loadAll` alone leaves `dir` null, and
@@ -973,6 +1002,12 @@ class _NutritionScreenState extends State<NutritionScreen>
               tooltip: l10n.nutritionSaveAsRecipe,
               icon: const Icon(Icons.menu_book_outlined),
               onPressed: _savingRecipe ? null : _saveAsRecipe,
+            ),
+          if (_platePhotoAvailable)
+            IconButton(
+              tooltip: l10n.nutritionLogFromPhoto,
+              icon: const Icon(Icons.photo_camera_outlined),
+              onPressed: _logFromPhoto,
             ),
           IconButton(
             tooltip: l10n.nutritionLogFood,

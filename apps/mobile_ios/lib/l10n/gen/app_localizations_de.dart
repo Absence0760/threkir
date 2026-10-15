@@ -11486,6 +11486,106 @@ class AppLocalizationsDe extends AppLocalizations {
   String get nutritionLogFood => 'Essen erfassen';
 
   @override
+  String get nutritionLogFromPhoto => 'Aus einem Foto eintragen';
+
+  @override
+  String get platePhotoTitle => 'Aus einem Foto eintragen';
+
+  @override
+  String get platePhotoIntro =>
+      'Mach oder wähle ein Foto deiner Mahlzeit. Threkir schätzt, was auf dem Teller liegt, und du prüfst und bearbeitest jeden Eintrag, bevor etwas gespeichert wird.';
+
+  @override
+  String get platePhotoTakePhoto => 'Foto aufnehmen';
+
+  @override
+  String get platePhotoChoosePhoto => 'Foto auswählen';
+
+  @override
+  String get platePhotoPreviewLabel => 'Dein Mahlzeitenfoto';
+
+  @override
+  String get platePhotoNoteLabel => 'Notiz (optional)';
+
+  @override
+  String get platePhotoNoteHint => 'z. B. halbe Portion, ohne Dressing';
+
+  @override
+  String get platePhotoEstimate => 'Schätzen';
+
+  @override
+  String get platePhotoEstimating => 'Wird geschätzt…';
+
+  @override
+  String get platePhotoEmpty =>
+      'Auf dem Foto wurde kein Essen erkannt. Geh zurück und versuch ein anderes oder trag die Mahlzeit von Hand ein.';
+
+  @override
+  String get platePhotoReviewHeading => 'Vor dem Speichern prüfen';
+
+  @override
+  String get platePhotoReviewHint =>
+      'Das sind Schätzungen. Korrigiere, was nicht stimmt, und entferne, was nicht auf dem Teller ist.';
+
+  @override
+  String get platePhotoMealSlot => 'Mahlzeit';
+
+  @override
+  String get platePhotoItemName => 'Lebensmittel';
+
+  @override
+  String platePhotoRemoveItem(String name) {
+    return '$name entfernen';
+  }
+
+  @override
+  String get platePhotoLowConfidence => 'Unsichere Schätzung';
+
+  @override
+  String get platePhotoCalories => 'kcal';
+
+  @override
+  String get platePhotoProtein => 'Eiweiß (g)';
+
+  @override
+  String get platePhotoCarbs => 'Kohlenhydrate (g)';
+
+  @override
+  String get platePhotoFat => 'Fett (g)';
+
+  @override
+  String platePhotoSave(int count) {
+    return 'Einträge speichern ($count)';
+  }
+
+  @override
+  String get platePhotoSaving => 'Wird gespeichert…';
+
+  @override
+  String get platePhotoErrorConsent =>
+      'Die Mahlzeiten-Fotoerfassung benötigt die aktualisierten KI-Hinweise. Öffne den Coach, um sie zu lesen und zu bestätigen.';
+
+  @override
+  String get platePhotoErrorPro =>
+      'Das Eintragen aus einem Foto ist eine Pro-Funktion.';
+
+  @override
+  String get platePhotoErrorRate =>
+      'Du hast in dieser Stunde viele Fotos eingetragen. Versuch es später erneut oder trag die Mahlzeit von Hand ein.';
+
+  @override
+  String get platePhotoErrorInvalid =>
+      'Dieses Bild konnte nicht gelesen werden. Versuch ein anderes Foto.';
+
+  @override
+  String get platePhotoErrorNotUnderstood =>
+      'Das Essen auf dem Foto war nicht zu erkennen. Versuch ein anderes oder trag es von Hand ein.';
+
+  @override
+  String get platePhotoErrorUnavailable =>
+      'Das Eintragen aus einem Foto ist gerade nicht verfügbar. Trag die Mahlzeit von Hand ein.';
+
+  @override
   String get nutritionCalories => 'Kalorien';
 
   @override

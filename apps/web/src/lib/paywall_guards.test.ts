@@ -180,6 +180,18 @@ test('/app-capabilities.json publishes the same perk flags and web-checkout gate
 		/ai_plan: coachEnabled\(\) && aiPlanEnabled\(\)/,
 		'the manifest must publish `ai_plan` as coachEnabled() && aiPlanEnabled(), the gate the web box renders under.',
 	);
+	// The plate-photo logger, under the same both-flags gate /nutrition/log
+	// renders its control under.
+	assert.match(
+		manifest,
+		/import \{ platePhotoEnabled \} from '#lib\/nutrition\/plate_photo_flag\.ts'/,
+		'the capability manifest must derive `plate_photo` from the shared platePhotoEnabled() gate.',
+	);
+	assert.match(
+		manifest,
+		/plate_photo: coachEnabled\(\) && platePhotoEnabled\(\)/,
+		'the manifest must publish `plate_photo` as coachEnabled() && platePhotoEnabled().',
+	);
 	assert.match(
 		manifest,
 		/export const prerender = true/,

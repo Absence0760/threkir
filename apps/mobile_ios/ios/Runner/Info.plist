@@ -55,7 +55,7 @@
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Threkir saves shared run cards back to your Photos library when you tap "Save to Photos."</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Threkir uses the camera to scan a food product's barcode so it can look up its nutrition and log it for you.</string>
+	<string>Threkir uses the camera to scan a food product's barcode, or to photograph a meal you want to log, so it can look up or estimate the nutrition for you.</string>
 	<key>NSCalendarsWriteOnlyAccessUsageDescription</key>
 	<string>Threkir adds a club event you choose to your calendar. It never reads what else is in there.</string>
 	<key>NSCalendarsUsageDescription</key>

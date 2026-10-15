@@ -56,6 +56,7 @@ const WEB_ONLY = new Map<string, string>([
 	['src/lib/social/fundraising_flag.ts', 'the fundraising surface is web-canonical with no mobile twin (decisions § 24)'],
 	['src/lib/training/cycle_plan_flag.ts', 'cycle_plan has a Dart twin but no mobile SURFACE consumes it yet, so mobile has no gate to name'],
 	['src/lib/training/ai_plan_flag.ts', 'mobile reads the plan assistant\'s availability from /app-capabilities.json (`ai_plan`, pro_sellable.dart), not from a gate module of its own'],
+	['src/lib/nutrition/plate_photo_flag.ts', 'mobile reads the plate-photo logger\'s availability from /app-capabilities.json (`plate_photo`, pro_sellable.dart), not from a gate module of its own'],
 ]);
 
 /// The shared parser, not a gate: it reads no env key of its own.

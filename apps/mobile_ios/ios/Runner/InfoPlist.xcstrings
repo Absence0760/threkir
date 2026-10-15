@@ -379,48 +379,48 @@
       }
     },
     "NSCameraUsageDescription" : {
-      "comment" : "Purpose string for the camera prompt raised by the nutrition barcode scanner.",
+      "comment" : "Purpose string for the camera prompt raised by the nutrition barcode scanner and the plate-photo logger.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Threkir verwendet die Kamera, um den Barcode eines Lebensmittels zu scannen, damit es die Nährwerte nachschlagen und für dich erfassen kann."
+            "value" : "Threkir verwendet die Kamera, um den Barcode eines Lebensmittels zu scannen oder eine Mahlzeit zu fotografieren, die du eintragen möchtest, damit es die Nährwerte nachschlagen oder schätzen kann."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Threkir uses the camera to scan a food product's barcode so it can look up its nutrition and log it for you."
+            "value" : "Threkir uses the camera to scan a food product's barcode, or to photograph a meal you want to log, so it can look up or estimate the nutrition for you."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Threkir usa la cámara para escanear el código de barras de un producto alimenticio, buscar su información nutricional y registrarlo por ti."
+            "value" : "Threkir usa la cámara para escanear el código de barras de un producto alimenticio o fotografiar una comida que quieras registrar, y así buscar o estimar su información nutricional por ti."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Threkir utilise l’appareil photo pour scanner le code-barres d’un produit alimentaire afin d’en trouver les valeurs nutritionnelles et de l’enregistrer pour vous."
+            "value" : "Threkir utilise l’appareil photo pour scanner le code-barres d’un produit alimentaire ou photographier un repas que vous voulez enregistrer, afin d’en trouver ou d’en estimer les valeurs nutritionnelles pour vous."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Threkir はカメラで食品のバーコードをスキャンし、栄養成分を調べて記録します。"
+            "value" : "Threkir はカメラで食品のバーコードをスキャンしたり、記録したい食事を撮影したりして、栄養成分を調べたり推定したりします。"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O Threkir usa a câmera para escanear o código de barras de um alimento, consultar suas informações nutricionais e registrá-lo para você."
+            "value" : "O Threkir usa a câmera para escanear o código de barras de um alimento ou fotografar uma refeição que você quer registrar, e assim consultar ou estimar as informações nutricionais para você."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O Threkir utiliza a câmara para digitalizar o código de barras de um alimento, consultar a sua informação nutricional e registá-lo por si."
+            "value" : "O Threkir utiliza a câmara para digitalizar o código de barras de um alimento ou fotografar uma refeição que pretende registar, e assim consultar ou estimar a informação nutricional por si."
           }
         }
       }

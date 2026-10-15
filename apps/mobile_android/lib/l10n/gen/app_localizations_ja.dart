@@ -10908,6 +10908,100 @@ class AppLocalizationsJa extends AppLocalizations {
   String get nutritionLogFood => '食事を記録';
 
   @override
+  String get nutritionLogFromPhoto => '写真から記録';
+
+  @override
+  String get platePhotoTitle => '写真から記録';
+
+  @override
+  String get platePhotoIntro =>
+      '食事の写真を撮るか選んでください。Threkirがお皿の内容を推定し、保存する前にすべての項目を確認・編集できます。';
+
+  @override
+  String get platePhotoTakePhoto => '写真を撮る';
+
+  @override
+  String get platePhotoChoosePhoto => '写真を選ぶ';
+
+  @override
+  String get platePhotoPreviewLabel => '選んだ食事の写真';
+
+  @override
+  String get platePhotoNoteLabel => 'メモ（任意）';
+
+  @override
+  String get platePhotoNoteHint => '例：半人前、ドレッシングなし';
+
+  @override
+  String get platePhotoEstimate => '推定する';
+
+  @override
+  String get platePhotoEstimating => '推定中…';
+
+  @override
+  String get platePhotoEmpty => 'その写真から食品を認識できませんでした。戻って別の写真を試すか、手動で追加してください。';
+
+  @override
+  String get platePhotoReviewHeading => '保存する前に確認してください';
+
+  @override
+  String get platePhotoReviewHint => 'これは推定値です。違っているものは編集し、写っていないものは削除してください。';
+
+  @override
+  String get platePhotoMealSlot => '食事';
+
+  @override
+  String get platePhotoItemName => '食品';
+
+  @override
+  String platePhotoRemoveItem(String name) {
+    return '$name を削除';
+  }
+
+  @override
+  String get platePhotoLowConfidence => '推定の確度が低い';
+
+  @override
+  String get platePhotoCalories => 'kcal';
+
+  @override
+  String get platePhotoProtein => 'たんぱく質 (g)';
+
+  @override
+  String get platePhotoCarbs => '炭水化物 (g)';
+
+  @override
+  String get platePhotoFat => '脂質 (g)';
+
+  @override
+  String platePhotoSave(int count) {
+    return '項目を保存（$count件）';
+  }
+
+  @override
+  String get platePhotoSaving => '保存中…';
+
+  @override
+  String get platePhotoErrorConsent =>
+      '食事写真による記録には、更新されたAIに関する説明への同意が必要です。コーチを開いて確認・同意してください。';
+
+  @override
+  String get platePhotoErrorPro => '写真からの記録はProの機能です。';
+
+  @override
+  String get platePhotoErrorRate => 'この1時間に多くの写真を記録しました。後でもう一度試すか、手動で追加してください。';
+
+  @override
+  String get platePhotoErrorInvalid => 'その画像を読み込めませんでした。別の写真を試してください。';
+
+  @override
+  String get platePhotoErrorNotUnderstood =>
+      'その写真の食品を判別できませんでした。別の写真を試すか、手動で追加してください。';
+
+  @override
+  String get platePhotoErrorUnavailable => '現在、写真からの記録は利用できません。手動で追加してください。';
+
+  @override
   String get nutritionCalories => 'カロリー';
 
   @override

@@ -14827,6 +14827,132 @@
     }
   },
   "nutritionLogFood": "Log food",
+  "nutritionLogFromPhoto": "Log from a photo",
+  "@nutritionLogFromPhoto": {
+    "description": "Tooltip on the nutrition screen action that opens the plate-photo logger"
+  },
+  "platePhotoTitle": "Log from a photo",
+  "@platePhotoTitle": {
+    "description": "Title of the plate-photo logger screen"
+  },
+  "platePhotoIntro": "Take or choose a photo of your meal. Threkir estimates what's on the plate, and you check and edit every entry before anything is saved.",
+  "@platePhotoIntro": {
+    "description": "Explains the plate-photo logger above the photo buttons"
+  },
+  "platePhotoTakePhoto": "Take a photo",
+  "@platePhotoTakePhoto": {
+    "description": "Button that opens the camera"
+  },
+  "platePhotoChoosePhoto": "Choose a photo",
+  "@platePhotoChoosePhoto": {
+    "description": "Button that opens the photo gallery"
+  },
+  "platePhotoPreviewLabel": "Your meal photo",
+  "@platePhotoPreviewLabel": {
+    "description": "Accessibility label for the preview of the chosen meal photo"
+  },
+  "platePhotoNoteLabel": "Note (optional)",
+  "@platePhotoNoteLabel": {
+    "description": "Label for the optional note sent with the meal photo"
+  },
+  "platePhotoNoteHint": "e.g. half portion, no dressing",
+  "@platePhotoNoteHint": {
+    "description": "Hint text for the optional note"
+  },
+  "platePhotoEstimate": "Estimate",
+  "@platePhotoEstimate": {
+    "description": "Button that sends the photo for an estimate"
+  },
+  "platePhotoEstimating": "Estimating…",
+  "@platePhotoEstimating": {
+    "description": "Button label while the estimate is running"
+  },
+  "platePhotoEmpty": "No food was recognised in that photo. Go back and try another, or add the meal by hand.",
+  "@platePhotoEmpty": {
+    "description": "Shown when the photo contained no recognisable food"
+  },
+  "platePhotoReviewHeading": "Check these before saving",
+  "@platePhotoReviewHeading": {
+    "description": "Heading above the proposed entries"
+  },
+  "platePhotoReviewHint": "These are estimates. Edit anything that looks wrong and remove anything that isn't there.",
+  "@platePhotoReviewHint": {
+    "description": "Hint under the review heading"
+  },
+  "platePhotoMealSlot": "Meal",
+  "@platePhotoMealSlot": {
+    "description": "Label for the meal slot picker on the review"
+  },
+  "platePhotoItemName": "Food",
+  "@platePhotoItemName": {
+    "description": "Label for a proposed food name"
+  },
+  "platePhotoRemoveItem": "Remove {name}",
+  "@platePhotoRemoveItem": {
+    "description": "Tooltip for removing a proposed entry",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "platePhotoLowConfidence": "Low confidence",
+  "@platePhotoLowConfidence": {
+    "description": "Marks a proposed entry the model was unsure of"
+  },
+  "platePhotoCalories": "kcal",
+  "@platePhotoCalories": {
+    "description": "Label for the calories field of a proposed entry"
+  },
+  "platePhotoProtein": "Protein (g)",
+  "@platePhotoProtein": {
+    "description": "Label for the protein field of a proposed entry"
+  },
+  "platePhotoCarbs": "Carbs (g)",
+  "@platePhotoCarbs": {
+    "description": "Label for the carbs field of a proposed entry"
+  },
+  "platePhotoFat": "Fat (g)",
+  "@platePhotoFat": {
+    "description": "Label for the fat field of a proposed entry"
+  },
+  "platePhotoSave": "Save entries ({count})",
+  "@platePhotoSave": {
+    "description": "Button that saves the kept entries",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "platePhotoSaving": "Saving…",
+  "@platePhotoSaving": {
+    "description": "Button label while saving"
+  },
+  "platePhotoErrorConsent": "The plate-photo logger needs the updated AI disclosure. Open the Coach to review and accept it.",
+  "@platePhotoErrorConsent": {
+    "description": "The endpoint refused for want of AI disclosure v5"
+  },
+  "platePhotoErrorPro": "Logging from a photo is a Pro feature.",
+  "@platePhotoErrorPro": {
+    "description": "The endpoint refused because the runner is not Pro"
+  },
+  "platePhotoErrorRate": "You've logged a lot of photos this hour. Try again later, or add the meal by hand.",
+  "@platePhotoErrorRate": {
+    "description": "The per-user hourly throttle refused"
+  },
+  "platePhotoErrorInvalid": "That picture couldn't be read. Try another photo.",
+  "@platePhotoErrorInvalid": {
+    "description": "The picture could not be read or sent"
+  },
+  "platePhotoErrorNotUnderstood": "Couldn't make out the food in that photo. Try another, or add it by hand.",
+  "@platePhotoErrorNotUnderstood": {
+    "description": "The model could not make out the food"
+  },
+  "platePhotoErrorUnavailable": "Logging from a photo isn't available right now. Add the meal by hand.",
+  "@platePhotoErrorUnavailable": {
+    "description": "The endpoint is off or failed"
+  },
   "nutritionCalories": "Calories",
   "nutritionProtein": "Protein",
   "nutritionCarbs": "Carbs",

@@ -40,6 +40,7 @@ Flutter iOS app. **`lib/`, `test/` and `integration_test/` are byte-for-byte ide
 | Background GPS | Geolocator foreground service | `CLLocationManager.allowsBackgroundLocationUpdates` (Info.plist `UIBackgroundModes:location`) |
 | Health Connect / HealthKit | `health` package on Android Health Connect | Same package, HealthKit backend |
 | Onboarding permission | `Geolocator.requestPermission` (location-when-in-use) | Same `Geolocator.requestPermission` call — no platform divergence |
+| Precise location off at run start | `RunRecorder.preciseLocationOff` set from an approximate-only grant; no new prompt (the pre-run fine + coarse request is Android 12+'s upgrade dialog); 8 s banner with a Settings action | `Geolocator.requestTemporaryFullAccuracy` asked once during the countdown under purpose key `PreciseRunTracking` (`NSLocationTemporaryUsageDescriptionDictionary` in `Info.plist`, localized in `InfoPlist.xcstrings`); same banner only if declined. Neither blocks the run (decisions § 1985) |
 
 **Pubspec divergence:** only `name` and `description`. Every dependency, every version, the asset list, and `dev_dependencies` all match. Run `diff apps/mobile_android/pubspec.yaml apps/mobile_ios/pubspec.yaml` — should be exactly two lines.
 

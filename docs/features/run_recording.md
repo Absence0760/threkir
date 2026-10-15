@@ -290,6 +290,14 @@ Other recorders are deliberately unchanged:
 - **Apple Watch.** Core Location again, with no way to force the watch's own receiver: watchOS may use the paired iPhone's location while it is nearby. Unmeasured.
 - **Garmin Connect IQ and the custom watch.** Both already read their own GNSS receivers; there is no fused layer to route around.
 
+### Precise location
+
+A location grant without precision (iOS 14+ with Precise Location off, Android 12+ with Approximate only) serves fixes kilometres wide. Every one fails the accuracy gate, so the run would record a clock and no track. Each recorder checks the grant at run start ([decisions § 1985](../architecture/decisions.md)); the accuracy gate itself is unchanged and no metadata key records the grant.
+
+- **Phone.** `RunRecorder.prepare()` reads `Geolocator.getLocationAccuracy()` once the stream is open and exposes `preciseLocationOff`. A failed read counts as precise and is logged. On iOS a reduced grant gets one temporary-full-accuracy prompt during the countdown, under the purpose key `PreciseRunTracking` (`NSLocationTemporaryUsageDescriptionDictionary` in `Info.plist`); the flag stays set only if the runner declines. Android has no temporary grant and gets no new prompt, because the pre-run fine-plus-coarse request is already Android 12+'s upgrade-to-precise dialog. On both, `run_screen.dart` shows an 8 s top banner at record start with a Settings action, and the run records.
+- **Apple Watch.** `WorkoutManager` checks `accuracyAuthorization` at start, on recovery and on each authorization change; `GpsHealth.precisionStep` asks once per run under `PreciseRunTracking`, then shows "Precise Location is off" under the GPS banner. The run records.
+- **Wear OS.** `permissionOutcome` grades an approximate-only grant as `PermissionCost.PreciseLocation` and blocks GO, the same as a denied location grant, because the watch has nothing else to measure distance from. The app requests `ACCESS_FINE_LOCATION` and `ACCESS_COARSE_LOCATION` together: Android 12+ ignores a fine-only request without showing a dialog.
+
 ### iOS-specific settings
 
 On iOS the recorder switches to `AppleSettings` inside `_platformLocationSettings` and pins two non-default values:

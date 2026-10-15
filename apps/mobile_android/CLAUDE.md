@@ -62,6 +62,7 @@ Nearly everything under Phase 1 "Android" in `roadmap.md` is implemented. Specif
 **Live and working:**
 - All of the `lib/screens/` files in the list below are wired to real data.
 - Background GPS recording with foreground service, auto-pause, lap markers, wakelock.
+- An approximate-only location grant (Android 12+) is detected at run start (`RunRecorder.preciseLocationOff`) and disclosed by an 8 s banner with a Settings action; the run still records ([run_recording.md § Precise location](../../docs/features/run_recording.md#precise-location), decisions § 1985).
 - Offline-first: runs save to `LocalRunStore` → sync on connectivity change / app foreground / WorkManager periodic background sync → reconcile via `last_modified_at` timestamps.
 - The first sync cycle with a session runs `ForeignRowCleanup` once per account (marker in `Preferences`): it removes club routes and coached athletes' runs that builds before decisions § 1937 stored as owned. It drops a synced row only when the owned-id walk lacks it, and an unsynced row only when the server names another owner — never unsynced work for being absent ([decisions § 1938](../../docs/architecture/decisions.md)).
 - Strava ZIP import (GPX/TCX/FIT) and Health Connect import. Batch cloud push via `saveRunsBatch`.

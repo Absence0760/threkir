@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { fetchRaceListingPhotos, type RaceListingPhoto } from '#lib/core/data.ts';
 	import { safeImageSrc } from '#lib/util/safe_image_src.ts';
@@ -32,9 +31,17 @@
 	// lookup to bake the <head>, and runners' photos must not reach an unfurl
 	// card or the server-rendered HTML (decisions § 1961).
 	let photos = $state<RaceListingPhoto[]>([]);
-	onMount(async () => {
-		if (!data.race) return;
-		photos = await fetchRaceListingPhotos(data.race.id);
+	$effect(() => {
+		const id = data.race?.id;
+		photos = [];
+		if (!id) return;
+		let live = true;
+		void fetchRaceListingPhotos(id).then((p) => {
+			if (live) photos = p;
+		});
+		return () => {
+			live = false;
+		};
 	});
 </script>
 

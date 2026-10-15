@@ -211,6 +211,21 @@ void main() {
       );
     });
 
+    test('the uploaded track blob carries baroEle on every fix that has one',
+        () {
+      final blob = ApiClient.debugTrackBlobJson(const [
+        Waypoint(
+            lat: 47.37, lng: 8.54, elevationMetres: 412, baroElevationMetres: 405.25),
+        Waypoint(lat: 47.371, lng: 8.54, elevationMetres: 398),
+        Waypoint(
+            lat: 47.372, lng: 8.54, elevationMetres: 420, baroElevationMetres: 409.5),
+      ]);
+      final points = (jsonDecode(blob) as List).cast<Map<String, dynamic>>();
+      expect(points.map((p) => p['baroEle']), [405.25, null, 409.5]);
+      expect(points.map((p) => p['ele']), [412, 398, 420]);
+      expect(points[1].containsKey('baroEle'), isFalse);
+    });
+
     test('the track blob drops a non-finite barometric altitude only', () {
       final blob = ApiClient.debugTrackBlobJson(const [
         Waypoint(

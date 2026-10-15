@@ -111,6 +111,38 @@ void main() {
       r.dispose();
     });
 
+    test('the stopped run keeps the anchored barometer on every fix', () async {
+      // A steady 1 m/s climb the barometer sees cleanly, while GPS altitude
+      // reads it +/-6 m around the truth, alternating. Each fix's fused
+      // altitude is the barometer plus the mean GPS offset so far: exactly
+      // the truth after an even count, 6/n high after an odd one.
+      final arrival = _FakeClock();
+      final r = RunRecorder(sourceClock: arrival)..debugPrepareWithoutStream();
+      r.begin();
+      for (var k = 0; k < 20; k++) {
+        arrival.advance(Duration(seconds: k) - arrival.elapsed);
+        r.setBarometricAltitude(k.toDouble());
+        r.debugInjectPosition(makePosition(
+          metresEast: 5.0 * k,
+          secondsFromStart: k,
+          speed: 5,
+          altitude: 400.0 + k + (k.isEven ? 6 : -6),
+        ));
+      }
+      final run = await r.stop();
+      expect(run.track, isNotEmpty);
+      for (final w in run.track) {
+        final k = w.timestamp!.second;
+        final n = k + 1;
+        expect(w.elevationMetres, 400.0 + k + (k.isEven ? 6 : -6));
+        expect(
+          w.baroElevationMetres,
+          closeTo(400.0 + k + (n.isOdd ? 6 / n : 0), 0.01),
+          reason: 'fix $k',
+        );
+      }
+    });
+
     test('without a barometer no fix carries one', () {
       final r = RunRecorder()..debugPrepareWithoutStream();
       for (var i = 0; i < 3; i++) {

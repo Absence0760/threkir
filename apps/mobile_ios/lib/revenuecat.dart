@@ -88,7 +88,7 @@ enum PurchaseResult { purchased, cancelled, notConfigured, failed }
 
 /// The two Pro billing periods the `default` offering sells:
 /// `$rc_monthly` (product `pro_monthly`) and `$rc_annual` (product
-/// `pro_annual`), both granting the `pro` entitlement.
+/// `pro_annual`), both granting the [proEntitlementId] entitlement.
 enum ProPlan { monthly, annual }
 
 /// The Pro packages the current offering carries, keyed by [ProPlan].
@@ -228,8 +228,10 @@ Future<ProPlanOptions?> loadProPlans(
   }
 }
 
-/// The RevenueCat entitlement both Pro products grant.
-const proEntitlementId = 'pro';
+/// The RevenueCat entitlement both Pro products grant. This is the
+/// identifier the RevenueCat project defines, and RevenueCat does not
+/// let an entitlement identifier be renamed.
+const proEntitlementId = 'threkir_pro';
 
 /// What the store says about the buyer's active Pro entitlement.
 class ProEntitlement {

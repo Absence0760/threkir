@@ -186,7 +186,7 @@ perk switched off propagates instead of sticking in caches for a year.
 
 **A subscriber sees their subscription, not the storefront.** The mobile
 Pro screen counts the user as Pro when **either** the RevenueCat
-`CustomerInfo` entitlement `pro` is active (`ProStore.loadEntitlement` →
+`CustomerInfo` entitlement `threkir_pro` is active (`ProStore.loadEntitlement` →
 `loadProEntitlement`, true the instant the store completes a purchase) **or**
 the server tier is paid (`ApiClient.isPro()` → `is_pro`, authoritative for
 gating but only flipped once `revenuecat-webhook` lands, and the only signal
@@ -227,7 +227,7 @@ dropped); reviving transparent funding later is a one-page revert.
 | Tier | How you get it | What it unlocks |
 |---|---|---|
 | `free` | Default for every new account | Every screen in the app. AI Coach capped at 2 messages/day. Standard request priority. Route generation via the in-browser heuristic. |
-| `pro` | RevenueCat subscription: $9.99 / month (`pro_monthly`, package `$rc_monthly`) or $79.99 / year (`pro_annual`, package `$rc_annual`), both in offering `default` and both granting entitlement `pro` | Everything free users get + AI Coach capped at 10 messages/day (5× the free cap) + priority processing (wider context budget, longer responses) + AI route descriptions + server-side route generation (real street-graph loops, decisions §204). |
+| `pro` | RevenueCat subscription: $9.99 / month (`pro_monthly`, package `$rc_monthly`) or $79.99 / year (`pro_annual`, package `$rc_annual`), both in offering `default` and both granting entitlement `threkir_pro` | Everything free users get + AI Coach capped at 10 messages/day (5× the free cap) + priority processing (wider context budget, longer responses) + AI route descriptions + server-side route generation (real street-graph loops, decisions §204). |
 | `lifetime` | RevenueCat one-time purchase (not currently sold) | Same as `pro`. |
 
 `user_profiles.subscription_tier` is the authoritative column. A CHECK
@@ -518,7 +518,7 @@ watch inherits the phone's subscription via the paired Supabase session
 
 1. **Storefront availability.** The app *and* the subscription product must be enabled for the buyer's country (App Store Connect → Availability; Play Console → Countries/regions). Excluding a country silently makes Pro unbuyable there — this is the most common gap, so any "is Pro reachable in country X?" check starts here. (`/audit/regional-availability` exercises this.)
 2. **Per-region price.** Apple via a price tier (auto-generates the local amount per storefront) or a custom per-region price; Play via per-country pricing. RevenueCat just reports whatever the store says.
-3. **RC project provisioned** — offering `default` with packages `$rc_monthly` → `pro_monthly` and `$rc_annual` → `pro_annual`, both attached to entitlement `pro`, + `REVENUECAT_API_KEY_*` (followups.md §#9). Both products need a store price in every territory: an offering missing one simply offers the other alone. Until then the tile falls through to the web URL.
+3. **RC project provisioned** — offering `default` with packages `$rc_monthly` → `pro_monthly` and `$rc_annual` → `pro_annual`, both attached to entitlement `threkir_pro`, + `REVENUECAT_API_KEY_*` (followups.md §#9). Both products need a store price in every territory: an offering missing one simply offers the other alone. Until then the tile falls through to the web URL.
 
 **Caveats:**
 

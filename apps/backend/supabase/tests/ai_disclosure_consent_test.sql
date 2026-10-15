@@ -21,10 +21,12 @@
 --      so an update-only write would no-op and report success (issue #233).
 --  13. A v2 holder reaches the v3 plan-assistant rung only by accepting v3
 --      (migration 20270816000001).
+--  14. A v3 holder reaches the v4 plan-edit rung only by accepting v4
+--      (migration 20270820000001).
 
 begin;
 
-select plan(13);
+select plan(14);
 
 -- U1: no consent on record.
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
@@ -56,8 +58,8 @@ select throws_ok(
 -- ── 2. The version the web + SQL sides agree on ──────────────────
 select is(
   (select ai_disclosure_current_version()),
-  3::smallint,
-  'ai_disclosure_current_version() is the v3 plan-assistant version'
+  4::smallint,
+  'ai_disclosure_current_version() is the v4 plan-edit version'
 );
 
 -- ── 3. No resolvable identity → refused ──────────────────────────
@@ -151,6 +153,13 @@ select is(
   (select version from record_ai_disclosure_consent(3::smallint)),
   3::smallint,
   'record_ai_disclosure_consent(3) upgrades a v2 holder to the plan-assistant rung'
+);
+
+-- ── 14. v3 -> v4 is an explicit upgrade, not inherited ───────────
+select is(
+  (select version from record_ai_disclosure_consent(4::smallint)),
+  4::smallint,
+  'record_ai_disclosure_consent(4) upgrades a v3 holder to the plan-edit rung'
 );
 
 select * from finish();

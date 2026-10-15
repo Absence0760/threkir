@@ -794,3 +794,36 @@ func TestParseTrack_PrefersTheSmoothedPairOnlyWhenBothArePresent(t *testing.T) {
 		t.Errorf("a matcher point re-encodes the smoothed keys: %s", out)
 	}
 }
+
+// The automatic recompute a new Wear OS / watchOS run is queued for keeps the
+// wrist's own figure as the original, stamps the current estimator and the
+// recompute time, and leaves the recorder's other keys in place.
+func TestDistanceRecompute_FirstWatchRecomputeKeepsTheWristFigureAsTheOriginal(t *testing.T) {
+	run := appRun(`{"activity_type":"run","distance_estimator":"kalman_v1","distance_step_filled_m":120}`)
+	run.Source = "watch"
+	run.DistanceM = 5210
+	w, b := distanceWorker(t, run, straightDopplerTrack(101, 2.5))
+	if err := w.dispatch(context.Background(), distanceJob(t, DistanceRecomputePayload{RunID: drRunID, UserID: drUserID})); err != nil {
+		t.Fatalf("dispatch: %v", err)
+	}
+	if len(b.distance.updates) != 1 {
+		t.Fatalf("updates = %d, want 1", len(b.distance.updates))
+	}
+	u := b.distance.updates[0]
+	if math.Abs(u.DistanceM-(250+120)) > 0.011 {
+		t.Errorf("distance_m = %v, want the 250 m replay plus the 120 m step fill", u.DistanceM)
+	}
+	md := u.Metadata
+	if md["distance_recorded_m"] != 5210.0 {
+		t.Errorf("distance_recorded_m = %v, want the wrist's 5210", md["distance_recorded_m"])
+	}
+	if md["distance_estimator"] != "kalman_v4" {
+		t.Errorf("distance_estimator = %v, want kalman_v4", md["distance_estimator"])
+	}
+	if at, _ := md["distance_recomputed_at"].(string); at == "" {
+		t.Errorf("distance_recomputed_at = %v, want a timestamp", md["distance_recomputed_at"])
+	}
+	if md["activity_type"] != "run" || md["distance_step_filled_m"] != 120.0 {
+		t.Errorf("recorder keys not kept: %+v", md)
+	}
+}

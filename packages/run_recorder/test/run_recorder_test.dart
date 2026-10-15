@@ -324,24 +324,28 @@ void main() {
       // A real dropout — fixes rejected under cover / in a tunnel / while
       // backgrounded — while the runner keeps moving. The first fix back is
       // > 100 m from the stale anchor but a genuine interval has elapsed, so
-      // the anchor rebases to it WITHOUT crediting the un-sampled gap, and
-      // ordinary movement accumulates again from the new anchor.
+      // the anchor rebases to it and ordinary movement accumulates again from
+      // the new anchor. The estimator credits the gap only its straight chord
+      // less the 1-sigma uncertainty of both ends (spec v1.4), a lower bound.
       // The monotonic clock advances with the GPS one, as on a real phone.
       final clock = _FakeClock();
       final r = RunRecorder(clock: clock)
         ..debugPrepareWithoutStream(maxSpeedMps: 1000);
       r.begin();
       r.debugInjectPosition(makePosition(metresEast: 0, secondsFromStart: 0));
-      // 150 m gap over 60 s (> the 10 s re-anchor window): rebase, no credit.
+      // 150 m gap over 60 s (> the 10 s re-anchor window): rebase, crediting
+      // the chord less sqrt(25 + 25 + 2 * 25) = 10 m. Figures from
+      // scripts/gps_distance/reference.py on the same fixes (the helper's
+      // metres-per-degree makes the 150 m hop 149.82 m).
       clock.advance(const Duration(seconds: 60));
       r.debugInjectPosition(makePosition(metresEast: 150, secondsFromStart: 60));
-      expect(r.debugDistanceMetres, 0);
+      expect(r.debugDistanceMetres, closeTo(139.823, 1e-3));
       expect(r.debugTrack.length, 2);
       // Normal movement from the re-anchored position now accumulates.
       clock.advance(const Duration(seconds: 10));
       r.debugInjectPosition(
           makePosition(metresEast: 160, secondsFromStart: 70, speed: 1));
-      expect(r.debugDistanceMetres, closeTo(10, 0.5));
+      expect(r.debugDistanceMetres, closeTo(149.823, 1e-3));
       expect(r.debugTrack.length, 3);
     });
 
@@ -357,7 +361,8 @@ void main() {
         ..debugPrepareWithoutStream(maxSpeedMps: 1000);
       r.begin();
       r.debugInjectPosition(makePosition(metresEast: 0, secondsFromStart: 0));
-      // 200 m gap over 60 s → re-anchor at 200 m, nothing credited.
+      // 200 m gap over 60 s → re-anchor at 200 m, credited its chord lower
+      // bound (189.76 m by the reference).
       clock.advance(const Duration(seconds: 60));
       r.debugInjectPosition(makePosition(metresEast: 200, secondsFromStart: 60));
       clock.advance(const Duration(seconds: 10));
@@ -366,9 +371,9 @@ void main() {
       clock.advance(const Duration(seconds: 10));
       r.debugInjectPosition(
           makePosition(metresEast: 260, secondsFromStart: 80, speed: 3));
-      // 30 m + 30 m of real movement after the re-anchor; the 200 m gap itself
-      // is never credited.
-      expect(r.debugDistanceMetres, closeTo(60, 1.0));
+      // 30 m + 30 m of real movement after the re-anchor, on top of the gap's
+      // chord lower bound.
+      expect(r.debugDistanceMetres, closeTo(249.764, 1e-3));
       expect(r.debugTrack.length, 4);
     });
 
@@ -420,21 +425,25 @@ void main() {
       clock.advance(const Duration(seconds: 12));
       r.debugInjectPosition(
           makePosition(metresEast: 150, secondsFromStart: -3600));
-      expect(r.debugDistanceMetres, 0,
-          reason: 'the un-sampled gap is still never credited');
+      expect(r.debugDistanceMetres, closeTo(139.823, 1e-3),
+          reason: 'the un-sampled gap is credited only its chord lower bound, '
+              'timed on the monotonic clock');
       expect(r.debugTrack.length, 2, reason: 'but the anchor must rebase');
       // Ordinary movement accumulates again from the re-anchored position.
       clock.advance(const Duration(seconds: 10));
       r.debugInjectPosition(makePosition(
           metresEast: 160, secondsFromStart: -3590, speed: 1));
-      expect(r.debugDistanceMetres, closeTo(10, 0.5));
+      expect(r.debugDistanceMetres, closeTo(149.823, 1e-3));
       expect(r.debugTrack.length, 3);
     });
 
-    test('stalled GPS clock keeps recording the path, credits no distance', () {
-      // Every fix shares a timestamp, so dt is 0 and speed is unverifiable.
-      // Failing closed on DISTANCE is right; freezing the TRACK too is not —
-      // the run's path must keep being recorded.
+    test('stalled GPS clock keeps recording the path on the monotonic clock',
+        () {
+      // Every fix shares a timestamp, so the GPS dt is 0. Freezing the TRACK
+      // would be wrong — the run's path must keep being recorded — and the
+      // estimator times the 12 s on the monotonic clock instead: a gap, so it
+      // credits the 40 m hop only its chord lower bound (29.95 m by the
+      // reference), never Doppler over a GPS interval it cannot verify.
       final clock = _FakeClock();
       final r = RunRecorder(clock: clock)
         ..debugPrepareWithoutStream(maxSpeedMps: 1000);
@@ -443,7 +452,7 @@ void main() {
       clock.advance(const Duration(seconds: 12));
       r.debugInjectPosition(makePosition(metresEast: 40, secondsFromStart: 30));
       expect(r.debugTrack.length, 2);
-      expect(r.debugDistanceMetres, 0);
+      expect(r.debugDistanceMetres, closeTo(29.953, 1e-3));
     });
 
     test('no GPS timestamp sequence can freeze the anchor permanently', () {
@@ -913,7 +922,7 @@ void main() {
       final run = await r.stop();
       expect(run.metadata?['indoor'], isNull);
       expect(run.metadata?['indoor_source'], isNull);
-      expect(run.metadata?['distance_estimator'], 'kalman_v3');
+      expect(run.metadata?['distance_estimator'], 'kalman_v4');
       expect(run.metadata?.containsKey('distance_step_filled_m'), isFalse,
           reason: 'no pedometer fill happened, so the key is omitted');
     });
@@ -1378,7 +1387,7 @@ void main() {
       expect(r.debugDistanceMetres, closeTo(34.92098239921727, 1e-6));
       final run = await r.stop();
       expect(run.distanceMetres, closeTo(39.487530494657875, 1e-6));
-      expect(run.metadata?['distance_estimator'], 'kalman_v3');
+      expect(run.metadata?['distance_estimator'], 'kalman_v4');
       expect(run.track, hasLength(11));
       for (final w in run.track) {
         expect(w.hasSmoothedPosition, isTrue);
@@ -1425,7 +1434,7 @@ void main() {
     test('one stretch not smoothed leaves the whole run unstamped', () async {
       // The first stretch (11 fixes plus the pause's finish) fits a cap of 12
       // and is smoothed; the second outgrows it. The saved distance takes the
-      // first stretch's correction, but kalman_v3 would claim the second was
+      // first stretch's correction, but kalman_v4 would claim the second was
       // smoothed too and hide Recalculate for a run the server could still
       // improve.
       final clock = _FakeClock();
@@ -1787,13 +1796,77 @@ void main() {
       }
       r.debugInjectPosition(
           makePosition(metresEast: 4.0 * 46, secondsFromStart: 46, speed: 4));
+      // The steps fall 4.22 m short of the 21 s gap's chord lower bound, so
+      // the GPS credit tops them up to it (spec v1.4).
       expect(r.stepFilledDistanceMetres, closeTo(72, 1e-6));
-      expect(r.debugDistanceMetres, closeTo(172, 1e-6));
+      expect(r.debugDistanceMetres, closeTo(176.2203647, 1e-6));
 
       final run = await r.stop();
-      expect(run.distanceMetres, closeTo(172, 1e-6));
-      expect(run.metadata?['distance_estimator'], 'kalman_v3');
+      expect(run.distanceMetres, closeTo(176.2203647, 1e-6));
+      expect(run.metadata?['distance_estimator'], 'kalman_v4');
       expect(run.metadata?['distance_step_filled_m'], 72);
+    });
+
+    test('a 20-50 m fix feeds the estimator but not the track or the map',
+        () {
+      // Canopy: the stated accuracy degrades past the 20 m map gate while
+      // Doppler stays good. The estimator keeps every fix up to its own 50 m
+      // cap, so the stretch is 30 s of 4 m/s, not a gap; the track keeps only
+      // the five clean fixes. Past 50 m a fix is dropped outright.
+      final clock = _FakeClock();
+      final r = RunRecorder(clock: clock)..debugPrepareWithoutStream();
+      r.begin();
+      for (var i = 0; i <= 30; i++) {
+        r.debugInjectPosition(makePosition(
+            metresEast: 4.0 * i,
+            secondsFromStart: i,
+            speed: 4,
+            accuracy: i < 5 ? 5 : 35));
+        clock.advance(const Duration(seconds: 1));
+      }
+      expect(r.debugTrack, hasLength(5));
+      expect(r.debugDistanceMetres, closeTo(120, 1e-6));
+      expect(r.debugWeakGps, isTrue);
+      r.debugInjectPosition(makePosition(
+          metresEast: 124, secondsFromStart: 31, speed: 4, accuracy: 60));
+      expect(r.debugDistanceMetres, closeTo(120, 1e-6));
+    });
+
+    test('prepare seeds the stride, which survives begin, only when in range',
+        () {
+      final r = RunRecorder()..debugPrepareWithoutStream(initialStrideM: 0.95);
+      r.begin();
+      expect(r.strideMetres, 0.95);
+      final out = RunRecorder()..debugPrepareWithoutStream(initialStrideM: 3.0);
+      out.begin();
+      expect(out.strideMetres, isNull);
+    });
+
+    test('a fused stretch never learns stride; the receiver stretch after it does',
+        () {
+      // Fused blends non-GNSS speed in and was measured 25% fast (#1106); a
+      // stride learned there would fill later gaps 25% long.
+      final clock = _FakeClock();
+      final r = RunRecorder(
+        clock: clock,
+        sourceClock: _FakeClock(),
+        gnssPositions: (_) => const Stream<Position>.empty(),
+      )..debugPrepareWithoutStream();
+      r.begin();
+      for (var i = 0; i <= 25; i++) {
+        r.debugInjectPosition(makePosition(
+            metresEast: 4.0 * i, secondsFromStart: i, speed: 4));
+        r.setStepCount(3 * i);
+        clock.advance(const Duration(seconds: 1));
+      }
+      expect(r.strideMetres, isNull);
+      for (var i = 26; i <= 60; i++) {
+        r.debugInjectGnssPosition(makePosition(
+            metresEast: 4.0 * i, secondsFromStart: i, speed: 4, accuracy: 3));
+        r.setStepCount(3 * i);
+        clock.advance(const Duration(seconds: 1));
+      }
+      expect(r.strideMetres, closeTo(4 / 3, 1e-9));
     });
 
     test('a gap right after a resume is filled with the pre-pause stride',
@@ -1823,8 +1896,9 @@ void main() {
       clock.advance(const Duration(seconds: 1));
       r.debugInjectPosition(
           makePosition(metresEast: 188, secondsFromStart: 48, speed: 4));
+      // 72 m of steps, topped up 1.90 m to the gap's chord lower bound.
       expect(r.stepFilledDistanceMetres, closeTo(72, 1e-6));
-      expect(r.debugDistanceMetres, closeTo(172, 1e-6));
+      expect(r.debugDistanceMetres, closeTo(173.9009432, 1e-6));
     });
 
     test('steps while paused are never credited', () {

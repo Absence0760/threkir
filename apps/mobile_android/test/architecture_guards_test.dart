@@ -437,9 +437,11 @@ void main() {
       // Reason: the live counter used to sum every positive altitude delta
       // with no noise band and no dropout carry, so a flat 10K read ~1,200 m
       // on the run screen and ~38 m on the run-detail screen minutes later.
-      // computeElevationGain / ElevationGainAccumulator in route_simplify.dart
-      // are the ONE elevation-gain contract (3 m gate + dropout carry); the
-      // screen must feed the accumulator, not re-derive the arithmetic.
+      // computeRunElevationGain / RunElevationGainAccumulator in
+      // run_altitude.dart are the ONE recorded-run elevation-gain contract
+      // (the barometer-or-GPS series and its band, over route_simplify.dart's
+      // gate + dropout carry); the screen must feed that accumulator, not
+      // re-derive the arithmetic or pick a band of its own.
       final body = _extractMethodBody(
         source,
         r'void _onSnapshot\(RunSnapshot snapshot\)\s*\{',
@@ -448,7 +450,13 @@ void main() {
         body,
         contains('_elevationGain.add('),
         reason: '_onSnapshot must append new waypoints to the shared '
-            'ElevationGainAccumulator.',
+            'RunElevationGainAccumulator.',
+      );
+      expect(
+        source,
+        contains('final RunElevationGainAccumulator _elevationGain'),
+        reason: 'The live gain must be the run_altitude.dart accumulator, '
+            'so it reads the same series and band as the run-detail figure.',
       );
       expect(
         body.contains('_elevationGainMetres +='),
@@ -458,9 +466,14 @@ void main() {
       );
       expect(
         source,
-        contains("import '../route_simplify.dart';"),
-        reason: 'The gate constant and the accumulator live in '
-            'route_simplify.dart; do not fork a second 3 m threshold here.',
+        contains("import '../run_altitude.dart';"),
+        reason: 'The accumulator and its bands live in run_altitude.dart.',
+      );
+      expect(
+        RegExp(r'minDeltaM|kElevationGain\w*MinDeltaM').hasMatch(source),
+        isFalse,
+        reason: 'The noise bands belong to run_altitude.dart and '
+            'route_simplify.dart; do not fork a threshold here.',
       );
     });
 

@@ -521,3 +521,28 @@ test('the AI plan assistant gates on the plan disclosure, above the route-AI ver
 		.includes('bypassPaywallEnabled');
 	assert.ok(!bypassInGate, `${file} must not let bypassPaywallEnabled skip the consent gate.`);
 });
+
+test('AI plan edits gate on the v4 plan-edit disclosure, before the plan read, the counter and the model', () => {
+	// /api/coach/plan-edit ships the runner's plan and change request to
+	// Anthropic so a model can propose changes to the plan — a purpose the v1
+	// copy's "the active plan" did not describe (decisions § 571, § 1962). It
+	// must require AI_DISCLOSURE_VERSION_PLAN_EDIT_AI, and the dev paywall
+	// bypass must not reach the consent branch.
+	const gate = read('src/lib/core/ai_disclosure.ts');
+	assert.match(gate, /AI_DISCLOSURE_VERSION_PLAN_EDIT_AI\s*=\s*4/);
+	const file = 'src/lib/training/plan_edit/handler.ts';
+	const source = read(file);
+	assert.match(source, /gateAiDisclosure\([\s\S]*?AI_DISCLOSURE_VERSION_PLAN_EDIT_AI/);
+	const gateIdx = source.indexOf('gateAiDisclosure(');
+	const loadIdx = source.indexOf('await loadPlan(');
+	const counterIdx = source.indexOf("rpc('increment_coach_usage'");
+	const anthropicIdx = source.indexOf('new Anthropic(');
+	assert.ok(
+		gateIdx > 0 && gateIdx < loadIdx && gateIdx < counterIdx && gateIdx < anthropicIdx,
+		`${file} must run the consent gate before it reads the plan, spends a slot or builds a client.`,
+	);
+	const bypassInGate = source
+		.slice(gateIdx, source.indexOf('ANTHROPIC_API_KEY', gateIdx))
+		.includes('bypassPaywallEnabled');
+	assert.ok(!bypassInGate, `${file} must not let bypassPaywallEnabled skip the consent gate.`);
+});

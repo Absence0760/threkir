@@ -294,3 +294,18 @@ test('the AI plan assistant spends a coach daily-cap slot before its billed call
 		`${file} must refund on refusal, a missing tool call and a provider error (found ${refunds.length}).`,
 	);
 });
+
+test('AI plan edits spend a coach daily-cap slot before the billed call, and refund failures', () => {
+	// /api/coach/plan-edit is open to free runners, so its per-user ceiling is
+	// the Coach's daily counter, taken before the Anthropic call, denying on an
+	// unreadable count and handed back when the call yields nothing.
+	const file = 'src/lib/training/plan_edit/handler.ts';
+	const source = read(file);
+	const incrIdx = source.indexOf("rpc('increment_coach_usage'");
+	const spendIdx = source.indexOf('anthropic.messages.create');
+	assert.ok(incrIdx > 0 && spendIdx > 0 && incrIdx < spendIdx, `${file}: the counter must precede the billed call.`);
+	assert.match(source, /resolveUsageCount\(/);
+	assert.match(source, /usedToday > dailyLimit/);
+	assert.match(source, /rpc\('decrement_coach_usage'/);
+	assert.ok((source.match(/await refundSlot\(/g) ?? []).length >= 3, `${file} must refund every failed call.`);
+});

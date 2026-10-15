@@ -37,7 +37,7 @@ import { dbError, thrownMessage } from '../../core/supabase_error';
 import { isoEpochDay, validatePlanInputs, type PlanRequestInputs } from './inputs';
 
 /// Matches the model used by the route assistant + the coach.
-const PLAN_REQUEST_MODEL = 'claude-opus-4-8';
+export const PLAN_REQUEST_MODEL = 'claude-opus-4-8';
 
 /// One small tool_use object. No thinking block: the API refuses extended
 /// thinking alongside a forced tool_choice, and the forced tool is what keeps

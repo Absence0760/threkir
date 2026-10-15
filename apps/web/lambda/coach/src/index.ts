@@ -23,6 +23,7 @@ import type { CoachConfig } from '../../../src/lib/coach/types';
 import { handleRouteDescribe } from '../../../src/lib/routes/route_describe/handler';
 import { handleRouteRequest } from '../../../src/lib/routes/route_request/handler';
 import { handlePlanRequest } from '../../../src/lib/training/plan_request/handler';
+import { handlePlanEdit } from '../../../src/lib/training/plan_edit/handler';
 import { isTruthyFlagValue } from '../../../src/lib/core/env_flag';
 import { methodRefusal, type MethodRefusal } from '../../../src/lib/core/method_gate';
 
@@ -58,6 +59,7 @@ import {
 	ROUTE_DESCRIBE_BODY_LIMIT_BYTES,
 	ROUTE_REQUEST_BODY_LIMIT_BYTES,
 	PLAN_REQUEST_BODY_LIMIT_BYTES,
+	PLAN_EDIT_BODY_LIMIT_BYTES,
 } from '../../../src/lib/coach/body';
 import { reportException } from '../../../src/lib/core/lambda_sentry';
 import { loadSecrets } from '../../../src/lib/core/lambda_secrets';
@@ -79,6 +81,7 @@ const SUB_PATHS = [
 	{ segment: 'route-describe', handle: dispatchRouteDescribe },
 	{ segment: 'route-request', handle: dispatchRouteRequest },
 	{ segment: 'plan-request', handle: dispatchPlanRequest },
+	{ segment: 'plan-edit', handle: dispatchPlanEdit },
 ].map(({ segment, handle }) => ({
 	segment,
 	pattern: new RegExp(`^/api/coach/${segment}/?$`),
@@ -385,6 +388,43 @@ async function dispatchPlanRequest(
 		null;
 	const result = await handlePlanRequest(authHeader, rawBody, {
 		enabled: isTruthyFlagValue(process.env.AI_PLAN_ENABLED),
+		anthropicApiKey: (await loadSecrets()).ANTHROPIC_API_KEY,
+		publicSupabaseUrl: requireEnv('PUBLIC_SUPABASE_URL'),
+		publicSupabaseAnonKey: requireEnv('PUBLIC_SUPABASE_ANON_KEY'),
+		bypassPaywallEnabled: false,
+	});
+	writeResult(responseStream, result);
+}
+
+// AI plan edits: a plain-English change to the caller's own plan becomes
+// validated edit operations via forced tool-use. `bypassPaywallEnabled: false`
+// is hard-coded: the production Lambda must never skip the daily cap.
+async function dispatchPlanEdit(
+	event: LambdaFunctionURLEvent,
+	responseStream: ResponseStream,
+): Promise<void> {
+	const decoded = decodeLambdaBody(
+		event.body,
+		event.isBase64Encoded === true,
+		PLAN_EDIT_BODY_LIMIT_BYTES,
+	);
+	if (!decoded.ok) {
+		writeJson(responseStream, decoded.status, { error: decoded.error });
+		return;
+	}
+	let rawBody: unknown;
+	try {
+		rawBody = decoded.body ? JSON.parse(decoded.body) : null;
+	} catch {
+		writeJson(responseStream, 400, { error: 'invalid JSON' });
+		return;
+	}
+	const authHeader =
+		event.headers?.['x-supabase-authorization'] ??
+		event.headers?.['X-Supabase-Authorization'] ??
+		null;
+	const result = await handlePlanEdit(authHeader, rawBody, {
+		enabled: isTruthyFlagValue(process.env.AI_PLAN_EDIT_ENABLED),
 		anthropicApiKey: (await loadSecrets()).ANTHROPIC_API_KEY,
 		publicSupabaseUrl: requireEnv('PUBLIC_SUPABASE_URL'),
 		publicSupabaseAnonKey: requireEnv('PUBLIC_SUPABASE_ANON_KEY'),

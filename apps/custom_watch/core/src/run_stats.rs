@@ -139,7 +139,7 @@ pub fn compute_real_splits(track: &[TrackPoint], tick_metres: f64) -> Vec<Split,
     let mut splits: Vec<Split, MAX_SPLITS> = Vec::new();
     // A non-positive tick puts every boundary at or behind 0 m, so each
     // segment would close a split of its own. Same guard as web and mobile.
-    if track.len() < 2 || !(tick_metres > 0.0) {
+    if track.len() < 2 || tick_metres.is_nan() || tick_metres <= 0.0 {
         return splits;
     }
     if !track.iter().any(|p| p.ts.is_some()) {

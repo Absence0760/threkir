@@ -100,6 +100,11 @@ export type TrackPoint = {
 	/// fields); `ele` stays the GPS altitude. Climb and the profile read it
 	/// through `runAltitude` (lib/runs/run_altitude.ts).
 	baroEle?: number;
+	/// The run's distance credited up to and including this fix, metres:
+	/// the GPS distance estimator's cumulative figure as the recorder saved it
+	/// (docs/features/gps_distance.md § Waypoint fields). Splits and moving
+	/// time read it through `trackCumulativeMetres` (lib/runs/run_stats.ts).
+	distM?: number;
 };
 
 // `track` is populated on-demand by `data.ts#fetchRunById` from the gzipped

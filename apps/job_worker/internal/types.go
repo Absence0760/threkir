@@ -38,6 +38,11 @@ type TrackPoint struct {
 	// absent on imports and older recordings. The OSRM matcher turns it
 	// into a per-point search radius.
 	AccuracyMetres *float64 `json:"accuracyMetres,omitempty"`
+	// DistM is the run's distance credited up to this fix as the recorder
+	// saved it (docs/features/gps_distance.md § Waypoint fields). Carried
+	// so a matched track, which keeps one point per stored fix, keeps it
+	// too; the worker reads none of it.
+	DistM *float64 `json:"distM,omitempty"`
 }
 
 // MatchOutput is what a Matcher hands back to the worker. The matched

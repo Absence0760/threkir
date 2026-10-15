@@ -46,6 +46,15 @@ class Waypoint {
   @JsonKey(includeIfNull: false)
   final double? baroElevationMetres;
 
+  /// The run's distance credited up to and including this fix, metres: the
+  /// GPS distance estimator's cumulative figure as the recorder saved it
+  /// (`docs/features/gps_distance.md` § Waypoint fields; `distM` in the
+  /// uploaded track). Splits and moving time read it through
+  /// `trackCumulativeMetres`. Omitted on imports and on every track recorded
+  /// before it existed.
+  @JsonKey(includeIfNull: false)
+  final double? cumulativeDistanceMetres;
+
   const Waypoint({
     required this.lat,
     required this.lng,
@@ -59,6 +68,7 @@ class Waypoint {
     this.smoothedLat,
     this.smoothedLng,
     this.baroElevationMetres,
+    this.cumulativeDistanceMetres,
   });
 
   /// Whether the stored track carries a usable smoothed position for this
@@ -90,6 +100,25 @@ class Waypoint {
         smoothedLat: smoothedLat,
         smoothedLng: smoothedLng,
         baroElevationMetres: baroElevationMetres,
+        cumulativeDistanceMetres: cumulativeDistanceMetres,
+      );
+
+  /// This fix with its cumulative credited distance set (or cleared).
+  Waypoint withCumulativeDistance(double? cumulativeDistanceMetres) =>
+      Waypoint(
+        lat: lat,
+        lng: lng,
+        elevationMetres: elevationMetres,
+        timestamp: timestamp,
+        bpm: bpm,
+        accuracyMetres: accuracyMetres,
+        speedMps: speedMps,
+        speedAccuracyMps: speedAccuracyMps,
+        bearingDeg: bearingDeg,
+        smoothedLat: smoothedLat,
+        smoothedLng: smoothedLng,
+        baroElevationMetres: baroElevationMetres,
+        cumulativeDistanceMetres: cumulativeDistanceMetres,
       );
 
   factory Waypoint.fromJson(Map<String, dynamic> json) =>
@@ -130,7 +159,8 @@ List<Waypoint> finiteWaypoints(List<Waypoint> track) {
         _nonFinite(w.bearingDeg) ||
         _nonFinite(w.smoothedLat) ||
         _nonFinite(w.smoothedLng) ||
-        _nonFinite(w.baroElevationMetres)) {
+        _nonFinite(w.baroElevationMetres) ||
+        _nonFinite(w.cumulativeDistanceMetres)) {
       needsFilter = true;
       break;
     }
@@ -153,6 +183,7 @@ List<Waypoint> finiteWaypoints(List<Waypoint> track) {
           smoothedLat: _finiteSmoothedPair(w) ? w.smoothedLat : null,
           smoothedLng: _finiteSmoothedPair(w) ? w.smoothedLng : null,
           baroElevationMetres: _finiteOrNull(w.baroElevationMetres),
+          cumulativeDistanceMetres: _finiteOrNull(w.cumulativeDistanceMetres),
         ),
   ];
 }

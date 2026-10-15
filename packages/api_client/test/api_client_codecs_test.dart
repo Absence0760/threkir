@@ -197,6 +197,20 @@ void main() {
       );
     });
 
+    test('the cumulative credited distance round-trips as distM', () {
+      const w = Waypoint(lat: 47.37, lng: 8.54, cumulativeDistanceMetres: 812.4);
+      final json = ApiClient.debugWaypointToJson(w);
+      expect(json['distM'], 812.4);
+      final back = ApiClient.debugWaypointFromJson(
+          jsonDecode(jsonEncode(json)) as Map<String, dynamic>);
+      expect(back.cumulativeDistanceMetres, 812.4);
+      expect(
+        ApiClient.debugWaypointToJson(const Waypoint(lat: 1, lng: 2))
+            .containsKey('distM'),
+        isFalse,
+      );
+    });
+
     test('the track blob drops a non-finite barometric altitude only', () {
       final blob = ApiClient.debugTrackBlobJson(const [
         Waypoint(

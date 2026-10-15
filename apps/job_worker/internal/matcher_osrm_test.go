@@ -659,3 +659,20 @@ func TestTrackPoint_DecodesRecorderAccuracy(t *testing.T) {
 		t.Errorf("radius %v / %v", osrmRadiusM(pts[0]), osrmRadiusM(pts[1]))
 	}
 }
+
+func TestTrackPoint_RoundTripsRecordedDistance(t *testing.T) {
+	var pts []TrackPoint
+	if err := json.Unmarshal([]byte(`[{"lat":1,"lng":2,"distM":812.4},{"lat":1,"lng":2}]`), &pts); err != nil {
+		t.Fatal(err)
+	}
+	if pts[0].DistM == nil || *pts[0].DistM != 812.4 || pts[1].DistM != nil {
+		t.Fatalf("distM not decoded: %+v", pts)
+	}
+	out, err := json.Marshal(pts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := string(out); got != `[{"lat":1,"lng":2,"distM":812.4},{"lat":1,"lng":2}]` {
+		t.Errorf("encoded %s", got)
+	}
+}

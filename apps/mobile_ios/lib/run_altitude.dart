@@ -122,5 +122,6 @@ Waypoint _withBarometricElevation(Waypoint w) {
     smoothedLat: w.smoothedLat,
     smoothedLng: w.smoothedLng,
     baroElevationMetres: baro,
+    cumulativeDistanceMetres: w.cumulativeDistanceMetres,
   );
 }

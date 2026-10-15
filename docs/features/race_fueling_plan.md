@@ -46,6 +46,44 @@ competitor does. In-run reminders are a deferred separate phase.
 
 No new schema (prefs in the existing universal bag).
 
+## Coach fuelling handoff (2026-10-15, decisions § 1975)
+
+The Coach no longer only refuses "how should I fuel my long run / race?".
+Behind a default-off flag it answers with one link to **`/nutrition/fuel`**, a
+route-less fuelling plan for a single run: the same `buildFuelPlan` over one
+start-to-finish leg, showing total carbohydrate, the gel count and total fluid,
+with a Heat toggle. The link carries `duration` (whole seconds, from the plan,
+a comparable recent run or a time the runner gave) and `carbs` / `fluid` /
+`heat` only when the runner stated them; otherwise the page uses the runner's
+saved `carbs_per_hour` / `fluid_per_hour`, then the defaults, and labels which
+source each rate came from.
+
+- **Validation.** `parseFuelHandoff` (`apps/web/src/lib/routes/fuel_params.ts`)
+  reads only plain non-negative numbers, refuses a rate above the Settings
+  ceilings (200 g/h, 3000 ml/h) and a duration outside 10 min – 7 days, and
+  DROPS an out-of-range value rather than clamping it. The roadbook's
+  `?carbs=` / `?fluid=` overrides go through the same parser.
+- **Still forbidden in the Coach:** naming foods, drinks, products, brands or
+  supplements, calorie targets, and any carbohydrate / fluid / sodium amount of
+  the model's own (`system_prompt.ts`, pinned by `system_prompt.test.ts`).
+- **No new AI disclosure version:** the link is built from context the Coach
+  already sends (plan, recent runs, chat). See § 1975 for the argument.
+- **Mobile:** the phone has no route-less fuelling screen; its Coach opens the
+  link on the web host (`coachFuelLinkWebUrl` in `coach_screen.dart`).
+- **Gates:** `PUBLIC_COACH_FUEL_ENABLED` (page, `coach_fuel_flag.ts`) and the
+  coach Lambda's `COACH_FUEL_ENABLED` (prompt addendum, sops
+  `coach_config_keys`). Both default off.
+
+### Pre-deploy checklist (Coach fuelling handoff)
+
+- [ ] Owner sign-off: the Coach answering fuelling questions through the
+  deterministic plan (reverses § 12 in part).
+- [ ] Counsel sign-off: the liability surface § 12 named, the system-prompt
+  prohibitions, and the page's "planning totals, not a prescription" copy in
+  all seven locales.
+- [ ] Then set `PUBLIC_COACH_FUEL_ENABLED` (release-web secret) and
+  `COACH_FUEL_ENABLED` (sops) together.
+
 ## Commit cadence
 
 1. ✅ `fuel_plan.ts/.dart` helper + unit/mirror tests.
@@ -85,6 +123,7 @@ for the full rationale.
 ## Docs
 
 Cross-references: [race_roadbook.md](race_roadbook.md) § Fueling,
+[decisions.md § 1975](../architecture/decisions.md) (Coach fuelling handoff),
 [settings.md](../backend/settings.md) (`carbs_per_hour` / `fluid_per_hour`),
 [parity.md](../product/parity.md) (Race fueling plan row), and
 [decisions.md § 155](../architecture/decisions.md).

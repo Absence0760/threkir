@@ -27,11 +27,12 @@ test.describe('/plans/new — AI plan request', () => {
 	}
 
 	test('a successful extraction fills the form, explains itself, and leaves the 5K unconfirmed', async ({
-		page
+		page,
+		mockRoute
 	}) => {
 		const raceDate = browserDate(70);
 		const seen: { body: { request?: string; today?: string } | null } = { body: null };
-		await page.route('**/api/coach/plan-request', async (route) => {
+		await mockRoute(page, '**/api/coach/plan-request', async (route) => {
 			seen.body = route.request().postDataJSON();
 			await route.fulfill({
 				status: 200,
@@ -78,13 +79,14 @@ test.describe('/plans/new — AI plan request', () => {
 	});
 
 	test('a second fill replaces the first one\'s length and goal time rather than inheriting them', async ({
-		page
+		page,
+		mockRoute
 	}) => {
 		const replies = [
 			{ goalEvent: 'distance_half', goalTimeSec: 6900, weeks: 12 },
 			{ goalEvent: 'distance_10k', goalTimeSec: null, weeks: null }
 		];
-		await page.route('**/api/coach/plan-request', async (route) => {
+		await mockRoute(page, '**/api/coach/plan-request', async (route) => {
 			const next = replies.shift()!;
 			await route.fulfill({
 				status: 200,
@@ -172,8 +174,8 @@ test.describe('/plans/new — AI plan request', () => {
 		expect(bodies).toHaveLength(1);
 	});
 
-	test('a consent refusal links to /coach to accept the updated disclosure', async ({ page }) => {
-		await page.route('**/api/coach/plan-request', async (route) => {
+	test('a consent refusal links to /coach to accept the updated disclosure', async ({ page, mockRoute }) => {
+		await mockRoute(page, '**/api/coach/plan-request', async (route) => {
 			await route.fulfill({
 				status: 403,
 				contentType: 'application/json',
@@ -194,8 +196,8 @@ test.describe('/plans/new — AI plan request', () => {
 		await expect(editor.locator('.ai-applied')).toHaveCount(0);
 	});
 
-	test('a 503 shows the fallback and the manual form still generates', async ({ page }) => {
-		await page.route('**/api/coach/plan-request', async (route) => {
+	test('a 503 shows the fallback and the manual form still generates', async ({ page, mockRoute }) => {
+		await mockRoute(page, '**/api/coach/plan-request', async (route) => {
 			await route.fulfill({
 				status: 503,
 				contentType: 'application/json',

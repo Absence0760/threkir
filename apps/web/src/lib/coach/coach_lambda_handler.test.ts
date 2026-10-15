@@ -228,8 +228,11 @@ test('COACH_PROVIDER=openai with no base URL refuses before the quota is spent',
 
 test('the provider check does not gate the non-streaming sub-paths', async () => {
 	// They are a Pro perk with a templated fallback and no COACH_PROVIDER of
-	// their own, so an unconfigured provider must not 503 them.
+	// their own, so an unconfigured provider must not 503 them. The plan
+	// assistant's own deploy flag is switched on here: unset, it answers a
+	// fail-closed 503 of its own, which would read as this gate.
 	process.env.COACH_PROVIDER = 'not-a-provider';
+	process.env.AI_PLAN_ENABLED = 'true';
 	try {
 		for (const rawPath of [
 			'/api/coach/route-describe',
@@ -241,6 +244,7 @@ test('the provider check does not gate the non-streaming sub-paths', async () =>
 		}
 	} finally {
 		delete process.env.COACH_PROVIDER;
+		delete process.env.AI_PLAN_ENABLED;
 	}
 });
 
@@ -369,7 +373,11 @@ test('an unknown path under the prefix never reaches the coach turn or its large
 
 	// The paths the dev table does declare still route, trailing slash
 	// included. The status is each handler's own first refusal — 401 for the
-	// coach's auth gate, 400 for a sub-path's input check.
+	// coach's auth gate, 400 for a sub-path's input check. The plan
+	// assistant's deploy flag is on so its first refusal is the input check
+	// rather than its fail-closed 503.
+	process.env.AI_PLAN_ENABLED = 'true';
+	try {
 	for (const [rawPath, status] of [
 		['/api/coach', 401],
 		['/api/coach/', 401],
@@ -382,6 +390,9 @@ test('an unknown path under the prefix never reaches the coach turn or its large
 	] as Array<[string, number]>) {
 		const out = await invoke({ rawPath, body: CHAT_BODY });
 		assert.equal(out.status, status, `${rawPath} no longer routes`);
+	}
+	} finally {
+		delete process.env.AI_PLAN_ENABLED;
 	}
 });
 

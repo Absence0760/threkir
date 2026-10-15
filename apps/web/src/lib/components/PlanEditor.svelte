@@ -1216,7 +1216,7 @@
 	}
 	.ai-applied ul {
 		margin: 0;
-		padding-left: 1.1rem;
+		padding-inline-start: 1.1rem;
 		color: var(--color-text-secondary);
 	}
 	.imported-note {

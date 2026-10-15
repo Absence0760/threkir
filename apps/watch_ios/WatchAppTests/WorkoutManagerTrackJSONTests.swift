@@ -106,6 +106,23 @@ final class WorkoutManagerTrackJSONTests: XCTestCase {
         XCTAssertEqual(back[1].ts, "2026-04-15T07:30:11Z")
     }
 
+    func testCreditedDistanceRidesTheWireAsDistM() throws {
+        let id = "json-\(UUID().uuidString.lowercased())"
+        let wm = WorkoutManager()
+        wm.finishedRun = makeRun(id: id, points: [
+            TrackPointRecord(lat: 51.4513, lng: -0.1962, ele: nil, ts: "2026-04-15T07:30:01Z", distM: 0),
+            TrackPointRecord(lat: 51.4514, lng: -0.1961, ele: nil, ts: "2026-04-15T07:30:11Z", distM: 14.25),
+            TrackPointRecord(lat: 51.4515, lng: -0.1960, ele: nil, ts: "2026-04-15T07:30:21Z"),
+        ])
+        let url = try wm.writeTrackJSON()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let raw = try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [[String: Any]]
+        XCTAssertEqual(raw?[0]["distM"] as? Double, 0)
+        XCTAssertEqual(raw?[1]["distM"] as? Double, 14.25)
+        XCTAssertNil(raw?[2]["distM"], "an unstamped point omits the key rather than writing null")
+    }
+
     func testEmptyTrackWritesValidEmptyArray() throws {
         // Indoor / no-GPS run: zero points must still produce a valid `[]`
         // file the phone can upload without special-casing.

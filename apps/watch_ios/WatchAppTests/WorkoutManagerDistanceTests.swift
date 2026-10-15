@@ -164,6 +164,16 @@ final class WorkoutManagerDistanceTests: XCTestCase {
                        "a segment that learned nothing passes on the stride it carried")
     }
 
+    /// Each stored fix carries the run's credited distance as `distM`, the
+    /// axis splits and moving time are measured on.
+    func testStoredDistanceIsTheCreditedFigureToTheCentimetre() {
+        XCTAssertEqual(WorkoutManager.storedDistance(0), 0)
+        XCTAssertEqual(WorkoutManager.storedDistance(812.4049), 812.4)
+        XCTAssertNil(WorkoutManager.storedDistance(.nan))
+        XCTAssertNil(WorkoutManager.storedDistance(.infinity))
+        XCTAssertNil(WorkoutManager.storedDistance(-1))
+    }
+
     func testStopKeepsTheBankedFigure() {
         let wm = WorkoutManager()
         wm.state = .recording

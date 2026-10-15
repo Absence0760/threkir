@@ -217,6 +217,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         var speedMps: Double? = nil
         var speedAccuracyMps: Double? = nil
         var bearingDeg: Double? = nil
+        var distM: Double? = nil
     }
 
     /// Bytes buffered before `writeTrackJSON` flushes to the output handle.
@@ -269,7 +270,8 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
                 accuracyMetres: record.accuracyMetres,
                 speedMps: record.speedMps,
                 speedAccuracyMps: record.speedAccuracyMps,
-                bearingDeg: record.bearingDeg
+                bearingDeg: record.bearingDeg,
+                distM: record.distM
             )
             guard let encoded = try? encoder.encode(point) else { return }
             if wroteAny { buffer.append(comma) }
@@ -930,6 +932,13 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         location.course >= 0 && location.courseAccuracy >= 0 ? location.course : nil
     }
 
+    /// The run's credited distance as a stored track point carries it,
+    /// rounded to the centimetre; absent when it is not a finite distance.
+    static func storedDistance(_ metres: Double) -> Double? {
+        guard metres.isFinite, metres >= 0 else { return nil }
+        return (metres * 100).rounded() / 100
+    }
+
     private func feedEstimator(_ location: CLLocation, t: Double) {
         distanceEstimator.addFix(
             t: t,
@@ -985,7 +994,8 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
                 accuracyMetres: location.horizontalAccuracy,
                 speedMps: Self.speed(of: location),
                 speedAccuracyMps: Self.speedAccuracy(of: location),
-                bearingDeg: Self.bearing(of: location)
+                bearingDeg: Self.bearing(of: location),
+                distM: Self.storedDistance(distanceMetres)
             ))
         }
 

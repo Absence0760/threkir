@@ -371,4 +371,7 @@ struct TrackPointRecord: Codable {
     var speedMps: Double? = nil
     var speedAccuracyMps: Double? = nil
     var bearingDeg: Double? = nil
+    /// The run's distance credited up to and including this fix
+    /// (docs/features/gps_distance.md § Waypoint fields).
+    var distM: Double? = nil
 }

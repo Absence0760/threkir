@@ -65,3 +65,26 @@ func TestFollowRequest_IsEmailedToARecipientOnAllMail(t *testing.T) {
 		t.Error("a follow request is not pushed under the \"all\" mode")
 	}
 }
+
+func TestFollowRequest_ReachesTheDefaultImportantModeAndHasItsOwnMute(t *testing.T) {
+	def := map[string]interface{}{}
+	if !shouldEmail("follow_request", def) || !shouldPush("follow_request", def) {
+		t.Error("a follow request should go out on both channels under the default important mode")
+	}
+	if shouldEmail("follow", def) || shouldPush("follow", def) {
+		t.Error("a plain follow must stay out of the default important mode")
+	}
+
+	muted := map[string]interface{}{"notify_follow_request": "off"}
+	if shouldEmail("follow_request", muted) || shouldPush("follow_request", muted) {
+		t.Error("notify_follow_request=off must silence email and push")
+	}
+	if kindMuted("mention", muted) {
+		t.Error("notify_follow_request muted another kind")
+	}
+
+	off := map[string]interface{}{"email_notifications": emailModeOff, "push_notifications": pushModeOff, "notify_follow_request": "on"}
+	if shouldEmail("follow_request", off) || shouldPush("follow_request", off) {
+		t.Error("a per-kind 'on' must not promote a follow request past a channel mute")
+	}
+}

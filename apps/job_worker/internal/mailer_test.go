@@ -37,7 +37,7 @@ func pushPrefs(mode string) map[string]interface{} {
 }
 
 func TestShouldEmail_Matrix(t *testing.T) {
-	important := []string{"event_reminder", "event_cancel", "plan_update", "message", "data_export_ready", "refund_failed", "event_waitlist_slot", "mention"}
+	important := []string{"event_reminder", "event_cancel", "plan_update", "message", "data_export_ready", "refund_failed", "event_waitlist_slot", "mention", "follow_request"}
 	social := []string{"kudos", "comment", "comment_reply", "follow", "club_post", "run_completed", "event_rsvp", "reaction", "comment_like"}
 
 	for _, k := range important {
@@ -219,6 +219,7 @@ func TestRenderNotificationEmail_AllKinds(t *testing.T) {
 		{"comment_like", NotificationRow{Kind: "comment_like", RunID: &run}, base + "/runs/run-1"},
 		{"mention", NotificationRow{Kind: "mention", RunID: &run}, base + "/runs/run-1"},
 		{"follow", NotificationRow{Kind: "follow", UserID: "usr-1"}, base + "/u/usr-1"},
+		{"follow_request", NotificationRow{Kind: "follow_request", UserID: "usr-1"}, base + "/follow-requests"},
 		{"challenge_complete", NotificationRow{Kind: "challenge_complete"}, base + "/challenges"},
 		{"achievement", NotificationRow{Kind: "achievement", UserID: "usr-1"}, base + "/u/usr-1?tab=notifications"},
 		{"content_hidden", NotificationRow{Kind: "content_hidden", UserID: "usr-1"}, base + "/u/usr-1?tab=notifications"},

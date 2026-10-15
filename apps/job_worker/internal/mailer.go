@@ -335,6 +335,10 @@ var importantKinds = map[string]bool{
 	// message than to the social loop. reaction / comment_like stay out: they
 	// are the same kind of signal as kudos (decisions § 1971).
 	"mention": true,
+	// A private profile's owner is the only one who can let the asker in,
+	// and the asker sees nothing until they do. A plain follow stays out:
+	// it has already happened and asks nothing of the recipient.
+	"follow_request": true,
 }
 
 // kindMutePrefKey maps a notification kind to the user_settings.prefs key
@@ -367,6 +371,9 @@ var kindMutePrefKey = map[string]string{
 	"reaction":     "notify_reaction",
 	"comment_like": "notify_comment_like",
 	"mention":      "notify_mention",
+	// Important for the same reason a mention is, and raised by someone else,
+	// so the owner needs a control narrower than the whole channel.
+	"follow_request": "notify_follow_request",
 }
 
 // kindMuted reports whether the recipient silenced this one kind. Only the

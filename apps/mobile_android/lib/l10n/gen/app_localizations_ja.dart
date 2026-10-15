@@ -2041,6 +2041,10 @@ class AppLocalizationsJa extends AppLocalizations {
       'アプリを離れている間、位置情報の記録が一時停止しました — タイムは計測を続け、記録済みのデータは失われていませんが、画面外で進んだ距離は加算されていません。バックグラウンドでも記録するには、位置情報を「常に許可」に設定してください。';
 
   @override
+  String get runPreciseLocationOff =>
+      '正確な位置情報がオフです — このランの地図とGPS距離は表示されないか大きくずれますが、タイムは記録を続けます。正確なルートを記録するには、設定で正確な位置情報をオンにしてください。';
+
+  @override
   String get runGpsSensorFailed => 'GPSなしで記録中 — センサーを開始できませんでした。';
 
   @override

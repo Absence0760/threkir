@@ -593,6 +593,7 @@
   "runGpsBlockedSettings": "Pas de GPS — autorisation bloquée. Activez-la pour suivre le parcours.",
   "runGpsPermissionPending": "Pas de GPS — le suivi démarrera quand l'autorisation sera accordée.",
   "runBackgroundLocationPaused": "Le suivi a été mis en pause pendant votre absence — le chrono a continué et rien n’a été perdu, mais la distance parcourue hors écran n’a pas été comptée. Réglez la localisation sur « Toujours autoriser » pour suivre en arrière-plan.",
+  "runPreciseLocationOff": "La position exacte est désactivée — la carte et la distance GPS de cette course seront absentes ou très imprécises, mais le chrono continue d’enregistrer. Activez la position exacte dans les Réglages pour un tracé précis.",
   "runGpsSensorFailed": "Enregistrement sans GPS — impossible de démarrer le capteur.",
   "runAgoJustNow": "À l'instant",
   "runAgoMinutes": "il y a {count} min",

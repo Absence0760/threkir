@@ -40,6 +40,11 @@
 	<string>Threkir uses your location to track runs.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Threkir continues tracking runs in the background so you don't lose data if you take a call or lock your phone.</string>
+	<key>NSLocationTemporaryUsageDescriptionDictionary</key>
+	<dict>
+		<key>RunRecording</key>
+		<string>Threkir needs your precise location to map this run and measure its distance accurately.</string>
+	</dict>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Threkir reads workouts, distance, heart rate and body weight from Apple Health so runs you've recorded in other apps can be imported into your history and your calorie estimate uses your real weight.</string>
 	<key>NSHealthUpdateUsageDescription</key>

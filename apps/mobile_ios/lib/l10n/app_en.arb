@@ -2749,6 +2749,10 @@
   "@runBackgroundLocationPaused": {
     "description": "Banner shown on returning to a recording run after the app was backgrounded under a foreground-only location grant and no fix arrived while away"
   },
+  "runPreciseLocationOff": "Precise location is off — the map and GPS distance for this run will be missing or far off, but the timer still records. Turn on precise location in Settings for an accurate track.",
+  "@runPreciseLocationOff": {
+    "description": "Banner shown at run start when location is granted without precision (iOS Precise Location off, or Android approximate only), so GPS fixes are too coarse to track the run"
+  },
   "runGpsSensorFailed": "Recording without GPS — could not start the sensor.",
   "@runGpsSensorFailed": {
     "description": "Banner shown when the GPS sensor could not start for an unknown reason"

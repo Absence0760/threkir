@@ -593,6 +593,7 @@
   "runGpsBlockedSettings": "Kein GPS — Berechtigung blockiert. Aktiviere sie, um die Route aufzuzeichnen.",
   "runGpsPermissionPending": "Kein GPS — die Aufzeichnung startet, sobald die Berechtigung erteilt ist.",
   "runBackgroundLocationPaused": "Die Aufzeichnung pausierte, während du weg warst — die Zeit lief weiter und nichts ging verloren, aber die Distanz außerhalb des Bildschirms wurde nicht gezählt. Stelle den Standort auf „Immer zulassen“, um im Hintergrund aufzuzeichnen.",
+  "runPreciseLocationOff": "Genauer Standort ist aus — Karte und GPS-Distanz dieses Laufs fehlen oder liegen weit daneben, die Zeit wird aber weiter aufgezeichnet. Aktiviere den genauen Standort in den Einstellungen für eine exakte Strecke.",
   "runGpsSensorFailed": "Aufzeichnung ohne GPS — der Sensor konnte nicht gestartet werden.",
   "runAgoJustNow": "Gerade eben",
   "runAgoMinutes": "vor {count} Min.",

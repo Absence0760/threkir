@@ -2120,6 +2120,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Tracking paused while you were away — your run kept timing and nothing was lost, but distance covered off screen wasn’t counted. Set Location to \"Allow all the time\" to track in the background.';
 
   @override
+  String get runPreciseLocationOff =>
+      'Precise location is off — the map and GPS distance for this run will be missing or far off, but the timer still records. Turn on precise location in Settings for an accurate track.';
+
+  @override
   String get runGpsSensorFailed =>
       'Recording without GPS — could not start the sensor.';
 

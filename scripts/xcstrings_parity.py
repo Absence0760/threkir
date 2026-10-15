@@ -39,8 +39,10 @@ Seven claims, in order:
      declare exactly that set. A translated string the bundle does not declare
      is never loaded at runtime: the app silently shows English and nothing
      fails, which is precisely how a half-declared locale ships.
-  5. Every `NS*UsageDescription` key Info.plist declares has an entry in the
-     consent catalog, and every entry names a key Info.plist actually declares.
+  5. Every `NS*UsageDescription` key Info.plist declares -- and every purpose
+     key inside its `NSLocationTemporaryUsageDescriptionDictionary`, which iOS
+     localizes under the purpose key itself -- has an entry in the consent
+     catalog, and every entry names a key Info.plist actually declares.
      A new capability adds a purpose string to the plist and nothing anywhere
      asks for its six translations -- the prompt just reads English forever.
      The other direction is an entry for a key that no longer exists: six
@@ -201,19 +203,37 @@ plist_usage = {
         re.S,
     )
 }
+temporary = re.search(
+    r"<key>NSLocationTemporaryUsageDescriptionDictionary</key>\s*<dict>(.*?)</dict>",
+    plist_text,
+    re.S,
+)
+plist_purpose = (
+    {
+        k: html.unescape(v)
+        for k, v in re.findall(
+            r"<key>(\w+)</key>\s*<string>(.*?)</string>",
+            temporary.group(1),
+            re.S,
+        )
+    }
+    if temporary is not None
+    else {}
+)
+plist_consent = {**plist_usage, **plist_purpose}
 plist_name, plist_source, plist_strings = catalogs[plist_catalog_rel]
-for key in sorted(set(plist_usage) - set(plist_strings)):
+for key in sorted(set(plist_consent) - set(plist_strings)):
     errors.append(
         f"{plist_name}: Info.plist declares {key} with no catalog entry — "
         f"that consent prompt renders English on every {args.device}"
     )
-for key in sorted(set(plist_strings) - set(plist_usage)):
+for key in sorted(set(plist_strings) - set(plist_consent)):
     errors.append(
         f"{plist_name} [{key}]: no such NS*UsageDescription key in Info.plist"
     )
-for key in sorted(set(plist_usage) & set(plist_strings)):
+for key in sorted(set(plist_consent) & set(plist_strings)):
     unit = plist_strings[key].get("localizations", {}).get(plist_source, {}).get("stringUnit", {})
-    if unit.get("value") != plist_usage[key]:
+    if unit.get("value") != plist_consent[key]:
         errors.append(
             f"{plist_name} [{key}]: {plist_source} value differs from the "
             "Info.plist string it falls back to"
@@ -307,6 +327,11 @@ if errors:
 print(
     f"OK: {count} string(s) across {len(catalogs)} catalog(s) each translated for "
     f"{', '.join(LOCALES)}; {len(plist_usage)} NS*UsageDescription key(s) localized; "
-    f"Info.plist and knownRegions declare the same set; every catalog is bundled "
+    + (
+        f"{len(plist_purpose)} temporary-accuracy purpose key(s) localized; "
+        if plist_purpose
+        else ""
+    )
+    + f"Info.plist and knownRegions declare the same set; every catalog is bundled "
     f"by {args.target}"
 )

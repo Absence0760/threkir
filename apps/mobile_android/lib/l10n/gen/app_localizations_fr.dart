@@ -2149,6 +2149,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Le suivi a été mis en pause pendant votre absence — le chrono a continué et rien n’a été perdu, mais la distance parcourue hors écran n’a pas été comptée. Réglez la localisation sur « Toujours autoriser » pour suivre en arrière-plan.';
 
   @override
+  String get runPreciseLocationOff =>
+      'La position exacte est désactivée — la carte et la distance GPS de cette course seront absentes ou très imprécises, mais le chrono continue d’enregistrer. Activez la position exacte dans les Réglages pour un tracé précis.';
+
+  @override
   String get runGpsSensorFailed =>
       'Enregistrement sans GPS — impossible de démarrer le capteur.';
 

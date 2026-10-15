@@ -3671,6 +3671,12 @@ abstract class AppLocalizations {
   /// **'Tracking paused while you were away — your run kept timing and nothing was lost, but distance covered off screen wasn’t counted. Set Location to \"Allow all the time\" to track in the background.'**
   String get runBackgroundLocationPaused;
 
+  /// Banner shown at run start when location is granted without precision (iOS Precise Location off, or Android approximate only), so GPS fixes are too coarse to track the run
+  ///
+  /// In en, this message translates to:
+  /// **'Precise location is off — the map and GPS distance for this run will be missing or far off, but the timer still records. Turn on precise location in Settings for an accurate track.'**
+  String get runPreciseLocationOff;
+
   /// Banner shown when the GPS sensor could not start for an unknown reason
   ///
   /// In en, this message translates to:

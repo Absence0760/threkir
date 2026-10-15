@@ -76,6 +76,10 @@ class _FakeGeolocatorPlatform extends GeolocatorPlatform {
       LocationPermission.always;
 
   @override
+  Future<LocationAccuracyStatus> getLocationAccuracy() async =>
+      LocationAccuracyStatus.precise;
+
+  @override
   Stream<Position> getPositionStream({LocationSettings? locationSettings}) {
     _positions ??= StreamController<Position>.broadcast();
     return _positions!.stream;
@@ -130,6 +134,21 @@ class _CapturingRunStore extends LocalRunStore {
 class _ServicesOffGeolocatorPlatform extends _FakeGeolocatorPlatform {
   @override
   Future<bool> isLocationServiceEnabled() async => false;
+}
+
+/// Geolocator fake granting only approximate location (iOS Precise Location
+/// off / Android approximate only), and declining iOS's temporary
+/// full-accuracy prompt.
+class _ReducedAccuracyGeolocatorPlatform extends _FakeGeolocatorPlatform {
+  @override
+  Future<LocationAccuracyStatus> getLocationAccuracy() async =>
+      LocationAccuracyStatus.reduced;
+
+  @override
+  Future<LocationAccuracyStatus> requestTemporaryFullAccuracy({
+    required String purposeKey,
+  }) async =>
+      LocationAccuracyStatus.reduced;
 }
 
 /// Records every spectator ping the run screen decides to send. The real
@@ -1095,6 +1114,42 @@ void main() {
       }
       tester.takeException();
       await off.dispose();
+    });
+
+    testWidgets('an approximate-only grant still records and says why the '
+        'track will be wrong', (tester) async {
+      final reduced = _ReducedAccuracyGeolocatorPlatform();
+      GeolocatorPlatform.instance = reduced;
+      await pumpRunScreen(tester);
+
+      await tester.tap(find.text('START'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      tester.takeException(); // LiveRunMap tile-fetch noise
+
+      expect(
+        find.text('Precise location is off — the map and GPS distance for '
+            'this run will be missing or far off, but the timer still '
+            'records. Turn on precise location in Settings for an accurate '
+            'track.'),
+        findsOneWidget,
+        reason: 'a rough grant records an empty or kilometres-off track; '
+            'the runner has to be told why, with the way to fix it',
+      );
+      expect(find.text('START'), findsNothing,
+          reason: 'the notice discloses — it must not stop the run');
+
+      await tester.pumpWidget(const SizedBox());
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      tester.takeException();
+      await reduced.dispose();
     });
   });
 

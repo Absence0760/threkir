@@ -593,6 +593,7 @@
   "runGpsBlockedSettings": "Sem GPS — permissão bloqueada. Ative-a para rastrear a rota.",
   "runGpsPermissionPending": "Sem GPS — o rastreamento começará quando a permissão for concedida.",
   "runBackgroundLocationPaused": "O rastreamento pausou enquanto você esteve fora — o tempo continuou correndo e nada foi perdido, mas a distância percorrida fora da tela não foi contada. Defina a Localização como “Permitir o tempo todo” para continuar rastreando em segundo plano.",
+  "runPreciseLocationOff": "A localização precisa está desativada — o mapa e a distância GPS desta corrida vão faltar ou ficar muito imprecisos, mas o tempo continua sendo registrado. Ative a localização precisa nos Ajustes para um trajeto preciso.",
   "runGpsSensorFailed": "Gravando sem GPS — não foi possível iniciar o sensor.",
   "runAgoJustNow": "Agora mesmo",
   "runAgoMinutes": "há {count} min",

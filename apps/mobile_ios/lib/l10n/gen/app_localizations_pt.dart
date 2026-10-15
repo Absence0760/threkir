@@ -2142,6 +2142,10 @@ class AppLocalizationsPt extends AppLocalizations {
       'O registo foi pausado enquanto esteve fora — o tempo continuou a contar e nada se perdeu, mas a distância percorrida fora do ecrã não foi contabilizada. Defina a Localização como “Permitir sempre” para continuar a registar em segundo plano.';
 
   @override
+  String get runPreciseLocationOff =>
+      'A localização exata está desativada — o mapa e a distância GPS desta corrida vão faltar ou ficar muito imprecisos, mas o tempo continua a ser registado. Ative a localização exata nas Definições para um percurso preciso.';
+
+  @override
   String get runGpsSensorFailed =>
       'A gravar sem GPS — não foi possível iniciar o sensor.';
 
@@ -18321,6 +18325,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get runBackgroundLocationPaused =>
       'O rastreamento pausou enquanto você esteve fora — o tempo continuou correndo e nada foi perdido, mas a distância percorrida fora da tela não foi contada. Defina a Localização como “Permitir o tempo todo” para continuar rastreando em segundo plano.';
+
+  @override
+  String get runPreciseLocationOff =>
+      'A localização precisa está desativada — o mapa e a distância GPS desta corrida vão faltar ou ficar muito imprecisos, mas o tempo continua sendo registrado. Ative a localização precisa nos Ajustes para um trajeto preciso.';
 
   @override
   String get runGpsSensorFailed =>

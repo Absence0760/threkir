@@ -1931,6 +1931,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     final prepareError = _prepareError;
     if (prepareError != null) {
       _notifyGpsUnavailable(prepareError);
+    } else if (_recorder?.preciseLocationOff == true) {
+      _notifyPreciseLocationOff();
     }
     _leftForegroundAt = null;
     _backgroundLimitDisclosed = false;
@@ -3331,6 +3333,22 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       duration: const Duration(seconds: 6),
       actionLabel: actionLabel,
       onAction: onAction,
+    );
+  }
+
+  /// The grant is approximate (iOS Precise Location off, Android
+  /// approximate only), so the map and GPS distance will be missing or far
+  /// off while the clock still records. The in-app remedy has already been
+  /// offered by the time this shows — the recorder asked iOS for temporary
+  /// full accuracy, and [_maybeRequestPermission]'s FINE + COARSE request is
+  /// Android 12+'s upgrade-to-precise prompt — so Settings is what is left.
+  void _notifyPreciseLocationOff() {
+    if (!mounted) return;
+    _showTopBanner(
+      _l10n.runPreciseLocationOff,
+      duration: const Duration(seconds: 8),
+      actionLabel: _l10n.runSettings,
+      onAction: () => Geolocator.openAppSettings(),
     );
   }
 

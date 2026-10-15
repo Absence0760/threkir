@@ -2145,6 +2145,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Die Aufzeichnung pausierte, während du weg warst — die Zeit lief weiter und nichts ging verloren, aber die Distanz außerhalb des Bildschirms wurde nicht gezählt. Stelle den Standort auf „Immer zulassen“, um im Hintergrund aufzuzeichnen.';
 
   @override
+  String get runPreciseLocationOff =>
+      'Genauer Standort ist aus — Karte und GPS-Distanz dieses Laufs fehlen oder liegen weit daneben, die Zeit wird aber weiter aufgezeichnet. Aktiviere den genauen Standort in den Einstellungen für eine exakte Strecke.';
+
+  @override
   String get runGpsSensorFailed =>
       'Aufzeichnung ohne GPS — der Sensor konnte nicht gestartet werden.';
 

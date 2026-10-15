@@ -2140,6 +2140,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'El seguimiento se pausó mientras no estabas — el tiempo siguió corriendo y no se perdió nada, pero la distancia fuera de pantalla no se contó. Configura la Ubicación en «Permitir siempre» para seguir registrando en segundo plano.';
 
   @override
+  String get runPreciseLocationOff =>
+      'La ubicación exacta está desactivada — el mapa y la distancia GPS de esta carrera faltarán o serán muy imprecisos, pero el tiempo se sigue registrando. Activa la ubicación exacta en Ajustes para un recorrido preciso.';
+
+  @override
   String get runGpsSensorFailed =>
       'Grabando sin GPS — no se pudo iniciar el sensor.';
 

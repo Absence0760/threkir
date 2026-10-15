@@ -96,6 +96,53 @@
         }
       }
     },
+    "RunRecording" : {
+      "comment" : "Purpose string for the one-time temporary full-accuracy prompt (Info.plist NSLocationTemporaryUsageDescriptionDictionary, purpose key RunRecording) shown when a run starts with Precise Location off.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir braucht deinen genauen Standort, um diesen Lauf auf der Karte zu zeigen und seine Distanz exakt zu messen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir needs your precise location to map this run and measure its distance accurately."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir necesita tu ubicación exacta para trazar esta carrera en el mapa y medir su distancia con precisión."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir a besoin de votre position exacte pour tracer cette course sur la carte et mesurer sa distance avec précision."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir は、このランを地図に記録し距離を正確に測るために正確な位置情報を必要とします。"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Threkir precisa da sua localização precisa para mapear esta corrida e medir a distância com exatidão."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Threkir precisa da sua localização exata para mapear esta corrida e medir a distância com exatidão."
+          }
+        }
+      }
+    },
     "NSHealthShareUsageDescription" : {
       "comment" : "Purpose string for the HealthKit read prompt raised by the Apple Health import.",
       "localizations" : {

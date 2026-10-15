@@ -45,6 +45,7 @@ export const RUN_RESTORE_COLUMNS = {
 	metadata: true,
 	race_listing_id: true,
 	route_id: true,
+	safety_audience: true,
 	source: true,
 	started_at: true,
 	track_url: true,

@@ -35,5 +35,16 @@
 	<array>
 		<string>group.com.threkir.app.share</string>
 	</array>
+	<!-- Universal links: https://threkir.com/clubs/join/<token>, /runs/<uuid>
+	     and /routes/<uuid> open here through app_links once iOS has fetched
+	     https://threkir.com/.well-known/apple-app-site-association (source:
+	     apps/web/static/.well-known/), the twin of Android's autoVerify
+	     filters. The App Store profile must carry the capability or the
+	     signed release fails; development profiles pick it up from the App ID
+	     under automatic signing. decisions.md § 1865, § 1924. -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:threkir.com</string>
+	</array>
 </dict>
 </plist>

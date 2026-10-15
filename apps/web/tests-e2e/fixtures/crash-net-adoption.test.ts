@@ -10,7 +10,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const E2E_ROOT = join(HERE, '..');
 
 /**
- * The source half of the crash net (`fixtures/test.ts`, decisions § 1943).
+ * The source half of the crash net (`fixtures/test.ts`, decisions § 1944).
  * The fixture only watches a test that was declared with ITS `test`; one
  * declared with `@playwright/test`'s, or with `mock-route`'s (the layer the
  * net extends), runs unwatched and nothing says so. So no file in the tree

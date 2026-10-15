@@ -51,7 +51,7 @@ export interface DmRecipient {
 /// collator: a collation here would order the one list two ways (§ 1337).
 /// That costs the per-reader order § 1400 kept while the list was web-only —
 /// a Swedish reader now sees `Åsa` filed beside `Asa`, as every reader does
-/// (decisions § 1949).
+/// (decisions § 1950).
 export function dmRecipientCandidates(
 	followers: readonly DmCandidateProfile[],
 	following: readonly DmCandidateProfile[],

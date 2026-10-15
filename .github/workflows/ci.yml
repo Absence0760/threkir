@@ -3523,8 +3523,10 @@ jobs:
       # stripe@17.5.0/types/index.d.ts and 285 more stripe URLs; `deno check`
       # straight afterwards downloads nothing at all; and `deno check` run with
       # no warm step downloads 403 URLs, a strict subset of these 776. So every
-      # fetch the lane makes is inside this retry, and nothing needs one of its
-      # own. That holds only while both steps derive the SAME file set, which
+      # URL fetch the lane makes is inside this retry. The npm tarballs
+      # `deno install` pulls for the node types are not — they get the same
+      # retry in their own step below. That holds only while both steps derive
+      # the SAME file set, which
       # scripts/edge_functions_typecheck_coverage.test.mjs asserts by running
       # both `files=$(…)` expressions rather than restating either.
       - name: Warm the Deno dependency cache
@@ -3563,11 +3565,16 @@ jobs:
       # workspace install and does not need setup-node.
       - name: Provision node types for the typecheck
         run: |
-          if ! deno install; then
-            echo "::error::Could not provision node_modules for the Edge Function typecheck. Nothing here involves the Edge Functions themselves, the Supabase stack or the Deno test suites — this is dependency resolution against the root package.json and its lockfiles."
-            echo "Reproduce locally with: deno install (from the repo root)."
-            exit 1
-          fi
+          for attempt in 1 2 3; do
+            if deno install; then
+              exit 0
+            fi
+            echo "::warning::deno install attempt $attempt failed (npm registry transient?); retrying"
+            sleep $((attempt * 5))
+          done
+          echo "::error::Could not provision node_modules for the Edge Function typecheck after 3 attempts. Nothing here involves the Edge Functions themselves, the Supabase stack or the Deno test suites — this is dependency resolution against the root package.json and its lockfiles."
+          echo "Reproduce locally with: deno install (from the repo root)."
+          exit 1
       - name: Edge Function typecheck
         working-directory: apps/backend
         run: |
@@ -4040,7 +4047,7 @@ jobs:
       - name: Run Playwright suite (shard ${{ matrix.shard }}/14)
         working-directory: apps/web
         env:
-          # Report-only pass of the e2e crash net (decisions § 1943): delete this
+          # Report-only pass of the e2e crash net (decisions § 1944): delete this
           # line once every crash it lists is fixed or allowlisted with a reason.
           CRASH_NET: report
         run: pnpm exec playwright test --config=tests-e2e/playwright.config.ts --shard=${{ matrix.shard }}/14
@@ -4134,7 +4141,7 @@ jobs:
       - name: Run Playwright live-hub suite
         working-directory: apps/web
         env:
-          # Report-only pass of the e2e crash net (decisions § 1943): delete this
+          # Report-only pass of the e2e crash net (decisions § 1944): delete this
           # line once every crash it lists is fixed or allowlisted with a reason.
           CRASH_NET: report
         run: pnpm exec playwright test --config=tests-e2e/playwright.livehub.config.ts
@@ -4246,7 +4253,7 @@ jobs:
       - name: Run Playwright queued-export suite
         working-directory: apps/web
         env:
-          # Report-only pass of the e2e crash net (decisions § 1943): delete this
+          # Report-only pass of the e2e crash net (decisions § 1944): delete this
           # line once every crash it lists is fixed or allowlisted with a reason.
           CRASH_NET: report
         run: pnpm exec playwright test --config=tests-e2e/playwright.exporthub.config.ts
@@ -4360,7 +4367,7 @@ jobs:
       - name: Run Playwright SSO suite
         working-directory: apps/web
         env:
-          # Report-only pass of the e2e crash net (decisions § 1943): delete this
+          # Report-only pass of the e2e crash net (decisions § 1944): delete this
           # line once every crash it lists is fixed or allowlisted with a reason.
           CRASH_NET: report
         run: pnpm exec playwright test --config=tests-e2e/playwright.sso.config.ts
@@ -4421,7 +4428,7 @@ jobs:
       - name: Run the built-app Playwright suite
         working-directory: apps/web
         env:
-          # Report-only pass of the e2e crash net (decisions § 1943): delete this
+          # Report-only pass of the e2e crash net (decisions § 1944): delete this
           # line once every crash it lists is fixed or allowlisted with a reason.
           CRASH_NET: report
         run: pnpm exec playwright test --config=tests-e2e/playwright.built.config.ts

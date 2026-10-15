@@ -40,7 +40,7 @@ import { expect, test as mockRouteTest } from './mock-route.ts';
  *
  * `CRASH_NET=report` logs instead of failing: each crash becomes a
  * `crash-net` test annotation and a stdout line (a `::warning` annotation on
- * GitHub Actions). Unset means fail. Decisions § 1943.
+ * GitHub Actions). Unset means fail. Decisions § 1944.
  */
 
 export type { CrashNetOptions };

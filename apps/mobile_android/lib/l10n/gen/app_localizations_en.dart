@@ -5758,6 +5758,99 @@ class AppLocalizationsEn extends AppLocalizations {
       'We couldn\'t read that race\'s date, so the dates below are the usual defaults.';
 
   @override
+  String get planNewAiTitle => 'Describe the plan you want';
+
+  @override
+  String get planNewAiHint =>
+      'Write it in plain English and the form below is filled in for you. The app\'s own generator still builds the plan — check every field before you create it.';
+
+  @override
+  String get planNewAiPlaceholder =>
+      'e.g. A sub-2 half marathon on 14 March. I can train 4 days a week and my last 5K was 26:30.';
+
+  @override
+  String get planNewAiButton => 'Fill in the form';
+
+  @override
+  String get planNewAiWorking => 'Reading…';
+
+  @override
+  String get planNewAiAppliedTitle =>
+      'Filled in from your description — check each field.';
+
+  @override
+  String get planNewAiAppliedGenerator =>
+      'The plan is built by the app\'s own generator from these fields, not by the AI.';
+
+  @override
+  String get planNewAiAppliedRecent5k =>
+      'Your 5K time was added but not confirmed. Tick the box only if it reflects your fitness today.';
+
+  @override
+  String planNewAiRaceApplied(String date) {
+    return 'Start date and plan length set so race week includes $date.';
+  }
+
+  @override
+  String get planNewAiRacePast =>
+      'That race date has already passed, so the start date was left as it was.';
+
+  @override
+  String get planNewAiRaceTooSoon =>
+      'Race day is less than four weeks away, so the start date was left as it was — a plan needs at least four weeks.';
+
+  @override
+  String get planNewAiRaceInvalid =>
+      'That race date couldn\'t be read, so the start date was left as it was.';
+
+  @override
+  String get planNewAiAssumptionGoalEventDefault =>
+      'No race distance was mentioned, so the goal is set to a half marathon.';
+
+  @override
+  String get planNewAiAssumptionDaysDefault =>
+      'No training days were mentioned, so it\'s set to 4 days a week.';
+
+  @override
+  String get planNewAiAssumptionDaysClamped =>
+      'Training days were set to the nearest the planner supports (3 to 7 a week).';
+
+  @override
+  String get planNewAiAssumptionWeeksClamped =>
+      'Plan length was set to the nearest the planner supports (4 to 24 weeks).';
+
+  @override
+  String get planNewAiAssumptionRaceDateDropped =>
+      'The race date couldn\'t be used — it has to be a future date within two years.';
+
+  @override
+  String get planNewAiAssumptionGoalTimeDropped =>
+      'The goal time looked out of range for that distance, so it was left blank.';
+
+  @override
+  String get planNewAiAssumptionRecent5kDropped =>
+      'The 5K time looked out of range, so it was left blank.';
+
+  @override
+  String get planNewAiAssumptionBeginner5k =>
+      'A walk-run plan for new runners builds to a 5K, so the goal was set to 5K with no goal time.';
+
+  @override
+  String get planNewAiErrorConsent =>
+      'The plan assistant needs the updated AI disclosure.';
+
+  @override
+  String get planNewAiReviewDisclosure => 'Review disclosure';
+
+  @override
+  String get planNewAiErrorDailyLimit =>
+      'You\'ve used today\'s AI requests. Fill in the form yourself, or try again tomorrow.';
+
+  @override
+  String get planNewAiErrorFallback =>
+      'Couldn\'t read that — fill in the form yourself.';
+
+  @override
   String get planNewCancel => 'Cancel';
 
   @override
@@ -6573,6 +6666,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get coachSuggestNewWalkRun => 'Is it OK to walk during my runs?';
+
+  @override
+  String get coachSuggestBuildHalfPlan =>
+      'Build me a half marathon training plan';
+
+  @override
+  String get coachSuggestBuildFirst5kPlan =>
+      'Build me a beginner plan to run my first 5K';
+
+  @override
+  String get coachSuggestPlanNextRace => 'Help me plan my next race';
 
   @override
   String get coachEditMessageLabel => 'Edit your message';

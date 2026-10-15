@@ -5829,6 +5829,99 @@ class AppLocalizationsFr extends AppLocalizations {
       'Nous n\'avons pas pu lire la date de cette course, les dates ci-dessous sont donc celles par défaut.';
 
   @override
+  String get planNewAiTitle => 'Décrivez le plan que vous voulez';
+
+  @override
+  String get planNewAiHint =>
+      'Écrivez-le simplement et le formulaire ci-dessous se remplit pour vous. C\'est toujours le générateur de l\'application qui construit le plan — vérifiez chaque champ avant de le créer.';
+
+  @override
+  String get planNewAiPlaceholder =>
+      'ex. Un semi-marathon en moins de 2 h le 14 mars. Je peux m\'entraîner 4 jours par semaine et mon dernier 5 km était en 26:30.';
+
+  @override
+  String get planNewAiButton => 'Remplir le formulaire';
+
+  @override
+  String get planNewAiWorking => 'Lecture…';
+
+  @override
+  String get planNewAiAppliedTitle =>
+      'Rempli à partir de votre description — vérifiez chaque champ.';
+
+  @override
+  String get planNewAiAppliedGenerator =>
+      'Le plan est construit à partir de ces champs par le générateur de l\'application, pas par l\'IA.';
+
+  @override
+  String get planNewAiAppliedRecent5k =>
+      'Votre temps sur 5 km a été ajouté mais pas confirmé. Cochez la case seulement s\'il reflète votre forme actuelle.';
+
+  @override
+  String planNewAiRaceApplied(String date) {
+    return 'Date de début et durée du plan réglées pour que la semaine de course inclue le $date.';
+  }
+
+  @override
+  String get planNewAiRacePast =>
+      'Cette date de course est déjà passée, la date de début n\'a donc pas été modifiée.';
+
+  @override
+  String get planNewAiRaceTooSoon =>
+      'La course a lieu dans moins de quatre semaines, la date de début n\'a donc pas été modifiée — un plan nécessite au moins quatre semaines.';
+
+  @override
+  String get planNewAiRaceInvalid =>
+      'Cette date de course n\'a pas pu être lue, la date de début n\'a donc pas été modifiée.';
+
+  @override
+  String get planNewAiAssumptionGoalEventDefault =>
+      'Aucune distance de course n\'a été mentionnée, l\'objectif est donc un semi-marathon.';
+
+  @override
+  String get planNewAiAssumptionDaysDefault =>
+      'Aucun nombre de jours d\'entraînement n\'a été mentionné, il est donc réglé sur 4 jours par semaine.';
+
+  @override
+  String get planNewAiAssumptionDaysClamped =>
+      'Les jours d\'entraînement ont été ramenés à la valeur la plus proche prise en charge (3 à 7 par semaine).';
+
+  @override
+  String get planNewAiAssumptionWeeksClamped =>
+      'La durée du plan a été ramenée à la valeur la plus proche prise en charge (4 à 24 semaines).';
+
+  @override
+  String get planNewAiAssumptionRaceDateDropped =>
+      'La date de course n\'a pas pu être utilisée — elle doit être future et à moins de deux ans.';
+
+  @override
+  String get planNewAiAssumptionGoalTimeDropped =>
+      'Le temps visé semblait irréaliste pour cette distance, il a donc été laissé vide.';
+
+  @override
+  String get planNewAiAssumptionRecent5kDropped =>
+      'Le temps sur 5 km semblait irréaliste, il a donc été laissé vide.';
+
+  @override
+  String get planNewAiAssumptionBeginner5k =>
+      'Un plan marche-course pour débutants mène au 5 km, l\'objectif a donc été fixé à 5 km sans temps visé.';
+
+  @override
+  String get planNewAiErrorConsent =>
+      'L\'assistant de plan nécessite la notice IA mise à jour.';
+
+  @override
+  String get planNewAiReviewDisclosure => 'Consulter l\'information';
+
+  @override
+  String get planNewAiErrorDailyLimit =>
+      'Vous avez utilisé vos requêtes IA du jour. Remplissez le formulaire vous-même ou réessayez demain.';
+
+  @override
+  String get planNewAiErrorFallback =>
+      'Impossible de lire cela — remplissez le formulaire vous-même.';
+
+  @override
   String get planNewCancel => 'Annuler';
 
   @override
@@ -6660,6 +6753,18 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get coachSuggestNewWalkRun =>
       'Est-ce que je peux marcher pendant mes courses ?';
+
+  @override
+  String get coachSuggestBuildHalfPlan =>
+      'Crée-moi un plan d\'entraînement pour un semi-marathon';
+
+  @override
+  String get coachSuggestBuildFirst5kPlan =>
+      'Crée-moi un plan débutant pour courir mes premiers 5 km';
+
+  @override
+  String get coachSuggestPlanNextRace =>
+      'Aide-moi à planifier ma prochaine course';
 
   @override
   String get coachEditMessageLabel => 'Modifier votre message';

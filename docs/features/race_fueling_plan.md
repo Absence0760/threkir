@@ -104,6 +104,9 @@ band (Sawka et al. 2007). Heat still multiplies it.
 
 ### Pre-deploy checklist (weight-based fluid)
 
+There is no flag: the toggle is live in the first web and mobile release that
+carries it, so this review gates that release (`docs/ops/deployment.md` § Weight-based fluid).
+
 - [ ] CISO / counsel review: a new Art 9 use of body weight (fluid planning),
   covered by the existing health-data consent copy? If the copy names its uses
   exhaustively, add fuelling to it before deploy.

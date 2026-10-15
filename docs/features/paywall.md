@@ -155,9 +155,12 @@ they also sit beside Restore Purchases. Pinned by
 A Flutter binary has no server-rendered env, so the web build publishes
 the two flags it already reads as a prerendered manifest at
 **`/app-capabilities.json`** (`apps/web/src/routes/app-capabilities.json/+server.ts`,
-body `{coach, route_gen, web_checkout}`, derived from the *same*
-`coachEnabled()` / `routeGenEnabled()` / `webCheckoutAvailable()` gates —
-there is no second flag to keep in sync).
+body `{coach, route_gen, web_checkout, ai_plan, plate_photo}`, derived from
+the *same* `coachEnabled()` / `routeGenEnabled()` / `webCheckoutAvailable()`
+gates, and `coachEnabled() && aiPlanEnabled()` / `coachEnabled() &&
+platePhotoEnabled()` for the last two — there is no second flag to keep in
+sync). `ai_plan` and `plate_photo` only tell the phone whether to offer the
+AI plan box and the plate-photo camera action; they sell nothing.
 `apps/mobile_android/lib/pro_sellable.dart` (twin-mirrored) fetches it
 from `WEB_BASE_URL` — the origin the app already calls for `/api/coach`
 — and `SettingsProScreen` swaps the "Subscribe to Pro" tile for the

@@ -342,7 +342,9 @@ channel-agnostic scan rather than forking it.
 
 The escalation net above only watches *live-broadcast* runs. The persona's
 stated habit is to share a live link for every solo evening run — but a
-runner who hasn't enabled `auto_live_share` (default off) and doesn't tap
+runner who hasn't enabled `auto_live_share` (default off while the `safety_audience`
+gate is closed; see § Safety-contacts-only audience for the default once it
+opens, §1965) and doesn't tap
 "Share live link" gets no net and, worse, no signal that they're
 unprotected. This closes that gap with a **one-time, throttled, dismissible
 contextual nudge** at run start — no start-flow friction, no new blocking

@@ -684,9 +684,9 @@ The disclosure copy is **not** behind these flags. The disclosure migrations (`2
 
 The CTL/ATL/TSB direction gate on the adaptive re-plan (decisions § 144, § 1977) is built on web and mobile and off. Flip `PUBLIC_ADAPTIVE_FITNESS_GATE` (web build) and `ADAPTIVE_FITNESS_GATE` (the mobile dotenv, [apps/mobile_android/deployment.md](../../apps/mobile_android/deployment.md)) only after the CISO / Security Analyst signs off on health-derived load feeding a prescription. § 1977 records the verification behind the request.
 
-### Weight-based fluid — review before the next web and mobile release
+### Weight-based fluid — after the CISO / counsel review
 
-The "Fluid from body weight" toggle on the roadbook and `/nutrition/fuel` (decisions § 1976) is **not flag-gated**: it is live in the first release that carries it, for runners with health-data consent and a logged weight. Its [pre-deploy checklist](../features/race_fueling_plan.md) item, the CISO / counsel review of a new Art 9 use of body weight against the health-data consent copy, therefore gates that release itself rather than a later flip. If the review finds the consent copy lists its uses exhaustively, fuelling is added to it before the release.
+The "Fluid from body weight" toggle on the roadbook and `/nutrition/fuel` (decisions § 1976) is built on web and mobile and off. Off, neither surface reads a body weight, the toggle is hidden, and the flat fluid rate stands whatever `?bw=1` a link carries. Flip `PUBLIC_WEIGHT_FLUID_ENABLED` (web build) and `WEIGHT_FLUID_ENABLED` (the mobile dotenv, [apps/mobile_android/deployment.md](../../apps/mobile_android/deployment.md)) together, only after its [pre-deploy checklist](../features/race_fueling_plan.md) item lands: the CISO / counsel review of a new Art 9 use of body weight against the health-data consent copy. If the review finds the consent copy lists its uses exhaustively, fuelling is added to it before the flip.
 
 ### Upcoming parkruns — after parkrun's written permission
 

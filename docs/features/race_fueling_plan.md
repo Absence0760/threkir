@@ -86,7 +86,11 @@ source each rate came from.
 
 ## Weight-based fluid (2026-10-15, decisions § 1976)
 
-An opt-in **"Fluid from body weight"** toggle beside Heat (web `?bw=1` on
+Behind the fail-closed deploy gate `PUBLIC_WEIGHT_FLUID_ENABLED` (web,
+`nutrition/weight_fluid_flag.ts`) / `WEIGHT_FLUID_ENABLED` (mobile dotenv,
+`weight_fluid_flag.dart`), default off: with it off no surface reads a body
+weight, the toggle is hidden, and a `?bw=1` link is ignored. With it on, an
+opt-in **"Fluid from body weight"** toggle beside Heat (web `?bw=1` on
 `/routes/[id]/roadbook` and `/nutrition/fuel`; screen-local on mobile
 `RoadbookScreen`) replaces the flat fluid rate with
 `weightFluidPerHourMl(weight)`: the 500 ml/h default scaled by body mass from a
@@ -104,12 +108,14 @@ band (Sawka et al. 2007). Heat still multiplies it.
 
 ### Pre-deploy checklist (weight-based fluid)
 
-There is no flag: the toggle is live in the first web and mobile release that
-carries it, so this review gates that release (`docs/ops/deployment.md` § Weight-based fluid).
+The code ships off behind `PUBLIC_WEIGHT_FLUID_ENABLED` / `WEIGHT_FLUID_ENABLED`;
+this review gates flipping both (`docs/ops/deployment.md` § Weight-based fluid).
 
 - [ ] CISO / counsel review: a new Art 9 use of body weight (fluid planning),
   covered by the existing health-data consent copy? If the copy names its uses
   exhaustively, add fuelling to it before deploy.
+- [ ] Then set `PUBLIC_WEIGHT_FLUID_ENABLED` (release-web secret) and
+  `WEIGHT_FLUID_ENABLED` (mobile dart-define) together, never one platform alone.
 
 ## Commit cadence
 

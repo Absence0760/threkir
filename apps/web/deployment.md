@@ -173,6 +173,7 @@ unwired gate now fails in `src/lib/ci_workflow_guards.test.ts`. Setting one to
 | `PUBLIC_WEIGH_IN_ENABLED` | the Art 9 weigh-in / medical UI | owner + CISO + counsel |
 | `PUBLIC_ENABLE_NEARBY_RUNNERS` | the nearby-runners discovery surface | owner + CISO + counsel |
 | `PUBLIC_ADAPTIVE_FITNESS_GATE` | fitness-directed plan generation (P2) | CISO / Security Analyst |
+| `PUBLIC_WEIGHT_FLUID_ENABLED` | the "Fluid from body weight" toggle on the roadbook and `/nutrition/fuel` (decisions § 1976); off, neither page reads a body weight and the flat rate stands. Flip together with mobile's `WEIGHT_FLUID_ENABLED` | CISO + counsel review of a new Art 9 use of body weight against the health-data consent copy ([race_fueling_plan.md § Pre-deploy checklist (weight-based fluid)](../../docs/features/race_fueling_plan.md)) |
 | `PUBLIC_FUNDRAISING_ENABLED` | donations / fundraiser pages | Stripe Connect + owner + CISO + counsel |
 | `PUBLIC_CYCLE_PLANS_ENABLED` | the Art 9 cycle / pregnancy plan-adjust UI | owner + CISO + counsel |
 

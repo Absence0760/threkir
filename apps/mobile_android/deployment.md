@@ -170,6 +170,7 @@ Each define is passed from a GitHub Secret; `main.dart`'s `String.fromEnvironmen
 | `OFF_ROUTE_ESCALATION_ENABLED` | off-route → notify-a-contact escalation; unset → the whole path stays inert. Owner + CISO + counsel sign-off. |
 | `ADAPTIVE_FITNESS_GATE` | plan-generator-v2 P2 health-derived load → prescription; unset → exactly shipped P1. CISO / Security-Analyst sign-off. |
 | `WEIGH_IN_GATE` | Art 9 checkpoint weigh-in fields; unset → never collected or sent. Owner + CISO + counsel sign-off. |
+| `WEIGHT_FLUID_ENABLED` | the roadbook's "Fluid from body weight" toggle (decisions § 1976); unset → no body weight is read and the flat fluid rate stands. CISO + counsel review of the new Art 9 use; flip together with web's `PUBLIC_WEIGHT_FLUID_ENABLED`. |
 | `ENABLE_NEARBY_RUNNERS` | opt-in person-location discovery; unset → the surface is unreachable. Owner + CISO/counsel sign-off. |
 | `USDA_FDC_API_KEY` | second food-search source; unset → Open Food Facts only, no error. |
 | `TILE_URL_TEMPLATE` | `{z}/{x}/{y}` raster override that outranks MapTiler (decisions §68) — the wire for a self-hosted Protomaps migration. |

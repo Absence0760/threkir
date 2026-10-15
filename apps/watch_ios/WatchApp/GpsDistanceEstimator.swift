@@ -1,6 +1,6 @@
 import Foundation
 
-/// GPS distance estimator, spec v1.3 forward filter — the watchOS port of
+/// GPS distance estimator, spec v1.4 forward filter — the watchOS port of
 /// `scripts/gps_distance/reference.py`. See `docs/features/gps_distance.md`.
 /// The watch runs only the causal filter; the spec's smoother is ported where
 /// a whole run's saved figure is computed (phone, web, server).
@@ -12,6 +12,7 @@ final class GpsDistanceEstimator {
     static let earthRadiusM = 6371008.8
     static let qAccel = 0.6
     static let minPosSigmaM = 3.0
+    static let maxPosSigmaM = 50.0
     static let initVelVar = 25.0
     static let minSpeedSigmaMps = 0.3
     static let defaultSpeedSigmaMps = 0.5
@@ -24,6 +25,9 @@ final class GpsDistanceEstimator {
     static let minStrideM = 0.4
     static let maxStrideM = 2.5
     static let strideEmaAlpha = 0.2
+    static let strideMaxSpeedSigmaMps = 1.0
+    static let strideMaxPosSigmaM = 20.0
+    static let checkMaxPosSigmaM = 20.0
     static let gateChi2 = 13.8155
     static let gateMaxRejects = 5
     static let rScaleAlpha = 0.05
@@ -49,7 +53,7 @@ final class GpsDistanceEstimator {
     static let zuptVelSigmaMps = 0.1
     static let zuptDopplerOverrideMps = 1.0
     static let zuptReleaseM = 40.0
-    static let specVersion = "1.3"
+    static let specVersion = "1.4"
 
     /// Every constant by its reference name, so the vector test can hold each
     /// one to the fixture's `constants` block.
@@ -60,6 +64,8 @@ final class GpsDistanceEstimator {
         "STATIONARY_SPEED_MPS": stationarySpeedMps, "POS_ONLY_STATIONARY_SPEED_MPS": posOnlyStationarySpeedMps,
         "GAP_S": gapS, "FRESH_FIX_S": freshFixS, "STRIDE_WINDOW_STEPS": Double(strideWindowSteps),
         "MIN_STRIDE_M": minStrideM, "MAX_STRIDE_M": maxStrideM, "STRIDE_EMA_ALPHA": strideEmaAlpha,
+        "MAX_POS_SIGMA_M": maxPosSigmaM, "STRIDE_MAX_SPEED_SIGMA_MPS": strideMaxSpeedSigmaMps,
+        "STRIDE_MAX_POS_SIGMA_M": strideMaxPosSigmaM, "CHECK_MAX_POS_SIGMA_M": checkMaxPosSigmaM,
         "GATE_CHI2": gateChi2, "GATE_MAX_REJECTS": Double(gateMaxRejects),
         "R_SCALE_ALPHA": rScaleAlpha, "R_SCALE_MIN": rScaleMin, "R_SCALE_MAX": rScaleMax,
         "XCHECK_TAU_S": xcheckTauS, "XCHECK_MIN_S": xcheckMinS,
@@ -134,6 +140,10 @@ final class GpsDistanceEstimator {
 
     let maxSpeedMps: Double
     let expectedIntervalS: Double
+    /// False for a segment on a source whose speed is not its own Doppler:
+    /// its stride is used, never learned. CoreLocation is the watch's only
+    /// source, so the recorder always leaves it true.
+    let learnStride: Bool
     /// The gap and fresh-fix windows, scaled by the interval the recorder
     /// samples GPS at on purpose.
     let gapWindowS: Double
@@ -157,6 +167,7 @@ final class GpsDistanceEstimator {
     private var lastSteps: Int?
     private var lastStepT: Double?
     private var pendingStepM: Double = 0
+    private var strideOk = false
     private var rejectStreak = 0
     private var xcDoppler: Double = 0
     private var xcPos: Double = 0
@@ -175,9 +186,15 @@ final class GpsDistanceEstimator {
 
     /// `initialStrideM` carries a stride learned earlier (e.g. before a
     /// pause); it is ignored outside `minStrideM...maxStrideM`.
-    init(maxSpeedMps: Double = 10.0, expectedIntervalS: Double = 1.0, initialStrideM: Double? = nil) {
+    init(
+        maxSpeedMps: Double = 10.0,
+        expectedIntervalS: Double = 1.0,
+        initialStrideM: Double? = nil,
+        learnStride: Bool = true
+    ) {
         self.maxSpeedMps = maxSpeedMps
         self.expectedIntervalS = expectedIntervalS
+        self.learnStride = learnStride
         let scale = expectedIntervalS.isFinite && expectedIntervalS > 1.0 ? expectedIntervalS : 1.0
         self.gapWindowS = Self.gapS * scale
         self.freshFixWindowS = Self.freshFixS * scale
@@ -190,7 +207,12 @@ final class GpsDistanceEstimator {
     /// seeded with this one's stride, which is itself the carried stride when
     /// this segment learned none.
     func nextSegment() -> GpsDistanceEstimator {
-        GpsDistanceEstimator(maxSpeedMps: maxSpeedMps, expectedIntervalS: expectedIntervalS, initialStrideM: strideM)
+        GpsDistanceEstimator(
+            maxSpeedMps: maxSpeedMps,
+            expectedIntervalS: expectedIntervalS,
+            initialStrideM: strideM,
+            learnStride: learnStride
+        )
     }
 
     var distanceM: Double { gpsDistanceM + stepDistanceM }
@@ -241,6 +263,7 @@ final class GpsDistanceEstimator {
         bearingDeg: Double? = nil
     ) -> Double {
         guard t.isFinite, lat.isFinite, lng.isFinite else { return 0 }
+        if let acc = accuracyM, acc.isFinite, acc > Self.maxPosSigmaM { return 0 }
         if lat0 == nil {
             lat0 = lat
             lng0 = lng
@@ -258,11 +281,26 @@ final class GpsDistanceEstimator {
         let doppler = dopplerSpeed(speedMps, speedAccuracyMps)
         let dop = doppler?.s
         guard let last = self.t, t - last <= gapWindowS, var ax = x, var ay = y else {
-            // (Re-)anchor. Steps buffered across a real gap are committed now.
-            if self.t != nil {
+            // (Re-)anchor. Steps buffered across a real gap are committed now,
+            // and the straight line across it, less its 1-sigma uncertainty, is
+            // a lower bound on the distance covered: the GPS credit makes up
+            // whatever the steps fall short of it.
+            var gapM: Double = 0
+            if let last = self.t, let px = x, let py = y {
                 stepDistanceM += pendingStepM
+                let d = hypot(zx - px.p, zy - py.p)
+                let lower = min(d - (px.a + py.a + 2.0 * r).squareRoot(), maxSpeedMps * (t - last))
+                if lower > pendingStepM {
+                    gapM = lower - pendingStepM
+                    gpsDistanceM += gapM
+                }
             }
             pendingStepM = 0
+            strideOk = strideGrade(accuracyM, doppler?.sa)
+            if !strideOk {
+                winSteps = 0
+                winM = 0
+            }
             x = Axis(p: zx, posVar: r)
             y = Axis(p: zy, posVar: r)
             self.t = t
@@ -270,7 +308,7 @@ final class GpsDistanceEstimator {
             dsLast = (zx, zy, t, dop, bearingDeg.flatMap { $0.isFinite ? $0 : nil })
             rejectStreak = 0
             zuptAnchor = nil
-            return 0
+            return gapM
         }
         // The gap closed inside the gap window, so the filter integrates it: drop the buffer.
         pendingStepM = 0
@@ -335,7 +373,9 @@ final class GpsDistanceEstimator {
         // 4. Doppler-vs-position cross-check: Doppler speed against the raw
         //    fixes' displacement projected on the Doppler bearing.
         let bearing = bearingDeg.flatMap { $0.isFinite ? $0 : nil }
-        if accepted {
+        var checkable = true
+        if let acc = accuracyM, acc.isFinite, acc > Self.checkMaxPosSigmaM { checkable = false }
+        if accepted, checkable {
             let span = t - xcLast.t
             if let dop, !zupt, let bearing, dop >= Self.posOnlyStationarySpeedMps, span <= Self.xcheckMaxSpanS {
                 let b = bearing * Self.degToRad
@@ -421,8 +461,23 @@ final class GpsDistanceEstimator {
             inc = speed < stationaryFloor ? 0 : min(speed, maxSpeedMps) * dt
         }
         gpsDistanceM += inc
-        winM += inc
+        strideOk = strideGrade(accuracyM, chord == nil ? useDop?.sa : nil)
+        if strideOk {
+            winM += inc
+        } else {
+            winSteps = 0
+            winM = 0
+        }
         return inc
+    }
+
+    /// Whether a fix may teach stride: by its Doppler sigma when its credit
+    /// came from Doppler (`dopplerSa` non-nil), else by its position accuracy.
+    private func strideGrade(_ accuracyM: Double?, _ dopplerSa: Double?) -> Bool {
+        if !learnStride { return false }
+        if let sa = dopplerSa { return sa <= Self.strideMaxSpeedSigmaMps }
+        if let acc = accuracyM, acc.isFinite, acc > Self.strideMaxPosSigmaM { return false }
+        return true
     }
 
     /// Cumulative pedometer count. Learns a stride while GPS is good and
@@ -442,6 +497,7 @@ final class GpsDistanceEstimator {
             zuptReleased = false
         }
         if let fixT = self.t, t - fixT <= freshFixWindowS {
+            if !strideOk { return }
             winSteps += d
             if winSteps >= Self.strideWindowSteps {
                 let stride = winM / Double(winSteps)

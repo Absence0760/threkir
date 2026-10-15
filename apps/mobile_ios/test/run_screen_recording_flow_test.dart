@@ -1165,6 +1165,45 @@ void main() {
       tester.takeException();
       await reduced.dispose();
     });
+
+    testWidgets('a precise grant records with no precise-location notice',
+        (tester) async {
+      await pumpRunScreen(tester);
+
+      await tester.tap(find.text('START'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      tester.takeException(); // LiveRunMap tile-fetch noise
+
+      expect(find.text('START'), findsNothing);
+      expect(
+        find.text('Precise location is off — the map and GPS distance for '
+            'this run will be missing or far off, but the timer still '
+            'records. Turn on precise location in Settings for an accurate '
+            'track.'),
+        findsNothing,
+      );
+
+      for (var i = 0; i < 4; i++) {
+        geolocator.emit(_pos(metresEast: i * 3.0, secondsFromStart: i));
+        await tester.pump(const Duration(seconds: 1));
+      }
+      await tester.pump();
+      tester.takeException();
+      expect(find.text('Approximate location — distance paused'),
+          findsNothing);
+
+      await tester.pumpWidget(const SizedBox());
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      tester.takeException();
+    });
   });
 
   group('RunScreen — pre-run Android permission dialogs', () {

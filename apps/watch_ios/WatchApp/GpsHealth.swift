@@ -19,15 +19,25 @@ enum GpsBannerState: Equatable {
     case lost
 }
 
-/// The two decisions the watch makes about its own GPS stream, both pure.
+/// What the recorder does about Precise Location for the run in hand.
+enum GpsPrecisionStep: Equatable {
+    /// Full accuracy, or no location grant for precision to qualify.
+    case precise
+    /// Reduced accuracy, and this run has not asked for full accuracy yet.
+    case requestFullAccuracy
+    /// Still reduced after asking: tell the runner, keep recording.
+    case warnReduced
+}
+
+/// The decisions the watch makes about its own GPS stream, all pure.
 ///
-/// Pure because neither can be produced on a simulator: a watchOS simulator
+/// Pure because no dropout can be produced on a simulator: a watchOS simulator
 /// serves whatever location Xcode is configured to serve and never wedges, so
 /// the only honest coverage of a dropout is a decision function driven over
 /// synthetic clocks.
 ///
-/// The two halves deliberately read DIFFERENT clocks. The banner is about the
-/// run's data — the last fix that passed the accuracy gate, because a stream
+/// The retry and the banner deliberately read DIFFERENT clocks. The banner is
+/// about the run's data — the last fix that passed the accuracy gate, because a stream
 /// delivering only 100 m fixes has frozen the distance exactly as a dead one
 /// would, and "GPS lost" is the true thing to say. The retry is about the
 /// subsystem — the last delivery of any kind, gated or not, because restarting
@@ -95,5 +105,26 @@ enum GpsHealth {
     static func banner(lastAcceptedFixAge: TimeInterval?) -> GpsBannerState {
         guard let age = lastAcceptedFixAge else { return .noFixYet }
         return age > lostSeconds ? .lost : .healthy
+    }
+
+    /// Whether to ask for full accuracy, warn the runner, or do nothing.
+    ///
+    /// With Precise Location off CoreLocation serves fixes kilometres wide.
+    /// The accuracy gate drops every one, so the run banks no distance and the
+    /// banner reads "No GPS — time only", which describes a treadmill rather
+    /// than a setting the runner can change. Asked once per run: a decline is
+    /// the runner's answer for this run, and asking again on every
+    /// authorization change would put the sheet back in front of them
+    /// mid-stride.
+    ///
+    /// Unauthorized is `.precise` because the no-GPS banner already covers it
+    /// and a precision notice would name the wrong setting.
+    static func precisionStep(
+        authorized: Bool,
+        reducedAccuracy: Bool,
+        alreadyAsked: Bool
+    ) -> GpsPrecisionStep {
+        guard authorized, reducedAccuracy else { return .precise }
+        return alreadyAsked ? .warnReduced : .requestFullAccuracy
     }
 }

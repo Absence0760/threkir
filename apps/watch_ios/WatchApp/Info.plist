@@ -48,6 +48,11 @@
 	<string>Threkir needs your location to track your running route, calculate distance, and provide pace information.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Threkir continues tracking your run when your watch display turns off during a workout.</string>
+	<key>NSLocationTemporaryUsageDescriptionDictionary</key>
+	<dict>
+		<key>PreciseRunTracking</key>
+		<string>Threkir needs your precise location for this run so its distance, pace and map are accurate.</string>
+	</dict>
 	<key>WKApplication</key>
 	<true/>
 	<key>WKCompanionAppBundleIdentifier</key>

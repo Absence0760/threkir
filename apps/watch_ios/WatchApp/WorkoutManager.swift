@@ -81,6 +81,9 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     /// the absence of arriving fixes — a signal derived from the thing that
     /// stopped can only report the stop by never updating again.
     @Published private(set) var gpsBanner: GpsBannerState = .noFixYet
+    /// The run is recording under Precise Location off, after asking for full
+    /// accuracy once. See `GpsHealth.precisionStep`.
+    @Published private(set) var preciseLocationOff = false
     /// Lap marks the runner has taken this run, cumulative — see `LapMark`.
     @Published var lapMarks: [LapMark] = []
 
@@ -152,6 +155,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     /// Uptime of the last (re)start of location updates.
     private var lastGpsRetryUptime: TimeInterval?
     private var locationUpdatesRunning = false
+    private var fullAccuracyAsked = false
     private var gpsRetryTimer: Timer?
 
     struct FinishedRun {
@@ -352,6 +356,8 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         lastAcceptedFixUptime = nil
         lastGpsDeliveryUptime = nil
         gpsBanner = .noFixYet
+        preciseLocationOff = false
+        fullAccuracyAsked = false
         locationManager.requestWhenInUseAuthorization()
         locationManager.allowsBackgroundLocationUpdates = true
         startLocationUpdates()
@@ -363,6 +369,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         startRecordingTimers()
 
         state = .recording
+        checkLocationPrecision()
         publishComplicationSnapshot()
         announcer.announceStart()
     }
@@ -484,6 +491,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             locationManager.allowsBackgroundLocationUpdates = true
             startLocationUpdates()
         }
+        checkLocationPrecision()
         startPedometer(from: now, priorSteps: cp.steps)
         startRecordingTimers()
         // The checkpoint now describes the resumed clock, so a second
@@ -542,6 +550,8 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         lastAcceptedFixUptime = nil
         lastGpsDeliveryUptime = nil
         gpsBanner = .noFixYet
+        preciseLocationOff = false
+        fullAccuracyAsked = false
         state = plan.resumesPaused ? .paused : .recording
     }
 
@@ -697,6 +707,8 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         lastAcceptedFixUptime = nil
         lastGpsDeliveryUptime = nil
         gpsBanner = .noFixYet
+        preciseLocationOff = false
+        fullAccuracyAsked = false
         routeNavigator = nil
         mapRoute = []
         mapTrail.reset()
@@ -793,6 +805,24 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         startLocationUpdates()
     }
 
+    /// Ask for full accuracy once per run when Precise Location is off, and
+    /// raise the notice when the runner keeps it off. Never blocks the run:
+    /// the clock, heart rate and steps record either way.
+    private func checkLocationPrecision() {
+        guard state == .recording || state == .paused else { return }
+        let step = GpsHealth.precisionStep(
+            authorized: locationAuthorized,
+            reducedAccuracy: locationManager.accuracyAuthorization == .reducedAccuracy,
+            alreadyAsked: fullAccuracyAsked
+        )
+        preciseLocationOff = step == .warnReduced
+        guard step == .requestFullAccuracy else { return }
+        fullAccuracyAsked = true
+        locationManager.requestTemporaryFullAccuracyAuthorization(withPurposeKey: "PreciseRunTracking") { [weak self] _ in
+            DispatchQueue.main.async { self?.checkLocationPrecision() }
+        }
+    }
+
     func refreshGpsBanner() {
         let age = lastAcceptedFixUptime.map { ProcessInfo.processInfo.systemUptime - $0 }
         gpsBanner = GpsHealth.banner(lastAcceptedFixAge: age)
@@ -819,6 +849,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     /// deliberately refuses to poll for it, because a restart under a denial
     /// delivers nothing.
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        checkLocationPrecision()
         guard state == .recording else { return }
         if locationAuthorized {
             guard !locationUpdatesRunning else { return }

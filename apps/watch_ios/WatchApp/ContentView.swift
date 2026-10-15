@@ -605,6 +605,10 @@ struct RunStatsView: View {
         VStack(spacing: 8) {
             GpsBannerView(state: workoutManager.gpsBanner)
 
+            if workoutManager.preciseLocationOff {
+                PreciseLocationNotice()
+            }
+
             Text(workoutManager.formattedElapsed)
                 .font(.system(.title, design: .monospaced))
                 .lineLimit(1)
@@ -740,6 +744,28 @@ struct GpsBannerView: View {
         case .healthy:
             EmptyView()
         }
+    }
+}
+
+// MARK: - Precise Location notice
+
+/// With Precise Location off every fix is kilometres wide, so the distance and
+/// the map are wrong while the clock, heart rate and steps are right. The run
+/// carries on, and the runner is told which setting to change, because the
+/// recorder asks for full accuracy only once a run.
+struct PreciseLocationNotice: View {
+    var body: some View {
+        VStack(spacing: 2) {
+            Text("Precise Location is off")
+                .font(.caption2.weight(.semibold))
+                .foregroundColor(AppTheme.error)
+            Text("Distance and map will be wrong. Turn on Precise Location in Settings > Privacy & Security > Location Services > Threkir, on this watch or in the Watch app on iPhone.")
+                .font(.caption2)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 

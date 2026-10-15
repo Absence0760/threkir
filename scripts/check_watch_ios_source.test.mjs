@@ -62,6 +62,8 @@ import {
 	phoneEnvelopeKeys,
 	stripSwiftComments,
 	swiftPayloadKeys,
+	temporaryPurposeKeysCalled,
+	temporaryPurposeKeysDeclared,
 	swiftStructFields,
 	watchEnvelopeKeys,
 } from './check_watch_ios_source.mjs';
@@ -76,6 +78,7 @@ const BRIDGE = join('WatchApp', 'ActiveRunBridge.swift');
 const COPY = join('Complications', 'ActiveRunComplication.swift');
 const README = join('Complications', 'README.md');
 const SYNC = join('WatchApp', 'ContentView.swift');
+const RECORDER = join('WatchApp', 'WorkoutManager.swift');
 const INGEST_ABS = join(REPO_ROOT, INGEST);
 const ROUTE_BRIDGE_ABS = join(REPO_ROOT, ROUTE_BRIDGE);
 /** Where `stage()` parks a copy of the phone's half of the envelope. */
@@ -424,6 +427,47 @@ test('a purpose string no call claims is refused as an over-claim', () => {
 		);
 	});
 	assert.equal(matched(errors, /declares `NSCameraUsageDescription` and no code/).length, 1, errors.join('\n'));
+});
+
+test('a full-accuracy purpose key Info.plist does not explain is refused', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, PLIST, (s) =>
+			s.replace(/\t\t<key>PreciseRunTracking<\/key>\n\t\t<string>[^<]*<\/string>\n/, ''),
+		);
+	});
+	assert.equal(
+		matched(errors, /asks under purpose key `PreciseRunTracking`, and Info\.plist/).length,
+		1,
+		errors.join('\n'),
+	);
+});
+
+test('a full-accuracy purpose key no call asks under is refused as an over-claim', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, RECORDER, (s) => s.replace('withPurposeKey: "PreciseRunTracking"', 'withPurposeKey: "OtherKey"'));
+	});
+	assert.equal(matched(errors, /declares `PreciseRunTracking` and no/).length, 1, errors.join('\n'));
+	assert.equal(matched(errors, /purpose key `OtherKey`/).length, 1, errors.join('\n'));
+});
+
+test('a full-accuracy purpose key passed as a non-literal is refused, not skipped', () => {
+	assert.equal(
+		temporaryPurposeKeysCalled('m.requestTemporaryFullAccuracyAuthorization(withPurposeKey: key) { _ in }'),
+		null,
+	);
+	assert.deepEqual(
+		[...(temporaryPurposeKeysCalled('m.requestTemporaryFullAccuracyAuthorization(withPurposeKey: "A")') ?? [])],
+		['A'],
+	);
+	assert.deepEqual(
+		[
+			...temporaryPurposeKeysDeclared(
+				'<dict><key>NSLocationTemporaryUsageDescriptionDictionary</key><dict>' +
+					'<key>A</key><string>why</string></dict><key>X</key><true/></dict>',
+			),
+		],
+		[['A', 'why']],
+	);
 });
 
 test('a background mode removed while the call that needs it stays is refused', () => {

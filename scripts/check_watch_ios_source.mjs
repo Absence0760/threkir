@@ -34,6 +34,10 @@
 //       under the plist key the system reads it from (`location` under
 //       `UIBackgroundModes`, `workout-processing` under `WKBackgroundModes`):
 //       one under the wrong key crashed the app on Start (decisions § 1742).
+//       The same two directions hold for the purpose keys
+//       `requestTemporaryFullAccuracyAuthorization` names and the
+//       `NSLocationTemporaryUsageDescriptionDictionary` that has to explain
+//       each one: a key with no entry there gets no Precise Location sheet.
 //
 //   (4) RETIRED, and the number is left vacant so every claim below still
 //       answers to the number it has always had. It held the complication's
@@ -410,6 +414,36 @@ export const PURPOSE_STRINGS = [
 		needed_by: 'HealthKitManager writes the workout back to Health',
 	},
 ];
+
+/**
+ * The purpose keys the Swift hands `requestTemporaryFullAccuracyAuthorization`,
+ * or null when a call passes anything but a string literal: a key this guard
+ * cannot read is not one it can hold Info.plist to.
+ * @param {string} src comment-stripped Swift
+ * @returns {Set<string> | null}
+ */
+export function temporaryPurposeKeysCalled(src) {
+	const calls = [...src.matchAll(/requestTemporaryFullAccuracyAuthorization\s*\(/g)].length;
+	const keys = [
+		...src.matchAll(/requestTemporaryFullAccuracyAuthorization\s*\(\s*withPurposeKey:\s*"([^"\\\n]+)"/g),
+	].map((m) => m[1]);
+	return keys.length === calls ? new Set(keys) : null;
+}
+
+/**
+ * Info.plist's `NSLocationTemporaryUsageDescriptionDictionary`, purpose key ->
+ * string. `parseFlatPlist` reads no nested dict, so this one is read on its own.
+ * @param {string} xml
+ * @returns {Map<string, string>}
+ */
+export function temporaryPurposeKeysDeclared(xml) {
+	/** @type {Map<string, string>} */
+	const out = new Map();
+	const block = /<key>NSLocationTemporaryUsageDescriptionDictionary<\/key>\s*<dict>([\s\S]*?)<\/dict>/.exec(xml);
+	if (block === null) return out;
+	for (const m of block[1].matchAll(/<key>([^<]+)<\/key>\s*<string>([\s\S]*?)<\/string>/g)) out.set(m[1], m[2]);
+	return out;
+}
 
 /**
  * `WatchApp.entitlements` keys, each derived from the code that needs it.
@@ -1788,6 +1822,35 @@ export function check(
 				'a permission the app never asks for is an App Store privacy over-claim. Either delete ' +
 				'it, or add a rule to PURPOSE_STRINGS naming the call that needs it.',
 		);
+	}
+
+	const calledPurposes = temporaryPurposeKeysCalled(allSwift);
+	const declaredPurposes = temporaryPurposeKeysDeclared(read(join('WatchApp', 'Info.plist')));
+	if (calledPurposes === null) {
+		errors.push(
+			'A `requestTemporaryFullAccuracyAuthorization` call passes its purpose key as something other ' +
+				'than a string literal, so nothing can check Info.plist explains it. Pass the key as a literal.',
+		);
+	} else {
+		for (const key of calledPurposes) {
+			if ((declaredPurposes.get(key) ?? '').trim() !== '') {
+				ok.push(`Info.plist explains the \`${key}\` full-accuracy purpose key`);
+				continue;
+			}
+			errors.push(
+				`\`requestTemporaryFullAccuracyAuthorization\` asks under purpose key \`${key}\`, and ` +
+					"Info.plist's NSLocationTemporaryUsageDescriptionDictionary has no usable string for it. " +
+					'Without one the system shows no sheet and the run stays on approximate fixes.',
+			);
+		}
+		for (const key of declaredPurposes.keys()) {
+			if (calledPurposes.has(key)) continue;
+			errors.push(
+				`Info.plist's NSLocationTemporaryUsageDescriptionDictionary declares \`${key}\` and no ` +
+					'`requestTemporaryFullAccuracyAuthorization` call asks under it. Either delete it, or ' +
+					'make the call that needs it.',
+			);
+		}
 	}
 
 	for (const rule of ENTITLEMENTS) {

@@ -85,6 +85,12 @@ export interface CoachConfig {
 	// builder — so the coach never points at a box the runner cannot see.
 	aiPlanEnabled: boolean;
 
+	// AI plan edits' deploy flag (ai_plan_edit_flag.ts), read the same way:
+	// PUBLIC_AI_PLAN_EDIT_ENABLED in the dev wrapper, AI_PLAN_EDIT_ENABLED in
+	// the Lambda. Adds the plan-edit handoff addendum only when the endpoint it
+	// links into is live.
+	aiPlanEditEnabled: boolean;
+
 	// Test seam only. Injects the Supabase-client factory so the handler's
 	// post-auth branches (notably the regenerate/edit anchor-miss fail-
 	// closed path) can be unit-tested without a live Supabase. Prod callers

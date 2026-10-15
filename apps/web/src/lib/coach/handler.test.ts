@@ -55,6 +55,7 @@ function baseConfig(): CoachConfig {
 		publicSupabaseAnonKey: 'sb_publishable_fake_local_anon_key',
 		bypassPaywallEnabled: false,
 		aiPlanEnabled: false,
+		aiPlanEditEnabled: false,
 	};
 }
 
@@ -585,7 +586,7 @@ test('happy path persists the full reply, emits done, refunds nothing', async ()
 /// `fetch` stubbed, and return the system text the provider was handed.
 /// The stubbed upstream answers 500, so the turn ends in the mid-stream
 /// error path — only the request body matters here.
-async function systemTextFor(aiPlanEnabled: boolean): Promise<string> {
+async function systemTextFor(aiPlanEnabled: boolean, aiPlanEditEnabled = false): Promise<string> {
 	const calls = { inserts: [] as string[], deletes: [] as string[] };
 	const originalFetch = globalThis.fetch;
 	let sent: { messages?: { role: string; content: string }[] } | null = null;
@@ -604,6 +605,7 @@ async function systemTextFor(aiPlanEnabled: boolean): Promise<string> {
 					openaiBaseUrl: 'http://127.0.0.1:1/v1',
 					bypassPaywallEnabled: true,
 					aiPlanEnabled,
+					aiPlanEditEnabled,
 					createClient: () => makeSupabaseStub(calls),
 				},
 			);
@@ -631,4 +633,11 @@ test('the system text points at the bare plan builder when the AI plan assistant
 	const text = await systemTextFor(false);
 	assert.ok(text.includes('[plan builder](/plans/new)'), text.slice(-1200));
 	assert.ok(!text.includes('describe='), 'no assistant link while the flag is off');
+});
+
+test('the system text carries the plan-edit handoff only when AI plan edits are on', async () => {
+	const on = await systemTextFor(false, true);
+	assert.ok(on.includes('?adjust=<request>'), on.slice(-1500));
+	const off = await systemTextFor(false, false);
+	assert.ok(!off.includes('adjust='), 'no plan-edit link while the flag is off');
 });

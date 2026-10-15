@@ -3,7 +3,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { COACH_SYSTEM_PROMPT, planHandoffAddendum } from './system_prompt';
+import { COACH_SYSTEM_PROMPT, planEditHandoffAddendum, planHandoffAddendum } from './system_prompt';
 
 test('system prompt declares the <CONTEXT> boundary', () => {
 	// audit/coach May 2026 Medium #4 + Low #11 — OWASP LLM01 prompt
@@ -114,4 +114,19 @@ test('the handoff addenda leak no operational secret either', () => {
 	for (const text of [planHandoffAddendum(true), planHandoffAddendum(false)]) {
 		for (const k of FORBIDDEN) assert.equal(text.includes(k), false, k);
 	}
+});
+
+test('planEditHandoffAddendum(true) asks for one adjust link on the context plan, never an invented id', () => {
+	const out = planEditHandoffAddendum(true);
+	assert.match(out, /\[Adjust my plan\]\(\/plans\/<plan id>\?adjust=<request>\)/);
+	assert.match(out, /exactly one markdown link/);
+	assert.match(out, /Never invent a plan id/);
+	assert.match(out, /do not rewrite workouts or dates yourself/);
+	assert.match(out, /percent-encode/);
+});
+
+test('planEditHandoffAddendum(false) is empty, so the system text is unchanged while the feature is off', () => {
+	assert.equal(planEditHandoffAddendum(false), '');
+	assert.equal(planEditHandoffAddendum(true), planEditHandoffAddendum(true));
+	assert.ok(!/\d{4}-\d{2}-\d{2}/.test(planEditHandoffAddendum(true)));
 });

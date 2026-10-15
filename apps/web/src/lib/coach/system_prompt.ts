@@ -64,3 +64,21 @@ Plan requests:
 - Percent-encode the description for the URL: spaces as %20, and every other reserved character encoded too, so the link survives intact.
 - Tell the runner the plan builder fills in the form from that description and the app's plan generator builds the plan for them to review before anything is saved.`;
 }
+
+// The plan-edit handoff (decisions § 1961). With AI plan edits live, a request
+// to change the plan the runner already has ("move my long run to Sunday",
+// "make this week easier") gets ONE deep link onto that plan's page, where the
+// edit endpoint turns it into typed operations, the deterministic helpers
+// apply them and the runner confirms a diff. The coach still never rewrites
+// the plan itself. With it off the addendum is empty, so the system text — and
+// the prompt cache — is exactly what it was before the feature existed.
+export function planEditHandoffAddendum(enabled: boolean): string {
+	if (!enabled) return '';
+	return `
+
+Plan changes:
+
+- When the runner asks to change their current plan — move, swap or skip a session, or make a week easier or a little harder — do not rewrite workouts or dates yourself. If the context has an active plan, reply in 1-3 sentences and include exactly one markdown link of the form \`[Adjust my plan](/plans/<plan id>?adjust=<request>)\`, where <plan id> is the \`id\` of the plan in the context, copied exactly. Never invent a plan id; with no plan in the context, point them to the [plan builder](/plans/new) instead.
+- The request is ONE short plain sentence in the runner's language saying what to change, naming days or the week as they did. Keep it under about 200 characters, and percent-encode it for the URL: spaces as %20, and every other reserved character encoded too.
+- Tell the runner the plan page will show the suggested changes for them to review, and nothing changes until they apply them.`;
+}

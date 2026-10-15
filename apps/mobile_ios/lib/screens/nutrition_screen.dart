@@ -1006,7 +1006,7 @@ class _NutritionScreenState extends State<NutritionScreen>
           if (_platePhotoAvailable)
             IconButton(
               tooltip: l10n.nutritionLogFromPhoto,
-              icon: const Icon(Icons.photo_camera_outlined),
+              icon: const Icon(Icons.photo_camera),
               onPressed: _logFromPhoto,
             ),
           IconButton(

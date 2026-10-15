@@ -249,7 +249,7 @@ class PlatePhotoFormState extends State<PlatePhotoForm> {
               FilledButton.tonalIcon(
                 key: const ValueKey('plate-photo-camera'),
                 onPressed: _estimating ? null : () => _pick(ImageSource.camera),
-                icon: const Icon(Icons.photo_camera_outlined),
+                icon: const Icon(Icons.photo_camera),
                 label: Text(l10n.platePhotoTakePhoto),
               ),
               OutlinedButton.icon(

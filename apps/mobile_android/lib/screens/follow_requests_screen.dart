@@ -98,7 +98,7 @@ class _FollowRequestsScreenState extends State<FollowRequestsScreen> {
     if (_requests.isEmpty) {
       return EmptyState(
         key: const ValueKey('follow-requests-empty'),
-        icon: Icons.person_add_alt_1_outlined,
+        icon: Icons.person_add_alt_1,
         title: l10n.followRequestsEmptyTitle,
         body: l10n.followRequestsEmptyBody,
       );

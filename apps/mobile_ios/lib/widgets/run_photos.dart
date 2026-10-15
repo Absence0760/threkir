@@ -468,7 +468,7 @@ class _RunPhotosState extends State<RunPhotos> with WidgetsBindingObserver {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.emoji_events_outlined,
+                Icon(Icons.emoji_events,
                     size: 16, color: cs.onSurfaceVariant),
                 const SizedBox(width: 6),
                 Expanded(

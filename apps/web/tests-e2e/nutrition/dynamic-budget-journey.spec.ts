@@ -6,13 +6,7 @@ import { getAdminClient } from '../fixtures/local-supabase';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { insertRun } from '../fixtures/simulate';
 import { readRows } from '../fixtures/db-read';
-
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-	);
-}
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Dynamic calorie-budget (base + exercise) cross-modal day — one long,
@@ -171,7 +165,7 @@ test.describe('/nutrition — dynamic budget (base + exercise) cross-modal day',
 		// getByRole('dialog') ambiguous and floats over the FoodLogEditor's
 		// Add button (matches the saga-spec consent pattern, e.g.
 		// cross-user/sagas/kudos-notification.spec.ts).
-		await ctx.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctx);
 		const page: Page = await ctx.newPage();
 
 		// Live readers over the rendered page — the source's own numbers, so the

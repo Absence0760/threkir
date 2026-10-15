@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test';
 import { expect, test } from '../fixtures/test';
 
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * /social?tab=clubs Browse — "Is your club missing? Set it up" (issue #1151
@@ -96,9 +97,7 @@ test.describe('clubs Browse — missing club', () => {
 		test('the set-up link sends a visitor through sign-in and back to the prefilled form', async ({
 			page,
 		}) => {
-			await page.addInitScript(() => {
-				localStorage.setItem('cookie_consent', JSON.stringify({ choice: 'accepted', timestamp: Date.now() }));
-			});
+			await acceptCookieConsent(page);
 			const name = 'Lakeside Joggers';
 			const target = `/clubs/new?name=${encodeURIComponent(name)}`;
 

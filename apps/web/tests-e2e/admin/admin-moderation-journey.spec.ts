@@ -8,6 +8,7 @@ import {
 	deleteSagaUsers,
 	type SagaUser,
 } from '../fixtures/saga-users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Content-moderation journey — report → review → action, end to end.
@@ -43,19 +44,12 @@ import {
  * we don't bypass them the way reports.spec.ts does.
  */
 
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-	);
-}
-
 async function newConsentingContext(
 	browser: import('@playwright/test').Browser,
 	storageStatePath: string,
 ): Promise<BrowserContext> {
 	const ctx = await browser.newContext({ storageState: storageStatePath });
-	await ctx.addInitScript(setConsentAccepted);
+	await acceptCookieConsent(ctx);
 	return ctx;
 }
 

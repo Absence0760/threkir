@@ -1,6 +1,7 @@
 import { expect, test } from '../fixtures/test';
 
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * /guided + /guided/[id] — guided audio run library.
@@ -39,18 +40,11 @@ const KNOWN_RUNS = [
 	}
 ];
 
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-	);
-}
-
 test.describe('/guided — index page (anon)', () => {
 	test.use({ storageState: { cookies: [], origins: [] } });
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(context);
 	});
 
 	test('renders the kicker, h1, tagline + "preview only" mobile callout', async ({ page }) => {
@@ -123,7 +117,7 @@ test.describe('/guided/[id] — detail pages (anon)', () => {
 	test.use({ storageState: { cookies: [], origins: [] } });
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(context);
 	});
 
 	for (const r of KNOWN_RUNS) {
@@ -209,7 +203,7 @@ test.describe('/guided ↔ /guided/[id] — navigation round-trip', () => {
 	test.use({ storageState: { cookies: [], origins: [] } });
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(context);
 	});
 
 	test('library card click → detail → Library back link → library', async ({ page }) => {

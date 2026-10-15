@@ -4,6 +4,7 @@ import { getAdminClient } from '../fixtures/local-supabase';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { insertRun } from '../fixtures/simulate';
 import { readCount, readMaybeRow } from '../fixtures/db-read';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Social cross-surface journey — discover → follow → feed → engage →
@@ -111,12 +112,7 @@ test.describe('social journey — discover → follow → feed → engage → un
 		// this consent choice, so inject it before the first navigation (the
 		// consent module reads localStorage once on import) — same pattern as
 		// helpers.signIn.
-		await ctx.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		const admin = getAdminClient();
 		try {

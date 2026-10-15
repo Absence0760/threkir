@@ -6,6 +6,7 @@ import { getAdminClient } from '../fixtures/local-supabase';
 import { RUNNER_PUBLIC_RUN_ID } from '../fixtures/seeded-data';
 import { clearNotifications, insertComment } from '../fixtures/simulate';
 import { USER_A, USER_B, USER_C_PRO } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Reactions, comment likes and @mentions on a run (decisions § 1971), driven
@@ -24,13 +25,6 @@ import { USER_A, USER_B, USER_C_PRO } from '../fixtures/users';
  */
 
 const MORGAN_HANDLE = 'morgan_e2e_mention';
-
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-	);
-}
 
 async function cleanup() {
 	const admin = getAdminClient();
@@ -72,7 +66,7 @@ test.describe('run reactions, comment likes and mentions', () => {
 
 	test('a reaction toggles on and notifies the run owner once', async ({ browser, mockRoute }) => {
 		const ctx = await browser.newContext({ storageState: USER_B.storageStatePath });
-		await ctx.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
 			await mockRoute(page, '**/functions/v1/clip-public-track', (route) =>
@@ -123,7 +117,7 @@ test.describe('run reactions, comment likes and mentions', () => {
 		});
 		await clearNotifications(USER_A.id);
 		const ctx = await browser.newContext({ storageState: USER_B.storageStatePath });
-		await ctx.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
 			await mockRoute(page, '**/functions/v1/clip-public-track', (route) =>
@@ -164,7 +158,7 @@ test.describe('run reactions, comment likes and mentions', () => {
 		mockRoute,
 	}) => {
 		const ctx = await browser.newContext({ storageState: USER_B.storageStatePath });
-		await ctx.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
 			await mockRoute(page, '**/functions/v1/clip-public-track', (route) =>
@@ -217,7 +211,7 @@ test.describe('run reactions, comment likes and mentions', () => {
 		for (const { error } of seeded) if (error) throw new Error(`seed failed: ${error.message}`);
 
 		const ctx = await browser.newContext({ storageState: USER_B.storageStatePath });
-		await ctx.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
 			await mockRoute(page, '**/functions/v1/clip-public-track', (route) =>

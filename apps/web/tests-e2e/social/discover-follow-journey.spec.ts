@@ -4,6 +4,7 @@ import { getAdminClient } from '../fixtures/local-supabase';
 import { insertRun } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
 import { readCount, readMaybeRow } from '../fixtures/db-read';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 const SAGA_PASSWORD = 'sagatest123';
 
@@ -154,12 +155,7 @@ test.describe('social journey — seeded actor discovers a stranger, follows + e
 		// People row and intercept pointer events on the follow / kudos /
 		// comment affordances. Inject before the first navigation (the
 		// consent module reads localStorage once on import).
-		await page.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(page);
 
 		// Sanity: USER_A does NOT already follow the Stranger going in
 		// (proves the search result's "Follow" state is real, not stale).

@@ -9,6 +9,7 @@ import {
 	setUserSetting,
 } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * /live/[id] on the safety-contacts-only audience (decisions § 1964).
@@ -108,12 +109,7 @@ test.describe('/live/[id] — safety-contacts link (anon)', () => {
 	});
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-			);
-		});
+		await acceptCookieConsent(context);
 	});
 
 	test('the run is never public: the bare link shows nothing', async ({ page }) => {

@@ -9,6 +9,7 @@ import {
 	insertRun
 } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * /live/[id] — the "Next cut-off" card (predictive-live-tracking item 3).
@@ -80,12 +81,7 @@ test.describe('/live/[id] — Next cut-off card (anon)', () => {
 	test.use({ storageState: { cookies: [], origins: [] } });
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(context);
 	});
 
 	test('fresh pings + cutoff ahead → card + margin chip render', async ({ page }) => {

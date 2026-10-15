@@ -1,4 +1,5 @@
 import { expect, test } from '../fixtures/test';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * /compare — public marketing comparison vs Strava Free + Pro.
@@ -16,12 +17,7 @@ test.describe('/compare — feature comparison vs Strava', () => {
 	test.use({ storageState: { cookies: [], origins: [] } });
 
 	test.beforeEach(async ({ page }) => {
-		await page.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-			);
-		});
+		await acceptCookieConsent(page);
 	});
 
 	test('document title + meta description match the SEO contract', async ({ page }) => {

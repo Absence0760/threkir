@@ -3,6 +3,7 @@ import { expect, test } from '../fixtures/test';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A, USER_B, USER_C_PRO } from '../fixtures/users';
 import { readRows } from '../fixtures/db-read';
+import { setStorageOnLoad } from '../fixtures/helpers';
 
 /**
  * /messages — DM permission boundaries + unread plumbing (#55).
@@ -73,9 +74,7 @@ test.describe('/messages — permission boundaries', () => {
 		const ctx = await browser.newContext({ storageState: USER_B.storageStatePath, locale: 'de-DE' });
 		const page = await ctx.newPage();
 		try {
-			await page.addInitScript(() => {
-				localStorage.setItem('locale', 'de');
-			});
+			await setStorageOnLoad(page, { local: { locale: 'de' } });
 			await page.goto(`/messages/${USER_C_PRO.id}`);
 
 			const composer = page.getByPlaceholder('Nachricht…');

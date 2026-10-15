@@ -2,6 +2,7 @@ import { expect, test } from '../fixtures/test';
 
 import { deleteRun, insertLivePings, insertRun } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * /live/[id] — the stopped-runner readout (`lib/safety/live_motion.ts`).
@@ -53,12 +54,7 @@ test.describe('/live/[id] — stopped-runner readout (anon)', () => {
 	test.use({ storageState: { cookies: [], origins: [] } });
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-			);
-		});
+		await acceptCookieConsent(context);
 	});
 
 	test('fresh pings from one spot report how long the runner has been there', async ({

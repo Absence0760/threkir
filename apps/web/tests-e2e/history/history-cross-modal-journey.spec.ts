@@ -3,6 +3,7 @@ import { expect, test } from '../fixtures/test';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { insertRun, deleteRun } from '../fixtures/simulate';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Cross-modal /history timeline journey — one runner logs activity in all
@@ -145,12 +146,7 @@ test.describe('history cross-modal timeline journey — three modalities interle
 			// Pre-accept the GDPR cookie banner so its role="dialog" can't float
 			// over the Log modals and intercept the menu-item clicks. Inject
 			// before the first navigation (consent reads localStorage on import).
-			await ctx.addInitScript(() => {
-				localStorage.setItem(
-					'cookie_consent',
-					JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-				);
-			});
+			await acceptCookieConsent(ctx);
 			const page = await ctx.newPage();
 
 			try {

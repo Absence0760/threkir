@@ -3,6 +3,7 @@ import { expect, test } from '../fixtures/test';
 import { originOf } from '../fixtures/base-url';
 import { browserYear } from '../fixtures/dates';
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 const CURRENT_YEAR = browserYear();
 // A random, never-published uuid — the private-by-default / revoked case.
@@ -12,12 +13,7 @@ test.describe('/recap/share/[id] — anon visitor', () => {
 	test.use({ storageState: { cookies: [], origins: [] } });
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(context);
 	});
 
 	test('an unpublished id renders the not-found fallback, not a 500', async ({ page }) => {
@@ -41,12 +37,7 @@ test.describe('/recap/share/[id] — publish round-trip (seed user)', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(context);
 	});
 
 	test('publish from /recap/[year] then load the public link with OG tags', async ({

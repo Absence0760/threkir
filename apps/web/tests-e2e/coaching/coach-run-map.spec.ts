@@ -3,6 +3,7 @@ import { expect, test } from '../fixtures/test';
 import { getAdminClient, getUserClient, loadSupabaseEnv } from '../fixtures/local-supabase';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { insertRun } from '../fixtures/simulate';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * A linked coach sees the athlete's run map, clipped (decisions § 1968).
@@ -91,12 +92,7 @@ test.describe('coach run map — clipped, and only through an active link', () =
 
 	test('the coach page draws the athlete run map', async ({ browser }) => {
 		const ctx = await browser.newContext({ storageState: coach.storageStatePath });
-		await ctx.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		const served = page.waitForResponse(
 			(r) => r.url().includes('/functions/v1/clip-public-track') && r.request().method() === 'POST'

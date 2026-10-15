@@ -4,13 +4,7 @@ import { expect, test } from '../fixtures/test';
 import { noonOnBrowserDay } from '../fixtures/dates';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
-
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-	);
-}
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Extended-nutrient day roll-up on `/nutrition` — and specifically the
@@ -133,7 +127,7 @@ test.describe('/nutrition — extended nutrients, coverage-aware', () => {
 		browser,
 	}) => {
 		const ctx = await browser.newContext({ storageState: user.storageStatePath });
-		await ctx.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctx);
 		const page: Page = await ctx.newPage();
 
 		try {

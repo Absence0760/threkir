@@ -4,6 +4,7 @@ import { getAdminClient } from '../fixtures/local-supabase';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { insertRun } from '../fixtures/simulate';
 import { readCount } from '../fixtures/db-read';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Private profile and follower approval (decisions § 1967), walked as one
@@ -49,12 +50,7 @@ test.describe('private profile — request, approve, then see the runs', () => {
 
 	async function contextFor(browser: import('@playwright/test').Browser, user: SagaUser) {
 		const ctx = await browser.newContext({ storageState: user.storageStatePath });
-		await ctx.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(ctx);
 		return ctx;
 	}
 

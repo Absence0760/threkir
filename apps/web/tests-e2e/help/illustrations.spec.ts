@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { expect, test } from '../fixtures/test';
 
 import type { Guide } from '../../src/lib/help/types';
+import { setStorageOnLoad } from '../fixtures/helpers';
 
 /**
  * Every help-guide illustration, as a signed-out visitor sees it
@@ -114,9 +115,7 @@ test.describe('/help — every guide illustration, signed out', () => {
 			.find((b) => b.type === 'illustration')!.alt!;
 		expect(jaAlt).toMatch(/[぀-ヿ一-鿿]/);
 
-		await context.addInitScript(() => {
-			localStorage.setItem('locale', 'ja');
-		});
+		await setStorageOnLoad(context, { local: { locale: 'ja' } });
 		await page.goto('/help/follow-a-race-live');
 		const figure = page.getByTestId('help-illustration');
 		await expect(figure).toHaveAttribute('data-illustration', 'follow-a-race-live', { timeout: 10_000 });

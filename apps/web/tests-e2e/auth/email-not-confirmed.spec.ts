@@ -1,4 +1,5 @@
 import { expect, test } from '../fixtures/test';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * /login — an unconfirmed-email sign-in must surface a specific,
@@ -20,12 +21,7 @@ test.describe('/login unconfirmed email', () => {
 	}) => {
 		// Pre-accept the cookie banner before the module reads localStorage
 		// (same reason as the signIn helper) so it can't intercept clicks.
-		await page.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(page);
 
 		// Stand in for GoTrue's password-grant response for an account
 		// that exists but hasn't confirmed its email. Both the dedicated

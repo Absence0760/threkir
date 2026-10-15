@@ -5,6 +5,7 @@ import { getAdminClient } from '../fixtures/local-supabase';
 import { shareChoosingPublic } from '../fixtures/share';
 import { deleteRun, insertRun, setUserSetting } from '../fixtures/simulate';
 import { USER_A, USER_B } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 const PRIVACY_ZONES_KEY = 'privacy_zones';
 const SEEDED_ZONE = { lat: -37.8136, lng: 144.9631, radius_m: 200, label: 'home' };
@@ -56,12 +57,7 @@ test.describe('/share/run/[id] — server-side privacy-zone clipping', () => {
 		browser
 	}) => {
 		const ctx = await browser.newContext({ storageState: { cookies: [], origins: [] } });
-		await ctx.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
 			const efPromise = page.waitForResponse(
@@ -95,12 +91,7 @@ test.describe('/share/run/[id] — server-side privacy-zone clipping', () => {
 
 	test('authenticated non-owner (USER_B) receives the same clipped set', async ({ browser }) => {
 		const ctx = await browser.newContext({ storageState: USER_B.storageStatePath });
-		await ctx.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
 			const efPromise = page.waitForResponse(
@@ -128,12 +119,7 @@ test.describe('/share/run/[id] — server-side privacy-zone clipping', () => {
 		browser
 	}) => {
 		const ctx = await browser.newContext({ storageState: USER_A.storageStatePath });
-		await ctx.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
 			let efHit = false;
@@ -208,12 +194,7 @@ test.describe('/share/run/[id] — a smoothed position inside a zone is clipped 
 		browser
 	}) => {
 		const ctx = await browser.newContext({ storageState: USER_B.storageStatePath });
-		await ctx.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
 			const efPromise = page.waitForResponse(
@@ -288,12 +269,7 @@ test.describe('/share/run/[id] — owner-zone clipping uses owner zones, not vie
 		]);
 
 		const ctx = await browser.newContext({ storageState: USER_B.storageStatePath });
-		await ctx.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
 			const efPromise = page.waitForResponse(
@@ -354,12 +330,7 @@ test.describe('/runs/[id] share confirm — a smoothed position inside a zone wa
 		}
 
 		const ctx = await browser.newContext({ storageState: USER_A.storageStatePath });
-		await ctx.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
 			await page.goto(`/runs/${plantedRunId}`);

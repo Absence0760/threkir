@@ -2,6 +2,7 @@ import { expect, test } from '../fixtures/test';
 
 import { deleteEvent, insertEvent } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
+import { setStorageOnLoad } from '../fixtures/helpers';
 
 /**
  * The in-app help centre (docs/features/help.md): /help contents, search,
@@ -236,9 +237,7 @@ test.describe('/help — illustration in dark mode and German', () => {
 	});
 
 	test('de: the figure is announced by its German alt text', async ({ context, page }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem('locale', 'de');
-		});
+		await setStorageOnLoad(context, { local: { locale: 'de' } });
 		await page.goto('/help/privacy-zones');
 		const figure = page.getByTestId('help-illustration');
 		await expect(figure).toHaveAttribute('data-illustration', 'privacy-zones');

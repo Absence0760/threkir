@@ -3,6 +3,7 @@ import { expect, test } from '../fixtures/test';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { RUNNER_PUBLIC_ROUTE_ID } from '../fixtures/seeded-data';
 import { USER_A, USER_B, USER_C_PRO } from '../fixtures/users';
+import { setStorageOnLoad } from '../fixtures/helpers';
 
 /**
  * /messages — direct messages (very-social persona #55).
@@ -182,13 +183,7 @@ test.describe('/messages — direct messages', () => {
 
 	test('anon is prompted to sign in', async ({ page, context }) => {
 		await context.clearCookies();
-		await page.context().addInitScript(() => {
-			try {
-				localStorage.clear();
-			} catch (_) {
-				/* ignore */
-			}
-		});
+		await setStorageOnLoad(page.context(), { clearLocal: true });
 		await page.goto('/messages');
 		// Either the in-page sign-in prompt or a redirect to login.
 		await expect(

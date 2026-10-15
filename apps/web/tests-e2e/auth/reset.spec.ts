@@ -1,7 +1,7 @@
 import { expect, test } from '../fixtures/test';
 
 import { resolveBaseUrl } from '../fixtures/base-url';
-import { refreshStorageState } from '../fixtures/helpers';
+import { acceptCookieConsent, refreshStorageState } from '../fixtures/helpers';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { clearMailpit, extractLink, waitForEmail } from '../fixtures/mailpit';
 import { USER_A } from '../fixtures/users';
@@ -45,12 +45,7 @@ test.describe('/auth/reset', () => {
 		try {
 			await clearMailpit();
 
-			await page.addInitScript(() => {
-				localStorage.setItem(
-					'cookie_consent',
-					JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-				);
-			});
+			await acceptCookieConsent(page);
 
 			await page.goto('/login?reset=1');
 			await expect(page.getByRole('heading', { name: 'Reset your password' }))
@@ -74,12 +69,7 @@ test.describe('/auth/reset', () => {
 			// token_hash it carries now is redeemable anywhere.
 			const mailReader = await browser.newContext();
 			const resetPage = await mailReader.newPage();
-			await resetPage.addInitScript(() => {
-				localStorage.setItem(
-					'cookie_consent',
-					JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-				);
-			});
+			await acceptCookieConsent(resetPage);
 			await resetPage.goto(link);
 			await expect(resetPage.getByRole('heading', { name: 'Set a new password' }))
 				.toBeVisible({ timeout: 10_000 });
@@ -92,12 +82,7 @@ test.describe('/auth/reset', () => {
 
 			const fresh = await page.context().browser()!.newContext();
 			const verifyPage = await fresh.newPage();
-			await verifyPage.addInitScript(() => {
-				localStorage.setItem(
-					'cookie_consent',
-					JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-				);
-			});
+			await acceptCookieConsent(verifyPage);
 			await verifyPage.goto('/login');
 			await verifyPage.getByPlaceholder('Email address').fill(USER_A.email);
 			await verifyPage.getByPlaceholder('Password').fill(newPassword);
@@ -131,12 +116,7 @@ test.describe('/auth/reset', () => {
 
 	test('invalid / missing token renders the "invalid link" branch — not a /login redirect',
 		async ({ page }) => {
-			await page.addInitScript(() => {
-				localStorage.setItem(
-					'cookie_consent',
-					JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-				);
-			});
+			await acceptCookieConsent(page);
 
 			await page.goto('/auth/reset');
 			// The page must NOT be bounced to /login by the global auth
@@ -162,12 +142,7 @@ test.describe('/auth/reset', () => {
 			// pins that contract: if a future refactor drops /auth/reset
 			// from the anon-allowed list, this fails immediately rather
 			// than as a hard-to-trace recovery-flow regression.
-			await page.addInitScript(() => {
-				localStorage.setItem(
-					'cookie_consent',
-					JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-				);
-			});
+			await acceptCookieConsent(page);
 
 			await page.goto('/auth/reset');
 			await expect(page.getByRole('heading', { name: 'Set a new password' }))
@@ -188,12 +163,7 @@ test.describe('/auth/reset', () => {
 		const admin = getAdminClient();
 		try {
 			await clearMailpit();
-			await page.addInitScript(() => {
-				localStorage.setItem(
-					'cookie_consent',
-					JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-				);
-			});
+			await acceptCookieConsent(page);
 
 			await page.goto('/login?reset=1');
 			await page.getByPlaceholder('Email address').fill(USER_A.email);
@@ -205,12 +175,7 @@ test.describe('/auth/reset', () => {
 			const link = extractLink(msg);
 
 			const resetPage = await context.newPage();
-			await resetPage.addInitScript(() => {
-				localStorage.setItem(
-					'cookie_consent',
-					JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-				);
-			});
+			await acceptCookieConsent(resetPage);
 			await resetPage.goto(link);
 			await expect(resetPage.getByRole('heading', { name: 'Set a new password' }))
 				.toBeVisible({ timeout: 10_000 });

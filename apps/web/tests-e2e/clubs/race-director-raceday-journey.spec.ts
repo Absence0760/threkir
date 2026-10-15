@@ -11,6 +11,7 @@ import {
 } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
 import { readCount, readRow } from '../fixtures/db-read';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Race-director race-day operations — the full stitched journey
@@ -52,13 +53,6 @@ import { readCount, readRow } from '../fixtures/db-read';
  */
 
 const RICHMOND_CLUB_ID = 'c1111111-0000-0000-0000-000000000001';
-
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-	);
-}
 
 // Docklands, Melbourne — outside the seeded privacy zones.
 const PING_BASE = { lat: -37.8155, lng: 144.945 };
@@ -109,7 +103,7 @@ test.describe('saga: race director runs a race day end-to-end', () => {
 		browser
 	}) => {
 		const ctx = await browser.newContext({ storageState: USER_A.storageStatePath });
-		await ctx.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctx);
 		const director = await ctx.newPage();
 
 		const [ada, boyd] = runners;

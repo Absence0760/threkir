@@ -1,6 +1,7 @@
 import { expect, test } from '../fixtures/test';
 
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * /routes?tab=explore — when the public-route search read fails, the
@@ -13,12 +14,7 @@ test.describe('/routes?tab=explore — search failure', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(context);
 	});
 
 	test('a failed search shows a retry card, not the empty state', async ({ page }) => {

@@ -2,6 +2,7 @@ import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * AI-coach grounded-context journey — one runner with real training
@@ -83,12 +84,7 @@ test.describe('AI coach grounded-context journey', () => {
 	test.beforeEach(async ({ context }) => {
 		// Pre-accept consent so the GDPR banner can't float over the
 		// composer / context strip (mirrors the upgrade-unlock journey).
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-			);
-		});
+		await acceptCookieConsent(context);
 	});
 
 	test('runner opens Coach → sees the grounded plan + runs window → asks → switches the window/plan and the grounding follows', async ({

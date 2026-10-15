@@ -5,6 +5,7 @@ import { readRows } from '../fixtures/db-read';
 import { getAdminClient, loadSupabaseEnv } from '../fixtures/local-supabase';
 import { deleteEvent, deleteRun, insertEvent, insertRun } from '../fixtures/simulate';
 import { USER_A, USER_B, USER_C_PRO } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * /clubs/[slug]/events/[id] — the event gallery as seen by the viewers the
@@ -105,9 +106,7 @@ test.describe('signed out', () => {
 
 	// The consent banner would sit over the gallery; its own specs cover it.
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem('cookie_consent', JSON.stringify({ choice: 'accepted', timestamp: Date.now() }));
-		});
+		await acceptCookieConsent(context);
 	});
 
 	test('a public event shows the unhidden photos and no moderation or upload controls', async ({ page }) => {

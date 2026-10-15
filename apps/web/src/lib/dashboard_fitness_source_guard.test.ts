@@ -49,7 +49,7 @@ test('readiness ring reads the training-load series', () => {
 test('the CTL/ATL/TSB card numbers read loadNow, not liveSnap', () => {
 	assert.match(SOURCE, /loadNow\.ctl\.toFixed/, 'CTL must read loadNow');
 	assert.match(SOURCE, /loadNow\.atl\.toFixed/, 'ATL must read loadNow');
-	assert.match(SOURCE, /loadNow\.tsb\.toFixed/, 'TSB must read loadNow');
+	assert.match(SOURCE, /formatSignedInteger\(loadNow\.tsb,/, 'TSB must read loadNow');
 	assert.doesNotMatch(
 		SOURCE,
 		/liveSnap\.(chronicLoad|acuteLoad|trainingStressBal)\.toFixed/,

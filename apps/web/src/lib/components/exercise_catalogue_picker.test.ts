@@ -281,12 +281,12 @@ test('an absent unavailable flag reads as available', () => {
  *
  * § 1481 fixed a reactivity property of a Svelte component, and § 1278 records
  * why nothing here could hold it: `apps/web` runs its unit suite under
- * `tsx --test`, which cannot compile a component. § 1958 asked for a Playwright
+ * `tsx --test`, which cannot compile a component. A review asked for a Playwright
  * case instead and three rounds running were not permitted to execute one, so
  * the fix sat unpinned; the tree's own answer to exactly this shape is
  * `gym_execution_band_seeding.test.ts`, which reads a component's source
  * because the seeding it pins lives in an `$effect` a DOM-free test cannot
- * drive. The objection § 1958 raised was to a BLANKET ban — seeding local state
+ * drive. That review's objection was to a BLANKET ban — seeding local state
  * from a prop with `untrack` is correct in five other components in this tree —
  * and these read one file, so no correct component is in their reach.
  *

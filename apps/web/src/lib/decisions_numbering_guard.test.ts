@@ -47,10 +47,6 @@ const decisionsPath = resolve(repoRoot, 'docs/architecture/decisions.md');
 const KNOWN_DANGLING_REFS = new Map<number, string>([
 	[4704, '"§ 4704\'s `+` packing" — no entry 4704, and § 470 is unrelated to the glyph table'],
 	[
-		1958,
-		'cited twice in exercise_catalogue_picker.test.ts as having "asked for a Playwright" test and "raised an objection"; above the maximum'
-	],
-	[
 		8703,
 		'cited in followups.md as a "§ 8703 region" for the Trivy exit-code posture; four digits, the same shape as 4704'
 	]

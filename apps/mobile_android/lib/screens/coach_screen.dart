@@ -156,6 +156,7 @@ String? coachFuelLinkWebUrl(String href, {String? webBase}) {
   final target = Uri.parse('$base/nutrition/fuel');
   return (kept.isEmpty ? target : target.replace(queryParameters: kept))
       .toString();
+}
 
 final RegExp _planIdPath = RegExp(
     r'^/plans/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');

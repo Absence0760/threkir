@@ -4520,6 +4520,12 @@ export const messages = {
 	"prefs.emailLifecycleDripHint": "Erhalte gelegentliche Einstiegs-, Reaktivierungs- und Serien-Erinnerungen. Standardmäßig aus; getrennt von deiner wöchentlichen Zusammenfassung und deinen Benachrichtigungs-E-Mails.",
 	"prefs.notifyDataExportReady": "Datenexport fertig",
 	"prefs.notifyDataExportReadyHint": "Per E-Mail und Push benachrichtigen, sobald ein von dir angeforderter Datenexport fertig ist. Der Download-Link wird erst beim Öffnen der Seite erzeugt, es läuft also nichts ab, während er wartet.",
+	"prefs.notifyMention": "Erwähnungen",
+	"prefs.notifyMentionHint": "Per E-Mail und Push benachrichtigen, wenn mich jemand in einem Kommentar zu einem Lauf, den ich sehen kann, mit meinem @Handle erwähnt.",
+	"prefs.notifyReaction": "Reaktionen auf meine Läufe",
+	"prefs.notifyReactionHint": "Per E-Mail und Push benachrichtigen, wenn jemand auf einen meiner Läufe reagiert. Das wird nur verschickt, wenn der Kanal oben auf alle Benachrichtigungen steht.",
+	"prefs.notifyCommentLike": "„Gefällt mir“ für meine Kommentare",
+	"prefs.notifyCommentLikeHint": "Per E-Mail und Push benachrichtigen, wenn jemandem ein Kommentar von mir gefällt. Das wird nur verschickt, wenn der Kanal oben auf alle Benachrichtigungen steht.",
 	"prefs.emailNewDeviceAlerts": "Anmeldungen auf neuen Geräten",
 	"prefs.emailNewDeviceAlertsHint": "Per E-Mail benachrichtigen, wenn sich mein Konto zum ersten Mal über einen Browser oder ein Gerät anmeldet, das es bisher nicht verwendet hat. Hinweise zu Passwortänderungen werden immer gesendet und lassen sich nicht abschalten.",
 	// Gym (Phase 4 multi-modal, decisions §63)

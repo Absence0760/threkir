@@ -4538,6 +4538,12 @@ export const en = {
 	"prefs.emailLifecycleDripHint": "Opt in to occasional onboarding, re-engagement, and streak nudges. Off by default; separate from your weekly digest and notification emails.",
 	"prefs.notifyDataExportReady": "Data export ready",
 	"prefs.notifyDataExportReadyHint": "Email and push me when a data export I asked for has finished building. The download link is created when you open the page, so nothing expires while it waits.",
+	"prefs.notifyMention": "Mentions",
+	"prefs.notifyMentionHint": "Email and push me when someone mentions my @handle in a comment on a run I can see.",
+	"prefs.notifyReaction": "Reactions to my runs",
+	"prefs.notifyReactionHint": "Email and push me when someone reacts to one of my runs. These only go out when the channel above is set to all notifications.",
+	"prefs.notifyCommentLike": "Likes on my comments",
+	"prefs.notifyCommentLikeHint": "Email and push me when someone likes a comment I left on a run. These only go out when the channel above is set to all notifications.",
 	"prefs.emailNewDeviceAlerts": "New-device sign-in alerts",
 	"prefs.emailNewDeviceAlertsHint": "Email me the first time my account signs in from a browser or device it hasn't used before. Password-change notices always send and can't be turned off.",
 	// Gym (Phase 4 multi-modal, decisions §63)

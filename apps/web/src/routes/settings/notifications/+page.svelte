@@ -20,6 +20,11 @@
 	// unlike the engagement streams: the subject requested the export minutes
 	// earlier. It only ever subtracts — muting a channel above still silences it.
 	let notifyDataExportReady = $state(true);
+	// Per-kind mutes for the social signals of decisions § 1971, same opt-OUT
+	// shape and the same subtract-only scope as the export notice.
+	let notifyMention = $state(true);
+	let notifyReaction = $state(true);
+	let notifyCommentLike = $state(true);
 	// Opt-OUT alert for a sign-in from a device class the account has not used
 	// before (security_email new_device_sign_in). The password-changed notice
 	// has no control on purpose: it is the one mail a takeover must not mute.
@@ -34,6 +39,9 @@
 		// chose and a corrupt one is not a decision, matching the worker's own
 		// read in mailer.go's kindMuted.
 		notifyDataExportReady = effective<string>(settings, 'notify_data_export_ready', 'on') !== 'off';
+		notifyMention = effective<string>(settings, 'notify_mention', 'on') !== 'off';
+		notifyReaction = effective<string>(settings, 'notify_reaction', 'on') !== 'off';
+		notifyCommentLike = effective<string>(settings, 'notify_comment_like', 'on') !== 'off';
 		emailNewDeviceAlerts = effective<string>(settings, 'email_new_device_alerts', 'on') !== 'off';
 	});
 
@@ -88,6 +96,42 @@
 			<span>
 				{m('prefs.notifyDataExportReady')}
 				<span class="hint">{m('prefs.notifyDataExportReadyHint')}</span>
+			</span>
+		</label>
+		<label class="checkbox-row">
+			<input
+				type="checkbox"
+				bind:checked={notifyMention}
+				onchange={() => prefs.save({ notify_mention: notifyMention ? 'on' : 'off' })}
+				data-testid="notify-mention"
+			/>
+			<span>
+				{m('prefs.notifyMention')}
+				<span class="hint">{m('prefs.notifyMentionHint')}</span>
+			</span>
+		</label>
+		<label class="checkbox-row">
+			<input
+				type="checkbox"
+				bind:checked={notifyReaction}
+				onchange={() => prefs.save({ notify_reaction: notifyReaction ? 'on' : 'off' })}
+				data-testid="notify-reaction"
+			/>
+			<span>
+				{m('prefs.notifyReaction')}
+				<span class="hint">{m('prefs.notifyReactionHint')}</span>
+			</span>
+		</label>
+		<label class="checkbox-row">
+			<input
+				type="checkbox"
+				bind:checked={notifyCommentLike}
+				onchange={() => prefs.save({ notify_comment_like: notifyCommentLike ? 'on' : 'off' })}
+				data-testid="notify-comment-like"
+			/>
+			<span>
+				{m('prefs.notifyCommentLike')}
+				<span class="hint">{m('prefs.notifyCommentLikeHint')}</span>
 			</span>
 		</label>
 		<label class="checkbox-row">

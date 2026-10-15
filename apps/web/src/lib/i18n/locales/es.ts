@@ -4520,6 +4520,12 @@ export const messages = {
 	"prefs.emailLifecycleDripHint": "Suscríbete para recibir recordatorios ocasionales de inicio, reactivación y rachas. Desactivado por defecto; independiente de tu resumen semanal y de tus correos de notificaciones.",
 	"prefs.notifyDataExportReady": "Exportación de datos lista",
 	"prefs.notifyDataExportReadyHint": "Avisarme por correo y notificación cuando termine una exportación de datos que haya pedido. El enlace de descarga se crea al abrir la página, así que nada caduca mientras espera.",
+	"prefs.notifyMention": "Menciones",
+	"prefs.notifyMentionHint": "Avisarme por correo y notificación cuando alguien mencione mi @usuario en un comentario de una carrera que puedo ver.",
+	"prefs.notifyReaction": "Reacciones a mis carreras",
+	"prefs.notifyReactionHint": "Avisarme por correo y notificación cuando alguien reaccione a una de mis carreras. Solo se envía si el canal de arriba está en todas las notificaciones.",
+	"prefs.notifyCommentLike": "Me gusta en mis comentarios",
+	"prefs.notifyCommentLikeHint": "Avisarme por correo y notificación cuando a alguien le guste uno de mis comentarios. Solo se envía si el canal de arriba está en todas las notificaciones.",
 	"prefs.emailNewDeviceAlerts": "Alertas de inicio de sesión en dispositivos nuevos",
 	"prefs.emailNewDeviceAlertsHint": "Avisarme por correo la primera vez que se inicie sesión en mi cuenta desde un navegador o dispositivo que no haya usado antes. Los avisos de cambio de contraseña se envían siempre y no se pueden desactivar.",
 	// Gym (Phase 4 multi-modal, decisions §63)

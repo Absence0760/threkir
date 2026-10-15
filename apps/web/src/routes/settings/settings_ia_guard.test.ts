@@ -59,6 +59,9 @@ const HOMES: Record<string, Home> = {
 	email_weekly_digest: { page: 'notifications' },
 	email_lifecycle_drip: { page: 'notifications' },
 	notify_data_export_ready: { page: 'notifications' },
+	notify_mention: { page: 'notifications' },
+	notify_reaction: { page: 'notifications' },
+	notify_comment_like: { page: 'notifications' },
 	email_new_device_alerts: { page: 'notifications' },
 	locale: {
 		page: 'display',

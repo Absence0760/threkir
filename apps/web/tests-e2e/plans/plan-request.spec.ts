@@ -77,6 +77,48 @@ test.describe('/plans/new — AI plan request', () => {
 		await expect(editor.getByRole('button', { name: 'Create plan' })).toBeEnabled();
 	});
 
+	test('a second fill replaces the first one\'s length and goal time rather than inheriting them', async ({
+		page
+	}) => {
+		const replies = [
+			{ goalEvent: 'distance_half', goalTimeSec: 6900, weeks: 12 },
+			{ goalEvent: 'distance_10k', goalTimeSec: null, weeks: null }
+		];
+		await page.route('**/api/coach/plan-request', async (route) => {
+			const next = replies.shift()!;
+			await route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					inputs: {
+						...next,
+						raceDate: null,
+						recent5kSec: null,
+						daysPerWeek: 4,
+						beginnerWalkRun: false,
+						planName: null,
+						assumptions: []
+					}
+				})
+			});
+		});
+
+		const editor = await describe(page, 'a 1:55 half in twelve weeks');
+		await expect(editor.locator('.ai-applied')).toBeVisible({ timeout: 10_000 });
+		const weeksInput = editor.locator('input[type="number"][min="4"][max="24"]');
+		const goalTime = editor.locator('fieldset', { hasText: 'Goal time' }).first().locator('input[type="number"]');
+		await expect(weeksInput).toHaveValue('12');
+		await expect(goalTime.nth(0)).toHaveValue('1');
+
+		await editor.getByRole('textbox', { name: 'Describe the plan you want' }).fill('actually just a 10k');
+		await editor.getByRole('button', { name: 'Fill in the form' }).click();
+		await expect(editor.getByRole('combobox', { name: /Goal race/ })).toHaveValue('distance_10k', {
+			timeout: 10_000
+		});
+		await expect(weeksInput).toHaveValue('');
+		await expect(goalTime.nth(0)).toHaveValue('');
+	});
+
 	test('a consent refusal links to /coach to accept the updated disclosure', async ({ page }) => {
 		await page.route('**/api/coach/plan-request', async (route) => {
 			await route.fulfill({

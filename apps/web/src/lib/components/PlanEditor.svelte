@@ -186,6 +186,11 @@
 	} | null>(null);
 	// The runner's own plan name always beats the extracted one.
 	let nameTouched = $state(false);
+	// The start date the last AI fill derived from a race date. A later fill
+	// without a race date puts it back, so the plan stops being sized for a
+	// race the new description no longer mentions; a date the runner picked
+	// by hand is left alone.
+	let aiRaceStart = $state<string | null>(null);
 
 	const AI_ASSUMPTION_KEYS: Record<PlanRequestAssumption, MessageKey> = {
 		goal_event_default: 'planEditor.aiAssumptionGoalEventDefault',
@@ -226,6 +231,7 @@
 			presetWeeks = requestedWeeks;
 		}
 		startDate = presetStart;
+		aiRaceStart = presetStart;
 		startSnapped = false;
 		weekOverride = presetWeeks;
 		return t('planEditor.aiRaceApplied', {
@@ -238,11 +244,22 @@
 		beginnerWalkRun = inputs.beginnerWalkRun;
 		goalEvent = inputs.goalEvent;
 		daysPerWeek = inputs.daysPerWeek;
-		if (inputs.weeks != null) weekOverride = inputs.weeks;
+		// A fill replaces the shape of the plan, not just the fields this
+		// description happened to name: a second fill must not inherit the
+		// first one's length, race start or goal time.
+		weekOverride = inputs.weeks;
+		if (!inputs.raceDate && aiRaceStart !== null && startDate === aiRaceStart) {
+			startDate = defaultStart();
+		}
+		aiRaceStart = null;
 		if (inputs.goalTimeSec != null) {
 			targetHours = Math.floor(inputs.goalTimeSec / 3600);
 			targetMin = Math.floor((inputs.goalTimeSec % 3600) / 60);
 			targetSec = inputs.goalTimeSec % 60;
+		} else {
+			targetHours = null;
+			targetMin = null;
+			targetSec = null;
 		}
 		if (inputs.recent5kSec != null) {
 			recent5kMin = Math.floor(inputs.recent5kSec / 60);

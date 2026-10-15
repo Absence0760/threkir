@@ -26,12 +26,19 @@ function body(name: string): string {
 	return source.slice(start, next === -1 ? undefined : next);
 }
 
-const READERS = ['fetchFollowers', 'fetchFollowing', 'fetchClubMembers', 'fetchEventAttendees'];
+const READERS = [
+	'fetchFollowers',
+	'fetchFollowing',
+	'fetchClubMembers',
+	'fetchEventAttendees',
+	'searchPublicRoutes',
+];
 
 for (const name of READERS) {
 	test(`${name} pages by keyset cursor, not by offset`, () => {
 		const fn = body(name);
 		assert.match(fn, /after\?: KeysetCursor \| null/, `${name} must take the previous page's cursor`);
+		assert.doesNotMatch(fn, /p_offset/, `${name} must not page through an offset RPC parameter`);
 		assert.match(fn, /keysetAfter\(/, `${name} must filter to the rows after the cursor`);
 		assert.match(fn, /nextCursor\(/, `${name} must hand back the cursor of the last row it read`);
 		assert.doesNotMatch(fn, /\boffset\b/, `${name} must not page by offset`);

@@ -13,7 +13,15 @@ import type { Insertable, Updatable } from './database';
 import type { JsonObject, TrackPoint } from '../types';
 import { isEntityId } from './entity_id';
 import { markListsStale } from './list_freshness';
-import { keysetAfter, nextCursor, type KeysetCursor, type KeysetKey, type KeysetPage } from './keyset_page';
+import {
+	keysetAfter,
+	nextCursor,
+	publicRouteOrder,
+	type KeysetCursor,
+	type KeysetKey,
+	type KeysetPage,
+	type PublicRouteSort,
+} from './keyset_page';
 import { probeSaysConfigured } from './provider_probe';
 import { loadSettings, effective } from '../settings/settings';
 import type { Modality } from '../settings/modality_visibility';
@@ -1950,6 +1958,20 @@ export async function nearbyPublicRoutes(options: {
 	return data as PublicRouteSummary[];
 }
 
+/// The public-route catalogue search, one keyset page at a time: pass the
+/// previous page's `next` as `after` (with the SAME filters and sort) to load
+/// more.
+///
+/// Reads the `public_routes` view directly rather than through the
+/// `search_public_routes` RPC. The RPC pages by `p_offset`, and an offset is a
+/// position: a route published or unpublished between two reads moves every
+/// later position, so "load more" repeated or skipped a route — and none of its
+/// three orders was total, so two routes sharing a `created_at` could swap
+/// between reads. The view is the RPC's own source (same visibility: public,
+/// not shadow-hidden, club id redacted) and is granted to anon + authenticated,
+/// so the filters move here verbatim and the order gains `id` from
+/// `publicRouteOrder`, whose prefix keeps the RPC's per-sort partial indexes
+/// (migration 20270326_001) serving it. Mirrors `ApiClient.searchPublicRoutes`.
 export async function searchPublicRoutes(options?: {
 	query?: string;
 	minDistanceM?: number;
@@ -1957,10 +1979,10 @@ export async function searchPublicRoutes(options?: {
 	surface?: string;
 	tags?: string[];
 	featuredOnly?: boolean;
-	sort?: 'newest' | 'popular' | 'featured';
+	sort?: PublicRouteSort;
 	limit?: number;
-	offset?: number;
-}): Promise<PublicRouteSummary[]> {
+	after?: KeysetCursor | null;
+}): Promise<KeysetPage<PublicRouteSummary>> {
 	const {
 		query,
 		minDistanceM,
@@ -1970,32 +1992,36 @@ export async function searchPublicRoutes(options?: {
 		featuredOnly,
 		sort = 'newest',
 		limit = 50,
-		offset = 0,
 	} = options ?? {};
 
-	const { data, error } = await supabase.rpc('search_public_routes', {
-		p_query: query && query.trim() ? query.trim() : null,
-		p_min_distance_m: minDistanceM ?? null,
-		p_max_distance_m: maxDistanceM ?? null,
-		// Treat empty-string surface the same as null (no filter) —
-		// matches mobile's `ApiClient.searchPublicRoutes`, which gates
-		// on `surface.isNotEmpty`. Previously web passed `''` straight
-		// through to the RPC, where `surface = ''` matches no rows
-		// and the user saw an empty result list rather than the full
-		// catalogue.
-		p_surface: surface && surface.length > 0 ? surface : null,
-		p_tags: tags && tags.length > 0 ? tags : null,
-		p_featured_only: featuredOnly ?? false,
-		p_sort: sort,
-		p_limit: limit,
-		p_offset: offset,
-	});
+	const order = publicRouteOrder(sort);
+	const after = options?.after ? keysetAfter(order, options.after) : undefined;
+	if (after === null) return { rows: [], next: null };
+
+	let q = supabase.from('public_routes').select('*');
+	const trimmed = query?.trim();
+	if (trimmed) q = q.ilike('name', `%${trimmed}%`);
+	if (minDistanceM != null) q = q.gte('distance_m', minDistanceM);
+	if (maxDistanceM != null) q = q.lte('distance_m', maxDistanceM);
+	// Treat empty-string surface the same as no filter — matches mobile's
+	// `ApiClient.searchPublicRoutes`, which gates on `surface.isNotEmpty`.
+	// `surface = ''` matches no rows, so passing it through showed an empty
+	// result list rather than the full catalogue.
+	if (surface && surface.length > 0) q = q.eq('surface', surface);
+	if (tags && tags.length > 0) q = q.overlaps('tags', tags);
+	if (featuredOnly) q = q.eq('is_featured', true);
+	if (after) q = q.or(after);
+	for (const k of order) {
+		q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+	}
+	const { data, error } = await q.limit(limit);
 	// Throw on error rather than collapsing to []: the sole caller
 	// (RouteExplorer) needs to tell a genuine load failure apart from a
 	// legitimately empty result so it can show a retry affordance instead
 	// of a misleading "no matches" empty state.
 	if (error) throw dbError(error);
-	return (data ?? []) as PublicRouteSummary[];
+	const rows = data ?? [];
+	return { rows: rows as PublicRouteSummary[], next: nextCursor(order, rows, limit) };
 }
 
 /// The set of tags currently used across any public route, ordered by

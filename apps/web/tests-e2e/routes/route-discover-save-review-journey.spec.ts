@@ -35,7 +35,7 @@ import { insertRoute, deleteRoute } from '../fixtures/simulate';
  * drives every assertion through the real UI.
  *
  * DISCOVERY PATH: the real community explorer. /routes?tab=explore mounts
- * RouteExplorer, whose search box drives the `search_public_routes` RPC
+ * RouteExplorer, whose search box reads the `public_routes` view
  * (name ILIKE). The route is planted with a unique name so the search
  * narrows to exactly this one row. The SAVE write goes through the
  * explorer's `.save-btn` (→ saved_routes), and the REVIEW write goes
@@ -135,7 +135,7 @@ test.describe('saga: discover a public route, save it, review it (cross-user)', 
 		try {
 			await test.step('1. DISCOVER — the public route surfaces in the community Explore search', async () => {
 				// /routes?tab=explore mounts RouteExplorer. Its search box
-				// drives search_public_routes (name ILIKE), so typing the
+				// drives the public_routes search (name ILIKE), so typing the
 				// unique name + Enter narrows to exactly this one row. No
 				// networkidle wait — the page holds an open realtime socket
 				// (it never settles); poll for the concrete card instead.

@@ -5499,19 +5499,6 @@ class ApiClient {
     });
   }
 
-  /// Pending join requests for an admin to action.
-  Future<List<ClubMemberRow>> fetchPendingRequests(String clubId) async {
-    final data = await _client
-        .from(ClubMemberRow.table)
-        .select()
-        .eq(ClubMemberRow.colClubId, clubId)
-        .eq(ClubMemberRow.colStatus, 'pending')
-        .order(ClubMemberRow.colJoinedAt, ascending: false);
-    return data
-        .map<ClubMemberRow>((r) => ClubMemberRow.fromJson(r))
-        .toList();
-  }
-
   /// Approve a pending member.
   Future<void> approveJoinRequest({
     required String clubId,

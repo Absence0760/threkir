@@ -691,18 +691,55 @@ class SocialService extends ChangeNotifier {
     }
   }
 
-  /// Clubs the current user is a member of (any status).
+  /// The order the caller's memberships are listed and walked in: most
+  /// recently joined first, `club_id` (unique within one user's memberships —
+  /// the primary key is `(club_id, user_id)`) breaking a `joined_at` tie.
+  /// Web's `MY_CLUB_MEMBERSHIP_ORDER` is the same order.
+  static const List<KeysetKey> myClubMembershipOrder = [
+    KeysetKey('joined_at', ascending: false, nullsFirst: false),
+    KeysetKey('club_id', ascending: false, nullsFirst: false),
+  ];
+
+  /// The order a club's pending join requests are listed and walked in:
+  /// oldest request first, so an admin works the queue in arrival order,
+  /// `user_id` (unique within one club) breaking a tie. Web's
+  /// `CLUB_MEMBER_ORDER` is the same order, and `club_members_club_roster
+  /// (club_id, joined_at, user_id)` serves it.
+  static const List<KeysetKey> pendingRequestOrder = [
+    KeysetKey('joined_at', ascending: true, nullsFirst: false),
+    KeysetKey('user_id', ascending: true, nullsFirst: false),
+  ];
+
+  /// Clubs the current user is a member of (any status). Walked by keyset
+  /// cursor in [myClubMembershipOrder]: an unranged select is capped at
+  /// `db.max-rows` (1000) with no flag, and nothing bounds how many clubs one
+  /// user joins (decisions § 1931).
   Future<List<ClubView>> fetchMyClubs() async {
     final uid = _uid;
     if (uid == null) return const [];
-    final rows = await _c
-        .from('club_members')
-        .select('club_id, role, status, clubs!inner($_clubSelectCols)')
-        .eq('user_id', uid)
-        .order('joined_at', ascending: false);
+    final rows = await walkKeyset(
+      myClubMembershipOrder,
+      (after, limit) async {
+        var q = _c
+            .from('club_members')
+            .select(
+                'club_id, role, status, joined_at, clubs!inner($_clubSelectCols)')
+            .eq('user_id', uid);
+        if (after != null) q = q.or(after);
+        PostgrestTransformBuilder<PostgrestList> sorted = q;
+        for (final k in myClubMembershipOrder) {
+          sorted = sorted.order(
+            k.column,
+            ascending: k.ascending,
+            nullsFirst: k.nullsFirst,
+          );
+        }
+        return await sorted.limit(limit);
+      },
+    );
     final clubs = <Map<String, dynamic>>[];
-    for (final row in rows as List) {
-      final club = (row as Map<String, dynamic>)['clubs'];
+    for (final row in rows) {
+      final club = row['clubs'];
       if (club is Map<String, dynamic>) clubs.add(club);
     }
     return _enrichClubs(clubs);
@@ -776,30 +813,27 @@ class SocialService extends ChangeNotifier {
     final clubs = rows.map(ClubRow.fromJson).toList();
     final ids = clubs.map((c) => c.id).toList();
 
-    final countsFut = _c
-        .from('club_members')
-        .select('club_id')
-        .inFilter('club_id', ids)
-        .eq('status', 'active');
+    // The member count is the trigger-maintained `clubs.member_count`
+    // (docs/backend/derived_state.md), not a re-count of `club_members`: that
+    // aggregate was one unranged select over every listed club's roster,
+    // capped at `db.max-rows` (1000) with no flag, so a big club, or a page of
+    // clubs whose rosters summed past the cap, showed a short count. The
+    // viewer's own membership rows are chunked because a walked
+    // [fetchMyClubs] can list more clubs than one `in` filter carries.
     final uid = _uid;
-    final rolesFut = uid == null
-        ? Future.value(<dynamic>[])
-        : _c
-            .from('club_members')
-            .select('club_id, role, status')
-            .inFilter('club_id', ids)
-            .eq('user_id', uid);
-
-    final results = await Future.wait([countsFut, rolesFut]);
-    final counts = <String, int>{};
-    for (final r in results[0]) {
-      final id = (r as Map)['club_id'] as String;
-      counts[id] = (counts[id] ?? 0) + 1;
-    }
+    final List<Map<String, dynamic>> membership = uid == null
+        ? const []
+        : await readChunked<Map<String, dynamic>>(
+            ids,
+            (chunk) async => _c
+                .from('club_members')
+                .select('club_id, role, status')
+                .eq('user_id', uid)
+                .inFilter('club_id', chunk),
+          );
     final roles = <String, String>{};
     final statuses = <String, String>{};
-    for (final r in results[1]) {
-      final m = r as Map;
+    for (final m in membership) {
       final cid = m['club_id'] as String;
       final status = m['status'] as String? ?? 'active';
       statuses[cid] = status;
@@ -810,7 +844,7 @@ class SocialService extends ChangeNotifier {
       for (var i = 0; i < clubs.length; i++)
         ClubView(
           row: clubs[i],
-          memberCount: counts[clubs[i].id] ?? 0,
+          memberCount: clubs[i].memberCount,
           viewerRole: roles[clubs[i].id],
           viewerStatus: statuses[clubs[i].id],
           joinPolicy: (rows[i]['join_policy'] as String?) ?? 'open',
@@ -987,18 +1021,33 @@ class SocialService extends ChangeNotifier {
         .join();
   }
 
-  /// Pending join requests on a club (admins only — RLS will filter).
+  /// Pending join requests on a club (admins only — RLS will filter), oldest
+  /// first. Walked by keyset cursor in [pendingRequestOrder]: nothing bounds
+  /// how many requests a request-to-join club accumulates, and an unranged
+  /// select capped at `db.max-rows` (1000) hid every request past the cap
+  /// from the admin with no error (decisions § 1931).
   Future<List<ClubMemberRow>> fetchPendingRequests(String clubId) async {
-    final rows = await _c
-        .from('club_members')
-        .select()
-        .eq('club_id', clubId)
-        .eq('status', 'pending')
-        .order('joined_at', ascending: false);
-    return (rows as List)
-        .map<ClubMemberRow>((r) =>
-            ClubMemberRow.fromJson(r as Map<String, dynamic>))
-        .toList();
+    final rows = await walkKeyset(
+      pendingRequestOrder,
+      (after, limit) async {
+        var q = _c
+            .from('club_members')
+            .select()
+            .eq('club_id', clubId)
+            .eq('status', 'pending');
+        if (after != null) q = q.or(after);
+        PostgrestTransformBuilder<PostgrestList> sorted = q;
+        for (final k in pendingRequestOrder) {
+          sorted = sorted.order(
+            k.column,
+            ascending: k.ascending,
+            nullsFirst: k.nullsFirst,
+          );
+        }
+        return await sorted.limit(limit);
+      },
+    );
+    return rows.map(ClubMemberRow.fromJson).toList();
   }
 
   /// Approve a pending join request.

@@ -4560,17 +4560,6 @@ class AppLocalizationsFr extends AppLocalizations {
   String get profileNotFound => 'Profil introuvable.';
 
   @override
-  String profileFollowStats(int followers, int following) {
-    String _temp0 = intl.Intl.pluralLogic(
-      followers,
-      locale: localeName,
-      other: '$followers abonnés',
-      one: '$followers abonné',
-    );
-    return '$_temp0 · $following abonnements';
-  }
-
-  @override
   String get profileFollowing => 'Abonné';
 
   @override

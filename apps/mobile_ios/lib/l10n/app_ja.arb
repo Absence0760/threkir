@@ -1281,7 +1281,6 @@
   "profileLoadError": "プロフィールを読み込めませんでした。",
   "profileSectionError": "このセクションを読み込めませんでした。",
   "profileNotFound": "プロフィールが見つかりません。",
-  "profileFollowStats": "フォロワー {followers} · フォロー中 {following}",
   "profileFollowing": "フォロー中",
   "profileFollow": "フォロー",
   "profileRunsEmptySelf": "まだランを共有していません。",

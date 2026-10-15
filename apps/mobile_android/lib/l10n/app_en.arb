@@ -5939,18 +5939,6 @@
   "@profileNotFound": {
     "description": "Shown when the profile does not exist"
   },
-  "profileFollowStats": "{followers, plural, one{{followers} follower} other{{followers} followers}} · {following} following",
-  "@profileFollowStats": {
-    "description": "Header line summarising follower and following counts",
-    "placeholders": {
-      "followers": {
-        "type": "int"
-      },
-      "following": {
-        "type": "int"
-      }
-    }
-  },
   "profileFollowing": "Following",
   "@profileFollowing": {
     "description": "Follow button label when the viewer already follows this user"

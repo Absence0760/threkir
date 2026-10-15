@@ -7516,12 +7516,6 @@ abstract class AppLocalizations {
   /// **'Profile not found.'**
   String get profileNotFound;
 
-  /// Header line summarising follower and following counts
-  ///
-  /// In en, this message translates to:
-  /// **'{followers, plural, one{{followers} follower} other{{followers} followers}} · {following} following'**
-  String profileFollowStats(int followers, int following);
-
   /// Follow button label when the viewer already follows this user
   ///
   /// In en, this message translates to:

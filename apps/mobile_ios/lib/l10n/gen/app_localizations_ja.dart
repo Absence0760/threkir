@@ -4285,11 +4285,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get profileNotFound => 'プロフィールが見つかりません。';
 
   @override
-  String profileFollowStats(int followers, int following) {
-    return 'フォロワー $followers · フォロー中 $following';
-  }
-
-  @override
   String get profileFollowing => 'フォロー中';
 
   @override

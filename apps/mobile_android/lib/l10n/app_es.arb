@@ -1281,7 +1281,6 @@
   "profileLoadError": "No se pudo cargar el perfil.",
   "profileSectionError": "No se pudo cargar esta sección.",
   "profileNotFound": "Perfil no encontrado.",
-  "profileFollowStats": "{followers, plural, one{{followers} seguidor} other{{followers} seguidores}} · {following} siguiendo",
   "profileFollowing": "Siguiendo",
   "profileFollow": "Seguir",
   "profileRunsEmptySelf": "Aún no has compartido ninguna carrera.",

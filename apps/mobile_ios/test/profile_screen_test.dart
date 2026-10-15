@@ -376,12 +376,12 @@ void main() {
     final source =
         File('lib/screens/profile_screen.dart').readAsStringSync();
 
-    test('Block IconButton renders in the AppBar for non-self viewers', () {
+    test('Block / Unblock is in the AppBar overflow for non-self viewers', () {
       expect(
-          source.contains('tooltip: _blocked ? l10n.profileUnblock'),
+          source.contains('_blocked ? l10n.profileUnblock : l10n.profileBlock'),
           isTrue,
           reason:
-              'AppBar must surface a Block / Unblock IconButton when the '
+              'The AppBar overflow must offer Block / Unblock when the '
               'viewer is not viewing their own profile. Without it the '
               'block_user RPC is unreachable from this screen — the '
               'persona-hunt Round 3 W1 finding.');
@@ -416,11 +416,10 @@ void main() {
   });
 
   group('profile header (issue #666 C12)', () {
-    // The header is a fixed band above `Expanded(TabBarView)` in a
-    // non-scrolling `Column`, and `user_profiles.display_name` has no DB
-    // length constraint. The derivation, not an absolute: name LENGTH must
-    // not move the header/tabs split — font-independent, where an absolute
-    // "the tabs get N dp" would not be measurable in CI (decisions § 500).
+    // `user_profiles.display_name` has no DB length constraint. The name is
+    // the AppBar title only, so its length must not move the header/tabs
+    // split at all — asserted as a derivation, not an absolute (decisions
+    // § 500).
     testWidgets('display-name length does not move the header/tabs split',
         (tester) async {
       await _ensureSupabase();
@@ -434,8 +433,7 @@ void main() {
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
             // Keyed by the name: without it the second pump reuses the first
-            // State, which never re-fetches, and the assertions would run
-            // against the first name twice.
+            // State, which never re-fetches.
             home: ProfileScreen(
               key: ValueKey(name),
               api: _NamedApi(name),
@@ -445,15 +443,12 @@ void main() {
         );
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 50));
-        // The AppBar title carries the same string; the header copy is the
-        // one that can grow the band, and it is the capped one.
         expect(find.byType(IdentityAvatar), findsOneWidget);
+        // Printed once, in the AppBar; the header no longer repeats it.
+        expect(find.text(name), findsOneWidget);
         expect(
-          tester
-              .widgetList<Text>(find.text(name))
-              .map((t) => t.maxLines)
-              .toList(),
-          contains(kProfileNameMaxLines),
+          find.descendant(of: find.byType(AppBar), matching: find.text(name)),
+          findsOneWidget,
         );
         return tester.getSize(find.byType(TabBarView)).height;
       }
@@ -464,13 +459,143 @@ void main() {
 
       expect(atCap, greaterThan(0));
       expect(tester.takeException(), isNull);
+      expect(tenTimesLonger, atCap,
+          reason: 'a longer display name still eats the tab bodies');
+    });
+
+    Future<void> pumpOther(WidgetTester tester, ApiClient api) async {
+      await _ensureSupabase();
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: ProfileScreen(api: api, userId: 'other'),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    testWidgets('the counts select the tab that lists them', (tester) async {
+      await pumpOther(tester, _OtherApi());
+      expect(find.text('48'), findsOneWidget);
+      expect(find.text('61'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('profile-stat-following')));
+      await tester.pumpAndSettle();
+      expect(_selectedTabLabel(tester), 'Following');
+      await tester.tap(find.byKey(const ValueKey('profile-stat-followers')));
+      await tester.pumpAndSettle();
+      expect(_selectedTabLabel(tester), 'Followers');
+      await tester.tap(find.byKey(const ValueKey('profile-stat-runs')));
+      await tester.pumpAndSettle();
+      expect(_selectedTabLabel(tester), 'Runs');
+    });
+
+    testWidgets('a full runs page reads as N+, not as a total',
+        (tester) async {
+      await pumpOther(tester, _OtherApi(runCount: 30));
       expect(
-        tenTimesLonger,
-        atCap,
-        reason: 'a longer display name still eats the tab bodies',
+        find.descendant(
+          of: find.byKey(const ValueKey('profile-stat-runs')),
+          matching: find.text('30+'),
+        ),
+        findsOneWidget,
       );
     });
+
+    testWidgets('signed out hides the follow counts, not the run count',
+        (tester) async {
+      await pumpOther(tester, _OtherApi(signedIn: false));
+      expect(find.byKey(const ValueKey('profile-stat-runs')), findsOneWidget);
+      expect(find.byKey(const ValueKey('profile-stat-followers')), findsNothing);
+      expect(find.byKey(const ValueKey('profile-message')), findsNothing);
+      expect(find.byKey(const ValueKey('profile-follow')), findsOneWidget);
+    });
+
+    testWidgets('another runner gets labelled Follow + Message buttons and an '
+        'overflow with Report and Block', (tester) async {
+      await pumpOther(tester, _OtherApi());
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('profile-follow')),
+          matching: find.text('Follow'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('profile-message')),
+          matching: find.text('Message'),
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const ValueKey('profile-more')));
+      await tester.pumpAndSettle();
+      expect(find.text('Report user'), findsOneWidget);
+      expect(find.text('Block this profile'), findsOneWidget);
+    });
+
+    testWidgets('your own profile has no follow, message or overflow',
+        (tester) async {
+      await _ensureSupabase();
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: ProfileScreen(api: _SelfApi(), userId: 'me'),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(find.byKey(const ValueKey('profile-follow')), findsNothing);
+      expect(find.byKey(const ValueKey('profile-message')), findsNothing);
+      expect(find.byKey(const ValueKey('profile-more')), findsNothing);
+    });
   });
+}
+
+/// Another runner's profile, viewed signed in (or not), with [runCount]
+/// public runs.
+class _OtherApi extends _SelfApi {
+  _OtherApi({this.runCount = 3, this.signedIn = true});
+
+  final int runCount;
+  final bool signedIn;
+
+  @override
+  String? get userId => signedIn ? 'me' : null;
+
+  @override
+  Future<ProfileSummary?> fetchProfileSummary(String userId) async =>
+      const ProfileSummary(
+        id: 'other',
+        displayName: 'Grace',
+        followerCount: 48,
+        followingCount: 61,
+        viewerFollows: false,
+      );
+
+  @override
+  Future<bool> isBlockedByViewer(String targetUserId) async => false;
+
+  @override
+  Future<List<RunRow>> fetchPublicRunsByUser(String userId,
+          {int limit = 50}) async =>
+      [
+        for (var i = 0; i < runCount; i++)
+          RunRow(
+            id: 'r$i',
+            userId: 'other',
+            startedAt: DateTime.utc(2026, 10, 1).add(Duration(days: i)),
+            durationS: 1800,
+            distanceM: 5000,
+            source: 'app',
+            activityType: 'run',
+            isDnf: false,
+            isPublic: true,
+            followersOnly: false,
+          ),
+      ];
 }
 
 /// Self-profile whose display name the caller chooses, so the header's

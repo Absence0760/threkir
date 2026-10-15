@@ -1281,7 +1281,6 @@
   "profileLoadError": "Não foi possível carregar o perfil.",
   "profileSectionError": "Não foi possível carregar esta secção.",
   "profileNotFound": "Perfil não encontrado.",
-  "profileFollowStats": "{followers, plural, one{{followers} seguidor} other{{followers} seguidores}} · a seguir {following}",
   "profileFollowing": "A seguir",
   "profileFollow": "Seguir",
   "profileRunsEmptySelf": "Ainda não partilhou nenhuma corrida.",

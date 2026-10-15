@@ -4548,17 +4548,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get profileNotFound => 'Perfil não encontrado.';
 
   @override
-  String profileFollowStats(int followers, int following) {
-    String _temp0 = intl.Intl.pluralLogic(
-      followers,
-      locale: localeName,
-      other: '$followers seguidores',
-      one: '$followers seguidor',
-    );
-    return '$_temp0 · a seguir $following';
-  }
-
-  @override
   String get profileFollowing => 'A seguir';
 
   @override
@@ -20249,17 +20238,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get profileNotFound => 'Perfil não encontrado.';
-
-  @override
-  String profileFollowStats(int followers, int following) {
-    String _temp0 = intl.Intl.pluralLogic(
-      followers,
-      locale: localeName,
-      other: '$followers seguidores',
-      one: '$followers seguidor',
-    );
-    return '$_temp0 · seguindo $following';
-  }
 
   @override
   String get profileFollowing => 'Seguindo';

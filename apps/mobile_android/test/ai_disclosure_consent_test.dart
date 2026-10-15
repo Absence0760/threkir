@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../lib/ai_disclosure.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/coach_screen.dart';
@@ -165,7 +166,7 @@ void main() {
       await tester.tap(_dialogAccept());
       await tester.pumpAndSettle();
 
-      expect(api.recorded, [2]);
+      expect(api.recorded, [kAiDisclosureCurrentVersion]);
       expect(find.text('AI disclosure accepted.'), findsOneWidget);
       await _scrollTo(tester, find.text(_withdrawTile));
       expect(find.text(_reviewTile), findsNothing);
@@ -184,9 +185,19 @@ void main() {
       expect(find.text(_reviewTile), findsNothing);
     });
 
+    testWidgets('a v2 route-AI acceptance is offered the plan-assistant '
+        'disclosure and keeps its withdrawal', (tester) async {
+      final api = _ConsentApi(storedVersion: kAiDisclosureVersionRouteAi);
+      await _pumpSettings(tester, api);
+
+      await _scrollTo(tester, find.text(_updateTile));
+      expect(find.text(_withdrawTile), findsOneWidget);
+      expect(find.text(_reviewTile), findsNothing);
+    });
+
     testWidgets('a current acceptance has no acceptance left to make',
         (tester) async {
-      final api = _ConsentApi(storedVersion: 2);
+      final api = _ConsentApi(storedVersion: kAiDisclosureCurrentVersion);
       await _pumpSettings(tester, api);
 
       await _scrollTo(tester, find.text(_withdrawTile));
@@ -207,7 +218,7 @@ void main() {
       await tester.tap(_dialogAccept());
       await tester.pumpAndSettle();
 
-      expect(api.recorded, [2]);
+      expect(api.recorded, [kAiDisclosureCurrentVersion]);
       expect(find.byType(AlertDialog), findsOneWidget);
       expect(
         find.textContaining("Couldn't record consent:"),
@@ -226,7 +237,7 @@ void main() {
 
     testWidgets('withdrawing clears the record and re-offers the disclosure',
         (tester) async {
-      final api = _ConsentApi(storedVersion: 2);
+      final api = _ConsentApi(storedVersion: kAiDisclosureCurrentVersion);
       await _pumpSettings(tester, api);
 
       await _scrollTo(tester, find.text(_withdrawTile));
@@ -274,7 +285,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 50));
       }
 
-      expect(api.recorded, [2]);
+      expect(api.recorded, [kAiDisclosureCurrentVersion]);
       expect(find.text("Before you use Threkir's AI features"), findsNothing);
     });
   });

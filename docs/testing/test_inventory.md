@@ -489,7 +489,7 @@ The DST date-cursor guard (`decisions.md § 589`). Scans every file under `lib/`
 
 A `DateTime.now()` or `.toUtc()` receiver is exempt structurally — an instant has no local midnight to drift off. Everything else opts out with an inline `// elapsed-time:` marker naming the reason, read from the line itself or the contiguous comment block above it; the marker is local rather than a file allowlist because several files carry both shapes. The second test proves the matcher still fires, so a refactor that breaks the regex can't pass by matching nothing.
 
-This is the timezone-independent half of the fix: the behavioural repros in `current_week_strip_test.dart` only bite under `TZ=America/New_York`, and CI runs in UTC.
+This is the timezone-independent half of the fix: the behavioural repros in `current_week_strip_test.dart` only bite under `TZ=America/New_York`. They carry the `tz` tag, so CI's `test-timezones` job runs them there too ([testing.md § Timezone-sensitive Dart tests](testing.md#timezone-sensitive-dart-tests)); this guard still catches the shape in the UTC run.
 
 ### `apps/mobile_android/test/post_await_setstate_guard_test.dart` — 2 tests
 

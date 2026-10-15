@@ -1482,6 +1482,79 @@ void main() {
           reason: 'the live track is not rewritten');
     });
 
+    test('each stored fix carries the credited distance, moved onto the saved '
+        'distance at stop()', () async {
+      // Splits and moving time measure on Waypoint.cumulativeDistanceMetres
+      // (docs/features/gps_distance.md § Splits and moving time), so the last
+      // stored fix must read the saved distance, not the forward one.
+      final clock = _FakeClock();
+      final r = RunRecorder(clock: clock)..debugPrepareWithoutStream();
+      r.begin();
+      for (var i = 0; i <= 10; i++) {
+        r.debugInjectPosition(makePosition(
+          metresEast: 4.0 * i,
+          secondsFromStart: i,
+          speed: 0,
+          speedAccuracy: 0,
+          heading: 0,
+          headingAccuracy: 0,
+        ));
+        clock.advance(const Duration(seconds: 1));
+      }
+      expect(r.debugTrack.first.cumulativeDistanceMetres, 0);
+      expect(r.debugTrack.last.cumulativeDistanceMetres,
+          closeTo(r.debugDistanceMetres, 0.005),
+          reason: 'live, the forward figure');
+      final run = await r.stop();
+      final stamped = [for (final w in run.track) w.cumulativeDistanceMetres!];
+      for (var i = 1; i < stamped.length; i++) {
+        expect(stamped[i], greaterThanOrEqualTo(stamped[i - 1]));
+      }
+      expect(stamped.last, closeTo(run.distanceMetres, 0.005));
+      expect(stamped.last, isNot(closeTo(r.debugDistanceMetres, 1)),
+          reason: 'the smoothed figure, not the forward one');
+    });
+
+    test('a paused run stamps across stretches and still ends on the saved '
+        'distance', () async {
+      final clock = _FakeClock();
+      final r = RunRecorder(clock: clock)..debugPrepareWithoutStream();
+      r.begin();
+      for (var i = 0; i <= 10; i++) {
+        r.debugInjectPosition(makePosition(
+          metresEast: 4.0 * i,
+          secondsFromStart: i,
+          speed: 0,
+          speedAccuracy: 0,
+          heading: 0,
+          headingAccuracy: 0,
+        ));
+        clock.advance(const Duration(seconds: 1));
+      }
+      r.pause();
+      r.resume();
+      for (var i = 0; i <= 10; i++) {
+        r.debugInjectPosition(makePosition(
+          metresEast: 40.0 + 4.0 * i,
+          secondsFromStart: 60 + i,
+          speed: 0,
+          speedAccuracy: 0,
+          heading: 0,
+          headingAccuracy: 0,
+        ));
+        clock.advance(const Duration(seconds: 1));
+      }
+      final run = await r.stop();
+      expect(run.track.every((w) => w.cumulativeDistanceMetres != null), isTrue);
+      final stamped = [for (final w in run.track) w.cumulativeDistanceMetres!];
+      for (var i = 1; i < stamped.length; i++) {
+        expect(stamped[i], greaterThanOrEqualTo(stamped[i - 1]));
+      }
+      expect(stamped.last, closeTo(run.distanceMetres, 0.005));
+      expect(stamped[11], closeTo(stamped[10], 0.005),
+          reason: 'the paused span credits nothing');
+    });
+
     // stop() replays every stretch through the smoother on the UI isolate,
     // so a stretch keeps at most maxSmoothedStretchEvents inputs. Past that it
     // saves its forward figure and raw positions, and the run is left

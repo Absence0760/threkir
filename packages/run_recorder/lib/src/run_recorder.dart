@@ -1438,6 +1438,7 @@ class RunRecorder {
       forward: _estimator,
       expectedIntervalS: expectedIntervalS,
       initialStrideM: _priorStrideM,
+      startM: _distanceOffsetMetres,
     ));
     _estFixT = null;
     _estFixMono = null;
@@ -1954,8 +1955,12 @@ class RunRecorder {
           _currentWaypointTrusted = false;
         }
       }
-      if (eventIndex != null && _track.length > trackLengthBefore) {
-        _stretch?.trackLinks.add((track: trackLengthBefore, event: eventIndex));
+      if (_track.length > trackLengthBefore) {
+        _stampCumulativeDistance(trackLengthBefore);
+        if (eventIndex != null) {
+          _stretch?.trackLinks
+              .add((track: trackLengthBefore, event: eventIndex));
+        }
       }
       if (estT != null) _addPaceSample(estT, _estimator.distanceM);
     } else {
@@ -1963,6 +1968,18 @@ class RunRecorder {
     }
 
     _emitSnapshot();
+  }
+
+  /// Stamps the waypoint just appended at [index] with the distance the run
+  /// has credited so far ([Waypoint.cumulativeDistanceMetres]), the axis
+  /// splits and moving time are measured on. [stop] moves it onto the
+  /// smoothed distance.
+  void _stampCumulativeDistance(int index) {
+    final stamped =
+        _track[index].withCumulativeDistance(_round2(_reportedDistanceMetres));
+    _track[index] = stamped;
+    _currentWaypoint = stamped;
+    _stretch?.trackPoints.add(index);
   }
 
   /// Headline distance: belt distance in treadmill mode, GPS-accumulated
@@ -2264,6 +2281,7 @@ class RunRecorder {
       }
       laps = _smoothedLaps(smoothed);
       everyStretchSmoothed = _everyStretchSmoothed(smoothed);
+      _restampSmoothedDistances(track, smoothed);
     }
 
     final metadata = <String, dynamic>{};
@@ -2347,6 +2365,37 @@ class RunRecorder {
       }
     }
     return out;
+  }
+
+  /// Moves every stretch's [Waypoint.cumulativeDistanceMetres] onto the
+  /// distance [stop] saves, so the last split ends on it: a fix the smoother
+  /// saw takes the smoothed cumulative at its event, offset by the stretches
+  /// before; any other point keeps its live stamp, offset by the corrections
+  /// of the stretches before it. Never decreasing, so a point the smoother did
+  /// not see cannot read past the smoothed one ahead of it.
+  void _restampSmoothedDistances(List<Waypoint> track,
+      List<({double correctionM, List<double> cumulativeM})?> smoothed) {
+    var before = 0.0;
+    var floor = 0.0;
+    for (var i = 0; i < _stretches.length; i++) {
+      final stretch = _stretches[i];
+      final s = i < smoothed.length ? smoothed[i] : null;
+      final events = <int, int>{
+        for (final link in stretch.trackLinks) link.track: link.event,
+      };
+      for (final index in stretch.trackPoints) {
+        if (index >= track.length) continue;
+        final event = events[index];
+        final live = track[index].cumulativeDistanceMetres;
+        final double? d = s != null && event != null && event < s.cumulativeM.length
+            ? stretch.startM + before + s.cumulativeM[event]
+            : (live == null ? null : live + before);
+        if (d == null || !d.isFinite) continue;
+        floor = max(floor, d);
+        track[index] = track[index].withCumulativeDistance(_round2(floor));
+      }
+      before += s?.correctionM ?? 0;
+    }
   }
 
   /// Whether [stop]'s distance is the smoother's for every stretch that had
@@ -2436,13 +2485,19 @@ class _DistanceStretch {
     required this.forward,
     required this.expectedIntervalS,
     required this.initialStrideM,
+    required this.startM,
   });
 
   final GpsDistanceEstimator forward;
+  /// The run's distance when the stretch began, before its own estimator
+  /// credited anything.
+  final double startM;
   final double expectedIntervalS;
   final double? initialStrideM;
   final List<GpsEvent> events = [];
   final List<({int track, int event})> trackLinks = [];
+  /// Every track index the stretch appended, linked to an event or not.
+  final List<int> trackPoints = [];
   bool smoothable = true;
   /// Reached [RunRecorder._maxSmoothedStretchEvents]: its inputs were dropped
   /// and its forward distance is what the run saves.

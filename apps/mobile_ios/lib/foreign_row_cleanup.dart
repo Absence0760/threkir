@@ -86,7 +86,8 @@ class ForeignRowCleanup {
   final Set<String> _attempted = <String>{};
 
   /// True once the reconcile has completed for the signed-in account, now or
-  /// on an earlier launch. Never throws.
+  /// on an earlier launch. Every reconcile and marker failure is caught here;
+  /// only reading the marker from an uninitialised [preferences] throws.
   Future<bool> runOnce(ApiClient api) async {
     final userId = api.userId;
     if (userId == null || userId.isEmpty) return false;

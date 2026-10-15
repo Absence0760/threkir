@@ -5,6 +5,7 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../lib/background_sync.dart';
 import '../lib/foreign_row_cleanup.dart';
 import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
@@ -286,6 +287,22 @@ void main() {
       expect(api.pushedRoutes, isEmpty);
       expect(sync.debugBackoffState().failures, 0,
           reason: 'the refused push used to fail every cycle');
+    });
+
+    test('the background cycle reconciles before it pushes', () async {
+      // WorkManager can wake the app long before the foreground sync runs,
+      // and without the reconcile it pushed the starred club route and was
+      // refused on every wake.
+      await routes.saveBatch([_route('club-route', userId: _clubMate)]);
+      await routes.save(_route('club-route', userId: _clubMate, starred: true));
+      api.routeOwners = {'club-route': _clubMate};
+
+      await runBackgroundSyncCycle(api, runs, routes,
+          foreignRowCleanup: cleanup());
+
+      expect(routes.routes, isEmpty);
+      expect(api.pushedRoutes, isEmpty);
+      expect(prefs.foreignRowCleanupDone(_me), isTrue);
     });
 
     test('a failed read deletes nothing and is not marked done', () async {

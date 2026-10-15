@@ -6565,7 +6565,6 @@ export type Database = {
           created_at: string
           display_name: string
           id: string
-          storage_path: string
           thumb_512_path: string
         }[]
       }

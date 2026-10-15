@@ -9,7 +9,7 @@
 -- pinned by a photo that is present in the fixture and absent from the answer.
 
 begin;
-select plan(22);
+select plan(23);
 
 insert into auth.users (id, email, encrypted_password, email_confirmed_at,
                         instance_id, aud, role)
@@ -167,7 +167,7 @@ select is(
 select is(
   (select array_agg(p.id::text order by p.o)
      from race_listing_photos('22222222-0000-0000-0000-000000019611')
-          with ordinality as p(id, thumb_512_path, storage_path, caption, created_at, display_name, o)),
+          with ordinality as p(id, thumb_512_path, caption, created_at, display_name, o)),
   array['11111111-0000-0000-0000-0000001961b7', '11111111-0000-0000-0000-0000001961b1'],
   'newest photo first');
 
@@ -214,6 +214,14 @@ select throws_ok($$
           '99999999-9999-9999-9999-99991961a001/new.jpg', true)
 $$, '42501', 'a photo is shared to its race page after upload, through set_run_photo_race_gallery',
   'a photo cannot be uploaded already shared');
+
+select throws_ok($$
+  insert into run_photos (run_id, owner_id, storage_path, thumb_512_path)
+  values ('aaaaaaaa-0000-0000-0000-0000001961f1', '99999999-9999-9999-9999-99991961a001',
+          '99999999-9999-9999-9999-99991961a001/raw.jpg',
+          '99999999-9999-9999-9999-99991961a001/raw.jpg')
+$$, '42501', 'thumb_512_path is written by the photo worker only',
+  'a client cannot pass the raw original off as its processed thumbnail');
 
 select throws_ok($$
   select set_run_photo_race_gallery('11111111-0000-0000-0000-0000001961b9', true)

@@ -45,6 +45,13 @@ begin
     raise exception 'a photo is shared to its race page after upload, through set_run_photo_race_gallery'
       using errcode = '42501';
   end if;
+  -- The read gate takes a set thumbnail as proof the worker re-encoded the
+  -- bytes, and only an UPDATE of the column was locked (20260916_001), so a
+  -- client could insert the raw original as its own thumbnail.
+  if tg_op = 'INSERT' and new.thumb_512_path is not null then
+    raise exception 'thumb_512_path is written by the photo worker only'
+      using errcode = '42501';
+  end if;
   if tg_op = 'UPDATE' and new.race_gallery is distinct from old.race_gallery then
     raise exception 'run_photos.race_gallery is set through set_run_photo_race_gallery only'
       using errcode = '42501';
@@ -102,7 +109,6 @@ create or replace function public.race_listing_photos(p_listing_id uuid, p_limit
 returns table (
   id uuid,
   thumb_512_path text,
-  storage_path text,
   caption text,
   created_at timestamptz,
   display_name text
@@ -112,7 +118,7 @@ stable
 security definer
 set search_path = public
 as $$
-  select rp.id, rp.thumb_512_path, rp.storage_path, rp.caption, rp.created_at,
+  select rp.id, rp.thumb_512_path, rp.caption, rp.created_at,
          up.display_name
     from public_race_listings l
     join runs r on r.race_listing_id = l.id

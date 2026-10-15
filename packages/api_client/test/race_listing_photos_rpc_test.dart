@@ -75,7 +75,6 @@ void main() {
       fake.bodyByPath[_listPath] = [
         {
           'id': 'photo-a',
-          'storage_path': 'owner-1/photo-a.jpg',
           'thumb_512_path': 'owner-1/photo-a.512.jpg',
           'caption': 'Mile 20',
           'created_at': '2026-10-01T09:30:00Z',
@@ -83,7 +82,6 @@ void main() {
         },
         {
           'id': 'photo-b',
-          'storage_path': 'owner-2/photo-b.jpg',
           'thumb_512_path': 'owner-2/photo-b.512.jpg',
           'caption': null,
           'created_at': '2026-10-01T08:00:00Z',

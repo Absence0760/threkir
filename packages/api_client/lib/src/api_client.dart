@@ -8923,16 +8923,14 @@ class EventPhotoView {
 /// track: the page is public and indexed.
 class RaceListingPhotoView {
   final String id;
-  final String storagePath;
-  final String? thumb512Path;
+  final String thumb512Path;
   final String? caption;
   final DateTime createdAt;
   final String? displayName;
 
   const RaceListingPhotoView({
     required this.id,
-    required this.storagePath,
-    this.thumb512Path,
+    required this.thumb512Path,
     this.caption,
     required this.createdAt,
     this.displayName,
@@ -8941,8 +8939,7 @@ class RaceListingPhotoView {
   factory RaceListingPhotoView.fromJson(Map<String, dynamic> json) =>
       RaceListingPhotoView(
         id: json['id'] as String,
-        storagePath: json['storage_path'] as String,
-        thumb512Path: json['thumb_512_path'] as String?,
+        thumb512Path: json['thumb_512_path'] as String,
         caption: json['caption'] as String?,
         createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
         displayName: json['display_name'] as String?,

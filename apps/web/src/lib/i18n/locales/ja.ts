@@ -724,6 +724,7 @@ export const messages = {
 	"plansPage.filterCompleted": "完了",
 	"plansPage.filterAbandoned": "中止",
 	"plansPage.newPlan": "新しいプラン",
+	"plansPage.describeWithAi": "AIでプランを説明する",
 	"plansPage.browseLibrary": "ライブラリを見る",
 	"plansPage.loadingPlans": "トレーニングプランを読み込み中…",
 	"plansPage.emptyTitle": "まだプランがありません。",

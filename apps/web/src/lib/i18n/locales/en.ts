@@ -742,6 +742,7 @@ export const en = {
 	"plansPage.filterCompleted": "Completed",
 	"plansPage.filterAbandoned": "Abandoned",
 	"plansPage.newPlan": "New plan",
+	"plansPage.describeWithAi": "Describe a plan with AI",
 	"plansPage.browseLibrary": "Browse library",
 	"plansPage.loadingPlans": "Loading training plans…",
 	"plansPage.emptyTitle": "No plans yet.",

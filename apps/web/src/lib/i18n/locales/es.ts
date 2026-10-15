@@ -729,6 +729,7 @@ export const messages = {
 	"plansPage.filterCompleted": "Completados",
 	"plansPage.filterAbandoned": "Abandonados",
 	"plansPage.newPlan": "Nuevo plan",
+	"plansPage.describeWithAi": "Describir un plan con IA",
 	"plansPage.browseLibrary": "Explorar biblioteca",
 	"plansPage.loadingPlans": "Cargando planes de entrenamiento…",
 	"plansPage.emptyTitle": "Aún no hay planes.",

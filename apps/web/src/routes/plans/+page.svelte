@@ -8,6 +8,8 @@
 	import { page } from '$app/state';
 	import { fetchMyPlansWithError, deletePlan, updatePlanStatus } from '#lib/core/data.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { coachEnabled } from '#lib/coach/coach_flag.ts';
+	import { aiPlanEnabled } from '#lib/training/ai_plan_flag.ts';
 	import { currentPlanWeekIndex } from '#lib/training/plan_week.ts';
 	import { todayISO } from '#lib/training/training.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
@@ -27,6 +29,10 @@
 	let confirmTarget = $state<TrainingPlan | null>(null);
 	let confirmAction = $state<'abandon' | 'delete' | null>(null);
 	let showPlanModal = $state(false);
+	// The AI plan assistant lives on the full wizard page, not in the modal:
+	// `#ai-plan` is the box's id in PlanEditor.
+	const showAiPlan = coachEnabled() && aiPlanEnabled();
+	const AI_PLAN_HREF = '/plans/new?type=training#ai-plan';
 
 	type StatusFilter = 'all' | PlanStatus;
 	let statusFilter = $state<StatusFilter>('all');
@@ -276,6 +282,12 @@
 					<span class="material-symbols">public</span>
 					{m('plansPage.browseLibrary')}
 				</a>
+				{#if showAiPlan}
+					<a class="add-btn add-btn-outline" href={AI_PLAN_HREF}>
+						<span class="material-symbols">auto_awesome</span>
+						{m('plansPage.describeWithAi')}
+					</a>
+				{/if}
 				<button class="add-btn" type="button" onclick={() => (showPlanModal = true)}>
 					<span class="material-symbols">add</span>
 					{m('plansPage.newPlan')}
@@ -323,6 +335,9 @@
 				<span class="material-symbols">add</span>
 				{m('plansPage.createFirst')}
 			</button>
+			{#if showAiPlan}
+				<a href={AI_PLAN_HREF}>{m('plansPage.describeWithAi')}</a>
+			{/if}
 		</section>
 	{:else}
 		<div class="grid">

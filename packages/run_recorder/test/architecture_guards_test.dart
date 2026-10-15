@@ -34,12 +34,14 @@ void main() {
     // emit (1 Hz minimum). Replaced by a single UnmodifiableListView
     // stored as `_trackView` — same wrapper across every snapshot. If
     // someone goes back to List.unmodifiable, the allocation comes back.
-    final body = _extractMethodBody(source, r'void _emitSnapshot\(\)\s*\{');
+    final body = _extractMethodBody(
+      source,
+      r'void _emitSnapshot\(\)\s*\{',
+    );
     expect(
       body.contains('List.unmodifiable(_track)'),
       isFalse,
-      reason:
-          '_emitSnapshot must pass the shared _trackView, '
+      reason: '_emitSnapshot must pass the shared _trackView, '
           'not allocate a fresh unmodifiable list per emit.',
     );
     expect(
@@ -54,12 +56,14 @@ void main() {
     // mode, warmup, stationary runner). Re-running the full-route
     // segment projection each tick is wasteful — the cache short-circuits
     // when _currentWaypoint hasn't changed.
-    final body = _extractMethodBody(source, r'void _emitSnapshot\(\)\s*\{');
+    final body = _extractMethodBody(
+      source,
+      r'void _emitSnapshot\(\)\s*\{',
+    );
     expect(
       body,
       contains('identical(current, _lastRouteCalcFor)'),
-      reason:
-          '_emitSnapshot must skip route math when _currentWaypoint '
+      reason: '_emitSnapshot must skip route math when _currentWaypoint '
           'hasn\'t changed (identity check against _lastRouteCalcFor).',
     );
   });
@@ -68,12 +72,14 @@ void main() {
     // Reason: the stopwatch has to keep advancing for indoor / treadmill
     // runs where `_currentWaypoint` stays null. Gating the timer on
     // `_currentWaypoint != null` would freeze the clock for those runs.
-    final beginBody = _extractMethodBody(source, r'void begin\(\)\s*\{');
+    final beginBody = _extractMethodBody(
+      source,
+      r'void begin\(\)\s*\{',
+    );
     expect(
       beginBody.contains('_currentWaypoint == null'),
       isFalse,
-      reason:
-          'begin()\'s periodic timer must not gate snapshot emission '
+      reason: 'begin()\'s periodic timer must not gate snapshot emission '
           'on _currentWaypoint — indoor runs depend on null-position '
           'snapshots firing every second.',
     );
@@ -87,23 +93,20 @@ void main() {
     expect(
       source,
       contains('throw LocationServiceDisabledError()'),
-      reason:
-          'prepare() must throw LocationServiceDisabledError when '
+      reason: 'prepare() must throw LocationServiceDisabledError when '
           'isLocationServiceEnabled() is false — the run_screen snackbar '
           'branches on this type.',
     );
     expect(
       source,
       contains('throw LocationPermissionDeniedError'),
-      reason:
-          'prepare() must throw LocationPermissionDeniedError on '
+      reason: 'prepare() must throw LocationPermissionDeniedError on '
           'denied permission — the run_screen snackbar branches on this.',
     );
     expect(
       source,
       contains('_backgroundLocationLimited = _foregroundOnlyGrant('),
-      reason:
-          'prepare() must record a foreground-only ("While using the '
+      reason: 'prepare() must record a foreground-only ("While using the '
           'app") grant as backgroundLocationLimited and open the stream '
           'anyway. Refusing the grant recorded NOTHING — no fixes, a map '
           'stuck on "Waiting for GPS", a run saved as indoor — which is a '
@@ -112,50 +115,44 @@ void main() {
     );
   });
 
-  test(
-    'iOS location settings disable auto-pause and tag activityType.fitness',
-    () {
-      // Reason: CLLocationManager.pausesLocationUpdatesAutomatically defaults
-      // to TRUE on iOS. With the default, iOS auto-pauses the GPS the moment
-      // it thinks the user has stopped moving — including the 30 s pause to
-      // photograph something interesting mid-run. The recorder MUST pass an
-      // AppleSettings with pauseLocationUpdatesAutomatically: false so iOS
-      // keeps feeding fixes through stationary segments. activityType
-      // .fitness biases the CoreLocation power-saving heuristics for foot-
-      // paced motion.
-      expect(
-        source,
-        contains('AppleSettings('),
-        reason:
-            'recorder must build AppleSettings on iOS — passing the '
-            'AndroidSettings base on iOS leaves every Apple-only knob at '
-            'CoreLocation defaults, including the silent-freeze auto-pause.',
-      );
-      expect(
-        source,
-        contains('pauseLocationUpdatesAutomatically: false'),
-        reason:
-            'AppleSettings.pauseLocationUpdatesAutomatically MUST be '
-            'false — this is the iOS twin of the Android whileInUse silent-'
-            'freeze bug. Removing this re-introduces the failure mode.',
-      );
-      expect(
-        source,
-        contains('activityType: ActivityType.fitness'),
-        reason:
-            'AppleSettings.activityType must be fitness so iOS biases '
-            'the location power model for running pace, not driving.',
-      );
-      expect(
-        source,
-        contains('allowBackgroundLocationUpdates: true'),
-        reason:
-            'AppleSettings.allowBackgroundLocationUpdates must be true '
-            'so the recorder keeps producing fixes when the screen is off '
-            '(the UIBackgroundModes:location capability gates this).',
-      );
-    },
-  );
+  test('iOS location settings disable auto-pause and tag activityType.fitness',
+      () {
+    // Reason: CLLocationManager.pausesLocationUpdatesAutomatically defaults
+    // to TRUE on iOS. With the default, iOS auto-pauses the GPS the moment
+    // it thinks the user has stopped moving — including the 30 s pause to
+    // photograph something interesting mid-run. The recorder MUST pass an
+    // AppleSettings with pauseLocationUpdatesAutomatically: false so iOS
+    // keeps feeding fixes through stationary segments. activityType
+    // .fitness biases the CoreLocation power-saving heuristics for foot-
+    // paced motion.
+    expect(
+      source,
+      contains('AppleSettings('),
+      reason: 'recorder must build AppleSettings on iOS — passing the '
+          'AndroidSettings base on iOS leaves every Apple-only knob at '
+          'CoreLocation defaults, including the silent-freeze auto-pause.',
+    );
+    expect(
+      source,
+      contains('pauseLocationUpdatesAutomatically: false'),
+      reason: 'AppleSettings.pauseLocationUpdatesAutomatically MUST be '
+          'false — this is the iOS twin of the Android whileInUse silent-'
+          'freeze bug. Removing this re-introduces the failure mode.',
+    );
+    expect(
+      source,
+      contains('activityType: ActivityType.fitness'),
+      reason: 'AppleSettings.activityType must be fitness so iOS biases '
+          'the location power model for running pace, not driving.',
+    );
+    expect(
+      source,
+      contains('allowBackgroundLocationUpdates: true'),
+      reason: 'AppleSettings.allowBackgroundLocationUpdates must be true '
+          'so the recorder keeps producing fixes when the screen is off '
+          '(the UIBackgroundModes:location capability gates this).',
+    );
+  });
 
   test('Android location settings keep distanceFilter:0 + an FGS config', () {
     // Reason: distanceFilter > 0 silently starves the blue dot at walking
@@ -173,16 +170,14 @@ void main() {
     expect(
       source,
       contains('distanceFilter: 0'),
-      reason:
-          'AndroidSettings.distanceFilter must be 0 — any positive '
+      reason: 'AndroidSettings.distanceFilter must be 0 — any positive '
           'value gates fix emission at the OS level and starves the live '
           'dot at slow paces. Software filtering handles movement gating.',
     );
     expect(
       source,
       contains('foregroundNotificationConfig:'),
-      reason:
-          'AndroidSettings must pass a ForegroundNotificationConfig '
+      reason: 'AndroidSettings must pass a ForegroundNotificationConfig '
           'so the geolocator service is promoted to a typed FGS — without '
           'it the process drops to CACHED + Samsung Freecess kills it.',
     );
@@ -198,59 +193,49 @@ void main() {
     );
     final preparedIdx = body.indexOf('_prepared = true');
     final serviceCheckIdx = body.indexOf('isLocationServiceEnabled');
-    expect(
-      preparedIdx,
-      greaterThan(-1),
-      reason: 'prepare() must set _prepared = true somewhere.',
-    );
-    expect(
-      serviceCheckIdx,
-      greaterThan(-1),
-      reason: 'prepare() must call isLocationServiceEnabled.',
-    );
+    expect(preparedIdx, greaterThan(-1),
+        reason: 'prepare() must set _prepared = true somewhere.');
+    expect(serviceCheckIdx, greaterThan(-1),
+        reason: 'prepare() must call isLocationServiceEnabled.');
     expect(
       preparedIdx < serviceCheckIdx,
       isTrue,
-      reason:
-          '_prepared must be flipped BEFORE the service/permission '
+      reason: '_prepared must be flipped BEFORE the service/permission '
           'checks so begin() works in indoor mode even if prepare throws.',
     );
   });
 
   test(
-    'GPS retry loop gates on the SAME permission predicate as prepare() (#671)',
-    () {
-      // Reason: the two gates decide the same question — may this permission
-      // open a position stream — in two places, and they drifted once already
-      // (#671), leaving the retry timer reopening a stream prepare() had just
-      // refused. Both must call the same shared predicate; this pins that both
-      // bodies reference it rather than re-deriving the condition inline.
-      final prepareBody = _extractMethodBody(
-        source,
-        r'Future<void> prepare\(\{[^)]*\}\)\s*async\s*\{',
-      );
-      expect(
-        prepareBody,
-        contains('_permissionAllowsStream('),
-        reason:
-            'prepare() must gate the stream-opening decision through '
-            '_permissionAllowsStream, not an inline permission condition.',
-      );
-      final retryLoopBody = _extractMethodBody(
-        source,
-        r'void _startGpsRetryLoop\(\)\s*\{',
-      );
-      expect(
-        retryLoopBody,
-        contains('_permissionAllowsStream('),
-        reason:
-            '_startGpsRetryLoop() must precheck permission through the '
-            'SAME _permissionAllowsStream predicate prepare() uses — a '
-            'hand-rolled copy of the condition silently drifts from '
-            'prepare()\'s gate (see #671).',
-      );
-    },
-  );
+      'GPS retry loop gates on the SAME permission predicate as prepare() (#671)',
+      () {
+    // Reason: the two gates decide the same question — may this permission
+    // open a position stream — in two places, and they drifted once already
+    // (#671), leaving the retry timer reopening a stream prepare() had just
+    // refused. Both must call the same shared predicate; this pins that both
+    // bodies reference it rather than re-deriving the condition inline.
+    final prepareBody = _extractMethodBody(
+      source,
+      r'Future<void> prepare\(\{[^)]*\}\)\s*async\s*\{',
+    );
+    expect(
+      prepareBody,
+      contains('_permissionAllowsStream('),
+      reason: 'prepare() must gate the stream-opening decision through '
+          '_permissionAllowsStream, not an inline permission condition.',
+    );
+    final retryLoopBody = _extractMethodBody(
+      source,
+      r'void _startGpsRetryLoop\(\)\s*\{',
+    );
+    expect(
+      retryLoopBody,
+      contains('_permissionAllowsStream('),
+      reason: '_startGpsRetryLoop() must precheck permission through the '
+          'SAME _permissionAllowsStream predicate prepare() uses — a '
+          'hand-rolled copy of the condition silently drifts from '
+          'prepare()\'s gate (see #671).',
+    );
+  });
 
   test('GPS retry loop exists and is cancelled on stop/dispose', () {
     // Reason: the retry loop is what reopens the stream after a
@@ -267,7 +252,10 @@ void main() {
       contains('_gpsRetryTimer?.cancel()'),
       reason: 'stop() must cancel the GPS retry timer.',
     );
-    final disposeBody = _extractMethodBody(source, r'void dispose\(\)\s*\{');
+    final disposeBody = _extractMethodBody(
+      source,
+      r'void dispose\(\)\s*\{',
+    );
     expect(
       disposeBody,
       contains('_gpsRetryTimer?.cancel()'),
@@ -278,21 +266,22 @@ void main() {
   test('RunSnapshot.currentPosition is nullable', () {
     // Reason: the 1-second timer emits without a GPS fix. A non-nullable
     // currentPosition would force callers to invent a sentinel.
-    final snapshotSource = File('lib/src/run_snapshot.dart').readAsStringSync();
+    final snapshotSource =
+        File('lib/src/run_snapshot.dart').readAsStringSync();
     expect(
       snapshotSource,
       contains('Waypoint? currentPosition'),
-      reason:
-          'RunSnapshot.currentPosition must be nullable so indoor / '
+      reason: 'RunSnapshot.currentPosition must be nullable so indoor / '
           'warmup snapshots can carry a null.',
     );
   });
 
-  test('_currentWaypoint constructor uses pos.timestamp, not DateTime.now()', () {
+  test('_currentWaypoint constructor uses pos.timestamp, not DateTime.now()',
+      () {
     // Reason: an earlier version stamped _currentWaypoint.timestamp =
     // DateTime.now(). Wall-clock dt collapsed to zero whenever GPS
     // callbacks landed in the same millisecond (CPU stall, batched fixes,
-    // or synthetic unit-test injection), and _calculatePace silently
+    // or synchronous unit-test injection), and _calculatePace silently
     // returned null because endTs.difference(startTs).inMilliseconds == 0.
     // GPX/TCX/FIT exports also embed Run.track[i].timestamp, so wall-clock
     // would mean "process time" rather than "GPS time" in shared files.
@@ -303,25 +292,27 @@ void main() {
     // current position to that same waypoint restamped with distance. So
     // the guard pins both halves: every assignment comes from one of those
     // sources, and the builder reads the fix's own timestamp.
-    final assignments = RegExp(
-      r'_currentWaypoint\s*=\s*([^;]+);',
-    ).allMatches(source).map((m) => m.group(1)!.trim()).toList();
+    final assignments = RegExp(r'_currentWaypoint\s*=\s*([^;]+);')
+        .allMatches(source)
+        .map((m) => m.group(1)!.trim())
+        .toList();
     expect(
       assignments,
       isNotEmpty,
-      reason:
-          'Could not find any _currentWaypoint assignment — rename? '
+      reason: 'Could not find any _currentWaypoint assignment — rename? '
           'Update the guard to match the new shape.',
     );
     for (final rhs in assignments) {
       expect(
-        rhs == 'null' || rhs == 'stamped' || rhs.startsWith('_waypointFor(pos'),
+        rhs == 'null' ||
+            rhs == 'stamped' ||
+            rhs.startsWith('_waypointFor(pos'),
         isTrue,
-        reason:
-            '_currentWaypoint = $rhs — the current position must be the '
-            'waypoint of the fix itself (built by _waypointFor(pos, ...), or that '
-            'waypoint restamped by _storeFix), so its timestamp is the GPS '
-            'time. A new source needs the same pos.timestamp proof here.',
+        reason: '_currentWaypoint = $rhs — the current position must be '
+            'the waypoint of the fix itself (built by _waypointFor(pos, '
+            '...), or that waypoint restamped by _storeFix), so its '
+            'timestamp is the GPS time. A new source needs the same '
+            'pos.timestamp proof here.',
       );
     }
 
@@ -331,82 +322,77 @@ void main() {
     expect(
       builder,
       isNotNull,
-      reason:
-          'Could not find the _waypointFor(...) => Waypoint(...) '
+      reason: 'Could not find the _waypointFor(...) => Waypoint(...) '
           'builder — rename? Update the guard to match the new shape.',
     );
     expect(
       builder,
       contains('timestamp: pos.timestamp'),
-      reason:
-          'The waypoint of a fix must read timestamp from pos.timestamp '
-          '(GPS-reported), not DateTime.now() — see decisions.md §46. '
-          'Reverting this re-introduces the silent _calculatePace = null '
-          'bug under fix-batching.',
+      reason: 'The waypoint of a fix must read timestamp from '
+          'pos.timestamp (GPS-reported), not DateTime.now() — see '
+          'decisions.md §46. Reverting this re-introduces the silent '
+          '_calculatePace = null bug under fix-batching.',
     );
     expect(
       builder,
       isNot(contains('DateTime.now()')),
-      reason:
-          'Same as above — DateTime.now() must not appear inside the '
+      reason: 'Same as above — DateTime.now() must not appear inside the '
           'waypoint builder.',
     );
 
-    final store = RegExp(
-      r'void _storeFix\([\s\S]*?\n  \}',
-    ).firstMatch(source)?.group(0);
+    final store = RegExp(r'void _storeFix\([\s\S]*?\n  \}')
+        .firstMatch(source)
+        ?.group(0);
     expect(store, isNotNull, reason: '_storeFix moved — update the guard.');
     expect(
       store,
       isNot(contains('DateTime.now()')),
-      reason:
-          '_storeFix hands its waypoint to _currentWaypoint, so it '
+      reason: '_storeFix hands its waypoint to _currentWaypoint, so it '
           'must not restamp it with wall-clock time.',
     );
   });
 
-  test('run_recorder has zero network / backend dependencies — every '
-      'lib/ source must only import flutter, geolocator, core_models, '
-      'or dart:* (no api_client, supabase, http, dio)', () {
-    // Reason: the user must be able to start a run, see the clock
-    // tick, and watch distance accumulate even when every backend
-    // service is down. This guard pins the recorder\'s isolation
-    // from the network — any new import of an HTTP / Supabase /
-    // typed-API package would silently break the layered-
-    // resilience contract before any test exercises it.
-    const blockedSubstrings = [
-      'package:api_client',
-      'package:supabase_flutter',
-      'package:supabase',
-      'package:http/',
-      'package:dio',
-      'package:web_socket_channel',
-    ];
-    final libDir = Directory('lib');
-    expect(
-      libDir.existsSync(),
-      isTrue,
-      reason: 'package:run_recorder is missing its lib/ dir.',
-    );
-    final dartFiles = libDir
-        .listSync(recursive: true)
-        .whereType<File>()
-        .where((f) => f.path.endsWith('.dart'))
-        .toList();
-    for (final f in dartFiles) {
-      final source = f.readAsStringSync();
-      for (final banned in blockedSubstrings) {
-        expect(
-          source.contains(banned),
-          isFalse,
-          reason:
-              'package:run_recorder/${f.path} pulled in `$banned` — '
-              'the recording stack must stay isolated from the '
-              'network so a backend outage cannot stop the clock '
-              'or break distance accumulation. Move backend wiring '
-              'to apps/mobile_android/lib/ instead.',
-        );
+  test(
+    'run_recorder has zero network / backend dependencies — every '
+    'lib/ source must only import flutter, geolocator, core_models, '
+    'or dart:* (no api_client, supabase, http, dio)',
+    () {
+      // Reason: the user must be able to start a run, see the clock
+      // tick, and watch distance accumulate even when every backend
+      // service is down. This guard pins the recorder\'s isolation
+      // from the network — any new import of an HTTP / Supabase /
+      // typed-API package would silently break the layered-
+      // resilience contract before any test exercises it.
+      const blockedSubstrings = [
+        'package:api_client',
+        'package:supabase_flutter',
+        'package:supabase',
+        'package:http/',
+        'package:dio',
+        'package:web_socket_channel',
+      ];
+      final libDir = Directory('lib');
+      expect(libDir.existsSync(), isTrue,
+          reason: 'package:run_recorder is missing its lib/ dir.');
+      final dartFiles = libDir
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.dart'))
+          .toList();
+      for (final f in dartFiles) {
+        final source = f.readAsStringSync();
+        for (final banned in blockedSubstrings) {
+          expect(
+            source.contains(banned),
+            isFalse,
+            reason: 'package:run_recorder/${f.path} pulled in `$banned` — '
+                'the recording stack must stay isolated from the '
+                'network so a backend outage cannot stop the clock '
+                'or break distance accumulation. Move backend wiring '
+                'to apps/mobile_android/lib/ instead.',
+          );
+        }
       }
-    }
-  });
+    },
+  );
 }

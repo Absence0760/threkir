@@ -535,12 +535,12 @@ as $neutralised$
          c.location_label, c.is_public, c.created_at, c.updated_at, c.join_policy,
          null::text, c.location_point, c.member_count, c.is_verified,
          c.requires_activity_waiver, c.website_url, c.instagram_url, c.strava_url,
-         c.facebook_url, c.shadow_hidden
+         c.facebook_url, c.shadow_hidden, c.strava_club_id
   from clubs c, center
   where (
       p_query is null
-      or c.name ilike '%' || p_query || '%'
-      or c.location_label ilike '%' || p_query || '%'
+      or c.name ilike '%' || private.like_escape(p_query) || '%'
+      or c.location_label ilike '%' || private.like_escape(p_query) || '%'
       or (
         center.pt is not null
         and c.location_point is not null
@@ -1254,7 +1254,7 @@ $neutralised$;`,
 //
 // Registering one costs a copy of a definition to keep in step with the schema,
 // and buys a measurement only where an empty result is a claim about access
-// control. All three of these are outside that, for three different reasons,
+// control. Every entry below is outside that, each for its own reason,
 // and each was checked rather than assumed - the operator was pointed at it and
 // the verdict it would produce is recorded beside it. The list is CLOSED: the
 // validation phase re-derives the same set from the suite and fails if another
@@ -1286,5 +1286,11 @@ export const UNREGISTERED_DEFINER_RELATIONS = [
     assertion: 'an account that never signed in with Apple has nothing to read',
     reason:
       "the function carries no access-control filter to drop: its only WHERE is `user_id = p_user_id`, a subject selector, and who may call it at all is enforced by the EXECUTE grant (service_role only), which the same file's 42501 throws_ok assertions pin for authenticated and anon. The empty result claims that a user id with no stored token reads as nothing to revoke - delete-account's 'skipped' - not that a row is being hidden. Emptiness is not what it turns on either: two `results_eq` positives in the same transaction name the row the function DOES return for the account that has one",
+  },
+  {
+    relation: 'public_runs',
+    assertion: 'a safety stub is not in public_runs',
+    reason:
+      "the claim is that a safety-audience stub is a PRIVATE run (20270821000001 stores it `is_public = false`; a safety audience is reached through the per-contact spectator link, never a public flip), and the view's `is_public = true` is the subject selector that says which runs it is about - the same role `is_public = false` plays in the shared_runs replacement above. A replacement may only drop the access-control half (the private-profile / self / follower / in-progress disjunction), so the stub stays absent and the assertion would survive: an EXPECTED_SURVIVORS entry bought with a copy of the view's whole column list. Who reads the stub's pings is what the file's measured assertions are about, and those read `live_run_pings` through RLS, which operator 1 does mutate",
   },
 ];

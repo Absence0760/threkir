@@ -349,7 +349,8 @@ const at = (lngM: number, s: number, distM?: number, smoothedLngM?: number): Tra
 test('trackCumulativeMetres — reads distM, scaled so the last point is the run distance', () => {
 	const t = [at(0, 0, 0), at(410, 100, 400), at(790, 200, 800), at(1010, 250, 1000)];
 	assert.deepEqual(trackCumulativeMetres(t), [0, 400, 800, 1000]);
-	assert.deepEqual(trackCumulativeMetres(t, 1100), [0, 440, 880, 1100]);
+	const scaled = trackCumulativeMetres(t, 1100);
+	[0, 440, 880, 1100].forEach((m, i) => assert.ok(Math.abs(scaled[i] - m) < 1e-9, `scaled[${i}] ${scaled[i]}`));
 	assert.deepEqual(trackCumulativeMetres(t, null), [0, 400, 800, 1000]);
 	assert.deepEqual(trackCumulativeMetres(t, 0), [0, 400, 800, 1000]);
 	assert.deepEqual(trackCumulativeMetres(t, Number.NaN), [0, 400, 800, 1000]);
@@ -372,9 +373,10 @@ test('trackCumulativeMetres — positions unless every point carries a non-decre
 test('trackCumulativeMetres — the position fallback measures the smoothed line, else raw', () => {
 	const smoothed = [at(0, 0, undefined, 0), at(100, 30, undefined, 60)];
 	const cum = trackCumulativeMetres(smoothed, 5000);
-	assert.ok(Math.abs(cum[1] - 60) < 0.1, `smoothed hop ${cum[1]}`);
+	const smoothedHop = haversineMetres(0, 0, 0, 60 / 111_320);
+	assert.ok(Math.abs(cum[1] - smoothedHop) < 0.01, `smoothed hop ${cum[1]}`);
 	const raw = [at(0, 0), at(100, 30)];
-	assert.ok(Math.abs(trackCumulativeMetres(raw)[1] - 100) < 0.1);
+	assert.ok(Math.abs(trackCumulativeMetres(raw)[1] - haversineMetres(0, 0, 0, 100 / 111_320)) < 0.01);
 });
 
 test('computeRealSplits — a recorded track splits on distM and ends on distance_m', () => {

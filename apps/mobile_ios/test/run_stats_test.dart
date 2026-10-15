@@ -501,8 +501,10 @@ void main() {
         at(1010, 250, distM: 1000),
       ];
       expect(trackCumulativeMetres(t), [0, 400, 800, 1000]);
-      expect(trackCumulativeMetres(t, totalDistanceMetres: 1100),
-          [0, 440, 880, 1100]);
+      final scaled = trackCumulativeMetres(t, totalDistanceMetres: 1100);
+      for (final (i, m) in [0.0, 440.0, 880.0, 1100.0].indexed) {
+        expect(scaled[i], closeTo(m, 1e-9), reason: 'scaled[$i]');
+      }
       expect(trackCumulativeMetres(t, totalDistanceMetres: null),
           [0, 400, 800, 1000]);
       expect(trackCumulativeMetres(t, totalDistanceMetres: 0),
@@ -537,9 +539,9 @@ void main() {
         at(100, 30, smoothedLngM: 60),
       ];
       expect(trackCumulativeMetres(smoothed, totalDistanceMetres: 5000)[1],
-          closeTo(60, 0.1));
+          closeTo(haversineMetres(0, 0, 0, 60 / 111320), 0.01));
       expect(trackCumulativeMetres([at(0, 0), at(100, 30)])[1],
-          closeTo(100, 0.1));
+          closeTo(haversineMetres(0, 0, 0, 100 / 111320), 0.01));
     });
 
     test('a recorded track splits on its distance and ends on the run '

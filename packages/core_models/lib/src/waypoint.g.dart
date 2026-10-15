@@ -23,6 +23,7 @@ Waypoint _$WaypointFromJson(Map<String, dynamic> json) => Waypoint(
   baroElevationMetres: (json['baroElevationMetres'] as num?)?.toDouble(),
   cumulativeDistanceMetres: (json['cumulativeDistanceMetres'] as num?)
       ?.toDouble(),
+  offTrack: Waypoint._isTrue(json['offTrack']),
 );
 
 Map<String, dynamic> _$WaypointToJson(Waypoint instance) => <String, dynamic>{
@@ -39,4 +40,5 @@ Map<String, dynamic> _$WaypointToJson(Waypoint instance) => <String, dynamic>{
   'smoothedLng': ?instance.smoothedLng,
   'baroElevationMetres': ?instance.baroElevationMetres,
   'cumulativeDistanceMetres': ?instance.cumulativeDistanceMetres,
+  'offTrack': ?Waypoint._trueOrNull(instance.offTrack),
 };

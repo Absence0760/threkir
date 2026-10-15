@@ -55,6 +55,16 @@ class Waypoint {
   @JsonKey(includeIfNull: false)
   final double? cumulativeDistanceMetres;
 
+  /// A fix the GPS distance estimator took that failed the recorder's track
+  /// gate (a 20-50 m canopy fix on the phone, 30-50 m on the watches, or a
+  /// phone fix the movement gate held back). Stored so the server can replay
+  /// the whole estimator input (`docs/features/gps_distance.md` § Stored
+  /// track); everything that draws, matches or measures the line skips it,
+  /// and only a distance replay reads it. Serialised only when true, so every
+  /// older track reads as all on-track.
+  @JsonKey(includeIfNull: false, toJson: _trueOrNull, fromJson: _isTrue)
+  final bool offTrack;
+
   const Waypoint({
     required this.lat,
     required this.lng,
@@ -69,6 +79,7 @@ class Waypoint {
     this.smoothedLng,
     this.baroElevationMetres,
     this.cumulativeDistanceMetres,
+    this.offTrack = false,
   });
 
   /// Whether the stored track carries a usable smoothed position for this
@@ -101,6 +112,7 @@ class Waypoint {
         smoothedLng: smoothedLng,
         baroElevationMetres: baroElevationMetres,
         cumulativeDistanceMetres: cumulativeDistanceMetres,
+        offTrack: offTrack,
       );
 
   /// This fix with its cumulative credited distance set (or cleared).
@@ -119,7 +131,29 @@ class Waypoint {
         smoothedLng: smoothedLng,
         baroElevationMetres: baroElevationMetres,
         cumulativeDistanceMetres: cumulativeDistanceMetres,
+        offTrack: offTrack,
       );
+
+  /// This fix marked off the track line (or back on it).
+  Waypoint withOffTrack(bool offTrack) => Waypoint(
+        lat: lat,
+        lng: lng,
+        elevationMetres: elevationMetres,
+        timestamp: timestamp,
+        bpm: bpm,
+        accuracyMetres: accuracyMetres,
+        speedMps: speedMps,
+        speedAccuracyMps: speedAccuracyMps,
+        bearingDeg: bearingDeg,
+        smoothedLat: smoothedLat,
+        smoothedLng: smoothedLng,
+        baroElevationMetres: baroElevationMetres,
+        cumulativeDistanceMetres: cumulativeDistanceMetres,
+        offTrack: offTrack,
+      );
+
+  static Object? _trueOrNull(bool v) => v ? true : null;
+  static bool _isTrue(Object? v) => v == true;
 
   factory Waypoint.fromJson(Map<String, dynamic> json) =>
       _$WaypointFromJson(json);
@@ -184,7 +218,23 @@ List<Waypoint> finiteWaypoints(List<Waypoint> track) {
           smoothedLng: _finiteSmoothedPair(w) ? w.smoothedLng : null,
           baroElevationMetres: _finiteOrNull(w.baroElevationMetres),
           cumulativeDistanceMetres: _finiteOrNull(w.cumulativeDistanceMetres),
+          offTrack: w.offTrack,
         ),
+  ];
+}
+
+/// The fixes of [track] that belong on the run's line: every waypoint not
+/// flagged [Waypoint.offTrack]. The map line, route match, elevation, climb,
+/// segment and pace readers take this; only a distance replay reads the
+/// stored track whole.
+///
+/// Returns the input list itself when no point is flagged, so an older track
+/// (none carry the flag) allocates nothing.
+List<Waypoint> trackLine(List<Waypoint> track) {
+  if (!track.any((w) => w.offTrack)) return track;
+  return <Waypoint>[
+    for (final w in track)
+      if (!w.offTrack) w,
   ];
 }
 

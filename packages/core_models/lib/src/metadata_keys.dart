@@ -78,6 +78,7 @@ class MetadataKeys {
   static const String stravaId = 'strava_id';
   static const String subSport = 'sub_sport';
   static const String title = 'title';
+  static const String trackComplete = 'track_complete';
   static const String trackUrl = 'track_url';
   static const String watchWorkout = 'watch_workout';
   static const String workoutAdherence = 'workout_adherence';

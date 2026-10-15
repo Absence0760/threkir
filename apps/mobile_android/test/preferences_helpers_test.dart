@@ -215,6 +215,14 @@ void main() {
   });
 
   group('formatEffortTime', () {
+    test('a real effort renders M:SS under an hour and H:MM:SS from one', () {
+      expect(formatEffortTime(65), '1:05');
+      expect(formatEffortTime(1925.4), '32:05');
+      expect(formatEffortTime(59.6), '1:00');
+      expect(formatEffortTime(3599.6), '1:00:00');
+      expect(formatEffortTime(3725), '1:02:05');
+    });
+
     test('degenerate input gets the em dash, never NaN, Infinity or a throw',
         () {
       // Mirrors the formatDuration degenerate table in web's time.test.ts.

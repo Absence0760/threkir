@@ -9,8 +9,23 @@
 /// in that function.
 export const NON_OWNER_WITHHELD_POINT_KEYS = ['distM'] as const;
 
+/// Whether a stored point is an off-track fix: one the recorder's distance
+/// estimator took that failed its track gate (`offTrack: true`,
+/// docs/features/gps_distance.md § Waypoint fields). It is distance input for
+/// the server replay, never line, so no non-owner is served one.
+/// `clip_track_for_user` drops them before its zone walk (20270829000032);
+/// this drops them again from what the handler returns.
+export function isOffTrackPoint(p: unknown): boolean {
+  return (
+    p !== null &&
+    typeof p === 'object' &&
+    !Array.isArray(p) &&
+    (p as Record<string, unknown>).offTrack === true
+  );
+}
+
 export function withholdFromNonOwner(points: unknown[]): unknown[] {
-  return points.map((p) => {
+  return points.filter((p) => !isOffTrackPoint(p)).map((p) => {
     if (p === null || typeof p !== 'object' || Array.isArray(p)) return p;
     const out: Record<string, unknown> = { ...(p as Record<string, unknown>) };
     for (const key of NON_OWNER_WITHHELD_POINT_KEYS) delete out[key];

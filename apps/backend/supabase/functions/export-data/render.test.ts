@@ -434,3 +434,16 @@ Deno.test('buildGpx emits no character an XML parser would refuse, whatever the 
 	assert(!XML_FORBIDDEN.test(gpx), `forbidden character in ${JSON.stringify(gpx)}`);
 	assert(gpx.includes('<name>Bell� lap �</name>'), 'the title keeps every character it can');
 });
+
+Deno.test('buildGpx leaves out an off-track fix, as the run line does', () => {
+	// An off-track fix is distance input the recorder stored for the server
+	// replay; the GPX is the line, and the Go twin's parseTrack drops it too.
+	const gpx = buildGpx(GPX_REF, [
+		{ lat: 1, lng: 2 },
+		{ lat: 1.5, lng: 2.5, offTrack: true },
+		{ lat: 3, lng: 4, offTrack: false },
+	]);
+	assertEquals(gpx.match(/<trkpt /g)?.length, 2);
+	assert(!gpx.includes('lat="1.5"'), 'the off-track fix reached the GPX');
+	assert(gpx.includes('<trkpt lat="3" lon="4">'));
+});

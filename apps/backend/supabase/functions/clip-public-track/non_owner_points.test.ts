@@ -1,12 +1,13 @@
 /// `withholdFromNonOwner` removes the per-point keys that measure a run from
-/// its start, so a privacy-zone clip cannot be undone by reading them.
+/// its start, so a privacy-zone clip cannot be undone by reading them, and
+/// every off-track fix, which is distance input and never line.
 ///
 /// Run with `cd apps/backend && deno test --no-check --allow-read --allow-env
 /// supabase/functions/clip-public-track/non_owner_points.test.ts`.
 
 import { assertEquals } from 'https://deno.land/std@0.224.0/assert/mod.ts';
 
-import { NON_OWNER_WITHHELD_POINT_KEYS, withholdFromNonOwner } from './non_owner_points.ts';
+import { isOffTrackPoint, NON_OWNER_WITHHELD_POINT_KEYS, withholdFromNonOwner } from './non_owner_points.ts';
 
 const TS = '2026-10-15T07:00:00Z';
 
@@ -52,7 +53,8 @@ Deno.test('every other recorded field is served unchanged', () => {
 
 Deno.test('the input is not mutated, so an owner path sharing it keeps distM', () => {
   const owner = [{ lat: 47.37, lng: 8.555, distM: 420 }];
-  withholdFromNonOwner(owner);
+  const served = withholdFromNonOwner(owner);
+  assertEquals(served, [{ lat: 47.37, lng: 8.555 }]);
   assertEquals(owner, [{ lat: 47.37, lng: 8.555, distM: 420 }]);
 });
 
@@ -62,4 +64,27 @@ Deno.test('a non-object element passes through as stored', () => {
 
 Deno.test('distM is on the withheld list', () => {
   assertEquals([...NON_OWNER_WITHHELD_POINT_KEYS], ['distM']);
+});
+
+Deno.test('an off-track fix is never served, whether or not the clip dropped it', () => {
+  // clip_track_for_user drops them first; this layer drops them again, so a
+  // regression in one alone does not hand a viewer a canopy fix.
+  assertEquals(
+    withholdFromNonOwner([
+      { lat: 47.37, lng: 8.555, distM: 420 },
+      { lat: 47.37, lng: 8.556, distM: 470, offTrack: true },
+      { lat: 47.37, lng: 8.557, distM: 520, offTrack: false },
+      null,
+    ]),
+    [{ lat: 47.37, lng: 8.555 }, { lat: 47.37, lng: 8.557, offTrack: false }, null],
+  );
+});
+
+Deno.test('only offTrack true on an object marks an off-track fix', () => {
+  assertEquals(isOffTrackPoint({ lat: 1, lng: 2, offTrack: true }), true);
+  assertEquals(isOffTrackPoint({ lat: 1, lng: 2, offTrack: false }), false);
+  assertEquals(isOffTrackPoint({ lat: 1, lng: 2, offTrack: 'true' }), false);
+  assertEquals(isOffTrackPoint({ lat: 1, lng: 2 }), false);
+  assertEquals(isOffTrackPoint(null), false);
+  assertEquals(isOffTrackPoint([true]), false);
 });

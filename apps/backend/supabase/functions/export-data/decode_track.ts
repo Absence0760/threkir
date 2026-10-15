@@ -45,6 +45,7 @@ export interface TrackPoint {
 	t?: number;
 	ele?: number;
 	bpm?: number;
+	offTrack?: boolean;
 }
 
 export async function decodeTrack(blob: Blob): Promise<TrackPoint[]> {

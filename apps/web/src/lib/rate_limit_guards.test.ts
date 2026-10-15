@@ -272,40 +272,32 @@ test('every LLM-spending endpoint carries a per-user rate-limit bucket', () => {
 	}
 });
 
-test('the AI plan assistant spends a coach daily-cap slot before its billed call, and refunds failures', () => {
-	// /api/coach/plan-request is open to free runners, so the per-user ceiling
-	// is the Coach's own daily counter rather than a Pro-only route bucket. It
-	// has to be taken before the Anthropic call, deny on an unreadable count
-	// (resolveUsageCount), and hand the slot back when the call yields nothing.
-	const file = 'src/lib/training/plan_request/handler.ts';
+test('the Coach-message cost rail takes the slot fail-closed and refunds through decrement_coach_usage', () => {
+	// One copy of the rail the plan assistant and AI plan edits spend on
+	// (decisions § 1930, § 1981): open to free runners, so the per-user ceiling
+	// is the Coach's own daily counter rather than a Pro-only route bucket.
+	const file = 'src/lib/coach/coach_message_slot.ts';
 	const source = read(file);
-	const incrIdx = source.indexOf("rpc('increment_coach_usage'");
-	const spendIdx = source.indexOf('anthropic.messages.create');
-	assert.ok(
-		incrIdx > 0 && spendIdx > 0 && incrIdx < spendIdx,
-		`${file}: increment_coach_usage must precede the billed call.`,
-	);
+	assert.match(source, /rpc\('increment_coach_usage'/, `${file} must take a counter slot.`);
 	assert.match(source, /resolveUsageCount\(/, `${file} must fail closed on an unreadable count.`);
 	assert.match(source, /usedToday > dailyLimit/, `${file} must deny past the tier's daily limit.`);
-	assert.match(source, /rpc\('decrement_coach_usage'/, `${file} must refund a slot the call did not use.`);
-	const refunds = source.match(/await refundSlot\(/g) ?? [];
-	assert.ok(
-		refunds.length >= 3,
-		`${file} must refund on refusal, a missing tool call and a provider error (found ${refunds.length}).`,
-	);
+	assert.match(source, /rpc\('decrement_coach_usage'/, `${file} must be able to refund a slot.`);
 });
 
-test('AI plan edits spend a coach daily-cap slot before the billed call, and refund failures', () => {
-	// /api/coach/plan-edit is open to free runners, so its per-user ceiling is
-	// the Coach's daily counter, taken before the Anthropic call, denying on an
-	// unreadable count and handed back when the call yields nothing.
-	const file = 'src/lib/training/plan_edit/handler.ts';
-	const source = read(file);
-	const incrIdx = source.indexOf("rpc('increment_coach_usage'");
-	const spendIdx = source.indexOf('anthropic.messages.create');
-	assert.ok(incrIdx > 0 && spendIdx > 0 && incrIdx < spendIdx, `${file}: the counter must precede the billed call.`);
-	assert.match(source, /resolveUsageCount\(/);
-	assert.match(source, /usedToday > dailyLimit/);
-	assert.match(source, /rpc\('decrement_coach_usage'/);
-	assert.ok((source.match(/await refundSlot\(/g) ?? []).length >= 3, `${file} must refund every failed call.`);
+test('the plan assistant and AI plan edits spend a Coach message before their billed call, and refund failures', () => {
+	for (const file of ['src/lib/training/plan_request/handler.ts', 'src/lib/training/plan_edit/handler.ts']) {
+		const source = read(file);
+		const spendIdx = source.indexOf('spendCoachMessage(');
+		const callIdx = source.indexOf('anthropic.messages.create');
+		assert.ok(
+			spendIdx > 0 && callIdx > 0 && spendIdx < callIdx,
+			`${file}: spendCoachMessage must precede the billed call.`,
+		);
+		assert.match(source, /refundCoachMessage\(/, `${file} must refund through the shared rail.`);
+		const refunds = source.match(/await refundSlot\(/g) ?? [];
+		assert.ok(
+			refunds.length >= 3,
+			`${file} must refund on refusal, a missing tool call and a provider error (found ${refunds.length}).`,
+		);
+	}
 });

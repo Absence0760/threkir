@@ -27,8 +27,13 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
 
-import { parseAuthHeader, resolveUsageCount } from '../../coach/limits';
-import { TIER_LIMITS, type SupabaseClientFactory, type Tier } from '../../coach/types';
+import {
+	forcedToolUse,
+	refundCoachMessage,
+	spendCoachMessage,
+} from '../../coach/coach_message_slot';
+import { parseAuthHeader } from '../../coach/limits';
+import type { SupabaseClientFactory } from '../../coach/types';
 import {
 	AI_DISCLOSURE_VERSION_PLAN_EDIT_AI,
 	aiDisclosureDenialBody,
@@ -324,36 +329,13 @@ export async function handlePlanEdit(
 
 	// Cost cap: the Coach's daily counter at the caller's tier.
 	if (!config.bypassPaywallEnabled) {
-		const proRes = await supabase.rpc('is_pro', undefined, { get: true });
-		const tier: Tier = proRes.data === true ? 'pro' : 'free';
-		const dailyLimit = TIER_LIMITS[tier].dailyLimit;
-		const { data: newCount, error: incrErr } = await supabase.rpc('increment_coach_usage', {
-			p_user_id: userId,
-		});
-		const usage = resolveUsageCount(newCount, incrErr);
-		if (!usage.ok) {
-			console.error('[plan-edit] increment_coach_usage failed — denying to keep the cap enforced', {
-				tier,
-				error: incrErr?.message ?? `non-numeric count: ${typeof newCount}`,
-			});
-			return json(503, { error: 'plan edits unavailable' });
-		}
-		if (usage.usedToday > dailyLimit) {
-			return json(429, { error: 'daily_limit', used: usage.usedToday, limit: dailyLimit, tier });
-		}
+		const slot = await spendCoachMessage(supabase, userId, 'plan-edit', 'plan edits unavailable');
+		if (!slot.ok) return json(slot.status, slot.payload);
 	}
 
 	async function refundSlot(reason: string): Promise<void> {
 		if (config.bypassPaywallEnabled) return;
-		try {
-			const { error } = await supabase.rpc('decrement_coach_usage', { p_user_id: userId });
-			if (error) throw dbError(error);
-		} catch (e) {
-			console.error('[plan-edit] decrement_coach_usage failed', {
-				reason,
-				err: thrownMessage(e),
-			});
-		}
+		await refundCoachMessage(supabase, userId, 'plan-edit', reason);
 	}
 
 	try {
@@ -384,9 +366,7 @@ export async function handlePlanEdit(
 			return json(422, { error: 'could not understand request' });
 		}
 
-		const toolUse = message.content.find(
-			(b): b is Anthropic.ToolUseBlock => b.type === 'tool_use' && b.name === EDIT_TOOL.name,
-		);
+		const toolUse = forcedToolUse(message, EDIT_TOOL.name);
 		if (!toolUse) {
 			console.warn('[plan-edit] no tool_use block in model response');
 			await refundSlot('no_tool_use');

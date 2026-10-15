@@ -511,7 +511,7 @@ test('the AI plan assistant gates on the plan disclosure, above the route-AI ver
 	);
 	const gateIdx = source.indexOf('gateAiDisclosure(');
 	const anthropicIdx = source.indexOf('new Anthropic(');
-	const counterIdx = source.indexOf("rpc('increment_coach_usage'");
+	const counterIdx = source.indexOf('spendCoachMessage(');
 	assert.ok(
 		gateIdx > 0 && gateIdx < anthropicIdx && gateIdx < counterIdx,
 		`${file} must run the consent gate before the daily counter and the Anthropic client.`,
@@ -535,7 +535,7 @@ test('AI plan edits gate on the v4 plan-edit disclosure, before the plan read, t
 	assert.match(source, /gateAiDisclosure\([\s\S]*?AI_DISCLOSURE_VERSION_PLAN_EDIT_AI/);
 	const gateIdx = source.indexOf('gateAiDisclosure(');
 	const loadIdx = source.indexOf('await loadPlan(');
-	const counterIdx = source.indexOf("rpc('increment_coach_usage'");
+	const counterIdx = source.indexOf('spendCoachMessage(');
 	const anthropicIdx = source.indexOf('new Anthropic(');
 	assert.ok(
 		gateIdx > 0 && gateIdx < loadIdx && gateIdx < counterIdx && gateIdx < anthropicIdx,

@@ -8680,9 +8680,9 @@ class ApiClient {
   ///
   /// Keyset-paged newest-first on `(created_at, id)`: [before] is the oldest
   /// message already shown, and the page holds the [limit] messages before it.
-  /// Web reads the oldest 200 ascending and stops, so a long thread there
-  /// never reaches its latest messages; paging from the newest end is what
-  /// makes the first screen the current one. The pair is matched as both
+  /// Paging from the newest end is what makes the first screen the current
+  /// one; web's `fetchDmThread` pages the same way (`social/dm_thread.ts`),
+  /// same page size and tie-break. The pair is matched as both
   /// columns IN the two ids, which with the table's `sender_id <>
   /// recipient_id` CHECK is exactly the two directions of this conversation.
   /// Throws on a failed read.

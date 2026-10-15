@@ -204,6 +204,14 @@ import {
 } from '../social/event_gym_template';
 import { m } from '../i18n/store.svelte';
 import { rateLimitErrorMessage } from '../i18n/rate_limit_message';
+import {
+	DM_THREAD_ORDER,
+	DM_THREAD_PAGE_SIZE,
+	dmPageBeforeFilter,
+	dmPageFromRows,
+	type DmOrderKey,
+	type DmPage,
+} from '../social/dm_thread';
 import type { ParsedResultRow } from '../runs/event_results_csv';
 import {
 	applyRunMetadataPatch,
@@ -9925,25 +9933,38 @@ export async function fetchDmThreads(): Promise<DmThread[]> {
 	return [...byPartner.values()];
 }
 
-/// Full message history with one partner, oldest-first for rendering.
-export async function fetchDmThread(otherId: string, limit = 200): Promise<DirectMessage[]> {
+/// One page of the conversation with `otherId`, oldest message first.
+///
+/// Keyset-paged from the newest end on `(created_at, id)`: `before` is the
+/// oldest message already shown, and the page holds the `limit` messages before
+/// it, so the first read is the current end of the conversation however long
+/// it is. Mirrors mobile's `fetchDmThread`. The pair is matched as both columns
+/// IN the two ids, which with the table's `sender_id <> recipient_id` CHECK is
+/// exactly the two directions of this conversation, and leaves the `or` tree
+/// to the keyset. Throws on a failed read.
+export async function fetchDmThread(
+	otherId: string,
+	opts: { before?: DmOrderKey; limit?: number } = {},
+): Promise<DmPage<DirectMessage>> {
 	const me = auth.user?.id;
-	if (!me) return [];
-	const { data, error } = await supabase
+	if (!me) return { messages: [], hasMore: false };
+	const limit = opts.limit ?? DM_THREAD_PAGE_SIZE;
+	const pair = [me, otherId];
+	let query = supabase
 		.from(TABLES.direct_messages)
 		.select('*')
-		.or(
-			`and(sender_id.eq.${me},recipient_id.eq.${otherId}),and(sender_id.eq.${otherId},recipient_id.eq.${me})`,
-		)
-		.order('created_at', { ascending: true })
-		.limit(limit);
-	// Throw rather than returning [] — the caller can't tell a transient
-	// failure (network blip, RLS denial, dead session) from a genuinely
-	// empty conversation, and rendering the empty-thread copy on a blip
-	// leaves the user on the previous pane with no sign anything broke.
+		.in('sender_id', pair)
+		.in('recipient_id', pair);
+	if (opts.before) query = query.or(dmPageBeforeFilter(opts.before));
+	for (const k of DM_THREAD_ORDER) {
+		query = query.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+	}
+	const { data, error } = await query.limit(limit + 1);
+	// Throw rather than returning an empty page: the caller can't tell a
+	// transient failure (network blip, RLS denial, dead session) from a
+	// genuinely empty conversation.
 	if (error) throw new Error(`fetchDmThread failed: ${error.message}`);
-	if (!data) return [];
-	return data as DirectMessage[];
+	return dmPageFromRows((data ?? []) as DirectMessage[], limit);
 }
 
 /// Send a message. RLS enforces the no-block + follow-graph gate; a
@@ -9976,7 +9997,7 @@ export async function sendDm(
 		.single();
 	if (error || !data) {
 		if (error?.code === '42501') {
-			throw new Error("You can only message people you follow (or who follow you), and who haven't blocked you.");
+			throw new Error(m('messages.sendNotAllowed'));
 		}
 		const friendly = rateLimitErrorMessage(m, error);
 		if (friendly) throw new Error(friendly);

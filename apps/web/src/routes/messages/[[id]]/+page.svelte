@@ -2,13 +2,14 @@
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { appErrorMessage } from '#lib/core/supabase_error.ts';
 	import { m as tr } from '#lib/i18n/store.svelte.ts';
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { initial } from '#lib/format/avatar.ts';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import DmRouteAttachment from '#lib/components/DmRouteAttachment.svelte';
 	import { bodyRestatesAttachment, hasDmRouteAttachment } from '#lib/social/dm_attachment.ts';
+	import { mergeDmMessages } from '#lib/social/dm_thread.ts';
 	import {
 		fetchDmThreads,
 		fetchDmThread,
@@ -33,6 +34,11 @@
 	let sendError = $state<string | null>(null);
 	let threadsError = $state(false);
 	let threadError = $state(false);
+	// The thread is read from its newest end, a page at a time (dm_thread.ts).
+	let hasMore = $state(false);
+	let loadingEarlier = $state(false);
+	let earlierError = $state(false);
+	let scroller = $state<HTMLDivElement | null>(null);
 
 	let activeId = $derived(page.params.id ?? null);
 	const draft = $derived(activeId ? (drafts[activeId] ?? '') : '');
@@ -81,6 +87,7 @@
 		sendError = null;
 		if (!id || !auth.user) {
 			messages = [];
+			hasMore = false;
 			threadError = false;
 			return;
 		}
@@ -97,18 +104,22 @@
 		// failure and the retry banner never rendered.
 		loadingThread = true;
 		threadError = false;
+		earlierError = false;
 		try {
-			const rows = await fetchDmThread(id);
+			const result = await fetchDmThread(id);
 			if (id !== activeId) return;
-			messages = rows;
+			messages = result.messages;
+			hasMore = result.hasMore;
 		} catch {
 			if (id !== activeId) return;
 			messages = [];
+			hasMore = false;
 			threadError = true;
 			return;
 		} finally {
 			if (id === activeId) loadingThread = false;
 		}
+		void scrollToNewest();
 		const newestShown = messages.findLast((m) => m.sender_id === id);
 		if (!newestShown) return;
 		try {
@@ -122,6 +133,35 @@
 		}
 	}
 
+	// The first page is the newest end of the conversation, so it opens there.
+	async function scrollToNewest() {
+		await tick();
+		if (scroller) scroller.scrollTop = scroller.scrollHeight;
+	}
+
+	// Prepending a page must not move what the reader is looking at: keep the
+	// distance from the bottom, which the new rows above leave unchanged.
+	async function loadEarlier() {
+		const id = activeId;
+		const oldest = messages[0];
+		if (!id || !oldest || loadingEarlier) return;
+		loadingEarlier = true;
+		earlierError = false;
+		try {
+			const result = await fetchDmThread(id, { before: oldest });
+			if (id !== activeId) return;
+			const fromBottom = scroller ? scroller.scrollHeight - scroller.scrollTop : 0;
+			messages = mergeDmMessages(messages, result.messages);
+			hasMore = result.hasMore;
+			await tick();
+			if (scroller) scroller.scrollTop = scroller.scrollHeight - fromBottom;
+		} catch {
+			if (id === activeId) earlierError = true;
+		} finally {
+			loadingEarlier = false;
+		}
+	}
+
 	async function send() {
 		const id = activeId;
 		if (!id || !draft.trim() || sending) return;
@@ -130,7 +170,8 @@
 		try {
 			const body = drafts[id] ?? '';
 			const msg = await sendDm(id, body);
-			messages = [...messages, msg];
+			messages = mergeDmMessages(messages, [msg]);
+			void scrollToNewest();
 			delete drafts[id];
 			drafts = { ...drafts };
 			try {
@@ -220,7 +261,7 @@
 							{activeThread?.partnerName ?? tr('messages.runnerFallback')}
 						</a>
 					</header>
-					<div class="messages">
+					<div class="messages" bind:this={scroller}>
 						{#if loadingThread}
 							<p class="muted center">{tr('shell.loading')}</p>
 						{:else if threadError}
@@ -237,6 +278,21 @@
 						{:else if messages.length === 0}
 							<p class="muted center">{tr('messages.emptyConversation')}</p>
 						{:else}
+							{#if hasMore}
+								<div class="earlier">
+									<button
+										type="button"
+										class="btn btn-secondary btn-sm"
+										onclick={() => void loadEarlier()}
+										disabled={loadingEarlier}
+									>
+										{loadingEarlier ? tr('shell.loading') : tr('messages.loadEarlier')}
+									</button>
+									{#if earlierError}
+										<p class="send-error" role="alert">{tr('messages.loadEarlierFailed')}</p>
+									{/if}
+								</div>
+							{/if}
 							{#each messages as m (m.id)}
 								{@const attached = m.route_id}
 								<div class="bubble" class:mine={m.sender_id === me}>
@@ -429,6 +485,12 @@
 	   inherit the sent-bubble's inverted foreground. */
 	.bubble.mine :global(.attachment) {
 		color: var(--color-text);
+	}
+	.earlier {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.25rem;
 	}
 	.send-error {
 		color: var(--color-danger-text);

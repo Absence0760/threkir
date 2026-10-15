@@ -4577,5 +4577,7 @@
   "followRequestsApproved": "{name} kann jetzt dein Profil sehen",
   "followRequestsDeclinedBanner": "Anfrage abgelehnt",
   "followRequestsLoadError": "Follower-Anfragen konnten nicht geladen werden.",
-  "followRequestsActionFailed": "Anfrage konnte nicht aktualisiert werden."
+  "followRequestsActionFailed": "Anfrage konnte nicht aktualisiert werden.",
+  "coachingAthleteMapsClippedNote": "Karten lassen die Bereiche weg, die diese Person mit Privatsphäre-Zonen verbirgt.",
+  "coachingAthleteRunMapLabel": "Karte des Laufs vom {date}, ohne die Privatsphäre-Zonen der Person"
 }

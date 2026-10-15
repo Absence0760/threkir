@@ -8522,7 +8522,7 @@ class ApiClient {
     final data = await _client
         .from(RunRow.table)
         .select(
-            'id, started_at, distance_m, duration_s, is_public, source, route_id, activity_type, metadata')
+            'id, started_at, distance_m, duration_s, is_public, source, route_id, activity_type, metadata, track_url')
         .eq(RunRow.colUserId, athleteId)
         .order(RunRow.colStartedAt, ascending: false)
         .limit(limit);
@@ -8537,8 +8537,26 @@ class ApiClient {
         routeId: r['route_id'] as String?,
         activityType: (r['activity_type'] as String?) ?? 'run',
         metadata: r['metadata'] as Map<String, dynamic>?,
+        trackUrl: r['track_url'] as String?,
       );
     }).toList();
+  }
+
+  /// Whether a linked coach is served the athlete's clipped run map (the
+  /// server's `coach_run_map` flag, decisions § 1968). Mirrors web
+  /// `coachRunMapEnabled`. Fail-closed: any failure reads as off.
+  Future<bool> coachRunMapEnabled() async {
+    try {
+      final result = await _client.rpc(
+        'coach_run_map_enabled',
+        params: const {},
+        get: true,
+      );
+      return result == true;
+    } catch (e) {
+      debugPrint('coachRunMapEnabled failed: $e');
+      return false;
+    }
   }
 
   /// The athlete's active training plan + its weeks/workouts for the coach
@@ -9054,6 +9072,14 @@ class AthleteRunSummary {
   final String activityType;
   final Map<String, dynamic>? metadata;
 
+  /// The run's Storage path, kept only as the preview cache key and as the
+  /// fact that a track exists: the coach's map is served clipped by
+  /// `clip-public-track` (decisions § 1968), and the Storage policy keeps
+  /// the bytes owner-only.
+  final String? trackUrl;
+
+  bool get hasTrack => trackUrl != null;
+
   const AthleteRunSummary({
     required this.id,
     required this.startedAt,
@@ -9064,6 +9090,7 @@ class AthleteRunSummary {
     required this.routeId,
     required this.activityType,
     required this.metadata,
+    this.trackUrl,
   });
 }
 

@@ -20198,5 +20198,18 @@
   "followRequestsActionFailed": "Couldn't update the request.",
   "@followRequestsActionFailed": {
     "description": "Banner when approving or declining a follow request failed"
+  },
+  "coachingAthleteMapsClippedNote": "Maps leave out the areas this athlete hides with privacy zones.",
+  "@coachingAthleteMapsClippedNote": {
+    "description": "Note above a coach's view of an athlete's run maps"
+  },
+  "coachingAthleteRunMapLabel": "Map of the run on {date}, with the athlete's privacy zones removed",
+  "@coachingAthleteRunMapLabel": {
+    "description": "Accessibility label for the clipped map of one of an athlete's runs on the coach's view",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
   }
 }

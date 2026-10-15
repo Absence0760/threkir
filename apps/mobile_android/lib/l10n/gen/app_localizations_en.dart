@@ -15791,4 +15791,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get followRequestsActionFailed => 'Couldn\'t update the request.';
+
+  @override
+  String get coachingAthleteMapsClippedNote =>
+      'Maps leave out the areas this athlete hides with privacy zones.';
+
+  @override
+  String coachingAthleteRunMapLabel(String date) {
+    return 'Map of the run on $date, with the athlete\'s privacy zones removed';
+  }
 }

@@ -4577,5 +4577,7 @@
   "followRequestsApproved": "{name} agora pode ver seu perfil",
   "followRequestsDeclinedBanner": "Solicitação recusada",
   "followRequestsLoadError": "Não foi possível carregar as solicitações para seguir.",
-  "followRequestsActionFailed": "Não foi possível atualizar a solicitação."
+  "followRequestsActionFailed": "Não foi possível atualizar a solicitação.",
+  "coachingAthleteMapsClippedNote": "Os mapas omitem as áreas que este atleta oculta com zonas de privacidade.",
+  "coachingAthleteRunMapLabel": "Mapa da corrida de {date}, sem as zonas de privacidade do atleta"
 }

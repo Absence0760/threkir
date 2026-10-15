@@ -26336,6 +26336,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn't update the request.'**
   String get followRequestsActionFailed;
+
+  /// Note above a coach's view of an athlete's run maps
+  ///
+  /// In en, this message translates to:
+  /// **'Maps leave out the areas this athlete hides with privacy zones.'**
+  String get coachingAthleteMapsClippedNote;
+
+  /// Accessibility label for the clipped map of one of an athlete's runs on the coach's view
+  ///
+  /// In en, this message translates to:
+  /// **'Map of the run on {date}, with the athlete's privacy zones removed'**
+  String coachingAthleteRunMapLabel(String date);
 }
 
 class _AppLocalizationsDelegate

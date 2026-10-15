@@ -4577,5 +4577,7 @@
   "followRequestsApproved": "{name}さんがあなたのプロフィールを見られるようになりました",
   "followRequestsDeclinedBanner": "リクエストを拒否しました",
   "followRequestsLoadError": "フォローリクエストを読み込めませんでした。",
-  "followRequestsActionFailed": "リクエストを更新できませんでした。"
+  "followRequestsActionFailed": "リクエストを更新できませんでした。",
+  "coachingAthleteMapsClippedNote": "地図には、このアスリートがプライバシーゾーンで非表示にしている範囲は含まれません。",
+  "coachingAthleteRunMapLabel": "{date}のランの地図（アスリートのプライバシーゾーンを除く）"
 }

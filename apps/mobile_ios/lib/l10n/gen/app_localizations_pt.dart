@@ -15961,6 +15961,15 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get followRequestsActionFailed =>
       'Não foi possível atualizar o pedido.';
+
+  @override
+  String get coachingAthleteMapsClippedNote =>
+      'Os mapas omitem as áreas que este atleta oculta com zonas de privacidade.';
+
+  @override
+  String coachingAthleteRunMapLabel(String date) {
+    return 'Mapa da corrida de $date, sem as zonas de privacidade do atleta';
+  }
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -31905,4 +31914,13 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get followRequestsActionFailed =>
       'Não foi possível atualizar a solicitação.';
+
+  @override
+  String get coachingAthleteMapsClippedNote =>
+      'Os mapas omitem as áreas que este atleta oculta com zonas de privacidade.';
+
+  @override
+  String coachingAthleteRunMapLabel(String date) {
+    return 'Mapa da corrida de $date, sem as zonas de privacidade do atleta';
+  }
 }

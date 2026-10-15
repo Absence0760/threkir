@@ -4577,5 +4577,7 @@
   "followRequestsApproved": "{name} peut maintenant voir votre profil",
   "followRequestsDeclinedBanner": "Demande refusée",
   "followRequestsLoadError": "Impossible de charger les demandes d'abonnement.",
-  "followRequestsActionFailed": "Impossible de mettre à jour la demande."
+  "followRequestsActionFailed": "Impossible de mettre à jour la demande.",
+  "coachingAthleteMapsClippedNote": "Les cartes omettent les zones que cet athlète masque avec ses zones de confidentialité.",
+  "coachingAthleteRunMapLabel": "Carte de la sortie du {date}, sans les zones de confidentialité de l'athlète"
 }

@@ -15993,4 +15993,13 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get followRequestsActionFailed =>
       'Impossible de mettre à jour la demande.';
+
+  @override
+  String get coachingAthleteMapsClippedNote =>
+      'Les cartes omettent les zones que cet athlète masque avec ses zones de confidentialité.';
+
+  @override
+  String coachingAthleteRunMapLabel(String date) {
+    return 'Carte de la sortie du $date, sans les zones de confidentialité de l\'athlète';
+  }
 }

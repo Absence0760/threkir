@@ -15968,4 +15968,13 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get followRequestsActionFailed =>
       'Anfrage konnte nicht aktualisiert werden.';
+
+  @override
+  String get coachingAthleteMapsClippedNote =>
+      'Karten lassen die Bereiche weg, die diese Person mit Privatsphäre-Zonen verbirgt.';
+
+  @override
+  String coachingAthleteRunMapLabel(String date) {
+    return 'Karte des Laufs vom $date, ohne die Privatsphäre-Zonen der Person';
+  }
 }

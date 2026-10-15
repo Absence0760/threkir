@@ -21,6 +21,7 @@ class _FakeApi extends ApiClient {
     this.plans = const [],
     this.assignError,
     this.loadError,
+    this.mapEnabled = false,
   });
 
   final List<AthleteRunSummary> runs;
@@ -28,8 +29,23 @@ class _FakeApi extends ApiClient {
   final List<TrainingPlanRow> plans;
   final String? assignError;
   final Object? loadError;
+  final bool mapEnabled;
 
   String? lastAssignedPlanId;
+  final List<String> clipped = [];
+
+  @override
+  Future<bool> coachRunMapEnabled() async => mapEnabled;
+
+  @override
+  Future<List<Waypoint>> fetchClippedTrackForRun(String runId) async {
+    clipped.add(runId);
+    return const [
+      Waypoint(lat: -33.87, lng: 151.22),
+      Waypoint(lat: -33.88, lng: 151.23),
+      Waypoint(lat: -33.89, lng: 151.24),
+    ];
+  }
 
   @override
   String? get userId => 'coach-1';
@@ -120,6 +136,19 @@ AthleteRunSummary _run(String id) => AthleteRunSummary(
       metadata: null,
     );
 
+AthleteRunSummary _trackedRun(String id) => AthleteRunSummary(
+      id: id,
+      startedAt: DateTime.utc(2026, 1, 11, 7),
+      distanceM: 8000,
+      durationS: 2400,
+      isPublic: false,
+      source: 'app',
+      routeId: null,
+      activityType: 'run',
+      metadata: null,
+      trackUrl: 'a1/$id.json.gz',
+    );
+
 AthleteRunSummary _strollerRun() => AthleteRunSummary(
       id: 'r-stroller',
       startedAt: DateTime.utc(2026, 3, 28, 7),
@@ -205,6 +234,30 @@ void main() {
     // (mirrors web's `assignNoPlans` branch).
     expect(find.text(l10n.coachingAthleteAssignNoPlans), findsOneWidget);
     expect(find.text(l10n.coachingAthleteRecentRuns), findsOneWidget);
+  });
+
+  testWidgets(
+      'with the coach map gate open, a tracked run draws its map through the '
+      'clipped non-owner path', (tester) async {
+    final prefs = await _prefs();
+    final api = _FakeApi(runs: [_trackedRun('t1'), _run('r1')], mapEnabled: true);
+    await _pump(tester, api, prefs);
+    await tester.pump();
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    expect(find.byKey(const ValueKey('coach-run-map-t1')), findsOneWidget);
+    expect(find.byKey(const ValueKey('coach-run-map-r1')), findsNothing);
+    expect(find.text(l10n.coachingAthleteMapsClippedNote), findsOneWidget);
+    expect(api.clipped, ['t1']);
+  });
+
+  testWidgets('with the gate closed no map is drawn and nothing is fetched',
+      (tester) async {
+    final prefs = await _prefs();
+    final api = _FakeApi(runs: [_trackedRun('t1')]);
+    await _pump(tester, api, prefs);
+    await tester.pump();
+    expect(find.byKey(const ValueKey('coach-run-map-t1')), findsNothing);
+    expect(api.clipped, isEmpty);
   });
 
   testWidgets('offers the assign control when the coach has plans and the '

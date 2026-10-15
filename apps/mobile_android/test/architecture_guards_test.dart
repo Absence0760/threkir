@@ -2232,6 +2232,27 @@ void main() {
       );
     });
 
+    test('the coach view clips the athlete map as the athlete, not the coach',
+        () {
+      // Reason: decisions § 1968 serves a linked coach the athlete's run map
+      // only through clip-public-track. Without ownerUserId the preview
+      // would take the owner branch and ask Storage for the raw bytes.
+      final source =
+          File('lib/screens/coaching_athlete_screen.dart').readAsStringSync();
+      expect(
+        source,
+        matches(RegExp(r'RunTrackPreview\([^)]*runId: r\.id', dotAll: true)),
+        reason: 'the coach view must thread the run id into RunTrackPreview.',
+      );
+      expect(
+        source,
+        matches(RegExp(r'RunTrackPreview\([^)]*ownerUserId: widget\.athleteId',
+            dotAll: true)),
+        reason: 'the coach view must name the athlete as the owner, so the '
+            'privacy-zone clip runs against the athlete\'s zones.',
+      );
+    });
+
     test('RunTrackPreview cache is bounded (LRU)', () {
       // Reason: without the cap a long session through 1000+ runs
       // holds every deserialised track in memory until app restart.

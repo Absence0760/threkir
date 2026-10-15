@@ -15208,4 +15208,13 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get followRequestsActionFailed => 'リクエストを更新できませんでした。';
+
+  @override
+  String get coachingAthleteMapsClippedNote =>
+      '地図には、このアスリートがプライバシーゾーンで非表示にしている範囲は含まれません。';
+
+  @override
+  String coachingAthleteRunMapLabel(String date) {
+    return '$dateのランの地図（アスリートのプライバシーゾーンを除く）';
+  }
 }

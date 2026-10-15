@@ -669,7 +669,8 @@ steal focus from typing). `RotaryScrollWiringTest` pins the call sites.
   server's smoother: once the row has its `track_url`, the
   `runs_enqueue_watch_distance_recompute` trigger queues a
   `distance_recompute` job, which replays this track and replaces
-  `distance_m` with the smoothed figure (plus the step-filled metres),
+  `distance_m` with the smoothed figure (its gaps credited the larger of
+  their chords and the step-filled metres),
   keeping the wrist's figure as `distance_recorded_m`
   ([gps_distance.md § Server recompute](../../docs/features/gps_distance.md#server-recompute),
   decisions § 1991).

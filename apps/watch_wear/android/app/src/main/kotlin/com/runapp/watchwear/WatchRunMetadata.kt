@@ -1,5 +1,7 @@
 package com.runapp.watchwear
 
+import com.runapp.watchwear.recording.GnssSignalSummary
+import com.runapp.watchwear.recording.toJson
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.addJsonObject
 import kotlinx.serialization.json.buildJsonArray
@@ -30,6 +32,7 @@ fun buildRunMetadata(
     distanceEstimator: String? = null,
     distanceStepFilledM: Double? = null,
     locationProvider: String? = null,
+    gnssSignal: GnssSignalSummary? = null,
 ): JsonObject = buildJsonObject {
     put("activity_type", activityType)
     if (avgBpm != null) put("avg_bpm", avgBpm)
@@ -50,6 +53,7 @@ fun buildRunMetadata(
         put("distance_step_filled_m", distanceStepFilledM)
     }
     if (locationProvider != null) put("location_provider", locationProvider)
+    if (gnssSignal != null) put("gnss_signal", gnssSignal.toJson())
     if (laps.isNotEmpty()) {
         put("laps", buildJsonArray {
             var prevMs = 0L

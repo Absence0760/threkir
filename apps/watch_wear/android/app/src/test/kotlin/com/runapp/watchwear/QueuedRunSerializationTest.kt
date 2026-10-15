@@ -1,5 +1,6 @@
 package com.runapp.watchwear
 
+import com.runapp.watchwear.recording.GnssSignalSummary
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
@@ -41,6 +42,7 @@ class QueuedRunSerializationTest {
         ),
         steps = 4_500,
         isPublic = true,
+        gnssSignal = GnssSignalSummary(samples = 1800, usedMedian = 0),
     )
 
     @Test

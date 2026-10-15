@@ -62,6 +62,7 @@ class RunRecordingService : Service() {
     private var stepsJob: Job? = null
     private var tickerJob: Job? = null
     private var checkpointJob: Job? = null
+    private var gnssStatusJob: Job? = null
 
     private lateinit var gps: GpsRecorder
     private lateinit var hr: HeartRateMonitor
@@ -98,6 +99,8 @@ class RunRecordingService : Service() {
     /// the arbitration and the [onGps] it gates; it is taken before
     /// [distanceLock], never inside it.
     private val sourceArbiter = LocationSourceArbiter()
+    private val gnssSignalLock = Any()
+    private var gnssSignal = GnssSignalAccumulator()
     private val fixLock = Any()
     /// Wall-clock timestamp of the most recent GPS point delivered while
     /// Recording. Used by the self-heal watchdog to re-subscribe if the
@@ -259,6 +262,8 @@ class RunRecordingService : Service() {
             livePace.seal()
         }
         synchronized(fixLock) { sourceArbiter.reset() }
+        synchronized(gnssSignalLock) { gnssSignal = GnssSignalAccumulator() }
+        subscribeToGnssStatus()
         lastPointAtMs = 0L
         trackOverlay.clear()
         bpmSum = 0
@@ -482,6 +487,7 @@ class RunRecordingService : Service() {
         stepsJob?.cancel(); stepsJob = null
         tickerJob?.cancel(); tickerJob = null
         checkpointJob?.cancel(); checkpointJob = null
+        gnssStatusJob?.cancel(); gnssStatusJob = null
 
         val (finishDistanceM, stepFilledM) = synchronized(distanceLock) {
             closeDistanceSegment()
@@ -514,6 +520,7 @@ class RunRecordingService : Service() {
                 distanceM = finishDistanceM,
                 distanceStepFilledM = stepFilledM,
                 locationProvider = locationProvider,
+                gnssSignal = gnssSignalSummary(),
                 finishedHr = hr,
                 trackFilePath = file?.absolutePath,
                 laps = laps.toList(),
@@ -628,6 +635,23 @@ class RunRecordingService : Service() {
             if (verdict.feed) onGps(p)
         }
     }
+
+    /// Feed the receiver's satellite status into [gnssSignal] for
+    /// `metadata.gnss_signal`. A paused reading is dropped, as a paused fix
+    /// is. L4: a failure only loses the summary.
+    private fun subscribeToGnssStatus() {
+        gnssStatusJob?.cancel()
+        gnssStatusJob = scope.launch {
+            gps.gnssStatusStream()
+                .catch { e -> android.util.Log.w(TAG, "gnss status stream failed", e) }
+                .collect { sample ->
+                    if (!isPaused()) synchronized(gnssSignalLock) { gnssSignal.add(sample) }
+                }
+        }
+    }
+
+    private fun gnssSignalSummary(): GnssSignalSummary? =
+        synchronized(gnssSignalLock) { gnssSignal.summary() }
 
     /// `metadata.location_provider`, written only for a run with a track.
     private fun locationProviderForTrack(pointCount: Int): String? =
@@ -758,6 +782,7 @@ class RunRecordingService : Service() {
                 distanceEstimator = GpsDistanceEstimator.SPEC_ID,
                 distanceStepFilledM = stepFilledM,
                 locationProvider = locationProviderForTrack(file.pointCount),
+                gnssSignal = gnssSignalSummary(),
             )
         )
     }

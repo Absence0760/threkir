@@ -62,6 +62,9 @@ data class Checkpoint(
     // the normal stop path would. Null on an older checkpoint, or before the
     // run has a track.
     val locationProvider: String? = null,
+    // The receiver's signal-quality summary so far, so a recovered run keeps
+    // `metadata.gnss_signal`. Null on an older checkpoint or before a reading.
+    val gnssSignal: GnssSignalSummary? = null,
 )
 
 @Serializable

@@ -54,6 +54,6 @@ test('every autoVerify host in the manifest is the host this file is served from
 
 test('the release sync keeps .well-known off the immutable year-long cache', () => {
 	const workflow = read('../../.github/workflows/release-web.yml');
-	assert.match(workflow, /--exclude "\.well-known\/\*"/);
-	assert.match(workflow, /--include "\.well-known\/\*"/);
+	assert.ok(workflow.includes('--exclude ".well-known/*"'), 'the immutable sync must exclude .well-known');
+	assert.ok(workflow.includes('--include ".well-known/*"'), 'a short-cache sync must include .well-known');
 });

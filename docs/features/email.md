@@ -705,7 +705,7 @@ neither, and neither carries a `List-Unsubscribe` header.
   deep-link to `/runs/{id}`, which serves a non-owner the shared view of any
   run their audience admits — the mention gate already required that audience.
 - [x] **Follow requests reach the default mode** — `follow_request` (private
-  profiles, `decisions.md § 1967`) is in `importantKinds` since § 1982: only the
+  profiles, `decisions.md § 1967`) is in `importantKinds` since § 1983: only the
   owner can let the asker in, so the default `important` mode emails and pushes
   it, where a plain `follow` stays under `all`. Deep link `/follow-requests`.
   Its own opt-OUT mute is `notify_follow_request` (web Settings →

@@ -48,13 +48,12 @@ export const ROUTE_REQUEST_RATE_MAX = 60;
 export const ROUTE_REQUEST_RATE_WINDOW_S = 3600;
 import { validateConstraints, type RouteConstraints } from './constraints';
 
-/// Matches the model used by route-describe + the coach (decisions.md;
-/// claude-api skill: default to Opus 4.8 with adaptive thinking).
+/// Matches the model used by route-describe + the coach.
 const ROUTE_REQUEST_MODEL = 'claude-opus-4-8';
 
-/// Tool-use output is one small JSON object; adaptive thinking draws from
-/// the same ceiling, so leave headroom for a thinking block plus the
-/// tool_use block. 1024 mirrors route-describe.
+/// One small tool_use object. No thinking block: the API refuses extended
+/// thinking alongside a forced tool_choice (decisions § 1930), and the forced
+/// tool is what keeps the output a typed object rather than prose.
 const ROUTE_REQUEST_MAX_TOKENS = 1024;
 
 /// Hard wall-clock cap so a slow model call can't hang the request.
@@ -296,7 +295,6 @@ export async function handleRouteRequest(
 			{
 				model: ROUTE_REQUEST_MODEL,
 				max_tokens: ROUTE_REQUEST_MAX_TOKENS,
-				thinking: { type: 'adaptive' },
 				system: SYSTEM_PROMPT,
 				// Force the tool so the output is a typed constraint object,
 				// never prose. tool_choice pins the single extraction tool.

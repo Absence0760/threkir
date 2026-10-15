@@ -7,6 +7,7 @@ import {
 	AI_DISCLOSURE_ERROR,
 	AI_DISCLOSURE_VERSION_COACH,
 	AI_DISCLOSURE_VERSION_PLAN_AI,
+	AI_DISCLOSURE_VERSION_PLAN_EDIT_AI,
 	AI_DISCLOSURE_VERSION_ROUTE_AI,
 	aiDisclosureDenialBody,
 	aiDisclosureFromProfileRow,
@@ -71,7 +72,7 @@ test('a v2 route-AI acceptance does NOT satisfy the plan-assistant scope', () =>
 	);
 });
 
-test('the v3 acceptance satisfies every scope', () => {
+test('the v3 acceptance satisfies every scope below plan edits', () => {
 	const record = { version: AI_DISCLOSURE_VERSION_PLAN_AI, acceptedAt: ACCEPTED };
 	for (const required of [
 		AI_DISCLOSURE_VERSION_COACH,
@@ -79,6 +80,35 @@ test('the v3 acceptance satisfies every scope', () => {
 		AI_DISCLOSURE_VERSION_PLAN_AI,
 	]) {
 		assert.deepEqual(checkAiDisclosure(record, required), { ok: true, version: 3 });
+	}
+});
+
+test('no acceptance below v4 satisfies the plan-edit scope', () => {
+	// Plan edits send the active plan with the runner's change request so the
+	// model can propose changes to it. The v1 copy names the plan, but for the
+	// Coach to comment on; a new purpose is a new rung (decisions § 571).
+	for (const version of [
+		AI_DISCLOSURE_VERSION_COACH,
+		AI_DISCLOSURE_VERSION_ROUTE_AI,
+		AI_DISCLOSURE_VERSION_PLAN_AI,
+	]) {
+		assert.deepEqual(
+			checkAiDisclosure({ version, acceptedAt: ACCEPTED }, AI_DISCLOSURE_VERSION_PLAN_EDIT_AI),
+			{ ok: false, reason: 'stale' },
+			`v${version}`,
+		);
+	}
+});
+
+test('the v4 acceptance satisfies every scope', () => {
+	const record = { version: AI_DISCLOSURE_VERSION_PLAN_EDIT_AI, acceptedAt: ACCEPTED };
+	for (const required of [
+		AI_DISCLOSURE_VERSION_COACH,
+		AI_DISCLOSURE_VERSION_ROUTE_AI,
+		AI_DISCLOSURE_VERSION_PLAN_AI,
+		AI_DISCLOSURE_VERSION_PLAN_EDIT_AI,
+	]) {
+		assert.deepEqual(checkAiDisclosure(record, required), { ok: true, version: 4 });
 	}
 });
 
@@ -284,5 +314,6 @@ test('AI_DISCLOSURE_CURRENT_VERSION matches ai_disclosure_current_version() in S
 test('the version ladder is ordered and the current version is its top rung', () => {
 	assert.ok(AI_DISCLOSURE_VERSION_COACH < AI_DISCLOSURE_VERSION_ROUTE_AI);
 	assert.ok(AI_DISCLOSURE_VERSION_ROUTE_AI < AI_DISCLOSURE_VERSION_PLAN_AI);
-	assert.equal(AI_DISCLOSURE_CURRENT_VERSION, AI_DISCLOSURE_VERSION_PLAN_AI);
+	assert.ok(AI_DISCLOSURE_VERSION_PLAN_AI < AI_DISCLOSURE_VERSION_PLAN_EDIT_AI);
+	assert.equal(AI_DISCLOSURE_CURRENT_VERSION, AI_DISCLOSURE_VERSION_PLAN_EDIT_AI);
 });

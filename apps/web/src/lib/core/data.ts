@@ -3197,19 +3197,41 @@ export async function fetchMyClubsWithError(): Promise<{
 		userId = session?.user?.id;
 	}
 	if (!userId) return { clubs: [], error: null };
-	const { data, error } = await supabase
-		.from(TABLES.club_members)
-		.select(`club_id, role, clubs!inner(${CLUB_SELECT_COLS})` as const)
-		.eq('user_id', userId)
-		.order('joined_at', { ascending: false });
-	if (error) return { clubs: [], error: error.message };
+	const uid = userId;
+	// Walked by cursor: an unranged select is capped at `db.max-rows` (1000)
+	// with no flag, and nothing bounds how many clubs one user joins (§ 1931).
+	const walk = await walkKeyset(MY_CLUB_MEMBERSHIP_ORDER, (after, limit) => {
+		let q = supabase
+			.from(TABLES.club_members)
+			.select(`club_id, role, joined_at, clubs!inner(${CLUB_SELECT_COLS})` as const)
+			.eq('user_id', uid);
+		if (after) q = q.or(after);
+		for (const k of MY_CLUB_MEMBERSHIP_ORDER) {
+			q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+		}
+		return q.limit(limit);
+	});
+	if (!walk.complete) {
+		console.error('fetchMyClubs failed', walk.error);
+		const error = walk.error as { message?: unknown } | null;
+		return { clubs: [], error: typeof error?.message === 'string' ? error.message : 'unavailable' };
+	}
 	// `(row: any)` stood here and hid that this read alone skipped `asClub`:
 	// the embedded row's `join_policy` arrived as the bare `string` the
 	// generated type gives it and was handed on under a type promising the
 	// union. Typing the client is what made the gap visible.
-	const clubs = (data ?? []).map((row) => row.clubs).filter(Boolean).map(asClub);
+	const clubs = walk.rows.map((row) => row.clubs).filter(Boolean).map(asClub);
 	return enrichClubs(clubs);
 }
+
+/// Most recently joined first; `club_id` (unique within one user's
+/// memberships — the key is `(club_id, user_id)`) breaks a `joined_at` tie so
+/// the order is total. Mobile's `SocialService.myClubMembershipOrder` is the
+/// same order.
+const MY_CLUB_MEMBERSHIP_ORDER: readonly KeysetKey[] = [
+	{ column: 'joined_at', ascending: false, nullsFirst: false },
+	{ column: 'club_id', ascending: false, nullsFirst: false },
+];
 
 export async function fetchMyClubs(): Promise<ClubWithMeta[]> {
 	return (await fetchMyClubsWithError()).clubs;
@@ -3298,13 +3320,28 @@ async function enrichClubs(
 	const ids = clubs.map((c) => c.id);
 	const userId = auth.user?.id;
 
-	const rolesRes = userId
-		? await supabase
-				.from(TABLES.club_members)
-				.select('club_id, role, status')
-				.in('club_id', ids)
-				.eq('user_id', userId)
-		: { data: [] as { club_id: string; role: string; status: string }[], error: null };
+	// Chunked: a walked `fetchMyClubs` can list more clubs than one `in`
+	// filter carries before the request line overflows (decisions § 653).
+	type MembershipRow = { club_id: string; role: string; status: string };
+	let rolesRes: { data: MembershipRow[] | null; error: { message: string; code?: string | null } | null } = {
+		data: [],
+		error: null,
+	};
+	if (userId) {
+		const pages = await Promise.all(
+			chunk(ids, FEED_FOLLOWEE_CHUNK).map((part) =>
+				supabase
+					.from(TABLES.club_members)
+					.select('club_id, role, status')
+					.in('club_id', part)
+					.eq('user_id', userId)
+			)
+		);
+		const failed = pages.find((p) => p.error);
+		rolesRes = failed?.error
+			? { data: null, error: failed.error }
+			: { data: pages.flatMap((p) => p.data ?? []), error: null };
+	}
 
 	const roles = new Map<string, ClubRole>();
 	const statuses = new Map<string, MembershipStatus>();
@@ -3535,13 +3572,24 @@ export async function fetchPendingRequests(clubId: string): Promise<(ClubMember 
 	display_name: string | null;
 	avatar_url: string | null;
 })[]> {
-	const { data: rows } = await supabase
-		.from(TABLES.club_members)
-		.select('club_id, user_id, role, status, joined_at')
-		.eq('club_id', clubId)
-		.eq('status', 'pending')
-		.order('joined_at', { ascending: true });
-	if (!rows || rows.length === 0) return [];
+	// Walked by cursor: nothing bounds how many requests a request-to-join club
+	// accumulates, and an unranged select capped at `db.max-rows` (1000) hid
+	// every request past the cap from the admin with no error (§ 1931).
+	const walk = await walkKeyset(CLUB_MEMBER_ORDER, (after, limit) => {
+		let q = supabase
+			.from(TABLES.club_members)
+			.select('club_id, user_id, role, status, joined_at')
+			.eq('club_id', clubId)
+			.eq('status', 'pending');
+		if (after) q = q.or(after);
+		for (const k of CLUB_MEMBER_ORDER) {
+			q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+		}
+		return q.limit(limit);
+	});
+	if (!walk.complete) console.error('fetchPendingRequests failed', walk.error);
+	const rows = walk.rows;
+	if (rows.length === 0) return [];
 	const userIds = (rows as ClubMember[]).map((r) => r.user_id);
 	const byId = await fetchProfilesByIds(userIds);
 	return (rows as ClubMember[]).map((r) => ({

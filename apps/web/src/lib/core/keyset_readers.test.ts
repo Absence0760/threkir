@@ -128,3 +128,34 @@ test('fetchRuns takes a keyset cursor, and its whole-history walk is a keyset wa
 		'fetchRunsWithError must hand back the cursor of the last run it read',
 	);
 });
+
+test('the my-clubs and pending-request reads walk by keyset cursor', () => {
+	// Both were one unranged select, which PostgREST caps at `db.max-rows`
+	// (1000) with a 200 and no flag, and nothing bounds how many clubs one user
+	// joins or how many requests a club accumulates (§ 1931).
+	for (const [name, order] of [
+		['fetchMyClubsWithError', 'MY_CLUB_MEMBERSHIP_ORDER'],
+		['fetchPendingRequests', 'CLUB_MEMBER_ORDER'],
+	] as const) {
+		const fn = body(name);
+		assert.match(fn, new RegExp(`walkKeyset\\(${order}, `), `${name} must walk by cursor`);
+		assert.match(fn, /if \(after\) q = q\.or\(after\)/, `${name} must start each page after the last`);
+		assert.match(
+			fn,
+			new RegExp(`for \\(const k of ${order}\\)[\\s\\S]*?\\.order\\(k\\.column`),
+			`${name} must sort by the order its cursor is taken in`,
+		);
+		assert.doesNotMatch(fn, /\.range\(/, `${name} must not page with .range()`);
+	}
+	assert.match(body('fetchMyClubsWithError'), /joined_at, clubs!inner\(/, 'the cursor reads joined_at off each row');
+});
+
+test('enrichClubs chunks its membership in filter', () => {
+	// A walked fetchMyClubs can list more clubs than one `in` filter carries
+	// before the request line overflows (§ 653).
+	const start = source.indexOf('async function enrichClubs(');
+	assert.ok(start >= 0, 'Could not locate enrichClubs — rename?');
+	const fn = source.slice(start, source.indexOf('\nexport ', start));
+	assert.match(fn, /chunk\(ids, FEED_FOLLOWEE_CHUNK\)/);
+	assert.doesNotMatch(fn, /\.in\('club_id', ids\)/);
+});

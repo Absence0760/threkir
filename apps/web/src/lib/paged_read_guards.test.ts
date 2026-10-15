@@ -35,9 +35,10 @@ const srcRoot = resolve(import.meta.dirname, '..');
  * ending on one is a total order. `id` is every table's primary key here;
  * the two membership tables are keyed on a pair whose other half the query
  * already fixes with `.eq()`, which is why their own readers tiebreak on the
- * user rather than on an id they do not have.
+ * user — or, for a user's own clubs, on the club — rather than on an id they
+ * do not have.
  */
-const UNIQUE_TIEBREAKS = ['id', 'user_id', 'follower_id', 'followee_id'];
+const UNIQUE_TIEBREAKS = ['id', 'user_id', 'club_id', 'follower_id', 'followee_id'];
 
 function sources(dir: string): string[] {
 	const out: string[] = [];
@@ -155,8 +156,9 @@ test('every keyset walk runs over a total order that something sorts by', () => 
 	}
 
 	// Population: a walk that resolved nothing would satisfy the assertion
-	// below while proving nothing. Seven today — fetchRuns, the exercise
-	// catalogue, the backup's runs and routes, and the three ZIP-import reads.
-	assert.ok(walks >= 7, `only found ${walks} walkKeyset calls — walker broken?`);
+	// below while proving nothing. Nine today — fetchRuns, the exercise
+	// catalogue, the backup's runs and routes, the three ZIP-import reads, and
+	// the caller's clubs and a club's pending requests (§ 1931).
+	assert.ok(walks >= 9, `only found ${walks} walkKeyset calls — walker broken?`);
 	assert.deepEqual(offenders.sort(), []);
 });

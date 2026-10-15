@@ -4618,6 +4618,8 @@ export const messages = {
 	"prefs.notifyReactionHint": "Avise por e-mail e push quando alguém reagir a uma das minhas corridas. Só é enviado quando o canal acima está em todas as notificações.",
 	"prefs.notifyCommentLike": "Curtidas nos meus comentários",
 	"prefs.notifyCommentLikeHint": "Avise por e-mail e push quando alguém curtir um comentário meu. Só é enviado quando o canal acima está em todas as notificações.",
+	"prefs.notifyFollowRequest": "Solicitações para seguir",
+	"prefs.notifyFollowRequestHint": "Avise por e-mail e push quando alguém pedir para seguir meu perfil privado.",
 	"prefs.emailNewDeviceAlerts": "Alertas de login em novo dispositivo",
 	"prefs.emailNewDeviceAlertsHint": "Avise por e-mail na primeira vez que minha conta for acessada de um navegador ou dispositivo que ela ainda não usou. Os avisos de alteração de senha são sempre enviados e não podem ser desativados.",
 	// Gym (Phase 4 multi-modal, decisions §63)

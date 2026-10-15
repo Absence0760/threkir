@@ -4619,6 +4619,8 @@ export const messages = {
 	"prefs.notifyReactionHint": "Me prévenir par e-mail et notification lorsque quelqu'un réagit à une de mes courses. Uniquement si le canal ci-dessus est réglé sur toutes les notifications.",
 	"prefs.notifyCommentLike": "J'aime sur mes commentaires",
 	"prefs.notifyCommentLikeHint": "Me prévenir par e-mail et notification lorsque quelqu'un aime un de mes commentaires. Uniquement si le canal ci-dessus est réglé sur toutes les notifications.",
+	"prefs.notifyFollowRequest": "Demandes d'abonnement",
+	"prefs.notifyFollowRequestHint": "Me prévenir par e-mail et notification lorsque quelqu'un demande à s'abonner à mon profil privé.",
 	"prefs.emailNewDeviceAlerts": "Alertes de connexion depuis un nouvel appareil",
 	"prefs.emailNewDeviceAlertsHint": "Me prévenir par e-mail la première fois que mon compte se connecte depuis un navigateur ou un appareil qu'il n'a jamais utilisé. Les avis de changement de mot de passe sont toujours envoyés et ne peuvent pas être désactivés.",
 	// Gym (Phase 4 multi-modal, decisions §63)

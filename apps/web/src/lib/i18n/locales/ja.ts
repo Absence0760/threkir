@@ -4614,6 +4614,8 @@ export const messages = {
 	"prefs.notifyReactionHint": "自分のランに誰かがリアクションしたら、メールとプッシュで知らせます。上のチャンネルが「すべての通知」の場合のみ送信されます。",
 	"prefs.notifyCommentLike": "自分のコメントへの「いいね」",
 	"prefs.notifyCommentLikeHint": "自分のコメントに誰かが「いいね」したら、メールとプッシュで知らせます。上のチャンネルが「すべての通知」の場合のみ送信されます。",
+	"prefs.notifyFollowRequest": "フォローリクエスト",
+	"prefs.notifyFollowRequestHint": "非公開プロフィールへのフォローリクエストが届いたら、メールとプッシュで知らせます。",
 	"prefs.emailNewDeviceAlerts": "新しいデバイスでのサインイン通知",
 	"prefs.emailNewDeviceAlertsHint": "これまで使われたことのないブラウザやデバイスからアカウントにサインインがあったときに、メールで知らせます。パスワード変更の通知は常に送信され、オフにすることはできません。",
 	// Gym (Phase 4 multi-modal, decisions §63)

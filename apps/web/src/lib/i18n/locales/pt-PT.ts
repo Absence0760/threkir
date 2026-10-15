@@ -4618,6 +4618,8 @@ export const messages = {
 	"prefs.notifyReactionHint": "Avise por e-mail e push quando alguém reagir a uma das minhas corridas. Só é enviado quando o canal acima está em todas as notificações.",
 	"prefs.notifyCommentLike": "Gostos nos meus comentários",
 	"prefs.notifyCommentLikeHint": "Avise por e-mail e push quando alguém gostar de um comentário meu. Só é enviado quando o canal acima está em todas as notificações.",
+	"prefs.notifyFollowRequest": "Pedidos para seguir",
+	"prefs.notifyFollowRequestHint": "Avise por e-mail e push quando alguém pedir para seguir o meu perfil privado.",
 	"prefs.emailNewDeviceAlerts": "Alertas de início de sessão num novo dispositivo",
 	"prefs.emailNewDeviceAlertsHint": "Avise por e-mail na primeira vez que for iniciada sessão na minha conta a partir de um navegador ou dispositivo ainda não utilizado. Os avisos de alteração da palavra-passe são sempre enviados e não podem ser desativados.",
 	// Gym (Phase 4 multi-modal, decisions §63)

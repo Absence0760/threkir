@@ -25,6 +25,7 @@
 	let notifyMention = $state(true);
 	let notifyReaction = $state(true);
 	let notifyCommentLike = $state(true);
+	let notifyFollowRequest = $state(true);
 	// Opt-OUT alert for a sign-in from a device class the account has not used
 	// before (security_email new_device_sign_in). The password-changed notice
 	// has no control on purpose: it is the one mail a takeover must not mute.
@@ -42,6 +43,7 @@
 		notifyMention = effective<string>(settings, 'notify_mention', 'on') !== 'off';
 		notifyReaction = effective<string>(settings, 'notify_reaction', 'on') !== 'off';
 		notifyCommentLike = effective<string>(settings, 'notify_comment_like', 'on') !== 'off';
+		notifyFollowRequest = effective<string>(settings, 'notify_follow_request', 'on') !== 'off';
 		emailNewDeviceAlerts = effective<string>(settings, 'email_new_device_alerts', 'on') !== 'off';
 	});
 
@@ -132,6 +134,18 @@
 			<span>
 				{m('prefs.notifyCommentLike')}
 				<span class="hint">{m('prefs.notifyCommentLikeHint')}</span>
+			</span>
+		</label>
+		<label class="checkbox-row">
+			<input
+				type="checkbox"
+				bind:checked={notifyFollowRequest}
+				onchange={() => prefs.save({ notify_follow_request: notifyFollowRequest ? 'on' : 'off' })}
+				data-testid="notify-follow-request"
+			/>
+			<span>
+				{m('prefs.notifyFollowRequest')}
+				<span class="hint">{m('prefs.notifyFollowRequestHint')}</span>
 			</span>
 		</label>
 		<label class="checkbox-row">

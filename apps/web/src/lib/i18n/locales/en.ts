@@ -4637,6 +4637,8 @@ export const en = {
 	"prefs.notifyReactionHint": "Email and push me when someone reacts to one of my runs. These only go out when the channel above is set to all notifications.",
 	"prefs.notifyCommentLike": "Likes on my comments",
 	"prefs.notifyCommentLikeHint": "Email and push me when someone likes a comment I left on a run. These only go out when the channel above is set to all notifications.",
+	"prefs.notifyFollowRequest": "Follow requests",
+	"prefs.notifyFollowRequestHint": "Email and push me when someone asks to follow my private profile.",
 	"prefs.emailNewDeviceAlerts": "New-device sign-in alerts",
 	"prefs.emailNewDeviceAlertsHint": "Email me the first time my account signs in from a browser or device it hasn't used before. Password-change notices always send and can't be turned off.",
 	// Gym (Phase 4 multi-modal, decisions §63)

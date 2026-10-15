@@ -4619,6 +4619,8 @@ export const messages = {
 	"prefs.notifyReactionHint": "Avisarme por correo y notificación cuando alguien reaccione a una de mis carreras. Solo se envía si el canal de arriba está en todas las notificaciones.",
 	"prefs.notifyCommentLike": "Me gusta en mis comentarios",
 	"prefs.notifyCommentLikeHint": "Avisarme por correo y notificación cuando a alguien le guste uno de mis comentarios. Solo se envía si el canal de arriba está en todas las notificaciones.",
+	"prefs.notifyFollowRequest": "Solicitudes de seguimiento",
+	"prefs.notifyFollowRequestHint": "Avisarme por correo y notificación cuando alguien pida seguir mi perfil privado.",
 	"prefs.emailNewDeviceAlerts": "Alertas de inicio de sesión en dispositivos nuevos",
 	"prefs.emailNewDeviceAlertsHint": "Avisarme por correo la primera vez que se inicie sesión en mi cuenta desde un navegador o dispositivo que no haya usado antes. Los avisos de cambio de contraseña se envían siempre y no se pueden desactivar.",
 	// Gym (Phase 4 multi-modal, decisions §63)

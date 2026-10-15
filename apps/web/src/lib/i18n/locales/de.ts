@@ -4619,6 +4619,8 @@ export const messages = {
 	"prefs.notifyReactionHint": "Per E-Mail und Push benachrichtigen, wenn jemand auf einen meiner Läufe reagiert. Das wird nur verschickt, wenn der Kanal oben auf alle Benachrichtigungen steht.",
 	"prefs.notifyCommentLike": "„Gefällt mir“ für meine Kommentare",
 	"prefs.notifyCommentLikeHint": "Per E-Mail und Push benachrichtigen, wenn jemandem ein Kommentar von mir gefällt. Das wird nur verschickt, wenn der Kanal oben auf alle Benachrichtigungen steht.",
+	"prefs.notifyFollowRequest": "Follower-Anfragen",
+	"prefs.notifyFollowRequestHint": "Per E-Mail und Push benachrichtigen, wenn jemand meinem privaten Profil folgen möchte.",
 	"prefs.emailNewDeviceAlerts": "Anmeldungen auf neuen Geräten",
 	"prefs.emailNewDeviceAlertsHint": "Per E-Mail benachrichtigen, wenn sich mein Konto zum ersten Mal über einen Browser oder ein Gerät anmeldet, das es bisher nicht verwendet hat. Hinweise zu Passwortänderungen werden immer gesendet und lassen sich nicht abschalten.",
 	// Gym (Phase 4 multi-modal, decisions §63)

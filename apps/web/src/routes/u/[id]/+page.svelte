@@ -734,7 +734,7 @@
 				{/if}
 				{#if isSelf}
 					<a
-						href="/settings"
+						href="/settings/account"
 						class="btn btn-outline btn-icon-only"
 						aria-label={m('profile.editProfile')}
 						title={m('profile.editProfile')}

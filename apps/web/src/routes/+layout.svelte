@@ -638,7 +638,7 @@
 					<a
 						class="popover-item"
 						role="menuitem"
-						href="/settings"
+						href="/settings/account"
 						onclick={() => (showLogoutModal = false)}
 					>
 						<span class="material-symbols" aria-hidden="true">settings</span>

@@ -4557,5 +4557,10 @@
   "routeDetailSendDmSending": "送信中…",
   "routeDetailSendDmSent": "{name} にルートを送信しました。",
   "routeDetailSendDmOpenThread": "メッセージを開く",
-  "routeDetailSendDmDone": "完了"
+  "routeDetailSendDmDone": "完了",
+  "runPhotosRaceGalleryShow": "レースページに表示",
+  "runPhotosRaceGalleryHide": "レースページから削除",
+  "runPhotosRaceGalleryHint": "写真のメダルをタップすると、このレースの公開ページに表示されます。このページは誰でも閲覧でき、写真はいつでも取り下げられます。",
+  "runPhotosRaceGalleryPrivate": "このランを公開すると、写真をレースページで共有できます。",
+  "runPhotosRaceGalleryError": "レースページを更新できませんでした: {error}"
 }

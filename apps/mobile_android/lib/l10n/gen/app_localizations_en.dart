@@ -15721,4 +15721,23 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get routeDetailSendDmDone => 'Done';
+
+  @override
+  String get runPhotosRaceGalleryShow => 'Show on race page';
+
+  @override
+  String get runPhotosRaceGalleryHide => 'Remove from race page';
+
+  @override
+  String get runPhotosRaceGalleryHint =>
+      'Tap the medal on a photo to show it on this race\'s public page. Anyone can see that page, and you can remove a photo at any time.';
+
+  @override
+  String get runPhotosRaceGalleryPrivate =>
+      'Make this run public to share its photos on the race page.';
+
+  @override
+  String runPhotosRaceGalleryError(String error) {
+    return 'Could not update the race page: $error';
+  }
 }

@@ -15896,4 +15896,23 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get routeDetailSendDmDone => 'Fertig';
+
+  @override
+  String get runPhotosRaceGalleryShow => 'Auf der Rennseite zeigen';
+
+  @override
+  String get runPhotosRaceGalleryHide => 'Von der Rennseite entfernen';
+
+  @override
+  String get runPhotosRaceGalleryHint =>
+      'Tippe auf die Medaille eines Fotos, um es auf der öffentlichen Seite dieses Rennens zu zeigen. Diese Seite kann jeder sehen, und du kannst ein Foto jederzeit wieder entfernen.';
+
+  @override
+  String get runPhotosRaceGalleryPrivate =>
+      'Mach diesen Lauf öffentlich, um seine Fotos auf der Rennseite zu teilen.';
+
+  @override
+  String runPhotosRaceGalleryError(String error) {
+    return 'Rennseite konnte nicht aktualisiert werden: $error';
+  }
 }

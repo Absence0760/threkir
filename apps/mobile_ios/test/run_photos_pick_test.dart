@@ -18,6 +18,11 @@ class _PhotosApi extends ApiClient {
   @override
   Future<List<RunPhotoRow>> fetchRunPhotos(String runId, {int limit = 50}) async =>
       const [];
+
+  @override
+  Future<({bool isPublic, String? raceListingId})?> fetchRunRaceGalleryContext(
+          String runId) async =>
+      null;
 }
 
 bool _supabaseReady = false;

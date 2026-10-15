@@ -15880,4 +15880,23 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get routeDetailSendDmDone => 'Listo';
+
+  @override
+  String get runPhotosRaceGalleryShow => 'Mostrar en la página de la carrera';
+
+  @override
+  String get runPhotosRaceGalleryHide => 'Quitar de la página de la carrera';
+
+  @override
+  String get runPhotosRaceGalleryHint =>
+      'Toca la medalla de una foto para mostrarla en la página pública de esta carrera. Cualquiera puede ver esa página y puedes quitar una foto en cualquier momento.';
+
+  @override
+  String get runPhotosRaceGalleryPrivate =>
+      'Haz pública esta actividad para compartir sus fotos en la página de la carrera.';
+
+  @override
+  String runPhotosRaceGalleryError(String error) {
+    return 'No se pudo actualizar la página de la carrera: $error';
+  }
 }

@@ -4557,5 +4557,10 @@
   "routeDetailSendDmSending": "Enviando…",
   "routeDetailSendDmSent": "Rota enviada para {name}.",
   "routeDetailSendDmOpenThread": "Abrir conversa",
-  "routeDetailSendDmDone": "Concluído"
+  "routeDetailSendDmDone": "Concluído",
+  "runPhotosRaceGalleryShow": "Mostrar na página da prova",
+  "runPhotosRaceGalleryHide": "Remover da página da prova",
+  "runPhotosRaceGalleryHint": "Toque na medalha de uma foto para mostrá-la na página pública desta prova. Qualquer pessoa pode ver essa página, e você pode remover uma foto a qualquer momento.",
+  "runPhotosRaceGalleryPrivate": "Torne esta corrida pública para compartilhar as fotos na página da prova.",
+  "runPhotosRaceGalleryError": "Não foi possível atualizar a página da prova: {error}"
 }

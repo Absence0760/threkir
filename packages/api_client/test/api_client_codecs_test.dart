@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
@@ -565,6 +566,25 @@ void main() {
       expect((decoded[0] as Map<String, dynamic>)['lat'], 47.37);
       expect((decoded[1] as Map<String, dynamic>)['lat'], 47.39);
       expect((decoded[1] as Map<String, dynamic>)['ele'], isNull);
+    });
+
+    test('the credited distance survives the gzipped blob, and an older '
+        'blob without it still decodes', () {
+      final stored = gzip.encode(utf8.encode(ApiClient.debugTrackBlobJson(const [
+        Waypoint(lat: 47.37, lng: 8.54, cumulativeDistanceMetres: 0),
+        Waypoint(lat: 47.371, lng: 8.54, cumulativeDistanceMetres: 111.2),
+        Waypoint(
+            lat: 47.372, lng: 8.54, cumulativeDistanceMetres: double.infinity),
+      ])));
+      final back = ApiClient.debugDecodeTrack(gzip.decode(stored));
+      expect(back.map((w) => w.cumulativeDistanceMetres), [0, 111.2, null]);
+      expect(back[2].lat, 47.372);
+
+      final legacy = ApiClient.debugDecodeTrack(gzip.decode(gzip.encode(
+          utf8.encode('[{"lat":47.37,"lng":8.54,"ele":408.5,'
+              '"ts":"2026-04-01T07:00:00.000Z"}]'))));
+      expect(legacy.single.cumulativeDistanceMetres, isNull);
+      expect(legacy.single.elevationMetres, 408.5);
     });
 
     test('a clean track encodes every point', () {

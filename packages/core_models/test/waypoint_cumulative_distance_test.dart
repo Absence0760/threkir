@@ -51,5 +51,17 @@ void main() {
       expect(out[0].cumulativeDistanceMetres, isNull);
       expect(out[1].cumulativeDistanceMetres, 51);
     });
+
+    test('a stored fix from before the field decodes with it absent', () {
+      final w = Waypoint.fromJson(const {
+        'lat': 1.0,
+        'lng': 2.0,
+        'elevationMetres': 30.0,
+        'timestamp': '2026-04-01T07:00:00.000Z',
+      });
+      expect(w.cumulativeDistanceMetres, isNull);
+      expect(w.elevationMetres, 30.0);
+      expect(w.timestamp, DateTime.utc(2026, 4, 1, 7));
+    });
   });
 }

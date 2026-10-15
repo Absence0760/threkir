@@ -238,7 +238,9 @@ double trainingLoadTickStep(double span, {int maxTicks = 4}) {
           : norm <= 5
               ? 5.0
               : 10.0;
-  return mult * mag;
+  // Labels print `tick.round()`, so a sub-1 step (a near-zero load, e.g. one
+  // 10 s run) labels neighbouring gridlines with the same number.
+  return math.max(1.0, mult * mag);
 }
 
 class _ChartPainter extends CustomPainter {

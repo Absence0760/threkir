@@ -587,5 +587,47 @@ void main() {
         const Duration(seconds: 60),
       );
     });
+
+    test('mile splits on the recorded distance land on the mile boundaries',
+        () {
+      // 2.5 m/s for 2120 s on the recorded distance, raw positions zig-zagging
+      // off the line: three whole miles at 643.7 s each.
+      final pts = [
+        for (var i = 0; i <= 1060; i++)
+          Waypoint(
+            lat: (i.isEven ? 6 : -6) / 111320,
+            lng: i * 5 / 111320,
+            timestamp: start.add(Duration(seconds: i * 2)),
+            cumulativeDistanceMetres: i * 5.0,
+          ),
+      ];
+      final splits = computeSplitDurations(pts, 1609.344, start);
+      expect(splits.map((s) => s.tick), [1, 2, 3]);
+      for (final s in splits) {
+        expect(s.duration.inMilliseconds / 1000, closeTo(643.7376, 0.002));
+      }
+    });
+
+    test('a recorded run, stop, run counts only the credited stretches', () {
+      // 3 m/s for 60 s, 60 s held still while the raw fixes wander 5 m, then
+      // 3 m/s for 60 s more.
+      final pts = [
+        for (var i = 0; i <= 180; i++)
+          () {
+            final d = i <= 60
+                ? 3.0 * i
+                : i <= 120
+                    ? 180.0
+                    : 180.0 + 3 * (i - 120);
+            final stopped = i > 60 && i < 120;
+            return at(d + (stopped && i.isOdd ? 5 : 0), i, distM: d);
+          }(),
+      ];
+      expect(movingTimeOf(pts), const Duration(seconds: 120));
+      expect(
+        movingTimeOf([for (final w in pts) w.withCumulativeDistance(null)]),
+        const Duration(seconds: 180),
+      );
+    });
   });
 }

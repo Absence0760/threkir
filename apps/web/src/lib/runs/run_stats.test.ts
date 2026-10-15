@@ -409,3 +409,35 @@ test('movingTimeSeconds — a stop the estimator held still is not moving time',
 	assert.equal(movingTimeSeconds(pts), 0);
 	assert.equal(movingTimeSeconds(pts.map(({ distM: _d, ...p }) => p)), 60);
 });
+
+test('computeRealSplits — mile splits on distM land on the mile boundaries', () => {
+	// 2.5 m/s for 2120 s on distM, raw positions zig-zagging off the line:
+	// three whole miles at 400 s/km and a 472 m tail, summing to 5300 m.
+	const pts: TrackPoint[] = [];
+	for (let i = 0; i <= 1060; i++) {
+		const p = at(i * 5, i * 2, i * 5);
+		p.lat = (i % 2 === 0 ? 6 : -6) / 111_320;
+		pts.push(p);
+	}
+	const splits = computeRealSplits(pts, 1609.344);
+	assert.deepEqual(
+		splits.map((sp) => sp.distance_m),
+		[1609, 1609, 1609, 472]
+	);
+	for (const sp of splits) assert.equal(sp.pace_s, 400, `split ${sp.km} pace ${sp.pace_s}`);
+	const summed = splits.reduce((a, sp) => a + sp.distance_m, 0);
+	assert.ok(Math.abs(summed - 5300) <= splits.length, `splits sum to ${summed}`);
+});
+
+test('movingTimeSeconds — a recorded run, stop, run counts only the credited stretches', () => {
+	// 3 m/s for 60 s, 60 s held still while the raw fixes wander 5 m, then
+	// 3 m/s for 60 s more.
+	const pts: TrackPoint[] = [];
+	for (let i = 0; i <= 180; i++) {
+		const distM = i <= 60 ? 3 * i : i <= 120 ? 180 : 180 + 3 * (i - 120);
+		const stopped = i > 60 && i < 120;
+		pts.push(at(distM + (stopped && i % 2 === 1 ? 5 : 0), i, distM));
+	}
+	assert.equal(movingTimeSeconds(pts), 120);
+	assert.equal(movingTimeSeconds(pts.map(({ distM: _d, ...p }) => p)), 180);
+});

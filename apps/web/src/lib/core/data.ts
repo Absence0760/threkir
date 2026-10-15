@@ -6397,71 +6397,154 @@ export interface ProfileSummary extends PublicProfile {
 	follower_count: number;
 	following_count: number;
 	viewer_follows: boolean;
+	/// The owner made the profile private (decisions § 1967): follows become
+	/// requests and the runs / follower lists open only to approved followers.
+	profile_private: boolean;
+	/// The viewer has a pending request to follow this profile.
+	viewer_requested: boolean;
+	/// Whether the viewer may read the profile's activity and lists — the
+	/// owner, anyone for a public profile, an approved follower for a private one.
+	content_visible: boolean;
 }
 
-/// Public-by-default user profile lookup. Returns null when the user
-/// doesn't exist or RLS hides the row (shouldn't happen now that
-/// user_profiles has a public-read policy, but a defensive null is
-/// cheap insurance).
+/// User profile lookup. The counts and the viewer's own follow / request
+/// state come from `profile_follow_summary`, because on a private profile the
+/// follow rows behind the counts are closed to a viewer who is not an
+/// approved follower. Returns null when the user doesn't exist, is hidden, or
+/// a block stands between the two.
 export async function fetchPublicProfile(
 	userId: string
 ): Promise<{ profile: ProfileSummary | null; error: string | null }> {
-	const { data: sessionData } = await supabase.auth.getSession();
-	const viewerId = sessionData.session?.user?.id;
-
-	const [profileRes, followerRes, followingRes, viewerRes] = await Promise.all([
+	const [profileRes, summaryRes] = await Promise.all([
 		supabase
 			.from('user_profiles')
 			.select('id, display_name, avatar_url')
 			.eq('id', userId)
 			.maybeSingle(),
-		supabase
-			.from('user_follows')
-			.select('*', { count: 'exact', head: true })
-			.eq('followee_id', userId),
-		supabase
-			.from('user_follows')
-			.select('*', { count: 'exact', head: true })
-			.eq('follower_id', userId),
-		viewerId && viewerId !== userId
-			? supabase
-					.from('user_follows')
-					.select('follower_id')
-					.eq('follower_id', viewerId)
-					.eq('followee_id', userId)
-					.maybeSingle()
-			: Promise.resolve({ data: null }),
+		supabase.rpc('profile_follow_summary', { p_user_id: userId }, { get: true }).maybeSingle(),
 	]);
 
 	// Surface a query error so the profile page can show a "couldn't load —
 	// retry" state instead of the not-found page (a real error otherwise
 	// reads as a missing user when the row just comes back null).
-	const error = (profileRes as { error?: { message?: string } | null }).error?.message ?? null;
-	if (!profileRes.data) return { profile: null, error };
+	const error =
+		(profileRes as { error?: { message?: string } | null }).error?.message ??
+		(summaryRes as { error?: { message?: string } | null }).error?.message ??
+		null;
+	if (!profileRes.data || !summaryRes.data) return { profile: null, error };
+	const summary = summaryRes.data;
 
 	return {
 		profile: {
 			id: profileRes.data.id,
 			display_name: profileRes.data.display_name,
 			avatar_url: profileRes.data.avatar_url,
-			follower_count: followerRes.count ?? 0,
-			following_count: followingRes.count ?? 0,
-			viewer_follows: viewerRes.data != null,
+			follower_count: Number(summary.follower_count) || 0,
+			following_count: Number(summary.following_count) || 0,
+			viewer_follows: summary.viewer_follows === true,
+			profile_private: summary.profile_private === true,
+			viewer_requested: summary.viewer_requested === true,
+			content_visible: summary.content_visible === true,
 		},
 		error: null
 	};
 }
 
-export async function followUser(targetUserId: string): Promise<void> {
+/// What a follow tap did: followed a public profile at once, or filed a
+/// request with a private one.
+export type FollowOutcome = 'following' | 'requested';
+
+/// Follow `targetUserId`, or ask to when their profile is private. One RPC so
+/// the client never has to read the target's privacy and race its change; the
+/// server writes through the same RLS a direct insert would hit.
+export async function followUser(targetUserId: string): Promise<FollowOutcome> {
 	const { data: sessionData } = await supabase.auth.getSession();
 	const userId = sessionData.session?.user?.id;
 	if (!userId) throw new Error('Not signed in');
 	if (userId === targetUserId) throw new Error("Can't follow yourself");
+	const { data, error } = await supabase.rpc('request_follow', { p_target: targetUserId });
+	if (error) throw dbError(error);
+	return data === 'requested' ? 'requested' : 'following';
+}
+
+/// Withdraw the viewer's pending request to follow `targetUserId`.
+export async function cancelFollowRequest(targetUserId: string): Promise<void> {
+	const { data: sessionData } = await supabase.auth.getSession();
+	const userId = sessionData.session?.user?.id;
+	if (!userId) throw new Error('Not signed in');
 	const { error } = await supabase
-		.from('user_follows')
-		.insert({ follower_id: userId, followee_id: targetUserId });
-	// Treat duplicate (already following) as a no-op.
-	if (error && !isDuplicateKeyError(error)) throw dbError(error);
+		.from(TABLES.follow_requests)
+		.delete()
+		.eq('requester_id', userId)
+		.eq('target_id', targetUserId);
+	if (error) throw dbError(error);
+}
+
+export interface IncomingFollowRequest extends PublicProfile {
+	requested_at: string;
+}
+
+/// Requests to follow the signed-in user, newest first.
+export async function fetchIncomingFollowRequests(): Promise<IncomingFollowRequest[]> {
+	const { data: sessionData } = await supabase.auth.getSession();
+	const userId = sessionData.session?.user?.id;
+	if (!userId) return [];
+	const { data, error } = await supabase
+		.from(TABLES.follow_requests)
+		.select('requester_id, requested_at')
+		.eq('target_id', userId)
+		.order('requested_at', { ascending: false })
+		.order('requester_id', { ascending: false })
+		.limit(200);
+	if (error) throw dbError(error);
+	const rows = data ?? [];
+	const profiles = await profilesInEdgeOrder(rows.map((r) => r.requester_id));
+	const at = new Map(rows.map((r) => [r.requester_id, r.requested_at]));
+	return profiles.map((p) => ({ ...p, requested_at: at.get(p.id) ?? '' }));
+}
+
+export async function approveFollowRequest(requesterId: string): Promise<void> {
+	const { error } = await supabase.rpc('approve_follow_request', { p_requester: requesterId });
+	if (error) throw dbError(error);
+}
+
+export async function declineFollowRequest(requesterId: string): Promise<void> {
+	const { data: sessionData } = await supabase.auth.getSession();
+	const userId = sessionData.session?.user?.id;
+	if (!userId) throw new Error('Not signed in');
+	const { error } = await supabase
+		.from(TABLES.follow_requests)
+		.delete()
+		.eq('requester_id', requesterId)
+		.eq('target_id', userId);
+	if (error) throw dbError(error);
+}
+
+/// The signed-in user's own private-profile switch.
+export async function fetchMyProfilePrivate(): Promise<boolean> {
+	const { data: sessionData } = await supabase.auth.getSession();
+	const userId = sessionData.session?.user?.id;
+	if (!userId) return false;
+	const { data, error } = await supabase
+		.from('user_profiles')
+		.select('profile_private')
+		.eq('id', userId)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	return data?.profile_private === true;
+}
+
+/// Turning it off approves every pending request (a trigger does it in the
+/// same statement), so nobody is left asking a profile that no longer asks.
+export async function setProfilePrivate(next: boolean): Promise<void> {
+	const { data: sessionData } = await supabase.auth.getSession();
+	const userId = sessionData.session?.user?.id;
+	if (!userId) throw new Error('Not signed in');
+	const { error } = await supabase
+		.from('user_profiles')
+		.update({ profile_private: next })
+		.eq('id', userId);
+	if (error) throw dbError(error);
 }
 
 export async function unfollowUser(targetUserId: string): Promise<void> {

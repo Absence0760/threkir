@@ -74,6 +74,7 @@ export const TABLES = {
 	fitness_snapshots: 'fitness_snapshots',
 	personal_records: 'personal_records',
 	user_blocks: 'user_blocks',
+	follow_requests: 'follow_requests',
 	safety_contacts: 'safety_contacts',
 	public_recaps: 'public_recaps',
 	achievements: 'achievements',

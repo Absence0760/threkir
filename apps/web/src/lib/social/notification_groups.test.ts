@@ -142,6 +142,20 @@ test('groupNotifications: follows collapse regardless of actor', () => {
 	assert.equal(groups[0].otherCount, 2);
 });
 
+test('groupNotifications: follow requests collapse together, apart from follows', () => {
+	const groups = groupNotifications(
+		[
+			n({ id: 'r1', kind: 'follow_request', actor_id: 'u1', created_at: ago(1000) }),
+			n({ id: 'r2', kind: 'follow_request', actor_id: 'u2', created_at: ago(2000) }),
+			n({ id: 'f1', kind: 'follow', actor_id: 'u3', created_at: ago(1500) }),
+		],
+		NOW,
+	);
+	assert.equal(groups.length, 2);
+	const requests = groups.find((g) => g.lead.kind === 'follow_request');
+	assert.equal(requests?.otherCount, 1);
+});
+
 test('groupNotifications: event RSVPs collapse per event, distinct events split', () => {
 	const groups = groupNotifications(
 		[

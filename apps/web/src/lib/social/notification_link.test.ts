@@ -42,6 +42,11 @@ test('follow links to the actor profile', () => {
 	assert.equal(notificationLinkFor(make({ kind: 'follow' })), null);
 });
 
+test('a follow request links to the requests page, with or without an actor', () => {
+	assert.equal(notificationLinkFor(make({ kind: 'follow_request', actor_id: 'u9' })), '/follow-requests');
+	assert.equal(notificationLinkFor(make({ kind: 'follow_request' })), '/follow-requests');
+});
+
 test('event kinds link to the club event, needing both event id and club slug', () => {
 	for (const kind of ['event_rsvp', 'event_cancel', 'event_reminder', 'event_waitlist_slot']) {
 		assert.equal(

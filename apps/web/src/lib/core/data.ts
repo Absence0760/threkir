@@ -7664,7 +7664,7 @@ export async function resolveMentionHandles(handles: string[]): Promise<Map<stri
 				.from('user_profiles')
 				.select('id, handle')
 				.in('handle', part);
-			if (error) throw error;
+			if (error) throw dbError(error);
 			return data ?? [];
 		});
 	} catch (error) {

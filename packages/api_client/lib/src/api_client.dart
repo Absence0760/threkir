@@ -4336,6 +4336,24 @@ class ApiClient {
     );
   }
 
+  /// What the owner's "Show on race page" toggle needs to know about a run:
+  /// whether it is public (the page shows only public runs' photos) and the
+  /// race listing it is linked to. Null when RLS returns no row.
+  Future<({bool isPublic, String? raceListingId})?> fetchRunRaceGalleryContext(
+    String runId,
+  ) async {
+    final row = await _client
+        .from(RunRow.table)
+        .select('${RunRow.colIsPublic}, ${RunRow.colRaceListingId}')
+        .eq(RunRow.colId, runId)
+        .maybeSingle();
+    if (row == null) return null;
+    return (
+      isPublic: row[RunRow.colIsPublic] == true,
+      raceListingId: row[RunRow.colRaceListingId] as String?,
+    );
+  }
+
   /// Runners' opted-in photos for a public race listing, newest first. The
   /// RPC returns no run, owner, route or track — only what the public page
   /// shows — and caps [limit] server-side. Mirrors web

@@ -34,6 +34,7 @@ class _FakeHttp extends http.BaseClient {
 
 const _listPath = '/rest/v1/rpc/race_listing_photos';
 const _sharePath = '/rest/v1/rpc/set_run_photo_race_gallery';
+const _runsPath = '/rest/v1/runs';
 
 void main() {
   late _FakeHttp fake;
@@ -105,6 +106,39 @@ void main() {
       fake.bodyByPath[_listPath] = const <dynamic>[];
 
       expect(await api.fetchRaceListingPhotos('listing-1'), isEmpty);
+    });
+  });
+
+  group('fetchRunRaceGalleryContext', () {
+    test('reads the run\'s visibility and race link in one query', () async {
+      fake.bodyByPath[_runsPath] = [
+        {'is_public': true, 'race_listing_id': 'listing-1'},
+      ];
+
+      final ctx = await api.fetchRunRaceGalleryContext('run-1');
+
+      expect(ctx, (isPublic: true, raceListingId: 'listing-1'));
+      final req = fake.to(_runsPath).single;
+      expect(req.method, 'GET');
+      expect(req.url.queryParameters['select'], 'is_public,race_listing_id');
+      expect(req.url.queryParameters['id'], 'eq.run-1');
+    });
+
+    test('a private run with no race link reads as such', () async {
+      fake.bodyByPath[_runsPath] = [
+        {'is_public': false, 'race_listing_id': null},
+      ];
+
+      expect(
+        await api.fetchRunRaceGalleryContext('run-1'),
+        (isPublic: false, raceListingId: null),
+      );
+    });
+
+    test('a run RLS hides answers null', () async {
+      fake.bodyByPath[_runsPath] = const <dynamic>[];
+
+      expect(await api.fetchRunRaceGalleryContext('run-1'), isNull);
     });
   });
 

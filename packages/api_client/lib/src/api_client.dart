@@ -2201,10 +2201,17 @@ class ApiClient {
     return data.map<Route>((row) => _routeFromRow(row)).toList();
   }
 
-  /// Search public routes. Supports full-text name search, distance range
-  /// filtering, and surface type filtering. Uses the `routes_public` partial
-  /// index and `routes_name_search` GIN index.
-  Future<List<Route>> searchPublicRoutes({
+  /// Search public routes, one keyset page at a time: pass the previous
+  /// page's `next` as `after` (with the SAME filters and sort) to load more.
+  /// `sort` is `newest` / `popular` / `featured` (see [publicRouteOrder]).
+  ///
+  /// Reads the `public_routes` view directly rather than through the
+  /// `search_public_routes` RPC, whose `p_offset` paging repeated or skipped a
+  /// route whenever one was published or unpublished between two reads, and
+  /// none of whose orders was total. The view is the RPC's own source (same
+  /// visibility) and is granted to anon + authenticated, so the filters move
+  /// here verbatim. Mirrors web `searchPublicRoutes` in `core/data.ts`.
+  Future<KeysetPage<Route>> searchPublicRoutes({
     String? query,
     double? minDistanceM,
     double? maxDistanceM,
@@ -2213,22 +2220,29 @@ class ApiClient {
     bool featuredOnly = false,
     String sort = 'newest',
     int limit = 50,
-    int offset = 0,
+    List<Object?>? after,
   }) async {
-    final data = await _client.rpc('search_public_routes', params: {
-      'p_query': (query != null && query.trim().isNotEmpty) ? query.trim() : null,
-      'p_min_distance_m': minDistanceM,
-      'p_max_distance_m': maxDistanceM,
-      'p_surface': (surface != null && surface.isNotEmpty) ? surface : null,
-      'p_tags': (tags != null && tags.isNotEmpty) ? tags : null,
-      'p_featured_only': featuredOnly,
-      'p_sort': sort,
-      'p_limit': limit,
-      'p_offset': offset,
-    });
-    return (data as List)
-        .map<Route>((row) => _routeFromRow(row as Map<String, dynamic>))
-        .toList();
+    final order = publicRouteOrder(sort);
+    final filter = after == null ? null : keysetAfter(order, after);
+    if (after != null && filter == null) {
+      return const KeysetPage(<Route>[], null);
+    }
+    var q = _client.from('public_routes').select();
+    final trimmed = query?.trim();
+    if (trimmed != null && trimmed.isNotEmpty) {
+      q = q.ilike('name', '%$trimmed%');
+    }
+    if (minDistanceM != null) q = q.gte('distance_m', minDistanceM);
+    if (maxDistanceM != null) q = q.lte('distance_m', maxDistanceM);
+    if (surface != null && surface.isNotEmpty) q = q.eq('surface', surface);
+    if (tags != null && tags.isNotEmpty) q = q.overlaps('tags', tags);
+    if (featuredOnly) q = q.eq('is_featured', true);
+    if (filter != null) q = q.or(filter);
+    final rows = await _orderBy(q, order).limit(limit);
+    return KeysetPage(
+      rows.map<Route>(_routeFromRow).toList(),
+      nextCursor(order, rows, limit),
+    );
   }
 
   /// Cross-club activity discovery. Searches PUBLIC clubs' events across the

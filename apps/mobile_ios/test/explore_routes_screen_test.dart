@@ -53,7 +53,7 @@ class _BookmarkApi extends ApiClient {
   String? get userId => 'u1';
 
   @override
-  Future<List<cm.Route>> searchPublicRoutes({
+  Future<cm.KeysetPage<cm.Route>> searchPublicRoutes({
     String? query,
     double? minDistanceM,
     double? maxDistanceM,
@@ -62,9 +62,11 @@ class _BookmarkApi extends ApiClient {
     bool featuredOnly = false,
     String sort = 'newest',
     int limit = 50,
-    int offset = 0,
+    List<Object?>? after,
   }) async =>
-      offset == 0 ? [_route('r1', 'Morning loop')] : const [];
+      after == null
+          ? cm.KeysetPage([_route('r1', 'Morning loop')], null)
+          : const cm.KeysetPage(<cm.Route>[], null);
 
   @override
   Future<List<String>> fetchPopularRouteTags({int limit = 20}) async =>

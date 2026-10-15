@@ -37,6 +37,18 @@ void main() {
     });
   }
 
+  test('searchPublicRoutes reads the view by cursor, not the offset RPC', () {
+    final fn = body('Future<KeysetPage<Route>> searchPublicRoutes(');
+    expect(fn, isNotEmpty, reason: 'the reader moved or was renamed');
+    expect(fn.contains('List<Object?>? after'), isTrue);
+    expect(fn.contains('keysetAfter(order, after)'), isTrue);
+    expect(fn.contains('nextCursor(order, rows, limit)'), isTrue);
+    expect(fn.contains('p_offset'), isFalse,
+        reason: 'search_public_routes pages by offset; the view is read '
+            'directly so the page can start after a cursor');
+    expect(fn.contains('offset'), isFalse);
+  });
+
   test('_followPage filters after the cursor and returns the next one', () {
     expect(followPage, isNotEmpty, reason: '_followPage moved or was renamed');
     expect(followPage.contains('keysetAfter(order, after)'), isTrue);

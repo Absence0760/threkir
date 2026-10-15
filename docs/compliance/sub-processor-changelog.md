@@ -90,6 +90,18 @@ will diff against this baseline.
 
 ---
 
+## 2026-10-15 — Anthropic — new data category (no new sub-processor)
+
+* **What changes**: Pro runners who use the plate-photo logger send one photo of a meal per request to Anthropic, which proposes food-diary entries.
+* **Why**: photo-of-plate food logging (issue #1168 item 9, decisions § 1972).
+* **Activation date**: not before the counsel / CISO sign-off on the v5 AI-disclosure copy; the feature ships default-off behind `PUBLIC_PLATE_PHOTO_ENABLED` / `PLATE_PHOTO_ENABLED`.
+* **Data categories affected**: meal photographs (location and camera metadata stripped on the device and the server first; never stored by Threkir).
+* **Region**: us-east-1 (unchanged).
+* **DPA**: <https://www.anthropic.com/legal/data-processing-addendum> (unchanged).
+* **Opt-out path**: don't use the plate-photo logger; consent is AI disclosure v5, withdrawable in Settings → Account.
+
+---
+
 ## Template for future entries
 
 ```

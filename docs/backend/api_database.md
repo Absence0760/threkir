@@ -1080,7 +1080,9 @@ kept whole by `user_profiles_ai_disclosure_chk` — either both are set or neith
 |---|---|---|
 | 1 | AI Coach only — profile slice, recent runs, active plan, chat text | `/api/coach` |
 | 2 | v1 plus the AI route assistant (route stats + name, the typed request, a coarse place label) | `/api/coach/route-describe`, `/api/coach/route-request` |
-| 3 | All AI features — v2 plus the AI plan assistant (the typed plan description: goal race, target and recent times, training days — sent only to extract plan-wizard settings; the plan is built by the deterministic generator). Migration `20270816000001`; prod deploy gated on counsel / CISO sign-off of the v3 copy | `/api/coach/plan-request` |
+| 3 | v2 plus the AI plan assistant (the typed plan description: goal race, target and recent times, training days — sent only to extract plan-wizard settings; the plan is built by the deterministic generator). Migration `20270816000001`; prod deploy gated on counsel / CISO sign-off of the v3 copy | `/api/coach/plan-request` |
+| 4 | v3 plus AI plan edits (added on a sibling branch; its row lands with it). | |
+| 5 | All AI features — v4 plus the plate-photo logger (one meal photo per request, location and camera metadata stripped server-side before it leaves, never stored; used only to propose food-log entries the runner edits before saving). Migration `20270826000003`, [decisions § 1973](../architecture/decisions.md). | `/api/coach/plate-photo` |
 
 The ladder is **monotone by construction** — each version is a strict superset of the one below,
 which is what makes `accepted >= required` sound. A future disclosure that *narrows* could not

@@ -415,7 +415,7 @@ Not Phase 4 work — documented so future-us doesn't re-litigate scope when the 
 
 **Nutrition — heavy (AI-driven):**
 
-- Photo-of-plate recognition (vision-model-based — heavy lift, expensive at scale).
+- ~~Photo-of-plate recognition (vision-model-based — heavy lift, expensive at scale).~~ **Built web + mobile behind default-off `PUBLIC_PLATE_PHOTO_ENABLED` / `PLATE_PHOTO_ENABLED` (2026-10-15, [decisions § 1972](../architecture/decisions.md)).** "Log from a photo" on `/nutrition/log` and a camera action on the mobile nutrition screen: one forced tool call to a vision model proposes `food_log` rows, the server clamps every field, the runner edits before saving, and the photo is never stored. Pro + a 20/hour throttle answer "expensive at scale". Live once counsel / CISO sign the v5 AI-disclosure copy.
 - AI Coach writes the meal plan from training plan + goals + dietary preferences.
 - Restaurant menu suggestions, grocery list export.
 

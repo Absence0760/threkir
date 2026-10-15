@@ -318,7 +318,7 @@ test('regenerate with a missing anchor fails closed with 409 and inserts nothing
 			},
 			{
 				...baseConfig(),
-				// Bypass the paywall so the is_pro / increment_coach_usage RPCs
+				// Bypass the paywall so the is_pro / spend_coach_usage_slot RPCs
 				// are skipped — the stub only needs to satisfy auth + consent +
 				// buildContext + the anchor lookup.
 				bypassPaywallEnabled: true,
@@ -684,4 +684,136 @@ test('the system text carries the plan-edit handoff only when AI plan edits are 
 	assert.ok(on.includes('?adjust=<request>'), on.slice(-1500));
 	const off = await systemTextFor(false, false, false);
 	assert.ok(!off.includes('adjust='), 'no plan-edit link while the flag is off');
+});
+
+// ───────────── daily-cap spend + ticketed refund (decisions § 1990) ─────────────
+//
+// The refund's only authority is the ticket `spend_coach_usage_slot` returns.
+// These drive handleCoach end to end with the paywall ON, through the
+// OpenAI-compatible provider (whose only I/O is `fetch`, stubbed per test), and
+// read the RPCs the handler made: a reply that streamed keeps the slot, a
+// failed call refunds exactly the ticket its own spend was issued.
+
+const TICKET = '5e5e0000-0000-0000-0000-00000000c0a1';
+
+type RpcCall = { name: string; args: unknown };
+
+function paywalledStub(rpcs: RpcCall[], used = 1, spendId: string | null = TICKET) {
+	const base = makeSupabaseStub({ inserts: [], deletes: [] }) as unknown as {
+		rpc: (name: string, args?: unknown, opts?: unknown) => unknown;
+	};
+	const baseRpc = base.rpc;
+	base.rpc = (name: string, args?: unknown, opts?: unknown) => {
+		rpcs.push({ name, args });
+		if (name === 'is_pro') return Promise.resolve({ data: false, error: null });
+		if (name === 'spend_coach_usage_slot') {
+			return Promise.resolve({ data: [{ used, spend_id: spendId }], error: null });
+		}
+		if (name === 'refund_coach_usage_slot') return Promise.resolve({ data: true, error: null });
+		return baseRpc(name, args, opts);
+	};
+	return base as unknown as SupabaseClient;
+}
+
+async function coachWithUpstream(
+	upstream: () => Response,
+	used = 1,
+	spendId: string | null = TICKET,
+): Promise<{ result: Awaited<ReturnType<typeof handleCoach>>; rpcs: RpcCall[]; sse: string }> {
+	const rpcs: RpcCall[] = [];
+	const originalFetch = globalThis.fetch;
+	globalThis.fetch = (async () => upstream()) as typeof fetch;
+	let result!: Awaited<ReturnType<typeof handleCoach>>;
+	let sse = '';
+	try {
+		await captureConsoleError(async () => {
+			result = await handleCoach(
+				'Bearer fake-token',
+				{ messages: [{ role: 'user', content: 'how was my week?' }] },
+				{
+					...baseConfig(),
+					provider: 'openai',
+					openaiBaseUrl: 'http://upstream.test/v1',
+					createClient: () => paywalledStub(rpcs, used, spendId),
+				},
+			);
+			if (result.kind === 'sse') sse = await drain(result.body);
+		});
+	} finally {
+		globalThis.fetch = originalFetch;
+	}
+	return { result, rpcs, sse };
+}
+
+const names = (rpcs: RpcCall[]) => rpcs.map((c) => c.name);
+
+test('a reply that streams keeps the slot: one spend, no refund', async () => {
+	const { result, rpcs, sse } = await coachWithUpstream(
+		() =>
+			new Response(
+				'data: {"choices":[{"delta":{"content":"Solid week."}}]}\n\ndata: [DONE]\n\n',
+				{ status: 200 },
+			),
+	);
+	assert.equal(result.kind, 'sse');
+	assert.match(sse, /Solid week\./);
+	assert.deepEqual(
+		rpcs.find((c) => c.name === 'spend_coach_usage_slot')?.args,
+		{ p_user_id: 'user-1' },
+	);
+	assert.ok(!names(rpcs).includes('refund_coach_usage_slot'), names(rpcs).join(','));
+	assert.ok(!names(rpcs).includes('increment_coach_usage'));
+});
+
+test('a provider failure with nothing streamed refunds the ticket its own spend was issued', async () => {
+	const { result, rpcs } = await coachWithUpstream(() => new Response('upstream down', { status: 503 }));
+	assert.equal(result.kind, 'sse');
+	const refunds = rpcs.filter((c) => c.name === 'refund_coach_usage_slot');
+	assert.equal(refunds.length, 1, names(rpcs).join(','));
+	assert.deepEqual(refunds[0].args, { p_user_id: 'user-1', p_spend_id: TICKET });
+});
+
+test('an over-cap spend answers 429 and refunds nothing', async () => {
+	const { result, rpcs } = await coachWithUpstream(
+		() => {
+			throw new Error('the provider must not be called over the cap');
+		},
+		3,
+	);
+	assert.equal(parseJsonResult(result).status, 429);
+	assert.ok(!names(rpcs).includes('refund_coach_usage_slot'));
+});
+
+test('a spend that returns no ticket still enforces, and a failure then refunds nothing', async () => {
+	const { result, rpcs } = await coachWithUpstream(() => new Response('down', { status: 503 }), 1, null);
+	assert.equal(result.kind, 'sse');
+	assert.ok(names(rpcs).includes('spend_coach_usage_slot'));
+	assert.ok(!names(rpcs).includes('refund_coach_usage_slot'));
+});
+
+test('an unreadable spend denies with 503 before any provider call', async () => {
+	const rpcs: RpcCall[] = [];
+	let result!: Awaited<ReturnType<typeof handleCoach>>;
+	await captureConsoleError(async () => {
+		result = await handleCoach(
+			'Bearer fake-token',
+			{ messages: [{ role: 'user', content: 'hi' }] },
+			{
+				...baseConfig(),
+				createClient: () => {
+					const sb = paywalledStub(rpcs) as unknown as {
+						rpc: (n: string, a?: unknown, o?: unknown) => unknown;
+					};
+					const inner = sb.rpc;
+					sb.rpc = (n, a, o) =>
+						n === 'spend_coach_usage_slot'
+							? Promise.resolve({ data: null, error: { message: 'boom' } })
+							: inner(n, a, o);
+					return sb as unknown as SupabaseClient;
+				},
+			},
+		);
+	});
+	assert.equal(parseJsonResult(result).status, 503);
+	assert.ok(!names(rpcs).includes('refund_coach_usage_slot'));
 });

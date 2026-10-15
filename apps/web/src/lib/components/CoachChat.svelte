@@ -679,7 +679,7 @@
 			}
 		} else if (event === 'error') {
 			error = (parsed.message as string) ?? t('coachChat.errorStreamFailed');
-			// The server refunds the cap slot (decrement_coach_usage) when a
+			// The server refunds the cap slot (refund_coach_usage_slot) when a
 			// stream fails before any token is produced, but that corrected
 			// count only reaches us on this `error` event — never via `done`.
 			// Roll back the optimistic usedToday++ when no tokens streamed, so

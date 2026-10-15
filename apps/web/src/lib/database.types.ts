@@ -6132,7 +6132,6 @@ export type Database = {
         }
       }
       decline_safety_contact: { Args: { p_id: string }; Returns: boolean }
-      decrement_coach_usage: { Args: { p_user_id: string }; Returns: number }
       defer_job: {
         Args: { delay_seconds: number; err?: string; job_id: number }
         Returns: string
@@ -6857,6 +6856,10 @@ export type Database = {
         Args: { p_route_id: string }
         Returns: undefined
       }
+      refund_coach_usage_slot: {
+        Args: { p_spend_id: string; p_user_id: string }
+        Returns: boolean
+      }
       refund_rate_limit_slot: {
         Args: { p_bucket: string; p_spend_id: string; p_user_id: string }
         Returns: boolean
@@ -7226,6 +7229,13 @@ export type Database = {
       }
       sign_in_browser_class: { Args: { p_ua: string }; Returns: string }
       sign_in_platform_class: { Args: { p_ua: string }; Returns: string }
+      spend_coach_usage_slot: {
+        Args: { p_user_id: string }
+        Returns: {
+          spend_id: string
+          used: number
+        }[]
+      }
       spend_rate_limit_slot: {
         Args: {
           p_bucket: string

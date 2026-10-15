@@ -919,6 +919,10 @@ create table user_coach_usage (
 
 - `increment_coach_usage(p_user_id uuid) → integer` — upserts today's row and returns the new count. `security definer` so the coach endpoint can call it in one round trip. Guarded: `auth.uid() != p_user_id` raises `not authorized`, so a malicious caller can't exhaust another user's quota.
 - `get_coach_usage(p_user_id uuid) → integer` — read-only; returns today's count without incrementing. Used by `CoachChat.svelte` to show "N of M remaining" before the user types. Same `auth.uid()` guard as `increment_coach_usage`.
+- `spend_coach_usage_slot(p_user_id uuid) → table(used integer, spend_id uuid)` — what the billed handlers call (the Coach, the plan assistant, AI plan edits; `apps/web/src/lib/coach/coach_message_slot.ts`): `increment_coach_usage` plus a fresh random refund ticket, recorded in `private.coach_usage_refund_tickets` against the usage row the spend bumped (newest 32 per row, bounded in the function). Migration `20270829000011`.
+- `refund_coach_usage_slot(p_user_id uuid, p_spend_id uuid) → boolean` — gives back one message for a ticket still held, consumes it, and decrements the day bucket the spend landed in (floored at 0); an unknown, consumed, evicted or other runner's ticket is a no-op returning false. It replaced `decrement_coach_usage`, which was dropped: a bare per-user decrement granted to `authenticated` let a runner reset their own cap through PostgREST after every successful message, because the handlers hold only the caller's JWT. The ticket reaches only the spend's caller (Lambda to PostgREST, never the browser) and the sidecar is in `private` with no client grant, so it cannot be read back; spending and refunding directly is net zero. Both RPCs are SECURITY DEFINER, refuse a caller who is not `p_user_id` (or service_role) with `42501`, and are executable by `authenticated` + `service_role` only (decisions § 1990). pgtap: `coach_usage_refund_ticket_test.sql`.
+
+**Refund tickets (`private.coach_usage_refund_tickets`).** One row per `user_coach_usage` row, `(user_id, usage_date)` primary key and a composite FK to that row `on delete cascade`, so the hourly retention sweep and account deletion retire the tickets with their bucket. Not on the usage row itself: the owner reads that row under its SELECT policy and both Art 20 export rails select it with `*`, so a ticket there would be handed to the runner. RLS on, every grant revoked; not exported (an operational credential, like `rate_limits.refundable_spends`).
 
 **RLS:** owner SELECT only. The self-INSERT / self-UPDATE policies this table shipped with were removed in migration `20270505_001` (`user_coach_usage_no_insert` / `no_update` / `no_delete`, with INSERT/UPDATE/DELETE revoked from `anon` + `authenticated`): the table is a meter, and a signed-in caller who can `PATCH message_count = 0` — or `INSERT` a future-dated bucket with a negative count, which the rolling-24h sum adds in — re-rolls their whole allowance and uncaps the Anthropic spend the cap exists to bound. Pinned by `rls_user_coach_usage_test.sql`.
 
@@ -2307,10 +2311,10 @@ grant  execute on function public.<fn>(<args>) to authenticated;   -- and/or ser
 
 Add `authenticated` to the revoke list when no client role should hold it at all
 (the `cleanup_*` / `enqueue_*` cron family, and helpers only a SECURITY DEFINER
-trigger calls). 100 migrations write a function-level `from public, anon` revoke
-today (83 as `revoke execute`, 18 as `revoke all`); it is the house form for
+trigger calls). 103 migrations write a function-level `from public, anon` revoke
+today (86 as `revoke execute`, 18 as `revoke all`); it is the house form for
 exactly this reason, and `check_migration_function_revoke_noop.mjs` is what
-keeps it — it replays all 550 migrations in version order and fails the PR on
+keeps it — it replays all 553 migrations in version order and fails the PR on
 any EXECUTE revoke that leaves the other channel at its image-dependent
 default, in either direction. **Those four figures are derived, not typed**: the
 guard prints them and `check_migration_function_revoke_noop.test.mjs` asserts

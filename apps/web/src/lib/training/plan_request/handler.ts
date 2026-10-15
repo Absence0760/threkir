@@ -11,10 +11,10 @@
 // it. The runner still reviews it and presses Create.
 //
 // Cost: one plan request is one coach-equivalent call, so it spends a slot of
-// the AI Coach's own daily counter (`increment_coach_usage`) at the caller's
+// the AI Coach's own daily counter (`spend_coach_usage_slot`) at the caller's
 // tier rather than being Pro-gated — free runners get it inside the same
 // daily cap. Fail-closed: an unreadable counter denies. A provider failure,
-// refusal or missing tool call refunds the slot.
+// refusal or missing tool call refunds the slot with that spend's ticket.
 //
 // Wrapped twice, exactly like the route-request + coach handlers
 // (decisions.md § 53):
@@ -274,14 +274,15 @@ export async function handlePlanRequest(
 	}
 
 	// Cost cap: the Coach's daily counter at the caller's tier.
+	let spendId: string | null = null;
 	if (!config.bypassPaywallEnabled) {
 		const slot = await spendCoachMessage(supabase, userId, 'plan-request', 'plan assistant unavailable');
 		if (!slot.ok) return json(slot.status, slot.payload);
+		spendId = slot.spendId;
 	}
 
 	async function refundSlot(reason: string): Promise<void> {
-		if (config.bypassPaywallEnabled) return;
-		await refundCoachMessage(supabase, userId, 'plan-request', reason);
+		await refundCoachMessage(supabase, userId, spendId, 'plan-request', reason);
 	}
 
 	const today = resolveToday(input.clientToday, (config.now ?? Date.now)());

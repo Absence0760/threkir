@@ -234,7 +234,7 @@ test('every rate-limit trigger raises through enforce_create_rate_limit', () => 
 
 test('every LLM-spending endpoint carries a per-user rate-limit bucket', () => {
 	// Reason: Pro is a monthly price, not a per-call one. `/api/coach` is
-	// capped by increment_coach_usage and the two route-engine handlers by
+	// capped by spend_coach_usage_slot and the two route-engine handlers by
 	// checkRouteRateLimit, but route-describe and route-request shipped with
 	// neither — a single subscription (or one leaked Pro JWT) bought unbounded
 	// claude-opus-4-8 calls on the operator's key. The only backstop was the
@@ -299,16 +299,37 @@ test('the Anthropic handlers on a route bucket give the slot back when the model
 	}
 });
 
-test('the Coach-message cost rail takes the slot fail-closed and refunds through decrement_coach_usage', () => {
-	// One copy of the rail the plan assistant and AI plan edits spend on
-	// (decisions § 1930, § 1981): open to free runners, so the per-user ceiling
-	// is the Coach's own daily counter rather than a Pro-only route bucket.
+test('the Coach-message cost rail takes the slot fail-closed and refunds only through its ticket', () => {
+	// One copy of the rail the Coach, the plan assistant and AI plan edits
+	// spend on (decisions § 1930, § 1981): open to free runners, so the
+	// per-user ceiling is the Coach's own daily counter rather than a Pro-only
+	// route bucket. The refund is ticketed (spend_coach_usage_slot /
+	// refund_coach_usage_slot, migration 20270829000011) for the reason the
+	// route buckets' is (§ 1990): a bare per-user decrement the handler can
+	// call, the runner can call after every successful message.
 	const file = 'src/lib/coach/coach_message_slot.ts';
 	const source = read(file);
-	assert.match(source, /rpc\('increment_coach_usage'/, `${file} must take a counter slot.`);
-	assert.match(source, /resolveUsageCount\(/, `${file} must fail closed on an unreadable count.`);
+	assert.match(source, /rpc\('spend_coach_usage_slot'/, `${file} must take a counter slot.`);
+	assert.match(source, /resolveUsageSpend\(/, `${file} must fail closed on an unreadable count.`);
 	assert.match(source, /usedToday > dailyLimit/, `${file} must deny past the tier's daily limit.`);
-	assert.match(source, /rpc\('decrement_coach_usage'/, `${file} must be able to refund a slot.`);
+	assert.match(source, /rpc\('refund_coach_usage_slot'/, `${file} must be able to refund a slot.`);
+	assert.match(source, /p_spend_id: spendId/, `${file} must refund with the spend's own ticket.`);
+	for (const caller of [
+		file,
+		'src/lib/coach/handler.ts',
+		'src/lib/training/plan_request/handler.ts',
+		'src/lib/training/plan_edit/handler.ts',
+	]) {
+		const src = read(caller);
+		assert.doesNotMatch(
+			src,
+			/rpc\('(increment|decrement)_coach_usage'/,
+			`${caller}: spend through spend_coach_usage_slot and refund with its ticket; a bare counter call has no ticket to refund with.`,
+		);
+	}
+	const coach = read('src/lib/coach/handler.ts');
+	assert.match(coach, /rpc\('spend_coach_usage_slot'/, 'the Coach handler must spend through the ticketed RPC.');
+	assert.match(coach, /refundCoachMessage\(supabase, authUserId, spendId,/, 'the Coach handler must refund with its own ticket.');
 });
 
 test('the plan assistant and AI plan edits spend a Coach message before their billed call, and refund failures', () => {

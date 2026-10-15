@@ -45,10 +45,15 @@ interface StubOpts {
 	snapshot?: ReturnType<typeof fixture>;
 }
 
+const TICKET = '5e5e0000-0000-0000-0000-0000000071e1';
+
 /// Enough Supabase for auth, the RPCs and the three plan reads, recording
-/// every RPC and every filter so a test can assert what was read and spent.
+/// every RPC, every refund's arguments and every filter so a test can assert
+/// what was read, spent and handed back. A numeric `usage` is the spend row's
+/// count; anything else is the RPC's raw `data`.
 function stubSupabase(opts: StubOpts = {}) {
 	const calls: string[] = [];
+	const refunds: unknown[] = [];
 	const filters: string[] = [];
 	const snap = opts.snapshot ?? fixture();
 	const planRow =
@@ -75,7 +80,7 @@ function stubSupabase(opts: StubOpts = {}) {
 				};
 				return chain;
 			},
-			rpc: (name: string) => {
+			rpc: (name: string, args?: unknown) => {
 				calls.push(name);
 				if (name === 'get_my_profile') {
 					return {
@@ -89,16 +94,21 @@ function stubSupabase(opts: StubOpts = {}) {
 					};
 				}
 				if (name === 'is_pro') return Promise.resolve({ data: opts.isPro === true, error: null });
-				if (name === 'increment_coach_usage') {
+				if (name === 'spend_coach_usage_slot') {
+					const usage = opts.usage === undefined ? 1 : opts.usage;
 					return Promise.resolve({
-						data: opts.usage === undefined ? 1 : opts.usage,
+						data: typeof usage === 'number' ? [{ used: usage, spend_id: TICKET }] : usage,
 						error: opts.usageError ?? null,
 					});
+				}
+				if (name === 'refund_coach_usage_slot') {
+					refunds.push(args);
+					return Promise.resolve({ data: true, error: null });
 				}
 				return Promise.resolve({ data: null, error: null });
 			},
 		}) as never;
-	return { factory, calls, filters };
+	return { factory, calls, refunds, filters };
 }
 
 function stubModel(respond: () => unknown) {
@@ -165,7 +175,7 @@ test('a v3 acceptance is refused with the machine-readable v4 requirement, befor
 	assert.equal(r.body.code, 'ai_disclosure_required');
 	assert.equal(r.body.required_version, 4);
 	assert.deepEqual(r.sb.filters, []);
-	assert.ok(!r.sb.calls.includes('increment_coach_usage'));
+	assert.ok(!r.sb.calls.includes('spend_coach_usage_slot'));
 	assert.equal(r.model.seen.calls, 0);
 });
 
@@ -179,7 +189,7 @@ test('the plan is read under the caller\'s own id, and a plan they do not own is
 	assert.equal(r.status, 404);
 	assert.ok(r.sb.filters.includes(`training_plans.id=${PLAN_ID}`));
 	assert.ok(r.sb.filters.includes('training_plans.user_id=user-1'));
-	assert.ok(!r.sb.calls.includes('increment_coach_usage'));
+	assert.ok(!r.sb.calls.includes('spend_coach_usage_slot'));
 });
 
 test('a template plan is not editable here', async () => {
@@ -193,7 +203,7 @@ test('a template plan is not editable here', async () => {
 test('a plan read error is a 500 that spends nothing', async () => {
 	const r = await run({ planError: { message: 'boom' } });
 	assert.equal(r.status, 500);
-	assert.ok(!r.sb.calls.includes('increment_coach_usage'));
+	assert.ok(!r.sb.calls.includes('spend_coach_usage_slot'));
 });
 
 test('a plan with nothing left to change is a 409 that spends nothing', async () => {
@@ -201,13 +211,13 @@ test('a plan with nothing left to change is a 409 that spends nothing', async ()
 	for (const w of snap.workouts) w.manually_completed = true;
 	const r = await run({ snapshot: snap });
 	assert.equal(r.status, 409);
-	assert.ok(!r.sb.calls.includes('increment_coach_usage'));
+	assert.ok(!r.sb.calls.includes('spend_coach_usage_slot'));
 });
 
 test('a missing key is a 503 and spends no slot', async () => {
 	const r = await run({}, undefined, { anthropicApiKey: undefined });
 	assert.equal(r.status, 503);
-	assert.ok(!r.sb.calls.includes('increment_coach_usage'));
+	assert.ok(!r.sb.calls.includes('spend_coach_usage_slot'));
 });
 
 test('over the daily cap is a 429 and no model call', async () => {
@@ -232,15 +242,15 @@ test('a provider failure, a refusal and a missing tool call each refund the slot
 	for (const [respond, status] of cases) {
 		const r = await run({}, stubModel(respond));
 		assert.equal(r.status, status);
-		assert.ok(r.sb.calls.includes('decrement_coach_usage'), String(status));
+		assert.deepEqual(r.sb.refunds, [{ p_user_id: 'user-1', p_spend_id: TICKET }], String(status));
 	}
 });
 
 test('the bypass skips the counter and never refunds', async () => {
 	const r = await run({}, stubModel(() => ({ stop_reason: 'refusal', content: [] })), { bypassPaywallEnabled: true });
 	assert.equal(r.status, 422);
-	assert.ok(!r.sb.calls.includes('increment_coach_usage'));
-	assert.ok(!r.sb.calls.includes('decrement_coach_usage'));
+	assert.ok(!r.sb.calls.includes('spend_coach_usage_slot'));
+	assert.ok(!r.sb.calls.includes('refund_coach_usage_slot'));
 });
 
 test('success returns validated operations against real ids, never the raw tool input', async () => {
@@ -316,8 +326,8 @@ test('a successful edit spends exactly one Coach message and refunds nothing', a
 	);
 	assert.equal(r.status, 200);
 	assert.equal(r.model.seen.calls, 1);
-	assert.equal(r.sb.calls.filter((c) => c === 'increment_coach_usage').length, 1);
-	assert.ok(!r.sb.calls.includes('decrement_coach_usage'));
+	assert.equal(r.sb.calls.filter((c) => c === 'spend_coach_usage_slot').length, 1);
+	assert.ok(!r.sb.calls.includes('refund_coach_usage_slot'));
 });
 
 test('a Pro caller is held to the Pro cap, not the free one', async () => {

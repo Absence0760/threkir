@@ -16,9 +16,10 @@
 // can name — come from a plan the caller owns.
 //
 // Cost: one plan edit is one coach-equivalent call, so it spends a slot of the
-// AI Coach's daily counter (`increment_coach_usage`) at the caller's tier,
+// AI Coach's daily counter (`spend_coach_usage_slot`) at the caller's tier,
 // exactly as the plan assistant does. Fail-closed: an unreadable counter
-// denies. A provider failure, refusal or missing tool call refunds the slot.
+// denies. A provider failure, refusal or missing tool call refunds the slot
+// with that spend's ticket.
 //
 // Wrapped twice (decisions § 53):
 //   - apps/web/src/routes/api/coach/plan-edit/+server.ts (dev)
@@ -328,14 +329,15 @@ export async function handlePlanEdit(
 	if (!anyEditable) return json(409, { error: 'nothing to adjust' });
 
 	// Cost cap: the Coach's daily counter at the caller's tier.
+	let spendId: string | null = null;
 	if (!config.bypassPaywallEnabled) {
 		const slot = await spendCoachMessage(supabase, userId, 'plan-edit', 'plan edits unavailable');
 		if (!slot.ok) return json(slot.status, slot.payload);
+		spendId = slot.spendId;
 	}
 
 	async function refundSlot(reason: string): Promise<void> {
-		if (config.bypassPaywallEnabled) return;
-		await refundCoachMessage(supabase, userId, 'plan-edit', reason);
+		await refundCoachMessage(supabase, userId, spendId, 'plan-edit', reason);
 	}
 
 	try {

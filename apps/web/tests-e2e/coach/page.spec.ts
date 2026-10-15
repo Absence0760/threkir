@@ -762,7 +762,7 @@ test.describe('/coach', () => {
 	}) => {
 		// The client bumps usedToday optimistically the instant a 200 stream
 		// begins. When the provider then fails before emitting any token, the
-		// server refunds the cap slot (decrement_coach_usage) and reports the
+		// server refunds the cap slot (refund_coach_usage_slot) and reports the
 		// corrected count only on the `error` SSE event — never via `done`. If
 		// the client doesn't roll its optimistic ++ back, a single transient
 		// failure at the cap boundary wrongly replaces the composer with the

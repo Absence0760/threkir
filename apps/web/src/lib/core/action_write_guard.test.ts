@@ -4,9 +4,9 @@
 // the "Linked to route" toast and flipped route_id locally while the
 // write failed (route_id feeds plan progress + segment auto-compute),
 // replaceSessionPlanChildren could duplicate every block/item after a
-// resolved-with-error delete, and a resolved-error decrement_coach_usage
-// silently kept a failed generation's daily-cap slot consumed. Action
-// writes must destructure { error } and throw.
+// resolved-with-error delete, and a resolved-error coach refund silently
+// kept a failed generation's daily-cap slot consumed. Action writes must
+// destructure { error } and throw.
 
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
@@ -15,6 +15,7 @@ import { resolve } from 'node:path';
 
 const data = readFileSync(resolve('src/lib/core/data.ts'), 'utf-8');
 const handler = readFileSync(resolve('src/lib/coach/handler.ts'), 'utf-8');
+const slot = readFileSync(resolve('src/lib/coach/coach_message_slot.ts'), 'utf-8');
 
 function fnBody(source: string, decl: string): string {
 	const start = source.indexOf(decl);
@@ -46,10 +47,12 @@ test('coach refundCapSlot surfaces a resolved rpc error (#236)', () => {
 	const start = handler.indexOf('async function refundCapSlot(');
 	assert.notEqual(start, -1, 'refundCapSlot missing from coach/handler.ts');
 	const body = handler.slice(start, handler.indexOf('\n\t}', start));
+	assert.match(body, /refundCoachMessage\(/, 'the Coach refunds through the shared rail');
+	const rail = fnBody(slot, 'export async function refundCoachMessage(');
 	assert.match(
-		body,
-		/const \{ error \} = await supabase\.rpc\('decrement_coach_usage'/,
+		rail,
+		/const \{ error \} = await supabase\.rpc\('refund_coach_usage_slot'/,
 		'the refund rpc must destructure { error }',
 	);
-	assert.match(body, /if \(error\) throw dbError\(error\);/, 'a resolved error must reach the catch/log');
+	assert.match(rail, /if \(error\) throw dbError\(error\);/, 'a resolved error must reach the catch/log');
 });

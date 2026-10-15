@@ -8,19 +8,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/follow_requests_screen.dart';
 
-bool _supabaseReady = false;
-
-Future<void> _ensureSupabase() async {
-  if (_supabaseReady) return;
-  TestWidgetsFlutterBinding.ensureInitialized();
-  SharedPreferences.setMockInitialValues({});
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:24321',
-    anonKey: 'eyJ.local.test',
-  );
-  _supabaseReady = true;
-}
-
 class _FakeApi extends ApiClient {
   _FakeApi(this.requests, {this.declineThrows = false});
 
@@ -51,7 +38,6 @@ IncomingFollowRequest _req(String id, String name) => IncomingFollowRequest(
     );
 
 Future<void> _pump(WidgetTester tester, ApiClient api) async {
-  await _ensureSupabase();
   await tester.pumpWidget(
     MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -64,6 +50,17 @@ Future<void> _pump(WidgetTester tester, ApiClient api) async {
 }
 
 void main() {
+  // Outside any testWidgets body: the auth client arms a periodic refresh
+  // timer, which inside one is a fake timer still pending at teardown.
+  setUpAll(() async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    SharedPreferences.setMockInitialValues({});
+    await Supabase.initialize(
+      url: 'http://127.0.0.1:24321',
+      anonKey: 'eyJ.local.test',
+    );
+  });
+
   testWidgets('approving removes the row and calls the approve RPC',
       (tester) async {
     final api = _FakeApi([_req('a', 'Ada'), _req('b', 'Bo')]);

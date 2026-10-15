@@ -78,6 +78,66 @@ void main() {
     });
   });
 
+  group('barometric altitude', () {
+    test('a fix carries the anchored barometer beside its GPS altitude', () {
+      final r = RunRecorder()..debugPrepareWithoutStream();
+      r.debugInjectPosition(makePosition(
+        metresEast: 0,
+        secondsFromStart: 0,
+        altitude: 400,
+      ));
+      expect(r.debugCurrentWaypoint!.baroElevationMetres, isNull);
+
+      r.setBarometricAltitude(10);
+      r.debugInjectPosition(makePosition(
+        metresEast: 5,
+        secondsFromStart: 1,
+        altitude: 420,
+      ));
+      // The first paired GPS altitude sets the level: 420 - 10.
+      expect(r.debugCurrentWaypoint!.baroElevationMetres, 420);
+      expect(r.debugCurrentWaypoint!.elevationMetres, 420);
+
+      r.setBarometricAltitude(13);
+      r.debugInjectPosition(makePosition(
+        metresEast: 10,
+        secondsFromStart: 2,
+        altitude: 400,
+      ));
+      // The level is the mean of 410 and 387; the 3 m the barometer rose is
+      // the shape, and the 20 m GPS drop is mostly averaged away.
+      expect(r.debugCurrentWaypoint!.baroElevationMetres, 411.5);
+      expect(r.debugCurrentWaypoint!.elevationMetres, 400);
+      r.dispose();
+    });
+
+    test('without a barometer no fix carries one', () {
+      final r = RunRecorder()..debugPrepareWithoutStream();
+      for (var i = 0; i < 3; i++) {
+        r.debugInjectPosition(makePosition(
+          metresEast: i * 5.0,
+          secondsFromStart: i,
+          altitude: 400.0 + i,
+        ));
+        expect(r.debugCurrentWaypoint!.baroElevationMetres, isNull);
+        expect(r.debugCurrentWaypoint!.elevationMetres, 400.0 + i);
+      }
+      r.dispose();
+    });
+
+    test('a non-finite barometer sample is dropped, not stamped', () {
+      final r = RunRecorder()..debugPrepareWithoutStream();
+      r.setBarometricAltitude(double.nan);
+      r.debugInjectPosition(makePosition(
+        metresEast: 0,
+        secondsFromStart: 0,
+        altitude: 400,
+      ));
+      expect(r.debugCurrentWaypoint!.baroElevationMetres, isNull);
+      r.dispose();
+    });
+  });
+
   group('elevation sentinel', () {
     test('altitude 0.0 with a valid accuracy is kept (sea-level fix)', () {
       final r = RunRecorder()..debugPrepareWithoutStream();

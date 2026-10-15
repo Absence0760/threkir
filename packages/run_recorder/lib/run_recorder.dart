@@ -1,6 +1,7 @@
 /// Live GPS run recording with pace, distance, and route navigation.
 library run_recorder;
 
+export 'src/baro_altitude_anchor.dart';
 export 'src/gps_distance_estimator.dart';
 export 'src/run_recorder.dart';
 export 'src/run_snapshot.dart';

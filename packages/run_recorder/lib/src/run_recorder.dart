@@ -12,6 +12,7 @@ import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:uuid/uuid.dart';
 
+import 'baro_altitude_anchor.dart';
 import 'gps_distance_estimator.dart';
 import 'run_snapshot.dart';
 
@@ -367,6 +368,12 @@ class RunRecorder {
   /// — Waypoints constructed without a sample carry `bpm: null`, which
   /// matches the pre-strap behaviour.
   int? _currentBpm;
+
+  /// Levels the phone barometer against GPS altitude; its fused altitude is
+  /// stamped on each new [Waypoint] as `baroElevationMetres`. Fed by
+  /// [setBarometricAltitude]; stays unanchored, and stamps nothing, on a phone
+  /// without a barometer. Times are [_sourceClock] seconds.
+  final BaroAltitudeAnchor _baroAnchor = BaroAltitudeAnchor();
 
   /// Treadmill (FTMS) distance source — an ADDITIVE, OPT-IN alternate to the
   /// GPS L1 distance path. Off by default: every field here stays untouched
@@ -1224,6 +1231,33 @@ class RunRecorder {
     _currentBpm = bpm;
   }
 
+  /// Feed the phone barometer's relative altitude, metres on the sensor's own
+  /// datum (`run_app/barometer`). Only the shape is used: [BaroAltitudeAnchor]
+  /// levels it against GPS altitude before anything is stamped. L4 — a bad
+  /// sample is dropped and the track keeps its GPS `elevationMetres`.
+  void setBarometricAltitude(double relativeAltitudeM) {
+    try {
+      _baroAnchor.addBarometer(_sourceSeconds(), relativeAltitudeM);
+    } catch (e) {
+      debugPrint('RunRecorder: barometer sample dropped — $e');
+    }
+  }
+
+  double _sourceSeconds() => _sourceClock.elapsed.inMicroseconds / 1e6;
+
+  /// Averages this fix's GPS altitude into the barometer's level and returns
+  /// the fused altitude for it, or null when there is none to stamp.
+  double? _baroElevationFor(Position pos) {
+    try {
+      final t = _sourceSeconds();
+      _baroAnchor.addGps(t, pos.altitude, pos.altitudeAccuracy);
+      return _round2(_baroAnchor.altitudeAt(t));
+    } catch (e) {
+      debugPrint('RunRecorder: barometric altitude skipped — $e');
+      return null;
+    }
+  }
+
   /// Feed the pedometer's run-relative cumulative step count. While GPS is
   /// good the estimator learns a stride from it; across a GPS gap longer than
   /// [GpsDistanceEstimator.gapS] the steps x stride fill the distance the
@@ -1654,6 +1688,7 @@ class RunRecorder {
       speedMps: _round2(fix.speedMps),
       speedAccuracyMps: _round2(fix.speedAccuracyMps),
       bearingDeg: _round2(fix.bearingDeg),
+      baroElevationMetres: _baroElevationFor(pos),
     );
     _currentWaypointAt = DateTime.now();
 

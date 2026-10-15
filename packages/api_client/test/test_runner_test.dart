@@ -20,8 +20,11 @@ import 'package:test/test.dart';
 /// arrive with no documented runner; a package that declares the Flutter SDK
 /// is in the `flutter test` column, DERIVED from its pubspec rather than
 /// copied from the table; and the packages the table says CI runs are exactly
-/// the `--scope=` list of the `test-packages` job, which is the drift that
-/// once left `ui_kit` and `core_models` running nowhere.
+/// the ones CI runs — the `--scope=` list of the `test-packages` job, which is
+/// the drift that once left `ui_kit` and `core_models` running nowhere, plus
+/// any package the table hands to a job of its own (`apps/mobile_android`,
+/// sharded in `test-mobile-android` since PR #1164's runner was shut down
+/// mid-suite), which must exist and run `flutter test` in that package.
 ///
 /// It cannot check the transitive case — nothing in this repo says
 /// `supabase_flutter` is Flutter-only — which is precisely why that row is
@@ -66,10 +69,10 @@ void main() {
     );
   });
 
-  test('the CI column names exactly the test-packages scopes', () {
+  test('the CI column names exactly the jobs that run each package', () {
     final scopes = _testPackagesScopes(ci.readAsStringSync());
     final claimed = table.entries
-        .where((e) => e.value.runInCi)
+        .where((e) => e.value.ciJob == 'test-packages')
         .map((e) => e.key.split('/').last)
         .toSet();
     expect(
@@ -80,6 +83,28 @@ void main() {
           'stops a whole suite; a scope added without a row leaves the doc '
           'claiming it runs nowhere.',
     );
+
+    // A package the column hands to a job of its own must be run by it.
+    final text = ci.readAsStringSync();
+    final wrong = <String>[];
+    for (final entry in table.entries) {
+      final job = entry.value.ciJob;
+      if (job == null || job == 'test-packages') continue;
+      final block = _jobBlock(text, job);
+      if (block == null) {
+        wrong.add('${entry.key}: ci.yml has no job `$job`');
+      } else if (!block.contains('working-directory: ${entry.key}') ||
+          !block.contains('flutter test')) {
+        wrong.add('${entry.key}: job `$job` does not run `flutter test` with '
+            'working-directory ${entry.key}');
+      }
+    }
+    expect(
+      wrong,
+      isEmpty,
+      reason: 'the "Run in CI by" column names a job that does not run the '
+          'package, so the suite it claims is covered runs nowhere',
+    );
   });
 
   test('this package is documented as needing flutter test', () {
@@ -87,15 +112,17 @@ void main() {
     // than left to the derivation above, which cannot reach it: nothing in
     // this repo says `supabase_flutter` pulls in the Flutter SDK.
     expect(table['packages/api_client']!.dartTestWorks, isFalse);
-    expect(table['packages/api_client']!.runInCi, isTrue);
+    expect(table['packages/api_client']!.ciJob, 'test-packages');
   });
 }
 
 class _RunnerRow {
-  const _RunnerRow({required this.dartTestWorks, required this.runInCi});
+  const _RunnerRow({required this.dartTestWorks, required this.ciJob});
 
   final bool dartTestWorks;
-  final bool runInCi;
+
+  /// The ci.yml job the "Run in CI by" cell names, or null when it names none.
+  final String? ciJob;
 }
 
 Directory _repoRoot() {
@@ -145,7 +172,7 @@ Map<String, _RunnerRow> _parseRunnerTable(String markdown) {
     }
     rows[path] = _RunnerRow(
       dartTestWorks: dartTestWorks,
-      runInCi: cells[2].contains('test-packages'),
+      ciJob: RegExp(r'`([a-z0-9-]+)`').firstMatch(cells[2])?.group(1),
     );
   }
   if (rows.isEmpty) throw StateError('the runner table has no rows');
@@ -179,6 +206,19 @@ bool _declaresFlutterSdk(String pubspec) {
     if (lines[i + 1].trim() == 'sdk: flutter') return true;
   }
   return false;
+}
+
+/// The lines of one top-level job under `jobs:`, or null if there is none.
+String? _jobBlock(String ci, String job) {
+  final lines = ci.split('\n');
+  final start = lines.indexOf('  $job:');
+  if (start < 0) return null;
+  final header = RegExp(r'^(  [A-Za-z0-9_-]+:\s*$|\S)');
+  var end = start + 1;
+  while (end < lines.length && !header.hasMatch(lines[end])) {
+    end++;
+  }
+  return lines.sublist(start, end).join('\n');
 }
 
 Set<String> _testPackagesScopes(String ci) {

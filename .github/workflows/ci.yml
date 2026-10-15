@@ -534,8 +534,66 @@ jobs:
       # ui_kit and core_models carry 16 test files between them and were
       # absent from this list, so their suites — including every theme
       # guard added by the issue #666 rounds — had never run in CI.
-      - run: melos exec --scope="run_recorder" --scope="mobile_android" --scope="api_client" --scope="gpx_parser" --scope="ui_kit" --scope="core_models" -- flutter test
+      # mobile_android is deliberately absent: its suite runs sharded in
+      # test-mobile-android below. `dart analyze` stays whole-workspace here,
+      # so mobile_android is analysed once, not once per shard.
+      - run: melos exec --scope="run_recorder" --scope="api_client" --scope="gpx_parser" --scope="ui_kit" --scope="core_models" -- flutter test
       - run: melos exec -- dart analyze
+
+  # mobile_android's suite (661 test files on 2026-10-15) used to run inside
+  # test-packages' single `melos exec`, beside five other packages, on one
+  # hosted runner. That step took 21 min green on main (run 38736606802) and
+  # was then killed three times at ~22-24 min on PR #1164 with "The runner
+  # has received a shutdown signal" / exit 143 and no failing test — every
+  # other package had passed, and only mobile_android was still running. A
+  # runner that is shut down mid-suite is a capacity failure, so the fix is
+  # less work per runner, not a longer timeout or a retry.
+  #
+  # Sharded by FILE, not with `flutter test --total-shards`: package:test's
+  # sharding (test_core runner.dart `_shardSuite`) splits the test CASES
+  # inside each suite, so every shard would still compile and load all 661
+  # files — the cost being cut. Instead each shard takes every Nth file of
+  # the sorted list, round-robin so the alphabetically clustered heavy
+  # widget files (47 settings_*, 36 run_*, 24 route_*) spread across shards. N and the
+  # index come from the strategy context, so the matrix list is the only
+  # place the shard count is written; the modulo partition covers every
+  # file exactly once by construction. Four shards puts each at ~165 files,
+  # about 5-6 min of the 21, well under the slowest e2e lanes; a fifth
+  # would buy little against the ~1 min of setup each shard repeats.
+  test-mobile-android:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    name: Test mobile_android — shard ${{ matrix.shard }}/4
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - run: dart pub global activate melos 7.8.2
+      - run: melos bootstrap
+      - run: cp apps/mobile_android/.env.example apps/mobile_android/.env.development
+      - run: flutter precache
+      - name: Run this shard's share of the mobile_android test files
+        working-directory: apps/mobile_android
+        env:
+          SHARD_INDEX: ${{ strategy.job-index }}
+          SHARD_TOTAL: ${{ strategy.job-total }}
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(find test -name '*_test.dart' | LC_ALL=C sort | awk -v n="$SHARD_TOTAL" -v i="$SHARD_INDEX" '(NR - 1) % n == i')
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "::error::Shard $((SHARD_INDEX + 1)) of $SHARD_TOTAL was handed no mobile_android test files, so it would report green having run nothing. Either test/ moved or the matrix grew past the file count."
+            exit 1
+          fi
+          echo "Shard $((SHARD_INDEX + 1)) of $SHARD_TOTAL: ${#files[@]} test files"
+          flutter test "${files[@]}"
 
   # The run above is in UTC, the runner's zone, where a local calendar day is
   # always 24 hours and always starts at 00:00 UTC — so a test whose verdict
@@ -548,8 +606,9 @@ jobs:
   # +0/+1 flip, Kolkata for a half-hour positive offset with no DST. The Dart
   # VM reads the zone through the C library's localtime_r, which honours TZ
   # from the environment flutter_tester inherits. Separate from
-  # test-packages so the critical path does not grow; the file list is
-  # derived from the tag, so a new test opts in where it is written.
+  # test-packages and test-mobile-android so the critical path does not
+  # grow; the file list is derived from the tag, so a new test opts in
+  # where it is written.
   test-timezones:
     needs: changes
     if: needs.changes.outputs.code == 'true'
@@ -1169,7 +1228,8 @@ jobs:
     # the budget's old job spent 47 s repeating the `npm ci` + `vite build`
     # this job spends 69 s on, and deleting that duplicate gives a runner
     # slot back. Wall-clock on the gate is unchanged either way — the
-    # critical path is `test-packages` at 17 min (run 33175862509) and every
+    # critical path was `test-packages` at 17 min (run 33175862509; its
+    # mobile_android suite now runs sharded in `test-mobile-android`) and every
     # candidate here is two orders of magnitude under it — so the choice is
     # about runner-minutes and about a failure the gate actually waits for.
     # Bundling rather than splitting is what `parity-matrix` already decided
@@ -2788,7 +2848,7 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     name: Build mobile_android APK (smoke)
     runs-on: ubuntu-latest
-    # `flutter test` (in test-packages) catches Dart-level regressions
+    # `flutter test` (in test-mobile-android) catches Dart-level regressions
     # but does NOT exercise the Android Gradle build. Plugin pin
     # mismatches like the AGP 8.13 / Kotlin 2.2 / reactive_ble_mobile
     # compileSdk-33 case (apps/mobile_android/android/build.gradle.kts
@@ -2900,7 +2960,7 @@ jobs:
     timeout-minutes: 45
     # Runs the `integration_test/` harness (decisions § 1820) on a real
     # Android emulator: the real `main()`, real plugins, real
-    # SharedPreferences — the layer `test-packages`' headless widget tests
+    # SharedPreferences — the layer `test-mobile-android`'s headless widget tests
     # cannot reach. No Supabase stack is started, on purpose. Neither suite
     # touches the backend: onboarding is device-local, and Home is reachable
     # without a session (main.dart routes on the device-scoped `onboarded`
@@ -3001,7 +3061,7 @@ jobs:
     runs-on: macos-latest
     # The Flutter iOS target was the one shipped app surface nothing in CI
     # ever compiled. `build-mobile-android` covers the Gradle toolchain,
-    # `test-packages` covers the Dart, `ios-native-declarations` is a static
+    # `test-mobile-android` covers the Dart, `ios-native-declarations` is a static
     # Node guard that never invokes a compiler, and `test-watch-ios` builds
     # the SEPARATE native watchOS app — so a break in the Swift under
     # apps/mobile_ios/ios/Runner, in the Podfile, in the pbxproj, or in a
@@ -4659,6 +4719,7 @@ jobs:
       - changes
       - workflow-lint
       - test-packages
+      - test-mobile-android
       - test-timezones
       - test-worker
       - test-graph-cycle

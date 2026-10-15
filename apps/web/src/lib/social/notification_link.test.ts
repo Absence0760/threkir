@@ -31,7 +31,7 @@ function make(overrides: {
 }
 
 test('run-engagement kinds link to the run detail', () => {
-	for (const kind of ['kudos', 'comment', 'comment_reply']) {
+	for (const kind of ['kudos', 'comment', 'comment_reply', 'reaction', 'comment_like', 'mention']) {
 		assert.equal(notificationLinkFor(make({ kind, run_id: 'r1' })), '/runs/r1');
 		assert.equal(notificationLinkFor(make({ kind })), null, `${kind} with no run_id has no link`);
 	}

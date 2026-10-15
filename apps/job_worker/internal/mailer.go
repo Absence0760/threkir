@@ -331,6 +331,10 @@ var importantKinds = map[string]bool{
 	// A seat held for the recipient that lapses to the next person if they
 	// don't act: the definition of something they are waiting on.
 	"event_waitlist_slot": true,
+	// Someone addressed the recipient by name, which is closer to a direct
+	// message than to the social loop. reaction / comment_like stay out: they
+	// are the same kind of signal as kudos (decisions § 1971).
+	"mention": true,
 }
 
 // kindMutePrefKey maps a notification kind to the user_settings.prefs key
@@ -356,6 +360,13 @@ var importantKinds = map[string]bool{
 // mute. See docs/backend/settings.md + decisions.md § 729.
 var kindMutePrefKey = map[string]string{
 	"data_export_ready": "notify_data_export_ready",
+	// The social signals from decisions § 1971. A mention reaches the default
+	// "important" set, so a runner who wants every other message but not
+	// these needs a control narrower than the channel; reaction and
+	// comment_like only go out under "all", where the same is true.
+	"reaction":     "notify_reaction",
+	"comment_like": "notify_comment_like",
+	"mention":      "notify_mention",
 }
 
 // kindMuted reports whether the recipient silenced this one kind. Only the
@@ -492,9 +503,15 @@ func pathForKind(kind, base string, n NotificationRow) string {
 		return base + "/messages"
 	case "club_post":
 		return clubPath(base, n)
-	case "kudos", "comment", "comment_reply":
+	case "kudos", "comment", "comment_reply", "reaction":
 		// The recipient owns the run these fire on, so the owner-scoped
 		// /runs/{id} detail page is correct.
+		return runPath(base, n)
+	case "comment_like", "mention":
+		// The recipient need not own the run, but they could read it when the
+		// row was written (the mention gate checks exactly that), and
+		// /runs/{id} serves a non-owner the shared view of any run their
+		// audience admits.
 		return runPath(base, n)
 	case "run_completed":
 		// Fires on a followee's run, so the recipient is NOT the owner —

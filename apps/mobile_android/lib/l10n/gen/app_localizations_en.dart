@@ -4677,6 +4677,21 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String profileNotifReaction(String name) {
+    return '$name reacted to your run';
+  }
+
+  @override
+  String profileNotifCommentLike(String name) {
+    return '$name liked your comment';
+  }
+
+  @override
+  String profileNotifMention(String name) {
+    return '$name mentioned you in a comment';
+  }
+
+  @override
   String profileNotifFollow(String name) {
     return '$name started following you';
   }

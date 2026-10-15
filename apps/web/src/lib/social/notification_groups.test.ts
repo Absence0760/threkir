@@ -255,3 +255,25 @@ test('groupNotifications: achievements group by id, a null id stays solo', () =>
 	assert.ok(ach1);
 	assert.equal(ach1.otherCount, 1);
 });
+
+test('groupNotifications: reactions, comment likes and mentions collapse per run and kind', () => {
+	const groups = groupNotifications(
+		[
+			n({ id: 'r1', kind: 'reaction', run_id: 'run1', actor_id: 'u1', created_at: ago(3000) }),
+			n({ id: 'r2', kind: 'reaction', run_id: 'run1', actor_id: 'u2', created_at: ago(2000) }),
+			n({ id: 'l1', kind: 'comment_like', run_id: 'run1', actor_id: 'u1', created_at: ago(1500) }),
+			n({ id: 'm1', kind: 'mention', run_id: 'run1', actor_id: 'u3', created_at: ago(1000) }),
+			n({ id: 'm2', kind: 'mention', run_id: 'run2', actor_id: 'u3', created_at: ago(500) }),
+		],
+		NOW,
+	);
+	assert.deepEqual(
+		groups.map((g) => [g.lead.id, g.otherCount]),
+		[
+			['m2', 0],
+			['m1', 0],
+			['l1', 0],
+			['r2', 1],
+		],
+	);
+});

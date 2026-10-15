@@ -7768,6 +7768,24 @@ abstract class AppLocalizations {
   /// **'{name} replied to your comment'**
   String profileNotifCommentReply(String name);
 
+  /// Notification text when someone reacts to the viewer's run
+  ///
+  /// In en, this message translates to:
+  /// **'{name} reacted to your run'**
+  String profileNotifReaction(String name);
+
+  /// Notification text when someone likes the viewer's comment
+  ///
+  /// In en, this message translates to:
+  /// **'{name} liked your comment'**
+  String profileNotifCommentLike(String name);
+
+  /// Notification text when someone mentions the viewer by @handle in a run comment
+  ///
+  /// In en, this message translates to:
+  /// **'{name} mentioned you in a comment'**
+  String profileNotifMention(String name);
+
   /// Notification text for a new follower
   ///
   /// In en, this message translates to:

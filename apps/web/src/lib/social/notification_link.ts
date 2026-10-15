@@ -29,6 +29,11 @@ export function notificationLinkFor(item: NotificationLinkInput): string | null 
 		case 'kudos':
 		case 'comment':
 		case 'comment_reply':
+		case 'reaction':
+		case 'comment_like':
+		case 'mention':
+			// The last two need not be the recipient's run; /runs/[id] serves a
+			// non-owner the shared view of any run their audience admits.
 			return r.run_id ? `/runs/${r.run_id}` : null;
 		case 'follow':
 			return r.actor_id ? `/u/${r.actor_id}` : null;

@@ -4721,6 +4721,21 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String profileNotifReaction(String name) {
+    return '$name reagiu à sua corrida';
+  }
+
+  @override
+  String profileNotifCommentLike(String name) {
+    return '$name gostou do seu comentário';
+  }
+
+  @override
+  String profileNotifMention(String name) {
+    return '$name mencionou-o num comentário';
+  }
+
+  @override
   String profileNotifFollow(String name) {
     return '$name começou a seguir o seu perfil';
   }
@@ -20606,6 +20621,21 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String profileNotifCommentReply(String name) {
     return '$name respondeu ao seu comentário';
+  }
+
+  @override
+  String profileNotifReaction(String name) {
+    return '$name reagiu à sua corrida';
+  }
+
+  @override
+  String profileNotifCommentLike(String name) {
+    return '$name curtiu seu comentário';
+  }
+
+  @override
+  String profileNotifMention(String name) {
+    return '$name mencionou você em um comentário';
   }
 
   @override

@@ -42,6 +42,9 @@ String _targetKeyFor(NotificationRow n) {
     case 'comment':
     case 'comment_reply':
     case 'run_completed':
+    case 'reaction':
+    case 'comment_like':
+    case 'mention':
       return n.runId != null ? 'run:${n.runId}' : solo;
     case 'follow':
       // Followers all target the recipient — collapse them together.

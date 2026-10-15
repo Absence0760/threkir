@@ -4454,6 +4454,21 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String profileNotifReaction(String name) {
+    return '$nameがあなたのランにリアクションしました';
+  }
+
+  @override
+  String profileNotifCommentLike(String name) {
+    return '$nameがあなたのコメントに「いいね」しました';
+  }
+
+  @override
+  String profileNotifMention(String name) {
+    return '$nameがコメントであなたをメンションしました';
+  }
+
+  @override
   String profileNotifFollow(String name) {
     return '$nameがあなたをフォローしました';
   }

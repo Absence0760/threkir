@@ -6196,6 +6196,33 @@
       }
     }
   },
+  "profileNotifReaction": "{name} reacted to your run",
+  "@profileNotifReaction": {
+    "description": "Notification text when someone reacts to the viewer's run",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "profileNotifCommentLike": "{name} liked your comment",
+  "@profileNotifCommentLike": {
+    "description": "Notification text when someone likes the viewer's comment",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "profileNotifMention": "{name} mentioned you in a comment",
+  "@profileNotifMention": {
+    "description": "Notification text when someone mentions the viewer by @handle in a run comment",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "profileNotifFollow": "{name} started following you",
   "@profileNotifFollow": {
     "description": "Notification text for a new follower",

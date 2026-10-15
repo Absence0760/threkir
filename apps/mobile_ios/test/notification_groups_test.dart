@@ -218,5 +218,24 @@ void main() {
       final ach1 = groups.firstWhere((g) => g.lead.achievementId == 'ach1');
       expect(ach1.otherCount, 1);
     });
+
+    test('reactions, comment likes and mentions collapse per run and kind', () {
+      final groups = groupNotifications([
+        n(id: 'r1', kind: 'reaction', runId: 'run1', actorId: 'u1', createdAt: ago(3000)),
+        n(id: 'r2', kind: 'reaction', runId: 'run1', actorId: 'u2', createdAt: ago(2000)),
+        n(id: 'l1', kind: 'comment_like', runId: 'run1', actorId: 'u1', createdAt: ago(1500)),
+        n(id: 'm1', kind: 'mention', runId: 'run1', actorId: 'u3', createdAt: ago(1000)),
+        n(id: 'm2', kind: 'mention', runId: 'run2', actorId: 'u3', createdAt: ago(500)),
+      ], nowMs: now);
+      expect(
+        groups.map((g) => [g.lead.id, g.otherCount]).toList(),
+        [
+          ['m2', 0],
+          ['m1', 0],
+          ['l1', 0],
+          ['r2', 1],
+        ],
+      );
+    });
   });
 }

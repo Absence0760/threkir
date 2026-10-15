@@ -1330,7 +1330,13 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
         ),
       );
-    } else if (kind == 'run_completed' && item.row.runId != null) {
+    } else if ((kind == 'run_completed' ||
+            kind == 'comment_like' ||
+            kind == 'mention') &&
+        item.row.runId != null) {
+      // A comment like or a mention need not be on the recipient's own run,
+      // so they open the public view a non-owner can read, as run_completed
+      // does.
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) =>
@@ -1380,6 +1386,12 @@ class _ProfileScreenState extends State<ProfileScreen>
         return l10n.profileNotifComment(name, dist);
       case 'comment_reply':
         return l10n.profileNotifCommentReply(name);
+      case 'reaction':
+        return l10n.profileNotifReaction(name);
+      case 'comment_like':
+        return l10n.profileNotifCommentLike(name);
+      case 'mention':
+        return l10n.profileNotifMention(name);
       case 'follow':
         return l10n.profileNotifFollow(name);
       case 'event_rsvp':

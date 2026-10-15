@@ -580,7 +580,10 @@ export type NotificationKind =
 	| 'content_hidden'
 	| 'data_export_ready'
 	| 'refund_failed'
-	| 'event_waitlist_slot';
+	| 'event_waitlist_slot'
+	| 'reaction'
+	| 'comment_like'
+	| 'mention';
 
 // `invite_token` is excluded from the base type because the column-
 // level grant lockdown (migrations 20260801_001 + 20260818_001 redo)

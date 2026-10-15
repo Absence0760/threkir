@@ -105,6 +105,12 @@ export type TrackPoint = {
 	/// (docs/features/gps_distance.md § Waypoint fields). Splits and moving
 	/// time read it through `trackCumulativeMetres` (lib/runs/run_stats.ts).
 	distM?: number;
+	/// A fix the distance estimator took that failed the recorder's track
+	/// gate (docs/features/gps_distance.md § Waypoint fields): stored for the
+	/// server's distance replay, never drawn. Absent, never `false`, on every
+	/// other point. Line readers go through `onTrackPoints`
+	/// (lib/runs/track_points.ts).
+	offTrack?: boolean;
 };
 
 // `track` is populated on-demand by `data.ts#fetchRunById` from the gzipped

@@ -1,5 +1,6 @@
 import type { TrackPoint } from '../types';
 import { computeElevationGain, ELEVATION_GAIN_MIN_DELTA_M } from '../routes/route_simplify';
+import { onTrackPoints } from './track_points';
 
 /**
  * Which altitude a recorded run's climb and elevation profile are read from,
@@ -23,9 +24,13 @@ import { computeElevationGain, ELEVATION_GAIN_MIN_DELTA_M } from '../routes/rout
  * 3. Anything else — an import or a watch, whose `ele` may already be
  *    barometric (Garmin, Apple Watch, the custom watch) and whose device we
  *    cannot see from here — keeps the route band, exactly as before.
+ *
+ * Off-track fixes (`offTrack: true`, the canopy fixes the recorder stored only
+ * for the distance replay) are left out of every case: `track` is the line,
+ * and a 30-50 m fix's altitude is worse than its position.
  */
 export interface RunAltitude {
-	/** The track with `ele` holding the chosen series; the input itself when GPS `ele` is the series. */
+	/** The on-track points with `ele` holding the chosen series; the input itself when GPS `ele` is the series and no point is off-track. */
 	track: TrackPoint[];
 	/** The noise band the climb over `track` is gated on. */
 	minDeltaM: number;
@@ -50,9 +55,10 @@ export function hasBarometricAltitude(track: TrackPoint[]): boolean {
 }
 
 export function runAltitude(
-	track: TrackPoint[],
+	stored: TrackPoint[],
 	source: string | null | undefined,
 ): RunAltitude {
+	const track = onTrackPoints(stored);
 	if (hasBarometricAltitude(track)) {
 		return {
 			track: track.map((p) => {

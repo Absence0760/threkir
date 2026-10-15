@@ -160,6 +160,7 @@ import {
 import type { GeneratedPlan, GoalEvent, PlanPhase } from '../training/training';
 import { auth } from '../stores/auth.svelte';
 import { lineLngLat } from '../runs/track_line';
+import { onTrackPoints } from '../runs/track_points';
 import {
 	mergeSmoothedSidecar,
 	needsSmoothedSidecar,
@@ -852,8 +853,14 @@ async function fetchTrack(path: string) {
 /// must use [fetchClippedTrackForRun] instead, which routes through the
 /// `clip-public-track` Edge Function so the privacy-zone clip happens
 /// server-side and the unclipped blob never crosses the wire.
+///
+/// Every caller draws the track (the runs-list thumbnail, the personal
+/// heatmap, the owner's share page), so it returns the line: the stored
+/// off-track fixes, kept only for the server's distance replay, are dropped
+/// here (`onTrackPoints`), as `clip-public-track` drops them for a non-owner.
 export async function fetchTrackByPath(path: string) {
-	return fetchTrack(path);
+	const points = await fetchTrack(path);
+	return Array.isArray(points) ? onTrackPoints(points) : points;
 }
 
 /// Owner-only fetch of the indoor/treadmill HR sidecar
@@ -949,10 +956,12 @@ export async function fetchRoutesIntersectingTrack(
 	maxResults = 10,
 ): Promise<RouteMatchCandidate[]> {
 	const userId = auth.user?.id;
-	if (!userId || track.length < 2) return [];
+	// Matched on the line: an off-track fix is distance input, not path.
+	const line = onTrackPoints(track);
+	if (!userId || line.length < 2) return [];
 	const geojson = {
 		type: 'LineString' as const,
-		coordinates: track.map(lineLngLat),
+		coordinates: line.map(lineLngLat),
 	};
 	const { data, error } = await supabase.rpc('routes_intersecting_track', {
 		caller_user_id: userId,

@@ -90,6 +90,17 @@ test('runAltitude — without a barometer the track is the input, untouched', ()
 	assert.equal(baro.baroEle, 300);
 });
 
+test('runAltitude — an off-track fix is no altitude sample and no line point', () => {
+	// A 30-50 m canopy fix the recorder stored only for the distance replay:
+	// its 60 m spike would read as climb on the route band.
+	const track: TrackPoint[] = [pt(0, 400), { ...pt(1, 460), offTrack: true }, pt(2, 401), pt(3, 402)];
+	const alt = runAltitude(track, 'watch');
+	assert.deepEqual(alt.track.map((p) => p.ele), [400, 401, 402]);
+	assert.equal(computeRunElevationGain(track, 'watch'), 0);
+	const baro: TrackPoint[] = [pt(0, 400, 300), { ...pt(1, 460, 360), offTrack: true }, pt(2, 401, 301)];
+	assert.deepEqual(runAltitude(baro, 'app').track.map((p) => p.ele), [300, 301]);
+});
+
 test('hasBarometricAltitude — a non-finite reading is no reading', () => {
 	assert.equal(hasBarometricAltitude([]), false);
 	assert.equal(hasBarometricAltitude(gpsWander), false);

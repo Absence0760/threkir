@@ -2119,7 +2119,7 @@ Receives RevenueCat subscription events (initial purchase, renewal, cancellation
 
 ### `GET /clip-public-track`
 
-Serves the clipped track JSON for a non-owner viewer of a public run, or of a non-public run whose audience admits the caller (a follower of a followers-level run, or the recipient of a live `run_shares` grant — read through `shared_runs` after `public_runs` misses, for a signed-in caller only; decisions § 1878). Either way the track is clipped against the owner's privacy zones. Replaces the dropped bare-table Storage SELECT policy on the `runs` bucket (migration `20260619_001`) — anonymous and signed-in non-owners can no longer read raw track files; they must go through this function, which applies `clip_track_for_user` (decisions §33) before returning.
+Serves the clipped track JSON for a non-owner viewer of a public run, of a non-public run whose audience admits the caller (a follower of a followers-level run, or the recipient of a live `run_shares` grant — read through `shared_runs` after `public_runs` misses, for a signed-in caller only; decisions § 1878), or of a run of an athlete the caller actively coaches (read through `coached_runs` third, for a signed-in caller only, while the `coach_run_map` gate is open; decisions § 1968). Every non-owner gets the track clipped against the owner's privacy zones. **`coached_runs`** (`20270822000011`) is a view over `runs` projecting `id`, `user_id`, `is_public`, `metadata`, filtered on `user_id <> auth.uid()`, `private.coach_run_map_enabled()` and `private.is_active_coach_of(auth.uid(), user_id)`; SELECT granted to `authenticated` only. The gate is the `coach_run_map` row of `private.feature_flags`, which no migration writes; clients read it through `public.coach_run_map_enabled()` (authenticated, stable). pgtap: `coach_run_map_test.sql`. Replaces the dropped bare-table Storage SELECT policy on the `runs` bucket (migration `20260619_001`) — anonymous and signed-in non-owners can no longer read raw track files; they must go through this function, which applies `clip_track_for_user` (decisions §33) before returning.
 
 **Request:**
 ```
@@ -2263,10 +2263,10 @@ grant  execute on function public.<fn>(<args>) to authenticated;   -- and/or ser
 
 Add `authenticated` to the revoke list when no client role should hold it at all
 (the `cleanup_*` / `enqueue_*` cron family, and helpers only a SECURITY DEFINER
-trigger calls). 94 migrations write a function-level `from public, anon` revoke
-today (79 as `revoke execute`, 15 as `revoke all`); it is the house form for
+trigger calls). 95 migrations write a function-level `from public, anon` revoke
+today (80 as `revoke execute`, 15 as `revoke all`); it is the house form for
 exactly this reason, and `check_migration_function_revoke_noop.mjs` is what
-keeps it — it replays all 542 migrations in version order and fails the PR on
+keeps it — it replays all 543 migrations in version order and fails the PR on
 any EXECUTE revoke that leaves the other channel at its image-dependent
 default, in either direction. **Those four figures are derived, not typed**: the
 guard prints them and `check_migration_function_revoke_noop.test.mjs` asserts

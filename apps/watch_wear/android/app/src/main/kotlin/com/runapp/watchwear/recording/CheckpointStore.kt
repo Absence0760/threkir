@@ -65,6 +65,10 @@ data class Checkpoint(
     // The receiver's signal-quality summary so far, so a recovered run keeps
     // `metadata.gnss_signal`. Null on an older checkpoint or before a reading.
     val gnssSignal: GnssSignalSummary? = null,
+    // Whether the track file holds every fix the estimator took, off-track
+    // ones flagged. False on a checkpoint from a build that stored only the
+    // fixes inside the 30 m gate, so its recovered run claims nothing.
+    val trackComplete: Boolean = false,
 )
 
 @Serializable

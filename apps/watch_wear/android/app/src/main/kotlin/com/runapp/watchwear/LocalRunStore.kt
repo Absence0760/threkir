@@ -59,6 +59,9 @@ data class QueuedRun(
     /// `metadata.gnss_signal`. Null on a run queued before the watch read
     /// satellite status, or with no reading, and the key is omitted.
     val gnssSignal: GnssSignalSummary? = null,
+    /// `metadata.track_complete`. False on a run queued before the watch
+    /// stored its off-track fixes, and the key is omitted.
+    val trackComplete: Boolean = false,
 )
 
 private val Context.dataStore by preferencesDataStore(name = "watch_wear")

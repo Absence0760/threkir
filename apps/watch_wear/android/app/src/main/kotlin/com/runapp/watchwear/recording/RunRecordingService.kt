@@ -514,7 +514,8 @@ class RunRecordingService : Service() {
             activeElapsedMs = finalElapsed,
         )
 
-        val locationProvider = locationProviderForTrack(trackWriter?.pointCount ?: 0)
+        val storedPoints = trackWriter?.pointCount ?: 0
+        val locationProvider = locationProviderForTrack(storedPoints)
         val file = trackWriter?.close()
         trackWriter = null
 
@@ -528,6 +529,7 @@ class RunRecordingService : Service() {
                 gnssSignal = gnssSignalSummary(),
                 finishedHr = hr,
                 trackFilePath = file?.absolutePath,
+                trackComplete = storedPoints > 0,
                 laps = laps.toList(),
                 activityType = activityType,
             )
@@ -677,8 +679,11 @@ class RunRecordingService : Service() {
         if (pointCount > 0) synchronized(fixLock) { sourceArbiter.locationProvider() } else null
 
     /// [track] false is a fix past [FIX_ACCURACY_GATE_M]: under canopy it
-    /// still carries good Doppler, so it feeds distance and pace, but it stays
-    /// out of the stored track, the map overlay and the route match.
+    /// still carries good Doppler, so it feeds distance and pace, and it is
+    /// stored flagged `offTrack` so the server's replay of the track sees every
+    /// fix the estimator took (`docs/features/gps_distance.md` § Stored track),
+    /// but it stays out of the map overlay, the latest point and the route
+    /// match.
     private fun onGps(p: GpsPoint, track: Boolean) {
         lastPointAtMs = System.currentTimeMillis()
         val (newDistance, pace) = synchronized(distanceLock) {
@@ -695,7 +700,7 @@ class RunRecordingService : Service() {
             livePace.add(t, distanceEstimator.distanceM)
             (bankedDistanceM() + distanceEstimator.distanceM) to livePace.secondsPerKm
         }
-        if (track) trackWriter?.append(p, distM = newDistance)
+        trackWriter?.append(p, distM = newDistance, offTrack = !track)
         if (!track) {
             RecordingRepository.update { it.copy(distanceM = newDistance, paceSecPerKm = pace) }
             announceProgress(newDistance, pace)
@@ -815,6 +820,7 @@ class RunRecordingService : Service() {
                 distanceStepFilledM = stepFilledM,
                 locationProvider = locationProviderForTrack(file.pointCount),
                 gnssSignal = gnssSignalSummary(),
+                trackComplete = file.pointCount > 0,
             )
         )
     }

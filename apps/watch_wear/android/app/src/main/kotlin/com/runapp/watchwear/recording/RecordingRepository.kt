@@ -78,6 +78,10 @@ object RecordingRepository {
         val trackPointCount: Int = 0,
         val latestPoint: GpsPoint? = null,
         val trackFilePath: String? = null,
+        /// Set on `Finished`: the file at [trackFilePath] holds every fix the
+        /// distance estimator took, off-track ones flagged, and is not empty.
+        /// Becomes `metadata.track_complete`.
+        val trackComplete: Boolean = false,
         val locationAvailable: Boolean = true,
         val activityType: String = "run",
         val laps: List<Lap> = emptyList(),

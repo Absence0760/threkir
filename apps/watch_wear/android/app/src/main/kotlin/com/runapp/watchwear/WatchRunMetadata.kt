@@ -33,6 +33,7 @@ fun buildRunMetadata(
     distanceStepFilledM: Double? = null,
     locationProvider: String? = null,
     gnssSignal: GnssSignalSummary? = null,
+    trackComplete: Boolean = false,
 ): JsonObject = buildJsonObject {
     put("activity_type", activityType)
     if (avgBpm != null) put("avg_bpm", avgBpm)
@@ -54,6 +55,10 @@ fun buildRunMetadata(
     }
     if (locationProvider != null) put("location_provider", locationProvider)
     if (gnssSignal != null) put("gnss_signal", gnssSignal.toJson())
+    // The uploaded track holds every fix the estimator took, those past the
+    // 30 m gate flagged `offTrack`, so the server's replay sees the watch's
+    // own input (docs/features/gps_distance.md § Stored track).
+    if (trackComplete) put("track_complete", true)
     if (laps.isNotEmpty()) {
         put("laps", buildJsonArray {
             var prevMs = 0L

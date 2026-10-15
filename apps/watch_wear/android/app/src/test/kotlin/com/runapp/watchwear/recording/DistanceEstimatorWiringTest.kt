@@ -43,20 +43,30 @@ class DistanceEstimatorWiringTest {
     fun `a fix past the track gate still feeds the estimator`() {
         val onGps = body(serviceSrc, ON_GPS)
         val fed = onGps.indexOf("distanceEstimator.addFix(")
-        val gated = onGps.indexOf("if (track)")
-        assertTrue("onGps must gate the track on the fix's verdict", gated >= 0)
+        val gated = onGps.indexOf("if (!track)")
+        assertTrue("onGps must gate the line on the fix's verdict", gated >= 0)
         assertTrue("the estimator takes the fix before the track gate", fed in 0 until gated)
     }
 
     @Test
-    fun `a stored fix carries the distance credited through it`() {
+    fun `every fix the estimator took is stored, with its distM and its track verdict`() {
+        // docs/features/gps_distance.md § Stored track: the server replays the
+        // stored track, so a fix past the 30 m gate is stored flagged
+        // `offTrack` rather than left out.
         val onGps = body(serviceSrc, ON_GPS)
         val fed = onGps.indexOf("distanceEstimator.addFix(")
-        val stored = onGps.indexOf("trackWriter?.append(p, distM = newDistance)")
-        assertTrue("onGps must write distM, the run's credited distance", stored >= 0)
-        assertTrue("only a fix within the track gate is stored", onGps.contains("if (track) trackWriter?.append("))
+        val stored = onGps.indexOf("trackWriter?.append(p, distM = newDistance, offTrack = !track)")
+        assertTrue("onGps must store every fed fix, flagged by the gate's verdict", stored >= 0)
+        assertFalse("no fix is gated out of the stored track", onGps.contains("if (track) trackWriter?.append("))
         assertTrue("the fix is stored after the estimator has credited it", stored > fed)
         assertFalse("no fix is stored without its distM", onGps.contains("trackWriter?.append(p)"))
+    }
+
+    @Test
+    fun `the finished run and the checkpoint claim a complete track only when one was written`() {
+        val stop = body(serviceSrc, "private fun stopRecording()")
+        assertTrue(stop.contains("trackComplete = storedPoints > 0"))
+        assertTrue(serviceSrc.contains("trackComplete = file.pointCount > 0"))
     }
 
     @Test
@@ -103,13 +113,13 @@ class DistanceEstimatorWiringTest {
     }
 
     @Test
-    fun `a canopy fix feeds distance and pace but stays off the track, the map and the route match`() {
+    fun `a canopy fix feeds distance and pace and is stored, but stays off the map and the route match`() {
         assertTrue(gpsSrc.contains("loc.accuracy > ESTIMATOR_ACCURACY_CAP_M) continue"))
         val onFix = body(serviceSrc, "private fun onFix(p: GpsPoint, fromReceiver: Boolean)")
         assertTrue(onFix.contains("onGps(p, track = verdict.track)"))
         val onGps = body(serviceSrc, "private fun onGps(p: GpsPoint, track: Boolean)")
         val fed = onGps.indexOf("distanceEstimator.addFix(")
-        val stored = onGps.indexOf("if (track) trackWriter?.append(p, distM = newDistance)")
+        val stored = onGps.indexOf("trackWriter?.append(p, distM = newDistance, offTrack = !track)")
         val offTrackReturn = onGps.indexOf("if (!track) {")
         val routeMatch = onGps.indexOf("RouteMath.routeProgress(")
         val overlay = onGps.indexOf("trackOverlay.add(posLL)")

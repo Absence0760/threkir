@@ -7,6 +7,11 @@ import java.io.File
 import java.io.FileWriter
 import java.io.PrintWriter
 import java.time.Instant
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 
 /// Append-only writer that streams GPS points to a JSON array on disk
 /// as they arrive, so a 10-hour run doesn't hold a 36,000-element list
@@ -41,8 +46,12 @@ class TrackWriter(private val file: File) {
 
     /// [distM] is the run's distance credited up to and including this fix,
     /// the axis splits and moving time are measured on
-    /// (`docs/features/gps_distance.md` § Waypoint fields).
-    fun append(point: GpsPoint, distM: Double? = null) {
+    /// (`docs/features/gps_distance.md` § Waypoint fields). [offTrack] marks a
+    /// fix the distance estimator took past the 30 m track gate: stored so the
+    /// server's replay sees every estimator input, written as `"offTrack":true`
+    /// and omitted otherwise, and skipped by every reader that draws the line
+    /// (`docs/features/gps_distance.md` § Stored track).
+    fun append(point: GpsPoint, distM: Double? = null, offTrack: Boolean = false) {
         val w = writer ?: return
         if (count > 0) w.print(",")
         val ts = Instant.ofEpochMilli(point.epochMs)
@@ -57,6 +66,7 @@ class TrackWriter(private val file: File) {
                 optionalField("speedAccuracyMps", point.speedAccuracyMps?.takeIf { it > 0 }) +
                 optionalField("bearingDeg", point.bearingDeg) +
                 optionalField("distM", distM?.takeIf { it.isFinite() && it >= 0 }?.let { Math.round(it * 100) / 100.0 }) +
+                (if (offTrack) ",\"offTrack\":true" else "") +
                 "}"
         )
         count++
@@ -93,5 +103,22 @@ class TrackWriter(private val file: File) {
         /// on its own — see [TrackStorage].
         fun fileFor(context: Context, runId: String): File =
             TrackStorage.fileFor(context, runId)
+    }
+}
+
+/// The line of a stored track file's JSON [raw]: each point's lat / lng, in
+/// order, skipping a fix written `"offTrack":true` (one the distance
+/// estimator took past the track gate, stored only for the server's replay)
+/// and any entry without a numeric coordinate. Throws on text that is not
+/// JSON, as `Json.parseToJsonElement` does; a JSON value that is not an array
+/// is an empty line.
+fun trackLineLatLngs(raw: String): List<RouteMath.LatLng> {
+    val arr = Json.parseToJsonElement(raw) as? JsonArray ?: return emptyList()
+    return arr.mapNotNull { el ->
+        val obj = el as? JsonObject ?: return@mapNotNull null
+        if ((obj["offTrack"] as? JsonPrimitive)?.booleanOrNull == true) return@mapNotNull null
+        val lat = (obj["lat"] as? JsonPrimitive)?.content?.toDoubleOrNull() ?: return@mapNotNull null
+        val lng = (obj["lng"] as? JsonPrimitive)?.content?.toDoubleOrNull() ?: return@mapNotNull null
+        RouteMath.LatLng(lat, lng)
     }
 }

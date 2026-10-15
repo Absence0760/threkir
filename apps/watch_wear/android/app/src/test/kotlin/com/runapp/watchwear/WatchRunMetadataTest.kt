@@ -373,6 +373,22 @@ class WatchRunMetadataTest {
     }
 
     @Test
+    fun `track_complete is written only for a run that stored every estimator fix`() {
+        fun md(complete: Boolean) = buildRunMetadata(
+            activityType = "run",
+            avgBpm = null,
+            hrCoverage = null,
+            steps = null,
+            laps = emptyList(),
+            lastModifiedAtIso = isoStamp,
+            distanceEstimator = "kalman_v4",
+            trackComplete = complete,
+        )
+        assertEquals(true, md(true)["track_complete"]!!.jsonPrimitive.content.toBoolean())
+        assertFalse(md(false).containsKey("track_complete"))
+    }
+
+    @Test
     fun `location_provider is written when the run names one and omitted otherwise`() {
         fun md(provider: String?) = buildRunMetadata(
             activityType = "run",

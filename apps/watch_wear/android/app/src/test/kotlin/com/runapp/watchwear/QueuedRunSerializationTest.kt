@@ -266,4 +266,24 @@ class QueuedRunSerializationTest {
         assertEquals("kalman_v1", decoded.distanceEstimator)
         assertNull(decoded.locationProvider)
     }
+    @Test
+    fun `a complete-track claim round-trips and an older queue entry claims none`() {
+        val queued = sample.copy(trackComplete = true)
+        val decoded = json.decodeFromString(
+            QueuedRun.serializer(),
+            json.encodeToString(QueuedRun.serializer(), queued),
+        )
+        assertTrue(decoded.trackComplete)
+        val older = """
+        {
+            "id": "old-run",
+            "startedAtIso": "2026-05-01T08:00:00Z",
+            "durationS": 1800,
+            "distanceM": 5000.0,
+            "trackFilePath": "/old/path.json",
+            "distanceEstimator": "kalman_v4"
+        }
+        """.trimIndent()
+        assertEquals(false, json.decodeFromString(QueuedRun.serializer(), older).trackComplete)
+    }
 }

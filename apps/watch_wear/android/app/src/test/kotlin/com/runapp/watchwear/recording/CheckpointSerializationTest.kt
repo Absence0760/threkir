@@ -87,6 +87,29 @@ class CheckpointSerializationTest {
     }
 
     @Test
+    fun `a checkpoint from a build that gated its track claims no complete track`() {
+        // Its track file holds only the fixes inside the 30 m gate, so a
+        // recovered run of that vintage must not stamp track_complete.
+        val older = """
+        {
+            "runId": "old-run",
+            "startedAtMs": 1700000000000,
+            "savedAtMs": 1700000900000,
+            "distanceM": 5000.0,
+            "trackFilePath": "/old/path.json",
+            "trackPointCount": 1200,
+            "distanceEstimator": "kalman_v4"
+        }
+        """.trimIndent()
+        assertEquals(false, json.decodeFromString(Checkpoint.serializer(), older).trackComplete)
+        val current = sample.copy(trackComplete = true)
+        assertEquals(
+            current,
+            json.decodeFromString(Checkpoint.serializer(), json.encodeToString(Checkpoint.serializer(), current)),
+        )
+    }
+
+    @Test
     fun `decode populates activityType = run when absent (v1 payload)`() {
         // Pre-activity-picker checkpoints had no activityType. The
         // default "run" matches QueuedRun's contract — anything else

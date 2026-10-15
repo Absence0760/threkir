@@ -15,17 +15,21 @@ void main() {
     ]);
   });
 
-  test('someone the sender follows who does not follow back is a candidate',
-      () {
-    final out = dmRecipientCandidates([], [profile('b', 'Bo')]);
-    expect(out.map((r) => [r.id, r.relation]).toList(), [
-      ['b', DmRelation.youFollow],
-    ]);
-  });
+  test(
+    'someone the sender follows who does not follow back is a candidate',
+    () {
+      final out = dmRecipientCandidates([], [profile('b', 'Bo')]);
+      expect(out.map((r) => [r.id, r.relation]).toList(), [
+        ['b', DmRelation.youFollow],
+      ]);
+    },
+  );
 
   test('a person on both sides appears once, as mutual', () {
-    final out =
-        dmRecipientCandidates([profile('a', 'Ana')], [profile('a', 'Ana')]);
+    final out = dmRecipientCandidates(
+      [profile('a', 'Ana')],
+      [profile('a', 'Ana')],
+    );
     expect(out.length, 1);
     expect(out.single.relation, DmRelation.mutual);
   });
@@ -39,46 +43,58 @@ void main() {
     expect(out, isEmpty);
   });
 
-  test('rows with no id are dropped rather than offered as an unsendable target',
-      () {
-    final out = dmRecipientCandidates([profile('', 'Nameless id')], []);
-    expect(out, isEmpty);
-  });
-
-  test('candidates are ordered by display name, case- and accent-insensitively',
-      () {
-    final out = dmRecipientCandidates(
-      [profile('3', 'zoe'), profile('1', 'Émile')],
-      [profile('2', 'ana')],
-    );
-    expect(out.map((r) => r.displayName).toList(), ['ana', 'Émile', 'zoe']);
-  });
+  test(
+    'rows with no id are dropped rather than offered as an unsendable target',
+    () {
+      final out = dmRecipientCandidates([profile('', 'Nameless id')], []);
+      expect(out, isEmpty);
+    },
+  );
 
   test(
-      'the order is the folded order the web half computes, not a host collation',
-      () {
-    final out = dmRecipientCandidates(
-      [profile('1', 'Zaragoza'), profile('2', 'Ørsted')],
-      [profile('3', 'Åre')],
-    );
-    expect(
-        out.map((r) => r.displayName).toList(), ['Åre', 'Zaragoza', 'Ørsted']);
-  });
+    'candidates are ordered by display name, case- and accent-insensitively',
+    () {
+      final out = dmRecipientCandidates(
+        [profile('3', 'zoe'), profile('1', 'Émile')],
+        [profile('2', 'ana')],
+      );
+      expect(out.map((r) => r.displayName).toList(), ['ana', 'Émile', 'zoe']);
+    },
+  );
 
-  test('unnamed candidates sort last, and ties break on id so the order is total',
-      () {
-    final out = dmRecipientCandidates(
-      [profile('z-id'), profile('a-id'), profile('m', 'Mo')],
-      [],
-    );
-    expect(out.map((r) => r.id).toList(), ['m', 'a-id', 'z-id']);
-  });
+  test(
+    'the order is the folded order the web half computes, not a host collation',
+    () {
+      final out = dmRecipientCandidates(
+        [profile('1', 'Zaragoza'), profile('2', 'Ørsted')],
+        [profile('3', 'Åre')],
+      );
+      expect(out.map((r) => r.displayName).toList(), [
+        'Åre',
+        'Zaragoza',
+        'Ørsted',
+      ]);
+    },
+  );
+
+  test(
+    'unnamed candidates sort last, and ties break on id so the order is total',
+    () {
+      final out = dmRecipientCandidates([
+        profile('z-id'),
+        profile('a-id'),
+        profile('m', 'Mo'),
+      ], []);
+      expect(out.map((r) => r.id).toList(), ['m', 'a-id', 'z-id']);
+    },
+  );
 
   test('the merge order of the two fetches does not change the result', () {
     final followers = [profile('b', 'Bo'), profile('a', 'Ana')];
     final following = [profile('c', 'Cy'), profile('a', 'Ana')];
-    List<Object?> ids(List<DmRecipient> rs) =>
-        [for (final r in rs) '${r.id}:${r.relation.name}'];
+    List<Object?> ids(List<DmRecipient> rs) => [
+      for (final r in rs) '${r.id}:${r.relation.name}',
+    ];
     expect(
       ids(dmRecipientCandidates(followers, following)),
       ids(dmRecipientCandidates(followers, following)),
@@ -90,18 +106,19 @@ void main() {
   });
 
   test(
-      'avatar and display name are carried through from whichever side supplied them',
-      () {
-    final out = dmRecipientCandidates([
-      const DmCandidateProfile(
-        id: 'a',
-        displayName: 'Ana',
-        avatarUrl: 'https://example.test/a.png',
-      ),
-    ], []);
-    expect(out.first.displayName, 'Ana');
-    expect(out.first.avatarUrl, 'https://example.test/a.png');
-  });
+    'avatar and display name are carried through from whichever side supplied them',
+    () {
+      final out = dmRecipientCandidates([
+        const DmCandidateProfile(
+          id: 'a',
+          displayName: 'Ana',
+          avatarUrl: 'https://example.test/a.png',
+        ),
+      ], []);
+      expect(out.first.displayName, 'Ana');
+      expect(out.first.avatarUrl, 'https://example.test/a.png');
+    },
+  );
 
   test('a blank query keeps every candidate', () {
     final all = dmRecipientCandidates([profile('a', 'Ana'), profile('b')], []);
@@ -110,8 +127,10 @@ void main() {
   });
 
   test('filtering matches a substring, case- and accent-insensitively', () {
-    final all = dmRecipientCandidates(
-        [profile('a', 'Émile Zola'), profile('b', 'Bo')], []);
+    final all = dmRecipientCandidates([
+      profile('a', 'Émile Zola'),
+      profile('b', 'Bo'),
+    ], []);
     expect(filterDmRecipients(all, 'emile').map((r) => r.id).toList(), ['a']);
     expect(filterDmRecipients(all, 'ZOL').map((r) => r.id).toList(), ['a']);
   });
@@ -122,8 +141,10 @@ void main() {
   });
 
   test('filtering does not mutate the list it was given', () {
-    final all =
-        dmRecipientCandidates([profile('a', 'Ana'), profile('b', 'Bo')], []);
+    final all = dmRecipientCandidates([
+      profile('a', 'Ana'),
+      profile('b', 'Bo'),
+    ], []);
     filterDmRecipients(all, 'ana');
     expect(all.length, 2);
   });
@@ -141,16 +162,18 @@ void main() {
     expect(filterDmRecipients(list, 'οδος').length, 1);
   });
 
-  test('filterDmRecipients: the search folds accents, like every other search key',
-      () {
-    final list = [
-      DmRecipient(
-        id: 'a',
-        displayName: 'Zoë Müller',
-        avatarUrl: null,
-        relation: DmRelation.youFollow,
-      ),
-    ];
-    expect(filterDmRecipients(list, 'zoe muller').length, 1);
-  });
+  test(
+    'filterDmRecipients: the search folds accents, like every other search key',
+    () {
+      final list = [
+        DmRecipient(
+          id: 'a',
+          displayName: 'Zoë Müller',
+          avatarUrl: null,
+          relation: DmRelation.youFollow,
+        ),
+      ];
+      expect(filterDmRecipients(list, 'zoe muller').length, 1);
+    },
+  );
 }

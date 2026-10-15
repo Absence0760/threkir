@@ -19895,5 +19895,78 @@
   "profileMessage": "Message",
   "@profileMessage": {
     "description": "Profile action opening a direct-message conversation with this runner"
+  },
+  "routeDetailSendToFollower": "Send to a follower",
+  "@routeDetailSendToFollower": {
+    "description": "Share menu entry that sends this route to one follower as a direct message"
+  },
+  "routeDetailSendDmTitle": "Send this route",
+  "@routeDetailSendDmTitle": {
+    "description": "Title of the send-a-route sheet"
+  },
+  "routeDetailSendDmIntro": "Pick a runner you follow, or who follows you. The route link lands in your conversation with them.",
+  "@routeDetailSendDmIntro": {
+    "description": "Explains who the route can be sent to"
+  },
+  "routeDetailSendDmLinkNote": "They get the public share link, so anyone they pass it on to can open it too.",
+  "@routeDetailSendDmLinkNote": {
+    "description": "Shown when the recipient receives the public share link"
+  },
+  "routeDetailSendDmPrivateNote": "It stays private: only the person you send it to can open the link, and you can stop sharing at any time.",
+  "@routeDetailSendDmPrivateNote": {
+    "description": "Shown when the route stays private and only the recipient is granted access"
+  },
+  "routeDetailSendDmSearchPlaceholder": "Search people",
+  "@routeDetailSendDmSearchPlaceholder": {
+    "description": "Search field hint in the send-a-route sheet"
+  },
+  "routeDetailSendDmLoadFailed": "Couldn't load who you can send to.",
+  "@routeDetailSendDmLoadFailed": {
+    "description": "The followers / following read failed, so the sheet cannot say who the route can go to"
+  },
+  "routeDetailSendDmEmpty": "You don't follow anyone yet, and nobody follows you yet.",
+  "@routeDetailSendDmEmpty": {
+    "description": "The sender has no follow edge in either direction"
+  },
+  "routeDetailSendDmNoMatches": "Nobody matches that search.",
+  "@routeDetailSendDmNoMatches": {
+    "description": "The search matched nobody"
+  },
+  "routeDetailSendDmRelationMutual": "You follow each other",
+  "@routeDetailSendDmRelationMutual": {
+    "description": "Recipient row: the two follow each other"
+  },
+  "routeDetailSendDmRelationFollowsYou": "Follows you",
+  "@routeDetailSendDmRelationFollowsYou": {
+    "description": "Recipient row: this person follows the sender"
+  },
+  "routeDetailSendDmRelationYouFollow": "You follow them",
+  "@routeDetailSendDmRelationYouFollow": {
+    "description": "Recipient row: the sender follows this person"
+  },
+  "routeDetailSendDmSend": "Send",
+  "@routeDetailSendDmSend": {
+    "description": "Recipient row action that sends the route"
+  },
+  "routeDetailSendDmSending": "Sending…",
+  "@routeDetailSendDmSending": {
+    "description": "Recipient row while the send is in flight"
+  },
+  "routeDetailSendDmSent": "Route sent to {name}.",
+  "@routeDetailSendDmSent": {
+    "description": "Confirmation once the route was sent",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "routeDetailSendDmOpenThread": "Open conversation",
+  "@routeDetailSendDmOpenThread": {
+    "description": "Opens the conversation the route was sent into"
+  },
+  "routeDetailSendDmDone": "Done",
+  "@routeDetailSendDmDone": {
+    "description": "Closes the send-a-route sheet after a send"
   }
 }

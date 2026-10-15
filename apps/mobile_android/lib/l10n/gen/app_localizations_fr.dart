@@ -15734,4 +15734,63 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get profileMessage => 'Message';
+
+  @override
+  String get routeDetailSendToFollower => 'Envoyer à un abonné';
+
+  @override
+  String get routeDetailSendDmTitle => 'Envoyer cet itinéraire';
+
+  @override
+  String get routeDetailSendDmIntro =>
+      'Choisissez quelqu\'un que vous suivez ou qui vous suit. Le lien de l\'itinéraire arrivera dans votre conversation.';
+
+  @override
+  String get routeDetailSendDmLinkNote =>
+      'Cette personne reçoit le lien de partage public : quiconque le reçoit ensuite peut aussi l\'ouvrir.';
+
+  @override
+  String get routeDetailSendDmPrivateNote =>
+      'Il reste privé : seule la personne à qui vous l\'envoyez peut ouvrir le lien, et vous pouvez arrêter le partage à tout moment.';
+
+  @override
+  String get routeDetailSendDmSearchPlaceholder => 'Rechercher des personnes';
+
+  @override
+  String get routeDetailSendDmLoadFailed =>
+      'Impossible de charger la liste des destinataires possibles.';
+
+  @override
+  String get routeDetailSendDmEmpty =>
+      'Vous ne suivez encore personne et personne ne vous suit.';
+
+  @override
+  String get routeDetailSendDmNoMatches =>
+      'Aucune personne ne correspond à cette recherche.';
+
+  @override
+  String get routeDetailSendDmRelationMutual => 'Vous vous suivez mutuellement';
+
+  @override
+  String get routeDetailSendDmRelationFollowsYou => 'Vous suit';
+
+  @override
+  String get routeDetailSendDmRelationYouFollow => 'Vous suivez cette personne';
+
+  @override
+  String get routeDetailSendDmSend => 'Envoyer';
+
+  @override
+  String get routeDetailSendDmSending => 'Envoi…';
+
+  @override
+  String routeDetailSendDmSent(String name) {
+    return 'Itinéraire envoyé à $name.';
+  }
+
+  @override
+  String get routeDetailSendDmOpenThread => 'Ouvrir la conversation';
+
+  @override
+  String get routeDetailSendDmDone => 'Terminé';
 }

@@ -4508,5 +4508,22 @@
   "messagesRouteUntitled": "Route ohne Namen",
   "messagesRouteUnavailable": "Diese Route ist für dich nicht mehr verfügbar.",
   "messagesRouteLoading": "Route wird geladen",
-  "profileMessage": "Nachricht"
+  "profileMessage": "Nachricht",
+  "routeDetailSendToFollower": "An Follower senden",
+  "routeDetailSendDmTitle": "Diese Route senden",
+  "routeDetailSendDmIntro": "Wähle jemanden aus, dem du folgst oder der dir folgt. Der Routenlink landet in eurer Unterhaltung.",
+  "routeDetailSendDmLinkNote": "Die Person erhält den öffentlichen Freigabelink – wer ihn weitergereicht bekommt, kann ihn ebenfalls öffnen.",
+  "routeDetailSendDmPrivateNote": "Sie bleibt privat: Nur die Person, an die du sie sendest, kann den Link öffnen, und du kannst das Teilen jederzeit beenden.",
+  "routeDetailSendDmSearchPlaceholder": "Personen suchen",
+  "routeDetailSendDmLoadFailed": "Wir konnten nicht laden, an wen du senden kannst.",
+  "routeDetailSendDmEmpty": "Du folgst noch niemandem, und dir folgt noch niemand.",
+  "routeDetailSendDmNoMatches": "Niemand passt zu dieser Suche.",
+  "routeDetailSendDmRelationMutual": "Ihr folgt euch gegenseitig",
+  "routeDetailSendDmRelationFollowsYou": "Folgt dir",
+  "routeDetailSendDmRelationYouFollow": "Du folgst dieser Person",
+  "routeDetailSendDmSend": "Senden",
+  "routeDetailSendDmSending": "Wird gesendet…",
+  "routeDetailSendDmSent": "Route an {name} gesendet.",
+  "routeDetailSendDmOpenThread": "Unterhaltung öffnen",
+  "routeDetailSendDmDone": "Fertig"
 }

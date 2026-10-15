@@ -43,6 +43,7 @@ import '../tile_pack.dart' show TileBbox;
 import '../undo_queue.dart';
 import '../watch_course.dart';
 import '../watch_roadbook.dart';
+import 'message_thread_screen.dart';
 import 'roadbook_screen.dart';
 import '../widgets/ai_disclosure_notice.dart';
 import '../widgets/app_bar_actions.dart';
@@ -54,6 +55,7 @@ import '../widgets/route_conditions.dart';
 import '../widgets/route_photos.dart';
 import '../widgets/route_share_card.dart';
 import '../widgets/segments_panel.dart';
+import '../widgets/send_route_sheet.dart';
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/undo_bar.dart';
@@ -969,6 +971,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                 tooltip: l10n.routeDetailShare,
                 onSelected: (fmt) => switch (fmt) {
                   'link' => _shareLink(context),
+                  'send' => _sendToFollower(context),
                   'watch' => _sendCourseToWatch(),
                   'apple_watch' => _sendRouteToAppleWatch(),
                   _ => _shareAs(context, fmt),
@@ -983,6 +986,11 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                   if (_isPublic || _isOwner)
                     PopupMenuItem(
                         value: 'link', child: Text(l10n.routeDetailShareLink)),
+                  if ((_isPublic || _isOwner) &&
+                      widget.apiClient?.userId != null)
+                    PopupMenuItem(
+                        value: 'send',
+                        child: Text(l10n.routeDetailSendToFollower)),
                   PopupMenuItem(
                       value: 'image',
                       child: Text(l10n.routeDetailShareAsImage)),
@@ -1585,7 +1593,6 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
   /// only offers this when the route is public or the viewer owns it, so a
   /// non-owner never shares a dead link.
   Future<void> _shareLink(BuildContext context) async {
-    final l10n = AppLocalizations.of(context);
     final api = widget.apiClient;
     if (_isOwner && !_isPublic && api != null && api.userId != null) {
       // With audience sharing on, Share asks who should see the route; public
@@ -1608,43 +1615,96 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
       }
     }
     if (!context.mounted) return;
-    if (_isOwner && !_isPublic) {
-      // Making a still-private route public exposes it (and its start point)
-      // to anyone with the link and in Explore — confirm before that flip.
-      final ok = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(l10n.routeDetailShareConfirmTitle),
-          content: Text(l10n.routeDetailShareConfirmBody),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(l10n.routeDetailCancel),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(l10n.routeDetailShareConfirmCta),
-            ),
-          ],
-        ),
-      );
-      if (ok != true) return;
-      if (!mounted) return;
-      final api = widget.apiClient!;
-      try {
-        await api.setRoutePublic(widget.route.id, true);
-        if (!mounted) return;
-        setState(() => _isPublic = true);
-        showTopBanner(context, l10n.routeDetailMadePublicForLink);
-      } catch (e) {
-        if (!mounted) return;
-        showTopBanner(context,
-            l10n.routeDetailShareLinkFailed(friendlyError(l10n, e)));
-        return;
-      }
-    }
+    if (!await _ensurePublic(context)) return;
+    if (!context.mounted) return;
     await shareTextFrom(context,
         text: routeShareUrl(widget.route.id), subject: widget.route.name);
+  }
+
+  /// Make the route publicly reachable before a link to it goes out. An
+  /// already-public route answers true at once. An owner's still-private
+  /// route is flipped only after the confirm, because the flip exposes it
+  /// (and its start point) to anyone with the link and in Explore; a
+  /// cancelled confirm or a failed flip answers false and leaves it private.
+  /// Both link affordances come through here, as web's both come through
+  /// `runShare` (decisions § 734).
+  Future<bool> _ensurePublic(BuildContext context) async {
+    if (_isPublic) return true;
+    if (!_isOwner) return false;
+    final l10n = AppLocalizations.of(context);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.routeDetailShareConfirmTitle),
+        content: Text(l10n.routeDetailShareConfirmBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.routeDetailCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.routeDetailShareConfirmCta),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return false;
+    try {
+      await widget.apiClient!.setRoutePublic(widget.route.id, true);
+      if (!mounted) return false;
+      setState(() => _isPublic = true);
+      if (context.mounted) {
+        showTopBanner(context, l10n.routeDetailMadePublicForLink);
+      }
+      return true;
+    } catch (e) {
+      if (!mounted) return false;
+      if (context.mounted) {
+        showTopBanner(context,
+            l10n.routeDetailShareLinkFailed(friendlyError(l10n, e)));
+      }
+      return false;
+    }
+  }
+
+  /// Send the route to one follower as a direct message carrying the route
+  /// attachment. Mirror of web's `handleSendToFollower`: with audience
+  /// sharing on, an owner's private route stays private and each send grants
+  /// that one person access; otherwise a private route goes through the same
+  /// public-flip confirm as Share link, and a cancel leaves it private with
+  /// the picker never opened (route_direct_share.md).
+  Future<void> _sendToFollower(BuildContext context) async {
+    final api = widget.apiClient;
+    if (api == null || api.userId == null) return;
+    var grantAccess = false;
+    var shareUrl = routeShareUrl(widget.route.id);
+    if (_isOwner && !_isPublic && await api.audienceSharingEnabled()) {
+      grantAccess = true;
+      shareUrl = audienceLinkUrl(ShareableKind.route, widget.route.id);
+    } else {
+      if (!context.mounted) return;
+      if (!await _ensurePublic(context)) return;
+    }
+    if (!context.mounted) return;
+    final openWith = await showSendRouteSheet(
+      context,
+      api: api,
+      routeId: widget.route.id,
+      shareUrl: shareUrl,
+      grantAccess: grantAccess,
+    );
+    if (openWith == null || !context.mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => MessageThreadScreen(
+          api: api,
+          partnerId: openWith.id,
+          partnerName: openWith.displayName,
+          partnerAvatarUrl: openWith.avatarUrl,
+        ),
+      ),
+    );
   }
 
   /// Whether the custom-watch course push is offered at all. See

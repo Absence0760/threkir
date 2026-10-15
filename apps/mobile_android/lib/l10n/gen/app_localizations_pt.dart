@@ -15702,6 +15702,65 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get profileMessage => 'Mensagem';
+
+  @override
+  String get routeDetailSendToFollower => 'Enviar para um seguidor';
+
+  @override
+  String get routeDetailSendDmTitle => 'Enviar esta rota';
+
+  @override
+  String get routeDetailSendDmIntro =>
+      'Escolha alguém que segue, ou que o segue. O link da rota chega à conversa com essa pessoa.';
+
+  @override
+  String get routeDetailSendDmLinkNote =>
+      'A pessoa recebe o link público de partilha, por isso qualquer pessoa a quem o reencaminhe também o pode abrir.';
+
+  @override
+  String get routeDetailSendDmPrivateNote =>
+      'Continua privada: só a pessoa a quem a envia pode abrir o link, e pode deixar de partilhar a qualquer momento.';
+
+  @override
+  String get routeDetailSendDmSearchPlaceholder => 'Procurar pessoas';
+
+  @override
+  String get routeDetailSendDmLoadFailed =>
+      'Não foi possível carregar para quem pode enviar.';
+
+  @override
+  String get routeDetailSendDmEmpty =>
+      'Ainda não segue ninguém e ninguém o segue.';
+
+  @override
+  String get routeDetailSendDmNoMatches =>
+      'Ninguém corresponde a essa pesquisa.';
+
+  @override
+  String get routeDetailSendDmRelationMutual => 'Seguem-se mutuamente';
+
+  @override
+  String get routeDetailSendDmRelationFollowsYou => 'Segue o seu perfil';
+
+  @override
+  String get routeDetailSendDmRelationYouFollow => 'Segue essa pessoa';
+
+  @override
+  String get routeDetailSendDmSend => 'Enviar';
+
+  @override
+  String get routeDetailSendDmSending => 'A enviar…';
+
+  @override
+  String routeDetailSendDmSent(String name) {
+    return 'Rota enviada para $name.';
+  }
+
+  @override
+  String get routeDetailSendDmOpenThread => 'Abrir conversa';
+
+  @override
+  String get routeDetailSendDmDone => 'Concluído';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -31388,4 +31447,62 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get profileMessage => 'Mensagem';
+
+  @override
+  String get routeDetailSendToFollower => 'Enviar para um seguidor';
+
+  @override
+  String get routeDetailSendDmTitle => 'Enviar esta rota';
+
+  @override
+  String get routeDetailSendDmIntro =>
+      'Escolha alguém que você segue ou que segue você. O link da rota chega na conversa de vocês.';
+
+  @override
+  String get routeDetailSendDmLinkNote =>
+      'A pessoa recebe o link público de compartilhamento, então qualquer um a quem ela repassar também poderá abri-lo.';
+
+  @override
+  String get routeDetailSendDmPrivateNote =>
+      'Continua privada: só a pessoa para quem você enviar pode abrir o link, e você pode parar de compartilhar a qualquer momento.';
+
+  @override
+  String get routeDetailSendDmSearchPlaceholder => 'Buscar pessoas';
+
+  @override
+  String get routeDetailSendDmLoadFailed =>
+      'Não foi possível carregar para quem você pode enviar.';
+
+  @override
+  String get routeDetailSendDmEmpty =>
+      'Você ainda não segue ninguém e ninguém segue você.';
+
+  @override
+  String get routeDetailSendDmNoMatches => 'Ninguém corresponde a essa busca.';
+
+  @override
+  String get routeDetailSendDmRelationMutual => 'Vocês se seguem';
+
+  @override
+  String get routeDetailSendDmRelationFollowsYou => 'Segue você';
+
+  @override
+  String get routeDetailSendDmRelationYouFollow => 'Você segue essa pessoa';
+
+  @override
+  String get routeDetailSendDmSend => 'Enviar';
+
+  @override
+  String get routeDetailSendDmSending => 'Enviando…';
+
+  @override
+  String routeDetailSendDmSent(String name) {
+    return 'Rota enviada para $name.';
+  }
+
+  @override
+  String get routeDetailSendDmOpenThread => 'Abrir conversa';
+
+  @override
+  String get routeDetailSendDmDone => 'Concluído';
 }

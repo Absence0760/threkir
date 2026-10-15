@@ -125,6 +125,17 @@ void main() {
         reason: 'id must break a created_at tie so the order is total');
   });
 
+  test('getRoutes lists only the caller\'s own routes', () {
+    // `routes` SELECT RLS also admits club routes of every club the caller
+    // belongs to, so a reader relying on RLS alone stored other members'
+    // club routes as the caller's own. Web filters by user_id; so must this.
+    final fn = body('Future<KeysetPage<Route>> getRoutes(');
+    expect(fn, isNotEmpty, reason: 'getRoutes moved or was renamed');
+    expect(fn.contains('.eq(RouteRow.colUserId, userId)'), isTrue,
+        reason: 'the owner filter must be explicit, not left to RLS');
+    expect(fn.contains('_client.auth.currentUser?.id'), isTrue);
+  });
+
   test('_followPage filters after the cursor and returns the next one', () {
     expect(followPage, isNotEmpty, reason: '_followPage moved or was renamed');
     expect(followPage.contains('keysetAfter(order, after)'), isTrue);

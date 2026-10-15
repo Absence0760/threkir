@@ -2219,6 +2219,12 @@ class ApiClient {
   /// — `created_at` with `id` breaking a tie — because a cursor on
   /// `created_at` alone (`lt created_at`) dropped the second of two routes
   /// saved in the same instant whenever they straddled a page boundary.
+  ///
+  /// Owner-only, filtered by `user_id` rather than left to RLS: the `routes`
+  /// SELECT policy also admits every club route of a club the caller belongs
+  /// to, and those landed in the local route store as if the caller had
+  /// saved them. Club routes are [fetchClubRoutes]'s. Mirrors web
+  /// `fetchRoutesWithError`.
   Future<KeysetPage<Route>> getRoutes({
     int limit = 200,
     List<Object?>? after,
@@ -2228,7 +2234,12 @@ class ApiClient {
     if (after != null && filter == null) {
       return const KeysetPage(<Route>[], null);
     }
-    var query = _client.from(RouteRow.table).select();
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) throw Exception('Not authenticated');
+    var query = _client
+        .from(RouteRow.table)
+        .select()
+        .eq(RouteRow.colUserId, userId);
     if (starredOnly) {
       query = query.eq(RouteRow.colIsStarred, true);
     }

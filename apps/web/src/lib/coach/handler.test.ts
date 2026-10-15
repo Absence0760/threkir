@@ -25,7 +25,10 @@ import assert from 'node:assert/strict';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import type Anthropic from '@anthropic-ai/sdk';
+
 import { coachSseStream, handleCoach, type CoachStreamDeps } from './handler';
+import { anthropicTextTokens } from './providers';
 import { emptyUsage, type CoachConfig, type ProviderStream } from './types';
 
 /// Run `fn` with console.error captured, returning every line emitted.
@@ -563,6 +566,27 @@ test('mid-stream failure with ZERO tokens refunds the slot and persists nothing'
 	assert.deepEqual(persisted, [], 'nothing to persist when the stream yielded nothing');
 	assert.deepEqual(refunds, ['mid_stream_error_zero_tokens'], 'the empty slot must be refunded');
 	assert.match(out, /event: error/);
+});
+
+test('an Anthropic refusal with no text refunds the slot through the mid-stream path', async () => {
+	async function* refusal(): AsyncIterable<Anthropic.MessageStreamEvent> {
+		for (const e of [
+			{ type: 'message_start' },
+			{ type: 'message_delta', delta: { stop_reason: 'refusal' } },
+			{ type: 'message_stop' },
+		]) {
+			yield e as Anthropic.MessageStreamEvent;
+		}
+	}
+	const { deps, persisted, refunds } = streamDeps({
+		providerStream: { tokens: anthropicTextTokens(refusal()), finalUsage: async () => emptyUsage() },
+	});
+	const out = await drain(coachSseStream(deps));
+
+	assert.deepEqual(persisted, []);
+	assert.deepEqual(refunds, ['mid_stream_error_zero_tokens']);
+	assert.match(out, /event: error/);
+	assert.doesNotMatch(out, /event: done/);
 });
 
 test('happy path persists the full reply, emits done, refunds nothing', async () => {

@@ -2655,6 +2655,8 @@ export const messages = {
 	"messages.threadsLoadFailed": "会話を読み込めませんでした。",
 	"messages.threadLoadFailed": "この会話を読み込めませんでした。",
 	"messages.retry": "再試行",
+	"messages.loadEarlier": "以前のメッセージを読み込む",
+	"messages.loadEarlierFailed": "以前のメッセージを読み込めませんでした。",
 	"messages.attachment.routeEyebrow": "ルート",
 	"messages.attachment.routeUntitled": "名称未設定のルート",
 	"messages.attachment.routeUnavailable": "このルートは表示できなくなりました。",

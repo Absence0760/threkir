@@ -2659,6 +2659,8 @@ export const messages = {
 	"messages.threadsLoadFailed": "Não foi possível carregar suas conversas.",
 	"messages.threadLoadFailed": "Não foi possível carregar esta conversa.",
 	"messages.retry": "Tentar novamente",
+	"messages.loadEarlier": "Carregar mensagens anteriores",
+	"messages.loadEarlierFailed": "Não foi possível carregar as mensagens anteriores.",
 	"messages.attachment.routeEyebrow": "Rota",
 	"messages.attachment.routeUntitled": "Rota sem título",
 	"messages.attachment.routeUnavailable": "Esta rota não está mais disponível para você.",

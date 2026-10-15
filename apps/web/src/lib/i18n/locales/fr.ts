@@ -2660,6 +2660,8 @@ export const messages = {
 	"messages.threadsLoadFailed": "Impossible de charger vos conversations.",
 	"messages.threadLoadFailed": "Impossible de charger cette conversation.",
 	"messages.retry": "Réessayer",
+	"messages.loadEarlier": "Charger les messages précédents",
+	"messages.loadEarlierFailed": "Impossible de charger les messages précédents.",
 	"messages.attachment.routeEyebrow": "Itinéraire",
 	"messages.attachment.routeUntitled": "Itinéraire sans titre",
 	"messages.attachment.routeUnavailable": "Cet itinéraire n'est plus accessible pour vous.",

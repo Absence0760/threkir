@@ -2673,6 +2673,8 @@ export const en = {
 	"messages.threadsLoadFailed": "Couldn’t load your conversations.",
 	"messages.threadLoadFailed": "Couldn’t load this conversation.",
 	"messages.retry": "Retry",
+	"messages.loadEarlier": "Load earlier messages",
+	"messages.loadEarlierFailed": "Couldn’t load earlier messages.",
 	"messages.attachment.routeEyebrow": "Route",
 	"messages.attachment.routeUntitled": "Untitled route",
 	"messages.attachment.routeUnavailable": "This route isn't available to you any more.",

@@ -320,10 +320,10 @@ class RouteMarkersPanelState extends State<RouteMarkersPanel> {
     final spec = kindSpec(m.kind);
     final parts = <String>[];
     if (spec.hasServices && meta is Map && meta['services'] is List) {
-      // whereType, not cast: meta is a schemaless jsonb bag, and a cast that
-      // throws mid-build takes the whole route-detail list down with it (L4
-      // breaking L1) over one malformed marker.
-      final services = (meta['services'] as List).whereType<String>().toList();
+      // parseAidServices, not cast: meta is a schemaless jsonb bag, and a cast
+      // that throws mid-build takes the whole route-detail list down with it
+      // (L4 breaking L1) over one malformed marker.
+      final services = parseAidServices(meta['services']);
       if (services.isNotEmpty) {
         parts.add(services.map((s) => serviceLabel(l10n, s)).join(' · '));
       }

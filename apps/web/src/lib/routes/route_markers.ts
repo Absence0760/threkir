@@ -80,6 +80,23 @@ export type AidService = 'water' | 'food' | 'medical' | 'toilets' | 'drop_bag';
 
 export const AID_SERVICES: AidService[] = ['water', 'food', 'medical', 'toilets', 'drop_bag'];
 
+/**
+ * An aid station's `meta.services` read as the set it is meant to be: string
+ * entries only, each kept at its first position. `meta` is schemaless jsonb, so
+ * neither a duplicate nor a non-string entry is stopped by the database — and
+ * the roadbook renders services in a keyed `{#each}`, where one duplicate
+ * throws each_key_duplicate and takes the page down. Unknown strings are kept,
+ * so a service added by a newer client still round-trips.
+ */
+export function parseAidServices(raw: unknown): string[] {
+	if (!Array.isArray(raw)) return [];
+	const seen = new Set<string>();
+	for (const s of raw) {
+		if (typeof s === 'string') seen.add(s);
+	}
+	return [...seen];
+}
+
 /** Minimal shape the ordering + summarising helpers need. */
 export interface MarkerLike {
 	position_m: number | null;

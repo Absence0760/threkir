@@ -20,6 +20,7 @@
 		sortMarkers,
 		parseCutoff,
 		parseTarget,
+		parseAidServices,
 		isOfficialMarker
 	} from '#lib/routes/route_markers.ts';
 	import { markerPointAtDistance, polylineLengthMetres } from '#lib/routes/route_geometry.ts';
@@ -306,7 +307,7 @@
 		editingId = mk.id;
 		draftKind = mk.kind;
 		draftLabel = mk.label;
-		draftServices = Array.isArray(mk.meta?.services) ? [...(mk.meta.services as string[])] : [];
+		draftServices = parseAidServices(mk.meta?.services);
 		const cutoff = parseCutoff(mk.meta);
 		// Open in the form the marker was actually saved in.
 		draftCutoffElapsed = cutoff?.elapsedS != null;
@@ -526,9 +527,10 @@
 	function detailLine(mk: RouteMarker): string {
 		const spec = kindSpec(mk.kind);
 		const parts: string[] = [];
-		if (spec.hasServices && Array.isArray(mk.meta?.services) && mk.meta.services.length > 0) {
+		const services = spec.hasServices ? parseAidServices(mk.meta?.services) : [];
+		if (services.length > 0) {
 			parts.push(
-				(mk.meta.services as string[])
+				services
 					.map((s) => m(`routeMarker.service.${s}` as 'routeMarker.service.water'))
 					.join(' · ')
 			);

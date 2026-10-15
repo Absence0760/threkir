@@ -39,6 +39,29 @@ void main() {
     expect(aidServices, ['water', 'food', 'medical', 'toilets', 'drop_bag']);
   });
 
+  test('parseAidServices drops duplicates, keeping each service at its first position', () {
+    expect(parseAidServices(['water', 'food', 'water', 'food', 'medical']),
+        ['water', 'food', 'medical']);
+  });
+
+  test('parseAidServices drops non-string entries and keeps unknown names', () {
+    expect(
+        parseAidServices([
+          'water',
+          7,
+          null,
+          {'s': 'food'},
+          'shower'
+        ]),
+        ['water', 'shower']);
+  });
+
+  test('parseAidServices reads anything that is not a list as no services', () {
+    expect(parseAidServices(null), isEmpty);
+    expect(parseAidServices('water'), isEmpty);
+    expect(parseAidServices({'water': true}), isEmpty);
+  });
+
   test('sortMarkers orders by position_m, nulls last, stable by created_at', () {
     final markers = [
       _M('c', null, '2026-01-01T00:00:02Z'),

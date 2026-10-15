@@ -10,7 +10,10 @@ MLAT = 111195.0
 
 def walk(T, v, seed, sigma=3.0, rho=0.9, doppler=True, stops=(), drop=(), steps=False, cadence=2.8,
          gaps_steps=True, every=1, lat0=LAT0, lng0=LNG0, h0=0.0, speed_at=None, dop2d=None, bias=0.0, scale=1.0,
-         spikes=(), jump=None, acc=None, steps_until=None):
+         spikes=(), jump=None, acc=None, steps_until=None, canopy=None, speed_acc=None):
+    """canopy: (start, length, extra_sigma_m, stated_acc_m, stated_speed_acc_mps) — a stretch
+    under trees: extra white position noise, the stated accuracies, and Doppler with that
+    stated speed accuracy (its noise drawn to match)."""
     r = random.Random(seed)
     mlng = MLAT * math.cos(math.radians(lat0))
     x = y = 0.0; h = math.radians(h0); nx = ny = 0.0; k = math.sqrt(1 - rho * rho); ev = []; cnt = 0; stepacc = 0.0
@@ -33,21 +36,28 @@ def walk(T, v, seed, sigma=3.0, rho=0.9, doppler=True, stops=(), drop=(), steps=
                 ox += dx; oy += dy
         if jump is not None and t >= jump[0]:
             ox += jump[1]; oy += jump[2]
+        under = canopy is not None and canopy[0] <= t < canopy[0] + canopy[1]
+        if under:
+            ox += r.gauss(0, canopy[2]); oy += r.gauss(0, canopy[2])
         lng = lng0 + (x + nx + ox) / mlng
         if lng >= 180.0:
             lng -= 360.0
         fix = {"type": "fix", "t": float(t),
                "lat": round(lat0 + (y + ny + oy) / MLAT, 9), "lng": round(lng, 9),
-               "acc": round(sigma * 1.2 + abs(r.gauss(0, 1)), 2) if acc is None else acc,
+               "acc": (canopy[3] if under else round(sigma * 1.2 + abs(r.gauss(0, 1)), 2)) if acc is None else acc,
                "speed": None, "speedAcc": None, "bearing": None}
         if doppler and dop2d is not None:
             dvx = s * math.sin(h) + r.gauss(0, dop2d); dvy = s * math.cos(h) + r.gauss(0, dop2d)
             fix["speed"] = round(math.hypot(dvx, dvy), 3)
             fix["speedAcc"] = dop2d
             fix["bearing"] = round(math.degrees(math.atan2(dvx, dvy)) % 360, 2)
+        elif doppler and under:
+            fix["speed"] = round(abs(s + r.gauss(0, canopy[4] * 0.6)), 3)
+            fix["speedAcc"] = canopy[4]
+            fix["bearing"] = round((math.degrees(h) + r.gauss(0, 15)) % 360, 2) if s > 0 else None
         elif doppler:
             fix["speed"] = round(abs(s + r.gauss(0, 0.15)) * scale + bias, 3)
-            fix["speedAcc"] = round(0.3 + abs(r.gauss(0, 0.1)), 3)
+            fix["speedAcc"] = round(0.3 + abs(r.gauss(0, 0.1)), 3) if speed_acc is None else speed_acc
             fix["bearing"] = round((math.degrees(h) + r.gauss(0, 8)) % 360, 2) if s > 0 else None
         ev.append(fix)
     ev.sort(key=lambda e: e["t"])
@@ -55,8 +65,8 @@ def walk(T, v, seed, sigma=3.0, rho=0.9, doppler=True, stops=(), drop=(), steps=
     return ev
 
 
-def evaluate(events, max_speed=10.0, interval=1.0, stride=None):
-    e = GpsDistanceEstimator(max_speed, interval, stride)
+def evaluate(events, max_speed=10.0, interval=1.0, stride=None, learn_stride=True):
+    e = GpsDistanceEstimator(max_speed, interval, stride, learn_stride=learn_stride)
     out = []
     for x in events:
         if x["type"] == "fix":
@@ -70,11 +80,12 @@ def evaluate(events, max_speed=10.0, interval=1.0, stride=None):
 
 
 scen = []
-def add(name, desc, events, max_speed=10.0, interval=1.0, stride=None):
-    e, out = evaluate(events, max_speed, interval, stride)
-    sm = ref.smooth_distance(events, max_speed, interval, stride)
+def add(name, desc, events, max_speed=10.0, interval=1.0, stride=None, learn_stride=True):
+    e, out = evaluate(events, max_speed, interval, stride, learn_stride)
+    sm = ref.smooth_distance(events, max_speed, interval, stride, learn_stride)
     scen.append({"name": name, "description": desc, "maxSpeedMps": max_speed,
-                 "expectedIntervalS": interval, "initialStrideM": stride, "events": events,
+                 "expectedIntervalS": interval, "initialStrideM": stride, "learnStride": learn_stride,
+                 "events": events,
                  "expected": {"distanceAfterEachEventM": out,
                               "gpsDistanceM": round(e.gps_distance_m, 6),
                               "stepDistanceM": round(e.step_distance_m, 6),
@@ -98,16 +109,16 @@ add("position_only_run", "120 s run with no Doppler (legacy track); true distanc
 add("stationary_doppler", "90 s standing still with jitter; Doppler ~0.15 m/s; expect ~0", walk(90, 0.0, 3))
 add("stationary_position_only", "90 s standing still, no Doppler; expect ~0 (forward drifts, smoother's stop detection does not)", walk(90, 0.0, 4, doppler=False))
 add("stop_and_go", "red-light stop mid-run with Doppler", walk(150, 2.68, 5, stops=((50, 40),)))
-add("gap_no_steps", "30 s fix gap mid-run, no pedometer: gap not credited", walk(120, 2.68, 6, drop=((50, 30),)))
-add("gap_with_steps", "stride learned over 80 s, then 40 s fix gap filled by steps x stride", walk(160, 2.68, 7, drop=((80, 40),), steps=True))
+add("gap_no_steps", "30 s fix gap mid-run, no pedometer: no steps to fill it, so the chord across it, less its uncertainty, is credited (v1.4)", walk(120, 2.68, 6, drop=((50, 30),)))
+add("gap_with_steps", "stride learned over 80 s, then 40 s fix gap filled by steps x stride, topped up to the chord lower bound (v1.4)", walk(160, 2.68, 7, drop=((80, 40),), steps=True))
 add("short_gap_with_steps", "6 s fix gap: filter integrates it, buffered steps discarded", walk(120, 2.68, 8, drop=((80, 6),), steps=True))
 add("trailing_gap_with_steps", "fixes stop 30 s before finish: steps committed at finish", walk(140, 2.68, 9, drop=((110, 40),), steps=True))
 add("walker", "1.3 m/s walk with Doppler", walk(120, 1.3, 10), max_speed=5.0)
 add("sparse_15s", "fixes every 15 s (firmware power mode) with Doppler; expectedIntervalS 15 keeps them inside the gap window", walk(300, 2.68, 12, every=15), interval=15.0)
 add("sparse_60s_position_only", "fixes every 60 s, no Doppler, expectedIntervalS 60", walk(600, 2.68, 13, doppler=False, every=60), interval=60.0)
-add("sparse_without_interval_hint", "fixes every 15 s but expectedIntervalS left at 1: every fix re-anchors and credits nothing", walk(120, 2.68, 14, every=15))
+add("sparse_without_interval_hint", "fixes every 15 s but expectedIntervalS left at 1: every fix re-anchors, credited only by the chord lower bound (v1.4)", walk(120, 2.68, 14, every=15))
 add("seeded_stride_gap_fill", "initialStrideM 0.95 carried over a pause: a gap 10 s after the start is filled before any stride is learned", walk(90, 2.68, 15, drop=((10, 40),), steps=True), stride=0.95)
-add("seeded_stride_out_of_range", "initialStrideM 3.0 is outside 0.4-2.5 m and ignored, so the early gap is not filled", walk(90, 2.68, 16, drop=((10, 40),), steps=True), stride=3.0)
+add("seeded_stride_out_of_range", "initialStrideM 3.0 is outside 0.4-2.5 m and ignored, so the early gap is not step-filled; its chord lower bound is credited (v1.4)", walk(90, 2.68, 16, drop=((10, 40),), steps=True), stride=3.0)
 inv = walk(20, 2.68, 11)
 inv.insert(5, {"type": "fix", "t": 3.0, "lat": 40.0, "lng": -75.0, "acc": 5.0, "speed": 2.6, "speedAcc": 0.3, "bearing": 10.0})
 inv[8]["speed"] = 50.0
@@ -145,6 +156,20 @@ add("doppler_scale_low", "v1.3 Doppler scale: Doppler reads 8% low for the whole
     walk(420, 2.68, 31, scale=0.92))
 add("doppler_scale_high", "v1.3 Doppler scale: Doppler reads 10% high for the whole 420 s run (a fused-provider Android); the learned scale falls to about 0.93",
     walk(420, 2.68, 32, scale=1.10))
+
+# v1.4 scenarios.
+add("canopy_20_50", "v1.4 canopy: a 60 s stretch under trees reports 35 m accuracy (extra 12 m noise) and Doppler at speedAcc 0.9; the fixes stay in the filter, so there is no gap",
+    walk(180, 2.68, 40, canopy=(60, 60, 12.0, 35.0, 0.9)))
+add("canopy_beyond_50", "v1.4 canopy: a 30 s stretch reports 60 m accuracy; past MAX_POS_SIGMA_M the fixes are ignored, the stretch is a gap, and its chord lower bound is credited",
+    walk(150, 2.68, 41, canopy=(60, 30, 25.0, 60.0, 0.9)))
+add("canopy_poor_speed_accuracy", "v1.4 stride: steps under a 60 s canopy stretch whose Doppler states speedAcc 1.2 do not teach stride; the velocity update still takes that Doppler",
+    walk(120, 2.68, 42, steps=True, canopy=(0, 120, 6.0, 30.0, 1.2)))
+add("gap_chord_steps_short", "v1.4 gap: initialStrideM 0.5 is too short, so the 30 s gap's steps fall short of the chord; the GPS credit makes up the difference",
+    walk(120, 2.68, 43, drop=((40, 30),), steps=True), stride=0.5)
+add("fused_no_stride_learning", "v1.4 fused: learnStride false, steps throughout; no stride is learned, and the 30 s gap is credited by its chord alone",
+    walk(160, 2.68, 44, drop=((80, 30),), steps=True), learn_stride=False)
+add("fused_seeded_stride", "v1.4 fused: learnStride false with initialStrideM 0.95; the seeded stride fills the gap and is never updated",
+    walk(160, 2.68, 45, drop=((80, 30),), steps=True), stride=0.95, learn_stride=False)
 
 doc = {"spec": "gps-distance-estimator v" + ref.SPEC_VERSION,
        "reference": "docs/features/gps_distance.md",

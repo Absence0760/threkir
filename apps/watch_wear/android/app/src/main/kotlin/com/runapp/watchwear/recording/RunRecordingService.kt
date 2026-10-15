@@ -256,7 +256,12 @@ class RunRecordingService : Service() {
         pausedSinceMs = 0
         laps.clear()
         synchronized(distanceLock) {
-            distanceEstimator = GpsDistanceEstimator(GpsDistanceEstimator.maxSpeedMpsFor(activity))
+            // Every session starts on fused (see `sourceArbiter.reset()`),
+            // which may not teach stride.
+            distanceEstimator = GpsDistanceEstimator(
+                GpsDistanceEstimator.maxSpeedMpsFor(activity),
+                learnStride = false,
+            )
             bankedGpsDistanceM = 0.0
             bankedStepDistanceM = 0.0
             livePace.seal()
@@ -621,7 +626,9 @@ class RunRecordingService : Service() {
 
     /// Arbitrate one fix between the receiver and fused, end the estimator
     /// segment when the run changes source, and record the fix if it feeds.
-    /// A paused fix is still arbitrated but never recorded.
+    /// A paused fix is still arbitrated but never recorded. Only a receiver
+    /// segment may teach the estimator a stride: fused blends non-GNSS speed
+    /// in and was measured 25% fast (#1106).
     private fun onFix(p: GpsPoint, fromReceiver: Boolean) {
         synchronized(fixLock) {
             val live = !isPaused()
@@ -629,10 +636,22 @@ class RunRecordingService : Service() {
             val verdict = if (fromReceiver) {
                 sourceArbiter.onGnssFix(p.accuracyM, now, live)
             } else {
-                sourceArbiter.onFusedFix(now, live)
+                sourceArbiter.onFusedFix(now, live, p.accuracyM)
             }
-            if (verdict.rollSegment) synchronized(distanceLock) { closeDistanceSegment() }
-            if (verdict.feed) onGps(p)
+            val onReceiver = sourceArbiter.onReceiver
+            if (verdict.rollSegment) {
+                synchronized(distanceLock) { closeDistanceSegment(learnStride = onReceiver) }
+            } else if (verdict.feed) {
+                synchronized(distanceLock) {
+                    // The segment opened at start holds no fix yet when the
+                    // first source takes the run, so it is reopened for it.
+                    val segment = distanceEstimator
+                    if (segment.lastFixT == null && segment.learnStride != onReceiver) {
+                        distanceEstimator = segment.nextSegment(learnStride = onReceiver)
+                    }
+                }
+            }
+            if (verdict.feed) onGps(p, track = verdict.track)
         }
     }
 
@@ -657,9 +676,12 @@ class RunRecordingService : Service() {
     private fun locationProviderForTrack(pointCount: Int): String? =
         if (pointCount > 0) synchronized(fixLock) { sourceArbiter.locationProvider() } else null
 
-    private fun onGps(p: GpsPoint) {
+    /// [track] false is a fix past [FIX_ACCURACY_GATE_M]: under canopy it
+    /// still carries good Doppler, so it feeds distance and pace, but it stays
+    /// out of the stored track, the map overlay and the route match.
+    private fun onGps(p: GpsPoint, track: Boolean) {
         lastPointAtMs = System.currentTimeMillis()
-        trackWriter?.append(p)
+        if (track) trackWriter?.append(p)
         val (newDistance, pace) = synchronized(distanceLock) {
             val t = (p.elapsedRealtimeMs ?: SystemClock.elapsedRealtime()) / 1000.0
             distanceEstimator.addFix(
@@ -673,6 +695,11 @@ class RunRecordingService : Service() {
             )
             livePace.add(t, distanceEstimator.distanceM)
             (bankedDistanceM() + distanceEstimator.distanceM) to livePace.secondsPerKm
+        }
+        if (!track) {
+            RecordingRepository.update { it.copy(distanceM = newDistance, paceSecPerKm = pace) }
+            announceProgress(newDistance, pace)
+            return
         }
         val posLL = RouteMath.LatLng(p.lat, p.lng)
         val progress = if (routeWaypoints.isNotEmpty()) {
@@ -708,7 +735,12 @@ class RunRecordingService : Service() {
                 trackOverlayPoints = trackOverlay.toList(),
             )
         }
+        announceProgress(newDistance, pace)
+    }
 
+    /// The split announcement and the pace-drift alert, after every fix that
+    /// moved distance.
+    private fun announceProgress(newDistance: Double, pace: Double?) {
         // TTS split: announce once per completed unit of the runner's
         // `preferred_unit`. Runs on the service's Default-dispatcher scope
         // already — the TTS engine is thread-safe and a Flush-queued speak()
@@ -832,13 +864,14 @@ class RunRecordingService : Service() {
     /// End the current estimator segment: commit any step distance buffered
     /// across a trailing GPS gap, bank the segment's totals, and start a
     /// fresh estimator that keeps the learned stride, so a GPS gap right
-    /// after a resume is still step-filled. Caller holds [distanceLock].
-    private fun closeDistanceSegment() {
+    /// after a resume is still step-filled. [learnStride] is the next
+    /// segment's source's. Caller holds [distanceLock].
+    private fun closeDistanceSegment(learnStride: Boolean = distanceEstimator.learnStride) {
         val segment = distanceEstimator
         segment.finish(realtimeS())
         bankedGpsDistanceM += segment.gpsDistanceM
         bankedStepDistanceM += segment.stepDistanceM
-        distanceEstimator = segment.nextSegment()
+        distanceEstimator = segment.nextSegment(learnStride)
         livePace.seal()
     }
 

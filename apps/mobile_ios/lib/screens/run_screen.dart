@@ -1509,6 +1509,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       distanceFilterMetres: adv ? 2 : _activityType.gpsDistanceFilter,
       minMovementMetres: adv ? 1 : _activityType.minMovementMetres,
       maxSpeedMps: _activityType.maxSpeedMps,
+      initialStrideM: _persistedStrideM(),
     )
         .catchError((Object e) {
       _prepareError = e;
@@ -1530,6 +1531,33 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         _baroSub = null;
       },
     );
+  }
+
+  /// The stride this runner's earlier runs of this activity taught the
+  /// estimator on this phone, or null.
+  double? _persistedStrideM() {
+    final userId = widget.apiClient?.userId;
+    if (userId == null) return null;
+    try {
+      return widget.preferences.learnedStrideM(userId, _activityType.name);
+    } catch (e) {
+      debugPrint('stride seed unavailable: $e');
+      return null;
+    }
+  }
+
+  /// Keeps the stride this run ended with for the next run of the activity.
+  /// An auxiliary write: a failure costs only the next run's seed.
+  Future<void> _persistStride(RunRecorder recorder) async {
+    final userId = widget.apiClient?.userId;
+    final stride = recorder.strideMetres;
+    if (userId == null || stride == null) return;
+    try {
+      await widget.preferences
+          .setLearnedStrideM(userId, _activityType.name, stride);
+    } catch (e) {
+      debugPrint('stride not persisted: $e');
+    }
   }
 
   /// Subscribe to the pedometer stream. On error, wait a bit and retry —
@@ -2414,6 +2442,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         distanceFilterMetres: adv ? 2 : _activityType.gpsDistanceFilter,
         minMovementMetres: adv ? 1 : _activityType.minMovementMetres,
         maxSpeedMps: _activityType.maxSpeedMps,
+        initialStrideM: _persistedStrideM(),
       );
     } catch (e) {
       _notifyGpsUnavailable(e);
@@ -2634,10 +2663,18 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       // a total GPS blackout would otherwise look permanently healthy.
       // Also latch _everHadGpsFix so we know whether to fall back to the
       // pedometer for distance.
+      // GPS-lost is about distance, so it reads the later of the blue dot's
+      // fix and the estimator's: under canopy the estimator keeps 20-50 m
+      // fixes that never move the dot.
       final fixedAt = snapshot.positionFixedAt;
       if (fixedAt != null) {
         _lastSnapshotAt = fixedAt;
         if (!_everHadGpsFix) _everHadGpsFix = true;
+      }
+      final distanceAt = snapshot.distanceFixedAt;
+      final lastAt = _lastSnapshotAt;
+      if (distanceAt != null && (lastAt == null || distanceAt.isAfter(lastAt))) {
+        _lastSnapshotAt = distanceAt;
       }
       final positionFresh = fixedAt != null &&
           DateTime.now().difference(fixedAt) <= _gpsLostThreshold;
@@ -3479,6 +3516,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     if (_stopRequested || recorder == null) return;
     _stopRequested = true;
     final raw = await recorder.stop();
+    unawaited(_persistStride(recorder));
     _snapshotSub?.cancel();
     _stepSub?.cancel();
     _baroSub?.cancel();

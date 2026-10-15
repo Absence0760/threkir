@@ -90,10 +90,19 @@ void main() {
   });
 
   test('a run already on the current estimator is not offered again', () {
-    expect(currentDistanceEstimator, 'kalman_v3');
+    expect(currentDistanceEstimator, 'kalman_v4');
     expect(
       canRecomputeDistance(
-          run(metadata: {'distance_estimator': 'kalman_v3'}), owner),
+          run(metadata: {'distance_estimator': 'kalman_v4'}), owner),
+      isFalse,
+    );
+    expect(
+      canRecomputeDistance(
+          run(metadata: {
+            'distance_estimator': 'kalman_v4',
+            'distance_recomputed_at': '2026-10-08T08:00:00Z',
+          }),
+          owner),
       isFalse,
     );
     expect(
@@ -103,7 +112,8 @@ void main() {
             'distance_recomputed_at': '2026-10-08T08:00:00Z',
           }),
           owner),
-      isFalse,
+      isTrue,
+      reason: 'a run recomputed under spec v1.3 gains the v1.4 gap chord',
     );
     expect(
       canRecomputeDistance(

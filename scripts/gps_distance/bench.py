@@ -1,4 +1,4 @@
-"""Synthetic noise bench for the GPS distance estimator (spec v1.2).
+"""Synthetic noise bench for the GPS distance estimator.
 
 Prints the error against the true path length for the old hop-sum, the
 forward filter (live screens) and the smoother (saved / recomputed figure),
@@ -46,6 +46,11 @@ def run(cfg, seed, est_cls=ref.GpsDistanceEstimator, smoother=ref.smooth_distanc
     dstated = cfg.get("dstated", 0.4)
     bias = cfg.get("bias", 0.0)
     spikes = cfg.get("spikes", 0.0)
+    # canopy: (period_s, under_s, extra_sigma_m, doppler_sigma, doppler_stated) — the first
+    # under_s of every period_s is under trees, stating 20-50 m accuracy.
+    canopy = cfg.get("canopy")
+    # gate: the recorder's accuracy gate, applied before the estimator sees a fix.
+    gate = cfg.get("gate")
     k = math.sqrt(1 - rho * rho)
     nx = ny = 0.0
     mlng = MLAT * math.cos(math.radians(LAT0))
@@ -57,14 +62,20 @@ def run(cfg, seed, est_cls=ref.GpsDistanceEstimator, smoother=ref.smooth_distanc
         if spikes and r.random() < spikes:
             a = r.uniform(0, 2 * math.pi); m = r.uniform(25, 60)
             X += m * math.sin(a); Y += m * math.cos(a)
+        under = canopy is not None and t % canopy[0] < canopy[1]
+        acc_t, dsig_t, dstated_t = stated, dsig, dstated
+        if under:
+            X += r.gauss(0, canopy[2]); Y += r.gauss(0, canopy[2])
+            acc_t = r.uniform(22.0, 48.0)
+            dsig_t, dstated_t = canopy[3], canopy[4]
         if t % every:
             continue
         fix = {"type": "fix", "t": float(t), "lat": LAT0 + Y / MLAT, "lng": LNG0 + X / mlng,
-               "acc": stated, "speed": None, "speedAcc": None, "bearing": None}
+               "acc": acc_t, "speed": None, "speedAcc": None, "bearing": None}
         if doppler:
-            dvx, dvy = vx + r.gauss(0, dsig), vy + r.gauss(0, dsig)
+            dvx, dvy = vx + r.gauss(0, dsig_t), vy + r.gauss(0, dsig_t)
             s = math.hypot(dvx, dvy) + bias
-            fix["speed"], fix["speedAcc"] = max(0.0, s), dstated
+            fix["speed"], fix["speedAcc"] = max(0.0, s), dstated_t
             fix["bearing"] = math.degrees(math.atan2(dvx, dvy)) % 360 if math.hypot(vx, vy) > 0 else None
         events.append(fix)
         if anchor is None:
@@ -73,6 +84,8 @@ def run(cfg, seed, est_cls=ref.GpsDistanceEstimator, smoother=ref.smooth_distanc
             d = math.hypot(X - anchor[0], Y - anchor[1])
             if 3 < d < 100:
                 naive += d; anchor = (X, Y)
+    if gate is not None:
+        events = [ev for ev in events if ev["acc"] <= gate]
     events.append({"type": "finish", "t": float(T)})
     e = est_cls(cfg.get("max_speed", 10.0), float(every))
     for ev in events:
@@ -87,6 +100,8 @@ def run(cfg, seed, est_cls=ref.GpsDistanceEstimator, smoother=ref.smooth_distanc
 FOREST = {"v": 2.2, "turn_every": 25, "turn_deg": 90, "sigma": 6.0, "rho": 0.97, "white": 2.0,
           "dsig": 0.35, "dstated": 0.5}
 SWITCHBACKS = dict(FOREST, turn_every=12, turn_deg=150)
+
+CANOPY = dict(FOREST, canopy=(180, 90, 10.0, 0.5, 0.8))
 
 SCENARIOS = [
     ("sigma 3 m, rho 0.9", {}),
@@ -109,6 +124,10 @@ SCENARIOS = [
     ("forest trail, position-only", dict(FOREST, doppler=False)),
     ("canopy switchbacks: 150 deg every 12 s, sigma 6 m, rho 0.97", SWITCHBACKS),
     ("canopy switchbacks, position-only", dict(SWITCHBACKS, doppler=False)),
+    ("canopy 20-50 m half the time, recorder gate 20 m", dict(CANOPY, gate=20.0)),
+    ("canopy 20-50 m half the time, fed to the estimator", CANOPY),
+    ("canopy 20-50 m, position-only, recorder gate 20 m", dict(CANOPY, doppler=False, gate=20.0)),
+    ("canopy 20-50 m, position-only, fed to the estimator", dict(CANOPY, doppler=False)),
     ("urban canyon: sigma 8 m, rho 0.98, spikes 5%, turns every 30 s", {"turn_every": 30, "sigma": 8.0, "rho": 0.98,
                                                                        "white": 2.0, "spikes": 0.05, "dsig": 0.4,
                                                                        "dstated": 0.6}),

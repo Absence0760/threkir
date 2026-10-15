@@ -162,6 +162,7 @@ class Preferences extends ChangeNotifier {
 
   static const _kBackgroundLocationNudgeDismissed =
       'background_location_nudge_dismissed';
+  static const _kLearnedStridePrefix = 'learned_stride_m';
 
   static const _kNotifDeniedHintShown = 'notif_denied_hint_shown';
 
@@ -609,6 +610,22 @@ class Preferences extends ChangeNotifier {
     await setKeepScreenOn(true);
     await setDimScreenWhileRecording(false);
     await clearVoiceCueTypes();
+  }
+
+  /// The stride the GPS distance estimator last learned for [userId] doing
+  /// [activity] on this device, in metres, or null. Seeds the next run's
+  /// estimator, so a GPS gap before that run has learned its own stride is
+  /// still step-filled. Device-local and never synced: it calibrates this
+  /// phone's pedometer against the runner's GPS. Keyed by account, so a
+  /// second account on the phone never inherits the first one's stride.
+  double? learnedStrideM(String userId, String activity) =>
+      _prefs.getDouble('$_kLearnedStridePrefix:$userId:$activity');
+
+  Future<void> setLearnedStrideM(
+      String userId, String activity, double strideM) async {
+    if (!strideM.isFinite || strideM <= 0) return;
+    await _prefs.setDouble(
+        '$_kLearnedStridePrefix:$userId:$activity', strideM);
   }
 
   /// Whether the one-time OEM battery-optimisation hint has been shown. Many

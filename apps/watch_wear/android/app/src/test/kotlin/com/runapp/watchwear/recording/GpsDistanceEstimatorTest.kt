@@ -41,9 +41,9 @@ class GpsDistanceEstimatorTest {
         e?.takeIf { it !is JsonNull }?.jsonPrimitive?.doubleOrNull
 
     @Test
-    fun `the fixture is spec v1_2 and every constant matches it`() {
-        assertEquals("gps-distance-estimator v1.3", fixture["spec"]!!.jsonPrimitive.content)
-        assertEquals("1.3", GpsDistanceEstimator.SPEC_VERSION)
+    fun `the fixture is spec v1_4 and every constant matches it`() {
+        assertEquals("gps-distance-estimator v1.4", fixture["spec"]!!.jsonPrimitive.content)
+        assertEquals("1.4", GpsDistanceEstimator.SPEC_VERSION)
         val constants = fixture["constants"]!!.jsonObject
         assertFalse("port declares no constants", GpsDistanceEstimator.CONSTANTS.isEmpty())
         for ((name, value) in GpsDistanceEstimator.CONSTANTS) {
@@ -64,6 +64,7 @@ class GpsDistanceEstimatorTest {
                 maxSpeedMps = sc["maxSpeedMps"]!!.jsonPrimitive.double,
                 expectedIntervalS = sc["expectedIntervalS"]!!.jsonPrimitive.double,
                 initialStrideM = sc.num("initialStrideM"),
+                learnStride = sc["learnStride"]!!.jsonPrimitive.boolean,
             )
             val events = sc["events"]!!.jsonArray
             val expected = sc["expected"]!!.jsonObject
@@ -147,5 +148,27 @@ class GpsDistanceEstimatorTest {
         val est = GpsDistanceEstimator(initialStrideM = 0.95)
         learnStride(est)
         assertEquals(0.96, est.strideM!!, tolerance)
+    }
+
+    @Test
+    fun `a segment that may not learn keeps its seed, and passes the flag on unless told otherwise`() {
+        val fused = GpsDistanceEstimator(initialStrideM = 0.95, learnStride = false)
+        learnStride(fused)
+        assertEquals(0.95, fused.strideM!!, 0.0)
+        val stillFused = fused.nextSegment()
+        assertFalse(stillFused.learnStride)
+        val receiver = fused.nextSegment(learnStride = true)
+        assertTrue(receiver.learnStride)
+        learnStride(receiver)
+        assertEquals(0.96, receiver.strideM!!, tolerance)
+    }
+
+    @Test
+    fun `a fix stating worse than 50 m is ignored outright`() {
+        val est = GpsDistanceEstimator()
+        assertEquals(0.0, est.addFix(0.0, 40.0, -75.0, 51.0), 0.0)
+        est.addFix(1.0, 40.0, -75.0, 50.0)
+        est.addFix(2.0, 40.00003, -75.0, 51.0, 3.0, 0.3, 0.0)
+        assertEquals(0.0, est.distanceM, 0.0)
     }
 }

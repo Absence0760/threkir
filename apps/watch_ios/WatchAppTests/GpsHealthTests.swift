@@ -205,13 +205,22 @@ final class GpsHealthTests: XCTestCase {
     }
 
     func testARejectedFixDoesNotClearTheIndoorBanner() {
-        // A 50 m fix is dropped by the accuracy gate, so it banks no distance
+        // A 51 m fix is past the estimator's 50 m cap, so it banks no distance
         // — telling the runner GPS is fine while the distance sits at zero
         // would be the lie the banner exists to prevent.
         let wm = WorkoutManager()
-        wm.locationManager(CLLocationManager(), didUpdateLocations: [fix(accuracy: 50)])
+        wm.locationManager(CLLocationManager(), didUpdateLocations: [fix(accuracy: 51)])
         wm.refreshGpsBanner()
         XCTAssertEqual(wm.gpsBanner, .noFixYet)
+    }
+
+    func testACanopyFixTheEstimatorKeepsClearsTheIndoorBanner() {
+        // 40 m is past the track gate but inside the estimator's cap: it can
+        // move distance, so GPS is not lost.
+        let wm = WorkoutManager()
+        wm.locationManager(CLLocationManager(), didUpdateLocations: [fix(accuracy: 40)])
+        wm.refreshGpsBanner()
+        XCTAssertEqual(wm.gpsBanner, .healthy)
     }
 
     private func fix(accuracy: Double) -> CLLocation {

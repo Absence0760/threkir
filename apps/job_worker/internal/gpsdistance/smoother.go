@@ -158,6 +158,9 @@ func SmoothDistance(events []Event, o Options) SmoothResult {
 		if !(finite(f.T) && finite(f.Lat) && finite(f.Lng)) {
 			continue
 		}
+		if validPtr(f.AccuracyM) && *f.AccuracyM > MaxPosSigmaM {
+			continue
+		}
 		if !haveOrigin {
 			lat0, lng0, haveOrigin = f.Lat, f.Lng, true
 		}
@@ -222,7 +225,8 @@ func SmoothDistance(events []Event, o Options) SmoothResult {
 		}
 	}
 
-	// Credit along the smoothed velocities: trapezoid per interval, gap re-anchors not credited.
+	// Credit along the smoothed velocities: trapezoid per interval; a gap
+	// re-anchor carries the forward pass's chord lower bound.
 	effs := make([]float64, len(recs))
 	for k, r := range recs {
 		if r.zupt {
@@ -240,6 +244,9 @@ func SmoothDistance(events []Event, o Options) SmoothResult {
 	for k, r := range recs {
 		switch {
 		case r.anchor:
+			if r.hasChord {
+				credit[k] = r.chord
+			}
 		case r.hasChord:
 			credit[k] = r.chord
 		default:

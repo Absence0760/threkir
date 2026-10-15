@@ -188,7 +188,7 @@ func TestDistanceRecompute_RewritesDistanceAndKeepsEveryOtherKey(t *testing.T) {
 	if u.Metadata["distance_recorded_m"] != 6308.7 {
 		t.Errorf("distance_recorded_m = %v, want the old distance_m 6308.7", u.Metadata["distance_recorded_m"])
 	}
-	if u.Metadata["distance_estimator"] != "kalman_v3" {
+	if u.Metadata["distance_estimator"] != "kalman_v4" {
 		t.Errorf("distance_estimator = %v", u.Metadata["distance_estimator"])
 	}
 	at, _ := u.Metadata["distance_recomputed_at"].(string)
@@ -210,8 +210,8 @@ func TestDistanceRecompute_RepeatKeepsTheOriginalRecordedDistance(t *testing.T) 
 	if got := b.distance.updates[0].Metadata["distance_recorded_m"]; got != 6308.7 {
 		t.Errorf("distance_recorded_m = %v, want the original 6308.7, not the previous recompute's 250", got)
 	}
-	if got := b.distance.updates[0].Metadata["distance_estimator"]; got != "kalman_v3" {
-		t.Errorf("distance_estimator = %v, want a kalman_v1 recompute restamped kalman_v3", got)
+	if got := b.distance.updates[0].Metadata["distance_estimator"]; got != "kalman_v4" {
+		t.Errorf("distance_estimator = %v, want a kalman_v1 recompute restamped kalman_v4", got)
 	}
 }
 
@@ -270,7 +270,7 @@ func (m errRoadMatcher) MatchWithRoadDistance(context.Context, []TrackPoint) ([]
 }
 
 // An engine outage must not decide the pass: a run written now is stamped
-// kalman_v3 and never offered Recalculate again, so a road run recomputed
+// kalman_v4 and never offered Recalculate again, so a road run recomputed
 // during a 502 would keep the forward figure for good. The job is deferred
 // instead, and nothing is written.
 func TestDistanceRecompute_TransientRoadMatchFailureDefersTheJob(t *testing.T) {
@@ -419,7 +419,7 @@ func TestDistanceRecompute_SkipsWhatIsNotTheEstimatorsToReplace(t *testing.T) {
 			r.Metadata = json.RawMessage(`{"distance_estimator":"kalman_v1"}`)
 		}},
 		{"saved by the smoother on the phone", func(r *DistanceRecomputeRun) {
-			r.Metadata = json.RawMessage(`{"distance_estimator":"kalman_v3"}`)
+			r.Metadata = json.RawMessage(`{"distance_estimator":"kalman_v4"}`)
 		}},
 	}
 	for _, tc := range cases {

@@ -54,9 +54,39 @@ class LocationSourceArbiterTest {
         assertTrue(a.onGnssFix(FIX_ACCURACY_GATE_M, s(3), live = true).feed)
 
         for (t in 4..20) {
-            assertFalse("an unusable receiver fix is never recorded", a.onGnssFix(45.0, s(t), live = true).feed)
+            val canopy = a.onGnssFix(45.0, s(t), live = true)
+            assertTrue("a canopy fix within the estimator's cap still feeds distance", canopy.feed)
+            assertFalse("but never the track", canopy.track)
         }
         assertTrue("17 s of canopy fixes is a silent receiver", a.onFusedFix(s(20), live = true).feed)
+        assertFalse("past the receiver, canopy fixes are dropped", a.onGnssFix(45.0, s(21), live = true).feed)
+    }
+
+    @Test fun `a receiver fix past the estimator cap is dropped even on the receiver`() {
+        val a = takeReceiver(LocationSourceArbiter())
+        assertFalse(a.onGnssFix(ESTIMATOR_ACCURACY_CAP_M + 0.1, s(3), live = true).feed)
+        val atCap = a.onGnssFix(ESTIMATOR_ACCURACY_CAP_M, s(4), live = true)
+        assertTrue(atCap.feed)
+        assertFalse(atCap.track)
+    }
+
+    @Test fun `a coarse fused fix feeds distance but not the track`() {
+        val a = LocationSourceArbiter()
+        val coarse = a.onFusedFix(s(0), live = true, accuracyM = 40.0)
+        assertTrue(coarse.feed)
+        assertFalse(coarse.track)
+        assertTrue(a.onFusedFix(s(1), live = true, accuracyM = FIX_ACCURACY_GATE_M).track)
+    }
+
+    @Test fun `the arbitration gate is configurable apart from the track gate`() {
+        val a = LocationSourceArbiter(arbitrationGateM = 20.0)
+        for (t in 0..2) a.onGnssFix(25.0, s(t), live = true)
+        assertFalse("25 m fixes do not take the run at a 20 m gate", a.onReceiver)
+        takeReceiver(a)
+        assertTrue(a.onReceiver)
+        val fix = a.onGnssFix(25.0, s(3), live = true)
+        assertTrue(fix.feed)
+        assertTrue("25 m is inside the 30 m track gate", fix.track)
     }
 
     // ─────────── fused standing in ───────────

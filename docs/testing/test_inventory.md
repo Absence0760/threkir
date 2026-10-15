@@ -35,7 +35,7 @@ Pure-function tests for two helpers in `lib/run_stats.dart`:
 - Slow → fast → slow run → picks the fast middle 5 km
 - Regression: a 10 km in 1:14:34 does **not** surface as a 37:17 fastest 5k
 
-### `packages/run_recorder/test/run_recorder_test.dart` — 100 tests
+### `packages/run_recorder/test/run_recorder_test.dart` — 104 tests
 
 The recorder's state machine and GPS filter chain. Uses `@visibleForTesting` hooks (see below) to bypass the real geolocator stream and inject synthetic `Position` objects directly into `_onPosition`.
 
@@ -72,6 +72,12 @@ The recorder's state machine and GPS filter chain. Uses `@visibleForTesting` hoo
 - Receiver fixes the accuracy gate drops don't count as delivering, so fused takes over
 - A source switch while recording opens a new estimator stretch; the first source of a recording does not
 - A saved run names the stream that recorded it in `metadata.location_provider`
+
+**GPS distance spec v1.4 (4 tests, decisions § 1991):**
+- A 20-50 m canopy fix feeds the estimator (30 s of 4 m/s is 120 m, not a gap) but not the track or the map; past 50 m it is dropped
+- `prepare(initialStrideM:)` seeds the stride, which survives `begin()`, and an out-of-range seed is ignored
+- A fused stretch never learns stride; the receiver stretch after it does
+- A canopy fix advances `distanceFixedAt` but not `positionFixedAt`
 
 **Not covered (require mocking `GeolocatorPlatform.instance`):** typed errors thrown from `prepare()`, the `_gpsRetryTimer` retry loop, position-stream `onError` cleanup, `stop`/`dispose` cancelling the retry timer.
 
@@ -994,7 +1000,7 @@ Every static-map image on web renders through `StaticMapImage.svelte`, which swa
 
 `activityUsesSpeed`: only `cycle` reads by speed, the twin of core_models' `ActivityType.usesSpeed`, and an untagged or unknown activity reads by pace. Drives the pace-or-speed key-stat tile on `/runs/[id]`.
 
-### `apps/watch_wear/android/app/src/test/kotlin/**/*Test.kt` — 999 Wear OS Kotlin/JUnit tests across 95 files
+### `apps/watch_wear/android/app/src/test/kotlin/**/*Test.kt` — 1018 Wear OS Kotlin/JUnit tests across 97 files
 
 Run with `cd apps/watch_wear/android && ./gradlew testDebugUnitTest`. Pure-JVM tests — no Android instrumentation, no Robolectric. **Six of them read files outside this Gradle build** (the phone's two `Wear*Bridge.kt`, `apps/web/src/lib/core/env_flag.ts`, `docs/backend/metadata.md`, the `activity_type` migration and the two client label catalogues), plus the manifest, and none was a declared input of the test task until [decisions § 946](../architecture/decisions.md) — so a local run reported UP-TO-DATE and SUCCESSFUL on exactly the drift those guards exist to catch. They are declared now; if you add a guard that reads anything outside `app/src`, add it to `guardedCrossTreeFiles` / `guardedCrossTreeSets` in `app/build.gradle.kts` in the same change or it will not re-run when its subject changes. `ScreenWiringTest` also now pins the pre-run signed-out notice ([decisions § 948](../architecture/decisions.md)): the `!authed` branch renders `not_signed_in` and NOT `offline`, read branch-scoped so the sibling `!online && authed` branch a few lines above cannot satisfy it — two conditions sharing one string breaks nothing, so only an assertion about which branch says which can see it. The team deliberately avoided UI-test infrastructure (see `apps/watch_wear/CLAUDE.md`'s "layouts can't be unit-tested without Robolectric"); the pattern is to extract pure helpers from the Android-bound classes and exercise them at the JVM level.
 
@@ -1032,7 +1038,7 @@ Three source-level resilience guards were added on 2026-09-03 in the same idiom 
 
 The handful of Wear OS surfaces NOT covered (need instrumentation): `Pedometer` sensor binding itself, `HeartRateMonitor.MeasureCallback` registration with Health Services, `GpsRecorder`'s `GPS_PROVIDER` and `FusedLocationProviderClient` callbacks, foreground-service lifecycle, Compose UI screen rendering (the team deliberately stayed off Robolectric — `ScreenWiringTest`'s source-grep approach is the cheap-but-effective alternative).
 
-### `apps/job_worker/internal/**/*_test.go` — 971 tests across 92 files (Go unit tests)
+### `apps/job_worker/internal/**/*_test.go` — 973 tests across 92 files (Go unit tests)
 
 Run with `go test ./...` from `apps/job_worker`. No network or Postgres dependency — the worker tests use a fake `Backend`, the matcher tests use `httptest.Server` to stand in for OSRM. Gated in CI by the `test-worker` job (`go vet` + `go test ./...`), so a Go-side guard like `internal/personal_data_export_guard_test.go` (the GDPR Art 20 export-completeness tripwire — fails the build when a new `user_id`-bearing table isn't wired into `exportPersonalDataSpecs` or the reasoned exclusion list) now fails a PR, not just a local run. Files:
 
@@ -1255,7 +1261,7 @@ The behavioural guard on the § 1286 / § 1489 negative: no uniqueness on `gym_r
 
 Pins migration `20270808000011` (decisions § 1918). The gate: no API role can run `private.remap_recurrence_wallclock` or close the transition window, nothing in the database calls the remap, and its default call is a dry run that reports the real counts and moves and records nothing; a dry run (or dry-run sweep) smaller than the series it would select is refused `22023`, so a batched dry-run loop cannot spin, while one covering them all runs. The window: the migration seeds `recurrence_utc_clock_legacy` enabled and a deleted row reads strict; before the close `is_event_occurrence` accepts both the UTC-clock and the wall-clock instant on its default and only the wall-clock one for a strict caller, and after it only the wall-clock one; the close refuses while a row still sits on a UTC-clock-only instant and, when it succeeds, leaves the flag disabled. The remap: a New York Wednesday-evening series pairs each Tuesday row with the Wednesday after it (shift 1) across attendees, the cancellation, the reminder, the event post and the host photo; an adjacent MO/TU series moves seven rows through a chain of instants without a primary-key or result unique-key collision; the monthly 28 February clamp and the April EDT move; the 07:00 fall-back move; a row whose target its owner already holds stays and is counted while the others at that instant move; a paid order written on an old instant moves onto the wall-clock one through the strict occurrence trigger; a UTC series moves nothing. A second run is a no-op, and a sweep moves only the rows an old build wrote afterwards, leaving a wall-clock RSVP whose instant is also a UTC-clock one where it is. Every one of the fifteen mutations recorded in § 1918 fails it, the vectors file or `event_order_occurrence_test.sql`.
 
-### `apps/backend/supabase/functions/**/*.test.ts` — 1393 deno tests across 104 files
+### `apps/backend/supabase/functions/**/*.test.ts` — 1395 deno tests across 104 files
 
 Run the pure-helper slices with `cd apps/backend && deno test --no-check supabase/functions/_shared/*.test.ts` plus the per-function `lib.test.ts` / `wiring.test.ts` / `handler.test.ts` files (`auth-email`, `delete-account`, `donations-checkout`, `events-cancel`, `events-checkout`, `events-connect-onboard`, `events-refund-sweep`, `export-data`, `parkrun-import`, `race-results-import`, `refresh-tokens`, `revenuecat-webhook`, `strava-clubs`, `strava-import`, `strava-webhook`, `stripe-events-webhook`); the network-touching ones (e.g. `_shared/handler_envelope.test.ts`) need `SUPABASE_TEST_URL=http://127.0.0.1:24321 supabase functions serve --env-file .env.local` and the `--allow-net --allow-env` flags. The `edge-functions` CI job runs all of them on every PR.
 

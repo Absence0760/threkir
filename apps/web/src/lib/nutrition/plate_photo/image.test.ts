@@ -62,3 +62,49 @@ test('an image over the byte ceiling, or too small to be one, is refused', () =>
 		reason: 'size',
 	});
 });
+
+function pngChunk(type: string, data: number[]): number[] {
+	const len = data.length;
+	return [(len >>> 24) & 0xff, (len >>> 16) & 0xff, (len >>> 8) & 0xff, len & 0xff, ...Buffer.from(type, 'latin1'), ...data, 0, 0, 0, 0];
+}
+
+function png(withExif: boolean): Uint8Array {
+	const parts = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+	parts.push(...pngChunk('IHDR', [0, 0, 0, 2, 0, 0, 0, 2, 8, 2, 0, 0, 0]));
+	if (withExif) parts.push(...pngChunk('eXIf', Array.from(Buffer.from('GPS-51.5074N', 'latin1'))));
+	parts.push(...pngChunk('IDAT', Array.from({ length: 40 }, (_, i) => i)));
+	parts.push(...pngChunk('IEND', []));
+	return Uint8Array.from(parts);
+}
+
+function webp(withExif: boolean): Uint8Array {
+	const chunk = (fourcc: string, data: number[]) => {
+		const n = data.length;
+		return [...Buffer.from(fourcc, 'latin1'), n & 0xff, (n >>> 8) & 0xff, (n >>> 16) & 0xff, (n >>> 24) & 0xff, ...data, ...(n & 1 ? [0] : [])];
+	};
+	const body = [...Buffer.from('WEBP', 'latin1'), ...chunk('VP8 ', Array.from({ length: 60 }, (_, i) => i))];
+	if (withExif) body.push(...chunk('EXIF', Array.from(Buffer.from('GPS-51.5074N', 'latin1'))));
+	const size = body.length;
+	return Uint8Array.from([...Buffer.from('RIFF', 'latin1'), size & 0xff, (size >>> 8) & 0xff, (size >>> 16) & 0xff, (size >>> 24) & 0xff, ...body]);
+}
+
+test('a PNG passes under its own type and loses its eXIf chunk', () => {
+	const out = preparePlateImage(b64(png(true)), 'image/png');
+	assert.equal(out.ok, true);
+	if (!out.ok) return;
+	assert.equal(out.mediaType, 'image/png');
+	const sent = Buffer.from(out.base64, 'base64');
+	assert.equal(sent.includes(Buffer.from('GPS-51.5074N')), false);
+	assert.deepEqual(new Uint8Array(sent), png(false));
+});
+
+test('a WebP passes under its own type and loses its EXIF chunk', () => {
+	const out = preparePlateImage(b64(webp(true)), 'image/webp');
+	assert.equal(out.ok, true);
+	if (!out.ok) return;
+	assert.equal(out.mediaType, 'image/webp');
+	const sent = Buffer.from(out.base64, 'base64');
+	assert.equal(sent.includes(Buffer.from('GPS-51.5074N')), false);
+	assert.deepEqual(new Uint8Array(sent), webp(false));
+	assert.equal(out.bytes, sent.length);
+});

@@ -92,6 +92,7 @@ import '../widgets/track_preview.dart' show projectTrack;
 import '../widgets/upcoming_event_card.dart';
 import '../widgets/workout_execution_band.dart';
 import 'event_detail_screen.dart';
+import 'help_screen.dart';
 import 'plan_detail_screen.dart';
 import 'plans_screen.dart';
 import 'run_detail_screen.dart';
@@ -1255,9 +1256,11 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   /// run starts (persona #57). Non-blocking — the run proceeds either
   /// way; recording still works while the app is on screen. Shows once:
   /// a dismissal persists (issue #266) and only re-arms if always-on is
-  /// later granted then revoked.
-  Future<void> _maybeNudgeBackgroundLocation() async {
-    if (!Platform.isAndroid) return;
+  /// later granted then revoked. Returns false when the runner chose to read
+  /// the location guide instead, so the start is abandoned rather than the
+  /// countdown running out behind the guide.
+  Future<bool> _maybeNudgeBackgroundLocation() async {
+    if (!Platform.isAndroid) return true;
     final foreground = await Permission.location.isGranted;
     final always = await Permission.locationAlways.isGranted;
     if (shouldRearmBackgroundLocationNudge(
@@ -1276,7 +1279,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       alwaysGranted: always,
       alreadyDismissed: widget.preferences.backgroundLocationNudgeDismissed,
     )) {
-      return;
+      return true;
     }
     // Mark dismissed up front so a crash / early-dismiss can't re-trigger
     // it on the next run — either dialog action is an informed choice, and
@@ -1286,26 +1289,41 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     } catch (e) {
       debugPrint('setBackgroundLocationNudgeDismissed failed: $e');
     }
-    if (!mounted) return;
-    final openSettings = await showDialog<bool>(
+    if (!mounted) return false;
+    final choice = await showDialog<_BackgroundLocationChoice>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(_l10n.runBackgroundLocationNudgeTitle),
         content: Text(_l10n.runBackgroundLocationNudgeBody),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
+            onPressed: () =>
+                Navigator.pop(ctx, _BackgroundLocationChoice.readGuide),
+            child: Text(_l10n.infoTipReadGuide),
+          ),
+          TextButton(
+            onPressed: () =>
+                Navigator.pop(ctx, _BackgroundLocationChoice.startAnyway),
             child: Text(_l10n.runStartAnyway),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
+            onPressed: () =>
+                Navigator.pop(ctx, _BackgroundLocationChoice.openSettings),
             child: Text(_l10n.runOpenSettings),
           ),
         ],
       ),
     );
-    if (openSettings == true) {
-      await openAppSettings();
+    switch (choice) {
+      case _BackgroundLocationChoice.readGuide:
+        if (mounted) await openGuide(context, 'location-permission');
+        return false;
+      case _BackgroundLocationChoice.openSettings:
+        await openAppSettings();
+        return true;
+      case _BackgroundLocationChoice.startAnyway:
+      case null:
+        return true;
     }
   }
 
@@ -1381,8 +1399,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       _startRequested = false;
       return;
     }
-    await _maybeNudgeBackgroundLocation();
-    if (!mounted) {
+    final proceed = await _maybeNudgeBackgroundLocation();
+    if (!mounted || !proceed) {
       _startRequested = false;
       return;
     }
@@ -6548,3 +6566,5 @@ class _TrackSparkPainter extends CustomPainter {
   bool shouldRepaint(covariant _TrackSparkPainter old) =>
       old.track != track || old.color != color;
 }
+
+enum _BackgroundLocationChoice { readGuide, startAnyway, openSettings }

@@ -11,6 +11,7 @@ import '../l10n/gen/app_localizations.dart';
 import '../preferences.dart';
 import '../settings_sync.dart';
 import '../widgets/sign_in_required_state.dart' show resolveApiForSignIn;
+import 'help_screen.dart';
 import 'sign_in_screen.dart';
 import 'sign_up_screen.dart';
 
@@ -103,6 +104,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           description: Platform.isIOS
               ? l10n.onboardingLocationBodyIos
               : l10n.onboardingLocationBodyAndroid,
+          guideId: 'location-permission',
         ),
       ];
 
@@ -294,6 +296,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                     height: 1.5,
                                   ),
                                 ),
+                                if (p.guideId case final id?) ...[
+                                  const SizedBox(height: 8),
+                                  TextButton(
+                                    onPressed: () => openGuide(context, id),
+                                    child: Text(l10n.infoTipReadGuide),
+                                  ),
+                                ],
                               ],
                             ),
                           ),
@@ -478,9 +487,11 @@ class _PageData {
   final IconData icon;
   final String title;
   final String description;
+  final String? guideId;
   const _PageData({
     required this.icon,
     required this.title,
     required this.description,
+    this.guideId,
   });
 }

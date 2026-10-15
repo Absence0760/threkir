@@ -1,6 +1,7 @@
-// Tapping a comment-like or a mention row in the mobile inbox (decisions
-// § 1971) marks it read and opens the run it names in the public view, which
-// is the one a recipient who does not own the run can read.
+// Tapping a row in the mobile inbox marks it read and opens what it names,
+// kind for kind with web's notificationLinkFor. Every run kind opens the run
+// view that serves owner and non-owner alike (decisions § 1971); kudos,
+// comment, comment_reply and reaction used to mark read and go nowhere.
 
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
@@ -10,20 +11,29 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
+import '../lib/screens/challenge_detail_screen.dart';
+import '../lib/screens/event_detail_screen.dart';
+import '../lib/screens/plan_detail_screen.dart';
 import '../lib/screens/profile_screen.dart';
 import '../lib/screens/public_run_screen.dart';
+import '../lib/widgets/badge_grid.dart';
 
-NotificationView _view(String kind) => NotificationView(
+NotificationView _view(String kind, {String? eventClubSlug}) => NotificationView(
       row: NotificationRow(
         id: 'n-$kind',
         userId: 'me',
         actorId: 'u-ana',
         kind: kind,
         runId: 'r1',
+        eventId: 'e1',
+        planId: 'p1',
+        achievementId: 'a1',
+        challengeId: 'c1',
         createdAt: DateTime.utc(2026, 10, 13, 9),
         refunded: false,
       ),
       actor: const PublicProfile(id: 'u-ana', displayName: 'Ana', avatarUrl: null),
+      eventClubSlug: eventClubSlug,
     );
 
 class _NotifApi extends ApiClient {
@@ -121,6 +131,10 @@ void main() {
   setUpAll(_ensureSupabase);
 
   final cases = <String, String Function(AppLocalizations)>{
+    'kudos': (l) => l.profileNotifKudos('Ana', l.profileNotifYourRun),
+    'comment': (l) => l.profileNotifComment('Ana', l.profileNotifYourRun),
+    'comment_reply': (l) => l.profileNotifCommentReply('Ana'),
+    'reaction': (l) => l.profileNotifReaction('Ana'),
     'comment_like': (l) => l.profileNotifCommentLike('Ana'),
     'mention': (l) => l.profileNotifMention('Ana'),
   };
@@ -140,4 +154,103 @@ void main() {
       expect(api.opened, ['r1']);
     });
   }
+
+  Future<void> tapAndSettle(WidgetTester tester, String text) async {
+    await tester.tap(find.text(text));
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    tester.takeException();
+  }
+
+  Future<void> teardown(WidgetTester tester) async {
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(milliseconds: 100));
+    tester.takeException();
+  }
+
+  testWidgets('tapping a follow row opens the follower\'s profile', (tester) async {
+    final api = _NotifApi([_view('follow')]);
+    await _pump(tester, api);
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+
+    await tapAndSettle(tester, l10n.profileNotifFollow('Ana'));
+
+    expect(api.read, ['n-follow']);
+    expect(
+      find.byWidgetPredicate((w) => w is ProfileScreen && w.userId == 'u-ana'),
+      findsOneWidget,
+    );
+     await teardown(tester);
+  });
+
+  final eventCases = <String, String Function(AppLocalizations)>{
+    'event_cancel': (l) => l.profileNotifEventCancel,
+    'event_reminder': (l) => l.profileNotifEventReminder,
+  };
+  for (final entry in eventCases.entries) {
+    testWidgets('tapping an ${entry.key} row opens the event', (tester) async {
+      final api = _NotifApi([_view(entry.key, eventClubSlug: 'studio')]);
+      await _pump(tester, api);
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+
+      await tapAndSettle(tester, entry.value(l10n));
+
+      expect(api.read, ['n-${entry.key}']);
+      final screen = tester.widget<EventDetailScreen>(
+        find.byType(EventDetailScreen),
+      );
+      expect(screen.eventId, 'e1');
+      expect(screen.clubSlug, 'studio');
+      await teardown(tester);
+    });
+  }
+
+  final planCases = <String, String Function(AppLocalizations)>{
+    'plan_update': (l) => l.profileNotifPlanUpdate('Ana'),
+    'plan_assigned': (l) => l.profileNotifPlanAssigned('Ana'),
+  };
+  for (final entry in planCases.entries) {
+    testWidgets('tapping a ${entry.key} row opens the plan', (tester) async {
+      final api = _NotifApi([_view(entry.key)]);
+      await _pump(tester, api);
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+
+      await tapAndSettle(tester, entry.value(l10n));
+
+      expect(api.read, ['n-${entry.key}']);
+      final screen = tester.widget<PlanDetailScreen>(
+        find.byType(PlanDetailScreen),
+      );
+      expect(screen.planId, 'p1');
+      await teardown(tester);
+    });
+  }
+
+  testWidgets('tapping a challenge_complete row opens the challenge', (tester) async {
+    final api = _NotifApi([_view('challenge_complete')]);
+    await _pump(tester, api);
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+
+    await tapAndSettle(tester, l10n.profileNotifChallengeComplete);
+
+    expect(api.read, ['n-challenge_complete']);
+    final screen = tester.widget<ChallengeDetailScreen>(
+      find.byType(ChallengeDetailScreen),
+    );
+    expect(screen.challengeId, 'c1');
+    await teardown(tester);
+  });
+
+  testWidgets('tapping an achievement row shows the badges tab', (tester) async {
+    final api = _NotifApi([_view('achievement')]);
+    await _pump(tester, api);
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    expect(find.byType(BadgeGrid), findsNothing);
+
+    await tapAndSettle(tester, l10n.profileNotifAchievement);
+
+    expect(api.read, ['n-achievement']);
+    expect(find.byType(BadgeGrid), findsOneWidget);
+  });
 }

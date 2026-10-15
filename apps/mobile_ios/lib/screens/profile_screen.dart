@@ -20,10 +20,12 @@ import '../widgets/run_list_tile.dart';
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/undo_bar.dart';
+import 'challenge_detail_screen.dart';
 import 'club_detail_screen.dart';
 import 'event_detail_screen.dart';
 import 'follow_requests_screen.dart';
 import 'message_thread_screen.dart';
+import 'plan_detail_screen.dart';
 import 'public_run_screen.dart';
 
 /// Page size for the followers / following tabs. Same value as the
@@ -45,6 +47,16 @@ const int _kProfileRunsLimit = 30;
 
 /// The overflow menu's entries on another runner's profile.
 enum _ProfileMenuAction { report, block }
+
+const Set<String> _kRunNotificationKinds = {
+  'kudos',
+  'comment',
+  'comment_reply',
+  'reaction',
+  'comment_like',
+  'mention',
+  'run_completed',
+};
 
 /// Public profile screen — mirrors the web `/u/[id]` page (decisions §31).
 ///
@@ -1355,7 +1367,10 @@ class _ProfileScreenState extends State<ProfileScreen>
         name: item.actor?.displayName,
         avatarUrl: item.actor?.avatarUrl,
       );
-    } else if ((kind == 'event_rsvp' || kind == 'event_waitlist_slot') &&
+    } else if ((kind == 'event_rsvp' ||
+            kind == 'event_cancel' ||
+            kind == 'event_reminder' ||
+            kind == 'event_waitlist_slot') &&
         item.row.eventId != null &&
         item.eventClubSlug != null) {
       await Navigator.of(context).push(
@@ -1377,19 +1392,44 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
         ),
       );
-    } else if ((kind == 'run_completed' ||
-            kind == 'comment_like' ||
-            kind == 'mention') &&
-        item.row.runId != null) {
-      // A comment like or a mention need not be on the recipient's own run,
-      // so they open the public view a non-owner can read, as run_completed
-      // does.
+    } else if (_kRunNotificationKinds.contains(kind) && item.row.runId != null) {
+      // A reply, a comment like or a mention need not be on the recipient's
+      // own run, so every run kind opens the view that serves both the owner
+      // and a non-owner, as web's /runs/[id] and the push path do.
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) =>
               PublicRunScreen(api: widget.api, runId: item.row.runId!),
         ),
       );
+    } else if (kind == 'follow' && item.row.actorId != null) {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) =>
+              ProfileScreen(api: widget.api, userId: item.row.actorId!),
+        ),
+      );
+    } else if ((kind == 'plan_update' || kind == 'plan_assigned') &&
+        item.row.planId != null) {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => PlanDetailScreen(
+            training: TrainingService(),
+            planId: item.row.planId!,
+          ),
+        ),
+      );
+    } else if (kind == 'challenge_complete' && item.row.challengeId != null) {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => ChallengeDetailScreen(
+            social: SocialService(),
+            challengeId: item.row.challengeId!,
+          ),
+        ),
+      );
+    } else if (kind == 'achievement') {
+      _tabs.animateTo(_tabOrder.indexOf(ProfileTab.badges));
     } else if (kind == 'follow_request') {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(

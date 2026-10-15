@@ -1571,12 +1571,20 @@ class ApiClient {
   /// caller stores its `lastFetchedAt` locally and passes it on subsequent
   /// opens so we don't re-fetch the entire history on every Runs tab
   /// visit.
+  ///
+  /// Owner-only, filtered by `user_id` rather than left to RLS: the `runs`
+  /// SELECT policy also admits every run of an athlete the caller actively
+  /// coaches, and those would land in a coach's own run store, history and
+  /// training load. Mirrors web `fetchRuns`.
   Future<List<Run>> getRuns({
     int limit = 50,
     DateTime? before,
     DateTime? updatedSince,
   }) async {
-    var query = _client.from(RunRow.table).select();
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) throw Exception('Not authenticated');
+    var query =
+        _client.from(RunRow.table).select().eq(RunRow.colUserId, userId);
 
     if (before != null) {
       query = query.lt(RunRow.colStartedAt, before.toIso8601String());

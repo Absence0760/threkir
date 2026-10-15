@@ -136,6 +136,17 @@ void main() {
     expect(fn.contains('_client.auth.currentUser?.id'), isTrue);
   });
 
+  test('getRuns lists only the caller\'s own runs', () {
+    // `runs` SELECT RLS also admits the runs of every athlete the caller
+    // actively coaches, so a reader relying on RLS alone filled a coach's
+    // own run store with athletes' runs. Web filters by user_id; so must
+    // this.
+    final fn = body('Future<List<Run>> getRuns(');
+    expect(fn, isNotEmpty, reason: 'getRuns moved or was renamed');
+    expect(fn.contains('.eq(RunRow.colUserId, userId)'), isTrue,
+        reason: 'the owner filter must be explicit, not left to RLS');
+  });
+
   test('_followPage filters after the cursor and returns the next one', () {
     expect(followPage, isNotEmpty, reason: '_followPage moved or was renamed');
     expect(followPage.contains('keysetAfter(order, after)'), isTrue);

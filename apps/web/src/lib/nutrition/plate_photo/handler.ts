@@ -32,6 +32,7 @@ import {
 	gateAiDisclosure,
 } from '../../core/ai_disclosure';
 import { supabaseErrorFields } from '../../core/supabase_error';
+import { providerErrorFields } from '../../core/provider_error';
 import { checkRouteRateLimit } from '../../routes/rate_limit';
 import { preparePlateImage } from './image';
 import {
@@ -311,14 +312,4 @@ export async function handlePlatePhoto(
 		console.error('[plate-photo] provider call failed', { ...providerErrorFields(e) });
 		return json(503, { error: 'plate photo unavailable' });
 	}
-}
-
-export function providerErrorFields(e: unknown): Record<string, unknown> {
-	if (!e || typeof e !== 'object') return { kind: typeof e };
-	const o = e as { name?: unknown; status?: unknown; error?: { error?: { type?: unknown } } };
-	return {
-		name: typeof o.name === 'string' ? o.name : 'unknown',
-		status: typeof o.status === 'number' ? o.status : null,
-		type: typeof o.error?.error?.type === 'string' ? o.error.error.type : null,
-	};
 }

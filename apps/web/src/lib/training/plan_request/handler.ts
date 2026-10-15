@@ -34,6 +34,7 @@ import {
 	gateAiDisclosure,
 } from '../../core/ai_disclosure';
 import { dbError, thrownMessage } from '../../core/supabase_error';
+import { providerErrorFields } from '../../core/provider_error';
 import { isoEpochDay, validatePlanInputs, type PlanRequestInputs } from './inputs';
 
 /// Matches the model used by the route assistant + the coach.
@@ -350,14 +351,4 @@ export async function handlePlanRequest(
 	}
 }
 
-/// The loggable part of a provider failure: never the message, which for an
-/// SDK APIError embeds the response body.
-export function providerErrorFields(e: unknown): Record<string, unknown> {
-	if (!e || typeof e !== 'object') return { kind: typeof e };
-	const o = e as { name?: unknown; status?: unknown; error?: { error?: { type?: unknown } } };
-	return {
-		name: typeof o.name === 'string' ? o.name : 'unknown',
-		status: typeof o.status === 'number' ? o.status : null,
-		type: typeof o.error?.error?.type === 'string' ? o.error.error.type : null,
-	};
-}
+export { providerErrorFields };

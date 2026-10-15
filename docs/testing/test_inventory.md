@@ -35,7 +35,7 @@ Pure-function tests for two helpers in `lib/run_stats.dart`:
 - Slow → fast → slow run → picks the fast middle 5 km
 - Regression: a 10 km in 1:14:34 does **not** surface as a 37:17 fastest 5k
 
-### `packages/run_recorder/test/run_recorder_test.dart` — 93 tests
+### `packages/run_recorder/test/run_recorder_test.dart` — 96 tests
 
 The recorder's state machine and GPS filter chain. Uses `@visibleForTesting` hooks (see below) to bypass the real geolocator stream and inject synthetic `Position` objects directly into `_onPosition`.
 
@@ -65,10 +65,12 @@ The recorder's state machine and GPS filter chain. Uses `@visibleForTesting` hoo
 - The 1-second timer emits snapshots with `currentPosition: null` when `begin()` runs without any injected fix — the stopwatch ticks even for a treadmill run
 - An injected fix after begin populates `currentWaypoint` normally (indoor → outdoor transition)
 
-**Android location source (5 tests, decisions § 1954):**
+**Android location source (8 tests, decisions § 1954):**
 - Android asks the fused provider for its fallback stream at 1 Hz; iOS names no provider
 - The receiver takes the run after three steady fixes and fused fixes stand aside
-- A silent receiver hands the run to fused, and takes it back after three steady fixes
+- A silent receiver hands the run to fused after 12 s (on arrival time), and takes it back after three steady fixes
+- Receiver fixes the accuracy gate drops don't count as delivering, so fused takes over
+- A source switch while recording opens a new estimator stretch; the first source of a recording does not
 - A saved run names the stream that recorded it in `metadata.location_provider`
 
 **Not covered (require mocking `GeolocatorPlatform.instance`):** typed errors thrown from `prepare()`, the `_gpsRetryTimer` retry loop, position-stream `onError` cleanup, `stop`/`dispose` cancelling the retry timer.

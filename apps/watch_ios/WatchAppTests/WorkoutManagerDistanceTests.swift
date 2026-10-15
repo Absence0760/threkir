@@ -106,6 +106,20 @@ final class WorkoutManagerDistanceTests: XCTestCase {
         XCTAssertEqual(wm.distanceMetres, before + 2.8, accuracy: 0.01)
     }
 
+    func testACanopyStretchMovesDistanceButNotTheTrackOrTheMap() {
+        // Five clean seconds, then ten at 40 m: past the 30 m track gate,
+        // inside the estimator's 50 m cap, Doppler still good. 2.8 m/s over
+        // 15 s by scripts/gps_distance/reference.py.
+        let wm = WorkoutManager()
+        let degPerSecond = 2.8 / 111_195
+        feed(wm, (0...15).map {
+            loc(51.5 + Double($0) * degPerSecond, at: Double($0), accuracy: $0 <= 5 ? 5 : 40)
+        })
+        XCTAssertEqual(wm.distanceMetres, 2.8 * 15, accuracy: 0.01)
+        XCTAssertEqual(wm.trackPointCount, 6)
+        XCTAssertEqual(wm.mapPosition?.latitude ?? 0, 51.5 + 5 * degPerSecond, accuracy: 1e-12)
+    }
+
     func testBadAccuracyFixIsIgnored() {
         let wm = WorkoutManager()
         feed(wm, run(from: 51.5, at: 0, seconds: 5))

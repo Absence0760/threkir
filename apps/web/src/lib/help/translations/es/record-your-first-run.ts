@@ -23,7 +23,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'note',
 					tone: 'tip',
-					text: 'En Android, elige **Permitir todo el tiempo** para la ubicación. Si solo das acceso mientras la app está abierta, no se cuenta la distancia que recorres con la pantalla apagada, aunque el reloj sigue corriendo.',
+					text: 'En Android, elige **Permitir todo el tiempo** para la ubicación. Si solo das acceso mientras la app está abierta, puede que no se cuente la distancia que recorres con la pantalla apagada, aunque el reloj sigue corriendo. Consulta [[guide:location-permission|qué opción de ubicación elegir]].',
 				},
 				{
 					type: 'illustration',
@@ -102,7 +102,7 @@ export const translation: GuideTranslation = {
 		's0.b1.i0': 'a7632a8cd2567c2c',
 		's0.b1.i1': '68b860679cd99712',
 		's0.b1.i2': 'a406181fe0c90b54',
-		's0.b2': 'b93825fb9981ec39',
+		's0.b2': 'f776b4b4202d8779',
 		's1.heading': '7c0f775fc550ae67',
 		's1.b0': '7cdb0afab0e6c855',
 		's1.b1': '1514c09a3d983d9e',

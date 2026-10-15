@@ -64,6 +64,27 @@ void main() {
         reason: 'an ilike pattern reads * % _ \\ as wildcards');
   });
 
+  test('the public gym-routine library matches its search literally', () {
+    // `ilike('%q%')` read every `*` as `%` (PostgREST) and `%` `_` `\` as
+    // LIKE wildcards, so "5*5" or "100%" found the wrong routines.
+    final start = src.indexOf('fetchPublicGymRoutineLibrary({');
+    expect(start, greaterThanOrEqualTo(0), reason: 'the reader moved');
+    final fn = src.substring(start, src.indexOf('\n  /// ', start));
+    expect(fn, contains('imatchRegex('));
+    expect(fn, contains('literalSubstringPattern(trimmed)'));
+  });
+
+  test('no read filters with a LIKE pattern', () {
+    // `like` / `ilike` cannot express a literal `*` through PostgREST at all
+    // (decisions § 1926): use imatch + literalSubstringPattern, or
+    // literalSubstringTerm inside an or= tree.
+    final code = src
+        .split('\n')
+        .where((l) => !l.trimLeft().startsWith('//'))
+        .join('\n');
+    expect(RegExp(r'\.i?like(AllOf|AnyOf)?\(').hasMatch(code), isFalse);
+  });
+
   test('no filter tree interpolates text into a pattern operator unquoted',
       () {
     // Inside `or=` / `and=` PostgREST reads an unquoted value up to the next

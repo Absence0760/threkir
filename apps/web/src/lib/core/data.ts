@@ -5569,7 +5569,8 @@ export type PublicPlanLibraryEntry = TrainingPlan & {
 };
 
 /// Browse the public plan library — published plans any user can clone
-/// (migration 20270126_001). Optional case-insensitive name search.
+/// (migration 20270126_001). Optional case-insensitive name search, every
+/// character matched literally (`literalSubstringPattern`, decisions § 1928).
 /// Each entry carries the author's public display name (handle) joined
 /// from user_profiles; no other author data is exposed. Mirrors mobile
 /// `TrainingService.fetchPublicPlanLibrary`.
@@ -5584,7 +5585,7 @@ export async function fetchPublicPlanLibrary(
 		.order('created_at', { ascending: false })
 		.limit(limit);
 	const trimmed = query.trim();
-	if (trimmed) q = q.ilike('name', `%${trimmed}%`);
+	if (trimmed) q = q.regexIMatch('name', literalSubstringPattern(trimmed));
 	const { data, error } = await q;
 	if (error) return { plans: [], error: error.message };
 	const rows = (data ?? []) as TrainingPlan[];
@@ -12640,7 +12641,8 @@ export type PublicGymRoutineEntry = GymRoutineSummary & {
 
 /// Browse the public gym-routine library — routines published as public
 /// templates that any signed-in user can adopt (migration 20270224_001).
-/// Optional case-insensitive title search. Each entry carries the author's
+/// Optional case-insensitive title search, every character matched literally
+/// (`literalSubstringPattern`, decisions § 1928). Each entry carries the author's
 /// public display name (handle) joined from user_profiles; no other author
 /// data is exposed. Mirrors fetchPublicPlanLibrary + the mobile
 /// `ApiClient.fetchPublicGymRoutineLibrary`.
@@ -12656,7 +12658,7 @@ export async function fetchPublicGymRoutineLibrary(
 		.order('created_at', { ascending: false })
 		.limit(limit);
 	const trimmed = query.trim();
-	if (trimmed) q = q.ilike('title', `%${trimmed}%`);
+	if (trimmed) q = q.regexIMatch('title', literalSubstringPattern(trimmed));
 	const { data, error } = await q;
 	if (error) return { routines: [], error: error.message };
 	const rows = ((data ?? []) as Array<Omit<GymRoutineSummary, 'last_modified_at'>>).map(

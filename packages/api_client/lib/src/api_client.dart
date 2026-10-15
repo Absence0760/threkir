@@ -7512,9 +7512,11 @@ class ApiClient {
 
   /// Browse the public gym-routine library — routines published as public
   /// templates that any signed-in user can adopt (migration 20270224_001).
-  /// Optional case-insensitive title search. Each entry carries the author's
-  /// public display name (handle) joined from user_profiles; no other author
-  /// data is exposed. Mirrors web `data.ts#fetchPublicGymRoutineLibrary`.
+  /// Optional case-insensitive title search, every character matched
+  /// literally (`literalSubstringPattern`, decisions § 1928). Each entry
+  /// carries the author's public display name (handle) joined from
+  /// user_profiles; no other author data is exposed. Mirrors web
+  /// `data.ts#fetchPublicGymRoutineLibrary`.
   Future<List<({GymRoutineRow routine, String? authorHandle})>>
       fetchPublicGymRoutineLibrary({String query = ''}) async {
     // public_gym_routines redacts external_id + last_modified_at (migration
@@ -7522,7 +7524,10 @@ class ApiClient {
     var sel = _client.from('public_gym_routines').select();
     final trimmed = query.trim();
     if (trimmed.isNotEmpty) {
-      sel = sel.ilike(GymRoutineRow.colTitle, '%$trimmed%');
+      sel = sel.imatchRegex(
+        GymRoutineRow.colTitle,
+        literalSubstringPattern(trimmed),
+      );
     }
     final rows = await sel
         .order(GymRoutineRow.colCreatedAt, ascending: false)

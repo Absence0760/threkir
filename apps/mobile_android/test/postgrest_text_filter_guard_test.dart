@@ -39,6 +39,27 @@ void main() {
         reason: 'an ilike pattern reads * % _ \\ as wildcards');
   });
 
+  test('the public plan library matches its search literally', () {
+    // `ilike('%q%')` read every `*` as `%` (PostgREST) and `%` `_` `\` as
+    // LIKE wildcards, so "5*5" or "100%" found the wrong plans.
+    expect(
+      sources()['lib/training_service.dart'],
+      contains("imatchRegex('name', literalSubstringPattern(trimmed))"),
+    );
+  });
+
+  test('no read filters with a LIKE pattern', () {
+    // `like` / `ilike` cannot express a literal `*` through PostgREST at all
+    // (decisions § 1926): use imatch + literalSubstringPattern, or
+    // literalSubstringTerm inside an or= tree.
+    final pattern = RegExp(r'\.i?like(AllOf|AnyOf)?\(');
+    final offenders = [
+      for (final e in sources().entries)
+        if (pattern.hasMatch(e.value)) e.key,
+    ];
+    expect(offenders, isEmpty);
+  });
+
   test('no filter tree interpolates text into a pattern operator unquoted', () {
     final pattern =
         RegExp(r'\.(i?like|i?match|fts|plfts|phfts|wfts)\.[%*]?\$');

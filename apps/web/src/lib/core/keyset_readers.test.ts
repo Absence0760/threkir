@@ -89,6 +89,23 @@ test('no PostgREST filter tree interpolates text into a pattern operator unquote
 	assert.deepEqual(offenders, []);
 });
 
+test('the public plan and gym-routine libraries match their search literally', () => {
+	// Both sent `ilike('%q%')`, where PostgREST reads every `*` as `%` and `%`
+	// `_` `\` are LIKE wildcards, so "5*5" or "100%" found the wrong plans.
+	assert.match(body('fetchPublicPlanLibrary'), /\.regexIMatch\('name', literalSubstringPattern\(trimmed\)\)/);
+	assert.match(body('fetchPublicGymRoutineLibrary'), /\.regexIMatch\('title', literalSubstringPattern\(trimmed\)\)/);
+});
+
+test('no web read filters with a LIKE pattern', () => {
+	// `like` / `ilike` cannot express a literal `*` through PostgREST at all
+	// (decisions § 1926), so a text search goes through imatch +
+	// literalSubstringPattern, or literalSubstringTerm inside an or= tree.
+	const offenders = webSources()
+		.filter(([, src]) => /\.i?like(AllOf|AnyOf)?\(/.test(src))
+		.map(([f]) => f);
+	assert.deepEqual(offenders, []);
+});
+
 test('fetchRuns takes a keyset cursor, and its whole-history walk is a keyset walk too', () => {
 	// The limited branch is one load-more page starting at the cursor. The
 	// unlimited branch reads the whole history for recap, heatmap and the

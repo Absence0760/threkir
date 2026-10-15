@@ -308,7 +308,9 @@ class TrainingService extends ChangeNotifier {
   }
 
   /// Browse the public plan library — published plans any user can clone
-  /// (migration 20270126_001). Optional case-insensitive name search.
+  /// (migration 20270126_001). Optional case-insensitive name search, every
+  /// character matched literally (`literalSubstringPattern`, decisions
+  /// § 1928).
   /// Each entry carries the author's public display name (handle) joined
   /// from user_profiles; no other author data is exposed. Mirrors web
   /// `core/data.ts:fetchPublicPlanLibrary`.
@@ -317,7 +319,9 @@ class TrainingService extends ChangeNotifier {
   }) async {
     var sel = _c.from('training_plans').select().eq('is_public_template', true);
     final trimmed = query.trim();
-    if (trimmed.isNotEmpty) sel = sel.ilike('name', '%$trimmed%');
+    if (trimmed.isNotEmpty) {
+      sel = sel.imatchRegex('name', literalSubstringPattern(trimmed));
+    }
     final rows = await sel.order('created_at', ascending: false).limit(100);
     final plans = (rows as List)
         .cast<Map<String, dynamic>>()

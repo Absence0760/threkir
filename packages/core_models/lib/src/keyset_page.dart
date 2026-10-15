@@ -192,10 +192,10 @@ String literalSubstringPattern(String text) => text.replaceAllMapped(
 );
 
 /// The total order of each public-route search sort (`newest` / `popular` /
-/// `featured`). The first keys are the `search_public_routes` RPC's (migration
-/// 20270326_001), null placement included, so the partial indexes that
-/// migration built still serve the prefix; `id` is appended because none of
-/// the three was total — two routes created in the same instant could swap
+/// `featured`). The first keys are the dropped `search_public_routes` RPC's
+/// (migration 20270326_001), null placement included, so the partial indexes
+/// that migration built still serve the prefix; `id` is appended because none
+/// of the three was total — two routes created in the same instant could swap
 /// between reads.
 List<KeysetKey> publicRouteOrder(String sort) {
   const id = KeysetKey('id', ascending: false, nullsFirst: false);

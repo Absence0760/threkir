@@ -2206,9 +2206,9 @@ class ApiClient {
   /// `sort` is `newest` / `popular` / `featured` (see [publicRouteOrder]).
   ///
   /// Reads the `public_routes` view directly rather than through the
-  /// `search_public_routes` RPC, whose `p_offset` paging repeated or skipped a
-  /// route whenever one was published or unpublished between two reads, and
-  /// none of whose orders was total. The view is the RPC's own source (same
+  /// `search_public_routes` RPC (dropped in 20270817000001), whose `p_offset`
+  /// paging repeated or skipped a route whenever one was published or
+  /// unpublished between two reads, and none of whose orders was total. The view is the RPC's own source (same
   /// visibility) and is granted to anon + authenticated, so the filters move
   /// here verbatim. Mirrors web `searchPublicRoutes` in `core/data.ts`.
   Future<KeysetPage<Route>> searchPublicRoutes({

@@ -34,13 +34,13 @@ const clearAttendance: Functions['mark_attendance']['Args'] = {
 	p_attendance: null,
 };
 
-// `search_public_routes(p_query text default null)` is emitted optional, and
+// `search_race_listings(p_query text default null)` is emitted optional, and
 // still never `| null`. Saying null explicitly is what keeps the client from
 // inheriting whatever default a later migration gives the parameter.
-const noQuery: Functions['search_public_routes']['Args'] = {
+const noQuery: Functions['search_race_listings']['Args'] = {
 	p_query: null,
-	p_surface: null,
-	p_tags: null,
+	p_distance: null,
+	p_from: null,
 };
 
 // The widening is per-argument, not a blanket `any`: the argument NAMES and

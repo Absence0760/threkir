@@ -170,9 +170,9 @@ export function literalSubstringPattern(text: string): string {
 export type PublicRouteSort = 'newest' | 'popular' | 'featured';
 
 /// The total order of each public-route search sort. The first keys are the
-/// `search_public_routes` RPC's (migration 20270326_001), null placement
-/// included, so the partial indexes that migration built still serve the
-/// prefix; `id` is appended because none of the three was total — two routes
+/// dropped `search_public_routes` RPC's (migration 20270326_001), null
+/// placement included, so the partial indexes that migration built still serve
+/// the prefix; `id` is appended because none of the three was total — two routes
 /// created in the same instant could swap between reads.
 export function publicRouteOrder(sort: PublicRouteSort): readonly KeysetKey[] {
 	const id: KeysetKey = { column: 'id', ascending: false, nullsFirst: false };

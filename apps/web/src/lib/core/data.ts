@@ -1964,9 +1964,9 @@ export async function nearbyPublicRoutes(options: {
 /// more.
 ///
 /// Reads the `public_routes` view directly rather than through the
-/// `search_public_routes` RPC. The RPC pages by `p_offset`, and an offset is a
-/// position: a route published or unpublished between two reads moves every
-/// later position, so "load more" repeated or skipped a route — and none of its
+/// `search_public_routes` RPC (dropped in 20270817000001). The RPC paged by
+/// `p_offset`, and an offset is a position: a route published or unpublished
+/// between two reads moves every later position, so "load more" repeated or skipped a route — and none of its
 /// three orders was total, so two routes sharing a `created_at` could swap
 /// between reads. The view is the RPC's own source (same visibility: public,
 /// not shadow-hidden, club id redacted) and is granted to anon + authenticated,

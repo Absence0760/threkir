@@ -104,7 +104,6 @@ insert into anon_callable (fn, why) values
   ('run_engagement_counts',           'public run page'),
   ('search_clubs',                    'logged-out search'),
   ('search_public_events',            'logged-out search'),
-  ('search_public_routes',            'logged-out search'),
   ('search_race_listings',            'logged-out search'),
   ('segment_effort_ranks',            'public segment board');
 

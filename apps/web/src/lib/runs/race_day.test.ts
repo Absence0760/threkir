@@ -7,7 +7,6 @@ import {
 	MILE_METRES,
 	negativeSplitPacing,
 	raceChecklist,
-	fmtSplitTime,
 	goalFeasibility,
 	GOAL_ONTRACK_BAND,
 	GOAL_FARBEHIND_BAND,
@@ -246,22 +245,6 @@ test('raceChecklist: marathon adds the toilet-plan item', () => {
 	assert.match(gearText, /Toilet plan/i);
 });
 
-// ─────────── fmtSplitTime ───────────
-
-test('fmtSplitTime: under an hour formats as M:SS', () => {
-	assert.equal(fmtSplitTime(305), '5:05');
-	assert.equal(fmtSplitTime(60), '1:00');
-});
-
-test('fmtSplitTime: over an hour formats as H:MM:SS', () => {
-	assert.equal(fmtSplitTime(3725), '1:02:05');
-	assert.equal(fmtSplitTime(3 * 3600 + 30 * 60), '3:30:00');
-});
-
-test('fmtSplitTime: rounds to nearest second', () => {
-	assert.equal(fmtSplitTime(305.6), '5:06');
-});
-
 // ─────────── Round 3 edge cases ───────────
 
 test('evenSplitPacing: exact whole-km distance has no partial-km tail', () => {
@@ -314,12 +297,6 @@ test('raceChecklist: gear section always has the core 5 items', () => {
 	assert.match(gear, /Race bib/);
 	assert.match(gear, /[Aa]nti-chafe/);
 	assert.match(gear, /Socks/);
-});
-
-test('fmtSplitTime: zero and very-small inputs', () => {
-	assert.equal(fmtSplitTime(0), '0:00');
-	assert.equal(fmtSplitTime(0.4), '0:00');
-	assert.equal(fmtSplitTime(0.5), '0:01');
 });
 
 test('evenSplitPacing: marathon distance (42.195 km) has 43 splits, last partial', () => {

@@ -57,6 +57,13 @@ test('formatDuration — under an hour is M:SS', () => {
 	assert.equal(formatDuration(599), '9:59');
 });
 
+test('formatDuration — rounds to the nearest second (the race-day split cases)', () => {
+	assert.equal(formatDuration(0.4), '0:00');
+	assert.equal(formatDuration(0.5), '0:01');
+	assert.equal(formatDuration(305.6), '5:06');
+	assert.equal(formatDuration(3725), '1:02:05');
+});
+
 test('formatDuration — an hour or more is H:MM:SS', () => {
 	assert.equal(formatDuration(3600), '1:00:00');
 	assert.equal(formatDuration(3661), '1:01:01');

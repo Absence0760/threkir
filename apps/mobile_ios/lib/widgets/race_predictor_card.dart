@@ -99,7 +99,7 @@ class RacePredictorCard extends StatelessWidget {
   }
 }
 
-/// MM:SS or H:MM:SS, mirroring web `fmtSplitTime`.
+/// MM:SS or H:MM:SS, mirroring web `formatDuration`.
 String _clock(double seconds) {
   final total = seconds.round();
   final h = total ~/ 3600;

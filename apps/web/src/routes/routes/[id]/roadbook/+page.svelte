@@ -27,7 +27,7 @@
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { loadSettings, effective } from '#lib/settings/settings.ts';
 	import { fetchElevations } from '#lib/routes/elevation.ts';
-	import { fmtSplitTime } from '#lib/runs/race_day.ts';
+	import { formatDuration } from '#lib/format/time.ts';
 	import { formatDistance, formatElevation, formatPace } from '#lib/format/units.svelte.ts';
 
 	let { data }: { data: { id: string } } = $props();
@@ -263,7 +263,7 @@
 
 	function fmtMargin(seconds: number): string {
 		const sign = seconds < 0 ? '−' : '+';
-		return `${sign}${fmtSplitTime(Math.abs(seconds))}`;
+		return `${sign}${formatDuration(Math.abs(seconds))}`;
 	}
 
 	function fmtClock(min: number | undefined): string {
@@ -288,7 +288,7 @@
 	}
 
 	// Goal input bound as H:MM:SS.
-	let goalInput = $derived(fmtSplitTime(goalSeconds));
+	let goalInput = $derived(formatDuration(goalSeconds));
 	let startInput = $derived(startClockMin == null ? '' : fmtClock(startClockMin));
 
 	function onGoalChange(e: Event) {
@@ -304,17 +304,17 @@
 		);
 		for (const [i, leg] of roadbook.legs.entries()) {
 			const target = leg.target
-				? `${fmtSplitTime(leg.target.targetElapsedS)} ${fmtMargin(leg.target.marginS)} ${targetStatusLabel(leg.target.status)}`
+				? `${formatDuration(leg.target.targetElapsedS)} ${fmtMargin(leg.target.marginS)} ${targetStatusLabel(leg.target.status)}`
 				: '';
 			const cut = leg.cutoff
 				? `${
 						startClockMin != null
 							? fmtClock(startClockMin + leg.cutoff.limitElapsedS / 60)
-							: fmtSplitTime(leg.cutoff.limitElapsedS)
+							: formatDuration(leg.cutoff.limitElapsedS)
 					} ${fmtMargin(leg.cutoff.marginS)}`
 				: '';
 			lines.push(
-				`${checkpointLabel(leg)} | ${formatDistance(leg.cumDistM)} | ${legPace(i)} | ${fmtSplitTime(leg.projectedElapsedS)}${leg.projectedClockMin != null ? ` (${fmtClock(leg.projectedClockMin)})` : ''}${hasTargets ? ` | ${target}` : ''} | ${cut}`
+				`${checkpointLabel(leg)} | ${formatDistance(leg.cumDistM)} | ${legPace(i)} | ${formatDuration(leg.projectedElapsedS)}${leg.projectedClockMin != null ? ` (${fmtClock(leg.projectedClockMin)})` : ''}${hasTargets ? ` | ${target}` : ''} | ${cut}`
 			);
 		}
 		try {
@@ -453,7 +453,7 @@
 				{m('roadbook.summary', {
 					distance: formatDistance(roadbook.totalDistM),
 					vert: formatElevation(roadbook.totalGainM),
-					time: fmtSplitTime(roadbook.totalSeconds)
+					time: formatDuration(roadbook.totalSeconds)
 				})}
 				{#if model === 'effort' && !roadbook.hasElevation}
 					<button class="link-btn no-print" onclick={addElevation} disabled={fetchingEle}>
@@ -497,14 +497,14 @@
 							</td>
 							<td class="num" data-testid="roadbook-leg-pace">{legPace(i)}</td>
 							<td class="num">
-								{fmtSplitTime(leg.projectedElapsedS)}
+								{formatDuration(leg.projectedElapsedS)}
 								{#if leg.projectedClockMin != null}<span class="clock">{fmtClock(leg.projectedClockMin)}</span>{/if}
 							</td>
 							{#if hasTargets}
 								<td data-testid="roadbook-target">
 									{#if leg.target}
 										<span class="cut {targetClass(leg.target.status)}">
-											{fmtSplitTime(leg.target.targetElapsedS)}
+											{formatDuration(leg.target.targetElapsedS)}
 											<small>
 												{fmtMargin(leg.target.marginS)}
 												{targetStatusLabel(leg.target.status)}
@@ -516,7 +516,7 @@
 							<td>
 								{#if leg.cutoff}
 									<span class="cut {cutoffClass(leg.cutoff.status)}">
-										{fmtClock(startClockMin != null ? (startClockMin + leg.cutoff.limitElapsedS / 60) : undefined) || fmtSplitTime(leg.cutoff.limitElapsedS)}
+										{fmtClock(startClockMin != null ? (startClockMin + leg.cutoff.limitElapsedS / 60) : undefined) || formatDuration(leg.cutoff.limitElapsedS)}
 										<small>{fmtMargin(leg.cutoff.marginS)}</small>
 									</span>
 								{/if}

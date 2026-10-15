@@ -6,7 +6,6 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -32,6 +31,7 @@ import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../l10n/number_format.dart';
 import '../training_service.dart';
+import '../web_base_url.dart';
 import '../weekly_goal.dart';
 import '../widgets/ai_disclosure_notice.dart';
 import '../widgets/confirm_destructive.dart';
@@ -147,12 +147,7 @@ String? coachFuelLinkWebUrl(String href, {String? webBase}) {
     for (final k in _kCoachFuelLinkParams)
       if (query[k] != null && query[k]!.isNotEmpty) k: query[k]!,
   };
-  var base = (webBase ??
-          (dotenv.isInitialized ? dotenv.maybeGet('WEB_BASE_URL') : null) ??
-          '')
-      .trim();
-  if (base.isEmpty) base = 'https://threkir.com';
-  if (base.endsWith('/')) base = base.substring(0, base.length - 1);
+  final base = resolveWebBaseUrl(override: webBase);
   final target = Uri.parse('$base/nutrition/fuel');
   return (kept.isEmpty ? target : target.replace(queryParameters: kept))
       .toString();
@@ -626,9 +621,7 @@ class _CoachScreenState extends State<CoachScreen> {
         'anchor_message_id': anchorId,
       });
 
-      final base = (dotenv.env['WEB_BASE_URL'] ?? 'https://threkir.com')
-          .replaceAll(RegExp(r'/$'), '');
-      final uri = Uri.parse('$base/api/coach');
+      final uri = Uri.parse('${resolveWebBaseUrl()}/api/coach');
 
       // Inline helper so we can retry once after a 401 (stale JWT).
       // Each call uses a fresh HttpClient so a redirect / error
@@ -1022,8 +1015,7 @@ class _CoachScreenState extends State<CoachScreen> {
       }
       return;
     }
-    final adjustUri = coachPlanAdjustWebUri(
-        href, dotenv.env['WEB_BASE_URL'] ?? 'https://threkir.com');
+    final adjustUri = coachPlanAdjustWebUri(href, resolveWebBaseUrl());
     if (adjustUri != null) {
       try {
         await launchUrl(adjustUri, mode: LaunchMode.externalApplication);

@@ -2,12 +2,12 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'ai_disclosure.dart';
 import 'payload_hash.dart';
 import 'route_description.dart';
+import 'web_base_url.dart';
 
 /// Network glue for the route-detail "Describe this route" affordance.
 ///
@@ -77,9 +77,7 @@ bool isAiDisclosureDenial(int status, String body) {
 Future<AiDescriptionResult> requestAiDescription(
     RouteDescriptionInput input) async {
   final body = jsonEncode(_toBody(input));
-  final base = (dotenv.env['WEB_BASE_URL'] ?? 'https://threkir.com')
-      .replaceAll(RegExp(r'/$'), '');
-  final uri = Uri.parse('$base/api/coach/route-describe');
+  final uri = Uri.parse('${resolveWebBaseUrl()}/api/coach/route-describe');
 
   String? token = Supabase.instance.client.auth.currentSession?.accessToken;
   if (token == null) throw StateError('not_authenticated');

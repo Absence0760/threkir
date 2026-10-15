@@ -125,6 +125,18 @@ test('/settings/upgrade gates the Get Pro CTA on a live perk (never sells a holl
 		/\{#if routeGenOn\}[\s\S]*?upgrade\.proFeatRouteGenTitle/,
 		'the route-generation perk bullet must be gated on routeGenOn so the card never advertises deferred engines.',
 	);
+	// The plate-photo logger is a Pro perk that runs on the Coach's key: its
+	// bullet needs both flags, and it must not make Pro sellable on its own.
+	assert.match(
+		page,
+		/const platePhotoOn = coachOn && platePhotoEnabled\(\)/,
+		'the plate-photo perk must be gated on coachOn && platePhotoEnabled(), the gate the logger renders under.',
+	);
+	assert.match(
+		page,
+		/\{#if platePhotoOn\}[\s\S]*?upgrade\.proFeatPlatePhotoTitle/,
+		'the plate-photo perk bullet must be gated on platePhotoOn so the card never advertises a dead logger.',
+	);
 	const flag = read('src/lib/coach/coach_flag.ts');
 	assert.match(flag, /PUBLIC_COACH_ENABLED/, 'coach_flag must read PUBLIC_COACH_ENABLED.');
 	const rgFlag = read('src/lib/routes/route_gen_flag.ts');

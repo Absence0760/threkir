@@ -3915,6 +3915,8 @@ export const messages = {
 	"upgrade.proFeatCoachSub": "5× das kostenlose Limit beim Coach-Chat (2/Tag → 10/Tag).",
 	"upgrade.proFeatRouteGenTitle": "Server-Routengenerierung",
 	"upgrade.proFeatRouteGenSub": "Schleifen auf dem echten Straßennetz — sauberere Formen, näher an deiner Zieldistanz.",
+	"upgrade.proFeatPlatePhotoTitle": "Mahlzeiten per Foto erfassen",
+	"upgrade.proFeatPlatePhotoSub": "Fotografiere deinen Teller und prüfe die geschätzten Lebensmittel und Makros, bevor sie in dein Ernährungstagebuch kommen.",
 	"upgrade.proFeatMapMatchTitle": "Vorrangiges Map-Matching",
 	"upgrade.proFeatMapMatchSub": "Deine GPS-Tracks rasten in Sekunden auf Straßen ein, nicht in Minuten.",
 	"upgrade.proFeatExportsTitle": "Vorrangige Cloud-Exporte",

@@ -3933,6 +3933,8 @@ export const en = {
 	"upgrade.proFeatCoachSub": "5× the Free cap on Coach chat (2/day → 10/day).",
 	"upgrade.proFeatRouteGenTitle": "Server route generation",
 	"upgrade.proFeatRouteGenSub": "Loops traced on the real street network — cleaner shapes, closer to your target distance.",
+	"upgrade.proFeatPlatePhotoTitle": "Log meals from a photo",
+	"upgrade.proFeatPlatePhotoSub": "Photograph your plate and check the estimated foods and macros before they go in your food log.",
 	"upgrade.proFeatMapMatchTitle": "Priority map-matching",
 	"upgrade.proFeatMapMatchSub": "Your GPS tracks snap to roads in seconds, not minutes.",
 	"upgrade.proFeatExportsTitle": "Priority cloud exports",

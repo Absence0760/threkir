@@ -3910,6 +3910,8 @@ export const messages = {
 	"upgrade.proFeatCoachSub": "無料版のコーチチャット上限の5倍（1日2回 → 1日10回）。",
 	"upgrade.proFeatRouteGenTitle": "サーバールート生成",
 	"upgrade.proFeatRouteGenSub": "実際の道路網をたどるループ — よりきれいな形で、目標距離により近くなります。",
+	"upgrade.proFeatPlatePhotoTitle": "写真から食事を記録",
+	"upgrade.proFeatPlatePhotoSub": "お皿を撮影し、推定された食品とマクロ栄養素を確認してから食事記録に追加できます。",
 	"upgrade.proFeatMapMatchTitle": "優先マップマッチング",
 	"upgrade.proFeatMapMatchSub": "GPSトラックが数分ではなく数秒で道路にスナップします。",
 	"upgrade.proFeatExportsTitle": "優先クラウドエクスポート",

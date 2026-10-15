@@ -1429,7 +1429,9 @@ var orderByTable = map[string]string{
 	schema.TableInstructorPayoutAccounts: "user_id",
 	schema.TablePersonalRecords:          "user_id,distance",
 	schema.TableRunGear:                  "run_id,gear_id",
+	schema.TableRunCommentLikes:          "user_id,comment_id",
 	schema.TableRunKudos:                 "user_id,run_id",
+	schema.TableRunReactions:             "user_id,run_id,reaction",
 	schema.TableSavedRoutes:              "user_id,route_id",
 	schema.TableSignInDevices:            "user_id,browser,platform",
 	schema.TableUserBlocks:               "blocker_id,blocked_id",
@@ -2241,6 +2243,23 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 			name: "run_comments_received.json", table: schema.TableRunComments,
 			filter: "runs.user_id=eq." + uid,
 			sel:    "*,runs!inner(user_id)",
+		},
+		// run_reactions and run_comment_likes (decisions § 1971): the ones
+		// the subject left, then the ones left on their runs / comments.
+		// Same inner-join shape as the kudos pair above; a like carries no
+		// run owner either, so it joins the comment and filters on its
+		// author.
+		{name: "run_reactions.json", table: schema.TableRunReactions, filter: uidEq, sel: "*"},
+		{name: "run_comment_likes.json", table: schema.TableRunCommentLikes, filter: uidEq, sel: "*"},
+		{
+			name: "run_reactions_received.json", table: schema.TableRunReactions,
+			filter: "runs.user_id=eq." + uid,
+			sel:    "*,runs!inner(user_id)",
+		},
+		{
+			name: "run_comment_likes_received.json", table: schema.TableRunCommentLikes,
+			filter: "run_comments.author_id=eq." + uid,
+			sel:    "*,run_comments!inner(author_id)",
 		},
 		// run_photos metadata. The image bytes themselves are bundled
 		// under `photos/` by BuildBackupZip via DownloadPhoto, keyed off

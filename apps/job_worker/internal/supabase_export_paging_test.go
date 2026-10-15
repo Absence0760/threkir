@@ -344,6 +344,8 @@ func TestExportTableOrderCoversEveryCompositeKey(t *testing.T) {
 	cases := map[string]string{
 		"user_follows":         "follower_id,followee_id",
 		"run_kudos":            "user_id,run_id",
+		"run_reactions":        "user_id,run_id,reaction",
+		"run_comment_likes":    "user_id,comment_id",
 		"run_gear":             "run_id,gear_id",
 		"personal_records":     "user_id,distance",
 		"event_attendees":      "event_id,user_id,instance_start",

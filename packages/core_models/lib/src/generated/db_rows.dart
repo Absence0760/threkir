@@ -5797,6 +5797,47 @@ class RouteRow {
   );
 }
 
+/// Row shape for the `run_comment_likes` table. Mirrors the Supabase schema
+/// exactly — field names are snake_case to match the JSON wire format.
+class RunCommentLikeRow {
+  static const String table = 'run_comment_likes';
+  static const String colUserId = 'user_id';
+  static const String colCommentId = 'comment_id';
+  static const String colLikedAt = 'liked_at';
+
+  final String userId;
+  final String commentId;
+  final DateTime likedAt;
+
+  const RunCommentLikeRow({
+    required this.userId,
+    required this.commentId,
+    required this.likedAt,
+  });
+
+  factory RunCommentLikeRow.fromJson(Map<String, dynamic> json) => RunCommentLikeRow(
+    userId: json['user_id'] as String,
+    commentId: json['comment_id'] as String,
+    likedAt: parseIsoStrictRequired(json['liked_at'], 'liked_at'),
+  );
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    colUserId: userId,
+    colCommentId: commentId,
+    colLikedAt: likedAt.toIso8601String(),
+  };
+
+  RunCommentLikeRow copyWith({
+    String? userId,
+    String? commentId,
+    DateTime? likedAt,
+  }) => RunCommentLikeRow(
+    userId: userId ?? this.userId,
+    commentId: commentId ?? this.commentId,
+    likedAt: likedAt ?? this.likedAt,
+  );
+}
+
 /// Row shape for the `run_comments` table. Mirrors the Supabase schema
 /// exactly — field names are snake_case to match the JSON wire format.
 class RunCommentRow {
@@ -6146,6 +6187,54 @@ class RunPhotoRow {
     eventInstanceStart: eventInstanceStart ?? this.eventInstanceStart,
     hiddenAt: hiddenAt ?? this.hiddenAt,
     hiddenBy: hiddenBy ?? this.hiddenBy,
+  );
+}
+
+/// Row shape for the `run_reactions` table. Mirrors the Supabase schema
+/// exactly — field names are snake_case to match the JSON wire format.
+class RunReactionRow {
+  static const String table = 'run_reactions';
+  static const String colUserId = 'user_id';
+  static const String colRunId = 'run_id';
+  static const String colReaction = 'reaction';
+  static const String colReactedAt = 'reacted_at';
+
+  final String userId;
+  final String runId;
+  final String reaction;
+  final DateTime reactedAt;
+
+  const RunReactionRow({
+    required this.userId,
+    required this.runId,
+    required this.reaction,
+    required this.reactedAt,
+  });
+
+  factory RunReactionRow.fromJson(Map<String, dynamic> json) => RunReactionRow(
+    userId: json['user_id'] as String,
+    runId: json['run_id'] as String,
+    reaction: json['reaction'] as String,
+    reactedAt: parseIsoStrictRequired(json['reacted_at'], 'reacted_at'),
+  );
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    colUserId: userId,
+    colRunId: runId,
+    colReaction: reaction,
+    colReactedAt: reactedAt.toIso8601String(),
+  };
+
+  RunReactionRow copyWith({
+    String? userId,
+    String? runId,
+    String? reaction,
+    DateTime? reactedAt,
+  }) => RunReactionRow(
+    userId: userId ?? this.userId,
+    runId: runId ?? this.runId,
+    reaction: reaction ?? this.reaction,
+    reactedAt: reactedAt ?? this.reactedAt,
   );
 }
 

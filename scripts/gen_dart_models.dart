@@ -94,6 +94,8 @@ const _tables = <String>{
   'coach_messages',
   'user_follows',
   'run_kudos',
+  'run_reactions',
+  'run_comment_likes',
   'run_comments',
   'run_photos',
   'run_shares',

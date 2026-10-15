@@ -1222,3 +1222,50 @@ func TestStreamExportPersonalDataTables_IncludesGymRoutines(t *testing.T) {
 		t.Errorf("embedded gym_routine_exercises must carry their nested sets; got exercise=%v", ex0)
 	}
 }
+
+// decisions § 1971: run reactions and comment likes are personal data in both
+// directions — the ones the subject left, and the ones left on their runs and
+// comments. The received halves carry no owner column of their own, so they
+// must filter through an INNER embed of the parent (a plain embed leaves the
+// filter on an outer-joined relation and returns every row in the table).
+func TestStreamExportPersonalDataTables_IncludesReactionsAndCommentLikes(t *testing.T) {
+	queries := map[string][]string{}
+	client := newSupabaseTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		for _, table := range []string{"run_reactions", "run_comment_likes"} {
+			if strings.HasSuffix(r.URL.Path, "/rest/v1/"+table) {
+				queries[table] = append(queries[table], r.URL.RawQuery)
+				_, _ = w.Write([]byte(`[{"user_id":"user-B"}]`))
+				return
+			}
+		}
+		_, _ = w.Write([]byte(`[]`))
+	})
+	out, _, err := collectExportTables(client, context.Background(), "user-A")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []string{
+		"run_reactions.json",
+		"run_reactions_received.json",
+		"run_comment_likes.json",
+		"run_comment_likes_received.json",
+	} {
+		if rows, ok := out[key]; !ok || len(rows) == 0 {
+			t.Errorf("%s must appear in the export manifest; got out=%v", key, extraTableKeys(out))
+		}
+	}
+	joined := func(table string) string { return strings.Join(queries[table], "\n") }
+	for _, c := range []struct{ table, want string }{
+		{"run_reactions", "user_id=eq.user-A"},
+		{"run_reactions", "runs.user_id=eq.user-A"},
+		{"run_reactions", "runs%21inner"},
+		{"run_comment_likes", "user_id=eq.user-A"},
+		{"run_comment_likes", "run_comments.author_id=eq.user-A"},
+		{"run_comment_likes", "run_comments%21inner"},
+	} {
+		if !strings.Contains(joined(c.table), c.want) {
+			t.Errorf("%s export queries must contain %q; got %q", c.table, c.want, joined(c.table))
+		}
+	}
+}

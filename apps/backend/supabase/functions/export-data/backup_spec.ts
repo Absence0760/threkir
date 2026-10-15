@@ -25,8 +25,10 @@ const ORDER_BY_TABLE: Record<string, string> = {
 	event_pricing: 'event_id,instance_start',
 	instructor_payout_accounts: 'user_id',
 	personal_records: 'user_id,distance',
+	run_comment_likes: 'user_id,comment_id',
 	run_gear: 'run_id,gear_id',
 	run_kudos: 'user_id,run_id',
+	run_reactions: 'user_id,run_id,reaction',
 	saved_routes: 'user_id,route_id',
 	sign_in_devices: 'user_id,browser,platform',
 	user_blocks: 'blocker_id,blocked_id',
@@ -97,6 +99,24 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 			table: 'run_comments',
 			filter: `runs.user_id=eq.${uid}`,
 			select: '*,runs!inner(user_id)',
+		},
+		// run_reactions + run_comment_likes (decisions § 1971), left and
+		// received. A like names no run owner, so its received half joins the
+		// comment and filters on the comment's author. Mirror of the Go
+		// worker's exportPersonalDataSpecs.
+		{ entry: 'run_reactions.json', table: 'run_reactions', filter: uidEq, select: '*' },
+		{ entry: 'run_comment_likes.json', table: 'run_comment_likes', filter: uidEq, select: '*' },
+		{
+			entry: 'run_reactions_received.json',
+			table: 'run_reactions',
+			filter: `runs.user_id=eq.${uid}`,
+			select: '*,runs!inner(user_id)',
+		},
+		{
+			entry: 'run_comment_likes_received.json',
+			table: 'run_comment_likes',
+			filter: `run_comments.author_id=eq.${uid}`,
+			select: '*,run_comments!inner(author_id)',
 		},
 		{
 			entry: 'run_photos.json',

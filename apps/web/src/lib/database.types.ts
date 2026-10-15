@@ -3801,6 +3801,32 @@ export type Database = {
           },
         ]
       }
+      run_comment_likes: {
+        Row: {
+          comment_id: string
+          liked_at: string
+          user_id: string
+        }
+        Insert: {
+          comment_id: string
+          liked_at?: string
+          user_id: string
+        }
+        Update: {
+          comment_id?: string
+          liked_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "run_comment_likes_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "run_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       run_comments: {
         Row: {
           author_id: string
@@ -4085,6 +4111,49 @@ export type Database = {
           },
           {
             foreignKeyName: "run_photos_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "shared_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      run_reactions: {
+        Row: {
+          reacted_at: string
+          reaction: string
+          run_id: string
+          user_id: string
+        }
+        Insert: {
+          reacted_at?: string
+          reaction: string
+          run_id: string
+          user_id: string
+        }
+        Update: {
+          reacted_at?: string
+          reaction?: string
+          run_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "run_reactions_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "public_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "run_reactions_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "run_reactions_run_id_fkey"
             columns: ["run_id"]
             isOneToOne: false
             referencedRelation: "shared_runs"
@@ -6713,12 +6782,28 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      run_comment_like_summary: {
+        Args: { p_run_id: string }
+        Returns: {
+          comment_id: string
+          like_count: number
+          viewer_liked: boolean
+        }[]
+      }
       run_engagement_counts: {
         Args: { p_run_ids: string[] }
         Returns: {
           comment_count: number
           kudos_count: number
           run_id: string
+        }[]
+      }
+      run_reaction_summary: {
+        Args: { p_run_id: string }
+        Returns: {
+          reaction: string
+          reaction_count: number
+          viewer_reacted: boolean
         }[]
       }
       run_streaks_for_user: {

@@ -8,6 +8,7 @@ import {
 	AI_DISCLOSURE_VERSION_COACH,
 	AI_DISCLOSURE_VERSION_FOOD_PHOTO_AI,
 	AI_DISCLOSURE_VERSION_PLAN_AI,
+	AI_DISCLOSURE_VERSION_PLAN_EDIT_AI,
 	AI_DISCLOSURE_VERSION_ROUTE_AI,
 	aiDisclosureDenialBody,
 	aiDisclosureFromProfileRow,
@@ -72,7 +73,7 @@ test('a v2 route-AI acceptance does NOT satisfy the plan-assistant scope', () =>
 	);
 });
 
-test('the v3 acceptance satisfies the Coach, route and plan scopes', () => {
+test('the v3 acceptance satisfies every scope below plan edits', () => {
 	const record = { version: AI_DISCLOSURE_VERSION_PLAN_AI, acceptedAt: ACCEPTED };
 	for (const required of [
 		AI_DISCLOSURE_VERSION_COACH,
@@ -83,22 +84,63 @@ test('the v3 acceptance satisfies the Coach, route and plan scopes', () => {
 	}
 });
 
-test('a v3 plan-assistant acceptance does NOT satisfy the plate-photo scope', () => {
-	// A meal photo is a payload and purpose no earlier copy described
-	// (decisions § 1972), so an older acceptance must be re-asked.
-	const check = checkAiDisclosure(
-		{ version: AI_DISCLOSURE_VERSION_PLAN_AI, acceptedAt: ACCEPTED },
-		AI_DISCLOSURE_VERSION_FOOD_PHOTO_AI,
-	);
-	assert.deepEqual(check, { ok: false, reason: 'stale' });
+test('no acceptance below v4 satisfies the plan-edit scope', () => {
+	// Plan edits send the active plan with the runner's change request so the
+	// model can propose changes to it. The v1 copy names the plan, but for the
+	// Coach to comment on; a new purpose is a new rung (decisions § 571).
+	for (const version of [
+		AI_DISCLOSURE_VERSION_COACH,
+		AI_DISCLOSURE_VERSION_ROUTE_AI,
+		AI_DISCLOSURE_VERSION_PLAN_AI,
+	]) {
+		assert.deepEqual(
+			checkAiDisclosure({ version, acceptedAt: ACCEPTED }, AI_DISCLOSURE_VERSION_PLAN_EDIT_AI),
+			{ ok: false, reason: 'stale' },
+			`v${version}`,
+		);
+	}
 });
 
-test('the v5 acceptance satisfies the plate-photo scope', () => {
-	const check = checkAiDisclosure(
-		{ version: AI_DISCLOSURE_VERSION_FOOD_PHOTO_AI, acceptedAt: ACCEPTED },
+test('the v4 acceptance satisfies every scope below the plate-photo logger', () => {
+	const record = { version: AI_DISCLOSURE_VERSION_PLAN_EDIT_AI, acceptedAt: ACCEPTED };
+	for (const required of [
+		AI_DISCLOSURE_VERSION_COACH,
+		AI_DISCLOSURE_VERSION_ROUTE_AI,
+		AI_DISCLOSURE_VERSION_PLAN_AI,
+		AI_DISCLOSURE_VERSION_PLAN_EDIT_AI,
+	]) {
+		assert.deepEqual(checkAiDisclosure(record, required), { ok: true, version: 4 });
+	}
+});
+
+test('no acceptance below v5 satisfies the plate-photo scope', () => {
+	// A meal photo is a payload and purpose no earlier copy described
+	// (decisions § 1972), so an older acceptance must be re-asked.
+	for (const version of [
+		AI_DISCLOSURE_VERSION_COACH,
+		AI_DISCLOSURE_VERSION_ROUTE_AI,
+		AI_DISCLOSURE_VERSION_PLAN_AI,
+		AI_DISCLOSURE_VERSION_PLAN_EDIT_AI,
+	]) {
+		assert.deepEqual(
+			checkAiDisclosure({ version, acceptedAt: ACCEPTED }, AI_DISCLOSURE_VERSION_FOOD_PHOTO_AI),
+			{ ok: false, reason: 'stale' },
+			`v${version}`,
+		);
+	}
+});
+
+test('the v5 acceptance satisfies every scope', () => {
+	const record = { version: AI_DISCLOSURE_VERSION_FOOD_PHOTO_AI, acceptedAt: ACCEPTED };
+	for (const required of [
+		AI_DISCLOSURE_VERSION_COACH,
+		AI_DISCLOSURE_VERSION_ROUTE_AI,
+		AI_DISCLOSURE_VERSION_PLAN_AI,
+		AI_DISCLOSURE_VERSION_PLAN_EDIT_AI,
 		AI_DISCLOSURE_VERSION_FOOD_PHOTO_AI,
-	);
-	assert.deepEqual(check, { ok: true, version: 5 });
+	]) {
+		assert.deepEqual(checkAiDisclosure(record, required), { ok: true, version: 5 });
+	}
 });
 
 test('no record at all denies as missing', () => {
@@ -303,6 +345,7 @@ test('AI_DISCLOSURE_CURRENT_VERSION matches ai_disclosure_current_version() in S
 test('the version ladder is ordered and the current version is its top rung', () => {
 	assert.ok(AI_DISCLOSURE_VERSION_COACH < AI_DISCLOSURE_VERSION_ROUTE_AI);
 	assert.ok(AI_DISCLOSURE_VERSION_ROUTE_AI < AI_DISCLOSURE_VERSION_PLAN_AI);
-	assert.ok(AI_DISCLOSURE_VERSION_PLAN_AI < AI_DISCLOSURE_VERSION_FOOD_PHOTO_AI);
+	assert.ok(AI_DISCLOSURE_VERSION_PLAN_AI < AI_DISCLOSURE_VERSION_PLAN_EDIT_AI);
+	assert.ok(AI_DISCLOSURE_VERSION_PLAN_EDIT_AI < AI_DISCLOSURE_VERSION_FOOD_PHOTO_AI);
 	assert.equal(AI_DISCLOSURE_CURRENT_VERSION, AI_DISCLOSURE_VERSION_FOOD_PHOTO_AI);
 });

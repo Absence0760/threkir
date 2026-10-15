@@ -2,7 +2,7 @@
 	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { onMount, tick } from 'svelte';
-	import { afterNavigate } from '$app/navigation';
+	import { afterNavigate, replaceState } from '$app/navigation';
 	import { page } from '$app/state';
 	import {
 		fetchPlan,
@@ -34,6 +34,9 @@
 	import { isAdaptiveFitnessGateEnabled } from '#lib/training/adaptive_fitness_flag.ts';
 	import WorkoutEditor from '#lib/components/WorkoutEditor.svelte';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import PlanAiAdjust from '#lib/components/PlanAiAdjust.svelte';
+	import { coachEnabled } from '#lib/coach/coach_flag.ts';
+	import { aiPlanEditEnabled } from '#lib/training/ai_plan_edit_flag.ts';
 	import Modal from '#lib/components/Modal.svelte';
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
 	import PlanMetaEditor from '#lib/components/PlanMetaEditor.svelte';
@@ -299,6 +302,49 @@
 		propose();
 		await tick();
 		replanPreviewHeading?.focus();
+	}
+
+	// "Adjust with AI" (decisions § 1979). Needs the Coach on as well: a plan
+	// edit spends the Coach's key and daily counter.
+	const showAiAdjust = coachEnabled() && aiPlanEditEnabled();
+	let aiAdjustOpen = $state(false);
+	let aiAdjustRequest = $state<string | undefined>(undefined);
+
+	async function chooseAiAdjust(): Promise<void> {
+		adjustOpen = false;
+		await tick();
+		aiAdjustRequest = undefined;
+		aiAdjustOpen = true;
+	}
+
+	async function closeAiAdjust(): Promise<void> {
+		aiAdjustOpen = false;
+		aiAdjustRequest = undefined;
+		await tick();
+		adjustButton?.focus();
+	}
+
+	/// The Coach's plan-edit handoff lands here as `?adjust=<request>`. The
+	/// request spends a Coach message, so it runs once and leaves the URL: a
+	/// reload or a back-navigation must not run it again. The strip waits a
+	/// macrotask because SvelteKit refuses replaceState until its router has
+	/// finished starting.
+	function takeAdjustParam(): void {
+		const url = new URL(page.url.href);
+		const handed = url.searchParams.get('adjust')?.trim();
+		if (!handed) return;
+		if (showAiAdjust && plan && isOwner && !plan.is_template) {
+			aiAdjustRequest = handed;
+			aiAdjustOpen = true;
+		}
+		setTimeout(() => {
+			url.searchParams.delete('adjust');
+			try {
+				replaceState(`${url.pathname}${url.search}${url.hash}`, page.state);
+			} catch (e) {
+				console.error('Clearing the plan-edit request from the URL failed', { message: thrownMessage(e) });
+			}
+		}, 0);
 	}
 
 	async function dismissReplan(): Promise<void> {
@@ -680,6 +726,7 @@
 		// never shows as a section opening and then shutting.
 		disclosure = readDisclosureState(DISCLOSURE_SCOPE, auth.user?.id, DISCLOSURE_DEFAULTS);
 		await load();
+		takeAdjustParam();
 		// Calendar week-start follows the user's preference (W-5/W-14).
 		if (auth.user?.id) {
 			try {
@@ -1152,6 +1199,23 @@
 					</button>
 				</div>
 			</section>
+		{/if}
+
+		{#if isOwner && !plan.is_template && showAiAdjust && aiAdjustOpen}
+			<PlanAiAdjust
+				{plan}
+				{weeks}
+				{workouts}
+				{recentRuns}
+				{today}
+				initialRequest={aiAdjustRequest}
+				onclose={closeAiAdjust}
+				onapplied={async () => {
+					aiAdjustOpen = false;
+					aiAdjustRequest = undefined;
+					await load();
+				}}
+			/>
 		{/if}
 
 		{#if todayWorkout}
@@ -1635,6 +1699,21 @@
 				</button>
 				<p class="adjust-option-desc" id="adjust-adaptive-desc">{m('planDetail.adjustAdaptiveDesc')}</p>
 			</li>
+			{#if showAiAdjust}
+				<li class="adjust-option">
+					<button
+						type="button"
+						class="btn btn-outline btn-sm adjust-option-btn"
+						aria-describedby="adjust-ai-desc"
+						onclick={chooseAiAdjust}
+						disabled={bulkBusy}
+					>
+						<span class="material-symbols" aria-hidden="true">auto_awesome</span>
+						{m('planDetail.aiAdjust')}
+					</button>
+					<p class="adjust-option-desc" id="adjust-ai-desc">{m('planDetail.adjustAiDesc')}</p>
+				</li>
+			{/if}
 			{#if plan.status === 'paused' || plan.status === 'active'}
 				<li class="adjust-option">
 					<button

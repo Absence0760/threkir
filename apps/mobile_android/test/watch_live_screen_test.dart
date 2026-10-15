@@ -54,6 +54,7 @@ class _FakeApi extends ApiClient {
     required String runId,
     required DateTime startedAt,
     String activityType = 'run',
+    bool safetyAudience = false,
   }) async {
     if (beginThrows) throw StateError('backend down');
     begun.add(runId);

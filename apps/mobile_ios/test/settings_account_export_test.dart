@@ -33,7 +33,7 @@ class _ExportApi extends ApiClient {
   Future<Map<String, dynamic>?> fetchAiDisclosure() async => null;
   @override
   Future<UserProfileRow?> fetchMyProfile() async =>
-      UserProfileRow(shadowHidden: false, id: 'u1', displayName: 'Alex');
+      UserProfileRow(profilePrivate: false, shadowHidden: false, id: 'u1', displayName: 'Alex');
 }
 
 /// A scripted export service. Records every request so a test can say

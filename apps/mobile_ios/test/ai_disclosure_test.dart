@@ -56,7 +56,7 @@ void main() {
       }
     });
 
-    test('the v3 acceptance satisfies the Coach, route and plan scopes', () {
+    test('the v3 acceptance satisfies every scope below plan edits', () {
       const record = AiDisclosureRecord(
         version: kAiDisclosureVersionPlanAi,
         acceptedAt: _accepted,
@@ -72,25 +72,76 @@ void main() {
       }
     });
 
-    test('a v3 plan-assistant acceptance does NOT satisfy the plate-photo scope',
-        () {
-      const record = AiDisclosureRecord(
-        version: kAiDisclosureVersionPlanAi,
-        acceptedAt: _accepted,
-      );
-      final check = checkAiDisclosure(record, kAiDisclosureVersionFoodPhotoAi);
-      expect(check.ok, isFalse);
-      expect(check.reason, AiDisclosureDenial.stale);
+    test('no acceptance below v4 satisfies the plan-edit scope', () {
+      // Plan edits send the active plan with the runner's change request so
+      // the model can propose changes to it. The v1 copy names the plan, but
+      // for the Coach to comment on; a new purpose is a new rung
+      // (decisions § 571).
+      for (final version in [
+        kAiDisclosureVersionCoach,
+        kAiDisclosureVersionRouteAi,
+        kAiDisclosureVersionPlanAi,
+      ]) {
+        final check = checkAiDisclosure(
+          AiDisclosureRecord(version: version, acceptedAt: _accepted),
+          kAiDisclosureVersionPlanEditAi,
+        );
+        expect(check.ok, isFalse);
+        expect(check.reason, AiDisclosureDenial.stale);
+      }
     });
 
-    test('the v5 acceptance satisfies the plate-photo scope', () {
+    test('the v4 acceptance satisfies every scope below the plate-photo logger', () {
+      const record = AiDisclosureRecord(
+        version: kAiDisclosureVersionPlanEditAi,
+        acceptedAt: _accepted,
+      );
+      for (final minimum in [
+        kAiDisclosureVersionCoach,
+        kAiDisclosureVersionRouteAi,
+        kAiDisclosureVersionPlanAi,
+        kAiDisclosureVersionPlanEditAi,
+      ]) {
+        final check = checkAiDisclosure(record, minimum);
+        expect(check.ok, isTrue);
+        expect(check.version, 4);
+      }
+    });
+
+    test('no acceptance below v5 satisfies the plate-photo scope', () {
+      // A meal photo is a payload and purpose no earlier copy described
+      // (decisions § 1972), so an older acceptance must be re-asked.
+      for (final version in [
+        kAiDisclosureVersionCoach,
+        kAiDisclosureVersionRouteAi,
+        kAiDisclosureVersionPlanAi,
+        kAiDisclosureVersionPlanEditAi,
+      ]) {
+        final check = checkAiDisclosure(
+          AiDisclosureRecord(version: version, acceptedAt: _accepted),
+          kAiDisclosureVersionFoodPhotoAi,
+        );
+        expect(check.ok, isFalse);
+        expect(check.reason, AiDisclosureDenial.stale);
+      }
+    });
+
+    test('the v5 acceptance satisfies every scope', () {
       const record = AiDisclosureRecord(
         version: kAiDisclosureVersionFoodPhotoAi,
         acceptedAt: _accepted,
       );
-      final check = checkAiDisclosure(record, kAiDisclosureVersionFoodPhotoAi);
-      expect(check.ok, isTrue);
-      expect(check.version, 5);
+      for (final minimum in [
+        kAiDisclosureVersionCoach,
+        kAiDisclosureVersionRouteAi,
+        kAiDisclosureVersionPlanAi,
+        kAiDisclosureVersionPlanEditAi,
+        kAiDisclosureVersionFoodPhotoAi,
+      ]) {
+        final check = checkAiDisclosure(record, minimum);
+        expect(check.ok, isTrue);
+        expect(check.version, 5);
+      }
     });
 
     test('no record at all denies as missing', () {
@@ -176,6 +227,8 @@ void main() {
       expect(
           kAiDisclosureVersionRouteAi, lessThan(kAiDisclosureVersionPlanAi));
       expect(kAiDisclosureVersionPlanAi,
+          lessThan(kAiDisclosureVersionPlanEditAi));
+      expect(kAiDisclosureVersionPlanEditAi,
           lessThan(kAiDisclosureVersionFoodPhotoAi));
       expect(kAiDisclosureCurrentVersion, kAiDisclosureVersionFoodPhotoAi);
     });

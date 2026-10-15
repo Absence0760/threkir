@@ -1,4 +1,4 @@
-/// `findViewableRun` decides which of the two non-owner reads admitted a run.
+/// `findViewableRun` decides which of the three non-owner reads admitted a run.
 ///
 /// Run with `cd apps/backend && deno test --no-check --allow-read --allow-env
 /// supabase/functions/clip-public-track/viewable_run.test.ts`.
@@ -13,7 +13,7 @@ function reader(answers: Record<string, { data: ViewableRunRow | null; error: un
   const asked: string[] = [];
   return {
     asked,
-    read: (view: 'public_runs' | 'shared_runs') => {
+    read: (view: 'public_runs' | 'shared_runs' | 'coached_runs') => {
       asked.push(view);
       return Promise.resolve(answers[view] ?? { data: null, error: null });
     },
@@ -36,8 +36,22 @@ Deno.test('a run shared with the caller is found through shared_runs', async () 
   assertEquals(r.asked, ['public_runs', 'shared_runs']);
 });
 
+Deno.test('an athlete\'s run is found through coached_runs, after the two audience reads', async () => {
+  const r = reader({ coached_runs: { data: ROW, error: null } });
+  const out = await findViewableRun(r.read, 'coach');
+  assertEquals(out.kind === 'found' && out.audience, 'coach');
+  assertEquals(out.kind === 'found' && out.run.user_id, 'owner');
+  assertEquals(r.asked, ['public_runs', 'shared_runs', 'coached_runs']);
+});
+
+Deno.test('a coach of nobody, or a closed gate, leaves the run missing', async () => {
+  const r = reader({});
+  assertEquals((await findViewableRun(r.read, 'coach')).kind, 'missing');
+  assertEquals(r.asked, ['public_runs', 'shared_runs', 'coached_runs']);
+});
+
 Deno.test('an anonymous caller has no audience to be in', async () => {
-  const r = reader({ shared_runs: { data: ROW, error: null } });
+  const r = reader({ shared_runs: { data: ROW, error: null }, coached_runs: { data: ROW, error: null } });
   const out = await findViewableRun(r.read, null);
   assertEquals(out.kind, 'missing');
   assertEquals(r.asked, ['public_runs']);
@@ -54,4 +68,6 @@ Deno.test('a failed read is a failure, not a miss, on either view', async () => 
   assertEquals(pub.asked, ['public_runs']);
   const shared = reader({ shared_runs: { data: null, error: { code: '500' } } });
   assertEquals((await findViewableRun(shared.read, 'viewer')).kind, 'failed');
+  const coached = reader({ coached_runs: { data: null, error: { code: '500' } } });
+  assertEquals((await findViewableRun(coached.read, 'viewer')).kind, 'failed');
 });

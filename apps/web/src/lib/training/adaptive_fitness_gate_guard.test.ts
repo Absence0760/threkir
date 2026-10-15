@@ -13,7 +13,7 @@
 
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 function read(...parts: string[]): string {
@@ -89,4 +89,36 @@ test('the fitness snapshot is never stored, logged, or persisted by the plan pag
 		'applying a re-plan must write only target_distance_m');
 	assert.equal(/tsb|atl|ctl/.test(applyBody), false,
 		'the apply path must not carry a load value');
+});
+
+test('the plan page is the only caller of the engine, so no second call site escapes these guards', () => {
+	// Every property above is pinned on ONE call site. A second caller (a
+	// dashboard card, the coach, a notification) would pass whatever it liked
+	// and none of this would see it (decisions § 1977).
+	const callers: string[] = [];
+	const walk = (dir: string): void => {
+		for (const e of readdirSync(resolve(dir), { withFileTypes: true })) {
+			const p = `${dir}/${e.name}`;
+			if (e.isDirectory()) {
+				if (e.name !== 'node_modules') walk(p);
+			} else if (/\.(ts|svelte)$/.test(e.name) && !/\.test\.ts$/.test(e.name)) {
+				if (/\badaptiveReplanRemaining\(/.test(read(p)) && !p.endsWith('training/plan_adaptive_replan.ts')) {
+					callers.push(p);
+				}
+			}
+		}
+	};
+	walk('src');
+	assert.deepEqual(callers, ['src/routes/plans/[id]/+page.svelte']);
+});
+
+test('the plan page reads the gate only through the flag module and holds no load value', () => {
+	const page = read('src/routes/plans/[id]/+page.svelte');
+	assert.equal(page.includes('PUBLIC_ADAPTIVE_FITNESS_GATE'), false,
+		'the page must call isAdaptiveFitnessGateEnabled(), not re-read the env key');
+	// tsb / atl / ctl may appear only inside adaptiveFitnessInput(), where the
+	// snapshot is built and returned; anywhere else is a handle a write could reach.
+	const outside = page.replace(fitnessInputBody(page), '');
+	assert.equal(/\b(tsb|atl|ctl)\b/.test(outside), false,
+		'a load value appears on the plan page outside adaptiveFitnessInput()');
 });

@@ -38,7 +38,11 @@ drive the worker:
   enqueued once per run by the `enqueue_safety_overdue_emails()` pg_cron scan
   when a live-broadcast run goes silent past the owner's
   `safety_overdue_minutes` window; carries started/last-seen **times + the
-  `/live/{run_id}` link, never coordinates**; docs/features/safety.md).
+  `/live/{run_id}` link, never coordinates**; docs/features/safety.md). On a
+  safety-audience run (decisions § 1964) the `overdue` and `off_route` payloads
+  (and the matching `safety_sms`) carry `view_token`, that contact's own link,
+  which the worker appends as `#k=<token>` — a fragment, so it never reaches a
+  server log.
   Crucially **not** gated on the runner's `email_notifications` preference — a
   safety contact opted in explicitly and must not be silenced by the runner's
   social-email setting. `decisions.md § 131`.
@@ -230,7 +234,7 @@ Shared pieces:
 
 | Email | Kind | Trigger | Localized | ADR |
 |---|---|---|---|---|
-| Notification → email (kudos, comment, reaction, comment like, mention, follow, event RSVP/cancel/reminder, plan update, message, club post, run completed) | `notification_email` | `notifications` AFTER INSERT, gated on `email_notifications` | ✓ | §117 |
+| Notification → email (kudos, comment, reaction, comment like, mention, follow, follow request, event RSVP/cancel/reminder, plan update, message, club post, run completed) | `notification_email` | `notifications` AFTER INSERT, gated on `email_notifications` | ✓ | §117 |
 | **Event-day reminders** (scheduled) | `notification_email` (`event_reminder`) | hourly pg_cron `enqueue_event_reminders()` over `going` RSVPs in the next 24 h | ✓ | §117 |
 | **Welcome** ("thanks for signing up") | `lifecycle_email` (`welcome`) | `user_profiles` AFTER INSERT | ✓ | §119 |
 | **Pro-purchase receipt** | `lifecycle_email` (`pro_welcome`) | `user_profiles` AFTER UPDATE, `subscription_tier` → paid | ✓ | §121 |

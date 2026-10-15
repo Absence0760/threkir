@@ -57,3 +57,16 @@ String? healthUseDob(UserProfileRow? row) {
   if (healthUseDobState(row) != HealthUseDobState.usable) return null;
   return row!.dateOfBirth!.toIso8601String().substring(0, _isoDateLength);
 }
+
+/// A body weight a health inference may use, or null. The weight is read from
+/// the consent-gated `body_metrics` series, which a withdrawal erases, but the
+/// fuelling plan's weight-based fluid rate (decisions § 1976) re-checks the
+/// stamp on the same profile row anyway, so a weight cached on a screen from
+/// before a withdrawal cannot keep feeding the rate. Fail-closed: no stamp, no
+/// weight.
+double? healthUseWeightKg(UserProfileRow? row, double? weightKg) {
+  if (row?.healthDataConsentAt == null) return null;
+  return weightKg != null && weightKg.isFinite && weightKg > 0
+      ? weightKg
+      : null;
+}

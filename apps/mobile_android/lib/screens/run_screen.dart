@@ -58,6 +58,7 @@ import '../route_markers.dart' show parseTarget;
 import '../route_match.dart';
 import '../route_simplify.dart';
 import '../run_stop_dock.dart';
+import '../safety_live_audience.dart';
 import '../safety_nudge.dart';
 import '../settings_sync.dart';
 import '../sim_watch_link.dart' show maybeDevBackendUrl;
@@ -550,6 +551,13 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   // stop path uses it to resolve the saved run's visibility — the live
   // window's public opt-in must not silently outlive the run (issue #664).
   bool _liveBroadcastBegun = false;
+  // The begun stub is (or was made) public. A broadcast on the safety-contacts
+  // audience (decisions § 1964) never was, so the stop path has no public flip
+  // to resolve for it.
+  bool _liveBroadcastPublic = false;
+  // The server's safety_audience gate, probed once per screen. Fail closed:
+  // false until the probe answers, so nothing defaults on before then.
+  bool _safetyAudienceEnabled = false;
   // The `runs.concluded_at` stamp is owed for this run id and hasn't landed.
   // Tracked separately from the broadcaster's attached state: an explicit
   // stop-share detaches the pump whether or not its conclude call succeeded,
@@ -765,6 +773,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     _maybePreloadWorkoutRunner();
     _refreshUpcomingEvent();
     _refreshPlanOverview();
+    unawaited(_probeSafetyAudience());
     // Drain after first frame: if a deeper screen set
     // `pendingStartWorkout` *before* this State existed (lazy tab
     // construction), we'd have missed the listener fire. Run once
@@ -1666,9 +1675,12 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   /// runner's default unless they explicitly keep it public (issue
   /// #664). Skipped on anonymous sessions — only signed-in users
   /// can broadcast. Returns whether the broadcaster is attached.
-  Future<bool> _startLiveBroadcast() async {
+  Future<bool> _startLiveBroadcast({
+    LiveShareAudience audience = LiveShareAudience.public,
+  }) async {
     final api = widget.apiClient;
     if (api == null || api.userId == null) return false;
+    final wantPublic = audience == LiveShareAudience.public;
     _runId ??= _uuid.v4();
     // LiveHubClient stays nil-effect when `LIVE_HUB_URL` is unset
     // — the broadcaster falls back to the legacy
@@ -1695,9 +1707,17 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
             runId: _runId!,
             startedAt: _runStartedAtWall ?? DateTime.now(),
             activityType: _activityType.name,
+            safetyAudience: !wantPublic,
           )
           .timeout(kBackendLoadTimeout);
+      // The begin ignores duplicates, so a manual share over a stub the
+      // automatic share created for the safety audience must widen it here,
+      // or the link the runner just handed out would open nothing.
+      if (wantPublic && _liveBroadcastBegun && !_liveBroadcastPublic) {
+        await api.makeRunPublic(_runId!).timeout(kBackendLoadTimeout);
+      }
       _liveBroadcaster!.attach(_runId!);
+      if (wantPublic || !_liveBroadcastBegun) _liveBroadcastPublic = wantPublic;
       _liveBroadcastBegun = true;
       _liveConcludeOwed = true;
       _liveShareActive.value = true;
@@ -1708,21 +1728,43 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     }
   }
 
-  /// The auto_live_share device pref (docs/features/safety.md). False
-  /// when settings aren't available (signed out, sync not wired) —
-  /// fail-closed: no silent broadcast without the explicit opt-in.
+  /// The effective auto_live_share (docs/features/safety.md, decisions
+  /// § 1964): the device pref when the runner set it, else ON only for the
+  /// safety-contacts audience with an armed escalation
+  /// ([effectiveAutoLiveShare]). False when settings aren't available
+  /// (signed out, sync not wired) — fail-closed: no silent broadcast.
   bool get _autoLiveShareEnabled {
     final service = widget.settingsSync?.service;
     if (service == null) return false;
     try {
-      return service.effective<bool>(
-            SettingsKeys.autoLiveShare,
-            fallback: false,
-          ) ==
-          true;
+      return effectiveAutoLiveShare(
+        explicitPref: service.effective<bool>(SettingsKeys.autoLiveShare),
+        safetyAudienceEnabled: _safetyAudienceEnabled,
+        safetyNetArmed: safetyNetArmed(
+          overdueMinutes:
+              service.effective<num>(SettingsKeys.safetyOverdueMinutes),
+          offRouteAlerts:
+              service.effective<bool>(SettingsKeys.safetyOffRouteAlerts),
+        ),
+      );
     } catch (e) {
       debugPrint('auto_live_share read failed: $e');
       return false;
+    }
+  }
+
+  /// Ask the server once whether the safety-contacts audience is live. L4:
+  /// a failure leaves the gate read as closed, which only means the automatic
+  /// share keeps the explicit-opt-in public behaviour it had before.
+  Future<void> _probeSafetyAudience() async {
+    final api = widget.apiClient;
+    if (api == null || api.userId == null) return;
+    try {
+      final enabled =
+          await api.safetyAudienceEnabled().timeout(kBackendLoadTimeout);
+      if (mounted) _safetyAudienceEnabled = enabled;
+    } catch (e) {
+      debugPrint('safety_audience probe failed: $e');
     }
   }
 
@@ -1971,9 +2013,15 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       liveShareRequested: _liveShareRequested,
       broadcasterActive: _liveBroadcaster?.isActive ?? false,
     )) {
-      unawaited(_startLiveBroadcast().then((attached) {
+      final audience = _liveShareRequested
+          ? LiveShareAudience.public
+          : autoLiveShareAudience(
+              safetyAudienceEnabled: _safetyAudienceEnabled);
+      unawaited(_startLiveBroadcast(audience: audience).then((attached) {
         if (attached && mounted) {
-          _showTopBanner(_l10n.runAutoLiveShareStarted);
+          _showTopBanner(audience == LiveShareAudience.safetyContacts
+              ? _l10n.runSafetyLiveShareStarted
+              : _l10n.runAutoLiveShareStarted);
         }
       }).catchError((Object e) {
         debugPrint('auto live share failed: $e');
@@ -3700,8 +3748,10 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       broadcasterActiveAtStop: broadcasterActiveAtStop,
       defaultPublic: widget.preferences.newRunsArePublic,
       signedIn: api != null && api.userId != null,
+      broadcastWasPublic: _liveBroadcastPublic,
     );
     _liveBroadcastBegun = false;
+    _liveBroadcastPublic = false;
     if (action == PostLiveVisibilityAction.none) return;
 
     var keepPublic = false;
@@ -3796,6 +3846,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // never chose to share.
     _liveShareRequested = false;
     _liveBroadcastBegun = false;
+    _liveBroadcastPublic = false;
     _liveConcludeOwed = false;
     _liveShareActive.value = false;
     _pedometerRetries = 0;
@@ -6090,8 +6141,12 @@ PostLiveVisibilityAction postLiveVisibilityActionOnStop({
   required bool broadcasterActiveAtStop,
   required bool defaultPublic,
   required bool signedIn,
+  bool broadcastWasPublic = true,
 }) {
   if (!broadcastBegun || !signedIn) return PostLiveVisibilityAction.none;
+  // A safety-contacts broadcast (decisions § 1964) never flipped the run
+  // public, so there is no public window to close and nothing to ask.
+  if (!broadcastWasPublic) return PostLiveVisibilityAction.none;
   if (defaultPublic) return PostLiveVisibilityAction.none;
   return broadcasterActiveAtStop
       ? PostLiveVisibilityAction.prompt

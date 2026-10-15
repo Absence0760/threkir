@@ -90,6 +90,14 @@ locals {
     # Server half of PUBLIC_PLATE_PHOTO_ENABLED: /api/coach/plate-photo answers
     # 503 unless this is truthy (decisions § 1972). Unset means off.
     "PLATE_PHOTO_ENABLED",
+    # Server half of PUBLIC_COACH_FUEL_ENABLED: the coach system prompt carries
+    # the fuelling handoff only when this is truthy (decisions § 1975). Unset
+    # in the sops file means off.
+    "COACH_FUEL_ENABLED",
+    # Server half of PUBLIC_AI_PLAN_EDIT_ENABLED: /api/coach/plan-edit answers
+    # 503 unless this is truthy (decisions § 1979), and the Coach links into
+    # AI plan edits only when it is. Unset in the sops file means off.
+    "AI_PLAN_EDIT_ENABLED",
   ]
 
   # The two X-Engine-Key credentials the generate-route handler sends. Same

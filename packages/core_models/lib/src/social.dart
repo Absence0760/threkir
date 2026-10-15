@@ -54,6 +54,16 @@ class ProfileSummary extends PublicProfile {
   final int followingCount;
   final bool viewerFollows;
 
+  /// The owner made the profile private (decisions § 1967): follows become
+  /// requests and the runs / follower lists open only to approved followers.
+  final bool profilePrivate;
+
+  /// The viewer has a pending request to follow this profile.
+  final bool viewerRequested;
+
+  /// Whether the viewer may read the profile's activity and lists.
+  final bool contentVisible;
+
   const ProfileSummary({
     required super.id,
     super.displayName,
@@ -61,6 +71,42 @@ class ProfileSummary extends PublicProfile {
     required this.followerCount,
     required this.followingCount,
     required this.viewerFollows,
+    this.profilePrivate = false,
+    this.viewerRequested = false,
+    this.contentVisible = true,
+  });
+
+  ProfileSummary copyWith({
+    int? followerCount,
+    bool? viewerFollows,
+    bool? viewerRequested,
+    bool? contentVisible,
+  }) =>
+      ProfileSummary(
+        id: id,
+        displayName: displayName,
+        avatarUrl: avatarUrl,
+        followerCount: followerCount ?? this.followerCount,
+        followingCount: followingCount,
+        viewerFollows: viewerFollows ?? this.viewerFollows,
+        profilePrivate: profilePrivate,
+        viewerRequested: viewerRequested ?? this.viewerRequested,
+        contentVisible: contentVisible ?? this.contentVisible,
+      );
+}
+
+/// What a follow tap did: followed a public profile at once, or filed a
+/// request with a private one. Mirrors web `FollowOutcome`.
+enum FollowOutcome { following, requested }
+
+/// One pending request to follow the signed-in user.
+class IncomingFollowRequest {
+  final PublicProfile requester;
+  final DateTime requestedAt;
+
+  const IncomingFollowRequest({
+    required this.requester,
+    required this.requestedAt,
   });
 }
 

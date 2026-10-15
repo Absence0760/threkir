@@ -31,7 +31,7 @@ class _FakeApi extends ApiClient {
   String? get userId => 'u1';
 
   @override
-  Future<UserProfileRow?> fetchMyProfile() async => UserProfileRow(
+  Future<UserProfileRow?> fetchMyProfile() async => UserProfileRow(profilePrivate: false, 
         shadowHidden: false,
         id: 'u1',
         healthDataConsentAt: consentAt,

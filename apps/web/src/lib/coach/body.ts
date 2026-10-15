@@ -27,6 +27,8 @@ export const PLAN_REQUEST_BODY_LIMIT_BYTES = 16 * 1024;
 // The plate-photo body carries one base64 image: 3 MB decoded is 4 MB of
 // base64, plus a short note. Under the Function URL's 6 MB request ceiling.
 export const PLATE_PHOTO_BODY_LIMIT_BYTES = 4 * 1024 * 1024 + 16 * 1024;
+// A plan id and one short change request; the plan itself is read server-side.
+export const PLAN_EDIT_BODY_LIMIT_BYTES = 16 * 1024;
 
 export type BodyDecodeResult =
 	| { ok: true; body: string }

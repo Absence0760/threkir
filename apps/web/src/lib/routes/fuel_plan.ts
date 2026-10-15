@@ -25,6 +25,47 @@ export const HEAT_FLUID_FACTOR = 1.5;
 export const GEL_CARBS_G = 25;
 
 /**
+ * Weight-based fluid baseline (decisions § 1976). Sweat loss at a given pace
+ * and climate scales with metabolic heat production, and the energy cost of
+ * running is proportional to body mass (~1 kcal/kg/km, the constant
+ * `runCalories` uses), so the moderate-conditions default above is read as the
+ * rate for a 70 kg reference runner and scaled by mass. The result is held to
+ * the 0.4–0.8 L/h band the ACSM position stand gives for marathon running
+ * (Sawka et al., "Exercise and fluid replacement", Med Sci Sports Exerc 2007;
+ * 39(2):377–390: higher for heavier, faster runners in the warm, lower for
+ * lighter, slower ones in the cool). The 800 ml/h ceiling also keeps the
+ * baseline below the overdrinking that drives exercise-associated
+ * hyponatremia. It is a planning baseline, not a measured sweat rate; heat
+ * still multiplies it, as it multiplies the flat rate.
+ */
+export const WEIGHT_FLUID_REFERENCE_KG = 70;
+export const WEIGHT_FLUID_MIN_ML = 400;
+export const WEIGHT_FLUID_MAX_ML = 800;
+export const WEIGHT_FLUID_ROUND_ML = 25;
+/** The body-metrics weight range; outside it the weight is not used. */
+export const WEIGHT_FLUID_MIN_KG = 20;
+export const WEIGHT_FLUID_MAX_KG = 250;
+
+/**
+ * Per-hour fluid baseline from body weight, or null when the weight is absent
+ * or outside the body-metrics range, so the caller falls back to the flat rate.
+ * The caller decides whether a weight may be used at all (Art 9 consent).
+ */
+export function weightFluidPerHourMl(weightKg: number | null | undefined): number | null {
+	if (
+		weightKg == null ||
+		!Number.isFinite(weightKg) ||
+		weightKg < WEIGHT_FLUID_MIN_KG ||
+		weightKg > WEIGHT_FLUID_MAX_KG
+	) {
+		return null;
+	}
+	const scaled = (DEFAULT_FLUID_PER_HOUR_ML * weightKg) / WEIGHT_FLUID_REFERENCE_KG;
+	const rounded = Math.round(scaled / WEIGHT_FLUID_ROUND_ML) * WEIGHT_FLUID_ROUND_ML;
+	return Math.min(WEIGHT_FLUID_MAX_ML, Math.max(WEIGHT_FLUID_MIN_ML, rounded));
+}
+
+/**
  * Minimal per-leg input. A roadbook `RoadbookLeg` structurally satisfies this,
  * so the web surface can pass `roadbook.legs` directly.
  */

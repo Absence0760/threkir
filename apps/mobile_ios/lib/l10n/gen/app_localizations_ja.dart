@@ -1087,6 +1087,10 @@ class AppLocalizationsJa extends AppLocalizations {
       'この端末でランを開始すると自動的にライブ共有を開始します。進行中のランはリンクを知っている人なら誰でも見られます。ランが終了すると、既定の公開設定に戻ります。';
 
   @override
+  String get safetyAutoLiveShareSafetySubtitle =>
+      'このスマートフォンでランを開始すると、自動的にライブ共有を開始します。公開されることはありません。確認済みの安全連絡先だけが、遅延アラートまたはルート逸脱アラートで届くリンクから追跡できます。アラートを設定すると既定でオンになります。';
+
+  @override
   String get safetyOffRouteTitle => 'ルート逸脱アラート';
 
   @override
@@ -1098,6 +1102,10 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get runAutoLiveShareStarted => 'ライブ共有中 — 「ライブリンクを共有」でリンクを送れます';
+
+  @override
+  String get runSafetyLiveShareStarted =>
+      '安全共有がオンです。安全連絡先だけが、アラートが送られた後にのみ追跡できます';
 
   @override
   String get runSafetyNudgeSolo =>
@@ -6251,6 +6259,10 @@ class AppLocalizationsJa extends AppLocalizations {
       '食事写真による記録：あなたが選んだ食事の写真を、お皿の内容を推定するためだけに送信します。位置情報やカメラの情報は送信前に削除され、Threkirは写真を保存せず、確認して保存するまで何も記録されません。';
 
   @override
+  String get coachConsentBulletPlanEdit =>
+      'AIプラン調整利用時: 変更するプランの今後のワークアウト（日付、種類、距離）と入力した変更内容。保存前に確認する変更案の作成にのみ使用し、AIがワークアウトを追加したりペースを設定したりすることはありません。';
+
+  @override
   String get coachConsentProcessing =>
       'Anthropic は Threkir に代わってデータ処理条件に基づきデータを処理します。既定では Threkir の顧客データでモデルを学習しません。移転の仕組み、保持期間、撤回の権利を含む詳細は、プライバシーポリシーをご覧ください。';
 
@@ -6618,7 +6630,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get settingsAccountAiConsentUpdateSubtitle =>
-      '説明の対象となる機能が増えました。内容を確認して同意すると、AIルートアシスタントとAIプランアシスタントを利用できます。';
+      '説明の対象となる機能が増えました。内容を確認して同意すると、記載されているすべてのAI機能を利用できます。';
 
   @override
   String get settingsAccountAiConsentGrantTitle => 'AIの説明を確認する';
@@ -12225,6 +12237,22 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String get roadbookWeightToggle => '体重から水分量を計算';
+
+  @override
+  String get roadbookWeightHint =>
+      '水分量を体重に合わせて調整します。ランニングに対してスポーツ医学のガイドラインが示す1時間あたり400〜800 mlの範囲内です。計画用の目安であり、発汗テストではありません。';
+
+  @override
+  String roadbookWeightUsing(String ml) {
+    return '水分: 体重から1時間あたり $ml ml。';
+  }
+
+  @override
+  String get roadbookWeightUnavailable =>
+      '体重から水分量を計算するには、身体データで体重を追加し、そこで健康データの利用に同意してください。';
+
+  @override
   String get roadbookColTarget => '目標';
 
   @override
@@ -15300,4 +15328,99 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get routeDetailSendDmDone => '完了';
+
+  @override
+  String get runPhotosRaceGalleryShow => 'レースページに表示';
+
+  @override
+  String get runPhotosRaceGalleryHide => 'レースページから削除';
+
+  @override
+  String get runPhotosRaceGalleryHint =>
+      '写真のメダルをタップすると、このレースの公開ページに表示されます。このページは誰でも閲覧でき、写真はいつでも取り下げられます。';
+
+  @override
+  String get runPhotosRaceGalleryPrivate => 'このランを公開すると、写真をレースページで共有できます。';
+
+  @override
+  String runPhotosRaceGalleryError(String error) {
+    return 'レースページを更新できませんでした: $error';
+  }
+
+  @override
+  String get profileRequestToFollow => 'フォローをリクエスト';
+
+  @override
+  String get profileRequested => 'リクエスト済み';
+
+  @override
+  String get profileRequestSent => 'フォローリクエストを送信しました';
+
+  @override
+  String get profileRequestWithdrawn => 'フォローリクエストを取り消しました';
+
+  @override
+  String get profilePrivateTitle => 'このプロフィールは非公開です';
+
+  @override
+  String profilePrivateBody(String name) {
+    return '$nameさんをフォローすると、ランとフォロー中のユーザーを見られます。リクエストはそれぞれ承認が必要です。';
+  }
+
+  @override
+  String get profilePrivateRequestedBody =>
+      'リクエストは承認待ちです。承認されるとランを見られるようになります。';
+
+  @override
+  String profileNotifFollowRequest(String name) {
+    return '$nameさんがフォローをリクエストしました';
+  }
+
+  @override
+  String get prefsPrivateProfile => '非公開プロフィール';
+
+  @override
+  String get prefsPrivateProfileSubtitle =>
+      '承認したフォロワーだけが、あなたのラン、アクティビティ、フォロワー一覧を見られます。名前で検索してフォローをリクエストすることはできます。';
+
+  @override
+  String get prefsPrivateProfileFailed => 'プロフィールの公開設定を変更できませんでした。';
+
+  @override
+  String get followRequestsTitle => 'フォローリクエスト';
+
+  @override
+  String get followRequestsEmptyTitle => '保留中のリクエストはありません';
+
+  @override
+  String get followRequestsEmptyBody => '誰かが非公開プロフィールのフォローをリクエストすると、ここに表示されます。';
+
+  @override
+  String get followRequestsApprove => '承認';
+
+  @override
+  String get followRequestsDecline => '拒否';
+
+  @override
+  String followRequestsApproved(String name) {
+    return '$nameさんがあなたのプロフィールを見られるようになりました';
+  }
+
+  @override
+  String get followRequestsDeclinedBanner => 'リクエストを拒否しました';
+
+  @override
+  String get followRequestsLoadError => 'フォローリクエストを読み込めませんでした。';
+
+  @override
+  String get followRequestsActionFailed => 'リクエストを更新できませんでした。';
+
+  @override
+  String get coachingAthleteMapsClippedNote =>
+      '地図には、このアスリートがプライバシーゾーンで非表示にしている範囲は含まれません。';
+
+  @override
+  String coachingAthleteRunMapLabel(String date) {
+    return '$dateのランの地図（アスリートのプライバシーゾーンを除く）';
+  }
 }

@@ -397,6 +397,7 @@ type ExportRun struct {
 	HrSeriesURL          *string                `json:"hr_series_url"`
 	IsPublic             *bool                  `json:"is_public"`
 	FollowersOnly        bool                   `json:"followers_only"`
+	SafetyAudience       bool                   `json:"safety_audience"`
 	EventID              *string                `json:"event_id"`
 	RouteID              *string                `json:"route_id"`
 	RaceListingID        *string                `json:"race_listing_id"`
@@ -546,6 +547,7 @@ var csvColumns = []string{
 	"external_id",
 	"is_public",
 	"followers_only",
+	"safety_audience",
 	"metadata",
 	"created_at",
 	"updated_at",
@@ -631,6 +633,7 @@ func csvRow(r ExportRun) []string {
 		deref(r.ExternalID),
 		derefBool(r.IsPublic),
 		strconv.FormatBool(r.FollowersOnly),
+		strconv.FormatBool(r.SafetyAudience),
 		string(mdJSON),
 		r.CreatedAt,
 		r.UpdatedAt,

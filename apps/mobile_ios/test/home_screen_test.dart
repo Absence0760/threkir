@@ -70,7 +70,7 @@ class _WizardApi extends ApiClient {
   Future<cm.UserProfileRow?> fetchMyProfile() async {
     if (uid == null || !hasRow) return null;
     final stamp = consented ? DateTime.utc(2026, 10, 6) : null;
-    return cm.UserProfileRow(
+    return cm.UserProfileRow(profilePrivate: false, 
       shadowHidden: false,
       id: uid!,
       displayName: null,

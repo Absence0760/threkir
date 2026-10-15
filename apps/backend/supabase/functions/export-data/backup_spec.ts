@@ -23,6 +23,7 @@ const ORDER_BY_TABLE: Record<string, string> = {
 	event_attendees: 'event_id,user_id,instance_start',
 	event_exceptions: 'event_id,instance_start',
 	event_pricing: 'event_id,instance_start',
+	follow_requests: 'requester_id,target_id',
 	instructor_payout_accounts: 'user_id',
 	personal_records: 'user_id,distance',
 	run_comment_likes: 'user_id,comment_id',
@@ -157,6 +158,20 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 			entry: 'followers.json',
 			table: 'user_follows',
 			filter: `followee_id=eq.${uid}`,
+			select: '*',
+		},
+		// follow_requests — pending follows of a private profile (migration
+		// 20270822000001), both legs. Mirrors the Go worker's entries.
+		{
+			entry: 'follow_requests_sent.json',
+			table: 'follow_requests',
+			filter: `requester_id=eq.${uid}`,
+			select: '*',
+		},
+		{
+			entry: 'follow_requests_received.json',
+			table: 'follow_requests',
+			filter: `target_id=eq.${uid}`,
 			select: '*',
 		},
 		{ entry: 'event_attendees.json', table: 'event_attendees', filter: uidEq, select: '*' },

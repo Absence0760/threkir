@@ -46,15 +46,20 @@ class _CapturingApi extends ApiClient {
   }) async {
     uploaded = bytes;
     uploadedContentType = contentType;
-    return RunPhotoRow(
-      id: 'p1',
-      runId: runId,
-      ownerId: 'owner-1',
-      storagePath: 'owner-1/$runId/p1.$extension',
-      createdAt: DateTime.utc(2026, 3, 1),
-      positionIdx: positionIdx,
-    );
+    return RunPhotoRow.fromJson({
+      'id': 'p1',
+      'run_id': runId,
+      'owner_id': 'owner-1',
+      'storage_path': 'owner-1/$runId/p1.$extension',
+      'created_at': '2026-03-01T00:00:00Z',
+      'position_idx': positionIdx,
+    });
   }
+
+  @override
+  Future<({bool isPublic, String? raceListingId})?> fetchRunRaceGalleryContext(
+          String runId) async =>
+      null;
 }
 
 int _crc32(List<int> bytes) {

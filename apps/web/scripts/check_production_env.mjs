@@ -60,6 +60,14 @@
  *     so the CLI names that state in a `::notice::`. The same holds for
  *     PUBLIC_PLATE_PHOTO_ENABLED and the /nutrition/log photo control.
  *
+ *   - PUBLIC_COACH_FUEL_ENABLED may be on or off, but on with
+ *     PUBLIC_COACH_ENABLED off renders /nutrition/fuel with nothing linking
+ *     to it (the Coach writes the only link), so the CLI names that state in
+ *     a `::notice::` too.
+ *   - PUBLIC_AI_PLAN_EDIT_ENABLED the same way: on with
+ *     PUBLIC_COACH_ENABLED off, the "Adjust with AI" option on /plans/[id]
+ *     stays hidden, and the CLI says so.
+ *
  * NOT enforced (intentional):
  *   - PUBLIC_REVENUECAT_WEB_PORTAL_URL — the manage-subscription portal
  *     is optional. An empty value degrades the "Manage subscription"
@@ -288,6 +296,23 @@ export function checkProductionEnv(env) {
 	if (isTruthyFlagValue(env.PUBLIC_AI_PLAN_ENABLED) && !isTruthyFlagValue(env.PUBLIC_COACH_ENABLED)) {
 		notices.push(
 			'The AI plan assistant stays hidden: PUBLIC_AI_PLAN_ENABLED is on but PUBLIC_COACH_ENABLED is not, and /plans/new shows the box only when both are. Turn the Coach on as well, or unset PUBLIC_AI_PLAN_ENABLED.',
+		);
+	}
+	if (
+		isTruthyFlagValue(env.PUBLIC_AI_PLAN_EDIT_ENABLED) &&
+		!isTruthyFlagValue(env.PUBLIC_COACH_ENABLED)
+	) {
+		notices.push(
+			'AI plan edits stay hidden: PUBLIC_AI_PLAN_EDIT_ENABLED is on but PUBLIC_COACH_ENABLED is not, and /plans/[id] shows "Adjust with AI" only when both are. Turn the Coach on as well, or unset PUBLIC_AI_PLAN_EDIT_ENABLED.',
+		);
+	}
+
+	// The fuelling page is reachable without the Coach, but the Coach's
+	// handoff is the only thing that links to it, so the flag on with the
+	// Coach off ships a page nobody is sent to.
+	if (isTruthyFlagValue(env.PUBLIC_COACH_FUEL_ENABLED) && !isTruthyFlagValue(env.PUBLIC_COACH_ENABLED)) {
+		notices.push(
+			'The Coach fuelling handoff has no way in: PUBLIC_COACH_FUEL_ENABLED is on but PUBLIC_COACH_ENABLED is not, so /nutrition/fuel renders and nothing links to it. Turn the Coach on as well (and COACH_FUEL_ENABLED in the coach Lambda), or unset PUBLIC_COACH_FUEL_ENABLED.',
 		);
 	}
 

@@ -245,6 +245,9 @@
 	/// length match); if no candidate clears the bar this stays
 	/// null and no UI renders.
 	let suggestedRoute = $state<RouteMatchCandidate | null>(null);
+	/// Reported by RunRaceResult: the linked listing, null when the run has
+	/// none or the listing is not publicly readable (so no race page exists).
+	let publicRaceListingId = $state<string | null>(null);
 
 	onMount(async () => {
 		// Wait for the auth store to hydrate AND the user profile to
@@ -2103,9 +2106,16 @@
 			runOwnerId={run.user_id}
 			startedAt={run.started_at}
 			distanceM={run.distance_m}
+			onlisting={(id) => (publicRaceListingId = id)}
 		/>
 
-		<RunPhotos runId={run.id} runOwnerId={run.user_id} wrapperClass="section" />
+		<RunPhotos
+			runId={run.id}
+			runOwnerId={run.user_id}
+			raceListingId={publicRaceListingId}
+			runIsPublic={run.is_public === true}
+			wrapperClass="section"
+		/>
 
 		<FundraiserSection runId={run.id} isOwner={auth.user?.id === run.user_id} />
 

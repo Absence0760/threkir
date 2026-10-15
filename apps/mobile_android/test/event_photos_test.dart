@@ -90,16 +90,16 @@ class _PhotosApi extends ApiClient {
     lastEventId = eventId;
     lastInstance = eventInstanceStart;
     _photos.add(_photo(id: 'added', uploader: 'Me'));
-    return RunPhotoRow(
-      id: 'added',
-      runId: runId,
-      ownerId: 'me',
-      storagePath: 'me/added.$extension',
-      positionIdx: positionIdx,
-      createdAt: DateTime.now(),
-      eventId: eventId,
-      eventInstanceStart: eventInstanceStart,
-    );
+    return RunPhotoRow.fromJson({
+      'id': 'added',
+      'run_id': runId,
+      'owner_id': 'me',
+      'storage_path': 'me/added.$extension',
+      'position_idx': positionIdx,
+      'created_at': DateTime.now().toUtc().toIso8601String(),
+      'event_id': eventId,
+      'event_instance_start': eventInstanceStart?.toUtc().toIso8601String(),
+    });
   }
 }
 

@@ -141,6 +141,8 @@
 				return m('notificationBell.mention', { name });
 			case 'follow':
 				return m('notificationBell.follow', { name });
+			case 'follow_request':
+				return m('notificationBell.followRequest', { name });
 			case 'event_rsvp':
 				return item.event_title
 					? m('notificationBell.eventRsvpTitled', { name, title: item.event_title })

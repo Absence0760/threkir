@@ -21,6 +21,7 @@ class _FakeApi extends ApiClient {
     required String runId,
     required DateTime startedAt,
     String activityType = 'run',
+    bool safetyAudience = false,
   }) async {
     begins++;
     if (beginError != null) throw beginError!;

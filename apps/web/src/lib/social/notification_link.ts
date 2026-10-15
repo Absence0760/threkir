@@ -37,6 +37,10 @@ export function notificationLinkFor(item: NotificationLinkInput): string | null 
 			return r.run_id ? `/runs/${r.run_id}` : null;
 		case 'follow':
 			return r.actor_id ? `/u/${r.actor_id}` : null;
+		case 'follow_request':
+			// Approve and decline live on the requests page; the requester's
+			// own profile may be closed to the recipient.
+			return '/follow-requests';
 		case 'event_rsvp':
 		case 'event_cancel':
 		case 'event_reminder':

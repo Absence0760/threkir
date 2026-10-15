@@ -7,6 +7,7 @@ import '../auth_error.dart';
 import '../e164.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../off_route_flag.dart';
+import '../safety_live_audience.dart';
 import '../settings_sync.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/top_banner.dart';
@@ -64,7 +65,13 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
   static const List<int> _overdueChoices = [15, 30, 60, 120];
   int? _overdueMinutes;
   bool _autoLiveShare = false;
+  // The device choice as stored; null = never set, so the switch shows the
+  // default [effectiveAutoLiveShare] derives (decisions § 1964).
+  bool? _autoLiveShareExplicit;
   bool _offRouteAlerts = false;
+  // The server's safety_audience gate. Fail closed until the probe answers:
+  // the switch then describes, and defaults to, the public share.
+  bool _safetyAudienceEnabled = false;
 
   // Off-route auto-notify deploy gate (docs/features/safety.md). Hidden until
   // OFF_ROUTE_ESCALATION_ENABLED flips at deploy time (owner+CISO+counsel).
@@ -75,6 +82,29 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
     super.initState();
     _loadPrefs();
     _load();
+    _probeSafetyAudience();
+  }
+
+  Future<void> _probeSafetyAudience() async {
+    final api = widget.api;
+    if (api == null || api.userId == null) return;
+    final enabled = await api.safetyAudienceEnabled();
+    if (!mounted) return;
+    setState(() {
+      _safetyAudienceEnabled = enabled;
+      _recomputeAutoLiveShare();
+    });
+  }
+
+  void _recomputeAutoLiveShare() {
+    _autoLiveShare = effectiveAutoLiveShare(
+      explicitPref: _autoLiveShareExplicit,
+      safetyAudienceEnabled: _safetyAudienceEnabled,
+      safetyNetArmed: safetyNetArmed(
+        overdueMinutes: _overdueMinutes,
+        offRouteAlerts: _offRouteAlerts,
+      ),
+    );
   }
 
   /// Mirrors the preferences screen's gating: bag-backed controls are
@@ -86,18 +116,16 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
     final service = widget.settingsSync?.service;
     if (service == null) return;
     final overdue = service.effective<num>(SettingsKeys.safetyOverdueMinutes);
-    final auto = service.effective<bool>(
-      SettingsKeys.autoLiveShare,
-      fallback: false,
-    );
+    final auto = service.effective<bool>(SettingsKeys.autoLiveShare);
     final offRoute = service.effective<bool>(
       SettingsKeys.safetyOffRouteAlerts,
       fallback: false,
     );
     _overdueMinutes =
         overdue != null && overdue.isFinite && overdue > 0 ? overdue.toInt() : null;
-    _autoLiveShare = auto == true;
+    _autoLiveShareExplicit = auto;
     _offRouteAlerts = offRoute == true;
+    _recomputeAutoLiveShare();
   }
 
   // A safety switch that reads on while the server still has it off is worse
@@ -107,14 +135,22 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
   Future<void> _setOverdueMinutes(int? minutes) async {
     final l10n = AppLocalizations.of(context);
     final previous = _overdueMinutes;
-    setState(() => _overdueMinutes = minutes);
+    setState(() {
+      _overdueMinutes = minutes;
+      _recomputeAutoLiveShare();
+    });
     try {
       await widget.settingsSync
           ?.updateUniversal({SettingsKeys.safetyOverdueMinutes: minutes});
       _banner(l10n.safetyOverdueSaved);
     } catch (e) {
       debugPrint('safety overdue save failed: $e');
-      if (mounted) setState(() => _overdueMinutes = previous);
+      if (mounted) {
+        setState(() {
+          _overdueMinutes = previous;
+          _recomputeAutoLiveShare();
+        });
+      }
       _banner(l10n.safetySettingSaveFailed(friendlyError(l10n, e)),
           onRetry: () => _setOverdueMinutes(minutes));
     }
@@ -122,14 +158,22 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
 
   Future<void> _setAutoLiveShare(bool value) async {
     final l10n = AppLocalizations.of(context);
-    final previous = _autoLiveShare;
-    setState(() => _autoLiveShare = value);
+    final previous = _autoLiveShareExplicit;
+    setState(() {
+      _autoLiveShareExplicit = value;
+      _recomputeAutoLiveShare();
+    });
     try {
       await widget.settingsSync
           ?.updateDevice({SettingsKeys.autoLiveShare: value});
     } catch (e) {
       debugPrint('safety auto-live-share save failed: $e');
-      if (mounted) setState(() => _autoLiveShare = previous);
+      if (mounted) {
+        setState(() {
+          _autoLiveShareExplicit = previous;
+          _recomputeAutoLiveShare();
+        });
+      }
       _banner(l10n.safetySettingSaveFailed(friendlyError(l10n, e)),
           onRetry: () => _setAutoLiveShare(value));
     }
@@ -138,13 +182,21 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
   Future<void> _setOffRouteAlerts(bool value) async {
     final l10n = AppLocalizations.of(context);
     final previous = _offRouteAlerts;
-    setState(() => _offRouteAlerts = value);
+    setState(() {
+      _offRouteAlerts = value;
+      _recomputeAutoLiveShare();
+    });
     try {
       await widget.settingsSync
           ?.updateUniversal({SettingsKeys.safetyOffRouteAlerts: value});
     } catch (e) {
       debugPrint('safety off-route save failed: $e');
-      if (mounted) setState(() => _offRouteAlerts = previous);
+      if (mounted) {
+        setState(() {
+          _offRouteAlerts = previous;
+          _recomputeAutoLiveShare();
+        });
+      }
       _banner(l10n.safetySettingSaveFailed(friendlyError(l10n, e)),
           onRetry: () => _setOffRouteAlerts(value));
     }
@@ -522,7 +574,9 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
                 ),
                 SwitchListTile(
                   title: Text(l10n.safetyAutoLiveShareTitle),
-                  subtitle: Text(l10n.safetyAutoLiveShareSubtitle),
+                  subtitle: Text(_safetyAudienceEnabled
+                      ? l10n.safetyAutoLiveShareSafetySubtitle
+                      : l10n.safetyAutoLiveShareSubtitle),
                   value: _autoLiveShare,
                   onChanged: _prefsEditable ? _setAutoLiveShare : null,
                 ),

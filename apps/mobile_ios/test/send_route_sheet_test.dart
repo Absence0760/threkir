@@ -24,7 +24,7 @@ const _routeId = 'r1';
 const _shareUrl = 'https://threkir.com/share/route/r1';
 
 UserProfileRow _person(String id, String? name) =>
-    UserProfileRow(id: id, displayName: name, shadowHidden: false);
+    UserProfileRow(profilePrivate: false, id: id, displayName: name, shadowHidden: false);
 
 class _FakeApi extends ApiClient {
   _FakeApi({this.signedIn = true});

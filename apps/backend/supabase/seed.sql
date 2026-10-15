@@ -3037,3 +3037,22 @@ INSERT INTO global_segments (name, description, waypoints, distance_m, elevation
 -- audience control, the Playwright specs and manual testing exercise it.
 insert into private.feature_flags (name, enabled) values ('audience_sharing', true)
   on conflict (name) do update set enabled = excluded.enabled, updated_at = now();
+
+-- ─────────────────── Safety-contacts live audience gate (20270821000001) ───────────────────
+--
+-- A live share on the runner's safety contacts only, with no public flip, is
+-- fail-closed behind its own flag row, because who can see a named person's
+-- live location is a CISO + counsel sign-off (docs/features/safety.md,
+-- decisions § 1964). Local stacks and CI open it so the /live/[id] link path
+-- and its Playwright spec run.
+insert into private.feature_flags (name, enabled) values ('safety_audience', true)
+  on conflict (name) do update set enabled = excluded.enabled, updated_at = now();
+
+-- ─────────────────── Coach run map gate (20270822000011) ───────────────────
+--
+-- A linked coach's clipped view of an athlete's run map is fail-closed behind
+-- a private.feature_flags row no migration writes, so prod stays off until
+-- the CISO / Security Analyst sign-off in docs/features/coach_roster.md.
+-- Local stacks and CI open it so the coach view and its specs exercise it.
+insert into private.feature_flags (name, enabled) values ('coach_run_map', true)
+  on conflict (name) do update set enabled = excluded.enabled, updated_at = now();

@@ -523,6 +523,11 @@ func pathForKind(kind, base string, n NotificationRow) string {
 		// The recipient's own profile (/u/{id}), where their followers are
 		// shown — there is no /profile route, so the old target 404'd.
 		return profilePath(base, n)
+	case "follow_request":
+		// The recipient's pending requests, where approve and decline live.
+		// The actor's profile would be the wrong target: it is closed to the
+		// recipient unless that profile happens to be public.
+		return base + "/follow-requests"
 	case "challenge_complete":
 		return challengePath(base, n)
 	case "achievement":
@@ -744,10 +749,7 @@ func renderSafetyEmail(p SafetyEmailPayload, baseURL, locale string) (Email, boo
 		} else {
 			first = fmt.Sprintf(s.body[1], owner, formatTimeUTC(p.StartedAt))
 		}
-		ctaURL := base
-		if p.RunID != nil && *p.RunID != "" {
-			ctaURL = base + "/live/" + *p.RunID
-		}
+		ctaURL := safetyLiveURL(base, p.RunID, p.ViewToken)
 		return composeEmail(emailContent{
 			logoURL:   emailLogoURL(baseURL),
 			lang:      loc,
@@ -772,10 +774,7 @@ func renderSafetyEmail(p SafetyEmailPayload, baseURL, locale string) (Email, boo
 		} else {
 			first = fmt.Sprintf(s.body[1], owner, formatTimeUTC(p.StartedAt))
 		}
-		ctaURL := base
-		if p.RunID != nil && *p.RunID != "" {
-			ctaURL = base + "/live/" + *p.RunID
-		}
+		ctaURL := safetyLiveURL(base, p.RunID, p.ViewToken)
 		return composeEmail(emailContent{
 			logoURL:   emailLogoURL(baseURL),
 			lang:      loc,

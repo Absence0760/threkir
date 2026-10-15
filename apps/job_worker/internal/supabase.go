@@ -1426,6 +1426,7 @@ var orderByTable = map[string]string{
 	schema.TableEventAttendees:           "event_id,user_id,instance_start",
 	schema.TableEventExceptions:          "event_id,instance_start",
 	schema.TableEventPricing:             "event_id,instance_start",
+	schema.TableFollowRequests:           "requester_id,target_id",
 	schema.TableInstructorPayoutAccounts: "user_id",
 	schema.TablePersonalRecords:          "user_id,distance",
 	schema.TableRunGear:                  "run_id,gear_id",
@@ -1587,7 +1588,7 @@ func (c *SupabaseClient) StreamExportRuns(ctx context.Context, userID string, em
 // TestExportRunProjectionCoversEveryRunsColumn.
 const exportRunsSelect = "id,user_id,started_at,concluded_at,duration_s,distance_m," +
 	"elevation_gain_m,source,activity_type,is_dnf,external_id,metadata,track_url," +
-	"hr_series_url,is_public,followers_only,event_id,route_id,race_listing_id,fastest_5k_s," +
+	"hr_series_url,is_public,followers_only,safety_audience,event_id,route_id,race_listing_id,fastest_5k_s," +
 	"fastest_10k_s,fastest_half_marathon_s,fastest_marathon_s,created_at,updated_at"
 
 // ExportRunRow mirrors dataexport.ExportRun. We don't import the
@@ -1611,6 +1612,7 @@ type ExportRunRow struct {
 	HrSeriesURL          *string                `json:"hr_series_url"`
 	IsPublic             *bool                  `json:"is_public"`
 	FollowersOnly        bool                   `json:"followers_only"`
+	SafetyAudience       bool                   `json:"safety_audience"`
 	EventID              *string                `json:"event_id"`
 	RouteID              *string                `json:"route_id"`
 	RaceListingID        *string                `json:"race_listing_id"`
@@ -2307,6 +2309,19 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 		{
 			name: "followers.json", table: schema.TableUserFollows,
 			filter: "followee_id=eq." + uid, sel: "*",
+		},
+		// follow_requests — pending follows of a private profile (migration
+		// 20270822000001), both legs: requests the subject made and requests
+		// made to them. Keyed by requester_id / target_id, neither of which the
+		// guard's owner-FK scan names, so both are wired in explicitly. An
+		// approved or declined request is deleted, so there is no history.
+		{
+			name: "follow_requests_sent.json", table: schema.TableFollowRequests,
+			filter: "requester_id=eq." + uid, sel: "*",
+		},
+		{
+			name: "follow_requests_received.json", table: schema.TableFollowRequests,
+			filter: "target_id=eq." + uid, sel: "*",
 		},
 		// event_attendees — RSVPs.
 		{name: "event_attendees.json", table: schema.TableEventAttendees, filter: uidEq, sel: "*"},

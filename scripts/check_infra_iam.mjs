@@ -990,6 +990,12 @@ export const NON_CREDENTIAL_SOPS_KEYS = {
   PLATE_PHOTO_ENABLED:
     'a feature switch: /api/coach/plate-photo answers 503 unless it is ' +
     'truthy. It turns a route off or on and authorises no caller',
+  COACH_FUEL_ENABLED:
+    'a feature switch: it selects whether the coach system prompt carries ' +
+    'the fuelling handoff. It changes prompt text and authorises no caller',
+  AI_PLAN_EDIT_ENABLED:
+    'a feature switch: /api/coach/plan-edit answers 503 unless it is ' +
+    'truthy. It turns a route off or on and authorises no caller',
 };
 
 /// `name = ["A", "B"]` entries in a `locals` block, which is what a

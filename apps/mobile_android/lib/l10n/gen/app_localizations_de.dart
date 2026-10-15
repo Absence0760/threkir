@@ -1137,6 +1137,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Startet auf diesem Telefon automatisch ein Live-Teilen, wenn ein Lauf beginnt. Der laufende Lauf ist für alle mit dem Link sichtbar; nach dem Ende des Laufs gilt wieder deine Standard-Sichtbarkeit.';
 
   @override
+  String get safetyAutoLiveShareSafetySubtitle =>
+      'Startet auf diesem Telefon automatisch ein Live-Teilen, wenn ein Lauf beginnt. Es ist nie öffentlich: Nur deine bestätigten Sicherheitskontakte können folgen, über den Link, den ihnen ein Überfällig- oder Routen-Alarm schickt. Standardmäßig an, sobald ein Alarm eingerichtet ist.';
+
+  @override
   String get safetyOffRouteTitle => 'Routen-Warnung';
 
   @override
@@ -1150,6 +1154,10 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get runAutoLiveShareStarted =>
       'Live-Teilen ist aktiv — sende den Link über „Live-Link teilen“';
+
+  @override
+  String get runSafetyLiveShareStarted =>
+      'Sicherheits-Teilen ist aktiv — nur deine Sicherheitskontakte können folgen, und erst nach einem Alarm';
 
   @override
   String get runSafetyNudgeSolo =>
@@ -6631,6 +6639,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Für die Mahlzeiten-Fotoerfassung: das Foto deiner Mahlzeit, das du auswählst, nur um zu schätzen, was auf dem Teller liegt. Standort- und Kameradaten werden vorher entfernt, Threkir speichert das Foto nicht, und nichts wird eingetragen, bevor du es prüfst und speicherst.';
 
   @override
+  String get coachConsentBulletPlanEdit =>
+      'Für KI-Planänderungen: die anstehenden Einheiten des Plans, den du änderst (Datum, Art und Distanz), und die Änderung, die du eingibst, nur um Änderungen vorzuschlagen, die du prüfst, bevor etwas gespeichert wird — die KI kann keine Einheiten hinzufügen und keine Pace festlegen.';
+
+  @override
   String get coachConsentProcessing =>
       'Anthropic verarbeitet die Daten im Auftrag von Threkir gemäß ihren Auftragsverarbeitungsbedingungen; standardmäßig trainieren sie ihre Modelle nicht mit Threkir-Kundendaten. Alle Details — einschließlich Übermittlungsmechanismus, Speicherdauer und deinen Widerrufsrechten — findest du in unserer Datenschutzerklärung.';
 
@@ -7025,7 +7037,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get settingsAccountAiConsentUpdateSubtitle =>
-      'Die Hinweise decken jetzt mehr Funktionen ab. Lies sie und stimme zu, um den KI-Routen- und den KI-Planassistenten zu nutzen.';
+      'Die Hinweise decken jetzt mehr Funktionen ab. Lies sie und stimme zu, um alle dort beschriebenen KI-Funktionen zu nutzen.';
 
   @override
   String get settingsAccountAiConsentGrantTitle => 'KI-Hinweise ansehen';
@@ -12843,6 +12855,22 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get roadbookWeightToggle => 'Flüssigkeit nach Körpergewicht';
+
+  @override
+  String get roadbookWeightHint =>
+      'Passt die Flüssigkeitsmenge an dein Körpergewicht an, innerhalb der 400–800 ml pro Stunde, die sportmedizinische Empfehlungen fürs Laufen nennen. Ein Planungswert, kein Schweißtest.';
+
+  @override
+  String roadbookWeightUsing(String ml) {
+    return 'Flüssigkeit: $ml ml pro Stunde nach deinem Körpergewicht.';
+  }
+
+  @override
+  String get roadbookWeightUnavailable =>
+      'Um die Flüssigkeit an deinem Körpergewicht auszurichten, trage dein Gewicht unter Körperdaten ein und erteile dort die Einwilligung für Gesundheitsdaten.';
+
+  @override
   String get roadbookColTarget => 'Zielzeit';
 
   @override
@@ -16062,4 +16090,104 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get routeDetailSendDmDone => 'Fertig';
+
+  @override
+  String get runPhotosRaceGalleryShow => 'Auf der Rennseite zeigen';
+
+  @override
+  String get runPhotosRaceGalleryHide => 'Von der Rennseite entfernen';
+
+  @override
+  String get runPhotosRaceGalleryHint =>
+      'Tippe auf die Medaille eines Fotos, um es auf der öffentlichen Seite dieses Rennens zu zeigen. Diese Seite kann jeder sehen, und du kannst ein Foto jederzeit wieder entfernen.';
+
+  @override
+  String get runPhotosRaceGalleryPrivate =>
+      'Mach diesen Lauf öffentlich, um seine Fotos auf der Rennseite zu teilen.';
+
+  @override
+  String runPhotosRaceGalleryError(String error) {
+    return 'Rennseite konnte nicht aktualisiert werden: $error';
+  }
+
+  @override
+  String get profileRequestToFollow => 'Folgen anfragen';
+
+  @override
+  String get profileRequested => 'Angefragt';
+
+  @override
+  String get profileRequestSent => 'Follower-Anfrage gesendet';
+
+  @override
+  String get profileRequestWithdrawn => 'Follower-Anfrage zurückgezogen';
+
+  @override
+  String get profilePrivateTitle => 'Dieses Profil ist privat';
+
+  @override
+  String profilePrivateBody(String name) {
+    return 'Folge $name, um die Läufe zu sehen und wem diese Person folgt. Jede Anfrage wird einzeln bestätigt.';
+  }
+
+  @override
+  String get profilePrivateRequestedBody =>
+      'Deine Anfrage wartet auf Bestätigung. Sobald sie angenommen ist, siehst du die Läufe.';
+
+  @override
+  String profileNotifFollowRequest(String name) {
+    return '$name möchte dir folgen';
+  }
+
+  @override
+  String get prefsPrivateProfile => 'Privates Profil';
+
+  @override
+  String get prefsPrivateProfileSubtitle =>
+      'Nur Follower, die du bestätigst, sehen deine Läufe, Aktivitäten und Follower-Listen. Andere finden dich weiterhin über deinen Namen und können anfragen.';
+
+  @override
+  String get prefsPrivateProfileFailed =>
+      'Profil-Privatsphäre konnte nicht geändert werden.';
+
+  @override
+  String get followRequestsTitle => 'Follower-Anfragen';
+
+  @override
+  String get followRequestsEmptyTitle => 'Keine offenen Anfragen';
+
+  @override
+  String get followRequestsEmptyBody =>
+      'Wenn jemand deinem privaten Profil folgen möchte, erscheint die Anfrage hier.';
+
+  @override
+  String get followRequestsApprove => 'Annehmen';
+
+  @override
+  String get followRequestsDecline => 'Ablehnen';
+
+  @override
+  String followRequestsApproved(String name) {
+    return '$name kann jetzt dein Profil sehen';
+  }
+
+  @override
+  String get followRequestsDeclinedBanner => 'Anfrage abgelehnt';
+
+  @override
+  String get followRequestsLoadError =>
+      'Follower-Anfragen konnten nicht geladen werden.';
+
+  @override
+  String get followRequestsActionFailed =>
+      'Anfrage konnte nicht aktualisiert werden.';
+
+  @override
+  String get coachingAthleteMapsClippedNote =>
+      'Karten lassen die Bereiche weg, die diese Person mit Privatsphäre-Zonen verbirgt.';
+
+  @override
+  String coachingAthleteRunMapLabel(String date) {
+    return 'Karte des Laufs vom $date, ohne die Privatsphäre-Zonen der Person';
+  }
 }

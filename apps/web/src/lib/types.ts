@@ -581,6 +581,7 @@ export type NotificationKind =
 	| 'data_export_ready'
 	| 'refund_failed'
 	| 'event_waitlist_slot'
+	| 'follow_request'
 	| 'reaction'
 	| 'comment_like'
 	| 'mention';
@@ -603,7 +604,11 @@ export type NotificationKind =
 // it server-side). The column is grantable to anon/authenticated; if
 // a future client surface ever needs to render the point (a map pin
 // on a club's page), reintroduce it here + extend CLUB_SELECT_COLS.
-export type Club = Omit<ClubRow, 'join_policy' | 'invite_token' | 'location_point'> & {
+//
+// `strava_club_id` (migration 20270819001953) is granted but no club surface
+// reads it: the Strava link is listed and written through the `strava-clubs`
+// Edge Function (decisions § 1959), so the browse and member reads leave it out.
+export type Club = Omit<ClubRow, 'join_policy' | 'invite_token' | 'location_point' | 'strava_club_id'> & {
 	join_policy: JoinPolicy;
 };
 // `activity_waiver_ack_at` is omitted for the same reason `Route` omits

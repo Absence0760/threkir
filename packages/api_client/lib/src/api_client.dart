@@ -2823,16 +2823,114 @@ class ApiClient {
   // Methods are intentionally narrow wrappers over the row classes;
   // any cross-shape (FeedEntry, ProfileSummary) lives in core_models.
 
-  /// Follow `targetUserId`. No-op if already following (composite-PK
-  /// duplicate is swallowed by the unique-violation guard).
-  Future<void> followUser(String targetUserId) async {
+  /// Follow `targetUserId`, or ask to when their profile is private
+  /// (decisions § 1967). One RPC, so the client never reads the target's
+  /// privacy and races its change. Mirrors web `followUser`.
+  Future<FollowOutcome> followUser(String targetUserId) async {
     final viewerId = _client.auth.currentUser?.id;
     if (viewerId == null) throw Exception('Not authenticated');
-    if (viewerId == targetUserId) return;
-    await _client.from(UserFollowRow.table).insert({
-      UserFollowRow.colFollowerId: viewerId,
-      UserFollowRow.colFolloweeId: targetUserId,
-    });
+    if (viewerId == targetUserId) return FollowOutcome.following;
+    final result = await _client.rpc(
+      'request_follow',
+      params: {'p_target': targetUserId},
+    );
+    return result == 'requested'
+        ? FollowOutcome.requested
+        : FollowOutcome.following;
+  }
+
+  /// Withdraw the viewer's pending request to follow `targetUserId`.
+  Future<void> cancelFollowRequest(String targetUserId) async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) throw StateError('not signed in');
+    await _client
+        .from(FollowRequestRow.table)
+        .delete()
+        .eq(FollowRequestRow.colRequesterId, viewerId)
+        .eq(FollowRequestRow.colTargetId, targetUserId);
+  }
+
+  /// Requests to follow the signed-in user, newest first. Mirrors web
+  /// `fetchIncomingFollowRequests`.
+  Future<List<IncomingFollowRequest>> fetchIncomingFollowRequests() async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) return const [];
+    final rows = await _client
+        .from(FollowRequestRow.table)
+        .select()
+        .eq(FollowRequestRow.colTargetId, viewerId)
+        .order(FollowRequestRow.colRequestedAt, ascending: false)
+        .order(FollowRequestRow.colRequesterId, ascending: false)
+        .limit(200);
+    final requests = (rows as List)
+        .map((r) => FollowRequestRow.fromJson(r as Map<String, dynamic>))
+        .toList();
+    if (requests.isEmpty) return const [];
+    final profiles = await _client
+        .from(UserProfileRow.table)
+        .select(
+            '${UserProfileRow.colId}, ${UserProfileRow.colDisplayName}, ${UserProfileRow.colAvatarUrl}')
+        .inFilter(UserProfileRow.colId,
+            requests.map((r) => r.requesterId).toList());
+    final byId = <String, PublicProfile>{
+      for (final p in profiles as List)
+        (p as Map<String, dynamic>)[UserProfileRow.colId] as String:
+            PublicProfile.fromJson(p),
+    };
+    return [
+      for (final r in requests)
+        if (byId[r.requesterId] != null)
+          IncomingFollowRequest(
+            requester: byId[r.requesterId]!,
+            requestedAt: r.requestedAt,
+          ),
+    ];
+  }
+
+  Future<void> approveFollowRequest(String requesterId) async {
+    await _client.rpc(
+      'approve_follow_request',
+      params: {'p_requester': requesterId},
+    );
+  }
+
+  /// A decline is the target deleting the request under RLS. Zero rows
+  /// deleted means it was already gone or refused, and is thrown.
+  Future<void> declineFollowRequest(String requesterId) async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) throw StateError('not signed in');
+    final List<dynamic> rows = await _client
+        .from(FollowRequestRow.table)
+        .delete()
+        .eq(FollowRequestRow.colRequesterId, requesterId)
+        .eq(FollowRequestRow.colTargetId, viewerId)
+        .select(FollowRequestRow.colRequesterId);
+    if (rows.isEmpty) throw StateError('follow request not declined');
+  }
+
+  /// The signed-in user's own private-profile switch.
+  Future<bool> fetchMyProfilePrivate() async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) return false;
+    final row = await _client
+        .from(UserProfileRow.table)
+        .select(UserProfileRow.colProfilePrivate)
+        .eq(UserProfileRow.colId, viewerId)
+        .maybeSingle();
+    return row?[UserProfileRow.colProfilePrivate] == true;
+  }
+
+  /// Turning it off approves every pending request in the same statement
+  /// (a trigger). Zero rows updated means RLS refused, and is thrown.
+  Future<void> setProfilePrivate(bool value) async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) throw StateError('not signed in');
+    final List<dynamic> rows = await _client
+        .from(UserProfileRow.table)
+        .update({UserProfileRow.colProfilePrivate: value})
+        .eq(UserProfileRow.colId, viewerId)
+        .select(UserProfileRow.colId);
+    if (rows.isEmpty) throw StateError('profile privacy not updated');
   }
 
   /// Stop following `targetUserId`.
@@ -4429,6 +4527,58 @@ class ApiClient {
     }
   }
 
+  /// Opt one of the viewer's run photos into the public race-listing page
+  /// of the race its run is linked to, or withdraw it. Owner-only and
+  /// run-photo-only, enforced by the RPC; the column refuses direct writes.
+  /// The page also requires the run to be public, so a private run's opted-in
+  /// photo stays off it until the run is made public (decisions § 1961).
+  Future<void> setRunPhotoRaceGallery(
+    String photoId, {
+    required bool shared,
+  }) async {
+    await _client.rpc(
+      'set_run_photo_race_gallery',
+      params: {'p_photo_id': photoId, 'p_shared': shared},
+    );
+  }
+
+  /// What the owner's "Show on race page" toggle needs to know about a run:
+  /// whether it is public (the page shows only public runs' photos) and the
+  /// race listing it is linked to. Null when RLS returns no row.
+  Future<({bool isPublic, String? raceListingId})?> fetchRunRaceGalleryContext(
+    String runId,
+  ) async {
+    final row = await _client
+        .from(RunRow.table)
+        .select('${RunRow.colIsPublic}, ${RunRow.colRaceListingId}')
+        .eq(RunRow.colId, runId)
+        .maybeSingle();
+    if (row == null) return null;
+    return (
+      isPublic: row[RunRow.colIsPublic] == true,
+      raceListingId: row[RunRow.colRaceListingId] as String?,
+    );
+  }
+
+  /// Runners' opted-in photos for a public race listing, newest first. The
+  /// RPC returns no run, owner, route or track — only what the public page
+  /// shows — and caps [limit] server-side. Mirrors web
+  /// `fetchRaceListingPhotos`; throws on a load failure.
+  Future<List<RaceListingPhotoView>> fetchRaceListingPhotos(
+    String listingId, {
+    int limit = 24,
+  }) async {
+    final res = await _client.rpc(
+      'race_listing_photos',
+      params: {'p_listing_id': listingId, 'p_limit': limit},
+      get: true,
+    );
+    return [
+      for (final r in (res as List).cast<Map<String, dynamic>>())
+        RaceListingPhotoView.fromJson(r),
+    ];
+  }
+
   // ──────────────────── Route photos (backlog C1) ────────────────────
   //
   // The run_photos capability applied to routes. Metadata in
@@ -6001,26 +6151,32 @@ class ApiClient {
   // consumer (feed, profile, run-detail comments) sees the same
   // typed view.
 
-  /// Profile + follower / following counts + whether the current
-  /// viewer follows. Three reads in flight in parallel; null when
-  /// the user doesn't exist or RLS hides the row.
+  /// Profile + follower / following counts + the viewer's follow and
+  /// request state. The counts come from `profile_follow_summary` because on
+  /// a private profile the follow rows behind them are closed to a viewer who
+  /// is not an approved follower (decisions § 1967). Null when the user
+  /// doesn't exist or RLS hides the row. Mirrors web `fetchPublicProfile`.
   Future<ProfileSummary?> fetchProfileSummary(String userId) async {
-    final results = await Future.wait([
-      fetchPublicProfile(userId),
-      fetchFollowCounts(userId),
-      viewerFollows(userId),
-    ]);
-    final profile = results[0] as UserProfileRow?;
+    final profileF = fetchPublicProfile(userId);
+    final List<dynamic> rows = await _client.rpc(
+      'profile_follow_summary',
+      params: {'p_user_id': userId},
+      get: true,
+    );
+    final profile = await profileF;
     if (profile == null) return null;
-    final counts = results[1] as ({int followers, int following});
-    final follows = results[2] as bool;
+    if (rows.isEmpty) return null;
+    final s = rows.first as Map<String, dynamic>;
     return ProfileSummary(
       id: profile.id,
       displayName: profile.displayName,
       avatarUrl: profile.avatarUrl,
-      followerCount: counts.followers,
-      followingCount: counts.following,
-      viewerFollows: follows,
+      followerCount: (s['follower_count'] as num?)?.toInt() ?? 0,
+      followingCount: (s['following_count'] as num?)?.toInt() ?? 0,
+      viewerFollows: s['viewer_follows'] == true,
+      profilePrivate: s['profile_private'] == true,
+      viewerRequested: s['viewer_requested'] == true,
+      contentVisible: s['content_visible'] == true,
     );
   }
 
@@ -6909,15 +7065,24 @@ class ApiClient {
   /// the recorder's save flow.
   ///
   /// Idempotent — repeated calls (e.g. user re-taps "Share live link")
-  /// are no-ops via ignoreDuplicates. The row is created with
+  /// are no-ops via ignoreDuplicates. By default the row is created with
   /// `is_public = true` so anyone with the share URL can watch; the
   /// final `saveRun` upsert will overwrite the placeholder fields, so
   /// callers that want the finished run to stay public must re-assert
   /// it via [makeRunPublic] after save.
+  ///
+  /// With [safetyAudience] the stub is created private and marked
+  /// `safety_audience`: only the runner's confirmed safety contacts can
+  /// follow it, through the per-contact link an overdue or off-route alert
+  /// carries (decisions § 1964). Ask [safetyAudienceEnabled] first — with
+  /// the server gate closed the mark is stored false and the stub is simply
+  /// private. Because the upsert ignores duplicates, widening an existing
+  /// safety stub to a public share is [makeRunPublic]'s job.
   Future<void> beginLiveBroadcast({
     required String runId,
     required DateTime startedAt,
     String activityType = 'run',
+    bool safetyAudience = false,
   }) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw Exception('Not authenticated');
@@ -6932,7 +7097,8 @@ class ApiClient {
         RunRow.colDurationS: 0,
         RunRow.colDistanceM: 0,
         RunRow.colSource: 'app',
-        RunRow.colIsPublic: true,
+        RunRow.colIsPublic: !safetyAudience,
+        if (safetyAudience) RunRow.colSafetyAudience: true,
         RunRow.colActivityType: activityType,
         RunRow.colMetadata: {
           'in_progress': true,
@@ -6940,6 +7106,21 @@ class ApiClient {
       },
       ignoreDuplicates: true,
     );
+  }
+
+  /// Whether a live share may run on the safety-contacts-only audience (the
+  /// server's `safety_audience` gate, decisions § 1964). Fail closed: any read
+  /// failure is "off", and the caller falls back to the public live share it
+  /// had before — never to a private stub nobody can follow.
+  Future<bool> safetyAudienceEnabled() async {
+    try {
+      final result = await _client
+          .rpc('safety_audience_enabled', params: const {}, get: true);
+      return result == true;
+    } catch (e) {
+      debugPrint('safety_audience_enabled failed: $e');
+      return false;
+    }
   }
 
   /// Append one spectator ping for an in-progress run. Intended to be
@@ -8526,7 +8707,7 @@ class ApiClient {
     final data = await _client
         .from(RunRow.table)
         .select(
-            'id, started_at, distance_m, duration_s, is_public, source, route_id, activity_type, metadata')
+            'id, started_at, distance_m, duration_s, is_public, source, route_id, activity_type, metadata, track_url')
         .eq(RunRow.colUserId, athleteId)
         .order(RunRow.colStartedAt, ascending: false)
         .limit(limit);
@@ -8541,8 +8722,26 @@ class ApiClient {
         routeId: r['route_id'] as String?,
         activityType: (r['activity_type'] as String?) ?? 'run',
         metadata: r['metadata'] as Map<String, dynamic>?,
+        trackUrl: r['track_url'] as String?,
       );
     }).toList();
+  }
+
+  /// Whether a linked coach is served the athlete's clipped run map (the
+  /// server's `coach_run_map` flag, decisions § 1968). Mirrors web
+  /// `coachRunMapEnabled`. Fail-closed: any failure reads as off.
+  Future<bool> coachRunMapEnabled() async {
+    try {
+      final result = await _client.rpc(
+        'coach_run_map_enabled',
+        params: const {},
+        get: true,
+      );
+      return result == true;
+    } catch (e) {
+      debugPrint('coachRunMapEnabled failed: $e');
+      return false;
+    }
   }
 
   /// The athlete's active training plan + its weeks/workouts for the coach
@@ -8974,6 +9173,34 @@ class EventPhotoView {
       );
 }
 
+/// One runner's photo on a public race-listing page — the mobile mirror of
+/// web's `RaceListingPhoto`, before signing. Carries no run, owner, route or
+/// track: the page is public and indexed.
+class RaceListingPhotoView {
+  final String id;
+  final String thumb512Path;
+  final String? caption;
+  final DateTime createdAt;
+  final String? displayName;
+
+  const RaceListingPhotoView({
+    required this.id,
+    required this.thumb512Path,
+    this.caption,
+    required this.createdAt,
+    this.displayName,
+  });
+
+  factory RaceListingPhotoView.fromJson(Map<String, dynamic> json) =>
+      RaceListingPhotoView(
+        id: json['id'] as String,
+        thumb512Path: json['thumb_512_path'] as String,
+        caption: json['caption'] as String?,
+        createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
+        displayName: json['display_name'] as String?,
+      );
+}
+
 /// One athlete on a coach's roster, or one coach on an athlete's list — the
 /// mirror of web's `CoachAthleteLink`. `userId` is whichever party is *not*
 /// the viewer (the athlete for a coach's roster, the coach for an athlete's
@@ -9058,6 +9285,14 @@ class AthleteRunSummary {
   final String activityType;
   final Map<String, dynamic>? metadata;
 
+  /// The run's Storage path, kept only as the preview cache key and as the
+  /// fact that a track exists: the coach's map is served clipped by
+  /// `clip-public-track` (decisions § 1968), and the Storage policy keeps
+  /// the bytes owner-only.
+  final String? trackUrl;
+
+  bool get hasTrack => trackUrl != null;
+
   const AthleteRunSummary({
     required this.id,
     required this.startedAt,
@@ -9068,6 +9303,7 @@ class AthleteRunSummary {
     required this.routeId,
     required this.activityType,
     required this.metadata,
+    this.trackUrl,
   });
 }
 
@@ -9290,10 +9526,15 @@ class ActivityRow {
 /// followers level the owner chose on another device. A `false` is therefore
 /// dropped too — it is the column default, never a choice an upsert makes.
 /// Narrowing a run goes through [ApiClient.setRunAudience].
+///
+/// `safety_audience` is never an upsert's to write, in either direction: only
+/// [ApiClient.beginLiveBroadcast] sets it, on the live stub, and the finishing
+/// save of that same run must not flip it mid-escalation (decisions § 1964).
 Map<String, dynamic> _runUpsertBody(Map<String, dynamic> json) {
   final body = Map<String, dynamic>.from(json)..removeWhere((k, v) => v == null);
   if (body[RunRow.colFollowersOnly] == false) {
     body.remove(RunRow.colFollowersOnly);
   }
+  body.remove(RunRow.colSafetyAudience);
   return body;
 }

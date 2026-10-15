@@ -40,6 +40,9 @@ const LISTED = {
 
 test.describe('Your Strava clubs — unconfigured build', () => {
 	test.use({ storageState: USER_A.storageStatePath });
+	test.beforeEach(async () => {
+		await resetRateLimit(USER_A.id, 'create_club');
+	});
 
 	test('My clubs never asks Strava, even for a connected runner', async ({ page, mockRoute }) => {
 		await mockRoute(
@@ -78,8 +81,6 @@ test.describe('Your Strava clubs — unconfigured build', () => {
 				body: JSON.stringify({ type: 'FeatureCollection', features: [] }),
 			}),
 		);
-		await resetRateLimit(USER_A.id, 'create_club');
-
 		const name = `Strava Only Striders ${Date.now()}`;
 		const params = new URLSearchParams({ name, location: 'Leeds, United Kingdom', strava_club: '101' });
 		await page.goto(`/clubs/new?${params.toString()}`);

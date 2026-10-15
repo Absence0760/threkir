@@ -1631,6 +1631,24 @@ export type Database = {
         }
         Relationships: []
       }
+      follow_requests: {
+        Row: {
+          requested_at: string
+          requester_id: string
+          target_id: string
+        }
+        Insert: {
+          requested_at?: string
+          requester_id: string
+          target_id: string
+        }
+        Update: {
+          requested_at?: string
+          requester_id?: string
+          target_id?: string
+        }
+        Relationships: []
+      }
       food_log: {
         Row: {
           calories: number | null
@@ -4055,6 +4073,7 @@ export type Database = {
           id: string
           owner_id: string
           position_idx: number
+          race_gallery: boolean
           run_id: string | null
           storage_path: string
           thumb_512_path: string | null
@@ -4069,6 +4088,7 @@ export type Database = {
           id?: string
           owner_id: string
           position_idx?: number
+          race_gallery?: boolean
           run_id?: string | null
           storage_path: string
           thumb_512_path?: string | null
@@ -4083,6 +4103,7 @@ export type Database = {
           id?: string
           owner_id?: string
           position_idx?: number
+          race_gallery?: boolean
           run_id?: string | null
           storage_path?: string
           thumb_512_path?: string | null
@@ -4229,6 +4250,7 @@ export type Database = {
           metadata: Json | null
           race_listing_id: string | null
           route_id: string | null
+          safety_audience: boolean
           source: string
           started_at: string
           track_url: string | null
@@ -4256,6 +4278,7 @@ export type Database = {
           metadata?: Json | null
           race_listing_id?: string | null
           route_id?: string | null
+          safety_audience?: boolean
           source: string
           started_at: string
           track_url?: string | null
@@ -4283,6 +4306,7 @@ export type Database = {
           metadata?: Json | null
           race_listing_id?: string | null
           route_id?: string | null
+          safety_audience?: boolean
           source?: string
           started_at?: string
           track_url?: string | null
@@ -4896,6 +4920,7 @@ export type Database = {
           id: string
           onboarded_at: string | null
           parkrun_number: string | null
+          profile_private: boolean
           preferred_unit: string | null
           shadow_hidden: boolean
           subscription_at: string | null
@@ -4919,6 +4944,7 @@ export type Database = {
           id: string
           onboarded_at?: string | null
           parkrun_number?: string | null
+          profile_private?: boolean
           preferred_unit?: string | null
           shadow_hidden?: boolean
           subscription_at?: string | null
@@ -4942,6 +4968,7 @@ export type Database = {
           id?: string
           onboarded_at?: string | null
           parkrun_number?: string | null
+          profile_private?: boolean
           preferred_unit?: string | null
           shadow_hidden?: boolean
           subscription_at?: string | null
@@ -5002,6 +5029,15 @@ export type Database = {
           kind: string | null
           started_at: string | null
           summary: Json | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      coached_runs: {
+        Row: {
+          id: string | null
+          is_public: boolean | null
+          metadata: Json | null
           user_id: string | null
         }
         Relationships: []
@@ -5746,6 +5782,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      approve_follow_request: {
+        Args: { p_requester: string }
+        Returns: undefined
+      }
       assign_plan_to_athlete: {
         Args: {
           p_athlete_id: string
@@ -5939,6 +5979,7 @@ export type Database = {
           runs_7d: number
         }[]
       }
+      coach_run_map_enabled: { Args: never; Returns: boolean }
       confirm_age_and_terms: {
         Args: { p_preferred_unit?: string }
         Returns: undefined
@@ -6584,6 +6625,17 @@ export type Database = {
         Args: { lat: number; lng: number; zones_json: Json }
         Returns: boolean
       }
+      profile_follow_summary: {
+        Args: { p_user_id: string }
+        Returns: {
+          content_visible: boolean
+          follower_count: number
+          following_count: number
+          profile_private: boolean
+          viewer_follows: boolean
+          viewer_requested: boolean
+        }[]
+      }
       prune_sign_in_devices: { Args: never; Returns: number }
       public_profile_by_id: {
         Args: { p_id: string }
@@ -6623,6 +6675,16 @@ export type Database = {
       publish_gym_routine_as_template: {
         Args: { p_club_id: string; p_routine_id: string }
         Returns: string
+      }
+      race_listing_photos: {
+        Args: { p_limit?: number; p_listing_id: string }
+        Returns: {
+          caption: string
+          created_at: string
+          display_name: string
+          id: string
+          thumb_512_path: string
+        }[]
       }
       race_pending_dnf_count: {
         Args: { p_event_id: string; p_instance_start: string }
@@ -6679,6 +6741,7 @@ export type Database = {
         Args: { p_run_id: string }
         Returns: undefined
       }
+      request_follow: { Args: { p_target: string }; Returns: string }
       resolve_target_reports: {
         Args: {
           p_resolution?: string
@@ -6816,6 +6879,28 @@ export type Database = {
       runs_track_object_version: {
         Args: { p_track_url: string }
         Returns: string
+      }
+      safety_audience_enabled: { Args: never; Returns: boolean }
+      safety_live_pings: {
+        Args: { p_run_id: string; p_since?: string; p_token: string }
+        Returns: {
+          at: string
+          coarse: boolean
+          distance_m: number
+          elapsed_s: number
+          lat: number
+          lng: number
+        }[]
+      }
+      safety_live_run: {
+        Args: { p_run_id: string; p_token: string }
+        Returns: {
+          distance_m: number
+          duration_s: number
+          owner_name: string
+          route_id: string
+          started_at: string
+        }[]
       }
       search_clubs: {
         Args: {
@@ -7006,6 +7091,10 @@ export type Database = {
       set_run_expected_return: {
         Args: { p_expected_return_at: string; p_run_id: string }
         Returns: boolean
+      }
+      set_run_photo_race_gallery: {
+        Args: { p_photo_id: string; p_shared: boolean }
+        Returns: undefined
       }
       set_safety_sms_opt_in: {
         Args: { p_id: string; p_opt_in: boolean }

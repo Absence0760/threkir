@@ -24,6 +24,15 @@
 		DEFAULT_FLUID_PER_HOUR_ML,
 		HEAT_FLUID_FACTOR
 	} from '#lib/routes/fuel_plan.ts';
+	import {
+		FUEL_MAX_CARBS_PER_HOUR_G,
+		FUEL_MAX_FLUID_PER_HOUR_ML,
+		parseFuelRate,
+		resolveFluidRate
+	} from '#lib/routes/fuel_params.ts';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { fetchLatestWeightKg } from '#lib/core/data.ts';
+	import { healthUseWeightKg } from '#lib/core/health_consent.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { loadSettings, effective } from '#lib/settings/settings.ts';
 	import { fetchElevations } from '#lib/routes/elevation.ts';
@@ -41,6 +50,9 @@
 	// falling back to these prefs, then the fuel_plan.ts constants when unset.
 	let carbsPrefG = $state(DEFAULT_CARBS_PER_HOUR_G);
 	let fluidPrefMl = $state(DEFAULT_FLUID_PER_HOUR_ML);
+	// A weight the Art 9 gate lets the fluid rate use, or null (decisions
+	// § 1976): the runner's own latest body-metrics weight, only under consent.
+	let consentedWeightKg = $state<number | null>(null);
 	// Open-Meteo elevations fetched on demand when the route lacks stored ele.
 	let fetchedEle = $state<number[] | null>(null);
 	let fetchingEle = $state(false);
@@ -77,7 +89,12 @@
 		await auth.ready();
 		if (!auth.user) return;
 		try {
-			const settings = await loadSettings(auth.user.id);
+			const [settings, weight, profileRes] = await Promise.all([
+				loadSettings(auth.user.id),
+				fetchLatestWeightKg(),
+				supabase.rpc('get_my_profile', undefined, { get: true }).maybeSingle()
+			]);
+			consentedWeightKg = healthUseWeightKg(profileRes.data, weight);
 			carbsPrefG = effective<number>(settings, 'carbs_per_hour', DEFAULT_CARBS_PER_HOUR_G) ?? DEFAULT_CARBS_PER_HOUR_G;
 			fluidPrefMl = effective<number>(settings, 'fluid_per_hour', DEFAULT_FLUID_PER_HOUR_ML) ?? DEFAULT_FLUID_PER_HOUR_ML;
 		} catch {
@@ -108,19 +125,27 @@
 	// `?heat=1` bumps fluid by the heat factor.
 	let fuelOn = $derived(params.get('fuel') === '1');
 	let heatOn = $derived(params.get('heat') === '1');
+	// `?bw=1` asks for the weight-based fluid rate; it applies only when a
+	// consented weight is on record, otherwise the flat rate stands.
+	let weightOn = $derived(params.get('bw') === '1');
 
 	// Effective intake rates: a per-page ?carbs= / ?fluid= override wins, then
-	// the user's settings pref, then the fuel_plan.ts default.
-	let carbsPerHourG = $derived.by(() => {
-		const raw = params.get('carbs');
-		const n = raw ? Number(raw) : NaN;
-		return Number.isFinite(n) && n >= 0 ? n : carbsPrefG;
-	});
-	let fluidPerHourMl = $derived.by(() => {
-		const raw = params.get('fluid');
-		const n = raw ? Number(raw) : NaN;
-		return Number.isFinite(n) && n >= 0 ? n : fluidPrefMl;
-	});
+	// the user's settings pref, then the fuel_plan.ts default. The override is
+	// a pasted or Coach-written link, so it goes through parseFuelRate and an
+	// out-of-range value falls back to the pref rather than reaching the plan.
+	let carbsPerHourG = $derived(
+		parseFuelRate(params.get('carbs'), FUEL_MAX_CARBS_PER_HOUR_G) ?? carbsPrefG
+	);
+	let fluidRate = $derived(
+		resolveFluidRate({
+			useWeight: weightOn,
+			weightKg: consentedWeightKg,
+			linkValue: parseFuelRate(params.get('fluid'), FUEL_MAX_FLUID_PER_HOUR_ML),
+			pref: fluidPrefMl,
+			fallback: DEFAULT_FLUID_PER_HOUR_ML
+		})
+	);
+	let fluidPerHourMl = $derived(fluidRate.value);
 
 	function updateParam(key: string, value: string | null) {
 		const url = new URL(page.url.href);
@@ -442,8 +467,29 @@
 					>
 						{m('roadbook.heat')}
 					</button>
+					<button
+						class:active={weightOn && consentedWeightKg != null}
+						aria-pressed={weightOn && consentedWeightKg != null}
+						disabled={consentedWeightKg == null}
+						aria-describedby="roadbook-weight-hint"
+						data-testid="roadbook-fuel-weight"
+						onclick={() => updateParam('bw', weightOn ? null : '1')}
+					>
+						{m('fuelPlan.weightToggle')}
+					</button>
 				{/if}
 			</div>
+			{#if fuelOn}
+				<p class="weight-hint" id="roadbook-weight-hint" data-testid="roadbook-weight-hint">
+					{#if consentedWeightKg == null}
+						{m('fuelPlan.weightUnavailable')}
+					{:else if fluidRate.source === 'fromWeight'}
+						{m('fuelPlan.weightUsing', { ml: String(fluidRate.value) })}
+					{:else}
+						{m('fuelPlan.weightHint')}
+					{/if}
+				</p>
+			{/if}
 		</section>
 
 		{#if markers.length === 0}
@@ -711,6 +757,13 @@
 		margin: 0 4px 2px 0;
 		font-size: 0.78rem;
 	}
+	.weight-hint {
+		flex-basis: 100%;
+		margin: 0;
+		font-size: 0.85rem;
+		color: var(--color-text-secondary);
+	}
+
 	.fuel-cell {
 		white-space: nowrap;
 	}

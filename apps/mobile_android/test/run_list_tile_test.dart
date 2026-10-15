@@ -28,7 +28,7 @@ Run _run({Map<String, dynamic>? metadata, List<Waypoint>? track}) => Run(
     );
 
 RunRow _row({dynamic metadata, String activityType = 'run', double? elevationGainM}) =>
-    RunRow(
+    RunRow(safetyAudience: false, 
       id: 'run-1',
       userId: 'owner-1',
       startedAt: _startedAt,

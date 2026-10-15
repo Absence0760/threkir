@@ -254,3 +254,14 @@ Web `apps/web/src/lib/i18n/locales/{en,de,es,fr,ja,pt-BR}.ts`; mobile `apps/mobi
 10. Add all i18n keys (every web locale + seven ARBs).
 11. Docs sweep (roadmap #10, parity, integrations, metadata.md writer flip, api_database, decisions ADR, CLAUDE.md parity entry, e2e dev accounts).
 12. Run `/check` before each commit; keep RunSignUp fail-closed (no key in CI/dev).
+
+## Runners' photos on the race page (shipped 2026-10-15)
+
+Issue #1150 item 4, [decisions § 1961](../architecture/decisions.md). The public `/share/race/[id]` page shows a **Runners' photos** grid, hidden when empty. A photo is on it only when all of these hold, checked at read time by `race_listing_photos(p_listing_id, p_limit default 24, capped at 60)`:
+
+- its owner ticked **Show on race page** on that photo (`run_photos.race_gallery`, written only through `set_run_photo_race_gallery`; never at upload, never on a run-less host photo);
+- its run is public and `runs.race_listing_id` is this listing;
+- `thumb_512_path` is set, so the `photo_process` worker has stripped EXIF;
+- it is not hidden, the owner's profile is not shadow-hidden, and viewer and uploader have not blocked each other.
+
+The page gets the thumbnail, caption, time and the uploader's display name, never a run id, owner id or track. The gallery loads in the browser, not in the share-entity Lambda, so none of it reaches the page head or a link unfurl. Making the run private or unlinking the race removes the photo immediately; the owner can untick it at any time. The toggle lives on the owner's run photos on web `/runs/[id]` and on mobile run detail; it is shown only when the run has a race link, and enabling is disabled on a private run. Tests: `apps/backend/supabase/tests/race_listing_photos_test.sql`, `apps/web/tests-e2e/races/race-listing-photos.spec.ts`, `apps/mobile_android/test/run_photos_race_gallery_test.dart`, `packages/api_client/test/race_listing_photos_rpc_test.dart`.

@@ -33,7 +33,7 @@ class _FakeApi extends ApiClient {
       const [];
 }
 
-RunRow _run() => RunRow(
+RunRow _run() => RunRow(safetyAudience: false, 
       id: 'r1',
       userId: 'u1',
       startedAt: DateTime(2026, 6, 1, 8),
@@ -47,7 +47,7 @@ RunRow _run() => RunRow(
 
 /// A 100-hour, 240-mile ultra: the widest the stat cells ever get
 /// ("104:32:11" / "386.24"), which is what overflowed the row.
-RunRow _ultraRun() => RunRow(
+RunRow _ultraRun() => RunRow(safetyAudience: false, 
       id: 'r1',
       userId: 'u1',
       startedAt: DateTime(2026, 6, 1, 8),
@@ -61,7 +61,7 @@ RunRow _ultraRun() => RunRow(
 
 /// The stub row `beginLiveBroadcast` upserts: 0 duration, 0 distance, public,
 /// never concluded.
-RunRow _liveStub() => RunRow(
+RunRow _liveStub() => RunRow(safetyAudience: false, 
       id: 'r1',
       userId: 'u1',
       startedAt: DateTime(2026, 6, 1, 8),
@@ -73,7 +73,7 @@ RunRow _liveStub() => RunRow(
       followersOnly: false,
     );
 
-UserProfileRow _author(String displayName) => UserProfileRow(
+UserProfileRow _author(String displayName) => UserProfileRow(profilePrivate: false, 
       id: 'u1',
       displayName: displayName,
       shadowHidden: false,
@@ -195,7 +195,7 @@ void main() {
     });
 
     test('concluded_at wins over a stale zero duration', () {
-      final concluded = RunRow(
+      final concluded = RunRow(safetyAudience: false, 
         id: 'r1',
         userId: 'u1',
         startedAt: DateTime(2026, 6, 1, 8),

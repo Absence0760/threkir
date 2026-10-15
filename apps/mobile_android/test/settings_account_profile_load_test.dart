@@ -46,7 +46,7 @@ class _ProfileApi extends ApiClient {
 }
 
 UserProfileRow _row(String id, String? name) =>
-    UserProfileRow(shadowHidden: false, id: id, displayName: name);
+    UserProfileRow(profilePrivate: false, shadowHidden: false, id: id, displayName: name);
 
 bool _supabaseReady = false;
 

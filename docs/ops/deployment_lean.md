@@ -55,6 +55,13 @@ Fully functional web launch with backups intact.
   the Coach's key and daily counter) stays unset until its decisions §12
   liability sign-off and the v3 AI-disclosure copy sign-off land; it is not a
   Pro storefront gate, and on its own it changes nothing without the Coach flag.
+  `PUBLIC_COACH_FUEL_ENABLED` + the coach Lambda's `COACH_FUEL_ENABLED` (the
+  Coach's fuelling handoff to `/nutrition/fuel`, decisions § 1975) stay unset
+  until the owner + counsel sign-off in `race_fueling_plan.md` lands; they add
+  no model call, only prompt text and a deterministic page.
+  `PUBLIC_AI_PLAN_EDIT_ENABLED` (Adjust with AI on `/plans/[id]`, same key and
+  counter) stays unset the same way until its decisions § 1979 sign-off and the
+  v4 disclosure copy sign-off land.
   `PUBLIC_PLATE_PHOTO_ENABLED` (the plate-photo logger on `/nutrition/log`, a
   Pro perk on the Coach's key) stays unset, with `PLATE_PHOTO_ENABLED` unset in
   the coach Lambda's sops file, until the counsel / CISO sign-off on the v5

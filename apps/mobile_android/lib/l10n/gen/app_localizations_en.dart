@@ -1122,6 +1122,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Start a live share automatically when a run starts on this phone. The in-progress run is viewable by anyone with the link; when the run ends it returns to your default run visibility.';
 
   @override
+  String get safetyAutoLiveShareSafetySubtitle =>
+      'Start a live share automatically when a run starts on this phone. It is never public: only your confirmed safety contacts can follow it, through the link an overdue or off-route alert sends them. On by default once an alert is set.';
+
+  @override
   String get safetyOffRouteTitle => 'Off-route alert';
 
   @override
@@ -1135,6 +1139,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get runAutoLiveShareStarted =>
       'Live sharing is on — use Share live link to send it';
+
+  @override
+  String get runSafetyLiveShareStarted =>
+      'Safety share is on — only your safety contacts can follow, and only once an alert fires';
 
   @override
   String get runSafetyNudgeSolo =>
@@ -6554,6 +6562,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'For the plate-photo logger: the photo of your meal you choose, sent only to estimate what is on the plate. Location and camera details are removed before it leaves, Threkir does not keep the photo, and nothing is logged until you review and save it.';
 
   @override
+  String get coachConsentBulletPlanEdit =>
+      'For AI plan edits: the upcoming workouts in the plan you are changing (dates, types and distances) and the change you type, used only to suggest edits you review before anything is saved — the AI cannot add workouts or set paces.';
+
+  @override
   String get coachConsentProcessing =>
       'Anthropic processes the data on Threkir\'s behalf under their data-processing terms; they do not train their models on Threkir customer data by default. Full details — including transfer mechanism, retention, and your withdrawal rights — are in our privacy policy.';
 
@@ -6940,7 +6952,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsAccountAiConsentUpdateSubtitle =>
-      'The disclosure now covers more features. Review and accept it to use the AI route and plan assistants.';
+      'The disclosure now covers more features. Review and accept it to use every AI feature it describes.';
 
   @override
   String get settingsAccountAiConsentGrantTitle => 'Review the AI disclosure';
@@ -12703,6 +12715,22 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get roadbookWeightToggle => 'Fluid from body weight';
+
+  @override
+  String get roadbookWeightHint =>
+      'Scales the fluid rate by your body weight, within the 400–800 ml per hour range sports-medicine guidance gives for running. A planning baseline, not a sweat test.';
+
+  @override
+  String roadbookWeightUsing(String ml) {
+    return 'Fluid: $ml ml per hour from your body weight.';
+  }
+
+  @override
+  String get roadbookWeightUnavailable =>
+      'To base fluid on your body weight, add your weight under Body metrics and give health-data consent there.';
+
+  @override
   String get roadbookColTarget => 'Target';
 
   @override
@@ -15886,4 +15914,102 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get routeDetailSendDmDone => 'Done';
+
+  @override
+  String get runPhotosRaceGalleryShow => 'Show on race page';
+
+  @override
+  String get runPhotosRaceGalleryHide => 'Remove from race page';
+
+  @override
+  String get runPhotosRaceGalleryHint =>
+      'Tap the medal on a photo to show it on this race\'s public page. Anyone can see that page, and you can remove a photo at any time.';
+
+  @override
+  String get runPhotosRaceGalleryPrivate =>
+      'Make this run public to share its photos on the race page.';
+
+  @override
+  String runPhotosRaceGalleryError(String error) {
+    return 'Could not update the race page: $error';
+  }
+
+  @override
+  String get profileRequestToFollow => 'Request to follow';
+
+  @override
+  String get profileRequested => 'Requested';
+
+  @override
+  String get profileRequestSent => 'Follow request sent';
+
+  @override
+  String get profileRequestWithdrawn => 'Follow request withdrawn';
+
+  @override
+  String get profilePrivateTitle => 'This profile is private';
+
+  @override
+  String profilePrivateBody(String name) {
+    return 'Follow $name to see their runs and who they follow. They approve each request.';
+  }
+
+  @override
+  String get profilePrivateRequestedBody =>
+      'Your request is waiting for approval. You\'ll see their runs once it\'s accepted.';
+
+  @override
+  String profileNotifFollowRequest(String name) {
+    return '$name asked to follow you';
+  }
+
+  @override
+  String get prefsPrivateProfile => 'Private profile';
+
+  @override
+  String get prefsPrivateProfileSubtitle =>
+      'Only followers you approve see your runs, activities and follower lists. People can still find you by name and ask to follow.';
+
+  @override
+  String get prefsPrivateProfileFailed =>
+      'Couldn\'t update your profile privacy.';
+
+  @override
+  String get followRequestsTitle => 'Follow requests';
+
+  @override
+  String get followRequestsEmptyTitle => 'No pending requests';
+
+  @override
+  String get followRequestsEmptyBody =>
+      'When someone asks to follow your private profile, they\'ll show up here.';
+
+  @override
+  String get followRequestsApprove => 'Approve';
+
+  @override
+  String get followRequestsDecline => 'Decline';
+
+  @override
+  String followRequestsApproved(String name) {
+    return '$name can now see your profile';
+  }
+
+  @override
+  String get followRequestsDeclinedBanner => 'Request declined';
+
+  @override
+  String get followRequestsLoadError => 'Couldn\'t load follow requests.';
+
+  @override
+  String get followRequestsActionFailed => 'Couldn\'t update the request.';
+
+  @override
+  String get coachingAthleteMapsClippedNote =>
+      'Maps leave out the areas this athlete hides with privacy zones.';
+
+  @override
+  String coachingAthleteRunMapLabel(String date) {
+    return 'Map of the run on $date, with the athlete\'s privacy zones removed';
+  }
 }

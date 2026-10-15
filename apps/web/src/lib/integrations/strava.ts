@@ -12,6 +12,7 @@ import { PUBLIC_STRAVA_CLIENT_ID as PUBLIC_STRAVA_CLIENT_ID_ENV } from '$app/env
 import { supabase } from '../core/supabase';
 import { edgeFunctionErrorCode, edgeFunctionErrorMessage } from '../core/edge_function_error';
 import { markListsStale } from '../core/list_freshness';
+import { dbError } from '../core/supabase_error';
 import {
 	STRAVA_LOOKBACK_DEFAULT_DAYS,
 	parseStravaSyncResult,
@@ -198,6 +199,6 @@ export async function linkStravaClub(clubId: string, stravaClubId: number): Prom
 /// gated on the caller administering the Threkir club.
 export async function unlinkStravaClub(clubId: string): Promise<void> {
 	const { data, error: rpcError } = await supabase.rpc('unlink_club_strava', { p_club_id: clubId });
-	if (rpcError) throw rpcError;
+	if (rpcError) throw dbError(rpcError);
 	if (data !== true) throw new StravaClubLinkFailure('not_club_admin');
 }

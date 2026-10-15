@@ -28,7 +28,7 @@ class _FakeApi extends ApiClient {
       pings;
 }
 
-RunRow _liveRun() => RunRow(
+RunRow _liveRun() => RunRow(safetyAudience: false, 
   id: 'r1',
   userId: 'u1',
   startedAt: DateTime.now().toUtc().subtract(const Duration(minutes: 20)),

@@ -247,6 +247,30 @@ test('rejects a set PUBLIC_REVENUECAT_WEB_CHECKOUT_URL that is not a Web Purchas
 	}
 });
 
+test('the AI plan flag without the Coach flag passes with a notice that the box stays hidden', () => {
+	const r = checkProductionEnv({ ...RELEASE_BASE, PUBLIC_AI_PLAN_ENABLED: 'true' });
+	assert.equal(r.ok, true);
+	assert.equal(r.notices.length, 1);
+	assert.match(r.notices[0], /AI plan assistant stays hidden/);
+	assert.match(r.notices[0], /PUBLIC_COACH_ENABLED/);
+});
+
+test('the AI plan flag with the Coach flag, or off, adds no plan notice', () => {
+	for (const flags of [
+		{ PUBLIC_AI_PLAN_ENABLED: 'true', PUBLIC_COACH_ENABLED: 'true' },
+		{ PUBLIC_AI_PLAN_ENABLED: '', PUBLIC_COACH_ENABLED: 'true' },
+		{ PUBLIC_AI_PLAN_ENABLED: 'false' },
+	]) {
+		const r = checkProductionEnv({
+			...RELEASE_BASE,
+			PUBLIC_REVENUECAT_WEB_CHECKOUT_URL: 'https://pay.rev.cat/abc123',
+			...flags,
+		});
+		assert.equal(r.ok, true, JSON.stringify(flags));
+		assert.deepEqual(r.notices, [], JSON.stringify(flags));
+	}
+});
+
 test('CLI prints a ::notice:: for the app-only storefront and exits 0', () => {
 	const r = runScript({
 		...RELEASE_BASE,

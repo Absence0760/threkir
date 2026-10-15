@@ -164,6 +164,7 @@ unwired gate now fails in `src/lib/ci_workflow_guards.test.ts`. Setting one to
 |---|---|---|
 | `PUBLIC_COACH_ENABLED` | the AI coach (a Pro perk) | an Anthropic key on the coach Lambda |
 | `PUBLIC_ROUTE_GEN_ENABLED` | route generation (a Pro perk) | the graph-cycle sidecar deployed |
+| `PUBLIC_AI_PLAN_ENABLED` | the AI plan assistant box on `/plans/new` (also needs `PUBLIC_COACH_ENABLED`; not a Pro perk) | owner + counsel sign-off on superseding decisions §12, and sign-off on the v3 AI-disclosure copy |
 | `PUBLIC_GOOGLE_AUTH_ENABLED` | Google sign-in on `/login` | the Supabase `google` provider configured ([google_provisioning.md](../../docs/ops/google_provisioning.md)) |
 | `PUBLIC_OFF_ROUTE_ESCALATION_ENABLED` | off-route → auto-notify-contact | owner + CISO + counsel |
 | `PUBLIC_WEIGH_IN_ENABLED` | the Art 9 weigh-in / medical UI | owner + CISO + counsel |

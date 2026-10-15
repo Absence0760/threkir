@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { healthUseDob, healthUseDobState } from './health_consent';
+import { healthUseDob, healthUseDobState, healthUseWeightKg } from './health_consent';
 
 const CONSENTED = { date_of_birth: '1978-04-09', health_data_consent_at: '2026-08-01T09:00:00Z' };
 const NO_CONSENT = { date_of_birth: '1978-04-09', health_data_consent_at: null };
@@ -62,5 +62,18 @@ test('a row that is not an object grades absent', () => {
 	for (const row of ['1978-04-09', 42, true]) {
 		assert.equal(healthUseDobState(row), 'absent');
 		assert.equal(healthUseDob(row), null);
+	}
+});
+
+test('a weight is usable for a health inference only under the Art 9 stamp', () => {
+	assert.equal(healthUseWeightKg(CONSENTED, 72.5), 72.5);
+	assert.equal(healthUseWeightKg(NO_CONSENT, 72.5), null);
+	assert.equal(healthUseWeightKg(null, 72.5), null);
+	assert.equal(healthUseWeightKg({ health_data_consent_at: '' }, 72.5), null);
+});
+
+test('no usable weight on record yields none, consented or not', () => {
+	for (const w of [null, undefined, 0, -1, NaN, Infinity]) {
+		assert.equal(healthUseWeightKg(CONSENTED, w), null, String(w));
 	}
 });

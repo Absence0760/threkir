@@ -927,7 +927,7 @@ create table user_profiles (
   display_name             text,                                -- <= 60 chars (20270502_001) + rejects control chars (20270423_001)
   avatar_url               text,
   handle                   text,                                -- public @username (issue #465, 20270424000002); lowercase [a-z0-9_]{3,30}, case-insensitively unique, world-readable
-  parkrun_number           text,                                -- e.g. 'A123456'; owner-only (column-locked 20260707_001, read via get_my_profile); clients save it canonical (A + 1-12 digits); drawn as the parkrun barcode
+  parkrun_number           text,                                -- e.g. 'A123456'; owner-only (column-locked 20260707_001, read via get_my_profile); CHECK user_profiles_parkrun_number_format_chk = '^A[0-9]{1,12}$' (20270818000001/2), a BEFORE trigger canonicalises a normalisable write via private.normalize_parkrun_number; drawn as the parkrun barcode
   preferred_unit           text default 'km',                   -- 'km' | 'mi'
   subscription_tier        text default 'free',                 -- 'free' | 'pro' | 'lifetime' (world-readable)
   subscription_at          timestamptz,
@@ -2253,7 +2253,7 @@ Add `authenticated` to the revoke list when no client role should hold it at all
 trigger calls). 90 migrations write a function-level `from public, anon` revoke
 today (77 as `revoke execute`, 13 as `revoke all`); it is the house form for
 exactly this reason, and `check_migration_function_revoke_noop.mjs` is what
-keeps it — it replays all 535 migrations in version order and fails the PR on
+keeps it — it replays all 537 migrations in version order and fails the PR on
 any EXECUTE revoke that leaves the other channel at its image-dependent
 default, in either direction. **Those four figures are derived, not typed**: the
 guard prints them and `check_migration_function_revoke_noop.test.mjs` asserts

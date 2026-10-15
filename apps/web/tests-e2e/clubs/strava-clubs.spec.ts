@@ -13,11 +13,12 @@ import { USER_A } from '../fixtures/users';
  * integration row) and with `strava-clubs` answering as if it would happily
  * list clubs: a gate that read the integration row instead of the build would
  * render the section and spend a call. The section's own behaviour on a
- * configured build is pinned by the function's Deno tests and the pure
- * `strava_clubs.test.ts`; no lane builds with a Strava client id (followups).
+ * configured build — the list, the link picker, the undoable unlink and the
+ * set-up-then-link hand-off — is pinned by `configured/strava-clubs.spec.ts`,
+ * which only the configured lane (playwright.configured.config.ts) runs.
  *
- * If a lane ever does build with one, the first test fails by design — it is
- * then the wrong lane for it, not a broken gate.
+ * If this lane ever does build with an id, the first test fails by design —
+ * it is then the wrong lane for it, not a broken gate.
  */
 
 const LISTED = {

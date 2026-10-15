@@ -37,7 +37,8 @@
 		"test:e2e:livehub": "svelte-kit sync && playwright test --config=tests-e2e/playwright.livehub.config.ts",
 		"test:e2e:exporthub": "svelte-kit sync && playwright test --config=tests-e2e/playwright.exporthub.config.ts",
 		"test:e2e:sso": "svelte-kit sync && playwright test --config=tests-e2e/playwright.sso.config.ts",
-		"test:e2e:built": "svelte-kit sync && playwright test --config=tests-e2e/playwright.built.config.ts"
+		"test:e2e:built": "svelte-kit sync && playwright test --config=tests-e2e/playwright.built.config.ts",
+		"test:e2e:configured": "svelte-kit sync && playwright test --config=tests-e2e/playwright.configured.config.ts"
 	},
 	"devDependencies": {
 		"@playwright/test": "^1.64.0",

@@ -294,7 +294,7 @@ Until step 4 lands, treat the secret as compromised-if-logs-are: the channel is 
 Every deploy starts with a merge, so the merge gate is the first production
 control. Branch protection on `main` requires **exactly one status context**:
 `CI gate`, the aggregator job in `.github/workflows/ci.yml`. It waits on the
-other 37 jobs in that file and fails if any of them reports anything but
+other 39 jobs in that file and fails if any of them reports anything but
 success or skipped.
 
 `build-mobile-ios` joined the required set on 2026-09-20. It compiles

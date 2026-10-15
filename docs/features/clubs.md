@@ -41,7 +41,7 @@ Strava's API lists only the signed-in athlete's own clubs, and its terms allow s
 - **The link.** `clubs.strava_club_id` (migration `20270819001953`), unique where set, because a link is a claim. Clients cannot write it (the `clubs_freeze_managed_columns` trigger discards it); the only writer is the service-role-only `set_club_strava_link`, which the `strava-clubs` `link` action calls after asking Strava (`GET /clubs/{id}`) that the caller is a member and admin/owner of that club, and which itself re-checks that the caller owns or administers the Threkir club. A Strava club already linked elsewhere answers "already linked". Both Strava calls need only the `read` scope the connect flow already requests.
 - **Images.** The function projects the club's https profile image, but the page draws the seeded avatar instead: the site CSP's `img-src` does not allow Strava's image CDN (followups).
 
-Web only for now (parity.md). Pinned by `strava-clubs/handler.test.ts`, `club_strava_link_test.sql`, `lib/integrations/strava_clubs.test.ts` and `tests-e2e/clubs/strava-clubs.spec.ts` (which pins the inert state every CI lane builds; no lane builds with a Strava client id).
+Web only for now (parity.md). Pinned by `strava-clubs/handler.test.ts`, `club_strava_link_test.sql`, `lib/integrations/strava_clubs.test.ts` `tests-e2e/clubs/strava-clubs.spec.ts` (the inert state the sharded lane builds) and `tests-e2e/configured/strava-clubs.spec.ts` (the configured state: list, link picker, undoable unlink, set-up-then-link hand-off — run only by the `e2e-web-configured` lane, whose dev server carries a dummy client id).
 
 ### Club photo gallery
 

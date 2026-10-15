@@ -11,24 +11,31 @@ Everything below is derived from the shipped catalogues (measured
 
 **Use `vous`.** decisions.md § 1675 records that "the mobile ARB onboarding
 copy decides the register (… `vous` on French …)", and the phone is
-majority `vous` (332 strings against 139 with `tu`/`ton`/`ta`/`tes`).
+majority `vous` (409 strings against 163 with `tu`/`te`/`toi`/`ton`/`ta`/
+`tes`/`t'`; re-measured 2026-10-15 at `58a09dd0c`, the same marker set for
+both registers and both catalogues).
 
 - `discardChangesBody` (mobile) and `common.unsavedBody` (web): "Vous avez des modifications non enregistrées. Quitter sans enregistrer ?"
 - `clubInviteEnterCodeError` (mobile): "Saisissez le code d'invitation de votre lien."
 - `rateLimit.generic` (web): "Vous faites cela trop rapidement — veuillez patienter {wait} et réessayer."
 
-**Finding — the French catalogues mix both registers, and web leans the
-other way.** Web is majority **tu** (455 strings against 288 `vous`):
-`onboarding.step6Hint` "Les notifications push t'informent …",
-`runSocial.signInToGiveKudos` "Connecte-toi pour donner des kudos",
-`settingsAccount.passwordDesc` "Modifie le mot de passe qui te sert …".
-The phone has its own `tu` pockets: `settingsAccountSignOutFailed` "…
-vérifie ta connexion", `settingsAccountDeleteBody` "Cela supprime
-définitivement tes courses …". `tu` clusters in settings, preferences,
-plans, integrations, nutrition and the dashboard; `vous` in runs, profile,
-clubs, routes, coach, safety, sign-in and events. Until the user decides a
-migration, write new strings in `vous` and flag any batch key whose
-neighbours are `tu`. Never mix the two inside one string.
+**Finding — the French catalogues still mix both registers.** A 2026-10-15
+pass moved about 85 web strings (the AI-consent copy among them) and the
+phone's weight-fluid and safety-share strings to `vous`, but it was not a
+full migration: web now sits at **460 `vous` against 451 `tu`** (of 6,115
+strings; one string carries both) and the phone at 409 against 163. `tu`
+remains in, among others, `onboarding.step6Hint` "Les notifications push
+t'informent …", `coachChat.errorSignInFirst` "Connecte-toi d'abord.",
+`settingsAccount.passwordDesc` "Modifie le mot de passe qui te sert …", and
+on the phone `settingsAccountSignOutFailed` "… vérifie ta connexion" and
+`settingsAccountDeleteBody` "Cela supprime définitivement tes courses …".
+On web `tu` still dominates `prefs`, `dash`, `settingsIntegrations`,
+`planEditor`, `planDetail`, `onboarding`, `gym`, `coachChat`, `metric` and
+`upgrade`; `vous` dominates notifications, `safety`, `deleteAccount`,
+`login`, `clubEvent`, `coachPage`, `rateLimit`, `fuelPlan` and `audience`.
+Write new strings in `vous`, flag any batch key whose neighbours are `tu`
+(the residue is a migration, not a precedent), and never mix the two inside
+one string.
 
 Buttons are infinitives ("Enregistrer", "Mettre en pause", "Rejoindre");
 instructions use the `vous` imperative ("Saisissez", "Collez").

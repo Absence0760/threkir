@@ -1459,6 +1459,10 @@
   "@safetyAutoLiveShareSubtitle": {
     "description": "Subtitle of the auto-live-share device toggle (public-by-link disclosure)"
   },
+  "safetyAutoLiveShareSafetySubtitle": "Start a live share automatically when a run starts on this phone. It is never public: only your confirmed safety contacts can follow it, through the link an overdue or off-route alert sends them. On by default once an alert is set.",
+  "@safetyAutoLiveShareSafetySubtitle": {
+    "description": "Subtitle of the auto-live-share device toggle once the safety-contacts audience is live (never public)"
+  },
   "safetyOffRouteTitle": "Off-route alert",
   "@safetyOffRouteTitle": {
     "description": "Title of the off-route auto-notify toggle on the safety settings screen"
@@ -1474,6 +1478,10 @@
   "runAutoLiveShareStarted": "Live sharing is on — use Share live link to send it",
   "@runAutoLiveShareStarted": {
     "description": "Banner on the run screen when the auto-live-share pref attached the broadcaster"
+  },
+  "runSafetyLiveShareStarted": "Safety share is on — only your safety contacts can follow, and only once an alert fires",
+  "@runSafetyLiveShareStarted": {
+    "description": "Banner on the run screen when the automatic share started on the safety-contacts audience"
   },
   "runSafetyNudgeSolo": "Running solo after dark? Share a live link so someone can follow along.",
   "@runSafetyNudgeSolo": {

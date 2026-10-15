@@ -6801,15 +6801,24 @@ class ApiClient {
   /// the recorder's save flow.
   ///
   /// Idempotent — repeated calls (e.g. user re-taps "Share live link")
-  /// are no-ops via ignoreDuplicates. The row is created with
+  /// are no-ops via ignoreDuplicates. By default the row is created with
   /// `is_public = true` so anyone with the share URL can watch; the
   /// final `saveRun` upsert will overwrite the placeholder fields, so
   /// callers that want the finished run to stay public must re-assert
   /// it via [makeRunPublic] after save.
+  ///
+  /// With [safetyAudience] the stub is created private and marked
+  /// `safety_audience`: only the runner's confirmed safety contacts can
+  /// follow it, through the per-contact link an overdue or off-route alert
+  /// carries (decisions § 1964). Ask [safetyAudienceEnabled] first — with
+  /// the server gate closed the mark is stored false and the stub is simply
+  /// private. Because the upsert ignores duplicates, widening an existing
+  /// safety stub to a public share is [makeRunPublic]'s job.
   Future<void> beginLiveBroadcast({
     required String runId,
     required DateTime startedAt,
     String activityType = 'run',
+    bool safetyAudience = false,
   }) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw Exception('Not authenticated');
@@ -6824,7 +6833,8 @@ class ApiClient {
         RunRow.colDurationS: 0,
         RunRow.colDistanceM: 0,
         RunRow.colSource: 'app',
-        RunRow.colIsPublic: true,
+        RunRow.colIsPublic: !safetyAudience,
+        if (safetyAudience) RunRow.colSafetyAudience: true,
         RunRow.colActivityType: activityType,
         RunRow.colMetadata: {
           'in_progress': true,
@@ -6832,6 +6842,21 @@ class ApiClient {
       },
       ignoreDuplicates: true,
     );
+  }
+
+  /// Whether a live share may run on the safety-contacts-only audience (the
+  /// server's `safety_audience` gate, decisions § 1964). Fail closed: any read
+  /// failure is "off", and the caller falls back to the public live share it
+  /// had before — never to a private stub nobody can follow.
+  Future<bool> safetyAudienceEnabled() async {
+    try {
+      final result = await _client
+          .rpc('safety_audience_enabled', params: const {}, get: true);
+      return result == true;
+    } catch (e) {
+      debugPrint('safety_audience_enabled failed: $e');
+      return false;
+    }
   }
 
   /// Append one spectator ping for an in-progress run. Intended to be

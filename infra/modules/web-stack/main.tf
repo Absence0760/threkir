@@ -1767,13 +1767,20 @@ resource "aws_cloudfront_response_headers_policy" "security" {
         # in `.ingest.de.sentry.io`. That mismatch blocks every event
         # with no server-side symptom at all. A SaaS org's region
         # cannot be changed after creation, so this will not drift
-        # back to the US host without a new org. `*.supabase.co` covers
-        # REST + Realtime + Storage; `*.maptiler.com` covers tile
-        # fetches. `wss://*.threkir.com` covers the Go live-hub WS
-        # upgrade — the spectator page would otherwise be CSP-blocked
-        # the moment PUBLIC_LIVE_HUB_URL lands in prod. /audit/owasp
-        # May 2026 High #2a.
-        "connect-src 'self' https://*.supabase.co https://api.threkir.com https://*.maptiler.com https://*.ingest.de.sentry.io wss://*.threkir.com",
+        # back to the US host without a new org. `https://*.supabase.co`
+        # covers REST + Auth + Storage; Realtime is a WebSocket to
+        # `wss://<ref>.supabase.co/realtime/v1` and needs its own entry,
+        # because an `https` scheme-part does not match a `wss` URL
+        # (CSP3 § 6.7.2.9 lets only http→https, ws→wss/http/https and
+        # wss→https match; nothing upgrades https to wss). Without it
+        # every postgres_changes channel — the live spectator page,
+        # notifications, club and event pages — fails to connect with
+        # no server-side symptom. `*.maptiler.com` covers tile fetches.
+        # `wss://*.threkir.com` covers the Go live-hub WS upgrade — the
+        # spectator page would otherwise be CSP-blocked the moment
+        # PUBLIC_LIVE_HUB_URL lands in prod. /audit/owasp May 2026
+        # High #2a.
+        "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.threkir.com https://*.maptiler.com https://*.ingest.de.sentry.io wss://*.threkir.com",
         "worker-src 'self' blob:",
         "manifest-src 'self'",
         "object-src 'none'",

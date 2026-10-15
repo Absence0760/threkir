@@ -16,14 +16,28 @@
 /// `UPSTREAM_TIMEOUT_MS`; 502 when it cannot be reached, on a non-2xx, a
 /// non-JSON body, a body that is not the race feed, or RunSignUp's HTTP-200
 /// error envelope), then the write (500).
+///
+/// Nine slots a cycle also carry a parkrun leg (`parkrunChunkAt`, decisions
+/// § 1952): one read of parkrun's events file, one ninth of it written. It is
+/// OFF unless `PARKRUN_EVENTS_ENABLED` is exactly `true`, and then makes no
+/// request at all and answers `parkrun: { enabled: false }`. It runs after the
+/// RunSignUp leg whatever that leg answered, and its outcome rides in the body
+/// under `parkrun` without changing the status, which stays RunSignUp's — so a
+/// parkrun failure is read in the body and the log, not the status line.
 
 import type { DbClient } from '../_shared/database.ts';
 import { discardBody } from '../_shared/body_limit.ts';
 import { checkRateLimit, ipBucketKey } from '../_shared/rate_limit.ts';
 import { cronGate } from '../events-refund-sweep/lib.ts';
 import { isUpstreamTimeout, UPSTREAM_TIMEOUT_MS } from '../_shared/upstream_deadline.ts';
-import { providerRacesUrl, sweepWindowAt } from '../race-listings-sync/lib.ts';
-import { syncProviderPayload } from '../race-listings-sync/write.ts';
+import { providerRacesUrl, type SweepWindow, sweepWindowAt } from '../race-listings-sync/lib.ts';
+import {
+  PARKRUN_EVENTS_URL,
+  PARKRUN_SWEEP_CHUNKS,
+  parkrunChunkAt,
+  parkrunEventsEnabled,
+} from '../race-listings-sync/parkrun.ts';
+import { syncParkrunPayload, syncProviderPayload } from '../race-listings-sync/write.ts';
 
 export interface RaceListingsSweepDeps {
   getEnv: (name: string) => string | undefined;
@@ -65,44 +79,96 @@ export function makeRaceListingsSweepHandler(
     }
 
     const window = sweepWindowAt(deps.now());
-    const apiKey = deps.getEnv('RUNSIGNUP_API_KEY') ?? null;
-    const apiSecret = deps.getEnv('RUNSIGNUP_API_SECRET') ?? null;
-    // One signal bounds the headers AND the body: a feed that sends its headers
-    // and then trickles the 2.9 MB page is as stuck as one that never answers.
-    const signal = AbortSignal.timeout(deps.upstreamTimeoutMs ?? UPSTREAM_TIMEOUT_MS);
-    let upstream: Response;
-    try {
-      upstream = await deps.fetch(
-        providerRacesUrl({ provider: 'runsignup', apiKey, apiSecret, near: null, window }),
-        { headers: { 'User-Agent': deps.getEnv('RACE_IMPORT_USER_AGENT') || 'RunApp/1.0' }, signal },
-      );
-    } catch (err) {
-      return isUpstreamTimeout(err)
-        ? Response.json({ error: 'runsignup upstream timeout', window }, { status: 504 })
-        : Response.json({ error: 'runsignup upstream unreachable', window }, { status: 502 });
-    }
-    if (!upstream.ok) {
-      upstream.body?.cancel().catch(() => {});
-      return Response.json({ error: `runsignup upstream ${upstream.status}`, window }, { status: 502 });
-    }
-    let payload: unknown;
-    try {
-      payload = await upstream.json();
-    } catch (err) {
-      return isUpstreamTimeout(err)
-        ? Response.json({ error: 'runsignup upstream timeout', window }, { status: 504 })
-        : Response.json({ error: 'runsignup upstream not JSON', window }, { status: 502 });
-    }
-
-    const outcome = await syncProviderPayload(deps.serviceClient(), 'runsignup', payload);
-    if (!outcome.ok) {
-      return Response.json({ error: outcome.error, window }, { status: outcome.status });
-    }
-    // A window that filled the page lost the races past it. That is the signal
-    // to narrow SWEEP_WINDOW_DAYS, so it is said where the operator reads.
-    if (!outcome.summary.complete) {
-      console.error('race-listings-sweep: window filled the page', JSON.stringify(window));
-    }
-    return Response.json({ window, ...outcome.summary });
+    const runsignup = await runSignUpLeg(deps, window);
+    const chunk = parkrunChunkAt(window.slot);
+    if (chunk === null) return Response.json(runsignup.body, { status: runsignup.status });
+    const parkrun = await parkrunLeg(deps, chunk);
+    return Response.json({ ...runsignup.body, parkrun }, { status: runsignup.status });
   };
+}
+
+interface LegResult {
+  status: number;
+  body: Record<string, unknown>;
+}
+
+async function runSignUpLeg(deps: RaceListingsSweepDeps, window: SweepWindow): Promise<LegResult> {
+  const apiKey = deps.getEnv('RUNSIGNUP_API_KEY') ?? null;
+  const apiSecret = deps.getEnv('RUNSIGNUP_API_SECRET') ?? null;
+  // One signal bounds the headers AND the body: a feed that sends its headers
+  // and then trickles the 2.9 MB page is as stuck as one that never answers.
+  const signal = AbortSignal.timeout(deps.upstreamTimeoutMs ?? UPSTREAM_TIMEOUT_MS);
+  let upstream: Response;
+  try {
+    upstream = await deps.fetch(
+      providerRacesUrl({ provider: 'runsignup', apiKey, apiSecret, near: null, window }),
+      { headers: { 'User-Agent': deps.getEnv('RACE_IMPORT_USER_AGENT') || 'RunApp/1.0' }, signal },
+    );
+  } catch (err) {
+    return isUpstreamTimeout(err)
+      ? { status: 504, body: { error: 'runsignup upstream timeout', window } }
+      : { status: 502, body: { error: 'runsignup upstream unreachable', window } };
+  }
+  if (!upstream.ok) {
+    upstream.body?.cancel().catch(() => {});
+    return { status: 502, body: { error: `runsignup upstream ${upstream.status}`, window } };
+  }
+  let payload: unknown;
+  try {
+    payload = await upstream.json();
+  } catch (err) {
+    return isUpstreamTimeout(err)
+      ? { status: 504, body: { error: 'runsignup upstream timeout', window } }
+      : { status: 502, body: { error: 'runsignup upstream not JSON', window } };
+  }
+
+  const outcome = await syncProviderPayload(deps.serviceClient(), 'runsignup', payload);
+  if (!outcome.ok) {
+    return { status: outcome.status, body: { error: outcome.error, window } };
+  }
+  // A window that filled the page lost the races past it. That is the signal
+  // to narrow SWEEP_WINDOW_DAYS, so it is said where the operator reads.
+  if (!outcome.summary.complete) {
+    console.error('race-listings-sweep: window filled the page', JSON.stringify(window));
+  }
+  return { status: 200, body: { window, ...outcome.summary } };
+}
+
+/// One chunk of parkrun's events file. Disabled answers without a request.
+async function parkrunLeg(deps: RaceListingsSweepDeps, chunk: number): Promise<Record<string, unknown>> {
+  if (!parkrunEventsEnabled(deps.getEnv('PARKRUN_EVENTS_ENABLED'))) return { enabled: false, chunk };
+  const signal = AbortSignal.timeout(deps.upstreamTimeoutMs ?? UPSTREAM_TIMEOUT_MS);
+  const fail = (error: string, status: number) => {
+    console.error('race-listings-sweep: parkrun leg failed', error);
+    return { enabled: true, chunk, error, status };
+  };
+  let upstream: Response;
+  try {
+    upstream = await deps.fetch(PARKRUN_EVENTS_URL, {
+      headers: {
+        'User-Agent': deps.getEnv('PARKRUN_USER_AGENT') || deps.getEnv('RACE_IMPORT_USER_AGENT') || 'RunApp/1.0',
+      },
+      signal,
+    });
+  } catch (err) {
+    return isUpstreamTimeout(err) ? fail('parkrun upstream timeout', 504) : fail('parkrun upstream unreachable', 502);
+  }
+  if (!upstream.ok) {
+    upstream.body?.cancel().catch(() => {});
+    return fail(`parkrun upstream ${upstream.status}`, 502);
+  }
+  let payload: unknown;
+  try {
+    payload = await upstream.json();
+  } catch (err) {
+    return isUpstreamTimeout(err) ? fail('parkrun upstream timeout', 504) : fail('parkrun upstream not JSON', 502);
+  }
+  const outcome = await syncParkrunPayload(
+    deps.serviceClient(),
+    payload,
+    { kind: 'chunk', index: chunk, count: PARKRUN_SWEEP_CHUNKS },
+    deps.now(),
+  );
+  if (!outcome.ok) return fail(outcome.error, outcome.status);
+  return { enabled: true, chunk, ...outcome.summary };
 }

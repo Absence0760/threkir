@@ -1,0 +1,283 @@
+{
+  "countries": {
+    "3": {
+      "url": "www.parkrun.com.au",
+      "bounds": [
+        112.921,
+        -43.6432,
+        153.639,
+        -10.0591
+      ]
+    },
+    "14": {
+      "url": "www.parkrun.ca",
+      "bounds": [
+        -141.002,
+        41.6766,
+        -52.6191,
+        83.1132
+      ]
+    },
+    "42": {
+      "url": "www.parkrun.ie",
+      "bounds": [
+        -10.48,
+        51.4475,
+        -5.99805,
+        55.3829
+      ]
+    },
+    "46": {
+      "url": "www.parkrun.jp",
+      "bounds": [
+        122.934,
+        24.2552,
+        145.817,
+        45.523
+      ]
+    },
+    "97": {
+      "url": "www.parkrun.org.uk",
+      "bounds": [
+        -8.61772,
+        49.9029,
+        1.76891,
+        59.3608
+      ]
+    },
+    "98": {
+      "url": "www.parkrun.us",
+      "bounds": [
+        -124.733,
+        24.5439,
+        -66.9492,
+        49.3845
+      ]
+    }
+  },
+  "events": {
+    "type": "FeatureCollection",
+    "features": [
+      {
+        "id": 1,
+        "type": "Feature",
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            -0.335791,
+            51.410992
+          ]
+        },
+        "properties": {
+          "eventname": "bushy",
+          "EventLongName": "Bushy parkrun",
+          "EventShortName": "Bushy Park",
+          "LocalisedEventLongName": null,
+          "countrycode": 97,
+          "seriesid": 1,
+          "EventLocation": "Bushy Park, Teddington"
+        }
+      },
+      {
+        "id": 2,
+        "type": "Feature",
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            -0.232215,
+            51.442078
+          ]
+        },
+        "properties": {
+          "eventname": "wimbledon",
+          "EventLongName": "Wimbledon Common parkrun",
+          "EventShortName": "Wimbledon Common",
+          "LocalisedEventLongName": null,
+          "countrycode": 97,
+          "seriesid": 1,
+          "EventLocation": "Wimbledon Common"
+        }
+      },
+      {
+        "id": 32,
+        "type": "Feature",
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            -0.080886,
+            51.36575
+          ]
+        },
+        "properties": {
+          "eventname": "lloyd-juniors",
+          "EventLongName": "Lloyd junior parkrun",
+          "EventShortName": "Lloyd juniors",
+          "LocalisedEventLongName": "Lloyd junior parkrun",
+          "countrycode": 97,
+          "seriesid": 2,
+          "EventLocation": "Lloyd Park"
+        }
+      },
+      {
+        "id": 25,
+        "type": "Feature",
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            151.18219,
+            -33.907658
+          ]
+        },
+        "properties": {
+          "eventname": "stpeters",
+          "EventLongName": "St Peters parkrun",
+          "EventShortName": "St Peters",
+          "LocalisedEventLongName": null,
+          "countrycode": 3,
+          "seriesid": 1,
+          "EventLocation": "Sydney Park, St Peters, Sydney"
+        }
+      },
+      {
+        "id": 52,
+        "type": "Feature",
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            144.96312,
+            -37.843521
+          ]
+        },
+        "properties": {
+          "eventname": "albertmelbourne",
+          "EventLongName": "Albert parkrun, Melbourne",
+          "EventShortName": "Albert Melbourne",
+          "LocalisedEventLongName": null,
+          "countrycode": 3,
+          "seriesid": 1,
+          "EventLocation": "Albert Park, Melbourne, Australia"
+        }
+      },
+      {
+        "id": 1984,
+        "type": "Feature",
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            145.13425,
+            -37.74439
+          ]
+        },
+        "properties": {
+          "eventname": "westerfolds-juniors",
+          "EventLongName": "Westerfolds junior parkrun",
+          "EventShortName": "Westerfolds juniors",
+          "LocalisedEventLongName": "Westerfolds junior parkrun",
+          "countrycode": 3,
+          "seriesid": 2,
+          "EventLocation": "Westerfolds Park"
+        }
+      },
+      {
+        "id": 166,
+        "type": "Feature",
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            -77.063956,
+            38.89638
+          ]
+        },
+        "properties": {
+          "eventname": "rooseveltislanddc",
+          "EventLongName": "Roosevelt Island DC parkrun",
+          "EventShortName": "Roosevelt Island DC",
+          "LocalisedEventLongName": null,
+          "countrycode": 98,
+          "seriesid": 1,
+          "EventLocation": "Roosevelt Island DC"
+        }
+      },
+      {
+        "id": 219,
+        "type": "Feature",
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            -82.538434,
+            40.767616
+          ]
+        },
+        "properties": {
+          "eventname": "mansfieldoh",
+          "EventLongName": "Mansfield OH parkrun",
+          "EventShortName": "Mansfield OH",
+          "LocalisedEventLongName": null,
+          "countrycode": 98,
+          "seriesid": 1,
+          "EventLocation": "North Lake Park"
+        }
+      },
+      {
+        "id": 1363,
+        "type": "Feature",
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            -6.099962,
+            53.523269
+          ]
+        },
+        "properties": {
+          "eventname": "rush-juniors",
+          "EventLongName": "Rush junior parkrun",
+          "EventShortName": "Rush juniors",
+          "LocalisedEventLongName": null,
+          "countrycode": 42,
+          "seriesid": 2,
+          "EventLocation": "Kenure Woods"
+        }
+      },
+      {
+        "id": 2295,
+        "type": "Feature",
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            139.621233,
+            35.613653
+          ]
+        },
+        "properties": {
+          "eventname": "futakotamagawa",
+          "EventLongName": "Futakotamagawa parkrun",
+          "EventShortName": "Futakotamagawa",
+          "LocalisedEventLongName": "二子玉川parkrun",
+          "countrycode": 46,
+          "seriesid": 1,
+          "EventLocation": ""
+        }
+      },
+      {
+        "id": 1517,
+        "type": "Feature",
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            -114.129961,
+            51.12534
+          ]
+        },
+        "properties": {
+          "eventname": "nosehill",
+          "EventLongName": "Nose Hill parkrun",
+          "EventShortName": "Nose Hill",
+          "LocalisedEventLongName": null,
+          "countrycode": 14,
+          "seriesid": 1,
+          "EventLocation": "Nose Hill Park"
+        }
+      }
+    ]
+  }
+}

@@ -12,6 +12,7 @@ import { assert, assertEquals } from 'https://deno.land/std@0.224.0/assert/mod.t
 import type { DbClient } from '../_shared/database.ts';
 import { CRON_SECRET_MIN_CHARS } from '../events-refund-sweep/lib.ts';
 import { SWEEP_PERIOD_S, SWEEP_STATES, SWEEP_WINDOWS } from '../race-listings-sync/lib.ts';
+import { PARKRUN_EVENTS_URL } from '../race-listings-sync/parkrun.ts';
 import { makeRaceListingsSweepHandler } from './handler.ts';
 
 const SECRET = 's'.repeat(CRON_SECRET_MIN_CHARS);
@@ -23,12 +24,24 @@ const SQL = Deno.readTextFileSync(
 );
 const CONFIG = Deno.readTextFileSync(new URL('../../config.toml', import.meta.url));
 
-/// 2026-10-14T12:00:00Z — slot (epoch / 300) mod 306.
+const PARKRUN_TEXT = Deno.readTextFileSync(
+  new URL('../race-listings-sync/fixtures/parkrun_events.json', import.meta.url),
+);
+
+/// 2026-10-14T12:00:00Z — slot (epoch / 300) mod 306, which carries no parkrun chunk.
 const NOW = Date.UTC(2026, 9, 14, 12, 0, 0);
+/// The start of NOW's cycle, plus slot 136: parkrun chunk 4, which holds the
+/// recorded events 166, 1363 and 1984. A function, not a constant, so a
+/// neutered lib.ts fails the cases that use it rather than the module load.
+function parkrunNow(): number {
+  const cycleMs = SWEEP_STATES.length * SWEEP_WINDOWS * SWEEP_PERIOD_S * 1000;
+  return Math.floor(NOW / cycleMs) * cycleMs + 136 * SWEEP_PERIOD_S * 1000;
+}
 
 function fakeService() {
   const tables: string[] = [];
   const rpcs: string[] = [];
+  const inserted: Array<Record<string, unknown>> = [];
   const client = {
     rpc(name: string) {
       rpcs.push(name);
@@ -39,8 +52,9 @@ function fakeService() {
       const ops: string[] = [];
       const builder: Record<string, unknown> = {};
       for (const name of ['select', 'insert', 'update', 'eq', 'in']) {
-        builder[name] = () => {
+        builder[name] = (...args: unknown[]) => {
           ops.push(name);
+          if (name === 'insert') inserted.push(...(args[0] as Array<Record<string, unknown>>));
           return builder;
         };
       }
@@ -51,10 +65,16 @@ function fakeService() {
       return builder;
     },
   };
-  return { tables, rpcs, client: client as unknown as DbClient };
+  return { tables, rpcs, inserted, client: client as unknown as DbClient };
 }
 
-function harness(opts: { env?: Record<string, string | undefined>; upstream?: () => Response } = {}) {
+function harness(
+  opts: {
+    env?: Record<string, string | undefined>;
+    upstream?: (url: string) => Response;
+    now?: number;
+  } = {},
+) {
   const env: Record<string, string | undefined> = { CRON_SECRET: SECRET, ...(opts.env ?? {}) };
   const fake = fakeService();
   const fetched: string[] = [];
@@ -63,9 +83,11 @@ function harness(opts: { env?: Record<string, string | undefined>; upstream?: ()
     serviceClient: () => fake.client,
     fetch: (input) => {
       fetched.push(input);
-      return Promise.resolve(opts.upstream ? opts.upstream() : new Response(FEED_TEXT, { status: 200 }));
+      if (opts.upstream) return Promise.resolve(opts.upstream(input));
+      const text = input === PARKRUN_EVENTS_URL ? PARKRUN_TEXT : FEED_TEXT;
+      return Promise.resolve(new Response(text, { status: 200 }));
     },
-    now: () => NOW,
+    now: () => opts.now ?? NOW,
   });
   return { handler, fake, fetched };
 }
@@ -141,6 +163,58 @@ Deno.test('a non-2xx, a non-JSON body and the HTTP-200 refusal are 502s that wri
     assertEquals((await res.json()).error, error);
     assertEquals(h.fake.tables, []);
   }
+});
+
+Deno.test('a slot with no parkrun chunk never mentions parkrun, whatever the flag says', async () => {
+  const h = harness({ env: { PARKRUN_EVENTS_ENABLED: 'true' } });
+  const body = await (await h.handler(call())).json();
+  assertEquals('parkrun' in body, false);
+  assertEquals(h.fetched.includes(PARKRUN_EVENTS_URL), false);
+});
+
+Deno.test('with the flag off, a parkrun slot makes no parkrun request and says it is disabled', async () => {
+  for (const flag of [undefined, '', 'TRUE', '1']) {
+    const h = harness({ now: parkrunNow(), env: { PARKRUN_EVENTS_ENABLED: flag } });
+    const res = await h.handler(call());
+    assertEquals(res.status, 200);
+    assertEquals((await res.json()).parkrun, { enabled: false, chunk: 4 });
+    assertEquals(h.fetched.length, 1, `flag ${flag}`);
+    assertEquals(h.fetched.includes(PARKRUN_EVENTS_URL), false);
+    assertEquals(h.fake.inserted.filter((r) => r.provider === 'parkrun'), []);
+  }
+});
+
+Deno.test('with the flag on, a parkrun slot reads the events file and writes its chunk', async () => {
+  const h = harness({ now: parkrunNow(), env: { PARKRUN_EVENTS_ENABLED: 'true' } });
+  const res = await h.handler(call());
+  assertEquals(res.status, 200);
+  assertEquals(h.fetched, [h.fetched[0], PARKRUN_EVENTS_URL]);
+  const body = await res.json();
+  assertEquals(body.parkrun.enabled, true);
+  assertEquals(body.parkrun.chunk, 4);
+  assertEquals(body.parkrun.synced, 3);
+  assert(body.synced > 0, 'the RunSignUp leg still ran');
+  const parkrun = h.fake.inserted.filter((r) => r.provider === 'parkrun');
+  assertEquals(parkrun.map((r) => r.provider_race_id).sort(), ['1363', '166', '1984']);
+  assert(parkrun.every((r) => typeof r.location_point === 'string'));
+});
+
+Deno.test('a parkrun failure rides in the body and leaves the RunSignUp status alone', async () => {
+  const h = harness({
+    now: parkrunNow(),
+    env: { PARKRUN_EVENTS_ENABLED: 'true' },
+    upstream: (url) =>
+      url === PARKRUN_EVENTS_URL ? new Response('nope', { status: 403 }) : new Response(FEED_TEXT, { status: 200 }),
+  });
+  const res = await h.handler(call());
+  assertEquals(res.status, 200);
+  assertEquals((await res.json()).parkrun, {
+    enabled: true,
+    chunk: 4,
+    error: 'parkrun upstream 403',
+    status: 502,
+  });
+  assertEquals(h.fake.inserted.filter((r) => r.provider === 'parkrun'), []);
 });
 
 Deno.test('the schedule runs every five minutes and calls nothing until both Vault secrets exist', () => {

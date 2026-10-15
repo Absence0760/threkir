@@ -9,7 +9,7 @@
 
 import { assert, assertEquals } from 'https://deno.land/std@0.224.0/assert/mod.ts';
 import type { DbClient } from '../_shared/database.ts';
-import { syncProviderPayload } from './write.ts';
+import { syncParkrunPayload, syncProviderPayload } from './write.ts';
 
 const FEED = JSON.parse(
   Deno.readTextFileSync(new URL('./fixtures/runsignup_races.json', import.meta.url)),
@@ -151,5 +151,58 @@ Deno.test('a payload of the wrong shape answers what it could not read, and writ
       complete: true,
     },
   });
+  assertEquals(fake.calls, []);
+});
+
+const PARKRUN = JSON.parse(
+  Deno.readTextFileSync(new URL('./fixtures/parkrun_events.json', import.meta.url)),
+);
+/// Wednesday 2026-10-14 12:00 UTC.
+const WED = Date.UTC(2026, 9, 14, 12, 0);
+const ALL_CHUNK = { kind: 'chunk' as const, index: 0, count: 1 };
+
+Deno.test('parkrun events are written at the feed\'s own point, with no ZIP lookup', async () => {
+  const fake = fakeService();
+  const outcome = await syncParkrunPayload(fake.client, PARKRUN, ALL_CHUNK, WED);
+  assert(outcome.ok);
+  const rows = fake.inserted();
+  assertEquals(rows.length, 11);
+  assertEquals(outcome.summary.synced, 11);
+  assertEquals(outcome.summary.unplaced, 0);
+  assertEquals(fake.calls.filter((c) => c.table === 'us_zcta_points'), []);
+  const bushy = rows.find((r) => r.provider_race_id === '1')!;
+  assertEquals(bushy, {
+    provider: 'parkrun',
+    provider_race_id: '1',
+    name: 'Bushy parkrun',
+    race_date: '2026-10-17',
+    distance_m: 5000,
+    location_label: 'Bushy Park, Teddington',
+    location_point: 'SRID=4326;POINT(-0.335791 51.410992)',
+    entry_url: 'https://www.parkrun.org.uk/bushy/',
+    results_url: null,
+    is_verified: true,
+  });
+  const read = fake.calls.find((c) => c.table === 'race_listings' && c.ops[0]?.[0] === 'select')!;
+  assert(read.ops.some((op) => op[0] === 'eq' && op[1] === 'provider' && op[2] === 'parkrun'));
+});
+
+Deno.test('a near scope writes only the events around the point', async () => {
+  const fake = fakeService();
+  const outcome = await syncParkrunPayload(
+    fake.client,
+    PARKRUN,
+    { kind: 'near', lat: 51.5074, lng: -0.1278, radiusM: 25_000 },
+    WED,
+  );
+  assert(outcome.ok);
+  assertEquals(fake.inserted().map((r) => r.provider_race_id), ['2', '32', '1']);
+  assertEquals(outcome.summary.total, 3);
+});
+
+Deno.test('a body that is not parkrun\'s events file is a 502 that writes nothing', async () => {
+  const fake = fakeService();
+  const outcome = await syncParkrunPayload(fake.client, { races: [] }, ALL_CHUNK, WED);
+  assertEquals(outcome, { ok: false, status: 502, error: 'parkrun upstream shape' });
   assertEquals(fake.calls, []);
 });

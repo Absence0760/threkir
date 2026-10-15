@@ -1,5 +1,6 @@
 /// The write half of a provider race sync: read a provider payload, place each
-/// race on the map from its ZIP, and reconcile the result into `race_listings`.
+/// race on the map (from the feed's own point, else its ZIP), and reconcile the
+/// result into `race_listings`.
 ///
 /// Shared by the caller-driven sync (index.ts) and the scheduled sweep
 /// (`race-listings-sweep`), so the two cannot disagree about what a listing is.
@@ -17,6 +18,7 @@ import {
   type NormalisedRace,
   pointEwkt,
   type RaceListingUpsert,
+  type RaceRowProvider,
   readProviderRace,
   reconcileListingBatch,
   extractProviderRaces,
@@ -24,6 +26,7 @@ import {
   runSignUpErrorOf,
   type StoredListing,
 } from './lib.ts';
+import { type ParkrunScope, readParkrunFeed, readParkrunSlice, scopeParkrunFeatures } from './parkrun.ts';
 
 export interface SyncSummary {
   synced: number;
@@ -68,7 +71,7 @@ export async function zipPoints(
 
 export async function syncProviderPayload(
   service: DbClient,
-  provider: ListingSyncProvider,
+  provider: RaceRowProvider,
   payload: unknown,
 ): Promise<SyncOutcome> {
   if (provider === 'runsignup' && runSignUpErrorOf(payload) !== null) {
@@ -96,8 +99,7 @@ export async function syncProviderPayload(
     races.push(race);
   }
 
-  const complete = rows.length < MAX_LISTING_ROWS;
-  const summary: SyncSummary = {
+  return await writeListings(service, provider, races, {
     synced: 0,
     updated: 0,
     skipped: 0,
@@ -105,20 +107,61 @@ export async function syncProviderPayload(
     excluded,
     unplaced: 0,
     total: rows.length,
-    complete,
-  };
+    complete: rows.length < MAX_LISTING_ROWS,
+  });
+}
+
+/// The parkrun leg: one global events file, of which `scope` names the slice
+/// this sync writes (./parkrun.ts), dated for the run at `nowMs`.
+export async function syncParkrunPayload(
+  service: DbClient,
+  payload: unknown,
+  scope: ParkrunScope,
+  nowMs: number,
+): Promise<SyncOutcome> {
+  const feed = readParkrunFeed(payload);
+  if (feed === null) {
+    console.error('race-listings-sync: parkrun answered without an events feature array');
+    return { ok: false, status: 502, error: 'parkrun upstream shape' };
+  }
+  const slice = scopeParkrunFeatures(feed.features, scope);
+  const { races, unusable } = readParkrunSlice(slice.features, feed.hosts, nowMs);
+  return await writeListings(service, 'parkrun', races, {
+    synced: 0,
+    updated: 0,
+    skipped: 0,
+    unusable,
+    excluded: 0,
+    unplaced: 0,
+    total: slice.features.length,
+    complete: slice.complete,
+  });
+}
+
+async function writeListings(
+  service: DbClient,
+  provider: ListingSyncProvider,
+  races: NormalisedRace[],
+  summary: SyncSummary,
+): Promise<SyncOutcome> {
   if (races.length === 0) return { ok: true, summary };
 
-  const zips = [...new Set(races.map((r) => r.postalCode).filter((z): z is string => z !== null))];
+  const zips = [
+    ...new Set(
+      races.filter((r) => !r.point).map((r) => r.postalCode).filter((z): z is string => z !== null),
+    ),
+  ];
   const points = await zipPoints(service, zips);
-  // Per race: whether its point (or its lack of one) is the table's answer. A
-  // race with no US ZIP has a known answer — none — whatever the lookup did.
+  // Per race: whether its point (or its lack of one) is a known answer. A race
+  // that carries its own point, or has no US ZIP, has one whatever the lookup did.
   const pointKnown = new Map<string, boolean>();
   const listings: RaceListingUpsert[] = races.map((race) => {
-    const point = race.postalCode === null || points === null ? null : points.get(race.postalCode) ?? null;
+    const own = race.point ? pointEwkt(race.point.lat, race.point.lng) : null;
+    const point = own ??
+      (race.postalCode === null || points === null ? null : points.get(race.postalCode) ?? null);
     if (point === null) summary.unplaced++;
     if (race.providerRaceId !== null) {
-      pointKnown.set(race.providerRaceId, race.postalCode === null || points !== null);
+      pointKnown.set(race.providerRaceId, own !== null || race.postalCode === null || points !== null);
     }
     return listingUpsertFrom(provider, race, point);
   });

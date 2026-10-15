@@ -447,4 +447,33 @@ void main() {
     expect(d.isFinite, isTrue);
     expect(d, closeTo(20015086.796, 1.0));
   });
+
+  test('degenerate tracks — no moving time, no splits, never NaN', () {
+    // The tracks a brand-new account's first recordings reach: nothing, a
+    // single fix, a 10 s / 3 m blip (slower than the moving floor), a
+    // stand-still pair, and an untimed pair. Same table as the degenerate
+    // tracks test in web's run_stats.test.ts.
+    final start = DateTime.utc(2026, 4, 1, 7);
+    Waypoint p(double lngM, int? s) => Waypoint(
+          lat: 0,
+          lng: lngM / 111320,
+          timestamp: s == null ? null : start.add(Duration(seconds: s)),
+        );
+    final cases = <(String, List<Waypoint>)>[
+      ('empty', const []),
+      ('one fix', [p(0, 0)]),
+      ('10 s / 3 m', [p(0, 0), p(3, 10)]),
+      ('stand-still', [p(0, 0), p(0, 10)]),
+      ('untimed', [p(0, null), p(3000, null)]),
+    ];
+    for (final (name, t) in cases) {
+      expect(movingTimeOf(t), Duration.zero, reason: name);
+      expect(computeSplitDurations(t, 1000, start), isEmpty, reason: name);
+      expect(computeSplitDurations(t, 1609.344, start), isEmpty, reason: name);
+    }
+    final real = [for (var i = 0; i < 400; i++) p(i * 10.0, i * 3)];
+    expect(computeSplitDurations(real, 0, start), isEmpty);
+    expect(computeSplitDurations(real, -1000, start), isEmpty);
+    expect(computeSplitDurations(real, double.nan, start), isEmpty);
+  });
 }

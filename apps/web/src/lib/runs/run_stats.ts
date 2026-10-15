@@ -63,7 +63,9 @@ export const SPLIT_TAIL_MIN_M = 50;
  * segment. Null when the track has no elevation data.
  */
 export function computeRealSplits(track: TrackPoint[], tickMetres = 1000): Split[] {
-	if (track.length < 2) return [];
+	// A tick of 0 put every boundary at 0 m, which the boundary loop below
+	// re-crosses forever. The Dart twin returns [] for a non-positive tick.
+	if (track.length < 2 || !(tickMetres > 0)) return [];
 	const hasTs = track.some((p) => p.ts != null);
 	if (!hasTs) return [];
 

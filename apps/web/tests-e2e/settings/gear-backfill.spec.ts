@@ -4,6 +4,7 @@ import { browserDate } from '../fixtures/dates';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
 import { readRows } from '../fixtures/db-read';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * /settings/gear — post-create backfill.
@@ -37,12 +38,7 @@ test.describe('/settings/gear — backfill past runs onto newly-registered gear'
 	let plantedGearId: string | null = null;
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-			);
-		});
+		await acceptCookieConsent(context);
 	});
 
 	test.afterEach(async () => {

@@ -3,6 +3,7 @@ import { expect, test } from '../fixtures/test';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
 import { readRow } from '../fixtures/db-read';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Upgrade-unlock journey — one free user walks the whole "I hit a
@@ -59,12 +60,7 @@ test.describe('upgrade-unlock journey', () => {
 	test.beforeEach(async ({ context }) => {
 		// Pre-accept consent so the GDPR banner can't float over the
 		// composer / usage bar (mirrors the paywall specs).
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-			);
-		});
+		await acceptCookieConsent(context);
 	});
 
 	test('free user hits the coach cap → upgrade flips tier → coach unlocks + settings shows Pro', async ({

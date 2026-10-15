@@ -2,6 +2,7 @@ import { expect, test } from '../fixtures/test';
 import type { MockRoute } from '../fixtures/mock-route';
 
 import { USER_A } from '../fixtures/users';
+import { setStorageOnLoad } from '../fixtures/helpers';
 
 /**
  * /settings/account — profile + email / password / parkrun number /
@@ -485,7 +486,7 @@ test.describe('/settings/account', () => {
 			// The saved storage state carries a stored `locale` choice, which
 			// wins over the browser language. This context is thrown away, so
 			// overriding it here can't leak German into other specs.
-			await context.addInitScript(() => localStorage.setItem('locale', 'de'));
+			await setStorageOnLoad(context, { local: { locale: 'de' } });
 			const page = await context.newPage();
 			try {
 				await mockRoute(page, DELETE_EF, (route) => route.abort(), { neverFires: NEVER_DELETE });

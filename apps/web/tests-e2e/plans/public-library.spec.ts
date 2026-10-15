@@ -3,6 +3,7 @@ import { expect, test } from '../fixtures/test';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A, USER_B } from '../fixtures/users';
 import { readMaybeRow, readRows } from '../fixtures/db-read';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Public plan library — publish → browse → clone round-trip.
@@ -48,12 +49,7 @@ async function sweepLibrary(): Promise<void> {
 
 test.describe('Public plan library — publish → browse → clone', () => {
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(context);
 		await sweepLibrary();
 	});
 
@@ -66,12 +62,7 @@ test.describe('Public plan library — publish → browse → clone', () => {
 
 		// ── USER_A publishes ──
 		const ctxA = await browser.newContext({ storageState: USER_A.storageStatePath });
-		await ctxA.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(ctxA);
 		const pageA = await ctxA.newPage();
 		await pageA.goto(`/plans/${SOURCE_PLAN_ID}`);
 		const libraryRow = pageA
@@ -121,12 +112,7 @@ test.describe('Public plan library — publish → browse → clone', () => {
 
 		// ── USER_B browses + clones ──
 		const ctxB = await browser.newContext({ storageState: USER_B.storageStatePath });
-		await ctxB.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(ctxB);
 		const pageB = await ctxB.newPage();
 		await pageB.goto('/plans/library');
 		const card = pageB.locator('.plan-card', { hasText: PLAN_NAME });

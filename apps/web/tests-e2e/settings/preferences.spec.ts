@@ -2,6 +2,7 @@ import { expect, test } from '../fixtures/test';
 
 import { RUNNER_PUBLIC_RUN_ID } from '../fixtures/seeded-data';
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * The preference pages /settings/preferences was split into (issue #905) —
@@ -812,12 +813,7 @@ test.describe('/settings/preferences — anon', () => {
 		page,
 		context
 	}) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(context);
 		await page.goto('/settings/preferences');
 		await page.waitForURL(/\/login(\?|$)/, { timeout: 10_000 });
 		// return_to round-trip: the layout guard preserves the original

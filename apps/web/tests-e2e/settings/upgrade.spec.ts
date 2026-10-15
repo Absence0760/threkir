@@ -1,6 +1,7 @@
 import { expect, test } from '../fixtures/test';
 
 import { USER_A, USER_C_PRO } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * /settings/upgrade — two-tier Free vs Pro comparison + one-off donate
@@ -17,12 +18,7 @@ test.describe('/settings/upgrade — free user', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-			);
-		});
+		await acceptCookieConsent(context);
 	});
 
 	test('Pro pricing card renders for a free user', async ({ page }) => {
@@ -226,12 +222,7 @@ test.describe('/settings/upgrade — Pro user', () => {
 	test.use({ storageState: USER_C_PRO.storageStatePath });
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-			);
-		});
+		await acceptCookieConsent(context);
 	});
 
 	test('Pro tier card flips to active state: "Active" badge + Manage subscription CTA + no Get Pro button', async ({
@@ -277,12 +268,7 @@ test.describe('/settings/upgrade — anon', () => {
 	test.use({ storageState: { cookies: [], origins: [] } });
 
 	test('anon visitor is auth-walled to /login', async ({ page, context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-			);
-		});
+		await acceptCookieConsent(context);
 		// /settings/upgrade is NOT in the anon-allowed list — anon
 		// users must be redirected to /login with a return_to.
 		await page.goto('/settings/upgrade');

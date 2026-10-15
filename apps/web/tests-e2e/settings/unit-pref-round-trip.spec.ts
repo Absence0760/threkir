@@ -3,6 +3,7 @@ import { expect, test } from '../fixtures/test';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { deleteRun, insertRun } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
+import { setStorageOnLoad } from '../fixtures/helpers';
 
 /**
  * Unit-pref round-trip regression net.
@@ -122,10 +123,9 @@ test.describe('/runs — unit pref round-trip', () => {
 		// cap (269a3865) instead of being buried under ~90 newer seed runs.
 		// addInitScript re-applies before every navigation; the page reads
 		// runs_filters_v1 on mount, so no in-UI date-picker driving needed.
-		await page.addInitScript(() => {
-			localStorage.setItem(
-				'runs_filters_v1',
-				JSON.stringify({
+		await setStorageOnLoad(page, {
+			local: {
+				runs_filters_v1: JSON.stringify({
 					sourceFilter: 'all',
 					activityFilter: 'all',
 					dateRange: 'custom',
@@ -133,7 +133,7 @@ test.describe('/runs — unit pref round-trip', () => {
 					customTo: '2026-03-02',
 					sortKey: 'newest',
 				}),
-			);
+			},
 		});
 
 		// ── Step 1: pref = km, both runs show km ──────────────────

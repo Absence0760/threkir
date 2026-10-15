@@ -1,7 +1,7 @@
 import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
-import { switchRunsToAllTime } from '../fixtures/helpers';
+import { acceptCookieConsent, switchRunsToAllTime } from '../fixtures/helpers';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { readCount, readRows } from '../fixtures/db-read';
 
@@ -185,13 +185,7 @@ test.describe('Strava bulk-import — multi-activity, track-bearing, partial re-
 		const ctx = await browser.newContext({ storageState: saga.storageStatePath });
 		// Saga users must pre-accept the cookie banner before any page so it
 		// doesn't intercept clicks / file-input interactions.
-		function setConsentAccepted() {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		}
-		await ctx.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 
 		// Captured so teardown sweeps exactly what this test planted (the

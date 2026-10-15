@@ -1,6 +1,7 @@
 import { expect, test } from '../fixtures/test';
 
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * /plans/[id] — CurrentWeekStrip.svelte (the focused 7-day ribbon
@@ -24,12 +25,7 @@ test.describe('/plans/[id] — CurrentWeekStrip (this-week ribbon)', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(context);
 	});
 
 	test('Strip mounts with the "This week" heading and exactly 7 day cells', async ({

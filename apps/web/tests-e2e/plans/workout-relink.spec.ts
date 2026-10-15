@@ -4,6 +4,7 @@ import { getAdminClient } from '../fixtures/local-supabase';
 import { repurposeTodayWorkout, SYDNEY_HALF_PLAN_ID } from '../fixtures/plan-today';
 import { deleteRun, insertRun } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Re-link picker on workout-detail (Training Phase-3).
@@ -20,12 +21,7 @@ test.describe('Workout re-link picker', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(context);
 	});
 
 	test('re-link a workout from one run to a different run', async ({ page }) => {

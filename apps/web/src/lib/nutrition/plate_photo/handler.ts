@@ -11,11 +11,12 @@
 // The photo is never stored: it is checked, metadata-stripped and forwarded in
 // this request, then dropped (`image.ts`).
 //
-// Cost: Pro-gated and per-user rate-limited (`checkRouteRateLimit`), like the
-// route assistant, not a Coach daily-counter slot — a vision call is the most
-// expensive single request the app makes, so it is a paid perk with its own
-// hourly ceiling rather than a free-tier allowance. Fail-closed throughout:
-// an unreadable Pro status or throttle denies.
+// Cost: Pro-gated and per-user rate-limited (`spendRouteRateLimitSlot`), like
+// the route assistant, not a Coach daily-counter slot — a vision call is the
+// most expensive single request the app makes, so it is a paid perk with its
+// own hourly ceiling rather than a free-tier allowance. Fail-closed throughout:
+// an unreadable Pro status or throttle denies. A refusal, a reply with no tool
+// call or a provider failure gives the slot back.
 //
 // Wrapped twice, like the other coach sub-paths (decisions § 53):
 //   - apps/web/src/routes/api/coach/plate-photo/+server.ts (dev)
@@ -33,7 +34,7 @@ import {
 } from '../../core/ai_disclosure';
 import { supabaseErrorFields } from '../../core/supabase_error';
 import { providerErrorFields } from '../../core/provider_error';
-import { checkRouteRateLimit } from '../../routes/rate_limit';
+import { refundRouteRateLimitSlot, spendRouteRateLimitSlot } from '../../routes/rate_limit';
 import { preparePlateImage } from './image';
 import { MAX_PLATE_NOTE_CHARS } from './upload';
 import {
@@ -233,7 +234,14 @@ export async function handlePlatePhoto(
 			: json(500, { error: 'consent check failed' });
 	}
 
+	// Before the throttle, so an operator misconfiguration never spends a slot.
+	if (!config.anthropicApiKey) {
+		console.error('[plate-photo] missing ANTHROPIC_API_KEY');
+		return json(503, { error: 'plate photo unavailable' });
+	}
+
 	// Paywall — fail-closed. An RPC error or a non-true result is no perk.
+	let spendId: string | null = null;
 	if (!config.bypassPaywallEnabled) {
 		const proRes = await supabase.rpc('is_pro', undefined, { get: true });
 		if (proRes.error) {
@@ -242,19 +250,21 @@ export async function handlePlatePhoto(
 		}
 		if (proRes.data !== true) return json(403, { error: 'pro required', upgrade: true });
 
-		const rl = await checkRouteRateLimit(
+		const rl = await spendRouteRateLimitSlot(
 			supabase,
 			userId,
 			PLATE_PHOTO_RATE_BUCKET,
 			PLATE_PHOTO_RATE_MAX,
 			PLATE_PHOTO_RATE_WINDOW_S,
 		);
-		if (rl !== 'ok') return json(429, { error: 'rate_limited' });
+		if (rl.verdict !== 'ok') return json(429, { error: 'rate_limited' });
+		spendId = rl.spendId;
 	}
 
-	if (!config.anthropicApiKey) {
-		console.error('[plate-photo] missing ANTHROPIC_API_KEY');
-		return json(503, { error: 'plate photo unavailable' });
+	// A call that produced nothing usable gives its slot back, as the plan
+	// assistant's Coach-counter rail does.
+	async function refundSlot(reason: string): Promise<void> {
+		await refundRouteRateLimitSlot(supabase, userId, PLATE_PHOTO_RATE_BUCKET, spendId, reason);
 	}
 
 	try {
@@ -291,6 +301,7 @@ export async function handlePlatePhoto(
 
 		if (message.stop_reason === 'refusal') {
 			console.warn('[plate-photo] model refused');
+			await refundSlot('refusal');
 			return json(422, { error: 'could not read photo' });
 		}
 		const toolUse = message.content.find(
@@ -298,6 +309,7 @@ export async function handlePlatePhoto(
 		);
 		if (!toolUse) {
 			console.warn('[plate-photo] no tool_use block in model response');
+			await refundSlot('no_tool_use');
 			return json(422, { error: 'could not read photo' });
 		}
 
@@ -308,6 +320,7 @@ export async function handlePlatePhoto(
 		// Status and type only: an SDK APIError's message embeds the response
 		// body, which can echo the runner's note.
 		console.error('[plate-photo] provider call failed', { ...providerErrorFields(e) });
+		await refundSlot('provider_error');
 		return json(503, { error: 'plate photo unavailable' });
 	}
 }

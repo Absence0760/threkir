@@ -67,11 +67,18 @@ function stubSupabase(opts: StubOpts = {}) {
 				if (name === 'is_pro') {
 					return Promise.resolve({ data: opts.isPro ?? true, error: opts.proError ?? null });
 				}
-				if (name === 'check_rate_limit') {
+				if (name === 'spend_rate_limit_slot') {
 					if (opts.rateAllowed === 'error') {
 						return Promise.resolve({ data: null, error: { message: 'boom' } });
 					}
-					return Promise.resolve({ data: [{ allowed: opts.rateAllowed ?? true }], error: null });
+					const allowed = opts.rateAllowed ?? true;
+					return Promise.resolve({
+						data: [{ allowed, retry_after_seconds: 0, spend_id: allowed ? 'ticket-1' : null }],
+						error: null,
+					});
+				}
+				if (name === 'refund_rate_limit_slot') {
+					return Promise.resolve({ data: true, error: null });
 				}
 				return Promise.resolve({ data: null, error: null });
 			},
@@ -199,20 +206,22 @@ test('the per-user throttle is taken before the model, and limited or errored de
 		createClient: sb.factory,
 		createAnthropic: stubModel(() => toolMessage({ items: [] })).create,
 	});
-	const rl = sb.calls.find((c) => c.name === 'check_rate_limit');
+	const rl = sb.calls.find((c) => c.name === 'spend_rate_limit_slot');
 	assert.equal((rl?.args as { p_bucket: string }).p_bucket, PLATE_PHOTO_RATE_BUCKET);
 });
 
-test('a missing key is a 503 without a model call', async () => {
+test('a missing key is a 503 without a model call or a spent slot', async () => {
 	const model = stubModel(() => toolMessage({ items: [] }));
+	const sb = stubSupabase();
 	const r = await handlePlatePhoto('Bearer x', VALID, {
 		...baseConfig(),
 		anthropicApiKey: undefined,
-		createClient: stubSupabase().factory,
+		createClient: sb.factory,
 		createAnthropic: model.create,
 	});
 	assert.equal(r.status, 503);
 	assert.equal(model.seen.calls, 0);
+	assert.equal(sb.names().includes('spend_rate_limit_slot'), false);
 });
 
 test('success: one forced tool call, no thinking, the stripped image, and a validated estimate', async () => {
@@ -262,7 +271,7 @@ test('the note is truncated and cannot close its own marker block', async () => 
 	assert.ok(text.length < MAX_PLATE_NOTE_CHARS + 400);
 });
 
-test('a refusal or a missing tool call is a 422; a provider error is a 503', async () => {
+test('a refusal or a missing tool call is a 422; a provider error is a 503; each refunds the slot', async () => {
 	for (const [respond, status] of [
 		[() => ({ stop_reason: 'refusal', content: [] }), 422],
 		[() => ({ stop_reason: 'end_turn', content: [{ type: 'text', text: 'a salad' }] }), 422],
@@ -273,13 +282,34 @@ test('a refusal or a missing tool call is a 422; a provider error is a 503', asy
 			503,
 		],
 	] as const) {
+		const sb = stubSupabase();
 		const r = await handlePlatePhoto('Bearer x', VALID, {
 			...baseConfig(),
-			createClient: stubSupabase().factory,
+			createClient: sb.factory,
 			createAnthropic: stubModel(respond).create,
 		});
 		assert.equal(r.status, status);
+		assert.deepEqual(sb.names(), ['get_my_profile', 'is_pro', 'spend_rate_limit_slot', 'refund_rate_limit_slot']);
+		assert.deepEqual(sb.calls.find((c) => c.name === 'refund_rate_limit_slot')?.args, {
+			p_user_id: 'user-1',
+			p_bucket: PLATE_PHOTO_RATE_BUCKET,
+			p_spend_id: 'ticket-1',
+		});
 	}
+});
+
+test('under the dev bypass a provider failure refunds nothing, because nothing was spent', async () => {
+	const sb = stubSupabase();
+	const r = await handlePlatePhoto('Bearer x', VALID, {
+		...baseConfig(),
+		bypassPaywallEnabled: true,
+		createClient: sb.factory,
+		createAnthropic: stubModel(() => {
+			throw new Error('down');
+		}).create,
+	});
+	assert.equal(r.status, 503);
+	assert.deepEqual(sb.names(), ['get_my_profile']);
 });
 
 test('every nutrient the tool advertises is one the validator reads', () => {
@@ -308,7 +338,7 @@ test('with the dev bypass and a v5 record the estimate runs, skipping only Pro a
 	assert.equal(model.seen.calls, 1);
 });
 
-test('a Pro runner spends one slot of the caller\'s 20-per-hour plate-photo bucket', async () => {
+test('a Pro runner spends one slot of the caller\'s 20-per-hour plate-photo bucket and keeps it on success', async () => {
 	const sb = stubSupabase();
 	const r = await handlePlatePhoto('Bearer x', VALID, {
 		...baseConfig(),
@@ -316,8 +346,8 @@ test('a Pro runner spends one slot of the caller\'s 20-per-hour plate-photo buck
 		createAnthropic: stubModel(() => toolMessage({ items: [] })).create,
 	});
 	assert.equal(r.status, 200);
-	assert.deepEqual(sb.names(), ['get_my_profile', 'is_pro', 'check_rate_limit']);
-	assert.deepEqual(sb.calls.find((c) => c.name === 'check_rate_limit')?.args, {
+	assert.deepEqual(sb.names(), ['get_my_profile', 'is_pro', 'spend_rate_limit_slot']);
+	assert.deepEqual(sb.calls.find((c) => c.name === 'spend_rate_limit_slot')?.args, {
 		p_user_id: 'user-1',
 		p_bucket: PLATE_PHOTO_RATE_BUCKET,
 		p_max: PLATE_PHOTO_RATE_MAX,

@@ -243,32 +243,58 @@ test('every LLM-spending endpoint carries a per-user rate-limit bucket', () => {
 	// #lib/routes/rate_limit.ts was written for. Every handler that reaches a
 	// billed provider must hold a durable per-user ceiling, and it must be
 	// taken BEFORE the provider call.
-	for (const [file, marker] of [
-		['src/lib/routes/route_describe/handler.ts', 'anthropic.messages.create'],
-		['src/lib/routes/route_request/handler.ts', 'anthropic.messages.create'],
-		['src/lib/nutrition/plate_photo/handler.ts', 'anthropic.messages.create'],
-		['src/lib/routes/generate/handler.ts', 'const fetcher: Fetcher'],
-		['src/lib/routes/osrm_proxy/handler.ts', 'const fetcher: Fetcher'],
+	for (const [file, gate, marker] of [
+		['src/lib/routes/route_describe/handler.ts', 'spendRouteRateLimitSlot(', 'anthropic.messages.create'],
+		['src/lib/routes/route_request/handler.ts', 'spendRouteRateLimitSlot(', 'anthropic.messages.create'],
+		['src/lib/nutrition/plate_photo/handler.ts', 'spendRouteRateLimitSlot(', 'anthropic.messages.create'],
+		['src/lib/routes/generate/handler.ts', 'checkRouteRateLimit(', 'const fetcher: Fetcher'],
+		['src/lib/routes/osrm_proxy/handler.ts', 'checkRouteRateLimit(', 'const fetcher: Fetcher'],
 	] as const) {
 		const source = read(file);
-		assert.match(
-			source,
-			/checkRouteRateLimit\(/,
+		const gateIdx = source.indexOf(gate);
+		assert.ok(
+			gateIdx > 0,
 			`${file} calls a billed provider and must take a per-user rate-limit slot ` +
-				'via checkRouteRateLimit — the per-IP WAF rule is not a per-user ceiling.',
+				`via ${gate.slice(0, -1)} — the per-IP WAF rule is not a per-user ceiling.`,
 		);
-		const gateIdx = source.indexOf('checkRouteRateLimit(');
 		const spendIdx = source.indexOf(marker);
 		assert.ok(
-			gateIdx > 0 && spendIdx > 0 && gateIdx < spendIdx,
+			spendIdx > 0 && gateIdx < spendIdx,
 			`${file}: the rate-limit check must precede the billed call (${marker}).`,
 		);
 		// The verdict is a three-value union; anything other than 'ok' has to
 		// deny, or a fail-closed 'error' silently grants the spend.
 		assert.match(
 			source,
-			/rl !== 'ok'|verdict === 'limited'/,
+			/rl !== 'ok'|rl\.verdict !== 'ok'|verdict === 'limited'/,
 			`${file} must deny on a non-'ok' rate-limit verdict (fail closed on 'error').`,
+		);
+	}
+});
+
+test('the Anthropic handlers on a route bucket give the slot back when the model produces nothing usable', () => {
+	// A provider outage, a refusal or a reply the handler cannot use used to
+	// cost the runner one of a small hourly allowance (plate-photo is 20). The
+	// refund is ticketed (spend_rate_limit_slot / refund_rate_limit_slot,
+	// migration 20270827000001) because a bare decrement the handler can call
+	// is one the runner can call too.
+	const helper = read('src/lib/routes/rate_limit.ts');
+	assert.match(helper, /rpc\('spend_rate_limit_slot'/);
+	assert.match(helper, /rpc\('refund_rate_limit_slot'/);
+	assert.doesNotMatch(helper, /rpc\('decrement/, 'the refund must be ticketed, never a bare per-bucket decrement');
+	for (const [file, reasons] of [
+		['src/lib/nutrition/plate_photo/handler.ts', ['refusal', 'no_tool_use', 'provider_error']],
+		['src/lib/routes/route_request/handler.ts', ['refusal', 'no_tool_use', 'provider_error']],
+		['src/lib/routes/route_describe/handler.ts', ['refusal', 'empty_text', 'provider_error']],
+	] as const) {
+		const source = read(file);
+		assert.match(source, /refundRouteRateLimitSlot\(/, `${file} must refund through the shared helper.`);
+		for (const reason of reasons) {
+			assert.ok(source.includes(`await refundSlot('${reason}')`), `${file} must refund on ${reason}.`);
+		}
+		assert.ok(
+			source.indexOf('ANTHROPIC_API_KEY') < source.indexOf('spendRouteRateLimitSlot('),
+			`${file}: check the key before the throttle, so a misconfiguration never spends a slot.`,
 		);
 	}
 });

@@ -562,7 +562,7 @@ test('the plate-photo logger gates on the v5 disclosure before Pro, the throttle
 		`${file} must gate on the plate-photo disclosure before calling Anthropic.`,
 	);
 	const gateIdx = source.indexOf('gateAiDisclosure(');
-	for (const later of ["rpc('is_pro'", 'checkRouteRateLimit(', 'new Anthropic(']) {
+	for (const later of ["rpc('is_pro'", 'spendRouteRateLimitSlot(', 'new Anthropic(']) {
 		const idx = source.indexOf(later);
 		assert.ok(gateIdx > 0 && idx > gateIdx, `${file}: the consent gate must precede ${later}.`);
 	}

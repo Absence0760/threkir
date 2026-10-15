@@ -17,7 +17,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { EXTRACT_TOOL, handleRouteRequest, MAX_REQUEST_TEXT_CHARS } from './handler';
+import {
+	EXTRACT_TOOL,
+	handleRouteRequest,
+	MAX_REQUEST_TEXT_CHARS,
+	ROUTE_REQUEST_RATE_BUCKET,
+	ROUTE_REQUEST_RATE_MAX,
+	ROUTE_REQUEST_RATE_WINDOW_S,
+} from './handler';
 import type { RouteRequestConfig } from './handler';
 import { validateConstraints } from './constraints';
 
@@ -218,4 +225,126 @@ test('the dev paywall bypass does not bypass the consent gate', async () => {
 	);
 	assert.equal(r.status, 403);
 	assert.equal(r.body.code, 'ai_disclosure_required');
+});
+
+// ─────────────── Rate-limit slot: spent before the model, refunded on failure ───────────────
+
+/// A Pro caller whose throttle hands out ticket `ticket-1`; records every RPC.
+function proClient() {
+	const calls: Array<{ name: string; args?: unknown }> = [];
+	const factory = () =>
+		({
+			auth: { getUser: async () => ({ data: { user: { id: 'user-1' } }, error: null }) },
+			rpc: (name: string, args?: unknown) => {
+				calls.push({ name, args });
+				if (name === 'get_my_profile') {
+					return {
+						maybeSingle: async () => ({
+							data: { ai_disclosure_version: 2, coach_consent_at: ACCEPTED_AT },
+							error: null,
+						}),
+					};
+				}
+				if (name === 'spend_rate_limit_slot') {
+					return Promise.resolve({
+						data: [{ allowed: true, retry_after_seconds: 0, spend_id: 'ticket-1' }],
+						error: null,
+					});
+				}
+				return Promise.resolve({ data: true, error: null });
+			},
+		}) as never;
+	return { factory, names: () => calls.map((c) => c.name), calls };
+}
+
+function fakeModel(respond: () => unknown) {
+	let calls = 0;
+	return {
+		create: () => ({
+			messages: {
+				create: async () => {
+					calls += 1;
+					return respond() as never;
+				},
+			},
+		}),
+		calls: () => calls,
+	};
+}
+
+function quietly<T>(fn: () => Promise<T>): Promise<T> {
+	const [err, warn] = [console.error, console.warn];
+	console.error = () => {};
+	console.warn = () => {};
+	return fn().finally(() => {
+		console.error = err;
+		console.warn = warn;
+	});
+}
+
+test('success spends one slot of the route-request bucket and keeps it', async () => {
+	const sb = proClient();
+	const r = parse(
+		await handleRouteRequest('Bearer x', VALID_REQUEST, {
+			...baseConfig(),
+			createClient: sb.factory,
+			createAnthropic: fakeModel(() => ({
+				stop_reason: 'tool_use',
+				content: [{ type: 'tool_use', id: 'tu_1', name: EXTRACT_TOOL.name, input: {} }],
+			})).create,
+		}),
+	);
+	assert.equal(r.status, 200);
+	assert.deepEqual(sb.names(), ['get_my_profile', 'is_pro', 'spend_rate_limit_slot']);
+	assert.deepEqual(sb.calls[2].args, {
+		p_user_id: 'user-1',
+		p_bucket: ROUTE_REQUEST_RATE_BUCKET,
+		p_max: ROUTE_REQUEST_RATE_MAX,
+		p_window_seconds: ROUTE_REQUEST_RATE_WINDOW_S,
+	});
+});
+
+test('a refusal, a missing tool call and a provider failure each refund the slot', async () => {
+	for (const [respond, status] of [
+		[() => ({ stop_reason: 'refusal', content: [] }), 422],
+		[() => ({ stop_reason: 'end_turn', content: [{ type: 'text', text: 'a loop' }] }), 422],
+		[
+			() => {
+				throw Object.assign(new Error('529 overloaded'), { status: 529 });
+			},
+			503,
+		],
+	] as const) {
+		const sb = proClient();
+		const r = await quietly(() =>
+			handleRouteRequest('Bearer x', VALID_REQUEST, {
+				...baseConfig(),
+				createClient: sb.factory,
+				createAnthropic: fakeModel(respond).create,
+			}),
+		);
+		assert.equal(r.status, status);
+		assert.deepEqual(sb.names(), ['get_my_profile', 'is_pro', 'spend_rate_limit_slot', 'refund_rate_limit_slot']);
+		assert.deepEqual(sb.calls[3].args, {
+			p_user_id: 'user-1',
+			p_bucket: ROUTE_REQUEST_RATE_BUCKET,
+			p_spend_id: 'ticket-1',
+		});
+	}
+});
+
+test('a missing key spends no slot', async () => {
+	const sb = proClient();
+	const model = fakeModel(() => ({}));
+	const r = await quietly(() =>
+		handleRouteRequest('Bearer x', VALID_REQUEST, {
+			...baseConfig(),
+			anthropicApiKey: undefined,
+			createClient: sb.factory,
+			createAnthropic: model.create,
+		}),
+	);
+	assert.equal(r.status, 503);
+	assert.equal(sb.names().includes('spend_rate_limit_slot'), false);
+	assert.equal(model.calls(), 0);
 });

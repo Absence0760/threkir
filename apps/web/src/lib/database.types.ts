@@ -3313,18 +3313,21 @@ export type Database = {
         Row: {
           bucket: string
           count: number
+          refundable_spends: string[]
           user_id: string
           window_start: string
         }
         Insert: {
           bucket: string
           count?: number
+          refundable_spends?: string[]
           user_id: string
           window_start: string
         }
         Update: {
           bucket?: string
           count?: number
+          refundable_spends?: string[]
           user_id?: string
           window_start?: string
         }
@@ -6737,6 +6740,10 @@ export type Database = {
         Args: { p_route_id: string }
         Returns: undefined
       }
+      refund_rate_limit_slot: {
+        Args: { p_bucket: string; p_spend_id: string; p_user_id: string }
+        Returns: boolean
+      }
       request_distance_recompute: {
         Args: { p_run_id: string }
         Returns: undefined
@@ -7102,6 +7109,19 @@ export type Database = {
       }
       sign_in_browser_class: { Args: { p_ua: string }; Returns: string }
       sign_in_platform_class: { Args: { p_ua: string }; Returns: string }
+      spend_rate_limit_slot: {
+        Args: {
+          p_bucket: string
+          p_max: number
+          p_user_id: string
+          p_window_seconds: number
+        }
+        Returns: {
+          allowed: boolean
+          retry_after_seconds: number
+          spend_id: string
+        }[]
+      }
       submit_report: {
         Args: {
           p_notes?: string

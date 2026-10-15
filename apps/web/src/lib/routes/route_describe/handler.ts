@@ -32,7 +32,7 @@ import {
 	aiDisclosureDenialBody,
 	gateAiDisclosure,
 } from '../../core/ai_disclosure';
-import { checkRouteRateLimit } from '../rate_limit';
+import { refundRouteRateLimitSlot, spendRouteRateLimitSlot } from '../rate_limit';
 import { supabaseErrorFields, thrownMessage } from '../../core/supabase_error';
 
 /// Per-user ceiling on the billed Anthropic call. Sized like the sibling
@@ -67,6 +67,17 @@ const ROUTE_DESCRIBE_TIMEOUT_MS = 12_000;
  */
 export const MAX_ROUTE_NAME_CHARS = 200;
 
+/// The structural surface the handler uses — narrow enough that a test can
+/// hand in a fake without the SDK's whole client.
+export interface RouteDescribeModelClient {
+	messages: {
+		create(
+			body: Anthropic.MessageCreateParamsNonStreaming,
+			options?: { timeout?: number },
+		): PromiseLike<Anthropic.Message>;
+	};
+}
+
 export interface RouteDescribeConfig {
 	anthropicApiKey: string | undefined;
 	publicSupabaseUrl: string;
@@ -80,6 +91,8 @@ export interface RouteDescribeConfig {
 	 * `CoachConfig` carries.
 	 */
 	createClient?: SupabaseClientFactory;
+	/// Same hook for the model: unset in both wrappers, a fake in unit tests.
+	createAnthropic?: (apiKey: string) => RouteDescribeModelClient;
 }
 
 export interface RouteDescribeResult {
@@ -234,34 +247,45 @@ export async function handleRouteDescribe(
 		});
 	}
 
-	// Per-user ceiling on the billed fan-out. Pro is a monthly price, not a
-	// per-call one, so without this a single subscription (or one leaked Pro
-	// JWT) buys unbounded Opus calls on the operator's key — the per-IP WAF
-	// rule can't see a JWT spread over an IP pool. Only Pro callers reach
-	// here, so a free caller is never charged a slot. Fail-closed: a throttle
-	// error serves the templated description rather than the model.
-	if (!config.bypassPaywallEnabled) {
-		const rl = await checkRouteRateLimit(
-			supabase,
-			userRes.data.user.id,
-			ROUTE_DESCRIBE_RATE_BUCKET,
-			ROUTE_DESCRIBE_RATE_MAX,
-			ROUTE_DESCRIBE_RATE_WINDOW_S,
-		);
-		if (rl !== 'ok') {
-			return json(200, { description: templated, source: 'template' });
-		}
-	}
-
 	// Pro path. Missing key → degrade to templated rather than 503 — the
-	// runner still gets a description.
+	// runner still gets a description. Checked before the throttle so a
+	// misconfiguration never spends a slot.
 	if (!config.anthropicApiKey) {
 		console.error('[route-describe] missing ANTHROPIC_API_KEY — serving templated description');
 		return json(200, { description: templated, source: 'template' });
 	}
 
+	// Per-user ceiling on the billed fan-out. Pro is a monthly price, not a
+	// per-call one, so without this a single subscription (or one leaked Pro
+	// JWT) buys unbounded Opus calls on the operator's key — the per-IP WAF
+	// rule can't see a JWT spread over an IP pool. Only Pro callers reach
+	// here, so a free caller is never charged a slot. Fail-closed: a throttle
+	// error serves the templated description rather than the model. A call
+	// that falls back to the template gives its slot back.
+	const userId = userRes.data.user.id;
+	let spendId: string | null = null;
+	if (!config.bypassPaywallEnabled) {
+		const rl = await spendRouteRateLimitSlot(
+			supabase,
+			userId,
+			ROUTE_DESCRIBE_RATE_BUCKET,
+			ROUTE_DESCRIBE_RATE_MAX,
+			ROUTE_DESCRIBE_RATE_WINDOW_S,
+		);
+		if (rl.verdict !== 'ok') {
+			return json(200, { description: templated, source: 'template' });
+		}
+		spendId = rl.spendId;
+	}
+
+	async function refundSlot(reason: string): Promise<void> {
+		await refundRouteRateLimitSlot(supabase, userId, ROUTE_DESCRIBE_RATE_BUCKET, spendId, reason);
+	}
+
 	try {
-		const anthropic = new Anthropic({ apiKey: config.anthropicApiKey });
+		const anthropic: RouteDescribeModelClient = config.createAnthropic
+			? config.createAnthropic(config.anthropicApiKey)
+			: new Anthropic({ apiKey: config.anthropicApiKey });
 		const message = await anthropic.messages.create(
 			{
 				model: ROUTE_DESCRIBE_MODEL,
@@ -288,6 +312,7 @@ export async function handleRouteDescribe(
 		// degrade to the templated text on a refusal.
 		if (message.stop_reason === 'refusal') {
 			console.warn('[route-describe] model refused — serving templated description');
+			await refundSlot('refusal');
 			return json(200, { description: templated, source: 'template' });
 		}
 
@@ -300,6 +325,7 @@ export async function handleRouteDescribe(
 		if (!text) {
 			// Empty completion (hit max_tokens before any text, etc.) —
 			// fall back rather than show a blank box.
+			await refundSlot('empty_text');
 			return json(200, { description: templated, source: 'template' });
 		}
 		return json(200, { description: text, source: 'ai' });
@@ -313,6 +339,7 @@ export async function handleRouteDescribe(
 			message: thrownMessage(e),
 			stack: e instanceof Error ? e.stack : undefined,
 		});
+		await refundSlot('provider_error');
 		return json(200, { description: templated, source: 'template' });
 	}
 }

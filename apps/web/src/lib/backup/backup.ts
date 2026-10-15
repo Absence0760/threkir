@@ -14,9 +14,9 @@ function prefsBagOf(value: Json | null | undefined): JsonObject {
 import { TABLES, BUCKETS } from '../core/schema';
 import { markListsStale } from '../core/list_freshness';
 import { auth } from '../stores/auth.svelte';
+import { walkKeyset, type KeysetKey } from '../core/keyset_page';
 import {
 	buildBackupZip,
-	readAllRows,
 	BACKUP_FORMAT,
 	BACKUP_VERSION
 } from './backup_writer';
@@ -51,6 +51,18 @@ export type { BackupArchive, BackupProgress };
 
 export type { RestoreProgress, RestoreResult } from './restore_orchestrator';
 
+/// Newest run first, `id` breaking a `started_at` tie so the walk's order is
+/// total. Both NOT NULL.
+const BACKUP_RUN_ORDER: readonly KeysetKey[] = [
+	{ column: 'started_at', ascending: false, nullsFirst: true },
+	{ column: 'id', ascending: false, nullsFirst: true },
+];
+
+/// `routes` has no natural sort, so the walk orders on the primary key alone.
+const BACKUP_ROUTE_ORDER: readonly KeysetKey[] = [
+	{ column: 'id', ascending: true, nullsFirst: false },
+];
+
 /**
  * Build the account's local backup archive.
  *
@@ -67,25 +79,22 @@ export async function createBackup(
 	const userId = auth.user?.id;
 	if (!userId) throw new Error('Not authenticated');
 
-	// PAGED, and uncapped. An unranged select is clamped to `db-max-rows`
+	// WALKED, and uncapped. An unranged select is clamped to `db-max-rows`
 	// (1000) and answered 200 with no flag, so a deep history backed itself
-	// up, was told it succeeded, and found out at restore.
+	// up, was told it succeeded, and found out at restore. Walked by keyset
+	// cursor, not by OFFSET: a run synced or deleted while the backup is
+	// between two pages moves every later position, and an OFFSET walk then
+	// archives one run twice or not at all under a manifest saying `complete`
+	// (§ 1927).
 	onProgress?.({ stage: 'runs', current: 0, total: 1 });
-	const runsRead = await readAllRows<Record<string, unknown>>((from, to) =>
-		supabase
-			.from(TABLES.runs)
-			.select('*')
-			.eq('user_id', userId)
-			.order('started_at', { ascending: false })
-			// Secondary key so the pages compose into the whole table: LIMIT /
-			// OFFSET over a non-unique sort key lets a row on a page boundary
-			// be returned twice or not at all, and this read is the one whose
-			// manifest then claims `complete`. Same rule `fetchClubMembers`
-			// states for load-more, where the cost is a visibly duplicated
-			// name rather than a run missing from an archive.
-			.order('id', { ascending: false })
-			.range(from, to)
-	);
+	const runsRead = await walkKeyset<Record<string, unknown>>(BACKUP_RUN_ORDER, (after, limit) => {
+		let q = supabase.from(TABLES.runs).select('*').eq('user_id', userId);
+		if (after) q = q.or(after);
+		for (const k of BACKUP_RUN_ORDER) {
+			q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+		}
+		return q.limit(limit);
+	});
 	// Nothing at all is a failed backup, not a short one — the runner gets
 	// the error rather than a file with no runs in it. A read that died
 	// PART-way still holds runs worth keeping, so it ships flagged.
@@ -93,18 +102,14 @@ export async function createBackup(
 	const runRows = runsRead.rows;
 
 	onProgress?.({ stage: 'routes', current: 0, total: 1 });
-	const routesRead = await readAllRows<Record<string, unknown>>((from, to) =>
-		// Ordered on the primary key alone: `routes` has no natural sort and a
-		// paged read with no ORDER BY is undefined -- Postgres may answer two
-		// OFFSETs from different row orders, so an account past one page could
-		// archive a route twice and lose another, under a whole manifest.
-		supabase
-			.from('routes')
-			.select('*')
-			.eq('user_id', userId)
-			.order('id', { ascending: true })
-			.range(from, to)
-	);
+	const routesRead = await walkKeyset<Record<string, unknown>>(BACKUP_ROUTE_ORDER, (after, limit) => {
+		let q = supabase.from('routes').select('*').eq('user_id', userId);
+		if (after) q = q.or(after);
+		for (const k of BACKUP_ROUTE_ORDER) {
+			q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+		}
+		return q.limit(limit);
+	});
 	const routes = routesRead.rows;
 
 	onProgress?.({ stage: 'profile', current: 0, total: 1 });

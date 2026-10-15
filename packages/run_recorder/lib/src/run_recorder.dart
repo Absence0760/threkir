@@ -433,6 +433,31 @@ class RunRecorder {
   bool get backgroundLocationLimited => _backgroundLocationLimited;
   bool _backgroundLocationLimited = false;
 
+  /// Whether this run records under a reduced-accuracy location grant:
+  /// iOS 14+ with Precise Location switched off, or Android 12+ with only
+  /// approximate (`ACCESS_COARSE_LOCATION`) granted. Fixes then arrive
+  /// kilometres off, so the accuracy gate drops them and the track, map and
+  /// GPS distance stay empty; on Android the `GPS_PROVIDER` bridge cannot
+  /// open at all without `ACCESS_FINE_LOCATION`.
+  ///
+  /// Like [backgroundLocationLimited] it is a limitation, not a failure:
+  /// the clock and pedometer still record, and callers disclose it rather
+  /// than refuse the run. On iOS [prepare] first asks once for temporary
+  /// full accuracy (purpose key [fullAccuracyPurposeKey]), which lasts the
+  /// app session; this is true only when that was declined. Android has no
+  /// temporary grant, and [Geolocator.requestPermission] cannot upgrade a
+  /// coarse grant there (it bundles `ACCESS_BACKGROUND_LOCATION`, and Android
+  /// 11+ ignores a request mixing it with a foreground permission), so the
+  /// caller re-requests or sends the runner to settings. An unreadable
+  /// status counts as precise. Resolved by [prepare].
+  bool get preciseLocationOff => _preciseLocationOff;
+  bool _preciseLocationOff = false;
+
+  /// The `NSLocationTemporaryUsageDescriptionDictionary` key in the iOS
+  /// Info.plist whose purpose string the temporary-full-accuracy prompt
+  /// shows.
+  static const String fullAccuracyPurposeKey = 'RunRecording';
+
   /// Which Android stream the recorded fixes came from: `'gps'`, `'fused'`, or
   /// `'mixed'` when the run fell back to fused for part of it. Counts restart
   /// at [prepare], so a resumed session describes its own fixes. Null off
@@ -523,6 +548,7 @@ class RunRecorder {
     _resetSourceArbitration();
     _lastAccuracyDropLogAt = null;
     _backgroundLocationLimited = false;
+    _preciseLocationOff = false;
     _resetTreadmill();
     _prepared = true;
 
@@ -551,6 +577,29 @@ class RunRecorder {
     _backgroundLocationLimited = _foregroundOnlyGrant(permission);
 
     _openPositionStream();
+    final preciseOff = await _resolvePreciseLocationOff();
+    if (!_disposed) _preciseLocationOff = preciseOff;
+  }
+
+  /// Reads the accuracy of the current grant for [preciseLocationOff],
+  /// asking iOS once for temporary full accuracy when it is reduced. Runs
+  /// after the stream is open because Core Location upgrades a live stream
+  /// in place when the grant changes. L4: a platform failure here only
+  /// loses the disclosure, so it is caught on its own and reads as precise.
+  Future<bool> _resolvePreciseLocationOff() async {
+    try {
+      var status = await Geolocator.getLocationAccuracy();
+      if (status == LocationAccuracyStatus.reduced &&
+          defaultTargetPlatform == TargetPlatform.iOS) {
+        status = await Geolocator.requestTemporaryFullAccuracy(
+          purposeKey: fullAccuracyPurposeKey,
+        );
+      }
+      return status == LocationAccuracyStatus.reduced;
+    } catch (e) {
+      debugPrint('RunRecorder: location accuracy check failed — $e');
+      return false;
+    }
   }
 
   /// Whether [permission] covers the foreground but not reliably the

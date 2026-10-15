@@ -7,8 +7,9 @@ import 'package:run_recorder/run_recorder.dart';
 
 /// Test fake for [GeolocatorPlatform]. Replaces the real platform
 /// channel so [Geolocator.checkPermission], [Geolocator.requestPermission],
-/// [Geolocator.isLocationServiceEnabled], and [Geolocator.getPositionStream]
-/// all flow through configurable values + a controllable position stream.
+/// [Geolocator.isLocationServiceEnabled], [Geolocator.getPositionStream],
+/// [Geolocator.getLocationAccuracy] and
+/// [Geolocator.requestTemporaryFullAccuracy] all flow through configurable values + a controllable position stream.
 ///
 /// Extends (not implements) so `PlatformInterface.verify` passes.
 class _FakeGeolocatorPlatform extends GeolocatorPlatform {
@@ -45,6 +46,29 @@ class _FakeGeolocatorPlatform extends GeolocatorPlatform {
     final result = requestPermissionResult ?? permissionState;
     permissionState = result;
     return result;
+  }
+
+  LocationAccuracyStatus accuracyStatus = LocationAccuracyStatus.precise;
+  // What the iOS temporary-full-accuracy prompt resolves to; null mirrors
+  // the current [accuracyStatus] (the runner declined).
+  LocationAccuracyStatus? temporaryFullAccuracyResult;
+  Object? accuracyError;
+  final List<String> temporaryFullAccuracyPurposeKeys = <String>[];
+
+  @override
+  Future<LocationAccuracyStatus> getLocationAccuracy() async {
+    final error = accuracyError;
+    if (error != null) throw error;
+    return accuracyStatus;
+  }
+
+  @override
+  Future<LocationAccuracyStatus> requestTemporaryFullAccuracy({
+    required String purposeKey,
+  }) async {
+    temporaryFullAccuracyPurposeKeys.add(purposeKey);
+    accuracyStatus = temporaryFullAccuracyResult ?? accuracyStatus;
+    return accuracyStatus;
   }
 
   @override
@@ -221,6 +245,88 @@ void main() {
       fake.permissionState = LocationPermission.always;
       await r.prepare();
       expect(r.backgroundLocationLimited, isFalse);
+      r.dispose();
+    });
+
+    test('flags an approximate-only grant on Android without re-requesting',
+        () async {
+      // Android 12+ lets the runner grant only approximate location: fixes
+      // land kilometres off and the GPS_PROVIDER bridge cannot open.
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      fake.permissionState = LocationPermission.whileInUse;
+      fake.accuracyStatus = LocationAccuracyStatus.reduced;
+      final r = RunRecorder();
+      await r.prepare();
+      expect(r.preciseLocationOff, isTrue);
+      expect(fake.subscriptionsOpened, 1,
+          reason: 'a rough grant still records — the clock and pedometer '
+              'do not depend on precision.');
+      expect(fake.temporaryFullAccuracyPurposeKeys, isEmpty,
+          reason: 'temporary full accuracy is an iOS-only grant.');
+      r.dispose();
+    });
+
+    test('asks iOS once for temporary full accuracy and clears the flag '
+        'when granted', () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      fake.accuracyStatus = LocationAccuracyStatus.reduced;
+      fake.temporaryFullAccuracyResult = LocationAccuracyStatus.precise;
+      final r = RunRecorder();
+      await r.prepare();
+      expect(fake.temporaryFullAccuracyPurposeKeys,
+          [RunRecorder.fullAccuracyPurposeKey]);
+      expect(r.preciseLocationOff, isFalse);
+      r.dispose();
+    });
+
+    test('flags Precise Location off on iOS when the runner declines '
+        'temporary full accuracy', () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      fake.accuracyStatus = LocationAccuracyStatus.reduced;
+      final r = RunRecorder();
+      await r.prepare();
+      expect(fake.temporaryFullAccuracyPurposeKeys, hasLength(1));
+      expect(r.preciseLocationOff, isTrue);
+      r.dispose();
+    });
+
+    test('does not ask for temporary full accuracy when already precise',
+        () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      final r = RunRecorder();
+      await r.prepare();
+      expect(fake.temporaryFullAccuracyPurposeKeys, isEmpty);
+      expect(r.preciseLocationOff, isFalse);
+      r.dispose();
+    });
+
+    test('an unreadable accuracy status reads as precise and still records',
+        () async {
+      fake.accuracyError = Exception('accuracy channel down');
+      final r = RunRecorder();
+      await r.prepare();
+      expect(r.prepared, isTrue);
+      expect(fake.subscriptionsOpened, 1);
+      expect(r.preciseLocationOff, isFalse);
+      r.dispose();
+    });
+
+    test('clears preciseLocationOff when a later prepare is precise',
+        () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      fake.accuracyStatus = LocationAccuracyStatus.reduced;
+      final r = RunRecorder();
+      await r.prepare();
+      expect(r.preciseLocationOff, isTrue);
+
+      fake.accuracyStatus = LocationAccuracyStatus.precise;
+      await r.prepare();
+      expect(r.preciseLocationOff, isFalse);
       r.dispose();
     });
 

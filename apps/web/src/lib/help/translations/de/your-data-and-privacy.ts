@@ -11,10 +11,11 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'Deine Profilseite mit Anzeigenamen, Bild, Follower-Zahlen und deinen öffentlichen Läufen kann jeder öffnen, der ihren Link hat.',
+						'Deine Profilseite mit Anzeigenamen, Bild, Follower-Zahlen und deinen öffentlichen Läufen kann jeder öffnen, der ihren Link hat. Bei einem privaten Profil sehen nur Follower, die du annimmst, deine Läufe und Follower-Listen; siehe [[guide:private-profile-and-follow-requests|Dein Profil privat machen und Follower annehmen]].',
 						'Läufe, die du öffentlich machst, erscheinen in deinem Profil und im Feed. Private Läufe sind nur für dich sichtbar.',
 						'Deine Mitgliedschaft in einem öffentlichen Club und alles, was du dort postest, können alle sehen, die den Club sehen können.',
 						'Solange du einen Live-Link teilst, kann jeder mit dem Link den laufenden Lauf sehen.',
+						'Ein Foto, für das du **Auf der Rennseite zeigen** wählst, erscheint bei einem öffentlichen Lauf, der mit einem Rennen verknüpft ist, mit Bildunterschrift und deinem Namen auf der öffentlichen Seite dieses Rennens. Nimm das Häkchen heraus oder mach den Lauf privat, um es wieder zu entfernen.',
 					],
 				},
 				{
@@ -92,10 +93,11 @@ export const translation: GuideTranslation = {
 		title: 'd180bf422ce3bba9',
 		summary: '2b4cc5410b0eb4b6',
 		's0.heading': '4158a516fb61f91b',
-		's0.b0.i0': '6b0cdb0395bd2c4b',
+		's0.b0.i0': '6ef16a07f5e1d2dc',
 		's0.b0.i1': '9a700fce5a4094fc',
 		's0.b0.i2': 'dc76446c63a054d2',
 		's0.b0.i3': '483ea8dba216e43c',
+		's0.b0.i4': 'cc3a91ab3dc6a2a6',
 		's0.b1': '0bbe7c39a03a9a09',
 		's1.heading': 'ac353e580fc0908f',
 		's1.b0.i0': '7b3a2d8b5b822576',

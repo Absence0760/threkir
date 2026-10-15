@@ -6413,6 +6413,7 @@ export type Database = {
           onboarded_at: string | null
           parkrun_number: string | null
           preferred_unit: string | null
+          profile_private: boolean
           shadow_hidden: boolean
           subscription_at: string | null
           subscription_tier: string | null

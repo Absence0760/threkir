@@ -1,4 +1,4 @@
-//! GPS distance estimator, spec v1.3 forward filter — the `no_std` port of
+//! GPS distance estimator, spec v1.4 forward filter — the `no_std` port of
 //! `scripts/gps_distance/reference.py` (docs/features/gps_distance.md). The
 //! spec's smoother needs the whole run in memory and is not ported here; the
 //! phone or server re-derives a saved figure from the uploaded track.
@@ -12,7 +12,9 @@
 //! inventing the un-sampled ground. v1.2 adds an innovation gate with a
 //! lock-out re-anchor, adaptive measurement noise, a Doppler-vs-position
 //! cross-check, a low-speed Doppler debias, a pedometer zero-velocity update
-//! and an antimeridian-safe projection.
+//! and an antimeridian-safe projection. v1.3 learns a Doppler speed scale.
+//! v1.4 keeps fixes stating up to 50 m, credits a gap at least its straight
+//! chord less its uncertainty, and learns stride only from trustworthy credit.
 //!
 //! Every port replays `fixtures/gps_distance_vectors.json` to 1e-3 m, so the
 //! arithmetic follows the reference operation for operation. Fixed-size, no
@@ -21,6 +23,7 @@
 pub const EARTH_RADIUS_M: f64 = 6_371_008.8;
 pub const Q_ACCEL: f64 = 0.6;
 pub const MIN_POS_SIGMA_M: f64 = 3.0;
+pub const MAX_POS_SIGMA_M: f64 = 50.0;
 pub const INIT_VEL_VAR: f64 = 25.0;
 pub const MIN_SPEED_SIGMA_MPS: f64 = 0.3;
 pub const DEFAULT_SPEED_SIGMA_MPS: f64 = 0.5;
@@ -33,6 +36,9 @@ pub const STRIDE_WINDOW_STEPS: i64 = 50;
 pub const MIN_STRIDE_M: f64 = 0.4;
 pub const MAX_STRIDE_M: f64 = 2.5;
 pub const STRIDE_EMA_ALPHA: f64 = 0.2;
+pub const STRIDE_MAX_SPEED_SIGMA_MPS: f64 = 1.0;
+pub const STRIDE_MAX_POS_SIGMA_M: f64 = 20.0;
+pub const CHECK_MAX_POS_SIGMA_M: f64 = 20.0;
 pub const GATE_CHI2: f64 = 13.8155;
 pub const GATE_MAX_REJECTS: u32 = 5;
 pub const R_SCALE_ALPHA: f64 = 0.05;
@@ -58,7 +64,7 @@ pub const ZUPT_NO_STEP_S: f64 = 6.0;
 pub const ZUPT_VEL_SIGMA_MPS: f64 = 0.1;
 pub const ZUPT_DOPPLER_OVERRIDE_MPS: f64 = 1.0;
 pub const ZUPT_RELEASE_M: f64 = 40.0;
-pub const SPEC_VERSION: &str = "1.3";
+pub const SPEC_VERSION: &str = "1.4";
 pub const DEFAULT_MAX_SPEED_MPS: f64 = 10.0;
 
 const DEG_TO_RAD: f64 = core::f64::consts::PI / 180.0;
@@ -192,6 +198,8 @@ pub struct GpsDistanceEstimator {
     doppler_trusted: bool,
     steps_seen: bool,
     zupt_released: bool,
+    learn_stride: bool,
+    stride_ok: bool,
     xc_doppler: f64,
     xc_pos: f64,
     xc_time: f64,
@@ -212,11 +220,12 @@ pub struct GpsDistanceEstimator {
 /// One estimator lives in the `Recorder`, which the firmware holds once, so
 /// the pin is about noticing growth rather than a hard ceiling. Measured at
 /// spec v1.2: v1.1's 248 B plus 112 B for the gate, adaptive-R, cross-check
-/// and ZUPT state; spec v1.3 adds 88 B for the Doppler scale. The state stays `f64`: the projection and the covariance
+/// and ZUPT state; spec v1.3 adds 88 B for the Doppler scale; spec v1.4's two
+/// stride-learning flags spill one more 8 B word. The state stays `f64`: the projection and the covariance
 /// recursion over a run of thousands of fixes do not hold the vectors' 1e-3 m
 /// in `f32`. Identical on both targets because every field is 8-aligned
 /// scalars, `u32`s and `bool`s.
-const _: () = assert!(core::mem::size_of::<GpsDistanceEstimator>() == 448);
+const _: () = assert!(core::mem::size_of::<GpsDistanceEstimator>() == 456);
 
 impl Default for GpsDistanceEstimator {
     fn default() -> Self {
@@ -270,6 +279,8 @@ impl GpsDistanceEstimator {
             doppler_trusted: true,
             steps_seen: false,
             zupt_released: false,
+            learn_stride: true,
+            stride_ok: false,
             xc_doppler: 0.0,
             xc_pos: 0.0,
             xc_time: 0.0,
@@ -334,7 +345,29 @@ impl GpsDistanceEstimator {
     /// seeded with this one's stride, which is itself the carried stride when
     /// this segment learned none.
     pub const fn next_segment(&self) -> Self {
-        Self::with_config(self.max_speed_mps, self.expected_interval_s, self.stride_m)
+        let mut next =
+            Self::with_config(self.max_speed_mps, self.expected_interval_s, self.stride_m);
+        next.learn_stride = self.learn_stride;
+        next
+    }
+
+    /// The same estimator for a stretch on a source whose speed is not its
+    /// own Doppler: its stride is used, never learned.
+    pub const fn without_stride_learning(mut self) -> Self {
+        self.learn_stride = false;
+        self
+    }
+
+    /// Whether a fix may teach stride: by its Doppler sigma `sa` when its
+    /// credit came from Doppler, else by its position accuracy.
+    fn stride_grade(&self, accuracy_m: Option<f64>, doppler_sa: Option<f64>) -> bool {
+        if !self.learn_stride {
+            return false;
+        }
+        match doppler_sa {
+            Some(sa) => sa <= STRIDE_MAX_SPEED_SIGMA_MPS,
+            None => !matches!(valid(accuracy_m), Some(a) if a > STRIDE_MAX_POS_SIGMA_M),
+        }
     }
 
     pub fn max_speed_mps(&self) -> f64 {
@@ -366,6 +399,9 @@ impl GpsDistanceEstimator {
         if !(t.is_finite() && lat.is_finite() && lng.is_finite()) {
             return 0.0;
         }
+        if matches!(valid(accuracy_m), Some(a) if a > MAX_POS_SIGMA_M) {
+            return 0.0;
+        }
         let (lat0, lng0) = *self.origin.get_or_insert((lat, lng));
         let zx = wrap_lng(lng - lng0) * DEG_TO_RAD * EARTH_RADIUS_M * libm::cos(lat0 * DEG_TO_RAD);
         let zy = (lat - lat0) * DEG_TO_RAD * EARTH_RADIUS_M;
@@ -386,18 +422,34 @@ impl GpsDistanceEstimator {
         let (mut x, mut y, last) = match (self.axes, self.t) {
             (Some((x, y)), Some(last)) if t - last <= self.gap_s => (x, y, last),
             _ => {
-                // (Re-)anchor. Steps buffered across a real gap are committed now.
-                if self.t.is_some() {
+                // (Re-)anchor. Steps buffered across a real gap are committed
+                // now, and the straight line across it, less its 1-sigma
+                // uncertainty, is a lower bound on the distance covered: the
+                // GPS credit makes up whatever the steps fall short of it.
+                let mut gap_m = 0.0;
+                if let (Some((px, py)), Some(last)) = (self.axes, self.t) {
                     self.step_distance_m += self.pending_step_m;
+                    let d = libm::hypot(zx - px.p, zy - py.p);
+                    let lower = (d - libm::sqrt(px.a + py.a + 2.0 * r))
+                        .min(self.max_speed_mps * (t - last));
+                    if lower > self.pending_step_m {
+                        gap_m = lower - self.pending_step_m;
+                        self.gps_distance_m += gap_m;
+                    }
                 }
                 self.pending_step_m = 0.0;
+                self.stride_ok = self.stride_grade(accuracy_m, doppler.map(|(_, sa)| sa));
+                if !self.stride_ok {
+                    self.win_steps = 0;
+                    self.win_m = 0.0;
+                }
                 self.axes = Some((Axis::new(zx, r), Axis::new(zy, r)));
                 self.t = Some(t);
                 self.xc_last = (zx, zy, t);
                 self.ds_last = (zx, zy, t, dop, valid(bearing_deg));
                 self.reject_streak = 0;
                 self.zupt_anchor = None;
-                return 0.0;
+                return gap_m;
             }
         };
         // The gap closed inside the gap window, so the filter integrates it: drop the buffer.
@@ -463,7 +515,8 @@ impl GpsDistanceEstimator {
         // 4. Doppler-vs-position cross-check: Doppler speed against the raw
         //    fixes' displacement projected on the Doppler bearing.
         let bearing = valid(bearing_deg);
-        if accepted {
+        let checkable = !matches!(valid(accuracy_m), Some(a) if a > CHECK_MAX_POS_SIGMA_M);
+        if accepted && checkable {
             let (lx, ly, lt) = self.xc_last;
             let span = t - lt;
             if let (Some(d), Some(bd), false) = (dop, bearing, zupt) {
@@ -560,7 +613,17 @@ impl GpsDistanceEstimator {
             }
         };
         self.gps_distance_m += inc;
-        self.win_m += inc;
+        let credit_sa = match (use_dop, chord) {
+            (Some((_, sa)), None) => Some(sa),
+            _ => None,
+        };
+        self.stride_ok = self.stride_grade(accuracy_m, credit_sa);
+        if self.stride_ok {
+            self.win_m += inc;
+        } else {
+            self.win_steps = 0;
+            self.win_m = 0.0;
+        }
         inc
     }
 
@@ -588,6 +651,9 @@ impl GpsDistanceEstimator {
         }
         if let Some(fix_t) = self.t {
             if t - fix_t <= self.fresh_fix_s {
+                if !self.stride_ok {
+                    return;
+                }
                 self.win_steps += d;
                 if self.win_steps >= STRIDE_WINDOW_STEPS {
                     let stride = self.win_m / self.win_steps as f64;
@@ -646,6 +712,9 @@ mod tests {
                 sc["expectedIntervalS"].as_f64().expect("expectedIntervalS"),
                 sc["initialStrideM"].as_f64(),
             );
+            if sc["learnStride"].as_bool() == Some(false) {
+                e = e.without_stride_learning();
+            }
             let events = sc["events"].as_array().expect("events");
             let want = sc["expected"]["distanceAfterEachEventM"]
                 .as_array()
@@ -729,6 +798,7 @@ mod tests {
         assert_eq!(f("EARTH_RADIUS_M"), EARTH_RADIUS_M);
         assert_eq!(f("Q_ACCEL"), Q_ACCEL);
         assert_eq!(f("MIN_POS_SIGMA_M"), MIN_POS_SIGMA_M);
+        assert_eq!(f("MAX_POS_SIGMA_M"), MAX_POS_SIGMA_M);
         assert_eq!(f("INIT_VEL_VAR"), INIT_VEL_VAR);
         assert_eq!(f("MIN_SPEED_SIGMA_MPS"), MIN_SPEED_SIGMA_MPS);
         assert_eq!(f("DEFAULT_SPEED_SIGMA_MPS"), DEFAULT_SPEED_SIGMA_MPS);
@@ -744,6 +814,9 @@ mod tests {
         assert_eq!(f("MIN_STRIDE_M"), MIN_STRIDE_M);
         assert_eq!(f("MAX_STRIDE_M"), MAX_STRIDE_M);
         assert_eq!(f("STRIDE_EMA_ALPHA"), STRIDE_EMA_ALPHA);
+        assert_eq!(f("STRIDE_MAX_SPEED_SIGMA_MPS"), STRIDE_MAX_SPEED_SIGMA_MPS);
+        assert_eq!(f("STRIDE_MAX_POS_SIGMA_M"), STRIDE_MAX_POS_SIGMA_M);
+        assert_eq!(f("CHECK_MAX_POS_SIGMA_M"), CHECK_MAX_POS_SIGMA_M);
         assert_eq!(f("GATE_CHI2"), GATE_CHI2);
         assert_eq!(f("GATE_MAX_REJECTS") as u32, GATE_MAX_REJECTS);
         assert_eq!(f("R_SCALE_ALPHA"), R_SCALE_ALPHA);
@@ -774,8 +847,8 @@ mod tests {
     #[test]
     fn the_fixture_is_this_port_s_spec_version() {
         let doc: serde_json::Value = serde_json::from_str(VECTORS).expect("vectors parse");
-        assert_eq!(SPEC_VERSION, "1.3");
-        assert_eq!(doc["spec"].as_str(), Some("gps-distance-estimator v1.3"));
+        assert_eq!(SPEC_VERSION, "1.4");
+        assert_eq!(doc["spec"].as_str(), Some("gps-distance-estimator v1.4"));
     }
 
     #[test]
@@ -790,14 +863,50 @@ mod tests {
     }
 
     #[test]
-    fn a_gap_over_ten_seconds_reanchors_without_credit() {
+    fn a_gap_over_ten_seconds_reanchors_crediting_its_chord_lower_bound() {
         let mut e = GpsDistanceEstimator::default();
         e.add_fix(0.0, 40.0, -75.0, None, Some(3.0), None, None);
+        // 111.195 m north, less sqrt(9 + 9 + 2 * 9) = 6 m of uncertainty.
+        let chord = 0.001 * DEG_TO_RAD * EARTH_RADIUS_M - 6.0;
+        let inc = e.add_fix(30.0, 40.001, -75.0, None, Some(3.0), None, None);
+        assert!((inc - chord).abs() < 1e-9);
+        assert!((e.distance_m() - chord).abs() < 1e-9);
+    }
+
+    #[test]
+    fn a_fix_stating_worse_than_fifty_metres_is_ignored() {
+        let mut e = GpsDistanceEstimator::default();
         assert_eq!(
-            e.add_fix(30.0, 40.001, -75.0, None, Some(3.0), None, None),
+            e.add_fix(0.0, 40.0, -75.0, Some(51.0), None, None, None),
             0.0
         );
+        assert_eq!(e.last_fix_t(), None);
+        e.add_fix(1.0, 40.0, -75.0, Some(50.0), None, None, None);
+        e.add_fix(
+            2.0,
+            40.00003,
+            -75.0,
+            Some(51.0),
+            Some(3.0),
+            Some(0.3),
+            Some(0.0),
+        );
+        assert_eq!(e.last_fix_t(), Some(1.0));
         assert_eq!(e.distance_m(), 0.0);
+    }
+
+    #[test]
+    fn without_stride_learning_keeps_the_seed_across_segments() {
+        let mut e = GpsDistanceEstimator::with_config(DEFAULT_MAX_SPEED_MPS, 1.0, Some(0.95))
+            .without_stride_learning();
+        learn_stride(&mut e);
+        assert_eq!(e.stride_m(), Some(0.95));
+        let mut next = e.next_segment();
+        learn_stride(&mut next);
+        assert_eq!(next.stride_m(), Some(0.95));
+        let mut unseeded = GpsDistanceEstimator::default().without_stride_learning();
+        learn_stride(&mut unseeded);
+        assert_eq!(unseeded.stride_m(), None);
     }
 
     fn learn_stride(e: &mut GpsDistanceEstimator) {
@@ -850,10 +959,10 @@ mod tests {
         e.add_fix(0.0, 40.0, -75.0, None, Some(3.0), None, None);
         let inc = e.add_fix(60.0, 40.0016, -75.0, None, Some(3.0), None, None);
         assert!((inc - 180.0).abs() < 1e-9);
-        assert_eq!(
-            e.add_fix(661.0, 40.02, -75.0, None, Some(3.0), None, None),
-            0.0
-        );
+        // 601 s is past the 600 s gap window: a re-anchor credited by its
+        // chord less its uncertainty, not by Doppler x interval.
+        let gap = e.add_fix(661.0, 40.02, -75.0, None, Some(3.0), None, None);
+        assert!((gap - 2040.0015971).abs() < 1e-6, "{gap}");
     }
 
     #[test]

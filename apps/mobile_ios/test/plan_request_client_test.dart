@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import '../lib/payload_hash.dart';
 import '../lib/plan_request_client.dart';
@@ -270,5 +271,25 @@ void main() {
     expect(planRequestErrorKind(400, null), PlanRequestErrorKind.invalid);
     expect(planRequestErrorKind(422, null), PlanRequestErrorKind.notUnderstood);
     expect(planRequestErrorKind(502, null), PlanRequestErrorKind.unavailable);
+  });
+
+  test('a blank WEB_BASE_URL posts to production, never to a relative path',
+      () async {
+    dotenv.loadFromString(envString: 'WEB_BASE_URL=');
+    addTearDown(dotenv.clean);
+    final fake = _Fake([_ok(_inputs()), _ok(_inputs())]);
+    for (final baseUrl in [null, ' ']) {
+      await requestPlanInputs(
+        'A sub-2 half on 14 March',
+        '2026-10-15',
+        post: fake.post,
+        currentToken: () async => 'tok',
+        baseUrl: baseUrl,
+      );
+    }
+    expect(fake.calls.map((c) => '${c.url}'), [
+      'https://threkir.com/api/coach/plan-request',
+      'https://threkir.com/api/coach/plan-request',
+    ]);
   });
 }

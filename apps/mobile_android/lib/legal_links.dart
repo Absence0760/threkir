@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'l10n/gen/app_localizations.dart';
+import 'web_base_url.dart';
 import 'widgets/top_banner.dart';
 
 /// The legal documents the web app links from its settings nav footer
@@ -29,13 +29,7 @@ String legalDocLabel(AppLocalizations l10n, LegalDoc doc) => switch (doc) {
 /// the same resolution every other web-link surface uses. Pure so it can be
 /// unit-tested without a launcher.
 String legalDocUrl(LegalDoc doc, {String? webBase}) {
-  var base = (webBase ??
-          (dotenv.isInitialized ? dotenv.maybeGet('WEB_BASE_URL') : null) ??
-          '')
-      .trim();
-  if (base.isEmpty) base = 'https://threkir.com';
-  if (base.endsWith('/')) base = base.substring(0, base.length - 1);
-  return '$base/${legalDocPath(doc)}';
+  return '${resolveWebBaseUrl(override: webBase)}/${legalDocPath(doc)}';
 }
 
 /// Opens [doc] in the external browser, surfacing a banner rather than

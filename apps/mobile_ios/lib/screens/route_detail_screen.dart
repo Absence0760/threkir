@@ -6,7 +6,6 @@ import 'package:core_models/core_models.dart' as cm;
 import 'package:core_models/core_models.dart' show DistanceUnit;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:ui_kit/ui_kit.dart'
     show AppSemanticColors, StatGrid, StatTile, StatusPill, motionScrollTo;
@@ -32,6 +31,7 @@ import '../route_description.dart';
 import '../route_geometry.dart' show interpolateAlongRoute;
 import '../route_gpx.dart';
 import '../share_sheet.dart';
+import '../web_base_url.dart';
 import '../widgets/audience_sheet.dart';
 import '../roadbook.dart'
     show RoadbookMarker, RoadbookWaypoint, buildRoadbook;
@@ -78,12 +78,7 @@ List<ClubView> adminClubsForRouteTransfer(Iterable<ClubView> clubs) {
 /// trimmed. Mirrors web's `${origin}/share/route/${id}` in
 /// `routes/[id]/+page.svelte`.
 String routeShareUrl(String routeId, {String? webBase}) {
-  final base = (webBase ??
-          (dotenv.isInitialized ? dotenv.maybeGet('WEB_BASE_URL') : null) ??
-          'https://threkir.com')
-      .trim()
-      .replaceAll(RegExp(r'/+$'), '');
-  return '$base/share/route/$routeId';
+  return '${resolveWebBaseUrl(override: webBase)}/share/route/$routeId';
 }
 
 class RouteDetailScreen extends StatefulWidget {

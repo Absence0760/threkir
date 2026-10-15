@@ -28,6 +28,7 @@ import '../preferences.dart';
 import '../text_limits.dart';
 import '../settings_sync.dart';
 import '../share_sheet.dart';
+import '../web_base_url.dart';
 import '../widgets/ai_disclosure_notice.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/password_field.dart';
@@ -868,17 +869,7 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
   /// The web `/auth/reset` URL a mailed reset link should land on — mobile
   /// doesn't host the password-edit form. Mirrors the sign-in screen's
   /// reset flow: `WEB_BASE_URL` with the prod host as the fallback.
-  String _resetRedirect() {
-    var webBase =
-        (dotenv.isInitialized ? dotenv.maybeGet('WEB_BASE_URL') : null)
-                ?.trim() ??
-            '';
-    if (webBase.isEmpty) webBase = 'https://threkir.com';
-    if (webBase.endsWith('/')) {
-      webBase = webBase.substring(0, webBase.length - 1);
-    }
-    return '$webBase/auth/reset';
-  }
+  String _resetRedirect() => '${resolveWebBaseUrl()}/auth/reset';
 
   Future<void> _changeEmail() async {
     final l10n = AppLocalizations.of(context);

@@ -2,13 +2,13 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'ai_disclosure.dart';
 import 'exif_strip.dart';
 import 'nutrition_totals.dart' show mealSlots;
 import 'payload_hash.dart';
+import 'web_base_url.dart';
 
 /// Network glue for the plate-photo logger (decisions § 1972), the mobile
 /// half of web's `plate_photo_client.ts`. The picture is metadata-stripped
@@ -171,11 +171,6 @@ Future<PlatePhotoHttpResponse> _defaultPost(
   }
 }
 
-String _webBase() =>
-    ((dotenv.isInitialized ? dotenv.maybeGet('WEB_BASE_URL') : null) ??
-            'https://threkir.com')
-        .replaceAll(RegExp(r'/$'), '');
-
 Future<String?> _currentToken() async =>
     Supabase.instance.client.auth.currentSession?.accessToken;
 
@@ -194,7 +189,9 @@ Future<PlateEstimate> requestPlateEstimate(
 }) async {
   final send = post ?? _defaultPost;
   final body = platePhotoBody(bytes, note);
-  final uri = Uri.parse('${baseUrl ?? _webBase()}/api/coach/plate-photo');
+  final uri = Uri.parse(
+    '${resolveWebBaseUrl(override: baseUrl)}/api/coach/plate-photo',
+  );
   // Production Lambda reads `x-supabase-authorization` only, and CloudFront's
   // OAC cannot hash the body, so the client supplies the payload hash (#590).
   final hash = payloadSha256Hex(body);

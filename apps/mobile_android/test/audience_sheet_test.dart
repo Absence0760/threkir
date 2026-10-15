@@ -1,6 +1,7 @@
 // "Who can see this" on the phone (decisions § 1874): the four levels,
 // named people, revoke, and the two exits the caller acts on.
 
+import 'package:api_client/api_client.dart' show ShareableKind;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -236,5 +237,18 @@ void main() {
       ),
     );
     expect(_selected(tester, AudienceLevel.private), isTrue);
+  });
+
+  group('audienceLinkUrl', () {
+    test('builds the in-app link from the base, trailing slashes trimmed', () {
+      expect(audienceLinkUrl(ShareableKind.run, 'r1', webBase: 'https://x.test/'),
+          'https://x.test/runs/r1');
+      expect(audienceLinkUrl(ShareableKind.route, 'q1', webBase: 'https://x.test'),
+          'https://x.test/routes/q1');
+    });
+    test('a blank base falls back to production, not a relative link', () {
+      expect(audienceLinkUrl(ShareableKind.run, 'r1', webBase: ''),
+          'https://threkir.com/runs/r1');
+    });
   });
 }

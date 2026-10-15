@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../lib/payload_hash.dart';
 import '../lib/plate_photo_client.dart';
 
@@ -15,8 +16,10 @@ Uint8List _jpeg({bool exif = false}) {
   return Uint8List.fromList(parts);
 }
 
-PlatePhotoPoster _respond(int status, Object body, {List<Map<String, String>>? seen, List<String>? bodies}) =>
+PlatePhotoPoster _respond(int status, Object body,
+        {List<Map<String, String>>? seen, List<String>? bodies, List<Uri>? urls}) =>
     (url, headers, body0) async {
+      urls?.add(url);
       seen?.add(headers);
       bodies?.add(body0);
       return PlatePhotoHttpResponse(status, jsonEncode(body));
@@ -162,5 +165,29 @@ void main() {
     );
     expect(e.items, isEmpty);
     expect(e.mealSlot, isNull);
+  });
+
+  test('a blank WEB_BASE_URL posts to production, never to a relative path',
+      () async {
+    dotenv.loadFromString(envString: 'WEB_BASE_URL=');
+    addTearDown(dotenv.clean);
+    final urls = <Uri>[];
+    await requestPlateEstimate(
+      _jpeg(),
+      '',
+      post: _respond(200, {'items': []}, urls: urls),
+      currentToken: _token,
+    );
+    await requestPlateEstimate(
+      _jpeg(),
+      '',
+      post: _respond(200, {'items': []}, urls: urls),
+      currentToken: _token,
+      baseUrl: ' ',
+    );
+    expect(urls.map((u) => '$u'), [
+      'https://threkir.com/api/coach/plate-photo',
+      'https://threkir.com/api/coach/plate-photo',
+    ]);
   });
 }

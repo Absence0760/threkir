@@ -67,6 +67,7 @@ import '../turn_cue_announcer.dart';
 import '../turn_cues.dart';
 import '../typed_decimal.dart';
 import '../watch_settings.dart';
+import '../web_base_url.dart';
 import '../widgets/cutoff_card.dart';
 import 'route_picker_screen.dart';
 import '../background_location_nudge.dart';
@@ -1907,17 +1908,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     }
   }
 
-  /// Base URL of the spectator web app. Reads `WEB_BASE_URL` from dotenv
-  /// (a `--dart-define`, or `.env.development` in debug) when set;
-  /// otherwise falls back to the production host
-  /// so a freshly-installed app still produces a working link.
-  String _liveLinkBase() {
-    final fromEnv = dotenv.env['WEB_BASE_URL'] ?? '';
-    if (fromEnv.isNotEmpty) {
-      return fromEnv.replaceAll(RegExp(r'/+$'), '');
-    }
-    return 'https://threkir.com';
-  }
+  /// Base URL of the spectator web app.
+  String _liveLinkBase() => resolveWebBaseUrl();
 
   Future<void> _begin() async {
     // In the common case prepare has already completed during the 3-second

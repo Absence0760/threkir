@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -40,5 +42,20 @@ void main() {
       'https://local.test',
     );
     expect(resolveWebBaseUrl(override: ''), kDefaultWebBaseUrl);
+  });
+
+  test('no surface under lib/ reads WEB_BASE_URL except through the resolver',
+      () {
+    // An inline read is how six surfaces came to turn a blank value into a
+    // relative URL. main.dart only forwards the build-time define to dotenv.
+    final key = RegExp(r"""['"]WEB_BASE_URL['"]""");
+    final offenders = <String>[];
+    for (final f in Directory('lib').listSync(recursive: true)) {
+      if (f is! File || !f.path.endsWith('.dart')) continue;
+      final path = f.path.replaceAll(r'\\', '/');
+      if (path == 'lib/web_base_url.dart' || path == 'lib/main.dart') continue;
+      if (key.hasMatch(f.readAsStringSync())) offenders.add(path);
+    }
+    expect(offenders, isEmpty);
   });
 }

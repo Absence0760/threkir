@@ -2,7 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+import 'web_base_url.dart';
 
 /// Whether the running deploy actually has a Pro perk to deliver.
 ///
@@ -96,16 +97,9 @@ ProPerks parseProPerks(String raw) {
   }
 }
 
-/// Base URL of the web deploy this build belongs to, matching the
-/// resolution in `route_describe_client.dart` and `coach_screen.dart`.
-String _webBase() =>
-    ((dotenv.isInitialized ? dotenv.maybeGet('WEB_BASE_URL') : null) ??
-            'https://threkir.com')
-        .replaceAll(RegExp(r'/$'), '');
-
 /// Fetch the deploy's live-perk manifest. Never throws.
 Future<ProPerks> fetchProPerks() async {
-  final uri = Uri.parse('${_webBase()}/app-capabilities.json');
+  final uri = Uri.parse('${resolveWebBaseUrl()}/app-capabilities.json');
   final client = HttpClient()..connectionTimeout = kProPerksTimeout;
   try {
     final req = await client.getUrl(uri).timeout(kProPerksTimeout);

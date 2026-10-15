@@ -18,6 +18,7 @@ import '../share_sheet.dart';
 import '../sim_watch_sync.dart';
 import '../watch_ingest_queue.dart';
 import '../watch_status_link.dart';
+import '../web_base_url.dart';
 import '../widgets/top_banner.dart';
 
 /// Settings → Integrations → Custom watch: relays the watch's per-second BLE
@@ -243,10 +244,7 @@ class _WatchLiveScreenState extends State<WatchLiveScreen> {
   Future<void> _share() async {
     final runId = _forwarder?.runId;
     if (runId == null) return;
-    final base = _env('WEB_BASE_URL');
-    final root = base.isEmpty
-        ? 'https://threkir.com'
-        : base.replaceAll(RegExp(r'/+$'), '');
+    final root = resolveWebBaseUrl();
     try {
       await shareTextFrom(context,
           text: '$root/live/$runId', subject: _l10n.runShareSubject);

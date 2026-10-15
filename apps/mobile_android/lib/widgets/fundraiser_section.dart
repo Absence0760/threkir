@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, ProgressBar;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../fundraiser_progress.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../social_service.dart';
+import '../web_base_url.dart';
 
 /// Read-only charity-fundraiser card for run-detail / event-detail
 /// (fundraising.md). Mobile is read + web-handoff only: the thermometer + feed
@@ -72,13 +72,10 @@ class _FundraiserSectionState extends State<FundraiserSection> {
     }
   }
 
-  String _webBase() => (dotenv.env['WEB_BASE_URL'] ?? 'https://threkir.com')
-      .replaceAll(RegExp(r'/$'), '');
-
   Future<void> _donateOnWeb() async {
     final f = _fundraiser;
     if (f == null) return;
-    final uri = Uri.parse('${_webBase()}/fundraisers/${f.id}');
+    final uri = Uri.parse('${resolveWebBaseUrl()}/fundraisers/${f.id}');
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 

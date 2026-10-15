@@ -76,10 +76,10 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'Sur la page de l\'événement, les coureurs voient les parcours. S\'il y en a plusieurs, ils doivent en choisir un dans **Ton parcours** pour que **Je participe** fonctionne ; sinon, ils voient « Choisis d\'abord ton parcours. »',
+						'Sur la page de l\'événement, les coureurs voient les parcours. S\'il y en a plusieurs, ils doivent en choisir un dans **Votre parcours** pour que **Je participe** fonctionne ; sinon, ils voient « Choisissez d\'abord votre parcours. »',
 						'Dans l\'app mobile, toucher **Je viens** sur une course à plusieurs parcours leur demande **Choisissez votre parcours**, et ils peuvent utiliser **Changer de parcours** plus tard.',
 						'Avec un seul parcours, personne n\'a rien à choisir.',
-						'Les inscriptions payantes ne demandent pas encore de parcours. Un coureur qui a payé en choisit un ensuite depuis le même menu **Ton parcours**.',
+						'Les inscriptions payantes ne demandent pas encore de parcours. Un coureur qui a payé en choisit un ensuite depuis le même menu **Votre parcours**.',
 					],
 				},
 				{

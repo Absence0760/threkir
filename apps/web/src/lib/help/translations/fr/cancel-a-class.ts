@@ -42,7 +42,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Toutes les personnes ayant répondu pour cette occurrence (participe, peut-être ou en liste d\'attente) sont prévenues. Celles qui ont payé reçoivent une notification du type *Une occurrence de « Tuesday Reformer » a été annulée — ton paiement est en cours de remboursement*, et le même texte part par e-mail ou par notification push à celles qui les reçoivent. Le message dit *en cours de* remboursement parce que le remboursement est lancé à ce moment-là et peut mettre quelques jours à arriver sur leur compte bancaire.',
+					text: 'Toutes les personnes ayant répondu pour cette occurrence (participe, peut-être ou en liste d\'attente) sont prévenues. Celles qui ont payé reçoivent une notification du type *Une occurrence de « Tuesday Reformer » a été annulée — votre paiement est en cours de remboursement*, et le même texte part par e-mail ou par notification push à celles qui les reçoivent. Le message dit *en cours de* remboursement parce que le remboursement est lancé à ce moment-là et peut mettre quelques jours à arriver sur leur compte bancaire.',
 				},
 			],
 		},

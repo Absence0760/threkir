@@ -27,13 +27,13 @@ export const translation: GuideTranslation = {
 					type: 'steps',
 					items: [
 						'Ouvrez l\'événement de la course.',
-						'S\'il y a plusieurs parcours, choisissez le vôtre dans **Ton parcours** sur le web. Dans l\'app mobile, on vous demande **Choisissez votre parcours** quand vous touchez **Je viens**.',
+						'S\'il y a plusieurs parcours, choisissez le vôtre dans **Votre parcours** sur le web. Dans l\'app mobile, on vous demande **Choisissez votre parcours** quand vous touchez **Je viens**.',
 						'Touchez **Je participe**. Seule une inscription **Je participe** reçoit les alertes de course sur votre appareil ; **Peut-être** ne les reçoit pas.',
 					],
 				},
 				{
 					type: 'p',
-					text: 'Vous avez changé d\'avis ? Sur le web, choisissez un autre parcours dans **Ton parcours** (vous verrez « Parcours mis à jour. »). Dans l\'app mobile, touchez **Changer de parcours**. Fixez votre parcours avant de lancer l\'enregistrement : votre téléphone ou votre montre le lit au début de l\'enregistrement de la course, et votre résultat va au classement de ce parcours.',
+					text: 'Vous avez changé d\'avis ? Sur le web, choisissez un autre parcours dans **Votre parcours** (vous verrez « Parcours mis à jour. »). Dans l\'app mobile, touchez **Changer de parcours**. Fixez votre parcours avant de lancer l\'enregistrement : votre téléphone ou votre montre le lit au début de l\'enregistrement de la course, et votre résultat va au classement de ce parcours.',
 				},
 			],
 		},

@@ -1165,7 +1165,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Toutes les personnes ayant répondu pour cette occurrence (participe, peut-être ou en liste d'attente) sont prévenues. Celles qui ont payé reçoivent une notification du type *Une occurrence de « Tuesday Reformer » a été annulée — ton paiement est en cours de remboursement*, et le même texte part par e-mail ou par notification push à celles qui les reçoivent. Le message dit *en cours de* remboursement parce que le remboursement est lancé à ce moment-là et peut mettre quelques jours à arriver sur leur compte bancaire."
+            "text": "Toutes les personnes ayant répondu pour cette occurrence (participe, peut-être ou en liste d'attente) sont prévenues. Celles qui ont payé reçoivent une notification du type *Une occurrence de « Tuesday Reformer » a été annulée — votre paiement est en cours de remboursement*, et le même texte part par e-mail ou par notification push à celles qui les reçoivent. Le message dit *en cours de* remboursement parce que le remboursement est lancé à ce moment-là et peut mettre quelques jours à arriver sur leur compte bancaire."
           }
         ]
       },
@@ -1485,7 +1485,7 @@
           {
             "type": "list",
             "items": [
-              "Vous devez être admin ou organisateur d'événements du club. La page du club vous indique lequel avec **Tu es admin** ou **Tu es organisateur d'événements**.",
+              "Vous devez être admin ou organisateur d'événements du club. La page du club vous indique lequel avec **Vous êtes admin** ou **Vous êtes organisateur d'événements**.",
               "Le prix, la capacité, le calendrier de répétition et le plan de séance se règlent tous sur le web. L'app mobile peut créer un cours et l'affiche aux membres, mais elle n'a pas de champs pour le prix, la capacité ou le plan de séance.",
               "Si vous voulez joindre une séquence, créez-la d'abord : voir [[guide:build-a-session-plan|Créer un plan de séance]]."
             ]
@@ -2221,13 +2221,13 @@
             "type": "steps",
             "items": [
               "Ouvrez l'événement de la course.",
-              "S'il y a plusieurs parcours, choisissez le vôtre dans **Ton parcours** sur le web. Dans l'app mobile, on vous demande **Choisissez votre parcours** quand vous touchez **Je viens**.",
+              "S'il y a plusieurs parcours, choisissez le vôtre dans **Votre parcours** sur le web. Dans l'app mobile, on vous demande **Choisissez votre parcours** quand vous touchez **Je viens**.",
               "Touchez **Je participe**. Seule une inscription **Je participe** reçoit les alertes de course sur votre appareil ; **Peut-être** ne les reçoit pas."
             ]
           },
           {
             "type": "p",
-            "text": "Vous avez changé d'avis ? Sur le web, choisissez un autre parcours dans **Ton parcours** (vous verrez « Parcours mis à jour. »). Dans l'app mobile, touchez **Changer de parcours**. Fixez votre parcours avant de lancer l'enregistrement : votre téléphone ou votre montre le lit au début de l'enregistrement de la course, et votre résultat va au classement de ce parcours."
+            "text": "Vous avez changé d'avis ? Sur le web, choisissez un autre parcours dans **Votre parcours** (vous verrez « Parcours mis à jour. »). Dans l'app mobile, touchez **Changer de parcours**. Fixez votre parcours avant de lancer l'enregistrement : votre téléphone ou votre montre le lit au début de l'enregistrement de la course, et votre résultat va au classement de ce parcours."
           }
         ]
       },
@@ -2434,10 +2434,10 @@
           {
             "type": "list",
             "items": [
-              "Sur la page de l'événement, les coureurs voient les parcours. S'il y en a plusieurs, ils doivent en choisir un dans **Ton parcours** pour que **Je participe** fonctionne ; sinon, ils voient « Choisis d'abord ton parcours. »",
+              "Sur la page de l'événement, les coureurs voient les parcours. S'il y en a plusieurs, ils doivent en choisir un dans **Votre parcours** pour que **Je participe** fonctionne ; sinon, ils voient « Choisissez d'abord votre parcours. »",
               "Dans l'app mobile, toucher **Je viens** sur une course à plusieurs parcours leur demande **Choisissez votre parcours**, et ils peuvent utiliser **Changer de parcours** plus tard.",
               "Avec un seul parcours, personne n'a rien à choisir.",
-              "Les inscriptions payantes ne demandent pas encore de parcours. Un coureur qui a payé en choisit un ensuite depuis le même menu **Ton parcours**."
+              "Les inscriptions payantes ne demandent pas encore de parcours. Un coureur qui a payé en choisit un ensuite depuis le même menu **Votre parcours**."
             ]
           },
           {
@@ -2723,9 +2723,9 @@
             "type": "steps",
             "items": [
               "Ouvrez [[route:/settings/integrations|Intégrations]] dans les Paramètres et repérez la carte UltraSignup.",
-              "Sous **Retrouver ton profil UltraSignup**, saisissez votre **Prénom** et votre **Nom** exactement comme lors de vos inscriptions aux courses, puis sélectionnez **Me trouver**.",
+              "Sous **Retrouver votre profil UltraSignup**, saisissez votre **Prénom** et votre **Nom** exactement comme lors de vos inscriptions aux courses, puis sélectionnez **Me trouver**.",
               "UltraSignup liste toutes les personnes qui portent ce nom. Servez-vous de l'âge, du nombre de résultats et des courses les plus récentes de chacune pour vous repérer.",
-              "Sous **Laquelle de ces personnes est toi ?**, sélectionnez **C'est moi** sur votre ligne."
+              "Sous **Laquelle de ces personnes êtes-vous ?**, sélectionnez **C'est moi** sur votre ligne."
             ]
           },
           {
@@ -2735,7 +2735,7 @@
           {
             "type": "note",
             "tone": "tip",
-            "text": "Si vous voyez **UltraSignup ne connaît personne sous ce nom. Vérifie l'orthographe sous laquelle tu cours.**, essayez l'orthographe exacte de vos inscriptions, y compris un éventuel deuxième prénom ou trait d'union."
+            "text": "Si vous voyez **UltraSignup ne connaît personne sous ce nom. Vérifiez l'orthographe sous laquelle vous courez.**, essayez l'orthographe exacte de vos inscriptions, y compris un éventuel deuxième prénom ou trait d'union."
           }
         ]
       },
@@ -2761,7 +2761,7 @@
           },
           {
             "type": "p",
-            "text": "Si vous voyez **Associe d'abord ton profil UltraSignup dans les Réglages, puis importe depuis ici.**, associez votre profil comme indiqué ci-dessus, puis revenez."
+            "text": "Si vous voyez **Associez d'abord votre profil UltraSignup dans les Réglages, puis importez depuis ici.**, associez votre profil comme indiqué ci-dessus, puis revenez."
           }
         ]
       }

@@ -106,6 +106,12 @@
 			provider together with a summary of your recent training to generate a useful response.
 		</li>
 		<li>
+			<strong>Meal photos</strong> (Pro, only if you use the plate-photo logger): the photo of a
+			meal you choose, sent to our AI provider once to estimate the food on the plate. We strip
+			location and camera metadata before it leaves our servers and never store the photo; only
+			the food entries you review and save are kept.
+		</li>
+		<li>
 			<strong>Subscription</strong>: subscription tier and renewal state (we do not see or store
 			card numbers — that data goes directly to Stripe / Apple / Google).
 		</li>
@@ -194,6 +200,11 @@
 			outputs are deleted from Anthropic's systems within 30 days of processing (material flagged
 			by automated trust-and-safety screening can be retained longer). Your chat history itself is
 			stored by us, not the provider — see section 7.
+		</li>
+		<li>
+			<strong>Anthropic</strong> — plate-photo logger (Pro). Receives one meal photo per request,
+			with its location and camera metadata already removed, and returns estimated food entries.
+			The same no-training and 30-day retention terms apply; Threkir keeps no copy of the photo.
 		</li>
 		<li>
 			<strong>MapTiler</strong> (EU, with global edge caching) — map tiles. Receives the map

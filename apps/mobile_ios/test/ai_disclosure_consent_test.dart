@@ -166,6 +166,10 @@ void main() {
         find.textContaining('For the AI plan assistant:'),
         findsOneWidget,
       );
+      expect(
+        find.textContaining('For the plate-photo logger:'),
+        findsOneWidget,
+      );
 
       await tester.tap(_dialogAccept());
       await tester.pumpAndSettle();
@@ -280,6 +284,10 @@ void main() {
       );
       expect(
         find.textContaining('For the AI plan assistant:'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('For the plate-photo logger:'),
         findsOneWidget,
       );
 

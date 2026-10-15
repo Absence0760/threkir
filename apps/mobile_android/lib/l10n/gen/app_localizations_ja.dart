@@ -6224,7 +6224,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get coachConsentIntro =>
-      'ThrekirのAI機能（コーチ、AIルートアシスタント、AIプランアシスタント）は、あなたのデータの一部を、米国のAIモデルプロバイダーである Anthropic に送信します。利用する機能に応じて、その一部には以下が含まれます：';
+      'ThrekirのAI機能は、あなたのデータの一部を、米国のAIモデルプロバイダーである Anthropic に送信します。利用する機能に応じて、その一部には以下が含まれます：';
 
   @override
   String get coachConsentBulletProfile => '生年月日、性別、設定済みの心拍ゾーン。';
@@ -6245,6 +6245,10 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get coachConsentBulletPlanRequest =>
       'AIプランアシスタント利用時: 入力したプランの説明（目標レース、目標タイムと最近のタイム、トレーニングできる日数）。プラン設定の入力にのみ使用し、プラン自体はAIではなくThrekir独自のジェネレーターが作成します。';
+
+  @override
+  String get coachConsentBulletPlatePhoto =>
+      '食事写真による記録：あなたが選んだ食事の写真を、お皿の内容を推定するためだけに送信します。位置情報やカメラの情報は送信前に削除され、Threkirは写真を保存せず、確認して保存するまで何も記録されません。';
 
   @override
   String get coachConsentProcessing =>

@@ -10777,7 +10777,7 @@ abstract class AppLocalizations {
   /// Consent gate intro paragraph
   ///
   /// In en, this message translates to:
-  /// **'Threkir\'s AI features — the Coach, the AI route assistant and the AI plan assistant — forward a slice of your data to Anthropic, our AI model provider in the United States. Depending on which feature you use, that slice includes:'**
+  /// **'Threkir's AI features forward a slice of your data to Anthropic, our AI model provider in the United States. Depending on which feature you use, that slice includes:'**
   String get coachConsentIntro;
 
   /// Consent gate bullet: profile data
@@ -10815,6 +10815,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'For the AI plan assistant: the plan description you type (goal race, target and recent times, how many days you can train), used only to fill in the plan settings — the plan itself is built by Threkir\'s own generator, not the AI.'**
   String get coachConsentBulletPlanRequest;
+
+  /// Consent gate bullet: the plate-photo logger (AI disclosure v5)
+  ///
+  /// In en, this message translates to:
+  /// **'For the plate-photo logger: the photo of your meal you choose, sent only to estimate what is on the plate. Location and camera details are removed before it leaves, Threkir does not keep the photo, and nothing is logged until you review and save it.'**
+  String get coachConsentBulletPlatePhoto;
 
   /// Consent gate data-processing paragraph
   ///

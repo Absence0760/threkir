@@ -45,11 +45,19 @@ export const AI_DISCLOSURE_VERSION_ROUTE_AI = 2;
 export const AI_DISCLOSURE_VERSION_PLAN_AI = 3;
 
 /**
+ * Minimum disclosure version /api/coach/plate-photo requires. Its own rung
+ * because it sends a photograph of the runner's meal — a payload that can
+ * carry anything in frame — to estimate food_log rows, a purpose no earlier
+ * copy described (decisions § 1972). Rung 4 belongs to AI plan edits.
+ */
+export const AI_DISCLOSURE_VERSION_FOOD_PHOTO_AI = 5;
+
+/**
  * The newest disclosure this build knows how to present. Must equal the
  * SQL `ai_disclosure_current_version()`; `ai_disclosure.test.ts` reads the
  * newest migration that defines it and fails if they drift.
  */
-export const AI_DISCLOSURE_CURRENT_VERSION = AI_DISCLOSURE_VERSION_PLAN_AI;
+export const AI_DISCLOSURE_CURRENT_VERSION = AI_DISCLOSURE_VERSION_FOOD_PHOTO_AI;
 
 /**
  * Machine-readable marker on every AI-consent denial. It rides a `code`

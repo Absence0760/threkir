@@ -6590,7 +6590,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get coachConsentIntro =>
-      'As funcionalidades de IA da Threkir — o Coach, o assistente de rotas com IA e o assistente de planos com IA — enviam uma parte dos seus dados à Anthropic, o nosso fornecedor de modelos de IA nos Estados Unidos. Consoante a funcionalidade utilizada, essa parte inclui:';
+      'As funcionalidades de IA da Threkir enviam uma parte dos seus dados à Anthropic, o nosso fornecedor de modelos de IA nos Estados Unidos. Consoante a funcionalidade utilizada, essa parte inclui:';
 
   @override
   String get coachConsentBulletProfile =>
@@ -6615,6 +6615,10 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get coachConsentBulletPlanRequest =>
       'Para o assistente de planos com IA: a descrição do plano que escreve (prova-alvo, tempos-alvo e recentes, quantos dias pode treinar), usada apenas para preencher as definições do plano — o plano em si é criado pelo gerador próprio da Threkir, não pela IA.';
+
+  @override
+  String get coachConsentBulletPlatePhoto =>
+      'Para o registo por fotografia do prato: a fotografia da sua refeição que escolher, enviada só para estimar o que está no prato. A localização e os dados da câmara são removidos antes do envio, a Threkir não guarda a fotografia e nada é registado até rever e guardar.';
 
   @override
   String get coachConsentProcessing =>
@@ -22538,7 +22542,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get coachConsentIntro =>
-      'Os recursos de IA do Threkir — o Coach, o assistente de rotas com IA e o assistente de planos com IA — enviam uma parte dos seus dados à Anthropic, nosso provedor de modelos de IA nos Estados Unidos. Dependendo do recurso que você usa, essa parte inclui:';
+      'Os recursos de IA do Threkir enviam uma parte dos seus dados à Anthropic, nosso provedor de modelos de IA nos Estados Unidos. Dependendo do recurso que você usa, essa parte inclui:';
 
   @override
   String get coachConsentBulletProfile =>
@@ -22563,6 +22567,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get coachConsentBulletPlanRequest =>
       'Para o assistente de planos com IA: a descrição do plano que você digita (prova-alvo, tempos-alvo e recentes, quantos dias você pode treinar), usada apenas para preencher as configurações do plano — o plano em si é criado pelo gerador próprio do Threkir, não pela IA.';
+
+  @override
+  String get coachConsentBulletPlatePhoto =>
+      'Para o registro por foto do prato: a foto da sua refeição que você escolher, enviada só para estimar o que há no prato. Localização e dados da câmera são removidos antes do envio, o Threkir não guarda a foto e nada é registrado até você revisar e salvar.';
 
   @override
   String get coachConsentProcessing =>

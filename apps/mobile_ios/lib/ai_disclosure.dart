@@ -43,9 +43,15 @@ const int kAiDisclosureVersionRouteAi = 2;
 /// the route copy described.
 const int kAiDisclosureVersionPlanAi = 3;
 
+/// Minimum disclosure version the plate-photo logger requires
+/// (`/api/coach/plate-photo`). Its own rung because it sends a photograph of
+/// the runner's meal — a payload that can carry anything in frame — to
+/// estimate food-log rows (decisions § 1972). Rung 4 belongs to AI plan edits.
+const int kAiDisclosureVersionFoodPhotoAi = 5;
+
 /// The newest disclosure this build knows how to present. Must equal the SQL
 /// `ai_disclosure_current_version()` and web's `AI_DISCLOSURE_CURRENT_VERSION`.
-const int kAiDisclosureCurrentVersion = kAiDisclosureVersionPlanAi;
+const int kAiDisclosureCurrentVersion = kAiDisclosureVersionFoodPhotoAi;
 
 /// Machine-readable marker on every AI-consent denial. It rides a `code`
 /// field rather than `error` because the endpoints already use `error` for

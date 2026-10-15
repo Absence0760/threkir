@@ -6601,7 +6601,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get coachConsentIntro =>
-      'Die KI-Funktionen von Threkir — der Coach, der KI-Routenassistent und der KI-Planassistent — leiten einen Teil deiner Daten an Anthropic weiter, unseren KI-Modellanbieter in den USA. Je nach genutzter Funktion umfasst dieser Teil:';
+      'Die KI-Funktionen von Threkir leiten einen Teil deiner Daten an Anthropic weiter, unseren KI-Modellanbieter in den USA. Je nach genutzter Funktion umfasst dieser Teil:';
 
   @override
   String get coachConsentBulletProfile =>
@@ -6625,6 +6625,10 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get coachConsentBulletPlanRequest =>
       'Für den KI-Planassistenten: deine eingegebene Planbeschreibung (Zielrennen, Ziel- und aktuelle Zeiten, an wie vielen Tagen du trainieren kannst), nur um die Planeinstellungen auszufüllen — den Plan selbst erstellt Threkirs eigener Generator, nicht die KI.';
+
+  @override
+  String get coachConsentBulletPlatePhoto =>
+      'Für die Mahlzeiten-Fotoerfassung: das Foto deiner Mahlzeit, das du auswählst, nur um zu schätzen, was auf dem Teller liegt. Standort- und Kameradaten werden vorher entfernt, Threkir speichert das Foto nicht, und nichts wird eingetragen, bevor du es prüfst und speicherst.';
 
   @override
   String get coachConsentProcessing =>

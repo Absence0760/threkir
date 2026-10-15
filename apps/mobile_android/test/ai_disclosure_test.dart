@@ -56,7 +56,7 @@ void main() {
       }
     });
 
-    test('the v3 acceptance satisfies every scope', () {
+    test('the v3 acceptance satisfies the Coach, route and plan scopes', () {
       const record = AiDisclosureRecord(
         version: kAiDisclosureVersionPlanAi,
         acceptedAt: _accepted,
@@ -70,6 +70,27 @@ void main() {
         expect(check.ok, isTrue);
         expect(check.version, 3);
       }
+    });
+
+    test('a v3 plan-assistant acceptance does NOT satisfy the plate-photo scope',
+        () {
+      const record = AiDisclosureRecord(
+        version: kAiDisclosureVersionPlanAi,
+        acceptedAt: _accepted,
+      );
+      final check = checkAiDisclosure(record, kAiDisclosureVersionFoodPhotoAi);
+      expect(check.ok, isFalse);
+      expect(check.reason, AiDisclosureDenial.stale);
+    });
+
+    test('the v5 acceptance satisfies the plate-photo scope', () {
+      const record = AiDisclosureRecord(
+        version: kAiDisclosureVersionFoodPhotoAi,
+        acceptedAt: _accepted,
+      );
+      final check = checkAiDisclosure(record, kAiDisclosureVersionFoodPhotoAi);
+      expect(check.ok, isTrue);
+      expect(check.version, 5);
     });
 
     test('no record at all denies as missing', () {
@@ -154,7 +175,9 @@ void main() {
       expect(kAiDisclosureVersionCoach, lessThan(kAiDisclosureVersionRouteAi));
       expect(
           kAiDisclosureVersionRouteAi, lessThan(kAiDisclosureVersionPlanAi));
-      expect(kAiDisclosureCurrentVersion, kAiDisclosureVersionPlanAi);
+      expect(kAiDisclosureVersionPlanAi,
+          lessThan(kAiDisclosureVersionFoodPhotoAi));
+      expect(kAiDisclosureCurrentVersion, kAiDisclosureVersionFoodPhotoAi);
     });
 
     test('matches ai_disclosure_current_version() in SQL', () {

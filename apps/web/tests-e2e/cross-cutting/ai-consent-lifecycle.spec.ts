@@ -146,6 +146,7 @@ test.describe('AI-processing consent — gate, record, withdraw, re-engage', () 
 			// would record a consent that was never actually disclosed.
 			await expect(dialog).toContainText('For the AI route assistant:');
 			await expect(dialog).toContainText('For the AI plan assistant:');
+			await expect(dialog).toContainText('For the plate-photo logger:');
 			// Render-gated, not disabled: the composer does not exist yet.
 			await expect(page.getByPlaceholder(/Ask about today/)).toHaveCount(0);
 			expect(coachCalls).toBe(0);

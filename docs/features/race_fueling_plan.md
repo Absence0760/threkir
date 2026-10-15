@@ -84,6 +84,30 @@ source each rate came from.
 - [ ] Then set `PUBLIC_COACH_FUEL_ENABLED` (release-web secret) and
   `COACH_FUEL_ENABLED` (sops) together.
 
+## Weight-based fluid (2026-10-15, decisions § 1976)
+
+An opt-in **"Fluid from body weight"** toggle beside Heat (web `?bw=1` on
+`/routes/[id]/roadbook` and `/nutrition/fuel`; screen-local on mobile
+`RoadbookScreen`) replaces the flat fluid rate with
+`weightFluidPerHourMl(weight)`: the 500 ml/h default scaled by body mass from a
+70 kg reference, rounded to 25 ml and held to the ACSM 400–800 ml/h marathon
+band (Sawka et al. 2007). Heat still multiplies it.
+
+- **Consent-gated.** The weight is the latest `body_metrics` row, passed through
+  `healthUseWeightKg` (the `health_consent` pair) so it is used only while
+  `health_data_consent_at` is on record. Without consent or a weight the toggle
+  is disabled with the reason and the flat rates stand.
+- **No sodium figure:** sweat sodium varies independently of body mass; nothing
+  published derives it from weight.
+- **Not persisted** (like Heat) and not pushed to the custom watch, which keeps
+  the synced flat `fluid_per_hour`.
+
+### Pre-deploy checklist (weight-based fluid)
+
+- [ ] CISO / counsel review: a new Art 9 use of body weight (fluid planning),
+  covered by the existing health-data consent copy? If the copy names its uses
+  exhaustively, add fuelling to it before deploy.
+
 ## Commit cadence
 
 1. ✅ `fuel_plan.ts/.dart` helper + unit/mirror tests.
@@ -102,7 +126,8 @@ source each rate came from.
 
 ## Decisions made
 
-- **Flat per-hour rates, not weight-derived.** `carbs_per_hour` / `fluid_per_hour`
+- **Flat per-hour rates, not weight-derived** (superseded in part by the
+  opt-in weight-based fluid above, decisions § 1976). `carbs_per_hour` / `fluid_per_hour`
   are plain per-hour prefs (60 / 500 defaults), deliberately **not** a
   weight-based sweat-rate / ml-per-kg model — that keeps the feature out of the
   Art 9 health-special-category consent gate. The weight-derived fluid model

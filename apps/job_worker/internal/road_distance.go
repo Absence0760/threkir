@@ -290,11 +290,7 @@ func (w *Worker) writeWatchSmoothedSidecar(ctx context.Context, runID, trackURL 
 		return nil
 	}
 	if replay.PositionOnly {
-		raw := make([]TrackPoint, 0, len(pts))
-		for _, p := range pts {
-			raw = append(raw, TrackPoint{Lat: *p.Lat, Lng: *p.Lng, Timestamp: p.Timestamp})
-		}
-		if v, reason := roadDistanceFor(run, meta, raw, road); v == nil {
+		if v, reason := roadDistanceFor(run, meta, onTrackRaw(pts), road); v == nil {
 			w.Log.Info("smoothed sidecar skipped", "run_id", runID, "reason", "position-only and not a road run: "+reason)
 			return nil
 		}

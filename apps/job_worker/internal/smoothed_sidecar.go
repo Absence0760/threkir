@@ -40,7 +40,9 @@ type TrackFingerprint struct {
 
 // SmoothedSidecar is the object's JSON. Positions has one entry per stored
 // waypoint, `[lat, lng]` in degrees or null where the smoother placed none (a
-// waypoint without a coordinate or a timestamp, an ignored fix).
+// waypoint without a coordinate or a timestamp, an ignored fix) or where the
+// waypoint is off-track: the sidecar is a line, and no reader draws an
+// off-track fix.
 type SmoothedSidecar struct {
 	Version   int              `json:"version"`
 	Track     TrackFingerprint `json:"track"`
@@ -98,7 +100,7 @@ func buildSmoothedSidecar(track *RecordedTrack, storedIdx []int, replay trackRep
 	positions := make([]*[2]float64, len(track.Points))
 	placed := 0
 	for k, i := range storedIdx {
-		if k >= len(replay.Positions) || replay.Positions[k] == nil {
+		if k >= len(replay.Positions) || replay.Positions[k] == nil || track.Points[i].OffTrack {
 			continue
 		}
 		p := replay.Positions[k]

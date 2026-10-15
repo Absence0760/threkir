@@ -51,6 +51,11 @@ type RecordedTrackPoint struct {
 	// sidecar writer that the track already carries its own pair.
 	SmoothedLat *float64 `json:"smoothedLat,omitempty"`
 	SmoothedLng *float64 `json:"smoothedLng,omitempty"`
+	// OffTrack marks a fix the recorder's distance estimator took that
+	// failed its track gate (a 30-50 m canopy fix on a watch). The replay
+	// reads it like any other fix, because the recorder's figure includes
+	// it; nothing that draws or matches the line does (onTrackRaw).
+	OffTrack bool `json:"offTrack,omitempty"`
 }
 
 // ErrRunNotFound means the run named by a job payload no longer exists

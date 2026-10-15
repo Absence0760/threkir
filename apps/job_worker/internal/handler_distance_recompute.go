@@ -230,6 +230,23 @@ func metaString(meta map[string]json.RawMessage, key string) string {
 	return s
 }
 
+// onTrackRaw is the line of a replayed track for the road matcher and the
+// road classifier: the raw position of every coordinate-bearing point that
+// is not off-track. An off-track fix is one the recorder's estimator took
+// and its track gate refused (spec v1.4 canopy fixes stated 30-50 m on a
+// watch), so it belongs to the distance replay and to nothing that matches
+// the line to a road or a route.
+func onTrackRaw(pts []RecordedTrackPoint) []TrackPoint {
+	raw := make([]TrackPoint, 0, len(pts))
+	for _, p := range pts {
+		if p.OffTrack {
+			continue
+		}
+		raw = append(raw, TrackPoint{Lat: *p.Lat, Lng: *p.Lng, Timestamp: p.Timestamp})
+	}
+	return raw
+}
+
 // distanceRecomputeSkipReason returns why a run's distance is not the
 // estimator's to replace, or "" when it is. The clients' offer gate —
 // canRecomputeDistance in apps/web/src/lib/runs/distance_recompute.ts and
@@ -260,9 +277,22 @@ func distanceRecomputeSkipReason(run *DistanceRecomputeRun, meta map[string]json
 		// recorders store every fix their forward filter took, so a watch
 		// run's track replays whole and gains the smoother.
 		return "recorded live by " + metaString(meta, schema.MetaDistanceEstimator)
+	case meta[schema.MetaDistanceEstimator] != nil && meta[schema.MetaDistanceRecomputedAt] == nil &&
+		!preCanopyEstimators[metaString(meta, schema.MetaDistanceEstimator)] &&
+		!metaIsTrue(meta, schema.MetaTrackComplete):
+		// A recorder from spec v1.4 on feeds its estimator fixes up to
+		// 50 m but, unless it says track_complete, stored only those
+		// within its track gate, so the replay would see each canopy
+		// stretch as a gap and credit only its chord.
+		return "track omits fixes " + metaString(meta, schema.MetaDistanceEstimator) + " took"
 	}
 	return ""
 }
+
+// preCanopyEstimators are the live stamps of recorders from before spec
+// v1.4, which gated the estimator and the stored track at the same accuracy,
+// so their stored track holds every fix the estimator took.
+var preCanopyEstimators = map[string]bool{"kalman_v1": true, "kalman_v2": true, "kalman_v3": true}
 
 // mergeDistanceMetadata adds the recompute's four keys to the bag, sets
 // smoothed_sidecar_sha256 to sidecarSHA (removing it when that is ""), and
@@ -316,10 +346,7 @@ func (w *Worker) distanceEstimatorPass(
 	if !ok {
 		return EstimatorPassForward, "no road matcher to classify a position-only track", nil
 	}
-	raw := make([]TrackPoint, 0, len(pts))
-	for _, p := range pts {
-		raw = append(raw, TrackPoint{Lat: *p.Lat, Lng: *p.Lng, Timestamp: p.Timestamp})
-	}
+	raw := onTrackRaw(pts)
 	out, road, err := rm.MatchWithRoadDistance(ctx, raw)
 	if err != nil {
 		if isTransient(err) {

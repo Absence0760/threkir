@@ -914,6 +914,7 @@ func TestDistanceRecompute_GapWithStepsMatchesTheRecorder(t *testing.T) {
 		meta, _ := json.Marshal(map[string]any{
 			"distance_estimator":     "kalman_v4",
 			"distance_step_filled_m": s.Smoothed.StepDistanceM,
+			"track_complete":         true,
 		})
 		run := appRun(string(meta))
 		run.Source = "watch"

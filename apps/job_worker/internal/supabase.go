@@ -223,28 +223,35 @@ func (c *SupabaseClient) DownloadTrack(ctx context.Context, path string) ([]Trac
 }
 
 // storedTrackPoint is a TrackPoint plus the smoother's filtered position
-// (docs/features/gps_distance.md § Waypoint fields).
+// and the off-track flag (docs/features/gps_distance.md § Waypoint fields).
 type storedTrackPoint struct {
 	TrackPoint
 	SmoothedLat *float64 `json:"smoothedLat,omitempty"`
 	SmoothedLng *float64 `json:"smoothedLng,omitempty"`
+	OffTrack    bool     `json:"offTrack,omitempty"`
 }
 
-// parseTrack decodes a stored track for the matcher, taking the smoothed
-// position of a waypoint that carries both smoothedLat and smoothedLng:
-// the filtered line is what route-matching should follow. Raw lat/lng
-// stay in the stored file; the matched output carries no smoothed keys.
+// parseTrack decodes a stored track for the matcher and the GPX export:
+// the line, so it drops every off-track fix (a fix the distance estimator
+// took that failed the recorder's track gate) and takes the smoothed
+// position of a waypoint that carries both smoothedLat and smoothedLng.
+// Raw lat/lng stay in the stored file; the output carries neither the
+// smoothed keys nor the flag.
 func parseTrack(body []byte) ([]TrackPoint, error) {
 	stored, err := decodeTrack[storedTrackPoint](body)
 	if err != nil {
 		return nil, err
 	}
-	pts := make([]TrackPoint, len(stored))
-	for i, sp := range stored {
-		pts[i] = sp.TrackPoint
-		if sp.SmoothedLat != nil && sp.SmoothedLng != nil {
-			pts[i].Lat, pts[i].Lng = *sp.SmoothedLat, *sp.SmoothedLng
+	pts := make([]TrackPoint, 0, len(stored))
+	for _, sp := range stored {
+		if sp.OffTrack {
+			continue
 		}
+		p := sp.TrackPoint
+		if sp.SmoothedLat != nil && sp.SmoothedLng != nil {
+			p.Lat, p.Lng = *sp.SmoothedLat, *sp.SmoothedLng
+		}
+		pts = append(pts, p)
 	}
 	return pts, nil
 }

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { appendPage } from '#lib/core/offset_page.ts';
+	import { appendPage } from '#lib/core/keyset_page.ts';
 	import { siteOrigin } from '#lib/core/site_url.ts';
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import { lengthLimit } from '#lib/core/column_limits.ts';

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { appendPage } from '#lib/core/offset_page.ts';
+	import { appendPage } from '#lib/core/keyset_page.ts';
 	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { formatDistance } from '#lib/core/mock-data.ts';

@@ -2,6 +2,7 @@ import type { Locator, Page } from '@playwright/test';
 
 import { browserDateOf } from '../fixtures/dates';
 import { degenerateStrings } from '../fixtures/degenerate-text';
+import { acceptCookieConsent } from '../fixtures/helpers';
 import { seedMinimalActivity, type MinimalActivity } from '../fixtures/minimal-activity';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { expect, test } from '../fixtures/test';
@@ -91,13 +92,6 @@ const ROUTES: readonly SweepRoute[] = [
 	{ name: 'gear settings', path: () => '/settings/gear' }
 ];
 
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-	);
-}
-
 /**
  * What the page paints or announces, plus every style and SVG geometry
  * attribute: the strings a NaN or a negative zero can reach a reader through,
@@ -162,7 +156,7 @@ test.describe('an account with minimal activity', () => {
 		test(`${route.name} renders without a crash or a broken number`, async ({ browser }) => {
 			const path = route.path(seeded, user);
 			const ctx = await browser.newContext({ storageState: user.storageStatePath });
-			await ctx.addInitScript(setConsentAccepted);
+			await acceptCookieConsent(ctx);
 			const page = await ctx.newPage();
 
 			try {

@@ -1,8 +1,27 @@
-import { chromium, expect, type Browser, type Page } from '@playwright/test';
+import { chromium, expect, type Browser, type BrowserContext, type Page } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
 import type { SeededUser } from './users';
+
+/**
+ * Pre-accepts the cookie banner in every document `target` opens, before the
+ * consent module reads it on first import.
+ *
+ * A context's init scripts also run in each new page's initial `about:blank`,
+ * whose opaque origin has no storage: touching `localStorage` there throws a
+ * SecurityError the crash net (`fixtures/test.ts`) records as a pageerror.
+ * Nothing of the app runs on that document, so the script skips it.
+ */
+export async function acceptCookieConsent(target: BrowserContext | Page): Promise<void> {
+	await target.addInitScript(() => {
+		if (location.protocol === 'about:') return;
+		localStorage.setItem(
+			'cookie_consent',
+			JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
+		);
+	});
+}
 
 /**
  * Drive the email-password sign-in form. Shared by globalSetup

@@ -456,7 +456,7 @@ class RunRecorder {
   /// The `NSLocationTemporaryUsageDescriptionDictionary` key in the iOS
   /// Info.plist whose purpose string the temporary-full-accuracy prompt
   /// shows.
-  static const String fullAccuracyPurposeKey = 'RunRecording';
+  static const String fullAccuracyPurposeKey = 'PreciseRunTracking';
 
   /// Which Android stream the recorded fixes came from: `'gps'`, `'fused'`, or
   /// `'mixed'` when the run fell back to fused for part of it. Counts restart

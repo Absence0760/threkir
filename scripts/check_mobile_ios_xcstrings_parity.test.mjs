@@ -136,11 +136,11 @@ test('a temporary-accuracy purpose string with no catalog entry is refused', () 
 	// Location off is a consent prompt like the NS*UsageDescription ones.
 	const { status, out } = runMutated((dir) => {
 		const cat = readPlistCatalog(dir);
-		delete cat.strings.RunRecording;
+		delete cat.strings.PreciseRunTracking;
 		writePlistCatalog(dir, cat);
 	});
 	assert.equal(status, 1, out);
-	assert.match(out, /Info\.plist declares RunRecording with no catalog entry/);
+	assert.match(out, /Info\.plist declares PreciseRunTracking with no catalog entry/);
 });
 
 test('a consent prompt that never translated a shipped locale is refused', () => {

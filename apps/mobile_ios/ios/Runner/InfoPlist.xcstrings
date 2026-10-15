@@ -96,8 +96,8 @@
         }
       }
     },
-    "RunRecording" : {
-      "comment" : "Purpose string for the one-time temporary full-accuracy prompt (Info.plist NSLocationTemporaryUsageDescriptionDictionary, purpose key RunRecording) shown when a run starts with Precise Location off.",
+    "PreciseRunTracking" : {
+      "comment" : "Purpose string for the one-time temporary full-accuracy prompt (Info.plist NSLocationTemporaryUsageDescriptionDictionary, purpose key PreciseRunTracking) shown when a run starts with Precise Location off.",
       "localizations" : {
         "de" : {
           "stringUnit" : {

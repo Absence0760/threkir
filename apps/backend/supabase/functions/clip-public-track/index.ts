@@ -22,8 +22,9 @@ import {
 } from '../_shared/smoothed_sidecar.ts';
 
 // Serves a privacy-zone-clipped track for a run the caller may see but does
-// not own: a public run, or (audience sharing, 20270802000003) a run whose
-// followers level or named-person grant admits the caller. Replaces
+// not own: a public run, (audience sharing, 20270802000003) a run whose
+// followers level or named-person grant admits the caller, or (coach run map,
+// 20270822000011) a run of an athlete the caller actively coaches. Replaces
 // direct Storage download for non-owner viewers (audit/storage High,
 // migration 20260619_001 dropped the public-runs Storage policy).
 //
@@ -168,7 +169,12 @@ Deno.serve(withSentry('clip-public-track', async (req: Request) => {
   // (audit/auth 2026-05-25).
   const isOwnerBypass = callerId !== null && callerId === ownerId;
   const isAudienceMember = audience === 'shared' && callerId !== null && callerId !== ownerId;
-  if (!run.is_public && !isAudienceMember && !isOwnerBypass) {
+  // A coach is admitted only by a row `coached_runs` returned for this caller:
+  // an active link, read as the caller, with the gate open (decisions § 1968).
+  // The coach's `runs` RLS policy would also return the row, which is why the
+  // base table is never read here — it carries no gate and no clip contract.
+  const isActiveCoach = audience === 'coach' && callerId !== null && callerId !== ownerId;
+  if (!run.is_public && !isAudienceMember && !isActiveCoach && !isOwnerBypass) {
     return Response.json({ error: 'not found' }, { status: 404 });
   }
 

@@ -15186,4 +15186,81 @@ class AppLocalizationsJa extends AppLocalizations {
   String runPhotosRaceGalleryError(String error) {
     return 'レースページを更新できませんでした: $error';
   }
+
+  @override
+  String get profileRequestToFollow => 'フォローをリクエスト';
+
+  @override
+  String get profileRequested => 'リクエスト済み';
+
+  @override
+  String get profileRequestSent => 'フォローリクエストを送信しました';
+
+  @override
+  String get profileRequestWithdrawn => 'フォローリクエストを取り消しました';
+
+  @override
+  String get profilePrivateTitle => 'このプロフィールは非公開です';
+
+  @override
+  String profilePrivateBody(String name) {
+    return '$nameさんをフォローすると、ランとフォロー中のユーザーを見られます。リクエストはそれぞれ承認が必要です。';
+  }
+
+  @override
+  String get profilePrivateRequestedBody =>
+      'リクエストは承認待ちです。承認されるとランを見られるようになります。';
+
+  @override
+  String profileNotifFollowRequest(String name) {
+    return '$nameさんがフォローをリクエストしました';
+  }
+
+  @override
+  String get prefsPrivateProfile => '非公開プロフィール';
+
+  @override
+  String get prefsPrivateProfileSubtitle =>
+      '承認したフォロワーだけが、あなたのラン、アクティビティ、フォロワー一覧を見られます。名前で検索してフォローをリクエストすることはできます。';
+
+  @override
+  String get prefsPrivateProfileFailed => 'プロフィールの公開設定を変更できませんでした。';
+
+  @override
+  String get followRequestsTitle => 'フォローリクエスト';
+
+  @override
+  String get followRequestsEmptyTitle => '保留中のリクエストはありません';
+
+  @override
+  String get followRequestsEmptyBody => '誰かが非公開プロフィールのフォローをリクエストすると、ここに表示されます。';
+
+  @override
+  String get followRequestsApprove => '承認';
+
+  @override
+  String get followRequestsDecline => '拒否';
+
+  @override
+  String followRequestsApproved(String name) {
+    return '$nameさんがあなたのプロフィールを見られるようになりました';
+  }
+
+  @override
+  String get followRequestsDeclinedBanner => 'リクエストを拒否しました';
+
+  @override
+  String get followRequestsLoadError => 'フォローリクエストを読み込めませんでした。';
+
+  @override
+  String get followRequestsActionFailed => 'リクエストを更新できませんでした。';
+
+  @override
+  String get coachingAthleteMapsClippedNote =>
+      '地図には、このアスリートがプライバシーゾーンで非表示にしている範囲は含まれません。';
+
+  @override
+  String coachingAthleteRunMapLabel(String date) {
+    return '$dateのランの地図（アスリートのプライバシーゾーンを除く）';
+  }
 }

@@ -2823,16 +2823,114 @@ class ApiClient {
   // Methods are intentionally narrow wrappers over the row classes;
   // any cross-shape (FeedEntry, ProfileSummary) lives in core_models.
 
-  /// Follow `targetUserId`. No-op if already following (composite-PK
-  /// duplicate is swallowed by the unique-violation guard).
-  Future<void> followUser(String targetUserId) async {
+  /// Follow `targetUserId`, or ask to when their profile is private
+  /// (decisions § 1967). One RPC, so the client never reads the target's
+  /// privacy and races its change. Mirrors web `followUser`.
+  Future<FollowOutcome> followUser(String targetUserId) async {
     final viewerId = _client.auth.currentUser?.id;
     if (viewerId == null) throw Exception('Not authenticated');
-    if (viewerId == targetUserId) return;
-    await _client.from(UserFollowRow.table).insert({
-      UserFollowRow.colFollowerId: viewerId,
-      UserFollowRow.colFolloweeId: targetUserId,
-    });
+    if (viewerId == targetUserId) return FollowOutcome.following;
+    final result = await _client.rpc(
+      'request_follow',
+      params: {'p_target': targetUserId},
+    );
+    return result == 'requested'
+        ? FollowOutcome.requested
+        : FollowOutcome.following;
+  }
+
+  /// Withdraw the viewer's pending request to follow `targetUserId`.
+  Future<void> cancelFollowRequest(String targetUserId) async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) throw StateError('not signed in');
+    await _client
+        .from(FollowRequestRow.table)
+        .delete()
+        .eq(FollowRequestRow.colRequesterId, viewerId)
+        .eq(FollowRequestRow.colTargetId, targetUserId);
+  }
+
+  /// Requests to follow the signed-in user, newest first. Mirrors web
+  /// `fetchIncomingFollowRequests`.
+  Future<List<IncomingFollowRequest>> fetchIncomingFollowRequests() async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) return const [];
+    final rows = await _client
+        .from(FollowRequestRow.table)
+        .select()
+        .eq(FollowRequestRow.colTargetId, viewerId)
+        .order(FollowRequestRow.colRequestedAt, ascending: false)
+        .order(FollowRequestRow.colRequesterId, ascending: false)
+        .limit(200);
+    final requests = (rows as List)
+        .map((r) => FollowRequestRow.fromJson(r as Map<String, dynamic>))
+        .toList();
+    if (requests.isEmpty) return const [];
+    final profiles = await _client
+        .from(UserProfileRow.table)
+        .select(
+            '${UserProfileRow.colId}, ${UserProfileRow.colDisplayName}, ${UserProfileRow.colAvatarUrl}')
+        .inFilter(UserProfileRow.colId,
+            requests.map((r) => r.requesterId).toList());
+    final byId = <String, PublicProfile>{
+      for (final p in profiles as List)
+        (p as Map<String, dynamic>)[UserProfileRow.colId] as String:
+            PublicProfile.fromJson(p),
+    };
+    return [
+      for (final r in requests)
+        if (byId[r.requesterId] != null)
+          IncomingFollowRequest(
+            requester: byId[r.requesterId]!,
+            requestedAt: r.requestedAt,
+          ),
+    ];
+  }
+
+  Future<void> approveFollowRequest(String requesterId) async {
+    await _client.rpc(
+      'approve_follow_request',
+      params: {'p_requester': requesterId},
+    );
+  }
+
+  /// A decline is the target deleting the request under RLS. Zero rows
+  /// deleted means it was already gone or refused, and is thrown.
+  Future<void> declineFollowRequest(String requesterId) async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) throw StateError('not signed in');
+    final List<dynamic> rows = await _client
+        .from(FollowRequestRow.table)
+        .delete()
+        .eq(FollowRequestRow.colRequesterId, requesterId)
+        .eq(FollowRequestRow.colTargetId, viewerId)
+        .select(FollowRequestRow.colRequesterId);
+    if (rows.isEmpty) throw StateError('follow request not declined');
+  }
+
+  /// The signed-in user's own private-profile switch.
+  Future<bool> fetchMyProfilePrivate() async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) return false;
+    final row = await _client
+        .from(UserProfileRow.table)
+        .select(UserProfileRow.colProfilePrivate)
+        .eq(UserProfileRow.colId, viewerId)
+        .maybeSingle();
+    return row?[UserProfileRow.colProfilePrivate] == true;
+  }
+
+  /// Turning it off approves every pending request in the same statement
+  /// (a trigger). Zero rows updated means RLS refused, and is thrown.
+  Future<void> setProfilePrivate(bool value) async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) throw StateError('not signed in');
+    final List<dynamic> rows = await _client
+        .from(UserProfileRow.table)
+        .update({UserProfileRow.colProfilePrivate: value})
+        .eq(UserProfileRow.colId, viewerId)
+        .select(UserProfileRow.colId);
+    if (rows.isEmpty) throw StateError('profile privacy not updated');
   }
 
   /// Stop following `targetUserId`.
@@ -5945,26 +6043,32 @@ class ApiClient {
   // consumer (feed, profile, run-detail comments) sees the same
   // typed view.
 
-  /// Profile + follower / following counts + whether the current
-  /// viewer follows. Three reads in flight in parallel; null when
-  /// the user doesn't exist or RLS hides the row.
+  /// Profile + follower / following counts + the viewer's follow and
+  /// request state. The counts come from `profile_follow_summary` because on
+  /// a private profile the follow rows behind them are closed to a viewer who
+  /// is not an approved follower (decisions § 1967). Null when the user
+  /// doesn't exist or RLS hides the row. Mirrors web `fetchPublicProfile`.
   Future<ProfileSummary?> fetchProfileSummary(String userId) async {
-    final results = await Future.wait([
-      fetchPublicProfile(userId),
-      fetchFollowCounts(userId),
-      viewerFollows(userId),
-    ]);
-    final profile = results[0] as UserProfileRow?;
+    final profileF = fetchPublicProfile(userId);
+    final List<dynamic> rows = await _client.rpc(
+      'profile_follow_summary',
+      params: {'p_user_id': userId},
+      get: true,
+    );
+    final profile = await profileF;
     if (profile == null) return null;
-    final counts = results[1] as ({int followers, int following});
-    final follows = results[2] as bool;
+    if (rows.isEmpty) return null;
+    final s = rows.first as Map<String, dynamic>;
     return ProfileSummary(
       id: profile.id,
       displayName: profile.displayName,
       avatarUrl: profile.avatarUrl,
-      followerCount: counts.followers,
-      followingCount: counts.following,
-      viewerFollows: follows,
+      followerCount: (s['follower_count'] as num?)?.toInt() ?? 0,
+      followingCount: (s['following_count'] as num?)?.toInt() ?? 0,
+      viewerFollows: s['viewer_follows'] == true,
+      profilePrivate: s['profile_private'] == true,
+      viewerRequested: s['viewer_requested'] == true,
+      contentVisible: s['content_visible'] == true,
     );
   }
 
@@ -8495,7 +8599,7 @@ class ApiClient {
     final data = await _client
         .from(RunRow.table)
         .select(
-            'id, started_at, distance_m, duration_s, is_public, source, route_id, activity_type, metadata')
+            'id, started_at, distance_m, duration_s, is_public, source, route_id, activity_type, metadata, track_url')
         .eq(RunRow.colUserId, athleteId)
         .order(RunRow.colStartedAt, ascending: false)
         .limit(limit);
@@ -8510,8 +8614,26 @@ class ApiClient {
         routeId: r['route_id'] as String?,
         activityType: (r['activity_type'] as String?) ?? 'run',
         metadata: r['metadata'] as Map<String, dynamic>?,
+        trackUrl: r['track_url'] as String?,
       );
     }).toList();
+  }
+
+  /// Whether a linked coach is served the athlete's clipped run map (the
+  /// server's `coach_run_map` flag, decisions § 1968). Mirrors web
+  /// `coachRunMapEnabled`. Fail-closed: any failure reads as off.
+  Future<bool> coachRunMapEnabled() async {
+    try {
+      final result = await _client.rpc(
+        'coach_run_map_enabled',
+        params: const {},
+        get: true,
+      );
+      return result == true;
+    } catch (e) {
+      debugPrint('coachRunMapEnabled failed: $e');
+      return false;
+    }
   }
 
   /// The athlete's active training plan + its weeks/workouts for the coach
@@ -9055,6 +9177,14 @@ class AthleteRunSummary {
   final String activityType;
   final Map<String, dynamic>? metadata;
 
+  /// The run's Storage path, kept only as the preview cache key and as the
+  /// fact that a track exists: the coach's map is served clipped by
+  /// `clip-public-track` (decisions § 1968), and the Storage policy keeps
+  /// the bytes owner-only.
+  final String? trackUrl;
+
+  bool get hasTrack => trackUrl != null;
+
   const AthleteRunSummary({
     required this.id,
     required this.startedAt,
@@ -9065,6 +9195,7 @@ class AthleteRunSummary {
     required this.routeId,
     required this.activityType,
     required this.metadata,
+    this.trackUrl,
   });
 }
 

@@ -1631,6 +1631,24 @@ export type Database = {
         }
         Relationships: []
       }
+      follow_requests: {
+        Row: {
+          requested_at: string
+          requester_id: string
+          target_id: string
+        }
+        Insert: {
+          requested_at?: string
+          requester_id: string
+          target_id: string
+        }
+        Update: {
+          requested_at?: string
+          requester_id?: string
+          target_id?: string
+        }
+        Relationships: []
+      }
       food_log: {
         Row: {
           calories: number | null
@@ -4833,6 +4851,7 @@ export type Database = {
           id: string
           onboarded_at: string | null
           parkrun_number: string | null
+          profile_private: boolean
           preferred_unit: string | null
           shadow_hidden: boolean
           subscription_at: string | null
@@ -4856,6 +4875,7 @@ export type Database = {
           id: string
           onboarded_at?: string | null
           parkrun_number?: string | null
+          profile_private?: boolean
           preferred_unit?: string | null
           shadow_hidden?: boolean
           subscription_at?: string | null
@@ -4879,6 +4899,7 @@ export type Database = {
           id?: string
           onboarded_at?: string | null
           parkrun_number?: string | null
+          profile_private?: boolean
           preferred_unit?: string | null
           shadow_hidden?: boolean
           subscription_at?: string | null
@@ -4939,6 +4960,15 @@ export type Database = {
           kind: string | null
           started_at: string | null
           summary: Json | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      coached_runs: {
+        Row: {
+          id: string | null
+          is_public: boolean | null
+          metadata: Json | null
           user_id: string | null
         }
         Relationships: []
@@ -5683,6 +5713,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      approve_follow_request: {
+        Args: { p_requester: string }
+        Returns: undefined
+      }
       assign_plan_to_athlete: {
         Args: {
           p_athlete_id: string
@@ -5876,6 +5910,7 @@ export type Database = {
           runs_7d: number
         }[]
       }
+      coach_run_map_enabled: { Args: never; Returns: boolean }
       confirm_age_and_terms: {
         Args: { p_preferred_unit?: string }
         Returns: undefined
@@ -6521,6 +6556,17 @@ export type Database = {
         Args: { lat: number; lng: number; zones_json: Json }
         Returns: boolean
       }
+      profile_follow_summary: {
+        Args: { p_user_id: string }
+        Returns: {
+          content_visible: boolean
+          follower_count: number
+          following_count: number
+          profile_private: boolean
+          viewer_follows: boolean
+          viewer_requested: boolean
+        }[]
+      }
       prune_sign_in_devices: { Args: never; Returns: number }
       public_profile_by_id: {
         Args: { p_id: string }
@@ -6626,6 +6672,7 @@ export type Database = {
         Args: { p_run_id: string }
         Returns: undefined
       }
+      request_follow: { Args: { p_target: string }; Returns: string }
       resolve_target_reports: {
         Args: {
           p_resolution?: string

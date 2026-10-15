@@ -131,7 +131,8 @@ create temporary table append_only_registry (tbl name, reason text);
 insert into append_only_registry (tbl, reason) values
   ('global_segment_efforts', 'a catalogue effort is a record of a run that happened: insert + owner-delete policies only, no UPDATE policy and no UPDATE grant'),
   ('run_shares',             'a share grant is revoked by DELETE, never edited (decisions § 1876): no UPDATE grant, and the insert policy pins owner_id to the run''s real owner'),
-  ('route_shares',           'ditto for routes (decisions § 1876)');
+  ('route_shares',           'ditto for routes (decisions § 1876)'),
+  ('follow_requests',        'a request is withdrawn, declined or approved by DELETE (approval moves it into user_follows as the definer), never edited (decisions § 1967)');
 
 -- (1) The registry IS the withheld write map, in both directions, for both
 -- roles and both verbs. "Column-scoped" means the role lacks the table-level

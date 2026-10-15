@@ -63,6 +63,7 @@ class _FakeApi extends ApiClient {
   List<PeopleSuggestion> suggestions;
   List<PeopleSuggestion> results;
   bool followShouldThrow;
+  FollowOutcome followOutcome = FollowOutcome.following;
   bool searchShouldThrow;
   Object? searchError;
   Object? suggestionsError;
@@ -107,9 +108,10 @@ class _FakeApi extends ApiClient {
   }
 
   @override
-  Future<void> followUser(String targetUserId) async {
+  Future<FollowOutcome> followUser(String targetUserId) async {
     followCalls++;
     if (followShouldThrow) throw Exception('follow down');
+    return followOutcome;
   }
 
   @override
@@ -354,6 +356,24 @@ void main() {
       expect(find.text('Following'), findsOneWidget);
       await _settle(tester);
       expect(api.followCalls, 1);
+    });
+
+    testWidgets(
+        'following a private profile files a request: the label returns to '
+        'Follow and the banner says a request went out', (tester) async {
+      final api = _FakeApi(suggestions: [_person(follows: false)])
+        ..followOutcome = FollowOutcome.requested;
+      await tester.pumpWidget(_wrap(PeopleScreen(api: api, embedded: true)));
+      await _settle(tester);
+
+      await tester.tap(find.text('Follow'));
+      await _settle(tester);
+
+      expect(api.followCalls, 1);
+      expect(find.text('Follow'), findsOneWidget);
+      expect(find.text('Following'), findsNothing);
+      expect(find.text('Follow request sent'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 4)); // drain banner timer
     });
 
     testWidgets('a failed follow rolls back the label + surfaces a banner',

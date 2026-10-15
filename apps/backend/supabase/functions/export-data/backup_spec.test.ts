@@ -53,8 +53,9 @@ Deno.test('buildBackupSpecs covers the Go worker table set', () => {
 	// added run_shares + route_shares, each on both legs (owner + recipient).
 	// New-device sign-in alerts (migration 20270804000002) added sign_in_devices.
 	// Nutrition programming P1 (migration 20270815000001) added nutrition_plans
-	// + nutrition_plan_assignments.
-	assertEquals(specs.length, 68, `expected 68 specs, got ${specs.length}`);
+	// + nutrition_plan_assignments. Private profiles (migration
+	// 20270822000001) added follow_requests on both legs (sent + received).
+	assertEquals(specs.length, 70, `expected 70 specs, got ${specs.length}`);
 	const entries = new Set(specs.map((s) => s.entry));
 	for (const expected of [
 		'coach_messages.json',
@@ -62,6 +63,8 @@ Deno.test('buildBackupSpecs covers the Go worker table set', () => {
 		'training_plans.json',
 		'integrations.json',
 		'run_kudos.json',
+		'follow_requests_sent.json',
+		'follow_requests_received.json',
 		'run_comments.json',
 		'run_kudos_received.json',
 		'run_comments_received.json',

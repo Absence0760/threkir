@@ -4,10 +4,12 @@
 	import { compareOrdinal } from '#lib/util/ordinal_compare.ts';
 	import { page } from '$app/state';
 	import Avatar from '#lib/components/Avatar.svelte';
+	import RunTrackPreview from '#lib/components/RunTrackPreview.svelte';
 	import {
 		fetchMyAthletesWithError,
 		fetchAthleteRuns,
 		fetchAthletePlanOverview,
+		coachRunMapEnabled,
 		fetchMyPlans,
 		assignPlanToAthlete,
 		type CoachAthleteLink,
@@ -35,6 +37,9 @@
 	let assignSelectedId = $state('');
 	let assignStartDate = $state(localTodayISO());
 	let assigning = $state(false);
+	// The athlete's map, clipped against their privacy zones by
+	// clip-public-track (decisions § 1968). Off until the server gate says so.
+	let showMaps = $state(false);
 
 	function localTodayISO(): string {
 		const d = new Date();
@@ -70,10 +75,11 @@
 				loading = false;
 				return;
 			}
-			[runs, overview, myPlans] = await Promise.all([
+			[runs, overview, myPlans, showMaps] = await Promise.all([
 				fetchAthleteRuns(id, 20),
 				fetchAthletePlanOverview(id),
-				fetchMyPlans()
+				fetchMyPlans(),
+				coachRunMapEnabled()
 			]);
 		} catch (e) {
 			// A rejected fetch (auth/timeout/RLS) would otherwise leave the
@@ -301,6 +307,9 @@
 
 		<section class="card">
 			<h2>{m('coachingAthlete.recentRuns')}</h2>
+			{#if showMaps && runs.some((r) => r.has_track)}
+				<p class="maps-note">{m('coachingAthlete.mapsClippedNote')}</p>
+			{/if}
 			{#if runs.length === 0}
 				<p class="empty">{m('coachingAthlete.noRunsYet')}</p>
 			{:else}
@@ -314,6 +323,16 @@
 							<span class="r-pace">{paceLabel(r)}</span>
 							{#if !r.is_public}
 								<span class="r-private" title={m('coachingAthlete.privateRunTooltip')}>{m('coachingAthlete.private')}</span>
+							{/if}
+							{#if showMaps && r.has_track && athleteId}
+								<div
+									class="r-map"
+									data-testid="coach-run-map"
+									role="img"
+									aria-label={m('coachingAthlete.runMapLabel', { date: formatDate(r.started_at) })}
+								>
+									<RunTrackPreview runId={r.id} trackUrl={null} ownerUserId={athleteId} />
+								</div>
 							{/if}
 						</li>
 					{/each}
@@ -472,6 +491,17 @@
 		gap: var(--space-2xs);
 	}
 	.workout-row,
+	.maps-note {
+		margin: 0 0 var(--space-sm) 0;
+		font-size: 0.85rem;
+		color: var(--color-text-secondary);
+	}
+	.r-map {
+		flex: 1 1 100%;
+		max-width: 24rem;
+		border-radius: var(--radius-md);
+		overflow: hidden;
+	}
 	.run-row {
 		display: flex;
 		flex-wrap: wrap;

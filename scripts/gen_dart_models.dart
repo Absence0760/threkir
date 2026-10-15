@@ -93,6 +93,7 @@ const _tables = <String>{
   'personal_records',
   'coach_messages',
   'user_follows',
+  'follow_requests',
   'run_kudos',
   'run_comments',
   'run_photos',

@@ -43,6 +43,7 @@ const (
 	TableUserDeviceSettings      = "user_device_settings"
 	TableUserCoachUsage          = "user_coach_usage"
 	TableUserFollows             = "user_follows"
+	TableFollowRequests          = "follow_requests"
 	TableUserBlocks              = "user_blocks"
 	TableNotifications           = "notifications"
 	TableLifecycleEmailLog       = "lifecycle_email_log"

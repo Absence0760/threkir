@@ -15927,4 +15927,85 @@ class AppLocalizationsEs extends AppLocalizations {
   String runPhotosRaceGalleryError(String error) {
     return 'No se pudo actualizar la página de la carrera: $error';
   }
+
+  @override
+  String get profileRequestToFollow => 'Solicitar seguir';
+
+  @override
+  String get profileRequested => 'Solicitado';
+
+  @override
+  String get profileRequestSent => 'Solicitud de seguimiento enviada';
+
+  @override
+  String get profileRequestWithdrawn => 'Solicitud de seguimiento retirada';
+
+  @override
+  String get profilePrivateTitle => 'Este perfil es privado';
+
+  @override
+  String profilePrivateBody(String name) {
+    return 'Sigue a $name para ver sus carreras y a quién sigue. Cada solicitud se aprueba una a una.';
+  }
+
+  @override
+  String get profilePrivateRequestedBody =>
+      'Tu solicitud está pendiente de aprobación. Verás sus carreras cuando la acepten.';
+
+  @override
+  String profileNotifFollowRequest(String name) {
+    return '$name quiere seguirte';
+  }
+
+  @override
+  String get prefsPrivateProfile => 'Perfil privado';
+
+  @override
+  String get prefsPrivateProfileSubtitle =>
+      'Solo los seguidores que apruebes ven tus carreras, actividades y listas de seguidores. Los demás aún pueden encontrarte por tu nombre y pedir seguirte.';
+
+  @override
+  String get prefsPrivateProfileFailed =>
+      'No se pudo cambiar la privacidad del perfil.';
+
+  @override
+  String get followRequestsTitle => 'Solicitudes de seguimiento';
+
+  @override
+  String get followRequestsEmptyTitle => 'No hay solicitudes pendientes';
+
+  @override
+  String get followRequestsEmptyBody =>
+      'Cuando alguien pida seguir tu perfil privado, aparecerá aquí.';
+
+  @override
+  String get followRequestsApprove => 'Aprobar';
+
+  @override
+  String get followRequestsDecline => 'Rechazar';
+
+  @override
+  String followRequestsApproved(String name) {
+    return '$name ya puede ver tu perfil';
+  }
+
+  @override
+  String get followRequestsDeclinedBanner => 'Solicitud rechazada';
+
+  @override
+  String get followRequestsLoadError =>
+      'No se pudieron cargar las solicitudes de seguimiento.';
+
+  @override
+  String get followRequestsActionFailed =>
+      'No se pudo actualizar la solicitud.';
+
+  @override
+  String get coachingAthleteMapsClippedNote =>
+      'Los mapas omiten las zonas que este atleta oculta con sus zonas de privacidad.';
+
+  @override
+  String coachingAthleteRunMapLabel(String date) {
+    return 'Mapa de la carrera del $date, sin las zonas de privacidad del atleta';
+  }
 }

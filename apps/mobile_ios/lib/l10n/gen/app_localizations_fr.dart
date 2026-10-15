@@ -15968,4 +15968,85 @@ class AppLocalizationsFr extends AppLocalizations {
   String runPhotosRaceGalleryError(String error) {
     return 'Impossible de mettre à jour la page de la course : $error';
   }
+
+  @override
+  String get profileRequestToFollow => 'Demander à s\'abonner';
+
+  @override
+  String get profileRequested => 'Demande envoyée';
+
+  @override
+  String get profileRequestSent => 'Demande d\'abonnement envoyée';
+
+  @override
+  String get profileRequestWithdrawn => 'Demande d\'abonnement retirée';
+
+  @override
+  String get profilePrivateTitle => 'Ce profil est privé';
+
+  @override
+  String profilePrivateBody(String name) {
+    return 'Abonnez-vous à $name pour voir ses sorties et ses abonnements. Chaque demande est validée.';
+  }
+
+  @override
+  String get profilePrivateRequestedBody =>
+      'Votre demande attend une validation. Vous verrez ses sorties une fois acceptée.';
+
+  @override
+  String profileNotifFollowRequest(String name) {
+    return '$name souhaite s\'abonner à vous';
+  }
+
+  @override
+  String get prefsPrivateProfile => 'Profil privé';
+
+  @override
+  String get prefsPrivateProfileSubtitle =>
+      'Seuls les abonnés que vous acceptez voient vos sorties, activités et listes d\'abonnés. On peut toujours vous trouver par votre nom et demander à s\'abonner.';
+
+  @override
+  String get prefsPrivateProfileFailed =>
+      'Impossible de modifier la confidentialité du profil.';
+
+  @override
+  String get followRequestsTitle => 'Demandes d\'abonnement';
+
+  @override
+  String get followRequestsEmptyTitle => 'Aucune demande en attente';
+
+  @override
+  String get followRequestsEmptyBody =>
+      'Quand quelqu\'un demande à s\'abonner à votre profil privé, la demande apparaît ici.';
+
+  @override
+  String get followRequestsApprove => 'Accepter';
+
+  @override
+  String get followRequestsDecline => 'Refuser';
+
+  @override
+  String followRequestsApproved(String name) {
+    return '$name peut maintenant voir votre profil';
+  }
+
+  @override
+  String get followRequestsDeclinedBanner => 'Demande refusée';
+
+  @override
+  String get followRequestsLoadError =>
+      'Impossible de charger les demandes d\'abonnement.';
+
+  @override
+  String get followRequestsActionFailed =>
+      'Impossible de mettre à jour la demande.';
+
+  @override
+  String get coachingAthleteMapsClippedNote =>
+      'Les cartes omettent les zones que cet athlète masque avec ses zones de confidentialité.';
+
+  @override
+  String coachingAthleteRunMapLabel(String date) {
+    return 'Carte de la sortie du $date, sans les zones de confidentialité de l\'athlète';
+  }
 }

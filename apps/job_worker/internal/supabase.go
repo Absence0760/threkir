@@ -1426,6 +1426,7 @@ var orderByTable = map[string]string{
 	schema.TableEventAttendees:           "event_id,user_id,instance_start",
 	schema.TableEventExceptions:          "event_id,instance_start",
 	schema.TableEventPricing:             "event_id,instance_start",
+	schema.TableFollowRequests:           "requester_id,target_id",
 	schema.TableInstructorPayoutAccounts: "user_id",
 	schema.TablePersonalRecords:          "user_id,distance",
 	schema.TableRunGear:                  "run_id,gear_id",
@@ -2289,6 +2290,19 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 		{
 			name: "followers.json", table: schema.TableUserFollows,
 			filter: "followee_id=eq." + uid, sel: "*",
+		},
+		// follow_requests — pending follows of a private profile (migration
+		// 20270822000001), both legs: requests the subject made and requests
+		// made to them. Keyed by requester_id / target_id, neither of which the
+		// guard's owner-FK scan names, so both are wired in explicitly. An
+		// approved or declined request is deleted, so there is no history.
+		{
+			name: "follow_requests_sent.json", table: schema.TableFollowRequests,
+			filter: "requester_id=eq." + uid, sel: "*",
+		},
+		{
+			name: "follow_requests_received.json", table: schema.TableFollowRequests,
+			filter: "target_id=eq." + uid, sel: "*",
 		},
 		// event_attendees — RSVPs.
 		{name: "event_attendees.json", table: schema.TableEventAttendees, filter: uidEq, sel: "*"},

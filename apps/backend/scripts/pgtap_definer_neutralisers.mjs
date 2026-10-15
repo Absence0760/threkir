@@ -154,7 +154,7 @@ export const DEFINER_NEUTRALISERS = new Map([
   [
     'public_gym_workouts',
     {
-      why: 'drops `is_public = true`',
+      why: 'drops `is_public = true` and the private-profile clause (an approved follower or the owner)',
       sql: `create or replace view public.public_gym_workouts as
  select id, user_id, started_at, title, duration_s, is_public, set_count, volume_kg, created_at
    from gym_workouts w
@@ -171,7 +171,7 @@ export const DEFINER_NEUTRALISERS = new Map([
   [
     'public_gym_sets',
     {
-      why: "drops the parent workout's `is_public = true`; keeps the set→workout join, which is structure rather than access control",
+      why: "drops the parent workout's `is_public = true` and its owner's private-profile clause; keeps the set→workout join, which is structure rather than access control",
       sql: `create or replace view public.public_gym_sets as
  select s.id, s.workout_id, s.set_index, s.exercise_name, s.reps, s.weight_kg, s.duration_s
    from gym_sets s
@@ -191,7 +191,7 @@ export const DEFINER_NEUTRALISERS = new Map([
   [
     'public_profile_by_id',
     {
-      why: 'drops `shadow_hidden = false` and the mutual-block check; keeps `u.id = p_id`, which is the subject selector',
+      why: 'drops `shadow_hidden = false`, the mutual-block check and the private-profile clause; keeps `u.id = p_id`, which is the subject selector',
       sql: `create or replace function public.public_profile_by_id(p_id uuid)
  returns table(id uuid, display_name text, avatar_url text)
  language sql stable security definer set search_path to 'public'
@@ -943,7 +943,7 @@ $neutralised$;`,
   [
     'public_run_counts',
     {
-      why: "drops `r.is_public = true`; keeps the caller's own `user_id = any(p_user_ids)`",
+      why: "drops `r.is_public = true` and the private-profile clause; keeps the caller's own `user_id = any(p_user_ids)`",
       sql: `create or replace function public.public_run_counts(p_user_ids uuid[])
  returns table(user_id uuid, public_run_count bigint)
  language sql stable security definer set search_path to 'public', 'pg_temp'
@@ -1227,6 +1227,23 @@ $neutralised$;`,
                  where id = (select id from routes order by id limit 1);`,
         probe: `select count(*) from shared_routes
                  where id = (select id from routes order by id limit 1);`,
+      },
+    },
+  ],
+  [
+    'coached_runs',
+    {
+      why: "drops `private.is_active_coach_of(auth.uid(), user_id)`, the coach_run_map gate and the self exclusion — every predicate that decides whether the caller coaches the run's owner. The view has no subject selector of its own; the assertion's `id = …` is",
+      sql: `create or replace view public.coached_runs as
+ select r.id, r.user_id, r.is_public, coalesce(r.metadata, '{}'::jsonb) as metadata
+   from runs r
+  where ${mine('r')};`,
+      subject: 'runs r — the run whose coaching check was dropped',
+      witness: {
+        setup: `update runs set is_public = is_public
+                 where id = (select id from runs order by id limit 1);`,
+        probe: `select count(*) from coached_runs
+                 where id = (select id from runs order by id limit 1);`,
       },
     },
   ],

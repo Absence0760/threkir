@@ -2451,6 +2451,47 @@ class FitnessSnapshotRow {
   );
 }
 
+/// Row shape for the `follow_requests` table. Mirrors the Supabase schema
+/// exactly — field names are snake_case to match the JSON wire format.
+class FollowRequestRow {
+  static const String table = 'follow_requests';
+  static const String colRequesterId = 'requester_id';
+  static const String colTargetId = 'target_id';
+  static const String colRequestedAt = 'requested_at';
+
+  final String requesterId;
+  final String targetId;
+  final DateTime requestedAt;
+
+  const FollowRequestRow({
+    required this.requesterId,
+    required this.targetId,
+    required this.requestedAt,
+  });
+
+  factory FollowRequestRow.fromJson(Map<String, dynamic> json) => FollowRequestRow(
+    requesterId: json['requester_id'] as String,
+    targetId: json['target_id'] as String,
+    requestedAt: parseIsoStrictRequired(json['requested_at'], 'requested_at'),
+  );
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    colRequesterId: requesterId,
+    colTargetId: targetId,
+    colRequestedAt: requestedAt.toIso8601String(),
+  };
+
+  FollowRequestRow copyWith({
+    String? requesterId,
+    String? targetId,
+    DateTime? requestedAt,
+  }) => FollowRequestRow(
+    requesterId: requesterId ?? this.requesterId,
+    targetId: targetId ?? this.targetId,
+    requestedAt: requestedAt ?? this.requestedAt,
+  );
+}
+
 /// Row shape for the `food_log` table. Mirrors the Supabase schema
 /// exactly — field names are snake_case to match the JSON wire format.
 class FoodLogRow {
@@ -7274,6 +7315,7 @@ class UserProfileRow {
   static const String colTierUpdatedEventTs = 'tier_updated_event_ts';
   static const String colHandle = 'handle';
   static const String colAiDisclosureVersion = 'ai_disclosure_version';
+  static const String colProfilePrivate = 'profile_private';
 
   final String id;
   final String? displayName;
@@ -7296,6 +7338,7 @@ class UserProfileRow {
   final int? tierUpdatedEventTs;
   final String? handle;
   final int? aiDisclosureVersion;
+  final bool profilePrivate;
 
   const UserProfileRow({
     required this.id,
@@ -7319,6 +7362,7 @@ class UserProfileRow {
     this.tierUpdatedEventTs,
     this.handle,
     this.aiDisclosureVersion,
+    required this.profilePrivate,
   });
 
   factory UserProfileRow.fromJson(Map<String, dynamic> json) => UserProfileRow(
@@ -7343,6 +7387,7 @@ class UserProfileRow {
     tierUpdatedEventTs: (json['tier_updated_event_ts'] as num?)?.toInt(),
     handle: json['handle'] as String?,
     aiDisclosureVersion: (json['ai_disclosure_version'] as num?)?.toInt(),
+    profilePrivate: (json['profile_private'] as bool?) ?? false,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -7367,6 +7412,7 @@ class UserProfileRow {
     colTierUpdatedEventTs: tierUpdatedEventTs,
     colHandle: handle,
     colAiDisclosureVersion: aiDisclosureVersion,
+    colProfilePrivate: profilePrivate,
   };
 
   UserProfileRow copyWith({
@@ -7391,6 +7437,7 @@ class UserProfileRow {
     int? tierUpdatedEventTs,
     String? handle,
     int? aiDisclosureVersion,
+    bool? profilePrivate,
   }) => UserProfileRow(
     id: id ?? this.id,
     displayName: displayName ?? this.displayName,
@@ -7413,6 +7460,7 @@ class UserProfileRow {
     tierUpdatedEventTs: tierUpdatedEventTs ?? this.tierUpdatedEventTs,
     handle: handle ?? this.handle,
     aiDisclosureVersion: aiDisclosureVersion ?? this.aiDisclosureVersion,
+    profilePrivate: profilePrivate ?? this.profilePrivate,
   );
 }
 

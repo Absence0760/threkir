@@ -569,7 +569,11 @@
   "importStatusCloudPushDeferred": "{count, plural, one{1 run is saved on this device — its upload to the cloud didn't go through. It will retry on the next sync.} other{{count} runs are saved on this device — their upload to the cloud didn't go through. They will retry on the next sync.}}",
   "@importStatusCloudPushDeferred": {
     "description": "Shown when imported runs saved locally but the upload to the cloud failed for some or all of them",
-    "placeholders": {"count": {"type": "int"}}
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "importHealthSubtitleIos": "Pull workouts you've recorded on Apple Watch, Nike Run Club, Strava, and other apps that write to Apple Health",
   "@importHealthSubtitleIos": {
@@ -590,7 +594,11 @@
   "importHealthRoutesWithheld": "{count, plural, one{1 imported activity has a GPS map Threkir isn't allowed to read.} other{{count} imported activities have GPS maps Threkir isn't allowed to read.}} Health Connect keeps a workout's route behind its own permission.",
   "@importHealthRoutesWithheld": {
     "description": "Offer shown after a Health Connect import found routes it was refused",
-    "placeholders": {"count": {"type": "int"}}
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "importHealthRoutesAllowButton": "Allow map import",
   "importHealthRoutesRequesting": "Asking Health Connect for map access...",
@@ -599,7 +607,11 @@
   "importHealthRoutesAdded": "{count, plural, =0{No maps could be added.} one{Added a map to 1 activity.} other{Added maps to {count} activities.}}",
   "@importHealthRoutesAdded": {
     "description": "Status after backfilling maps onto already-imported activities",
-    "placeholders": {"count": {"type": "int"}}
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "peopleFollowFailedBanner": "Could not update follow: {error}",
   "@peopleFollowFailedBanner": {
@@ -697,7 +709,7 @@
   "@peopleNearbyHeader": {
     "description": "Section heading for the opt-in coarse-location runners-nearby list on the People screen"
   },
-  "peopleNearbySubtitle": "Runners who opted in near the area you set. Approximate distance only \u2014 never a live location.",
+  "peopleNearbySubtitle": "Runners who opted in near the area you set. Approximate distance only — never a live location.",
   "@peopleNearbySubtitle": {
     "description": "Explanatory subtitle under the runners-nearby heading"
   },
@@ -719,7 +731,7 @@
   },
   "peopleNearbyWithin": "Within {distance}",
   "@peopleNearbyWithin": {
-    "description": "Coarse distance label for a nearby runner \u2014 the bucket's upper bound, never an exact distance",
+    "description": "Coarse distance label for a nearby runner — the bucket's upper bound, never an exact distance",
     "placeholders": {
       "distance": {
         "type": "String"
@@ -739,7 +751,7 @@
   "@prefsDiscoverableNearby": {
     "description": "Toggle title for opting in to coarse-location runners-nearby discovery"
   },
-  "prefsDiscoverableNearbySubtitle": "Off by default. When on, other runners who also opted in can see that you are roughly nearby \u2014 an approximate distance from the area you set, never your location.",
+  "prefsDiscoverableNearbySubtitle": "Off by default. When on, other runners who also opted in can see that you are roughly nearby — an approximate distance from the area you set, never your location.",
   "@prefsDiscoverableNearbySubtitle": {
     "description": "Subtitle for the runners-nearby opt-in toggle"
   },
@@ -770,7 +782,7 @@
   },
   "nearbyAreaSearchUnavailable": "Place search is unavailable right now.",
   "@nearbyAreaSearchUnavailable": {
-    "description": "Shown when the geocoding provider fails \u2014 distinct from no matches"
+    "description": "Shown when the geocoding provider fails — distinct from no matches"
   },
   "nearbyAreaNoResults": "No places matched that search.",
   "@nearbyAreaNoResults": {
@@ -2177,28 +2189,36 @@
   "@runExpectedReturnOptionMinutes": {
     "description": "Expected-return option expressed in minutes from now",
     "placeholders": {
-      "minutes": { "type": "int" }
+      "minutes": {
+        "type": "int"
+      }
     }
   },
   "runExpectedReturnOptionHours": "{hours, plural, =1{In 1 hour} other{In {hours} hours}}",
   "@runExpectedReturnOptionHours": {
     "description": "Expected-return option expressed in hours from now",
     "placeholders": {
-      "hours": { "type": "int" }
+      "hours": {
+        "type": "int"
+      }
     }
   },
   "runExpectedReturnBy": "Back by {time}",
   "@runExpectedReturnBy": {
     "description": "Subtitle under an expected-return option showing the resulting local clock time",
     "placeholders": {
-      "time": { "type": "String" }
+      "time": {
+        "type": "String"
+      }
     }
   },
   "runExpectedReturnActive": "Alert set for {time}.",
   "@runExpectedReturnActive": {
     "description": "Shown in the expected-return dialog when an alarm is already armed",
     "placeholders": {
-      "time": { "type": "String" }
+      "time": {
+        "type": "String"
+      }
     }
   },
   "runExpectedReturnClear": "Clear the alert",
@@ -3789,41 +3809,90 @@
     "description": "Pacing card note when grade-adjusted effort fell over the second half"
   },
   "runDetailStrategyTitle": "Pacing strategy",
-  "@runDetailStrategyTitle": {"description": "Run detail — heading of the pacing-strategy review section"},
+  "@runDetailStrategyTitle": {
+    "description": "Run detail — heading of the pacing-strategy review section"
+  },
   "runDetailStrategyGoal": "Goal {time}",
-  "@runDetailStrategyGoal": {"description": "Run detail pacing strategy — the goal time the runner set; time is h:mm:ss", "placeholders": {"time": {"type": "String"}}},
+  "@runDetailStrategyGoal": {
+    "description": "Run detail pacing strategy — the goal time the runner set; time is h:mm:ss",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
   "runDetailStrategyColPhase": "Phase",
-  "@runDetailStrategyColPhase": {"description": "Run detail pacing strategy — table column: the phase"},
+  "@runDetailStrategyColPhase": {
+    "description": "Run detail pacing strategy — table column: the phase"
+  },
   "runDetailStrategyColTarget": "Target",
-  "@runDetailStrategyColTarget": {"description": "Run detail pacing strategy — table column: the target pace for the phase"},
+  "@runDetailStrategyColTarget": {
+    "description": "Run detail pacing strategy — table column: the target pace for the phase"
+  },
   "runDetailStrategyNotReached": "not reached",
-  "@runDetailStrategyNotReached": {"description": "Run detail pacing strategy — a phase the run ended before reaching"},
+  "@runDetailStrategyNotReached": {
+    "description": "Run detail pacing strategy — a phase the run ended before reaching"
+  },
   "runDetailStrategyPartial": "partial",
-  "@runDetailStrategyPartial": {"description": "Run detail pacing strategy — a phase the run ended part-way through"},
+  "@runDetailStrategyPartial": {
+    "description": "Run detail pacing strategy — a phase the run ended part-way through"
+  },
   "runDetailStrategyOnPace": "on pace",
-  "@runDetailStrategyOnPace": {"description": "Run detail pacing strategy — delta cell when a phase ran exactly at its target pace"},
+  "@runDetailStrategyOnPace": {
+    "description": "Run detail pacing strategy — delta cell when a phase ran exactly at its target pace"
+  },
   "runDetailStrategyVerdictOnPlan": "On plan",
-  "@runDetailStrategyVerdictOnPlan": {"description": "Run detail pacing strategy verdict — every phase on target"},
+  "@runDetailStrategyVerdictOnPlan": {
+    "description": "Run detail pacing strategy verdict — every phase on target"
+  },
   "runDetailStrategyVerdictWentOutTooFast": "Went out too fast",
-  "@runDetailStrategyVerdictWentOutTooFast": {"description": "Run detail pacing strategy verdict — the first phase ran too fast and the finish lost ground"},
+  "@runDetailStrategyVerdictWentOutTooFast": {
+    "description": "Run detail pacing strategy verdict — the first phase ran too fast and the finish lost ground"
+  },
   "runDetailStrategyVerdictFaded": "Faded",
-  "@runDetailStrategyVerdictFaded": {"description": "Run detail pacing strategy verdict — the final phase ran slower than its target"},
+  "@runDetailStrategyVerdictFaded": {
+    "description": "Run detail pacing strategy verdict — the final phase ran slower than its target"
+  },
   "runDetailStrategyVerdictNegativeSplit": "Finished stronger than planned",
-  "@runDetailStrategyVerdictNegativeSplit": {"description": "Run detail pacing strategy verdict — the finish ran stronger against its target than the start"},
+  "@runDetailStrategyVerdictNegativeSplit": {
+    "description": "Run detail pacing strategy verdict — the finish ran stronger against its target than the start"
+  },
   "runDetailStrategyVerdictFasterThanPlan": "Faster than plan",
-  "@runDetailStrategyVerdictFasterThanPlan": {"description": "Run detail pacing strategy verdict — faster than the targets overall"},
+  "@runDetailStrategyVerdictFasterThanPlan": {
+    "description": "Run detail pacing strategy verdict — faster than the targets overall"
+  },
   "runDetailStrategyVerdictSlowerThanPlan": "Slower than plan",
-  "@runDetailStrategyVerdictSlowerThanPlan": {"description": "Run detail pacing strategy verdict — slower than the targets overall"},
+  "@runDetailStrategyVerdictSlowerThanPlan": {
+    "description": "Run detail pacing strategy verdict — slower than the targets overall"
+  },
   "runDetailStrategyAverageBasis": "No goal time was set, so each target is the plan's shape at your average pace.",
-  "@runDetailStrategyAverageBasis": {"description": "Run detail pacing strategy — note when no goal time was set and targets come from the run average"},
+  "@runDetailStrategyAverageBasis": {
+    "description": "Run detail pacing strategy — note when no goal time was set and targets come from the run average"
+  },
   "runDetailStrategyNoTrack": "This run has no timed GPS track, so its phases can't be graded.",
-  "@runDetailStrategyNoTrack": {"description": "Run detail pacing strategy — note when the run has no timed GPS track"},
+  "@runDetailStrategyNoTrack": {
+    "description": "Run detail pacing strategy — note when the run has no timed GPS track"
+  },
   "runDetailStrategyNoGoal": "No goal time was set, so a one-phase even plan has nothing to grade against.",
-  "@runDetailStrategyNoGoal": {"description": "Run detail pacing strategy — note when an even plan had no goal time"},
+  "@runDetailStrategyNoGoal": {
+    "description": "Run detail pacing strategy — note when an even plan had no goal time"
+  },
   "runDetailStrategyStoppedShort": "Ended at {distance} of the planned {planned}, so the later phases weren't run.",
-  "@runDetailStrategyStoppedShort": {"description": "Run detail pacing strategy — note when the run ended well short of the planned distance; both are formatted distances such as 28.1 km", "placeholders": {"distance": {"type": "String"}, "planned": {"type": "String"}}},
+  "@runDetailStrategyStoppedShort": {
+    "description": "Run detail pacing strategy — note when the run ended well short of the planned distance; both are formatted distances such as 28.1 km",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      },
+      "planned": {
+        "type": "String"
+      }
+    }
+  },
   "runDetailStrategyBand": "A phase within 1.5% of its target pace counts as on target; paces exclude stops.",
-  "@runDetailStrategyBand": {"description": "Run detail pacing strategy — footnote stating the on-target band and that stops are excluded"},
+  "@runDetailStrategyBand": {
+    "description": "Run detail pacing strategy — footnote stating the on-target band and that stops are excluded"
+  },
   "runDetailGapColumn": "Grade-adj.",
   "@runDetailGapColumn": {
     "description": "Header of the grade-adjusted pace column in the splits list"
@@ -4155,7 +4224,11 @@
   "routesImportedMany": "Imported {count} routes",
   "@routesImportedMany": {
     "description": "Banner after importing a file that held several tracks",
-    "placeholders": { "count": { "type": "int" } }
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "@routesImported": {
     "description": "Banner shown after a route file is successfully imported",
@@ -5767,7 +5840,9 @@
   "@runNotificationPausedTitle": {
     "description": "Lock-screen notification title while the recording is manually paused",
     "placeholders": {
-      "activity": { "type": "String" }
+      "activity": {
+        "type": "String"
+      }
     }
   },
   "activityTypeRun": "Run",
@@ -7402,21 +7477,27 @@
   "@liveSpectatorCourseProgress": {
     "description": "Course-progress label — how far along a linked route the runner is",
     "placeholders": {
-      "p": { "type": "int" }
+      "p": {
+        "type": "int"
+      }
     }
   },
   "liveSpectatorMotionStopped": "Not moving — {n} min in the same spot",
   "@liveSpectatorMotionStopped": {
     "description": "Spectator chip: the runner is still pinging but has not left this spot for n minutes",
     "placeholders": {
-      "n": { "type": "int" }
+      "n": {
+        "type": "int"
+      }
     }
   },
   "liveSpectatorMotionStoppedAtLeast": "Not moving — at least {n} min in the same spot",
   "@liveSpectatorMotionStoppedAtLeast": {
     "description": "Same chip when the stop reaches the start of the observed window, so n is a floor",
     "placeholders": {
-      "n": { "type": "int" }
+      "n": {
+        "type": "int"
+      }
     }
   },
   "liveSpectatorConcludedTitle": "Run complete",
@@ -9283,15 +9364,62 @@
     }
   },
   "settingsAccountBackupPartial": "Export is partial — {count} of {total} runs.",
-  "@settingsAccountBackupPartial": { "description": "Banner shown after a server-built export that came back short of the account run history", "placeholders": { "count": { "type": "int" }, "total": { "type": "int" } } },
+  "@settingsAccountBackupPartial": {
+    "description": "Banner shown after a server-built export that came back short of the account run history",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
   "settingsAccountBackupPartialNotice": "Your last export is partial: it holds {count} of the {total} runs on your account. Nothing was deleted — export again to retry. The full account archive names every short section in its manifest.json.",
-  "@settingsAccountBackupPartialNotice": { "description": "Persistent notice under the full-backup tile naming how short the last export was", "placeholders": { "count": { "type": "int" }, "total": { "type": "int" } } },
+  "@settingsAccountBackupPartialNotice": {
+    "description": "Persistent notice under the full-backup tile naming how short the last export was",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
   "settingsAccountBackupTracksPartial": "Backup is missing {missing} of {total} GPS files.",
-  "@settingsAccountBackupTracksPartial": { "description": "Banner shown after a locally-built backup whose GPS track downloads came up short", "placeholders": { "missing": { "type": "int" }, "total": { "type": "int" } } },
+  "@settingsAccountBackupTracksPartial": {
+    "description": "Banner shown after a locally-built backup whose GPS track downloads came up short",
+    "placeholders": {
+      "missing": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
   "settingsAccountBackupTracksPartialNotice": "Your last backup could not download {missing} of the {total} GPS track files. Every run is in the archive; export again to retry the traces. Its manifest.json says complete: false.",
-  "@settingsAccountBackupTracksPartialNotice": { "description": "Persistent notice under the full-backup tile naming how many GPS track files the last local backup could not download", "placeholders": { "missing": { "type": "int" }, "total": { "type": "int" } } },
+  "@settingsAccountBackupTracksPartialNotice": {
+    "description": "Persistent notice under the full-backup tile naming how many GPS track files the last local backup could not download",
+    "placeholders": {
+      "missing": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
   "settingsAccountRestoreIncompleteArchive": "That archive said it was incomplete. {runs} runs were restored and nothing was overwritten - restore from a complete backup to fill the gaps.",
-  "@settingsAccountRestoreIncompleteArchive": { "description": "Persistent notice under the restore tile shown when the restored archive declared itself incomplete", "placeholders": { "runs": { "type": "int" } } },
+  "@settingsAccountRestoreIncompleteArchive": {
+    "description": "Persistent notice under the restore tile shown when the restored archive declared itself incomplete",
+    "placeholders": {
+      "runs": {
+        "type": "int"
+      }
+    }
+  },
   "settingsAccountRestoreUnavailable": "Backup service unavailable.",
   "@settingsAccountRestoreUnavailable": {
     "description": "Banner shown when restore can't run because the local store is missing"
@@ -9478,39 +9606,103 @@
     "description": "Subtitle of the Import tile"
   },
   "settingsAccountAccountExport": "Account export",
-  "@settingsAccountAccountExport": {"description": "Tile title for the queued server-built GDPR Art 20 export"},
+  "@settingsAccountAccountExport": {
+    "description": "Tile title for the queued server-built GDPR Art 20 export"
+  },
   "settingsAccountAccountExportSubtitle": "Everything on your account — runs, routes, messages, orders, integrations, safety contacts. Built on our server; you can close the app while it runs.",
-  "@settingsAccountAccountExportSubtitle": {"description": "Subtitle for the account-export tile"},
+  "@settingsAccountAccountExportSubtitle": {
+    "description": "Subtitle for the account-export tile"
+  },
   "settingsAccountExportQueued": "Building your export. You can close the app — come back here to download it.",
-  "@settingsAccountExportQueued": {"description": "Banner shown the moment an export job is queued"},
+  "@settingsAccountExportQueued": {
+    "description": "Banner shown the moment an export job is queued"
+  },
   "settingsAccountExportBuildingNotice": "Your account export is being built. You can close the app; it keeps building without you.",
-  "@settingsAccountExportBuildingNotice": {"description": "Persistent notice while the queued export job is running"},
+  "@settingsAccountExportBuildingNotice": {
+    "description": "Persistent notice while the queued export job is running"
+  },
   "settingsAccountExportReadyNotice": "Your account export is ready.",
-  "@settingsAccountExportReadyNotice": {"description": "Persistent notice when the queued export job has finished"},
+  "@settingsAccountExportReadyNotice": {
+    "description": "Persistent notice when the queued export job has finished"
+  },
   "settingsAccountExportDownload": "Download and share",
-  "@settingsAccountExportDownload": {"description": "Button that downloads a ready account export and opens the share sheet"},
+  "@settingsAccountExportDownload": {
+    "description": "Button that downloads a ready account export and opens the share sheet"
+  },
   "settingsAccountExportFailedNotice": "Your last account export failed ({error}). Nothing was deleted — ask for another one.",
-  "@settingsAccountExportFailedNotice": {"description": "Persistent notice naming why the last queued export failed", "placeholders": {"error": {"type": "String"}}},
+  "@settingsAccountExportFailedNotice": {
+    "description": "Persistent notice naming why the last queued export failed",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "settingsAccountExportStalledNotice": "Your last account export stopped responding. Nothing was deleted — ask for another one.",
-  "@settingsAccountExportStalledNotice": {"description": "Persistent notice when the export job went quiet for longer than the worker's retry budget"},
+  "@settingsAccountExportStalledNotice": {
+    "description": "Persistent notice when the export job went quiet for longer than the worker's retry budget"
+  },
   "settingsAccountExportExpiredNotice": "Your last account export has expired. Exports are deleted after 7 days — ask for another one.",
-  "@settingsAccountExportExpiredNotice": {"description": "Persistent notice when the export artifact has been swept"},
+  "@settingsAccountExportExpiredNotice": {
+    "description": "Persistent notice when the export artifact has been swept"
+  },
   "settingsAccountExportStatusUnavailable": "Can't reach the export service to check on your export. It may still be building.",
-  "@settingsAccountExportStatusUnavailable": {"description": "Persistent notice after repeated failed status reads"},
+  "@settingsAccountExportStatusUnavailable": {
+    "description": "Persistent notice after repeated failed status reads"
+  },
   "settingsAccountExportUnavailable": "The account export service isn't set up in this build. Full backup below is built on this device and doesn't include your account records.",
-  "@settingsAccountExportUnavailable": {"description": "Banner when no export service is configured"},
+  "@settingsAccountExportUnavailable": {
+    "description": "Banner when no export service is configured"
+  },
   "settingsAccountExportUnsyncedWarning": "{count} runs haven't synced yet. The account export is built on the server, so it won't include them — use Full backup to keep those.",
-  "@settingsAccountExportUnsyncedWarning": {"description": "Persistent notice under the account-export tile when the device holds undrained runs", "placeholders": {"count": {"type": "int"}}},
+  "@settingsAccountExportUnsyncedWarning": {
+    "description": "Persistent notice under the account-export tile when the device holds undrained runs",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "settingsAccountBackupOnDeviceNotice": "Your last full backup was built on this device. It holds your runs, routes, profile, preferences, gym and food logs — but not your account records. Use Account export for the complete copy.",
-  "@settingsAccountBackupOnDeviceNotice": {"description": "Persistent notice after a locally-built archive naming which archive the runner got"},
+  "@settingsAccountBackupOnDeviceNotice": {
+    "description": "Persistent notice after a locally-built archive naming which archive the runner got"
+  },
   "settingsAccountExportRateLimited": "Export limit reached — try again in {seconds} seconds.",
-  "@settingsAccountExportRateLimited": {"description": "Banner when the export quota refused the request", "placeholders": {"seconds": {"type": "int"}}},
+  "@settingsAccountExportRateLimited": {
+    "description": "Banner when the export quota refused the request",
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
   "settingsAccountExportRequestFailed": "Couldn't request your export: {error}",
-  "@settingsAccountExportRequestFailed": {"description": "Banner when the enqueue call failed", "placeholders": {"error": {"type": "String"}}},
+  "@settingsAccountExportRequestFailed": {
+    "description": "Banner when the enqueue call failed",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "settingsAccountExportDownloadFailed": "Couldn't download your export: {error}",
-  "@settingsAccountExportDownloadFailed": {"description": "Banner when downloading a ready export failed", "placeholders": {"error": {"type": "String"}}},
+  "@settingsAccountExportDownloadFailed": {
+    "description": "Banner when downloading a ready export failed",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "settingsAccountExportReadyBanner": "Your account export is ready — {count} runs.",
-  "@settingsAccountExportReadyBanner": {"description": "Banner raised when a watched export job finishes while the screen is open", "placeholders": {"count": {"type": "int"}}},
+  "@settingsAccountExportReadyBanner": {
+    "description": "Banner raised when a watched export job finishes while the screen is open",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "settingsAccountFullBackup": "Full backup",
   "@settingsAccountFullBackup": {
     "description": "Tile title for the full backup export"
@@ -10953,8 +11145,12 @@
   "@prefsSplitIntervalDefaultSubtitle": {
     "description": "Subtitle shown when the split interval is at its default. The two intervals are passed in already rendered in the runner's own distance unit — the default follows the preference (1 mi / 5 mi in imperial), so the string must not name one.",
     "placeholders": {
-      "run": { "type": "String" },
-      "cycle": { "type": "String" }
+      "run": {
+        "type": "String"
+      },
+      "cycle": {
+        "type": "String"
+      }
     }
   },
   "prefsSplitPaceMode": "Splits announce",
@@ -13581,19 +13777,33 @@
   "@ttsSplitAverage": {
     "description": "Spoken split cue reading the cumulative average pace/speed instead of the split's own. tail is the pace/speed utterance.",
     "placeholders": {
-      "count": { "type": "String" },
-      "unit": { "type": "String" },
-      "tail": { "type": "String" }
+      "count": {
+        "type": "String"
+      },
+      "unit": {
+        "type": "String"
+      },
+      "tail": {
+        "type": "String"
+      }
     }
   },
   "ttsSplitBoth": "{count} {unit}. {tail}. Average {avgTail}",
   "@ttsSplitBoth": {
     "description": "Spoken split cue reading the split's own pace/speed then the cumulative average.",
     "placeholders": {
-      "count": { "type": "String" },
-      "unit": { "type": "String" },
-      "tail": { "type": "String" },
-      "avgTail": { "type": "String" }
+      "count": {
+        "type": "String"
+      },
+      "unit": {
+        "type": "String"
+      },
+      "tail": {
+        "type": "String"
+      },
+      "avgTail": {
+        "type": "String"
+      }
     }
   },
   "ttsStepWarmup": "Warmup",
@@ -17865,152 +18075,387 @@
     "description": "Confirm button of the clear-HR-zones dialog"
   },
   "signInRequiredMessage": "Sign in to use this feature.",
-  "@signInRequiredMessage": {"description": "Generic body of the shared sign-in-required state on auth-only surfaces"},
+  "@signInRequiredMessage": {
+    "description": "Generic body of the shared sign-in-required state on auth-only surfaces"
+  },
   "signInRequiredAction": "Sign in",
-  "@signInRequiredAction": {"description": "CTA button on the shared sign-in-required state; opens the sign-in screen"},
+  "@signInRequiredAction": {
+    "description": "CTA button on the shared sign-in-required state; opens the sign-in screen"
+  },
   "backendUnavailableMessage": "Can't reach the server right now. Online features are unavailable.",
-  "@backendUnavailableMessage": {"description": "Body of the shared state when the backend is unreachable at launch (no sign-in CTA can help)"},
+  "@backendUnavailableMessage": {
+    "description": "Body of the shared state when the backend is unreachable at launch (no sign-in CTA can help)"
+  },
   "feedSignedOutMessage": "Sign in to see runs from people you follow.",
-  "@feedSignedOutMessage": {"description": "Body of the sign-in-required state on the following feed"},
+  "@feedSignedOutMessage": {
+    "description": "Body of the sign-in-required state on the following feed"
+  },
   "ttsPaceAlertSpeedUpByKm": "Speed up by {sec} seconds per kilometre",
-  "@ttsPaceAlertSpeedUpByKm": {"description": "Voice cues / race strategy", "placeholders": {"sec": {"type": "int"}}},
+  "@ttsPaceAlertSpeedUpByKm": {
+    "description": "Voice cues / race strategy",
+    "placeholders": {
+      "sec": {
+        "type": "int"
+      }
+    }
+  },
   "ttsPaceAlertSpeedUpByMi": "Speed up by {sec} seconds per mile",
-  "@ttsPaceAlertSpeedUpByMi": {"description": "Voice cues / race strategy", "placeholders": {"sec": {"type": "int"}}},
+  "@ttsPaceAlertSpeedUpByMi": {
+    "description": "Voice cues / race strategy",
+    "placeholders": {
+      "sec": {
+        "type": "int"
+      }
+    }
+  },
   "ttsPaceAlertSlowDownByKm": "Slow down by {sec} seconds per kilometre",
-  "@ttsPaceAlertSlowDownByKm": {"description": "Voice cues / race strategy", "placeholders": {"sec": {"type": "int"}}},
+  "@ttsPaceAlertSlowDownByKm": {
+    "description": "Voice cues / race strategy",
+    "placeholders": {
+      "sec": {
+        "type": "int"
+      }
+    }
+  },
   "ttsPaceAlertSlowDownByMi": "Slow down by {sec} seconds per mile",
-  "@ttsPaceAlertSlowDownByMi": {"description": "Voice cues / race strategy", "placeholders": {"sec": {"type": "int"}}},
+  "@ttsPaceAlertSlowDownByMi": {
+    "description": "Voice cues / race strategy",
+    "placeholders": {
+      "sec": {
+        "type": "int"
+      }
+    }
+  },
   "ttsCutoffCatchUp": "Next cutoff in {distance}. You need {pace} to make it.",
-  "@ttsCutoffCatchUp": {"description": "Voice cues / race strategy", "placeholders": {"distance": {"type": "String"}, "pace": {"type": "String"}}},
+  "@ttsCutoffCatchUp": {
+    "description": "Voice cues / race strategy",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      },
+      "pace": {
+        "type": "String"
+      }
+    }
+  },
   "ttsCutoffUnreachable": "Next cutoff: the time limit has passed.",
-  "@ttsCutoffUnreachable": {"description": "Voice cues / race strategy"},
+  "@ttsCutoffUnreachable": {
+    "description": "Voice cues / race strategy"
+  },
   "ttsMarkerAheadOfPlan": "{label}: {time} ahead of plan",
-  "@ttsMarkerAheadOfPlan": {"description": "Voice cues / race strategy", "placeholders": {"label": {"type": "String"}, "time": {"type": "String"}}},
+  "@ttsMarkerAheadOfPlan": {
+    "description": "Voice cues / race strategy",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
   "ttsMarkerBehindPlan": "{label}: {time} behind plan",
-  "@ttsMarkerBehindPlan": {"description": "Voice cues / race strategy", "placeholders": {"label": {"type": "String"}, "time": {"type": "String"}}},
+  "@ttsMarkerBehindPlan": {
+    "description": "Voice cues / race strategy",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
   "ttsMarkerOnPlan": "{label}: on plan",
-  "@ttsMarkerOnPlan": {"description": "Voice cues / race strategy", "placeholders": {"label": {"type": "String"}}},
+  "@ttsMarkerOnPlan": {
+    "description": "Voice cues / race strategy",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
   "ttsPhaseStart": "Phase {index} of {total}. {phrase}",
-  "@ttsPhaseStart": {"description": "Voice cues / race strategy", "placeholders": {"index": {"type": "int"}, "total": {"type": "int"}, "phrase": {"type": "String"}}},
+  "@ttsPhaseStart": {
+    "description": "Voice cues / race strategy",
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "phrase": {
+        "type": "String"
+      }
+    }
+  },
   "ttsPhaseHoldBack": "Hold back. Stay controlled.",
-  "@ttsPhaseHoldBack": {"description": "Voice cues / race strategy"},
+  "@ttsPhaseHoldBack": {
+    "description": "Voice cues / race strategy"
+  },
   "ttsPhaseSettle": "Settle into your goal pace.",
-  "@ttsPhaseSettle": {"description": "Voice cues / race strategy"},
+  "@ttsPhaseSettle": {
+    "description": "Voice cues / race strategy"
+  },
   "ttsPhaseRace": "Time to race. Give what you have left.",
-  "@ttsPhaseRace": {"description": "Voice cues / race strategy"},
+  "@ttsPhaseRace": {
+    "description": "Voice cues / race strategy"
+  },
   "ttsPhaseEven": "Hold an even effort.",
-  "@ttsPhaseEven": {"description": "Voice cues / race strategy"},
+  "@ttsPhaseEven": {
+    "description": "Voice cues / race strategy"
+  },
   "ttsPhaseTargetPace": "Target {pace}.",
-  "@ttsPhaseTargetPace": {"description": "Voice cues / race strategy", "placeholders": {"pace": {"type": "String"}}},
+  "@ttsPhaseTargetPace": {
+    "description": "Voice cues / race strategy",
+    "placeholders": {
+      "pace": {
+        "type": "String"
+      }
+    }
+  },
   "prefsVoiceCueTypesLabel": "Spoken cues",
-  "@prefsVoiceCueTypesLabel": {"description": "Voice cues / race strategy"},
+  "@prefsVoiceCueTypesLabel": {
+    "description": "Voice cues / race strategy"
+  },
   "prefsCueSplits": "Splits",
-  "@prefsCueSplits": {"description": "Voice cues / race strategy"},
+  "@prefsCueSplits": {
+    "description": "Voice cues / race strategy"
+  },
   "prefsCueSplitsSubtitle": "Your pace (or speed) each time you pass a split marker",
-  "@prefsCueSplitsSubtitle": {"description": "Voice cues / race strategy"},
+  "@prefsCueSplitsSubtitle": {
+    "description": "Voice cues / race strategy"
+  },
   "prefsCueSplitsInfo": "Speaks a short summary every time you complete a split (set the distance under Split interval). Use Splits announce to pick split pace, average pace, or both. Example: “1 kilometre. Pace, 5 minutes 30 seconds per kilometre.”",
-  "@prefsCueSplitsInfo": {"description": "Info popup body + example for the Splits cue"},
+  "@prefsCueSplitsInfo": {
+    "description": "Info popup body + example for the Splits cue"
+  },
   "prefsCueStartFinish": "Start and finish",
-  "@prefsCueStartFinish": {"description": "Voice cues / race strategy"},
+  "@prefsCueStartFinish": {
+    "description": "Voice cues / race strategy"
+  },
   "prefsCueStartFinishSubtitle": "“Run started” at the start, and a summary when you finish",
-  "@prefsCueStartFinishSubtitle": {"description": "Voice cues / race strategy"},
+  "@prefsCueStartFinishSubtitle": {
+    "description": "Voice cues / race strategy"
+  },
   "prefsCueStartFinishInfo": "Confirms the run began and reads your distance and time when you stop. Example: “Run complete. 10.0 kilometres in 52 minutes.”",
-  "@prefsCueStartFinishInfo": {"description": "Info popup body + example for the start/finish cue"},
+  "@prefsCueStartFinishInfo": {
+    "description": "Info popup body + example for the start/finish cue"
+  },
   "prefsCueOffRoute": "Off-route warning",
-  "@prefsCueOffRoute": {"description": "Voice cues / race strategy"},
+  "@prefsCueOffRoute": {
+    "description": "Voice cues / race strategy"
+  },
   "prefsCueOffRouteSubtitle": "A heads-up when you stray from a route you’re following",
-  "@prefsCueOffRouteSubtitle": {"description": "Voice cues / race strategy"},
+  "@prefsCueOffRouteSubtitle": {
+    "description": "Voice cues / race strategy"
+  },
   "prefsCueOffRouteInfo": "Only works when you start a run with a saved route. Warns you once you drift away from it so you can get back on course. Example: “Off route.”",
-  "@prefsCueOffRouteInfo": {"description": "Info popup body + example for the off-route cue"},
+  "@prefsCueOffRouteInfo": {
+    "description": "Info popup body + example for the off-route cue"
+  },
   "prefsCuePaceAlerts": "Off-pace alerts",
-  "@prefsCuePaceAlerts": {"description": "Voice cues / race strategy"},
+  "@prefsCuePaceAlerts": {
+    "description": "Voice cues / race strategy"
+  },
   "prefsCuePaceAlertsSubtitle": "“Speed up” / “slow down” when you drift from your Target pace",
-  "@prefsCuePaceAlertsSubtitle": {"description": "Voice cues / race strategy"},
+  "@prefsCuePaceAlertsSubtitle": {
+    "description": "Voice cues / race strategy"
+  },
   "prefsCuePaceAlertsInfo": "Needs a Target pace set. When you drift more than about 30 seconds off it, this tells you which way to adjust and by how much. Example: “Speed up by 8 seconds.”",
-  "@prefsCuePaceAlertsInfo": {"description": "Info popup body + example for the off-pace alerts cue"},
+  "@prefsCuePaceAlertsInfo": {
+    "description": "Info popup body + example for the off-pace alerts cue"
+  },
   "prefsCueWorkoutSteps": "Workout steps",
-  "@prefsCueWorkoutSteps": {"description": "Voice cues / race strategy"},
+  "@prefsCueWorkoutSteps": {
+    "description": "Voice cues / race strategy"
+  },
   "prefsCueWorkoutStepsSubtitle": "Calls each step of a structured workout as it begins",
-  "@prefsCueWorkoutStepsSubtitle": {"description": "Voice cues / race strategy"},
+  "@prefsCueWorkoutStepsSubtitle": {
+    "description": "Voice cues / race strategy"
+  },
   "prefsCueWorkoutStepsInfo": "Only active during a structured workout (a plan session or interval workout). Announces each step and its target so you can keep your eyes up. Example: “Rep 3 of 5. 400 metres at 4 minutes 30 seconds per kilometre.”",
-  "@prefsCueWorkoutStepsInfo": {"description": "Info popup body + example for the workout-steps cue"},
+  "@prefsCueWorkoutStepsInfo": {
+    "description": "Info popup body + example for the workout-steps cue"
+  },
   "prefsCueCutoffCatchUp": "Cutoff catch-up",
-  "@prefsCueCutoffCatchUp": {"description": "Voice cues / race strategy"},
+  "@prefsCueCutoffCatchUp": {
+    "description": "Voice cues / race strategy"
+  },
   "prefsCueCutoffCatchUpSubtitle": "The pace you need to make a cutoff you’re at risk of missing",
-  "@prefsCueCutoffCatchUpSubtitle": {"description": "Voice cues / race strategy"},
+  "@prefsCueCutoffCatchUpSubtitle": {
+    "description": "Voice cues / race strategy"
+  },
   "prefsCueCutoffCatchUpInfo": "Only active on a route with course cutoffs. If one is at risk, it reads the distance to it and the pace that still makes it. Example: “2 kilometres to the cutoff. 6 minutes per kilometre.”",
-  "@prefsCueCutoffCatchUpInfo": {"description": "Info popup body + example for the cutoff catch-up cue"},
+  "@prefsCueCutoffCatchUpInfo": {
+    "description": "Info popup body + example for the cutoff catch-up cue"
+  },
   "prefsCueMarkerTargets": "Course marker targets",
-  "@prefsCueMarkerTargets": {"description": "Voice cues / race strategy"},
+  "@prefsCueMarkerTargets": {
+    "description": "Voice cues / race strategy"
+  },
   "prefsCueMarkerTargetsSubtitle": "Whether you’re ahead of or behind plan at each course marker",
-  "@prefsCueMarkerTargetsSubtitle": {"description": "Voice cues / race strategy"},
+  "@prefsCueMarkerTargetsSubtitle": {
+    "description": "Voice cues / race strategy"
+  },
   "prefsCueMarkerTargetsInfo": "Only active on a route whose course markers carry target times. As you pass each one it tells you if you’re ahead or behind, and by how much. Example: “Aid 2: 45 seconds ahead of plan.”",
-  "@prefsCueMarkerTargetsInfo": {"description": "Info popup body + example for the marker-targets cue"},
+  "@prefsCueMarkerTargetsInfo": {
+    "description": "Info popup body + example for the marker-targets cue"
+  },
   "prefsCuePhaseTransitions": "Race phases",
-  "@prefsCuePhaseTransitions": {"description": "Voice cues / race strategy"},
+  "@prefsCuePhaseTransitions": {
+    "description": "Voice cues / race strategy"
+  },
   "prefsCuePhaseTransitionsSubtitle": "A cue when each phase of your race-strategy plan begins",
-  "@prefsCuePhaseTransitionsSubtitle": {"description": "Voice cues / race strategy"},
+  "@prefsCuePhaseTransitionsSubtitle": {
+    "description": "Voice cues / race strategy"
+  },
   "prefsCuePhaseTransitionsInfo": "Only active when you pick a Race strategy for the run. Announces each phase and its intent as it starts. Example: “Phase 2 of 3. Settle into your goal pace.”",
-  "@prefsCuePhaseTransitionsInfo": {"description": "Info popup body + example for the race-phases cue"},
+  "@prefsCuePhaseTransitionsInfo": {
+    "description": "Info popup body + example for the race-phases cue"
+  },
   "prefsCueGuidedRun": "Guided runs",
-  "@prefsCueGuidedRun": {"description": "Voice cues / race strategy"},
+  "@prefsCueGuidedRun": {
+    "description": "Voice cues / race strategy"
+  },
   "prefsCueGuidedRunSubtitle": "The coach script of a guided run you armed before starting",
-  "@prefsCueGuidedRunSubtitle": {"description": "Voice cues / race strategy"},
+  "@prefsCueGuidedRunSubtitle": {
+    "description": "Voice cues / race strategy"
+  },
   "prefsCueGuidedRunInfo": "Only active when you arm a guided run on the recording screen before you start. Speaks each scripted coach cue as you reach its mark. Example: “Five minutes in. Settle into a rhythm you could hold all day.”",
-  "@prefsCueGuidedRunInfo": {"description": "Info popup body + example for the guided-run cue"},
+  "@prefsCueGuidedRunInfo": {
+    "description": "Info popup body + example for the guided-run cue"
+  },
   "runGuidedRun": "Guided run",
-  "@runGuidedRun": {"description": "Run screen — the idle-state affordance that arms a guided run for the next recording"},
+  "@runGuidedRun": {
+    "description": "Run screen — the idle-state affordance that arms a guided run for the next recording"
+  },
   "runGuidedRunNone": "No guided run",
-  "@runGuidedRunNone": {"description": "Run screen — the guided-run picker row that clears the armed run"},
+  "@runGuidedRunNone": {
+    "description": "Run screen — the guided-run picker row that clears the armed run"
+  },
   "runGuidedRunOption": "{minutes} min · {subtitle}",
-  "@runGuidedRunOption": {"description": "Run screen — a guided-run picker row subtitle", "placeholders": {"minutes": {"type": "int"}, "subtitle": {"type": "String"}}},
+  "@runGuidedRunOption": {
+    "description": "Run screen — a guided-run picker row subtitle",
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      },
+      "subtitle": {
+        "type": "String"
+      }
+    }
+  },
   "runRaceStrategy": "Race strategy",
-  "@runRaceStrategy": {"description": "Voice cues / race strategy"},
+  "@runRaceStrategy": {
+    "description": "Voice cues / race strategy"
+  },
   "runStrategyNone": "No strategy",
-  "@runStrategyNone": {"description": "Voice cues / race strategy"},
+  "@runStrategyNone": {
+    "description": "Voice cues / race strategy"
+  },
   "runStrategyTenTenTen": "10-10-10",
-  "@runStrategyTenTenTen": {"description": "Voice cues / race strategy"},
+  "@runStrategyTenTenTen": {
+    "description": "Voice cues / race strategy"
+  },
   "runStrategyNegativeSplit": "Negative split",
-  "@runStrategyNegativeSplit": {"description": "Voice cues / race strategy"},
+  "@runStrategyNegativeSplit": {
+    "description": "Voice cues / race strategy"
+  },
   "runStrategyEven": "Even pace",
-  "@runStrategyEven": {"description": "Voice cues / race strategy"},
+  "@runStrategyEven": {
+    "description": "Voice cues / race strategy"
+  },
   "runStrategyTenTenTenHint": "Hold back, settle in, race the final stretch",
-  "@runStrategyTenTenTenHint": {"description": "Voice cues / race strategy"},
+  "@runStrategyTenTenTenHint": {
+    "description": "Voice cues / race strategy"
+  },
   "runStrategyNegativeSplitHint": "First half controlled, second half faster",
-  "@runStrategyNegativeSplitHint": {"description": "Voice cues / race strategy"},
+  "@runStrategyNegativeSplitHint": {
+    "description": "Voice cues / race strategy"
+  },
   "runStrategyEvenHint": "One steady pace start to finish",
-  "@runStrategyEvenHint": {"description": "Voice cues / race strategy"},
+  "@runStrategyEvenHint": {
+    "description": "Voice cues / race strategy"
+  },
   "runStrategyGoalTime": "Goal time",
-  "@runStrategyGoalTime": {"description": "Voice cues / race strategy"},
+  "@runStrategyGoalTime": {
+    "description": "Voice cues / race strategy"
+  },
   "runStrategyDistance": "Distance",
-  "@runStrategyDistance": {"description": "Voice cues / race strategy"},
+  "@runStrategyDistance": {
+    "description": "Voice cues / race strategy"
+  },
   "runStrategyNeedsDistance": "Choose a route or enter a distance to enable phases",
   "runStrategyInvalidGoal": "Enter the goal time as h:mm:ss",
-  "@runStrategyNeedsDistance": {"description": "Voice cues / race strategy"},
+  "@runStrategyNeedsDistance": {
+    "description": "Voice cues / race strategy"
+  },
   "runPhaseChip": "Phase {index}/{total} — {intent}",
-  "@runPhaseChip": {"description": "Voice cues / race strategy", "placeholders": {"index": {"type": "int"}, "total": {"type": "int"}, "intent": {"type": "String"}}},
+  "@runPhaseChip": {
+    "description": "Voice cues / race strategy",
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "intent": {
+        "type": "String"
+      }
+    }
+  },
   "phaseIntentHoldBack": "Hold back",
-  "@phaseIntentHoldBack": {"description": "Voice cues / race strategy"},
+  "@phaseIntentHoldBack": {
+    "description": "Voice cues / race strategy"
+  },
   "phaseIntentSettle": "Settle",
-  "@phaseIntentSettle": {"description": "Voice cues / race strategy"},
+  "@phaseIntentSettle": {
+    "description": "Voice cues / race strategy"
+  },
   "phaseIntentRace": "Race",
-  "@phaseIntentRace": {"description": "Voice cues / race strategy"},
+  "@phaseIntentRace": {
+    "description": "Voice cues / race strategy"
+  },
   "phaseIntentEven": "Even",
-  "@phaseIntentEven": {"description": "Voice cues / race strategy"},
+  "@phaseIntentEven": {
+    "description": "Voice cues / race strategy"
+  },
   "routeMarkerTargetChip": "Target {time}",
-  "@routeMarkerTargetChip": {"description": "Voice cues / race strategy", "placeholders": {"time": {"type": "String"}}},
+  "@routeMarkerTargetChip": {
+    "description": "Voice cues / race strategy",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
   "routeMarkerTargetLabel": "Target time",
-  "@routeMarkerTargetLabel": {"description": "Voice cues / race strategy"},
+  "@routeMarkerTargetLabel": {
+    "description": "Voice cues / race strategy"
+  },
   "routeMarkerTargetHelper": "Hours : minutes : seconds",
-  "@routeMarkerTargetHelper": {"description": "Persistent helper under the course-marker target-time field clarifying the h:mm:ss format"},
+  "@routeMarkerTargetHelper": {
+    "description": "Persistent helper under the course-marker target-time field clarifying the h:mm:ss format"
+  },
   "routeMarkerTargetInvalid": "Enter the target time as h:mm:ss",
-  "@routeMarkerTargetInvalid": {"description": "Course marker target-time validation"},
+  "@routeMarkerTargetInvalid": {
+    "description": "Course marker target-time validation"
+  },
   "routeMarkerOfficialBadge": "Route owner",
-  "@routeMarkerOfficialBadge": {"description": "Badge on a course marker that belongs to the route owner (official), shown to a non-owner viewer"},
+  "@routeMarkerOfficialBadge": {
+    "description": "Badge on a course marker that belongs to the route owner (official), shown to a non-owner viewer"
+  },
   "routeMarkerDistanceAlongLabel": "Distance along route",
-  "@routeMarkerDistanceAlongLabel": {"description": "Editor field to place a course marker by distance along the route instead of lat/lng"},
+  "@routeMarkerDistanceAlongLabel": {
+    "description": "Editor field to place a course marker by distance along the route instead of lat/lng"
+  },
   "routeMarkerDistanceInvalid": "Enter a valid distance along the route.",
-  "@routeMarkerDistanceInvalid": {"description": "Validation when the distance-along-route value can't be parsed"},
+  "@routeMarkerDistanceInvalid": {
+    "description": "Validation when the distance-along-route value can't be parsed"
+  },
   "watchScreensTitle": "Watch screens",
   "@watchScreensTitle": {
     "description": "Title of the composed-watch-screen editor"
@@ -19359,7 +19804,11 @@
   "helpStepLabel": "Step {n}",
   "@helpStepLabel": {
     "description": "Screen-reader label for a numbered step in a guide",
-    "placeholders": {"n": {"type": "int"}}
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
   },
   "infoTipReadGuide": "Read the guide",
   "@infoTipReadGuide": {
@@ -20158,6 +20607,114 @@
     "description": "Banner when adding a photo to, or removing it from, the race page fails",
     "placeholders": {
       "error": {
+        "type": "String"
+      }
+    }
+  },
+  "profileRequestToFollow": "Request to follow",
+  "@profileRequestToFollow": {
+    "description": "Follow button label on a private profile the viewer does not follow"
+  },
+  "profileRequested": "Requested",
+  "@profileRequested": {
+    "description": "Follow button label while the viewer's request to follow a private profile is pending"
+  },
+  "profileRequestSent": "Follow request sent",
+  "@profileRequestSent": {
+    "description": "Banner after the viewer asks to follow a private profile"
+  },
+  "profileRequestWithdrawn": "Follow request withdrawn",
+  "@profileRequestWithdrawn": {
+    "description": "Banner after the viewer withdraws a pending follow request"
+  },
+  "profilePrivateTitle": "This profile is private",
+  "@profilePrivateTitle": {
+    "description": "Title of the panel shown instead of runs and follower lists on a private profile"
+  },
+  "profilePrivateBody": "Follow {name} to see their runs and who they follow. They approve each request.",
+  "@profilePrivateBody": {
+    "description": "Body of the private-profile panel for a viewer with no pending request",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "profilePrivateRequestedBody": "Your request is waiting for approval. You'll see their runs once it's accepted.",
+  "@profilePrivateRequestedBody": {
+    "description": "Body of the private-profile panel while the viewer's request is pending"
+  },
+  "profileNotifFollowRequest": "{name} asked to follow you",
+  "@profileNotifFollowRequest": {
+    "description": "Notification text for a request to follow the recipient's private profile",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "prefsPrivateProfile": "Private profile",
+  "@prefsPrivateProfile": {
+    "description": "Settings switch that makes the profile private"
+  },
+  "prefsPrivateProfileSubtitle": "Only followers you approve see your runs, activities and follower lists. People can still find you by name and ask to follow.",
+  "@prefsPrivateProfileSubtitle": {
+    "description": "Explains the private-profile switch"
+  },
+  "prefsPrivateProfileFailed": "Couldn't update your profile privacy.",
+  "@prefsPrivateProfileFailed": {
+    "description": "Banner when the private-profile switch could not be saved"
+  },
+  "followRequestsTitle": "Follow requests",
+  "@followRequestsTitle": {
+    "description": "Title of the screen listing requests to follow the user's private profile"
+  },
+  "followRequestsEmptyTitle": "No pending requests",
+  "@followRequestsEmptyTitle": {
+    "description": "Empty state title on the follow requests screen"
+  },
+  "followRequestsEmptyBody": "When someone asks to follow your private profile, they'll show up here.",
+  "@followRequestsEmptyBody": {
+    "description": "Empty state body on the follow requests screen"
+  },
+  "followRequestsApprove": "Approve",
+  "@followRequestsApprove": {
+    "description": "Approve a follow request"
+  },
+  "followRequestsDecline": "Decline",
+  "@followRequestsDecline": {
+    "description": "Decline a follow request"
+  },
+  "followRequestsApproved": "{name} can now see your profile",
+  "@followRequestsApproved": {
+    "description": "Banner after approving a follow request",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "followRequestsDeclinedBanner": "Request declined",
+  "@followRequestsDeclinedBanner": {
+    "description": "Banner after declining a follow request"
+  },
+  "followRequestsLoadError": "Couldn't load follow requests.",
+  "@followRequestsLoadError": {
+    "description": "Error state when follow requests could not be loaded"
+  },
+  "followRequestsActionFailed": "Couldn't update the request.",
+  "@followRequestsActionFailed": {
+    "description": "Banner when approving or declining a follow request failed"
+  },
+  "coachingAthleteMapsClippedNote": "Maps leave out the areas this athlete hides with privacy zones.",
+  "@coachingAthleteMapsClippedNote": {
+    "description": "Note above a coach's view of an athlete's run maps"
+  },
+  "coachingAthleteRunMapLabel": "Map of the run on {date}, with the athlete's privacy zones removed",
+  "@coachingAthleteRunMapLabel": {
+    "description": "Accessibility label for the clipped map of one of an athlete's runs on the coach's view",
+    "placeholders": {
+      "date": {
         "type": "String"
       }
     }

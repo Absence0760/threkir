@@ -74,3 +74,20 @@ export function mergeProfilePages<T extends { id: string }>(
 	}
 	return byId;
 }
+
+/**
+ * Run `query` once per FEED_FOLLOWEE_CHUNK-sized chunk of `ids` and concatenate
+ * the rows. For an `in` filter whose id list has no ceiling of its own under
+ * the chunk bound: past it, a gateway can answer 200 with an empty match
+ * rather than an error (decisions § 653), so the unchunked read reports
+ * "nobody" instead of failing. A rejected chunk rejects the whole read.
+ * Mirrors mobile's `readChunked` (api_client/chunk.dart).
+ */
+export async function readChunked<T>(
+	ids: string[],
+	query: (part: string[]) => Promise<T[]>
+): Promise<T[]> {
+	if (ids.length === 0) return [];
+	const pages = await Promise.all(chunk(ids, FEED_FOLLOWEE_CHUNK).map(query));
+	return pages.flat();
+}

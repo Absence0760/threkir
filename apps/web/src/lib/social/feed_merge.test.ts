@@ -7,6 +7,7 @@ import {
 	mergeFeedPages,
 	mergeProfilePages,
 	mergeRecencyPages,
+	readChunked,
 	FEED_FOLLOWEE_CHUNK
 } from './feed_merge';
 
@@ -230,3 +231,42 @@ test('a row present in two chunks keeps the later chunk, as documented', () => {
 	assert.equal(feed[0].note, 'fresh');
 });
 
+
+test('readChunked runs one query per bounded chunk and concatenates in order', async () => {
+	const ids = Array.from({ length: 250 }, (_, i) => `id-${i}`);
+	const seen: string[][] = [];
+	const rows = await readChunked(ids, async (part) => {
+		seen.push(part);
+		return part.map((id) => ({ id }));
+	});
+	assert.deepEqual(
+		seen.map((p) => p.length),
+		[100, 100, 50]
+	);
+	assert.ok(seen.every((p) => p.length <= FEED_FOLLOWEE_CHUNK));
+	assert.deepEqual(
+		rows.map((r) => r.id),
+		ids
+	);
+});
+
+test('readChunked issues no query for an empty id list', async () => {
+	let calls = 0;
+	const rows = await readChunked([], async () => {
+		calls++;
+		return [1];
+	});
+	assert.deepEqual(rows, []);
+	assert.equal(calls, 0);
+});
+
+test('readChunked rejects when any chunk rejects', async () => {
+	const ids = Array.from({ length: 150 }, (_, i) => `id-${i}`);
+	await assert.rejects(
+		readChunked(ids, async (part) => {
+			if (part[0] === 'id-100') throw new Error('chunk 2 failed');
+			return part;
+		}),
+		/chunk 2 failed/
+	);
+});

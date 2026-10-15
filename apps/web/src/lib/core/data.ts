@@ -226,6 +226,7 @@ import {
 	mergeFeedPages,
 	mergeProfilePages,
 	mergeRecencyPages,
+	readChunked,
 	FEED_FOLLOWEE_CHUNK
 } from '../social/feed_merge';
 import { deleteRunsBounded } from './bulk_delete';
@@ -6962,14 +6963,16 @@ const FOLLOWING_ORDER: readonly KeysetKey[] = [
 /// profile row is dropped here, AFTER the cursor was taken from the edge, so
 /// it neither ends the list early nor shifts the next page.
 async function profilesInEdgeOrder(ids: string[]): Promise<PublicProfile[]> {
-	if (ids.length === 0) return [];
-	const { data: profiles, error } = await supabase
-		.from('user_profiles')
-		.select('id, display_name, avatar_url')
-		.in('id', ids);
-	if (error) throw dbError(error);
+	const profiles = await readChunked(ids, async (part) => {
+		const { data, error } = await supabase
+			.from('user_profiles')
+			.select('id, display_name, avatar_url')
+			.in('id', part);
+		if (error) throw dbError(error);
+		return data ?? [];
+	});
 	const byId = new Map<string, PublicProfile>();
-	for (const p of profiles ?? []) byId.set(p.id, p);
+	for (const p of profiles) byId.set(p.id, p);
 	return ids.map((id) => byId.get(id)).filter((p): p is PublicProfile => p != null);
 }
 
@@ -7614,16 +7617,21 @@ export async function unlikeRunComment(commentId: string): Promise<boolean> {
 export async function resolveMentionHandles(handles: string[]): Promise<Map<string, string>> {
 	const out = new Map<string, string>();
 	const wanted = Array.from(new Set(handles.map((h) => h.toLowerCase()))).slice(0, 200);
-	if (wanted.length === 0) return out;
-	const { data, error } = await supabase
-		.from('user_profiles')
-		.select('id, handle')
-		.in('handle', wanted);
-	if (error) {
+	let rows: { id: string; handle: string | null }[];
+	try {
+		rows = await readChunked(wanted, async (part) => {
+			const { data, error } = await supabase
+				.from('user_profiles')
+				.select('id, handle')
+				.in('handle', part);
+			if (error) throw error;
+			return data ?? [];
+		});
+	} catch (error) {
 		console.error('resolveMentionHandles failed', error);
 		return out;
 	}
-	for (const row of data ?? []) if (row.handle) out.set(row.handle, row.id);
+	for (const row of rows) if (row.handle) out.set(row.handle, row.id);
 	return out;
 }
 

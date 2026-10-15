@@ -702,6 +702,34 @@ test('the profile-join fetchers chunk `.in()` so >~100 members are not lost', ()
 	}
 });
 
+test('the follow-request and mention-handle joins read their `in` list through readChunked', () => {
+	// Reason: neither id list has a ceiling under FEED_FOLLOWEE_CHUNK —
+	// fetchIncomingFollowRequests reads up to 200 requests and
+	// resolveMentionHandles takes up to 200 handles — and an `in` filter past
+	// the gateway's request-line budget can come back as an empty 200 rather
+	// than an error (decisions § 653): every request would render nameless,
+	// every @mention as plain text. Both route through readChunked.
+	const source = stripComments(read('src/lib/core/data.ts'));
+	const cases: [string, RegExp][] = [
+		['async function profilesInEdgeOrder(', /\.in\('id', ids\)/],
+		['export async function resolveMentionHandles(', /\.in\('handle', wanted\)/],
+	];
+	for (const [decl, unchunked] of cases) {
+		const start = source.indexOf(decl);
+		assert.ok(start >= 0, `Could not locate ${decl} — rename?`);
+		const body = source.slice(start, source.indexOf('\n}', start));
+		assert.match(body, /await readChunked\(/, `${decl} must read through readChunked.`);
+		assert.match(body, /\.in\('(id|handle)', part\)/, `${decl} must filter on the chunk.`);
+		assert.doesNotMatch(body, unchunked, `${decl} must not filter on the whole list.`);
+	}
+	const reqs = source.slice(source.indexOf('export async function fetchIncomingFollowRequests('));
+	assert.match(
+		reqs.slice(0, reqs.indexOf('\n}')),
+		/await profilesInEdgeOrder\(/,
+		'fetchIncomingFollowRequests must join profiles through the chunked profilesInEdgeOrder.',
+	);
+});
+
 test('fetchFollowingBadgeAwards chunks the followee `.in()` (no silently-empty badge feed)', () => {
 	// Reason: a viewer following >~100 people overflowed the gateway on the
 	// primary `.in('user_id', authors)` query, silently returning null — an

@@ -1,6 +1,7 @@
 import { expect, test } from '../fixtures/test';
 
 import { browserDate } from '../fixtures/dates';
+import { readRow, readRows } from '../fixtures/db-read';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
 
@@ -147,20 +148,22 @@ test.describe('/plans/[id] — Adjust with AI', () => {
 		await box.getByRole('button', { name: 'Apply AI-suggested changes' }).click();
 		await expect(page.getByTestId('ai-adjust')).toHaveCount(0, { timeout: 10_000 });
 
-		const { data: rows } = await admin
-			.from('plan_workouts')
-			.select('id, target_distance_m, skipped_at')
-			.in('id', [easyId, tempoId, longId]);
-		const byId = new Map((rows ?? []).map((r) => [r.id, r]));
+		const rows = await readRows(
+			'plan_workouts by id',
+			admin
+				.from('plan_workouts')
+				.select('id, target_distance_m, skipped_at')
+				.in('id', [easyId, tempoId, longId]),
+		);
+		const byId = new Map(rows.map((r) => [r.id, r]));
 		expect(byId.get(easyId)?.target_distance_m).toBe(6_400);
 		expect(byId.get(longId)?.target_distance_m).toBe(12_800);
 		expect(byId.get(tempoId)?.skipped_at).not.toBeNull();
-		const { data: week } = await admin
-			.from('plan_weeks')
-			.select('target_volume_m')
-			.eq('id', week0.id)
-			.single();
-		expect(week?.target_volume_m).toBe(25_600);
+		const week = await readRow(
+			'plan_weeks by id',
+			admin.from('plan_weeks').select('target_volume_m').eq('id', week0.id).single(),
+		);
+		expect(week.target_volume_m).toBe(25_600);
 	});
 
 	test('an edit that stacks hard days needs a second confirmation', async ({ page, mockRoute }) => {

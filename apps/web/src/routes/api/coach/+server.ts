@@ -9,9 +9,10 @@
 // signature and returns a streaming `Response` for SSE.
 
 import type { RequestHandler } from './$types';
-import { PUBLIC_SUPABASE_ANON_KEY, PUBLIC_SUPABASE_URL } from '$app/env/public';
+import { PUBLIC_AI_PLAN_ENABLED, PUBLIC_SUPABASE_ANON_KEY, PUBLIC_SUPABASE_URL } from '$app/env/public';
 import { ANTHROPIC_API_KEY, BYPASS_PAYWALL, COACH_PROVIDER, NODE_ENV, OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL, SUPABASE_SECRET_KEY } from '$app/env/private';
 import { handleCoach } from '#lib/coach/handler.ts';
+import { isTruthyFlagValue } from '#lib/core/env_flag.ts';
 
 export const prerender = false;
 
@@ -99,6 +100,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		publicSupabaseAnonKey: PUBLIC_SUPABASE_ANON_KEY,
 		supabaseSecretKey: SUPABASE_SECRET_KEY,
 		bypassPaywallEnabled,
+		aiPlanEnabled: isTruthyFlagValue(PUBLIC_AI_PLAN_ENABLED),
 	});
 
 	if (result.kind === 'json') {

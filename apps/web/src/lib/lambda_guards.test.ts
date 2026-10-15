@@ -54,6 +54,16 @@ test('Lambda /api/coach hardcodes bypassPaywallEnabled: false (no env read)', ()
 	);
 });
 
+test('both /api/coach wrappers read the plan-handoff flag from the AI plan assistant gate', () => {
+	// The coach's plan handoff links into the AI plan assistant only when the
+	// assistant is live. Each wrapper must read the same flag the assistant's
+	// own endpoint reads, or the coach would hand runners to a box that is off.
+	const lambda = stripComments(read('lambda/coach/src/index.ts'));
+	assert.match(lambda, /aiPlanEnabled\s*:\s*isTruthyFlagValue\(process\.env\.AI_PLAN_ENABLED\)/);
+	const dev = stripComments(read('src/routes/api/coach/+server.ts'));
+	assert.match(dev, /aiPlanEnabled\s*:\s*isTruthyFlagValue\(PUBLIC_AI_PLAN_ENABLED\)/);
+});
+
 test('RouteBuilder sends the generate JWT in `x-supabase-authorization`, not `Authorization`', () => {
 	// Reason: same collision as the coach clients — the production Lambda
 	// Function URL is AWS_IAM-auth and CloudFront's OAC signs `Authorization`

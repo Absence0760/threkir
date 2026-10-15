@@ -217,6 +217,7 @@ export const handler = awslambda.streamifyResponse<LambdaFunctionURLEvent>(
 			// the env's sops secrets file (see infra/modules/web-stack).
 			supabaseSecretKey: secrets.SUPABASE_SECRET_KEY,
 			bypassPaywallEnabled: false,
+			aiPlanEnabled: isTruthyFlagValue(process.env.AI_PLAN_ENABLED),
 		};
 
 		const result = await handleCoach(authHeader, rawBody, config);

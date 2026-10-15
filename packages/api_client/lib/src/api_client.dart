@@ -3924,6 +3924,114 @@ class ApiClient {
     return deleted.isNotEmpty;
   }
 
+  // ───────── Reactions, comment likes, mentions (decisions § 1971) ─────────
+
+  /// Raw rows of the `run_reaction_summary` RPC (reaction, reaction_count,
+  /// viewer_reacted). INVOKER, so RLS decides what is counted. Shaped into
+  /// tallies by `reactionTallies` in the app's run_reactions.dart.
+  Future<List<Map<String, dynamic>>> fetchRunReactionSummary(String runId) async {
+    final rows = await _client.rpc(
+      'run_reaction_summary',
+      params: {'p_run_id': runId},
+    );
+    return (rows as List).cast<Map<String, dynamic>>();
+  }
+
+  /// `true` when a new reaction row landed, `false` on the 23505 no-op —
+  /// the [giveKudos] contract.
+  Future<bool> addRunReaction(String runId, String reaction) async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) throw Exception('Not authenticated');
+    try {
+      await _client.from(RunReactionRow.table).insert({
+        RunReactionRow.colUserId: viewerId,
+        RunReactionRow.colRunId: runId,
+        RunReactionRow.colReaction: reaction,
+      });
+      return true;
+    } on PostgrestException catch (e) {
+      if (e.code == '23505') return false;
+      rethrow;
+    }
+  }
+
+  /// `true` when a reaction row was deleted, `false` when there was none.
+  Future<bool> removeRunReaction(String runId, String reaction) async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) return false;
+    final deleted = await _client
+        .from(RunReactionRow.table)
+        .delete()
+        .eq(RunReactionRow.colUserId, viewerId)
+        .eq(RunReactionRow.colRunId, runId)
+        .eq(RunReactionRow.colReaction, reaction)
+        .select(RunReactionRow.colUserId);
+    return deleted.isNotEmpty;
+  }
+
+  /// Like counts for every liked comment on a run, keyed by comment id. A
+  /// comment absent from the map has no likes.
+  Future<Map<String, ({int count, bool viewerLiked})>> fetchRunCommentLikeSummary(
+    String runId,
+  ) async {
+    final rows = await _client.rpc(
+      'run_comment_like_summary',
+      params: {'p_run_id': runId},
+    );
+    return {
+      for (final r in (rows as List).cast<Map<String, dynamic>>())
+        r['comment_id'] as String: (
+          count: ((r['like_count'] as num?) ?? 0).toInt().clamp(0, 1 << 30),
+          viewerLiked: r['viewer_liked'] == true,
+        ),
+    };
+  }
+
+  /// `true` on a new like, `false` when the viewer had already liked it.
+  Future<bool> likeRunComment(String commentId) async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) throw Exception('Not authenticated');
+    try {
+      await _client.from(RunCommentLikeRow.table).insert({
+        RunCommentLikeRow.colUserId: viewerId,
+        RunCommentLikeRow.colCommentId: commentId,
+      });
+      return true;
+    } on PostgrestException catch (e) {
+      if (e.code == '23505') return false;
+      rethrow;
+    }
+  }
+
+  /// `true` when a like was removed, `false` when there was none.
+  Future<bool> unlikeRunComment(String commentId) async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) return false;
+    final deleted = await _client
+        .from(RunCommentLikeRow.table)
+        .delete()
+        .eq(RunCommentLikeRow.colUserId, viewerId)
+        .eq(RunCommentLikeRow.colCommentId, commentId)
+        .select(RunCommentLikeRow.colUserId);
+    return deleted.isNotEmpty;
+  }
+
+  /// Resolve mentioned handles to profile ids so a comment can link the ones
+  /// that name a real runner. Handles are stored lowercase (decisions § 269).
+  Future<Map<String, String>> resolveMentionHandles(List<String> handles) async {
+    final wanted = handles.map((h) => h.toLowerCase()).toSet().take(200).toList();
+    if (wanted.isEmpty) return const {};
+    final rows = await _client
+        .from(UserProfileRow.table)
+        .select('${UserProfileRow.colId}, ${UserProfileRow.colHandle}')
+        .inFilter(UserProfileRow.colHandle, wanted);
+    return {
+      for (final r in rows)
+        if (r[UserProfileRow.colHandle] is String)
+          r[UserProfileRow.colHandle] as String: r[UserProfileRow.colId] as String,
+    };
+  }
+
   /// Per-run engagement summary (kudos count, comment count, whether
   /// the viewer has given kudos). Mirrors the web `fetchEngagement
   /// Summaries` shape — used by feed cards and run-detail pages.

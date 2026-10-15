@@ -9178,6 +9178,53 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get runSocialReactionsLabel => 'Reações';
+
+  @override
+  String get runSocialReactionFire => 'Em grande';
+
+  @override
+  String get runSocialReactionStrong => 'Forte';
+
+  @override
+  String get runSocialReactionTrophy => 'Campeão';
+
+  @override
+  String get runSocialReactionThumbsUp => 'Muito bem';
+
+  @override
+  String get runSocialReactionWave => 'Olá';
+
+  @override
+  String runSocialReactWith(String label) {
+    return 'Reagir com "$label"';
+  }
+
+  @override
+  String runSocialRemoveReaction(String label) {
+    return 'Remover a sua reação "$label"';
+  }
+
+  @override
+  String runSocialReactionError(String error) {
+    return 'Não foi possível atualizar a sua reação: $error';
+  }
+
+  @override
+  String get runSocialLikeComment => 'Gostar deste comentário';
+
+  @override
+  String get runSocialUnlikeComment => 'Deixar de gostar deste comentário';
+
+  @override
+  String runSocialLikeError(String error) {
+    return 'Não foi possível atualizar o seu gosto: $error';
+  }
+
+  @override
+  String get runSocialMentionSuggestions => 'Pessoas a mencionar';
+
+  @override
   String get runPhotosLoading => 'A carregar fotografias…';
 
   @override
@@ -25069,6 +25116,53 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String runSocialDeleteError(String error) {
     return 'Falha ao excluir: $error';
   }
+
+  @override
+  String get runSocialReactionsLabel => 'Reações';
+
+  @override
+  String get runSocialReactionFire => 'Pegando fogo';
+
+  @override
+  String get runSocialReactionStrong => 'Forte';
+
+  @override
+  String get runSocialReactionTrophy => 'Campeão';
+
+  @override
+  String get runSocialReactionThumbsUp => 'Mandou bem';
+
+  @override
+  String get runSocialReactionWave => 'Oi';
+
+  @override
+  String runSocialReactWith(String label) {
+    return 'Reagir com "$label"';
+  }
+
+  @override
+  String runSocialRemoveReaction(String label) {
+    return 'Remover sua reação "$label"';
+  }
+
+  @override
+  String runSocialReactionError(String error) {
+    return 'Não foi possível atualizar sua reação: $error';
+  }
+
+  @override
+  String get runSocialLikeComment => 'Curtir este comentário';
+
+  @override
+  String get runSocialUnlikeComment => 'Descurtir este comentário';
+
+  @override
+  String runSocialLikeError(String error) {
+    return 'Não foi possível atualizar sua curtida: $error';
+  }
+
+  @override
+  String get runSocialMentionSuggestions => 'Pessoas para mencionar';
 
   @override
   String get runPhotosLoading => 'Carregando fotos…';

@@ -9198,6 +9198,53 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get runSocialReactionsLabel => 'Réactions';
+
+  @override
+  String get runSocialReactionFire => 'En feu';
+
+  @override
+  String get runSocialReactionStrong => 'Solide';
+
+  @override
+  String get runSocialReactionTrophy => 'Champion';
+
+  @override
+  String get runSocialReactionThumbsUp => 'Bien joué';
+
+  @override
+  String get runSocialReactionWave => 'Coucou';
+
+  @override
+  String runSocialReactWith(String label) {
+    return 'Réagir avec « $label »';
+  }
+
+  @override
+  String runSocialRemoveReaction(String label) {
+    return 'Retirer votre réaction « $label »';
+  }
+
+  @override
+  String runSocialReactionError(String error) {
+    return 'Impossible de mettre à jour votre réaction : $error';
+  }
+
+  @override
+  String get runSocialLikeComment => 'J\'aime ce commentaire';
+
+  @override
+  String get runSocialUnlikeComment => 'Je n\'aime plus ce commentaire';
+
+  @override
+  String runSocialLikeError(String error) {
+    return 'Impossible de mettre à jour votre j\'aime : $error';
+  }
+
+  @override
+  String get runSocialMentionSuggestions => 'Personnes à mentionner';
+
+  @override
   String get runPhotosLoading => 'Chargement des photos…';
 
   @override

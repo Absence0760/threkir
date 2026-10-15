@@ -8695,6 +8695,53 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String get runSocialReactionsLabel => 'リアクション';
+
+  @override
+  String get runSocialReactionFire => '絶好調';
+
+  @override
+  String get runSocialReactionStrong => '力強い';
+
+  @override
+  String get runSocialReactionTrophy => 'チャンピオン';
+
+  @override
+  String get runSocialReactionThumbsUp => 'いいね';
+
+  @override
+  String get runSocialReactionWave => 'やあ';
+
+  @override
+  String runSocialReactWith(String label) {
+    return '「$label」でリアクション';
+  }
+
+  @override
+  String runSocialRemoveReaction(String label) {
+    return '「$label」のリアクションを取り消す';
+  }
+
+  @override
+  String runSocialReactionError(String error) {
+    return 'リアクションを更新できませんでした: $error';
+  }
+
+  @override
+  String get runSocialLikeComment => 'このコメントに「いいね」';
+
+  @override
+  String get runSocialUnlikeComment => '「いいね」を取り消す';
+
+  @override
+  String runSocialLikeError(String error) {
+    return '「いいね」を更新できませんでした: $error';
+  }
+
+  @override
+  String get runSocialMentionSuggestions => 'メンションする人';
+
+  @override
   String get runPhotosLoading => '写真を読み込み中…';
 
   @override

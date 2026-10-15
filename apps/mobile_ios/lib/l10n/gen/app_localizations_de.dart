@@ -9186,6 +9186,53 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get runSocialReactionsLabel => 'Reaktionen';
+
+  @override
+  String get runSocialReactionFire => 'Stark unterwegs';
+
+  @override
+  String get runSocialReactionStrong => 'Kraftvoll';
+
+  @override
+  String get runSocialReactionTrophy => 'Meisterhaft';
+
+  @override
+  String get runSocialReactionThumbsUp => 'Gut gemacht';
+
+  @override
+  String get runSocialReactionWave => 'Hallo';
+
+  @override
+  String runSocialReactWith(String label) {
+    return 'Mit „$label“ reagieren';
+  }
+
+  @override
+  String runSocialRemoveReaction(String label) {
+    return 'Deine Reaktion „$label“ entfernen';
+  }
+
+  @override
+  String runSocialReactionError(String error) {
+    return 'Reaktion konnte nicht aktualisiert werden: $error';
+  }
+
+  @override
+  String get runSocialLikeComment => 'Kommentar mit „Gefällt mir“ markieren';
+
+  @override
+  String get runSocialUnlikeComment => '„Gefällt mir“ entfernen';
+
+  @override
+  String runSocialLikeError(String error) {
+    return '„Gefällt mir“ konnte nicht aktualisiert werden: $error';
+  }
+
+  @override
+  String get runSocialMentionSuggestions => 'Personen zum Erwähnen';
+
+  @override
   String get runPhotosLoading => 'Fotos werden geladen…';
 
   @override

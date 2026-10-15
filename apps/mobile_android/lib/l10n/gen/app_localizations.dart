@@ -14925,6 +14925,84 @@ abstract class AppLocalizations {
   /// **'Failed to delete: {error}'**
   String runSocialDeleteError(String error);
 
+  /// Accessibility label for the row of reaction buttons on a run
+  ///
+  /// In en, this message translates to:
+  /// **'Reactions'**
+  String get runSocialReactionsLabel;
+
+  /// Name of the fire reaction on a run
+  ///
+  /// In en, this message translates to:
+  /// **'On fire'**
+  String get runSocialReactionFire;
+
+  /// Name of the strong reaction on a run
+  ///
+  /// In en, this message translates to:
+  /// **'Strong'**
+  String get runSocialReactionStrong;
+
+  /// Name of the trophy reaction on a run
+  ///
+  /// In en, this message translates to:
+  /// **'Champion'**
+  String get runSocialReactionTrophy;
+
+  /// Name of the thumbs-up reaction on a run
+  ///
+  /// In en, this message translates to:
+  /// **'Nice'**
+  String get runSocialReactionThumbsUp;
+
+  /// Name of the wave reaction on a run
+  ///
+  /// In en, this message translates to:
+  /// **'Hello'**
+  String get runSocialReactionWave;
+
+  /// Accessibility label for a reaction button the viewer has not used yet
+  ///
+  /// In en, this message translates to:
+  /// **'React with {label}'**
+  String runSocialReactWith(String label);
+
+  /// Accessibility label for a reaction button the viewer already used
+  ///
+  /// In en, this message translates to:
+  /// **'Remove your {label} reaction'**
+  String runSocialRemoveReaction(String label);
+
+  /// Banner when toggling a reaction fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn't update your reaction: {error}'**
+  String runSocialReactionError(String error);
+
+  /// Accessibility label for liking a comment
+  ///
+  /// In en, this message translates to:
+  /// **'Like this comment'**
+  String get runSocialLikeComment;
+
+  /// Accessibility label for removing a like from a comment
+  ///
+  /// In en, this message translates to:
+  /// **'Unlike this comment'**
+  String get runSocialUnlikeComment;
+
+  /// Banner when toggling a comment like fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn't update your like: {error}'**
+  String runSocialLikeError(String error);
+
+  /// Accessibility label for the list of people offered while typing an @mention
+  ///
+  /// In en, this message translates to:
+  /// **'People to mention'**
+  String get runSocialMentionSuggestions;
+
   /// Loading state for the run photo gallery
   ///
   /// In en, this message translates to:

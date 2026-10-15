@@ -12024,6 +12024,78 @@
       }
     }
   },
+  "runSocialReactionsLabel": "Reactions",
+  "@runSocialReactionsLabel": {
+    "description": "Accessibility label for the row of reaction buttons on a run"
+  },
+  "runSocialReactionFire": "On fire",
+  "@runSocialReactionFire": {
+    "description": "Name of the fire reaction on a run"
+  },
+  "runSocialReactionStrong": "Strong",
+  "@runSocialReactionStrong": {
+    "description": "Name of the strong reaction on a run"
+  },
+  "runSocialReactionTrophy": "Champion",
+  "@runSocialReactionTrophy": {
+    "description": "Name of the trophy reaction on a run"
+  },
+  "runSocialReactionThumbsUp": "Nice",
+  "@runSocialReactionThumbsUp": {
+    "description": "Name of the thumbs-up reaction on a run"
+  },
+  "runSocialReactionWave": "Hello",
+  "@runSocialReactionWave": {
+    "description": "Name of the wave reaction on a run"
+  },
+  "runSocialReactWith": "React with {label}",
+  "@runSocialReactWith": {
+    "description": "Accessibility label for a reaction button the viewer has not used yet",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "runSocialRemoveReaction": "Remove your {label} reaction",
+  "@runSocialRemoveReaction": {
+    "description": "Accessibility label for a reaction button the viewer already used",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "runSocialReactionError": "Couldn't update your reaction: {error}",
+  "@runSocialReactionError": {
+    "description": "Banner when toggling a reaction fails",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "runSocialLikeComment": "Like this comment",
+  "@runSocialLikeComment": {
+    "description": "Accessibility label for liking a comment"
+  },
+  "runSocialUnlikeComment": "Unlike this comment",
+  "@runSocialUnlikeComment": {
+    "description": "Accessibility label for removing a like from a comment"
+  },
+  "runSocialLikeError": "Couldn't update your like: {error}",
+  "@runSocialLikeError": {
+    "description": "Banner when toggling a comment like fails",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "runSocialMentionSuggestions": "People to mention",
+  "@runSocialMentionSuggestions": {
+    "description": "Accessibility label for the list of people offered while typing an @mention"
+  },
   "runPhotosLoading": "Loading photos…",
   "@runPhotosLoading": {
     "description": "Loading state for the run photo gallery"

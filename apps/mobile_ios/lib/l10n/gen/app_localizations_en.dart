@@ -9082,6 +9082,53 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get runSocialReactionsLabel => 'Reactions';
+
+  @override
+  String get runSocialReactionFire => 'On fire';
+
+  @override
+  String get runSocialReactionStrong => 'Strong';
+
+  @override
+  String get runSocialReactionTrophy => 'Champion';
+
+  @override
+  String get runSocialReactionThumbsUp => 'Nice';
+
+  @override
+  String get runSocialReactionWave => 'Hello';
+
+  @override
+  String runSocialReactWith(String label) {
+    return 'React with $label';
+  }
+
+  @override
+  String runSocialRemoveReaction(String label) {
+    return 'Remove your $label reaction';
+  }
+
+  @override
+  String runSocialReactionError(String error) {
+    return 'Couldn\'t update your reaction: $error';
+  }
+
+  @override
+  String get runSocialLikeComment => 'Like this comment';
+
+  @override
+  String get runSocialUnlikeComment => 'Unlike this comment';
+
+  @override
+  String runSocialLikeError(String error) {
+    return 'Couldn\'t update your like: $error';
+  }
+
+  @override
+  String get runSocialMentionSuggestions => 'People to mention';
+
+  @override
   String get runPhotosLoading => 'Loading photos…';
 
   @override

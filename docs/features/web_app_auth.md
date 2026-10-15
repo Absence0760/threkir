@@ -91,7 +91,7 @@ Public routes (no auth, no sidebar):
 - `/live/...` — public spectator pages
 - `/clubs/join/[token]/` — public invite-link landing
 
-Public routes that keep the sidebar for a signed-in visitor (`isAnonAllowed` in the root layout) also include the legal pages, `/compare`, `/segments`, public clubs and events, `/fundraisers/[id]`, and the help centre `/help`, `/help/[id]`, `/help/search` (decisions § 1866: the public live-event page links spectators into it).
+Public routes that keep the sidebar for a signed-in visitor (`isAnonAllowed` in the root layout) also include the legal pages, `/compare`, `/segments`, public clubs and events, `/fundraisers/[id]`, the Coach's fuelling plan `/nutrition/fuel` (decisions § 1975: the mobile Coach opens it on the web host), and the help centre `/help`, `/help/[id]`, `/help/search` (decisions § 1866: the public live-event page links spectators into it).
 
 Everything else renders inside the authenticated app shell (sidebar + main content).
 

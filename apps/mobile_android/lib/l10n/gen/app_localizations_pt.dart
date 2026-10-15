@@ -1393,7 +1393,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get onboardingLocationBodyAndroid =>
-      'O Threkir recolhe a sua localização GPS para registar uma corrida, incluindo com o ecrã desligado — uma notificação indica que há um registo a decorrer. A sua localização fica neste dispositivo enquanto não sincronizar nem partilhar uma corrida. O pedido seguinte concede o acesso durante a utilização da aplicação, que é tudo o que o primeiro pedido do Android pode dar; antes da sua primeira corrida, o Threkir propõe a passagem para «Permitir sempre», que mantém o seguimento fiável quando muda para outra aplicação. Se recusar, as corridas continuam a registar tempo e passos — mas sem mapa, distância ou ritmo.';
+      'O Threkir recolhe a sua localização GPS para registar uma corrida e continua a pedi-la com o ecrã desligado — uma notificação indica que há um registo a decorrer. A sua localização fica neste dispositivo enquanto não sincronizar nem partilhar uma corrida. O pedido seguinte concede o acesso durante a utilização da aplicação, que é tudo o que o primeiro pedido do Android pode dar; só com esse acesso, o Android pode deixar de enviar a sua localização com o ecrã desligado ou enquanto está noutra aplicação. Antes da sua primeira corrida, o Threkir propõe a passagem para «Permitir sempre», que mantém então o seguimento fiável. Se recusar, as corridas continuam a registar tempo e passos — mas sem mapa, distância ou ritmo.';
 
   @override
   String get onboardingLocationBodyIos =>
@@ -17581,7 +17581,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get onboardingLocationBodyAndroid =>
-      'O Threkir coleta sua localização GPS para gravar uma corrida, inclusive com a tela desligada — uma notificação mostra que há uma gravação em andamento. Sua localização fica neste dispositivo enquanto você não sincronizar nem compartilhar uma corrida. A próxima solicitação concede o acesso durante o uso do app, que é tudo o que a primeira solicitação do Android pode dar; antes da sua primeira corrida, o Threkir oferece a mudança para “Permitir o tempo todo”, que mantém o rastreamento confiável quando você troca de app. Se recusar, as corridas continuam registrando tempo e passos — mas sem mapa, distância ou ritmo.';
+      'O Threkir coleta sua localização GPS para gravar uma corrida e continua pedindo a localização com a tela desligada — uma notificação mostra que há uma gravação em andamento. Sua localização fica neste dispositivo enquanto você não sincronizar nem compartilhar uma corrida. A próxima solicitação concede o acesso durante o uso do app, que é tudo o que a primeira solicitação do Android pode dar; só com esse acesso, o Android pode parar de enviar sua localização com a tela desligada ou enquanto você está em outro app. Antes da sua primeira corrida, o Threkir oferece a mudança para “Permitir o tempo todo”, que mantém o rastreamento confiável nesses casos. Se recusar, as corridas continuam registrando tempo e passos — mas sem mapa, distância ou ritmo.';
 
   @override
   String get onboardingLocationBodyIos =>

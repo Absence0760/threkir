@@ -1397,7 +1397,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get onboardingLocationBodyAndroid =>
-      'Threkir relève votre position GPS pour enregistrer une course, y compris écran éteint — une notification indique qu’un enregistrement est en cours. Votre position reste sur cet appareil tant que vous ne synchronisez ni ne partagez une course. La demande suivante accorde l’accès pendant l’utilisation de l’app, ce que la première demande d’Android ne peut pas dépasser ; avant votre première course, Threkir propose le passage à « Toujours autoriser », qui fiabilise le suivi lorsque vous passez à une autre app. Si vous refusez, les courses enregistrent toujours le temps et les pas — mais ni carte, ni distance, ni allure.';
+      'Threkir relève votre position GPS pour enregistrer une course et continue de la demander écran éteint — une notification indique qu’un enregistrement est en cours. Votre position reste sur cet appareil tant que vous ne synchronisez ni ne partagez une course. La demande suivante accorde l’accès pendant l’utilisation de l’app, ce que la première demande d’Android ne peut pas dépasser ; avec ce seul accès, Android peut cesser d’envoyer votre position écran éteint ou lorsque vous êtes dans une autre app. Avant votre première course, Threkir propose le passage à « Toujours autoriser », qui fiabilise alors le suivi. Si vous refusez, les courses enregistrent toujours le temps et les pas — mais ni carte, ni distance, ni allure.';
 
   @override
   String get onboardingLocationBodyIos =>

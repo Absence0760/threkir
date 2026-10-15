@@ -1396,7 +1396,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get onboardingLocationBodyAndroid =>
-      'Threkir erfasst deinen GPS-Standort, um einen Lauf aufzuzeichnen – auch bei ausgeschaltetem Bildschirm; eine Benachrichtigung zeigt an, dass gerade aufgezeichnet wird. Dein Standort bleibt auf diesem Gerät, solange du einen Lauf nicht synchronisierst oder teilst. Die nächste Abfrage erteilt den Zugriff während der App-Nutzung – mehr kann Androids erste Abfrage nicht geben; vor deinem ersten Lauf bietet Threkir die Erweiterung auf „Immer zulassen“ an, mit der die Aufzeichnung auch zuverlässig bleibt, wenn du zu einer anderen App wechselst. Lehnst du ab, zeichnen Läufe weiterhin Zeit und Schritte auf – aber keine Karte, Distanz oder Pace.';
+      'Threkir erfasst deinen GPS-Standort, um einen Lauf aufzuzeichnen, und fragt ihn auch bei ausgeschaltetem Bildschirm weiter ab; eine Benachrichtigung zeigt an, dass gerade aufgezeichnet wird. Dein Standort bleibt auf diesem Gerät, solange du einen Lauf nicht synchronisierst oder teilst. Die nächste Abfrage erteilt den Zugriff während der App-Nutzung – mehr kann Androids erste Abfrage nicht geben, und damit kann Android die Übermittlung deines Standorts einstellen, solange der Bildschirm aus ist oder du in einer anderen App bist. Vor deinem ersten Lauf bietet Threkir die Erweiterung auf „Immer zulassen“ an, mit der die Aufzeichnung auch dann zuverlässig bleibt. Lehnst du ab, zeichnen Läufe weiterhin Zeit und Schritte auf – aber keine Karte, Distanz oder Pace.';
 
   @override
   String get onboardingLocationBodyIos =>

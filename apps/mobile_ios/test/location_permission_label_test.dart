@@ -31,6 +31,15 @@ void main() {
     });
   }
 
+  test('the Android onboarding disclosure does not promise screen-off '
+      'recording under the while-in-use grant it requests', () {
+    final en = lookupAppLocalizations(const Locale('en'));
+    expect(en.onboardingLocationBodyAndroid,
+        isNot(contains('including while your screen is off')));
+    expect(en.onboardingLocationBodyAndroid,
+        contains('Android may stop sending your location'));
+  });
+
   test('pt-PT names the option the way pt-PT Android does, not pt-BR', () {
     final pt = lookupAppLocalizations(const Locale('pt'));
     for (final s in [

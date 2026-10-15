@@ -2366,7 +2366,7 @@ abstract class AppLocalizations {
   /// Android location disclosure on the onboarding Location page — describes the while-in-use grant the app actually requests and the later Allow-all-the-time upgrade (Play location policy)
   ///
   /// In en, this message translates to:
-  /// **'Threkir samples your GPS location to record a run, including while your screen is off — a notification shows whenever a run is recording. Your location stays on this device unless you sync or share a run. The next prompt grants access while the app is in use, which is all Android’s first prompt can give; before your first run Threkir offers the “Allow all the time” upgrade that keeps tracking reliable once you switch to another app. Decline, and runs still record time and steps — but no map, distance or pace.'**
+  /// **'Threkir samples your GPS location to record a run and keeps requesting it while your screen is off — a notification shows whenever a run is recording. Your location stays on this device unless you sync or share a run. The next prompt grants access while the app is in use, which is all Android’s first prompt can give: under it, Android may stop sending your location while the screen is off or you are in another app. Before your first run Threkir offers the “Allow all the time” upgrade that keeps tracking reliable then. Decline, and runs still record time and steps — but no map, distance or pace.'**
   String get onboardingLocationBodyAndroid;
 
   /// iOS location disclosure on the onboarding Location page — names the iOS Settings path, not the Android one

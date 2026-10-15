@@ -6,10 +6,10 @@ First registered handler is `kind='map_match'`; additional kinds plug
 into `internal/worker.go`'s dispatch switch. `kind='distance_recompute'`
 (enqueued by the owner-only `request_distance_recompute(p_run_id)` RPC,
 payload `{run_id, user_id}`) replays an app- or watch-recorded run's
-stored track through the spec-v1.2 GPS distance smoother
+stored track through the spec-v1.4 GPS distance smoother
 (`internal/gpsdistance/`, [`docs/features/gps_distance.md`](../../docs/features/gps_distance.md))
 and rewrites `runs.distance_m`, keeping the original in
-`metadata.distance_recorded_m` and stamping `distance_estimator = "kalman_v3"`.
+`metadata.distance_recorded_m` and stamping `distance_estimator = "kalman_v4"`.
 A track with no Doppler that the map_match road classifier (`roadDistanceFor`)
 does not accept as a road run keeps the smoother's forward pass instead, and
 `metadata.distance_estimator_pass` records which pass was kept.

@@ -292,6 +292,8 @@ The `decisions.md` § entries for wave 2 (§273) **and** this batch (§274) are 
 
 **GPS distance spec v1.3 (2026-10-09, [`gps_distance.md`](../../docs/features/gps_distance.md)).** The forward filter learns a Doppler speed scale from the fixes' displacement along the RMC course and multiplies every Doppler speed by it (decisions § 1821). The estimator grows from 360 B to 448 B. Type-checked on the host and the firmware target; the vector replay assertion for the scale is written but not run here, so it is *host-tested* only once CI's test job passes.
 
+**GPS distance spec v1.4 (2026-10-15, [`gps_distance.md`](../../docs/features/gps_distance.md)).** The forward filter ignores a fix stating worse than 50 m, keeps 20-50 m fixes out of the cross-check and the Doppler scale, credits a gap over the window at least its chord less its uncertainty, and learns stride only from Doppler with speed accuracy within 1.0 m/s or from a fix within 20 m (`without_stride_learning()` exists for the vectors; the watch's own receiver always learns). The estimator grows from 448 B to 456 B. Type-checked on the host; the vector replay is *host-tested* only once CI's test job passes.
+
 
 ## Layout
 

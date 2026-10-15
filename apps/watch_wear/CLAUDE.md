@@ -91,7 +91,7 @@ apps/watch_wear/
             │   │   ├── RecordingRepository.kt   # process-singleton StateFlow
             │   │   ├── CheckpointStore.kt       # in-progress recovery snapshot
             │   │   ├── CheckpointRecovery.kt    # grade a survivor before offering it
-            │   │   ├── GpsDistanceEstimator.kt  # spec-v1.2 forward Kalman distance (shared vectors)
+            │   │   ├── GpsDistanceEstimator.kt  # spec-v1.4 forward Kalman distance (shared vectors)
             │   │   ├── LocationSourceArbiter.kt # receiver-vs-fused arbitration, mirrors the phone's RunRecorder
             │   │   ├── LivePace.kt              # live pace over the estimator's last ~200 m
             │   │   ├── TrackWriter.kt           # streaming GPS to disk JSON
@@ -621,26 +621,27 @@ steal focus from typing). `RotaryScrollWiringTest` pins the call sites.
   a phone the same provider read +10.4% long (decisions § 1960, § 1984).
   `recording/LocationSourceArbiter.kt` applies the phone `RunRecorder`'s
   rules unchanged: the receiver takes the run after 3 consecutive usable
-  fixes (past the 30 m gate) each arriving within 12 s of the last; fused
+  fixes (within the 30 m `arbitrationGateM`) each arriving within 12 s of the last; fused
   feeds the run only after > 12 s with no usable receiver fix; the fused
   stream stays open throughout; arbitration is on arrival time
   (monotonic), never fix timestamps. Each switch starts a new
   `GpsDistanceEstimator` segment with the stride carried over, so no
-  learned Doppler or cross-check state crosses sources. A watch with no
+  learned Doppler or cross-check state crosses sources; a fused segment
+  never learns stride (spec v1.4 `learnStride`). A watch with no
   GPS chip, or a disabled or erroring provider, simply never gets receiver
   fixes and fused carries the run. The saved run records which stream it
   came from in `metadata.location_provider` (`gps` / `fused` / `mixed`).
   Not yet verified on a device: one run on a Wear watch beside the Garmin,
   checking it saves `location_provider: gps`.
 - **Distance is the shared estimator, not a hop sum.**
-  `recording/GpsDistanceEstimator.kt` is the Kotlin port of the spec-v1.2
+  `recording/GpsDistanceEstimator.kt` is the Kotlin port of the spec-v1.4
   forward filter in `scripts/gps_distance/reference.py` (gate, adaptive R,
   Doppler cross-check and debias, pedometer ZUPT; no smoother —
   [docs/features/gps_distance.md](../../docs/features/gps_distance.md)),
   held to `fixtures/gps_distance_vectors.json` after every event by
   `GpsDistanceEstimatorTest`. Change it only together with the reference and
-  every other port. `onGps` feeds it every fix from the current source that
-  passes `GpsRecorder`'s 30 m accuracy gate, stamped with the fix's own `elapsedRealtimeNanos`
+  every other port. `onGps` feeds it every fix from the current source up to
+  the estimator's 50 m cap (`ESTIMATOR_ACCURACY_CAP_M`), stamped with the fix's own `elapsedRealtimeNanos`
   (never the wall-clock `time`), plus `Location.speed` / `speedAccuracy` /
   `bearing` only when the matching `has*()` is true; the pedometer feeds
   `addSteps`. A pause closes the estimator segment (`finish` + bank the
@@ -649,8 +650,9 @@ steal focus from typing). `RotaryScrollWiringTest` pins the call sites.
   the closing segment's stride, so a GPS gap right after a resume is still
   step-filled. Fixes arrive at 1 s, so `expectedIntervalS` stays 1. The
   ceiling is per activity (`maxSpeedMpsFor`, the phone's
-  `ActivityType.maxSpeedMps` values). The track itself still appends every
-  gated fix; each point now also carries the optional `accuracyMetres`,
+  `ActivityType.maxSpeedMps` values). The track, the overlay and the route
+  match take only fixes within 30 m (`SourceVerdict.track`): a 30-50 m
+  canopy fix moves distance and pace and nothing else; each point now also carries the optional `accuracyMetres`,
   `speedMps`, `speedAccuracyMps`, `bearingDeg` keys so the server can
   recompute. Uploads stamp `metadata.distance_estimator = "kalman_v1"` and,
   when > 0, `distance_step_filled_m`; a run queued or checkpointed by an

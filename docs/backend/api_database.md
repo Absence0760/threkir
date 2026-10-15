@@ -434,6 +434,36 @@ create table run_comments (
 
 Threading is one level deep, enforced by the INSERT policy: `parent_comment_id is null OR (the parent's parent_comment_id is null)`. The depth check delegates to the SECURITY DEFINER helper `_run_comment_parent_is_top_level(uuid)` because PostgreSQL's RLS planner flags any policy that selects from its own table as recursive — even when the runtime path is acyclic — and would otherwise return `infinite recursion detected in policy for relation "run_comments"` on every authenticated INSERT (fixed in `20260529_001`). Run owner can DELETE any comment on their run for moderation; otherwise authors edit / delete their own. The `run_comments_set_updated_at` BEFORE-UPDATE trigger keeps `updated_at` honest so consumers can tell edited comments apart.
 
+#### `run_reactions` / `run_comment_likes`
+
+Optional signals beside kudos ([decisions § 1971](../architecture/decisions.md), migration `20270826000001`). Two sibling tables rather than a widened `run_kudos`, so no kudos count anywhere starts counting reactions.
+
+```sql
+create table run_reactions (
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  run_id     uuid not null references runs(id) on delete cascade,
+  reaction   text not null check (reaction in ('fire','strong','trophy','thumbs_up','wave')),
+  reacted_at timestamptz not null default now(),
+  primary key (user_id, run_id, reaction)
+);
+
+create table run_comment_likes (
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  comment_id uuid not null references run_comments(id) on delete cascade,
+  liked_at   timestamptz not null default now(),
+  primary key (user_id, comment_id)
+);
+```
+
+- **Reads** (`anon, authenticated`): a reaction is readable when its run is (`private.is_run_visible_to`); a like when its comment's run is (`private.is_run_comment_visible_to`, a definer so the policy does not re-enter `run_comments`' own). Anon reads public-run rows for the logged-out share page, as with kudos.
+- **Writes** (`authenticated`): own row only; the run must be visible to the writer; the **§ 158 block gate** resolves the run owner (and, for a like, the comment author) in definer context — `private.is_blocked_for_run` for reactions, `private.can_like_run_comment` for likes, which also refuses a like on your own comment. Self-reaction is refused by a plain subquery (the owner can see their own run). Delete own only; no UPDATE grant.
+- **Vocabulary**: the five reaction keys are a CHECK and a registered rail in `check_constraint_unions.mjs` (web `social/reactions.ts`, Dart `run_reactions.dart`). Clients draw each key as an icon; no emoji is stored or shipped.
+- **RPCs** (INVOKER, so RLS decides what is counted; anon + authenticated + service_role): `run_reaction_summary(p_run_id uuid)` → `(reaction, reaction_count, viewer_reacted)`; `run_comment_like_summary(p_run_id uuid)` → `(comment_id, like_count, viewer_liked)`.
+- **Notifications**: `notify_run_reaction` (→ run owner, kind `reaction`) and `notify_run_comment_like` (→ comment author, kind `comment_like`) are definer `after insert` triggers that write at most one row per (recipient, actor, target) — the de-dupe is a `NOT EXISTS` over existing `notifications` indexes, so no index was built on the populated table.
+- **Export / erasure**: both tables ship in the Art 20 export on both legs (`run_reactions.json` / `_received`, `run_comment_likes.json` / `_received`, the received halves through an inner embed of `runs` / `run_comments`); every FK cascades, so Art 17 needs nothing extra.
+
+**@mentions** need no table. `notify_run_comment_mentions` (definer, `after insert or update of body on run_comments`) parses the body with `private.extract_mention_handles(text)` — the § 269 handle rule (`@` + `[A-Za-z0-9_]{3,30}`, not glued to a word or a second `@`, not followed by another handle character), lowercased, de-duplicated, at most 10, which is also the TS/Dart `mentions` parity pair — and writes kind `mention` to each runner who holds that handle **and** can already read the run (`private.is_run_visible_to`) **and** has no block either way with the comment's author or the run's owner. The author, the run owner on a top-level comment and the parent author on a reply are skipped (they already get the `comment` / `comment_reply` row). An edit notifies only handles the new body adds. The parser is executable by `service_role` only.
+
 #### `run_photos`
 
 Photos attached to a run (decisions §36). Metadata in Postgres, bytes in the **private** `run-photos` Storage bucket at `{owner_id}/{photo_id}.{ext}` (migration `20260712_001` flipped the bucket public flag; the previous "public-read with policy gate" model didn't actually work — Supabase routes public-bucket reads through an unauthenticated CDN endpoint that bypasses RLS on `storage.objects`). Visibility tracks the parent run via EXISTS — same shape as `run_kudos` / `run_comments` — and is now properly enforced by the storage SELECT policy from `20260705_001`. Clients access bytes via `createSignedUrl(s)` with a 1-hour TTL.
@@ -494,7 +524,7 @@ Re-keys the `route_photos` shape to club membership. **INSERT** requires `auth.u
 
 #### `notifications`
 
-Inbox rows for the social loop (decisions §38). Materialised by `after insert` (kudos / comments / follows / club posts / completed runs) and `after insert or update` (event RSVPs) SECURITY DEFINER triggers on `run_kudos`, `run_comments`, `user_follows`, `event_attendees`, `club_posts`, and `runs` so the notification lands in the same transaction as the source write. `event_waitlist_slot` (`20270726000002`, [decisions § 1840](../architecture/decisions.md)) is inserted by `private.fill_event_seats` when a paid occurrence's seat is offered to a waitlister, carrying `event_id` + `event_instance_start`. Not every kind comes from a trigger: `data_export_ready` (`20270607_001`, [decisions § 729](../architecture/decisions.md)) is written by the `notify_data_export_ready()` RPC the Go worker calls once a queued Art 20 export is `ready` — the kind carries **no FK**, because the export lives in `data_export_jobs` and the notification's deep link is `/settings/account`, where the signed download URL is minted at read time. `refund_failed` (`20270701000001`, [decisions § 825](../architecture/decisions.md)) comes from a trigger, but from a **money ledger** rather than a social one: one `after update of status ... when (old.status is distinct from new.status and new.status = 'refund_failed')` SECURITY DEFINER trigger on `event_orders` and one on `donations`, so the payer is told once when the bank sends a refund back. The transition IS the dedupe — the `stripe-events-webhook` CASes against the status it read, so a redelivered event updates no row and fires nothing, which is why this kind needs no `notified_at` stamp. The order arm carries `event_id` + `event_instance_start`; the donation arm carries **no FK**, because `donations` has no client SELECT policy and there is no donor-readable row to point at, so both clients render it as plain text and the outbound CTA falls back to the inbox. An anonymous donation (`donor_user_id` null) is skipped in the function rather than left to raise 23502 inside the webhook's own UPDATE, which would roll the ledger move back with it.
+Inbox rows for the social loop (decisions §38). Materialised by `after insert` (kudos / comments / follows / club posts / completed runs) and `after insert or update` (event RSVPs) SECURITY DEFINER triggers on `run_kudos`, `run_comments`, `user_follows`, `event_attendees`, `club_posts`, and `runs` so the notification lands in the same transaction as the source write. `reaction`, `comment_like` and `mention` (`20270826000001`, [decisions § 1971](../architecture/decisions.md)) come from the triggers on `run_reactions`, `run_comment_likes` and `run_comments` described under those tables; each carries `run_id` (and `comment_id` for the last two) and the `('run', run_id)` activity reference. `event_waitlist_slot` (`20270726000002`, [decisions § 1840](../architecture/decisions.md)) is inserted by `private.fill_event_seats` when a paid occurrence's seat is offered to a waitlister, carrying `event_id` + `event_instance_start`. Not every kind comes from a trigger: `data_export_ready` (`20270607_001`, [decisions § 729](../architecture/decisions.md)) is written by the `notify_data_export_ready()` RPC the Go worker calls once a queued Art 20 export is `ready` — the kind carries **no FK**, because the export lives in `data_export_jobs` and the notification's deep link is `/settings/account`, where the signed download URL is minted at read time. `refund_failed` (`20270701000001`, [decisions § 825](../architecture/decisions.md)) comes from a trigger, but from a **money ledger** rather than a social one: one `after update of status ... when (old.status is distinct from new.status and new.status = 'refund_failed')` SECURITY DEFINER trigger on `event_orders` and one on `donations`, so the payer is told once when the bank sends a refund back. The transition IS the dedupe — the `stripe-events-webhook` CASes against the status it read, so a redelivered event updates no row and fires nothing, which is why this kind needs no `notified_at` stamp. The order arm carries `event_id` + `event_instance_start`; the donation arm carries **no FK**, because `donations` has no client SELECT policy and there is no donor-readable row to point at, so both clients render it as plain text and the outbound CTA falls back to the inbox. An anonymous donation (`donor_user_id` null) is skipped in the function rather than left to raise 23502 inside the webhook's own UPDATE, which would roll the ledger move back with it.
 
 **Widening the `kind` CHECK takes the `NOT VALID` + `VALIDATE` two-step** — `notifications` is in the migration-locks guard's `GUARDED_TABLES`, and a single-step drop-and-recreate scans every notification ever written under ACCESS EXCLUSIVE for a widen that cannot invalidate a single existing row. `20270607_001` is the first kind migration to do so; the twelve before it are grandfathered.
 
@@ -2259,10 +2289,10 @@ grant  execute on function public.<fn>(<args>) to authenticated;   -- and/or ser
 
 Add `authenticated` to the revoke list when no client role should hold it at all
 (the `cleanup_*` / `enqueue_*` cron family, and helpers only a SECURITY DEFINER
-trigger calls). 93 migrations write a function-level `from public, anon` revoke
-today (78 as `revoke execute`, 15 as `revoke all`); it is the house form for
+trigger calls). 94 migrations write a function-level `from public, anon` revoke
+today (79 as `revoke execute`, 15 as `revoke all`); it is the house form for
 exactly this reason, and `check_migration_function_revoke_noop.mjs` is what
-keeps it — it replays all 540 migrations in version order and fails the PR on
+keeps it — it replays all 542 migrations in version order and fails the PR on
 any EXECUTE revoke that leaves the other channel at its image-dependent
 default, in either direction. **Those four figures are derived, not typed**: the
 guard prints them and `check_migration_function_revoke_noop.test.mjs` asserts

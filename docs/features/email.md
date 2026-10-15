@@ -230,7 +230,7 @@ Shared pieces:
 
 | Email | Kind | Trigger | Localized | ADR |
 |---|---|---|---|---|
-| Notification → email (kudos, comment, follow, event RSVP/cancel/reminder, plan update, message, club post, run completed) | `notification_email` | `notifications` AFTER INSERT, gated on `email_notifications` | ✓ | §117 |
+| Notification → email (kudos, comment, reaction, comment like, mention, follow, event RSVP/cancel/reminder, plan update, message, club post, run completed) | `notification_email` | `notifications` AFTER INSERT, gated on `email_notifications` | ✓ | §117 |
 | **Event-day reminders** (scheduled) | `notification_email` (`event_reminder`) | hourly pg_cron `enqueue_event_reminders()` over `going` RSVPs in the next 24 h | ✓ | §117 |
 | **Welcome** ("thanks for signing up") | `lifecycle_email` (`welcome`) | `user_profiles` AFTER INSERT | ✓ | §119 |
 | **Pro-purchase receipt** | `lifecycle_email` (`pro_welcome`) | `user_profiles` AFTER UPDATE, `subscription_tier` → paid | ✓ | §121 |
@@ -688,6 +688,20 @@ neither, and neither carries a `List-Unsubscribe` header.
   is the candidate filter). The kind widen is the `NOT VALID` half in
   `20270726000002` and the `VALIDATE` in `20270726000022`. Goes live with the
   shared `SMTP_HOST` worker gate; no new credential.
+
+- [x] **Reactions, comment likes and mentions on every channel** — SHIPPED
+  2026-10-15 (migration `20270826000001`, kinds `reaction`, `comment_like`,
+  `mention`; `decisions.md § 1971`). `mention` is in `importantKinds` — someone
+  addressed the recipient by handle, which is closer to a direct message than
+  to the social loop — so the default `important` mode emails and pushes it;
+  `reaction` and `comment_like` are social-loop signals like kudos and leave
+  the inbox only under `all`. Each has its own opt-OUT `kindMutePrefKey`
+  (`notify_mention`, `notify_reaction`, `notify_comment_like`, web Settings →
+  Notifications), subtract-only like `notify_data_export_ready`. All three
+  deep-link to `/runs/{id}`, which serves a non-owner the shared view of any
+  run their audience admits — the mention gate already required that audience.
+  Copy in all seven locales; no new credential. The kind widen is the
+  `NOT VALID` half in `20270826000001` and the `VALIDATE` in `20270826000002`.
 
 ### Not planned (with reason)
 

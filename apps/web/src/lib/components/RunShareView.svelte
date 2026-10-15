@@ -8,6 +8,7 @@
 	import ElevationProfile from '#lib/components/ElevationProfile.svelte';
 	import { computeElevationGain } from '#lib/routes/route_simplify.ts';
 	import { elevationSourceTrack } from '#lib/runs/key_stats.ts';
+	import { runAltitude } from '#lib/runs/run_altitude.ts';
 	import RunSocial from '#lib/components/RunSocial.svelte';
 	import RunPhotos from '#lib/components/RunPhotos.svelte';
 	import RunGearChips from '#lib/components/RunGearChips.svelte';
@@ -113,10 +114,11 @@
 
 	onMount(load);
 
-	let elevations = $derived(track.map((p) => p.ele ?? 0));
+	let altitude = $derived(runAltitude(track, run?.source));
+	let elevations = $derived(altitude.track.map((p) => p.ele ?? 0));
 	let elevationGainM = $derived.by(() => {
-		const source = elevationSourceTrack(track);
-		return source ? Math.round(computeElevationGain(source)) : null;
+		const source = elevationSourceTrack(altitude.track);
+		return source ? Math.round(computeElevationGain(source, altitude.minDeltaM)) : null;
 	});
 
 	// Linked-cursor index — same shape as /runs/[id]. ElevationProfile

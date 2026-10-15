@@ -95,6 +95,11 @@ export type TrackPoint = {
 	/// go through `lineLat` / `lineLng` (lib/runs/track_line.ts).
 	smoothedLat?: number;
 	smoothedLng?: number;
+	/// The phone barometer's altitude for this fix, metres, anchored to GPS
+	/// altitude over a long window (docs/features/gps_distance.md § Waypoint
+	/// fields); `ele` stays the GPS altitude. Climb and the profile read it
+	/// through `runAltitude` (lib/runs/run_altitude.ts).
+	baroEle?: number;
 };
 
 // `track` is populated on-demand by `data.ts#fetchRunById` from the gzipped

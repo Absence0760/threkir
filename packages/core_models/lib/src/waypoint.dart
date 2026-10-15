@@ -38,6 +38,14 @@ class Waypoint {
   @JsonKey(includeIfNull: false)
   final double? smoothedLng;
 
+  /// The phone barometer's altitude for this fix, metres, anchored to GPS
+  /// altitude over a long window (`docs/features/gps_distance.md`
+  /// § Waypoint fields). [elevationMetres] stays the GPS altitude. Omitted on
+  /// a phone with no barometer, before the anchor has a GPS altitude to
+  /// level against, and on every track recorded before it existed.
+  @JsonKey(includeIfNull: false)
+  final double? baroElevationMetres;
+
   const Waypoint({
     required this.lat,
     required this.lng,
@@ -50,6 +58,7 @@ class Waypoint {
     this.bearingDeg,
     this.smoothedLat,
     this.smoothedLng,
+    this.baroElevationMetres,
   });
 
   /// Whether the stored track carries a usable smoothed position for this
@@ -80,6 +89,7 @@ class Waypoint {
         bearingDeg: bearingDeg,
         smoothedLat: smoothedLat,
         smoothedLng: smoothedLng,
+        baroElevationMetres: baroElevationMetres,
       );
 
   factory Waypoint.fromJson(Map<String, dynamic> json) =>
@@ -119,7 +129,8 @@ List<Waypoint> finiteWaypoints(List<Waypoint> track) {
         _nonFinite(w.speedAccuracyMps) ||
         _nonFinite(w.bearingDeg) ||
         _nonFinite(w.smoothedLat) ||
-        _nonFinite(w.smoothedLng)) {
+        _nonFinite(w.smoothedLng) ||
+        _nonFinite(w.baroElevationMetres)) {
       needsFilter = true;
       break;
     }
@@ -141,6 +152,7 @@ List<Waypoint> finiteWaypoints(List<Waypoint> track) {
           // A half-finite smoothed pair is no position: both or neither.
           smoothedLat: _finiteSmoothedPair(w) ? w.smoothedLat : null,
           smoothedLng: _finiteSmoothedPair(w) ? w.smoothedLng : null,
+          baroElevationMetres: _finiteOrNull(w.baroElevationMetres),
         ),
   ];
 }

@@ -54,7 +54,7 @@
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Threkir connects to your Bluetooth heart-rate strap so it can stream live BPM into your run.</string>
 	<key>NSMotionUsageDescription</key>
-	<string>Threkir uses motion data to count steps and estimate cadence on treadmill runs without GPS.</string>
+	<string>Threkir uses motion data to count steps and estimate cadence, and the barometer to measure the climb on your runs.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Threkir lets you attach photos from your library to your runs.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>

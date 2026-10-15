@@ -2182,6 +2182,7 @@ class ApiClient {
         if (w.bearingDeg != null) 'bearingDeg': w.bearingDeg,
         if (w.hasSmoothedPosition) 'smoothedLat': w.smoothedLat,
         if (w.hasSmoothedPosition) 'smoothedLng': w.smoothedLng,
+        if (w.baroElevationMetres != null) 'baroEle': w.baroElevationMetres,
       };
 
   static Waypoint _waypointFromJson(Map<String, dynamic> m) => Waypoint(
@@ -2196,6 +2197,7 @@ class ApiClient {
         bearingDeg: (m['bearingDeg'] as num?)?.toDouble(),
         smoothedLat: (m['smoothedLat'] as num?)?.toDouble(),
         smoothedLng: (m['smoothedLng'] as num?)?.toDouble(),
+        baroElevationMetres: (m['baroEle'] as num?)?.toDouble(),
       );
 
   /// Auto-link helper: ask the DB which of the user's saved routes

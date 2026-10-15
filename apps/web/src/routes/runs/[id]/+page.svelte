@@ -61,6 +61,7 @@
 	import { movingTimeSeconds, computeRealSplits } from '#lib/runs/run_stats.ts';
 	import { lineLat, lineLng } from '#lib/runs/track_line.ts';
 	import { computeElevationGain } from '#lib/routes/route_simplify.ts';
+	import { runAltitude } from '#lib/runs/run_altitude.ts';
 	import {
 		cadenceSpm,
 		elevationSeries,
@@ -825,10 +826,12 @@
 		if (!name) return;
 		savingRoute = true;
 		try {
+			const alt = runAltitude(run.track, run.source);
 			const { id } = await saveRunAsRoute(
 				run.id,
 				name,
-				run.track.map((p) => ({ lat: p.lat, lng: p.lng, ele: p.ele ?? null })),
+				alt.track.map((p) => ({ lat: p.lat, lng: p.lng, ele: p.ele ?? null })),
+				alt.minDeltaM,
 			);
 			showNameRoute = false;
 			showToast(m('runDetail.savedAsRoute'), 'success');
@@ -1002,17 +1005,22 @@
 	 *  10 km with ten minutes of traffic lights (decisions § 1223). */
 	let paceSeconds = $derived(movingSeconds > 0 ? movingSeconds : (run?.duration_s ?? 0));
 
+	/** The altitude series the climb, the profile and grade-adjusted pace read:
+	 *  the anchored barometer when the phone had one, else GPS altitude, with
+	 *  the noise band that series earns (lib/runs/run_altitude.ts). */
+	let altitude = $derived(run?.track ? runAltitude(run.track, run.source) : null);
+
 	/** The track the climb is measured over, or null when no point on it
 	 *  carried an altitude. A manual entry and a summary import have no track
 	 *  at all, and a track with no `ele` sums to 0 exactly as a flat run does,
 	 *  so the samples are the discriminator and not the answer (§ 1164). */
-	let elevationTrack = $derived(elevationSourceTrack(run?.track));
+	let elevationTrack = $derived(elevationSourceTrack(altitude?.track));
 
 	/** The route summary's rule, not a second one: an ungated sum integrates
 	 *  autocorrelated altitude error and reported 143 m of climb on a flat
 	 *  half-hour (decisions § 981). Null when nothing measured the altitude —
 	 *  a real 0 m over a track that did measure it still renders. */
-	let realElevationGain = $derived(elevationTrack ? Math.round(computeElevationGain(elevationTrack)) : null);
+	let realElevationGain = $derived(elevationTrack ? Math.round(computeElevationGain(elevationTrack, altitude?.minDeltaM)) : null);
 
 	/** What the page may say the climb was. The measured track wins — it is the
 	 *  same samples the elevation profile below is drawn from, so a different
@@ -1030,7 +1038,7 @@
 
 	/** Grade-adjusted pace (sec/km) — effort-equivalent flat pace over hilly
 	 *  terrain (Minetti 2002). Null on flat runs / tracks without elevation. */
-	let gradeAdjustedPace = $derived(run?.track ? gradeAdjustedPaceSecPerKm(run.track) : null);
+	let gradeAdjustedPace = $derived(altitude ? gradeAdjustedPaceSecPerKm(altitude.track) : null);
 
 	/** Only surface GAP when it differs from raw average pace by a margin
 	 *  worth showing — a near-flat run's GAP is the raw pace and the extra
@@ -1329,7 +1337,7 @@
 	// genuinely flat route); with an intermittent `ele` it fell to 0 m at
 	// every dropout. Null when too few points carry an altitude to draw a
 	// profile at all.
-	let elevationSamples = $derived(elevationSeries(baseTrack));
+	let elevationSamples = $derived(elevationSeries(runAltitude(baseTrack, run?.source).track));
 	/// Drawn smoothed over an along-track window: phone GPS altitude wanders
 	/// by metres between fixes, which the raw series drew as a sawtooth.
 	let elevations = $derived(
@@ -1373,8 +1381,8 @@
 	/// First-half vs second-half pacing, and the same comparison on
 	/// grade-adjusted effort. Independent of the split tick length — the
 	/// halves are cut at the run's own midpoint, not at a split boundary.
-	let pacing = $derived(analysePacing(run?.track));
-	let splitGapPaces = $derived(gradeAdjustedSplitPaces(run?.track, splits));
+	let pacing = $derived(analysePacing(altitude?.track));
+	let splitGapPaces = $derived(gradeAdjustedSplitPaces(altitude?.track, splits));
 
 	/// Both grade-adjusted reads are gated on the same 2 s/km margin the
 	/// key-stat GAP cell uses: on flat ground GAP is the raw pace, and a

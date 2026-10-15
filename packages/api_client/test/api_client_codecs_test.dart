@@ -173,6 +173,39 @@ void main() {
       expect(p.containsKey('smoothedLng'), isFalse);
       expect(p['lat'], 1);
     });
+
+    // The fused barometric altitude rides beside the GPS `ele`, never in
+    // place of it (docs/features/gps_distance.md § Waypoint fields).
+    test('the barometric altitude round-trips as baroEle beside ele', () {
+      const w = Waypoint(
+        lat: 47.37,
+        lng: 8.54,
+        elevationMetres: 412,
+        baroElevationMetres: 405.25,
+      );
+      final json = ApiClient.debugWaypointToJson(w);
+      expect(json['ele'], 412);
+      expect(json['baroEle'], 405.25);
+      final back = ApiClient.debugWaypointFromJson(
+          jsonDecode(jsonEncode(json)) as Map<String, dynamic>);
+      expect(back.elevationMetres, 412);
+      expect(back.baroElevationMetres, 405.25);
+      expect(
+        ApiClient.debugWaypointToJson(const Waypoint(lat: 1, lng: 2))
+            .containsKey('baroEle'),
+        isFalse,
+      );
+    });
+
+    test('the track blob drops a non-finite barometric altitude only', () {
+      final blob = ApiClient.debugTrackBlobJson(const [
+        Waypoint(
+            lat: 1, lng: 2, elevationMetres: 30, baroElevationMetres: double.nan),
+      ]);
+      final p = (jsonDecode(blob) as List).single as Map<String, dynamic>;
+      expect(p.containsKey('baroEle'), isFalse);
+      expect(p['ele'], 30);
+    });
   });
 
   group('debugRunFromRow', () {

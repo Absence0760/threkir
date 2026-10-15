@@ -34,6 +34,7 @@ import '../pace_analysis.dart';
 import '../preferences.dart';
 import '../privacy.dart';
 import '../route_simplify.dart';
+import '../run_altitude.dart';
 import '../grade_adjusted_pace.dart';
 import '../guided_runs.dart';
 import '../run_stats.dart';
@@ -209,6 +210,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   DistanceUnit? _statsCacheSplitsUnit;
   double? _cachedElevationGain;
   double? _cachedElevationLoss;
+  List<Waypoint>? _cachedAltitudeTrack;
   Duration? _cachedMovingTime;
   int? _cachedGap;
   bool _gapCacheChecked = false;
@@ -235,6 +237,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     _statsCacheTrackLen = run.track.length;
     _cachedElevationGain = null;
     _cachedElevationLoss = null;
+    _cachedAltitudeTrack = null;
     _cachedMovingTime = null;
     _cachedGap = null;
     _gapCacheChecked = false;
@@ -1438,7 +1441,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: _ElevationChart(
-            track: run.track,
+            track: _altitudeTrack,
             theme: theme,
             unit: unit,
             onHoverIdx: (idx) =>
@@ -1644,12 +1647,12 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       ActivityType.fromName(run.metadata?[MetadataKeys.activityType] as String?);
 
   bool get _hasElevation =>
-      run.track.any((w) => w.elevationMetres != null);
+      _altitudeTrack.any((w) => w.elevationMetres != null);
 
   /// One altitude is a point, not a profile — the same
   /// [minElevationSamples] floor [elevationSeries] applies.
   bool get _hasElevationProfile =>
-      run.track
+      _altitudeTrack
           .where((w) => w.elevationMetres?.isFinite ?? false)
           .take(minElevationSamples)
           .length ==
@@ -1830,7 +1833,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   int? get _gradeAdjustedPaceSecPerKm {
     _resetStatsCacheIfStale();
     if (!_gapCacheChecked) {
-      _cachedGap = gradeAdjustedPaceSecPerKm(run.track);
+      _cachedGap = gradeAdjustedPaceSecPerKm(_altitudeTrack);
       _gapCacheChecked = true;
     }
     return _cachedGap;
@@ -1860,9 +1863,18 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   }
 
   // The shared helper, not a third copy of the arithmetic: it carries the last
-  // reading across an altitude dropout and gates on the noise band, so the
-  // number here matches what save-as-route writes and what web reports.
-  double _computeElevationGain() => computeElevationGain(run.track);
+  // reading across an altitude dropout and gates on the noise band its
+  // altitude source earns (`run_altitude.dart`), so the number here matches
+  // what save-as-route writes and what web reports.
+  double _computeElevationGain() =>
+      computeRunElevationGain(run.track, run.source);
+
+  /// The altitude series the climb, the profile and grade-adjusted pace read:
+  /// the anchored barometer when the phone had one, else the GPS altitude.
+  List<Waypoint> get _altitudeTrack {
+    _resetStatsCacheIfStale();
+    return _cachedAltitudeTrack ??= runAltitude(run.track, run.source).track;
+  }
 
   double get _elevationLoss {
     _resetStatsCacheIfStale();
@@ -1870,7 +1882,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   }
 
   // The shared helper, gated the same way as the gain shown beside it.
-  double _computeElevationLoss() => computeElevationLoss(run.track);
+  double _computeElevationLoss() =>
+      computeRunElevationLoss(run.track, run.source);
 
   // Calorie estimate routes through the shared pure helper in
   // `lib/calories.dart` (mirrored byte-for-byte to web's
@@ -2362,7 +2375,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   PacingAnalysis? get _pacing {
     _resetStatsCacheIfStale();
     if (!_pacingCacheChecked) {
-      _cachedPacing = analysePacing(run.track);
+      _cachedPacing = analysePacing(_altitudeTrack);
       _pacingCacheChecked = true;
     }
     return _cachedPacing;
@@ -2380,7 +2393,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     const metresPerMile = 1609.344;
     final tickLength = unit == DistanceUnit.mi ? metresPerMile : 1000.0;
     final gap = gradeAdjustedSplitPaces(
-        run.track, List.filled(_splitsFor(unit).length, tickLength));
+        _altitudeTrack, List.filled(_splitsFor(unit).length, tickLength));
     _cachedSplitGap = gap;
     _statsCacheSplitGapUnit = unit;
     return gap;
@@ -2774,8 +2787,9 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     if (saved != true) return;
 
     final name = nameCtl.text.trim().isEmpty ? _title : nameCtl.text.trim();
-    final simplified = simplifyTrack(run.track, epsilonMetres: 10);
-    final gain = computeElevationGain(run.track);
+    final simplified =
+        simplifyTrack(runAltitude(run.track, run.source).track, epsilonMetres: 10);
+    final gain = computeRunElevationGain(run.track, run.source);
 
     final route = Route(
       id: const Uuid().v4(),

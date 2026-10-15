@@ -1544,16 +1544,24 @@ export async function fetchFitnessSnapshots(limit = 60): Promise<FitnessSnapshot
 /// 10 m epsilon the Android path uses), sums elevation gain, and
 /// inserts a `routes` row for the current user. Throws if the run has
 /// no track (manual-entry runs); the caller should gate the button.
+/// `track` carries the run's chosen altitude series and
+/// `elevationMinDeltaM` its noise band (`runAltitude`), so the route's
+/// climb is the figure the run page showed.
 ///
 /// Returns the new route id so the caller can navigate to it.
 export async function saveRunAsRoute(
 	runId: string,
 	name: string,
 	track: Array<{ lat: number; lng: number; ele?: number | null }>,
+	elevationMinDeltaM?: number,
 ): Promise<{ id: string }> {
 	const { summarizeRouteFromTrack } = await import('../routes/route_simplify');
 	if (track.length < 2) throw new Error('Not enough GPS points to save a route');
-	const { waypoints, distance_m, elevation_m } = summarizeRouteFromTrack(track, 10);
+	const { waypoints, distance_m, elevation_m } = summarizeRouteFromTrack(
+		track,
+		10,
+		elevationMinDeltaM,
+	);
 
 	const { data: authUser } = await supabase.auth.getUser();
 	const userId = authUser.user?.id;

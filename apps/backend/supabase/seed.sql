@@ -3037,3 +3037,12 @@ INSERT INTO global_segments (name, description, waypoints, distance_m, elevation
 -- audience control, the Playwright specs and manual testing exercise it.
 insert into private.feature_flags (name, enabled) values ('audience_sharing', true)
   on conflict (name) do update set enabled = excluded.enabled, updated_at = now();
+
+-- ─────────────────── Coach run map gate (20270822000011) ───────────────────
+--
+-- A linked coach's clipped view of an athlete's run map is fail-closed behind
+-- a private.feature_flags row no migration writes, so prod stays off until
+-- the CISO / Security Analyst sign-off in docs/features/coach_roster.md.
+-- Local stacks and CI open it so the coach view and its specs exercise it.
+insert into private.feature_flags (name, enabled) values ('coach_run_map', true)
+  on conflict (name) do update set enabled = excluded.enabled, updated_at = now();

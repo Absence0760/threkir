@@ -1173,6 +1173,23 @@ $neutralised$;`,
       },
     },
   ],
+  [
+    'coached_runs',
+    {
+      why: "drops `private.is_active_coach_of(auth.uid(), user_id)`, the coach_run_map gate and the self exclusion — every predicate that decides whether the caller coaches the run's owner. The view has no subject selector of its own; the assertion's `id = …` is",
+      sql: `create or replace view public.coached_runs as
+ select r.id, r.user_id, r.is_public, coalesce(r.metadata, '{}'::jsonb) as metadata
+   from runs r
+  where ${mine('r')};`,
+      subject: 'runs r — the run whose coaching check was dropped',
+      witness: {
+        setup: `update runs set is_public = is_public
+                 where id = (select id from runs order by id limit 1);`,
+        probe: `select count(*) from coached_runs
+                 where id = (select id from runs order by id limit 1);`,
+      },
+    },
+  ],
 ]);
 
 // Definer relations a zero-or-empty assertion reads and that deliberately have

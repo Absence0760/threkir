@@ -4958,6 +4958,15 @@ export type Database = {
         }
         Relationships: []
       }
+      coached_runs: {
+        Row: {
+          id: string | null
+          is_public: boolean | null
+          metadata: Json | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
       event_results_redacted: {
         Row: {
           age_grade_pct: number | null
@@ -5895,6 +5904,7 @@ export type Database = {
           runs_7d: number
         }[]
       }
+      coach_run_map_enabled: { Args: never; Returns: boolean }
       confirm_age_and_terms: {
         Args: { p_preferred_unit?: string }
         Returns: undefined

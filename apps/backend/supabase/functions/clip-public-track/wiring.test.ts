@@ -67,8 +67,8 @@ Deno.test('the owner bypass demands an identified caller', () => {
     'the visibility bypass must require a non-null caller AND an owner match',
   );
   assert(
-    /if \(!run\.is_public && !isAudienceMember && !isOwnerBypass\) \{/.test(SRC),
-    'a non-public row must be refused to everyone but its owner and its admitted audience',
+    /if \(!run\.is_public && !isAudienceMember && !isActiveCoach && !isOwnerBypass\) \{/.test(SRC),
+    'a non-public row must be refused to everyone but its owner, its admitted audience and its athlete\'s active coach',
   );
 });
 
@@ -94,6 +94,29 @@ Deno.test('an audience member is only ever a caller shared_runs returned the row
     /userClient\s*\.from\(view\)/.test(SRC),
     'the views must be read as the caller — the service role would see every audience at once',
   );
+});
+
+Deno.test('a coach is only ever a caller coached_runs returned the row for', () => {
+  // decisions § 1968: the coach branch is named by where the row came from —
+  // `coached_runs`, read as the caller, which applies the active link and the
+  // coach_run_map gate — never by the base `runs` table, whose coach RLS policy
+  // carries neither the gate nor the clip contract.
+  assert(
+    /const isActiveCoach = audience === 'coach' && callerId !== null && callerId !== ownerId;/.test(SRC),
+    'the coach branch must come from the coached_runs read, for an identified non-owner',
+  );
+  assert(
+    !/(userClient|adminClient)\s*\.from\(['"]runs['"]\)/.test(SRC),
+    'the run row must never be read from the base runs table (the Storage bucket of the same name is a different call)',
+  );
+});
+
+Deno.test('a coached run is clipped like every other non-owner read', () => {
+  const ownerReturn = SRC.indexOf('if (callerId === ownerId) {');
+  assert(ownerReturn !== -1, 'the owner return is gone');
+  assert(!/audience === 'coach'[^\n]*\{\s*return Response\.json\(\{ points: served/.test(SRC),
+    'a coach must never be handed the unclipped points');
+  assert(SRC.indexOf("'clip_track_for_user'") > ownerReturn, 'every non-owner falls through to the clip');
 });
 
 Deno.test('a shared run is clipped exactly like a public one', () => {

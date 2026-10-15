@@ -2075,6 +2075,7 @@ export const messages = {
 	"clubHome.rotate": "再生成",
 	"clubHome.generateInviteLink": "招待リンクを生成",
 	"clubHome.pendingRequests": "保留中のリクエスト ({n})",
+	"clubHome.pendingLoadFailed": "参加リクエストを読み込めませんでした: {error}",
 	"clubHome.approving": "承認中…",
 	"clubHome.approveAll": "すべて承認",
 	"clubHome.memberFallback": "メンバー",

@@ -2093,6 +2093,7 @@ export const en = {
 	"clubHome.rotate": "Rotate",
 	"clubHome.generateInviteLink": "Generate invite link",
 	"clubHome.pendingRequests": "Pending requests ({n})",
+	"clubHome.pendingLoadFailed": "Couldn’t load the join requests: {error}",
 	"clubHome.approving": "Approving…",
 	"clubHome.approveAll": "Approve all",
 	"clubHome.memberFallback": "Member",

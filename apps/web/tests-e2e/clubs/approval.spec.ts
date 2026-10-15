@@ -177,4 +177,28 @@ test.describe('/clubs/[slug] — approval flow', () => {
 			page.locator('.member-list .member', { hasText: 'Alex Chen' })
 		).toBeVisible({ timeout: 10_000 });
 	});
+
+	test('a join queue that fails to load says so, and Retry loads it', async ({ page }) => {
+		// The queue used to log the failure and render nothing, so an admin
+		// was told no one was waiting while a request sat unanswered.
+		const pendingRead = '**/rest/v1/club_members?*status=eq.pending*';
+		await page.route(pendingRead, (route) =>
+			route.fulfill({ status: 500, contentType: 'application/json', body: '{"message":"boom"}' })
+		);
+		await page.goto('/clubs/tempo-tuesday');
+		await expect(
+			page.getByRole('heading', { level: 1, name: 'UVA Tempo Tuesday' })
+		).toBeVisible({ timeout: 10_000 });
+
+		const failed = page.locator('section.admin-card[role="alert"]');
+		await expect(failed).toContainText('Couldn’t load the join requests', { timeout: 10_000 });
+		await expect(page.locator('section.admin-card', { hasText: /Pending requests/ })).toHaveCount(0);
+
+		await page.unroute(pendingRead);
+		await failed.getByRole('button', { name: 'Retry' }).click();
+		await expect(failed).toHaveCount(0);
+		await expect(
+			page.locator('section.admin-card', { hasText: /Pending requests/ })
+		).toContainText('Pending requests (1)', { timeout: 10_000 });
+	});
 });

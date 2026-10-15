@@ -159,3 +159,19 @@ test('enrichClubs chunks its membership in filter', () => {
 	assert.match(fn, /chunk\(ids, FEED_FOLLOWEE_CHUNK\)/);
 	assert.doesNotMatch(fn, /\.in\('club_id', ids\)/);
 });
+
+test('a whole-list read that ended short fails rather than returning what it reached', () => {
+	// An export, a total or an admin queue built from a partial walk presents
+	// the rows it never reached as rows that do not exist.
+	assert.match(
+		body('fetchPendingRequests'),
+		/if \(!walk\.complete\) \{\s*throw dbError\(/,
+		'fetchPendingRequests must throw on an incomplete walk',
+	);
+	assert.match(
+		body('fetchRuns'),
+		/if \(!walk\.complete\) \{\s*if \(opts\?\.throwOnError\) \{\s*throw dbError\(/,
+		'fetchRuns must throw on an incomplete walk when its caller asked for errors',
+	);
+});
+

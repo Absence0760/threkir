@@ -364,8 +364,14 @@ export async function fetchRuns(
 		// walked, and walked by cursor: an OFFSET walk over a history that a
 		// sync or a delete changes mid-read skips or repeats a run (§ 1927).
 		const walk = await walkKeyset(RUN_ORDER, page, { start: opts?.after ?? null });
-		if (walk.error && opts?.throwOnError) throw dbError(walk.error);
-		if (!walk.complete) console.warn('fetchRuns: the history walk ended short', walk.error);
+		// A history that ended short is not a shorter history: the export and
+		// the totals would present the missing runs as never having existed.
+		if (!walk.complete) {
+			if (opts?.throwOnError) {
+				throw dbError(walk.error ?? new Error('fetchRuns: the history walk ended short'));
+			}
+			console.warn('fetchRuns: the history walk ended short', walk.error);
+		}
 		return walk.rows;
 	};
 
@@ -3587,7 +3593,11 @@ export async function fetchPendingRequests(clubId: string): Promise<(ClubMember 
 		}
 		return q.limit(limit);
 	});
-	if (!walk.complete) console.error('fetchPendingRequests failed', walk.error);
+	// Throws rather than returning the rows it reached: a queue that failed to
+	// load must not read as "no one is waiting" to the admin approving it.
+	if (!walk.complete) {
+		throw dbError(walk.error ?? new Error('fetchPendingRequests: the walk ended short'));
+	}
 	const rows = walk.rows;
 	if (rows.length === 0) return [];
 	const userIds = (rows as ClubMember[]).map((r) => r.user_id);

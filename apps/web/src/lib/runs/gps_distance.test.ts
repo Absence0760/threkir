@@ -176,14 +176,25 @@ test('a fix with a non-finite timestamp or coordinate credits nothing', () => {
 	assert.equal(est.distanceM, 0);
 });
 
-test('a gap over GAP_S re-anchors and credits nothing for the jump', () => {
+test('a gap over GAP_S re-anchors and credits the chord, capped at maxSpeed x dt (v1.4)', () => {
 	const est = new GpsDistanceEstimator();
 	est.addFix(0, 40, -75, 3, 3, 0.3, 0);
 	est.addFix(1, 40.000027, -75, 3, 3, 0.3, 0);
 	const before = est.distanceM;
-	// ~1.1 km north, 30 s later: a re-anchor, not a 37 m/s sprint.
-	assert.equal(est.addFix(31, 40.01, -75, 3, 3, 0.3, 0), 0);
-	assert.equal(est.distanceM, before);
+	// ~1.1 km north, 30 s later: a re-anchor, not a 37 m/s sprint, so the
+	// chord is credited only up to the 10 m/s ceiling over the 30 s.
+	assert.equal(est.addFix(31, 40.01, -75, 3, 3, 0.3, 0), 300);
+	assert.equal(est.distanceM, before + 300);
+});
+
+test('a reachable gap credits its chord less the 1-sigma uncertainty of both ends (v1.4)', () => {
+	const est = new GpsDistanceEstimator();
+	est.addFix(0, 40, -75, 3, 3, 0.3, 0);
+	est.addFix(1, 40.000027, -75, 3, 3, 0.3, 0);
+	// ~97 m north, 30 s later: the straight line across the gap is a lower
+	// bound on the path, less sqrt(ax + ay + 2r). Value from reference.py.
+	const credit = est.addFix(31, 40.0009, -75, 3, 3, 0.3, 0);
+	assert.ok(Math.abs(credit - 91.887248) <= 1e-3, `credit ${credit}`);
 });
 
 test('finish with no pending steps and no fixes is a no-op', () => {

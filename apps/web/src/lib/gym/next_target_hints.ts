@@ -3,7 +3,8 @@
 // session's logged sets. Pure suggestion — never auto-applied.
 //
 // Pure — no Svelte / Supabase dependencies, so it runs under `npx tsx --test`.
-// Web-only: no Dart twin.
+// Dart twin: `apps/mobile_android/lib/next_target_hints.dart` — keep the
+// algorithm, edge cases, outputs, and test counts in lockstep.
 
 import { normaliseExerciseName } from './gym_prs';
 import { nextPrescription, type ProgressionScheme, type ProgressionSetLike } from './gym_progression';

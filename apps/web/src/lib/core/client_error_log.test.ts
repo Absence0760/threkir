@@ -12,7 +12,7 @@ test('logs the prefix, status, message, route and the error itself', () => {
 	const calls: unknown[][] = [];
 	const error = new Error('each_key_duplicate');
 	logClientError(
-		{ error, status: 500, message: 'Internal Error', event: { route: { id: '/dashboard' } } },
+		{ kind: 'unknown', error, event: { route: { id: '/dashboard' } } },
 		(...data) => calls.push(data)
 	);
 	assert.equal(calls.length, 1);
@@ -25,7 +25,7 @@ test('writes to console.error when no sink is passed, as the hook calls it', () 
 	const spy = mock.method(console, 'error', () => {});
 	try {
 		const error = new Error('boom');
-		logClientError({ error, status: 500, message: 'Internal Error', event: { route: { id: '/runs/[id]' } } });
+		logClientError({ kind: 'unknown', error, event: { route: { id: '/runs/[id]' } } });
 		assert.equal(spy.mock.callCount(), 1);
 		assert.deepEqual(spy.mock.calls[0].arguments, [
 			CLIENT_ERROR_LOG_PREFIX,
@@ -40,7 +40,7 @@ test('writes to console.error when no sink is passed, as the hook calls it', () 
 test('names an unmatched route instead of throwing on it', () => {
 	const calls: unknown[][] = [];
 	logClientError(
-		{ error: 'x', status: 500, message: 'Internal Error', event: { route: { id: null } } },
+		{ kind: 'unknown', error: 'x', event: { route: { id: null } } },
 		(...data) => calls.push(data)
 	);
 	assert.equal(calls[0][1], '500 Internal Error on (no route)');
@@ -49,15 +49,33 @@ test('names an unmatched route instead of throwing on it', () => {
 test('a client-side 404 is not logged, so the crash net does not read it as a crash', () => {
 	const calls: unknown[][] = [];
 	logClientError(
-		{ error: new Error('Not found: /nope'), status: 404, message: 'Not Found', event: { route: { id: null } } },
+		{ kind: 'framework', error: { status: 404, message: 'Not Found' }, event: { route: { id: null } } },
 		(...data) => calls.push(data)
 	);
 	assert.equal(calls.length, 0);
 });
 
+test('a framework error logs its own status and safe message', () => {
+	const calls: unknown[][] = [];
+	logClientError(
+		{ kind: 'framework', error: { status: 503, message: 'Service Unavailable' }, event: { route: { id: '/plans' } } },
+		(...data) => calls.push(data)
+	);
+	assert.equal(calls[0][1], '503 Service Unavailable on /plans');
+});
+
+test('an app error logs the message from its App.Error body', () => {
+	const calls: unknown[][] = [];
+	logClientError(
+		{ kind: 'app', error: { message: 'Plan not found' }, event: { route: { id: '/plans/[id]' } } },
+		(...data) => calls.push(data)
+	);
+	assert.equal(calls[0][1], '500 Plan not found on /plans/[id]');
+});
+
 test('a throwing sink does not escape', () => {
 	assert.doesNotThrow(() =>
-		logClientError({ error: 1, status: 500, message: 'm', event: {} }, () => {
+		logClientError({ kind: 'unknown', error: 1, event: {} }, () => {
 			throw new Error('console is gone');
 		})
 	);

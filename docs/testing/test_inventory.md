@@ -35,7 +35,7 @@ Pure-function tests for two helpers in `lib/run_stats.dart`:
 - Slow → fast → slow run → picks the fast middle 5 km
 - Regression: a 10 km in 1:14:34 does **not** surface as a 37:17 fastest 5k
 
-### `packages/run_recorder/test/run_recorder_test.dart` — 96 tests
+### `packages/run_recorder/test/run_recorder_test.dart` — 97 tests
 
 The recorder's state machine and GPS filter chain. Uses `@visibleForTesting` hooks (see below) to bypass the real geolocator stream and inject synthetic `Position` objects directly into `_onPosition`.
 
@@ -429,7 +429,7 @@ Pure-function tests for `parseBleHeartRateMeasurement` in `lib/ble_heart_rate.da
 - Truncated payload returns null
 - Single-byte payload returns null
 
-### `apps/mobile_android/test/training_test.dart` — 66 tests
+### `apps/mobile_android/test/training_test.dart` — 67 tests
 
 Dart mirror of `apps/web/src/lib/training/training.test.ts`. The Dart engine (`lib/training.dart`) must produce the same paces and phase assignments as the TypeScript engine for the same inputs. Covers the same functions:
 
@@ -609,7 +609,7 @@ Pure-parser coverage for `RouteParser` (GPX/KML/TCX/GeoJSON) and `FitParser`. GP
 
 Regression for the `RunSource.watch` enum-map regen. Constructs a `Run` with `source: RunSource.watch`, asserts `toJson()['source'] == 'watch'` and `fromJson({'source': 'watch'}).source == RunSource.watch`. Existed to catch the crash that would otherwise hit `_$RunSourceEnumMap[instance.source]!` on any serialisation of a watch-originated run.
 
-### `apps/web/src/lib/training/training.test.ts` — 72 tests
+### `apps/web/src/lib/training/training.test.ts` — 73 tests
 
 TypeScript unit tests for the training plan engine, written against Node's `node:test` API (no test runner dependency). Run with `npx tsx --test src/lib/training/training.test.ts` from `apps/web`.
 
@@ -1297,7 +1297,7 @@ The happy-path 200s with valid HMAC / freshness / dedupe still need real secrets
 
 The runtime half of the guard `build-web` runs over the build output (`scripts/check_web_removed_kit_apis.mjs`). web@1.12.0 resolved @sentry/sveltekit's Svelte 4 tracing variant, which subscribes to `$app/stores` — a stub that throws on Kit 3 — and `hooks.client.ts` runs `Sentry.init` only when `!dev && PUBLIC_SENTRY_DSN && hasAcceptedConsent()`, so every reader who accepted error reporting got a blank page while every `vite dev` lane stayed green ([decisions § 1896](../architecture/decisions.md)). Runs under `playwright.built.config.ts`: a production build with a dummy DSN, served as CloudFront serves it by `tests-e2e/scripts/serve-build.mjs`. One case seeds consent the way `consent.set('accepted')` stores it and loads `/` (prerendered — the uncaught-error check is what fails there), `/help` and `/login` (the SPA shell — a throw leaves them blank); the other accepts through the banner itself, which reloads the page, and asserts it still renders. Both require a `*.sentry.io` request to have been answered, so neither can pass without `Sentry.init` having run. Against the pre-fix `vite.config.ts` (no `sentrySvelteKit()` plugin) both fail on the `app_stores_removed` page error.
 
-### `apps/web/tests-e2e/**/*.spec.ts` — 2,117 declared tests across 559 spec files (Playwright suite)
+### `apps/web/tests-e2e/**/*.spec.ts` — 2,118 declared tests across 559 spec files (Playwright suite)
 
 End-to-end browser tests that drive the real SvelteKit app against a real local Supabase. Unit tests pin pure helpers and SQL pins RLS at the database; this suite catches the next failure mode — **a UI fetch path that bypasses or misuses an otherwise-correct policy** (a wrong join, a dropped filter, a client-side lookup that trusts the URL, an optimistic update that never round-trips). Browser-only on purpose — mobile / watch don't have an equivalent harness (Flutter `integration_test` is too slow + flaky on CI to be worth the cycles right now).
 

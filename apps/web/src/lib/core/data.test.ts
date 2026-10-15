@@ -1856,11 +1856,17 @@ test('the exercise catalogue read is totally ordered, so a name binds to one id'
 	const start = source.indexOf('export async function fetchExerciseCatalogue(');
 	assert.ok(start >= 0, 'fetchExerciseCatalogue moved — re-anchor this guard');
 	const body = source.slice(start, source.indexOf('\nexport ', start + 1));
-	assert.match(body, /\.order\('name'/, 'the catalogue is still presented by name');
+	const order = /const EXERCISE_ORDER[^=]*= \[([^\]]*)\]/.exec(source);
+	assert.ok(order, 'EXERCISE_ORDER moved — re-anchor this guard');
+	assert.deepEqual(
+		[...order[1].matchAll(/column: '(\w+)'/g)].map((m) => m[1]),
+		['name', 'id'],
+		'presented by name, and ordering on a non-unique key alone is not an order — keep the id tiebreak',
+	);
 	assert.match(
 		body,
-		/\.order\('id'/,
-		'ordering on a non-unique key alone is not an order — add the id tiebreak',
+		/for \(const k of EXERCISE_ORDER\)[\s\S]*?\.order\(k\.column/,
+		'the read must sort by the order its cursor is taken in',
 	);
 });
 
@@ -1868,7 +1874,7 @@ test('the exercise catalogue read pages, and says so when it fails', () => {
 	// Reason: PostgREST caps an unranged select at `db.max-rows` and answers
 	// with the truncated page and a 200 — no error, no flag — so a read whose
 	// contract is "the whole catalogue" cannot be a bare `.select()`.
-	// `api_client.dart` has walked ranges since it was written; the web half
+	// `api_client.dart` has walked the catalogue since it was written; the web half
 	// did not, so the two clients disagreed about a bound and the web one gave
 	// no signal on hitting it. Degrading to `[]` on a real error is the same
 	// class one layer up: an empty catalogue is a state the surfaces ACT on.
@@ -1876,8 +1882,12 @@ test('the exercise catalogue read pages, and says so when it fails', () => {
 	const start = source.indexOf('export async function fetchExerciseCatalogue(');
 	assert.ok(start >= 0, 'fetchExerciseCatalogue moved — re-anchor this guard');
 	const body = source.slice(start, source.indexOf('\nexport ', start + 1));
-	assert.match(body, /\.range\(/, 'an unranged select is capped at db.max-rows with no flag');
-	assert.match(body, /error: `\$\{error\.message\}/, 'a failed read must surface, not return []');
+	// Walked by keyset rather than by `.range()`: an OFFSET walk over a
+	// catalogue that gains or loses a custom entry mid-read skips or repeats
+	// a row (§ 1927).
+	assert.match(body, /walkKeyset\(EXERCISE_ORDER,/, 'an unranged select is capped at db.max-rows with no flag');
+	assert.doesNotMatch(body, /\.range\(/, 'the catalogue must not be walked by offset');
+	assert.match(body, /if \(!walk\.complete\)[\s\S]*?error: `\$\{message\}/, 'a failed read must surface, not return []');
 	assert.match(
 		body,
 		/dedupeShadowedExercises\(/,

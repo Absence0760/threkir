@@ -60,13 +60,21 @@ test('searchPublicRoutes matches the query literally, not as a LIKE pattern', ()
 	assert.doesNotMatch(fn, /\.ilike\(/, 'an ilike pattern reads * % _ \\ as wildcards');
 });
 
-test('fetchRuns takes a keyset cursor and its load-more page starts at the cursor', () => {
-	// The whole-history walk (no `limit`) still pages with `.range()` from 0
-	// to the end, which is not a load-more list; the limited branch must not
-	// take a position.
+test('fetchRuns takes a keyset cursor, and its whole-history walk is a keyset walk too', () => {
+	// The limited branch is one load-more page starting at the cursor. The
+	// unlimited branch reads the whole history for recap, heatmap and the
+	// account export, and used to walk it with `.range()`: an OFFSET walk
+	// over a history a sync or a delete changes mid-read skips or repeats a
+	// run (§ 1927). Both must take a position from a row, never a count.
 	const fn = body('fetchRuns');
 	assert.match(fn, /keysetAfter\(RUN_ORDER, opts\.after\)/, 'fetchRuns must filter to the runs after the cursor');
-	assert.match(fn, /page\(0, opts\.limit - 1\)/, 'the limited page must start at the cursor, not at an offset');
+	assert.match(fn, /walkKeyset\(RUN_ORDER, page/, 'the whole-history read must walk by cursor');
+	assert.match(
+		fn,
+		/for \(const k of RUN_ORDER\)[\s\S]*?\.order\(k\.column/,
+		'the read must sort by the order its cursor is taken in',
+	);
+	assert.doesNotMatch(fn, /\.range\(/, 'fetchRuns must not page with .range()');
 	assert.doesNotMatch(fn, /opts\.offset|opts\?\.offset/, 'fetchRuns must not page by offset');
 	assert.match(
 		body('fetchRunsWithError'),

@@ -175,7 +175,7 @@ test('every paged read ends its ordering on a column unique per row', () => {
 	// readers moved to keyset cursors (`core/keyset_page.ts`,
 	// `core/keyset_readers.test.ts`), which page with `.limit()`, so what is
 	// left is the whole-table walks.
-	assert.ok(ranges >= 6, `only found ${ranges} .range() reads — walker broken?`);
+	assert.ok(ranges >= 4, `only found ${ranges} .range() reads — walker broken?`);
 
 	assert.deepEqual(
 		offenders.sort(),

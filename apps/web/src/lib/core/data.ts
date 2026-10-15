@@ -22,6 +22,7 @@ import {
 	type KeysetKey,
 	type KeysetPage,
 	type PublicRouteSort,
+	walkKeyset,
 } from './keyset_page';
 import { probeSaysConfigured } from './provider_probe';
 import { loadSettings, effective } from '../settings/settings';
@@ -317,9 +318,7 @@ export async function fetchRuns(
 	// `/tmp/data-isolation-audit/client-realtime.md` M2.
 	const userId = auth.user?.id;
 	if (!userId) return [];
-	const after = opts?.after ? keysetAfter(RUN_ORDER, opts.after) : undefined;
-	if (after === null) return [];
-	const build = <S extends string>(select: S) => {
+	const build = <S extends string>(select: S, after: string | null) => {
 		let q = supabase
 			.from(TABLES.runs)
 			// Generic over the select list rather than a ternary over it. A
@@ -334,53 +333,39 @@ export async function fetchRuns(
 		if (opts?.startedAtFrom != null) q = q.gte('started_at', opts.startedAtFrom);
 		if (opts?.startedAtBefore != null) q = q.lt('started_at', opts.startedAtBefore);
 		if (after) q = q.or(after);
-		// RUN_ORDER, spelt out so paged_read_guards can read it: the `id`
-		// tie-break is what lets the whole-history walk below compose and a
-		// keyset cursor name exactly one row.
-		return q
-			.order('started_at', { ascending: false, nullsFirst: true })
-			.order('id', { ascending: false, nullsFirst: true });
+		// Sorted by the same spec the cursor is read from, so the two cannot
+		// drift: a cursor taken in one order and applied in another skips rows.
+		for (const k of RUN_ORDER) {
+			q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+		}
+		return q;
 	};
 
-	// The paging, the `limit`/`offset` window, the `throwOnError` contract and
-	// the safety ceiling, shared by both branches and generic in the row type
-	// the caller's own page function hands back. Sharing them is what the
-	// per-projection sibling § 1518 refused would have cost four copies of.
-	const collect = async <R>(
-		page: (from: number, to: number) => PromiseLike<{ data: R[] | null; error: unknown }>,
+	// One load-more page, or the whole history; the `throwOnError` contract is
+	// shared by both branches and generic in the row type the caller's own page
+	// function hands back. Sharing it is what the per-projection sibling § 1518
+	// refused would have cost four copies of.
+	const collect = async <R extends object>(
+		page: (after: string | null, limit: number) => PromiseLike<{ data: R[] | null; error: unknown }>,
 	): Promise<R[]> => {
 		if (opts?.limit != null) {
-			// One keyset page: `after` already moved the window, so it always
-			// starts at the first row the filter admits.
-			const { data, error } = await page(0, opts.limit - 1);
+			const after = opts.after ? keysetAfter(RUN_ORDER, opts.after) : null;
+			if (opts.after && after === null) return [];
+			const { data, error } = await page(after, opts.limit);
 			if (error || !data) {
 				if (opts?.throwOnError && error) throw dbError(error);
 				return [];
 			}
 			return data;
 		}
-		// No explicit limit means "every run". PostgREST caps an unbounded
-		// SELECT at 1000 rows, which silently dropped the oldest activities
-		// of a high-volume history (a 1,500-run Strava migrant lost ~500)
-		// across recap / heatmap / dashboard / account / runs. Page through
-		// instead so nothing is truncated; the safety ceiling logs rather
-		// than dropping silently. Theme C (strava-migration / pro).
-		const PAGE = 1000;
-		const SAFETY_MAX = 50_000;
-		const rows: R[] = [];
-		for (let from = 0; from < SAFETY_MAX; from += PAGE) {
-			const { data, error } = await page(from, from + PAGE - 1);
-			if (error || !data) {
-				if (opts?.throwOnError && error) throw dbError(error);
-				break;
-			}
-			rows.push(...data);
-			if (data.length < PAGE) break;
-		}
-		if (rows.length >= SAFETY_MAX) {
-			console.warn(`fetchRuns reached the ${SAFETY_MAX}-row ceiling; older runs may be omitted`);
-		}
-		return rows;
+		// No explicit limit means "every run" — recap, heatmap, account export.
+		// PostgREST caps an unbounded SELECT at 1000 rows, so the history is
+		// walked, and walked by cursor: an OFFSET walk over a history that a
+		// sync or a delete changes mid-read skips or repeats a run (§ 1927).
+		const walk = await walkKeyset(RUN_ORDER, page, { start: opts?.after ?? null });
+		if (walk.error && opts?.throwOnError) throw dbError(walk.error);
+		if (!walk.complete) console.warn('fetchRuns: the history walk ended short', walk.error);
+		return walk.rows;
 	};
 
 	// Defensive narrow on read: the DB CHECK constraints stop bad `source` /
@@ -392,17 +377,28 @@ export async function fetchRuns(
 	// selects every column, and says so with a literal the parser reads for
 	// itself rather than with an assertion this function makes about itself.
 	if (opts?.columns) {
-		const columns = opts.columns;
+		const columns: readonly string[] = opts.columns;
+		// The cursor is read off the row, so a projection that leaves out an
+		// order column selects it for the walk and drops it again: the row
+		// must carry only the columns its type names (§ 1520).
+		const cursorOnly = RUN_ORDER.map((k) => k.column).filter((c) => !columns.includes(c));
 		// The joined list is `string`, so the parser answers `GenericStringError`
 		// and the rows would be walked as errors. `Partial<RunRow>` is the honest
 		// claim for a projection: which of the columns arrived is the caller's
 		// tuple to say, and the overload above says it.
-		const rows = await collect((from, to) =>
-			build(columns.join(SELECT_SEPARATOR)).range(from, to).overrideTypes<Partial<RunRow>[]>(),
+		const read = await collect((after, limit) =>
+			build([...columns, ...cursorOnly].join(SELECT_SEPARATOR), after)
+				.limit(limit)
+				.overrideTypes<Partial<RunRow>[]>(),
 		);
+		const rows = read.map((r) => {
+			const out: Record<string, unknown> = { ...r };
+			for (const c of cursorOnly) delete out[c];
+			return out as Partial<RunRow>;
+		});
 		return rows.map(asProjectedRun);
 	}
-	const rows = await collect((from, to) => build('*').range(from, to));
+	const rows = await collect((after, limit) => build('*', after).limit(limit));
 	return rows.map((r) => asRun(r, null));
 }
 
@@ -10730,16 +10726,15 @@ export async function fetchGymExerciseNames(): Promise<string[]> {
 	return ((data ?? []) as Array<{ exercise_name: string }>).map((r) => r.exercise_name);
 }
 
-/// One page of an unbounded PostgREST read. The server caps an unranged
-/// `select()` at `db.max-rows` and answers with the truncated page and a 200
-/// — no error, no flag — so a read whose contract is "every row" has to ask
-/// for explicit ranges until the result set proves exhausted. Mirrors
-/// `packages/api_client/lib/src/paged_read.dart`, including its rule that a
-/// short page is NOT proof of exhaustion: a deployment whose cap is below the
-/// ask answers the very first range short, so the walk stops only on an empty
-/// page, or on one that is both short of the ask AND shorter than the page
-/// before it.
-const EXERCISE_PAGE = 1000;
+/// Alphabetical; `id` breaks a tie because a seeded global and a user's own
+/// custom entry can carry the same name — the two partial uniques on
+/// `name_key` (migration 20270222_001) scope uniqueness to `author_id is null`
+/// and to one author, so a custom can shadow a global. Both columns are NOT
+/// NULL. `api_client.dart` walks the catalogue in the same order.
+const EXERCISE_ORDER: readonly KeysetKey[] = [
+	{ column: 'name', ascending: true, nullsFirst: false },
+	{ column: 'id', ascending: true, nullsFirst: false },
+];
 
 /// The exercise catalogue visible to the signed-in user: every seeded global
 /// (author_id null) plus their own custom entries. RLS scopes the read; an
@@ -10766,38 +10761,25 @@ export async function fetchExerciseCatalogue(): Promise<{
 	// the next caller inherits whatever it says, and `null` here says the
 	// catalogue is known to hold nothing.
 	if (!auth.user?.id) return { catalogue: [], error: 'signed_out' };
-	const rows: Exercise[] = [];
-	let from = 0;
-	let previous: number | null = null;
-	for (;;) {
-		const { data, error } = await supabase
-			.from(TABLES.exercises)
-			.select('*')
-			.order('name', { ascending: true })
-			// A seeded global and a user's own custom entry can carry the same
-			// name: the two partial uniques on `name_key` (migration 20270222_001)
-			// scope uniqueness to `author_id is null` and to one author, so a
-			// custom can shadow a global. Ordering on `name` alone leaves that pair
-			// in an unspecified order, and a range over an ambiguous ordering lets
-			// a row on a page boundary come back twice or not at all.
-			// `api_client.dart` carries the same tiebreak, and this comment, for
-			// the same reason.
-			.order('id', { ascending: true })
-			.range(from, from + EXERCISE_PAGE - 1);
-		if (error) {
-			console.error('fetchExerciseCatalogue failed', error);
-			return {
-				catalogue: [],
-				error: `${error.message}${error.code ? ` (${error.code})` : ''}`,
-			};
+	// Walked by cursor: PostgREST caps an unranged select at `db.max-rows`, and
+	// an OFFSET walk over a catalogue someone adds a custom entry to mid-read
+	// skips or repeats a row (§ 1927).
+	const walk = await walkKeyset(EXERCISE_ORDER, (after, limit) => {
+		let q = supabase.from(TABLES.exercises).select('*');
+		if (after) q = q.or(after);
+		for (const k of EXERCISE_ORDER) {
+			q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
 		}
-		const page = (data ?? []) as Exercise[];
-		rows.push(...page);
-		if (page.length === 0) break;
-		if (page.length < EXERCISE_PAGE && previous !== null && page.length < previous) break;
-		previous = page.length;
-		from += page.length;
+		return q.limit(limit);
+	});
+	if (!walk.complete) {
+		const error = walk.error as { message?: unknown; code?: unknown } | null;
+		console.error('fetchExerciseCatalogue failed', walk.error);
+		const message = typeof error?.message === 'string' ? error.message : 'unavailable';
+		const code = typeof error?.code === 'string' && error.code ? ` (${error.code})` : '';
+		return { catalogue: [], error: `${message}${code}` };
 	}
+	const rows = walk.rows as Exercise[];
 	return { catalogue: dedupeShadowedExercises(rows), error: null };
 }
 

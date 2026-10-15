@@ -8676,6 +8676,20 @@ class ApiClient {
     ];
   }
 
+  /// Total unread direct messages across every conversation — the badge on
+  /// the You tab's inbox icon. The same `dm_threads()` aggregation as
+  /// [fetchDmThreads], without its partner-name read, since a count needs no
+  /// names. Throws on a failed read; signed out answers 0 without a call.
+  Future<int> fetchUnreadDmCount() async {
+    if (_client.auth.currentUser == null) return 0;
+    final res = await _client.rpc('dm_threads', params: const {}, get: true);
+    var total = 0;
+    for (final r in (res as List).cast<Map<String, dynamic>>()) {
+      total += (r['unread'] as num?)?.toInt() ?? 0;
+    }
+    return total;
+  }
+
   /// One page of the conversation with [otherId], oldest message first.
   ///
   /// Keyset-paged newest-first on `(created_at, id)`: [before] is the oldest

@@ -805,6 +805,43 @@ class AppLocalizationsDe extends AppLocalizations {
   String get youProfileTitle => 'Dein Profil';
 
   @override
+  String get homeTrainingPlanLabel => 'Trainingsplan';
+
+  @override
+  String homeRaceInDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Rennen in $days Tagen',
+      one: 'Rennen in $days Tag',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get homeRaceTomorrow => 'Rennen morgen';
+
+  @override
+  String get homeRaceDay => 'Renntag';
+
+  @override
+  String homePlanStartsInDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Beginnt in $days Tagen',
+      one: 'Beginnt in $days Tag',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get homePlanStartsTomorrow => 'Beginnt morgen';
+
+  @override
+  String get youViewProfile => 'Profil ansehen';
+
+  @override
   String get logSheetTitle => 'Erfassen';
 
   @override
@@ -1149,7 +1186,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get homeTodaysLift => 'Heutiges Training';
 
   @override
-  String get settingsSectionProfile => 'Profil';
+  String get settingsSectionTraining => 'Training';
+
+  @override
+  String get settingsSectionSettings => 'Einstellungen';
 
   @override
   String get settingsSectionAppsData => 'Apps & Daten';
@@ -4555,17 +4595,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get profileNotFound => 'Profil nicht gefunden.';
 
   @override
-  String profileFollowStats(int followers, int following) {
-    String _temp0 = intl.Intl.pluralLogic(
-      followers,
-      locale: localeName,
-      other: '$followers Follower',
-      one: '$followers Follower',
-    );
-    return '$_temp0 · $following abonniert';
-  }
-
-  @override
   String get profileFollowing => 'Folgt';
 
   @override
@@ -5826,6 +5855,99 @@ class AppLocalizationsDe extends AppLocalizations {
       'Wir konnten das Datum dieses Rennens nicht lesen, daher sind die Daten unten die üblichen Standardwerte.';
 
   @override
+  String get planNewAiTitle => 'Beschreibe den Plan, den du möchtest';
+
+  @override
+  String get planNewAiHint =>
+      'Schreib es in eigenen Worten, und das Formular unten wird für dich ausgefüllt. Den Plan erstellt weiterhin der eigene Generator der App — prüfe jedes Feld, bevor du ihn anlegst.';
+
+  @override
+  String get planNewAiPlaceholder =>
+      'z. B. Ein Halbmarathon unter 2 Stunden am 14. März. Ich kann 4 Tage pro Woche trainieren, meine letzten 5 km lief ich in 26:30.';
+
+  @override
+  String get planNewAiButton => 'Formular ausfüllen';
+
+  @override
+  String get planNewAiWorking => 'Wird gelesen…';
+
+  @override
+  String get planNewAiAppliedTitle =>
+      'Aus deiner Beschreibung ausgefüllt — prüfe jedes Feld.';
+
+  @override
+  String get planNewAiAppliedGenerator =>
+      'Der Plan wird vom eigenen Generator der App aus diesen Feldern erstellt, nicht von der KI.';
+
+  @override
+  String get planNewAiAppliedRecent5k =>
+      'Deine 5-km-Zeit wurde eingetragen, aber nicht bestätigt. Setze das Häkchen nur, wenn sie deiner heutigen Form entspricht.';
+
+  @override
+  String planNewAiRaceApplied(String date) {
+    return 'Startdatum und Planlänge sind so gesetzt, dass die Wettkampfwoche den $date enthält.';
+  }
+
+  @override
+  String get planNewAiRacePast =>
+      'Dieses Wettkampfdatum liegt bereits in der Vergangenheit, daher wurde das Startdatum nicht geändert.';
+
+  @override
+  String get planNewAiRaceTooSoon =>
+      'Der Wettkampf ist weniger als vier Wochen entfernt, daher wurde das Startdatum nicht geändert — ein Plan braucht mindestens vier Wochen.';
+
+  @override
+  String get planNewAiRaceInvalid =>
+      'Das Wettkampfdatum konnte nicht gelesen werden, daher wurde das Startdatum nicht geändert.';
+
+  @override
+  String get planNewAiAssumptionGoalEventDefault =>
+      'Es wurde keine Wettkampfdistanz genannt, daher ist das Ziel ein Halbmarathon.';
+
+  @override
+  String get planNewAiAssumptionDaysDefault =>
+      'Es wurden keine Trainingstage genannt, daher sind 4 Tage pro Woche eingestellt.';
+
+  @override
+  String get planNewAiAssumptionDaysClamped =>
+      'Die Trainingstage wurden auf den nächsten vom Planer unterstützten Wert gesetzt (3 bis 7 pro Woche).';
+
+  @override
+  String get planNewAiAssumptionWeeksClamped =>
+      'Die Planlänge wurde auf den nächsten vom Planer unterstützten Wert gesetzt (4 bis 24 Wochen).';
+
+  @override
+  String get planNewAiAssumptionRaceDateDropped =>
+      'Das Wettkampfdatum konnte nicht übernommen werden — es muss in der Zukunft und höchstens zwei Jahre entfernt liegen.';
+
+  @override
+  String get planNewAiAssumptionGoalTimeDropped =>
+      'Die Zielzeit wirkte für diese Distanz unrealistisch und wurde leer gelassen.';
+
+  @override
+  String get planNewAiAssumptionRecent5kDropped =>
+      'Die 5-km-Zeit wirkte unrealistisch und wurde leer gelassen.';
+
+  @override
+  String get planNewAiAssumptionBeginner5k =>
+      'Ein Geh-Lauf-Plan für Einsteiger führt zu 5 km, daher wurde das Ziel auf 5 km ohne Zielzeit gesetzt.';
+
+  @override
+  String get planNewAiErrorConsent =>
+      'Der Plan-Assistent benötigt die aktualisierte KI-Information.';
+
+  @override
+  String get planNewAiReviewDisclosure => 'Hinweise ansehen';
+
+  @override
+  String get planNewAiErrorDailyLimit =>
+      'Du hast deine KI-Anfragen für heute aufgebraucht. Fülle das Formular selbst aus oder versuche es morgen erneut.';
+
+  @override
+  String get planNewAiErrorFallback =>
+      'Das konnte nicht gelesen werden — fülle das Formular selbst aus.';
+
+  @override
   String get planNewCancel => 'Abbrechen';
 
   @override
@@ -6464,7 +6586,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get coachConsentIntro =>
-      'Die KI-Funktionen von Threkir — der Coach und der KI-Routenassistent — leiten einen Teil deiner Daten an Anthropic weiter, unseren KI-Modellanbieter in den USA. Je nach genutzter Funktion umfasst dieser Teil:';
+      'Die KI-Funktionen von Threkir — der Coach, der KI-Routenassistent und der KI-Planassistent — leiten einen Teil deiner Daten an Anthropic weiter, unseren KI-Modellanbieter in den USA. Je nach genutzter Funktion umfasst dieser Teil:';
 
   @override
   String get coachConsentBulletProfile =>
@@ -6484,6 +6606,10 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get coachConsentBulletRoutes =>
       'Für den KI-Routenassistenten: Name und Eckdaten der Route, dein eingegebener Wunsch und eine grobe Ortsangabe — niemals deine genauen Koordinaten.';
+
+  @override
+  String get coachConsentBulletPlanRequest =>
+      'Für den KI-Planassistenten: deine eingegebene Planbeschreibung (Zielrennen, Ziel- und aktuelle Zeiten, an wie vielen Tagen du trainieren kannst), nur um die Planeinstellungen auszufüllen — den Plan selbst erstellt Threkirs eigener Generator, nicht die KI.';
 
   @override
   String get coachConsentProcessing =>
@@ -6650,6 +6776,18 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get coachSuggestNewWalkRun =>
       'Ist es in Ordnung, während meiner Läufe zu gehen?';
+
+  @override
+  String get coachSuggestBuildHalfPlan =>
+      'Erstelle mir einen Trainingsplan für einen Halbmarathon';
+
+  @override
+  String get coachSuggestBuildFirst5kPlan =>
+      'Erstelle mir einen Einsteigerplan für meine ersten 5 km';
+
+  @override
+  String get coachSuggestPlanNextRace =>
+      'Hilf mir, mein nächstes Rennen zu planen';
 
   @override
   String get coachEditMessageLabel => 'Nachricht bearbeiten';
@@ -6868,7 +7006,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get settingsAccountAiConsentUpdateSubtitle =>
-      'Die Hinweise decken jetzt mehr Funktionen ab. Lies sie und stimme zu, um den KI-Routenassistenten zu nutzen.';
+      'Die Hinweise decken jetzt mehr Funktionen ab. Lies sie und stimme zu, um den KI-Routen- und den KI-Planassistenten zu nutzen.';
 
   @override
   String get settingsAccountAiConsentGrantTitle => 'KI-Hinweise ansehen';
@@ -10474,9 +10612,6 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get settingsBackendNotConfigured => 'Backend nicht konfiguriert';
-
-  @override
-  String get settingsAccountSignedIn => 'Angemeldet';
 
   @override
   String get settingsDevicesSignedOutSubtitle =>

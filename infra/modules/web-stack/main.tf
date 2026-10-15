@@ -83,6 +83,10 @@ locals {
     "COACH_PROVIDER",
     "OPENAI_BASE_URL",
     "OPENAI_MODEL",
+    # Server half of PUBLIC_AI_PLAN_ENABLED: /api/coach/plan-request answers
+    # 503 unless this is truthy (decisions § 1930). Unset in the sops file
+    # means off.
+    "AI_PLAN_ENABLED",
   ]
 
   # The two X-Engine-Key credentials the generate-route handler sends. Same

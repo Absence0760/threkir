@@ -37,10 +37,13 @@ const int _kFollowsPageSize = 20;
 /// was inserted ahead of it).
 enum ProfileTab { runs, badges, followers, following, notifications }
 
-/// Lines the profile header gives a display name. A name is a name; two lines
-/// is generous, and the cap is what keeps the header from starving the tabs
-/// below it (decisions § 537).
-const int kProfileNameMaxLines = 2;
+/// How many public runs the Runs tab reads. The header's run count is the
+/// length of that page, so a full page is shown as "30+" rather than as a
+/// total it is not.
+const int _kProfileRunsLimit = 30;
+
+/// The overflow menu's entries on another runner's profile.
+enum _ProfileMenuAction { report, block }
 
 /// Public profile screen — mirrors the web `/u/[id]` page (decisions §31).
 ///
@@ -198,7 +201,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     try {
       final runs = await widget.api.fetchPublicRunsByUser(
         widget.userId,
-        limit: 30,
+        limit: _kProfileRunsLimit,
       );
       if (!mounted) return;
       setState(() {
@@ -614,26 +617,46 @@ class _ProfileScreenState extends State<ProfileScreen>
       appBar: AppBar(
         title: Text(_summary?.displayName ?? l10n.profileTitle),
         actions: [
+          // Report and Block are rare and one is destructive, so they share
+          // an overflow menu rather than sitting as two bare icons beside the
+          // title (web keeps them as header buttons; there is room there).
           if (!_isSelf)
-            IconButton(
-              tooltip: l10n.profileReportUser,
-              icon: const Icon(Icons.flag_outlined),
-              onPressed: () => showReportSheet(
-                context,
-                api: widget.api,
-                targetKind: 'user',
-                targetId: widget.userId,
-              ),
-            ),
-          if (!_isSelf)
-            IconButton(
-              tooltip: _blocked ? l10n.profileUnblock : l10n.profileBlock,
-              icon: Icon(
-                Icons.block,
-                color: _blocked ? Theme.of(context).colorScheme.error : null,
-              ),
-              isSelected: _blocked,
-              onPressed: _blockBusy ? null : _toggleBlock,
+            PopupMenuButton<_ProfileMenuAction>(
+              key: const ValueKey('profile-more'),
+              tooltip: l10n.commonMore,
+              onSelected: (action) => switch (action) {
+                _ProfileMenuAction.report => showReportSheet(
+                  context,
+                  api: widget.api,
+                  targetKind: 'user',
+                  targetId: widget.userId,
+                ),
+                _ProfileMenuAction.block => _toggleBlock(),
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: _ProfileMenuAction.report,
+                  child: ListTile(
+                    leading: const Icon(Icons.flag_outlined),
+                    title: Text(l10n.profileReportUser),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+                PopupMenuItem(
+                  value: _ProfileMenuAction.block,
+                  enabled: !_blockBusy,
+                  child: ListTile(
+                    leading: Icon(
+                      Icons.block,
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                    title: Text(
+                      _blocked ? l10n.profileUnblock : l10n.profileBlock,
+                    ),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ],
             ),
         ],
       ),
@@ -649,7 +672,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             ListSkeleton.section(
               label: l10n.commonLoading,
               rows: 1,
-              rowHeight: 56,
+              rowHeight: 80,
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
             )
           else
@@ -675,78 +698,157 @@ class _ProfileScreenState extends State<ProfileScreen>
     return _tabView(theme, l10n, tab);
   }
 
+  /// The identity band: avatar beside the three counts, then Follow and
+  /// Message on another runner's profile. The name is the AppBar title only,
+  /// so it is not printed twice, and it stays in view once the band scrolls
+  /// away. Mirrors web `/u/[id]`, whose counts also select their tab.
   Widget _buildHeader(ThemeData theme) {
     final l10n = AppLocalizations.of(context);
     final s = _summary!;
+    final signedIn = widget.api.userId != null;
+    final runsLabel = _runsLoading || _runsError != null
+        ? '–'
+        : _runs.length >= _kProfileRunsLimit
+            ? '$_kProfileRunsLimit+'
+            : '${_runs.length}';
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      child: Row(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          IdentityAvatar(
-            seed: s.id,
-            name: s.displayName,
-            size: 56,
-            imageUrl: s.avatarUrl,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  s.displayName ?? l10n.profileRunnerFallback,
-                  // Same fixed-band-above-a-TabBarView shape as club detail
-                  // (decisions § 537): this header is the only unbounded
-                  // child of a `Column` whose sibling is `Expanded`, and
-                  // `user_profiles.display_name` has no DB length constraint,
-                  // so an uncapped name takes the tabs' height and then
-                  // overflows.
-                  maxLines: kProfileNameMaxLines,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+          Row(
+            children: [
+              IdentityAvatar(
+                seed: s.id,
+                name: s.displayName,
+                size: 80,
+                imageUrl: s.avatarUrl,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Row(
+                  children: [
+                    _stat(
+                      theme,
+                      key: const ValueKey('profile-stat-runs'),
+                      value: runsLabel,
+                      label: l10n.profileTabRuns,
+                      tab: ProfileTab.runs,
+                    ),
+                    // The user_follows select is authenticated-only, so a
+                    // signed-out viewer's counts are always zero — hide them
+                    // rather than present the zeros as fact.
+                    if (signedIn) ...[
+                      _stat(
+                        theme,
+                        key: const ValueKey('profile-stat-followers'),
+                        value: '${s.followerCount}',
+                        label: l10n.profileTabFollowers,
+                        tab: ProfileTab.followers,
+                      ),
+                      _stat(
+                        theme,
+                        key: const ValueKey('profile-stat-following'),
+                        value: '${s.followingCount}',
+                        label: l10n.profileTabFollowing,
+                        tab: ProfileTab.following,
+                      ),
+                    ],
+                  ],
                 ),
-                // The user_follows select is authenticated-only, so a
-                // signed-out viewer's counts are always zero — hide the
-                // line rather than present the zeros as fact.
-                if (widget.api.userId != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    l10n.profileFollowStats(s.followerCount, s.followingCount),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ],
+          ),
+          if (!_isSelf) ...[
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: s.viewerFollows
+                      ? OutlinedButton.icon(
+                          key: const ValueKey('profile-follow'),
+                          onPressed: _followBusy ? null : _toggleFollow,
+                          icon: const Icon(Icons.check),
+                          label: Text(l10n.profileFollowing),
+                        )
+                      : FilledButton.icon(
+                          key: const ValueKey('profile-follow'),
+                          onPressed: _followBusy ? null : _toggleFollow,
+                          icon: const Icon(Icons.person_add_alt_1_outlined),
+                          label: Text(l10n.profileFollow),
+                        ),
+                ),
+                // Same gate as web's `/u/[id]`: another runner's profile,
+                // signed in. Whether the send is admitted (a follow edge
+                // either way, no block either way) is the server's answer,
+                // not a reason to hide the button — a client cannot see a
+                // block placed on it.
+                if (signedIn) ...[
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      key: const ValueKey('profile-message'),
+                      onPressed: () => _openConversation(
+                        s.id,
+                        name: s.displayName,
+                        avatarUrl: s.avatarUrl,
+                      ),
+                      icon: const Icon(Icons.chat_bubble_outline),
+                      label: Text(l10n.profileMessage),
                     ),
                   ),
                 ],
               ],
             ),
-          ),
-          if (!_isSelf)
-            FilledButton.tonal(
-              onPressed: _followBusy ? null : _toggleFollow,
-              child: Text(
-                s.viewerFollows ? l10n.profileFollowing : l10n.profileFollow,
-              ),
-            ),
-          // Same gate as web's `/u/[id]`: another runner's profile, signed in.
-          // Whether the send is admitted (a follow edge either way, no block
-          // either way) is the server's answer, not a reason to hide the
-          // button — a client cannot see a block placed on it.
-          if (!_isSelf && widget.api.userId != null) ...[
-            const SizedBox(width: 8),
-            IconButton.outlined(
-              key: const ValueKey('profile-message'),
-              tooltip: l10n.profileMessage,
-              icon: const Icon(Icons.chat_bubble_outline),
-              onPressed: () => _openConversation(
-                s.id,
-                name: s.displayName,
-                avatarUrl: s.avatarUrl,
-              ),
-            ),
           ],
         ],
+      ),
+    );
+  }
+
+  /// One count in the header, which selects the tab that lists it.
+  Widget _stat(
+    ThemeData theme, {
+    required Key key,
+    required String value,
+    required String label,
+    required ProfileTab tab,
+  }) {
+    // Each count takes an equal share and shrinks rather than overflowing:
+    // three labels at a large OS text scale do not fit beside an 80 dp avatar
+    // on a 360 dp phone.
+    return Expanded(
+      child: MergeSemantics(
+      child: InkWell(
+        key: key,
+        borderRadius: BorderRadius.circular(8),
+        onTap: () => _tabs.animateTo(_tabOrder.indexOf(tab)),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  value,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Text(
+                label,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
       ),
     );
   }

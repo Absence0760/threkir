@@ -51,6 +51,10 @@ Fully functional web launch with backups intact.
   sellable (`PUBLIC_COACH_ENABLED=true`), but leave `PUBLIC_ROUTE_GEN_ENABLED`
   unset — the route engines are still deferred here, and the flag keeps the
   Pro card + `/routes/new` from advertising the dead perk (decisions §204).
+  `PUBLIC_AI_PLAN_ENABLED` (the AI plan assistant on `/plans/new`, which spends
+  the Coach's key and daily counter) stays unset until its decisions §12
+  liability sign-off and the v3 AI-disclosure copy sign-off land; it is not a
+  Pro storefront gate, and on its own it changes nothing without the Coach flag.
 - No mobile stores.
 
 ### Rock-bottom — ~$10–11/mo (coach off) — SELECTED 2026-07-02, DEPLOYED 2026-07-11

@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:api_client/api_client.dart';
+import 'package:core_models/core_models.dart' show UserProfileRow;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -22,22 +23,39 @@ import '../lib/screens/profile_screen.dart';
 import '../lib/screens/you_screen.dart';
 import 'pump_until.dart';
 
-/// Signed-in fake so the profile header renders. The pushed ProfileScreen's
-/// own load fails gracefully against the uninitialised Supabase client (caught
-/// into its error state) — the screen still mounts, which is what we assert.
+/// Signed-in fake so the identity header renders. [displayName] and
+/// [unread] stand in for the two reads the header makes; [failProfile] makes
+/// the profile read throw, as an offline read does.
 class _FakeApi extends ApiClient {
+  _FakeApi({this.displayName = 'Ada Lovelace', this.unread = 0});
+
+  final String? displayName;
+  final int unread;
+  bool failProfile = false;
+
   @override
   String? get userId => 'u1';
 
   @override
   String? get userEmail => 'runner@test.com';
+
+  @override
+  Future<UserProfileRow?> fetchMyProfile() async {
+    if (failProfile) throw Exception('offline');
+    return UserProfileRow(
+        id: 'u1', displayName: displayName, shadowHidden: false);
+  }
+
+  @override
+  Future<int> fetchUnreadDmCount() async => unread;
 }
 
-/// Drives auth transitions: mutate [uid]/[email], then [emit] a tick on the
-/// stream the AuthChangeAware mixin listens to (#223/#232).
+/// Drives auth transitions: mutate [uid]/[email]/[name], then [emit] a tick
+/// on the stream the AuthChangeAware mixin listens to (#223/#232).
 class _SwitchableApi extends ApiClient {
   String? uid = 'u1';
   String? email = 'runner@test.com';
+  String? name = 'Ada Lovelace';
   final _controller = StreamController<String?>.broadcast();
 
   @override
@@ -45,6 +63,14 @@ class _SwitchableApi extends ApiClient {
 
   @override
   String? get userEmail => email;
+
+  @override
+  Future<UserProfileRow?> fetchMyProfile() async => uid == null
+      ? null
+      : UserProfileRow(id: uid!, displayName: name, shadowHidden: false);
+
+  @override
+  Future<int> fetchUnreadDmCount() async => 0;
 
   @override
   Stream<String?> get authUserChanges => _controller.stream;
@@ -98,55 +124,111 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets('hosts the profile entry + the existing Settings tiles',
+  testWidgets('the header names the runner, not their email',
       (tester) async {
     await pump(tester);
-    // Profile header at the top.
-    expect(find.text('Your profile'), findsOneWidget);
-    // Settings section tiles fold in below (the unchanged SettingsScreen body).
+    await pumpUntil(
+        tester, () => find.text('Ada Lovelace').evaluate().isNotEmpty,
+        describe: 'the display name');
+    expect(find.text('View profile'), findsOneWidget);
+    // The email belongs to the Account screen; the header and the Account
+    // row used to both print it.
+    expect(find.text('runner@test.com'), findsNothing);
+    // Settings section tiles fold in below.
     expect(find.text('Account'), findsOneWidget);
     expect(find.text('Preferences'), findsOneWidget);
   });
 
-  testWidgets('tapping the profile entry pushes ProfileScreen', (tester) async {
-    await pump(tester);
-    await tester.tap(find.text('Your profile'));
+  testWidgets('a runner with no display name sees "Your profile"',
+      (tester) async {
+    await pump(tester, api: _FakeApi(displayName: null));
     await tester.pump();
-    await tester.pump();
-    expect(find.byType(ProfileScreen), findsOneWidget);
+    expect(find.text('Your profile'), findsOneWidget);
   });
 
-  testWidgets('profile tile reacts to sign-out and an account switch (#223)',
+  testWidgets('a failed profile read falls back to "Your profile"',
+      (tester) async {
+    await pump(tester, api: _FakeApi()..failProfile = true);
+    await tester.pump();
+    expect(find.text('Your profile'), findsOneWidget);
+    expect(find.text('Ada Lovelace'), findsNothing);
+  });
+
+  testWidgets("tapping the header pushes the runner's own ProfileScreen",
+      (tester) async {
+    await pump(tester);
+    await tester.tap(find.byKey(const ValueKey('you-profile-header')));
+    await tester.pump();
+    await tester.pump();
+    expect(
+      tester.widget<ProfileScreen>(find.byType(ProfileScreen)).userId,
+      'u1',
+    );
+  });
+
+  testWidgets('the header reacts to sign-out and an account switch (#223)',
       (tester) async {
     final api = _SwitchableApi();
     await pump(tester, api: api);
-    expect(find.text('runner@test.com'), findsWidgets);
+    await pumpUntil(
+        tester, () => find.text('Ada Lovelace').evaluate().isNotEmpty,
+        describe: "A's name");
 
     // Sign out (from anywhere — the account screen, a session expiry):
-    // the tile must drop the departed user's email, not render it until
+    // the header must drop the departed runner, not render them until
     // some unrelated rebuild.
     api.uid = null;
     api.email = null;
     api.emit();
     await tester.pump();
     await tester.pump();
-    expect(find.text('runner@test.com'), findsNothing);
-    expect(find.text('Your profile'), findsNothing);
+    expect(find.text('Ada Lovelace'), findsNothing);
+    expect(find.byKey(const ValueKey('you-profile-header')), findsNothing);
 
-    // Sign in as someone else: the tile shows B's email and routes to
-    // B's profile, not A's (#232 instance 3 — stale viewerId).
+    // Sign in as someone else: the header shows B and routes to B's
+    // profile, not A's (#232 instance 3 — stale viewerId).
     api.uid = 'u2';
     api.email = 'other@test.com';
+    api.name = 'Grace Hopper';
     api.emit();
-    await tester.pump();
-    expect(find.text('other@test.com'), findsWidgets);
-    await tester.tap(find.text('Your profile'));
+    await pumpUntil(
+        tester, () => find.text('Grace Hopper').evaluate().isNotEmpty,
+        describe: "B's name");
+    await tester.tap(find.byKey(const ValueKey('you-profile-header')));
     await tester.pump();
     await tester.pump();
     expect(
       tester.widget<ProfileScreen>(find.byType(ProfileScreen)).userId,
       'u2',
     );
+  });
+
+  testWidgets('the inbox icon shows and announces the unread count',
+      (tester) async {
+    final handle = tester.ensureSemantics();
+    await pump(tester, api: _FakeApi(unread: 3));
+    final icon = find.byKey(const ValueKey('you-messages'));
+    await pumpUntil(
+      tester,
+      () => find
+          .descendant(of: icon, matching: find.text('3'))
+          .evaluate()
+          .isNotEmpty,
+      describe: 'the unread badge',
+    );
+    // One merged node: the count is read as the button's value, not as a
+    // stray "3" after it.
+    final data = tester.getSemantics(icon).getSemanticsData();
+    expect(data.tooltip, 'Messages');
+    expect(data.value, '3 unread messages');
+    expect(data.flagsCollection.isButton, isTrue);
+    handle.dispose();
+  });
+
+  testWidgets('no badge with nothing unread', (tester) async {
+    await pump(tester, api: _FakeApi(unread: 0));
+    await tester.pump();
+    expect(tester.widget<Badge>(find.byType(Badge)).isLabelVisible, isFalse);
   });
 
   testWidgets('a settings tile drills into its sub-screen', (tester) async {

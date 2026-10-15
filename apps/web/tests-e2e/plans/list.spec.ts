@@ -32,6 +32,22 @@ test.describe('/plans', () => {
 		await expect(page.locator('.modal')).toHaveCount(0);
 	});
 
+	test('"Describe a plan with AI" opens the wizard at the plan assistant box', async ({ page }) => {
+		// The assistant lives on the full /plans/new wizard, not in the
+		// New-plan modal, so the list offers a link straight to its box.
+		await page.goto('/plans');
+		await page
+			.locator('.toolbar-actions')
+			.getByRole('link', { name: 'Describe a plan with AI' })
+			.click();
+
+		await expect(page).toHaveURL(/\/plans\/new\?type=training#ai-plan$/);
+		const box = page.locator('#ai-plan');
+		await expect(box).toBeVisible({ timeout: 10_000 });
+		await expect(box.getByRole('textbox', { name: 'Describe the plan you want' })).toBeVisible();
+		await expect(page.getByTestId('kind-training')).toHaveCount(0);
+	});
+
 	test('seeded Richmond Half 2026 plan renders + drill into detail', async ({
 		page
 	}) => {

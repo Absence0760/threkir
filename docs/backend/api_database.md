@@ -1049,7 +1049,8 @@ kept whole by `user_profiles_ai_disclosure_chk` — either both are set or neith
 | Version | Scope | Minimum required by |
 |---|---|---|
 | 1 | AI Coach only — profile slice, recent runs, active plan, chat text | `/api/coach` |
-| 2 | All AI features — v1 plus the AI route assistant (route stats + name, the typed request, a coarse place label) | `/api/coach/route-describe`, `/api/coach/route-request` |
+| 2 | v1 plus the AI route assistant (route stats + name, the typed request, a coarse place label) | `/api/coach/route-describe`, `/api/coach/route-request` |
+| 3 | All AI features — v2 plus the AI plan assistant (the typed plan description: goal race, target and recent times, training days — sent only to extract plan-wizard settings; the plan is built by the deterministic generator). Migration `20270816000001`; prod deploy gated on counsel / CISO sign-off of the v3 copy | `/api/coach/plan-request` |
 
 The ladder is **monotone by construction** — each version is a strict superset of the one below,
 which is what makes `accepted >= required` sound. A future disclosure that *narrows* could not
@@ -1057,7 +1058,8 @@ join it; it would need a scope set instead.
 
 - `ai_disclosure_current_version()` — the highest version the DB knows. Its TS mirror is
   `AI_DISCLOSURE_CURRENT_VERSION` in `apps/web/src/lib/core/ai_disclosure.ts`, and
-  `ai_disclosure.test.ts` parses the migration to fail the build on drift.
+  `ai_disclosure.test.ts` (and the Dart twin's `ai_disclosure_test.dart`) parses the newest
+  migration that defines it to fail the build on drift.
 - `record_ai_disclosure_consent(p_version smallint)` → `(version, accepted_at)` — the canonical
   recorder. **Monotone**: accepting a version at or below the one on record is a no-op returning
   the original stamp, so a Coach re-prompt can never walk a v2 acceptance back to v1. An unknown
@@ -1067,7 +1069,7 @@ join it; it would need a scope set instead.
   acceptance of one disclosure, so withdrawal is all of it.
 - `record_coach_consent()` / `withdraw_coach_consent()` remain as **v1 entry points** in SQL,
   but **no client calls them**: mobile now presents the same widened disclosure web does, so
-  the honest record is v2 and `packages/api_client` writes it through
+  the honest record is the current version and `packages/api_client` writes it through
   `record_ai_disclosure_consent()` directly (decisions § 573). Two client paths writing one
   consent record is the defect the versioning exists to prevent, one layer down.
 - `lock_consent_columns` now also blocks a direct write to `ai_disclosure_version`; without that
@@ -2257,10 +2259,10 @@ grant  execute on function public.<fn>(<args>) to authenticated;   -- and/or ser
 
 Add `authenticated` to the revoke list when no client role should hold it at all
 (the `cleanup_*` / `enqueue_*` cron family, and helpers only a SECURITY DEFINER
-trigger calls). 90 migrations write a function-level `from public, anon` revoke
-today (77 as `revoke execute`, 13 as `revoke all`); it is the house form for
+trigger calls). 93 migrations write a function-level `from public, anon` revoke
+today (78 as `revoke execute`, 15 as `revoke all`); it is the house form for
 exactly this reason, and `check_migration_function_revoke_noop.mjs` is what
-keeps it — it replays all 537 migrations in version order and fails the PR on
+keeps it — it replays all 540 migrations in version order and fails the PR on
 any EXECUTE revoke that leaves the other channel at its image-dependent
 default, in either direction. **Those four figures are derived, not typed**: the
 guard prints them and `check_migration_function_revoke_noop.test.mjs` asserts

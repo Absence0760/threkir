@@ -10,7 +10,10 @@
 	// (+page.ts, prerender=true) emitted a redirect STUB with an un-hashed
 	// inline `location.href` script that rode the CloudFront header's
 	// `unsafe-inline` — the one page the hash-based CSP couldn't cover
-	// (audit-xss M2 / decisions §70). The <meta refresh> is the no-JS fallback.
+	// (audit-xss M2 / decisions §70). The <meta refresh> is the no-JS fallback,
+	// and it sits inside <noscript> because <svelte:head> also inserts it on a
+	// client-side navigation here, where the browser obeys it and does a full
+	// reload before goto() can run.
 	onMount(() => {
 		goto('/settings/account', { replace: true });
 	});
@@ -18,7 +21,7 @@
 
 <svelte:head>
 	<title>{m('shell.redirecting')}</title>
-	<meta http-equiv="refresh" content="0;url=/settings/account" />
+	<noscript><meta http-equiv="refresh" content="0;url=/settings/account" /></noscript>
 </svelte:head>
 
 <div class="page">

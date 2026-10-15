@@ -23,3 +23,30 @@ export function currentPlanWeekIndex(
 	if (dayIndex < 0) return 0;
 	return Math.min(weekCount - 1, Math.floor(dayIndex / 7));
 }
+
+/**
+ * Where today sits against a plan's race day (its end date): before the plan
+ * starts, counting down to the race, on it, or past it. `days` is whole days to
+ * the start (`starts_in`) or to the race (`race_in`), counted in epoch-days for
+ * the same DST reason as above; it is 0 for `race_day` and `race_past`. Callers
+ * own the wording ("Race tomorrow" is `race_in` with 1).
+ */
+export type PlanRaceCountdown =
+	| { kind: 'starts_in'; days: number }
+	| { kind: 'race_in'; days: number }
+	| { kind: 'race_day'; days: 0 }
+	| { kind: 'race_past'; days: 0 };
+
+export function planRaceCountdown(
+	startDateIso: string,
+	endDateIso: string,
+	todayIso: string
+): PlanRaceCountdown {
+	const today = isoToEpochDay(todayIso);
+	const start = isoToEpochDay(startDateIso);
+	const end = isoToEpochDay(endDateIso);
+	if (today < start) return { kind: 'starts_in', days: start - today };
+	if (today > end) return { kind: 'race_past', days: 0 };
+	if (today === end) return { kind: 'race_day', days: 0 };
+	return { kind: 'race_in', days: end - today };
+}

@@ -46,6 +46,15 @@ class SettingsScreen extends StatefulWidget {
   /// same isolation rail as the seed auto-login.
   final String? devBackendUrl;
 
+  /// Rows the host draws above the first section, inside the same scroll —
+  /// the You tab's identity header and its shortcuts.
+  final List<Widget> header;
+
+  /// Fires when a sub-screen pushed from here is popped, so the host can
+  /// re-read what that screen may have changed (the account screen edits the
+  /// display name and avatar the You header draws).
+  final VoidCallback? onSubScreenClosed;
+
   const SettingsScreen({
     super.key,
     this.apiClient,
@@ -59,6 +68,8 @@ class SettingsScreen extends StatefulWidget {
     this.gearStore,
     this.settingsSync,
     this.devBackendUrl,
+    this.header = const [],
+    this.onSubScreenClosed,
   });
 
   @override
@@ -66,8 +77,9 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  void _open(Widget Function(BuildContext) builder) {
-    Navigator.push(context, MaterialPageRoute(builder: builder));
+  Future<void> _open(Widget Function(BuildContext) builder) async {
+    await Navigator.push(context, MaterialPageRoute(builder: builder));
+    widget.onSubScreenClosed?.call();
   }
 
   Future<void> _openAfterSignIn(Widget Function(BuildContext) builder) async {
@@ -121,18 +133,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: ListView(
           padding: const EdgeInsets.symmetric(vertical: 8),
           children: [
+            ...widget.header,
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
-              child: SectionHeader(label: l10n.settingsSectionProfile),
+              child: SectionHeader(label: l10n.settingsSectionTraining),
+            ),
+            _tab(
+              icon: Icons.groups_outlined,
+              label: l10n.coachingTitle,
+              subtitle: l10n.settingsTabCoachingSubtitle,
+              onTap: () => _openAfterSignIn((_) => CoachingScreen(
+                    api: widget.apiClient!,
+                    preferences: widget.preferences,
+                  )),
+            ),
+            // Guided runs is coaching content, so it belongs beside Coaching
+            // rather than three taps down inside Account, whose subject is
+            // sign-in / backup / deletion (#666 I7). It stays on the landing
+            // and not behind the sign-in-gated Coach screen because the
+            // library is local TTS scripts with no API dependency — the
+            // signed-out floor `settings_screen_test` already pins.
+            _tab(
+              icon: Icons.headset,
+              label: l10n.guidedRunsTitle,
+              subtitle: l10n.guidedRunsSubtitle,
+              onTap: () => _open((_) => const GuidedRunsScreen()),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
+              child: SectionHeader(label: l10n.settingsSectionSettings),
             ),
             _tab(
               icon: Icons.person_outline,
               label: l10n.settingsAccountTitle,
-              subtitle: signedIn
-                  ? (api?.userEmail?.isNotEmpty ?? false
-                      ? api!.userEmail!
-                      : l10n.settingsAccountSignedIn)
-                  : l10n.settingsTabAccountSubtitle,
+              subtitle: l10n.settingsTabAccountSubtitle,
               onTap: () => _open((_) => SettingsAccountScreen(
                     apiClient: widget.apiClient,
                     preferences: widget.preferences,
@@ -161,27 +195,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     api: widget.apiClient,
                     settingsSync: widget.settingsSync,
                   )),
-            ),
-            _tab(
-              icon: Icons.groups_outlined,
-              label: l10n.coachingTitle,
-              subtitle: l10n.settingsTabCoachingSubtitle,
-              onTap: () => _openAfterSignIn((_) => CoachingScreen(
-                    api: widget.apiClient!,
-                    preferences: widget.preferences,
-                  )),
-            ),
-            // Guided runs is coaching content, so it belongs beside Coaching
-            // rather than three taps down inside Account, whose subject is
-            // sign-in / backup / deletion (#666 I7). It stays on the landing
-            // and not behind the sign-in-gated Coach screen because the
-            // library is local TTS scripts with no API dependency — the
-            // signed-out floor `settings_screen_test` already pins.
-            _tab(
-              icon: Icons.headset,
-              label: l10n.guidedRunsTitle,
-              subtitle: l10n.guidedRunsSubtitle,
-              onTap: () => _open((_) => const GuidedRunsScreen()),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),

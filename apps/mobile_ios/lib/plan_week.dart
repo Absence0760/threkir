@@ -32,3 +32,46 @@ int currentPlanWeekIndex(
   if (dayIndex < 0) return 0;
   return math.min(weekCount - 1, dayIndex ~/ 7);
 }
+
+/// Where today sits against a plan's race day (its end date). Twin of
+/// `planRaceCountdown` in `plan_week.ts`.
+enum PlanRaceCountdownKind { startsIn, raceIn, raceDay, racePast }
+
+/// [days] is whole days to the start ([PlanRaceCountdownKind.startsIn]) or to
+/// the race ([PlanRaceCountdownKind.raceIn]), counted in epoch-days for the
+/// same DST reason as above, and 0 otherwise. Callers own the wording.
+class PlanRaceCountdown {
+  final PlanRaceCountdownKind kind;
+  final int days;
+  const PlanRaceCountdown(this.kind, this.days);
+
+  @override
+  bool operator ==(Object other) =>
+      other is PlanRaceCountdown && other.kind == kind && other.days == days;
+
+  @override
+  int get hashCode => Object.hash(kind, days);
+
+  @override
+  String toString() => 'PlanRaceCountdown($kind, $days)';
+}
+
+PlanRaceCountdown planRaceCountdown(
+  String startDateIso,
+  String endDateIso,
+  String todayIso,
+) {
+  final today = _isoToEpochDay(todayIso);
+  final start = _isoToEpochDay(startDateIso);
+  final end = _isoToEpochDay(endDateIso);
+  if (today < start) {
+    return PlanRaceCountdown(PlanRaceCountdownKind.startsIn, start - today);
+  }
+  if (today > end) {
+    return const PlanRaceCountdown(PlanRaceCountdownKind.racePast, 0);
+  }
+  if (today == end) {
+    return const PlanRaceCountdown(PlanRaceCountdownKind.raceDay, 0);
+  }
+  return PlanRaceCountdown(PlanRaceCountdownKind.raceIn, end - today);
+}

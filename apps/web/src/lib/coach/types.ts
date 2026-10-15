@@ -78,6 +78,13 @@ export interface CoachConfig {
 	// accidental prod activation shows up immediately in CloudWatch.
 	bypassPaywallEnabled: boolean;
 
+	// The AI plan assistant's deploy flag (ai_plan_flag.ts), read by the
+	// caller: PUBLIC_AI_PLAN_ENABLED in the dev wrapper, AI_PLAN_ENABLED in
+	// the Lambda. Selects which plan-handoff addendum the system prompt
+	// carries — a deep link into the assistant, or a bare link to the plan
+	// builder — so the coach never points at a box the runner cannot see.
+	aiPlanEnabled: boolean;
+
 	// Test seam only. Injects the Supabase-client factory so the handler's
 	// post-auth branches (notably the regenerate/edit anchor-miss fail-
 	// closed path) can be unit-tested without a live Supabase. Prod callers

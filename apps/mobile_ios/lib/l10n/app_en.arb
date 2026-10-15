@@ -1048,6 +1048,44 @@
   "@youProfileTitle": {
     "description": "Title of the profile entry at the top of the You tab"
   },
+  "homeTrainingPlanLabel": "Training plan",
+  "@homeTrainingPlanLabel": {
+    "description": "Eyebrow on the Home card for the active training plan, above the plan's name"
+  },
+  "homeRaceInDays": "{days, plural, one{Race in {days} day} other{Race in {days} days}}",
+  "@homeRaceInDays": {
+    "description": "Countdown on the Home plan card: whole days until the plan's race day (always 2 or more; 1 is homeRaceTomorrow)",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "homeRaceTomorrow": "Race tomorrow",
+  "@homeRaceTomorrow": {
+    "description": "Countdown on the Home plan card when race day is tomorrow"
+  },
+  "homeRaceDay": "Race day",
+  "@homeRaceDay": {
+    "description": "Countdown on the Home plan card on race day itself"
+  },
+  "homePlanStartsInDays": "{days, plural, one{Starts in {days} day} other{Starts in {days} days}}",
+  "@homePlanStartsInDays": {
+    "description": "Home plan card before the plan's first day: whole days until it starts",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "homePlanStartsTomorrow": "Starts tomorrow",
+  "@homePlanStartsTomorrow": {
+    "description": "Home plan card when the plan starts tomorrow"
+  },
+  "youViewProfile": "View profile",
+  "@youViewProfile": {
+    "description": "Second line of the You tab's identity header, under the runner's name; tapping the header opens their own profile"
+  },
   "logSheetTitle": "Log",
   "@logSheetTitle": {
     "description": "Title of the Log capture bottom sheet"
@@ -1481,9 +1519,13 @@
   "@homeTodaysLift": {
     "description": "Home card header above today's logged gym workout"
   },
-  "settingsSectionProfile": "Profile",
-  "@settingsSectionProfile": {
-    "description": "Settings landing section header grouping Account + Preferences"
+  "settingsSectionTraining": "Training",
+  "@settingsSectionTraining": {
+    "description": "Section header on the You tab above coaching and guided runs"
+  },
+  "settingsSectionSettings": "Settings",
+  "@settingsSectionSettings": {
+    "description": "Section header on the You tab above Account, Preferences and Safety contacts"
   },
   "settingsSectionAppsData": "Apps & data",
   "@settingsSectionAppsData": {
@@ -5931,18 +5973,6 @@
   "@profileNotFound": {
     "description": "Shown when the profile does not exist"
   },
-  "profileFollowStats": "{followers, plural, one{{followers} follower} other{{followers} followers}} · {following} following",
-  "@profileFollowStats": {
-    "description": "Header line summarising follower and following counts",
-    "placeholders": {
-      "followers": {
-        "type": "int"
-      },
-      "following": {
-        "type": "int"
-      }
-    }
-  },
   "profileFollowing": "Following",
   "@profileFollowing": {
     "description": "Follow button label when the viewer already follows this user"
@@ -7708,6 +7738,107 @@
   "@planNewRaceUnreadable": {
     "description": "Note shown when the race date the wizard was opened with could not be parsed"
   },
+  "planNewAiTitle": "Describe the plan you want",
+  "@planNewAiTitle": {
+    "description": "Heading of the AI plan-assistant box at the top of the new-plan wizard"
+  },
+  "planNewAiHint": "Write it in plain English and the form below is filled in for you. The app's own generator still builds the plan — check every field before you create it.",
+  "@planNewAiHint": {
+    "description": "Hint under the AI plan-assistant heading explaining that the AI only fills the form and the app generator builds the plan"
+  },
+  "planNewAiPlaceholder": "e.g. A sub-2 half marathon on 14 March. I can train 4 days a week and my last 5K was 26:30.",
+  "@planNewAiPlaceholder": {
+    "description": "Example text shown in the empty AI plan-assistant description field"
+  },
+  "planNewAiButton": "Fill in the form",
+  "@planNewAiButton": {
+    "description": "Button that sends the description to the AI plan assistant to fill the wizard form"
+  },
+  "planNewAiWorking": "Reading…",
+  "@planNewAiWorking": {
+    "description": "AI plan-assistant button label while the description is being read"
+  },
+  "planNewAiAppliedTitle": "Filled in from your description — check each field.",
+  "@planNewAiAppliedTitle": {
+    "description": "Heading of the status card shown after the AI plan assistant filled the wizard form"
+  },
+  "planNewAiAppliedGenerator": "The plan is built by the app's own generator from these fields, not by the AI.",
+  "@planNewAiAppliedGenerator": {
+    "description": "Status-card line saying the plan is built by the app generator, not the AI"
+  },
+  "planNewAiAppliedRecent5k": "Your 5K time was added but not confirmed. Tick the box only if it reflects your fitness today.",
+  "@planNewAiAppliedRecent5k": {
+    "description": "Status-card line shown when the AI filled a recent 5K time, which the runner still has to confirm with the checkbox"
+  },
+  "planNewAiRaceApplied": "Start date and plan length set so race week includes {date}.",
+  "@planNewAiRaceApplied": {
+    "description": "Status-card line when the start date and plan length were set around the race date from the description; date is a formatted calendar date",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planNewAiRacePast": "That race date has already passed, so the start date was left as it was.",
+  "@planNewAiRacePast": {
+    "description": "Status-card line when the race date from the description has already passed"
+  },
+  "planNewAiRaceTooSoon": "Race day is less than four weeks away, so the start date was left as it was — a plan needs at least four weeks.",
+  "@planNewAiRaceTooSoon": {
+    "description": "Status-card line when the race date from the description is under four weeks away"
+  },
+  "planNewAiRaceInvalid": "That race date couldn't be read, so the start date was left as it was.",
+  "@planNewAiRaceInvalid": {
+    "description": "Status-card line when the race date from the description could not be read"
+  },
+  "planNewAiAssumptionGoalEventDefault": "No race distance was mentioned, so the goal is set to a half marathon.",
+  "@planNewAiAssumptionGoalEventDefault": {
+    "description": "AI plan-assistant assumption: no race distance was mentioned, so the goal defaulted to a half marathon"
+  },
+  "planNewAiAssumptionDaysDefault": "No training days were mentioned, so it's set to 4 days a week.",
+  "@planNewAiAssumptionDaysDefault": {
+    "description": "AI plan-assistant assumption: no training days were mentioned, so 4 days a week was set"
+  },
+  "planNewAiAssumptionDaysClamped": "Training days were set to the nearest the planner supports (3 to 7 a week).",
+  "@planNewAiAssumptionDaysClamped": {
+    "description": "AI plan-assistant assumption: training days were clamped to the supported range"
+  },
+  "planNewAiAssumptionWeeksClamped": "Plan length was set to the nearest the planner supports (4 to 24 weeks).",
+  "@planNewAiAssumptionWeeksClamped": {
+    "description": "AI plan-assistant assumption: plan length was clamped to the supported range"
+  },
+  "planNewAiAssumptionRaceDateDropped": "The race date couldn't be used — it has to be a future date within two years.",
+  "@planNewAiAssumptionRaceDateDropped": {
+    "description": "AI plan-assistant assumption: the race date was unusable and dropped"
+  },
+  "planNewAiAssumptionGoalTimeDropped": "The goal time looked out of range for that distance, so it was left blank.",
+  "@planNewAiAssumptionGoalTimeDropped": {
+    "description": "AI plan-assistant assumption: the goal time was out of range and left blank"
+  },
+  "planNewAiAssumptionRecent5kDropped": "The 5K time looked out of range, so it was left blank.",
+  "@planNewAiAssumptionRecent5kDropped": {
+    "description": "AI plan-assistant assumption: the 5K time was out of range and left blank"
+  },
+  "planNewAiAssumptionBeginner5k": "A walk-run plan for new runners builds to a 5K, so the goal was set to 5K with no goal time.",
+  "@planNewAiAssumptionBeginner5k": {
+    "description": "AI plan-assistant assumption: a beginner walk-run plan always targets a 5K with no goal time"
+  },
+  "planNewAiErrorConsent": "The plan assistant needs the updated AI disclosure.",
+  "@planNewAiErrorConsent": {
+    "description": "Error when the AI plan assistant needs the runner to accept the updated AI disclosure first"
+  },
+  "planNewAiReviewDisclosure": "Review disclosure",
+  "@planNewAiReviewDisclosure": {
+    "description": "Button under the AI plan-assistant consent error that opens the AI disclosure"
+  },
+  "planNewAiErrorDailyLimit": "You've used today's AI requests. Fill in the form yourself, or try again tomorrow.",
+  "@planNewAiErrorDailyLimit": {
+    "description": "Error when the runner has used up today's AI requests"
+  },
+  "planNewAiErrorFallback": "Couldn't read that — fill in the form yourself.",
+  "@planNewAiErrorFallback": {
+    "description": "Error when the AI plan assistant could not fill the form; the manual form still works"
+  },
   "planNewCancel": "Cancel",
   "@planNewCancel": {
     "description": "Cancel button in the new-plan wizard"
@@ -8535,7 +8666,7 @@
   "@coachConsentHeadline": {
     "description": "Consent gate headline"
   },
-  "coachConsentIntro": "Threkir's AI features — the Coach and the AI route assistant — forward a slice of your data to Anthropic, our AI model provider in the United States. Depending on which feature you use, that slice includes:",
+  "coachConsentIntro": "Threkir's AI features — the Coach, the AI route assistant and the AI plan assistant — forward a slice of your data to Anthropic, our AI model provider in the United States. Depending on which feature you use, that slice includes:",
   "@coachConsentIntro": {
     "description": "Consent gate intro paragraph"
   },
@@ -8558,6 +8689,10 @@
   "coachConsentBulletRoutes": "For the AI route assistant: the route's name and stats, the request you type, and a coarse place label — never your precise coordinates.",
   "@coachConsentBulletRoutes": {
     "description": "Consent gate bullet: AI route assistant"
+  },
+  "coachConsentBulletPlanRequest": "For the AI plan assistant: the plan description you type (goal race, target and recent times, how many days you can train), used only to fill in the plan settings — the plan itself is built by Threkir's own generator, not the AI.",
+  "@coachConsentBulletPlanRequest": {
+    "description": "Consent gate bullet: AI plan assistant (the typed plan description sent to extract plan-wizard settings)"
   },
   "coachConsentProcessing": "Anthropic processes the data on Threkir's behalf under their data-processing terms; they do not train their models on Threkir customer data by default. Full details — including transfer mechanism, retention, and your withdrawal rights — are in our privacy policy.",
   "@coachConsentProcessing": {
@@ -8776,6 +8911,18 @@
   "coachSuggestNewWalkRun": "Is it OK to walk during my runs?",
   "@coachSuggestNewWalkRun": {
     "description": "Suggestion chip (brand-new runner, zero runs)"
+  },
+  "coachSuggestBuildHalfPlan": "Build me a half marathon training plan",
+  "@coachSuggestBuildHalfPlan": {
+    "description": "Coach empty-state suggestion asking the coach to build a half marathon plan; shown when the AI plan assistant is available"
+  },
+  "coachSuggestBuildFirst5kPlan": "Build me a beginner plan to run my first 5K",
+  "@coachSuggestBuildFirst5kPlan": {
+    "description": "Coach empty-state suggestion for a new runner asking for a beginner plan to a first 5K; shown when the AI plan assistant is available"
+  },
+  "coachSuggestPlanNextRace": "Help me plan my next race",
+  "@coachSuggestPlanNextRace": {
+    "description": "Coach empty-state suggestion for a runner with a plan asking for help planning the next race; shown when the AI plan assistant is available"
   },
   "coachEditMessageLabel": "Edit your message",
   "@coachEditMessageLabel": {
@@ -9060,7 +9207,7 @@
   "@settingsAccountAiConsentUpdateTitle": {
     "description": "Settings > Account tile title to accept a widened AI disclosure"
   },
-  "settingsAccountAiConsentUpdateSubtitle": "The disclosure now covers more features. Review and accept it to use the AI route assistant.",
+  "settingsAccountAiConsentUpdateSubtitle": "The disclosure now covers more features. Review and accept it to use the AI route and plan assistants.",
   "@settingsAccountAiConsentUpdateSubtitle": {
     "description": "Subtitle under the accept-updated-AI-disclosure tile"
   },
@@ -13893,10 +14040,6 @@
   "settingsBackendNotConfigured": "Backend not configured",
   "@settingsBackendNotConfigured": {
     "description": "Banner shown when a settings action needs a configured backend but none is available"
-  },
-  "settingsAccountSignedIn": "Signed in",
-  "@settingsAccountSignedIn": {
-    "description": "Account settings tile subtitle shown when signed in but no email address is available"
   },
   "settingsDevicesSignedOutSubtitle": "Sign in to see where you're signed in",
   "@settingsDevicesSignedOutSubtitle": {

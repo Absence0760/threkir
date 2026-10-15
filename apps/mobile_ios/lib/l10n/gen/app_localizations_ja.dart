@@ -772,6 +772,41 @@ class AppLocalizationsJa extends AppLocalizations {
   String get youProfileTitle => 'あなたのプロフィール';
 
   @override
+  String get homeTrainingPlanLabel => 'トレーニングプラン';
+
+  @override
+  String homeRaceInDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'レースは$days日後',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get homeRaceTomorrow => 'レースは明日';
+
+  @override
+  String get homeRaceDay => 'レース当日';
+
+  @override
+  String homePlanStartsInDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days日後に開始',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get homePlanStartsTomorrow => '明日開始';
+
+  @override
+  String get youViewProfile => 'プロフィールを見る';
+
+  @override
   String get logSheetTitle => '記録';
 
   @override
@@ -1099,7 +1134,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get homeTodaysLift => '今日の筋トレ';
 
   @override
-  String get settingsSectionProfile => 'プロフィール';
+  String get settingsSectionTraining => 'トレーニング';
+
+  @override
+  String get settingsSectionSettings => '設定';
 
   @override
   String get settingsSectionAppsData => 'アプリとデータ';
@@ -4279,11 +4317,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get profileNotFound => 'プロフィールが見つかりません。';
 
   @override
-  String profileFollowStats(int followers, int following) {
-    return 'フォロワー $followers · フォロー中 $following';
-  }
-
-  @override
   String get profileFollowing => 'フォロー中';
 
   @override
@@ -5477,6 +5510,93 @@ class AppLocalizationsJa extends AppLocalizations {
   String get planNewRaceUnreadable => 'このレースの日付を読み取れなかったため、下の日付は通常の初期値です。';
 
   @override
+  String get planNewAiTitle => '希望するプランを説明する';
+
+  @override
+  String get planNewAiHint =>
+      '普段の言葉で書くと、下のフォームが自動で入力されます。プランを作成するのは引き続きアプリ独自のジェネレーターです。作成する前にすべての項目を確認してください。';
+
+  @override
+  String get planNewAiPlaceholder =>
+      '例：3月14日のハーフマラソンで2時間切りを目指したい。週4日練習できて、最近の5kmは26:30でした。';
+
+  @override
+  String get planNewAiButton => 'フォームに入力';
+
+  @override
+  String get planNewAiWorking => '読み取り中…';
+
+  @override
+  String get planNewAiAppliedTitle => '説明をもとに入力しました。各項目を確認してください。';
+
+  @override
+  String get planNewAiAppliedGenerator =>
+      'プランはこれらの項目からアプリ独自のジェネレーターが作成します。AIが作成するのではありません。';
+
+  @override
+  String get planNewAiAppliedRecent5k =>
+      '5kmのタイムを入力しましたが、確認はされていません。現在の体力を反映している場合のみチェックを入れてください。';
+
+  @override
+  String planNewAiRaceApplied(String date) {
+    return 'レース週に$dateが含まれるよう、開始日とプランの期間を設定しました。';
+  }
+
+  @override
+  String get planNewAiRacePast => 'そのレース日はすでに過ぎているため、開始日は変更していません。';
+
+  @override
+  String get planNewAiRaceTooSoon =>
+      'レースまで4週間未満のため、開始日は変更していません。プランには最低4週間が必要です。';
+
+  @override
+  String get planNewAiRaceInvalid => 'レース日を読み取れなかったため、開始日は変更していません。';
+
+  @override
+  String get planNewAiAssumptionGoalEventDefault =>
+      'レースの距離が書かれていなかったため、目標をハーフマラソンにしました。';
+
+  @override
+  String get planNewAiAssumptionDaysDefault => '練習日数が書かれていなかったため、週4日にしました。';
+
+  @override
+  String get planNewAiAssumptionDaysClamped =>
+      '練習日数を、プランナーが対応する最も近い値（週3〜7日）にしました。';
+
+  @override
+  String get planNewAiAssumptionWeeksClamped =>
+      'プランの期間を、プランナーが対応する最も近い値（4〜24週）にしました。';
+
+  @override
+  String get planNewAiAssumptionRaceDateDropped =>
+      'レース日を使用できませんでした。今日より後で、2年以内の日付である必要があります。';
+
+  @override
+  String get planNewAiAssumptionGoalTimeDropped =>
+      '目標タイムがその距離に対して範囲外に見えたため、空欄のままにしました。';
+
+  @override
+  String get planNewAiAssumptionRecent5kDropped =>
+      '5kmのタイムが範囲外に見えたため、空欄のままにしました。';
+
+  @override
+  String get planNewAiAssumptionBeginner5k =>
+      '初心者向けのウォーク・ランプランは5kmを目指すため、目標を5km（目標タイムなし）にしました。';
+
+  @override
+  String get planNewAiErrorConsent => 'プランアシスタントを使うには、更新されたAIに関する説明への同意が必要です。';
+
+  @override
+  String get planNewAiReviewDisclosure => '説明を確認';
+
+  @override
+  String get planNewAiErrorDailyLimit =>
+      '本日のAIリクエストを使い切りました。フォームをご自身で入力するか、明日もう一度お試しください。';
+
+  @override
+  String get planNewAiErrorFallback => '読み取れませんでした。フォームをご自身で入力してください。';
+
+  @override
   String get planNewCancel => 'キャンセル';
 
   @override
@@ -6089,7 +6209,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get coachConsentIntro =>
-      'ThrekirのAI機能（コーチとAIルートアシスタント）は、あなたのデータの一部を、米国のAIモデルプロバイダーである Anthropic に送信します。利用する機能に応じて、その一部には以下が含まれます：';
+      'ThrekirのAI機能（コーチ、AIルートアシスタント、AIプランアシスタント）は、あなたのデータの一部を、米国のAIモデルプロバイダーである Anthropic に送信します。利用する機能に応じて、その一部には以下が含まれます：';
 
   @override
   String get coachConsentBulletProfile => '生年月日、性別、設定済みの心拍ゾーン。';
@@ -6106,6 +6226,10 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get coachConsentBulletRoutes =>
       'AIルートアシスタント利用時: ルートの名称と数値データ、入力したリクエスト、おおまかな地名。正確な座標は送信しません。';
+
+  @override
+  String get coachConsentBulletPlanRequest =>
+      'AIプランアシスタント利用時: 入力したプランの説明（目標レース、目標タイムと最近のタイム、トレーニングできる日数）。プラン設定の入力にのみ使用し、プラン自体はAIではなくThrekir独自のジェネレーターが作成します。';
 
   @override
   String get coachConsentProcessing =>
@@ -6260,6 +6384,15 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get coachSuggestNewWalkRun => 'ランの途中で歩いてもいい？';
+
+  @override
+  String get coachSuggestBuildHalfPlan => 'ハーフマラソンのトレーニングプランを作って';
+
+  @override
+  String get coachSuggestBuildFirst5kPlan => '初めての5kmを走るための初心者向けプランを作って';
+
+  @override
+  String get coachSuggestPlanNextRace => '次のレースの計画を手伝って';
 
   @override
   String get coachEditMessageLabel => 'メッセージを編集';
@@ -6466,7 +6599,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get settingsAccountAiConsentUpdateSubtitle =>
-      '説明の対象となる機能が増えました。内容を確認して同意すると、AIルートアシスタントを利用できます。';
+      '説明の対象となる機能が増えました。内容を確認して同意すると、AIルートアシスタントとAIプランアシスタントを利用できます。';
 
   @override
   String get settingsAccountAiConsentGrantTitle => 'AIの説明を確認する';
@@ -9938,9 +10071,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get settingsBackendNotConfigured => 'バックエンドが構成されていません';
-
-  @override
-  String get settingsAccountSignedIn => 'サインイン済み';
 
   @override
   String get settingsDevicesSignedOutSubtitle => 'サインインすると、サインイン中のデバイスを確認できます';

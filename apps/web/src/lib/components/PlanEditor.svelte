@@ -3,6 +3,8 @@
 	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { lengthLimit } from '#lib/core/column_limits.ts';
 	import { onMount, untrack } from 'svelte';
+	import { replaceState } from '$app/navigation';
+	import { page } from '$app/state';
 	import { createTrainingPlan, fetchActivePlanOverview, fetchRuns } from '#lib/core/data.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
@@ -39,6 +41,16 @@
 	import { fmtKm, fmtPace, getUnit } from '#lib/format/units.svelte.ts';
 	import { paceMinutesSeconds } from '#lib/format/pace_format.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import type { MessageKey } from '#lib/i18n/messages.ts';
+	import { coachEnabled } from '#lib/coach/coach_flag.ts';
+	import { aiPlanEnabled } from '#lib/training/ai_plan_flag.ts';
+	import {
+		PlanRequestError,
+		requestPlanInputs,
+		type PlanRequestAssumption,
+		type PlanRequestInputs,
+	} from '#lib/training/plan_request_client.ts';
+	import { racePlanPreset, type RacePlanRefusal } from '#lib/training/race_plan_preset.ts';
 
 	// Persona-hunt Round 3 finding Woman #3. Pull the runner's gender
 	// off user_profiles so generatePlan can apply the gender-aware
@@ -126,6 +138,10 @@
 		initialName?: string;
 		initialStartDate?: string;
 		initialWeeks?: number;
+		// A plain-English plan description handed over by a deep link (the
+		// coach's plan handoff). With the assistant live it prefills the box
+		// and runs one fill on mount; with it off it is ignored.
+		initialDescription?: string;
 	}
 	let {
 		oncreated,
@@ -135,6 +151,7 @@
 		initialName,
 		initialStartDate,
 		initialWeeks,
+		initialDescription,
 	}: Props = $props();
 
 	// The initial* props seed the form once; the fields are edited locally after.
@@ -160,6 +177,176 @@
 	let weekOverride = $state<number | null>(untrack(() => initialWeeks ?? null));
 	let busy = $state(false);
 	let error = $state<string | null>(null);
+
+	// "Describe the plan you want". The AI is the interface, never the planner:
+	// it only fills the fields below, and the generator builds the plan from
+	// them exactly as it does for a hand-filled form. Every failure leaves the
+	// manual form as it was.
+	const showAiPlan = coachEnabled() && aiPlanEnabled();
+	const handedDescription = untrack(() => (showAiPlan ? (initialDescription?.trim() ?? '') : ''));
+	let aiRequest = $state(handedDescription);
+	let aiBox = $state<HTMLDetailsElement | null>(null);
+	let aiBusy = $state(false);
+	let aiError = $state<{ message: string; consent: boolean } | null>(null);
+	let aiApplied = $state<{
+		assumptions: PlanRequestAssumption[];
+		raceNote: string | null;
+		recent5kFilled: boolean;
+	} | null>(null);
+	// The runner's own plan name always beats the extracted one.
+	let nameTouched = $state(false);
+	// The start date the last AI fill derived from a race date. A later fill
+	// without a race date puts it back, so the plan stops being sized for a
+	// race the new description no longer mentions; a date the runner picked
+	// by hand is left alone.
+	let aiRaceStart = $state<string | null>(null);
+
+	const AI_ASSUMPTION_KEYS: Record<PlanRequestAssumption, MessageKey> = {
+		goal_event_default: 'planEditor.aiAssumptionGoalEventDefault',
+		days_per_week_default: 'planEditor.aiAssumptionDaysDefault',
+		days_per_week_clamped: 'planEditor.aiAssumptionDaysClamped',
+		weeks_clamped: 'planEditor.aiAssumptionWeeksClamped',
+		race_date_dropped: 'planEditor.aiAssumptionRaceDateDropped',
+		goal_time_dropped: 'planEditor.aiAssumptionGoalTimeDropped',
+		recent_5k_dropped: 'planEditor.aiAssumptionRecent5kDropped',
+		beginner_5k: 'planEditor.aiAssumptionBeginner5k',
+	};
+	const RACE_REFUSAL_KEYS: Record<RacePlanRefusal, MessageKey> = {
+		past: 'planEditor.aiRacePast',
+		too_soon: 'planEditor.aiRaceTooSoon',
+		invalid: 'planEditor.aiRaceInvalid',
+	};
+
+	function addDaysIso(iso: string, days: number): string {
+		const d = parseISO(iso);
+		d.setDate(d.getDate() + days);
+		return formatISO(d);
+	}
+
+	/// Presets the start date + length so race week contains race day, and
+	/// returns the note saying so — or why it could not.
+	function applyRaceDate(raceDate: string, requestedWeeks: number | null): string {
+		const result = racePlanPreset({
+			raceDateIso: raceDate,
+			distanceM: GOAL_DISTANCES_M[goalEvent as Exclude<GoalEvent, 'custom'>],
+			todayIso: todayIso(),
+		});
+		if (!result.ok) return t(RACE_REFUSAL_KEYS[result.reason]);
+		let { weeks: presetWeeks, startDate: presetStart } = result.preset;
+		// A shorter plan the runner asked for still ends on race week: start
+		// later rather than earlier. A longer one cannot fit, so the preset wins.
+		if (requestedWeeks != null && requestedWeeks < presetWeeks) {
+			presetStart = addDaysIso(presetStart, (presetWeeks - requestedWeeks) * 7);
+			presetWeeks = requestedWeeks;
+		}
+		startDate = presetStart;
+		aiRaceStart = presetStart;
+		startSnapped = false;
+		weekOverride = presetWeeks;
+		return t('planEditor.aiRaceApplied', {
+			date: parseISO(raceDate).toLocaleDateString(activeFormatLocale(), { dateStyle: 'medium' }),
+		});
+	}
+
+	function applyPlanInputs(inputs: PlanRequestInputs) {
+		exitImportMode();
+		beginnerWalkRun = inputs.beginnerWalkRun;
+		goalEvent = inputs.goalEvent;
+		daysPerWeek = inputs.daysPerWeek;
+		// A fill replaces the shape of the plan, not just the fields this
+		// description happened to name: a second fill must not inherit the
+		// first one's length, race start or goal time.
+		weekOverride = inputs.weeks;
+		if (!inputs.raceDate && aiRaceStart !== null && startDate === aiRaceStart) {
+			startDate = defaultStart();
+		}
+		aiRaceStart = null;
+		if (inputs.goalTimeSec != null) {
+			targetHours = Math.floor(inputs.goalTimeSec / 3600);
+			targetMin = Math.floor((inputs.goalTimeSec % 3600) / 60);
+			targetSec = inputs.goalTimeSec % 60;
+		} else {
+			targetHours = null;
+			targetMin = null;
+			targetSec = null;
+		}
+		if (inputs.recent5kSec != null) {
+			recent5kMin = Math.floor(inputs.recent5kSec / 60);
+			recent5kSec = inputs.recent5kSec % 60;
+			// Never ticked for the runner: whether the time reflects their
+			// fitness today is theirs to confirm, and an unconfirmed time keeps
+			// the paces on the conservative goal-based fallback.
+			recent5kConfirmed = false;
+		}
+		if (inputs.planName && (!nameTouched || !name.trim())) name = inputs.planName;
+		const raceNote = inputs.raceDate ? applyRaceDate(inputs.raceDate, inputs.weeks) : null;
+		aiApplied = {
+			assumptions: inputs.assumptions,
+			raceNote,
+			recent5kFilled: inputs.recent5kSec != null,
+		};
+	}
+
+	function aiErrorFor(e: unknown): { message: string; consent: boolean } {
+		const kind = e instanceof PlanRequestError ? e.kind : 'unavailable';
+		if (kind === 'consent') return { message: t('planEditor.aiErrorConsent'), consent: true };
+		if (kind === 'daily_limit') return { message: t('planEditor.aiErrorDailyLimit'), consent: false };
+		return { message: t('planEditor.aiErrorFallback'), consent: false };
+	}
+
+	// A deep-linked description spends a Coach message, so it runs once and
+	// leaves the URL: a reload or a back-navigation must not run it again.
+	// The strip waits a macrotask because SvelteKit refuses replaceState until
+	// its router has finished starting, which is after the first mount.
+	function stripDescribeParam() {
+		const url = new URL(page.url.href);
+		if (!url.searchParams.has('describe')) return;
+		url.searchParams.delete('describe');
+		try {
+			replaceState(`${url.pathname}${url.search}${url.hash}`, page.state);
+		} catch (e) {
+			console.error('Clearing the plan description from the URL failed', { message: thrownMessage(e) });
+		}
+	}
+
+	onMount(() => {
+		if (!handedDescription) return;
+		if (aiBox) {
+			aiBox.open = true;
+			aiBox.scrollIntoView({ block: 'start' });
+		}
+		void fillFromDescription();
+		setTimeout(stripDescribeParam, 0);
+	});
+
+	async function fillFromDescription() {
+		const text = aiRequest.trim();
+		if (!text || aiBusy) return;
+		aiBusy = true;
+		aiError = null;
+		aiApplied = null;
+		let inputs: PlanRequestInputs;
+		try {
+			inputs = await requestPlanInputs(text, todayIso());
+		} catch (e) {
+			if (!(e instanceof PlanRequestError)) {
+				console.error('Plan assistant request failed', { message: thrownMessage(e) });
+			}
+			aiError = aiErrorFor(e);
+			aiBusy = false;
+			return;
+		}
+		// Its own catch: a fill that throws part-way must not take the editor
+		// down with it — the fields already set stay, the runner edits the rest.
+		try {
+			applyPlanInputs(inputs);
+		} catch (e) {
+			console.error('Applying plan assistant inputs failed', { message: thrownMessage(e) });
+			aiError = { message: t('planEditor.aiErrorFallback'), consent: false };
+		} finally {
+			aiBusy = false;
+		}
+	}
 
 	// Editable plan state. The auto-generator produces a candidate
 	// outline whenever core form inputs change; the user can then
@@ -487,6 +674,57 @@
 <form onsubmit={submit} class="plan-editor">
 	<div class="grid">
 		<section class="form">
+			{#if showAiPlan}
+				<details class="import-box ai-box" id="ai-plan" bind:this={aiBox} open>
+					<summary>{t('planEditor.aiTitle')}</summary>
+					<p class="hint" id="plan-ai-hint">{t('planEditor.aiHint')}</p>
+					<label class="visually-hidden" for="plan-ai-request">{t('planEditor.aiTitle')}</label>
+					<textarea
+						id="plan-ai-request"
+						class="ai-text"
+						bind:value={aiRequest}
+						rows="3"
+						maxlength="600"
+						placeholder={t('planEditor.aiPlaceholder')}
+						aria-describedby="plan-ai-hint"
+						disabled={aiBusy}
+					></textarea>
+					<button
+						type="button"
+						class="btn btn-secondary"
+						onclick={fillFromDescription}
+						disabled={aiBusy || !aiRequest.trim()}
+						aria-busy={aiBusy}
+					>
+						{aiBusy ? t('planEditor.aiWorking') : t('planEditor.aiButton')}
+					</button>
+					{#if aiError}
+						<p class="error ai-error" role="alert">
+							{aiError.message}
+							{#if aiError.consent}
+								<a href="/coach">{t('planEditor.aiErrorConsentLink')}</a>
+							{/if}
+						</p>
+					{/if}
+					{#if aiApplied}
+						<div class="ai-applied" role="status">
+							<p class="ai-applied-title">{t('planEditor.aiAppliedTitle')}</p>
+							<ul>
+								<li>{t('planEditor.aiAppliedGenerator')}</li>
+								{#if aiApplied.raceNote}
+									<li>{aiApplied.raceNote}</li>
+								{/if}
+								{#if aiApplied.recent5kFilled}
+									<li>{t('planEditor.aiAppliedRecent5k')}</li>
+								{/if}
+								{#each aiApplied.assumptions as a (a)}
+									<li>{t(AI_ASSUMPTION_KEYS[a])}</li>
+								{/each}
+							</ul>
+						</div>
+					{/if}
+				</details>
+			{/if}
 			<details class="import-box" bind:open={showImport}>
 				<summary>{t('planEditor.importTitle')}</summary>
 				<p class="hint" id="plan-import-hint">{t('planEditor.importHint')}</p>
@@ -514,6 +752,7 @@
 					<input
 						type="text"
 						bind:value={name}
+						oninput={() => (nameTouched = true)}
 						placeholder={t('planEditor.planNamePlaceholder')}
 						required
 						maxlength={lengthLimit('training_plans.name')}
@@ -945,6 +1184,40 @@
 		color: var(--color-text);
 		resize: vertical;
 		margin-bottom: 0.5rem;
+	}
+	.ai-text {
+		width: 100%;
+		box-sizing: border-box;
+		font: inherit;
+		font-size: 0.9rem;
+		background: var(--color-bg);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-sm);
+		padding: 0.5rem;
+		color: var(--color-text);
+		resize: vertical;
+		margin-bottom: 0.5rem;
+	}
+	.ai-error {
+		margin-top: 0.5rem;
+	}
+	.ai-error a {
+		color: inherit;
+		font-weight: 600;
+	}
+	.ai-applied {
+		margin-top: 0.5rem;
+		font-size: 0.85rem;
+	}
+	.ai-applied-title {
+		font-weight: 600;
+		color: var(--color-primary);
+		margin: 0 0 0.25rem;
+	}
+	.ai-applied ul {
+		margin: 0;
+		padding-inline-start: 1.1rem;
+		color: var(--color-text-secondary);
 	}
 	.imported-note {
 		font-size: 0.82rem;

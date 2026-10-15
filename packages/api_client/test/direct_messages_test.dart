@@ -173,6 +173,52 @@ void main() {
     });
   });
 
+  group('fetchUnreadDmCount', () {
+    test('sums unread across conversations and reads no names', () async {
+      await _signIn(client);
+      fake.bodyByPath[_threadsPath] = [
+        {
+          'partner_id': 'p-1',
+          'last_body': 'hi',
+          'last_at': '2026-10-14T09:30:00Z',
+          'last_from_me': false,
+          'unread': 2,
+        },
+        {
+          'partner_id': 'p-2',
+          'last_body': 'yo',
+          'last_at': '2026-10-13T09:30:00Z',
+          'last_from_me': true,
+          'unread': 0,
+        },
+        {
+          'partner_id': 'p-3',
+          'last_body': 'run?',
+          'last_at': '2026-10-12T09:30:00Z',
+          'last_from_me': false,
+          'unread': 5,
+        },
+      ];
+
+      expect(await api.fetchUnreadDmCount(), 7);
+      expect(fake.to(_threadsPath).single.method, 'GET');
+      expect(fake.to(_profilesPath), isEmpty);
+    });
+
+    test('a failed read throws rather than reading as zero', () async {
+      await _signIn(client);
+      fake.statusByPath[_threadsPath] = 500;
+      fake.bodyByPath[_threadsPath] = {'message': 'boom'};
+
+      expect(api.fetchUnreadDmCount(), throwsA(isA<PostgrestException>()));
+    });
+
+    test('signed out answers zero without a wire call', () async {
+      expect(await api.fetchUnreadDmCount(), 0);
+      expect(fake.requests, isEmpty);
+    });
+  });
+
   group('fetchDmThread', () {
     test('reads the newest page of the pair and returns it oldest first',
         () async {

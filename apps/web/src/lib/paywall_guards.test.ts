@@ -168,6 +168,18 @@ test('/app-capabilities.json publishes the same perk flags and web-checkout gate
 		/web_checkout: webCheckoutAvailable\(\)/,
 		'the manifest body must publish `web_checkout` under the key the mobile parser reads.',
 	);
+	// The AI plan assistant: mobile offers the box (and follows the coach's
+	// describe link) only when the web box itself would render.
+	assert.match(
+		manifest,
+		/import \{ aiPlanEnabled \} from '#lib\/training\/ai_plan_flag\.ts'/,
+		'the capability manifest must derive `ai_plan` from the shared aiPlanEnabled() gate.',
+	);
+	assert.match(
+		manifest,
+		/ai_plan: coachEnabled\(\) && aiPlanEnabled\(\)/,
+		'the manifest must publish `ai_plan` as coachEnabled() && aiPlanEnabled(), the gate the web box renders under.',
+	);
 	assert.match(
 		manifest,
 		/export const prerender = true/,

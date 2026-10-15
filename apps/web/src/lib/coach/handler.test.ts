@@ -54,6 +54,7 @@ function baseConfig(): CoachConfig {
 		publicSupabaseUrl: 'http://127.0.0.1:24321',
 		publicSupabaseAnonKey: 'sb_publishable_fake_local_anon_key',
 		bypassPaywallEnabled: false,
+		aiPlanEnabled: false,
 	};
 }
 
@@ -576,4 +577,58 @@ test('happy path persists the full reply, emits done, refunds nothing', async ()
 	assert.match(out, /event: done/);
 	assert.match(out, /assistant-row-1/, 'done event carries the persisted assistant_message_id');
 	assert.match(out, /"used_today":1/);
+});
+
+// ───────────── plan handoff addendum (decisions § 1930) ─────────────
+
+/// Drive one `send` turn through the OpenAI-compatible provider with
+/// `fetch` stubbed, and return the system text the provider was handed.
+/// The stubbed upstream answers 500, so the turn ends in the mid-stream
+/// error path — only the request body matters here.
+async function systemTextFor(aiPlanEnabled: boolean): Promise<string> {
+	const calls = { inserts: [] as string[], deletes: [] as string[] };
+	const originalFetch = globalThis.fetch;
+	let sent: { messages?: { role: string; content: string }[] } | null = null;
+	globalThis.fetch = (async (_url: unknown, init?: { body?: unknown }) => {
+		sent = JSON.parse(String(init?.body ?? 'null'));
+		return new Response('upstream down', { status: 500 });
+	}) as typeof fetch;
+	try {
+		await captureConsoleError(async () => {
+			const result = await handleCoach(
+				'Bearer fake-token',
+				{ messages: [{ role: 'user', content: 'Generate a half marathon training plan' }] },
+				{
+					...baseConfig(),
+					provider: 'openai',
+					openaiBaseUrl: 'http://127.0.0.1:1/v1',
+					bypassPaywallEnabled: true,
+					aiPlanEnabled,
+					createClient: () => makeSupabaseStub(calls),
+				},
+			);
+			if (result.kind === 'sse') {
+				for await (const chunk of result.body) void chunk;
+			}
+		});
+	} finally {
+		globalThis.fetch = originalFetch;
+	}
+	const system = (sent as { messages?: { role: string; content: string }[] } | null)?.messages?.find(
+		(m) => m.role === 'system',
+	);
+	assert.ok(system, 'the provider must receive a system message');
+	return system!.content;
+}
+
+test('the system text carries the describe-link handoff when the AI plan assistant is on', async () => {
+	const text = await systemTextFor(true);
+	assert.ok(text.includes('[Build this plan](/plans/new?describe='), text.slice(-1200));
+	assert.match(text, /do not write workouts or a schedule yourself/);
+});
+
+test('the system text points at the bare plan builder when the AI plan assistant is off', async () => {
+	const text = await systemTextFor(false);
+	assert.ok(text.includes('[plan builder](/plans/new)'), text.slice(-1200));
+	assert.ok(!text.includes('describe='), 'no assistant link while the flag is off');
 });

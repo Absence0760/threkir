@@ -776,6 +776,14 @@ void main() {
                   of: find.byType(TodaysWorkoutCard),
                   matching: find.text('Long run')),
               findsOneWidget);
+          // The plan's race day is counted down on Home too (decisions
+          // § 1954); the exact count is next_race_card_test's to pin.
+          final race = find.byKey(const Key('dashboardNextRace'));
+          await tester.scrollUntilVisible(race, 200,
+              scrollable: find.byType(Scrollable).first);
+          expect(
+              find.descendant(of: race, matching: find.text('Sub-3 Marathon')),
+              findsOneWidget);
         } finally {
           dir.deleteSync(recursive: true);
         }
@@ -817,6 +825,7 @@ void main() {
           await tester.pump();
 
           expect(find.text("TODAY'S WORKOUT"), findsNothing);
+          expect(find.byKey(const Key('dashboardNextRace')), findsNothing);
         } finally {
           dir.deleteSync(recursive: true);
         }

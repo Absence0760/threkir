@@ -55,6 +55,10 @@
  *     hubs at each visitor's own machine — all three fail silently, in
  *     the artifact, for everyone.
  *
+ *   - PUBLIC_AI_PLAN_ENABLED may be on or off, but on with
+ *     PUBLIC_COACH_ENABLED off is a no-op (the /plans/new box needs both),
+ *     so the CLI names that state in a `::notice::`.
+ *
  * NOT enforced (intentional):
  *   - PUBLIC_REVENUECAT_WEB_PORTAL_URL — the manage-subscription portal
  *     is optional. An empty value degrades the "Manage subscription"
@@ -273,6 +277,16 @@ export function checkProductionEnv(env) {
 	} else if (proSellable) {
 		notices.push(
 			'Web checkout is off: PUBLIC_REVENUECAT_WEB_CHECKOUT_URL is unset while a Pro perk flag is on, so /settings/upgrade sells Pro through the iPhone app only (decisions § 1826). Set the secret to a https://pay.rev.cat/<token> link to turn web checkout on.',
+		);
+	}
+
+	// The plan assistant's box renders only when the Coach is on too (it is a
+	// coach-equivalent call on the Coach's key and daily counter), so the
+	// flag alone changes nothing. A legitimate build, but one an operator who
+	// just flipped the flag would otherwise read as broken.
+	if (isTruthyFlagValue(env.PUBLIC_AI_PLAN_ENABLED) && !isTruthyFlagValue(env.PUBLIC_COACH_ENABLED)) {
+		notices.push(
+			'The AI plan assistant stays hidden: PUBLIC_AI_PLAN_ENABLED is on but PUBLIC_COACH_ENABLED is not, and /plans/new shows the box only when both are. Turn the Coach on as well, or unset PUBLIC_AI_PLAN_ENABLED.',
 		);
 	}
 

@@ -94,6 +94,20 @@ test('a regex after a keyword is a regex, so a quote inside it opens no string',
   assert.deepEqual(topLevelExports(src).map((e) => e.name), ['namePart', 'kind', 'ratio', 'after']);
 });
 
+test('a regex inside a template interpolation is a regex, so a quote inside it opens no string', () => {
+  // `${String(v).replace(/"/g, '\\"')}` read the regex's `"` as a string that
+  // ran past the closing backtick, and every export after it vanished from the
+  // stub (_shared/keyset_page.ts lost six).
+  const src = [
+    'function literal(v: string) {',
+    "  return `\"${String(v).replace(/\\\\/g, '\\\\\\\\').replace(/\"/g, '\\\\\"')}\"`;",
+    '}',
+    'export function half(a: number) { return `${a / 2}`; }',
+    "export const after = 'still read';",
+  ].join('\n');
+  assert.deepEqual(topLevelExports(src).map((e) => e.name), ['half', 'after']);
+});
+
 test('every line-anchored declaration in a real module is read by the scanner', () => {
   // An independent count, so a lexer slip that hides exports from BOTH the
   // original and its stub cannot pass the shape check below by agreeing with

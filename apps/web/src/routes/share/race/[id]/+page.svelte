@@ -1,5 +1,8 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { fetchRaceListingPhotos, type RaceListingPhoto } from '#lib/core/data.ts';
+	import { safeImageSrc } from '#lib/util/safe_image_src.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import SharePageShell from '#lib/components/SharePageShell.svelte';
 	import { safeHref } from '#lib/util/html_escape.ts';
@@ -24,6 +27,15 @@
 	// entry_url is DB-constrained to http(s), but pass it through safeHref
 	// defence-in-depth before it reaches the anchor.
 	let entryHref = $derived(data.race?.entry_url ? safeHref(data.race.entry_url) : null);
+
+	// Loaded in the browser, never in `load`: the share-entity Lambda runs the
+	// lookup to bake the <head>, and runners' photos must not reach an unfurl
+	// card or the server-rendered HTML (decisions § 1961).
+	let photos = $state<RaceListingPhoto[]>([]);
+	onMount(async () => {
+		if (!data.race) return;
+		photos = await fetchRaceListingPhotos(data.race.id);
+	});
 </script>
 
 <svelte:head>
@@ -70,6 +82,26 @@
 				<a class="btn btn-outline" href="/races">{m('shareRace.calendar')}</a>
 			</div>
 		</main>
+		{#if photos.length > 0}
+			<section class="photos" aria-labelledby="race-photos-heading" data-testid="race-photos">
+				<h2 id="race-photos-heading">{m('shareRace.photosHeading')}</h2>
+				<div class="photo-grid">
+					{#each photos as p (p.id)}
+						<figure class="photo">
+							<img src={safeImageSrc(p.thumbUrl)} alt={p.caption ?? ''} loading="lazy" />
+							{#if p.caption || p.displayName}
+								<figcaption>
+									{#if p.caption}<span class="caption">{p.caption}</span>{/if}
+									{#if p.displayName}
+										<span class="by">{m('shareRace.photoBy', { name: p.displayName })}</span>
+									{/if}
+								</figcaption>
+							{/if}
+						</figure>
+					{/each}
+				</div>
+			</section>
+		{/if}
 	{:else}
 		<main class="content" id="main-content">
 			<div class="notfound-card">
@@ -136,6 +168,50 @@
 	.dot {
 		color: var(--color-text-tertiary);
 		margin: 0 0.3rem;
+	}
+	.photos {
+		max-width: 48rem;
+		margin: 0 auto;
+		width: 100%;
+		padding: var(--space-md);
+	}
+	.photos h2 {
+		font-size: 1.2rem;
+		font-weight: 700;
+		margin: 0 0 var(--space-md);
+	}
+	.photo-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(min(160px, 100%), 1fr));
+		gap: var(--space-sm);
+	}
+	.photo {
+		margin: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.3rem;
+	}
+	.photo img {
+		width: 100%;
+		aspect-ratio: 1 / 1;
+		object-fit: cover;
+		border-radius: var(--radius-md);
+		display: block;
+		background: var(--color-surface);
+	}
+	.photo figcaption {
+		display: flex;
+		flex-direction: column;
+		gap: 0.1rem;
+		font-size: 0.82rem;
+		line-height: 1.35;
+		word-break: break-word;
+	}
+	.photo .caption {
+		color: var(--color-text-secondary);
+	}
+	.photo .by {
+		color: var(--color-text-tertiary);
 	}
 	.content {
 		max-width: 48rem;

@@ -6,6 +6,7 @@
 		addRunPhoto,
 		deleteRunPhoto,
 		updateRunPhotoCaption,
+		setRunPhotoRaceGallery,
 		type RunPhoto,
 	} from '#lib/core/data.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
@@ -17,9 +18,19 @@
 	interface Props {
 		runId: string;
 		runOwnerId: string;
+		/// The publicly readable race listing this run is linked to; null
+		/// hides the race-page toggle (decisions § 1961).
+		raceListingId?: string | null;
+		runIsPublic?: boolean;
 		wrapperClass?: string;
 	}
-	let { runId, runOwnerId, wrapperClass = 'card' }: Props = $props();
+	let {
+		runId,
+		runOwnerId,
+		raceListingId = null,
+		runIsPublic = false,
+		wrapperClass = 'card',
+	}: Props = $props();
 
 	let photos = $state<RunPhoto[]>([]);
 	let loading = $state(true);
@@ -34,6 +45,22 @@
 	let fileInput: HTMLInputElement | undefined = $state();
 
 	let canManage = $derived(auth.user?.id === runOwnerId);
+	let showRaceToggle = $derived(canManage && !!raceListingId);
+	let raceBusyId = $state<string | null>(null);
+
+	async function toggleRaceGallery(p: RunPhoto, input: HTMLInputElement) {
+		const shared = input.checked;
+		raceBusyId = p.id;
+		try {
+			await setRunPhotoRaceGallery(p.id, shared);
+			photos = photos.map((x) => (x.id === p.id ? { ...x, race_gallery: shared } : x));
+		} catch (e) {
+			input.checked = p.race_gallery;
+			showToast(m('runPhotos.raceGalleryFailed', { error: thrownMessage(e) }), 'error');
+		} finally {
+			raceBusyId = null;
+		}
+	}
 
 	async function load() {
 		loading = true;
@@ -187,6 +214,11 @@
 	{:else if photos.length === 0 && !canManage}
 		<p class="muted">{m('runPhotos.noPhotos')}</p>
 	{:else if photos.length > 0}
+		{#if showRaceToggle}
+			<p class="race-hint" data-testid="race-gallery-hint">
+				{runIsPublic ? m('runPhotos.raceGalleryHint') : m('runPhotos.raceGalleryPrivateHint')}
+			</p>
+		{/if}
 		<div class="grid">
 			{#each photos as p (p.id)}
 				<figure class="tile">
@@ -215,6 +247,18 @@
 						</form>
 					{:else if p.caption}
 						<figcaption>{p.caption}</figcaption>
+					{/if}
+					{#if showRaceToggle}
+						<!-- Withdrawing stays possible on a private run; only sharing waits on it. -->
+						<label class="race-toggle">
+							<input
+								type="checkbox"
+								checked={p.race_gallery}
+								disabled={raceBusyId === p.id || (!runIsPublic && !p.race_gallery)}
+								onchange={(e) => toggleRaceGallery(p, e.currentTarget)}
+							/>
+							{m('runPhotos.raceGalleryToggle')}
+						</label>
 					{/if}
 					{#if canManage}
 						<div class="tile-actions">
@@ -383,6 +427,27 @@
 		line-height: 1.35;
 		white-space: pre-wrap;
 		word-break: break-word;
+	}
+
+	.race-hint {
+		margin: 0;
+		font-size: 0.82rem;
+		color: var(--color-text-secondary);
+		line-height: 1.4;
+	}
+
+	.race-toggle {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		font-size: 0.82rem;
+		color: var(--color-text-secondary);
+		cursor: pointer;
+	}
+
+	.race-toggle:has(input:disabled) {
+		cursor: not-allowed;
+		opacity: 0.6;
 	}
 
 	.caption-edit {

@@ -22,7 +22,7 @@ Deno.test('an unrecognised provider is refused, not read as the default', () => 
   // while RunSignUp's key is missing, and a `synced: 0` success once it lands,
   // for a provider this function has never heard of.
   assert(
-    /if \(requested !== 'runsignup' && requested !== 'ultrasignup'\) \{/.test(SRC),
+    /if \(requested !== 'runsignup' && requested !== 'ultrasignup' && requested !== 'parkrun'\) \{/.test(SRC),
     'the provider must be validated against the set it supports',
   );
   const refusal = SRC.slice(SRC.indexOf("requested !== 'runsignup'"));
@@ -75,6 +75,28 @@ Deno.test('UltraSignup is gated on its own key pair; RunSignUp listings are keyl
   assert(gate !== -1, 'the credential gate is gone');
   assert(out !== -1, 'the leg makes no outbound call at all — is it a stub again?');
   assert(gate < out, 'the credential gate must precede the outbound fetch');
+});
+
+Deno.test('the parkrun leg is off unless PARKRUN_EVENTS_ENABLED is exactly true, ahead of the probe and the fetch', () => {
+  // Listing parkrun's events waits on parkrun's written permission (#1148,
+  // decisions § 1952). The flag is the deploy gate, so a probe must not report
+  // the leg configured and a sync must not reach parkrun's server while it is off.
+  const gate = SRC.indexOf(
+    "if (provider === 'parkrun' && !parkrunEventsEnabled(Deno.env.get('PARKRUN_EVENTS_ENABLED'))) {",
+  );
+  assert(gate !== -1, 'the parkrun gate is gone, or reads another variable');
+  assert(
+    /PARKRUN_EVENTS_ENABLED'\)\)\) \{\s*return Response\.json\(\{ error: 'provider_not_configured' \}, \{ status: 503 \}\);/
+      .test(SRC),
+    'a disabled parkrun leg must answer 503 provider_not_configured',
+  );
+  const probe = SRC.indexOf('if (!isSync) {');
+  const out = SRC.indexOf('await fetch(');
+  assert(probe !== -1 && out !== -1);
+  assert(gate < probe, 'the probe would report a disabled parkrun leg as configured');
+  assert(gate < out, 'the gate must precede the outbound fetch');
+  assert(/\? await syncParkrunPayload\(\s*service,/.test(SRC), 'the parkrun write must go through the service client');
+  assert(!/syncParkrunPayload\(\s*supabase/.test(SRC), 'the caller-scoped client must never write');
 });
 
 Deno.test('a region hint the provider cannot search by is refused before the fetch', () => {

@@ -58,6 +58,7 @@ import '../widgets/run_list_tile.dart';
 import '../widgets/this_week_strip.dart';
 import '../widgets/goal_editor_sheet.dart';
 import '../widgets/todays_workout_card.dart';
+import '../widgets/next_race_card.dart';
 import '../widgets/training_load_chart.dart';
 import 'add_run_screen.dart';
 import 'coach_screen.dart';
@@ -641,6 +642,19 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
+  /// The active plan's race-day countdown, or null with no active plan or
+  /// once its race day has passed.
+  Widget? _nextRaceCard(DateTime now) {
+    final p = _planOverview;
+    if (p == null || !NextRaceCard.shows(p, now)) return null;
+    return NextRaceCard(
+      key: const Key('dashboardNextRace'),
+      overview: p,
+      now: now,
+      onTap: _openTodayWorkout,
+    );
+  }
+
   /// The pinned "Ask your coach" entry shown at the top of Home. Null when
   /// signed out or no training service (same guard as the toolbar action), so
   /// it never renders a dead tap.
@@ -1048,6 +1062,13 @@ class _DashboardScreenState extends State<DashboardScreen>
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: heroWorkoutCard,
                   ),
+                // Onboarding can mint a plan before the first run, so its
+                // race day shows here too, not only once there is history.
+                if (_nextRaceCard(now) case final raceCard?)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    child: raceCard,
+                  ),
                 if (goals.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -1091,6 +1112,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       // week to lead with.
       final weekLeadCard =
           runs.isNotEmpty ? _weekLeadCard(runs, goals, unit, now) : null;
+      final raceCard = _nextRaceCard(now);
       // Active-plan hero: surface the day's structured workout above
       // goals so a plan-runner sees what's next before scrolling. Hidden
       // when no active plan or no workout today.
@@ -1358,6 +1380,7 @@ class _DashboardScreenState extends State<DashboardScreen>
               pendingBanner,
               if (coach != null) ...[coach, _kSectionGap],
               if (weekLeadCard != null) ...[weekLeadCard, _kSectionGap],
+              if (raceCard != null) ...[raceCard, _kSectionGap],
               if (leadColumn != null && goalsSection != null)
                 Row(
                   key: const Key('dashboardExpandedLeadRow'),
@@ -1407,6 +1430,8 @@ class _DashboardScreenState extends State<DashboardScreen>
             if (coach != null) ...[coach, _kSectionGap],
             if (weekLeadCard != null) ...[weekLeadCard, _kSectionGap],
             if (workoutCard != null) ...[workoutCard, _kSectionGap],
+            // After today's session, which is the more urgent of the two.
+            if (raceCard != null) ...[raceCard, _kSectionGap],
             if (latestRunSection != null) ...[latestRunSection, _kSectionGap],
             // Today's logged non-run modalities (gym + nutrition).
             // Self-hiding: each card only renders when that modality was

@@ -772,6 +772,38 @@ class AppLocalizationsJa extends AppLocalizations {
   String get youProfileTitle => 'あなたのプロフィール';
 
   @override
+  String get homeTrainingPlanLabel => 'トレーニングプラン';
+
+  @override
+  String homeRaceInDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'レースは$days日後',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get homeRaceTomorrow => 'レースは明日';
+
+  @override
+  String get homeRaceDay => 'レース当日';
+
+  @override
+  String homePlanStartsInDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days日後に開始',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get homePlanStartsTomorrow => '明日開始';
+
+  @override
   String get youViewProfile => 'プロフィールを見る';
 
   @override

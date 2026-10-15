@@ -803,6 +803,40 @@ class AppLocalizationsFr extends AppLocalizations {
   String get youProfileTitle => 'Votre profil';
 
   @override
+  String get homeTrainingPlanLabel => 'Plan d\'entraînement';
+
+  @override
+  String homeRaceInDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Course dans $days jours',
+      one: 'Course dans $days jour',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get homeRaceTomorrow => 'Course demain';
+
+  @override
+  String get homeRaceDay => 'Jour de course';
+
+  @override
+  String homePlanStartsInDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Commence dans $days jours',
+      one: 'Commence dans $days jour',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get homePlanStartsTomorrow => 'Commence demain';
+
+  @override
   String get youViewProfile => 'Voir le profil';
 
   @override

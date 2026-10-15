@@ -1048,6 +1048,40 @@
   "@youProfileTitle": {
     "description": "Title of the profile entry at the top of the You tab"
   },
+  "homeTrainingPlanLabel": "Training plan",
+  "@homeTrainingPlanLabel": {
+    "description": "Eyebrow on the Home card for the active training plan, above the plan's name"
+  },
+  "homeRaceInDays": "{days, plural, one{Race in {days} day} other{Race in {days} days}}",
+  "@homeRaceInDays": {
+    "description": "Countdown on the Home plan card: whole days until the plan's race day (always 2 or more; 1 is homeRaceTomorrow)",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "homeRaceTomorrow": "Race tomorrow",
+  "@homeRaceTomorrow": {
+    "description": "Countdown on the Home plan card when race day is tomorrow"
+  },
+  "homeRaceDay": "Race day",
+  "@homeRaceDay": {
+    "description": "Countdown on the Home plan card on race day itself"
+  },
+  "homePlanStartsInDays": "{days, plural, one{Starts in {days} day} other{Starts in {days} days}}",
+  "@homePlanStartsInDays": {
+    "description": "Home plan card before the plan's first day: whole days until it starts",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "homePlanStartsTomorrow": "Starts tomorrow",
+  "@homePlanStartsTomorrow": {
+    "description": "Home plan card when the plan starts tomorrow"
+  },
   "youViewProfile": "View profile",
   "@youViewProfile": {
     "description": "Second line of the You tab's identity header, under the runner's name; tapping the header opens their own profile"

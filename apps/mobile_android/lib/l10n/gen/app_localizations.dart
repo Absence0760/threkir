@@ -1373,6 +1373,42 @@ abstract class AppLocalizations {
   /// **'Your profile'**
   String get youProfileTitle;
 
+  /// Eyebrow on the Home card for the active training plan, above the plan's name
+  ///
+  /// In en, this message translates to:
+  /// **'Training plan'**
+  String get homeTrainingPlanLabel;
+
+  /// Countdown on the Home plan card: whole days until the plan's race day (always 2 or more; 1 is homeRaceTomorrow)
+  ///
+  /// In en, this message translates to:
+  /// **'{days, plural, one{Race in {days} day} other{Race in {days} days}}'**
+  String homeRaceInDays(int days);
+
+  /// Countdown on the Home plan card when race day is tomorrow
+  ///
+  /// In en, this message translates to:
+  /// **'Race tomorrow'**
+  String get homeRaceTomorrow;
+
+  /// Countdown on the Home plan card on race day itself
+  ///
+  /// In en, this message translates to:
+  /// **'Race day'**
+  String get homeRaceDay;
+
+  /// Home plan card before the plan's first day: whole days until it starts
+  ///
+  /// In en, this message translates to:
+  /// **'{days, plural, one{Starts in {days} day} other{Starts in {days} days}}'**
+  String homePlanStartsInDays(int days);
+
+  /// Home plan card when the plan starts tomorrow
+  ///
+  /// In en, this message translates to:
+  /// **'Starts tomorrow'**
+  String get homePlanStartsTomorrow;
+
   /// Second line of the You tab's identity header, under the runner's name; tapping the header opens their own profile
   ///
   /// In en, this message translates to:

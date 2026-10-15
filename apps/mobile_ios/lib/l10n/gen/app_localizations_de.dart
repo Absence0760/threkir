@@ -805,6 +805,40 @@ class AppLocalizationsDe extends AppLocalizations {
   String get youProfileTitle => 'Dein Profil';
 
   @override
+  String get homeTrainingPlanLabel => 'Trainingsplan';
+
+  @override
+  String homeRaceInDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Rennen in $days Tagen',
+      one: 'Rennen in $days Tag',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get homeRaceTomorrow => 'Rennen morgen';
+
+  @override
+  String get homeRaceDay => 'Renntag';
+
+  @override
+  String homePlanStartsInDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Beginnt in $days Tagen',
+      one: 'Beginnt in $days Tag',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get homePlanStartsTomorrow => 'Beginnt morgen';
+
+  @override
   String get youViewProfile => 'Profil ansehen';
 
   @override

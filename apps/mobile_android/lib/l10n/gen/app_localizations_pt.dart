@@ -804,6 +804,40 @@ class AppLocalizationsPt extends AppLocalizations {
   String get youProfileTitle => 'O seu perfil';
 
   @override
+  String get homeTrainingPlanLabel => 'Plano de treino';
+
+  @override
+  String homeRaceInDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Prova em $days dias',
+      one: 'Prova em $days dia',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get homeRaceTomorrow => 'Prova amanhã';
+
+  @override
+  String get homeRaceDay => 'Dia da prova';
+
+  @override
+  String homePlanStartsInDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Começa em $days dias',
+      one: 'Começa em $days dia',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get homePlanStartsTomorrow => 'Começa amanhã';
+
+  @override
   String get youViewProfile => 'Ver perfil';
 
   @override
@@ -16603,6 +16637,40 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get youProfileTitle => 'Seu perfil';
+
+  @override
+  String get homeTrainingPlanLabel => 'Plano de treino';
+
+  @override
+  String homeRaceInDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Prova em $days dias',
+      one: 'Prova em $days dia',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get homeRaceTomorrow => 'Prova amanhã';
+
+  @override
+  String get homeRaceDay => 'Dia da prova';
+
+  @override
+  String homePlanStartsInDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Começa em $days dias',
+      one: 'Começa em $days dia',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get homePlanStartsTomorrow => 'Começa amanhã';
 
   @override
   String get youViewProfile => 'Ver perfil';

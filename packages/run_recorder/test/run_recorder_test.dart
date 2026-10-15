@@ -2062,6 +2062,29 @@ void main() {
       expect(r.debugDistanceMetres, closeTo(120, 1e-6));
     });
 
+    test('a canopy stretch is in the saved distance but not the saved track',
+        () async {
+      // The smoother replays the canopy fixes the estimator took, so the
+      // saved figure keeps the 30 s of 4 m/s (120 m by
+      // scripts/gps_distance/reference.py) while the stored track holds only
+      // the five clean fixes.
+      final clock = _FakeClock();
+      final r = RunRecorder(clock: clock)..debugPrepareWithoutStream();
+      r.begin();
+      for (var i = 0; i <= 30; i++) {
+        r.debugInjectPosition(makePosition(
+            metresEast: 4.0 * i,
+            secondsFromStart: i,
+            speed: 4,
+            accuracy: i < 5 ? 5 : 35));
+        clock.advance(const Duration(seconds: 1));
+      }
+      final run = await r.stop();
+      expect(run.track, hasLength(5));
+      expect(run.distanceMetres, closeTo(120, 1e-6));
+      expect(run.metadata?['distance_estimator'], 'kalman_v4');
+    });
+
     test('prepare seeds the stride, which survives begin, only when in range',
         () {
       final r = RunRecorder()..debugPrepareWithoutStream(initialStrideM: 0.95);

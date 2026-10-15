@@ -3623,8 +3623,9 @@ export const ROSTER_PAGE_SIZE = 50;
 
 /// Oldest member first; `user_id` (unique within one club) breaks a
 /// `joined_at` tie so the order is total. `joined_at` is nullable, and a null
-/// sorts last as it always has. No index carries this order — the club's rows
-/// are found through the `(club_id, user_id)` primary key and sorted.
+/// sorts last as it always has. Served by `club_members_club_roster
+/// (club_id, joined_at, user_id)`, whose ascending-nulls-last keys are this
+/// order exactly.
 const CLUB_MEMBER_ORDER: readonly KeysetKey[] = [
 	{ column: 'joined_at', ascending: true, nullsFirst: false },
 	{ column: 'user_id', ascending: true, nullsFirst: false },
@@ -4542,8 +4543,9 @@ export async function markAttendance(
 /// Earliest RSVP first; `user_id` (unique within one occurrence — the primary
 /// key is `(event_id, user_id, instance_start)`) breaks a `joined_at` tie so
 /// the order is total. `joined_at` is nullable and a null sorts last, as it
-/// always has. No index carries this order — the occurrence's rows are found
-/// through the primary key and sorted.
+/// always has. Served by `event_attendees_instance_roster (event_id,
+/// instance_start, joined_at, user_id)`; mobile's `ApiClient.eventAttendeeOrder`
+/// is the same order.
 const EVENT_ATTENDEE_ORDER: readonly KeysetKey[] = [
 	{ column: 'joined_at', ascending: true, nullsFirst: false },
 	{ column: 'user_id', ascending: true, nullsFirst: false },

@@ -30,15 +30,23 @@ class ProPerks {
   /// buyer this build cannot sell to itself (decisions § 1826).
   final bool webCheckout;
 
+  /// The AI plan assistant is live (web's `coachEnabled() && aiPlanEnabled()`).
+  /// Not a perk either: it rides on the Coach, so it must never make Pro
+  /// sellable on its own.
+  final bool aiPlan;
+
   const ProPerks({
     required this.coach,
     required this.routeGen,
     this.webCheckout = false,
+    this.aiPlan = false,
   });
 
   static const ProPerks none = ProPerks(coach: false, routeGen: false);
 
   bool get sellable => coach || routeGen;
+
+  bool get aiPlanAvailable => coach && aiPlan;
 }
 
 /// Whether this build can offer Pro for sale right now: a perk must be live,
@@ -71,6 +79,7 @@ ProPerks parseProPerks(String raw) {
       coach: json['coach'] == true,
       routeGen: json['route_gen'] == true,
       webCheckout: json['web_checkout'] == true,
+      aiPlan: json['ai_plan'] == true,
     );
   } catch (_) {
     return ProPerks.none;
@@ -102,3 +111,8 @@ Future<ProPerks> fetchProPerks() async {
     client.close(force: true);
   }
 }
+
+/// Whether the plan wizard's "Describe the plan you want" box and the Coach's
+/// plan-building prompts should show. Never throws; unknown reads as off.
+Future<bool> fetchAiPlanAvailable() async =>
+    (await fetchProPerks()).aiPlanAvailable;

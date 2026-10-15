@@ -12,7 +12,9 @@ import { thrownMessage } from './supabase_error';
 // last — which is what makes "accepted >= required" sound:
 //
 //   1  AI Coach only.
-//   2  All AI features: the Coach plus the AI route assistant.
+//   2  The Coach plus the AI route assistant.
+//   3  All AI features: v2 plus the AI plan assistant (the typed plan
+//      description, sent only to extract plan-wizard settings).
 //
 // Every AI endpoint declares its minimum. Adding the next AI feature means
 // a new version with new copy, not a new boolean column and not quietly
@@ -35,11 +37,19 @@ export const AI_DISCLOSURE_VERSION_COACH = 1;
 export const AI_DISCLOSURE_VERSION_ROUTE_AI = 2;
 
 /**
+ * Minimum disclosure version /api/coach/plan-request requires. Its own rung
+ * because it sends the typed plan description (goal race, target and recent
+ * times, training days) to extract plan-wizard settings — a payload and
+ * purpose neither the Coach nor the route copy described.
+ */
+export const AI_DISCLOSURE_VERSION_PLAN_AI = 3;
+
+/**
  * The newest disclosure this build knows how to present. Must equal the
  * SQL `ai_disclosure_current_version()`; `ai_disclosure.test.ts` reads the
- * migration and fails if they drift.
+ * newest migration that defines it and fails if they drift.
  */
-export const AI_DISCLOSURE_CURRENT_VERSION = AI_DISCLOSURE_VERSION_ROUTE_AI;
+export const AI_DISCLOSURE_CURRENT_VERSION = AI_DISCLOSURE_VERSION_PLAN_AI;
 
 /**
  * Machine-readable marker on every AI-consent denial. It rides a `code`

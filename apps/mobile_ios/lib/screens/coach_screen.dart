@@ -25,6 +25,7 @@ import '../backend_timeout.dart';
 import '../auth_error.dart';
 import '../payload_hash.dart';
 import '../preferences.dart' show activeDistanceUnit;
+import '../pro_sellable.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
@@ -37,6 +38,7 @@ import '../widgets/sign_in_required_state.dart';
 import '../widgets/surface_peer_strip.dart';
 import '../widgets/top_banner.dart';
 import 'guided_runs_screen.dart';
+import 'plan_new_screen.dart';
 
 /// Truncate a coach message to a sidebar-thread title. Strips repeated
 /// whitespace so multi-line user prompts collapse to a single line, then
@@ -98,6 +100,27 @@ CoachSseEvent? parseCoachSseEvent(String block) {
   }
 }
 
+/// The description a Coach link to the plan wizard carries — `''` when it
+/// carries none — or null when [href] is not such a link. The Coach answers
+/// "build me a plan" with `[Build this plan](/plans/new?describe=…)`; only
+/// that same-origin path is recognised, never an absolute URL.
+@visibleForTesting
+String? coachPlanLinkDescription(String href) {
+  final uri = Uri.tryParse(href);
+  if (uri == null || uri.hasScheme || uri.hasAuthority) return null;
+  if (uri.path != '/plans/new') return null;
+  String describe;
+  try {
+    describe = uri.queryParameters['describe'] ?? '';
+  } catch (_) {
+    describe = '';
+  }
+  describe = describe.trim();
+  return describe.length > kPlanDescriptionMaxChars
+      ? describe.substring(0, kPlanDescriptionMaxChars)
+      : describe;
+}
+
 /// AI Coach chat. Mirrors `apps/web/src/lib/components/CoachChat.svelte`
 /// + `/coach/+page.svelte`. One screen file by design — see backlog.
 class CoachScreen extends StatefulWidget {
@@ -105,11 +128,17 @@ class CoachScreen extends StatefulWidget {
   final TrainingService training;
   final String? initialPlanId;
 
+  /// Whether the deploy has the AI plan assistant live. Defaults to the
+  /// capability manifest; tests inject it. Forwarded to the plan wizard a
+  /// "Build this plan" link opens.
+  final Future<bool> Function()? loadAiPlanAvailable;
+
   const CoachScreen({
     super.key,
     required this.api,
     required this.training,
     this.initialPlanId,
+    this.loadAiPlanAvailable,
   });
 
   @override
@@ -197,11 +226,27 @@ class _CoachScreenState extends State<CoachScreen> {
   bool _consentSaving = false;
   String? _consentError;
 
+  // Off until the capability manifest says the AI plan assistant is live.
+  bool _aiPlan = false;
+
   @override
   void initState() {
     super.initState();
     _planId = widget.initialPlanId;
     _bootstrap();
+    _loadAiPlanAvailability();
+  }
+
+  Future<void> _loadAiPlanAvailability() async {
+    var available = false;
+    try {
+      available =
+          await (widget.loadAiPlanAvailable ?? fetchAiPlanAvailable)();
+    } catch (e) {
+      debugPrint('coach_screen: AI plan capability lookup failed: $e');
+    }
+    if (!mounted || !available) return;
+    setState(() => _aiPlan = true);
   }
 
   @override
@@ -877,6 +922,11 @@ class _CoachScreenState extends State<CoachScreen> {
   /// tap it).
   Future<void> _onCoachLinkTap(String text, String? href, String title) async {
     if (href == null || href.isEmpty) return;
+    final planDescription = coachPlanLinkDescription(href);
+    if (planDescription != null) {
+      await _openPlanWizard(planDescription);
+      return;
+    }
     final Uri? uri = Uri.tryParse(href);
     if (uri == null) return;
     final scheme = uri.scheme.toLowerCase();
@@ -891,6 +941,23 @@ class _CoachScreenState extends State<CoachScreen> {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (e) {
       debugPrint('coach link tap failed: $e');
+    }
+  }
+
+  Future<void> _openPlanWizard(String description) async {
+    try {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => PlanNewScreen(
+            training: widget.training,
+            apiClient: widget.api,
+            initialDescription: description.isEmpty ? null : description,
+            loadAiPlanAvailable: widget.loadAiPlanAvailable,
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('coach_screen: opening the plan wizard failed: $e');
     }
   }
 
@@ -1343,25 +1410,31 @@ class _CoachScreenState extends State<CoachScreen> {
   Widget _buildScroll(ThemeData theme, AppLocalizations l10n, bool hasPlan) {
     if (_messages.isEmpty && _viewingArchiveAt == null) {
       final isNewRunner = _ctx?.runCount == 0;
+      // With the plan assistant live, a plan-building prompt replaces the
+      // weakest chip so each set stays at four.
       final suggestions = isNewRunner
           ? [
+              if (_aiPlan) l10n.coachSuggestBuildFirst5kPlan,
               l10n.coachSuggestNewFirstRun,
               l10n.coachSuggestNewFirstFeel,
-              l10n.coachSuggestNewHowOften,
+              if (!_aiPlan) l10n.coachSuggestNewHowOften,
               l10n.coachSuggestNewWalkRun,
             ]
           : hasPlan
               ? [
                   l10n.coachSuggestPlanRest,
                   l10n.coachSuggestPlanOnTrack,
-                  l10n.coachSuggestPlanLongRun,
+                  _aiPlan
+                      ? l10n.coachSuggestPlanNextRace
+                      : l10n.coachSuggestPlanLongRun,
                   l10n.coachSuggestPlanToday,
                 ]
               : [
+                  if (_aiPlan) l10n.coachSuggestBuildHalfPlan,
                   l10n.coachSuggestNoPlanLastRun,
                   l10n.coachSuggestNoPlanEasyPace,
                   l10n.coachSuggestNoPlanWeekOff,
-                  l10n.coachSuggestNoPlanTempo,
+                  if (!_aiPlan) l10n.coachSuggestNoPlanTempo,
                 ];
       return ListView(
         controller: _scrollCtrl,

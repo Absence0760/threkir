@@ -62,7 +62,41 @@ void main() {
     });
   });
 
+  group('ai_plan capability', () {
+    test('reads ai_plan, available only alongside the coach', () {
+      final p = parseProPerks('{"coach":true,"ai_plan":true}');
+      expect(p.aiPlan, isTrue);
+      expect(p.aiPlanAvailable, isTrue);
+      expect(parseProPerks('{"coach":false,"ai_plan":true}').aiPlanAvailable,
+          isFalse);
+      expect(parseProPerks('{"coach":true,"ai_plan":false}').aiPlanAvailable,
+          isFalse);
+    });
+
+    test('missing, non-boolean and camelCase values read as off', () {
+      for (final body in [
+        '{"coach":true}',
+        '{"coach":true,"ai_plan":"true"}',
+        '{"coach":true,"ai_plan":1}',
+        '{"coach":true,"aiPlan":true}',
+        'not json',
+      ]) {
+        expect(parseProPerks(body).aiPlanAvailable, isFalse,
+            reason: 'body: $body');
+      }
+    });
+
+    test('never makes Pro sellable on its own', () {
+      expect(parseProPerks('{"ai_plan":true}').sellable, isFalse);
+      expect(
+          parseProPerks('{"coach":false,"route_gen":false,"ai_plan":true}')
+              .sellable,
+          isFalse);
+    });
+  });
+
   test('ProPerks.none is the fail-closed default', () {
+    expect(ProPerks.none.aiPlan, isFalse);
     expect(ProPerks.none.coach, isFalse);
     expect(ProPerks.none.routeGen, isFalse);
     expect(ProPerks.none.webCheckout, isFalse);

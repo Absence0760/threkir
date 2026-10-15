@@ -5812,6 +5812,99 @@ class AppLocalizationsEs extends AppLocalizations {
       'No pudimos leer la fecha de esa carrera, así que las fechas de abajo son las predeterminadas.';
 
   @override
+  String get planNewAiTitle => 'Describe el plan que quieres';
+
+  @override
+  String get planNewAiHint =>
+      'Escríbelo con tus palabras y el formulario de abajo se rellena por ti. El plan lo sigue creando el generador propio de la app: revisa cada campo antes de crearlo.';
+
+  @override
+  String get planNewAiPlaceholder =>
+      'p. ej. Una media maratón en menos de 2 horas el 14 de marzo. Puedo entrenar 4 días a la semana y mis últimos 5 km fueron en 26:30.';
+
+  @override
+  String get planNewAiButton => 'Rellenar el formulario';
+
+  @override
+  String get planNewAiWorking => 'Leyendo…';
+
+  @override
+  String get planNewAiAppliedTitle =>
+      'Rellenado a partir de tu descripción: revisa cada campo.';
+
+  @override
+  String get planNewAiAppliedGenerator =>
+      'El plan lo crea el generador propio de la app a partir de estos campos, no la IA.';
+
+  @override
+  String get planNewAiAppliedRecent5k =>
+      'Se añadió tu tiempo de 5 km, pero sin confirmar. Marca la casilla solo si refleja tu forma actual.';
+
+  @override
+  String planNewAiRaceApplied(String date) {
+    return 'Fecha de inicio y duración del plan ajustadas para que la semana de la carrera incluya el $date.';
+  }
+
+  @override
+  String get planNewAiRacePast =>
+      'Esa fecha de carrera ya ha pasado, así que la fecha de inicio no se ha cambiado.';
+
+  @override
+  String get planNewAiRaceTooSoon =>
+      'Faltan menos de cuatro semanas para la carrera, así que la fecha de inicio no se ha cambiado: un plan necesita al menos cuatro semanas.';
+
+  @override
+  String get planNewAiRaceInvalid =>
+      'No se pudo leer esa fecha de carrera, así que la fecha de inicio no se ha cambiado.';
+
+  @override
+  String get planNewAiAssumptionGoalEventDefault =>
+      'No se mencionó ninguna distancia, así que el objetivo es una media maratón.';
+
+  @override
+  String get planNewAiAssumptionDaysDefault =>
+      'No se mencionaron días de entrenamiento, así que se han puesto 4 días a la semana.';
+
+  @override
+  String get planNewAiAssumptionDaysClamped =>
+      'Los días de entrenamiento se ajustaron al valor admitido más cercano (de 3 a 7 por semana).';
+
+  @override
+  String get planNewAiAssumptionWeeksClamped =>
+      'La duración del plan se ajustó al valor admitido más cercano (de 4 a 24 semanas).';
+
+  @override
+  String get planNewAiAssumptionRaceDateDropped =>
+      'No se pudo usar la fecha de carrera: debe ser futura y estar a menos de dos años.';
+
+  @override
+  String get planNewAiAssumptionGoalTimeDropped =>
+      'El tiempo objetivo parecía fuera de rango para esa distancia, así que se dejó en blanco.';
+
+  @override
+  String get planNewAiAssumptionRecent5kDropped =>
+      'El tiempo de 5 km parecía fuera de rango, así que se dejó en blanco.';
+
+  @override
+  String get planNewAiAssumptionBeginner5k =>
+      'Un plan de caminar y correr para principiantes lleva a los 5 km, así que el objetivo se fijó en 5 km sin tiempo objetivo.';
+
+  @override
+  String get planNewAiErrorConsent =>
+      'El asistente de planes necesita el aviso de IA actualizado.';
+
+  @override
+  String get planNewAiReviewDisclosure => 'Ver la información';
+
+  @override
+  String get planNewAiErrorDailyLimit =>
+      'Has usado tus solicitudes de IA de hoy. Rellena el formulario tú mismo o vuelve a intentarlo mañana.';
+
+  @override
+  String get planNewAiErrorFallback =>
+      'No se pudo leer: rellena el formulario tú mismo.';
+
+  @override
   String get planNewCancel => 'Cancelar';
 
   @override
@@ -6447,7 +6540,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get coachConsentIntro =>
-      'Las funciones de IA de Threkir — el Coach y el asistente de rutas con IA — envían una parte de tus datos a Anthropic, nuestro proveedor de modelos de IA en EE. UU. Según la función que uses, esa parte incluye:';
+      'Las funciones de IA de Threkir — el Coach, el asistente de rutas con IA y el asistente de planes con IA — envían una parte de tus datos a Anthropic, nuestro proveedor de modelos de IA en EE. UU. Según la función que uses, esa parte incluye:';
 
   @override
   String get coachConsentBulletProfile =>
@@ -6468,6 +6561,10 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get coachConsentBulletRoutes =>
       'Para el asistente de rutas con IA: el nombre y los datos de la ruta, la petición que escribes y una referencia aproximada del lugar; nunca tus coordenadas exactas.';
+
+  @override
+  String get coachConsentBulletPlanRequest =>
+      'Para el asistente de planes con IA: la descripción del plan que escribes (carrera objetivo, tiempos objetivo y recientes, cuántos días puedes entrenar), solo para rellenar los ajustes del plan; el plan en sí lo crea el generador propio de Threkir, no la IA.';
 
   @override
   String get coachConsentProcessing =>
@@ -6635,6 +6732,18 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get coachSuggestNewWalkRun =>
       '¿Está bien caminar durante mis carreras?';
+
+  @override
+  String get coachSuggestBuildHalfPlan =>
+      'Créame un plan de entrenamiento para una media maratón';
+
+  @override
+  String get coachSuggestBuildFirst5kPlan =>
+      'Créame un plan para principiantes para correr mis primeros 5 km';
+
+  @override
+  String get coachSuggestPlanNextRace =>
+      'Ayúdame a planificar mi próxima carrera';
 
   @override
   String get coachEditMessageLabel => 'Edita tu mensaje';
@@ -6852,7 +6961,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get settingsAccountAiConsentUpdateSubtitle =>
-      'La información ahora cubre más funciones. Léela y acéptala para usar el asistente de rutas con IA.';
+      'La información ahora cubre más funciones. Léela y acéptala para usar los asistentes de rutas y de planes con IA.';
 
   @override
   String get settingsAccountAiConsentGrantTitle =>

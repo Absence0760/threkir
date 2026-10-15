@@ -1,11 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import {
 	AI_DISCLOSURE_CURRENT_VERSION,
 	AI_DISCLOSURE_ERROR,
 	AI_DISCLOSURE_VERSION_COACH,
+	AI_DISCLOSURE_VERSION_PLAN_AI,
 	AI_DISCLOSURE_VERSION_ROUTE_AI,
 	aiDisclosureDenialBody,
 	aiDisclosureFromProfileRow,
@@ -46,10 +47,39 @@ test('a v1 Coach acceptance does NOT satisfy the widened route-AI scope', () => 
 	});
 });
 
-test('the widened acceptance satisfies both scopes', () => {
+test('the route-AI acceptance satisfies the Coach and route scopes', () => {
 	const record = { version: AI_DISCLOSURE_VERSION_ROUTE_AI, acceptedAt: ACCEPTED };
 	assert.equal(checkAiDisclosure(record, AI_DISCLOSURE_VERSION_COACH).ok, true);
 	assert.equal(checkAiDisclosure(record, AI_DISCLOSURE_VERSION_ROUTE_AI).ok, true);
+});
+
+test('a v2 route-AI acceptance does NOT satisfy the plan-assistant scope', () => {
+	// Reason: the plan assistant sends the typed plan description for a
+	// purpose the v2 copy never described (decisions § 571). A v2 holder
+	// must re-accept, not be quietly widened.
+	const record = { version: AI_DISCLOSURE_VERSION_ROUTE_AI, acceptedAt: ACCEPTED };
+	assert.deepEqual(checkAiDisclosure(record, AI_DISCLOSURE_VERSION_PLAN_AI), {
+		ok: false,
+		reason: 'stale',
+	});
+	assert.deepEqual(
+		checkAiDisclosure(
+			{ version: AI_DISCLOSURE_VERSION_COACH, acceptedAt: ACCEPTED },
+			AI_DISCLOSURE_VERSION_PLAN_AI,
+		),
+		{ ok: false, reason: 'stale' },
+	);
+});
+
+test('the v3 acceptance satisfies every scope', () => {
+	const record = { version: AI_DISCLOSURE_VERSION_PLAN_AI, acceptedAt: ACCEPTED };
+	for (const required of [
+		AI_DISCLOSURE_VERSION_COACH,
+		AI_DISCLOSURE_VERSION_ROUTE_AI,
+		AI_DISCLOSURE_VERSION_PLAN_AI,
+	]) {
+		assert.deepEqual(checkAiDisclosure(record, required), { ok: true, version: 3 });
+	}
 });
 
 test('no record at all denies as missing', () => {
@@ -233,14 +263,17 @@ test('AI_DISCLOSURE_CURRENT_VERSION matches ai_disclosure_current_version() in S
 	// user can be asked to accept a version that cannot be stored, or a
 	// stored version stops being honoured. Same class of guard as the
 	// CHECK-constraint ↔ TS-union parity check.
-	const sql = readFileSync(
-		resolve('../backend/supabase/migrations/20270511_001_ai_disclosure_consent_version.sql'),
-		'utf-8',
-	);
-	const match = sql.match(
-		/create or replace function ai_disclosure_current_version\(\)[\s\S]*?select\s+(\d+)::smallint/,
-	);
-	assert.ok(match, 'ai_disclosure_current_version() must be defined in the migration');
+	// The NEWEST definition is the live one: each rung is a fresh
+	// `create or replace` in its own migration, and migrations apply in
+	// filename order.
+	const dir = resolve('../backend/supabase/migrations');
+	const re =
+		/create or replace function ai_disclosure_current_version\(\)[\s\S]*?select\s+(\d+)::smallint/g;
+	let match: RegExpMatchArray | undefined;
+	for (const file of readdirSync(dir).filter((f) => f.endsWith('.sql')).sort()) {
+		for (const m of readFileSync(resolve(dir, file), 'utf-8').matchAll(re)) match = m;
+	}
+	assert.ok(match, 'ai_disclosure_current_version() must be defined in a migration');
 	assert.equal(
 		Number(match[1]),
 		AI_DISCLOSURE_CURRENT_VERSION,
@@ -250,5 +283,6 @@ test('AI_DISCLOSURE_CURRENT_VERSION matches ai_disclosure_current_version() in S
 
 test('the version ladder is ordered and the current version is its top rung', () => {
 	assert.ok(AI_DISCLOSURE_VERSION_COACH < AI_DISCLOSURE_VERSION_ROUTE_AI);
-	assert.equal(AI_DISCLOSURE_CURRENT_VERSION, AI_DISCLOSURE_VERSION_ROUTE_AI);
+	assert.ok(AI_DISCLOSURE_VERSION_ROUTE_AI < AI_DISCLOSURE_VERSION_PLAN_AI);
+	assert.equal(AI_DISCLOSURE_CURRENT_VERSION, AI_DISCLOSURE_VERSION_PLAN_AI);
 });

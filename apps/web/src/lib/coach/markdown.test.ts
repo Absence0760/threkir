@@ -81,7 +81,7 @@ test('renderCoachMarkdown drops an svg or math payload with its handlers', () =>
 	assert.ok(!/<svg|<math|onload|javascript:/i.test(out), out);
 });
 
-test('renderCoachMarkdown keeps only http(s) and mailto hrefs', () => {
+test('renderCoachMarkdown keeps only http(s), mailto and root-relative app hrefs', () => {
 	const out = renderCoachMarkdown(
 		[
 			'[a](data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==)',
@@ -90,9 +90,36 @@ test('renderCoachMarkdown keeps only http(s) and mailto hrefs', () => {
 			'[d](//evil.example/x)',
 			'[e](mailto:coach@threkir.com)',
 			'[f](HTTPS://threkir.com/plan)',
+			'[g](/runs/abc)',
 		].join(' '),
 	);
-	assert.deepEqual(hrefsOf(out), ['mailto:coach@threkir.com', 'HTTPS://threkir.com/plan']);
+	assert.deepEqual(hrefsOf(out), ['mailto:coach@threkir.com', 'HTTPS://threkir.com/plan', '/runs/abc']);
+});
+
+test('renderCoachMarkdown refuses every protocol-relative spelling of an app path', () => {
+	const out = renderCoachMarkdown(
+		'<a href="//evil.example">a</a> <a href="/\\evil.example">b</a> ' +
+			'<a href="/\t/evil.example">c</a> <a href="/ /evil.example">d</a>',
+	);
+	assert.deepEqual(hrefsOf(out), [], out);
+});
+
+// The coach's plan handoff (system_prompt.ts planHandoffAddendum) writes this
+// link; the query string must survive intact and the anchor must navigate in
+// place, which SvelteKit's router only does for an anchor with no `target`.
+test('renderCoachMarkdown keeps a plan-builder deep link in-app with its query string', () => {
+	const href = '/plans/new?describe=Half%20marathon%20on%202026-12-06%2C%204%20days%20a%20week';
+	const out = renderCoachMarkdown(`Ready when you are: [Build this plan](${href})`);
+	assert.deepEqual(hrefsOf(out), [href], out);
+	assert.ok(!/target=/.test(out), `an app link must not open a new tab: ${out}`);
+	assert.ok(out.includes('rel="noopener noreferrer"'), out);
+	assert.ok(out.includes('>Build this plan</a>'), out);
+});
+
+test('renderCoachMarkdown keeps the forced new tab on an external link next to an app link', () => {
+	const out = renderCoachMarkdown('[run](/runs/abc) [site](https://threkir.com)');
+	assert.match(out, /href="\/runs\/abc" rel="noopener noreferrer">run/, out);
+	assert.match(out, /href="https:\/\/threkir\.com" target="_blank"/, out);
 });
 
 test('renderCoachMarkdown is not fooled by an entity-encoded or whitespace-split javascript: scheme', () => {

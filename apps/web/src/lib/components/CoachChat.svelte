@@ -10,6 +10,7 @@
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import ChipDropdown from '#lib/components/ChipDropdown.svelte';
 	import { TIER_LIMITS } from '#lib/coach/types.ts';
+	import { aiPlanEnabled } from '#lib/training/ai_plan_flag.ts';
 	import type { CoachMessageRole } from '#lib/coach/types.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
 	import type { TrainingPlan } from '#lib/types.ts';
@@ -389,27 +390,46 @@
 		contextSummary = { planName, planWeeks, runCount, hrZonesLoaded, weeklyGoalMetres };
 	}
 
+	// With the AI plan assistant live, a plan request gets a chip of its own:
+	// the coach answers it with a link into the assistant (system_prompt.ts
+	// planHandoffAddendum). It takes the slot of the most generic question in
+	// each set, so the primer stays at four.
+	const planChips = aiPlanEnabled();
 	let suggestions = $derived(
 		contextSummary?.runCount === 0
-			? [
-					t('coachChat.suggestNewFirstRun'),
-					t('coachChat.suggestNewFirstFeel'),
-					t('coachChat.suggestNewHowOften'),
-					t('coachChat.suggestNewWalkRun')
-				]
+			? planChips
+				? [
+						t('coachChat.suggestBuildPlanFirst5k'),
+						t('coachChat.suggestNewFirstRun'),
+						t('coachChat.suggestNewFirstFeel'),
+						t('coachChat.suggestNewWalkRun')
+					]
+				: [
+						t('coachChat.suggestNewFirstRun'),
+						t('coachChat.suggestNewFirstFeel'),
+						t('coachChat.suggestNewHowOften'),
+						t('coachChat.suggestNewWalkRun')
+					]
 			: hasPlan
 				? [
 						t('coachChat.suggestPlanRestDay'),
 						t('coachChat.suggestPlanGoalTime'),
-						t('coachChat.suggestPlanLongRun'),
+						planChips ? t('coachChat.suggestBuildPlanNextRace') : t('coachChat.suggestPlanLongRun'),
 						t('coachChat.suggestPlanTodayWorkout')
 					]
-				: [
-						t('coachChat.suggestNoPlanLastRun'),
-						t('coachChat.suggestNoPlanEasyPace'),
-						t('coachChat.suggestNoPlanWeekOff'),
-						t('coachChat.suggestNoPlanTempo')
-					]
+				: planChips
+					? [
+							t('coachChat.suggestBuildPlanHalf'),
+							t('coachChat.suggestNoPlanLastRun'),
+							t('coachChat.suggestNoPlanEasyPace'),
+							t('coachChat.suggestNoPlanWeekOff')
+						]
+					: [
+							t('coachChat.suggestNoPlanLastRun'),
+							t('coachChat.suggestNoPlanEasyPace'),
+							t('coachChat.suggestNoPlanWeekOff'),
+							t('coachChat.suggestNoPlanTempo')
+						]
 	);
 
 	// Markdown rendering hoisted to #lib/coach/markdown so the DOMPurify

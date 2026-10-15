@@ -195,6 +195,13 @@ final class WatchIngestBridgeTests: XCTestCase {
         XCTAssertEqual(Set(payload.keys), ["id", "started_at", "track"])
     }
 
+    func testIngestPayloadForwardsTheCompleteTrackClaim() {
+        var metadata = fullMetadata
+        metadata["track_complete"] = true
+        let payload = WatchIngestBridge.ingestPayload(metadata: metadata, track: "[]")
+        XCTAssertEqual(payload["track_complete"] as? Bool, true)
+    }
+
     func testIngestPayloadCarriesTheVisibilityTheWristStamped() {
         let payload = WatchIngestBridge.ingestPayload(metadata: fullMetadata, track: "[]")
         XCTAssertEqual(payload["is_public"] as? Bool, true)

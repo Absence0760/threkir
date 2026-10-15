@@ -369,6 +369,9 @@ cm.Run runFromWatchPayload(Map<String, dynamic> raw) {
           speedAccuracyMps: _finiteOrNull(p['speedAccuracyMps']),
           bearingDeg: _finiteOrNull(p['bearingDeg']),
           cumulativeDistanceMetres: _finiteOrNull(p['distM']),
+          // A fix the wrist's estimator took past its 30 m track gate,
+          // stored for the server's replay and skipped by every line reader.
+          offTrack: p['offTrack'] == true,
         ));
       }
     }
@@ -409,6 +412,11 @@ cm.Run runFromWatchPayload(Map<String, dynamic> raw) {
   final estimator = raw['distance_estimator'];
   if (estimator is String && estimator.isNotEmpty) {
     metadata[cm.MetadataKeys.distanceEstimator] = estimator;
+  }
+  // The wrist stored every fix its estimator took, off-track ones flagged,
+  // so the server replay of this track sees the watch's own input.
+  if (raw['track_complete'] == true) {
+    metadata[cm.MetadataKeys.trackComplete] = true;
   }
   final stepFilled = raw['distance_step_filled_m'];
   if (stepFilled is num && stepFilled.toDouble().isFinite && stepFilled > 0) {

@@ -3572,37 +3572,53 @@ export async function leaveClub(clubId: string): Promise<void> {
 /// every view — see `fetchFollowers` / `FOLLOW_PAGE_SIZE` for the same shape.
 export const ROSTER_PAGE_SIZE = 50;
 
+/// Oldest member first; `user_id` (unique within one club) breaks a
+/// `joined_at` tie so the order is total. `joined_at` is nullable, and a null
+/// sorts last as it always has. No index carries this order — the club's rows
+/// are found through the `(club_id, user_id)` primary key and sorted.
+const CLUB_MEMBER_ORDER: readonly KeysetKey[] = [
+	{ column: 'joined_at', ascending: true, nullsFirst: false },
+	{ column: 'user_id', ascending: true, nullsFirst: false },
+];
+
+/// A club's roster, one keyset page at a time: pass the previous page's
+/// `next` as `after` to load more. A cursor rather than an offset because a
+/// member who leaves between two reads moves every later member up one, and
+/// offset 50 then starts a row late, so one member is never shown.
 export async function fetchClubMembers(
 	clubId: string,
-	opts?: { limit?: number; offset?: number }
-): Promise<(ClubMember & {
+	opts?: { limit?: number; after?: KeysetCursor | null }
+): Promise<KeysetPage<ClubMember & {
 	display_name: string | null;
 	avatar_url: string | null;
-})[]> {
+}>> {
 	const limit = opts?.limit ?? ROSTER_PAGE_SIZE;
-	const offset = opts?.offset ?? 0;
-	const { data: members } = await supabase
+	const after = opts?.after ? keysetAfter(CLUB_MEMBER_ORDER, opts.after) : undefined;
+	if (after === null) return { rows: [], next: null };
+	let q = supabase
 		.from(TABLES.club_members)
 		// Enumerate columns rather than `*`: on a public club anyone can
 		// read this list, and `activity_waiver_ack_at` (when a member
 		// signed the liability waiver) is the member's own business, not
 		// public roster data.
 		.select('club_id, user_id, role, status, joined_at')
-		.eq('club_id', clubId)
-		.order('joined_at', { ascending: true })
-		// Secondary key so offset pages are stable when two members share a
-		// joined_at timestamp — without it a row on a page boundary can be
-		// duplicated or skipped on load-more.
-		.order('user_id', { ascending: true })
-		.range(offset, offset + limit - 1);
-	if (!members) return [];
+		.eq('club_id', clubId);
+	if (after) q = q.or(after);
+	for (const k of CLUB_MEMBER_ORDER) {
+		q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+	}
+	const { data: members } = await q.limit(limit);
+	if (!members) return { rows: [], next: null };
 	const userIds = (members as ClubMember[]).map((m) => m.user_id);
 	const byId = await fetchProfilesByIds(userIds);
-	return (members as ClubMember[]).map((m) => ({
-		...m,
-		display_name: byId.get(m.user_id)?.display_name ?? null,
-		avatar_url: byId.get(m.user_id)?.avatar_url ?? null
-	}));
+	return {
+		rows: (members as ClubMember[]).map((m) => ({
+			...m,
+			display_name: byId.get(m.user_id)?.display_name ?? null,
+			avatar_url: byId.get(m.user_id)?.avatar_url ?? null
+		})),
+		next: nextCursor(CLUB_MEMBER_ORDER, members, limit),
+	};
 }
 
 // --- Events ---

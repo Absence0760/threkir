@@ -127,7 +127,12 @@
 	}
 </script>
 
-<svelte:head><title>{m('fuelPlan.title')} — Threkir</title></svelte:head>
+<svelte:head>
+	<title>{m('fuelPlan.title')} — Threkir</title>
+	<!-- Readable signed out so a Coach link opens on the phone's browser, but an
+	     in-app tool, not a search landing page (like /help). -->
+	<meta name="robots" content="noindex" />
+</svelte:head>
 
 <div class="fuel-page">
 	<header class="page-header">

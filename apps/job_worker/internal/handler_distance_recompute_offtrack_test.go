@@ -121,8 +121,8 @@ func TestDistanceRecompute_ReplaysOffTrackCanopyFixesToTheRecordersFigure(t *tes
 }
 
 // From spec v1.4 a recorder feeds its estimator fixes its track gate refuses,
-// so a live stamp from a v1.4 recorder names a complete track only when it
-// says track_complete. A pre-v1.4 stamp gated both at one accuracy.
+// so a live kalman_v4 stamp names a complete track only when the run says
+// track_complete. Any other live stamp is judged as before.
 func TestDistanceRecompute_LiveV14WatchStampNeedsACompleteTrack(t *testing.T) {
 	cases := []struct {
 		metadata string
@@ -134,6 +134,7 @@ func TestDistanceRecompute_LiveV14WatchStampNeedsACompleteTrack(t *testing.T) {
 		{`{"distance_estimator":"kalman_v4","track_complete":true}`, true},
 		{`{"distance_estimator":"kalman_v1"}`, true},
 		{`{"distance_estimator":"kalman_v3"}`, true},
+		{`{"distance_estimator":"something_older"}`, true},
 		// A recompute stamped it: the stamp no longer names the recorder.
 		{`{"distance_estimator":"kalman_v4","distance_recomputed_at":"2026-10-15T10:00:00Z"}`, true},
 		{`{}`, true},

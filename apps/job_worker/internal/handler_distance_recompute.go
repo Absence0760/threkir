@@ -278,7 +278,7 @@ func distanceRecomputeSkipReason(run *DistanceRecomputeRun, meta map[string]json
 		// run's track replays whole and gains the smoother.
 		return "recorded live by " + metaString(meta, schema.MetaDistanceEstimator)
 	case meta[schema.MetaDistanceEstimator] != nil && meta[schema.MetaDistanceRecomputedAt] == nil &&
-		!preCanopyEstimators[metaString(meta, schema.MetaDistanceEstimator)] &&
+		trackGatedEstimators[metaString(meta, schema.MetaDistanceEstimator)] &&
 		!metaIsTrue(meta, schema.MetaTrackComplete):
 		// A recorder from spec v1.4 on feeds its estimator fixes up to
 		// 50 m but, unless it says track_complete, stored only those
@@ -289,10 +289,13 @@ func distanceRecomputeSkipReason(run *DistanceRecomputeRun, meta map[string]json
 	return ""
 }
 
-// preCanopyEstimators are the live stamps of recorders from before spec
-// v1.4, which gated the estimator and the stored track at the same accuracy,
-// so their stored track holds every fix the estimator took.
-var preCanopyEstimators = map[string]bool{"kalman_v1": true, "kalman_v2": true, "kalman_v3": true}
+// trackGatedEstimators are the live stamps of recorders that feed their
+// estimator fixes their track gate refuses (spec v1.4 on), so their stored
+// track is complete only when the run says track_complete. A spec bump adds
+// its value. Recorders before v1.4 gated the estimator and the track at one
+// accuracy, and the Wear OS and watchOS builds stamp their forward filter
+// "kalman_v1" whatever the spec, so those stamps are judged as complete.
+var trackGatedEstimators = map[string]bool{"kalman_v4": true}
 
 // mergeDistanceMetadata adds the recompute's four keys to the bag, sets
 // smoothed_sidecar_sha256 to sidecarSHA (removing it when that is ""), and

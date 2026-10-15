@@ -30,6 +30,7 @@ type Scenario = {
 	maxSpeedMps: number;
 	expectedIntervalS: number;
 	initialStrideM: number | null;
+	learnStride: boolean;
 	events: Array<FixEvent | StepsEvent | FinishEvent>;
 	expected: {
 		distanceAfterEachEventM: number[];
@@ -64,7 +65,13 @@ const TOL = fixture.tolerance_m;
 const POS_TOL = fixture.position_tolerance_deg;
 
 function replay(s: Scenario): { est: GpsDistanceEstimator; after: number[] } {
-	const est = new GpsDistanceEstimator(s.maxSpeedMps, s.expectedIntervalS, s.initialStrideM);
+	const est = new GpsDistanceEstimator(
+		s.maxSpeedMps,
+		s.expectedIntervalS,
+		s.initialStrideM,
+		false,
+		s.learnStride,
+	);
 	const after: number[] = [];
 	for (const e of s.events) {
 		if (e.type === 'fix') est.addFix(e.t, e.lat, e.lng, e.acc, e.speed, e.speedAcc, e.bearing);
@@ -75,10 +82,10 @@ function replay(s: Scenario): { est: GpsDistanceEstimator; after: number[] } {
 	return { est, after };
 }
 
-test('fixture is spec v1.3 with a non-trivial scenario set', () => {
-	assert.equal(fixture.spec, 'gps-distance-estimator v1.3');
-	assert.equal(SPEC_VERSION, '1.3');
-	assert.ok(fixture.scenarios.length >= 29, `only ${fixture.scenarios.length} scenarios`);
+test('fixture is spec v1.4 with a non-trivial scenario set', () => {
+	assert.equal(fixture.spec, 'gps-distance-estimator v1.4');
+	assert.equal(SPEC_VERSION, '1.4');
+	assert.ok(fixture.scenarios.length >= 35, `only ${fixture.scenarios.length} scenarios`);
 	assert.ok(TOL > 0 && TOL <= 0.001);
 	assert.ok(POS_TOL > 0 && POS_TOL <= 1e-8);
 });
@@ -128,7 +135,13 @@ for (const s of fixture.scenarios) {
 	});
 
 	test(`vector ${s.name}: smoothed distance and positions`, () => {
-		const sm = smoothDistance(s.events as GpsEvent[], s.maxSpeedMps, s.expectedIntervalS, s.initialStrideM);
+		const sm = smoothDistance(
+			s.events as GpsEvent[],
+			s.maxSpeedMps,
+			s.expectedIntervalS,
+			s.initialStrideM,
+			s.learnStride,
+		);
 		const want = s.smoothed;
 		assert.equal(sm.cumulativeM.length, want.distanceAfterEachEventM.length);
 		sm.cumulativeM.forEach((got, i) => {
@@ -185,7 +198,10 @@ test('a non-finite or sub-second interval hint behaves as 1 s', () => {
 		const est = new GpsDistanceEstimator(10, it);
 		est.addFix(0, 40, -75);
 		est.addFix(11, 40.0003, -75);
-		assert.equal(est.gpsDistanceM, 0, `interval ${it}`);
+		// An 11 s interval is a gap at 1 s, credited only by its chord less the
+		// 1-sigma uncertainty of both ends: sqrt(9 + 9 + 2 * 9) = 6 m.
+		const chord = ((0.0003 * Math.PI) / 180) * gps.EARTH_RADIUS_M;
+		assert.ok(Math.abs(est.gpsDistanceM - (chord - 6)) < 1e-6, `interval ${it}`);
 	}
 });
 
@@ -194,4 +210,23 @@ test('initial stride is kept only when finite and in range', () => {
 	assert.equal(new GpsDistanceEstimator(10, 1, 0.3).strideM, null);
 	assert.equal(new GpsDistanceEstimator(10, 1, 2.6).strideM, null);
 	assert.equal(new GpsDistanceEstimator(10, 1, Number.NaN).strideM, null);
+});
+
+test('a fix stating worse than MAX_POS_SIGMA_M is ignored outright', () => {
+	const est = new GpsDistanceEstimator();
+	assert.equal(est.addFix(0, 40, -75, 51), 0);
+	est.addFix(1, 40, -75, 50);
+	est.addFix(2, 40.00003, -75, 51, 3, 0.3, 0);
+	assert.equal(est.distanceM, 0);
+});
+
+test('learnStride false never learns a stride, and keeps a seeded one', () => {
+	for (const seed of [null, 0.95]) {
+		const est = new GpsDistanceEstimator(10, 1, seed, false, false);
+		for (let i = 0; i < 120; i++) {
+			est.addFix(i, 40 + i * 0.000025, -75, 4, 2.78, 0.3, 0);
+			est.addSteps(i + 0.5, (i + 1) * 3);
+		}
+		assert.equal(est.strideM, seed);
+	}
 });

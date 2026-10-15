@@ -134,8 +134,8 @@ class BackupService {
       if (serverIds.contains(run.id)) continue;
       runsOut.add(rawRunRowForBackup(run));
       if (run.track.isEmpty) continue;
-      localTracks[run.id] = Uint8List.fromList(gzip.encode(utf8.encode(
-          jsonEncode([for (final w in run.track) _backupWaypointJson(w)]))));
+      localTracks[run.id] =
+          Uint8List.fromList(ApiClient.encodeTrackBlob(run.track));
     }
     final routesOut = routes.map((r) {
       final copy = Map<String, dynamic>.from(r);
@@ -926,32 +926,11 @@ class BackupService {
         ..remove('user_id')
         ..remove('track_url');
 
-  static Map<String, dynamic> _backupWaypointJson(cm.Waypoint w) => {
-        'lat': w.lat,
-        'lng': w.lng,
-        'ele': w.elevationMetres,
-        'ts': w.timestamp?.toUtc().toIso8601String(),
-        if (w.bpm != null) 'bpm': w.bpm,
-      };
-
   List<cm.Waypoint> _decodeTrack(Archive archive, String runId) {
     final file = archive.findFile('tracks/$runId.json.gz');
     if (file == null) return const [];
     try {
-      final gz = file.content as List<int>;
-      final raw = GZipDecoder().decodeBytes(gz);
-      final body = utf8.decode(raw);
-      final list = jsonDecode(body) as List;
-      return [
-        for (final w in list)
-          if (w is Map)
-            cm.Waypoint(
-              lat: (w['lat'] as num).toDouble(),
-              lng: (w['lng'] as num).toDouble(),
-              elevationMetres: (w['ele'] as num?)?.toDouble(),
-              timestamp: cm.parseIsoStrictValue(w['ts']),
-            ),
-      ];
+      return ApiClient.decodeTrackBlob(file.content as List<int>);
     } catch (e) {
       debugPrint('[backup._decodeTrack] $e');
       return const [];

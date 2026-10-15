@@ -409,20 +409,27 @@ void main() {
           DateTime.utc(2026, 5, 10, 8, 0, 0));
     });
 
-    test('per-point bpm in track survives round-trip', () async {
-      // Some Go-built backups carry per-point HR (Garmin, Strava).
-      // The Dart Waypoint model has a `bpm` field; restore must
-      // populate it from the track's `bpm` key.
-      //
-      // NOTE: today, the Dart restore code does NOT read `bpm` from
-      // the per-waypoint object — only lat/lng/ele/ts. This test
-      // pins that contract: per-point bpm is silently dropped on
-      // the offline restore path. If the Dart Waypoint domain
-      // model + restore are extended to round-trip bpm, flip the
-      // assertion.
+    test('per-fix fields in a track survive the offline restore', () async {
+      // Restore decodes the track through the same codec the upload path
+      // stores, so per-point HR, the anchored barometer, the credited
+      // distance and accuracy all come back rather than lat/lng/ele/ts only.
       final track = const [
-        {'lat': 47.37, 'lng': 8.54, 'bpm': 142},
-        {'lat': 47.371, 'lng': 8.541, 'bpm': 145},
+        {
+          'lat': 47.37,
+          'lng': 8.54,
+          'bpm': 142,
+          'baroEle': 410.5,
+          'distM': 0.0,
+          'accuracyMetres': 4.5,
+        },
+        {
+          'lat': 47.371,
+          'lng': 8.541,
+          'bpm': 145,
+          'baroEle': 411.25,
+          'distM': 132.4,
+          'accuracyMetres': 6.0,
+        },
       ];
       final bytes = goShapeBackup(
         manifest: {
@@ -453,12 +460,10 @@ void main() {
       expect(result.runsImported, 1);
       final r = runStore.runs.single;
       expect(r.track, hasLength(2));
-      // Per-point bpm is currently NOT plumbed through the offline
-      // restore path — the Dart Waypoint's `bpm` field stays null
-      // even though the input had it. If this expectation flips,
-      // update apps/mobile_android/lib/backup.dart's _decodeTrack
-      // to map `bpm` → Waypoint.bpm.
-      expect(r.track.first.bpm, isNull);
+      expect(r.track.map((w) => w.bpm), [142, 145]);
+      expect(r.track.map((w) => w.baroElevationMetres), [410.5, 411.25]);
+      expect(r.track.map((w) => w.cumulativeDistanceMetres), [0.0, 132.4]);
+      expect(r.track.map((w) => w.accuracyMetres), [4.5, 6.0]);
     });
 
     test('100-point dense track round-trips without truncation', () async {

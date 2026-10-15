@@ -2126,6 +2126,16 @@ class ApiClient {
   static String debugTrackBlobJson(List<Waypoint> track) =>
       _trackBlobJson(track);
 
+  /// The stored track blob for [track], gzipped: the exact bytes the `runs`
+  /// bucket holds. A device backup writes local-only tracks through this so
+  /// a restore reads back every per-fix field the upload path keeps.
+  static List<int> encodeTrackBlob(List<Waypoint> track) =>
+      gzip.encode(utf8.encode(_trackBlobJson(track)));
+
+  /// Inverse of [encodeTrackBlob]: decodes a gzipped track blob.
+  static List<Waypoint> decodeTrackBlob(List<int> gzipped) =>
+      _decodeTrack(gzip.decode(gzipped));
+
   Future<List<Waypoint>> _downloadTrack(String path) async {
     final bytes = await _client.storage.from(StorageBuckets.runs).download(path);
     return _decodeTrack(gzip.decode(bytes));

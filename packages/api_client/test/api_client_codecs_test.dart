@@ -238,6 +238,50 @@ void main() {
     });
   });
 
+  group('encodeTrackBlob / decodeTrackBlob', () {
+    test('a device backup keeps every per-fix field the upload path keeps',
+        () {
+      final track = [
+        Waypoint(
+          lat: 47.37,
+          lng: 8.54,
+          elevationMetres: 408,
+          timestamp: DateTime.utc(2026, 4, 10, 8),
+          bpm: 142,
+          accuracyMetres: 4.5,
+          speedMps: 3.1,
+          baroElevationMetres: 410.5,
+          cumulativeDistanceMetres: 0,
+        ),
+        Waypoint(
+          lat: 47.371,
+          lng: 8.541,
+          elevationMetres: 409,
+          timestamp: DateTime.utc(2026, 4, 10, 8, 0, 30),
+          bpm: 145,
+          accuracyMetres: 6,
+          speedMps: 3.2,
+          baroElevationMetres: 411.25,
+          cumulativeDistanceMetres: 132.4,
+        ),
+      ];
+      final back = ApiClient.decodeTrackBlob(ApiClient.encodeTrackBlob(track));
+      expect(back, hasLength(2));
+      expect(back.map((w) => w.bpm), [142, 145]);
+      expect(back.map((w) => w.baroElevationMetres), [410.5, 411.25]);
+      expect(back.map((w) => w.cumulativeDistanceMetres), [0.0, 132.4]);
+      expect(back.map((w) => w.accuracyMetres), [4.5, 6.0]);
+      expect(back.map((w) => w.speedMps), [3.1, 3.2]);
+      expect(back.last.timestamp, DateTime.utc(2026, 4, 10, 8, 0, 30));
+    });
+
+    test('the bytes are the gzipped blob the runs bucket stores', () {
+      const track = [Waypoint(lat: 1, lng: 2)];
+      expect(utf8.decode(gzip.decode(ApiClient.encodeTrackBlob(track))),
+          ApiClient.debugTrackBlobJson(track));
+    });
+  });
+
   group('debugRunFromRow', () {
     Map<String, dynamic> minimalRow({
       String id = 'run-1',

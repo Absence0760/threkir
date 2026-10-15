@@ -10,6 +10,7 @@ import {
 } from "#lib/sentry/redact.ts";
 import { SENTRY_DATA_COLLECTION } from "#lib/sentry/data_collection.ts";
 import { hasAcceptedConsent } from "#lib/settings/consent.svelte.ts";
+import { logClientError } from "#lib/core/client_error_log.ts";
 
 const dsn = PUBLIC_SENTRY_DSN ?? "";
 const release = PUBLIC_APP_RELEASE || "dev";
@@ -51,6 +52,7 @@ if (!dev && dsn && hasAcceptedConsent()) {
 // only the static types differ.
 const handleErrorViaSentry = Sentry.handleErrorWithSentry() as unknown as HandleClientError;
 export const handleError: HandleClientError = (input) => {
+	logClientError(input);
 	if (!hasAcceptedConsent()) return;
 	return handleErrorViaSentry(input);
 };

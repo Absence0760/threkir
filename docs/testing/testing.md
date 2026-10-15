@@ -373,6 +373,25 @@ Read the row before navigating away: `await expect.poll(readStarredFlag).toBe(tr
 
 `/runs`, `/history`, `/plans` and `/routes` restore their list from a SvelteKit snapshot when a detail page's back link pops history, and that restore skips the fetch. A spec that creates something and then re-enters the list with `page.goto` mounts a fresh page and fetches, so it can never see a restore that brought back the pre-write list — every create spec did exactly that while "All runs" returned a list without the run just added ([decisions § 1822](../architecture/decisions.md)). When the journey under test is create → detail → back, click the detail page's back link. `runs/add-consecutive-runs-journey`, `plans/create-back-to-list-journey`, `history/log-run-back-to-timeline-journey` and `cross-cutting/click-through-session-journey` are the reference shape.
 
+### 11. A page that crashed fails the test, whatever the assertions say
+
+The near-zero training-load crash (#1155) rendered "500 Internal Error" on `/dashboard` while specs asserting on headings around it stayed green. `tests-e2e/fixtures/test.ts` is the crash net: take `test` and `expect` from it instead of `@playwright/test` (it extends `mock-route`'s `test`, so `mockRoute` comes with it):
+
+```ts
+import { expect, test } from '../fixtures/test';
+```
+
+Every page in the test's `context`, and in any context the test makes with `browser.newContext()` / `browser.newPage()`, is watched for an uncaught exception (`pageerror`), an `error`-level console line carrying a Svelte runtime code (`svelte.dev/e/…`), the client `handleError` hook's local log line (`src/lib/core/client_error_log.ts`), and SvelteKit's "Internal Error" page appearing in the DOM (an init script watches for it, so a boundary the spec navigated away from still counts; a 404's "Not Found" does not). Teardown fails the test listing each one. A context opened in a `beforeAll` belongs to no test and is not watched.
+
+Opting out always takes a written reason, which the fixture refuses empty:
+
+```ts
+test.use({ crashNet: { off: 'drives the 500 page on purpose' } });
+test.use({ crashNet: { allow: [{ match: 'each_key_duplicate', reason: '#1234, fixed by …' }] } });
+```
+
+Prefer `allow` — it excuses only the matching crash, and an entry that excused nothing in the test fails it, so it cannot outlive the bug it was written for. `CRASH_NET=report` logs instead of failing (a `crash-net` test annotation, plus a `::warning` annotation on GitHub Actions); unset or `fail` fails, anything else throws. CI runs every Playwright lane with `CRASH_NET=report` for the report-only pass of #1161; flip it by deleting those `env` lines in `ci.yml` ([decisions § 1943](../architecture/decisions.md)). `cross-cutting/crash-net.spec.ts` pins `mode: 'fail'` and proves each detector bites; `fixtures/crash-net.test.ts` (web unit suite) covers the classification and the opt-out validation.
+
 ---
 
 ## How to add a new test

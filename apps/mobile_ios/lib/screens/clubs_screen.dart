@@ -16,6 +16,7 @@ import '../widgets/error_state.dart';
 import '../widgets/verified_badge.dart';
 import 'club_detail_screen.dart';
 import 'club_invite_screen.dart';
+import 'help_screen.dart';
 import 'people_screen.dart';
 
 class ClubsScreen extends StatefulWidget {
@@ -124,25 +125,31 @@ class ClubsScreenState extends State<ClubsScreen> {
   Widget buildCreateClubFab(BuildContext context) {
     return FloatingActionButton.extended(
       heroTag: 'clubs_create_fab',
-      onPressed: () async {
-        final slug = await showClubFormSheet(context, social: widget.social);
-        if (slug == null || !mounted) return;
-        await Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => ClubDetailScreen(
-              social: widget.social,
-              training: widget.training,
-              apiClient: widget.apiClient,
-              routeStore: widget.routeStore,
-              slug: slug,
-            ),
-          ),
-        );
-        _load();
-      },
+      onPressed: _createClub,
       icon: const Icon(Icons.add),
       label: Text(AppLocalizations.of(context).clubsNewClub),
     );
+  }
+
+  Future<void> _createClub({String? initialName}) async {
+    final slug = await showClubFormSheet(
+      context,
+      social: widget.social,
+      initialName: initialName,
+    );
+    if (slug == null || !mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ClubDetailScreen(
+          social: widget.social,
+          training: widget.training,
+          apiClient: widget.apiClient,
+          routeStore: widget.routeStore,
+          slug: slug,
+        ),
+      ),
+    );
+    _load();
   }
 
   /// Embedded mode: the segment-strip + search bar live INSIDE the
@@ -229,7 +236,12 @@ class ClubsScreenState extends State<ClubsScreen> {
                       : l10n.clubsLoadError,
                   onRetry: _load)
               : list.isEmpty
-              ? _Empty(tab: _tab)
+              ? _Empty(
+                  tab: _tab,
+                  onSetUpClub: () =>
+                      _createClub(initialName: _searchCtrl.text.trim()),
+                  onHowToCreate: () => openGuide(context, 'create-a-club'),
+                )
               : RefreshIndicator(
                   onRefresh: _load,
                   child: ListView.separated(
@@ -423,7 +435,13 @@ class _ClubTile extends StatelessWidget {
 
 class _Empty extends StatelessWidget {
   final int tab;
-  const _Empty({required this.tab});
+  final VoidCallback onSetUpClub;
+  final VoidCallback onHowToCreate;
+  const _Empty({
+    required this.tab,
+    required this.onSetUpClub,
+    required this.onHowToCreate,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -451,13 +469,27 @@ class _Empty extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               tab == 0
-                  ? l10n.clubsEmptyBrowseBody
+                  ? l10n.clubsMissingClubBody
                   : l10n.clubsEmptyMineBody,
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
+            if (tab == 0) ...[
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: onSetUpClub,
+                icon: const Icon(Icons.add),
+                label: Text(l10n.clubsSetUpYourClub),
+              ),
+              const SizedBox(height: 8),
+              TextButton.icon(
+                onPressed: onHowToCreate,
+                icon: const Icon(Icons.help_outline),
+                label: Text(l10n.clubsHowToCreateClub),
+              ),
+            ],
           ],
         ),
       ),

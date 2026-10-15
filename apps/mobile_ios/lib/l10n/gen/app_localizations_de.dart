@@ -2894,6 +2894,69 @@ class AppLocalizationsDe extends AppLocalizations {
       'Höhenkorrigiert bist du in der zweiten Hälfte langsamer geworden.';
 
   @override
+  String get runDetailStrategyTitle => 'Tempostrategie';
+
+  @override
+  String runDetailStrategyGoal(String time) {
+    return 'Ziel $time';
+  }
+
+  @override
+  String get runDetailStrategyColPhase => 'Phase';
+
+  @override
+  String get runDetailStrategyColTarget => 'Vorgabe';
+
+  @override
+  String get runDetailStrategyNotReached => 'nicht erreicht';
+
+  @override
+  String get runDetailStrategyPartial => 'teilweise';
+
+  @override
+  String get runDetailStrategyOnPace => 'im Tempo';
+
+  @override
+  String get runDetailStrategyVerdictOnPlan => 'Nach Plan';
+
+  @override
+  String get runDetailStrategyVerdictWentOutTooFast => 'Zu schnell angegangen';
+
+  @override
+  String get runDetailStrategyVerdictFaded => 'Eingebrochen';
+
+  @override
+  String get runDetailStrategyVerdictNegativeSplit =>
+      'Stärker beendet als geplant';
+
+  @override
+  String get runDetailStrategyVerdictFasterThanPlan => 'Schneller als geplant';
+
+  @override
+  String get runDetailStrategyVerdictSlowerThanPlan => 'Langsamer als geplant';
+
+  @override
+  String get runDetailStrategyAverageBasis =>
+      'Keine Zielzeit gesetzt – jede Vorgabe ist der Planverlauf bei deinem Durchschnittstempo.';
+
+  @override
+  String get runDetailStrategyNoTrack =>
+      'Dieser Lauf hat keinen GPS-Track mit Zeitstempeln, daher lassen sich die Phasen nicht bewerten.';
+
+  @override
+  String get runDetailStrategyNoGoal =>
+      'Keine Zielzeit gesetzt – ein einphasiger gleichmäßiger Plan hat keinen Vergleichswert.';
+
+  @override
+  String runDetailStrategyStoppedShort(String distance, String planned) {
+    return 'Beendet bei $distance von geplanten $planned – die späteren Phasen wurden nicht gelaufen.';
+  }
+
+  @override
+  String get runDetailStrategyBand =>
+      'Eine Phase innerhalb von 1,5 % ihres Vorgabetempos gilt als im Ziel; Stopps sind nicht eingerechnet.';
+
+  @override
   String get runDetailGapColumn => 'Höhenkorr.';
 
   @override
@@ -4905,7 +4968,14 @@ class AppLocalizationsDe extends AppLocalizations {
   String get clubsEmptyMineTitle => 'Du bist noch keinem Club beigetreten.';
 
   @override
-  String get clubsEmptyBrowseBody => 'Versuche einen anderen Namen oder Ort.';
+  String get clubsMissingClubBody =>
+      'Fehlt dein Club? Vielleicht ist er noch nicht auf Threkir. Richte seine Seite ein und lade deine Mitglieder ein.';
+
+  @override
+  String get clubsSetUpYourClub => 'Club einrichten';
+
+  @override
+  String get clubsHowToCreateClub => 'So gründest du einen Club';
 
   @override
   String get clubsEmptyMineBody => 'Geh zu Entdecken, um einen zu finden.';
@@ -15560,4 +15630,84 @@ class AppLocalizationsDe extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get messagesTitle => 'Nachrichten';
+
+  @override
+  String get messagesEmptyTitle => 'Noch keine Unterhaltungen';
+
+  @override
+  String get messagesEmptyBody =>
+      'Öffne das Profil eines Läufers und tippe auf Nachricht, um eine Unterhaltung zu beginnen.';
+
+  @override
+  String get messagesLoadError =>
+      'Deine Unterhaltungen konnten nicht geladen werden.';
+
+  @override
+  String get messagesThreadLoadError =>
+      'Diese Unterhaltung konnte nicht geladen werden.';
+
+  @override
+  String messagesYouPrefixed(String body) {
+    return 'Du: $body';
+  }
+
+  @override
+  String messagesUnreadCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ungelesene Nachrichten',
+      one: '$count ungelesene Nachricht',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get messagesThreadEmpty => 'Noch keine Nachrichten. Sag Hallo.';
+
+  @override
+  String get messagesComposerHint => 'Nachricht…';
+
+  @override
+  String get messagesSend => 'Senden';
+
+  @override
+  String get messagesSending => 'Wird gesendet…';
+
+  @override
+  String get messagesSendFailed =>
+      'Deine Nachricht konnte nicht gesendet werden. Versuche es erneut.';
+
+  @override
+  String get messagesSendNotAllowed =>
+      'Du kannst nur Personen schreiben, denen du folgst oder die dir folgen und die dich nicht blockiert haben.';
+
+  @override
+  String get messagesLoadEarlier => 'Ältere Nachrichten laden';
+
+  @override
+  String get messagesLoadEarlierFailed =>
+      'Ältere Nachrichten konnten nicht geladen werden.';
+
+  @override
+  String get messagesViewProfile => 'Profil ansehen';
+
+  @override
+  String get messagesRouteEyebrow => 'Route';
+
+  @override
+  String get messagesRouteUntitled => 'Route ohne Namen';
+
+  @override
+  String get messagesRouteUnavailable =>
+      'Diese Route ist für dich nicht mehr verfügbar.';
+
+  @override
+  String get messagesRouteLoading => 'Route wird geladen';
+
+  @override
+  String get profileMessage => 'Nachricht';
 }

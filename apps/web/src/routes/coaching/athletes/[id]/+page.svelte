@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { appErrorMessage, thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { compareOrdinal } from '#lib/util/ordinal_compare.ts';
 	import { page } from '$app/state';
@@ -78,7 +79,7 @@
 			// A rejected fetch (auth/timeout/RLS) would otherwise leave the
 			// page stuck on its loading spinner forever — surface it with a
 			// retry instead.
-			loadError = e instanceof Error ? e.message : String(e);
+			loadError = thrownMessage(e);
 		}
 		loading = false;
 	}
@@ -109,7 +110,7 @@
 		} catch (e) {
 			// The RPC raises a specific message (e.g. already has an active plan);
 			// surface it rather than a swallowed failure.
-			showToast(e instanceof Error ? e.message : m('coachingAthlete.assignError'), 'error');
+			showToast(appErrorMessage(e) ?? m('coachingAthlete.assignError'), 'error');
 		} finally {
 			assigning = false;
 		}
@@ -182,12 +183,12 @@
 
 	{#if loading}
 		<p class="muted">{m('shell.loading')}</p>
-	{:else if loadError}
+	{:else if loadError !== null}
 		<div class="error-banner" role="alert">
 			<span class="material-symbols" aria-hidden="true">error</span>
 			<div>
 				<strong>{m('coaching.loadError')}</strong>
-				<span class="error-detail">{loadError}</span>
+				{#if loadError}<span class="error-detail">{loadError}</span>{/if}
 			</div>
 			<button class="btn btn-outline" onclick={load}>{m('coaching.retry')}</button>
 		</div>

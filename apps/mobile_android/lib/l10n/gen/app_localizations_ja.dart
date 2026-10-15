@@ -2743,6 +2743,68 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runDetailPacingGapPositive => '勾配を調整すると、後半はペースが落ちています。';
 
   @override
+  String get runDetailStrategyTitle => 'ペース戦略';
+
+  @override
+  String runDetailStrategyGoal(String time) {
+    return '目標 $time';
+  }
+
+  @override
+  String get runDetailStrategyColPhase => 'フェーズ';
+
+  @override
+  String get runDetailStrategyColTarget => '目標';
+
+  @override
+  String get runDetailStrategyNotReached => '未到達';
+
+  @override
+  String get runDetailStrategyPartial => '一部';
+
+  @override
+  String get runDetailStrategyOnPace => 'ペース通り';
+
+  @override
+  String get runDetailStrategyVerdictOnPlan => '計画どおり';
+
+  @override
+  String get runDetailStrategyVerdictWentOutTooFast => '入りが速すぎ';
+
+  @override
+  String get runDetailStrategyVerdictFaded => '終盤失速';
+
+  @override
+  String get runDetailStrategyVerdictNegativeSplit => '計画より強く終えた';
+
+  @override
+  String get runDetailStrategyVerdictFasterThanPlan => '計画より速い';
+
+  @override
+  String get runDetailStrategyVerdictSlowerThanPlan => '計画より遅い';
+
+  @override
+  String get runDetailStrategyAverageBasis =>
+      '目標タイムが未設定のため、各目標は平均ペースに計画の配分を当てはめたものです。';
+
+  @override
+  String get runDetailStrategyNoTrack =>
+      'このランには時刻付きのGPSトラックがないため、フェーズを評価できません。';
+
+  @override
+  String get runDetailStrategyNoGoal =>
+      '目標タイムが未設定のため、1フェーズのイーブンペース計画には比較対象がありません。';
+
+  @override
+  String runDetailStrategyStoppedShort(String distance, String planned) {
+    return '予定 $planned のうち $distance で終了したため、後半のフェーズは走っていません。';
+  }
+
+  @override
+  String get runDetailStrategyBand =>
+      '目標ペースとの差が1.5%以内のフェーズは目標どおりとみなします。停止時間は含みません。';
+
+  @override
   String get runDetailGapColumn => '勾配調整';
 
   @override
@@ -4607,7 +4669,14 @@ class AppLocalizationsJa extends AppLocalizations {
   String get clubsEmptyMineTitle => 'まだクラブに参加していません。';
 
   @override
-  String get clubsEmptyBrowseBody => '別の名前または場所を試してください。';
+  String get clubsMissingClubBody =>
+      'お探しのクラブが見つかりませんか？まだ Threkir にないのかもしれません。クラブのページを作成して、メンバーを招待しましょう。';
+
+  @override
+  String get clubsSetUpYourClub => 'クラブを立ち上げる';
+
+  @override
+  String get clubsHowToCreateClub => 'クラブの作成方法';
 
   @override
   String get clubsEmptyMineBody => '「さがす」から探してみましょう。';
@@ -14820,4 +14889,77 @@ class AppLocalizationsJa extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get messagesTitle => 'メッセージ';
+
+  @override
+  String get messagesEmptyTitle => 'まだ会話がありません';
+
+  @override
+  String get messagesEmptyBody => 'ランナーのプロフィールを開いて「メッセージ」をタップすると、会話を始められます。';
+
+  @override
+  String get messagesLoadError => '会話を読み込めませんでした。';
+
+  @override
+  String get messagesThreadLoadError => 'この会話を読み込めませんでした。';
+
+  @override
+  String messagesYouPrefixed(String body) {
+    return 'あなた: $body';
+  }
+
+  @override
+  String messagesUnreadCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '未読メッセージ$count件',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get messagesThreadEmpty => 'まだメッセージがありません。あいさつしてみましょう。';
+
+  @override
+  String get messagesComposerHint => 'メッセージ…';
+
+  @override
+  String get messagesSend => '送信';
+
+  @override
+  String get messagesSending => '送信中…';
+
+  @override
+  String get messagesSendFailed => 'メッセージを送信できませんでした。もう一度お試しください。';
+
+  @override
+  String get messagesSendNotAllowed =>
+      'メッセージを送れるのは、あなたがフォローしている人か、あなたをフォローしている人のうち、あなたをブロックしていない人だけです。';
+
+  @override
+  String get messagesLoadEarlier => '以前のメッセージを読み込む';
+
+  @override
+  String get messagesLoadEarlierFailed => '以前のメッセージを読み込めませんでした。';
+
+  @override
+  String get messagesViewProfile => 'プロフィールを見る';
+
+  @override
+  String get messagesRouteEyebrow => 'ルート';
+
+  @override
+  String get messagesRouteUntitled => '名称未設定のルート';
+
+  @override
+  String get messagesRouteUnavailable => 'このルートは表示できなくなりました。';
+
+  @override
+  String get messagesRouteLoading => 'ルートを読み込み中';
+
+  @override
+  String get profileMessage => 'メッセージ';
 }

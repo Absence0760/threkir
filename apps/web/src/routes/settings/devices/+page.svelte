@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { onMount } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
@@ -72,7 +73,7 @@
 			await refreshCurrentDeviceRow();
 			showToast(m('settingsDevices.pushEnabledToast'), 'success');
 		} catch (e) {
-			showToast(m('settingsDevices.pushEnableFailedToast', { message: (e as Error).message }), 'error');
+			showToast(m('settingsDevices.pushEnableFailedToast', { message: thrownMessage(e) }), 'error');
 		} finally {
 			pushBusy = false;
 		}
@@ -86,7 +87,7 @@
 			await refreshCurrentDeviceRow();
 			showToast(m('settingsDevices.pushDisabledToast'), 'success');
 		} catch (e) {
-			showToast(m('settingsDevices.pushDisableFailedToast', { message: (e as Error).message }), 'error');
+			showToast(m('settingsDevices.pushDisableFailedToast', { message: thrownMessage(e) }), 'error');
 		} finally {
 			pushBusy = false;
 		}

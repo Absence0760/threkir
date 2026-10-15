@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
@@ -45,7 +46,7 @@
 		} catch (e) {
 			// Not-found and could-not-load are different answers; the second
 			// must not tell an author their routine is gone.
-			loadError = e instanceof Error ? e.message : String(e);
+			loadError = thrownMessage(e);
 			detail = null;
 			return;
 		} finally {
@@ -158,7 +159,7 @@
 
 	{#if loading}
 		<p class="sr-only" role="status">{t('shell.loading')}</p>
-	{:else if loadError}
+	{:else if loadError !== null}
 		<div class="load-error" role="alert" data-testid="routine-load-error">
 			<p>{t('gym.routine.loadError')}</p>
 			<button class="btn btn-outline" onclick={load}>{t('gym.routine.retry')}</button>

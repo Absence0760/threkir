@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { onMount, tick } from 'svelte';
 	import { afterNavigate } from '$app/navigation';
@@ -339,7 +340,7 @@
 			showToast(m('planDetail.shiftDone', { n: Math.abs(shiftDays) }));
 			await load();
 		} catch (e) {
-			showToast(m('planDetail.bulkFailed', { error: String(e) }), 'error');
+			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			bulkBusy = false;
 		}
@@ -363,7 +364,7 @@
 			showToast(m('planDetail.recoveryDone'));
 			await load();
 		} catch (e) {
-			showToast(m('planDetail.bulkFailed', { error: String(e) }), 'error');
+			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			bulkBusy = false;
 		}
@@ -381,7 +382,7 @@
 			showToast(m('planDetail.duplicateWeekDone', { n: week.week_index + 1 }));
 			await load();
 		} catch (e) {
-			showToast(m('planDetail.bulkFailed', { error: String(e) }), 'error');
+			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			bulkBusy = false;
 		}
@@ -431,7 +432,7 @@
 			showToast(m('planDetail.cycleAdjustDone'));
 			await load();
 		} catch (e) {
-			showToast(m('planDetail.bulkFailed', { error: String(e) }), 'error');
+			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			bulkBusy = false;
 		}
@@ -446,7 +447,7 @@
 			showToast(m('planDetail.pauseDone'));
 			await load();
 		} catch (e) {
-			showToast(m('planDetail.bulkFailed', { error: String(e) }), 'error');
+			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			bulkBusy = false;
 		}
@@ -465,7 +466,7 @@
 			if (e instanceof ActivePlanExistsError) {
 				showToast(m('planDetail.resumeBlocked'), 'error');
 			} else {
-				showToast(m('planDetail.bulkFailed', { error: String(e) }), 'error');
+				showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
 			}
 		} finally {
 			bulkBusy = false;
@@ -618,7 +619,7 @@
 			adaptiveInfo = null;
 			await load();
 		} catch (e) {
-			showToast(m('planDetail.bulkFailed', { error: String(e) }), 'error');
+			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			bulkBusy = false;
 		}
@@ -652,10 +653,10 @@
 		} catch (e) {
 			// A rejected fetch would otherwise leave the page stuck on its
 			// loading skeleton forever — surface it with a retry instead.
-			loadError = e instanceof Error ? e.message : String(e);
+			loadError = thrownMessage(e);
 		}
 		loading = false;
-		if (!loadError && plan != null && plan.user_id === auth.user?.id) {
+		if (loadError === null && plan != null && plan.user_id === auth.user?.id) {
 			// Owner-only: the recent runs feed both the Race Day Riegel
 			// projection (within 21 days) and the current-week adherence
 			// drift flag (any time). 50 covers a heavy week comfortably.
@@ -735,7 +736,7 @@
 			publishedTemplate = { ...plan, id: newId, is_public_template: true };
 			showToast(m('planDetail.publishLibrarySuccess'));
 		} catch (e) {
-			showToast(m('planDetail.publishLibraryFailed', { error: String(e) }), 'error');
+			showToast(m('planDetail.publishLibraryFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			libraryBusy = false;
 		}
@@ -749,7 +750,7 @@
 			publishedTemplate = null;
 			showToast(m('planDetail.unpublishLibrarySuccess'));
 		} catch (e) {
-			showToast(m('planDetail.unpublishLibraryFailed', { error: String(e) }), 'error');
+			showToast(m('planDetail.unpublishLibraryFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			libraryBusy = false;
 		}
@@ -766,7 +767,7 @@
 			// No reload needed — the source plan stayed put. The new
 			// template lives on the club's Templates tab.
 		} catch (e) {
-			showToast(m('planDetail.publishFailed', { error: String(e) }), 'error');
+			showToast(m('planDetail.publishFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			publishingBusy = false;
 		}
@@ -977,7 +978,7 @@
 		<div class="week-skel skeleton-shimmer"></div>
 		<div class="week-skel skeleton-shimmer"></div>
 	</div>
-{:else if loadError}
+{:else if loadError !== null}
 	<div class="page">
 		<a class="back" href={backHref} onclick={handleBack}>
 			<span class="material-symbols">arrow_back</span>
@@ -987,7 +988,7 @@
 			<span class="material-symbols" aria-hidden="true">error</span>
 			<div>
 				<strong>{m('plansPage.loadError')}</strong>
-				<span class="error-detail">{loadError}</span>
+				{#if loadError}<span class="error-detail">{loadError}</span>{/if}
 			</div>
 			<button class="btn btn-outline" onclick={load}>{m('plansPage.retry')}</button>
 		</div>

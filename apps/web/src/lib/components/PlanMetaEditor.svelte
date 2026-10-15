@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { untrack } from 'svelte';
 	import { lengthLimit } from '#lib/core/column_limits.ts';
 	import Modal from './Modal.svelte';
@@ -69,7 +70,7 @@
 			showToast(m('planMeta.planUpdated'));
 			onSaved();
 		} catch (e: any) {
-			error = m('planMeta.saveFailed', { error: e instanceof Error ? e.message : String(e) });
+			error = m('planMeta.saveFailed', { error: thrownMessage(e) });
 		} finally {
 			saving = false;
 		}

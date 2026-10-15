@@ -2897,6 +2897,69 @@ class AppLocalizationsFr extends AppLocalizations {
       'Corrigé du dénivelé, vous avez ralenti sur la seconde moitié.';
 
   @override
+  String get runDetailStrategyTitle => 'Stratégie d\'allure';
+
+  @override
+  String runDetailStrategyGoal(String time) {
+    return 'Objectif $time';
+  }
+
+  @override
+  String get runDetailStrategyColPhase => 'Phase';
+
+  @override
+  String get runDetailStrategyColTarget => 'Cible';
+
+  @override
+  String get runDetailStrategyNotReached => 'non atteinte';
+
+  @override
+  String get runDetailStrategyPartial => 'partielle';
+
+  @override
+  String get runDetailStrategyOnPace => 'dans le rythme';
+
+  @override
+  String get runDetailStrategyVerdictOnPlan => 'Conforme au plan';
+
+  @override
+  String get runDetailStrategyVerdictWentOutTooFast => 'Départ trop rapide';
+
+  @override
+  String get runDetailStrategyVerdictFaded => 'Fin en baisse';
+
+  @override
+  String get runDetailStrategyVerdictNegativeSplit =>
+      'Fin plus forte que prévu';
+
+  @override
+  String get runDetailStrategyVerdictFasterThanPlan => 'Plus rapide que prévu';
+
+  @override
+  String get runDetailStrategyVerdictSlowerThanPlan => 'Plus lent que prévu';
+
+  @override
+  String get runDetailStrategyAverageBasis =>
+      'Aucun temps visé n\'a été défini : chaque cible reprend le profil du plan à votre allure moyenne.';
+
+  @override
+  String get runDetailStrategyNoTrack =>
+      'Cette sortie n\'a pas de trace GPS horodatée : ses phases ne peuvent pas être évaluées.';
+
+  @override
+  String get runDetailStrategyNoGoal =>
+      'Aucun temps visé n\'a été défini : un plan à allure régulière en une seule phase n\'a rien à quoi se comparer.';
+
+  @override
+  String runDetailStrategyStoppedShort(String distance, String planned) {
+    return 'Terminée à $distance sur les $planned prévus : les phases suivantes n\'ont pas été courues.';
+  }
+
+  @override
+  String get runDetailStrategyBand =>
+      'Une phase à moins de 1,5 % de son allure cible est considérée dans la cible ; les arrêts sont exclus.';
+
+  @override
   String get runDetailGapColumn => 'Corrigée';
 
   @override
@@ -4905,7 +4968,14 @@ class AppLocalizationsFr extends AppLocalizations {
   String get clubsEmptyMineTitle => 'Vous n\'avez encore rejoint aucun club.';
 
   @override
-  String get clubsEmptyBrowseBody => 'Essayez un autre nom ou lieu.';
+  String get clubsMissingClubBody =>
+      'Votre club n\'apparaît pas ? Il n\'est peut-être pas encore sur Threkir. Créez sa page et invitez vos membres à le rejoindre.';
+
+  @override
+  String get clubsSetUpYourClub => 'Configurer votre club';
+
+  @override
+  String get clubsHowToCreateClub => 'Comment créer un club';
 
   @override
   String get clubsEmptyMineBody => 'Allez dans Parcourir pour en trouver un.';
@@ -15584,4 +15654,84 @@ class AppLocalizationsFr extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get messagesTitle => 'Messages';
+
+  @override
+  String get messagesEmptyTitle => 'Aucune conversation pour l\'instant';
+
+  @override
+  String get messagesEmptyBody =>
+      'Ouvrez le profil d\'un coureur et appuyez sur Message pour démarrer une conversation.';
+
+  @override
+  String get messagesLoadError => 'Impossible de charger vos conversations.';
+
+  @override
+  String get messagesThreadLoadError =>
+      'Impossible de charger cette conversation.';
+
+  @override
+  String messagesYouPrefixed(String body) {
+    return 'Vous : $body';
+  }
+
+  @override
+  String messagesUnreadCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count messages non lus',
+      one: '$count message non lu',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get messagesThreadEmpty =>
+      'Aucun message pour l\'instant. Dites bonjour.';
+
+  @override
+  String get messagesComposerHint => 'Message…';
+
+  @override
+  String get messagesSend => 'Envoyer';
+
+  @override
+  String get messagesSending => 'Envoi…';
+
+  @override
+  String get messagesSendFailed =>
+      'Impossible d\'envoyer votre message. Réessayez.';
+
+  @override
+  String get messagesSendNotAllowed =>
+      'Vous ne pouvez écrire qu\'aux personnes que vous suivez ou qui vous suivent, et qui ne vous ont pas bloqué.';
+
+  @override
+  String get messagesLoadEarlier => 'Charger les messages précédents';
+
+  @override
+  String get messagesLoadEarlierFailed =>
+      'Impossible de charger les messages précédents.';
+
+  @override
+  String get messagesViewProfile => 'Voir le profil';
+
+  @override
+  String get messagesRouteEyebrow => 'Itinéraire';
+
+  @override
+  String get messagesRouteUntitled => 'Itinéraire sans titre';
+
+  @override
+  String get messagesRouteUnavailable =>
+      'Cet itinéraire n\'est plus accessible pour vous.';
+
+  @override
+  String get messagesRouteLoading => 'Chargement de l\'itinéraire';
+
+  @override
+  String get profileMessage => 'Message';
 }

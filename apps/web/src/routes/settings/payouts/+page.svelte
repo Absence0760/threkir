@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
@@ -77,7 +78,7 @@
 			// (events-connect-onboard fails closed). Treat that like the
 			// upgrade page's not-configured fallback: an info toast, no
 			// red error, page stays usable.
-			const msg = err instanceof Error ? err.message : String(err);
+			const msg = thrownMessage(err);
 			// `startConnectOnboarding` unwraps the function's own
 			// `{ error: '<code>' }` envelope, so the machine code arrives
 			// here. The pattern stays as tolerance for a refusal whose body

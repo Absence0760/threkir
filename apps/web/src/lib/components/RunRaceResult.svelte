@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
@@ -136,7 +137,7 @@
 			// Any leg's unconfigured signal drops to the manual paste form. Keyed
 			// off the map rather than the one literal, or a ChronoTrack candidate
 			// on an unconfigured leg reports a generic failure and offers nothing.
-			const message = (e as Error).message;
+			const message = thrownMessage(e);
 			if (Object.values(RACE_IMPORT_UNAVAILABLE).includes(message)) {
 				pasting = true;
 			} else if (message === ULTRASIGNUP_NOT_LINKED) {

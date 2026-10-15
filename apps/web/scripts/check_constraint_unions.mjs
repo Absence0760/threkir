@@ -623,6 +623,29 @@ export const PAIRS = [
 		],
 	},
 	{
+		tableColumn: 'nutrition_plan_assignments.status',
+		clients: [{ file: TS_TYPES, decl: 'NutritionAssignmentStatus', shape: 'union' }],
+	},
+	{
+		tableColumn: 'nutrition_plans.goal_phase',
+		clients: [
+			{ file: TS_TYPES, decl: 'NutritionGoalPhase', shape: 'union' },
+			{ file: 'apps/web/src/lib/nutrition/meal_plan.ts', decl: 'GOAL_PHASES', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/meal_plan.dart', decl: 'goalPhases', shape: 'strings' },
+			{
+				file: 'apps/mobile_android/lib/meal_plan.dart',
+				decl: 'goalPhaseToWeightGoal',
+				shape: 'switch',
+				// Both phases that move no target fall through to 'maintain'.
+				allowMissing: ['maintain', 'recomp'],
+			},
+		],
+	},
+	{
+		tableColumn: 'nutrition_plans.progression',
+		clients: [{ file: TS_TYPES, decl: 'NutritionProgression', shape: 'union' }],
+	},
+	{
 		tableColumn: 'notifications.activity_kind',
 		clients: [],
 		note: 'stamped by the notify triggers from the activity that fired them; no client enumerates the three.',

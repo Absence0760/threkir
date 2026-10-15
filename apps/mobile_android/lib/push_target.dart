@@ -39,6 +39,10 @@ enum PushTargetKind {
   /// resolves the owning club's slug before pushing.
   event,
 
+  /// The direct-message inbox (`/messages`), or one conversation when the
+  /// URL names the partner (`/messages/<user id>`, web's own thread path).
+  messages,
+
   /// Settings → Account (`/settings/account`), where a finished Art 20
   /// export is collected. Carries no id: the export lives in
   /// `data_export_jobs` and the screen reads the subject's latest one.
@@ -119,9 +123,10 @@ PushTarget pushTargetFromUrl(String? url) {
       return const PushTarget(PushTargetKind.plans);
     case 'challenges':
       return const PushTarget(PushTargetKind.challenges);
-    // `/messages` has no mobile surface (web-only, decisions §24), so a
-    // message push lands on the inbox where the same notification is listed.
+    // The worker stamps a bare `/messages` for a message push, so it opens
+    // the conversation list; a URL naming the partner opens that thread.
     case 'messages':
+      return PushTarget(PushTargetKind.messages, id);
     case 'notifications':
       return PushTarget.inbox;
     default:

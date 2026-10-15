@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount, untrack } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
@@ -21,10 +22,24 @@
 		createRecipe,
 		deleteRecipe,
 		logRecipe,
+		fetchNutritionPlansWithError,
+		fetchNutritionPlansByIds,
+		fetchMyNutritionAssignmentsWithError,
+		followNutritionPlan,
+		planAssignmentOf,
+		planTargetsOf,
 		type FoodEntry,
 		type MealTemplateSummary,
 		type RecipeSummary,
 	} from '#lib/core/data.ts';
+	import {
+		activeAssignmentForDate,
+		planDraftFromTargets,
+		prescribedTargets,
+		type PlanDraft,
+	} from '#lib/nutrition/meal_plan.ts';
+	import { nutritionAdherence } from '#lib/nutrition/nutrition_adherence.ts';
+	import type { NutritionPlan, NutritionPlanAssignment } from '#lib/types.ts';
 	import { templateFromEntries } from '#lib/nutrition/meal_template.ts';
 	import { recipeFromEntries } from '#lib/nutrition/recipe.ts';
 	import { loadSettings, effective } from '#lib/settings/settings.ts';
@@ -32,6 +47,7 @@
 		computeNutritionTargets,
 		ageFromDob,
 		type ActivityLevel,
+		type BodyMetricsInput,
 		type WeightGoal,
 		type NutritionTargets,
 	} from '#lib/nutrition/nutrition_targets.ts';
@@ -43,7 +59,7 @@
 		ringFraction,
 		type MealSlotGroup,
 	} from '#lib/nutrition/nutrition_totals.ts';
-	import { computeDayBudget, type MacroKind } from '#lib/nutrition/nutrition_budget.ts';
+	import { macroBudget, type MacroKind } from '#lib/nutrition/nutrition_budget.ts';
 	import { hydrationTargetMl, hydrationBudget } from '#lib/nutrition/hydration.ts';
 	import {
 		extendedNutrientTargets,
@@ -71,6 +87,9 @@
 	import Modal from '#lib/components/Modal.svelte';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import FoodLogEditor from '#lib/components/FoodLogEditor.svelte';
+	import MealPlanEditor from '#lib/components/MealPlanEditor.svelte';
+	import NutritionPlanLibrary from '#lib/components/NutritionPlanLibrary.svelte';
+	import NutritionAdherencePanel from '#lib/components/NutritionAdherencePanel.svelte';
 
 	// The diary day the page is showing — today unless `?date=` names an
 	// earlier one. Held as state rather than derived so `load()` and every
@@ -94,6 +113,15 @@
 	let waterMl = $state(0);
 	let weightKg = $state<number | null>(null);
 	let exerciseMinutes = $state(0);
+
+	let plans = $state<NutritionPlan[]>([]);
+	let assignments = $state<NutritionPlanAssignment[]>([]);
+	let governingPlan = $state<NutritionPlan | null>(null);
+	let isTrainingDay = $state(false);
+	let bodyInput = $state<BodyMetricsInput | null>(null);
+	let showPlanEditor = $state(false);
+	let planSeed = $state<PlanDraft | null>(null);
+	let followingPlanId = $state<string | null>(null);
 
 	let templates = $state<MealTemplateSummary[]>([]);
 	let templatesError = $state(false);
@@ -273,7 +301,7 @@
 			const prof = profileRes.data as
 				| { height_cm: number | null; gender: string | null }
 				| null;
-			targets = computeNutritionTargets({
+			const body: BodyMetricsInput = {
 				weightKg,
 				heightCm: prof?.height_cm ?? null,
 				// A calorie target is an Art 9 use of the age record, which
@@ -283,8 +311,34 @@
 				sex: prof?.gender ?? null,
 				activityLevel: effective<ActivityLevel>(settings, 'nutrition_activity_level', 'moderate') ?? 'moderate',
 				goal: effective<WeightGoal>(settings, 'nutrition_goal', 'maintain') ?? 'maintain',
-				exerciseKcal,
-			});
+			};
+			bodyInput = body;
+			targets = computeNutritionTargets({ ...body, exerciseKcal });
+
+			// The plan governing this day replaces the computed target, so a
+			// failed read of it cannot fall back to the computed numbers: that
+			// would show a follower the wrong target as if it were theirs.
+			const [planRes, assignRes] = await Promise.all([
+				fetchNutritionPlansWithError(),
+				fetchMyNutritionAssignmentsWithError(),
+			]);
+			if (!current()) return;
+			const planError = planRes.error ?? assignRes.error;
+			if (planError !== null) {
+				loadError = planError;
+				loading = false;
+				return;
+			}
+			plans = planRes.plans;
+			assignments = assignRes.assignments;
+			const governing = activeAssignmentForDate(assignments.map(planAssignmentOf), day);
+			let plan = governing ? (plans.find((p) => p.id === governing.planId) ?? null) : null;
+			if (governing && plan === null) {
+				plan = (await fetchNutritionPlansByIds([governing.planId]))[0] ?? null;
+				if (!current()) return;
+			}
+			governingPlan = plan;
+			isTrainingDay = dayRuns.length + dayGym.length > 0;
 
 			// Trend: the seven days ending on the viewed day. Surface a fetch
 			// failure the same way the day's-food path does — otherwise the
@@ -321,7 +375,7 @@
 			// as an empty page indistinguishable from "nothing logged" — surface
 			// the same load-error banner the primary day's-food path uses.
 			console.warn('nutrition load failed', e);
-			if (current()) loadError = (e as Error).message;
+			if (current()) loadError = thrownMessage(e);
 		}
 		if (current()) loading = false;
 	}
@@ -393,10 +447,39 @@
 			mealName = '';
 			await loadTemplates();
 		} catch (e) {
-			showToast(m('nutrition.templateSaveFailed', { error: (e as Error).message }), 'error');
+			showToast(m('nutrition.templateSaveFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			savingMeal = false;
 		}
+	}
+
+	function openPlanEditor(seed: PlanDraft | null) {
+		planSeed = seed;
+		showPlanEditor = true;
+	}
+
+	async function followPlan(plan: NutritionPlan) {
+		if (followingPlanId) return;
+		followingPlanId = plan.id;
+		try {
+			await followNutritionPlan(plan.id, todayIso, assignments);
+			showToast(m('nutrition.plan.followed', { name: plan.title }), 'success');
+		} catch (e) {
+			showToast(m('nutrition.plan.followFailed', { error: thrownMessage(e) }), 'error');
+		} finally {
+			followingPlanId = null;
+		}
+		await load();
+	}
+
+	async function onPlanSaved(plan: NutritionPlan, follow: boolean) {
+		showPlanEditor = false;
+		if (follow) {
+			await followPlan(plan);
+			return;
+		}
+		showToast(m('nutrition.plan.saved'), 'success');
+		await load();
 	}
 
 	async function logTemplate(t: MealTemplateSummary) {
@@ -411,7 +494,7 @@
 			showToast(m('nutrition.templateLogged', { n, name: t.name }), 'success');
 			await load();
 		} catch (e) {
-			showToast(m('nutrition.templateLogFailed', { error: (e as Error).message }), 'error');
+			showToast(m('nutrition.templateLogFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			loggingTemplateId = null;
 		}
@@ -426,7 +509,7 @@
 			templates = templates.filter((x) => x.id !== t.id);
 			confirmDeleteTemplate = null;
 		} catch (e) {
-			showToast(m('nutrition.deleteTemplateFailed', { error: (e as Error).message }), 'error');
+			showToast(m('nutrition.deleteTemplateFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			deletingTemplate = false;
 		}
@@ -461,7 +544,7 @@
 			recipeServings = servingsBounds.min;
 			await loadRecipes();
 		} catch (e) {
-			showToast(m('nutrition.recipeSaveFailed', { error: (e as Error).message }), 'error');
+			showToast(m('nutrition.recipeSaveFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			savingRecipe = false;
 		}
@@ -479,7 +562,7 @@
 			showToast(m('nutrition.recipeLogged', { n, name: r.name }), 'success');
 			await load();
 		} catch (e) {
-			showToast(m('nutrition.recipeLogFailed', { error: (e as Error).message }), 'error');
+			showToast(m('nutrition.recipeLogFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			loggingRecipeId = null;
 		}
@@ -494,7 +577,7 @@
 			recipes = recipes.filter((x) => x.id !== r.id);
 			confirmDeleteRecipe = null;
 		} catch (e) {
-			showToast(m('nutrition.deleteRecipeFailed', { error: (e as Error).message }), 'error');
+			showToast(m('nutrition.deleteRecipeFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			deletingRecipe = false;
 		}
@@ -525,7 +608,7 @@
 			},
 			onCommitError: (e) =>
 				showToast(
-					m('nutrition.deleteFailed', { error: e instanceof Error ? e.message : String(e) }),
+					m('nutrition.deleteFailed', { error: thrownMessage(e) }),
 					'error',
 				),
 		});
@@ -542,13 +625,40 @@
 		unit: string;
 		color: string;
 	};
+	// A plan governing the viewed day replaces the computed target outright;
+	// a macro it leaves unprescribed has no target that day.
+	const prescribed = $derived(
+		governingPlan ? prescribedTargets(planTargetsOf(governingPlan), isTrainingDay) : null,
+	);
+	const dayTargets = $derived<{
+		calories: number;
+		proteinG: number | null;
+		carbsG: number | null;
+		fatG: number | null;
+	} | null>(prescribed ?? targets);
+	const adherence = $derived(nutritionAdherence(prescribed, consumed));
+	const trainingOverrideApplies = $derived(
+		prescribed?.isTrainingDay === true &&
+			governingPlan !== null &&
+			(governingPlan.training_calories !== null || governingPlan.training_carbs_g !== null),
+	);
+	const planSeedFromToday = $derived(bodyInput ? planDraftFromTargets(bodyInput) : null);
 	const rings = $derived<RingDef[]>([
-		{ key: 'calories', label: m('nutrition.calories'), consumed: consumed.calories, target: targets?.calories ?? null, unit: 'kcal', color: 'var(--color-primary)' },
-		{ key: 'protein', label: m('nutrition.protein'), consumed: consumed.proteinG, target: targets?.proteinG ?? null, unit: 'g', color: 'var(--color-accent-cyan)' },
-		{ key: 'carbs', label: m('nutrition.carbs'), consumed: consumed.carbsG, target: targets?.carbsG ?? null, unit: 'g', color: 'var(--color-secondary)' },
-		{ key: 'fat', label: m('nutrition.fat'), consumed: consumed.fatG, target: targets?.fatG ?? null, unit: 'g', color: 'var(--color-warning)' },
+		{ key: 'calories', label: m('nutrition.calories'), consumed: consumed.calories, target: dayTargets?.calories ?? null, unit: 'kcal', color: 'var(--color-primary)' },
+		{ key: 'protein', label: m('nutrition.protein'), consumed: consumed.proteinG, target: dayTargets?.proteinG ?? null, unit: 'g', color: 'var(--color-accent-cyan)' },
+		{ key: 'carbs', label: m('nutrition.carbs'), consumed: consumed.carbsG, target: dayTargets?.carbsG ?? null, unit: 'g', color: 'var(--color-secondary)' },
+		{ key: 'fat', label: m('nutrition.fat'), consumed: consumed.fatG, target: dayTargets?.fatG ?? null, unit: 'g', color: 'var(--color-warning)' },
 	]);
-	const dayBudget = $derived(computeDayBudget(consumed, targets));
+	const dayBudget = $derived(
+		dayTargets
+			? {
+					calories: macroBudget(consumed.calories, dayTargets.calories, 'calories'),
+					protein: macroBudget(consumed.proteinG, dayTargets.proteinG, 'protein'),
+					carbs: macroBudget(consumed.carbsG, dayTargets.carbsG, 'carbs'),
+					fat: macroBudget(consumed.fatG, dayTargets.fatG, 'fat'),
+				}
+			: null,
+	);
 	// The arc clamps at full, so an over day is invisible without this.
 	const calorieBudget = $derived(dayBudget?.calories ?? null);
 	const waterTargetMl = $derived(hydrationTargetMl(weightKg, exerciseMinutes));
@@ -559,10 +669,10 @@
 	const hasMeals = $derived(groups.length > 0);
 	const hasAnyData = $derived(entries.length > 0 || weekDays.some((d) => d.calories > 0));
 	const weekSummary = $derived(
-		weeklyIntakeSummary(weekDays.map((d) => d.calories), targets?.calories ?? null),
+		weeklyIntakeSummary(weekDays.map((d) => d.calories), dayTargets?.calories ?? null),
 	);
 	const proteinSummary = $derived(
-		weeklyProteinSummary(weekDays.map((d) => d.protein), targets?.proteinG ?? null),
+		weeklyProteinSummary(weekDays.map((d) => d.protein), dayTargets?.proteinG ?? null),
 	);
 	// The 7-day chart plots one metric at a time. Both series (calories +
 	// protein) are already collected per day and each has its own logged-day
@@ -574,7 +684,7 @@
 			return {
 				values: weekDays.map((d) => d.protein),
 				avg: proteinSummary.avgProteinG,
-				goal: targets?.proteinG ?? null,
+				goal: dayTargets?.proteinG ?? null,
 				unit: 'g',
 				avgLabel: m('nutrition.trendAvgProtein', { n: proteinSummary.avgProteinG }),
 			};
@@ -582,7 +692,7 @@
 		return {
 			values: weekDays.map((d) => d.calories),
 			avg: weekSummary.avgCalories,
-			goal: targets?.calories ?? null,
+			goal: dayTargets?.calories ?? null,
 			unit: 'kcal',
 			avgLabel: m('nutrition.trendAvgCalories', { n: weekSummary.avgCalories }),
 		};
@@ -667,22 +777,22 @@
 			<div class="skel skel-row"></div>
 			<div class="skel skel-block"></div>
 		</div>
-	{:else if loadError}
+	{:else if loadError !== null}
 		<div class="load-error-banner" role="alert" data-testid="nutrition-load-error">
 			<span class="material-symbols" aria-hidden="true">error</span>
 			<div>
 				<strong>{m('nutrition.loadFailed')}</strong>
-				<span class="load-error-detail">{loadError}</span>
+				{#if loadError}<span class="load-error-detail">{loadError}</span>{/if}
 			</div>
 			<button class="btn btn-outline" type="button" onclick={() => void load()}>{m('nutrition.retry')}</button>
 		</div>
 	{:else}
 		<section class="card-elevated rings-card" data-testid="macro-rings">
-			{#if targets && calorieBudget}
+			{#if dayTargets && calorieBudget}
 				<div class="card-head">
 					<span class="section-label">{dayLabel}</span>
 					<div class="budget-head">
-						<span class="card-meta">{consumed.calories} / {targets.calories} kcal</span>
+						<span class="card-meta">{consumed.calories} / {dayTargets.calories} kcal</span>
 						{#if calorieBudget.exceeded}
 							<span class="budget-chip budget-over" data-testid="calorie-budget">{m('nutrition.over', { n: calorieBudget.over })}</span>
 						{:else if calorieBudget.remaining === 0}
@@ -693,7 +803,7 @@
 					</div>
 				</div>
 			{/if}
-			<div class="rings" class:rings-untargeted={!targets}>
+			<div class="rings" class:rings-untargeted={!dayTargets}>
 				{#each rings as r (r.key)}
 					{@const frac = ringFraction(r.consumed, r.target)}
 					{@const pct = frac !== null ? Math.round(frac * 100) : null}
@@ -736,7 +846,7 @@
 					</div>
 				{/each}
 			</div>
-			{#if targets && targets.exerciseKcal > 0}
+			{#if !prescribed && targets && targets.exerciseKcal > 0}
 				<p class="goal-breakdown" data-testid="goal-breakdown">
 					<span class="material-symbols breakdown-icon" aria-hidden="true">local_fire_department</span>
 					{m(isViewingToday ? 'nutrition.goalBreakdown' : 'nutrition.day.goalBreakdown', {
@@ -745,19 +855,54 @@
 					})}
 				</p>
 			{/if}
-			{#if !targets}
+			{#if governingPlan}
+				<p class="plan-strip" data-testid="plan-following">
+					<span class="material-symbols hint-icon" aria-hidden="true">target</span>
+					<a href={`/nutrition/plans/${governingPlan.id}`}>{m('nutrition.plan.followingNamed', { name: governingPlan.title })}</a>
+					{#if trainingOverrideApplies}
+						<span class="plan-training" data-testid="plan-training-day">{m('nutrition.plan.trainingDayApplied')}</span>
+					{/if}
+				</p>
+			{:else if isViewingToday && targets}
+				<p class="plan-strip">
+					<button
+						class="btn btn-outline btn-sm"
+						type="button"
+						onclick={() => openPlanEditor(planSeedFromToday)}
+						data-testid="save-as-plan"
+					>
+						<span class="material-symbols" aria-hidden="true">target</span>
+						{m('nutrition.plan.saveAsPlan')}
+					</button>
+				</p>
+			{/if}
+			{#if !dayTargets}
 				<div class="no-targets" data-testid="no-targets">
 					<p class="section-hint">
 						<span class="material-symbols hint-icon" aria-hidden="true">info</span>
 						{m('nutrition.noTargets')}
 					</p>
-					<a class="btn btn-secondary btn-sm" href="/settings/body#body-metrics" data-testid="add-body-metrics">
-						<span class="material-symbols" aria-hidden="true">straighten</span>
-						{m('nutrition.addBodyMetrics')}
-					</a>
+					<div class="no-targets-actions">
+						<a class="btn btn-secondary btn-sm" href="/settings/body#body-metrics" data-testid="add-body-metrics">
+							<span class="material-symbols" aria-hidden="true">straighten</span>
+							{m('nutrition.addBodyMetrics')}
+						</a>
+						{#if isViewingToday}
+							<button
+								class="btn btn-outline btn-sm"
+								type="button"
+								onclick={() => openPlanEditor(null)}
+								data-testid="plan-from-scratch"
+							>{m('nutrition.plan.fromScratch')}</button>
+						{/if}
+					</div>
 				</div>
 			{/if}
 		</section>
+
+		{#if adherence}
+			<NutritionAdherencePanel {adherence} isToday={isViewingToday} />
+		{/if}
 
 		{@const drunkPips = Math.round(waterMl / WATER_UNIT_ML)}
 		{@const pipCount = Math.max(8, Math.round(waterTargetMl / WATER_UNIT_ML), drunkPips)}
@@ -827,6 +972,15 @@
 				</p>
 			</section>
 		{/if}
+
+		<NutritionPlanLibrary
+			{plans}
+			followingPlanId={governingPlan?.id ?? null}
+			canFollow={isViewingToday}
+			busyPlanId={followingPlanId}
+			onfollow={(p) => void followPlan(p)}
+			onnew={() => openPlanEditor(null)}
+		/>
 
 		{#if templatesError}
 			<section class="card-elevated templates-card" data-testid="templates-error">
@@ -1077,6 +1231,22 @@
 	<FoodLogEditor oncreated={onLogged} diaryDate={viewDate} />
 </Modal>
 
+<Modal
+	open={showPlanEditor}
+	title={planSeed ? m('nutrition.plan.saveAsPlanTitle') : m('nutrition.plan.newTitle')}
+	narrow
+	onclose={() => (showPlanEditor = false)}
+>
+	{#if showPlanEditor}
+		<MealPlanEditor
+			seed={planSeed}
+			offerFollow={isViewingToday}
+			onsaved={(plan, follow) => void onPlanSaved(plan, follow)}
+			oncancel={() => (showPlanEditor = false)}
+		/>
+	{/if}
+</Modal>
+
 <Modal open={showSaveMeal} title={m('nutrition.saveAsMealTitle')} narrow onclose={() => (showSaveMeal = false)}>
 	<form
 		class="editor-form save-meal-form"
@@ -1217,6 +1387,25 @@
 		font-weight: 600;
 		min-width: 9rem;
 		text-align: center;
+	}
+	.plan-strip {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: var(--space-xs) var(--space-sm);
+		margin: var(--space-md) 0 0;
+		font-size: 0.85rem;
+	}
+	.plan-strip a {
+		font-weight: 600;
+	}
+	.plan-training {
+		color: var(--color-text-secondary);
+	}
+	.no-targets-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-sm);
 	}
 	.no-targets {
 		display: flex;

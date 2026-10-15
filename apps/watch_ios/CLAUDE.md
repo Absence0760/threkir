@@ -29,6 +29,9 @@ is **not** trying to mirror web's feature surface.
 
 **Don't build here:**
 
+- Nutrition, meal plans included. Nobody logs a meal or follows a macro target
+  on a wrist, and [nutrition_programming.md § Mobile & watch](../../docs/features/nutrition_programming.md#mobile--watch)
+  defers a watch surface indefinitely.
 - Anything that belongs in a pocket app: history browse, settings, social
   feed, club detail, plan editing, OAuth setup. The watch is a recording
   surface and a status surface — not a phone in a smaller form factor. If a

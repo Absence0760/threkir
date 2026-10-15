@@ -37,7 +37,7 @@ import {
 	gateAiDisclosure,
 } from '../../core/ai_disclosure';
 import { checkRouteRateLimit } from '../rate_limit';
-import { supabaseErrorFields } from '../../core/supabase_error';
+import { supabaseErrorFields, thrownMessage } from '../../core/supabase_error';
 
 /// Per-user ceiling on the billed Anthropic call. Same shape and size as
 /// the sibling `generate-route` / `route-describe` buckets: 60/hour is far
@@ -340,7 +340,7 @@ export async function handleRouteRequest(
 		// this endpoint is the runner's typed request and their location
 		// label. Same shape every catch in the Lambda tree uses.
 		console.error('[route-request] provider call failed', {
-			message: e instanceof Error ? e.message : String(e),
+			message: thrownMessage(e),
 			stack: e instanceof Error ? e.stack : undefined,
 		});
 		return json(503, { error: 'route assistant unavailable' });

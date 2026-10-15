@@ -1,3 +1,4 @@
+import { thrownMessage } from '../../core/supabase_error';
 /**
  * GraphHopper `round_trip` client for the server-side "Generate a route by
  * distance" loop generator.
@@ -246,7 +247,7 @@ export async function fetchRoundTrip(
 	} catch (e) {
 		throw new GraphHopperError(
 			'upstream',
-			`GraphHopper request failed: ${e instanceof Error ? e.message : String(e)}`,
+			`GraphHopper request failed: ${thrownMessage(e)}`,
 		);
 	} finally {
 		clearTimeout(timer);
@@ -260,7 +261,7 @@ export async function fetchRoundTrip(
 	} catch (e) {
 		throw new GraphHopperError(
 			'upstream',
-			`GraphHopper returned non-JSON: ${e instanceof Error ? e.message : String(e)}`,
+			`GraphHopper returned non-JSON: ${thrownMessage(e)}`,
 		);
 	}
 	const candidate = parseRoundTrip(json);

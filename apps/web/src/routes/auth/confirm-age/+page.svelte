@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { supabase } from '#lib/core/supabase.ts';
+	import { appErrorMessage, dbError } from '#lib/core/supabase_error.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { checkSignUpGates } from '#lib/core/auth_gates.ts';
 	import { defaultUnitForLocale } from '#lib/format/locale_defaults.ts';
@@ -36,14 +37,14 @@
 			const { error: rpcError } = await supabase.rpc('confirm_age_and_terms', {
 				p_preferred_unit: defaultUnitForLocale(navigator.language),
 			});
-			if (rpcError) throw rpcError;
+			if (rpcError) throw dbError(rpcError);
 			// Re-hydrate before leaving: the root layout's consent gate reads
 			// `auth.user.consent_recorded`, and a stale `false` would bounce
 			// straight back here.
 			await auth.refreshSession();
 			goto('/dashboard');
 		} catch (err) {
-			error = err instanceof Error ? err.message : m('confirmAge.recordConsentError');
+			error = appErrorMessage(err) ?? m('confirmAge.recordConsentError');
 		} finally {
 			loading = false;
 		}

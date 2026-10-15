@@ -17,9 +17,7 @@ Of the 16 `✗` Android rows, several are **not Android gaps**: they're web-cano
 
 ### Genuine remaining gaps (web `✓`/`Partial`, Android `✗`)
 
-| Gap | Section in parity.md | Note |
-|---|---|---|
-| Direct messages (1:1) | Following and feed | Web `/messages/[[id]]`; mobile has no DM surface and `api_client` has no conversation methods. **The one unambiguous read-surface gap left.** |
+None left on the read side: direct messages, the last one, shipped 2026-10-14 (decisions § 1916). Route detail's Send-to-a-follower action is the one DM-adjacent write still owed (`parity.md` "Send a route to a follower in-app").
 
 ### Closed since this list was written (verified on disk 2026-08-02)
 
@@ -50,10 +48,9 @@ These are `✗` on Android by design or by external dependency — listed so the
 
 The structural foundations (`api_client`, `core_models`, stores, `ui_kit`) all exist, so these no longer follow the old foundation-before-screens phasing — each remaining item is self-contained. Items 1, 2 and 4 of the original sequence have since landed (see the closed-gaps table above); what is left is:
 
-1. **Direct messages** — one screen composing `api_client` methods, mirroring the web `/messages/[[id]]` shape. `api_client` has no conversation methods yet, so add those first per the rule below.
-2. **Native paywall sheets go-live** — the code is landed and fail-closed; the remaining work is provisioning RevenueCat credentials operator-side, not Android work.
+1. **Native paywall sheets go-live** — the code is landed and fail-closed; the remaining work is provisioning RevenueCat credentials operator-side, not Android work.
 
-*Shipped since this doc was written:* the **post-signup setup wizard** (`setup_wizard_screen.dart` + the `home_screen.dart` `onboarded_at` gate + `ApiClient.completeOnboarding`/`markOnboarded`), the **personal run-track heatmap** (`run_heatmap_screen.dart` + the pure `run_heatmap.dart` twin), and the **finisher certificate** (`widgets/finisher_certificate_card.dart` on the event-detail leaderboard).
+*Shipped since this doc was written:* **direct messages** (`messages_screen.dart` + `message_thread_screen.dart` over four new `api_client` methods, decisions § 1916), the **post-signup setup wizard** (`setup_wizard_screen.dart` + the `home_screen.dart` `onboarded_at` gate + `ApiClient.completeOnboarding`/`markOnboarded`), the **personal run-track heatmap** (`run_heatmap_screen.dart` + the pure `run_heatmap.dart` twin), and the **finisher certificate** (`widgets/finisher_certificate_card.dart` on the event-detail leaderboard).
 
 Every item still obeys the rule: **don't fan a screen out into ad-hoc `Supabase.instance.client` queries** — go through the typed `api_client`, adding a method there first if one is missing.
 

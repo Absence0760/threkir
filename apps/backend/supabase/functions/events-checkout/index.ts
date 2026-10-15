@@ -13,7 +13,9 @@
 ///   - the event is visible to the caller,
 ///   - there is event_pricing for (event, instance) with modality
 ///     'in_person' (a 'virtual' price is reserved for P4 -> 400),
-///   - the instance is not a cancelled occurrence (event_exceptions),
+///   - the instance is a real occurrence of the event (404
+///     instance_not_found — `event_occurrence_exists`, decisions § 1921),
+///     not a cancelled one (event_exceptions) and not past the series end,
 ///   - the sales window is still open,
 ///   - the host has a charges-enabled payout account (else 409),
 ///   - capacity is not already full counting going + non-expired pending
@@ -48,7 +50,6 @@ import {
   checkoutExpiresAtUnix,
   checkoutIdempotencyKey,
   computeApplicationFeeCents,
-  isPastSeriesEnd,
   isSalesWindowOpen,
   type PendingOrderRow,
   reservationExpiry,
@@ -56,6 +57,7 @@ import {
 } from './lib.ts';
 import { validateReturnUrl } from '../events-connect-onboard/lib.ts';
 import { precheckCapacity } from './capacity.ts';
+import { gateOccurrence } from './occurrence.ts';
 import { publishableKey, secretKey } from '../_shared/api_keys.ts';
 import { parseRedirectAllowlist } from '../_shared/redirect_allowlist.ts';
 
@@ -173,6 +175,15 @@ Deno.serve(withSentry('events-checkout', async (req: Request) => {
     return Response.json({ error: 'event_has_no_host' }, { status: 409 });
   }
 
+  // The instant must be a live occurrence of the series, asked before
+  // pricing: pricing resolves to the series default for ANY instant, so a
+  // fabricated session would otherwise price, pass an open sales window and
+  // be sold (decisions § 1921).
+  const refusal = await gateOccurrence(service, eventId, instanceStart, event.recurrence_until);
+  if (refusal) {
+    return Response.json({ error: refusal.error }, { status: refusal.status });
+  }
+
   // Pricing for this (event, instance): per-instance override wins, else
   // the series default (instance_start is null). Read as the user (RLS
   // allows reading pricing with the event).
@@ -204,20 +215,6 @@ Deno.serve(withSentry('events-checkout', async (req: Request) => {
   const platformFeeBps = await readPlatformFeeBps(service, 'event');
   if (platformFeeBps === null) {
     return Response.json({ error: 'platform_fee_not_configured' }, { status: 503 });
-  }
-
-  // Cancelled-occurrence guard: a cancelled instance is un-buyable.
-  const { data: exception } = await userClient
-    .from('event_exceptions')
-    .select('event_id')
-    .eq('event_id', eventId)
-    .eq('instance_start', instanceStart)
-    .maybeSingle();
-  if (exception) {
-    return Response.json({ error: 'instance_cancelled' }, { status: 409 });
-  }
-  if (isPastSeriesEnd(event.recurrence_until, Date.parse(instanceStart))) {
-    return Response.json({ error: 'instance_cancelled' }, { status: 409 });
   }
 
   // Sales window, graded against the OCCURRENCE being bought. `events.

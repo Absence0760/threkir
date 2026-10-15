@@ -15,6 +15,7 @@
 
 import type { MessageKey } from './messages';
 import { asImportRefusal, type ImportRefusalReason } from '../integrations/import_refusal';
+import { thrownMessage } from '../core/supabase_error';
 
 export type Translate = (key: MessageKey, params?: Record<string, string | number>) => string;
 
@@ -34,7 +35,7 @@ export function importRefusalMessage(
 ): string {
 	const refusal = asImportRefusal(err);
 	if (refusal === null) {
-		return t(fallbackKey, { error: err instanceof Error ? err.message : String(err) });
+		return t(fallbackKey, { error: thrownMessage(err) });
 	}
 	const { reason, data } = refusal;
 	const params: Record<string, string | number> = {};

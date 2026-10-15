@@ -152,7 +152,7 @@ void main() {
       expect(series!.rrule, 'FREQ=WEEKLY;COUNT=3;BYDAY=SA');
     });
 
-    test('the weekday set is read off the expansion', () {
+    test('the weekday set is the stored one, in RFC order', () {
       final series = calendarSeriesFor(
         _weekly(byday: [Weekday.tu, Weekday.th]),
         now: DateTime.utc(2026, 6, 16),
@@ -240,6 +240,130 @@ void main() {
     });
   });
 
+  group('calendarSeriesFor on the event clock', () {
+    EventRecurrence zoned(
+      String zone,
+      DateTime startsAt, {
+      List<Weekday>? byday,
+      RecurrenceFreq freq = RecurrenceFreq.weekly,
+    }) => EventRecurrence(
+      startsAt: startsAt,
+      freq: freq,
+      byday: byday,
+      timezone: zone,
+    );
+
+    test('a New York Wednesday 21:30 series stays on Wednesdays in New York',
+        () {
+      // 21:30 EDT on Wed 21 Oct is 01:30Z on Thursday. The rule must name the
+      // organiser's Wednesday and travel with the event's zone, or the phone
+      // expands it on Thursdays (or on whatever weekday its own zone reads).
+      final series = calendarSeriesFor(
+        zoned('America/New_York', DateTime.utc(2026, 10, 22, 1, 30),
+            byday: [Weekday.we]),
+        now: DateTime.utc(2026, 10, 1),
+      )!;
+      expect(series.rrule, 'FREQ=WEEKLY;BYDAY=WE');
+      expect(series.timeZone, 'America/New_York');
+      expect(series.anchor, DateTime.utc(2026, 10, 22, 1, 30));
+    });
+
+    test('a series with no stored weekday names the start\'s local weekday', () {
+      // 05:00 IST on Wednesday is 23:30Z on Tuesday.
+      final series = calendarSeriesFor(
+        zoned('Asia/Kolkata', DateTime.utc(2026, 10, 20, 23, 30)),
+        now: DateTime.utc(2026, 10, 1),
+      )!;
+      expect(series.rrule, 'FREQ=WEEKLY;BYDAY=WE');
+      expect(series.anchor, DateTime.utc(2026, 10, 20, 23, 30));
+    });
+
+    test('the anchor is the first local date carrying a stored weekday', () {
+      // A Friday 07:00 start in Auckland on a Wednesday series opens on the
+      // next Wednesday, 07:00 NZST.
+      final series = calendarSeriesFor(
+        zoned('Pacific/Auckland', DateTime.utc(2026, 4, 9, 19),
+            byday: [Weekday.we]),
+        now: DateTime.utc(2026, 4, 1),
+      )!;
+      expect(series.anchor, DateTime.utc(2026, 4, 14, 19));
+    });
+
+    test('an anchor inside a DST gap moves forward, as the platform will', () {
+      // Sun 14 Mar 2027 has no 02:30 in New York: 03:30 EDT, 07:30Z.
+      final series = calendarSeriesFor(
+        zoned('America/New_York', DateTime.utc(2027, 3, 12, 7, 30),
+            byday: [Weekday.su]),
+        now: DateTime.utc(2027, 3, 1),
+      )!;
+      expect(series.anchor, DateTime.utc(2027, 3, 14, 7, 30));
+    });
+
+    test('a start on the second pass of a fall-back hour is withheld', () {
+      // 06:30Z is the SECOND 01:30 on 1 Nov 2026 in New York; a zoned rule
+      // anchored at 01:30 names the first.
+      expect(
+        calendarSeriesFor(
+          zoned('America/New_York', DateTime.utc(2026, 11, 1, 6, 30)),
+          now: DateTime.utc(2026, 10, 1),
+        ),
+        isNull,
+      );
+      expect(
+        calendarSeriesFor(
+          zoned('America/New_York', DateTime.utc(2026, 11, 1, 5, 30)),
+          now: DateTime.utc(2026, 10, 1),
+        )!.anchor,
+        DateTime.utc(2026, 11, 1, 5, 30),
+      );
+    });
+
+    test('a monthly day is read in the event zone', () {
+      // 21:00 EDT on 30 Sep is 1 Oct in UTC; the series is on the 30th, which
+      // no rule can clamp, so it is withheld rather than stated as the 1st.
+      expect(
+        calendarSeriesFor(
+          zoned('America/New_York', DateTime.utc(2026, 10, 1, 1),
+              freq: RecurrenceFreq.monthly),
+          now: DateTime.utc(2026, 9, 1),
+        ),
+        isNull,
+      );
+      expect(
+        calendarSeriesFor(
+          zoned('America/New_York', DateTime.utc(2026, 10, 16, 1),
+              freq: RecurrenceFreq.monthly),
+          now: DateTime.utc(2026, 9, 1),
+        )!.rrule,
+        'FREQ=MONTHLY;BYMONTHDAY=15',
+      );
+    });
+
+    test('a zone the tz database does not know is withheld', () {
+      expect(
+        calendarSeriesFor(
+          zoned('Mars/Olympus', DateTime.utc(2026, 6, 20, 18)),
+          now: DateTime.utc(2026, 6, 1),
+        ),
+        isNull,
+      );
+    });
+
+    test('a legacy series with no stored zone leaves the device zone in charge',
+        () {
+      final series = calendarSeriesFor(
+        EventRecurrence(
+          startsAt: DateTime.utc(2026, 6, 20, 12),
+          freq: RecurrenceFreq.weekly,
+        ),
+        now: DateTime.utc(2026, 6, 1),
+      )!;
+      expect(series.timeZone, isNull);
+      final local = DateTime.utc(2026, 6, 20, 12).toLocal();
+      expect(series.rrule, 'FREQ=WEEKLY;BYDAY=${weekdayCode(Weekday.values[local.weekday - 1])}');
+    });
+  });
+
   group('addToDeviceCalendar', () {
     final messenger =
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
@@ -263,6 +387,7 @@ void main() {
         location: 'Riverside Park',
         url: 'https://threkir.com/share/event/e1',
         rrule: 'FREQ=WEEKLY;BYDAY=SA',
+        timeZone: 'Australia/Sydney',
       );
 
       expect(ok, isTrue);
@@ -273,6 +398,7 @@ void main() {
       expect(args['endMs'], DateTime.utc(2026, 6, 20, 9, 30).millisecondsSinceEpoch);
       expect(args['location'], 'Riverside Park');
       expect(args['rrule'], 'FREQ=WEEKLY;BYDAY=SA');
+      expect(args['timeZone'], 'Australia/Sydney');
     });
 
     test('no duration means no end instant to hand over', () async {

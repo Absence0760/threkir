@@ -403,76 +403,130 @@ test('expandInstances — a small max does not shorten how far the scan reaches'
 	);
 });
 
-test('expandInstances — timezoned weekly anchors instance_start to UTC wall-clock, viewer-independent', () => {
-	// The capacity key + race-arm key for a recurring instance must be the same
-	// instant for every spectator. With a timezone present the expansion reads +
-	// stamps the recurrence fields in UTC, so the produced instants are fixed in
-	// absolute time and do not depend on the running process's TZ. Asserting the
-	// exact ISO instants pins that: under any host TZ these literals must match.
+function isoList(e: Event, from: string, to: string): string[] {
+	return expandInstances(e, new Date(from), new Date(to)).map((d) => d.toISOString());
+}
+
+test('expandInstances — a timezoned weekly series keeps its local time of day across a DST change', () => {
+	// The capacity key + race-arm key of an occurrence must be one instant for
+	// every viewer, and it must be the organiser's wall-clock: 07:00 in New York
+	// on both sides of the 1 November fall-back, so the UTC hour moves.
 	const e = ev({
-		starts_at: '2026-04-07T13:00:00Z', // Tue 13:00 UTC
+		starts_at: '2026-10-21T11:00:00Z', // Wed 07:00 EDT
 		timezone: 'America/New_York',
-		recurrence_freq: 'weekly',
+		recurrence_freq: 'weekly'
 	});
-	const out = expandInstances(
-		e,
-		new Date('2026-04-01T00:00:00Z'),
-		new Date('2026-04-30T23:59:59Z'),
-	);
-	const iso = out.map((d) => d.toISOString());
-	assert.deepEqual(iso, [
-		'2026-04-07T13:00:00.000Z',
-		'2026-04-14T13:00:00.000Z',
-		'2026-04-21T13:00:00.000Z',
-		'2026-04-28T13:00:00.000Z',
+	assert.deepEqual(isoList(e, '2026-10-15T00:00:00Z', '2026-11-12T00:00:00Z'), [
+		'2026-10-21T11:00:00.000Z',
+		'2026-10-28T11:00:00.000Z',
+		'2026-11-04T12:00:00.000Z',
+		'2026-11-11T12:00:00.000Z'
 	]);
 });
 
 test('expandInstances — two cross-TZ viewers compute the SAME instance_start (timezoned event)', () => {
-	// The bug: startOfWeek / setHours built instants in the VIEWER's local zone,
-	// so a spectator in Tokyo and one in New York produced different
-	// instance_starts and RSVP'd against different capacity keys. expandInstances
-	// now reads no ambient zone other than via the Date accessors the WallClock
-	// selects — for a timezoned event that is UTC only, invariant across viewers.
-	// Re-running the same input twice (standing in for two viewers) must yield
-	// identical instants; the absolute-time assertion is what guards the
-	// cross-process case (the suite is also run under two TZ values in CI/local).
+	// Re-running the same input stands in for two viewers; the absolute-time
+	// assertion is what guards the cross-process case (the suite runs under
+	// several TZ values, and the shared vectors replay every viewer zone).
 	const e = ev({
-		starts_at: '2026-05-02T23:30:00Z', // Sat 23:30 UTC — late enough that a
-		timezone: 'Europe/London', // viewer-local stamp would roll the weekday.
+		starts_at: '2026-05-02T08:00:00Z', // Sat 09:00 BST
+		timezone: 'Europe/London',
 		recurrence_freq: 'biweekly',
-		recurrence_byday: ['SA'],
+		recurrence_byday: ['SA']
 	});
-	const from = new Date('2026-05-01T00:00:00Z');
-	const to = new Date('2026-05-31T23:59:59Z');
-	const viewerA = expandInstances(e, from, to).map((d) => d.toISOString());
-	const viewerB = expandInstances(e, from, to).map((d) => d.toISOString());
+	const viewerA = isoList(e, '2026-05-01T00:00:00Z', '2026-05-31T23:59:59Z');
+	const viewerB = isoList(e, '2026-05-01T00:00:00Z', '2026-05-31T23:59:59Z');
 	assert.deepEqual(viewerA, viewerB);
 	assert.deepEqual(viewerA, [
-		'2026-05-02T23:30:00.000Z',
-		'2026-05-16T23:30:00.000Z',
-		'2026-05-30T23:30:00.000Z',
+		'2026-05-02T08:00:00.000Z',
+		'2026-05-16T08:00:00.000Z',
+		'2026-05-30T08:00:00.000Z'
 	]);
 });
 
-test('expandInstances — timezoned monthly anchors day-of-month + time in UTC', () => {
+test('expandInstances — a timezoned monthly series keeps its local day-of-month and time', () => {
+	// 22:00 UTC on 31 January is 09:00 on 1 February in Sydney, so the series
+	// is "the 1st at 09:00": the UTC hour moves when Sydney leaves DST on 5 April.
 	const e = ev({
 		starts_at: '2026-01-31T22:00:00Z',
 		timezone: 'Australia/Sydney',
-		recurrence_freq: 'monthly',
+		recurrence_freq: 'monthly'
 	});
-	const out = expandInstances(
-		e,
-		new Date('2026-01-01T00:00:00Z'),
-		new Date('2026-04-30T23:59:59Z'),
-	);
-	const iso = out.map((d) => d.toISOString());
-	// Jan-31, Feb-28 (clamp, 2026 non-leap), Mar-31, Apr-30 — all at 22:00 UTC.
-	assert.deepEqual(iso, [
+	assert.deepEqual(isoList(e, '2026-01-01T00:00:00Z', '2026-04-30T23:59:59Z'), [
 		'2026-01-31T22:00:00.000Z',
 		'2026-02-28T22:00:00.000Z',
 		'2026-03-31T22:00:00.000Z',
-		'2026-04-30T22:00:00.000Z',
+		'2026-04-30T23:00:00.000Z'
+	]);
+});
+
+test('expandInstances — a weekday chip is a local weekday, so an evening series west of UTC keeps its day', () => {
+	// Wednesday 21:30 in New York is Thursday in UTC. Read on the UTC clock the
+	// WE chip moved the series to Tuesday evenings and dropped its first night.
+	const e = ev({
+		starts_at: '2026-10-22T01:30:00Z',
+		timezone: 'America/New_York',
+		recurrence_freq: 'weekly',
+		recurrence_byday: ['WE']
+	});
+	assert.deepEqual(isoList(e, '2026-10-15T00:00:00Z', '2026-11-13T00:00:00Z'), [
+		'2026-10-22T01:30:00.000Z',
+		'2026-10-29T01:30:00.000Z',
+		'2026-11-05T02:30:00.000Z',
+		'2026-11-12T02:30:00.000Z'
+	]);
+});
+
+test('expandInstances — a wall-clock inside the spring-forward gap moves forward by the gap', () => {
+	// 02:30 does not exist in New York on 14 March 2027; it becomes 03:30 EDT.
+	const e = ev({
+		starts_at: '2027-03-07T07:30:00Z', // Sun 02:30 EST
+		timezone: 'America/New_York',
+		recurrence_freq: 'weekly'
+	});
+	assert.deepEqual(isoList(e, '2027-03-01T00:00:00Z', '2027-03-22T00:00:00Z'), [
+		'2027-03-07T07:30:00.000Z',
+		'2027-03-14T07:30:00.000Z',
+		'2027-03-21T06:30:00.000Z'
+	]);
+});
+
+test('expandInstances — a wall-clock inside the fall-back overlap takes the earlier instant', () => {
+	// 01:30 happens twice in New York on 1 November 2026; the occurrence is the
+	// first, 01:30 EDT, as RFC 5545 resolves it.
+	const e = ev({
+		starts_at: '2026-10-25T05:30:00Z', // Sun 01:30 EDT
+		timezone: 'America/New_York',
+		recurrence_freq: 'weekly'
+	});
+	assert.deepEqual(isoList(e, '2026-10-20T00:00:00Z', '2026-11-09T00:00:00Z'), [
+		'2026-10-25T05:30:00.000Z',
+		'2026-11-01T05:30:00.000Z',
+		'2026-11-08T06:30:00.000Z'
+	]);
+});
+
+test('expandInstances — a series started in the second pass of an overlap hour keeps starts_at first', () => {
+	const e = ev({
+		starts_at: '2026-11-01T06:30:00Z', // Sun 01:30 EST, the later of the two
+		timezone: 'America/New_York',
+		recurrence_freq: 'weekly'
+	});
+	assert.deepEqual(isoList(e, '2026-10-20T00:00:00Z', '2026-11-09T00:00:00Z'), [
+		'2026-11-01T06:30:00.000Z',
+		'2026-11-08T06:30:00.000Z'
+	]);
+});
+
+test('expandInstances — a zone the runtime cannot resolve expands in UTC', () => {
+	const e = ev({
+		starts_at: '2026-04-07T13:00:00Z',
+		timezone: 'Not/AZone',
+		recurrence_freq: 'weekly'
+	});
+	assert.deepEqual(isoList(e, '2026-04-01T00:00:00Z', '2026-04-15T00:00:00Z'), [
+		'2026-04-07T13:00:00.000Z',
+		'2026-04-14T13:00:00.000Z'
 	]);
 });
 

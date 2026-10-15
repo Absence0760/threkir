@@ -1,5 +1,6 @@
 import { browser } from '$app/env';
 import { supabase } from '#lib/core/supabase.ts';
+import { dbError } from '#lib/core/supabase_error.ts';
 import { dropUserCache } from '#lib/settings/settings.ts';
 import { setUnit } from '#lib/format/units.svelte.ts';
 import { defaultUnitForLocale } from '#lib/format/locale_defaults.ts';
@@ -75,7 +76,7 @@ function createAuthStore() {
 			provider: 'google',
 			options: { redirectTo: `${window.location.origin}/auth/callback` }
 		});
-		if (error) throw error;
+		if (error) throw dbError(error);
 	}
 
 	async function signInWithApple() {
@@ -84,7 +85,7 @@ function createAuthStore() {
 			provider: 'apple',
 			options: { redirectTo: `${window.location.origin}/auth/callback` }
 		});
-		if (error) throw error;
+		if (error) throw dbError(error);
 	}
 
 	async function refreshSession() {

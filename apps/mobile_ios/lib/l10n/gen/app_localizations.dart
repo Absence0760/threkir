@@ -4859,6 +4859,114 @@ abstract class AppLocalizations {
   /// **'Adjusted for the terrain, you slowed over the second half.'**
   String get runDetailPacingGapPositive;
 
+  /// Run detail — heading of the pacing-strategy review section
+  ///
+  /// In en, this message translates to:
+  /// **'Pacing strategy'**
+  String get runDetailStrategyTitle;
+
+  /// Run detail pacing strategy — the goal time the runner set; time is h:mm:ss
+  ///
+  /// In en, this message translates to:
+  /// **'Goal {time}'**
+  String runDetailStrategyGoal(String time);
+
+  /// Run detail pacing strategy — table column: the phase
+  ///
+  /// In en, this message translates to:
+  /// **'Phase'**
+  String get runDetailStrategyColPhase;
+
+  /// Run detail pacing strategy — table column: the target pace for the phase
+  ///
+  /// In en, this message translates to:
+  /// **'Target'**
+  String get runDetailStrategyColTarget;
+
+  /// Run detail pacing strategy — a phase the run ended before reaching
+  ///
+  /// In en, this message translates to:
+  /// **'not reached'**
+  String get runDetailStrategyNotReached;
+
+  /// Run detail pacing strategy — a phase the run ended part-way through
+  ///
+  /// In en, this message translates to:
+  /// **'partial'**
+  String get runDetailStrategyPartial;
+
+  /// Run detail pacing strategy — delta cell when a phase ran exactly at its target pace
+  ///
+  /// In en, this message translates to:
+  /// **'on pace'**
+  String get runDetailStrategyOnPace;
+
+  /// Run detail pacing strategy verdict — every phase on target
+  ///
+  /// In en, this message translates to:
+  /// **'On plan'**
+  String get runDetailStrategyVerdictOnPlan;
+
+  /// Run detail pacing strategy verdict — the first phase ran too fast and the finish lost ground
+  ///
+  /// In en, this message translates to:
+  /// **'Went out too fast'**
+  String get runDetailStrategyVerdictWentOutTooFast;
+
+  /// Run detail pacing strategy verdict — the final phase ran slower than its target
+  ///
+  /// In en, this message translates to:
+  /// **'Faded'**
+  String get runDetailStrategyVerdictFaded;
+
+  /// Run detail pacing strategy verdict — the finish ran stronger against its target than the start
+  ///
+  /// In en, this message translates to:
+  /// **'Finished stronger than planned'**
+  String get runDetailStrategyVerdictNegativeSplit;
+
+  /// Run detail pacing strategy verdict — faster than the targets overall
+  ///
+  /// In en, this message translates to:
+  /// **'Faster than plan'**
+  String get runDetailStrategyVerdictFasterThanPlan;
+
+  /// Run detail pacing strategy verdict — slower than the targets overall
+  ///
+  /// In en, this message translates to:
+  /// **'Slower than plan'**
+  String get runDetailStrategyVerdictSlowerThanPlan;
+
+  /// Run detail pacing strategy — note when no goal time was set and targets come from the run average
+  ///
+  /// In en, this message translates to:
+  /// **'No goal time was set, so each target is the plan\'s shape at your average pace.'**
+  String get runDetailStrategyAverageBasis;
+
+  /// Run detail pacing strategy — note when the run has no timed GPS track
+  ///
+  /// In en, this message translates to:
+  /// **'This run has no timed GPS track, so its phases can\'t be graded.'**
+  String get runDetailStrategyNoTrack;
+
+  /// Run detail pacing strategy — note when an even plan had no goal time
+  ///
+  /// In en, this message translates to:
+  /// **'No goal time was set, so a one-phase even plan has nothing to grade against.'**
+  String get runDetailStrategyNoGoal;
+
+  /// Run detail pacing strategy — note when the run ended well short of the planned distance; both are formatted distances such as 28.1 km
+  ///
+  /// In en, this message translates to:
+  /// **'Ended at {distance} of the planned {planned}, so the later phases weren\'t run.'**
+  String runDetailStrategyStoppedShort(String distance, String planned);
+
+  /// Run detail pacing strategy — footnote stating the on-target band and that stops are excluded
+  ///
+  /// In en, this message translates to:
+  /// **'A phase within 1.5% of its target pace counts as on target; paces exclude stops.'**
+  String get runDetailStrategyBand;
+
   /// Header of the grade-adjusted pace column in the splits list
   ///
   /// In en, this message translates to:
@@ -8044,11 +8152,23 @@ abstract class AppLocalizations {
   /// **'You haven\'t joined a club yet.'**
   String get clubsEmptyMineTitle;
 
-  /// Empty-state hint for the browse tab
+  /// Browse-tab empty state: the club the user searched for may not be on the app yet, so they can set it up
   ///
   /// In en, this message translates to:
-  /// **'Try a different name or location.'**
-  String get clubsEmptyBrowseBody;
+  /// **'Is your club missing? It may not be on Threkir yet. Set up its page and invite your members to join.'**
+  String get clubsMissingClubBody;
+
+  /// Browse-tab empty-state button: opens the new-club form prefilled with the searched name
+  ///
+  /// In en, this message translates to:
+  /// **'Set up your club'**
+  String get clubsSetUpYourClub;
+
+  /// Browse-tab empty-state button: opens the in-app help guide on creating a club
+  ///
+  /// In en, this message translates to:
+  /// **'How to create a club'**
+  String get clubsHowToCreateClub;
 
   /// Empty-state hint for the my-clubs tab
   ///
@@ -25676,6 +25796,132 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, one{{count} step} other{{count} steps}}'**
   String runnerMenuWorkoutSteps(int count);
+
+  /// Messages, the direct-message inbox title (also the You tile)
+  ///
+  /// In en, this message translates to:
+  /// **'Messages'**
+  String get messagesTitle;
+
+  /// Inbox empty state title
+  ///
+  /// In en, this message translates to:
+  /// **'No conversations yet'**
+  String get messagesEmptyTitle;
+
+  /// Inbox empty state body: how a conversation starts
+  ///
+  /// In en, this message translates to:
+  /// **'Open a runner\'s profile and tap Message to start a conversation.'**
+  String get messagesEmptyBody;
+
+  /// Inbox failed to load
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your conversations.'**
+  String get messagesLoadError;
+
+  /// One conversation failed to load
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load this conversation.'**
+  String get messagesThreadLoadError;
+
+  /// Inbox preview line when the latest message is the viewer's own
+  ///
+  /// In en, this message translates to:
+  /// **'You: {body}'**
+  String messagesYouPrefixed(String body);
+
+  /// Accessible label for a conversation's unread badge
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} unread message} other{{count} unread messages}}'**
+  String messagesUnreadCount(int count);
+
+  /// A conversation with no messages yet
+  ///
+  /// In en, this message translates to:
+  /// **'No messages yet. Say hi.'**
+  String get messagesThreadEmpty;
+
+  /// Composer text field placeholder
+  ///
+  /// In en, this message translates to:
+  /// **'Message…'**
+  String get messagesComposerHint;
+
+  /// Composer send button
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get messagesSend;
+
+  /// Accessible status of a message still being sent
+  ///
+  /// In en, this message translates to:
+  /// **'Sending…'**
+  String get messagesSending;
+
+  /// A send failed for a reason the app cannot name
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send your message. Try again.'**
+  String get messagesSendFailed;
+
+  /// The server refused the send: no follow either way, or a block either way (deliberately not told apart)
+  ///
+  /// In en, this message translates to:
+  /// **'You can only message people you follow or who follow you, and who haven\'t blocked you.'**
+  String get messagesSendNotAllowed;
+
+  /// Button at the top of a conversation that loads older messages
+  ///
+  /// In en, this message translates to:
+  /// **'Load earlier messages'**
+  String get messagesLoadEarlier;
+
+  /// Loading older messages failed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load earlier messages.'**
+  String get messagesLoadEarlierFailed;
+
+  /// Conversation app-bar action opening the partner's profile
+  ///
+  /// In en, this message translates to:
+  /// **'View profile'**
+  String get messagesViewProfile;
+
+  /// Label above a route shared in a message
+  ///
+  /// In en, this message translates to:
+  /// **'Route'**
+  String get messagesRouteEyebrow;
+
+  /// Name shown for a shared route whose name is blank
+  ///
+  /// In en, this message translates to:
+  /// **'Untitled route'**
+  String get messagesRouteUntitled;
+
+  /// A route shared in a message that the reader can no longer see
+  ///
+  /// In en, this message translates to:
+  /// **'This route isn\'t available to you any more.'**
+  String get messagesRouteUnavailable;
+
+  /// Accessible label while a shared route resolves
+  ///
+  /// In en, this message translates to:
+  /// **'Loading route'**
+  String get messagesRouteLoading;
+
+  /// Profile action opening a direct-message conversation with this runner
+  ///
+  /// In en, this message translates to:
+  /// **'Message'**
+  String get profileMessage;
 }
 
 class _AppLocalizationsDelegate

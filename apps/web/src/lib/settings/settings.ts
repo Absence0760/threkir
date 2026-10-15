@@ -1,4 +1,5 @@
 import { supabase } from '../core/supabase';
+import { dbError } from '../core/supabase_error';
 import {
 	effective,
 	effectivePreferredUnit,
@@ -125,7 +126,7 @@ export async function loadSettings(userId: string): Promise<LoadedSettings> {
 		// auto-provision empty row", and the cache would be
 		// overwritten with `{}` on every offline reload.
 		if (universalRes.error || deviceRes.error) {
-			throw universalRes.error ?? deviceRes.error;
+			throw dbError(universalRes.error ?? deviceRes.error);
 		}
 
 		// Auto-provision empty rows on first access so later UPDATEs
@@ -143,7 +144,7 @@ export async function loadSettings(userId: string): Promise<LoadedSettings> {
 				.upsert({ user_id: userId, prefs: {} }, { onConflict: 'user_id', ignoreDuplicates: true });
 			// Error-checked (#234): a silently failed provision used to leave
 			// the 0-row update hole open. Throwing routes to the cache path.
-			if (provRes.error) throw provRes.error;
+			if (provRes.error) throw dbError(provRes.error);
 		}
 		if (!deviceRes.data) {
 			const provRes = await supabase.from('user_device_settings').upsert(
@@ -156,7 +157,7 @@ export async function loadSettings(userId: string): Promise<LoadedSettings> {
 				},
 				{ onConflict: 'user_id,device_id', ignoreDuplicates: true },
 			);
-			if (provRes.error) throw provRes.error;
+			if (provRes.error) throw dbError(provRes.error);
 		}
 
 		const universal: PrefsBag = (universalRes.data?.prefs as PrefsBag | null) ?? {};

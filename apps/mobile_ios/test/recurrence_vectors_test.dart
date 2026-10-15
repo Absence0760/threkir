@@ -8,12 +8,12 @@ import '../lib/recurrence.dart';
 /// vectors generated from web's `expandInstances` and replayed by
 /// `apps/web/src/lib/social/recurrence_vectors.test.ts` and by the database's
 /// `private.is_event_occurrence` (`event_occurrence_vectors_test.sql`). The
-/// event-photo trigger refuses any instant that SQL function rejects, so this
-/// expansion offering a different instant is a photo the database refuses
-/// (decisions § 1905).
+/// event-photo and order triggers refuse any instant that SQL function
+/// rejects, so this expansion offering a different instant is a write the
+/// database refuses (decisions § 1905, § 1918).
 ///
-/// A series with a timezone expands on the UTC clock and must give the same
-/// answer on every host. A legacy series (no timezone) expands in the host's
+/// A series with a timezone expands on its own zone's wall-clock and must give
+/// the same answer on every host. A legacy series (no timezone) expands in the host's
 /// local zone, so it is checked against the fixture's entry for that zone:
 /// `TZ=Asia/Kolkata flutter test test/recurrence_vectors_test.dart` runs those
 /// against the Kolkata vectors; a host zone the fixture does not carry skips

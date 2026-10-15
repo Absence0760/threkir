@@ -1,7 +1,11 @@
 <script lang="ts">
 	import { goto, afterNavigate } from '$app/navigation';
+	import { page } from '$app/state';
 	import ClubEditor from '#lib/components/ClubEditor.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { prefilledClubName } from '#lib/social/club_setup.ts';
+
+	const initialName = prefilledClubName(page.url.searchParams.get('name'));
 
 	let cameFromClubs = $state(false);
 	afterNavigate(({ from }) => {
@@ -44,6 +48,7 @@
 	</header>
 
 	<ClubEditor
+		{initialName}
 		oncreated={(club) => goto(`/clubs/${club.slug}`)}
 		oncancel={handleCancel}
 	/>

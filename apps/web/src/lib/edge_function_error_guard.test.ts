@@ -89,7 +89,7 @@ function invokeSites(): { key: string; file: string; rethrows: boolean }[] {
 				file: relative(SRC, file),
 				rethrows:
 					bound !== null &&
-					new RegExp(`\\bthrow\\s+${bound}\\s*;`).test(window),
+					new RegExp(`\\bthrow\\s+(?:dbError\\(\\s*${bound}\\s*\\)|${bound})\\s*;`).test(window),
 			});
 		}
 	}

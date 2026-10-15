@@ -294,7 +294,7 @@ test('/segments cannot strand the browse page on a failed catalogue fetch', () =
 		/finally \{\s*loading = false;/,
 		'loading must clear on the failure path too, not only on success',
 	);
-	assert.match(source, /\{:else if loadError\}/, 'the page needs a failure branch');
+	assert.match(source, /\{:else if loadError !== null\}/, 'the page needs a failure branch, tested against null so an error with no readable message still shows');
 	assert.match(source, /onclick=\{load\}/, 'the failure branch must offer a retry');
 });
 

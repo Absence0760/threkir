@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { activeFormatLocale } from '#lib/format/time.ts';
+	import { appErrorMessage } from '#lib/core/supabase_error.ts';
 	import { m as tr } from '#lib/i18n/store.svelte.ts';
 	import { onMount } from 'svelte';
 	import { initial } from '#lib/format/avatar.ts';
@@ -108,8 +109,10 @@
 		} finally {
 			if (id === activeId) loadingThread = false;
 		}
+		const newestShown = messages.findLast((m) => m.sender_id === id);
+		if (!newestShown) return;
 		try {
-			await markDmThreadRead(id);
+			await markDmThreadRead(id, newestShown);
 			markedReadAt.set(id, Date.now());
 			// Zero the unread badge locally without a full refetch.
 			threads = threads.map((t) => (t.partnerId === id ? { ...t, unread: 0 } : t));
@@ -138,7 +141,7 @@
 				// previews are fine until the next load.
 			}
 		} catch (e) {
-			sendError = e instanceof Error ? e.message : tr('messages.sendFailed');
+			sendError = appErrorMessage(e) ?? tr('messages.sendFailed');
 		} finally {
 			sending = false;
 		}

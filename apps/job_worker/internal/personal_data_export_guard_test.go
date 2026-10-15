@@ -29,7 +29,7 @@ package internal
 // could ship missing from the export with nothing to flag it (the
 // 2026-06-20 GDPR Art 20 finding). The guard now keys on ANY owner-style
 // FK to auth.users — user_id / author_id / owner_id / buyer_user_id /
-// host_user_id / contact_user_id. `user_id` is matched by name (some
+// host_user_id / contact_user_id / client_id. `user_id` is matched by name (some
 // user_id columns declare their FK as a separate constraint or live in an
 // RPC return table, so a name match is the crisp signal there); the other
 // owner names are matched only when the column declaration also carries
@@ -113,7 +113,7 @@ func TestPersonalDataExport_EveryOwnerFkTableIsCoveredOrExcluded(t *testing.T) {
 	// so a regression in either matching path is loud.
 	for _, sentinel := range []string{
 		"runs", "coach_messages", "race_pings", "gym_workouts",
-		"session_plans", "route_photos", "event_orders",
+		"session_plans", "route_photos", "event_orders", "nutrition_plan_assignments",
 	} {
 		if !ownerTables[sentinel] {
 			t.Fatalf("parser failed to detect an owner-style FK to auth.users on %q — the "+
@@ -137,7 +137,7 @@ func TestPersonalDataExport_EveryOwnerFkTableIsCoveredOrExcluded(t *testing.T) {
 	if len(missing) > 0 {
 		sort.Strings(missing)
 		t.Errorf("these tables carry an owner-style FK to auth.users (user_id / author_id / "+
-			"owner_id / buyer_user_id / host_user_id / contact_user_id) but are not in the "+
+			"owner_id / buyer_user_id / host_user_id / contact_user_id / client_id) but are not in the "+
 			"GDPR Art 20 export spec (exportPersonalDataSpecs) nor in exportGuardExclusions: %v\n"+
 			"Wire each into exportPersonalDataSpecs (and its TS twin backup_spec.test.ts), "+
 			"or add it to exportGuardExclusions with a reason if it is genuinely not "+
@@ -217,7 +217,7 @@ var (
 	// table (a hypothetical `owner_id references clubs`) can't false-positive.
 	// `[^,]*` keeps the match inside the single (comma-separated) column def.
 	reOwnerFkCol = regexp.MustCompile(
-		`(?:^|[\s,(])(?:author_id|owner_id|buyer_user_id|host_user_id|contact_user_id)\s+uuid[^,]*references\s+auth\.users`)
+		`(?:^|[\s,(])(?:author_id|owner_id|buyer_user_id|host_user_id|contact_user_id|client_id)\s+uuid[^,]*references\s+auth\.users`)
 )
 
 // ownerFkTablesFromMigrations parses every *.sql migration and returns

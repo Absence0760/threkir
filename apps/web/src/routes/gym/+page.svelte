@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import {
@@ -83,7 +84,7 @@
 			// fetchSessionPlans rethrows rather than returning an error field,
 			// so a rejection used to escape the Promise.all and leave `loading`
 			// true forever — the retry banner below was unreachable.
-			loadError = e instanceof Error ? e.message : String(e);
+			loadError = thrownMessage(e);
 			catalogueUnavailable = true;
 		} finally {
 			loading = false;
@@ -282,12 +283,12 @@
 			{/each}
 		</ul>
 		<p class="sr-only" role="status">{t('shell.loading')}</p>
-	{:else if loadError}
+	{:else if loadError !== null}
 		<div class="error-banner" role="alert" data-testid="gym-load-error">
 			<span class="material-symbols" aria-hidden="true">error</span>
 			<div>
 				<strong>{t('gym.loadError')}</strong>
-				<span class="error-detail">{loadError}</span>
+				{#if loadError}<span class="error-detail">{loadError}</span>{/if}
 			</div>
 			<button class="btn btn-outline" onclick={load}>{t('gym.routine.retry')}</button>
 		</div>

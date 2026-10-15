@@ -53,6 +53,18 @@ const Map<String, ColumnLimit> kColumnLimits = {
   // Deliberately far below the column's 4096: a club post is a notice board,
   // not an essay. Four surfaces write this column and all four said 1200.
   'club_posts.body': ColumnLimit.length(1200),
+  // 1200 is the app's soft calorie floor (`minCalorieTarget`), above the
+  // column's 1000 sanity floor: an editor will not take a number the day view
+  // would then clamp up and show as something else.
+  'nutrition_plans.target_calories': ColumnLimit.value(1200, 12000),
+  'nutrition_plans.training_calories': ColumnLimit.value(1200, 12000),
+  // EQUAL to the columns' 0..2000 g a day.
+  'nutrition_plans.target_protein_g': ColumnLimit.value(0, 2000),
+  'nutrition_plans.target_carbs_g': ColumnLimit.value(0, 2000),
+  'nutrition_plans.target_fat_g': ColumnLimit.value(0, 2000),
+  'nutrition_plans.training_carbs_g': ColumnLimit.value(0, 2000),
+  'nutrition_plans.title': ColumnLimit.length(120),
+  'nutrition_plans.notes': ColumnLimit.length(1000),
   // Below the column's 2000, for the same reason.
   'events.description': ColumnLimit.length(1000),
   // Below the column's 120 — a plan name is a header, and 80 is what both

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../device_timezone.dart';
 import '../column_limits.dart';
 import '../auth_error.dart';
 import '../event_category.dart';
@@ -31,6 +32,7 @@ Future<String?> showEventFormSheet(
   required SocialService social,
   required String clubId,
   bool clubIsPublic = true,
+  Future<String?> Function() deviceTimeZone = deviceIanaTimeZoneOrNull,
 }) {
   final formKey = GlobalKey<_EventFormState>();
   return showFullScreenForm<String>(
@@ -41,7 +43,8 @@ Future<String?> showEventFormSheet(
         key: formKey,
         social: social,
         clubId: clubId,
-        clubIsPublic: clubIsPublic),
+        clubIsPublic: clubIsPublic,
+        deviceTimeZone: deviceTimeZone),
   );
 }
 
@@ -52,11 +55,15 @@ class _EventForm extends StatefulWidget {
   // club's events are already members-only via the club gate), so it's hidden
   // for a private club.
   final bool clubIsPublic;
+  // The zone the picked date + time are read in, stamped on the event so its
+  // recurrence stays on the organiser's wall clock for every viewer.
+  final Future<String?> Function() deviceTimeZone;
   const _EventForm({
     super.key,
     required this.social,
     required this.clubId,
     this.clubIsPublic = true,
+    this.deviceTimeZone = deviceIanaTimeZoneOrNull,
   });
 
   @override
@@ -300,6 +307,7 @@ class _EventFormState extends State<_EventForm> {
         const dow = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
         byday = dow[(_starts.weekday - 1) % 7];
       }
+      final timezone = await widget.deviceTimeZone();
       final created = await widget.social.createEvent(
         clubId: widget.clubId,
         title: title,
@@ -327,6 +335,7 @@ class _EventFormState extends State<_EventForm> {
         // is hidden there and we leave this public (the column is moot — the
         // club gate already restricts read + discovery skips the club).
         isPublic: widget.clubIsPublic ? _isPublic : true,
+        timezone: timezone,
       );
       // Pricing and the session plan are separate writes with their own
       // gates (the charges-enabled trigger, the organiser trigger). The event

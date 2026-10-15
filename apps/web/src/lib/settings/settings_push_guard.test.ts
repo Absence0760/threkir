@@ -99,7 +99,7 @@ test('drainPending drops a rejected entry instead of retrying it forever', () =>
 
 test('loadSettings error-checks the auto-provision upserts', () => {
 	const body = fnBody('loadSettings');
-	const provisionChecks = body.match(/provRes\.error\)\s*throw\s+provRes\.error/g) ?? [];
+	const provisionChecks = body.match(/provRes\.error\)\s*throw\s+dbError\(provRes\.error\)/g) ?? [];
 	assert.equal(
 		provisionChecks.length,
 		2,

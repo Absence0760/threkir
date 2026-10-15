@@ -810,6 +810,18 @@ composer is a modal sheet, matching `gear_form_sheet` / `goal_editor_sheet`.
 > byte-identical iOS twin. In the Art 20 DSAR export (ingredients nested).
 > **Per-ingredient quantity editing + shared/public recipes + an edit path stay deferred.**
 
+> **Status (meal plans + day adherence — nutrition programming P1, shipped web
+> 2026-10-14, migration `20270815000001`, [decisions § 1922](../architecture/decisions.md)):**
+> the depth tier's first slice and its engagement probe. A followed plan
+> replaces the computed target on every day it governs (never a second
+> target beside it), so the day view keeps one set of rings and gains one
+> panel, the adherence verdict, only on a governed day. The Plans section
+> sits with Meal templates and Recipes and self-hides at zero plans; before
+> one exists the only entries are Save as plan on the rings card and, for a
+> user without body metrics, a blank plan beside the Settings link. Full
+> design + phasing: [nutrition_programming.md](nutrition_programming.md).
+> Mobile is that spec's P4.
+
 > **Status (targets peer — shipped web 2026-08-05, issue #666 M1):** the rule
 > below that "each modality owns its planning assets ... nutrition owns
 > targets/recipes" held for recipes and meal templates and **did not hold for

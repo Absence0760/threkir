@@ -137,6 +137,20 @@ test.describe('paid registration — what a refusal tells the buyer', () => {
 		await expect(toast(page).filter({ hasText: /non-2xx|Edge Function/ })).toHaveCount(0);
 	});
 
+	test('a session the schedule does not hold reads as such, not as a retryable failure', async ({
+		page,
+		mockRoute
+	}) => {
+		// events-checkout answers instance_not_found for an instant the series
+		// never produces (decisions § 1921). A retry cannot fix it; the page
+		// has to send the buyer back to the real dates.
+		await pricedEventRefusing(mockRoute, page, 404, 'instance_not_found');
+		await expect(page.getByText(/isn't on the schedule/)).toBeVisible({ timeout: 10_000 });
+		await expect(toast(page).filter({ hasText: /non-2xx|Edge Function|try again/ })).toHaveCount(
+			0,
+		);
+	});
+
 	test('a host who cannot take payment is named as such, not as "try again"', async ({ page, mockRoute }) => {
 		// Retrying cannot fix this one, so the generic "please try again" is
 		// the wrong sentence as surely as the internal one is.

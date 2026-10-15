@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { effective, updateUniversal } from '#lib/settings/settings.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
@@ -66,7 +67,7 @@
 			nearbyAreaInput = '';
 			showToast(m('prefs.nearbyAreaSaved'), 'success');
 		} catch (e) {
-			showToast(m('prefs.nearbyAreaFailed', { error: (e as Error).message }), 'error');
+			showToast(m('prefs.nearbyAreaFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			nearbySavingArea = false;
 		}
@@ -80,7 +81,7 @@
 			nearbyAreaLabel = null;
 			showToast(m('prefs.nearbyAreaCleared'), 'success');
 		} catch (e) {
-			showToast(m('prefs.nearbyAreaFailed', { error: (e as Error).message }), 'error');
+			showToast(m('prefs.nearbyAreaFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			nearbySavingArea = false;
 		}
@@ -106,7 +107,7 @@
 			});
 			privacyZones = next;
 		} catch (e) {
-			showToast(m('prefs.zoneSaveFailed', { error: (e as Error).message }), 'error');
+			showToast(m('prefs.zoneSaveFailed', { error: thrownMessage(e) }), 'error');
 		}
 	}
 

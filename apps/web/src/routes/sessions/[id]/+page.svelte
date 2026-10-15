@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { siteOrigin } from '#lib/core/site_url.ts';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
@@ -67,7 +68,7 @@
 		try {
 			plan = await fetchSessionPlan(planId);
 		} catch (e) {
-			loadError = e instanceof Error ? e.message : String(e);
+			loadError = thrownMessage(e);
 			return;
 		} finally {
 			loading = false;
@@ -279,12 +280,12 @@
 
 	{#if loading}
 		<p class="muted">…</p>
-	{:else if loadError}
+	{:else if loadError !== null}
 		<div class="error-banner" role="alert" data-testid="session-load-error">
 			<span class="material-symbols" aria-hidden="true">error</span>
 			<div>
 				<strong>{t('session.loadError')}</strong>
-				<span class="error-detail">{loadError}</span>
+				{#if loadError}<span class="error-detail">{loadError}</span>{/if}
 			</div>
 			<button class="btn btn-outline" onclick={load}>{t('session.run.retry')}</button>
 		</div>

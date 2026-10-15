@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import Modal from './Modal.svelte';
 	import { m as tr } from '#lib/i18n/store.svelte.ts';
 	import { initial } from '#lib/format/avatar.ts';
@@ -101,7 +102,7 @@
 			await sendDm(recipient.id, shareUrl, routeId);
 			sentTo = recipient;
 		} catch (e) {
-			sendError = e instanceof Error ? e.message : `${e}`;
+			sendError = thrownMessage(e);
 		} finally {
 			sendingTo = null;
 		}
@@ -137,7 +138,7 @@
 			{grantAccess ? tr('routeDetail.sendDm.privateNote') : tr('routeDetail.sendDm.linkNote')}
 		</p>
 
-		{#if sendError}
+		{#if sendError !== null}
 			<p class="send-error" role="alert" data-testid="send-route-error">
 				{tr('routeDetail.sendDm.sendFailed', { error: sendError })}
 			</p>

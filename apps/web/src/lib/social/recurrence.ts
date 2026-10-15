@@ -4,16 +4,7 @@
 // on every event-detail render; no need to materialise instances.
 
 import type { Event, Weekday, RecurrenceFreq } from '../types';
-
-const WEEKDAY_TO_INDEX: Record<Weekday, number> = {
-	SU: 0,
-	MO: 1,
-	TU: 2,
-	WE: 3,
-	TH: 4,
-	FR: 5,
-	SA: 6
-};
+import { isKnownTimeZone, zoneOffsetMs } from './zoned_time';
 
 const WEEKDAY_LABEL: Record<Weekday, string> = {
 	MO: 'Mon',
@@ -28,63 +19,56 @@ const WEEKDAY_LABEL: Record<Weekday, string> = {
 const ISO_ORDER: Weekday[] = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
 
 // A recurring event's instance_start is its per-occurrence capacity key
-// (20261018_001) and the live-race arm key — every viewer's expansion MUST
-// produce the IDENTICAL instant, or two spectators in different zones RSVP
-// against different keys and a cross-TZ viewer sees a live race as "not
-// armed". The wall-clock the organiser meant is fixed in the EVENT's zone,
-// not the viewer's. Reading the recurrence fields with `getHours()` /
-// `getDay()` and stamping with `setHours()` used the viewer's LOCAL zone, so
-// the computed instant drifted by the viewer-vs-event offset. When the event
-// carries a timezone (20270111_001) we read + stamp the fields in UTC — a
-// zone-independent anchor identical on every viewer and both platforms (the
-// server's discovery filter likewise normalises via `at time zone`). Legacy
-// rows with no timezone keep the original local-zone behaviour so their
-// already-placed RSVPs don't shift. Mirrors apps/mobile_android/lib/
-// recurrence.dart — keep the two in lockstep.
-interface WallClock {
-	weekday(d: Date): number;
-	startOfWeek(d: Date): Date;
-	startOfDay(d: Date): Date;
-	addDays(d: Date, n: number): Date;
-	stamp(day: Date, src: Date): Date;
+// (20261018_001) and the live-race arm key, so every viewer's expansion must
+// produce the identical instant. An occurrence is a LOCAL date in the event's
+// own zone (events.timezone, 20270111_001): a weekday in `recurrence_byday`
+// (else the local weekday of starts_at), biweekly counted in local weeks from
+// the local Monday of starts_at, monthly on starts_at's local day-of-month
+// clamped to the month's end, stamped at starts_at's local time of day. A
+// wall-clock that does not exist (spring-forward gap) moves forward by the
+// gap; one that exists twice (fall-back overlap) takes the EARLIER instant,
+// as RFC 5545 does. The occurrence on starts_at's own local date is starts_at
+// itself (to the second), so a series started in the second pass of an
+// overlap hour keeps its first occurrence. A zone the runtime cannot resolve
+// expands in UTC. A legacy series with no timezone expands in the VIEWER's
+// zone, as it always has, so its placed RSVPs keep their keys. Mirrors
+// apps/mobile_android/lib/recurrence.dart and private.event_occurrences /
+// private.is_event_occurrence (decisions § 1918).
+interface Zone {
+	offset(t: number): number;
 }
 
-const localClock: WallClock = {
-	weekday: (d) => d.getDay(),
-	startOfWeek,
-	startOfDay,
-	addDays,
-	stamp: (day, src) => {
-		const s = new Date(day);
-		s.setHours(src.getHours(), src.getMinutes(), src.getSeconds(), 0);
-		return s;
-	}
-};
+const DAY = 86_400_000;
 
-const utcClock: WallClock = {
-	weekday: (d) => d.getUTCDay(),
-	startOfWeek: (d) => {
-		const c = new Date(d);
-		c.setUTCHours(0, 0, 0, 0);
-		c.setUTCDate(c.getUTCDate() - ((c.getUTCDay() + 6) % 7)); // Monday anchor
-		return c;
-	},
-	startOfDay: (d) => {
-		const c = new Date(d);
-		c.setUTCHours(0, 0, 0, 0);
-		return c;
-	},
-	addDays: (d, n) => {
-		const c = new Date(d);
-		c.setUTCDate(c.getUTCDate() + n);
-		return c;
-	},
-	stamp: (day, src) => {
-		const s = new Date(day);
-		s.setUTCHours(src.getUTCHours(), src.getUTCMinutes(), src.getUTCSeconds(), 0);
-		return s;
+const utcZone: Zone = { offset: () => 0 };
+
+const localZone: Zone = { offset: (t) => -new Date(t).getTimezoneOffset() * 60_000 };
+
+function namedZone(name: string): Zone | null {
+	if (!isKnownTimeZone(name)) return null;
+	return { offset: (t) => zoneOffsetMs(t, name) };
+}
+
+function eventZone(timezone: string | null | undefined): Zone {
+	if (!timezone) return localZone;
+	if (timezone === 'UTC') return utcZone;
+	return namedZone(timezone) ?? utcZone;
+}
+
+function wallToInstant(zone: Zone, wall: number): number {
+	const before = zone.offset(wall - DAY);
+	const after = zone.offset(wall + DAY);
+	let best: number | null = null;
+	for (const o of [before, after]) {
+		const t = wall - o;
+		if (zone.offset(t) === o && (best === null || t < best)) best = t;
 	}
-};
+	return best ?? wall - before;
+}
+
+function isoDow(day: number): number {
+	return ((((day + 3) % 7) + 7) % 7) + 1;
+}
 
 /**
  * Expand a recurring event into instance start times within [from, to], or
@@ -97,40 +81,46 @@ export function expandInstances(event: Event, from: Date, to: Date, max = 100): 
 		return start >= from && start <= to ? [start] : [];
 	}
 
-	const wc = event.timezone ? utcClock : localClock;
+	const zone = eventZone(event.timezone);
 	const until = event.recurrence_until ? new Date(event.recurrence_until) : null;
 	const hardCap = event.recurrence_count ?? Infinity;
 	const results: Date[] = [];
-	const step = event.recurrence_freq === 'biweekly' ? 14 : 7;
+	// `stamp` rebuilds every instant from whole seconds, so a `starts_at`
+	// carrying a non-zero millisecond is compared, and stands as its own first
+	// occurrence, at that resolution.
+	const startSecond = Math.floor(start.getTime() / 1000) * 1000;
+	const startLocal = startSecond + zone.offset(startSecond);
+	const startDay = Math.floor(startLocal / DAY);
+	const timeOfDay = startLocal - startDay * DAY;
+	const stamp = (day: number) =>
+		day === startDay ? startSecond : wallToInstant(zone, day * DAY + timeOfDay);
+	const localDay = (t: number) => Math.floor((t + zone.offset(t)) / DAY);
 	// The walk always starts at `starts_at` (occurrences before `from` still
-	// count toward `recurrence_count`), so its iteration budget has to reach the
-	// far end of the requested window. Budgeting off `max` — a RESULT count —
-	// stopped the walk `max` periods after the series began, so `nextInstanceAfter`
-	// (max = 1) reported "no next occurrence" for every series older than a
-	// fortnight.
+	// count toward `recurrence_count`), so its budget has to reach the far end
+	// of the requested window, not `max` periods past the start.
 	const scanEnd = until && until < to ? until : to;
-	const byday: Weekday[] =
-		event.recurrence_freq === 'monthly'
-			? ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'] // unused for monthly; we use the day-of-month of starts_at
-			: (event.recurrence_byday?.length ? event.recurrence_byday : [indexToWeekday(wc.weekday(start))]) as Weekday[];
 
 	let produced = 0;
 	if (event.recurrence_freq === 'monthly') {
-		// Monthly: same day-of-month as starts_at, every N months. Each instance
-		// is `i` whole months from start with the day clamped to the target
-		// month's last day (Jan-31 → Feb-28/29). Stepping a running cursor would
-		// let a clamp permanently shrink the day-of-month (Jan-31 → Feb-28 →
-		// Mar-28), drifting off the intended day.
-		const monthBudget = monthsBetween(start, scanEnd, !!event.timezone) + 1;
+		// Each instance is `i` whole months from start with the day clamped to
+		// the target month's last day (Jan-31 → Feb-28/29). Stepping a running
+		// cursor would let a clamp permanently shrink the day-of-month.
+		const s = new Date(startDay * DAY);
+		const e = new Date(localDay(scanEnd.getTime()) * DAY);
+		const monthBudget =
+			(e.getUTCFullYear() - s.getUTCFullYear()) * 12 + (e.getUTCMonth() - s.getUTCMonth()) + 1;
 		for (let i = 0; produced < hardCap; i++) {
 			if (i > monthBudget) break;
-			const cursor = addMonthsClamped(start, i, !!event.timezone);
+			const total = s.getUTCMonth() + i;
+			const year = s.getUTCFullYear() + Math.floor(total / 12);
+			const month = ((total % 12) + 12) % 12;
+			const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+			const cursor = new Date(
+				stamp(Date.UTC(year, month, Math.min(s.getUTCDate(), lastDay)) / DAY)
+			);
 			if (until && cursor > until) break;
 			// recurrence_count caps TOTAL occurrences from starts_at, not the
-			// ones that happen to fall inside [from, to]. Counting only in-window
-			// occurrences let a count-limited series resurrect phantom instances
-			// past its real end whenever it was viewed after it had started
-			// (from = now > starts_at).
+			// ones that happen to fall inside [from, to].
 			produced++;
 			if (cursor > to) break;
 			if (cursor >= from) {
@@ -141,45 +131,26 @@ export function expandInstances(event: Event, from: Date, to: Date, max = 100): 
 		return results;
 	}
 
-	// Weekly / biweekly: step day-by-day, anchored at the Monday of starts_at's
-	// week so weekIndex * 7 == elapsed weeks. The loop guards compare *calendar
-	// day* (cursor d is at midnight) — the precise checks happen against the
-	// `stamped` time (d stamped at starts_at's time-of-day). Mirrors the Dart
-	// twin in apps/mobile_android/lib/recurrence.dart; without the split, the
-	// first-week instance is silently dropped whenever starts_at has a non-
-	// midnight time-of-day (d at midnight < start at, say, 09:00).
-	const anchor = wc.startOfWeek(start);
-	const startDayOnly = wc.startOfDay(start);
-	// `stamp` rebuilds the instant from whole seconds, so a `starts_at` carrying
-	// a non-zero millisecond makes its OWN first candidate sort before it and
-	// the series' first occurrence disappears everywhere — picker, listings,
-	// RSVP keys. The candidate is not-before the start at the only resolution
-	// the stamp has, so compare at that resolution.
-	const startSecond = Math.floor(start.getTime() / 1000) * 1000;
-	const dayBudget = Math.floor((scanEnd.getTime() - anchor.getTime()) / 86_400_000) + step + 1;
-	for (let dayOffset = 0; dayOffset <= dayBudget; dayOffset++) {
-		const d = wc.addDays(anchor, dayOffset);
-		if (d < startDayOnly) continue;
-		if (until && d > wc.addDays(until, 1)) break;
-		if (d > wc.addDays(to, 1)) break;
+	const stepWeeks = event.recurrence_freq === 'biweekly' ? 2 : 1;
+	const byday: Weekday[] = event.recurrence_byday?.length
+		? (event.recurrence_byday as Weekday[])
+		: [ISO_ORDER[isoDow(startDay) - 1]];
+	// Weeks are counted from the local Monday of starts_at's week, matching the
+	// Dart twin and the SQL.
+	const anchor = startDay - (isoDow(startDay) - 1);
+	const lastScanDay = localDay(scanEnd.getTime()) + 1;
+	for (let day = startDay; day <= lastScanDay; day++) {
+		if (Math.floor((day - anchor) / 7) % stepWeeks !== 0) continue;
+		if (!byday.includes(ISO_ORDER[isoDow(day) - 1])) continue;
 
-		const weekIndex = Math.floor(dayOffset / 7);
-		if (weekIndex % (step / 7) !== 0) continue;
-
-		const wd = indexToWeekday(wc.weekday(d));
-		if (!byday.includes(wd)) continue;
-
-		const stamped = wc.stamp(d, start);
+		const stamped = new Date(stamp(day));
 		if (until && stamped > until) continue;
 		if (stamped > to) continue;
 		if (stamped.getTime() < startSecond) continue;
 
-		// Count every real occurrence toward recurrence_count — not just the
-		// in-window ones — so a count-limited series stops at its true end even
-		// when the window starts after starts_at (see the monthly branch above).
-		// The cap is checked BEFORE counting, as the monthly loop's condition
-		// is, so a stored count of 0 yields no occurrence on either branch and
-		// agrees with the database's is_event_occurrence.
+		// Every real occurrence counts toward recurrence_count, in-window or
+		// not, and the cap is checked BEFORE counting so a stored count of 0
+		// yields no occurrence (decisions § 1910).
 		if (produced >= hardCap) break;
 		produced++;
 		if (stamped >= from) {
@@ -214,54 +185,3 @@ export const WEEKDAY_CHOICES: { code: Weekday; label: string }[] = ISO_ORDER.map
 	label: WEEKDAY_LABEL[code]
 }));
 
-function indexToWeekday(i: number): Weekday {
-	return Object.entries(WEEKDAY_TO_INDEX).find(([, v]) => v === i)![0] as Weekday;
-}
-
-function addDays(d: Date, n: number): Date {
-	const c = new Date(d);
-	c.setDate(c.getDate() + n);
-	return c;
-}
-
-function monthsBetween(a: Date, b: Date, useUtc: boolean): number {
-	const ay = useUtc ? a.getUTCFullYear() : a.getFullYear();
-	const am = useUtc ? a.getUTCMonth() : a.getMonth();
-	const by = useUtc ? b.getUTCFullYear() : b.getFullYear();
-	const bm = useUtc ? b.getUTCMonth() : b.getMonth();
-	return (by - ay) * 12 + (bm - am);
-}
-
-function addMonthsClamped(base: Date, months: number, useUtc: boolean): Date {
-	const baseMonth = useUtc ? base.getUTCMonth() : base.getMonth();
-	const baseYear = useUtc ? base.getUTCFullYear() : base.getFullYear();
-	const baseDay = useUtc ? base.getUTCDate() : base.getDate();
-	const h = useUtc ? base.getUTCHours() : base.getHours();
-	const mi = useUtc ? base.getUTCMinutes() : base.getMinutes();
-	const s = useUtc ? base.getUTCSeconds() : base.getSeconds();
-	const total = baseMonth + months;
-	const year = baseYear + Math.floor(total / 12);
-	const month = ((total % 12) + 12) % 12;
-	// Last day of the target month — computed with the same clock as the rest
-	// so the day-of-month clamp matches the anchor's wall-clock calendar.
-	const lastDay = useUtc
-		? new Date(Date.UTC(year, month + 1, 0)).getUTCDate()
-		: new Date(year, month + 1, 0).getDate();
-	const day = Math.min(baseDay, lastDay);
-	return useUtc
-		? new Date(Date.UTC(year, month, day, h, mi, s, 0))
-		: new Date(year, month, day, h, mi, s, 0);
-}
-
-function startOfWeek(d: Date): Date {
-	const c = new Date(d);
-	c.setHours(0, 0, 0, 0);
-	c.setDate(c.getDate() - ((c.getDay() + 6) % 7)); // Monday anchor, matches recurrence.dart
-	return c;
-}
-
-function startOfDay(d: Date): Date {
-	const c = new Date(d);
-	c.setHours(0, 0, 0, 0);
-	return c;
-}

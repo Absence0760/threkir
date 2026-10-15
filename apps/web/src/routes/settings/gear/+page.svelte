@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import {
@@ -110,7 +111,7 @@
 			wearNote = '';
 			wearArea = '';
 		} catch (e) {
-			showToast(t('settingsGear.wearLogAddFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(t('settingsGear.wearLogAddFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			addingWear = false;
 		}
@@ -142,7 +143,7 @@
 			onCommitError: (e) =>
 				showToast(
 					t('settingsGear.wearLogDeleteFailed', {
-						error: e instanceof Error ? e.message : String(e),
+						error: thrownMessage(e),
 					}),
 					'error',
 				),
@@ -181,7 +182,7 @@
 			newRotationName = '';
 			await reloadRotations();
 		} catch (e) {
-			showToast(t('settingsGear.rotationSaveFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(t('settingsGear.rotationSaveFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			creatingRotation = false;
 		}
@@ -197,7 +198,7 @@
 			renameRotationName = '';
 			await reloadRotations();
 		} catch (e) {
-			showToast(t('settingsGear.rotationSaveFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(t('settingsGear.rotationSaveFailed', { error: thrownMessage(e) }), 'error');
 		}
 	}
 
@@ -208,7 +209,7 @@
 			await deleteGearRotation(r.id);
 			await reloadRotations();
 		} catch (e) {
-			showToast(t('settingsGear.rotationSaveFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(t('settingsGear.rotationSaveFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			confirmingRotationDelete = null;
 		}
@@ -235,7 +236,7 @@
 			managingRotation = null;
 			await reloadRotations();
 		} catch (e) {
-			showToast(t('settingsGear.rotationSaveFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(t('settingsGear.rotationSaveFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			savingMembers = false;
 		}
@@ -274,7 +275,7 @@
 			await setDefaultGear(g.id, g.kind);
 			gear = await fetchMyGear();
 		} catch (e) {
-			showToast(t('settingsGear.failed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(t('settingsGear.failed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			movingStar = false;
 		}
@@ -445,7 +446,7 @@
 			showCreate = false;
 			if (created) await maybeOfferBackfill(created);
 		} catch (e) {
-			showToast(t('settingsGear.saveFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(t('settingsGear.saveFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			saving = false;
 		}
@@ -460,7 +461,7 @@
 			await setDefaultGear(g.is_default ? null : g.id, g.kind);
 			gear = await fetchMyGear();
 		} catch (e) {
-			showToast(t('settingsGear.failed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(t('settingsGear.failed', { error: thrownMessage(e) }), 'error');
 		}
 	}
 
@@ -473,7 +474,7 @@
 			}
 			gear = await fetchMyGear();
 		} catch (e) {
-			showToast(t('settingsGear.failed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(t('settingsGear.failed', { error: thrownMessage(e) }), 'error');
 		}
 	}
 
@@ -483,7 +484,7 @@
 			await deleteGear(confirmingDelete.id);
 			gear = await fetchMyGear();
 		} catch (e) {
-			showToast(t('settingsGear.deleteFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(t('settingsGear.deleteFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			confirmingDelete = null;
 		}

@@ -46,6 +46,18 @@ export const COLUMN_LIMITS = {
 	// Deliberately far below the column's 4096: a club post is a notice board,
 	// not an essay. Four surfaces write this column and all four said 1200.
 	'club_posts.body': { kind: 'length', max: 1200 },
+	// 1200 is the app's soft calorie floor (`MIN_CALORIE_TARGET`), above the
+	// column's 1000 sanity floor: the editor will not take a number the day
+	// view would then clamp up and show as something else.
+	'nutrition_plans.target_calories': { kind: 'value', min: 1200, max: 12000 },
+	'nutrition_plans.training_calories': { kind: 'value', min: 1200, max: 12000 },
+	// EQUAL to the columns' 0..2000 g a day.
+	'nutrition_plans.target_protein_g': { kind: 'value', min: 0, max: 2000 },
+	'nutrition_plans.target_carbs_g': { kind: 'value', min: 0, max: 2000 },
+	'nutrition_plans.target_fat_g': { kind: 'value', min: 0, max: 2000 },
+	'nutrition_plans.training_carbs_g': { kind: 'value', min: 0, max: 2000 },
+	'nutrition_plans.title': { kind: 'length', max: 120 },
+	'nutrition_plans.notes': { kind: 'length', max: 1000 },
 	// Below the column's 2000, for the same reason.
 	'events.description': { kind: 'length', max: 1000 },
 	// Below the column's 120 — a plan name is a header, and 80 is what both

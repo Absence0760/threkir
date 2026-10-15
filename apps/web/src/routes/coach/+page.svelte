@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
@@ -130,7 +131,7 @@
 			}
 			aiDisclosure = { version: row.version, acceptedAt: row.accepted_at };
 		} catch (e) {
-			coachConsentError = m('coachPage.consentRecordError', { error: e instanceof Error ? e.message : String(e) });
+			coachConsentError = m('coachPage.consentRecordError', { error: thrownMessage(e) });
 		} finally {
 			coachConsentSaving = false;
 		}

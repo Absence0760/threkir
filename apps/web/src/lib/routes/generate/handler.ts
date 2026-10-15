@@ -53,7 +53,7 @@ import { fetchGraphCycle, GraphCycleError } from './graph_cycle';
 import { pickBestLoop } from './select';
 import { isValidTargetDistance } from '../route_loop';
 import { checkRouteRateLimit } from '../rate_limit';
-import { supabaseErrorFields } from '../../core/supabase_error';
+import { supabaseErrorFields, thrownMessage } from '../../core/supabase_error';
 
 // Bound on the inbound body, enforced by BOTH wrappers. The only fields are a
 // start coordinate, a target distance and an optional seed count — a few dozen
@@ -398,7 +398,7 @@ export async function handleGenerate(
 			// surface it.
 			console.warn(
 				'[generate] graph_cycle sidecar error, falling back:',
-				e instanceof Error ? e.message : String(e),
+				thrownMessage(e),
 			);
 		}
 		if (!config.graphhopperUrl) {

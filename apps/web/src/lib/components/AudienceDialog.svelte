@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import Modal from './Modal.svelte';
 	import ConfirmDialog from './ConfirmDialog.svelte';
 	import { m as tr } from '#lib/i18n/store.svelte.ts';
@@ -139,7 +140,7 @@
 			onlevel(audienceColumns(next));
 			showToast(tr('audience.updated'), 'success');
 		} catch (e) {
-			showToast(tr('audience.updateFailed', { error: e instanceof Error ? e.message : `${e}` }), 'error');
+			showToast(tr('audience.updateFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			busy = false;
 		}
@@ -166,7 +167,7 @@
 			];
 			showToast(tr('audience.shared', { name: nameOf(person.displayName) }), 'success');
 		} catch (e) {
-			showToast(tr('audience.shareFailed', { error: e instanceof Error ? e.message : `${e}` }), 'error');
+			showToast(tr('audience.shareFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			pendingRecipient = null;
 		}
@@ -181,7 +182,7 @@
 			if (level === 'specific') picked = 'specific';
 			showToast(tr('audience.revoked', { name: nameOf(person.displayName) }), 'success');
 		} catch (e) {
-			showToast(tr('audience.revokeFailed', { error: e instanceof Error ? e.message : `${e}` }), 'error');
+			showToast(tr('audience.revokeFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			pendingRecipient = null;
 		}

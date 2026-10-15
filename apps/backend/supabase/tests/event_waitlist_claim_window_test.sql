@@ -211,22 +211,34 @@ select is(
 
 -- ── 7. the deadline respects sales close ──
 -- An occurrence two hours out (series pricing, sales close at the start):
--- the offer runs to the start, not twelve hours.
+-- the offer runs to the start, not twelve hours. Each instant is its own
+-- one-off event, because an order must name a real occurrence (20270808000041).
+insert into events (id, club_id, title, starts_at, author_id, host_user_id, category, capacity)
+values
+  ('cccc7726-0000-0000-0000-000000000003', 'bbbb7726-0000-0000-0000-000000000001', 'Reformer soon',
+   now() + interval '2 hours', 'aaaa7726-0000-0000-0000-000000000001',
+   'aaaa7726-0000-0000-0000-000000000001', 'class', 1),
+  ('cccc7726-0000-0000-0000-000000000004', 'bbbb7726-0000-0000-0000-000000000001', 'Reformer begun',
+   now() - interval '1 hour', 'aaaa7726-0000-0000-0000-000000000001',
+   'aaaa7726-0000-0000-0000-000000000001', 'class', 1);
+insert into event_pricing (event_id, price_cents)
+values ('cccc7726-0000-0000-0000-000000000003', 2200),
+       ('cccc7726-0000-0000-0000-000000000004', 2200);
 insert into event_orders (id, event_id, instance_start, buyer_user_id, host_user_id,
                           amount_cents, platform_fee_cents, status, paid_at)
-values ('dddd7726-0000-0000-0000-000000000007', 'cccc7726-0000-0000-0000-000000000001', now() + interval '2 hours',
+values ('dddd7726-0000-0000-0000-000000000007', 'cccc7726-0000-0000-0000-000000000003', now() + interval '2 hours',
         'aaaa7726-0000-0000-0000-000000000002', 'aaaa7726-0000-0000-0000-000000000001', 2200, 110, 'paid', now()),
-       ('dddd7726-0000-0000-0000-000000000008', 'cccc7726-0000-0000-0000-000000000001', now() - interval '1 hour',
+       ('dddd7726-0000-0000-0000-000000000008', 'cccc7726-0000-0000-0000-000000000004', now() - interval '1 hour',
         'aaaa7726-0000-0000-0000-000000000002', 'aaaa7726-0000-0000-0000-000000000001', 2200, 110, 'paid', now());
 insert into event_attendees (event_id, user_id, status, instance_start, order_id, joined_at)
 values
-  ('cccc7726-0000-0000-0000-000000000001', 'aaaa7726-0000-0000-0000-000000000002', 'going',
+  ('cccc7726-0000-0000-0000-000000000003', 'aaaa7726-0000-0000-0000-000000000002', 'going',
    now() + interval '2 hours', 'dddd7726-0000-0000-0000-000000000007', now()),
-  ('cccc7726-0000-0000-0000-000000000001', 'aaaa7726-0000-0000-0000-000000000004', 'waitlisted',
+  ('cccc7726-0000-0000-0000-000000000003', 'aaaa7726-0000-0000-0000-000000000004', 'waitlisted',
    now() + interval '2 hours', null, now()),
-  ('cccc7726-0000-0000-0000-000000000001', 'aaaa7726-0000-0000-0000-000000000002', 'going',
+  ('cccc7726-0000-0000-0000-000000000004', 'aaaa7726-0000-0000-0000-000000000002', 'going',
    now() - interval '1 hour', 'dddd7726-0000-0000-0000-000000000008', now()),
-  ('cccc7726-0000-0000-0000-000000000001', 'aaaa7726-0000-0000-0000-000000000004', 'waitlisted',
+  ('cccc7726-0000-0000-0000-000000000004', 'aaaa7726-0000-0000-0000-000000000004', 'waitlisted',
    now() - interval '1 hour', null, now());
 delete from event_attendees
 where user_id = 'aaaa7726-0000-0000-0000-000000000002'

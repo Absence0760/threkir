@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import {
 		fetchRouteConditionsWithError,
@@ -64,7 +65,7 @@
 			}
 			conditions = res.conditions;
 		} catch (e) {
-			loadError = e instanceof Error ? e.message : String(e);
+			loadError = thrownMessage(e);
 		} finally {
 			loading = false;
 		}
@@ -131,7 +132,7 @@
 			composerOpen = false;
 			showToast(m('routeConditions.reported'), 'success');
 		} catch (e: any) {
-			showToast(m('routeConditions.reportFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(m('routeConditions.reportFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			submitting = false;
 		}
@@ -151,7 +152,7 @@
 			},
 			onCommitError: (e) =>
 				showToast(
-					m('routeConditions.deleteFailed', { error: e instanceof Error ? e.message : String(e) }),
+					m('routeConditions.deleteFailed', { error: thrownMessage(e) }),
 					'error',
 				),
 		});
@@ -216,12 +217,12 @@
 
 	{#if loading}
 		<p class="muted">{m('routeConditions.loading')}</p>
-	{:else if loadError}
+	{:else if loadError !== null}
 		<div class="error-banner" role="alert">
 			<span class="material-symbols" aria-hidden="true">error</span>
 			<div>
 				<strong>{m('routesPage.loadError')}</strong>
-				<span class="error-detail">{loadError}</span>
+				{#if loadError}<span class="error-detail">{loadError}</span>{/if}
 			</div>
 			<button class="btn btn-outline btn-sm" onclick={load}>{m('routesPage.retry')}</button>
 		</div>

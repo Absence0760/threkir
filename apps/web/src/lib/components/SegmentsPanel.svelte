@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount, untrack } from 'svelte';
 	import Avatar from '#lib/components/Avatar.svelte';
 	import { formatDuration } from '#lib/format/time.ts';
@@ -91,7 +92,7 @@
 			}
 			segments = res.segments;
 		} catch (e) {
-			loadError = e instanceof Error ? e.message : String(e);
+			loadError = thrownMessage(e);
 		} finally {
 			loading = false;
 		}
@@ -135,7 +136,7 @@
 			leaderboards = new Map(leaderboards).set(segmentId, []);
 			leaderboardErrors = new Map(leaderboardErrors).set(
 				segmentId,
-				e instanceof Error ? e.message : String(e),
+				thrownMessage(e),
 			);
 		}
 	}
@@ -181,8 +182,8 @@
 			segments = [...segments, seg].sort((a, b) => a.start_distance_m - b.start_distance_m);
 			showCreate = false;
 			draftName = '';
-		} catch (e: any) {
-			showToast(e?.message ?? t('segments.createFailed'), 'error');
+		} catch (e) {
+			showToast(thrownMessage(e) || t('segments.createFailed'), 'error');
 		} finally {
 			creating = false;
 		}
@@ -199,8 +200,8 @@
 				Array.from(leaderboards.entries()).filter(([id]) => id !== target.id),
 			);
 			if (openSegmentId === target.id) openSegmentId = null;
-		} catch (e: any) {
-			showToast(e?.message ?? t('segments.deleteFailed'), 'error');
+		} catch (e) {
+			showToast(thrownMessage(e) || t('segments.deleteFailed'), 'error');
 		}
 	}
 
@@ -276,12 +277,12 @@
 
 	{#if loading}
 		<p class="muted">{t('segments.loadingSegments')}</p>
-	{:else if loadError}
+	{:else if loadError !== null}
 		<div class="error-banner" role="alert">
 			<span class="material-symbols" aria-hidden="true">error</span>
 			<div>
 				<strong>{t('routesPage.loadError')}</strong>
-				<span class="error-detail">{loadError}</span>
+				{#if loadError}<span class="error-detail">{loadError}</span>{/if}
 			</div>
 			<button class="btn btn-outline btn-sm" onclick={load}>{t('routesPage.retry')}</button>
 		</div>

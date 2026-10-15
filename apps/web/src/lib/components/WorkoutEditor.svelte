@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
+	import { appErrorMessage } from '#lib/core/supabase_error.ts';
 	import { markWorkoutCompleted, markWorkoutSkipped, updatePlanWorkout } from '#lib/core/data.ts';
 	import {
 		isWorkoutCompleted,
@@ -224,7 +225,7 @@
 			dirty.rebaseline();
 			onSaved();
 		} catch (e: unknown) {
-			error = e instanceof Error ? e.message : t('workoutEditor.updateFailed');
+			error = appErrorMessage(e) ?? t('workoutEditor.updateFailed');
 		} finally {
 			busy = false;
 		}
@@ -240,7 +241,7 @@
 			dirty.rebaseline();
 			onSaved();
 		} catch (e: unknown) {
-			error = e instanceof Error ? e.message : t('workoutEditor.updateFailed');
+			error = appErrorMessage(e) ?? t('workoutEditor.updateFailed');
 		} finally {
 			busy = false;
 		}
@@ -323,7 +324,7 @@
 			dirty.rebaseline();
 			onSaved();
 		} catch (e: unknown) {
-			error = e instanceof Error ? e.message : t('workoutEditor.saveFailed');
+			error = appErrorMessage(e) ?? t('workoutEditor.saveFailed');
 		} finally {
 			busy = false;
 		}

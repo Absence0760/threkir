@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { supabase } from '#lib/core/supabase.ts';
@@ -104,7 +105,7 @@
 			});
 			recompute();
 		} catch (e) {
-			loadError = (e as Error).message;
+			loadError = thrownMessage(e);
 		}
 		loading = false;
 	}
@@ -127,7 +128,7 @@
 		try {
 			await updateUniversal(auth.user!.id, changes);
 		} catch (e) {
-			saveError = (e as Error).message;
+			saveError = thrownMessage(e);
 		}
 	}
 
@@ -159,12 +160,12 @@
 			<div class="skel skel-block"></div>
 		</div>
 		<p class="sr-only" role="status">{m('shell.loading')}</p>
-	{:else if loadError}
+	{:else if loadError !== null}
 		<div class="load-error-banner" role="alert" data-testid="targets-load-error">
 			<span class="material-symbols" aria-hidden="true">error</span>
 			<div>
 				<strong>{m('nutrition.loadFailed')}</strong>
-				<span class="load-error-detail">{loadError}</span>
+				{#if loadError}<span class="load-error-detail">{loadError}</span>{/if}
 			</div>
 			<button class="btn btn-outline" type="button" onclick={() => void load()}>{m('nutrition.retry')}</button>
 		</div>
@@ -294,7 +295,7 @@
 				</div>
 			</div>
 			<p class="section-hint">{m('nutrition.targets.defaultsHint')}</p>
-			{#if saveError}
+			{#if saveError !== null}
 				<p class="save-error" role="alert" data-testid="targets-save-error">
 					<span class="material-symbols hint-icon" aria-hidden="true">error</span>
 					{m('nutrition.targets.saveFailed')}

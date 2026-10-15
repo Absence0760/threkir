@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount, tick } from 'svelte';
 	import { formatDistance } from '#lib/core/mock-data.ts';
 	import { formatDate, formatDuration } from '#lib/format/time.ts';
@@ -159,7 +160,7 @@
 				}
 			})
 			.catch((e) => {
-				if (gen === fetchGen) loadError = (e as Error)?.message ?? 'Failed to load history';
+				if (gen === fetchGen) loadError = thrownMessage(e) || 'Failed to load history';
 			})
 			.finally(() => {
 				if (gen === fetchGen) activitiesLoaded = true;

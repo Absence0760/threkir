@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import Modal from '#lib/components/Modal.svelte';
 	import { addGearToRuns } from '#lib/core/data.ts';
 	import { formatDate } from '#lib/format/time.ts';
@@ -68,7 +69,7 @@
 			saving = false;
 			showToast(
 				m('settingsGear.backfillAttachFailed', {
-					error: e instanceof Error ? e.message : String(e),
+					error: thrownMessage(e),
 				}),
 				'error',
 			);

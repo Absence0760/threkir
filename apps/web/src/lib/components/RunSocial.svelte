@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import Avatar from '#lib/components/Avatar.svelte';
 	import { formatRelativeTime } from '#lib/format/time.ts';
@@ -53,7 +54,7 @@
 			kudos = k.kudos;
 			comments = c.comments;
 		} catch (e) {
-			loadError = e instanceof Error ? e.message : String(e);
+			loadError = thrownMessage(e);
 		} finally {
 			loading = false;
 		}
@@ -79,7 +80,7 @@
 				};
 			}
 		} catch (e) {
-			showToast(t('runSocial.kudosUpdateFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(t('runSocial.kudosUpdateFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			kudosBusy = false;
 		}
@@ -94,7 +95,7 @@
 			draftBody = '';
 			await load();
 		} catch (e) {
-			showToast(t('runSocial.commentPostFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(t('runSocial.commentPostFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			posting = false;
 		}
@@ -110,7 +111,7 @@
 			replyTo = null;
 			await load();
 		} catch (e) {
-			showToast(t('runSocial.replyPostFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(t('runSocial.replyPostFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			posting = false;
 		}
@@ -136,7 +137,7 @@
 			},
 			onCommitError: (e) =>
 				showToast(
-					t('runSocial.deleteFailed', { error: e instanceof Error ? e.message : String(e) }),
+					t('runSocial.deleteFailed', { error: thrownMessage(e) }),
 					'error',
 				),
 		});
@@ -187,12 +188,12 @@
 	</div>
 
 	{#if !loading}
-		{#if loadError}
+		{#if loadError !== null}
 			<div class="error-banner" role="alert">
 				<span class="material-symbols" aria-hidden="true">error</span>
 				<div>
 					<strong>{t('runs.loadFailed')}</strong>
-					<span class="error-detail">{loadError}</span>
+					{#if loadError}<span class="error-detail">{loadError}</span>{/if}
 				</div>
 				<button class="btn btn-outline btn-sm" onclick={load}>{t('runs.retry')}</button>
 			</div>

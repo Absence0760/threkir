@@ -16,6 +16,7 @@ import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
 import '../lib/parkrun_barcode_cache.dart';
 import '../lib/preferences.dart';
+import '../lib/screens/messages_screen.dart';
 import '../lib/screens/parkrun_barcode_screen.dart';
 import '../lib/screens/profile_screen.dart';
 import '../lib/screens/you_screen.dart';
@@ -157,6 +158,28 @@ void main() {
     // The Preferences sub-screen pushed over You — its own AppBar (with a
     // back button) is up, which a top-level tab screen never shows.
     expect(find.byType(BackButton), findsOneWidget);
+  });
+
+  testWidgets('the Messages entry opens the inbox, and only when signed in',
+      (tester) async {
+    final api = _SwitchableApi();
+    await pump(tester, api: api);
+    final tile = find.byKey(const ValueKey('you-messages'));
+    expect(tile, findsOneWidget);
+
+    await tester.tap(tile);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byType(MessagesScreen), findsOneWidget);
+
+    Navigator.of(tester.element(find.byType(MessagesScreen))).pop();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    api.uid = null;
+    api.emit();
+    await tester.pump();
+    await tester.pump();
+    expect(tile, findsNothing);
   });
 
   testWidgets('no parkrun barcode shortcut until this device holds a number',

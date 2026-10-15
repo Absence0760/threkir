@@ -46,6 +46,8 @@ type ChallengeRow = Database['public']['Tables']['challenges']['Row'];
 type ChallengeParticipantRow = Database['public']['Tables']['challenge_participants']['Row'];
 type ChallengeBadgeRow = Database['public']['Tables']['challenge_badges']['Row'];
 type ExerciseRow = Database['public']['Tables']['exercises']['Row'];
+type NutritionPlanRow = Database['public']['Tables']['nutrition_plans']['Row'];
+type NutritionPlanAssignmentRow = Database['public']['Tables']['nutrition_plan_assignments']['Row'];
 
 // Coach-athlete link lifecycle (persona #46). Enforced by the
 // `coach_athletes_status_check` CHECK in 20261102_001_coach_athletes.sql;
@@ -496,6 +498,59 @@ export type Exercise = Omit<ExerciseRow, 'category' | 'modality'> & {
 	category: ExerciseCategory;
 	modality: GymExerciseModality;
 };
+// Nutrition programming P1 (nutrition_programming.md, migration
+// 20270815000001). Three narrow-union ↔ CHECK pairs; keep each in lockstep
+// with the migration (check_constraint_unions.mjs PAIRS).
+// nutrition_plans.goal_phase — maps onto WeightGoal (goalPhaseToWeightGoal).
+export type NutritionGoalPhase = 'cut' | 'maintain' | 'build' | 'recomp';
+// nutrition_plans.progression — every P1 plan stays 'none'; P2 wires the engine.
+export type NutritionProgression = 'none' | 'weight_trend' | 'linear_deficit' | 'reverse_diet';
+// nutrition_plan_assignments.status
+export type NutritionAssignmentStatus = 'active' | 'ended';
+export type NutritionPlan = Omit<NutritionPlanRow, 'goal_phase' | 'progression' | 'progression_params'> & {
+	goal_phase: NutritionGoalPhase;
+	progression: NutritionProgression;
+	progression_params: JsonObject;
+};
+export type NutritionPlanAssignment = Omit<NutritionPlanAssignmentRow, 'status'> & {
+	status: NutritionAssignmentStatus;
+};
+
+/// Defensive narrows on read. An unknown phase reads as `'maintain'`, the
+/// phase that moves no target. An unknown scheme reads as `'none'`, so a
+/// build that cannot read a progression never suggests from it. An unknown
+/// status reads as `'ended'`: an ended row governs only an explicit date
+/// range, so a value this build does not understand can never leave a plan
+/// governing every future day.
+export function parseNutritionGoalPhase(raw: string | null | undefined): NutritionGoalPhase {
+	switch (raw) {
+		case 'cut':
+		case 'maintain':
+		case 'build':
+		case 'recomp':
+			return raw;
+		default:
+			return 'maintain';
+	}
+}
+
+export function parseNutritionProgression(raw: string | null | undefined): NutritionProgression {
+	switch (raw) {
+		case 'none':
+		case 'weight_trend':
+		case 'linear_deficit':
+		case 'reverse_diet':
+			return raw;
+		default:
+			return 'none';
+	}
+}
+
+export function parseNutritionAssignmentStatus(
+	raw: string | null | undefined,
+): NutritionAssignmentStatus {
+	return raw === 'active' ? 'active' : 'ended';
+}
 // Polymorphic report target. Kept in lockstep with the `reports.target_kind`
 // CHECK constraint (migrations 20260908_001 / 20261117_001 / 20270115_001 /
 // 20270402_001) via apps/web/scripts/check_constraint_unions.mjs.

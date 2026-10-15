@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { parseRouteFile, type ImportedRoute } from '#lib/integrations/import.ts';
+	import { appErrorMessage } from '#lib/core/supabase_error.ts';
 	import { saveRoute } from '#lib/core/data.ts';
 	import { formatDistance } from '#lib/core/mock-data.ts';
 	import { goto } from '$app/navigation';
@@ -59,7 +60,7 @@
 			names = routes.map((r) => r.name);
 			selected = routes.map(() => true);
 		} catch (err) {
-			error = err instanceof Error ? err.message : m('importRoute.failedToParse');
+			error = appErrorMessage(err) ?? m('importRoute.failedToParse');
 		} finally {
 			parsing = false;
 		}
@@ -102,7 +103,7 @@
 				onclose();
 			}
 		} catch (err) {
-			showToast(err instanceof Error ? err.message : m('importRoute.failedToSave'), 'error');
+			showToast(appErrorMessage(err) ?? m('importRoute.failedToSave'), 'error');
 		} finally {
 			saving = false;
 		}

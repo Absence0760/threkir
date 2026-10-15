@@ -5,10 +5,15 @@ import {
 	phaseAt,
 	phaseTargetPaceSecPerKm,
 	goalPaceSecPerKm,
+	gradePhases,
+	parsePacingStrategy,
+	PHASE_BAND_PCT,
+	type PacingStrategy,
 	type RacePhase,
 	type RacePhaseIntent,
 	type RacePhasePreset
 } from './race_phases';
+import type { TrackPoint } from '../types';
 
 const TEN_MILE_FRACTION = 16_093.44 / 42_195;
 
@@ -118,4 +123,122 @@ test('preset and intent wire names are stable', () => {
 	const intents: RacePhaseIntent[] = ['hold_back', 'settle', 'race', 'even'];
 	assert.deepEqual(presets, ['ten_ten_ten', 'negative_split', 'even']);
 	assert.deepEqual(intents, ['hold_back', 'settle', 'race', 'even']);
+});
+
+const M_PER_DEG_LAT = 111_320;
+
+/// A meridian-aligned track of `legs`, each `m` metres at `pace` s/km in 50 m
+/// steps; a `pauseS` leg holds position for that many seconds.
+function trackOf(legs: ({ m: number; pace: number } | { pauseS: number })[]): TrackPoint[] {
+	let cumM = 0;
+	let tMs = Date.UTC(2026, 3, 12, 7, 0, 0);
+	const at = () => ({ lat: 40 + cumM / M_PER_DEG_LAT, lng: -105, ts: new Date(tMs).toISOString() });
+	const out: TrackPoint[] = [at()];
+	for (const leg of legs) {
+		if ('pauseS' in leg) {
+			tMs += leg.pauseS * 1000;
+			out.push(at());
+			continue;
+		}
+		const n = Math.max(1, Math.round(leg.m / 50));
+		for (let i = 0; i < n; i++) {
+			cumM += leg.m / n;
+			tMs += Math.round((leg.m / n) * leg.pace);
+			out.push(at());
+		}
+	}
+	return out;
+}
+
+const HALF: PacingStrategy = { preset: 'negative_split', distanceM: 10_000, goalTimeS: 3_000 };
+
+test('parsePacingStrategy reads the writer shape and drops an absent goal to null', () => {
+	assert.deepEqual(parsePacingStrategy({ preset: 'ten_ten_ten', distance_m: 42_195, goal_time_s: 12_600 }), {
+		preset: 'ten_ten_ten',
+		distanceM: 42_195,
+		goalTimeS: 12_600,
+	});
+	assert.deepEqual(parsePacingStrategy({ preset: 'even', distance_m: 5_000 }), {
+		preset: 'even',
+		distanceM: 5_000,
+		goalTimeS: null,
+	});
+});
+
+test('parsePacingStrategy refuses an unknown preset, a bad distance, and a non-object', () => {
+	assert.equal(parsePacingStrategy({ preset: 'pyramid', distance_m: 10_000 }), null);
+	assert.equal(parsePacingStrategy({ preset: 'even', distance_m: 0 }), null);
+	assert.equal(parsePacingStrategy({ preset: 'even', distance_m: '5000' }), null);
+	assert.equal(parsePacingStrategy({ preset: 'even' }), null);
+	assert.equal(parsePacingStrategy('even'), null);
+	assert.equal(parsePacingStrategy(null), null);
+	assert.equal(parsePacingStrategy([]), null);
+});
+
+test('gradePhases grades phases on moving time, so a stop does not read as a slow phase', () => {
+	const r = gradePhases(
+		trackOf([{ m: 2_500, pace: 306 }, { pauseS: 240 }, { m: 2_500, pace: 306 }, { m: 5_000, pace: 294 }]),
+		HALF
+	);
+	assert.deepEqual(
+		r.phases.map((p) => p.grade),
+		['on_target', 'on_target']
+	);
+	assert.equal(r.verdict, 'on_plan');
+	assert.ok(Math.abs(r.phases[0].actualPaceSecPerKm! - 306) <= 1);
+});
+
+test('gradePhases without a track keeps the goal targets and grades nothing', () => {
+	const r = gradePhases(null, HALF);
+	assert.equal(r.verdict, 'ungraded');
+	assert.equal(r.ungradedReason, 'no_track');
+	assert.equal(r.completed, false);
+	assert.deepEqual(
+		r.phases.map((p) => [p.coverage, p.targetPaceSecPerKm, p.actualPaceSecPerKm]),
+		[
+			['not_reached', 306, null],
+			['not_reached', 294, null],
+		]
+	);
+});
+
+test('gradePhases calls a fast first phase followed by a slow finish going out too fast', () => {
+	const r = gradePhases(trackOf([{ m: 5_000, pace: 290 }, { m: 5_000, pace: 310 }]), HALF);
+	assert.deepEqual(
+		r.phases.map((p) => p.grade),
+		['fast', 'slow']
+	);
+	assert.equal(r.verdict, 'went_out_too_fast');
+	assert.ok(r.phases[0].gapSecPerKm! < 0 && r.phases[1].gapSecPerKm! > 0);
+});
+
+test('gradePhases on a run well short of the plan marks it incomplete and leaves later phases unreached', () => {
+	const r = gradePhases(trackOf([{ m: 3_000, pace: 306 }]), HALF);
+	assert.equal(r.completed, false);
+	assert.deepEqual(
+		r.phases.map((p) => p.coverage),
+		['partial', 'not_reached']
+	);
+	assert.equal(r.phases[1].actualPaceSecPerKm, null);
+	assert.equal(r.verdict, 'on_plan');
+});
+
+test('gradePhases needs a goal time to grade a single-phase even plan', () => {
+	const r = gradePhases(trackOf([{ m: 5_000, pace: 300 }]), {
+		preset: 'even',
+		distanceM: 5_000,
+		goalTimeS: null,
+	});
+	assert.equal(r.basis, 'average');
+	assert.equal(r.verdict, 'ungraded');
+	assert.equal(r.ungradedReason, 'no_goal');
+	assert.equal(r.phases[0].targetPaceSecPerKm, null);
+});
+
+test('gradePhases band: a 1.4% miss is on target, a 2.7% miss is not', () => {
+	assert.equal(PHASE_BAND_PCT, 0.015);
+	const even: PacingStrategy = { preset: 'even', distanceM: 5_000, goalTimeS: 1_500 };
+	assert.equal(gradePhases(trackOf([{ m: 5_000, pace: 304 }]), even).phases[0].grade, 'on_target');
+	assert.equal(gradePhases(trackOf([{ m: 5_000, pace: 308 }]), even).phases[0].grade, 'slow');
+	assert.equal(gradePhases(trackOf([{ m: 5_000, pace: 292 }]), even).phases[0].grade, 'fast');
 });

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import Avatar from '#lib/components/Avatar.svelte';
 	import { hashHue } from '#lib/format/avatar.ts';
@@ -85,7 +86,7 @@
 			// the user looking at an empty results list with no
 			// feedback. Surface the failure so they know to retry.
 			if (gen === searchGen) {
-				showToast(m('socialPeople.searchFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+				showToast(m('socialPeople.searchFailed', { error: thrownMessage(e) }), 'error');
 			}
 		} finally {
 			if (gen === searchGen) searching = false;
@@ -114,7 +115,7 @@
 			else await followUser(target.id);
 		} catch (err) {
 			flipFollow(target.id, wasFollowing);
-			showToast(m('socialPeople.followFailed', { error: err instanceof Error ? err.message : String(err) }), 'error');
+			showToast(m('socialPeople.followFailed', { error: thrownMessage(err) }), 'error');
 		} finally {
 			const next = new Set(rowBusy);
 			next.delete(target.id);

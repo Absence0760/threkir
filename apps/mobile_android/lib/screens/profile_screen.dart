@@ -22,6 +22,7 @@ import '../widgets/top_banner.dart';
 import '../widgets/undo_bar.dart';
 import 'club_detail_screen.dart';
 import 'event_detail_screen.dart';
+import 'message_thread_screen.dart';
 import 'public_run_screen.dart';
 
 /// Page size for the followers / following tabs. Same value as the
@@ -719,6 +720,23 @@ class _ProfileScreenState extends State<ProfileScreen>
                 s.viewerFollows ? l10n.profileFollowing : l10n.profileFollow,
               ),
             ),
+          // Same gate as web's `/u/[id]`: another runner's profile, signed in.
+          // Whether the send is admitted (a follow edge either way, no block
+          // either way) is the server's answer, not a reason to hide the
+          // button — a client cannot see a block placed on it.
+          if (!_isSelf && widget.api.userId != null) ...[
+            const SizedBox(width: 8),
+            IconButton.outlined(
+              key: const ValueKey('profile-message'),
+              tooltip: l10n.profileMessage,
+              icon: const Icon(Icons.chat_bubble_outline),
+              onPressed: () => _openConversation(
+                s.id,
+                name: s.displayName,
+                avatarUrl: s.avatarUrl,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -1153,11 +1171,33 @@ class _ProfileScreenState extends State<ProfileScreen>
     _dismissNotifs(ids, AppLocalizations.of(context).undoDismissed(ids.length));
   }
 
+  Future<void> _openConversation(
+    String partnerId, {
+    String? name,
+    String? avatarUrl,
+  }) =>
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => MessageThreadScreen(
+            api: widget.api,
+            partnerId: partnerId,
+            partnerName: name,
+            partnerAvatarUrl: avatarUrl,
+          ),
+        ),
+      );
+
   Future<void> _onNotifTap(NotificationView item) async {
     await _markNotifRead(item);
     if (!mounted) return;
     final kind = item.row.kind;
-    if ((kind == 'event_rsvp' || kind == 'event_waitlist_slot') &&
+    if (kind == 'message' && item.row.actorId != null) {
+      await _openConversation(
+        item.row.actorId!,
+        name: item.actor?.displayName,
+        avatarUrl: item.actor?.avatarUrl,
+      );
+    } else if ((kind == 'event_rsvp' || kind == 'event_waitlist_slot') &&
         item.row.eventId != null &&
         item.eventClubSlug != null) {
       await Navigator.of(context).push(

@@ -20,10 +20,10 @@
 		"rclt"
 	],
 	"subset": {
-		"bytes": 71240,
-		"sha256": "12fd8dab05c49bb8aeee4e39aed417b44bf03b0e6d06b520185c656e33a99890",
-		"glyphs": 315,
-		"ligatures": 424
+		"bytes": 71528,
+		"sha256": "0722efdc2ec332c3215ccbb7bca383e337e2be5124f4eb8adc435a420c214ed7",
+		"glyphs": 317,
+		"ligatures": 426
 	},
 	"icons": [
 		"10k",
@@ -96,6 +96,7 @@
 		"create",
 		"credit_card_off",
 		"csv",
+		"cut",
 		"cycle",
 		"dashboard",
 		"database",
@@ -103,6 +104,7 @@
 		"delete",
 		"description",
 		"desktop_windows",
+		"details",
 		"devices",
 		"devices_other",
 		"directions",

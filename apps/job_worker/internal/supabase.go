@@ -2487,6 +2487,23 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 			filter: uidEq,
 			sel:    "*,ingredients:recipe_ingredients(*)",
 		},
+		// nutrition_plans — the subject's authored meal plans (nutrition
+		// programming P1, migration 20270815000001). Keyed by author_id (NOT
+		// user_id), like gym_routines. Keep in lockstep with backup_spec.ts.
+		{
+			name: "nutrition_plans.json", table: schema.TableNutritionPlans,
+			filter: "author_id=eq." + uid,
+			sel:    "*",
+		},
+		// nutrition_plan_assignments — which plan governed the subject's diary
+		// days, keyed by client_id. In P1 every row is a self-assignment, so
+		// this leg is the whole table for the subject; the P3 nutritionist
+		// adds an assigner leg.
+		{
+			name: "nutrition_plan_assignments.json", table: schema.TableNutritionAssignments,
+			filter: "client_id=eq." + uid,
+			sel:    "*",
+		},
 		// body_metrics — Phase 4 nutrition weight time-series (migration
 		// 20261216_001). GDPR special-category health data; owner-scoped and
 		// squarely within the Art 20 right to receive. height_cm lives on

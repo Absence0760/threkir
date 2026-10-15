@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { parseImportCompleteness } from '#lib/integrations/import_completeness.ts';
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
@@ -235,7 +236,7 @@
 			);
 			importing = null;
 		} catch (e) {
-			const message = (e as Error).message ?? '';
+			const message = thrownMessage(e);
 			if (message === RACE_IMPORT_UNAVAILABLE[importLeg]) {
 				// The leg went unavailable between the probe and the call; correct
 				// the modal as well as saying so, or it keeps offering the form.

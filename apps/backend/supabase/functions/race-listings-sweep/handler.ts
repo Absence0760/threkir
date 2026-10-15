@@ -21,7 +21,8 @@ import type { DbClient } from '../_shared/database.ts';
 import { discardBody } from '../_shared/body_limit.ts';
 import { checkRateLimit, ipBucketKey } from '../_shared/rate_limit.ts';
 import { cronGate } from '../events-refund-sweep/lib.ts';
-import { providerRacesUrl, sweepWindowAt, UPSTREAM_TIMEOUT_MS } from '../race-listings-sync/lib.ts';
+import { isUpstreamTimeout, UPSTREAM_TIMEOUT_MS } from '../_shared/upstream_deadline.ts';
+import { providerRacesUrl, sweepWindowAt } from '../race-listings-sync/lib.ts';
 import { syncProviderPayload } from '../race-listings-sync/write.ts';
 
 export interface RaceListingsSweepDeps {
@@ -31,11 +32,6 @@ export interface RaceListingsSweepDeps {
   now: () => number;
   /// Overrides `UPSTREAM_TIMEOUT_MS`, so a test can watch the bound fire.
   upstreamTimeoutMs?: number;
-}
-
-/// Whether a rejected fetch or body read is the request bound firing.
-function timedOut(err: unknown): boolean {
-  return err instanceof DOMException && err.name === 'TimeoutError';
 }
 
 export function makeRaceListingsSweepHandler(
@@ -81,7 +77,7 @@ export function makeRaceListingsSweepHandler(
         { headers: { 'User-Agent': deps.getEnv('RACE_IMPORT_USER_AGENT') || 'RunApp/1.0' }, signal },
       );
     } catch (err) {
-      return timedOut(err)
+      return isUpstreamTimeout(err)
         ? Response.json({ error: 'runsignup upstream timeout', window }, { status: 504 })
         : Response.json({ error: 'runsignup upstream unreachable', window }, { status: 502 });
     }
@@ -93,7 +89,7 @@ export function makeRaceListingsSweepHandler(
     try {
       payload = await upstream.json();
     } catch (err) {
-      return timedOut(err)
+      return isUpstreamTimeout(err)
         ? Response.json({ error: 'runsignup upstream timeout', window }, { status: 504 })
         : Response.json({ error: 'runsignup upstream not JSON', window }, { status: 502 });
     }

@@ -378,75 +378,134 @@ void main() {
   });
 
   group('expandInstances — timezoned (viewer-independent instance_start)', () {
-    test('timezoned weekly anchors instance_start to UTC wall-clock', () {
-      // The capacity key + race-arm key for a recurring instance must be the
-      // same instant for every spectator. With a timezone present the
-      // expansion reads + stamps the fields in UTC, so the produced instants
-      // are fixed in absolute time and don't depend on the device's zone.
-      // Asserting the exact UTC ISO instants pins that under any test TZ.
+    List<String> isoList(EventRecurrence e, String from, String to) =>
+        expandInstances(e, DateTime.parse(from), DateTime.parse(to))
+            .map((d) => d.toUtc().toIso8601String())
+            .toList();
+
+    test('a timezoned weekly series keeps its local time of day across a DST change', () {
+      // The capacity key + race-arm key of an occurrence must be one instant
+      // for every viewer, and it must be the organiser's wall-clock: 07:00 in
+      // New York on both sides of the 1 November fall-back, so the UTC hour
+      // moves.
       final e = EventRecurrence(
-        startsAt: DateTime.utc(2026, 4, 7, 13, 0, 0), // Tue 13:00 UTC
+        startsAt: DateTime.utc(2026, 10, 21, 11), // Wed 07:00 EDT
         freq: RecurrenceFreq.weekly,
         timezone: 'America/New_York',
       );
-      final out = expandInstances(
-        e,
-        DateTime.utc(2026, 4, 1),
-        DateTime.utc(2026, 4, 30, 23, 59, 59),
-      );
-      final iso = out.map((d) => d.toUtc().toIso8601String()).toList();
-      expect(iso, [
-        '2026-04-07T13:00:00.000Z',
-        '2026-04-14T13:00:00.000Z',
-        '2026-04-21T13:00:00.000Z',
-        '2026-04-28T13:00:00.000Z',
+      expect(isoList(e, '2026-10-15T00:00:00Z', '2026-11-12T00:00:00Z'), [
+        '2026-10-21T11:00:00.000Z',
+        '2026-10-28T11:00:00.000Z',
+        '2026-11-04T12:00:00.000Z',
+        '2026-11-11T12:00:00.000Z',
       ]);
     });
 
     test('two cross-TZ viewers compute the SAME instance_start', () {
-      // The bug: the .toLocal() + local-field stamp built instants in the
-      // VIEWER's zone, so spectators in different zones RSVP'd against
-      // different capacity keys. For a timezoned event the expansion reads no
-      // ambient zone other than UTC, invariant across viewers. Re-running the
-      // same input twice (standing in for two viewers) yields identical
-      // instants; the absolute-time assertion guards the cross-device case
-      // (the suite is also run under multiple TZ values).
+      // Re-running the same input stands in for two viewers; the absolute-time
+      // assertion is what guards the cross-device case (the suite runs under
+      // several TZ values, and the shared vectors replay every viewer zone).
       final e = EventRecurrence(
-        startsAt: DateTime.utc(2026, 5, 2, 23, 30, 0), // Sat 23:30 UTC — a
-        freq: RecurrenceFreq.biweekly, // viewer-local stamp would roll the day.
+        startsAt: DateTime.utc(2026, 5, 2, 8), // Sat 09:00 BST
+        freq: RecurrenceFreq.biweekly,
         byday: const [Weekday.sa],
         timezone: 'Europe/London',
       );
-      final from = DateTime.utc(2026, 5, 1);
-      final to = DateTime.utc(2026, 5, 31, 23, 59, 59);
-      final viewerA = expandInstances(e, from, to).map((d) => d.toUtc().toIso8601String()).toList();
-      final viewerB = expandInstances(e, from, to).map((d) => d.toUtc().toIso8601String()).toList();
+      final viewerA = isoList(e, '2026-05-01T00:00:00Z', '2026-05-31T23:59:59Z');
+      final viewerB = isoList(e, '2026-05-01T00:00:00Z', '2026-05-31T23:59:59Z');
       expect(viewerA, viewerB);
       expect(viewerA, [
-        '2026-05-02T23:30:00.000Z',
-        '2026-05-16T23:30:00.000Z',
-        '2026-05-30T23:30:00.000Z',
+        '2026-05-02T08:00:00.000Z',
+        '2026-05-16T08:00:00.000Z',
+        '2026-05-30T08:00:00.000Z',
       ]);
     });
 
-    test('timezoned monthly anchors day-of-month + time in UTC', () {
+    test('a timezoned monthly series keeps its local day-of-month and time', () {
+      // 22:00 UTC on 31 January is 09:00 on 1 February in Sydney, so the
+      // series is "the 1st at 09:00": the UTC hour moves when Sydney leaves
+      // DST on 5 April.
       final e = EventRecurrence(
-        startsAt: DateTime.utc(2026, 1, 31, 22, 0, 0),
+        startsAt: DateTime.utc(2026, 1, 31, 22),
         freq: RecurrenceFreq.monthly,
         timezone: 'Australia/Sydney',
       );
-      final out = expandInstances(
-        e,
-        DateTime.utc(2026, 1, 1),
-        DateTime.utc(2026, 4, 30, 23, 59, 59),
-      );
-      final iso = out.map((d) => d.toUtc().toIso8601String()).toList();
-      // Jan-31, Feb-28 (clamp, 2026 non-leap), Mar-31, Apr-30 — all 22:00 UTC.
-      expect(iso, [
+      expect(isoList(e, '2026-01-01T00:00:00Z', '2026-04-30T23:59:59Z'), [
         '2026-01-31T22:00:00.000Z',
         '2026-02-28T22:00:00.000Z',
         '2026-03-31T22:00:00.000Z',
-        '2026-04-30T22:00:00.000Z',
+        '2026-04-30T23:00:00.000Z',
+      ]);
+    });
+
+    test('a weekday chip is a local weekday, so an evening series west of UTC keeps its day', () {
+      // Wednesday 21:30 in New York is Thursday in UTC. Read on the UTC clock
+      // the WE chip moved the series to Tuesday evenings and dropped its first
+      // night.
+      final e = EventRecurrence(
+        startsAt: DateTime.utc(2026, 10, 22, 1, 30),
+        freq: RecurrenceFreq.weekly,
+        byday: const [Weekday.we],
+        timezone: 'America/New_York',
+      );
+      expect(isoList(e, '2026-10-15T00:00:00Z', '2026-11-13T00:00:00Z'), [
+        '2026-10-22T01:30:00.000Z',
+        '2026-10-29T01:30:00.000Z',
+        '2026-11-05T02:30:00.000Z',
+        '2026-11-12T02:30:00.000Z',
+      ]);
+    });
+
+    test('a wall-clock inside the spring-forward gap moves forward by the gap', () {
+      // 02:30 does not exist in New York on 14 March 2027; it becomes 03:30 EDT.
+      final e = EventRecurrence(
+        startsAt: DateTime.utc(2027, 3, 7, 7, 30), // Sun 02:30 EST
+        freq: RecurrenceFreq.weekly,
+        timezone: 'America/New_York',
+      );
+      expect(isoList(e, '2027-03-01T00:00:00Z', '2027-03-22T00:00:00Z'), [
+        '2027-03-07T07:30:00.000Z',
+        '2027-03-14T07:30:00.000Z',
+        '2027-03-21T06:30:00.000Z',
+      ]);
+    });
+
+    test('a wall-clock inside the fall-back overlap takes the earlier instant', () {
+      // 01:30 happens twice in New York on 1 November 2026; the occurrence is
+      // the first, 01:30 EDT, as RFC 5545 resolves it.
+      final e = EventRecurrence(
+        startsAt: DateTime.utc(2026, 10, 25, 5, 30), // Sun 01:30 EDT
+        freq: RecurrenceFreq.weekly,
+        timezone: 'America/New_York',
+      );
+      expect(isoList(e, '2026-10-20T00:00:00Z', '2026-11-09T00:00:00Z'), [
+        '2026-10-25T05:30:00.000Z',
+        '2026-11-01T05:30:00.000Z',
+        '2026-11-08T06:30:00.000Z',
+      ]);
+    });
+
+    test('a series started in the second pass of an overlap hour keeps startsAt first', () {
+      final e = EventRecurrence(
+        startsAt: DateTime.utc(2026, 11, 1, 6, 30), // Sun 01:30 EST, the later
+        freq: RecurrenceFreq.weekly,
+        timezone: 'America/New_York',
+      );
+      expect(isoList(e, '2026-10-20T00:00:00Z', '2026-11-09T00:00:00Z'), [
+        '2026-11-01T06:30:00.000Z',
+        '2026-11-08T06:30:00.000Z',
+      ]);
+    });
+
+    test('a zone the runtime cannot resolve expands in UTC', () {
+      final e = EventRecurrence(
+        startsAt: DateTime.utc(2026, 4, 7, 13),
+        freq: RecurrenceFreq.weekly,
+        timezone: 'Not/AZone',
+      );
+      expect(isoList(e, '2026-04-01T00:00:00Z', '2026-04-15T00:00:00Z'), [
+        '2026-04-07T13:00:00.000Z',
+        '2026-04-14T13:00:00.000Z',
       ]);
     });
 
@@ -472,58 +531,50 @@ void main() {
   });
 
   group('calendar-day stepping (DST parity with web)', () {
-    test('the instance walk never steps by an absolute Duration', () {
-      // Regression guard for the biweekly-across-DST divergence. Web steps its
-      // cursor with Date.setDate(), which is CALENDAR-based. Dart's
-      // add/subtract(Duration(days: n)) adds absolute 24-hour blocks, so across
-      // a fall-back a local midnight lands at 23:00 the previous day: the local
-      // calendar day repeats and every later offset shifts by one, flipping
-      // weekIndex % 2. Verified against the real modules under
-      // TZ=America/New_York for a legacy (timezone == null) [SU] event over
-      // 2026-10-25 -> 2026-11-30, where the two disagreed outright:
-      //   weekly   web Oct25,Nov1,8,15,22,29  vs Dart Oct25,Nov1,Nov1,8,15,22,29
-      //   biweekly web Oct25,Nov8,Nov22       vs Dart Oct25,Nov1,Nov15,Nov29
-      // This is a SOURCE guard because CI runs in UTC, where no transition
-      // exists and a behavioural test cannot fail.
-      // Only the two CURSOR sites are guarded. The remaining Duration(days: 1)
-      // uses are one-day slack on absolute-instant comparisons, which is
-      // exactly what Duration is for.
+    String expansionSource() {
       final source = File('lib/recurrence.dart').readAsStringSync();
+      final start = source.indexOf('List<DateTime> expandInstances(');
+      final end = source.indexOf('DateTime? nextInstanceAfter(');
+      return source.substring(start, end);
+    }
+
+    test('the instance walk steps civil day numbers, never an absolute Duration', () {
+      // Regression guard for the biweekly-across-DST divergence. Dart's
+      // add(Duration(days: n)) adds absolute 24-hour blocks, so across a
+      // fall-back a local midnight lands at 23:00 the previous day, the local
+      // calendar day repeats and every later offset shifts by one, flipping
+      // the biweekly week parity. Verified against the old modules under
+      // TZ=America/New_York for a legacy [SU] event over 2026-10-25 ->
+      // 2026-11-30, where web gave Oct25,Nov8,Nov22 and Dart Oct25,Nov1,Nov15,
+      // Nov29. The walk now counts integer days in the event's zone. This is a
+      // SOURCE guard because CI runs in UTC, where no transition exists and a
+      // behavioural test of the legacy path cannot fail.
+      final body = expansionSource();
       expect(
-        source.contains('_addDaysCalendar(startDayOnly, -(start.weekday - 1), useUtc)'),
+        body.contains('for (var day = startDay; day <= lastScanDay; day++)'),
         isTrue,
-        reason: 'The week anchor must be stepped back by calendar days.',
+        reason: 'The cursor must be a civil day number.',
       );
       expect(
-        source.contains('_addDaysCalendar(anchor, dayOffset, useUtc)'),
-        isTrue,
-        reason: 'The day cursor must be stepped forward by calendar days.',
-      );
-      expect(
-        source.contains('anchor.add(Duration(days:') ||
-            source.contains('startDayOnly.subtract(Duration(days:'),
+        body.contains('Duration('),
         isFalse,
         reason: 'Absolute-Duration stepping of the cursor is the DST divergence.',
       );
     });
 
-    test('the monthly branch reads its anchor in the same clock as the weekly branch', () {
-      // startsAt is parsed from a +00:00 string, so it carries a UTC flag.
-      // _addMonthsClamped reads day-of-month / time-of-day fields and rebuilds
-      // them; without .toLocal() on the legacy path it read UTC fields and
-      // built a LOCAL DateTime, shifting every monthly instance by the viewer's
-      // offset. The weekly branch always had the .toLocal().
-      final source = File('lib/recurrence.dart').readAsStringSync();
-      expect(
-        source.contains('useUtc ? e.startsAt.toUtc() : e.startsAt.toLocal()'),
-        isTrue,
-        reason: 'Both branches must resolve the anchor into the clock they then read fields from.',
-      );
-      expect(
-        source.contains('useUtc ? e.startsAt.toUtc() : e.startsAt;'),
-        isFalse,
-        reason: 'A raw (UTC-flagged) startsAt on the legacy path is the monthly-branch bug.',
-      );
+    test('every recurrence field is read through the event zone, never a DateTime getter', () {
+      // startsAt is parsed from a +00:00 string, so it carries a UTC flag;
+      // reading .weekday / .hour / .day off it (or off .toLocal()) picked the
+      // clock by accident, which is how the monthly branch once shifted every
+      // legacy instance by the viewer's offset and how the timezoned branch
+      // read the organiser's chips on the UTC clock. Every field now comes
+      // from the zone's offset.
+      final body = expansionSource();
+      expect(body.contains('zone.offset(startSecond)'), isTrue,
+          reason: 'The start is read in the event zone.');
+      for (final getter in ['.toLocal()', '.toUtc()', 'startsAt.weekday', 'startsAt.hour', 'startsAt.day']) {
+        expect(body.contains(getter), isFalse, reason: '$getter reads a field off an ambient clock.');
+      }
     });
   });
 

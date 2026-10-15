@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { siteOrigin } from '#lib/core/site_url.ts';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
@@ -130,7 +131,7 @@
 		try {
 			w = await fetchGymWorkoutWithSets(id);
 		} catch (e) {
-			loadError = e instanceof Error ? e.message : String(e);
+			loadError = thrownMessage(e);
 			data = null;
 			notFound = false;
 			loading = false;
@@ -442,7 +443,7 @@
 			</div>
 		{/each}
 		<p class="sr-only" role="status">{t('shell.loading')}</p>
-	{:else if loadError}
+	{:else if loadError !== null}
 		<div class="card-elevated empty-card" role="alert" data-testid="gym-detail-load-error">
 			<span class="material-symbols empty-icon" aria-hidden="true">error</span>
 			<p class="empty-text">{t('gym.loadError')}</p>

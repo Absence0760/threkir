@@ -1167,6 +1167,7 @@ class SocialService extends ChangeNotifier {
     DateTime? recurrenceUntil,
     int? recurrenceCount,
     bool isPublic = true,
+    String? timezone,
   }) async {
     final uid = _uid;
     if (uid == null) throw Exception('Not authenticated');
@@ -1192,6 +1193,7 @@ class SocialService extends ChangeNotifier {
       recurrenceUntil: recurrenceUntil,
       recurrenceCount: recurrenceCount,
       isPublic: isPublic,
+      timezone: timezone,
     );
     final inserted = await _c
         .from('events')
@@ -1228,6 +1230,7 @@ class SocialService extends ChangeNotifier {
     DateTime? recurrenceUntil,
     int? recurrenceCount,
     bool isPublic = true,
+    String? timezone,
   }) {
     String? trimToNull(String? s) {
       final t = s?.trim();
@@ -1253,6 +1256,9 @@ class SocialService extends ChangeNotifier {
       // session's zone (UTC), so a 7pm local event would be stored as 7pm
       // UTC. No-op when the caller already passed a UTC instant.
       'starts_at': startsAt.toUtc().toIso8601String(),
+      // The organiser's IANA zone, which the recurrence fields are wall-clock
+      // in — web's createEvent stamps the browser's the same way.
+      'timezone': trimToNull(timezone),
       'duration_min': durationMin,
       'meet_label': trimToNull(meetLabel),
       'meet_lat': meetLat,

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { lengthLimit } from '#lib/core/column_limits.ts';
 	import { formatISO, todayISO } from '#lib/training/training.ts';
@@ -231,7 +232,7 @@
 			showToast(m('plansNew.toastCreated'));
 			goto(`/plans/${newPlanId}`);
 		} catch (e) {
-			showToast(m('plansNew.toastCloneFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(m('plansNew.toastCloneFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
 			cloning = false;
 		}
@@ -271,7 +272,7 @@
 			goto(`/plans/${plan.id}`);
 		} catch (e) {
 			showToast(
-				m('plansNew.toastCreateFailed', { error: e instanceof Error ? e.message : String(e) }),
+				m('plansNew.toastCreateFailed', { error: thrownMessage(e) }),
 				'error'
 			);
 		} finally {

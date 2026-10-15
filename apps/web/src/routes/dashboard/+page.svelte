@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { formatPace, formatDistance, sourceLabel } from '#lib/core/mock-data.ts';
@@ -762,7 +763,7 @@
 			await updateUniversal(uid, { hidden_prs: next });
 		} catch (e) {
 			hiddenPrs = previous;
-			showToast(m('dash.hidePrFailed', { error: (e as Error).message }), 'error');
+			showToast(m('dash.hidePrFailed', { error: thrownMessage(e) }), 'error');
 		}
 	}
 	/// Remembering the expander is auxiliary (L4): the section is open for this

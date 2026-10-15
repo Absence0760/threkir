@@ -24,6 +24,7 @@ import {
 	ROUTE_RESTORE_COLUMNS,
 	RUN_RESTORE_COLUMNS
 } from './restore_columns';
+import { thrownMessage } from '../core/supabase_error';
 
 export interface RestoreProgress {
 	stage: 'reading' | 'profile' | 'tracks' | 'runs' | 'routes' | 'done';
@@ -163,14 +164,14 @@ export async function restoreOrchestrate(
 			await backend.upsertProfile(known.row);
 			result.profileRestored = true;
 		} catch (e) {
-			result.warnings.push(`profile: ${(e as Error).message}`);
+			result.warnings.push(`profile: ${thrownMessage(e)}`);
 		}
 	}
 	if (Object.keys(parsed.settingsPrefs).length > 0) {
 		try {
 			await backend.upsertSettings(parsed.settingsPrefs);
 		} catch (e) {
-			result.warnings.push(`settings_prefs: ${(e as Error).message}`);
+			result.warnings.push(`settings_prefs: ${thrownMessage(e)}`);
 		}
 	}
 
@@ -204,7 +205,7 @@ export async function restoreOrchestrate(
 					trackUrl = path;
 					result.tracksUploaded++;
 				} catch (e) {
-					result.warnings.push(`track ${origId}: ${(e as Error).message}`);
+					result.warnings.push(`track ${origId}: ${thrownMessage(e)}`);
 				}
 			}
 
@@ -245,7 +246,7 @@ export async function restoreOrchestrate(
 				await backend.upsertRun(known.row);
 				result.runsImported++;
 			} catch (e) {
-				result.warnings.push(`run ${origId}: ${(e as Error).message}`);
+				result.warnings.push(`run ${origId}: ${thrownMessage(e)}`);
 			}
 			i++;
 		}
@@ -271,7 +272,7 @@ export async function restoreOrchestrate(
 				await backend.upsertRoute(known.row);
 				result.routesImported++;
 			} catch (e) {
-				result.warnings.push(`route ${r.id}: ${(e as Error).message}`);
+				result.warnings.push(`route ${r.id}: ${thrownMessage(e)}`);
 			}
 			i++;
 		}

@@ -15,6 +15,9 @@
  * - `pending` never collapses to `card`. A card drawn before the route
  *   resolves is a route with no name and no trace, which reads as a broken
  *   route rather than as one still loading.
+ *
+ * Mirrored by `apps/mobile_android/lib/dm_attachment.dart` — keep both in
+ * lockstep (docs/architecture/parity_pairs.md).
  */
 
 export interface DmRouteCard {

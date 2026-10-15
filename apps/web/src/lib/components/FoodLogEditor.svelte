@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { searchFoodSources, scalePortion, type FoodSearchResult } from '#lib/nutrition/food_search.ts';
 	import { entryTimestampFor } from '#lib/nutrition/diary_day.ts';
 	import { createFoodEntry } from '#lib/core/data.ts';
@@ -140,7 +141,7 @@
 			dirty.rebaseline();
 			oncreated();
 		} catch (e) {
-			showToast(m('nutrition.addFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(m('nutrition.addFailed', { error: thrownMessage(e) }), 'error');
 			saving = false;
 		}
 	}
@@ -169,7 +170,7 @@
 			dirty.rebaseline();
 			oncreated();
 		} catch (e) {
-			showToast(m('nutrition.addFailed', { error: e instanceof Error ? e.message : String(e) }), 'error');
+			showToast(m('nutrition.addFailed', { error: thrownMessage(e) }), 'error');
 			saving = false;
 		}
 	}

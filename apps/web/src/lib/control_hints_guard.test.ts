@@ -45,6 +45,7 @@ const SURFACES: Array<{ name: string; file: string }> = [
 	{ name: 'SessionPlanEditor', file: 'lib/components/SessionPlanEditor.svelte' },
 	{ name: 'GymEditor', file: 'lib/components/GymEditor.svelte' },
 	{ name: 'FoodLogEditor', file: 'lib/components/FoodLogEditor.svelte' },
+	{ name: 'MealPlanEditor', file: 'lib/components/MealPlanEditor.svelte' },
 	{ name: 'WorkoutEditor', file: 'lib/components/WorkoutEditor.svelte' },
 	{ name: '/nutrition/targets', file: 'routes/nutrition/targets/+page.svelte' },
 	{ name: '/segments', file: 'routes/segments/+page.svelte' },

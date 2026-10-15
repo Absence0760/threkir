@@ -9,6 +9,8 @@ import assert from 'node:assert/strict';
 import { MAX_PLATE_NOTE_CHARS } from './upload';
 import {
 	PLATE_PHOTO_RATE_BUCKET,
+	PLATE_PHOTO_RATE_MAX,
+	PLATE_PHOTO_RATE_WINDOW_S,
 	PROPOSE_TOOL,
 	handlePlatePhoto,
 	type PlatePhotoConfig,
@@ -287,4 +289,97 @@ test('every nutrient the tool advertises is one the validator reads', () => {
 	for (const k of Object.keys(props)) {
 		assert.ok(['item_name', 'confidence', ...PLATE_NUTRIENTS].includes(k as never), k);
 	}
+});
+
+test('with the dev bypass and a v5 record the estimate runs, skipping only Pro and the throttle', async () => {
+	const sb = stubSupabase();
+	const model = stubModel(() => toolMessage({ items: [{ item_name: '2 fried eggs', calories: 180 }] }));
+	const r = parse(
+		await handlePlatePhoto('Bearer x', VALID, {
+			...baseConfig(),
+			bypassPaywallEnabled: true,
+			createClient: sb.factory,
+			createAnthropic: model.create,
+		}),
+	);
+	assert.equal(r.status, 200);
+	assert.equal(r.body.items[0].item_name, '2 fried eggs');
+	assert.deepEqual(sb.names(), ['get_my_profile']);
+	assert.equal(model.seen.calls, 1);
+});
+
+test('a Pro runner spends one slot of the caller\'s 20-per-hour plate-photo bucket', async () => {
+	const sb = stubSupabase();
+	const r = await handlePlatePhoto('Bearer x', VALID, {
+		...baseConfig(),
+		createClient: sb.factory,
+		createAnthropic: stubModel(() => toolMessage({ items: [] })).create,
+	});
+	assert.equal(r.status, 200);
+	assert.deepEqual(sb.names(), ['get_my_profile', 'is_pro', 'check_rate_limit']);
+	assert.deepEqual(sb.calls.find((c) => c.name === 'check_rate_limit')?.args, {
+		p_user_id: 'user-1',
+		p_bucket: PLATE_PHOTO_RATE_BUCKET,
+		p_max: PLATE_PHOTO_RATE_MAX,
+		p_window_seconds: PLATE_PHOTO_RATE_WINDOW_S,
+	});
+	assert.equal(PLATE_PHOTO_RATE_MAX, 20);
+	assert.equal(PLATE_PHOTO_RATE_WINDOW_S, 3600);
+});
+
+test('a photo with no food is a 200 with an empty list and no meal slot', async () => {
+	const r = parse(
+		await handlePlatePhoto('Bearer x', VALID, {
+			...baseConfig(),
+			createClient: stubSupabase().factory,
+			createAnthropic: stubModel(() => toolMessage({ items: [] })).create,
+		}),
+	);
+	assert.equal(r.status, 200);
+	assert.deepEqual(r.body, { items: [], meal_slot: null });
+});
+
+test('without a note the text turn carries no runner-note block', async () => {
+	const model = stubModel(() => toolMessage({ items: [] }));
+	await handlePlatePhoto('Bearer x', VALID, {
+		...baseConfig(),
+		createClient: stubSupabase().factory,
+		createAnthropic: model.create,
+	});
+	const content = (model.seen.body!.messages as Array<{ content: Array<Record<string, unknown>> }>)[0].content;
+	const image = content.find((b) => b.type === 'image') as { source: { media_type: string } };
+	assert.equal(image.source.media_type, 'image/jpeg');
+	const text = (content.find((b) => b.type === 'text') as { text: string }).text;
+	assert.equal(text.includes('<runner_note>'), false);
+});
+
+test('a provider failure logs its status and type, never the note it may echo', async () => {
+	const logged: unknown[][] = [];
+	const original = console.error;
+	console.error = (...args: unknown[]) => {
+		logged.push(args);
+	};
+	try {
+		const r = await handlePlatePhoto(
+			'Bearer x',
+			{ ...VALID, note: 'secret-note-text' },
+			{
+				...baseConfig(),
+				createClient: stubSupabase().factory,
+				createAnthropic: stubModel(() => {
+					throw Object.assign(new Error('400 {"note":"secret-note-text"}'), {
+						name: 'BadRequestError',
+						status: 400,
+						error: { error: { type: 'invalid_request_error' } },
+					});
+				}).create,
+			},
+		);
+		assert.equal(r.status, 503);
+	} finally {
+		console.error = original;
+	}
+	const line = logged.find((a) => a[0] === '[plate-photo] provider call failed');
+	assert.deepEqual(line?.[1], { name: 'BadRequestError', status: 400, type: 'invalid_request_error' });
+	assert.equal(JSON.stringify(logged).includes('secret-note-text'), false);
 });

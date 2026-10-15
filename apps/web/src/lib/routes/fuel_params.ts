@@ -65,7 +65,7 @@ export interface FuelHandoff {
 }
 
 /** Every fuelling input a link can carry, each validated on its own. */
-export function parseFuelHandoff(params: URLSearchParams): FuelHandoff {
+export function parseFuelHandoff(params: Pick<URLSearchParams, 'get'>): FuelHandoff {
 	return {
 		durationS: parseFuelDurationS(params.get('duration')),
 		carbsPerHourG: parseFuelRate(params.get('carbs'), FUEL_MAX_CARBS_PER_HOUR_G),

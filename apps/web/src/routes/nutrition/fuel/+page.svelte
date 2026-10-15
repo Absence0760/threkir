@@ -107,7 +107,7 @@
 		const url = new URL(page.url.href);
 		if (value == null || value === '') url.searchParams.delete(key);
 		else url.searchParams.set(key, value);
-		goto(`${url.pathname}${url.search}`, { replace: true, keepFocus: true, noScroll: true });
+		goto(`${url.pathname}${url.search}`, { replace: true, reset: false });
 	}
 
 	function onDurationChange(e: Event) {

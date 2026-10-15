@@ -165,6 +165,24 @@ test.describe('owner', () => {
 		await expect(page.getByTestId('recalculate-distance')).toHaveCount(0);
 	});
 
+	test('a run recomputed under kalman_v3 is offered the action again', async ({ page }) => {
+		const id = await plant({
+			title: 'Smoothed under v3',
+			metadata: {
+				distance_estimator: 'kalman_v3',
+				distance_recorded_m: 6_308,
+				distance_recomputed_at: browserDayAt(0, 6),
+			},
+		});
+
+		await page.goto(`/runs/${id}`);
+		await expect(page.getByRole('heading', { name: 'Smoothed under v3' })).toBeVisible({
+			timeout: 10_000,
+		});
+		await expect(page.getByTestId('distance-recorded-note')).toContainText('Originally recorded:');
+		await expect(page.getByTestId('recalculate-distance')).toBeVisible();
+	});
+
 	test('imports, pedometer, live-stamped and trackless runs are not offered the action', async ({
 		page,
 	}) => {

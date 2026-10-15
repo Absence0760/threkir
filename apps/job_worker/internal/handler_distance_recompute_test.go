@@ -827,3 +827,28 @@ func TestDistanceRecompute_FirstWatchRecomputeKeepsTheWristFigureAsTheOriginal(t
 		t.Errorf("recorder keys not kept: %+v", md)
 	}
 }
+
+// The web and mobile gates offer Recalculate on a run a recompute stamped
+// kalman_v3, so the worker must accept it and restamp it kalman_v4 rather
+// than complete the job as a skip.
+func TestDistanceRecompute_KalmanV3RecomputeIsRestampedKalmanV4(t *testing.T) {
+	run := appRun(`{"distance_recorded_m":6308.7,"distance_estimator":"kalman_v3","distance_recomputed_at":"2026-10-08T08:00:00Z"}`)
+	run.DistanceM = 251.3
+	w, b := distanceWorker(t, run, straightDopplerTrack(101, 2.5))
+	if err := w.dispatch(context.Background(), distanceJob(t, DistanceRecomputePayload{RunID: drRunID, UserID: drUserID})); err != nil {
+		t.Fatalf("dispatch: %v", err)
+	}
+	if len(b.distance.updates) != 1 {
+		t.Fatalf("updates = %d, want the kalman_v3 run recomputed", len(b.distance.updates))
+	}
+	md := b.distance.updates[0].Metadata
+	if md["distance_estimator"] != "kalman_v4" {
+		t.Errorf("distance_estimator = %v, want kalman_v4", md["distance_estimator"])
+	}
+	if md["distance_recorded_m"] != 6308.7 {
+		t.Errorf("distance_recorded_m = %v, want the original 6308.7", md["distance_recorded_m"])
+	}
+	if at, _ := md["distance_recomputed_at"].(string); at == "" || at == "2026-10-08T08:00:00Z" {
+		t.Errorf("distance_recomputed_at = %q, want a fresh timestamp", at)
+	}
+}

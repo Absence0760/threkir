@@ -26,8 +26,8 @@ class DistanceEstimatorWiringTest {
     }
 
     @Test
-    fun `every gated fix reaches the estimator with its Doppler inputs on a monotonic clock`() {
-        val onGps = body(serviceSrc, "private fun onGps(p: GpsPoint)")
+    fun `every fed fix reaches the estimator with its Doppler inputs on a monotonic clock`() {
+        val onGps = body(serviceSrc, ON_GPS)
         assertTrue(onGps.contains("distanceEstimator.addFix("))
         for (arg in listOf("p.accuracyM", "p.speedMps", "p.speedAccuracyMps", "p.bearingDeg")) {
             assertTrue("onGps must pass $arg", onGps.contains(arg))
@@ -40,11 +40,21 @@ class DistanceEstimatorWiringTest {
     }
 
     @Test
+    fun `a fix past the track gate still feeds the estimator`() {
+        val onGps = body(serviceSrc, ON_GPS)
+        val fed = onGps.indexOf("distanceEstimator.addFix(")
+        val gated = onGps.indexOf("if (track)")
+        assertTrue("onGps must gate the track on the fix's verdict", gated >= 0)
+        assertTrue("the estimator takes the fix before the track gate", fed in 0 until gated)
+    }
+
+    @Test
     fun `a stored fix carries the distance credited through it`() {
-        val onGps = body(serviceSrc, "private fun onGps(p: GpsPoint)")
+        val onGps = body(serviceSrc, ON_GPS)
         val fed = onGps.indexOf("distanceEstimator.addFix(")
         val stored = onGps.indexOf("trackWriter?.append(p, distM = newDistance)")
         assertTrue("onGps must write distM, the run's credited distance", stored >= 0)
+        assertTrue("only a fix within the track gate is stored", onGps.contains("if (track) trackWriter?.append("))
         assertTrue("the fix is stored after the estimator has credited it", stored > fed)
         assertFalse("no fix is stored without its distM", onGps.contains("trackWriter?.append(p)"))
     }
@@ -66,24 +76,30 @@ class DistanceEstimatorWiringTest {
     fun `a pause closes the segment so the paused span is never credited`() {
         assertTrue(body(serviceSrc, "private fun pauseRecording()").contains("closeDistanceSegment()"))
         assertTrue(body(serviceSrc, "private fun stopRecording()").contains("closeDistanceSegment()"))
-        val close = body(serviceSrc, "private fun closeDistanceSegment()")
+        val close = body(serviceSrc, CLOSE_SEGMENT)
         assertTrue("finish() commits steps buffered across a trailing gap", close.contains(".finish("))
         assertTrue(
             "the next segment keeps the learned stride",
-            close.contains("distanceEstimator = segment.nextSegment()"),
+            close.contains("distanceEstimator = segment.nextSegment(learnStride)"),
         )
     }
 
     @Test
+    fun `a source switch opens a segment that learns stride only on the receiver`() {
+        assertTrue(serviceSrc.contains("closeDistanceSegment(learnStride = onReceiver)"))
+        assertTrue(serviceSrc.contains("segment.nextSegment(learnStride = onReceiver)"))
+    }
+
+    @Test
     fun `live pace reads the estimator's distance, sealed with every segment`() {
-        val onGps = body(serviceSrc, "private fun onGps(p: GpsPoint)")
+        val onGps = body(serviceSrc, ON_GPS)
         assertTrue(onGps.contains("livePace.add(t, distanceEstimator.distanceM)"))
         assertTrue(onGps.contains("livePace.secondsPerKm"))
         assertFalse(
             "pace is the rolling window, not the whole-run average",
             onGps.contains("elapsedS / newDistance"),
         )
-        assertTrue(body(serviceSrc, "private fun closeDistanceSegment()").contains("livePace.seal()"))
+        assertTrue(body(serviceSrc, CLOSE_SEGMENT).contains("livePace.seal()"))
     }
 
     @Test
@@ -120,5 +136,10 @@ class DistanceEstimatorWiringTest {
     fun `the finished run carries the step-filled share to the queue`() {
         val stop = body(serviceSrc, "private fun stopRecording()")
         assertTrue(stop.contains("distanceStepFilledM = stepFilledM"))
+    }
+
+    private companion object {
+        const val ON_GPS = "private fun onGps(p: GpsPoint, track: Boolean)"
+        const val CLOSE_SEGMENT = "private fun closeDistanceSegment(learnStride: Boolean"
     }
 }

@@ -242,4 +242,19 @@ class TrackWriterTest {
             assertEquals(setOf("lat", "lng", "ele", "ts"), keys)
         }
     }
+
+    @Test
+    fun `the credited distance is written as distM, rounded to the centimetre`() {
+        val w = TrackWriter(trackFile)
+        w.open()
+        w.append(GpsPoint(lat = 51.5, lng = -0.1, ele = null, epochMs = 0), distM = 0.0)
+        w.append(GpsPoint(lat = 51.5, lng = -0.1, ele = null, epochMs = 1000), distM = 812.4049)
+        w.append(GpsPoint(lat = 51.5, lng = -0.1, ele = null, epochMs = 2000), distM = Double.NaN)
+        w.append(GpsPoint(lat = 51.5, lng = -0.1, ele = null, epochMs = 3000))
+        val arr = Json.parseToJsonElement(w.close().readText()).jsonArray
+        assertEquals(0.0, arr[0].jsonObject["distM"]!!.jsonPrimitive.content.toDouble(), 0.0)
+        assertEquals(812.4, arr[1].jsonObject["distM"]!!.jsonPrimitive.content.toDouble(), 1e-9)
+        assertEquals(setOf("lat", "lng", "ele", "ts"), arr[2].jsonObject.keys)
+        assertEquals(setOf("lat", "lng", "ele", "ts"), arr[3].jsonObject.keys)
+    }
 }

@@ -681,7 +681,6 @@ class RunRecordingService : Service() {
     /// out of the stored track, the map overlay and the route match.
     private fun onGps(p: GpsPoint, track: Boolean) {
         lastPointAtMs = System.currentTimeMillis()
-        if (track) trackWriter?.append(p)
         val (newDistance, pace) = synchronized(distanceLock) {
             val t = (p.elapsedRealtimeMs ?: SystemClock.elapsedRealtime()) / 1000.0
             distanceEstimator.addFix(
@@ -696,6 +695,7 @@ class RunRecordingService : Service() {
             livePace.add(t, distanceEstimator.distanceM)
             (bankedDistanceM() + distanceEstimator.distanceM) to livePace.secondsPerKm
         }
+        if (track) trackWriter?.append(p, distM = newDistance)
         if (!track) {
             RecordingRepository.update { it.copy(distanceM = newDistance, paceSecPerKm = pace) }
             announceProgress(newDistance, pace)

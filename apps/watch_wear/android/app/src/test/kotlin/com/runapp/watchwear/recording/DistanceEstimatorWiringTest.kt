@@ -40,6 +40,16 @@ class DistanceEstimatorWiringTest {
     }
 
     @Test
+    fun `a stored fix carries the distance credited through it`() {
+        val onGps = body(serviceSrc, "private fun onGps(p: GpsPoint)")
+        val fed = onGps.indexOf("distanceEstimator.addFix(")
+        val stored = onGps.indexOf("trackWriter?.append(p, distM = newDistance)")
+        assertTrue("onGps must write distM, the run's credited distance", stored >= 0)
+        assertTrue("the fix is stored after the estimator has credited it", stored > fed)
+        assertFalse("no fix is stored without its distM", onGps.contains("trackWriter?.append(p)"))
+    }
+
+    @Test
     fun `optional Location fields are read only when the platform reports them`() {
         assertTrue(gpsSrc.contains("if (loc.hasSpeed()) loc.speed"))
         assertTrue(gpsSrc.contains("if (loc.hasSpeedAccuracy()) loc.speedAccuracyMetersPerSecond"))

@@ -39,7 +39,10 @@ class TrackWriter(private val file: File) {
         open = true
     }
 
-    fun append(point: GpsPoint) {
+    /// [distM] is the run's distance credited up to and including this fix,
+    /// the axis splits and moving time are measured on
+    /// (`docs/features/gps_distance.md` § Waypoint fields).
+    fun append(point: GpsPoint, distM: Double? = null) {
         val w = writer ?: return
         if (count > 0) w.print(",")
         val ts = Instant.ofEpochMilli(point.epochMs)
@@ -53,6 +56,7 @@ class TrackWriter(private val file: File) {
                 optionalField("speedMps", point.speedMps?.takeIf { it >= 0 }) +
                 optionalField("speedAccuracyMps", point.speedAccuracyMps?.takeIf { it > 0 }) +
                 optionalField("bearingDeg", point.bearingDeg) +
+                optionalField("distM", distM?.takeIf { it.isFinite() && it >= 0 }?.let { Math.round(it * 100) / 100.0 }) +
                 "}"
         )
         count++

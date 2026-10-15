@@ -460,6 +460,50 @@ void main() {
       expect(walked, whole.map((p) => p.id).toList());
     });
 
+    test('getRoutes pages past two routes sharing a created_at', () async {
+      // Two routes saved in the same instant, newer than anything else the
+      // seed user owns so they lead the list. One-row pages walked by the
+      // returned cursor must visit both: the old `lt created_at` cursor
+      // excluded every row with the boundary's created_at, so the second was
+      // never read.
+      final hex = DateTime.now()
+          .microsecondsSinceEpoch
+          .toRadixString(16)
+          .padLeft(11, '0');
+      final stem = '00000000-0000-4000-8000-${hex.substring(hex.length - 11)}';
+      final ids = ['${stem}a', '${stem}b'];
+      const sameInstant = '2099-01-01T00:00:00.123456+00:00';
+      await client.from('routes').insert([
+        for (final id in ids)
+          {
+            'id': id,
+            'user_id': userId,
+            'name': 'keyset tie $id',
+            'waypoints': const <Object>[],
+            'distance_m': 1000,
+            'created_at': sameInstant,
+          },
+      ]);
+      try {
+        final walked = <String>[];
+        List<Object?>? after;
+        for (var page = 0; page < 2; page++) {
+          final got = await api.getRoutes(limit: 1, after: after);
+          walked.addAll(got.rows.map((r) => r.id));
+          if (got.next == null) break;
+          after = got.next;
+        }
+        expect(walked, ['${stem}b', '${stem}a'],
+            reason: 'both tied routes, in id desc order, one per page');
+      } finally {
+        for (final id in ids) {
+          try {
+            await api.deleteRoute(id);
+          } catch (_) {}
+        }
+      }
+    });
+
     test('fetchProfileSummary loads for the seed user (profile screen '
         'entry path)', () async {
       // fetchProfileSummary fans out to fetchPublicProfile +

@@ -2174,32 +2174,45 @@ class ApiClient {
       ..removeWhere((k, v) => v == null);
   }
 
-  /// Fetches the user's saved routes, newest first.
+  /// Fetches the user's saved routes, newest first, one keyset page at a
+  /// time: pass the previous page's `next` as `after` (with the SAME
+  /// `starredOnly`) to load more.
   ///
   /// `limit` caps the number of rows returned (default 200 — kept high
   /// to preserve the existing one-shot semantics for unbounded callers
-  /// like the routes-screen full-sync path). `before` paginates: pass
-  /// the oldest already-loaded route's `created_at` to fetch the next
-  /// page. Cursor over offset because routes are append-only-by-time
-  /// and a cursor is stable against concurrent inserts/deletes.
-  Future<List<Route>> getRoutes({
+  /// like the routes-screen full-sync path). The order is [_routeListOrder]
+  /// — `created_at` with `id` breaking a tie — because a cursor on
+  /// `created_at` alone (`lt created_at`) dropped the second of two routes
+  /// saved in the same instant whenever they straddled a page boundary.
+  Future<KeysetPage<Route>> getRoutes({
     int limit = 200,
-    DateTime? before,
+    List<Object?>? after,
     bool starredOnly = false,
   }) async {
+    final filter = after == null ? null : keysetAfter(_routeListOrder, after);
+    if (after != null && filter == null) {
+      return const KeysetPage(<Route>[], null);
+    }
     var query = _client.from(RouteRow.table).select();
     if (starredOnly) {
       query = query.eq(RouteRow.colIsStarred, true);
     }
-    if (before != null) {
-      query = query.lt(RouteRow.colCreatedAt, before.toIso8601String());
-    }
-    final data = await query
-        .order(RouteRow.colCreatedAt, ascending: false)
-        .limit(limit);
+    if (filter != null) query = query.or(filter);
+    final data = await _orderBy(query, _routeListOrder).limit(limit);
 
-    return data.map<Route>((row) => _routeFromRow(row)).toList();
+    return KeysetPage(
+      data.map<Route>((row) => _routeFromRow(row)).toList(),
+      nextCursor(_routeListOrder, data, limit),
+    );
   }
+
+  /// Newest route first; `id` breaks a `created_at` tie so the order is
+  /// total. Nulls last on both, which is what postgrest-dart's `.order()`
+  /// sent for the old `created_at`-only order.
+  static const List<KeysetKey> _routeListOrder = [
+    KeysetKey(RouteRow.colCreatedAt, ascending: false, nullsFirst: false),
+    KeysetKey(RouteRow.colId, ascending: false, nullsFirst: false),
+  ];
 
   /// Search public routes, one keyset page at a time: pass the previous
   /// page's `next` as `after` (with the SAME filters and sort) to load more.

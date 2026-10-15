@@ -330,7 +330,7 @@ class ApiClient {
   Future<List<Run>> getRuns({int limit = 50, DateTime? before});
   Future<List<Waypoint>> fetchTrack(Run run);
   Future<void> saveRoute(Route route);
-  Future<List<Route>> getRoutes();
+  Future<KeysetPage<Route>> getRoutes({int limit = 200, List<Object?>? after, bool starredOnly = false});
 }
 ```
 

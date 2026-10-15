@@ -64,6 +64,24 @@ void main() {
         reason: 'an ilike pattern reads * % _ \\ as wildcards');
   });
 
+  test('getRoutes pages on a total order, not created_at alone', () {
+    // `lt created_at` excluded every route sharing the boundary row's
+    // created_at, so two routes saved in the same instant that straddled a
+    // page lost the second. The cursor must be the keyset of
+    // (created_at, id).
+    final fn = body('Future<KeysetPage<Route>> getRoutes(');
+    expect(fn, isNotEmpty, reason: 'getRoutes moved or was renamed');
+    expect(fn.contains('List<Object?>? after'), isTrue);
+    expect(fn.contains('keysetAfter(_routeListOrder, after)'), isTrue);
+    expect(fn.contains('nextCursor(_routeListOrder, data, limit)'), isTrue);
+    expect(fn.contains('DateTime? before'), isFalse);
+    expect(fn.contains('.lt(RouteRow.colCreatedAt'), isFalse,
+        reason: 'a created_at-only cursor drops a tied row');
+    final order = body('static const List<KeysetKey> _routeListOrder');
+    expect(order.contains('KeysetKey(RouteRow.colId'), isTrue,
+        reason: 'id must break a created_at tie so the order is total');
+  });
+
   test('_followPage filters after the cursor and returns the next one', () {
     expect(followPage, isNotEmpty, reason: '_followPage moved or was renamed');
     expect(followPage.contains('keysetAfter(order, after)'), isTrue);

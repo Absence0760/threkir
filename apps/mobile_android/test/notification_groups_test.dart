@@ -133,6 +133,17 @@ void main() {
       expect(groups[0].otherCount, 2);
     });
 
+    test('follow requests collapse together, apart from follows', () {
+      final groups = groupNotifications([
+        n(id: 'r1', kind: 'follow_request', actorId: 'u1', createdAt: ago(1000)),
+        n(id: 'r2', kind: 'follow_request', actorId: 'u2', createdAt: ago(2000)),
+        n(id: 'f1', kind: 'follow', actorId: 'u3', createdAt: ago(1500)),
+      ], nowMs: now);
+      expect(groups.length, 2);
+      final requests = groups.firstWhere((g) => g.lead.kind == 'follow_request');
+      expect(requests.otherCount, 1);
+    });
+
     test('event RSVPs collapse per event, distinct events split', () {
       final groups = groupNotifications([
         n(id: 'e1a', kind: 'event_rsvp', eventId: 'ev1', createdAt: ago(1000)),

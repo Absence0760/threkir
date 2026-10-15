@@ -129,8 +129,10 @@
     <string name="done">Terminé</string>
 
     <string name="perm_title_blocked">Position requise</string>
+    <string name="perm_title_precise">Position précise désactivée</string>
     <string name="perm_title_degraded">Certaines fonctions désactivées</string>
     <string name="perm_cost_location">Sans la position, cette course n\'enregistre que le temps — ni tracé, ni distance, ni allure.</string>
+    <string name="perm_cost_precise_location">La position approximative ne permet pas d\'enregistrer le tracé, la distance ni l\'allure. Choisissez « Précise » ou activez « Utiliser la position exacte ».</string>
     <string name="perm_cost_heart_rate">La fréquence cardiaque ne sera pas enregistrée.</string>
     <string name="perm_cost_steps">Les pas ne seront pas enregistrés.</string>
     <string name="perm_cost_notification">Pas d\'indicateur de course sur le cadran pendant l\'enregistrement.</string>

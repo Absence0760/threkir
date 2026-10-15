@@ -163,8 +163,10 @@
          came back with something declined: a location denial blocks the run,
          anything else degrades it. One line per thing actually lost. -->
     <string name="perm_title_blocked">Location needed</string>
+    <string name="perm_title_precise">Precise location off</string>
     <string name="perm_title_degraded">Some features off</string>
     <string name="perm_cost_location">Without location this run records time only — no route, distance or pace.</string>
+    <string name="perm_cost_precise_location">Approximate location is too coarse to record route, distance or pace. Choose Precise, or turn on Use precise location.</string>
     <string name="perm_cost_heart_rate">Heart rate won\'t be recorded.</string>
     <string name="perm_cost_steps">Step count won\'t be recorded.</string>
     <string name="perm_cost_notification">No run chip on the watch face while recording.</string>

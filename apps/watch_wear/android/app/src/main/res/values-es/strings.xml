@@ -129,8 +129,10 @@
     <string name="done">Listo</string>
 
     <string name="perm_title_blocked">Se necesita la ubicación</string>
+    <string name="perm_title_precise">Ubicación precisa desactivada</string>
     <string name="perm_title_degraded">Algunas funciones desactivadas</string>
     <string name="perm_cost_location">Sin ubicación esta carrera solo registra el tiempo — sin ruta, distancia ni ritmo.</string>
+    <string name="perm_cost_precise_location">La ubicación aproximada no basta para registrar ruta, distancia ni ritmo. Elige «Precisa» o activa «Usar ubicación precisa».</string>
     <string name="perm_cost_heart_rate">No se registrará la frecuencia cardíaca.</string>
     <string name="perm_cost_steps">No se registrarán los pasos.</string>
     <string name="perm_cost_notification">Sin indicador de carrera en la esfera mientras se graba.</string>

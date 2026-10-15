@@ -120,7 +120,7 @@ Same shape as the phone app: `dev` and `production`. The dev flavour reads from 
 `apps/watch_wear/android/app/src/main/AndroidManifest.xml`:
 
 - `<uses-feature android:name="android.hardware.type.watch" />` — REQUIRED, makes the app eligible for Wear listing
-- `android.permission.ACCESS_FINE_LOCATION` + `ACCESS_COARSE_LOCATION` — the coarse one is granted alongside the fine one and is never requested separately. `ACCESS_BACKGROUND_LOCATION` is **not** declared and never has been; this list used to claim it (`decisions.md § 1020`). Do not disclose it.
+- `android.permission.ACCESS_FINE_LOCATION` + `ACCESS_COARSE_LOCATION` — both are requested together (Android 12+ ignores a fine request without coarse), and a runner who grants Approximate only is stopped at a Precise-location notice before the run starts. `ACCESS_BACKGROUND_LOCATION` is **not** declared and never has been; this list used to claim it (`decisions.md § 1020`). Do not disclose it.
 - `android.permission.ACTIVITY_RECOGNITION`
 - `android.permission.BODY_SENSORS` — Health Services HR via `MeasureClient`
 - `android.permission.BODY_SENSORS_BACKGROUND` — **removed, do not re-add without changing the client.** It gates `PassiveMonitoringClient`; `HeartRateMonitor` uses `MeasureClient`, whose documented background access is no. It was declared and never requested, so it was inert as well as inapplicable (`decisions.md § 1015`). `ManifestGuardsTest` fails if it comes back.

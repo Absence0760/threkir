@@ -433,8 +433,13 @@ in `ui/RunWatchApp.kt`. `POST_NOTIFICATIONS` was declared and never requested,
 so on API 33+ the ongoing-activity notification never reached the shade
 (`decisions.md § 881`). `ManifestPermissionCoverageTest` derives the obligation
 from the manifest: every declared permission is requested, install-time, or a
-registered exemption with its reason. `ACCESS_COARSE_LOCATION` is the only
-exemption left — the platform grants it alongside the fine one.
+registered exemption with its reason. There are no exemptions left.
+`ACCESS_COARSE_LOCATION` used to be one, and is now requested beside the fine
+one: from Android 12 a fine request without coarse is ignored with no dialog,
+and the runner may still grant Approximate only. `permissionOutcome` grades
+that as `PermissionCost.PreciseLocation` and blocks the run like a location
+denial, because approximate fixes never pass the accuracy gate and the run
+would record the clock alone.
 `BODY_SENSORS_BACKGROUND` used to be the second, and was removed rather than
 wired: it gates `PassiveMonitoringClient`, and this app reads heart rate through
 `MeasureClient`, whose background access is documented as no

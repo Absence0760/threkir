@@ -121,8 +121,10 @@
     <string name="done">完了</string>
 
     <string name="perm_title_blocked">位置情報が必要です</string>
+    <string name="perm_title_precise">正確な位置情報がオフです</string>
     <string name="perm_title_degraded">一部の機能がオフです</string>
     <string name="perm_cost_location">位置情報なしでは時間のみ記録され、ルート・距離・ペースは記録されません。</string>
+    <string name="perm_cost_precise_location">おおよその位置情報ではルート・距離・ペースを記録できません。「正確」を選ぶか、「正確な位置情報を使用」をオンにしてください。</string>
     <string name="perm_cost_heart_rate">心拍数は記録されません。</string>
     <string name="perm_cost_steps">歩数は記録されません。</string>
     <string name="perm_cost_notification">記録中も文字盤にラン表示は出ません。</string>

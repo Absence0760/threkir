@@ -16,6 +16,7 @@ import org.junit.Test
 class PermissionOutcomeTest {
 
     private val fine = Manifest.permission.ACCESS_FINE_LOCATION
+    private val coarse = Manifest.permission.ACCESS_COARSE_LOCATION
     private val sensors = Manifest.permission.BODY_SENSORS
     private val activity = Manifest.permission.ACTIVITY_RECOGNITION
     private val notifications = Manifest.permission.POST_NOTIFICATIONS
@@ -36,6 +37,50 @@ class PermissionOutcomeTest {
         )
         assertFalse(outcome.canStart)
         assertEquals(listOf(PermissionCost.Location), outcome.costs)
+    }
+
+    @Test
+    fun `an approximate-only grant blocks the run as precise location off`() {
+        // Android 12+ lets the runner pick Approximate. The receiver then
+        // refuses the request and fused returns fixes far wider than the
+        // accuracy gate, so the run would silently record no track.
+        val outcome = permissionOutcome(
+            mapOf(fine to false, coarse to true, sensors to true, activity to true),
+        )
+        assertFalse(outcome.canStart)
+        assertEquals(listOf(PermissionCost.PreciseLocation), outcome.costs)
+        assertTrue(shouldInterruptForCosts(outcome, alreadyShown = true))
+    }
+
+    @Test
+    fun `a precise grant starts the run whatever coarse reports`() {
+        for (coarseGranted in listOf(true, false)) {
+            val outcome = permissionOutcome(
+                mapOf(fine to true, coarse to coarseGranted, sensors to true, activity to true),
+            )
+            assertTrue(outcome.canStart)
+            assertEquals(emptyList<PermissionCost>(), outcome.costs)
+        }
+    }
+
+    @Test
+    fun `denying both location grants reads as a location denial, not a precise one`() {
+        val outcome = permissionOutcome(
+            mapOf(fine to false, coarse to false, sensors to true, activity to true),
+        )
+        assertFalse(outcome.canStart)
+        assertEquals(listOf(PermissionCost.Location), outcome.costs)
+    }
+
+    @Test
+    fun `an approximate-only grant still reports the auxiliary costs after it`() {
+        val outcome = permissionOutcome(
+            mapOf(fine to false, coarse to true, sensors to false, activity to true),
+        )
+        assertEquals(
+            listOf(PermissionCost.PreciseLocation, PermissionCost.HeartRate),
+            outcome.costs,
+        )
     }
 
     @Test

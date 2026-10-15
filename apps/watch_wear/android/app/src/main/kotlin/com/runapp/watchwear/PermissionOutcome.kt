@@ -9,6 +9,11 @@ enum class PermissionCost {
     /// Blocking. Without it there is no route, no distance and no pace —
     /// only the clock — so the run does not start.
     Location,
+    /// Blocking for the same reason. Android 12+ lets the runner grant
+    /// approximate location only: the receiver refuses the request and fused
+    /// returns fixes kilometres wide, which the accuracy gate drops, so the
+    /// run would record the clock and nothing else.
+    PreciseLocation,
     HeartRate,
     Steps,
     OngoingNotification,
@@ -35,8 +40,15 @@ data class PermissionOutcome(
 fun permissionOutcome(granted: Map<String, Boolean>): PermissionOutcome {
     fun denied(permission: String): Boolean = granted[permission] == false
 
+    val fine = granted[Manifest.permission.ACCESS_FINE_LOCATION] == true
+    val approximateOnly = !fine && granted[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+
     val costs = buildList {
-        if (denied(Manifest.permission.ACCESS_FINE_LOCATION)) add(PermissionCost.Location)
+        if (approximateOnly) {
+            add(PermissionCost.PreciseLocation)
+        } else if (denied(Manifest.permission.ACCESS_FINE_LOCATION)) {
+            add(PermissionCost.Location)
+        }
         if (denied(Manifest.permission.BODY_SENSORS)) add(PermissionCost.HeartRate)
         if (denied(Manifest.permission.ACTIVITY_RECOGNITION)) add(PermissionCost.Steps)
         if (denied(Manifest.permission.POST_NOTIFICATIONS)) {
@@ -44,7 +56,7 @@ fun permissionOutcome(granted: Map<String, Boolean>): PermissionOutcome {
         }
     }
     return PermissionOutcome(
-        canStart = granted[Manifest.permission.ACCESS_FINE_LOCATION] == true,
+        canStart = fine,
         costs = costs,
     )
 }

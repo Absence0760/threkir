@@ -630,8 +630,14 @@ class SocialService extends ChangeNotifier {
   Future<List<ClubView>> browseClubs({String? query}) async {
     var q = _c.from('clubs').select(_clubSelectCols).eq('is_public', true);
     if (query != null && query.trim().isNotEmpty) {
+      // Quoted per filter: the raw term inside the `or=` tree let `,` start a
+      // new filter and `)` close the tree, and ilike read `*` `%` `_` as
+      // wildcards. Mirrors web `browseClubsWithError`.
       final term = query.trim();
-      q = q.or('name.ilike.%$term%,location_label.ilike.%$term%');
+      q = q.or(
+        '${literalSubstringTerm('name', term)},'
+        '${literalSubstringTerm('location_label', term)}',
+      );
     }
     final rows = await q.order('created_at', ascending: false).limit(60);
     return _enrichClubs(rows);
@@ -678,7 +684,8 @@ class SocialService extends ChangeNotifier {
     } catch (e, s) {
       // Per the web fallback: if the RPC fails (e.g. it's not deployed
       // in a dev env, or the planner threw on a malformed bbox) we
-      // degrade to plain ILIKE rather than surfacing a red error toast.
+      // degrade to the plain name/label match rather than surfacing a red
+      // error toast.
       debugPrint('SocialService.searchClubs RPC failed, falling back: $e\n$s');
       return browseClubs(query: term);
     }

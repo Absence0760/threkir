@@ -64,6 +64,28 @@ void main() {
         reason: 'an ilike pattern reads * % _ \\ as wildcards');
   });
 
+  test('no filter tree interpolates text into a pattern operator unquoted',
+      () {
+    // Inside `or=` / `and=` PostgREST reads an unquoted value up to the next
+    // `,` or `)`, so `name.ilike.%$term%` lets typed text rewrite the tree.
+    // Build the term with core_models' `literalSubstringTerm`, which escapes
+    // it for imatch and double-quotes it.
+    final pattern =
+        RegExp(r'\.(i?like|i?match|fts|plfts|phfts|wfts)\.[%*]?\$');
+    final offenders = [
+      for (final f in Directory('lib')
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.dart')))
+        if (pattern.hasMatch(f
+            .readAsLinesSync()
+            .where((l) => !l.trimLeft().startsWith('//'))
+            .join('\n')))
+          f.path,
+    ];
+    expect(offenders, isEmpty);
+  });
+
   test('getRoutes pages on a total order, not created_at alone', () {
     // `lt created_at` excluded every route sharing the boundary row's
     // created_at, so two routes saved in the same instant that straddled a

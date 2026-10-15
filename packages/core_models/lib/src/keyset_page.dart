@@ -184,12 +184,26 @@ List<T> appendPage<T>(
 /// ordinary in a regex and pass through. A substring regex needs no anchors,
 /// and `routes_name_trgm` (gin_trgm_ops) serves `~*` as it served `ilike`.
 ///
-/// For a TOP-LEVEL filter only: inside an `or=`/`and=` tree the value would
-/// also need quoting, because `,` `(` `)` are the tree's own delimiters.
+/// For a TOP-LEVEL filter only: inside an `or=`/`and=` tree the value also
+/// needs quoting, because `,` `(` `)` are the tree's own delimiters — use
+/// [literalSubstringTerm] there.
 String literalSubstringPattern(String text) => text.replaceAllMapped(
   RegExp(r'[\\^$.|?*+()[\]{}]'),
   (m) => '\\${m[0]}',
 );
+
+/// One `column imatch pattern` filter for INSIDE a PostgREST `or=`/`and=`
+/// tree, matching `text` as a case-insensitive literal substring of `column`.
+///
+/// Inside a tree PostgREST reads an unquoted value up to the next `,` or `)`
+/// (`pLogicSingleVal` in `ApiRequest/QueryParams.hs`), so raw text containing
+/// either ends the filter early: a `,` starts a new, malformed filter and a
+/// `)` closes the tree — a parse error, or worse a different filter. A
+/// double-quoted value is read up to the closing quote with `\` escaping the
+/// next character, so the pattern is quoted with `\` and `"` escaped —
+/// the same quoting the keyset literals use.
+String literalSubstringTerm(String column, String text) =>
+    '${_checkColumn(column)}.imatch.${_literal(literalSubstringPattern(text))}';
 
 /// The total order of each public-route search sort (`newest` / `popular` /
 /// `featured`). The first keys are the dropped `search_public_routes` RPC's

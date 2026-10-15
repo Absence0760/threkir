@@ -573,6 +573,83 @@ void main() {
     );
   });
 
+  // ── literalSubstringTerm ─────────────────────────────────────────────────
+  // A faithful model of how PostgREST reads the filters of a flat `or=(…)`
+  // body: `pLogicSingleVal` (ApiRequest/QueryParams.hs) tries a double-quoted
+  // value first — `\` escapes the next character, and the closing quote must
+  // be followed by `,` or `)` — and otherwise takes everything up to the next
+  // `,` or `)`. A `)` before the end of the body closes the tree, so it is an
+  // error here. Returns each filter as [column, operator, value].
+
+  const delimiters = [
+    ...tricky,
+    ',',
+    '(',
+    ')',
+    '.',
+    '"',
+    r'\',
+    '*',
+    '%',
+    '_',
+    r',()."\*%_',
+    'a"),b.eq.(',
+    r'\"',
+    '{x}',
+  ];
+
+  test(
+    'a substring term survives every logic-tree delimiter and matches literally',
+    () {
+      for (final text in delimiters) {
+        final body = [
+          literalSubstringTerm('name', text),
+          literalSubstringTerm('location_label', text),
+        ].join(',');
+        final filters = _parseOrBody(body);
+        expect(
+          filters.map((f) => [f[0], f[1]]).toList(),
+          [
+            ['name', 'imatch'],
+            ['location_label', 'imatch'],
+          ],
+          reason: '$text must stay two filters',
+        );
+        for (final f in filters) {
+          expect(f[2], literalSubstringPattern(text),
+              reason: '$text must reach the server unchanged');
+          expect(
+            RegExp(f[2], caseSensitive: false)
+                .hasMatch('Club ${text.toUpperCase()}!'),
+            isTrue,
+            reason: '$text must match itself',
+          );
+        }
+      }
+      expect(
+        () => literalSubstringTerm('name,x', 'a'),
+        throwsA(isA<ArgumentError>()),
+      );
+    },
+  );
+
+  test('the raw interpolation club search used is not the filter it meant', () {
+    // What browseClubs sent before: the term unquoted inside the tree.
+    String raw(String t) => 'name.ilike.%$t%,location_label.ilike.%$t%';
+    expect(
+      () => _parseOrBody(raw('x,y')),
+      throwsA(predicate((e) => '$e'.contains('not a filter'))),
+    );
+    expect(
+      () => _parseOrBody(raw('f(1)')),
+      throwsA(predicate((e) => '$e'.contains('closes early'))),
+    );
+    expect(_parseOrBody(raw('5k')), [
+      ['name', 'ilike', '%5k%'],
+      ['location_label', 'ilike', '%5k%'],
+    ]);
+  });
+
   // ── appendPage ───────────────────────────────────────────────────────────
 
   String id(Map<String, Object> r) => r['id']! as String;
@@ -623,4 +700,44 @@ void main() {
     appendPage(shown, rows(['b']), id);
     expect(shown.map(id).toList(), ['a']);
   });
+}
+
+List<List<String>> _parseOrBody(String body) {
+  final out = <List<String>>[];
+  final head = RegExp(r'^([a-z_][a-z0-9_]*)\.([a-z]+)\.');
+  var i = 0;
+  for (;;) {
+    final m = head.firstMatch(body.substring(i));
+    if (m == null) throw StateError('not a filter at $i: ${body.substring(i)}');
+    i += m[0]!.length;
+    var value = '';
+    var quoted = false;
+    if (i < body.length && body[i] == '"') {
+      final buf = StringBuffer();
+      var j = i + 1;
+      while (j < body.length && body[j] != '"') {
+        if (body[j] == r'\') j++;
+        if (j < body.length) buf.write(body[j]);
+        j++;
+      }
+      if (j < body.length &&
+          (j + 1 == body.length || body[j + 1] == ',' || body[j + 1] == ')')) {
+        value = buf.toString();
+        i = j + 1;
+        quoted = true;
+      }
+    }
+    if (!quoted) {
+      var j = i;
+      while (j < body.length && body[j] != ',' && body[j] != ')') {
+        j++;
+      }
+      value = body.substring(i, j);
+      i = j;
+    }
+    out.add([m[1]!, m[2]!, value]);
+    if (i == body.length) return out;
+    if (body[i] != ',') throw StateError('the tree closes early at $i: $body');
+    i++;
+  }
 }

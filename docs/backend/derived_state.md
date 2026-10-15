@@ -397,7 +397,7 @@ retention cron referenced in a comment that was never created.
   <club> and status = 'active'`.
 - **Consumers (read the cache, do NOT recompute):** `search_clubs` (sort key)
   and every `enrichClubs` caller in `apps/web/src/lib/core/data.ts`
-  (`browseClubs`, `searchClubs` ILIKE fallback, `fetchMyClubs`,
+  (`browseClubs`, `searchClubs` name/label fallback, `fetchMyClubs`,
   `fetchClubBySlug`) — `CLUB_SELECT_COLS` selects `member_count` and
   `enrichClubs` reads `c.member_count` (issue #331; the old post-query aggregate
   is gone).

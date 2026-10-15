@@ -8,6 +8,7 @@ import {
 	type KeysetKey,
 	type KeysetValue,
 	literalSubstringPattern,
+	literalSubstringTerm,
 	nextCursor,
 	publicRouteOrder,
 	walkKeyset,
@@ -430,6 +431,80 @@ test('the regex metacharacters are escaped and nothing else is', () => {
 	assert.equal(literalSubstringPattern('5*5'), '5\\*5');
 	assert.equal(literalSubstringPattern('\\^$.|?*+()[]{}'), '\\\\\\^\\$\\.\\|\\?\\*\\+\\(\\)\\[\\]\\{\\}');
 	assert.equal(literalSubstringPattern(`100% a_b, "q" it's -#éß`), `100% a_b, "q" it's -#éß`);
+});
+
+// ── literalSubstringTerm ───────────────────────────────────────────────────
+// A faithful model of how PostgREST reads the filters of a flat `or=(…)` body:
+// `pLogicSingleVal` (ApiRequest/QueryParams.hs) tries a double-quoted value
+// first — `\` escapes the next character, and the closing quote must be
+// followed by `,` or `)` — and otherwise takes everything up to the next `,`
+// or `)`. A `)` before the end of the body closes the tree, so it is an error
+// here. Returns each filter as [column, operator, value].
+function parseOrBody(body: string): Array<[string, string, string]> {
+	const out: Array<[string, string, string]> = [];
+	let i = 0;
+	for (;;) {
+		const head = /^([a-z_][a-z0-9_]*)\.([a-z]+)\./.exec(body.slice(i));
+		if (!head) throw new Error(`not a filter at ${i}: ${body.slice(i)}`);
+		i += head[0].length;
+		let value = '';
+		let quoted = false;
+		if (body[i] === '"') {
+			let j = i + 1;
+			while (j < body.length && body[j] !== '"') {
+				if (body[j] === '\\') j++;
+				value += body[j] ?? '';
+				j++;
+			}
+			if (j < body.length && (j + 1 === body.length || body[j + 1] === ',' || body[j + 1] === ')')) {
+				i = j + 1;
+				quoted = true;
+			} else value = '';
+		}
+		if (!quoted) {
+			let j = i;
+			while (j < body.length && body[j] !== ',' && body[j] !== ')') j++;
+			value = body.slice(i, j);
+			i = j;
+		}
+		out.push([head[1], head[2], value]);
+		if (i === body.length) return out;
+		if (body[i] !== ',') throw new Error(`the tree closes early at ${i}: ${body}`);
+		i++;
+	}
+}
+
+const DELIMITERS = [...TRICKY, ',', '(', ')', '.', '"', '\\', '*', '%', '_', ',()."\\*%_', 'a"),b.eq.(', '\\"', '{x}'];
+
+test('a substring term survives every logic-tree delimiter and matches literally', () => {
+	for (const text of DELIMITERS) {
+		const body = [literalSubstringTerm('name', text), literalSubstringTerm('location_label', text)].join(',');
+		const filters = parseOrBody(body);
+		assert.deepEqual(
+			filters.map(([c, op]) => [c, op]),
+			[
+				['name', 'imatch'],
+				['location_label', 'imatch'],
+			],
+			`${text} must stay two filters`,
+		);
+		for (const [, , value] of filters) {
+			assert.equal(value, literalSubstringPattern(text), `${text} must reach the server unchanged`);
+			assert.ok(new RegExp(value, 'i').test(`Club ${text.toUpperCase()}!`), `${text} must match itself`);
+		}
+	}
+	assert.throws(() => literalSubstringTerm('name,x', 'a'), /not a plain column name/);
+});
+
+test('the raw interpolation club search used is not the filter it meant', () => {
+	// What browseClubs sent before: the term unquoted inside the tree.
+	const raw = (t: string) => `name.ilike.%${t}%,location_label.ilike.%${t}%`;
+	assert.throws(() => parseOrBody(raw('x,y')), /not a filter/);
+	assert.throws(() => parseOrBody(raw('f(1)')), /closes early/);
+	assert.deepEqual(parseOrBody(raw('5k')), [
+		['name', 'ilike', '%5k%'],
+		['location_label', 'ilike', '%5k%'],
+	]);
 });
 
 // ── appendPage ─────────────────────────────────────────────────────────────

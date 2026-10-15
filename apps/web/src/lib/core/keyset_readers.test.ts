@@ -10,8 +10,8 @@
 
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 
 import { stripComments } from './strip_comments.ts';
 
@@ -58,6 +58,35 @@ test('searchPublicRoutes matches the query literally, not as a LIKE pattern', ()
 		'searchPublicRoutes must match the name through literalSubstringPattern',
 	);
 	assert.doesNotMatch(fn, /\.ilike\(/, 'an ilike pattern reads * % _ \\ as wildcards');
+});
+
+test('browseClubsWithError quotes its search term inside the or= tree', () => {
+	// The term went into `or=(name.ilike.%…%,location_label.ilike.%…%)` raw, so
+	// a `,` started a new, malformed filter, a `)` closed the tree, and `*` `%`
+	// `_` were wildcards. Each filter must come from literalSubstringTerm.
+	const fn = body('browseClubsWithError');
+	assert.match(fn, /literalSubstringTerm\('name', term\)/);
+	assert.match(fn, /literalSubstringTerm\('location_label', term\)/);
+	assert.doesNotMatch(fn, /ilike/, 'an ilike pattern reads * % _ \\ as wildcards');
+});
+
+/** Every non-test .ts / .svelte file under apps/web/src, comments stripped. */
+function webSources(): Array<[string, string]> {
+	const root = resolve(import.meta.dirname, '../..');
+	return (readdirSync(root, { recursive: true }) as string[])
+		.filter((f) => /\.(ts|svelte)$/.test(f) && !/\.(test|spec)\.ts$/.test(f) && !f.endsWith('.d.ts'))
+		.map((f) => [f, stripComments(readFileSync(join(root, f), 'utf-8'))]);
+}
+
+test('no PostgREST filter tree interpolates text into a pattern operator unquoted', () => {
+	// Inside `or=` / `and=` an unquoted value runs to the next `,` or `)`, so
+	// `name.ilike.%${q}%` lets the user's text rewrite the tree. Build the term
+	// with literalSubstringTerm, which escapes and double-quotes it (the
+	// `literal(` it calls is the one quoting site this rule allows).
+	const offenders = webSources()
+		.filter(([, src]) => /\.(i?like|i?match|fts|plfts|phfts|wfts)\.[%*]?\$\{(?!literal\()/.test(src))
+		.map(([f]) => f);
+	assert.deepEqual(offenders, []);
 });
 
 test('fetchRuns takes a keyset cursor, and its whole-history walk is a keyset walk too', () => {

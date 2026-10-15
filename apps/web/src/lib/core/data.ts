@@ -16,6 +16,7 @@ import { markListsStale } from './list_freshness';
 import {
 	keysetAfter,
 	literalSubstringPattern,
+	literalSubstringTerm,
 	nextCursor,
 	publicRouteOrder,
 	type KeysetCursor,
@@ -2600,8 +2601,12 @@ export async function browseClubsWithError(
 ): Promise<{ clubs: ClubWithMeta[]; error: string | null }> {
 	let query = supabase.from('clubs').select(CLUB_SELECT_COLS).eq('is_public', true);
 	if (search && search.trim()) {
+		// Quoted per filter: the raw term inside the `or=` tree let `,` start a
+		// new filter and `)` close the tree, and ilike read `*` `%` `_` as wildcards.
 		const term = search.trim();
-		query = query.or(`name.ilike.%${term}%,location_label.ilike.%${term}%`);
+		query = query.or(
+			`${literalSubstringTerm('name', term)},${literalSubstringTerm('location_label', term)}`
+		);
 	}
 	const { data, error } = await query.order('created_at', { ascending: false }).limit(60);
 	if (error) return { clubs: [], error: error.message };
@@ -2614,8 +2619,8 @@ export async function browseClubs(search?: string): Promise<ClubWithMeta[]> {
 
 /// Region-aware club search. Tries to geocode the query first
 /// (so "Virginia" → centroid + ~470km radius → ST_DWithin against
-/// `clubs.location_point`); falls back to the same ILIKE-on-name /
-/// label path `browseClubs` uses when geocoding doesn't resolve
+/// `clubs.location_point`); falls back to the same literal name /
+/// label match `browseClubs` uses when geocoding doesn't resolve
 /// (short query, MapTiler offline, no key, etc.). See
 /// [migration 20260905_001] for the RPC.
 export async function searchClubsWithError(
@@ -2640,7 +2645,7 @@ export async function searchClubsWithError(
 		p_limit: 60,
 	}, { get: true });
 	if (error) {
-		console.warn('search_clubs RPC failed, falling back to ILIKE-only', error);
+		console.warn('search_clubs RPC failed, falling back to the name/label match', error);
 		return browseClubsWithError(term);
 	}
 	// The RPC returns `setof clubs` — strip the columns the client

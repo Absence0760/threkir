@@ -131,6 +131,58 @@ void main() {
     }
   });
 
+  testWidgets('the photo action opens the plate-photo logger when the deploy offers it',
+      (tester) async {
+    final f = await _store('plate_on_');
+    try {
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: NutritionScreen(
+          api: _OfflineFakeApi(),
+          store: f.store,
+          loadPlatePhotoAvailable: () async => true,
+        ),
+      ));
+      await tester.pump();
+      await tester.pump();
+      expect(find.byTooltip('Log from a photo'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Log from a photo'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.textContaining('Take or choose a photo of your meal'),
+          findsOneWidget);
+      expect(find.byKey(const ValueKey('plate-photo-camera')), findsOneWidget);
+    } finally {
+      await pumpUntilStoreWritesSettle(tester);
+      f.dir.deleteSync(recursive: true);
+    }
+  });
+
+  testWidgets('no photo action when the deploy does not offer the logger',
+      (tester) async {
+    final f = await _store('plate_off_');
+    try {
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: NutritionScreen(
+          api: _OfflineFakeApi(),
+          store: f.store,
+          loadPlatePhotoAvailable: () async => false,
+        ),
+      ));
+      await tester.pump();
+      await tester.pump();
+      expect(find.byTooltip('Log from a photo'), findsNothing);
+      expect(find.byTooltip('Log food'), findsOneWidget);
+    } finally {
+      await pumpUntilStoreWritesSettle(tester);
+      f.dir.deleteSync(recursive: true);
+    }
+  });
+
   testWidgets('targets-unset state offers a route to Body metrics, not the web',
       (tester) async {
     // The copy used to tell mobile users to go and fill their body metrics

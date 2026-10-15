@@ -1048,6 +1048,10 @@
   "@youProfileTitle": {
     "description": "Title of the profile entry at the top of the You tab"
   },
+  "youViewProfile": "View profile",
+  "@youViewProfile": {
+    "description": "Second line of the You tab's identity header, under the runner's name; tapping the header opens their own profile"
+  },
   "logSheetTitle": "Log",
   "@logSheetTitle": {
     "description": "Title of the Log capture bottom sheet"
@@ -1481,9 +1485,13 @@
   "@homeTodaysLift": {
     "description": "Home card header above today's logged gym workout"
   },
-  "settingsSectionProfile": "Profile",
-  "@settingsSectionProfile": {
-    "description": "Settings landing section header grouping Account + Preferences"
+  "settingsSectionTraining": "Training",
+  "@settingsSectionTraining": {
+    "description": "Section header on the You tab above coaching and guided runs"
+  },
+  "settingsSectionSettings": "Settings",
+  "@settingsSectionSettings": {
+    "description": "Section header on the You tab above Account, Preferences and Safety contacts"
   },
   "settingsSectionAppsData": "Apps & data",
   "@settingsSectionAppsData": {
@@ -5930,18 +5938,6 @@
   "profileNotFound": "Profile not found.",
   "@profileNotFound": {
     "description": "Shown when the profile does not exist"
-  },
-  "profileFollowStats": "{followers, plural, one{{followers} follower} other{{followers} followers}} · {following} following",
-  "@profileFollowStats": {
-    "description": "Header line summarising follower and following counts",
-    "placeholders": {
-      "followers": {
-        "type": "int"
-      },
-      "following": {
-        "type": "int"
-      }
-    }
   },
   "profileFollowing": "Following",
   "@profileFollowing": {
@@ -14010,10 +14006,6 @@
   "settingsBackendNotConfigured": "Backend not configured",
   "@settingsBackendNotConfigured": {
     "description": "Banner shown when a settings action needs a configured backend but none is available"
-  },
-  "settingsAccountSignedIn": "Signed in",
-  "@settingsAccountSignedIn": {
-    "description": "Account settings tile subtitle shown when signed in but no email address is available"
   },
   "settingsDevicesSignedOutSubtitle": "Sign in to see where you're signed in",
   "@settingsDevicesSignedOutSubtitle": {

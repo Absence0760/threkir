@@ -123,7 +123,11 @@ class AppTheme {
             borderRadius: BorderRadius.circular(12),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          // A button applies its resolved textStyle as-is, not merged with the
+          // theme's text theme, so a style without a family renders in the
+          // platform default font instead of Manrope.
           textStyle: const TextStyle(
+            fontFamily: fontFamily,
             fontWeight: FontWeight.w600,
             letterSpacing: 0.2,
           ),
@@ -301,7 +305,11 @@ class AppTheme {
             borderRadius: BorderRadius.circular(12),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          // A button applies its resolved textStyle as-is, not merged with the
+          // theme's text theme, so a style without a family renders in the
+          // platform default font instead of Manrope.
           textStyle: const TextStyle(
+            fontFamily: fontFamily,
             fontWeight: FontWeight.w600,
             letterSpacing: 0.2,
           ),

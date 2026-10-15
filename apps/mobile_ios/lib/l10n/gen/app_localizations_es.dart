@@ -801,6 +801,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get youProfileTitle => 'Tu perfil';
 
   @override
+  String get youViewProfile => 'Ver perfil';
+
+  @override
   String get logSheetTitle => 'Registrar';
 
   @override
@@ -1144,7 +1147,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get homeTodaysLift => 'Pesas de hoy';
 
   @override
-  String get settingsSectionProfile => 'Perfil';
+  String get settingsSectionTraining => 'Entrenamiento';
+
+  @override
+  String get settingsSectionSettings => 'Ajustes';
 
   @override
   String get settingsSectionAppsData => 'Apps y datos';
@@ -4535,17 +4541,6 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get profileNotFound => 'Perfil no encontrado.';
-
-  @override
-  String profileFollowStats(int followers, int following) {
-    String _temp0 = intl.Intl.pluralLogic(
-      followers,
-      locale: localeName,
-      other: '$followers seguidores',
-      one: '$followers seguidor',
-    );
-    return '$_temp0 · $following siguiendo';
-  }
 
   @override
   String get profileFollowing => 'Siguiendo';
@@ -10574,9 +10569,6 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get settingsBackendNotConfigured => 'Backend no configurado';
-
-  @override
-  String get settingsAccountSignedIn => 'Sesión iniciada';
 
   @override
   String get settingsDevicesSignedOutSubtitle =>

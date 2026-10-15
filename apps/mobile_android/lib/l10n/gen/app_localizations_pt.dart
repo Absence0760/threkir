@@ -804,6 +804,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get youProfileTitle => 'O seu perfil';
 
   @override
+  String get youViewProfile => 'Ver perfil';
+
+  @override
   String get logSheetTitle => 'Registar';
 
   @override
@@ -1148,7 +1151,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get homeTodaysLift => 'Treino de hoje';
 
   @override
-  String get settingsSectionProfile => 'Perfil';
+  String get settingsSectionTraining => 'Treino';
+
+  @override
+  String get settingsSectionSettings => 'Definições';
 
   @override
   String get settingsSectionAppsData => 'Apps e dados';
@@ -4540,17 +4546,6 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get profileNotFound => 'Perfil não encontrado.';
-
-  @override
-  String profileFollowStats(int followers, int following) {
-    String _temp0 = intl.Intl.pluralLogic(
-      followers,
-      locale: localeName,
-      other: '$followers seguidores',
-      one: '$followers seguidor',
-    );
-    return '$_temp0 · a seguir $following';
-  }
 
   @override
   String get profileFollowing => 'A seguir';
@@ -10579,9 +10574,6 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get settingsBackendNotConfigured => 'Backend não configurado';
-
-  @override
-  String get settingsAccountSignedIn => 'Conectado';
 
   @override
   String get settingsDevicesSignedOutSubtitle =>
@@ -16613,6 +16605,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get youProfileTitle => 'Seu perfil';
 
   @override
+  String get youViewProfile => 'Ver perfil';
+
+  @override
   String get logSheetTitle => 'Registrar';
 
   @override
@@ -16957,7 +16952,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get homeTodaysLift => 'Treino de hoje';
 
   @override
-  String get settingsSectionProfile => 'Perfil';
+  String get settingsSectionTraining => 'Treino';
+
+  @override
+  String get settingsSectionSettings => 'Configurações';
 
   @override
   String get settingsSectionAppsData => 'Apps e dados';
@@ -20349,17 +20347,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get profileNotFound => 'Perfil não encontrado.';
-
-  @override
-  String profileFollowStats(int followers, int following) {
-    String _temp0 = intl.Intl.pluralLogic(
-      followers,
-      locale: localeName,
-      other: '$followers seguidores',
-      one: '$followers seguidor',
-    );
-    return '$_temp0 · seguindo $following';
-  }
 
   @override
   String get profileFollowing => 'Seguindo';
@@ -26379,9 +26366,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get settingsBackendNotConfigured => 'Backend não configurado';
-
-  @override
-  String get settingsAccountSignedIn => 'Conectado';
 
   @override
   String get settingsDevicesSignedOutSubtitle =>

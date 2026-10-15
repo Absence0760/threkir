@@ -2662,6 +2662,7 @@ export const messages = {
 	"messages.retry": "Reintentar",
 	"messages.loadEarlier": "Cargar mensajes anteriores",
 	"messages.loadEarlierFailed": "No se pudieron cargar los mensajes anteriores.",
+	"messages.sendNotAllowed": "Solo puedes escribir a personas que sigues o que te siguen, y que no te han bloqueado.",
 	"messages.attachment.routeEyebrow": "Ruta",
 	"messages.attachment.routeUntitled": "Ruta sin título",
 	"messages.attachment.routeUnavailable": "Esta ruta ya no está disponible para ti.",

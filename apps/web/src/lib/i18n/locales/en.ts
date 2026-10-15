@@ -2675,6 +2675,7 @@ export const en = {
 	"messages.retry": "Retry",
 	"messages.loadEarlier": "Load earlier messages",
 	"messages.loadEarlierFailed": "Couldn’t load earlier messages.",
+	"messages.sendNotAllowed": "You can only message people you follow or who follow you, and who haven’t blocked you.",
 	"messages.attachment.routeEyebrow": "Route",
 	"messages.attachment.routeUntitled": "Untitled route",
 	"messages.attachment.routeUnavailable": "This route isn't available to you any more.",

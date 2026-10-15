@@ -9997,7 +9997,7 @@ export async function sendDm(
 		.single();
 	if (error || !data) {
 		if (error?.code === '42501') {
-			throw new Error("You can only message people you follow (or who follow you), and who haven't blocked you.");
+			throw new Error(m('messages.sendNotAllowed'));
 		}
 		const friendly = rateLimitErrorMessage(m, error);
 		if (friendly) throw new Error(friendly);

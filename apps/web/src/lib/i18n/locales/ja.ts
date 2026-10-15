@@ -2657,6 +2657,7 @@ export const messages = {
 	"messages.retry": "再試行",
 	"messages.loadEarlier": "以前のメッセージを読み込む",
 	"messages.loadEarlierFailed": "以前のメッセージを読み込めませんでした。",
+	"messages.sendNotAllowed": "メッセージを送れるのは、あなたがフォローしている人か、あなたをフォローしている人のうち、あなたをブロックしていない人だけです。",
 	"messages.attachment.routeEyebrow": "ルート",
 	"messages.attachment.routeUntitled": "名称未設定のルート",
 	"messages.attachment.routeUnavailable": "このルートは表示できなくなりました。",

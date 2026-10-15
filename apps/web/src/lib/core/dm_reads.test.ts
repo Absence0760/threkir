@@ -44,3 +44,11 @@ test('fetchDmThread matches the pair with two in filters, leaving the one or= to
 	assert.match(fn, /\.in\('recipient_id', pair\)/);
 	assert.equal((fn.match(/\.or\(/g) ?? []).length, 1, 'the keyset is the only or= tree');
 });
+
+test('sendDm renders its follow/block refusal through the catalogue', () => {
+	// The 42501 branch threw a hard-coded English sentence, so every locale
+	// read the refusal in English.
+	const fn = body('sendDm');
+	assert.match(fn, /error\?\.code === '42501'\) \{\s*throw new Error\(m\('messages\.sendNotAllowed'\)\)/);
+	assert.doesNotMatch(fn, /You can only message/);
+});

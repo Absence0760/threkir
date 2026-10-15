@@ -2662,6 +2662,7 @@ export const messages = {
 	"messages.retry": "Réessayer",
 	"messages.loadEarlier": "Charger les messages précédents",
 	"messages.loadEarlierFailed": "Impossible de charger les messages précédents.",
+	"messages.sendNotAllowed": "Vous ne pouvez écrire qu'aux personnes que vous suivez ou qui vous suivent, et qui ne vous ont pas bloqué.",
 	"messages.attachment.routeEyebrow": "Itinéraire",
 	"messages.attachment.routeUntitled": "Itinéraire sans titre",
 	"messages.attachment.routeUnavailable": "Cet itinéraire n'est plus accessible pour vous.",

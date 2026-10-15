@@ -54,6 +54,7 @@ src/
     types.ts        # Run, Route, Integration type overlays on generated DB types
     database.types.ts  # Generated Supabase types (regenerate after migrations)
     core/supabase.ts     # Supabase client init
+    core/client_error_log.ts # logClientError: hooks.client.ts's handleError writes every unexpected client error to the local console under CLIENT_ERROR_LOG_PREFIX before (and independent of) the consent-gated Sentry path, so a prod 500 is diagnosable from DevTools with nothing sent. The e2e crash net (tests-e2e/fixtures/crash-net.ts) keys on the same prefix.
     core/mock-data.ts    # Fallback data when Supabase is empty
     format/units.svelte.ts # Reactive km/mi + kg/lbs preference signals + unit-aware formatters (distance/pace/elevation; weight via the format/weight.ts pure layer)
     format/weight.ts       # Pure kg↔lbs conversion + formatWeightKg / parseWeightToKg for the `weight_unit` pref (storage stays canonical kg). Rune-free sibling of units.svelte.ts so it is tsx-testable (weight.test.ts); mirror the mobile Dart twin.

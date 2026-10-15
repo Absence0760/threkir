@@ -15,7 +15,7 @@ export const translation: GuideTranslation = {
 						'As corridas que você torna públicas aparecem no seu perfil e no feed. As corridas privadas ficam visíveis só para você.',
 						'A participação em um clube público, e tudo o que você publica nele, pode ser vista por quem pode ver o clube.',
 						'Enquanto você compartilha um link ao vivo, a corrida em andamento pode ser vista por qualquer pessoa que tenha o link.',
-						'Uma foto que você marca com **Mostrar na página da corrida**, em uma corrida pública vinculada a uma prova, aparece na página pública dessa prova com a legenda e o seu nome. Desmarque-a, ou deixe a corrida privada, para tirá-la de lá.',
+						'Uma foto que você marca com **Mostrar na página da prova**, em uma corrida pública vinculada a uma prova, aparece na página pública dessa prova com a legenda e o seu nome. Desmarque-a, ou deixe a corrida privada, para tirá-la de lá.',
 					],
 				},
 				{

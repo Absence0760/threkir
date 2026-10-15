@@ -58,7 +58,7 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						'Cada pedido gasta uma das suas mensagens diárias do Coach de IA, o mesmo limite do Coach.',
-						'Precisa do aviso de IA mais recente. Se lhe pedirem para o aceitar, selecione **Reveja-as nas Definições** e aceite-o aí.',
+						'Precisa do aviso de IA mais recente. Se lhe pedirem para o aceitar, selecione **Reveja-o nas Definições** e aceite-o aí.',
 						'Só os próximos treinos do seu plano e a alteração que escreveu são enviados para a IA.',
 					],
 				},

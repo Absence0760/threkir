@@ -70,13 +70,13 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Si votre compte Strava est connecté, ouvrez [[route:/social|Social]] sur le web, choisissez **Clubs** puis **Mes clubs**. Sous **Tes clubs Strava**, vous voyez les clubs Strava dont vous êtes membre. Vous seul voyez cette liste.',
+					text: 'Si votre compte Strava est connecté, ouvrez [[route:/social|Social]] sur le web, choisissez **Clubs** puis **Mes clubs**. Sous **Vos clubs Strava**, vous voyez les clubs Strava dont vous êtes membre. Vous seul voyez cette liste.',
 				},
 				{
 					type: 'list',
 					items: [
 						'**Créer sur Threkir** ouvre le formulaire d\'un nouveau club avec son nom et son lieu déjà remplis, et lie les deux dès que vous créez le club.',
-						'**Lier à mon club** le relie à un club que vous gérez déjà ici : choisissez-le sous **Lequel de tes clubs est-ce ?** puis sélectionnez **Lier**.',
+						'**Lier à mon club** le relie à un club que vous gérez déjà ici : choisissez-le sous **Lequel de vos clubs est-ce ?** puis sélectionnez **Lier**.',
 						'**Délier** supprime le lien. Aucun des deux clubs n\'est modifié.',
 					],
 				},

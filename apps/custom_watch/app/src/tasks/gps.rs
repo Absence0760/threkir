@@ -5,7 +5,8 @@
 //! Thin glue by design: byte assembly + parsing live in `ublox_nmea`,
 //! RMC/GGA merging in `watch_core::fix`, the publication cadence + the
 //! may-the-receiver-sleep decision in `watch_core::gnss_cadence`, the
-//! power-down schedule in `watch_core::gnss_power`, the GSV/GSA signal-meter
+//! power-down schedule and when the receiver config is owed in
+//! `watch_core::gnss_power`, the GSV/GSA signal-meter
 //! gate in `watch_core::gnss_signal` — all host-tested. This task only moves
 //! bytes between the peripheral and those modules.
 //!
@@ -115,7 +116,7 @@ use watch_core::gnss_cadence::{
     earned_sleep_window, min_interval_s, publish_due, receiver_may_sleep,
 };
 use watch_core::gnss_mode::GnssMode;
-use watch_core::gnss_power::SleepWindow;
+use watch_core::gnss_power::{ReceiverConfig, SleepWindow};
 use watch_core::gnss_signal::{self, SignalSample};
 use watch_core::record::RecordState;
 
@@ -290,9 +291,7 @@ pub async fn run(mut tx: BufferedUarteTx<'static>, mut rx: BufferedUarteRx<'stat
     // on. The mode is frozen mid-run (BTN3 cycles pages then), so a window
     // never spans a mode change.
     let mut sleep: Option<SleepWindow> = None;
-    // Owed at boot and after every wake; paid on the first buffer the
-    // receiver streams, which is what proves it is awake to take it.
-    let mut configure_due = true;
+    let mut config = ReceiverConfig::at_boot();
     info!("gps: listening on UARTE0");
     loop {
         // Pick up run start/stop and mode changes without blocking on them;
@@ -329,7 +328,7 @@ pub async fn run(mut tx: BufferedUarteTx<'static>, mut rx: BufferedUarteRx<'stat
                 Either3::First(()) => {
                     wake_receiver(&mut tx, "window over").await;
                     sleep = None;
-                    configure_due = true;
+                    config.woke();
                 }
                 Either3::Second(Ok(n)) => {
                     pipe.feed(&buf[..n], min_interval_s(rec_state, mode));
@@ -346,7 +345,7 @@ pub async fn run(mut tx: BufferedUarteTx<'static>, mut rx: BufferedUarteRx<'stat
                         // not at the next scheduled wake.
                         wake_receiver(&mut tx, "run state changed").await;
                         sleep = None;
-                        configure_due = true;
+                        config.woke();
                     }
                 }
             }
@@ -355,8 +354,8 @@ pub async fn run(mut tx: BufferedUarteTx<'static>, mut rx: BufferedUarteRx<'stat
 
         match rx.read(&mut buf).await {
             Ok(n) => {
-                if configure_due && n > 0 {
-                    configure_due = !configure_receiver(&mut tx).await;
+                if config.send_now(n) {
+                    config.sent(configure_receiver(&mut tx).await);
                 }
                 let published = pipe.feed(&buf[..n], min_interval_s(rec_state, mode));
                 let window = published.and_then(|at_s| earned_sleep_window(rec_state, mode, at_s));

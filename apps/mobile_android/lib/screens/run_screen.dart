@@ -1338,7 +1338,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   /// One-time OEM battery-optimisation disclosure. Aggressive OEM app-killers
   /// (Samsung Stamina, Xiaomi, OnePlus) freeze the recording foreground
   /// service mid-run unless the app is exempted from battery optimisation,
-  /// silently truncating a long effort. Surface a single dismissible hint
+  /// silently truncating the run. Shown once, on the first START, with no
+  /// run-length gate. Surface a single dismissible hint
   /// deep-linking to the battery-optimisation settings (App Info as the
   /// fallback). Android-only and never a gate on the run itself. Returns
   /// false when the runner went to Settings, so the start is abandoned

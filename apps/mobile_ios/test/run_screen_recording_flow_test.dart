@@ -1252,6 +1252,38 @@ void main() {
         debugDefaultTargetPlatformOverride = null;
       }
     });
+
+    testWidgets(
+        'the battery-optimisation hint shows on the first START with no run '
+        'length to judge by, is marked shown, and Not now starts the run',
+        (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      try {
+        mockPermissions(alwaysGranted: true);
+        await pumpRunScreen(tester);
+        await tapStartToDialog(tester);
+        expect(find.text('Keep recording alive in the background'),
+            findsOneWidget,
+            reason: 'no route, workout or goal is set; the hint is not '
+                'gated on a long run');
+
+        await tester.tap(find.widgetWithText(TextButton, 'Not now'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+
+        expect(settingsCalls, isEmpty);
+        expect(find.text('START'), findsNothing,
+            reason: 'declining the hint must not hold the run');
+        await unmount(tester);
+
+        final reread = Preferences();
+        await reread.init();
+        expect(reread.batteryOptHintShown, isTrue,
+            reason: 'the hint is one-time');
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
   });
 
   group('RunScreen — the docked centre Stop (RunStopDock)', () {

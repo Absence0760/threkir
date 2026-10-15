@@ -219,6 +219,19 @@ void main() {
     expect(r.changes.any((c) => c.workoutId == 'next'), true);
   });
 
+  test('adaptiveReplanRemaining: with the gate off (no fitness) the same under-trend proposes the make-up', () {
+    // The plan screen passes null while ADAPTIVE_FITNESS_GATE is off, so the
+    // fixture the fatigued case suppresses must read as adherence alone.
+    final r = adaptiveReplanRemaining(
+      weeks: underTrendWeeks(),
+      today: '2026-07-01',
+      fitness: null,
+    );
+    expect(r.reason, AdaptiveReason.trendUnderfitness);
+    expect(r.fitnessGated, false);
+    expect(r.changes.any((c) => c.workoutId == 'next'), true);
+  });
+
   test('adaptiveReplanRemaining: an over-training trend is not fitness-gated even when fatigued', () {
     final easy = _wo('easy', '2026-07-07', 'easy', 8000);
     final weeks = [

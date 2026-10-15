@@ -66,6 +66,12 @@ void main() {
     expect(_countdown(tester), 'Starts in 7 days');
   });
 
+  testWidgets('the day before the plan starts reads as starts tomorrow',
+      (tester) async {
+    await _pump(tester, _plan(start, race), DateTime(2026, 5, 31, 22));
+    expect(_countdown(tester), 'Starts tomorrow');
+  });
+
   test('hides once the race is behind the runner', () {
     expect(NextRaceCard.shows(_plan(start, race), DateTime(2026, 8, 30)),
         isTrue);

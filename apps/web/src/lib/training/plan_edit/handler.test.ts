@@ -281,3 +281,57 @@ test('the tool advertises exactly the operations the validator accepts', () => {
 	const items = (EDIT_TOOL.input_schema.properties as Record<string, { items: { properties: { op: { enum: string[] } } } }>).operations.items;
 	assert.deepEqual(items.properties.op.enum, [...PLAN_EDIT_OP_KINDS]);
 });
+
+test('a request using every operation kind comes back as one validated set', async () => {
+	const r = await run(
+		{},
+		stubModel(() =>
+			toolMessage({
+				operations: [
+					{ op: 'skip_workout', workout: 'W3' },
+					{ op: 'move_workout', workout: 'W9', date: '2026-10-24' },
+					{ op: 'swap_days', workout: 'W10', other_workout: 'W11' },
+					{ op: 'mark_recovery', week: 3 },
+					{ op: 'scale_week', week: 4, factor: 0.9 },
+				],
+			}),
+		),
+	);
+	assert.equal(r.status, 200);
+	assert.deepEqual(r.body.ops, [
+		{ op: 'skip_workout', workoutId: 'a-tempo' },
+		{ op: 'move_workout', workoutId: 'b-long', date: '2026-10-24' },
+		{ op: 'swap_days', workoutId: 'c-tempo', otherWorkoutId: 'c-easy' },
+		{ op: 'mark_recovery', weekIndex: 2 },
+		{ op: 'scale_week', weekIndex: 3, factor: 0.9 },
+	]);
+	assert.equal(r.body.dropped, 0);
+	assert.deepEqual(r.body.notes, []);
+});
+
+test('a successful edit spends exactly one Coach message and refunds nothing', async () => {
+	const r = await run(
+		{},
+		stubModel(() => toolMessage({ operations: [{ op: 'skip_workout', workout: 'W6' }] })),
+	);
+	assert.equal(r.status, 200);
+	assert.equal(r.model.seen.calls, 1);
+	assert.equal(r.sb.calls.filter((c) => c === 'increment_coach_usage').length, 1);
+	assert.ok(!r.sb.calls.includes('decrement_coach_usage'));
+});
+
+test('a Pro caller is held to the Pro cap, not the free one', async () => {
+	const pastFree = await run({ isPro: true, usage: TIER_LIMITS.free.dailyLimit + 1 });
+	assert.equal(pastFree.status, 200);
+	const atPro = await run({ isPro: true, usage: TIER_LIMITS.pro.dailyLimit });
+	assert.equal(atPro.status, 200);
+	const overPro = await run({ isPro: true, usage: TIER_LIMITS.pro.dailyLimit + 1 });
+	assert.equal(overPro.status, 429);
+	assert.deepEqual(overPro.body, {
+		error: 'daily_limit',
+		used: TIER_LIMITS.pro.dailyLimit + 1,
+		limit: TIER_LIMITS.pro.dailyLimit,
+		tier: 'pro',
+	});
+	assert.equal(overPro.model.seen.calls, 0);
+});

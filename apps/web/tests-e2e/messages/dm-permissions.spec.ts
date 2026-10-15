@@ -69,6 +69,29 @@ test.describe('/messages — permission boundaries', () => {
 		}
 	});
 
+	test('the follow-gate refusal reads in the runner\'s own language', async ({ browser }) => {
+		const ctx = await browser.newContext({ storageState: USER_B.storageStatePath, locale: 'de-DE' });
+		const page = await ctx.newPage();
+		try {
+			await page.addInitScript(() => {
+				localStorage.setItem('locale', 'de');
+			});
+			await page.goto(`/messages/${USER_C_PRO.id}`);
+
+			const composer = page.getByPlaceholder('Nachricht…');
+			await expect(composer).toBeVisible({ timeout: 10_000 });
+			await composer.fill(`e2e-should-fail-de ${Date.now()}`);
+			await page.getByRole('button', { name: 'Senden' }).click();
+
+			const alert = page.locator('.send-error[role="alert"]');
+			await expect(alert).toBeVisible({ timeout: 10_000 });
+			await expect(alert).toContainText('Du kannst nur Personen schreiben, denen du folgst');
+			await expect(alert).not.toContainText(/can only message/i);
+		} finally {
+			await ctx.close();
+		}
+	});
+
 	test('a block overrides an existing follow edge: blocked sender is rejected', async ({
 		browser
 	}) => {

@@ -152,6 +152,74 @@ test.describe('owner', () => {
 		}
 	});
 
+	test('withdraws a shared photo; it leaves the race page', async ({ page, browser }) => {
+		const caption = `e2e race photo withdrawn ${Date.now()}`;
+		const { runId, photoId } = await seedLinkedRunWithPhoto({
+			isPublic: true,
+			caption,
+			raceGallery: true
+		});
+
+		await page.goto(`/runs/${runId}`);
+		const toggle = page.locator('.tile').first().getByRole('checkbox', { name: 'Show on race page' });
+		await expect(toggle).toBeChecked({ timeout: 15_000 });
+		await toggle.uncheck();
+
+		await expect
+			.poll(
+				async () =>
+					(
+						await readRow(
+							'run_photos.race_gallery by id',
+							getAdminClient().from('run_photos').select('race_gallery').eq('id', photoId).single()
+						)
+					).race_gallery,
+				{ timeout: 15_000 }
+			)
+			.toBe(false);
+
+		const anon = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+		try {
+			const anonPage = await anon.newPage();
+			const galleryRead = anonPage.waitForResponse((r) =>
+				r.url().includes('/rest/v1/rpc/race_listing_photos')
+			);
+			await anonPage.goto(`/share/race/${listingId}`);
+			await expect(anonPage.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 15_000 });
+			expect((await galleryRead).ok()).toBe(true);
+			await expect(anonPage.getByText(caption)).toHaveCount(0);
+		} finally {
+			await anon.close();
+		}
+	});
+
+	test('a shared photo on a private run can still be withdrawn', async ({ page }) => {
+		const { runId, photoId } = await seedLinkedRunWithPhoto({
+			isPublic: false,
+			caption: `e2e private withdraw ${Date.now()}`,
+			raceGallery: true
+		});
+
+		await page.goto(`/runs/${runId}`);
+		const toggle = page.locator('.tile').first().getByRole('checkbox', { name: 'Show on race page' });
+		await expect(toggle).toBeChecked({ timeout: 15_000 });
+		await expect(toggle).toBeEnabled();
+		await toggle.uncheck();
+
+		await expect
+			.poll(
+				async () =>
+					(
+						await readRow(
+							'run_photos.race_gallery by id',
+							getAdminClient().from('run_photos').select('race_gallery').eq('id', photoId).single()
+						)
+					).race_gallery,
+				{ timeout: 15_000 }
+			)
+			.toBe(false);
+	});
+
 	test('a private run disables the toggle and explains why', async ({ page }) => {
 		const { runId } = await seedLinkedRunWithPhoto({
 			isPublic: false,

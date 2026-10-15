@@ -1621,6 +1621,20 @@ void main() {
       expect(sources(r), [gnssAcc, fusedAcc, fusedAcc, gnssAcc, gnssAcc]);
     });
 
+    test('fused stays aside through 12 s of receiver silence and feeds after',
+        () {
+      final (:r, :gnss, :fused) = arbitrated();
+      r.begin();
+      for (final s in [0, 1, 2]) {
+        gnss(s);
+      }
+      fused(14);
+      expect(sources(r), [gnssAcc]);
+      fused(15);
+      expect(sources(r), [gnssAcc, fusedAcc]);
+      expect(r.locationProvider, 'mixed');
+    });
+
     test('receiver fixes the accuracy gate drops do not hold fused off', () {
       final (:r, :gnss, :fused) = arbitrated();
       r.begin();

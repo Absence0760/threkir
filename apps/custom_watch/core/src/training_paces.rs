@@ -274,6 +274,34 @@ mod tests {
     }
 
     #[test]
+    fn real_anchor_is_not_the_fallback() {
+        let goal = resolve_training_paces_with_meta(anchor(
+            10_000.0,
+            Some(2400.0),
+            None,
+            TrainingGender::None,
+        ));
+        assert!(!goal.is_fallback);
+        assert_eq!(
+            goal.paces,
+            paces_from_goal_pace(240.0, TrainingGender::None)
+        );
+
+        let recent = resolve_training_paces_with_meta(anchor(
+            10_000.0,
+            None,
+            Some(1200.0),
+            TrainingGender::None,
+        ));
+        assert!(!recent.is_fallback);
+        let goal_pace = riegel_predict(5000.0, 1200.0, 10_000.0, RIEGEL_EXPONENT) / 10.0;
+        assert_eq!(
+            recent.paces,
+            paces_from_goal_pace(goal_pace, TrainingGender::None)
+        );
+    }
+
+    #[test]
     fn zero_anchor_is_treated_as_no_anchor() {
         let zero_recent = resolve_training_paces_with_meta(anchor(
             10_000.0,

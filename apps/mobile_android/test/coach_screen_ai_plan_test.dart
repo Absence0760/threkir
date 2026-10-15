@@ -1,6 +1,8 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -280,6 +282,72 @@ void main() {
 
       final wizard = tester.widget<PlanNewScreen>(find.byType(PlanNewScreen));
       expect(wizard.initialDescription, 'A sub-2 half on 14 March');
+    });
+  });
+
+  group('CoachScreen — web handoff links', () {
+    const launcher = MethodChannel('plugins.flutter.io/url_launcher');
+    const planId = '11111111-2222-4333-8444-555555555555';
+
+    Future<List<Uri>> tapCoachLink(
+        WidgetTester tester, String text, String href) async {
+      dotenv.loadFromString(
+        envString: 'WEB_BASE_URL=https://preview.threkir.com',
+        isOptional: true,
+      );
+      final launched = <Uri>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(launcher,
+          (call) async {
+        if (call.method == 'launch' || call.method == 'launchUrl') {
+          launched.add(Uri.parse((call.arguments as Map)['url'] as String));
+        }
+        return true;
+      });
+      addTearDown(() => tester.binding.defaultBinaryMessenger
+          .setMockMethodCallHandler(launcher, null));
+      await _pump(
+        tester,
+        aiPlan: false,
+        plan: _plan(),
+        messages: [
+          CoachMessageRow(
+            id: 'm1',
+            userId: 'u1',
+            role: 'assistant',
+            content: '[$text]($href)',
+            createdAt: DateTime(2026, 10, 1),
+          ),
+        ],
+      );
+      final markdown = tester.widget<MarkdownBody>(find.byType(MarkdownBody));
+      markdown.onTapLink!(text, href, '');
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      return launched;
+    }
+
+    realtimeWidgetTest('an "Adjust my plan" link opens the web plan page',
+        (tester) async {
+      final launched = await tapCoachLink(tester, 'Adjust my plan',
+          '/plans/$planId?adjust=Move%20my%20long%20run%20to%20Sunday');
+      expect(launched, hasLength(1));
+      expect(launched.single.origin, 'https://preview.threkir.com');
+      expect(launched.single.path, '/plans/$planId');
+      expect(launched.single.queryParameters,
+          {'adjust': 'Move my long run to Sunday'});
+      expect(find.byType(PlanNewScreen), findsNothing);
+    });
+
+    realtimeWidgetTest('a "Plan your fuelling" link opens the web fuelling page',
+        (tester) async {
+      final launched = await tapCoachLink(tester, 'Plan your fuelling',
+          '/nutrition/fuel?duration=9000&carbs=70&heat=1');
+      expect(launched, hasLength(1));
+      expect(launched.single.origin, 'https://preview.threkir.com');
+      expect(launched.single.path, '/nutrition/fuel');
+      expect(launched.single.queryParameters,
+          {'duration': '9000', 'carbs': '70', 'heat': '1'});
     });
   });
 }

@@ -25,6 +25,7 @@
 	import SendRouteDialog from '#lib/components/SendRouteDialog.svelte';
 	import RoutePreviewScrubber from '#lib/components/RoutePreviewScrubber.svelte';
 	import { interpolateAlongRoute } from '#lib/routes/route_geometry.ts';
+	import { distinctTags } from '#lib/routes/route_tags.ts';
 	import { routeElevation } from '#lib/routes/route_elevation.ts';
 	import { buildRouteShareCanonical } from '#lib/share/share_meta.ts';
 	import { describeRoute, localisedTemplate } from '#lib/routes/route_description.ts';
@@ -53,6 +54,7 @@
 	);
 
 	let route = $state<Route | null>(null);
+	const routeTags = $derived(distinctTags(route?.tags));
 	// `fetchRouteById` returns owner-clipped waypoints for owners and
 	// server-clipped waypoints for non-owners (via the public_routes
 	// view + clip_route_for_viewer). The wire-leak is closed there;
@@ -302,11 +304,12 @@
 		if (!route) return;
 		const next = tagDraft.trim().toLowerCase();
 		if (!next) return;
-		if ((route.tags ?? []).includes(next)) {
+		const current = distinctTags(route.tags);
+		if (current.includes(next)) {
 			tagDraft = '';
 			return;
 		}
-		const updated = [...(route.tags ?? []), next];
+		const updated = [...current, next];
 		tagsSaving = true;
 		try {
 			await updateRouteTags(route.id, updated);
@@ -321,7 +324,7 @@
 
 	async function removeTag(tag: string) {
 		if (!route || tagsSaving) return;
-		const updated = (route.tags ?? []).filter((t) => t !== tag);
+		const updated = distinctTags(route.tags).filter((t) => t !== tag);
 		tagsSaving = true;
 		try {
 			await updateRouteTags(route.id, updated);
@@ -702,9 +705,9 @@
 							{describing ? m('routeDetail.describing') : m('routeDetail.describe')}
 						</button>
 					{/if}
-					{#if (route.tags && route.tags.length > 0) || isOwner}
+					{#if routeTags.length > 0 || isOwner}
 						<div class="tags-row">
-							{#each route.tags ?? [] as t (t)}
+							{#each routeTags as t (t)}
 								<span class="tag-chip">
 									{t}
 									{#if isOwner}

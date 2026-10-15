@@ -12,6 +12,7 @@
 		unbookmarkRoute,
 	} from '#lib/core/data.ts';
 	import type { PublicRouteSummary } from '#lib/routes/route_list_columns.ts';
+	import { distinctTags } from '#lib/routes/route_tags.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { supabase } from '#lib/core/supabase.ts';
@@ -338,6 +339,7 @@
 	{:else}
 		<div class="route-grid">
 			{#each routes as route}
+				{@const cardTags = distinctTags(route.tags).slice(0, 4)}
 				<div class="route-card">
 					<a href="/routes/{route.id}?from=explore" class="route-link">
 						<div class="route-map-placeholder">
@@ -386,9 +388,9 @@
 									</span>
 								{/if}
 							</div>
-							{#if route.tags && route.tags.length > 0}
+							{#if cardTags.length > 0}
 								<div class="card-tags">
-									{#each route.tags.slice(0, 4) as t (t)}
+									{#each cardTags as t (t)}
 										<span class="card-tag">{t}</span>
 									{/each}
 								</div>

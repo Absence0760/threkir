@@ -175,3 +175,50 @@ test('skipping one of a stacked pair never reports it', () => {
 	const { after } = applyPlanEditOps(before, [{ op: 'skip_workout', workoutId: 'b-easy2' }], TODAY);
 	assert.deepEqual(planEditLoadCheck(before, after, STEADY, TODAY).stackedDays, []);
 });
+
+test('a set mixing every operation kind applies each one, and an easier plan is ok', () => {
+	const before = fixture();
+	const r = applyPlanEditOps(
+		before,
+		[
+			{ op: 'skip_workout', workoutId: 'a-tempo' },
+			{ op: 'move_workout', workoutId: 'b-long', date: '2026-10-24' },
+			{ op: 'swap_days', workoutId: 'c-tempo', otherWorkoutId: 'c-easy' },
+			{ op: 'mark_recovery', weekIndex: 2 },
+			{ op: 'scale_week', weekIndex: 3, factor: 0.9 },
+		],
+		TODAY,
+	);
+	assert.equal(r.applied, 5);
+	assert.deepEqual(
+		r.workouts.map((c) => [c.workoutId, c.patch, c.skip]),
+		[
+			['a-tempo', null, true],
+			['b-long', { scheduled_date: '2026-10-24' }, false],
+			[
+				'c-tempo',
+				{
+					scheduled_date: '2026-10-29',
+					kind: 'recovery',
+					target_distance_m: 6000,
+					target_pace_sec_per_km: null,
+					target_pace_tolerance_sec: null,
+				},
+				false,
+			],
+			['c-easy', { scheduled_date: '2026-10-27', target_distance_m: 6000 }, false],
+			['c-long', { target_distance_m: 14_400 }, false],
+			['d-easy', { target_distance_m: 7200 }, false],
+			['d-tempo', { target_distance_m: 5400 }, false],
+		],
+	);
+	assert.deepEqual(r.weeks, [
+		{ weekId: 'wk2', weekIndex: 2, beforeVolumeM: 44_000, afterVolumeM: 26_400 },
+		{ weekId: 'wk3', weekIndex: 3, beforeVolumeM: 30_000, afterVolumeM: 27_000 },
+	]);
+	assert.deepEqual(planEditLoadCheck(before, r.after, STEADY, TODAY), {
+		verdict: 'ok',
+		raisedWeeks: [],
+		stackedDays: [],
+	});
+});

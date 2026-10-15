@@ -81,6 +81,7 @@ Titles, summaries, section headings and illustration alt text take no markup at 
 - **Account menu → Help.** The sidebar's account popover lists the secondary destinations; it serves the desktop sidebar and the narrow-viewport rail alike.
 - **`<HelpLink route="/the/route/[id]" />`** — "How this works" near a page title: one guide links straight to it, several open a short disclosure list, none renders nothing (and fails the guard). Mount it with a literal route id.
 - **`<InfoTip guide="<id>" …>`** — adds "Read the guide" after the tip's own text.
+- **Mobile, `openGuide(context, '<id>')`** (`screens/help_screen.dart`) — opens one guide from wherever the decision it explains is made, labelled with the existing `infoTipReadGuide` string: the clubs empty state (`create-a-club`), an `InfoTipButton` with a `guideId`, and for `location-permission` both the onboarding **Location access** page and the pre-run **Allow location all the time** dialog. A guide that explains an OS permission (`location-permission`) has no `routes`, since no web page records a run, so it is reached this way rather than through a *How this works* button.
 
 ### Mobile
 

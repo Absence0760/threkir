@@ -108,18 +108,35 @@ final class WorkoutManagerDistanceTests: XCTestCase {
         XCTAssertEqual(wm.distanceMetres, before + 103.4528 + 2.8, accuracy: 0.01)
     }
 
-    func testACanopyStretchMovesDistanceButNotTheTrackOrTheMap() {
+    func testACanopyStretchMovesDistanceAndIsStoredButNotOnTheMap() {
         // Five clean seconds, then ten at 40 m: past the 30 m track gate,
         // inside the estimator's 50 m cap, Doppler still good. 2.8 m/s over
-        // 15 s by scripts/gps_distance/reference.py.
+        // 15 s by scripts/gps_distance/reference.py. Every one of the 16 fixes
+        // the estimator took is stored, the ten canopy ones flagged offTrack
+        // (docs/features/gps_distance.md § Stored track), so the server's
+        // replay sees the watch's input; the mini-map and its position are
+        // exactly what the six clean fixes alone draw.
         let wm = WorkoutManager()
         let degPerSecond = 2.8 / 111_195
-        feed(wm, (0...15).map {
+        let fixes = (0...15).map {
             loc(51.5 + Double($0) * degPerSecond, at: Double($0), accuracy: $0 <= 5 ? 5 : 40)
-        })
+        }
+        feed(wm, fixes)
         XCTAssertEqual(wm.distanceMetres, 2.8 * 15, accuracy: 0.01)
-        XCTAssertEqual(wm.trackPointCount, 6)
+        XCTAssertEqual(wm.trackPointCount, 16)
         XCTAssertEqual(wm.mapPosition?.latitude ?? 0, 51.5 + 5 * degPerSecond, accuracy: 1e-12)
+        let cleanOnly = WorkoutManager()
+        feed(cleanOnly, Array(fixes.prefix(6)))
+        XCTAssertEqual(wm.mapTrail, cleanOnly.mapTrail, "the map line is the clean fixes alone")
+        XCTAssertTrue(wm.storedTrackComplete)
+    }
+
+    func testAFixExactlyAtTheTrackGateIsOffTheLine() {
+        // The gate is strict: 30 m is stored flagged, as before it was left out.
+        let wm = WorkoutManager()
+        feed(wm, [loc(51.5, at: 0), loc(51.5 + 2.8 / 111_195, at: 1, accuracy: 30)])
+        XCTAssertEqual(wm.trackPointCount, 2)
+        XCTAssertEqual(wm.mapPosition?.latitude ?? 0, 51.5, accuracy: 1e-12)
     }
 
     func testFixPastTheAccuracyCapIsIgnored() {

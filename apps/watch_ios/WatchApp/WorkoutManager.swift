@@ -133,6 +133,10 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     /// Distance banked by segments closed at a pause.
     private var bankedDistanceMetres: Double = 0
     private var bankedStepFilledMetres: Double = 0
+    /// Whether the track file holds every fix the estimator took this run:
+    /// true from `start()`, and on a continued run only when its checkpoint
+    /// said so. Becomes `FinishedRun.trackComplete`.
+    private(set) var storedTrackComplete = true
     /// Estimator clock of the last fix fed, used to seal the pace window when
     /// the estimator re-anchors over a gap it will not credit.
     private var lastEstimatorFixT: Double?
@@ -203,6 +207,9 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         /// Metres the pedometer filled across GPS gaps, already inside
         /// `distanceMetres`. Sent only when above zero.
         var distanceStepFilledMetres: Double = 0
+        /// `metadata.track_complete`: the track file holds every fix the
+        /// estimator took, off-track ones flagged, and is not empty.
+        var trackComplete: Bool = false
     }
 
     /// A track point in the wire shape the phone, web and mobile clients
@@ -218,6 +225,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         var speedAccuracyMps: Double? = nil
         var bearingDeg: Double? = nil
         var distM: Double? = nil
+        var offTrack: Bool? = nil
     }
 
     /// Bytes buffered before `writeTrackJSON` flushes to the output handle.
@@ -271,7 +279,8 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
                 speedMps: record.speedMps,
                 speedAccuracyMps: record.speedAccuracyMps,
                 bearingDeg: record.bearingDeg,
-                distM: record.distM
+                distM: record.distM,
+                offTrack: record.offTrack
             )
             guard let encoded = try? encoder.encode(point) else { return }
             if wroteAny { buffer.append(comma) }
@@ -339,6 +348,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         let runId = UUID().uuidString.lowercased()
         currentRunId = runId
         trackPointCount = 0
+        storedTrackComplete = true
         distanceMetres = 0
         elapsedSeconds = 0
         currentPace = nil
@@ -537,6 +547,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         distanceMetres = bankedDistanceMetres
         lapMarks = cp.laps ?? []
         steps = cp.steps
+        storedTrackComplete = cp.trackComplete ?? false
 
         let store = CheckpointStore(runId: cp.id)
         checkpointStore = store
@@ -545,6 +556,9 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         var last: TrackPointRecord?
         store.forEachTrackPoint { record in
             count += 1
+            // The map is the line; a fix stored only for the server's
+            // distance replay is not on it.
+            guard !record.isOffTrack else { return }
             trail.append(MiniMapPoint(latitude: record.lat, longitude: record.lng))
             last = record
         }
@@ -670,7 +684,8 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             ),
             isPublic: PrivacyDefault.isPublic(PrivacyDefault.stored()),
             distanceEstimator: Self.distanceEstimatorTag,
-            distanceStepFilledMetres: distanceStepFilledMetres
+            distanceStepFilledMetres: distanceStepFilledMetres,
+            trackComplete: storedTrackComplete && trackPointCount > 0
         )
 
         state = .finished
@@ -915,9 +930,11 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     /// CoreLocation reports an unknown speed, course or accuracy as a
     /// negative value; each reads as absent here, for the estimator and for
     /// the stored track point alike.
-    /// The accuracy a fix must state to enter the stored track, the mini-map
-    /// and route guidance. The estimator takes fixes up to its own
-    /// `GpsDistanceEstimator.maxPosSigmaM`.
+    /// The accuracy a fix must state to join the run's line: the mini-map and
+    /// route guidance. The estimator takes fixes up to its own
+    /// `GpsDistanceEstimator.maxPosSigmaM`, and every one it takes is stored,
+    /// those at or past this gate flagged `offTrack`
+    /// (docs/features/gps_distance.md § Stored track).
     static let trackAccuracyGateM = 30.0
 
     static func speed(of location: CLLocation) -> Double? {
@@ -981,10 +998,10 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             fedEstimator = true
 
             // A canopy fix past the track gate still carries good Doppler, so
-            // it moves distance, but it stays off the track, the mini-map and
-            // route guidance.
-            guard location.horizontalAccuracy < Self.trackAccuracyGateM else { continue }
-            lastAcceptedFix = location
+            // it moves distance and is stored for the server's replay, flagged
+            // off the line: the mini-map and route guidance never see it.
+            let onLine = location.horizontalAccuracy < Self.trackAccuracyGateM
+            if onLine { lastAcceptedFix = location }
 
             newPoints.append(TrackPointRecord(
                 lat: location.coordinate.latitude,
@@ -995,7 +1012,8 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
                 speedMps: Self.speed(of: location),
                 speedAccuracyMps: Self.speedAccuracy(of: location),
                 bearingDeg: Self.bearing(of: location),
-                distM: Self.storedDistance(distanceMetres)
+                distM: Self.storedDistance(distanceMetres),
+                offTrack: onLine ? nil : true
             ))
         }
 
@@ -1021,7 +1039,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         // The mini-map is the last auxiliary read, and a read only: pure value
         // maths over points the steps above have already committed, with no
         // framework call to fail and nothing the recording stack waits on.
-        for record in newPoints {
+        for record in newPoints where !record.isOffTrack {
             mapTrail.append(MiniMapPoint(latitude: record.lat, longitude: record.lng))
         }
         if let fix = lastAcceptedFix {
@@ -1091,7 +1109,8 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             distanceStepFilledMetres: distanceStepFilledMetres,
             pausedAt: pausedAt,
             hrMeanUngraded: measured.mean,
-            hrCoveredSeconds: measured.coveredSeconds
+            hrCoveredSeconds: measured.coveredSeconds,
+            trackComplete: storedTrackComplete
         )
         store.write(checkpoint: cp)
         // Match the track's crash-durability window to the checkpoint's.
@@ -1140,7 +1159,8 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             // OS's recovery keeps for the same reason (#389).
             isPublic: cp.isPublic,
             distanceEstimator: cp.distanceEstimator,
-            distanceStepFilledMetres: cp.distanceStepFilledMetres ?? 0
+            distanceStepFilledMetres: cp.distanceStepFilledMetres ?? 0,
+            trackComplete: (cp.trackComplete ?? false) && count > 0
         )
     }
 

@@ -158,6 +158,9 @@ struct ContentView: View {
             if run.distanceStepFilledMetres > 0 {
                 metadata["distance_step_filled_m"] = run.distanceStepFilledMetres
             }
+            // The track holds every fix the estimator took, off-track ones
+            // flagged, so the server's replay sees the watch's own input.
+            if run.trackComplete { metadata["track_complete"] = true }
             // Only mark the run synced when WCSession actually queued it.
             // A false means nothing was handed off (session not yet
             // activated) — leave `thisRunSynced` false so `PostRunView`

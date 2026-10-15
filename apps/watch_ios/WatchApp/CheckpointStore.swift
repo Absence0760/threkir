@@ -77,6 +77,12 @@ struct RunCheckpoint: Codable {
     // back to the graded pair.
     let hrMeanUngraded: Double?
     let hrCoveredSeconds: Double?
+    // Whether the track file holds every fix the distance estimator took,
+    // those past the 30 m gate flagged `offTrack`
+    // (docs/features/gps_distance.md § Stored track). Nil from a build that
+    // stored only the gated fixes, so a run continued or recovered from it
+    // claims no complete track.
+    let trackComplete: Bool?
 
     init(
         id: String,
@@ -97,6 +103,7 @@ struct RunCheckpoint: Codable {
         pausedAt: Date? = nil,
         hrMeanUngraded: Double? = nil,
         hrCoveredSeconds: Double? = nil,
+        trackComplete: Bool? = nil,
         version: Int = RunCheckpoint.currentVersion
     ) {
         self.version = version
@@ -118,6 +125,7 @@ struct RunCheckpoint: Codable {
         self.pausedAt = pausedAt
         self.hrMeanUngraded = hrMeanUngraded
         self.hrCoveredSeconds = hrCoveredSeconds
+        self.trackComplete = trackComplete
     }
 
     /// Every field is decoded with a fallback default rather than the
@@ -151,6 +159,7 @@ struct RunCheckpoint: Codable {
         pausedAt = try c.decodeIfPresent(Date.self, forKey: .pausedAt)
         hrMeanUngraded = try c.decodeIfPresent(Double.self, forKey: .hrMeanUngraded)
         hrCoveredSeconds = try c.decodeIfPresent(Double.self, forKey: .hrCoveredSeconds)
+        trackComplete = try c.decodeIfPresent(Bool.self, forKey: .trackComplete)
     }
 }
 
@@ -374,4 +383,11 @@ struct TrackPointRecord: Codable {
     /// The run's distance credited up to and including this fix
     /// (docs/features/gps_distance.md § Waypoint fields).
     var distM: Double? = nil
+    /// `true` on a fix the distance estimator took past the 30 m track gate:
+    /// stored for the server's replay, skipped by the mini-map and every
+    /// other reader of the line. Nil, and so omitted, on every other fix
+    /// (docs/features/gps_distance.md § Stored track).
+    var offTrack: Bool? = nil
+
+    var isOffTrack: Bool { offTrack == true }
 }

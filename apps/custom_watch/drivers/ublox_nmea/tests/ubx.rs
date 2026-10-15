@@ -332,3 +332,61 @@ fn an_oversized_length_is_abandoned_at_the_length_field() {
     let out: Vec<Sentence> = stream.iter().filter_map(|b| p.feed(*b)).collect();
     assert!(matches!(out[..], [Sentence::NavPvt(_)]), "{out:?}");
 }
+
+/// A whole NAV-PVT frame with every field populated as a receiver would send
+/// it (date, nano, height, hMSL, vAcc, NED velocity, headMot, headAcc, pDOP),
+/// so a decoder reading a neighbouring field's offset cannot pass by reading
+/// a zero. The checksum was computed outside this crate. Fields: iTOW
+/// 412215000, 2026-10-15 14:23:35 valid 0x37, fixType 3, gnssFixOK, numSV 14,
+/// lon -105.2705123, lat 40.0150456, hAcc 1870 mm, vAcc 3410 mm, gSpeed
+/// 3158 mm/s, sAcc 260 mm/s.
+const POPULATED_NAV_PVT: [u8; 100] = [
+    0xB5, 0x62, 0x01, 0x07, 0x5C, 0x00, 0xD8, 0xE6, 0x91, 0x18, 0xEA, 0x07, 0x0A, 0x0F, 0x0E, 0x17,
+    0x23, 0x37, 0x15, 0x00, 0x00, 0x00, 0xC0, 0x1D, 0xFE, 0xFF, 0x03, 0x01, 0xE0, 0x0E, 0x9D, 0xFE,
+    0x40, 0xC1, 0xB8, 0xCF, 0xD9, 0x17, 0xA0, 0x41, 0x19, 0x00, 0xF0, 0xF1, 0x18, 0x00, 0x4E, 0x07,
+    0x00, 0x00, 0x52, 0x0D, 0x00, 0x00, 0x1E, 0xFB, 0xFF, 0xFF, 0x54, 0x0B, 0x00, 0x00, 0x28, 0x00,
+    0x00, 0x00, 0x56, 0x0C, 0x00, 0x00, 0x40, 0x82, 0xAB, 0x00, 0x04, 0x01, 0x00, 0x00, 0x80, 0x31,
+    0x17, 0x00, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0xAD, 0x6E,
+];
+
+#[test]
+fn a_fully_populated_nav_pvt_frame_decodes_through_the_parser() {
+    let mut p = Parser::new();
+    let out: Vec<Sentence> = POPULATED_NAV_PVT
+        .iter()
+        .filter_map(|b| p.feed(*b))
+        .collect();
+    let [Sentence::NavPvt(pvt)] = out[..] else {
+        panic!("expected one NAV-PVT, got {out:?}");
+    };
+    assert_eq!(pvt.itow_ms, 412_215_000);
+    assert_eq!(pvt.time_of_day, Some(14 * 3600 + 23 * 60 + 35));
+    assert_eq!(pvt.fix_type, 3);
+    assert!(pvt.gnss_fix_ok);
+    assert_eq!(pvt.num_sv, 14);
+    assert!((pvt.lat_deg - 40.015_045_6).abs() < 1e-9);
+    assert!((pvt.lon_deg - -105.270_512_3).abs() < 1e-9);
+    assert!((pvt.h_acc_m - 1.87).abs() < 1e-6, "hAcc, not vAcc (3.41)");
+    assert!((pvt.g_speed_mps - 3.158).abs() < 1e-6);
+    assert!((pvt.s_acc_mps - 0.26).abs() < 1e-6);
+}
+
+#[test]
+fn the_runner_valset_and_its_ack_round_trip_the_same_message_id() {
+    // The ACK the gps task logs names the class/id of the frame it answers;
+    // pin that the VALSET we send is the message that ACK refers to.
+    let frame = ubx::cfg_valset_runner();
+    assert_eq!((frame[2], frame[3]), (ubx::CLASS_CFG, ubx::ID_VALSET));
+    let ack = framed(ubx::CLASS_ACK, ubx::ID_ACK_ACK, &frame[2..4]);
+    let mut p = Parser::new();
+    let out: Vec<Sentence> = ack.iter().filter_map(|b| p.feed(*b)).collect();
+    assert_eq!(
+        out,
+        vec![Sentence::UbxAck {
+            class: ubx::CLASS_CFG,
+            id: ubx::ID_VALSET,
+            acked: true
+        }]
+    );
+}

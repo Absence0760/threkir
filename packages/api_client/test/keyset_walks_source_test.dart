@@ -64,6 +64,8 @@ void main() {
       '_checkpointCrossingOrder'
     ),
     ('Future<List<ExerciseRow>> fetchExerciseCatalogue()', '_exerciseCatalogueOrder'),
+    ('Future<Set<String>> fetchOwnedRunIds()', '_runRowsOrder'),
+    ('Future<Set<String>> fetchOwnedRouteIds()', '_routeRowsOrder'),
   ]) {
     test('$signature walks $order by keyset cursor', () {
       final b = body(signature);
@@ -83,4 +85,40 @@ void main() {
       );
     });
   }
+
+  // The foreign-row reconcile (decisions § 1929) deletes a synced local row
+  // these sets lack, so each must be the caller's OWN rows, whole: RLS alone
+  // also admits club routes and a coach's athletes' runs, and a capped read
+  // would delete owned rows past the cap.
+  for (final (signature, filter) in const [
+    ('Future<Set<String>> fetchOwnedRunIds()', '.eq(RunRow.colUserId, userId)'),
+    (
+      'Future<Set<String>> fetchOwnedRouteIds()',
+      '.eq(RouteRow.colUserId, userId)'
+    ),
+    (
+      'Future<Set<String>> fetchSavedRouteIds()',
+      '.eq(SavedRouteRow.colUserId, userId)'
+    ),
+  ]) {
+    test('$signature filters by the caller explicitly', () {
+      final b = body(signature);
+      expect(b, isNotEmpty, reason: '$signature moved or was renamed');
+      expect(b.contains(filter), isTrue,
+          reason: 'the owner filter must be explicit, not left to RLS');
+      expect(b.contains('.limit('), isFalse,
+          reason: 'a capped id set reads as complete and deletes owned rows');
+    });
+  }
+
+  test('fetchSavedRouteIds walks the bookmark key by cursor', () {
+    final b = body('Future<Set<String>> fetchSavedRouteIds()');
+    expect(b.contains('_walk(\n      _savedRouteIdOrder,'), isTrue,
+        reason: 'fetchBookmarkedRoutes caps at 200; the reconcile needs '
+            'every bookmark');
+    expect(orderColumns('_savedRouteIdOrder'),
+        ['SavedRouteRow.colRouteId'],
+        reason: 'route_id is total only under the user_id filter, as the '
+            'primary key (user_id, route_id)');
+  });
 }

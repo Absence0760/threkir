@@ -1945,6 +1945,101 @@ class ApiClient {
     KeysetKey('id', ascending: true, nullsFirst: false),
   ];
 
+  /// The id of every run the caller owns, for the device's one-time
+  /// foreign-row reconcile (decisions § 1929). Walked like
+  /// [fetchRunRowsRaw] — the reconcile drops a synced local run this set
+  /// lacks, so a truncated set would delete owned runs — and filtered by
+  /// `user_id` explicitly because the `runs` SELECT policy also admits the
+  /// runs of every athlete the caller coaches. `started_at` rides along only
+  /// because the cursor is read from it.
+  Future<Set<String>> fetchOwnedRunIds() async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) throw Exception('Not authenticated');
+    final rows = await _walk(
+      _runRowsOrder,
+      () => _client
+          .from(RunRow.table)
+          .select('${RunRow.colId}, ${RunRow.colStartedAt}')
+          .eq(RunRow.colUserId, userId),
+    );
+    return {for (final r in rows) r[RunRow.colId] as String};
+  }
+
+  /// The id of every route the caller owns — [fetchOwnedRunIds]'s routes
+  /// half. The `routes` SELECT policy also admits every club route of a club
+  /// the caller belongs to, hence the explicit owner filter.
+  Future<Set<String>> fetchOwnedRouteIds() async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) throw Exception('Not authenticated');
+    final rows = await _walk(
+      _routeRowsOrder,
+      () => _client
+          .from(RouteRow.table)
+          .select(RouteRow.colId)
+          .eq(RouteRow.colUserId, userId),
+    );
+    return {for (final r in rows) r[RouteRow.colId] as String};
+  }
+
+  /// The id of every route the caller has bookmarked (`saved_routes`), whole.
+  /// A bookmarked route carries its author's `user_id`, so the foreign-row
+  /// reconcile has to recognise it as the caller's by this set instead.
+  /// Unlike [fetchBookmarkedRoutes] this has no 200-row cap: a missed id here
+  /// is a bookmark deleted from the device.
+  Future<Set<String>> fetchSavedRouteIds() async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) throw Exception('Not authenticated');
+    final rows = await _walk(
+      _savedRouteIdOrder,
+      () => _client
+          .from(SavedRouteRow.table)
+          .select(SavedRouteRow.colRouteId)
+          .eq(SavedRouteRow.colUserId, userId),
+    );
+    return {for (final r in rows) r[SavedRouteRow.colRouteId] as String};
+  }
+
+  /// `(user_id, route_id)` is the primary key, so under the `user_id` filter
+  /// `route_id` alone is a total order.
+  static const List<KeysetKey> _savedRouteIdOrder = [
+    KeysetKey(SavedRouteRow.colRouteId, ascending: true, nullsFirst: false),
+  ];
+
+  /// The owner of each of [ids] the caller can see in `runs`, as id →
+  /// `user_id`. Deliberately NOT owner-filtered: the reconcile asks it which
+  /// unsynced local runs the server holds under SOMEONE ELSE (a coach's
+  /// copy of an athlete's run), so it reads through RLS as-is. An id the
+  /// caller cannot see is absent, which the reconcile treats as "keep".
+  Future<Map<String, String>> fetchRunOwners(Iterable<String> ids) async {
+    final rows = await readChunked(
+      ids.toSet().toList(),
+      (chunk) async => _client
+          .from(RunRow.table)
+          .select('${RunRow.colId}, ${RunRow.colUserId}')
+          .inFilter(RunRow.colId, chunk),
+    );
+    return {
+      for (final r in rows)
+        r[RunRow.colId] as String: r[RunRow.colUserId] as String,
+    };
+  }
+
+  /// [fetchRunOwners] for `routes`: which of [ids] the server holds, and
+  /// under whom, as far as RLS lets the caller see.
+  Future<Map<String, String>> fetchRouteOwners(Iterable<String> ids) async {
+    final rows = await readChunked(
+      ids.toSet().toList(),
+      (chunk) async => _client
+          .from(RouteRow.table)
+          .select('${RouteRow.colId}, ${RouteRow.colUserId}')
+          .inFilter(RouteRow.colId, chunk),
+    );
+    return {
+      for (final r in rows)
+        r[RouteRow.colId] as String: r[RouteRow.colUserId] as String,
+    };
+  }
+
   /// Every row [query] selects, walked by keyset cursor in [order]: each page
   /// is [query] narrowed to the rows strictly after the previous page's last
   /// row, sorted by the same spec the cursor is read from. PostgREST caps an

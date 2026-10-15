@@ -198,6 +198,24 @@ void main() {
       expect(runTss(1000, 600, 0), 0);
     });
 
+    test('degenerate runs contribute nothing, never NaN (with vdotFromRun)', () {
+      // A 0 m run, a 10 s / 3 m blip, a 0 s run, and a corrupt NaN field.
+      // One NaN TSS used to poison every later day of the CTL/ATL EWMA. Same
+      // table as fitness.test.ts.
+      const cases = <(double, int, double)>[
+        (0.0, 0, 300.0),
+        (3.0, 10, 300.0),
+        (1000.0, 0, 300.0),
+        (double.nan, 600, 300.0),
+        (500.0, 600, double.nan),
+      ];
+      for (final (distanceM, durationS, threshold) in cases) {
+        final label = '$distanceM m / $durationS s / $threshold';
+        expect(runTss(distanceM, durationS, threshold), 0, reason: label);
+        expect(vdotFromRun(distanceM, durationS), isNull, reason: label);
+      }
+    });
+
     test('matches Coggan-style ranges for a steady 1h at threshold', () {
       // 1 h at threshold pace is by definition TSS=100.
       final tss = runTss(10000, 3600, 360);

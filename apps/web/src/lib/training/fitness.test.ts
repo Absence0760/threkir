@@ -260,6 +260,24 @@ test('runTss — sub-100m or sub-30s or zero threshold returns 0', () => {
 	assert.equal(runTss(5000, 1500, 0), 0);
 });
 
+test('runTss + vdotFromRun — degenerate runs contribute nothing, never NaN', () => {
+	// A 0 m run, a 10 s / 3 m blip, a 0 s run, and a corrupt NaN field. One NaN
+	// TSS used to poison every later day of the CTL/ATL EWMA. Same table as
+	// fitness_test.dart.
+	const cases: Array<[number, number, number]> = [
+		[0, 0, 300],
+		[3, 10, 300],
+		[1000, 0, 300],
+		[Number.NaN, 600, 300],
+		[500, 600, Number.NaN],
+	];
+	for (const [distanceM, durationS, threshold] of cases) {
+		const label = `${distanceM} m / ${durationS} s / ${threshold}`;
+		assert.equal(runTss(distanceM, durationS, threshold), 0, label);
+		assert.equal(vdotFromRun(distanceM, durationS), null, label);
+	}
+});
+
 test('runTss — pace at threshold yields an intensity of 1.0 → ~100 TSS per hour', () => {
 	// 1 hour at threshold pace = exactly 100 TSS by Coggan's reference.
 	// Run pace s/km = 3600 / 12 km = 300, threshold same.

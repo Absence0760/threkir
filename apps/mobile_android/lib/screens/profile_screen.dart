@@ -774,7 +774,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                       : FilledButton.icon(
                           key: const ValueKey('profile-follow'),
                           onPressed: _followBusy ? null : _toggleFollow,
-                          icon: const Icon(Icons.person_add_alt_1_outlined),
+                          icon: const Icon(Icons.person_add_alt_1),
                           label: Text(l10n.profileFollow),
                         ),
                 ),

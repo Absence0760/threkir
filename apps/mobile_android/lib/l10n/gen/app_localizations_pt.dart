@@ -6769,15 +6769,15 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get coachSuggestBuildHalfPlan =>
-      'Cria-me um plano de treino para uma meia maratona';
+      'Crie-me um plano de treino para uma meia maratona';
 
   @override
   String get coachSuggestBuildFirst5kPlan =>
-      'Cria-me um plano para principiantes para correr os meus primeiros 5 km';
+      'Crie-me um plano para principiantes para correr os meus primeiros 5 km';
 
   @override
   String get coachSuggestPlanNextRace =>
-      'Ajuda-me a planear a minha próxima prova';
+      'Ajude-me a planear a minha próxima prova';
 
   @override
   String get coachEditMessageLabel => 'Editar a sua mensagem';

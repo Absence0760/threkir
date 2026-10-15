@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { appendPage } from '#lib/core/keyset_page.ts';
+	import { appendPage, type KeysetCursor } from '#lib/core/keyset_page.ts';
 	import { siteOrigin } from '#lib/core/site_url.ts';
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import { lengthLimit } from '#lib/core/column_limits.ts';
@@ -197,6 +197,8 @@
 	);
 	let attendees = $state<(EventAttendee & { display_name: string | null; avatar_url: string | null })[]>([]);
 	let attendeesHasMore = $state(false);
+	// The keyset cursor for the attendee list's next page (see fetchEventAttendees).
+	let attendeesNext = $state<KeysetCursor | null>(null);
 	let attendeesLoadingMore = $state(false);
 	// Exact counts, independent of the paginated `attendees` roster (which is
 	// only its first page). Drives the RSVP pills + capacity/waitlist math.
@@ -760,8 +762,9 @@
 			fetchEventRsvpSummary(event.id, activeInstance),
 			canStewardEventPhotos(event.id)
 		]);
-		attendees = res[0];
-		attendeesHasMore = res[0].length === ROSTER_PAGE_SIZE;
+		attendees = res[0].rows;
+		attendeesNext = res[0].next;
+		attendeesHasMore = res[0].next !== null;
 		route = res[1];
 		eventPosts = (res[2] as ClubPostWithAuthor[]).filter(
 			(p) =>
@@ -819,15 +822,16 @@
 	}
 
 	async function loadMoreAttendees() {
-		if (!event || !activeInstance || attendeesLoadingMore || !attendeesHasMore) return;
+		if (!event || !activeInstance || attendeesLoadingMore || !attendeesHasMore || !attendeesNext) return;
 		attendeesLoadingMore = true;
 		try {
 			const more = await fetchEventAttendees(event.id, activeInstance, {
 				limit: ROSTER_PAGE_SIZE,
-				offset: attendees.length
+				after: attendeesNext
 			});
-			attendees = appendPage(attendees, more, (a) => a.user_id);
-			attendeesHasMore = more.length === ROSTER_PAGE_SIZE;
+			attendees = appendPage(attendees, more.rows, (a) => a.user_id);
+			attendeesNext = more.next;
+			attendeesHasMore = more.next !== null;
 		} catch (e) {
 			showToast(m('profile.loadMoreError', { error: thrownMessage(e) }), 'error');
 		} finally {

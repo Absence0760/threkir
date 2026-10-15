@@ -25,7 +25,7 @@ function body(name: string): string {
 	return source.slice(start, next === -1 ? undefined : next);
 }
 
-const READERS = ['fetchFollowers', 'fetchFollowing', 'fetchClubMembers'];
+const READERS = ['fetchFollowers', 'fetchFollowing', 'fetchClubMembers', 'fetchEventAttendees'];
 
 for (const name of READERS) {
 	test(`${name} pages by keyset cursor, not by offset`, () => {

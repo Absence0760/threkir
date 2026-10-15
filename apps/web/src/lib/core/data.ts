@@ -4490,34 +4490,52 @@ export async function markAttendance(
 	if (error) throw dbError(error);
 }
 
+/// Earliest RSVP first; `user_id` (unique within one occurrence — the primary
+/// key is `(event_id, user_id, instance_start)`) breaks a `joined_at` tie so
+/// the order is total. `joined_at` is nullable and a null sorts last, as it
+/// always has. No index carries this order — the occurrence's rows are found
+/// through the primary key and sorted.
+const EVENT_ATTENDEE_ORDER: readonly KeysetKey[] = [
+	{ column: 'joined_at', ascending: true, nullsFirst: false },
+	{ column: 'user_id', ascending: true, nullsFirst: false },
+];
+
+/// One occurrence's attendee list, one keyset page at a time: pass the
+/// previous page's `next` as `after` to load more. A cursor rather than an
+/// offset because an RSVP withdrawn between two reads moves every later
+/// attendee up one, and offset 50 then starts a row late.
 export async function fetchEventAttendees(
 	eventId: string,
 	instanceStart: string,
-	opts?: { limit?: number; offset?: number }
-): Promise<(EventAttendee & {
+	opts?: { limit?: number; after?: KeysetCursor | null }
+): Promise<KeysetPage<EventAttendee & {
 	display_name: string | null;
 	avatar_url: string | null;
-})[]> {
+}>> {
 	const limit = opts?.limit ?? ROSTER_PAGE_SIZE;
-	const offset = opts?.offset ?? 0;
-	const { data: attendees } = await supabase
+	const after = opts?.after ? keysetAfter(EVENT_ATTENDEE_ORDER, opts.after) : undefined;
+	if (after === null) return { rows: [], next: null };
+	let q = supabase
 		.from(TABLES.event_attendees)
 		.select('*')
 		.eq('event_id', eventId)
-		.eq('instance_start', instanceStart)
-		.order('joined_at', { ascending: true })
-		// Secondary key so offset pages are stable when two RSVPs share a
-		// joined_at timestamp (see fetchClubMembers).
-		.order('user_id', { ascending: true })
-		.range(offset, offset + limit - 1);
-	if (!attendees) return [];
+		.eq('instance_start', instanceStart);
+	if (after) q = q.or(after);
+	for (const k of EVENT_ATTENDEE_ORDER) {
+		q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+	}
+	const { data: attendees } = await q.limit(limit);
+	if (!attendees) return { rows: [], next: null };
 	const userIds = (attendees as EventAttendee[]).map((a) => a.user_id);
 	const byId = await fetchProfilesByIds(userIds);
-	return (attendees as EventAttendee[]).map((a) => ({
-		...a,
-		display_name: byId.get(a.user_id)?.display_name ?? null,
-		avatar_url: byId.get(a.user_id)?.avatar_url ?? null
-	}));
+	return {
+		rows: (attendees as EventAttendee[]).map((a) => ({
+			...a,
+			display_name: byId.get(a.user_id)?.display_name ?? null,
+			avatar_url: byId.get(a.user_id)?.avatar_url ?? null
+		})),
+		next: nextCursor(EVENT_ATTENDEE_ORDER, attendees, limit),
+	};
 }
 
 /// Exact per-status RSVP tallies + the viewer's own status for an event

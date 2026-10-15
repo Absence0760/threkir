@@ -1441,7 +1441,7 @@
 					</div>
 				{:else}
 					<ul class="search-results">
-						{#each searchResults as result (result.lat + ':' + result.lng)}
+						{#each searchResults as result, i (i)}
 							<li>
 								<button onmousedown={() => selectSearchResult(result)}>
 									{result.name}

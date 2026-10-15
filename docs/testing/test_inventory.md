@@ -1201,7 +1201,7 @@ The Supabase-touching surface of `SocialService` (`browseClubs`, `fetchMyClubs`,
 
 Pins the degrade-don't-throw contract on the two `SocialService` methods whose `catch` is the point of the method, via `SocialService.withClient` against a loopback `dart:io` PostgREST stand-in — the live-stack `services_integration_test.dart` can't fail one read independently of another, which is what these turn on. Two tests cover `searchClubs`: the `search_clubs` RPC failing (the branch that always worked) and the `_enrichClubs` follow-up reads failing after the RPC succeeds (the branch that didn't — `return _enrichClubs(rows)` without `await` put those reads outside the `try`, so the `browseClubs` fallback was dead, decisions.md § 595). Both assert the fallback's rows come back rather than an exception. The third pins `fetchClubSlugForEvent`'s never-rethrow contract — contract coverage, not a discriminating regression test, because the inner club lookup swallows its own failures either way.
 
-### `apps/backend/supabase/tests/rls_*.sql` — 500 planned assertions across 57 files (pgtap RLS suite)
+### `apps/backend/supabase/tests/rls_*.sql` — 501 planned assertions across 57 files (pgtap RLS suite)
 
 pgTAP tests against the highest-blast-radius RLS policies, run by `cd apps/backend && supabase test db --local`. Gated in CI by the `pgtap-rls` job. Each file is wrapped in `begin; ... rollback;` so it's idempotent against the running local DB; tests filter to fixture user_ids so they don't trip on `seed.sql` rows. Pattern: insert two test users into `auth.users`, then `set local role authenticated; set local "request.jwt.claims" = '{"sub":"<uuid>"}';` to switch identity. Anon paths use `set local role anon`.
 

@@ -111,30 +111,28 @@ v1.1+ estimator; keep the phone where you normally carry it and note that in
    distance you trust, with its source). Course type `trail`. This is the
    under-count check.
 
-If possible record each on both an Android phone and an iPhone — Android
-records a fix every 5 s by default and iOS every second at reduced accuracy
-(#1090 research findings 1–2), and those are different noise regimes. Set an
+If possible record each on both an Android phone and an iPhone. Android
+records the GPS receiver at 1 Hz and iOS records CoreLocation at 1 Hz, and
+those are different noise regimes. Set an
 `error_budget_pct` you would accept as a runner (2% on the track and the road
 loop is a reasonable start), commit the pair, and run the replay.
 
-## Item 6 — fused provider vs raw GPS on Android
+## Item 6 — which Android stream recorded the entry
 
-The same corpus answers #1090 item 6. On an Android phone, record the track
-and road-loop runs twice, each as its own entry: once on the fused provider
-(the default) and once on raw `GPS_PROVIDER`.
+#1090 item 6 (fused provider against raw `GPS_PROVIDER`) is answered: the
+fused provider blends non-GNSS estimates into speed and position, and the
+Android recorder now takes its fixes from the satellite receiver, falling back
+to fused only while the receiver is silent (decisions § 1954,
+`docs/features/run_recording.md` § Android location source). There is no
+switch to set.
 
-1. Install a debug or profile build (`flutter run --profile` from
-   `apps/mobile_android`, against the backend you will export from). A release
-   build only shows the switch against a loopback backend.
-2. Settings → Developer → **Raw GPS provider**: off for the fused run, on for
-   the raw run. It applies from the next run started, not one in progress.
-3. Record, then check the saved run's `metadata.location_provider` reads
-   `fused` or `gps` (it is in the export's run record), and name the provider
-   in the entry's `device` too.
-4. Turn the switch off again afterwards.
+1. Record on a current build.
+2. Check the saved run's `metadata.location_provider` (it is in the export's
+   run record) reads `gps`. `mixed` means fused stood in for part of the run
+   and `fused` means the receiver never delivered; say so in the entry's
+   `device` and `notes`, because such an entry measures the fused provider,
+   not the estimator on GNSS input.
+3. Note the battery the run used (Settings → Battery → app usage) in `notes`.
 
-Compare the two entries' `saved` error, their
-`NIS` and `C` (a fused track that already smooths shows lower `C` residuals and
-lower NIS — double smoothing), and the battery each used over the run (Settings
-→ Battery → app usage, noted in `notes`). Dual-frequency L1+L5 cannot be
-switched on through geolocator; note per device whether the phone has it.
+Dual-frequency L1+L5 cannot be switched on from the app; note per device
+whether the phone has it.

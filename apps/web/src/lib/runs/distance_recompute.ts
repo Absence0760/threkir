@@ -15,6 +15,13 @@ export const RECOMPUTABLE_SOURCES: readonly RunSource[] = ['app', 'watch'];
 /// v1.2's) or `kalman_v1` (spec v1.1's forward filter) is offered again.
 export const CURRENT_DISTANCE_ESTIMATOR = 'kalman_v4';
 
+/// Live stamps of recorders that feed their estimator fixes their track gate
+/// refuses (spec v1.4 on): such a run's stored track holds every fix the
+/// estimator took only when it says `track_complete`, so a replay of any
+/// other would credit each canopy stretch its chord and read short. A spec
+/// bump adds its value. Mirrors `trackGatedEstimators` in the job_worker.
+export const TRACK_GATED_ESTIMATORS: readonly string[] = ['kalman_v4'];
+
 export type RecomputeCandidate = Pick<Run, 'user_id' | 'source' | 'track_url' | 'metadata'>;
 
 /// Whether the viewer may offer "Recalculate distance" on this run: they own
@@ -54,7 +61,22 @@ export function canRecomputeDistance(
 	) {
 		return false;
 	}
-	if (metadata[METADATA_KEYS.distance_estimator] === CURRENT_DISTANCE_ESTIMATOR) return false;
+	// Stamped live by a v1.4 recorder whose track omits the canopy fixes its
+	// estimator took. The Wear OS and watchOS builds before track_complete
+	// stamp `kalman_v1`, whose track the replay reproduces.
+	const estimator = metadata[METADATA_KEYS.distance_estimator];
+	const recomputed = METADATA_KEYS.distance_recomputed_at in metadata;
+	if (
+		!recomputed &&
+		typeof estimator === 'string' &&
+		TRACK_GATED_ESTIMATORS.includes(estimator) &&
+		metadata[METADATA_KEYS.track_complete] !== true
+	) {
+		return false;
+	}
+	// A recompute already applied the current smoother. A live stamp names
+	// the recorder's forward filter, which the replay improves on.
+	if (recomputed && estimator === CURRENT_DISTANCE_ESTIMATOR) return false;
 	return true;
 }
 

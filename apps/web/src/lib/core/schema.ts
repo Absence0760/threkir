@@ -134,4 +134,5 @@ export const METADATA_KEYS = {
 	distance_recomputed_at: 'distance_recomputed_at',
 	distance_map_matched_m: 'distance_map_matched_m',
 	smoothed_sidecar_sha256: 'smoothed_sidecar_sha256',
+	track_complete: 'track_complete',
 } as const;

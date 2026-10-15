@@ -537,7 +537,7 @@ Settings → Integrations' UltraSignup finder ([decisions § 1841](../architectu
 
 The centre button's long-press start-options sheet (decisions § 1892, § 1897): which items it offers when the tap starts a run and when the tap fans, that it never exceeds five, which plan workout counts as today's open one (not another day, a rest day, a completed, run-completed or skipped workout, or one with nothing to follow), the workout card's summary (target distance, or the summed distance steps, and the step count), and which saved routes sit inline (most recently run first, then newest saved, undated last, at most three). The sheet itself: its sections and title in one screen-reader group, the workout card naming kind, distance and steps and resolving in one tap, no route section with no saved route, one route inline with no "All routes…", three inline with "All routes…" resolving to the picker, a route tile resolving to that route, a row resolving to its action, dismissal resolving to nothing, and the full sheet at the largest text size scrolling rather than overflowing. Each item's routing in the shell, including an inline route starting the recorder without a second picker, is pinned in `home_screen_test.dart`.
 
-### `apps/mobile_ios/test/` — 637 files, byte-for-byte
+### `apps/mobile_ios/test/` — 638 files, byte-for-byte
 
 After the April 2026 mobile-codebase unification, `apps/mobile_ios/test/` is kept identical to `apps/mobile_android/test/` via `diff -rq`. Every test file documented above runs on the iOS target too **locally** — `melos run test` has no scope filter — but **not in CI**: the `test-packages` job scopes `melos exec` to `run_recorder`, `mobile_android`, `api_client`, `gpx_parser`, `ui_kit` and `core_models`, and `mobile_ios` is not among them. That is not a gap for byte-identical Dart, but it is why a test gated on an `ios/` file being present asserts nothing on any CI run — two such groups existed and were removed in favour of `scripts/check_ios_native_declarations.mjs` (decisions.md § 742). Per-target counts: `flutter test` compiles separately, so each test file is executed twice when you run both apps locally. Don't add iOS-specific test files — every test belongs in both apps. The architecture-guard tests under `apps/mobile_android/test/architecture_guards_test.dart` read `lib/screens/run_screen.dart` from the working directory, so they pin the same invariants on both targets.
 
@@ -721,7 +721,7 @@ TypeScript unit tests for the pure privacy-zone clipper (`lib/privacy.ts`, decis
 
 The pure-JS clipper drives owner-side previews; non-owner viewers go through the `clip_track_for_user` SECURITY DEFINER RPC so zones never leave the database.
 
-### `apps/web/src/lib/backup/backup.test.ts` — 15 tests
+### `apps/web/src/lib/backup/backup.test.ts` — 12 tests
 
 TypeScript unit tests for the streaming + parallel-download backup writer (`lib/backup_writer.ts`). Run with `npx tsx --test src/lib/backup.test.ts` from `apps/web`. Exercises the pure writer seam without supabase-js: round-trip through JSZip to confirm manifest + runs + routes + profile + tracks all land; bounded-concurrency contract observed via a counter-tracking fetcher (peak in-flight ≤ `concurrency`, observable parallelism); single-track failure doesn't sink the rest (manifest counts reflect what landed); empty `runsWithTracks` produces a valid manifest-only archive; `concurrency < 1` rejected; progress events ordered (`tracks` → `writing` → `done`); profile `id` field stripped to keep the archive re-homeable.
 
@@ -918,9 +918,9 @@ Which catalogue each shipped locale actually reaches. `messages_parity.test.ts` 
 
 What `/settings/account` may say about a backup that came up short ([decisions § 845](../architecture/decisions.md)). `buildBackupZip` merges the writer's own shortfall (a track blob that would not download) with the caller's (a row read that died half-way, § 675/§ 676) into one `incomplete` list, and the page read only the blob counts off it — so an archive short of two thousand runs whose tracks all downloaded rendered "missing 0 of 0 GPS tracks". Covers: a whole archive discloses nothing; a tracks-only shortfall states the count and names no section; a short `runs` or `routes` read is disclosed with the section named and NO track sentence; both kinds together; dedupe + sort; `tracks` named with no count to state falls back to being listed rather than disclosed as silence; a table-driven case that every shortfall earns at least one sentence; nonsense counts clamp; and a source guard that the page routes through the grader and both message keys stay reachable.
 
-### `apps/web/src/lib/backup/backup.test.ts` — 15 tests
+### `apps/web/src/lib/backup/backup.test.ts` — 12 tests
 
-The streaming + parallel-download writer and its paged row reads (was 14). The added case is a source guard on `createBackup`, which needs supabase-js and cannot be executed here: every `supabase` read behind the archive must bind its `error`, and the graded errors must reach `incompleteSections`. § 675/§ 676 paged and flagged the runs + routes reads and left the `get_my_profile` RPC and the `user_settings` read discarding theirs, so a failed read shipped a null profile and an empty prefs bag under a manifest still claiming `complete: true`.
+The streaming + parallel-download writer and its walked row reads (was 14, then 15; 12 since [decisions § 1927](../architecture/decisions.md) moved the five `readAllRows` paging cases to `walkKeyset` in `core/keyset_page.test.ts` and added two source guards: both reads are `walkKeyset` walks over a total order sorted by the cursor's own key spec with no `.range()`, and a short walk names its section). The added case is a source guard on `createBackup`, which needs supabase-js and cannot be executed here: every `supabase` read behind the archive must bind its `error`, and the graded errors must reach `incompleteSections`. § 675/§ 676 paged and flagged the runs + routes reads and left the `get_my_profile` RPC and the `user_settings` read discarding theirs, so a failed read shipped a null profile and an empty prefs bag under a manifest still claiming `complete: true`.
 
 ### `apps/web/src/lib/backup/cloud_export_transport.test.ts` — 9 tests
 
@@ -1926,7 +1926,7 @@ own typed request — are fixed in the same commit. Carries two population floor
 so a broken import walk fails rather than reporting a clean tree. See
 [decisions § 919](../architecture/decisions.md).
 
-### `apps/web/src/lib/paged_read_guards.test.ts` — 1 test (new)
+### `apps/web/src/lib/paged_read_guards.test.ts` — 2 tests
 
 Every `.range()` read in the web tree, and whether its ordering is a total
 order. PostgREST turns `.range()` into `LIMIT`/`OFFSET`, so a non-unique (or
@@ -1940,6 +1940,15 @@ pre-fix tree it names six reads: `createBackup`'s runs page (ordered on
 claiming `complete`), both `fetchRuns` branches, and both ZIP importers' dedupe
 reads. Population floor of eight `.range()` reads. See
 [decisions § 922](../architecture/decisions.md).
+
+Rewritten by [decisions § 1927](../architecture/decisions.md): a total order
+stops a tie from straddling a boundary but not a row inserted or deleted
+mid-walk from shifting every later OFFSET, so the rule is now that no `.range()`
+read exists at all (the first case names each one it finds), and the second case
+resolves every `walkKeyset(<ORDER>, …)` call to its `KeysetKey[]` literal and
+fails when the order does not end on a unique column or nothing sorts by it
+(`for (const k of <ORDER>) … .order(k.column`). Population floor of seven walks.
+Restoring the pre-change `createBackup` fails both cases.
 
 ### `apps/web/scripts/env_isolation.test.mjs` — 22 tests (3 added)
 
@@ -2757,3 +2766,35 @@ The token behind [decisions § 1822](../architecture/decisions.md): a token note
 ### `apps/web/src/lib/core/list_freshness_guard.test.ts` — 6 source guards
 
 Derives the writers rather than listing them: every `.from(<table>).insert|update|upsert|delete` on a table in `LISTS_BY_TABLE`, in `data.ts` per exported function and in every other `src/` file, must follow a `markListsStale` naming each list the table maps to. A self-check fails if the pattern stops finding the data layer's writes; the one exemption (`computeGlobalSegmentEffortsForRun`) fails once it stops existing, writing, or starts marking. The RPC and Edge Function writers (`clonePlanTemplate`, `clonePublicPlan`, `importRaceResult`, `completeStravaOAuth`, `syncStrava`) are pinned by name. Every page exporting a `snapshot` must be a registered list, note its token as its load starts, capture that load token, and check it before putting the captured list back. Mutation-verified: dropping `deletePlan`'s mark fails the data-layer sweep naming it.
+
+## Whole-table walks by keyset cursor (2026-10-14)
+
+[decisions § 1927](../architecture/decisions.md). Every read whose contract is "every row" walked with `.range()` — LIMIT/OFFSET — so a row inserted or deleted while the walk was between two pages shifted every later position and was read twice or not at all. Each now walks by keyset cursor through `walkKeyset`.
+
+### `apps/web/src/lib/core/keyset_page.test.ts` — 32 tests at run time
+
+Nine `walkKeyset` cases added (mirrored in `packages/core_models/test/keyset_page_test.dart`), run against a fake PostgREST that evaluates the walk's own filter: every row once in order across pages, for all four direction × null-placement orders; a row deleted mid-walk makes the walk skip nothing while an OFFSET walk over the same deletion loses the third row; a row inserted behind the cursor mid-walk repeats nothing while the OFFSET walk returns the second row twice; a server capping below the page size is not read as exhausted; a short first page costs one confirming read and a full last page one empty read; a page error returns what was read, flagged short (Dart: propagates); a server ignoring the filter stops short instead of looping (Dart: `StateError`); a `start` cursor; a non-positive page size refused.
+
+### `packages/core_models/test/keyset_page_test.dart` — 32 tests at run time
+
+The Dart half of the pair above, same cases, same evaluator.
+
+### `apps/web/src/lib/integrations/garmin_paged_identities.test.ts` — 5 tests
+
+`collectRunIdentities` against a fake keyset source: 1,200 runs all collected, page 2 filtered after page 1's last row; the walk order is `started_at desc, id desc`; a page error ends the walk without throwing; non-finite start times dropped; each page asks for the 1,000-row cap.
+
+### `apps/web/src/lib/integrations/strava-zip-dedupe.test.ts` — 10 tests
+
+Two `collectStravaDedupeSet` cases rewritten for the walk: 2,500 runs over three cursor-filtered pages, the first unfiltered; an error page ends the walk without throwing.
+
+### `packages/api_client/test/keyset_walks_source_test.dart` — 8 tests at run time
+
+Replaces `paged_read_test.dart` with `readAllPages`. No `.range()` or `readAllPages` in the client; `_walk` filters after the cursor and sorts by `_orderBy(q, order)`; and each of `fetchRunRowsRaw`, `fetchRouteRowsRaw`, `getRouteReviews`, `fetchEventAttendees`, `fetchCheckpointCrossings` and `fetchExerciseCatalogue` walks its named `KeysetKey` order, which must end on a unique column.
+
+### `apps/mobile_android/test/social_attendees_walk_test.dart` — 1 test
+
+`SocialService.fetchAttendees` (the event-detail attendee list) was one unranged select, capped at 1,000 rows with no flag. The guard requires a `walkKeyset` over `ApiClient.eventAttendeeOrder`, the cursor filter, a sort by that order, and no `.range()`.
+
+### `apps/backend/supabase/tests/roster_keyset_indexes_test.sql` — 5 tests
+
+Migration `20270817000021`: `club_members` has a plain ascending btree on `(club_id, joined_at, user_id)` and `event_attendees` one on `(event_id, instance_start, joined_at, user_id)`, matched by key columns, `indoption` and no predicate or expression; `event_attendees_instance_roster` exists by name; and the left-prefix `event_attendees_event_instance` is gone, by name and by shape.

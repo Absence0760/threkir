@@ -150,6 +150,10 @@ const (
 	MetaDistanceRecordedM    = "distance_recorded_m"
 	MetaDistanceEstimator    = "distance_estimator"
 	MetaDistanceRecomputedAt = "distance_recomputed_at"
+	// Metres a recorder credited from the pedometer across GPS gaps, already
+	// in distance_m. The stored track carries no steps, so a recompute adds
+	// it back to its replay.
+	MetaDistanceStepFilledM = "distance_step_filled_m"
 	// Which of the smoother's passes the recompute kept: "smoothed", or
 	// "forward" for a position-only track that is not a road run.
 	MetaDistanceEstimatorPass = "distance_estimator_pass"

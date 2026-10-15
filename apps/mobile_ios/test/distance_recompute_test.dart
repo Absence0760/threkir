@@ -117,18 +117,26 @@ void main() {
     );
   });
 
-  test('a run its recorder stamped live is not offered, whatever the estimator',
-      () {
-    // The Wear OS and watchOS recorders stamp kalman_v1 on every run; the
-    // worker skips a live stamp because the stored track is movement-gated.
+  test(
+      'a phone run its recorder stamped is not offered; a watch run its '
+      'recorder stamped is', () {
+    // The phone's stored track is movement-gated, so the worker skips its
+    // stamp. The Wear OS and watchOS recorders stamp kalman_v1 and store every
+    // fix their filter took, so the worker replays them.
     for (final estimator in ['kalman_v1', 'something_older']) {
+      expect(
+        canRecomputeDistance(
+            run(metadata: {'distance_estimator': estimator}), owner),
+        isFalse,
+        reason: estimator,
+      );
       expect(
         canRecomputeDistance(
             run(
                 source: RunSource.watch,
                 metadata: {'distance_estimator': estimator}),
             owner),
-        isFalse,
+        isTrue,
         reason: estimator,
       );
     }

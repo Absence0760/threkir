@@ -449,6 +449,53 @@ func TestDistanceRecompute_WatchRunIsRecomputed(t *testing.T) {
 	}
 }
 
+// The Wear OS and watchOS recorders stamp their live forward filter, and
+// their stored track holds every fix it took, so the stamp is no reason to
+// skip a watch run: the replay gains the smoother.
+func TestDistanceRecompute_WatchRunStampedLiveIsRecomputed(t *testing.T) {
+	run := appRun(`{"distance_estimator":"kalman_v1"}`)
+	run.Source = "watch"
+	w, b := distanceWorker(t, run, straightDopplerTrack(101, 2.5))
+	if err := w.handleDistanceRecompute(context.Background(), distanceJob(t, DistanceRecomputePayload{RunID: drRunID})); err != nil {
+		t.Fatalf("handle: %v", err)
+	}
+	if len(b.distance.updates) != 1 {
+		t.Fatalf("updates = %d, want the live-stamped watch run recomputed", len(b.distance.updates))
+	}
+	md := b.distance.updates[0].Metadata
+	if md["distance_estimator"] != DistanceEstimatorCurrent || md["distance_estimator_pass"] != "smoothed" {
+		t.Errorf("metadata = %+v, want the current estimator's smoothed pass", md)
+	}
+}
+
+// The track carries no steps, so the pedometer's share of a gap the recorder
+// filled is kept as recorded on top of the replay.
+func TestDistanceRecompute_KeepsTheRecordersStepFilledMetres(t *testing.T) {
+	recompute := func(metadata string) float64 {
+		t.Helper()
+		run := appRun(metadata)
+		run.Source = "watch"
+		w, b := distanceWorker(t, run, straightDopplerTrack(101, 2.5))
+		if err := w.handleDistanceRecompute(context.Background(), distanceJob(t, DistanceRecomputePayload{RunID: drRunID})); err != nil {
+			t.Fatalf("handle: %v", err)
+		}
+		if len(b.distance.updates) != 1 {
+			t.Fatalf("updates = %d", len(b.distance.updates))
+		}
+		return b.distance.updates[0].DistanceM
+	}
+	base := recompute(`{"distance_estimator":"kalman_v1"}`)
+	filled := recompute(`{"distance_estimator":"kalman_v1","distance_step_filled_m":412.5}`)
+	if math.Abs(filled-base-412.5) > 0.011 {
+		t.Errorf("step-filled run = %v, gap-free replay = %v; want the 412.5 m kept on top", filled, base)
+	}
+	for _, bad := range []string{`-3`, `0`, `null`, `"412.5"`} {
+		if got := recompute(`{"distance_estimator":"kalman_v1","distance_step_filled_m":` + bad + `}`); got != base {
+			t.Errorf("distance_step_filled_m %s added %v m", bad, got-base)
+		}
+	}
+}
+
 func TestDistanceRecompute_DeletedRunIsANoOp(t *testing.T) {
 	w, b := distanceWorker(t, appRun(`{}`), nil)
 	other := "11111111-2222-3333-4444-555555555555"

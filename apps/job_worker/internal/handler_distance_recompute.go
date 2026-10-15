@@ -127,6 +127,11 @@ func (w *Worker) handleDistanceRecompute(ctx context.Context, job *Job) error {
 		if pass == EstimatorPassForward {
 			rawDistanceM, cum = replay.ForwardM, replay.ForwardCumM
 		}
+		// The replay re-anchors across a GPS gap and credits nothing for it;
+		// the recorder credited the gap from the pedometer, which the track
+		// cannot reproduce, so that share is kept as recorded. The bests stay
+		// on the replay's own cumulative, which can only make them slower.
+		rawDistanceM += metaStepFilledM(meta)
 		distanceM := math.Round(rawDistanceM*100) / 100
 
 		// The line follows the figure the run now carries, so only a
@@ -197,6 +202,16 @@ func metaIsTrue(meta map[string]json.RawMessage, key string) bool {
 	return json.Unmarshal(meta[key], &b) == nil && b
 }
 
+// metaStepFilledM is metadata.distance_step_filled_m when it is a finite
+// positive number, else 0.
+func metaStepFilledM(meta map[string]json.RawMessage) float64 {
+	var v float64
+	if json.Unmarshal(meta[schema.MetaDistanceStepFilledM], &v) != nil || math.IsNaN(v) || math.IsInf(v, 0) || v <= 0 {
+		return 0
+	}
+	return v
+}
+
 func metaString(meta map[string]json.RawMessage, key string) string {
 	var s string
 	if json.Unmarshal(meta[key], &s) != nil {
@@ -227,10 +242,13 @@ func distanceRecomputeSkipReason(run *DistanceRecomputeRun, meta map[string]json
 		// pedometer / treadmill today; any provenance tag names a
 		// non-GPS source, and an unknown one is not ours to overwrite.
 		return "distance came from " + metaString(meta, schema.MetaDistanceSource)
-	case meta[schema.MetaDistanceEstimator] != nil && meta[schema.MetaDistanceRecomputedAt] == nil:
-		// Stamped by a recorder that ran the estimator live over every
-		// fix; the stored track is movement-gated, so a replay would see
-		// fewer fixes than the live figure did.
+	case meta[schema.MetaDistanceEstimator] != nil && meta[schema.MetaDistanceRecomputedAt] == nil &&
+		run.Source != "watch":
+		// Stamped by the phone recorder, which saved the smoother's figure
+		// over every fix; its stored track is movement-gated, so a replay
+		// would see fewer fixes than the save did. The Wear OS and watchOS
+		// recorders store every fix their forward filter took, so a watch
+		// run's track replays whole and gains the smoother.
 		return "recorded live by " + metaString(meta, schema.MetaDistanceEstimator)
 	}
 	return ""

@@ -42,10 +42,13 @@ export function canRecomputeDistance(
 	// an unknown one is not the estimator's to overwrite.
 	const distanceSource = metadata[METADATA_KEYS.distance_source];
 	if (typeof distanceSource === 'string' && distanceSource !== '') return false;
-	// Stamped live by a recorder that ran the estimator over every fix (the
-	// watches stamp `kalman_v1`) and never recomputed: the stored track is
-	// movement-gated, so a replay would see fewer fixes than the live figure.
+	// Stamped by the phone recorder, which saved the smoother's figure over
+	// every fix, and never recomputed: its stored track is movement-gated, so
+	// a replay would see fewer fixes than the save did. A watch stamp
+	// (`kalman_v1`, the wrist's forward filter) is no bar: the watch stored
+	// every fix that filter took, so the replay gains the smoother.
 	if (
+		run.source !== 'watch' &&
 		METADATA_KEYS.distance_estimator in metadata &&
 		!(METADATA_KEYS.distance_recomputed_at in metadata)
 	) {

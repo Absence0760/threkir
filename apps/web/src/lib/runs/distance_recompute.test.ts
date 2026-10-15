@@ -97,12 +97,15 @@ test('a run already on the current estimator is not offered again', () => {
 	);
 });
 
-test('a run its recorder stamped live is not offered, whatever the estimator', () => {
-	// The Wear OS and watchOS recorders stamp kalman_v1 on every run; the
-	// worker skips a live stamp because the stored track is movement-gated.
+test('a phone run its recorder stamped is not offered; a watch run its recorder stamped is', () => {
+	// The phone's stored track is movement-gated, so the worker skips its
+	// stamp. The Wear OS and watchOS recorders stamp kalman_v1 and store every
+	// fix their filter took, so the worker replays them.
 	for (const estimator of ['kalman_v1', 'something_older']) {
-		const candidate = run({ source: 'watch', metadata: { distance_estimator: estimator } });
-		assert.equal(canRecomputeDistance(candidate, OWNER), false, estimator);
+		const phone = run({ metadata: { distance_estimator: estimator } });
+		assert.equal(canRecomputeDistance(phone, OWNER), false, estimator);
+		const watch = run({ source: 'watch', metadata: { distance_estimator: estimator } });
+		assert.equal(canRecomputeDistance(watch, OWNER), true, estimator);
 	}
 	assert.equal(canRecomputeDistance(run({ metadata: { distance_estimator: null } }), OWNER), false);
 });

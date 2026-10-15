@@ -2,7 +2,7 @@
 // change to the runner's own plan ("move my long run to Sunday", "make this
 // week easier") into STRICTLY-VALIDATED edit operations against that plan.
 //
-// The AI is the interface, never the planner (decisions § 12, § 1930, § 1961).
+// The AI is the interface, never the planner (decisions § 12, § 1930, § 1979).
 // One forced tool call picks operations from a fixed set of five, naming each
 // target by a short reference this handler hands out; `validatePlanEditOps`
 // whitelists every reference against the caller's own plan, keeps dates inside
@@ -76,7 +76,7 @@ export type PlanEditModelClient = PlanRequestModelClient;
 
 export interface PlanEditConfig {
 	/// The server half of the `PUBLIC_AI_PLAN_EDIT_ENABLED` prod gate
-	/// (decisions § 1961). Without it, any caller holding v4 consent could
+	/// (decisions § 1979). Without it, any caller holding v4 consent could
 	/// spend the operator's key and the Coach counter while the feature is off.
 	enabled: boolean;
 	anthropicApiKey: string | undefined;

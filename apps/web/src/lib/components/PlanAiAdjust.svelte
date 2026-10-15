@@ -1,5 +1,5 @@
 <script lang="ts">
-	// "Adjust with AI" on /plans/[id] (decisions § 1961). The AI is the
+	// "Adjust with AI" on /plans/[id] (decisions § 1979). The AI is the
 	// interface, never the planner: the server turns the runner's request into
 	// validated edit operations, this component applies them with the
 	// deterministic plan helpers, grades the result against the original with

@@ -4,7 +4,7 @@
  *
  * This is the deploy gate for two sign-offs, not for missing code: owner +
  * counsel sign-off on the model proposing changes to a saved plan (decisions
- * § 1961, superseding part of § 1930: the model picks typed operations, the
+ * § 1979, superseding part of § 1930: the model picks typed operations, the
  * deterministic helpers apply them, the result is re-graded and the runner
  * confirms the diff), and the sign-off on the v4 AI-disclosure copy the
  * endpoint's consent gate requires. Unset / empty / "false" / "0" → the option

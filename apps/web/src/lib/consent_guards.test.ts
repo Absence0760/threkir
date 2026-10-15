@@ -525,7 +525,7 @@ test('the AI plan assistant gates on the plan disclosure, above the route-AI ver
 test('AI plan edits gate on the v4 plan-edit disclosure, before the plan read, the counter and the model', () => {
 	// /api/coach/plan-edit ships the runner's plan and change request to
 	// Anthropic so a model can propose changes to the plan — a purpose the v1
-	// copy's "the active plan" did not describe (decisions § 571, § 1962). It
+	// copy's "the active plan" did not describe (decisions § 571, § 1980). It
 	// must require AI_DISCLOSURE_VERSION_PLAN_EDIT_AI, and the dev paywall
 	// bypass must not reach the consent branch.
 	const gate = read('src/lib/core/ai_disclosure.ts');

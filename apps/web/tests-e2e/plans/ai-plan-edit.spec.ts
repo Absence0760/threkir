@@ -5,7 +5,7 @@ import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
 
 /**
- * /plans/[id] — "Adjust with AI" (AI plan edits, decisions § 1961).
+ * /plans/[id] — "Adjust with AI" (AI plan edits, decisions § 1979).
  *
  * `/api/coach/plan-edit` is mocked at the network layer, so no Anthropic key
  * is needed: the endpoint's gates (consent v4, plan ownership, the daily cap,

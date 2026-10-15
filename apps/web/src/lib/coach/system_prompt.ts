@@ -65,7 +65,7 @@ Plan requests:
 - Tell the runner the plan builder fills in the form from that description and the app's plan generator builds the plan for them to review before anything is saved.`;
 }
 
-// The plan-edit handoff (decisions § 1961). With AI plan edits live, a request
+// The plan-edit handoff (decisions § 1979). With AI plan edits live, a request
 // to change the plan the runner already has ("move my long run to Sunday",
 // "make this week easier") gets ONE deep link onto that plan's page, where the
 // edit endpoint turns it into typed operations, the deterministic helpers

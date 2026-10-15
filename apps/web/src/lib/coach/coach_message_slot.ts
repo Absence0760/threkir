@@ -1,6 +1,6 @@
 // The AI Coach daily counter as a cost rail for the one-shot AI endpoints that
 // spend the Coach's key (the plan assistant, AI plan edits — decisions § 1930,
-// § 1963). One copy, so both endpoints take the slot, deny and refund the same
+// § 1981). One copy, so both endpoints take the slot, deny and refund the same
 // way: the tier from `is_pro()`, the slot from `increment_coach_usage`, an
 // unreadable count denying (fail-closed) rather than granting, and a refund
 // through `decrement_coach_usage` whenever the billed call yields nothing.

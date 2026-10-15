@@ -22,7 +22,7 @@
 --  13. A v2 holder reaches the v3 plan-assistant rung only by accepting v3
 --      (migration 20270816000001).
 --  14. A v3 holder reaches the v4 plan-edit rung only by accepting v4
---      (migration 20270820000001).
+--      (migration 20270825000001).
 
 begin;
 

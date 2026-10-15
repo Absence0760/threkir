@@ -304,7 +304,7 @@
 		replanPreviewHeading?.focus();
 	}
 
-	// "Adjust with AI" (decisions § 1961). Needs the Coach on as well: a plan
+	// "Adjust with AI" (decisions § 1979). Needs the Coach on as well: a plan
 	// edit spends the Coach's key and daily counter.
 	const showAiAdjust = coachEnabled() && aiPlanEditEnabled();
 	let aiAdjustOpen = $state(false);

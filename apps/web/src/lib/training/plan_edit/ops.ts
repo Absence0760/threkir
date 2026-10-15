@@ -1,7 +1,7 @@
 // The typed edit operations AI plan edits may propose, and the trust boundary
 // every one of them passes before it can reach a runner's plan.
 //
-// The AI is the interface, never the planner (decisions § 12, § 1930, § 1961).
+// The AI is the interface, never the planner (decisions § 12, § 1930, § 1979).
 // It turns "move my long run to Sunday" or "make this week easier" into a list
 // drawn from five operations, each naming a workout or a week of the runner's
 // own plan by a short reference this module hands out. It never emits a

@@ -128,7 +128,7 @@ final RegExp _planIdPath = RegExp(
 /// The web page a Coach plan-edit link should open, or null when [href] is not
 /// one. With AI plan edits live the Coach answers "move my long run to Sunday"
 /// with `[Adjust my plan](/plans/<id>?adjust=…)`. The feature is web-only
-/// (decisions § 24, § 1961), so the phone hands the link to the browser on
+/// (decisions § 24, § 1979), so the phone hands the link to the browser on
 /// [webBase] rather than tapping a dead link. Only a same-origin plan path is
 /// recognised, and only the `adjust` parameter is carried, re-encoded.
 @visibleForTesting

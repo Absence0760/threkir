@@ -20,15 +20,16 @@
 	}
 	let { oncreated, diaryDate }: Props = $props();
 
-	// Review rows are plain strings bound to inputs, so an emptied field stays
-	// empty (null on save) rather than snapping back to a model number.
+	// The macro fields are bound to `type="number"` inputs, which Svelte binds
+	// as a number, or null once emptied, so an emptied field saves as null
+	// rather than snapping back to a model number.
 	interface Draft {
 		key: number;
 		item_name: string;
-		calories: string;
-		protein_g: string;
-		carbs_g: string;
-		fat_g: string;
+		calories: number | null;
+		protein_g: number | null;
+		carbs_g: number | null;
+		fat_g: number | null;
 		lowConfidence: boolean;
 		// The nutrients the review row does not show ride along unedited.
 		rest: Pick<PlateItem, 'fiber_g' | 'sugar_g' | 'saturated_fat_g' | 'sodium_mg' | 'cholesterol_mg'>;
@@ -55,16 +56,14 @@
 		unavailable: 'nutrition.platePhotoErrorUnavailable',
 	};
 
-	const num = (v: number | null) => (v == null ? '' : String(v));
-
 	function toDraft(item: PlateItem): Draft {
 		return {
 			key: ++seq,
 			item_name: item.item_name,
-			calories: num(item.calories),
-			protein_g: num(item.protein_g),
-			carbs_g: num(item.carbs_g),
-			fat_g: num(item.fat_g),
+			calories: item.calories,
+			protein_g: item.protein_g,
+			carbs_g: item.carbs_g,
+			fat_g: item.fat_g,
 			lowConfidence: item.confidence === 'low',
 			rest: {
 				fiber_g: item.fiber_g,
@@ -78,11 +77,8 @@
 
 	/// The same bound the server applies, so an edit cannot save what the
 	/// estimate itself could not have proposed.
-	function parseField(raw: string, max: number): number | null {
-		const t = raw.trim();
-		if (t === '') return null;
-		const v = Number(t);
-		if (!Number.isFinite(v) || v < 0) return null;
+	function boundField(v: number | null, max: number): number | null {
+		if (v == null || !Number.isFinite(v) || v < 0) return null;
 		return Math.min(v, max);
 	}
 
@@ -139,10 +135,10 @@
 				await createFoodEntry({
 					item_name: d.item_name.trim().slice(0, MAX_ITEM_NAME_CHARS),
 					meal_slot: mealSlot,
-					calories: parseField(d.calories, PLATE_ITEM_LIMITS.calories.max),
-					protein_g: parseField(d.protein_g, PLATE_ITEM_LIMITS.protein_g.max),
-					carbs_g: parseField(d.carbs_g, PLATE_ITEM_LIMITS.carbs_g.max),
-					fat_g: parseField(d.fat_g, PLATE_ITEM_LIMITS.fat_g.max),
+					calories: boundField(d.calories, PLATE_ITEM_LIMITS.calories.max),
+					protein_g: boundField(d.protein_g, PLATE_ITEM_LIMITS.protein_g.max),
+					carbs_g: boundField(d.carbs_g, PLATE_ITEM_LIMITS.carbs_g.max),
+					fat_g: boundField(d.fat_g, PLATE_ITEM_LIMITS.fat_g.max),
 					...d.rest,
 					started_at: startedAt,
 				});

@@ -290,9 +290,10 @@ void main() {
     const planId = '11111111-2222-4333-8444-555555555555';
 
     Future<List<Uri>> tapCoachLink(
-        WidgetTester tester, String text, String href) async {
+        WidgetTester tester, String text, String href,
+        {String env = 'WEB_BASE_URL=https://preview.threkir.com'}) async {
       dotenv.loadFromString(
-        envString: 'WEB_BASE_URL=https://preview.threkir.com',
+        envString: env,
         isOptional: true,
       );
       final launched = <Uri>[];
@@ -337,6 +338,17 @@ void main() {
       expect(launched.single.queryParameters,
           {'adjust': 'Move my long run to Sunday'});
       expect(find.byType(PlanNewScreen), findsNothing);
+    });
+
+    realtimeWidgetTest(
+        'an "Adjust my plan" link with a blank WEB_BASE_URL opens production',
+        (tester) async {
+      final launched = await tapCoachLink(tester, 'Adjust my plan',
+          '/plans/$planId?adjust=Move%20my%20long%20run%20to%20Sunday',
+          env: 'WEB_BASE_URL=');
+      expect(launched, hasLength(1));
+      expect(launched.single.origin, 'https://threkir.com');
+      expect(launched.single.path, '/plans/$planId');
     });
 
     realtimeWidgetTest('a "Plan your fuelling" link opens the web fuelling page',

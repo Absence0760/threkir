@@ -20,3 +20,7 @@ String resolveWebBaseUrl({String? override}) {
   }
   return base;
 }
+
+/// [path] (which starts with `/`) on the configured web origin.
+String webPageUrl(String path, {String? override}) =>
+    '${resolveWebBaseUrl(override: override)}$path';

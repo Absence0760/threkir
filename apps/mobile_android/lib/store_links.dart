@@ -1,8 +1,13 @@
 import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform;
 
-/// The web page that sells Pro and takes donations to Threkir itself.
-const String webUpgradeUrl = 'https://threkir.com/settings/upgrade';
+import 'web_base_url.dart';
+
+/// The web page that sells Pro and takes donations to Threkir itself, on the
+/// build's configured origin so a preview build never sends anyone to
+/// production's checkout.
+String webUpgradeUrl({String? webBase}) =>
+    webPageUrl('/settings/upgrade', override: webBase);
 
 /// Apple's own subscription-management page. It sells nothing, so it is where
 /// iOS goes wherever Android falls back to [webUpgradeUrl].
@@ -25,4 +30,4 @@ bool webPaymentLinksAllowed() => defaultTargetPlatform != TargetPlatform.iOS;
 /// Where "manage subscription" opens when the store SDK has no management URL
 /// of its own for this user.
 String manageSubscriptionFallbackUrl() =>
-    webPaymentLinksAllowed() ? webUpgradeUrl : appleSubscriptionsUrl;
+    webPaymentLinksAllowed() ? webUpgradeUrl() : appleSubscriptionsUrl;

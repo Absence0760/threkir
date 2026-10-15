@@ -205,15 +205,30 @@ void main() {
         reason: 'the _begin() hook must gate through '
             'shouldStartBroadcastOnRunStart',
       );
-      final hookWindow = sideEffects.substring(gateIdx, gateIdx + 500);
+      // The whole unawaited(...) call the gate guards, balanced on its
+      // parentheses, so a longer .then() cannot push its catchError out of
+      // view.
+      final callIdx = sideEffects.indexOf('unawaited(', gateIdx);
       expect(
-        hookWindow.contains('unawaited(_startLiveBroadcast()'),
+        callIdx > -1 &&
+            sideEffects.startsWith('unawaited(_startLiveBroadcast(', callIdx),
         isTrue,
         reason: 'the auto share is fire-and-forget — _begin() must not '
             'await the network before starting the clock',
       );
+      var depth = 0;
+      var callEnd = callIdx;
+      for (var i = callIdx; i < sideEffects.length; i++) {
+        final c = sideEffects[i];
+        if (c == '(') depth++;
+        if (c == ')' && --depth == 0) {
+          callEnd = i + 1;
+          break;
+        }
+      }
+      final hookCall = sideEffects.substring(callIdx, callEnd);
       expect(
-        hookWindow.contains('catchError'),
+        hookCall.contains('catchError'),
         isTrue,
         reason: 'the auto share needs its own error path (L4) so a '
             'failure cannot surface as an unhandled zone error mid-start',

@@ -6,6 +6,7 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
+import 'foreign_row_cleanup.dart';
 import 'local_route_store.dart';
 import 'local_run_store.dart';
 import 'social_service.dart';
@@ -44,6 +45,11 @@ class SyncService with WidgetsBindingObserver {
   /// whose upload failed offline is retried when connectivity returns rather
   /// than on the next sign-in (decisions § 1801).
   final WatchIngestQueue? watchQueue;
+  /// Optional — when provided, the first cycle with a session reconciles the
+  /// local stores against the caller's owned rows, once per account
+  /// (decisions § 1929). Runs before the drains so a foreign row's refused
+  /// push is gone before this cycle would send it.
+  final ForeignRowCleanup? foreignRowCleanup;
 
   StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
   bool _syncing = false;
@@ -73,6 +79,7 @@ class SyncService with WidgetsBindingObserver {
     this.routeStore,
     this.socialService,
     this.watchQueue,
+    this.foreignRowCleanup,
   });
 
   void start() {
@@ -213,6 +220,19 @@ class SyncService with WidgetsBindingObserver {
       queue.drain(api).catchError((Object e) {
         debugPrint('SyncService: watch ingest drain failed: $e');
       });
+    }
+    final cleanup = foreignRowCleanup;
+    if (cleanup != null) {
+      // Held under `_syncing` so a trigger landing mid-reconcile cannot start
+      // a drain against rows the reconcile is about to delete.
+      _syncing = true;
+      try {
+        await cleanup.runOnce(api);
+      } catch (e) {
+        debugPrint('SyncService: foreign-row cleanup failed: $e');
+      } finally {
+        _syncing = false;
+      }
     }
     final allUnsynced = runStore.unsyncedRuns;
     // Owner-tag filter: skip runs whose `metadata.created_by_user_id`

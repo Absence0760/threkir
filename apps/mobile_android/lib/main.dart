@@ -16,6 +16,7 @@ import 'audio_cues.dart';
 import 'background_sync.dart';
 import 'dev_auto_login.dart';
 import 'firebase_push_messaging.dart';
+import 'foreign_row_cleanup.dart';
 import 'in_progress_recovery.dart';
 import 'l10n/gen/app_localizations.dart';
 import 'l10n/locale_support.dart';
@@ -390,6 +391,11 @@ void main() async {
     routeStore: routeStore,
     socialService: social,
     watchQueue: watchQueue,
+    foreignRowCleanup: ForeignRowCleanup(
+      preferences: prefs,
+      runStore: store,
+      routeStore: routeStore,
+    ),
   );
   syncService.start();
 

@@ -161,6 +161,9 @@ class LocalRouteStore extends ChangeNotifier {
 
   int get unsyncedCount => unsyncedRoutes.length;
 
+  /// Whether [routeId] is confirmed pushed — the sidecar state, owner-blind.
+  bool isSynced(String routeId) => _syncedIds.contains(routeId);
+
   /// True when [routeId] is present locally and has NOT been confirmed
   /// pushed to the cloud — i.e. it carries a pending local edit. Used by
   /// [saveBatch] to keep a server ingest from clobbering an unsynced edit.

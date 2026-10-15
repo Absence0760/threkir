@@ -167,6 +167,11 @@ class Preferences extends ChangeNotifier {
 
   static const _kNotifDeniedHintShown = 'notif_denied_hint_shown';
 
+  // Account ids this install has run the one-time foreign-row reconcile for
+  // (decisions § 1929). Device-scoped on purpose: the reconcile cleans THIS
+  // device's stores, and a shared device's second account needs its own run.
+  static const _kForeignRowCleanupDoneFor = 'foreign_row_cleanup_done_for';
+
   // Stable per-install identifier used to scope `user_device_settings`
   // rows. Minted on first launch and never rotated — rotating would
   // orphan the device's row and lose per-device preferences.
@@ -645,6 +650,19 @@ class Preferences extends ChangeNotifier {
 
   Future<void> setNotifDeniedHintShown() async {
     await _prefs.setBool(_kNotifDeniedHintShown, true);
+  }
+
+  /// Whether the one-time foreign-row reconcile has completed for [userId]
+  /// on this device (decisions § 1929).
+  bool foreignRowCleanupDone(String userId) =>
+      (_prefs.getStringList(_kForeignRowCleanupDoneFor) ?? const <String>[])
+          .contains(userId);
+
+  Future<void> markForeignRowCleanupDone(String userId) async {
+    final done =
+        _prefs.getStringList(_kForeignRowCleanupDoneFor) ?? const <String>[];
+    if (done.contains(userId)) return;
+    await _prefs.setStringList(_kForeignRowCleanupDoneFor, [...done, userId]);
   }
 
   /// Target pace in seconds per km (0 means no target). Audio cue triggers

@@ -164,7 +164,7 @@ export async function syncStrava(
 	return parseStravaSyncResult(data);
 }
 
-/// The signed-in runner's own Strava clubs (decisions § 1953). Only called
+/// The signed-in runner's own Strava clubs (decisions § 1959). Only called
 /// where `isStravaConfigured()` holds; not being connected comes back as a
 /// status, so the caller renders nothing rather than an error.
 export async function fetchMyStravaClubs(): Promise<StravaClubsResult> {

@@ -24,7 +24,7 @@ import { syncParkrunPayload, syncProviderPayload } from './write.ts';
 // The parkrun leg reads parkrun's public events file and is OFF unless
 // `PARKRUN_EVENTS_ENABLED` is exactly `true`: listing parkrun's events waits on
 // parkrun's written permission (#1148), so it answers 503 to a probe and a sync
-// alike until an operator turns it on (decisions § 1952).
+// alike until an operator turns it on (decisions § 1958).
 //
 // It writes as the SERVICE ROLE, not as the caller: a provider race is
 // `is_verified`, and the `race_listings_force_unverified` trigger forces false

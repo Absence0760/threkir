@@ -4,7 +4,7 @@ import { getAdminClient, resetRateLimit } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
 
 /**
- * "Your Strava clubs" (issue #1151 step 4, decisions § 1953) on a build with no
+ * "Your Strava clubs" (issue #1151 step 4, decisions § 1959) on a build with no
  * `PUBLIC_STRAVA_CLIENT_ID` — every CI lane, and local dev by default.
  *
  * The section and the create page's link step sit behind `isStravaConfigured()`

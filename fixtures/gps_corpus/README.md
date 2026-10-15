@@ -122,7 +122,7 @@ loop is a reasonable start), commit the pair, and run the replay.
 #1090 item 6 (fused provider against raw `GPS_PROVIDER`) is answered: the
 fused provider blends non-GNSS estimates into speed and position, and the
 Android recorder now takes its fixes from the satellite receiver, falling back
-to fused only while the receiver is silent (decisions § 1954,
+to fused only while the receiver is silent (decisions § 1960,
 `docs/features/run_recording.md` § Android location source). There is no
 switch to set.
 

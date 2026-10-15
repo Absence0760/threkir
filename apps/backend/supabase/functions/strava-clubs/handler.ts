@@ -1,5 +1,5 @@
 /// `strava-clubs` — a signed-in runner's own Strava clubs, and linking one of
-/// them to a Threkir club (issue #1151 step 4, decisions § 1953).
+/// them to a Threkir club (issue #1151 step 4, decisions § 1959).
 ///
 /// Two actions, both scoped to the caller and nobody else:
 ///

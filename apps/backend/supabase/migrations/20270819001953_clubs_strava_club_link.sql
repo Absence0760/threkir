@@ -1,5 +1,5 @@
 -- A Threkir club can record which Strava club it is (issue #1151 step 4,
--- decisions § 1953).
+-- decisions § 1959).
 --
 -- `strava_club_id` is the Strava club's numeric id. It is unique where set,
 -- because a link is a claim: two Threkir clubs both saying they are the same

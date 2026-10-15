@@ -30,7 +30,7 @@ The offer only shows once a load has settled with no results. The loading skelet
 
 ### Your Strava clubs
 
-Strava's API lists only the signed-in athlete's own clubs, and its terms allow showing a runner their own Strava data, not building a directory from it (issue #1151). So the one Strava-sourced club surface is per-runner: **My clubs** on `/social?tab=clubs` shows a "Your Strava clubs" section listing the clubs the runner belongs to on Strava (#1151 step 4, [decisions § 1953](../architecture/decisions.md)). Nothing about the list is stored.
+Strava's API lists only the signed-in athlete's own clubs, and its terms allow showing a runner their own Strava data, not building a directory from it (issue #1151). So the one Strava-sourced club surface is per-runner: **My clubs** on `/social?tab=clubs` shows a "Your Strava clubs" section listing the clubs the runner belongs to on Strava (#1151 step 4, [decisions § 1959](../architecture/decisions.md)). Nothing about the list is stored.
 
 - **When it shows.** Only on a build where `isStravaConfigured()` holds (`PUBLIC_STRAVA_CLIENT_ID` set), and only once the `strava-clubs` Edge Function says the runner is connected. Not connected: nothing renders. A dead grant: a short "reconnect Strava" line linking to `/settings/integrations`. A failed load: an error line with Retry. The section stays mounted (hidden) on Browse so switching tabs does not ask Strava again.
 - **Per club.** Name, place and member count, plus what the runner can do with it:

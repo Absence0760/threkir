@@ -15,7 +15,7 @@
 	const initialName = prefilledClubName(page.url.searchParams.get('name'));
 	const initialLocation = prefilledClubLocation(page.url.searchParams.get('location'));
 	// Set by "Set up on Threkir" in Your Strava clubs: the new club is linked to
-	// that Strava club once it exists (decisions § 1953).
+	// that Strava club once it exists (decisions § 1959).
 	const stravaClubId = isStravaConfigured()
 		? parseStravaClubParam(page.url.searchParams.get('strava_club'))
 		: null;

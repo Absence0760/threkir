@@ -18,7 +18,7 @@
 /// error envelope), then the write (500).
 ///
 /// Nine slots a cycle also carry a parkrun leg (`parkrunChunkAt`, decisions
-/// § 1952): one read of parkrun's events file, one ninth of it written. It is
+/// § 1958): one read of parkrun's events file, one ninth of it written. It is
 /// OFF unless `PARKRUN_EVENTS_ENABLED` is exactly `true`, and then makes no
 /// request at all and answers `parkrun: { enabled: false }`. It runs after the
 /// RunSignUp leg whatever that leg answered, and its outcome rides in the body

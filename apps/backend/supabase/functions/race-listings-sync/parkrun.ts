@@ -1,5 +1,5 @@
 // Pure helpers for the parkrun leg of the race-calendar sync (issue #1148,
-// decisions § 1952).
+// decisions § 1958).
 //
 // parkrun publishes its whole event list as one public file,
 // `images.parkrun.com/events.json`: a `countries` map (id → site host) and a

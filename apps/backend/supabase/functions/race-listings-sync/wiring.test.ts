@@ -79,7 +79,7 @@ Deno.test('UltraSignup is gated on its own key pair; RunSignUp listings are keyl
 
 Deno.test('the parkrun leg is off unless PARKRUN_EVENTS_ENABLED is exactly true, ahead of the probe and the fetch', () => {
   // Listing parkrun's events waits on parkrun's written permission (#1148,
-  // decisions § 1952). The flag is the deploy gate, so a probe must not report
+  // decisions § 1958). The flag is the deploy gate, so a probe must not report
   // the leg configured and a sync must not reach parkrun's server while it is off.
   const gate = SRC.indexOf(
     "if (provider === 'parkrun' && !parkrunEventsEnabled(Deno.env.get('PARKRUN_EVENTS_ENABLED'))) {",

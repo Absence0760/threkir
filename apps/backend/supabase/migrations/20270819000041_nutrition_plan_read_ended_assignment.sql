@@ -4,7 +4,7 @@
 -- fetchNutritionPlansByIds, and a plan RLS hid there left that day judged
 -- against nothing. 20270815000001's helper honoured only status = 'active',
 -- which for a third-party author (the P3 nutritionist) withdrew the client's
--- own history the moment the assignment ended (decisions § 1951).
+-- own history the moment the assignment ended (decisions § 1957).
 --
 -- The read now follows the assignment row itself: any status that row can
 -- hold. The status list is spelled out rather than dropped so a status added

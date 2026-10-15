@@ -1,5 +1,5 @@
 /// The `strava-clubs` Edge Function's answers, graded rather than cast
-/// (decisions § 1953), and the hand-off from a Strava club to the create form.
+/// (decisions § 1959), and the hand-off from a Strava club to the create form.
 ///
 /// Pure on purpose: `strava.ts` imports `$app/env/public` and supabase-js and
 /// so cannot run under `node --test`, while this can.

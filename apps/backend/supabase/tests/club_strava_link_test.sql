@@ -1,5 +1,5 @@
 -- clubs.strava_club_id and its one writer, set_club_strava_link (migration
--- 20270819001953, decisions § 1953).
+-- 20270819001953, decisions § 1959).
 --
 -- The column is a claim on a Strava club, so the two things worth measuring
 -- are that a client cannot make the claim directly (the freeze trigger

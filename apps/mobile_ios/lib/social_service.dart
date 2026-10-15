@@ -1778,14 +1778,32 @@ class SocialService extends ChangeNotifier {
     }
   }
 
+  /// One occurrence's attendees, earliest RSVP first. Walked by keyset cursor
+  /// in [ApiClient.eventAttendeeOrder]: an unranged select is capped at
+  /// `db.max-rows` (1000) with no flag, so a big race's list silently lost
+  /// everyone past the cap, and its `joined_at`-only order left tied RSVPs in
+  /// no defined order (decisions § 1927).
   Future<List<AttendeeView>> fetchAttendees(String eventId, DateTime instance) async {
-    final rows = await _c
-        .from('event_attendees')
-        .select()
-        .eq('event_id', eventId)
-        .eq('instance_start', instanceStartKey(instance))
-        .order('joined_at', ascending: true);
-    final attendees = (rows as List).cast<Map<String, dynamic>>();
+    final attendees = await walkKeyset(
+      ApiClient.eventAttendeeOrder,
+      (after, limit) async {
+        var q = _c
+            .from('event_attendees')
+            .select()
+            .eq('event_id', eventId)
+            .eq('instance_start', instanceStartKey(instance));
+        if (after != null) q = q.or(after);
+        PostgrestTransformBuilder<PostgrestList> sorted = q;
+        for (final k in ApiClient.eventAttendeeOrder) {
+          sorted = sorted.order(
+            k.column,
+            ascending: k.ascending,
+            nullsFirst: k.nullsFirst,
+          );
+        }
+        return await sorted.limit(limit);
+      },
+    );
     if (attendees.isEmpty) return const [];
     final ids = attendees.map((r) => r['user_id'] as String).toList();
     // Chunk the profile-join: PostgREST serialises `.inFilter('id', ids)` into

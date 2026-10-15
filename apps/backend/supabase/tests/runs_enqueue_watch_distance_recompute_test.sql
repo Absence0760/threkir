@@ -1,19 +1,23 @@
 -- runs_enqueue_watch_distance_recompute — the trigger that queues the
 -- server's smoother for a Wear OS / watchOS run once its track lands
--- (migration 20270828000001, issue #1172).
+-- (migration 20270828000001, issue #1172), queued only for a complete track
+-- since 20270829000031.
 --
 -- Pinned: the function is SECURITY DEFINER with a pinned search_path and the
--- trigger exists; a watch run inserted with a track and a recorder estimator
--- stamp queues exactly one job carrying the run and its owner; a watch row
--- that lands before its track queues when track_url is set, and a later
--- write naming the same track_url queues nothing more, even after the first
--- job finished; an unrelated update queues nothing; and nothing is queued for
--- a phone run, a custom-watch run (no estimator stamp), a run already
--- recomputed, an indoor run or a run with no track.
+-- trigger exists; a watch run inserted with a track, a recorder estimator
+-- stamp and `track_complete: true` queues exactly one job carrying the run
+-- and its owner; a watch row that lands before its track queues when
+-- track_url is set, and a later write naming the same track_url queues
+-- nothing more, even after the first job finished; an unrelated update queues nothing; and nothing is queued for
+-- a watch run whose track is not complete (a build from before track_complete,
+-- whose stored track omits the canopy fixes its estimator took), a phone run,
+-- a custom-watch run (no estimator stamp), a run already recomputed, an indoor
+-- run or a run with no track. Every refused row carries `track_complete: true`
+-- unless that is what it is refused for, so each refusal is its own reason.
 
 begin;
 
-select plan(13);
+select plan(15);
 
 -- ── shape ────────────────────────────────────────────────────────────────
 
@@ -57,7 +61,7 @@ insert into runs (id, user_id, started_at, distance_m, duration_s, source, track
 values ('de000000-0000-4000-8000-000000000001', '00000000-0000-0000-0000-0000de000001',
         '2026-10-01 09:00:00+00', 5210, 1800, 'watch',
         '00000000-0000-0000-0000-0000de000001/de000000-0000-4000-8000-000000000001.json.gz',
-        '{"activity_type":"run","distance_estimator":"kalman_v1"}');
+        '{"activity_type":"run","distance_estimator":"kalman_v4","track_complete":true}');
 
 select is(pg_temp.recompute_jobs('de000000-0000-4000-8000-000000000001'), 1::bigint,
   'a watch run inserted with a track queues one distance_recompute');
@@ -81,7 +85,7 @@ select is(pg_temp.recompute_jobs('de000000-0000-4000-8000-000000000001'), 1::big
 insert into runs (id, user_id, started_at, distance_m, duration_s, source, track_url, metadata)
 values ('de000000-0000-4000-8000-000000000002', '00000000-0000-0000-0000-0000de000001',
         '2026-10-02 09:00:00+00', 5210, 1800, 'watch', null,
-        '{"activity_type":"run","distance_estimator":"kalman_v1"}');
+        '{"activity_type":"run","distance_estimator":"kalman_v4","track_complete":true}');
 
 select is(pg_temp.recompute_jobs('de000000-0000-4000-8000-000000000002'), 0::bigint,
   'a watch row with no track yet queues nothing');
@@ -111,19 +115,33 @@ values
   ('de000000-0000-4000-8000-000000000003', '00000000-0000-0000-0000-0000de000001',
    '2026-10-03 09:00:00+00', 5000, 1800, 'app',
    '00000000-0000-0000-0000-0000de000001/de000000-0000-4000-8000-000000000003.json.gz',
-   '{"activity_type":"run","distance_estimator":"kalman_v3"}'),
+   '{"activity_type":"run","distance_estimator":"kalman_v4","track_complete":true}'),
   ('de000000-0000-4000-8000-000000000004', '00000000-0000-0000-0000-0000de000001',
    '2026-10-04 09:00:00+00', 5000, 1800, 'watch',
    '00000000-0000-0000-0000-0000de000001/de000000-0000-4000-8000-000000000004.json.gz',
-   '{"activity_type":"run"}'),
+   '{"activity_type":"run","track_complete":true}'),
   ('de000000-0000-4000-8000-000000000005', '00000000-0000-0000-0000-0000de000001',
    '2026-10-05 09:00:00+00', 5000, 1800, 'watch',
    '00000000-0000-0000-0000-0000de000001/de000000-0000-4000-8000-000000000005.json.gz',
-   '{"activity_type":"run","distance_estimator":"kalman_v3","distance_recomputed_at":"2026-10-05T10:00:00Z"}'),
+   '{"activity_type":"run","distance_estimator":"kalman_v3","distance_recomputed_at":"2026-10-05T10:00:00Z","track_complete":true}'),
   ('de000000-0000-4000-8000-000000000006', '00000000-0000-0000-0000-0000de000001',
    '2026-10-06 09:00:00+00', 0, 1800, 'watch',
    '00000000-0000-0000-0000-0000de000001/de000000-0000-4000-8000-000000000006.json.gz',
-   '{"activity_type":"run","distance_estimator":"kalman_v1","indoor":true}');
+   '{"activity_type":"run","distance_estimator":"kalman_v4","indoor":true,"track_complete":true}'),
+  ('de000000-0000-4000-8000-000000000007', '00000000-0000-0000-0000-0000de000001',
+   '2026-10-07 09:00:00+00', 5000, 1800, 'watch',
+   '00000000-0000-0000-0000-0000de000001/de000000-0000-4000-8000-000000000007.json.gz',
+   '{"activity_type":"run","distance_estimator":"kalman_v1"}'),
+  ('de000000-0000-4000-8000-000000000008', '00000000-0000-0000-0000-0000de000001',
+   '2026-10-08 09:00:00+00', 5000, 1800, 'watch',
+   '00000000-0000-0000-0000-0000de000001/de000000-0000-4000-8000-000000000008.json.gz',
+   '{"activity_type":"run","distance_estimator":"kalman_v4","track_complete":"true"}');
+
+select is(pg_temp.recompute_jobs('de000000-0000-4000-8000-000000000007'), 0::bigint,
+  'a watch run without track_complete is not queued (its stored track omits the canopy fixes its estimator took)');
+
+select is(pg_temp.recompute_jobs('de000000-0000-4000-8000-000000000008'), 0::bigint,
+  'track_complete must be the JSON boolean true, the reading the worker gives it');
 
 select is(pg_temp.recompute_jobs('de000000-0000-4000-8000-000000000003'), 0::bigint,
   'a phone run is not queued (the phone saved the smoother''s figure)');

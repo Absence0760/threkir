@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 /**
  * /privacy, /terms, /cookie-notice, /health-data-notice, /delete-account —

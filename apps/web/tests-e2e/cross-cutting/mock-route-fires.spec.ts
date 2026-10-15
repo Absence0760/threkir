@@ -1,4 +1,4 @@
-import { expect, test } from '../fixtures/mock-route';
+import { expect, test } from '../fixtures/test';
 
 /**
  * The instrument's own proof. `mockRoute` only earns its keep if a mock that

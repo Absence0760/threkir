@@ -1,7 +1,8 @@
 import type { Page } from '@playwright/test';
 
 import { originOf } from '../fixtures/base-url';
-import { expect, test, type MockRoute } from '../fixtures/mock-route';
+import type { MockRoute } from '../fixtures/mock-route';
+import { expect, test } from '../fixtures/test';
 
 /**
  * Accepting error reporting must leave the app rendering (decisions § 1896).

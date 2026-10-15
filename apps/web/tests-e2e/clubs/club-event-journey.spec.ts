@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient, resetRateLimit } from '../fixtures/local-supabase';
 import { deleteClub, insertRun } from '../fixtures/simulate';

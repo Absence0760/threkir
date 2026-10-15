@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient, loadSupabaseEnv } from '../fixtures/local-supabase';
 import { createClient } from '@supabase/supabase-js';

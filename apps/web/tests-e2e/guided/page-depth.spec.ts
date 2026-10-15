@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 /**
  * /guided depth coverage — gaps the page.spec.ts smoke suite leaves

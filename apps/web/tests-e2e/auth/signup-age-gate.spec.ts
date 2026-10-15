@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 /**
  * Signup form — GDPR Art 8 age gate + ToS acceptance.

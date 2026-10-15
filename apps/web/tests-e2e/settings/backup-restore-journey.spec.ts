@@ -1,6 +1,6 @@
 import { gunzipSync, gzipSync } from 'node:zlib';
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { deleteRun } from '../fixtures/simulate';

@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { readMaybeRow } from '../fixtures/db-read';
 import { getAdminClient } from '../fixtures/local-supabase';

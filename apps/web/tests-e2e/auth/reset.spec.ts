@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { resolveBaseUrl } from '../fixtures/base-url';
 import { refreshStorageState } from '../fixtures/helpers';

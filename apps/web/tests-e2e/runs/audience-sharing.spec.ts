@@ -1,6 +1,6 @@
 import type { Browser, Page } from '@playwright/test';
 
-import { expect, test } from '../fixtures/mock-route';
+import { expect, test } from '../fixtures/test';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { deleteRun, insertRun } from '../fixtures/simulate';
 import { USER_A, USER_B, USER_C_PRO, type SeededUser } from '../fixtures/users';

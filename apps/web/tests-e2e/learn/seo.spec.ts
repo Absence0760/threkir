@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 /**
  * `/learn/<slug>` — SEO head: title, canonical, Open Graph, JSON-LD.

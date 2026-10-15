@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { browserDayAt } from '../fixtures/dates';
 import { deleteRun, insertRun, withCleanCurrentWeek } from '../fixtures/simulate';

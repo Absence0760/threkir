@@ -271,6 +271,30 @@ test('the AI plan flag with the Coach flag, or off, adds no plan notice', () => 
 	}
 });
 
+test('the AI plan-edit flag without the Coach flag passes with a notice that the option stays hidden', () => {
+	const r = checkProductionEnv({ ...RELEASE_BASE, PUBLIC_AI_PLAN_EDIT_ENABLED: 'true' });
+	assert.equal(r.ok, true);
+	assert.equal(r.notices.length, 1);
+	assert.match(r.notices[0], /AI plan edits stay hidden/);
+	assert.match(r.notices[0], /PUBLIC_COACH_ENABLED/);
+});
+
+test('the AI plan-edit flag with the Coach flag, or off, adds no plan-edit notice', () => {
+	for (const flags of [
+		{ PUBLIC_AI_PLAN_EDIT_ENABLED: 'true', PUBLIC_COACH_ENABLED: 'true' },
+		{ PUBLIC_AI_PLAN_EDIT_ENABLED: '', PUBLIC_COACH_ENABLED: 'true' },
+		{ PUBLIC_AI_PLAN_EDIT_ENABLED: 'false' },
+	]) {
+		const r = checkProductionEnv({
+			...RELEASE_BASE,
+			PUBLIC_REVENUECAT_WEB_CHECKOUT_URL: 'https://pay.rev.cat/abc123',
+			...flags,
+		});
+		assert.equal(r.ok, true, JSON.stringify(flags));
+		assert.deepEqual(r.notices, [], JSON.stringify(flags));
+	}
+});
+
 test('CLI prints a ::notice:: for the app-only storefront and exits 0', () => {
 	const r = runScript({
 		...RELEASE_BASE,

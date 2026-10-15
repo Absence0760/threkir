@@ -521,11 +521,17 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
                       formatDateShort(r.startedAt, activeLocaleTag)),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: RunTrackPreview(
-                      runId: r.id,
-                      trackUrl: r.trackUrl,
-                      api: widget.api,
-                      ownerUserId: widget.athleteId,
+                    // The preview paints to whatever box it is given, and a
+                    // list row's height is unbounded; the feed post's map
+                    // height keeps the two run maps one size.
+                    child: SizedBox(
+                      height: 120,
+                      child: RunTrackPreview(
+                        runId: r.id,
+                        trackUrl: r.trackUrl,
+                        api: widget.api,
+                        ownerUserId: widget.athleteId,
+                      ),
                     ),
                   ),
                 ),

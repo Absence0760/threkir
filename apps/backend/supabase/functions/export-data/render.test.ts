@@ -48,6 +48,7 @@ const REF: RenderRunRow = {
 		'22222222-2222-2222-2222-222222222222/11111111-1111-1111-1111-111111111111.hr.json.gz',
 	is_public: false,
 	followers_only: false,
+	safety_audience: false,
 	event_id: null,
 	route_id: null,
 	race_listing_id: null,
@@ -95,7 +96,7 @@ Deno.test('csvRow emits exactly one value per declared column', () => {
 	// A column added to CSV_COLS without a matching value in csvRow shifts
 	// every later field by one for the whole export, silently — a consumer
 	// reads `is_public` out of the `external_id` slot and nothing errors.
-	assertEquals(CSV_COLS.length, 27);
+	assertEquals(CSV_COLS.length, 28);
 	assertEquals(csvFields(csvRow(REF)).length, CSV_COLS.length);
 });
 
@@ -112,6 +113,7 @@ Deno.test('csvRow puts each value under the header its name promises', () => {
 	assertEquals(at('title'), 'Morning run');
 	assertEquals(at('is_public'), 'false');
 	assertEquals(at('followers_only'), 'false');
+	assertEquals(at('safety_audience'), 'false');
 	assertEquals(at('created_at'), REF.created_at);
 	assertEquals(at('updated_at'), REF.updated_at);
 	// The Storage path is deliberately absent from the CSV: it is a key into

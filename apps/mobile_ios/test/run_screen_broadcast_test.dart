@@ -116,5 +116,35 @@ void main() {
         PostLiveVisibilityAction.none,
       );
     });
+
+    // Decisions § 1964: a broadcast on the safety-contacts audience never
+    // flipped the run public, so the stop path has nothing to ask or revert.
+    test('a safety-contacts broadcast has no public window to resolve', () {
+      for (final active in [true, false]) {
+        expect(
+          postLiveVisibilityActionOnStop(
+            broadcastBegun: true,
+            broadcasterActiveAtStop: active,
+            defaultPublic: false,
+            signedIn: true,
+            broadcastWasPublic: false,
+          ),
+          PostLiveVisibilityAction.none,
+        );
+      }
+    });
+
+    test('a safety broadcast widened by a manual share still prompts', () {
+      expect(
+        postLiveVisibilityActionOnStop(
+          broadcastBegun: true,
+          broadcasterActiveAtStop: true,
+          defaultPublic: false,
+          signedIn: true,
+          broadcastWasPublic: true,
+        ),
+        PostLiveVisibilityAction.prompt,
+      );
+    });
   });
 }

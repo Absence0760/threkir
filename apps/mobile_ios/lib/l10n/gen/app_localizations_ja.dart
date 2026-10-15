@@ -1087,6 +1087,10 @@ class AppLocalizationsJa extends AppLocalizations {
       'この端末でランを開始すると自動的にライブ共有を開始します。進行中のランはリンクを知っている人なら誰でも見られます。ランが終了すると、既定の公開設定に戻ります。';
 
   @override
+  String get safetyAutoLiveShareSafetySubtitle =>
+      'このスマートフォンでランを開始すると、自動的にライブ共有を開始します。公開されることはありません。確認済みの安全連絡先だけが、遅延アラートまたはルート逸脱アラートで届くリンクから追跡できます。アラートを設定すると既定でオンになります。';
+
+  @override
   String get safetyOffRouteTitle => 'ルート逸脱アラート';
 
   @override
@@ -1098,6 +1102,10 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get runAutoLiveShareStarted => 'ライブ共有中 — 「ライブリンクを共有」でリンクを送れます';
+
+  @override
+  String get runSafetyLiveShareStarted =>
+      '安全共有がオンです。安全連絡先だけが、アラートが送られた後にのみ追跡できます';
 
   @override
   String get runSafetyNudgeSolo =>

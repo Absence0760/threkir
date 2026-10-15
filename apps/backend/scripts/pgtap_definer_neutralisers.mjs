@@ -298,6 +298,63 @@ $neutralised$;`,
     },
   ],
   [
+    'safety_live_run',
+    {
+      why: 'drops `private.safety_link_admits` — the token, the gate, the safety_audience mark, the live-stub and contact checks and the 48 h window, which together are the whole access control; keeps `r.id = p_run_id`, the subject',
+      sql: `create or replace function public.safety_live_run(p_run_id uuid, p_token uuid)
+ returns table(started_at timestamptz, duration_s integer, distance_m double precision, route_id uuid, owner_name text)
+ language sql stable security definer set search_path to 'public', 'private'
+as $neutralised$
+  select r.started_at, r.duration_s, r.distance_m::double precision,
+         case when is_public_route_by_id(r.route_id) then r.route_id else null end,
+         coalesce(p.display_name, '')
+    from runs r
+    left join user_profiles p on p.id = r.user_id
+   where r.id = p_run_id
+     and ${mine('r')};
+$neutralised$;`,
+      subject: 'runs r',
+      witness: {
+        setup: `insert into runs (id, user_id, started_at, duration_s, distance_m, source, is_public, metadata)
+                 values ('00000000-0000-0000-0000-00000000c5a1',
+                         (select id from auth.users order by id limit 1),
+                         now(), 0, 0, 'app', false, '{"in_progress": true}');`,
+        probe: `select count(*) from safety_live_run('00000000-0000-0000-0000-00000000c5a1',
+                                                     '00000000-0000-0000-0000-00000000c5a2');`,
+      },
+    },
+  ],
+  [
+    'safety_live_pings',
+    {
+      why: 'drops `private.safety_link_admits`, the whole access control (token, gate, safety_audience, live stub, confirmed contact, 48 h); keeps `p.run_id = p_run_id` and the `p_since` cursor, which select the rows asked about',
+      sql: `create or replace function public.safety_live_pings(p_run_id uuid, p_token uuid, p_since timestamptz default null)
+ returns table(lat double precision, lng double precision, distance_m double precision, elapsed_s integer, at timestamptz, coarse boolean)
+ language sql stable security definer set search_path to 'public', 'private'
+as $neutralised$
+  select p.lat, p.lng, p.distance_m::double precision, p.elapsed_s, p.at, p.coarse
+    from live_run_pings p
+   where p.run_id = p_run_id
+     and (p_since is null or p.at > p_since)
+     and ${mine('p')}
+   order by p.at desc
+   limit 1000;
+$neutralised$;`,
+      subject: 'live_run_pings p',
+      witness: {
+        setup: `insert into runs (id, user_id, started_at, duration_s, distance_m, source, is_public, metadata)
+                 values ('00000000-0000-0000-0000-00000000c5a3',
+                         (select id from auth.users order by id limit 1),
+                         now(), 0, 0, 'app', false, '{"in_progress": true}');
+                insert into live_run_pings (run_id, user_id, lat, lng)
+                 values ('00000000-0000-0000-0000-00000000c5a3',
+                         (select id from auth.users order by id limit 1), 10.5, 20.5);`,
+        probe: `select count(*) from safety_live_pings('00000000-0000-0000-0000-00000000c5a3',
+                                                       '00000000-0000-0000-0000-00000000c5a2');`,
+      },
+    },
+  ],
+  [
     'discoverable_runners_near',
     {
       why: "drops the caller's own `discoverable_nearby` opt-in, the other runner's two opt-outs, `shadow_hidden`, the under-18 floor and the block check; keeps `discoverable_area is not null` (a runner with no location was never a candidate) and the self-exclusion. The radius goes with the caller's opt-in: an opted-out caller has no `discoverable_area`, so there is no origin left to measure a distance from",

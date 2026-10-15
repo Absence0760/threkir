@@ -1136,6 +1136,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Démarre automatiquement un partage en direct au début d\'une course sur ce téléphone. La course en cours est visible par toute personne ayant le lien ; à la fin de la course, elle retrouve votre visibilité par défaut.';
 
   @override
+  String get safetyAutoLiveShareSafetySubtitle =>
+      'Démarre automatiquement un partage en direct quand une course commence sur ce téléphone. Il n\'est jamais public : seuls tes contacts de sécurité confirmés peuvent le suivre, via le lien qu\'une alerte de retard ou de sortie d\'itinéraire leur envoie. Activé par défaut dès qu\'une alerte est configurée.';
+
+  @override
   String get safetyOffRouteTitle => 'Alerte hors itinéraire';
 
   @override
@@ -1149,6 +1153,10 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get runAutoLiveShareStarted =>
       'Partage en direct actif — envoyez le lien via « Partager le lien en direct »';
+
+  @override
+  String get runSafetyLiveShareStarted =>
+      'Partage de sécurité actif — seuls tes contacts de sécurité peuvent suivre, et seulement après une alerte';
 
   @override
   String get runSafetyNudgeSolo =>

@@ -11,6 +11,13 @@
 > fail-closed (both prefs default off) until users opt in, so shipping the
 > code exposed no one. The "Open decisions" section records what was chosen
 > and why so a future session can revisit deliberately.
+>
+> **2026-10-15 — safety-contacts audience (decisions §1964–§1966):** the live
+> share, the escalation and its recipients can now run on the runner's
+> confirmed safety contacts only, with no `is_public` flip, and the automatic
+> share defaults on once an alert is armed. Code shipped behind the
+> default-closed `safety_audience` server gate; see
+> [Safety-contacts-only audience](#safety-contacts-only-audience-2026-10-15-decisions-1964).
 
 ## Context / why
 
@@ -82,7 +89,10 @@ safety contacts a "may be overdue" alert with the live link — once.
    beats a missed alert (§131's stance), but repeated alerts on the same
    silent run train contacts to ignore them. The saved-run finish email is
    the all-clear; if the run never finishes, one alert stands.
-5. **Auto-live-share is a per-device pref, default OFF** (`auto_live_share`,
+5. **Auto-live-share is a per-device pref, default OFF** — *superseded in
+   part by §1964/§1965: with the `safety_audience` gate open the automatic
+   share is private to the safety contacts and defaults on when an alert is
+   armed; the text below still describes the gate-closed behaviour* (`auto_live_share`,
    D scope — a property of the phone that records, like
    `voice_feedback_interval_km`). It makes every run publicly viewable mid-run (the stub is
    `is_public=true` — that's what makes the spectator link work for a
@@ -210,6 +220,9 @@ clipping; the email only carries times + the link.
   explicitly keep it public (issue #664, decisions §434). The pref copy
   states both plainly.
 - The escalation email contains times and a link only, never coordinates.
+- **With the `safety_audience` gate open (§1964)** the automatic share is
+  never public: nobody but the runner can see the run until an escalation
+  fires, and then only each confirmed contact, through their own link.
 - Pre-prod deploy checklist (not a code gate): CISO/counsel review of the
   overdue email copy + this posture section. The feature is fail-closed
   (both prefs default off/null) so shipping the code does not expose anyone.
@@ -518,3 +531,71 @@ stayed off — their planned route on a live-shared run.
   `off_route` email/SMS copy + this posture, then set
   `OFF_ROUTE_ESCALATION_ENABLED` on the web build + mobile dotenv. The feature
   is fail-closed (flag off, pref off) so shipping the code exposes no one.
+
+## Safety-contacts-only audience (2026-10-15, decisions §1964)
+
+> **STATUS: code shipped, prod-gated.** Issue #1168 item 3. Fail-closed behind
+> the `safety_audience` row in `private.feature_flags`, which no migration
+> writes (seed.sql opens it for local + CI only).
+
+The net above cost a public run: the only live stub a client could create was
+`is_public = true`, because the spectator link had to open for a partner with
+no account. A live share can now run on the runner's **confirmed safety
+contacts only**.
+
+- **Model.** `runs.safety_audience` marks a private live stub. Safety contacts
+  are email-identified and usually not app users, so admission is a
+  capability link rather than an identity: `private.run_safety_links` holds
+  one token per (run, confirmed contact), **minted only when an escalation
+  fires** — the overdue scan and `escalate_run_off_route` insert them in the
+  statement that stamps `safety_escalated_at`, and put each contact's own
+  token in their `safety_email` / `safety_sms` payload as `view_token`.
+  Before an escalation no token exists. Migration `20270821000001`.
+- **The link.** The Go worker appends the token as a fragment,
+  `/live/{run_id}#k=<token>` (`safetyLiveURL`; a non-UUID token is dropped),
+  so it never reaches a server log or a Referer. `/live/[id]` reads it from
+  `location.hash` (`lib/safety/safety_live_link.ts`) and calls
+  `safety_live_run` / `safety_live_pings` in a POST body; it polls every 5 s
+  with a cursor instead of subscribing, shows a "Safety contacts only — don't
+  forward this link" notice, and a closed-link state when the token stops
+  admitting.
+- **What a token admits, at read time** (`private.safety_link_admits`): the
+  gate is open; the token is for this run; the run still carries
+  `safety_audience`, is still an in-progress stub and is not concluded; the
+  contact is still a confirmed contact of the owner; the link is under 48 h
+  old. Stopping the share, saving the run, removing or declining the contact
+  (cascade) and closing the gate each end access on the next poll.
+  `cleanup_stale_live_run_pings` sweeps links on the same 48 h window.
+- **What does not change.** `live_run_pings` RLS still admits only what
+  `private.is_run_visible_to` admits, so anon, strangers, followers and even a
+  linked app-user contact read nothing from the table or realtime;
+  `public_runs` / `shared_runs` never contain the stub; the escalation never
+  flips `is_public`. Pinned by `apps/backend/supabase/tests/safety_live_audience_test.sql` (37).
+- **Mobile.** `ApiClient.beginLiveBroadcast(safetyAudience: true)` writes the
+  private stub; `safetyAudienceEnabled()` reads the gate (fail closed). The
+  run screen's automatic share uses the safety audience when the gate is
+  open (`safety_live_audience.dart`), and the effective `auto_live_share` is
+  the explicit device choice or, unset, ON only when the gate is open AND an
+  overdue window (≥10 min) or the off-route alert is armed (§1965). A manual
+  "Share live link" stays public and widens a safety stub via
+  `makeRunPublic`; the stop-path visibility dialog runs only when a public
+  window existed. Settings → Safety contacts shows the effective value and
+  the never-public copy while the gate is open.
+- **Gate closed.** A stub written with `safety_audience` is stored as plain
+  private; no link is minted (the email carries the bare `/live` link); every
+  token is refused; clients see `safety_audience_enabled() = false` and keep
+  the old public, explicit-opt-in behaviour.
+
+**Pre-deploy checklist (not a code gate, §150):**
+
+1. **CISO review** of the privacy boundary: per-contact capability links,
+   the admission predicate, the 48 h window, the fragment transport, the
+   default-on rule in §1965.
+2. **Counsel review** of the same change plus the contact-facing copy (the
+   `/live/[id]` notice and closed-link state in all seven locales, the
+   overdue / off-route email and SMS now carrying a personal link) and the
+   default-on posture for the runner.
+3. Only then: `insert into private.feature_flags (name, enabled) values
+   ('safety_audience', true)` in prod. Turning it off again is the rollback;
+   the default reverts for everyone who never touched the switch.
+

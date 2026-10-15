@@ -727,10 +727,7 @@ func renderSafetyEmail(p SafetyEmailPayload, baseURL, locale string) (Email, boo
 		} else {
 			first = fmt.Sprintf(s.body[1], owner, formatTimeUTC(p.StartedAt))
 		}
-		ctaURL := base
-		if p.RunID != nil && *p.RunID != "" {
-			ctaURL = base + "/live/" + *p.RunID
-		}
+		ctaURL := safetyLiveURL(base, p.RunID, p.ViewToken)
 		return composeEmail(emailContent{
 			logoURL:   emailLogoURL(baseURL),
 			lang:      loc,
@@ -755,10 +752,7 @@ func renderSafetyEmail(p SafetyEmailPayload, baseURL, locale string) (Email, boo
 		} else {
 			first = fmt.Sprintf(s.body[1], owner, formatTimeUTC(p.StartedAt))
 		}
-		ctaURL := base
-		if p.RunID != nil && *p.RunID != "" {
-			ctaURL = base + "/live/" + *p.RunID
-		}
+		ctaURL := safetyLiveURL(base, p.RunID, p.ViewToken)
 		return composeEmail(emailContent{
 			logoURL:   emailLogoURL(baseURL),
 			lang:      loc,

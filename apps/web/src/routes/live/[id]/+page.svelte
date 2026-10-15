@@ -9,7 +9,14 @@
 	import { watchMapResize } from '#lib/routes/map_resize.ts';
 	import { formatPace, formatDistance } from '#lib/core/mock-data.ts';
 	import { formatDuration } from '#lib/format/time.ts';
-	import { fetchRouteById, fetchRouteMarkers, setRunExpectedReturn } from '#lib/core/data.ts';
+	import {
+		fetchRouteById,
+		fetchRouteMarkers,
+		fetchSafetyLivePings,
+		fetchSafetyLiveRun,
+		setRunExpectedReturn,
+	} from '#lib/core/data.ts';
+	import { parseSafetyLinkToken, SAFETY_LINK_POLL_MS } from '#lib/safety/safety_live_link.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { buildRoadbook, type RoadbookLeg } from '#lib/routes/roadbook.ts';
 	import {
@@ -71,8 +78,17 @@
 				})
 			: '',
 	);
-	type Status = 'connecting' | 'live' | 'finished' | 'error' | 'not-found';
+	type Status = 'connecting' | 'live' | 'finished' | 'error' | 'not-found' | 'link-closed';
 	let status = $state<Status>('connecting');
+	// A safety contact's link (decisions § 1964): the run is private, so the
+	// public reads and the realtime channel show this viewer nothing. The
+	// token from the fragment is the capability, checked server-side by the
+	// two safety_live_* RPCs, and the feed is polled rather than subscribed.
+	let safetyToken: string | null = null;
+	let safetyMode = $state(false);
+	let safetyPoll: ReturnType<typeof setInterval> | null = null;
+	let safetyCursor: string | null = null;
+	let safetyOwnerName = $state('');
 	// Freshness: the ms timestamp of the last ping we rendered, plus a
 	// once-a-second clock so "updated N ago" / the stale badge recompute
 	// even while no new ping arrives. Without this a runner who lost
@@ -337,6 +353,13 @@
 	}
 
 	async function hydrateBacklog() {
+		if (safetyToken) {
+			const rows = await fetchSafetyLivePings(data.id, safetyToken).catch(() => []);
+			if (rows.length === 0) return false;
+			safetyCursor = rows[0].at;
+			for (let i = rows.length - 1; i >= 0; i--) pushPing(rows[i]);
+			return true;
+		}
 		if (isLiveHubConfigured()) {
 			// On the Go-hub path the full ping history is replayed over
 			// the WS on connect (server.go `handleSubscribe` sends up to
@@ -372,7 +395,25 @@
 		return true;
 	}
 
+	async function pollSafetyPings() {
+		if (!safetyToken) return;
+		try {
+			const rows = await fetchSafetyLivePings(data.id, safetyToken, safetyCursor);
+			for (const row of rows) {
+				pushPing(row);
+				safetyCursor = row.at;
+			}
+			if (rows.length > 0 && status === 'connecting') status = 'live';
+		} catch (err) {
+			console.warn('safety link poll failed', err);
+		}
+	}
+
 	function subscribeLive() {
+		if (safetyToken) {
+			safetyPoll = setInterval(() => void pollSafetyPings(), SAFETY_LINK_POLL_MS);
+			return;
+		}
 		// Privacy-zone trust contract: pings are rendered verbatim. The
 		// broadcaster's privacy zones are NOT fetched here (doing so
 		// would defeat the purpose — anyone watching a public live run
@@ -453,7 +494,34 @@
 	};
 	let visibleRun: VisibleRun | null = null;
 
+	async function ensureSafetyRunIsVisible(token: string): Promise<boolean> {
+		let row: Awaited<ReturnType<typeof fetchSafetyLiveRun>> = null;
+		try {
+			row = await fetchSafetyLiveRun(data.id, token);
+		} catch {
+			row = null;
+		}
+		if (!row) {
+			status = 'link-closed';
+			return false;
+		}
+		visibleRun = {
+			user_id: '',
+			started_at: row.started_at,
+			duration_s: row.duration_s,
+			distance_m: row.distance_m,
+			route_id: row.route_id,
+			concluded_at: null,
+		};
+		startedAtMs = Date.parse(row.started_at);
+		concludedAtMs = null;
+		safetyOwnerName = row.owner_name;
+		runnerName = row.owner_name || m('live.runnerAnonymous');
+		return true;
+	}
+
 	async function ensureRunIsVisible(): Promise<boolean> {
+		if (safetyToken) return ensureSafetyRunIsVisible(safetyToken);
 		// Visibility check: the spectator surface is a public-broadcast
 		// page, so the visible-runs set is exactly what `public_runs`
 		// exposes (decisions §33, migration 20260626_001).
@@ -657,6 +725,10 @@
 	}
 
 	function teardownTransports() {
+		if (safetyPoll) {
+			clearInterval(safetyPoll);
+			safetyPoll = null;
+		}
 		if (realtimeChannel) {
 			supabase.removeChannel(realtimeChannel);
 			realtimeChannel = null;
@@ -673,6 +745,14 @@
 	// saved totals and switch to the conclusion view for every transport.
 	async function checkConcluded() {
 		if (status !== 'live' || !visibleRun) return;
+		if (safetyToken) {
+			const still = await fetchSafetyLiveRun(data.id, safetyToken).catch(() => undefined);
+			if (still === null && status === 'live') {
+				teardownTransports();
+				status = 'link-closed';
+			}
+			return;
+		}
 		const { data: row } = await supabase
 			.from('public_runs')
 			.select('concluded_at, distance_m, duration_s')
@@ -696,6 +776,8 @@
 		// is the per-page acceptance path when the banner hasn't been
 		// answered yet.
 		if (hasAcceptedConsent()) mapConsented = true;
+		safetyToken = parseSafetyLinkToken(window.location.hash);
+		safetyMode = safetyToken != null;
 		// Drives the freshness readout / stale-badge transition while no
 		// new ping arrives, and every ~15s re-checks the concluded_at marker
 		// so a runner who stops mid-watch flips to the conclusion view
@@ -874,6 +956,7 @@
 
 	onDestroy(() => {
 		if (freshnessTicker) clearInterval(freshnessTicker);
+		if (safetyPoll) clearInterval(safetyPoll);
 		if (realtimeChannel) supabase.removeChannel(realtimeChannel);
 		liveHubHandle?.close();
 		authSub?.unsubscribe();
@@ -902,7 +985,7 @@
 			class:active={status === 'live' && !isStale}
 			class:stale={status === 'live' && isStale}
 			class:finished={status === 'finished'}
-			class:not-found={status === 'not-found'}
+			class:not-found={status === 'not-found' || status === 'link-closed'}
 		>
 			{#if status === 'connecting'}
 				<span class="badge-spinner" aria-hidden="true"></span>
@@ -915,7 +998,7 @@
 				{/if}
 			{:else if status === 'finished'}
 				{m('live.badgeFinished')}
-			{:else if status === 'not-found'}
+			{:else if status === 'not-found' || status === 'link-closed'}
 				{m('live.badgeNotBroadcasting')}
 			{:else}
 				{m('live.badgeConnectionLost')}
@@ -933,7 +1016,16 @@
 	     its landmark — every /share/* sibling already does. Without it this
 	     page shipped no main region at all (WCAG 1.3.1). -->
 	<main id="main-content">
-	{#if status === 'not-found'}
+	{#if status === 'link-closed'}
+		<div class="live-empty" data-testid="safety-link-closed">
+			<div class="live-empty-icon" aria-hidden="true">
+				<span class="material-symbols">health_and_safety</span>
+			</div>
+			<h1>{m('live.safetyClosedTitle')}</h1>
+			<p>{m('live.safetyClosedBody')}</p>
+			<a href="/" class="btn btn-primary">{m('live.backToThrekir')}</a>
+		</div>
+	{:else if status === 'not-found'}
 		<div class="live-empty">
 			<div class="live-empty-icon" aria-hidden="true">
 				<span class="material-symbols">satellite_alt</span>
@@ -945,6 +1037,17 @@
 			<a href="/" class="btn btn-primary">{m('live.backToThrekir')}</a>
 		</div>
 	{:else}
+		{#if safetyMode}
+			<p class="safety-notice" data-testid="safety-notice">
+				<span class="material-symbols" aria-hidden="true">health_and_safety</span>
+				<span>
+					<strong>{m('live.safetyBadge')}</strong>
+					{safetyOwnerName
+						? m('live.safetyNotice', { name: safetyOwnerName })
+						: m('live.safetyNoticeAnonymous')}
+				</span>
+			</p>
+		{/if}
 		<section class="live-strip" aria-label={m('live.liveStatusAria')}>
 			<div class="live-runner">
 				<span class="avatar" aria-hidden="true">{initials(runnerName ?? 'R')}</span>
@@ -1860,5 +1963,19 @@
 	}
 	.approx-badge .material-symbols {
 		font-size: 1rem;
+	}
+	.safety-notice {
+		display: flex;
+		align-items: flex-start;
+		gap: var(--space-sm);
+		margin: 0;
+		padding: var(--space-sm) var(--space-xl);
+		background: var(--color-surface);
+		border-bottom: 1px solid var(--color-border);
+		font-size: 0.85rem;
+	}
+	.safety-notice .material-symbols {
+		font-size: 1.1rem;
+		flex: none;
 	}
 </style>

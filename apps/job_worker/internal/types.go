@@ -282,6 +282,12 @@ type LifecycleEmailPayload struct {
 //     a sustained departure from the planned route. Same times-only payload
 //     shape as "overdue".
 //
+// ViewToken is set on an "overdue" / "off_route" job when the run was a live
+// share on the safety-contacts audience (migration 20270821000001, decisions
+// § 1964): this contact's own capability link, appended to the live URL as a
+// fragment so it never reaches a server log or a Referer. Absent for a public
+// live share, whose bare link already works.
+//
 // ContactEmail is always set (the address the alert goes to). ContactUserID
 // is set only for a contact linked to an app account — used purely to
 // localize the mail to their language; it is NOT a preference gate (a safety
@@ -298,6 +304,7 @@ type SafetyEmailPayload struct {
 	ConfirmToken  string  `json:"confirm_token"`
 	StartedAt     string  `json:"started_at,omitempty"`
 	LastSeenAt    string  `json:"last_seen_at,omitempty"`
+	ViewToken     string  `json:"view_token,omitempty"`
 }
 
 // SecurityEmailPayload is the payload for `kind='security_email'` jobs
@@ -331,6 +338,7 @@ type SecurityEmailPayload struct {
 // email-specific fields: ContactPhone is the E.164 destination; ContactUserID
 // (when the contact is a linked app user) localizes the copy only; StartedAt
 // and, when a ping landed, LastSeenAt carry the times. Never coordinates.
+// ViewToken is the contact's own safety-audience link, as on the email.
 type SafetySmsPayload struct {
 	Template      string  `json:"template"`
 	ContactUserID *string `json:"contact_user_id"`
@@ -339,6 +347,7 @@ type SafetySmsPayload struct {
 	RunID         *string `json:"run_id"`
 	StartedAt     string  `json:"started_at,omitempty"`
 	LastSeenAt    string  `json:"last_seen_at,omitempty"`
+	ViewToken     string  `json:"view_token,omitempty"`
 }
 
 // WeeklyDigestPayload is the payload for `kind='weekly_digest'` jobs

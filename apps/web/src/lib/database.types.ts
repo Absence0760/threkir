@@ -4160,6 +4160,7 @@ export type Database = {
           metadata: Json | null
           race_listing_id: string | null
           route_id: string | null
+          safety_audience: boolean
           source: string
           started_at: string
           track_url: string | null
@@ -4187,6 +4188,7 @@ export type Database = {
           metadata?: Json | null
           race_listing_id?: string | null
           route_id?: string | null
+          safety_audience?: boolean
           source: string
           started_at: string
           track_url?: string | null
@@ -4214,6 +4216,7 @@ export type Database = {
           metadata?: Json | null
           race_listing_id?: string | null
           route_id?: string | null
+          safety_audience?: boolean
           source?: string
           started_at?: string
           track_url?: string | null
@@ -6731,6 +6734,28 @@ export type Database = {
       runs_track_object_version: {
         Args: { p_track_url: string }
         Returns: string
+      }
+      safety_audience_enabled: { Args: never; Returns: boolean }
+      safety_live_pings: {
+        Args: { p_run_id: string; p_since?: string; p_token: string }
+        Returns: {
+          at: string
+          coarse: boolean
+          distance_m: number
+          elapsed_s: number
+          lat: number
+          lng: number
+        }[]
+      }
+      safety_live_run: {
+        Args: { p_run_id: string; p_token: string }
+        Returns: {
+          distance_m: number
+          duration_s: number
+          owner_name: string
+          route_id: string
+          started_at: string
+        }[]
       }
       search_clubs: {
         Args: {

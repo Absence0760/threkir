@@ -1585,7 +1585,7 @@ func (c *SupabaseClient) StreamExportRuns(ctx context.Context, userID string, em
 // TestExportRunProjectionCoversEveryRunsColumn.
 const exportRunsSelect = "id,user_id,started_at,concluded_at,duration_s,distance_m," +
 	"elevation_gain_m,source,activity_type,is_dnf,external_id,metadata,track_url," +
-	"hr_series_url,is_public,followers_only,event_id,route_id,race_listing_id,fastest_5k_s," +
+	"hr_series_url,is_public,followers_only,safety_audience,event_id,route_id,race_listing_id,fastest_5k_s," +
 	"fastest_10k_s,fastest_half_marathon_s,fastest_marathon_s,created_at,updated_at"
 
 // ExportRunRow mirrors dataexport.ExportRun. We don't import the
@@ -1609,6 +1609,7 @@ type ExportRunRow struct {
 	HrSeriesURL          *string                `json:"hr_series_url"`
 	IsPublic             *bool                  `json:"is_public"`
 	FollowersOnly        bool                   `json:"followers_only"`
+	SafetyAudience       bool                   `json:"safety_audience"`
 	EventID              *string                `json:"event_id"`
 	RouteID              *string                `json:"route_id"`
 	RaceListingID        *string                `json:"race_listing_id"`

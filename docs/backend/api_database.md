@@ -40,6 +40,7 @@ create table runs (
   hr_series_url text,                        -- Storage path: {user_id}/{run_id}.hr.json.gz (indoor/trackless HR series)
   is_public     boolean default false,      -- visible at /share/run/{id}
   followers_only boolean not null default false, -- the followers level (20270802000001): readable by the owner's followers, never public, never in a feed; cleared when is_public is set, stored false while audience sharing is off
+  safety_audience boolean not null default false, -- a live stub shared with the owner's confirmed safety contacts only, through per-contact links minted at escalation (20270821000001, decisions § 1964); never public; stored false while the safety_audience gate is closed
   concluded_at  timestamptz,                 -- positive live-broadcast terminal marker; stamped by concludeLiveBroadcast on stop, null while live or never broadcast. Exposed via public_runs so spectators detect finish honestly. 20270427_001 (issue #613)
   created_at    timestamptz default now(),
   updated_at    timestamptz default now()
@@ -73,6 +74,8 @@ create index runs_public on runs (is_public, started_at desc) where is_public = 
 **Indoor/trackless HR series** live in a sibling sidecar object in the *same* `runs` bucket at `{user_id}/{run_id}.hr.json.gz` (gzipped JSON array of `{ bpm, ts? }`), pointed to by `hr_series_url`. An indoor or treadmill FIT carries heart rate but no GPS fix, so the run imports with an empty `track` and the per-point `bpm` the HR-zone breakdown needs would otherwise be lost. The sidecar is owner-only audit data: it carries **no location**, is gated by the same `{user_id}/...` bucket RLS as the track, is pinned to its canonical path by the `runs_hr_series_url_path_shape` CHECK (mirrors `runs_track_url_path_shape`), and is **never** exposed through `public_runs` or `clip_track_for_user` (it never enters the coordinate pipeline). See [decisions.md § 116](../architecture/decisions.md). Migration `20261127_001`.
 
 **Audience levels** (migrations `20270802000001..3`, [sharing.md](../features/sharing.md), decisions § 1874). A run or route the owner can see sits at one of four levels: **Public** (`is_public`), **Followers** (`followers_only`), **Specific people** (owner-only columns plus live rows in `run_shares` / `route_shares`), or **Only me**. The BEFORE INSERT/UPDATE trigger `private.normalize_audience()` on both tables clears `followers_only` when `is_public` is set and stores it `false` while the server gate `private.audience_sharing_enabled()` is off, so nothing written before the gate opens widens on the day it does. Every non-public level is read through `private.run_audience_admits` / `private.route_audience_admits`, which the visibility helpers and the `shared_runs` / `shared_routes` views call; feeds, notifications, `public_runs` / `public_routes`, the sitemap, heatmap and challenges key on `is_public` only and never see a shared row (§ 96).
+
+**Safety-contacts live audience** (migration `20270821000001`, [safety.md](../features/safety.md), decisions § 1964). A fifth, live-window-only audience for runs: `runs.safety_audience` marks a private live stub that only the owner's confirmed safety contacts may follow, each through a capability link in `private.run_safety_links` (token, run, contact; unique per run + contact; FKs cascade from the run and the contact; no client grant). Links are minted only by `enqueue_safety_overdue_emails()` and `escalate_run_off_route()` when they escalate such a run with the gate open, and each contact's `safety_email` / `safety_sms` payload carries its own `view_token`. `private.normalize_safety_audience()` (BEFORE INSERT/UPDATE OF `safety_audience` on `runs`) stores it false while `private.safety_audience_enabled()` — the `safety_audience` row of `private.feature_flags` — is off. `private.safety_link_admits(run, token)` is the one admission predicate (gate on, token for this run, `safety_audience`, in-progress and not concluded, contact still confirmed, link under 48 h). `live_run_pings` RLS is unchanged: the stub is private, so no anon / stranger / follower / linked-contact read reaches its pings except through the two token RPCs below.
 
 **`source` values:**
 
@@ -1622,7 +1625,10 @@ create table live_run_pings (
   subscribed browsers.
 - RLS: `select` when the parent run is public or owned by the caller;
   `insert` / `delete` restricted to `auth.uid() = user_id` and (for
-  insert) a live run owned by the caller.
+  insert) a live run owned by the caller. A safety-audience stub
+  (decisions § 1964) is private, so this policy admits only its owner; a
+  safety contact reads it through `safety_live_pings(run, token, since)`,
+  never through the table or realtime.
 - Recorder contract: one row per GPS sample (3–10 s cadence), delete
   on finish. `cleanup_stale_live_run_pings()` (callable via service
   role) wipes rows older than 4 hours as a safety net.
@@ -1728,7 +1734,7 @@ Pinned by `data_export_jobs_test.sql` (19 assertions) + `data_export_ready_notif
 
 | Job | Schedule | What it does | Migration |
 |---|---|---|---|
-| `cleanup-stale-live-run-pings` | `*/15 * * * *` | Calls `cleanup_stale_live_run_pings()` to delete `live_run_pings` rows older than the retention window — keeps the spectator feed table bounded during a multi-hour event. | `20260602_001` |
+| `cleanup-stale-live-run-pings` | `*/15 * * * *` | Calls `cleanup_stale_live_run_pings()` to delete `live_run_pings` rows older than the retention window — keeps the spectator feed table bounded during a multi-hour event — and, since `20270821000001`, the safety-contact links (`private.run_safety_links`) on the same 48 h window. | `20260602_001` |
 | `cleanup-stale-rate-limits` | `0 * * * *` (hourly) | Calls `cleanup_stale_rate_limits()` to GC elapsed `rate_limits` rows. | `20260604_001` |
 | `cleanup-stale-webhook-events` | `17 4 * * *` | Deletes `webhook_events` rows older than 30 days (RevenueCat/Stripe replay-dedupe table). | `20260623_001` |
 | `enqueue-export-blob-reap` | `13 4 * * *` | Calls `enqueue_export_blob_reap()`: expires the `data_export_jobs` rows whose artifacts are about to go (`expire_stale_export_jobs()`, unconditionally — reachability first), then queues the Go worker's `export_blob_reap` job(s) that actually erase the bytes through the Storage API. One job for the `exports` bucket plus one per user still holding a legacy `runs/{uid}/exports/*` archive, the worklist derived from `storage.objects` so it empties itself; singleton per payload, so a night the worker was down cannot stack identical sweeps. **This is the only scheduled half of export retention.** `cleanup-stale-export-blobs` (`23 4 * * *`, `20260720_001`) was **unscheduled** in `20270709000001` ([§ 1172](../architecture/decisions.md)): its `storage.objects` row delete erases nothing and, once the row is gone, puts the bytes beyond the reach of the reaper that does. `cleanup_stale_export_blobs()` itself is kept as a `service_role` break-glass. | `20270708000010` |
@@ -2259,10 +2265,10 @@ grant  execute on function public.<fn>(<args>) to authenticated;   -- and/or ser
 
 Add `authenticated` to the revoke list when no client role should hold it at all
 (the `cleanup_*` / `enqueue_*` cron family, and helpers only a SECURITY DEFINER
-trigger calls). 93 migrations write a function-level `from public, anon` revoke
-today (78 as `revoke execute`, 15 as `revoke all`); it is the house form for
+trigger calls). 94 migrations write a function-level `from public, anon` revoke
+today (79 as `revoke execute`, 16 as `revoke all`); it is the house form for
 exactly this reason, and `check_migration_function_revoke_noop.mjs` is what
-keeps it — it replays all 540 migrations in version order and fails the PR on
+keeps it — it replays all 541 migrations in version order and fails the PR on
 any EXECUTE revoke that leaves the other channel at its image-dependent
 default, in either direction. **Those four figures are derived, not typed**: the
 guard prints them and `check_migration_function_revoke_noop.test.mjs` asserts
@@ -2601,6 +2607,14 @@ SECURITY DEFINER RPC for privacy-zone clipping (decisions §33). Reads `user_set
 ### `clip_route_for_viewer(p_route_id uuid)`
 
 SECURITY DEFINER RPC for the routes equivalent of `clip_track_for_user` (decisions §33, migration `20260625_001`). Self-contained: caller passes only the route id. Looks up the row internally, applies the same visibility gate as `private.is_route_visible_to` (owner / public-and-not-`shadow_hidden` / club member / since `20270802000003` a follower of a followers-level route or a named `route_shares` recipient, not shadow-hidden and only while audience sharing is on — the shadow-hidden exclusion landed in `20270329_001`, decisions §206; raises `42501` otherwise so private- or hidden-route reads are loud), and returns either the unclipped `waypoints` (owner) or the clipped output (non-owner, delegated to `clip_track_for_user` so the zone walk has one implementation). Granted to `anon` + `authenticated`. Anon callers can only read non-hidden `is_public = true` routes. Routes carry waypoints inline (no Storage indirection like runs) so this is a straight RPC rather than an Edge Function.
+
+### `safety_audience_enabled() → boolean`
+
+Whether a live share may run on the safety-contacts audience (migration `20270821000001`, decisions § 1964). Wraps `private.safety_audience_enabled()`, the `safety_audience` row of `private.feature_flags`; absent is OFF and no migration writes one (`seed.sql` opens it for local + CI). Granted to `authenticated` and `service_role`. Mobile falls back to the public live share when it is false.
+
+### `safety_live_run(p_run_id uuid, p_token uuid)` / `safety_live_pings(p_run_id uuid, p_token uuid, p_since timestamptz default null)`
+
+The token holder's read path for a safety-audience live run (migration `20270821000001`). SECURITY DEFINER, STABLE, granted to `anon`, `authenticated` and `service_role` (registered in `anon_execute_contract_test.sql`: a contact with no account opens the emailed link). Both return nothing unless `private.safety_link_admits` admits the token. `safety_live_run` returns `started_at`, `duration_s`, `distance_m`, `route_id` (only when the route is public) and `owner_name` — no `user_id`. `safety_live_pings` returns the stored (already privacy-clipped) pings: the newest 1000 newest-first without `p_since`, else those after it oldest-first, which is the web page's 5 s poll. Called with POST so the token stays out of request-URL logs. Pinned by `safety_live_audience_test.sql`.
 
 ### `audience_sharing_enabled() → boolean`
 

@@ -1137,6 +1137,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Startet auf diesem Telefon automatisch ein Live-Teilen, wenn ein Lauf beginnt. Der laufende Lauf ist für alle mit dem Link sichtbar; nach dem Ende des Laufs gilt wieder deine Standard-Sichtbarkeit.';
 
   @override
+  String get safetyAutoLiveShareSafetySubtitle =>
+      'Startet auf diesem Telefon automatisch ein Live-Teilen, wenn ein Lauf beginnt. Es ist nie öffentlich: Nur deine bestätigten Sicherheitskontakte können folgen, über den Link, den ihnen ein Überfällig- oder Routen-Alarm schickt. Standardmäßig an, sobald ein Alarm eingerichtet ist.';
+
+  @override
   String get safetyOffRouteTitle => 'Routen-Warnung';
 
   @override
@@ -1150,6 +1154,10 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get runAutoLiveShareStarted =>
       'Live-Teilen ist aktiv — sende den Link über „Live-Link teilen“';
+
+  @override
+  String get runSafetyLiveShareStarted =>
+      'Sicherheits-Teilen ist aktiv — nur deine Sicherheitskontakte können folgen, und erst nach einem Alarm';
 
   @override
   String get runSafetyNudgeSolo =>

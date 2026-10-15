@@ -6233,6 +6233,7 @@ class RunRow {
   static const String colFastestMarathonS = 'fastest_marathon_s';
   static const String colConcludedAt = 'concluded_at';
   static const String colFollowersOnly = 'followers_only';
+  static const String colSafetyAudience = 'safety_audience';
 
   final String id;
   final String userId;
@@ -6259,6 +6260,7 @@ class RunRow {
   final int? fastestMarathonS;
   final DateTime? concludedAt;
   final bool followersOnly;
+  final bool safetyAudience;
 
   const RunRow({
     required this.id,
@@ -6286,6 +6288,7 @@ class RunRow {
     this.fastestMarathonS,
     this.concludedAt,
     required this.followersOnly,
+    required this.safetyAudience,
   });
 
   factory RunRow.fromJson(Map<String, dynamic> json) => RunRow(
@@ -6314,6 +6317,7 @@ class RunRow {
     fastestMarathonS: (json['fastest_marathon_s'] as num?)?.toInt(),
     concludedAt: parseIsoStrictValue(json['concluded_at']),
     followersOnly: (json['followers_only'] as bool?) ?? false,
+    safetyAudience: (json['safety_audience'] as bool?) ?? false,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -6342,6 +6346,7 @@ class RunRow {
     colFastestMarathonS: fastestMarathonS,
     colConcludedAt: concludedAt?.toIso8601String(),
     colFollowersOnly: followersOnly,
+    colSafetyAudience: safetyAudience,
   };
 
   RunRow copyWith({
@@ -6370,6 +6375,7 @@ class RunRow {
     int? fastestMarathonS,
     DateTime? concludedAt,
     bool? followersOnly,
+    bool? safetyAudience,
   }) => RunRow(
     id: id ?? this.id,
     userId: userId ?? this.userId,
@@ -6396,6 +6402,7 @@ class RunRow {
     fastestMarathonS: fastestMarathonS ?? this.fastestMarathonS,
     concludedAt: concludedAt ?? this.concludedAt,
     followersOnly: followersOnly ?? this.followersOnly,
+    safetyAudience: safetyAudience ?? this.safetyAudience,
   );
 }
 

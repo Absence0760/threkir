@@ -1131,6 +1131,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'Inicia automáticamente el directo cuando empieza una carrera en este teléfono. La carrera en curso es visible para cualquiera con el enlace; al terminar la carrera, vuelve a tu visibilidad predeterminada.';
 
   @override
+  String get safetyAutoLiveShareSafetySubtitle =>
+      'Inicia automáticamente una transmisión en vivo cuando empieza una carrera en este teléfono. Nunca es pública: solo tus contactos de seguridad confirmados pueden seguirla, mediante el enlace que les envía una alerta de retraso o de salida de ruta. Activado por defecto en cuanto configuras una alerta.';
+
+  @override
   String get safetyOffRouteTitle => 'Aviso de salida de ruta';
 
   @override
@@ -1144,6 +1148,10 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get runAutoLiveShareStarted =>
       'Directo activado: envía el enlace con «Compartir enlace en directo»';
+
+  @override
+  String get runSafetyLiveShareStarted =>
+      'Seguimiento de seguridad activo: solo tus contactos de seguridad pueden seguirte, y solo cuando salta una alerta';
 
   @override
   String get runSafetyNudgeSolo =>

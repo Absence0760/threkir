@@ -1134,6 +1134,10 @@ class AppLocalizationsPt extends AppLocalizations {
       'Inicia automaticamente a partilha em direto quando uma corrida começa neste telemóvel. A corrida em curso fica visível para qualquer pessoa com o link; quando a corrida termina, volta à sua visibilidade predefinida.';
 
   @override
+  String get safetyAutoLiveShareSafetySubtitle =>
+      'Inicia automaticamente uma partilha em direto quando uma corrida começa neste telemóvel. Nunca é pública: apenas os seus contactos de segurança confirmados a podem seguir, através do link que um alerta de atraso ou de saída de rota lhes envia. Ativada por predefinição assim que configurar um alerta.';
+
+  @override
   String get safetyOffRouteTitle => 'Alerta de saída de rota';
 
   @override
@@ -1147,6 +1151,10 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get runAutoLiveShareStarted =>
       'Em direto ativado — envie o link em “Partilhar link em direto”';
+
+  @override
+  String get runSafetyLiveShareStarted =>
+      'Partilha de segurança ativa — apenas os seus contactos de segurança podem seguir, e só depois de um alerta';
 
   @override
   String get runSafetyNudgeSolo =>
@@ -17037,6 +17045,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Inicia automaticamente o compartilhamento ao vivo quando uma corrida começa neste telefone. A corrida em andamento fica visível para qualquer pessoa com o link; quando a corrida termina, ela volta à sua visibilidade padrão.';
 
   @override
+  String get safetyAutoLiveShareSafetySubtitle =>
+      'Inicia automaticamente o compartilhamento ao vivo quando uma corrida começa neste telefone. Nunca é público: somente seus contatos de segurança confirmados podem acompanhar, pelo link que um alerta de atraso ou de saída de rota envia a eles. Ativado por padrão assim que você configura um alerta.';
+
+  @override
   String get safetyOffRouteTitle => 'Alerta de saída de rota';
 
   @override
@@ -17050,6 +17062,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get runAutoLiveShareStarted =>
       'Ao vivo ativado — envie o link em “Compartilhar link ao vivo”';
+
+  @override
+  String get runSafetyLiveShareStarted =>
+      'Compartilhamento de segurança ativo — somente seus contatos de segurança podem acompanhar, e só depois de um alerta';
 
   @override
   String get runSafetyNudgeSolo =>

@@ -1913,6 +1913,12 @@ abstract class AppLocalizations {
   /// **'Start a live share automatically when a run starts on this phone. The in-progress run is viewable by anyone with the link; when the run ends it returns to your default run visibility.'**
   String get safetyAutoLiveShareSubtitle;
 
+  /// Subtitle of the auto-live-share device toggle once the safety-contacts audience is live (never public)
+  ///
+  /// In en, this message translates to:
+  /// **'Start a live share automatically when a run starts on this phone. It is never public: only your confirmed safety contacts can follow it, through the link an overdue or off-route alert sends them. On by default once an alert is set.'**
+  String get safetyAutoLiveShareSafetySubtitle;
+
   /// Title of the off-route auto-notify toggle on the safety settings screen
   ///
   /// In en, this message translates to:
@@ -1936,6 +1942,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Live sharing is on — use Share live link to send it'**
   String get runAutoLiveShareStarted;
+
+  /// Banner on the run screen when the automatic share started on the safety-contacts audience
+  ///
+  /// In en, this message translates to:
+  /// **'Safety share is on — only your safety contacts can follow, and only once an alert fires'**
+  String get runSafetyLiveShareStarted;
 
   /// One-time dismissible nudge on the run screen when a solo run starts after dark with no live share
   ///

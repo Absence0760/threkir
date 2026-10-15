@@ -369,17 +369,26 @@ jobs:
           # survived every deploy to date. `--exclude "index.html"` beside it
           # is subsumed by that glob and has been redundant since the glob was
           # added; it is left as documentation of intent.
+          #
+          # `.well-known/*` rides the short cache too: assetlinks.json is the
+          # Android App Links statement (decisions § 1923) and security.txt
+          # carries an Expires date, and neither has a hashed name, so an
+          # immutable year would pin a stale fingerprint or contact at the
+          # edge. Content-Type comes from the extension (application/json,
+          # text/plain), which is what Android's verifier requires.
           aws s3 sync apps/web/build/ "s3://${{ steps.aws.outputs.bucket }}/" \
             --delete \
             --cache-control "public,max-age=31536000,immutable" \
             --exclude "index.html" \
             --exclude "*.html" \
-            --exclude "app-capabilities.json"
+            --exclude "app-capabilities.json" \
+            --exclude ".well-known/*"
           aws s3 sync apps/web/build/ "s3://${{ steps.aws.outputs.bucket }}/" \
             --cache-control "public,max-age=60,must-revalidate" \
             --exclude "*" \
             --include "*.html" \
-            --include "app-capabilities.json"
+            --include "app-capabilities.json" \
+            --include ".well-known/*"
 
       - name: Update coach Lambda
         run: |

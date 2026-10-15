@@ -7,15 +7,14 @@ import { TIER_LIMITS, emptyUsage } from './types';
 
 // ─────────────────────── Anthropic (streaming + prompt cache) ───────────────────────
 
-export function streamAnthropic(
-	apiKey: string,
+export const COACH_ANTHROPIC_MODEL = 'claude-sonnet-5-5';
+
+export function anthropicCoachRequest(
 	systemText: string,
 	contextPayload: string,
 	messages: { role: CoachMessageRole; content: string }[],
 	limits: typeof TIER_LIMITS[Tier],
-): ProviderStream {
-	const anthropic = new Anthropic({ apiKey });
-
+): Anthropic.MessageStreamParams {
 	const systemBlocks = [
 		{
 			type: 'text' as const,
@@ -45,23 +44,52 @@ export function streamAnthropic(
 		})),
 	];
 
-	const stream = anthropic.messages.stream({
-		model: 'claude-sonnet-4-5',
+	return {
+		model: COACH_ANTHROPIC_MODEL,
 		max_tokens: limits.maxTokens,
+		// Omitting `thinking` runs adaptive thinking on this model, and
+		// thinking tokens count against max_tokens: the free tier's 768
+		// could be spent before the reply starts. `between_tools` is the
+		// model's no-extended-thinking setting, so max_tokens stays the
+		// reply cap TIER_LIMITS prices. It is only accepted at effort
+		// high or below.
+		thinking: { type: 'between_tools' },
+		output_config: { effort: 'low' },
 		system: systemBlocks,
 		messages: convo,
-	});
+	};
+}
 
-	async function* tokens(): AsyncIterable<string> {
-		for await (const event of stream) {
-			if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-				yield event.delta.text;
-			}
+// A safety-classifier decline ends the stream with stop_reason
+// "refusal" and no error. Throwing routes it through the handler's
+// mid-stream failure path (slot refunded when nothing streamed)
+// instead of a `done` carrying an empty answer the runner paid for.
+export async function* anthropicTextTokens(
+	events: AsyncIterable<Anthropic.MessageStreamEvent>,
+): AsyncIterable<string> {
+	for await (const event of events) {
+		if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+			yield event.delta.text;
+		} else if (event.type === 'message_delta' && event.delta.stop_reason === 'refusal') {
+			throw new Error('coach upstream refusal');
 		}
 	}
+}
+
+export function streamAnthropic(
+	apiKey: string,
+	systemText: string,
+	contextPayload: string,
+	messages: { role: CoachMessageRole; content: string }[],
+	limits: typeof TIER_LIMITS[Tier],
+): ProviderStream {
+	const anthropic = new Anthropic({ apiKey });
+	const stream = anthropic.messages.stream(
+		anthropicCoachRequest(systemText, contextPayload, messages, limits),
+	);
 
 	return {
-		tokens: tokens(),
+		tokens: anthropicTextTokens(stream),
 		finalUsage: async () => {
 			const final = await stream.finalMessage();
 			return {

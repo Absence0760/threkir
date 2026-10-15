@@ -219,6 +219,26 @@ test('CloudFront CSP drops unsafe-eval and bounds XSS gadget surface', () => {
 	);
 });
 
+test('CloudFront CSP connect-src allows the Supabase Realtime websocket', () => {
+	// Reason: supabase-js opens Realtime at wss://<ref>.supabase.co, and an
+	// https: scheme-part never matches a wss: URL (CSP3 § 6.7.2.9 — only
+	// http→https, ws→wss/http/https, wss→https). `https://*.supabase.co`
+	// alone therefore blocks every channel subscription in the browser
+	// while REST keeps working, so nothing on the server notices (#1161).
+	const tf = read('../../infra/modules/web-stack/main.tf');
+	const connect = tf.match(/"connect-src ([^"]*)"/);
+	assert.ok(connect, 'Could not locate the connect-src directive in the CloudFront CSP.');
+	const sources = connect![1].split(/\s+/);
+	assert.ok(
+		sources.includes('wss://*.supabase.co'),
+		`CSP connect-src must list wss://*.supabase.co for Supabase Realtime; got: ${connect![1]}`,
+	);
+	assert.ok(
+		sources.includes('https://*.supabase.co'),
+		`CSP connect-src must list https://*.supabase.co for Supabase REST/Auth/Storage; got: ${connect![1]}`,
+	);
+});
+
 test('every POST to a Lambda origin sends the sigv4 payload hash', () => {
 	// Reason: CloudFront's Lambda OAC sigv4-signs each origin request, and
 	// sigv4 covers the payload hash. CloudFront does not compute it — the

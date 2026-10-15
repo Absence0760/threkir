@@ -538,7 +538,7 @@ test('the mid-stream error event carries no upstream detail', async () => {
 		providerStream: fakeStream([], true, 'Coach upstream 400: {"type":"error",' +
 			'"error":{"type":"invalid_request_error","message":"messages.2.role: ' +
 			'Input tag \'system\' found using \'role\' does not match any of the ' +
-			'expected tags"}} model=claude-sonnet-4-5'),
+			'expected tags"}} model=claude-sonnet-5-5'),
 	});
 	const out = await drain(coachSseStream(deps));
 

@@ -2861,7 +2861,7 @@ void main() {
     // landed without the call-site fix.
     //
     // Pin the discipline statically so the next regression fails the
-    // `Test Flutter packages` job in PR CI before it reaches Postgres.
+    // `Test mobile_android` job in PR CI before it reaches Postgres.
     // The fix at any failing call site is "enumerate the columns
     // explicitly via the constants in social_service.dart /
     // api_client.dart", or for nested embeds use the `($_safeCols)`

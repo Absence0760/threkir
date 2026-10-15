@@ -433,7 +433,8 @@ Full pipeline defined in `.github/workflows/ci.yml`, which is the full list. The
 
 | Job | Runner | What it does |
 |---|---|---|
-| `test-packages` | ubuntu-latest | `melos bootstrap` → scoped `flutter test` on `run_recorder` + `mobile_android` + `api_client` + `gpx_parser` |
+| `test-packages` | ubuntu-latest | `melos bootstrap` → scoped `flutter test` on `run_recorder` + `api_client` + `gpx_parser` + `ui_kit` + `core_models`, then `melos exec -- dart analyze` over the whole workspace (incl. `mobile_android`) |
+| `test-mobile-android` | ubuntu-latest ×4 | `flutter test` on `apps/mobile_android`, a 4-entry matrix sharded by file (every fourth sorted `*_test.dart`); split out of `test-packages` after one runner was shut down mid-suite on PR #1164 — see [testing.md § Which runner a package takes](../testing/testing.md) |
 | `test-worker` | ubuntu-latest | `go vet ./...` + `go test ./...` for `apps/job_worker` (incl. the GDPR Art 20 export-completeness guard) |
 | `test-graph-cycle` | ubuntu-latest | `go vet ./...` + `go test ./...` for the `apps/graph_cycle` street-graph cycle-search sidecar |
 | `parity-types` | ubuntu-latest | migration version-key + online-safety guards, `check_pnpm_overrides.mjs` (the security pins are declared in both lockfiles and actually resolved to, [§ 730](decisions.md)), `sync_deno_lock.mjs --check` ([§ 706](decisions.md)), `check_constraint_unions.mjs`, the web TS unit suite, the four `apps/web` tsc roots + their coverage guard ([§ 749](decisions.md) / [§ 752](decisions.md)), the two repo-root tsc roots + their coverage guard (`check:script-types`, `check:cloudfront-types`, `check:tsconfig-coverage` — [§ 757](decisions.md)), then `supabase start` → `npm run gen:types:check`. Every step prints its own `::error::` — the job name covers more than type drift, so it cannot say which one broke ([decisions.md § 711](decisions.md)) |

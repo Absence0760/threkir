@@ -744,6 +744,8 @@ func TestOSRMMatcher_RecorderTrackSendsRadiusesAndTimestampsInOrder(t *testing.T
 	}
 	if q["gaps"] != "ignore" {
 		t.Errorf("gaps=%q, want ignore", q["gaps"])
+	}
+}
 
 // A matched track keeps one point per stored fix, so the recorder's credited
 // distance rides through a snap with the sample it belongs to.

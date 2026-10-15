@@ -167,6 +167,7 @@ unwired gate now fails in `src/lib/ci_workflow_guards.test.ts`. Setting one to
 | `PUBLIC_PLATE_PHOTO_ENABLED` | the plate-photo logger on `/nutrition/log` (a Pro perk; also needs `PUBLIC_COACH_ENABLED`, and `PLATE_PHOTO_ENABLED` on the coach Lambda) | counsel + CISO sign-off on the v5 AI-disclosure copy, owner sign-off on the vision spend |
 | `PUBLIC_AI_PLAN_ENABLED` | the AI plan assistant box on `/plans/new` (also needs `PUBLIC_COACH_ENABLED`; not a Pro perk). Flip it together with `AI_PLAN_ENABLED=true` in the coach Lambda's sops config, the endpoint's server half | owner + counsel sign-off on superseding decisions §12, and sign-off on the v3 AI-disclosure copy |
 | `PUBLIC_AI_PLAN_EDIT_ENABLED` | Adjust with AI on `/plans/[id]` (also needs `PUBLIC_COACH_ENABLED`; not a Pro perk). Flip it together with `AI_PLAN_EDIT_ENABLED=true` in the coach Lambda's sops config, the endpoint's server half, which also turns on the Coach's plan-edit handoff | owner + counsel sign-off on decisions § 1979, and sign-off on the v4 AI-disclosure copy |
+| `PUBLIC_COACH_FUEL_ENABLED` | `/nutrition/fuel`, the deterministic fuelling page the Coach links a fuelling question to. Flip it together with `COACH_FUEL_ENABLED=true` in the coach Lambda's sops config, which adds the handoff to the Coach's system prompt. Adds no model call and no AI-disclosure rung (decisions § 1975) | owner + counsel sign-off ([race_fueling_plan.md § Pre-deploy checklist (Coach fuelling handoff)](../../docs/features/race_fueling_plan.md)) |
 | `PUBLIC_GOOGLE_AUTH_ENABLED` | Google sign-in on `/login` | the Supabase `google` provider configured ([google_provisioning.md](../../docs/ops/google_provisioning.md)) |
 | `PUBLIC_OFF_ROUTE_ESCALATION_ENABLED` | off-route → auto-notify-contact | owner + CISO + counsel |
 | `PUBLIC_WEIGH_IN_ENABLED` | the Art 9 weigh-in / medical UI | owner + CISO + counsel |
@@ -183,6 +184,10 @@ unwired gate now fails in `src/lib/ci_workflow_guards.test.ts`. Setting one to
 | `SENTRY_DSN` | same sops file | optional — server-side capture |
 | `APP_RELEASE` | passed at deploy time as a Terraform variable, derived from the CI tag | tags Sentry events |
 | `COACH_PROVIDER` / `OPENAI_BASE_URL` | optional — set in `terraform.tfvars` per env | for self-hosted Ollama / OpenAI-compatible service |
+| `AI_PLAN_ENABLED` | non-credential config in the same sops file (`coach_config_keys` in `infra/modules/web-stack/main.tf`) | server half of `PUBLIC_AI_PLAN_ENABLED`: `/api/coach/plan-request` answers 503 unless truthy. Unset means off |
+| `AI_PLAN_EDIT_ENABLED` | same | server half of `PUBLIC_AI_PLAN_EDIT_ENABLED`: `/api/coach/plan-edit` answers 503 unless truthy, and the Coach links into AI plan edits only when it is (decisions § 1979) |
+| `PLATE_PHOTO_ENABLED` | same | server half of `PUBLIC_PLATE_PHOTO_ENABLED`: `/api/coach/plate-photo` answers 503 unless truthy (decisions § 1972) |
+| `COACH_FUEL_ENABLED` | same | server half of `PUBLIC_COACH_FUEL_ENABLED`: the Coach's system prompt carries the fuelling handoff only when truthy (decisions § 1975) |
 | `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY` | non-secret — passed as Terraform vars from CI environment, written to Lambda env directly | the Lambda needs them to validate the user's JWT and call `is_pro()` / `increment_coach_usage` RPCs |
 
 The generate-route Lambda reads one additional non-secret var:

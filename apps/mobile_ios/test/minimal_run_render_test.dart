@@ -346,32 +346,37 @@ void main() {
       });
     }
 
-    testWidgets('every minimal run under a weekly goal on every target',
-        (tester) async {
-      // The goal card prints a progress figure per target, and the average
-      // pace target divides the period's time by its distance.
-      final now = DateTime.now();
-      await pumpDashboard(
-        tester,
-        [
-          for (final (i, f) in _fixtures.indexed)
-            _runOf(f, id: 'run-$i', start: now.subtract(Duration(minutes: i))),
-        ],
-        goal: const RunGoal(
-          id: 'g1',
-          period: GoalPeriod.week,
-          distanceMetres: 20000,
-          timeSeconds: 7200,
-          avgPaceSecPerKm: 330,
-          runCount: 3,
-        ),
-      );
+    // The goal card prints a progress figure per target, and the average pace
+    // target divides the period's time by its distance — by zero when every
+    // run in the week stood still.
+    for (final (label, runs) in [
+      ('every minimal run', _fixtures),
+      ('only the 0 m runs', [for (final f in _fixtures) if (f.metres == 0) f]),
+    ]) {
+      testWidgets('$label under a weekly goal on every target', (tester) async {
+        final now = DateTime.now();
+        await pumpDashboard(
+          tester,
+          [
+            for (final (i, f) in runs.indexed)
+              _runOf(f, id: 'run-$i', start: now.subtract(Duration(minutes: i))),
+          ],
+          goal: const RunGoal(
+            id: 'g1',
+            period: GoalPeriod.week,
+            distanceMetres: 20000,
+            timeSeconds: 7200,
+            avgPaceSecPerKm: 330,
+            runCount: 3,
+          ),
+        );
 
-      expect(tester.takeException(), isNull);
-      expect(find.byKey(const Key('dashboardWeekLeadVs')), findsOneWidget,
-          reason: 'the week lead measures the minimal week against the goal');
-      expectNoDegenerateNumbers(tester, surface: 'dashboard, with a goal');
-      await pumpUntilStoreWritesSettle(tester);
-    });
+        expect(tester.takeException(), isNull);
+        expect(find.byKey(const Key('dashboardWeekLeadVs')), findsOneWidget,
+            reason: 'the week lead measures the minimal week against the goal');
+        expectNoDegenerateNumbers(tester, surface: 'dashboard, $label, goal');
+        await pumpUntilStoreWritesSettle(tester);
+      });
+    }
   });
 }

@@ -1185,6 +1185,48 @@ void main() {
           reason: 'seeded 1000 m + the ~30 m post-resume hop, no gap delta');
     });
 
+    test('a resumed run stamps on from the seeded distance and ends on the '
+        'saved one', () async {
+      final clock = _FakeClock();
+      final r = RunRecorder(clock: clock);
+      final seeded = [
+        for (final (i, w) in seededTrack().indexed)
+          w.withCumulativeDistance(20.0 * i),
+      ];
+      r.debugResumeWithoutStream(
+        track: seeded,
+        distanceMetres: 40,
+        elapsed: const Duration(seconds: 10),
+        startedAt: DateTime(2026, 4, 10, 10, 0, 0),
+      );
+      for (var i = 0; i <= 10; i++) {
+        r.debugInjectPosition(makePosition(
+          metresEast: 40.0 + 4.0 * i,
+          secondsFromStart: 20 + i,
+          speed: 0,
+          speedAccuracy: 0,
+          heading: 0,
+          headingAccuracy: 0,
+        ));
+        clock.advance(const Duration(seconds: 1));
+      }
+      final run = await r.stop();
+      expect(run.track.length, greaterThan(seeded.length));
+      expect(run.track.every((w) => w.cumulativeDistanceMetres != null), isTrue);
+      expect(
+          [for (final w in run.track.take(3)) w.cumulativeDistanceMetres],
+          [0, 20, 40],
+          reason: 'the seeded fixes keep the stamps the killed process saved');
+      final stamped = [for (final w in run.track) w.cumulativeDistanceMetres!];
+      for (var i = 1; i < stamped.length; i++) {
+        expect(stamped[i], greaterThanOrEqualTo(stamped[i - 1]));
+      }
+      expect(stamped[3], greaterThanOrEqualTo(40),
+          reason: 'the first post-resume fix starts from the seeded distance');
+      expect(run.distanceMetres, greaterThan(40));
+      expect(stamped.last, closeTo(run.distanceMetres, 0.005));
+    });
+
     test('restored laps continue numbering and survive to stop()', () async {
       final r = RunRecorder();
       final restored = lapsFromCanonicalJson([

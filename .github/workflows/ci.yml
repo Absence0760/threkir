@@ -537,6 +537,81 @@ jobs:
       - run: melos exec --scope="run_recorder" --scope="mobile_android" --scope="api_client" --scope="gpx_parser" --scope="ui_kit" --scope="core_models" -- flutter test
       - run: melos exec -- dart analyze
 
+  # The run above is in UTC, the runner's zone, where a local calendar day is
+  # always 24 hours and always starts at 00:00 UTC — so a test whose verdict
+  # depends on the host zone passes there whether or not the code is right.
+  # The dashboard heatmap shipped a day key that collided across the London
+  # spring change and failed only east of UTC (decisions § 1923). Every test
+  # tagged `tz` (declared in each package's dart_test.yaml) runs again here
+  # under three zones chosen to break different things: New York for the US
+  # transitions and a negative offset, London for the EU transitions and the
+  # +0/+1 flip, Kolkata for a half-hour positive offset with no DST. The Dart
+  # VM reads the zone through the C library's localtime_r, which honours TZ
+  # from the environment flutter_tester inherits. Separate from
+  # test-packages so the critical path does not grow; the file list is
+  # derived from the tag, so a new test opts in where it is written.
+  test-timezones:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    name: Test timezone-tagged Dart tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - run: dart pub global activate melos 7.8.2
+      - run: melos bootstrap
+      - run: cp apps/mobile_android/.env.example apps/mobile_android/.env.development
+      - name: Find the tz-tagged test files
+        run: |
+          set -euo pipefail
+          targets="$RUNNER_TEMP/tz_targets"
+          : > "$targets"
+          for pkg in apps/mobile_android packages/*; do
+            [ -d "$pkg/test" ] || continue
+            files=$(cd "$pkg" && grep -rlE "[Tt]ags[:(][^)]*[\"']tz[\"']" test --include='*_test.dart' | sort || true)
+            [ -n "$files" ] || continue
+            echo "$pkg" $files >> "$targets"
+          done
+          if [ ! -s "$targets" ]; then
+            echo "::error::No test file carries the tz tag, so this job would run nothing and report green. Either the tag was renamed or every tagged test was deleted; see docs/testing/testing.md, Timezone-sensitive Dart tests."
+            exit 1
+          fi
+          cat "$targets"
+      - name: tz-tagged tests under America/New_York
+        env:
+          TZ: America/New_York
+        run: |
+          set -euo pipefail
+          while read -r -a line; do
+            echo "::group::${line[0]} under $TZ"
+            (cd "${line[0]}" && flutter test --tags tz "${line[@]:1}" < /dev/null)
+            echo "::endgroup::"
+          done < "$RUNNER_TEMP/tz_targets"
+      - name: tz-tagged tests under Europe/London
+        env:
+          TZ: Europe/London
+        run: |
+          set -euo pipefail
+          while read -r -a line; do
+            echo "::group::${line[0]} under $TZ"
+            (cd "${line[0]}" && flutter test --tags tz "${line[@]:1}" < /dev/null)
+            echo "::endgroup::"
+          done < "$RUNNER_TEMP/tz_targets"
+      - name: tz-tagged tests under Asia/Kolkata
+        env:
+          TZ: Asia/Kolkata
+        run: |
+          set -euo pipefail
+          while read -r -a line; do
+            echo "::group::${line[0]} under $TZ"
+            (cd "${line[0]}" && flutter test --tags tz "${line[@]:1}" < /dev/null)
+            echo "::endgroup::"
+          done < "$RUNNER_TEMP/tz_targets"
+
   test-worker:
     needs: changes
     if: needs.changes.outputs.code == 'true'
@@ -3103,7 +3178,7 @@ jobs:
     # backstop: a diverged PR fails CI rather than landing.
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: lib/ + test/ + integration_test/ byte-identical
+      - name: lib/ + test/ + integration_test/ + dart_test.yaml byte-identical
         run: |
           if ! diff -rq apps/mobile_android/lib apps/mobile_ios/lib; then
             echo "::error::apps/mobile_android/lib has diverged from apps/mobile_ios/lib (decisions.md §39)."
@@ -3120,6 +3195,13 @@ jobs:
           if ! diff -rq apps/mobile_android/integration_test apps/mobile_ios/integration_test; then
             echo "::error::apps/mobile_android/integration_test has diverged from apps/mobile_ios/integration_test (decisions.md §39, § 1820)."
             echo "Mirror the change or invoke the mobile-twin-mirror agent."
+            exit 1
+          fi
+          # The shared test/ tree carries tags, so the file declaring them is
+          # shared too (decisions § 1923).
+          if ! diff -q apps/mobile_android/dart_test.yaml apps/mobile_ios/dart_test.yaml; then
+            echo "::error::apps/mobile_android/dart_test.yaml has diverged from apps/mobile_ios/dart_test.yaml (decisions.md §39, § 1923). The two twins run the same test files, so they declare the same tags."
+            echo "Copy the file across."
             exit 1
           fi
       - name: pubspec.yaml deltas limited to name + description
@@ -4463,6 +4545,7 @@ jobs:
       - changes
       - workflow-lint
       - test-packages
+      - test-timezones
       - test-worker
       - test-graph-cycle
       - parity-types

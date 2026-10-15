@@ -65,6 +65,28 @@ export const translation: GuideTranslation = {
 				},
 			],
 		},
+		{
+			heading: 'Einen Club von Strava übernehmen',
+			blocks: [
+				{
+					type: 'p',
+					text: 'Wenn dein Strava-Konto verbunden ist, öffne im Web [[route:/social|Community]], wähle **Clubs** und dann **Meine Clubs**. Unter **Deine Strava-Clubs** siehst du die Strava-Clubs, in denen du Mitglied bist. Nur du siehst diese Liste.',
+				},
+				{
+					type: 'list',
+					items: [
+						'**Auf Threkir einrichten** öffnet das Formular für einen neuen Club mit bereits ausgefülltem Namen und Ort und verknüpft beide, sobald du den Club erstellst.',
+						'**Mit meinem Club verknüpfen** verbindet ihn mit einem Club, den du hier schon leitest: Wähle ihn unter **Welcher deiner Clubs ist das?** aus und wähle **Verknüpfen**.',
+						'**Verknüpfung lösen** entfernt die Verbindung. Keiner der beiden Clubs wird verändert.',
+					],
+				},
+				{
+					type: 'note',
+					tone: 'caution',
+					text: 'Nur ein Admin des Clubs auf Strava kann ihn verknüpfen, und nur mit einem Club, den er hier besitzt oder mitverwaltet. Fehlt der Abschnitt, verbinde zuerst Strava unter [[route:/settings/integrations|Integrationen]] in den Einstellungen.',
+				},
+			],
+		},
 	],
 	sources: {
 		title: 'ff916040a4a088ae',
@@ -91,5 +113,11 @@ export const translation: GuideTranslation = {
 		's2.b1.i1': '102566e11462e84f',
 		's2.b1.i2': '83bc170018336efe',
 		's2.b2': 'eb88a7323310e67e',
+		's3.heading': '78e0de8618ff020a',
+		's3.b0': '728fa56591eb888d',
+		's3.b1.i0': '57a98843d18952a0',
+		's3.b1.i1': '6866a373a29d0bdb',
+		's3.b1.i2': 'afe5b3477e772c36',
+		's3.b2': '0c5f0a91de4775f1',
 	},
 };

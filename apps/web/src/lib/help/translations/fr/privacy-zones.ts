@@ -15,7 +15,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'Elle s\'applique à ce que voient les autres : courses et itinéraires partagés, votre profil public, le fil, les cartes de chaleur et la page de suivi en direct.',
+						'Elle s\'applique à ce que voient les autres : courses et itinéraires partagés, votre profil public, le fil, les cartes de chaleur, la page de suivi en direct et les cartes de course qu\'un coach avec qui vous travaillez peut ouvrir.',
 						'Elle s\'applique aux courses déjà enregistrées comme aux nouvelles, car le tracé est rogné chaque fois que quelqu\'un d\'autre le consulte.',
 						'Vous voyez toujours votre propre tracé complet, et les fichiers que vous exportez pour vous-même conservent aussi le tracé complet.',
 					],
@@ -88,9 +88,10 @@ export const translation: GuideTranslation = {
 		summary: '04c4913e2da59def',
 		's0.heading': '27ee9eff5654fc40',
 		's0.b0': '0786f273bb90019e',
-		's0.b1.i0': 'ae791e6bb37bf75e',
+		's0.b1.i0': 'd76fc2aebe831b0b',
 		's0.b1.i1': 'f895445f10db7b57',
 		's0.b1.i2': '591dec4de03df2a3',
+		's0.b2': '9bfc49abe8494ae1',
 		's1.heading': 'cc3973572fe81b73',
 		's1.b0.i0': 'a9f7c5a79d8779f0',
 		's1.b0.i1': 'de234d8646b8454f',
@@ -109,6 +110,5 @@ export const translation: GuideTranslation = {
 		's3.b0.i1': '7e6aff2443fca79b',
 		's3.b0.i2': '2d441105a1624ed1',
 		's3.b1': '20c32d436fe0799c',
-		's0.b2': '9bfc49abe8494ae1',
 	},
 };

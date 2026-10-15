@@ -15,7 +15,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'適用されるのは他の人に見える部分です：共有したランとルート、公開プロフィール、フィード、ヒートマップ、ライブトラッキングページ。',
+						'適用されるのは他の人に見える部分です：共有したランとルート、公開プロフィール、フィード、ヒートマップ、ライブトラッキングページ、一緒に取り組んでいるコーチが開けるランの地図。',
 						'トラックは他の人が閲覧するたびに切り取られるので、新しいランだけでなく、すでに記録したランにも適用されます。',
 						'自分のトラックは常にすべて表示され、自分用にエクスポートしたファイルにもトラック全体が残ります。',
 					],
@@ -88,9 +88,10 @@ export const translation: GuideTranslation = {
 		summary: '04c4913e2da59def',
 		's0.heading': '27ee9eff5654fc40',
 		's0.b0': '0786f273bb90019e',
-		's0.b1.i0': 'ae791e6bb37bf75e',
+		's0.b1.i0': 'd76fc2aebe831b0b',
 		's0.b1.i1': 'f895445f10db7b57',
 		's0.b1.i2': '591dec4de03df2a3',
+		's0.b2': '9bfc49abe8494ae1',
 		's1.heading': 'cc3973572fe81b73',
 		's1.b0.i0': 'a9f7c5a79d8779f0',
 		's1.b0.i1': 'de234d8646b8454f',
@@ -109,6 +110,5 @@ export const translation: GuideTranslation = {
 		's3.b0.i1': '7e6aff2443fca79b',
 		's3.b0.i2': '2d441105a1624ed1',
 		's3.b1': '20c32d436fe0799c',
-		's0.b2': '9bfc49abe8494ae1',
 	},
 };

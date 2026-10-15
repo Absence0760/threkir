@@ -16,10 +16,11 @@ export const guide: Guide = {
 				{
 					type: 'list',
 					items: [
-						'Your profile page, with your display name, picture, follower counts and your public runs, can be opened by anyone with its link.',
+						'Your profile page, with your display name, picture, follower counts and your public runs, can be opened by anyone with its link. With a private profile, only followers you approve see your runs and follower lists; see [[guide:private-profile-and-follow-requests|Make your profile private and approve followers]].',
 						'Runs you make public appear on your profile and in the feed. Private runs are visible only to you.',
 						'Membership of a public club, and anything you post there, can be seen by people who can see the club.',
 						'While you share a live link, the run in progress can be seen by anyone with the link.',
+						'A photo you mark **Show on race page**, on a public run linked to a race, appears on that race\'s public page with its caption and your name. Untick it, or make the run private, to take it down.',
 					],
 				},
 				{
@@ -93,5 +94,5 @@ export const guide: Guide = {
 			],
 		},
 	],
-	related: ['privacy-zones', 'live-tracking-and-safety', 'what-pro-includes'],
+	related: ['privacy-zones', 'private-profile-and-follow-requests', 'live-tracking-and-safety', 'what-pro-includes'],
 };

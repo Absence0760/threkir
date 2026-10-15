@@ -70,6 +70,28 @@ export const guide: Guide = {
 				},
 			],
 		},
+		{
+			heading: 'Bring a club across from Strava',
+			blocks: [
+				{
+					type: 'p',
+					text: 'If your Strava account is connected, open [[route:/social|Social]] on the web, choose **Clubs** and then **My clubs**. Under **Your Strava clubs** you see the Strava clubs you belong to. Only you can see this list.',
+				},
+				{
+					type: 'list',
+					items: [
+						'**Set up on Threkir** opens a new club form with its name and location filled in, and links the two once you create the club.',
+						'**Link to my club** connects it to a club you already run here: pick it under **Which of your clubs is this?** and select **Link**.',
+						'**Unlink** removes the connection. Neither club is changed.',
+					],
+				},
+				{
+					type: 'note',
+					tone: 'caution',
+					text: 'Only an admin of the club on Strava can link it, and only to a club they own or help run here. If the section is missing, connect Strava under [[route:/settings/integrations|Integrations]] in Settings first.',
+				},
+			],
+		},
 	],
-	related: ['invite-members-and-roles', 'recurring-events', 'set-up-a-race'],
+	related: ['invite-members-and-roles', 'recurring-events', 'set-up-a-race', 'import-your-history'],
 };

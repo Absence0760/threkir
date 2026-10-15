@@ -1,5 +1,198 @@
 [
   {
+    "id": "notifications-reactions-and-mentions",
+    "lang": "pt-BR",
+    "title": "Reações, menções e suas notificações",
+    "summary": "Reaja a corridas, curta comentários e mencione outros corredores, e escolha quais notificações também chegam ao seu e-mail e ao seu celular.",
+    "kind": "how-to",
+    "category": "account",
+    "audience": [
+      "everyone"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/settings/notifications",
+      "/runs/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Reagir, curtir e mencionar",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Na corrida de outra pessoa, ao lado dos kudos, escolha uma reação: **Pegando fogo**, **Forte**, **Campeão**, **Mandou bem** ou **Oi**. Você pode deixar mais de uma, e escolher de novo uma reação a remove.",
+              "Para curtir um comentário, escolha o coração ao lado dele. Você não pode reagir à sua própria corrida nem curtir o seu próprio comentário.",
+              "Para mencionar alguém em um comentário, digite @ e o começo do nome, e escolha a pessoa na lista que aparece. Ela só é avisada se já puder ver a corrida e nenhum de vocês tiver bloqueado o outro."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "As reações e as curtidas em comentários aparecem na própria corrida. Os cards do feed continuam mostrando só o número de kudos e de comentários."
+          }
+        ]
+      },
+      {
+        "heading": "Onde as notificações aparecem",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Toda notificação chega ao app: no sino, na web, e na aba **Notificações** do seu perfil, no app para celular. Você decide se ela também chega ao seu e-mail ou ao seu celular."
+          }
+        ]
+      },
+      {
+        "heading": "Escolher o que vai por e-mail e push",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Na web, abra [[route:/settings/notifications|Notificações]] em Configurações. No app para celular, abra **Preferências** na aba **Você** e role até **Notificações**.",
+              "Defina **Notificações por e-mail** e **Notificações push** separadamente."
+            ]
+          },
+          {
+            "type": "list",
+            "items": [
+              "**Apenas importantes**, o padrão: o que você está esperando ou o que muda seus planos, como mensagens, lembretes e cancelamentos de eventos, uma vaga reservada para você em uma lista de espera, menções, solicitações para seguir e uma exportação de dados concluída.",
+              "**Todas**: as importantes e também as sociais, como kudos, comentários, novos seguidores, reações e curtidas em comentários.",
+              "**Desativadas**: nada nesse canal. O app continua mostrando tudo."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Desativar um único tipo",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Na web, a mesma página permite silenciar alguns tipos sem mudar um canal inteiro: **Exportação de dados pronta**, **Menções**, **Reações às minhas corridas**, **Curtidas nos meus comentários** e **Solicitações para seguir**. Desmarque um e ele deixa de ir por e-mail e push, inclusive no celular, mas continua aparecendo no app."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Essas opções só desligam. Reações e curtidas em comentários só são enviadas quando um canal está em **Todas**, e um canal em **Desativadas** fica em silêncio, não importa o que as opções digam."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Por enquanto, as opções por tipo só existem na web. O app para celular mostra as configurações de e-mail e push."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "private-profile-and-follow-requests",
+      "your-data-and-privacy",
+      "using-help"
+    ]
+  },
+  {
+    "id": "private-profile-and-follow-requests",
+    "lang": "pt-BR",
+    "title": "Deixar seu perfil privado e aprovar seguidores",
+    "summary": "Ative um perfil privado para que só os seguidores que você aprova vejam suas corridas e aprove ou recuse as solicitações para seguir conforme elas chegam.",
+    "kind": "how-to",
+    "category": "account",
+    "audience": [
+      "everyone"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/settings/privacy",
+      "/follow-requests",
+      "/u/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "O que um perfil privado esconde",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Com um perfil privado, só os seguidores que você aprovou veem suas corridas e outras atividades, e as listas de quem segue você e de quem você segue. As outras pessoas veem seu nome, sua foto e suas contagens de seguidores, com **Este perfil é privado** no lugar das suas corridas."
+          },
+          {
+            "type": "list",
+            "items": [
+              "As pessoas ainda podem encontrar você pelo nome e pedir para seguir. Para ficar fora da busca por nome também, desative **Exibir-me na busca por nome** na mesma página.",
+              "Quem já segue você quando você ativa a opção continua seguindo.",
+              "Rotas, resultados de eventos e emblemas mantêm a própria visibilidade, porque cada um é compartilhado separadamente.",
+              "Um link ao vivo que você envia durante uma corrida, incluindo o link de um alerta de segurança, continua funcionando para quem o recebeu."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Ativar",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Na web, abra [[route:/settings/privacy|Privacidade e compartilhamento]] em Configurações e marque **Perfil privado** em **Ser encontrado**.",
+              "No app para celular, abra **Preferências** na aba **Você** e ative **Perfil privado** em **Privacidade e compartilhamento**."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "A mudança é salva na hora."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Desativar de novo aprova todas as solicitações ainda pendentes, e essas pessoas passam a seguir você na hora."
+          }
+        ]
+      },
+      {
+        "heading": "Aprovar ou recusar solicitações",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Quando alguém pede para seguir você, você recebe uma notificação. As solicitações para seguir contam como importantes, então, por padrão, elas também chegam por e-mail e por push."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Abra a notificação. Você também pode selecionar **Ver solicitações para seguir** em **Perfil privado** na web, ou tocar em **Solicitações para seguir** em **Perfil privado** no app para celular.",
+              "Escolha **Aprovar** para que essa pessoa veja seu perfil, ou **Recusar** para negar a solicitação. A pessoa não é avisada quando você recusa."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Seguir alguém com perfil privado",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Abra o perfil da pessoa e escolha **Pedir para seguir**.",
+              "Enquanto você espera, o botão mostra **Solicitado**. Escolha-o de novo para retirar a solicitação.",
+              "Quando a pessoa aprovar, o botão mostra **Seguindo** e as corridas dela aparecem."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Se você deixar de seguir alguém com perfil privado, vai precisar pedir de novo para ver as corridas dessa pessoa."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "your-data-and-privacy",
+      "notifications-reactions-and-mentions",
+      "privacy-zones"
+    ]
+  },
+  {
     "id": "using-help",
     "lang": "pt-BR",
     "title": "Como encontrar ajuda no app",
@@ -84,7 +277,7 @@
     "id": "what-pro-includes",
     "lang": "pt-BR",
     "title": "O que o Pro inclui",
-    "summary": "Todas as telas do Threkir são gratuitas; o Pro aumenta o seu limite do Coach de IA e coloca alguns processamentos em segundo plano na frente da fila.",
+    "summary": "Quase tudo no Threkir é gratuito; o Pro aumenta o seu limite do Coach de IA, adiciona alguns extras com IA e coloca alguns processamentos em segundo plano na frente da fila.",
     "kind": "explainer",
     "category": "account",
     "audience": [
@@ -105,7 +298,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Nada no app fica bloqueado atrás do Pro. Contas gratuitas têm gravação ilimitada no celular e no relógio, rotas, planos de treino e os números por trás deles, clubes e eventos, o feed social, contatos de segurança, importações e backups."
+            "text": "Quase nada no app fica bloqueado atrás do Pro. Contas gratuitas têm gravação ilimitada no celular e no relógio, rotas, planos de treino e os números por trás deles, clubes e eventos, o feed social, contatos de segurança, importações e backups."
           }
         ]
       },
@@ -120,7 +313,8 @@
               "**Map-matching prioritário**: os seus trajetos de GPS são ajustados às vias antes dos das contas gratuitas, então ficam prontos mais cedo.",
               "**Exportações para a nuvem prioritárias**: até 8 exportações de pacotes GPX por hora em vez de 2.",
               "**Geração de rotas no servidor**: circuitos traçados na rede de ruas real quando você gera uma rota por distância. Contas gratuitas continuam tendo a geração de circuitos, calculada no navegador.",
-              "Descrições de rota mais ricas: na página de uma rota, **Aprimorar com IA** transforma a descrição padrão em um parágrafo mais completo."
+              "Descrições de rota mais ricas: na página de uma rota, **Aprimorar com IA** transforma a descrição padrão em um parágrafo mais completo.",
+              "**Registrar a partir de uma foto**: fotografe uma refeição e o seu registro alimentar é preenchido para você conferir. Veja [[guide:log-a-meal-from-a-photo|Registrar uma refeição a partir de uma foto]]."
             ]
           },
           {
@@ -171,6 +365,7 @@
     ],
     "related": [
       "your-data-and-privacy",
+      "log-a-meal-from-a-photo",
       "using-help"
     ]
   },
@@ -202,10 +397,11 @@
           {
             "type": "list",
             "items": [
-              "A sua página de perfil, com o seu nome de exibição, foto, contagens de seguidores e as suas corridas públicas, pode ser aberta por qualquer pessoa que tenha o link.",
+              "A sua página de perfil, com o seu nome de exibição, foto, contagens de seguidores e as suas corridas públicas, pode ser aberta por qualquer pessoa que tenha o link. Com um perfil privado, só os seguidores que você aprova veem suas corridas e listas de seguidores; veja [[guide:private-profile-and-follow-requests|Deixar seu perfil privado e aprovar seguidores]].",
               "As corridas que você torna públicas aparecem no seu perfil e no feed. As corridas privadas ficam visíveis só para você.",
               "A participação em um clube público, e tudo o que você publica nele, pode ser vista por quem pode ver o clube.",
-              "Enquanto você compartilha um link ao vivo, a corrida em andamento pode ser vista por qualquer pessoa que tenha o link."
+              "Enquanto você compartilha um link ao vivo, a corrida em andamento pode ser vista por qualquer pessoa que tenha o link.",
+              "Uma foto que você marca com **Mostrar na página da corrida**, em uma corrida pública vinculada a uma prova, aparece na página pública dessa prova com a legenda e o seu nome. Desmarque-a, ou deixe a corrida privada, para tirá-la de lá."
             ]
           },
           {
@@ -281,6 +477,7 @@
     ],
     "related": [
       "privacy-zones",
+      "private-profile-and-follow-requests",
       "live-tracking-and-safety",
       "what-pro-includes"
     ]
@@ -366,12 +563,35 @@
             "text": "Excluir um clube remove todos os seus eventos, publicações e membros para todo mundo, e isso não pode ser desfeito."
           }
         ]
+      },
+      {
+        "heading": "Trazer um clube do Strava",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Se a sua conta do Strava estiver conectada, abra [[route:/social|Social]] na web, escolha **Clubes** e depois **Meus clubes**. Em **Seus clubes do Strava** você vê os clubes do Strava de que participa. Só você vê esta lista."
+          },
+          {
+            "type": "list",
+            "items": [
+              "**Criar no Threkir** abre o formulário de um novo clube com o nome e o local já preenchidos, e vincula os dois assim que você cria o clube.",
+              "**Vincular ao meu clube** liga-o a um clube que você já administra aqui: escolha-o em **Qual dos seus clubes é este?** e selecione **Vincular**.",
+              "**Desvincular** remove a conexão. Nenhum dos clubes é alterado."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Só um administrador do clube no Strava pode vinculá-lo, e apenas a um clube do qual seja dono ou administrador aqui. Se a seção não aparecer, conecte primeiro o Strava em [[route:/settings/integrations|Integrações]] em Configurações."
+          }
+        ]
       }
     ],
     "related": [
       "invite-members-and-roles",
       "recurring-events",
-      "set-up-a-race"
+      "set-up-a-race",
+      "import-your-history"
     ]
   },
   {
@@ -2262,6 +2482,93 @@
     ]
   },
   {
+    "id": "adjust-a-plan-with-ai",
+    "lang": "pt-BR",
+    "title": "Ajustar um plano de treino com IA",
+    "summary": "Descreva uma mudança no seu plano com suas próprias palavras, confira cada alteração sugerida e salve só quando concordar.",
+    "kind": "how-to",
+    "category": "running",
+    "audience": [
+      "runner"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "routes": [
+      "/plans/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "O que dá para mudar",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Ajustar com IA transforma um pedido como *muda meu longão para sábado* ou *deixa a próxima semana mais leve* em mudanças em um plano que você salvou. Ele pode mover um treino para outro dia da mesma semana, trocar dois dias, aumentar ou reduzir um pouco uma semana, transformar uma semana em semana de recuperação ou pular um treino."
+          },
+          {
+            "type": "p",
+            "text": "Cada mudança é feita pelas próprias regras de planos do Threkir. A IA nunca escreve um treino, uma distância ou um pace, então um pedido como *coloca um treino de subida* recebe um aviso de que isso não é possível. Para todo o resto, use **Editar plano**."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Ajustar com IA só existe na web e talvez ainda não esteja ativado. Se **Ajustar com IA** não aparecer em **Ajustar plano**, ele não está disponível para você."
+          }
+        ]
+      },
+      {
+        "heading": "Pedir uma mudança",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Abra seu plano na web e selecione **Ajustar plano**.",
+              "Escolha **Ajustar com IA**.",
+              "Digite o que você quer mudar e selecione **Sugerir mudanças**.",
+              "Leia as **Mudanças sugeridas**: cada treino que muda de dia, é pulado ou fica mais leve, e cada meta semanal que muda, antes e depois.",
+              "Selecione **Aplicar mudanças sugeridas pela IA** para salvá-las. Até lá, nada mudou no seu plano; selecione **Cancelar** para deixá-lo como estava."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Verificações de segurança antes de salvar",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Mudanças que levariam uma semana para a faixa de alto risco de lesão, em relação ao seu treino recente, não podem ser aplicadas. A página diz qual é a semana.",
+              "Se as mudanças deixarem uma semana mais puxada do que o seu treino recente aguenta, ou colocarem dois treinos fortes em dias seguidos, você vê a pergunta **Aplicar mudanças mais puxadas?** e precisa escolher **Aplicar mesmo assim**.",
+              "Uma sugestão que não podia ser aplicada com segurança fica de fora, e a página avisa você."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "O que ele usa",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Cada pedido gasta uma das suas mensagens diárias do Coach de IA, o mesmo limite do Coach.",
+              "Ele precisa do aviso de IA mais recente. Se pedirem que você o aceite, selecione **Revisar em Configurações** e aceite lá.",
+              "Só os próximos treinos do seu plano e a mudança que você digitou são enviados para a IA."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Você também pode pedir ao Coach para mudar seu plano. Ele responde com um link que abre Ajustar com IA com o seu pedido já preenchido."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "what-pro-includes",
+      "your-data-and-privacy"
+    ]
+  },
+  {
     "id": "import-your-history",
     "lang": "pt-BR",
     "title": "Importar seu histórico de corridas",
@@ -2513,7 +2820,7 @@
           {
             "type": "note",
             "tone": "tip",
-            "text": "Para compartilhar todas as corridas sem precisar lembrar, ative **Compartilhamento ao vivo automático** em **Contatos de segurança**, na aba **Você**. Vale só para aquele celular, e a corrida em andamento pode ser vista por qualquer pessoa com o link."
+            "text": "Para compartilhar todas as corridas sem precisar lembrar, ative **Compartilhamento ao vivo automático** em **Contatos de segurança**, na aba **Você**. Vale só para aquele celular. A descrição diz quem pode acompanhar: qualquer pessoa com o link ou só os seus contatos de segurança (veja a última seção)."
           },
           {
             "type": "illustration",
@@ -2581,6 +2888,28 @@
           {
             "type": "p",
             "text": "Se você seguir uma rota salva, a tela de corrida avisa quando você se afasta dela, mostrando a que distância você está, e pode dizer isso em voz alta se os avisos de áudio estiverem ativados. Esse aviso é para você; ele não entra em contato com ninguém."
+          }
+        ]
+      },
+      {
+        "heading": "Compartilhar só com seus contatos de segurança",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Onde o compartilhamento só com contatos de segurança estiver ativado, a descrição de **Compartilhamento ao vivo automático** diz que ele nunca é público. A corrida em andamento fica então oculta para todos, menos você, até que um alerta de atraso ou de saída de rota seja disparado. Só então cada contato confirmado recebe o próprio link, no e-mail ou SMS de alerta."
+          },
+          {
+            "type": "list",
+            "items": [
+              "O **Compartilhamento ao vivo automático** é ativado sozinho assim que você define um alerta de atraso, a menos que você mesmo o tenha desativado.",
+              "Tocar em **Compartilhar link ao vivo** continua criando um link público, como descrito acima.",
+              "O link de um contato mostra **Somente contatos de segurança**. Ele é só para essa pessoa, então peça que ela não o encaminhe. Ele para de funcionar quando a corrida termina, quando você para de compartilhar ou depois de 48 horas."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "O compartilhamento só com contatos de segurança pode ainda não estar ativado. Até lá, um compartilhamento ao vivo automático pode ser visto por qualquer pessoa com o link."
           }
         ]
       }
@@ -2739,6 +3068,102 @@
     ]
   },
   {
+    "id": "log-a-meal-from-a-photo",
+    "lang": "pt-BR",
+    "title": "Registrar uma refeição a partir de uma foto",
+    "summary": "Fotografe seu prato, deixe o Threkir estimar o que tem nele e confira e edite cada item antes que ele entre no seu registro alimentar.",
+    "kind": "how-to",
+    "category": "running",
+    "audience": [
+      "runner"
+    ],
+    "requires": [
+      "pro"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/nutrition/log"
+    ],
+    "sections": [
+      {
+        "heading": "Antes de começar",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Registrar a partir de uma foto faz parte do Pro. Registrar alimentos manualmente continua gratuito.",
+              "Ele usa IA, então precisa do aviso de IA mais recente. Se pedirem que você o aceite, abra o Coach e aceite lá.",
+              "A foto só é usada para estimar o que está no prato. Os dados de localização e da câmera são removidos antes do envio, e o Threkir não guarda a foto."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Ele talvez ainda não esteja ativado. Se você não vir **Registrar a partir de uma foto**, ele não está disponível para você."
+          }
+        ]
+      },
+      {
+        "heading": "Na web",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Abra a página [[route:/nutrition/log|Registrar comida]].",
+              "Em **Registrar a partir de uma foto**, selecione **Escolher uma foto** e escolha uma imagem da sua refeição.",
+              "Adicione uma **Observação (opcional)** se ajudar, por exemplo meia porção.",
+              "Selecione **Estimar**."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "No app para celular",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Abra **Fitness**, escolha a aba **Nutrição** e toque no botão da câmera, **Registrar a partir de uma foto**.",
+              "Toque em **Tirar foto** ou **Escolher foto**.",
+              "Adicione uma **Observação (opcional)** se ajudar e toque em **Estimar**."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Conferir antes de salvar",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Em **Confira antes de salvar**, cada alimento aparece com calorias, proteínas, carboidratos e gorduras. São estimativas, então confira."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Mude qualquer nome ou número que pareça errado. Os itens marcados com **Estimativa incerta** são os que mais merecem uma segunda olhada.",
+              "Remova tudo o que não estiver no seu prato.",
+              "Escolha a **Refeição** a que o alimento pertence.",
+              "Selecione **Salvar itens** para adicionar o que sobrou ao seu registro alimentar. Nada é salvo antes disso."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Se nenhum alimento for reconhecido, ou se você registrou muitas fotos na última hora, adicione a refeição manualmente como de costume."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "what-pro-includes",
+      "your-data-and-privacy"
+    ]
+  },
+  {
     "id": "privacy-zones",
     "lang": "pt-BR",
     "title": "Esconder sua casa com zonas de privacidade",
@@ -2767,7 +3192,7 @@
           {
             "type": "list",
             "items": [
-              "Ela vale para o que as outras pessoas veem: corridas e rotas compartilhadas, o seu perfil público, o feed, os mapas de calor e a página de acompanhamento ao vivo.",
+              "Ela vale para o que as outras pessoas veem: corridas e rotas compartilhadas, o seu perfil público, o feed, os mapas de calor, a página de acompanhamento ao vivo e os mapas de corrida que um treinador com quem você trabalha pode abrir.",
               "Ela vale para as corridas que você já gravou e também para as novas, porque o trajeto é cortado toda vez que outra pessoa o visualiza.",
               "Você sempre vê o seu trajeto completo, e os arquivos que você exporta para si mesmo também mantêm o trajeto completo."
             ]

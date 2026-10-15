@@ -15,7 +15,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'Aplica-se ao que as outras pessoas veem: corridas e rotas partilhadas, o seu perfil público, o feed, os mapas de calor e a página de acompanhamento em direto.',
+						'Aplica-se ao que as outras pessoas veem: corridas e rotas partilhadas, o seu perfil público, o feed, os mapas de calor, a página de acompanhamento em direto e os mapas de corrida que um treinador com quem trabalha pode abrir.',
 						'Aplica-se às corridas que já gravou, e não só às novas, porque o trajeto é cortado sempre que outra pessoa o vê.',
 						'Vê sempre o seu trajeto completo, e os ficheiros que exporta para si também mantêm o trajeto completo.',
 					],
@@ -88,9 +88,10 @@ export const translation: GuideTranslation = {
 		summary: '04c4913e2da59def',
 		's0.heading': '27ee9eff5654fc40',
 		's0.b0': '0786f273bb90019e',
-		's0.b1.i0': 'ae791e6bb37bf75e',
+		's0.b1.i0': 'd76fc2aebe831b0b',
 		's0.b1.i1': 'f895445f10db7b57',
 		's0.b1.i2': '591dec4de03df2a3',
+		's0.b2': '9bfc49abe8494ae1',
 		's1.heading': 'cc3973572fe81b73',
 		's1.b0.i0': 'a9f7c5a79d8779f0',
 		's1.b0.i1': 'de234d8646b8454f',
@@ -109,6 +110,5 @@ export const translation: GuideTranslation = {
 		's3.b0.i1': '7e6aff2443fca79b',
 		's3.b0.i2': '2d441105a1624ed1',
 		's3.b1': '20c32d436fe0799c',
-		's0.b2': '9bfc49abe8494ae1',
 	},
 };

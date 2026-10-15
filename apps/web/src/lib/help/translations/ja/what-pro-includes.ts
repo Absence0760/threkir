@@ -3,14 +3,14 @@ import type { GuideTranslation } from '../../types';
 export const translation: GuideTranslation = {
 	id: 'what-pro-includes',
 	title: 'Proに含まれるもの',
-	summary: 'Threkirのすべての画面は無料で使え、ProではAIコーチの利用上限が増え、一部のバックグラウンド処理が優先されます。',
+	summary: 'Threkirのほとんどの機能は無料で使え、ProではAIコーチの利用上限が増え、いくつかのAI機能が加わり、一部のバックグラウンド処理が優先されます。',
 	sections: [
 		{
 			heading: '無料のまま使えるもの',
 			blocks: [
 				{
 					type: 'p',
-					text: 'アプリにProでしか使えない機能はありません。無料アカウントでも、スマートフォンと時計での無制限の記録、ルート、トレーニングプランとその根拠となる数値、クラブとイベント、ソーシャルフィード、緊急連絡先、インポートとバックアップを利用できます。',
+					text: 'アプリにProでしか使えない機能はほとんどありません。無料アカウントでも、スマートフォンと時計での無制限の記録、ルート、トレーニングプランとその根拠となる数値、クラブとイベント、ソーシャルフィード、緊急連絡先、インポートとバックアップを利用できます。',
 				},
 			],
 		},
@@ -26,6 +26,7 @@ export const translation: GuideTranslation = {
 						'**優先クラウドエクスポート**: GPXバンドルのエクスポートが1時間に2回から最大8回に増えます。',
 						'**サーバールート生成**: 距離を指定してルートを生成するとき、実際の道路網に沿ってループが作成されます。無料アカウントでもループ生成は使え、ブラウザ内で計算されます。',
 						'より充実したルートの説明: ルートのページで**AIで強化**を押すと、標準の説明がより詳しい文章になります。',
+						'**写真から記録**: 食事の写真を撮ると、確認用に食事記録が入力されます。[[guide:log-a-meal-from-a-photo|写真から食事を記録する]]を参照してください。',
 					],
 				},
 				{
@@ -76,9 +77,9 @@ export const translation: GuideTranslation = {
 	],
 	sources: {
 		title: '4267811678bae9e8',
-		summary: '959c30d7818df50f',
+		summary: 'ba5bf8caf5aaf36d',
 		's0.heading': '1319c99f2d10de2f',
-		's0.b0': '4512e0ee677c9a74',
+		's0.b0': '45a78cc3bef78017',
 		's1.heading': '28933395a25968d0',
 		's1.b0.i0': '719256df99c524da',
 		's1.b0.i1': '2cc8c412ba418164',
@@ -86,6 +87,7 @@ export const translation: GuideTranslation = {
 		's1.b0.i3': 'a120796543f347bd',
 		's1.b0.i4': 'abbb1f922ffbfa10',
 		's1.b0.i5': 'dd0fa90eed200d7c',
+		's1.b0.i6': '0d98bcce46d47d2f',
 		's1.b1': '076479f3bd42d0b5',
 		's2.heading': '912eb19f965419db',
 		's2.b0': 'ee79a267ee574aa9',

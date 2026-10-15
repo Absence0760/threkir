@@ -20,7 +20,7 @@ export const guide: Guide = {
 				{
 					type: 'list',
 					items: [
-						'It applies to what other people see: shared runs and routes, your public profile, the feed, heatmaps and the live tracking page.',
+						'It applies to what other people see: shared runs and routes, your public profile, the feed, heatmaps, the live tracking page, and the run maps a coach you work with can open.',
 						'It applies to runs you have already recorded as well as new ones, because the track is trimmed each time someone else views it.',
 						'You always see your own full track, and files you export for yourself keep the full track too.',
 					],

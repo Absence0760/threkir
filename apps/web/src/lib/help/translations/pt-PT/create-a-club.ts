@@ -65,6 +65,28 @@ export const translation: GuideTranslation = {
 				},
 			],
 		},
+		{
+			heading: 'Trazer um clube do Strava',
+			blocks: [
+				{
+					type: 'p',
+					text: 'Se a sua conta do Strava estiver ligada, abra [[route:/social|Social]] na web, escolha **Clubes** e depois **Os meus clubes**. Em **Os seus clubes do Strava** vê os clubes do Strava de que é membro. Só o próprio vê esta lista.',
+				},
+				{
+					type: 'list',
+					items: [
+						'**Criar no Threkir** abre o formulário de um novo clube com o nome e a localização já preenchidos, e associa os dois assim que criar o clube.',
+						'**Associar ao meu clube** liga-o a um clube que já gere aqui: escolha-o em **Qual dos seus clubes é este?** e selecione **Associar**.',
+						'**Desassociar** remove a ligação. Nenhum dos clubes é alterado.',
+					],
+				},
+				{
+					type: 'note',
+					tone: 'caution',
+					text: 'Só um administrador do clube no Strava o pode associar, e apenas a um clube de que seja proprietário ou administrador aqui. Se a secção não aparecer, ligue primeiro o Strava em [[route:/settings/integrations|Integrações]] nas Definições.',
+				},
+			],
+		},
 	],
 	sources: {
 		title: 'ff916040a4a088ae',
@@ -91,5 +113,11 @@ export const translation: GuideTranslation = {
 		's2.b1.i1': '102566e11462e84f',
 		's2.b1.i2': '83bc170018336efe',
 		's2.b2': 'eb88a7323310e67e',
+		's3.heading': '78e0de8618ff020a',
+		's3.b0': '728fa56591eb888d',
+		's3.b1.i0': '57a98843d18952a0',
+		's3.b1.i1': '6866a373a29d0bdb',
+		's3.b1.i2': 'afe5b3477e772c36',
+		's3.b2': '0c5f0a91de4775f1',
 	},
 };

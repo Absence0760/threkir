@@ -36,7 +36,7 @@ export const guide: Guide = {
 				{
 					type: 'note',
 					tone: 'tip',
-					text: 'To share every run without remembering to, turn on **Auto live share** under **Safety contacts** in the **You** tab. It applies to that phone only, and the run in progress can be viewed by anyone with the link.',
+					text: 'To share every run without remembering to, turn on **Auto live share** under **Safety contacts** in the **You** tab. It applies to that phone only. Its description says who can follow: anyone with the link, or only your safety contacts (see the last section).',
 				},
 				{
 					type: 'illustration',
@@ -104,6 +104,28 @@ export const guide: Guide = {
 				{
 					type: 'p',
 					text: 'If you follow a saved route, the run screen warns you when you stray from it, showing how far away you are, and can say so out loud if audio cues are on. This warning is for you; it does not contact anyone.',
+				},
+			],
+		},
+		{
+			heading: 'Sharing with your safety contacts only',
+			blocks: [
+				{
+					type: 'p',
+					text: 'Where safety-only sharing is switched on, the description under **Auto live share** says the share is never public. The run in progress is then hidden from everyone but you until an overdue or off-route alert fires. Only then does each confirmed contact get their own link, in the alert email or text.',
+				},
+				{
+					type: 'list',
+					items: [
+						'**Auto live share** turns on by itself once you set an overdue alert, unless you have switched it off yourself.',
+						'Tapping **Share live link** still makes a public link, as described above.',
+						'A contact\'s link shows **Safety contacts only**. It is for them alone, so ask them not to forward it. It stops working when the run ends, when you stop sharing, or after 48 hours.',
+					],
+				},
+				{
+					type: 'note',
+					tone: 'caution',
+					text: 'Safety-only sharing may not be switched on yet. Until it is, an automatic live share can be viewed by anyone with the link.',
 				},
 			],
 		},

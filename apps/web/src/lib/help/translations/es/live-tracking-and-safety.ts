@@ -31,7 +31,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'note',
 					tone: 'tip',
-					text: 'Para compartir todas tus carreras sin tener que acordarte, activa **Directo automático** en **Contactos de seguridad**, dentro de la pestaña **Tú**. Solo se aplica a ese móvil, y cualquiera con el enlace puede ver la carrera en curso.',
+					text: 'Para compartir todas tus carreras sin tener que acordarte, activa **Directo automático** en **Contactos de seguridad**, dentro de la pestaña **Tú**. Solo se aplica a ese móvil. Su descripción indica quién puede seguirte: cualquiera con el enlace o solo tus contactos de seguridad (consulta la última sección).',
 				},
 				{
 					type: 'illustration',
@@ -102,6 +102,28 @@ export const translation: GuideTranslation = {
 				},
 			],
 		},
+		{
+			heading: 'Compartir solo con tus contactos de seguridad',
+			blocks: [
+				{
+					type: 'p',
+					text: 'Donde está activado compartir solo con los contactos de seguridad, la descripción de **Directo automático** dice que nunca es público. La carrera en curso queda oculta para todos menos para ti hasta que salta una alerta de retraso o de salida de ruta. Solo entonces cada contacto confirmado recibe su propio enlace, en el correo o SMS de alerta.',
+				},
+				{
+					type: 'list',
+					items: [
+						'**Directo automático** se activa solo en cuanto configuras una alerta de retraso, salvo que tú lo hayas desactivado.',
+						'Tocar **Compartir enlace en vivo** sigue creando un enlace público, como se explica más arriba.',
+						'El enlace de un contacto muestra **Solo contactos de seguridad**. Es solo para esa persona, así que pídele que no lo reenvíe. Deja de funcionar cuando termina la carrera, cuando dejas de compartir o pasadas 48 horas.',
+					],
+				},
+				{
+					type: 'note',
+					tone: 'caution',
+					text: 'Puede que compartir solo con los contactos de seguridad aún no esté activado. Hasta entonces, cualquiera con el enlace puede ver un directo automático.',
+				},
+			],
+		},
 	],
 	sources: {
 		title: 'cee4d0a20867ed19',
@@ -113,7 +135,8 @@ export const translation: GuideTranslation = {
 		's0.b1': 'f45b4fcfccc4fb7e',
 		's0.b2': '7845c9dd61f6fcbd',
 		's0.b3': '21b6940abd1d8d09',
-		's0.b4': '822ce03c51253ce8',
+		's0.b4': '5ac2ca8e766db07b',
+		's0.b5': 'eb575f135ac66d66',
 		's1.heading': '7fe0f3d3bca83ca6',
 		's1.b0': '8983069471135762',
 		's1.b1.i0': '6675420e0916edbb',
@@ -130,6 +153,11 @@ export const translation: GuideTranslation = {
 		's2.b3': '0694224872716044',
 		's3.heading': '4799e1fbd28720f2',
 		's3.b0': '2557edbaef77cc2c',
-		's0.b5': 'eb575f135ac66d66',
+		's4.heading': '77cc43259f01d7cd',
+		's4.b0': '5486560d83005e0c',
+		's4.b1.i0': '263589d27a310489',
+		's4.b1.i1': '5d8ab8e5ec1ecd1c',
+		's4.b1.i2': 'de89e5227402c8e0',
+		's4.b2': 'd3861ef7e8756240',
 	},
 };

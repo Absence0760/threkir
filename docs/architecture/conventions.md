@@ -1054,6 +1054,10 @@ Pairwise 3:1 between marks is often unreachable — *n* marks need 3^(n−1) and
 
 A min/max-normalised series drawn without an axis shows shape and hides scale: CTL 45 and CTL 450 render pixel-identically. Any plot that normalises to its own extremes owes a labelled y-scale — a gutter, round ticks off a 1/2/5×10^n ladder, and gridlines. On web, y labels go in a **CSS gutter beside** the SVG when the chart uses `preserveAspectRatio="none"`; text inside that viewBox is stretched horizontally at every viewport width.
 
+## Web keyed `{#each}` — a key is an identity, never content
+
+Svelte throws `each_key_duplicate` when two items in a keyed `{#each}` share a key, and an uncaught render error takes the whole page into the 500 boundary, not just the list. So a key must be unique **by construction**: a row's primary key, a value a DB constraint makes unique within the list, or the item's position when the list is display-only and rebuilt wholesale. Never key on something derived from the data that two items can share: a rounded or formatted number (the training-load ticks keyed `-0.5` and `0` both as `0` and took `/dashboard` down for a new account's one 10 s run, PR #1155), an exercise or place name (a superset logs the same lift twice), a coordinate pair from a geocoder, a calendar day, or a tag a writer other than ours may have repeated. When the list is built by code, build it in a pure module and test that the keys are unique on the degenerate input: zero span, one point, `-0`, the same name twice. `load_chart_ticks.ts`, `gym/exercise_blocks.ts` and `gym/next_target_hints.ts` are the shapes to copy. A list appended page by page goes through `appendPage` (`lib/core/offset_page.ts`), so a page that overlaps the one before it can't repeat a row.
+
 ## A localised string is prose — never recover a part of it by cutting it up
 
 `toLocaleDateString` and friends return output written for a human in their

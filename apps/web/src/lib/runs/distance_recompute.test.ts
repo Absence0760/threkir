@@ -71,11 +71,21 @@ test('an in-progress stub, a manual entry and an indoor run are never offered', 
 });
 
 test('a run already on the current estimator is not offered again', () => {
-	assert.equal(CURRENT_DISTANCE_ESTIMATOR, 'kalman_v3');
+	assert.equal(CURRENT_DISTANCE_ESTIMATOR, 'kalman_v4');
 	assert.equal(
-		canRecomputeDistance(run({ metadata: { distance_estimator: 'kalman_v3' } }), OWNER),
+		canRecomputeDistance(run({ metadata: { distance_estimator: 'kalman_v4' } }), OWNER),
 		false,
 	);
+	assert.equal(
+		canRecomputeDistance(
+			run({
+				metadata: { distance_estimator: 'kalman_v4', distance_recomputed_at: '2026-10-08T08:00:00Z' },
+			}),
+			OWNER,
+		),
+		false,
+	);
+	// A run recomputed under spec v1.3 gains v1.4's gap chord and canopy fixes.
 	assert.equal(
 		canRecomputeDistance(
 			run({
@@ -83,7 +93,7 @@ test('a run already on the current estimator is not offered again', () => {
 			}),
 			OWNER,
 		),
-		false,
+		true,
 	);
 	assert.equal(
 		canRecomputeDistance(

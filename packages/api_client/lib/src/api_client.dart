@@ -8727,11 +8727,20 @@ class ApiClient {
   /// every create-rate-limit raises, and is rethrown as the
   /// `PostgrestException` it is so the caller runs the shared
   /// `rateLimitErrorMessage` parser over it.
-  Future<DirectMessageRow> sendDm(String recipientId, String body) async {
+  ///
+  /// [routeId] is the typed route attachment (route_direct_share.md v2). The
+  /// same INSERT policy refuses an id the sender cannot see
+  /// (`private.is_route_visible_to`), as the same 42501.
+  Future<DirectMessageRow> sendDm(
+    String recipientId,
+    String body, {
+    String? routeId,
+  }) async {
     final me = _client.auth.currentUser?.id;
     if (me == null) throw StateError('not signed in');
     final trimmed = body.trim();
     if (trimmed.isEmpty) throw ArgumentError.value(body, 'body', 'is empty');
+    final attached = routeId?.trim();
     try {
       final row = await _client
           .from(DirectMessageRow.table)
@@ -8739,6 +8748,8 @@ class ApiClient {
             DirectMessageRow.colSenderId: me,
             DirectMessageRow.colRecipientId: recipientId,
             DirectMessageRow.colBody: trimmed,
+            DirectMessageRow.colRouteId:
+                attached == null || attached.isEmpty ? null : attached,
           })
           .select()
           .single();

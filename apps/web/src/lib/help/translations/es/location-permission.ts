@@ -45,7 +45,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'Con **Aproximada**, la ubicación es demasiado imprecisa para medir una carrera: verás **GPS débil — distancia en pausa** durante toda la carrera.',
+						'Con **Aproximada**, la ubicación es demasiado imprecisa para medir una carrera: verás **Ubicación aproximada — distancia en pausa** durante toda la carrera.',
 						'**Solo esta vez** sirve para la carrera que vas a empezar, y la próxima vez se te vuelve a preguntar.',
 						'Con **No permitir**, las carreras solo registran tiempo y pasos.',
 					],
@@ -63,7 +63,7 @@ export const translation: GuideTranslation = {
 					type: 'steps',
 					items: [
 						'En la solicitud, toca **Permitir al usar la app**.',
-						'Deja activada la ubicación exacta en la solicitud. Sin ella, tu posición es demasiado imprecisa para medir la distancia, y la carrera muestra **GPS débil — distancia en pausa**.',
+						'Deja activada la ubicación exacta en la solicitud. Sin ella, tu posición es demasiado imprecisa para medir la distancia, y la carrera muestra **Ubicación aproximada — distancia en pausa**.',
 					],
 				},
 				{
@@ -143,13 +143,13 @@ export const translation: GuideTranslation = {
 		's1.b1.i2': 'cd926bc8428f270d',
 		's1.b2': '3f9237c89f00534f',
 		's1.b3': '6c15e5f41c0dbad5',
-		's1.b4.i0': '96fb29287371ef73',
+		's1.b4.i0': '9c6c79a701984fae',
 		's1.b4.i1': 'd35c46ecb6f1579e',
 		's1.b4.i2': '09d7ce333fe83b8c',
 		's2.heading': '873081b6807b4197',
 		's2.b0': '6912b4c52f4c4037',
 		's2.b1.i0': '302121c948975146',
-		's2.b1.i1': '7bcc2b01bf8a35ab',
+		's2.b1.i1': '5776de36117755b3',
 		's2.b2': 'dd5515e417bcce18',
 		's3.heading': 'd91eca07ad12c491',
 		's3.b0': '5ecc6e3ad1cacf65',

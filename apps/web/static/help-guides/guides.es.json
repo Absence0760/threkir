@@ -2975,7 +2975,7 @@
           {
             "type": "list",
             "items": [
-              "Con **Aproximada**, la ubicación es demasiado imprecisa para medir una carrera: verás **GPS débil — distancia en pausa** durante toda la carrera.",
+              "Con **Aproximada**, la ubicación es demasiado imprecisa para medir una carrera: verás **Ubicación aproximada — distancia en pausa** durante toda la carrera.",
               "**Solo esta vez** sirve para la carrera que vas a empezar, y la próxima vez se te vuelve a preguntar.",
               "Con **No permitir**, las carreras solo registran tiempo y pasos."
             ]
@@ -2993,7 +2993,7 @@
             "type": "steps",
             "items": [
               "En la solicitud, toca **Permitir al usar la app**.",
-              "Deja activada la ubicación exacta en la solicitud. Sin ella, tu posición es demasiado imprecisa para medir la distancia, y la carrera muestra **GPS débil — distancia en pausa**."
+              "Deja activada la ubicación exacta en la solicitud. Sin ella, tu posición es demasiado imprecisa para medir la distancia, y la carrera muestra **Ubicación aproximada — distancia en pausa**."
             ]
           },
           {

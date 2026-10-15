@@ -2975,7 +2975,7 @@
           {
             "type": "list",
             "items": [
-              "Mit **Ungefähr** ist der Standort zu grob, um einen Lauf zu messen: Du siehst den ganzen Lauf über **Schwaches GPS — Distanz pausiert**.",
+              "Mit **Ungefähr** ist der Standort zu grob, um einen Lauf zu messen: Du siehst den ganzen Lauf über **Ungefährer Standort — Distanz pausiert**.",
               "**Nur dieses Mal** gilt für den Lauf, den du gleich startest, und beim nächsten Mal wirst du erneut gefragt.",
               "Mit **Nicht zulassen** zeichnen Läufe nur Zeit und Schritte auf."
             ]
@@ -2993,7 +2993,7 @@
             "type": "steps",
             "items": [
               "Tippe in der Abfrage auf **Beim Verwenden der App erlauben**.",
-              "Lass den genauen Standort in der Abfrage eingeschaltet. Ohne ihn ist deine Position zu grob, um die Distanz zu messen, und der Lauf zeigt **Schwaches GPS — Distanz pausiert**."
+              "Lass den genauen Standort in der Abfrage eingeschaltet. Ohne ihn ist deine Position zu grob, um die Distanz zu messen, und der Lauf zeigt **Ungefährer Standort — Distanz pausiert**."
             ]
           },
           {

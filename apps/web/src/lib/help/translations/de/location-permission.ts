@@ -45,7 +45,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'Mit **Ungefähr** ist der Standort zu grob, um einen Lauf zu messen: Du siehst den ganzen Lauf über **Schwaches GPS — Distanz pausiert**.',
+						'Mit **Ungefähr** ist der Standort zu grob, um einen Lauf zu messen: Du siehst den ganzen Lauf über **Ungefährer Standort — Distanz pausiert**.',
 						'**Nur dieses Mal** gilt für den Lauf, den du gleich startest, und beim nächsten Mal wirst du erneut gefragt.',
 						'Mit **Nicht zulassen** zeichnen Läufe nur Zeit und Schritte auf.',
 					],
@@ -63,7 +63,7 @@ export const translation: GuideTranslation = {
 					type: 'steps',
 					items: [
 						'Tippe in der Abfrage auf **Beim Verwenden der App erlauben**.',
-						'Lass den genauen Standort in der Abfrage eingeschaltet. Ohne ihn ist deine Position zu grob, um die Distanz zu messen, und der Lauf zeigt **Schwaches GPS — Distanz pausiert**.',
+						'Lass den genauen Standort in der Abfrage eingeschaltet. Ohne ihn ist deine Position zu grob, um die Distanz zu messen, und der Lauf zeigt **Ungefährer Standort — Distanz pausiert**.',
 					],
 				},
 				{
@@ -143,13 +143,13 @@ export const translation: GuideTranslation = {
 		's1.b1.i2': 'cd926bc8428f270d',
 		's1.b2': '3f9237c89f00534f',
 		's1.b3': '6c15e5f41c0dbad5',
-		's1.b4.i0': '96fb29287371ef73',
+		's1.b4.i0': '9c6c79a701984fae',
 		's1.b4.i1': 'd35c46ecb6f1579e',
 		's1.b4.i2': '09d7ce333fe83b8c',
 		's2.heading': '873081b6807b4197',
 		's2.b0': '6912b4c52f4c4037',
 		's2.b1.i0': '302121c948975146',
-		's2.b1.i1': '7bcc2b01bf8a35ab',
+		's2.b1.i1': '5776de36117755b3',
 		's2.b2': 'dd5515e417bcce18',
 		's3.heading': 'd91eca07ad12c491',
 		's3.b0': '5ecc6e3ad1cacf65',

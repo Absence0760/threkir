@@ -2975,7 +2975,7 @@
           {
             "type": "list",
             "items": [
-              "**Approximate** location is too rough to measure a run: you will see **Weak GPS — distance paused** for the whole run.",
+              "**Approximate** location is too rough to measure a run: you will see **Approximate location — distance paused** for the whole run.",
               "**Only this time** works for the run you are about to start, and you are asked again next time.",
               "**Don't allow** leaves runs with time and steps only."
             ]
@@ -2993,7 +2993,7 @@
             "type": "steps",
             "items": [
               "In the prompt, tap **Allow While Using App**.",
-              "Leave precise location switched on in the prompt. Without it your position is too rough to measure distance, and the run shows **Weak GPS — distance paused**."
+              "Leave precise location switched on in the prompt. Without it your position is too rough to measure distance, and the run shows **Approximate location — distance paused**."
             ]
           },
           {

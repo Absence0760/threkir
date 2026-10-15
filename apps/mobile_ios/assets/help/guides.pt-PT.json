@@ -2975,7 +2975,7 @@
           {
             "type": "list",
             "items": [
-              "Com **Aproximada**, a localização é demasiado imprecisa para medir uma corrida: verá **GPS fraco — distância pausada** durante toda a corrida.",
+              "Com **Aproximada**, a localização é demasiado imprecisa para medir uma corrida: verá **Localização aproximada — distância pausada** durante toda a corrida.",
               "**Apenas desta vez** vale para a corrida que vai iniciar, e da próxima vez o telemóvel volta a perguntar.",
               "Com **Não permitir**, as corridas registam apenas tempo e passos."
             ]
@@ -2993,7 +2993,7 @@
             "type": "steps",
             "items": [
               "No pedido, toque em **Permitir durante a utilização da app**.",
-              "Deixe a localização exata ativada no pedido. Sem ela, a sua posição fica demasiado imprecisa para medir a distância, e a corrida mostra **GPS fraco — distância pausada**."
+              "Deixe a localização exata ativada no pedido. Sem ela, a sua posição fica demasiado imprecisa para medir a distância, e a corrida mostra **Localização aproximada — distância pausada**."
             ]
           },
           {

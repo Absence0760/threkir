@@ -4031,6 +4031,7 @@ class ApiClient {
     final rows = await _client.rpc(
       'run_reaction_summary',
       params: {'p_run_id': runId},
+      get: true,
     );
     return (rows as List).cast<Map<String, dynamic>>();
   }
@@ -4075,6 +4076,7 @@ class ApiClient {
     final rows = await _client.rpc(
       'run_comment_like_summary',
       params: {'p_run_id': runId},
+      get: true,
     );
     return {
       for (final r in (rows as List).cast<Map<String, dynamic>>())

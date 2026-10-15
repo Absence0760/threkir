@@ -17,7 +17,7 @@
 // sigma-SENSITIVE search key left in the product: a display name `ΟΔΟΣ`
 // folds to a trailing ς, so a reader typing the medial σ their keyboard
 // produces could not find it (decisions § 1340).
-import { fold } from '../segments/catalogue_browse';
+import { compareFoldedNames, fold } from '../segments/catalogue_browse';
 
 export type DmRelation = 'mutual' | 'follows_you' | 'you_follow';
 
@@ -42,17 +42,16 @@ export interface DmRecipient {
 /// `sender_id = recipient_id` outright, so a self row reaching the list some
 /// other way must not be offered as a send that can only fail.
 ///
-/// Ordering is by display name, unnamed last, with the id as a total tiebreak
-/// so two renders of the same follow graph list people in the same order
-/// regardless of which of the two fetches resolved first.
+/// Ordering is by folded display name, unnamed last, with the id as a total
+/// tiebreak so two renders of the same follow graph list people in the same
+/// order regardless of which of the two fetches resolved first.
 ///
-/// The name comparison is a COLLATION and stays one, unlike the search above
-/// it, which folds. The two answer different questions: the filter must widen
-/// (a sender typing `elevation` should reach `Élévation`), while the order
-/// should be the reader's own — folding would hand every reader the English
-/// order, filing `Åsa` before `Zoe` for the Swede who expects the reverse.
-/// § 1337's reason for folding the routes list was its Dart twin, whose
-/// runtime ships no collator; this list has no twin (decisions § 1400).
+/// Folded, not collated, because this module has a Dart twin
+/// (`apps/mobile_android/lib/dm_recipients.dart`) and that runtime ships no
+/// collator: a collation here would order the one list two ways (§ 1337).
+/// That costs the per-reader order § 1400 kept while the list was web-only —
+/// a Swedish reader now sees `Åsa` filed beside `Asa`, as every reader does
+/// (decisions § 1946).
 export function dmRecipientCandidates(
 	followers: readonly DmCandidateProfile[],
 	following: readonly DmCandidateProfile[],
@@ -79,13 +78,9 @@ export function dmRecipientCandidates(
 	return [...byId.values()].sort((a, b) => {
 		if (a.displayName === null || b.displayName === null) {
 			if (a.displayName !== b.displayName) return a.displayName === null ? 1 : -1;
-		} else {
-			const byName = a.displayName.localeCompare(b.displayName, undefined, {
-				sensitivity: 'base'
-			});
-			if (byName !== 0) return byName;
+			return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 		}
-		return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+		return compareFoldedNames(a.displayName, a.id, b.displayName, b.id);
 	});
 }
 

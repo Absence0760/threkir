@@ -4,6 +4,7 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:cross_file/cross_file.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -132,6 +133,35 @@ EventPhotos _widget(
           Uint8List.fromList([0xFF, 0xD8, 0xFF, 0xE0, 0xFF, 0xD9]),
           name: 'shot.jpg'),
     );
+
+/// The event detail screen's own geometry: a 360dp phone, 16dp list gutters.
+Future<void> _pumpNarrow(
+  WidgetTester tester,
+  _PhotosApi api, {
+  required Locale locale,
+  double textScale = 1.0,
+}) async {
+  tester.view.physicalSize = const Size(360, 640) * 3;
+  tester.view.devicePixelRatio = 3.0;
+  addTearDown(tester.view.reset);
+  await tester.pumpWidget(MaterialApp(
+    locale: locale,
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    builder: (context, child) => MediaQuery(
+      data: MediaQuery.of(context)
+          .copyWith(textScaler: TextScaler.linear(textScale)),
+      child: child!,
+    ),
+    home: Scaffold(
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: _widget(api),
+      ),
+    ),
+  ));
+  await tester.pumpAndSettle();
+}
 
 /// The armed undo window owns a real Timer; a test that ends with it pending
 /// fails on `!timersPending`.
@@ -405,5 +435,55 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('None of your runs started during this event'),
         findsOneWidget);
+  });
+
+  group('long localized add labels at 360dp (#1154)', () {
+    const locales = [
+      Locale('de'),
+      Locale('es'),
+      Locale('pt'),
+      Locale('pt', 'BR'),
+    ];
+
+    for (final locale in locales) {
+      for (final scale in const [1.0, 1.3]) {
+        testWidgets('$locale at ${scale}x shows every add label whole',
+            (tester) async {
+          final l10n = lookupAppLocalizations(locale);
+          await _pumpNarrow(tester, _PhotosApi(steward: true),
+              locale: locale, textScale: scale);
+          expect(tester.takeException(), isNull);
+
+          for (final label in [
+            l10n.eventAddPhotoFromRun,
+            l10n.eventAddOccurrencePhoto,
+          ]) {
+            final text = find.text(label);
+            expect(text, findsOneWidget, reason: label);
+            expect(tester.renderObject<RenderParagraph>(text).didExceedMaxLines,
+                isFalse,
+                reason: '"$label" was cut short');
+            final rect = tester.getRect(text);
+            expect(rect.left, greaterThanOrEqualTo(16), reason: label);
+            expect(rect.right, lessThanOrEqualTo(360 - 16), reason: label);
+            final button = find.ancestor(
+              of: text,
+              matching: find.byWidgetPredicate((w) => w is TextButton),
+            );
+            expect(tester.getSize(button.first).height,
+                greaterThanOrEqualTo(48),
+                reason: label);
+          }
+        });
+      }
+    }
+
+    testWidgets('given room, the add button stays on the title line',
+        (tester) async {
+      await tester.pumpWidget(_host(_widget(_PhotosApi())));
+      await tester.pumpAndSettle();
+      expect(tester.getCenter(find.text('Add photo')).dy,
+          closeTo(tester.getCenter(find.text('Photos (0)')).dy, 1));
+    });
   });
 }

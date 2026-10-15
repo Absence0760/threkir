@@ -438,31 +438,35 @@ class _EventPhotosState extends State<EventPhotos> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 24),
-        Row(
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            Icon(Icons.photo_library_outlined,
-                size: 18, color: cs.onSurfaceVariant),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(l10n.eventPhotosTitle(visibleCount),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleMedium),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.photo_library_outlined,
+                    size: 18, color: cs.onSurfaceVariant),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(l10n.eventPhotosTitle(visibleCount),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium),
+                ),
+              ],
             ),
             if (widget.canAdd)
-              Flexible(
-                child: TextButton.icon(
-                  onPressed: _uploading ? null : _openPhotoFlow,
-                  icon: const Icon(Icons.add_a_photo_outlined, size: 18),
-                  label: Text(
-                    _uploading
-                        ? l10n.eventPhotoUploading
-                        : stewardCanPost
-                            ? l10n.eventAddPhotoFromRun
-                            : l10n.eventAddPhoto,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+              TextButton.icon(
+                key: const ValueKey('event-photo-add'),
+                onPressed: _uploading ? null : _openPhotoFlow,
+                icon: const Icon(Icons.add_a_photo_outlined, size: 18),
+                label: Text(
+                  _uploading
+                      ? l10n.eventPhotoUploading
+                      : stewardCanPost
+                          ? l10n.eventAddPhotoFromRun
+                          : l10n.eventAddPhoto,
                 ),
               ),
           ],

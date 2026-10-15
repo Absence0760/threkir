@@ -23,10 +23,12 @@
 --      (migration 20270816000001).
 --  14. A v3 holder reaches the v4 plan-edit rung only by accepting v4
 --      (migration 20270825000001).
+--  15/16. A v4 holder reaches the v5 plate-photo rung only by accepting v5
+--      (migration 20270826000003).
 
 begin;
 
-select plan(14);
+select plan(16);
 
 -- U1: no consent on record.
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
@@ -58,8 +60,8 @@ select throws_ok(
 -- ── 2. The version the web + SQL sides agree on ──────────────────
 select is(
   (select ai_disclosure_current_version()),
-  4::smallint,
-  'ai_disclosure_current_version() is the v4 plan-edit version'
+  5::smallint,
+  'ai_disclosure_current_version() is the v5 plate-photo version'
 );
 
 -- ── 3. No resolvable identity → refused ──────────────────────────
@@ -160,6 +162,20 @@ select is(
   (select version from record_ai_disclosure_consent(4::smallint)),
   4::smallint,
   'record_ai_disclosure_consent(4) upgrades a v3 holder to the plan-edit rung'
+);
+
+-- ── 15. v4 -> v5 is an explicit upgrade, not inherited ───────────
+select is(
+  (select version from record_ai_disclosure_consent(5::smallint)),
+  5::smallint,
+  'record_ai_disclosure_consent(5) upgrades a v4 holder to the plate-photo rung'
+);
+
+reset role;
+select is(
+  (select ai_disclosure_version from user_profiles where id = '00000000-0000-0000-0000-0000000ccf01'),
+  5::smallint,
+  'the v5 acceptance is persisted on the row'
 );
 
 select * from finish();

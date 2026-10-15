@@ -35,11 +35,6 @@ void main() {
     '.inFilter(RunRow.colId, runIds);': 2,
     '.inFilter(RunCommentRow.colId, commentIds);': 1,
     '.inFilter(EventRow.colId, eventIds);': 1,
-    // The exercises of ONE authored routine, and the weeks of ONE plan. Both
-    // are hand-built by a user; a routine with 100 exercises or a plan with
-    // 100 weeks is not a thing that exists.
-    '.inFilter(GymRoutineSetRow.colRoutineExerciseId,': 1,
-    '.inFilter(PlanWorkoutRow.colWeekId, [for (final w in weeks) w.id])': 1,
     // Author ids off a template search with a literal `.limit(100)`.
     ".inFilter('id', authorIds);": 1,
     // The two participants of one conversation (fetchDmThread): always

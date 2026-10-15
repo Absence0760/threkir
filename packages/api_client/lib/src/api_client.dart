@@ -7766,14 +7766,16 @@ class ApiClient {
             <({GymRoutineExerciseRow exercise, List<GymRoutineSetRow> sets})>[],
       );
     }
-    final setRows = await _client
-        .from(GymRoutineSetRow.table)
-        .select()
-        .inFilter(GymRoutineSetRow.colRoutineExerciseId,
-            [for (final e in exercises) e.id])
-        .order(GymRoutineSetRow.colSetIndex, ascending: true);
+    final setRows = await readChunked(
+      [for (final e in exercises) e.id],
+      (chunk) async => _client
+          .from(GymRoutineSetRow.table)
+          .select()
+          .inFilter(GymRoutineSetRow.colRoutineExerciseId, chunk)
+          .order(GymRoutineSetRow.colSetIndex, ascending: true),
+    );
     final byExercise = <String, List<GymRoutineSetRow>>{};
-    for (final raw in (setRows as List).cast<Map<String, dynamic>>()) {
+    for (final raw in setRows.cast<Map<String, dynamic>>()) {
       final s = GymRoutineSetRow.fromJson(raw);
       (byExercise[s.routineExerciseId] ??= []).add(s);
     }
@@ -8803,15 +8805,21 @@ class ApiClient {
         .toList();
     var workouts = <PlanWorkoutRow>[];
     if (weeks.isNotEmpty) {
-      final woRows = await _client
-          .from(PlanWorkoutRow.table)
-          .select()
-          .inFilter(PlanWorkoutRow.colWeekId, [for (final w in weeks) w.id])
-          .order(PlanWorkoutRow.colScheduledDate, ascending: true);
-      workouts = (woRows as List)
+      final woRows = await readChunked(
+        [for (final w in weeks) w.id],
+        (chunk) async => _client
+            .from(PlanWorkoutRow.table)
+            .select()
+            .inFilter(PlanWorkoutRow.colWeekId, chunk)
+            .order(PlanWorkoutRow.colScheduledDate, ascending: true),
+      );
+      // Each chunk comes back ordered; the merged list is re-sorted so a plan
+      // longer than one chunk still reads in date order.
+      workouts = woRows
           .cast<Map<String, dynamic>>()
           .map(PlanWorkoutRow.fromJson)
-          .toList();
+          .toList()
+        ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
     }
     final real = workouts.where((w) => w.kind != 'rest').toList();
     final done = real

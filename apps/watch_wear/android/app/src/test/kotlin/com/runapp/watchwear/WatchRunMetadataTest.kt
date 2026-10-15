@@ -416,8 +416,8 @@ class WatchRunMetadataTest {
             lastModifiedAtIso = isoStamp,
             gnssSignal = summary,
         )
-        val full = md(GnssSignalSummary(samples = 100, usedMedian = 14, cn0MedianDbHz = 39.1, cn0P10DbHz = 27.9, l5Fraction = 0.6))
-            ["gnss_signal"]!!.jsonObject
+        val summary = GnssSignalSummary(samples = 100, usedMedian = 14, cn0MedianDbHz = 39.1, cn0P10DbHz = 27.9, l5Fraction = 0.6)
+        val full = md(summary)["gnss_signal"]!!.jsonObject
         assertEquals(100, full["samples"]!!.jsonPrimitive.int)
         assertEquals(14, full["used_median"]!!.jsonPrimitive.int)
         assertEquals(39.1, full["cn0_median_dbhz"]!!.jsonPrimitive.double, 0.0)

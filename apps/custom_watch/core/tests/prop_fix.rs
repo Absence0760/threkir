@@ -11,8 +11,8 @@ mod support;
 
 use proptest::prelude::*;
 use support::check;
-use ublox_nmea::ubx::NavPvt;
-use ublox_nmea::{GgaData, GstData, RmcData, Sentence, ZdaData};
+use ublox_nmea::ubx::{self, NavPvt};
+use ublox_nmea::{GgaData, GstData, Parser, RmcData, Sentence, ZdaData};
 use watch_core::fix::{Fix, FixAccumulator, PVT_MAX_AGE_S};
 use watch_core::gps_distance::GpsDistanceEstimator;
 use watch_core::record::{Recorder, MAX_SPEED_MPS};
@@ -399,4 +399,39 @@ fn the_recorder_hands_each_fixs_accuracy_to_the_estimator_unchanged() {
             Ok(())
         },
     );
+}
+
+#[test]
+fn a_receiver_byte_stream_hands_the_fix_its_nav_pvt_accuracy() {
+    // What the gps task feeds the accumulator once the runner valset is in:
+    // a UBX-NAV-PVT and then the RMC of the same 07:30:00 epoch, as raw UART
+    // bytes through the one parser.
+    let mut payload = [0u8; ubx::NAV_PVT_PAYLOAD_LEN];
+    payload[8..12].copy_from_slice(&[7, 30, 0, 0b0111]);
+    payload[20] = 3;
+    payload[21] = 1;
+    payload[23] = 12;
+    payload[40..44].copy_from_slice(&2_400u32.to_le_bytes());
+    payload[60..64].copy_from_slice(&3_000i32.to_le_bytes());
+    payload[68..72].copy_from_slice(&150u32.to_le_bytes());
+    let mut stream = vec![0u8; ubx::FRAME_OVERHEAD + payload.len()];
+    ubx::write_frame(ubx::CLASS_NAV, ubx::ID_NAV_PVT, &payload, &mut stream).expect("fits");
+    stream.extend_from_slice(
+        b"$GPRMC,073000.00,A,4000.9000,N,10516.2300,W,5.83,90.0,080726,,,A*4B\r\n",
+    );
+
+    let mut parser = Parser::new();
+    let mut acc = FixAccumulator::new();
+    let fixes: Vec<Fix> = stream
+        .iter()
+        .filter_map(|b| parser.feed(*b))
+        .filter_map(|s| acc.apply(&s, 42))
+        .collect();
+
+    let [fix] = fixes[..] else {
+        panic!("expected one fix, got {fixes:?}");
+    };
+    assert_eq!(fix.uptime_s, 42);
+    assert_eq!(fix.h_acc_m, Some(2.4));
+    assert_eq!(fix.s_acc_mps, Some(0.15));
 }

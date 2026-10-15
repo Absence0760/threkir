@@ -122,6 +122,18 @@ Deno.test('csvRow puts each value under the header its name promises', () => {
 	assert(!csvRow(REF).includes('.json.gz'));
 });
 
+Deno.test('a safety-audience live share exports its flag under its own header', () => {
+	// The three visibility cells are adjacent booleans, so REF's all-false row
+	// cannot tell one slot from the next. A run shared live on the
+	// safety-contacts audience (decisions § 1964) is private, not
+	// followers-only, and has the safety flag on.
+	const row = csvFields(csvRow({ ...REF, is_public: false, followers_only: false, safety_audience: true }));
+	const at = (col: string) => row[CSV_COLS.indexOf(col)];
+	assertEquals(at('is_public'), 'false');
+	assertEquals(at('followers_only'), 'false');
+	assertEquals(at('safety_audience'), 'true');
+});
+
 Deno.test('the seven columns that reached no format now reach the CSV', () => {
 	// Four of them stopped being exported the day migration 20270325_001
 	// promoted them out of `runs.metadata` and stripped the keys from the bag

@@ -188,12 +188,20 @@ test('days per week is an integer clamped to 3-7, and a clamp is an assumption',
 		[0, 3],
 		[-2, 3],
 		[9, 7],
-		[4.6, 5],
 	] as const) {
 		const r = validatePlanInputs({ days_per_week: raw }, TODAY);
 		assert.equal(r.daysPerWeek, want, String(raw));
 		assert.ok(r.assumptions.includes('days_per_week_clamped'), String(raw));
 	}
+});
+
+test('a value that is only rounded into the band is not reported as clamped', () => {
+	const days = validatePlanInputs({ days_per_week: 4.6 }, TODAY);
+	assert.equal(days.daysPerWeek, 5);
+	assert.ok(!days.assumptions.includes('days_per_week_clamped'));
+	const weeks = validatePlanInputs({ weeks: 11.6 }, TODAY);
+	assert.equal(weeks.weeks, 12);
+	assert.ok(!weeks.assumptions.includes('weeks_clamped'));
 });
 
 test('weeks is an integer clamped to the wizard band; a missing or non-positive value is null', () => {

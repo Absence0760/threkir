@@ -182,14 +182,15 @@ export function validatePlanInputs(raw: unknown, todayIso: string): PlanRequestI
 	} else {
 		const rounded = Math.round(rawDays);
 		daysPerWeek = Math.min(MAX_DAYS_PER_WEEK, Math.max(MIN_DAYS_PER_WEEK, rounded));
-		if (daysPerWeek !== rawDays) assumptions.push('days_per_week_clamped');
+		if (daysPerWeek !== rounded) assumptions.push('days_per_week_clamped');
 	}
 
 	let weeks: number | null = null;
 	const rawWeeks = finiteNumber(o.weeks);
 	if (rawWeeks !== null && rawWeeks > 0) {
-		weeks = Math.min(MAX_PLAN_WEEKS, Math.max(MIN_PLAN_WEEKS, Math.round(rawWeeks)));
-		if (weeks !== rawWeeks) assumptions.push('weeks_clamped');
+		const roundedWeeks = Math.round(rawWeeks);
+		weeks = Math.min(MAX_PLAN_WEEKS, Math.max(MIN_PLAN_WEEKS, roundedWeeks));
+		if (weeks !== roundedWeeks) assumptions.push('weeks_clamped');
 	}
 
 	const raceDate = validRaceDate(o.race_date, todayIso);

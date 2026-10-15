@@ -368,6 +368,7 @@ cm.Run runFromWatchPayload(Map<String, dynamic> raw) {
           speedMps: _finiteOrNull(p['speedMps']),
           speedAccuracyMps: _finiteOrNull(p['speedAccuracyMps']),
           bearingDeg: _finiteOrNull(p['bearingDeg']),
+          cumulativeDistanceMetres: _finiteOrNull(p['distM']),
         ));
       }
     }

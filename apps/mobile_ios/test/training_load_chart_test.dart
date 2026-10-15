@@ -209,6 +209,14 @@ void main() {
       expect(trainingLoadTickStep(double.nan), greaterThan(0));
     });
 
+    test('never steps below 1, so whole-number labels stay distinct', () {
+      // One 10 s run gives a near-zero load and a ~2-wide padded axis; a
+      // 0.5 step labelled -1, -0, 0, 1, 1 once tick.round() was applied.
+      for (final span in [0.01, 0.4, 1.0, 2.3, 3.9]) {
+        expect(trainingLoadTickStep(span), greaterThanOrEqualTo(1));
+      }
+    });
+
     test('keeps the tick count at or under the cap', () {
       for (final span in [3.0, 9.0, 37.0, 128.0, 501.0, 4321.0]) {
         final step = trainingLoadTickStep(span);

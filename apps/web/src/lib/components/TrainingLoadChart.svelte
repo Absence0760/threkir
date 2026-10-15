@@ -70,7 +70,11 @@
 		const mag = 10 ** Math.floor(Math.log10(raw));
 		const norm = raw / mag;
 		const mult = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10;
-		return mult * mag;
+		// Labels are whole numbers and double as the keyed-each key, so a
+		// sub-1 step (a near-zero load, e.g. one 10 s run) rounds two ticks
+		// to the same value: -0.5 and 0 both key as 0 and Svelte throws,
+		// taking the whole dashboard down with it.
+		return Math.max(1, mult * mag);
 	}
 
 	let ticks = $derived.by(() => {

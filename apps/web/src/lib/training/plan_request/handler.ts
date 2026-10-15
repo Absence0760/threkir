@@ -68,6 +68,11 @@ export interface PlanRequestModelClient {
 }
 
 export interface PlanRequestConfig {
+	/// The server half of the `PUBLIC_AI_PLAN_ENABLED` prod gate (decisions
+	/// § 1930). Hiding the box is not enough on its own: without this, any
+	/// caller holding v3 consent could spend the operator's key and the Coach
+	/// counter while the feature is meant to be off.
+	enabled: boolean;
 	anthropicApiKey: string | undefined;
 	publicSupabaseUrl: string;
 	publicSupabaseAnonKey: string;
@@ -216,6 +221,8 @@ export async function handlePlanRequest(
 	rawBody: unknown,
 	config: PlanRequestConfig,
 ): Promise<PlanRequestResult> {
+	if (!config.enabled) return json(503, { error: 'plan assistant unavailable' });
+
 	const input = parseInput(rawBody);
 	if (!input) return json(400, { error: 'invalid plan request' });
 
@@ -334,13 +341,23 @@ export async function handlePlanRequest(
 		const inputs: PlanRequestInputs = validatePlanInputs(toolUse.input, today);
 		return json(200, { inputs });
 	} catch (e) {
-		// Normalised to { message, stack }: the SDK's error object carries the
-		// response body, and for a 400 that body can quote the runner's text.
-		console.error('[plan-request] provider call failed', {
-			message: thrownMessage(e),
-			stack: e instanceof Error ? e.stack : undefined,
-		});
+		// Status and type only. An Anthropic APIError's `message` is the status
+		// followed by the response body, and a 400 body can quote the runner's
+		// text, so neither the message nor the stack (which repeats it) is logged.
+		console.error('[plan-request] provider call failed', { ...providerErrorFields(e) });
 		await refundSlot('provider_error');
 		return json(503, { error: 'plan assistant unavailable' });
 	}
+}
+
+/// The loggable part of a provider failure: never the message, which for an
+/// SDK APIError embeds the response body.
+export function providerErrorFields(e: unknown): Record<string, unknown> {
+	if (!e || typeof e !== 'object') return { kind: typeof e };
+	const o = e as { name?: unknown; status?: unknown; error?: { error?: { type?: unknown } } };
+	return {
+		name: typeof o.name === 'string' ? o.name : 'unknown',
+		status: typeof o.status === 'number' ? o.status : null,
+		type: typeof o.error?.error?.type === 'string' ? o.error.error.type : null,
+	};
 }

@@ -18,6 +18,7 @@ import {
 	resolveToday,
 	type PlanRequestConfig,
 	type PlanRequestModelClient,
+	providerErrorFields,
 } from './handler';
 import { validatePlanInputs } from './inputs';
 
@@ -27,6 +28,7 @@ const VALID = { request: 'a sub-2 half on 14 March, 4 days a week' };
 
 function baseConfig(): PlanRequestConfig {
 	return {
+		enabled: true,
 		anthropicApiKey: 'sk-ant-test-FAKE-KEY-NEVER-USED',
 		publicSupabaseUrl: 'http://127.0.0.1:24321',
 		publicSupabaseAnonKey: 'sb_publishable_fake_local_anon_key',
@@ -113,6 +115,35 @@ function toolMessage(input: unknown) {
 }
 
 // ───────────────────────── input + auth ─────────────────────────
+
+test('a disabled assistant is a 503 before auth, consent or the counter', async () => {
+	let clientBuilt = false;
+	const result = await handlePlanRequest(
+		'Bearer x',
+		{ request: 'a half in march' },
+		{
+			...baseConfig(),
+			enabled: false,
+			createClient: () => {
+				clientBuilt = true;
+				throw new Error('must not build a client');
+			},
+		},
+	);
+	assert.equal(result.status, 503);
+	assert.equal(clientBuilt, false);
+});
+
+test('a provider error is logged by status and type, never by its message', () => {
+	const err = Object.assign(new Error('400 {"error":{"message":"quoted: my secret runner text"}}'), {
+		status: 400,
+		error: { error: { type: 'invalid_request_error' } },
+	});
+	const fields = providerErrorFields(err);
+	assert.deepEqual(fields, { name: 'Error', status: 400, type: 'invalid_request_error' });
+	assert.ok(!JSON.stringify(fields).includes('runner text'));
+	assert.deepEqual(providerErrorFields('boom'), { kind: 'string' });
+});
 
 test('returns 400 when the body has no usable request string', async () => {
 	for (const body of [null, {}, { request: 42 }, { request: '   ' }, 'text']) {

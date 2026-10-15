@@ -7,7 +7,8 @@
 // `/api/coach/route-request/+server.ts`.
 
 import type { RequestHandler } from './$types';
-import { PUBLIC_SUPABASE_ANON_KEY, PUBLIC_SUPABASE_URL } from '$app/env/public';
+import { PUBLIC_AI_PLAN_ENABLED, PUBLIC_SUPABASE_ANON_KEY, PUBLIC_SUPABASE_URL } from '$app/env/public';
+import { isTruthyFlagValue } from '#lib/core/env_flag.ts';
 import { ANTHROPIC_API_KEY, BYPASS_PAYWALL, NODE_ENV } from '$app/env/private';
 import { handlePlanRequest } from '#lib/training/plan_request/handler.ts';
 import { checkBodyByteLimit, PLAN_REQUEST_BODY_LIMIT_BYTES } from '#lib/coach/body.ts';
@@ -51,6 +52,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		request.headers.get('x-supabase-authorization'),
 		rawBody,
 		{
+			enabled: isTruthyFlagValue(PUBLIC_AI_PLAN_ENABLED),
 			anthropicApiKey: ANTHROPIC_API_KEY,
 			publicSupabaseUrl: PUBLIC_SUPABASE_URL,
 			publicSupabaseAnonKey: PUBLIC_SUPABASE_ANON_KEY,

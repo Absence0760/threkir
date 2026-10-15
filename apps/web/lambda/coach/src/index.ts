@@ -23,6 +23,7 @@ import type { CoachConfig } from '../../../src/lib/coach/types';
 import { handleRouteDescribe } from '../../../src/lib/routes/route_describe/handler';
 import { handleRouteRequest } from '../../../src/lib/routes/route_request/handler';
 import { handlePlanRequest } from '../../../src/lib/training/plan_request/handler';
+import { isTruthyFlagValue } from '../../../src/lib/core/env_flag';
 import { methodRefusal, type MethodRefusal } from '../../../src/lib/core/method_gate';
 
 const ALLOWED_METHODS = ['POST'] as const;
@@ -382,6 +383,7 @@ async function dispatchPlanRequest(
 		event.headers?.['X-Supabase-Authorization'] ??
 		null;
 	const result = await handlePlanRequest(authHeader, rawBody, {
+		enabled: isTruthyFlagValue(process.env.AI_PLAN_ENABLED),
 		anthropicApiKey: (await loadSecrets()).ANTHROPIC_API_KEY,
 		publicSupabaseUrl: requireEnv('PUBLIC_SUPABASE_URL'),
 		publicSupabaseAnonKey: requireEnv('PUBLIC_SUPABASE_ANON_KEY'),

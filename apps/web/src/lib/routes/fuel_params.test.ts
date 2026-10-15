@@ -9,6 +9,8 @@ import {
 	parseFuelDurationS,
 	parseFuelHandoff,
 	parseFuelRate,
+	resolveFluidRate,
+	resolveFuelRate,
 } from './fuel_params';
 
 test('a plain rate within the ceiling is read and rounded to a whole unit', () => {
@@ -54,14 +56,46 @@ test('a typed clock duration reads H:MM and H:MM:SS and refuses anything else', 
 
 test('parseFuelHandoff validates each parameter on its own', () => {
 	const ok = parseFuelHandoff(new URLSearchParams('duration=9000&carbs=70&fluid=600&heat=1'));
-	assert.deepEqual(ok, { durationS: 9000, carbsPerHourG: 70, fluidPerHourMl: 600, heat: true });
+	assert.deepEqual(ok, { durationS: 9000, carbsPerHourG: 70, fluidPerHourMl: 600, heat: true, useWeight: false });
 	// One bad value does not poison the others.
 	const mixed = parseFuelHandoff(new URLSearchParams('duration=9000&carbs=900&fluid=abc&heat=yes'));
-	assert.deepEqual(mixed, { durationS: 9000, carbsPerHourG: null, fluidPerHourMl: null, heat: false });
+	assert.deepEqual(mixed, { durationS: 9000, carbsPerHourG: null, fluidPerHourMl: null, heat: false, useWeight: false });
+	assert.equal(parseFuelHandoff(new URLSearchParams('bw=1')).useWeight, true);
+	assert.equal(parseFuelHandoff(new URLSearchParams('bw=true')).useWeight, false);
 	assert.deepEqual(parseFuelHandoff(new URLSearchParams('')), {
 		durationS: null,
 		carbsPerHourG: null,
 		fluidPerHourMl: null,
 		heat: false,
+		useWeight: false,
+	});
+});
+
+test('a rate resolves link first, then the saved pref, then the default, and says which', () => {
+	assert.deepEqual(resolveFuelRate(70, 60, 60), { value: 70, source: 'fromLink' });
+	assert.deepEqual(resolveFuelRate(null, 80, 60), { value: 80, source: 'fromSettings' });
+	assert.deepEqual(resolveFuelRate(null, null, 60), { value: 60, source: 'fromDefault' });
+	assert.deepEqual(resolveFuelRate(null, -5, 60), { value: 60, source: 'fromDefault' });
+});
+
+test('fluid uses the weight-based rate only when opted in and a weight is usable', () => {
+	const base = { linkValue: 600, pref: 500, fallback: 500 };
+	assert.deepEqual(resolveFluidRate({ ...base, useWeight: true, weightKg: 90 }), {
+		value: 650,
+		source: 'fromWeight',
+	});
+	// Not opted in: the weight is ignored even when present.
+	assert.deepEqual(resolveFluidRate({ ...base, useWeight: false, weightKg: 90 }), {
+		value: 600,
+		source: 'fromLink',
+	});
+	// Opted in without a usable (consented) weight: the flat rate stands.
+	assert.deepEqual(resolveFluidRate({ ...base, useWeight: true, weightKg: null }), {
+		value: 600,
+		source: 'fromLink',
+	});
+	assert.deepEqual(resolveFluidRate({ ...base, linkValue: null, useWeight: true, weightKg: 400 }), {
+		value: 500,
+		source: 'fromSettings',
 	});
 });

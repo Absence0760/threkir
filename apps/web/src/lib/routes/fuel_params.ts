@@ -1,3 +1,5 @@
+import { weightFluidPerHourMl } from './fuel_plan';
+
 /**
  * The fuelling plan's URL inputs, validated. Both fuelling surfaces read them
  * from the address bar — the roadbook's `?carbs=` / `?fluid=` overrides and
@@ -58,6 +60,8 @@ export interface FuelHandoff {
 	carbsPerHourG: number | null;
 	fluidPerHourMl: number | null;
 	heat: boolean;
+	/** `?bw=1`: the runner asked for the weight-based fluid rate. */
+	useWeight: boolean;
 }
 
 /** Every fuelling input a link can carry, each validated on its own. */
@@ -67,5 +71,38 @@ export function parseFuelHandoff(params: URLSearchParams): FuelHandoff {
 		carbsPerHourG: parseFuelRate(params.get('carbs'), FUEL_MAX_CARBS_PER_HOUR_G),
 		fluidPerHourMl: parseFuelRate(params.get('fluid'), FUEL_MAX_FLUID_PER_HOUR_ML),
 		heat: params.get('heat') === '1',
+		useWeight: params.get('bw') === '1',
 	};
+}
+
+export type FuelRateSource = 'fromWeight' | 'fromLink' | 'fromSettings' | 'fromDefault';
+
+export interface FuelRate {
+	value: number;
+	source: FuelRateSource;
+}
+
+/** A rate a link carries, else the runner's saved one, else the default. */
+export function resolveFuelRate(linkValue: number | null, pref: number | null, fallback: number): FuelRate {
+	if (linkValue != null) return { value: linkValue, source: 'fromLink' };
+	if (pref != null && Number.isFinite(pref) && pref >= 0) return { value: pref, source: 'fromSettings' };
+	return { value: fallback, source: 'fromDefault' };
+}
+
+/**
+ * The per-hour fluid rate: the weight-based baseline when the runner opted in
+ * AND a usable weight is on record (decisions § 1976), otherwise the flat rate
+ * by `resolveFuelRate`. `weightKg` must already have passed the Art 9 gate
+ * (`healthUseWeightKg`); this function does not see consent.
+ */
+export function resolveFluidRate(opts: {
+	useWeight: boolean;
+	weightKg: number | null;
+	linkValue: number | null;
+	pref: number | null;
+	fallback: number;
+}): FuelRate {
+	const fromWeight = opts.useWeight ? weightFluidPerHourMl(opts.weightKg) : null;
+	if (fromWeight != null) return { value: fromWeight, source: 'fromWeight' };
+	return resolveFuelRate(opts.linkValue, opts.pref, opts.fallback);
 }

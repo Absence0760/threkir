@@ -10,6 +10,9 @@
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { loadSettings, effective } from '#lib/settings/settings.ts';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { fetchLatestWeightKg } from '#lib/core/data.ts';
+	import { healthUseWeightKg } from '#lib/core/health_consent.ts';
 	import { coachFuelEnabled } from '#lib/nutrition/coach_fuel_flag.ts';
 	import {
 		buildFuelPlan,
@@ -22,15 +25,19 @@
 		FUEL_MAX_CARBS_PER_HOUR_G,
 		FUEL_MAX_FLUID_PER_HOUR_ML,
 		parseClockDurationS,
-		parseFuelHandoff
+		parseFuelHandoff,
+		resolveFluidRate,
+		resolveFuelRate,
+		type FuelRateSource
 	} from '#lib/routes/fuel_params.ts';
-
-	type RateSource = 'fromLink' | 'fromSettings' | 'fromDefault';
 
 	const enabled = coachFuelEnabled();
 
 	let carbsPrefG = $state<number | null>(null);
 	let fluidPrefMl = $state<number | null>(null);
+	// A weight the Art 9 gate lets the fluid rate use, or null (decisions
+	// § 1976). Read only for the signed-in runner's own record.
+	let consentedWeightKg = $state<number | null>(null);
 
 	$effect(() => {
 		if (enabled) void loadPrefs();
@@ -40,9 +47,14 @@
 		await auth.ready();
 		if (!auth.user) return;
 		try {
-			const settings = await loadSettings(auth.user.id);
+			const [settings, weight, profileRes] = await Promise.all([
+				loadSettings(auth.user.id),
+				fetchLatestWeightKg(),
+				supabase.rpc('get_my_profile', undefined, { get: true }).maybeSingle(),
+			]);
 			carbsPrefG = effective<number>(settings, 'carbs_per_hour') ?? null;
 			fluidPrefMl = effective<number>(settings, 'fluid_per_hour') ?? null;
+			consentedWeightKg = healthUseWeightKg(profileRes.data, weight);
 		} catch (e) {
 			// The defaults still give a plan; the source label says which rate
 			// the totals used, so a failed read is visible rather than silent.
@@ -52,14 +64,16 @@
 
 	const handoff = $derived(parseFuelHandoff(page.url.searchParams));
 
-	function rate(fromLink: number | null, pref: number | null, fallback: number) {
-		if (fromLink != null) return { value: fromLink, source: 'fromLink' as RateSource };
-		if (pref != null && pref >= 0) return { value: pref, source: 'fromSettings' as RateSource };
-		return { value: fallback, source: 'fromDefault' as RateSource };
-	}
-
-	const carbs = $derived(rate(handoff.carbsPerHourG, carbsPrefG, DEFAULT_CARBS_PER_HOUR_G));
-	const fluid = $derived(rate(handoff.fluidPerHourMl, fluidPrefMl, DEFAULT_FLUID_PER_HOUR_ML));
+	const carbs = $derived(resolveFuelRate(handoff.carbsPerHourG, carbsPrefG, DEFAULT_CARBS_PER_HOUR_G));
+	const fluid = $derived(
+		resolveFluidRate({
+			useWeight: handoff.useWeight,
+			weightKg: consentedWeightKg,
+			linkValue: handoff.fluidPerHourMl,
+			pref: fluidPrefMl,
+			fallback: DEFAULT_FLUID_PER_HOUR_ML
+		})
+	);
 
 	const plan = $derived(
 		handoff.durationS == null
@@ -100,7 +114,8 @@
 		updateParam(key, (e.currentTarget as HTMLInputElement).value.trim() || null);
 	}
 
-	function sourceLabel(source: RateSource): string {
+	function sourceLabel(source: FuelRateSource): string {
+		if (source === 'fromWeight') return m('fuelPlan.sourceWeight');
 		if (source === 'fromLink') return m('fuelPlan.sourceLink');
 		if (source === 'fromSettings') return m('fuelPlan.sourceSettings');
 		return m('fuelPlan.sourceDefault');
@@ -154,6 +169,7 @@
 						max={FUEL_MAX_FLUID_PER_HOUR_ML}
 						inputmode="numeric"
 						value={fluid.value}
+						disabled={fluid.source === 'fromWeight'}
 						onchange={(e) => onRateChange('fluid', e)}
 						data-testid="fuel-fluid-rate"
 					/>
@@ -169,6 +185,20 @@
 				/>
 				{m('fuelPlan.heat', { factor: String(HEAT_FLUID_FACTOR) })}
 			</label>
+			<label class="heat-toggle">
+				<input
+					type="checkbox"
+					checked={handoff.useWeight}
+					disabled={consentedWeightKg == null}
+					aria-describedby="fuel-weight-hint"
+					onchange={(e) => updateParam('bw', (e.currentTarget as HTMLInputElement).checked ? '1' : null)}
+					data-testid="fuel-weight"
+				/>
+				{m('fuelPlan.weightToggle')}
+			</label>
+			<p class="section-hint" id="fuel-weight-hint" data-testid="fuel-weight-hint">
+				{consentedWeightKg == null ? m('fuelPlan.weightUnavailable') : m('fuelPlan.weightHint')}
+			</p>
 		</section>
 
 		{#if plan == null}

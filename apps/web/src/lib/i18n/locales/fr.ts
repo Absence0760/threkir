@@ -2322,6 +2322,8 @@ export const messages = {
 	"coachingAthlete.recentRuns": "Courses récentes",
 	"coachingAthlete.noRunsYet": "Aucune course enregistrée pour l'instant.",
 	"coachingAthlete.privateRunTooltip": "Course privée — visible par toi en tant que coach",
+	"coachingAthlete.runMapLabel": "Carte de la sortie du {date}, sans les zones de confidentialité de l'athlète",
+	"coachingAthlete.mapsClippedNote": "Les cartes omettent les zones que cet athlète masque avec ses zones de confidentialité.",
 	"coachingAthlete.private": "Privée",
 	"coachingAthlete.assignTitle": "Attribuer un plan",
 	"coachingAthlete.assignHint": "Copiez l'un de vos plans dans le compte de {name} comme plan actif. Il pourra le modifier ou le remplacer.",

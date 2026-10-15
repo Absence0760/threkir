@@ -2317,6 +2317,8 @@ export const messages = {
 	"coachingAthlete.recentRuns": "最近のラン",
 	"coachingAthlete.noRunsYet": "まだランが記録されていません。",
 	"coachingAthlete.privateRunTooltip": "非公開のラン — コーチであるあなたには表示されます",
+	"coachingAthlete.runMapLabel": "{date}のランの地図（アスリートのプライバシーゾーンを除く）",
+	"coachingAthlete.mapsClippedNote": "地図には、このアスリートがプライバシーゾーンで非表示にしている範囲は含まれません。",
 	"coachingAthlete.private": "非公開",
 	"coachingAthlete.assignTitle": "プランを割り当てる",
 	"coachingAthlete.assignHint": "あなたのプランを{name}さんのアカウントにアクティブなプランとしてコピーします。本人が編集・変更できます。",

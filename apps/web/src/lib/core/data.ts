@@ -10264,6 +10264,10 @@ export interface AthleteRunSummary {
 	route_id: string | null;
 	activity_type: string;
 	metadata: Record<string, unknown> | null;
+	/// Whether the run carries a GPS track. Only the fact: the path is not
+	/// kept, and the coach's map is served clipped by `clip-public-track`
+	/// (decisions § 1968), never read from Storage.
+	has_track: boolean;
 }
 
 export async function fetchAthleteRuns(
@@ -10273,7 +10277,7 @@ export async function fetchAthleteRuns(
 	if (!auth.user?.id || !athleteId) return [];
 	const { data, error } = await supabase
 		.from(TABLES.runs)
-		.select('id, started_at, distance_m, duration_s, is_public, source, route_id, activity_type, metadata')
+		.select('id, started_at, distance_m, duration_s, is_public, source, route_id, activity_type, metadata, track_url')
 		.eq('user_id', athleteId)
 		.order('started_at', { ascending: false })
 		.limit(limit);
@@ -10288,7 +10292,31 @@ export async function fetchAthleteRuns(
 		route_id: (r.route_id as string | null) ?? null,
 		activity_type: (r.activity_type as string | null) ?? 'run',
 		metadata: (r.metadata as Record<string, unknown> | null) ?? null,
+		has_track: r.track_url != null,
 	}));
+}
+
+/// Whether a linked coach is served the athlete's clipped run map (the
+/// server's `coach_run_map` flag, decisions § 1968). Fail-closed: a read
+/// failure is "off" and is not cached, so a later mount can find out.
+let coachRunMapProbe: Promise<boolean> | null = null;
+export function coachRunMapEnabled(): Promise<boolean> {
+	if (coachRunMapProbe) return coachRunMapProbe;
+	const probe = (async () => {
+		try {
+			const { data, error } = await supabase.rpc('coach_run_map_enabled', undefined, { get: true });
+			if (error) {
+				coachRunMapProbe = null;
+				return false;
+			}
+			return data === true;
+		} catch {
+			coachRunMapProbe = null;
+			return false;
+		}
+	})();
+	coachRunMapProbe = probe;
+	return probe;
 }
 
 /// The athlete's active training plan + per-workout compliance for the

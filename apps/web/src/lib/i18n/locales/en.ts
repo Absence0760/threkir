@@ -2335,6 +2335,8 @@ export const en = {
 	"coachingAthlete.recentRuns": "Recent runs",
 	"coachingAthlete.noRunsYet": "No runs recorded yet.",
 	"coachingAthlete.privateRunTooltip": "Private run — visible to you as their coach",
+	"coachingAthlete.runMapLabel": "Map of the run on {date}, with the athlete's privacy zones removed",
+	"coachingAthlete.mapsClippedNote": "Maps leave out the areas this athlete hides with privacy zones.",
 	"coachingAthlete.private": "Private",
 	"coachingAthlete.assignTitle": "Assign a plan",
 	"coachingAthlete.assignHint": "Copy one of your plans into {name}'s account as their active plan. They can edit or replace it.",

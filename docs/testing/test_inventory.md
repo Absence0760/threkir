@@ -313,6 +313,10 @@ Covers the `_trySync` loop on `SyncService` via the new `@visibleForTesting debu
 
 **start / stop (2 tests):** `start()` registers as a binding observer, fires the startup `_trySync`, and routes subsequent lifecycle events through the observer. `stop()` removes the observer so further binding-level resume events don't fire syncs.
 
+### `apps/mobile_android/test/foreign_row_cleanup_test.dart` — 15 tests
+
+The one-time foreign-row reconcile ([decisions § 1929](../architecture/decisions.md)). `planForeignRows` as a pure function: an owned row is kept synced or not; a synced row the owned set lacks is dropped unless bookmarked or pinned; an unsynced row is never dropped for being absent from the server, is dropped when the server names another owner, and keeps its row but loses its push when kept; a failed owned read or no account plans nothing. `ForeignRowCleanup` against real run and route stores in a temp dir and a fake server: foreign synced rows go durably while owned, bookmarked, pinned and offline-built rows stay; a starred club route is no longer pushed (and refused) by the `SyncService` cycle that runs it; a failed read deletes nothing and is not marked; a failure retries on the next launch, not on every sync; the marker stops a second run and is per account; signed out it reads and marks nothing.
+
 ### `apps/mobile_android/test/local_route_store_test.dart` — 65 tests
 
 Persistence tests for `LocalRouteStore` mirroring the `local_run_store_test.dart` pattern — `init(overrideDirectory: ...)` with a tempDir, real file I/O, no mocks. Covers init (directory creation, non-`.json` file filtering, corrupt-file tolerance), save (file write, round-trip across fresh instances, replace-on-same-id, newest-first ordering, single-listener-call invariant), `saveBatch` (parallel write + single notify, empty-iterable no-op, overlapping-id replace), `delete` (disk + memory + unknown-id), the unmodifiable `routes` view, and the **offline pin** group (15 tests) — `pinOffline` / `unpinOffline` idempotency, listener notification, sidecar round-trip across cold start, delete clears the pin, unmodifiable views, pin-without-route is allowed and surfaces when the route lands; pin survives saveBatch overwrite of the same id; concurrent pin/unpin pairs serialise correctly and the sidecar matches in-memory; tolerates a corrupt-JSON / wrong-shape / mixed-types sidecar on cold start without crashing; 100-pin round-trip stays well under 2 s and survives cold start intact. The local-only flag semantics are pinned by `decisions.md § 64`.
@@ -2787,9 +2791,9 @@ The Dart half of the pair above, same cases, same evaluator.
 
 Two `collectStravaDedupeSet` cases rewritten for the walk: 2,500 runs over three cursor-filtered pages, the first unfiltered; an error page ends the walk without throwing.
 
-### `packages/api_client/test/keyset_walks_source_test.dart` — 8 tests at run time
+### `packages/api_client/test/keyset_walks_source_test.dart` — 14 tests at run time
 
-Replaces `paged_read_test.dart` with `readAllPages`. No `.range()` or `readAllPages` in the client; `_walk` filters after the cursor and sorts by `_orderBy(q, order)`; and each of `fetchRunRowsRaw`, `fetchRouteRowsRaw`, `getRouteReviews`, `fetchEventAttendees`, `fetchCheckpointCrossings` and `fetchExerciseCatalogue` walks its named `KeysetKey` order, which must end on a unique column.
+Replaces `paged_read_test.dart` with `readAllPages`. No `.range()` or `readAllPages` in the client; `_walk` filters after the cursor and sorts by `_orderBy(q, order)`; and each of `fetchRunRowsRaw`, `fetchRouteRowsRaw`, `getRouteReviews`, `fetchEventAttendees`, `fetchCheckpointCrossings`, `fetchExerciseCatalogue`, `fetchOwnedRunIds` and `fetchOwnedRouteIds` walks its named `KeysetKey` order, which must end on a unique column. The three owned-id readers the foreign-row reconcile leans on ([decisions § 1929](../architecture/decisions.md)) — those two and `fetchSavedRouteIds`, which walks `_savedRouteIdOrder` on `route_id` alone — filter by the caller explicitly and never `.limit(` the read.
 
 ### `apps/mobile_android/test/social_attendees_walk_test.dart` — 1 test
 

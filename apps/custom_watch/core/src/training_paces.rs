@@ -262,8 +262,12 @@ mod tests {
             (f64::NAN, Some(1200.0), None),
         ];
         for (distance, goal, recent) in cases {
-            let got =
-                resolve_training_paces_with_meta(anchor(distance, goal, recent, TrainingGender::None));
+            let got = resolve_training_paces_with_meta(anchor(
+                distance,
+                goal,
+                recent,
+                TrainingGender::None,
+            ));
             assert!(got.is_fallback, "{distance} {goal:?} {recent:?}");
             assert_eq!(got.paces, fallback.paces, "{distance} {goal:?} {recent:?}");
         }

@@ -132,6 +132,41 @@ Future<void> _pump(
 void main() {
   setUpAll(_ensureSupabase);
 
+  group('coachPlanAdjustWebUri', () {
+    const id = '11111111-2222-4333-8444-555555555555';
+
+    test('opens the web plan page carrying only the change request', () {
+      final uri = coachPlanAdjustWebUri(
+          '/plans/$id?adjust=Move%20my%20long%20run%20to%20Sunday&x=1',
+          'https://threkir.com/');
+      expect(uri, isNotNull);
+      expect(uri!.host, 'threkir.com');
+      expect(uri.path, '/plans/$id');
+      expect(uri.queryParameters, {'adjust': 'Move my long run to Sunday'});
+    });
+
+    test('anything else is not a plan-edit link', () {
+      for (final href in [
+        '/plans/$id',
+        '/plans/$id?adjust=%20',
+        '/plans/new?adjust=x',
+        '/plans/not-a-uuid?adjust=x',
+        'https://evil.example/plans/$id?adjust=x',
+        '//evil.example/plans/$id?adjust=x',
+        '/plans/$id/edit?adjust=x',
+      ]) {
+        expect(coachPlanAdjustWebUri(href, 'https://threkir.com'), isNull,
+            reason: href);
+      }
+    });
+
+    test('a non-web base never becomes a launch target', () {
+      expect(
+          coachPlanAdjustWebUri('/plans/$id?adjust=x', 'javascript:alert(1)'),
+          isNull);
+    });
+  });
+
   group('coachPlanLinkDescription', () {
     test('reads a decoded description off a /plans/new link', () {
       expect(

@@ -503,8 +503,7 @@ func pathForKind(kind, base string, n NotificationRow) string {
 		// go to the plan's OWNER (notify_plan_update notifies the owner of an
 		// edit someone else made; notify_plan_assigned notifies the athlete,
 		// who owns the assigned plan), so the owner-scoped detail page is
-		// correct for each — the /runs/{id} trap that caught run_completed
-		// doesn't apply here.
+		// correct for each.
 		return planPath(base, n)
 	case "message":
 		return base + "/messages"
@@ -521,10 +520,12 @@ func pathForKind(kind, base string, n NotificationRow) string {
 		// audience admits.
 		return runPath(base, n)
 	case "run_completed":
-		// Fires on a followee's run, so the recipient is NOT the owner —
-		// /runs/{id} fetches owner-scoped and renders "run not found" for
-		// them. The public share page is the only run surface a non-owner
-		// can read, matching notificationLinkFor on web.
+		// Fires on a followee's run, so the recipient is NOT the owner, and
+		// only on a public one (notify_run_completed skips is_public false).
+		// The anon-readable public share page renders it for anyone, signed
+		// in or not, matching notificationLinkFor on web. /runs/{id} would
+		// also serve it — a public run gets that page's non-owner branch
+		// since issue #666 — but that view needs a session.
 		return sharedRunPath(base, n)
 	case "follow":
 		// The recipient's own profile (/u/{id}), where their followers are

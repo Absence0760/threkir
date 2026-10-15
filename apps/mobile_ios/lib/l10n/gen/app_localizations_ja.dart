@@ -772,6 +772,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get youProfileTitle => 'あなたのプロフィール';
 
   @override
+  String get youViewProfile => 'プロフィールを見る';
+
+  @override
   String get logSheetTitle => '記録';
 
   @override
@@ -1099,7 +1102,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get homeTodaysLift => '今日の筋トレ';
 
   @override
-  String get settingsSectionProfile => 'プロフィール';
+  String get settingsSectionTraining => 'トレーニング';
+
+  @override
+  String get settingsSectionSettings => '設定';
 
   @override
   String get settingsSectionAppsData => 'アプリとデータ';
@@ -9938,9 +9944,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get settingsBackendNotConfigured => 'バックエンドが構成されていません';
-
-  @override
-  String get settingsAccountSignedIn => 'サインイン済み';
 
   @override
   String get settingsDevicesSignedOutSubtitle => 'サインインすると、サインイン中のデバイスを確認できます';

@@ -795,6 +795,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get youProfileTitle => 'Your profile';
 
   @override
+  String get youViewProfile => 'View profile';
+
+  @override
   String get logSheetTitle => 'Log';
 
   @override
@@ -1134,7 +1137,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeTodaysLift => 'Today\'s lift';
 
   @override
-  String get settingsSectionProfile => 'Profile';
+  String get settingsSectionTraining => 'Training';
+
+  @override
+  String get settingsSectionSettings => 'Settings';
 
   @override
   String get settingsSectionAppsData => 'Apps & data';
@@ -10355,9 +10361,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsBackendNotConfigured => 'Backend not configured';
-
-  @override
-  String get settingsAccountSignedIn => 'Signed in';
 
   @override
   String get settingsDevicesSignedOutSubtitle =>

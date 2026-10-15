@@ -1373,6 +1373,12 @@ abstract class AppLocalizations {
   /// **'Your profile'**
   String get youProfileTitle;
 
+  /// Second line of the You tab's identity header, under the runner's name; tapping the header opens their own profile
+  ///
+  /// In en, this message translates to:
+  /// **'View profile'**
+  String get youViewProfile;
+
   /// Title of the Log capture bottom sheet
   ///
   /// In en, this message translates to:
@@ -1961,11 +1967,17 @@ abstract class AppLocalizations {
   /// **'Today\'s lift'**
   String get homeTodaysLift;
 
-  /// Settings landing section header grouping Account + Preferences
+  /// Section header on the You tab above coaching and guided runs
   ///
   /// In en, this message translates to:
-  /// **'Profile'**
-  String get settingsSectionProfile;
+  /// **'Training'**
+  String get settingsSectionTraining;
+
+  /// Section header on the You tab above Account, Preferences and Safety contacts
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get settingsSectionSettings;
 
   /// Settings landing section header grouping Integrations + Devices + Gear
   ///
@@ -17162,12 +17174,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Backend not configured'**
   String get settingsBackendNotConfigured;
-
-  /// Account settings tile subtitle shown when signed in but no email address is available
-  ///
-  /// In en, this message translates to:
-  /// **'Signed in'**
-  String get settingsAccountSignedIn;
 
   /// Devices settings tile subtitle shown when signed out
   ///

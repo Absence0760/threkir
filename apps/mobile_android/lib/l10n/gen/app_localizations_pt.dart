@@ -804,6 +804,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get youProfileTitle => 'O seu perfil';
 
   @override
+  String get youViewProfile => 'Ver perfil';
+
+  @override
   String get logSheetTitle => 'Registar';
 
   @override
@@ -1148,7 +1151,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get homeTodaysLift => 'Treino de hoje';
 
   @override
-  String get settingsSectionProfile => 'Perfil';
+  String get settingsSectionTraining => 'Treino';
+
+  @override
+  String get settingsSectionSettings => 'Definições';
 
   @override
   String get settingsSectionAppsData => 'Apps e dados';
@@ -10472,9 +10478,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get settingsBackendNotConfigured => 'Backend não configurado';
 
   @override
-  String get settingsAccountSignedIn => 'Conectado';
-
-  @override
   String get settingsDevicesSignedOutSubtitle =>
       'Inicie sessão para ver onde tem sessão iniciada';
 
@@ -16504,6 +16507,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get youProfileTitle => 'Seu perfil';
 
   @override
+  String get youViewProfile => 'Ver perfil';
+
+  @override
   String get logSheetTitle => 'Registrar';
 
   @override
@@ -16848,7 +16854,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get homeTodaysLift => 'Treino de hoje';
 
   @override
-  String get settingsSectionProfile => 'Perfil';
+  String get settingsSectionTraining => 'Treino';
+
+  @override
+  String get settingsSectionSettings => 'Configurações';
 
   @override
   String get settingsSectionAppsData => 'Apps e dados';
@@ -26161,9 +26170,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get settingsBackendNotConfigured => 'Backend não configurado';
-
-  @override
-  String get settingsAccountSignedIn => 'Conectado';
 
   @override
   String get settingsDevicesSignedOutSubtitle =>

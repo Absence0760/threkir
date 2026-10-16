@@ -862,6 +862,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
       endDate: toIsoDate(p.endDate),
       goalDistanceM: p.goalDistanceM,
       goalTimeSec: p.goalTimeSeconds,
+      trimmedAt: p.trimmedAt,
       workouts: [for (final w in allWorkouts) PlanRaceWorkout.fromRow(w)],
     );
     return ListView(

@@ -2,7 +2,12 @@ import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { nextRace, planRaces } from './plan_races';
 
-const plan = { end_date: '2027-06-13', goal_distance_m: 91000, goal_time_seconds: 39600 };
+const plan = {
+	end_date: '2027-06-13',
+	goal_distance_m: 91000,
+	goal_time_seconds: 39600,
+	trimmed_at: null
+};
 const twoOceans = {
 	id: 'w-two-oceans',
 	scheduled_date: '2027-04-04',
@@ -106,6 +111,20 @@ test('nextRace: returns the first race on or after today, counting race day itse
 	assert.equal(nextRace(races, '2027-04-04')?.workoutId, 'w-two-oceans');
 	assert.equal(nextRace(races, '2027-04-05')?.workoutId, 'w-comrades');
 	assert.equal(nextRace(races, '2027-06-13')?.workoutId, 'w-comrades');
+});
+
+test('planRaces: a trimmed plan has no implicit end-date race', () => {
+	const trimmed = { ...plan, trimmed_at: '2027-03-01T09:00:00+00:00' };
+	const races = planRaces(trimmed, [twoOceans, longRun]);
+	assert.deepEqual(
+		races.map((r) => r.workoutId),
+		['w-two-oceans']
+	);
+	assert.deepEqual(planRaces(trimmed, [longRun]), []);
+	const withRace = planRaces(trimmed, [comrades]);
+	assert.equal(withRace.length, 1);
+	assert.equal(withRace[0].workoutId, 'w-comrades');
+	assert.equal(withRace[0].priority, 'A');
 });
 
 test('nextRace: returns null after the last race', () => {

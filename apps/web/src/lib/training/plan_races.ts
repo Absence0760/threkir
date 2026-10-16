@@ -15,7 +15,12 @@ export type PlanRace = {
 	workoutId: string | null;
 };
 
-type RacePlan = { end_date: string; goal_distance_m: number; goal_time_seconds: number | null };
+type RacePlan = {
+	end_date: string;
+	goal_distance_m: number;
+	goal_time_seconds: number | null;
+	trimmed_at: string | null;
+};
 
 type RaceWorkout = {
 	id: string;
@@ -35,7 +40,10 @@ function parseRacePriority(value: string | null | undefined): RacePriority | nul
 /// unset priority is A on the plan's end date and C anywhere else; the
 /// end-date race falls back to the plan goal for a missing distance or goal
 /// time. A plan with no race workout on its end date gets a synthetic A race
-/// there from the plan goal, so a plan without race rows still has its race.
+/// there from the plan goal, so a plan without race rows still has its race —
+/// unless the plan was ended early (`trimmed_at`, migration 20270830000003):
+/// its end date is then the day it was cut short, not a race day, and the goal
+/// race no longer happens inside it.
 export function planRaces(plan: RacePlan, workouts: RaceWorkout[]): PlanRace[] {
 	const races: PlanRace[] = [];
 	let endDateCovered = false;
@@ -52,7 +60,7 @@ export function planRaces(plan: RacePlan, workouts: RaceWorkout[]): PlanRace[] {
 			workoutId: w.id
 		});
 	}
-	if (!endDateCovered) {
+	if (!endDateCovered && !plan.trimmed_at) {
 		races.push({
 			date: plan.end_date,
 			name: null,

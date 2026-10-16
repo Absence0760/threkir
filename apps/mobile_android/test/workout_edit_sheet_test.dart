@@ -12,6 +12,7 @@ class _FakeTraining extends TrainingService {
     double? targetDistanceM,
     int? targetPaceSecPerKm,
     String? notes,
+    PlanWorkoutRaceFields? race,
   })? lastUpdate;
   Object? errorToThrow;
 
@@ -22,6 +23,7 @@ class _FakeTraining extends TrainingService {
     double? targetDistanceM,
     int? targetPaceSecPerKm,
     String? notes,
+    PlanWorkoutRaceFields? race,
   }) async {
     if (errorToThrow != null) throw errorToThrow!;
     lastUpdate = (
@@ -30,6 +32,7 @@ class _FakeTraining extends TrainingService {
       targetDistanceM: targetDistanceM,
       targetPaceSecPerKm: targetPaceSecPerKm,
       notes: notes,
+      race: race,
     );
   }
 }

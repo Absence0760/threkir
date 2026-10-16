@@ -38,6 +38,51 @@ class ActivePlanOverview {
   });
 }
 
+/// The race fields of a `race` plan workout, written together by
+/// [TrainingService.updateWorkout]. A null [priority] leaves it to
+/// `planRaces` (A on the plan's end date, C elsewhere).
+typedef PlanWorkoutRaceFields = ({
+  String? name,
+  String? priority,
+  int? goalTimeSec,
+});
+
+/// The `plan_workouts` patch [TrainingService.updateWorkout] sends. A null
+/// argument leaves its column alone, except inside [race]: that writes the
+/// race name, priority and goal time as given, nulls included. A [kind]
+/// other than `race` clears the race name and priority instead, since the
+/// table allows them only on race rows (23514 otherwise). [notes] is
+/// trimmed and an empty result nulls the column, matching web's
+/// `updatePlanWorkout`.
+Map<String, dynamic> planWorkoutPatch({
+  String? kind,
+  double? targetDistanceM,
+  int? targetPaceSecPerKm,
+  String? notes,
+  PlanWorkoutRaceFields? race,
+}) {
+  final patch = <String, dynamic>{};
+  if (kind != null) patch[PlanWorkoutRow.colKind] = kind;
+  if (kind != null && kind != 'race') {
+    patch[PlanWorkoutRow.colRaceName] = null;
+    patch[PlanWorkoutRow.colRacePriority] = null;
+  } else if (race != null) {
+    patch[PlanWorkoutRow.colRaceName] = TrainingService.trimToNull(race.name);
+    patch[PlanWorkoutRow.colRacePriority] = race.priority;
+    patch[PlanWorkoutRow.colTargetDurationSeconds] = race.goalTimeSec;
+  }
+  if (targetDistanceM != null) {
+    patch[PlanWorkoutRow.colTargetDistanceM] = targetDistanceM;
+  }
+  if (targetPaceSecPerKm != null) {
+    patch[PlanWorkoutRow.colTargetPaceSecPerKm] = targetPaceSecPerKm;
+  }
+  if (notes != null) {
+    patch[PlanWorkoutRow.colNotes] = TrainingService.trimToNull(notes);
+  }
+  return patch;
+}
+
 /// What creating a plan does to the active plans its window overlaps.
 /// [replace] marks them completed; [trim] ends the one plan that started
 /// before the new plan on the day before it starts (`trim_training_plan`).
@@ -335,6 +380,8 @@ class TrainingService extends ChangeNotifier {
         'target_pace_tolerance_sec': w.targetPaceToleranceSec,
         'structure': w.structure,
         'notes': w.notes,
+        'race_name': w.raceName,
+        'race_priority': w.racePriority,
       });
     }
     if (workoutPayload.isNotEmpty) {
@@ -501,6 +548,8 @@ class TrainingService extends ChangeNotifier {
         'target_pace_tolerance_sec': w.targetPaceToleranceSec,
         'structure': w.structure,
         'notes': w.notes,
+        'race_name': w.raceName,
+        'race_priority': w.racePriority,
       });
     }
     if (workoutPayload.isNotEmpty) {
@@ -1026,30 +1075,24 @@ class TrainingService extends ChangeNotifier {
     );
   }
 
-  /// Patch the editable fields on a planned workout. Pass any subset
-  /// of [kind], [targetDistanceM], [targetPaceSecPerKm], [notes].
-  /// Server-side RLS scopes writes to the plan owner.
+  /// Patch the editable fields on a planned workout; see
+  /// [planWorkoutPatch] for what each argument writes. Server-side RLS
+  /// scopes writes to the plan owner.
   Future<void> updateWorkout(
     String workoutId, {
     String? kind,
     double? targetDistanceM,
     int? targetPaceSecPerKm,
     String? notes,
+    PlanWorkoutRaceFields? race,
   }) async {
-    final patch = <String, dynamic>{};
-    if (kind != null) patch[PlanWorkoutRow.colKind] = kind;
-    if (targetDistanceM != null) {
-      patch[PlanWorkoutRow.colTargetDistanceM] = targetDistanceM;
-    }
-    if (targetPaceSecPerKm != null) {
-      patch[PlanWorkoutRow.colTargetPaceSecPerKm] = targetPaceSecPerKm;
-    }
-    if (notes != null) {
-      // Match `createPlan` + web's `updatePlanWorkout` — trim and
-      // collapse empty-after-trim to null so clearing a workout's
-      // notes via the inline editor actually nulls the column.
-      patch[PlanWorkoutRow.colNotes] = _trimToNull(notes);
-    }
+    final patch = planWorkoutPatch(
+      kind: kind,
+      targetDistanceM: targetDistanceM,
+      targetPaceSecPerKm: targetPaceSecPerKm,
+      notes: notes,
+      race: race,
+    );
     if (patch.isEmpty) return;
     await _c.from(PlanWorkoutRow.table).update(patch).eq('id', workoutId);
     notifyListeners();

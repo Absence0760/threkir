@@ -6239,6 +6239,83 @@ class AppLocalizationsPt extends AppLocalizations {
       'Outro plano ativo abrange agora estas datas. Verifique os seus planos e tente novamente.';
 
   @override
+  String get planDetailDuplicateWeekOverlap =>
+      'Duplicar esta semana faria o plano entrar nas datas de outro plano ativo. Desloque ou termine primeiro esse plano.';
+
+  @override
+  String get planNewImportButton => 'Importar um plano';
+
+  @override
+  String get planImportTitle => 'Importar um plano';
+
+  @override
+  String get planImportIntro =>
+      'Cole um plano exportado da app web, ou uma tabela com as colunas Week, Date e Type. Carregue-o para verificar as semanas antes de o criar.';
+
+  @override
+  String get planImportPasteLabel => 'Tabela do plano ou JSON';
+
+  @override
+  String get planImportLoad => 'Carregar';
+
+  @override
+  String planImportParseError(String detail) {
+    return 'Não foi possível ler esse plano: $detail';
+  }
+
+  @override
+  String planImportPreviewDates(String start, String end) {
+    return '$start a $end';
+  }
+
+  @override
+  String planImportPreviewCounts(int weeks, int workouts) {
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '$weeks semanas',
+      one: '$weeks semana',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      workouts,
+      locale: localeName,
+      other: '$workouts treinos',
+      one: '$workouts treino',
+    );
+    return '$_temp0 · $_temp1';
+  }
+
+  @override
+  String planImportPreviewWeek(int week, int workouts) {
+    String _temp0 = intl.Intl.pluralLogic(
+      workouts,
+      locale: localeName,
+      other: '$workouts treinos',
+      one: '$workouts treino',
+    );
+    return 'Semana $week: $_temp0';
+  }
+
+  @override
+  String planImportPreviewRace(String name, String date) {
+    return 'Prova: $name, $date';
+  }
+
+  @override
+  String get planImportPreviewRaceUnnamed => 'Prova sem nome';
+
+  @override
+  String get planImportCreate => 'Criar plano';
+
+  @override
+  String get planImportCreateFailed =>
+      'Não foi possível criar o plano. Verifique a sua ligação e tente novamente.';
+
+  @override
+  String get planOverlapLookupFailed =>
+      'Não foi possível verificar os seus planos ativos para estas datas. Verifique a sua ligação e tente novamente.';
+
+  @override
   String get planNewStarterC25k => 'Couch to 5K (iniciante caminhada-corrida)';
 
   @override
@@ -6333,6 +6410,41 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get planDetailAdjustAdaptiveDesc =>
       'Olha para as suas últimas três semanas terminadas e sugere alterações quando pelo menos duas ficaram acima ou abaixo do plano, para que uma semana atípica não mexa no seu plano. Use quando anda desviado do plano há algum tempo.';
+
+  @override
+  String get planDetailRaceTaper => 'Polimento em torno das provas B/C';
+
+  @override
+  String get planDetailAdjustRaceTaperDesc =>
+      'Alivia os dias antes de cada próxima prova B ou C e os dias a seguir, para que a corra descansado e recupere antes de o treino voltar a aumentar. A sua prova A e o respetivo polimento ficam como estão.';
+
+  @override
+  String get planDetailRaceTaperNone =>
+      'Nenhuma prova B ou C próxima precisa de polimento.';
+
+  @override
+  String get planDetailRaceTaperPreviewTitle =>
+      'Polimento e recuperação propostos';
+
+  @override
+  String planDetailRaceTaperPre(String change, String race) {
+    return '$change — polimento para $race';
+  }
+
+  @override
+  String planDetailRaceTaperShakeout(String change, String race) {
+    return '$change — corrida de ativação antes de $race';
+  }
+
+  @override
+  String planDetailRaceTaperPost(String change, String race) {
+    return '$change — recuperação depois de $race';
+  }
+
+  @override
+  String planDetailHeroNextRace(String name) {
+    return 'Próxima prova: $name';
+  }
 
   @override
   String get planDetailAdjustPauseDesc =>
@@ -22582,6 +22694,83 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Outro plano ativo agora cobre estas datas. Confira seus planos e tente de novo.';
 
   @override
+  String get planDetailDuplicateWeekOverlap =>
+      'Duplicar esta semana empurraria o plano para as datas de outro plano ativo. Antes, mova ou encerre esse plano.';
+
+  @override
+  String get planNewImportButton => 'Importar um plano';
+
+  @override
+  String get planImportTitle => 'Importar um plano';
+
+  @override
+  String get planImportIntro =>
+      'Cole um plano exportado do app web, ou uma tabela com as colunas Week, Date e Type. Carregue-o para conferir as semanas antes de criá-lo.';
+
+  @override
+  String get planImportPasteLabel => 'Tabela do plano ou JSON';
+
+  @override
+  String get planImportLoad => 'Carregar';
+
+  @override
+  String planImportParseError(String detail) {
+    return 'Não foi possível ler esse plano: $detail';
+  }
+
+  @override
+  String planImportPreviewDates(String start, String end) {
+    return '$start a $end';
+  }
+
+  @override
+  String planImportPreviewCounts(int weeks, int workouts) {
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '$weeks semanas',
+      one: '$weeks semana',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      workouts,
+      locale: localeName,
+      other: '$workouts treinos',
+      one: '$workouts treino',
+    );
+    return '$_temp0 · $_temp1';
+  }
+
+  @override
+  String planImportPreviewWeek(int week, int workouts) {
+    String _temp0 = intl.Intl.pluralLogic(
+      workouts,
+      locale: localeName,
+      other: '$workouts treinos',
+      one: '$workouts treino',
+    );
+    return 'Semana $week: $_temp0';
+  }
+
+  @override
+  String planImportPreviewRace(String name, String date) {
+    return 'Prova: $name, $date';
+  }
+
+  @override
+  String get planImportPreviewRaceUnnamed => 'Prova sem nome';
+
+  @override
+  String get planImportCreate => 'Criar plano';
+
+  @override
+  String get planImportCreateFailed =>
+      'Não foi possível criar o plano. Verifique sua conexão e tente novamente.';
+
+  @override
+  String get planOverlapLookupFailed =>
+      'Não foi possível verificar seus planos ativos para estas datas. Verifique sua conexão e tente novamente.';
+
+  @override
   String get planNewStarterC25k => 'Couch to 5K (iniciante caminhada-corrida)';
 
   @override
@@ -22676,6 +22865,41 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get planDetailAdjustAdaptiveDesc =>
       'Olha para as suas últimas três semanas concluídas e sugere mudanças quando pelo menos duas ficaram acima ou abaixo do plano, para que uma semana atípica não mexa no seu plano. Use quando você está desviado do plano há um tempo.';
+
+  @override
+  String get planDetailRaceTaper => 'Polimento para provas B/C';
+
+  @override
+  String get planDetailAdjustRaceTaperDesc =>
+      'Alivia os dias antes de cada prova B ou C futura e os dias depois dela, para você correr descansado e se recuperar antes de o treino voltar a apertar. Sua prova A e o polimento dela continuam como estão.';
+
+  @override
+  String get planDetailRaceTaperNone =>
+      'Nenhuma prova B ou C futura precisa de polimento.';
+
+  @override
+  String get planDetailRaceTaperPreviewTitle =>
+      'Polimento e recuperação propostos';
+
+  @override
+  String planDetailRaceTaperPre(String change, String race) {
+    return '$change — polimento para $race';
+  }
+
+  @override
+  String planDetailRaceTaperShakeout(String change, String race) {
+    return '$change — trote de soltura antes de $race';
+  }
+
+  @override
+  String planDetailRaceTaperPost(String change, String race) {
+    return '$change — recuperação depois de $race';
+  }
+
+  @override
+  String planDetailHeroNextRace(String name) {
+    return 'Próxima prova: $name';
+  }
 
   @override
   String get planDetailAdjustPauseDesc =>

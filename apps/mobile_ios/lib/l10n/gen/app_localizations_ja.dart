@@ -5892,6 +5892,79 @@ class AppLocalizationsJa extends AppLocalizations {
       'この期間には別のアクティブなプランが入っています。プランを確認して、もう一度お試しください。';
 
   @override
+  String get planDetailDuplicateWeekOverlap =>
+      'この週を複製すると、プランが別のアクティブなプランの期間に重なります。先にそのプランを移動するか終了してください。';
+
+  @override
+  String get planNewImportButton => 'プランをインポート';
+
+  @override
+  String get planImportTitle => 'プランをインポート';
+
+  @override
+  String get planImportIntro =>
+      'ウェブアプリからエクスポートしたプラン、またはWeek、Date、Typeの列がある表を貼り付けてください。読み込むと、作成する前に各週を確認できます。';
+
+  @override
+  String get planImportPasteLabel => 'プランの表またはJSON';
+
+  @override
+  String get planImportLoad => '読み込む';
+
+  @override
+  String planImportParseError(String detail) {
+    return 'このプランを読み取れませんでした: $detail';
+  }
+
+  @override
+  String planImportPreviewDates(String start, String end) {
+    return '$start〜$end';
+  }
+
+  @override
+  String planImportPreviewCounts(int weeks, int workouts) {
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '$weeks週間',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      workouts,
+      locale: localeName,
+      other: 'ワークアウト$workouts件',
+    );
+    return '$_temp0 · $_temp1';
+  }
+
+  @override
+  String planImportPreviewWeek(int week, int workouts) {
+    String _temp0 = intl.Intl.pluralLogic(
+      workouts,
+      locale: localeName,
+      other: 'ワークアウト$workouts件',
+    );
+    return '第$week週: $_temp0';
+  }
+
+  @override
+  String planImportPreviewRace(String name, String date) {
+    return 'レース: $name、$date';
+  }
+
+  @override
+  String get planImportPreviewRaceUnnamed => '名前のないレース';
+
+  @override
+  String get planImportCreate => 'プランを作成';
+
+  @override
+  String get planImportCreateFailed => 'プランを作成できませんでした。接続を確認してもう一度お試しください。';
+
+  @override
+  String get planOverlapLookupFailed =>
+      'この期間のアクティブなプランを確認できませんでした。接続を確認してもう一度お試しください。';
+
+  @override
   String get planNewStarterC25k => 'カウチ・トゥ・5K（初心者ウォークラン）';
 
   @override
@@ -5984,6 +6057,39 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get planDetailAdjustAdaptiveDesc =>
       '直近で終了した3週間を見て、2週間以上が計画を上回るか下回っていた場合に変更を提案します。1週間だけの例外で計画が動かないようにするためです。しばらく計画から外れているときに使います。';
+
+  @override
+  String get planDetailRaceTaper => 'B/Cレース前後のテーパリング';
+
+  @override
+  String get planDetailAdjustRaceTaperDesc =>
+      '今後のBレース・Cレースそれぞれの前の数日と後の数日を軽くし、疲れのない状態でレースに臨み、トレーニングが再び強まる前に回復できるようにします。Aレースとそのテーパリングはそのままです。';
+
+  @override
+  String get planDetailRaceTaperNone => 'テーパリングが必要な今後のBレース・Cレースはありません。';
+
+  @override
+  String get planDetailRaceTaperPreviewTitle => 'テーパリングと回復の変更案';
+
+  @override
+  String planDetailRaceTaperPre(String change, String race) {
+    return '$change — $raceに向けたテーパリング';
+  }
+
+  @override
+  String planDetailRaceTaperShakeout(String change, String race) {
+    return '$change — $race前の軽い調整ラン';
+  }
+
+  @override
+  String planDetailRaceTaperPost(String change, String race) {
+    return '$change — $race後の回復';
+  }
+
+  @override
+  String planDetailHeroNextRace(String name) {
+    return '次のレース: $name';
+  }
 
   @override
   String get planDetailAdjustPauseDesc =>

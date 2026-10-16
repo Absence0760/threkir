@@ -8405,39 +8405,66 @@
   "@planImportParseError": {
     "description": "Error under the paste box when the pasted plan can't be parsed; detail is the parser's (English) reason, e.g. a bad date on one row",
     "placeholders": {
-      "detail": {"type": "String", "example": "Bad date \"07/05/2026\" — use YYYY-MM-DD."}
+      "detail": {
+        "type": "String",
+        "example": "Bad date \"07/05/2026\" — use YYYY-MM-DD."
+      }
     }
   },
   "planImportPreviewDates": "{start} to {end}",
   "@planImportPreviewDates": {
     "description": "Date range of the imported plan in the preview",
     "placeholders": {
-      "start": {"type": "String", "example": "28 Mar 2027"},
-      "end": {"type": "String", "example": "13 Jun 2027"}
+      "start": {
+        "type": "String",
+        "example": "28 Mar 2027"
+      },
+      "end": {
+        "type": "String",
+        "example": "13 Jun 2027"
+      }
     }
   },
   "planImportPreviewCounts": "{weeks, plural, one{1 week} other{{weeks} weeks}} · {workouts, plural, one{1 workout} other{{workouts} workouts}}",
   "@planImportPreviewCounts": {
     "description": "How many weeks and workouts the pasted plan holds, in the import preview",
     "placeholders": {
-      "weeks": {"type": "int", "example": "12"},
-      "workouts": {"type": "int", "example": "60"}
+      "weeks": {
+        "type": "int",
+        "example": "12"
+      },
+      "workouts": {
+        "type": "int",
+        "example": "60"
+      }
     }
   },
   "planImportPreviewWeek": "Week {week}: {workouts, plural, one{1 workout} other{{workouts} workouts}}",
   "@planImportPreviewWeek": {
     "description": "One line per week in the import preview",
     "placeholders": {
-      "week": {"type": "int", "example": "3"},
-      "workouts": {"type": "int", "example": "5"}
+      "week": {
+        "type": "int",
+        "example": "3"
+      },
+      "workouts": {
+        "type": "int",
+        "example": "5"
+      }
     }
   },
   "planImportPreviewRace": "Race: {name}, {date}",
   "@planImportPreviewRace": {
     "description": "One line per race workout in the import preview",
     "placeholders": {
-      "name": {"type": "String", "example": "Two Oceans Ultra"},
-      "date": {"type": "String", "example": "4 Apr 2027"}
+      "name": {
+        "type": "String",
+        "example": "Two Oceans Ultra"
+      },
+      "date": {
+        "type": "String",
+        "example": "4 Apr 2027"
+      }
     }
   },
   "planImportPreviewRaceUnnamed": "Unnamed race",

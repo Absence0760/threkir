@@ -10210,6 +10210,96 @@ abstract class AppLocalizations {
   /// **'Another active plan now covers these dates. Check your plans and try again.'**
   String get planOverlapConflict;
 
+  /// Banner when duplicating a plan week is refused because the extra week would overlap another active plan
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicating this week would push the plan into another active plan\'s dates. Move or end that plan first.'**
+  String get planDetailDuplicateWeekOverlap;
+
+  /// Button on the new-plan screen that opens the plan import sheet (paste a plan table or JSON export)
+  ///
+  /// In en, this message translates to:
+  /// **'Import a plan'**
+  String get planNewImportButton;
+
+  /// Title of the plan import sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Import a plan'**
+  String get planImportTitle;
+
+  /// Explainer under the plan import sheet title. 'Week', 'Date' and 'Type' are the table column names the parser reads; keep them in English
+  ///
+  /// In en, this message translates to:
+  /// **'Paste a plan exported from the web app, or a table with Week, Date and Type columns. Load it to check the weeks before you create it.'**
+  String get planImportIntro;
+
+  /// Label of the multi-line text box the runner pastes a plan into
+  ///
+  /// In en, this message translates to:
+  /// **'Plan table or JSON'**
+  String get planImportPasteLabel;
+
+  /// Button that parses the pasted plan and shows a preview
+  ///
+  /// In en, this message translates to:
+  /// **'Load'**
+  String get planImportLoad;
+
+  /// Error under the paste box when the pasted plan can't be parsed; detail is the parser's (English) reason, e.g. a bad date on one row
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t read that plan: {detail}'**
+  String planImportParseError(String detail);
+
+  /// Date range of the imported plan in the preview
+  ///
+  /// In en, this message translates to:
+  /// **'{start} to {end}'**
+  String planImportPreviewDates(String start, String end);
+
+  /// How many weeks and workouts the pasted plan holds, in the import preview
+  ///
+  /// In en, this message translates to:
+  /// **'{weeks, plural, one{1 week} other{{weeks} weeks}} · {workouts, plural, one{1 workout} other{{workouts} workouts}}'**
+  String planImportPreviewCounts(int weeks, int workouts);
+
+  /// One line per week in the import preview
+  ///
+  /// In en, this message translates to:
+  /// **'Week {week}: {workouts, plural, one{1 workout} other{{workouts} workouts}}'**
+  String planImportPreviewWeek(int week, int workouts);
+
+  /// One line per race workout in the import preview
+  ///
+  /// In en, this message translates to:
+  /// **'Race: {name}, {date}'**
+  String planImportPreviewRace(String name, String date);
+
+  /// Stands in for a race workout with no name in the import preview
+  ///
+  /// In en, this message translates to:
+  /// **'Unnamed race'**
+  String get planImportPreviewRaceUnnamed;
+
+  /// Button that creates the previewed imported plan
+  ///
+  /// In en, this message translates to:
+  /// **'Create plan'**
+  String get planImportCreate;
+
+  /// Error in the import sheet when creating the imported plan fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t create the plan. Check your connection and try again.'**
+  String get planImportCreateFailed;
+
+  /// Error when creating or cloning a plan cannot first read the runner's active plans to check for overlapping dates; nothing is created
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t check your active plans for these dates. Check your connection and try again.'**
+  String get planOverlapLookupFailed;
+
   /// Built-in starter plan name
   ///
   /// In en, this message translates to:
@@ -10365,6 +10455,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Looks at your last three finished weeks and suggests changes when at least two were over or under plan, so one odd week doesn\'t move your plan. Use it when you\'ve been off plan for a while.'**
   String get planDetailAdjustAdaptiveDesc;
+
+  /// Plan-detail adjust-plan dialog: option that proposes a mini-taper and recovery around the plan's B and C races
+  ///
+  /// In en, this message translates to:
+  /// **'Taper around B/C races'**
+  String get planDetailRaceTaper;
+
+  /// Plan-detail adjust-plan dialog: description of the B/C race taper option
+  ///
+  /// In en, this message translates to:
+  /// **'Eases the days before each upcoming B or C race and the days after it, so you race it fresh and recover before training picks up. Your A race and its taper stay as they are.'**
+  String get planDetailAdjustRaceTaperDesc;
+
+  /// Plan-detail banner when the B/C race taper finds nothing to change
+  ///
+  /// In en, this message translates to:
+  /// **'No upcoming B or C race needs a taper.'**
+  String get planDetailRaceTaperNone;
+
+  /// Plan-detail heading of the B/C race taper preview
+  ///
+  /// In en, this message translates to:
+  /// **'Proposed taper and recovery'**
+  String get planDetailRaceTaperPreviewTitle;
+
+  /// Plan-detail race taper preview row for a session eased in the days before a B/C race. change is e.g. 'Intervals 10.0 km → Easy 6.5 km'; race is the race name or date
+  ///
+  /// In en, this message translates to:
+  /// **'{change} — taper for {race}'**
+  String planDetailRaceTaperPre(String change, String race);
+
+  /// Plan-detail race taper preview row for a session cut to a short easy shakeout in the 2 days before a B race
+  ///
+  /// In en, this message translates to:
+  /// **'{change} — shakeout before {race}'**
+  String planDetailRaceTaperShakeout(String change, String race);
+
+  /// Plan-detail race taper preview row for a session eased in the recovery days after a B/C race
+  ///
+  /// In en, this message translates to:
+  /// **'{change} — recovery after {race}'**
+  String planDetailRaceTaperPost(String change, String race);
+
+  /// Plan-detail hero line naming the next race the hero's distance, goal and date now describe (a B or C race before the plan's A race)
+  ///
+  /// In en, this message translates to:
+  /// **'Next race: {name}'**
+  String planDetailHeroNextRace(String name);
 
   /// Plan-detail adjust-plan dialog
   ///

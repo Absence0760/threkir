@@ -6252,6 +6252,42 @@ export async function resumePlan(id: string, userId: string): Promise<void> {
 	await updatePlanStatus(id, 'active');
 }
 
+/// The signed-in user's active plans, for checking a date shift against the
+/// plans around it (plan_shift.ts) before it runs.
+export async function fetchMyActivePlanWindows(): Promise<
+	Pick<TrainingPlan, 'id' | 'name' | 'start_date' | 'end_date'>[]
+> {
+	const { data: { session } } = await supabase.auth.getSession();
+	const userId = session?.user?.id;
+	if (!userId) return [];
+	const { data, error } = await supabase
+		.from('training_plans')
+		.select('id, name, start_date, end_date')
+		.eq('user_id', userId)
+		.eq('status', 'active')
+		.order('start_date', { ascending: true });
+	if (error) throw dbError(error);
+	return data ?? [];
+}
+
+/// Move a plan's workouts and dates by `days` in one transaction
+/// (shift_training_plan). With `shiftFollowing`, the active plans queued after
+/// it move by the same days. A shift that would overlap another active plan
+/// fails whole with a PlanOverlapError and nothing moves.
+export async function shiftTrainingPlan(
+	planId: string,
+	days: number,
+	shiftFollowing: boolean
+): Promise<void> {
+	markListsStale('plans');
+	const { error } = await supabase.rpc('shift_training_plan', {
+		p_plan_id: planId,
+		p_days: days,
+		p_shift_following: shiftFollowing
+	});
+	if (error) throw dbError(error);
+}
+
 export async function markWorkoutCompleted(
 	workoutId: string,
 	runId: string | null,

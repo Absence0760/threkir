@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
+	import { isPlanOverlapError, thrownMessage } from '#lib/core/supabase_error.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { onMount, tick } from 'svelte';
 	import { afterNavigate, replaceState } from '$app/navigation';
@@ -14,13 +14,15 @@
 		fetchMyPublishedPlans,
 		updatePlanWorkout,
 		updatePlanWeek,
-		updatePlanMeta,
 		duplicatePlanWeek,
+		fetchMyActivePlanWindows,
+		shiftTrainingPlan,
 		pausePlan,
 		resumePlan,
 		ActivePlanExistsError,
 	} from '#lib/core/data.ts';
-	import { shiftIsoDate, recoveryWorkoutPatch, recoveryWeekVolume } from '#lib/training/plan_bulk_ops.ts';
+	import { recoveryWorkoutPatch, recoveryWeekVolume } from '#lib/training/plan_bulk_ops.ts';
+	import { planShiftImpact } from '#lib/training/plan_shift.ts';
 	import { cyclePlanWorkoutPatch, type CyclePlanConfig } from '#lib/training/cycle_plan.ts';
 	import { isCyclePlansEnabled } from '#lib/training/cycle_plan_flag.ts';
 	import { replanRemaining, type ReplanChange, type ReplanWeek } from '#lib/training/plan_replan.ts';
@@ -84,6 +86,8 @@
 	import { loadSettings, effective } from '#lib/settings/settings.ts';
 	import type { WeekStart } from '#lib/format/calendar.ts';
 	import type { TrainingPlan, PlanWeek, PlanWorkout, ClubWithMeta } from '#lib/types.ts';
+
+	type PlanName = Pick<TrainingPlan, 'id' | 'name' | 'start_date' | 'end_date'>;
 
 	let id = $derived(page.params.id as string);
 	let plan = $state<TrainingPlan | null>(null);
@@ -274,7 +278,7 @@
 	// These three ops rewrite or re-date a chunk of the plan and can't be
 	// cleanly undone, so each routes through a ConfirmDialog before running.
 	let bulkConfirm = $state<
-		| { kind: 'shift' }
+		| { kind: 'shift'; following: PlanName[] }
 		| { kind: 'recovery'; week: PlanWeek }
 		| { kind: 'duplicate'; week: PlanWeek }
 		| { kind: 'cycle' }
@@ -298,11 +302,51 @@
 	let replanPreviewHeading = $state<HTMLHeadingElement>();
 
 	async function chooseConfirmed(
-		c: { kind: 'shift' } | { kind: 'cycle' } | { kind: 'pause' } | { kind: 'resume' },
+		c: { kind: 'cycle' } | { kind: 'pause' } | { kind: 'resume' },
 	): Promise<void> {
 		adjustOpen = false;
 		await tick();
 		bulkConfirm = c;
+	}
+
+	/// Check the shift against the runner's other active plans before asking
+	/// (plan_shift.ts, decisions § 2052). Landing on a plan queued after this
+	/// one turns the confirm into "also move it"; landing on the plan before is
+	/// refused here, since moving that one would rewrite history. A failed check
+	/// asks nothing: the shift is never offered blind.
+	async function chooseShift(): Promise<void> {
+		if (!plan || !shiftDays) return;
+		adjustOpen = false;
+		await tick();
+		let others: PlanName[];
+		try {
+			others = await fetchMyActivePlanWindows();
+		} catch (e) {
+			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+			return;
+		}
+		const impact = planShiftImpact(plan, others, shiftDays);
+		if (impact.kind === 'blocked') {
+			showToast(m('planDetail.shiftBlocked', { plans: planNames(impact.blocking) }), 'error');
+			return;
+		}
+		bulkConfirm = { kind: 'shift', following: impact.kind === 'following' ? impact.following : [] };
+	}
+
+	function planNames(plans: PlanName[]): string {
+		return new Intl.ListFormat(activeFormatLocale(), { type: 'conjunction' }).format(plans.map((p) => p.name));
+	}
+
+	/// A failed plan date write. 23P01 is the only exclusion constraint there
+	/// is (training_plans_active_no_overlap), so it is said in the runner's
+	/// language rather than as the data layer's English.
+	function planWriteFailed(e: unknown): void {
+		showToast(
+			isPlanOverlapError(e)
+				? m('planDetail.planOverlap')
+				: m('planDetail.bulkFailed', { error: thrownMessage(e) }),
+			'error',
+		);
 	}
 
 	async function chooseReplan(propose: () => void): Promise<void> {
@@ -453,7 +497,7 @@
 		const c = bulkConfirm;
 		bulkConfirm = null;
 		if (!c) return;
-		if (c.kind === 'shift') void shiftPlan();
+		if (c.kind === 'shift') void shiftPlan(c.following.length > 0);
 		else if (c.kind === 'recovery') void markWeekRecovery(c.week);
 		else if (c.kind === 'duplicate') void duplicateWeek(c.week);
 		else if (c.kind === 'cycle') void applyCycleAdjustment();
@@ -462,26 +506,17 @@
 	}
 
 	/// Move every workout + the plan's start/end by ±N days (race moved,
-	/// runner started a week late, …). Orchestrated client-side: one
-	/// update per workout then the plan meta; on partial failure the
-	/// reload surfaces the real server state.
-	async function shiftPlan(): Promise<void> {
+	/// runner started a week late, …) in one transaction (shift_training_plan),
+	/// with the plans queued after it when the runner chose to move them too.
+	async function shiftPlan(shiftFollowing: boolean): Promise<void> {
 		if (!plan || bulkBusy || !shiftDays) return;
 		bulkBusy = true;
 		try {
-			await Promise.all(
-				workouts.map((w) =>
-					updatePlanWorkout(w.id, { scheduled_date: shiftIsoDate(w.scheduled_date, shiftDays) }),
-				),
-			);
-			await updatePlanMeta(plan.id, {
-				start_date: shiftIsoDate(plan.start_date, shiftDays),
-				end_date: shiftIsoDate(plan.end_date, shiftDays),
-			});
+			await shiftTrainingPlan(plan.id, shiftDays, shiftFollowing);
 			showToast(m('planDetail.shiftDone', { n: Math.abs(shiftDays) }));
 			await load();
 		} catch (e) {
-			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+			planWriteFailed(e);
 		} finally {
 			bulkBusy = false;
 		}
@@ -523,7 +558,7 @@
 			showToast(m('planDetail.duplicateWeekDone', { n: week.week_index + 1 }));
 			await load();
 		} catch (e) {
-			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+			planWriteFailed(e);
 		} finally {
 			bulkBusy = false;
 		}
@@ -604,7 +639,9 @@
 			showToast(m('planDetail.resumeDone'));
 			await load();
 		} catch (e) {
-			if (e instanceof ActivePlanExistsError) {
+			// The pre-check and the constraint say the same thing; the
+			// constraint catches a plan created between the two.
+			if (e instanceof ActivePlanExistsError || isPlanOverlapError(e)) {
 				showToast(m('planDetail.resumeBlocked'), 'error');
 			} else {
 				showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
@@ -1864,7 +1901,7 @@
 						type="button"
 						class="btn btn-outline btn-sm adjust-option-btn"
 						aria-describedby="adjust-shift-desc"
-						onclick={() => chooseConfirmed({ kind: 'shift' })}
+						onclick={chooseShift}
 						disabled={bulkBusy || !shiftDays}
 					>
 						<span class="material-symbols" aria-hidden="true">date_range</span>
@@ -2002,7 +2039,12 @@
 						? m('planDetail.resumeConfirmTitle')
 						: m('planDetail.duplicateConfirmTitle')}
 	message={bulkConfirm?.kind === 'shift'
-		? m('planDetail.shiftConfirmMessage', { n: Math.abs(shiftDays) })
+		? bulkConfirm.following.length > 0
+			? m('planDetail.shiftFollowingMessage', {
+					n: Math.abs(shiftDays),
+					plans: planNames(bulkConfirm.following),
+				})
+			: m('planDetail.shiftConfirmMessage', { n: Math.abs(shiftDays) })
 		: bulkConfirm?.kind === 'recovery'
 			? m('planDetail.recoveryConfirmMessage', { n: bulkConfirm.week.week_index + 1 })
 			: bulkConfirm?.kind === 'duplicate'
@@ -2016,7 +2058,12 @@
 						: bulkConfirm?.kind === 'resume'
 							? m('planDetail.resumeConfirmMessage')
 							: ''}
-	confirmLabel={m('planDetail.bulkConfirm')}
+	confirmLabel={bulkConfirm?.kind === 'shift' && bulkConfirm.following.length > 0
+		? m('planDetail.shiftAlsoMove', {
+				plans: planNames(bulkConfirm.following),
+				n: Math.abs(shiftDays),
+			})
+		: m('planDetail.bulkConfirm')}
 	cancelLabel={m('planDetail.replanCancel')}
 	onconfirm={runBulkConfirm}
 	oncancel={() => (bulkConfirm = null)}

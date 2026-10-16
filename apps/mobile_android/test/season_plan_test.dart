@@ -200,6 +200,23 @@ void main() {
         56000);
   });
 
+  test('a 56 km and a 90 km A race chain, the first taking the ultra default length',
+      () {
+    final r = _ok(_build([
+      _race('Two Oceans', '2027-04-03', 56000, _a),
+      _race('Comrades', '2027-06-13', 90000, _a),
+    ]));
+    expect([
+      for (final p in r.plans)
+        (p.name, p.goalEvent, p.goalDistanceM, p.weeks, p.startDate, p.endDate)
+    ], [
+      ('Two Oceans', GoalEvent.custom, 56000.0, 16, '2026-12-13', '2027-04-03'),
+      ('Comrades', GoalEvent.custom, 90000.0, 8, '2027-04-25', '2027-06-13'),
+    ]);
+    expect((r.gaps.single.days, r.gaps.single.recoveryDays), (21, 19));
+    expect(_workouts(r.plans[1]).last.targetDistanceM, 90000);
+  });
+
   test(
       'a B race inside a plan becomes a race workout on its date, replacing the generated one',
       () {

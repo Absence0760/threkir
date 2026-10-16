@@ -3,17 +3,20 @@ import 'package:flutter/material.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
+import '../plan_races.dart';
 import '../plan_week.dart';
-import '../training.dart' show toIsoDate;
+import '../training.dart' show parseIsoDate, toIsoDate;
 import '../training_service.dart';
 
-/// The active plan's race day on Home: the plan's name, its race date and how
-/// far away that is. Mirrors the countdown in web `/dashboard`'s plan card; the
+/// The active plan's next race on Home: the race's name (the plan's for the
+/// plan's own end-date race), its date and how far away that is. A plan can
+/// hold several races (`plan_races.dart`), so a B race mid-block gets its
+/// own countdown before the A race at the end. Mirrors the countdown in web `/dashboard`'s plan card; the
 /// day count is the shared `planRaceCountdown` (plan_week pair), so the two
 /// cannot disagree. Races were otherwise reachable only from the Training
 /// tab's peer strip, where Races sat last (decisions § 1954).
 ///
-/// Self-hiding once the race is behind the runner: a countdown to a past date
+/// Self-hiding once the plan's last race is behind the runner: a countdown to a past date
 /// says nothing, and the plan itself is still one tap away under Training.
 class NextRaceCard extends StatelessWidget {
   final ActivePlanOverview overview;
@@ -27,10 +30,27 @@ class NextRaceCard extends StatelessWidget {
     this.onTap,
   });
 
+  /// The first race of [overview]'s plan on or after [now]'s day, or null
+  /// once the last one has passed.
+  static PlanRace? nextRaceFor(ActivePlanOverview overview, DateTime now) {
+    final plan = overview.plan;
+    return nextRace(
+      planRaces(
+        endDate: toIsoDate(plan.endDate),
+        goalDistanceM: plan.goalDistanceM,
+        goalTimeSec: plan.goalTimeSeconds,
+        workouts: [
+          for (final w in overview.workouts) PlanRaceWorkout.fromRow(w),
+        ],
+      ),
+      toIsoDate(now),
+    );
+  }
+
   static PlanRaceCountdown countdownFor(ActivePlanOverview overview, DateTime now) =>
       planRaceCountdown(
         toIsoDate(overview.plan.startDate),
-        toIsoDate(overview.plan.endDate),
+        nextRaceFor(overview, now)?.date ?? toIsoDate(overview.plan.endDate),
         toIsoDate(now),
       );
 
@@ -55,6 +75,9 @@ class NextRaceCard extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final tag = localeToTag(Localizations.localeOf(context));
     final countdown = countdownFor(overview, now);
+    final race = nextRaceFor(overview, now);
+    final raceDate =
+        race == null ? overview.plan.endDate : parseIsoDate(race.date);
     final raceDay = countdown.kind == PlanRaceCountdownKind.raceDay;
     return Card(
       child: InkWell(
@@ -77,7 +100,8 @@ class NextRaceCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      overview.plan.name,
+                      race?.name ?? overview.plan.name,
+                      key: const Key('nextRaceName'),
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
@@ -85,7 +109,7 @@ class NextRaceCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
-                      formatDateMed(overview.plan.endDate, tag),
+                      formatDateMed(raceDate, tag),
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),

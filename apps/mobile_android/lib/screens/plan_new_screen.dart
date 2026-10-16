@@ -23,6 +23,7 @@ import '../training_labels.dart';
 import '../training_service.dart';
 import '../widgets/ai_disclosure_notice.dart';
 import '../widgets/metric_label.dart';
+import '../widgets/plan_overlap_dialog.dart';
 import '../widgets/top_banner.dart';
 import 'plan_detail_screen.dart';
 
@@ -461,49 +462,18 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
     }
   }
 
-  /// Creating any plan auto-completes the runner's existing active plan
-  /// (the one-active-per-user partial unique index — see
-  /// `TrainingService.createPlan` / `clonePlanTemplate`). That retirement is
-  /// silent and feels irreversible — weeks of a current build get marked
-  /// `completed` with no warning. Mirror web's `PlanEditor` gate: before any
-  /// create path runs, if there's an active plan, confirm the swap and show
-  /// its name. Returns true to proceed, false to keep the current plan. A
-  /// best-effort overview fetch that fails (offline) proceeds rather than
-  /// blocking creation — the backend still enforces the invariant.
-  Future<bool> _confirmReplaceActivePlan() async {
-    String? activeName;
-    try {
-      final overview = await widget.training
-          .fetchActiveOverview()
-          .timeout(kBackendLoadTimeout);
-      if (overview == null) return true;
-      activeName = overview.plan.name;
-    } catch (_) {
-      return true;
-    }
-    if (!mounted) return false;
-    final l10n = AppLocalizations.of(context);
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.planNewReplaceActiveTitle),
-        content: Text(activeName != null
-            ? l10n.planNewReplaceActiveNamed(activeName)
-            : l10n.planNewReplaceActiveUnnamed),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l10n.planNewReplaceActiveKeep),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(l10n.planNewReplaceActiveConfirm),
-          ),
-        ],
-      ),
-    );
-    return ok == true;
-  }
+  /// Asks what to do with any active plan the new `[_startDate, endIso]`
+  /// window overlaps — see [confirmPlanOverlap]. Null means keep them and
+  /// don't create.
+  Future<PlanOverlapAction?> _confirmOverlap(String endIso) => confirmPlanOverlap(
+        context,
+        widget.training,
+        startIso: toIsoDate(_startDate),
+        endIso: endIso,
+      );
+
+  String _createError(AppLocalizations l10n, Object e) =>
+      e is ActivePlanExistsError ? l10n.planOverlapConflict : friendlyError(l10n, e);
 
   Future<void> _pickTemplate() async {
     if (_templates.isEmpty || _cloning) return;
@@ -515,9 +485,22 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
       builder: (_) => _TemplatePicker(options: _templates),
     );
     if (picked == null || !mounted) return;
-    if (!await _confirmReplaceActivePlan() || !mounted) return;
+    final action =
+        await _confirmOverlap(clonedPlanEndIso(picked.template, _startDate));
+    if (action == null || !mounted) return;
     setState(() => _cloning = true);
     try {
+      // The clone RPC replaces whatever it overlaps itself, so only a trim
+      // needs a write of its own first.
+      if (action == PlanOverlapAction.trim) {
+        await widget.training
+            .resolvePlanOverlap(
+              startIso: toIsoDate(_startDate),
+              endIso: clonedPlanEndIso(picked.template, _startDate),
+              action: action,
+            )
+            .timeout(kBackendLoadTimeout);
+      }
       final newId = await widget.training
           .clonePlanTemplate(
             templateId: picked.template.id,
@@ -535,7 +518,11 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
       debugPrint('Template clone failed: $e');
       if (mounted) {
         setState(() => _cloning = false);
-        showTopBanner(context, l10n.planNewTemplateCloneFailed);
+        showTopBanner(
+            context,
+            e is ActivePlanExistsError
+                ? l10n.planOverlapConflict
+                : l10n.planNewTemplateCloneFailed);
       }
     }
   }
@@ -568,7 +555,8 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
     if (picked == null || !mounted) return;
     final generated = instantiateStarter(picked.id, _startDate, age: _viewerAge);
     if (generated == null) return;
-    if (!await _confirmReplaceActivePlan() || !mounted) return;
+    final action = await _confirmOverlap(toIsoDate(generated.endDate));
+    if (action == null || !mounted) return;
     setState(() => _creatingStarter = true);
     try {
       final plan = await widget.training
@@ -579,6 +567,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
             startDate: _startDate,
             daysPerWeek: picked.daysPerWeek,
             generated: generated,
+            onOverlap: action,
           )
           .timeout(kBackendLoadTimeout);
       if (!mounted) return;
@@ -592,7 +581,11 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
       debugPrint('Starter plan create failed: $e');
       if (mounted) {
         setState(() => _creatingStarter = false);
-        showTopBanner(context, l10n.planNewStarterCreateFailed);
+        showTopBanner(
+            context,
+            e is ActivePlanExistsError
+                ? l10n.planOverlapConflict
+                : l10n.planNewStarterCreateFailed);
       }
     }
   }
@@ -639,7 +632,8 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
     if (name.isEmpty || _busy) return;
     final preview = _preview();
     if (preview == null) return;
-    if (!await _confirmReplaceActivePlan() || !mounted) return;
+    final action = await _confirmOverlap(toIsoDate(preview.endDate));
+    if (action == null || !mounted) return;
     setState(() {
       _busy = true;
       _error = null;
@@ -654,6 +648,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
         startDate: _startDate,
         daysPerWeek: _daysPerWeek,
         generated: preview,
+        onOverlap: action,
       );
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
@@ -665,7 +660,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
     } catch (e) {
       debugPrint('PlanNewScreen._submit failed: $e');
       if (mounted) {
-        setState(() => _error = friendlyError(AppLocalizations.of(context), e));
+        setState(() => _error = _createError(AppLocalizations.of(context), e));
       }
     } finally {
       if (mounted) setState(() => _busy = false);

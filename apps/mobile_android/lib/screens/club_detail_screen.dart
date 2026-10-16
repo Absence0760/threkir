@@ -20,6 +20,7 @@ import '../local_route_store.dart';
 import '../local_routine_store.dart';
 import '../preferences.dart';
 import '../social_service.dart';
+import '../training.dart' show toIsoDate;
 import '../training_service.dart';
 import '../backend_timeout.dart';
 import '../widgets/activity_waiver_dialog.dart';
@@ -29,6 +30,7 @@ import '../widgets/collapsing_tab_host.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/error_state.dart';
 import '../widgets/event_form_sheet.dart';
+import '../widgets/plan_overlap_dialog.dart';
 import '../widgets/report_sheet.dart';
 import '../widgets/route_track_preview.dart';
 import '../widgets/verified_badge.dart';
@@ -1346,9 +1348,23 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
 
   Future<void> _adoptTemplate(TrainingPlanRow t) async {
     if (_adoptingPlanId != null) return;
+    final today = DateTime.now();
+    final startIso = toIsoDate(today);
+    final endIso = clonedPlanEndIso(t, today);
+    final action = await confirmPlanOverlap(context, widget.training,
+        startIso: startIso, endIso: endIso);
+    if (action == null || !mounted) return;
     setState(() => _adoptingPlanId = t.id);
     try {
-      final newId = await widget.training.clonePlanTemplate(templateId: t.id);
+      // The clone RPC replaces whatever it overlaps itself, so only a trim
+      // needs a write of its own first.
+      if (action == PlanOverlapAction.trim) {
+        await widget.training
+            .resolvePlanOverlap(startIso: startIso, endIso: endIso, action: action)
+            .timeout(kBackendLoadTimeout);
+      }
+      final newId = await widget.training
+          .clonePlanTemplate(templateId: t.id, startDate: today);
       if (!mounted) return;
       showTopBanner(
           context, AppLocalizations.of(context).clubDetailTemplateAdded);

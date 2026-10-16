@@ -10,6 +10,7 @@ import '../training.dart';
 import '../training_service.dart';
 import '../backend_timeout.dart';
 import '../widgets/error_state.dart';
+import '../widgets/plan_overlap_dialog.dart';
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/top_banner.dart';
 import 'plan_detail_screen.dart';
@@ -239,8 +240,20 @@ class _PlanLibraryPreviewScreenState extends State<PlanLibraryPreviewScreen> {
     }
     if (!mounted) return;
     final l10n = AppLocalizations.of(context);
+    final startIso = toIsoDate(_startDate);
+    final endIso = clonedPlanEndIso(widget.entry.plan, _startDate);
+    final action = await confirmPlanOverlap(context, widget.training,
+        startIso: startIso, endIso: endIso);
+    if (action == null || !mounted) return;
     setState(() => _cloning = true);
     try {
+      // The clone RPC replaces whatever it overlaps itself, so only a trim
+      // needs a write of its own first.
+      if (action == PlanOverlapAction.trim) {
+        await widget.training
+            .resolvePlanOverlap(startIso: startIso, endIso: endIso, action: action)
+            .timeout(kBackendLoadTimeout);
+      }
       final newId = await widget.training
           .clonePublicPlan(templateId: widget.entry.plan.id, startDate: _startDate)
           .timeout(kBackendLoadTimeout);
@@ -254,7 +267,11 @@ class _PlanLibraryPreviewScreenState extends State<PlanLibraryPreviewScreen> {
       debugPrint('plan library clone failed: $e');
       if (mounted) {
         setState(() => _cloning = false);
-        showTopBanner(context, l10n.planLibraryCloneFailed(friendlyError(l10n, e)));
+        showTopBanner(
+            context,
+            e is ActivePlanExistsError
+                ? l10n.planOverlapConflict
+                : l10n.planLibraryCloneFailed(friendlyError(l10n, e)));
       }
     }
   }

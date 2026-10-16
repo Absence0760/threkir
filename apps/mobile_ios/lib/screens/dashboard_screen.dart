@@ -61,6 +61,7 @@ import '../widgets/this_week_strip.dart';
 import '../widgets/goal_editor_sheet.dart';
 import '../widgets/todays_workout_card.dart';
 import '../widgets/next_race_card.dart';
+import '../widgets/up_next_plan_card.dart';
 import '../widgets/training_load_chart.dart';
 import 'add_run_screen.dart';
 import 'coach_screen.dart';
@@ -656,16 +657,32 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  /// The active plan's race-day countdown, or null with no active plan or
-  /// once its race day has passed.
+  /// The shown plan's race-day countdown (or "starts in" before it begins),
+  /// with the plan queued after it beneath. Null with neither: no active
+  /// plan, or a race day passed with nothing queued.
   Widget? _nextRaceCard(DateTime now) {
     final p = _planOverview;
-    if (p == null || !NextRaceCard.shows(p, now)) return null;
-    return NextRaceCard(
-      key: const Key('dashboardNextRace'),
-      overview: p,
-      now: now,
-      onTap: _openTodayWorkout,
+    if (p == null) return null;
+    final race = NextRaceCard.shows(p, now)
+        ? NextRaceCard(
+            key: const Key('dashboardNextRace'),
+            overview: p,
+            now: now,
+            onTap: _openTodayWorkout,
+          )
+        : null;
+    final upNext = UpNextPlanCard.shows(p)
+        ? UpNextPlanCard(
+            key: const Key('dashboardUpNextPlan'),
+            overview: p,
+            now: now,
+            onTap: () => _openPlan(p.upcomingPlan!.id),
+          )
+        : null;
+    if (race == null || upNext == null) return race ?? upNext;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [race, const SizedBox(height: 8), upNext],
     );
   }
 
@@ -689,6 +706,16 @@ class _DashboardScreenState extends State<DashboardScreen>
         MaterialPageRoute<void>(
           builder: (_) => CoachScreen(api: api, training: training),
         ),
+      ),
+    );
+  }
+
+  void _openPlan(String planId) {
+    final svc = widget.training;
+    if (svc == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PlanDetailScreen(training: svc, planId: planId),
       ),
     );
   }

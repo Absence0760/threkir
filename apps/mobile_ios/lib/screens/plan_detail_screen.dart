@@ -593,7 +593,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
     } on ActivePlanExistsError {
       if (!mounted) return;
       setState(() => _bulkBusy = false);
-      showTopBanner(context, l10n.planDetailResumeBlocked);
+      showTopBanner(context, l10n.planDetailResumeOverlap);
     } catch (e, s) {
       debugPrint('pause/resume plan failed: $e\n$s');
       if (!mounted) return;

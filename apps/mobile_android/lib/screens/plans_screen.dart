@@ -268,6 +268,10 @@ class _PlanTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
+    final active = plan.status == 'active';
+    // An active plan that hasn't started is queued behind the current one.
+    final upcoming = active &&
+        toIsoDate(plan.startDate).compareTo(toIsoDate(DateTime.now())) > 0;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
@@ -297,19 +301,24 @@ class _PlanTile extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(
                     horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: plan.status == 'active'
-                        ? theme.colorScheme.primaryContainer
-                        : theme.colorScheme.surfaceContainerHigh,
+                    color: upcoming
+                        ? theme.colorScheme.secondaryContainer
+                        : active
+                            ? theme.colorScheme.primaryContainer
+                            : theme.colorScheme.surfaceContainerHigh,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    plan.status,
+                    upcoming ? l10n.plansStatusUpcoming : plan.status,
+                    key: upcoming ? const Key('planTileUpcoming') : null,
                     style: theme.textTheme.labelSmall?.copyWith(
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0.4,
-                      color: plan.status == 'active'
-                          ? theme.colorScheme.onPrimaryContainer
-                          : theme.colorScheme.onSurfaceVariant,
+                      color: upcoming
+                          ? theme.colorScheme.onSecondaryContainer
+                          : active
+                              ? theme.colorScheme.onPrimaryContainer
+                              : theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ),

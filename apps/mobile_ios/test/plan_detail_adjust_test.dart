@@ -265,7 +265,7 @@ void main() {
       await pumpUntil(
           tester,
           () => tester.any(
-              find.textContaining('You already have an active plan')),
+              find.textContaining('Another active plan overlaps these dates')),
           describe: 'the blocked-resume banner');
       expect(training.resumed, isEmpty);
       await tester.pump(const Duration(seconds: 4));

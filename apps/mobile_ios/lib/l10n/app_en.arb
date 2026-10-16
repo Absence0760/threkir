@@ -1090,6 +1090,18 @@
       }
     }
   },
+  "homePlanUpNext": "Up next: {name}, starts {date}",
+  "@homePlanUpNext": {
+    "description": "Home card line naming the next active plan queued after the current one. date is its formatted start date",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "homePlanStartsTomorrow": "Starts tomorrow",
   "@homePlanStartsTomorrow": {
     "description": "Home plan card when the plan starts tomorrow"
@@ -7721,6 +7733,10 @@
       }
     }
   },
+  "plansStatusUpcoming": "upcoming",
+  "@plansStatusUpcoming": {
+    "description": "Status pill on a plan tile for an active plan that starts after today (queued behind the current plan). Lowercase to match the other status pills"
+  },
   "plansSignInTitle": "Sign in to use training plans",
   "@plansSignInTitle": {
     "description": "Sign-in prompt title on plans list"
@@ -8311,6 +8327,69 @@
   "@planNewReplaceActiveKeep": {
     "description": "Cancel button of the replace-active-plan dialog"
   },
+  "planOverlapTitle": "These dates overlap an active plan",
+  "@planOverlapTitle": {
+    "description": "Title of the dialog shown before creating or adopting a plan whose dates overlap one or more of the runner's active plans"
+  },
+  "planOverlapBody": "Your new plan runs {start} – {end}. Only one plan can be active on any day, and it overlaps:",
+  "@planOverlapBody": {
+    "description": "Body of the plan-overlap dialog, above the list of overlapping plans. start/end are formatted dates of the new plan",
+    "placeholders": {
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "planOverlapPlanLine": "{name}: {start} – {end}",
+  "@planOverlapPlanLine": {
+    "description": "One overlapping active plan in the plan-overlap dialog: its name and formatted date range",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "planOverlapReplaceHint": "Replace marks the overlapping plans as completed. You can still find them under Manage plans.",
+  "@planOverlapReplaceHint": {
+    "description": "Plan-overlap dialog hint when only Replace is offered"
+  },
+  "planOverlapTrimHint": "End {name} early to keep its finished weeks and remove its workouts after {date}, or replace it to mark it completed.",
+  "@planOverlapTrimHint": {
+    "description": "Plan-overlap dialog hint when the overlapping plan started earlier and can be ended the day before the new plan starts. date is that formatted end date",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planOverlapTrim": "End {name} on {date}",
+  "@planOverlapTrim": {
+    "description": "Plan-overlap dialog button: end the overlapping plan the day before the new one starts, so both stay active back to back",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planOverlapConflict": "Another active plan now covers these dates. Check your plans and try again.",
+  "@planOverlapConflict": {
+    "description": "Error when the server refuses a new plan because an active plan overlaps its dates (changed since the overlap check)"
+  },
   "planNewStarterC25k": "Couch to 5K (beginner walk-run)",
   "@planNewStarterC25k": {
     "description": "Built-in starter plan name"
@@ -8451,6 +8530,10 @@
   "planDetailResumeBlocked": "You already have an active plan. Pause or finish it first.",
   "@planDetailResumeBlocked": {
     "description": "Plan-detail adjust-plan dialog"
+  },
+  "planDetailResumeOverlap": "Another active plan overlaps these dates. Pause it, finish it or end it earlier first.",
+  "@planDetailResumeOverlap": {
+    "description": "Banner when resuming a paused plan is refused because another active plan overlaps its dates"
   },
   "planDetailAdaptiveOnTrack": "Your recent weeks are on track — no adjustment needed.",
   "planDetailAdaptiveNoSafeChange": "You've drifted from plan recently, but there's no safe adjustment to make right now.",

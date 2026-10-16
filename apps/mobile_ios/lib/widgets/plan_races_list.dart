@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show AppRadius;
 
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -76,6 +77,9 @@ class PlanRacesList extends StatelessWidget {
     final onTap = workoutId == null || onSelectWorkout == null
         ? null
         : () => onSelectWorkout!(workoutId);
+    // A square at 1.0x that grows with the letter, so a 2x text scale
+    // widens the badge instead of clipping it.
+    final badge = MediaQuery.textScalerOf(context).scale(28);
     return InkWell(
       key: ValueKey('planRace-${r.workoutId ?? 'plan'}-${r.date}'),
       borderRadius: BorderRadius.circular(8),
@@ -88,14 +92,14 @@ class PlanRacesList extends StatelessWidget {
               label: l10n.planDetailRacePriority(r.priority),
               excludeSemantics: true,
               child: Container(
-                width: 28,
-                height: 28,
+                constraints: BoxConstraints(minWidth: badge, minHeight: badge),
+                padding: const EdgeInsets.symmetric(horizontal: 4),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: r.priority == 'A'
                       ? theme.colorScheme.primary
                       : theme.colorScheme.secondaryContainer,
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
                 ),
                 child: Text(
                   r.priority,

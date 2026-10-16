@@ -25,6 +25,11 @@
 	import { isCyclePlansEnabled } from '#lib/training/cycle_plan_flag.ts';
 	import { replanRemaining, type ReplanChange, type ReplanWeek } from '#lib/training/plan_replan.ts';
 	import {
+		raceTaperPatch,
+		raceTaperProposals,
+		type RaceTaperChange
+	} from '#lib/training/race_taper.ts';
+	import {
 		adaptiveReplanRemaining,
 		type AdaptiveReason,
 		type AdaptiveConfidence
@@ -302,10 +307,96 @@
 
 	async function chooseReplan(propose: () => void): Promise<void> {
 		adjustOpen = false;
+		taperPreview = null;
 		await tick();
 		propose();
 		await tick();
 		replanPreviewHeading?.focus();
+	}
+
+	// ─── Taper around B/C races (owner-only, decisions § 2051) ───
+	// The plan's phases only taper for the A race at its end, so a B or C race
+	// mid-block gets its mini-taper and recovery proposed here, previewed like
+	// a re-plan, and applied only on the runner's say-so.
+	let taperPreview = $state<RaceTaperChange[] | null>(null);
+	let taperPreviewHeading = $state<HTMLHeadingElement>();
+
+	function proposeRaceTaper(): void {
+		if (!plan || !isOwner || bulkBusy) return;
+		const input = weeks.flatMap((wk) =>
+			(workoutsByWeek.get(wk.id) ?? []).map((x) => ({
+				id: x.id,
+				scheduledDate: x.scheduled_date,
+				kind: x.kind,
+				targetDistanceM: x.target_distance_m,
+				phase: wk.phase,
+				completed: isWorkoutCompleted(x),
+				skipped: isWorkoutSkipped(x)
+			}))
+		);
+		const changes = raceTaperProposals({ workouts: input, races, today });
+		replanPreview = null;
+		adaptiveInfo = null;
+		if (changes.length === 0) {
+			taperPreview = null;
+			showToast(m('planDetail.raceTaperNone'));
+			return;
+		}
+		taperPreview = changes;
+	}
+
+	async function chooseRaceTaper(): Promise<void> {
+		adjustOpen = false;
+		await tick();
+		proposeRaceTaper();
+		await tick();
+		taperPreviewHeading?.focus();
+	}
+
+	async function dismissRaceTaper(): Promise<void> {
+		taperPreview = null;
+		await tick();
+		adjustButton?.focus();
+	}
+
+	/// Writes each proposed patch, then restates every touched week's volume
+	/// from the patched distances so the week header stays honest (the same
+	/// recompute applyCycleAdjustment does).
+	async function applyRaceTaper(): Promise<void> {
+		if (!taperPreview || bulkBusy) return;
+		bulkBusy = true;
+		try {
+			const changes = taperPreview;
+			const byWorkout = new Map(changes.map((c) => [c.workoutId, c]));
+			await Promise.all(changes.map((c) => updatePlanWorkout(c.workoutId, raceTaperPatch(c))));
+			for (const wk of weeks) {
+				const wkWorkouts = workoutsByWeek.get(wk.id) ?? [];
+				if (!wkWorkouts.some((x) => byWorkout.has(x.id))) continue;
+				const vol = wkWorkouts.reduce((sum, x) => {
+					if (x.kind === 'rest') return sum;
+					const c = byWorkout.get(x.id);
+					return sum + ((c ? c.toMetres : x.target_distance_m) ?? 0);
+				}, 0);
+				await updatePlanWeek(wk.id, { target_volume_m: vol });
+			}
+			showToast(m('planDetail.replanApplied', { n: changes.length }));
+			taperPreview = null;
+			await load();
+		} catch (e) {
+			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+		} finally {
+			bulkBusy = false;
+		}
+	}
+
+	function taperChangeLabel(c: RaceTaperChange): string {
+		const side = (kind: string, metres: number | null) =>
+			metres != null ? `${workoutKindLabel(kind)} ${fmtKm(metres)}` : workoutKindLabel(kind);
+		const change = `${side(c.fromKind, c.fromMetres)} → ${side(c.toKind, c.toMetres)}`;
+		const race = c.raceName ?? fmtRaceDate(c.raceDate);
+		if (c.reason === 'shakeout') return m('planDetail.raceTaperShakeout', { change, race });
+		if (c.reason === 'pre_race') return m('planDetail.raceTaperPre', { change, race });
+		return m('planDetail.raceTaperPost', { change, race });
 	}
 
 	// "Adjust with AI" (decisions § 1979). Needs the Coach on as well: a plan
@@ -841,6 +932,13 @@
 	/// B race mid-block gets its own run-in before the plan's A race.
 	let races = $derived(plan ? planRaces(plan, workouts) : []);
 	let upcomingRace = $derived(nextRace(races, today));
+	/// The hero's distance / goal / date follow the next race once it is not
+	/// the plan's own A race on the end date; the A goal stays in the races list.
+	let heroRace = $derived(
+		plan && upcomingRace && !(upcomingRace.priority === 'A' && upcomingRace.date === plan.end_date)
+			? upcomingRace
+			: null
+	);
 
 	let todayWorkout = $derived(
 		workouts.find((w) => w.scheduled_date === today) ?? null
@@ -1140,16 +1238,40 @@
 						</span>
 					{/if}
 				</div>
+				{#if heroRace}
+					<p class="hero-next-race" data-testid="hero-next-race">
+						<span
+							class="race-priority p-{heroRace.priority.toLowerCase()}"
+							aria-label={m('planDetail.racePriorityAria', { priority: heroRace.priority })}
+						>{heroRace.priority}</span>
+						{m('planDetail.heroNextRace', { name: heroRace.name ?? plan.name })}
+					</p>
+				{/if}
 				<div class="meta">
-					<span>
-						<span class="material-symbols">flag</span>
-						{fmtKm(plan.goal_distance_m, 1)}
-					</span>
-					{#if plan.goal_time_seconds}
+					{#if heroRace}
+						{#if heroRace.distanceM != null}
+							<span>
+								<span class="material-symbols">flag</span>
+								{fmtKm(heroRace.distanceM, 1)}
+							</span>
+						{/if}
+						{#if heroRace.goalTimeSec != null}
+							<span>
+								<span class="material-symbols">timer</span>
+								{fmtHms(heroRace.goalTimeSec)}
+							</span>
+						{/if}
+					{:else}
 						<span>
-							<span class="material-symbols">timer</span>
-							{fmtHms(plan.goal_time_seconds)}
+							<span class="material-symbols">flag</span>
+							{fmtKm(plan.goal_distance_m, 1)}
 						</span>
+						{#if plan.goal_time_seconds}
+							<span>
+								<span class="material-symbols">timer</span>
+								{fmtHms(plan.goal_time_seconds)}
+							</span>
+						{/if}
 					{/if}
 					{#if plan.vdot}
 						<span>
@@ -1161,7 +1283,7 @@
 					{#if planPosition}
 						<span>
 							<span class="material-symbols">event</span>
-							{fmtRaceDate(plan.end_date)}
+							{fmtRaceDate(heroRace?.date ?? plan.end_date)}
 						</span>
 					{/if}
 				</div>
@@ -1215,6 +1337,32 @@
 						{m('planDetail.replanCancel')}
 					</button>
 					<button type="button" class="btn btn-primary btn-sm" onclick={applyReplan} disabled={bulkBusy}>
+						{m('planDetail.replanApply')}
+					</button>
+				</div>
+			</section>
+		{/if}
+
+		{#if isOwner && !plan.is_template && taperPreview}
+			<section
+				class="replan-preview"
+				aria-label={m('planDetail.raceTaperPreviewTitle')}
+				data-testid="race-taper-preview"
+			>
+				<h3 tabindex="-1" bind:this={taperPreviewHeading}>{m('planDetail.raceTaperPreviewTitle')}</h3>
+				<ul>
+					{#each taperPreview as c (c.workoutId)}
+						<li>
+							<span class="replan-date">{c.scheduledDate}</span>
+							<span class="replan-change">{taperChangeLabel(c)}</span>
+						</li>
+					{/each}
+				</ul>
+				<div class="replan-actions">
+					<button type="button" class="btn btn-secondary btn-sm" onclick={dismissRaceTaper} disabled={bulkBusy}>
+						{m('planDetail.replanCancel')}
+					</button>
+					<button type="button" class="btn btn-primary btn-sm" onclick={applyRaceTaper} disabled={bulkBusy}>
 						{m('planDetail.replanApply')}
 					</button>
 				</div>
@@ -1751,6 +1899,22 @@
 				</button>
 				<p class="adjust-option-desc" id="adjust-adaptive-desc">{m('planDetail.adjustAdaptiveDesc')}</p>
 			</li>
+			{#if races.some((r) => r.priority !== 'A' && r.date > today)}
+				<li class="adjust-option">
+					<button
+						type="button"
+						class="btn btn-outline btn-sm adjust-option-btn"
+						data-testid="race-taper-btn"
+						aria-describedby="adjust-race-taper-desc"
+						onclick={chooseRaceTaper}
+						disabled={bulkBusy}
+					>
+						<span class="material-symbols" aria-hidden="true">flag</span>
+						{m('planDetail.raceTaper')}
+					</button>
+					<p class="adjust-option-desc" id="adjust-race-taper-desc">{m('planDetail.adjustRaceTaperDesc')}</p>
+				</li>
+			{/if}
 			{#if showAiAdjust}
 				<li class="adjust-option">
 					<button
@@ -2063,6 +2227,15 @@
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
 		color: var(--color-primary);
+	}
+
+	.hero-next-race {
+		display: flex;
+		align-items: center;
+		gap: var(--space-xs);
+		margin: var(--space-xs) 0 0;
+		font-weight: 600;
+		overflow-wrap: anywhere;
 	}
 
 	.meta {

@@ -260,12 +260,12 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
     final today = parseIsoDate(_today());
     final initial = row.date != null
         ? parseIsoDate(row.date!)
-        : today.add(const Duration(days: 84));
+        : DateTime(today.year, today.month, today.day + 84);
     final picked = await showDatePicker(
       context: context,
       initialDate: initial.isBefore(today) ? today : initial,
       firstDate: today,
-      lastDate: today.add(const Duration(days: 365 * 3)),
+      lastDate: DateTime(today.year + 3, today.month, today.day),
     );
     if (picked != null && mounted) setState(() => row.date = toIsoDate(picked));
   }

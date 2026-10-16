@@ -3075,6 +3075,8 @@ export type Database = {
           manually_completed: boolean
           notes: string | null
           pace_zone: string | null
+          race_name: string | null
+          race_priority: string | null
           scheduled_date: string
           skipped_at: string | null
           structure: Json | null
@@ -3095,6 +3097,8 @@ export type Database = {
           manually_completed?: boolean
           notes?: string | null
           pace_zone?: string | null
+          race_name?: string | null
+          race_priority?: string | null
           scheduled_date: string
           skipped_at?: string | null
           structure?: Json | null
@@ -3115,6 +3119,8 @@ export type Database = {
           manually_completed?: boolean
           notes?: string | null
           pace_zone?: string | null
+          race_name?: string | null
+          race_priority?: string | null
           scheduled_date?: string
           skipped_at?: string | null
           structure?: Json | null

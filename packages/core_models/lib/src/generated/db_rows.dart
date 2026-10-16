@@ -4675,6 +4675,8 @@ class PlanWorkoutRow {
   static const String colUpdatedBy = 'updated_by';
   static const String colUpdatedAt = 'updated_at';
   static const String colSkippedAt = 'skipped_at';
+  static const String colRaceName = 'race_name';
+  static const String colRacePriority = 'race_priority';
 
   final String id;
   final String weekId;
@@ -4694,6 +4696,8 @@ class PlanWorkoutRow {
   final String? updatedBy;
   final DateTime? updatedAt;
   final DateTime? skippedAt;
+  final String? raceName;
+  final String? racePriority;
 
   const PlanWorkoutRow({
     required this.id,
@@ -4714,6 +4718,8 @@ class PlanWorkoutRow {
     this.updatedBy,
     this.updatedAt,
     this.skippedAt,
+    this.raceName,
+    this.racePriority,
   });
 
   factory PlanWorkoutRow.fromJson(Map<String, dynamic> json) => PlanWorkoutRow(
@@ -4735,6 +4741,8 @@ class PlanWorkoutRow {
     updatedBy: json['updated_by'] as String?,
     updatedAt: parseIsoStrictValue(json['updated_at']),
     skippedAt: parseIsoStrictValue(json['skipped_at']),
+    raceName: json['race_name'] as String?,
+    racePriority: json['race_priority'] as String?,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -4756,6 +4764,8 @@ class PlanWorkoutRow {
     colUpdatedBy: updatedBy,
     colUpdatedAt: updatedAt?.toIso8601String(),
     colSkippedAt: skippedAt?.toIso8601String(),
+    colRaceName: raceName,
+    colRacePriority: racePriority,
   };
 
   PlanWorkoutRow copyWith({
@@ -4777,6 +4787,8 @@ class PlanWorkoutRow {
     String? updatedBy,
     DateTime? updatedAt,
     DateTime? skippedAt,
+    String? raceName,
+    String? racePriority,
   }) => PlanWorkoutRow(
     id: id ?? this.id,
     weekId: weekId ?? this.weekId,
@@ -4796,6 +4808,8 @@ class PlanWorkoutRow {
     updatedBy: updatedBy ?? this.updatedBy,
     updatedAt: updatedAt ?? this.updatedAt,
     skippedAt: skippedAt ?? this.skippedAt,
+    raceName: raceName ?? this.raceName,
+    racePriority: racePriority ?? this.racePriority,
   );
 }
 

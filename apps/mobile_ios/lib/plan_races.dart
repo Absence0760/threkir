@@ -13,6 +13,10 @@ import 'package:core_models/core_models.dart' show PlanWorkoutRow;
 
 const List<String> racePriorities = ['A', 'B', 'C'];
 
+/// The most hours a race goal time may hold, on every surface that reads or
+/// edits one: a 240-mile race runs past 100 hours, so two digits would not do.
+const int raceGoalMaxHours = 999;
+
 class PlanRace {
   final String date;
   final String? name;

@@ -25,7 +25,7 @@
 
 import { GOAL_DISTANCES_M, phaseFor } from './training';
 import type { GeneratedPlan, GoalEvent, PlanPhase, WorkoutKind } from './training';
-import { RACE_PRIORITIES, type RacePriority } from './plan_races';
+import { RACE_GOAL_MAX_HOURS, RACE_PRIORITIES, type RacePriority } from './plan_races';
 
 const METRES_PER_MILE = 1609.344;
 
@@ -278,10 +278,22 @@ function parsePriorityCell(cell: string): RacePriority | null {
 	return t as RacePriority;
 }
 
+/// A race goal cell: h:mm:ss with at most RACE_GOAL_MAX_HOURS hours, or m:ss
+/// under the same ceiling, minutes and seconds 0-59 where they are not the
+/// leading field.
 function parseGoalCell(cell: string): number | null {
 	const t = cell.trim();
 	if (!t) return null;
-	const sec = /^\d+(:\d{2}){1,2}$/.test(t) ? parseHms(t) : null;
+	const m = /^(\d+):(\d{2})(?::(\d{2}))?$/.exec(t);
+	let sec: number | null = null;
+	if (m) {
+		const fields = m.slice(1).filter((f) => f != null).map(Number);
+		const inner = fields.slice(1);
+		const total = parseHms(t);
+		if (inner.every((f) => f <= 59) && total != null && total <= RACE_GOAL_MAX_HOURS * 3600 + 59 * 60 + 59) {
+			sec = total;
+		}
+	}
 	if (sec == null || sec <= 0) throw new PlanParseError(`Couldn't read goal time "${cell}" — use h:mm:ss.`);
 	return sec;
 }

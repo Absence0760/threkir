@@ -4,6 +4,9 @@
 // countdown and goal. Dart twin `apps/mobile_android/lib/plan_races.dart`.
 
 export const RACE_PRIORITIES = ['A', 'B', 'C'] as const;
+/// The most hours a race goal time may hold, on every surface that reads or
+/// edits one: a 240-mile race runs past 100 hours, so two digits would not do.
+export const RACE_GOAL_MAX_HOURS = 999;
 export type RacePriority = (typeof RACE_PRIORITIES)[number];
 
 export type PlanRace = {

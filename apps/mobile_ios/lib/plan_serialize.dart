@@ -19,7 +19,7 @@ library;
 
 import 'dart:convert';
 
-import 'plan_races.dart' show racePriorities;
+import 'plan_races.dart' show raceGoalMaxHours, racePriorities;
 import 'training.dart';
 
 const double _metresPerMile = 1609.344;
@@ -320,10 +320,26 @@ String? _parsePriorityCell(String cell) {
   return t;
 }
 
+/// A race goal cell: h:mm:ss with at most [raceGoalMaxHours] hours, or m:ss
+/// under the same ceiling, minutes and seconds 0-59 where they are not the
+/// leading field.
 int? _parseGoalCell(String cell) {
   final t = cell.trim();
   if (t.isEmpty) return null;
-  final sec = RegExp(r'^\d+(:\d{2}){1,2}$').hasMatch(t) ? _parseHms(t) : null;
+  final m = RegExp(r'^(\d+):(\d{2})(?::(\d{2}))?$').firstMatch(t);
+  int? sec;
+  if (m != null) {
+    final fields = [
+      for (var i = 1; i <= 3; i++)
+        if (m.group(i) != null) int.parse(m.group(i)!),
+    ];
+    final total = _parseHms(t);
+    if (fields.skip(1).every((f) => f <= 59) &&
+        total != null &&
+        total <= raceGoalMaxHours * 3600 + 59 * 60 + 59) {
+      sec = total;
+    }
+  }
   if (sec == null || sec <= 0) {
     throw PlanParseError('Couldn\'t read goal time "$cell" — use h:mm:ss.');
   }

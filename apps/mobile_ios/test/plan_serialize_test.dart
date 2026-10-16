@@ -362,6 +362,31 @@ void main() {
   });
 
   test(
+      'parsePlanMarkdown reads a race goal up to 999 hours and refuses a field '
+      'out of range', () {
+    String table(String goal) => [
+          '| Week | Date | Type | Distance | Race | Priority | Goal |',
+          '| --- | --- | --- | --- | --- | --- | --- |',
+          '| 1 | 2027-02-06 | race | 386 km | Moab 240 | A | $goal |',
+        ].join('\n');
+    int? goalOf(String goal) => parsePlanMarkdown(table(goal))
+        .generated
+        .weeks[0]
+        .workouts[0]
+        .targetDurationSeconds;
+    expect(goalOf('105:00:00'), 105 * 3600);
+    expect(goalOf('999:59:59'), 999 * 3600 + 59 * 60 + 59);
+    expect(goalOf('25:30'), 25 * 60 + 30);
+    for (final bad in ['1000:00:00', '1:75:00', '1:30:60', '25:61']) {
+      expect(
+          () => parsePlanMarkdown(table(bad)),
+          throwsA(isA<PlanParseError>()
+              .having((e) => e.message, 'message', contains('goal time'))),
+          reason: bad);
+    }
+  });
+
+  test(
       'a piped race name, a priority-only race, a goal-only race and the plan '
       'goal time survive the round-trip', () {
     final plan = {

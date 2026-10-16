@@ -2,7 +2,7 @@
 /// season request extracts it from the runner's description, the runner
 /// confirms or edits it, and the season builder turns it into one chained
 /// plan per A race with the B / C races attached to the plan they fall
-/// inside. Mirrors web `training/season_types.ts`.
+/// inside.
 library;
 
 enum SeasonRacePriority { a, b, c }

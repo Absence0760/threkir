@@ -17,12 +17,16 @@
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
 	import {
 		GOAL_DISTANCES_M,
+		ULTRA_PRESETS,
 		defaultPlanWeeks,
+		isUltraDistance,
 		walkRunDefaultWeeks,
 		generatePlan,
 		formatISO,
 		parseISO,
+		type UltraPresetId,
 	} from '#lib/training/training.ts';
+	import { RACE_GOAL_MAX_HOURS } from '#lib/training/plan_races.ts';
 	import { workoutKindLabel, planPhaseLabel } from '#lib/training/workout_labels.ts';
 	import type {
 		GoalEvent,
@@ -137,6 +141,9 @@
 		// "create my training plan" deep-link keys these off primary_goal).
 		// Absent → the normal defaults below.
 		initialGoalEvent?: GoalEvent;
+		/// An ultra goal distance (past the marathon) to preselect, as the race
+		/// calendar hands one over. Ignored for any other distance.
+		initialGoalDistanceM?: number | null;
 		initialBeginnerWalkRun?: boolean;
 		// Preset the schedule so the plan's race week lands on a known race
 		// day (the race-calendar "train for this race" deep-link). The start
@@ -154,6 +161,7 @@
 		oncreated,
 		oncancel,
 		initialGoalEvent,
+		initialGoalDistanceM,
 		initialBeginnerWalkRun,
 		initialName,
 		initialStartDate,
@@ -163,7 +171,39 @@
 
 	// The initial* props seed the form once; the fields are edited locally after.
 	let name = $state(untrack(() => initialName ?? ''));
-	let goalEvent = $state<GoalEvent>(untrack(() => initialGoalEvent ?? 'distance_half'));
+	// An ultra goal is stored as `custom` plus its distance — the distance
+	// is what the generator plans from — and `ultraChoice` remembers which
+	// wizard entry the runner picked, so the select can show it.
+	type UltraChoice = UltraPresetId | 'ultra_other';
+	const initialUltra = untrack(() =>
+		initialGoalDistanceM != null && isUltraDistance(initialGoalDistanceM) ? initialGoalDistanceM : null,
+	);
+	let ultraChoice = $state<UltraChoice | null>(
+		initialUltra == null ? null : (ultraPresetFor(initialUltra) ?? 'ultra_other'),
+	);
+	let ultraDistanceM = $state<number | null>(initialUltra);
+	let goalEvent = $state<GoalEvent>(
+		untrack(() => (initialUltra != null ? 'custom' : (initialGoalEvent ?? 'distance_half'))),
+	);
+
+	/// The preset a distance is, to the metre, or null.
+	function ultraPresetFor(distanceM: number): UltraPresetId | null {
+		return ULTRA_PRESETS.find((p) => Math.abs(p.distanceM - distanceM) < 1)?.id ?? null;
+	}
+
+	function onGoalChange(e: Event) {
+		exitImportMode();
+		const value = (e.currentTarget as HTMLSelectElement).value;
+		if (value === 'ultra_other' || ULTRA_PRESETS.some((p) => p.id === value)) {
+			const preset = ULTRA_PRESETS.find((p) => p.id === value);
+			ultraChoice = value as UltraChoice;
+			goalEvent = 'custom';
+			ultraDistanceM = preset?.distanceM ?? ultraDistanceM ?? 70_000;
+			return;
+		}
+		ultraChoice = null;
+		goalEvent = value as GoalEvent;
+	}
 	let startDate = $state(untrack(() => initialStartDate ?? defaultStart()));
 	let daysPerWeek = $state(4);
 
@@ -235,7 +275,7 @@
 	function applyRaceDate(raceDate: string, requestedWeeks: number | null): string {
 		const result = racePlanPreset({
 			raceDateIso: raceDate,
-			distanceM: GOAL_DISTANCES_M[goalEvent as Exclude<GoalEvent, 'custom'>],
+			distanceM: goalDistance,
 			todayIso: todayIso(),
 		});
 		if (!result.ok) return t(RACE_REFUSAL_KEYS[result.reason]);
@@ -259,6 +299,7 @@
 		exitImportMode();
 		beginnerWalkRun = inputs.beginnerWalkRun;
 		goalEvent = inputs.goalEvent;
+		ultraChoice = null;
 		daysPerWeek = inputs.daysPerWeek;
 		// A fill replaces the shape of the plan, not just the fields this
 		// description happened to name: a second fill must not inherit the
@@ -382,6 +423,9 @@
 			const parsed = text.startsWith('{') ? parsePlanJson(text) : parsePlanMarkdown(text);
 			name = parsed.name;
 			goalEvent = parsed.goalEvent;
+			const pastedUltra = parsed.goalEvent === 'custom' && isUltraDistance(parsed.goalDistanceM);
+			ultraChoice = pastedUltra ? (ultraPresetFor(parsed.goalDistanceM) ?? 'ultra_other') : null;
+			ultraDistanceM = pastedUltra ? parsed.goalDistanceM : ultraDistanceM;
 			startDate = parsed.startDate;
 			importedGoalDistanceM = parsed.goalDistanceM;
 			if (parsed.goalTimeSec != null && parsed.goalTimeSec > 0) {
@@ -453,6 +497,7 @@
 		beginnerWalkRun = (e.currentTarget as HTMLInputElement).checked;
 		if (beginnerWalkRun && goalDistance > GOAL_DISTANCES_M.distance_5k) {
 			goalEvent = 'distance_5k';
+			ultraChoice = null;
 		}
 	}
 
@@ -482,14 +527,23 @@
 	}
 
 	let goalDistance = $derived(
-		goalEvent === 'custom' ? 10_000 : GOAL_DISTANCES_M[goalEvent]
+		goalEvent !== 'custom'
+			? GOAL_DISTANCES_M[goalEvent]
+			: ultraChoice != null
+				? (ultraDistanceM ?? 0)
+				: 10_000
 	);
+	// An ultra entry whose typed distance is not past the marathon plans
+	// nothing: the generator would quietly build a road plan under an ultra
+	// label.
+	let ultraDistanceInvalid = $derived(ultraChoice != null && !isUltraDistance(goalDistance));
 	// A beginner walk-run plan needs the full C25K progression length (9
 	// weeks), not the 5k continuous-run default (8) — otherwise the final
 	// graduation week is dropped. Persona round-5 runner-new. An explicit
 	// override still wins.
 	let weeks = $derived(
-		weekOverride ?? (beginnerWalkRun ? walkRunDefaultWeeks() : defaultPlanWeeks(goalEvent))
+		weekOverride ??
+			(beginnerWalkRun ? walkRunDefaultWeeks() : defaultPlanWeeks(goalEvent, goalDistance))
 	);
 
 	let goalTimeSec = $derived(
@@ -552,11 +606,11 @@
 	// until they touch a top-level input again.
 	$effect(() => {
 		// Read every input we care about so the effect tracks them.
-		void [goalEvent, goalDistance, goalTimeSec, recent5kApplied, startDate, daysPerWeek, weeks, viewerGender, beginnerWalkRun, importedMode];
+		void [goalEvent, goalDistance, ultraDistanceInvalid, goalTimeSec, recent5kApplied, startDate, daysPerWeek, weeks, viewerGender, beginnerWalkRun, importedMode];
 		// A pasted plan owns `plan` until the runner edits a core input
 		// (which flips importedMode off and re-runs this effect).
 		if (importedMode) return;
-		if (!startDate) {
+		if (!startDate || ultraDistanceInvalid) {
 			plan = null;
 			return;
 		}
@@ -585,6 +639,21 @@
 		{ value: 'distance_half', label: t('planEditor.halfMarathon') },
 		{ value: 'distance_full', label: t('planEditor.marathon') }
 	]);
+	const ULTRA_LABELS: Record<UltraPresetId, string> = {
+		ultra_50k: '50 km',
+		ultra_56k: '56 km',
+		ultra_90k: '90 km',
+		ultra_100mi: '100 mi',
+	};
+	const ultraOptions: { value: UltraChoice; label: string }[] = $derived([
+		...ULTRA_PRESETS.map((p) => ({ value: p.id as UltraChoice, label: ULTRA_LABELS[p.id] })),
+		{ value: 'ultra_other', label: t('planEditor.ultraOther') },
+	]);
+	// Smallest distance the ultra input accepts, in the runner's unit: the
+	// first tenth past the marathon.
+	let ultraMinInput = $derived(
+		String(Math.ceil((GOAL_DISTANCES_M.distance_full / distancePerUnit) * 10 + 0.001) / 10),
+	);
 
 	/// Active plans may chain but not overlap (decisions § 2008). The create
 	/// asks the server to refuse any overlap; when it does, the dialog names
@@ -764,14 +833,46 @@
 			<div class="field">
 				<label>
 					<span>{t('planEditor.goalRace')}</span>
-					<select bind:value={goalEvent} onchange={exitImportMode} aria-describedby="goal-race-hint">
-						{#each eventOptions as opt}
-							<option value={opt.value}>{opt.label}</option>
-						{/each}
+					<select value={ultraChoice ?? goalEvent} onchange={onGoalChange} aria-describedby="goal-race-hint">
+						<optgroup label={t('planEditor.goalGroupRoad')}>
+							{#each eventOptions as opt}
+								<option value={opt.value}>{opt.label}</option>
+							{/each}
+						</optgroup>
+						<optgroup label={t('planEditor.goalGroupUltra')}>
+							{#each ultraOptions as opt}
+								<option value={opt.value}>{opt.label}</option>
+							{/each}
+						</optgroup>
 					</select>
 				</label>
 				<p class="hint" id="goal-race-hint">{t('planEditor.goalRaceHint')}</p>
 			</div>
+
+			{#if ultraChoice}
+				<div class="field">
+					<label>
+						<span>{t('planEditor.ultraDistance', { unit: distanceUnit })}</span>
+						<input
+							type="number"
+							min={ultraMinInput}
+							step="0.1"
+							value={metresToDistanceInput(ultraDistanceM)}
+							oninput={(e) => {
+								exitImportMode();
+								ultraDistanceM = distanceInputToMetres((e.currentTarget as HTMLInputElement).value);
+							}}
+							aria-describedby="ultra-distance-hint"
+							aria-invalid={ultraDistanceInvalid}
+							data-testid="plan-ultra-distance"
+						/>
+					</label>
+					<p class="hint" id="ultra-distance-hint">{t('planEditor.ultraDistanceHint')}</p>
+					{#if ultraDistanceInvalid}
+						<p class="hint warn" role="alert">{t('planEditor.ultraDistanceTooShort')}</p>
+					{/if}
+				</div>
+			{/if}
 
 			<div class="field">
 				<label>
@@ -807,7 +908,7 @@
 				<legend>{t('planEditor.goalTime')} <span class="optional">{t('planEditor.optional')}</span></legend>
 				<p class="hint" id="goal-time-hint">{t('planEditor.goalTimeHint')}</p>
 				<div class="time-row">
-					<input type="number" min="0" max="9" bind:value={targetHours} placeholder={t('planEditor.placeholderHours')} aria-describedby="goal-time-hint" />
+					<input type="number" min="0" max={RACE_GOAL_MAX_HOURS} bind:value={targetHours} placeholder={t('planEditor.placeholderHours')} aria-describedby="goal-time-hint" />
 					<span>:</span>
 					<input type="number" min="0" max="59" bind:value={targetMin} placeholder={t('planEditor.placeholderMinutes')} aria-describedby="goal-time-hint" />
 					<span>:</span>
@@ -857,7 +958,7 @@
 						min="4"
 						max="24"
 						bind:value={weekOverride}
-						placeholder={String(defaultPlanWeeks(goalEvent))}
+						placeholder={String(defaultPlanWeeks(goalEvent, goalDistance))}
 						aria-describedby="override-weeks-hint"
 					/>
 				</label>

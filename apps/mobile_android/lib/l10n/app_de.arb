@@ -1726,6 +1726,8 @@
   "planOverlapReplaceHint": "Beim Ersetzen werden die überschneidenden Pläne als abgeschlossen markiert. Du findest sie weiterhin unter „Pläne verwalten“.",
   "planOverlapTrimHint": "Beende {name} vorzeitig, um seine abgeschlossenen Wochen zu behalten und seine Einheiten nach dem {date} zu entfernen, oder ersetze ihn, um ihn als abgeschlossen zu markieren.",
   "planOverlapTrim": "{name} am {date} beenden",
+  "planOverlapTrimMany": "Alle am {date} beenden",
+  "planOverlapTrimHintMany": "Beende sie vorzeitig, um ihre abgeschlossenen Wochen zu behalten und ihre Einheiten nach dem {date} zu entfernen, oder ersetze sie, um sie als abgeschlossen zu markieren.",
   "planOverlapConflict": "Ein anderer aktiver Plan deckt diesen Zeitraum jetzt ab. Prüfe deine Pläne und versuche es erneut.",
   "planOverlapTrimBlocked": "{plan} hat abgeschlossene Einheiten nach dem {date}. Ersetze ihn stattdessen oder starte den neuen Plan später.",
   "planOverlapTrimBlockedUnnamed": "Der Plan, den du vorzeitig beenden wolltest, hat abgeschlossene Einheiten nach dem {date}. Ersetze ihn stattdessen oder starte den neuen Plan später.",

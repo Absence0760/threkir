@@ -1726,6 +1726,8 @@
   "planOverlapReplaceHint": "Reemplazar marca los planes solapados como completados. Puedes seguir encontrándolos en Gestionar planes.",
   "planOverlapTrimHint": "Termina {name} antes para conservar sus semanas completadas y eliminar sus entrenamientos posteriores al {date}, o reemplázalo para marcarlo como completado.",
   "planOverlapTrim": "Terminar {name} el {date}",
+  "planOverlapTrimMany": "Terminarlos el {date}",
+  "planOverlapTrimHintMany": "Termínalos antes para conservar sus semanas completadas y eliminar sus entrenamientos posteriores al {date}, o reemplázalos para marcarlos como completados.",
   "planOverlapConflict": "Otro plan activo cubre ahora estas fechas. Revisa tus planes e inténtalo de nuevo.",
   "planOverlapTrimBlocked": "{plan} tiene entrenamientos completados posteriores al {date}. Reemplázalo en su lugar o empieza el nuevo plan más tarde.",
   "planOverlapTrimBlockedUnnamed": "El plan que elegiste terminar antes tiene entrenamientos completados posteriores al {date}. Reemplázalo en su lugar o empieza el nuevo plan más tarde.",

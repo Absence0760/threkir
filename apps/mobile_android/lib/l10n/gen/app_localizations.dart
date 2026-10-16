@@ -10204,6 +10204,18 @@ abstract class AppLocalizations {
   /// **'End {name} on {date}'**
   String planOverlapTrim(String name, String date);
 
+  /// Plan-overlap dialog button when several active plans overlap: end all of them the day before the new one starts. The dialog lists them by name above
+  ///
+  /// In en, this message translates to:
+  /// **'End them on {date}'**
+  String planOverlapTrimMany(String date);
+
+  /// Plan-overlap dialog hint when several overlapping plans can be ended the day before the new plan starts. date is that formatted end date
+  ///
+  /// In en, this message translates to:
+  /// **'End them early to keep their finished weeks and remove their workouts after {date}, or replace them to mark them completed.'**
+  String planOverlapTrimHintMany(String date);
+
   /// Error when the server refuses a new plan because an active plan overlaps its dates (changed since the overlap check)
   ///
   /// In en, this message translates to:

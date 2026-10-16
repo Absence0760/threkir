@@ -8373,6 +8373,24 @@
       }
     }
   },
+  "planOverlapTrimMany": "End them on {date}",
+  "@planOverlapTrimMany": {
+    "description": "Plan-overlap dialog button when several active plans overlap: end all of them the day before the new one starts. The dialog lists them by name above",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planOverlapTrimHintMany": "End them early to keep their finished weeks and remove their workouts after {date}, or replace them to mark them completed.",
+  "@planOverlapTrimHintMany": {
+    "description": "Plan-overlap dialog hint when several overlapping plans can be ended the day before the new plan starts. date is that formatted end date",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "planOverlapConflict": "Another active plan now covers these dates. Check your plans and try again.",
   "@planOverlapConflict": {
     "description": "Error when the server refuses a new plan because an active plan overlaps its dates (changed since the overlap check)"

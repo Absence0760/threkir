@@ -1726,6 +1726,8 @@
   "planOverlapReplaceHint": "Substituir marca os planos sobrepostos como concluídos. Continua a poder encontrá-los em Gerir planos.",
   "planOverlapTrimHint": "Termine {name} mais cedo para manter as semanas já concluídas e remover os treinos depois de {date}, ou substitua-o para o marcar como concluído.",
   "planOverlapTrim": "Terminar {name} a {date}",
+  "planOverlapTrimMany": "Terminá-los a {date}",
+  "planOverlapTrimHintMany": "Termine-os mais cedo para manter as semanas já concluídas e remover os treinos depois de {date}, ou substitua-os para os marcar como concluídos.",
   "planOverlapConflict": "Outro plano ativo abrange agora estas datas. Verifique os seus planos e tente novamente.",
   "planOverlapTrimBlocked": "{plan} tem treinos concluídos depois de {date}. Em vez disso, substitua-o ou comece o novo plano mais tarde.",
   "planOverlapTrimBlockedUnnamed": "O plano que escolheu terminar mais cedo tem treinos concluídos depois de {date}. Em vez disso, substitua-o ou comece o novo plano mais tarde.",

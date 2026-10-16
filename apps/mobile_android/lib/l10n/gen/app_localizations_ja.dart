@@ -5888,6 +5888,16 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String planOverlapTrimMany(String date) {
+    return 'すべて$dateに終了';
+  }
+
+  @override
+  String planOverlapTrimHintMany(String date) {
+    return '早めに終了すると、終えた週は残り、$dateより後のワークアウトは削除されます。置き換えると完了としてマークされます。';
+  }
+
+  @override
   String get planOverlapConflict =>
       'この期間には別のアクティブなプランが入っています。プランを確認して、もう一度お試しください。';
 

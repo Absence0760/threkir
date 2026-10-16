@@ -455,10 +455,11 @@ void main() {
       ]);
       await pumpGate(tester, training);
       await tapCreate(tester);
-      expect(find.textContaining('End Spring base, Hill block on'),
-          findsOneWidget);
-      expect(find.textContaining('End Spring base, Hill block early'),
-          findsOneWidget);
+      expect(find.textContaining('Spring base'), findsWidgets);
+      expect(find.textContaining('Hill block'), findsWidgets);
+      expect(find.textContaining('End them on'), findsOneWidget);
+      expect(find.textContaining('End them early'), findsOneWidget);
+      expect(find.textContaining('End Hill block on'), findsNothing);
       await tester.tap(find.byKey(const Key('planOverlapTrim')));
       await tester.pumpAndSettle();
       expect(training.overlapAction, PlanOverlapAction.trim);

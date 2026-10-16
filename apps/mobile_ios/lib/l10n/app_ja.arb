@@ -1726,6 +1726,8 @@
   "planOverlapReplaceHint": "置き換えると、重なっているプランは完了としてマークされます。「プランの管理」から引き続き確認できます。",
   "planOverlapTrimHint": "{name}を早めに終了すると、終えた週は残り、{date}より後のワークアウトは削除されます。置き換えると完了としてマークされます。",
   "planOverlapTrim": "{name}を{date}に終了",
+  "planOverlapTrimMany": "すべて{date}に終了",
+  "planOverlapTrimHintMany": "早めに終了すると、終えた週は残り、{date}より後のワークアウトは削除されます。置き換えると完了としてマークされます。",
   "planOverlapConflict": "この期間には別のアクティブなプランが入っています。プランを確認して、もう一度お試しください。",
   "planOverlapTrimBlocked": "{plan}には{date}より後に完了したワークアウトがあります。代わりに置き換えるか、新しいプランの開始を遅らせてください。",
   "planOverlapTrimBlockedUnnamed": "早めに終了しようとしたプランには{date}より後に完了したワークアウトがあります。代わりに置き換えるか、新しいプランの開始を遅らせてください。",

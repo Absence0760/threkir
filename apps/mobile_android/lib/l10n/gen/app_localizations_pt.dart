@@ -6235,6 +6235,16 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String planOverlapTrimMany(String date) {
+    return 'Terminá-los a $date';
+  }
+
+  @override
+  String planOverlapTrimHintMany(String date) {
+    return 'Termine-os mais cedo para manter as semanas já concluídas e remover os treinos depois de $date, ou substitua-os para os marcar como concluídos.';
+  }
+
+  @override
   String get planOverlapConflict =>
       'Outro plano ativo abrange agora estas datas. Verifique os seus planos e tente novamente.';
 
@@ -22725,6 +22735,16 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String planOverlapTrim(String name, String date) {
     return 'Encerrar $name em $date';
+  }
+
+  @override
+  String planOverlapTrimMany(String date) {
+    return 'Encerrar todos em $date';
+  }
+
+  @override
+  String planOverlapTrimHintMany(String date) {
+    return 'Encerre-os antes para manter as semanas já concluídas e remover os treinos deles depois de $date, ou substitua-os para marcá-los como concluídos.';
   }
 
   @override

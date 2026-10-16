@@ -23,6 +23,7 @@ import '../training_labels.dart';
 import '../training_service.dart';
 import '../widgets/ai_disclosure_notice.dart';
 import '../widgets/metric_label.dart';
+import '../widgets/plan_import_sheet.dart';
 import '../widgets/plan_overlap_dialog.dart';
 import '../widgets/top_banner.dart';
 import 'plan_detail_screen.dart';
@@ -590,6 +591,17 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
     }
   }
 
+  Future<void> _importPlan() async {
+    final planId = await showPlanImportSheet(context, widget.training);
+    if (planId == null || !mounted) return;
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(
+        builder: (_) =>
+            PlanDetailScreen(training: widget.training, planId: planId),
+      ),
+    );
+  }
+
   int? get _goalTimeSec {
     if (_goalHours == null && _goalMinutes == null && _goalSeconds == null) {
       return null;
@@ -700,7 +712,17 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
             const SizedBox(height: 20),
           ],
           _starterCard(theme, l10n),
-          const SizedBox(height: 20),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              key: const Key('planNewImport'),
+              onPressed: _importPlan,
+              icon: const Icon(Icons.content_paste, size: 18),
+              label: Text(l10n.planNewImportButton),
+            ),
+          ),
+          const SizedBox(height: 12),
           if (_templates.isNotEmpty) ...[
             _templateCard(theme, l10n),
             const SizedBox(height: 20),

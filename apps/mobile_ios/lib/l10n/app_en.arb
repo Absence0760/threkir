@@ -8377,6 +8377,77 @@
   "@planOverlapConflict": {
     "description": "Error when the server refuses a new plan because an active plan overlaps its dates (changed since the overlap check)"
   },
+  "planNewImportButton": "Import a plan",
+  "@planNewImportButton": {
+    "description": "Button on the new-plan screen that opens the plan import sheet (paste a plan table or JSON export)"
+  },
+  "planImportTitle": "Import a plan",
+  "@planImportTitle": {
+    "description": "Title of the plan import sheet"
+  },
+  "planImportIntro": "Paste a plan exported from the web app, or a table with Week, Date and Type columns. Load it to check the weeks before you create it.",
+  "@planImportIntro": {
+    "description": "Explainer under the plan import sheet title. 'Week', 'Date' and 'Type' are the table column names the parser reads; keep them in English"
+  },
+  "planImportPasteLabel": "Plan table or JSON",
+  "@planImportPasteLabel": {
+    "description": "Label of the multi-line text box the runner pastes a plan into"
+  },
+  "planImportLoad": "Load",
+  "@planImportLoad": {
+    "description": "Button that parses the pasted plan and shows a preview"
+  },
+  "planImportParseError": "Couldn't read that plan: {detail}",
+  "@planImportParseError": {
+    "description": "Error under the paste box when the pasted plan can't be parsed; detail is the parser's (English) reason, e.g. a bad date on one row",
+    "placeholders": {
+      "detail": {"type": "String", "example": "Bad date \"07/05/2026\" — use YYYY-MM-DD."}
+    }
+  },
+  "planImportPreviewDates": "{start} to {end}",
+  "@planImportPreviewDates": {
+    "description": "Date range of the imported plan in the preview",
+    "placeholders": {
+      "start": {"type": "String", "example": "28 Mar 2027"},
+      "end": {"type": "String", "example": "13 Jun 2027"}
+    }
+  },
+  "planImportPreviewCounts": "{weeks, plural, one{1 week} other{{weeks} weeks}} · {workouts, plural, one{1 workout} other{{workouts} workouts}}",
+  "@planImportPreviewCounts": {
+    "description": "How many weeks and workouts the pasted plan holds, in the import preview",
+    "placeholders": {
+      "weeks": {"type": "int", "example": "12"},
+      "workouts": {"type": "int", "example": "60"}
+    }
+  },
+  "planImportPreviewWeek": "Week {week}: {workouts, plural, one{1 workout} other{{workouts} workouts}}",
+  "@planImportPreviewWeek": {
+    "description": "One line per week in the import preview",
+    "placeholders": {
+      "week": {"type": "int", "example": "3"},
+      "workouts": {"type": "int", "example": "5"}
+    }
+  },
+  "planImportPreviewRace": "Race: {name}, {date}",
+  "@planImportPreviewRace": {
+    "description": "One line per race workout in the import preview",
+    "placeholders": {
+      "name": {"type": "String", "example": "Two Oceans Ultra"},
+      "date": {"type": "String", "example": "4 Apr 2027"}
+    }
+  },
+  "planImportPreviewRaceUnnamed": "Unnamed race",
+  "@planImportPreviewRaceUnnamed": {
+    "description": "Stands in for a race workout with no name in the import preview"
+  },
+  "planImportCreate": "Create plan",
+  "@planImportCreate": {
+    "description": "Button that creates the previewed imported plan"
+  },
+  "planImportCreateFailed": "Couldn't create the plan. Check your connection and try again.",
+  "@planImportCreateFailed": {
+    "description": "Error in the import sheet when creating the imported plan fails"
+  },
   "planNewStarterC25k": "Couch to 5K (beginner walk-run)",
   "@planNewStarterC25k": {
     "description": "Built-in starter plan name"

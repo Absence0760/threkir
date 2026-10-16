@@ -8,8 +8,8 @@ import { readMaybeRow } from '../fixtures/db-read';
  * /plans/new built-in starter library (Training P3). The engine
  * (starter_plans.ts) is unit-tested; this pins the picker UI: choosing a
  * starter instantiates it via generatePlan → createTrainingPlan and lands on
- * the new plan's detail. `createTrainingPlan` already auto-completes the prior
- * active plan, so the active-plan overlap constraint can't reject the create — the test must
+ * the new plan's detail. The starter overlaps the seeded plan, so the create asks first and the
+ * test chooses Replace, which completes the prior active plan — the test must
  * NOT delete USER_A's plans wholesale (that would destroy the shared seeded
  * `Richmond Half` plan other specs depend on). Cleanup removes only the plan
  * THIS test creates and restores the seed plan to active.
@@ -49,6 +49,11 @@ test.describe('/plans/new starter library', () => {
 			.locator('.starter-picker')
 			.getByRole('button', { name: 'Create plan' })
 			.click();
+		// The starter overlaps the seeded plan, so the create asks first
+		// (decisions § 2050); Replace completes the seed plan, as before.
+		const overlapDialog = page.getByTestId('plan-overlap-dialog');
+		await expect(overlapDialog).toBeVisible({ timeout: 10_000 });
+		await overlapDialog.getByRole('button', { name: 'Replace plan' }).click();
 
 		await page.waitForURL(/\/plans\/[0-9a-f-]{36}$/, { timeout: 15_000 });
 

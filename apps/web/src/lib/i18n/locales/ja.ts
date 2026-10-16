@@ -2927,7 +2927,7 @@ export const messages = {
 	"plansNew.starterHeading": "組み込みプランから始める",
 	"plansNew.starterHint": "実績のあるトレーニングプランを選ぶと、開始日からスケジュールします。後で調整できます。",
 	"plansNew.starterLabel": "スタータープラン",
-	"plansNew.createStarter": "プランを作成",
+	"plansNew.createStarter": "このプランを始める",
 	"plansNew.creating": "作成中…",
 	"plansNew.starterC25k": "カウチ・トゥ・5K（初心者ウォークラン）",
 	"plansNew.starterHalf12": "ハーフマラソン — 12週間",

@@ -418,7 +418,7 @@ test.describe('plan chaining', () => {
 		const picker = page.locator('.starter-picker');
 		await picker.locator('select').selectOption('c25k');
 		await picker.locator('input[type="date"]').fill(sundayOnOrAfter(14));
-		await picker.getByRole('button', { name: /Create plan/ }).click();
+		await picker.getByRole('button', { name: 'Start this plan' }).click();
 
 		const dialog = page.getByTestId('plan-overlap-dialog');
 		await expect(dialog).toBeVisible({ timeout: 10_000 });
@@ -441,7 +441,7 @@ test.describe('plan chaining', () => {
 		const picker = page.locator('.starter-picker');
 		await picker.locator('select').selectOption('c25k');
 		await picker.locator('input[type="date"]').fill(sundayOnOrAfter(14));
-		await picker.getByRole('button', { name: /Create plan/ }).click();
+		await picker.getByRole('button', { name: 'Start this plan' }).click();
 
 		const dialog = page.getByTestId('plan-overlap-dialog');
 		await expect(dialog).toBeVisible({ timeout: 10_000 });

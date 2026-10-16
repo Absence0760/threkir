@@ -2945,7 +2945,7 @@ export const en = {
 	"plansNew.starterHeading": "Start from a built-in plan",
 	"plansNew.starterHint": "Pick a proven training plan and we'll schedule it from your start date — you can tweak it after.",
 	"plansNew.starterLabel": "Starter plan",
-	"plansNew.createStarter": "Create plan",
+	"plansNew.createStarter": "Start this plan",
 	"plansNew.creating": "Creating…",
 	"plansNew.starterC25k": "Couch to 5K (beginner walk-run)",
 	"plansNew.starterHalf12": "Half Marathon — 12 weeks",

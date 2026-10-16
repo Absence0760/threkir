@@ -2,6 +2,7 @@
 	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { untrack } from 'svelte';
 	import { lengthLimit } from '#lib/core/column_limits.ts';
+	import { RACE_GOAL_MAX_HOURS } from '#lib/training/plan_races.ts';
 	import Modal from './Modal.svelte';
 	import { updatePlanMeta } from '#lib/core/data.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
@@ -116,7 +117,7 @@
 		<fieldset class="field">
 			<legend class="field-label">{m('planMeta.goalTime')} <span class="optional">{m('planMeta.optional')}</span></legend>
 			<div class="time-row">
-				<input type="number" min="0" max="9" bind:value={goalTimeHours} placeholder={m('planMeta.hoursAbbr')} aria-describedby="plan-meta-goal-time-hint" />
+				<input type="number" min="0" max={RACE_GOAL_MAX_HOURS} bind:value={goalTimeHours} placeholder={m('planMeta.hoursAbbr')} aria-describedby="plan-meta-goal-time-hint" />
 				<span>:</span>
 				<input type="number" min="0" max="59" bind:value={goalTimeMin} placeholder={m('planMeta.minutesAbbr')} aria-describedby="plan-meta-goal-time-hint" />
 				<span>:</span>

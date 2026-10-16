@@ -1046,12 +1046,15 @@ class TrainingService extends ChangeNotifier {
     required Map<String, Map<String, Object?>> patches,
   }) {
     final appliedAt = DateTime.now().toUtc().toIso8601String();
+    // Only a workout the taper changes is stamped: a stamp on an untouched
+    // one would make every later taper skip it.
     return _applyWorkoutAdjustments(planId, {
       for (final e in patches.entries)
-        e.key: {
-          ...e.value,
-          PlanWorkoutRow.colRaceTaperAppliedAt: appliedAt,
-        },
+        if (e.value.isNotEmpty)
+          e.key: {
+            ...e.value,
+            PlanWorkoutRow.colRaceTaperAppliedAt: appliedAt,
+          },
     });
   }
 

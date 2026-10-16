@@ -254,13 +254,18 @@ void main() {
         if (r.path == '/rest/v1/rpc/apply_workout_adjustments') r,
     ];
     expect(calls, hasLength(1));
-    expect(calls.single.body, {
-      'p_plan_id': 'plan-1',
-      'p_changes': [
-        {'id': 'wo-1', 'target_distance_m': 6000, 'target_pace_sec_per_km': null},
-        {'id': 'wo-3', 'structure': null},
-      ],
-    });
+    final body = calls.single.body as Map;
+    expect(body['p_plan_id'], 'plan-1');
+    final changes = (body['p_changes'] as List).cast<Map>();
+    // The empty wo-2 patch is neither sent nor stamped: a stamp on a
+    // workout the taper left alone would hide it from every later taper.
+    expect(changes.map((c) => c['id']), ['wo-1', 'wo-3']);
+    final stamp = changes.first['race_taper_applied_at'];
+    expect(stamp, isA<String>());
+    expect(changes, [
+      {'id': 'wo-1', 'target_distance_m': 6000, 'target_pace_sec_per_km': null, 'race_taper_applied_at': stamp},
+      {'id': 'wo-3', 'structure': null, 'race_taper_applied_at': stamp},
+    ]);
     expect(fake.requests.where((r) => r.method == 'PATCH'), isEmpty);
   });
 

@@ -1,6 +1,7 @@
 import { expect, test } from '../fixtures/test';
 
 import { readMaybeRow } from '../fixtures/db-read';
+import { setStorageOnLoad } from '../fixtures/helpers';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 
@@ -48,7 +49,7 @@ test('the browser zone is written after sign-in and follows a move', async ({ br
 	}
 });
 
-test('nothing is written when the settings read failed and the cache is cold', async ({ browser }) => {
+test('nothing is written when the settings read failed and the cache is cold', async ({ browser, mockRoute }) => {
 	// Writing over a bag that came from neither the server nor the cache would
 	// seed the cache with a bag holding no privacy zones, which the share paths
 	// then read as "no zones set" (runs/detail.spec.ts pins that refusal).
@@ -61,12 +62,8 @@ test('nothing is written when the settings read failed and the cache is cold', a
 	let reads = 0;
 	const writes: string[] = [];
 	try {
-		await page.addInitScript(() => {
-			for (const key of Object.keys(localStorage)) {
-				if (key.startsWith('settings_cache_')) localStorage.removeItem(key);
-			}
-		});
-		await page.route('**/rest/v1/user_settings*', (route) => {
+		await setStorageOnLoad(page, { removeLocalPrefixes: ['settings_cache_'] });
+		await mockRoute(page, '**/rest/v1/user_settings*', (route) => {
 			if (route.request().method() === 'GET') {
 				reads++;
 				return route.abort();

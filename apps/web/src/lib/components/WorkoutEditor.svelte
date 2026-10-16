@@ -9,7 +9,7 @@
 		type WorkoutStructure
 	} from '#lib/training/training.ts';
 	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
-	import { RACE_PRIORITIES, type RacePriority } from '#lib/training/plan_races.ts';
+	import { RACE_GOAL_MAX_HOURS, RACE_PRIORITIES, type RacePriority } from '#lib/training/plan_races.ts';
 	import { getUnit } from '#lib/format/units.svelte.ts';
 	import { paceParts } from '#lib/format/pace_format.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
@@ -418,7 +418,7 @@
 					<input
 						type="number"
 						min="0"
-						max="99"
+						max={RACE_GOAL_MAX_HOURS}
 						bind:value={goalHours}
 						placeholder={t('workoutEditor.hours')}
 						aria-label={t('workoutEditor.raceGoalHours')}

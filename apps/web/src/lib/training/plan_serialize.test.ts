@@ -277,6 +277,22 @@ test('parsePlanMarkdown rejects race fields on a non-race row and a bad priority
 	assert.throws(() => parsePlanMarkdown(table('| 1 | 2027-02-06 | race | 5 km | parkrun |  | fast |')), /goal time "fast"/);
 });
 
+test('parsePlanMarkdown reads a race goal up to 999 hours and refuses a field out of range', () => {
+	const table = (goal: string) =>
+		[
+			'| Week | Date | Type | Distance | Race | Priority | Goal |',
+			'| --- | --- | --- | --- | --- | --- | --- |',
+			`| 1 | 2027-02-06 | race | 386 km | Moab 240 | A | ${goal} |`,
+		].join('\n');
+	const goalOf = (goal: string) => parsePlanMarkdown(table(goal)).generated.weeks[0].workouts[0].target_duration_seconds;
+	assert.equal(goalOf('105:00:00'), 105 * 3600);
+	assert.equal(goalOf('999:59:59'), 999 * 3600 + 59 * 60 + 59);
+	assert.equal(goalOf('25:30'), 25 * 60 + 30);
+	for (const bad of ['1000:00:00', '1:75:00', '1:30:60', '25:61']) {
+		assert.throws(() => parsePlanMarkdown(table(bad)), /goal time/, bad);
+	}
+});
+
 test('a piped race name, a priority-only race, a goal-only race and the plan goal time survive the round-trip', () => {
 	const plan: ExportPlan = {
 		name: 'Spring double',

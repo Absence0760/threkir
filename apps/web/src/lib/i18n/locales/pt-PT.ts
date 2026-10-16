@@ -2934,7 +2934,6 @@ export const messages = {
 	"seasonPlanner.describeButton": "Encontrar as minhas provas",
 	"seasonPlanner.describeWorking": "A ler…",
 	"seasonPlanner.describeFound": "Provas encontradas na sua descrição. Verifique cada uma antes de continuar.",
-	"seasonPlanner.describeAssumed": "Alguns dados foram preenchidos automaticamente. Verifique a data, a distância e a prioridade de cada prova.",
 	"seasonPlanner.errorConsent": "O assistente de época precisa do aviso de IA atualizado. Pode adicionar as suas provas abaixo na mesma.",
 	"seasonPlanner.errorConsentLink": "Reveja e aceite nas Definições.",
 	"seasonPlanner.errorDailyLimit": "Já usou os pedidos de IA de hoje. Adicione as suas provas abaixo ou tente amanhã.",

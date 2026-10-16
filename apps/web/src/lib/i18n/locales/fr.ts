@@ -2935,7 +2935,6 @@ export const messages = {
 	"seasonPlanner.describeButton": "Trouver mes courses",
 	"seasonPlanner.describeWorking": "Lecture…",
 	"seasonPlanner.describeFound": "Courses trouvées dans ta description. Vérifie chacune avant de continuer.",
-	"seasonPlanner.describeAssumed": "Certains détails ont été complétés pour toi. Vérifie la date, la distance et la priorité de chaque course.",
 	"seasonPlanner.errorConsent": "L’assistant de saison nécessite la nouvelle information sur l’IA. Tu peux quand même ajouter tes courses ci-dessous.",
 	"seasonPlanner.errorConsentLink": "La consulter et l’accepter dans les réglages.",
 	"seasonPlanner.errorDailyLimit": "Tu as utilisé tes requêtes IA du jour. Ajoute tes courses toi-même ci-dessous, ou réessaie demain.",

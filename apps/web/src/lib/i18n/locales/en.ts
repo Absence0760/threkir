@@ -2948,7 +2948,6 @@ export const en = {
 	"seasonPlanner.describeButton": "Find my races",
 	"seasonPlanner.describeWorking": "Reading…",
 	"seasonPlanner.describeFound": "Races found in your description. Check each one before you continue.",
-	"seasonPlanner.describeAssumed": "Some details were filled in for you. Check the date, distance and priority of every race.",
 	"seasonPlanner.errorConsent": "The season assistant needs the updated AI disclosure. You can still add your races below.",
 	"seasonPlanner.errorConsentLink": "Review and accept it in Settings.",
 	"seasonPlanner.errorDailyLimit": "You've used today's AI requests. Add your races below yourself, or try again tomorrow.",

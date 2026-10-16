@@ -13,8 +13,11 @@ import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/sag
  * `season_plan_test.dart`) and the create loop in `season_create.test.ts`;
  * this pins the page wiring: races entered by hand, confirmed, previewed, and
  * created as chained plans through `create_training_plan`, with the B race
- * written as a race workout in the plan whose window holds it. The second
- * case pins the fallback when the race extraction is unavailable.
+ * written as a race workout in the plan whose window holds it. The other
+ * cases stub `/api/coach/season-request`: unavailable (manual entry), races
+ * with assumptions (the list fills, each assumption gets its own line, and a
+ * 56 km + 90 km season previews as two chained plans), and a 200 with no
+ * races (the assumption explains why, manual entry follows).
  *
  * Runs as a throwaway user so the two created active plans overlap nothing.
  */
@@ -149,6 +152,84 @@ test('an unavailable race extraction leaves a race to fill in by hand', async ({
 		await expect(races).toHaveCount(1);
 		await expect(races.nth(0).getByRole('combobox', { name: 'Priority' })).toHaveValue('A');
 		await expect(page.getByTestId('season-preview')).toHaveCount(0);
+	} finally {
+		await context.close();
+	}
+});
+
+test('races found in a description fill the list with the assumptions explained, and a 56 km + 90 km season chains', async ({
+	browser,
+	mockRoute,
+}) => {
+	const [runner] = users;
+	const context = await browser.newContext({ storageState: runner.storageStatePath });
+	const page = await context.newPage();
+	const twoOceans = { name: 'Two Oceans e2e', date: browserDate(84), distanceM: 56_000, priority: 'A', goalTimeSec: 6 * 3600 };
+	const comrades = { name: 'Comrades e2e', date: browserDate(154), distanceM: 90_000, priority: 'A', goalTimeSec: null };
+	try {
+		await mockRoute(page, '**/api/coach/season-request', (route) =>
+			route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({ races: [twoOceans, comrades], assumptions: ['race_date_next_year', 'priority_a_assigned'] }),
+			})
+		);
+		await open(page);
+		await page.getByRole('textbox', { name: 'Describe your season' }).fill('Two Oceans in April then Comrades in June');
+		await page.getByRole('button', { name: 'Find my races' }).click();
+
+		const assumptions = page.getByTestId('season-assumptions').getByRole('listitem');
+		await expect(assumptions).toHaveText([
+			'A date given without a year had already passed this year, so it was moved to next year.',
+			'No race was marked as your A race, so the longest one is.',
+		]);
+		const races = page.getByTestId('season-race');
+		await expect(races).toHaveCount(2);
+		await expect(races.nth(0).getByLabel('Name', { exact: true })).toHaveValue(twoOceans.name);
+		await expect(races.nth(0).getByLabel('Date', { exact: true })).toHaveValue(twoOceans.date);
+		await expect(races.nth(0).getByLabel('Distance (km)')).toHaveValue('56');
+		await expect(races.nth(0).getByLabel('Goal hours')).toHaveValue('6');
+		await expect(races.nth(1).getByLabel('Name', { exact: true })).toHaveValue(comrades.name);
+		await expect(races.nth(1).getByLabel('Distance (km)')).toHaveValue('90');
+		await expect(races.nth(1).getByRole('combobox', { name: 'Priority' })).toHaveValue('A');
+		await expect(page.getByTestId('season-preview')).toHaveCount(0);
+
+		await page.getByRole('button', { name: 'Confirm races and preview plans' }).click();
+		const preview = page.getByTestId('season-preview');
+		await expect(preview.getByTestId('season-refusal')).toHaveCount(0);
+		await expect(preview.getByTestId('season-plan')).toHaveCount(2);
+		await expect(preview.getByTestId('season-plan').nth(0)).toContainText(twoOceans.name);
+		await expect(preview.getByTestId('season-plan').nth(0)).toContainText('56');
+		await expect(preview.getByTestId('season-plan').nth(1)).toContainText(comrades.name);
+		await expect(preview.getByTestId('season-plan').nth(1)).toContainText('90');
+		await expect(preview).toContainText(`Recovery after ${twoOceans.name}`);
+		await expect(preview.getByRole('button', { name: 'Create 2 plans' })).toBeEnabled();
+	} finally {
+		await context.close();
+	}
+});
+
+test('a description with no usable races explains why and leaves a race to fill in', async ({ browser, mockRoute }) => {
+	const [runner] = users;
+	const context = await browser.newContext({ storageState: runner.storageStatePath });
+	const page = await context.newPage();
+	try {
+		await mockRoute(page, '**/api/coach/season-request', (route) =>
+			route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({ races: [], assumptions: ['race_dropped_distance'] }),
+			})
+		);
+		await open(page);
+		await page.getByRole('textbox', { name: 'Describe your season' }).fill('A 2 km fun run next month');
+		await page.getByRole('button', { name: 'Find my races' }).click();
+		await expect(page.getByTestId('season-request-error')).toContainText('No races could be found');
+		await expect(page.getByTestId('season-assumptions').getByRole('listitem')).toHaveText([
+			"A race was left out because its distance is outside what the planner supports (5 km to 400 km).",
+		]);
+		await expect(page.getByTestId('season-race')).toHaveCount(1);
+		await expect(page.getByTestId('season-race').nth(0).getByLabel('Name', { exact: true })).toHaveValue('');
 	} finally {
 		await context.close();
 	}

@@ -2935,7 +2935,6 @@ export const messages = {
 	"seasonPlanner.describeButton": "Buscar mis carreras",
 	"seasonPlanner.describeWorking": "Leyendo…",
 	"seasonPlanner.describeFound": "Carreras encontradas en tu descripción. Revisa cada una antes de continuar.",
-	"seasonPlanner.describeAssumed": "Algunos datos se completaron por ti. Revisa la fecha, la distancia y la prioridad de cada carrera.",
 	"seasonPlanner.errorConsent": "El asistente de temporada necesita el aviso de IA actualizado. Aun así puedes añadir tus carreras abajo.",
 	"seasonPlanner.errorConsentLink": "Revísalo y acéptalo en Ajustes.",
 	"seasonPlanner.errorDailyLimit": "Ya usaste tus solicitudes de IA de hoy. Añade tus carreras abajo tú mismo o inténtalo mañana.",

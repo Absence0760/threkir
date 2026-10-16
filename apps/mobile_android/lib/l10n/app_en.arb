@@ -16697,9 +16697,71 @@
   "@coachingAthleteAssignedByYou": {
     "description": "Badge when the active plan was assigned by the viewing coach"
   },
-  "coachingAthleteCannotAssignHasPlan": "This athlete already has an active plan. They'll need to finish or end it before you can assign a new one.",
-  "@coachingAthleteCannotAssignHasPlan": {
-    "description": "Hint when the athlete has a plan not assigned by this coach"
+  "coachingAthleteAssignAfterOne": "{name}'s plan “{plan}” runs until {end}. A plan you assign can't overlap it, so start it after that date.",
+  "@coachingAthleteAssignAfterOne": {
+    "description": "Assign control hint naming the athlete's one plan still holding dates; {end} is a formatted date",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "plan": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "coachingAthleteAssignAfterTwo": "{name}'s plan “{plan}” runs until {end}, and “{next}” runs {nextStart} – {nextEnd}. A plan you assign can't overlap either of them.",
+  "@coachingAthleteAssignAfterTwo": {
+    "description": "Assign control hint naming the athlete's current plan and the one queued after it; dates are formatted",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "plan": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      },
+      "next": {
+        "type": "String"
+      },
+      "nextStart": {
+        "type": "String"
+      },
+      "nextEnd": {
+        "type": "String"
+      }
+    }
+  },
+  "coachingAthleteAssignOverlapNamed": "Those dates overlap {name}'s plan “{plan}” ({start} – {end}). Pick a start date after it ends.",
+  "@coachingAthleteAssignOverlapNamed": {
+    "description": "Banner when the server refused an assignment that overlaps the named plan of the athlete",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "plan": {
+        "type": "String"
+      },
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "coachingAthleteAssignOverlap": "Those dates overlap one of {name}'s active plans. Pick a start date after it ends.",
+  "@coachingAthleteAssignOverlap": {
+    "description": "Banner when the server refused an overlapping assignment and the screen cannot name the plan",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
   },
   "coachingAthleteComplete": "complete",
   "@coachingAthleteComplete": {

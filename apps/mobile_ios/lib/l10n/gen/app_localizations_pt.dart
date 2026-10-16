@@ -12750,8 +12750,36 @@ class AppLocalizationsPt extends AppLocalizations {
   String get coachingAthleteAssignedByYou => 'Atribuído por si';
 
   @override
-  String get coachingAthleteCannotAssignHasPlan =>
-      'Este atleta já tem um plano ativo. Ele precisará concluí-lo ou encerrá-lo antes que possa atribuir um novo.';
+  String coachingAthleteAssignAfterOne(String name, String plan, String end) {
+    return 'O plano “$plan” de $name decorre até $end. Um plano atribuído não pode sobrepor-se a ele, por isso comece-o depois dessa data.';
+  }
+
+  @override
+  String coachingAthleteAssignAfterTwo(
+    String name,
+    String plan,
+    String end,
+    String next,
+    String nextStart,
+    String nextEnd,
+  ) {
+    return 'O plano “$plan” de $name decorre até $end, e “$next” decorre de $nextStart a $nextEnd. Um plano atribuído não pode sobrepor-se a nenhum deles.';
+  }
+
+  @override
+  String coachingAthleteAssignOverlapNamed(
+    String name,
+    String plan,
+    String start,
+    String end,
+  ) {
+    return 'Essas datas sobrepõem-se ao plano “$plan” de $name ($start – $end). Escolha uma data de início depois de ele terminar.';
+  }
+
+  @override
+  String coachingAthleteAssignOverlap(String name) {
+    return 'Essas datas sobrepõem-se a um dos planos ativos de $name. Escolha uma data de início depois de ele terminar.';
+  }
 
   @override
   String get coachingAthleteComplete => 'concluído';
@@ -29206,8 +29234,36 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get coachingAthleteAssignedByYou => 'Atribuído por você';
 
   @override
-  String get coachingAthleteCannotAssignHasPlan =>
-      'Este atleta já tem um plano ativo. Ele precisará concluí-lo ou encerrá-lo antes que você possa atribuir um novo.';
+  String coachingAthleteAssignAfterOne(String name, String plan, String end) {
+    return 'O plano “$plan” de $name vai até $end. Um plano atribuído não pode se sobrepor a ele, então comece-o depois dessa data.';
+  }
+
+  @override
+  String coachingAthleteAssignAfterTwo(
+    String name,
+    String plan,
+    String end,
+    String next,
+    String nextStart,
+    String nextEnd,
+  ) {
+    return 'O plano “$plan” de $name vai até $end, e “$next” vai de $nextStart a $nextEnd. Um plano atribuído não pode se sobrepor a nenhum deles.';
+  }
+
+  @override
+  String coachingAthleteAssignOverlapNamed(
+    String name,
+    String plan,
+    String start,
+    String end,
+  ) {
+    return 'Essas datas se sobrepõem ao plano “$plan” de $name ($start – $end). Escolha uma data de início depois que ele terminar.';
+  }
+
+  @override
+  String coachingAthleteAssignOverlap(String name) {
+    return 'Essas datas se sobrepõem a um dos planos ativos de $name. Escolha uma data de início depois que ele terminar.';
+  }
 
   @override
   String get coachingAthleteComplete => 'concluído';

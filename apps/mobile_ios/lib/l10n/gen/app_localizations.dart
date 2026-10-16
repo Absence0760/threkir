@@ -20883,11 +20883,41 @@ abstract class AppLocalizations {
   /// **'Assigned by you'**
   String get coachingAthleteAssignedByYou;
 
-  /// Hint when the athlete has a plan not assigned by this coach
+  /// Assign control hint naming the athlete's one plan still holding dates; {end} is a formatted date
   ///
   /// In en, this message translates to:
-  /// **'This athlete already has an active plan. They\'ll need to finish or end it before you can assign a new one.'**
-  String get coachingAthleteCannotAssignHasPlan;
+  /// **'{name}\'s plan “{plan}” runs until {end}. A plan you assign can\'t overlap it, so start it after that date.'**
+  String coachingAthleteAssignAfterOne(String name, String plan, String end);
+
+  /// Assign control hint naming the athlete's current plan and the one queued after it; dates are formatted
+  ///
+  /// In en, this message translates to:
+  /// **'{name}\'s plan “{plan}” runs until {end}, and “{next}” runs {nextStart} – {nextEnd}. A plan you assign can\'t overlap either of them.'**
+  String coachingAthleteAssignAfterTwo(
+    String name,
+    String plan,
+    String end,
+    String next,
+    String nextStart,
+    String nextEnd,
+  );
+
+  /// Banner when the server refused an assignment that overlaps the named plan of the athlete
+  ///
+  /// In en, this message translates to:
+  /// **'Those dates overlap {name}\'s plan “{plan}” ({start} – {end}). Pick a start date after it ends.'**
+  String coachingAthleteAssignOverlapNamed(
+    String name,
+    String plan,
+    String start,
+    String end,
+  );
+
+  /// Banner when the server refused an overlapping assignment and the screen cannot name the plan
+  ///
+  /// In en, this message translates to:
+  /// **'Those dates overlap one of {name}\'s active plans. Pick a start date after it ends.'**
+  String coachingAthleteAssignOverlap(String name);
 
   /// Word following the completion percentage, e.g. '40% complete'
   ///

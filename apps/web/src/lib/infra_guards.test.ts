@@ -262,6 +262,7 @@ test('every POST to a Lambda origin sends the sigv4 payload hash', () => {
 		'src/lib/routes/route_request_client.ts',
 		'src/lib/training/plan_request_client.ts',
 		'src/lib/training/plan_edit_client.ts',
+		'src/lib/training/season_request_transport.ts',
 	]) {
 		assert.match(
 			read(site),

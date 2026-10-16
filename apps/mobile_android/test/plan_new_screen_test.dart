@@ -1105,6 +1105,10 @@ void main() {
       final button = find.widgetWithText(FilledButton, 'Create plan');
       await tester.scrollUntilVisible(button, 300,
           scrollable: find.byType(Scrollable).first);
+      // scrollUntilVisible stops once any of the button is on screen, which
+      // can leave its centre, where tap() lands, past the viewport's edge.
+      await tester.ensureVisible(button);
+      await tester.pumpAndSettle();
       await tester.tap(button);
       await pumpUntil(tester, () => t.generated != null,
           describe: 'the wizard to ask for the ultra plan');

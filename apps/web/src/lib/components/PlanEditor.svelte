@@ -6,8 +6,14 @@
 	import { onMount, untrack } from 'svelte';
 	import { replaceState } from '$app/navigation';
 	import { page } from '$app/state';
-	import { createTrainingPlan, fetchMyOverlappingActivePlans, fetchRuns } from '#lib/core/data.ts';
-	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import {
+		createTrainingPlan,
+		fetchMyOverlappingActivePlans,
+		fetchRuns,
+		type PlanOverlapChoice,
+	} from '#lib/core/data.ts';
+	import PlanOverlapDialog from '#lib/components/PlanOverlapDialog.svelte';
+	import { attemptPlanCreate, type OverlapPlan } from '#lib/training/plan_overlap.ts';
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
 	import {
 		GOAL_DISTANCES_M,
@@ -25,8 +31,6 @@
 		TrainingGender,
 	} from '#lib/training/training.ts';
 	import { isSundayIso, nextSundayIso } from '#lib/training/plan_start.ts';
-	import { shiftIsoDate } from '#lib/training/plan_bulk_ops.ts';
-	import type { TrainingPlan } from '#lib/types.ts';
 	import {
 		CHRONIC_WINDOW_WEEKS,
 		openingWeekVolumeM,
@@ -582,37 +586,13 @@
 		{ value: 'distance_full', label: t('planEditor.marathon') }
 	]);
 
-	/// Active plans may chain but not overlap (decisions § 2008). A new plan
-	/// whose window misses every active plan is created straight away; one
-	/// that overlaps asks first, naming each plan it collides with, because
-	/// both ways through change an existing plan: replacing completes it,
-	/// ending it early deletes its workouts after the day before this start.
-	let overlapping = $state<Pick<TrainingPlan, 'id' | 'name' | 'start_date' | 'end_date'>[]>([]);
-	const showOverlapConfirm = $derived(overlapping.length > 0);
-	const trimTo = $derived(startDate ? shiftIsoDate(startDate, -1) : '');
-	const canTrim = $derived(
-		overlapping.length > 0 && overlapping.every((p) => p.start_date <= trimTo)
-	);
-	const fmtDay = (iso: string) =>
-		parseISO(iso).toLocaleDateString(activeFormatLocale(), { dateStyle: 'medium' });
-	const overlapMessage = $derived(
-		t('planEditor.overlapMessage', {
-			plans: overlapping
-				.map((p) =>
-					t('planEditor.overlapPlanItem', {
-						name: p.name,
-						start: fmtDay(p.start_date),
-						end: fmtDay(p.end_date)
-					})
-				)
-				.join(', ')
-		}) + (canTrim ? '' : ' ' + t('planEditor.overlapNoTrim'))
-	);
-	const trimLabel = $derived(
-		overlapping.length === 1
-			? t('planEditor.overlapTrimOne', { name: overlapping[0].name, date: trimTo ? fmtDay(trimTo) : '' })
-			: t('planEditor.overlapTrimMany', { date: trimTo ? fmtDay(trimTo) : '' })
-	);
+	/// Active plans may chain but not overlap (decisions § 2008). The create
+	/// asks the server to refuse any overlap; when it does, the dialog names
+	/// the plans in the way, read fresh at that moment, and the runner's choice
+	/// is sent back so the server resolves it in the same transaction as the
+	/// insert (decisions § 2050). A plan created since an earlier look is
+	/// therefore never replaced without being named first.
+	let overlapping = $state<OverlapPlan[]>([]);
 
 	async function submit(e: Event) {
 		e.preventDefault();
@@ -639,21 +619,7 @@
 			error = t('planEditor.errorStartMovedToSunday');
 			return;
 		}
-		busy = true;
-		error = null;
-		try {
-			const hits = await fetchMyOverlappingActivePlans(startDate, plan.endDate);
-			if (hits.length > 0) {
-				overlapping = hits;
-				busy = false;
-				return;
-			}
-			await proceedWithCreate('replace');
-		} catch (e: unknown) {
-			error = describeError(e);
-			console.error('Plan create failed', e);
-			busy = false;
-		}
+		await proceedWithCreate('refuse');
 	}
 
 	function todayIso(): string {
@@ -661,30 +627,36 @@
 		return formatISO(d);
 	}
 
-	async function proceedWithCreate(overlap: 'replace' | 'trim') {
+	async function proceedWithCreate(overlap: PlanOverlapChoice) {
 		busy = true;
 		error = null;
+		overlapping = [];
+		const endDate = plan!.endDate;
 		try {
-			const created = await createTrainingPlan({
-				name: name.trim(),
-				goalEvent,
-				// A pasted plan's distance comes from the parse (the derived
-				// `goalDistance` is wrong for a custom-event import).
-				goalDistanceM: importedMode && importedGoalDistanceM ? importedGoalDistanceM : goalDistance,
-				goalTimeSec,
-				recent5kSec: recent5kApplied,
-				startDate,
-				daysPerWeek,
-				generated: plan!,
-				overlap,
-			});
-			oncreated?.(created);
+			const outcome = await attemptPlanCreate(
+				() =>
+					createTrainingPlan({
+						name: name.trim(),
+						goalEvent,
+						// A pasted plan's distance comes from the parse (the derived
+						// `goalDistance` is wrong for a custom-event import).
+						goalDistanceM: importedMode && importedGoalDistanceM ? importedGoalDistanceM : goalDistance,
+						goalTimeSec,
+						recent5kSec: recent5kApplied,
+						startDate,
+						daysPerWeek,
+						generated: plan!,
+						overlap,
+					}),
+				() => fetchMyOverlappingActivePlans(startDate, endDate)
+			);
+			if (outcome.kind === 'overlap') overlapping = outcome.overlapping;
+			else oncreated?.(outcome.value);
 		} catch (e: unknown) {
 			error = describeError(e);
 			console.error('Plan create failed', e);
 		} finally {
 			busy = false;
-			overlapping = [];
 		}
 	}
 
@@ -1034,18 +1006,11 @@
 	</div>
 </form>
 
-<ConfirmDialog
-	open={showOverlapConfirm}
-	title={t('planEditor.overlapTitle')}
-	message={overlapMessage}
-	confirmLabel={t('planEditor.replacePlan')}
-	cancelLabel={t('common.cancel')}
-	altLabel={canTrim ? trimLabel : undefined}
-	onalt={canTrim ? () => proceedWithCreate('trim') : undefined}
-	danger={true}
-	onconfirm={() => proceedWithCreate('replace')}
+<PlanOverlapDialog
+	{overlapping}
+	{startDate}
+	onchoose={proceedWithCreate}
 	oncancel={cancelOverlap}
-	data-testid="plan-overlap-dialog"
 />
 
 <style>

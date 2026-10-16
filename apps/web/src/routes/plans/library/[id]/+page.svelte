@@ -8,7 +8,11 @@
 		fetchPlan,
 		fetchPublicPlanLibrary,
 		clonePublicPlan,
+		fetchMyOverlappingActivePlans,
+		type PlanOverlapChoice,
 	} from '#lib/core/data.ts';
+	import PlanOverlapDialog from '#lib/components/PlanOverlapDialog.svelte';
+	import { attemptPlanCreate, clonedPlanEndIso, type OverlapPlan } from '#lib/training/plan_overlap.ts';
 	import { formatDistance } from '#lib/format/units.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
@@ -83,13 +87,29 @@
 		loading = false;
 	}
 
-	async function clone() {
+	// The clone asks the server to refuse an overlap and, when it does, names
+	// the plans in the way before the runner chooses (decisions § 2050).
+	let overlapping = $state<OverlapPlan[]>([]);
+	let overlapStart = $state('');
+
+	async function clone(overlap: PlanOverlapChoice = 'refuse') {
 		if (!plan || cloning) return;
+		const source = plan;
+		const start = overlap === 'refuse' ? startDate : overlapStart;
+		overlapping = [];
 		cloning = true;
 		try {
-			const newId = await clonePublicPlan(plan.id, startDate);
+			const outcome = await attemptPlanCreate(
+				() => clonePublicPlan(source.id, start, overlap),
+				() => fetchMyOverlappingActivePlans(start, clonedPlanEndIso(source, start))
+			);
+			if (outcome.kind === 'overlap') {
+				overlapStart = start;
+				overlapping = outcome.overlapping;
+				return;
+			}
 			showToast(m('planLibrary.cloneSuccess'));
-			goto(`/plans/${newId}`);
+			goto(`/plans/${outcome.value}`);
 		} catch (e) {
 			showToast(m('planLibrary.cloneFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
@@ -138,7 +158,7 @@
 				<span>{m('planLibrary.startDateLabel')}</span>
 				<input type="date" bind:value={startDate} />
 			</label>
-			<button class="btn btn-primary" type="button" disabled={cloning} onclick={clone}>
+			<button class="btn btn-primary" type="button" disabled={cloning} onclick={() => clone()}>
 				{cloning ? m('planLibrary.cloning') : m('planLibrary.clone')}
 			</button>
 		</section>
@@ -158,6 +178,13 @@
 		</section>
 	{/if}
 </div>
+
+<PlanOverlapDialog
+	{overlapping}
+	startDate={overlapStart}
+	onchoose={(choice) => clone(choice)}
+	oncancel={() => (overlapping = [])}
+/>
 
 <style>
 	.preview {

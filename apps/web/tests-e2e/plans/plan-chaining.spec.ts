@@ -14,12 +14,18 @@ import { USER_B } from '../fixtures/users';
  * onto a queued plan it offers to move that plan too, onto the plan before it
  * it refuses.
  *
+ * Every create path asks the server to refuse an overlap and resolves it
+ * only once the runner has chosen (decisions § 2050): the wizard, a starter
+ * plan and a public-library clone all show the same dialog, and a plan that
+ * appears after the wizard opened is named rather than silently replaced.
+ *
  * Runs as USER_B with a planted active plan, so USER_A's seeded "Richmond
  * Half 2026" — which other specs need active and untrimmed — is never touched.
  * Every USER_B plan this file makes is deleted afterwards.
  */
 
 const BASE_NAME = 'e2e chain base';
+const STARTER_NAME = 'Couch to 5K (beginner walk-run)';
 
 /// The wizard snaps its start date to a Sunday, so the spec picks one itself
 /// and the date it asserts is the date the plan actually starts on.
@@ -36,12 +42,59 @@ function dayBefore(iso: string): string {
 }
 
 async function deleteUserBPlans(): Promise<void> {
+	for (const pattern of ['e2e chain%', STARTER_NAME]) {
+		const { data } = await getAdminClient()
+			.from('training_plans')
+			.select('id')
+			.eq('user_id', USER_B.id)
+			.like('name', pattern);
+		for (const row of data ?? []) await deletePlan(row.id);
+	}
+}
+
+async function plantPlanRow(fields: {
+	name: string;
+	start: string;
+	end: string;
+	status?: string;
+	isPublicTemplate?: boolean;
+}): Promise<string> {
+	const admin = getAdminClient();
+	const planId = crypto.randomUUID();
+	const template = fields.isPublicTemplate === true;
+	const { error } = await admin.from('training_plans').insert({
+		id: planId,
+		user_id: USER_B.id,
+		name: fields.name,
+		goal_event: 'distance_10k',
+		goal_distance_m: 10_000,
+		start_date: fields.start,
+		end_date: fields.end,
+		days_per_week: 4,
+		status: fields.status ?? 'active',
+		is_template: template,
+		is_public_template: template
+	});
+	if (error) throw error;
+	const weekId = crypto.randomUUID();
+	const { error: weekErr } = await admin
+		.from('plan_weeks')
+		.insert({ id: weekId, plan_id: planId, week_index: 0, phase: 'base', target_volume_m: 10_000 });
+	if (weekErr) throw weekErr;
+	const { error: woErr } = await admin
+		.from('plan_workouts')
+		.insert({ week_id: weekId, scheduled_date: fields.start, kind: 'easy', target_distance_m: 5_000 });
+	if (woErr) throw woErr;
+	return planId;
+}
+
+async function planStatus(id: string): Promise<{ status: string; end_date: string } | null> {
 	const { data } = await getAdminClient()
 		.from('training_plans')
-		.select('id')
-		.eq('user_id', USER_B.id)
-		.like('name', 'e2e chain%');
-	for (const row of data ?? []) await deletePlan(row.id);
+		.select('status, end_date')
+		.eq('id', id)
+		.single();
+	return data;
 }
 
 async function plantBasePlan(endOffsetDays: number): Promise<{ planId: string; weekId: string; lateWorkoutDate: string }> {
@@ -73,7 +126,12 @@ async function plantBasePlan(endOffsetDays: number): Promise<{ planId: string; w
 	return { planId, weekId, lateWorkoutDate };
 }
 
-async function openWizardAndSubmit(page: import('@playwright/test').Page, name: string, startIso: string) {
+async function openWizardAndSubmit(
+	page: import('@playwright/test').Page,
+	name: string,
+	startIso: string,
+	beforeSubmit?: () => Promise<void>
+) {
 	await page.goto('/plans');
 	await expect(page.locator('.card', { hasText: BASE_NAME })).toBeVisible({ timeout: 10_000 });
 	await page.getByRole('button', { name: /New plan/ }).first().click();
@@ -83,6 +141,7 @@ async function openWizardAndSubmit(page: import('@playwright/test').Page, name: 
 	await modal.locator('input[type="date"]').first().fill(startIso);
 	const submit = modal.getByRole('button', { name: /Create plan/ });
 	await expect(submit).toBeEnabled({ timeout: 5_000 });
+	await beforeSubmit?.();
 	await submit.click();
 }
 
@@ -291,5 +350,94 @@ test.describe('plan chaining', () => {
 			.eq('week_id', weekId)
 			.single();
 		expect(wo).toEqual({ kind: 'easy', race_name: null, race_priority: null });
+	});
+
+	test('a plan created after the wizard opened is named, not silently replaced', async ({ page }) => {
+		await plantBasePlan(20);
+		const start = sundayOnOrAfter(28);
+		let sneakyId = '';
+		await openWizardAndSubmit(page, 'e2e chain late', start, async () => {
+			sneakyId = await plantPlanRow({
+				name: 'e2e chain sneaky',
+				start: dayBefore(start),
+				end: browserDate(90)
+			});
+		});
+
+		const dialog = page.getByTestId('plan-overlap-dialog');
+		await expect(dialog).toBeVisible({ timeout: 10_000 });
+		await expect(dialog).toContainText('e2e chain sneaky');
+		await dialog.getByRole('button', { name: 'Cancel' }).click();
+		await expect(dialog).toHaveCount(0);
+
+		expect(await planStatus(sneakyId)).toEqual({ status: 'active', end_date: browserDate(90) });
+		const { data } = await getAdminClient()
+			.from('training_plans')
+			.select('id')
+			.eq('user_id', USER_B.id)
+			.eq('name', 'e2e chain late');
+		expect(data ?? []).toHaveLength(0);
+	});
+
+	test('a starter plan over an active plan asks first, and Cancel changes nothing', async ({ page }) => {
+		const { planId } = await plantBasePlan(60);
+		await page.goto('/plans/new?type=training');
+		const picker = page.locator('.starter-picker');
+		await picker.locator('select').selectOption('c25k');
+		await picker.locator('input[type="date"]').fill(sundayOnOrAfter(14));
+		await picker.getByRole('button', { name: /Create plan/ }).click();
+
+		const dialog = page.getByTestId('plan-overlap-dialog');
+		await expect(dialog).toBeVisible({ timeout: 10_000 });
+		await expect(dialog).toContainText(BASE_NAME);
+		await dialog.getByRole('button', { name: 'Cancel' }).click();
+		await expect(dialog).toHaveCount(0);
+
+		expect((await planStatus(planId))?.status).toBe('active');
+		const { data } = await getAdminClient()
+			.from('training_plans')
+			.select('id')
+			.eq('user_id', USER_B.id)
+			.eq('name', STARTER_NAME);
+		expect(data ?? []).toHaveLength(0);
+	});
+
+	test('a starter plan can replace the active plan it overlaps', async ({ page }) => {
+		const { planId } = await plantBasePlan(60);
+		await page.goto('/plans/new?type=training');
+		const picker = page.locator('.starter-picker');
+		await picker.locator('select').selectOption('c25k');
+		await picker.locator('input[type="date"]').fill(sundayOnOrAfter(14));
+		await picker.getByRole('button', { name: /Create plan/ }).click();
+
+		const dialog = page.getByTestId('plan-overlap-dialog');
+		await expect(dialog).toBeVisible({ timeout: 10_000 });
+		await dialog.getByRole('button', { name: 'Replace plan' }).click();
+		await page.waitForURL(/\/plans\/[0-9a-f-]+$/, { timeout: 15_000 });
+
+		expect((await planStatus(planId))?.status).toBe('completed');
+	});
+
+	test('a public-library clone over an active plan can end that plan early', async ({ page }) => {
+		const { planId } = await plantBasePlan(60);
+		const templateId = await plantPlanRow({
+			name: 'e2e chain library',
+			start: '2030-01-06',
+			end: '2030-01-19',
+			status: 'completed',
+			isPublicTemplate: true
+		});
+		const start = sundayOnOrAfter(14);
+		await page.goto(`/plans/library/${templateId}`);
+		await page.locator('.clone-row input[type="date"]').fill(start);
+		await page.getByRole('button', { name: 'Clone into my plans' }).click();
+
+		const dialog = page.getByTestId('plan-overlap-dialog');
+		await expect(dialog).toBeVisible({ timeout: 10_000 });
+		await expect(dialog).toContainText(BASE_NAME);
+		await dialog.getByRole('button', { name: new RegExp(`^End .*${BASE_NAME}`) }).click();
+		await page.waitForURL(/\/plans\/[0-9a-f-]+$/, { timeout: 15_000 });
+
+		expect(await planStatus(planId)).toEqual({ status: 'active', end_date: dayBefore(start) });
 	});
 });

@@ -141,6 +141,7 @@ test('writes that go through an RPC or an Edge Function mark the lists they chan
 	const cases: { file: string; fn: string; call: RegExp; lists: readonly string[] }[] = [
 		{ file: 'src/lib/core/data.ts', fn: 'clonePlanTemplate', call: /rpc\('clone_plan_template'/, lists: LISTS_BY_TABLE.training_plans },
 		{ file: 'src/lib/core/data.ts', fn: 'clonePublicPlan', call: /rpc\('clone_public_plan'/, lists: LISTS_BY_TABLE.training_plans },
+		{ file: 'src/lib/core/data.ts', fn: 'createTrainingPlan', call: /rpc\('create_training_plan'/, lists: LISTS_BY_TABLE.training_plans },
 		{ file: 'src/lib/core/data.ts', fn: 'importRaceResult', call: /invoke\('race-results-import'/, lists: LISTS_BY_TABLE.runs },
 		{ file: 'src/lib/integrations/strava.ts', fn: 'completeStravaOAuth', call: /invoke\('strava-import'/, lists: LISTS_BY_TABLE.runs },
 		{ file: 'src/lib/integrations/strava.ts', fn: 'syncStrava', call: /invoke\('strava-import'/, lists: LISTS_BY_TABLE.runs },

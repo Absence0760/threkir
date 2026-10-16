@@ -69,7 +69,6 @@ import {
 	type OccurrenceRefundSummary
 } from '../social/paid_registration';
 import { planHeadCopyFields, planWeekCopyRows, planWorkoutCopyRows } from './plan_copy';
-import { shiftIsoDate } from '../training/plan_bulk_ops';
 import { clubSlug, CLUB_SLUG_FALLBACK } from '../social/club_slug';
 import {
 	ROUTE_LIST_COLS,
@@ -5617,15 +5616,18 @@ export async function fetchClubTemplatesForClubs(
 
 /// Clone a template into a user-owned active plan, anchored at
 /// new_start_date. Returns the new plan's id; caller should navigate
-/// to /plans/{id}. The RPC enforces authorisation server-side.
+/// to /plans/{id}. The RPC enforces authorisation server-side and resolves
+/// overlapping active plans per `overlap` in the same transaction.
 export async function clonePlanTemplate(
 	templateId: string,
-	newStartDate: string
+	newStartDate: string,
+	overlap: PlanOverlapChoice = 'refuse'
 ): Promise<string> {
 	markListsStale('plans');
 	const { data, error } = await supabase.rpc('clone_plan_template', {
 		template_id: templateId,
 		new_start_date: newStartDate,
+		p_overlap: overlap,
 	});
 	if (error) {
 		const friendly = rateLimitErrorMessage(m, error);
@@ -5712,12 +5714,14 @@ export async function fetchPublicPlanLibrary(
 /// publisher's private fitness data.
 export async function clonePublicPlan(
 	templateId: string,
-	newStartDate: string
+	newStartDate: string,
+	overlap: PlanOverlapChoice = 'refuse'
 ): Promise<string> {
 	markListsStale('plans');
 	const { data, error } = await supabase.rpc('clone_public_plan', {
 		template_id: templateId,
 		new_start_date: newStartDate,
+		p_overlap: overlap,
 	});
 	if (error) {
 		const friendly = rateLimitErrorMessage(m, error);
@@ -6009,11 +6013,16 @@ async function planOverviewFor(userId: string): Promise<PlanOverviewRead> {
 	};
 }
 
+/// What creating or cloning a plan does to the active plans its window
+/// overlaps: 'refuse' (fail with a PlanOverlapError, the default, so nothing
+/// the runner did not name is changed), 'replace' (complete them) or 'trim'
+/// (end each the day before the new plan starts). Decisions § 2050.
+export type PlanOverlapChoice = 'refuse' | 'replace' | 'trim';
+
 /**
- * Persist a freshly generated plan — plan row, one row per week, and N
- * workouts per week. Runs four sequential inserts (plan → weeks → workouts
- * grouped by week); could be collapsed into a single RPC later but the
- * linear path is easier to reason about while the feature is new.
+ * Persist a freshly generated plan — plan row, weeks and workouts — through
+ * `create_training_plan`, which resolves overlapping active plans per
+ * `overlap` and writes everything in one transaction (decisions § 2050).
  */
 export async function createTrainingPlan(input: {
 	name: string;
@@ -6025,11 +6034,7 @@ export async function createTrainingPlan(input: {
 	daysPerWeek: number;
 	notes?: string;
 	generated: GeneratedPlan;
-	/// What to do with active plans the new window overlaps: complete them
-	/// ('replace', the default) or end each the day before the new plan
-	/// starts ('trim'). Active plans outside the window are left alone, so
-	/// the new plan chains before or after them.
-	overlap?: 'replace' | 'trim';
+	overlap?: PlanOverlapChoice;
 }): Promise<TrainingPlan> {
 	// Read the id from the session directly rather than from the auth store.
 	// The store's `user` object is populated by a background profile fetch
@@ -6040,9 +6045,8 @@ export async function createTrainingPlan(input: {
 	const userId = session?.user?.id;
 	if (!userId) throw new Error('Please sign in to create a plan.');
 
-	// Pre-flight validation — every client-set invariant the DB enforces
-	// echoed here so the user gets a readable error instead of a raw
-	// PostgrestError 23xxx code.
+	// Pre-flight validation — the RPC enforces the same rules, but a
+	// readable message here beats a raw 22023 / 23xxx code.
 	if (!input.name.trim()) throw new Error('Name is required.');
 	if (!(input.goalDistanceM > 0)) throw new Error('Goal distance must be positive.');
 	if (input.daysPerWeek < 3 || input.daysPerWeek > 7) {
@@ -6059,7 +6063,7 @@ export async function createTrainingPlan(input: {
 	}
 	// Defence in depth for the null-kind bug we fixed in training.ts —
 	// if some future change lets a kindless workout escape the generator,
-	// catch it here instead of losing the context in a server-side 23502.
+	// catch it here instead of losing the context in a server-side error.
 	for (const w of input.generated.weeks) {
 		for (const wo of w.workouts) {
 			if (!wo.kind) {
@@ -6071,42 +6075,8 @@ export async function createTrainingPlan(input: {
 	}
 
 	markListsStale('plans');
-	const overlapping = await fetchOverlappingActivePlans(
-		userId,
-		input.startDate,
-		input.generated.endDate
-	);
-	if (overlapping.length > 0) {
-		if ((input.overlap ?? 'replace') === 'trim') {
-			const trimTo = shiftIsoDate(input.startDate, -1);
-			if (overlapping.some((p) => p.start_date > trimTo)) {
-				throw new Error(
-					'A plan that starts on or after the new start date cannot be ended early to make room. Replace it instead.'
-				);
-			}
-			for (const p of overlapping) {
-				const { error } = await supabase.rpc('trim_training_plan', {
-					p_plan_id: p.id,
-					p_new_end_date: trimTo
-				});
-				if (error) throw dbError(error);
-			}
-		} else {
-			const { error } = await supabase
-				.from('training_plans')
-				.update({ status: 'completed' })
-				.in(
-					'id',
-					overlapping.map((p) => p.id)
-				);
-			if (error) throw dbError(error);
-		}
-	}
-
-	const { data: plan, error: planErr } = await supabase
-		.from('training_plans')
-		.insert({
-			user_id: userId,
+	const { data: planId, error } = await supabase.rpc('create_training_plan', {
+		p_plan: {
 			name: input.name.trim(),
 			goal_event: input.goalEvent,
 			goal_distance_m: input.goalDistanceM,
@@ -6116,52 +6086,36 @@ export async function createTrainingPlan(input: {
 			days_per_week: input.daysPerWeek,
 			vdot: input.generated.vdot ?? null,
 			current_5k_seconds: input.recent5kSec ?? null,
-			status: 'active' as PlanStatus,
-			source: 'generated' as const,
 			notes: input.notes?.trim() || null
-		})
-		.select()
+		},
+		p_weeks: input.generated.weeks.map((w) => ({
+			week_index: w.week_index,
+			phase: w.phase,
+			target_volume_m: w.target_volume_m,
+			notes: w.notes ?? null,
+			workouts: w.workouts.map((wo) => ({
+				scheduled_date: wo.scheduled_date,
+				kind: wo.kind,
+				target_distance_m: wo.target_distance_m ?? null,
+				target_duration_seconds: wo.target_duration_seconds ?? null,
+				target_pace_sec_per_km: wo.target_pace_sec_per_km ?? null,
+				target_pace_tolerance_sec: wo.target_pace_tolerance_sec ?? null,
+				structure: (wo.structure ?? null) as unknown as Json,
+				notes: wo.notes ?? null,
+				race_name: wo.kind === 'race' ? wo.race_name?.trim() || null : null,
+				race_priority: wo.kind === 'race' ? (wo.race_priority ?? null) : null
+			}))
+		})),
+		p_overlap: input.overlap ?? 'refuse'
+	});
+	if (error) throw dbError(error);
+
+	const { data: plan, error: readErr } = await supabase
+		.from('training_plans')
+		.select('*')
+		.eq('id', planId)
 		.single();
-	if (planErr || !plan) throw planErr ? dbError(planErr) : new Error('Plan insert failed');
-
-	const weekRows = input.generated.weeks.map((w) => ({
-		plan_id: plan.id,
-		week_index: w.week_index,
-		phase: w.phase,
-		target_volume_m: w.target_volume_m,
-		notes: w.notes
-	}));
-	const { data: weekRes, error: weekErr } = await supabase
-		.from('plan_weeks')
-		.insert(weekRows)
-		.select();
-	if (weekErr || !weekRes) throw weekErr ? dbError(weekErr) : new Error('Weeks insert failed');
-
-	const byIndex = new Map<number, string>();
-	for (const w of weekRes as { id: string; week_index: number }[]) {
-		byIndex.set(w.week_index, w.id);
-	}
-
-	const workoutRows = input.generated.weeks.flatMap((w) =>
-		w.workouts.map((wo) => ({
-			week_id: byIndex.get(w.week_index)!,
-			scheduled_date: wo.scheduled_date,
-			kind: wo.kind,
-			target_distance_m: wo.target_distance_m,
-			target_duration_seconds: wo.target_duration_seconds,
-			target_pace_sec_per_km: wo.target_pace_sec_per_km,
-			target_pace_tolerance_sec: wo.target_pace_tolerance_sec,
-			structure: wo.structure ?? null,
-			notes: wo.notes,
-			race_name: wo.kind === 'race' ? wo.race_name?.trim() || null : null,
-			race_priority: wo.kind === 'race' ? (wo.race_priority ?? null) : null
-		}))
-	);
-	if (workoutRows.length > 0) {
-		const { error: woErr } = await supabase.from('plan_workouts').insert(workoutRows);
-		if (woErr) throw dbError(woErr);
-	}
-
+	if (readErr || !plan) throw readErr ? dbError(readErr) : new Error('Plan read failed');
 	return plan as TrainingPlan;
 }
 

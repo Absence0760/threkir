@@ -834,6 +834,11 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String homePlanUpNext(String name, String date) {
+    return 'Up next: $name, starts $date';
+  }
+
+  @override
   String get homePlanStartsTomorrow => 'Commence demain';
 
   @override
@@ -5778,6 +5783,9 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get plansStatusUpcoming => 'upcoming';
+
+  @override
   String get plansSignInTitle =>
       'Connectez-vous pour utiliser les plans d\'entraînement';
 
@@ -6221,6 +6229,37 @@ class AppLocalizationsFr extends AppLocalizations {
   String get planNewReplaceActiveKeep => 'Garder l\'actuel';
 
   @override
+  String get planOverlapTitle => 'These dates overlap an active plan';
+
+  @override
+  String planOverlapBody(String start, String end) {
+    return 'Your new plan runs $start – $end. Only one plan can be active on any day, and it overlaps:';
+  }
+
+  @override
+  String planOverlapPlanLine(String name, String start, String end) {
+    return '$name: $start – $end';
+  }
+
+  @override
+  String get planOverlapReplaceHint =>
+      'Replace marks the overlapping plans as completed. You can still find them under Manage plans.';
+
+  @override
+  String planOverlapTrimHint(String name, String date) {
+    return 'End $name early to keep its finished weeks and remove its workouts after $date, or replace it to mark it completed.';
+  }
+
+  @override
+  String planOverlapTrim(String name, String date) {
+    return 'End $name on $date';
+  }
+
+  @override
+  String get planOverlapConflict =>
+      'Another active plan now covers these dates. Check your plans and try again.';
+
+  @override
   String get planNewStarterC25k => 'Couch to 5K (débutant marche-course)';
 
   @override
@@ -6331,6 +6370,10 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get planDetailResumeBlocked =>
       'Vous avez déjà un plan actif. Mettez-le en pause ou terminez-le d\'abord.';
+
+  @override
+  String get planDetailResumeOverlap =>
+      'Another active plan overlaps these dates. Pause it, finish it or end it earlier first.';
 
   @override
   String get planDetailAdaptiveOnTrack =>

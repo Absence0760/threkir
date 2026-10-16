@@ -1,6 +1,7 @@
 import { expect, test } from '../fixtures/test';
 
 import { browserDate } from '../fixtures/dates';
+import { readRow, readRows } from '../fixtures/db-read';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { deletePlan } from '../fixtures/simulate';
 import { USER_B } from '../fixtures/users';
@@ -45,12 +46,11 @@ function dayBefore(iso: string): string {
 
 async function deleteUserBPlans(): Promise<void> {
 	for (const pattern of ['e2e chain%', STARTER_NAME]) {
-		const { data } = await getAdminClient()
-			.from('training_plans')
-			.select('id')
-			.eq('user_id', USER_B.id)
-			.like('name', pattern);
-		for (const row of data ?? []) await deletePlan(row.id);
+		const rows = await readRows(
+			`USER_B plans named ${pattern}`,
+			getAdminClient().from('training_plans').select('id').eq('user_id', USER_B.id).like('name', pattern)
+		);
+		for (const row of rows) await deletePlan(row.id);
 	}
 }
 
@@ -90,13 +90,18 @@ async function plantPlanRow(fields: {
 	return planId;
 }
 
-async function planStatus(id: string): Promise<{ status: string; end_date: string } | null> {
-	const { data } = await getAdminClient()
-		.from('training_plans')
-		.select('status, end_date')
-		.eq('id', id)
-		.single();
-	return data;
+async function planStatus(id: string): Promise<{ status: string; end_date: string }> {
+	return readRow(
+		`plan ${id}`,
+		getAdminClient().from('training_plans').select('status, end_date').eq('id', id).single()
+	);
+}
+
+async function userBPlanIdsNamed(name: string): Promise<{ id: string }[]> {
+	return readRows(
+		`USER_B plans named ${name}`,
+		getAdminClient().from('training_plans').select('id').eq('user_id', USER_B.id).eq('name', name)
+	);
 }
 
 async function plantBasePlan(endOffsetDays: number): Promise<{ planId: string; weekId: string; lateWorkoutDate: string }> {
@@ -213,12 +218,11 @@ test.describe('plan chaining', () => {
 		await expect(next.locator('.badge.status-upcoming')).toBeVisible();
 		await expect(next.locator('.badge')).toContainText(/upcoming/i);
 
-		const { data } = await getAdminClient()
-			.from('training_plans')
-			.select('name, status')
-			.eq('user_id', USER_B.id)
-			.eq('status', 'active');
-		expect((data ?? []).map((p) => p.name).sort()).toEqual([BASE_NAME, name].sort());
+		const active = await readRows(
+			'USER_B active plans',
+			getAdminClient().from('training_plans').select('name, status').eq('user_id', USER_B.id).eq('status', 'active')
+		);
+		expect(active.map((p) => p.name).sort()).toEqual([BASE_NAME, name].sort());
 	});
 
 	test('an overlapping plan asks first, and ending the old plan early trims it to the day before', async ({
@@ -236,19 +240,13 @@ test.describe('plan chaining', () => {
 
 		await page.waitForURL(/\/plans\/[0-9a-f-]+$/, { timeout: 15_000 });
 
-		const admin = getAdminClient();
-		const { data: base } = await admin
-			.from('training_plans')
-			.select('status, end_date')
-			.eq('id', planId)
-			.single();
-		expect(base).toEqual({ status: 'active', end_date: trimTo });
+		expect(await planStatus(planId)).toEqual({ status: 'active', end_date: trimTo });
 
-		const { data: left } = await admin
-			.from('plan_workouts')
-			.select('scheduled_date')
-			.eq('week_id', weekId);
-		const dates = (left ?? []).map((w) => w.scheduled_date);
+		const left = await readRows(
+			'the trimmed plan workouts',
+			getAdminClient().from('plan_workouts').select('scheduled_date').eq('week_id', weekId)
+		);
+		const dates = left.map((w) => w.scheduled_date);
 		expect(dates).toContain(browserDate(0));
 		expect(dates).not.toContain(lateWorkoutDate);
 	});
@@ -276,12 +274,7 @@ test.describe('plan chaining', () => {
 		);
 		await expect(page.locator('.modal .error')).toContainText('Replace it instead, or start the new plan later.');
 		expect(await planStatus(planId)).toEqual({ status: 'active', end_date: browserDate(60) });
-		const { data: created } = await getAdminClient()
-			.from('training_plans')
-			.select('id')
-			.eq('user_id', USER_B.id)
-			.eq('name', 'e2e chain ran ahead');
-		expect(created ?? []).toHaveLength(0);
+		expect(await userBPlanIdsNamed('e2e chain ran ahead')).toHaveLength(0);
 	});
 
 	test('shifting into a queued plan offers to move it too, and both plans move', async ({ page }) => {
@@ -304,12 +297,26 @@ test.describe('plan chaining', () => {
 
 		const admin = getAdminClient();
 		await expect
-			.poll(async () => (await admin.from('training_plans').select('start_date').eq('id', queuedId).single()).data?.start_date)
+			.poll(
+				async () =>
+					(
+						await readRow(
+							'the queued plan',
+							admin.from('training_plans').select('start_date').eq('id', queuedId).single()
+						)
+					).start_date
+			)
 			.toBe(browserDate(28));
-		const { data: base } = await admin.from('training_plans').select('start_date, end_date').eq('id', baseId).single();
+		const base = await readRow(
+			'the shifted base plan',
+			admin.from('training_plans').select('start_date, end_date').eq('id', baseId).single()
+		);
 		expect(base).toEqual({ start_date: browserDate(0), end_date: browserDate(27) });
-		const { data: moved } = await admin.from('plan_workouts').select('scheduled_date').eq('week_id', queuedWeek).single();
-		expect(moved?.scheduled_date).toBe(browserDate(31));
+		const moved = await readRow(
+			'the queued plan workout',
+			admin.from('plan_workouts').select('scheduled_date').eq('week_id', queuedWeek).single()
+		);
+		expect(moved.scheduled_date).toBe(browserDate(31));
 	});
 
 	test('shifting back onto the plan before it is refused and nothing moves', async ({ page }) => {
@@ -322,8 +329,11 @@ test.describe('plan chaining', () => {
 
 		await expect(page.locator('.toast.toast-error')).toContainText('e2e chain earlier', { timeout: 5_000 });
 		await expect(page.getByTestId('bulk-confirm-dialog')).toBeHidden();
-		const { data } = await getAdminClient().from('training_plans').select('start_date').eq('id', baseId).single();
-		expect(data?.start_date).toBe(browserDate(-7));
+		const base = await readRow(
+			'the base plan',
+			getAdminClient().from('training_plans').select('start_date').eq('id', baseId).single()
+		);
+		expect(base.start_date).toBe(browserDate(-7));
 	});
 
 	test('resuming a paused plan that overlaps another active plan is refused', async ({ page }) => {
@@ -338,8 +348,7 @@ test.describe('plan chaining', () => {
 		await expect(page.locator('.toast.toast-error')).toContainText('Another active plan overlaps these dates', {
 			timeout: 5_000
 		});
-		const { data } = await getAdminClient().from('training_plans').select('status').eq('id', pausedId).single();
-		expect(data?.status).toBe('paused');
+		expect((await planStatus(pausedId)).status).toBe('paused');
 	});
 
 	test('the dashboard names the plan queued after the current one as up next', async ({ page }) => {
@@ -365,9 +374,12 @@ test.describe('plan chaining', () => {
 				}
 			]
 		});
-		const { data: plan } = await getAdminClient().from('plan_weeks').select('plan_id').eq('id', weekId).single();
+		const plan = await readRow(
+			'the race plan week',
+			getAdminClient().from('plan_weeks').select('plan_id').eq('id', weekId).single()
+		);
 
-		await page.goto(`/plans/${plan!.plan_id}`);
+		await page.goto(`/plans/${plan.plan_id}`);
 		const raceDay = page.locator('.weeks .week .day .day-link', { hasText: /Race|e2e chain tune-up/ }).first();
 		await expect(raceDay).toBeVisible({ timeout: 10_000 });
 		await raceDay.click();
@@ -377,11 +389,10 @@ test.describe('plan chaining', () => {
 		await modal.getByRole('button', { name: /^Save/ }).click();
 		await expect(modal).toHaveCount(0);
 
-		const { data: wo } = await getAdminClient()
-			.from('plan_workouts')
-			.select('kind, race_name, race_priority')
-			.eq('week_id', weekId)
-			.single();
+		const wo = await readRow(
+			'the edited race workout',
+			getAdminClient().from('plan_workouts').select('kind, race_name, race_priority').eq('week_id', weekId).single()
+		);
 		expect(wo).toEqual({ kind: 'easy', race_name: null, race_priority: null });
 	});
 
@@ -404,12 +415,7 @@ test.describe('plan chaining', () => {
 		await expect(dialog).toHaveCount(0);
 
 		expect(await planStatus(sneakyId)).toEqual({ status: 'active', end_date: browserDate(90) });
-		const { data } = await getAdminClient()
-			.from('training_plans')
-			.select('id')
-			.eq('user_id', USER_B.id)
-			.eq('name', 'e2e chain late');
-		expect(data ?? []).toHaveLength(0);
+		expect(await userBPlanIdsNamed('e2e chain late')).toHaveLength(0);
 	});
 
 	test('a starter plan over an active plan asks first, and Cancel changes nothing', async ({ page }) => {
@@ -426,13 +432,8 @@ test.describe('plan chaining', () => {
 		await dialog.getByRole('button', { name: 'Cancel' }).click();
 		await expect(dialog).toHaveCount(0);
 
-		expect((await planStatus(planId))?.status).toBe('active');
-		const { data } = await getAdminClient()
-			.from('training_plans')
-			.select('id')
-			.eq('user_id', USER_B.id)
-			.eq('name', STARTER_NAME);
-		expect(data ?? []).toHaveLength(0);
+		expect((await planStatus(planId)).status).toBe('active');
+		expect(await userBPlanIdsNamed(STARTER_NAME)).toHaveLength(0);
 	});
 
 	test('a starter plan can replace the active plan it overlaps', async ({ page }) => {
@@ -448,7 +449,7 @@ test.describe('plan chaining', () => {
 		await dialog.getByRole('button', { name: 'Replace plan' }).click();
 		await page.waitForURL(/\/plans\/[0-9a-f-]+$/, { timeout: 15_000 });
 
-		expect((await planStatus(planId))?.status).toBe('completed');
+		expect((await planStatus(planId)).status).toBe('completed');
 	});
 
 	test('a public-library clone over an active plan can end that plan early', async ({ page }) => {

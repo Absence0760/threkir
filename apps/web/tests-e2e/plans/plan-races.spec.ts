@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test';
 import { expect, test } from '../fixtures/test';
 
 import { browserDate } from '../fixtures/dates';
+import { readRow, readRows } from '../fixtures/db-read';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { deletePlan } from '../fixtures/simulate';
 import { USER_B } from '../fixtures/users';
@@ -20,12 +21,11 @@ const B_RACE = 'Two Oceans e2e';
 const A_RACE = 'Comrades e2e';
 
 async function deleteUserBRacePlans(): Promise<void> {
-	const { data } = await getAdminClient()
-		.from('training_plans')
-		.select('id')
-		.eq('user_id', USER_B.id)
-		.like('name', 'e2e races%');
-	for (const row of data ?? []) await deletePlan(row.id);
+	const rows = await readRows(
+		'USER_B race plans',
+		getAdminClient().from('training_plans').select('id').eq('user_id', USER_B.id).like('name', 'e2e races%')
+	);
+	for (const row of rows) await deletePlan(row.id);
 }
 
 async function importPlan(page: Page, md: string): Promise<void> {
@@ -42,24 +42,35 @@ async function importPlan(page: Page, md: string): Promise<void> {
 	await page.waitForURL(/\/plans\/[0-9a-f-]+$/, { timeout: 15_000 });
 }
 
+async function importedPlanWeeks(): Promise<{ id: string; target_volume_m: number | null }[]> {
+	const admin = getAdminClient();
+	const plan = await readRow(
+		'the imported plan',
+		admin.from('training_plans').select('id').eq('user_id', USER_B.id).eq('name', PLAN_NAME).single()
+	);
+	const weeks = await readRows(
+		'the imported plan weeks',
+		admin.from('plan_weeks').select('id, target_volume_m').eq('plan_id', plan.id)
+	);
+	if (weeks.length === 0) throw new Error('the imported plan has no weeks');
+	return weeks;
+}
+
 async function raceWorkouts(): Promise<
 	{ scheduled_date: string; kind: string; target_distance_m: number | null; week_volume_m: number | null }[]
 > {
 	const admin = getAdminClient();
-	const { data: plan } = await admin
-		.from('training_plans')
-		.select('id')
-		.eq('user_id', USER_B.id)
-		.eq('name', PLAN_NAME)
-		.single();
-	const { data: weeks } = await admin.from('plan_weeks').select('id, target_volume_m').eq('plan_id', plan!.id);
-	const volume = new Map((weeks ?? []).map((w) => [w.id, w.target_volume_m]));
-	const { data } = await admin
-		.from('plan_workouts')
-		.select('scheduled_date, kind, target_distance_m, week_id')
-		.in('week_id', (weeks ?? []).map((w) => w.id))
-		.order('scheduled_date');
-	return (data ?? []).map((w) => ({
+	const weeks = await importedPlanWeeks();
+	const volume = new Map(weeks.map((w) => [w.id, w.target_volume_m]));
+	const workouts = await readRows(
+		'the imported plan workouts',
+		admin
+			.from('plan_workouts')
+			.select('scheduled_date, kind, target_distance_m, week_id')
+			.in('week_id', weeks.map((w) => w.id))
+			.order('scheduled_date')
+	);
+	return workouts.map((w) => ({
 		scheduled_date: w.scheduled_date,
 		kind: w.kind,
 		target_distance_m: w.target_distance_m,
@@ -120,21 +131,17 @@ test.describe('races in a plan', () => {
 		await expect(page.locator('.relation-pill')).toHaveText(`${B_RACE} in 10 days`);
 		await expect(page.locator('.race-day-panel .kicker')).toHaveText(B_RACE);
 
-		const admin = getAdminClient();
-		const { data: plan } = await admin
-			.from('training_plans')
-			.select('id')
-			.eq('user_id', USER_B.id)
-			.eq('name', PLAN_NAME)
-			.single();
-		const { data: weeks } = await admin.from('plan_weeks').select('id').eq('plan_id', plan!.id);
-		const { data } = await admin
-			.from('plan_workouts')
-			.select('scheduled_date, race_name, race_priority, target_duration_seconds')
-			.in('week_id', (weeks ?? []).map((w) => w.id))
-			.eq('kind', 'race')
-			.order('scheduled_date');
-		expect((data ?? []).map((w) => [w.scheduled_date, w.race_name, w.race_priority, w.target_duration_seconds])).toEqual([
+		const weeks = await importedPlanWeeks();
+		const raceRows = await readRows(
+			'the imported race workouts',
+			getAdminClient()
+				.from('plan_workouts')
+				.select('scheduled_date, race_name, race_priority, target_duration_seconds')
+				.in('week_id', weeks.map((w) => w.id))
+				.eq('kind', 'race')
+				.order('scheduled_date')
+		);
+		expect(raceRows.map((w) => [w.scheduled_date, w.race_name, w.race_priority, w.target_duration_seconds])).toEqual([
 			[bDate, B_RACE, 'B', 23_400],
 			[aDate, A_RACE, 'A', null],
 		]);

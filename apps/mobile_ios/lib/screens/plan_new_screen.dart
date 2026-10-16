@@ -916,7 +916,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
               onChanged: (s) {
                 final n = double.tryParse(s.trim().replaceAll(',', '.'));
                 setState(() => _ultraDistanceM =
-                    n == null || n <= 0 ? null : n * _metresPerUnit);
+                    n == null || !n.isFinite || n <= 0 ? null : n * _metresPerUnit);
               },
             ),
           ],

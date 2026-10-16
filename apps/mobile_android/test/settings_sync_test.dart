@@ -45,9 +45,12 @@ class _MemCache implements SettingsCache {
 }
 
 class _FakeSettingsService implements SettingsService {
-  _FakeSettingsService({this.universalBag = const <String, dynamic>{}});
+  _FakeSettingsService(
+      {this.universalBag = const <String, dynamic>{},
+      this.serverHydrated = true});
 
   final Map<String, dynamic> universalBag;
+  final bool serverHydrated;
   final List<Map<String, dynamic>> universalWrites = [];
   final List<Map<String, dynamic>> deviceWrites = [];
 
@@ -56,7 +59,7 @@ class _FakeSettingsService implements SettingsService {
   @override
   Map<String, dynamic> get device => const <String, dynamic>{};
   @override
-  bool get isServerHydrated => true;
+  bool get isServerHydrated => serverHydrated;
   @override
   Future<void> updateUniversal(Map<String, dynamic> changes) async {
     universalWrites.add(changes);
@@ -93,6 +96,18 @@ void main() {
       expect(fake.universalWrites, [
         {SettingsKeys.timeZone: 'Pacific/Auckland'},
       ]);
+    });
+
+    test('writes nothing over a bag the server did not return', () async {
+      final fake = _FakeSettingsService(serverHydrated: false);
+      final svc = SettingsSyncService(
+        preferences: await freshPrefs(),
+        serviceLoader: () async => fake,
+        timeZoneReader: () async => 'Pacific/Auckland',
+      );
+      await svc.onSignedIn();
+      expect(svc.synced, isTrue);
+      expect(fake.universalWrites, isEmpty);
     });
 
     test('writes a changed zone, and nothing when it is unchanged', () async {

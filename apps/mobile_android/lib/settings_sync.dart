@@ -112,9 +112,12 @@ class SettingsSyncService extends ChangeNotifier {
 
   /// Keep the server's copy of the runner's zone current (the `time_zone`
   /// universal pref): the coach roster picks their current plan by their
-  /// local date (issue #1182). Written only when it changed. Auxiliary: a
-  /// failure is logged and never fails the sign-in hydrate above it.
+  /// local date (issue #1182). Written only when it changed, and only over a
+  /// bag the server returned: an offline write would seed the cache with a
+  /// bag that holds none of the runner's privacy zones. Auxiliary: a failure
+  /// is logged and never fails the sign-in hydrate above it.
   Future<void> _syncTimeZone(SettingsService loaded) async {
+    if (!loaded.isServerHydrated) return;
     try {
       final tz = timeZoneToWrite(
           loaded.universal[SettingsKeys.timeZone], await _timeZoneReader());

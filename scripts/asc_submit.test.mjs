@@ -863,6 +863,12 @@ test("the fake refuses what Apple's spec refuses, so a drifted request cannot pa
 	for (const [what, call, refusal] of cases) await assert.rejects(call(), refusal, what);
 	assert.equal(asc.refused.length, cases.length);
 	assert.deepEqual(asc.requests, [], 'a refused request reached the fake');
+	// A relationship's linkage comes back only when the request includes it.
+	const bare = /** @type {any} */ (await api.get('/v1/appStoreVersions/v1')).data;
+	assert.ok(!('data' in bare.relationships.build) && !('data' in bare.relationships.appStoreVersionPhasedRelease));
+	const full = /** @type {any} */ (await api.get('/v1/appStoreVersions/v1?include=build,appStoreVersionPhasedRelease')).data;
+	assert.deepEqual(full.relationships.build.data, { type: 'builds', id: 'b-old' });
+	assert.equal(full.relationships.appStoreVersionPhasedRelease.data, null);
 });
 
 test("every App Store version state Apple defines is classified once, and nothing else is", () => {

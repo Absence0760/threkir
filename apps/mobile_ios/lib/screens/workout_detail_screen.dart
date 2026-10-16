@@ -7,6 +7,7 @@ import 'package:ui_kit/ui_kit.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/date_format.dart';
 import '../l10n/locale_support.dart';
+import '../plan_races.dart';
 import '../relink_candidates.dart';
 import '../training.dart';
 import '../training_labels.dart';
@@ -186,6 +187,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         ? null
         : WorkoutStructure.fromJson(w.structure!);
 
+    final isRace = kind == WorkoutKind.race;
     return Scaffold(
       appBar: AppBar(title: Text(workoutKindLabel(l10n, kind))),
       body: ListView(
@@ -198,7 +200,11 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                 fontWeight: FontWeight.w700,
               )),
           const SizedBox(height: 4),
-          Text(workoutKindLabel(l10n, kind),
+          Text(
+              isRace && w.raceName != null
+                  ? w.raceName!
+                  : workoutKindLabel(l10n, kind),
+              key: const Key('workoutDetailHeading'),
               style: theme.textTheme.headlineSmall
                   ?.copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 12),
@@ -210,8 +216,15 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                 _metric(theme, l10n.workoutMetricDistance,
                     fmtKm(w.targetDistanceM, 2)),
               if (w.targetDurationSeconds != null)
-                _metric(theme, l10n.workoutMetricDuration,
+                _metric(
+                    theme,
+                    isRace
+                        ? l10n.workoutEditRaceGoalTimeLabel
+                        : l10n.workoutMetricDuration,
                     fmtHms(w.targetDurationSeconds)),
+              if (isRace && racePriorities.contains(w.racePriority))
+                _metric(theme, l10n.workoutEditRacePriorityLabel,
+                    racePriorityOptionLabel(l10n, w.racePriority!)),
               if (w.targetPaceSecPerKm != null)
                 _metric(
                   theme,

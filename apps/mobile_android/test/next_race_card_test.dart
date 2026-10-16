@@ -6,7 +6,9 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/training_service.dart';
 import '../lib/widgets/next_race_card.dart';
 
-ActivePlanOverview _plan(DateTime start, DateTime end) => ActivePlanOverview(
+ActivePlanOverview _plan(DateTime start, DateTime end,
+        {List<PlanWorkoutRow> workouts = const []}) =>
+    ActivePlanOverview(
       plan: TrainingPlanRow(
         id: 'plan-1',
         userId: 'u1',
@@ -22,7 +24,7 @@ ActivePlanOverview _plan(DateTime start, DateTime end) => ActivePlanOverview(
         isPublicTemplate: false,
       ),
       weeks: const [],
-      workouts: const [],
+      workouts: workouts,
       todayWorkout: null,
       completionPct: 0,
       currentWeekIndex: 0,
@@ -77,6 +79,46 @@ void main() {
         isTrue);
     expect(NextRaceCard.shows(_plan(start, race), DateTime(2026, 8, 31)),
         isFalse);
+  });
+
+  group('a plan with a mid-block race', () {
+    final tuneUp = PlanWorkoutRow(
+      id: 'w-tune-up',
+      weekId: 'wk1',
+      scheduledDate: DateTime(2026, 7, 19),
+      kind: 'race',
+      targetDistanceM: 10000,
+      raceName: 'Riverside 10K',
+      racePriority: 'B',
+      manuallyCompleted: false,
+    );
+
+    testWidgets('counts down to the next race with its own name and date',
+        (tester) async {
+      await _pump(tester, _plan(start, race, workouts: [tuneUp]),
+          DateTime(2026, 7, 9, 9));
+      expect(_countdown(tester), 'Race in 10 days');
+      expect(
+          tester.widget<Text>(find.byKey(const Key('nextRaceName'))).data,
+          'Riverside 10K');
+    });
+
+    testWidgets('after it, counts down to the plan race under the plan name',
+        (tester) async {
+      await _pump(tester, _plan(start, race, workouts: [tuneUp]),
+          DateTime(2026, 7, 20, 9));
+      expect(_countdown(tester), 'Race in 41 days');
+      expect(
+          tester.widget<Text>(find.byKey(const Key('nextRaceName'))).data,
+          'Spring Half');
+    });
+
+    test('still hides once every race is behind the runner', () {
+      expect(
+          NextRaceCard.shows(_plan(start, race, workouts: [tuneUp]),
+              DateTime(2026, 8, 31)),
+          isFalse);
+    });
   });
 
   testWidgets('tapping opens the plan', (tester) async {

@@ -1127,14 +1127,15 @@ class _DashboardScreenState extends State<DashboardScreen>
               theme: theme,
               planAbove: heroWorkoutCard != null,
               onStartRun: widget.onStartRun,
-              // Shown to the account that has not said whether it lifts. Once
-              // it has — the setup wizard's track step, or Settings — the link
-              // would contradict the answer just given, and sits a mis-tap
-              // under Start a run (decisions § 1650: only a touched choice is
-              // an answer).
-              onLogLift: widget.preferences.showGym == null
-                  ? widget.onLogLift
-                  : null,
+              // Hidden only from the account that said it does not lift (the
+              // setup wizard's track step, or Settings); that is the one answer
+              // the link would contradict. An account that said it lifts and
+              // has logged nothing is who the hint is for, and an unanswered
+              // one may lift too. Same rule as web's DashboardFirstRun
+              // (decisions § 2041).
+              onLogLift: widget.preferences.showGym == false
+                  ? null
+                  : widget.onLogLift,
               onAddGoal: _newGoal,
               onImport: _openImport,
             ),

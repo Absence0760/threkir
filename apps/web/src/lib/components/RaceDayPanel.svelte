@@ -15,11 +15,12 @@
 
 	interface Props {
 		raceDate: string;
+		raceName?: string | null;
 		distanceM: number;
 		goalTimeSec: number | null;
 		recentRuns: Run[];
 	}
-	let { raceDate, distanceM, goalTimeSec, recentRuns }: Props = $props();
+	let { raceDate, raceName = null, distanceM, goalTimeSec, recentRuns }: Props = $props();
 
 	let today = $state(new Date());
 
@@ -116,7 +117,7 @@
 {#if daysOut >= 0}
 	<section class="race-day-panel">
 		<header>
-			<span class="kicker">{m('raceDayPanel.raceDay')}</span>
+			<span class="kicker">{raceName ?? m('raceDayPanel.raceDay')}</span>
 			<h2>{countdownLabel}</h2>
 			{#if predictedSec != null}
 				<p class="prediction">

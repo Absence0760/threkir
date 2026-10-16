@@ -563,7 +563,7 @@ The centre button's long-press start-options sheet (decisions § 1892, § 1897):
 
 The minimum-data account on every mobile surface that derives a number from a run (issue #1161 round 3): run detail, a history row, the history list sorted fastest-first, and Home's card stack, each fed a 10 s / 3 m run over a two-point, one-point or empty track, a 0 m run with a one-point or empty track, and a 0 s / 0 m run, in km and in mi, as a run and as a ride, and on Home under a weekly goal on every target, once for every fixture and once for a week of only 0 m runs. Each case asserts no exception, the honest missing-value spelling (`--:--` for a pace, `--` for a speed), and a clean text sweep. The sweep is `test/rendered_text_sweep.dart`: it collects every `RichText`, `EditableText`, `Semantics` label and `Tooltip` message, offstage included, and fails on `NaN`, `Infinity`, `∞` or a negative zero (`-0`, `-0.00`, `-0:00`, U+2212 too) while letting a date, `UTC-0`, `-0.05` and a `-0:30` delta through; the suite's first two tests pin that pattern so a sweep that matches nothing cannot pass silently. The surfaces are pumped on a 400 × 9000 surface so every lazily-built list child is laid out and swept. Nine declarations, 41 cases once the fixture loops expand.
 
-### `apps/mobile_ios/test/` — 672 files, byte-for-byte
+### `apps/mobile_ios/test/` — 673 files, byte-for-byte
 
 After the April 2026 mobile-codebase unification, `apps/mobile_ios/test/` is kept identical to `apps/mobile_android/test/` via `diff -rq`. Every test file documented above runs on the iOS target too **locally** — `melos run test` has no scope filter — but **not in CI**: the `test-packages` job scopes `melos exec` to `run_recorder`, `mobile_android`, `api_client`, `gpx_parser`, `ui_kit` and `core_models`, and `mobile_ios` is not among them. That is not a gap for byte-identical Dart, but it is why a test gated on an `ios/` file being present asserts nothing on any CI run — two such groups existed and were removed in favour of `scripts/check_ios_native_declarations.mjs` (decisions.md § 742). Per-target counts: `flutter test` compiles separately, so each test file is executed twice when you run both apps locally. Don't add iOS-specific test files — every test belongs in both apps. The architecture-guard tests under `apps/mobile_android/test/architecture_guards_test.dart` read `lib/screens/run_screen.dart` from the working directory, so they pin the same invariants on both targets.
 
@@ -1604,6 +1604,18 @@ Mirror of the web suite above, vector for vector. Twelve of the fourteen fail ag
 
 The accent-fold drift guard, and the generator under it. Pins that the two causes of a mismatch are reported as different sentences — a hand-edit or a stale commit against a Node whose Unicode tables have moved — because the second reaches a PR that touched none of it, and sending that reader hunting for an edit they did not make wastes the run. Plus: a render that lost its version stamp is itself a finding (without it the guard cannot tell the causes apart), the committed table is what the generator renders, its keys are strictly ascending and parallel to its values, the Hangul arithmetic reproduces NFD across all 11,172 syllables independently of the generator's own assertion, the fold answers the divergence classes and leaves the undecomposable letters alone, and `dartLiteral` emits ASCII only.
 
+
+### Your Strava clubs parser — `apps/web/src/lib/integrations/strava_clubs.test.ts` (8) · `packages/core_models/test/strava_clubs_test.dart` (7)
+
+The registered parity pair behind "Your Strava clubs" ([decisions § 1959](../architecture/decisions.md)): a `connected` answer graded club by club, `not_connected` and `reconnect_required` as answers, any other body throwing rather than reading as "no clubs", the location join dropping an exact repeat, the set-up hand-off carrying name, place and id, and each link refusal mapped to its sentence. Two web cases have no Dart twin by design (the `strava_club` URL parameter and the prefill clamp, which the mobile form applies and `club_form_sheet_test.dart` pins); one Dart-only case pins that a whole-number JSON double reads as the id web's `Number.isSafeInteger` would read.
+
+### Your Strava clubs calls — `packages/api_client/test/strava_clubs_calls_test.dart` (8)
+
+The `strava-clubs` wrappers against a fake at the http boundary: `list` posts `{action: 'list'}` and grades the answer, a malformed body and a failed call throw, `link` posts both ids, each refusal body becomes a `StravaClubLinkFailure` naming it (one declaration looping over six codes), and `unlink_club_strava` is called with `p_club_id`, a `false` answer being the not-an-admin refusal.
+
+### Your Strava clubs section — `apps/mobile_android/test/strava_clubs_section_test.dart` (14 widget)
+
+The mobile mirror of web's `tests-e2e/clubs/strava-clubs.spec.ts` and `tests-e2e/configured/strava-clubs.spec.ts` on `ClubsScreen`: the inert build never asks Strava, a not-connected runner sees nothing, the rows and the actions each allows, link through the picker, a refused link, a cancelled picker, unlink with Undo and with the window closing, a failed load staying inside the section, a dead grant, no clubs, the section under an empty My clubs, and Set up opening the form prefilled.
 
 ### Exercise catalogue shadow resolution — `apps/web/src/lib/gym/exercise_catalogue.test.ts` (11) · `packages/core_models/test/exercise_catalogue_test.dart` (10)
 

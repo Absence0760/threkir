@@ -2824,7 +2824,7 @@ export const en = {
 	"planEditor.createPlan": "Create plan",
 	"planEditor.previewAndEdit": "Preview & edit",
 	"planEditor.importTitle": "Import a plan",
-	"planEditor.importHint": "Paste a plan as Markdown (a | Week | Date | Type | … | table) or JSON exported from another plan. The preview becomes editable before you save.",
+	"planEditor.importHint": "Paste a plan as Markdown (a | Week | Date | Type | … | table) or JSON exported from another plan. Optional Race, Priority (A, B or C) and Goal (h:mm:ss) columns name the race rows. The preview becomes editable before you save.",
 	"planEditor.importPlaceholder": "# My plan\n- Goal event: distance_half\n- Start date: 2026-06-07\n\n| Week | Date | Type | Distance | Pace | Notes |\n| --- | --- | --- | --- | --- | --- |\n| 1 | 2026-06-07 | long | 16.00 km | 6:00 | |",
 	"planEditor.importLoad": "Load plan",
 	"planEditor.importedNote": "Loaded from an imported plan. Editing the goal, start date, or days per week switches back to the generator.",

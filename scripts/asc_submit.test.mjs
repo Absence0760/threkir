@@ -79,6 +79,15 @@ test('a missing, empty or placeholder-only section fails, and generated notes ar
 	assert.throws(() => extractWhatsNew("## What's New\n<!-- write the App Store note here -->\n"), /is empty/);
 });
 
+test('a comment cannot survive the strip by nesting, and an unclosed one is refused', () => {
+	// Reason: a single pass over `<!-<!-- x -->- y -->` removed the inner
+	// comment and left a fresh `<!-- y -->` behind (code scanning #285).
+	assert.equal(extractWhatsNew("## What's New\nKeep<!-<!-- x -->- hidden -->\nthis"), 'Keep\nthis');
+	assert.equal(extractWhatsNew("## What's New\nA <!-- one --> B <!-- two --> C"), 'A  B  C');
+	assert.throws(() => extractWhatsNew("## What's New\nVisible\n<!-- never closed\nsecret"), /no closing "-->"/);
+	assert.throws(() => extractWhatsNew("## What's New\nVisible <!<!---->-- tail"), /no closing "-->"/);
+});
+
 test('two sections are refused rather than one picked', () => {
 	assert.throws(() => extractWhatsNew("## What's New\nA\n## What's New\nB"), /2 "## What's New" sections/);
 });

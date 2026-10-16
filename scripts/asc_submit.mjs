@@ -136,6 +136,29 @@ const WHATS_NEW_LINE = /^##[ \t]+what[’']s[ \t]+new[ \t]*#*[ \t]*$/i;
 const SECTION_END = /^#{1,2}[ \t]/;
 
 /**
+ * Removes HTML comments until none is left, since one pass over a nested
+ * `<!-<!-- -->-` leaves a fresh `<!--` behind. An opener with no closer is
+ * refused rather than shipped: everything after it would otherwise reach App
+ * Store users as the comment text it was meant to hide.
+ *
+ * @param {string} text
+ */
+function stripHtmlComments(text) {
+	let out = text;
+	for (;;) {
+		const next = out.replace(/<!--[\s\S]*?-->/g, '');
+		if (next === out) break;
+		out = next;
+	}
+	if (out.includes('<!--')) {
+		throw new Error(
+			`The "## ${WHATS_NEW_HEADING}" section of the GitHub Release body has a "<!--" with no closing "-->". Close or remove the comment in the Release and re-run the job.`,
+		);
+	}
+	return out;
+}
+
+/**
  * The release note the owner wrote under `## What's New` in the GitHub Release
  * body, as plain text. Throws, naming what to fix, when there is none, it is
  * empty once HTML comments are removed (a template's placeholder), there are
@@ -162,9 +185,7 @@ export function extractWhatsNew(body, { required = true } = {}) {
 	}
 	const rest = lines.slice(starts[0] + 1);
 	const end = rest.findIndex((line) => SECTION_END.test(line));
-	const text = (end < 0 ? rest : rest.slice(0, end))
-		.join('\n')
-		.replace(/<!--[\s\S]*?-->/g, '')
+	const text = stripHtmlComments((end < 0 ? rest : rest.slice(0, end)).join('\n'))
 		.replace(/[ \t]+$/gm, '')
 		.replace(/\n{3,}/g, '\n\n')
 		.trim();
@@ -370,7 +391,6 @@ export async function findBuild(api, { appId, version, buildNumber }) {
  */
 export async function waitForBuild(api, { appId, version, buildNumber, sleep, now, timeoutMs = PROCESSING_TIMEOUT_MS, pollMs = PROCESSING_POLL_MS, log = () => {} }) {
 	const deadline = now() + timeoutMs;
-	let last = 'not listed yet';
 	for (;;) {
 		const build = await findBuild(api, { appId, version, buildNumber });
 		const state = build?.attributes?.processingState;
@@ -378,7 +398,7 @@ export async function waitForBuild(api, { appId, version, buildNumber, sleep, no
 		if (build && (state === 'FAILED' || state === 'INVALID')) {
 			throw new Error(`Build ${version} (${buildNumber}) finished processing as ${state}. App Store Connect → TestFlight shows Apple's reason, and Apple emails it.`);
 		}
-		last = build ? `processing state ${state ?? 'unknown'}` : 'not listed yet';
+		const last = build ? `processing state ${state ?? 'unknown'}` : 'not listed yet';
 		if (now() >= deadline) {
 			throw new Error(
 				`Build ${version} (${buildNumber}) was still ${last} after ${Math.round(timeoutMs / 60000)} minutes. Nothing was submitted. Re-run the job once TestFlight shows the build; the upload is skipped when the build already exists.`,

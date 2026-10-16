@@ -209,19 +209,7 @@ test('/app-capabilities.json publishes the same perk flags and web-checkout gate
 		/export const prerender = true/,
 		'the manifest must be prerendered — adapter-static drops any endpoint that is not.',
 	);
-	// The release workflow must keep it off the immutable-asset sync, or a
-	// perk turned off would stay "on" in caches for a year.
-	const workflow = read('../../.github/workflows/release-web.yml');
-	assert.match(
-		workflow,
-		/--exclude "app-capabilities\.json"/,
-		'app-capabilities.json must be excluded from the year-long immutable S3 sync.',
-	);
-	assert.match(
-		workflow,
-		/--include "app-capabilities\.json"/,
-		'app-capabilities.json must ride the short-cache S3 sync so a disabled perk propagates.',
-	);
+	// Its short cache on the release is pinned by release_web_cache.test.ts.
 });
 
 test('isLocked() fails closed on unknown tier (default = locked)', () => {

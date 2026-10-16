@@ -651,6 +651,24 @@ void main() {
       expect(field.controller!.text, 'a' * kClubLocationLabelMaxLength);
     });
 
+    testWidgets('a Strava name longer than a club name is held to the bound',
+        (tester) async {
+      final fake = _CapturingSocialService();
+      await open(
+        tester,
+        _Launcher(
+          social: fake,
+          initialName: '  ${'n' * (kClubNameMaxLength + 20)}  ',
+          stravaClubId: 918273645,
+          linkStravaClub: (_, __) async {},
+        ),
+      );
+      await tester.tap(find.widgetWithText(FilledButton, 'Create'));
+      await tester.pumpAndSettle();
+      expect(fake.capturedName, 'n' * kClubNameMaxLength);
+      await tester.pump(const Duration(seconds: 9));
+    });
+
     testWidgets('creates the club with its Strava place, then links it',
         (tester) async {
       final fake = _CapturingSocialService();

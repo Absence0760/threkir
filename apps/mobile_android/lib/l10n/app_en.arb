@@ -16754,6 +16754,24 @@
       }
     }
   },
+  "coachingAthleteAssignAfterMany": "{name} has {count} plans still ahead: {plans}. A plan you assign can't overlap any of them, so start it after {end} or in a gap between them.",
+  "@coachingAthleteAssignAfterMany": {
+    "description": "Assign control hint when the athlete has three or more plans still holding dates; {plans} is their names joined with commas, {end} the last one's formatted end date",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      },
+      "plans": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
   "coachingAthleteAssignOverlapNamed": "Those dates overlap {name}'s plan “{plan}” ({start} – {end}). Pick a start date after it ends.",
   "@coachingAthleteAssignOverlapNamed": {
     "description": "Banner when the server refused an assignment that overlaps the named plan of the athlete",

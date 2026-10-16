@@ -3628,6 +3628,7 @@
   "coachingAthleteAssignedByYou": "あなたが割り当て",
   "coachingAthleteAssignAfterOne": "{name}さんのプラン「{plan}」は{end}まで続きます。割り当てるプランはこれと重ねられないため、この日より後に開始してください。",
   "coachingAthleteAssignAfterTwo": "{name}さんのプラン「{plan}」は{end}まで続き、その後「{next}」が{nextStart}〜{nextEnd}に予定されています。割り当てるプランはどちらとも重ねられません。",
+  "coachingAthleteAssignAfterMany": "{name}さんにはこれから{count}件のプランがあります：{plans}。割り当てるプランはいずれとも重ねられないため、{end}より後か、プランの間の空いた期間に開始してください。",
   "coachingAthleteAssignOverlapNamed": "その期間は{name}さんのプラン「{plan}」（{start}〜{end}）と重なっています。終了後の開始日を選んでください。",
   "coachingAthleteAssignOverlap": "その期間は{name}さんのアクティブなプランのいずれかと重なっています。終了後の開始日を選んでください。",
   "coachingAthleteComplete": "完了",

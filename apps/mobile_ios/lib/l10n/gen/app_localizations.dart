@@ -20914,6 +20914,17 @@ abstract class AppLocalizations {
     String nextEnd,
   );
 
+  /// Assign control hint when the athlete has three or more plans still holding dates; {plans} is their names joined with commas, {end} the last one's formatted end date
+  ///
+  /// In en, this message translates to:
+  /// **'{name} has {count} plans still ahead: {plans}. A plan you assign can\'t overlap any of them, so start it after {end} or in a gap between them.'**
+  String coachingAthleteAssignAfterMany(
+    String name,
+    int count,
+    String plans,
+    String end,
+  );
+
   /// Banner when the server refused an assignment that overlaps the named plan of the athlete
   ///
   /// In en, this message translates to:

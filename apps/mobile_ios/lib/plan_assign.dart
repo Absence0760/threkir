@@ -1,8 +1,8 @@
 /// Which of an athlete's plans a coach's assignment must clear (decisions
 /// § 2008): `assign_plan_to_athlete` refuses a window that shares a day with
 /// any of the athlete's active plans, and accepts any other. The coaching
-/// screen names the plans it already holds — the one it shows and the one
-/// queued after it — so the coach can pick dates before the server refuses.
+/// screen reads every active plan the athlete holds and names the ones still
+/// ahead, so the coach can pick dates before the server refuses.
 ///
 /// Dates are ISO `yyyy-mm-dd` strings. Dart twin of
 /// `apps/web/src/lib/training/plan_assign.ts` — keep `assignBlockers`,
@@ -12,18 +12,17 @@ library;
 import 'plan_current.dart';
 import 'plan_overlap.dart';
 
-/// The plans the screen holds that still hold dates from [todayIso] on, in
+/// The athlete's active plans that still hold dates from [todayIso] on, in
 /// start order. A plan that has already ended blocks nothing.
 List<T> assignBlockers<T>(
-  T? shown,
-  T? next,
+  List<T> activePlans,
   String todayIso, {
   required String Function(T plan) start,
   required String Function(T plan) end,
 }) =>
     [
-      for (final p in [shown, next])
-        if (p != null && end(p).compareTo(todayIso) >= 0) p,
+      for (final p in activePlans)
+        if (end(p).compareTo(todayIso) >= 0) p,
     ]..sort((a, b) => start(a).compareTo(start(b)));
 
 /// The first start date after every blocker, or today when none is ahead.

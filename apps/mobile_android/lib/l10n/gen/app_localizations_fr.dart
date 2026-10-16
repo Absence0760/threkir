@@ -12801,6 +12801,16 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String coachingAthleteAssignAfterMany(
+    String name,
+    int count,
+    String plans,
+    String end,
+  ) {
+    return '$name a encore $count plans à venir : $plans. Un plan attribué ne peut chevaucher aucun d\'eux : faites-le commencer après le $end ou dans un intervalle entre eux.';
+  }
+
+  @override
   String coachingAthleteAssignOverlapNamed(
     String name,
     String plan,

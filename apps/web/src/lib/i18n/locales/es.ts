@@ -695,6 +695,7 @@ export const messages = {
 	"planDetail.raceTaperPre": "{change} — afinamiento para {race}",
 	"planDetail.raceTaperShakeout": "{change} — rodaje de activación antes de {race}",
 	"planDetail.raceTaperPost": "{change} — recuperación después de {race}",
+	"planDetail.raceTaperNotesCleared": "Notas borradas",
 	"planDetail.heroNextRace": "Próxima carrera: {name}",
 	"planDetail.adjustPauseDesc": "Pone el plan en pausa sin eliminar nada hasta que lo reanudes. Úsalo en caso de enfermedad, lesión o viaje.",
 	"planDetail.adjustResumeDesc": "Vuelve a convertir este plan en tu plan activo. Úsalo cuando quieras retomarlo.",

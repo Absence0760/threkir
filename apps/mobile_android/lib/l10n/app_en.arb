@@ -8700,6 +8700,10 @@
       }
     }
   },
+  "planDetailRaceTaperNotesCleared": "Notes cleared",
+  "@planDetailRaceTaperNotesCleared": {
+    "description": "Second line under a proposed taper change: the workout's notes described the old session, so applying clears them"
+  },
   "planDetailHeroNextRace": "Next race: {name}",
   "@planDetailHeroNextRace": {
     "description": "Plan-detail hero line naming the next race the hero's distance, goal and date now describe (a B or C race before the plan's A race)",

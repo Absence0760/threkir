@@ -1779,6 +1779,7 @@
   "planDetailRaceTaperPre": "{change} — afinamiento para {race}",
   "planDetailRaceTaperShakeout": "{change} — rodaje de activación antes de {race}",
   "planDetailRaceTaperPost": "{change} — recuperación después de {race}",
+  "planDetailRaceTaperNotesCleared": "Notas borradas",
   "planDetailHeroNextRace": "Próxima carrera: {name}",
   "planDetailAdjustPauseDesc": "Deja el plan en espera sin borrar nada, hasta que lo reanudes. Úsalo por enfermedad, lesión o viaje.",
   "planDetailAdjustResumeDesc": "Vuelve a convertirlo en tu plan activo. Úsalo cuando estés listo para retomarlo.",

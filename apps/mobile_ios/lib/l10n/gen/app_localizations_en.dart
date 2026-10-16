@@ -6399,6 +6399,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get planDetailRaceTaperNotesCleared => 'Notes cleared';
+
+  @override
   String planDetailHeroNextRace(String name) {
     return 'Next race: $name';
   }

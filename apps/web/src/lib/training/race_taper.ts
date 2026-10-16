@@ -9,6 +9,7 @@
 
 import { daysBetweenIso } from './cycle_plan';
 import type { PlanRace } from './plan_races';
+import type { JsonObject } from '../types';
 
 /// Days before a B race whose sessions are cut, and the cut: 35% off volume
 /// across the 6 days, every quality session run easy. A tune-up race wants a
@@ -51,6 +52,10 @@ export type RaceTaperWorkout = {
 	scheduledDate: string;
 	kind: string;
 	targetDistanceM: number | null;
+	targetDurationSeconds: number | null;
+	/// The workout's `structure` jsonb; only a walk/run's is rebuilt.
+	structure: unknown;
+	notes: string | null;
 	/// Phase of the week the workout sits in, when known.
 	phase: string | null;
 	/// Linked to a run or ticked done by hand.
@@ -72,8 +77,17 @@ export type RaceTaperChange = {
 	toKind: string;
 	fromMetres: number | null;
 	toMetres: number | null;
+	fromDurationS: number | null;
+	toDurationS: number | null;
 	/// The session loses its pace target, tolerance and interval structure.
 	clearsPace: boolean;
+	/// `structure` is rewritten to `toStructure`: a walk/run's repeats cut to
+	/// the shorter session, or null when the kind changes under it.
+	structureChanged: boolean;
+	toStructure: JsonObject | null;
+	/// The notes described a session that no longer exists (the kind changed,
+	/// or a walk/run's structure was rebuilt), so they are cleared.
+	clearsNotes: boolean;
 };
 
 export type RaceTaperPatch = {
@@ -81,7 +95,9 @@ export type RaceTaperPatch = {
 	target_distance_m?: number | null;
 	target_pace_sec_per_km?: null;
 	target_pace_tolerance_sec?: null;
-	structure?: null;
+	structure?: JsonObject | null;
+	target_duration_seconds?: number | null;
+	notes?: null;
 };
 
 const SEVERITY: Record<RaceTaperReason, number> = { shakeout: 3, pre_race: 2, post_race: 1 };
@@ -112,7 +128,54 @@ function scaled(m: number | null, scale: number): number | null {
 	return m == null ? null : Math.round(m * scale);
 }
 
+type Plain = Record<string, unknown>;
+const isPlain = (v: unknown): v is Plain => typeof v === 'object' && v !== null && !Array.isArray(v);
+const secs = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+
+/// A walk/run structure cut by `factor`: the repeat count scales (rounded, at
+/// least one) and the run and walk lengths stay — they are the runner's stage
+/// of the progression, which a taper week does not move. A single continuous
+/// run (count 1) scales its run length instead. Null when nothing changes.
+function scaledWalkRun(structure: unknown, factor: number): Plain | null {
+	if (!isPlain(structure) || !isPlain(structure.repeats)) return null;
+	const reps = structure.repeats;
+	const count = typeof reps.count === 'number' ? reps.count : 1;
+	if (count > 1) {
+		const next = Math.max(1, Math.round(count * factor));
+		return next === count ? null : { ...structure, repeats: { ...reps, count: next } };
+	}
+	if (typeof reps.duration_s !== 'number') return null;
+	const next = Math.max(1, Math.round(reps.duration_s * factor));
+	return next === reps.duration_s ? null : { ...structure, repeats: { ...reps, duration_s: next } };
+}
+
+/// Total seconds a walk/run structure prescribes: warm-up, every run, the
+/// walks between them, cool-down.
+function walkRunSeconds(structure: Plain): number {
+	const reps = isPlain(structure.repeats) ? structure.repeats : {};
+	const count = typeof reps.count === 'number' ? reps.count : 1;
+	const warm = isPlain(structure.warmup) ? secs(structure.warmup.duration_s) : 0;
+	const cool = isPlain(structure.cooldown) ? secs(structure.cooldown.duration_s) : 0;
+	return warm + count * secs(reps.duration_s) + Math.max(0, count - 1) * secs(reps.recovery_duration_s) + cool;
+}
+
 function adjust(
+	w: RaceTaperWorkout,
+	reason: RaceTaperReason,
+	priority: 'B' | 'C'
+): { toKind: string; toMetres: number | null; clearsPace: boolean; scale: number } {
+	return { ...kindAndDistance(w, reason, priority), scale: ruleScale(w, reason, priority) };
+}
+
+/// The rule's volume factor before any cap: what a session with no distance
+/// is scaled by.
+function ruleScale(w: RaceTaperWorkout, reason: RaceTaperReason, priority: 'B' | 'C'): number {
+	if (reason === 'shakeout') return SHAKEOUT_SCALE;
+	if (reason === 'pre_race') return priority === 'B' ? B_TAPER_SCALE : C_TAPER_SCALE;
+	return w.kind === 'long' ? RECOVERY_LONG_SCALE : 1;
+}
+
+function kindAndDistance(
 	w: RaceTaperWorkout,
 	reason: RaceTaperReason,
 	priority: 'B' | 'C'
@@ -155,7 +218,10 @@ function adjust(
 /// the A race's taper/race weeks are touched. A workout inside two races'
 /// windows takes the stronger rule (shakeout, then taper, then recovery; then
 /// the B race, then the earlier race). A workout the rule would leave
-/// unchanged yields no change.
+/// unchanged yields no change. The whole prescription eases together
+/// (issue #1183): duration by the factor the distance moved, a walk/run's
+/// repeats cut to match, and notes cleared once they describe a session that
+/// no longer exists.
 export function raceTaperProposals(input: {
 	workouts: RaceTaperWorkout[];
 	races: PlanRace[];
@@ -188,7 +254,45 @@ export function raceTaperProposals(input: {
 		}
 		if (best == null) continue;
 		const a = adjust(w, best.reason, best.race.priority);
-		if (a.toKind === w.kind && a.toMetres === w.targetDistanceM && !a.clearsPace) continue;
+		// The factor the distance actually moved by (the shakeout's 5 km cap
+		// included), so duration and structure shrink with it; the rule's own
+		// factor when there is no distance to measure by.
+		const factor =
+			w.targetDistanceM != null && w.targetDistanceM > 0 && a.toMetres != null
+				? a.toMetres / w.targetDistanceM
+				: a.scale;
+		const kindChanged = a.toKind !== w.kind;
+		let toStructure: JsonObject | null = null;
+		let structureChanged = false;
+		let rebuiltWalkRun: Plain | null = null;
+		if (!a.clearsPace && kindChanged && w.structure != null) {
+			toStructure = null;
+			structureChanged = true;
+		} else if (!a.clearsPace && w.kind === 'walk_run') {
+			rebuiltWalkRun = scaledWalkRun(w.structure, factor);
+			if (rebuiltWalkRun != null) {
+				toStructure = rebuiltWalkRun as JsonObject;
+				structureChanged = true;
+			}
+		}
+		const fromDuration = w.targetDurationSeconds;
+		const toDurationS =
+			fromDuration == null
+				? null
+				: rebuiltWalkRun != null && walkRunSeconds(rebuiltWalkRun) > 0
+					? walkRunSeconds(rebuiltWalkRun)
+					: Math.round(fromDuration * factor);
+		const clearsNotes = w.notes != null && (kindChanged || rebuiltWalkRun != null);
+		if (
+			!kindChanged &&
+			a.toMetres === w.targetDistanceM &&
+			!a.clearsPace &&
+			toDurationS === fromDuration &&
+			!structureChanged &&
+			!clearsNotes
+		) {
+			continue;
+		}
 		changes.push({
 			workoutId: w.id,
 			scheduledDate: w.scheduledDate,
@@ -200,7 +304,12 @@ export function raceTaperProposals(input: {
 			toKind: a.toKind,
 			fromMetres: w.targetDistanceM,
 			toMetres: a.toMetres,
-			clearsPace: a.clearsPace
+			fromDurationS: fromDuration,
+			toDurationS,
+			clearsPace: a.clearsPace,
+			structureChanged,
+			toStructure,
+			clearsNotes
 		});
 	}
 	return changes.sort((x, y) => {
@@ -214,11 +323,15 @@ export function raceTaperPatch(c: RaceTaperChange): RaceTaperPatch {
 	const patch: RaceTaperPatch = {};
 	if (c.toKind !== c.fromKind) patch.kind = c.toKind;
 	if (c.toMetres !== c.fromMetres) patch.target_distance_m = c.toMetres;
+	if (c.toDurationS !== c.fromDurationS) patch.target_duration_seconds = c.toDurationS;
 	if (c.clearsPace) {
 		patch.target_pace_sec_per_km = null;
 		patch.target_pace_tolerance_sec = null;
 		patch.structure = null;
+	} else if (c.structureChanged) {
+		patch.structure = c.toStructure;
 	}
+	if (c.clearsNotes) patch.notes = null;
 	return patch;
 }
 

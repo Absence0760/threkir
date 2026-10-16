@@ -708,6 +708,7 @@ export const en = {
 	"planDetail.raceTaperPre": "{change} — taper for {race}",
 	"planDetail.raceTaperShakeout": "{change} — shakeout before {race}",
 	"planDetail.raceTaperPost": "{change} — recovery after {race}",
+	"planDetail.raceTaperNotesCleared": "Notes cleared",
 	"planDetail.heroNextRace": "Next race: {name}",
 	"planDetail.adjustPauseDesc": "Puts the plan on hold without deleting anything, until you resume it. Use it for illness, injury or travel.",
 	"planDetail.adjustResumeDesc": "Makes this your active plan again. Use it when you're ready to pick the plan back up.",

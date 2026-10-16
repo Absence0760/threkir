@@ -6107,6 +6107,9 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String get planDetailRaceTaperNotesCleared => 'メモを削除';
+
+  @override
   String planDetailHeroNextRace(String name) {
     return '次のレース: $name';
   }

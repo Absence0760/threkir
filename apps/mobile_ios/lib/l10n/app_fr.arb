@@ -1779,6 +1779,7 @@
   "planDetailRaceTaperPre": "{change} — affûtage pour {race}",
   "planDetailRaceTaperShakeout": "{change} — footing de déblocage avant {race}",
   "planDetailRaceTaperPost": "{change} — récupération après {race}",
+  "planDetailRaceTaperNotesCleared": "Notes effacées",
   "planDetailHeroNextRace": "Prochaine course : {name}",
   "planDetailAdjustPauseDesc": "Met le plan en attente sans rien supprimer, jusqu'à ce que vous le repreniez. À utiliser en cas de maladie, de blessure ou de voyage.",
   "planDetailAdjustResumeDesc": "Refait de ce plan votre plan actif. À utiliser quand vous êtes prêt à le reprendre.",

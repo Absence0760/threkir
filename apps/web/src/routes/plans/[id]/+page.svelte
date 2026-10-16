@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { isPlanOverlapError, thrownMessage } from '#lib/core/supabase_error.ts';
-	import { activeFormatLocale } from '#lib/format/time.ts';
+	import { activeFormatLocale, formatDuration } from '#lib/format/time.ts';
 	import { onMount, tick } from 'svelte';
 	import { afterNavigate, replaceState } from '$app/navigation';
 	import { page } from '$app/state';
@@ -374,6 +374,9 @@
 				scheduledDate: x.scheduled_date,
 				kind: x.kind,
 				targetDistanceM: x.target_distance_m,
+				targetDurationSeconds: x.target_duration_seconds,
+				structure: x.structure,
+				notes: x.notes,
 				phase: wk.phase,
 				completed: isWorkoutCompleted(x),
 				skipped: isWorkoutSkipped(x),
@@ -430,9 +433,15 @@
 	}
 
 	function taperChangeLabel(c: RaceTaperChange): string {
-		const side = (kind: string, metres: number | null) =>
-			metres != null ? `${workoutKindLabel(kind)} ${fmtKm(metres)}` : workoutKindLabel(kind);
-		const change = `${side(c.fromKind, c.fromMetres)} → ${side(c.toKind, c.toMetres)}`;
+		const side = (kind: string, metres: number | null, seconds: number | null) =>
+			[
+				workoutKindLabel(kind),
+				metres != null ? fmtKm(metres) : null,
+				seconds != null ? formatDuration(seconds) : null
+			]
+				.filter((p) => p != null)
+				.join(' ');
+		const change = `${side(c.fromKind, c.fromMetres, c.fromDurationS)} → ${side(c.toKind, c.toMetres, c.toDurationS)}`;
 		const race = c.raceName ?? fmtRaceDate(c.raceDate);
 		if (c.reason === 'shakeout') return m('planDetail.raceTaperShakeout', { change, race });
 		if (c.reason === 'pre_race') return m('planDetail.raceTaperPre', { change, race });
@@ -1377,6 +1386,9 @@
 						<li>
 							<span class="replan-date">{c.scheduledDate}</span>
 							<span class="replan-change">{taperChangeLabel(c)}</span>
+							{#if c.clearsNotes}
+								<span class="replan-note" data-testid="race-taper-notes-cleared">{m('planDetail.raceTaperNotesCleared')}</span>
+							{/if}
 						</li>
 					{/each}
 				</ul>
@@ -2602,6 +2614,13 @@
 		color: var(--color-text-tertiary);
 		font-variant-numeric: tabular-nums;
 		flex-shrink: 0;
+	}
+	.replan-preview li {
+		flex-wrap: wrap;
+	}
+	.replan-note {
+		color: var(--color-text-secondary);
+		font-size: 0.8rem;
 	}
 	.replan-actions {
 		display: flex;

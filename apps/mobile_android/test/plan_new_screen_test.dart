@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -10,6 +12,7 @@ import '../lib/screens/plan_new_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/training.dart';
 import '../lib/training_service.dart';
+import 'pump_until.dart';
 
 Future<void> _pump(WidgetTester tester) {
   return tester.pumpWidget(
@@ -96,6 +99,60 @@ class _GateTraining extends TrainingService {
     // the wizard (a real success navigates to PlanDetailScreen, which is
     // Supabase-backed and unbuildable in a widget test). The test only
     // asserts the gate reached createPlan.
+    throw Exception('test: skip navigation');
+  }
+}
+
+/// Holds the overlap lookup open on [lookupGate] and counts every lookup,
+/// create and clone, so a second tap inside the lookup is visible. Creates
+/// and clones throw after counting to keep the screen on the wizard, as
+/// [_GateTraining] does.
+class _LookupGateTraining extends TrainingService {
+  final Completer<void> lookupGate = Completer<void>();
+  final Map<String, List<TrainingPlanRow>> templatesByClub;
+  int lookupCalls = 0;
+  int createCalls = 0;
+  int cloneCalls = 0;
+  _LookupGateTraining({this.templatesByClub = const {}});
+
+  @override
+  Future<TrainingGender> fetchViewerGender() async => null;
+  @override
+  Future<int?> fetchViewerAge() async => null;
+  @override
+  Future<List<TrainingPlanRow>> fetchClubTemplates(String clubId) async =>
+      templatesByClub[clubId] ?? const [];
+  @override
+  Future<List<TrainingPlanRow>> fetchActivePlans() async {
+    lookupCalls++;
+    await lookupGate.future;
+    return const [];
+  }
+
+  @override
+  Future<TrainingPlanRow> createPlan({
+    required String name,
+    required GoalEvent goalEvent,
+    required double goalDistanceM,
+    int? goalTimeSec,
+    int? recent5kSec,
+    required DateTime startDate,
+    required int daysPerWeek,
+    String? notes,
+    required GeneratedPlan generated,
+    PlanOverlapAction onOverlap = PlanOverlapAction.refuse,
+  }) async {
+    createCalls++;
+    throw Exception('test: skip navigation');
+  }
+
+  @override
+  Future<String> clonePlanTemplate({
+    required String templateId,
+    DateTime? startDate,
+    PlanOverlapAction onOverlap = PlanOverlapAction.refuse,
+  }) async {
+    cloneCalls++;
     throw Exception('test: skip navigation');
   }
 }
@@ -437,6 +494,101 @@ void main() {
       await tapCreate(tester);
       expect(find.text(title), findsNothing);
       expect(training.createCalled, isTrue);
+    });
+  });
+
+  group('PlanNewScreen — a second tap during the overlap lookup', () {
+    Future<_LookupGateTraining> pumpLookup(WidgetTester tester,
+        {List<ClubView> clubs = const [],
+        Map<String, List<TrainingPlanRow>> templates = const {}}) async {
+      final training = _LookupGateTraining(templatesByClub: templates);
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: PlanNewScreen(training: training, social: _FakeSocial(clubs)),
+        ),
+      );
+      await tester.pump();
+      return training;
+    }
+
+    /// Answers the held lookup and lets the create or clone it unblocks
+    /// fail back onto the wizard, then runs out the failure banner's timer.
+    Future<void> finish(WidgetTester tester, _LookupGateTraining t) async {
+      t.lookupGate.complete();
+      await pumpUntil(tester, () => t.createCalls + t.cloneCalls > 0,
+          describe: 'the held lookup to unblock a create or clone');
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('Create plan creates once', (tester) async {
+      final t = await pumpLookup(tester);
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Plan name'), 'Autumn half');
+      await tester.pump();
+      final create = find.widgetWithText(FilledButton, 'Create plan');
+      await tester.scrollUntilVisible(create, 300,
+          scrollable: find.byType(Scrollable).first);
+      await tester.tap(create);
+      await tester.pump();
+      await tester.tap(create, warnIfMissed: false);
+      await tester.pump();
+      expect(t.lookupCalls, 1);
+
+      await finish(tester, t);
+      expect(t.createCalls, 1);
+    });
+
+    testWidgets('a starter plan creates once', (tester) async {
+      final t = await pumpLookup(tester);
+      final browse = find.text('Browse starter plans');
+      await tester.tap(browse);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Marathon — 16 weeks'));
+      await tester.pumpAndSettle();
+      expect(t.lookupCalls, 1);
+
+      await tester.tap(browse, warnIfMissed: false);
+      await tester.pumpAndSettle();
+      expect(find.text('Choose a starter plan'), findsNothing,
+          reason: 'the picker must not reopen while the first pick is '
+              'still being checked');
+      expect(t.lookupCalls, 1);
+
+      await finish(tester, t);
+      expect(t.createCalls, 1);
+    });
+
+    testWidgets('a club template clones once', (tester) async {
+      final t = await pumpLookup(
+        tester,
+        clubs: [_club('club-1', 'Trail Club')],
+        templates: {
+          'club-1': [_template('tpl-1', 'Spring Half')],
+        },
+      );
+      final browse = find.text('Browse templates');
+      await pumpUntil(tester, () => tester.any(browse),
+          describe: 'the club templates to load');
+      await tester.ensureVisible(browse);
+      await tester.pump();
+      await tester.tap(browse);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Spring Half'));
+      await tester.pumpAndSettle();
+      expect(t.lookupCalls, 1);
+
+      await tester.tap(browse, warnIfMissed: false);
+      await tester.pumpAndSettle();
+      expect(find.text('Choose a template'), findsNothing,
+          reason: 'the picker must not reopen while the first pick is '
+              'still being checked');
+      expect(t.lookupCalls, 1);
+
+      await finish(tester, t);
+      expect(t.cloneCalls, 1);
     });
   });
 

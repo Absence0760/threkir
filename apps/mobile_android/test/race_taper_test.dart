@@ -36,6 +36,9 @@ RaceTaperWorkout _wo(String id, String date, String kind, double? distanceM,
     );
 
 const _today = '2027-03-01';
+// A road B race: every case below that is not about ultras pins the road
+// windows, which the ultra rules must leave exactly as they were.
+final _springHalf = _race('2027-04-04', 'B', 21097.5);
 final _twoOceans = _race('2027-04-04', 'B', 56000);
 
 List<List<Object?>> _summary(List<RaceTaperChange> changes) => [
@@ -53,7 +56,7 @@ void main() {
         _wo('w-int', '2027-03-29', 'interval', 10000),
         _wo('w-easy', '2027-03-31', 'easy', 8000),
       ],
-      races: [_twoOceans],
+      races: [_springHalf],
       today: _today,
     );
     expect(_summary(changes), [
@@ -74,7 +77,7 @@ void main() {
         _wo('w-easy', '2027-04-03', 'easy', 8000),
         _wo('w-walk', '2027-04-03', 'walk_run', null),
       ],
-      races: [_twoOceans],
+      races: [_springHalf],
       today: _today,
     );
     expect(_summary(changes), [
@@ -94,7 +97,7 @@ void main() {
           ))
             c.scheduledDate,
         ];
-    expect(after(_twoOceans, ['2027-04-11', '2027-04-12']), ['2027-04-11']);
+    expect(after(_springHalf, ['2027-04-11', '2027-04-12']), ['2027-04-11']);
     expect(after(_race('2027-04-04', 'B', 10000), ['2027-04-08', '2027-04-09']),
         ['2027-04-08']);
     expect(after(_race('2027-04-04', 'B', null), ['2027-04-09', '2027-04-10']),
@@ -110,7 +113,7 @@ void main() {
         _wo('w-long', '2027-04-07', 'long', 24000),
         _wo('w-easy', '2027-04-08', 'easy', 8000),
       ],
-      races: [_twoOceans],
+      races: [_springHalf],
       today: _today,
     );
     expect(_summary(changes), [
@@ -151,7 +154,7 @@ void main() {
         _wo('w-taper', '2027-04-01', 'tempo', 10000, phase: 'taper'),
         _wo('w-past', '2027-03-30', 'tempo', 10000),
       ],
-      races: [_twoOceans],
+      races: [_springHalf],
       today: '2027-03-31',
     );
     expect(changes, isEmpty);
@@ -165,7 +168,7 @@ void main() {
     ];
     expect(
         raceTaperProposals(
-            workouts: workouts, races: [_twoOceans], today: '2027-04-04'),
+            workouts: workouts, races: [_springHalf], today: '2027-04-04'),
         isEmpty);
     expect(
         raceTaperProposals(
@@ -184,7 +187,7 @@ void main() {
       races: [
         _race('2027-03-30', 'C', 5000),
         _race('2027-03-31', 'C', 5000),
-        _twoOceans,
+        _springHalf,
       ],
       today: _today,
     );
@@ -204,7 +207,7 @@ void main() {
         _wo('w-int', '2027-03-30', 'interval', 10000),
         _wo('w-easy', '2027-03-31', 'easy', 8000),
       ],
-      races: [_twoOceans],
+      races: [_springHalf],
       today: _today,
     );
     expect(raceTaperPatch(changes[0]), {
@@ -225,7 +228,7 @@ void main() {
       _wo('w-easy', '2027-03-31', 'easy', 8000),
     ];
     final first = raceTaperProposals(
-        workouts: workouts, races: [_twoOceans], today: _today);
+        workouts: workouts, races: [_springHalf], today: _today);
     List<RaceTaperWorkout> applied({required bool stamped}) => [
           for (final w in workouts)
             () {
@@ -237,13 +240,13 @@ void main() {
     expect(
         _summary(raceTaperProposals(
             workouts: applied(stamped: true),
-            races: [_twoOceans],
+            races: [_springHalf],
             today: _today)),
         isEmpty);
     expect(
         _summary(raceTaperProposals(
             workouts: applied(stamped: false),
-            races: [_twoOceans],
+            races: [_springHalf],
             today: _today)),
         [
           ['w-int', RaceTaperReason.preRace, 'easy', 4225, false],
@@ -259,7 +262,7 @@ void main() {
         _wo('w-timed', '2027-03-31', 'easy', null, durationS: 3600),
         _wo('w-tempo', '2027-04-02', 'tempo', 12000, durationS: 3600),
       ],
-      races: [_twoOceans],
+      races: [_springHalf],
       today: _today,
     );
     expect([
@@ -301,7 +304,7 @@ void main() {
         _wo('w-grad', '2027-03-31', 'walk_run', 5000,
             durationS: 2400, structure: continuous),
       ],
-      races: [_twoOceans],
+      races: [_springHalf],
       today: _today,
     );
     // 8 repeats × 0.65 = 5.2 → 5; 300 + 5 × 90 + 4 × 120 + 300 = 1530 s.
@@ -342,7 +345,7 @@ void main() {
             }),
         _wo('w-easy', '2027-03-31', 'easy', 8000, notes: 'Flat route'),
       ],
-      races: [_twoOceans],
+      races: [_springHalf],
       today: _today,
     );
     expect(raceTaperPatch(changes[0]), {
@@ -361,5 +364,55 @@ void main() {
     });
     // Same kind, only shorter: the runner's own note still fits.
     expect(raceTaperPatch(changes[2]), {'target_distance_m': 5200});
+  });
+
+  test(
+      'raceTaperProposals: recovery after an ultra B race adds a day per 2 km past the marathon, up to 21',
+      () {
+    List<String> after(PlanRace r, List<String> days) => [
+          for (final c in raceTaperProposals(
+            workouts: [for (final d in days) _wo('w-$d', d, 'tempo', 8000)],
+            races: [r],
+            today: _today,
+          ))
+            c.scheduledDate,
+        ];
+    // Two Oceans: 7 + (56 - 42.195) / 2 = 13.9 -> 14 days.
+    expect(after(_twoOceans, ['2027-04-18', '2027-04-19']), ['2027-04-18']);
+    // A 90 km race reaches the 21-day ceiling; 100 miles stays there.
+    expect(after(_race('2027-04-04', 'B', 90000), ['2027-04-25', '2027-04-26']),
+        ['2027-04-25']);
+    expect(
+        after(_race('2027-04-04', 'B', 160934.4), ['2027-04-25', '2027-04-26']),
+        ['2027-04-25']);
+    // Continuous at the marathon: the marathon and a 43 km race both take 7.
+    expect(after(_race('2027-04-04', 'B', 42195), ['2027-04-11', '2027-04-12']),
+        ['2027-04-11']);
+    expect(after(_race('2027-04-04', 'B', 43000), ['2027-04-11', '2027-04-12']),
+        ['2027-04-11']);
+    // A C race stays at 2 days at any distance.
+    expect(after(_race('2027-04-04', 'C', 56000), ['2027-04-06', '2027-04-07']),
+        ['2027-04-06']);
+  });
+
+  test('raceTaperProposals: an ultra B race eases the 8 days before it, a road B race 6',
+      () {
+    List<List<Object?>> before(PlanRace r) => [
+          for (final c in raceTaperProposals(
+            workouts: [
+              _wo('w-9', '2027-03-26', 'easy', 8000),
+              _wo('w-8', '2027-03-27', 'long', 30000, durationS: 3 * 3600),
+              _wo('w-7', '2027-03-28', 'long', 30000),
+            ],
+            races: [r],
+            today: _today,
+          ))
+            [c.workoutId, c.reason, c.toKind, c.toMetres, c.toDurationS],
+        ];
+    expect(before(_twoOceans), [
+      ['w-8', RaceTaperReason.preRace, 'easy', 19500, 7020],
+      ['w-7', RaceTaperReason.preRace, 'easy', 19500, null],
+    ]);
+    expect(before(_springHalf), isEmpty);
   });
 }

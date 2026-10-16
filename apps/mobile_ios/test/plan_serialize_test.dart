@@ -360,4 +360,72 @@ void main() {
             table('| 1 | 2027-02-06 | race | 5 km | parkrun |  | fast |')),
         throwsWith('goal time "fast"'));
   });
+
+  test(
+      'a piped race name, a priority-only race, a goal-only race and the plan '
+      'goal time survive the round-trip', () {
+    final plan = {
+      'name': 'Spring double',
+      'goalEvent': 'distance_half',
+      'goalDistanceM': 21097.5,
+      'goalTimeSec': 1 * 3600 + 35 * 60 + 20,
+      'startDate': '2027-03-07',
+      'workouts': [
+        {'week_index': 0, 'scheduled_date': '2027-03-07', 'kind': 'race', 'target_distance_m': 5000, 'target_pace_sec_per_km': null, 'notes': null, 'target_duration_seconds': null, 'race_name': null, 'race_priority': 'C'},
+        {'week_index': 1, 'scheduled_date': '2027-03-14', 'kind': 'race', 'target_distance_m': 10000, 'target_pace_sec_per_km': null, 'notes': null, 'target_duration_seconds': 42 * 60 + 5, 'race_name': null, 'race_priority': null},
+        {'week_index': 2, 'scheduled_date': '2027-03-21', 'kind': 'race', 'target_distance_m': 21100, 'target_pace_sec_per_km': null, 'notes': null, 'target_duration_seconds': null, 'race_name': 'City | Half', 'race_priority': 'A'},
+      ],
+    };
+    // What web's planToMarkdown writes for [plan].
+    const markdown = """# Spring double
+
+- Goal event: distance_half
+- Goal distance: 21.10 km
+- Goal time: 1:35:20
+- Start date: 2027-03-07
+
+| Week | Date | Type | Distance | Pace | Notes | Race | Priority | Goal |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | 2027-03-07 | race | 5.00 km |  |  |  | C |  |
+| 2 | 2027-03-14 | race | 10.00 km |  |  |  |  | 0:42:05 |
+| 3 | 2027-03-21 | race | 21.10 km |  |  | City / Half | A |  |
+""";
+    for (final parsed in [
+      parsePlanMarkdown(markdown),
+      parsePlanJson(jsonEncode(plan)),
+    ]) {
+      expect(parsed.goalTimeSec, plan['goalTimeSec']);
+      expect(
+        _flattenRaces(parsed)
+            .map((r) => [
+                  r['race_name'],
+                  r['race_priority'],
+                  r['target_duration_seconds'],
+                ])
+            .toList(),
+        [
+          [null, 'C', null],
+          [null, null, 42 * 60 + 5],
+          ['City / Half', 'A', null],
+        ],
+      );
+    }
+  });
+
+  test(
+      'parsePlanMarkdown keeps a 120-character race name and rejects a '
+      '121-character one', () {
+    String table(String race) => _table([
+          '| Week | Date | Type | Distance | Race |',
+          '| --- | --- | --- | --- | --- |',
+          '| 1 | 2027-02-06 | race | 5 km | $race |',
+        ]);
+    final longest = 'R' * 120;
+    expect(_flattenRaces(parsePlanMarkdown(table(longest)))[0]['race_name'],
+        longest);
+    expect(
+        () => parsePlanMarkdown(table('${longest}R')),
+        throwsA(isA<PlanParseError>().having(
+            (e) => e.message, 'message', contains('longer than 120 characters'))));
+  });
 }

@@ -2,6 +2,7 @@
 // sync — the Dart engine is expected to produce the same paces and phase
 // assignments as the TS engine for the same inputs.
 
+import 'dart:math';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/preferences.dart';
@@ -1076,5 +1077,360 @@ void main() {
     expect((male.goalPaceSecPerKm - 12600 / 42.195).abs() < 0.001, isTrue);
     expect(male.paces.easy == female.paces.easy, isFalse,
         reason: 'bands still calibrate');
+  });
+
+  // ─────────────────────── Ultra distances (#1181) ───────────────────────
+  // Mirrors the ultra block in training.test.ts.
+
+  group('ultra distances', () {
+    const mi100 = 160934.4;
+
+    GeneratedPlan ultraPlan(double distanceM,
+            {int? goalTimeSec,
+            int? recent5kSec,
+            int days = 5,
+            int? weeks,
+            int? age}) =>
+        generatePlan(GeneratePlanInput(
+          goalEvent: GoalEvent.custom,
+          goalDistanceM: distanceM,
+          goalTimeSec: goalTimeSec,
+          recent5kSec: recent5kSec,
+          startDate: DateTime(2026, 11, 1),
+          daysPerWeek: days,
+          weeks: weeks,
+          age: age,
+        ));
+
+    bool isStepBack(GeneratedWeek w) =>
+        (w.notes ?? '').startsWith('Step-back');
+    int longest(GeneratedPlan p) => p.weeks
+        .expand((w) => w.workouts)
+        .map((w) =>
+            w.kind == WorkoutKind.long ? w.targetDurationSeconds! : 0)
+        .reduce(max);
+
+    test('a distance past the marathon is an ultra, the marathon itself is not',
+        () {
+      expect(isUltraDistance(kGoalDistancesM[GoalEvent.distanceFull]!), isFalse);
+      expect(isUltraDistance(42196), isTrue);
+      expect(isUltraDistance(double.nan), isFalse);
+      expect(isUltraDistance(double.infinity), isFalse);
+      for (final p in kUltraPresets) {
+        expect(isUltraDistance(p.distanceM), isTrue, reason: p.id);
+      }
+      expect([for (final p in kUltraPresets) p.distanceM],
+          [50000, 56000, 90000, mi100]);
+    });
+
+    test('default plan weeks scale with the distance, and a custom road distance keeps 12',
+        () {
+      expect(defaultPlanWeeks(GoalEvent.custom, 50000), 16);
+      expect(defaultPlanWeeks(GoalEvent.custom, 56000), 16);
+      expect(defaultPlanWeeks(GoalEvent.custom, 70000), 18);
+      expect(defaultPlanWeeks(GoalEvent.custom, 87700), 20);
+      expect(defaultPlanWeeks(GoalEvent.custom, mi100), 24);
+      expect(defaultPlanWeeks(GoalEvent.custom, 30000), 12);
+      expect(defaultPlanWeeks(GoalEvent.custom), 12);
+      expect(defaultPlanWeeks(GoalEvent.distanceFull, mi100), 16,
+          reason: 'a named event ignores the distance');
+      expect(ultraPlan(56000).weeks.length, 16);
+      expect(ultraPlan(mi100).weeks.length, 24);
+    });
+
+    test('weekly volume never grows more than 10% over the previous build week',
+        () {
+      for (final d in [
+        for (final p in kUltraPresets) p.distanceM,
+        43000.0,
+        70000.0,
+        250000.0,
+      ]) {
+        for (final days in [3, 4, 5, 6, 7]) {
+          for (final anchor in [
+            (gt: null, r5: null),
+            (gt: (d * 0.42).round(), r5: null),
+            (gt: null, r5: 1500),
+          ]) {
+            for (final age in [30, 55]) {
+              for (final weeks in [null, 8, 12]) {
+                final plan = ultraPlan(d,
+                    goalTimeSec: anchor.gt,
+                    recent5kSec: anchor.r5,
+                    days: days,
+                    age: age,
+                    weeks: weeks);
+                double? prev;
+                for (final w in plan.weeks) {
+                  if (w.phase == PlanPhase.taper || w.phase == PlanPhase.race) {
+                    break;
+                  }
+                  if (isStepBack(w)) continue;
+                  if (prev != null) {
+                    expect(
+                        w.targetVolumeM <= prev * kUltraMaxWeeklyRamp + 1e-6,
+                        isTrue,
+                        reason:
+                            '$d m, $days d/wk, week ${w.weekIndex}: $prev -> ${w.targetVolumeM}');
+                  }
+                  prev = w.targetVolumeM;
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    test('no long run outlasts the time-on-feet cap', () {
+      expect(ultraLongRunCapSec(50000), 12600);
+      expect(ultraLongRunCapSec(56000), 12600);
+      expect(ultraLongRunCapSec(70000), 14400);
+      expect(ultraLongRunCapSec(90000), 18000);
+      expect(ultraLongRunCapSec(mi100), 21600);
+      for (final d in [for (final p in kUltraPresets) p.distanceM, 70000.0]) {
+        for (final days in [3, 5, 7]) {
+          final plan = ultraPlan(d, recent5kSec: 1080, days: days);
+          final longs = plan.weeks
+              .expand((w) => w.workouts)
+              .where((w) => w.kind == WorkoutKind.long)
+              .toList();
+          expect(longs, isNotEmpty);
+          for (final w in longs) {
+            expect(w.targetDurationSeconds! <= ultraLongRunCapSec(d), isTrue,
+                reason: '$d: ${w.targetDurationSeconds}');
+          }
+        }
+      }
+      // The cap binds: a 32-hour 100-miler and a 7-hour 56 km runner both
+      // reach it.
+      expect(longest(ultraPlan(mi100, goalTimeSec: 32 * 3600, days: 7)), 21600);
+      expect(longest(ultraPlan(56000, goalTimeSec: 7 * 3600, days: 6)), 12600);
+    });
+
+    test('long runs are time-on-feet targets with no pace, their distance the duration at easy pace',
+        () {
+      final plan = ultraPlan(56000, goalTimeSec: 6 * 3600);
+      final longs = plan.weeks
+          .expand((w) => w.workouts)
+          .where((w) => w.kind == WorkoutKind.long);
+      for (final w in longs) {
+        expect(w.targetDurationSeconds! >= 3600, isTrue);
+        expect(w.targetDurationSeconds! % 900, 0, reason: 'quarter-hour steps');
+        expect(w.targetPaceSecPerKm, isNull);
+        expect(w.targetPaceToleranceSec, isNull);
+        expect(w.targetDistanceM,
+            ((w.targetDurationSeconds! / plan.paces.easy) * 10).round() * 100);
+      }
+    });
+
+    test('90 km and 100 mi plans carry back-to-back weekends; 50 km and 56 km do not',
+        () {
+      List<({int week, GeneratedWorkout workout})> saturdayLongs(
+              GeneratedPlan plan) =>
+          [
+            for (var i = 0; i < plan.weeks.length; i++)
+              for (final x in plan.weeks[i].workouts)
+                if (x.kind == WorkoutKind.long &&
+                    x.scheduledDate != plan.weeks[i].workouts[0].scheduledDate)
+                  (week: i, workout: x),
+          ];
+      for (final d in [87700.0, 90000.0, mi100]) {
+        final plan = ultraPlan(d, goalTimeSec: (d * 0.45).round(), days: 5);
+        final b2b = saturdayLongs(plan);
+        expect(b2b.length >= 4, isTrue,
+            reason: '$d: ${b2b.length} back-to-back weekends');
+        for (final (:week, :workout) in b2b) {
+          expect(workout.scheduledDate.weekday, DateTime.saturday);
+          expect([PlanPhase.build, PlanPhase.peak],
+              contains(plan.weeks[week].phase));
+          final sunday = plan.weeks[week + 1].workouts[0];
+          expect(sunday.kind, WorkoutKind.long);
+          expect(
+              workout.targetDurationSeconds! <=
+                  (ultraLongRunCapSec(d) * 0.6 / 900).floor() * 900,
+              isTrue);
+        }
+        for (final w in plan.weeks.where((x) => x.phase == PlanPhase.taper)) {
+          expect(w.workouts.where((x) => x.kind == WorkoutKind.long).length, 1,
+              reason: 'no back-to-back in the taper');
+        }
+      }
+      for (final d in [50000.0, 56000.0, 70000.0]) {
+        expect(
+            saturdayLongs(ultraPlan(d, goalTimeSec: (d * 0.45).round()))
+                .length,
+            0,
+            reason: '$d');
+      }
+    });
+
+    test('the taper runs 2 weeks below 80 km and 3 from 80 km, cutting volume each week',
+        () {
+      expect(ultraTaperWeeks(56000, 16), 2);
+      expect(ultraTaperWeeks(90000, 20), 3);
+      expect(ultraTaperWeeks(mi100, 8), 1,
+          reason: 'a short plan keeps most of its weeks to build');
+      expect(ultraTaperWeeks(mi100, 1), 0);
+      for (final (d, taper) in [(56000.0, 2), (mi100, 3)]) {
+        final plan = ultraPlan(d, goalTimeSec: (d * 0.45).round());
+        final tapers =
+            plan.weeks.where((w) => w.phase == PlanPhase.taper).toList();
+        expect(tapers.length, taper, reason: '$d');
+        expect(plan.weeks.last.phase, PlanPhase.race);
+        final peak = plan.weeks
+            .where((w) => w.phase != PlanPhase.race)
+            .map((w) => w.targetVolumeM)
+            .reduce(max);
+        var prev = peak;
+        for (final w in tapers) {
+          expect(w.targetVolumeM < prev, isTrue,
+              reason: 'taper week ${w.weekIndex} comes down');
+          expect(w.workouts.any((x) => x.kind == WorkoutKind.tempo), isTrue,
+              reason: 'some intensity stays');
+          prev = w.targetVolumeM;
+        }
+        expect(tapers.last.targetVolumeM <= peak * 0.6, isTrue,
+            reason: 'the last taper week is well under peak');
+      }
+    });
+
+    test('a custom 70 km plan is an 18-week ultra plan with no back-to-backs',
+        () {
+      final plan = ultraPlan(70000, goalTimeSec: 8 * 3600, days: 5);
+      expect(plan.weeks.length, 18);
+      expect(plan.goalDistanceM, 70000);
+      final workouts = plan.weeks.expand((w) => w.workouts).toList();
+      expect(workouts.every((w) => w.kind != WorkoutKind.marathonPace), isTrue,
+          reason: 'no goal pace to rehearse');
+      expect(
+          workouts
+              .where((w) => w.kind == WorkoutKind.long)
+              .every((w) => w.targetDurationSeconds! <= 4 * 3600),
+          isTrue);
+      expect(
+          workouts
+              .where((w) =>
+                  w.kind == WorkoutKind.long &&
+                  w.scheduledDate.weekday == DateTime.saturday)
+              .length,
+          0);
+      expect(plan.weeks.where((w) => w.phase == PlanPhase.taper).length, 2);
+    });
+
+    test('the race day carries the goal time as its duration and no pace', () {
+      final race = ultraPlan(90000, goalTimeSec: 11 * 3600).weeks.last.workouts[0];
+      expect(race.kind, WorkoutKind.race);
+      expect(race.targetDistanceM, 90000);
+      expect(race.targetDurationSeconds, 11 * 3600);
+      expect(race.targetPaceSecPerKm, isNull);
+      expect(ultraPlan(90000).weeks.last.workouts[0].targetDurationSeconds,
+          isNull);
+    });
+
+    test('training zones come from the marathon equivalent of the goal', () {
+      expect(ultraMarathonEquivalentSec(24 * 3600, mi100), 18532);
+      final plan = ultraPlan(mi100, goalTimeSec: 24 * 3600);
+      final expected =
+          resolveTrainingPaces(goalDistanceM: 42195, goalTimeSec: 18532);
+      expect(plan.paces.easy, expected.easy);
+      expect(plan.paces.marathon, expected.marathon);
+      expect(plan.paces.tempo, expected.tempo);
+      expect(plan.paces.interval, expected.interval);
+      expect(plan.paces.repetition, expected.repetition);
+      expect(plan.paces.tempo < 24 * 3600 / 160.9344, isTrue,
+          reason: 'tempo is faster than the 100-mile race pace');
+      expect((plan.vdot! - vdotFromRace(42195, 18532)).abs() < 1e-9, isTrue);
+      final anchored = ultraPlan(mi100, recent5kSec: 1500);
+      expect(anchored.paces.easy,
+          resolveTrainingPaces(goalDistanceM: 42195, recent5kSec: 1500).easy);
+    });
+
+    test('peak volume continues from the marathon and caps at 120 km', () {
+      expect(peakVolumeKm(42195, 5), peakVolumeKm(42196, 5));
+      expect(peakVolumeKm(mi100, 6), 120);
+      expect(peakVolumeKm(250000, 6), 120);
+      expect(peakVolumeKm(90000, 5) > peakVolumeKm(56000, 5), isTrue);
+    });
+
+    test('any distance from 5 km plans from a distance, a date and training days alone',
+        () {
+      for (final d in [
+        5000.0,
+        12345.0,
+        42195.0,
+        43000.0,
+        56000.0,
+        87700.0,
+        123456.0,
+        mi100,
+        386000.0,
+      ]) {
+        for (final days in [3, 4, 5, 6, 7]) {
+          final plan = generatePlan(GeneratePlanInput(
+            goalEvent: GoalEvent.custom,
+            goalDistanceM: d,
+            startDate: DateTime(2027, 1, 3),
+            daysPerWeek: days,
+          ));
+          expect(plan.goalDistanceM, d);
+          expect(plan.weeks.length >= 8, isTrue);
+          final all = plan.weeks.expand((w) => w.workouts).toList();
+          expect(all.length, plan.weeks.length * 7);
+          for (final w in all) {
+            final m = w.targetDistanceM;
+            expect(m == null || (m.isFinite && m > 0), isTrue);
+          }
+          expect(
+              all.where((w) => w.kind != WorkoutKind.rest).length <=
+                  plan.weeks.length * days,
+              isTrue);
+          final race = plan.weeks.last.workouts[0];
+          expect(race.kind, WorkoutKind.race);
+          expect(race.targetDistanceM, d);
+        }
+      }
+    });
+
+    test('road plans are unchanged by the ultra branch', () {
+      // Captured from the generator before the ultra branch landed.
+      final marathon = generatePlan(GeneratePlanInput(
+        goalEvent: GoalEvent.distanceFull,
+        goalTimeSec: 4 * 3600,
+        startDate: DateTime(2026, 11, 1),
+        daysPerWeek: 5,
+      ));
+      expect([for (final w in marathon.weeks) w.targetVolumeM], [
+        41000, 44000, 45000, 40000, 49000, 52000, 54000, 46000, //
+        58000, 61000, 63000, 52000, 67000, 37000, 37000, 42195,
+      ]);
+      expect(marathon.weeks[15].workouts[0].targetPaceSecPerKm, 341);
+      final custom30k = generatePlan(GeneratePlanInput(
+        goalEvent: GoalEvent.custom,
+        goalDistanceM: 30000,
+        recent5kSec: 1500,
+        startDate: DateTime(2026, 11, 1),
+        daysPerWeek: 4,
+      ));
+      expect([for (final w in custom30k.weeks) w.targetVolumeM], [
+        27000, 29000, 30000, 27000, 33000, 36000, //
+        38000, 33000, 42000, 24000, 24000, 30000,
+      ]);
+      // The marathon distance itself, entered as a custom goal, stays a road
+      // plan.
+      final customMarathon = generatePlan(GeneratePlanInput(
+        goalEvent: GoalEvent.custom,
+        goalDistanceM: 42195,
+        goalTimeSec: 4 * 3600,
+        startDate: DateTime(2026, 11, 1),
+        daysPerWeek: 5,
+        weeks: 16,
+      ));
+      expect([for (final w in customMarathon.weeks) w.targetVolumeM],
+          [for (final w in marathon.weeks) w.targetVolumeM]);
+      expect(
+          [for (final w in customMarathon.weeks) for (final x in w.workouts) x.kind],
+          [for (final w in marathon.weeks) for (final x in w.workouts) x.kind]);
+    });
   });
 }

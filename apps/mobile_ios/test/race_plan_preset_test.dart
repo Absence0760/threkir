@@ -135,12 +135,31 @@ void main() {
   });
 
   test('a distance matching no standard rung claims no goal event', () {
-    // A 50k trail ultra: the wizard has no custom-distance input, so calling
-    // this a marathon would train the runner for the wrong race.
+    // A 50k trail ultra: calling this a marathon would train the runner for
+    // the wrong race. It sizes as a custom goal of its own distance.
     final preset = _ok(racePlanPreset(
         raceDateIso: '2027-03-14', distanceM: 50000, todayIso: _today));
     expect(preset.goalEvent, isNull);
-    expect(preset.weeks, defaultPlanWeeks(GoalEvent.custom));
+    expect(preset.weeks, defaultPlanWeeks(GoalEvent.custom, 50000));
+  });
+
+  test('an ultra race sizes the plan to its ultra default, capped by the weeks left',
+      () {
+    final far = _ok(racePlanPreset(
+        raceDateIso: '2027-06-13', distanceM: 160934.4, todayIso: _today));
+    expect(far.weeks, 24);
+    _assertAnchoring(far, '2027-06-13');
+    // 18 weeks out: a 20-week Comrades build does not fit, so it takes all 18.
+    final near = _ok(racePlanPreset(
+        raceDateIso: '2026-12-13', distanceM: 87700, todayIso: _today));
+    expect(near.weeks, 18);
+    _assertAnchoring(near, '2026-12-13');
+    // A 30 km race off every rung keeps the custom 12.
+    expect(
+        _ok(racePlanPreset(
+                raceDateIso: '2027-06-13', distanceM: 30000, todayIso: _today))
+            .weeks,
+        12);
   });
 
   test('a listing with no distance still presets the dates', () {

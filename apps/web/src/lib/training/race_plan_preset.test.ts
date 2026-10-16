@@ -149,11 +149,23 @@ test('an unusable date is refused as invalid, never silently treated as past', (
 });
 
 test('a distance matching no standard rung claims no goal event', () => {
-	// A 50k trail ultra: the wizard has no custom-distance input, so calling
-	// this a marathon would train the runner for the wrong race.
+	// A 50k trail ultra: calling this a marathon would train the runner for
+	// the wrong race. It sizes as a custom goal of its own distance.
 	const preset = ok(racePlanPreset({ raceDateIso: '2027-03-14', distanceM: 50_000, todayIso: TODAY }));
 	assert.equal(preset.goalEvent, null);
-	assert.equal(preset.weeks, defaultPlanWeeks('custom'));
+	assert.equal(preset.weeks, defaultPlanWeeks('custom', 50_000));
+});
+
+test('an ultra race sizes the plan to its ultra default, capped by the weeks left', () => {
+	const far = ok(racePlanPreset({ raceDateIso: '2027-06-13', distanceM: 160_934.4, todayIso: TODAY }));
+	assert.equal(far.weeks, 24);
+	assertAnchoring(far, '2027-06-13');
+	// 18 weeks out: a 20-week Comrades build does not fit, so it takes all 18.
+	const near = ok(racePlanPreset({ raceDateIso: '2026-12-13', distanceM: 87_700, todayIso: TODAY }));
+	assert.equal(near.weeks, 18);
+	assertAnchoring(near, '2026-12-13');
+	// A 30 km race off every rung keeps the custom 12.
+	assert.equal(ok(racePlanPreset({ raceDateIso: '2027-06-13', distanceM: 30_000, todayIso: TODAY })).weeks, 12);
 });
 
 test('a listing with no distance still presets the dates', () => {

@@ -60,7 +60,7 @@ to build:
   `setof` a row type `(athlete_id uuid, display_name text, avatar_url text, last_run_at timestamptz,
   runs_7d int, distance_7d_m double precision, load_acute double precision, load_chronic double precision,
   acwr double precision, active_plan_id uuid, plan_completion_pct int)`.
-  - `active_plan_id` is the athlete's current plan when several are active (decisions § 2008): the active plan covering `current_date`, else the latest-ended, else the next to start — the same order as `plan_current.ts`, but on the server's date, so it can differ from the athlete's own view across a midnight in another time zone.
+  - `active_plan_id` is the athlete's current plan when several are active (decisions § 2008): the active plan covering the athlete's local today, else the latest-ended, else the next to start — the same order and the same date as `plan_current.ts` on the athlete's own dashboard. The local date comes from the `time_zone` universal pref each client writes from its device zone (`20270830000011`, issue #1182); with none set it falls back to the server date.
   - Body: `with mine as (select athlete_id from coach_athletes where coach_id = auth.uid() and status='active')`,
     then LEFT JOIN aggregates over `runs` (last 7d + last 28d windows for ACWR; `is_dnf=false`) and the athlete's
     active `training_plans` + a completion count over `plan_workouts` mirroring `fetchAthletePlanOverview`'s logic.

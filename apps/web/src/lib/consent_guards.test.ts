@@ -599,6 +599,7 @@ test('every AI consent prompt sends the runner to the one place that can record 
 		'src/lib/components/PlatePhotoLogger.svelte',
 		'src/lib/components/PlanAiAdjust.svelte',
 		'src/lib/components/PlanEditor.svelte',
+		'src/lib/components/SeasonPlanner.svelte',
 	];
 	const found = new Set<string>();
 	const walk = (dir: string) => {

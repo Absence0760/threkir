@@ -6,7 +6,7 @@ import { USER_A } from '../fixtures/users';
 import { setStorageOnLoad } from '../fixtures/helpers';
 
 /**
- * The sidebar's seven per-section identity accents (decisions § 529).
+ * The sidebar's per-section identity accents (decisions § 529, § 2007).
  *
  * Each nav row names a `--section-<x>` / `--section-<x>-ink` pair in app.css
  * via an inline `style="--accent: var(...)"`, and the icon glyph paints the
@@ -30,6 +30,7 @@ const SECTIONS = [
 	'nutrition',
 	'coach',
 	'social',
+	'messages',
 ] as const;
 
 async function tokens(page: Page, names: string[]): Promise<string[]> {
@@ -52,7 +53,7 @@ async function tokens(page: Page, names: string[]): Promise<string[]> {
  * Gym and Nutrition join the sidebar once the session's visibility read lands
  * (decisions § 1739 amendment). USER_A's seed logs both, so both resolve shown
  * and must be in the list before anything is measured; reading earlier would
- * check five or six sections and call it seven.
+ * check six or seven sections and call it eight.
  */
 async function navSettled(page: Page): Promise<void> {
 	for (const href of ['/gym', '/nutrition']) {
@@ -80,12 +81,12 @@ test.describe('sidebar section accents', () => {
 
 			const links = page.locator('nav.sidebar .nav-link');
 			// The AI Coach row hides when the Coach is off, so the set is the
-			// sections present, not always all seven.
+			// sections present, not always all eight.
 			const hrefs = await links.evaluateAll((els) =>
 				els.map((el) => el.getAttribute('href') ?? ''),
 			);
 			const present = SECTIONS.filter((s) => hrefs.includes(`/${s}`));
-			expect(present.length).toBeGreaterThanOrEqual(6);
+			expect(present.length).toBeGreaterThanOrEqual(7);
 
 			const glyphs = await glyphColours(page);
 			expect(glyphs).toHaveLength(hrefs.length);

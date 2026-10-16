@@ -272,4 +272,31 @@ void main() {
           throwsA(blocked(null)));
     });
   });
+
+  test('applyRaceTaper stamps every workout it eases in the one RPC', () async {
+    await training.applyRaceTaper(planId: 'plan-1', patches: {
+      'w-int': {'kind': 'easy', 'target_distance_m': 6500.0},
+      'w-easy': {'target_distance_m': 5200.0},
+    });
+    final calls = fake.requests.where((r) => r.path.startsWith('/rest/v1/'));
+    expect([for (final r in calls) r.path],
+        ['/rest/v1/rpc/apply_workout_adjustments']);
+    final body = calls.single.body! as Map<String, dynamic>;
+    expect(body['p_plan_id'], 'plan-1');
+    final changes = (body['p_changes'] as List).cast<Map<String, dynamic>>();
+    expect([for (final c in changes) c['id']], ['w-int', 'w-easy']);
+    final stamp = changes.first['race_taper_applied_at'] as String;
+    expect(DateTime.parse(stamp).isUtc, isTrue);
+    expect(changes[0], {
+      'id': 'w-int',
+      'kind': 'easy',
+      'target_distance_m': 6500.0,
+      'race_taper_applied_at': stamp,
+    });
+    expect(changes[1], {
+      'id': 'w-easy',
+      'target_distance_m': 5200.0,
+      'race_taper_applied_at': stamp,
+    });
+  });
 }

@@ -3077,6 +3077,7 @@ export type Database = {
           pace_zone: string | null
           race_name: string | null
           race_priority: string | null
+          race_taper_applied_at: string | null
           scheduled_date: string
           skipped_at: string | null
           structure: Json | null
@@ -3099,6 +3100,7 @@ export type Database = {
           pace_zone?: string | null
           race_name?: string | null
           race_priority?: string | null
+          race_taper_applied_at?: string | null
           scheduled_date: string
           skipped_at?: string | null
           structure?: Json | null
@@ -3121,6 +3123,7 @@ export type Database = {
           pace_zone?: string | null
           race_name?: string | null
           race_priority?: string | null
+          race_taper_applied_at?: string | null
           scheduled_date?: string
           skipped_at?: string | null
           structure?: Json | null

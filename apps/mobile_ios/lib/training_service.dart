@@ -1032,12 +1032,22 @@ class TrainingService extends ChangeNotifier {
   /// Writes the B/C race taper's per-workout patches (`raceTaperPatch`,
   /// decisions § 2051) through [_applyWorkoutAdjustments]. Unlike
   /// [updateWorkout] a patch may clear the pace target and the interval
-  /// structure. Mirrors web `applyRaceTaper` on the plan page.
+  /// structure. Every workout is stamped `race_taper_applied_at`, so the next
+  /// proposal leaves the eased workout alone rather than cutting it again.
+  /// Mirrors web `applyRaceTaper` on the plan page (`raceTaperAdjustments`).
   Future<void> applyRaceTaper({
     required String planId,
     required Map<String, Map<String, Object?>> patches,
-  }) =>
-      _applyWorkoutAdjustments(planId, patches);
+  }) {
+    final appliedAt = DateTime.now().toUtc().toIso8601String();
+    return _applyWorkoutAdjustments(planId, {
+      for (final e in patches.entries)
+        e.key: {
+          ...e.value,
+          PlanWorkoutRow.colRaceTaperAppliedAt: appliedAt,
+        },
+    });
+  }
 
   /// Writes a re-plan's proposed distances — `target_distance_m` and nothing
   /// else, no load value (decisions § 1977) — through

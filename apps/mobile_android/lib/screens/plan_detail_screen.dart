@@ -428,6 +428,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
               phase: w.phase,
               completed: _isWorkoutCompleted(x),
               skipped: _isWorkoutSkipped(x),
+              taperApplied: x.raceTaperAppliedAt != null,
             ),
       ],
       races: _planRacesFor(plan),

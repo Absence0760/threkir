@@ -1850,6 +1850,53 @@ export const FILTERED_RPC_ARGUMENTS = [
       'windows and the assertion after it states the moved workouts.',
   },
   {
+    file: 'plan_chaining_edges_test.sql',
+    description: 'a backward shift into free dates succeeds',
+    columns: [
+      'plan_workouts.scheduled_date',
+      'training_plans.end_date',
+      'training_plans.start_date',
+    ],
+    readBack: 'both shifts landed',
+    reason:
+      'The `lives_ok` measures that a backward shift clear of the plan before it is not refused ' +
+      'the way the one onto it was. The dates are `+ p_days` over the stored ones, and the named ' +
+      'read-back states the shifted window.',
+  },
+  {
+    file: 'plan_chaining_edges_test.sql',
+    description: 'a paused plan shifts across an active one',
+    columns: [
+      'plan_workouts.scheduled_date',
+      'training_plans.end_date',
+      'training_plans.start_date',
+    ],
+    readBack: 'both shifts landed',
+    reason:
+      'The subject is that a paused plan holds no dates against the active one it now overlaps. ' +
+      'The dates are `+ p_days` over the stored ones, and the named read-back states the paused ' +
+      'plan\'s shifted window.',
+  },
+  {
+    file: 'plan_chaining_edges_test.sql',
+    description: 'a create with replace over two active plans succeeds',
+    columns: ['training_plans.goal_event', 'training_plans.notes', 'training_plans.vdot'],
+    reason:
+      'The subject is the overlap resolution: that replace completes every plan it overlaps and ' +
+      'leaves a queued and a paused plan alone, which the status read-back after it states. The ' +
+      'cast columns are atomic_plan_create_test.sql\'s trim case\'s claim, read back there for the ' +
+      'same function.',
+  },
+  {
+    file: 'plan_chaining_edges_test.sql',
+    description: 'a paused plan over the new dates does not make a refusing create refuse',
+    columns: ['training_plans.goal_event', 'training_plans.notes', 'training_plans.vdot'],
+    reason:
+      'The subject is that a paused plan is not an overlap to refuse over, which the status ' +
+      'read-back after it states. The cast columns are atomic_plan_create_test.sql\'s trim case\'s ' +
+      'claim, read back there for the same function.',
+  },
+  {
     file: 'plan_review_followups_test.sql',
     description: 'the owner shifts plan 6 a week',
     columns: [

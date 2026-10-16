@@ -1678,7 +1678,7 @@ function sidebarStops(marker: string): string[] {
 }
 
 const SECTIONS = [
-	'dashboard', 'history', 'runs', 'gym', 'nutrition', 'coach', 'social',
+	'dashboard', 'history', 'runs', 'gym', 'nutrition', 'coach', 'social', 'messages',
 ] as const;
 
 // Every tint share the tree paints an ink on: the nav disc idle (14) and hover
@@ -1730,8 +1730,8 @@ for (const { label, marker } of THEMES) {
 		}
 		const fills = SECTIONS.map((s) => resolveToken(marker, `section-${s}`));
 		const inks = SECTIONS.map((s) => resolveToken(marker, `section-${s}-ink`));
-		assert.equal(new Set(fills).size, 7, `section accents collide in ${label}`);
-		assert.equal(new Set(inks).size, 7, `section inks collide in ${label}`);
+		assert.equal(new Set(fills).size, SECTIONS.length, `section accents collide in ${label}`);
+		assert.equal(new Set(inks).size, SECTIONS.length, `section inks collide in ${label}`);
 		// Non-regression per PAIR rather than an absolute floor, because no
 		// absolute floor is available: dashboard's peach and history's terracotta
 		// are 1.6 deg apart as shipped accents and are the closest pair either

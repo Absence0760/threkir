@@ -10262,6 +10262,18 @@ export interface DmThread {
 	unread: number;
 }
 
+/// Total unread direct messages across every conversation: the badge on the
+/// sidebar's Messages entry. The same `dm_threads()` aggregation as
+/// [fetchDmThreads] without its partner-profile read, as mobile's
+/// `ApiClient.fetchUnreadDmCount` does. Throws on a failed read, so the store
+/// keeps the last count rather than reading a blip as "nothing unread".
+export async function fetchUnreadDmCount(): Promise<number> {
+	if (!auth.user?.id) return 0;
+	const { data, error } = await supabase.rpc('dm_threads', undefined, { get: true });
+	if (error) throw new Error(`dm_threads failed: ${error.message}`);
+	return (data ?? []).reduce((total, r) => total + (Number(r.unread) || 0), 0);
+}
+
 /// Conversation list: the latest message per partner + an unread count.
 /// Aggregated server-side by the dm_threads() RPC (DISTINCT ON partner +
 /// unread COUNT over the viewer's ENTIRE message set) — one preview row per

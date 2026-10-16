@@ -17,6 +17,7 @@
 	import { setUndoWindowS } from '#lib/stores/undo.svelte.ts';
 	import NotificationBell from '#lib/components/NotificationBell.svelte';
 	import { notificationStore } from '#lib/stores/notifications.svelte.ts';
+	import { dmUnreadStore, DM_UNREAD_POLL_MS } from '#lib/stores/dm_unread.svelte.ts';
 	import { m, initLocale } from '#lib/i18n/store.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import { coachEnabled } from '#lib/coach/coach_flag.ts';
@@ -169,6 +170,26 @@
 		};
 	});
 
+	// Messages badge — the inbox has no Realtime channel, so it is read on
+	// auth-ready, on focus, and every minute while the tab is visible.
+	$effect(() => {
+		const uid = auth.user?.id;
+		if (!browser || !uid) {
+			dmUnreadStore.clear();
+			return;
+		}
+		dmUnreadStore.refresh();
+		const onFocus = () => dmUnreadStore.refresh();
+		window.addEventListener('focus', onFocus);
+		const timer = setInterval(() => {
+			if (document.visibilityState === 'visible') dmUnreadStore.refresh();
+		}, DM_UNREAD_POLL_MS);
+		return () => {
+			window.removeEventListener('focus', onFocus);
+			clearInterval(timer);
+		};
+	});
+
 	// Order is runner-led: log + review + train is the daily loop, then
 	// content, then social. Settings lives in the profile popover at the
 	// bottom of the sidebar; Feed is a self-only tab on /u/[me]; Guided runs
@@ -189,6 +210,7 @@
 		{ href: '/nutrition', labelKey: 'nav.nutrition', icon: 'nutrition', section: 'nutrition' },
 		{ href: '/coach', labelKey: 'nav.coach', icon: 'sports', section: 'coach' },
 		{ href: '/social', labelKey: 'nav.social', icon: 'public', section: 'social' },
+		{ href: '/messages', labelKey: 'nav.messages', icon: 'chat_bubble', section: 'messages' },
 	];
 	// The AI Coach nav entry is hidden when the Coach is off (rock-bottom
 	// deploy, PUBLIC_COACH_ENABLED unset) — don't surface a nav door that
@@ -545,8 +567,16 @@
 						>
 							<span class="nav-icon-wrap">
 								<span class="nav-icon material-symbols" aria-hidden="true">{item.icon}</span>
+								{#if item.href === '/messages' && dmUnreadStore.count > 0}
+									<span class="nav-badge" aria-hidden="true">
+										{dmUnreadStore.count > 9 ? '9+' : dmUnreadStore.count}
+									</span>
+								{/if}
 							</span>
 							<span class="nav-label">{m(item.labelKey)}</span>
+							{#if item.href === '/messages' && dmUnreadStore.count > 0}
+								<span class="visually-hidden">{m('nav.messagesUnread', { n: dmUnreadStore.count })}</span>
+							{/if}
 						</a>
 					</li>
 				{/each}
@@ -855,6 +885,30 @@
 
 	.nav-label {
 		transition: transform var(--transition-base);
+	}
+
+	.nav-icon-wrap {
+		position: relative;
+	}
+	/* Same treatment as the bell's count, so the two badges read as one
+	   system: --color-danger-strong keeps bold white at AA in both themes. */
+	.nav-badge {
+		position: absolute;
+		top: -4px;
+		inset-inline-end: -4px;
+		min-width: 1rem;
+		height: 1rem;
+		padding: 0 var(--space-xs);
+		display: inline-grid;
+		place-items: center;
+		background: var(--color-danger-strong);
+		color: white;
+		font-size: var(--font-size-section-label);
+		font-weight: 700;
+		line-height: 1;
+		border-radius: 9999px;
+		font-variant-numeric: tabular-nums;
+		box-shadow: 0 0 0 2px var(--color-bg-secondary);
 	}
 
 	.nav-link:hover .nav-icon-wrap {

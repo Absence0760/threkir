@@ -53,6 +53,8 @@ export const messages = {
 	'nav.runs': 'Läufe',
 	'nav.coach': 'KI-Coach',
 	'nav.social': 'Community',
+	'nav.messages': 'Nachrichten',
+	'nav.messagesUnread': '{n} ungelesen',
 	'runSurface.label': 'Laufbereich-Abschnitte',
 	'runSurface.tabRuns': 'Läufe',
 	'runSurface.tabRoutes': 'Routen',

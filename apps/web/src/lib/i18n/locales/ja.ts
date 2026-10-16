@@ -53,6 +53,8 @@ export const messages = {
 	'nav.runs': 'ラン',
 	'nav.coach': 'AI コーチ',
 	'nav.social': 'ソーシャル',
+	'nav.messages': 'メッセージ',
+	'nav.messagesUnread': '未読 {n} 件',
 	'runSurface.label': 'ランセクション',
 	'runSurface.tabRuns': 'ラン',
 	'runSurface.tabRoutes': 'ルート',

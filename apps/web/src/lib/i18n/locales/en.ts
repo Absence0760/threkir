@@ -67,6 +67,8 @@ export const en = {
 	'nav.runs': 'Runs',
 	'nav.coach': 'AI Coach',
 	'nav.social': 'Social',
+	'nav.messages': 'Messages',
+	'nav.messagesUnread': '{n} unread',
 	// Run-surface sub-tab strip (Runs · Routes · Plans) — RunSurfaceTabs.svelte
 	'runSurface.label': 'Run surface sections',
 	'runSurface.tabRuns': 'Runs',

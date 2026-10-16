@@ -162,7 +162,7 @@
 	   equal to it. */
 	--color-route-pinned: #6D28D9;
 
-	/* Seven per-section identity accents — the sidebar nav's per-section hue,
+	/* Eight per-section identity accents — the sidebar nav's per-section hue,
 	   and the same hue wherever a content surface marks the modality (the
 	   dashboard's gym card, the history timeline's lift / meal chips). Each
 	   name is a FILL or TINT; the `-ink` rung beside it is what any glyph,
@@ -174,7 +174,7 @@
 	   § 503 did for status roles and § 524 for mobile's marks.
 	   Section IDENTITY survives the split because it moves LIGHTNESS only:
 	   every ink's hue angle is within 2.6 deg of its accent (0 deg for four of
-	   the seven), so the seven hues a user learns are the seven that stay. The
+	   the eight), so the hues a user learns are the ones that stay. The
 	   accents were never separated by luminance anyway — pairwise they sit
 	   1.003:1 apart, the inks 1.002:1 — which is the same bargain --zone-* and
 	   --kind-* record, and it is why colour is a secondary cue on every one of
@@ -205,8 +205,12 @@
 	--section-coach-ink: var(--color-accent-cyan-text);
 	--section-social: #C98ECF;
 	--section-social-ink: #893D91;
+	/* Messages took the open rose between social's orchid and the dashboard's
+	   orange, clear of the danger red its own unread badge uses (§ 2007). */
+	--section-messages: #E48BB0;
+	--section-messages-ink: #8D355A;
 	/* Foreground for the ACTIVE nav disc, which fills with the whole accent.
-	   Theme-independent because the accents are: 5.757-10.291:1 on all seven.
+	   Theme-independent because the accents are: 5.757-10.291:1 on all eight.
 	   The § 506 --color-on-primary shape, one vocabulary over. */
 	--section-on-accent: #1A1722;
 
@@ -486,6 +490,7 @@
 		--section-gym-ink: var(--section-gym);
 		--section-nutrition-ink: var(--section-nutrition);
 		--section-social-ink: #CE98D3;
+		--section-messages-ink: #E694B6;
 
 		--provider-strava-ink: #FD763E;
 		--provider-parkrun-ink: #DF9171;
@@ -597,6 +602,7 @@
 	--section-gym-ink: var(--section-gym);
 	--section-nutrition-ink: var(--section-nutrition);
 	--section-social-ink: #CE98D3;
+	--section-messages-ink: #E694B6;
 
 	--provider-strava-ink: #FD763E;
 	--provider-parkrun-ink: #DF9171;

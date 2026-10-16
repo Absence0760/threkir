@@ -53,6 +53,8 @@ export const messages = {
 	'nav.runs': 'Carreras',
 	'nav.coach': 'Entrenador IA',
 	'nav.social': 'Social',
+	'nav.messages': 'Mensajes',
+	'nav.messagesUnread': '{n} sin leer',
 	'runSurface.label': 'Secciones del área de carrera',
 	'runSurface.tabRuns': 'Carreras',
 	'runSurface.tabRoutes': 'Rutas',

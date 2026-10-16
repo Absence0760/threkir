@@ -53,6 +53,8 @@ export const messages = {
 	'nav.runs': 'Corridas',
 	'nav.coach': 'Coach de IA',
 	'nav.social': 'Social',
+	'nav.messages': 'Mensagens',
+	'nav.messagesUnread': '{n} não lidas',
 	'runSurface.label': 'Seções da área de corrida',
 	'runSurface.tabRuns': 'Corridas',
 	'runSurface.tabRoutes': 'Rotas',

@@ -10780,8 +10780,10 @@ export async function fetchAthletePlanOverview(athleteId: string): Promise<PlanO
 }
 
 /// Assigns a coach's plan to a linked athlete via the assign_plan_to_athlete
-/// RPC (migration 20270106_001). The thrown error carries the RPC's raise text
-/// (e.g. the athlete already has an active plan), which the caller surfaces.
+/// RPC (migration 20270106_001). An overlap with one of the athlete's active
+/// plans throws a PlanOverlapError (23P01, migration 20270830000008), which the
+/// coaching page turns into "pick a start date after it ends"; any other
+/// refusal carries the RPC's raise text.
 export async function assignPlanToAthlete(
 	sourcePlanId: string,
 	athleteId: string,

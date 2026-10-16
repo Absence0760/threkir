@@ -180,6 +180,18 @@ Future<void> _chooseAdjustment(WidgetTester tester, String label) async {
   await _settleRoute(tester);
 }
 
+/// The preview renders below the hero and the races card, past the bottom of
+/// the 800x600 test surface. `ensureVisible` only schedules the scroll, so
+/// the frame has to be pumped before the tap reads the button's position.
+Future<void> _tapApply(WidgetTester tester, {Finder? within}) async {
+  final apply = within == null
+      ? find.text('Apply changes')
+      : find.descendant(of: within, matching: find.text('Apply changes'));
+  await tester.ensureVisible(apply);
+  await tester.pump();
+  await tester.tap(apply);
+}
+
 /// A plan whose week 0 is finished and missed its long run, with a later long
 /// run left to bump — the shape `replanRemaining` proposes a make-up for.
 _FakeTraining _missedLongPlan({String status = 'active'}) {
@@ -258,11 +270,8 @@ void main() {
           findsOneWidget);
       expect(training.taperPatches, isNull);
 
-      final apply = find.descendant(
-          of: find.byKey(const Key('planDetailRaceTaperPreview')),
-          matching: find.text('Apply changes'));
-      await tester.ensureVisible(apply);
-      await tester.tap(apply);
+      await _tapApply(tester,
+          within: find.byKey(const Key('planDetailRaceTaperPreview')));
       await pumpUntil(tester, () => training.taperPatches != null,
           describe: 'the taper to write its patches');
       expect(training.taperPatches!['int'], {
@@ -289,16 +298,17 @@ void main() {
           findsOneWidget);
       final fetchesBefore = training.fetchCount;
 
-      final apply = find.descendant(
-          of: find.byKey(const Key('planDetailRaceTaperPreview')),
-          matching: find.text('Apply changes'));
-      await tester.ensureVisible(apply);
-      await tester.tap(apply);
-      await pumpUntil(tester, () => training.fetchCount > fetchesBefore,
-          describe: 'the failed taper to re-fetch the plan');
+      await _tapApply(tester,
+          within: find.byKey(const Key('planDetailRaceTaperPreview')));
+      // The fake's fetchPlan counts synchronously, so the count alone is
+      // already true before a frame is pumped; wait for what the runner sees.
       await pumpUntil(
-          tester, () => !tester.any(find.byType(FullBodyLoader)),
-          describe: 'the re-fetch to finish');
+          tester,
+          () =>
+              training.fetchCount > fetchesBefore &&
+              tester.any(find.textContaining("Couldn't update the plan")) &&
+              !tester.any(find.byType(FullBodyLoader)),
+          describe: 'the failed taper to say so and re-fetch the plan');
       expect(find.textContaining("Couldn't update the plan"), findsOneWidget);
       expect(find.byKey(const Key('planDetailRaceTaperPreview')), findsNothing);
       expect(training.taperPatches, isNull);
@@ -380,7 +390,7 @@ void main() {
       expect(find.text('Proposed changes'), findsOneWidget);
       expect(training.updated, isEmpty);
 
-      await tester.tap(find.text('Apply changes'));
+      await _tapApply(tester);
       await pumpUntil(tester, () => training.updated.isNotEmpty,
           describe: 'the re-plan to write its week updates');
       expect(training.updated['next'], (22000 * 1.15).round());
@@ -398,12 +408,16 @@ void main() {
       expect(find.text('Proposed changes'), findsOneWidget);
       final fetchesBefore = training.fetchCount;
 
-      await tester.tap(find.text('Apply changes'));
-      await pumpUntil(tester, () => training.fetchCount > fetchesBefore,
-          describe: 'the failed re-plan to re-fetch the plan');
+      await _tapApply(tester);
+      // The fake's fetchPlan counts synchronously, so the count alone is
+      // already true before a frame is pumped; wait for what the runner sees.
       await pumpUntil(
-          tester, () => !tester.any(find.byType(FullBodyLoader)),
-          describe: 'the re-fetch to finish');
+          tester,
+          () =>
+              training.fetchCount > fetchesBefore &&
+              tester.any(find.textContaining("Couldn't update the plan")) &&
+              !tester.any(find.byType(FullBodyLoader)),
+          describe: 'the failed re-plan to say so and re-fetch the plan');
       expect(find.textContaining("Couldn't update the plan"), findsOneWidget);
       expect(find.text('Proposed changes'), findsNothing);
       expect(training.updated, isEmpty);

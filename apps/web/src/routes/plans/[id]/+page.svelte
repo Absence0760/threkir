@@ -765,14 +765,17 @@
 		return m('planDetail.adaptiveBadge', { reason, confidence });
 	}
 
+	/// Re-plan and adaptive re-plan write their distance changes, and restate
+	/// each touched week's volume, in one transaction
+	/// (`apply_workout_adjustments`, decisions § 2060); the page reloads on
+	/// failure so it never shows a half-applied plan.
 	async function applyReplan(): Promise<void> {
-		if (!replanPreview || bulkBusy) return;
+		if (!plan || !replanPreview || bulkBusy) return;
 		bulkBusy = true;
 		try {
-			await Promise.all(
-				replanPreview.map((c) =>
-					updatePlanWorkout(c.workoutId, { target_distance_m: c.toMetres }),
-				),
+			await applyWorkoutAdjustments(
+				plan.id,
+				replanPreview.map((c) => ({ id: c.workoutId, target_distance_m: c.toMetres })),
 			);
 			showToast(m('planDetail.replanApplied', { n: replanPreview.length }));
 			replanPreview = null;
@@ -780,6 +783,7 @@
 			await load();
 		} catch (e) {
 			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+			await load();
 		} finally {
 			bulkBusy = false;
 		}

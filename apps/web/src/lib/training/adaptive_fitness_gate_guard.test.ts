@@ -85,8 +85,10 @@ test('the fitness snapshot is never stored, logged, or persisted by the plan pag
 	assert.ok(applyStart >= 0, 'could not locate applyReplan — rename?');
 	const applyBody = page.slice(applyStart, page.indexOf('/// Human label for a proposed change row', applyStart));
 	assert.ok(applyBody.length > 0, 'could not slice applyReplan');
-	assert.match(applyBody, /updatePlanWorkout\(c\.workoutId,\s*\{\s*target_distance_m:\s*c\.toMetres\s*\}\)/,
+	assert.match(applyBody, /\(\{\s*id:\s*c\.workoutId,\s*target_distance_m:\s*c\.toMetres\s*\}\)/,
 		'applying a re-plan must write only target_distance_m');
+	assert.equal(/updatePlanWorkout\(/.test(applyBody), false,
+		'a re-plan is applied in one apply_workout_adjustments call, not per workout');
 	assert.equal(/tsb|atl|ctl/.test(applyBody), false,
 		'the apply path must not carry a load value');
 });

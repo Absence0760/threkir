@@ -11,6 +11,9 @@
 ///
 /// Pure and Supabase-free so `plan_copy.test.ts` can assert the shape against
 /// the generated schema without a live stack.
+///
+/// Dart twin `apps/mobile_android/lib/plan_copy.dart`, which the mobile
+/// publishers share the same way — keep the field lists alike.
 
 import type { PlanWeek, PlanWorkout, TrainingPlan } from '../types';
 

@@ -161,8 +161,9 @@ class ActivePlanExistsError implements Exception {
 /// A create or clone that chose [PlanOverlapAction.trim] was refused because
 /// the plan it would end has completed workouts after the cut
 /// (`trim_training_plan`'s SQLSTATE TR001, decisions § 2061). The whole
-/// create rolled back, so nothing changed. [planName] is the plan a
-/// follow-up lookup found in the way, null when that lookup failed;
+/// create rolled back, so nothing changed. [planName] names the plans a
+/// follow-up lookup found in the way, comma-joined in start order, null
+/// when that lookup failed or found none;
 /// [trimEndIso] is the end date the trim would have given it.
 class PlanTrimBlockedError implements Exception {
   final String? planName;
@@ -1008,19 +1009,24 @@ class TrainingService extends ChangeNotifier {
 
   /// [error] from a create or clone RPC as the caller should surface it: the
   /// overlap refusal (23P01) as [ActivePlanExistsError], the trim refusal
-  /// (TR001) as [PlanTrimBlockedError] naming the active plan that starts
-  /// before [newStartIso] and runs into it, anything else unchanged. The
-  /// RPC rolled back, so that plan still has its old dates.
+  /// (TR001) as [PlanTrimBlockedError] naming every active plan that starts
+  /// before [newStartIso] and runs into it, anything else unchanged. The trim
+  /// ends all of them and the refusal does not say which one held completed
+  /// workouts, so all are named, as web does. The RPC rolled back, so they
+  /// still have their old dates.
   Future<Object> _planCreateError(Object error, String newStartIso) async {
     if (_isOverlapViolation(error)) return const ActivePlanExistsError();
     if (!_isTrimBlocked(error)) return error;
     String? planName;
     try {
-      for (final p in await fetchActivePlans()) {
-        if (planRowStartIso(p).compareTo(newStartIso) < 0 &&
-            planRowEndIso(p).compareTo(newStartIso) >= 0) {
-          planName = p.name;
-        }
+      final inTheWay = [
+        for (final p in await fetchActivePlans())
+          if (planRowStartIso(p).compareTo(newStartIso) < 0 &&
+              planRowEndIso(p).compareTo(newStartIso) >= 0)
+            p,
+      ]..sort((a, b) => a.startDate.compareTo(b.startDate));
+      if (inTheWay.isNotEmpty) {
+        planName = inTheWay.map((p) => p.name).join(', ');
       }
     } catch (lookup) {
       debugPrint('plan trim refusal: active plan lookup failed: $lookup');

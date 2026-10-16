@@ -252,6 +252,19 @@ void main() {
           throwsA(blocked('Winter base')));
     });
 
+    test('names every plan that runs into the new start, in start order',
+        () async {
+      // The trim ends all of them, so any one could be the plan with the
+      // completed workouts; web's refusal names the same list.
+      fake.activePlans = [
+        active('Hill block', '2031-02-01', '2031-04-12'),
+        active('Winter base', '2031-01-05', '2031-03-29'),
+        active('Summer 5k', '2031-06-01', '2031-07-20'),
+      ];
+      await expectLater(create(plan(), onOverlap: PlanOverlapAction.trim),
+          throwsA(blocked('Winter base, Hill block')));
+    });
+
     test('both clone RPCs map it the same way', () async {
       await expectLater(
         training.clonePlanTemplate(

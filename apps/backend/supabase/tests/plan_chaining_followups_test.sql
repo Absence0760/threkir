@@ -66,7 +66,7 @@ select lives_ok(
 select throws_ok(
   $$ select assign_plan_to_athlete('dddddddd-0000-0000-0000-0000000c0001',
                                    'cccccccc-0000-0000-0000-0000000a0001', current_date) $$,
-  'P0001', null,
+  '23P01', null,
   'assigning over the athlete''s current block is refused'
 );
 reset role;

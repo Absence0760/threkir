@@ -5,10 +5,12 @@
 -- is refused whole; a trim with nothing to delete after the cut still ends
 -- the plan and drops the empty weeks past it, while a "trim" to the plan's own
 -- end or later is a no-op that stamps nothing; create_training_plan's
--- 'replace' completes every plan it overlaps and leaves a queued one alone.
+-- 'replace' completes every plan it overlaps and leaves a queued one alone;
+-- assign_plan_to_athlete refuses an overlap as 23P01 naming the plans in the
+-- way (20270830000008).
 
 begin;
-select plan(21);
+select plan(23);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -212,6 +214,25 @@ select is(
   array[row('Athlete paused', 'paused', '2037-01-01'::date, '2037-01-31'::date)::text,
         row('Coach source', 'active', '2037-01-05'::date, '2037-01-18'::date)::text],
   'the assignment is active beside the untouched paused plan'
+);
+
+insert into training_plans (user_id, name, goal_event, goal_distance_m, start_date, end_date, days_per_week, status)
+values ('7e7e7e7e-0000-0000-0000-0000000a0003', 'Athlete own', 'distance_10k', 10000, '2037-01-19', '2037-02-10', 4, 'active');
+
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"7e7e7e7e-0000-0000-0000-0000000c0001","role":"authenticated"}';
+select throws_ok(
+  $$ select assign_plan_to_athlete('7e7e7e7e-1000-0000-0000-0000000000c1', '7e7e7e7e-0000-0000-0000-0000000a0003', '2037-01-10') $$,
+  '23P01',
+  'assign_plan_to_athlete: these dates overlap the athlete''s active plan "Coach source" (2037-01-05 to 2037-01-18), "Athlete own" (2037-01-19 to 2037-02-10)',
+  'an assignment over the athlete''s active plans is an exclusion violation naming each plan in the way'
+);
+reset role;
+
+select is(
+  (select count(*)::int from training_plans where user_id = '7e7e7e7e-0000-0000-0000-0000000a0003'),
+  3,
+  'the refused assignment wrote no plan'
 );
 
 select * from finish();

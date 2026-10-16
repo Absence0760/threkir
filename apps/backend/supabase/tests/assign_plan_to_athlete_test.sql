@@ -176,7 +176,7 @@ select throws_ok(
        'aaaaaaaa-0000-0000-0000-00000000dd01',
        '00000000-0000-0000-0000-0000000000a4',
        current_date) $$,
-  'P0001', NULL,
+  '23P01', NULL,
   'refuses to assign when the athlete already has an active plan'
 );
 

@@ -259,6 +259,62 @@ void main() {
     _expectRows(_flatten(parsed), _sample['workouts'] as List);
   });
 
+  test('parsePlanJson carries the taper stamp back onto the workout it eased',
+      () {
+    const stamp = '2027-03-30T07:15:00.000Z';
+    final sampleWorkouts = _sample['workouts'] as List;
+    final plan = {
+      ..._sample,
+      'workouts': [
+        for (var i = 0; i < sampleWorkouts.length; i++)
+          {
+            ...sampleWorkouts[i] as Map<String, dynamic>,
+            'race_taper_applied_at': i == 1 ? stamp : null,
+          },
+      ],
+    };
+    final stamps = [
+      for (final w in parsePlanJson(jsonEncode(plan)).generated.weeks)
+        for (final wo in w.workouts) wo.raceTaperAppliedAt,
+    ];
+    expect(stamps, [
+      for (var i = 0; i < sampleWorkouts.length; i++) i == 1 ? stamp : null,
+    ]);
+    // The Markdown table is a hand-edited prescription: no stamp in.
+    expect(
+        parsePlanMarkdown(_sampleMarkdown).generated.weeks.every(
+            (w) => w.workouts.every((wo) => wo.raceTaperAppliedAt == null)),
+        isTrue);
+  });
+
+  test('parsePlanJson refuses a taper stamp that is not a timestamp', () {
+    final sampleWorkouts = _sample['workouts'] as List;
+    Map<String, dynamic> withStamps(Object? Function(int i) stampAt) => {
+          ..._sample,
+          'workouts': [
+            for (var i = 0; i < sampleWorkouts.length; i++)
+              {
+                ...sampleWorkouts[i] as Map<String, dynamic>,
+                'race_taper_applied_at': stampAt(i),
+              },
+          ],
+        };
+    for (final bad in <Object>['yesterday', '2027-03-30', 42]) {
+      expect(
+          () => parsePlanJson(jsonEncode(withStamps((i) => i == 0 ? bad : null))),
+          throwsA(isA<PlanParseError>().having(
+              (e) => e.message, 'message', contains('race_taper_applied_at'))),
+          reason: '$bad');
+    }
+    expect(
+        parsePlanJson(jsonEncode(withStamps((_) => '2027-03-30T07:15:00+00:00')))
+            .generated
+            .weeks[0]
+            .workouts[0]
+            .raceTaperAppliedAt,
+        '2027-03-30T07:15:00+00:00');
+  });
+
   test('parsePlanJson throws on non-JSON + on missing workouts', () {
     expect(
         () => parsePlanJson('not json {'),

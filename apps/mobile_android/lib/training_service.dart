@@ -821,6 +821,7 @@ class TrainingService extends ChangeNotifier {
                         : null,
                     'race_priority':
                         wo.kind == WorkoutKind.race ? wo.racePriority : null,
+                    'race_taper_applied_at': wo.raceTaperAppliedAt,
                   }
               ],
             }

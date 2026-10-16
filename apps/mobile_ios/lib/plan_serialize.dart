@@ -600,5 +600,76 @@ ParsedPlan parsePlanJson(String text) {
   } on TypeError {
     throw const PlanParseError('JSON workouts are not in the export shape.');
   }
-  return parsePlanMarkdown(markdown);
+  return _withTaperStamps(parsePlanMarkdown(markdown), [
+    for (final w in obj['workouts'] as List) w as Map<String, dynamic>,
+  ]);
+}
+
+final RegExp _taperStamp = RegExp(
+    r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$');
+
+/// The table drops `race_taper_applied_at`, so the JSON import lays each
+/// workout's stamp back onto the parsed plan, matching the n-th workout of a
+/// date and kind to the n-th the table produced (every sort on the way is
+/// stable). Without it a tapered plan re-imported would be offered, and cut
+/// by, the same taper again (decisions § 2063).
+ParsedPlan _withTaperStamps(
+    ParsedPlan parsed, List<Map<String, dynamic>> workouts) {
+  final ordered = [...workouts];
+  _stableSortBy(ordered, (w) => _str(w['scheduled_date']));
+  final queues = <String, List<String?>>{};
+  for (final w in ordered) {
+    final raw = w['race_taper_applied_at'];
+    if (raw != null && (raw is! String || !_taperStamp.hasMatch(raw))) {
+      throw PlanParseError(
+          'Couldn\'t read race_taper_applied_at "$raw" on ${w['scheduled_date']}.');
+    }
+    (queues['${w['scheduled_date']}|${w['kind']}'] ??= []).add(raw as String?);
+  }
+  String? next(String key) {
+    final q = queues[key];
+    return q == null || q.isEmpty ? null : q.removeAt(0);
+  }
+
+  final g = parsed.generated;
+  return ParsedPlan(
+    name: parsed.name,
+    goalEvent: parsed.goalEvent,
+    goalDistanceM: parsed.goalDistanceM,
+    goalTimeSec: parsed.goalTimeSec,
+    startDate: parsed.startDate,
+    generated: GeneratedPlan(
+      weeks: [
+        for (final wk in g.weeks)
+          GeneratedWeek(
+            weekIndex: wk.weekIndex,
+            phase: wk.phase,
+            targetVolumeM: wk.targetVolumeM,
+            notes: wk.notes,
+            workouts: [
+              for (final wo in wk.workouts)
+                GeneratedWorkout(
+                  scheduledDate: wo.scheduledDate,
+                  kind: wo.kind,
+                  targetDistanceM: wo.targetDistanceM,
+                  targetDurationSeconds: wo.targetDurationSeconds,
+                  targetPaceSecPerKm: wo.targetPaceSecPerKm,
+                  targetPaceToleranceSec: wo.targetPaceToleranceSec,
+                  structure: wo.structure,
+                  notes: wo.notes,
+                  raceName: wo.raceName,
+                  racePriority: wo.racePriority,
+                  raceTaperAppliedAt: next(
+                      '${toIsoDate(wo.scheduledDate)}|${workoutKindDbValue(wo.kind)}'),
+                ),
+            ],
+          ),
+      ],
+      paces: g.paces,
+      vdot: g.vdot,
+      endDate: g.endDate,
+      goalDistanceM: g.goalDistanceM,
+      pacesAreFallback: g.pacesAreFallback,
+    ),
+  );
 }

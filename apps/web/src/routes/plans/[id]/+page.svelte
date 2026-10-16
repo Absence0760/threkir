@@ -191,6 +191,7 @@
 				target_duration_seconds: w.target_duration_seconds,
 				race_name: w.race_name,
 				race_priority: w.race_priority,
+				race_taper_applied_at: w.race_taper_applied_at,
 			})),
 		};
 	}

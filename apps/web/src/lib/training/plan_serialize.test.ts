@@ -168,6 +168,37 @@ test('planToJson → parsePlanJson round-trips the workouts', () => {
 	assert.deepEqual(flatten(parsed), SAMPLE.workouts);
 });
 
+test('parsePlanJson carries the taper stamp back onto the workout it eased', () => {
+	const stamp = '2027-03-30T07:15:00.000Z';
+	const plan: ExportPlan = {
+		...SAMPLE,
+		workouts: SAMPLE.workouts.map((w, i) => ({ ...w, race_taper_applied_at: i === 1 ? stamp : null })),
+	};
+	const stamps = parsePlanJson(planToJson(plan)).generated.weeks.flatMap((w) =>
+		w.workouts.map((wo) => wo.race_taper_applied_at ?? null),
+	);
+	assert.deepEqual(stamps, SAMPLE.workouts.map((_, i) => (i === 1 ? stamp : null)));
+	// The Markdown table is a hand-edited prescription: no stamp out, none in.
+	assert.ok(!planToMarkdown(plan).includes(stamp));
+	assert.ok(
+		parsePlanMarkdown(planToMarkdown(plan)).generated.weeks.every((w) =>
+			w.workouts.every((wo) => wo.race_taper_applied_at == null),
+		),
+	);
+});
+
+test('parsePlanJson refuses a taper stamp that is not a timestamp', () => {
+	for (const bad of ['yesterday', '2027-03-30', 42]) {
+		const plan = {
+			...SAMPLE,
+			workouts: SAMPLE.workouts.map((w, i) => ({ ...w, race_taper_applied_at: i === 0 ? bad : null })),
+		};
+		assert.throws(() => parsePlanJson(JSON.stringify(plan)), /race_taper_applied_at/, String(bad));
+	}
+	const offset = { ...SAMPLE, workouts: SAMPLE.workouts.map((w) => ({ ...w, race_taper_applied_at: '2027-03-30T07:15:00+00:00' })) };
+	assert.equal(parsePlanJson(JSON.stringify(offset)).generated.weeks[0].workouts[0].race_taper_applied_at, '2027-03-30T07:15:00+00:00');
+});
+
 test('parsePlanJson throws on non-JSON + on missing workouts', () => {
 	assert.throws(() => parsePlanJson('not json {'), /valid JSON/);
 	assert.throws(() => parsePlanJson('{"name":"x"}'), /workouts array/);

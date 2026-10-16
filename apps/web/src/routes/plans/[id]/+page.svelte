@@ -404,7 +404,7 @@
 	}
 
 	/// Writes every proposed patch and restates each touched week's volume in
-	/// one transaction (`apply_workout_adjustments`, decisions § 2060), so a
+	/// one transaction (`apply_workout_adjustments`, decisions § 2062), so a
 	/// failure changes nothing. The page reloads either way, so it never shows
 	/// a state the server does not hold.
 	async function applyRaceTaper(): Promise<void> {
@@ -560,7 +560,7 @@
 	/// (today onward) — the past is history, don't rewrite it. Each workout
 	/// gets its per-date patch (`cyclePlanWorkoutPatch`), written with every
 	/// touched week's restated volume in one transaction
-	/// (`apply_workout_adjustments`, decisions § 2060).
+	/// (`apply_workout_adjustments`, decisions § 2062).
 	async function applyCycleAdjustment(): Promise<void> {
 		if (!plan || !isOwner || bulkBusy || !cyclePlanConfig) return;
 		bulkBusy = true;
@@ -764,7 +764,7 @@
 
 	/// Re-plan and adaptive re-plan write their distance changes, and restate
 	/// each touched week's volume, in one transaction
-	/// (`apply_workout_adjustments`, decisions § 2060); the page reloads on
+	/// (`apply_workout_adjustments`, decisions § 2062); the page reloads on
 	/// failure so it never shows a half-applied plan.
 	async function applyReplan(): Promise<void> {
 		if (!plan || !replanPreview || bulkBusy) return;

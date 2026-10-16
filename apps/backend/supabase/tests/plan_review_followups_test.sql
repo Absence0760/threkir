@@ -1,4 +1,4 @@
--- Pins migration 20270830000005 (decisions § 2060): apply_workout_adjustments
+-- Pins migration 20270830000005 (decisions § 2062): apply_workout_adjustments
 -- writes a batch of workout patches and restates only the touched weeks'
 -- volume in one transaction, trim_training_plan's completed-workout refusal
 -- carries TR001 (and create_training_plan lets it through), trimmed_at is

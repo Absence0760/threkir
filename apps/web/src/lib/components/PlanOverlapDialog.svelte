@@ -9,7 +9,7 @@
 
 	/// What every create path says when "End it early" is refused because an
 	/// overlapped plan has completed workouts after the cut (TR001, decisions
-	/// § 2060). The check is server-side, so the dialog keeps offering the
+	/// § 2062). The check is server-side, so the dialog keeps offering the
 	/// choice and this is the answer when it fails.
 	export function trimBlockedMessage(overlapping: OverlapPlan[], startDate: string): string {
 		return m('planEditor.overlapTrimBlocked', {

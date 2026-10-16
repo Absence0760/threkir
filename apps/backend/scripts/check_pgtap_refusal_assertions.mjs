@@ -1808,6 +1808,33 @@ export function stampedThroughRpc(landings, stamped) {
  */
 export const FILTERED_RPC_ARGUMENTS = [
   {
+    file: 'atomic_plan_create_test.sql',
+    description: 'an overlapping create with trim succeeds',
+    columns: ['training_plans.goal_event', 'training_plans.notes', 'training_plans.vdot'],
+    readBack: "the new plan is the caller's, active, generated, for its goal, with blank notes collapsed to null",
+    reason:
+      'create_training_plan casts `goal_event` and `vdot` out of the jsonb and collapses blank ' +
+      '`notes` to NULL, so none lands verbatim. The named read-back states all three as stored, ' +
+      'the NULL notes included.',
+  },
+  {
+    file: 'atomic_plan_create_test.sql',
+    description: 'an overlapping create with replace succeeds',
+    columns: ['training_plans.goal_event', 'training_plans.notes', 'training_plans.vdot'],
+    reason:
+      'The subject is the overlap resolution: that replace completes the plan the same window ' +
+      'refused under trim, which the assertion after it reads back. The columns written from the ' +
+      'jsonb are the trim case\'s claim, read back there for the same function.',
+  },
+  {
+    file: 'atomic_plan_create_test.sql',
+    description: 'a create into free dates needs no overlap choice',
+    columns: ['training_plans.goal_event', 'training_plans.notes', 'training_plans.vdot'],
+    reason:
+      'The subject is ownership: that a user_id smuggled into p_plan is ignored, which the ' +
+      'assertion after it reads back. The cast columns are the trim case\'s claim, read back there.',
+  },
+  {
     file: 'plan_chaining_followups_test.sql',
     description: 'shifting a block with the queued plans following it succeeds',
     columns: [

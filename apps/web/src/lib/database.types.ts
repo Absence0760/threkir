@@ -6066,11 +6066,19 @@ export type Database = {
         Returns: string
       }
       clone_plan_template: {
-        Args: { new_start_date: string; template_id: string }
+        Args: {
+          new_start_date: string
+          p_overlap?: string
+          template_id: string
+        }
         Returns: string
       }
       clone_public_plan: {
-        Args: { new_start_date: string; template_id: string }
+        Args: {
+          new_start_date: string
+          p_overlap?: string
+          template_id: string
+        }
         Returns: string
       }
       clone_session_template: { Args: { template_id: string }; Returns: string }
@@ -6120,6 +6128,10 @@ export type Database = {
       confirm_safety_contact_by_token: {
         Args: { p_sms_opt_in?: boolean; p_token: string }
         Returns: boolean
+      }
+      create_training_plan: {
+        Args: { p_overlap?: string; p_plan: Json; p_weeks: Json }
+        Returns: string
       }
       cron_schedule_status: { Args: { p_jobname: string }; Returns: Json }
       decide_event_result_claim: {

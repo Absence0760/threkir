@@ -144,7 +144,7 @@ select ok(
 );
 
 select ok(
-  not has_function_privilege('anon', 'public.clone_plan_template(uuid, date)', 'EXECUTE'),
+  not has_function_privilege('anon', 'public.clone_plan_template(uuid, date, text)', 'EXECUTE'),
   'anon must NOT have EXECUTE on clone_plan_template — same lockdown pattern'
 );
 
@@ -154,7 +154,7 @@ select ok(
   'authenticated keeps EXECUTE on join_club_by_token (the legitimate caller)'
 );
 select ok(
-  has_function_privilege('authenticated', 'public.clone_plan_template(uuid, date)', 'EXECUTE'),
+  has_function_privilege('authenticated', 'public.clone_plan_template(uuid, date, text)', 'EXECUTE'),
   'authenticated keeps EXECUTE on clone_plan_template'
 );
 

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { NOT_PROVIDED, OPERATOR, OPERATOR_FACTS_COMPLETE } from '#lib/legal/operator.ts';
 
-	const lastUpdated = '2026-10-13';
+	const lastUpdated = '2026-10-16';
 </script>
 
 <svelte:head>
@@ -65,6 +65,11 @@
 		<li>
 			<strong>Account</strong>: email address, optional display name, optional profile photo,
 			optional gender and date of birth (used for tiered leaderboards and age-graded results).
+		</li>
+		<li>
+			<strong>Settings</strong>: your app preferences, including your preferred language (for
+			emails) and your device's time zone (so a coach you link with sees the same "today" for your
+			training plan as you do).
 		</li>
 		<li>
 			<strong>Activity</strong>: GPS tracks, distance, duration, pace, elevation, heart rate

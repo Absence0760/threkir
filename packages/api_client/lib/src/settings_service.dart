@@ -97,6 +97,13 @@ class SettingsKeys {
   /// effect of the language picker so the Go worker can localize email
   /// (decisions §120). Distinct from the per-device UI locale (§113).
   static const locale = 'locale';
+
+  /// The runner's IANA time zone (`Europe/Berlin`), written by the clients
+  /// from the device zone when it changes. Read server-side by
+  /// `coach_roster_summary`, so a coach's roster picks the athlete's current
+  /// plan by the athlete's local date (issue #1182); the server refuses a
+  /// name Postgres does not know.
+  static const timeZone = 'time_zone';
   static const weeklyMileageGoalMetres = 'weekly_mileage_goal_m';
   static const weekStartDay = 'week_start_day';
   static const mapStyle = 'map_style';

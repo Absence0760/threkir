@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { dirname, join, relative } from 'node:path';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import { CLIENT_ERROR_LOG_PREFIX } from '../../src/lib/core/client_error_log.ts';
 
@@ -130,5 +133,34 @@ test('githubWarning keeps a multi-line stack in one escaped annotation', () => {
 	assert.equal(
 		githubWarning('crash-net, report: x', 'line 1\nline 2 100%'),
 		'::warning title=crash-net%2C report%3A x::line 1%0Aline 2 100%25'
+	);
+});
+
+const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
+
+function filesUnder(dir: string, keep: (name: string) => boolean): string[] {
+	return readdirSync(dir).flatMap((name) => {
+		const path = join(dir, name);
+		if (statSync(path).isDirectory()) return filesUnder(path, keep);
+		return keep(name) ? [path] : [];
+	});
+}
+
+test('nothing in CI or a run script puts the net back into report-only', () => {
+	// The report pass ended with decisions § 2043: an unexcused crash fails its
+	// case. A CRASH_NET: report line re-added to a workflow, a composite action
+	// or a package script would silently turn every crash back into a warning.
+	const sources = [
+		...filesUnder(join(REPO_ROOT, '.github'), (n) => /\.(ya?ml|sh|mjs|js)$/.test(n)),
+		join(REPO_ROOT, 'package.json'),
+		join(REPO_ROOT, 'apps', 'web', 'package.json'),
+		...filesUnder(join(REPO_ROOT, 'apps', 'web', 'tests-e2e'), (n) => /^playwright\..*config\.ts$/.test(n))
+	];
+	const setsReport = /\bCRASH_NET['"]?\s*[:=]\s*['"]?report\b/;
+	const offenders = sources.filter((file) => setsReport.test(readFileSync(file, 'utf8')));
+	assert.deepEqual(
+		offenders.map((file) => relative(REPO_ROOT, file)),
+		[],
+		'CRASH_NET is set to report; delete the line so the net fails on a crash'
 	);
 });

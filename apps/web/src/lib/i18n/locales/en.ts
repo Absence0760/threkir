@@ -2406,6 +2406,7 @@ export const en = {
 	"coachingAthlete.assignedByYou": "Assigned by you",
 	"coachingAthlete.assignAfterOne": "{name}'s plan “{plan}” runs until {end}. A plan you assign can't overlap it, so start it after that date.",
 	"coachingAthlete.assignAfterTwo": "{name}'s plan “{plan}” runs until {end}, and “{next}” runs {nextStart} – {nextEnd}. A plan you assign can't overlap either of them.",
+	"coachingAthlete.assignAfterMany": "{name} has {count} plans still ahead: {plans}. A plan you assign can't overlap any of them, so start it after {end} or in a gap between them.",
 	"coachingAthlete.assignOverlapNamed": "Those dates overlap {name}'s plan “{plan}” ({start} – {end}). Pick a start date after it ends.",
 	"coachingAthlete.assignOverlap": "Those dates overlap one of {name}'s active plans. Pick a start date after it ends.",
 	"compare.cellYes": "Yes",

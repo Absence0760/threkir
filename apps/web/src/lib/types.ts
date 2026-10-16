@@ -763,6 +763,9 @@ export type ActivePlanOverview = {
 	completionPct: number;
 	/** The active plan queued after `plan`, if any (plan chaining). */
 	upcoming: Pick<TrainingPlan, 'id' | 'name' | 'start_date' | 'end_date'> | null;
+	/** Every active plan the runner holds, `plan` included — what a coach's
+	 *  assignment must not overlap (plan chaining, decisions § 2008). */
+	activePlans: Pick<TrainingPlan, 'id' | 'name' | 'start_date' | 'end_date'>[];
 };
 
 // ─────────────────────── Challenges & competitions ───────────────────────

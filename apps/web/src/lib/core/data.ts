@@ -6007,7 +6007,8 @@ async function planOverviewFor(userId: string): Promise<PlanOverviewRead> {
 			completionPct,
 			upcoming: next
 				? { id: next.id, name: next.name, start_date: next.start_date, end_date: next.end_date }
-				: null
+				: null,
+			activePlans: active.map((p) => ({ id: p.id, name: p.name, start_date: p.start_date, end_date: p.end_date }))
 		},
 		error: null
 	};

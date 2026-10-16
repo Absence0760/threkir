@@ -1,8 +1,8 @@
 // Which of an athlete's plans a coach's assignment must clear (decisions
 // § 2008): assign_plan_to_athlete refuses a window that shares a day with any
 // of the athlete's active plans, and accepts any other. The coaching page
-// names the plans it already holds — the one it shows and the one queued
-// after it — so the coach can pick dates before the server has to refuse.
+// reads every active plan the athlete holds and names the ones still ahead,
+// so the coach can pick dates before the server has to refuse.
 // Dart twin `apps/mobile_android/lib/plan_assign.dart` — keep the three
 // helpers and the test counts in lockstep.
 
@@ -12,15 +12,11 @@ import { clonedPlanEndIso } from './plan_overlap';
 
 export type PlanWindow = { name: string; start_date: string; end_date: string };
 
-/// The plans the page holds that still hold dates from `todayIso` on, in
+/// The athlete's active plans that still hold dates from `todayIso` on, in
 /// start order. A plan that has already ended blocks nothing.
-export function assignBlockers(
-	shown: PlanWindow | null | undefined,
-	next: PlanWindow | null | undefined,
-	todayIso: string,
-): PlanWindow[] {
-	return [shown, next]
-		.filter((p): p is PlanWindow => p != null && p.end_date >= todayIso)
+export function assignBlockers<T extends PlanWindow>(activePlans: readonly T[], todayIso: string): T[] {
+	return activePlans
+		.filter((p) => p.end_date >= todayIso)
 		.sort((a, b) => (a.start_date < b.start_date ? -1 : a.start_date > b.start_date ? 1 : 0));
 }
 

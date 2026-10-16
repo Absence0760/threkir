@@ -188,4 +188,29 @@ test.describe('assigning over an athlete who now holds active plans', () => {
 			await context.close();
 		}
 	});
+
+	test('with three plans ahead the form names all of them, starts after the last, and a refusal names the third', async ({ browser }) => {
+		const THIRD = 'e2e athlete third block';
+		await plantPlan(athlete.id, OVERLAPPING, -5, 20);
+		await plantPlan(athlete.id, QUEUED, 21, 50);
+		await plantPlan(athlete.id, THIRD, 60, 90);
+		const context = await browser.newContext({ storageState: coach.storageStatePath });
+		const page = await context.newPage();
+		try {
+			await openAssignForm(page, browserDate(91));
+			const hint = page.getByTestId('assign-blockers');
+			await expect(hint).toContainText(`Overlap Athlete has 3 plans still ahead: ${OVERLAPPING}, ${QUEUED}, ${THIRD}.`);
+
+			// Inside the gap after the second plan, but running into the third.
+			await page.getByLabel('Start date').fill(browserDate(55));
+			await page.getByRole('button', { name: 'Assign plan' }).click();
+			await expect(page.locator('.toast.toast-error')).toContainText(
+				`Those dates overlap Overlap Athlete's plan “${THIRD}”`,
+				{ timeout: 10_000 }
+			);
+			expect((await athletePlans()).map((p) => p.name)).toEqual([OVERLAPPING, QUEUED, THIRD]);
+		} finally {
+			await context.close();
+		}
+	});
 });

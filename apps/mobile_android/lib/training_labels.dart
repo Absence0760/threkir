@@ -23,6 +23,7 @@ String racePriorityOptionLabel(AppLocalizations l10n, String priority) =>
     switch (priority) {
       'A' => l10n.racePriorityOptionA,
       'B' => l10n.racePriorityOptionB,
+      'C' => l10n.racePriorityOptionC,
       _ => l10n.racePriorityOptionC,
     };
 

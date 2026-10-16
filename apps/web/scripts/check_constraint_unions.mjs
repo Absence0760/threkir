@@ -706,6 +706,7 @@ export const PAIRS = [
 		clients: [
 			{ file: 'apps/web/src/lib/training/plan_races.ts', decl: 'RACE_PRIORITIES', shape: 'strings' },
 			{ file: 'apps/mobile_android/lib/plan_races.dart', decl: 'racePriorities', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/training_labels.dart', decl: 'racePriorityOptionLabel', shape: 'switch' },
 		],
 	},
 	{

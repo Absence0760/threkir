@@ -52,6 +52,9 @@ Future<PlanOverlapAction?> confirmPlanOverlap(
   final trimmable =
       canTrimOverlap(overlapping, startIso, start: planRowStartIso);
   final trimEnd = med(dayBeforeIso(startIso));
+  // Ending early trims every overlapped plan, not one of them, so the choice
+  // names them all — the same list web's trimBlockedMessage gives.
+  final trimmed = overlapping.map((p) => p.name).join(', ');
 
   return showDialog<PlanOverlapAction>(
     context: context,
@@ -82,7 +85,7 @@ Future<PlanOverlapAction?> confirmPlanOverlap(
               const SizedBox(height: 8),
               Text(
                 trimmable
-                    ? l10n.planOverlapTrimHint(overlapping.last.name, trimEnd)
+                    ? l10n.planOverlapTrimHint(trimmed, trimEnd)
                     : l10n.planOverlapReplaceHint,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
@@ -104,7 +107,7 @@ Future<PlanOverlapAction?> confirmPlanOverlap(
               ),
               onPressed: () => Navigator.pop(ctx, PlanOverlapAction.trim),
               child: Text(
-                  l10n.planOverlapTrim(overlapping.last.name, trimEnd)),
+                  l10n.planOverlapTrim(trimmed, trimEnd)),
             ),
           FilledButton(
             key: const Key('planOverlapReplace'),

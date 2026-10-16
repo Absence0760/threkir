@@ -445,6 +445,25 @@ void main() {
       expect(training.overlapAction, PlanOverlapAction.trim);
     });
 
+    testWidgets('ending early names every plan it ends, not just the last',
+        (tester) async {
+      // The server trims every overlapped plan to the day before the new
+      // start, so the choice has to name each of them.
+      final training = _GateTraining(activePlans: [
+        _activeWindow('Spring base', -30, 200),
+        _activeWindow('Hill block', -10, 100),
+      ]);
+      await pumpGate(tester, training);
+      await tapCreate(tester);
+      expect(find.textContaining('End Spring base, Hill block on'),
+          findsOneWidget);
+      expect(find.textContaining('End Spring base, Hill block early'),
+          findsOneWidget);
+      await tester.tap(find.byKey(const Key('planOverlapTrim')));
+      await tester.pumpAndSettle();
+      expect(training.overlapAction, PlanOverlapAction.trim);
+    });
+
     testWidgets('a plan starting after the new one offers no early end',
         (tester) async {
       final training = _GateTraining(

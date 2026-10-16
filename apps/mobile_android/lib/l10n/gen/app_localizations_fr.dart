@@ -16268,4 +16268,91 @@ class AppLocalizationsFr extends AppLocalizations {
   String coachingAthleteRunMapLabel(String date) {
     return 'Carte de la sortie du $date, sans les zones de confidentialité de l\'athlète';
   }
+
+  @override
+  String get stravaClubsHeading => 'Vos clubs Strava';
+
+  @override
+  String get stravaClubsIntro =>
+      'Les clubs dont vous faites partie sur Strava. Vous seul voyez cette liste.';
+
+  @override
+  String get stravaClubsEmpty =>
+      'Vous ne faites partie d\'aucun club sur Strava.';
+
+  @override
+  String get stravaClubsLoadError => 'Impossible de charger vos clubs Strava.';
+
+  @override
+  String get stravaClubsReconnectText =>
+      'Votre connexion Strava a expiré, vos clubs Strava ne peuvent donc pas s\'afficher.';
+
+  @override
+  String get stravaClubsReconnect => 'Reconnecter Strava';
+
+  @override
+  String get stravaClubsSetUp => 'Créer sur Threkir';
+
+  @override
+  String get stravaClubsLinkToMine => 'Lier à mon club';
+
+  @override
+  String get stravaClubsPickClubLabel => 'Lequel de vos clubs est-ce ?';
+
+  @override
+  String get stravaClubsAdminOnly =>
+      'Seul un administrateur de ce club sur Strava peut le faire venir sur Threkir.';
+
+  @override
+  String stravaClubsViewOnThrekir(String name) {
+    return 'Voir $name';
+  }
+
+  @override
+  String get stravaClubsUnlink => 'Dissocier';
+
+  @override
+  String stravaClubsLinked(String name) {
+    return 'Lié à $name.';
+  }
+
+  @override
+  String get stravaClubsLinkedNew => 'Votre club est lié à son club Strava.';
+
+  @override
+  String stravaClubsUnlinked(String name) {
+    return '$name a été dissocié de Strava.';
+  }
+
+  @override
+  String get stravaClubsSetUpNote =>
+      'Une fois créé, votre club sera lié à son club Strava.';
+
+  @override
+  String stravaClubsCreatedNotLinked(String reason) {
+    return 'Votre club a été créé, mais il n\'est pas lié à Strava : $reason';
+  }
+
+  @override
+  String get stravaClubsErrAdminRequired =>
+      'D\'après Strava, vous n\'êtes pas administrateur de ce club, il ne peut donc pas être lié.';
+
+  @override
+  String get stravaClubsErrAlreadyLinked =>
+      'Ce club Strava est déjà lié à un autre club sur Threkir.';
+
+  @override
+  String get stravaClubsErrNotClubAdmin =>
+      'Seul le propriétaire ou un administrateur du club Threkir peut le lier.';
+
+  @override
+  String get stravaClubsErrReconnect =>
+      'Reconnectez Strava dans les Réglages, puis réessayez.';
+
+  @override
+  String get stravaClubsErrGeneric => 'Impossible de lier le club. Réessayez.';
+
+  @override
+  String get stravaClubsErrUnlink =>
+      'Impossible de dissocier le club. Réessayez.';
 }

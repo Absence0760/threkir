@@ -1,4 +1,6 @@
-import 'package:core_models/core_models.dart' show ClubRow;
+import 'package:api_client/api_client.dart' show safeErrorLabel;
+import 'package:core_models/core_models.dart'
+    show ClubRow, StravaClubLinkError, StravaClubLinkFailure;
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import 'package:ui_kit/ui_kit.dart' show ChoiceChipOption, ChoiceChipRow;
@@ -9,6 +11,8 @@ import '../rate_limit_message.dart';
 import '../social_service.dart';
 import '../text_limits.dart';
 import 'full_screen_form.dart';
+import 'strava_clubs_section.dart' show stravaClubLinkErrorMessage;
+import 'top_banner.dart';
 
 /// Show the "New club" form (or an edit form when [existing] is set) as a
 /// full-screen dialog. Returns the slug on a create, or `true` on a saved
@@ -19,11 +23,18 @@ import 'full_screen_form.dart';
 /// keyboard via `resizeToAvoidBottomInset`, `SafeArea` clears the system
 /// nav bar, and the body's `SingleChildScrollView` prevents the
 /// "BOTTOM OVERFLOWED" stripe the earlier bottom-sheet layout hit.
+///
+/// [stravaClubId] comes from "Set up on Threkir" in Your Strava clubs: once
+/// the club exists it is linked to that Strava club through [linkStravaClub]
+/// (decisions § 1959). A refused link keeps the club and says why.
 Future<String?> showClubFormSheet(
   BuildContext context, {
   required SocialService social,
   ClubRow? existing,
   String? initialName,
+  String? initialLocation,
+  int? stravaClubId,
+  Future<void> Function(String clubId, int stravaClubId)? linkStravaClub,
 }) {
   final formKey = GlobalKey<_ClubFormScreenState>();
   return showFullScreenForm<String>(
@@ -38,6 +49,9 @@ Future<String?> showClubFormSheet(
           social: social,
           existing: existing,
           initialName: initialName,
+          initialLocation: initialLocation,
+          stravaClubId: linkStravaClub == null ? null : stravaClubId,
+          linkStravaClub: linkStravaClub,
         ),
   );
 }
@@ -46,15 +60,25 @@ String _prefilledClubName(String? raw) => String.fromCharCodes(
       (raw ?? '').trim().runes.take(kClubNameMaxLength),
     ).trim();
 
+String _prefilledClubLocation(String? raw) => String.fromCharCodes(
+      (raw ?? '').trim().runes.take(kClubLocationLabelMaxLength),
+    ).trim();
+
 class _ClubFormScreen extends StatefulWidget {
   final SocialService social;
   final ClubRow? existing;
   final String? initialName;
+  final String? initialLocation;
+  final int? stravaClubId;
+  final Future<void> Function(String clubId, int stravaClubId)? linkStravaClub;
   const _ClubFormScreen({
     super.key,
     required this.social,
     this.existing,
     this.initialName,
+    this.initialLocation,
+    this.stravaClubId,
+    this.linkStravaClub,
   });
 
   @override
@@ -67,8 +91,10 @@ class _ClubFormScreenState extends State<_ClubFormScreen> {
   );
   late final _description =
       TextEditingController(text: widget.existing?.description ?? '');
-  late final _location =
-      TextEditingController(text: widget.existing?.locationLabel ?? '');
+  late final _location = TextEditingController(
+    text: widget.existing?.locationLabel ??
+        _prefilledClubLocation(widget.initialLocation),
+  );
   late final _website =
       TextEditingController(text: widget.existing?.websiteUrl ?? '');
   late final _instagram =
@@ -197,6 +223,11 @@ class _ClubFormScreenState extends State<_ClubFormScreen> {
         stravaUrl: _strava.text,
         facebookUrl: _facebook.text,
       );
+      final stravaClubId = widget.stravaClubId;
+      final link = widget.linkStravaClub;
+      if (stravaClubId != null && link != null) {
+        await _linkStrava(link, club.id, stravaClubId);
+      }
       if (!mounted) return;
       Navigator.of(context).pop<String?>(club.slug);
     } catch (e) {
@@ -228,6 +259,33 @@ class _ClubFormScreenState extends State<_ClubFormScreen> {
     }
   }
 
+  /// The club already exists here, so a refused link must not read as a
+  /// failed create: it is reported and the form still closes on the club.
+  Future<void> _linkStrava(
+    Future<void> Function(String clubId, int stravaClubId) link,
+    String clubId,
+    int stravaClubId,
+  ) async {
+    final l10n = AppLocalizations.of(context);
+    try {
+      await link(clubId, stravaClubId);
+      if (mounted) showTopBanner(context, l10n.stravaClubsLinkedNew);
+    } catch (e) {
+      debugPrint('club form: strava link failed: ${safeErrorLabel(e)}');
+      final reason = e is StravaClubLinkFailure
+          ? e.reason
+          : StravaClubLinkError.generic;
+      if (mounted) {
+        showTopBanner(
+          context,
+          l10n.stravaClubsCreatedNotLinked(
+              stravaClubLinkErrorMessage(l10n, reason)),
+          duration: kTopBannerMaxDuration,
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -235,6 +293,16 @@ class _ClubFormScreenState extends State<_ClubFormScreen> {
     // Heading + Scaffold/SafeArea come from the host showFullScreenForm.
     return FullScreenFormBody(
       children: [
+              if (!_isEdit && widget.stravaClubId != null) ...[
+                Text(
+                  l10n.stravaClubsSetUpNote,
+                  key: const ValueKey('club-form-strava-note'),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
               TextField(
                 controller: _name,
                 autofocus: true,

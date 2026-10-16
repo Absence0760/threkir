@@ -1,5 +1,6 @@
 import { expect, test } from '../fixtures/test';
 
+import { BLANK_TILE, FALLBACK_TILE_ORIGINS } from '../fixtures/map-tiles';
 import { deleteRun, insertMatchedTrack, insertRun } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
 
@@ -184,6 +185,54 @@ test.describe('/runs/[id] — the map adopts the matched line', () => {
 
 		await expect(page.locator('.segment-card')).toBeVisible({ timeout: 10_000 });
 		await expect.poll(() => segmentBpm(page), { timeout: 10_000 }).toBe(RAW_BPM);
+	});
+
+	// MapLibre fires `load` only once the first frame's tiles are in, so
+	// holding every basemap tile pins the swap inside the window between the
+	// style loading and `load` — the window CI's real tile server opened by
+	// chance. The track change drew the overlays there and `load` drew them
+	// again, throwing `Source "trace" already exists`, which the crash net
+	// fails this test on (decisions § 2043). The marker then proves the
+	// deferred draw still fitted the camera to the matched line.
+	test('a matched line that lands before the map loads is drawn once, on the matched camera', async ({
+		page,
+		mockRoute,
+	}) => {
+		await insertMatchedTrack({ run_id: runId, user_id: USER_A.id, track: matchedTrack });
+		let releaseTiles = () => {};
+		const tilesReleased = new Promise<void>((resolve) => {
+			releaseTiles = resolve;
+		});
+		await mockRoute(
+			page,
+			(url) => FALLBACK_TILE_ORIGINS.has(url.origin),
+			async (route) => {
+				await tilesReleased;
+				await route.fulfill({ status: 200, contentType: 'image/png', body: BLANK_TILE });
+			},
+		);
+
+		try {
+			await page.goto(`/runs/${runId}`);
+			await expect(page.getByRole('heading', { name: 'Elevation Profile' })).toBeVisible({
+				timeout: 15_000,
+			});
+			await expect.poll(() => extremeLabels(page), { timeout: 15_000 }).toEqual(MATCHED_EXTREMES);
+			// The case is about the window only while the map has not loaded.
+			await expect(page.locator('.map-panel [data-map-idle="true"]')).toHaveCount(0);
+		} finally {
+			releaseTiles();
+		}
+		await expect(page.locator('.map-panel [data-map-idle="true"]')).toBeAttached({
+			timeout: 15_000,
+		});
+
+		const map = await mapBox(page);
+		const marker = await scrubToHalfway(page);
+		expect(marker.x).toBeGreaterThan(map.x);
+		expect(marker.x).toBeLessThan(map.x + map.width);
+		expect(marker.y).toBeGreaterThan(map.y);
+		expect(marker.y).toBeLessThan(map.y + map.height);
 	});
 });
 

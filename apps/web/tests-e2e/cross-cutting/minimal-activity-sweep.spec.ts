@@ -18,8 +18,7 @@ import { expect, test } from '../fixtures/test';
  * "500 Internal Error" in prod, while every spec seeded with a realistic run
  * stayed green. Each page here must
  *
- * - pass the crash net (`fixtures/test.ts`), pinned to `fail` so it bites
- *   even while CI runs the rest of the suite with `CRASH_NET=report`, and
+ * - pass the crash net (`fixtures/test.ts`), and
  * - print no NaN, infinity or negative zero, by the same pattern the mobile
  *   sweep uses (`fixtures/degenerate-text.ts`), in its text, its accessible
  *   names and tooltips, or a style / SVG geometry attribute (the 0 m run's
@@ -133,8 +132,6 @@ async function renderedStrings(page: Page): Promise<{ text: string[]; geometry: 
 		return { text, geometry };
 	});
 }
-
-test.use({ crashNet: { mode: 'fail' } });
 
 test.describe('an account with minimal activity', () => {
 	test.describe.configure({ timeout: 60_000 });

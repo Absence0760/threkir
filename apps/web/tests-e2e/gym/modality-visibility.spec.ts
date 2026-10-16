@@ -152,6 +152,30 @@ test.describe('gym and nutrition visibility switches', () => {
 		}
 	});
 
+	test('a runner who said they lift is still offered the first-run gym link', async ({
+		browser,
+	}) => {
+		// Only "no" hides it (decisions § 2041): a lifter with nothing logged yet
+		// is who the hint is for, and the link lands on /gym without a switch.
+		const { error } = await getAdminClient()
+			.from('user_settings')
+			.upsert({ user_id: user.id, prefs: { show_gym: true } }, { onConflict: 'user_id' });
+		expect(error).toBeNull();
+		const page = await openPage(browser);
+		try {
+			await page.goto('/dashboard');
+			await expect(page.getByTestId('dash-first-run')).toBeVisible({ timeout: 15_000 });
+			const link = page.getByTestId('dash-first-run-gym');
+			await expect(link).toBeVisible();
+
+			await link.click();
+			await expect(page).toHaveURL(/\/gym$/);
+			expect(await storedChoice('show_gym')).toBe(true);
+		} finally {
+			await page.context().close();
+		}
+	});
+
 	test('a runner who switched Gym off is not offered the first-run gym link', async ({
 		browser,
 	}) => {

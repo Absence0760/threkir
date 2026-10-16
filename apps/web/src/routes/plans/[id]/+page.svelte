@@ -71,6 +71,7 @@
 		planWorkoutProgress
 	} from '#lib/training/plan_progress.ts';
 	import { planToMarkdown, planToJson, type ExportPlan } from '#lib/training/plan_serialize.ts';
+	import { nextRace, planRaces } from '#lib/training/plan_races.ts';
 	import { planSlug } from '#lib/training/plan_slug.ts';
 	import { workoutKindLabel, planPhaseLabel } from '#lib/training/workout_labels.ts';
 	import { fmtKm, fmtPace } from '#lib/format/units.svelte.ts';
@@ -118,8 +119,8 @@
 	}
 
 	let showRaceDay = $derived.by(() => {
-		if (!plan) return false;
-		const days = daysUntilRace(plan.end_date, new Date());
+		if (!upcomingRace || upcomingRace.distanceM == null) return false;
+		const days = daysUntilRace(upcomingRace.date, new Date());
 		// Show within 21 days of race day (Strava's "race week" surface
 		// is +/-14; we widen it slightly to cover a proper taper).
 		return days >= 0 && days <= 21;
@@ -178,6 +179,9 @@
 				target_distance_m: w.target_distance_m,
 				target_pace_sec_per_km: w.target_pace_sec_per_km,
 				notes: w.notes,
+				target_duration_seconds: w.target_duration_seconds,
+				race_name: w.race_name,
+				race_priority: w.race_priority,
 			})),
 		};
 	}
@@ -832,6 +836,12 @@
 
 	let today = $derived(todayISO());
 
+	/// Every race the plan builds toward (plan_races.ts, decisions § 2009); the
+	/// countdown, race-week panel and hero relation follow the next one, so a
+	/// B race mid-block gets its own run-in before the plan's A race.
+	let races = $derived(plan ? planRaces(plan, workouts) : []);
+	let upcomingRace = $derived(nextRace(races, today));
+
 	let todayWorkout = $derived(
 		workouts.find((w) => w.scheduled_date === today) ?? null
 	);
@@ -855,6 +865,12 @@
 		if (!plan) return null;
 		const start = parseISO(plan.start_date);
 		const end = parseISO(plan.end_date);
+		const raceDate = parseISO(upcomingRace?.date ?? plan.end_date);
+		// A named race before the plan's end reads as "<name> in N days".
+		const namedRace =
+			upcomingRace && upcomingRace.name && upcomingRace.date !== plan.end_date
+				? upcomingRace.name
+				: null;
 		const t = parseISO(today);
 		const dayMs = 86_400_000;
 		const totalWeeks = weeks.length > 0 ? weeks.length : 1;
@@ -874,15 +890,19 @@
 			relation = m('planDetail.raceDayPast');
 			raceState = 'past';
 		} else {
-			const d = Math.round((end.getTime() - t.getTime()) / dayMs);
+			const d = Math.round((raceDate.getTime() - t.getTime()) / dayMs);
 			if (d === 0) {
-				relation = m('planDetail.raceDay');
+				relation = namedRace ? m('planDetail.namedRaceDay', { name: namedRace }) : m('planDetail.raceDay');
 				raceState = 'today';
 			} else if (d === 1) {
-				relation = m('planDetail.raceTomorrow');
+				relation = namedRace
+					? m('planDetail.namedRaceTomorrow', { name: namedRace })
+					: m('planDetail.raceTomorrow');
 				raceState = 'upcoming';
 			} else {
-				relation = m('planDetail.raceInDays', { d });
+				relation = namedRace
+					? m('planDetail.namedRaceInDays', { name: namedRace, d })
+					: m('planDetail.raceInDays', { d });
 				raceState = 'upcoming';
 			}
 		}
@@ -1353,11 +1373,43 @@
 			</section>
 		{/if}
 
-		{#if showRaceDay && plan != null}
+		{#if races.length > 1}
+			<section class="plan-races" aria-labelledby="plan-races-title">
+				<h2 id="plan-races-title">{m('planDetail.racesTitle')}</h2>
+				<ul>
+					{#each races as r (r.workoutId ?? r.date)}
+						{@const isNext = upcomingRace != null && r.date === upcomingRace.date && r.workoutId === upcomingRace.workoutId}
+						<li class:next={isNext} class:past={r.date < today}>
+							<span
+								class="race-priority p-{r.priority.toLowerCase()}"
+								aria-label={m('planDetail.racePriorityAria', { priority: r.priority })}
+							>{r.priority}</span>
+							<span class="race-name">{r.name ?? plan.name}</span>
+							<span class="race-date">{fmtRaceDate(r.date)}</span>
+							{#if r.distanceM != null}
+								<span class="race-meta">{fmtKm(r.distanceM, 1)}</span>
+							{/if}
+							{#if r.goalTimeSec != null}
+								<span class="race-meta">
+									<span class="material-symbols" aria-hidden="true">timer</span>
+									{fmtHms(r.goalTimeSec)}
+								</span>
+							{/if}
+							{#if isNext}
+								<span class="race-next">{m('planDetail.raceNext')}</span>
+							{/if}
+						</li>
+					{/each}
+				</ul>
+			</section>
+		{/if}
+
+		{#if showRaceDay && upcomingRace != null && upcomingRace.distanceM != null}
 			<RaceDayPanel
-				raceDate={plan.end_date}
-				distanceM={plan.goal_distance_m}
-				goalTimeSec={plan.goal_time_seconds}
+				raceDate={upcomingRace.date}
+				raceName={upcomingRace.name}
+				distanceM={upcomingRace.distanceM}
+				goalTimeSec={upcomingRace.goalTimeSec}
 				{recentRuns}
 			/>
 		{/if}
@@ -1941,6 +1993,77 @@
 	.chip-link:hover { color: var(--color-primary); }
 	.chip .material-symbols,
 	.chip-link .material-symbols { font-size: 0.95rem; }
+
+	.plan-races {
+		margin: 0 0 1.25rem;
+	}
+	.plan-races h2 {
+		font-size: 1rem;
+		margin: 0 0 0.5rem;
+	}
+	.plan-races ul {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.375rem;
+	}
+	.plan-races li {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.25rem 0.75rem;
+		padding: 0.5rem 0.75rem;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+		background: var(--color-surface);
+	}
+	.plan-races li.next {
+		border-color: var(--color-primary);
+	}
+	.plan-races li.past {
+		opacity: 0.6;
+	}
+	.race-priority {
+		display: inline-grid;
+		place-items: center;
+		min-width: 1.75rem;
+		height: 1.75rem;
+		border-radius: 999px;
+		font-weight: 700;
+		font-size: 0.8125rem;
+		background: var(--color-bg-secondary);
+		color: var(--color-text);
+	}
+	.race-priority.p-a {
+		background: var(--color-primary);
+		color: var(--color-on-primary);
+	}
+	.race-name {
+		font-weight: 600;
+		flex: 1 1 10rem;
+		min-width: 0;
+		overflow-wrap: anywhere;
+	}
+	.race-date,
+	.race-meta {
+		color: var(--color-text-secondary);
+		font-size: 0.875rem;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+	}
+	.race-meta .material-symbols {
+		font-size: 1rem;
+	}
+	.race-next {
+		font-size: 0.75rem;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		color: var(--color-primary);
+	}
 
 	.meta {
 		display: flex;

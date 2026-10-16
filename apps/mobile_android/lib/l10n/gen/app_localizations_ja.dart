@@ -802,7 +802,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String homePlanUpNext(String name, String date) {
-    return 'Up next: $name, starts $date';
+    return '次のプラン: $name（$date開始）';
   }
 
   @override
@@ -5445,7 +5445,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get plansStatusUpcoming => 'upcoming';
+  String get plansStatusUpcoming => '開始前';
 
   @override
   String get plansSignInTitle => 'ログインしてトレーニングプランを使用';
@@ -5855,50 +5855,41 @@ class AppLocalizationsJa extends AppLocalizations {
   String get planNewReplaceActiveTitle => 'アクティブなプランを置き換えますか？';
 
   @override
-  String planNewReplaceActiveNamed(String name) {
-    return 'すでにアクティブなプランがあります:「$name」。新しいプランを作成すると、現在のプランは完了としてマークされます（「プランの管理」から引き続き確認できます）。続行しますか？';
-  }
-
-  @override
-  String get planNewReplaceActiveUnnamed =>
-      'すでにアクティブなプランがあります。新しいプランを作成すると、現在のプランは完了としてマークされます。続行しますか？';
-
-  @override
   String get planNewReplaceActiveConfirm => 'プランを置き換える';
 
   @override
   String get planNewReplaceActiveKeep => '現在のプランを保持';
 
   @override
-  String get planOverlapTitle => 'These dates overlap an active plan';
+  String get planOverlapTitle => 'この期間はアクティブなプランと重なっています';
 
   @override
   String planOverlapBody(String start, String end) {
-    return 'Your new plan runs $start – $end. Only one plan can be active on any day, and it overlaps:';
+    return '新しいプランの期間は$start〜$endです。1日にアクティブにできるプランは1つだけで、次のプランと重なっています:';
   }
 
   @override
   String planOverlapPlanLine(String name, String start, String end) {
-    return '$name: $start – $end';
+    return '$name: $start〜$end';
   }
 
   @override
   String get planOverlapReplaceHint =>
-      'Replace marks the overlapping plans as completed. You can still find them under Manage plans.';
+      '置き換えると、重なっているプランは完了としてマークされます。「プランの管理」から引き続き確認できます。';
 
   @override
   String planOverlapTrimHint(String name, String date) {
-    return 'End $name early to keep its finished weeks and remove its workouts after $date, or replace it to mark it completed.';
+    return '$nameを早めに終了すると、終えた週は残り、$dateより後のワークアウトは削除されます。置き換えると完了としてマークされます。';
   }
 
   @override
   String planOverlapTrim(String name, String date) {
-    return 'End $name on $date';
+    return '$nameを$dateに終了';
   }
 
   @override
   String get planOverlapConflict =>
-      'Another active plan now covers these dates. Check your plans and try again.';
+      'この期間には別のアクティブなプランが入っています。プランを確認して、もう一度お試しください。';
 
   @override
   String get planNewStarterC25k => 'カウチ・トゥ・5K（初心者ウォークラン）';
@@ -5923,6 +5914,14 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get planDetailPublishTooltip => 'クラブテンプレートとして公開';
+
+  @override
+  String get planDetailRacesTitle => 'このプランのレース';
+
+  @override
+  String planDetailRacePriority(String priority) {
+    return '優先度$priority';
+  }
 
   @override
   String planDetailDaysPerWeek(int count) {
@@ -6007,12 +6006,8 @@ class AppLocalizationsJa extends AppLocalizations {
   String get planDetailResumeDone => 'プランを再開しました。';
 
   @override
-  String get planDetailResumeBlocked =>
-      'すでにアクティブなプランがあります。先にそれを一時停止するか終了してください。';
-
-  @override
   String get planDetailResumeOverlap =>
-      'Another active plan overlaps these dates. Pause it, finish it or end it earlier first.';
+      'この期間に重なる別のアクティブなプランがあります。先にそのプランを一時停止、完了、または早めに終了してください。';
 
   @override
   String get planDetailAdaptiveOnTrack => '直近の週は計画どおりです。調整は不要です。';
@@ -9522,6 +9517,33 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get workoutEditNotesLabel => 'メモ';
+
+  @override
+  String get workoutEditRaceNameLabel => 'レース名';
+
+  @override
+  String get workoutEditRacePriorityLabel => 'レースの優先度';
+
+  @override
+  String get workoutEditRacePriorityAuto => '自動';
+
+  @override
+  String get racePriorityOptionA => 'A — 目標レース';
+
+  @override
+  String get racePriorityOptionB => 'B — 重要なレース';
+
+  @override
+  String get racePriorityOptionC => 'C — 調整レース';
+
+  @override
+  String get workoutEditRaceGoalTimeLabel => '目標タイム';
+
+  @override
+  String get workoutEditRaceGoalTimeHint => '例: 6:30:00';
+
+  @override
+  String get workoutEditErrRaceGoalTime => '目標タイムは 6:30:00 の形式で入力してください';
 
   @override
   String get workoutEditCancel => 'キャンセル';

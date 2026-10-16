@@ -396,6 +396,18 @@ jobs:
             echo "Reproduce with: node --test scripts/ios_watch_runtime_config.test.mjs (stdlib only, no Xcode needed)."
             exit 1
           fi
+      # The App Store submission runs only inside a mobile_ios release, after a
+      # half-hour build, against App Store Connect. This drives it against an
+      # in-memory App Store Connect and pins the What's New rule and the step
+      # order in release-ios.yml, so a regression fails a PR instead of a
+      # release (decisions.md § 2040).
+      - name: The iOS release still submits to App Store review as decided
+        run: |
+          if ! node --test scripts/asc_submit.test.mjs; then
+            echo "::error::scripts/asc_submit.mjs or its wiring in release-ios.yml regressed: the What's New it reads from the Release body (an owner-written section, never generated notes, at most 4000 characters), the App Store version it picks, the phased release on approval, the review submission, or the step order that checks the note before the build and submits after the upload. Nothing here is about signing or the watch config."
+            echo "Reproduce with: node --test scripts/asc_submit.test.mjs (stdlib only, no credentials or network needed)."
+            exit 1
+          fi
       # The Apple client-secret rotation runs only on its monthly cron, against
       # prod. This signs with a key generated in the test and drives the
       # Management API calls against a stub, so a broken JWT or a PATCH that
@@ -4106,10 +4118,6 @@ jobs:
         run: pnpm exec svelte-kit sync
       - name: Run Playwright suite (shard ${{ matrix.shard }}/14)
         working-directory: apps/web
-        env:
-          # Report-only pass of the e2e crash net (decisions § 1944): delete this
-          # line once every crash it lists is fixed or allowlisted with a reason.
-          CRASH_NET: report
         run: pnpm exec playwright test --config=tests-e2e/playwright.config.ts --shard=${{ matrix.shard }}/14
       - name: Upload Playwright report on failure
         if: failure()
@@ -4200,10 +4208,6 @@ jobs:
         run: pnpm exec svelte-kit sync
       - name: Run Playwright live-hub suite
         working-directory: apps/web
-        env:
-          # Report-only pass of the e2e crash net (decisions § 1944): delete this
-          # line once every crash it lists is fixed or allowlisted with a reason.
-          CRASH_NET: report
         run: pnpm exec playwright test --config=tests-e2e/playwright.livehub.config.ts
       - name: Upload Playwright report on failure
         if: failure()
@@ -4312,10 +4316,6 @@ jobs:
         run: pnpm exec svelte-kit sync
       - name: Run Playwright queued-export suite
         working-directory: apps/web
-        env:
-          # Report-only pass of the e2e crash net (decisions § 1944): delete this
-          # line once every crash it lists is fixed or allowlisted with a reason.
-          CRASH_NET: report
         run: pnpm exec playwright test --config=tests-e2e/playwright.exporthub.config.ts
       - name: Upload Playwright report on failure
         if: failure()
@@ -4426,10 +4426,6 @@ jobs:
         run: pnpm exec svelte-kit sync
       - name: Run Playwright SSO suite
         working-directory: apps/web
-        env:
-          # Report-only pass of the e2e crash net (decisions § 1944): delete this
-          # line once every crash it lists is fixed or allowlisted with a reason.
-          CRASH_NET: report
         run: pnpm exec playwright test --config=tests-e2e/playwright.sso.config.ts
       - name: Upload Playwright report on failure
         if: failure()
@@ -4487,10 +4483,6 @@ jobs:
         run: pnpm exec svelte-kit sync
       - name: Run the built-app Playwright suite
         working-directory: apps/web
-        env:
-          # Report-only pass of the e2e crash net (decisions § 1944): delete this
-          # line once every crash it lists is fixed or allowlisted with a reason.
-          CRASH_NET: report
         run: pnpm exec playwright test --config=tests-e2e/playwright.built.config.ts
       - name: Upload Playwright report on failure
         if: failure()
@@ -4574,10 +4566,6 @@ jobs:
         run: pnpm exec svelte-kit sync
       - name: Run Playwright configured-integrations suite
         working-directory: apps/web
-        env:
-          # Report-only pass of the e2e crash net (decisions § 1944): delete this
-          # line once every crash it lists is fixed or allowlisted with a reason.
-          CRASH_NET: report
         run: pnpm exec playwright test --config=tests-e2e/playwright.configured.config.ts
       - name: Upload Playwright report on failure
         if: failure()

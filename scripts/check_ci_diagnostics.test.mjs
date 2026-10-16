@@ -657,6 +657,15 @@ const OFF_THE_GATE = new Map([
 			'(decisions § 1810).',
 	],
 	[
+		'scripts/asc_submit.mjs',
+		"release-ios.yml at tag time, and only there — `whats-new` reads the published " +
+			"Release's body, and `uploaded` / `submit` act on App Store Connect with the API " +
+			'key CI does not hold, after a build that exists nowhere but a release run. What ' +
+			'the gate holds instead is its SUITE, which drives every subcommand against an ' +
+			'in-memory App Store Connect and reads the workflow wiring, in the `workflow-lint` ' +
+			'job of ci.yml (decisions § 2040).',
+	],
+	[
 		'scripts/check_compliance_drift.mjs',
 		'compliance-drift.yml, deliberately advisory (COMPLIANCE_DRIFT_MODE=warn) — it ' +
 			'reports findings and never fails the job, so being off the gate is the design ' +

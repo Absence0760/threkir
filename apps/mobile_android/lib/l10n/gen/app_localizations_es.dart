@@ -833,7 +833,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String homePlanUpNext(String name, String date) {
-    return 'Up next: $name, starts $date';
+    return 'A continuación: $name, empieza el $date';
   }
 
   @override
@@ -5766,7 +5766,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get plansStatusUpcoming => 'upcoming';
+  String get plansStatusUpcoming => 'próximo';
 
   @override
   String get plansSignInTitle =>
@@ -6197,26 +6197,17 @@ class AppLocalizationsEs extends AppLocalizations {
   String get planNewReplaceActiveTitle => '¿Reemplazar tu plan activo?';
 
   @override
-  String planNewReplaceActiveNamed(String name) {
-    return 'Ya tienes un plan activo: «$name». Crear un plan nuevo marcará el actual como completado (podrás encontrarlo en Gestionar planes). ¿Continuar?';
-  }
-
-  @override
-  String get planNewReplaceActiveUnnamed =>
-      'Ya tienes un plan activo. Crear un plan nuevo marcará el actual como completado. ¿Continuar?';
-
-  @override
   String get planNewReplaceActiveConfirm => 'Reemplazar plan';
 
   @override
   String get planNewReplaceActiveKeep => 'Mantener el actual';
 
   @override
-  String get planOverlapTitle => 'These dates overlap an active plan';
+  String get planOverlapTitle => 'Estas fechas se solapan con un plan activo';
 
   @override
   String planOverlapBody(String start, String end) {
-    return 'Your new plan runs $start – $end. Only one plan can be active on any day, and it overlaps:';
+    return 'Tu nuevo plan va del $start al $end. Solo puede haber un plan activo cada día, y se solapa con:';
   }
 
   @override
@@ -6226,21 +6217,21 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get planOverlapReplaceHint =>
-      'Replace marks the overlapping plans as completed. You can still find them under Manage plans.';
+      'Reemplazar marca los planes solapados como completados. Puedes seguir encontrándolos en Gestionar planes.';
 
   @override
   String planOverlapTrimHint(String name, String date) {
-    return 'End $name early to keep its finished weeks and remove its workouts after $date, or replace it to mark it completed.';
+    return 'Termina $name antes para conservar sus semanas completadas y eliminar sus entrenamientos posteriores al $date, o reemplázalo para marcarlo como completado.';
   }
 
   @override
   String planOverlapTrim(String name, String date) {
-    return 'End $name on $date';
+    return 'Terminar $name el $date';
   }
 
   @override
   String get planOverlapConflict =>
-      'Another active plan now covers these dates. Check your plans and try again.';
+      'Otro plan activo cubre ahora estas fechas. Revisa tus planes e inténtalo de nuevo.';
 
   @override
   String get planNewStarterC25k => 'Couch to 5K (principiante caminar-correr)';
@@ -6267,6 +6258,14 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get planDetailPublishTooltip => 'Publicar como plantilla del club';
+
+  @override
+  String get planDetailRacesTitle => 'Carreras de este plan';
+
+  @override
+  String planDetailRacePriority(String priority) {
+    return 'Prioridad $priority';
+  }
 
   @override
   String planDetailDaysPerWeek(int count) {
@@ -6351,12 +6350,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get planDetailResumeDone => 'Plan reanudado.';
 
   @override
-  String get planDetailResumeBlocked =>
-      'Ya tienes un plan activo. Pausa o termina ese primero.';
-
-  @override
   String get planDetailResumeOverlap =>
-      'Another active plan overlaps these dates. Pause it, finish it or end it earlier first.';
+      'Otro plan activo se solapa con estas fechas. Primero páusalo, márcalo como completado o haz que termine antes.';
 
   @override
   String get planDetailAdaptiveOnTrack =>
@@ -10029,6 +10024,34 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get workoutEditNotesLabel => 'Notas';
+
+  @override
+  String get workoutEditRaceNameLabel => 'Nombre de la carrera';
+
+  @override
+  String get workoutEditRacePriorityLabel => 'Prioridad de la carrera';
+
+  @override
+  String get workoutEditRacePriorityAuto => 'Automática';
+
+  @override
+  String get racePriorityOptionA => 'A — carrera objetivo';
+
+  @override
+  String get racePriorityOptionB => 'B — carrera importante';
+
+  @override
+  String get racePriorityOptionC => 'C — carrera de preparación';
+
+  @override
+  String get workoutEditRaceGoalTimeLabel => 'Tiempo objetivo';
+
+  @override
+  String get workoutEditRaceGoalTimeHint => 'p. ej. 6:30:00';
+
+  @override
+  String get workoutEditErrRaceGoalTime =>
+      'El tiempo objetivo debe tener el formato 6:30:00';
 
   @override
   String get workoutEditCancel => 'Cancelar';

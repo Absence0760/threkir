@@ -159,6 +159,7 @@ import {
 	type RelinkCandidateRun
 } from '../training/relink_candidates';
 import type { GeneratedPlan, GoalEvent, PlanPhase } from '../training/training';
+import type { RacePriority } from '../training/plan_races';
 import { auth } from '../stores/auth.svelte';
 import { lineLngLat, trackLine } from '../runs/track_line';
 import {
@@ -6141,7 +6142,9 @@ export async function createTrainingPlan(input: {
 			target_pace_sec_per_km: wo.target_pace_sec_per_km,
 			target_pace_tolerance_sec: wo.target_pace_tolerance_sec,
 			structure: wo.structure ?? null,
-			notes: wo.notes
+			notes: wo.notes,
+			race_name: wo.kind === 'race' ? wo.race_name?.trim() || null : null,
+			race_priority: wo.kind === 'race' ? (wo.race_priority ?? null) : null
 		}))
 	);
 	if (workoutRows.length > 0) {
@@ -6447,6 +6450,8 @@ export async function updatePlanWorkout(
 		notes: string | null;
 		scheduled_date: string;
 		structure: JsonObject | null;
+		race_name: string | null;
+		race_priority: RacePriority | null;
 	}>
 ): Promise<void> {
 	// Normalise the `notes` patch the same way `createTrainingPlan`
@@ -6463,9 +6468,18 @@ export async function updatePlanWorkout(
 	// types spell it that way; the column's CHECK is what constrains it.
 	// Restated field-by-field rather than casting the whole patch, so the other
 	// nine fields stay checked against the table they are sent to.
+	if ('race_name' in normalisedPatch) {
+		normalisedPatch.race_name = normalisedPatch.race_name?.trim() || null;
+	}
 	const { kind, ...fields } = normalisedPatch;
 	const update: Updatable<'plan_workouts'> = fields;
 	if (kind !== undefined) update.kind = kind as Updatable<'plan_workouts'>['kind'];
+	// The race columns are only legal on a race (plan_workouts_race_fields_only_on_race),
+	// so moving a workout to any other kind clears them in the same write.
+	if (kind !== undefined && kind !== 'race') {
+		update.race_name = null;
+		update.race_priority = null;
+	}
 	const { error } = await supabase.from('plan_workouts').update(update).eq('id', id);
 	if (error) throw dbError(error);
 }

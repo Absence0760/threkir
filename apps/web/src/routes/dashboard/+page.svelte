@@ -37,6 +37,7 @@
 	import { computeReadiness, type ReadinessContributorKind } from '#lib/training/readiness.ts';
 	import { computeTrainingLoadSeries, hasTrimpSignal } from '#lib/training/training_load.ts';
 	import { planRaceCountdown } from '#lib/training/plan_week.ts';
+	import { nextRace, planRaces } from '#lib/training/plan_races.ts';
 	import { formatISO } from '#lib/training/training.ts';
 	import {
 		DISCLOSURE_LEVEL_KEY,
@@ -850,6 +851,13 @@
 		t.setHours(0, 0, 0, 0);
 		return t;
 	});
+	/// The plan's next race (plan_races.ts): a B race mid-block owns the
+	/// countdown and goal row until it has been run, then the plan's A race.
+	let heroRace = $derived(
+		planOverview
+			? nextRace(planRaces(planOverview.plan, planOverview.workouts), formatISO(todayMidnight))
+			: null
+	);
 	let planPosition = $derived.by(() => {
 		const overview = planOverview;
 		if (!overview) return null;
@@ -872,7 +880,7 @@
 		// and this one can never disagree on how many days remain.
 		const countdown = planRaceCountdown(
 			overview.plan.start_date,
-			overview.plan.end_date,
+			heroRace?.date ?? overview.plan.end_date,
 			formatISO(todayMidnight)
 		);
 		let relation: string;
@@ -1140,6 +1148,7 @@
 		{#if planOverview && planPosition}
 			{@const t = planOverview.todayWorkout}
 			{@const todayDone = t != null && (t.manually_completed === true || t.completed_run_id != null)}
+			{@const raceGoal = heroRace ? heroRace.goalTimeSec : planOverview.plan.goal_time_seconds}
 			<section class="plan-hero" class:race-today={planPosition.raceState === 'today'}>
 				<header class="plan-hero-head">
 					<div class="plan-hero-ident">
@@ -1148,17 +1157,17 @@
 						<div class="plan-hero-goal">
 							<span>
 								<span class="material-symbols">flag</span>
-								{goalEventLabel(planOverview.plan.goal_event)}
+								{heroRace?.name ?? goalEventLabel(planOverview.plan.goal_event)}
 							</span>
-							{#if planOverview.plan.goal_time_seconds}
+							{#if raceGoal}
 								<span>
 									<span class="material-symbols">timer</span>
-									{formatDuration(planOverview.plan.goal_time_seconds)}
+									{formatDuration(raceGoal)}
 								</span>
 							{/if}
 							<span>
 								<span class="material-symbols">event</span>
-								{fmtRaceDate(planOverview.plan.end_date)}
+								{fmtRaceDate(heroRace?.date ?? planOverview.plan.end_date)}
 							</span>
 						</div>
 					</div>

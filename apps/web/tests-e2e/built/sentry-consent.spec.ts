@@ -71,20 +71,31 @@ function fresh(): Observed {
 	return { pageErrors: [], kitErrors: [], sentryRequests: [] };
 }
 
+const SENTRY_PROBE = 'e2e-built: Sentry init probe';
+
 /**
  * Sentry's session envelope goes out at init; a thrown probe error is the
- * fallback, so the check does not depend on session tracking staying on.
+ * second signal, so the check does not depend on session tracking staying on.
  * Called only after the error assertions, so the probe's own throw is never
  * mistaken for the app's.
+ *
+ * Thrown on every call, not only when nothing has been sent yet: the crash net
+ * excuses it by name, and an allow entry that excuses nothing fails the test,
+ * so a probe that fired only when the envelope was slow would turn this red
+ * whenever it was fast. Resolves after the throw, so the net has recorded it
+ * before the caller closes the page.
  */
 async function expectSentryInitialised(page: Page, seen: Observed): Promise<void> {
-	if (seen.sentryRequests.length === 0) {
-		await page.evaluate(() => {
-			setTimeout(() => {
-				throw new Error('e2e-built: Sentry init probe');
-			});
-		});
-	}
+	await page.evaluate(
+		(message) =>
+			new Promise<void>((resolve) => {
+				setTimeout(() => {
+					setTimeout(resolve);
+					throw new Error(message);
+				});
+			}),
+		SENTRY_PROBE
+	);
 	await expect
 		.poll(() => seen.sentryRequests.length, {
 			message:
@@ -100,6 +111,12 @@ function expectNoHydrationErrors(seen: Observed, path: string): void {
 }
 
 test.describe('built app with error reporting accepted', () => {
+	test.use({
+		crashNet: {
+			allow: [{ match: SENTRY_PROBE, reason: 'thrown on purpose to prove Sentry.init ran (expectSentryInitialised)' }]
+		}
+	});
+
 	test('the landing page, /help and /login render with Sentry initialised', async ({
 		context,
 		baseURL,

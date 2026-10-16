@@ -10156,18 +10156,6 @@ abstract class AppLocalizations {
   /// **'Replace your active plan?'**
   String get planNewReplaceActiveTitle;
 
-  /// Body of the replace-active-plan confirm dialog when the existing plan has a name
-  ///
-  /// In en, this message translates to:
-  /// **'You already have an active plan: \"{name}\". Creating a new plan will mark the current one as completed (you can still find it under Manage plans). Continue?'**
-  String planNewReplaceActiveNamed(String name);
-
-  /// Body of the replace-active-plan confirm dialog when the existing plan name is unknown
-  ///
-  /// In en, this message translates to:
-  /// **'You already have an active plan. Creating a new plan will mark the current one as completed. Continue?'**
-  String get planNewReplaceActiveUnnamed;
-
   /// Confirm button of the replace-active-plan dialog
   ///
   /// In en, this message translates to:
@@ -10269,6 +10257,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Publish as club template'**
   String get planDetailPublishTooltip;
+
+  /// Heading of the plan detail card listing every race the plan builds toward (shown only when the plan has more than one race)
+  ///
+  /// In en, this message translates to:
+  /// **'Races in this plan'**
+  String get planDetailRacesTitle;
+
+  /// Screen-reader label for a race's priority badge on plan detail; priority is the letter A, B or C
+  ///
+  /// In en, this message translates to:
+  /// **'Priority {priority}'**
+  String planDetailRacePriority(String priority);
 
   /// Days-per-week meta on the hero card
   ///
@@ -10401,12 +10401,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Plan resumed.'**
   String get planDetailResumeDone;
-
-  /// Plan-detail adjust-plan dialog
-  ///
-  /// In en, this message translates to:
-  /// **'You already have an active plan. Pause or finish it first.'**
-  String get planDetailResumeBlocked;
 
   /// Banner when resuming a paused plan is refused because another active plan overlaps its dates
   ///
@@ -16418,6 +16412,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Notes'**
   String get workoutEditNotesLabel;
+
+  /// Label for the race name field, shown in the workout editor only when the workout kind is Race
+  ///
+  /// In en, this message translates to:
+  /// **'Race name'**
+  String get workoutEditRaceNameLabel;
+
+  /// Label for the A/B/C race priority picker in the workout editor (Race workouts only)
+  ///
+  /// In en, this message translates to:
+  /// **'Race priority'**
+  String get workoutEditRacePriorityLabel;
+
+  /// Race priority picker option for no explicit priority: the app treats a race on the plan's last day as A and any other race as C
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic'**
+  String get workoutEditRacePriorityAuto;
+
+  /// Race priority picker option A: the race the plan is built for. Keep the letter A
+  ///
+  /// In en, this message translates to:
+  /// **'A — goal race'**
+  String get racePriorityOptionA;
+
+  /// Race priority picker option B: a race that matters but is not the main goal. Keep the letter B
+  ///
+  /// In en, this message translates to:
+  /// **'B — important race'**
+  String get racePriorityOptionB;
+
+  /// Race priority picker option C: a low-key race run as training. Keep the letter C
+  ///
+  /// In en, this message translates to:
+  /// **'C — tune-up race'**
+  String get racePriorityOptionC;
+
+  /// Label for the race goal finish time field in the workout editor (Race workouts only)
+  ///
+  /// In en, this message translates to:
+  /// **'Goal time'**
+  String get workoutEditRaceGoalTimeLabel;
+
+  /// Example hint for the race goal time field (hours:minutes:seconds)
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. 6:30:00'**
+  String get workoutEditRaceGoalTimeHint;
+
+  /// Validation error for the race goal time field
+  ///
+  /// In en, this message translates to:
+  /// **'Goal time must look like 6:30:00'**
+  String get workoutEditErrRaceGoalTime;
 
   /// Button to cancel the workout edit sheet
   ///

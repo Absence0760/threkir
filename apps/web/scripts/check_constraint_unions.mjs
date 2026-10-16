@@ -702,6 +702,14 @@ export const PAIRS = [
 		],
 	},
 	{
+		tableColumn: 'plan_workouts.race_priority',
+		clients: [
+			{ file: 'apps/web/src/lib/training/plan_races.ts', decl: 'RACE_PRIORITIES', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/plan_races.dart', decl: 'racePriorities', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/training_labels.dart', decl: 'racePriorityOptionLabel', shape: 'switch' },
+		],
+	},
+	{
 		tableColumn: 'public_recaps.period_kind',
 		clients: [
 			{ file: TS_TYPES, decl: 'RecapPeriodKind', shape: 'union' },

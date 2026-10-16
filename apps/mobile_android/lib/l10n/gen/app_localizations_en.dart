@@ -6140,15 +6140,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get planNewReplaceActiveTitle => 'Replace your active plan?';
 
   @override
-  String planNewReplaceActiveNamed(String name) {
-    return 'You already have an active plan: \"$name\". Creating a new plan will mark the current one as completed (you can still find it under Manage plans). Continue?';
-  }
-
-  @override
-  String get planNewReplaceActiveUnnamed =>
-      'You already have an active plan. Creating a new plan will mark the current one as completed. Continue?';
-
-  @override
   String get planNewReplaceActiveConfirm => 'Replace plan';
 
   @override
@@ -6210,6 +6201,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get planDetailPublishTooltip => 'Publish as club template';
+
+  @override
+  String get planDetailRacesTitle => 'Races in this plan';
+
+  @override
+  String planDetailRacePriority(String priority) {
+    return 'Priority $priority';
+  }
 
   @override
   String planDetailDaysPerWeek(int count) {
@@ -6292,10 +6291,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get planDetailResumeDone => 'Plan resumed.';
-
-  @override
-  String get planDetailResumeBlocked =>
-      'You already have an active plan. Pause or finish it first.';
 
   @override
   String get planDetailResumeOverlap =>
@@ -9926,6 +9921,33 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get workoutEditNotesLabel => 'Notes';
+
+  @override
+  String get workoutEditRaceNameLabel => 'Race name';
+
+  @override
+  String get workoutEditRacePriorityLabel => 'Race priority';
+
+  @override
+  String get workoutEditRacePriorityAuto => 'Automatic';
+
+  @override
+  String get racePriorityOptionA => 'A — goal race';
+
+  @override
+  String get racePriorityOptionB => 'B — important race';
+
+  @override
+  String get racePriorityOptionC => 'C — tune-up race';
+
+  @override
+  String get workoutEditRaceGoalTimeLabel => 'Goal time';
+
+  @override
+  String get workoutEditRaceGoalTimeHint => 'e.g. 6:30:00';
+
+  @override
+  String get workoutEditErrRaceGoalTime => 'Goal time must look like 6:30:00';
 
   @override
   String get workoutEditCancel => 'Cancel';

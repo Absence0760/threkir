@@ -183,3 +183,96 @@ test('notes with a pipe survive the round-trip (sanitized to a slash)', () => {
 	const parsed = parsePlanMarkdown(planToMarkdown(withPipe));
 	assert.equal(flatten(parsed)[0].notes, 'do 4x / strides');
 });
+
+// ─────────────────────── Race columns ───────────────────────
+
+const RACE_PLAN: ExportPlan = {
+	name: 'Comrades block',
+	goalEvent: 'custom',
+	goalDistanceM: 91_000,
+	goalTimeSec: 11 * 3600,
+	startDate: '2027-03-28',
+	workouts: [
+		{ week_index: 0, scheduled_date: '2027-03-28', kind: 'long', target_distance_m: 30_000, target_pace_sec_per_km: 360, notes: null, target_duration_seconds: null, race_name: null, race_priority: null },
+		{ week_index: 1, scheduled_date: '2027-04-04', kind: 'race', target_distance_m: 56_000, target_pace_sec_per_km: null, notes: 'Two Oceans', target_duration_seconds: 6 * 3600 + 30 * 60, race_name: 'Two Oceans Ultra', race_priority: 'B' },
+		{ week_index: 2, scheduled_date: '2027-04-11', kind: 'race', target_distance_m: 91_000, target_pace_sec_per_km: null, notes: null, target_duration_seconds: null, race_name: 'Comrades', race_priority: 'A' },
+	],
+};
+
+function flattenRaces(p: ReturnType<typeof parsePlanMarkdown>) {
+	return p.generated.weeks.flatMap((w) =>
+		w.workouts.map((wo) => ({
+			week_index: w.week_index,
+			scheduled_date: wo.scheduled_date,
+			kind: wo.kind,
+			target_distance_m: wo.target_distance_m,
+			target_pace_sec_per_km: wo.target_pace_sec_per_km,
+			notes: wo.notes,
+			target_duration_seconds: wo.target_duration_seconds,
+			race_name: wo.race_name ?? null,
+			race_priority: wo.race_priority ?? null,
+		})),
+	);
+}
+
+test('planToMarkdown adds Race, Priority and Goal columns only when a race carries one', () => {
+	assert.match(planToMarkdown(RACE_PLAN), /\| Week \| Date \| Type \| Distance \| Pace \| Notes \| Race \| Priority \| Goal \|/);
+	assert.doesNotMatch(planToMarkdown(SAMPLE), /Priority/);
+});
+
+test('race columns round-trip through Markdown and JSON', () => {
+	assert.deepEqual(flattenRaces(parsePlanMarkdown(planToMarkdown(RACE_PLAN))), RACE_PLAN.workouts);
+	assert.deepEqual(flattenRaces(parsePlanJson(planToJson(RACE_PLAN))), RACE_PLAN.workouts);
+});
+
+test('parsePlanMarkdown maps columns by header name, in any order and case', () => {
+	const md = [
+		'# Reordered',
+		'| date | WEEK | Type | Race | Priority | Goal | Distance |',
+		'| --- | --- | --- | --- | --- | --- | --- |',
+		'| 2027-02-06 | 1 | race | parkrun | c | 22:30 | 5 km |',
+		'| 2027-02-07 | 1 | easy |  |  |  | 8 km |',
+	].join('\n');
+	const rows = flattenRaces(parsePlanMarkdown(md));
+	assert.deepEqual(rows[0], {
+		week_index: 0,
+		scheduled_date: '2027-02-06',
+		kind: 'race',
+		target_distance_m: 5000,
+		target_pace_sec_per_km: null,
+		notes: null,
+		target_duration_seconds: 22 * 60 + 30,
+		race_name: 'parkrun',
+		race_priority: 'C',
+	});
+	assert.equal(rows[1].kind, 'easy');
+	assert.equal(rows[1].target_distance_m, 8000);
+	assert.equal(rows[1].race_name, null);
+});
+
+test('parsePlanMarkdown reads the legacy six-column table positionally, extra cells folding into notes', () => {
+	const md = [
+		'| Week | Date | Type | Distance | Pace | Notes |',
+		'| --- | --- | --- | --- | --- | --- |',
+		'| 1 | 2027-02-06 | race | 5 km | 4:30 | parkrun | PB attempt |',
+	].join('\n');
+	const [row] = flattenRaces(parsePlanMarkdown(md));
+	assert.equal(row.notes, 'parkrun|PB attempt');
+	assert.equal(row.target_pace_sec_per_km, 270);
+	assert.equal(row.race_name, null);
+	assert.equal(row.race_priority, null);
+	assert.equal(row.target_duration_seconds, null);
+});
+
+test('parsePlanMarkdown rejects race fields on a non-race row and a bad priority or goal', () => {
+	const table = (row: string) =>
+		[
+			'| Week | Date | Type | Distance | Race | Priority | Goal |',
+			'| --- | --- | --- | --- | --- | --- | --- |',
+			row,
+		].join('\n');
+	assert.throws(() => parsePlanMarkdown(table('| 1 | 2027-02-06 | long | 30 km | Big Run |  |  |')), /only apply to race rows/);
+	assert.throws(() => parsePlanMarkdown(table('| 1 | 2027-02-06 | easy | 8 km |  | B |  |')), /only apply to race rows/);
+	assert.throws(() => parsePlanMarkdown(table('| 1 | 2027-02-06 | race | 5 km | parkrun | D |  |')), /priority "D"/);
+	assert.throws(() => parsePlanMarkdown(table('| 1 | 2027-02-06 | race | 5 km | parkrun |  | fast |')), /goal time "fast"/);
+});

@@ -1,5 +1,5 @@
 -- The coach roster picks each athlete's current plan by the ATHLETE's local
--- date, not the server's UTC date (issue #1182).
+-- date, not the server's UTC date (issue #1182, decisions § 2068).
 --
 -- coach_roster_summary compared plan windows against current_date, the
 -- database's UTC date, while every client picks the current plan by the

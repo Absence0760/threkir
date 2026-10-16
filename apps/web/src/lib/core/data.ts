@@ -6501,7 +6501,7 @@ export type WorkoutAdjustment = { id: string } & Partial<{
 
 /// Write a batch of workout patches to one plan and restate the volume of
 /// every week they touch, all in one transaction (`apply_workout_adjustments`,
-/// decisions § 2060): either every workout changes or none does. The patches
+/// decisions § 2062): either every workout changes or none does. The patches
 /// are normalised as `updatePlanWorkout` normalises one.
 export async function applyWorkoutAdjustments(
 	planId: string,

@@ -1,4 +1,4 @@
--- Plan review follow-ups (decisions § 2060).
+-- Plan review follow-ups (decisions § 2062).
 --
 -- apply_workout_adjustments writes a batch of per-workout patches and restates
 -- the target volume of every week it touched, in ONE transaction. The plan

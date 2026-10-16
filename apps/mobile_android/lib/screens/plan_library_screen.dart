@@ -6,6 +6,7 @@ import 'package:ui_kit/ui_kit.dart' show ListSkeleton;
 
 import '../auth_error.dart';
 import '../l10n/gen/app_localizations.dart';
+import '../plan_overlap.dart';
 import '../training.dart';
 import '../training_service.dart';
 import '../backend_timeout.dart';
@@ -241,7 +242,8 @@ class _PlanLibraryPreviewScreenState extends State<PlanLibraryPreviewScreen> {
     if (!mounted) return;
     final l10n = AppLocalizations.of(context);
     final startIso = toIsoDate(_startDate);
-    final endIso = clonedPlanEndIso(widget.entry.plan, _startDate);
+    final endIso = clonedPlanEndIso(widget.entry.plan, startIso,
+        start: planRowStartIso, end: planRowEndIso);
     final action = await confirmPlanOverlap(context, widget.training,
         startIso: startIso, endIso: endIso);
     if (action == null || !mounted) return;

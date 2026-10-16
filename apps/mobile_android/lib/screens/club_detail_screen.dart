@@ -18,6 +18,7 @@ import '../l10n/locale_support.dart';
 import '../local_gym_store.dart';
 import '../local_route_store.dart';
 import '../local_routine_store.dart';
+import '../plan_overlap.dart';
 import '../preferences.dart';
 import '../social_service.dart';
 import '../training.dart' show toIsoDate;
@@ -1350,7 +1351,8 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
     if (_adoptingPlanId != null) return;
     final today = DateTime.now();
     final startIso = toIsoDate(today);
-    final endIso = clonedPlanEndIso(t, today);
+    final endIso = clonedPlanEndIso(t, startIso,
+        start: planRowStartIso, end: planRowEndIso);
     final action = await confirmPlanOverlap(context, widget.training,
         startIso: startIso, endIso: endIso);
     if (action == null || !mounted) return;

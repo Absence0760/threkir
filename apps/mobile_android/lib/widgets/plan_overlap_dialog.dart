@@ -5,6 +5,7 @@ import '../backend_timeout.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
+import '../plan_overlap.dart';
 import '../training.dart';
 import '../training_service.dart';
 import 'top_banner.dart';
@@ -48,7 +49,8 @@ Future<PlanOverlapAction?> confirmPlanOverlap(
   final l10n = AppLocalizations.of(context);
   final tag = localeToTag(Localizations.localeOf(context));
   String med(String iso) => formatDateMed(parseIsoDate(iso), tag);
-  final trimmable = canTrimOverlap(overlapping, startIso);
+  final trimmable =
+      canTrimOverlap(overlapping, startIso, start: planRowStartIso);
   final trimEnd = med(dayBeforeIso(startIso));
 
   return showDialog<PlanOverlapAction>(
@@ -80,7 +82,7 @@ Future<PlanOverlapAction?> confirmPlanOverlap(
               const SizedBox(height: 8),
               Text(
                 trimmable
-                    ? l10n.planOverlapTrimHint(overlapping.single.name, trimEnd)
+                    ? l10n.planOverlapTrimHint(overlapping.last.name, trimEnd)
                     : l10n.planOverlapReplaceHint,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
@@ -102,7 +104,7 @@ Future<PlanOverlapAction?> confirmPlanOverlap(
               ),
               onPressed: () => Navigator.pop(ctx, PlanOverlapAction.trim),
               child: Text(
-                  l10n.planOverlapTrim(overlapping.single.name, trimEnd)),
+                  l10n.planOverlapTrim(overlapping.last.name, trimEnd)),
             ),
           FilledButton(
             key: const Key('planOverlapReplace'),

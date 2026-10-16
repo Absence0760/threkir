@@ -12,6 +12,7 @@ import '../l10n/locale_support.dart';
 import '../l10n/number_format.dart';
 import '../metrics.dart';
 import '../plan_ramp.dart';
+import '../plan_overlap.dart';
 import '../plan_request_client.dart';
 import '../plan_start.dart';
 import '../pro_sellable.dart';
@@ -487,7 +488,9 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
     );
     if (picked == null || !mounted) return;
     final action =
-        await _confirmOverlap(clonedPlanEndIso(picked.template, _startDate));
+        await _confirmOverlap(clonedPlanEndIso(
+            picked.template, toIsoDate(_startDate),
+            start: planRowStartIso, end: planRowEndIso));
     if (action == null || !mounted) return;
     setState(() => _cloning = true);
     try {

@@ -98,15 +98,17 @@ Map<String, dynamic> planWorkoutPatch({
 /// starts. [name] is the RPC's `p_overlap` value.
 enum PlanOverlapAction { refuse, replace, trim }
 
-String _planStart(TrainingPlanRow p) => toIsoDate(p.startDate);
-String _planEnd(TrainingPlanRow p) => toIsoDate(p.endDate);
+/// A plan row's window as ISO days, the accessors the pure plan helpers
+/// (`plan_current.dart`, `plan_overlap.dart`) take.
+String planRowStartIso(TrainingPlanRow p) => toIsoDate(p.startDate);
+String planRowEndIso(TrainingPlanRow p) => toIsoDate(p.endDate);
 
 /// The current plan among [activePlans] (see `plan_current.dart`), falling
 /// back to the queued one when nothing has started yet. Null with no plans.
 TrainingPlanRow? currentOrUpcomingPlan(
     List<TrainingPlanRow> activePlans, String todayIso) {
   final pick = pickCurrentPlan(activePlans, todayIso,
-      start: _planStart, end: _planEnd);
+      start: planRowStartIso, end: planRowEndIso);
   return pick.current ?? pick.upcoming;
 }
 
@@ -114,29 +116,12 @@ TrainingPlanRow? currentOrUpcomingPlan(
 List<TrainingPlanRow> overlappingActivePlans(
         List<TrainingPlanRow> activePlans, String startIso, String endIso) =>
     overlappingPlans(activePlans, startIso, endIso,
-        start: _planStart, end: _planEnd);
-
-/// Whether [PlanOverlapAction.trim] can resolve [overlapping] for a plan
-/// starting [newStartIso]: active plans never overlap each other, so at most
-/// one can start before the new plan, and it is trimmable only when it is the
-/// sole overlap.
-bool canTrimOverlap(List<TrainingPlanRow> overlapping, String newStartIso) =>
-    overlapping.length == 1 &&
-    _planStart(overlapping.single).compareTo(newStartIso) < 0;
+        start: planRowStartIso, end: planRowEndIso);
 
 /// The ISO day before [iso] — the end date a trimmed plan takes.
 String dayBeforeIso(String iso) {
   final d = parseIsoDate(iso);
   return toIsoDate(DateTime(d.year, d.month, d.day - 1));
-}
-
-/// The end date a clone of [template] takes when it starts on [start]: the
-/// clone RPCs shift every date by the same whole-day offset.
-String clonedPlanEndIso(TrainingPlanRow template, DateTime start) {
-  int epochDay(DateTime d) =>
-      DateTime.utc(d.year, d.month, d.day).millisecondsSinceEpoch ~/ 86400000;
-  final span = epochDay(template.endDate) - epochDay(template.startDate);
-  return toIsoDate(DateTime(start.year, start.month, start.day + span));
 }
 
 bool _isOverlapViolation(Object e) =>
@@ -740,9 +725,9 @@ class TrainingService extends ChangeNotifier {
     if (plan == null) return null;
     final upcoming = pickCurrentPlan(
       [for (final p in activePlans) if (p.id != plan.id) p],
-      _planStart(plan).compareTo(today) > 0 ? _planStart(plan) : today,
-      start: _planStart,
-      end: _planEnd,
+      planRowStartIso(plan).compareTo(today) > 0 ? planRowStartIso(plan) : today,
+      start: planRowStartIso,
+      end: planRowEndIso,
     ).upcoming;
     final res = await fetchPlan(plan.id);
     if (res.plan == null) return null;
@@ -926,7 +911,7 @@ class TrainingService extends ChangeNotifier {
       for (final p in await fetchActivePlans())
         if (p.id != id) p
     ];
-    if (overlappingActivePlans(others, _planStart(plan), _planEnd(plan))
+    if (overlappingActivePlans(others, planRowStartIso(plan), planRowEndIso(plan))
         .isNotEmpty) {
       throw const ActivePlanExistsError();
     }

@@ -3,6 +3,8 @@
 // of the athlete's active plans, and accepts any other. The coaching page
 // names the plans it already holds — the one it shows and the one queued
 // after it — so the coach can pick dates before the server has to refuse.
+// Dart twin `apps/mobile_android/lib/plan_assign.dart` — keep the three
+// helpers and the test counts in lockstep.
 
 import { shiftIsoDate } from './plan_bulk_ops';
 import { overlappingPlans } from './plan_current';

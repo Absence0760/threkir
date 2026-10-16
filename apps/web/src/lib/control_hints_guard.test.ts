@@ -34,6 +34,7 @@ const SURFACES: Array<{ name: string; file: string }> = [
 	})),
 	{ name: '/plans/new', file: 'routes/plans/new/+page.svelte' },
 	{ name: 'PlanEditor', file: 'lib/components/PlanEditor.svelte' },
+	{ name: 'SeasonPlanner', file: 'lib/components/SeasonPlanner.svelte' },
 	{ name: 'PlanMetaEditor', file: 'lib/components/PlanMetaEditor.svelte' },
 	{ name: 'RunEditor', file: 'lib/components/RunEditor.svelte' },
 	{ name: 'ClubEditor', file: 'lib/components/ClubEditor.svelte' },

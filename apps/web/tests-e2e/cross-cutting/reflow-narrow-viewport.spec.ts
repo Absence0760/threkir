@@ -54,6 +54,7 @@ test.describe('no horizontal document scroll at 300 / 320 / 360 px', () => {
 			'/settings',
 			'/settings/licenses',
 			'/plans/new',
+			'/plans/season',
 			'/gym/routines/new'
 		]) {
 			test(route, async ({ page }) => {

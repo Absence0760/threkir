@@ -9,37 +9,12 @@
 // once on a 401, mirroring route_request_client.
 
 import { supabase } from '../core/supabase';
-import { AI_DISCLOSURE_ERROR } from '../core/ai_disclosure';
 import { payloadSha256Hex } from '../util/payload_hash';
 import type { PlanRequestInputs } from './plan_request/inputs';
+import { PlanRequestError, planRequestErrorKind } from './plan_request_error';
 
 export type { PlanRequestInputs, PlanRequestAssumption } from './plan_request/inputs';
-
-export type PlanRequestErrorKind =
-	| 'not_authenticated'
-	| 'consent'
-	| 'daily_limit'
-	| 'invalid'
-	| 'not_understood'
-	| 'unavailable';
-
-export class PlanRequestError extends Error {
-	kind: PlanRequestErrorKind;
-	constructor(kind: PlanRequestErrorKind, message?: string) {
-		super(message ?? kind);
-		this.name = 'PlanRequestError';
-		this.kind = kind;
-	}
-}
-
-export function planRequestErrorKind(status: number, code: string | undefined): PlanRequestErrorKind {
-	if (status === 401) return 'not_authenticated';
-	if (status === 403 && code === AI_DISCLOSURE_ERROR) return 'consent';
-	if (status === 429) return 'daily_limit';
-	if (status === 400) return 'invalid';
-	if (status === 422) return 'not_understood';
-	return 'unavailable';
-}
+export { PlanRequestError, planRequestErrorKind, type PlanRequestErrorKind } from './plan_request_error';
 
 /**
  * Extract plan-wizard inputs from a plain-English description. `todayIso` is

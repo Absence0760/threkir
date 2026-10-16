@@ -45,6 +45,7 @@
 		type RecentVolume,
 	} from '#lib/training/plan_ramp.ts';
 	import { parsePlanMarkdown, parsePlanJson } from '#lib/training/plan_serialize.ts';
+	import { RACE_GOAL_MAX_HOURS } from '#lib/training/plan_races.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { ageFromDob } from '#lib/nutrition/nutrition_targets.ts';
 	import { healthUseDob } from '#lib/core/health_consent.ts';

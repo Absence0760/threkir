@@ -149,6 +149,33 @@ test.describe('plan import / export', () => {
 		await expect(startInput).toHaveAttribute('min', browserDate(0));
 	});
 
+	test('an imported ultra plan with a goal over nine hours passes form validation', async ({ page }) => {
+		await page.goto('/plans/new');
+		await expect(page.locator('.week-item').first()).toBeVisible({ timeout: 10_000 });
+
+		// The hours box was capped at 9, so the browser refused to submit a
+		// Comrades-length goal that the import itself had parsed correctly.
+		const md = [
+			'# Imported ultra plan',
+			'- Goal event: custom',
+			'- Goal distance: 91 km',
+			'- Goal time: 11:00:00',
+			'- Start date: 2020-01-03',
+			'',
+			'| Week | Date | Type | Distance | Pace | Notes |',
+			'| --- | --- | --- | --- | --- | --- |',
+			'| 1 | 2020-01-03 | easy | 5.00 km | | |',
+		].join('\n');
+		await page.getByText('Import a plan', { exact: true }).click();
+		await page.getByRole('textbox', { name: 'Import a plan' }).fill(md);
+		await page.getByRole('button', { name: 'Load plan' }).click();
+		await expect(page.locator('.imported-note')).toBeVisible();
+
+		const hours = page.locator('input[type="number"][aria-describedby="goal-time-hint"]').first();
+		await expect(hours).toHaveValue('11');
+		expect(await hours.evaluate((el: HTMLInputElement) => el.checkValidity())).toBe(true);
+	});
+
 	test('the import box spans the editor rather than the narrow form column', async ({ page }) => {
 		await page.goto('/plans/new');
 		await expect(page.locator('.week-item').first()).toBeVisible({ timeout: 10_000 });

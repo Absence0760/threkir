@@ -247,15 +247,12 @@ class _PlanLibraryPreviewScreenState extends State<PlanLibraryPreviewScreen> {
     if (action == null || !mounted) return;
     setState(() => _cloning = true);
     try {
-      // The clone RPC replaces whatever it overlaps itself, so only a trim
-      // needs a write of its own first.
-      if (action == PlanOverlapAction.trim) {
-        await widget.training
-            .resolvePlanOverlap(startIso: startIso, endIso: endIso, action: action)
-            .timeout(kBackendLoadTimeout);
-      }
       final newId = await widget.training
-          .clonePublicPlan(templateId: widget.entry.plan.id, startDate: _startDate)
+          .clonePublicPlan(
+            templateId: widget.entry.plan.id,
+            startDate: _startDate,
+            onOverlap: action,
+          )
           .timeout(kBackendLoadTimeout);
       if (!mounted) return;
       Navigator.of(context).pushReplacement(

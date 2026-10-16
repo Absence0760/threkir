@@ -1356,15 +1356,9 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
     if (action == null || !mounted) return;
     setState(() => _adoptingPlanId = t.id);
     try {
-      // The clone RPC replaces whatever it overlaps itself, so only a trim
-      // needs a write of its own first.
-      if (action == PlanOverlapAction.trim) {
-        await widget.training
-            .resolvePlanOverlap(startIso: startIso, endIso: endIso, action: action)
-            .timeout(kBackendLoadTimeout);
-      }
       final newId = await widget.training
-          .clonePlanTemplate(templateId: t.id, startDate: today);
+          .clonePlanTemplate(templateId: t.id, startDate: today, onOverlap: action)
+          .timeout(kBackendLoadTimeout);
       if (!mounted) return;
       showTopBanner(
           context, AppLocalizations.of(context).clubDetailTemplateAdded);
@@ -1380,8 +1374,12 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
     } catch (e) {
       debugPrint('club detail adopt failed: $e');
       if (!mounted) return;
+      final l10n = AppLocalizations.of(context);
       showTopBanner(
-          context, AppLocalizations.of(context).clubDetailAdoptFailed(friendlyError(AppLocalizations.of(context), e)));
+          context,
+          e is ActivePlanExistsError
+              ? l10n.planOverlapConflict
+              : l10n.clubDetailAdoptFailed(friendlyError(l10n, e)));
     } finally {
       if (mounted) setState(() => _adoptingPlanId = null);
     }

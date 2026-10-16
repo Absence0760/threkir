@@ -7,18 +7,20 @@ import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../training.dart';
 import '../training_service.dart';
+import 'top_banner.dart';
 
 /// Asks what to do with the active plans a new plan's `[startIso, endIso]`
 /// window overlaps, before any create path writes. Several plans may be
 /// active when their windows don't overlap, so a plan queued before or after
 /// the new one is left alone and never prompts.
 ///
-/// Returns [PlanOverlapAction.replace] with no dialog when nothing overlaps,
-/// the chosen action otherwise, or null when the runner keeps their plans.
-/// "End <plan> on <date>" is offered only when [canTrimOverlap] holds. A
-/// failed lookup (offline) proceeds rather than blocking creation: the
-/// server-side constraint still refuses an overlapping write, and the
-/// service maps that refusal to [ActivePlanExistsError].
+/// Returns [PlanOverlapAction.refuse] with no dialog when nothing overlaps
+/// (so a plan created since this lookup is refused by the server rather than
+/// replaced unasked, decisions § 2050), the chosen action otherwise, or null
+/// when the runner keeps their plans. "End <plan> on <date>" is offered only
+/// when [canTrimOverlap] holds. A failed lookup shows an error and returns
+/// null: without knowing what overlaps there is nothing to ask the runner,
+/// so nothing is created.
 Future<PlanOverlapAction?> confirmPlanOverlap(
   BuildContext context,
   TrainingService training, {
@@ -34,9 +36,13 @@ Future<PlanOverlapAction?> confirmPlanOverlap(
     )..sort((a, b) => a.startDate.compareTo(b.startDate));
   } catch (e) {
     debugPrint('confirmPlanOverlap: active plan lookup failed: $e');
-    return PlanOverlapAction.replace;
+    if (context.mounted) {
+      showTopBanner(
+          context, AppLocalizations.of(context).planOverlapLookupFailed);
+    }
+    return null;
   }
-  if (overlapping.isEmpty) return PlanOverlapAction.replace;
+  if (overlapping.isEmpty) return PlanOverlapAction.refuse;
   if (!context.mounted) return null;
 
   final l10n = AppLocalizations.of(context);

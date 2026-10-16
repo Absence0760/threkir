@@ -90,10 +90,13 @@ Map<String, dynamic> planWorkoutPatch({
   return patch;
 }
 
-/// What creating a plan does to the active plans its window overlaps.
-/// [replace] marks them completed; [trim] ends the one plan that started
-/// before the new plan on the day before it starts (`trim_training_plan`).
-enum PlanOverlapAction { replace, trim }
+/// What creating or cloning a plan does to the active plans its window
+/// overlaps, resolved by the server in the same transaction as the write
+/// (decisions § 2050). [refuse] fails with [ActivePlanExistsError] so nothing
+/// the runner did not name changes; [replace] marks them completed; [trim]
+/// ends the one plan that started before the new plan on the day before it
+/// starts. [name] is the RPC's `p_overlap` value.
+enum PlanOverlapAction { refuse, replace, trim }
 
 String _planStart(TrainingPlanRow p) => toIsoDate(p.startDate);
 String _planEnd(TrainingPlanRow p) => toIsoDate(p.endDate);
@@ -407,20 +410,28 @@ class TrainingService extends ChangeNotifier {
 
   /// Adopt a club template — RPC clones it back into a personal plan.
   /// Parameter names mirror the server function signature
-  /// (`clone_plan_template(template_id uuid, new_start_date date)`)
-  /// exactly — postgrest passes these through verbatim, so a typo
+  /// (`clone_plan_template(template_id uuid, new_start_date date,
+  /// p_overlap text)`) exactly — postgrest passes these through verbatim, so a typo
   /// surfaces as `PGRST202 function not found`.
   Future<String> clonePlanTemplate({
     required String templateId,
     DateTime? startDate,
+    PlanOverlapAction onOverlap = PlanOverlapAction.refuse,
   }) async {
-    final newId = await _c.rpc(
-      'clone_plan_template',
-      params: {
-        'template_id': templateId,
-        'new_start_date': toIsoDate(startDate ?? DateTime.now()),
-      },
-    );
+    final Object? newId;
+    try {
+      newId = await _c.rpc(
+        'clone_plan_template',
+        params: {
+          'template_id': templateId,
+          'new_start_date': toIsoDate(startDate ?? DateTime.now()),
+          'p_overlap': onOverlap.name,
+        },
+      );
+    } catch (e) {
+      if (_isOverlapViolation(e)) throw const ActivePlanExistsError();
+      rethrow;
+    }
     notifyListeners();
     return newId as String;
   }
@@ -470,14 +481,22 @@ class TrainingService extends ChangeNotifier {
   Future<String> clonePublicPlan({
     required String templateId,
     DateTime? startDate,
+    PlanOverlapAction onOverlap = PlanOverlapAction.refuse,
   }) async {
-    final newId = await _c.rpc(
-      'clone_public_plan',
-      params: {
-        'template_id': templateId,
-        'new_start_date': toIsoDate(startDate ?? DateTime.now()),
-      },
-    );
+    final Object? newId;
+    try {
+      newId = await _c.rpc(
+        'clone_public_plan',
+        params: {
+          'template_id': templateId,
+          'new_start_date': toIsoDate(startDate ?? DateTime.now()),
+          'p_overlap': onOverlap.name,
+        },
+      );
+    } catch (e) {
+      if (_isOverlapViolation(e)) throw const ActivePlanExistsError();
+      rethrow;
+    }
     notifyListeners();
     return newId as String;
   }
@@ -759,39 +778,10 @@ class TrainingService extends ChangeNotifier {
     );
   }
 
-  /// Clear the active plans a new `[startIso, endIso]` window overlaps so the
-  /// no-overlap constraint accepts it; plans outside the window stay active.
-  /// [PlanOverlapAction.trim] refuses, before writing anything, unless
-  /// [canTrimOverlap] holds.
-  Future<void> resolvePlanOverlap({
-    required String startIso,
-    required String endIso,
-    PlanOverlapAction action = PlanOverlapAction.replace,
-  }) async {
-    final overlapping =
-        overlappingActivePlans(await fetchActivePlans(), startIso, endIso);
-    if (overlapping.isEmpty) return;
-    switch (action) {
-      case PlanOverlapAction.replace:
-        await _c
-            .from('training_plans')
-            .update({'status': 'completed'})
-            .inFilter('id', [for (final p in overlapping) p.id]);
-      case PlanOverlapAction.trim:
-        if (!canTrimOverlap(overlapping, startIso)) {
-          throw StateError(
-              'trim needs exactly one overlapping plan that starts before $startIso');
-        }
-        await _c.rpc('trim_training_plan', params: {
-          'p_plan_id': overlapping.single.id,
-          'p_new_end_date': dayBeforeIso(startIso),
-        });
-    }
-  }
-
-  /// Write a freshly generated plan — plan row, weeks, workouts. Active plans
-  /// the new window overlaps are resolved per [onOverlap] first; any others
-  /// stay active alongside it.
+  /// Write a freshly generated plan — plan row, weeks, workouts — through
+  /// `create_training_plan`, which resolves the active plans the new window
+  /// overlaps per [onOverlap] and inserts everything in one transaction
+  /// (decisions § 2050). Plans outside the window stay active beside it.
   Future<TrainingPlanRow> createPlan({
     required String name,
     required GoalEvent goalEvent,
@@ -802,7 +792,7 @@ class TrainingService extends ChangeNotifier {
     required int daysPerWeek,
     String? notes,
     required GeneratedPlan generated,
-    PlanOverlapAction onOverlap = PlanOverlapAction.replace,
+    PlanOverlapAction onOverlap = PlanOverlapAction.refuse,
   }) async {
     final uid = _uid;
     if (uid == null) {
@@ -846,90 +836,64 @@ class TrainingService extends ChangeNotifier {
       }
     }
 
-    await resolvePlanOverlap(
-      startIso: toIsoDate(startDate),
-      endIso: toIsoDate(generated.endDate),
-      action: onOverlap,
-    );
-
-    final Map<String, dynamic> inserted;
+    final Object? planId;
     try {
-      inserted = await _c
-          .from('training_plans')
-          .insert({
-            'user_id': uid,
-            'name': name.trim(),
-            'goal_event': goalEventDbValue(goalEvent),
-            'goal_distance_m': goalDistanceM,
-            'goal_time_seconds': goalTimeSec,
-            'start_date': toIsoDate(startDate),
-            'end_date': toIsoDate(generated.endDate),
-            'days_per_week': daysPerWeek,
-            'vdot': generated.vdot,
-            'current_5k_seconds': recent5kSec,
-            'status': 'active',
-            'source': 'generated',
-            // Match web's `notes?.trim() || null` — whitespace-only
-            // collapses to null so the column stays clean for
-            // `IS NOT NULL` filters. Mobile previously stored `""`.
-            'notes': _trimToNull(notes),
-          })
-          .select()
-          .single();
-    } catch (e) {
-      if (_isOverlapViolation(e)) throw const ActivePlanExistsError();
-      rethrow;
-    }
-    final plan = TrainingPlanRow.fromJson(inserted);
-
-    final weekRows = await _c
-        .from('plan_weeks')
-        .insert([
+      planId = await _c.rpc('create_training_plan', params: {
+        'p_plan': {
+          'name': name.trim(),
+          'goal_event': goalEventDbValue(goalEvent),
+          'goal_distance_m': goalDistanceM,
+          'goal_time_seconds': goalTimeSec,
+          'start_date': toIsoDate(startDate),
+          'end_date': toIsoDate(generated.endDate),
+          'days_per_week': daysPerWeek,
+          'vdot': generated.vdot,
+          'current_5k_seconds': recent5kSec,
+          // Match web's `notes?.trim() || null` — whitespace-only collapses
+          // to null so the column stays clean for `IS NOT NULL` filters.
+          'notes': _trimToNull(notes),
+        },
+        'p_weeks': [
           for (final w in generated.weeks)
             {
-              'plan_id': plan.id,
               'week_index': w.weekIndex,
               'phase': planPhaseDbValue(w.phase),
               'target_volume_m': w.targetVolumeM,
               'notes': w.notes,
+              'workouts': [
+                for (final wo in w.workouts)
+                  {
+                    'scheduled_date': toIsoDate(wo.scheduledDate),
+                    'kind': workoutKindDbValue(wo.kind),
+                    'target_distance_m': wo.targetDistanceM,
+                    'target_duration_seconds': wo.targetDurationSeconds,
+                    'target_pace_sec_per_km': wo.targetPaceSecPerKm,
+                    'target_pace_tolerance_sec': wo.targetPaceToleranceSec,
+                    'structure': wo.structure?.toJson(),
+                    'notes': wo.notes,
+                    'race_name': wo.kind == WorkoutKind.race
+                        ? TrainingService.trimToNull(wo.raceName)
+                        : null,
+                    'race_priority':
+                        wo.kind == WorkoutKind.race ? wo.racePriority : null,
+                  }
+              ],
             }
-        ])
-        .select();
-
-    final byIndex = <int, String>{};
-    for (final r in weekRows as List) {
-      final m = r as Map<String, dynamic>;
-      byIndex[m['week_index'] as int] = m['id'] as String;
+        ],
+        'p_overlap': onOverlap.name,
+      });
+    } catch (e) {
+      if (_isOverlapViolation(e)) throw const ActivePlanExistsError();
+      rethrow;
     }
 
-    final workoutPayload = <Map<String, dynamic>>[];
-    for (final w in generated.weeks) {
-      final weekId = byIndex[w.weekIndex]!;
-      for (final wo in w.workouts) {
-        workoutPayload.add({
-          'week_id': weekId,
-          'scheduled_date': toIsoDate(wo.scheduledDate),
-          'kind': workoutKindDbValue(wo.kind),
-          'target_distance_m': wo.targetDistanceM,
-          'target_duration_seconds': wo.targetDurationSeconds,
-          'target_pace_sec_per_km': wo.targetPaceSecPerKm,
-          'target_pace_tolerance_sec': wo.targetPaceToleranceSec,
-          'structure': wo.structure?.toJson(),
-          'notes': wo.notes,
-          'race_name': wo.kind == WorkoutKind.race
-              ? TrainingService.trimToNull(wo.raceName)
-              : null,
-          'race_priority':
-              wo.kind == WorkoutKind.race ? wo.racePriority : null,
-        });
-      }
-    }
-    if (workoutPayload.isNotEmpty) {
-      await _c.from('plan_workouts').insert(workoutPayload);
-    }
-
+    final row = await _c
+        .from('training_plans')
+        .select()
+        .eq('id', planId as String)
+        .single();
     notifyListeners();
-    return plan;
+    return TrainingPlanRow.fromJson(row);
   }
 
   Future<void> updateStatus(String id, String status) async {

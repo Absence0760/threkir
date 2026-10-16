@@ -52,12 +52,19 @@ class _FakeTraining extends TrainingService {
         .toList();
   }
 
+  PlanOverlapAction? clonedOverlap;
+
+  @override
+  Future<List<TrainingPlanRow>> fetchActivePlans() async => const [];
+
   @override
   Future<String> clonePublicPlan({
     required String templateId,
     DateTime? startDate,
+    PlanOverlapAction onOverlap = PlanOverlapAction.refuse,
   }) async {
     clonedTemplateId = templateId;
+    clonedOverlap = onOverlap;
     return 'cloned-plan-id';
   }
 
@@ -119,5 +126,8 @@ void main() {
     await tester.pump();
 
     expect(t.clonedTemplateId, 'tmpl-1');
+    // Nothing overlapped when the dialog looked, so the server is asked to
+    // refuse rather than replace a plan created since (decisions § 2050).
+    expect(t.clonedOverlap, PlanOverlapAction.refuse);
   });
 }

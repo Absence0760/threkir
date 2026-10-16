@@ -59,9 +59,10 @@ class _FakeTraining extends TrainingService {
 /// return quietly so no network is touched in the widget test.
 class _GateTraining extends TrainingService {
   final List<TrainingPlanRow> activePlans;
+  final bool lookupFails;
   bool createCalled = false;
   PlanOverlapAction? overlapAction;
-  _GateTraining({this.activePlans = const []});
+  _GateTraining({this.activePlans = const [], this.lookupFails = false});
 
   @override
   Future<TrainingGender> fetchViewerGender() async => null;
@@ -71,7 +72,10 @@ class _GateTraining extends TrainingService {
   Future<List<TrainingPlanRow>> fetchClubTemplates(String clubId) async =>
       const [];
   @override
-  Future<List<TrainingPlanRow>> fetchActivePlans() async => activePlans;
+  Future<List<TrainingPlanRow>> fetchActivePlans() async {
+    if (lookupFails) throw Exception('test: offline');
+    return activePlans;
+  }
 
   @override
   Future<TrainingPlanRow> createPlan({
@@ -84,7 +88,7 @@ class _GateTraining extends TrainingService {
     required int daysPerWeek,
     String? notes,
     required GeneratedPlan generated,
-    PlanOverlapAction onOverlap = PlanOverlapAction.replace,
+    PlanOverlapAction onOverlap = PlanOverlapAction.refuse,
   }) async {
     createCalled = true;
     overlapAction = onOverlap;
@@ -403,7 +407,27 @@ void main() {
       await tapCreate(tester);
       expect(find.text(title), findsNothing);
       expect(training.createCalled, isTrue);
-      expect(training.overlapAction, PlanOverlapAction.replace);
+      // Nothing overlapped when the gate looked, so a plan created since is
+      // refused by the server rather than replaced unasked (decisions § 2050).
+      expect(training.overlapAction, PlanOverlapAction.refuse);
+    });
+
+    testWidgets('a failed active-plan lookup shows an error and creates nothing',
+        (tester) async {
+      // Reason: the gate used to fall through to replace when it could not
+      // read the active plans, so an offline blip completed plans unasked.
+      final training = _GateTraining(lookupFails: true);
+      await pumpGate(tester, training);
+      await tapCreate(tester);
+      expect(find.text(title), findsNothing);
+      expect(
+          find.text(
+              "Couldn't check your active plans for these dates. Check your connection and try again."),
+          findsOneWidget);
+      expect(training.createCalled, isFalse);
+      // Let the banner's dismiss timer run out so no timer is left pending.
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
     });
 
     testWidgets('no active plan creates without a confirm dialog',

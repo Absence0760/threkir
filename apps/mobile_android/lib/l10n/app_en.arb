@@ -8452,6 +8452,10 @@
   "@planImportCreateFailed": {
     "description": "Error in the import sheet when creating the imported plan fails"
   },
+  "planOverlapLookupFailed": "Couldn't check your active plans for these dates. Check your connection and try again.",
+  "@planOverlapLookupFailed": {
+    "description": "Error when creating or cloning a plan cannot first read the runner's active plans to check for overlapping dates; nothing is created"
+  },
   "planNewStarterC25k": "Couch to 5K (beginner walk-run)",
   "@planNewStarterC25k": {
     "description": "Built-in starter plan name"

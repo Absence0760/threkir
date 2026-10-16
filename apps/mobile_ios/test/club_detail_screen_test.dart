@@ -314,9 +314,13 @@ class _AdoptTraining extends TrainingService {
   ];
 
   @override
+  Future<List<TrainingPlanRow>> fetchActivePlans() async => const [];
+
+  @override
   Future<String> clonePlanTemplate({
     required String templateId,
     DateTime? startDate,
+    PlanOverlapAction onOverlap = PlanOverlapAction.refuse,
   }) async {
     cloneCalls++;
     await cloneGate.future;

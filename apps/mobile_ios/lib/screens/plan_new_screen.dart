@@ -491,21 +491,11 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
     if (action == null || !mounted) return;
     setState(() => _cloning = true);
     try {
-      // The clone RPC replaces whatever it overlaps itself, so only a trim
-      // needs a write of its own first.
-      if (action == PlanOverlapAction.trim) {
-        await widget.training
-            .resolvePlanOverlap(
-              startIso: toIsoDate(_startDate),
-              endIso: clonedPlanEndIso(picked.template, _startDate),
-              action: action,
-            )
-            .timeout(kBackendLoadTimeout);
-      }
       final newId = await widget.training
           .clonePlanTemplate(
             templateId: picked.template.id,
             startDate: _startDate,
+            onOverlap: action,
           )
           .timeout(kBackendLoadTimeout);
       if (!mounted) return;

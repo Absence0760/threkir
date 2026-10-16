@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -55,10 +57,18 @@ class _Training extends TrainingService {
   })?
   created;
 
+  /// Holds the overlap lookup open until completed, when set.
+  Completer<void>? lookupGate;
+  int lookupCalls = 0;
+
   _Training({this.activePlans = const [], this.createError});
 
   @override
-  Future<List<TrainingPlanRow>> fetchActivePlans() async => activePlans;
+  Future<List<TrainingPlanRow>> fetchActivePlans() async {
+    lookupCalls++;
+    await lookupGate?.future;
+    return activePlans;
+  }
 
   @override
   Future<TrainingPlanRow> createPlan({
@@ -71,7 +81,7 @@ class _Training extends TrainingService {
     required int daysPerWeek,
     String? notes,
     required GeneratedPlan generated,
-    PlanOverlapAction onOverlap = PlanOverlapAction.replace,
+    PlanOverlapAction onOverlap = PlanOverlapAction.refuse,
   }) async {
     createCalls++;
     if (createError != null) throw createError!;
@@ -208,7 +218,10 @@ void main() {
     expect(c.goalTimeSec, 11 * 3600);
     expect(c.startDate, DateTime(2027, 3, 28));
     expect(c.daysPerWeek, 3);
-    expect(c.onOverlap, PlanOverlapAction.replace);
+    // Nothing overlaps, so the sheet asks nothing and tells the server to
+    // refuse rather than change a plan this one turns out to overlap.
+    expect(c.onOverlap, PlanOverlapAction.refuse);
+    expect(find.byKey(const Key('planOverlapReplace')), findsNothing);
     final races = [
       for (final w in c.generated.weeks)
         for (final wo in w.workouts)
@@ -243,6 +256,76 @@ void main() {
     expect(training.createCalls, 0);
     expect(result.closed, isFalse);
     expect(find.byKey(const Key('planImportPreview')), findsOneWidget);
+  });
+
+  for (final (choice, key, action) in const [
+    ('Replace', 'planOverlapReplace', PlanOverlapAction.replace),
+    ('Trim', 'planOverlapTrim', PlanOverlapAction.trim),
+  ]) {
+    testWidgets('an overlapping plan sends the $choice choice and closes', (
+      tester,
+    ) async {
+      final training = _Training(
+        activePlans: [
+          _row(
+            'old',
+            'Marathon block',
+            DateTime(2027, 1, 1),
+            DateTime(2027, 4, 1),
+          ),
+        ],
+      );
+      final result = await _open(tester, training);
+      await _paste(tester, _plan);
+      await _create(tester);
+      await tester.tap(find.byKey(Key(key)));
+      await tester.pumpAndSettle();
+      expect(training.createCalls, 1);
+      expect(training.created!.onOverlap, action);
+      expect(result.closed, isTrue);
+      expect(result.planId, 'new-plan');
+    });
+  }
+
+  testWidgets('a second tap during the overlap lookup starts nothing', (
+    tester,
+  ) async {
+    final training = _Training()..lookupGate = Completer<void>();
+    final result = await _open(tester, training);
+    await _paste(tester, _plan);
+    final create = find.byKey(const Key('planImportCreate'));
+    await tester.ensureVisible(create);
+    await tester.tap(create);
+    await tester.pump();
+    await tester.tap(create, warnIfMissed: false);
+    await tester.pump();
+    expect(training.lookupCalls, 1);
+
+    training.lookupGate!.complete();
+    await tester.pumpAndSettle();
+    expect(training.createCalls, 1);
+    expect(result.closed, isTrue);
+  });
+
+  testWidgets('keeping the current plan leaves Create usable again', (
+    tester,
+  ) async {
+    final training = _Training(
+      activePlans: [
+        _row('old', 'Marathon block', DateTime(2027, 1, 1), DateTime(2027, 4, 1)),
+      ],
+    );
+    await _open(tester, training);
+    await _paste(tester, _plan);
+    await _create(tester);
+    await tester.tap(find.text('Keep current').last);
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<FilledButton>(find.byKey(const Key('planImportCreate')))
+          .onPressed,
+      isNotNull,
+    );
   });
 
   testWidgets('a failed create stays open and says so', (tester) async {

@@ -48,6 +48,7 @@ class _PlanImportSheetState extends State<PlanImportSheet> {
   String? _parseError;
   String? _createError;
   bool _creating = false;
+  bool _checkingOverlap = false;
 
   @override
   void dispose() {
@@ -74,19 +75,26 @@ class _PlanImportSheetState extends State<PlanImportSheet> {
 
   Future<void> _create() async {
     final parsed = _parsed;
-    if (parsed == null || _creating) return;
+    if (parsed == null || _creating || _checkingOverlap) return;
     final l10n = AppLocalizations.of(context);
+    // The overlap lookup is a network read; Create stays disabled across it
+    // so a second tap cannot start a second create.
+    setState(() => _checkingOverlap = true);
     final action = await confirmPlanOverlap(
       context,
       widget.training,
       startIso: parsed.startDate,
       endIso: toIsoDate(parsed.generated.endDate),
     );
-    if (action == null || !mounted) return;
+    if (!mounted) return;
     setState(() {
-      _creating = true;
-      _createError = null;
+      _checkingOverlap = false;
+      if (action != null) {
+        _creating = true;
+        _createError = null;
+      }
     });
+    if (action == null) return;
     try {
       final plan = await widget.training
           .createPlan(
@@ -189,7 +197,7 @@ class _PlanImportSheetState extends State<PlanImportSheet> {
               ],
               FilledButton(
                 key: const Key('planImportCreate'),
-                onPressed: _creating ? null : _create,
+                onPressed: _creating || _checkingOverlap ? null : _create,
                 child: _creating
                     ? const SizedBox(
                         width: 18,

@@ -59,7 +59,7 @@ test('buildContext reuses the handler-fetched profile row (no duplicate get_my_p
 	);
 	assert.match(
 		SRC,
-		/export async function buildContext\([\s\S]*?profileRow:\s*CoachProfileRow\s*\|\s*null,?\s*\):/,
+		/export async function buildContext\([^)]*?\bprofileRow:\s*CoachProfileRow\s*\|\s*null\s*[,)]/,
 		'buildContext must accept the profile row as a parameter',
 	);
 });

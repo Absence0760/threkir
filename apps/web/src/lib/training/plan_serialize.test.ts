@@ -276,3 +276,37 @@ test('parsePlanMarkdown rejects race fields on a non-race row and a bad priority
 	assert.throws(() => parsePlanMarkdown(table('| 1 | 2027-02-06 | race | 5 km | parkrun | D |  |')), /priority "D"/);
 	assert.throws(() => parsePlanMarkdown(table('| 1 | 2027-02-06 | race | 5 km | parkrun |  | fast |')), /goal time "fast"/);
 });
+
+test('a piped race name, a priority-only race, a goal-only race and the plan goal time survive the round-trip', () => {
+	const plan: ExportPlan = {
+		name: 'Spring double',
+		goalEvent: 'distance_half',
+		goalDistanceM: 21_097.5,
+		goalTimeSec: 1 * 3600 + 35 * 60 + 20,
+		startDate: '2027-03-07',
+		workouts: [
+			{ week_index: 0, scheduled_date: '2027-03-07', kind: 'race', target_distance_m: 5000, target_pace_sec_per_km: null, notes: null, target_duration_seconds: null, race_name: null, race_priority: 'C' },
+			{ week_index: 1, scheduled_date: '2027-03-14', kind: 'race', target_distance_m: 10_000, target_pace_sec_per_km: null, notes: null, target_duration_seconds: 42 * 60 + 5, race_name: null, race_priority: null },
+			{ week_index: 2, scheduled_date: '2027-03-21', kind: 'race', target_distance_m: 21_100, target_pace_sec_per_km: null, notes: null, target_duration_seconds: null, race_name: 'City | Half', race_priority: 'A' },
+		],
+	};
+	for (const parsed of [parsePlanMarkdown(planToMarkdown(plan)), parsePlanJson(planToJson(plan))]) {
+		assert.equal(parsed.goalTimeSec, plan.goalTimeSec);
+		assert.deepEqual(
+			flattenRaces(parsed).map((r) => [r.race_name, r.race_priority, r.target_duration_seconds]),
+			[
+				[null, 'C', null],
+				[null, null, 42 * 60 + 5],
+				['City / Half', 'A', null],
+			],
+		);
+	}
+});
+
+test('parsePlanMarkdown keeps a 120-character race name and rejects a 121-character one', () => {
+	const table = (race: string) =>
+		['| Week | Date | Type | Distance | Race |', '| --- | --- | --- | --- | --- |', `| 1 | 2027-02-06 | race | 5 km | ${race} |`].join('\n');
+	const longest = 'R'.repeat(120);
+	assert.equal(flattenRaces(parsePlanMarkdown(table(longest)))[0].race_name, longest);
+	assert.throws(() => parsePlanMarkdown(table(longest + 'R')), /longer than 120 characters/);
+});

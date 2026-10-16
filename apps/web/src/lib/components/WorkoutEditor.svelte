@@ -10,6 +10,7 @@
 	} from '#lib/training/training.ts';
 	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
 	import { RACE_GOAL_MAX_HOURS, RACE_PRIORITIES, type RacePriority } from '#lib/training/plan_races.ts';
+	import { raceGoalInputSeconds } from '#lib/training/race_goal_input.ts';
 	import { getUnit } from '#lib/format/units.svelte.ts';
 	import { paceParts } from '#lib/format/pace_format.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
@@ -307,8 +308,13 @@
 	}
 
 	async function save() {
-		busy = true;
 		error = null;
+		const goal = raceGoalInputSeconds(goalHours, goalMin, goalSec);
+		if (kind === 'race' && !goal.ok) {
+			error = t('workoutEditor.raceGoalInvalid', { max: RACE_GOAL_MAX_HOURS });
+			return;
+		}
+		busy = true;
 		try {
 			const paceStartUnit =
 				paceMin != null ? paceMin * 60 + (paceSec ?? 0) : null;
@@ -323,14 +329,13 @@
 			const isUnstructured = (unstructuredKinds as readonly string[]).includes(kind);
 			const nextStructure = isUnstructured ? null : buildStructure();
 			const isRace = kind === 'race';
-			const goalTotal = (goalHours ?? 0) * 3600 + (goalMin ?? 0) * 60 + (goalSec ?? 0);
 			const raceFields = isRace
 				? {
 						race_name: raceName.trim() || null,
 						race_priority: (RACE_PRIORITIES as readonly string[]).includes(racePriority)
 							? (racePriority as RacePriority)
 							: null,
-						target_duration_seconds: goalTotal > 0 ? goalTotal : null
+						target_duration_seconds: goal.ok ? goal.seconds : null
 					}
 				: {
 						race_name: null,

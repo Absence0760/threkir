@@ -396,6 +396,45 @@ test.describe('plan chaining', () => {
 		expect(wo).toEqual({ kind: 'easy', race_name: null, race_priority: null });
 	});
 
+	test('a race goal time past the editor\'s range is refused and leaves the workout as it was', async ({ page }) => {
+		const { weekId } = await plantPlan({
+			name: 'e2e chain goal range',
+			startOffset: -7,
+			endOffset: 40,
+			workouts: [
+				{
+					scheduled_date: browserDate(10),
+					kind: 'race',
+					target_distance_m: 160_000,
+					target_duration_seconds: 30 * 3600,
+					race_name: 'e2e chain hundred',
+					race_priority: 'B'
+				}
+			]
+		});
+		const plan = await readRow(
+			'the goal-range plan week',
+			getAdminClient().from('plan_weeks').select('plan_id').eq('id', weekId).single()
+		);
+
+		await page.goto(`/plans/${plan.plan_id}`);
+		const raceDay = page.locator('.weeks .week .day .day-link', { hasText: /Race|e2e chain hundred/ }).first();
+		await expect(raceDay).toBeVisible({ timeout: 10_000 });
+		await raceDay.click();
+		const modal = page.locator('.modal');
+		await expect(modal).toBeVisible({ timeout: 5_000 });
+		await modal.getByLabel('Goal time hours').fill('1000');
+		await modal.getByRole('button', { name: /^Save/ }).click();
+		await expect(modal.locator('.error')).toContainText('up to 999 hours');
+		await expect(modal).toBeVisible();
+
+		const wo = await readRow(
+			'the race workout after the refused save',
+			getAdminClient().from('plan_workouts').select('target_duration_seconds').eq('week_id', weekId).single()
+		);
+		expect(wo.target_duration_seconds).toBe(30 * 3600);
+	});
+
 	test('a plan created after the wizard opened is named, not silently replaced', async ({ page }) => {
 		await plantBasePlan(20);
 		const start = sundayOnOrAfter(28);

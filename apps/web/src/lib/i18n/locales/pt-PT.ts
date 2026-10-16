@@ -4091,6 +4091,7 @@ export const messages = {
 	"workoutEditor.raceGoalMinutes": "Minutos do tempo-alvo",
 	"workoutEditor.raceGoalSeconds": "Segundos do tempo-alvo",
 	"workoutEditor.raceGoalHint": "Opcional. Deixe em branco no último dia do plano para usar o tempo-alvo do plano.",
+	"workoutEditor.raceGoalInvalid": "Introduza um tempo-alvo até {max} horas, com minutos e segundos abaixo de 60.",
 	"workoutEditor.hours": "h",
 	"workoutKind.easy": "Leve",
 	"workoutKind.long": "Longão",

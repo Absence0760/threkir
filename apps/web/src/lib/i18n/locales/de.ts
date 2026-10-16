@@ -4092,6 +4092,7 @@ export const messages = {
 	"workoutEditor.raceGoalMinutes": "Zielzeit: Minuten",
 	"workoutEditor.raceGoalSeconds": "Zielzeit: Sekunden",
 	"workoutEditor.raceGoalHint": "Optional. Am letzten Tag des Plans leer lassen, um die Zielzeit des Plans zu verwenden.",
+	"workoutEditor.raceGoalInvalid": "Gib eine Zielzeit von bis zu {max} Stunden ein, Minuten und Sekunden jeweils unter 60.",
 	"workoutEditor.hours": "h",
 	"workoutKind.easy": "Locker",
 	"workoutKind.long": "Langer Lauf",

@@ -4087,6 +4087,7 @@ export const messages = {
 	"workoutEditor.raceGoalMinutes": "目標タイムの分",
 	"workoutEditor.raceGoalSeconds": "目標タイムの秒",
 	"workoutEditor.raceGoalHint": "任意。プランの最終日で空欄の場合は、プランの目標タイムを使います。",
+	"workoutEditor.raceGoalInvalid": "目標タイムは{max}時間以内で、分と秒は60未満で入力してください。",
 	"workoutEditor.hours": "時",
 	"workoutKind.easy": "イージー",
 	"workoutKind.long": "ロング走",

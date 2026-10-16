@@ -4110,6 +4110,7 @@ export const en = {
 	"workoutEditor.raceGoalMinutes": "Goal time minutes",
 	"workoutEditor.raceGoalSeconds": "Goal time seconds",
 	"workoutEditor.raceGoalHint": "Optional. Leave blank on the plan's last day to use the plan's goal time.",
+	"workoutEditor.raceGoalInvalid": "Enter a goal time up to {max} hours, with minutes and seconds under 60.",
 	"workoutEditor.hours": "h",
 	"workoutKind.easy": "Easy",
 	"workoutKind.long": "Long run",

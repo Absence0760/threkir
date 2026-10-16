@@ -4092,6 +4092,7 @@ export const messages = {
 	"workoutEditor.raceGoalMinutes": "Minutos del tiempo objetivo",
 	"workoutEditor.raceGoalSeconds": "Segundos del tiempo objetivo",
 	"workoutEditor.raceGoalHint": "Opcional. Déjalo en blanco el último día del plan para usar el tiempo objetivo del plan.",
+	"workoutEditor.raceGoalInvalid": "Introduce un tiempo objetivo de hasta {max} horas, con minutos y segundos por debajo de 60.",
 	"workoutEditor.hours": "h",
 	"workoutKind.easy": "Suave",
 	"workoutKind.long": "Tirada larga",

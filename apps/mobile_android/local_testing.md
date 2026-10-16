@@ -458,6 +458,10 @@ configure time — and sign in: a `device_tokens` row should appear for your
 user. Receiving is only half; the send side is the Go worker's FCM credentials.
 See [`docs/features/native_push.md` § Operator provisioning](../../docs/features/native_push.md#operator-provisioning-the-credential-gate).
 
+### Season planning
+
+Train → New plan → **Plan a season**. Add races with **Add a race** (name, race day, distance, priority, optional goal time `h:mm:ss`), set days per week, then **Confirm races and preview plans**: one plan per A race, each recovery gap, and any B/C race that falls in no plan. **Create** writes the plans in order and opens the first; the overlap prompt appears only when the first plan overlaps an active one. The **Describe your season** card shows only when the deploy's AI plan capability is on; any failure leaves a blank race to fill in. A season creates several active plans, so use a throwaway account or delete them afterwards.
+
 ### Not yet implemented
 
 A few items remain out of scope for now:

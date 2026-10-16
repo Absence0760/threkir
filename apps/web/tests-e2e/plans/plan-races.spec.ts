@@ -42,7 +42,9 @@ async function importPlan(page: Page, md: string): Promise<void> {
 	await page.waitForURL(/\/plans\/[0-9a-f-]+$/, { timeout: 15_000 });
 }
 
-async function raceWorkouts(): Promise<{ scheduled_date: string; kind: string; target_distance_m: number | null }[]> {
+async function raceWorkouts(): Promise<
+	{ scheduled_date: string; kind: string; target_distance_m: number | null; week_volume_m: number | null }[]
+> {
 	const admin = getAdminClient();
 	const { data: plan } = await admin
 		.from('training_plans')
@@ -50,14 +52,35 @@ async function raceWorkouts(): Promise<{ scheduled_date: string; kind: string; t
 		.eq('user_id', USER_B.id)
 		.eq('name', PLAN_NAME)
 		.single();
-	const { data: weeks } = await admin.from('plan_weeks').select('id').eq('plan_id', plan!.id);
+	const { data: weeks } = await admin.from('plan_weeks').select('id, target_volume_m').eq('plan_id', plan!.id);
+	const volume = new Map((weeks ?? []).map((w) => [w.id, w.target_volume_m]));
 	const { data } = await admin
 		.from('plan_workouts')
-		.select('scheduled_date, kind, target_distance_m')
+		.select('scheduled_date, kind, target_distance_m, week_id')
 		.in('week_id', (weeks ?? []).map((w) => w.id))
 		.order('scheduled_date');
-	return data ?? [];
+	return (data ?? []).map((w) => ({
+		scheduled_date: w.scheduled_date,
+		kind: w.kind,
+		target_distance_m: w.target_distance_m,
+		week_volume_m: volume.get(w.week_id) ?? null
+	}));
 }
+
+const TAPER_PLAN_MD = () =>
+	[
+		`# ${PLAN_NAME}`,
+		'- Goal event: custom',
+		'- Goal distance: 90.00 km',
+		`- Start date: ${browserDate(0)}`,
+		'',
+		'| Week | Date | Type | Distance | Pace | Notes | Race | Priority | Goal |',
+		'| --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+		`| 1 | ${browserDate(5)} | interval | 10.00 km | | |  |  |  |`,
+		`| 2 | ${browserDate(8)} | tempo | 12.00 km | | |  |  |  |`,
+		`| 2 | ${browserDate(10)} | race | 56.00 km | | | ${B_RACE} | B |  |`,
+		`| 6 | ${browserDate(40)} | race | 90.00 km | | | ${A_RACE} | A |  |`,
+	].join('\n');
 
 test.describe('races in a plan', () => {
 	test.use({ storageState: USER_B.storageStatePath });
@@ -143,20 +166,7 @@ test.describe('races in a plan', () => {
 	});
 
 	test('Adjust plan proposes a taper before a B race and applies it', async ({ page }) => {
-		const md = [
-			`# ${PLAN_NAME}`,
-			'- Goal event: custom',
-			'- Goal distance: 90.00 km',
-			`- Start date: ${browserDate(0)}`,
-			'',
-			'| Week | Date | Type | Distance | Pace | Notes | Race | Priority | Goal |',
-			'| --- | --- | --- | --- | --- | --- | --- | --- | --- |',
-			`| 1 | ${browserDate(5)} | interval | 10.00 km | | |  |  |  |`,
-			`| 2 | ${browserDate(8)} | tempo | 12.00 km | | |  |  |  |`,
-			`| 2 | ${browserDate(10)} | race | 56.00 km | | | ${B_RACE} | B |  |`,
-			`| 6 | ${browserDate(40)} | race | 90.00 km | | | ${A_RACE} | A |  |`,
-		].join('\n');
-		await importPlan(page, md);
+		await importPlan(page, TAPER_PLAN_MD());
 
 		await page.getByRole('button', { name: 'Adjust plan' }).click();
 		const dialog = page.getByTestId('adjust-plan-dialog');
@@ -176,5 +186,32 @@ test.describe('races in a plan', () => {
 		expect(byDate.get(browserDate(5))).toMatchObject({ kind: 'easy', target_distance_m: 6500 });
 		expect(byDate.get(browserDate(8))).toMatchObject({ kind: 'easy', target_distance_m: 5000 });
 		expect(byDate.get(browserDate(10))).toMatchObject({ kind: 'race', target_distance_m: 56000 });
+		// apply_workout_adjustments restates each touched week from what it holds.
+		expect(byDate.get(browserDate(5))?.week_volume_m).toBe(6500);
+		expect(byDate.get(browserDate(8))?.week_volume_m).toBe(61000);
+	});
+
+	test('a failed taper apply changes nothing and reloads the plan', async ({ page }) => {
+		await importPlan(page, TAPER_PLAN_MD());
+		const before = await raceWorkouts();
+
+		await page.route('**/rest/v1/rpc/apply_workout_adjustments*', (route) =>
+			route.fulfill({
+				status: 500,
+				contentType: 'application/json',
+				body: JSON.stringify({ message: 'simulated apply failure' })
+			})
+		);
+		await page.getByRole('button', { name: 'Adjust plan' }).click();
+		await page.getByTestId('adjust-plan-dialog').getByTestId('race-taper-btn').click();
+		const preview = page.getByTestId('race-taper-preview');
+		await expect(preview).toBeVisible();
+
+		const reload = page.waitForRequest((req) => req.method() === 'GET' && /\/rest\/v1\/plan_workouts/.test(req.url()));
+		await preview.getByRole('button', { name: 'Apply' }).click();
+		await expect(page.locator('.toast.toast-error')).toContainText("Couldn't update the plan", { timeout: 5_000 });
+		await reload;
+
+		expect(await raceWorkouts()).toEqual(before);
 	});
 });

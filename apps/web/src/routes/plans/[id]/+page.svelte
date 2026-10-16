@@ -12,6 +12,7 @@
 		publishPlanToLibrary,
 		unpublishFromLibrary,
 		fetchMyPublishedPlans,
+		applyWorkoutAdjustments,
 		updatePlanWorkout,
 		updatePlanWeek,
 		duplicatePlanWeek,
@@ -403,31 +404,25 @@
 		adjustButton?.focus();
 	}
 
-	/// Writes each proposed patch, then restates every touched week's volume
-	/// from the patched distances so the week header stays honest (the same
-	/// recompute applyCycleAdjustment does).
+	/// Writes every proposed patch and restates each touched week's volume in
+	/// one transaction (`apply_workout_adjustments`, decisions § 2060), so a
+	/// failure changes nothing. The page reloads either way, so it never shows
+	/// a state the server does not hold.
 	async function applyRaceTaper(): Promise<void> {
-		if (!taperPreview || bulkBusy) return;
+		if (!plan || !taperPreview || bulkBusy) return;
 		bulkBusy = true;
 		try {
 			const changes = taperPreview;
-			const byWorkout = new Map(changes.map((c) => [c.workoutId, c]));
-			await Promise.all(changes.map((c) => updatePlanWorkout(c.workoutId, raceTaperPatch(c))));
-			for (const wk of weeks) {
-				const wkWorkouts = workoutsByWeek.get(wk.id) ?? [];
-				if (!wkWorkouts.some((x) => byWorkout.has(x.id))) continue;
-				const vol = wkWorkouts.reduce((sum, x) => {
-					if (x.kind === 'rest') return sum;
-					const c = byWorkout.get(x.id);
-					return sum + ((c ? c.toMetres : x.target_distance_m) ?? 0);
-				}, 0);
-				await updatePlanWeek(wk.id, { target_volume_m: vol });
-			}
+			await applyWorkoutAdjustments(
+				plan.id,
+				changes.map((c) => ({ id: c.workoutId, ...raceTaperPatch(c) }))
+			);
 			showToast(m('planDetail.replanApplied', { n: changes.length }));
 			taperPreview = null;
 			await load();
 		} catch (e) {
 			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+			await load();
 		} finally {
 			bulkBusy = false;
 		}
@@ -566,9 +561,9 @@
 
 	/// Apply the cycle/pregnancy adjustment to the plan's FUTURE workouts only
 	/// (today onward) — the past is history, don't rewrite it. Each workout
-	/// gets its per-date patch (`cyclePlanWorkoutPatch`), then every touched
-	/// week's stated volume is recomputed from the patched distances so the
-	/// header stays honest. Orchestrated client-side like markWeekRecovery.
+	/// gets its per-date patch (`cyclePlanWorkoutPatch`), written with every
+	/// touched week's restated volume in one transaction
+	/// (`apply_workout_adjustments`, decisions § 2060).
 	async function applyCycleAdjustment(): Promise<void> {
 		if (!plan || !isOwner || bulkBusy || !cyclePlanConfig) return;
 		bulkBusy = true;
@@ -587,28 +582,15 @@
 				showToast(m('planDetail.cycleAdjustNone'));
 				return;
 			}
-			await Promise.all(
-				[...patchByWorkout].map(([wid, patch]) => updatePlanWorkout(wid, patch!)),
+			await applyWorkoutAdjustments(
+				plan.id,
+				[...patchByWorkout].map(([wid, patch]) => ({ id: wid, ...patch! })),
 			);
-			// Recompute the volume of every week that had a workout patched.
-			for (const wk of weeks) {
-				const wkWorkouts = workoutsByWeek.get(wk.id) ?? [];
-				if (!wkWorkouts.some((x) => patchByWorkout.has(x.id))) continue;
-				const vol = wkWorkouts.reduce((s, x) => {
-					if (x.kind === 'rest') return s;
-					const p = patchByWorkout.get(x.id);
-					const d =
-						p && 'target_distance_m' in p
-							? (p.target_distance_m ?? 0)
-							: (x.target_distance_m ?? 0);
-					return s + d;
-				}, 0);
-				await updatePlanWeek(wk.id, { target_volume_m: vol });
-			}
 			showToast(m('planDetail.cycleAdjustDone'));
 			await load();
 		} catch (e) {
 			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+			await load();
 		} finally {
 			bulkBusy = false;
 		}

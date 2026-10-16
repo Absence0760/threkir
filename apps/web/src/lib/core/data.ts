@@ -6484,6 +6484,46 @@ export async function updatePlanWorkout(
 	if (error) throw dbError(error);
 }
 
+/// One workout's patch for `applyWorkoutAdjustments`. A key present is
+/// written (null clears the column); a key absent leaves it alone.
+export type WorkoutAdjustment = { id: string } & Partial<{
+	kind: string;
+	target_distance_m: number | null;
+	target_duration_seconds: number | null;
+	target_pace_sec_per_km: number | null;
+	target_pace_tolerance_sec: number | null;
+	pace_zone: string | null;
+	structure: JsonObject | null;
+	notes: string | null;
+	race_name: string | null;
+	race_priority: RacePriority | null;
+}>;
+
+/// Write a batch of workout patches to one plan and restate the volume of
+/// every week they touch, all in one transaction (`apply_workout_adjustments`,
+/// decisions § 2060): either every workout changes or none does. The patches
+/// are normalised as `updatePlanWorkout` normalises one.
+export async function applyWorkoutAdjustments(
+	planId: string,
+	changes: WorkoutAdjustment[]
+): Promise<void> {
+	const normalised = changes.map((c) => {
+		const out: WorkoutAdjustment = { ...c };
+		if ('notes' in out) out.notes = normalisePlanWorkoutNotes(out.notes);
+		if ('race_name' in out) out.race_name = out.race_name?.trim() || null;
+		if (out.kind !== undefined && out.kind !== 'race') {
+			out.race_name = null;
+			out.race_priority = null;
+		}
+		return out;
+	});
+	const { error } = await supabase.rpc('apply_workout_adjustments', {
+		p_plan_id: planId,
+		p_changes: normalised
+	});
+	if (error) throw dbError(error);
+}
+
 export async function updatePlanWeek(
 	id: string,
 	patch: Partial<{ phase: PlanPhase; target_volume_m: number | null; notes: string | null }>

@@ -245,6 +245,7 @@ const VERSION_INCLUDE = [
 	'appStoreReviewDetail', 'appStoreVersionSubmission', 'appClipDefaultExperience', 'appStoreVersionExperiments',
 	'appStoreVersionExperimentsV2', 'alternativeDistributionPackage',
 ];
+/** @type {Record<string, 'string' | 'boolean' | string[]>} */
 const VERSION_ATTRIBUTES = {
 	versionString: 'string',
 	copyright: 'string',

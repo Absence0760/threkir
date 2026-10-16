@@ -7,6 +7,7 @@ import 'training.dart' show TrainingGender;
 
 import 'health_consent.dart';
 import 'nutrition_targets.dart' show ageFromDob;
+import 'plan_current.dart';
 import 'plan_ramp.dart';
 import 'plan_week.dart';
 import 'relink_candidates.dart';
@@ -22,6 +23,10 @@ class ActivePlanOverview {
   final int completionPct;
   final int currentWeekIndex;
 
+  /// The next active plan queued after [plan], if any — the chained block a
+  /// runner sees as "Up next".
+  final TrainingPlanRow? upcomingPlan;
+
   const ActivePlanOverview({
     required this.plan,
     required this.weeks,
@@ -29,8 +34,58 @@ class ActivePlanOverview {
     required this.todayWorkout,
     required this.completionPct,
     required this.currentWeekIndex,
+    this.upcomingPlan,
   });
 }
+
+/// What creating a plan does to the active plans its window overlaps.
+/// [replace] marks them completed; [trim] ends the one plan that started
+/// before the new plan on the day before it starts (`trim_training_plan`).
+enum PlanOverlapAction { replace, trim }
+
+String _planStart(TrainingPlanRow p) => toIsoDate(p.startDate);
+String _planEnd(TrainingPlanRow p) => toIsoDate(p.endDate);
+
+/// The current plan among [activePlans] (see `plan_current.dart`), falling
+/// back to the queued one when nothing has started yet. Null with no plans.
+TrainingPlanRow? currentOrUpcomingPlan(
+    List<TrainingPlanRow> activePlans, String todayIso) {
+  final pick = pickCurrentPlan(activePlans, todayIso,
+      start: _planStart, end: _planEnd);
+  return pick.current ?? pick.upcoming;
+}
+
+/// The active plans a new `[startIso, endIso]` window overlaps.
+List<TrainingPlanRow> overlappingActivePlans(
+        List<TrainingPlanRow> activePlans, String startIso, String endIso) =>
+    overlappingPlans(activePlans, startIso, endIso,
+        start: _planStart, end: _planEnd);
+
+/// Whether [PlanOverlapAction.trim] can resolve [overlapping] for a plan
+/// starting [newStartIso]: active plans never overlap each other, so at most
+/// one can start before the new plan, and it is trimmable only when it is the
+/// sole overlap.
+bool canTrimOverlap(List<TrainingPlanRow> overlapping, String newStartIso) =>
+    overlapping.length == 1 &&
+    _planStart(overlapping.single).compareTo(newStartIso) < 0;
+
+/// The ISO day before [iso] — the end date a trimmed plan takes.
+String dayBeforeIso(String iso) {
+  final d = parseIsoDate(iso);
+  return toIsoDate(DateTime(d.year, d.month, d.day - 1));
+}
+
+/// The end date a clone of [template] takes when it starts on [start]: the
+/// clone RPCs shift every date by the same whole-day offset.
+String clonedPlanEndIso(TrainingPlanRow template, DateTime start) {
+  int epochDay(DateTime d) =>
+      DateTime.utc(d.year, d.month, d.day).millisecondsSinceEpoch ~/ 86400000;
+  final span = epochDay(template.endDate) - epochDay(template.startDate);
+  return toIsoDate(DateTime(start.year, start.month, start.day + span));
+}
+
+bool _isOverlapViolation(Object e) =>
+    e is PostgrestException && e.code == '23P01';
 
 /// A public-library plan paired with its author's public handle. The
 /// browse + preview surfaces show the handle but never any other author
@@ -42,8 +97,10 @@ class PublicPlanLibraryEntry {
   const PublicPlanLibraryEntry({required this.plan, required this.authorHandle});
 }
 
-/// Thrown by [TrainingService.resumePlan] when another plan already holds the
-/// viewer's one active slot. Web twin: `ActivePlanExistsError` in
+/// Thrown when an active plan already covers some of the dates a write would
+/// activate — [TrainingService.resumePlan] up front, and either write when the
+/// `training_plans_active_no_overlap` constraint rejects it (23P01) after a
+/// concurrent change. Web twin: `ActivePlanExistsError` in
 /// `apps/web/src/lib/core/data.ts`.
 class ActivePlanExistsError implements Exception {
   const ActivePlanExistsError();
@@ -567,20 +624,38 @@ class TrainingService extends ChangeNotifier {
     return row == null ? null : PlanWorkoutRow.fromJson(row);
   }
 
-  Future<ActivePlanOverview?> fetchActiveOverview() async {
+  /// The viewer's active, non-template plans. Several can be active at once
+  /// when their date windows don't overlap.
+  Future<List<TrainingPlanRow>> fetchActivePlans() async {
     final uid = _uid;
-    if (uid == null) return null;
-    final planRow = await _c
+    if (uid == null) return const [];
+    final rows = await _c
         .from('training_plans')
         .select()
         .eq('user_id', uid)
         .eq('status', 'active')
-        .maybeSingle();
-    if (planRow == null) return null;
-    final plan = TrainingPlanRow.fromJson(planRow);
+        .eq('is_template', false);
+    return (rows as List)
+        .cast<Map<String, dynamic>>()
+        .map(TrainingPlanRow.fromJson)
+        .toList();
+  }
+
+  /// The overview of the current plan — the one covering today, else the
+  /// latest-ended — or, before any has started, of the queued one.
+  Future<ActivePlanOverview?> fetchActiveOverview() async {
+    final activePlans = await fetchActivePlans();
+    final today = toIsoDate(DateTime.now());
+    final plan = currentOrUpcomingPlan(activePlans, today);
+    if (plan == null) return null;
+    final upcoming = pickCurrentPlan(
+      [for (final p in activePlans) if (p.id != plan.id) p],
+      _planStart(plan).compareTo(today) > 0 ? _planStart(plan) : today,
+      start: _planStart,
+      end: _planEnd,
+    ).upcoming;
     final res = await fetchPlan(plan.id);
     if (res.plan == null) return null;
-    final today = toIsoDate(DateTime.now());
     final todayWorkout = res.workouts
         .where((w) =>
             toIsoDate(w.scheduledDate) == today && w.kind != 'rest')
@@ -599,7 +674,7 @@ class TrainingService extends ChangeNotifier {
         ? 0
         : currentPlanWeekIndex(
             toIsoDate(plan.startDate),
-            toIsoDate(DateTime.now()),
+            today,
             res.weeks.length,
           );
     return ActivePlanOverview(
@@ -609,12 +684,43 @@ class TrainingService extends ChangeNotifier {
       todayWorkout: todayWorkout,
       completionPct: pct,
       currentWeekIndex: currentWeek,
+      upcomingPlan: upcoming,
     );
   }
 
-  /// Write a freshly generated plan — plan row, weeks, workouts. Auto-
-  /// completes any existing active plan so the partial unique index
-  /// (one-active-per-user) doesn't reject the insert.
+  /// Clear the active plans a new `[startIso, endIso]` window overlaps so the
+  /// no-overlap constraint accepts it; plans outside the window stay active.
+  /// [PlanOverlapAction.trim] refuses, before writing anything, unless
+  /// [canTrimOverlap] holds.
+  Future<void> resolvePlanOverlap({
+    required String startIso,
+    required String endIso,
+    PlanOverlapAction action = PlanOverlapAction.replace,
+  }) async {
+    final overlapping =
+        overlappingActivePlans(await fetchActivePlans(), startIso, endIso);
+    if (overlapping.isEmpty) return;
+    switch (action) {
+      case PlanOverlapAction.replace:
+        await _c
+            .from('training_plans')
+            .update({'status': 'completed'})
+            .inFilter('id', [for (final p in overlapping) p.id]);
+      case PlanOverlapAction.trim:
+        if (!canTrimOverlap(overlapping, startIso)) {
+          throw StateError(
+              'trim needs exactly one overlapping plan that starts before $startIso');
+        }
+        await _c.rpc('trim_training_plan', params: {
+          'p_plan_id': overlapping.single.id,
+          'p_new_end_date': dayBeforeIso(startIso),
+        });
+    }
+  }
+
+  /// Write a freshly generated plan — plan row, weeks, workouts. Active plans
+  /// the new window overlaps are resolved per [onOverlap] first; any others
+  /// stay active alongside it.
   Future<TrainingPlanRow> createPlan({
     required String name,
     required GoalEvent goalEvent,
@@ -625,6 +731,7 @@ class TrainingService extends ChangeNotifier {
     required int daysPerWeek,
     String? notes,
     required GeneratedPlan generated,
+    PlanOverlapAction onOverlap = PlanOverlapAction.replace,
   }) async {
     final uid = _uid;
     if (uid == null) {
@@ -668,34 +775,40 @@ class TrainingService extends ChangeNotifier {
       }
     }
 
-    await _c
-        .from('training_plans')
-        .update({'status': 'completed'})
-        .eq('user_id', uid)
-        .eq('status', 'active');
+    await resolvePlanOverlap(
+      startIso: toIsoDate(startDate),
+      endIso: toIsoDate(generated.endDate),
+      action: onOverlap,
+    );
 
-    final inserted = await _c
-        .from('training_plans')
-        .insert({
-          'user_id': uid,
-          'name': name.trim(),
-          'goal_event': goalEventDbValue(goalEvent),
-          'goal_distance_m': goalDistanceM,
-          'goal_time_seconds': goalTimeSec,
-          'start_date': toIsoDate(startDate),
-          'end_date': toIsoDate(generated.endDate),
-          'days_per_week': daysPerWeek,
-          'vdot': generated.vdot,
-          'current_5k_seconds': recent5kSec,
-          'status': 'active',
-          'source': 'generated',
-          // Match web's `notes?.trim() || null` — whitespace-only
-          // collapses to null so the column stays clean for
-          // `IS NOT NULL` filters. Mobile previously stored `""`.
-          'notes': _trimToNull(notes),
-        })
-        .select()
-        .single();
+    final Map<String, dynamic> inserted;
+    try {
+      inserted = await _c
+          .from('training_plans')
+          .insert({
+            'user_id': uid,
+            'name': name.trim(),
+            'goal_event': goalEventDbValue(goalEvent),
+            'goal_distance_m': goalDistanceM,
+            'goal_time_seconds': goalTimeSec,
+            'start_date': toIsoDate(startDate),
+            'end_date': toIsoDate(generated.endDate),
+            'days_per_week': daysPerWeek,
+            'vdot': generated.vdot,
+            'current_5k_seconds': recent5kSec,
+            'status': 'active',
+            'source': 'generated',
+            // Match web's `notes?.trim() || null` — whitespace-only
+            // collapses to null so the column stays clean for
+            // `IS NOT NULL` filters. Mobile previously stored `""`.
+            'notes': _trimToNull(notes),
+          })
+          .select()
+          .single();
+    } catch (e) {
+      if (_isOverlapViolation(e)) throw const ActivePlanExistsError();
+      rethrow;
+    }
     final plan = TrainingPlanRow.fromJson(inserted);
 
     final weekRows = await _c
@@ -749,26 +862,40 @@ class TrainingService extends ChangeNotifier {
   }
 
   /// Pause an active plan — reversible by [resumePlan], and distinct from
-  /// abandon/complete. Frees the one-active slot so another plan can run.
+  /// abandon/complete. Frees its dates so another plan can be active on them.
   /// Web twin: `pausePlan` in `apps/web/src/lib/core/data.ts`.
   Future<void> pausePlan(String id) => updateStatus(id, 'paused');
 
-  /// Resume a paused plan. Refuses up front when another plan already holds
-  /// the active slot: the `training_plans_one_active` partial unique index
-  /// would reject the write as a bare 23505, which reads to the runner as an
-  /// unexplained failure rather than "finish the other plan first".
-  /// Web twin: `resumePlan` + `ActivePlanExistsError`.
+  /// Resume a paused plan. Refuses up front when another active plan
+  /// overlaps the paused plan's dates: the `training_plans_active_no_overlap`
+  /// constraint would reject the write as a bare 23P01, which reads to the
+  /// runner as an unexplained failure rather than "that plan is in the way".
+  /// A plan queued before or after it doesn't block. Web twin: `resumePlan` +
+  /// `ActivePlanExistsError`.
   Future<void> resumePlan(String id) async {
     final uid = _uid;
     if (uid == null) throw StateError('resumePlan called with no signed-in user.');
-    final active = await _c
+    final row = await _c
         .from('training_plans')
-        .select('id')
-        .eq('user_id', uid)
-        .eq('status', 'active')
-        .limit(1);
-    if (active.isNotEmpty) throw const ActivePlanExistsError();
-    await updateStatus(id, 'active');
+        .select()
+        .eq('id', id)
+        .maybeSingle();
+    if (row == null) throw StateError('resumePlan: plan $id not found.');
+    final plan = TrainingPlanRow.fromJson(row);
+    final others = [
+      for (final p in await fetchActivePlans())
+        if (p.id != id) p
+    ];
+    if (overlappingActivePlans(others, _planStart(plan), _planEnd(plan))
+        .isNotEmpty) {
+      throw const ActivePlanExistsError();
+    }
+    try {
+      await updateStatus(id, 'active');
+    } catch (e) {
+      if (_isOverlapViolation(e)) throw const ActivePlanExistsError();
+      rethrow;
+    }
   }
 
   Future<void> deletePlan(String id) async {

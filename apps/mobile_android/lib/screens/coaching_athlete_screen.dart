@@ -18,6 +18,7 @@ import '../l10n/locale_support.dart';
 import '../preferences.dart';
 import '../training.dart';
 import '../training_labels.dart';
+import '../training_service.dart' show currentOrUpcomingPlan;
 import '../widgets/run_track_preview.dart';
 import '../widgets/top_banner.dart';
 
@@ -71,7 +72,7 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
     try {
       final results = await Future.wait([
         widget.api.fetchAthleteRuns(widget.athleteId, limit: 20),
-        widget.api.fetchAthletePlanOverview(widget.athleteId),
+        widget.api.fetchAthletePlanOverview(widget.athleteId, pick: _pickPlan),
         widget.api.fetchMyPlans(),
         widget.api.coachRunMapEnabled(),
       ]);
@@ -93,6 +94,11 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
     }
   }
 
+  /// The athlete's current plan, or the queued one before any has started —
+  /// the same rule as the athlete's own dashboard.
+  static TrainingPlanRow? _pickPlan(List<TrainingPlanRow> active) =>
+      currentOrUpcomingPlan(active, toIsoDate(DateTime.now()));
+
   bool get _assignedByMe {
     final o = _overview;
     return o != null &&
@@ -111,7 +117,8 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
         athleteId: widget.athleteId,
         startDate: _startDate,
       );
-      final overview = await widget.api.fetchAthletePlanOverview(widget.athleteId);
+      final overview = await widget.api
+          .fetchAthletePlanOverview(widget.athleteId, pick: _pickPlan);
       if (!mounted) return;
       setState(() {
         _overview = overview;

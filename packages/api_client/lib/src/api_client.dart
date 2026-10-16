@@ -8781,19 +8781,28 @@ class ApiClient {
   /// review surface. Mirrors web `fetchAthletePlanOverview` — the coach
   /// plan-read policies (migration 20261116_001) grant SELECT on
   /// `training_plans` / `plan_weeks` / `plan_workouts` for active-linked
-  /// athletes. Null when the athlete has no active plan, or the caller isn't
-  /// their active coach (RLS yields no rows). `completionPct` excludes rest
-  /// days, matching the web roll-up.
-  Future<AthletePlanOverview?> fetchAthletePlanOverview(String athleteId) async {
+  /// athletes. An athlete may hold several active plans whose dates don't
+  /// overlap; [pick] chooses the one to show (the app's `plan_current.dart`
+  /// rule, which this package can't import). Null when the athlete has no
+  /// active plan, [pick] chooses none, or the caller isn't their active coach
+  /// (RLS yields no rows). `completionPct` excludes rest days, matching the
+  /// web roll-up.
+  Future<AthletePlanOverview?> fetchAthletePlanOverview(
+    String athleteId, {
+    required TrainingPlanRow? Function(List<TrainingPlanRow> activePlans) pick,
+  }) async {
     if (userId == null || athleteId.isEmpty) return null;
-    final planRow = await _client
+    final planRows = await _client
         .from(TrainingPlanRow.table)
         .select()
         .eq(TrainingPlanRow.colUserId, athleteId)
         .eq('status', 'active')
-        .maybeSingle();
-    if (planRow == null) return null;
-    final plan = TrainingPlanRow.fromJson(planRow);
+        .eq('is_template', false);
+    final plan = pick((planRows as List)
+        .cast<Map<String, dynamic>>()
+        .map(TrainingPlanRow.fromJson)
+        .toList());
+    if (plan == null) return null;
     final weekRows = await _client
         .from(PlanWeekRow.table)
         .select()

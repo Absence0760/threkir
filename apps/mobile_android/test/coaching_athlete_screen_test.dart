@@ -58,7 +58,10 @@ class _FakeApi extends ApiClient {
   }
 
   @override
-  Future<AthletePlanOverview?> fetchAthletePlanOverview(String athleteId) async =>
+  Future<AthletePlanOverview?> fetchAthletePlanOverview(
+    String athleteId, {
+    required TrainingPlanRow? Function(List<TrainingPlanRow> activePlans) pick,
+  }) async =>
       overview;
 
   @override
@@ -173,8 +176,9 @@ class _HangingApi extends ApiClient {
 
   @override
   Future<AthletePlanOverview?> fetchAthletePlanOverview(
-    String athleteId,
-  ) async =>
+    String athleteId, {
+    required TrainingPlanRow? Function(List<TrainingPlanRow> activePlans) pick,
+  }) async =>
       null;
 
   @override

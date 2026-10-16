@@ -83,6 +83,7 @@ class _GateTraining extends TrainingService {
     required int daysPerWeek,
     String? notes,
     required GeneratedPlan generated,
+    PlanOverlapAction onOverlap = PlanOverlapAction.replace,
   }) async {
     createCalled = true;
     // Throw after recording the call so the screen's try/catch keeps us on

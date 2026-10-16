@@ -19,6 +19,7 @@ import '../plan_adherence.dart';
 import '../plan_progress.dart';
 import '../plan_replan.dart';
 import '../plan_adaptive_replan.dart';
+import '../plan_races.dart';
 import '../plan_week.dart';
 import '../social_service.dart' show ClubView, RecentRunRow, SocialService;
 import '../metrics.dart';
@@ -32,6 +33,7 @@ import '../widgets/error_state.dart';
 import '../widgets/current_week_strip.dart';
 import '../widgets/disclosure_section.dart';
 import '../widgets/plan_calendar.dart';
+import '../widgets/plan_races_list.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/workout_edit_sheet.dart';
 import 'workout_detail_screen.dart';
@@ -855,10 +857,31 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
   Widget _bodyList(ThemeData theme, AppLocalizations l10n, TrainingPlanRow p,
       int pct, int done, int total, int currentWeek,
       PlanWorkoutRow? todayWorkout) {
+    final allWorkouts = _byWeek.values.expand((x) => x).toList();
+    final races = planRaces(
+      endDate: toIsoDate(p.endDate),
+      goalDistanceM: p.goalDistanceM,
+      goalTimeSec: p.goalTimeSeconds,
+      workouts: [for (final w in allWorkouts) PlanRaceWorkout.fromRow(w)],
+    );
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       children: [
         _heroCard(theme, l10n, p, pct, done, total),
+        if (PlanRacesList.shows(races)) ...[
+          const SizedBox(height: 12),
+          PlanRacesList(
+            key: const Key('planDetailRaces'),
+            planName: p.name,
+            planStartIso: toIsoDate(p.startDate),
+            races: races,
+            todayIso: toIsoDate(widget.now()),
+            onSelectWorkout: (id) {
+              final wo = allWorkouts.where((w) => w.id == id).firstOrNull;
+              if (wo != null) _openWorkout(wo);
+            },
+          ),
+        ],
         if (todayWorkout != null) ...[
           const SizedBox(height: 12),
           _todayCard(theme, l10n, p, todayWorkout),

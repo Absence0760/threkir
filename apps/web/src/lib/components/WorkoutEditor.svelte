@@ -9,6 +9,7 @@
 		type WorkoutStructure
 	} from '#lib/training/training.ts';
 	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
+	import { RACE_PRIORITIES, type RacePriority } from '#lib/training/plan_races.ts';
 	import { getUnit } from '#lib/format/units.svelte.ts';
 	import { paceParts } from '#lib/format/pace_format.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
@@ -75,6 +76,16 @@
 	);
 	let zone = $state<string>(untrack(() => workout.pace_zone ?? ''));
 	let notes = $state<string>(untrack(() => workout.notes ?? ''));
+	let raceName = $state<string>(untrack(() => workout.race_name ?? ''));
+	let racePriority = $state<string>(untrack(() => workout.race_priority ?? ''));
+	const initialGoal = untrack(() =>
+		workout.kind === 'race' ? (workout.target_duration_seconds ?? null) : null
+	);
+	let goalHours = $state<number | null>(initialGoal != null ? Math.floor(initialGoal / 3600) : null);
+	let goalMin = $state<number | null>(
+		initialGoal != null ? Math.floor((initialGoal % 3600) / 60) : null
+	);
+	let goalSec = $state<number | null>(initialGoal != null ? initialGoal % 60 : null);
 
 	const initialStructure = untrack(
 		() => (workout.structure as WorkoutStructure | null) ?? null
@@ -175,6 +186,11 @@
 		toleranceSec,
 		zone,
 		notes,
+		raceName,
+		racePriority,
+		goalHours,
+		goalMin,
+		goalSec,
 		mode,
 		warmupDistance,
 		cooldownDistance,
@@ -305,7 +321,23 @@
 			const unstructuredKinds = ['easy', 'long', 'recovery', 'rest'] as const;
 			const isUnstructured = (unstructuredKinds as readonly string[]).includes(kind);
 			const nextStructure = isUnstructured ? null : buildStructure();
+			const isRace = kind === 'race';
+			const goalTotal = (goalHours ?? 0) * 3600 + (goalMin ?? 0) * 60 + (goalSec ?? 0);
+			const raceFields = isRace
+				? {
+						race_name: raceName.trim() || null,
+						race_priority: (RACE_PRIORITIES as readonly string[]).includes(racePriority)
+							? (racePriority as RacePriority)
+							: null,
+						target_duration_seconds: goalTotal > 0 ? goalTotal : null
+					}
+				: {
+						race_name: null,
+						race_priority: null,
+						...(workout.kind === 'race' ? { target_duration_seconds: null } : {})
+					};
 			await updatePlanWorkout(workout.id, {
+				...raceFields,
 				kind,
 				target_distance_m: isRest
 					? null
@@ -350,6 +382,70 @@
 			</label>
 			<span class="hint" id="wo-kind-hint">{t('workoutEditor.kindHint')}</span>
 		</div>
+
+		{#if kind === 'race'}
+			<div class="field">
+				<label>
+					<span>{t('workoutEditor.raceName')}</span>
+					<input
+						type="text"
+						bind:value={raceName}
+						maxlength="120"
+						aria-describedby="wo-race-name-hint"
+					/>
+				</label>
+				<span class="hint" id="wo-race-name-hint">{t('workoutEditor.raceNameHint')}</span>
+			</div>
+
+			<div class="field">
+				<label>
+					<span>{t('workoutEditor.racePriority')}</span>
+					<select bind:value={racePriority} aria-describedby="wo-race-priority-hint">
+						<option value="">{t('workoutEditor.racePriorityAuto')}</option>
+						<option value="A">{t('workoutEditor.racePriorityA')}</option>
+						<option value="B">{t('workoutEditor.racePriorityB')}</option>
+						<option value="C">{t('workoutEditor.racePriorityC')}</option>
+					</select>
+				</label>
+				<span class="hint" id="wo-race-priority-hint">{t('workoutEditor.racePriorityHint')}</span>
+			</div>
+
+			<fieldset>
+				<legend>{t('workoutEditor.raceGoalTime')}</legend>
+				<div class="pace-row">
+					<input
+						type="number"
+						min="0"
+						max="99"
+						bind:value={goalHours}
+						placeholder={t('workoutEditor.hours')}
+						aria-label={t('workoutEditor.raceGoalHours')}
+						aria-describedby="wo-race-goal-hint"
+					/>
+					<span>:</span>
+					<input
+						type="number"
+						min="0"
+						max="59"
+						bind:value={goalMin}
+						placeholder={t('workoutEditor.min')}
+						aria-label={t('workoutEditor.raceGoalMinutes')}
+						aria-describedby="wo-race-goal-hint"
+					/>
+					<span>:</span>
+					<input
+						type="number"
+						min="0"
+						max="59"
+						bind:value={goalSec}
+						placeholder={t('workoutEditor.sec')}
+						aria-label={t('workoutEditor.raceGoalSeconds')}
+						aria-describedby="wo-race-goal-hint"
+					/>
+				</div>
+				<p class="hint" id="wo-race-goal-hint">{t('workoutEditor.raceGoalHint')}</p>
+			</fieldset>
+		{/if}
 
 		{#if kind !== 'rest'}
 			<div class="field">

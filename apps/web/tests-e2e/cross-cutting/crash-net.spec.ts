@@ -6,7 +6,7 @@ import { expect, test } from '../fixtures/test';
 /**
  * The crash net's own proof (fixtures/test.ts). A net nobody has seen catch
  * anything is not a net, so every case here pins `mode: 'fail'` — these must
- * bite even while CI runs the rest of the suite with `CRASH_NET=report`.
+ * bite even in a run that sets `CRASH_NET=report`.
  *
  * Two shapes. `test.fail()` proves an unexcused crash turns the test red; its
  * body cannot fail on its own (no navigation, no wait that can time out), so

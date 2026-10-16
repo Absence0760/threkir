@@ -212,6 +212,47 @@ void main() {
     });
   });
 
+  group('WorkoutDetailScreen — race workout', () {
+    PlanWorkoutRow raceWorkout({String? name, String? priority}) =>
+        PlanWorkoutRow(
+          id: 'fake-workout-id',
+          weekId: 'week-1',
+          scheduledDate: DateTime(2027, 4, 4),
+          kind: 'race',
+          targetDistanceM: 56000,
+          targetDurationSeconds: 23400,
+          raceName: name,
+          racePriority: priority,
+          manuallyCompleted: false,
+        );
+
+    testWidgets('headlines the race name and shows its priority and goal time',
+        (tester) async {
+      await _pumpWith(
+          tester,
+          _FakeTraining(
+              raceWorkout(name: 'Two Oceans Ultra', priority: 'B'), const []));
+      await tester.pumpAndSettle();
+      expect(
+          tester.widget<Text>(find.byKey(const Key('workoutDetailHeading'))).data,
+          'Two Oceans Ultra');
+      expect(find.text('RACE PRIORITY'), findsOneWidget);
+      expect(find.text('B — important race'), findsOneWidget);
+      expect(find.text('GOAL TIME'), findsOneWidget);
+      expect(find.text('6:30:00'), findsOneWidget);
+    });
+
+    testWidgets('an unnamed race with no priority falls back to the kind',
+        (tester) async {
+      await _pumpWith(tester, _FakeTraining(raceWorkout(), const []));
+      await tester.pumpAndSettle();
+      expect(
+          tester.widget<Text>(find.byKey(const Key('workoutDetailHeading'))).data,
+          'Race');
+      expect(find.text('RACE PRIORITY'), findsNothing);
+    });
+  });
+
   group('WorkoutDetailScreen — unlink confirm', () {
     testWidgets('Cancel does not unlink; confirm calls markCompleted(null)',
         (tester) async {

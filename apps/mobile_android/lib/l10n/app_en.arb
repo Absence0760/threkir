@@ -8306,19 +8306,6 @@
   "@planNewReplaceActiveTitle": {
     "description": "Title of the confirm dialog shown before a new plan retires the current active one"
   },
-  "planNewReplaceActiveNamed": "You already have an active plan: \"{name}\". Creating a new plan will mark the current one as completed (you can still find it under Manage plans). Continue?",
-  "@planNewReplaceActiveNamed": {
-    "description": "Body of the replace-active-plan confirm dialog when the existing plan has a name",
-    "placeholders": {
-      "name": {
-        "type": "String"
-      }
-    }
-  },
-  "planNewReplaceActiveUnnamed": "You already have an active plan. Creating a new plan will mark the current one as completed. Continue?",
-  "@planNewReplaceActiveUnnamed": {
-    "description": "Body of the replace-active-plan confirm dialog when the existing plan name is unknown"
-  },
   "planNewReplaceActiveConfirm": "Replace plan",
   "@planNewReplaceActiveConfirm": {
     "description": "Confirm button of the replace-active-plan dialog"
@@ -8538,10 +8525,6 @@
   },
   "planDetailResumeDone": "Plan resumed.",
   "@planDetailResumeDone": {
-    "description": "Plan-detail adjust-plan dialog"
-  },
-  "planDetailResumeBlocked": "You already have an active plan. Pause or finish it first.",
-  "@planDetailResumeBlocked": {
     "description": "Plan-detail adjust-plan dialog"
   },
   "planDetailResumeOverlap": "Another active plan overlaps these dates. Pause it, finish it or end it earlier first.",

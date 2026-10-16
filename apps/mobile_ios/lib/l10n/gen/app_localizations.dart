@@ -1403,6 +1403,12 @@ abstract class AppLocalizations {
   /// **'{days, plural, one{Starts in {days} day} other{Starts in {days} days}}'**
   String homePlanStartsInDays(int days);
 
+  /// Home card line naming the next active plan queued after the current one. date is its formatted start date
+  ///
+  /// In en, this message translates to:
+  /// **'Up next: {name}, starts {date}'**
+  String homePlanUpNext(String name, String date);
+
   /// Home plan card when the plan starts tomorrow
   ///
   /// In en, this message translates to:
@@ -9454,6 +9460,12 @@ abstract class AppLocalizations {
   /// **'{count} days/wk'**
   String plansDaysPerWeek(int count);
 
+  /// Status pill on a plan tile for an active plan that starts after today (queued behind the current plan). Lowercase to match the other status pills
+  ///
+  /// In en, this message translates to:
+  /// **'upcoming'**
+  String get plansStatusUpcoming;
+
   /// Sign-in prompt title on plans list
   ///
   /// In en, this message translates to:
@@ -10144,18 +10156,6 @@ abstract class AppLocalizations {
   /// **'Replace your active plan?'**
   String get planNewReplaceActiveTitle;
 
-  /// Body of the replace-active-plan confirm dialog when the existing plan has a name
-  ///
-  /// In en, this message translates to:
-  /// **'You already have an active plan: \"{name}\". Creating a new plan will mark the current one as completed (you can still find it under Manage plans). Continue?'**
-  String planNewReplaceActiveNamed(String name);
-
-  /// Body of the replace-active-plan confirm dialog when the existing plan name is unknown
-  ///
-  /// In en, this message translates to:
-  /// **'You already have an active plan. Creating a new plan will mark the current one as completed. Continue?'**
-  String get planNewReplaceActiveUnnamed;
-
   /// Confirm button of the replace-active-plan dialog
   ///
   /// In en, this message translates to:
@@ -10167,6 +10167,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Keep current'**
   String get planNewReplaceActiveKeep;
+
+  /// Title of the dialog shown before creating or adopting a plan whose dates overlap one or more of the runner's active plans
+  ///
+  /// In en, this message translates to:
+  /// **'These dates overlap an active plan'**
+  String get planOverlapTitle;
+
+  /// Body of the plan-overlap dialog, above the list of overlapping plans. start/end are formatted dates of the new plan
+  ///
+  /// In en, this message translates to:
+  /// **'Your new plan runs {start} – {end}. Only one plan can be active on any day, and it overlaps:'**
+  String planOverlapBody(String start, String end);
+
+  /// One overlapping active plan in the plan-overlap dialog: its name and formatted date range
+  ///
+  /// In en, this message translates to:
+  /// **'{name}: {start} – {end}'**
+  String planOverlapPlanLine(String name, String start, String end);
+
+  /// Plan-overlap dialog hint when only Replace is offered
+  ///
+  /// In en, this message translates to:
+  /// **'Replace marks the overlapping plans as completed. You can still find them under Manage plans.'**
+  String get planOverlapReplaceHint;
+
+  /// Plan-overlap dialog hint when the overlapping plan started earlier and can be ended the day before the new plan starts. date is that formatted end date
+  ///
+  /// In en, this message translates to:
+  /// **'End {name} early to keep its finished weeks and remove its workouts after {date}, or replace it to mark it completed.'**
+  String planOverlapTrimHint(String name, String date);
+
+  /// Plan-overlap dialog button: end the overlapping plan the day before the new one starts, so both stay active back to back
+  ///
+  /// In en, this message translates to:
+  /// **'End {name} on {date}'**
+  String planOverlapTrim(String name, String date);
+
+  /// Error when the server refuses a new plan because an active plan overlaps its dates (changed since the overlap check)
+  ///
+  /// In en, this message translates to:
+  /// **'Another active plan now covers these dates. Check your plans and try again.'**
+  String get planOverlapConflict;
 
   /// Built-in starter plan name
   ///
@@ -10215,6 +10257,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Publish as club template'**
   String get planDetailPublishTooltip;
+
+  /// Heading of the plan detail card listing every race the plan builds toward (shown only when the plan has more than one race)
+  ///
+  /// In en, this message translates to:
+  /// **'Races in this plan'**
+  String get planDetailRacesTitle;
+
+  /// Screen-reader label for a race's priority badge on plan detail; priority is the letter A, B or C
+  ///
+  /// In en, this message translates to:
+  /// **'Priority {priority}'**
+  String planDetailRacePriority(String priority);
 
   /// Days-per-week meta on the hero card
   ///
@@ -10348,11 +10402,11 @@ abstract class AppLocalizations {
   /// **'Plan resumed.'**
   String get planDetailResumeDone;
 
-  /// Plan-detail adjust-plan dialog
+  /// Banner when resuming a paused plan is refused because another active plan overlaps its dates
   ///
   /// In en, this message translates to:
-  /// **'You already have an active plan. Pause or finish it first.'**
-  String get planDetailResumeBlocked;
+  /// **'Another active plan overlaps these dates. Pause it, finish it or end it earlier first.'**
+  String get planDetailResumeOverlap;
 
   /// No description provided for @planDetailAdaptiveOnTrack.
   ///
@@ -16358,6 +16412,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Notes'**
   String get workoutEditNotesLabel;
+
+  /// Label for the race name field, shown in the workout editor only when the workout kind is Race
+  ///
+  /// In en, this message translates to:
+  /// **'Race name'**
+  String get workoutEditRaceNameLabel;
+
+  /// Label for the A/B/C race priority picker in the workout editor (Race workouts only)
+  ///
+  /// In en, this message translates to:
+  /// **'Race priority'**
+  String get workoutEditRacePriorityLabel;
+
+  /// Race priority picker option for no explicit priority: the app treats a race on the plan's last day as A and any other race as C
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic'**
+  String get workoutEditRacePriorityAuto;
+
+  /// Race priority picker option A: the race the plan is built for. Keep the letter A
+  ///
+  /// In en, this message translates to:
+  /// **'A — goal race'**
+  String get racePriorityOptionA;
+
+  /// Race priority picker option B: a race that matters but is not the main goal. Keep the letter B
+  ///
+  /// In en, this message translates to:
+  /// **'B — important race'**
+  String get racePriorityOptionB;
+
+  /// Race priority picker option C: a low-key race run as training. Keep the letter C
+  ///
+  /// In en, this message translates to:
+  /// **'C — tune-up race'**
+  String get racePriorityOptionC;
+
+  /// Label for the race goal finish time field in the workout editor (Race workouts only)
+  ///
+  /// In en, this message translates to:
+  /// **'Goal time'**
+  String get workoutEditRaceGoalTimeLabel;
+
+  /// Example hint for the race goal time field (hours:minutes:seconds)
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. 6:30:00'**
+  String get workoutEditRaceGoalTimeHint;
+
+  /// Validation error for the race goal time field
+  ///
+  /// In en, this message translates to:
+  /// **'Goal time must look like 6:30:00'**
+  String get workoutEditErrRaceGoalTime;
 
   /// Button to cancel the workout edit sheet
   ///

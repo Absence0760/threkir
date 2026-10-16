@@ -41,6 +41,7 @@
 		type RecentVolume,
 	} from '#lib/training/plan_ramp.ts';
 	import { parsePlanMarkdown, parsePlanJson } from '#lib/training/plan_serialize.ts';
+	import { RACE_GOAL_MAX_HOURS } from '#lib/training/plan_races.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { ageFromDob } from '#lib/nutrition/nutrition_targets.ts';
 	import { healthUseDob } from '#lib/core/health_consent.ts';
@@ -807,7 +808,7 @@
 				<legend>{t('planEditor.goalTime')} <span class="optional">{t('planEditor.optional')}</span></legend>
 				<p class="hint" id="goal-time-hint">{t('planEditor.goalTimeHint')}</p>
 				<div class="time-row">
-					<input type="number" min="0" max="9" bind:value={targetHours} placeholder={t('planEditor.placeholderHours')} aria-describedby="goal-time-hint" />
+					<input type="number" min="0" max={RACE_GOAL_MAX_HOURS} bind:value={targetHours} placeholder={t('planEditor.placeholderHours')} aria-describedby="goal-time-hint" />
 					<span>:</span>
 					<input type="number" min="0" max="59" bind:value={targetMin} placeholder={t('planEditor.placeholderMinutes')} aria-describedby="goal-time-hint" />
 					<span>:</span>

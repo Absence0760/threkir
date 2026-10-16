@@ -8377,6 +8377,81 @@
   "@planOverlapConflict": {
     "description": "Error when the server refuses a new plan because an active plan overlaps its dates (changed since the overlap check)"
   },
+  "planDetailDuplicateWeekOverlap": "Duplicating this week would push the plan into another active plan's dates. Move or end that plan first.",
+  "@planDetailDuplicateWeekOverlap": {
+    "description": "Banner when duplicating a plan week is refused because the extra week would overlap another active plan"
+  },
+  "planNewImportButton": "Import a plan",
+  "@planNewImportButton": {
+    "description": "Button on the new-plan screen that opens the plan import sheet (paste a plan table or JSON export)"
+  },
+  "planImportTitle": "Import a plan",
+  "@planImportTitle": {
+    "description": "Title of the plan import sheet"
+  },
+  "planImportIntro": "Paste a plan exported from the web app, or a table with Week, Date and Type columns. Load it to check the weeks before you create it.",
+  "@planImportIntro": {
+    "description": "Explainer under the plan import sheet title. 'Week', 'Date' and 'Type' are the table column names the parser reads; keep them in English"
+  },
+  "planImportPasteLabel": "Plan table or JSON",
+  "@planImportPasteLabel": {
+    "description": "Label of the multi-line text box the runner pastes a plan into"
+  },
+  "planImportLoad": "Load",
+  "@planImportLoad": {
+    "description": "Button that parses the pasted plan and shows a preview"
+  },
+  "planImportParseError": "Couldn't read that plan: {detail}",
+  "@planImportParseError": {
+    "description": "Error under the paste box when the pasted plan can't be parsed; detail is the parser's (English) reason, e.g. a bad date on one row",
+    "placeholders": {
+      "detail": {"type": "String", "example": "Bad date \"07/05/2026\" — use YYYY-MM-DD."}
+    }
+  },
+  "planImportPreviewDates": "{start} to {end}",
+  "@planImportPreviewDates": {
+    "description": "Date range of the imported plan in the preview",
+    "placeholders": {
+      "start": {"type": "String", "example": "28 Mar 2027"},
+      "end": {"type": "String", "example": "13 Jun 2027"}
+    }
+  },
+  "planImportPreviewCounts": "{weeks, plural, one{1 week} other{{weeks} weeks}} · {workouts, plural, one{1 workout} other{{workouts} workouts}}",
+  "@planImportPreviewCounts": {
+    "description": "How many weeks and workouts the pasted plan holds, in the import preview",
+    "placeholders": {
+      "weeks": {"type": "int", "example": "12"},
+      "workouts": {"type": "int", "example": "60"}
+    }
+  },
+  "planImportPreviewWeek": "Week {week}: {workouts, plural, one{1 workout} other{{workouts} workouts}}",
+  "@planImportPreviewWeek": {
+    "description": "One line per week in the import preview",
+    "placeholders": {
+      "week": {"type": "int", "example": "3"},
+      "workouts": {"type": "int", "example": "5"}
+    }
+  },
+  "planImportPreviewRace": "Race: {name}, {date}",
+  "@planImportPreviewRace": {
+    "description": "One line per race workout in the import preview",
+    "placeholders": {
+      "name": {"type": "String", "example": "Two Oceans Ultra"},
+      "date": {"type": "String", "example": "4 Apr 2027"}
+    }
+  },
+  "planImportPreviewRaceUnnamed": "Unnamed race",
+  "@planImportPreviewRaceUnnamed": {
+    "description": "Stands in for a race workout with no name in the import preview"
+  },
+  "planImportCreate": "Create plan",
+  "@planImportCreate": {
+    "description": "Button that creates the previewed imported plan"
+  },
+  "planImportCreateFailed": "Couldn't create the plan. Check your connection and try again.",
+  "@planImportCreateFailed": {
+    "description": "Error in the import sheet when creating the imported plan fails"
+  },
   "planNewStarterC25k": "Couch to 5K (beginner walk-run)",
   "@planNewStarterC25k": {
     "description": "Built-in starter plan name"
@@ -8502,6 +8577,67 @@
   "planDetailAdjustAdaptiveDesc": "Looks at your last three finished weeks and suggests changes when at least two were over or under plan, so one odd week doesn't move your plan. Use it when you've been off plan for a while.",
   "@planDetailAdjustAdaptiveDesc": {
     "description": "Plan-detail adjust-plan dialog"
+  },
+  "planDetailRaceTaper": "Taper around B/C races",
+  "@planDetailRaceTaper": {
+    "description": "Plan-detail adjust-plan dialog: option that proposes a mini-taper and recovery around the plan's B and C races"
+  },
+  "planDetailAdjustRaceTaperDesc": "Eases the days before each upcoming B or C race and the days after it, so you race it fresh and recover before training picks up. Your A race and its taper stay as they are.",
+  "@planDetailAdjustRaceTaperDesc": {
+    "description": "Plan-detail adjust-plan dialog: description of the B/C race taper option"
+  },
+  "planDetailRaceTaperNone": "No upcoming B or C race needs a taper.",
+  "@planDetailRaceTaperNone": {
+    "description": "Plan-detail banner when the B/C race taper finds nothing to change"
+  },
+  "planDetailRaceTaperPreviewTitle": "Proposed taper and recovery",
+  "@planDetailRaceTaperPreviewTitle": {
+    "description": "Plan-detail heading of the B/C race taper preview"
+  },
+  "planDetailRaceTaperPre": "{change} — taper for {race}",
+  "@planDetailRaceTaperPre": {
+    "description": "Plan-detail race taper preview row for a session eased in the days before a B/C race. change is e.g. 'Intervals 10.0 km → Easy 6.5 km'; race is the race name or date",
+    "placeholders": {
+      "change": {
+        "type": "String"
+      },
+      "race": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailRaceTaperShakeout": "{change} — shakeout before {race}",
+  "@planDetailRaceTaperShakeout": {
+    "description": "Plan-detail race taper preview row for a session cut to a short easy shakeout in the 2 days before a B race",
+    "placeholders": {
+      "change": {
+        "type": "String"
+      },
+      "race": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailRaceTaperPost": "{change} — recovery after {race}",
+  "@planDetailRaceTaperPost": {
+    "description": "Plan-detail race taper preview row for a session eased in the recovery days after a B/C race",
+    "placeholders": {
+      "change": {
+        "type": "String"
+      },
+      "race": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailHeroNextRace": "Next race: {name}",
+  "@planDetailHeroNextRace": {
+    "description": "Plan-detail hero line naming the next race the hero's distance, goal and date now describe (a B or C race before the plan's A race)",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
   },
   "planDetailAdjustPauseDesc": "Puts the plan on hold without deleting anything, until you resume it. Use it for illness, injury or travel.",
   "@planDetailAdjustPauseDesc": {

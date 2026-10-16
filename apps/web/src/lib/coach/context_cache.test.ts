@@ -53,6 +53,7 @@ function build() {
 		null,
 		10,
 		profileRow,
+		'2026-06-15',
 	);
 }
 

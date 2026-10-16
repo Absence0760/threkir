@@ -47,7 +47,7 @@
 	import { fetchGymSetHistory, fetchGymWorkouts } from '#lib/core/data.ts';
 	import { fetchFoodLog, fetchLatestWeightKg, type FoodEntry } from '#lib/core/data.ts';
 	import { supabase } from '#lib/core/supabase.ts';
-	import type { GymWorkout, GymSetWithDate, DashboardRun } from '#lib/core/data.ts';
+	import type { GymWorkout, GymSetWithDate, DashboardRun, PlanOverviewRead } from '#lib/core/data.ts';
 	import { liftsFromSetHistory } from '#lib/gym/lift_load.ts';
 	import { distinctExerciseCount } from '#lib/gym/gym_prs.ts';
 	import {
@@ -190,6 +190,9 @@
 	});
 	let showAgeGradeCol = $derived(Object.values(prAgeGrades).some((v) => v != null));
 	let planOverview = $state<ActivePlanOverview | null>(null);
+	/// The plan read failed: the plan slot says so rather than offering to
+	/// create a plan the runner may already have.
+	let planLoadError = $state<string | null>(null);
 	let loading = $state(true);
 	let loadError = $state<string | null>(null);
 	let mileageView = $state<'weekly' | 'monthly' | 'yearly'>('weekly');
@@ -582,6 +585,7 @@
 		// not take the run-derived cards down with it — the same contract the
 		// per-read try/catch blocks gave.
 		let runsRead: { runs: DashboardRun[]; error: string | null };
+		let planRead: PlanOverviewRead;
 		let settingsRead: LoadedSettings | null;
 		let gymRead: [GymWorkout[], GymSetWithDate[]] | null;
 		let profileRead: DashboardProfile | null;
@@ -589,7 +593,7 @@
 			runsRead,
 			allTimeStats,
 			personalRecords,
-			planOverview,
+			planRead,
 			upcomingEvent,
 			fitnessHistory,
 			settingsRead,
@@ -618,6 +622,8 @@
 			fetchDashboardProfile(),
 		]);
 		runs = runsRead.runs;
+		planOverview = planRead.overview;
+		planLoadError = planRead.error;
 		// Every card below derives from `runs`. If that read failed there is
 		// nothing truthful to render, so state it rather than painting an
 		// empty account over the top of it.
@@ -654,6 +660,12 @@
 		]);
 		loading = false;
 	});
+
+	async function reloadPlanOverview(): Promise<void> {
+		const read = await fetchActivePlanOverview();
+		planOverview = read.overview;
+		planLoadError = read.error;
+	}
 
 	/// The self-read the age-grade column and the nutrition targets both need.
 	/// `gender` is deny-by-default for direct SELECTs, so it comes through the
@@ -1279,6 +1291,17 @@
 					</a>
 				</footer>
 			</section>
+		{:else if planLoadError}
+			<div class="dash-load-error" role="alert" data-testid="dash-plan-load-error">
+				<span class="material-symbols" aria-hidden="true">error</span>
+				<div>
+					<strong>{m('dash.planLoadErrorTitle')}</strong>
+					<span class="dash-load-error-detail">{m('dash.planLoadErrorBody')}</span>
+				</div>
+				<button class="btn btn-outline" onclick={reloadPlanOverview} data-testid="dash-plan-load-retry"
+					>{m('dash.retry')}</button
+				>
+			</div>
 		{:else if !planOverview}
 			<a class="plan-promo" href="/plans?new=1">
 				<div>
@@ -2112,7 +2135,7 @@
 			editingWorkout = null;
 			// Re-fetch the active plan overview so the today card picks up
 			// any changes (e.g. new target distance / pace) without a refresh.
-			planOverview = await fetchActivePlanOverview();
+			await reloadPlanOverview();
 		}}
 	/>
 {/if}

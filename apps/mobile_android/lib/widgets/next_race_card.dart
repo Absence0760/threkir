@@ -39,6 +39,7 @@ class NextRaceCard extends StatelessWidget {
         endDate: toIsoDate(plan.endDate),
         goalDistanceM: plan.goalDistanceM,
         goalTimeSec: plan.goalTimeSeconds,
+        trimmedAt: plan.trimmedAt,
         workouts: [
           for (final w in overview.workouts) PlanRaceWorkout.fromRow(w),
         ],

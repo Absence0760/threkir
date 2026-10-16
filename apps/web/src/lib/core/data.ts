@@ -5922,7 +5922,7 @@ export async function fetchPlan(id: string): Promise<{
 		return { plan, weeks, workouts: [], error };
 	}
 	const weekIds = weeks.map((w) => w.id);
-	const { data: woData } = await queryChunked(weekIds, (part) =>
+	const { data: woData, error: woErr } = await queryChunked(weekIds, (part) =>
 		supabase.from('plan_workouts').select('*').in('week_id', part)
 	);
 	// Ordered here rather than per chunk: each chunk's order says nothing
@@ -5934,7 +5934,7 @@ export async function fetchPlan(id: string): Promise<{
 		plan,
 		weeks,
 		workouts,
-		error
+		error: error ?? woErr?.message ?? null
 	};
 }
 
@@ -5953,9 +5953,14 @@ export async function fetchWorkout(
 	return { workout: (data as PlanWorkout | null) ?? null, error: error?.message ?? null };
 }
 
-export async function fetchActivePlanOverview(): Promise<ActivePlanOverview | null> {
+/// A plan overview read. `error` is set when a read failed, so a caller can
+/// say "couldn't load your plan" instead of showing the no-plan state over a
+/// plan that exists.
+export type PlanOverviewRead = { overview: ActivePlanOverview | null; error: string | null };
+
+export async function fetchActivePlanOverview(): Promise<PlanOverviewRead> {
 	const userId = auth.user?.id;
-	if (!userId) return null;
+	if (!userId) return { overview: null, error: null };
 	return planOverviewFor(userId);
 }
 
@@ -5963,15 +5968,16 @@ export async function fetchActivePlanOverview(): Promise<ActivePlanOverview | nu
 /// one to start when nothing is current, so a runner whose only plan is queued
 /// sees it counting down rather than an empty card. `upcoming` is the plan
 /// after the one shown.
-async function planOverviewFor(userId: string): Promise<ActivePlanOverview | null> {
-	const { data: rows } = await supabase
+async function planOverviewFor(userId: string): Promise<PlanOverviewRead> {
+	const { data: rows, error: rowsErr } = await supabase
 		.from('training_plans')
 		.select('*')
 		.eq('user_id', userId)
 		.eq('status', 'active')
 		.eq('is_template', false);
+	if (rowsErr) return { overview: null, error: rowsErr.message };
 	const active = (rows ?? []) as TrainingPlan[];
-	if (active.length === 0) return null;
+	if (active.length === 0) return { overview: null, error: null };
 	// Local-tz today — `toISOString().slice(0,10)` returns the UTC date,
 	// which rolls a calendar day early/late depending on the viewer's TZ.
 	const { todayISO } = await import('../training/training');
@@ -5980,22 +5986,26 @@ async function planOverviewFor(userId: string): Promise<ActivePlanOverview | nul
 	const today = todayISO();
 	const picked = pickCurrentPlan(active, today);
 	const plan = picked.current ?? picked.upcoming;
-	if (!plan) return null;
+	if (!plan) return { overview: null, error: null };
 	const next = active
 		.filter((p) => p.start_date > plan.end_date)
 		.reduce<TrainingPlan | null>((a, p) => (!a || p.start_date < a.start_date ? p : a), null);
-	const { weeks, workouts } = await fetchPlan(plan.id);
+	const { weeks, workouts, error: planErr } = await fetchPlan(plan.id);
+	if (planErr) return { overview: null, error: planErr };
 	const todayWorkout = workouts.find((w) => w.scheduled_date === today) ?? null;
 	const completionPct = planWorkoutProgress(workouts).pct;
 	return {
-		plan,
-		weeks: weeks ?? [],
-		workouts: workouts ?? [],
-		todayWorkout,
-		completionPct,
-		upcoming: next
-			? { id: next.id, name: next.name, start_date: next.start_date, end_date: next.end_date }
-			: null
+		overview: {
+			plan,
+			weeks: weeks ?? [],
+			workouts: workouts ?? [],
+			todayWorkout,
+			completionPct,
+			upcoming: next
+				? { id: next.id, name: next.name, start_date: next.start_date, end_date: next.end_date }
+				: null
+		},
+		error: null
 	};
 }
 
@@ -6204,9 +6214,9 @@ export async function fetchMyOverlappingActivePlans(
 	return fetchOverlappingActivePlans(userId, startIso, endIso);
 }
 
-/// The user's active plans (templates included — the exclusion constraint
-/// covers every active row) whose inclusive window shares a day with
-/// [startIso, endIso].
+/// The user's active plans whose inclusive window shares a day with
+/// [startIso, endIso]. No template filter is needed: a template can never be
+/// active (training_plans_template_status).
 async function fetchOverlappingActivePlans(
 	userId: string,
 	startIso: string,
@@ -6240,6 +6250,42 @@ export async function resumePlan(id: string, userId: string): Promise<void> {
 	);
 	if (others.length > 0) throw new ActivePlanExistsError();
 	await updatePlanStatus(id, 'active');
+}
+
+/// The signed-in user's active plans, for checking a date shift against the
+/// plans around it (plan_shift.ts) before it runs.
+export async function fetchMyActivePlanWindows(): Promise<
+	Pick<TrainingPlan, 'id' | 'name' | 'start_date' | 'end_date'>[]
+> {
+	const { data: { session } } = await supabase.auth.getSession();
+	const userId = session?.user?.id;
+	if (!userId) return [];
+	const { data, error } = await supabase
+		.from('training_plans')
+		.select('id, name, start_date, end_date')
+		.eq('user_id', userId)
+		.eq('status', 'active')
+		.order('start_date', { ascending: true });
+	if (error) throw dbError(error);
+	return data ?? [];
+}
+
+/// Move a plan's workouts and dates by `days` in one transaction
+/// (shift_training_plan). With `shiftFollowing`, the active plans queued after
+/// it move by the same days. A shift that would overlap another active plan
+/// fails whole with a PlanOverlapError and nothing moves.
+export async function shiftTrainingPlan(
+	planId: string,
+	days: number,
+	shiftFollowing: boolean
+): Promise<void> {
+	markListsStale('plans');
+	const { error } = await supabase.rpc('shift_training_plan', {
+		p_plan_id: planId,
+		p_days: days,
+		p_shift_following: shiftFollowing
+	});
+	if (error) throw dbError(error);
 }
 
 export async function markWorkoutCompleted(
@@ -10733,10 +10779,8 @@ export function coachRunMapEnabled(): Promise<boolean> {
 /// `plan_workouts` for active-linked athletes. Null when the athlete
 /// has no active plan, or the caller isn't their active coach (RLS
 /// yields no rows).
-export async function fetchAthletePlanOverview(
-	athleteId: string
-): Promise<ActivePlanOverview | null> {
-	if (!auth.user?.id || !athleteId) return null;
+export async function fetchAthletePlanOverview(athleteId: string): Promise<PlanOverviewRead> {
+	if (!auth.user?.id || !athleteId) return { overview: null, error: null };
 	return planOverviewFor(athleteId);
 }
 

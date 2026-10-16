@@ -15,6 +15,27 @@ void main() {
     });
   });
 
+  test(
+      'planWorkoutPatch: a former race moving to another kind also clears '
+      'its goal time', () {
+    expect(planWorkoutPatch(kind: 'long', fromKind: 'race'), {
+      'kind': 'long',
+      'race_name': null,
+      'race_priority': null,
+      'target_duration_seconds': null,
+    });
+  });
+
+  test(
+      'planWorkoutPatch: a non-race kind change keeps a duration target the '
+      'row did not get from a race', () {
+    expect(planWorkoutPatch(kind: 'easy', fromKind: 'long'), {
+      'kind': 'easy',
+      'race_name': null,
+      'race_priority': null,
+    });
+  });
+
   test('planWorkoutPatch: race fields are written as given, nulls included',
       () {
     expect(

@@ -21,6 +21,7 @@ import '../plan_replan.dart';
 import '../plan_adaptive_replan.dart';
 import '../plan_races.dart';
 import '../plan_week.dart';
+import '../race_taper.dart';
 import '../social_service.dart' show ClubView, RecentRunRow, SocialService;
 import '../metrics.dart';
 import '../training.dart';
@@ -44,7 +45,7 @@ const double _kExpandedBodyMaxWidth = 900;
 
 /// The whole-plan changes the Adjust plan dialog offers. Web twin: the option
 /// list in `apps/web/src/routes/plans/[id]/+page.svelte` (decisions § 1635).
-enum _PlanAdjustment { replan, adaptiveReplan, pause, resume }
+enum _PlanAdjustment { replan, adaptiveReplan, raceTaper, pause, resume }
 
 /// Today's session and this week lead the screen; everything else sits behind
 /// a named expander whose open/closed state is remembered per account. Every
@@ -132,6 +133,9 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
   String? _publishedTemplateId;
   List<RecentRunRow> _recentRuns = const [];
   List<ReplanChange>? _replanPreview;
+  // The B/C race taper's proposals (decisions § 2051), previewed like a
+  // re-plan and applied only on the runner's say-so.
+  List<RaceTaperChange>? _taperPreview;
   // Set only when the current preview came from the adaptive (trend-based)
   // path, so its header can explain the multi-week reason + confidence.
   ({AdaptiveReason reason, AdaptiveConfidence confidence})? _adaptiveInfo;
@@ -380,6 +384,120 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
     }).toList();
   }
 
+  /// Every race the plan builds toward (plan_races.dart, decisions § 2009).
+  List<PlanRace> _planRacesFor(TrainingPlanRow p) => planRaces(
+        endDate: toIsoDate(p.endDate),
+        goalDistanceM: p.goalDistanceM,
+        goalTimeSec: p.goalTimeSeconds,
+        trimmedAt: p.trimmedAt,
+        workouts: [
+          for (final w in _byWeek.values.expand((x) => x))
+            PlanRaceWorkout.fromRow(w),
+        ],
+      );
+
+  /// The race the hero's distance / goal / date follow: the next race once it
+  /// is not the plan's own A race on the end date. Null keeps the plan goal,
+  /// which the races list carries either way. Web twin: `heroRace`.
+  PlanRace? _heroRace(TrainingPlanRow p, List<PlanRace> races) {
+    final next = nextRace(races, toIsoDate(widget.now()));
+    if (next == null) return null;
+    if (next.priority == 'A' && next.date == toIsoDate(p.endDate)) return null;
+    return next;
+  }
+
+  bool _hasFutureBcRace(TrainingPlanRow p) {
+    final today = toIsoDate(widget.now());
+    return _planRacesFor(p)
+        .any((r) => r.priority != 'A' && r.date.compareTo(today) > 0);
+  }
+
+  void _proposeRaceTaper(TrainingPlanRow plan) {
+    if (!_isOwner(plan) || _bulkBusy) return;
+    final l10n = AppLocalizations.of(context);
+    final changes = raceTaperProposals(
+      workouts: [
+        for (final w in _weeks)
+          for (final x in _byWeek[w.id] ?? const <PlanWorkoutRow>[])
+            RaceTaperWorkout(
+              id: x.id,
+              scheduledDate: toIsoDate(x.scheduledDate),
+              kind: x.kind,
+              targetDistanceM: x.targetDistanceM,
+              phase: w.phase,
+              completed: _isWorkoutCompleted(x),
+              skipped: _isWorkoutSkipped(x),
+            ),
+      ],
+      races: _planRacesFor(plan),
+      today: toIsoDate(widget.now()),
+    );
+    setState(() {
+      _replanPreview = null;
+      _adaptiveInfo = null;
+      _taperPreview = changes.isEmpty ? null : changes;
+    });
+    if (changes.isEmpty) showTopBanner(context, l10n.planDetailRaceTaperNone);
+  }
+
+  /// Writes each proposed patch, then restates every touched week's volume
+  /// from the patched distances. Web twin: `applyRaceTaper`.
+  Future<void> _applyRaceTaper() async {
+    final changes = _taperPreview;
+    if (changes == null || _bulkBusy) return;
+    final l10n = AppLocalizations.of(context);
+    final byWorkout = {for (final c in changes) c.workoutId: c};
+    final weekVolumes = <String, double>{};
+    for (final w in _weeks) {
+      final rows = _byWeek[w.id] ?? const <PlanWorkoutRow>[];
+      if (!rows.any((x) => byWorkout.containsKey(x.id))) continue;
+      var vol = 0.0;
+      for (final x in rows) {
+        if (x.kind == 'rest') continue;
+        final c = byWorkout[x.id];
+        vol += (c != null ? c.toMetres : x.targetDistanceM) ?? 0;
+      }
+      weekVolumes[w.id] = vol;
+    }
+    setState(() => _bulkBusy = true);
+    try {
+      await widget.training
+          .applyRaceTaper(
+            patches: {for (final c in changes) c.workoutId: raceTaperPatch(c)},
+            weekVolumes: weekVolumes,
+          )
+          .timeout(kBackendLoadTimeout);
+      if (!mounted) return;
+      setState(() {
+        _taperPreview = null;
+        _bulkBusy = false;
+      });
+      showTopBanner(context, l10n.planDetailReplanApplied(changes.length));
+      await _load();
+    } catch (e) {
+      debugPrint('plan detail race taper failed: $e');
+      if (!mounted) return;
+      setState(() => _bulkBusy = false);
+      showTopBanner(context, l10n.planDetailBulkFailed(friendlyError(l10n, e)));
+    }
+  }
+
+  String _taperChangeLabel(AppLocalizations l10n, RaceTaperChange c) {
+    String side(String kind, double? metres) {
+      final label = workoutKindLabel(l10n, workoutKindFromDb(kind));
+      return metres != null ? '$label ${fmtKm(metres)}' : label;
+    }
+
+    final change =
+        '${side(c.fromKind, c.fromMetres)} → ${side(c.toKind, c.toMetres)}';
+    final race = c.raceName ?? c.raceDate;
+    return switch (c.reason) {
+      RaceTaperReason.shakeout => l10n.planDetailRaceTaperShakeout(change, race),
+      RaceTaperReason.preRace => l10n.planDetailRaceTaperPre(change, race),
+      RaceTaperReason.postRace => l10n.planDetailRaceTaperPost(change, race),
+    };
+  }
+
   void _proposeReplan(TrainingPlanRow plan) {
     if (!_isOwner(plan) || _bulkBusy) return;
     final l10n = AppLocalizations.of(context);
@@ -514,6 +632,14 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
                   description: l10n.planDetailAdjustAdaptiveDesc,
                   value: _PlanAdjustment.adaptiveReplan,
                 ),
+                if (_hasFutureBcRace(p))
+                  _adjustOption(
+                    ctx,
+                    icon: Icons.flag_outlined,
+                    title: l10n.planDetailRaceTaper,
+                    description: l10n.planDetailAdjustRaceTaperDesc,
+                    value: _PlanAdjustment.raceTaper,
+                  ),
                 if (p.status == 'paused')
                   _adjustOption(
                     ctx,
@@ -543,11 +669,16 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
       },
     );
     if (choice == null || !mounted) return;
+    if (choice != _PlanAdjustment.raceTaper && _taperPreview != null) {
+      setState(() => _taperPreview = null);
+    }
     switch (choice) {
       case _PlanAdjustment.replan:
         _proposeReplan(p);
       case _PlanAdjustment.adaptiveReplan:
         _proposeAdaptiveReplan(p);
+      case _PlanAdjustment.raceTaper:
+        _proposeRaceTaper(p);
       case _PlanAdjustment.pause:
         await _setPlanPaused(p, paused: true);
       case _PlanAdjustment.resume:
@@ -666,6 +797,10 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
       showTopBanner(
           context, l10n.planDetailDuplicateWeekDone(week.weekIndex + 1));
       await _load();
+    } on ActivePlanExistsError {
+      if (!mounted) return;
+      setState(() => _bulkBusy = false);
+      showTopBanner(context, l10n.planDetailDuplicateWeekOverlap);
     } catch (e) {
       debugPrint('plan detail bulk failed: $e');
       if (!mounted) return;
@@ -858,16 +993,12 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
       int pct, int done, int total, int currentWeek,
       PlanWorkoutRow? todayWorkout) {
     final allWorkouts = _byWeek.values.expand((x) => x).toList();
-    final races = planRaces(
-      endDate: toIsoDate(p.endDate),
-      goalDistanceM: p.goalDistanceM,
-      goalTimeSec: p.goalTimeSeconds,
-      workouts: [for (final w in allWorkouts) PlanRaceWorkout.fromRow(w)],
-    );
+    final races = _planRacesFor(p);
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       children: [
-        _heroCard(theme, l10n, p, pct, done, total),
+        _heroCard(theme, l10n, p, pct, done, total,
+            heroRace: _heroRace(p, races)),
         if (PlanRacesList.shows(races)) ...[
           const SizedBox(height: 12),
           PlanRacesList(
@@ -1183,6 +1314,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
       ThemeData theme, AppLocalizations l10n, TrainingPlanRow p) {
     if (!_isOwner(p) || p.isTemplate) return const [];
     final preview = _replanPreview;
+    final taper = _taperPreview;
     return [
       const SizedBox(height: 12),
       Align(
@@ -1193,6 +1325,64 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
           label: Text(l10n.planDetailAdjustPlan),
         ),
       ),
+      if (taper != null) ...[
+        const SizedBox(height: 10),
+        Container(
+          key: const Key('planDetailRaceTaperPreview'),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest,
+            border: Border.all(color: theme.dividerColor),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(l10n.planDetailRaceTaperPreviewTitle,
+                  style: theme.textTheme.titleSmall
+                      ?.copyWith(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              for (final c in taper)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextLane(
+                        width: 92,
+                        child: Text(c.scheduledDate,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            )),
+                      ),
+                      Expanded(
+                        child: Text(_taperChangeLabel(l10n, c),
+                            style: theme.textTheme.bodySmall),
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: _bulkBusy
+                        ? null
+                        : () => setState(() => _taperPreview = null),
+                    child: Text(l10n.planDetailReplanCancel),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: _bulkBusy ? null : _applyRaceTaper,
+                    child: Text(l10n.planDetailReplanApply),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
       if (preview != null) ...[
         const SizedBox(height: 10),
         Container(
@@ -1271,7 +1461,9 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
   }
 
   Widget _heroCard(ThemeData theme, AppLocalizations l10n, TrainingPlanRow p,
-      int pct, int done, int total) {
+      int pct, int done, int total, {PlanRace? heroRace}) {
+    final goalDistanceM = heroRace != null ? heroRace.distanceM : p.goalDistanceM;
+    final goalTimeSec = heroRace != null ? heroRace.goalTimeSec : p.goalTimeSeconds;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1285,13 +1477,23 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (heroRace != null) ...[
+                  Text(
+                    l10n.planDetailHeroNextRace(heroRace.name ?? p.name),
+                    key: const Key('planDetailHeroNextRace'),
+                    style: theme.textTheme.titleSmall
+                        ?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 4),
+                ],
                 Wrap(
                   spacing: 10,
                   runSpacing: 4,
                   children: [
-                    _chip(theme, Icons.flag_outlined, fmtKm(p.goalDistanceM, 1)),
-                    if (p.goalTimeSeconds != null)
-                      _chip(theme, Icons.timer, fmtHms(p.goalTimeSeconds)),
+                    if (goalDistanceM != null)
+                      _chip(theme, Icons.flag_outlined, fmtKm(goalDistanceM, 1)),
+                    if (goalTimeSec != null)
+                      _chip(theme, Icons.timer, fmtHms(goalTimeSec)),
                     if (p.vdot != null)
                       _chip(
                           theme,
@@ -1302,6 +1504,10 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
                   ],
                 ),
                 const SizedBox(height: 6),
+                if (heroRace != null) ...[
+                  _chip(theme, Icons.event, heroRace.date),
+                  const SizedBox(height: 4),
+                ],
                 Text(
                   '${toIsoDate(p.startDate)} → ${toIsoDate(p.endDate)} · '
                   '${l10n.planDetailDaysPerWeek(p.daysPerWeek)}',

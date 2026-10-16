@@ -92,11 +92,15 @@ String? _parseRacePriority(String? value) =>
 /// unset priority is A on the plan's end date and C anywhere else; the
 /// end-date race falls back to the plan goal for a missing distance or goal
 /// time. A plan with no race workout on its end date gets a synthetic A race
-/// there from the plan goal, so a plan without race rows still has its race.
+/// there from the plan goal, so a plan without race rows still has its race —
+/// unless the plan was ended early ([trimmedAt], migration 20270830000003):
+/// its end date is then the day it was cut short, not a race day, and the goal
+/// race no longer happens inside it.
 List<PlanRace> planRaces({
   required String endDate,
   required double goalDistanceM,
   int? goalTimeSec,
+  required DateTime? trimmedAt,
   required List<PlanRaceWorkout> workouts,
 }) {
   final races = <PlanRace>[];
@@ -114,7 +118,7 @@ List<PlanRace> planRaces({
       workoutId: w.id,
     ));
   }
-  if (!endDateCovered) {
+  if (!endDateCovered && trimmedAt == null) {
     races.add(PlanRace(
       date: endDate,
       name: null,

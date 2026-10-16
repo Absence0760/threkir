@@ -44,6 +44,8 @@ Flutter iOS app. **`lib/`, `test/` and `integration_test/` are byte-for-byte ide
 
 **Pubspec divergence:** only `name` and `description`. Every dependency, every version, the asset list, and `dev_dependencies` all match. Run `diff apps/mobile_android/pubspec.yaml apps/mobile_ios/pubspec.yaml` — should be exactly two lines.
 
+**Training plans:** Training plans chain and carry several races (decisions § 2008 / § 2009 / § 2053). Three TS↔Dart parity pairs own the reading rules — `plan_current.dart` (which active plan is current / queued, and which plans a new window overlaps), `plan_races.dart` (every race in a plan, its A/B/C priority, the next one) and `plan_serialize.dart` (plan import: the parse half of web's `plan_serialize.ts`, used by `widgets/plan_import_sheet.dart` from **Import a plan** on the new-plan screen). Every create path asks `widgets/plan_overlap_dialog.dart` (`confirmPlanOverlap`) before writing; a write the `training_plans_active_no_overlap` constraint still refuses (23P01) surfaces as `ActivePlanExistsError` via `planWriteError` in `training_service.dart`. A race goal time is always `h:mm:ss` (`formatGoalTimeS` / `parseRaceGoalTimeS` in `goal_time.dart`), never pace-guessed. Shared Dart, so iOS gets all of it unchanged.
+
 **Native iOS files under `ios/Runner/`:**
 
 - `AppDelegate.swift` — activates the `WatchIngestBridge` singleton at launch + attaches its method channel when the Flutter engine spins up.

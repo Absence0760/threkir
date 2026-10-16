@@ -44,13 +44,19 @@ StravaClub _stravaClub({
       linkedClub: linked,
     );
 
-ClubView _mine({String? role = 'owner'}) => ClubView(
+ClubView _mine({
+  String? role = 'owner',
+  String id = 'c1111111-0000-0000-0000-000000000001',
+  String slug = 'richmond-run-club',
+  String name = 'Richmond Run Club',
+}) =>
+    ClubView(
       row: ClubRow(
         shadowHidden: false,
-        id: _richmond.id,
+        id: id,
         ownerId: 'owner',
-        name: _richmond.name,
-        slug: _richmond.slug,
+        name: name,
+        slug: slug,
         isPublic: true,
         isVerified: false,
         joinPolicy: 'open',
@@ -83,6 +89,8 @@ class _FakeApi extends ApiClient {
   final List<(String, int)> links = [];
   final List<String> unlinks = [];
   StravaClubLinkError? refuseLink;
+  Exception? failLink;
+  Exception? failUnlink;
 
   @override
   Future<StravaClubsResult> fetchMyStravaClubs() async {
@@ -95,6 +103,8 @@ class _FakeApi extends ApiClient {
   @override
   Future<void> linkStravaClub(String clubId, int stravaClubId) async {
     links.add((clubId, stravaClubId));
+    final failed = failLink;
+    if (failed != null) throw failed;
     final refused = refuseLink;
     if (refused != null) throw StravaClubLinkFailure(refused);
   }
@@ -102,6 +112,8 @@ class _FakeApi extends ApiClient {
   @override
   Future<void> unlinkStravaClub(String clubId) async {
     unlinks.add(clubId);
+    final failed = failUnlink;
+    if (failed != null) throw failed;
   }
 }
 
@@ -250,9 +262,120 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.text(l.stravaClubsErrAdminRequired), findsOneWidget);
+    expect(find.text(l.stravaClubsLinked(_richmond.name)), findsNothing);
     expect(_inRow(_stravaClubId, find.text(l.stravaClubsSetUp)),
         findsOneWidget);
     await tester.pump(const Duration(seconds: 9));
+  });
+
+  testWidgets('a link that fails without a reason says so, not "linked"',
+      (tester) async {
+    final l = await _l10n();
+    final api = _FakeApi(_connected([_stravaClub()]))
+      ..failLink = Exception('network');
+    await _pump(tester, api);
+
+    await tester.tap(_inRow(_stravaClubId, find.text(l.stravaClubsLinkToMine)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.descendant(
+        of: find.byType(SimpleDialog), matching: find.text(_richmond.name)));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text(l.stravaClubsErrGeneric), findsOneWidget);
+    expect(find.text(l.stravaClubsLinked(_richmond.name)), findsNothing);
+    expect(
+        _inRow(_stravaClubId,
+            find.text(l.stravaClubsViewOnThrekir(_richmond.name))),
+        findsNothing);
+    await tester.pump(const Duration(seconds: 9));
+  });
+
+  testWidgets(
+      'the picker offers only the clubs the runner owns or administers',
+      (tester) async {
+    final l = await _l10n();
+    final api = _FakeApi(_connected([_stravaClub()]));
+    await _pump(tester, api, mine: [
+      _mine(),
+      _mine(
+          role: 'member',
+          id: 'c2222222-0000-0000-0000-000000000002',
+          slug: 'joined-joggers',
+          name: 'Joined Joggers'),
+      _mine(
+          role: 'admin',
+          id: 'c3333333-0000-0000-0000-000000000003',
+          slug: 'admin-athletics',
+          name: 'Admin Athletics'),
+    ]);
+
+    await tester.tap(_inRow(_stravaClubId, find.text(l.stravaClubsLinkToMine)));
+    await tester.pumpAndSettle();
+
+    final picker = find.byType(SimpleDialog);
+    expect(find.descendant(of: picker, matching: find.text(_richmond.name)),
+        findsOneWidget);
+    expect(
+        find.descendant(of: picker, matching: find.text('Admin Athletics')),
+        findsOneWidget);
+    expect(
+        find.descendant(of: picker, matching: find.text('Joined Joggers')),
+        findsNothing);
+  });
+
+  testWidgets(
+      'linking a club moves it off the Strava club it was linked to before',
+      (tester) async {
+    final l = await _l10n();
+    final other = _stravaClubId + 1;
+    final api = _FakeApi(_connected([
+      _stravaClub(),
+      _stravaClub(
+        id: other,
+        name: 'Previously Linked',
+        linked: StravaLinkedClub(
+            id: _richmond.id, slug: _richmond.slug, name: _richmond.name),
+      ),
+    ]));
+    await _pump(tester, api);
+
+    await tester.tap(_inRow(_stravaClubId, find.text(l.stravaClubsLinkToMine)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.descendant(
+        of: find.byType(SimpleDialog), matching: find.text(_richmond.name)));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(
+        _inRow(_stravaClubId,
+            find.text(l.stravaClubsViewOnThrekir(_richmond.name))),
+        findsOneWidget);
+    expect(_inRow(other, find.text(l.stravaClubsViewOnThrekir(_richmond.name))),
+        findsNothing);
+    expect(_inRow(other, find.text(l.stravaClubsSetUp)), findsOneWidget);
+    await tester.pump(const Duration(seconds: 9));
+  });
+
+  testWidgets(
+      "a row linked to a club the runner doesn't administer offers no unlink",
+      (tester) async {
+    final l = await _l10n();
+    final api = _FakeApi(_connected([
+      _stravaClub(
+        linked: const StravaLinkedClub(
+            id: 'c9999999-0000-0000-0000-000000000009',
+            slug: 'someone-elses-club',
+            name: "Someone Else's Club"),
+      ),
+    ]));
+    await _pump(tester, api);
+
+    expect(
+        _inRow(_stravaClubId,
+            find.text(l.stravaClubsViewOnThrekir("Someone Else's Club"))),
+        findsOneWidget);
+    expect(_inRow(_stravaClubId, find.text(l.stravaClubsUnlink)), findsNothing);
   });
 
   testWidgets('cancelling the picker links nothing', (tester) async {
@@ -316,6 +439,28 @@ void main() {
       expect(api.unlinks, [_richmond.id]);
       expect(_inRow(_stravaClubId, find.text(l.stravaClubsSetUp)),
           findsOneWidget);
+    });
+
+    testWidgets('a refused unlink puts the link back and says so',
+        (tester) async {
+      final l = await _l10n();
+      final api = await openLinked(tester)
+        ..failUnlink = Exception('rpc');
+
+      await tester.tap(_inRow(_stravaClubId, find.text(l.stravaClubsUnlink)));
+      await tester.pump();
+      expect(_inRow(_stravaClubId, find.text(l.stravaClubsSetUp)),
+          findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 9));
+      await tester.pump();
+      expect(api.unlinks, [_richmond.id]);
+      expect(
+          _inRow(_stravaClubId,
+              find.text(l.stravaClubsViewOnThrekir(_richmond.name))),
+          findsOneWidget);
+      expect(find.text(l.stravaClubsErrUnlink), findsOneWidget);
+      await tester.pump(const Duration(seconds: 9));
     });
   });
 

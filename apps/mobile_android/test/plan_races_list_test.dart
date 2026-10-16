@@ -9,6 +9,7 @@ final _races = planRaces(
   endDate: '2027-06-13',
   goalDistanceM: 91000,
   goalTimeSec: 39600,
+  trimmedAt: null,
   workouts: const [
     PlanRaceWorkout(
       id: 'w-two-oceans',

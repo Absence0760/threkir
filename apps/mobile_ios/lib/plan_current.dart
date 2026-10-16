@@ -25,6 +25,8 @@ class CurrentPlanPick<T> {
   const CurrentPlanPick({required this.current, required this.upcoming});
 }
 
+/// Ties keep the earlier element, as the TS twin does; the exclusion
+/// constraint makes them impossible among active rows.
 CurrentPlanPick<T> pickCurrentPlan<T>(
   List<T> activePlans,
   String todayIso, {
@@ -37,9 +39,7 @@ CurrentPlanPick<T> pickCurrentPlan<T>(
     final s = start(p);
     final e = end(p);
     if (s.compareTo(todayIso) <= 0 && e.compareTo(todayIso) >= 0) {
-      if (covering == null || s.compareTo(start(covering)) > 0) {
-        covering = p;
-      }
+      covering ??= p;
     } else if (e.compareTo(todayIso) < 0) {
       if (latestEnded == null || e.compareTo(end(latestEnded)) > 0) {
         latestEnded = p;

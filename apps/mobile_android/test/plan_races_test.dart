@@ -3,10 +3,13 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../lib/plan_races.dart';
 
-List<PlanRace> _races(List<PlanRaceWorkout> workouts) => planRaces(
+List<PlanRace> _races(List<PlanRaceWorkout> workouts,
+        {DateTime? trimmedAt}) =>
+    planRaces(
       endDate: '2027-06-13',
       goalDistanceM: 91000,
       goalTimeSec: 39600,
+      trimmedAt: trimmedAt,
       workouts: workouts,
     );
 
@@ -122,6 +125,16 @@ void main() {
     expect(nextRace(races, '2027-04-04')?.workoutId, 'w-two-oceans');
     expect(nextRace(races, '2027-04-05')?.workoutId, 'w-comrades');
     expect(nextRace(races, '2027-06-13')?.workoutId, 'w-comrades');
+  });
+
+  test('planRaces: a trimmed plan has no implicit end-date race', () {
+    final trimmedAt = DateTime.utc(2027, 3, 1, 9);
+    final races = _races([_twoOceans, _longRun], trimmedAt: trimmedAt);
+    expect([for (final r in races) r.workoutId], ['w-two-oceans']);
+    expect(_races([_longRun], trimmedAt: trimmedAt), isEmpty);
+    final withRace = _races([_comrades], trimmedAt: trimmedAt);
+    expect(withRace.single.workoutId, 'w-comrades');
+    expect(withRace.single.priority, 'A');
   });
 
   test('nextRace: returns null after the last race', () {

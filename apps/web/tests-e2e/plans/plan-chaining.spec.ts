@@ -10,6 +10,9 @@ import { USER_B } from '../fixtures/users';
  * their windows do not overlap. A new plan that misses every active plan is
  * created with no replace dialog and queues as "upcoming"; one that overlaps
  * asks first and can end the old plan the day before it starts.
+ * Shifting a plan's dates checks the plans around it first (decisions § 2052):
+ * onto a queued plan it offers to move that plan too, onto the plan before it
+ * it refuses.
  *
  * Runs as USER_B with a planted active plan, so USER_A's seeded "Richmond
  * Half 2026" — which other specs need active and untrimmed — is never touched.
@@ -83,6 +86,49 @@ async function openWizardAndSubmit(page: import('@playwright/test').Page, name: 
 	await submit.click();
 }
 
+/// A USER_B plan with one week and one workout per entry of `workouts`.
+async function plantPlan(opts: {
+	name: string;
+	startOffset: number;
+	endOffset: number;
+	status?: 'active' | 'paused';
+	workouts?: Record<string, unknown>[];
+}): Promise<{ planId: string; weekId: string }> {
+	const admin = getAdminClient();
+	const planId = crypto.randomUUID();
+	const weekId = crypto.randomUUID();
+	const { error: planErr } = await admin.from('training_plans').insert({
+		id: planId,
+		user_id: USER_B.id,
+		name: opts.name,
+		goal_event: 'distance_half',
+		goal_distance_m: 21097,
+		start_date: browserDate(opts.startOffset),
+		end_date: browserDate(opts.endOffset),
+		days_per_week: 4,
+		status: opts.status ?? 'active'
+	});
+	if (planErr) throw planErr;
+	const { error: weekErr } = await admin
+		.from('plan_weeks')
+		.insert({ id: weekId, plan_id: planId, week_index: 0, phase: 'base', target_volume_m: 30_000 });
+	if (weekErr) throw weekErr;
+	const rows = (opts.workouts ?? [{ scheduled_date: browserDate(opts.startOffset), kind: 'easy', target_distance_m: 6_000 }])
+		.map((w) => ({ week_id: weekId, ...w }));
+	const { error: woErr } = await admin.from('plan_workouts').insert(rows);
+	if (woErr) throw woErr;
+	return { planId, weekId };
+}
+
+async function openAdjust(page: import('@playwright/test').Page, planId: string, heading: string) {
+	await page.goto(`/plans/${planId}`);
+	await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible({ timeout: 10_000 });
+	await page.getByRole('button', { name: 'Adjust plan' }).click();
+	const dialog = page.getByTestId('adjust-plan-dialog');
+	await expect(dialog).toBeVisible();
+	return dialog;
+}
+
 test.describe('plan chaining', () => {
 	test.use({ storageState: USER_B.storageStatePath });
 
@@ -144,5 +190,106 @@ test.describe('plan chaining', () => {
 		const dates = (left ?? []).map((w) => w.scheduled_date);
 		expect(dates).toContain(browserDate(0));
 		expect(dates).not.toContain(lateWorkoutDate);
+	});
+
+	test('shifting into a queued plan offers to move it too, and both plans move', async ({ page }) => {
+		const { planId: baseId } = await plantBasePlan(20);
+		const queuedName = 'e2e chain queued';
+		const { planId: queuedId, weekId: queuedWeek } = await plantPlan({
+			name: queuedName,
+			startOffset: 21,
+			endOffset: 60,
+			workouts: [{ scheduled_date: browserDate(24), kind: 'easy', target_distance_m: 6_000 }]
+		});
+
+		const dialog = await openAdjust(page, baseId, BASE_NAME);
+		await dialog.getByLabel('Days to shift (negative moves earlier)').fill('7');
+		await dialog.getByRole('button', { name: 'Shift dates' }).click();
+
+		const confirm = page.getByTestId('bulk-confirm-dialog');
+		await expect(confirm).toContainText(queuedName, { timeout: 5_000 });
+		await confirm.getByRole('button', { name: `Also move ${queuedName} by 7 days` }).click();
+
+		const admin = getAdminClient();
+		await expect
+			.poll(async () => (await admin.from('training_plans').select('start_date').eq('id', queuedId).single()).data?.start_date)
+			.toBe(browserDate(28));
+		const { data: base } = await admin.from('training_plans').select('start_date, end_date').eq('id', baseId).single();
+		expect(base).toEqual({ start_date: browserDate(0), end_date: browserDate(27) });
+		const { data: moved } = await admin.from('plan_workouts').select('scheduled_date').eq('week_id', queuedWeek).single();
+		expect(moved?.scheduled_date).toBe(browserDate(31));
+	});
+
+	test('shifting back onto the plan before it is refused and nothing moves', async ({ page }) => {
+		await plantPlan({ name: 'e2e chain earlier', startOffset: -40, endOffset: -8 });
+		const { planId: baseId } = await plantBasePlan(20);
+
+		const dialog = await openAdjust(page, baseId, BASE_NAME);
+		await dialog.getByLabel('Days to shift (negative moves earlier)').fill('-3');
+		await dialog.getByRole('button', { name: 'Shift dates' }).click();
+
+		await expect(page.locator('.toast.toast-error')).toContainText('e2e chain earlier', { timeout: 5_000 });
+		await expect(page.getByTestId('bulk-confirm-dialog')).toBeHidden();
+		const { data } = await getAdminClient().from('training_plans').select('start_date').eq('id', baseId).single();
+		expect(data?.start_date).toBe(browserDate(-7));
+	});
+
+	test('resuming a paused plan that overlaps another active plan is refused', async ({ page }) => {
+		await plantBasePlan(20);
+		const pausedName = 'e2e chain paused';
+		const { planId: pausedId } = await plantPlan({ name: pausedName, startOffset: 0, endOffset: 30, status: 'paused' });
+
+		const dialog = await openAdjust(page, pausedId, pausedName);
+		await dialog.getByRole('button', { name: 'Resume plan' }).click();
+		await page.getByTestId('bulk-confirm-dialog').getByRole('button', { name: 'Apply' }).click();
+
+		await expect(page.locator('.toast.toast-error')).toContainText('Another active plan overlaps these dates', {
+			timeout: 5_000
+		});
+		const { data } = await getAdminClient().from('training_plans').select('status').eq('id', pausedId).single();
+		expect(data?.status).toBe('paused');
+	});
+
+	test('the dashboard names the plan queued after the current one as up next', async ({ page }) => {
+		await plantBasePlan(20);
+		await plantPlan({ name: 'e2e chain queued', startOffset: 21, endOffset: 60 });
+
+		await page.goto('/dashboard');
+		await expect(page.getByTestId('plan-hero-next')).toContainText('Up next: e2e chain queued', { timeout: 10_000 });
+	});
+
+	test('changing a race workout to another kind clears its race name and priority', async ({ page }) => {
+		const { weekId } = await plantPlan({
+			name: 'e2e chain races',
+			startOffset: -7,
+			endOffset: 40,
+			workouts: [
+				{
+					scheduled_date: browserDate(10),
+					kind: 'race',
+					target_distance_m: 10_000,
+					race_name: 'e2e chain tune-up',
+					race_priority: 'B'
+				}
+			]
+		});
+		const { data: plan } = await getAdminClient().from('plan_weeks').select('plan_id').eq('id', weekId).single();
+
+		await page.goto(`/plans/${plan!.plan_id}`);
+		const raceDay = page.locator('.weeks .week .day .day-link', { hasText: /Race|e2e chain tune-up/ }).first();
+		await expect(raceDay).toBeVisible({ timeout: 10_000 });
+		await raceDay.click();
+		const modal = page.locator('.modal');
+		await expect(modal).toBeVisible({ timeout: 5_000 });
+		await modal.getByLabel('Kind', { exact: true }).selectOption('easy');
+		await modal.getByRole('button', { name: /^Save/ }).click();
+		await expect(modal).toHaveCount(0);
+
+		const { data: wo } = await getAdminClient()
+			.from('plan_workouts')
+			.select('kind, race_name, race_priority')
+			.eq('week_id', weekId)
+			.single();
+		expect(wo).toEqual({ kind: 'easy', race_name: null, race_priority: null });
 	});
 });

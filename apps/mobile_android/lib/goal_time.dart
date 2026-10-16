@@ -43,11 +43,32 @@ int? parseGoalTimeS(String raw, {double? distanceM}) {
   }
 }
 
-/// h:mm:ss (or mm:ss under an hour) — round-trips through [parseGoalTimeS].
+/// Parse a race goal time that is always written in hours: h:mm:ss, or an
+/// explicit h:mm. Unlike [parseGoalTimeS] there is no pace guess and no
+/// bare-minutes form, so a field prefilled by [formatGoalTimeS] reads back
+/// as the value it was filled with whether or not the race has a distance.
+int? parseRaceGoalTimeS(String raw) {
+  final parts = raw.trim().split(':');
+  if (parts.length < 2 || parts.length > 3) return null;
+  final nums = <int>[];
+  for (final p in parts) {
+    final t = p.trim();
+    if (t.isEmpty || !RegExp(r'^\d+$').hasMatch(t)) return null;
+    nums.add(int.parse(t));
+  }
+  if (nums.skip(1).any((n) => n > 59)) return null;
+  final s = nums[0] * 3600 + nums[1] * 60 + (nums.length == 3 ? nums[2] : 0);
+  return s > 0 ? s : null;
+}
+
+/// Always h:mm:ss, a sub-hour time included ("0:45:00"), so the output is
+/// three-part and reads back exactly through both [parseGoalTimeS] and
+/// [parseRaceGoalTimeS]. A two-part "45:00" would be read as 45 hours
+/// wherever no distance disambiguates it.
 String formatGoalTimeS(int s) {
   final h = s ~/ 3600;
   final m = (s % 3600) ~/ 60;
   final sec = s % 60;
   String two(int v) => v.toString().padLeft(2, '0');
-  return h > 0 ? '$h:${two(m)}:${two(sec)}' : '${two(m)}:${two(sec)}';
+  return '$h:${two(m)}:${two(sec)}';
 }

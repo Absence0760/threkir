@@ -1,6 +1,7 @@
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../lib/training.dart' show WorkoutKind;
 import '../lib/training_service.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/widgets/workout_edit_sheet.dart';
@@ -9,6 +10,7 @@ class _FakeTraining extends TrainingService {
   ({
     String workoutId,
     String? kind,
+    String? fromKind,
     double? targetDistanceM,
     int? targetPaceSecPerKm,
     String? notes,
@@ -20,6 +22,7 @@ class _FakeTraining extends TrainingService {
   Future<void> updateWorkout(
     String workoutId, {
     String? kind,
+    String? fromKind,
     double? targetDistanceM,
     int? targetPaceSecPerKm,
     String? notes,
@@ -29,6 +32,7 @@ class _FakeTraining extends TrainingService {
     lastUpdate = (
       workoutId: workoutId,
       kind: kind,
+      fromKind: fromKind,
       targetDistanceM: targetDistanceM,
       targetPaceSecPerKm: targetPaceSecPerKm,
       notes: notes,
@@ -240,6 +244,56 @@ void main() {
       expect(race0.name, 'Two Oceans');
       expect(race0.priority, 'A');
       expect(race0.goalTimeSec, 22500);
+    });
+
+    testWidgets(
+        'a sub-hour goal on a race with no distance survives an untouched save',
+        (tester) async {
+      final training = _FakeTraining();
+      await _pumpSheet(
+          tester,
+          _workout(
+            kind: 'race',
+            targetDistanceM: null,
+            targetPaceSecPerKm: null,
+            targetDurationSeconds: 2700,
+            raceName: 'Parkrun PB',
+          ),
+          training);
+      expect(find.widgetWithText(TextField, '0:45:00'), findsOneWidget);
+      await tester.ensureVisible(find.text('Save'));
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(training.lastUpdate!.race!.goalTimeSec, 2700);
+    });
+
+    testWidgets('a typed h:mm goal is read as hours, not pace-guessed',
+        (tester) async {
+      final training = _FakeTraining();
+      await _pumpSheet(tester, race(), training);
+      final goal = find.byKey(const Key('workoutEditRaceGoal'));
+      await tester.ensureVisible(goal);
+      await tester.enterText(goal, '5:45');
+      await tester.ensureVisible(find.text('Save'));
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(training.lastUpdate!.race!.goalTimeSec, 5 * 3600 + 45 * 60);
+    });
+
+    testWidgets('changing a race to another kind reports it was a race',
+        (tester) async {
+      final training = _FakeTraining();
+      await _pumpSheet(tester, race(), training);
+      await tester.tap(find.byType(DropdownButtonFormField<WorkoutKind>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Long run').last);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Save'));
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(training.lastUpdate!.kind, 'long');
+      expect(training.lastUpdate!.fromKind, 'race');
+      expect(training.lastUpdate!.race, isNull);
     });
 
     testWidgets('choosing Automatic clears the priority', (tester) async {

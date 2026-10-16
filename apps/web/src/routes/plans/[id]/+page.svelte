@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
+	import { isPlanOverlapError, thrownMessage } from '#lib/core/supabase_error.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { onMount, tick } from 'svelte';
 	import { afterNavigate, replaceState } from '$app/navigation';
@@ -14,16 +14,23 @@
 		fetchMyPublishedPlans,
 		updatePlanWorkout,
 		updatePlanWeek,
-		updatePlanMeta,
 		duplicatePlanWeek,
+		fetchMyActivePlanWindows,
+		shiftTrainingPlan,
 		pausePlan,
 		resumePlan,
 		ActivePlanExistsError,
 	} from '#lib/core/data.ts';
-	import { shiftIsoDate, recoveryWorkoutPatch, recoveryWeekVolume } from '#lib/training/plan_bulk_ops.ts';
+	import { recoveryWorkoutPatch, recoveryWeekVolume } from '#lib/training/plan_bulk_ops.ts';
+	import { planShiftImpact } from '#lib/training/plan_shift.ts';
 	import { cyclePlanWorkoutPatch, type CyclePlanConfig } from '#lib/training/cycle_plan.ts';
 	import { isCyclePlansEnabled } from '#lib/training/cycle_plan_flag.ts';
 	import { replanRemaining, type ReplanChange, type ReplanWeek } from '#lib/training/plan_replan.ts';
+	import {
+		raceTaperPatch,
+		raceTaperProposals,
+		type RaceTaperChange
+	} from '#lib/training/race_taper.ts';
 	import {
 		adaptiveReplanRemaining,
 		type AdaptiveReason,
@@ -79,6 +86,8 @@
 	import { loadSettings, effective } from '#lib/settings/settings.ts';
 	import type { WeekStart } from '#lib/format/calendar.ts';
 	import type { TrainingPlan, PlanWeek, PlanWorkout, ClubWithMeta } from '#lib/types.ts';
+
+	type PlanName = Pick<TrainingPlan, 'id' | 'name' | 'start_date' | 'end_date'>;
 
 	let id = $derived(page.params.id as string);
 	let plan = $state<TrainingPlan | null>(null);
@@ -269,7 +278,7 @@
 	// These three ops rewrite or re-date a chunk of the plan and can't be
 	// cleanly undone, so each routes through a ConfirmDialog before running.
 	let bulkConfirm = $state<
-		| { kind: 'shift' }
+		| { kind: 'shift'; following: PlanName[] }
 		| { kind: 'recovery'; week: PlanWeek }
 		| { kind: 'duplicate'; week: PlanWeek }
 		| { kind: 'cycle' }
@@ -293,19 +302,145 @@
 	let replanPreviewHeading = $state<HTMLHeadingElement>();
 
 	async function chooseConfirmed(
-		c: { kind: 'shift' } | { kind: 'cycle' } | { kind: 'pause' } | { kind: 'resume' },
+		c: { kind: 'cycle' } | { kind: 'pause' } | { kind: 'resume' },
 	): Promise<void> {
 		adjustOpen = false;
 		await tick();
 		bulkConfirm = c;
 	}
 
+	/// Check the shift against the runner's other active plans before asking
+	/// (plan_shift.ts, decisions § 2052). Landing on a plan queued after this
+	/// one turns the confirm into "also move it"; landing on the plan before is
+	/// refused here, since moving that one would rewrite history. A failed check
+	/// asks nothing: the shift is never offered blind.
+	async function chooseShift(): Promise<void> {
+		if (!plan || !shiftDays) return;
+		adjustOpen = false;
+		await tick();
+		let others: PlanName[];
+		try {
+			others = await fetchMyActivePlanWindows();
+		} catch (e) {
+			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+			return;
+		}
+		const impact = planShiftImpact(plan, others, shiftDays);
+		if (impact.kind === 'blocked') {
+			showToast(m('planDetail.shiftBlocked', { plans: planNames(impact.blocking) }), 'error');
+			return;
+		}
+		bulkConfirm = { kind: 'shift', following: impact.kind === 'following' ? impact.following : [] };
+	}
+
+	function planNames(plans: PlanName[]): string {
+		return new Intl.ListFormat(activeFormatLocale(), { type: 'conjunction' }).format(plans.map((p) => p.name));
+	}
+
+	/// A failed plan date write. 23P01 is the only exclusion constraint there
+	/// is (training_plans_active_no_overlap), so it is said in the runner's
+	/// language rather than as the data layer's English.
+	function planWriteFailed(e: unknown): void {
+		showToast(
+			isPlanOverlapError(e)
+				? m('planDetail.planOverlap')
+				: m('planDetail.bulkFailed', { error: thrownMessage(e) }),
+			'error',
+		);
+	}
+
 	async function chooseReplan(propose: () => void): Promise<void> {
 		adjustOpen = false;
+		taperPreview = null;
 		await tick();
 		propose();
 		await tick();
 		replanPreviewHeading?.focus();
+	}
+
+	// ─── Taper around B/C races (owner-only, decisions § 2051) ───
+	// The plan's phases only taper for the A race at its end, so a B or C race
+	// mid-block gets its mini-taper and recovery proposed here, previewed like
+	// a re-plan, and applied only on the runner's say-so.
+	let taperPreview = $state<RaceTaperChange[] | null>(null);
+	let taperPreviewHeading = $state<HTMLHeadingElement>();
+
+	function proposeRaceTaper(): void {
+		if (!plan || !isOwner || bulkBusy) return;
+		const input = weeks.flatMap((wk) =>
+			(workoutsByWeek.get(wk.id) ?? []).map((x) => ({
+				id: x.id,
+				scheduledDate: x.scheduled_date,
+				kind: x.kind,
+				targetDistanceM: x.target_distance_m,
+				phase: wk.phase,
+				completed: isWorkoutCompleted(x),
+				skipped: isWorkoutSkipped(x)
+			}))
+		);
+		const changes = raceTaperProposals({ workouts: input, races, today });
+		replanPreview = null;
+		adaptiveInfo = null;
+		if (changes.length === 0) {
+			taperPreview = null;
+			showToast(m('planDetail.raceTaperNone'));
+			return;
+		}
+		taperPreview = changes;
+	}
+
+	async function chooseRaceTaper(): Promise<void> {
+		adjustOpen = false;
+		await tick();
+		proposeRaceTaper();
+		await tick();
+		taperPreviewHeading?.focus();
+	}
+
+	async function dismissRaceTaper(): Promise<void> {
+		taperPreview = null;
+		await tick();
+		adjustButton?.focus();
+	}
+
+	/// Writes each proposed patch, then restates every touched week's volume
+	/// from the patched distances so the week header stays honest (the same
+	/// recompute applyCycleAdjustment does).
+	async function applyRaceTaper(): Promise<void> {
+		if (!taperPreview || bulkBusy) return;
+		bulkBusy = true;
+		try {
+			const changes = taperPreview;
+			const byWorkout = new Map(changes.map((c) => [c.workoutId, c]));
+			await Promise.all(changes.map((c) => updatePlanWorkout(c.workoutId, raceTaperPatch(c))));
+			for (const wk of weeks) {
+				const wkWorkouts = workoutsByWeek.get(wk.id) ?? [];
+				if (!wkWorkouts.some((x) => byWorkout.has(x.id))) continue;
+				const vol = wkWorkouts.reduce((sum, x) => {
+					if (x.kind === 'rest') return sum;
+					const c = byWorkout.get(x.id);
+					return sum + ((c ? c.toMetres : x.target_distance_m) ?? 0);
+				}, 0);
+				await updatePlanWeek(wk.id, { target_volume_m: vol });
+			}
+			showToast(m('planDetail.replanApplied', { n: changes.length }));
+			taperPreview = null;
+			await load();
+		} catch (e) {
+			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+		} finally {
+			bulkBusy = false;
+		}
+	}
+
+	function taperChangeLabel(c: RaceTaperChange): string {
+		const side = (kind: string, metres: number | null) =>
+			metres != null ? `${workoutKindLabel(kind)} ${fmtKm(metres)}` : workoutKindLabel(kind);
+		const change = `${side(c.fromKind, c.fromMetres)} → ${side(c.toKind, c.toMetres)}`;
+		const race = c.raceName ?? fmtRaceDate(c.raceDate);
+		if (c.reason === 'shakeout') return m('planDetail.raceTaperShakeout', { change, race });
+		if (c.reason === 'pre_race') return m('planDetail.raceTaperPre', { change, race });
+		return m('planDetail.raceTaperPost', { change, race });
 	}
 
 	// "Adjust with AI" (decisions § 1979). Needs the Coach on as well: a plan
@@ -362,7 +497,7 @@
 		const c = bulkConfirm;
 		bulkConfirm = null;
 		if (!c) return;
-		if (c.kind === 'shift') void shiftPlan();
+		if (c.kind === 'shift') void shiftPlan(c.following.length > 0);
 		else if (c.kind === 'recovery') void markWeekRecovery(c.week);
 		else if (c.kind === 'duplicate') void duplicateWeek(c.week);
 		else if (c.kind === 'cycle') void applyCycleAdjustment();
@@ -371,26 +506,17 @@
 	}
 
 	/// Move every workout + the plan's start/end by ±N days (race moved,
-	/// runner started a week late, …). Orchestrated client-side: one
-	/// update per workout then the plan meta; on partial failure the
-	/// reload surfaces the real server state.
-	async function shiftPlan(): Promise<void> {
+	/// runner started a week late, …) in one transaction (shift_training_plan),
+	/// with the plans queued after it when the runner chose to move them too.
+	async function shiftPlan(shiftFollowing: boolean): Promise<void> {
 		if (!plan || bulkBusy || !shiftDays) return;
 		bulkBusy = true;
 		try {
-			await Promise.all(
-				workouts.map((w) =>
-					updatePlanWorkout(w.id, { scheduled_date: shiftIsoDate(w.scheduled_date, shiftDays) }),
-				),
-			);
-			await updatePlanMeta(plan.id, {
-				start_date: shiftIsoDate(plan.start_date, shiftDays),
-				end_date: shiftIsoDate(plan.end_date, shiftDays),
-			});
+			await shiftTrainingPlan(plan.id, shiftDays, shiftFollowing);
 			showToast(m('planDetail.shiftDone', { n: Math.abs(shiftDays) }));
 			await load();
 		} catch (e) {
-			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+			planWriteFailed(e);
 		} finally {
 			bulkBusy = false;
 		}
@@ -432,7 +558,7 @@
 			showToast(m('planDetail.duplicateWeekDone', { n: week.week_index + 1 }));
 			await load();
 		} catch (e) {
-			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+			planWriteFailed(e);
 		} finally {
 			bulkBusy = false;
 		}
@@ -513,7 +639,9 @@
 			showToast(m('planDetail.resumeDone'));
 			await load();
 		} catch (e) {
-			if (e instanceof ActivePlanExistsError) {
+			// The pre-check and the constraint say the same thing; the
+			// constraint catches a plan created between the two.
+			if (e instanceof ActivePlanExistsError || isPlanOverlapError(e)) {
 				showToast(m('planDetail.resumeBlocked'), 'error');
 			} else {
 				showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
@@ -841,6 +969,13 @@
 	/// B race mid-block gets its own run-in before the plan's A race.
 	let races = $derived(plan ? planRaces(plan, workouts) : []);
 	let upcomingRace = $derived(nextRace(races, today));
+	/// The hero's distance / goal / date follow the next race once it is not
+	/// the plan's own A race on the end date; the A goal stays in the races list.
+	let heroRace = $derived(
+		plan && upcomingRace && !(upcomingRace.priority === 'A' && upcomingRace.date === plan.end_date)
+			? upcomingRace
+			: null
+	);
 
 	let todayWorkout = $derived(
 		workouts.find((w) => w.scheduled_date === today) ?? null
@@ -1140,16 +1275,40 @@
 						</span>
 					{/if}
 				</div>
+				{#if heroRace}
+					<p class="hero-next-race" data-testid="hero-next-race">
+						<span
+							class="race-priority p-{heroRace.priority.toLowerCase()}"
+							aria-label={m('planDetail.racePriorityAria', { priority: heroRace.priority })}
+						>{heroRace.priority}</span>
+						{m('planDetail.heroNextRace', { name: heroRace.name ?? plan.name })}
+					</p>
+				{/if}
 				<div class="meta">
-					<span>
-						<span class="material-symbols">flag</span>
-						{fmtKm(plan.goal_distance_m, 1)}
-					</span>
-					{#if plan.goal_time_seconds}
+					{#if heroRace}
+						{#if heroRace.distanceM != null}
+							<span>
+								<span class="material-symbols">flag</span>
+								{fmtKm(heroRace.distanceM, 1)}
+							</span>
+						{/if}
+						{#if heroRace.goalTimeSec != null}
+							<span>
+								<span class="material-symbols">timer</span>
+								{fmtHms(heroRace.goalTimeSec)}
+							</span>
+						{/if}
+					{:else}
 						<span>
-							<span class="material-symbols">timer</span>
-							{fmtHms(plan.goal_time_seconds)}
+							<span class="material-symbols">flag</span>
+							{fmtKm(plan.goal_distance_m, 1)}
 						</span>
+						{#if plan.goal_time_seconds}
+							<span>
+								<span class="material-symbols">timer</span>
+								{fmtHms(plan.goal_time_seconds)}
+							</span>
+						{/if}
 					{/if}
 					{#if plan.vdot}
 						<span>
@@ -1161,7 +1320,7 @@
 					{#if planPosition}
 						<span>
 							<span class="material-symbols">event</span>
-							{fmtRaceDate(plan.end_date)}
+							{fmtRaceDate(heroRace?.date ?? plan.end_date)}
 						</span>
 					{/if}
 				</div>
@@ -1215,6 +1374,32 @@
 						{m('planDetail.replanCancel')}
 					</button>
 					<button type="button" class="btn btn-primary btn-sm" onclick={applyReplan} disabled={bulkBusy}>
+						{m('planDetail.replanApply')}
+					</button>
+				</div>
+			</section>
+		{/if}
+
+		{#if isOwner && !plan.is_template && taperPreview}
+			<section
+				class="replan-preview"
+				aria-label={m('planDetail.raceTaperPreviewTitle')}
+				data-testid="race-taper-preview"
+			>
+				<h3 tabindex="-1" bind:this={taperPreviewHeading}>{m('planDetail.raceTaperPreviewTitle')}</h3>
+				<ul>
+					{#each taperPreview as c (c.workoutId)}
+						<li>
+							<span class="replan-date">{c.scheduledDate}</span>
+							<span class="replan-change">{taperChangeLabel(c)}</span>
+						</li>
+					{/each}
+				</ul>
+				<div class="replan-actions">
+					<button type="button" class="btn btn-secondary btn-sm" onclick={dismissRaceTaper} disabled={bulkBusy}>
+						{m('planDetail.replanCancel')}
+					</button>
+					<button type="button" class="btn btn-primary btn-sm" onclick={applyRaceTaper} disabled={bulkBusy}>
 						{m('planDetail.replanApply')}
 					</button>
 				</div>
@@ -1716,7 +1901,7 @@
 						type="button"
 						class="btn btn-outline btn-sm adjust-option-btn"
 						aria-describedby="adjust-shift-desc"
-						onclick={() => chooseConfirmed({ kind: 'shift' })}
+						onclick={chooseShift}
 						disabled={bulkBusy || !shiftDays}
 					>
 						<span class="material-symbols" aria-hidden="true">date_range</span>
@@ -1751,6 +1936,22 @@
 				</button>
 				<p class="adjust-option-desc" id="adjust-adaptive-desc">{m('planDetail.adjustAdaptiveDesc')}</p>
 			</li>
+			{#if races.some((r) => r.priority !== 'A' && r.date > today)}
+				<li class="adjust-option">
+					<button
+						type="button"
+						class="btn btn-outline btn-sm adjust-option-btn"
+						data-testid="race-taper-btn"
+						aria-describedby="adjust-race-taper-desc"
+						onclick={chooseRaceTaper}
+						disabled={bulkBusy}
+					>
+						<span class="material-symbols" aria-hidden="true">flag</span>
+						{m('planDetail.raceTaper')}
+					</button>
+					<p class="adjust-option-desc" id="adjust-race-taper-desc">{m('planDetail.adjustRaceTaperDesc')}</p>
+				</li>
+			{/if}
 			{#if showAiAdjust}
 				<li class="adjust-option">
 					<button
@@ -1838,7 +2039,12 @@
 						? m('planDetail.resumeConfirmTitle')
 						: m('planDetail.duplicateConfirmTitle')}
 	message={bulkConfirm?.kind === 'shift'
-		? m('planDetail.shiftConfirmMessage', { n: Math.abs(shiftDays) })
+		? bulkConfirm.following.length > 0
+			? m('planDetail.shiftFollowingMessage', {
+					n: Math.abs(shiftDays),
+					plans: planNames(bulkConfirm.following),
+				})
+			: m('planDetail.shiftConfirmMessage', { n: Math.abs(shiftDays) })
 		: bulkConfirm?.kind === 'recovery'
 			? m('planDetail.recoveryConfirmMessage', { n: bulkConfirm.week.week_index + 1 })
 			: bulkConfirm?.kind === 'duplicate'
@@ -1852,7 +2058,12 @@
 						: bulkConfirm?.kind === 'resume'
 							? m('planDetail.resumeConfirmMessage')
 							: ''}
-	confirmLabel={m('planDetail.bulkConfirm')}
+	confirmLabel={bulkConfirm?.kind === 'shift' && bulkConfirm.following.length > 0
+		? m('planDetail.shiftAlsoMove', {
+				plans: planNames(bulkConfirm.following),
+				n: Math.abs(shiftDays),
+			})
+		: m('planDetail.bulkConfirm')}
 	cancelLabel={m('planDetail.replanCancel')}
 	onconfirm={runBulkConfirm}
 	oncancel={() => (bulkConfirm = null)}
@@ -2063,6 +2274,15 @@
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
 		color: var(--color-primary);
+	}
+
+	.hero-next-race {
+		display: flex;
+		align-items: center;
+		gap: var(--space-xs);
+		margin: var(--space-xs) 0 0;
+		font-weight: 600;
+		overflow-wrap: anywhere;
 	}
 
 	.meta {

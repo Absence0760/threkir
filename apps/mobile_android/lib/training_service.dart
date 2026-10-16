@@ -51,11 +51,15 @@ typedef PlanWorkoutRaceFields = ({
 /// argument leaves its column alone, except inside [race]: that writes the
 /// race name, priority and goal time as given, nulls included. A [kind]
 /// other than `race` clears the race name and priority instead, since the
-/// table allows them only on race rows (23514 otherwise). [notes] is
+/// table allows them only on race rows (23514 otherwise), and when the row
+/// was a race ([fromKind]) it clears the race's goal time too, so a former
+/// race does not keep its finish time as a duration target. Matches web's
+/// `WorkoutEditor` save. [notes] is
 /// trimmed and an empty result nulls the column, matching web's
 /// `updatePlanWorkout`.
 Map<String, dynamic> planWorkoutPatch({
   String? kind,
+  String? fromKind,
   double? targetDistanceM,
   int? targetPaceSecPerKm,
   String? notes,
@@ -66,6 +70,9 @@ Map<String, dynamic> planWorkoutPatch({
   if (kind != null && kind != 'race') {
     patch[PlanWorkoutRow.colRaceName] = null;
     patch[PlanWorkoutRow.colRacePriority] = null;
+    if (fromKind == 'race') {
+      patch[PlanWorkoutRow.colTargetDurationSeconds] = null;
+    }
   } else if (race != null) {
     patch[PlanWorkoutRow.colRaceName] = TrainingService.trimToNull(race.name);
     patch[PlanWorkoutRow.colRacePriority] = race.priority;
@@ -131,6 +138,13 @@ String clonedPlanEndIso(TrainingPlanRow template, DateTime start) {
 
 bool _isOverlapViolation(Object e) =>
     e is PostgrestException && e.code == '23P01';
+
+/// [error] as a plan write should surface it: the overlap constraint's
+/// refusal (23P01) becomes [ActivePlanExistsError], anything else is
+/// returned unchanged. Web twin: `dbError`'s `PlanOverlapError` mapping in
+/// `apps/web/src/lib/core/supabase_error.ts`.
+Object planWriteError(Object error) =>
+    _isOverlapViolation(error) ? const ActivePlanExistsError() : error;
 
 /// A public-library plan paired with its author's public handle. The
 /// browse + preview surfaces show the handle but never any other author
@@ -592,14 +606,22 @@ class TrainingService extends ChangeNotifier {
   /// (plan_id, week_index) re-index is atomic server-side (duplicate_plan_week
   /// RPC) — a client-side multi-update would transiently break the unique
   /// index. Mirrors web `core/data.ts:duplicatePlanWeek`. Returns the new week id.
+  ///
+  /// Pushing the end date back a week can run into the next queued plan;
+  /// the constraint refuses that and it surfaces as [ActivePlanExistsError].
   Future<String> duplicatePlanWeek(String planId, int weekIndex) async {
-    final newId = await _c.rpc(
-      'duplicate_plan_week',
-      params: {
-        'p_plan_id': planId,
-        'p_week_index': weekIndex,
-      },
-    );
+    final Object? newId;
+    try {
+      newId = await _c.rpc(
+        'duplicate_plan_week',
+        params: {
+          'p_plan_id': planId,
+          'p_week_index': weekIndex,
+        },
+      );
+    } catch (e, s) {
+      Error.throwWithStackTrace(planWriteError(e), s);
+    }
     notifyListeners();
     return newId as String;
   }
@@ -894,6 +916,11 @@ class TrainingService extends ChangeNotifier {
           'target_pace_tolerance_sec': wo.targetPaceToleranceSec,
           'structure': wo.structure?.toJson(),
           'notes': wo.notes,
+          'race_name': wo.kind == WorkoutKind.race
+              ? TrainingService.trimToNull(wo.raceName)
+              : null,
+          'race_priority':
+              wo.kind == WorkoutKind.race ? wo.racePriority : null,
         });
       }
     }
@@ -1013,6 +1040,26 @@ class TrainingService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Writes the B/C race taper's per-workout patches (`raceTaperPatch`,
+  /// decisions § 2051) and restates each touched week's volume. Unlike
+  /// [updateWorkout] a patch may clear the pace target and the interval
+  /// structure. Mirrors web `applyRaceTaper` on the plan page.
+  Future<void> applyRaceTaper({
+    required Map<String, Map<String, Object?>> patches,
+    required Map<String, double> weekVolumes,
+  }) async {
+    for (final e in patches.entries) {
+      if (e.value.isEmpty) continue;
+      await _c.from(PlanWorkoutRow.table).update(e.value).eq('id', e.key);
+    }
+    for (final e in weekVolumes.entries) {
+      await _c
+          .from(PlanWeekRow.table)
+          .update({PlanWeekRow.colTargetVolumeM: e.value}).eq('id', e.key);
+    }
+    notifyListeners();
+  }
+
   /// Candidate runs the owner can re-link to [workout].
   ///
   /// Owner-scoped, within ±7 days of the scheduled date, EXCLUDING any
@@ -1081,6 +1128,7 @@ class TrainingService extends ChangeNotifier {
   Future<void> updateWorkout(
     String workoutId, {
     String? kind,
+    String? fromKind,
     double? targetDistanceM,
     int? targetPaceSecPerKm,
     String? notes,
@@ -1088,6 +1136,7 @@ class TrainingService extends ChangeNotifier {
   }) async {
     final patch = planWorkoutPatch(
       kind: kind,
+      fromKind: fromKind,
       targetDistanceM: targetDistanceM,
       targetPaceSecPerKm: targetPaceSecPerKm,
       notes: notes,

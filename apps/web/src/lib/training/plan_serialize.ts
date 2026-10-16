@@ -18,6 +18,9 @@
  * Phase + weekly volume are *recomputed* on import (phase from week
  * position, volume from the summed distances) rather than trusted from
  * the text.
+ *
+ * Dart twin of the parse half: `apps/mobile_android/lib/plan_serialize.dart`
+ * (decisions § 2053) — keep `parsePlanMarkdown` / `parsePlanJson` in lockstep.
  */
 
 import { GOAL_DISTANCES_M, phaseFor } from './training';

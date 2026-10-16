@@ -1,5 +1,6 @@
 -- assign_plan_to_athlete's overlap refusal carries SQLSTATE 23P01
--- (exclusion_violation) and names the athlete's plans in the way.
+-- (exclusion_violation) and names the athlete's plans in the way (decisions
+-- § 2065).
 --
 -- It raised a bare P0001 ("athlete already has an active plan for those
 -- dates"), which both clients could only show as their generic "Couldn't

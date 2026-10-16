@@ -1,4 +1,4 @@
--- A B/C race taper applied twice compounded (decisions § 2051 follow-up).
+-- A B/C race taper applied twice compounded (decisions § 2063; a § 2051 follow-up).
 --
 -- raceTaperProposals scales a workout's CURRENT distance, so once Apply had
 -- cut an easy run to 65% it stayed in the window and the next "Taper around

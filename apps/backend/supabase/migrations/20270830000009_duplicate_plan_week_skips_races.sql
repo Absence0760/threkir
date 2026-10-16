@@ -1,5 +1,5 @@
 -- duplicate_plan_week no longer copies a week's race workouts (decisions
--- § 2009 follow-up). The copy dropped race_name / race_priority so a
+-- § 2066, a § 2009 follow-up). The copy dropped race_name / race_priority so a
 -- duplicated race week would not name a second race, but it still copied the
 -- workout as kind 'race', and planRaces reads every race workout as a race:
 -- the nameless copy became a C race seven days later (or the A race, when it

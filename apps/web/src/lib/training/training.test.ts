@@ -40,6 +40,8 @@ import {
 	longRunDistance,
 	isUltraDistance,
 	parseISO,
+	planPhaseFor,
+	ultraPhaseFor,
 	ultraLongRunCapSec,
 	ultraMarathonEquivalentSec,
 	ultraTaperWeeks,
@@ -1339,4 +1341,15 @@ test('ultra: road plans are unchanged by the ultra branch', () => {
 		weeks: 16
 	});
 	assert.deepEqual(customMarathon.weeks, marathon.weeks);
+});
+
+test('ultra: planPhaseFor takes the ultra split past the marathon and the road one otherwise', () => {
+	for (let i = 0; i < 18; i++) {
+		assert.equal(planPhaseFor(i, 18, 70_000), ultraPhaseFor(i, 18, 70_000));
+		assert.equal(planPhaseFor(i, 18, 42_195), phaseFor(i, 18));
+	}
+	assert.deepEqual(
+		ultraPlan(70_000, { goalTimeSec: 8 * 3600 }).weeks.map((w) => w.phase),
+		Array.from({ length: 18 }, (_, i) => planPhaseFor(i, 18, 70_000))
+	);
 });

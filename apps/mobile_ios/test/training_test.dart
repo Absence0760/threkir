@@ -1432,5 +1432,15 @@ void main() {
           [for (final w in customMarathon.weeks) for (final x in w.workouts) x.kind],
           [for (final w in marathon.weeks) for (final x in w.workouts) x.kind]);
     });
+    test('planPhaseFor takes the ultra split past the marathon and the road one otherwise',
+        () {
+      for (var i = 0; i < 18; i++) {
+        expect(planPhaseFor(i, 18, 70000), ultraPhaseFor(i, 18, 70000));
+        expect(planPhaseFor(i, 18, 42195), phaseFor(i, 18));
+      }
+      expect(
+          [for (final w in ultraPlan(70000, goalTimeSec: 8 * 3600).weeks) w.phase],
+          [for (var i = 0; i < 18; i++) planPhaseFor(i, 18, 70000)]);
+    });
   });
 }

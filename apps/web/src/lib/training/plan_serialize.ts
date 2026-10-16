@@ -16,15 +16,16 @@
  * and duration-based steps aren't represented in the table, so a parsed
  * plan carries distance + pace + notes per workout and nulls the rest.
  * Phase + weekly volume are *recomputed* on import (phase from week
- * position, volume from the summed distances) rather than trusted from
+ * position and the goal distance, as the generator assigns them; volume
+ * from the summed distances) rather than trusted from
  * the text.
  *
  * Dart twin of the parse half: `apps/mobile_android/lib/plan_serialize.dart`
  * (decisions § 2053) — keep `parsePlanMarkdown` / `parsePlanJson` in lockstep.
  */
 
-import { GOAL_DISTANCES_M, phaseFor } from './training';
-import type { GeneratedPlan, GoalEvent, PlanPhase, WorkoutKind } from './training';
+import { GOAL_DISTANCES_M, planPhaseFor } from './training';
+import type { GeneratedPlan, GoalEvent, WorkoutKind } from './training';
 import { RACE_GOAL_MAX_HOURS, RACE_PRIORITIES, type RacePriority } from './plan_races';
 
 const METRES_PER_MILE = 1609.344;
@@ -420,31 +421,6 @@ export function parsePlanMarkdown(text: string): ParsedPlan {
 		byWeek.set(r.weekIndex, list);
 	}
 
-	const weeks = [...byWeek.keys()]
-		.sort((a, b) => a - b)
-		.map((weekIndex) => {
-			const wos = byWeek.get(weekIndex)!;
-			const target_volume_m = wos.reduce((s, w) => s + (w.target_distance_m ?? 0), 0);
-			return {
-				week_index: weekIndex,
-				phase: phaseFor(weekIndex, totalWeeks) as PlanPhase,
-				target_volume_m,
-				notes: null,
-				workouts: wos.map((w) => ({
-					scheduled_date: w.scheduled_date,
-					kind: w.kind,
-					target_distance_m: w.target_distance_m,
-					target_duration_seconds: w.target_duration_seconds,
-					target_pace_sec_per_km: w.target_pace_sec_per_km,
-					target_pace_tolerance_sec: null,
-					structure: null,
-					notes: w.notes,
-					race_name: w.race_name,
-					race_priority: w.race_priority,
-				})),
-			};
-		});
-
 	const goalEvent: GoalEvent =
 		goalEventToken && GOAL_EVENTS.includes(goalEventToken as GoalEvent)
 			? (goalEventToken as GoalEvent)
@@ -464,6 +440,33 @@ export function parsePlanMarkdown(text: string): ParsedPlan {
 	if (!(resolvedDistance > 0)) {
 		throw new PlanParseError('Could not determine a goal distance.');
 	}
+
+	const weeks = [...byWeek.keys()]
+		.sort((a, b) => a - b)
+		.map((weekIndex) => {
+			const wos = byWeek.get(weekIndex)!;
+			const target_volume_m = wos.reduce((s, w) => s + (w.target_distance_m ?? 0), 0);
+			return {
+				week_index: weekIndex,
+				// The generator's own rule, so a pasted ultra plan tapers as one.
+				phase: planPhaseFor(weekIndex, totalWeeks, resolvedDistance),
+				target_volume_m,
+				notes: null,
+				workouts: wos.map((w) => ({
+					scheduled_date: w.scheduled_date,
+					kind: w.kind,
+					target_distance_m: w.target_distance_m,
+					target_duration_seconds: w.target_duration_seconds,
+					target_pace_sec_per_km: w.target_pace_sec_per_km,
+					target_pace_tolerance_sec: null,
+					structure: null,
+					notes: w.notes,
+					race_name: w.race_name,
+					race_priority: w.race_priority,
+				})),
+			};
+		});
+
 
 	const start = startDate && ISO_DATE.test(startDate) ? startDate : rows[0].scheduled_date;
 	// create_training_plan refuses a workout outside the plan's window, so a

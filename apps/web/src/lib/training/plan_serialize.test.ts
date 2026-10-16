@@ -7,6 +7,7 @@ import {
 	parsePlanJson,
 	type ExportPlan,
 } from './plan_serialize';
+import { phaseFor, planPhaseFor } from './training';
 
 const SAMPLE: ExportPlan = {
 	name: 'Spring Marathon',
@@ -71,6 +72,29 @@ test('parsePlanMarkdown recomputes phase from week position', () => {
 	// phaseFor(0, 6) → base; the final week is always 'race'.
 	assert.equal(parsed.generated.weeks[0].phase, 'base');
 	assert.equal(parsed.generated.weeks[5].phase, 'race');
+});
+
+test('parsePlanMarkdown gives a pasted ultra plan the generator\'s ultra phases', () => {
+	const rows = Array.from({ length: 18 }, (_, wk) => {
+		const d = new Date(Date.UTC(2026, 5, 7 + wk * 7)).toISOString().slice(0, 10);
+		return `| ${wk + 1} | ${d} | long | 20.00 km |  |  |`;
+	});
+	const parsed = parsePlanMarkdown(
+		[
+			'# 70 km ultra',
+			'- Goal event: custom',
+			'- Goal distance: 70.00 km',
+			'| Week | Date | Type | Distance | Pace | Notes |',
+			'| --- | --- | --- | --- | --- | --- |',
+			...rows
+		].join('\n')
+	);
+	const phases = parsed.generated.weeks.map((w) => w.phase);
+	assert.deepEqual(phases, Array.from({ length: 18 }, (_, i) => planPhaseFor(i, 18, 70_000)));
+	// Two taper weeks, as the generator's ultra branch gives 70 km; the road
+	// split would have started a third one at week 15.
+	assert.deepEqual(phases.slice(12), ['peak', 'peak', 'peak', 'taper', 'taper', 'race']);
+	assert.equal(phaseFor(14, 18), 'taper');
 });
 
 test('parsePlanMarkdown sums weekly volume from the workout distances', () => {

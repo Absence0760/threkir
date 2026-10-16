@@ -150,6 +150,35 @@ void main() {
     expect(parsed.generated.weeks[5].phase, PlanPhase.race);
   });
 
+  test('parsePlanMarkdown gives a pasted ultra plan the generator\'s ultra phases',
+      () {
+    final rows = [
+      for (var wk = 0; wk < 18; wk++)
+        '| ${wk + 1} | ${_iso(DateTime(2026, 6, 7 + wk * 7))} | long | 20.00 km |  |  |',
+    ];
+    final parsed = parsePlanMarkdown(_table([
+      '# 70 km ultra',
+      '- Goal event: custom',
+      '- Goal distance: 70.00 km',
+      '| Week | Date | Type | Distance | Pace | Notes |',
+      '| --- | --- | --- | --- | --- | --- |',
+      ...rows,
+    ]));
+    final phases = [for (final w in parsed.generated.weeks) w.phase];
+    expect(phases, [for (var i = 0; i < 18; i++) planPhaseFor(i, 18, 70000)]);
+    // Two taper weeks, as the generator's ultra branch gives 70 km; the road
+    // split would have started a third one at week 15.
+    expect(phases.sublist(12), [
+      PlanPhase.peak,
+      PlanPhase.peak,
+      PlanPhase.peak,
+      PlanPhase.taper,
+      PlanPhase.taper,
+      PlanPhase.race,
+    ]);
+    expect(phaseFor(14, 18), PlanPhase.taper);
+  });
+
   test('parsePlanMarkdown sums weekly volume from the workout distances', () {
     final parsed = parsePlanMarkdown(_sampleMarkdown);
     expect(parsed.generated.weeks[0].targetVolumeM, 24000 + 10000);

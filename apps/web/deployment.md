@@ -185,7 +185,7 @@ unwired gate now fails in `src/lib/ci_workflow_guards.test.ts`. Setting one to
 | `SENTRY_DSN` | same sops file | optional — server-side capture |
 | `APP_RELEASE` | passed at deploy time as a Terraform variable, derived from the CI tag | tags Sentry events |
 | `COACH_PROVIDER` / `OPENAI_BASE_URL` | optional — set in `terraform.tfvars` per env | for self-hosted Ollama / OpenAI-compatible service |
-| `AI_PLAN_ENABLED` | non-credential config in the same sops file (`coach_config_keys` in `infra/modules/web-stack/main.tf`) | server half of `PUBLIC_AI_PLAN_ENABLED`: `/api/coach/plan-request` answers 503 unless truthy. Unset means off |
+| `AI_PLAN_ENABLED` | non-credential config in the same sops file (`coach_config_keys` in `infra/modules/web-stack/main.tf`) | server half of `PUBLIC_AI_PLAN_ENABLED`: `/api/coach/plan-request` and `/api/coach/season-request` answer 503 unless truthy. Unset means off |
 | `AI_PLAN_EDIT_ENABLED` | same | server half of `PUBLIC_AI_PLAN_EDIT_ENABLED`: `/api/coach/plan-edit` answers 503 unless truthy, and the Coach links into AI plan edits only when it is (decisions § 1979) |
 | `PLATE_PHOTO_ENABLED` | same | server half of `PUBLIC_PLATE_PHOTO_ENABLED`: `/api/coach/plate-photo` answers 503 unless truthy (decisions § 1972) |
 | `COACH_FUEL_ENABLED` | same | server half of `PUBLIC_COACH_FUEL_ENABLED`: the Coach's system prompt carries the fuelling handoff only when truthy (decisions § 1975) |

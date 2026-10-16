@@ -71,6 +71,7 @@ const HOMES: Record<string, Home> = {
 	discoverable_in_search: { page: 'privacy' },
 	discoverable_nearby: { page: 'privacy' },
 	trusted_contacts: { none: 'dormant: no surface reads or writes it (safety.md)' },
+	time_zone: { none: 'written from the browser zone by the root layout on sign-in, not a control' },
 	primary_goal: { none: 'written by /onboarding, which is not a settings page' },
 	disclosure_level: { page: 'display', via: 'DISCLOSURE_LEVEL_KEY' },
 	dashboard_training_load_expanded: {

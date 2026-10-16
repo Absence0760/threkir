@@ -125,10 +125,19 @@
 		}
 		(async () => {
 			try {
-				const { loadSettings, effective, effectivePreferredUnit } = await import(
+				const { loadSettings, effective, effectivePreferredUnit, updateUniversal } = await import(
 					'#lib/settings/settings.ts'
 				);
 				const settings = await loadSettings(uid);
+				// The coach roster picks this runner's current plan by their local
+				// date (issue #1182); keep the server's copy of their zone current.
+				const { browserTimeZone, timeZoneToWrite } = await import('#lib/settings/time_zone.ts');
+				const tz = timeZoneToWrite(settings.universal.time_zone, browserTimeZone());
+				if (tz != null) {
+					void updateUniversal(uid, { time_zone: tz }).catch((e) =>
+						console.warn('time zone sync failed', e),
+					);
+				}
 				void hydrateModalityVisibility(uid, settings).catch((e) =>
 					console.warn('modality visibility hydrate failed', e),
 				);

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { appErrorMessage, thrownMessage } from '#lib/core/supabase_error.ts';
+	import { appErrorMessage, isPlanOverlapError, thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { compareOrdinal } from '#lib/util/ordinal_compare.ts';
 	import { page } from '$app/state';
@@ -13,7 +13,8 @@
 		fetchMyPlans,
 		assignPlanToAthlete,
 		type CoachAthleteLink,
-		type AthleteRunSummary
+		type AthleteRunSummary,
+		type PlanOverviewRead
 	} from '#lib/core/data.ts';
 	import type { ActivePlanOverview, PlanWorkout, TrainingPlan } from '#lib/types.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
@@ -24,6 +25,7 @@
 	import { activityTypeLabel } from '#lib/runs/activity_type.svelte.ts';
 	import { isWorkoutSkipped } from '#lib/training/training.ts';
 	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
+	import { assignBlockers, assignCollision, firstStartAfter } from '#lib/training/plan_assign.ts';
 
 	const athleteId = $derived(page.params.id);
 
@@ -75,12 +77,22 @@
 				loading = false;
 				return;
 			}
-			[runs, overview, myPlans, showMaps] = await Promise.all([
+			let planRead: PlanOverviewRead;
+			[runs, planRead, myPlans, showMaps] = await Promise.all([
 				fetchAthleteRuns(id, 20),
 				fetchAthletePlanOverview(id),
 				fetchMyPlans(),
 				coachRunMapEnabled()
 			]);
+			if (planRead.error) {
+				loadError = planRead.error;
+				loading = false;
+				return;
+			}
+			overview = planRead.overview;
+			// Start the picker clear of the plans the athlete already holds, so
+			// the default is a date the server will accept.
+			assignStartDate = firstStartAfter(blockers, localTodayISO());
 		} catch (e) {
 			// A rejected fetch (auth/timeout/RLS) would otherwise leave the
 			// page stuck on its loading spinner forever — surface it with a
@@ -91,6 +103,11 @@
 	}
 
 	onMount(load);
+
+	// The athlete's plans an assignment must not overlap: every active plan
+	// they hold that still holds dates, not only the one shown.
+	const blockers = $derived(assignBlockers(overview?.activePlans ?? [], localTodayISO()));
+	const athleteName = $derived(link?.display_name ?? m('coachingAthlete.runnerFallback'));
 
 	// The athlete's active plan, if any, was assigned by THIS coach.
 	const assignedByMe = $derived(
@@ -112,11 +129,37 @@
 			);
 			assignSelectedId = '';
 			// Reload the overview so the freshly-assigned plan shows immediately.
-			overview = await fetchAthletePlanOverview(id);
+			const planRead = await fetchAthletePlanOverview(id);
+			if (planRead.error) loadError = planRead.error;
+			else {
+				overview = planRead.overview;
+				assignStartDate = firstStartAfter(blockers, localTodayISO());
+			}
 		} catch (e) {
-			// The RPC raises a specific message (e.g. already has an active plan);
-			// surface it rather than a swallowed failure.
-			showToast(appErrorMessage(e) ?? m('coachingAthlete.assignError'), 'error');
+			if (isPlanOverlapError(e)) {
+				// The athlete holds a plan on those dates (23P01). Re-read their
+				// plans — the one in the way may have appeared since the page
+				// loaded — and say which, so the coach knows what date to pick.
+				const planRead = await fetchAthletePlanOverview(id);
+				if (!planRead.error) overview = planRead.overview;
+				const source = myPlans.find((p) => p.id === assignSelectedId);
+				const hit = source ? assignCollision(blockers, source, assignStartDate) : null;
+				showToast(
+					hit
+						? m('coachingAthlete.assignOverlapNamed', {
+								name: athleteName,
+								plan: hit.name,
+								start: formatDate(hit.start_date),
+								end: formatDate(hit.end_date)
+							})
+						: m('coachingAthlete.assignOverlap', { name: athleteName }),
+					'error'
+				);
+			} else {
+				// Any other refusal raises a specific message; surface it rather
+				// than a swallowed failure.
+				showToast(appErrorMessage(e) ?? m('coachingAthlete.assignError'), 'error');
+			}
 		} finally {
 			assigning = false;
 		}
@@ -221,40 +264,6 @@
 			<h2>{m('coachingAthlete.planCompliance')}</h2>
 			{#if !overview}
 				<p class="empty">{m('coachingAthlete.noActivePlan')}</p>
-				{#if myPlans.length > 0}
-					<div class="assign-box">
-						<h3 class="assign-title">{m('coachingAthlete.assignTitle')}</h3>
-						<p class="assign-hint">
-							{m('coachingAthlete.assignHint', {
-								name: link?.display_name ?? m('coachingAthlete.runnerFallback')
-							})}
-						</p>
-						<div class="assign-fields">
-							<label class="assign-field">
-								<span>{m('coachingAthlete.assignSelectLabel')}</span>
-								<select bind:value={assignSelectedId} disabled={assigning}>
-									<option value="" disabled>{m('coachingAthlete.assignSelectPlaceholder')}</option>
-									{#each myPlans as p (p.id)}
-										<option value={p.id}>{p.name}</option>
-									{/each}
-								</select>
-							</label>
-							<label class="assign-field">
-								<span>{m('coachingAthlete.assignStartLabel')}</span>
-								<input type="date" bind:value={assignStartDate} disabled={assigning} />
-							</label>
-						</div>
-						<button
-							class="btn btn-primary"
-							onclick={assignPlan}
-							disabled={!assignSelectedId || assigning}
-						>
-							{assigning ? m('coachingAthlete.assigning') : m('coachingAthlete.assignButton')}
-						</button>
-					</div>
-				{:else}
-					<p class="assign-hint">{m('coachingAthlete.assignNoPlans')}</p>
-				{/if}
 			{:else}
 				<div class="plan-summary">
 					<a class="plan-name" href="/plans/{overview.plan.id}">{overview.plan.name}</a>
@@ -299,9 +308,69 @@
 						</li>
 					{/each}
 				</ul>
-				{#if !assignedByMe}
-					<p class="cannot-assign">{m('coachingAthlete.cannotAssignHasPlan')}</p>
-				{/if}
+			{/if}
+			{#if myPlans.length > 0}
+				<div class="assign-box">
+					<h3 class="assign-title">{m('coachingAthlete.assignTitle')}</h3>
+					<p class="assign-hint">
+						{m('coachingAthlete.assignHint', {
+							name: link?.display_name ?? m('coachingAthlete.runnerFallback')
+						})}
+					</p>
+					{#if blockers.length === 1}
+						<p class="assign-hint" data-testid="assign-blockers">
+							{m('coachingAthlete.assignAfterOne', {
+								name: athleteName,
+								plan: blockers[0].name,
+								end: formatDate(blockers[0].end_date)
+							})}
+						</p>
+					{:else if blockers.length === 2}
+						<p class="assign-hint" data-testid="assign-blockers">
+							{m('coachingAthlete.assignAfterTwo', {
+								name: athleteName,
+								plan: blockers[0].name,
+								end: formatDate(blockers[0].end_date),
+								next: blockers[1].name,
+								nextStart: formatDate(blockers[1].start_date),
+								nextEnd: formatDate(blockers[1].end_date)
+							})}
+						</p>
+					{:else if blockers.length > 2}
+						<p class="assign-hint" data-testid="assign-blockers">
+							{m('coachingAthlete.assignAfterMany', {
+								name: athleteName,
+								count: blockers.length,
+								plans: blockers.map((p) => p.name).join(', '),
+								end: formatDate(blockers[blockers.length - 1].end_date)
+							})}
+						</p>
+					{/if}
+					<div class="assign-fields">
+						<label class="assign-field">
+							<span>{m('coachingAthlete.assignSelectLabel')}</span>
+							<select bind:value={assignSelectedId} disabled={assigning}>
+								<option value="" disabled>{m('coachingAthlete.assignSelectPlaceholder')}</option>
+								{#each myPlans as p (p.id)}
+									<option value={p.id}>{p.name}</option>
+								{/each}
+							</select>
+						</label>
+						<label class="assign-field">
+							<span>{m('coachingAthlete.assignStartLabel')}</span>
+							<input type="date" bind:value={assignStartDate} disabled={assigning} />
+						</label>
+					</div>
+					<button
+						class="btn btn-primary"
+						onclick={assignPlan}
+						disabled={!assignSelectedId || assigning}
+					>
+						{assigning ? m('coachingAthlete.assigning') : m('coachingAthlete.assignButton')}
+					</button>
+				</div>
+			{:else}
+				<p class="assign-hint">{m('coachingAthlete.assignNoPlans')}</p>
 			{/if}
 		</section>
 
@@ -436,11 +505,6 @@
 		padding: 1px 10px;
 		background: color-mix(in srgb, var(--color-primary) 16%, transparent);
 		color: var(--color-primary);
-	}
-	.cannot-assign {
-		margin: var(--space-md) 0 0;
-		font-size: 0.8rem;
-		color: var(--color-text-tertiary);
 	}
 	.card {
 		background: var(--color-surface);

@@ -6,7 +6,9 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { TABLES } from '../core/schema';
+import { dbError } from '../core/supabase_error';
 import { distinctExerciseCount } from '../gym/gym_prs';
+import { pickCurrentPlan } from '../training/plan_current';
 
 export interface CoachContext {
 	data?: unknown;
@@ -21,12 +23,37 @@ export interface CoachProfileRow {
 	health_data_consent_at: string | null;
 }
 
+/// Several plans can be active at once when their windows don't overlap
+/// (decisions § 2008); the coach talks about the one plan_current.ts picks, or
+/// the next to start when none is current. `today` is the runner's local date,
+/// which the handler takes from the request and checks against its own clock
+/// (decisions § 2052). A failed read throws: answering as if the runner had no
+/// plan would be a confident wrong answer.
+async function currentPlanRow(
+	supabase: SupabaseClient,
+	userId: string,
+	today: string,
+): Promise<unknown> {
+	const { data, error } = await supabase
+		.from('training_plans')
+		.select('*')
+		.eq('user_id', userId)
+		.eq('status', 'active')
+		.eq('is_template', false)
+		.order('start_date', { ascending: true });
+	if (error) throw dbError(error);
+	const rows = (data ?? []) as { start_date: string; end_date: string }[];
+	const { current, upcoming } = pickCurrentPlan(rows, today);
+	return current ?? upcoming;
+}
+
 export async function buildContext(
 	supabase: SupabaseClient,
 	userId: string,
 	planId: string | null,
 	runsLimit: number,
 	profileRow: CoachProfileRow | null,
+	today: string,
 ): Promise<CoachContext> {
 	// `profileRow` is the `get_my_profile()` result the handler already
 	// fetched for the coach-consent gate — passed in rather than re-queried
@@ -82,19 +109,19 @@ export async function buildContext(
 		// active plan). The `.eq('user_id', userId)` keeps this the caller's own
 		// data; plan_weeks/plan_workouts inherit the scope transitively through
 		// the plan (they carry no user_id column).
-		const { data: plan } = planId
-			? await supabase
-					.from('training_plans')
-					.select('*')
-					.eq('id', planId)
-					.eq('user_id', userId)
-					.maybeSingle()
-			: await supabase
-					.from('training_plans')
-					.select('*')
-					.eq('user_id', userId)
-					.eq('status', 'active')
-					.maybeSingle();
+		let plan: unknown;
+		if (planId) {
+			const pinned = await supabase
+				.from('training_plans')
+				.select('*')
+				.eq('id', planId)
+				.eq('user_id', userId)
+				.maybeSingle();
+			if (pinned.error) throw dbError(pinned.error);
+			plan = pinned.data;
+		} else {
+			plan = await currentPlanRow(supabase, userId, today);
+		}
 		let weeks: unknown[] = [];
 		let workouts: unknown[] = [];
 		if (plan && typeof plan === 'object' && 'id' in plan) {

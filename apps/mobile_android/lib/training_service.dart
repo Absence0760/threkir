@@ -7,6 +7,8 @@ import 'training.dart' show TrainingGender;
 
 import 'health_consent.dart';
 import 'nutrition_targets.dart' show ageFromDob;
+import 'plan_copy.dart';
+import 'plan_current.dart';
 import 'plan_ramp.dart';
 import 'plan_week.dart';
 import 'relink_candidates.dart';
@@ -22,6 +24,10 @@ class ActivePlanOverview {
   final int completionPct;
   final int currentWeekIndex;
 
+  /// The next active plan queued after [plan], if any — the chained block a
+  /// runner sees as "Up next".
+  final TrainingPlanRow? upcomingPlan;
+
   const ActivePlanOverview({
     required this.plan,
     required this.weeks,
@@ -29,8 +35,107 @@ class ActivePlanOverview {
     required this.todayWorkout,
     required this.completionPct,
     required this.currentWeekIndex,
+    this.upcomingPlan,
   });
 }
+
+/// The race fields of a `race` plan workout, written together by
+/// [TrainingService.updateWorkout]. A null [priority] leaves it to
+/// `planRaces` (A on the plan's end date, C elsewhere).
+typedef PlanWorkoutRaceFields = ({
+  String? name,
+  String? priority,
+  int? goalTimeSec,
+});
+
+/// The `plan_workouts` patch [TrainingService.updateWorkout] sends. A null
+/// argument leaves its column alone, except inside [race]: that writes the
+/// race name, priority and goal time as given, nulls included. A [kind]
+/// other than `race` clears the race name and priority instead, since the
+/// table allows them only on race rows (23514 otherwise), and when the row
+/// was a race ([fromKind]) it clears the race's goal time too, so a former
+/// race does not keep its finish time as a duration target. Matches web's
+/// `WorkoutEditor` save. [notes] is
+/// trimmed and an empty result nulls the column, matching web's
+/// `updatePlanWorkout`.
+Map<String, dynamic> planWorkoutPatch({
+  String? kind,
+  String? fromKind,
+  double? targetDistanceM,
+  int? targetPaceSecPerKm,
+  String? notes,
+  PlanWorkoutRaceFields? race,
+}) {
+  final patch = <String, dynamic>{};
+  if (kind != null) patch[PlanWorkoutRow.colKind] = kind;
+  if (kind != null && kind != 'race') {
+    patch[PlanWorkoutRow.colRaceName] = null;
+    patch[PlanWorkoutRow.colRacePriority] = null;
+    if (fromKind == 'race') {
+      patch[PlanWorkoutRow.colTargetDurationSeconds] = null;
+    }
+  } else if (race != null) {
+    patch[PlanWorkoutRow.colRaceName] = TrainingService.trimToNull(race.name);
+    patch[PlanWorkoutRow.colRacePriority] = race.priority;
+    patch[PlanWorkoutRow.colTargetDurationSeconds] = race.goalTimeSec;
+  }
+  if (targetDistanceM != null) {
+    patch[PlanWorkoutRow.colTargetDistanceM] = targetDistanceM;
+  }
+  if (targetPaceSecPerKm != null) {
+    patch[PlanWorkoutRow.colTargetPaceSecPerKm] = targetPaceSecPerKm;
+  }
+  if (notes != null) {
+    patch[PlanWorkoutRow.colNotes] = TrainingService.trimToNull(notes);
+  }
+  return patch;
+}
+
+/// What creating or cloning a plan does to the active plans its window
+/// overlaps, resolved by the server in the same transaction as the write
+/// (decisions § 2050). [refuse] fails with [ActivePlanExistsError] so nothing
+/// the runner did not name changes; [replace] marks them completed; [trim]
+/// ends the one plan that started before the new plan on the day before it
+/// starts. [name] is the RPC's `p_overlap` value.
+enum PlanOverlapAction { refuse, replace, trim }
+
+/// A plan row's window as ISO days, the accessors the pure plan helpers
+/// (`plan_current.dart`, `plan_overlap.dart`) take.
+String planRowStartIso(TrainingPlanRow p) => toIsoDate(p.startDate);
+String planRowEndIso(TrainingPlanRow p) => toIsoDate(p.endDate);
+
+/// The current plan among [activePlans] (see `plan_current.dart`), falling
+/// back to the queued one when nothing has started yet. Null with no plans.
+TrainingPlanRow? currentOrUpcomingPlan(
+    List<TrainingPlanRow> activePlans, String todayIso) {
+  final pick = pickCurrentPlan(activePlans, todayIso,
+      start: planRowStartIso, end: planRowEndIso);
+  return pick.current ?? pick.upcoming;
+}
+
+/// The active plans a new `[startIso, endIso]` window overlaps.
+List<TrainingPlanRow> overlappingActivePlans(
+        List<TrainingPlanRow> activePlans, String startIso, String endIso) =>
+    overlappingPlans(activePlans, startIso, endIso,
+        start: planRowStartIso, end: planRowEndIso);
+
+/// The ISO day before [iso] — the end date a trimmed plan takes.
+String dayBeforeIso(String iso) {
+  final d = parseIsoDate(iso);
+  return toIsoDate(DateTime(d.year, d.month, d.day - 1));
+}
+
+bool _isOverlapViolation(Object e) =>
+    e is PostgrestException && e.code == '23P01';
+
+bool _isTrimBlocked(Object e) => e is PostgrestException && e.code == 'TR001';
+
+/// [error] as a plan write should surface it: the overlap constraint's
+/// refusal (23P01) becomes [ActivePlanExistsError], anything else is
+/// returned unchanged. Web twin: `dbError`'s `PlanOverlapError` mapping in
+/// `apps/web/src/lib/core/supabase_error.ts`.
+Object planWriteError(Object error) =>
+    _isOverlapViolation(error) ? const ActivePlanExistsError() : error;
 
 /// A public-library plan paired with its author's public handle. The
 /// browse + preview surfaces show the handle but never any other author
@@ -42,14 +147,33 @@ class PublicPlanLibraryEntry {
   const PublicPlanLibraryEntry({required this.plan, required this.authorHandle});
 }
 
-/// Thrown by [TrainingService.resumePlan] when another plan already holds the
-/// viewer's one active slot. Web twin: `ActivePlanExistsError` in
+/// Thrown when an active plan already covers some of the dates a write would
+/// activate — [TrainingService.resumePlan] up front, and either write when the
+/// `training_plans_active_no_overlap` constraint rejects it (23P01) after a
+/// concurrent change. Web twin: `ActivePlanExistsError` in
 /// `apps/web/src/lib/core/data.ts`.
 class ActivePlanExistsError implements Exception {
   const ActivePlanExistsError();
 
   @override
   String toString() => 'active_plan_exists';
+}
+
+/// A create or clone that chose [PlanOverlapAction.trim] was refused because
+/// the plan it would end has completed workouts after the cut
+/// (`trim_training_plan`'s SQLSTATE TR001, decisions § 2061). The whole
+/// create rolled back, so nothing changed. [planName] names the plans a
+/// follow-up lookup found in the way, comma-joined in start order, null
+/// when that lookup failed or found none;
+/// [trimEndIso] is the end date the trim would have given it.
+class PlanTrimBlockedError implements Exception {
+  final String? planName;
+  final String trimEndIso;
+
+  const PlanTrimBlockedError({required this.planName, required this.trimEndIso});
+
+  @override
+  String toString() => 'plan_trim_blocked';
 }
 
 class TrainingService extends ChangeNotifier {
@@ -217,20 +341,12 @@ class TrainingService extends ChangeNotifier {
     }
 
     final templateRow = await _c.from('training_plans').insert({
+      ...planHeadCopyFields(source),
       'user_id': uid,
-      'name': source.name,
-      'goal_event': source.goalEvent,
-      'goal_distance_m': source.goalDistanceM,
-      'goal_time_seconds': source.goalTimeSeconds,
-      'start_date': toIsoDate(source.startDate),
-      'end_date': toIsoDate(source.endDate),
-      'days_per_week': source.daysPerWeek,
       'vdot': null,
       'current_5k_seconds': null,
       'status': 'completed',
-      'source': source.source,
       'notes': null,
-      'rules': source.rules,
       'is_template': true,
       'club_id': clubId,
       'parent_template_id': null,
@@ -242,16 +358,10 @@ class TrainingService extends ChangeNotifier {
       return newPlanId;
     }
 
-    final weekRes = await _c.from('plan_weeks').insert([
-      for (final w in src.weeks)
-        {
-          'plan_id': newPlanId,
-          'week_index': w.weekIndex,
-          'phase': w.phase,
-          'target_volume_m': w.targetVolumeM,
-          'notes': w.notes,
-        },
-    ]).select('id, week_index');
+    final weekRes = await _c
+        .from('plan_weeks')
+        .insert(planWeekCopyRows(src.weeks, newPlanId))
+        .select('id, week_index');
 
     final byIdx = <int, String>{};
     for (final r in weekRes as List) {
@@ -264,22 +374,7 @@ class TrainingService extends ChangeNotifier {
       if (newId != null) oldToNew[w.id] = newId;
     }
 
-    final workoutPayload = <Map<String, dynamic>>[];
-    for (final w in src.workouts) {
-      final newWeekId = oldToNew[w.weekId];
-      if (newWeekId == null) continue;
-      workoutPayload.add({
-        'week_id': newWeekId,
-        'scheduled_date': toIsoDate(w.scheduledDate),
-        'kind': w.kind,
-        'target_distance_m': w.targetDistanceM,
-        'target_duration_seconds': w.targetDurationSeconds,
-        'target_pace_sec_per_km': w.targetPaceSecPerKm,
-        'target_pace_tolerance_sec': w.targetPaceToleranceSec,
-        'structure': w.structure,
-        'notes': w.notes,
-      });
-    }
+    final workoutPayload = planWorkoutCopyRows(src.workouts, oldToNew);
     if (workoutPayload.isNotEmpty) {
       await _c.from('plan_workouts').insert(workoutPayload);
     }
@@ -289,20 +384,28 @@ class TrainingService extends ChangeNotifier {
 
   /// Adopt a club template — RPC clones it back into a personal plan.
   /// Parameter names mirror the server function signature
-  /// (`clone_plan_template(template_id uuid, new_start_date date)`)
-  /// exactly — postgrest passes these through verbatim, so a typo
+  /// (`clone_plan_template(template_id uuid, new_start_date date,
+  /// p_overlap text)`) exactly — postgrest passes these through verbatim, so a typo
   /// surfaces as `PGRST202 function not found`.
   Future<String> clonePlanTemplate({
     required String templateId,
     DateTime? startDate,
+    PlanOverlapAction onOverlap = PlanOverlapAction.refuse,
   }) async {
-    final newId = await _c.rpc(
-      'clone_plan_template',
-      params: {
-        'template_id': templateId,
-        'new_start_date': toIsoDate(startDate ?? DateTime.now()),
-      },
-    );
+    final startIso = toIsoDate(startDate ?? DateTime.now());
+    final Object? newId;
+    try {
+      newId = await _c.rpc(
+        'clone_plan_template',
+        params: {
+          'template_id': templateId,
+          'new_start_date': startIso,
+          'p_overlap': onOverlap.name,
+        },
+      );
+    } catch (e, st) {
+      Error.throwWithStackTrace(await _planCreateError(e, startIso), st);
+    }
     notifyListeners();
     return newId as String;
   }
@@ -352,14 +455,22 @@ class TrainingService extends ChangeNotifier {
   Future<String> clonePublicPlan({
     required String templateId,
     DateTime? startDate,
+    PlanOverlapAction onOverlap = PlanOverlapAction.refuse,
   }) async {
-    final newId = await _c.rpc(
-      'clone_public_plan',
-      params: {
-        'template_id': templateId,
-        'new_start_date': toIsoDate(startDate ?? DateTime.now()),
-      },
-    );
+    final startIso = toIsoDate(startDate ?? DateTime.now());
+    final Object? newId;
+    try {
+      newId = await _c.rpc(
+        'clone_public_plan',
+        params: {
+          'template_id': templateId,
+          'new_start_date': startIso,
+          'p_overlap': onOverlap.name,
+        },
+      );
+    } catch (e, st) {
+      Error.throwWithStackTrace(await _planCreateError(e, startIso), st);
+    }
     notifyListeners();
     return newId as String;
   }
@@ -384,14 +495,8 @@ class TrainingService extends ChangeNotifier {
     }
 
     final templateRow = await _c.from('training_plans').insert({
+      ...planHeadCopyFields(source),
       'user_id': uid,
-      'name': source.name,
-      'goal_event': source.goalEvent,
-      'goal_distance_m': source.goalDistanceM,
-      'goal_time_seconds': source.goalTimeSeconds,
-      'start_date': toIsoDate(source.startDate),
-      'end_date': toIsoDate(source.endDate),
-      'days_per_week': source.daysPerWeek,
       'vdot': null,
       'current_5k_seconds': null,
       'status': 'completed',
@@ -408,16 +513,10 @@ class TrainingService extends ChangeNotifier {
       return newPlanId;
     }
 
-    final weekRes = await _c.from('plan_weeks').insert([
-      for (final w in src.weeks)
-        {
-          'plan_id': newPlanId,
-          'week_index': w.weekIndex,
-          'phase': w.phase,
-          'target_volume_m': w.targetVolumeM,
-          'notes': w.notes,
-        },
-    ]).select('id, week_index');
+    final weekRes = await _c
+        .from('plan_weeks')
+        .insert(planWeekCopyRows(src.weeks, newPlanId))
+        .select('id, week_index');
 
     final byIdx = <int, String>{};
     for (final r in weekRes as List) {
@@ -430,22 +529,7 @@ class TrainingService extends ChangeNotifier {
       if (newId != null) oldToNew[w.id] = newId;
     }
 
-    final workoutPayload = <Map<String, dynamic>>[];
-    for (final w in src.workouts) {
-      final newWeekId = oldToNew[w.weekId];
-      if (newWeekId == null) continue;
-      workoutPayload.add({
-        'week_id': newWeekId,
-        'scheduled_date': toIsoDate(w.scheduledDate),
-        'kind': w.kind,
-        'target_distance_m': w.targetDistanceM,
-        'target_duration_seconds': w.targetDurationSeconds,
-        'target_pace_sec_per_km': w.targetPaceSecPerKm,
-        'target_pace_tolerance_sec': w.targetPaceToleranceSec,
-        'structure': w.structure,
-        'notes': w.notes,
-      });
-    }
+    final workoutPayload = planWorkoutCopyRows(src.workouts, oldToNew);
     if (workoutPayload.isNotEmpty) {
       await _c.from('plan_workouts').insert(workoutPayload);
     }
@@ -486,14 +570,22 @@ class TrainingService extends ChangeNotifier {
   /// (plan_id, week_index) re-index is atomic server-side (duplicate_plan_week
   /// RPC) — a client-side multi-update would transiently break the unique
   /// index. Mirrors web `core/data.ts:duplicatePlanWeek`. Returns the new week id.
+  ///
+  /// Pushing the end date back a week can run into the next queued plan;
+  /// the constraint refuses that and it surfaces as [ActivePlanExistsError].
   Future<String> duplicatePlanWeek(String planId, int weekIndex) async {
-    final newId = await _c.rpc(
-      'duplicate_plan_week',
-      params: {
-        'p_plan_id': planId,
-        'p_week_index': weekIndex,
-      },
-    );
+    final Object? newId;
+    try {
+      newId = await _c.rpc(
+        'duplicate_plan_week',
+        params: {
+          'p_plan_id': planId,
+          'p_week_index': weekIndex,
+        },
+      );
+    } catch (e, s) {
+      Error.throwWithStackTrace(planWriteError(e), s);
+    }
     notifyListeners();
     return newId as String;
   }
@@ -567,20 +659,38 @@ class TrainingService extends ChangeNotifier {
     return row == null ? null : PlanWorkoutRow.fromJson(row);
   }
 
-  Future<ActivePlanOverview?> fetchActiveOverview() async {
+  /// The viewer's active, non-template plans. Several can be active at once
+  /// when their date windows don't overlap.
+  Future<List<TrainingPlanRow>> fetchActivePlans() async {
     final uid = _uid;
-    if (uid == null) return null;
-    final planRow = await _c
+    if (uid == null) return const [];
+    final rows = await _c
         .from('training_plans')
         .select()
         .eq('user_id', uid)
         .eq('status', 'active')
-        .maybeSingle();
-    if (planRow == null) return null;
-    final plan = TrainingPlanRow.fromJson(planRow);
+        .eq('is_template', false);
+    return (rows as List)
+        .cast<Map<String, dynamic>>()
+        .map(TrainingPlanRow.fromJson)
+        .toList();
+  }
+
+  /// The overview of the current plan — the one covering today, else the
+  /// latest-ended — or, before any has started, of the queued one.
+  Future<ActivePlanOverview?> fetchActiveOverview() async {
+    final activePlans = await fetchActivePlans();
+    final today = toIsoDate(DateTime.now());
+    final plan = currentOrUpcomingPlan(activePlans, today);
+    if (plan == null) return null;
+    final upcoming = pickCurrentPlan(
+      [for (final p in activePlans) if (p.id != plan.id) p],
+      planRowStartIso(plan).compareTo(today) > 0 ? planRowStartIso(plan) : today,
+      start: planRowStartIso,
+      end: planRowEndIso,
+    ).upcoming;
     final res = await fetchPlan(plan.id);
     if (res.plan == null) return null;
-    final today = toIsoDate(DateTime.now());
     final todayWorkout = res.workouts
         .where((w) =>
             toIsoDate(w.scheduledDate) == today && w.kind != 'rest')
@@ -599,7 +709,7 @@ class TrainingService extends ChangeNotifier {
         ? 0
         : currentPlanWeekIndex(
             toIsoDate(plan.startDate),
-            toIsoDate(DateTime.now()),
+            today,
             res.weeks.length,
           );
     return ActivePlanOverview(
@@ -609,12 +719,14 @@ class TrainingService extends ChangeNotifier {
       todayWorkout: todayWorkout,
       completionPct: pct,
       currentWeekIndex: currentWeek,
+      upcomingPlan: upcoming,
     );
   }
 
-  /// Write a freshly generated plan — plan row, weeks, workouts. Auto-
-  /// completes any existing active plan so the partial unique index
-  /// (one-active-per-user) doesn't reject the insert.
+  /// Write a freshly generated plan — plan row, weeks, workouts — through
+  /// `create_training_plan`, which resolves the active plans the new window
+  /// overlaps per [onOverlap] and inserts everything in one transaction
+  /// (decisions § 2050). Plans outside the window stay active beside it.
   Future<TrainingPlanRow> createPlan({
     required String name,
     required GoalEvent goalEvent,
@@ -625,6 +737,7 @@ class TrainingService extends ChangeNotifier {
     required int daysPerWeek,
     String? notes,
     required GeneratedPlan generated,
+    PlanOverlapAction onOverlap = PlanOverlapAction.refuse,
   }) async {
     final uid = _uid;
     if (uid == null) {
@@ -668,16 +781,10 @@ class TrainingService extends ChangeNotifier {
       }
     }
 
-    await _c
-        .from('training_plans')
-        .update({'status': 'completed'})
-        .eq('user_id', uid)
-        .eq('status', 'active');
-
-    final inserted = await _c
-        .from('training_plans')
-        .insert({
-          'user_id': uid,
+    final Object? planId;
+    try {
+      planId = await _c.rpc('create_training_plan', params: {
+        'p_plan': {
           'name': name.trim(),
           'goal_event': goalEventDbValue(goalEvent),
           'goal_distance_m': goalDistanceM,
@@ -687,60 +794,51 @@ class TrainingService extends ChangeNotifier {
           'days_per_week': daysPerWeek,
           'vdot': generated.vdot,
           'current_5k_seconds': recent5kSec,
-          'status': 'active',
-          'source': 'generated',
-          // Match web's `notes?.trim() || null` — whitespace-only
-          // collapses to null so the column stays clean for
-          // `IS NOT NULL` filters. Mobile previously stored `""`.
+          // Match web's `notes?.trim() || null` — whitespace-only collapses
+          // to null so the column stays clean for `IS NOT NULL` filters.
           'notes': _trimToNull(notes),
-        })
-        .select()
-        .single();
-    final plan = TrainingPlanRow.fromJson(inserted);
-
-    final weekRows = await _c
-        .from('plan_weeks')
-        .insert([
+        },
+        'p_weeks': [
           for (final w in generated.weeks)
             {
-              'plan_id': plan.id,
               'week_index': w.weekIndex,
               'phase': planPhaseDbValue(w.phase),
               'target_volume_m': w.targetVolumeM,
               'notes': w.notes,
+              'workouts': [
+                for (final wo in w.workouts)
+                  {
+                    'scheduled_date': toIsoDate(wo.scheduledDate),
+                    'kind': workoutKindDbValue(wo.kind),
+                    'target_distance_m': wo.targetDistanceM,
+                    'target_duration_seconds': wo.targetDurationSeconds,
+                    'target_pace_sec_per_km': wo.targetPaceSecPerKm,
+                    'target_pace_tolerance_sec': wo.targetPaceToleranceSec,
+                    'structure': wo.structure?.toJson(),
+                    'notes': wo.notes,
+                    'race_name': wo.kind == WorkoutKind.race
+                        ? TrainingService.trimToNull(wo.raceName)
+                        : null,
+                    'race_priority':
+                        wo.kind == WorkoutKind.race ? wo.racePriority : null,
+                    'race_taper_applied_at': wo.raceTaperAppliedAt,
+                  }
+              ],
             }
-        ])
-        .select();
-
-    final byIndex = <int, String>{};
-    for (final r in weekRows as List) {
-      final m = r as Map<String, dynamic>;
-      byIndex[m['week_index'] as int] = m['id'] as String;
+        ],
+        'p_overlap': onOverlap.name,
+      });
+    } catch (e, st) {
+      Error.throwWithStackTrace(await _planCreateError(e, toIsoDate(startDate)), st);
     }
 
-    final workoutPayload = <Map<String, dynamic>>[];
-    for (final w in generated.weeks) {
-      final weekId = byIndex[w.weekIndex]!;
-      for (final wo in w.workouts) {
-        workoutPayload.add({
-          'week_id': weekId,
-          'scheduled_date': toIsoDate(wo.scheduledDate),
-          'kind': workoutKindDbValue(wo.kind),
-          'target_distance_m': wo.targetDistanceM,
-          'target_duration_seconds': wo.targetDurationSeconds,
-          'target_pace_sec_per_km': wo.targetPaceSecPerKm,
-          'target_pace_tolerance_sec': wo.targetPaceToleranceSec,
-          'structure': wo.structure?.toJson(),
-          'notes': wo.notes,
-        });
-      }
-    }
-    if (workoutPayload.isNotEmpty) {
-      await _c.from('plan_workouts').insert(workoutPayload);
-    }
-
+    final row = await _c
+        .from('training_plans')
+        .select()
+        .eq('id', planId as String)
+        .single();
     notifyListeners();
-    return plan;
+    return TrainingPlanRow.fromJson(row);
   }
 
   Future<void> updateStatus(String id, String status) async {
@@ -749,26 +847,40 @@ class TrainingService extends ChangeNotifier {
   }
 
   /// Pause an active plan — reversible by [resumePlan], and distinct from
-  /// abandon/complete. Frees the one-active slot so another plan can run.
+  /// abandon/complete. Frees its dates so another plan can be active on them.
   /// Web twin: `pausePlan` in `apps/web/src/lib/core/data.ts`.
   Future<void> pausePlan(String id) => updateStatus(id, 'paused');
 
-  /// Resume a paused plan. Refuses up front when another plan already holds
-  /// the active slot: the `training_plans_one_active` partial unique index
-  /// would reject the write as a bare 23505, which reads to the runner as an
-  /// unexplained failure rather than "finish the other plan first".
-  /// Web twin: `resumePlan` + `ActivePlanExistsError`.
+  /// Resume a paused plan. Refuses up front when another active plan
+  /// overlaps the paused plan's dates: the `training_plans_active_no_overlap`
+  /// constraint would reject the write as a bare 23P01, which reads to the
+  /// runner as an unexplained failure rather than "that plan is in the way".
+  /// A plan queued before or after it doesn't block. Web twin: `resumePlan` +
+  /// `ActivePlanExistsError`.
   Future<void> resumePlan(String id) async {
     final uid = _uid;
     if (uid == null) throw StateError('resumePlan called with no signed-in user.');
-    final active = await _c
+    final row = await _c
         .from('training_plans')
-        .select('id')
-        .eq('user_id', uid)
-        .eq('status', 'active')
-        .limit(1);
-    if (active.isNotEmpty) throw const ActivePlanExistsError();
-    await updateStatus(id, 'active');
+        .select()
+        .eq('id', id)
+        .maybeSingle();
+    if (row == null) throw StateError('resumePlan: plan $id not found.');
+    final plan = TrainingPlanRow.fromJson(row);
+    final others = [
+      for (final p in await fetchActivePlans())
+        if (p.id != id) p
+    ];
+    if (overlappingActivePlans(others, planRowStartIso(plan), planRowEndIso(plan))
+        .isNotEmpty) {
+      throw const ActivePlanExistsError();
+    }
+    try {
+      await updateStatus(id, 'active');
+    } catch (e) {
+      if (_isOverlapViolation(e)) throw const ActivePlanExistsError();
+      rethrow;
+    }
   }
 
   Future<void> deletePlan(String id) async {
@@ -837,6 +949,86 @@ class TrainingService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// [error] from a create or clone RPC as the caller should surface it: the
+  /// overlap refusal (23P01) as [ActivePlanExistsError], the trim refusal
+  /// (TR001) as [PlanTrimBlockedError] naming every active plan that starts
+  /// before [newStartIso] and runs into it, anything else unchanged. The trim
+  /// ends all of them and the refusal does not say which one held completed
+  /// workouts, so all are named, as web does. The RPC rolled back, so they
+  /// still have their old dates.
+  Future<Object> _planCreateError(Object error, String newStartIso) async {
+    if (_isOverlapViolation(error)) return const ActivePlanExistsError();
+    if (!_isTrimBlocked(error)) return error;
+    String? planName;
+    try {
+      final inTheWay = [
+        for (final p in await fetchActivePlans())
+          if (planRowStartIso(p).compareTo(newStartIso) < 0 &&
+              planRowEndIso(p).compareTo(newStartIso) >= 0)
+            p,
+      ]..sort((a, b) => a.startDate.compareTo(b.startDate));
+      if (inTheWay.isNotEmpty) {
+        planName = inTheWay.map((p) => p.name).join(', ');
+      }
+    } catch (lookup) {
+      debugPrint('plan trim refusal: active plan lookup failed: $lookup');
+    }
+    return PlanTrimBlockedError(
+        planName: planName, trimEndIso: dayBeforeIso(newStartIso));
+  }
+
+  /// Writes the B/C race taper's per-workout patches (`raceTaperPatch`,
+  /// decisions § 2051) through [_applyWorkoutAdjustments]. Unlike
+  /// [updateWorkout] a patch may clear the pace target and the interval
+  /// structure. Every workout is stamped `race_taper_applied_at`, so the next
+  /// proposal leaves the eased workout alone rather than cutting it again.
+  /// Mirrors web `applyRaceTaper` on the plan page (`raceTaperAdjustments`).
+  Future<void> applyRaceTaper({
+    required String planId,
+    required Map<String, Map<String, Object?>> patches,
+  }) {
+    final appliedAt = DateTime.now().toUtc().toIso8601String();
+    // Only a workout the taper changes is stamped: a stamp on an untouched
+    // one would make every later taper skip it.
+    return _applyWorkoutAdjustments(planId, {
+      for (final e in patches.entries)
+        if (e.value.isNotEmpty)
+          e.key: {
+            ...e.value,
+            PlanWorkoutRow.colRaceTaperAppliedAt: appliedAt,
+          },
+    });
+  }
+
+  /// Writes a re-plan's proposed distances — `target_distance_m` and nothing
+  /// else, no load value (decisions § 1977) — through
+  /// [_applyWorkoutAdjustments]. Mirrors web `applyReplan` on the plan page.
+  Future<void> applyReplan({
+    required String planId,
+    required Map<String, double> distances,
+  }) =>
+      _applyWorkoutAdjustments(planId, {
+        for (final e in distances.entries)
+          e.key: {PlanWorkoutRow.colTargetDistanceM: e.value},
+      });
+
+  /// One `apply_workout_adjustments` call: it writes every patch and
+  /// restates each touched week's `target_volume_m` in one transaction, so a
+  /// failure changes nothing (decisions § 2061).
+  Future<void> _applyWorkoutAdjustments(
+      String planId, Map<String, Map<String, Object?>> patches) async {
+    final changes = [
+      for (final e in patches.entries)
+        if (e.value.isNotEmpty) {'id': e.key, ...e.value},
+    ];
+    if (changes.isEmpty) return;
+    await _c.rpc('apply_workout_adjustments', params: {
+      'p_plan_id': planId,
+      'p_changes': changes,
+    });
+    notifyListeners();
+  }
+
   /// Candidate runs the owner can re-link to [workout].
   ///
   /// Owner-scoped, within ±7 days of the scheduled date, EXCLUDING any
@@ -899,30 +1091,26 @@ class TrainingService extends ChangeNotifier {
     );
   }
 
-  /// Patch the editable fields on a planned workout. Pass any subset
-  /// of [kind], [targetDistanceM], [targetPaceSecPerKm], [notes].
-  /// Server-side RLS scopes writes to the plan owner.
+  /// Patch the editable fields on a planned workout; see
+  /// [planWorkoutPatch] for what each argument writes. Server-side RLS
+  /// scopes writes to the plan owner.
   Future<void> updateWorkout(
     String workoutId, {
     String? kind,
+    String? fromKind,
     double? targetDistanceM,
     int? targetPaceSecPerKm,
     String? notes,
+    PlanWorkoutRaceFields? race,
   }) async {
-    final patch = <String, dynamic>{};
-    if (kind != null) patch[PlanWorkoutRow.colKind] = kind;
-    if (targetDistanceM != null) {
-      patch[PlanWorkoutRow.colTargetDistanceM] = targetDistanceM;
-    }
-    if (targetPaceSecPerKm != null) {
-      patch[PlanWorkoutRow.colTargetPaceSecPerKm] = targetPaceSecPerKm;
-    }
-    if (notes != null) {
-      // Match `createPlan` + web's `updatePlanWorkout` — trim and
-      // collapse empty-after-trim to null so clearing a workout's
-      // notes via the inline editor actually nulls the column.
-      patch[PlanWorkoutRow.colNotes] = _trimToNull(notes);
-    }
+    final patch = planWorkoutPatch(
+      kind: kind,
+      fromKind: fromKind,
+      targetDistanceM: targetDistanceM,
+      targetPaceSecPerKm: targetPaceSecPerKm,
+      notes: notes,
+      race: race,
+    );
     if (patch.isEmpty) return;
     await _c.from(PlanWorkoutRow.table).update(patch).eq('id', workoutId);
     notifyListeners();

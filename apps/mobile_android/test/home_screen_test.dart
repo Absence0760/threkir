@@ -507,6 +507,28 @@ void main() {
       await tester.pump(const Duration(seconds: 8));
     });
 
+    testWidgets('an account that said it lifts follows the first-run gym link '
+        'to Gym, with nothing switched on to announce', (tester) async {
+      // The link stays for a lifter with nothing logged (decisions § 2041).
+      // Gym is already shown, so the tap only navigates: no "now shown"
+      // banner, and its Undo cannot rewrite the answer the account gave.
+      final s = await _makeStores();
+      await s.prefs.setShowGym(true);
+      await _pump(tester, s);
+      await tester.pump();
+
+      await tester.ensureVisible(find.text('Log a gym session'));
+      await tester.tap(find.text('Log a gym session'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byType(GymScreen), findsOneWidget);
+      expect(s.prefs.showGym, isTrue);
+      expect(find.text('Gym is now shown'), findsNothing);
+      expect(find.text('Undo'), findsNothing);
+      await tester.pump(const Duration(seconds: 8));
+    });
+
     testWidgets('body is a PageView', (tester) async {
       final s = await _makeStores();
       await _pump(tester, s);

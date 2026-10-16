@@ -15,54 +15,45 @@ import { readCount, readRow, readRows } from '../fixtures/db-read';
  */
 
 test.describe('database constraints', () => {
-	test('training_plans_one_active partial unique index rejects a duplicate active plan', async () => {
-		// Migration 20260419_001 ships:
-		//   create unique index training_plans_one_active
-		//     on training_plans(user_id) where status = 'active';
-		// `createTrainingPlan` works around this in app code by auto-
-		// demoting the existing active plan to 'completed' before
-		// inserting the new one. This test pins the SAFETY NET — if
-		// app-side demotion ever broke (or a future migration
-		// dropped the partial index), the DB itself must still
-		// reject the duplicate. Service role does NOT bypass unique
-		// constraints; the insert below will fail with 23505.
+	test('training_plans_active_no_overlap rejects an active plan that overlaps another', async () => {
+		// Migration 20270830000001 (decisions § 2008) lets a user hold several
+		// active plans as long as their inclusive [start_date, end_date]
+		// windows do not overlap. `createTrainingPlan` completes or trims the
+		// overlapping plans before inserting; this pins the SAFETY NET — if
+		// the app-side step ever broke, the DB itself must still reject the
+		// overlap. Service role does NOT bypass an exclusion constraint.
 		const admin = getAdminClient();
 
-		// Sanity: runner already has Richmond Half active (per seed).
+		// Runner's seeded Richmond Half is active and covers today.
 		const existing = await readRows(
 			'training_plans by user_id+status',
 			admin
 				.from('training_plans')
-				.select('id, status')
+				.select('id, status, start_date, end_date')
 				.eq('user_id', USER_A.id)
 				.eq('status', 'active')
 		);
 		expect(existing.length).toBeGreaterThanOrEqual(1);
+		const seed = existing[0];
 
-		// Try to insert a SECOND active plan for runner. We let the
-		// auto-generator skip plan_weeks/plan_workouts; the index is
-		// on training_plans alone.
+		// Starting ON the seed plan's last day is an overlap: the windows are
+		// inclusive at both ends.
 		const { error } = await admin.from('training_plans').insert({
 			user_id: USER_A.id,
-			name: 'e2e duplicate-active-plan attempt',
-			// goal_event is a custom enum (distance_5k / distance_10k /
-			// distance_half / distance_full / custom). Pick the same
-			// shape as the seeded Richmond Half plan so the row passes
-			// the CHECK + enum cast.
+			name: 'e2e overlapping-active-plan attempt',
 			goal_event: 'distance_half',
 			goal_distance_m: 21097,
-			start_date: '2026-09-01',
-			end_date: '2026-12-01',
+			start_date: seed.end_date,
+			end_date: seed.end_date,
 			days_per_week: 4,
 			vdot: 50,
 			status: 'active'
 		});
 
-		expect(error?.code).toBe('23505'); // unique_violation
-		expect(error?.message ?? '').toMatch(/training_plans_one_active/);
+		expect(error?.code).toBe('23P01'); // exclusion_violation
+		expect(error?.message ?? '').toMatch(/training_plans_active_no_overlap/);
 
-		// Sanity: runner still has exactly the seeded count of active
-		// plans — no half-inserted row leaked.
+		// No half-inserted row leaked.
 		const count = await readCount(
 			'training_plans by user_id+status',
 			admin

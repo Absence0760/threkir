@@ -42,8 +42,11 @@ class _FakeTraining extends TrainingService {
     return (plan: plan, weeks: weeks, workouts: workouts);
   }
 
+  bool duplicateOverlaps = false;
+
   @override
   Future<String> duplicatePlanWeek(String planId, int weekIndex) async {
+    if (duplicateOverlaps) throw const ActivePlanExistsError();
     duplicated.add('$planId:$weekIndex');
     return 'new-week-id';
   }
@@ -52,11 +55,21 @@ class _FakeTraining extends TrainingService {
   Future<void> updateWorkout(
     String workoutId, {
     String? kind,
+    String? fromKind,
     double? targetDistanceM,
     int? targetPaceSecPerKm,
     String? notes,
+    PlanWorkoutRaceFields? race,
   }) async {
     if (targetDistanceM != null) updated[workoutId] = targetDistanceM;
+  }
+
+  @override
+  Future<void> applyReplan({
+    required String planId,
+    required Map<String, double> distances,
+  }) async {
+    updated.addAll(distances);
   }
 }
 
@@ -305,6 +318,37 @@ void main() {
       await pumpUntil(tester, () => training.duplicated.isNotEmpty,
           describe: 'the confirmed duplicate to reach the RPC');
       expect(training.duplicated, contains('plan-1:0'));
+      await tester.pump(const Duration(seconds: 4));
+    });
+
+    testWidgets(
+        'a duplicate refused for overlapping the next plan says why',
+        (tester) async {
+      final start = _mondayThisWeek();
+      final training = _FakeTraining(
+        _plan(start),
+        [_week('w0', 0, 'build', 40000)],
+        [_wo('wo0', 'w0', start.add(const Duration(days: 1)), 'easy', 8000)],
+      )..duplicateOverlaps = true;
+      await _pump(tester, training: training, social: _FakeSocial(const []));
+
+      final dup = find.byTooltip('Duplicate week');
+      await tester.scrollUntilVisible(dup, 200,
+          scrollable: find.byType(Scrollable).first);
+      await tester.ensureVisible(dup);
+      await tester.pumpAndSettle();
+      await tester.tap(dup);
+      await tester.pumpAndSettle();
+      await tester.tap(find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.widgetWithText(FilledButton, 'Duplicate')));
+      await pumpUntil(
+          tester,
+          () => tester.any(find.textContaining(
+              "would push the plan into another active plan's dates")),
+          describe: 'the overlap banner');
+      expect(training.duplicated, isEmpty);
+      expect(find.textContaining('Something went wrong'), findsNothing);
       await tester.pump(const Duration(seconds: 4));
     });
 

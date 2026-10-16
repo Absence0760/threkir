@@ -4,7 +4,7 @@ How `apps/mobile_ios/` ships to the Apple App Store, including the bundled `apps
 
 Operational counterpart of [`apps/mobile_ios/CLAUDE.md`](CLAUDE.md) and the byte-identical-twin convention with `apps/mobile_android/` ([decisions.md § 39](../../docs/architecture/decisions.md#39-mobile_android-and-mobile_ios-share-a-byte-for-byte-dart-codebase)). For the cross-service overview see [`docs/ops/deployment.md`](../../docs/ops/deployment.md). For tag-driven release mechanics see [`docs/ops/releasing.md`](../../docs/ops/releasing.md).
 
-**Status: release path built, not yet run** (2026-09-21, [decisions § 1701](../../docs/architecture/decisions.md)). Publishing a `mobile_ios@*` Release signs the phone app and the watch app it embeds and uploads them to TestFlight. What remains is operator provisioning — [`docs/ops/apple_provisioning.md`](../../docs/ops/apple_provisioning.md) steps 2–4 and 14–18 — and the first device run on TestFlight.
+**Status: release path built, not yet run** (2026-09-21, [decisions § 1701](../../docs/architecture/decisions.md)). Publishing a `mobile_ios@*` Release signs the phone app and the watch app it embeds and uploads them to TestFlight. What remains is operator provisioning — [`docs/ops/apple_provisioning.md`](../../docs/ops/apple_provisioning.md) steps 2–4 and 14–18 — and the first device run on TestFlight. Since 2026-10-16 the release also submits each version after the app's first to App Store review and releases it on approval as a phased release ([App Store submission](#app-store-submission), [decisions § 2040](../../docs/architecture/decisions.md)); that step has not run yet.
 
 ---
 
@@ -230,16 +230,47 @@ The base content rating stays low for a running app; these capability flags are 
 Triggered by publishing a GitHub Release tagged `mobile_ios@1.2.3` (a bare tag push does nothing). `.github/workflows/release-ios.yml`, on `macos-latest`, after the `production` environment's approval:
 
 1. Fails in seconds if any required secret is unset, naming each one.
-2. Checks out the tag, parses the version (one to three dot-separated integers — the App Store accepts nothing else) and derives the build number from `git rev-list --count HEAD`.
+2. Checks out the tag and reads the Release body's `## What's New` section, failing in seconds if it is missing, empty or over 4000 characters ([App Store submission](#app-store-submission)). Then parses the version (one to three dot-separated integers — the App Store accepts nothing else) and derives the build number from `git rev-list --count HEAD`.
 3. Sets up the pinned Flutter SDK, bootstraps the workspace, pins `pubspec.yaml`'s version.
 4. Decodes `GoogleService-Info.plist` and checks its bundle id; stubs the bundled `.env.development` asset empty, as Android does.
 5. Imports the `.p12` into a keychain whose password is generated for the run, and fails unless it holds an `Apple Distribution` identity.
 6. Runs `scripts/ios_release_signing.mjs` against the five profiles — phone, watch, share extension, Live Activity extension, watch complication (see [Signing setup](#signing-setup)), which also writes `ExportOptions.plist` (`app-store-connect`, manual signing, dSYMs uploaded to Apple).
 7. Writes `dart_defines.json` and the Apple Watch app's untracked `ios/Flutter/WatchRuntime.xcconfig` (see [The Apple Watch app's Supabase project and Sentry config](#the-apple-watch-apps-supabase-project-and-sentry-config)), then `flutter build ipa --release`, then fails unless the IPA's `WatchApp.app/Info.plist` holds both Supabase values equal to the secrets, the release tag as `APP_RELEASE`, and the Sentry DSN exactly when one was set.
 8. Keeps the signed `.ipa` as a workflow **artifact**, `mobile_ios@<version>-ipa`, for 90 days, **before** uploading, so a refused upload still leaves a signed build to upload by hand: download it from the run's Summary page under Actions. Nothing is attached to the Release — that was the only thing that wanted `contents: write`, and on a public repo it made a signed production binary world-downloadable ([decisions § 1720](../../docs/architecture/decisions.md)).
-9. Uploads to TestFlight with the App Store Connect API key through `altool`, which validates the binary during the upload: any ITMS error Apple raises is printed in the run log and fails the step. The job does not wait for Apple's processing queue; TestFlight shows the build, and Apple emails, when processing ends. Then it deletes the keychain and the runtime config.
+9. Uploads to TestFlight with the App Store Connect API key through `altool`, which validates the binary during the upload: any ITMS error Apple raises is printed in the run log and fails the step. A build App Store Connect already holds (a re-run of the same commit) is not uploaded again, since `altool` refuses a build number twice.
+10. Submits the build for App Store review with the same key (`scripts/asc_submit.mjs`, [below](#app-store-submission)). Then it deletes the keychain and the runtime config.
 
-Lands the build in **TestFlight** (the equivalent of Play's Internal track). Promotion to the App Store is manual in App Store Connect, after a smoke test on an iPhone and a paired Apple Watch.
+Lands the build in **TestFlight** (the equivalent of Play's Internal track) and in App Review. **The `production` environment approval is the promotion gate**: approving the run sends the build to review, and Apple's approval releases it, phased over 7 days, with no further click ([decisions § 2040](../../docs/architecture/decisions.md)). The build reaches TestFlight and App Review in the same run, so this exact binary is no longer smoke-tested before review. It is installable from TestFlight while it waits for review (usually a day or more): smoke-test it on an iPhone and a paired Apple Watch then, and if it fails, **Remove this version from review** on its App Store Connect page before Apple approves it. Once approved, **Pause Phased Release** is the brake.
+
+## App Store submission
+
+The last step of the release, decided 2026-10-16 (issue #1072, [decisions § 2040](../../docs/architecture/decisions.md)). It replaces five clicks in App Store Connect: create the version, write What's New, pick the build, submit for review, release on approval.
+
+**What's New is written by the owner, in the GitHub Release body**, under a level-2 heading `## What's New`. The section runs to the next level-1 or level-2 heading, so the `## What's Changed` list that `--generate-notes` appends ends it. App Store Connect's limit is 4000 characters, and a longer note fails the job rather than being cut short. HTML comments are dropped, so a template placeholder alone counts as empty. There is no fallback to the generated notes: they are a developer changelog. The check runs before the build, and it reads the Release through the API, so fixing the body and re-running is enough. Until the app's first version is released, nothing submits a note, so the check allows a Release with no section (a duplicate, over-long or empty one still fails); it learns that by reading the app's versions with the API key, and if that read fails it applies the strict rule. [`docs/ops/releasing.md`](../../docs/ops/releasing.md#cutting-a-release) has the `gh release create` line.
+
+**Every localization the version has gets the same note.** Nothing in the repo records which product-page languages the App Store Connect listing carries. The app's UI ships seven (en, de, fr, es, ja, pt-PT, pt-BR), but the listing metadata set up for #1113 (subscription names and descriptions) is en-US only. App Store Connect refuses to submit an update with an empty What's New in any localization it has, so the script writes the owner's English note into each one rather than leaving a gap. When translated listings are added, that note shows in English there until a translated note path exists.
+
+**Which App Store version it uses.** The one whose version number equals the tag's version, which is also the build's `CFBundleShortVersionString` (the workflow stamps both from the tag). When none exists and no other version is in progress, it creates one. When another version is in progress under a different number, it fails and names both: App Store Connect allows one in progress at a time, and the script never renames one it did not create. To proceed, either change that version's number to the tag's on its App Store Connect page (allowed while it is editable) or finish it, then re-run.
+
+That rule is why the open question in #1072 does not need an answer to be safe. The first version's record reads **1.0** in App Store Connect while builds `1.0.4`, `1.0.7` and `1.0.8` (each stamped `CFBundleShortVersionString` from its tag by the *Pin version from tag* step) were selected on it by hand (#1113, 2026-10-11 and 2026-10-12). So App Store Connect does not refuse a build whose version string differs from the record's at selection time, and nothing in the repo shows whether it renames the record on approval. The script does not depend on either behaviour: it never attaches a build to a version under another number.
+
+**The first version is the owner's.** Apple takes no What's New on an app's first version, and that submission carries review notes, a demo account and a recording only the owner can supply. While no version has been released the submission step changes nothing and ends green with a `::notice::`: automatic submission starts after the first version is released, and the build is in TestFlight for the manual path (#1113). A release before then is not a red run. Automatic submission starts with the version after the one #1113 is resubmitting.
+
+**After approval** the version releases on its own as a phased release: 1% of auto-update users on day 1, rising to 100% over 7 days; anyone can download it from the App Store at once. **Pause Phased Release** on the version page stops the ramp (up to 30 days in total); **Release to All Users** ends it early. See [Rollback](#rollback).
+
+**When it stops** (each fails the job and changes nothing it cannot finish):
+
+| Reason | What to do |
+|---|---|
+| The Release has no usable `## What's New` | Edit the Release body, re-run the job |
+| Processing took over an hour, or ended `FAILED` / `INVALID` | Read Apple's reason in TestFlight or the email; re-run once the build shows (its upload is skipped) |
+| Another version is in progress under a different number | Rename it to the tag's number while it is editable, or finish it; re-run |
+| App Review returned a rejection that is waiting for a reply (`UNRESOLVED_ISSUES`) | Answer it in App Store Connect's App Review section; a rejection is not resubmitted past unread |
+| Another review submission is already with App Review | Let it finish or cancel it; re-run |
+| The tag's version is already with App Review or released with a different build | Tag the next version |
+| HTTP 401 / 403 from App Store Connect | The API key is revoked or mismatched (401), or its role is below App Manager (403) |
+
+Re-running after a partial run is safe: the upload is skipped when App Store Connect holds the build, and each later step does nothing when already true. A version already with App Review with this build is reported as done.
 
 ---
 
@@ -297,7 +328,7 @@ Marginal cost per install: $0. Apple takes 15–30% of in-app purchase revenue (
 
 App Store has a similar "halt rollout" called **Phased Release** + **Stop Phased Release**:
 
-- New releases ship via Phased Release by default — 1% of auto-update users on day 1, ramping to 100% over 7 days.
+- New releases ship via Phased Release — 1% of auto-update users on day 1, ramping to 100% over 7 days. `release-ios.yml` turns it on for every version it submits ([App Store submission](#app-store-submission)).
 - If a regression surfaces during phasing, **Stop Phased Release** in App Store Connect freezes new auto-updates at the current %. Existing installs keep their version.
 - Tag a fix as `mobile_ios@1.2.4` and submit. Expedited reviews are available for emergencies but should be reserved for genuine outages — abuse loses goodwill with reviewers.
 
@@ -344,6 +375,7 @@ Apple's appeal process is faster than Google's but still painful. Mitigations:
 - [x] No web payment link and no Google sign-in button on iOS ([decisions § 1700](../../docs/architecture/decisions.md))
 - [x] Watch target builds clean from the `Runner` scheme and is embedded — unsigned, on Xcode 26.4 ([decisions § 1679](../../docs/architecture/decisions.md))
 - [ ] First `mobile_ios@` release reaches TestFlight — step 18
+- [ ] First automatic App Store submission: the first `mobile_ios@` release after version 1.0 is live, with a `## What's New` section in its Release body ([App Store submission](#app-store-submission)). Releases cut before 1.0 is live need no section and end green with a notice; the API key keeps the App Manager role (a 403 means it is lower)
 - [ ] Universal links verified (§ 1924): after the next `web@*` release, `curl -sI https://threkir.com/.well-known/apple-app-site-association` answers `200` with `content-type: application/json` and no redirect; then, on an iPhone with a `mobile_ios@` build from after this change, tapping a `https://threkir.com/clubs/join/<token>` link in Messages or Notes opens the invite screen rather than Safari. Apple's CDN caches the file for up to about 24 h, so a fresh install right after the web release can still miss it
 - [ ] That build smoke-tested on a real iPhone and a paired Apple Watch: Sign in with Apple, a run recorded with the screen locked, HealthKit import, push, a sandbox purchase, account deletion, one watch run synced
 - [ ] Sentry receiving symbolicated native crash reports (dSYM upload step in `release-ios.yml`)

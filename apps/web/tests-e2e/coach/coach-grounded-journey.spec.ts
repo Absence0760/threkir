@@ -104,7 +104,7 @@ test.describe('AI coach grounded-context journey', () => {
 				// fetchMyPlans() orders by created_at DESC; an extra plan
 				// would push Richmond Half off the first dropdown row and
 				// desync the switcher. Sweep non-seed plans + force Richmond
-				// active (a prior Replace-plan run could have completed it) —
+				// active (a prior Replace run could have completed it) —
 				// same guard the per-surface page.spec uses.
 				await admin
 					.from('training_plans')

@@ -3075,6 +3075,9 @@ export type Database = {
           manually_completed: boolean
           notes: string | null
           pace_zone: string | null
+          race_name: string | null
+          race_priority: string | null
+          race_taper_applied_at: string | null
           scheduled_date: string
           skipped_at: string | null
           structure: Json | null
@@ -3095,6 +3098,9 @@ export type Database = {
           manually_completed?: boolean
           notes?: string | null
           pace_zone?: string | null
+          race_name?: string | null
+          race_priority?: string | null
+          race_taper_applied_at?: string | null
           scheduled_date: string
           skipped_at?: string | null
           structure?: Json | null
@@ -3115,6 +3121,9 @@ export type Database = {
           manually_completed?: boolean
           notes?: string | null
           pace_zone?: string | null
+          race_name?: string | null
+          race_priority?: string | null
+          race_taper_applied_at?: string | null
           scheduled_date?: string
           skipped_at?: string | null
           structure?: Json | null
@@ -4837,6 +4846,7 @@ export type Database = {
           source: string
           start_date: string
           status: string
+          trimmed_at: string | null
           updated_at: string | null
           user_id: string
           vdot: number | null
@@ -4861,6 +4871,7 @@ export type Database = {
           source?: string
           start_date: string
           status?: string
+          trimmed_at?: string | null
           updated_at?: string | null
           user_id: string
           vdot?: number | null
@@ -4885,6 +4896,7 @@ export type Database = {
           source?: string
           start_date?: string
           status?: string
+          trimmed_at?: string | null
           updated_at?: string | null
           user_id?: string
           vdot?: number | null
@@ -5864,6 +5876,10 @@ export type Database = {
       }
       ai_disclosure_current_version: { Args: never; Returns: number }
       am_i_admin: { Args: never; Returns: boolean }
+      apply_workout_adjustments: {
+        Args: { p_changes: Json; p_plan_id: string }
+        Returns: undefined
+      }
       approve_event_result: {
         Args: {
           p_approve: boolean
@@ -6057,11 +6073,19 @@ export type Database = {
         Returns: string
       }
       clone_plan_template: {
-        Args: { new_start_date: string; template_id: string }
+        Args: {
+          new_start_date: string
+          p_overlap?: string
+          template_id: string
+        }
         Returns: string
       }
       clone_public_plan: {
-        Args: { new_start_date: string; template_id: string }
+        Args: {
+          new_start_date: string
+          p_overlap?: string
+          template_id: string
+        }
         Returns: string
       }
       clone_session_template: { Args: { template_id: string }; Returns: string }
@@ -6111,6 +6135,10 @@ export type Database = {
       confirm_safety_contact_by_token: {
         Args: { p_sms_opt_in?: boolean; p_token: string }
         Returns: boolean
+      }
+      create_training_plan: {
+        Args: { p_overlap?: string; p_plan: Json; p_weeks: Json }
+        Returns: string
       }
       cron_schedule_status: { Args: { p_jobname: string }; Returns: Json }
       decide_event_result_claim: {
@@ -7228,6 +7256,10 @@ export type Database = {
         Args: { p_id: string; p_opt_in: boolean }
         Returns: boolean
       }
+      shift_training_plan: {
+        Args: { p_days: number; p_plan_id: string; p_shift_following?: boolean }
+        Returns: undefined
+      }
       sign_in_browser_class: { Args: { p_ua: string }; Returns: string }
       sign_in_platform_class: { Args: { p_ua: string }; Returns: string }
       spend_coach_usage_slot: {
@@ -7260,6 +7292,10 @@ export type Database = {
         Returns: string
       }
       sweep_challenge_completions: { Args: never; Returns: undefined }
+      trim_training_plan: {
+        Args: { p_new_end_date: string; p_plan_id: string }
+        Returns: undefined
+      }
       try_consume_strava_quota: {
         Args: { p_day_limit?: number; p_short_limit?: number }
         Returns: boolean

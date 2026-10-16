@@ -752,7 +752,8 @@ export type TrainingPlan = Omit<TrainingPlanRow, 'status'> & { status: PlanStatu
 export type PlanWeek = PlanWeekRow;
 export type PlanWorkout = PlanWorkoutRow;
 
-/** View-model returned by `fetchActivePlanOverview` — plan + current week +
+/** View-model returned by `fetchActivePlanOverview` — the current plan (or,
+ * when none is current, the next to start) + current week +
  * next few workouts. Used by the dashboard card + the plan detail page. */
 export type ActivePlanOverview = {
 	plan: TrainingPlan;
@@ -760,6 +761,11 @@ export type ActivePlanOverview = {
 	workouts: PlanWorkout[];
 	todayWorkout: PlanWorkout | null;
 	completionPct: number;
+	/** The active plan queued after `plan`, if any (plan chaining). */
+	upcoming: Pick<TrainingPlan, 'id' | 'name' | 'start_date' | 'end_date'> | null;
+	/** Every active plan the runner holds, `plan` included — what a coach's
+	 *  assignment must not overlap (plan chaining, decisions § 2008). */
+	activePlans: Pick<TrainingPlan, 'id' | 'name' | 'start_date' | 'end_date'>[];
 };
 
 // ─────────────────────── Challenges & competitions ───────────────────────

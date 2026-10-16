@@ -18,8 +18,10 @@ import '../l10n/locale_support.dart';
 import '../local_gym_store.dart';
 import '../local_route_store.dart';
 import '../local_routine_store.dart';
+import '../plan_overlap.dart';
 import '../preferences.dart';
 import '../social_service.dart';
+import '../training.dart' show toIsoDate;
 import '../training_service.dart';
 import '../backend_timeout.dart';
 import '../widgets/activity_waiver_dialog.dart';
@@ -29,6 +31,7 @@ import '../widgets/collapsing_tab_host.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/error_state.dart';
 import '../widgets/event_form_sheet.dart';
+import '../widgets/plan_overlap_dialog.dart';
 import '../widgets/report_sheet.dart';
 import '../widgets/route_track_preview.dart';
 import '../widgets/verified_badge.dart';
@@ -1346,9 +1349,24 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
 
   Future<void> _adoptTemplate(TrainingPlanRow t) async {
     if (_adoptingPlanId != null) return;
+    final today = DateTime.now();
+    final startIso = toIsoDate(today);
+    final endIso = clonedPlanEndIso(t, startIso,
+        start: planRowStartIso, end: planRowEndIso);
+    // Held across the overlap lookup too: it is a network read, and a second
+    // tap inside it would otherwise clone the template twice.
     setState(() => _adoptingPlanId = t.id);
+    final action = await confirmPlanOverlap(context, widget.training,
+        startIso: startIso, endIso: endIso);
+    if (!mounted) return;
+    if (action == null) {
+      setState(() => _adoptingPlanId = null);
+      return;
+    }
     try {
-      final newId = await widget.training.clonePlanTemplate(templateId: t.id);
+      final newId = await widget.training
+          .clonePlanTemplate(templateId: t.id, startDate: today, onOverlap: action)
+          .timeout(kBackendLoadTimeout);
       if (!mounted) return;
       showTopBanner(
           context, AppLocalizations.of(context).clubDetailTemplateAdded);
@@ -1364,8 +1382,11 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
     } catch (e) {
       debugPrint('club detail adopt failed: $e');
       if (!mounted) return;
+      final l10n = AppLocalizations.of(context);
       showTopBanner(
-          context, AppLocalizations.of(context).clubDetailAdoptFailed(friendlyError(AppLocalizations.of(context), e)));
+          context,
+          planOverlapErrorText(context, e) ??
+              l10n.clubDetailAdoptFailed(friendlyError(l10n, e)));
     } finally {
       if (mounted) setState(() => _adoptingPlanId = null);
     }

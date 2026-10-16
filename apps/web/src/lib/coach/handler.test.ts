@@ -27,7 +27,10 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import type Anthropic from '@anthropic-ai/sdk';
 
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { coachSseStream, handleCoach, type CoachStreamDeps } from './handler';
+import { resolveToday } from '../training/plan_request/handler';
 import { anthropicTextTokens } from './providers';
 import { emptyUsage, type CoachConfig, type ProviderStream } from './types';
 
@@ -816,4 +819,48 @@ test('an unreadable spend denies with 503 before any provider call', async () =>
 	});
 	assert.equal(parseJsonResult(result).status, 503);
 	assert.ok(!names(rpcs).includes('refund_coach_usage_slot'));
+});
+
+test('a failed plan read answers 503 and refunds the slot instead of coaching as if there were no plan', async () => {
+	const rpcs: RpcCall[] = [];
+	const stub = paywalledStub(rpcs) as unknown as { from: (t: string) => unknown };
+	const baseFrom = stub.from;
+	stub.from = (table: string) => {
+		if (table !== 'training_plans') return baseFrom(table);
+		const failed = { data: null, error: { message: 'timeout', code: '57014' } };
+		const b: Record<string, unknown> = {};
+		for (const k of ['select', 'eq', 'order']) b[k] = () => b;
+		b.maybeSingle = async () => failed;
+		b.then = (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) =>
+			Promise.resolve(failed).then(resolve, reject);
+		return b;
+	};
+	let result!: Awaited<ReturnType<typeof handleCoach>>;
+	await captureConsoleError(async () => {
+		result = await handleCoach(
+			'Bearer fake-token',
+			{ messages: [{ role: 'user', content: 'what is today?' }], today: '2026-06-15' },
+			{
+				...baseConfig(),
+				provider: 'openai',
+				openaiBaseUrl: 'http://upstream.test/v1',
+				createClient: () => stub as unknown as SupabaseClient,
+			},
+		);
+	});
+	assert.equal(parseJsonResult(result).status, 503);
+	const refunds = rpcs.filter((c) => c.name === 'refund_coach_usage_slot');
+	assert.equal(refunds.length, 1, names(rpcs).join(','));
+});
+
+test('the coach reads today from the request only within a day of the server clock', () => {
+	// The handler hands buildContext resolveToday(body.today, now) — the same
+	// skew window plan_request uses, so a forged date cannot move the plan pick
+	// further than a real timezone could.
+	const src = readFileSync(resolve(import.meta.dirname ?? '.', 'handler.ts'), 'utf8');
+	assert.match(src, /resolveToday\(body\.today, \(config\.now \?\? Date\.now\)\(\)\)/);
+	const NOW = Date.UTC(2026, 9, 15, 12);
+	assert.equal(resolveToday('2026-10-16', NOW), '2026-10-16');
+	assert.equal(resolveToday('2026-10-17', NOW), '2026-10-15');
+	assert.equal(resolveToday(undefined, NOW), '2026-10-15');
 });

@@ -119,7 +119,7 @@ The coach endpoint at `/api/coach/+server.ts` supports two providers, picked by 
 
 **Prod path — Anthropic (default)**
 1. `COACH_PROVIDER=anthropic` (or unset), `ANTHROPIC_API_KEY=sk-ant-...`.
-2. Visit `/coach` → confirm the "Grounded in:" strip lists your active plan (or "No active plan"), the runs count, and HR-zone status.
+2. Visit `/coach` → confirm the "Grounded in:" strip lists your current plan (the one covering your local today, else the latest-ended, else the next to start), or "No active plan", or "Plan couldn't load" when the plan read fails, the runs count, and HR-zone status.
 3. Send a message ("How's my pace?") → response arrives within ~3s. The usage bar at the bottom shows cache numbers (`read N · wrote N · in N · out N`); the second message in the same conversation should show non-zero `read` (cache hit).
 4. Switch the **Last N runs** chip to a different value and send another message. `runs_limit` is reflected in the prompt; the chip count updates immediately.
 5. With multiple plans, the header `<select>` lets you swap; URL gains `?plan=<id>` and the chat resets.

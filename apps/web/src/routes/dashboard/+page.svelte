@@ -37,6 +37,7 @@
 	import { computeReadiness, type ReadinessContributorKind } from '#lib/training/readiness.ts';
 	import { computeTrainingLoadSeries, hasTrimpSignal } from '#lib/training/training_load.ts';
 	import { planRaceCountdown } from '#lib/training/plan_week.ts';
+	import { nextRace, planRaces } from '#lib/training/plan_races.ts';
 	import { formatISO } from '#lib/training/training.ts';
 	import {
 		DISCLOSURE_LEVEL_KEY,
@@ -46,7 +47,7 @@
 	import { fetchGymSetHistory, fetchGymWorkouts } from '#lib/core/data.ts';
 	import { fetchFoodLog, fetchLatestWeightKg, type FoodEntry } from '#lib/core/data.ts';
 	import { supabase } from '#lib/core/supabase.ts';
-	import type { GymWorkout, GymSetWithDate, DashboardRun } from '#lib/core/data.ts';
+	import type { GymWorkout, GymSetWithDate, DashboardRun, PlanOverviewRead } from '#lib/core/data.ts';
 	import { liftsFromSetHistory } from '#lib/gym/lift_load.ts';
 	import { distinctExerciseCount } from '#lib/gym/gym_prs.ts';
 	import {
@@ -189,6 +190,9 @@
 	});
 	let showAgeGradeCol = $derived(Object.values(prAgeGrades).some((v) => v != null));
 	let planOverview = $state<ActivePlanOverview | null>(null);
+	/// The plan read failed: the plan slot says so rather than offering to
+	/// create a plan the runner may already have.
+	let planLoadError = $state<string | null>(null);
 	let loading = $state(true);
 	let loadError = $state<string | null>(null);
 	let mileageView = $state<'weekly' | 'monthly' | 'yearly'>('weekly');
@@ -581,6 +585,7 @@
 		// not take the run-derived cards down with it — the same contract the
 		// per-read try/catch blocks gave.
 		let runsRead: { runs: DashboardRun[]; error: string | null };
+		let planRead: PlanOverviewRead;
 		let settingsRead: LoadedSettings | null;
 		let gymRead: [GymWorkout[], GymSetWithDate[]] | null;
 		let profileRead: DashboardProfile | null;
@@ -588,7 +593,7 @@
 			runsRead,
 			allTimeStats,
 			personalRecords,
-			planOverview,
+			planRead,
 			upcomingEvent,
 			fitnessHistory,
 			settingsRead,
@@ -617,6 +622,8 @@
 			fetchDashboardProfile(),
 		]);
 		runs = runsRead.runs;
+		planOverview = planRead.overview;
+		planLoadError = planRead.error;
 		// Every card below derives from `runs`. If that read failed there is
 		// nothing truthful to render, so state it rather than painting an
 		// empty account over the top of it.
@@ -653,6 +660,12 @@
 		]);
 		loading = false;
 	});
+
+	async function reloadPlanOverview(): Promise<void> {
+		const read = await fetchActivePlanOverview();
+		planOverview = read.overview;
+		planLoadError = read.error;
+	}
 
 	/// The self-read the age-grade column and the nutrition targets both need.
 	/// `gender` is deny-by-default for direct SELECTs, so it comes through the
@@ -850,6 +863,13 @@
 		t.setHours(0, 0, 0, 0);
 		return t;
 	});
+	/// The plan's next race (plan_races.ts): a B race mid-block owns the
+	/// countdown and goal row until it has been run, then the plan's A race.
+	let heroRace = $derived(
+		planOverview
+			? nextRace(planRaces(planOverview.plan, planOverview.workouts), formatISO(todayMidnight))
+			: null
+	);
 	let planPosition = $derived.by(() => {
 		const overview = planOverview;
 		if (!overview) return null;
@@ -872,7 +892,7 @@
 		// and this one can never disagree on how many days remain.
 		const countdown = planRaceCountdown(
 			overview.plan.start_date,
-			overview.plan.end_date,
+			heroRace?.date ?? overview.plan.end_date,
 			formatISO(todayMidnight)
 		);
 		let relation: string;
@@ -1140,6 +1160,7 @@
 		{#if planOverview && planPosition}
 			{@const t = planOverview.todayWorkout}
 			{@const todayDone = t != null && (t.manually_completed === true || t.completed_run_id != null)}
+			{@const raceGoal = heroRace ? heroRace.goalTimeSec : planOverview.plan.goal_time_seconds}
 			<section class="plan-hero" class:race-today={planPosition.raceState === 'today'}>
 				<header class="plan-hero-head">
 					<div class="plan-hero-ident">
@@ -1148,17 +1169,17 @@
 						<div class="plan-hero-goal">
 							<span>
 								<span class="material-symbols">flag</span>
-								{goalEventLabel(planOverview.plan.goal_event)}
+								{heroRace?.name ?? goalEventLabel(planOverview.plan.goal_event)}
 							</span>
-							{#if planOverview.plan.goal_time_seconds}
+							{#if raceGoal}
 								<span>
 									<span class="material-symbols">timer</span>
-									{formatDuration(planOverview.plan.goal_time_seconds)}
+									{formatDuration(raceGoal)}
 								</span>
 							{/if}
 							<span>
 								<span class="material-symbols">event</span>
-								{fmtRaceDate(planOverview.plan.end_date)}
+								{fmtRaceDate(heroRace?.date ?? planOverview.plan.end_date)}
 							</span>
 						</div>
 					</div>
@@ -1249,6 +1270,16 @@
 					{/if}
 				</div>
 
+				{#if planOverview.upcoming}
+					<a class="plan-hero-next" href="/plans/{planOverview.upcoming.id}" data-testid="plan-hero-next">
+						<span class="material-symbols">event_upcoming</span>
+						{m('dash.planUpNext', {
+							name: planOverview.upcoming.name,
+							date: fmtRaceDate(planOverview.upcoming.start_date)
+						})}
+					</a>
+				{/if}
+
 				<footer class="plan-hero-actions">
 					<a class="btn btn-primary btn-sm plan-hero-cta" href="/plans/{planOverview.plan.id}">
 						<span class="material-symbols">calendar_month</span>
@@ -1260,6 +1291,17 @@
 					</a>
 				</footer>
 			</section>
+		{:else if planLoadError}
+			<div class="dash-load-error" role="alert" data-testid="dash-plan-load-error">
+				<span class="material-symbols" aria-hidden="true">error</span>
+				<div>
+					<strong>{m('dash.planLoadErrorTitle')}</strong>
+					<span class="dash-load-error-detail">{m('dash.planLoadErrorBody')}</span>
+				</div>
+				<button class="btn btn-outline" onclick={reloadPlanOverview} data-testid="dash-plan-load-retry"
+					>{m('dash.retry')}</button
+				>
+			</div>
 		{:else if !planOverview}
 			<a class="plan-promo" href="/plans?new=1">
 				<div>
@@ -2093,7 +2135,7 @@
 			editingWorkout = null;
 			// Re-fetch the active plan overview so the today card picks up
 			// any changes (e.g. new target distance / pace) without a refresh.
-			planOverview = await fetchActivePlanOverview();
+			await reloadPlanOverview();
 		}}
 	/>
 {/if}
@@ -2691,6 +2733,19 @@
 		color: var(--color-primary);
 	}
 	.plan-hero-manage :global(.material-symbols) { font-size: 1.05rem; }
+	.plan-hero-next {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2xs);
+		font-size: 0.85rem;
+		color: var(--color-text-secondary);
+		text-decoration: none;
+		overflow-wrap: anywhere;
+	}
+	.plan-hero-next:hover {
+		color: var(--color-primary);
+	}
+	.plan-hero-next :global(.material-symbols) { font-size: 1.05rem; }
 
 	.today-label {
 		font-size: var(--font-size-section-label);

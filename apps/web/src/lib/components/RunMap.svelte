@@ -24,6 +24,7 @@
 		mapTrackLine,
 	} from '#lib/routes/basemap_contrast.ts';
 	import { watchMapResize } from '#lib/routes/map_resize.ts';
+	import { OverlayDrawState, type OverlayStep } from '#lib/routes/overlay_draw.ts';
 	import { minMax } from '#lib/util/min_max.ts';
 	import type { TrackPoint } from '#lib/types.ts';
 	import { lineLngLat } from '#lib/runs/track_line.ts';
@@ -728,6 +729,16 @@
 		}
 	}
 
+	/// When a track change or a ready style may draw, and whether it clears
+	/// first. Drawing outside that is how /runs/[id] threw
+	/// `Source "trace" already exists` (decisions § 2043).
+	const overlayDraw = new OverlayDrawState();
+
+	function applyOverlayStep(step: OverlayStep): void {
+		if (step.clear) clearOverlays();
+		if (step.draw) addOverlays(trackCoords, trackBounds, step.fit);
+	}
+
 	let trackCoords: [number, number][] = [];
 	/// Pace colour stops for `track`, taken with the other snapshots.
 	let paceStops = $state<PaceStop[]>([]);
@@ -829,13 +840,12 @@
 		segmentMarker?.remove();
 		segmentMarker = undefined;
 		snapshotTrack();
-		clearOverlays();
 		// `data-map-idle` means "settled on the track being shown", so it has
 		// to come off until the new camera has settled -- a pointer-driven
 		// test waiting on it would otherwise read a position mid-animation.
 		mapContainer?.removeAttribute('data-map-idle');
 		map.once('idle', () => mapContainer?.setAttribute('data-map-idle', 'true'));
-		addOverlays(trackCoords, trackBounds, true);
+		applyOverlayStep(overlayDraw.trackChanged());
 	});
 
 	function loadMapNow() {
@@ -865,7 +875,7 @@
 
 		map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
-		map.on('load', () => addOverlays(trackCoords, trackBounds, true));
+		map.on('load', () => applyOverlayStep(overlayDraw.styleReady(true)));
 		// The entrance fitBounds (inside the load handler above) animates the
 		// camera, so a pin's screen position keeps moving for a beat after it
 		// first renders. `idle` fires only once tiles are loaded AND no camera
@@ -1064,8 +1074,9 @@
 		const next = getMapStyle();
 		if (!map || next === currentStyle) return;
 		currentStyle = next;
+		overlayDraw.styleSwapped();
 		map.setStyle(mapStyleUrl(PUBLIC_MAPTILER_KEY, prefersDark));
-		map.once('style.load', () => addOverlays(trackCoords, trackBounds, false));
+		map.once('style.load', () => applyOverlayStep(overlayDraw.styleReady(false)));
 	});
 
 	onDestroy(() => {

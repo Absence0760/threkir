@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -10,6 +12,7 @@ import '../lib/screens/plan_new_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/training.dart';
 import '../lib/training_service.dart';
+import 'pump_until.dart';
 
 Future<void> _pump(WidgetTester tester) {
   return tester.pumpWidget(
@@ -53,14 +56,16 @@ class _FakeTraining extends TrainingService {
       templatesByClub[clubId] ?? const [];
 }
 
-/// Drives the replace-active-plan confirm gate: `fetchActiveOverview`
-/// returns a configurable existing active plan (or null), and `createPlan`
-/// records whether it was reached. The viewer-demographic fetches return
-/// quietly so no network is touched in the widget test.
+/// Drives the plan-overlap confirm gate: `fetchActivePlans` returns the
+/// runner's configurable active plans, and `createPlan` records whether it
+/// was reached and with which overlap action. The viewer-demographic fetches
+/// return quietly so no network is touched in the widget test.
 class _GateTraining extends TrainingService {
-  final ActivePlanOverview? activeOverview;
+  final List<TrainingPlanRow> activePlans;
+  final bool lookupFails;
   bool createCalled = false;
-  _GateTraining({this.activeOverview});
+  PlanOverlapAction? overlapAction;
+  _GateTraining({this.activePlans = const [], this.lookupFails = false});
 
   @override
   Future<TrainingGender> fetchViewerGender() async => null;
@@ -70,7 +75,10 @@ class _GateTraining extends TrainingService {
   Future<List<TrainingPlanRow>> fetchClubTemplates(String clubId) async =>
       const [];
   @override
-  Future<ActivePlanOverview?> fetchActiveOverview() async => activeOverview;
+  Future<List<TrainingPlanRow>> fetchActivePlans() async {
+    if (lookupFails) throw Exception('test: offline');
+    return activePlans;
+  }
 
   @override
   Future<TrainingPlanRow> createPlan({
@@ -83,8 +91,10 @@ class _GateTraining extends TrainingService {
     required int daysPerWeek,
     String? notes,
     required GeneratedPlan generated,
+    PlanOverlapAction onOverlap = PlanOverlapAction.refuse,
   }) async {
     createCalled = true;
+    overlapAction = onOverlap;
     // Throw after recording the call so the screen's try/catch keeps us on
     // the wizard (a real success navigates to PlanDetailScreen, which is
     // Supabase-backed and unbuildable in a widget test). The test only
@@ -93,30 +103,81 @@ class _GateTraining extends TrainingService {
   }
 }
 
-TrainingPlanRow _planRow(String id, String name) => TrainingPlanRow(
-      id: id,
-      userId: 'me-uuid',
-      name: name,
-      goalEvent: 'distance_half',
-      goalDistanceM: 21097.5,
-      startDate: DateTime(2026, 1, 4),
-      endDate: DateTime(2026, 3, 1),
-      daysPerWeek: 4,
-      status: 'active',
-      source: 'generated',
-      isTemplate: false,
-      isPublicTemplate: false,
-      createdAt: DateTime(2026, 1, 1),
-    );
+/// Holds the overlap lookup open on [lookupGate] and counts every lookup,
+/// create and clone, so a second tap inside the lookup is visible. Creates
+/// and clones throw after counting to keep the screen on the wizard, as
+/// [_GateTraining] does.
+class _LookupGateTraining extends TrainingService {
+  final Completer<void> lookupGate = Completer<void>();
+  final Map<String, List<TrainingPlanRow>> templatesByClub;
+  int lookupCalls = 0;
+  int createCalls = 0;
+  int cloneCalls = 0;
+  _LookupGateTraining({this.templatesByClub = const {}});
 
-ActivePlanOverview _overview(String name) => ActivePlanOverview(
-      plan: _planRow('existing-plan', name),
-      weeks: const [],
-      workouts: const [],
-      todayWorkout: null,
-      completionPct: 0,
-      currentWeekIndex: 0,
-    );
+  @override
+  Future<TrainingGender> fetchViewerGender() async => null;
+  @override
+  Future<int?> fetchViewerAge() async => null;
+  @override
+  Future<List<TrainingPlanRow>> fetchClubTemplates(String clubId) async =>
+      templatesByClub[clubId] ?? const [];
+  @override
+  Future<List<TrainingPlanRow>> fetchActivePlans() async {
+    lookupCalls++;
+    await lookupGate.future;
+    return const [];
+  }
+
+  @override
+  Future<TrainingPlanRow> createPlan({
+    required String name,
+    required GoalEvent goalEvent,
+    required double goalDistanceM,
+    int? goalTimeSec,
+    int? recent5kSec,
+    required DateTime startDate,
+    required int daysPerWeek,
+    String? notes,
+    required GeneratedPlan generated,
+    PlanOverlapAction onOverlap = PlanOverlapAction.refuse,
+  }) async {
+    createCalls++;
+    throw Exception('test: skip navigation');
+  }
+
+  @override
+  Future<String> clonePlanTemplate({
+    required String templateId,
+    DateTime? startDate,
+    PlanOverlapAction onOverlap = PlanOverlapAction.refuse,
+  }) async {
+    cloneCalls++;
+    throw Exception('test: skip navigation');
+  }
+}
+
+/// An active plan spanning [fromDays]..[toDays] days from today. The wizard
+/// defaults its new plan to start next Sunday (1-7 days out) and run for
+/// weeks, which is what each window below is placed against.
+TrainingPlanRow _activeWindow(String name, int fromDays, int toDays) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  return TrainingPlanRow(
+    id: 'existing-$name',
+    userId: 'me-uuid',
+    name: name,
+    goalEvent: 'distance_half',
+    goalDistanceM: 21097.5,
+    startDate: DateTime(today.year, today.month, today.day + fromDays),
+    endDate: DateTime(today.year, today.month, today.day + toDays),
+    daysPerWeek: 4,
+    status: 'active',
+    source: 'generated',
+    isTemplate: false,
+    isPublicTemplate: false,
+  );
+}
 
 ClubView _club(String id, String name) => ClubView(
       row: ClubRow(shadowHidden: false, 
@@ -303,7 +364,7 @@ void main() {
     });
   });
 
-  group('PlanNewScreen — replace-active-plan confirm gate', () {
+  group('PlanNewScreen — plan-overlap confirm gate', () {
     Future<void> pumpGate(WidgetTester tester, _GateTraining training) async {
       await tester.pumpWidget(
         MaterialApp(
@@ -333,46 +394,221 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    testWidgets(
-        'creating with an existing active plan shows the replace confirm',
+    const title = 'These dates overlap an active plan';
+
+    testWidgets('an active plan the new dates overlap shows the overlap confirm',
         (tester) async {
-      // Reason: createPlan silently auto-completes the current active plan —
-      // weeks of a build vanish with no warning unless we gate it.
-      final training = _GateTraining(activeOverview: _overview('Spring base'));
+      // Reason: creating replaces or trims the overlapping plan — weeks of a
+      // build change with no warning unless we gate it.
+      final training = _GateTraining(
+          activePlans: [_activeWindow('Spring base', -30, 200)]);
       await pumpGate(tester, training);
       await tapCreate(tester);
-      expect(find.text('Replace your active plan?'), findsOneWidget);
-      expect(find.textContaining('Spring base'), findsOneWidget);
+      expect(find.text(title), findsOneWidget);
+      expect(find.textContaining('Spring base'), findsWidgets);
       expect(training.createCalled, isFalse);
     });
 
     testWidgets('Keep current dismisses the dialog without creating',
         (tester) async {
-      final training = _GateTraining(activeOverview: _overview('Spring base'));
+      final training = _GateTraining(
+          activePlans: [_activeWindow('Spring base', -30, 200)]);
       await pumpGate(tester, training);
       await tapCreate(tester);
       await tester.tap(find.widgetWithText(TextButton, 'Keep current'));
       await tester.pumpAndSettle();
-      expect(find.text('Replace your active plan?'), findsNothing);
+      expect(find.text(title), findsNothing);
       expect(training.createCalled, isFalse);
     });
 
-    testWidgets('Replace plan proceeds to createPlan', (tester) async {
-      final training = _GateTraining(activeOverview: _overview('Spring base'));
+    testWidgets('Replace plan creates with the replace action', (tester) async {
+      final training = _GateTraining(
+          activePlans: [_activeWindow('Spring base', -30, 200)]);
       await pumpGate(tester, training);
       await tapCreate(tester);
-      await tester.tap(find.widgetWithText(FilledButton, 'Replace plan'));
+      await tester.tap(find.byKey(const Key('planOverlapReplace')));
       await tester.pumpAndSettle();
       expect(training.createCalled, isTrue);
+      expect(training.overlapAction, PlanOverlapAction.replace);
+    });
+
+    testWidgets('a plan that started earlier can be ended the day before',
+        (tester) async {
+      final training = _GateTraining(
+          activePlans: [_activeWindow('Spring base', -30, 200)]);
+      await pumpGate(tester, training);
+      await tapCreate(tester);
+      expect(find.textContaining('End Spring base on'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('planOverlapTrim')));
+      await tester.pumpAndSettle();
+      expect(training.createCalled, isTrue);
+      expect(training.overlapAction, PlanOverlapAction.trim);
+    });
+
+    testWidgets('ending early names every plan it ends, not just the last',
+        (tester) async {
+      // The server trims every overlapped plan to the day before the new
+      // start, so the choice has to name each of them.
+      final training = _GateTraining(activePlans: [
+        _activeWindow('Spring base', -30, 200),
+        _activeWindow('Hill block', -10, 100),
+      ]);
+      await pumpGate(tester, training);
+      await tapCreate(tester);
+      expect(find.textContaining('Spring base'), findsWidgets);
+      expect(find.textContaining('Hill block'), findsWidgets);
+      expect(find.textContaining('End them on'), findsOneWidget);
+      expect(find.textContaining('End them early'), findsOneWidget);
+      expect(find.textContaining('End Hill block on'), findsNothing);
+      await tester.tap(find.byKey(const Key('planOverlapTrim')));
+      await tester.pumpAndSettle();
+      expect(training.overlapAction, PlanOverlapAction.trim);
+    });
+
+    testWidgets('a plan starting after the new one offers no early end',
+        (tester) async {
+      final training = _GateTraining(
+          activePlans: [_activeWindow('Autumn block', 30, 90)]);
+      await pumpGate(tester, training);
+      await tapCreate(tester);
+      expect(find.text(title), findsOneWidget);
+      expect(find.byKey(const Key('planOverlapTrim')), findsNothing);
+      expect(find.byKey(const Key('planOverlapReplace')), findsOneWidget);
+    });
+
+    testWidgets('an active plan that ended before the new one starts does not prompt',
+        (tester) async {
+      final training = _GateTraining(
+          activePlans: [_activeWindow('Spring base', -100, -10)]);
+      await pumpGate(tester, training);
+      await tapCreate(tester);
+      expect(find.text(title), findsNothing);
+      expect(training.createCalled, isTrue);
+      // Nothing overlapped when the gate looked, so a plan created since is
+      // refused by the server rather than replaced unasked (decisions § 2050).
+      expect(training.overlapAction, PlanOverlapAction.refuse);
+    });
+
+    testWidgets('a failed active-plan lookup shows an error and creates nothing',
+        (tester) async {
+      // Reason: the gate used to fall through to replace when it could not
+      // read the active plans, so an offline blip completed plans unasked.
+      final training = _GateTraining(lookupFails: true);
+      await pumpGate(tester, training);
+      await tapCreate(tester);
+      expect(find.text(title), findsNothing);
+      expect(
+          find.text(
+              "Couldn't check your active plans for these dates. Check your connection and try again."),
+          findsOneWidget);
+      expect(training.createCalled, isFalse);
+      // Let the banner's dismiss timer run out so no timer is left pending.
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
     });
 
     testWidgets('no active plan creates without a confirm dialog',
         (tester) async {
-      final training = _GateTraining(activeOverview: null);
+      final training = _GateTraining();
       await pumpGate(tester, training);
       await tapCreate(tester);
-      expect(find.text('Replace your active plan?'), findsNothing);
+      expect(find.text(title), findsNothing);
       expect(training.createCalled, isTrue);
+    });
+  });
+
+  group('PlanNewScreen — a second tap during the overlap lookup', () {
+    Future<_LookupGateTraining> pumpLookup(WidgetTester tester,
+        {List<ClubView> clubs = const [],
+        Map<String, List<TrainingPlanRow>> templates = const {}}) async {
+      final training = _LookupGateTraining(templatesByClub: templates);
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: PlanNewScreen(training: training, social: _FakeSocial(clubs)),
+        ),
+      );
+      await tester.pump();
+      return training;
+    }
+
+    /// Answers the held lookup and lets the create or clone it unblocks
+    /// fail back onto the wizard, then runs out the failure banner's timer.
+    Future<void> finish(WidgetTester tester, _LookupGateTraining t) async {
+      t.lookupGate.complete();
+      await pumpUntil(tester, () => t.createCalls + t.cloneCalls > 0,
+          describe: 'the held lookup to unblock a create or clone');
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('Create plan creates once', (tester) async {
+      final t = await pumpLookup(tester);
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Plan name'), 'Autumn half');
+      await tester.pump();
+      final create = find.widgetWithText(FilledButton, 'Create plan');
+      await tester.scrollUntilVisible(create, 300,
+          scrollable: find.byType(Scrollable).first);
+      await tester.tap(create);
+      await tester.pump();
+      await tester.tap(create, warnIfMissed: false);
+      await tester.pump();
+      expect(t.lookupCalls, 1);
+
+      await finish(tester, t);
+      expect(t.createCalls, 1);
+    });
+
+    testWidgets('a starter plan creates once', (tester) async {
+      final t = await pumpLookup(tester);
+      final browse = find.text('Browse starter plans');
+      await tester.tap(browse);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Marathon — 16 weeks'));
+      await tester.pumpAndSettle();
+      expect(t.lookupCalls, 1);
+
+      await tester.tap(browse, warnIfMissed: false);
+      await tester.pumpAndSettle();
+      expect(find.text('Choose a starter plan'), findsNothing,
+          reason: 'the picker must not reopen while the first pick is '
+              'still being checked');
+      expect(t.lookupCalls, 1);
+
+      await finish(tester, t);
+      expect(t.createCalls, 1);
+    });
+
+    testWidgets('a club template clones once', (tester) async {
+      final t = await pumpLookup(
+        tester,
+        clubs: [_club('club-1', 'Trail Club')],
+        templates: {
+          'club-1': [_template('tpl-1', 'Spring Half')],
+        },
+      );
+      final browse = find.text('Browse templates');
+      await pumpUntil(tester, () => tester.any(browse),
+          describe: 'the club templates to load');
+      await tester.ensureVisible(browse);
+      await tester.pump();
+      await tester.tap(browse);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Spring Half'));
+      await tester.pumpAndSettle();
+      expect(t.lookupCalls, 1);
+
+      await tester.tap(browse, warnIfMissed: false);
+      await tester.pumpAndSettle();
+      expect(find.text('Choose a template'), findsNothing,
+          reason: 'the picker must not reopen while the first pick is '
+              'still being checked');
+      expect(t.lookupCalls, 1);
+
+      await finish(tester, t);
+      expect(t.cloneCalls, 1);
     });
   });
 

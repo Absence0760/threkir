@@ -9,6 +9,8 @@
 		type WorkoutStructure
 	} from '#lib/training/training.ts';
 	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
+	import { RACE_GOAL_MAX_HOURS, RACE_PRIORITIES, type RacePriority } from '#lib/training/plan_races.ts';
+	import { raceGoalInputSeconds } from '#lib/training/race_goal_input.ts';
 	import { getUnit } from '#lib/format/units.svelte.ts';
 	import { paceParts } from '#lib/format/pace_format.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
@@ -24,6 +26,7 @@
 		onSaved: () => void;
 	}
 	let { workout, onClose, onSaved }: Props = $props();
+	const uid = $props.id();
 
 	// All inputs are rendered + stored in the user's preferred unit so
 	// the form matches the rest of the app. Conversion to the canonical
@@ -75,6 +78,16 @@
 	);
 	let zone = $state<string>(untrack(() => workout.pace_zone ?? ''));
 	let notes = $state<string>(untrack(() => workout.notes ?? ''));
+	let raceName = $state<string>(untrack(() => workout.race_name ?? ''));
+	let racePriority = $state<string>(untrack(() => workout.race_priority ?? ''));
+	const initialGoal = untrack(() =>
+		workout.kind === 'race' ? (workout.target_duration_seconds ?? null) : null
+	);
+	let goalHours = $state<number | null>(initialGoal != null ? Math.floor(initialGoal / 3600) : null);
+	let goalMin = $state<number | null>(
+		initialGoal != null ? Math.floor((initialGoal % 3600) / 60) : null
+	);
+	let goalSec = $state<number | null>(initialGoal != null ? initialGoal % 60 : null);
 
 	const initialStructure = untrack(
 		() => (workout.structure as WorkoutStructure | null) ?? null
@@ -175,6 +188,11 @@
 		toleranceSec,
 		zone,
 		notes,
+		raceName,
+		racePriority,
+		goalHours,
+		goalMin,
+		goalSec,
 		mode,
 		warmupDistance,
 		cooldownDistance,
@@ -290,8 +308,13 @@
 	}
 
 	async function save() {
-		busy = true;
 		error = null;
+		const goal = raceGoalInputSeconds(goalHours, goalMin, goalSec);
+		if (kind === 'race' && !goal.ok) {
+			error = t('workoutEditor.raceGoalInvalid', { max: RACE_GOAL_MAX_HOURS });
+			return;
+		}
+		busy = true;
 		try {
 			const paceStartUnit =
 				paceMin != null ? paceMin * 60 + (paceSec ?? 0) : null;
@@ -305,7 +328,22 @@
 			const unstructuredKinds = ['easy', 'long', 'recovery', 'rest'] as const;
 			const isUnstructured = (unstructuredKinds as readonly string[]).includes(kind);
 			const nextStructure = isUnstructured ? null : buildStructure();
+			const isRace = kind === 'race';
+			const raceFields = isRace
+				? {
+						race_name: raceName.trim() || null,
+						race_priority: (RACE_PRIORITIES as readonly string[]).includes(racePriority)
+							? (racePriority as RacePriority)
+							: null,
+						target_duration_seconds: goal.ok ? goal.seconds : null
+					}
+				: {
+						race_name: null,
+						race_priority: null,
+						...(workout.kind === 'race' ? { target_duration_seconds: null } : {})
+					};
 			await updatePlanWorkout(workout.id, {
+				...raceFields,
 				kind,
 				target_distance_m: isRest
 					? null
@@ -340,16 +378,81 @@
 >
 	<div class="editor-form">
 		<div class="field">
-			<label>
-				<span>{t('workoutEditor.kind')}</span>
-				<select bind:value={kind} aria-describedby="wo-kind-hint">
-					{#each kindOptions as k}
-						<option value={k}>{workoutKindLabel(k)}</option>
-					{/each}
-				</select>
-			</label>
+			<label class="field-label" for="{uid}-kind">{t('workoutEditor.kind')}</label>
+			<select id="{uid}-kind" bind:value={kind} aria-describedby="wo-kind-hint">
+				{#each kindOptions as k}
+					<option value={k}>{workoutKindLabel(k)}</option>
+				{/each}
+			</select>
 			<span class="hint" id="wo-kind-hint">{t('workoutEditor.kindHint')}</span>
 		</div>
+
+		{#if kind === 'race'}
+			<div class="field">
+				<label class="field-label" for="{uid}-race-name">{t('workoutEditor.raceName')}</label>
+				<input
+					id="{uid}-race-name"
+					type="text"
+					bind:value={raceName}
+					maxlength="120"
+					aria-describedby="wo-race-name-hint"
+				/>
+				<span class="hint" id="wo-race-name-hint">{t('workoutEditor.raceNameHint')}</span>
+			</div>
+
+			<div class="field">
+				<label class="field-label" for="{uid}-race-priority"
+					>{t('workoutEditor.racePriority')}</label
+				>
+				<select
+					id="{uid}-race-priority"
+					bind:value={racePriority}
+					aria-describedby="wo-race-priority-hint"
+				>
+					<option value="">{t('workoutEditor.racePriorityAuto')}</option>
+					<option value="A">{t('workoutEditor.racePriorityA')}</option>
+					<option value="B">{t('workoutEditor.racePriorityB')}</option>
+					<option value="C">{t('workoutEditor.racePriorityC')}</option>
+				</select>
+				<span class="hint" id="wo-race-priority-hint">{t('workoutEditor.racePriorityHint')}</span>
+			</div>
+
+			<fieldset>
+				<legend>{t('workoutEditor.raceGoalTime')}</legend>
+				<div class="pace-row">
+					<input
+						type="number"
+						min="0"
+						max={RACE_GOAL_MAX_HOURS}
+						bind:value={goalHours}
+						placeholder={t('workoutEditor.hours')}
+						aria-label={t('workoutEditor.raceGoalHours')}
+						aria-describedby="wo-race-goal-hint"
+					/>
+					<span>:</span>
+					<input
+						type="number"
+						min="0"
+						max="59"
+						bind:value={goalMin}
+						placeholder={t('workoutEditor.min')}
+						aria-label={t('workoutEditor.raceGoalMinutes')}
+						aria-describedby="wo-race-goal-hint"
+					/>
+					<span>:</span>
+					<input
+						type="number"
+						min="0"
+						max="59"
+						bind:value={goalSec}
+						placeholder={t('workoutEditor.sec')}
+						aria-label={t('workoutEditor.raceGoalSeconds')}
+						aria-describedby="wo-race-goal-hint"
+					/>
+				</div>
+				<p class="hint" id="wo-race-goal-hint">{t('workoutEditor.raceGoalHint')}</p>
+			</fieldset>
+		{/if}
 
 		{#if kind !== 'rest'}
 			<div class="field">

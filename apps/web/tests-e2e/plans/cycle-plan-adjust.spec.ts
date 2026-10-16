@@ -28,7 +28,7 @@ test.describe('/plans/[id] pause + resume', () => {
 		const week0 = crypto.randomUUID();
 		let displacedActiveIds: string[] = [];
 		try {
-			// Clear any pre-existing active plan so the one-active index is free.
+			// Clear any pre-existing active plan so the active-plan overlap constraint is clear.
 			// Remember which plans we displaced so the `finally` can restore
 			// them — this user's seed is shared with sibling specs (e.g.
 			// list.spec.ts), which expect the seeded plan to stay active.
@@ -85,7 +85,7 @@ test.describe('/plans/[id] pause + resume', () => {
 			await dialog.getByRole('button', { name: 'Apply' }).click();
 			await expect.poll(status).toBe('active');
 		} finally {
-			// Delete our own plan first (frees the one-active slot), then
+			// Delete our own plan first (clears the overlap), then
 			// restore the plans we displaced so the shared seed is left active
 			// for sibling specs.
 			await admin.from('training_plans').delete().eq('id', planId);

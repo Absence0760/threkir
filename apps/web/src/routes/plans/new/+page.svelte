@@ -7,6 +7,8 @@
 	import { goto, afterNavigate } from '$app/navigation';
 	import { page } from '$app/state';
 	import PlanEditor from '#lib/components/PlanEditor.svelte';
+	import PlanOverlapDialog, { trimBlockedMessage } from '#lib/components/PlanOverlapDialog.svelte';
+	import { attemptPlanCreate, clonedPlanEndIso, type OverlapPlan } from '#lib/training/plan_overlap.ts';
 	import SessionPlanEditor from '#lib/components/SessionPlanEditor.svelte';
 	import RoutineEditor from '#lib/components/RoutineEditor.svelte';
 	import {
@@ -14,6 +16,8 @@
 		fetchClubTemplatesForClubs,
 		clonePlanTemplate,
 		createTrainingPlan,
+		fetchMyOverlappingActivePlans,
+		type PlanOverlapChoice,
 		fetchGymExerciseNames,
 		publishGymRoutineAsTemplate,
 	} from '#lib/core/data.ts';
@@ -232,18 +236,61 @@
 		}
 	});
 
+	// The template and starter paths ask the server to refuse an overlap and,
+	// when it does, show the same dialog the wizard does; the runner's choice
+	// is retried through `retryWithOverlap` (decisions § 2050).
+	let overlapping = $state<OverlapPlan[]>([]);
+	let overlapStart = $state('');
+	let retryWithOverlap: ((overlap: PlanOverlapChoice) => Promise<void>) | null = null;
+
+	function askOverlap(start: string, hits: OverlapPlan[], retry: (overlap: PlanOverlapChoice) => Promise<void>) {
+		overlapStart = start;
+		retryWithOverlap = retry;
+		overlapping = hits;
+	}
+
+	function cancelOverlap() {
+		overlapping = [];
+		retryWithOverlap = null;
+	}
+
+	async function chooseOverlap(choice: 'replace' | 'trim') {
+		const retry = retryWithOverlap;
+		overlapping = [];
+		retryWithOverlap = null;
+		await retry?.(choice);
+	}
+
 	async function cloneSelected() {
-		if (!selectedTemplateId || !startDate) return;
-		cloning = true;
-		try {
-			const newPlanId = await clonePlanTemplate(selectedTemplateId, startDate);
-			showToast(m('plansNew.toastCreated'));
-			goto(`/plans/${newPlanId}`);
-		} catch (e) {
-			showToast(m('plansNew.toastCloneFailed', { error: thrownMessage(e) }), 'error');
-		} finally {
-			cloning = false;
-		}
+		if (!selectedTemplateId || !startDate || cloning) return;
+		const option = templates.find((t) => t.template.id === selectedTemplateId);
+		if (!option) return;
+		const start = startDate;
+		const end = clonedPlanEndIso(option.template, start);
+		const run = async (overlap: PlanOverlapChoice): Promise<void> => {
+			cloning = true;
+			try {
+				const outcome = await attemptPlanCreate(
+					() => clonePlanTemplate(option.template.id, start, overlap),
+					() => fetchMyOverlappingActivePlans(start, end)
+				);
+				if (outcome.kind === 'overlap') {
+					askOverlap(start, outcome.overlapping, run);
+					return;
+				}
+				if (outcome.kind === 'trimBlocked') {
+					showToast(trimBlockedMessage(outcome.overlapping, start), 'error');
+					return;
+				}
+				showToast(m('plansNew.toastCreated'));
+				goto(`/plans/${outcome.value}`);
+			} catch (e) {
+				showToast(m('plansNew.toastCloneFailed', { error: thrownMessage(e) }), 'error');
+			} finally {
+				cloning = false;
+			}
+		};
+		await run('refuse');
 	}
 
 	/// Localized display name per starter id (literal m() keys so the i18n
@@ -263,29 +310,47 @@
 
 	async function createFromStarter() {
 		if (!selectedStarterId || !startDate || creatingStarter) return;
-		const starter = starterById(selectedStarterId);
-		const generated = instantiateStarter(selectedStarterId, startDate);
+		const starterId = selectedStarterId;
+		const start = startDate;
+		const starter = starterById(starterId);
+		const generated = instantiateStarter(starterId, start);
 		if (!starter || !generated) return;
-		creatingStarter = true;
-		try {
-			const plan = await createTrainingPlan({
-				name: starterName(selectedStarterId),
-				goalEvent: starter.goalEvent,
-				goalDistanceM: generated.goalDistanceM,
-				startDate,
-				daysPerWeek: starter.daysPerWeek,
-				generated
-			});
-			showToast(m('plansNew.toastCreated'));
-			goto(`/plans/${plan.id}`);
-		} catch (e) {
-			showToast(
-				m('plansNew.toastCreateFailed', { error: thrownMessage(e) }),
-				'error'
-			);
-		} finally {
-			creatingStarter = false;
-		}
+		const run = async (overlap: PlanOverlapChoice): Promise<void> => {
+			creatingStarter = true;
+			try {
+				const outcome = await attemptPlanCreate(
+					() =>
+						createTrainingPlan({
+							name: starterName(starterId),
+							goalEvent: starter.goalEvent,
+							goalDistanceM: generated.goalDistanceM,
+							startDate: start,
+							daysPerWeek: starter.daysPerWeek,
+							generated,
+							overlap
+						}),
+					() => fetchMyOverlappingActivePlans(start, generated.endDate)
+				);
+				if (outcome.kind === 'overlap') {
+					askOverlap(start, outcome.overlapping, run);
+					return;
+				}
+				if (outcome.kind === 'trimBlocked') {
+					showToast(trimBlockedMessage(outcome.overlapping, start), 'error');
+					return;
+				}
+				showToast(m('plansNew.toastCreated'));
+				goto(`/plans/${outcome.value.id}`);
+			} catch (e) {
+				showToast(
+					m('plansNew.toastCreateFailed', { error: thrownMessage(e) }),
+					'error'
+				);
+			} finally {
+				creatingStarter = false;
+			}
+		};
+		await run('refuse');
 	}
 </script>
 
@@ -466,6 +531,13 @@
 		</div>
 	{/if}
 </div>
+
+<PlanOverlapDialog
+	{overlapping}
+	startDate={overlapStart}
+	onchoose={chooseOverlap}
+	oncancel={cancelOverlap}
+/>
 
 <style>
 	.page {

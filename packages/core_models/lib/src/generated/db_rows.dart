@@ -4675,6 +4675,9 @@ class PlanWorkoutRow {
   static const String colUpdatedBy = 'updated_by';
   static const String colUpdatedAt = 'updated_at';
   static const String colSkippedAt = 'skipped_at';
+  static const String colRaceName = 'race_name';
+  static const String colRacePriority = 'race_priority';
+  static const String colRaceTaperAppliedAt = 'race_taper_applied_at';
 
   final String id;
   final String weekId;
@@ -4694,6 +4697,9 @@ class PlanWorkoutRow {
   final String? updatedBy;
   final DateTime? updatedAt;
   final DateTime? skippedAt;
+  final String? raceName;
+  final String? racePriority;
+  final DateTime? raceTaperAppliedAt;
 
   const PlanWorkoutRow({
     required this.id,
@@ -4714,6 +4720,9 @@ class PlanWorkoutRow {
     this.updatedBy,
     this.updatedAt,
     this.skippedAt,
+    this.raceName,
+    this.racePriority,
+    this.raceTaperAppliedAt,
   });
 
   factory PlanWorkoutRow.fromJson(Map<String, dynamic> json) => PlanWorkoutRow(
@@ -4735,6 +4744,9 @@ class PlanWorkoutRow {
     updatedBy: json['updated_by'] as String?,
     updatedAt: parseIsoStrictValue(json['updated_at']),
     skippedAt: parseIsoStrictValue(json['skipped_at']),
+    raceName: json['race_name'] as String?,
+    racePriority: json['race_priority'] as String?,
+    raceTaperAppliedAt: parseIsoStrictValue(json['race_taper_applied_at']),
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -4756,6 +4768,9 @@ class PlanWorkoutRow {
     colUpdatedBy: updatedBy,
     colUpdatedAt: updatedAt?.toIso8601String(),
     colSkippedAt: skippedAt?.toIso8601String(),
+    colRaceName: raceName,
+    colRacePriority: racePriority,
+    colRaceTaperAppliedAt: raceTaperAppliedAt?.toIso8601String(),
   };
 
   PlanWorkoutRow copyWith({
@@ -4777,6 +4792,9 @@ class PlanWorkoutRow {
     String? updatedBy,
     DateTime? updatedAt,
     DateTime? skippedAt,
+    String? raceName,
+    String? racePriority,
+    DateTime? raceTaperAppliedAt,
   }) => PlanWorkoutRow(
     id: id ?? this.id,
     weekId: weekId ?? this.weekId,
@@ -4796,6 +4814,9 @@ class PlanWorkoutRow {
     updatedBy: updatedBy ?? this.updatedBy,
     updatedAt: updatedAt ?? this.updatedAt,
     skippedAt: skippedAt ?? this.skippedAt,
+    raceName: raceName ?? this.raceName,
+    racePriority: racePriority ?? this.racePriority,
+    raceTaperAppliedAt: raceTaperAppliedAt ?? this.raceTaperAppliedAt,
   );
 }
 
@@ -7080,6 +7101,7 @@ class TrainingPlanRow {
   static const String colClubId = 'club_id';
   static const String colAssignedByCoachId = 'assigned_by_coach_id';
   static const String colIsPublicTemplate = 'is_public_template';
+  static const String colTrimmedAt = 'trimmed_at';
 
   final String id;
   final String userId;
@@ -7103,6 +7125,7 @@ class TrainingPlanRow {
   final String? clubId;
   final String? assignedByCoachId;
   final bool isPublicTemplate;
+  final DateTime? trimmedAt;
 
   const TrainingPlanRow({
     required this.id,
@@ -7127,6 +7150,7 @@ class TrainingPlanRow {
     this.clubId,
     this.assignedByCoachId,
     required this.isPublicTemplate,
+    this.trimmedAt,
   });
 
   factory TrainingPlanRow.fromJson(Map<String, dynamic> json) => TrainingPlanRow(
@@ -7152,6 +7176,7 @@ class TrainingPlanRow {
     clubId: json['club_id'] as String?,
     assignedByCoachId: json['assigned_by_coach_id'] as String?,
     isPublicTemplate: (json['is_public_template'] as bool?) ?? false,
+    trimmedAt: parseIsoStrictValue(json['trimmed_at']),
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -7177,6 +7202,7 @@ class TrainingPlanRow {
     colClubId: clubId,
     colAssignedByCoachId: assignedByCoachId,
     colIsPublicTemplate: isPublicTemplate,
+    colTrimmedAt: trimmedAt?.toIso8601String(),
   };
 
   TrainingPlanRow copyWith({
@@ -7202,6 +7228,7 @@ class TrainingPlanRow {
     String? clubId,
     String? assignedByCoachId,
     bool? isPublicTemplate,
+    DateTime? trimmedAt,
   }) => TrainingPlanRow(
     id: id ?? this.id,
     userId: userId ?? this.userId,
@@ -7225,6 +7252,7 @@ class TrainingPlanRow {
     clubId: clubId ?? this.clubId,
     assignedByCoachId: assignedByCoachId ?? this.assignedByCoachId,
     isPublicTemplate: isPublicTemplate ?? this.isPublicTemplate,
+    trimmedAt: trimmedAt ?? this.trimmedAt,
   );
 }
 

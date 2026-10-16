@@ -1403,6 +1403,12 @@ abstract class AppLocalizations {
   /// **'{days, plural, one{Starts in {days} day} other{Starts in {days} days}}'**
   String homePlanStartsInDays(int days);
 
+  /// Home card line naming the next active plan queued after the current one. date is its formatted start date
+  ///
+  /// In en, this message translates to:
+  /// **'Up next: {name}, starts {date}'**
+  String homePlanUpNext(String name, String date);
+
   /// Home plan card when the plan starts tomorrow
   ///
   /// In en, this message translates to:
@@ -9454,6 +9460,12 @@ abstract class AppLocalizations {
   /// **'{count} days/wk'**
   String plansDaysPerWeek(int count);
 
+  /// Status pill on a plan tile for an active plan that starts after today (queued behind the current plan). Lowercase to match the other status pills
+  ///
+  /// In en, this message translates to:
+  /// **'upcoming'**
+  String get plansStatusUpcoming;
+
   /// Sign-in prompt title on plans list
   ///
   /// In en, this message translates to:
@@ -10144,18 +10156,6 @@ abstract class AppLocalizations {
   /// **'Replace your active plan?'**
   String get planNewReplaceActiveTitle;
 
-  /// Body of the replace-active-plan confirm dialog when the existing plan has a name
-  ///
-  /// In en, this message translates to:
-  /// **'You already have an active plan: \"{name}\". Creating a new plan will mark the current one as completed (you can still find it under Manage plans). Continue?'**
-  String planNewReplaceActiveNamed(String name);
-
-  /// Body of the replace-active-plan confirm dialog when the existing plan name is unknown
-  ///
-  /// In en, this message translates to:
-  /// **'You already have an active plan. Creating a new plan will mark the current one as completed. Continue?'**
-  String get planNewReplaceActiveUnnamed;
-
   /// Confirm button of the replace-active-plan dialog
   ///
   /// In en, this message translates to:
@@ -10167,6 +10167,162 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Keep current'**
   String get planNewReplaceActiveKeep;
+
+  /// Title of the dialog shown before creating or adopting a plan whose dates overlap one or more of the runner's active plans
+  ///
+  /// In en, this message translates to:
+  /// **'These dates overlap an active plan'**
+  String get planOverlapTitle;
+
+  /// Body of the plan-overlap dialog, above the list of overlapping plans. start/end are formatted dates of the new plan
+  ///
+  /// In en, this message translates to:
+  /// **'Your new plan runs {start} – {end}. Only one plan can be active on any day, and it overlaps:'**
+  String planOverlapBody(String start, String end);
+
+  /// One overlapping active plan in the plan-overlap dialog: its name and formatted date range
+  ///
+  /// In en, this message translates to:
+  /// **'{name}: {start} – {end}'**
+  String planOverlapPlanLine(String name, String start, String end);
+
+  /// Plan-overlap dialog hint when only Replace is offered
+  ///
+  /// In en, this message translates to:
+  /// **'Replace marks the overlapping plans as completed. You can still find them under Manage plans.'**
+  String get planOverlapReplaceHint;
+
+  /// Plan-overlap dialog hint when the overlapping plan started earlier and can be ended the day before the new plan starts. date is that formatted end date
+  ///
+  /// In en, this message translates to:
+  /// **'End {name} early to keep its finished weeks and remove its workouts after {date}, or replace it to mark it completed.'**
+  String planOverlapTrimHint(String name, String date);
+
+  /// Plan-overlap dialog button: end the overlapping plan the day before the new one starts, so both stay active back to back
+  ///
+  /// In en, this message translates to:
+  /// **'End {name} on {date}'**
+  String planOverlapTrim(String name, String date);
+
+  /// Plan-overlap dialog button when several active plans overlap: end all of them the day before the new one starts. The dialog lists them by name above
+  ///
+  /// In en, this message translates to:
+  /// **'End them on {date}'**
+  String planOverlapTrimMany(String date);
+
+  /// Plan-overlap dialog hint when several overlapping plans can be ended the day before the new plan starts. date is that formatted end date
+  ///
+  /// In en, this message translates to:
+  /// **'End them early to keep their finished weeks and remove their workouts after {date}, or replace them to mark them completed.'**
+  String planOverlapTrimHintMany(String date);
+
+  /// Error when the server refuses a new plan because an active plan overlaps its dates (changed since the overlap check)
+  ///
+  /// In en, this message translates to:
+  /// **'Another active plan now covers these dates. Check your plans and try again.'**
+  String get planOverlapConflict;
+
+  /// Error when the runner chose to end an overlapping plan early but the server refused because that plan has completed workouts after the new end date; nothing changed. plan is that plan's name, date is the formatted end date the trim would have given it (the day before the new plan starts)
+  ///
+  /// In en, this message translates to:
+  /// **'{plan} has completed workouts after {date}. Replace it instead, or start the new plan later.'**
+  String planOverlapTrimBlocked(String plan, String date);
+
+  /// Same refusal as planOverlapTrimBlocked when the plan's name could not be looked up. date is the formatted end date the trim would have given it (the day before the new plan starts)
+  ///
+  /// In en, this message translates to:
+  /// **'The plan you chose to end early has completed workouts after {date}. Replace it instead, or start the new plan later.'**
+  String planOverlapTrimBlockedUnnamed(String date);
+
+  /// Banner when duplicating a plan week is refused because the extra week would overlap another active plan
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicating this week would push the plan into another active plan\'s dates. Move or end that plan first.'**
+  String get planDetailDuplicateWeekOverlap;
+
+  /// Button on the new-plan screen that opens the plan import sheet (paste a plan table or JSON export)
+  ///
+  /// In en, this message translates to:
+  /// **'Import a plan'**
+  String get planNewImportButton;
+
+  /// Title of the plan import sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Import a plan'**
+  String get planImportTitle;
+
+  /// Explainer under the plan import sheet title. 'Week', 'Date' and 'Type' are the table column names the parser reads; keep them in English
+  ///
+  /// In en, this message translates to:
+  /// **'Paste a plan exported from the web app, or a table with Week, Date and Type columns. Load it to check the weeks before you create it.'**
+  String get planImportIntro;
+
+  /// Label of the multi-line text box the runner pastes a plan into
+  ///
+  /// In en, this message translates to:
+  /// **'Plan table or JSON'**
+  String get planImportPasteLabel;
+
+  /// Button that parses the pasted plan and shows a preview
+  ///
+  /// In en, this message translates to:
+  /// **'Load'**
+  String get planImportLoad;
+
+  /// Error under the paste box when the pasted plan can't be parsed; detail is the parser's (English) reason, e.g. a bad date on one row
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t read that plan: {detail}'**
+  String planImportParseError(String detail);
+
+  /// Date range of the imported plan in the preview
+  ///
+  /// In en, this message translates to:
+  /// **'{start} to {end}'**
+  String planImportPreviewDates(String start, String end);
+
+  /// How many weeks and workouts the pasted plan holds, in the import preview
+  ///
+  /// In en, this message translates to:
+  /// **'{weeks, plural, one{1 week} other{{weeks} weeks}} · {workouts, plural, one{1 workout} other{{workouts} workouts}}'**
+  String planImportPreviewCounts(int weeks, int workouts);
+
+  /// One line per week in the import preview
+  ///
+  /// In en, this message translates to:
+  /// **'Week {week}: {workouts, plural, one{1 workout} other{{workouts} workouts}}'**
+  String planImportPreviewWeek(int week, int workouts);
+
+  /// One line per race workout in the import preview
+  ///
+  /// In en, this message translates to:
+  /// **'Race: {name}, {date}'**
+  String planImportPreviewRace(String name, String date);
+
+  /// Stands in for a race workout with no name in the import preview
+  ///
+  /// In en, this message translates to:
+  /// **'Unnamed race'**
+  String get planImportPreviewRaceUnnamed;
+
+  /// Button that creates the previewed imported plan
+  ///
+  /// In en, this message translates to:
+  /// **'Create plan'**
+  String get planImportCreate;
+
+  /// Error in the import sheet when creating the imported plan fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t create the plan. Check your connection and try again.'**
+  String get planImportCreateFailed;
+
+  /// Error when creating or cloning a plan cannot first read the runner's active plans to check for overlapping dates; nothing is created
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t check your active plans for these dates. Check your connection and try again.'**
+  String get planOverlapLookupFailed;
 
   /// Built-in starter plan name
   ///
@@ -10215,6 +10371,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Publish as club template'**
   String get planDetailPublishTooltip;
+
+  /// Heading of the plan detail card listing every race the plan builds toward (shown only when the plan has more than one race)
+  ///
+  /// In en, this message translates to:
+  /// **'Races in this plan'**
+  String get planDetailRacesTitle;
+
+  /// Screen-reader label for a race's priority badge on plan detail; priority is the letter A, B or C
+  ///
+  /// In en, this message translates to:
+  /// **'Priority {priority}'**
+  String planDetailRacePriority(String priority);
 
   /// Days-per-week meta on the hero card
   ///
@@ -10312,6 +10480,54 @@ abstract class AppLocalizations {
   /// **'Looks at your last three finished weeks and suggests changes when at least two were over or under plan, so one odd week doesn\'t move your plan. Use it when you\'ve been off plan for a while.'**
   String get planDetailAdjustAdaptiveDesc;
 
+  /// Plan-detail adjust-plan dialog: option that proposes a mini-taper and recovery around the plan's B and C races
+  ///
+  /// In en, this message translates to:
+  /// **'Taper around B/C races'**
+  String get planDetailRaceTaper;
+
+  /// Plan-detail adjust-plan dialog: description of the B/C race taper option
+  ///
+  /// In en, this message translates to:
+  /// **'Eases the days before each upcoming B or C race and the days after it, so you race it fresh and recover before training picks up. Your A race and its taper stay as they are.'**
+  String get planDetailAdjustRaceTaperDesc;
+
+  /// Plan-detail banner when the B/C race taper finds nothing to change
+  ///
+  /// In en, this message translates to:
+  /// **'No upcoming B or C race needs a taper.'**
+  String get planDetailRaceTaperNone;
+
+  /// Plan-detail heading of the B/C race taper preview
+  ///
+  /// In en, this message translates to:
+  /// **'Proposed taper and recovery'**
+  String get planDetailRaceTaperPreviewTitle;
+
+  /// Plan-detail race taper preview row for a session eased in the days before a B/C race. change is e.g. 'Intervals 10.0 km → Easy 6.5 km'; race is the race name or date
+  ///
+  /// In en, this message translates to:
+  /// **'{change} — taper for {race}'**
+  String planDetailRaceTaperPre(String change, String race);
+
+  /// Plan-detail race taper preview row for a session cut to a short easy shakeout in the 2 days before a B race
+  ///
+  /// In en, this message translates to:
+  /// **'{change} — shakeout before {race}'**
+  String planDetailRaceTaperShakeout(String change, String race);
+
+  /// Plan-detail race taper preview row for a session eased in the recovery days after a B/C race
+  ///
+  /// In en, this message translates to:
+  /// **'{change} — recovery after {race}'**
+  String planDetailRaceTaperPost(String change, String race);
+
+  /// Plan-detail hero line naming the next race the hero's distance, goal and date now describe (a B or C race before the plan's A race)
+  ///
+  /// In en, this message translates to:
+  /// **'Next race: {name}'**
+  String planDetailHeroNextRace(String name);
+
   /// Plan-detail adjust-plan dialog
   ///
   /// In en, this message translates to:
@@ -10348,11 +10564,11 @@ abstract class AppLocalizations {
   /// **'Plan resumed.'**
   String get planDetailResumeDone;
 
-  /// Plan-detail adjust-plan dialog
+  /// Banner when resuming a paused plan is refused because another active plan overlaps its dates
   ///
   /// In en, this message translates to:
-  /// **'You already have an active plan. Pause or finish it first.'**
-  String get planDetailResumeBlocked;
+  /// **'Another active plan overlaps these dates. Pause it, finish it or end it earlier first.'**
+  String get planDetailResumeOverlap;
 
   /// No description provided for @planDetailAdaptiveOnTrack.
   ///
@@ -16359,6 +16575,60 @@ abstract class AppLocalizations {
   /// **'Notes'**
   String get workoutEditNotesLabel;
 
+  /// Label for the race name field, shown in the workout editor only when the workout kind is Race
+  ///
+  /// In en, this message translates to:
+  /// **'Race name'**
+  String get workoutEditRaceNameLabel;
+
+  /// Label for the A/B/C race priority picker in the workout editor (Race workouts only)
+  ///
+  /// In en, this message translates to:
+  /// **'Race priority'**
+  String get workoutEditRacePriorityLabel;
+
+  /// Race priority picker option for no explicit priority: the app treats a race on the plan's last day as A and any other race as C
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic'**
+  String get workoutEditRacePriorityAuto;
+
+  /// Race priority picker option A: the race the plan is built for. Keep the letter A
+  ///
+  /// In en, this message translates to:
+  /// **'A — goal race'**
+  String get racePriorityOptionA;
+
+  /// Race priority picker option B: a race that matters but is not the main goal. Keep the letter B
+  ///
+  /// In en, this message translates to:
+  /// **'B — important race'**
+  String get racePriorityOptionB;
+
+  /// Race priority picker option C: a low-key race run as training. Keep the letter C
+  ///
+  /// In en, this message translates to:
+  /// **'C — tune-up race'**
+  String get racePriorityOptionC;
+
+  /// Label for the race goal finish time field in the workout editor (Race workouts only)
+  ///
+  /// In en, this message translates to:
+  /// **'Goal time'**
+  String get workoutEditRaceGoalTimeLabel;
+
+  /// Example hint for the race goal time field (hours:minutes:seconds)
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. 6:30:00'**
+  String get workoutEditRaceGoalTimeHint;
+
+  /// Validation error for the race goal time field
+  ///
+  /// In en, this message translates to:
+  /// **'Goal time must look like 6:30:00'**
+  String get workoutEditErrRaceGoalTime;
+
   /// Button to cancel the workout edit sheet
   ///
   /// In en, this message translates to:
@@ -20625,11 +20895,52 @@ abstract class AppLocalizations {
   /// **'Assigned by you'**
   String get coachingAthleteAssignedByYou;
 
-  /// Hint when the athlete has a plan not assigned by this coach
+  /// Assign control hint naming the athlete's one plan still holding dates; {end} is a formatted date
   ///
   /// In en, this message translates to:
-  /// **'This athlete already has an active plan. They\'ll need to finish or end it before you can assign a new one.'**
-  String get coachingAthleteCannotAssignHasPlan;
+  /// **'{name}\'s plan “{plan}” runs until {end}. A plan you assign can\'t overlap it, so start it after that date.'**
+  String coachingAthleteAssignAfterOne(String name, String plan, String end);
+
+  /// Assign control hint naming the athlete's current plan and the one queued after it; dates are formatted
+  ///
+  /// In en, this message translates to:
+  /// **'{name}\'s plan “{plan}” runs until {end}, and “{next}” runs {nextStart} – {nextEnd}. A plan you assign can\'t overlap either of them.'**
+  String coachingAthleteAssignAfterTwo(
+    String name,
+    String plan,
+    String end,
+    String next,
+    String nextStart,
+    String nextEnd,
+  );
+
+  /// Assign control hint when the athlete has three or more plans still holding dates; {plans} is their names joined with commas, {end} the last one's formatted end date
+  ///
+  /// In en, this message translates to:
+  /// **'{name} has {count} plans still ahead: {plans}. A plan you assign can\'t overlap any of them, so start it after {end} or in a gap between them.'**
+  String coachingAthleteAssignAfterMany(
+    String name,
+    int count,
+    String plans,
+    String end,
+  );
+
+  /// Banner when the server refused an assignment that overlaps the named plan of the athlete
+  ///
+  /// In en, this message translates to:
+  /// **'Those dates overlap {name}\'s plan “{plan}” ({start} – {end}). Pick a start date after it ends.'**
+  String coachingAthleteAssignOverlapNamed(
+    String name,
+    String plan,
+    String start,
+    String end,
+  );
+
+  /// Banner when the server refused an overlapping assignment and the screen cannot name the plan
+  ///
+  /// In en, this message translates to:
+  /// **'Those dates overlap one of {name}\'s active plans. Pick a start date after it ends.'**
+  String coachingAthleteAssignOverlap(String name);
 
   /// Word following the completion percentage, e.g. '40% complete'
   ///
@@ -26708,6 +27019,144 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Map of the run on {date}, with the athlete\'s privacy zones removed'**
   String coachingAthleteRunMapLabel(String date);
+
+  /// Heading of the Your Strava clubs section on My clubs
+  ///
+  /// In en, this message translates to:
+  /// **'Your Strava clubs'**
+  String get stravaClubsHeading;
+
+  /// Intro under the heading
+  ///
+  /// In en, this message translates to:
+  /// **'Clubs you belong to on Strava. Only you can see this list.'**
+  String get stravaClubsIntro;
+
+  /// Shown when the runner is in no Strava clubs
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re not in any clubs on Strava.'**
+  String get stravaClubsEmpty;
+
+  /// The Strava clubs list failed to load; a Retry button follows
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your Strava clubs.'**
+  String get stravaClubsLoadError;
+
+  /// The Strava grant has expired
+  ///
+  /// In en, this message translates to:
+  /// **'Your Strava connection has expired, so your Strava clubs can’t be shown.'**
+  String get stravaClubsReconnectText;
+
+  /// Button opening Settings > Integrations to reconnect Strava
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnect Strava'**
+  String get stravaClubsReconnect;
+
+  /// Button: create a Threkir club from this Strava club
+  ///
+  /// In en, this message translates to:
+  /// **'Set up on Threkir'**
+  String get stravaClubsSetUp;
+
+  /// Button: link this Strava club to one of my existing Threkir clubs
+  ///
+  /// In en, this message translates to:
+  /// **'Link to my club'**
+  String get stravaClubsLinkToMine;
+
+  /// Title of the dialog picking which of my Threkir clubs this Strava club is
+  ///
+  /// In en, this message translates to:
+  /// **'Which of your clubs is this?'**
+  String get stravaClubsPickClubLabel;
+
+  /// Shown on a Strava club the runner does not administer
+  ///
+  /// In en, this message translates to:
+  /// **'Only an admin of this club on Strava can bring it to Threkir.'**
+  String get stravaClubsAdminOnly;
+
+  /// Button opening the linked Threkir club; name is the club name
+  ///
+  /// In en, this message translates to:
+  /// **'View {name}'**
+  String stravaClubsViewOnThrekir(String name);
+
+  /// Button removing the link between a Strava club and a Threkir club
+  ///
+  /// In en, this message translates to:
+  /// **'Unlink'**
+  String get stravaClubsUnlink;
+
+  /// Banner after linking; name is the Threkir club name
+  ///
+  /// In en, this message translates to:
+  /// **'Linked to {name}.'**
+  String stravaClubsLinked(String name);
+
+  /// Banner after a new club was created and linked to its Strava club
+  ///
+  /// In en, this message translates to:
+  /// **'Your club is linked to its Strava club.'**
+  String get stravaClubsLinkedNew;
+
+  /// Undo bar message after unlinking; name is the Threkir club name
+  ///
+  /// In en, this message translates to:
+  /// **'Unlinked {name} from Strava.'**
+  String stravaClubsUnlinked(String name);
+
+  /// Note on the new-club form when it came from a Strava club
+  ///
+  /// In en, this message translates to:
+  /// **'Once your club is created it will be linked to its Strava club.'**
+  String get stravaClubsSetUpNote;
+
+  /// Banner when the club was created but the Strava link failed; reason is one of the stravaClubsErr* sentences
+  ///
+  /// In en, this message translates to:
+  /// **'Your club was created, but it isn’t linked to Strava: {reason}'**
+  String stravaClubsCreatedNotLinked(String reason);
+
+  /// Link refused: not a Strava admin of the club
+  ///
+  /// In en, this message translates to:
+  /// **'Strava says you aren’t an admin of this club, so it can’t be linked.'**
+  String get stravaClubsErrAdminRequired;
+
+  /// Link refused: Strava club already linked elsewhere
+  ///
+  /// In en, this message translates to:
+  /// **'This Strava club is already linked to another club on Threkir.'**
+  String get stravaClubsErrAlreadyLinked;
+
+  /// Link refused: not an owner/admin of the Threkir club
+  ///
+  /// In en, this message translates to:
+  /// **'Only an owner or admin of the Threkir club can link it.'**
+  String get stravaClubsErrNotClubAdmin;
+
+  /// Link refused: the Strava connection needs reconnecting
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnect Strava in Settings, then try again.'**
+  String get stravaClubsErrReconnect;
+
+  /// Link failed for another reason
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t link the club. Try again.'**
+  String get stravaClubsErrGeneric;
+
+  /// Unlink failed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t unlink the club. Try again.'**
+  String get stravaClubsErrUnlink;
 }
 
 class _AppLocalizationsDelegate

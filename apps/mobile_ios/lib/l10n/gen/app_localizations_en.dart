@@ -826,6 +826,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String homePlanUpNext(String name, String date) {
+    return 'Up next: $name, starts $date';
+  }
+
+  @override
   String get homePlanStartsTomorrow => 'Starts tomorrow';
 
   @override
@@ -5709,6 +5714,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get plansStatusUpcoming => 'upcoming';
+
+  @override
   String get plansSignInTitle => 'Sign in to use training plans';
 
   @override
@@ -6132,19 +6140,138 @@ class AppLocalizationsEn extends AppLocalizations {
   String get planNewReplaceActiveTitle => 'Replace your active plan?';
 
   @override
-  String planNewReplaceActiveNamed(String name) {
-    return 'You already have an active plan: \"$name\". Creating a new plan will mark the current one as completed (you can still find it under Manage plans). Continue?';
-  }
-
-  @override
-  String get planNewReplaceActiveUnnamed =>
-      'You already have an active plan. Creating a new plan will mark the current one as completed. Continue?';
-
-  @override
   String get planNewReplaceActiveConfirm => 'Replace plan';
 
   @override
   String get planNewReplaceActiveKeep => 'Keep current';
+
+  @override
+  String get planOverlapTitle => 'These dates overlap an active plan';
+
+  @override
+  String planOverlapBody(String start, String end) {
+    return 'Your new plan runs $start – $end. Only one plan can be active on any day, and it overlaps:';
+  }
+
+  @override
+  String planOverlapPlanLine(String name, String start, String end) {
+    return '$name: $start – $end';
+  }
+
+  @override
+  String get planOverlapReplaceHint =>
+      'Replace marks the overlapping plans as completed. You can still find them under Manage plans.';
+
+  @override
+  String planOverlapTrimHint(String name, String date) {
+    return 'End $name early to keep its finished weeks and remove its workouts after $date, or replace it to mark it completed.';
+  }
+
+  @override
+  String planOverlapTrim(String name, String date) {
+    return 'End $name on $date';
+  }
+
+  @override
+  String planOverlapTrimMany(String date) {
+    return 'End them on $date';
+  }
+
+  @override
+  String planOverlapTrimHintMany(String date) {
+    return 'End them early to keep their finished weeks and remove their workouts after $date, or replace them to mark them completed.';
+  }
+
+  @override
+  String get planOverlapConflict =>
+      'Another active plan now covers these dates. Check your plans and try again.';
+
+  @override
+  String planOverlapTrimBlocked(String plan, String date) {
+    return '$plan has completed workouts after $date. Replace it instead, or start the new plan later.';
+  }
+
+  @override
+  String planOverlapTrimBlockedUnnamed(String date) {
+    return 'The plan you chose to end early has completed workouts after $date. Replace it instead, or start the new plan later.';
+  }
+
+  @override
+  String get planDetailDuplicateWeekOverlap =>
+      'Duplicating this week would push the plan into another active plan\'s dates. Move or end that plan first.';
+
+  @override
+  String get planNewImportButton => 'Import a plan';
+
+  @override
+  String get planImportTitle => 'Import a plan';
+
+  @override
+  String get planImportIntro =>
+      'Paste a plan exported from the web app, or a table with Week, Date and Type columns. Load it to check the weeks before you create it.';
+
+  @override
+  String get planImportPasteLabel => 'Plan table or JSON';
+
+  @override
+  String get planImportLoad => 'Load';
+
+  @override
+  String planImportParseError(String detail) {
+    return 'Couldn\'t read that plan: $detail';
+  }
+
+  @override
+  String planImportPreviewDates(String start, String end) {
+    return '$start to $end';
+  }
+
+  @override
+  String planImportPreviewCounts(int weeks, int workouts) {
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '$weeks weeks',
+      one: '1 week',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      workouts,
+      locale: localeName,
+      other: '$workouts workouts',
+      one: '1 workout',
+    );
+    return '$_temp0 · $_temp1';
+  }
+
+  @override
+  String planImportPreviewWeek(int week, int workouts) {
+    String _temp0 = intl.Intl.pluralLogic(
+      workouts,
+      locale: localeName,
+      other: '$workouts workouts',
+      one: '1 workout',
+    );
+    return 'Week $week: $_temp0';
+  }
+
+  @override
+  String planImportPreviewRace(String name, String date) {
+    return 'Race: $name, $date';
+  }
+
+  @override
+  String get planImportPreviewRaceUnnamed => 'Unnamed race';
+
+  @override
+  String get planImportCreate => 'Create plan';
+
+  @override
+  String get planImportCreateFailed =>
+      'Couldn\'t create the plan. Check your connection and try again.';
+
+  @override
+  String get planOverlapLookupFailed =>
+      'Couldn\'t check your active plans for these dates. Check your connection and try again.';
 
   @override
   String get planNewStarterC25k => 'Couch to 5K (beginner walk-run)';
@@ -6171,6 +6298,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get planDetailPublishTooltip => 'Publish as club template';
+
+  @override
+  String get planDetailRacesTitle => 'Races in this plan';
+
+  @override
+  String planDetailRacePriority(String priority) {
+    return 'Priority $priority';
+  }
 
   @override
   String planDetailDaysPerWeek(int count) {
@@ -6235,6 +6370,40 @@ class AppLocalizationsEn extends AppLocalizations {
       'Looks at your last three finished weeks and suggests changes when at least two were over or under plan, so one odd week doesn\'t move your plan. Use it when you\'ve been off plan for a while.';
 
   @override
+  String get planDetailRaceTaper => 'Taper around B/C races';
+
+  @override
+  String get planDetailAdjustRaceTaperDesc =>
+      'Eases the days before each upcoming B or C race and the days after it, so you race it fresh and recover before training picks up. Your A race and its taper stay as they are.';
+
+  @override
+  String get planDetailRaceTaperNone =>
+      'No upcoming B or C race needs a taper.';
+
+  @override
+  String get planDetailRaceTaperPreviewTitle => 'Proposed taper and recovery';
+
+  @override
+  String planDetailRaceTaperPre(String change, String race) {
+    return '$change — taper for $race';
+  }
+
+  @override
+  String planDetailRaceTaperShakeout(String change, String race) {
+    return '$change — shakeout before $race';
+  }
+
+  @override
+  String planDetailRaceTaperPost(String change, String race) {
+    return '$change — recovery after $race';
+  }
+
+  @override
+  String planDetailHeroNextRace(String name) {
+    return 'Next race: $name';
+  }
+
+  @override
   String get planDetailAdjustPauseDesc =>
       'Puts the plan on hold without deleting anything, until you resume it. Use it for illness, injury or travel.';
 
@@ -6255,8 +6424,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get planDetailResumeDone => 'Plan resumed.';
 
   @override
-  String get planDetailResumeBlocked =>
-      'You already have an active plan. Pause or finish it first.';
+  String get planDetailResumeOverlap =>
+      'Another active plan overlaps these dates. Pause it, finish it or end it earlier first.';
 
   @override
   String get planDetailAdaptiveOnTrack =>
@@ -9885,6 +10054,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workoutEditNotesLabel => 'Notes';
 
   @override
+  String get workoutEditRaceNameLabel => 'Race name';
+
+  @override
+  String get workoutEditRacePriorityLabel => 'Race priority';
+
+  @override
+  String get workoutEditRacePriorityAuto => 'Automatic';
+
+  @override
+  String get racePriorityOptionA => 'A — goal race';
+
+  @override
+  String get racePriorityOptionB => 'B — important race';
+
+  @override
+  String get racePriorityOptionC => 'C — tune-up race';
+
+  @override
+  String get workoutEditRaceGoalTimeLabel => 'Goal time';
+
+  @override
+  String get workoutEditRaceGoalTimeHint => 'e.g. 6:30:00';
+
+  @override
+  String get workoutEditErrRaceGoalTime => 'Goal time must look like 6:30:00';
+
+  @override
   String get workoutEditCancel => 'Cancel';
 
   @override
@@ -12432,8 +12628,46 @@ class AppLocalizationsEn extends AppLocalizations {
   String get coachingAthleteAssignedByYou => 'Assigned by you';
 
   @override
-  String get coachingAthleteCannotAssignHasPlan =>
-      'This athlete already has an active plan. They\'ll need to finish or end it before you can assign a new one.';
+  String coachingAthleteAssignAfterOne(String name, String plan, String end) {
+    return '$name\'s plan “$plan” runs until $end. A plan you assign can\'t overlap it, so start it after that date.';
+  }
+
+  @override
+  String coachingAthleteAssignAfterTwo(
+    String name,
+    String plan,
+    String end,
+    String next,
+    String nextStart,
+    String nextEnd,
+  ) {
+    return '$name\'s plan “$plan” runs until $end, and “$next” runs $nextStart – $nextEnd. A plan you assign can\'t overlap either of them.';
+  }
+
+  @override
+  String coachingAthleteAssignAfterMany(
+    String name,
+    int count,
+    String plans,
+    String end,
+  ) {
+    return '$name has $count plans still ahead: $plans. A plan you assign can\'t overlap any of them, so start it after $end or in a gap between them.';
+  }
+
+  @override
+  String coachingAthleteAssignOverlapNamed(
+    String name,
+    String plan,
+    String start,
+    String end,
+  ) {
+    return 'Those dates overlap $name\'s plan “$plan” ($start – $end). Pick a start date after it ends.';
+  }
+
+  @override
+  String coachingAthleteAssignOverlap(String name) {
+    return 'Those dates overlap one of $name\'s active plans. Pick a start date after it ends.';
+  }
 
   @override
   String get coachingAthleteComplete => 'complete';
@@ -16019,4 +16253,89 @@ class AppLocalizationsEn extends AppLocalizations {
   String coachingAthleteRunMapLabel(String date) {
     return 'Map of the run on $date, with the athlete\'s privacy zones removed';
   }
+
+  @override
+  String get stravaClubsHeading => 'Your Strava clubs';
+
+  @override
+  String get stravaClubsIntro =>
+      'Clubs you belong to on Strava. Only you can see this list.';
+
+  @override
+  String get stravaClubsEmpty => 'You\'re not in any clubs on Strava.';
+
+  @override
+  String get stravaClubsLoadError => 'Couldn\'t load your Strava clubs.';
+
+  @override
+  String get stravaClubsReconnectText =>
+      'Your Strava connection has expired, so your Strava clubs can’t be shown.';
+
+  @override
+  String get stravaClubsReconnect => 'Reconnect Strava';
+
+  @override
+  String get stravaClubsSetUp => 'Set up on Threkir';
+
+  @override
+  String get stravaClubsLinkToMine => 'Link to my club';
+
+  @override
+  String get stravaClubsPickClubLabel => 'Which of your clubs is this?';
+
+  @override
+  String get stravaClubsAdminOnly =>
+      'Only an admin of this club on Strava can bring it to Threkir.';
+
+  @override
+  String stravaClubsViewOnThrekir(String name) {
+    return 'View $name';
+  }
+
+  @override
+  String get stravaClubsUnlink => 'Unlink';
+
+  @override
+  String stravaClubsLinked(String name) {
+    return 'Linked to $name.';
+  }
+
+  @override
+  String get stravaClubsLinkedNew => 'Your club is linked to its Strava club.';
+
+  @override
+  String stravaClubsUnlinked(String name) {
+    return 'Unlinked $name from Strava.';
+  }
+
+  @override
+  String get stravaClubsSetUpNote =>
+      'Once your club is created it will be linked to its Strava club.';
+
+  @override
+  String stravaClubsCreatedNotLinked(String reason) {
+    return 'Your club was created, but it isn’t linked to Strava: $reason';
+  }
+
+  @override
+  String get stravaClubsErrAdminRequired =>
+      'Strava says you aren’t an admin of this club, so it can’t be linked.';
+
+  @override
+  String get stravaClubsErrAlreadyLinked =>
+      'This Strava club is already linked to another club on Threkir.';
+
+  @override
+  String get stravaClubsErrNotClubAdmin =>
+      'Only an owner or admin of the Threkir club can link it.';
+
+  @override
+  String get stravaClubsErrReconnect =>
+      'Reconnect Strava in Settings, then try again.';
+
+  @override
+  String get stravaClubsErrGeneric => 'Couldn\'t link the club. Try again.';
+
+  @override
+  String get stravaClubsErrUnlink => 'Couldn\'t unlink the club. Try again.';
 }

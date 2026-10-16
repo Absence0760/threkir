@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:api_client/api_client.dart';
+import 'package:core_models/core_models.dart'
+    show StravaClub, stravaClubSetup;
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:ui_kit/ui_kit.dart';
@@ -9,10 +11,12 @@ import '../l10n/gen/app_localizations.dart';
 import '../fab_clearance.dart';
 import '../local_route_store.dart';
 import '../social_service.dart';
+import '../strava.dart' show isStravaConfigured;
 import '../training_service.dart';
 import '../backend_timeout.dart';
 import '../widgets/club_form_sheet.dart';
 import '../widgets/error_state.dart';
+import '../widgets/strava_clubs_section.dart';
 import '../widgets/verified_badge.dart';
 import 'club_detail_screen.dart';
 import 'club_invite_screen.dart';
@@ -33,6 +37,10 @@ class ClubsScreen extends StatefulWidget {
   /// owns those chrome surfaces. Default false preserves the
   /// standalone-route shape for any legacy callers.
   final bool embedded;
+
+  /// Whether this build carries a Strava client id. "Your Strava clubs" is
+  /// inert without one, as on web (decisions § 1959); tests pass their own.
+  final bool Function() stravaConfigured;
   const ClubsScreen({
     super.key,
     required this.social,
@@ -40,6 +48,7 @@ class ClubsScreen extends StatefulWidget {
     this.apiClient,
     this.routeStore,
     this.embedded = false,
+    this.stravaConfigured = isStravaConfigured,
   });
 
   @override
@@ -57,11 +66,19 @@ class ClubsScreenState extends State<ClubsScreen> {
   List<ClubView> _mine = const [];
   final _searchCtrl = TextEditingController();
 
+  /// Null when the build has no Strava client id or no api client; then the
+  /// section is never built and Strava is never asked.
+  StravaClubsController? _strava;
+
   @override
   void initState() {
     super.initState();
     widget.social.addListener(_onChange);
     _load();
+    final api = widget.apiClient;
+    if (api != null && widget.stravaConfigured()) {
+      _strava = StravaClubsController(api)..load();
+    }
   }
 
   void _onChange() {
@@ -117,6 +134,7 @@ class ClubsScreenState extends State<ClubsScreen> {
   void dispose() {
     widget.social.removeListener(_onChange);
     _searchCtrl.dispose();
+    _strava?.dispose();
     super.dispose();
   }
 
@@ -131,13 +149,37 @@ class ClubsScreenState extends State<ClubsScreen> {
     );
   }
 
-  Future<void> _createClub({String? initialName}) async {
+  Future<void> _createClub({
+    String? initialName,
+    String? initialLocation,
+    int? stravaClubId,
+  }) async {
+    final api = widget.apiClient;
     final slug = await showClubFormSheet(
       context,
       social: widget.social,
       initialName: initialName,
+      initialLocation: initialLocation,
+      stravaClubId: stravaClubId,
+      linkStravaClub: stravaClubId == null || api == null
+          ? null
+          : api.linkStravaClub,
     );
     if (slug == null || !mounted) return;
+    if (stravaClubId != null) _strava?.load();
+    await _openClub(slug);
+  }
+
+  void _setUpFromStrava(StravaClub club) {
+    final setup = stravaClubSetup(club);
+    _createClub(
+      initialName: setup.name,
+      initialLocation: setup.location,
+      stravaClubId: setup.stravaClubId,
+    );
+  }
+
+  Future<void> _openClub(String slug) async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => ClubDetailScreen(
@@ -150,6 +192,22 @@ class ClubsScreenState extends State<ClubsScreen> {
       ),
     );
     _load();
+  }
+
+  Widget? _stravaSection() {
+    final strava = _strava;
+    if (strava == null || _tab != 1) return null;
+    return StravaClubsSection(
+      controller: strava,
+      adminClubs: [
+        for (final v in _mine)
+          if (v.viewerRole == 'owner' || v.viewerRole == 'admin') v.row,
+      ],
+      onSetUp: _setUpFromStrava,
+      onOpenClub: (slug) {
+        _openClub(slug);
+      },
+    );
   }
 
   /// Embedded mode: the segment-strip + search bar live INSIDE the
@@ -227,6 +285,12 @@ class ClubsScreenState extends State<ClubsScreen> {
 
   Widget _buildList(List<ClubView> list) {
     final l10n = AppLocalizations.of(context);
+    final strava = _stravaSection();
+    final empty = _Empty(
+      tab: _tab,
+      onSetUpClub: () => _createClub(initialName: _searchCtrl.text.trim()),
+      onHowToCreate: () => openGuide(context, 'create-a-club'),
+    );
     return _loading
           ? ListSkeleton(label: l10n.commonLoading)
           : _error != null
@@ -236,20 +300,23 @@ class ClubsScreenState extends State<ClubsScreen> {
                       : l10n.clubsLoadError,
                   onRetry: _load)
               : list.isEmpty
-              ? _Empty(
-                  tab: _tab,
-                  onSetUpClub: () =>
-                      _createClub(initialName: _searchCtrl.text.trim()),
-                  onHowToCreate: () => openGuide(context, 'create-a-club'),
-                )
+              ? (strava == null
+                  ? empty
+                  : ListView(
+                      padding: EdgeInsets.fromLTRB(
+                          16, 0, 16, fabScrollClearance(context)),
+                      children: [empty, strava],
+                    ))
               : RefreshIndicator(
                   onRefresh: _load,
                   child: ListView.separated(
                     padding: EdgeInsets.fromLTRB(
                         16, 16, 16, fabScrollClearance(context)),
-                    itemCount: list.length,
+                    itemCount: list.length + (strava == null ? 0 : 1),
                     separatorBuilder: (_, __) => const SizedBox(height: 8),
-                    itemBuilder: (ctx, i) => _ClubTile(
+                    itemBuilder: (ctx, i) => i == list.length
+                        ? strava!
+                        : _ClubTile(
                       view: list[i],
                       onTap: () async {
                         await Navigator.of(ctx).push(

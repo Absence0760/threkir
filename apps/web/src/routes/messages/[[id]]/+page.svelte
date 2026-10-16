@@ -2,6 +2,7 @@
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { appErrorMessage } from '#lib/core/supabase_error.ts';
 	import { m as tr } from '#lib/i18n/store.svelte.ts';
+	import { dmUnreadStore } from '#lib/stores/dm_unread.svelte.ts';
 	import { onMount, tick } from 'svelte';
 	import { initial } from '#lib/format/avatar.ts';
 	import { page } from '$app/state';
@@ -127,6 +128,7 @@
 			markedReadAt.set(id, Date.now());
 			// Zero the unread badge locally without a full refetch.
 			threads = threads.map((t) => (t.partnerId === id ? { ...t, unread: 0 } : t));
+			void dmUnreadStore.refresh();
 		} catch {
 			// Marking-read is a non-critical side effect; its failure must not
 			// blank the conversation the fetch already loaded.

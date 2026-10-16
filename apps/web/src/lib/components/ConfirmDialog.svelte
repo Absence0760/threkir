@@ -11,6 +11,11 @@
 		danger?: boolean;
 		onconfirm: () => void | Promise<void>;
 		oncancel: () => void;
+		/// A second way through, rendered between cancel and confirm, for a
+		/// choice between two outcomes (e.g. end the old plan early vs replace
+		/// it). Shares the in-flight lock with confirm.
+		altLabel?: string;
+		onalt?: () => void | Promise<void>;
 		/// When set, the confirm button stays disabled until the user types
 		/// this exact string (case-insensitive, trimmed, NFKC) into a challenge
 		/// input. Used for irreversible actions (e.g. account deletion —
@@ -38,6 +43,8 @@
 		danger = false,
 		onconfirm,
 		oncancel,
+		altLabel,
+		onalt,
 		requireText,
 		requireTextLabel,
 		'data-testid': testId,
@@ -63,15 +70,16 @@
 		!requireText || normalizeChallenge(challenge) === normalizeChallenge(requireText),
 	);
 
-	async function handleConfirm() {
+	async function run(action: () => void | Promise<void>) {
 		if (!challengeMet || busy) return;
 		busy = true;
 		try {
-			await onconfirm();
+			await action();
 		} finally {
 			busy = false;
 		}
 	}
+	const handleConfirm = () => run(onconfirm);
 </script>
 
 <Modal
@@ -105,6 +113,17 @@
 		<button type="button" class="btn btn-secondary" onclick={oncancel} disabled={busy}>
 			{cancelLabel ?? m('common.cancel')}
 		</button>
+		{#if altLabel && onalt}
+			<button
+				type="button"
+				class="btn btn-outline"
+				disabled={!challengeMet || busy}
+				aria-busy={busy}
+				onclick={() => run(onalt)}
+			>
+				{altLabel}
+			</button>
+		{/if}
 		<button
 			type="button"
 			class="btn"
@@ -135,6 +154,7 @@
 	}
 	.actions {
 		display: flex;
+		flex-wrap: wrap;
 		justify-content: flex-end;
 		gap: 0.5rem;
 	}

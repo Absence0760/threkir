@@ -56,8 +56,8 @@ import { readRow, readRows } from '../fixtures/db-read';
  *
  * Cleanup: service-role deletePlan (cascades weeks + workouts) + deleteRun
  * for every run created, and the seed's Richmond Half is restored to
- * `active` (createTrainingPlan auto-demotes the active plan to claim the
- * one-active slot — same restore as starter-plan.spec.ts) so downstream
+ * `active` (the test replaces it through the overlap dialog to claim the
+ * overlapping window — same restore as starter-plan.spec.ts) so downstream
  * specs see it active.
  */
 
@@ -79,8 +79,8 @@ test.describe('plan adherence + re-plan journey', () => {
 			await deletePlan(plantedPlanId).catch(() => {});
 			plantedPlanId = null;
 		}
-		// createTrainingPlan auto-completes the seed's active Richmond Half to
-		// claim the one-active slot. Restore it so the rest of the suite is
+		// Replacing through the overlap dialog completes the seed's active
+		// Richmond Half to make room for the overlapping new plan. Restore it so the rest of the suite is
 		// unaffected.
 		await setPlanStatus(SEED_PLAN_ID, 'active').catch(() => {});
 	});
@@ -98,12 +98,15 @@ test.describe('plan adherence + re-plan journey', () => {
 			).toBeVisible({ timeout: 10_000 });
 
 			await page.getByLabel('Starter plan').selectOption('half_12wk');
-			// Scope to the starter section — the from-scratch PlanEditor also has a
-			// "Create plan" submit button.
 			await page
 				.locator('.starter-picker')
-				.getByRole('button', { name: 'Create plan' })
+				.getByRole('button', { name: 'Start this plan' })
 				.click();
+			// The starter overlaps the seeded plan, so the create asks first
+			// (decisions § 2050); Replace completes the seed plan, as before.
+			const overlapDialog = page.getByTestId('plan-overlap-dialog');
+			await expect(overlapDialog).toBeVisible({ timeout: 10_000 });
+			await overlapDialog.getByRole('button', { name: 'Replace plan' }).click();
 
 			await page.waitForURL(/\/plans\/[0-9a-f-]{36}$/, { timeout: 15_000 });
 			plantedPlanId = page.url().match(/\/plans\/([0-9a-f-]+)$/)![1];

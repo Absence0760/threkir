@@ -9,6 +9,10 @@ import '../lib/training_service.dart';
 
 class _FakeTraining extends TrainingService {
   ({String name, GoalEvent goal, int days})? created;
+  PlanOverlapAction? overlap;
+
+  @override
+  Future<List<TrainingPlanRow>> fetchActivePlans() async => const [];
 
   @override
   Future<TrainingGender> fetchViewerGender() async => null;
@@ -39,8 +43,10 @@ class _FakeTraining extends TrainingService {
     required int daysPerWeek,
     String? notes,
     required GeneratedPlan generated,
+    PlanOverlapAction onOverlap = PlanOverlapAction.refuse,
   }) async {
     created = (name: name, goal: goalEvent, days: daysPerWeek);
+    overlap = onOverlap;
     return TrainingPlanRow(
       id: 'new-plan',
       userId: 'u',
@@ -101,5 +107,6 @@ void main() {
     expect(t.created!.name, 'Marathon — 16 weeks');
     expect(t.created!.goal, GoalEvent.distanceFull);
     expect(t.created!.days, 5);
+    expect(t.overlap, PlanOverlapAction.refuse);
   });
 }

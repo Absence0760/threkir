@@ -1,6 +1,6 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { expect, type Page } from '@playwright/test';
+
+import { BLANK_TILE, FALLBACK_TILE_ORIGINS } from './map-tiles';
 
 /**
  * Shared contract for the WCAG 1.4.10 reflow specs. Extracted so the static
@@ -23,27 +23,6 @@ import { expect, type Page } from '@playwright/test';
  * below the requirement converts that invisible 2 px into a visible 20 px, and
  * it is the same derivation — no absolute width is asserted anywhere.
  */
-/**
- * Origins of the raster tiles in `static/osm-fallback-style.json`, the style
- * every map falls back to without a MapTiler key — which is CI. Read from the
- * style itself so a host it gains is stubbed too.
- */
-const FALLBACK_TILE_ORIGINS: ReadonlySet<string> = new Set(
-	Object.values(
-		(
-			JSON.parse(
-				readFileSync(resolve(import.meta.dirname, '..', '..', 'static', 'osm-fallback-style.json'), 'utf-8')
-			) as { sources: Record<string, { tiles?: string[] }> }
-		).sources
-	).flatMap((source) => (source.tiles ?? []).map((url) => new URL(url.replace(/[{}]/g, '')).origin))
-);
-
-/** A 1×1 transparent PNG. */
-const BLANK_TILE = Buffer.from(
-	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
-	'base64'
-);
-
 export const VIEWPORTS = [
 	{ width: 300, height: 720 },
 	{ width: 320, height: 720 },

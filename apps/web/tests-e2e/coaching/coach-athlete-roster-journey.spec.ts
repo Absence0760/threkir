@@ -263,7 +263,7 @@ test.describe('coach <-> athlete roster lifecycle: private-run visibility tier (
 				await expect(
 					coachPage.getByRole('heading', { level: 2, name: 'Plan compliance' })
 				).toBeVisible({ timeout: 10_000 });
-				await expect(coachPage.getByText('Saga Compliance Plan')).toBeVisible();
+				await expect(coachPage.getByRole('link', { name: 'Saga Compliance Plan' })).toBeVisible();
 				await expect(coachPage.getByText('1/3 done')).toBeVisible();
 				await expect(coachPage.getByText('2 missed')).toBeVisible();
 				await expect(coachPage.locator('.status-pill.status-done').first()).toBeVisible();

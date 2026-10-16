@@ -158,6 +158,7 @@ import {
 	type RelinkCandidateRun
 } from '../training/relink_candidates';
 import type { GeneratedPlan, GoalEvent, PlanPhase } from '../training/training';
+import type { RacePriority } from '../training/plan_races';
 import { auth } from '../stores/auth.svelte';
 import { lineLngLat, trackLine } from '../runs/track_line';
 import {
@@ -5615,15 +5616,18 @@ export async function fetchClubTemplatesForClubs(
 
 /// Clone a template into a user-owned active plan, anchored at
 /// new_start_date. Returns the new plan's id; caller should navigate
-/// to /plans/{id}. The RPC enforces authorisation server-side.
+/// to /plans/{id}. The RPC enforces authorisation server-side and resolves
+/// overlapping active plans per `overlap` in the same transaction.
 export async function clonePlanTemplate(
 	templateId: string,
-	newStartDate: string
+	newStartDate: string,
+	overlap: PlanOverlapChoice = 'refuse'
 ): Promise<string> {
 	markListsStale('plans');
 	const { data, error } = await supabase.rpc('clone_plan_template', {
 		template_id: templateId,
 		new_start_date: newStartDate,
+		p_overlap: overlap,
 	});
 	if (error) {
 		const friendly = rateLimitErrorMessage(m, error);
@@ -5710,12 +5714,14 @@ export async function fetchPublicPlanLibrary(
 /// publisher's private fitness data.
 export async function clonePublicPlan(
 	templateId: string,
-	newStartDate: string
+	newStartDate: string,
+	overlap: PlanOverlapChoice = 'refuse'
 ): Promise<string> {
 	markListsStale('plans');
 	const { data, error } = await supabase.rpc('clone_public_plan', {
 		template_id: templateId,
 		new_start_date: newStartDate,
+		p_overlap: overlap,
 	});
 	if (error) {
 		const friendly = rateLimitErrorMessage(m, error);
@@ -5920,7 +5926,7 @@ export async function fetchPlan(id: string): Promise<{
 		return { plan, weeks, workouts: [], error };
 	}
 	const weekIds = weeks.map((w) => w.id);
-	const { data: woData } = await queryChunked(weekIds, (part) =>
+	const { data: woData, error: woErr } = await queryChunked(weekIds, (part) =>
 		supabase.from('plan_workouts').select('*').in('week_id', part)
 	);
 	// Ordered here rather than per chunk: each chunk's order says nothing
@@ -5932,7 +5938,7 @@ export async function fetchPlan(id: string): Promise<{
 		plan,
 		weeks,
 		workouts,
-		error
+		error: error ?? woErr?.message ?? null
 	};
 }
 
@@ -5951,38 +5957,73 @@ export async function fetchWorkout(
 	return { workout: (data as PlanWorkout | null) ?? null, error: error?.message ?? null };
 }
 
-export async function fetchActivePlanOverview(): Promise<ActivePlanOverview | null> {
+/// A plan overview read. `error` is set when a read failed, so a caller can
+/// say "couldn't load your plan" instead of showing the no-plan state over a
+/// plan that exists.
+export type PlanOverviewRead = { overview: ActivePlanOverview | null; error: string | null };
+
+export async function fetchActivePlanOverview(): Promise<PlanOverviewRead> {
 	const userId = auth.user?.id;
-	if (!userId) return null;
-	const { data: plan } = await supabase
+	if (!userId) return { overview: null, error: null };
+	return planOverviewFor(userId);
+}
+
+/// The overview of `userId`'s current plan (plan_current.ts), or of the next
+/// one to start when nothing is current, so a runner whose only plan is queued
+/// sees it counting down rather than an empty card. `upcoming` is the plan
+/// after the one shown.
+async function planOverviewFor(userId: string): Promise<PlanOverviewRead> {
+	const { data: rows, error: rowsErr } = await supabase
 		.from('training_plans')
 		.select('*')
 		.eq('user_id', userId)
 		.eq('status', 'active')
-		.maybeSingle();
-	if (!plan) return null;
-	const { weeks, workouts } = await fetchPlan(plan.id);
+		.eq('is_template', false);
+	if (rowsErr) return { overview: null, error: rowsErr.message };
+	const active = (rows ?? []) as TrainingPlan[];
+	if (active.length === 0) return { overview: null, error: null };
 	// Local-tz today — `toISOString().slice(0,10)` returns the UTC date,
 	// which rolls a calendar day early/late depending on the viewer's TZ.
 	const { todayISO } = await import('../training/training');
+	const { pickCurrentPlan } = await import('../training/plan_current');
 	const { planWorkoutProgress } = await import('../training/plan_progress');
 	const today = todayISO();
+	const picked = pickCurrentPlan(active, today);
+	const plan = picked.current ?? picked.upcoming;
+	if (!plan) return { overview: null, error: null };
+	const next = active
+		.filter((p) => p.start_date > plan.end_date)
+		.reduce<TrainingPlan | null>((a, p) => (!a || p.start_date < a.start_date ? p : a), null);
+	const { weeks, workouts, error: planErr } = await fetchPlan(plan.id);
+	if (planErr) return { overview: null, error: planErr };
 	const todayWorkout = workouts.find((w) => w.scheduled_date === today) ?? null;
 	const completionPct = planWorkoutProgress(workouts).pct;
 	return {
-		plan: plan as TrainingPlan,
-		weeks: weeks ?? [],
-		workouts: workouts ?? [],
-		todayWorkout,
-		completionPct
+		overview: {
+			plan,
+			weeks: weeks ?? [],
+			workouts: workouts ?? [],
+			todayWorkout,
+			completionPct,
+			upcoming: next
+				? { id: next.id, name: next.name, start_date: next.start_date, end_date: next.end_date }
+				: null,
+			activePlans: active.map((p) => ({ id: p.id, name: p.name, start_date: p.start_date, end_date: p.end_date }))
+		},
+		error: null
 	};
 }
 
+/// What creating or cloning a plan does to the active plans its window
+/// overlaps: 'refuse' (fail with a PlanOverlapError, the default, so nothing
+/// the runner did not name is changed), 'replace' (complete them) or 'trim'
+/// (end each the day before the new plan starts). Decisions § 2050.
+export type PlanOverlapChoice = 'refuse' | 'replace' | 'trim';
+
 /**
- * Persist a freshly generated plan — plan row, one row per week, and N
- * workouts per week. Runs four sequential inserts (plan → weeks → workouts
- * grouped by week); could be collapsed into a single RPC later but the
- * linear path is easier to reason about while the feature is new.
+ * Persist a freshly generated plan — plan row, weeks and workouts — through
+ * `create_training_plan`, which resolves overlapping active plans per
+ * `overlap` and writes everything in one transaction (decisions § 2050).
  */
 export async function createTrainingPlan(input: {
 	name: string;
@@ -5994,6 +6035,7 @@ export async function createTrainingPlan(input: {
 	daysPerWeek: number;
 	notes?: string;
 	generated: GeneratedPlan;
+	overlap?: PlanOverlapChoice;
 }): Promise<TrainingPlan> {
 	// Read the id from the session directly rather than from the auth store.
 	// The store's `user` object is populated by a background profile fetch
@@ -6004,9 +6046,8 @@ export async function createTrainingPlan(input: {
 	const userId = session?.user?.id;
 	if (!userId) throw new Error('Please sign in to create a plan.');
 
-	// Pre-flight validation — every client-set invariant the DB enforces
-	// echoed here so the user gets a readable error instead of a raw
-	// PostgrestError 23xxx code.
+	// Pre-flight validation — the RPC enforces the same rules, but a
+	// readable message here beats a raw 22023 / 23xxx code.
 	if (!input.name.trim()) throw new Error('Name is required.');
 	if (!(input.goalDistanceM > 0)) throw new Error('Goal distance must be positive.');
 	if (input.daysPerWeek < 3 || input.daysPerWeek > 7) {
@@ -6023,7 +6064,7 @@ export async function createTrainingPlan(input: {
 	}
 	// Defence in depth for the null-kind bug we fixed in training.ts —
 	// if some future change lets a kindless workout escape the generator,
-	// catch it here instead of losing the context in a server-side 23502.
+	// catch it here instead of losing the context in a server-side error.
 	for (const w of input.generated.weeks) {
 		for (const wo of w.workouts) {
 			if (!wo.kind) {
@@ -6035,18 +6076,8 @@ export async function createTrainingPlan(input: {
 	}
 
 	markListsStale('plans');
-	// Auto-complete any existing active plan so the partial unique index
-	// (one-active-per-user) doesn't reject the insert.
-	await supabase
-		.from('training_plans')
-		.update({ status: 'completed' })
-		.eq('user_id', userId)
-		.eq('status', 'active');
-
-	const { data: plan, error: planErr } = await supabase
-		.from('training_plans')
-		.insert({
-			user_id: userId,
+	const { data: planId, error } = await supabase.rpc('create_training_plan', {
+		p_plan: {
 			name: input.name.trim(),
 			goal_event: input.goalEvent,
 			goal_distance_m: input.goalDistanceM,
@@ -6056,50 +6087,37 @@ export async function createTrainingPlan(input: {
 			days_per_week: input.daysPerWeek,
 			vdot: input.generated.vdot ?? null,
 			current_5k_seconds: input.recent5kSec ?? null,
-			status: 'active' as PlanStatus,
-			source: 'generated' as const,
 			notes: input.notes?.trim() || null
-		})
-		.select()
+		},
+		p_weeks: input.generated.weeks.map((w) => ({
+			week_index: w.week_index,
+			phase: w.phase,
+			target_volume_m: w.target_volume_m,
+			notes: w.notes ?? null,
+			workouts: w.workouts.map((wo) => ({
+				scheduled_date: wo.scheduled_date,
+				kind: wo.kind,
+				target_distance_m: wo.target_distance_m ?? null,
+				target_duration_seconds: wo.target_duration_seconds ?? null,
+				target_pace_sec_per_km: wo.target_pace_sec_per_km ?? null,
+				target_pace_tolerance_sec: wo.target_pace_tolerance_sec ?? null,
+				structure: (wo.structure ?? null) as unknown as Json,
+				notes: wo.notes ?? null,
+				race_name: wo.kind === 'race' ? wo.race_name?.trim() || null : null,
+				race_priority: wo.kind === 'race' ? (wo.race_priority ?? null) : null,
+				race_taper_applied_at: wo.race_taper_applied_at ?? null
+			}))
+		})),
+		p_overlap: input.overlap ?? 'refuse'
+	});
+	if (error) throw dbError(error);
+
+	const { data: plan, error: readErr } = await supabase
+		.from('training_plans')
+		.select('*')
+		.eq('id', planId)
 		.single();
-	if (planErr || !plan) throw planErr ? dbError(planErr) : new Error('Plan insert failed');
-
-	const weekRows = input.generated.weeks.map((w) => ({
-		plan_id: plan.id,
-		week_index: w.week_index,
-		phase: w.phase,
-		target_volume_m: w.target_volume_m,
-		notes: w.notes
-	}));
-	const { data: weekRes, error: weekErr } = await supabase
-		.from('plan_weeks')
-		.insert(weekRows)
-		.select();
-	if (weekErr || !weekRes) throw weekErr ? dbError(weekErr) : new Error('Weeks insert failed');
-
-	const byIndex = new Map<number, string>();
-	for (const w of weekRes as { id: string; week_index: number }[]) {
-		byIndex.set(w.week_index, w.id);
-	}
-
-	const workoutRows = input.generated.weeks.flatMap((w) =>
-		w.workouts.map((wo) => ({
-			week_id: byIndex.get(w.week_index)!,
-			scheduled_date: wo.scheduled_date,
-			kind: wo.kind,
-			target_distance_m: wo.target_distance_m,
-			target_duration_seconds: wo.target_duration_seconds,
-			target_pace_sec_per_km: wo.target_pace_sec_per_km,
-			target_pace_tolerance_sec: wo.target_pace_tolerance_sec,
-			structure: wo.structure ?? null,
-			notes: wo.notes
-		}))
-	);
-	if (workoutRows.length > 0) {
-		const { error: woErr } = await supabase.from('plan_workouts').insert(workoutRows);
-		if (woErr) throw dbError(woErr);
-	}
-
+	if (readErr || !plan) throw readErr ? dbError(readErr) : new Error('Plan read failed');
 	return plan as TrainingPlan;
 }
 
@@ -6128,8 +6146,8 @@ export async function pausePlan(id: string): Promise<void> {
 	await updatePlanStatus(id, 'paused');
 }
 
-/// Thrown by resumePlan when the user already has another active plan — the
-/// `training_plans_one_active` unique index would reject the resume, so we
+/// Thrown by resumePlan when another active plan overlaps the paused plan's
+/// window — `training_plans_active_no_overlap` would reject the resume, so we
 /// refuse up front with a clear signal the UI can translate rather than
 /// silently completing the other plan.
 export class ActivePlanExistsError extends Error {
@@ -6139,20 +6157,91 @@ export class ActivePlanExistsError extends Error {
 	}
 }
 
-/// Resume a paused plan back to 'active'. Refuses (throws
-/// ActivePlanExistsError) when another active plan already exists for the
-/// user, since the one-active partial unique index would reject it — the
-/// runner must pause/finish the other plan first. Non-destructive by design.
-export async function resumePlan(id: string, userId: string): Promise<void> {
-	const { data: active, error: qErr } = await supabase
+/// The signed-in user's active plans a new plan over [startIso, endIso] would
+/// collide with — what the plan creator names before offering replace / trim.
+/// Session-read for the same reason createTrainingPlan is.
+export async function fetchMyOverlappingActivePlans(
+	startIso: string,
+	endIso: string
+): Promise<Pick<TrainingPlan, 'id' | 'name' | 'start_date' | 'end_date'>[]> {
+	const { data: { session } } = await supabase.auth.getSession();
+	const userId = session?.user?.id;
+	if (!userId) return [];
+	return fetchOverlappingActivePlans(userId, startIso, endIso);
+}
+
+/// The user's active plans whose inclusive window shares a day with
+/// [startIso, endIso]. No template filter is needed: a template can never be
+/// active (training_plans_template_status).
+async function fetchOverlappingActivePlans(
+	userId: string,
+	startIso: string,
+	endIso: string
+): Promise<Pick<TrainingPlan, 'id' | 'name' | 'start_date' | 'end_date'>[]> {
+	const { data, error } = await supabase
 		.from('training_plans')
-		.select('id')
+		.select('id, name, start_date, end_date')
 		.eq('user_id', userId)
 		.eq('status', 'active')
-		.limit(1);
-	if (qErr) throw dbError(qErr);
-	if (active && active.length > 0) throw new ActivePlanExistsError();
+		.lte('start_date', endIso)
+		.gte('end_date', startIso)
+		.order('start_date', { ascending: true });
+	if (error) throw dbError(error);
+	return data ?? [];
+}
+
+/// Resume a paused plan back to 'active'. Refuses (throws
+/// ActivePlanExistsError) when another active plan overlaps its window; a
+/// plan queued before or after it does not block. Non-destructive by design.
+export async function resumePlan(id: string, userId: string): Promise<void> {
+	const { data: plan, error: planErr } = await supabase
+		.from('training_plans')
+		.select('start_date, end_date')
+		.eq('id', id)
+		.maybeSingle();
+	if (planErr) throw dbError(planErr);
+	if (!plan) throw new Error('Plan not found.');
+	const others = (await fetchOverlappingActivePlans(userId, plan.start_date, plan.end_date)).filter(
+		(p) => p.id !== id
+	);
+	if (others.length > 0) throw new ActivePlanExistsError();
 	await updatePlanStatus(id, 'active');
+}
+
+/// The signed-in user's active plans, for checking a date shift against the
+/// plans around it (plan_shift.ts) before it runs.
+export async function fetchMyActivePlanWindows(): Promise<
+	Pick<TrainingPlan, 'id' | 'name' | 'start_date' | 'end_date'>[]
+> {
+	const { data: { session } } = await supabase.auth.getSession();
+	const userId = session?.user?.id;
+	if (!userId) return [];
+	const { data, error } = await supabase
+		.from('training_plans')
+		.select('id, name, start_date, end_date')
+		.eq('user_id', userId)
+		.eq('status', 'active')
+		.order('start_date', { ascending: true });
+	if (error) throw dbError(error);
+	return data ?? [];
+}
+
+/// Move a plan's workouts and dates by `days` in one transaction
+/// (shift_training_plan). With `shiftFollowing`, the active plans queued after
+/// it move by the same days. A shift that would overlap another active plan
+/// fails whole with a PlanOverlapError and nothing moves.
+export async function shiftTrainingPlan(
+	planId: string,
+	days: number,
+	shiftFollowing: boolean
+): Promise<void> {
+	markListsStale('plans');
+	const { error } = await supabase.rpc('shift_training_plan', {
+		p_plan_id: planId,
+		p_days: days,
+		p_shift_following: shiftFollowing
+	});
+	if (error) throw dbError(error);
 }
 
 export async function markWorkoutCompleted(
@@ -6363,6 +6452,8 @@ export async function updatePlanWorkout(
 		notes: string | null;
 		scheduled_date: string;
 		structure: JsonObject | null;
+		race_name: string | null;
+		race_priority: RacePriority | null;
 	}>
 ): Promise<void> {
 	// Normalise the `notes` patch the same way `createTrainingPlan`
@@ -6379,10 +6470,60 @@ export async function updatePlanWorkout(
 	// types spell it that way; the column's CHECK is what constrains it.
 	// Restated field-by-field rather than casting the whole patch, so the other
 	// nine fields stay checked against the table they are sent to.
+	if ('race_name' in normalisedPatch) {
+		normalisedPatch.race_name = normalisedPatch.race_name?.trim() || null;
+	}
 	const { kind, ...fields } = normalisedPatch;
 	const update: Updatable<'plan_workouts'> = fields;
 	if (kind !== undefined) update.kind = kind as Updatable<'plan_workouts'>['kind'];
+	// The race columns are only legal on a race (plan_workouts_race_fields_only_on_race),
+	// so moving a workout to any other kind clears them in the same write.
+	if (kind !== undefined && kind !== 'race') {
+		update.race_name = null;
+		update.race_priority = null;
+	}
 	const { error } = await supabase.from('plan_workouts').update(update).eq('id', id);
+	if (error) throw dbError(error);
+}
+
+/// One workout's patch for `applyWorkoutAdjustments`. A key present is
+/// written (null clears the column); a key absent leaves it alone.
+export type WorkoutAdjustment = { id: string } & Partial<{
+	kind: string;
+	target_distance_m: number | null;
+	target_duration_seconds: number | null;
+	target_pace_sec_per_km: number | null;
+	target_pace_tolerance_sec: number | null;
+	pace_zone: string | null;
+	structure: JsonObject | null;
+	notes: string | null;
+	race_name: string | null;
+	race_priority: RacePriority | null;
+	race_taper_applied_at: string | null;
+}>;
+
+/// Write a batch of workout patches to one plan and restate the volume of
+/// every week they touch, all in one transaction (`apply_workout_adjustments`,
+/// decisions § 2062): either every workout changes or none does. The patches
+/// are normalised as `updatePlanWorkout` normalises one.
+export async function applyWorkoutAdjustments(
+	planId: string,
+	changes: WorkoutAdjustment[]
+): Promise<void> {
+	const normalised = changes.map((c) => {
+		const out: WorkoutAdjustment = { ...c };
+		if ('notes' in out) out.notes = normalisePlanWorkoutNotes(out.notes);
+		if ('race_name' in out) out.race_name = out.race_name?.trim() || null;
+		if (out.kind !== undefined && out.kind !== 'race') {
+			out.race_name = null;
+			out.race_priority = null;
+		}
+		return out;
+	});
+	const { error } = await supabase.rpc('apply_workout_adjustments', {
+		p_plan_id: planId,
+		p_changes: normalised
+	});
 	if (error) throw dbError(error);
 }
 
@@ -10262,6 +10403,18 @@ export interface DmThread {
 	unread: number;
 }
 
+/// Total unread direct messages across every conversation: the badge on the
+/// sidebar's Messages entry. The same `dm_threads()` aggregation as
+/// [fetchDmThreads] without its partner-profile read, as mobile's
+/// `ApiClient.fetchUnreadDmCount` does. Throws on a failed read, so the store
+/// keeps the last count rather than reading a blip as "nothing unread".
+export async function fetchUnreadDmCount(): Promise<number> {
+	if (!auth.user?.id) return 0;
+	const { data, error } = await supabase.rpc('dm_threads', undefined, { get: true });
+	if (error) throw new Error(`dm_threads failed: ${error.message}`);
+	return (data ?? []).reduce((total, r) => total + (Number(r.unread) || 0), 0);
+}
+
 /// Conversation list: the latest message per partner + an unread count.
 /// Aggregated server-side by the dm_threads() RPC (DISTINCT ON partner +
 /// unread COUNT over the viewer's ENTIRE message set) — one preview row per
@@ -10623,35 +10776,16 @@ export function coachRunMapEnabled(): Promise<boolean> {
 /// `plan_workouts` for active-linked athletes. Null when the athlete
 /// has no active plan, or the caller isn't their active coach (RLS
 /// yields no rows).
-export async function fetchAthletePlanOverview(
-	athleteId: string
-): Promise<ActivePlanOverview | null> {
-	if (!auth.user?.id || !athleteId) return null;
-	const { data: plan } = await supabase
-		.from('training_plans')
-		.select('*')
-		.eq('user_id', athleteId)
-		.eq('status', 'active')
-		.maybeSingle();
-	if (!plan) return null;
-	const { weeks, workouts } = await fetchPlan(plan.id);
-	const { todayISO } = await import('../training/training');
-	const { planWorkoutProgress } = await import('../training/plan_progress');
-	const today = todayISO();
-	const todayWorkout = workouts.find((w) => w.scheduled_date === today) ?? null;
-	const completionPct = planWorkoutProgress(workouts).pct;
-	return {
-		plan: plan as TrainingPlan,
-		weeks: weeks ?? [],
-		workouts: workouts ?? [],
-		todayWorkout,
-		completionPct,
-	};
+export async function fetchAthletePlanOverview(athleteId: string): Promise<PlanOverviewRead> {
+	if (!auth.user?.id || !athleteId) return { overview: null, error: null };
+	return planOverviewFor(athleteId);
 }
 
 /// Assigns a coach's plan to a linked athlete via the assign_plan_to_athlete
-/// RPC (migration 20270106_001). The thrown error carries the RPC's raise text
-/// (e.g. the athlete already has an active plan), which the caller surfaces.
+/// RPC (migration 20270106_001). An overlap with one of the athlete's active
+/// plans throws a PlanOverlapError (23P01, migration 20270830000008), which the
+/// coaching page turns into "pick a start date after it ends"; any other
+/// refusal carries the RPC's raise text.
 export async function assignPlanToAthlete(
 	sourcePlanId: string,
 	athleteId: string,

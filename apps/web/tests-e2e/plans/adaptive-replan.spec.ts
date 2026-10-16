@@ -9,7 +9,7 @@ import { USER_A } from '../fixtures/users';
  * manual re-plan doesn't exercise: three completed weeks well under plan
  * form a sustained trend, so "Adaptive re-plan" opens the preview WITH a
  * trend reason + confidence badge, and applying writes the make-up.
- * Throwaway plan (status `completed` to dodge the one-active unique index;
+ * Throwaway plan (status `completed` to dodge the active-plan overlap constraint;
  * re-planning gates on dates, not status). Planned volume is set far above
  * any real mileage the seed user might have in-window, so the three weeks
  * are deterministically "under" without seeding runs.

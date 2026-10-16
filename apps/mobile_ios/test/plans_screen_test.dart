@@ -55,6 +55,25 @@ TrainingPlanRow _activePlan() => TrainingPlanRow(
       isPublicTemplate: false,
     );
 
+/// An active plan that starts [days] from today — queued behind the current one.
+TrainingPlanRow _queuedPlan(int days) {
+  final now = DateTime.now();
+  return TrainingPlanRow(
+    id: 'p2',
+    userId: 'u',
+    name: 'Comrades block',
+    goalEvent: 'distance_marathon',
+    goalDistanceM: 42195,
+    startDate: DateTime(now.year, now.month, now.day + days),
+    endDate: DateTime(now.year, now.month, now.day + days + 120),
+    daysPerWeek: 5,
+    status: 'active',
+    source: 'generated',
+    isTemplate: false,
+    isPublicTemplate: false,
+  );
+}
+
 Future<void> _pumpSignedIn(WidgetTester tester, _FakeTraining training) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -103,6 +122,24 @@ void main() {
       await tester.pump();
       expect(find.byType(CircularProgressIndicator), findsNothing);
       expect(find.byType(ListSkeleton), findsNothing);
+    });
+  });
+
+  group('PlansScreen — chained plans', () {
+    testWidgets('an active plan that starts after today reads as upcoming',
+        (tester) async {
+      final training = _FakeTraining([_activePlan(), _queuedPlan(30)]);
+      await _pumpSignedIn(tester, training);
+      expect(find.byKey(const Key('planTileUpcoming')), findsOneWidget);
+      expect(find.text('upcoming'), findsOneWidget);
+    });
+
+    testWidgets('an active plan that has started keeps its status',
+        (tester) async {
+      final training = _FakeTraining([_activePlan()]);
+      await _pumpSignedIn(tester, training);
+      expect(find.byKey(const Key('planTileUpcoming')), findsNothing);
+      expect(find.text('active'), findsOneWidget);
     });
   });
 

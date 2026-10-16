@@ -8,7 +8,7 @@ import { USER_A } from '../fixtures/users';
  * The re-index is unit-pinned in pgtap; this pins the owner UI: clicking
  * Duplicate on a week inserts a copy after it, pushes the later week +7
  * days, and extends the plan. Throwaway plan (status `completed` to dodge
- * the one-active unique index — duplication doesn't gate on status).
+ * the active-plan overlap constraint — duplication doesn't gate on status).
  */
 
 test.describe('/plans/[id] duplicate week', () => {

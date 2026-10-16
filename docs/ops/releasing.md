@@ -69,7 +69,9 @@ companion disagree. **Not verified yet:** the signed archive,
 which `release-ios.yml` builds for the first time on the first `mobile_ios@*`
 release (§ 1701), and -- device-gated -- one run syncing end to end from a
 paired physical watch, which is § 1256 step 5 and the one checkbox nobody has
-been able to tick. Test that one on TestFlight before submitting for review.
+been able to tick. Test that one on TestFlight before approving a release:
+the approval is now the last human step before App Review
+([decisions § 2040](../architecture/decisions.md)).
 
 ## Cutting a release
 
@@ -81,6 +83,32 @@ been able to tick. Test that one on TestFlight before submitting for review.
 git checkout main && git pull
 gh release create mobile_android@1.2.3 --title "Android 1.2.3" --generate-notes
 ```
+
+**An iOS Release needs a `## What's New` section in its body.** It is the note
+App Store users read, so the owner writes it; the generated notes below it are a
+developer changelog and are never used in its place. `release-ios.yml` fails in
+its first minute, before the build, when the section is missing, empty (an HTML
+comment alone counts as empty) or over App Store Connect's 4000 characters.
+The heading is level 2 and reads `What's New` (any case, either apostrophe); the
+section runs to the next level-1 or level-2 heading, so `### Fixed` inside it is
+kept. Fix the Release body and re-run the job: it reads the body live, not
+from the publish event. **Until the app's first App Store version is
+released** nothing submits a note, so a missing section is allowed then (one
+that is present is still checked), and the submission step ends green with a
+notice that the build is in TestFlight for the manual first submission
+(#1113). If App Store Connect cannot be read to tell, the strict rule applies.
+
+```bash
+gh release create mobile_ios@1.0.12 --title "iOS 1.0.12" --generate-notes --notes-start-tag mobile_ios@1.0.11 --notes "## What's New
+
+- Training plans can follow one another.
+- Fixes distance under tree cover.
+"
+```
+
+`--notes` with `--generate-notes` puts the owner's text first and the
+generated list after it, under its own `## What's Changed` heading, which is
+where the What's New section ends.
 
 You can also publish from the **Releases → Draft a new release** UI (pick
 or type the `<app>@<version>` tag, write notes, **Publish**), or via the
@@ -116,7 +144,7 @@ create` / UI / `/release`). The last column is what the workflow attaches
 |---|---|---|---|---|
 | `mobile_android@*` | ubuntu-latest | release keystore from secrets | Play Internal track | `.aab` |
 | `watch_wear@*` | ubuntu-latest | Wear release keystore | Play Internal track (`com.threkir.watchwear`) | `.aab` |
-| `mobile_ios@*` | macos-latest | Apple Distribution certificate + one App Store profile each for the phone and watch apps, from secrets | TestFlight (promotion to the App Store is manual, in App Store Connect) | — |
+| `mobile_ios@*` | macos-latest | Apple Distribution certificate + one App Store profile each for the phone and watch apps, from secrets | TestFlight, then App Store review; on approval it releases itself as a 7-day phased release ([§ 2040](../architecture/decisions.md)) | — |
 | `watch_ios@*` | macos-latest | — | — (build smoke-check only) | — |
 | `web@*` | ubuntu-latest | — | AWS S3 + CloudFront + Lambda (`prod` env at `threkir.com` / `www.threkir.com`) | build zip |
 | `backend@*` | ubuntu-latest | — | Supabase (migrations + functions on linked project) | — |
@@ -126,6 +154,22 @@ create` / UI / `/release`). The last column is what the workflow attaches
 | `graphhopper@*` | ubuntu-latest | — | Fly.io `graphhopper` app (image only — the PBF + built `graph-cache/` stay on the `graphhopper_data` volume) | — |
 
 **Why an iOS upload failed.** The upload runs through `altool`, so Apple's validation errors (ITMS codes) are in the Release iOS run's "Upload to TestFlight" step, not only in an email. The default `appstore-api` backend validated out of band: `mobile_ios@1.0.0` uploaded, never appeared in App Store Connect and sent no email, leaving no reason anywhere.
+
+**What the iOS submission does, and when it stops.** After the upload,
+`scripts/asc_submit.mjs` waits up to an hour for Apple's processing, then puts
+the build on the App Store version whose number is the tag's (creating it when
+no version is in progress), writes the Release's What's New into every
+localization that version has, sets it to release automatically after approval
+as a 7-day phased release, and submits it for review. Re-running is safe: a
+build App Store Connect already holds is not uploaded again, and each step is a
+no-op when already done. It fails the job, changing nothing it cannot finish,
+when another version is in progress under a different number, when App Review
+returned a rejection that is waiting for a reply, or when a submitted version
+holds another build. The app's first version is left to the owner, because
+Apple takes no What's New on it: while nothing is released, the step ends
+green with a `::notice::` saying so, not red. Pause the rollout with **Pause Phased
+Release** on the version page in App Store Connect. The runbook is
+[`apps/mobile_ios/deployment.md`](../../apps/mobile_ios/deployment.md#app-store-submission).
 
 **Where the signed IPA is if TestFlight refuses it.** `mobile_ios@*` attaches
 nothing back to the Release; the signed `.ipa` is kept as a workflow **artifact**

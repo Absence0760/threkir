@@ -6,8 +6,14 @@
 	import { onMount, untrack } from 'svelte';
 	import { replaceState } from '$app/navigation';
 	import { page } from '$app/state';
-	import { createTrainingPlan, fetchActivePlanOverview, fetchRuns } from '#lib/core/data.ts';
-	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import {
+		createTrainingPlan,
+		fetchMyOverlappingActivePlans,
+		fetchRuns,
+		type PlanOverlapChoice,
+	} from '#lib/core/data.ts';
+	import PlanOverlapDialog, { trimBlockedMessage } from '#lib/components/PlanOverlapDialog.svelte';
+	import { attemptPlanCreate, type OverlapPlan } from '#lib/training/plan_overlap.ts';
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
 	import {
 		GOAL_DISTANCES_M,
@@ -580,16 +586,13 @@
 		{ value: 'distance_full', label: t('planEditor.marathon') }
 	]);
 
-	/// The schema enforces one active plan per user via a partial unique
-	/// index, and `createTrainingPlan` enforces it by auto-completing
-	/// any existing active plan inside the same transaction. That used
-	/// to happen silently — clicking "Create plan" on the wizard would
-	/// transparently flip the user's current plan to `completed` with
-	/// no warning. This dialog gates the create on an explicit
-	/// confirmation when a previous active plan exists; the user gets
-	/// to see what they're about to retire and can cancel.
-	let showReplaceConfirm = $state(false);
-	let existingActiveName = $state<string | null>(null);
+	/// Active plans may chain but not overlap (decisions § 2008). The create
+	/// asks the server to refuse any overlap; when it does, the dialog names
+	/// the plans in the way, read fresh at that moment, and the runner's choice
+	/// is sent back so the server resolves it in the same transaction as the
+	/// insert (decisions § 2050). A plan created since an earlier look is
+	/// therefore never replaced without being named first.
+	let overlapping = $state<OverlapPlan[]>([]);
 
 	async function submit(e: Event) {
 		e.preventDefault();
@@ -616,22 +619,7 @@
 			error = t('planEditor.errorStartMovedToSunday');
 			return;
 		}
-		busy = true;
-		error = null;
-		try {
-			const active = await fetchActivePlanOverview();
-			if (active?.plan) {
-				existingActiveName = active.plan.name;
-				showReplaceConfirm = true;
-				busy = false;
-				return;
-			}
-			await proceedWithCreate();
-		} catch (e: unknown) {
-			error = describeError(e);
-			console.error('Plan create failed', e);
-			busy = false;
-		}
+		await proceedWithCreate('refuse');
 	}
 
 	function todayIso(): string {
@@ -639,40 +627,67 @@
 		return formatISO(d);
 	}
 
-	async function proceedWithCreate() {
+	async function proceedWithCreate(overlap: PlanOverlapChoice) {
 		busy = true;
 		error = null;
+		overlapping = [];
+		const endDate = plan!.endDate;
 		try {
-			const created = await createTrainingPlan({
-				name: name.trim(),
-				goalEvent,
-				// A pasted plan's distance comes from the parse (the derived
-				// `goalDistance` is wrong for a custom-event import).
-				goalDistanceM: importedMode && importedGoalDistanceM ? importedGoalDistanceM : goalDistance,
-				goalTimeSec,
-				recent5kSec: recent5kApplied,
-				startDate,
-				daysPerWeek,
-				generated: plan!,
-			});
-			oncreated?.(created);
+			const outcome = await attemptPlanCreate(
+				() =>
+					createTrainingPlan({
+						name: name.trim(),
+						goalEvent,
+						// A pasted plan's distance comes from the parse (the derived
+						// `goalDistance` is wrong for a custom-event import).
+						goalDistanceM: importedMode && importedGoalDistanceM ? importedGoalDistanceM : goalDistance,
+						goalTimeSec,
+						recent5kSec: recent5kApplied,
+						startDate,
+						daysPerWeek,
+						generated: plan!,
+						overlap,
+					}),
+				() => fetchMyOverlappingActivePlans(startDate, endDate)
+			);
+			if (outcome.kind === 'overlap') overlapping = outcome.overlapping;
+			else if (outcome.kind === 'trimBlocked') error = trimBlockedMessage(outcome.overlapping, startDate);
+			else oncreated?.(outcome.value);
 		} catch (e: unknown) {
 			error = describeError(e);
 			console.error('Plan create failed', e);
 		} finally {
 			busy = false;
-			showReplaceConfirm = false;
-			existingActiveName = null;
 		}
 	}
 
-	function cancelReplace() {
-		showReplaceConfirm = false;
-		existingActiveName = null;
+	function cancelOverlap() {
+		overlapping = [];
 	}
 </script>
 
 <form onsubmit={submit} class="plan-editor">
+	<!-- Spans both columns: a pasted plan is a wide Markdown table, and the
+	     22rem form column wrapped every row of it. -->
+	<details class="import-box import-wide" bind:open={showImport}>
+		<summary id="plan-import-title">{t('planEditor.importTitle')}</summary>
+		<p class="hint" id="plan-import-hint">{t('planEditor.importHint')}</p>
+		<textarea
+			aria-labelledby="plan-import-title"
+			class="import-text"
+			bind:value={importText}
+			rows="14"
+			wrap="off"
+			placeholder={t('planEditor.importPlaceholder')}
+			aria-describedby="plan-import-hint"
+		></textarea>
+		{#if importError}
+			<p class="error">{importError}</p>
+		{/if}
+		<button type="button" class="btn btn-secondary" onclick={loadFromText}>
+			{t('planEditor.importLoad')}
+		</button>
+	</details>
 	<div class="grid">
 		<section class="form">
 			{#if showAiPlan}
@@ -726,23 +741,6 @@
 					{/if}
 				</details>
 			{/if}
-			<details class="import-box" bind:open={showImport}>
-				<summary>{t('planEditor.importTitle')}</summary>
-				<p class="hint" id="plan-import-hint">{t('planEditor.importHint')}</p>
-				<textarea
-					class="import-text"
-					bind:value={importText}
-					rows="6"
-					placeholder={t('planEditor.importPlaceholder')}
-					aria-describedby="plan-import-hint"
-				></textarea>
-				{#if importError}
-					<p class="error">{importError}</p>
-				{/if}
-				<button type="button" class="btn btn-secondary" onclick={loadFromText}>
-					{t('planEditor.importLoad')}
-				</button>
-			</details>
 			{#if importedMode}
 				<p class="imported-note" role="status">{t('planEditor.importedNote')}</p>
 			{/if}
@@ -781,7 +779,7 @@
 					<input
 						type="date"
 						bind:value={startDate}
-						min={todayIso()}
+						min={importedMode ? undefined : todayIso()}
 						onchange={() => { exitImportMode(); alignStartToSunday(); }}
 						required
 						aria-describedby="start-date-hint"
@@ -1009,17 +1007,11 @@
 	</div>
 </form>
 
-<ConfirmDialog
-	open={showReplaceConfirm}
-	title={t('planEditor.replaceActivePlanTitle')}
-	message={existingActiveName
-		? t('planEditor.replaceActivePlanNamed', { name: existingActiveName })
-		: t('planEditor.replaceActivePlanUnnamed')}
-	confirmLabel={t('planEditor.replacePlan')}
-	cancelLabel={t('planEditor.keepCurrent')}
-	danger={true}
-	onconfirm={proceedWithCreate}
-	oncancel={cancelReplace}
+<PlanOverlapDialog
+	{overlapping}
+	{startDate}
+	onchoose={proceedWithCreate}
+	oncancel={cancelOverlap}
 />
 
 <style>
@@ -1173,6 +1165,9 @@
 	.import-box[open] summary {
 		margin-bottom: 0.4rem;
 	}
+	.import-wide {
+		margin-bottom: var(--space-lg);
+	}
 	.import-text {
 		width: 100%;
 		box-sizing: border-box;
@@ -1184,6 +1179,8 @@
 		padding: 0.5rem;
 		color: var(--color-text);
 		resize: vertical;
+		white-space: pre;
+		overflow-x: auto;
 		margin-bottom: 0.5rem;
 	}
 	.ai-text {

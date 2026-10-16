@@ -1,5 +1,7 @@
 -- Pins migration 20260529000004 — clone_plan_template auto-completes
--- the caller's existing active plan before inserting the new one.
+-- the caller's existing active plan before inserting the new one. Since
+-- 20270830000001 only an OVERLAPPING active plan is completed; the existing
+-- plan here spans the clone's start, so it still is.
 -- Persona-hunt Round 2 finding Intermediate #1.
 
 begin;
@@ -90,15 +92,15 @@ select is(
   'Cloned plan lands as active'
 );
 
--- 3. Only one active plan for the user (the `one_active` partial
--- unique index is the contract; double-active would violate it).
+-- 3. Only one active plan for the user: the two windows overlap, and
+-- training_plans_active_no_overlap would refuse both being active.
 select is(
   (select count(*) from training_plans
    where user_id = current_setting('persona.user', true)::uuid
      and status = 'active'
      and is_template = false),
   1::bigint,
-  'Exactly one active plan post-clone (training_plans_one_active honoured)'
+  'Exactly one active plan post-clone (training_plans_active_no_overlap honoured)'
 );
 
 rollback;

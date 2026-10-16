@@ -7040,6 +7040,51 @@ class ApiClient {
     return stravaSyncResultFromResponse(res.data);
   }
 
+  /// The signed-in runner's own Strava clubs (decisions § 1959), fetched per
+  /// call and never stored. Not being connected comes back as a status, so the
+  /// caller renders nothing rather than an error; a transport failure or a body
+  /// in none of the three shapes throws. Mirrors web `fetchMyStravaClubs`.
+  Future<StravaClubsResult> fetchMyStravaClubs() async {
+    final res = await _client.functions.invoke(
+      'strava-clubs',
+      body: {'action': 'list'},
+    );
+    return parseStravaClubsResult(res.data);
+  }
+
+  /// Record that a Threkir club IS this Strava club. The function checks on
+  /// Strava that the caller administers the Strava club, and in SQL that they
+  /// administer the Threkir one; a refusal throws [StravaClubLinkFailure]
+  /// naming which. Mirrors web `linkStravaClub`.
+  Future<void> linkStravaClub(String clubId, int stravaClubId) async {
+    try {
+      await _client.functions.invoke(
+        'strava-clubs',
+        body: {
+          'action': 'link',
+          'club_id': clubId,
+          'strava_club_id': stravaClubId,
+        },
+      );
+    } on FunctionException catch (e) {
+      final details = e.details;
+      final code = details is Map ? details['error'] : null;
+      throw StravaClubLinkFailure(
+          stravaClubLinkError(code is String ? code : null));
+    }
+  }
+
+  /// Clear a club's Strava link. Needs no Strava call, so it is a plain RPC
+  /// gated on the caller administering the Threkir club; a `false` answer is
+  /// that refusal. Mirrors web `unlinkStravaClub`.
+  Future<void> unlinkStravaClub(String clubId) async {
+    final data =
+        await _client.rpc('unlink_club_strava', params: {'p_club_id': clubId});
+    if (data != true) {
+      throw const StravaClubLinkFailure(StravaClubLinkError.notClubAdmin);
+    }
+  }
+
   /// Lightweight count of a user's runs, capped by [limit]. The coach
   /// context strip uses this to show how much history the model is
   /// reasoning over — only the count matters, so the column projection
@@ -8781,19 +8826,29 @@ class ApiClient {
   /// review surface. Mirrors web `fetchAthletePlanOverview` — the coach
   /// plan-read policies (migration 20261116_001) grant SELECT on
   /// `training_plans` / `plan_weeks` / `plan_workouts` for active-linked
-  /// athletes. Null when the athlete has no active plan, or the caller isn't
-  /// their active coach (RLS yields no rows). `completionPct` excludes rest
-  /// days, matching the web roll-up.
-  Future<AthletePlanOverview?> fetchAthletePlanOverview(String athleteId) async {
+  /// athletes. An athlete may hold several active plans whose dates don't
+  /// overlap; [pick] chooses the one to show (the app's `plan_current.dart`
+  /// rule, which this package can't import). Null when the athlete has no
+  /// active plan, [pick] chooses none, or the caller isn't their active coach
+  /// (RLS yields no rows). `completionPct` excludes rest days, matching the
+  /// web roll-up.
+  Future<AthletePlanOverview?> fetchAthletePlanOverview(
+    String athleteId, {
+    required TrainingPlanRow? Function(List<TrainingPlanRow> activePlans) pick,
+  }) async {
     if (userId == null || athleteId.isEmpty) return null;
-    final planRow = await _client
+    final planRows = await _client
         .from(TrainingPlanRow.table)
         .select()
         .eq(TrainingPlanRow.colUserId, athleteId)
         .eq('status', 'active')
-        .maybeSingle();
-    if (planRow == null) return null;
-    final plan = TrainingPlanRow.fromJson(planRow);
+        .eq('is_template', false);
+    final active = (planRows as List)
+        .cast<Map<String, dynamic>>()
+        .map(TrainingPlanRow.fromJson)
+        .toList();
+    final plan = pick(active);
+    if (plan == null) return null;
     final weekRows = await _client
         .from(PlanWeekRow.table)
         .select()
@@ -8831,6 +8886,7 @@ class ApiClient {
       weeks: weeks,
       workouts: workouts,
       completionPct: pct,
+      activePlans: active,
     );
   }
 
@@ -8852,9 +8908,10 @@ class ApiClient {
   }
 
   /// Assign one of the coach's plans to a linked athlete via the
-  /// `assign_plan_to_athlete` RPC (migration 20270106_001). The thrown error
-  /// carries the RPC's raise text (e.g. the athlete already has an active
-  /// plan), which the caller surfaces. Returns the new plan id.
+  /// `assign_plan_to_athlete` RPC (migration 20270106_001). An overlap with
+  /// one of the athlete's active plans throws [PlanAssignOverlapException];
+  /// any other refusal throws an Exception carrying the RPC's raise text,
+  /// which the caller surfaces. Returns the new plan id.
   Future<String> assignPlanToAthlete({
     required String sourcePlanId,
     required String athleteId,
@@ -8869,9 +8926,12 @@ class ApiClient {
       });
       return res as String;
     } on PostgrestException catch (e) {
-      // Surface the RPC's RAISE text verbatim (e.g. "athlete already has an
-      // active plan") rather than the noisy PostgrestException.toString(), so
-      // the caller can show it directly without re-parsing the SQLSTATE.
+      // An overlap with one of the athlete's active plans is 23P01
+      // (migration 20270830000008); typed so the caller can say which dates
+      // to pick instead of showing the raw raise text.
+      if (e.code == '23P01') throw PlanAssignOverlapException(e.message);
+      // Any other refusal: the RPC's RAISE text verbatim rather than the noisy
+      // PostgrestException.toString(), so the caller can show it directly.
       throw Exception(e.message);
     }
   }
@@ -9356,12 +9416,28 @@ class AthletePlanOverview {
   final List<PlanWorkoutRow> workouts;
   final int completionPct;
 
+  /// Every active plan the athlete holds, [plan] included — what a coach's
+  /// assignment must not overlap (plan chaining, decisions § 2008).
+  final List<TrainingPlanRow> activePlans;
+
   const AthletePlanOverview({
     required this.plan,
     required this.weeks,
     required this.workouts,
     required this.completionPct,
+    this.activePlans = const [],
   });
+}
+
+/// `assign_plan_to_athlete` refused because the assigned window overlaps one
+/// of the athlete's active plans (SQLSTATE 23P01). [message] is the server's
+/// text, which names the plans in the way.
+class PlanAssignOverlapException implements Exception {
+  const PlanAssignOverlapException(this.message);
+  final String message;
+
+  @override
+  String toString() => 'PlanAssignOverlapException: $message';
 }
 
 /// One set in a [ApiClient.createGymWorkout] / `updateGymWorkout` call,

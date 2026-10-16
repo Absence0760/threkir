@@ -1808,6 +1808,109 @@ export function stampedThroughRpc(landings, stamped) {
  */
 export const FILTERED_RPC_ARGUMENTS = [
   {
+    file: 'atomic_plan_create_test.sql',
+    description: 'an overlapping create with trim succeeds',
+    columns: ['training_plans.goal_event', 'training_plans.notes', 'training_plans.vdot'],
+    readBack: "the new plan is the caller's, active, generated, for its goal, with blank notes collapsed to null",
+    reason:
+      'create_training_plan casts `goal_event` and `vdot` out of the jsonb and collapses blank ' +
+      '`notes` to NULL, so none lands verbatim. The named read-back states all three as stored, ' +
+      'the NULL notes included.',
+  },
+  {
+    file: 'atomic_plan_create_test.sql',
+    description: 'an overlapping create with replace succeeds',
+    columns: ['training_plans.goal_event', 'training_plans.notes', 'training_plans.vdot'],
+    reason:
+      'The subject is the overlap resolution: that replace completes the plan the same window ' +
+      'refused under trim, which the assertion after it reads back. The columns written from the ' +
+      'jsonb are the trim case\'s claim, read back there for the same function.',
+  },
+  {
+    file: 'atomic_plan_create_test.sql',
+    description: 'a create into free dates needs no overlap choice',
+    columns: ['training_plans.goal_event', 'training_plans.notes', 'training_plans.vdot'],
+    reason:
+      'The subject is ownership: that a user_id smuggled into p_plan is ignored, which the ' +
+      'assertion after it reads back. The cast columns are the trim case\'s claim, read back there.',
+  },
+  {
+    file: 'plan_chaining_followups_test.sql',
+    description: 'shifting a block with the queued plans following it succeeds',
+    columns: [
+      'plan_workouts.scheduled_date',
+      'training_plans.end_date',
+      'training_plans.start_date',
+    ],
+    readBack: 'both blocks moved a week and still meet end to start',
+    reason:
+      'The `lives_ok` measures that a shift carrying the queued plan does not trip the overlap ' +
+      'constraint the shift alone tripped one assertion earlier. The dates are `+ p_days` over the ' +
+      'stored ones, never the argument itself, so the named read-back states both plans\' new ' +
+      'windows and the assertion after it states the moved workouts.',
+  },
+  {
+    file: 'plan_chaining_edges_test.sql',
+    description: 'a backward shift into free dates succeeds',
+    columns: [
+      'plan_workouts.scheduled_date',
+      'training_plans.end_date',
+      'training_plans.start_date',
+    ],
+    readBack: 'both shifts landed',
+    reason:
+      'The `lives_ok` measures that a backward shift clear of the plan before it is not refused ' +
+      'the way the one onto it was. The dates are `+ p_days` over the stored ones, and the named ' +
+      'read-back states the shifted window.',
+  },
+  {
+    file: 'plan_chaining_edges_test.sql',
+    description: 'a paused plan shifts across an active one',
+    columns: [
+      'plan_workouts.scheduled_date',
+      'training_plans.end_date',
+      'training_plans.start_date',
+    ],
+    readBack: 'both shifts landed',
+    reason:
+      'The subject is that a paused plan holds no dates against the active one it now overlaps. ' +
+      'The dates are `+ p_days` over the stored ones, and the named read-back states the paused ' +
+      'plan\'s shifted window.',
+  },
+  {
+    file: 'plan_chaining_edges_test.sql',
+    description: 'a create with replace over two active plans succeeds',
+    columns: ['training_plans.goal_event', 'training_plans.notes', 'training_plans.vdot'],
+    reason:
+      'The subject is the overlap resolution: that replace completes every plan it overlaps and ' +
+      'leaves a queued and a paused plan alone, which the status read-back after it states. The ' +
+      'cast columns are atomic_plan_create_test.sql\'s trim case\'s claim, read back there for the ' +
+      'same function.',
+  },
+  {
+    file: 'plan_chaining_edges_test.sql',
+    description: 'a paused plan over the new dates does not make a refusing create refuse',
+    columns: ['training_plans.goal_event', 'training_plans.notes', 'training_plans.vdot'],
+    reason:
+      'The subject is that a paused plan is not an overlap to refuse over, which the status ' +
+      'read-back after it states. The cast columns are atomic_plan_create_test.sql\'s trim case\'s ' +
+      'claim, read back there for the same function.',
+  },
+  {
+    file: 'plan_review_followups_test.sql',
+    description: 'the owner shifts plan 6 a week',
+    columns: [
+      'plan_workouts.scheduled_date',
+      'training_plans.end_date',
+      'training_plans.start_date',
+    ],
+    readBack: 'shifting a trimmed plan keeps its stamp',
+    reason:
+      'The subject is the trimmed_at trigger: a shift keeps the plan\'s length, so the stamp ' +
+      'must survive it. The dates are `+ p_days` over the stored ones, and the named read-back ' +
+      'states the shifted window beside the stamp.',
+  },
+  {
     file: 'checkpoint_crossings_test.sql',
     description: 'an event organiser can write a crossing via upsert_checkpoint_crossing',
     columns: [

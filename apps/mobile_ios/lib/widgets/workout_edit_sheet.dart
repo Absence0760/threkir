@@ -2,7 +2,9 @@ import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 
 import '../auth_error.dart';
+import '../goal_time.dart';
 import '../l10n/gen/app_localizations.dart';
+import '../plan_races.dart';
 import '../training.dart';
 import '../training_labels.dart';
 import '../training_service.dart';
@@ -10,7 +12,8 @@ import '../typed_decimal.dart';
 import 'full_screen_form.dart';
 
 /// Full-screen dialog for inline editing of a planned workout's kind,
-/// target distance, target pace, and notes. The caller is responsible
+/// target distance, target pace, and notes, plus — on a `race` workout — the
+/// race's name, A/B/C priority and goal time. The caller is responsible
 /// for refreshing the plan view after the sheet returns. Presentation
 /// goes through [showFullScreenForm], the shared create/edit-entity wrapper.
 Future<bool> showWorkoutEditSheet(
@@ -50,9 +53,13 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
   late final TextEditingController _distanceCtl;
   late final TextEditingController _paceCtl;
   late final TextEditingController _notesCtl;
+  late final TextEditingController _raceNameCtl;
+  late final TextEditingController _raceGoalCtl;
+  String? _racePriority;
   bool _saving = false;
   String? _distanceError;
   String? _paceError;
+  String? _raceGoalError;
   String? _error;
 
   @override
@@ -71,6 +78,14 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
           : _paceToEditText(w.targetPaceSecPerKm!),
     );
     _notesCtl = TextEditingController(text: w.notes ?? '');
+    _raceNameCtl = TextEditingController(text: w.raceName ?? '');
+    _raceGoalCtl = TextEditingController(
+      text: w.kind != 'race' || w.targetDurationSeconds == null
+          ? ''
+          : formatRaceGoalTimeS(w.targetDurationSeconds!),
+    );
+    _racePriority =
+        racePriorities.contains(w.racePriority) ? w.racePriority : null;
     _initialSnapshot = _snapshot();
   }
 
@@ -81,6 +96,9 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
         _distanceCtl.text,
         _paceCtl.text,
         _notesCtl.text,
+        _raceNameCtl.text,
+        _raceGoalCtl.text,
+        _racePriority ?? '',
       ].join('\u0000');
 
   bool get isDirty => _snapshot() != _initialSnapshot;
@@ -90,6 +108,8 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
     _distanceCtl.dispose();
     _paceCtl.dispose();
     _notesCtl.dispose();
+    _raceNameCtl.dispose();
+    _raceGoalCtl.dispose();
     super.dispose();
   }
 
@@ -141,6 +161,7 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
               }
             },
           ),
+          if (_kind == WorkoutKind.race) ..._raceFields(l10n),
           const SizedBox(height: 8),
           TextField(
             controller: _notesCtl,
@@ -182,6 +203,52 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
       );
   }
 
+  List<Widget> _raceFields(AppLocalizations l10n) => [
+        const SizedBox(height: 8),
+        TextField(
+          key: const Key('workoutEditRaceName'),
+          controller: _raceNameCtl,
+          maxLength: 120,
+          textCapitalization: TextCapitalization.words,
+          decoration:
+              InputDecoration(labelText: l10n.workoutEditRaceNameLabel),
+        ),
+        DropdownButtonFormField<String?>(
+          key: const Key('workoutEditRacePriority'),
+          initialValue: _racePriority,
+          decoration:
+              InputDecoration(labelText: l10n.workoutEditRacePriorityLabel),
+          items: [
+            DropdownMenuItem<String?>(
+              value: null,
+              child: Text(l10n.workoutEditRacePriorityAuto),
+            ),
+            for (final p in racePriorities)
+              DropdownMenuItem<String?>(
+                value: p,
+                child: Text(racePriorityOptionLabel(l10n, p)),
+              ),
+          ],
+          onChanged: (v) => setState(() => _racePriority = v),
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          key: const Key('workoutEditRaceGoal'),
+          controller: _raceGoalCtl,
+          keyboardType: TextInputType.datetime,
+          decoration: InputDecoration(
+            labelText: l10n.workoutEditRaceGoalTimeLabel,
+            hintText: l10n.workoutEditRaceGoalTimeHint,
+            errorText: _raceGoalError,
+          ),
+          onChanged: (_) {
+            if (_raceGoalError != null) {
+              setState(() => _raceGoalError = null);
+            }
+          },
+        ),
+      ];
+
   Future<void> _save() async {
     final l10n = AppLocalizations.of(context);
     // Validate both targets in one pass so each invalid field is flagged
@@ -208,11 +275,23 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
       }
     }
 
+    final isRace = _kind == WorkoutKind.race;
+    final goalText = _raceGoalCtl.text.trim();
+    int? goalTimeSec;
+    String? raceGoalError;
+    if (isRace && goalText.isNotEmpty) {
+      goalTimeSec = parseRaceGoalTimeS(goalText);
+      if (goalTimeSec == null) raceGoalError = l10n.workoutEditErrRaceGoalTime;
+    }
+
     setState(() {
       _distanceError = distanceError;
       _paceError = paceError;
+      _raceGoalError = raceGoalError;
     });
-    if (distanceError != null || paceError != null) return;
+    if (distanceError != null || paceError != null || raceGoalError != null) {
+      return;
+    }
 
     setState(() {
       _saving = true;
@@ -222,9 +301,17 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
       await widget.training.updateWorkout(
         widget.workout.id,
         kind: workoutKindDbValue(_kind),
+        fromKind: widget.workout.kind,
         targetDistanceM: distanceM,
         targetPaceSecPerKm: paceSecPerKm,
         notes: _notesCtl.text.trim(),
+        race: isRace
+            ? (
+                name: _raceNameCtl.text,
+                priority: _racePriority,
+                goalTimeSec: goalTimeSec,
+              )
+            : null,
       );
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {

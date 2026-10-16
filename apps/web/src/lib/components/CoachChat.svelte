@@ -11,6 +11,9 @@
 	import ChipDropdown from '#lib/components/ChipDropdown.svelte';
 	import { TIER_LIMITS } from '#lib/coach/types.ts';
 	import { aiPlanEnabled } from '#lib/training/ai_plan_flag.ts';
+	import { pickCurrentPlan } from '#lib/training/plan_current.ts';
+	import { todayISO } from '#lib/training/training.ts';
+	import { dbError, thrownMessage } from '#lib/core/supabase_error.ts';
 	import type { CoachMessageRole } from '#lib/coach/types.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
 	import type { TrainingPlan } from '#lib/types.ts';
@@ -300,6 +303,8 @@
 		runCount: number;
 		hrZonesLoaded: boolean;
 		weeklyGoalMetres: number | null;
+		/// The plan read failed: the strip says so instead of "No plan".
+		planReadFailed: boolean;
 	}
 	let contextSummary = $state<ContextSummary | null>(null);
 
@@ -341,16 +346,28 @@
 	async function loadContextSummary(userId: string) {
 		let planName: string | null = null;
 		let planWeeks: number | null = null;
+		let planReadFailed = false;
 		try {
-			const planQuery = planId
-				? supabase.from('training_plans').select('id, name').eq('id', planId).maybeSingle()
-				: supabase
-						.from('training_plans')
-						.select('id, name')
-						.eq('user_id', userId)
-						.eq('status', 'active')
-						.maybeSingle();
-			const { data: plan } = await planQuery;
+			let plan: { id: string; name: string } | null = null;
+			if (planId) {
+				const { data, error: err } = await supabase
+					.from('training_plans')
+					.select('id, name')
+					.eq('id', planId)
+					.maybeSingle();
+				if (err) throw dbError(err);
+				plan = data;
+			} else {
+				const { data, error: err } = await supabase
+					.from('training_plans')
+					.select('id, name, start_date, end_date')
+					.eq('user_id', userId)
+					.eq('status', 'active')
+					.eq('is_template', false);
+				if (err) throw dbError(err);
+				const picked = pickCurrentPlan(data ?? [], todayISO());
+				plan = picked.current ?? picked.upcoming;
+			}
 			if (plan) {
 				planName = plan.name;
 				const { count } = await supabase
@@ -359,7 +376,10 @@
 					.eq('plan_id', plan.id);
 				planWeeks = count ?? null;
 			}
-		} catch (_) { /* noop */ }
+		} catch (e) {
+			console.error('[coach] plan context read failed', { message: thrownMessage(e) });
+			planReadFailed = true;
+		}
 
 		let runCount = 0;
 		try {
@@ -387,7 +407,7 @@
 			if (typeof goal === 'number' && goal > 0) weeklyGoalMetres = goal;
 		} catch (_) { /* noop */ }
 
-		contextSummary = { planName, planWeeks, runCount, hrZonesLoaded, weeklyGoalMetres };
+		contextSummary = { planName, planWeeks, runCount, hrZonesLoaded, weeklyGoalMetres, planReadFailed };
 	}
 
 	// With the AI plan assistant live, a plan request gets a chip of its own:
@@ -509,6 +529,7 @@
 					messages: payloadMessages,
 					plan_id: planId,
 					recent_runs_limit: runsLimit,
+					today: todayISO(),
 					mode: opts.mode,
 					anchor_message_id: opts.anchorId ?? null,
 				});
@@ -931,6 +952,11 @@
 								title={t('coachChat.planContextTitle')}
 								suffix={c.planWeeks ? `· ${c.planWeeks}w` : undefined}
 							/>
+						{:else if c.planReadFailed}
+							<span class="chip chip-muted" role="status" data-testid="coach-plan-read-failed">
+								<span class="material-symbols" aria-hidden="true">error</span>
+								{t('coachChat.planReadFailed')}
+							</span>
 						{:else if c.planName}
 							<span class="chip" title={t('coachChat.planLoaded')}>
 								<span class="material-symbols">calendar_month</span>

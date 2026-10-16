@@ -34,9 +34,8 @@ test.describe('/plans/new — create wizard', () => {
 			}
 			plantedPlanId = null;
 		}
-		// `createTrainingPlan` auto-demotes any existing active plan to
-		// 'completed' so the new one can take the per-user "one active
-		// plan" slot. The seed has Richmond Half at 'active'; without
+		// Replacing completes the active plans the new window overlaps
+		// (decisions § 2008). The seed has Richmond Half at 'active'; without
 		// this, every other test downstream of this file sees Sydney
 		// Half as 'completed' and any test that needs an active plan
 		// (e.g. /coach defaulting) would behave differently. Restore.
@@ -68,12 +67,10 @@ test.describe('/plans/new — create wizard', () => {
 			const submit = modal.getByRole('button', { name: /Create plan/ });
 			await expect(submit).toBeEnabled({ timeout: 5_000 });
 			await submit.click();
-			// Seed has an active plan; the create flow gates on a
-			// Replace-plan ConfirmDialog. Wait for the dialog and
-			// confirm so we proceed to the actual create.
-			const replace = page.locator('.modal.modal-narrow', {
-				hasText: /Replace your active plan/
-			});
+			// The seeded active plan covers this start date, so the create
+			// flow asks before it replaces or trims it. Replace, so the seed
+			// plan keeps its dates for the specs after this one.
+			const replace = page.getByTestId('plan-overlap-dialog');
 			await expect(replace).toBeVisible({ timeout: 5_000 });
 			await replace.getByRole('button', { name: 'Replace plan' }).click();
 		});
@@ -124,17 +121,13 @@ test.describe('/plans/new — create wizard', () => {
 		});
 	});
 
-	test('creating a new plan when one is already active shows the Replace-plan confirm dialog; Cancel keeps the current plan active', async ({
+	test('creating a plan that overlaps the active one shows the overlap dialog; Cancel keeps the current plan active', async ({
 		page
 	}) => {
-		// Real bug surfaced by the user: clicking Create plan on the
-		// wizard silently auto-completed the existing active plan.
-		// The schema enforces one-active-per-user via a partial unique
-		// index, but the data layer's auto-complete-then-insert flow
-		// did the swap without telling the user. Fix: ConfirmDialog
-		// gates the create when an active plan exists; Cancel keeps
-		// the existing plan untouched, Confirm proceeds with the
-		// (now intentional) replace.
+		// Creating a plan once silently completed the active one. Plans may
+		// now chain, but a new window that overlaps the seeded plan (which
+		// covers today through ~65 days out) still asks first, naming the
+		// plan it collides with; Cancel leaves it untouched.
 		await page.goto('/plans');
 
 		// Seed has an active plan ("Richmond Half 2026"); confirm it's
@@ -156,22 +149,19 @@ test.describe('/plans/new — create wizard', () => {
 		);
 		await expect(modal.locator('.preview')).toBeVisible({ timeout: 5_000 });
 
-		// Click Create plan — confirm dialog should appear, NOT the
-		// silent auto-complete. ConfirmDialog renders via narrow Modal,
-		// so .modal-narrow disambiguates from the wizard modal that's
+		// Click Create plan — the overlap dialog appears, NOT a silent
+		// replace. Its test id disambiguates it from the wizard modal
 		// still open behind it.
 		await modal.getByRole('button', { name: 'Create plan' }).click();
-		const confirm = page.locator('.modal.modal-narrow', {
-			hasText: /Replace your active plan/
-		});
+		const confirm = page.getByTestId('plan-overlap-dialog');
 		await expect(confirm).toBeVisible({ timeout: 5_000 });
-		// Dialog names the plan being replaced so the user can see
-		// exactly what they're about to retire.
+		// Dialog names the overlapping plan so the user can see exactly
+		// what either choice would change.
 		await expect(confirm).toContainText('Richmond Half 2026');
 
 		// Cancel: dialog closes, no replace happens, the original plan
 		// stays visible on /plans.
-		await confirm.getByRole('button', { name: 'Keep current' }).click();
+		await confirm.getByRole('button', { name: 'Cancel', exact: true }).click();
 		await expect(confirm).toHaveCount(0, { timeout: 5_000 });
 
 		// Close the wizard.

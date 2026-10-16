@@ -435,6 +435,16 @@ class GeneratedWorkout {
   final WorkoutStructure? structure;
   final String? notes;
 
+  /// Set only on a `race` workout read from an imported plan; the
+  /// generator never names a race. Mirrors training.ts.
+  final String? raceName;
+  final String? racePriority;
+
+  /// Set only on a workout read from a JSON export a B/C race taper had
+  /// eased (decisions § 2063); the generator never sets it. Mirrors
+  /// training.ts.
+  final String? raceTaperAppliedAt;
+
   const GeneratedWorkout({
     required this.scheduledDate,
     required this.kind,
@@ -444,6 +454,9 @@ class GeneratedWorkout {
     this.targetPaceToleranceSec,
     this.structure,
     this.notes,
+    this.raceName,
+    this.racePriority,
+    this.raceTaperAppliedAt,
   });
 }
 

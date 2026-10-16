@@ -801,6 +801,11 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String homePlanUpNext(String name, String date) {
+    return '次のプラン: $name（$date開始）';
+  }
+
+  @override
   String get homePlanStartsTomorrow => '明日開始';
 
   @override
@@ -5440,6 +5445,9 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String get plansStatusUpcoming => '開始前';
+
+  @override
   String get plansSignInTitle => 'ログインしてトレーニングプランを使用';
 
   @override
@@ -5847,19 +5855,134 @@ class AppLocalizationsJa extends AppLocalizations {
   String get planNewReplaceActiveTitle => 'アクティブなプランを置き換えますか？';
 
   @override
-  String planNewReplaceActiveNamed(String name) {
-    return 'すでにアクティブなプランがあります:「$name」。新しいプランを作成すると、現在のプランは完了としてマークされます（「プランの管理」から引き続き確認できます）。続行しますか？';
-  }
-
-  @override
-  String get planNewReplaceActiveUnnamed =>
-      'すでにアクティブなプランがあります。新しいプランを作成すると、現在のプランは完了としてマークされます。続行しますか？';
-
-  @override
   String get planNewReplaceActiveConfirm => 'プランを置き換える';
 
   @override
   String get planNewReplaceActiveKeep => '現在のプランを保持';
+
+  @override
+  String get planOverlapTitle => 'この期間はアクティブなプランと重なっています';
+
+  @override
+  String planOverlapBody(String start, String end) {
+    return '新しいプランの期間は$start〜$endです。1日にアクティブにできるプランは1つだけで、次のプランと重なっています:';
+  }
+
+  @override
+  String planOverlapPlanLine(String name, String start, String end) {
+    return '$name: $start〜$end';
+  }
+
+  @override
+  String get planOverlapReplaceHint =>
+      '置き換えると、重なっているプランは完了としてマークされます。「プランの管理」から引き続き確認できます。';
+
+  @override
+  String planOverlapTrimHint(String name, String date) {
+    return '$nameを早めに終了すると、終えた週は残り、$dateより後のワークアウトは削除されます。置き換えると完了としてマークされます。';
+  }
+
+  @override
+  String planOverlapTrim(String name, String date) {
+    return '$nameを$dateに終了';
+  }
+
+  @override
+  String planOverlapTrimMany(String date) {
+    return 'すべて$dateに終了';
+  }
+
+  @override
+  String planOverlapTrimHintMany(String date) {
+    return '早めに終了すると、終えた週は残り、$dateより後のワークアウトは削除されます。置き換えると完了としてマークされます。';
+  }
+
+  @override
+  String get planOverlapConflict =>
+      'この期間には別のアクティブなプランが入っています。プランを確認して、もう一度お試しください。';
+
+  @override
+  String planOverlapTrimBlocked(String plan, String date) {
+    return '$planには$dateより後に完了したワークアウトがあります。代わりに置き換えるか、新しいプランの開始を遅らせてください。';
+  }
+
+  @override
+  String planOverlapTrimBlockedUnnamed(String date) {
+    return '早めに終了しようとしたプランには$dateより後に完了したワークアウトがあります。代わりに置き換えるか、新しいプランの開始を遅らせてください。';
+  }
+
+  @override
+  String get planDetailDuplicateWeekOverlap =>
+      'この週を複製すると、プランが別のアクティブなプランの期間に重なります。先にそのプランを移動するか終了してください。';
+
+  @override
+  String get planNewImportButton => 'プランをインポート';
+
+  @override
+  String get planImportTitle => 'プランをインポート';
+
+  @override
+  String get planImportIntro =>
+      'ウェブアプリからエクスポートしたプラン、またはWeek、Date、Typeの列がある表を貼り付けてください。読み込むと、作成する前に各週を確認できます。';
+
+  @override
+  String get planImportPasteLabel => 'プランの表またはJSON';
+
+  @override
+  String get planImportLoad => '読み込む';
+
+  @override
+  String planImportParseError(String detail) {
+    return 'このプランを読み取れませんでした: $detail';
+  }
+
+  @override
+  String planImportPreviewDates(String start, String end) {
+    return '$start〜$end';
+  }
+
+  @override
+  String planImportPreviewCounts(int weeks, int workouts) {
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '$weeks週間',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      workouts,
+      locale: localeName,
+      other: 'ワークアウト$workouts件',
+    );
+    return '$_temp0 · $_temp1';
+  }
+
+  @override
+  String planImportPreviewWeek(int week, int workouts) {
+    String _temp0 = intl.Intl.pluralLogic(
+      workouts,
+      locale: localeName,
+      other: 'ワークアウト$workouts件',
+    );
+    return '第$week週: $_temp0';
+  }
+
+  @override
+  String planImportPreviewRace(String name, String date) {
+    return 'レース: $name、$date';
+  }
+
+  @override
+  String get planImportPreviewRaceUnnamed => '名前のないレース';
+
+  @override
+  String get planImportCreate => 'プランを作成';
+
+  @override
+  String get planImportCreateFailed => 'プランを作成できませんでした。接続を確認してもう一度お試しください。';
+
+  @override
+  String get planOverlapLookupFailed =>
+      'この期間のアクティブなプランを確認できませんでした。接続を確認してもう一度お試しください。';
 
   @override
   String get planNewStarterC25k => 'カウチ・トゥ・5K（初心者ウォークラン）';
@@ -5884,6 +6007,14 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get planDetailPublishTooltip => 'クラブテンプレートとして公開';
+
+  @override
+  String get planDetailRacesTitle => 'このプランのレース';
+
+  @override
+  String planDetailRacePriority(String priority) {
+    return '優先度$priority';
+  }
 
   @override
   String planDetailDaysPerWeek(int count) {
@@ -5948,6 +6079,39 @@ class AppLocalizationsJa extends AppLocalizations {
       '直近で終了した3週間を見て、2週間以上が計画を上回るか下回っていた場合に変更を提案します。1週間だけの例外で計画が動かないようにするためです。しばらく計画から外れているときに使います。';
 
   @override
+  String get planDetailRaceTaper => 'B/Cレース前後のテーパリング';
+
+  @override
+  String get planDetailAdjustRaceTaperDesc =>
+      '今後のBレース・Cレースそれぞれの前の数日と後の数日を軽くし、疲れのない状態でレースに臨み、トレーニングが再び強まる前に回復できるようにします。Aレースとそのテーパリングはそのままです。';
+
+  @override
+  String get planDetailRaceTaperNone => 'テーパリングが必要な今後のBレース・Cレースはありません。';
+
+  @override
+  String get planDetailRaceTaperPreviewTitle => 'テーパリングと回復の変更案';
+
+  @override
+  String planDetailRaceTaperPre(String change, String race) {
+    return '$change — $raceに向けたテーパリング';
+  }
+
+  @override
+  String planDetailRaceTaperShakeout(String change, String race) {
+    return '$change — $race前の軽い調整ラン';
+  }
+
+  @override
+  String planDetailRaceTaperPost(String change, String race) {
+    return '$change — $race後の回復';
+  }
+
+  @override
+  String planDetailHeroNextRace(String name) {
+    return '次のレース: $name';
+  }
+
+  @override
   String get planDetailAdjustPauseDesc =>
       '何も削除せずに、再開するまでプランを保留します。体調不良、けが、旅行のときに使います。';
 
@@ -5968,8 +6132,8 @@ class AppLocalizationsJa extends AppLocalizations {
   String get planDetailResumeDone => 'プランを再開しました。';
 
   @override
-  String get planDetailResumeBlocked =>
-      'すでにアクティブなプランがあります。先にそれを一時停止するか終了してください。';
+  String get planDetailResumeOverlap =>
+      'この期間に重なる別のアクティブなプランがあります。先にそのプランを一時停止、完了、または早めに終了してください。';
 
   @override
   String get planDetailAdaptiveOnTrack => '直近の週は計画どおりです。調整は不要です。';
@@ -9481,6 +9645,33 @@ class AppLocalizationsJa extends AppLocalizations {
   String get workoutEditNotesLabel => 'メモ';
 
   @override
+  String get workoutEditRaceNameLabel => 'レース名';
+
+  @override
+  String get workoutEditRacePriorityLabel => 'レースの優先度';
+
+  @override
+  String get workoutEditRacePriorityAuto => '自動';
+
+  @override
+  String get racePriorityOptionA => 'A — 目標レース';
+
+  @override
+  String get racePriorityOptionB => 'B — 重要なレース';
+
+  @override
+  String get racePriorityOptionC => 'C — 調整レース';
+
+  @override
+  String get workoutEditRaceGoalTimeLabel => '目標タイム';
+
+  @override
+  String get workoutEditRaceGoalTimeHint => '例: 6:30:00';
+
+  @override
+  String get workoutEditErrRaceGoalTime => '目標タイムは 6:30:00 の形式で入力してください';
+
+  @override
   String get workoutEditCancel => 'キャンセル';
 
   @override
@@ -11958,8 +12149,46 @@ class AppLocalizationsJa extends AppLocalizations {
   String get coachingAthleteAssignedByYou => 'あなたが割り当て';
 
   @override
-  String get coachingAthleteCannotAssignHasPlan =>
-      'このアスリートには既にアクティブなプランがあります。新しいプランを割り当てる前に、完了または終了する必要があります。';
+  String coachingAthleteAssignAfterOne(String name, String plan, String end) {
+    return '$nameさんのプラン「$plan」は$endまで続きます。割り当てるプランはこれと重ねられないため、この日より後に開始してください。';
+  }
+
+  @override
+  String coachingAthleteAssignAfterTwo(
+    String name,
+    String plan,
+    String end,
+    String next,
+    String nextStart,
+    String nextEnd,
+  ) {
+    return '$nameさんのプラン「$plan」は$endまで続き、その後「$next」が$nextStart〜$nextEndに予定されています。割り当てるプランはどちらとも重ねられません。';
+  }
+
+  @override
+  String coachingAthleteAssignAfterMany(
+    String name,
+    int count,
+    String plans,
+    String end,
+  ) {
+    return '$nameさんにはこれから$count件のプランがあります：$plans。割り当てるプランはいずれとも重ねられないため、$endより後か、プランの間の空いた期間に開始してください。';
+  }
+
+  @override
+  String coachingAthleteAssignOverlapNamed(
+    String name,
+    String plan,
+    String start,
+    String end,
+  ) {
+    return 'その期間は$nameさんのプラン「$plan」（$start〜$end）と重なっています。終了後の開始日を選んでください。';
+  }
+
+  @override
+  String coachingAthleteAssignOverlap(String name) {
+    return 'その期間は$nameさんのアクティブなプランのいずれかと重なっています。終了後の開始日を選んでください。';
+  }
 
   @override
   String get coachingAthleteComplete => '完了';
@@ -15430,4 +15659,85 @@ class AppLocalizationsJa extends AppLocalizations {
   String coachingAthleteRunMapLabel(String date) {
     return '$dateのランの地図（アスリートのプライバシーゾーンを除く）';
   }
+
+  @override
+  String get stravaClubsHeading => 'あなたの Strava クラブ';
+
+  @override
+  String get stravaClubsIntro => 'Strava で参加しているクラブです。このリストはあなたにしか表示されません。';
+
+  @override
+  String get stravaClubsEmpty => 'Strava で参加しているクラブはありません。';
+
+  @override
+  String get stravaClubsLoadError => 'Strava クラブを読み込めませんでした。';
+
+  @override
+  String get stravaClubsReconnectText =>
+      'Strava との接続の有効期限が切れたため、Strava クラブを表示できません。';
+
+  @override
+  String get stravaClubsReconnect => 'Strava を再接続';
+
+  @override
+  String get stravaClubsSetUp => 'Threkir で立ち上げる';
+
+  @override
+  String get stravaClubsLinkToMine => '自分のクラブとリンク';
+
+  @override
+  String get stravaClubsPickClubLabel => 'これはあなたのどのクラブですか？';
+
+  @override
+  String get stravaClubsAdminOnly =>
+      'このクラブを Threkir に追加できるのは、Strava でこのクラブの管理者になっている人だけです。';
+
+  @override
+  String stravaClubsViewOnThrekir(String name) {
+    return '$name を見る';
+  }
+
+  @override
+  String get stravaClubsUnlink => 'リンクを解除';
+
+  @override
+  String stravaClubsLinked(String name) {
+    return '$name とリンクしました。';
+  }
+
+  @override
+  String get stravaClubsLinkedNew => 'クラブを Strava のクラブとリンクしました。';
+
+  @override
+  String stravaClubsUnlinked(String name) {
+    return '$name と Strava のリンクを解除しました。';
+  }
+
+  @override
+  String get stravaClubsSetUpNote => 'クラブを作成すると、Strava のクラブとリンクされます。';
+
+  @override
+  String stravaClubsCreatedNotLinked(String reason) {
+    return 'クラブは作成されましたが、Strava とリンクできませんでした：$reason';
+  }
+
+  @override
+  String get stravaClubsErrAdminRequired =>
+      'Strava によると、あなたはこのクラブの管理者ではないため、リンクできません。';
+
+  @override
+  String get stravaClubsErrAlreadyLinked =>
+      'この Strava クラブは、すでに Threkir の別のクラブとリンクされています。';
+
+  @override
+  String get stravaClubsErrNotClubAdmin => 'リンクできるのは、Threkir クラブのオーナーか管理者だけです。';
+
+  @override
+  String get stravaClubsErrReconnect => '設定で Strava を再接続してから、もう一度お試しください。';
+
+  @override
+  String get stravaClubsErrGeneric => 'クラブをリンクできませんでした。もう一度お試しください。';
+
+  @override
+  String get stravaClubsErrUnlink => 'リンクを解除できませんでした。もう一度お試しください。';
 }

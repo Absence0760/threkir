@@ -6,10 +6,12 @@ import 'package:ui_kit/ui_kit.dart' show ListSkeleton;
 
 import '../auth_error.dart';
 import '../l10n/gen/app_localizations.dart';
+import '../plan_overlap.dart';
 import '../training.dart';
 import '../training_service.dart';
 import '../backend_timeout.dart';
 import '../widgets/error_state.dart';
+import '../widgets/plan_overlap_dialog.dart';
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/top_banner.dart';
 import 'plan_detail_screen.dart';
@@ -239,10 +241,20 @@ class _PlanLibraryPreviewScreenState extends State<PlanLibraryPreviewScreen> {
     }
     if (!mounted) return;
     final l10n = AppLocalizations.of(context);
+    final startIso = toIsoDate(_startDate);
+    final endIso = clonedPlanEndIso(widget.entry.plan, startIso,
+        start: planRowStartIso, end: planRowEndIso);
+    final action = await confirmPlanOverlap(context, widget.training,
+        startIso: startIso, endIso: endIso);
+    if (action == null || !mounted) return;
     setState(() => _cloning = true);
     try {
       final newId = await widget.training
-          .clonePublicPlan(templateId: widget.entry.plan.id, startDate: _startDate)
+          .clonePublicPlan(
+            templateId: widget.entry.plan.id,
+            startDate: _startDate,
+            onOverlap: action,
+          )
           .timeout(kBackendLoadTimeout);
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
@@ -254,7 +266,10 @@ class _PlanLibraryPreviewScreenState extends State<PlanLibraryPreviewScreen> {
       debugPrint('plan library clone failed: $e');
       if (mounted) {
         setState(() => _cloning = false);
-        showTopBanner(context, l10n.planLibraryCloneFailed(friendlyError(l10n, e)));
+        showTopBanner(
+            context,
+            planOverlapErrorText(context, e) ??
+                l10n.planLibraryCloneFailed(friendlyError(l10n, e)));
       }
     }
   }

@@ -61,6 +61,7 @@ import '../widgets/this_week_strip.dart';
 import '../widgets/goal_editor_sheet.dart';
 import '../widgets/todays_workout_card.dart';
 import '../widgets/next_race_card.dart';
+import '../widgets/up_next_plan_card.dart';
 import '../widgets/training_load_chart.dart';
 import 'add_run_screen.dart';
 import 'coach_screen.dart';
@@ -656,16 +657,32 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  /// The active plan's race-day countdown, or null with no active plan or
-  /// once its race day has passed.
+  /// The shown plan's race-day countdown (or "starts in" before it begins),
+  /// with the plan queued after it beneath. Null with neither: no active
+  /// plan, or a race day passed with nothing queued.
   Widget? _nextRaceCard(DateTime now) {
     final p = _planOverview;
-    if (p == null || !NextRaceCard.shows(p, now)) return null;
-    return NextRaceCard(
-      key: const Key('dashboardNextRace'),
-      overview: p,
-      now: now,
-      onTap: _openTodayWorkout,
+    if (p == null) return null;
+    final race = NextRaceCard.shows(p, now)
+        ? NextRaceCard(
+            key: const Key('dashboardNextRace'),
+            overview: p,
+            now: now,
+            onTap: _openTodayWorkout,
+          )
+        : null;
+    final upNext = UpNextPlanCard.shows(p)
+        ? UpNextPlanCard(
+            key: const Key('dashboardUpNextPlan'),
+            overview: p,
+            now: now,
+            onTap: () => _openPlan(p.upcomingPlan!.id),
+          )
+        : null;
+    if (race == null || upNext == null) return race ?? upNext;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [race, const SizedBox(height: 8), upNext],
     );
   }
 
@@ -689,6 +706,16 @@ class _DashboardScreenState extends State<DashboardScreen>
         MaterialPageRoute<void>(
           builder: (_) => CoachScreen(api: api, training: training),
         ),
+      ),
+    );
+  }
+
+  void _openPlan(String planId) {
+    final svc = widget.training;
+    if (svc == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PlanDetailScreen(training: svc, planId: planId),
       ),
     );
   }
@@ -1100,14 +1127,15 @@ class _DashboardScreenState extends State<DashboardScreen>
               theme: theme,
               planAbove: heroWorkoutCard != null,
               onStartRun: widget.onStartRun,
-              // Shown to the account that has not said whether it lifts. Once
-              // it has — the setup wizard's track step, or Settings — the link
-              // would contradict the answer just given, and sits a mis-tap
-              // under Start a run (decisions § 1650: only a touched choice is
-              // an answer).
-              onLogLift: widget.preferences.showGym == null
-                  ? widget.onLogLift
-                  : null,
+              // Hidden only from the account that said it does not lift (the
+              // setup wizard's track step, or Settings); that is the one answer
+              // the link would contradict. An account that said it lifts and
+              // has logged nothing is who the hint is for, and an unanswered
+              // one may lift too. Same rule as web's DashboardFirstRun
+              // (decisions § 2041).
+              onLogLift: widget.preferences.showGym == false
+                  ? null
+                  : widget.onLogLift,
               onAddGoal: _newGoal,
               onImport: _openImport,
             ),

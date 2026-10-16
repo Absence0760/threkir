@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
+	import { isPlanOverlapError, thrownMessage } from '#lib/core/supabase_error.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { onMount, tick } from 'svelte';
 	import { afterNavigate, replaceState } from '$app/navigation';
@@ -12,18 +12,25 @@
 		publishPlanToLibrary,
 		unpublishFromLibrary,
 		fetchMyPublishedPlans,
+		applyWorkoutAdjustments,
 		updatePlanWorkout,
-		updatePlanWeek,
-		updatePlanMeta,
 		duplicatePlanWeek,
+		fetchMyActivePlanWindows,
+		shiftTrainingPlan,
 		pausePlan,
 		resumePlan,
 		ActivePlanExistsError,
 	} from '#lib/core/data.ts';
-	import { shiftIsoDate, recoveryWorkoutPatch, recoveryWeekVolume } from '#lib/training/plan_bulk_ops.ts';
+	import { recoveryWorkoutPatch } from '#lib/training/plan_bulk_ops.ts';
+	import { planShiftImpact } from '#lib/training/plan_shift.ts';
 	import { cyclePlanWorkoutPatch, type CyclePlanConfig } from '#lib/training/cycle_plan.ts';
 	import { isCyclePlansEnabled } from '#lib/training/cycle_plan_flag.ts';
 	import { replanRemaining, type ReplanChange, type ReplanWeek } from '#lib/training/plan_replan.ts';
+	import {
+		raceTaperAdjustments,
+		raceTaperProposals,
+		type RaceTaperChange
+	} from '#lib/training/race_taper.ts';
 	import {
 		adaptiveReplanRemaining,
 		type AdaptiveReason,
@@ -71,6 +78,7 @@
 		planWorkoutProgress
 	} from '#lib/training/plan_progress.ts';
 	import { planToMarkdown, planToJson, type ExportPlan } from '#lib/training/plan_serialize.ts';
+	import { nextRace, planRaces } from '#lib/training/plan_races.ts';
 	import { planSlug } from '#lib/training/plan_slug.ts';
 	import { workoutKindLabel, planPhaseLabel } from '#lib/training/workout_labels.ts';
 	import { fmtKm, fmtPace } from '#lib/format/units.svelte.ts';
@@ -78,6 +86,8 @@
 	import { loadSettings, effective } from '#lib/settings/settings.ts';
 	import type { WeekStart } from '#lib/format/calendar.ts';
 	import type { TrainingPlan, PlanWeek, PlanWorkout, ClubWithMeta } from '#lib/types.ts';
+
+	type PlanName = Pick<TrainingPlan, 'id' | 'name' | 'start_date' | 'end_date'>;
 
 	let id = $derived(page.params.id as string);
 	let plan = $state<TrainingPlan | null>(null);
@@ -118,8 +128,8 @@
 	}
 
 	let showRaceDay = $derived.by(() => {
-		if (!plan) return false;
-		const days = daysUntilRace(plan.end_date, new Date());
+		if (!upcomingRace || upcomingRace.distanceM == null) return false;
+		const days = daysUntilRace(upcomingRace.date, new Date());
 		// Show within 21 days of race day (Strava's "race week" surface
 		// is +/-14; we widen it slightly to cover a proper taper).
 		return days >= 0 && days <= 21;
@@ -178,6 +188,10 @@
 				target_distance_m: w.target_distance_m,
 				target_pace_sec_per_km: w.target_pace_sec_per_km,
 				notes: w.notes,
+				target_duration_seconds: w.target_duration_seconds,
+				race_name: w.race_name,
+				race_priority: w.race_priority,
+				race_taper_applied_at: w.race_taper_applied_at,
 			})),
 		};
 	}
@@ -265,7 +279,7 @@
 	// These three ops rewrite or re-date a chunk of the plan and can't be
 	// cleanly undone, so each routes through a ConfirmDialog before running.
 	let bulkConfirm = $state<
-		| { kind: 'shift' }
+		| { kind: 'shift'; following: PlanName[] }
 		| { kind: 'recovery'; week: PlanWeek }
 		| { kind: 'duplicate'; week: PlanWeek }
 		| { kind: 'cycle' }
@@ -289,19 +303,140 @@
 	let replanPreviewHeading = $state<HTMLHeadingElement>();
 
 	async function chooseConfirmed(
-		c: { kind: 'shift' } | { kind: 'cycle' } | { kind: 'pause' } | { kind: 'resume' },
+		c: { kind: 'cycle' } | { kind: 'pause' } | { kind: 'resume' },
 	): Promise<void> {
 		adjustOpen = false;
 		await tick();
 		bulkConfirm = c;
 	}
 
+	/// Check the shift against the runner's other active plans before asking
+	/// (plan_shift.ts, decisions § 2052). Landing on a plan queued after this
+	/// one turns the confirm into "also move it"; landing on the plan before is
+	/// refused here, since moving that one would rewrite history. A failed check
+	/// asks nothing: the shift is never offered blind.
+	async function chooseShift(): Promise<void> {
+		if (!plan || !shiftDays) return;
+		adjustOpen = false;
+		await tick();
+		let others: PlanName[];
+		try {
+			others = await fetchMyActivePlanWindows();
+		} catch (e) {
+			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+			return;
+		}
+		const impact = planShiftImpact(plan, others, shiftDays);
+		if (impact.kind === 'blocked') {
+			showToast(m('planDetail.shiftBlocked', { plans: planNames(impact.blocking) }), 'error');
+			return;
+		}
+		bulkConfirm = { kind: 'shift', following: impact.kind === 'following' ? impact.following : [] };
+	}
+
+	function planNames(plans: PlanName[]): string {
+		return new Intl.ListFormat(activeFormatLocale(), { type: 'conjunction' }).format(plans.map((p) => p.name));
+	}
+
+	/// A failed plan date write. 23P01 is the only exclusion constraint there
+	/// is (training_plans_active_no_overlap), so it is said in the runner's
+	/// language rather than as the data layer's English.
+	function planWriteFailed(e: unknown): void {
+		showToast(
+			isPlanOverlapError(e)
+				? m('planDetail.planOverlap')
+				: m('planDetail.bulkFailed', { error: thrownMessage(e) }),
+			'error',
+		);
+	}
+
 	async function chooseReplan(propose: () => void): Promise<void> {
 		adjustOpen = false;
+		taperPreview = null;
 		await tick();
 		propose();
 		await tick();
 		replanPreviewHeading?.focus();
+	}
+
+	// ─── Taper around B/C races (owner-only, decisions § 2051) ───
+	// The plan's phases only taper for the A race at its end, so a B or C race
+	// mid-block gets its mini-taper and recovery proposed here, previewed like
+	// a re-plan, and applied only on the runner's say-so.
+	let taperPreview = $state<RaceTaperChange[] | null>(null);
+	let taperPreviewHeading = $state<HTMLHeadingElement>();
+
+	function proposeRaceTaper(): void {
+		if (!plan || !isOwner || bulkBusy) return;
+		const input = weeks.flatMap((wk) =>
+			(workoutsByWeek.get(wk.id) ?? []).map((x) => ({
+				id: x.id,
+				scheduledDate: x.scheduled_date,
+				kind: x.kind,
+				targetDistanceM: x.target_distance_m,
+				phase: wk.phase,
+				completed: isWorkoutCompleted(x),
+				skipped: isWorkoutSkipped(x),
+				taperApplied: x.race_taper_applied_at != null
+			}))
+		);
+		const changes = raceTaperProposals({ workouts: input, races, today });
+		replanPreview = null;
+		adaptiveInfo = null;
+		if (changes.length === 0) {
+			taperPreview = null;
+			showToast(m('planDetail.raceTaperNone'));
+			return;
+		}
+		taperPreview = changes;
+	}
+
+	async function chooseRaceTaper(): Promise<void> {
+		adjustOpen = false;
+		await tick();
+		proposeRaceTaper();
+		await tick();
+		taperPreviewHeading?.focus();
+	}
+
+	async function dismissRaceTaper(): Promise<void> {
+		taperPreview = null;
+		await tick();
+		adjustButton?.focus();
+	}
+
+	/// Writes every proposed patch and restates each touched week's volume in
+	/// one transaction (`apply_workout_adjustments`, decisions § 2062), so a
+	/// failure changes nothing. The page reloads either way, so it never shows
+	/// a state the server does not hold.
+	async function applyRaceTaper(): Promise<void> {
+		if (!plan || !taperPreview || bulkBusy) return;
+		bulkBusy = true;
+		try {
+			const changes = taperPreview;
+			await applyWorkoutAdjustments(
+				plan.id,
+				raceTaperAdjustments(changes, new Date().toISOString())
+			);
+			showToast(m('planDetail.replanApplied', { n: changes.length }));
+			taperPreview = null;
+			await load();
+		} catch (e) {
+			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+			await load();
+		} finally {
+			bulkBusy = false;
+		}
+	}
+
+	function taperChangeLabel(c: RaceTaperChange): string {
+		const side = (kind: string, metres: number | null) =>
+			metres != null ? `${workoutKindLabel(kind)} ${fmtKm(metres)}` : workoutKindLabel(kind);
+		const change = `${side(c.fromKind, c.fromMetres)} → ${side(c.toKind, c.toMetres)}`;
+		const race = c.raceName ?? fmtRaceDate(c.raceDate);
+		if (c.reason === 'shakeout') return m('planDetail.raceTaperShakeout', { change, race });
+		if (c.reason === 'pre_race') return m('planDetail.raceTaperPre', { change, race });
+		return m('planDetail.raceTaperPost', { change, race });
 	}
 
 	// "Adjust with AI" (decisions § 1979). Needs the Coach on as well: a plan
@@ -358,7 +493,7 @@
 		const c = bulkConfirm;
 		bulkConfirm = null;
 		if (!c) return;
-		if (c.kind === 'shift') void shiftPlan();
+		if (c.kind === 'shift') void shiftPlan(c.following.length > 0);
 		else if (c.kind === 'recovery') void markWeekRecovery(c.week);
 		else if (c.kind === 'duplicate') void duplicateWeek(c.week);
 		else if (c.kind === 'cycle') void applyCycleAdjustment();
@@ -367,26 +502,17 @@
 	}
 
 	/// Move every workout + the plan's start/end by ±N days (race moved,
-	/// runner started a week late, …). Orchestrated client-side: one
-	/// update per workout then the plan meta; on partial failure the
-	/// reload surfaces the real server state.
-	async function shiftPlan(): Promise<void> {
+	/// runner started a week late, …) in one transaction (shift_training_plan),
+	/// with the plans queued after it when the runner chose to move them too.
+	async function shiftPlan(shiftFollowing: boolean): Promise<void> {
 		if (!plan || bulkBusy || !shiftDays) return;
 		bulkBusy = true;
 		try {
-			await Promise.all(
-				workouts.map((w) =>
-					updatePlanWorkout(w.id, { scheduled_date: shiftIsoDate(w.scheduled_date, shiftDays) }),
-				),
-			);
-			await updatePlanMeta(plan.id, {
-				start_date: shiftIsoDate(plan.start_date, shiftDays),
-				end_date: shiftIsoDate(plan.end_date, shiftDays),
-			});
+			await shiftTrainingPlan(plan.id, shiftDays, shiftFollowing);
 			showToast(m('planDetail.shiftDone', { n: Math.abs(shiftDays) }));
 			await load();
 		} catch (e) {
-			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+			planWriteFailed(e);
 		} finally {
 			bulkBusy = false;
 		}
@@ -399,18 +525,16 @@
 		if (bulkBusy) return;
 		bulkBusy = true;
 		try {
-			const weekWorkouts = workoutsByWeek.get(week.id) ?? [];
-			await Promise.all(
-				weekWorkouts.map((w) => {
-					const patch = recoveryWorkoutPatch(w);
-					return patch ? updatePlanWorkout(w.id, patch) : Promise.resolve();
-				}),
-			);
-			await updatePlanWeek(week.id, { target_volume_m: recoveryWeekVolume(week.target_volume_m) });
+			const changes = (workoutsByWeek.get(week.id) ?? []).flatMap((w) => {
+				const patch = recoveryWorkoutPatch(w);
+				return patch ? [{ id: w.id, ...patch }] : [];
+			});
+			if (changes.length) await applyWorkoutAdjustments(plan!.id, changes);
 			showToast(m('planDetail.recoveryDone'));
 			await load();
 		} catch (e) {
 			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+			await load();
 		} finally {
 			bulkBusy = false;
 		}
@@ -428,7 +552,7 @@
 			showToast(m('planDetail.duplicateWeekDone', { n: week.week_index + 1 }));
 			await load();
 		} catch (e) {
-			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+			planWriteFailed(e);
 		} finally {
 			bulkBusy = false;
 		}
@@ -436,9 +560,9 @@
 
 	/// Apply the cycle/pregnancy adjustment to the plan's FUTURE workouts only
 	/// (today onward) — the past is history, don't rewrite it. Each workout
-	/// gets its per-date patch (`cyclePlanWorkoutPatch`), then every touched
-	/// week's stated volume is recomputed from the patched distances so the
-	/// header stays honest. Orchestrated client-side like markWeekRecovery.
+	/// gets its per-date patch (`cyclePlanWorkoutPatch`), written with every
+	/// touched week's restated volume in one transaction
+	/// (`apply_workout_adjustments`, decisions § 2062).
 	async function applyCycleAdjustment(): Promise<void> {
 		if (!plan || !isOwner || bulkBusy || !cyclePlanConfig) return;
 		bulkBusy = true;
@@ -457,28 +581,15 @@
 				showToast(m('planDetail.cycleAdjustNone'));
 				return;
 			}
-			await Promise.all(
-				[...patchByWorkout].map(([wid, patch]) => updatePlanWorkout(wid, patch!)),
+			await applyWorkoutAdjustments(
+				plan.id,
+				[...patchByWorkout].map(([wid, patch]) => ({ id: wid, ...patch! })),
 			);
-			// Recompute the volume of every week that had a workout patched.
-			for (const wk of weeks) {
-				const wkWorkouts = workoutsByWeek.get(wk.id) ?? [];
-				if (!wkWorkouts.some((x) => patchByWorkout.has(x.id))) continue;
-				const vol = wkWorkouts.reduce((s, x) => {
-					if (x.kind === 'rest') return s;
-					const p = patchByWorkout.get(x.id);
-					const d =
-						p && 'target_distance_m' in p
-							? (p.target_distance_m ?? 0)
-							: (x.target_distance_m ?? 0);
-					return s + d;
-				}, 0);
-				await updatePlanWeek(wk.id, { target_volume_m: vol });
-			}
 			showToast(m('planDetail.cycleAdjustDone'));
 			await load();
 		} catch (e) {
 			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+			await load();
 		} finally {
 			bulkBusy = false;
 		}
@@ -509,7 +620,9 @@
 			showToast(m('planDetail.resumeDone'));
 			await load();
 		} catch (e) {
-			if (e instanceof ActivePlanExistsError) {
+			// The pre-check and the constraint say the same thing; the
+			// constraint catches a plan created between the two.
+			if (e instanceof ActivePlanExistsError || isPlanOverlapError(e)) {
 				showToast(m('planDetail.resumeBlocked'), 'error');
 			} else {
 				showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
@@ -651,14 +764,17 @@
 		return m('planDetail.adaptiveBadge', { reason, confidence });
 	}
 
+	/// Re-plan and adaptive re-plan write their distance changes, and restate
+	/// each touched week's volume, in one transaction
+	/// (`apply_workout_adjustments`, decisions § 2062); the page reloads on
+	/// failure so it never shows a half-applied plan.
 	async function applyReplan(): Promise<void> {
-		if (!replanPreview || bulkBusy) return;
+		if (!plan || !replanPreview || bulkBusy) return;
 		bulkBusy = true;
 		try {
-			await Promise.all(
-				replanPreview.map((c) =>
-					updatePlanWorkout(c.workoutId, { target_distance_m: c.toMetres }),
-				),
+			await applyWorkoutAdjustments(
+				plan.id,
+				replanPreview.map((c) => ({ id: c.workoutId, target_distance_m: c.toMetres })),
 			);
 			showToast(m('planDetail.replanApplied', { n: replanPreview.length }));
 			replanPreview = null;
@@ -666,6 +782,7 @@
 			await load();
 		} catch (e) {
 			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+			await load();
 		} finally {
 			bulkBusy = false;
 		}
@@ -832,6 +949,19 @@
 
 	let today = $derived(todayISO());
 
+	/// Every race the plan builds toward (plan_races.ts, decisions § 2009); the
+	/// countdown, race-week panel and hero relation follow the next one, so a
+	/// B race mid-block gets its own run-in before the plan's A race.
+	let races = $derived(plan ? planRaces(plan, workouts) : []);
+	let upcomingRace = $derived(nextRace(races, today));
+	/// The hero's distance / goal / date follow the next race once it is not
+	/// the plan's own A race on the end date; the A goal stays in the races list.
+	let heroRace = $derived(
+		plan && upcomingRace && !(upcomingRace.priority === 'A' && upcomingRace.date === plan.end_date)
+			? upcomingRace
+			: null
+	);
+
 	let todayWorkout = $derived(
 		workouts.find((w) => w.scheduled_date === today) ?? null
 	);
@@ -855,6 +985,12 @@
 		if (!plan) return null;
 		const start = parseISO(plan.start_date);
 		const end = parseISO(plan.end_date);
+		const raceDate = parseISO(upcomingRace?.date ?? plan.end_date);
+		// A named race before the plan's end reads as "<name> in N days".
+		const namedRace =
+			upcomingRace && upcomingRace.name && upcomingRace.date !== plan.end_date
+				? upcomingRace.name
+				: null;
 		const t = parseISO(today);
 		const dayMs = 86_400_000;
 		const totalWeeks = weeks.length > 0 ? weeks.length : 1;
@@ -874,15 +1010,19 @@
 			relation = m('planDetail.raceDayPast');
 			raceState = 'past';
 		} else {
-			const d = Math.round((end.getTime() - t.getTime()) / dayMs);
+			const d = Math.round((raceDate.getTime() - t.getTime()) / dayMs);
 			if (d === 0) {
-				relation = m('planDetail.raceDay');
+				relation = namedRace ? m('planDetail.namedRaceDay', { name: namedRace }) : m('planDetail.raceDay');
 				raceState = 'today';
 			} else if (d === 1) {
-				relation = m('planDetail.raceTomorrow');
+				relation = namedRace
+					? m('planDetail.namedRaceTomorrow', { name: namedRace })
+					: m('planDetail.raceTomorrow');
 				raceState = 'upcoming';
 			} else {
-				relation = m('planDetail.raceInDays', { d });
+				relation = namedRace
+					? m('planDetail.namedRaceInDays', { name: namedRace, d })
+					: m('planDetail.raceInDays', { d });
 				raceState = 'upcoming';
 			}
 		}
@@ -1120,16 +1260,40 @@
 						</span>
 					{/if}
 				</div>
+				{#if heroRace}
+					<p class="hero-next-race" data-testid="hero-next-race">
+						<span
+							class="race-priority p-{heroRace.priority.toLowerCase()}"
+							aria-label={m('planDetail.racePriorityAria', { priority: heroRace.priority })}
+						>{heroRace.priority}</span>
+						{m('planDetail.heroNextRace', { name: heroRace.name ?? plan.name })}
+					</p>
+				{/if}
 				<div class="meta">
-					<span>
-						<span class="material-symbols">flag</span>
-						{fmtKm(plan.goal_distance_m, 1)}
-					</span>
-					{#if plan.goal_time_seconds}
+					{#if heroRace}
+						{#if heroRace.distanceM != null}
+							<span>
+								<span class="material-symbols">flag</span>
+								{fmtKm(heroRace.distanceM, 1)}
+							</span>
+						{/if}
+						{#if heroRace.goalTimeSec != null}
+							<span>
+								<span class="material-symbols">timer</span>
+								{fmtHms(heroRace.goalTimeSec)}
+							</span>
+						{/if}
+					{:else}
 						<span>
-							<span class="material-symbols">timer</span>
-							{fmtHms(plan.goal_time_seconds)}
+							<span class="material-symbols">flag</span>
+							{fmtKm(plan.goal_distance_m, 1)}
 						</span>
+						{#if plan.goal_time_seconds}
+							<span>
+								<span class="material-symbols">timer</span>
+								{fmtHms(plan.goal_time_seconds)}
+							</span>
+						{/if}
 					{/if}
 					{#if plan.vdot}
 						<span>
@@ -1141,7 +1305,7 @@
 					{#if planPosition}
 						<span>
 							<span class="material-symbols">event</span>
-							{fmtRaceDate(plan.end_date)}
+							{fmtRaceDate(heroRace?.date ?? plan.end_date)}
 						</span>
 					{/if}
 				</div>
@@ -1195,6 +1359,32 @@
 						{m('planDetail.replanCancel')}
 					</button>
 					<button type="button" class="btn btn-primary btn-sm" onclick={applyReplan} disabled={bulkBusy}>
+						{m('planDetail.replanApply')}
+					</button>
+				</div>
+			</section>
+		{/if}
+
+		{#if isOwner && !plan.is_template && taperPreview}
+			<section
+				class="replan-preview"
+				aria-label={m('planDetail.raceTaperPreviewTitle')}
+				data-testid="race-taper-preview"
+			>
+				<h3 tabindex="-1" bind:this={taperPreviewHeading}>{m('planDetail.raceTaperPreviewTitle')}</h3>
+				<ul>
+					{#each taperPreview as c (c.workoutId)}
+						<li>
+							<span class="replan-date">{c.scheduledDate}</span>
+							<span class="replan-change">{taperChangeLabel(c)}</span>
+						</li>
+					{/each}
+				</ul>
+				<div class="replan-actions">
+					<button type="button" class="btn btn-secondary btn-sm" onclick={dismissRaceTaper} disabled={bulkBusy}>
+						{m('planDetail.replanCancel')}
+					</button>
+					<button type="button" class="btn btn-primary btn-sm" onclick={applyRaceTaper} disabled={bulkBusy}>
 						{m('planDetail.replanApply')}
 					</button>
 				</div>
@@ -1353,11 +1543,43 @@
 			</section>
 		{/if}
 
-		{#if showRaceDay && plan != null}
+		{#if races.length > 1}
+			<section class="plan-races" aria-labelledby="plan-races-title">
+				<h2 id="plan-races-title">{m('planDetail.racesTitle')}</h2>
+				<ul>
+					{#each races as r (r.workoutId ?? r.date)}
+						{@const isNext = upcomingRace != null && r.date === upcomingRace.date && r.workoutId === upcomingRace.workoutId}
+						<li class:next={isNext} class:past={r.date < today}>
+							<span
+								class="race-priority p-{r.priority.toLowerCase()}"
+								aria-label={m('planDetail.racePriorityAria', { priority: r.priority })}
+							>{r.priority}</span>
+							<span class="race-name">{r.name ?? plan.name}</span>
+							<span class="race-date">{fmtRaceDate(r.date)}</span>
+							{#if r.distanceM != null}
+								<span class="race-meta">{fmtKm(r.distanceM, 1)}</span>
+							{/if}
+							{#if r.goalTimeSec != null}
+								<span class="race-meta">
+									<span class="material-symbols" aria-hidden="true">timer</span>
+									{fmtHms(r.goalTimeSec)}
+								</span>
+							{/if}
+							{#if isNext}
+								<span class="race-next">{m('planDetail.raceNext')}</span>
+							{/if}
+						</li>
+					{/each}
+				</ul>
+			</section>
+		{/if}
+
+		{#if showRaceDay && upcomingRace != null && upcomingRace.distanceM != null}
 			<RaceDayPanel
-				raceDate={plan.end_date}
-				distanceM={plan.goal_distance_m}
-				goalTimeSec={plan.goal_time_seconds}
+				raceDate={upcomingRace.date}
+				raceName={upcomingRace.name}
+				distanceM={upcomingRace.distanceM}
+				goalTimeSec={upcomingRace.goalTimeSec}
 				{recentRuns}
 			/>
 		{/if}
@@ -1664,7 +1886,7 @@
 						type="button"
 						class="btn btn-outline btn-sm adjust-option-btn"
 						aria-describedby="adjust-shift-desc"
-						onclick={() => chooseConfirmed({ kind: 'shift' })}
+						onclick={chooseShift}
 						disabled={bulkBusy || !shiftDays}
 					>
 						<span class="material-symbols" aria-hidden="true">date_range</span>
@@ -1699,6 +1921,22 @@
 				</button>
 				<p class="adjust-option-desc" id="adjust-adaptive-desc">{m('planDetail.adjustAdaptiveDesc')}</p>
 			</li>
+			{#if races.some((r) => r.priority !== 'A' && r.date > today)}
+				<li class="adjust-option">
+					<button
+						type="button"
+						class="btn btn-outline btn-sm adjust-option-btn"
+						data-testid="race-taper-btn"
+						aria-describedby="adjust-race-taper-desc"
+						onclick={chooseRaceTaper}
+						disabled={bulkBusy}
+					>
+						<span class="material-symbols" aria-hidden="true">flag</span>
+						{m('planDetail.raceTaper')}
+					</button>
+					<p class="adjust-option-desc" id="adjust-race-taper-desc">{m('planDetail.adjustRaceTaperDesc')}</p>
+				</li>
+			{/if}
 			{#if showAiAdjust}
 				<li class="adjust-option">
 					<button
@@ -1786,7 +2024,12 @@
 						? m('planDetail.resumeConfirmTitle')
 						: m('planDetail.duplicateConfirmTitle')}
 	message={bulkConfirm?.kind === 'shift'
-		? m('planDetail.shiftConfirmMessage', { n: Math.abs(shiftDays) })
+		? bulkConfirm.following.length > 0
+			? m('planDetail.shiftFollowingMessage', {
+					n: Math.abs(shiftDays),
+					plans: planNames(bulkConfirm.following),
+				})
+			: m('planDetail.shiftConfirmMessage', { n: Math.abs(shiftDays) })
 		: bulkConfirm?.kind === 'recovery'
 			? m('planDetail.recoveryConfirmMessage', { n: bulkConfirm.week.week_index + 1 })
 			: bulkConfirm?.kind === 'duplicate'
@@ -1800,7 +2043,12 @@
 						: bulkConfirm?.kind === 'resume'
 							? m('planDetail.resumeConfirmMessage')
 							: ''}
-	confirmLabel={m('planDetail.bulkConfirm')}
+	confirmLabel={bulkConfirm?.kind === 'shift' && bulkConfirm.following.length > 0
+		? m('planDetail.shiftAlsoMove', {
+				plans: planNames(bulkConfirm.following),
+				n: Math.abs(shiftDays),
+			})
+		: m('planDetail.bulkConfirm')}
 	cancelLabel={m('planDetail.replanCancel')}
 	onconfirm={runBulkConfirm}
 	oncancel={() => (bulkConfirm = null)}
@@ -1941,6 +2189,86 @@
 	.chip-link:hover { color: var(--color-primary); }
 	.chip .material-symbols,
 	.chip-link .material-symbols { font-size: 0.95rem; }
+
+	.plan-races {
+		margin: 0 0 1.25rem;
+	}
+	.plan-races h2 {
+		font-size: 1rem;
+		margin: 0 0 0.5rem;
+	}
+	.plan-races ul {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.375rem;
+	}
+	.plan-races li {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.25rem 0.75rem;
+		padding: 0.5rem 0.75rem;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+		background: var(--color-surface);
+	}
+	.plan-races li.next {
+		border-color: var(--color-primary);
+	}
+	.plan-races li.past {
+		opacity: 0.6;
+	}
+	.race-priority {
+		display: inline-grid;
+		place-items: center;
+		min-width: 1.75rem;
+		height: 1.75rem;
+		border-radius: 999px;
+		font-weight: 700;
+		font-size: 0.8125rem;
+		background: var(--color-bg-secondary);
+		color: var(--color-text);
+	}
+	.race-priority.p-a {
+		background: var(--color-primary);
+		color: var(--color-on-primary);
+	}
+	.race-name {
+		font-weight: 600;
+		flex: 1 1 10rem;
+		min-width: 0;
+		overflow-wrap: anywhere;
+	}
+	.race-date,
+	.race-meta {
+		color: var(--color-text-secondary);
+		font-size: 0.875rem;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+	}
+	.race-meta .material-symbols {
+		font-size: 1rem;
+	}
+	.race-next {
+		font-size: 0.75rem;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		color: var(--color-primary);
+	}
+
+	.hero-next-race {
+		display: flex;
+		align-items: center;
+		gap: var(--space-xs);
+		margin: var(--space-xs) 0 0;
+		font-weight: 600;
+		overflow-wrap: anywhere;
+	}
 
 	.meta {
 		display: flex;

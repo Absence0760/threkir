@@ -84,16 +84,28 @@ void main() {
 
     // The only thing an applied re-plan writes is the workout distance the
     // shipped engine proposed — no load column, no new field.
-    final applyStart = screen.indexOf('Future<void> _applyReplan()');
+    final applyStart = screen.indexOf('Future<void> _applyReplan(');
     expect(applyStart >= 0, true, reason: 'could not locate _applyReplan — rename?');
     final applyBody = screen.substring(
         applyStart, screen.indexOf('await _load();', applyStart));
     expect(applyBody.isNotEmpty, true, reason: 'could not slice _applyReplan');
     expect(
-        RegExp(r'updateWorkout\(c\.workoutId,\s*targetDistanceM:\s*c\.toMetres\)')
+        RegExp(r'applyReplan\(\s*planId:\s*plan\.id,\s*distances:\s*\{\s*for \(final c in changes\)\s*c\.workoutId:\s*c\.toMetres\s*\},?\s*\)')
             .hasMatch(applyBody),
         true,
-        reason: 'applying a re-plan must write only targetDistanceM');
+        reason: 'applying a re-plan must send only each workout\'s proposed distance');
+    final service = _read('lib/training_service.dart');
+    final replanStart = service.indexOf('Future<void> applyReplan(');
+    expect(replanStart >= 0, true, reason: 'could not locate applyReplan — rename?');
+    final replanBody = service.substring(
+        replanStart, service.indexOf('Future<void> _applyWorkoutAdjustments(', replanStart));
+    expect(
+        RegExp(r'e\.key:\s*\{PlanWorkoutRow\.colTargetDistanceM:\s*e\.value\}')
+            .hasMatch(replanBody),
+        true,
+        reason: 'the re-plan write must patch only target_distance_m');
+    expect(RegExp(r'\b(tsb|atl|ctl)\b').hasMatch(replanBody), false,
+        reason: 'the re-plan write must not carry a load value');
     expect(RegExp(r'\b(tsb|atl|ctl)\b').hasMatch(applyBody), false,
         reason: 'the apply path must not carry a load value');
   });

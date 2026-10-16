@@ -1090,6 +1090,18 @@
       }
     }
   },
+  "homePlanUpNext": "Up next: {name}, starts {date}",
+  "@homePlanUpNext": {
+    "description": "Home card line naming the next active plan queued after the current one. date is its formatted start date",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "homePlanStartsTomorrow": "Starts tomorrow",
   "@homePlanStartsTomorrow": {
     "description": "Home plan card when the plan starts tomorrow"
@@ -7721,6 +7733,10 @@
       }
     }
   },
+  "plansStatusUpcoming": "upcoming",
+  "@plansStatusUpcoming": {
+    "description": "Status pill on a plan tile for an active plan that starts after today (queued behind the current plan). Lowercase to match the other status pills"
+  },
   "plansSignInTitle": "Sign in to use training plans",
   "@plansSignInTitle": {
     "description": "Sign-in prompt title on plans list"
@@ -8290,19 +8306,6 @@
   "@planNewReplaceActiveTitle": {
     "description": "Title of the confirm dialog shown before a new plan retires the current active one"
   },
-  "planNewReplaceActiveNamed": "You already have an active plan: \"{name}\". Creating a new plan will mark the current one as completed (you can still find it under Manage plans). Continue?",
-  "@planNewReplaceActiveNamed": {
-    "description": "Body of the replace-active-plan confirm dialog when the existing plan has a name",
-    "placeholders": {
-      "name": {
-        "type": "String"
-      }
-    }
-  },
-  "planNewReplaceActiveUnnamed": "You already have an active plan. Creating a new plan will mark the current one as completed. Continue?",
-  "@planNewReplaceActiveUnnamed": {
-    "description": "Body of the replace-active-plan confirm dialog when the existing plan name is unknown"
-  },
   "planNewReplaceActiveConfirm": "Replace plan",
   "@planNewReplaceActiveConfirm": {
     "description": "Confirm button of the replace-active-plan dialog"
@@ -8310,6 +8313,214 @@
   "planNewReplaceActiveKeep": "Keep current",
   "@planNewReplaceActiveKeep": {
     "description": "Cancel button of the replace-active-plan dialog"
+  },
+  "planOverlapTitle": "These dates overlap an active plan",
+  "@planOverlapTitle": {
+    "description": "Title of the dialog shown before creating or adopting a plan whose dates overlap one or more of the runner's active plans"
+  },
+  "planOverlapBody": "Your new plan runs {start} – {end}. Only one plan can be active on any day, and it overlaps:",
+  "@planOverlapBody": {
+    "description": "Body of the plan-overlap dialog, above the list of overlapping plans. start/end are formatted dates of the new plan",
+    "placeholders": {
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "planOverlapPlanLine": "{name}: {start} – {end}",
+  "@planOverlapPlanLine": {
+    "description": "One overlapping active plan in the plan-overlap dialog: its name and formatted date range",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "planOverlapReplaceHint": "Replace marks the overlapping plans as completed. You can still find them under Manage plans.",
+  "@planOverlapReplaceHint": {
+    "description": "Plan-overlap dialog hint when only Replace is offered"
+  },
+  "planOverlapTrimHint": "End {name} early to keep its finished weeks and remove its workouts after {date}, or replace it to mark it completed.",
+  "@planOverlapTrimHint": {
+    "description": "Plan-overlap dialog hint when the overlapping plan started earlier and can be ended the day before the new plan starts. date is that formatted end date",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planOverlapTrim": "End {name} on {date}",
+  "@planOverlapTrim": {
+    "description": "Plan-overlap dialog button: end the overlapping plan the day before the new one starts, so both stay active back to back",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planOverlapTrimMany": "End them on {date}",
+  "@planOverlapTrimMany": {
+    "description": "Plan-overlap dialog button when several active plans overlap: end all of them the day before the new one starts. The dialog lists them by name above",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planOverlapTrimHintMany": "End them early to keep their finished weeks and remove their workouts after {date}, or replace them to mark them completed.",
+  "@planOverlapTrimHintMany": {
+    "description": "Plan-overlap dialog hint when several overlapping plans can be ended the day before the new plan starts. date is that formatted end date",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planOverlapConflict": "Another active plan now covers these dates. Check your plans and try again.",
+  "@planOverlapConflict": {
+    "description": "Error when the server refuses a new plan because an active plan overlaps its dates (changed since the overlap check)"
+  },
+  "planOverlapTrimBlocked": "{plan} has completed workouts after {date}. Replace it instead, or start the new plan later.",
+  "@planOverlapTrimBlocked": {
+    "description": "Error when the runner chose to end an overlapping plan early but the server refused because that plan has completed workouts after the new end date; nothing changed. plan is that plan's name, date is the formatted end date the trim would have given it (the day before the new plan starts)",
+    "placeholders": {
+      "plan": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planOverlapTrimBlockedUnnamed": "The plan you chose to end early has completed workouts after {date}. Replace it instead, or start the new plan later.",
+  "@planOverlapTrimBlockedUnnamed": {
+    "description": "Same refusal as planOverlapTrimBlocked when the plan's name could not be looked up. date is the formatted end date the trim would have given it (the day before the new plan starts)",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailDuplicateWeekOverlap": "Duplicating this week would push the plan into another active plan's dates. Move or end that plan first.",
+  "@planDetailDuplicateWeekOverlap": {
+    "description": "Banner when duplicating a plan week is refused because the extra week would overlap another active plan"
+  },
+  "planNewImportButton": "Import a plan",
+  "@planNewImportButton": {
+    "description": "Button on the new-plan screen that opens the plan import sheet (paste a plan table or JSON export)"
+  },
+  "planImportTitle": "Import a plan",
+  "@planImportTitle": {
+    "description": "Title of the plan import sheet"
+  },
+  "planImportIntro": "Paste a plan exported from the web app, or a table with Week, Date and Type columns. Load it to check the weeks before you create it.",
+  "@planImportIntro": {
+    "description": "Explainer under the plan import sheet title. 'Week', 'Date' and 'Type' are the table column names the parser reads; keep them in English"
+  },
+  "planImportPasteLabel": "Plan table or JSON",
+  "@planImportPasteLabel": {
+    "description": "Label of the multi-line text box the runner pastes a plan into"
+  },
+  "planImportLoad": "Load",
+  "@planImportLoad": {
+    "description": "Button that parses the pasted plan and shows a preview"
+  },
+  "planImportParseError": "Couldn't read that plan: {detail}",
+  "@planImportParseError": {
+    "description": "Error under the paste box when the pasted plan can't be parsed; detail is the parser's (English) reason, e.g. a bad date on one row",
+    "placeholders": {
+      "detail": {
+        "type": "String",
+        "example": "Bad date \"07/05/2026\" — use YYYY-MM-DD."
+      }
+    }
+  },
+  "planImportPreviewDates": "{start} to {end}",
+  "@planImportPreviewDates": {
+    "description": "Date range of the imported plan in the preview",
+    "placeholders": {
+      "start": {
+        "type": "String",
+        "example": "28 Mar 2027"
+      },
+      "end": {
+        "type": "String",
+        "example": "13 Jun 2027"
+      }
+    }
+  },
+  "planImportPreviewCounts": "{weeks, plural, one{1 week} other{{weeks} weeks}} · {workouts, plural, one{1 workout} other{{workouts} workouts}}",
+  "@planImportPreviewCounts": {
+    "description": "How many weeks and workouts the pasted plan holds, in the import preview",
+    "placeholders": {
+      "weeks": {
+        "type": "int",
+        "example": "12"
+      },
+      "workouts": {
+        "type": "int",
+        "example": "60"
+      }
+    }
+  },
+  "planImportPreviewWeek": "Week {week}: {workouts, plural, one{1 workout} other{{workouts} workouts}}",
+  "@planImportPreviewWeek": {
+    "description": "One line per week in the import preview",
+    "placeholders": {
+      "week": {
+        "type": "int",
+        "example": "3"
+      },
+      "workouts": {
+        "type": "int",
+        "example": "5"
+      }
+    }
+  },
+  "planImportPreviewRace": "Race: {name}, {date}",
+  "@planImportPreviewRace": {
+    "description": "One line per race workout in the import preview",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Two Oceans Ultra"
+      },
+      "date": {
+        "type": "String",
+        "example": "4 Apr 2027"
+      }
+    }
+  },
+  "planImportPreviewRaceUnnamed": "Unnamed race",
+  "@planImportPreviewRaceUnnamed": {
+    "description": "Stands in for a race workout with no name in the import preview"
+  },
+  "planImportCreate": "Create plan",
+  "@planImportCreate": {
+    "description": "Button that creates the previewed imported plan"
+  },
+  "planImportCreateFailed": "Couldn't create the plan. Check your connection and try again.",
+  "@planImportCreateFailed": {
+    "description": "Error in the import sheet when creating the imported plan fails"
+  },
+  "planOverlapLookupFailed": "Couldn't check your active plans for these dates. Check your connection and try again.",
+  "@planOverlapLookupFailed": {
+    "description": "Error when creating or cloning a plan cannot first read the runner's active plans to check for overlapping dates; nothing is created"
   },
   "planNewStarterC25k": "Couch to 5K (beginner walk-run)",
   "@planNewStarterC25k": {
@@ -8342,6 +8553,19 @@
   "planDetailPublishTooltip": "Publish as club template",
   "@planDetailPublishTooltip": {
     "description": "Publish-as-template AppBar action tooltip"
+  },
+  "planDetailRacesTitle": "Races in this plan",
+  "@planDetailRacesTitle": {
+    "description": "Heading of the plan detail card listing every race the plan builds toward (shown only when the plan has more than one race)"
+  },
+  "planDetailRacePriority": "Priority {priority}",
+  "@planDetailRacePriority": {
+    "description": "Screen-reader label for a race's priority badge on plan detail; priority is the letter A, B or C",
+    "placeholders": {
+      "priority": {
+        "type": "String"
+      }
+    }
   },
   "planDetailDaysPerWeek": "{count} days/wk",
   "@planDetailDaysPerWeek": {
@@ -8424,6 +8648,67 @@
   "@planDetailAdjustAdaptiveDesc": {
     "description": "Plan-detail adjust-plan dialog"
   },
+  "planDetailRaceTaper": "Taper around B/C races",
+  "@planDetailRaceTaper": {
+    "description": "Plan-detail adjust-plan dialog: option that proposes a mini-taper and recovery around the plan's B and C races"
+  },
+  "planDetailAdjustRaceTaperDesc": "Eases the days before each upcoming B or C race and the days after it, so you race it fresh and recover before training picks up. Your A race and its taper stay as they are.",
+  "@planDetailAdjustRaceTaperDesc": {
+    "description": "Plan-detail adjust-plan dialog: description of the B/C race taper option"
+  },
+  "planDetailRaceTaperNone": "No upcoming B or C race needs a taper.",
+  "@planDetailRaceTaperNone": {
+    "description": "Plan-detail banner when the B/C race taper finds nothing to change"
+  },
+  "planDetailRaceTaperPreviewTitle": "Proposed taper and recovery",
+  "@planDetailRaceTaperPreviewTitle": {
+    "description": "Plan-detail heading of the B/C race taper preview"
+  },
+  "planDetailRaceTaperPre": "{change} — taper for {race}",
+  "@planDetailRaceTaperPre": {
+    "description": "Plan-detail race taper preview row for a session eased in the days before a B/C race. change is e.g. 'Intervals 10.0 km → Easy 6.5 km'; race is the race name or date",
+    "placeholders": {
+      "change": {
+        "type": "String"
+      },
+      "race": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailRaceTaperShakeout": "{change} — shakeout before {race}",
+  "@planDetailRaceTaperShakeout": {
+    "description": "Plan-detail race taper preview row for a session cut to a short easy shakeout in the 2 days before a B race",
+    "placeholders": {
+      "change": {
+        "type": "String"
+      },
+      "race": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailRaceTaperPost": "{change} — recovery after {race}",
+  "@planDetailRaceTaperPost": {
+    "description": "Plan-detail race taper preview row for a session eased in the recovery days after a B/C race",
+    "placeholders": {
+      "change": {
+        "type": "String"
+      },
+      "race": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailHeroNextRace": "Next race: {name}",
+  "@planDetailHeroNextRace": {
+    "description": "Plan-detail hero line naming the next race the hero's distance, goal and date now describe (a B or C race before the plan's A race)",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "planDetailAdjustPauseDesc": "Puts the plan on hold without deleting anything, until you resume it. Use it for illness, injury or travel.",
   "@planDetailAdjustPauseDesc": {
     "description": "Plan-detail adjust-plan dialog"
@@ -8448,9 +8733,9 @@
   "@planDetailResumeDone": {
     "description": "Plan-detail adjust-plan dialog"
   },
-  "planDetailResumeBlocked": "You already have an active plan. Pause or finish it first.",
-  "@planDetailResumeBlocked": {
-    "description": "Plan-detail adjust-plan dialog"
+  "planDetailResumeOverlap": "Another active plan overlaps these dates. Pause it, finish it or end it earlier first.",
+  "@planDetailResumeOverlap": {
+    "description": "Banner when resuming a paused plan is refused because another active plan overlaps its dates"
   },
   "planDetailAdaptiveOnTrack": "Your recent weeks are on track — no adjustment needed.",
   "planDetailAdaptiveNoSafeChange": "You've drifted from plan recently, but there's no safe adjustment to make right now.",
@@ -13327,6 +13612,42 @@
   "@workoutEditNotesLabel": {
     "description": "Label for the workout notes field"
   },
+  "workoutEditRaceNameLabel": "Race name",
+  "@workoutEditRaceNameLabel": {
+    "description": "Label for the race name field, shown in the workout editor only when the workout kind is Race"
+  },
+  "workoutEditRacePriorityLabel": "Race priority",
+  "@workoutEditRacePriorityLabel": {
+    "description": "Label for the A/B/C race priority picker in the workout editor (Race workouts only)"
+  },
+  "workoutEditRacePriorityAuto": "Automatic",
+  "@workoutEditRacePriorityAuto": {
+    "description": "Race priority picker option for no explicit priority: the app treats a race on the plan's last day as A and any other race as C"
+  },
+  "racePriorityOptionA": "A — goal race",
+  "@racePriorityOptionA": {
+    "description": "Race priority picker option A: the race the plan is built for. Keep the letter A"
+  },
+  "racePriorityOptionB": "B — important race",
+  "@racePriorityOptionB": {
+    "description": "Race priority picker option B: a race that matters but is not the main goal. Keep the letter B"
+  },
+  "racePriorityOptionC": "C — tune-up race",
+  "@racePriorityOptionC": {
+    "description": "Race priority picker option C: a low-key race run as training. Keep the letter C"
+  },
+  "workoutEditRaceGoalTimeLabel": "Goal time",
+  "@workoutEditRaceGoalTimeLabel": {
+    "description": "Label for the race goal finish time field in the workout editor (Race workouts only)"
+  },
+  "workoutEditRaceGoalTimeHint": "e.g. 6:30:00",
+  "@workoutEditRaceGoalTimeHint": {
+    "description": "Example hint for the race goal time field (hours:minutes:seconds)"
+  },
+  "workoutEditErrRaceGoalTime": "Goal time must look like 6:30:00",
+  "@workoutEditErrRaceGoalTime": {
+    "description": "Validation error for the race goal time field"
+  },
   "workoutEditCancel": "Cancel",
   "@workoutEditCancel": {
     "description": "Button to cancel the workout edit sheet"
@@ -16394,9 +16715,89 @@
   "@coachingAthleteAssignedByYou": {
     "description": "Badge when the active plan was assigned by the viewing coach"
   },
-  "coachingAthleteCannotAssignHasPlan": "This athlete already has an active plan. They'll need to finish or end it before you can assign a new one.",
-  "@coachingAthleteCannotAssignHasPlan": {
-    "description": "Hint when the athlete has a plan not assigned by this coach"
+  "coachingAthleteAssignAfterOne": "{name}'s plan “{plan}” runs until {end}. A plan you assign can't overlap it, so start it after that date.",
+  "@coachingAthleteAssignAfterOne": {
+    "description": "Assign control hint naming the athlete's one plan still holding dates; {end} is a formatted date",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "plan": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "coachingAthleteAssignAfterTwo": "{name}'s plan “{plan}” runs until {end}, and “{next}” runs {nextStart} – {nextEnd}. A plan you assign can't overlap either of them.",
+  "@coachingAthleteAssignAfterTwo": {
+    "description": "Assign control hint naming the athlete's current plan and the one queued after it; dates are formatted",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "plan": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      },
+      "next": {
+        "type": "String"
+      },
+      "nextStart": {
+        "type": "String"
+      },
+      "nextEnd": {
+        "type": "String"
+      }
+    }
+  },
+  "coachingAthleteAssignAfterMany": "{name} has {count} plans still ahead: {plans}. A plan you assign can't overlap any of them, so start it after {end} or in a gap between them.",
+  "@coachingAthleteAssignAfterMany": {
+    "description": "Assign control hint when the athlete has three or more plans still holding dates; {plans} is their names joined with commas, {end} the last one's formatted end date",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      },
+      "plans": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "coachingAthleteAssignOverlapNamed": "Those dates overlap {name}'s plan “{plan}” ({start} – {end}). Pick a start date after it ends.",
+  "@coachingAthleteAssignOverlapNamed": {
+    "description": "Banner when the server refused an assignment that overlaps the named plan of the athlete",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "plan": {
+        "type": "String"
+      },
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "coachingAthleteAssignOverlap": "Those dates overlap one of {name}'s active plans. Pick a start date after it ends.",
+  "@coachingAthleteAssignOverlap": {
+    "description": "Banner when the server refused an overlapping assignment and the screen cannot name the plan",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
   },
   "coachingAthleteComplete": "complete",
   "@coachingAthleteComplete": {
@@ -20955,5 +21356,117 @@
         "type": "String"
       }
     }
+  },
+  "stravaClubsHeading": "Your Strava clubs",
+  "@stravaClubsHeading": {
+    "description": "Heading of the Your Strava clubs section on My clubs"
+  },
+  "stravaClubsIntro": "Clubs you belong to on Strava. Only you can see this list.",
+  "@stravaClubsIntro": {
+    "description": "Intro under the heading"
+  },
+  "stravaClubsEmpty": "You're not in any clubs on Strava.",
+  "@stravaClubsEmpty": {
+    "description": "Shown when the runner is in no Strava clubs"
+  },
+  "stravaClubsLoadError": "Couldn't load your Strava clubs.",
+  "@stravaClubsLoadError": {
+    "description": "The Strava clubs list failed to load; a Retry button follows"
+  },
+  "stravaClubsReconnectText": "Your Strava connection has expired, so your Strava clubs can’t be shown.",
+  "@stravaClubsReconnectText": {
+    "description": "The Strava grant has expired"
+  },
+  "stravaClubsReconnect": "Reconnect Strava",
+  "@stravaClubsReconnect": {
+    "description": "Button opening Settings > Integrations to reconnect Strava"
+  },
+  "stravaClubsSetUp": "Set up on Threkir",
+  "@stravaClubsSetUp": {
+    "description": "Button: create a Threkir club from this Strava club"
+  },
+  "stravaClubsLinkToMine": "Link to my club",
+  "@stravaClubsLinkToMine": {
+    "description": "Button: link this Strava club to one of my existing Threkir clubs"
+  },
+  "stravaClubsPickClubLabel": "Which of your clubs is this?",
+  "@stravaClubsPickClubLabel": {
+    "description": "Title of the dialog picking which of my Threkir clubs this Strava club is"
+  },
+  "stravaClubsAdminOnly": "Only an admin of this club on Strava can bring it to Threkir.",
+  "@stravaClubsAdminOnly": {
+    "description": "Shown on a Strava club the runner does not administer"
+  },
+  "stravaClubsViewOnThrekir": "View {name}",
+  "@stravaClubsViewOnThrekir": {
+    "description": "Button opening the linked Threkir club; name is the club name",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "stravaClubsUnlink": "Unlink",
+  "@stravaClubsUnlink": {
+    "description": "Button removing the link between a Strava club and a Threkir club"
+  },
+  "stravaClubsLinked": "Linked to {name}.",
+  "@stravaClubsLinked": {
+    "description": "Banner after linking; name is the Threkir club name",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "stravaClubsLinkedNew": "Your club is linked to its Strava club.",
+  "@stravaClubsLinkedNew": {
+    "description": "Banner after a new club was created and linked to its Strava club"
+  },
+  "stravaClubsUnlinked": "Unlinked {name} from Strava.",
+  "@stravaClubsUnlinked": {
+    "description": "Undo bar message after unlinking; name is the Threkir club name",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "stravaClubsSetUpNote": "Once your club is created it will be linked to its Strava club.",
+  "@stravaClubsSetUpNote": {
+    "description": "Note on the new-club form when it came from a Strava club"
+  },
+  "stravaClubsCreatedNotLinked": "Your club was created, but it isn’t linked to Strava: {reason}",
+  "@stravaClubsCreatedNotLinked": {
+    "description": "Banner when the club was created but the Strava link failed; reason is one of the stravaClubsErr* sentences",
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "stravaClubsErrAdminRequired": "Strava says you aren’t an admin of this club, so it can’t be linked.",
+  "@stravaClubsErrAdminRequired": {
+    "description": "Link refused: not a Strava admin of the club"
+  },
+  "stravaClubsErrAlreadyLinked": "This Strava club is already linked to another club on Threkir.",
+  "@stravaClubsErrAlreadyLinked": {
+    "description": "Link refused: Strava club already linked elsewhere"
+  },
+  "stravaClubsErrNotClubAdmin": "Only an owner or admin of the Threkir club can link it.",
+  "@stravaClubsErrNotClubAdmin": {
+    "description": "Link refused: not an owner/admin of the Threkir club"
+  },
+  "stravaClubsErrReconnect": "Reconnect Strava in Settings, then try again.",
+  "@stravaClubsErrReconnect": {
+    "description": "Link refused: the Strava connection needs reconnecting"
+  },
+  "stravaClubsErrGeneric": "Couldn't link the club. Try again.",
+  "@stravaClubsErrGeneric": {
+    "description": "Link failed for another reason"
+  },
+  "stravaClubsErrUnlink": "Couldn't unlink the club. Try again.",
+  "@stravaClubsErrUnlink": {
+    "description": "Unlink failed"
   }
 }

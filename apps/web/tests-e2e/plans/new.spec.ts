@@ -52,7 +52,7 @@ test.describe('/plans/new — standalone wizard', () => {
 		await expect(page.locator('.plan-editor')).toBeVisible({ timeout: 5_000 });
 	});
 
-	test('fill wizard → Replace-plan confirm → land on /plans/<new-id>; DB invariants honoured', async ({
+	test('fill wizard → overlap dialog → Replace → land on /plans/<new-id>; DB invariants honoured', async ({
 		page
 	}) => {
 		const name = `e2e-new-plan ${Date.now()}`;
@@ -73,9 +73,7 @@ test.describe('/plans/new — standalone wizard', () => {
 		await expect(submit).toBeEnabled({ timeout: 5_000 });
 		await submit.click();
 
-		const replace = page.locator('.modal.modal-narrow', {
-			hasText: /Replace your active plan/
-		});
+		const replace = page.getByTestId('plan-overlap-dialog');
 		await expect(replace).toBeVisible({ timeout: 5_000 });
 		await expect(replace).toContainText('Richmond Half 2026');
 		await replace.getByRole('button', { name: 'Replace plan' }).click();
@@ -152,9 +150,7 @@ test.describe('/plans/new — standalone wizard', () => {
 		await expect(submit).toBeEnabled();
 		await submit.click();
 
-		const replace = page.locator('.modal.modal-narrow', {
-			hasText: /Replace your active plan/
-		});
+		const replace = page.getByTestId('plan-overlap-dialog');
 		await expect(replace).toBeVisible({ timeout: 5_000 });
 		await replace.getByRole('button', { name: 'Replace plan' }).click();
 

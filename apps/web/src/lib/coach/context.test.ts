@@ -59,7 +59,7 @@ test('buildContext reuses the handler-fetched profile row (no duplicate get_my_p
 	);
 	assert.match(
 		SRC,
-		/export async function buildContext\([\s\S]*?profileRow:\s*CoachProfileRow\s*\|\s*null,?\s*\):/,
+		/export async function buildContext\([^)]*?\bprofileRow:\s*CoachProfileRow\s*\|\s*null\s*[,)]/,
 		'buildContext must accept the profile row as a parameter',
 	);
 });
@@ -147,7 +147,7 @@ test('buildContext caps plan_weeks + plan_workouts row counts', async () => {
 	// PostgREST): a plan with far more than the caps' worth of weeks +
 	// workouts must not send them all. Fails before the fix (unbounded →
 	// full history returned) and passes after (arrays clamped to the caps).
-	const planRow = { id: 'p1', start_date: '2026-06-01', status: 'active' };
+	const planRow = { id: 'p1', start_date: '2026-06-01', end_date: '2099-12-31', status: 'active', is_template: false };
 	const weeks = Array.from({ length: COACH_PLAN_WEEKS_CAP + 12 }, (_, i) => ({
 		id: `w${i}`,
 		plan_id: 'p1',
@@ -159,7 +159,7 @@ test('buildContext caps plan_weeks + plan_workouts row counts', async () => {
 	);
 	const ctx = await buildContext(
 		fakeSupabase({
-			training_plans: planRow,
+			training_plans: [planRow],
 			plan_weeks: weeks,
 			plan_workouts: workouts,
 		}) as never,
@@ -167,6 +167,7 @@ test('buildContext caps plan_weeks + plan_workouts row counts', async () => {
 		null,
 		10,
 		{ display_name: 'R', preferred_unit: 'km', health_data_consent_at: null },
+		'2026-06-15',
 	);
 	const data = ctx.data as { plan_weeks: unknown[]; plan_workouts: unknown[] };
 	assert.equal(data.plan_weeks.length, COACH_PLAN_WEEKS_CAP);
@@ -232,6 +233,10 @@ function fakeSupabase(tableData: Record<string, unknown>) {
 						: result,
 				);
 			q.maybeSingle = () => Promise.resolve(result);
+			q.then = (
+				onFulfilled: (v: unknown) => unknown,
+				onRejected?: (e: unknown) => unknown,
+			) => Promise.resolve(result).then(onFulfilled, onRejected);
 			return q;
 		},
 	};
@@ -257,6 +262,7 @@ function runWithConsent(consentAt: string | null) {
 		null,
 		10,
 		profileRow,
+		'2026-06-15',
 	);
 }
 
@@ -342,8 +348,8 @@ function coachTenantFixture() {
 			{ id: 'run-b', user_id: COACH, started_at: soon, distance_m: 5000, duration_s: 1500, metadata: { activity_type: 'run' }, route_id: null },
 		],
 		training_plans: [
-			{ id: 'plan-a', user_id: ATHLETE, status: 'active', is_template: false },
-			{ id: 'plan-b', user_id: COACH, status: 'active', is_template: false },
+			{ id: 'plan-a', user_id: ATHLETE, status: 'active', is_template: false, start_date: '2026-01-04', end_date: '2099-12-31' },
+			{ id: 'plan-b', user_id: COACH, status: 'active', is_template: false, start_date: '2026-01-04', end_date: '2099-12-31' },
 		],
 		plan_weeks: [
 			{ id: 'week-a', plan_id: 'plan-a', week_index: 0 },
@@ -381,6 +387,7 @@ test('buildContext no-plan_id branch returns the CALLER active plan, not an athl
 		null,
 		10,
 		COACH_PROFILE,
+		'2026-06-15',
 	);
 	const data = ctx.data as {
 		plan: { id: string; user_id: string } | null;
@@ -400,6 +407,7 @@ test('buildContext leaks none of an athlete recent runs into a coach context', a
 		null,
 		10,
 		COACH_PROFILE,
+		'2026-06-15',
 	);
 	const runs = (ctx.data as { recent_runs: { id: string; metadata: unknown }[] }).recent_runs;
 	assert.deepEqual(runs.map((r) => r.id), ['run-b'], 'only the coach own run');
@@ -412,6 +420,7 @@ test('buildContext scopes lifts + nutrition to the caller', async () => {
 		null,
 		10,
 		COACH_PROFILE,
+		'2026-06-15',
 	);
 	const data = ctx.data as {
 		recent_lifts: { title: string | null; volume_kg: number }[];
@@ -433,6 +442,7 @@ test('buildContext with an athlete planId still returns nothing cross-tenant', a
 		'plan-a',
 		10,
 		COACH_PROFILE,
+		'2026-06-15',
 	);
 	const data = ctx.data as { plan: unknown; plan_weeks: unknown[]; plan_workouts: unknown[] };
 	assert.equal(data.plan, null, 'a foreign plan id must not resolve');
@@ -555,4 +565,47 @@ test('summarizeNutrition yields null macro averages when no row carries that mac
 	assert.equal(out.avg_protein_g, null);
 	assert.equal(out.avg_carbs_g, null);
 	assert.equal(out.avg_fat_g, null);
+});
+
+test('buildContext picks the current plan by the runner today it is handed, not the server clock', async () => {
+	// Two chained plans hand over at midnight between 2026-06-14 and -15. The
+	// handler resolves the runner's local date (decisions § 2052); the plan
+	// the coach talks about must follow it.
+	const fixture = {
+		training_plans: [
+			{ id: 'plan-1', user_id: COACH, status: 'active', is_template: false, start_date: '2026-05-01', end_date: '2026-06-14' },
+			{ id: 'plan-2', user_id: COACH, status: 'active', is_template: false, start_date: '2026-06-15', end_date: '2026-09-01' },
+		],
+	};
+	const before = await buildContext(filteringSupabase(fixture) as never, COACH, null, 10, COACH_PROFILE, '2026-06-14');
+	const after = await buildContext(filteringSupabase(fixture) as never, COACH, null, 10, COACH_PROFILE, '2026-06-15');
+	assert.equal((before.data as { plan: { id: string } }).plan.id, 'plan-1');
+	assert.equal((after.data as { plan: { id: string } }).plan.id, 'plan-2');
+});
+
+function failingPlansSupabase() {
+	const base = filteringSupabase({});
+	return {
+		from(table: string) {
+			if (table !== 'training_plans') return base.from(table);
+			const failed = { data: null, error: { message: 'boom', code: '57014' } };
+			const q: Record<string, unknown> = {};
+			for (const m of ['select', 'eq', 'order']) q[m] = () => q;
+			q.maybeSingle = () => Promise.resolve(failed);
+			q.then = (onFulfilled: (v: unknown) => unknown, onRejected?: (e: unknown) => unknown) =>
+				Promise.resolve(failed).then(onFulfilled, onRejected);
+			return q;
+		},
+	};
+}
+
+test('buildContext throws when the plan read fails instead of reporting no plan', async () => {
+	await assert.rejects(
+		buildContext(failingPlansSupabase() as never, COACH, null, 10, COACH_PROFILE, '2026-06-15'),
+		(e: unknown) => (e as { code?: string }).code === '57014',
+	);
+	await assert.rejects(
+		buildContext(failingPlansSupabase() as never, COACH, 'plan-x', 10, COACH_PROFILE, '2026-06-15'),
+		(e: unknown) => (e as { code?: string }).code === '57014',
+	);
 });

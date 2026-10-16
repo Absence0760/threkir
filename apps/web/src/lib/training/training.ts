@@ -13,6 +13,8 @@
 // and carry zero table data. If users complain about pace accuracy, swap
 // `paceFor` for a Daniels-table lookup without changing the public surface.
 
+import type { RacePriority } from './plan_races';
+
 export type GoalEvent = 'distance_5k' | 'distance_10k' | 'distance_half' | 'distance_full' | 'custom';
 export type WorkoutKind =
 	| 'easy'
@@ -418,6 +420,11 @@ export interface GeneratedWorkout {
 	target_pace_tolerance_sec: number | null;
 	structure: WorkoutStructure | null;
 	notes: string | null;
+	race_name?: string | null;
+	race_priority?: RacePriority | null;
+	/// Set only on a workout read from a JSON export a B/C race taper had
+	/// eased (decisions § 2063); the generator never sets it.
+	race_taper_applied_at?: string | null;
 }
 
 export interface GeneratedWeek {

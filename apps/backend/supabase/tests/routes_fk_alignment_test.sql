@@ -1,6 +1,7 @@
 -- Pins migration 20270322_001 (db-design alignment): the duplicate
--- training_plans_active index is gone (the partial UNIQUE
--- training_plans_one_active serves those lookups), and the two outlier FKs
+-- training_plans_active index is gone (the exclusion constraint
+-- training_plans_active_no_overlap, which replaced training_plans_one_active
+-- in 20270830000001, serves those lookups), and the two outlier FKs
 -- referencing routes(id) carry their intended ON DELETE behaviour — a deleted
 -- route detaches from runs (SET NULL) and takes its reviews with it (CASCADE)
 -- instead of blocking the delete with 23503.
@@ -16,10 +17,11 @@ select is(
   'the duplicate training_plans_active index is dropped');
 
 select is(
-  (select indexdef ilike '%unique%' from pg_indexes
-     where tablename = 'training_plans' and indexname = 'training_plans_one_active'),
-  true,
-  'training_plans_one_active survives as the partial unique index');
+  (select contype::text from pg_constraint
+     where conrelid = 'public.training_plans'::regclass
+       and conname = 'training_plans_active_no_overlap'),
+  'x',
+  'training_plans_active_no_overlap serves the active-plan lookups as an exclusion constraint');
 
 select is(
   (select confdeltype from pg_constraint where conname = 'runs_route_id_fkey'),

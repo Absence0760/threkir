@@ -344,15 +344,23 @@
 			{#each filteredPlans as p (p.id)}
 				{@const total = totalWeeks(p)}
 				{@const isActive = p.status === 'active'}
+				{@const isUpcoming = isActive && p.start_date > todayISO()}
 				{@const week = isActive ? currentWeek(p) : null}
 				{@const pct = isActive ? calendarPct(p) : null}
 				<a class="card" class:card-active={isActive} href="/plans/{p.id}">
 					<div class="card-head">
 						<h3>{p.name}</h3>
-						<span class="badge status-{p.status}">
-							<span class="material-symbols">{statusIcon[p.status] ?? 'help'}</span>
-							{statusLabel(p.status)}
-						</span>
+						{#if isUpcoming}
+							<span class="badge status-upcoming">
+								<span class="material-symbols">event_upcoming</span>
+								{m('plansPage.statusUpcoming')}
+							</span>
+						{:else}
+							<span class="badge status-{p.status}">
+								<span class="material-symbols">{statusIcon[p.status] ?? 'help'}</span>
+								{statusLabel(p.status)}
+							</span>
+						{/if}
 					</div>
 
 					<div class="hero">
@@ -660,6 +668,10 @@
 	.status-active {
 		background: var(--color-primary-light);
 		color: var(--color-primary);
+	}
+	.status-upcoming {
+		background: var(--color-bg-tertiary);
+		color: var(--color-text-secondary);
 	}
 	.status-completed {
 		background: var(--color-success-light);

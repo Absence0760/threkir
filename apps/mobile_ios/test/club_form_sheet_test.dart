@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import 'package:ui_kit/ui_kit.dart' show ChoiceChipRow;
 
 import '../lib/club_slug.dart';
+import '../lib/text_limits.dart';
 import '../lib/social_service.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/widgets/club_form_sheet.dart';
@@ -49,6 +50,7 @@ class _CapturingSocialService extends SocialService {
   String? capturedSlug;
   String? capturedJoinPolicy;
   bool? capturedIsPublic;
+  String? capturedLocation;
   Completer<void>? gate;
 
   @override
@@ -72,6 +74,7 @@ class _CapturingSocialService extends SocialService {
     capturedSlug = slug;
     capturedJoinPolicy = joinPolicy;
     capturedIsPublic = isPublic;
+    capturedLocation = locationLabel;
     if (gate != null) await gate!.future;
     return ClubRow(shadowHidden: false, 
       id: 'club-new',
@@ -92,7 +95,17 @@ class _CapturingSocialService extends SocialService {
 
 class _Launcher extends StatefulWidget {
   final SocialService social;
-  const _Launcher({required this.social});
+  final String? initialName;
+  final String? initialLocation;
+  final int? stravaClubId;
+  final Future<void> Function(String clubId, int stravaClubId)? linkStravaClub;
+  const _Launcher({
+    required this.social,
+    this.initialName,
+    this.initialLocation,
+    this.stravaClubId,
+    this.linkStravaClub,
+  });
 
   @override
   State<_Launcher> createState() => _LauncherState();
@@ -110,7 +123,14 @@ class _LauncherState extends State<_Launcher> {
           children: [
             ElevatedButton(
               onPressed: () async {
-                final r = await showClubFormSheet(context, social: widget.social);
+                final r = await showClubFormSheet(
+                  context,
+                  social: widget.social,
+                  initialName: widget.initialName,
+                  initialLocation: widget.initialLocation,
+                  stravaClubId: widget.stravaClubId,
+                  linkStravaClub: widget.linkStravaClub,
+                );
                 setState(() => _result = r ?? '<cancelled>');
               },
               child: const Text('Open'),
@@ -601,6 +621,113 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.text('Discard changes?'), findsOneWidget);
+    });
+  });
+
+  group('showClubFormSheet — Strava set-up hand-off (decisions § 1959)', () {
+    Future<void> open(WidgetTester tester, _Launcher launcher) async {
+      await tester.binding.setSurfaceSize(const Size(600, 1200));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: launcher,
+      ));
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('the prefilled location is held to the column bound',
+        (tester) async {
+      await open(
+        tester,
+        _Launcher(
+          social: _CapturingSocialService(),
+          initialLocation: '  ${'a' * (kClubLocationLabelMaxLength + 20)}  ',
+        ),
+      );
+      final field = tester.widget<TextField>(
+          find.widgetWithText(TextField, 'Location (optional)'));
+      expect(field.controller!.text, 'a' * kClubLocationLabelMaxLength);
+    });
+
+    testWidgets('a Strava name longer than a club name is held to the bound',
+        (tester) async {
+      final fake = _CapturingSocialService();
+      await open(
+        tester,
+        _Launcher(
+          social: fake,
+          initialName: '  ${'n' * (kClubNameMaxLength + 20)}  ',
+          stravaClubId: 918273645,
+          linkStravaClub: (_, __) async {},
+        ),
+      );
+      await tester.tap(find.widgetWithText(FilledButton, 'Create'));
+      await tester.pumpAndSettle();
+      expect(fake.capturedName, 'n' * kClubNameMaxLength);
+      await tester.pump(const Duration(seconds: 9));
+    });
+
+    testWidgets('creates the club with its Strava place, then links it',
+        (tester) async {
+      final fake = _CapturingSocialService();
+      final links = <(String, int)>[];
+      await open(
+        tester,
+        _Launcher(
+          social: fake,
+          initialName: 'Strava Only Striders',
+          initialLocation: 'Leeds, United Kingdom',
+          stravaClubId: 918273645,
+          linkStravaClub: (clubId, stravaClubId) async =>
+              links.add((clubId, stravaClubId)),
+        ),
+      );
+      expect(
+          find.text(
+              'Once your club is created it will be linked to its Strava club.'),
+          findsOneWidget);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Create'));
+      await tester.pumpAndSettle();
+
+      expect(fake.capturedName, 'Strava Only Striders');
+      expect(fake.capturedLocation, 'Leeds, United Kingdom');
+      expect(links, [('club-new', 918273645)]);
+      expect(find.text('Your club is linked to its Strava club.'),
+          findsOneWidget);
+      expect(find.text('result=strava-only-striders'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 9));
+    });
+
+    testWidgets('a refused link keeps the club and says why', (tester) async {
+      await open(
+        tester,
+        _Launcher(
+          social: _CapturingSocialService(),
+          initialName: 'Strava Only Striders',
+          stravaClubId: 918273645,
+          linkStravaClub: (_, __) async => throw const StravaClubLinkFailure(
+              StravaClubLinkError.stravaClubAlreadyLinked),
+        ),
+      );
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Create'));
+      await tester.pumpAndSettle();
+
+      expect(
+          find.text("Your club was created, but it isn’t linked to Strava: "
+              'This Strava club is already linked to another club on Threkir.'),
+          findsOneWidget);
+      expect(find.text('result=strava-only-striders'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 9));
+    });
+
+    testWidgets('without a Strava club there is no note and no link',
+        (tester) async {
+      await open(tester, _Launcher(social: _CapturingSocialService()));
+      expect(find.byKey(const ValueKey('club-form-strava-note')), findsNothing);
     });
   });
 }

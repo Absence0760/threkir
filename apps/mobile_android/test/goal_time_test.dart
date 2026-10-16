@@ -42,35 +42,44 @@ void main() {
   });
 
   group('formatGoalTimeS', () {
-    test('is always h:mm:ss, a sub-hour time included', () {
+    test('prints a sub-hour goal as mm:ss, so a 25-minute 5K reads 25:00', () {
       expect(formatGoalTimeS(12600), '3:30:00');
-      expect(formatGoalTimeS(1500), '0:25:00');
-      expect(formatGoalTimeS(2700), '0:45:00');
-      expect(formatGoalTimeS(45), '0:00:45');
+      expect(formatGoalTimeS(1500), '25:00');
     });
 
-    test('round-trips through parseGoalTimeS with or without a distance', () {
-      for (final s in [45, 1500, 2700, 3599, 12600, 45000]) {
-        expect(parseGoalTimeS(formatGoalTimeS(s)), s);
-        expect(parseGoalTimeS(formatGoalTimeS(s), distanceM: 5000), s);
-      }
+    test('a 25-minute 5K prefill round-trips through parseGoalTimeS', () {
+      expect(parseGoalTimeS(formatGoalTimeS(12600)), 12600);
+      expect(parseGoalTimeS(formatGoalTimeS(1500), distanceM: 5000), 1500);
+    });
+  });
+
+  group('formatRaceGoalTimeS', () {
+    test('is always h:mm:ss, a sub-hour time included', () {
+      expect(formatRaceGoalTimeS(12600), '3:30:00');
+      expect(formatRaceGoalTimeS(2700), '0:45:00');
+      expect(formatRaceGoalTimeS(45), '0:00:45');
     });
   });
 
   group('parseRaceGoalTimeS', () {
-    test('a 45-minute goal round-trips unchanged with no distance', () {
-      expect(parseRaceGoalTimeS(formatGoalTimeS(2700)), 2700);
+    test('a 45-minute race goal round-trips as 0:45:00', () {
+      expect(formatRaceGoalTimeS(2700), '0:45:00');
+      expect(parseRaceGoalTimeS(formatRaceGoalTimeS(2700)), 2700);
+      for (final s in [45, 1500, 3599, 12600, 45000, 99 * 3600 + 3599]) {
+        expect(parseRaceGoalTimeS(formatRaceGoalTimeS(s)), s);
+      }
     });
 
-    test('reads h:mm:ss and an explicit h:mm, both in hours', () {
+    test('reads exactly h:mm:ss', () {
       expect(parseRaceGoalTimeS('6:30:00'), 23400);
       expect(parseRaceGoalTimeS('0:45:00'), 2700);
-      expect(parseRaceGoalTimeS('6:30'), 23400);
       expect(parseRaceGoalTimeS(' 3:05:09 '), 11109);
+      expect(parseRaceGoalTimeS('99:59:59'), 99 * 3600 + 59 * 60 + 59);
     });
 
-    test('never pace-guesses a two-part value into minutes', () {
-      expect(parseRaceGoalTimeS('45:00'), 45 * 3600);
+    test('rejects a two-part value rather than guessing its unit', () {
+      expect(parseRaceGoalTimeS('45:00'), isNull);
+      expect(parseRaceGoalTimeS('6:30'), isNull);
     });
 
     test('rejects bare numbers, junk, zero and out-of-range fields', () {
@@ -81,7 +90,9 @@ void main() {
       expect(parseRaceGoalTimeS('0:00:00'), isNull);
       expect(parseRaceGoalTimeS('1:60:00'), isNull);
       expect(parseRaceGoalTimeS('1:30:75'), isNull);
-      expect(parseRaceGoalTimeS('-1:30'), isNull);
+      expect(parseRaceGoalTimeS('100:00:00'), isNull);
+      expect(parseRaceGoalTimeS('1:5:00'), isNull);
+      expect(parseRaceGoalTimeS('-1:30:00'), isNull);
       expect(parseRaceGoalTimeS('1::30'), isNull);
     });
   });

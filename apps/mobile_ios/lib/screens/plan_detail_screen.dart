@@ -24,6 +24,7 @@ import '../plan_week.dart';
 import '../race_taper.dart';
 import '../social_service.dart' show ClubView, RecentRunRow, SocialService;
 import '../metrics.dart';
+import '../goal_time.dart' show formatRaceGoalTimeS;
 import '../training.dart';
 import '../training_labels.dart';
 import '../training_load.dart';
@@ -1493,7 +1494,12 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
                     if (goalDistanceM != null)
                       _chip(theme, Icons.flag_outlined, fmtKm(goalDistanceM, 1)),
                     if (goalTimeSec != null)
-                      _chip(theme, Icons.timer, fmtHms(goalTimeSec)),
+                      _chip(
+                          theme,
+                          Icons.timer,
+                          heroRace != null && goalTimeSec > 0
+                              ? formatRaceGoalTimeS(goalTimeSec)
+                              : fmtHms(goalTimeSec)),
                     if (p.vdot != null)
                       _chip(
                           theme,

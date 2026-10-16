@@ -267,18 +267,22 @@ void main() {
       expect(training.lastUpdate!.race!.goalTimeSec, 2700);
     });
 
-    testWidgets('a typed h:mm goal is read as hours, not pace-guessed',
-        (tester) async {
-      final training = _FakeTraining();
-      await _pumpSheet(tester, race(), training);
-      final goal = find.byKey(const Key('workoutEditRaceGoal'));
-      await tester.ensureVisible(goal);
-      await tester.enterText(goal, '5:45');
-      await tester.ensureVisible(find.text('Save'));
-      await tester.tap(find.text('Save'));
-      await tester.pumpAndSettle();
-      expect(training.lastUpdate!.race!.goalTimeSec, 5 * 3600 + 45 * 60);
-    });
+    for (final typed in ['45:00', '5:45']) {
+      testWidgets('a two-part goal "$typed" is rejected, not unit-guessed',
+          (tester) async {
+        final training = _FakeTraining();
+        await _pumpSheet(tester, race(), training);
+        final goal = find.byKey(const Key('workoutEditRaceGoal'));
+        await tester.ensureVisible(goal);
+        await tester.enterText(goal, typed);
+        await tester.ensureVisible(find.text('Save'));
+        await tester.tap(find.text('Save'));
+        await tester.pump();
+        expect(tester.widget<TextField>(goal).decoration?.errorText,
+            'Goal time must look like 6:30:00');
+        expect(training.lastUpdate, isNull);
+      });
+    }
 
     testWidgets('changing a race to another kind reports it was a race',
         (tester) async {

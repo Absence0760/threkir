@@ -5,7 +5,8 @@ import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../plan_races.dart';
 import '../plan_week.dart';
-import '../training.dart' show fmtHms, fmtKm, parseIsoDate;
+import '../goal_time.dart' show formatRaceGoalTimeS;
+import '../training.dart' show fmtKm, parseIsoDate;
 import 'next_race_card.dart';
 
 /// The races a plan builds toward, on plan detail: priority, name (the plan's
@@ -67,7 +68,8 @@ class PlanRacesList extends StatelessWidget {
     final details = [
       formatDateMed(parseIsoDate(r.date), tag),
       if (r.distanceM != null) fmtKm(r.distanceM, 1),
-      if (r.goalTimeSec != null) fmtHms(r.goalTimeSec),
+      if (r.goalTimeSec != null && r.goalTimeSec! > 0)
+        formatRaceGoalTimeS(r.goalTimeSec!),
     ].join(' · ');
     final past = r.date.compareTo(todayIso) < 0;
     final workoutId = r.workoutId;

@@ -93,7 +93,7 @@ void main() {
       expect(find.text('Pacing strategy'), findsOneWidget);
       expect(find.text('Went out too fast'), findsOneWidget);
       expect(find.textContaining('10-10-10'), findsOneWidget);
-      expect(find.textContaining('Goal 0:25:00'), findsOneWidget);
+      expect(find.textContaining('Goal 25:00'), findsOneWidget);
       expect(_inPhase('hold_back', 'Hold back'), findsOneWidget);
       expect(_inPhase('settle', 'Settle'), findsOneWidget);
       expect(_inPhase('race', 'Race'), findsOneWidget);

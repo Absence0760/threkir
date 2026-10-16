@@ -43,32 +43,36 @@ int? parseGoalTimeS(String raw, {double? distanceM}) {
   }
 }
 
-/// Parse a race goal time that is always written in hours: h:mm:ss, or an
-/// explicit h:mm. Unlike [parseGoalTimeS] there is no pace guess and no
-/// bare-minutes form, so a field prefilled by [formatGoalTimeS] reads back
-/// as the value it was filled with whether or not the race has a distance.
-int? parseRaceGoalTimeS(String raw) {
-  final parts = raw.trim().split(':');
-  if (parts.length < 2 || parts.length > 3) return null;
-  final nums = <int>[];
-  for (final p in parts) {
-    final t = p.trim();
-    if (t.isEmpty || !RegExp(r'^\d+$').hasMatch(t)) return null;
-    nums.add(int.parse(t));
-  }
-  if (nums.skip(1).any((n) => n > 59)) return null;
-  final s = nums[0] * 3600 + nums[1] * 60 + (nums.length == 3 ? nums[2] : 0);
-  return s > 0 ? s : null;
-}
-
-/// Always h:mm:ss, a sub-hour time included ("0:45:00"), so the output is
-/// three-part and reads back exactly through both [parseGoalTimeS] and
-/// [parseRaceGoalTimeS]. A two-part "45:00" would be read as 45 hours
-/// wherever no distance disambiguates it.
+/// h:mm:ss (or mm:ss under an hour) — round-trips through [parseGoalTimeS].
 String formatGoalTimeS(int s) {
   final h = s ~/ 3600;
   final m = (s % 3600) ~/ 60;
   final sec = s % 60;
   String two(int v) => v.toString().padLeft(2, '0');
+  return h > 0 ? '$h:${two(m)}:${two(sec)}' : '${two(m)}:${two(sec)}';
+}
+
+/// A plan race's goal time, always h:mm:ss — a sub-hour goal included
+/// ("0:45:00") — so the race field's prefill reads back through
+/// [parseRaceGoalTimeS] unchanged whether or not the race has a distance.
+String formatRaceGoalTimeS(int s) {
+  final h = s ~/ 3600;
+  final m = (s % 3600) ~/ 60;
+  final sec = s % 60;
+  String two(int v) => v.toString().padLeft(2, '0');
   return '$h:${two(m)}:${two(sec)}';
+}
+
+/// Parse a plan race's goal time: exactly h:mm:ss, hours 0–99, minutes and
+/// seconds 0–59. No pace guess and no two-part form, because a race may
+/// have no distance to disambiguate "45:00" with.
+int? parseRaceGoalTimeS(String raw) {
+  final m = RegExp(r'^(\d{1,2}):(\d{2}):(\d{2})$').firstMatch(raw.trim());
+  if (m == null) return null;
+  final h = int.parse(m.group(1)!);
+  final min = int.parse(m.group(2)!);
+  final sec = int.parse(m.group(3)!);
+  if (min > 59 || sec > 59) return null;
+  final s = h * 3600 + min * 60 + sec;
+  return s > 0 ? s : null;
 }

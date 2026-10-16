@@ -82,7 +82,7 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
     _raceGoalCtl = TextEditingController(
       text: w.kind != 'race' || w.targetDurationSeconds == null
           ? ''
-          : formatGoalTimeS(w.targetDurationSeconds!),
+          : formatRaceGoalTimeS(w.targetDurationSeconds!),
     );
     _racePriority =
         racePriorities.contains(w.racePriority) ? w.racePriority : null;

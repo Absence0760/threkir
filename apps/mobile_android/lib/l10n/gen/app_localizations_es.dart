@@ -6234,6 +6234,16 @@ class AppLocalizationsEs extends AppLocalizations {
       'Otro plan activo cubre ahora estas fechas. Revisa tus planes e inténtalo de nuevo.';
 
   @override
+  String planOverlapTrimBlocked(String plan, String date) {
+    return '$plan tiene entrenamientos completados posteriores al $date. Reemplázalo en su lugar o empieza el nuevo plan más tarde.';
+  }
+
+  @override
+  String planOverlapTrimBlockedUnnamed(String date) {
+    return 'El plan que elegiste terminar antes tiene entrenamientos completados posteriores al $date. Reemplázalo en su lugar o empieza el nuevo plan más tarde.';
+  }
+
+  @override
   String get planDetailDuplicateWeekOverlap =>
       'Duplicar esta semana llevaría el plan a las fechas de otro plan activo. Mueve o termina antes ese plan.';
 

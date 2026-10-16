@@ -2879,6 +2879,7 @@ export const messages = {
 	"planEditor.overlapNoTrim": "Un plan que empieza el mismo día o después de la nueva fecha de inicio solo se puede reemplazar.",
 	"planEditor.overlapTrimOne": "Terminar «{name}» el {date}",
 	"planEditor.overlapTrimMany": "Terminarlos el {date}",
+	"planEditor.overlapTrimBlocked": "{plan} tiene entrenamientos completados posteriores al {date}. Reemplázalo en su lugar o empieza el nuevo plan más tarde.",
 	"planEditor.replacePlan": "Reemplazar plan",
 	"planMeta.nameRequired": "El nombre es obligatorio",
 	"planMeta.planUpdated": "Plan actualizado.",

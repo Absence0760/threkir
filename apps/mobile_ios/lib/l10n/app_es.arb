@@ -1727,6 +1727,8 @@
   "planOverlapTrimHint": "Termina {name} antes para conservar sus semanas completadas y eliminar sus entrenamientos posteriores al {date}, o reemplázalo para marcarlo como completado.",
   "planOverlapTrim": "Terminar {name} el {date}",
   "planOverlapConflict": "Otro plan activo cubre ahora estas fechas. Revisa tus planes e inténtalo de nuevo.",
+  "planOverlapTrimBlocked": "{plan} tiene entrenamientos completados posteriores al {date}. Reemplázalo en su lugar o empieza el nuevo plan más tarde.",
+  "planOverlapTrimBlockedUnnamed": "El plan que elegiste terminar antes tiene entrenamientos completados posteriores al {date}. Reemplázalo en su lugar o empieza el nuevo plan más tarde.",
   "planDetailDuplicateWeekOverlap": "Duplicar esta semana llevaría el plan a las fechas de otro plan activo. Mueve o termina antes ese plan.",
   "planNewImportButton": "Importar un plan",
   "planImportTitle": "Importar un plan",

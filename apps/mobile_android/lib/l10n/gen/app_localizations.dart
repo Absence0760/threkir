@@ -10210,6 +10210,18 @@ abstract class AppLocalizations {
   /// **'Another active plan now covers these dates. Check your plans and try again.'**
   String get planOverlapConflict;
 
+  /// Error when the runner chose to end an overlapping plan early but the server refused because that plan has completed workouts after the new end date; nothing changed. plan is that plan's name, date is the formatted end date the trim would have given it (the day before the new plan starts)
+  ///
+  /// In en, this message translates to:
+  /// **'{plan} has completed workouts after {date}. Replace it instead, or start the new plan later.'**
+  String planOverlapTrimBlocked(String plan, String date);
+
+  /// Same refusal as planOverlapTrimBlocked when the plan's name could not be looked up. date is the formatted end date the trim would have given it (the day before the new plan starts)
+  ///
+  /// In en, this message translates to:
+  /// **'The plan you chose to end early has completed workouts after {date}. Replace it instead, or start the new plan later.'**
+  String planOverlapTrimBlockedUnnamed(String date);
+
   /// Banner when duplicating a plan week is refused because the extra week would overlap another active plan
   ///
   /// In en, this message translates to:

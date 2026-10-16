@@ -2879,6 +2879,7 @@ export const messages = {
 	"planEditor.overlapNoTrim": "Ein Plan, der am neuen Startdatum oder danach beginnt, kann nur ersetzt werden.",
 	"planEditor.overlapTrimOne": "„{name}“ am {date} beenden",
 	"planEditor.overlapTrimMany": "Alle am {date} beenden",
+	"planEditor.overlapTrimBlocked": "{plan} hat abgeschlossene Einheiten nach dem {date}. Ersetze ihn stattdessen oder starte den neuen Plan später.",
 	"planEditor.replacePlan": "Plan ersetzen",
 	"planMeta.nameRequired": "Name ist erforderlich",
 	"planMeta.planUpdated": "Plan aktualisiert.",

@@ -1727,6 +1727,8 @@
   "planOverlapTrimHint": "Beende {name} vorzeitig, um seine abgeschlossenen Wochen zu behalten und seine Einheiten nach dem {date} zu entfernen, oder ersetze ihn, um ihn als abgeschlossen zu markieren.",
   "planOverlapTrim": "{name} am {date} beenden",
   "planOverlapConflict": "Ein anderer aktiver Plan deckt diesen Zeitraum jetzt ab. Prüfe deine Pläne und versuche es erneut.",
+  "planOverlapTrimBlocked": "{plan} hat abgeschlossene Einheiten nach dem {date}. Ersetze ihn stattdessen oder starte den neuen Plan später.",
+  "planOverlapTrimBlockedUnnamed": "Der Plan, den du vorzeitig beenden wolltest, hat abgeschlossene Einheiten nach dem {date}. Ersetze ihn stattdessen oder starte den neuen Plan später.",
   "planDetailDuplicateWeekOverlap": "Wenn du diese Woche duplizierst, rutscht der Plan in den Zeitraum eines anderen aktiven Plans. Verschiebe oder beende jenen Plan zuerst.",
   "planNewImportButton": "Plan importieren",
   "planImportTitle": "Plan importieren",

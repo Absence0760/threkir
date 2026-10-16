@@ -6251,6 +6251,16 @@ class AppLocalizationsDe extends AppLocalizations {
       'Ein anderer aktiver Plan deckt diesen Zeitraum jetzt ab. Prüfe deine Pläne und versuche es erneut.';
 
   @override
+  String planOverlapTrimBlocked(String plan, String date) {
+    return '$plan hat abgeschlossene Einheiten nach dem $date. Ersetze ihn stattdessen oder starte den neuen Plan später.';
+  }
+
+  @override
+  String planOverlapTrimBlockedUnnamed(String date) {
+    return 'Der Plan, den du vorzeitig beenden wolltest, hat abgeschlossene Einheiten nach dem $date. Ersetze ihn stattdessen oder starte den neuen Plan später.';
+  }
+
+  @override
   String get planDetailDuplicateWeekOverlap =>
       'Wenn du diese Woche duplizierst, rutscht der Plan in den Zeitraum eines anderen aktiven Plans. Verschiebe oder beende jenen Plan zuerst.';
 

@@ -5892,6 +5892,16 @@ class AppLocalizationsJa extends AppLocalizations {
       'この期間には別のアクティブなプランが入っています。プランを確認して、もう一度お試しください。';
 
   @override
+  String planOverlapTrimBlocked(String plan, String date) {
+    return '$planには$dateより後に完了したワークアウトがあります。代わりに置き換えるか、新しいプランの開始を遅らせてください。';
+  }
+
+  @override
+  String planOverlapTrimBlockedUnnamed(String date) {
+    return '早めに終了しようとしたプランには$dateより後に完了したワークアウトがあります。代わりに置き換えるか、新しいプランの開始を遅らせてください。';
+  }
+
+  @override
   String get planDetailDuplicateWeekOverlap =>
       'この週を複製すると、プランが別のアクティブなプランの期間に重なります。先にそのプランを移動するか終了してください。';
 

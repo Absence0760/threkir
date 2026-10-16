@@ -1727,6 +1727,8 @@
   "planOverlapTrimHint": "Terminez {name} plus tôt pour conserver ses semaines effectuées et supprimer ses séances après le {date}, ou remplacez-le pour le marquer comme terminé.",
   "planOverlapTrim": "Terminer {name} le {date}",
   "planOverlapConflict": "Un autre plan actif couvre désormais ces dates. Vérifiez vos plans et réessayez.",
+  "planOverlapTrimBlocked": "{plan} comporte des séances effectuées après le {date}. Remplacez-le plutôt, ou commencez le nouveau plan plus tard.",
+  "planOverlapTrimBlockedUnnamed": "Le plan que vous avez choisi de terminer plus tôt comporte des séances effectuées après le {date}. Remplacez-le plutôt, ou commencez le nouveau plan plus tard.",
   "planDetailDuplicateWeekOverlap": "Dupliquer cette semaine ferait empiéter le plan sur les dates d'un autre plan actif. Déplacez ou terminez d'abord ce plan.",
   "planNewImportButton": "Importer un plan",
   "planImportTitle": "Importer un plan",

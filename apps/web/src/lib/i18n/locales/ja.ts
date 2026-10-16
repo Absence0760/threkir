@@ -2874,6 +2874,7 @@ export const messages = {
 	"planEditor.overlapNoTrim": "新しい開始日以降に始まるプランは、置き換えることしかできません。",
 	"planEditor.overlapTrimOne": "「{name}」を{date}に終了",
 	"planEditor.overlapTrimMany": "{date}に終了",
+	"planEditor.overlapTrimBlocked": "{plan}には{date}より後に完了したワークアウトがあります。代わりに置き換えるか、新しいプランの開始を遅らせてください。",
 	"planEditor.replacePlan": "プランを置き換える",
 	"planMeta.nameRequired": "名前は必須です",
 	"planMeta.planUpdated": "プランを更新しました。",

@@ -1727,6 +1727,8 @@
   "planOverlapTrimHint": "{name}を早めに終了すると、終えた週は残り、{date}より後のワークアウトは削除されます。置き換えると完了としてマークされます。",
   "planOverlapTrim": "{name}を{date}に終了",
   "planOverlapConflict": "この期間には別のアクティブなプランが入っています。プランを確認して、もう一度お試しください。",
+  "planOverlapTrimBlocked": "{plan}には{date}より後に完了したワークアウトがあります。代わりに置き換えるか、新しいプランの開始を遅らせてください。",
+  "planOverlapTrimBlockedUnnamed": "早めに終了しようとしたプランには{date}より後に完了したワークアウトがあります。代わりに置き換えるか、新しいプランの開始を遅らせてください。",
   "planDetailDuplicateWeekOverlap": "この週を複製すると、プランが別のアクティブなプランの期間に重なります。先にそのプランを移動するか終了してください。",
   "planNewImportButton": "プランをインポート",
   "planImportTitle": "プランをインポート",

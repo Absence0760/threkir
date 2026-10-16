@@ -673,6 +673,27 @@
 </script>
 
 <form onsubmit={submit} class="plan-editor">
+	<!-- Spans both columns: a pasted plan is a wide Markdown table, and the
+	     22rem form column wrapped every row of it. -->
+	<details class="import-box import-wide" bind:open={showImport}>
+		<summary id="plan-import-title">{t('planEditor.importTitle')}</summary>
+		<p class="hint" id="plan-import-hint">{t('planEditor.importHint')}</p>
+		<textarea
+			aria-labelledby="plan-import-title"
+			class="import-text"
+			bind:value={importText}
+			rows="14"
+			wrap="off"
+			placeholder={t('planEditor.importPlaceholder')}
+			aria-describedby="plan-import-hint"
+		></textarea>
+		{#if importError}
+			<p class="error">{importError}</p>
+		{/if}
+		<button type="button" class="btn btn-secondary" onclick={loadFromText}>
+			{t('planEditor.importLoad')}
+		</button>
+	</details>
 	<div class="grid">
 		<section class="form">
 			{#if showAiPlan}
@@ -726,23 +747,6 @@
 					{/if}
 				</details>
 			{/if}
-			<details class="import-box" bind:open={showImport}>
-				<summary>{t('planEditor.importTitle')}</summary>
-				<p class="hint" id="plan-import-hint">{t('planEditor.importHint')}</p>
-				<textarea
-					class="import-text"
-					bind:value={importText}
-					rows="6"
-					placeholder={t('planEditor.importPlaceholder')}
-					aria-describedby="plan-import-hint"
-				></textarea>
-				{#if importError}
-					<p class="error">{importError}</p>
-				{/if}
-				<button type="button" class="btn btn-secondary" onclick={loadFromText}>
-					{t('planEditor.importLoad')}
-				</button>
-			</details>
 			{#if importedMode}
 				<p class="imported-note" role="status">{t('planEditor.importedNote')}</p>
 			{/if}
@@ -781,7 +785,7 @@
 					<input
 						type="date"
 						bind:value={startDate}
-						min={todayIso()}
+						min={importedMode ? undefined : todayIso()}
 						onchange={() => { exitImportMode(); alignStartToSunday(); }}
 						required
 						aria-describedby="start-date-hint"
@@ -1173,6 +1177,9 @@
 	.import-box[open] summary {
 		margin-bottom: 0.4rem;
 	}
+	.import-wide {
+		margin-bottom: var(--space-lg);
+	}
 	.import-text {
 		width: 100%;
 		box-sizing: border-box;
@@ -1184,6 +1191,8 @@
 		padding: 0.5rem;
 		color: var(--color-text);
 		resize: vertical;
+		white-space: pre;
+		overflow-x: auto;
 		margin-bottom: 0.5rem;
 	}
 	.ai-text {

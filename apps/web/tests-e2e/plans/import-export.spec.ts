@@ -104,4 +104,45 @@ test.describe('plan import / export', () => {
 		// Name field picked up the parsed title.
 		await expect(page.locator('input[type="text"]').first()).toHaveValue('Imported e2e plan');
 	});
+
+	test('an imported plan that started in the past still passes form validation', async ({ page }) => {
+		await page.goto('/plans/new');
+		await expect(page.locator('.week-item').first()).toBeVisible({ timeout: 10_000 });
+
+		// A plan already under way: its start date is behind today and not a
+		// Sunday. The generator's min=today on the date input used to make the
+		// browser refuse to submit it, though submit() lets imports through.
+		const md = [
+			'# Imported mid-block plan',
+			'- Goal event: distance_full',
+			'- Start date: 2020-01-03',
+			'',
+			'| Week | Date | Type | Distance | Pace | Notes |',
+			'| --- | --- | --- | --- | --- | --- |',
+			'| 1 | 2020-01-03 | easy | 5.00 km | | |',
+			'| 1 | 2020-01-04 | long | 20.00 km | 6:24 | |',
+		].join('\n');
+
+		await page.getByText('Import a plan', { exact: true }).click();
+		await page.getByRole('textbox', { name: 'Import a plan' }).fill(md);
+		await page.getByRole('button', { name: 'Load plan' }).click();
+		await expect(page.locator('.imported-note')).toBeVisible();
+
+		const startInput = page.locator('input[type="date"]');
+		await expect(startInput).toHaveValue('2020-01-03');
+		await expect(startInput).not.toHaveAttribute('min');
+		expect(await startInput.evaluate((el: HTMLInputElement) => el.checkValidity())).toBe(true);
+	});
+
+	test('the import box spans the editor rather than the narrow form column', async ({ page }) => {
+		await page.goto('/plans/new');
+		await expect(page.locator('.week-item').first()).toBeVisible({ timeout: 10_000 });
+		await page.getByText('Import a plan', { exact: true }).click();
+
+		const box = await page.getByRole('textbox', { name: 'Import a plan' }).boundingBox();
+		const formColumn = await page.locator('.plan-editor .form').boundingBox();
+		expect(box).not.toBeNull();
+		expect(formColumn).not.toBeNull();
+		expect(box!.width).toBeGreaterThan(formColumn!.width);
+	});
 });

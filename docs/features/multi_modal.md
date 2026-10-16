@@ -366,8 +366,12 @@ becomes an **action button**, not a tab.
 > device-side analogue of web's Add a run), Set a goal and Import runs; #905
 > added the plan-aware body variant and web's "Lifting instead? Log a gym
 > session" hint, which lands on the Fitness hub's Gym tab through the shell's
-> Log → Lift action. Web's record-on-your-phone hint has no counterpart, since
-> this is the phone. `test/dashboard_first_run_test.dart`.
+> Log → Lift action. The hint follows web's rule: hidden only when `show_gym`
+> is an explicit no, shown while it is unanswered or yes (decisions § 2041).
+> The Log → Lift path switches Gym on, with its Undo banner, only while Gym is
+> hidden; for an account that already said yes it just lands on the tab.
+> Web's record-on-your-phone hint has no counterpart, since this is the phone.
+> `test/dashboard_first_run_test.dart`.
 >
 > **Status (mobile, run-only polish, 2026-10-04):** Home carries a **Last
 > run** section under the plan card — the Runs list's own `RunListTile`, so

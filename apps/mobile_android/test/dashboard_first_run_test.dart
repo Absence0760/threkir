@@ -233,7 +233,8 @@ void main() {
       expect(find.textContaining('Goals'), findsWidgets);
     });
 
-    testWidgets('offers a lifter the gym, as web does', (tester) async {
+    testWidgets('offers the gym to an account that has not said whether it '
+        'lifts', (tester) async {
       final s = await _stores();
       var lifts = 0;
       await _pump(tester, s, onLogLift: () => lifts++);
@@ -245,20 +246,35 @@ void main() {
       expect(lifts, 1);
     });
 
-    for (final answer in [false, true]) {
-      testWidgets('hides the gym way out once the account has answered '
-          'whether it lifts (show_gym: $answer)', (tester) async {
-        // The setup wizard's track step records an explicit answer only when
-        // it is touched (decisions § 1650). Once there is one, the link
-        // contradicts it and sits a mis-tap under Start a run.
-        final s = await _stores();
-        await s.prefs.setShowGym(answer);
-        await _pump(tester, s, onLogLift: () {});
+    testWidgets('keeps the gym way out for an account that said it lifts',
+        (tester) async {
+      // A lifter with nothing logged yet is exactly who the hint is for;
+      // web shows it unless the answer is no (decisions § 2041).
+      final s = await _stores();
+      await s.prefs.setShowGym(true);
+      var lifts = 0;
+      await _pump(tester, s, onLogLift: () => lifts++);
 
-        expect(find.text('Welcome!'), findsOneWidget);
-        expect(find.text('Log a gym session'), findsNothing);
-      });
-    }
+      expect(find.text('Welcome!'), findsOneWidget);
+      expect(find.text('Lifting instead?'), findsOneWidget);
+      await tester.ensureVisible(find.text('Log a gym session'));
+      await tester.tap(find.text('Log a gym session'));
+      expect(lifts, 1);
+    });
+
+    testWidgets('hides the gym way out from an account that said it does not '
+        'lift', (tester) async {
+      // The setup wizard's track step records an explicit answer only when
+      // it is touched (decisions § 1650). "No" is the one answer the link
+      // contradicts.
+      final s = await _stores();
+      await s.prefs.setShowGym(false);
+      await _pump(tester, s, onLogLift: () {});
+
+      expect(find.text('Welcome!'), findsOneWidget);
+      expect(find.text('Lifting instead?'), findsNothing);
+      expect(find.text('Log a gym session'), findsNothing);
+    });
 
     testWidgets('hides the gym way out when the host cannot reach it',
         (tester) async {

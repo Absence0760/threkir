@@ -728,6 +728,23 @@
 		}
 	}
 
+	/// Whether the current style carries the overlays. False from map creation
+	/// until `load`, and from `setStyle` until `style.load`: in those windows a
+	/// handler is already pending that draws whatever track is current when it
+	/// fires, so a track change there only records that the camera owes a refit.
+	/// Drawing anyway is how /runs/[id] threw `Source "trace" already exists`
+	/// when the matched line landed between `style.load` and `load` -- the
+	/// track change drew, then `load` drew again (decisions § 2043).
+	let overlaysOnStyle = false;
+	let refitPending = false;
+
+	function drawOverlays(fit: boolean): void {
+		overlaysOnStyle = true;
+		const refit = fit || refitPending;
+		refitPending = false;
+		addOverlays(trackCoords, trackBounds, refit);
+	}
+
 	let trackCoords: [number, number][] = [];
 	/// Pace colour stops for `track`, taken with the other snapshots.
 	let paceStops = $state<PaceStop[]>([]);
@@ -829,12 +846,16 @@
 		segmentMarker?.remove();
 		segmentMarker = undefined;
 		snapshotTrack();
-		clearOverlays();
 		// `data-map-idle` means "settled on the track being shown", so it has
 		// to come off until the new camera has settled -- a pointer-driven
 		// test waiting on it would otherwise read a position mid-animation.
 		mapContainer?.removeAttribute('data-map-idle');
 		map.once('idle', () => mapContainer?.setAttribute('data-map-idle', 'true'));
+		if (!overlaysOnStyle) {
+			refitPending = true;
+			return;
+		}
+		clearOverlays();
 		addOverlays(trackCoords, trackBounds, true);
 	});
 
@@ -865,7 +886,7 @@
 
 		map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
-		map.on('load', () => addOverlays(trackCoords, trackBounds, true));
+		map.on('load', () => drawOverlays(true));
 		// The entrance fitBounds (inside the load handler above) animates the
 		// camera, so a pin's screen position keeps moving for a beat after it
 		// first renders. `idle` fires only once tiles are loaded AND no camera
@@ -1064,8 +1085,9 @@
 		const next = getMapStyle();
 		if (!map || next === currentStyle) return;
 		currentStyle = next;
+		overlaysOnStyle = false;
 		map.setStyle(mapStyleUrl(PUBLIC_MAPTILER_KEY, prefersDark));
-		map.once('style.load', () => addOverlays(trackCoords, trackBounds, false));
+		map.once('style.load', () => drawOverlays(false));
 	});
 
 	onDestroy(() => {

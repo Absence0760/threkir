@@ -23,6 +23,8 @@ class _FakeTraining extends TrainingService {
   final List<String> paused = [];
   final List<String> resumed = [];
   final Map<String, double> updated = {};
+  Map<String, Map<String, Object?>>? taperPatches;
+  Map<String, double>? taperWeekVolumes;
 
   /// Makes `resumePlan` refuse the way the one-active index would.
   bool resumeBlocked = false;
@@ -59,6 +61,15 @@ class _FakeTraining extends TrainingService {
   }) async {
     if (targetDistanceM != null) updated[workoutId] = targetDistanceM;
   }
+
+  @override
+  Future<void> applyRaceTaper({
+    required Map<String, Map<String, Object?>> patches,
+    required Map<String, double> weekVolumes,
+  }) async {
+    taperPatches = patches;
+    taperWeekVolumes = weekVolumes;
+  }
 }
 
 class _FakeSocial extends SocialService {
@@ -88,7 +99,7 @@ PlanWeekRow _week(String id, int idx, String phase, double vol) => PlanWeekRow(
     id: id, planId: 'plan-1', weekIndex: idx, phase: phase, targetVolumeM: vol);
 
 PlanWorkoutRow _wo(String id, String weekId, DateTime date, String kind,
-        double? dist) =>
+        double? dist, {String? raceName, String? racePriority}) =>
     PlanWorkoutRow(
       id: id,
       weekId: weekId,
@@ -96,6 +107,8 @@ PlanWorkoutRow _wo(String id, String weekId, DateTime date, String kind,
       kind: kind,
       targetDistanceM: dist,
       manuallyCompleted: false,
+      raceName: raceName,
+      racePriority: racePriority,
     );
 
 Future<void> _pump(
@@ -165,7 +178,106 @@ _FakeTraining _missedLongPlan({String status = 'active'}) {
   );
 }
 
+/// A plan whose next race is a B race ten days out, with an interval five
+/// days before it and a tempo two days before it — the shape
+/// `raceTaperProposals` eases and cuts to a shakeout.
+_FakeTraining _bRacePlan() {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final start = today.subtract(const Duration(days: 7));
+  return _FakeTraining(
+    TrainingPlanRow(
+      id: 'plan-1',
+      userId: _uid,
+      name: 'Test Plan',
+      goalEvent: 'distance_marathon',
+      goalDistanceM: 42195,
+      startDate: start,
+      endDate: start.add(const Duration(days: 69)),
+      daysPerWeek: 4,
+      status: 'active',
+      source: 'generated',
+      isTemplate: false,
+      isPublicTemplate: false,
+    ),
+    [_week('w0', 0, 'build', 40000), _week('w1', 1, 'build', 42000)],
+    [
+      _wo('int', 'w0', today.add(const Duration(days: 5)), 'interval', 10000),
+      _wo('tempo', 'w1', today.add(const Duration(days: 8)), 'tempo', 12000),
+      _wo('b-race', 'w1', today.add(const Duration(days: 10)), 'race', 21097.5,
+          raceName: 'Two Oceans Half', racePriority: 'B'),
+    ],
+  );
+}
+
 void main() {
+  group('PlanDetailScreen — taper around B/C races', () {
+    testWidgets('not offered when the plan has no future B or C race',
+        (tester) async {
+      final training = _missedLongPlan();
+      await _pump(tester, training: training, social: _FakeSocial(const []));
+      await _openAdjust(tester);
+
+      expect(_inDialog(find.text('Taper around B/C races')), findsNothing);
+    });
+
+    testWidgets('previews the taper before a B race and applies its patches',
+        (tester) async {
+      final training = _bRacePlan();
+      await _pump(tester, training: training, social: _FakeSocial(const []));
+      await _openAdjust(tester);
+      expect(_inDialog(find.textContaining('Your A race and its taper')),
+          findsOneWidget);
+      await _chooseAdjustment(tester, 'Taper around B/C races');
+
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.text('Proposed taper and recovery'), findsOneWidget);
+      expect(find.textContaining('taper for Two Oceans Half'), findsOneWidget);
+      expect(find.textContaining('shakeout before Two Oceans Half'),
+          findsOneWidget);
+      expect(training.taperPatches, isNull);
+
+      final apply = find.descendant(
+          of: find.byKey(const Key('planDetailRaceTaperPreview')),
+          matching: find.text('Apply changes'));
+      await tester.ensureVisible(apply);
+      await tester.tap(apply);
+      await pumpUntil(tester, () => training.taperPatches != null,
+          describe: 'the taper to write its patches');
+      expect(training.taperPatches!['int'], {
+        'kind': 'easy',
+        'target_distance_m': 6500,
+        'target_pace_sec_per_km': null,
+        'target_pace_tolerance_sec': null,
+        'structure': null,
+      });
+      expect(training.taperPatches!['tempo']!['target_distance_m'], 5000);
+      expect(training.taperPatches!.containsKey('b-race'), isFalse);
+      expect(training.taperWeekVolumes, {'w0': 6500, 'w1': 5000 + 21097.5});
+      await tester.pump(const Duration(seconds: 4));
+    });
+
+    testWidgets('the hero names the next race and shows its distance',
+        (tester) async {
+      final training = _bRacePlan();
+      await _pump(tester, training: training, social: _FakeSocial(const []));
+
+      final next = find.byKey(const Key('planDetailHeroNextRace'));
+      expect(next, findsOneWidget);
+      expect(tester.widget<Text>(next).data, 'Next race: Two Oceans Half');
+      expect(find.textContaining('21.1'), findsWidgets);
+    });
+
+    testWidgets('the hero keeps the plan goal while the A race is next',
+        (tester) async {
+      final training = _missedLongPlan();
+      await _pump(tester, training: training, social: _FakeSocial(const []));
+
+      expect(find.byKey(const Key('planDetailHeroNextRace')), findsNothing);
+    });
+  });
+
+
   group('PlanDetailScreen — Adjust plan dialog', () {
     testWidgets('the page offers one entry point, not the bare controls',
         (tester) async {

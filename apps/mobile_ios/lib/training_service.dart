@@ -1013,6 +1013,26 @@ class TrainingService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Writes the B/C race taper's per-workout patches (`raceTaperPatch`,
+  /// decisions § 2051) and restates each touched week's volume. Unlike
+  /// [updateWorkout] a patch may clear the pace target and the interval
+  /// structure. Mirrors web `applyRaceTaper` on the plan page.
+  Future<void> applyRaceTaper({
+    required Map<String, Map<String, Object?>> patches,
+    required Map<String, double> weekVolumes,
+  }) async {
+    for (final e in patches.entries) {
+      if (e.value.isEmpty) continue;
+      await _c.from(PlanWorkoutRow.table).update(e.value).eq('id', e.key);
+    }
+    for (final e in weekVolumes.entries) {
+      await _c
+          .from(PlanWeekRow.table)
+          .update({PlanWeekRow.colTargetVolumeM: e.value}).eq('id', e.key);
+    }
+    notifyListeners();
+  }
+
   /// Candidate runs the owner can re-link to [workout].
   ///
   /// Owner-scoped, within ±7 days of the scheduled date, EXCLUDING any

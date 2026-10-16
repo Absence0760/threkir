@@ -8503,6 +8503,67 @@
   "@planDetailAdjustAdaptiveDesc": {
     "description": "Plan-detail adjust-plan dialog"
   },
+  "planDetailRaceTaper": "Taper around B/C races",
+  "@planDetailRaceTaper": {
+    "description": "Plan-detail adjust-plan dialog: option that proposes a mini-taper and recovery around the plan's B and C races"
+  },
+  "planDetailAdjustRaceTaperDesc": "Eases the days before each upcoming B or C race and the days after it, so you race it fresh and recover before training picks up. Your A race and its taper stay as they are.",
+  "@planDetailAdjustRaceTaperDesc": {
+    "description": "Plan-detail adjust-plan dialog: description of the B/C race taper option"
+  },
+  "planDetailRaceTaperNone": "No upcoming B or C race needs a taper.",
+  "@planDetailRaceTaperNone": {
+    "description": "Plan-detail banner when the B/C race taper finds nothing to change"
+  },
+  "planDetailRaceTaperPreviewTitle": "Proposed taper and recovery",
+  "@planDetailRaceTaperPreviewTitle": {
+    "description": "Plan-detail heading of the B/C race taper preview"
+  },
+  "planDetailRaceTaperPre": "{change} — taper for {race}",
+  "@planDetailRaceTaperPre": {
+    "description": "Plan-detail race taper preview row for a session eased in the days before a B/C race. change is e.g. 'Intervals 10.0 km → Easy 6.5 km'; race is the race name or date",
+    "placeholders": {
+      "change": {
+        "type": "String"
+      },
+      "race": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailRaceTaperShakeout": "{change} — shakeout before {race}",
+  "@planDetailRaceTaperShakeout": {
+    "description": "Plan-detail race taper preview row for a session cut to a short easy shakeout in the 2 days before a B race",
+    "placeholders": {
+      "change": {
+        "type": "String"
+      },
+      "race": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailRaceTaperPost": "{change} — recovery after {race}",
+  "@planDetailRaceTaperPost": {
+    "description": "Plan-detail race taper preview row for a session eased in the recovery days after a B/C race",
+    "placeholders": {
+      "change": {
+        "type": "String"
+      },
+      "race": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailHeroNextRace": "Next race: {name}",
+  "@planDetailHeroNextRace": {
+    "description": "Plan-detail hero line naming the next race the hero's distance, goal and date now describe (a B or C race before the plan's A race)",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "planDetailAdjustPauseDesc": "Puts the plan on hold without deleting anything, until you resume it. Use it for illness, injury or travel.",
   "@planDetailAdjustPauseDesc": {
     "description": "Plan-detail adjust-plan dialog"

@@ -157,6 +157,55 @@ class _LookupGateTraining extends TrainingService {
   }
 }
 
+/// The goal dropdown's selected entry: a goal_event db value, or an ultra
+/// entry id.
+String? _goalValue(WidgetTester tester) => tester
+    .widget<DropdownButtonFormField<String>>(find.byWidgetPredicate((w) =>
+        w is DropdownButtonFormField<String> &&
+        w.key is ValueKey<String> &&
+        (w.key as ValueKey<String>).value.startsWith('plan-new-goal-')))
+    .initialValue;
+
+/// Records the plan the wizard asks to create, then throws to keep the
+/// screen on the wizard (a real success navigates to the Supabase-backed
+/// PlanDetailScreen).
+class _RecordingTraining extends TrainingService {
+  GoalEvent? goalEvent;
+  double? goalDistanceM;
+  GeneratedPlan? generated;
+
+  @override
+  Future<TrainingGender> fetchViewerGender() async => null;
+  @override
+  Future<int?> fetchViewerAge() async => null;
+  @override
+  Future<RecentVolume?> fetchRecentRunVolume() async => null;
+  @override
+  Future<List<TrainingPlanRow>> fetchClubTemplates(String clubId) async =>
+      const [];
+  @override
+  Future<List<TrainingPlanRow>> fetchActivePlans() async => const [];
+
+  @override
+  Future<TrainingPlanRow> createPlan({
+    required String name,
+    required GoalEvent goalEvent,
+    required double goalDistanceM,
+    int? goalTimeSec,
+    int? recent5kSec,
+    required DateTime startDate,
+    required int daysPerWeek,
+    String? notes,
+    required GeneratedPlan generated,
+    PlanOverlapAction onOverlap = PlanOverlapAction.refuse,
+  }) async {
+    this.goalEvent = goalEvent;
+    this.goalDistanceM = goalDistanceM;
+    this.generated = generated;
+    throw Exception('test: skip navigation');
+  }
+}
+
 /// An active plan spanning [fromDays]..[toDays] days from today. The wizard
 /// defaults its new plan to start next Sunday (1-7 days out) and run for
 /// weeks, which is what each window below is placed against.
@@ -952,9 +1001,7 @@ void main() {
       expect(find.byKey(const Key('plan-new-race-note')), findsOneWidget);
       expect(find.textContaining('${expected.weeks}-week plan'), findsOneWidget);
       expect(find.text(expected.startDate), findsOneWidget);
-      final goal = tester.widget<DropdownButtonFormField<GoalEvent>>(
-          find.byType(DropdownButtonFormField<GoalEvent>));
-      expect(goal.initialValue, GoalEvent.distanceHalf);
+      expect(_goalValue(tester), 'distance_half');
       expect(fieldTexts(tester), contains('Autumn Half'));
       expect(fieldTexts(tester), contains('${expected.weeks}'));
     });
@@ -988,8 +1035,21 @@ void main() {
 
     testWidgets('a distance matching no rung presets the dates but not the goal',
         (tester) async {
-      // A 50k trail ultra: the goal dropdown has no custom-distance entry, so
-      // snapping it to the marathon rung would preselect a different race.
+      // A 30 km race: snapping it to the nearest rung would preselect a
+      // different race, and it is no ultra.
+      final raceIso = isoDaysOut(220);
+      final expected = racePlanPreset(
+        raceDateIso: raceIso,
+        distanceM: 30000,
+        todayIso: toIsoDate(DateTime.now()),
+      ).preset!;
+      await pumpRace(tester, raceDateIso: raceIso, distanceM: 30000);
+      await tester.pump();
+      expect(_goalValue(tester), 'distance_half'); // the wizard default
+      expect(find.text(expected.startDate), findsOneWidget);
+    });
+
+    testWidgets('an ultra race preselects its ultra distance', (tester) async {
       final raceIso = isoDaysOut(220);
       final expected = racePlanPreset(
         raceDateIso: raceIso,
@@ -998,10 +1058,10 @@ void main() {
       ).preset!;
       await pumpRace(tester, raceDateIso: raceIso, distanceM: 50000);
       await tester.pump();
-      final goal = tester.widget<DropdownButtonFormField<GoalEvent>>(
-          find.byType(DropdownButtonFormField<GoalEvent>));
-      expect(goal.initialValue, GoalEvent.distanceHalf); // the wizard default
+      expect(_goalValue(tester), 'ultra_50k');
+      expect(find.byKey(const Key('plan-new-ultra-distance')), findsOneWidget);
       expect(find.text(expected.startDate), findsOneWidget);
+      expect(fieldTexts(tester), contains('${expected.weeks}'));
     });
 
     testWidgets('no race leaves the wizard silent', (tester) async {
@@ -1017,6 +1077,122 @@ void main() {
       );
       await tester.pump();
       expect(find.byKey(const Key('plan-new-race-note')), findsNothing);
+    });
+  });
+
+  group('PlanNewScreen — ultra distances (#1181)', () {
+    Future<_RecordingTraining> pumpUltra(WidgetTester tester) async {
+      final training = _RecordingTraining();
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: PlanNewScreen(training: training),
+        ),
+      );
+      await tester.pump();
+      return training;
+    }
+
+    Future<void> pickGoal(WidgetTester tester, String label) async {
+      await tester.tap(find.byKey(const ValueKey('plan-new-goal-0')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(label).last);
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> create(WidgetTester tester, _RecordingTraining t) async {
+      final button = find.widgetWithText(FilledButton, 'Create plan');
+      await tester.scrollUntilVisible(button, 300,
+          scrollable: find.byType(Scrollable).first);
+      await tester.tap(button);
+      await pumpUntil(tester, () => t.generated != null,
+          describe: 'the wizard to ask for the ultra plan');
+      // Runs out the failure banner's timer the throwing fake leaves behind.
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('the goal list offers the ultra distances', (tester) async {
+      await pumpUltra(tester);
+      await tester.tap(find.byKey(const ValueKey('plan-new-goal-0')));
+      await tester.pumpAndSettle();
+      for (final label in [
+        '50 km',
+        '56 km',
+        '90 km',
+        '100 mi',
+        'Other ultra distance',
+      ]) {
+        expect(find.text(label), findsWidgets, reason: label);
+      }
+    });
+
+    testWidgets('picking 56 km creates a 16-week time-on-feet ultra plan',
+        (tester) async {
+      final t = await pumpUltra(tester);
+      await pickGoal(tester, '56 km');
+      expect(find.byKey(const Key('plan-new-ultra-distance')), findsOneWidget);
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Plan name'), 'Two Oceans');
+      await tester.pump();
+      await create(tester, t);
+
+      expect(t.goalEvent, GoalEvent.custom);
+      expect(t.goalDistanceM, 56000);
+      final plan = t.generated!;
+      expect(plan.weeks.length, 16);
+      final longs = plan.weeks
+          .expand((w) => w.workouts)
+          .where((w) => w.kind == WorkoutKind.long)
+          .toList();
+      expect(longs, isNotEmpty);
+      for (final w in longs) {
+        expect(w.targetDurationSeconds, isNotNull);
+        expect(w.targetDurationSeconds! <= 12600, isTrue);
+        expect(w.targetPaceSecPerKm, isNull);
+      }
+      expect(plan.weeks.last.workouts.first.kind, WorkoutKind.race);
+      expect(plan.weeks.last.workouts.first.targetDistanceM, 56000);
+    });
+
+    testWidgets('a typed Comrades distance is planned as typed', (tester) async {
+      final t = await pumpUltra(tester);
+      await pickGoal(tester, '90 km');
+      await tester.enterText(
+          find.byKey(const Key('plan-new-ultra-distance')), '87.7');
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Plan name'), 'Comrades');
+      await tester.pump();
+      await create(tester, t);
+
+      expect(t.goalDistanceM, closeTo(87700, 0.001));
+      expect(t.generated!.weeks.length, 20);
+      expect(
+          t.generated!.weeks.expand((w) => w.workouts).any((w) =>
+              w.kind == WorkoutKind.long &&
+              w.scheduledDate.weekday == DateTime.saturday),
+          isTrue,
+          reason: 'back-to-back weekends');
+    });
+
+    testWidgets('an ultra distance not past the marathon blocks the create',
+        (tester) async {
+      await pumpUltra(tester);
+      await pickGoal(tester, 'Other ultra distance');
+      await tester.enterText(
+          find.byKey(const Key('plan-new-ultra-distance')), '30');
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Plan name'), 'Too short');
+      await tester.pump();
+      expect(
+          find.text('An ultra is longer than a marathon. Pick Marathon, or '
+              'enter a longer distance.'),
+          findsOneWidget);
+      final button = find.widgetWithText(FilledButton, 'Create plan');
+      await tester.scrollUntilVisible(button, 300,
+          scrollable: find.byType(Scrollable).first);
+      expect(tester.widget<FilledButton>(button).onPressed, isNull);
     });
   });
 }

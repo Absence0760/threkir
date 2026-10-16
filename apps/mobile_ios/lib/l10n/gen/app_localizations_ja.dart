@@ -5492,6 +5492,22 @@ class AppLocalizationsJa extends AppLocalizations {
   String get planNewGoalRace => '目標レース';
 
   @override
+  String get planNewUltraOther => 'その他のウルトラ距離';
+
+  @override
+  String planNewUltraDistance(String unit) {
+    return 'レース距離 ($unit)';
+  }
+
+  @override
+  String get planNewUltraDistanceHint =>
+      'ウルトラのコースは大会ごとに異なります。コムラッズは年により86〜90 kmです。レースの正確な距離を入力してください。ロング走はペースではなく走行時間で設定します。';
+
+  @override
+  String get planNewUltraDistanceTooShort =>
+      'ウルトラはマラソンより長い距離です。マラソンを選ぶか、より長い距離を入力してください。';
+
+  @override
   String get planNewStartDate => '開始日';
 
   @override

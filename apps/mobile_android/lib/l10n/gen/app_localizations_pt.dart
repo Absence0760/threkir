@@ -5823,6 +5823,22 @@ class AppLocalizationsPt extends AppLocalizations {
   String get planNewGoalRace => 'Prova-alvo';
 
   @override
+  String get planNewUltraOther => 'Outra distância de ultra';
+
+  @override
+  String planNewUltraDistance(String unit) {
+    return 'Distância da prova ($unit)';
+  }
+
+  @override
+  String get planNewUltraDistanceHint =>
+      'Os percursos de ultra variam — a Comrades tem entre 86 e 90 km consoante o ano. Introduza a distância exata da sua prova. Os treinos longos são definidos pelo tempo a correr, não pelo ritmo.';
+
+  @override
+  String get planNewUltraDistanceTooShort =>
+      'Uma ultra é mais longa do que uma maratona. Escolha Maratona ou introduza uma distância maior.';
+
+  @override
   String get planNewStartDate => 'Data de início';
 
   @override
@@ -22373,6 +22389,22 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get planNewGoalRace => 'Prova-alvo';
+
+  @override
+  String get planNewUltraOther => 'Outra distância de ultra';
+
+  @override
+  String planNewUltraDistance(String unit) {
+    return 'Distância da prova ($unit)';
+  }
+
+  @override
+  String get planNewUltraDistanceHint =>
+      'Os percursos de ultra variam — a Comrades tem de 86 a 90 km conforme o ano. Informe a distância exata da sua prova. Os longões são definidos por tempo em movimento, não por pace.';
+
+  @override
+  String get planNewUltraDistanceTooShort =>
+      'Uma ultra é mais longa que uma maratona. Escolha Maratona ou informe uma distância maior.';
 
   @override
   String get planNewStartDate => 'Data de início';

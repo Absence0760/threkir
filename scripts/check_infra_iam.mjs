@@ -985,8 +985,9 @@ export const NON_CREDENTIAL_SOPS_KEYS = {
   OPENAI_BASE_URL: 'an endpoint, not a credential — the OpenAI-compatible base URL',
   OPENAI_MODEL: 'a model name, not a credential',
   AI_PLAN_ENABLED:
-    'a feature switch: /api/coach/plan-request answers 503 unless it is ' +
-    'truthy. It turns a route off or on and authorises no caller',
+    'a feature switch: /api/coach/plan-request and /api/coach/season-request ' +
+    'answer 503 unless it is truthy. It turns two routes off or on and ' +
+    'authorises no caller',
   PLATE_PHOTO_ENABLED:
     'a feature switch: /api/coach/plate-photo answers 503 unless it is ' +
     'truthy. It turns a route off or on and authorises no caller',

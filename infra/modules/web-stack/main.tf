@@ -83,9 +83,9 @@ locals {
     "COACH_PROVIDER",
     "OPENAI_BASE_URL",
     "OPENAI_MODEL",
-    # Server half of PUBLIC_AI_PLAN_ENABLED: /api/coach/plan-request answers
-    # 503 unless this is truthy (decisions § 1930). Unset in the sops file
-    # means off.
+    # Server half of PUBLIC_AI_PLAN_ENABLED: /api/coach/plan-request and
+    # /api/coach/season-request answer 503 unless this is truthy (decisions
+    # § 1930). Unset in the sops file means off.
     "AI_PLAN_ENABLED",
     # Server half of PUBLIC_PLATE_PHOTO_ENABLED: /api/coach/plate-photo answers
     # 503 unless this is truthy (decisions § 1972). Unset means off.

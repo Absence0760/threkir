@@ -26,6 +26,7 @@ import {
 import { supabaseErrorFields, thrownMessage } from '../core/supabase_error';
 import { refundCoachMessage } from './coach_message_slot';
 import { buildContext, type CoachProfileRow } from './context';
+import { resolveToday } from '../training/plan_request/handler';
 import {
 	clampRunsLimit,
 	jsonError as buildJsonError,
@@ -238,13 +239,24 @@ export async function handleCoach(
 
 	const runsLimit = clampRunsLimit(body.recent_runs_limit, tier);
 
-	const context = await buildContext(
-		supabase,
-		authUser.id,
-		body.plan_id ?? null,
-		runsLimit,
-		profileRow,
-	);
+	// A failed plan read throws rather than reading as "no plan": the coach
+	// would otherwise answer confidently about a plan it could not see. The
+	// slot this request spent is given back, as on a provider failure.
+	let context: Awaited<ReturnType<typeof buildContext>>;
+	try {
+		context = await buildContext(
+			supabase,
+			authUser.id,
+			body.plan_id ?? null,
+			runsLimit,
+			profileRow,
+			resolveToday(body.today, (config.now ?? Date.now)()),
+		);
+	} catch (e) {
+		console.error('[coach] context read failed', { message: thrownMessage(e) });
+		await refundCoachMessage(supabase, authUser.id, spendId, 'coach', 'context_read_failed');
+		return jsonError(503, 'coach context unavailable');
+	}
 
 	const personality = (context.data as Record<string, unknown>)?.runner_context as
 		| Record<string, unknown>

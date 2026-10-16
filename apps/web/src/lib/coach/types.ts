@@ -37,6 +37,10 @@ export interface CoachRequestBody {
 	// every later message in the same (user, plan, archived_at=null)
 	// thread before running.
 	anchor_message_id?: string;
+	// The runner's local date (YYYY-MM-DD). The server has no viewer
+	// timezone, so it picks the current plan by this when it is within a day
+	// of its own UTC date, and by the UTC date otherwise (decisions § 2052).
+	today?: string;
 }
 
 export interface CoachConfig {
@@ -102,6 +106,8 @@ export interface CoachConfig {
 	// closed path) can be unit-tested without a live Supabase. Prod callers
 	// leave this unset — the handler falls back to the real `createClient`.
 	createClient?: SupabaseClientFactory;
+	// Test seam only: the server clock `today` is checked against.
+	now?: () => number;
 }
 
 export type CoachResult =

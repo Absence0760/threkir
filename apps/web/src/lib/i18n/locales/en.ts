@@ -225,6 +225,7 @@ export const en = {
 	"coachChat.planContextTitle": "Switch which plan grounds the coach's answers",
 	"coachChat.planLoaded": "Plan loaded for this conversation",
 	"coachChat.noActivePlanTitle": "No active plan; coach is grounded in recent runs only",
+	"coachChat.planReadFailed": "Plan couldn't load",
 	"coachChat.noRuns": "No runs",
 	"coachChat.noRunsTitle": "No runs available to feed the coach",
 	"coachChat.recentRunsAria": "Recent runs to include",

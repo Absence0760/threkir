@@ -290,7 +290,7 @@ export function buildSeason(input: SeasonBuildInput): SeasonBuildResult {
 		// than earlier, as a single race plan does (`racePlanPreset`); a later
 		// plan fills the gap from the end of recovery, so the season has no
 		// unplanned weeks between its blocks.
-		const cap = prev ? SEASON_MAX_PLAN_WEEKS : Math.min(SEASON_MAX_PLAN_WEEKS, defaultPlanWeeks(goalEvent));
+		const cap = prev ? SEASON_MAX_PLAN_WEEKS : Math.min(SEASON_MAX_PLAN_WEEKS, defaultPlanWeeks(goalEvent, goalDistanceM));
 		const weeks = Math.min(available, cap);
 		const start = raceWeekStart - (weeks - 1) * 7;
 		const generated = generatePlan({

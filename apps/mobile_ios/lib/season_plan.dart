@@ -352,7 +352,8 @@ SeasonBuildResult buildSeason({
     // recovery, so the season has no unplanned weeks between its blocks.
     final cap = prev != null
         ? kSeasonMaxPlanWeeks
-        : math.min(kSeasonMaxPlanWeeks, defaultPlanWeeks(goal.goalEvent));
+        : math.min(kSeasonMaxPlanWeeks,
+            defaultPlanWeeks(goal.goalEvent, goal.goalDistanceM));
     final weeks = math.min(available, cap);
     final start = raceWeekStart - (weeks - 1) * 7;
     final generated = generatePlan(GeneratePlanInput(

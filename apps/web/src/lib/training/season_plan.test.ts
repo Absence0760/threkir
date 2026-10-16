@@ -166,6 +166,19 @@ test('a custom distance A race plans at its own distance', () => {
 	assert.equal(workouts(plans[0]).find((w) => w.kind === 'race')!.target_distance_m, 56_000);
 });
 
+test('a 56 km and a 90 km A race chain, the first taking the ultra default length', () => {
+	const { plans, gaps } = ok(build([race('Two Oceans', '2027-04-03', 56_000, 'A'), race('Comrades', '2027-06-13', 90_000, 'A')]));
+	assert.deepEqual(
+		plans.map((p) => [p.name, p.goalEvent, p.goalDistanceM, p.weeks, p.startDate, p.endDate]),
+		[
+			['Two Oceans', 'custom', 56_000, 16, '2026-12-13', '2027-04-03'],
+			['Comrades', 'custom', 90_000, 8, '2027-04-25', '2027-06-13'],
+		]
+	);
+	assert.deepEqual([gaps[0].days, gaps[0].recoveryDays], [21, 19]);
+	assert.equal(workouts(plans[1]).at(-1)!.target_distance_m, 90_000);
+});
+
 test('a B race inside a plan becomes a race workout on its date, replacing the generated one', () => {
 	const { plans, unplaced } = ok(build([RICHMOND, TWO_OCEANS, COMRADES]));
 	assert.equal(unplaced.length, 0);

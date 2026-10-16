@@ -29,6 +29,8 @@ export const PLAN_REQUEST_BODY_LIMIT_BYTES = 16 * 1024;
 export const PLATE_PHOTO_BODY_LIMIT_BYTES = 4 * 1024 * 1024 + 16 * 1024;
 // A plan id and one short change request; the plan itself is read server-side.
 export const PLAN_EDIT_BODY_LIMIT_BYTES = 16 * 1024;
+// A season description of a few races, capped at 1500 characters by the handler.
+export const SEASON_REQUEST_BODY_LIMIT_BYTES = 16 * 1024;
 
 export type BodyDecodeResult =
 	| { ok: true; body: string }

@@ -25,6 +25,7 @@ import { handleRouteRequest } from '../../../src/lib/routes/route_request/handle
 import { handlePlanRequest } from '../../../src/lib/training/plan_request/handler';
 import { handlePlatePhoto } from '../../../src/lib/nutrition/plate_photo/handler';
 import { handlePlanEdit } from '../../../src/lib/training/plan_edit/handler';
+import { handleSeasonRequest } from '../../../src/lib/training/season_request/handler';
 import { isTruthyFlagValue } from '../../../src/lib/core/env_flag';
 import { methodRefusal, type MethodRefusal } from '../../../src/lib/core/method_gate';
 
@@ -62,6 +63,7 @@ import {
 	PLAN_REQUEST_BODY_LIMIT_BYTES,
 	PLATE_PHOTO_BODY_LIMIT_BYTES,
 	PLAN_EDIT_BODY_LIMIT_BYTES,
+	SEASON_REQUEST_BODY_LIMIT_BYTES,
 } from '../../../src/lib/coach/body';
 import { reportException } from '../../../src/lib/core/lambda_sentry';
 import { loadSecrets } from '../../../src/lib/core/lambda_secrets';
@@ -85,6 +87,7 @@ const SUB_PATHS = [
 	{ segment: 'plan-request', handle: dispatchPlanRequest },
 	{ segment: 'plate-photo', handle: dispatchPlatePhoto },
 	{ segment: 'plan-edit', handle: dispatchPlanEdit },
+	{ segment: 'season-request', handle: dispatchSeasonRequest },
 ].map(({ segment, handle }) => ({
 	segment,
 	pattern: new RegExp(`^/api/coach/${segment}/?$`),
@@ -392,6 +395,44 @@ async function dispatchPlanRequest(
 		event.headers?.['X-Supabase-Authorization'] ??
 		null;
 	const result = await handlePlanRequest(authHeader, rawBody, {
+		enabled: isTruthyFlagValue(process.env.AI_PLAN_ENABLED),
+		anthropicApiKey: (await loadSecrets()).ANTHROPIC_API_KEY,
+		publicSupabaseUrl: requireEnv('PUBLIC_SUPABASE_URL'),
+		publicSupabaseAnonKey: requireEnv('PUBLIC_SUPABASE_ANON_KEY'),
+		bypassPaywallEnabled: false,
+	});
+	writeResult(responseStream, result);
+}
+
+// Season-request sub-handler — the multi-race sibling of the plan assistant,
+// behind the same AI_PLAN_ENABLED flag. Non-streaming, one race list via
+// forced tool-use. `bypassPaywallEnabled: false` is hard-coded: the
+// production Lambda must never skip the daily cap.
+async function dispatchSeasonRequest(
+	event: LambdaFunctionURLEvent,
+	responseStream: ResponseStream,
+): Promise<void> {
+	const decoded = decodeLambdaBody(
+		event.body,
+		event.isBase64Encoded === true,
+		SEASON_REQUEST_BODY_LIMIT_BYTES,
+	);
+	if (!decoded.ok) {
+		writeJson(responseStream, decoded.status, { error: decoded.error });
+		return;
+	}
+	let rawBody: unknown;
+	try {
+		rawBody = decoded.body ? JSON.parse(decoded.body) : null;
+	} catch {
+		writeJson(responseStream, 400, { error: 'invalid JSON' });
+		return;
+	}
+	const authHeader =
+		event.headers?.['x-supabase-authorization'] ??
+		event.headers?.['X-Supabase-Authorization'] ??
+		null;
+	const result = await handleSeasonRequest(authHeader, rawBody, {
 		enabled: isTruthyFlagValue(process.env.AI_PLAN_ENABLED),
 		anthropicApiKey: (await loadSecrets()).ANTHROPIC_API_KEY,
 		publicSupabaseUrl: requireEnv('PUBLIC_SUPABASE_URL'),

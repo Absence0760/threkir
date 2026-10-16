@@ -490,36 +490,42 @@ test('Nominatim fallback uses a reachable contact email (no protomaps placeholde
 	);
 });
 
-test('the AI plan assistant gates on the plan disclosure, above the route-AI version', () => {
+test('the AI plan assistant and the season request gate on the plan disclosure, above the route-AI version', () => {
 	// /api/coach/plan-request ships the runner's description of their goals and
 	// fitness to Anthropic, a payload and purpose neither the Coach nor the
-	// route copy described. It must require AI_DISCLOSURE_VERSION_PLAN_AI, so an
-	// older acceptance does not satisfy it, and the dev paywall bypass must not
-	// reach the consent branch.
+	// route copy described; /api/coach/season-request ships the same kind of
+	// description (goal races, dates, target times) for the same purpose, so it
+	// rides the same rung. Both must require AI_DISCLOSURE_VERSION_PLAN_AI, so
+	// an older acceptance does not satisfy them, and the dev paywall bypass
+	// must not reach the consent branch.
 	const gate = read('src/lib/core/ai_disclosure.ts');
 	assert.match(
 		gate,
 		/AI_DISCLOSURE_VERSION_PLAN_AI\s*=\s*3/,
 		'the plan-AI minimum must sit above the route-AI minimum.',
 	);
-	const file = 'src/lib/training/plan_request/handler.ts';
-	const source = read(file);
-	assert.match(
-		source,
-		/gateAiDisclosure\([\s\S]*?AI_DISCLOSURE_VERSION_PLAN_AI/,
-		`${file} must gate on the plan AI disclosure before calling Anthropic.`,
-	);
-	const gateIdx = source.indexOf('gateAiDisclosure(');
-	const anthropicIdx = source.indexOf('new Anthropic(');
-	const counterIdx = source.indexOf('spendCoachMessage(');
-	assert.ok(
-		gateIdx > 0 && gateIdx < anthropicIdx && gateIdx < counterIdx,
-		`${file} must run the consent gate before the daily counter and the Anthropic client.`,
-	);
-	const bypassInGate = source
-		.slice(gateIdx, source.indexOf('Cost cap', gateIdx))
-		.includes('bypassPaywallEnabled');
-	assert.ok(!bypassInGate, `${file} must not let bypassPaywallEnabled skip the consent gate.`);
+	for (const file of [
+		'src/lib/training/plan_request/handler.ts',
+		'src/lib/training/season_request/handler.ts',
+	]) {
+		const source = read(file);
+		assert.match(
+			source,
+			/gateAiDisclosure\([\s\S]*?AI_DISCLOSURE_VERSION_PLAN_AI/,
+			`${file} must gate on the plan AI disclosure before calling Anthropic.`,
+		);
+		const gateIdx = source.indexOf('gateAiDisclosure(');
+		const anthropicIdx = source.indexOf('new Anthropic(');
+		const counterIdx = source.indexOf('spendCoachMessage(');
+		assert.ok(
+			gateIdx > 0 && gateIdx < anthropicIdx && gateIdx < counterIdx,
+			`${file} must run the consent gate before the daily counter and the Anthropic client.`,
+		);
+		const bypassInGate = source
+			.slice(gateIdx, source.indexOf('Cost cap', gateIdx))
+			.includes('bypassPaywallEnabled');
+		assert.ok(!bypassInGate, `${file} must not let bypassPaywallEnabled skip the consent gate.`);
+	}
 });
 
 test('AI plan edits gate on the v4 plan-edit disclosure, before the plan read, the counter and the model', () => {

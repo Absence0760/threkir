@@ -319,6 +319,7 @@ test('the Coach-message cost rail takes the slot fail-closed and refunds only th
 		'src/lib/coach/handler.ts',
 		'src/lib/training/plan_request/handler.ts',
 		'src/lib/training/plan_edit/handler.ts',
+		'src/lib/training/season_request/handler.ts',
 	]) {
 		const src = read(caller);
 		assert.doesNotMatch(
@@ -332,8 +333,12 @@ test('the Coach-message cost rail takes the slot fail-closed and refunds only th
 	assert.match(coach, /refundCoachMessage\(supabase, authUserId, spendId,/, 'the Coach handler must refund with its own ticket.');
 });
 
-test('the plan assistant and AI plan edits spend a Coach message before their billed call, and refund failures', () => {
-	for (const file of ['src/lib/training/plan_request/handler.ts', 'src/lib/training/plan_edit/handler.ts']) {
+test('the plan assistant, the season request and AI plan edits spend a Coach message before their billed call, and refund failures', () => {
+	for (const file of [
+		'src/lib/training/plan_request/handler.ts',
+		'src/lib/training/plan_edit/handler.ts',
+		'src/lib/training/season_request/handler.ts',
+	]) {
 		const source = read(file);
 		const spendIdx = source.indexOf('spendCoachMessage(');
 		const callIdx = source.indexOf('anthropic.messages.create');

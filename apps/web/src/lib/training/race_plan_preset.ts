@@ -45,10 +45,9 @@ export type RacePlanRefusal =
 
 export interface RacePlanPreset {
 	/// The standard event the race distance matches, or null when it matches
-	/// none. The wizard has no custom-distance input, so claiming the nearest
-	/// rung for (say) a 50k would silently train the runner for a marathon;
-	/// null leaves the goal on the wizard's own default and still presets the
-	/// dates, which is the half of the answer we can stand behind.
+	/// none. Claiming the nearest rung for (say) a 50k would silently train
+	/// the runner for a marathon; null leaves the goal to the wizard, which
+	/// offers an ultra entry past the marathon (`isUltraDistance`).
 	goalEvent: GoalEvent | null;
 	/// Total plan weeks, >= RACE_PLAN_MIN_WEEKS.
 	weeks: number;
@@ -131,7 +130,9 @@ export function racePlanPreset(input: {
 	const available = (raceWeekStart - firstStart) / 7 + 1;
 	if (available < RACE_PLAN_MIN_WEEKS) return { ok: false, reason: 'too_soon' };
 
-	const weeks = Math.min(available, defaultPlanWeeks(goalEvent ?? 'custom'));
+	// A distance off every rung sizes as a custom goal, which gives an ultra its
+	// own longer default.
+	const weeks = Math.min(available, defaultPlanWeeks(goalEvent ?? 'custom', input.distanceM));
 	return {
 		ok: true,
 		preset: {

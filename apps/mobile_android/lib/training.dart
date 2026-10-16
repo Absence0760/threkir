@@ -41,8 +41,15 @@ const Map<GoalEvent, int> _defaultWeeks = {
   GoalEvent.distanceFull: 16,
 };
 
-int defaultPlanWeeks(GoalEvent g) =>
-    g == GoalEvent.custom ? 12 : _defaultWeeks[g]!;
+/// [distanceM] matters only for a custom goal: an ultra distance takes its
+/// own, longer default ([ultraDefaultWeeks]), anything else the custom 12.
+/// Mirrors training.ts.
+int defaultPlanWeeks(GoalEvent g, [double? distanceM]) {
+  if (g != GoalEvent.custom) return _defaultWeeks[g]!;
+  return distanceM != null && isUltraDistance(distanceM)
+      ? ultraDefaultWeeks(distanceM)
+      : 12;
+}
 
 /// Default week count for a beginner C25K walk-run plan. The continuous-run
 /// default (`defaultPlanWeeks(GoalEvent.distance5k)` = 8) is one week shorter
@@ -541,10 +548,21 @@ GeneratedPlan generatePlan(GeneratePlanInput input) {
   final goalDistance = input.goalEvent == GoalEvent.custom
       ? input.goalDistanceM!
       : kGoalDistancesM[input.goalEvent]!;
-  final totalWeeks = input.weeks ?? defaultPlanWeeks(input.goalEvent);
+  final totalWeeks =
+      input.weeks ?? defaultPlanWeeks(input.goalEvent, goalDistance);
+  final ultra = !input.beginnerWalkRun && isUltraDistance(goalDistance);
+  // An ultra's training zones are anchored at its marathon equivalent: zone
+  // multipliers of a 100-mile goal pace would put "tempo" slower than a
+  // marathon jog. See [ultraMarathonEquivalentSec].
+  final paceDistanceM =
+      ultra ? kGoalDistancesM[GoalEvent.distanceFull]! : goalDistance;
+  final goalTime = input.goalTimeSec;
+  final paceGoalTimeSec = ultra && goalTime != null && goalTime > 0
+      ? ultraMarathonEquivalentSec(goalTime, goalDistance)
+      : goalTime;
   final resolved = resolveTrainingPacesWithMeta(
-    goalDistanceM: goalDistance,
-    goalTimeSec: input.goalTimeSec,
+    goalDistanceM: paceDistanceM,
+    goalTimeSec: paceGoalTimeSec,
     recent5kSec: input.recent5kSec,
     gender: input.gender,
   );
@@ -558,12 +576,20 @@ GeneratedPlan generatePlan(GeneratePlanInput input) {
   double? vdot;
   if (input.recent5kSec != null && input.recent5kSec! > 0) {
     vdot = vdotFromRace(5000, input.recent5kSec!);
-  } else if (input.goalTimeSec != null && input.goalTimeSec! > 0) {
-    vdot = vdotFromRace(goalDistance, input.goalTimeSec!);
+  } else if (paceGoalTimeSec != null && paceGoalTimeSec > 0) {
+    vdot = vdotFromRace(paceDistanceM, paceGoalTimeSec);
   }
 
   if (input.beginnerWalkRun) {
     return _generateWalkRunPlan(input, goalDistance, paces, vdot, pacesAreFallback);
+  }
+  if (ultra) {
+    return _generateUltraPlan(input,
+        goalDistanceM: goalDistance,
+        totalWeeks: totalWeeks,
+        paces: paces,
+        vdot: vdot,
+        pacesAreFallback: pacesAreFallback);
   }
 
   final weeks = <GeneratedWeek>[];
@@ -727,19 +753,388 @@ GeneratedPlan _generateWalkRunPlan(GeneratePlanInput input,
   );
 }
 
+// ─────────────────────── Ultra distances ───────────────────────
+// Mirror of the ultra branch in apps/web/src/lib/training/training.ts — keep
+// in lockstep. Anything longer than the marathon follows the time-on-feet
+// method of Koop, "Training Essentials for Ultrarunning" (2016): long runs
+// capped by duration rather than distance, back-to-back weekend long runs
+// from ~80 km up, and a 2-3 week taper that cuts volume progressively while a
+// little intensity stays.
+
+/// The ultra distances the plan wizards offer by name. Comrades runs 86-90 km
+/// depending on the year's direction, so the wizards let the runner correct
+/// any of these to their race's exact distance.
+const kUltraPresets = <({String id, double distanceM})>[
+  (id: 'ultra_50k', distanceM: 50000),
+  (id: 'ultra_56k', distanceM: 56000),
+  (id: 'ultra_90k', distanceM: 90000),
+  (id: 'ultra_100mi', distanceM: 160934.4),
+];
+
+/// Strictly longer than the marathon. A non-finite distance is not an ultra.
+bool isUltraDistance(double distanceM) =>
+    distanceM.isFinite && distanceM > kGoalDistancesM[GoalEvent.distanceFull]!;
+
+/// From this distance up, build and peak weekends carry a Saturday long run
+/// before the Sunday one.
+const double kUltraBackToBackMinM = 80000;
+
+/// Riegel's 1.06 was fitted to races up to the marathon; ultra finish times
+/// slow faster than it predicts, so converting an ultra goal to its marathon
+/// equivalent uses a steeper exponent. It only anchors training zones — it
+/// never predicts a race time. See training.ts.
+const double kUltraRiegelExponent = 1.15;
+
+/// The marathon time an ultra goal time corresponds to, in whole seconds.
+int ultraMarathonEquivalentSec(int goalTimeSec, double distanceM) =>
+    (goalTimeSec *
+            pow(kGoalDistancesM[GoalEvent.distanceFull]! / distanceM,
+                kUltraRiegelExponent))
+        .round();
+
+/// The longest single long run, in seconds: a duration, never a distance.
+int ultraLongRunCapSec(double distanceM) {
+  if (distanceM < 60000) return 12600;
+  if (distanceM < kUltraBackToBackMinM) return 14400;
+  if (distanceM < 120000) return 18000;
+  return 21600;
+}
+
+/// Default plan length for an ultra goal.
+int ultraDefaultWeeks(double distanceM) {
+  if (distanceM < 60000) return 16;
+  if (distanceM < kUltraBackToBackMinM) return 18;
+  if (distanceM < 120000) return 20;
+  return 24;
+}
+
+/// Taper weeks before race week: 3 from ~80 km up, 2 below, and never more
+/// than a quarter of the training weeks, so a short plan still builds.
+int ultraTaperWeeks(double distanceM, int totalWeeks) {
+  if (totalWeeks <= 1) return 0;
+  final wanted = distanceM >= kUltraBackToBackMinM ? 3 : 2;
+  return min(wanted, max(1, (totalWeeks - 1) ~/ 4));
+}
+
+const double _kUltraPeakCapKm = 120;
+double _ultraPeakBaseKm(double distanceM) {
+  final marathonKm = kGoalDistancesM[GoalEvent.distanceFull]! / 1000;
+  return min(_kUltraPeakCapKm,
+      marathonKm * 1.8 + 0.4 * (distanceM / 1000 - marathonKm));
+}
+
+const List<PlanPhase> _ultraBuildOrder = [
+  PlanPhase.base,
+  PlanPhase.build,
+  PlanPhase.peak,
+];
+const List<double> _ultraBuildShares = [0.35, 0.45, 0.2];
+
+/// Phase of a week in an ultra plan: the last week is the race, the
+/// [ultraTaperWeeks] before it taper, and the rest split base / build / peak
+/// 35 / 45 / 20 by largest remainder.
+PlanPhase ultraPhaseFor(int weekIndex, int totalWeeks, double distanceM) {
+  if (weekIndex >= totalWeeks - 1) return PlanPhase.race;
+  final buildWeeks = totalWeeks - 1 - ultraTaperWeeks(distanceM, totalWeeks);
+  if (weekIndex >= buildWeeks) return PlanPhase.taper;
+  final exact = [for (final share in _ultraBuildShares) share * buildWeeks];
+  final counts = [for (final v in exact) v.floor()];
+  var left = buildWeeks - counts.fold(0, (a, b) => a + b);
+  final order = List<int>.generate(exact.length, (i) => i)
+    ..sort((a, b) {
+      final byFrac = (exact[b] - exact[b].floor()) - (exact[a] - exact[a].floor());
+      return byFrac != 0 ? byFrac.sign.toInt() : a - b;
+    });
+  for (final i in order) {
+    if (left <= 0) break;
+    counts[i]++;
+    left--;
+  }
+  var end = 0;
+  for (var i = 0; i < counts.length; i++) {
+    end += counts[i];
+    if (weekIndex < end) return _ultraBuildOrder[i];
+  }
+  return PlanPhase.peak;
+}
+
+/// Most a build week may grow over the build week before it.
+const double kUltraMaxWeeklyRamp = 1.1;
+
+/// Fraction of peak volume for every week of an ultra plan. Mirrors
+/// `ultraMileageFractions` in training.ts.
+List<double> ultraMileageFractions(int totalWeeks, double distanceM,
+    [bool masters = false]) {
+  final taperWeeks = ultraTaperWeeks(distanceM, totalWeeks);
+  final buildWeeks = totalWeeks - 1 - taperWeeks;
+  final out = <double>[];
+  var ramp = 0.0;
+  for (var i = 0; i < totalWeeks; i++) {
+    if (i == totalWeeks - 1) {
+      out.add(0.35);
+    } else if (i >= buildWeeks) {
+      out.add(0.85 - (0.4 * (i - buildWeeks + 1)) / taperWeeks);
+    } else if (_isStepBackWeek(i, masters)) {
+      out.add(ramp * 0.82);
+    } else {
+      final linear = 0.6 + (0.4 * i) / max(1, buildWeeks - 1);
+      ramp = i == 0
+          ? 0.6
+          : min(1.0, min(linear, ramp * kUltraMaxWeeklyRamp));
+      out.add(ramp);
+    }
+  }
+  return out;
+}
+
+const double _kUltraLongShare = 0.35;
+const double _kUltraB2bSundayShare = 0.32;
+const double _kUltraB2bSaturdayShare = 0.24;
+const double _kUltraB2bSaturdayCap = 0.6;
+const int _kLongRunStepSec = 900;
+const int _kUltraLongRunMinSec = 3600;
+const int _kUltraEasyMaxSec = 7200;
+
+int _floorToStep(double sec) =>
+    (sec / _kLongRunStepSec).floor() * _kLongRunStepSec;
+
+/// A time-on-feet long run: the duration is the target; the distance is what
+/// it covers at easy pace (to 100 m); no pace target. Mirrors training.ts.
+GeneratedWorkout _ultraLongRun(DateTime date, double budgetKm, int capSec,
+    int easyPace, String notes) {
+  final durationSec = min(
+      capSec, max(_kUltraLongRunMinSec, _floorToStep(budgetKm * easyPace)));
+  return GeneratedWorkout(
+    scheduledDate: date,
+    kind: WorkoutKind.long,
+    targetDistanceM: ((durationSec / easyPace) * 10).round() * 100.0,
+    targetDurationSeconds: durationSec,
+    notes: notes,
+  );
+}
+
+const _kUltraLongNote =
+    'Time on feet at easy effort: the duration is the target, not the pace. Practise race-day fuelling.';
+const _kUltraB2bNote =
+    'Back-to-back, day one: easy effort, and tomorrow’s long run starts on tired legs.';
+
+String? _ultraWeekNote(
+    PlanPhase phase, int i, int total, bool masters, bool backToBack) {
+  if (phase == PlanPhase.taper) {
+    return 'Taper — volume comes down week by week; keep a little intensity.';
+  }
+  if (backToBack &&
+      !_isStepBackWeek(i, masters) &&
+      (phase == PlanPhase.build || phase == PlanPhase.peak)) {
+    return 'Back-to-back weekend — Saturday and Sunday long runs.';
+  }
+  return _weekNote(phase, i, total, masters);
+}
+
+GeneratedPlan _generateUltraPlan(
+  GeneratePlanInput input, {
+  required double goalDistanceM,
+  required int totalWeeks,
+  required TrainingPaces paces,
+  required double? vdot,
+  required bool pacesAreFallback,
+}) {
+  final masters = isMastersAge(input.age);
+  final backToBack = goalDistanceM >= kUltraBackToBackMinM;
+  final peakKm = peakVolumeKm(
+      goalDistanceM,
+      input.daysPerWeek,
+      (input.goalTimeSec != null && input.goalTimeSec! > 0) ||
+          (input.recent5kSec != null && input.recent5kSec! > 0));
+  final fractions = ultraMileageFractions(totalWeeks, goalDistanceM, masters);
+  final weeks = <GeneratedWeek>[];
+  // The ramp limit holds on what the weeks actually prescribe, not only on
+  // the fractions. Mirrors training.ts.
+  double? lastBuildM;
+  for (var i = 0; i < totalWeeks; i++) {
+    final phase = ultraPhaseFor(i, totalWeeks, goalDistanceM);
+    final buildWeek = (phase == PlanPhase.base ||
+            phase == PlanPhase.build ||
+            phase == PlanPhase.peak) &&
+        !_isStepBackWeek(i, masters);
+    final targetKm = (peakKm * fractions[i]).roundToDouble();
+    final workouts = _generateUltraWeek(
+      phase: phase,
+      weekStart: addDays(input.startDate, i * 7),
+      daysPerWeek: input.daysPerWeek,
+      weeklyKm: buildWeek && lastBuildM != null
+          ? min(targetKm, (lastBuildM / 1000) * kUltraMaxWeeklyRamp)
+          : targetKm,
+      paces: paces,
+      goalDistanceM: goalDistanceM,
+      goalTimeSec: input.goalTimeSec,
+      masters: masters,
+      backToBack: backToBack && buildWeek && phase != PlanPhase.base,
+    );
+    final volumeM =
+        workouts.fold(0.0, (s, w) => s + (w.targetDistanceM ?? 0));
+    if (buildWeek) lastBuildM = volumeM;
+    weeks.add(GeneratedWeek(
+      weekIndex: i,
+      phase: phase,
+      targetVolumeM: volumeM,
+      notes: _ultraWeekNote(phase, i, totalWeeks, masters, backToBack),
+      workouts: workouts,
+    ));
+  }
+  return GeneratedPlan(
+    weeks: weeks,
+    paces: paces,
+    vdot: vdot,
+    endDate: addDays(input.startDate, totalWeeks * 7 - 1),
+    goalDistanceM: goalDistanceM,
+    pacesAreFallback: pacesAreFallback,
+  );
+}
+
+/// Quality for an ultra week. Mirrors `allocateUltraQuality` in training.ts.
+_QualityPair _allocateUltraQuality(
+    PlanPhase phase, int daysPerWeek, TrainingPaces paces, bool backToBack) {
+  GeneratedWorkout? a, b;
+  final placeholder = DateTime(2000, 1, 1);
+  final second = daysPerWeek >= 5 && !backToBack;
+  if (phase == PlanPhase.base) {
+    a = _tempo(placeholder, 6, paces);
+  } else if (phase == PlanPhase.build) {
+    a = _intervals(placeholder, paces);
+    if (second) b = _tempo(placeholder, 7, paces);
+  } else if (phase == PlanPhase.peak) {
+    a = _intervals(placeholder, paces);
+    if (second) b = _tempo(placeholder, 8, paces);
+  } else if (phase == PlanPhase.taper) {
+    a = _tempo(placeholder, 4, paces);
+  }
+  return _QualityPair(a, b);
+}
+
+List<GeneratedWorkout> _generateUltraWeek({
+  required PlanPhase phase,
+  required DateTime weekStart,
+  required int daysPerWeek,
+  required double weeklyKm,
+  required TrainingPaces paces,
+  required double goalDistanceM,
+  required int? goalTimeSec,
+  required bool masters,
+  required bool backToBack,
+}) {
+  final restDow = daysPerWeek >= 7 ? -1 : 1;
+  const longDow = 0;
+  const saturdayDow = 6;
+  final qaDow = masters ? 3 : 2;
+  final qbDow = masters ? 5 : 4;
+  final isRaceWeek = phase == PlanPhase.race;
+  final easyPace = paces.easy;
+  final capSec = ultraLongRunCapSec(goalDistanceM);
+  final quality = _allocateUltraQuality(phase, daysPerWeek, paces, backToBack);
+  final placeholder = DateTime(2000, 1, 1);
+
+  final sunday = isRaceWeek
+      ? null
+      : _ultraLongRun(
+          placeholder,
+          weeklyKm *
+              (backToBack ? _kUltraB2bSundayShare : _kUltraLongShare),
+          capSec,
+          easyPace,
+          _kUltraLongNote);
+  final saturdayRun = backToBack
+      ? _ultraLongRun(
+          placeholder,
+          weeklyKm * _kUltraB2bSaturdayShare,
+          _floorToStep(capSec * _kUltraB2bSaturdayCap),
+          easyPace,
+          _kUltraB2bNote)
+      : null;
+
+  final daysUsed = restDow >= 0 ? <int>{longDow, restDow} : <int>{longDow};
+  if (quality.a != null) daysUsed.add(qaDow);
+  if (quality.b != null) daysUsed.add(qbDow);
+  if (saturdayRun != null) daysUsed.add(saturdayDow);
+
+  final anchorKm = isRaceWeek
+      ? goalDistanceM / 1000
+      : (sunday!.targetDistanceM ?? 0) / 1000;
+  final fixedKm = anchorKm +
+      ((saturdayRun?.targetDistanceM ?? 0) +
+              (quality.a?.targetDistanceM ?? 0) +
+              (quality.b?.targetDistanceM ?? 0)) /
+          1000;
+  final remainingKm = max(0.0, weeklyKm - fixedKm);
+  final easySlots =
+      max(0, daysPerWeek - daysUsed.where((d) => d != restDow).length);
+  final easyDays =
+      min(easySlots, (remainingKm / _kEasyRunFloorKm).floor());
+  final easyTotalKm = easyDays > 0
+      ? min(remainingKm, (easyDays * _kUltraEasyMaxSec) / easyPace).floor()
+      : 0;
+  final easyBaseKm = easyDays > 0 ? easyTotalKm ~/ easyDays : 0;
+  final easyExtraDays = easyTotalKm - easyBaseKm * easyDays;
+
+  final workouts = <GeneratedWorkout>[];
+  var easyEmitted = 0;
+  for (var dow = 0; dow < 7; dow++) {
+    final date = addDays(weekStart, dow);
+    if (dow == restDow) {
+      workouts.add(GeneratedWorkout(scheduledDate: date, kind: WorkoutKind.rest));
+    } else if (dow == longDow) {
+      workouts.add(isRaceWeek
+          ? _ultraRace(date, goalDistanceM, goalTimeSec)
+          : sunday!._withDate(date));
+    } else if (dow == saturdayDow && saturdayRun != null) {
+      workouts.add(saturdayRun._withDate(date));
+    } else if (dow == qaDow && quality.a != null) {
+      workouts.add(quality.a!._withDate(date));
+    } else if (dow == qbDow && quality.b != null) {
+      workouts.add(quality.b!._withDate(date));
+    } else if (easyEmitted < easyDays) {
+      workouts.add(_easy(
+          date,
+          (easyBaseKm + (easyEmitted < easyExtraDays ? 1 : 0)).toDouble(),
+          paces));
+      easyEmitted++;
+    } else {
+      workouts.add(GeneratedWorkout(scheduledDate: date, kind: WorkoutKind.rest));
+    }
+  }
+  return _limitToDays(workouts, daysPerWeek);
+}
+
+/// An ultra's race day carries the goal time as its duration and no pace.
+GeneratedWorkout _ultraRace(
+        DateTime date, double goalDistanceM, int? goalTimeSec) =>
+    GeneratedWorkout(
+      scheduledDate: date,
+      kind: WorkoutKind.race,
+      targetDistanceM: goalDistanceM,
+      targetDurationSeconds:
+          goalTimeSec != null && goalTimeSec > 0 ? goalTimeSec : null,
+      notes:
+          'Race day. Run by effort and fuel early — the clock looks after itself.',
+    );
+
 double peakVolumeKm(double goalDistanceM, int daysPerWeek,
     [bool hasAnchor = true]) {
-  final baseMul = goalDistanceM <= 10000
-      ? 5.0
-      : goalDistanceM <= 21100
-          ? 2.5
-          : 1.8;
+  // Past the marathon the multiple stops: weekly volume keeps growing with
+  // the race, but far more slowly than the race does. Mirrors training.ts.
+  final baseKm = isUltraDistance(goalDistanceM)
+      ? _ultraPeakBaseKm(goalDistanceM)
+      : (goalDistanceM / 1000) *
+          (goalDistanceM <= 10000
+              ? 5.0
+              : goalDistanceM <= 21100
+                  ? 2.5
+                  : 1.8);
   final dayFactor = 0.7 + (daysPerWeek - 3) * 0.1;
   // No fitness anchor (no goal time, no recent 5k) -> scale the peak down so
   // a no-info 5k plan doesn't open with a punishing week 1 (new persona #23).
   final anchorFactor = hasAnchor ? 1.0 : 0.6;
-  return ((goalDistanceM / 1000) * baseMul * dayFactor * anchorFactor)
-      .roundToDouble();
+  return (baseKm * dayFactor * anchorFactor).roundToDouble();
 }
 
 // Masters recover on a 3-week cycle; the default is 4 weeks. Week 0 is

@@ -48,10 +48,9 @@ enum RacePlanRefusal {
 
 class RacePlanPreset {
   /// The standard event the race distance matches, or null when it matches
-  /// none. The wizard has no custom-distance input, so claiming the nearest
-  /// rung for (say) a 50k would silently train the runner for a marathon;
-  /// null leaves the goal on the wizard's own default and still presets the
-  /// dates, which is the half of the answer we can stand behind.
+  /// none. Claiming the nearest rung for (say) a 50k would silently train
+  /// the runner for a marathon; null leaves the goal to the wizard, which
+  /// offers an ultra entry past the marathon ([isUltraDistance]).
   final GoalEvent? goalEvent;
 
   /// Total plan weeks, >= [kRacePlanMinWeeks].
@@ -152,8 +151,10 @@ RacePlanPresetResult racePlanPreset({
     return const RacePlanPresetResult.refused(RacePlanRefusal.tooSoon);
   }
 
-  final weeks =
-      math.min(available, defaultPlanWeeks(goalEvent ?? GoalEvent.custom));
+  // A distance off every rung sizes as a custom goal, which gives an ultra its
+  // own longer default.
+  final weeks = math.min(available,
+      defaultPlanWeeks(goalEvent ?? GoalEvent.custom, distanceM?.toDouble()));
   return RacePlanPresetResult.ok(RacePlanPreset(
     goalEvent: goalEvent,
     weeks: weeks,

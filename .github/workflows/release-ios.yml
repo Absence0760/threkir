@@ -2,10 +2,14 @@ name: Release iOS
 
 # Tag: `mobile_ios@1.2.3`. Builds the iPhone app with the Apple Watch app it
 # embeds, signs each bundle for the App Store, keeps the .ipa as a workflow
-# artifact (not a Release asset — see the permissions note below) and uploads
-# it to TestFlight. Promotion from TestFlight to the App Store is a
-# manual step in App Store Connect. apps/mobile_ios/deployment.md is the
-# operator runbook for every secret below; decisions.md § 1701 is the design.
+# artifact (not a Release asset — see the permissions note below), uploads
+# it to TestFlight, and submits it for App Store review: once Apple approves,
+# it releases on its own as a 7-day phased release. The `production`
+# environment's approval is the human gate (decisions § 2040). The Release
+# body must carry an owner-written `## What's New` section, which becomes the
+# App Store note; the job fails in its first minute without one.
+# apps/mobile_ios/deployment.md is the operator runbook for every secret
+# below; decisions.md § 1701 is the design.
 #
 # Signing (the first step fails, naming every one that is unset):
 #   IOS_BUILD_CERTIFICATE_BASE64          Apple Distribution certificate + key, as a .p12
@@ -82,7 +86,7 @@ env:
 
 jobs:
   release:
-    name: Build, sign and upload iOS to TestFlight
+    name: Build, sign, upload iOS to TestFlight and submit for App Store review
     runs-on: macos-latest
     # Guard: `on: release` fires for every published release in the repo,
     # so only act on mobile_ios@* releases.
@@ -119,6 +123,19 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+
+      # Before the build, so a Release with no note fails in seconds rather than
+      # after it. Read through the API rather than from the event payload, which
+      # is frozen at publish time: editing the Release and re-running the job
+      # picks the edit up. Never falls back to the generated notes
+      # (decisions § 2040).
+      - name: The GitHub Release carries a What's New for the App Store
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" --jq '.body // ""' > "$RUNNER_TEMP/release-body.md"
+          node scripts/asc_submit.mjs whats-new "$RUNNER_TEMP/release-body.md" "$RUNNER_TEMP/whats-new.txt"
 
       - name: Parse version from tag
         id: version
@@ -318,7 +335,21 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
+      # A re-run after a failed submission rebuilds the same commit, so the same
+      # build number, and altool refuses a build number it already has. This
+      # lets the upload step skip a build App Store Connect already holds.
+      - name: Is this build already in App Store Connect
+        id: uploaded
+        env:
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+          APP_STORE_CONNECT_API_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_API_PRIVATE_KEY }}
+          ASC_VERSION: ${{ steps.version.outputs.name }}
+          ASC_BUILD_NUMBER: ${{ steps.version.outputs.code }}
+        run: node scripts/asc_submit.mjs uploaded
+
       - name: Upload to TestFlight
+        if: steps.uploaded.outputs.uploaded != 'true'
         uses: apple-actions/upload-testflight-build@155ea93be9ee6d5186c71f660a612f5eddb14510 # v5.6.0
         with:
           app-path: ${{ steps.ipa.outputs.path }}
@@ -332,12 +363,27 @@ jobs:
           # never appeared in App Store Connect, sent no email, and the job
           # timed out polling for it with no reason anywhere.
           backend: altool
-          # Processing takes as long as Apple's queue does; a successful
-          # upload is this job's finish line. TestFlight shows the build and
-          # Apple emails when processing ends.
+          # The submission step below waits for processing itself, with a
+          # deadline and a diagnosis of its own.
           wait-for-processing: 'false'
           # Matches Info.plist's ITSAppUsesNonExemptEncryption = false.
           uses-non-exempt-encryption: 'false'
+
+      # Waits for Apple's processing, then puts the build on the App Store
+      # version for the tag, writes What's New into every localization it has,
+      # sets it to release on approval as a 7-day phased release, and submits
+      # it for review. Re-running is safe; a version in progress under another
+      # number, a rejection awaiting a reply, or anything else it does not
+      # recognise fails the job rather than being guessed past
+      # (scripts/asc_submit.mjs, decisions § 2040).
+      - name: Submit the build for App Store review
+        env:
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+          APP_STORE_CONNECT_API_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_API_PRIVATE_KEY }}
+          ASC_VERSION: ${{ steps.version.outputs.name }}
+          ASC_BUILD_NUMBER: ${{ steps.version.outputs.code }}
+        run: WHATS_NEW_FILE="$RUNNER_TEMP/whats-new.txt" node scripts/asc_submit.mjs submit
 
       - name: Remove the signing keychain and the runtime configs
         if: always()

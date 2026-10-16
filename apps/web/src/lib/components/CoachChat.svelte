@@ -13,7 +13,7 @@
 	import { aiPlanEnabled } from '#lib/training/ai_plan_flag.ts';
 	import { pickCurrentPlan } from '#lib/training/plan_current.ts';
 	import { todayISO } from '#lib/training/training.ts';
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
+	import { dbError, thrownMessage } from '#lib/core/supabase_error.ts';
 	import type { CoachMessageRole } from '#lib/coach/types.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
 	import type { TrainingPlan } from '#lib/types.ts';
@@ -355,7 +355,7 @@
 					.select('id, name')
 					.eq('id', planId)
 					.maybeSingle();
-				if (err) throw err;
+				if (err) throw dbError(err);
 				plan = data;
 			} else {
 				const { data, error: err } = await supabase
@@ -364,7 +364,7 @@
 					.eq('user_id', userId)
 					.eq('status', 'active')
 					.eq('is_template', false);
-				if (err) throw err;
+				if (err) throw dbError(err);
 				const picked = pickCurrentPlan(data ?? [], todayISO());
 				plan = picked.current ?? picked.upcoming;
 			}

@@ -13410,6 +13410,42 @@
   "@workoutEditNotesLabel": {
     "description": "Label for the workout notes field"
   },
+  "workoutEditRaceNameLabel": "Race name",
+  "@workoutEditRaceNameLabel": {
+    "description": "Label for the race name field, shown in the workout editor only when the workout kind is Race"
+  },
+  "workoutEditRacePriorityLabel": "Race priority",
+  "@workoutEditRacePriorityLabel": {
+    "description": "Label for the A/B/C race priority picker in the workout editor (Race workouts only)"
+  },
+  "workoutEditRacePriorityAuto": "Automatic",
+  "@workoutEditRacePriorityAuto": {
+    "description": "Race priority picker option for no explicit priority: the app treats a race on the plan's last day as A and any other race as C"
+  },
+  "racePriorityOptionA": "A — goal race",
+  "@racePriorityOptionA": {
+    "description": "Race priority picker option A: the race the plan is built for. Keep the letter A"
+  },
+  "racePriorityOptionB": "B — important race",
+  "@racePriorityOptionB": {
+    "description": "Race priority picker option B: a race that matters but is not the main goal. Keep the letter B"
+  },
+  "racePriorityOptionC": "C — tune-up race",
+  "@racePriorityOptionC": {
+    "description": "Race priority picker option C: a low-key race run as training. Keep the letter C"
+  },
+  "workoutEditRaceGoalTimeLabel": "Goal time",
+  "@workoutEditRaceGoalTimeLabel": {
+    "description": "Label for the race goal finish time field in the workout editor (Race workouts only)"
+  },
+  "workoutEditRaceGoalTimeHint": "e.g. 6:30:00",
+  "@workoutEditRaceGoalTimeHint": {
+    "description": "Example hint for the race goal time field (hours:minutes:seconds)"
+  },
+  "workoutEditErrRaceGoalTime": "Goal time must look like 6:30:00",
+  "@workoutEditErrRaceGoalTime": {
+    "description": "Validation error for the race goal time field"
+  },
   "workoutEditCancel": "Cancel",
   "@workoutEditCancel": {
     "description": "Button to cancel the workout edit sheet"

@@ -18,6 +18,14 @@ String workoutKindLabel(AppLocalizations l10n, WorkoutKind k) => switch (k) {
       WorkoutKind.rest => l10n.workoutKindRest,
     };
 
+/// A `plan_workouts.race_priority` value as a picker option.
+String racePriorityOptionLabel(AppLocalizations l10n, String priority) =>
+    switch (priority) {
+      'A' => l10n.racePriorityOptionA,
+      'B' => l10n.racePriorityOptionB,
+      _ => l10n.racePriorityOptionC,
+    };
+
 String planPhaseLabel(AppLocalizations l10n, PlanPhase p) => switch (p) {
       PlanPhase.base => l10n.planPhaseBase,
       PlanPhase.build => l10n.planPhaseBuild,

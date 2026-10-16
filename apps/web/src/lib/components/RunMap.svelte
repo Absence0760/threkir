@@ -24,6 +24,7 @@
 		mapTrackLine,
 	} from '#lib/routes/basemap_contrast.ts';
 	import { watchMapResize } from '#lib/routes/map_resize.ts';
+	import { OverlayDrawState, type OverlayStep } from '#lib/routes/overlay_draw.ts';
 	import { minMax } from '#lib/util/min_max.ts';
 	import type { TrackPoint } from '#lib/types.ts';
 	import { lineLngLat } from '#lib/runs/track_line.ts';
@@ -728,21 +729,14 @@
 		}
 	}
 
-	/// Whether the current style carries the overlays. False from map creation
-	/// until `load`, and from `setStyle` until `style.load`: in those windows a
-	/// handler is already pending that draws whatever track is current when it
-	/// fires, so a track change there only records that the camera owes a refit.
-	/// Drawing anyway is how /runs/[id] threw `Source "trace" already exists`
-	/// when the matched line landed between `style.load` and `load` -- the
-	/// track change drew, then `load` drew again (decisions § 2043).
-	let overlaysOnStyle = false;
-	let refitPending = false;
+	/// When a track change or a ready style may draw, and whether it clears
+	/// first. Drawing outside that is how /runs/[id] threw
+	/// `Source "trace" already exists` (decisions § 2043).
+	const overlayDraw = new OverlayDrawState();
 
-	function drawOverlays(fit: boolean): void {
-		overlaysOnStyle = true;
-		const refit = fit || refitPending;
-		refitPending = false;
-		addOverlays(trackCoords, trackBounds, refit);
+	function applyOverlayStep(step: OverlayStep): void {
+		if (step.clear) clearOverlays();
+		if (step.draw) addOverlays(trackCoords, trackBounds, step.fit);
 	}
 
 	let trackCoords: [number, number][] = [];
@@ -851,12 +845,7 @@
 		// test waiting on it would otherwise read a position mid-animation.
 		mapContainer?.removeAttribute('data-map-idle');
 		map.once('idle', () => mapContainer?.setAttribute('data-map-idle', 'true'));
-		if (!overlaysOnStyle) {
-			refitPending = true;
-			return;
-		}
-		clearOverlays();
-		addOverlays(trackCoords, trackBounds, true);
+		applyOverlayStep(overlayDraw.trackChanged());
 	});
 
 	function loadMapNow() {
@@ -886,7 +875,7 @@
 
 		map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
-		map.on('load', () => drawOverlays(true));
+		map.on('load', () => applyOverlayStep(overlayDraw.styleReady(true)));
 		// The entrance fitBounds (inside the load handler above) animates the
 		// camera, so a pin's screen position keeps moving for a beat after it
 		// first renders. `idle` fires only once tiles are loaded AND no camera
@@ -1085,9 +1074,9 @@
 		const next = getMapStyle();
 		if (!map || next === currentStyle) return;
 		currentStyle = next;
-		overlaysOnStyle = false;
+		overlayDraw.styleSwapped();
 		map.setStyle(mapStyleUrl(PUBLIC_MAPTILER_KEY, prefersDark));
-		map.once('style.load', () => drawOverlays(false));
+		map.once('style.load', () => applyOverlayStep(overlayDraw.styleReady(false)));
 	});
 
 	onDestroy(() => {

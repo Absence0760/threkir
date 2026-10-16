@@ -2935,7 +2935,6 @@ export const messages = {
 	"seasonPlanner.describeButton": "Meine Rennen finden",
 	"seasonPlanner.describeWorking": "Wird gelesen…",
 	"seasonPlanner.describeFound": "Rennen aus deiner Beschreibung. Prüfe jedes, bevor du weitermachst.",
-	"seasonPlanner.describeAssumed": "Einige Angaben wurden für dich ergänzt. Prüfe Datum, Distanz und Priorität jedes Rennens.",
 	"seasonPlanner.errorConsent": "Der Saison-Assistent braucht den aktualisierten KI-Hinweis. Du kannst deine Rennen trotzdem unten eintragen.",
 	"seasonPlanner.errorConsentLink": "In den Einstellungen ansehen und akzeptieren.",
 	"seasonPlanner.errorDailyLimit": "Du hast deine KI-Anfragen für heute aufgebraucht. Trage deine Rennen unten selbst ein oder versuche es morgen wieder.",

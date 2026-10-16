@@ -21,7 +21,7 @@
 	import { raceGoalInputSeconds } from '#lib/training/race_goal_input.ts';
 	import { RACE_GOAL_MAX_HOURS } from '#lib/training/plan_races.ts';
 	import { PlanRequestError, type PlanRequestErrorKind } from '#lib/training/plan_request_client.ts';
-	import { requestSeasonRaces } from '#lib/training/season_request_client.ts';
+	import { requestSeasonRaces, seasonAssumptionMessageKey } from '#lib/training/season_request_client.ts';
 	import type { SeasonRace, SeasonRacePriority } from '#lib/training/season_types.ts';
 	import {
 		SEASON_RACE_NAME_MAX,
@@ -66,7 +66,8 @@
 	let request = $state('');
 	let requestBusy = $state(false);
 	let requestError = $state<{ key: MessageKey; consent: boolean } | null>(null);
-	let requestFound = $state<{ assumed: boolean } | null>(null);
+	let requestFound = $state(false);
+	let requestAssumptions = $state<MessageKey[]>([]);
 
 	let nextKey = 0;
 	let rows = $state<RaceRow[]>([]);
@@ -150,15 +151,20 @@
 		if (!text || requestBusy) return;
 		requestBusy = true;
 		requestError = null;
-		requestFound = null;
+		requestFound = false;
+		requestAssumptions = [];
 		try {
 			const result = await requestSeasonRaces(text, todayIso());
+			requestAssumptions = result.assumptions
+				.map(seasonAssumptionMessageKey)
+				.filter((k): k is MessageKey => k !== null);
 			if (result.races.length === 0) {
 				requestError = { key: 'seasonPlanner.errorNotUnderstood', consent: false };
+				if (rows.length === 0) addRace();
 				return;
 			}
 			rows = result.races.map(rowFrom);
-			requestFound = { assumed: result.assumptions.length > 0 };
+			requestFound = true;
 		} catch (e) {
 			if (!(e instanceof PlanRequestError)) {
 				console.error('Season request failed', { message: thrownMessage(e) });
@@ -298,11 +304,17 @@
 					{/if}
 				</p>
 			{/if}
-			{#if requestFound}
-				<div class="note" role="status">
-					<p>{m('seasonPlanner.describeFound')}</p>
-					{#if requestFound.assumed}
-						<p>{m('seasonPlanner.describeAssumed')}</p>
+			{#if requestFound || requestAssumptions.length > 0}
+				<div class="note" role="status" data-testid="season-request-found">
+					{#if requestFound}
+						<p>{m('seasonPlanner.describeFound')}</p>
+					{/if}
+					{#if requestAssumptions.length > 0}
+						<ul data-testid="season-assumptions">
+							{#each requestAssumptions as key (key)}
+								<li>{m(key)}</li>
+							{/each}
+						</ul>
 					{/if}
 				</div>
 			{/if}

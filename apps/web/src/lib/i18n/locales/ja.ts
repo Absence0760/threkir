@@ -2930,7 +2930,6 @@ export const messages = {
 	"seasonPlanner.describeButton": "レースを探す",
 	"seasonPlanner.describeWorking": "読み取り中…",
 	"seasonPlanner.describeFound": "説明から見つかったレースです。続ける前にそれぞれ確認してください。",
-	"seasonPlanner.describeAssumed": "一部の項目は自動で補われました。各レースの日付・距離・優先度を確認してください。",
 	"seasonPlanner.errorConsent": "シーズンアシスタントには更新された AI に関する説明への同意が必要です。下でレースを自分で追加することもできます。",
 	"seasonPlanner.errorConsentLink": "設定で確認して同意してください。",
 	"seasonPlanner.errorDailyLimit": "本日の AI リクエストを使い切りました。下でレースを自分で追加するか、明日もう一度お試しください。",

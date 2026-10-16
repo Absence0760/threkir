@@ -175,6 +175,10 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
   List<_TemplateOption> _templates = const [];
   bool _cloning = false;
   bool _creatingStarter = false;
+  // True while an overlap lookup is in flight. It is a network read, so every
+  // create path stays disabled across it and a second tap cannot start a
+  // second create.
+  bool _checkingOverlap = false;
   bool _nameDefaulted = false;
   // The runner's own plan name always beats the extracted one.
   bool _nameTouched = false;
@@ -467,18 +471,25 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
   /// Asks what to do with any active plan the new `[_startDate, endIso]`
   /// window overlaps — see [confirmPlanOverlap]. Null means keep them and
   /// don't create.
-  Future<PlanOverlapAction?> _confirmOverlap(String endIso) => confirmPlanOverlap(
+  Future<PlanOverlapAction?> _confirmOverlap(String endIso) async {
+    setState(() => _checkingOverlap = true);
+    try {
+      return await confirmPlanOverlap(
         context,
         widget.training,
         startIso: toIsoDate(_startDate),
         endIso: endIso,
       );
+    } finally {
+      if (mounted) setState(() => _checkingOverlap = false);
+    }
+  }
 
   String _createError(AppLocalizations l10n, Object e) =>
       planOverlapErrorText(context, e) ?? friendlyError(l10n, e);
 
   Future<void> _pickTemplate() async {
-    if (_templates.isEmpty || _cloning) return;
+    if (_templates.isEmpty || _cloning || _checkingOverlap) return;
     final l10n = AppLocalizations.of(context);
     final picked = await showModalBottomSheet<_TemplateOption>(
       context: context,
@@ -534,7 +545,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
   }
 
   Future<void> _pickStarter() async {
-    if (_creatingStarter) return;
+    if (_creatingStarter || _checkingOverlap) return;
     final l10n = AppLocalizations.of(context);
     final picked = await showModalBottomSheet<StarterPlan>(
       context: context,
@@ -632,7 +643,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
 
   Future<void> _submit() async {
     final name = _nameCtrl.text.trim();
-    if (name.isEmpty || _busy) return;
+    if (name.isEmpty || _busy || _checkingOverlap) return;
     final preview = _preview();
     if (preview == null) return;
     final action = await _confirmOverlap(toIsoDate(preview.endDate));
@@ -929,7 +940,10 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
               Expanded(
                 child: FilledButton(
                   onPressed:
-                      (_nameCtrl.text.trim().isEmpty || _busy || preview == null)
+                      (_nameCtrl.text.trim().isEmpty ||
+                              _busy ||
+                              _checkingOverlap ||
+                              preview == null)
                           ? null
                           : _submit,
                   child: Text(
@@ -1156,7 +1170,8 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
               )),
           const SizedBox(height: 10),
           FilledButton.tonalIcon(
-            onPressed: _creatingStarter ? null : _pickStarter,
+            onPressed:
+                _creatingStarter || _checkingOverlap ? null : _pickStarter,
             icon: _creatingStarter
                 ? const SizedBox(
                     width: 16,
@@ -1218,7 +1233,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
               )),
           const SizedBox(height: 10),
           FilledButton.tonalIcon(
-            onPressed: _cloning ? null : _pickTemplate,
+            onPressed: _cloning || _checkingOverlap ? null : _pickTemplate,
             icon: _cloning
                 ? const SizedBox(
                     width: 16,

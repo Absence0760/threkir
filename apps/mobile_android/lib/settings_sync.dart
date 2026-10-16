@@ -6,8 +6,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'apple_watch_prefs_bridge.dart';
+import 'device_timezone.dart';
 import 'goals.dart';
 import 'preferences.dart';
+import 'time_zone_pref.dart';
 import 'undo_queue.dart';
 
 /// Bridge between local [Preferences] (SharedPreferences) and the
@@ -24,7 +26,9 @@ class SettingsSyncService extends ChangeNotifier {
     required this.preferences,
     this.cache,
     @visibleForTesting Future<SettingsService> Function()? serviceLoader,
-  }) : _serviceLoader = serviceLoader;
+    @visibleForTesting Future<String?> Function()? timeZoneReader,
+  })  : _serviceLoader = serviceLoader,
+        _timeZoneReader = timeZoneReader ?? deviceIanaTimeZoneOrNull;
 
   final Preferences preferences;
 
@@ -34,6 +38,7 @@ class SettingsSyncService extends ChangeNotifier {
   final SettingsCache? cache;
 
   final Future<SettingsService> Function()? _serviceLoader;
+  final Future<String?> Function() _timeZoneReader;
 
   SettingsService? _settings;
 
@@ -96,12 +101,28 @@ class SettingsSyncService extends ChangeNotifier {
       _mirrorAppleWatchHrZones(loaded);
       _synced = true;
       _lastError = loaded.isServerHydrated ? null : _offlineNotice;
+      await _syncTimeZone(loaded);
     } catch (e) {
       _settings = null;
       _synced = false;
       _lastError = e.toString();
     }
     notifyListeners();
+  }
+
+  /// Keep the server's copy of the runner's zone current (the `time_zone`
+  /// universal pref): the coach roster picks their current plan by their
+  /// local date (issue #1182). Written only when it changed. Auxiliary: a
+  /// failure is logged and never fails the sign-in hydrate above it.
+  Future<void> _syncTimeZone(SettingsService loaded) async {
+    try {
+      final tz = timeZoneToWrite(
+          loaded.universal[SettingsKeys.timeZone], await _timeZoneReader());
+      if (tz == null) return;
+      await loaded.updateUniversal(<String, dynamic>{SettingsKeys.timeZone: tz});
+    } catch (e) {
+      debugPrint('[SettingsSyncService] time zone sync failed: $e');
+    }
   }
 
   static const _offlineNotice =

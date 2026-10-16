@@ -45,11 +45,14 @@ class _MemCache implements SettingsCache {
 }
 
 class _FakeSettingsService implements SettingsService {
+  _FakeSettingsService({this.universalBag = const <String, dynamic>{}});
+
+  final Map<String, dynamic> universalBag;
   final List<Map<String, dynamic>> universalWrites = [];
   final List<Map<String, dynamic>> deviceWrites = [];
 
   @override
-  Map<String, dynamic> get universal => const <String, dynamic>{};
+  Map<String, dynamic> get universal => universalBag;
   @override
   Map<String, dynamic> get device => const <String, dynamic>{};
   @override
@@ -70,6 +73,48 @@ class _FakeSettingsService implements SettingsService {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  group('time_zone sync on sign-in (issue #1182)', () {
+    Future<_FakeSettingsService> signIn(
+        Map<String, dynamic> bag, Future<String?> Function() reader) async {
+      final fake = _FakeSettingsService(universalBag: bag);
+      final svc = SettingsSyncService(
+        preferences: await freshPrefs(),
+        serviceLoader: () async => fake,
+        timeZoneReader: reader,
+      );
+      await svc.onSignedIn();
+      expect(svc.synced, isTrue);
+      return fake;
+    }
+
+    test('writes the device zone when the bag has none', () async {
+      final fake = await signIn({}, () async => 'Pacific/Auckland');
+      expect(fake.universalWrites, [
+        {SettingsKeys.timeZone: 'Pacific/Auckland'},
+      ]);
+    });
+
+    test('writes a changed zone, and nothing when it is unchanged', () async {
+      final moved = await signIn(
+          {SettingsKeys.timeZone: 'Europe/London'}, () async => 'America/Denver');
+      expect(moved.universalWrites, [
+        {SettingsKeys.timeZone: 'America/Denver'},
+      ]);
+      final stayed = await signIn(
+          {SettingsKeys.timeZone: 'Europe/London'}, () async => 'Europe/London');
+      expect(stayed.universalWrites, isEmpty);
+    });
+
+    test('an unknown device zone or a failing reader writes nothing and does '
+        'not fail the sign-in', () async {
+      expect((await signIn({}, () async => null)).universalWrites, isEmpty);
+      expect(
+          (await signIn({}, () async => throw StateError('no plugin')))
+              .universalWrites,
+          isEmpty);
+    });
+  });
 
   group('debugApplyUniversal', () {
     test('preferred_unit "mi" sets useMiles to true', () async {

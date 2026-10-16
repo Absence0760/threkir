@@ -14,7 +14,6 @@
 		fetchMyPublishedPlans,
 		applyWorkoutAdjustments,
 		updatePlanWorkout,
-		updatePlanWeek,
 		duplicatePlanWeek,
 		fetchMyActivePlanWindows,
 		shiftTrainingPlan,
@@ -22,7 +21,7 @@
 		resumePlan,
 		ActivePlanExistsError,
 	} from '#lib/core/data.ts';
-	import { recoveryWorkoutPatch, recoveryWeekVolume } from '#lib/training/plan_bulk_ops.ts';
+	import { recoveryWorkoutPatch } from '#lib/training/plan_bulk_ops.ts';
 	import { planShiftImpact } from '#lib/training/plan_shift.ts';
 	import { cyclePlanWorkoutPatch, type CyclePlanConfig } from '#lib/training/cycle_plan.ts';
 	import { isCyclePlansEnabled } from '#lib/training/cycle_plan_flag.ts';
@@ -524,18 +523,16 @@
 		if (bulkBusy) return;
 		bulkBusy = true;
 		try {
-			const weekWorkouts = workoutsByWeek.get(week.id) ?? [];
-			await Promise.all(
-				weekWorkouts.map((w) => {
-					const patch = recoveryWorkoutPatch(w);
-					return patch ? updatePlanWorkout(w.id, patch) : Promise.resolve();
-				}),
-			);
-			await updatePlanWeek(week.id, { target_volume_m: recoveryWeekVolume(week.target_volume_m) });
+			const changes = (workoutsByWeek.get(week.id) ?? []).flatMap((w) => {
+				const patch = recoveryWorkoutPatch(w);
+				return patch ? [{ id: w.id, ...patch }] : [];
+			});
+			if (changes.length) await applyWorkoutAdjustments(plan!.id, changes);
 			showToast(m('planDetail.recoveryDone'));
 			await load();
 		} catch (e) {
 			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+			await load();
 		} finally {
 			bulkBusy = false;
 		}

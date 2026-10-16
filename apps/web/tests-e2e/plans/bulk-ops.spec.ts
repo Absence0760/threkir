@@ -68,7 +68,7 @@ test.describe('/plans/[id] bulk ops', () => {
 				goal_distance_m: 42195, goal_time_seconds: null, start_date: startIso,
 				end_date: iso(new Date(Date.now() + 35 * dayMs)), status: 'completed', days_per_week: 5
 			});
-			await admin.from('plan_weeks').insert({ id: weekId, plan_id: planId, week_index: 0, phase: 'build', target_volume_m: 40_000 });
+			await admin.from('plan_weeks').insert({ id: weekId, plan_id: planId, week_index: 0, phase: 'build', target_volume_m: 12_000 });
 			await admin.from('plan_workouts').insert({ week_id: weekId, scheduled_date: iso(new Date(Date.now() - dayMs)), kind: 'tempo', target_distance_m: 12_000, target_pace_sec_per_km: 270 });
 
 			await page.goto(`/plans/${planId}`);
@@ -80,10 +80,11 @@ test.describe('/plans/[id] bulk ops', () => {
 				.getByRole('button', { name: 'Apply' })
 				.click();
 
-			// Volume scaled to 60%.
+			// The week's volume is restated from the workouts it now holds: the
+			// one tempo session at 60% (apply_workout_adjustments, § 2060).
 			await expect
 				.poll(async () => (await admin.from('plan_weeks').select('target_volume_m').eq('id', weekId).single()).data?.target_volume_m)
-				.toBe(24_000);
+				.toBe(7_200);
 			// The tempo session became a recovery run at 60% distance, pace cleared.
 			const wo = (await admin.from('plan_workouts').select('kind, target_distance_m, target_pace_sec_per_km').eq('week_id', weekId).single()).data;
 			expect(wo?.kind).toBe('recovery');

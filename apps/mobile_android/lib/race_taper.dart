@@ -9,6 +9,8 @@
 /// scales, tie-breaks and test counts in lockstep.
 library;
 
+import 'dart:math' show min;
+
 import 'cycle_plan.dart' show daysBetweenIso;
 import 'plan_races.dart';
 
@@ -35,6 +37,17 @@ const int bRecoveryKmPerDay = 3;
 const int bRecoveryMinDays = 4;
 const int bRecoveryMaxDays = 7;
 const int bRecoveryDefaultDays = 5;
+
+/// Past the marathon a B race costs more than a week: the recovery keeps the
+/// 7 days a marathon gets and adds a day per 2 km beyond it, up to 21.
+/// Mirrors race_taper.ts.
+const int bUltraRecoveryKmPerDay = 2;
+const int bUltraRecoveryMaxDays = 21;
+
+/// An ultra B race's taper starts 8 days out instead of 6, so the whole
+/// weekend before it is eased. Mirrors race_taper.ts.
+const int bUltraTaperDays = 8;
+const double _marathonM = 42195;
 
 /// A C race is a training-load race (a parkrun, a club 10 km): 3 days before
 /// eased by 20%, quality run easy, and 2 easy days after.
@@ -146,6 +159,10 @@ int _recoveryDays(PlanRace race) {
   if (race.priority == 'C') return cRecoveryDays;
   final d = race.distanceM;
   if (d == null || !(d > 0)) return bRecoveryDefaultDays;
+  if (d > _marathonM) {
+    final extra = (d - _marathonM) / 1000 / bUltraRecoveryKmPerDay;
+    return min(bUltraRecoveryMaxDays, (bRecoveryMaxDays + extra).round());
+  }
   final days = (d / 1000 / bRecoveryKmPerDay).round();
   return days.clamp(bRecoveryMinDays, bRecoveryMaxDays);
 }
@@ -155,7 +172,10 @@ RaceTaperReason? _windowFor(PlanRace race, int offset) {
     final before = -offset;
     if (race.priority == 'B') {
       if (before <= bShakeoutDays) return RaceTaperReason.shakeout;
-      return before <= bTaperDays ? RaceTaperReason.preRace : null;
+      final d = race.distanceM;
+      final taperDays =
+          d != null && d > _marathonM ? bUltraTaperDays : bTaperDays;
+      return before <= taperDays ? RaceTaperReason.preRace : null;
     }
     return before <= cTaperDays ? RaceTaperReason.preRace : null;
   }

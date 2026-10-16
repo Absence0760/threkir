@@ -32,6 +32,18 @@ export const B_RECOVERY_KM_PER_DAY = 3;
 export const B_RECOVERY_MIN_DAYS = 4;
 export const B_RECOVERY_MAX_DAYS = 7;
 export const B_RECOVERY_DEFAULT_DAYS = 5;
+/// Past the marathon a B race costs more than a week: the recovery keeps the
+/// 7 days a marathon gets and adds a day per 2 km beyond it, up to 21 — so a
+/// 56 km Two Oceans inside a Comrades block takes the two easy weeks Comrades
+/// programmes give it, and a 90 km race the three-week ceiling. Road races are
+/// unchanged.
+export const B_ULTRA_RECOVERY_KM_PER_DAY = 2;
+export const B_ULTRA_RECOVERY_MAX_DAYS = 21;
+/// An ultra B race's taper starts 8 days out instead of 6, so the whole
+/// weekend before it — a back-to-back long run on any weekday the race falls —
+/// is eased, not just its Sunday.
+export const B_ULTRA_TAPER_DAYS = 8;
+const MARATHON_M = 42_195;
 /// A C race is a training-load race (a parkrun, a club 10 km): 3 days before
 /// eased by 20%, quality run easy, and 2 easy days after.
 export const C_TAPER_DAYS = 3;
@@ -107,6 +119,10 @@ type Window = { reason: RaceTaperReason; race: PlanRace & { priority: 'B' | 'C' 
 function recoveryDays(race: PlanRace): number {
 	if (race.priority === 'C') return C_RECOVERY_DAYS;
 	if (race.distanceM == null || !(race.distanceM > 0)) return B_RECOVERY_DEFAULT_DAYS;
+	if (race.distanceM > MARATHON_M) {
+		const extra = (race.distanceM - MARATHON_M) / 1000 / B_ULTRA_RECOVERY_KM_PER_DAY;
+		return Math.min(B_ULTRA_RECOVERY_MAX_DAYS, Math.round(B_RECOVERY_MAX_DAYS + extra));
+	}
 	const days = Math.round(race.distanceM / 1000 / B_RECOVERY_KM_PER_DAY);
 	return Math.min(B_RECOVERY_MAX_DAYS, Math.max(B_RECOVERY_MIN_DAYS, days));
 }
@@ -116,7 +132,9 @@ function windowFor(race: Window['race'], offset: number): RaceTaperReason | null
 		const before = -offset;
 		if (race.priority === 'B') {
 			if (before <= B_SHAKEOUT_DAYS) return 'shakeout';
-			return before <= B_TAPER_DAYS ? 'pre_race' : null;
+			const taperDays =
+				race.distanceM != null && race.distanceM > MARATHON_M ? B_ULTRA_TAPER_DAYS : B_TAPER_DAYS;
+			return before <= taperDays ? 'pre_race' : null;
 		}
 		return before <= C_TAPER_DAYS ? 'pre_race' : null;
 	}

@@ -131,8 +131,13 @@
 				const settings = await loadSettings(uid);
 				// The coach roster picks this runner's current plan by their local
 				// date (issue #1182); keep the server's copy of their zone current.
+				// Never on a bag that came from neither the server nor the cache:
+				// the write would seed the cache with a bag holding no privacy
+				// zones, which the share paths then read as "no zones set".
 				const { browserTimeZone, timeZoneToWrite } = await import('#lib/settings/time_zone.ts');
-				const tz = timeZoneToWrite(settings.universal.time_zone, browserTimeZone());
+				const tz = settings.universalUnknown
+					? null
+					: timeZoneToWrite(settings.universal.time_zone, browserTimeZone());
 				if (tz != null) {
 					void updateUniversal(uid, { time_zone: tz }).catch((e) =>
 						console.warn('time zone sync failed', e),

@@ -68,6 +68,13 @@ export function isPlanOverlapError(err: unknown): boolean {
 	return typeof err === 'object' && err !== null && (err as { code?: unknown }).code === '23P01';
 }
 
+/// SQLSTATE TR001 — trim_training_plan refusing to end a plan early because a
+/// workout the runner already completed falls after the cut (decisions
+/// § 2060). The create and clone RPCs raise it for `p_overlap = 'trim'`.
+export function isPlanTrimBlockedError(err: unknown): boolean {
+	return typeof err === 'object' && err !== null && (err as { code?: unknown }).code === 'TR001';
+}
+
 /// Turn a Supabase result's `error` into something fit to throw. An `Error`
 /// that is not postgrest-js's own `PostgrestError` (auth-js, storage-js and
 /// functions-js all throw real subclasses, and a FunctionsHttpError's

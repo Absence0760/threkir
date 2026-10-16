@@ -7,7 +7,7 @@
 	import { goto, afterNavigate } from '$app/navigation';
 	import { page } from '$app/state';
 	import PlanEditor from '#lib/components/PlanEditor.svelte';
-	import PlanOverlapDialog from '#lib/components/PlanOverlapDialog.svelte';
+	import PlanOverlapDialog, { trimBlockedMessage } from '#lib/components/PlanOverlapDialog.svelte';
 	import { attemptPlanCreate, clonedPlanEndIso, type OverlapPlan } from '#lib/training/plan_overlap.ts';
 	import SessionPlanEditor from '#lib/components/SessionPlanEditor.svelte';
 	import RoutineEditor from '#lib/components/RoutineEditor.svelte';
@@ -278,6 +278,10 @@
 					askOverlap(start, outcome.overlapping, run);
 					return;
 				}
+				if (outcome.kind === 'trimBlocked') {
+					showToast(trimBlockedMessage(outcome.overlapping, start), 'error');
+					return;
+				}
 				showToast(m('plansNew.toastCreated'));
 				goto(`/plans/${outcome.value}`);
 			} catch (e) {
@@ -329,6 +333,10 @@
 				);
 				if (outcome.kind === 'overlap') {
 					askOverlap(start, outcome.overlapping, run);
+					return;
+				}
+				if (outcome.kind === 'trimBlocked') {
+					showToast(trimBlockedMessage(outcome.overlapping, start), 'error');
 					return;
 				}
 				showToast(m('plansNew.toastCreated'));

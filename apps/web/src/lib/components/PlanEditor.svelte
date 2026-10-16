@@ -12,7 +12,7 @@
 		fetchRuns,
 		type PlanOverlapChoice,
 	} from '#lib/core/data.ts';
-	import PlanOverlapDialog from '#lib/components/PlanOverlapDialog.svelte';
+	import PlanOverlapDialog, { trimBlockedMessage } from '#lib/components/PlanOverlapDialog.svelte';
 	import { attemptPlanCreate, type OverlapPlan } from '#lib/training/plan_overlap.ts';
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
 	import {
@@ -651,6 +651,7 @@
 				() => fetchMyOverlappingActivePlans(startDate, endDate)
 			);
 			if (outcome.kind === 'overlap') overlapping = outcome.overlapping;
+			else if (outcome.kind === 'trimBlocked') error = trimBlockedMessage(outcome.overlapping, startDate);
 			else oncreated?.(outcome.value);
 		} catch (e: unknown) {
 			error = describeError(e);

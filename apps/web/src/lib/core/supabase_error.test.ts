@@ -10,6 +10,7 @@ import {
 	DbError,
 	dbError,
 	isPlanOverlapError,
+	isPlanTrimBlockedError,
 	PlanOverlapError,
 	supabaseErrorFields,
 	isDuplicateKeyError,
@@ -247,4 +248,13 @@ test('dbError turns a 23P01 plan-window overlap into a readable PlanOverlapError
 	assert.equal(appErrorMessage(err), err.message);
 	assert.equal(isPlanOverlapError(err), true);
 	assert.equal(isPlanOverlapError({ code: '23505' }), false);
+});
+
+test('a refused trim keeps its own SQLSTATE and is not an overlap', () => {
+	const err = dbError({ message: 'trim_training_plan: completed workouts fall after 2031-04-11', code: 'TR001' });
+	assert.ok(err instanceof DbError);
+	assert.ok(!(err instanceof PlanOverlapError));
+	assert.equal(isPlanTrimBlockedError(err), true);
+	assert.equal(isPlanOverlapError(err), false);
+	assert.equal(isPlanTrimBlockedError({ code: '23P01' }), false);
 });

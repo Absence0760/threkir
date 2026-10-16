@@ -2892,6 +2892,7 @@ export const en = {
 	"planEditor.overlapNoTrim": "A plan that starts on or after the new start date can only be replaced.",
 	"planEditor.overlapTrimOne": "End “{name}” on {date}",
 	"planEditor.overlapTrimMany": "End them on {date}",
+	"planEditor.overlapTrimBlocked": "{plan} has completed workouts after {date}. Replace it instead, or start the new plan later.",
 	"planEditor.replacePlan": "Replace plan",
 	"planMeta.nameRequired": "Name is required",
 	"planMeta.planUpdated": "Plan updated.",

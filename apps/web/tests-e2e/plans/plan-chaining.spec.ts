@@ -18,6 +18,8 @@ import { USER_B } from '../fixtures/users';
  * only once the runner has chosen (decisions § 2050): the wizard, a starter
  * plan and a public-library clone all show the same dialog, and a plan that
  * appears after the wizard opened is named rather than silently replaced.
+ * Ending a plan early over a completed workout is refused by the server
+ * (TR001, decisions § 2060) and the wizard says why.
  *
  * Runs as USER_B with a planted active plan, so USER_A's seeded "Richmond
  * Half 2026" — which other specs need active and untrimmed — is never touched.
@@ -249,6 +251,37 @@ test.describe('plan chaining', () => {
 		const dates = (left ?? []).map((w) => w.scheduled_date);
 		expect(dates).toContain(browserDate(0));
 		expect(dates).not.toContain(lateWorkoutDate);
+	});
+
+	test('ending a plan early is refused, and says why, when it has completed workouts after the cut', async ({
+		page
+	}) => {
+		const { planId, weekId, lateWorkoutDate } = await plantBasePlan(60);
+		const { error: doneErr } = await getAdminClient()
+			.from('plan_workouts')
+			.update({ manually_completed: true, completed_at: new Date().toISOString() })
+			.eq('week_id', weekId)
+			.eq('scheduled_date', lateWorkoutDate);
+		if (doneErr) throw doneErr;
+		const start = sundayOnOrAfter(14);
+		await openWizardAndSubmit(page, 'e2e chain ran ahead', start);
+
+		const dialog = page.getByTestId('plan-overlap-dialog');
+		await expect(dialog).toBeVisible({ timeout: 5_000 });
+		await dialog.getByRole('button', { name: new RegExp(`^End .*${BASE_NAME}`) }).click();
+
+		await expect(page.locator('.modal .error')).toContainText(
+			`${BASE_NAME} has completed workouts after`,
+			{ timeout: 10_000 }
+		);
+		await expect(page.locator('.modal .error')).toContainText('Replace it instead, or start the new plan later.');
+		expect(await planStatus(planId)).toEqual({ status: 'active', end_date: browserDate(60) });
+		const { data: created } = await getAdminClient()
+			.from('training_plans')
+			.select('id')
+			.eq('user_id', USER_B.id)
+			.eq('name', 'e2e chain ran ahead');
+		expect(created ?? []).toHaveLength(0);
 	});
 
 	test('shifting into a queued plan offers to move it too, and both plans move', async ({ page }) => {

@@ -1,4 +1,9 @@
-import { isPlanOverlapError } from '../core/supabase_error';
+// "End it early" over an overlapped plan (decisions § 2008, § 2050).
+// `canTrimOverlap` and `clonedPlanEndIso` are a parity pair with the Dart twin
+// `apps/mobile_android/lib/plan_overlap.dart`; `attemptPlanCreate` and
+// `overlapTrimDate` are web-only.
+
+import { isPlanOverlapError, isPlanTrimBlockedError } from '../core/supabase_error';
 import { shiftIsoDate } from './plan_bulk_ops';
 
 /// An active plan a new plan's window collides with, as the overlap dialog
@@ -24,8 +29,7 @@ export function canTrimOverlap(overlapping: readonly OverlapPlan[], newStartIso:
 }
 
 /// The end date a clone of `template` takes when it starts on `startIso`: the
-/// clone RPCs shift every date by the same whole-day offset. Mirrors
-/// `clonedPlanEndIso` in the mobile `training_service.dart`.
+/// clone RPCs shift every date by the same whole-day offset.
 export function clonedPlanEndIso(
 	template: { start_date: string; end_date: string },
 	startIso: string
@@ -36,13 +40,17 @@ export function clonedPlanEndIso(
 
 export type PlanCreateOutcome<T> =
 	| { kind: 'created'; value: T }
-	| { kind: 'overlap'; overlapping: OverlapPlan[] };
+	| { kind: 'overlap'; overlapping: OverlapPlan[] }
+	| { kind: 'trimBlocked'; overlapping: OverlapPlan[] };
 
 /// Run one create or clone attempt. When the server refuses it because an
 /// active plan now overlaps (23P01: the caller chose 'refuse', or a plan was
 /// created since the dialog last looked), re-read the overlapping plans so
 /// the caller can ask again with fresh names instead of failing or silently
-/// replacing. A refusal with nothing left to name rethrows.
+/// replacing. When it refuses an "End it early" because an overlapped plan
+/// has completed workouts after the cut (TR001, checked only on the server),
+/// the same re-read names the plans for the caller's message. A refusal with
+/// nothing left to name rethrows.
 export async function attemptPlanCreate<T>(
 	create: () => Promise<T>,
 	lookupOverlaps: () => Promise<OverlapPlan[]>
@@ -50,11 +58,12 @@ export async function attemptPlanCreate<T>(
 	try {
 		return { kind: 'created', value: await create() };
 	} catch (e) {
-		if (!isPlanOverlapError(e)) throw e;
+		const trimBlocked = isPlanTrimBlockedError(e);
+		if (!trimBlocked && !isPlanOverlapError(e)) throw e;
 		const overlapping = await lookupOverlaps();
 		if (overlapping.length === 0) throw e;
 		return {
-			kind: 'overlap',
+			kind: trimBlocked ? 'trimBlocked' : 'overlap',
 			overlapping: [...overlapping].sort((a, b) => (a.start_date < b.start_date ? -1 : a.start_date > b.start_date ? 1 : 0))
 		};
 	}

@@ -11,7 +11,7 @@
 		fetchMyOverlappingActivePlans,
 		type PlanOverlapChoice,
 	} from '#lib/core/data.ts';
-	import PlanOverlapDialog from '#lib/components/PlanOverlapDialog.svelte';
+	import PlanOverlapDialog, { trimBlockedMessage } from '#lib/components/PlanOverlapDialog.svelte';
 	import { attemptPlanCreate, clonedPlanEndIso, type OverlapPlan } from '#lib/training/plan_overlap.ts';
 	import { formatDistance } from '#lib/format/units.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
@@ -106,6 +106,10 @@
 			if (outcome.kind === 'overlap') {
 				overlapStart = start;
 				overlapping = outcome.overlapping;
+				return;
+			}
+			if (outcome.kind === 'trimBlocked') {
+				showToast(trimBlockedMessage(outcome.overlapping, start), 'error');
 				return;
 			}
 			showToast(m('planLibrary.cloneSuccess'));

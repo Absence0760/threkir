@@ -128,7 +128,9 @@ test.describe('plan import / export', () => {
 		await page.getByRole('button', { name: 'Load plan' }).click();
 		await expect(page.locator('.imported-note')).toBeVisible();
 
-		const startInput = page.locator('input[type="date"]');
+		// /plans/new also renders the starter and club-template pickers, each
+		// with its own date input; the editor's is the one its hint describes.
+		const startInput = page.locator('input[type="date"][aria-describedby="start-date-hint"]');
 		await expect(startInput).toHaveValue('2020-01-03');
 		await expect(startInput).not.toHaveAttribute('min');
 		expect(await startInput.evaluate((el: HTMLInputElement) => el.checkValidity())).toBe(true);

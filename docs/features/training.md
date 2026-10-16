@@ -210,7 +210,7 @@ Never touched: workouts before today, done (linked or ticked) or skipped, rest d
 
 **Ending a plan early** (`trim_training_plan`) refuses with SQLSTATE `TR001` when a completed workout falls after the cut; every create and clone path shows "<plan> has completed workouts after <date>. Replace it instead, or start the new plan later." (`planEditor.overlapTrimBlocked`), and the dialog keeps offering End early because the check is server-side. A trimmed plan made longer again (a meta edit of its end date, Duplicate week) loses `trimmed_at`, so its end date reads as a race again; a shift keeps it. `create_training_plan` refuses a workout dated outside the plan's own window (decisions § 2062).
 
-`clone_plan_template`, `clone_public_plan` and `assign_plan_to_athlete` copy the two columns; `duplicate_plan_week` deliberately does not, so a copied race week does not invent a second race of the same name.
+`clone_plan_template`, `clone_public_plan` and `assign_plan_to_athlete` copy the two columns; `duplicate_plan_week` copies no `race` workout at all (migration `20270830000009`): a duplicated week is training, so its race day stays free and the copy's `target_volume_m` drops the race distance. Copying the race without its name and priority, as it did before, still invented a race, because `planRaces` reads every `race` workout as one — a nameless C race seven days on, with its own countdown and taper window.
 
 ## Pace derivation — why multipliers, not Daniels tables
 

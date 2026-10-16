@@ -9760,6 +9760,60 @@ abstract class AppLocalizations {
   /// **'A walk-run plan for new runners builds to a 5K, so the goal was set to 5K with no goal time.'**
   String get planNewAiAssumptionBeginner5k;
 
+  /// AI season-request assumption: a race entry with no usable name was dropped
+  ///
+  /// In en, this message translates to:
+  /// **'A race that couldn\'t be read was left out.'**
+  String get planNewSeasonAssumptionRaceDroppedInvalid;
+
+  /// AI season-request assumption: a race was dropped because its date was not a future date within two years
+  ///
+  /// In en, this message translates to:
+  /// **'A race was left out because its date couldn\'t be used — it has to be a future date within two years.'**
+  String get planNewSeasonAssumptionRaceDroppedDate;
+
+  /// AI season-request assumption: a race was dropped because its distance was outside 5-400 km
+  ///
+  /// In en, this message translates to:
+  /// **'A race was left out because its distance is outside what the planner supports (5 km to 400 km).'**
+  String get planNewSeasonAssumptionRaceDroppedDistance;
+
+  /// AI season-request assumption: a date with no year had passed this year and was moved to next year
+  ///
+  /// In en, this message translates to:
+  /// **'A date given without a year had already passed this year, so it was moved to next year.'**
+  String get planNewSeasonAssumptionRaceDateNextYear;
+
+  /// AI season-request assumption: a race's goal time was out of range for its distance and was removed
+  ///
+  /// In en, this message translates to:
+  /// **'A goal time looked out of range for its distance, so that race has no goal time.'**
+  String get planNewSeasonAssumptionGoalTimeDropped;
+
+  /// AI season-request assumption: a race named twice was merged into one entry
+  ///
+  /// In en, this message translates to:
+  /// **'A race mentioned twice is listed once.'**
+  String get planNewSeasonAssumptionRaceDuplicateMerged;
+
+  /// AI season-request assumption: only the first 12 races were kept
+  ///
+  /// In en, this message translates to:
+  /// **'Only the first 12 races are listed — a season can hold up to 12.'**
+  String get planNewSeasonAssumptionRacesCapped;
+
+  /// AI season-request assumption: races with no A/B/C priority were given priority B
+  ///
+  /// In en, this message translates to:
+  /// **'Races without a priority were set to B.'**
+  String get planNewSeasonAssumptionPriorityDefault;
+
+  /// AI season-request assumption: no race was priority A, so the longest race was made the A race
+  ///
+  /// In en, this message translates to:
+  /// **'No race was marked as your A race, so the longest one is.'**
+  String get planNewSeasonAssumptionPriorityAAssigned;
+
   /// Error when the AI plan assistant needs the runner to accept the updated AI disclosure first
   ///
   /// In en, this message translates to:

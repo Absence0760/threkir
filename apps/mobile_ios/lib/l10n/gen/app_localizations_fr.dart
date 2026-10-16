@@ -5975,6 +5975,42 @@ class AppLocalizationsFr extends AppLocalizations {
       'Un plan marche-course pour débutants mène au 5 km, l\'objectif a donc été fixé à 5 km sans temps visé.';
 
   @override
+  String get planNewSeasonAssumptionRaceDroppedInvalid =>
+      'Une course illisible a été laissée de côté.';
+
+  @override
+  String get planNewSeasonAssumptionRaceDroppedDate =>
+      'Une course a été laissée de côté car sa date n\'a pas pu être utilisée — elle doit être future et à moins de deux ans.';
+
+  @override
+  String get planNewSeasonAssumptionRaceDroppedDistance =>
+      'Une course a été laissée de côté car sa distance sort de ce que le planificateur prend en charge (5 km à 400 km).';
+
+  @override
+  String get planNewSeasonAssumptionRaceDateNextYear =>
+      'Une date donnée sans année était déjà passée cette année, elle a donc été reportée à l\'année prochaine.';
+
+  @override
+  String get planNewSeasonAssumptionGoalTimeDropped =>
+      'Un temps visé semblait irréaliste pour sa distance, cette course n\'a donc pas de temps visé.';
+
+  @override
+  String get planNewSeasonAssumptionRaceDuplicateMerged =>
+      'Une course mentionnée deux fois n\'apparaît qu\'une fois.';
+
+  @override
+  String get planNewSeasonAssumptionRacesCapped =>
+      'Seules les 12 premières courses sont listées — une saison en compte 12 au maximum.';
+
+  @override
+  String get planNewSeasonAssumptionPriorityDefault =>
+      'Les courses sans priorité ont été mises en B.';
+
+  @override
+  String get planNewSeasonAssumptionPriorityAAssigned =>
+      'Aucune course n\'était marquée comme course A, c\'est donc la plus longue.';
+
+  @override
   String get planNewAiErrorConsent =>
       'L\'assistant de plan nécessite la notice IA mise à jour.';
 

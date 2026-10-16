@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { deleteRun, insertRun } from '../fixtures/simulate';
@@ -9,7 +9,7 @@ import { readMaybeRow } from '../fixtures/db-read';
  * /social?tab=people — follow toggle FAILURE path + the follow→feed
  * link. people.spec.ts covers the happy-path optimistic flip + DB
  * persistence; this pins two gaps:
- *   1. when the follow write FAILS, the optimistic flip ROLLS BACK and
+ *   1. when the follow RPC FAILS, the optimistic flip ROLLS BACK and
  *      a failure toast surfaces (SocialPeople.toggleFollow catch).
  *   2. the follow graph actually drives the feed: a followed user's
  *      public run appears; after unfollow it disappears. This is the
@@ -42,22 +42,19 @@ test.describe('/social?tab=people — follow failure rolls back', () => {
 			);
 	});
 
-	test('a failed follow INSERT rolls the button back to Follow + shows a failure toast', async ({
+	test('a failed follow request rolls the button back to Follow + shows a failure toast', async ({
 		page
 	}) => {
-		// Fail every user_follows write (POST) — the follow insert. The
-		// optimistic flip paints "Following" immediately, then the catch
-		// must roll it back to "Follow" when the write 500s.
-		await page.route('**/rest/v1/user_follows*', async (route) => {
-			if (route.request().method() === 'POST') {
-				await route.fulfill({
-					status: 500,
-					contentType: 'application/json',
-					body: JSON.stringify({ message: 'simulated follow failure' })
-				});
-			} else {
-				await route.continue();
-			}
+		// A follow is the request_follow RPC (it files a request instead when
+		// the profile is private), so that call is the one to fail. The
+		// optimistic flip paints "Following" immediately, then the catch must
+		// roll it back to "Follow" when the RPC 500s.
+		await page.route('**/rest/v1/rpc/request_follow*', async (route) => {
+			await route.fulfill({
+				status: 500,
+				contentType: 'application/json',
+				body: JSON.stringify({ message: 'simulated follow failure' })
+			});
 		});
 
 		await page.goto('/social?tab=people');

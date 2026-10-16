@@ -177,6 +177,10 @@ void main() {
     test('falls back to the prod host when WEB_BASE_URL is unset', () {
       expect(routeShareUrl('r1'), 'https://threkir.com/share/route/r1');
     });
+    test('a blank base falls back to the prod host, not a relative link', () {
+      expect(routeShareUrl('r1', webBase: '  '),
+          'https://threkir.com/share/route/r1');
+    });
   });
 
   group('RouteDetailScreen', () {

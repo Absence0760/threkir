@@ -936,7 +936,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         for (final e in pbDistances.entries) {
           if (r.distanceMetres < e.value) continue;
           final cached = runCache.putIfAbsent(
-              e.value, () => fastestWindowOf(r.track, e.value));
+              e.value, () => fastestWindowOf(trackLine(r.track), e.value));
           if (cached != null &&
               (!bestEfforts.containsKey(e.key) ||
                   cached < bestEfforts[e.key]!)) {

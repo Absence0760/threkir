@@ -96,6 +96,53 @@
         }
       }
     },
+    "PreciseRunTracking" : {
+      "comment" : "Purpose string for the one-time temporary full-accuracy prompt (Info.plist NSLocationTemporaryUsageDescriptionDictionary, purpose key PreciseRunTracking) shown when a run starts with Precise Location off.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir braucht deinen genauen Standort, um diesen Lauf auf der Karte zu zeigen und seine Distanz exakt zu messen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir needs your precise location to map this run and measure its distance accurately."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir necesita tu ubicación exacta para trazar esta carrera en el mapa y medir su distancia con precisión."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir a besoin de votre position exacte pour tracer cette course sur la carte et mesurer sa distance avec précision."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir は、このランを地図に記録し距離を正確に測るために正確な位置情報を必要とします。"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Threkir precisa da sua localização precisa para mapear esta corrida e medir a distância com exatidão."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Threkir precisa da sua localização exata para mapear esta corrida e medir a distância com exatidão."
+          }
+        }
+      }
+    },
     "NSHealthShareUsageDescription" : {
       "comment" : "Purpose string for the HealthKit read prompt raised by the Apple Health import.",
       "localizations" : {
@@ -238,48 +285,48 @@
       }
     },
     "NSMotionUsageDescription" : {
-      "comment" : "Purpose string for the Motion & Fitness prompt raised by the pedometer, which counts steps and cadence when a run has no GPS.",
+      "comment" : "Purpose string for the Motion & Fitness prompt raised by the pedometer (steps and cadence) and the barometer (CMAltimeter, the climb on a run).",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Threkir nutzt Bewegungsdaten, um bei Laufband-Läufen ohne GPS Schritte zu zählen und die Schrittfrequenz zu schätzen."
+            "value" : "Threkir nutzt Bewegungsdaten, um Schritte zu zählen und die Schrittfrequenz zu schätzen, und das Barometer, um die Höhenmeter deiner Läufe zu messen."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Threkir uses motion data to count steps and estimate cadence on treadmill runs without GPS."
+            "value" : "Threkir uses motion data to count steps and estimate cadence, and the barometer to measure the climb on your runs."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Threkir usa los datos de movimiento para contar los pasos y estimar la cadencia en las carreras en cinta de correr sin GPS."
+            "value" : "Threkir usa los datos de movimiento para contar los pasos y estimar la cadencia, y el barómetro para medir el desnivel de tus carreras."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Threkir utilise les données de mouvement pour compter vos pas et estimer votre cadence lors des courses sur tapis de course, sans GPS."
+            "value" : "Threkir utilise les données de mouvement pour compter vos pas et estimer votre cadence, et le baromètre pour mesurer le dénivelé de vos courses."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Threkir はモーションデータを使用して、GPS を使わないトレッドミルでのランで歩数を数え、ケイデンスを推定します。"
+            "value" : "Threkir はモーションデータを使用して歩数を数えてケイデンスを推定し、気圧計を使用してランの獲得標高を測定します。"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O Threkir usa dados de movimento para contar passos e estimar a cadência em corridas na esteira sem GPS."
+            "value" : "O Threkir usa dados de movimento para contar passos e estimar a cadência, e o barômetro para medir a subida acumulada das suas corridas."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O Threkir utiliza dados de movimento para contar passos e estimar a cadência em corridas na passadeira sem GPS."
+            "value" : "O Threkir utiliza dados de movimento para contar passos e estimar a cadência, e o barómetro para medir o desnível positivo das suas corridas."
           }
         }
       }
@@ -379,48 +426,48 @@
       }
     },
     "NSCameraUsageDescription" : {
-      "comment" : "Purpose string for the camera prompt raised by the nutrition barcode scanner.",
+      "comment" : "Purpose string for the camera prompt raised by the nutrition barcode scanner and the plate-photo logger.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Threkir verwendet die Kamera, um den Barcode eines Lebensmittels zu scannen, damit es die Nährwerte nachschlagen und für dich erfassen kann."
+            "value" : "Threkir verwendet die Kamera, um den Barcode eines Lebensmittels zu scannen oder eine Mahlzeit zu fotografieren, die du eintragen möchtest, damit es die Nährwerte nachschlagen oder schätzen kann."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Threkir uses the camera to scan a food product's barcode so it can look up its nutrition and log it for you."
+            "value" : "Threkir uses the camera to scan a food product's barcode, or to photograph a meal you want to log, so it can look up or estimate the nutrition for you."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Threkir usa la cámara para escanear el código de barras de un producto alimenticio, buscar su información nutricional y registrarlo por ti."
+            "value" : "Threkir usa la cámara para escanear el código de barras de un producto alimenticio o fotografiar una comida que quieras registrar, y así buscar o estimar su información nutricional por ti."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Threkir utilise l’appareil photo pour scanner le code-barres d’un produit alimentaire afin d’en trouver les valeurs nutritionnelles et de l’enregistrer pour vous."
+            "value" : "Threkir utilise l’appareil photo pour scanner le code-barres d’un produit alimentaire ou photographier un repas que vous voulez enregistrer, afin d’en trouver ou d’en estimer les valeurs nutritionnelles pour vous."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Threkir はカメラで食品のバーコードをスキャンし、栄養成分を調べて記録します。"
+            "value" : "Threkir はカメラで食品のバーコードをスキャンしたり、記録したい食事を撮影したりして、栄養成分を調べたり推定したりします。"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O Threkir usa a câmera para escanear o código de barras de um alimento, consultar suas informações nutricionais e registrá-lo para você."
+            "value" : "O Threkir usa a câmera para escanear o código de barras de um alimento ou fotografar uma refeição que você quer registrar, e assim consultar ou estimar as informações nutricionais para você."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O Threkir utiliza a câmara para digitalizar o código de barras de um alimento, consultar a sua informação nutricional e registá-lo por si."
+            "value" : "O Threkir utiliza a câmara para digitalizar o código de barras de um alimento ou fotografar uma refeição que pretende registar, e assim consultar ou estimar a informação nutricional por si."
           }
         }
       }

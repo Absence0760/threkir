@@ -3,7 +3,6 @@ import 'package:core_models/core_models.dart' show DistanceUnit;
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart' show ListSkeleton;
 import 'package:flutter/services.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import '../auth_error.dart';
 import '../coach_load.dart';
@@ -12,6 +11,7 @@ import '../l10n/date_format.dart';
 import '../l10n/locale_support.dart';
 import '../preferences.dart';
 import '../share_sheet.dart';
+import '../web_base_url.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/top_banner.dart';
 import 'coaching_athlete_screen.dart';
@@ -40,13 +40,7 @@ class CoachingScreen extends StatefulWidget {
 /// from `WEB_BASE_URL` (set at build time, e.g. the preview host) and falls
 /// back to the production host. Pure so it can be unit-tested.
 String coachInviteLink(String token, {String? webBase}) {
-  var base = (webBase ??
-          (dotenv.isInitialized ? dotenv.maybeGet('WEB_BASE_URL') : null) ??
-          '')
-      .trim();
-  if (base.isEmpty) base = 'https://threkir.com';
-  if (base.endsWith('/')) base = base.substring(0, base.length - 1);
-  return '$base/coaching/accept/$token';
+  return '${resolveWebBaseUrl(override: webBase)}/coaching/accept/$token';
 }
 
 class _CoachingScreenState extends State<CoachingScreen> {

@@ -130,6 +130,19 @@ test('a catalog entry for a permission Info.plist no longer declares is refused'
 	assert.match(out, /\[NSCameraUsageDescription\]: no such NS\*UsageDescription key in Info\.plist/);
 });
 
+test('a temporary-accuracy purpose string with no catalog entry is refused', () => {
+	// iOS localizes NSLocationTemporaryUsageDescriptionDictionary under each
+	// purpose key, so the full-accuracy prompt a run raises with Precise
+	// Location off is a consent prompt like the NS*UsageDescription ones.
+	const { status, out } = runMutated((dir) => {
+		const cat = readPlistCatalog(dir);
+		delete cat.strings.PreciseRunTracking;
+		writePlistCatalog(dir, cat);
+	});
+	assert.equal(status, 1, out);
+	assert.match(out, /Info\.plist declares PreciseRunTracking with no catalog entry/);
+});
+
 test('a consent prompt that never translated a shipped locale is refused', () => {
 	const { status, out } = runMutated((dir) => {
 		const cat = readPlistCatalog(dir);

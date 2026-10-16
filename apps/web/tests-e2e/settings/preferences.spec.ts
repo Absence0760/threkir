@@ -1,7 +1,8 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { RUNNER_PUBLIC_RUN_ID } from '../fixtures/seeded-data';
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * The preference pages /settings/preferences was split into (issue #905) —
@@ -226,6 +227,28 @@ test.describe('settings preference pages', () => {
 		// Restore so later specs see the default.
 		await sel.selectOption(before);
 		await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
+	});
+
+	test('the mention / reaction / comment-like / follow-request mutes save off and survive a reload', async ({
+		page
+	}) => {
+		// decisions § 1971: opt-OUT per-kind mutes the worker's kindMuted
+		// reads. Absent reads as on; unticking writes the literal 'off'.
+		await page.goto('/settings/notifications');
+		await page.waitForLoadState('networkidle');
+		for (const id of ['notify-mention', 'notify-reaction', 'notify-comment-like', 'notify-follow-request']) {
+			const box = page.getByTestId(id);
+			await expect(box).toBeChecked();
+			await box.uncheck();
+			await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
+		}
+		await page.reload();
+		for (const id of ['notify-mention', 'notify-reaction', 'notify-comment-like', 'notify-follow-request']) {
+			const box = page.getByTestId(id);
+			await expect(box).not.toBeChecked();
+			await box.check();
+			await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
+		}
 	});
 
 	test('Push notifications <select> save round-trip persists across reload', async ({
@@ -790,12 +813,7 @@ test.describe('/settings/preferences — anon', () => {
 		page,
 		context
 	}) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(context);
 		await page.goto('/settings/preferences');
 		await page.waitForURL(/\/login(\?|$)/, { timeout: 10_000 });
 		// return_to round-trip: the layout guard preserves the original

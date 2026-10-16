@@ -85,6 +85,18 @@ export interface CoachConfig {
 	// builder — so the coach never points at a box the runner cannot see.
 	aiPlanEnabled: boolean;
 
+	// The coach fuelling handoff's server flag (coach_fuel_flag.ts is the
+	// client half): PUBLIC_COACH_FUEL_ENABLED in the dev wrapper,
+	// COACH_FUEL_ENABLED in the Lambda. On, the system prompt carries the
+	// fuelHandoffAddendum and the coach answers a fuelling question with a link
+	// to /nutrition/fuel; off, the addendum is empty (decisions § 1975).
+	fuelHandoffEnabled: boolean;
+	// AI plan edits' deploy flag (ai_plan_edit_flag.ts), read the same way:
+	// PUBLIC_AI_PLAN_EDIT_ENABLED in the dev wrapper, AI_PLAN_EDIT_ENABLED in
+	// the Lambda. Adds the plan-edit handoff addendum only when the endpoint it
+	// links into is live.
+	aiPlanEditEnabled: boolean;
+
 	// Test seam only. Injects the Supabase-client factory so the handler's
 	// post-auth branches (notably the regenerate/edit anchor-miss fail-
 	// closed path) can be unit-tested without a live Supabase. Prod callers
@@ -124,8 +136,8 @@ export interface ProviderStream {
 
 // Both tiers carry a finite daily cap. Pro was previously uncapped;
 // it was lowered to 10/day in May 2026 to bound worst-case Anthropic
-// spend per stolen Pro session token (~$0.50/day at 10×2048 output
-// tokens + ~50k input tokens). Free at 2/day is generous enough to
+// spend per stolen Pro session token (~$0.30/day at 10×2048 output
+// tokens + ~50k input tokens on claude-sonnet-5-5's $2/$10 per MTok). Free at 2/day is generous enough to
 // let a new user have a real exchange with the coach (one prompt +
 // one clarifying follow-up) before deciding whether to upgrade.
 // Pro `maxRunsLimit` was lowered from 200 to 75 in audit pass 3.

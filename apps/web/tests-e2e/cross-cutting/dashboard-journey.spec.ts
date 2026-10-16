@@ -1,7 +1,8 @@
-import { expect, test, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { browserDatetimeLocal } from '../fixtures/dates';
-import { switchRunsToAllTime } from '../fixtures/helpers';
+import { setStorageOnLoad, switchRunsToAllTime } from '../fixtures/helpers';
 import { withCleanCurrentWeek } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
 
@@ -54,7 +55,10 @@ async function recentRunDistances(page: Page): Promise<string[]> {
 }
 
 test.describe('dashboard end-to-end journey', () => {
-	test.use({ storageState: USER_A.storageStatePath });
+	// Pinned to `fail` while CI runs the suite with CRASH_NET=report: the
+	// /runs period switch here destroyed every RunTrackPreview while auth was
+	// still settling, and each one then observed an unbound element.
+	test.use({ storageState: USER_A.storageStatePath, crashNet: { mode: 'fail' } });
 
 	// The seed gained a now()-relative 8 km run ("Morning easy 8K"), which
 	// would put a freshly planted 25 km/week goal at 32% instead of the 0%
@@ -83,12 +87,7 @@ test.describe('dashboard end-to-end journey', () => {
 			const goalJson = JSON.stringify([
 				{ id: GOAL_ID, period: 'week', distance_m: 25_000 }
 			]);
-			await context.addInitScript(
-				(args: { key: string; value: string }) => {
-					localStorage.setItem(args.key, args.value);
-				},
-				{ key: GOAL_KEY, value: goalJson }
-			);
+			await setStorageOnLoad(context, { local: { [GOAL_KEY]: goalJson } });
 		});
 
 		// ── Phase 1: snapshot initial dashboard state ──────────────

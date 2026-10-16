@@ -348,6 +348,30 @@ test('a source string that has drifted from the Info.plist fallback is refused',
 	assert.match(out, /en value differs from the Info\.plist string it falls back to/);
 });
 
+test('a temporary-accuracy purpose key Info.plist declares with no catalog entry is refused', () => {
+	// The one-off Precise Location sheet is localized under its purpose key,
+	// not an NS*UsageDescription name, so the usage-description regex alone
+	// would never ask for its translations.
+	const { status, out } = runMutated((dir) => {
+		const cat = readPlistCatalog(dir);
+		assert.ok('PreciseRunTracking' in cat.strings, 'the shipped catalog has no PreciseRunTracking entry');
+		delete cat.strings.PreciseRunTracking;
+		writePlistCatalog(dir, cat);
+	});
+	assert.equal(status, 1, out);
+	assert.match(out, /Info\.plist declares PreciseRunTracking with no catalog entry/);
+});
+
+test('a temporary-accuracy purpose string drifted from its Info.plist fallback is refused', () => {
+	const { status, out } = runMutated((dir) => {
+		const cat = readPlistCatalog(dir);
+		cat.strings.PreciseRunTracking.localizations.en.stringUnit.value = 'Threkir wants precision.';
+		writePlistCatalog(dir, cat);
+	});
+	assert.equal(status, 1, out);
+	assert.match(out, /\[PreciseRunTracking\]: en value differs from the Info\.plist string/);
+});
+
 test('a locale added to the plist catalog alone fails the UI catalog too', () => {
 	// The locale set is derived across BOTH catalogs, so one of them running
 	// ahead is caught rather than each being graded against its own set.

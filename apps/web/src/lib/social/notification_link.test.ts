@@ -31,7 +31,7 @@ function make(overrides: {
 }
 
 test('run-engagement kinds link to the run detail', () => {
-	for (const kind of ['kudos', 'comment', 'comment_reply']) {
+	for (const kind of ['kudos', 'comment', 'comment_reply', 'reaction', 'comment_like', 'mention']) {
 		assert.equal(notificationLinkFor(make({ kind, run_id: 'r1' })), '/runs/r1');
 		assert.equal(notificationLinkFor(make({ kind })), null, `${kind} with no run_id has no link`);
 	}
@@ -40,6 +40,11 @@ test('run-engagement kinds link to the run detail', () => {
 test('follow links to the actor profile', () => {
 	assert.equal(notificationLinkFor(make({ kind: 'follow', actor_id: 'u9' })), '/u/u9');
 	assert.equal(notificationLinkFor(make({ kind: 'follow' })), null);
+});
+
+test('a follow request links to the requests page, with or without an actor', () => {
+	assert.equal(notificationLinkFor(make({ kind: 'follow_request', actor_id: 'u9' })), '/follow-requests');
+	assert.equal(notificationLinkFor(make({ kind: 'follow_request' })), '/follow-requests');
 });
 
 test('event kinds link to the club event, needing both event id and club slug', () => {

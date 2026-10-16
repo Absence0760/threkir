@@ -1,4 +1,4 @@
-import { expect, test } from '../fixtures/mock-route';
+import { expect, test } from '../fixtures/test';
 
 import { USER_A } from '../fixtures/users';
 

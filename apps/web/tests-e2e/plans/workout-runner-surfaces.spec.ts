@@ -1,9 +1,10 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { repurposeTodayWorkout, seedDateToLive } from '../fixtures/plan-today';
 import { USER_A } from '../fixtures/users';
 import { readMaybeRow } from '../fixtures/db-read';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Workout-runner-adjacent surfaces (web).
@@ -67,12 +68,7 @@ test.describe('Workout-runner surfaces (web)', () => {
 		// Pre-accept cookie consent so the CookieConsentBanner doesn't
 		// layer over modal pointer events. See calendar.spec.ts for the
 		// same fix.
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(context);
 	});
 
 	test.describe('Today card on /plans/[id]', () => {

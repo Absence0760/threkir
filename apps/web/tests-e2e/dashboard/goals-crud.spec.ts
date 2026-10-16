@@ -1,8 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { withCleanCurrentWeek } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent, setStorageOnLoad } from '../fixtures/helpers';
 
 /**
  * /dashboard Goals section — full CRUD round-trip from an empty state.
@@ -42,16 +43,7 @@ test.describe('/dashboard Goals — CRUD UI', () => {
 	let restoreCurrentWeek: (() => Promise<void>) | null = null;
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-			);
-		});
-		await context.addInitScript((args: { key: string }) => {
-			localStorage.removeItem(args.key);
-			localStorage.removeItem('run_app.goals_v1');
-		}, { key: GOAL_KEY });
+		await acceptCookieConsent(context, { [GOAL_KEY]: null, 'run_app.goals_v1': null });
 
 		// The seed sets `weekly_mileage_goal_m=50000` on runner@test.com,
 		// which the dashboard surfaces as a synthetic Weekly distance
@@ -81,14 +73,7 @@ test.describe('/dashboard Goals — CRUD UI', () => {
 			await restoreCurrentWeek();
 			restoreCurrentWeek = null;
 		}
-		await context.addInitScript((args: { key: string }) => {
-			try {
-				localStorage.removeItem(args.key);
-				localStorage.removeItem('run_app.goals_v1');
-			} catch (_) {
-				/* noop */
-			}
-		}, { key: GOAL_KEY });
+		await setStorageOnLoad(context, { local: { [GOAL_KEY]: null, 'run_app.goals_v1': null } });
 
 		const admin = getAdminClient();
 		const { data } = await admin

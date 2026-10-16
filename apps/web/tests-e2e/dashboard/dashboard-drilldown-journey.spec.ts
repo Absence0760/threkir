@@ -1,7 +1,9 @@
-import { expect, test, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { insertRun } from '../fixtures/simulate';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Dashboard overview → period-summary drilldown journey.
@@ -89,16 +91,6 @@ function stripKmLabel(metres: number): string {
 	return `${(metres / METRES_PER_KM).toFixed(1)} km`;
 }
 
-// Pre-accept the cookie banner before any context paint — the consent
-// dialog is role="dialog" and floats over modals, which has eaten clicks
-// on the stat tiles in prior rounds. Saga users have never accepted it.
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-	);
-}
-
 // The PeriodSummary modal's four stat cards in DOM order: Distance, Time,
 // Runs, Avg pace (PeriodSummary.svelte `.stats > .stat-card` order).
 //
@@ -168,7 +160,7 @@ test.describe('dashboard drilldown journey', () => {
 		browser,
 	}) => {
 		const ctx = await browser.newContext({ storageState: user.storageStatePath });
-		await ctx.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 
 		try {

@@ -43,6 +43,7 @@ const (
 	TableUserDeviceSettings      = "user_device_settings"
 	TableUserCoachUsage          = "user_coach_usage"
 	TableUserFollows             = "user_follows"
+	TableFollowRequests          = "follow_requests"
 	TableUserBlocks              = "user_blocks"
 	TableNotifications           = "notifications"
 	TableLifecycleEmailLog       = "lifecycle_email_log"
@@ -52,6 +53,8 @@ const (
 	TableTrainingPlans           = "training_plans"
 	TableRunKudos                = "run_kudos"
 	TableRunComments             = "run_comments"
+	TableRunReactions            = "run_reactions"
+	TableRunCommentLikes         = "run_comment_likes"
 	TableSegmentEfforts          = "segment_efforts"
 	TableGlobalSegmentEfforts    = "global_segment_efforts"
 	TableFitnessSnapshots        = "fitness_snapshots"
@@ -147,6 +150,15 @@ const (
 	MetaDistanceRecordedM    = "distance_recorded_m"
 	MetaDistanceEstimator    = "distance_estimator"
 	MetaDistanceRecomputedAt = "distance_recomputed_at"
+	// Metres a recorder credited from the pedometer across GPS gaps, already
+	// in distance_m. The stored track carries no steps, so a recompute adds
+	// it back to its replay.
+	MetaDistanceStepFilledM = "distance_step_filled_m"
+	// Stamped true by a recorder whose stored track holds every fix its
+	// distance estimator took, the off-track ones flagged `offTrack`. A
+	// live watch stamp from spec v1.4 on without it names a track that
+	// omits its canopy fixes, which a replay would read short.
+	MetaTrackComplete = "track_complete"
 	// Which of the smoother's passes the recompute kept: "smoothed", or
 	// "forward" for a position-only track that is not a road run.
 	MetaDistanceEstimatorPass = "distance_estimator_pass"

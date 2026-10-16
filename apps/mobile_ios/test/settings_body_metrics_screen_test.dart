@@ -31,7 +31,7 @@ class _ConsentedApi extends ApiClient {
   @override
   String? get userId => 'u1';
   @override
-  Future<UserProfileRow?> fetchMyProfile() async => UserProfileRow(shadowHidden: false, 
+  Future<UserProfileRow?> fetchMyProfile() async => UserProfileRow(profilePrivate: false, shadowHidden: false, 
         id: 'u1',
         healthDataConsentAt: DateTime.utc(2026, 1, 1),
         heightCm: 175,
@@ -52,7 +52,7 @@ class _ConsentedWithDobApi extends ApiClient {
   @override
   String? get userId => 'u1';
   @override
-  Future<UserProfileRow?> fetchMyProfile() async => UserProfileRow(
+  Future<UserProfileRow?> fetchMyProfile() async => UserProfileRow(profilePrivate: false, 
         shadowHidden: false,
         id: 'u1',
         healthDataConsentAt: DateTime.utc(2026, 1, 1),
@@ -76,7 +76,7 @@ class _ConsentedSaveApi extends ApiClient {
   @override
   String? get userId => 'u1';
   @override
-  Future<UserProfileRow?> fetchMyProfile() async => UserProfileRow(
+  Future<UserProfileRow?> fetchMyProfile() async => UserProfileRow(profilePrivate: false, 
         shadowHidden: false,
         id: 'u1',
         healthDataConsentAt: DateTime.utc(2026, 1, 1),

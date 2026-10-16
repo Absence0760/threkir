@@ -244,10 +244,16 @@ void main() {
           reason:
               'Tapping a club_post notification must open ClubDetailScreen '
               'for the linked club slug.');
-      expect(source.contains("kind == 'run_completed'"), isTrue,
+      final runKinds = RegExp(r'_kRunNotificationKinds = \{([^}]*)\}')
+          .firstMatch(source)
+          ?.group(1);
+      expect(runKinds, contains("'run_completed'"),
+          reason: 'run_completed must be one of the run kinds a tap opens.');
+      expect(source.contains('openRunLink(item.row.runId!)'), isTrue,
           reason:
-              'run_completed tap must route to PublicRunScreen via the '
-              'row runId.');
+              'a run-kind tap hands the row runId to the shell, which opens '
+              'the owner screen for the runner\'s own run and '
+              'PublicRunScreen for anyone else\'s.');
     });
   });
 
@@ -535,6 +541,50 @@ void main() {
       expect(find.text('Block this profile'), findsOneWidget);
     });
 
+    testWidgets(
+        'a private profile shows the lock panel and Request to follow; a tap '
+        'files a request and the button reads Requested', (tester) async {
+      final api = _PrivateApi();
+      await pumpOther(tester, api);
+      expect(find.byKey(const ValueKey('profile-private-panel')), findsOneWidget);
+      expect(find.text('This profile is private'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('profile-follow')),
+          matching: find.text('Request to follow'),
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const ValueKey('profile-follow')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(api.followCalls, 1);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('profile-follow')),
+          matching: find.text('Requested'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('profile-private-panel')), findsOneWidget);
+      await tester.pump(const Duration(seconds: 4)); // drain banner timer
+    });
+
+    testWidgets('an approved follower of a private profile sees the runs',
+        (tester) async {
+      await pumpOther(tester, _PrivateApi(approved: true));
+      expect(find.byKey(const ValueKey('profile-private-panel')), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('profile-follow')),
+          matching: find.text('Following'),
+        ),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('your own profile has no follow, message or overflow',
         (tester) async {
       await _ensureSupabase();
@@ -583,7 +633,7 @@ class _OtherApi extends _SelfApi {
           {int limit = 50}) async =>
       [
         for (var i = 0; i < runCount; i++)
-          RunRow(
+          RunRow(safetyAudience: false, 
             id: 'r$i',
             userId: 'other',
             startedAt: DateTime.utc(2026, 10, 1).add(Duration(days: i)),
@@ -614,4 +664,31 @@ class _NamedApi extends _SelfApi {
         followingCount: 0,
         viewerFollows: false,
       );
+}
+
+/// A private profile, viewed by a stranger (or, with [approved], by an
+/// approved follower).
+class _PrivateApi extends _OtherApi {
+  _PrivateApi({this.approved = false});
+
+  final bool approved;
+  int followCalls = 0;
+
+  @override
+  Future<ProfileSummary?> fetchProfileSummary(String userId) async =>
+      ProfileSummary(
+        id: 'other',
+        displayName: 'Grace',
+        followerCount: 48,
+        followingCount: 61,
+        viewerFollows: approved,
+        profilePrivate: true,
+        contentVisible: approved,
+      );
+
+  @override
+  Future<FollowOutcome> followUser(String targetUserId) async {
+    followCalls++;
+    return FollowOutcome.requested;
+  }
 }

@@ -197,7 +197,9 @@ const double kElevationGainMinDeltaM = 3;
 ///    carried across the gap, so an intermittent dropout (tree cover, a tunnel,
 ///    satellite reacquisition on a long ultra) doesn't silently erase the climb
 ///    that spans the missing samples.
-/// 2. A change only counts once it clears [kElevationGainMinDeltaM].
+/// 2. A change only counts once it clears [minDeltaM], which defaults to
+///    [kElevationGainMinDeltaM]. A recorded run passes the band `runAltitude`
+///    (`lib/run_altitude.dart`) picks for its altitude source.
 ///
 /// Callers must pass the raw track. Running this over an RDP-simplified
 /// polyline reads a hill as flat: RDP measures perpendicular distance in 2-D
@@ -208,7 +210,10 @@ const double kElevationGainMinDeltaM = 3;
 /// run-detail screen shows the two side by side, and grading one through the
 /// noise band while summing the other raw would read as a bug (a flat road
 /// would report 0 m of climb next to hundreds of metres of descent).
-double computeElevationLoss(List<Waypoint> track) {
+double computeElevationLoss(
+  List<Waypoint> track, {
+  double minDeltaM = kElevationGainMinDeltaM,
+}) {
   double loss = 0;
   double? ref;
   for (final p in track) {
@@ -219,18 +224,21 @@ double computeElevationLoss(List<Waypoint> track) {
       continue;
     }
     final delta = ele - ref;
-    if (delta <= -kElevationGainMinDeltaM) {
+    if (delta <= -minDeltaM) {
       loss += -delta;
       ref = ele;
-    } else if (delta >= kElevationGainMinDeltaM) {
+    } else if (delta >= minDeltaM) {
       ref = ele;
     }
   }
   return loss;
 }
 
-double computeElevationGain(List<Waypoint> track) {
-  final acc = ElevationGainAccumulator();
+double computeElevationGain(
+  List<Waypoint> track, {
+  double minDeltaM = kElevationGainMinDeltaM,
+}) {
+  final acc = ElevationGainAccumulator(minDeltaM: minDeltaM);
   acc.addAll(track);
   return acc.gainMetres;
 }
@@ -242,6 +250,9 @@ double computeElevationGain(List<Waypoint> track) {
 /// is this class run to completion, which is what keeps the live counter and
 /// the finished-run figure from ever disagreeing.
 class ElevationGainAccumulator {
+  ElevationGainAccumulator({this.minDeltaM = kElevationGainMinDeltaM});
+
+  final double minDeltaM;
   double _gain = 0;
   double? _ref;
 
@@ -252,8 +263,11 @@ class ElevationGainAccumulator {
     _ref = null;
   }
 
-  void add(Waypoint point) {
-    final ele = point.elevationMetres;
+  void add(Waypoint point) => addElevation(point.elevationMetres);
+
+  /// [add] for a bare altitude, so a caller choosing between two series per
+  /// point need not build a [Waypoint] for each.
+  void addElevation(double? ele) {
     if (ele == null) return;
     final ref = _ref;
     if (ref == null) {
@@ -261,10 +275,10 @@ class ElevationGainAccumulator {
       return;
     }
     final delta = ele - ref;
-    if (delta >= kElevationGainMinDeltaM) {
+    if (delta >= minDeltaM) {
       _gain += delta;
       _ref = ele;
-    } else if (delta <= -kElevationGainMinDeltaM) {
+    } else if (delta <= -minDeltaM) {
       // A real descent — move the reference down so the next climb is measured
       // from the valley, not from the previous summit.
       _ref = ele;

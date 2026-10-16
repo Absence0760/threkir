@@ -189,6 +189,17 @@ Run `flutter gen-l10n` after ARB edits and mirror `lib/l10n/gen/` to the iOS twi
   re-checking consent per athlete inside the definer body; injury-risk flag is ACWR with the band thresholds in the
   shared `coach_load` helper, not the SQL; raw track stays owner-only (no new privacy surface)."
 
+## Coach run map (decisions § 1968)
+
+Built 2026-10-15 (issue #1168 item 8), after the roster above. The coach review page (`/coaching/athletes/[id]` on web, `coaching_athlete_screen.dart` on mobile) draws each tracked run's map. The track comes from `clip-public-track`, clipped against the **athlete's** privacy zones like every non-owner read; the raw track and the `runs` Storage policy stay owner-only, and photos stay out. Consent is the same active `coach_athletes` link the run rows ride on: ending the link ends the map on the next request.
+
+- **Server:** the `coached_runs` view (migration `20270822000011`), asked third by `clip-public-track` after `public_runs` and `shared_runs`; the `coach_run_map` row of `private.feature_flags`, read in SQL. Closed, the view is empty and both clients draw no map (`coachRunMapEnabled` on web and in `ApiClient`).
+- **Pre-deploy checklist:**
+  - [ ] **CISO / Security Analyst review** of `coached_runs` and the coach branch of `clip-public-track`, then open the flag ([deployment.md § Coach run map](../ops/deployment.md#coach-run-map--after-the-ciso--security-analyst-review)).
+- **Tests:** pgtap `coach_run_map_test.sql` (active / ended / no link / closed gate, the athlete's own run, the clip); Deno `clip-public-track/viewable_run.test.ts` + `wiring.test.ts`; Playwright `tests-e2e/coaching/coach-run-map.spec.ts`; Flutter `coaching_athlete_screen_test.dart` and the coach case in `architecture_guards_test.dart`.
+
+The roster note below ("raw GPS track stays owner-only … do not add a track read here") still holds for the roster: the map lives on the per-athlete review page only.
+
 ## Gating / compliance
 
 - **Consent is the gate, and it already exists** — every read is scoped to an `active` `coach_athletes` link

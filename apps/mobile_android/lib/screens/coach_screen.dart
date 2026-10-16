@@ -6,7 +6,6 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -32,6 +31,7 @@ import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../l10n/number_format.dart';
 import '../training_service.dart';
+import '../web_base_url.dart';
 import '../weekly_goal.dart';
 import '../widgets/ai_disclosure_notice.dart';
 import '../widgets/confirm_destructive.dart';
@@ -120,6 +120,69 @@ String? coachPlanLinkDescription(String href) {
   return describe.length > kPlanDescriptionMaxChars
       ? describe.substring(0, kPlanDescriptionMaxChars)
       : describe;
+}
+
+/// The query parameters a Coach fuelling link may carry to the web page.
+const _kCoachFuelLinkParams = ['duration', 'carbs', 'fluid', 'heat'];
+
+/// The web fuelling page a Coach fuelling link opens, or null when [href] is
+/// not such a link. The Coach answers "how should I fuel my long run" with
+/// `[Plan your fuelling](/nutrition/fuel?duration=…)` (decisions § 1975). The
+/// phone has no route-less fuelling screen, so the link opens the web page on
+/// the configured host. Only that same-origin path is recognised and only the
+/// four fuelling parameters are carried across; the page validates each value
+/// itself, because a model-written link is never trusted.
+@visibleForTesting
+String? coachFuelLinkWebUrl(String href, {String? webBase}) {
+  final uri = Uri.tryParse(href);
+  if (uri == null || uri.hasScheme || uri.hasAuthority) return null;
+  if (uri.path != '/nutrition/fuel') return null;
+  Map<String, String> query;
+  try {
+    query = uri.queryParameters;
+  } catch (_) {
+    query = const {};
+  }
+  final kept = <String, String>{
+    for (final k in _kCoachFuelLinkParams)
+      if (query[k] != null && query[k]!.isNotEmpty) k: query[k]!,
+  };
+  final base = resolveWebBaseUrl(override: webBase);
+  final target = Uri.parse('$base/nutrition/fuel');
+  return (kept.isEmpty ? target : target.replace(queryParameters: kept))
+      .toString();
+}
+
+final RegExp _planIdPath = RegExp(
+    r'^/plans/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+
+/// The web page a Coach plan-edit link should open, or null when [href] is not
+/// one. With AI plan edits live the Coach answers "move my long run to Sunday"
+/// with `[Adjust my plan](/plans/<id>?adjust=…)`. The feature is web-only
+/// (decisions § 24, § 1979), so the phone hands the link to the browser on
+/// [webBase] rather than tapping a dead link. Only a same-origin plan path is
+/// recognised, and only the `adjust` parameter is carried, re-encoded.
+@visibleForTesting
+Uri? coachPlanAdjustWebUri(String href, String webBase) {
+  final uri = Uri.tryParse(href);
+  if (uri == null || uri.hasScheme || uri.hasAuthority) return null;
+  if (!_planIdPath.hasMatch(uri.path)) return null;
+  String adjust;
+  try {
+    adjust = uri.queryParameters['adjust'] ?? '';
+  } catch (_) {
+    adjust = '';
+  }
+  adjust = adjust.trim();
+  if (adjust.isEmpty) return null;
+  final base = Uri.tryParse(webBase.replaceAll(RegExp(r'/$'), ''));
+  if (base == null || !(base.scheme == 'https' || base.scheme == 'http')) {
+    return null;
+  }
+  return base.replace(
+    path: uri.path,
+    queryParameters: {'adjust': adjust},
+  );
 }
 
 /// AI Coach chat. Mirrors `apps/web/src/lib/components/CoachChat.svelte`
@@ -558,9 +621,7 @@ class _CoachScreenState extends State<CoachScreen> {
         'anchor_message_id': anchorId,
       });
 
-      final base = (dotenv.env['WEB_BASE_URL'] ?? 'https://threkir.com')
-          .replaceAll(RegExp(r'/$'), '');
-      final uri = Uri.parse('$base/api/coach');
+      final uri = Uri.parse('${resolveWebBaseUrl()}/api/coach');
 
       // Inline helper so we can retry once after a 401 (stale JWT).
       // Each call uses a fresh HttpClient so a redirect / error
@@ -942,6 +1003,25 @@ class _CoachScreenState extends State<CoachScreen> {
     final planDescription = coachPlanLinkDescription(href);
     if (planDescription != null) {
       await _openPlanWizard(planDescription);
+      return;
+    }
+    final fuelUrl = coachFuelLinkWebUrl(href);
+    if (fuelUrl != null) {
+      try {
+        await launchUrl(Uri.parse(fuelUrl),
+            mode: LaunchMode.externalApplication);
+      } catch (e) {
+        debugPrint('coach fuelling link tap failed: $e');
+      }
+      return;
+    }
+    final adjustUri = coachPlanAdjustWebUri(href, resolveWebBaseUrl());
+    if (adjustUri != null) {
+      try {
+        await launchUrl(adjustUri, mode: LaunchMode.externalApplication);
+      } catch (e) {
+        debugPrint('coach plan-edit link tap failed: $e');
+      }
       return;
     }
     final Uri? uri = Uri.tryParse(href);

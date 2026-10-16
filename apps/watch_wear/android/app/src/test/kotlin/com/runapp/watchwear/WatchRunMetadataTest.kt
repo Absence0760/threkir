@@ -1,5 +1,6 @@
 package com.runapp.watchwear
 
+import com.runapp.watchwear.recording.GnssSignalSummary
 import kotlinx.serialization.json.double
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
@@ -370,4 +371,62 @@ class WatchRunMetadataTest {
         assertFalse(md.containsKey("distance_estimator"))
         assertFalse(md.containsKey("distance_step_filled_m"))
     }
+
+    @Test
+    fun `track_complete is written only for a run that stored every estimator fix`() {
+        fun md(complete: Boolean) = buildRunMetadata(
+            activityType = "run",
+            avgBpm = null,
+            hrCoverage = null,
+            steps = null,
+            laps = emptyList(),
+            lastModifiedAtIso = isoStamp,
+            distanceEstimator = "kalman_v4",
+            trackComplete = complete,
+        )
+        assertEquals(true, md(true)["track_complete"]!!.jsonPrimitive.content.toBoolean())
+        assertFalse(md(false).containsKey("track_complete"))
+    }
+
+    @Test
+    fun `location_provider is written when the run names one and omitted otherwise`() {
+        fun md(provider: String?) = buildRunMetadata(
+            activityType = "run",
+            avgBpm = null,
+            hrCoverage = null,
+            steps = null,
+            laps = emptyList(),
+            lastModifiedAtIso = isoStamp,
+            locationProvider = provider,
+        )
+        for (provider in listOf("gps", "fused", "mixed")) {
+            assertEquals(provider, md(provider)["location_provider"]!!.jsonPrimitive.content)
+        }
+        assertFalse(md(null).containsKey("location_provider"))
+    }
+
+    @Test
+    fun `gnss_signal is written whole when the run read satellite status`() {
+        fun md(summary: GnssSignalSummary?) = buildRunMetadata(
+            activityType = "run",
+            avgBpm = null,
+            hrCoverage = null,
+            steps = null,
+            laps = emptyList(),
+            lastModifiedAtIso = isoStamp,
+            gnssSignal = summary,
+        )
+        val summary = GnssSignalSummary(samples = 100, usedMedian = 14, cn0MedianDbHz = 39.1, cn0P10DbHz = 27.9, l5Fraction = 0.6)
+        val full = md(summary)["gnss_signal"]!!.jsonObject
+        assertEquals(100, full["samples"]!!.jsonPrimitive.int)
+        assertEquals(14, full["used_median"]!!.jsonPrimitive.int)
+        assertEquals(39.1, full["cn0_median_dbhz"]!!.jsonPrimitive.double, 0.0)
+        assertEquals(27.9, full["cn0_p10_dbhz"]!!.jsonPrimitive.double, 0.0)
+        assertEquals(0.6, full["l5_fraction"]!!.jsonPrimitive.double, 0.0)
+
+        val noFix = md(GnssSignalSummary(samples = 2, usedMedian = 0))["gnss_signal"]!!.jsonObject
+        assertEquals(setOf("samples", "used_median"), noFix.keys)
+        assertFalse(md(null).containsKey("gnss_signal"))
+    }
 }
+

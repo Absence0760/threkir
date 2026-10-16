@@ -7,6 +7,8 @@ import {
 	computeRealSplits,
 	haversineMetres,
 	SPLIT_TAIL_MIN_M,
+	hasRecordedDistances,
+	trackCumulativeMetres,
 } from './run_stats';
 import { stripComments } from '../core/strip_comments';
 import type { TrackPoint } from '../types';
@@ -300,4 +302,144 @@ test('computeRealSplits — the dropped tail is bounded by the named floor', () 
 		);
 		assert.ok(summed <= covered + 1, 'the splits may never total more than the track');
 	}
+});
+
+test('degenerate tracks — no moving time, no splits, never NaN', () => {
+	// The tracks a brand-new account's first recordings reach: nothing, a
+	// single fix, a 10 s / 3 m blip (slower than the moving floor, and far
+	// under the split tail), a stand-still pair, and an untimed pair. Same
+	// table as `degenerate tracks` in run_stats_test.dart.
+	const p = (lngM: number, s: number | null): TrackPoint => ({
+		lat: 0,
+		lng: lngM / 111_320,
+		...(s == null
+			? {}
+			: { ts: new Date(Date.parse('2026-04-01T07:00:00Z') + s * 1000).toISOString() }),
+	});
+	const cases: Array<[string, TrackPoint[]]> = [
+		['empty', []],
+		['one fix', [p(0, 0)]],
+		['10 s / 3 m', [p(0, 0), p(3, 10)]],
+		['stand-still', [p(0, 0), p(0, 10)]],
+		['untimed', [p(0, null), p(3000, null)]],
+	];
+	for (const [name, t] of cases) {
+		assert.equal(movingTimeSeconds(t), 0, name);
+		assert.deepEqual(computeRealSplits(t), [], name);
+		assert.deepEqual(computeRealSplits(t, 1609.344), [], name);
+	}
+	// A non-positive tick length is no tick at all; 0 used to loop forever.
+	const real = track(10, 3, 400);
+	assert.deepEqual(computeRealSplits(real, 0), []);
+	assert.deepEqual(computeRealSplits(real, -1000), []);
+	assert.deepEqual(computeRealSplits(real, Number.NaN), []);
+});
+
+// The recorder's cumulative credited distance (`distM`) as the split and
+// moving-time axis. Same cases as the `recorded distance axis` group in
+// run_stats_test.dart.
+const at = (lngM: number, s: number, distM?: number, smoothedLngM?: number): TrackPoint => ({
+	lat: 0,
+	lng: lngM / 111_320,
+	ts: new Date(Date.parse('2026-04-01T07:00:00Z') + s * 1000).toISOString(),
+	...(distM == null ? {} : { distM }),
+	...(smoothedLngM == null ? {} : { smoothedLat: 0, smoothedLng: smoothedLngM / 111_320 }),
+});
+
+test('trackCumulativeMetres — reads distM, scaled so the last point is the run distance', () => {
+	const t = [at(0, 0, 0), at(410, 100, 400), at(790, 200, 800), at(1010, 250, 1000)];
+	assert.deepEqual(trackCumulativeMetres(t), [0, 400, 800, 1000]);
+	const scaled = trackCumulativeMetres(t, 1100);
+	[0, 440, 880, 1100].forEach((m, i) => assert.ok(Math.abs(scaled[i] - m) < 1e-9, `scaled[${i}] ${scaled[i]}`));
+	assert.deepEqual(trackCumulativeMetres(t, null), [0, 400, 800, 1000]);
+	assert.deepEqual(trackCumulativeMetres(t, 0), [0, 400, 800, 1000]);
+	assert.deepEqual(trackCumulativeMetres(t, Number.NaN), [0, 400, 800, 1000]);
+});
+
+test('trackCumulativeMetres — positions unless every point carries a non-decreasing distM', () => {
+	const missing = [at(0, 0, 0), at(100, 30), at(200, 60, 200)];
+	const backwards = [at(0, 0, 0), at(100, 30, 120), at(200, 60, 110)];
+	const negative = [at(0, 0, -1), at(100, 30, 100)];
+	for (const t of [missing, backwards, negative]) {
+		assert.equal(hasRecordedDistances(t), false);
+		const cum = trackCumulativeMetres(t, 5000);
+		assert.ok(Math.abs(cum[cum.length - 1] - haversineMetres(0, 0, 0, t[t.length - 1].lng)) < 0.01);
+	}
+	assert.equal(hasRecordedDistances([at(0, 0, 0)]), false);
+	assert.equal(hasRecordedDistances([at(0, 0, 0), at(100, 30, 100)]), true);
+	assert.deepEqual(trackCumulativeMetres([]), []);
+});
+
+test('trackCumulativeMetres — the position fallback measures the smoothed line, else raw', () => {
+	const smoothed = [at(0, 0, undefined, 0), at(100, 30, undefined, 60)];
+	const cum = trackCumulativeMetres(smoothed, 5000);
+	const smoothedHop = haversineMetres(0, 0, 0, 60 / 111_320);
+	assert.ok(Math.abs(cum[1] - smoothedHop) < 0.01, `smoothed hop ${cum[1]}`);
+	const raw = [at(0, 0), at(100, 30)];
+	assert.ok(Math.abs(trackCumulativeMetres(raw)[1] - haversineMetres(0, 0, 0, 100 / 111_320)) < 0.01);
+});
+
+test('computeRealSplits — a recorded track splits on distM and ends on distance_m', () => {
+	// 2.5 m/s for 2120 s, a fix every 2 s, with raw positions zig-zagging 12 m
+	// across the line so their hop-sum reads far long. The estimator credited
+	// 5300 m to the last stored fix and the run saved 5312 m.
+	const pts: TrackPoint[] = [];
+	for (let i = 0; i <= 1060; i++) {
+		const p = at(i * 5, i * 2, i * 5);
+		p.lat = (i % 2 === 0 ? 6 : -6) / 111_320;
+		pts.push(p);
+	}
+	const splits = computeRealSplits(pts, 1000, 5312);
+	assert.equal(splits.length, 6);
+	const summed = splits.reduce((a, sp) => a + sp.distance_m, 0);
+	assert.ok(Math.abs(summed - 5312) <= splits.length, `splits sum to ${summed}`);
+	for (const sp of splits.slice(0, 5)) {
+		assert.equal(sp.distance_m, 1000);
+		assert.ok(Math.abs(sp.pace_s - 399) <= 1, `split ${sp.km} pace ${sp.pace_s}`);
+	}
+	const unscaled = computeRealSplits(pts, 1000);
+	assert.equal(unscaled.reduce((a, sp) => a + sp.distance_m, 0), 5300);
+	const raw = computeRealSplits(pts.map(({ distM: _d, ...p }) => p), 1000, 5312);
+	assert.ok(raw.reduce((a, sp) => a + sp.distance_m, 0) > 7000, 'raw zig-zag reads long');
+});
+
+test('movingTimeSeconds — a stop the estimator held still is not moving time', () => {
+	// Raw fixes wander 5 m a second while the runner stands; the recorder
+	// credited nothing over those 60 s.
+	const pts: TrackPoint[] = [];
+	for (let i = 0; i <= 60; i++) pts.push(at(i % 2 === 0 ? 0 : 5, i, 100));
+	assert.equal(movingTimeSeconds(pts), 0);
+	assert.equal(movingTimeSeconds(pts.map(({ distM: _d, ...p }) => p)), 60);
+});
+
+test('computeRealSplits — mile splits on distM land on the mile boundaries', () => {
+	// 2.5 m/s for 2120 s on distM, raw positions zig-zagging off the line:
+	// three whole miles at 400 s/km and a 472 m tail, summing to 5300 m.
+	const pts: TrackPoint[] = [];
+	for (let i = 0; i <= 1060; i++) {
+		const p = at(i * 5, i * 2, i * 5);
+		p.lat = (i % 2 === 0 ? 6 : -6) / 111_320;
+		pts.push(p);
+	}
+	const splits = computeRealSplits(pts, 1609.344);
+	assert.deepEqual(
+		splits.map((sp) => sp.distance_m),
+		[1609, 1609, 1609, 472]
+	);
+	for (const sp of splits) assert.equal(sp.pace_s, 400, `split ${sp.km} pace ${sp.pace_s}`);
+	const summed = splits.reduce((a, sp) => a + sp.distance_m, 0);
+	assert.ok(Math.abs(summed - 5300) <= splits.length, `splits sum to ${summed}`);
+});
+
+test('movingTimeSeconds — a recorded run, stop, run counts only the credited stretches', () => {
+	// 3 m/s for 60 s, 60 s held still while the raw fixes wander 5 m, then
+	// 3 m/s for 60 s more.
+	const pts: TrackPoint[] = [];
+	for (let i = 0; i <= 180; i++) {
+		const distM = i <= 60 ? 3 * i : i <= 120 ? 180 : 180 + 3 * (i - 120);
+		const stopped = i > 60 && i < 120;
+		pts.push(at(distM + (stopped && i % 2 === 1 ? 5 : 0), i, distM));
+	}
+	assert.equal(movingTimeSeconds(pts), 120);
+	assert.equal(movingTimeSeconds(pts.map(({ distM: _d, ...p }) => p)), 180);
 });

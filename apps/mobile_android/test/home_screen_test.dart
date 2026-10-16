@@ -18,7 +18,9 @@ import '../lib/local_gear_store.dart';
 import '../lib/local_gym_store.dart';
 import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
-import '../lib/main.dart' show pendingArmGuidedRun, pendingStartWorkout;
+import '../lib/main.dart'
+    show pendingArmGuidedRun, pendingPushTarget, pendingStartWorkout;
+import '../lib/push_target.dart';
 import '../lib/preferences.dart';
 import '../lib/race_controller.dart';
 import '../lib/run_stop_dock.dart';
@@ -34,6 +36,7 @@ import '../lib/screens/nutrition_screen.dart';
 import '../lib/screens/public_route_screen.dart';
 import '../lib/screens/public_run_screen.dart';
 import '../lib/screens/route_picker_screen.dart';
+import '../lib/screens/run_detail_screen.dart';
 import '../lib/screens/run_screen.dart';
 import '../lib/screens/settings_about_screen.dart';
 import '../lib/screens/settings_account_screen.dart';
@@ -70,7 +73,7 @@ class _WizardApi extends ApiClient {
   Future<cm.UserProfileRow?> fetchMyProfile() async {
     if (uid == null || !hasRow) return null;
     final stamp = consented ? DateTime.utc(2026, 10, 6) : null;
-    return cm.UserProfileRow(
+    return cm.UserProfileRow(profilePrivate: false, 
       shadowHidden: false,
       id: uid!,
       displayName: null,
@@ -1824,8 +1827,83 @@ void main() {
 
   group('run and route links (decisions § 1879)', () {
     const id = '0b6f2f4e-8c1d-4a7e-9f3b-2d5c6a7b8c9d';
-    setUp(() => pendingEntityLink.value = null);
-    tearDown(() => pendingEntityLink.value = null);
+    setUp(() {
+      pendingEntityLink.value = null;
+      pendingPushTarget.value = null;
+    });
+    tearDown(() {
+      pendingEntityLink.value = null;
+      pendingPushTarget.value = null;
+    });
+
+    Future<void> seedOwnRun(WidgetTester tester, dynamic s) async {
+      await tester.runAsync(() async {
+        await s.runStore.save(cm.Run(
+          id: id,
+          startedAt: DateTime.utc(2026, 10, 1, 7),
+          duration: const Duration(minutes: 30),
+          distanceMetres: 5000,
+          track: const [],
+          source: cm.RunSource.app,
+        ));
+      });
+    }
+
+    // One decision for every way a run is opened — an OS link, a push, and an
+    // inbox row handed over with openRunLink — so the runner's own run is
+    // never shown to them as a stranger's (web's /runs/[id] is owner-aware).
+    testWidgets('the runner\'s own run on this device opens the owner screen '
+        'from an inbox row', (tester) async {
+      final s = await _makeStores();
+      await seedOwnRun(tester, s);
+      await _pump(tester, s, api: _LinkApi());
+      openRunLink(id);
+      await pumpUntil(
+        tester,
+        () => find.byType(RunDetailScreen).evaluate().isNotEmpty,
+        describe: 'the owner run screen',
+      );
+
+      expect(find.byType(RunDetailScreen), findsOneWidget);
+      expect(find.byType(PublicRunScreen), findsNothing);
+      expect(pendingEntityLink.value, isNull);
+      tester.takeException();
+    });
+
+    testWidgets('a run push for the runner\'s own run opens the owner screen',
+        (tester) async {
+      final s = await _makeStores();
+      await seedOwnRun(tester, s);
+      await _pump(tester, s, api: _LinkApi());
+      pendingPushTarget.value = const PushTarget(PushTargetKind.run, id);
+      await pumpUntil(
+        tester,
+        () => find.byType(RunDetailScreen).evaluate().isNotEmpty,
+        describe: 'the owner run screen',
+      );
+
+      expect(find.byType(RunDetailScreen), findsOneWidget);
+      expect(find.byType(PublicRunScreen), findsNothing);
+      tester.takeException();
+    });
+
+    testWidgets('a run push for a run not on the device opens the non-owner '
+        'view', (tester) async {
+      // Someone else's run, or an older one of the runner's own the history
+      // list never paged in: the non-owner view serves both, reading the
+      // owner's unclipped track when the viewer owns it.
+      final s = await _makeStores();
+      await _pump(tester, s, api: _LinkApi());
+      pendingPushTarget.value = const PushTarget(PushTargetKind.run, id);
+      await pumpUntil(
+        tester,
+        () => find.byType(PublicRunScreen).evaluate().isNotEmpty,
+        describe: 'the non-owner run view',
+      );
+
+      expect(find.byType(PublicRunScreen), findsOneWidget);
+      expect(find.byType(RunDetailScreen), findsNothing);
+    });
 
     Future<void> settle(WidgetTester tester) async {
       await tester.pump();

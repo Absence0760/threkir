@@ -18,9 +18,10 @@ import type { Request, Route } from '@playwright/test';
  * zero instead — which is a real check, not an exemption: a mock that starts
  * firing fails too, so the reason cannot quietly go stale.
  *
- * Usage — take `mockRoute` off the fixture object, not off `page`:
+ * Usage — take `mockRoute` off the fixture object, not off `page`. Specs import
+ * `test` from `fixtures/test` (the crash net), which extends this one:
  *
- *     import { expect, test } from '../fixtures/mock-route';
+ *     import { expect, test } from '../fixtures/test';
  *
  *     test('…', async ({ page, mockRoute }) => {
  *         await mockRoute(page, '**\/api/coach', (route) => route.fulfill({ … }));

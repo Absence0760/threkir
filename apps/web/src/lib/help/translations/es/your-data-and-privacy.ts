@@ -11,10 +11,11 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'Tu página de perfil, con tu nombre visible, tu foto, tus cifras de seguidores y tus carreras públicas, puede abrirla cualquiera que tenga su enlace.',
+						'Tu página de perfil, con tu nombre visible, tu foto, tus cifras de seguidores y tus carreras públicas, puede abrirla cualquiera que tenga su enlace. Con un perfil privado, solo los seguidores que apruebes ven tus carreras y tus listas de seguidores; consulta [[guide:private-profile-and-follow-requests|Haz tu perfil privado y aprueba seguidores]].',
 						'Las carreras que haces públicas aparecen en tu perfil y en el feed. Las carreras privadas solo las ves tú.',
 						'Tu pertenencia a un club público, y todo lo que publiques en él, pueden verlo las personas que pueden ver el club.',
 						'Mientras compartes un enlace en directo, cualquiera que tenga el enlace puede ver la carrera en curso.',
+						'Una foto que marques con **Mostrar en la página de la carrera**, en una carrera pública vinculada a una prueba, aparece en la página pública de esa prueba con su pie de foto y tu nombre. Desmárcala, o haz privada la carrera, para retirarla.',
 					],
 				},
 				{
@@ -92,10 +93,11 @@ export const translation: GuideTranslation = {
 		title: 'd180bf422ce3bba9',
 		summary: '2b4cc5410b0eb4b6',
 		's0.heading': '4158a516fb61f91b',
-		's0.b0.i0': '6b0cdb0395bd2c4b',
+		's0.b0.i0': '6ef16a07f5e1d2dc',
 		's0.b0.i1': '9a700fce5a4094fc',
 		's0.b0.i2': 'dc76446c63a054d2',
 		's0.b0.i3': '483ea8dba216e43c',
+		's0.b0.i4': 'cc3a91ab3dc6a2a6',
 		's0.b1': '0bbe7c39a03a9a09',
 		's1.heading': 'ac353e580fc0908f',
 		's1.b0.i0': '7b3a2d8b5b822576',

@@ -1,5 +1,6 @@
 import { supabase } from '../core/supabase';
 import { dbError } from '../core/supabase_error';
+import { queryChunked } from '../social/feed_merge';
 import type { JsonObject } from '../types';
 import type { Insertable } from '../core/database';
 import type { Json } from '../database.types';
@@ -261,7 +262,9 @@ function supabaseRestoreBackend(): RestoreBackend {
 			if (error) throw dbError(error);
 		},
 		async fetchValidEventIds(ids) {
-			const { data } = await supabase.from('events').select('id').in('id', ids);
+			const { data } = await queryChunked(ids, (part) =>
+				supabase.from('events').select('id').in('id', part)
+			);
 			const valid = new Set<string>();
 			for (const e of data ?? []) valid.add(e.id);
 			return valid;

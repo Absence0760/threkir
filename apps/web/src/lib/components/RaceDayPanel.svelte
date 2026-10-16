@@ -5,9 +5,9 @@
 		MILE_METRES,
 		negativeSplitPacing,
 		raceChecklist,
-		fmtSplitTime,
 		goalFeasibility,
 	} from '#lib/runs/race_day.ts';
+	import { formatDuration } from '#lib/format/time.ts';
 	import { riegelPredict, predictionConfidence } from '#lib/training/training.ts';
 	import { fmtKm, getUnit } from '#lib/format/units.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
@@ -79,7 +79,7 @@
 	let feasibilityLabel = $derived.by(() => {
 		if (feasibility == null) return null;
 		return m(`raceDayPanel.feasibility_${feasibility.verdict}`, {
-			delta: fmtSplitTime(Math.abs(feasibility.deltaSec)),
+			delta: formatDuration(Math.abs(feasibility.deltaSec)),
 		});
 	});
 
@@ -120,7 +120,7 @@
 			<h2>{countdownLabel}</h2>
 			{#if predictedSec != null}
 				<p class="prediction">
-					{m('raceDayPanel.predictedFinishPrefix')} <strong>{fmtSplitTime(predictedSec)}</strong>
+					{m('raceDayPanel.predictedFinishPrefix')} <strong>{formatDuration(predictedSec)}</strong>
 					{m('raceDayPanel.predictedFinishFor')} {fmtKm(distanceM, 1)}
 				</p>
 				{#if confidenceLabel != null}
@@ -156,7 +156,7 @@
 					{#each pacing.splitsSec as sp, i (i)}
 						<li>
 							<span class="split-km">{splitUnitLabel} {i + 1}</span>
-							<span class="split-time">{fmtSplitTime(sp)}</span>
+							<span class="split-time">{formatDuration(sp)}</span>
 						</li>
 					{/each}
 				</ol>

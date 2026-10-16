@@ -30,7 +30,7 @@ class _FakeApi extends ApiClient {
 
   @override
   Future<List<RunRow>> fetchPublicRunsByUser(String userId, {int limit = 50}) async => [
-        RunRow(
+        RunRow(safetyAudience: false, 
           id: 'r1',
           userId: 'u1',
           startedAt: DateTime(2026, 6, 1, 8),
@@ -46,12 +46,12 @@ class _FakeApi extends ApiClient {
   @override
   Future<KeysetPage<UserProfileRow>> fetchFollowers(String userId,
           {int limit = 20, List<Object?>? after}) async =>
-      const KeysetPage(<UserProfileRow>[UserProfileRow(id: 'f1', displayName: 'Follower One', shadowHidden: false)], null);
+      const KeysetPage(<UserProfileRow>[UserProfileRow(profilePrivate: false, id: 'f1', displayName: 'Follower One', shadowHidden: false)], null);
 
   @override
   Future<KeysetPage<UserProfileRow>> fetchFollowing(String userId,
           {int limit = 20, List<Object?>? after}) async =>
-      const KeysetPage(<UserProfileRow>[UserProfileRow(id: 'g1', displayName: 'Followed One', shadowHidden: false)], null);
+      const KeysetPage(<UserProfileRow>[UserProfileRow(profilePrivate: false, id: 'g1', displayName: 'Followed One', shadowHidden: false)], null);
 
   @override
   Future<List<AchievementRow>> fetchUserBadges(String userId) async {

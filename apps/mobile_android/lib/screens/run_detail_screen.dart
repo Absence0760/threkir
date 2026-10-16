@@ -34,6 +34,7 @@ import '../pace_analysis.dart';
 import '../preferences.dart';
 import '../privacy.dart';
 import '../route_simplify.dart';
+import '../run_altitude.dart';
 import '../grade_adjusted_pace.dart';
 import '../guided_runs.dart';
 import '../run_stats.dart';
@@ -209,6 +210,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   DistanceUnit? _statsCacheSplitsUnit;
   double? _cachedElevationGain;
   double? _cachedElevationLoss;
+  List<Waypoint>? _cachedAltitudeTrack;
   Duration? _cachedMovingTime;
   int? _cachedGap;
   bool _gapCacheChecked = false;
@@ -235,6 +237,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     _statsCacheTrackLen = run.track.length;
     _cachedElevationGain = null;
     _cachedElevationLoss = null;
+    _cachedAltitudeTrack = null;
     _cachedMovingTime = null;
     _cachedGap = null;
     _gapCacheChecked = false;
@@ -308,9 +311,9 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     final api = widget.apiClient;
     if (api == null) return;
     if (run.routeId != null) return;
-    if (run.track.length < 2) return;
+    if (_line.length < 2) return;
     try {
-      final candidates = await api.fetchRoutesIntersectingTrack(run.track);
+      final candidates = await api.fetchRoutesIntersectingTrack(_line);
       if (candidates.isEmpty) return;
       final best = candidates.first;
       final lengthRatio = (best.distanceM - run.distanceMetres).abs() /
@@ -484,13 +487,13 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   void _toggleReplay() {
     final ctl = _replayController;
     if (ctl == null) {
-      if (run.track.length < 2) return;
+      if (_line.length < 2) return;
       final c = AnimationController(
         vsync: this,
         duration: const Duration(seconds: 15),
       );
       c.addListener(() {
-        final len = run.track.length;
+        final len = _line.length;
         final idx = (c.value * (len - 1)).floor().clamp(0, len - 1);
         if (idx != _replayIndex.value) {
           _replayIndex.value = idx;
@@ -592,7 +595,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
           await api.smoothedLocalTrack(run).timeout(kBackendLoadTimeout);
       if (line == null || !mounted || !identical(source, run.track)) return;
       setState(() {
-        _sidecarLine = line;
+        _sidecarLine = trackLine(line);
         _sidecarLineSource = source;
       });
     } catch (e) {
@@ -601,13 +604,32 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   }
 
   /// The track the map line draws when no matched line replaces it:
-  /// [_sidecarLine] while it is still over `run.track`, else `run.track`.
-  /// Never the sidecar under "Show raw GPS track".
+  /// [_sidecarLine] while it is still over `run.track`, else [_line]. Never
+  /// the sidecar under "Show raw GPS track". Either way, only on-track fixes.
   List<Waypoint> get _lineTrack => !widget.preferences.showRawTrack &&
           _sidecarLine != null &&
           identical(_sidecarLineSource, run.track)
       ? _sidecarLine!
-      : run.track;
+      : _line;
+
+  /// The run's line: `run.track` without its off-track fixes ([trackLine]),
+  /// the canopy fixes the recorder stored only for the server's distance
+  /// replay. The map, replay, route match, race phases, segments and best
+  /// efforts read it; splits, moving time and heart rate keep `run.track`,
+  /// because they measure on the credited distance every point carries.
+  /// Memoised on `run.track`'s identity: the replay builder reads it every
+  /// tick.
+  List<Waypoint> get _line {
+    final source = run.track;
+    if (!identical(source, _lineSource)) {
+      _lineSource = source;
+      _lineCache = trackLine(source);
+    }
+    return _lineCache;
+  }
+
+  List<Waypoint>? _lineSource;
+  List<Waypoint> _lineCache = const [];
 
   /// The line the map draws ([displayedRunTrack]), memoised on its inputs:
   /// the replay builder reads it every tick, and the raw view of a smoothed
@@ -1127,7 +1149,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
             // alter the numbers. The "Show raw GPS track"
             // preference forces the raw line for verification.
             final mapTrack = _mapTrack;
-            // The replay index advances over `run.track`, but
+            // The replay index advances over [_line], but
             // the line on screen is `mapTrack` — the matched
             // line when the worker produced one, with a
             // different length + coords. Feed the dot a point
@@ -1138,7 +1160,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
             // map is showing the raw track.
             final dotIndex = replayDotIndex(
               replayIndex,
-              run.track.length,
+              _line.length,
               mapTrack.length,
             );
             return LiveRunMap(
@@ -1167,12 +1189,13 @@ class _RunDetailScreenState extends State<RunDetailScreen>
               // Linked cursor: paints a pulsing marker at
               // the elevation chart's current pointer index
               // on the live track. Gated on index alignment —
-              // the chart reads run.track, but the map
-              // sometimes shows the matched track, which has
-              // a different index space. The sidecar line and
-              // the raw view are run.track point for point.
+              // the chart reads the line ([_altitudeTrack]),
+              // but the map sometimes shows the matched track,
+              // which has a different index space. The sidecar
+              // line and the raw view are the line point for
+              // point.
               hoverIdx: !identical(mapTrack, _matchInfo?.track) &&
-                      mapTrack.length == run.track.length
+                      mapTrack.length == _line.length
                   ? _chartHoverIdx
                   : null,
             );
@@ -1438,7 +1461,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: _ElevationChart(
-            track: run.track,
+            track: _altitudeTrack,
             theme: theme,
             unit: unit,
             onHoverIdx: (idx) =>
@@ -1484,7 +1507,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       // Race-strategy review — only when the run was recorded under a
       // pacing strategy this build can read (metadata.pacing_strategy).
       PacingStrategySection(
-          metadata: run.metadata, track: run.track, unit: unit),
+          metadata: run.metadata, track: _line, unit: unit),
 
       // HR zone breakdown — only when the track carries per-point bpm
       // (Strava streams, FIT/TCX imports, future watch recorders).
@@ -1513,7 +1536,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
           runId: run.id,
           runOwnerId: widget.apiClient!.userId,
           routeId: run.routeId,
-          track: run.track,
+          track: _line,
         ),
       ],
 
@@ -1644,12 +1667,12 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       ActivityType.fromName(run.metadata?[MetadataKeys.activityType] as String?);
 
   bool get _hasElevation =>
-      run.track.any((w) => w.elevationMetres != null);
+      _altitudeTrack.any((w) => w.elevationMetres != null);
 
   /// One altitude is a point, not a profile — the same
   /// [minElevationSamples] floor [elevationSeries] applies.
   bool get _hasElevationProfile =>
-      run.track
+      _altitudeTrack
           .where((w) => w.elevationMetres?.isFinite ?? false)
           .take(minElevationSamples)
           .length ==
@@ -1830,7 +1853,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   int? get _gradeAdjustedPaceSecPerKm {
     _resetStatsCacheIfStale();
     if (!_gapCacheChecked) {
-      _cachedGap = gradeAdjustedPaceSecPerKm(run.track);
+      _cachedGap = gradeAdjustedPaceSecPerKm(_altitudeTrack);
       _gapCacheChecked = true;
     }
     return _cachedGap;
@@ -1860,9 +1883,18 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   }
 
   // The shared helper, not a third copy of the arithmetic: it carries the last
-  // reading across an altitude dropout and gates on the noise band, so the
-  // number here matches what save-as-route writes and what web reports.
-  double _computeElevationGain() => computeElevationGain(run.track);
+  // reading across an altitude dropout and gates on the noise band its
+  // altitude source earns (`run_altitude.dart`), so the number here matches
+  // what save-as-route writes and what web reports.
+  double _computeElevationGain() =>
+      computeRunElevationGain(run.track, run.source);
+
+  /// The altitude series the climb, the profile and grade-adjusted pace read:
+  /// the anchored barometer when the phone had one, else the GPS altitude.
+  List<Waypoint> get _altitudeTrack {
+    _resetStatsCacheIfStale();
+    return _cachedAltitudeTrack ??= runAltitude(run.track, run.source).track;
+  }
 
   double get _elevationLoss {
     _resetStatsCacheIfStale();
@@ -1870,7 +1902,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   }
 
   // The shared helper, gated the same way as the gain shown beside it.
-  double _computeElevationLoss() => computeElevationLoss(run.track);
+  double _computeElevationLoss() =>
+      computeRunElevationLoss(run.track, run.source);
 
   // Calorie estimate routes through the shared pure helper in
   // `lib/calories.dart` (mirrored byte-for-byte to web's
@@ -1975,7 +2008,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   List<MapEntry<String, Duration>> _computeBestEfforts() {
     final out = <MapEntry<String, Duration>>[];
     for (final e in _bestEffortDistances.entries) {
-      final best = fastestWindowOf(run.track, e.value);
+      final best = fastestWindowOf(_line, e.value);
       if (best != null) out.add(MapEntry(e.key, best));
     }
     return out;
@@ -2349,7 +2382,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     // interpolate a boundary crossing inside a long inter-fix gap (see
     // computeSplitDurations); the previous inline loop re-used a segment's end
     // time for every boundary it crossed, emitting 0:00 phantom splits.
-    return computeSplitDurations(run.track, tickLength, run.startedAt)
+    return computeSplitDurations(run.track, tickLength, run.startedAt,
+            totalDistanceMetres: run.distanceMetres)
         .map((s) => _Split(s.tick, s.duration))
         .toList();
   }
@@ -2362,7 +2396,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   PacingAnalysis? get _pacing {
     _resetStatsCacheIfStale();
     if (!_pacingCacheChecked) {
-      _cachedPacing = analysePacing(run.track);
+      _cachedPacing = analysePacing(_altitudeTrack);
       _pacingCacheChecked = true;
     }
     return _cachedPacing;
@@ -2380,7 +2414,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     const metresPerMile = 1609.344;
     final tickLength = unit == DistanceUnit.mi ? metresPerMile : 1000.0;
     final gap = gradeAdjustedSplitPaces(
-        run.track, List.filled(_splitsFor(unit).length, tickLength));
+        _altitudeTrack, List.filled(_splitsFor(unit).length, tickLength));
     _cachedSplitGap = gap;
     _statsCacheSplitGapUnit = unit;
     return gap;
@@ -2774,8 +2808,9 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     if (saved != true) return;
 
     final name = nameCtl.text.trim().isEmpty ? _title : nameCtl.text.trim();
-    final simplified = simplifyTrack(run.track, epsilonMetres: 10);
-    final gain = computeElevationGain(run.track);
+    final simplified =
+        simplifyTrack(runAltitude(run.track, run.source).track, epsilonMetres: 10);
+    final gain = computeRunElevationGain(run.track, run.source);
 
     final route = Route(
       id: const Uuid().v4(),
@@ -2799,7 +2834,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     showTopBanner(
         context,
         l10n.runDetailRouteSaved(
-            name, simplified.length, run.track.length - simplified.length));
+            name, simplified.length, _line.length - simplified.length));
   }
 
   /// Open the share sheet — lets the user share an image of the run card or
@@ -2979,8 +3014,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   Future<bool> _confirmMakePublic(List<PrivacyZone> zones) async {
     final l10n = AppLocalizations.of(context);
     final hasZones = zones.isNotEmpty;
-    final track = run.track;
-    final intersectsZone = trackEntersAnyZone(track, zones);
+    final intersectsZone = trackEntersAnyZone(_line, zones);
     final body = intersectsZone
         ? l10n.runDetailMakePublicBodyZone
         : hasZones

@@ -1,7 +1,8 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * The six `em` font-sizes, resolved.
@@ -64,12 +65,7 @@ test.describe('em font-sizes resolve above the 11px micro-label floor', () => {
 		test.use({ storageState: USER_A.storageStatePath });
 
 		test.beforeEach(async ({ context }) => {
-			await context.addInitScript(() => {
-				localStorage.setItem(
-					'cookie_consent',
-					JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-				);
-			});
+			await acceptCookieConsent(context);
 		});
 
 		test('the coach chat markdown code spans (0.85em inside prose)', async ({ page }) => {

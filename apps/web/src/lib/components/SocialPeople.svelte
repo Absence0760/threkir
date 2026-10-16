@@ -112,7 +112,11 @@
 		flipFollow(target.id, !wasFollowing);
 		try {
 			if (wasFollowing) await unfollowUser(target.id);
-			else await followUser(target.id);
+			else if ((await followUser(target.id)) === 'requested') {
+				// A private profile: a request went out, nothing is followed yet.
+				flipFollow(target.id, false);
+				showToast(m('socialPeople.requestSent'), 'success');
+			}
 		} catch (err) {
 			flipFollow(target.id, wasFollowing);
 			showToast(m('socialPeople.followFailed', { error: thrownMessage(err) }), 'error');

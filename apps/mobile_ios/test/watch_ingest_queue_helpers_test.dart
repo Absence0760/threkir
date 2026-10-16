@@ -219,6 +219,40 @@ void main() {
       expect(run.metadata![MetadataKeys.distanceStepFilledM], 105.7);
     });
 
+    test('keeps an off-track fix flagged, in order, and forwards track_complete',
+        () {
+      final raw = _basePayload()
+        ..['track_complete'] = true
+        ..['track'] = [
+          {'lat': 40.0, 'lng': -75.0, 'ts': '2026-04-15T07:30:00Z', 'distM': 0},
+          {
+            'lat': 40.0001,
+            'lng': -75.0,
+            'ts': '2026-04-15T07:30:01Z',
+            'accuracyMetres': 38.0,
+            'distM': 11.1,
+            'offTrack': true,
+          },
+          {'lat': 40.0002, 'lng': -75.0, 'ts': '2026-04-15T07:30:02Z', 'distM': 22.2},
+        ];
+      final run = runFromWatchPayload(raw);
+      expect(run.track.map((w) => w.offTrack), [false, true, false]);
+      expect(run.track[1].cumulativeDistanceMetres, 11.1);
+      expect(trackLine(run.track), hasLength(2));
+      expect(run.metadata![MetadataKeys.trackComplete], isTrue);
+    });
+
+    test('an older watch payload reads as all on-track and claims nothing', () {
+      final raw = _basePayload()
+        ..['track_complete'] = 'yes'
+        ..['track'] = [
+          {'lat': 40.0, 'lng': -75.0, 'ts': '2026-04-15T07:30:00Z'},
+        ];
+      final run = runFromWatchPayload(raw);
+      expect(run.track.single.offTrack, isFalse);
+      expect(run.metadata, isNull);
+    });
+
     test('drops a zero or non-numeric step-filled distance', () {
       final zero = runFromWatchPayload(
           _basePayload()..['distance_step_filled_m'] = 0);

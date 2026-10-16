@@ -1321,6 +1321,9 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                     isPublic = isPublicFromPrivacyDefault(cp.privacyDefault),
                     distanceEstimator = cp.distanceEstimator,
                     distanceStepFilledM = cp.distanceStepFilledM,
+                    locationProvider = cp.locationProvider,
+                    gnssSignal = cp.gnssSignal,
+                    trackComplete = cp.trackComplete,
                 )
             )
             checkpoints.clear()
@@ -1787,6 +1790,9 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                     isPublic = snapshotIsPublic(),
                     distanceEstimator = GpsDistanceEstimator.SPEC_ID,
                     distanceStepFilledM = m.distanceStepFilledM,
+                    locationProvider = m.locationProvider,
+                    gnssSignal = m.gnssSignal,
+                    trackComplete = m.trackComplete,
                 )
             )
             rememberLastRun(m, runId, durationS)
@@ -2171,6 +2177,14 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private suspend fun pushRun(run: QueuedRun) {
+        // A queued run whose payload is gone is uploaded without one rather
+        // than left in the queue promising a sync that can never happen. The
+        // file is only ever deleted after the entry is removed, so a missing
+        // file means the track was never uploaded — posting a null
+        // `track_url` cannot erase one already in Storage.
+        val trackFile = withContext(Dispatchers.IO) {
+            File(run.trackFilePath).takeIf { it.exists() }
+        }
         val metadata: JsonObject = buildRunMetadata(
             activityType = run.activityType,
             avgBpm = run.avgBpm,
@@ -2180,15 +2194,10 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
             lastModifiedAtIso = Instant.now().toString(),
             distanceEstimator = run.distanceEstimator,
             distanceStepFilledM = run.distanceStepFilledM,
+            locationProvider = run.locationProvider,
+            gnssSignal = run.gnssSignal,
+            trackComplete = run.trackComplete && trackFile != null,
         )
-        // A queued run whose payload is gone is uploaded without one rather
-        // than left in the queue promising a sync that can never happen. The
-        // file is only ever deleted after the entry is removed, so a missing
-        // file means the track was never uploaded — posting a null
-        // `track_url` cannot erase one already in Storage.
-        val trackFile = withContext(Dispatchers.IO) {
-            File(run.trackFilePath).takeIf { it.exists() }
-        }
         supabase.saveRun(
             runId = run.id,
             startedAtIso = run.startedAtIso,
@@ -2254,16 +2263,9 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         try {
             val raw = File(path).takeIf { it.exists() }?.readText()
                 ?: return@withContext emptyList()
-            val arr = (kotlinx.serialization.json.Json.parseToJsonElement(raw)
-                as? kotlinx.serialization.json.JsonArray) ?: return@withContext emptyList()
-            val all = arr.mapNotNull { el ->
-                val obj = el as? kotlinx.serialization.json.JsonObject ?: return@mapNotNull null
-                val lat = (obj["lat"] as? kotlinx.serialization.json.JsonPrimitive)
-                    ?.content?.toDoubleOrNull() ?: return@mapNotNull null
-                val lng = (obj["lng"] as? kotlinx.serialization.json.JsonPrimitive)
-                    ?.content?.toDoubleOrNull() ?: return@mapNotNull null
-                com.runapp.watchwear.recording.RouteMath.LatLng(lat, lng)
-            }.toMutableList()
+            // The post-run map draws the line the live map drew; a fix stored
+            // only for the server's distance replay is not on it.
+            val all = com.runapp.watchwear.recording.trackLineLatLngs(raw).toMutableList()
             while (all.size > 256) {
                 com.runapp.watchwear.recording.TrackOverlayBuffer.halveIfOverflowing(all, 256)
             }

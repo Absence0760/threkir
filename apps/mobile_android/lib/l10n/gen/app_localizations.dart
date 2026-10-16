@@ -1913,6 +1913,12 @@ abstract class AppLocalizations {
   /// **'Start a live share automatically when a run starts on this phone. The in-progress run is viewable by anyone with the link; when the run ends it returns to your default run visibility.'**
   String get safetyAutoLiveShareSubtitle;
 
+  /// Subtitle of the auto-live-share device toggle once the safety-contacts audience is live (never public)
+  ///
+  /// In en, this message translates to:
+  /// **'Start a live share automatically when a run starts on this phone. It is never public: only your confirmed safety contacts can follow it, through the link an overdue or off-route alert sends them. On by default once an alert is set.'**
+  String get safetyAutoLiveShareSafetySubtitle;
+
   /// Title of the off-route auto-notify toggle on the safety settings screen
   ///
   /// In en, this message translates to:
@@ -1936,6 +1942,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Live sharing is on — use Share live link to send it'**
   String get runAutoLiveShareStarted;
+
+  /// Banner on the run screen when the automatic share started on the safety-contacts audience
+  ///
+  /// In en, this message translates to:
+  /// **'Safety share is on — only your safety contacts can follow, and only once an alert fires'**
+  String get runSafetyLiveShareStarted;
 
   /// One-time dismissible nudge on the run screen when a solo run starts after dark with no live share
   ///
@@ -2354,7 +2366,7 @@ abstract class AppLocalizations {
   /// Android location disclosure on the onboarding Location page — describes the while-in-use grant the app actually requests and the later Allow-all-the-time upgrade (Play location policy)
   ///
   /// In en, this message translates to:
-  /// **'Threkir samples your GPS location to record a run, including while your screen is off — a notification shows whenever a run is recording. Your location stays on this device unless you sync or share a run. The next prompt grants access while the app is in use, which is all Android’s first prompt can give; before your first run Threkir offers the “Allow all the time” upgrade that keeps tracking reliable once you switch to another app. Decline, and runs still record time and steps — but no map, distance or pace.'**
+  /// **'Threkir samples your GPS location to record a run and keeps requesting it while your screen is off — a notification shows whenever a run is recording. Your location stays on this device unless you sync or share a run. The next prompt grants access while the app is in use, which is all Android’s first prompt can give: under it, Android may stop sending your location while the screen is off or you are in another app. Before your first run Threkir offers the “Allow all the time” upgrade that keeps tracking reliable then. Decline, and runs still record time and steps — but no map, distance or pace.'**
   String get onboardingLocationBodyAndroid;
 
   /// iOS location disclosure on the onboarding Location page — names the iOS Settings path, not the Android one
@@ -3329,6 +3341,12 @@ abstract class AppLocalizations {
   /// **'Weak GPS — distance paused'**
   String get runWeakGps;
 
+  /// Banner shown mid-run instead of runWeakGps when distance has stalled because the location grant is approximate (Precise Location off / Approximate only)
+  ///
+  /// In en, this message translates to:
+  /// **'Approximate location — distance paused'**
+  String get runWeakGpsApproximate;
+
   /// Screen-reader status announcement when recording begins
   ///
   /// In en, this message translates to:
@@ -3658,6 +3676,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Tracking paused while you were away — your run kept timing and nothing was lost, but distance covered off screen wasn’t counted. Set Location to \"Allow all the time\" to track in the background.'**
   String get runBackgroundLocationPaused;
+
+  /// Banner shown at run start when location is granted without precision (iOS Precise Location off, or Android approximate only), so GPS fixes are too coarse to track the run
+  ///
+  /// In en, this message translates to:
+  /// **'Precise location is off — the map and GPS distance for this run will be missing or far off, but the timer still records. Turn on precise location in Settings for an accurate track.'**
+  String get runPreciseLocationOff;
 
   /// Banner shown when the GPS sensor could not start for an unknown reason
   ///
@@ -7768,6 +7792,24 @@ abstract class AppLocalizations {
   /// **'{name} replied to your comment'**
   String profileNotifCommentReply(String name);
 
+  /// Notification text when someone reacts to the viewer's run
+  ///
+  /// In en, this message translates to:
+  /// **'{name} reacted to your run'**
+  String profileNotifReaction(String name);
+
+  /// Notification text when someone likes the viewer's comment
+  ///
+  /// In en, this message translates to:
+  /// **'{name} liked your comment'**
+  String profileNotifCommentLike(String name);
+
+  /// Notification text when someone mentions the viewer by @handle in a run comment
+  ///
+  /// In en, this message translates to:
+  /// **'{name} mentioned you in a comment'**
+  String profileNotifMention(String name);
+
   /// Notification text for a new follower
   ///
   /// In en, this message translates to:
@@ -10759,7 +10801,7 @@ abstract class AppLocalizations {
   /// Consent gate intro paragraph
   ///
   /// In en, this message translates to:
-  /// **'Threkir\'s AI features — the Coach, the AI route assistant and the AI plan assistant — forward a slice of your data to Anthropic, our AI model provider in the United States. Depending on which feature you use, that slice includes:'**
+  /// **'Threkir\'s AI features forward a slice of your data to Anthropic, our AI model provider in the United States. Depending on which feature you use, that slice includes:'**
   String get coachConsentIntro;
 
   /// Consent gate bullet: profile data
@@ -10797,6 +10839,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'For the AI plan assistant: the plan description you type (goal race, target and recent times, how many days you can train), used only to fill in the plan settings — the plan itself is built by Threkir\'s own generator, not the AI.'**
   String get coachConsentBulletPlanRequest;
+
+  /// Consent gate bullet: the plate-photo logger (AI disclosure v5)
+  ///
+  /// In en, this message translates to:
+  /// **'For the plate-photo logger: the photo of your meal you choose, sent only to estimate what is on the plate. Location and camera details are removed before it leaves, Threkir does not keep the photo, and nothing is logged until you review and save it.'**
+  String get coachConsentBulletPlatePhoto;
+
+  /// Consent gate bullet: AI plan edits (the active plan's upcoming workouts and the typed change request, sent to propose edits the runner reviews)
+  ///
+  /// In en, this message translates to:
+  /// **'For AI plan edits: the upcoming workouts in the plan you are changing (dates, types and distances) and the change you type, used only to suggest edits you review before anything is saved — the AI cannot add workouts or set paces.'**
+  String get coachConsentBulletPlanEdit;
 
   /// Consent gate data-processing paragraph
   ///
@@ -11437,7 +11491,7 @@ abstract class AppLocalizations {
   /// Subtitle under the accept-updated-AI-disclosure tile
   ///
   /// In en, this message translates to:
-  /// **'The disclosure now covers more features. Review and accept it to use the AI route and plan assistants.'**
+  /// **'The disclosure now covers more features. Review and accept it to use every AI feature it describes.'**
   String get settingsAccountAiConsentUpdateSubtitle;
 
   /// Settings > Account tile title to read and accept the AI disclosure for the first time
@@ -14906,6 +14960,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Failed to delete: {error}'**
   String runSocialDeleteError(String error);
+
+  /// Accessibility label for the row of reaction buttons on a run
+  ///
+  /// In en, this message translates to:
+  /// **'Reactions'**
+  String get runSocialReactionsLabel;
+
+  /// Name of the fire reaction on a run
+  ///
+  /// In en, this message translates to:
+  /// **'On fire'**
+  String get runSocialReactionFire;
+
+  /// Name of the strong reaction on a run
+  ///
+  /// In en, this message translates to:
+  /// **'Strong'**
+  String get runSocialReactionStrong;
+
+  /// Name of the trophy reaction on a run
+  ///
+  /// In en, this message translates to:
+  /// **'Champion'**
+  String get runSocialReactionTrophy;
+
+  /// Name of the thumbs-up reaction on a run
+  ///
+  /// In en, this message translates to:
+  /// **'Nice'**
+  String get runSocialReactionThumbsUp;
+
+  /// Name of the wave reaction on a run
+  ///
+  /// In en, this message translates to:
+  /// **'Hello'**
+  String get runSocialReactionWave;
+
+  /// Accessibility label for a reaction button the viewer has not used yet
+  ///
+  /// In en, this message translates to:
+  /// **'React with {label}'**
+  String runSocialReactWith(String label);
+
+  /// Accessibility label for a reaction button the viewer already used
+  ///
+  /// In en, this message translates to:
+  /// **'Remove your {label} reaction'**
+  String runSocialRemoveReaction(String label);
+
+  /// Banner when toggling a reaction fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t update your reaction: {error}'**
+  String runSocialReactionError(String error);
+
+  /// Accessibility label for liking a comment
+  ///
+  /// In en, this message translates to:
+  /// **'Like this comment'**
+  String get runSocialLikeComment;
+
+  /// Accessibility label for removing a like from a comment
+  ///
+  /// In en, this message translates to:
+  /// **'Unlike this comment'**
+  String get runSocialUnlikeComment;
+
+  /// Banner when toggling a comment like fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t update your like: {error}'**
+  String runSocialLikeError(String error);
+
+  /// Accessibility label for the list of people offered while typing an @mention
+  ///
+  /// In en, this message translates to:
+  /// **'People to mention'**
+  String get runSocialMentionSuggestions;
 
   /// Loading state for the run photo gallery
   ///
@@ -18705,6 +18837,180 @@ abstract class AppLocalizations {
   /// **'Log food'**
   String get nutritionLogFood;
 
+  /// Tooltip on the nutrition screen action that opens the plate-photo logger
+  ///
+  /// In en, this message translates to:
+  /// **'Log from a photo'**
+  String get nutritionLogFromPhoto;
+
+  /// Title of the plate-photo logger screen
+  ///
+  /// In en, this message translates to:
+  /// **'Log from a photo'**
+  String get platePhotoTitle;
+
+  /// Explains the plate-photo logger above the photo buttons
+  ///
+  /// In en, this message translates to:
+  /// **'Take or choose a photo of your meal. Threkir estimates what\'s on the plate, and you check and edit every entry before anything is saved.'**
+  String get platePhotoIntro;
+
+  /// Button that opens the camera
+  ///
+  /// In en, this message translates to:
+  /// **'Take a photo'**
+  String get platePhotoTakePhoto;
+
+  /// Button that opens the photo gallery
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a photo'**
+  String get platePhotoChoosePhoto;
+
+  /// Accessibility label for the preview of the chosen meal photo
+  ///
+  /// In en, this message translates to:
+  /// **'Your meal photo'**
+  String get platePhotoPreviewLabel;
+
+  /// Label for the optional note sent with the meal photo
+  ///
+  /// In en, this message translates to:
+  /// **'Note (optional)'**
+  String get platePhotoNoteLabel;
+
+  /// Hint text for the optional note
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. half portion, no dressing'**
+  String get platePhotoNoteHint;
+
+  /// Button that sends the photo for an estimate
+  ///
+  /// In en, this message translates to:
+  /// **'Estimate'**
+  String get platePhotoEstimate;
+
+  /// Button label while the estimate is running
+  ///
+  /// In en, this message translates to:
+  /// **'Estimating…'**
+  String get platePhotoEstimating;
+
+  /// Shown when the photo contained no recognisable food
+  ///
+  /// In en, this message translates to:
+  /// **'No food was recognised in that photo. Go back and try another, or add the meal by hand.'**
+  String get platePhotoEmpty;
+
+  /// Heading above the proposed entries
+  ///
+  /// In en, this message translates to:
+  /// **'Check these before saving'**
+  String get platePhotoReviewHeading;
+
+  /// Hint under the review heading
+  ///
+  /// In en, this message translates to:
+  /// **'These are estimates. Edit anything that looks wrong and remove anything that isn\'t there.'**
+  String get platePhotoReviewHint;
+
+  /// Label for the meal slot picker on the review
+  ///
+  /// In en, this message translates to:
+  /// **'Meal'**
+  String get platePhotoMealSlot;
+
+  /// Label for a proposed food name
+  ///
+  /// In en, this message translates to:
+  /// **'Food'**
+  String get platePhotoItemName;
+
+  /// Tooltip for removing a proposed entry
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {name}'**
+  String platePhotoRemoveItem(String name);
+
+  /// Marks a proposed entry the model was unsure of
+  ///
+  /// In en, this message translates to:
+  /// **'Low confidence'**
+  String get platePhotoLowConfidence;
+
+  /// Label for the calories field of a proposed entry
+  ///
+  /// In en, this message translates to:
+  /// **'kcal'**
+  String get platePhotoCalories;
+
+  /// Label for the protein field of a proposed entry
+  ///
+  /// In en, this message translates to:
+  /// **'Protein (g)'**
+  String get platePhotoProtein;
+
+  /// Label for the carbs field of a proposed entry
+  ///
+  /// In en, this message translates to:
+  /// **'Carbs (g)'**
+  String get platePhotoCarbs;
+
+  /// Label for the fat field of a proposed entry
+  ///
+  /// In en, this message translates to:
+  /// **'Fat (g)'**
+  String get platePhotoFat;
+
+  /// Button that saves the kept entries
+  ///
+  /// In en, this message translates to:
+  /// **'Save entries ({count})'**
+  String platePhotoSave(int count);
+
+  /// Button label while saving
+  ///
+  /// In en, this message translates to:
+  /// **'Saving…'**
+  String get platePhotoSaving;
+
+  /// The endpoint refused for want of AI disclosure v5
+  ///
+  /// In en, this message translates to:
+  /// **'The plate-photo logger needs the updated AI disclosure. Accept it in Settings → Account.'**
+  String get platePhotoErrorConsent;
+
+  /// The endpoint refused because the runner is not Pro
+  ///
+  /// In en, this message translates to:
+  /// **'Logging from a photo is a Pro feature.'**
+  String get platePhotoErrorPro;
+
+  /// The per-user hourly throttle refused
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve logged a lot of photos this hour. Try again later, or add the meal by hand.'**
+  String get platePhotoErrorRate;
+
+  /// The picture could not be read or sent
+  ///
+  /// In en, this message translates to:
+  /// **'That picture couldn\'t be read. Try another photo.'**
+  String get platePhotoErrorInvalid;
+
+  /// The model could not make out the food
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t make out the food in that photo. Try another, or add it by hand.'**
+  String get platePhotoErrorNotUnderstood;
+
+  /// The endpoint is off or failed
+  ///
+  /// In en, this message translates to:
+  /// **'Logging from a photo isn\'t available right now. Add the meal by hand.'**
+  String get platePhotoErrorUnavailable;
+
   /// No description provided for @nutritionCalories.
   ///
   /// In en, this message translates to:
@@ -20841,6 +21147,30 @@ abstract class AppLocalizations {
   /// **'carry {gels} gels · {fluid} ml'**
   String roadbookCarryHint(String gels, String fluid);
 
+  /// Roadbook fuelling toggle that bases the per-hour fluid rate on the runner's consented body weight
+  ///
+  /// In en, this message translates to:
+  /// **'Fluid from body weight'**
+  String get roadbookWeightToggle;
+
+  /// Explains the weight-based fluid rate under the roadbook fuelling toggles
+  ///
+  /// In en, this message translates to:
+  /// **'Scales the fluid rate by your body weight, within the 400–800 ml per hour range sports-medicine guidance gives for running. A planning baseline, not a sweat test.'**
+  String get roadbookWeightHint;
+
+  /// Shown when the weight-based fluid rate is in use; ml is the per-hour fluid figure
+  ///
+  /// In en, this message translates to:
+  /// **'Fluid: {ml} ml per hour from your body weight.'**
+  String roadbookWeightUsing(String ml);
+
+  /// Why the weight-based fluid toggle is disabled: no weight on record or no health-data consent
+  ///
+  /// In en, this message translates to:
+  /// **'To base fluid on your body weight, add your weight under Body metrics and give health-data consent there.'**
+  String get roadbookWeightUnavailable;
+
   /// Label on the roadbook target-time verdict chip
   ///
   /// In en, this message translates to:
@@ -22490,18 +22820,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Live status from the simulated custom watch'**
   String get settingsTabSimWatchSubtitle;
-
-  /// Developer-section switch title: record a run from Android's raw GPS_PROVIDER instead of the fused location provider (GPS accuracy diagnostic)
-  ///
-  /// In en, this message translates to:
-  /// **'Raw GPS provider'**
-  String get settingsDevRawGps;
-
-  /// Subtitle under the developer raw GPS provider switch. 'Fused location service' is Android's combined GPS + Wi-Fi + cell provider.
-  ///
-  /// In en, this message translates to:
-  /// **'Record from the GPS chip alone instead of the fused location service, to compare distance accuracy. Applies from the next run.'**
-  String get settingsDevRawGpsSubtitle;
 
   /// No description provided for @simWatchTitle.
   ///
@@ -26126,6 +26444,270 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Message'**
   String get profileMessage;
+
+  /// Share menu entry that sends this route to one follower as a direct message
+  ///
+  /// In en, this message translates to:
+  /// **'Send to a follower'**
+  String get routeDetailSendToFollower;
+
+  /// Title of the send-a-route sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Send this route'**
+  String get routeDetailSendDmTitle;
+
+  /// Explains who the route can be sent to
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a runner you follow, or who follows you. The route link lands in your conversation with them.'**
+  String get routeDetailSendDmIntro;
+
+  /// Shown when the recipient receives the public share link
+  ///
+  /// In en, this message translates to:
+  /// **'They get the public share link, so anyone they pass it on to can open it too.'**
+  String get routeDetailSendDmLinkNote;
+
+  /// Shown when the route stays private and only the recipient is granted access
+  ///
+  /// In en, this message translates to:
+  /// **'It stays private: only the person you send it to can open the link, and you can stop sharing at any time.'**
+  String get routeDetailSendDmPrivateNote;
+
+  /// Search field hint in the send-a-route sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Search people'**
+  String get routeDetailSendDmSearchPlaceholder;
+
+  /// The followers / following read failed, so the sheet cannot say who the route can go to
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load who you can send to.'**
+  String get routeDetailSendDmLoadFailed;
+
+  /// The sender has no follow edge in either direction
+  ///
+  /// In en, this message translates to:
+  /// **'You don\'t follow anyone yet, and nobody follows you yet.'**
+  String get routeDetailSendDmEmpty;
+
+  /// The search matched nobody
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody matches that search.'**
+  String get routeDetailSendDmNoMatches;
+
+  /// Recipient row: the two follow each other
+  ///
+  /// In en, this message translates to:
+  /// **'You follow each other'**
+  String get routeDetailSendDmRelationMutual;
+
+  /// Recipient row: this person follows the sender
+  ///
+  /// In en, this message translates to:
+  /// **'Follows you'**
+  String get routeDetailSendDmRelationFollowsYou;
+
+  /// Recipient row: the sender follows this person
+  ///
+  /// In en, this message translates to:
+  /// **'You follow them'**
+  String get routeDetailSendDmRelationYouFollow;
+
+  /// Recipient row action that sends the route
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get routeDetailSendDmSend;
+
+  /// Recipient row while the send is in flight
+  ///
+  /// In en, this message translates to:
+  /// **'Sending…'**
+  String get routeDetailSendDmSending;
+
+  /// Confirmation once the route was sent
+  ///
+  /// In en, this message translates to:
+  /// **'Route sent to {name}.'**
+  String routeDetailSendDmSent(String name);
+
+  /// Opens the conversation the route was sent into
+  ///
+  /// In en, this message translates to:
+  /// **'Open conversation'**
+  String get routeDetailSendDmOpenThread;
+
+  /// Closes the send-a-route sheet after a send
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get routeDetailSendDmDone;
+
+  /// Tooltip on the owner's toggle that adds a run photo to the public race-listing page
+  ///
+  /// In en, this message translates to:
+  /// **'Show on race page'**
+  String get runPhotosRaceGalleryShow;
+
+  /// Tooltip on the owner's toggle that withdraws a run photo from the public race-listing page
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from race page'**
+  String get runPhotosRaceGalleryHide;
+
+  /// Explains the race-page toggle on run photos and that the race page is public
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the medal on a photo to show it on this race\'s public page. Anyone can see that page, and you can remove a photo at any time.'**
+  String get runPhotosRaceGalleryHint;
+
+  /// Shown instead of the toggle hint, and as the disabled toggle's tooltip, while the run is private
+  ///
+  /// In en, this message translates to:
+  /// **'Make this run public to share its photos on the race page.'**
+  String get runPhotosRaceGalleryPrivate;
+
+  /// Banner when adding a photo to, or removing it from, the race page fails
+  ///
+  /// In en, this message translates to:
+  /// **'Could not update the race page: {error}'**
+  String runPhotosRaceGalleryError(String error);
+
+  /// Follow button label on a private profile the viewer does not follow
+  ///
+  /// In en, this message translates to:
+  /// **'Request to follow'**
+  String get profileRequestToFollow;
+
+  /// Follow button label while the viewer's request to follow a private profile is pending
+  ///
+  /// In en, this message translates to:
+  /// **'Requested'**
+  String get profileRequested;
+
+  /// Banner after the viewer asks to follow a private profile
+  ///
+  /// In en, this message translates to:
+  /// **'Follow request sent'**
+  String get profileRequestSent;
+
+  /// Banner after the viewer withdraws a pending follow request
+  ///
+  /// In en, this message translates to:
+  /// **'Follow request withdrawn'**
+  String get profileRequestWithdrawn;
+
+  /// Title of the panel shown instead of runs and follower lists on a private profile
+  ///
+  /// In en, this message translates to:
+  /// **'This profile is private'**
+  String get profilePrivateTitle;
+
+  /// Body of the private-profile panel for a viewer with no pending request
+  ///
+  /// In en, this message translates to:
+  /// **'Follow {name} to see their runs and who they follow. They approve each request.'**
+  String profilePrivateBody(String name);
+
+  /// Body of the private-profile panel while the viewer's request is pending
+  ///
+  /// In en, this message translates to:
+  /// **'Your request is waiting for approval. You\'ll see their runs once it\'s accepted.'**
+  String get profilePrivateRequestedBody;
+
+  /// Notification text for a request to follow the recipient's private profile
+  ///
+  /// In en, this message translates to:
+  /// **'{name} asked to follow you'**
+  String profileNotifFollowRequest(String name);
+
+  /// Settings switch that makes the profile private
+  ///
+  /// In en, this message translates to:
+  /// **'Private profile'**
+  String get prefsPrivateProfile;
+
+  /// Explains the private-profile switch
+  ///
+  /// In en, this message translates to:
+  /// **'Only followers you approve see your runs, activities and follower lists. People can still find you by name and ask to follow.'**
+  String get prefsPrivateProfileSubtitle;
+
+  /// Banner when the private-profile switch could not be saved
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t update your profile privacy.'**
+  String get prefsPrivateProfileFailed;
+
+  /// Title of the screen listing requests to follow the user's private profile
+  ///
+  /// In en, this message translates to:
+  /// **'Follow requests'**
+  String get followRequestsTitle;
+
+  /// Empty state title on the follow requests screen
+  ///
+  /// In en, this message translates to:
+  /// **'No pending requests'**
+  String get followRequestsEmptyTitle;
+
+  /// Empty state body on the follow requests screen
+  ///
+  /// In en, this message translates to:
+  /// **'When someone asks to follow your private profile, they\'ll show up here.'**
+  String get followRequestsEmptyBody;
+
+  /// Approve a follow request
+  ///
+  /// In en, this message translates to:
+  /// **'Approve'**
+  String get followRequestsApprove;
+
+  /// Decline a follow request
+  ///
+  /// In en, this message translates to:
+  /// **'Decline'**
+  String get followRequestsDecline;
+
+  /// Banner after approving a follow request
+  ///
+  /// In en, this message translates to:
+  /// **'{name} can now see your profile'**
+  String followRequestsApproved(String name);
+
+  /// Banner after declining a follow request
+  ///
+  /// In en, this message translates to:
+  /// **'Request declined'**
+  String get followRequestsDeclinedBanner;
+
+  /// Error state when follow requests could not be loaded
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load follow requests.'**
+  String get followRequestsLoadError;
+
+  /// Banner when approving or declining a follow request failed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t update the request.'**
+  String get followRequestsActionFailed;
+
+  /// Note above a coach's view of an athlete's run maps
+  ///
+  /// In en, this message translates to:
+  /// **'Maps leave out the areas this athlete hides with privacy zones.'**
+  String get coachingAthleteMapsClippedNote;
+
+  /// Accessibility label for the clipped map of one of an athlete's runs on the coach's view
+  ///
+  /// In en, this message translates to:
+  /// **'Map of the run on {date}, with the athlete\'s privacy zones removed'**
+  String coachingAthleteRunMapLabel(String date);
 }
 
 class _AppLocalizationsDelegate

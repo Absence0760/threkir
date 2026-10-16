@@ -3,14 +3,14 @@ import type { GuideTranslation } from '../../types';
 export const translation: GuideTranslation = {
 	id: 'what-pro-includes',
 	title: 'Ce que comprend Pro',
-	summary: 'Tous les écrans de Threkir sont gratuits ; Pro augmente votre quota de Coach IA et fait passer certains traitements en arrière-plan en tête de file.',
+	summary: 'Presque tout dans Threkir est gratuit ; Pro augmente votre quota de Coach IA, ajoute quelques extras basés sur l\'IA et fait passer certains traitements en arrière-plan en priorité.',
 	sections: [
 		{
 			heading: 'Ce qui reste gratuit',
 			blocks: [
 				{
 					type: 'p',
-					text: 'Rien dans l\'app n\'est réservé à Pro. Les comptes gratuits bénéficient de l\'enregistrement illimité sur téléphone et montre, des itinéraires, des plans d\'entraînement et des chiffres qui les sous-tendent, des clubs et événements, du fil social, des contacts de sécurité, des imports et des sauvegardes.',
+					text: 'Presque rien dans l\'app n\'est réservé à Pro. Les comptes gratuits bénéficient de l\'enregistrement illimité sur téléphone et montre, des itinéraires, des plans d\'entraînement et des chiffres qui les sous-tendent, des clubs et événements, du fil social, des contacts de sécurité, des imports et des sauvegardes.',
 				},
 			],
 		},
@@ -26,6 +26,7 @@ export const translation: GuideTranslation = {
 						'**Exports cloud prioritaires** : jusqu\'à 8 exports groupés GPX par heure au lieu de 2.',
 						'**Génération de parcours côté serveur** : des boucles tracées sur le vrai réseau de rues quand vous générez un itinéraire par distance. Les comptes gratuits ont toujours la génération de boucles, calculée dans le navigateur.',
 						'Des descriptions d\'itinéraire plus riches : sur la page d\'un itinéraire, **Améliorer avec l\'IA** transforme la description standard en un paragraphe plus complet.',
+						'**Saisir depuis une photo** : photographiez un repas et votre journal alimentaire est prérempli pour que vous le vérifiiez. Voir [[guide:log-a-meal-from-a-photo|Saisir un repas depuis une photo]].',
 					],
 				},
 				{
@@ -76,9 +77,9 @@ export const translation: GuideTranslation = {
 	],
 	sources: {
 		title: '4267811678bae9e8',
-		summary: '959c30d7818df50f',
+		summary: 'ba5bf8caf5aaf36d',
 		's0.heading': '1319c99f2d10de2f',
-		's0.b0': '4512e0ee677c9a74',
+		's0.b0': '45a78cc3bef78017',
 		's1.heading': '28933395a25968d0',
 		's1.b0.i0': '719256df99c524da',
 		's1.b0.i1': '2cc8c412ba418164',
@@ -86,6 +87,7 @@ export const translation: GuideTranslation = {
 		's1.b0.i3': 'a120796543f347bd',
 		's1.b0.i4': 'abbb1f922ffbfa10',
 		's1.b0.i5': 'dd0fa90eed200d7c',
+		's1.b0.i6': '0d98bcce46d47d2f',
 		's1.b1': '076479f3bd42d0b5',
 		's2.heading': '912eb19f965419db',
 		's2.b0': 'ee79a267ee574aa9',

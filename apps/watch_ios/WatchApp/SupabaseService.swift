@@ -143,7 +143,8 @@ actor SupabaseService {
                 steps: run.steps.flatMap { $0 > 0 ? $0 : nil },
                 laps: run.laps.isEmpty ? nil : run.laps.map(LapPayload.init),
                 distance_estimator: run.distanceEstimator,
-                distance_step_filled_m: run.distanceStepFilledMetres > 0 ? run.distanceStepFilledMetres : nil
+                distance_step_filled_m: run.distanceStepFilledMetres > 0 ? run.distanceStepFilledMetres : nil,
+                track_complete: run.trackComplete ? true : nil
             )
         )
 
@@ -225,6 +226,9 @@ actor SupabaseService {
         let laps: [LapPayload]?
         let distance_estimator: String?
         let distance_step_filled_m: Double?
+        /// Present (true) only when the uploaded track holds every fix the
+        /// estimator took (docs/features/gps_distance.md § Stored track).
+        let track_complete: Bool?
     }
 
     /// The registered `metadata.laps` element. Declared here rather than

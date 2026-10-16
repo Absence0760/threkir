@@ -6,7 +6,8 @@ import { withSentry } from '../_shared/sentry.ts';
 import { publishableKey, secretKey } from '../_shared/api_keys.ts';
 import { isUpstreamTimeout, UPSTREAM_TIMEOUT_MS } from '../_shared/upstream_deadline.ts';
 import { nearHintError, parseNearHint, providerRacesUrl } from './lib.ts';
-import { syncProviderPayload } from './write.ts';
+import { parkrunEventsEnabled, PARKRUN_EVENTS_URL } from './parkrun.ts';
+import { syncParkrunPayload, syncProviderPayload } from './write.ts';
 
 // Pull a provider's upcoming races into race_listings.
 //
@@ -20,6 +21,11 @@ import { syncProviderPayload } from './write.ts';
 // differently answers `synced: 0` with `unusable` equal to the row count rather
 // than writing junk into a calendar every user reads (decisions § 977).
 //
+// The parkrun leg reads parkrun's public events file and is OFF unless
+// `PARKRUN_EVENTS_ENABLED` is exactly `true`: listing parkrun's events waits on
+// parkrun's written permission (#1148), so it answers 503 to a probe and a sync
+// alike until an operator turns it on (decisions § 1958).
+//
 // It writes as the SERVICE ROLE, not as the caller: a provider race is
 // `is_verified`, and the `race_listings_force_unverified` trigger forces false
 // for every other role. The caller's own client is still what identifies them
@@ -29,7 +35,7 @@ import { syncProviderPayload } from './write.ts';
 
 interface RequestBody {
   near?: unknown; // { postal_code?, lng?, lat?, radius_m? } region hint, see NearHint
-  provider?: unknown; // 'runsignup' (default) | 'ultrasignup' — which leg to gate/sync
+  provider?: unknown; // 'runsignup' (default) | 'ultrasignup' | 'parkrun' — which leg to gate/sync
   sync?: unknown; // true to actually walk the feed; anything else is a credential probe
 }
 
@@ -83,10 +89,13 @@ Deno.serve(withSentry('race-listings-sync', async (req: Request) => {
   // never heard of. `race-results-import` already answers 400 here and names
   // this the same class of bug as claiming an unconfigured leg is configured.
   const requested = body.provider ?? 'runsignup';
-  if (requested !== 'runsignup' && requested !== 'ultrasignup') {
+  if (requested !== 'runsignup' && requested !== 'ultrasignup' && requested !== 'parkrun') {
     return Response.json({ error: 'unknown_provider' }, { status: 400 });
   }
   const provider = requested;
+  if (provider === 'parkrun' && !parkrunEventsEnabled(Deno.env.get('PARKRUN_EVENTS_ENABLED'))) {
+    return Response.json({ error: 'provider_not_configured' }, { status: 503 });
+  }
   const apiKey = provider === 'ultrasignup'
     ? Deno.env.get('ULTRASIGNUP_API_KEY')
     : Deno.env.get('RUNSIGNUP_API_KEY');
@@ -121,16 +130,18 @@ Deno.serve(withSentry('race-listings-sync', async (req: Request) => {
 
   // One bound over the headers and the body, the sweep's (UPSTREAM_TIMEOUT_MS).
   const signal = AbortSignal.timeout(UPSTREAM_TIMEOUT_MS);
+  const userAgent = (provider === 'parkrun' ? Deno.env.get('PARKRUN_USER_AGENT') : undefined) ||
+    Deno.env.get('RACE_IMPORT_USER_AGENT');
   let upstream: Response;
   try {
     upstream = await fetch(
-      providerRacesUrl({
+      provider === 'parkrun' ? PARKRUN_EVENTS_URL : providerRacesUrl({
         provider,
         apiKey: apiKey ?? null,
         apiSecret: apiSecret ?? null,
         near: nearHint.near,
       }),
-      { headers: { 'User-Agent': Deno.env.get('RACE_IMPORT_USER_AGENT') || 'RunApp/1.0' }, signal },
+      { headers: { 'User-Agent': userAgent || 'RunApp/1.0' }, signal },
     );
   } catch (err) {
     return isUpstreamTimeout(err)
@@ -153,7 +164,15 @@ Deno.serve(withSentry('race-listings-sync', async (req: Request) => {
   }
 
   const service = createClient<Database>(Deno.env.get('SUPABASE_URL')!, secretKey());
-  const outcome = await syncProviderPayload(service, provider, payload);
+  const point = nearHint.near?.point;
+  const outcome = provider === 'parkrun'
+    ? await syncParkrunPayload(
+      service,
+      payload,
+      { kind: 'near', lat: point!.lat, lng: point!.lng, radiusM: nearHint.near!.radiusM },
+      Date.now(),
+    )
+    : await syncProviderPayload(service, provider, payload);
   if (!outcome.ok) return Response.json({ error: outcome.error }, { status: outcome.status });
   return Response.json(outcome.summary);
 }));

@@ -1,7 +1,8 @@
 import type { Page } from '@playwright/test';
 
 import { browserDayAt } from '../fixtures/dates';
-import { expect, test, type MockRoute } from '../fixtures/mock-route';
+import type { MockRoute } from '../fixtures/mock-route';
+import { expect, test } from '../fixtures/test';
 import { deleteRun, insertRun } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
 

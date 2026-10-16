@@ -64,3 +64,17 @@ export function healthUseDob(row: unknown): string | null {
 	if (healthUseDobState(row) !== 'usable') return null;
 	return rowField(row, 'date_of_birth')!.slice(0, ISO_DATE_LENGTH);
 }
+
+/**
+ * A body weight a health inference may use, or null. The weight is read from
+ * the consent-gated `body_metrics` series, which a withdrawal erases, but the
+ * fuelling plan's weight-based fluid rate (decisions § 1976) re-checks the
+ * stamp on the same `get_my_profile()` row anyway, the way `coach/context.ts`
+ * re-gates the date-of-birth mirror: a weight cached on the page from before a
+ * withdrawal in another tab must not keep feeding the rate. Fail-closed: no
+ * stamp, no weight.
+ */
+export function healthUseWeightKg(row: unknown, weightKg: number | null | undefined): number | null {
+	if (rowField(row, 'health_data_consent_at') == null) return null;
+	return weightKg != null && Number.isFinite(weightKg) && weightKg > 0 ? weightKg : null;
+}

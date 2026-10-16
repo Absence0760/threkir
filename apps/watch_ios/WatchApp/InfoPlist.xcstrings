@@ -61,6 +61,18 @@
         "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "O Threkir continua registrando sua corrida quando a tela do relógio desliga durante um treino." } },
         "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "O Threkir continua a registar a sua corrida quando o ecrã do relógio se desliga durante um treino." } }
       }
+    },
+    "PreciseRunTracking" : {
+      "comment" : "Purpose string for the one-run full-accuracy sheet WorkoutManager raises through requestTemporaryFullAccuracyAuthorization when Precise Location is off. The key is the NSLocationTemporaryUsageDescriptionDictionary purpose key, shared with the iPhone app.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Threkir benötigt für diesen Lauf deinen genauen Standort, damit Distanz, Pace und Karte stimmen." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Threkir needs your precise location for this run so its distance, pace and map are accurate." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Threkir necesita tu ubicación exacta durante esta carrera para que la distancia, el ritmo y el mapa sean precisos." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Threkir a besoin de votre position exacte pendant cette course pour que la distance, l’allure et la carte soient justes." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "このランの距離、ペース、マップを正確にするため、Threkir は正確な位置情報を使用します。" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "O Threkir precisa da sua localização exata durante esta corrida para que a distância, o ritmo e o mapa fiquem corretos." } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "O Threkir precisa da sua localização exata durante esta corrida para que a distância, o ritmo e o mapa estejam corretos." } }
+      }
     }
   }
 }

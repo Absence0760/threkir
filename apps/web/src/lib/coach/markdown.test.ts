@@ -116,6 +116,25 @@ test('renderCoachMarkdown keeps a plan-builder deep link in-app with its query s
 	assert.ok(out.includes('>Build this plan</a>'), out);
 });
 
+// The coach's fuelling handoff (system_prompt.ts fuelHandoffAddendum) writes
+// this link; it must stay in-app with every query parameter intact.
+test('renderCoachMarkdown keeps a fuelling-plan link in-app with its query string', () => {
+	const out = renderCoachMarkdown('[Plan your fuelling](/nutrition/fuel?duration=9000&carbs=70&heat=1)');
+	// The serialised attribute escapes `&`; the browser reads it back as `&`.
+	assert.deepEqual(hrefsOf(out), ['/nutrition/fuel?duration=9000&amp;carbs=70&amp;heat=1'], out);
+	assert.ok(!/target=/.test(out), `an app link must not open a new tab: ${out}`);
+	assert.ok(out.includes('>Plan your fuelling</a>'), out);
+});
+
+// The plan-edit handoff (planEditHandoffAddendum) links onto the runner's own
+// plan page with the change request in `adjust`.
+test('renderCoachMarkdown keeps a plan-edit deep link in-app with its query string', () => {
+	const href = '/plans/11111111-2222-4333-8444-555555555555?adjust=Move%20my%20long%20run%20to%20Sunday';
+	const out = renderCoachMarkdown(`Here you go: [Adjust my plan](${href})`);
+	assert.deepEqual(hrefsOf(out), [href], out);
+	assert.ok(!/target=/.test(out), `an app link must not open a new tab: ${out}`);
+});
+
 test('renderCoachMarkdown keeps the forced new tab on an external link next to an app link', () => {
 	const out = renderCoachMarkdown('[run](/runs/abc) [site](https://threkir.com)');
 	assert.match(out, /href="\/runs\/abc" rel="noopener noreferrer">run/, out);

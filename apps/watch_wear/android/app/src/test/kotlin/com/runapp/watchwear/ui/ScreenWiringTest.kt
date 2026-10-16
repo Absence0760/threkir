@@ -140,6 +140,8 @@ class ScreenWiringTest {
         val strings = readDefaultStrings()
         for (key in listOf(
             "perm_cost_location",
+            "perm_cost_precise_location",
+            "perm_title_precise",
             "perm_cost_heart_rate",
             "perm_cost_steps",
             "perm_cost_notification",

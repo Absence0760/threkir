@@ -20,7 +20,13 @@ export function paceParts(secPerUnit: number): { minutes: number; seconds: numbe
 /// km or mi by the caller) as "m:ss". Mirrors `fmtPaceCell` in
 /// training/plan_serialize.ts and the Dart `UnitFormat.pace` twin in
 /// preferences.dart.
+///
+/// A non-finite or negative input is not a pace — `Infinity` is what a 0 m
+/// distance divides to, and `paceParts` would otherwise render it as
+/// "Infinity:NaN" — so it gets the `--:--` placeholder `formatPace` and
+/// `UnitFormat.pace` use. Zero stays "0:00", which the pace editors pre-fill.
 export function paceMinutesSeconds(secPerUnit: number): string {
+	if (!Number.isFinite(secPerUnit) || secPerUnit < 0) return '--:--';
 	const { minutes, seconds } = paceParts(secPerUnit);
 	return `${minutes}:${String(seconds).padStart(2, '0')}`;
 }

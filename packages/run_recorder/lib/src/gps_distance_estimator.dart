@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-/// GPS distance estimator, spec v1.3 — a port of
+/// GPS distance estimator, spec v1.4 — a port of
 /// `scripts/gps_distance/reference.py`, which is the spec. See
 /// `docs/features/gps_distance.md`. Every operation mirrors the reference so
 /// `fixtures/gps_distance_vectors.json` replays to 1e-3 m; do not tune a
@@ -14,10 +14,12 @@ class GpsDistanceEstimator {
     double maxSpeedMps = 10.0,
     double expectedIntervalS = 1.0,
     double? initialStrideM,
+    bool learnStride = true,
   }) : this._(
          maxSpeedMps: maxSpeedMps,
          expectedIntervalS: expectedIntervalS,
          initialStrideM: initialStrideM,
+         learnStride: learnStride,
          record: false,
        );
 
@@ -25,6 +27,7 @@ class GpsDistanceEstimator {
     required this.maxSpeedMps,
     required double expectedIntervalS,
     required double? initialStrideM,
+    required this.learnStride,
     required bool record,
   }) : _gapS = gapS * _intervalScale(expectedIntervalS),
        _freshFixS = freshFixS * _intervalScale(expectedIntervalS),
@@ -36,11 +39,12 @@ class GpsDistanceEstimator {
            : null,
        _records = record ? <_FixRecord>[] : null;
 
-  static const String specVersion = '1.3';
+  static const String specVersion = '1.4';
 
   static const double earthRadiusM = 6371008.8;
   static const double qAccel = 0.6;
   static const double minPosSigmaM = 3.0;
+  static const double maxPosSigmaM = 50.0;
   static const double initVelVar = 25.0;
   static const double minSpeedSigmaMps = 0.3;
   static const double defaultSpeedSigmaMps = 0.5;
@@ -53,6 +57,9 @@ class GpsDistanceEstimator {
   static const double minStrideM = 0.4;
   static const double maxStrideM = 2.5;
   static const double strideEmaAlpha = 0.2;
+  static const double strideMaxSpeedSigmaMps = 1.0;
+  static const double strideMaxPosSigmaM = 20.0;
+  static const double checkMaxPosSigmaM = 20.0;
 
   static const double gateChi2 = 13.8155;
   static const int gateMaxRejects = 5;
@@ -85,6 +92,10 @@ class GpsDistanceEstimator {
   static const double stopRadiusM = 10.0;
 
   final double maxSpeedMps;
+
+  /// False for a stretch on a source whose speed is not its own Doppler
+  /// (Android's fused provider): its stride is used, never learned.
+  final bool learnStride;
   final double _gapS;
   final double _freshFixS;
 
@@ -101,6 +112,7 @@ class GpsDistanceEstimator {
   int? _lastSteps;
   double? _lastStepT;
   double _pendingStepM = 0.0;
+  bool _strideOk = false;
 
   double _rScale = 1.0;
   int _rejectedFixes = 0;
@@ -226,6 +238,7 @@ class GpsDistanceEstimator {
     bool stoppedHint = false,
   }) {
     if (!(_valid(t) && _valid(lat) && _valid(lng))) return 0.0;
+    if (_valid(accuracyM) && accuracyM! > maxPosSigmaM) return 0.0;
     if (_lat0 == null) {
       _lat0 = lat;
       _lng0 = lng;
@@ -245,9 +258,29 @@ class GpsDistanceEstimator {
     final doppler = _dopplerSpeed(speedMps, speedAccuracyMps, maxSpeedMps);
     final dop = doppler?.s;
     if (prevT == null || t - prevT > _gapS) {
-      // (Re-)anchor. Steps buffered across a real gap are committed now.
-      if (prevT != null) _stepDistanceM += _pendingStepM;
+      // (Re-)anchor. Steps buffered across a real gap are committed now, and
+      // the straight line across it, less its 1-sigma uncertainty, is a lower
+      // bound on the distance covered: the GPS credit makes up whatever the
+      // steps fall short of it.
+      double? gapM;
+      if (prevT != null) {
+        _stepDistanceM += _pendingStepM;
+        final px = _x!;
+        final py = _y!;
+        final d = _hypot(zx - px.p, zy - py.p);
+        var lower = d - math.sqrt(px.a + py.a + 2.0 * r);
+        lower = math.min(lower, maxSpeedMps * (t - prevT));
+        if (lower > _pendingStepM) {
+          gapM = lower - _pendingStepM;
+          _gpsDistanceM += gapM;
+        }
+      }
       _pendingStepM = 0.0;
+      _strideOk = _strideGrade(accuracyM, dop != null, doppler?.sa);
+      if (!_strideOk) {
+        _winSteps = 0;
+        _winM = 0.0;
+      }
       _x = _Axis(zx, r);
       _y = _Axis(zy, r);
       _t = t;
@@ -267,9 +300,9 @@ class GpsDistanceEstimator {
         predY: null,
         zupt: zupt,
         dop: (dop != null && _dopplerTrusted) ? dop * _dopplerScale : null,
-        chord: null,
+        chord: gapM,
       );
-      return 0.0;
+      return gapM ?? 0.0;
     }
     // The gap closed inside the gap window, so the filter integrates it: drop the buffer.
     _pendingStepM = 0.0;
@@ -349,7 +382,7 @@ class GpsDistanceEstimator {
 
     // 4. Doppler-vs-position cross-check, on the raw fixes' displacement
     //    projected on the Doppler bearing.
-    if (accepted) {
+    if (accepted && !(_valid(accuracyM) && accuracyM! > checkMaxPosSigmaM)) {
       final lx = _xcLastX!;
       final ly = _xcLastY!;
       final span = t - _xcLastT!;
@@ -456,7 +489,17 @@ class GpsDistanceEstimator {
       inc = speed < floor ? 0.0 : math.min(speed, maxSpeedMps) * dt;
     }
     _gpsDistanceM += inc;
-    _winM += inc;
+    _strideOk = _strideGrade(
+      accuracyM,
+      useDop != null && chord == null,
+      doppler?.sa,
+    );
+    if (_strideOk) {
+      _winM += inc;
+    } else {
+      _winSteps = 0;
+      _winM = 0.0;
+    }
     _record(
       anchor: false,
       chainBreak: chainBreak,
@@ -468,6 +511,14 @@ class GpsDistanceEstimator {
       chord: chord,
     );
     return inc;
+  }
+
+  /// Whether a fix may teach stride: [fromDoppler] when its credit came from
+  /// Doppler, whose stated sigma is [sa]; otherwise from its position.
+  bool _strideGrade(double? accuracyM, bool fromDoppler, double? sa) {
+    if (!learnStride) return false;
+    if (fromDoppler) return sa! <= strideMaxSpeedSigmaMps;
+    return !(_valid(accuracyM) && accuracyM! > strideMaxPosSigmaM);
   }
 
   /// Cumulative pedometer count. Learns a stride while GPS is good; buffers
@@ -489,6 +540,7 @@ class GpsDistanceEstimator {
     }
     final fixT = _t;
     if (fixT != null && t - fixT <= _freshFixS) {
+      if (!_strideOk) return;
       _winSteps += d;
       if (_winSteps >= strideWindowSteps) {
         final stride = _winM / _winSteps;
@@ -679,6 +731,7 @@ SmoothedDistance smoothDistance(
   double maxSpeedMps = 10.0,
   double expectedIntervalS = 1.0,
   double? initialStrideM,
+  bool learnStride = true,
 }) {
   bool valid(double? v) => v != null && v.isFinite;
   double rad(double d) => d * (math.pi / 180.0);
@@ -695,6 +748,8 @@ SmoothedDistance smoothDistance(
     final ev = events[i];
     if (ev is! GpsFixEvent) continue;
     if (!(valid(ev.t) && valid(ev.lat) && valid(ev.lng))) continue;
+    final acc = ev.accuracyM;
+    if (valid(acc) && acc! > GpsDistanceEstimator.maxPosSigmaM) continue;
     lat0 ??= ev.lat;
     lng0 ??= ev.lng;
     if (lastT != null && ev.t <= lastT) continue;
@@ -720,6 +775,7 @@ SmoothedDistance smoothDistance(
     maxSpeedMps: maxSpeedMps,
     expectedIntervalS: expectedIntervalS,
     initialStrideM: initialStrideM,
+    learnStride: learnStride,
     record: true,
   );
   final recs = est._records!;
@@ -760,7 +816,8 @@ SmoothedDistance smoothDistance(
     }
   }
 
-  // Credit along the smoothed velocities: trapezoid per interval, gap re-anchors not credited.
+  // Credit along the smoothed velocities: trapezoid per interval; a gap
+  // re-anchor carries the forward pass's chord lower bound.
   final effs = List<double>.filled(recs.length, 0);
   for (var k = 0; k < recs.length; k++) {
     final r = recs[k];
@@ -780,7 +837,10 @@ SmoothedDistance smoothDistance(
   final credit = List<double>.filled(recs.length, 0);
   for (var k = 0; k < recs.length; k++) {
     final r = recs[k];
-    if (r.anchor) continue;
+    if (r.anchor) {
+      credit[k] = r.chord ?? 0.0;
+      continue;
+    }
     credit[k] = r.chord ?? 0.5 * (effs[k - 1] + effs[k]) * r.dt;
   }
 

@@ -319,6 +319,12 @@ ResolvedPaces resolveTrainingPacesWithMeta({
     goalPace = _kFallbackGoalPaceSecPerKm;
     isFallback = true;
   }
+  // A 0 m goal distance divides to Infinity (or NaN), and each band's
+  // `.round()` throws on it. An anchor that yields no usable pace is no anchor.
+  if (!(goalPace.isFinite && goalPace > 0)) {
+    goalPace = _kFallbackGoalPaceSecPerKm;
+    isFallback = true;
+  }
   return ResolvedPaces(pacesFromGoalPace(goalPace, gender), isFallback, goalPace);
 }
 

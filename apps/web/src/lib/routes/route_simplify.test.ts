@@ -170,6 +170,13 @@ test('computeElevationGain — a descent resets the reference to the valley', ()
 	);
 });
 
+test('computeElevationGain — a wider band ignores a climb that fits inside it', () => {
+	const track = [400, 408, 400, 409].map((ele, i) => ({ lat: 0, lng: i * 0.0001, ele }));
+	assert.equal(computeElevationGain(track), 17);
+	assert.equal(computeElevationGain(track, 10), 0);
+	assert.equal(computeElevationGain([...track, { lat: 0, lng: 0.0005, ele: 411 }], 10), 11);
+});
+
 test('computeElevationGain — empty / single-point track returns 0', () => {
 	assert.equal(computeElevationGain([]), 0);
 	assert.equal(computeElevationGain([{ lat: 0, lng: 0, ele: 100 }]), 0);

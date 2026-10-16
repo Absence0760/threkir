@@ -39,10 +39,14 @@ const _roots = ['lib', '../../packages/ui_kit/lib'];
 /// `runs_screen_test` caught, and a user would have hit as a screen that
 /// stopped distinguishing the two.
 ///
+/// `emoji_events` is a toggle: `run_photos.dart`'s race-gallery button
+/// (`Semantics(toggled: shared)`) draws it filled while the photo is shared to
+/// the race page and outlined while it is not, so the variant IS the state.
+///
 /// The M3 `NavigationDestination(icon:, selectedIcon:)` pair belongs here too
 /// when the first one lands; there are none today (zero `selectedIcon:` in
 /// `lib/`), so it is not pre-built.
-const _selectionPairs = <String>{'cloud_upload'};
+const _selectionPairs = <String>{'cloud_upload', 'emoji_events'};
 
 String _stem(String name) =>
     name.replaceAll(RegExp(r'_(outlined|rounded|sharp)$'), '');

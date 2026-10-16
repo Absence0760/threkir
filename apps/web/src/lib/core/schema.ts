@@ -56,7 +56,9 @@ export const TABLES = {
 	route_markers: 'route_markers',
 	route_conditions: 'route_conditions',
 	run_kudos: 'run_kudos',
+	run_reactions: 'run_reactions',
 	run_comments: 'run_comments',
+	run_comment_likes: 'run_comment_likes',
 	run_photos: 'run_photos',
 	run_gear: 'run_gear',
 	notifications: 'notifications',
@@ -74,6 +76,7 @@ export const TABLES = {
 	fitness_snapshots: 'fitness_snapshots',
 	personal_records: 'personal_records',
 	user_blocks: 'user_blocks',
+	follow_requests: 'follow_requests',
 	safety_contacts: 'safety_contacts',
 	public_recaps: 'public_recaps',
 	achievements: 'achievements',
@@ -131,4 +134,5 @@ export const METADATA_KEYS = {
 	distance_recomputed_at: 'distance_recomputed_at',
 	distance_map_matched_m: 'distance_map_matched_m',
 	smoothed_sidecar_sha256: 'smoothed_sidecar_sha256',
+	track_complete: 'track_complete',
 } as const;

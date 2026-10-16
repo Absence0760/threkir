@@ -25,7 +25,10 @@ import assert from 'node:assert/strict';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import type Anthropic from '@anthropic-ai/sdk';
+
 import { coachSseStream, handleCoach, type CoachStreamDeps } from './handler';
+import { anthropicTextTokens } from './providers';
 import { emptyUsage, type CoachConfig, type ProviderStream } from './types';
 
 /// Run `fn` with console.error captured, returning every line emitted.
@@ -55,6 +58,8 @@ function baseConfig(): CoachConfig {
 		publicSupabaseAnonKey: 'sb_publishable_fake_local_anon_key',
 		bypassPaywallEnabled: false,
 		aiPlanEnabled: false,
+		fuelHandoffEnabled: false,
+		aiPlanEditEnabled: false,
 	};
 }
 
@@ -313,7 +318,7 @@ test('regenerate with a missing anchor fails closed with 409 and inserts nothing
 			},
 			{
 				...baseConfig(),
-				// Bypass the paywall so the is_pro / increment_coach_usage RPCs
+				// Bypass the paywall so the is_pro / spend_coach_usage_slot RPCs
 				// are skipped — the stub only needs to satisfy auth + consent +
 				// buildContext + the anchor lookup.
 				bypassPaywallEnabled: true,
@@ -539,7 +544,7 @@ test('the mid-stream error event carries no upstream detail', async () => {
 		providerStream: fakeStream([], true, 'Coach upstream 400: {"type":"error",' +
 			'"error":{"type":"invalid_request_error","message":"messages.2.role: ' +
 			'Input tag \'system\' found using \'role\' does not match any of the ' +
-			'expected tags"}} model=claude-sonnet-4-5'),
+			'expected tags"}} model=claude-sonnet-5-5'),
 	});
 	const out = await drain(coachSseStream(deps));
 
@@ -561,6 +566,27 @@ test('mid-stream failure with ZERO tokens refunds the slot and persists nothing'
 	assert.deepEqual(persisted, [], 'nothing to persist when the stream yielded nothing');
 	assert.deepEqual(refunds, ['mid_stream_error_zero_tokens'], 'the empty slot must be refunded');
 	assert.match(out, /event: error/);
+});
+
+test('an Anthropic refusal with no text refunds the slot through the mid-stream path', async () => {
+	async function* refusal(): AsyncIterable<Anthropic.MessageStreamEvent> {
+		for (const e of [
+			{ type: 'message_start' },
+			{ type: 'message_delta', delta: { stop_reason: 'refusal' } },
+			{ type: 'message_stop' },
+		]) {
+			yield e as Anthropic.MessageStreamEvent;
+		}
+	}
+	const { deps, persisted, refunds } = streamDeps({
+		providerStream: { tokens: anthropicTextTokens(refusal()), finalUsage: async () => emptyUsage() },
+	});
+	const out = await drain(coachSseStream(deps));
+
+	assert.deepEqual(persisted, []);
+	assert.deepEqual(refunds, ['mid_stream_error_zero_tokens']);
+	assert.match(out, /event: error/);
+	assert.doesNotMatch(out, /event: done/);
 });
 
 test('happy path persists the full reply, emits done, refunds nothing', async () => {
@@ -585,7 +611,11 @@ test('happy path persists the full reply, emits done, refunds nothing', async ()
 /// `fetch` stubbed, and return the system text the provider was handed.
 /// The stubbed upstream answers 500, so the turn ends in the mid-stream
 /// error path — only the request body matters here.
-async function systemTextFor(aiPlanEnabled: boolean): Promise<string> {
+async function systemTextFor(
+	aiPlanEnabled: boolean,
+	fuelHandoffEnabled = false,
+	aiPlanEditEnabled = false,
+): Promise<string> {
 	const calls = { inserts: [] as string[], deletes: [] as string[] };
 	const originalFetch = globalThis.fetch;
 	let sent: { messages?: { role: string; content: string }[] } | null = null;
@@ -604,6 +634,8 @@ async function systemTextFor(aiPlanEnabled: boolean): Promise<string> {
 					openaiBaseUrl: 'http://127.0.0.1:1/v1',
 					bypassPaywallEnabled: true,
 					aiPlanEnabled,
+					fuelHandoffEnabled,
+					aiPlanEditEnabled,
 					createClient: () => makeSupabaseStub(calls),
 				},
 			);
@@ -631,4 +663,157 @@ test('the system text points at the bare plan builder when the AI plan assistant
 	const text = await systemTextFor(false);
 	assert.ok(text.includes('[plan builder](/plans/new)'), text.slice(-1200));
 	assert.ok(!text.includes('describe='), 'no assistant link while the flag is off');
+});
+
+// ───────────── fuelling handoff addendum (decisions § 1975) ─────────────
+
+test('the system text carries the fuelling handoff when the coach fuelling flag is on', async () => {
+	const text = await systemTextFor(false, true);
+	assert.ok(text.includes('[Plan your fuelling](/nutrition/fuel?duration=<seconds>)'), text.slice(-1600));
+	assert.match(text, /never name a food, drink, product, brand or supplement/);
+});
+
+test('the system text carries no fuelling handoff when the coach fuelling flag is off', async () => {
+	const text = await systemTextFor(true, false);
+	assert.ok(!text.includes('/nutrition/fuel'), 'no fuelling link while the flag is off');
+	assert.ok(!text.includes('Fuelling requests'), text.slice(-1600));
+});
+
+test('the system text carries the plan-edit handoff only when AI plan edits are on', async () => {
+	const on = await systemTextFor(false, false, true);
+	assert.ok(on.includes('?adjust=<request>'), on.slice(-1500));
+	const off = await systemTextFor(false, false, false);
+	assert.ok(!off.includes('adjust='), 'no plan-edit link while the flag is off');
+});
+
+// ───────────── daily-cap spend + ticketed refund (decisions § 1990) ─────────────
+//
+// The refund's only authority is the ticket `spend_coach_usage_slot` returns.
+// These drive handleCoach end to end with the paywall ON, through the
+// OpenAI-compatible provider (whose only I/O is `fetch`, stubbed per test), and
+// read the RPCs the handler made: a reply that streamed keeps the slot, a
+// failed call refunds exactly the ticket its own spend was issued.
+
+const TICKET = '5e5e0000-0000-0000-0000-00000000c0a1';
+
+type RpcCall = { name: string; args: unknown };
+
+function paywalledStub(rpcs: RpcCall[], used = 1, spendId: string | null = TICKET) {
+	const base = makeSupabaseStub({ inserts: [], deletes: [] }) as unknown as {
+		rpc: (name: string, args?: unknown, opts?: unknown) => unknown;
+	};
+	const baseRpc = base.rpc;
+	base.rpc = (name: string, args?: unknown, opts?: unknown) => {
+		rpcs.push({ name, args });
+		if (name === 'is_pro') return Promise.resolve({ data: false, error: null });
+		if (name === 'spend_coach_usage_slot') {
+			return Promise.resolve({ data: [{ used, spend_id: spendId }], error: null });
+		}
+		if (name === 'refund_coach_usage_slot') return Promise.resolve({ data: true, error: null });
+		return baseRpc(name, args, opts);
+	};
+	return base as unknown as SupabaseClient;
+}
+
+async function coachWithUpstream(
+	upstream: () => Response,
+	used = 1,
+	spendId: string | null = TICKET,
+): Promise<{ result: Awaited<ReturnType<typeof handleCoach>>; rpcs: RpcCall[]; sse: string }> {
+	const rpcs: RpcCall[] = [];
+	const originalFetch = globalThis.fetch;
+	globalThis.fetch = (async () => upstream()) as typeof fetch;
+	let result!: Awaited<ReturnType<typeof handleCoach>>;
+	let sse = '';
+	try {
+		await captureConsoleError(async () => {
+			result = await handleCoach(
+				'Bearer fake-token',
+				{ messages: [{ role: 'user', content: 'how was my week?' }] },
+				{
+					...baseConfig(),
+					provider: 'openai',
+					openaiBaseUrl: 'http://upstream.test/v1',
+					createClient: () => paywalledStub(rpcs, used, spendId),
+				},
+			);
+			if (result.kind === 'sse') sse = await drain(result.body);
+		});
+	} finally {
+		globalThis.fetch = originalFetch;
+	}
+	return { result, rpcs, sse };
+}
+
+const names = (rpcs: RpcCall[]) => rpcs.map((c) => c.name);
+
+test('a reply that streams keeps the slot: one spend, no refund', async () => {
+	const { result, rpcs, sse } = await coachWithUpstream(
+		() =>
+			new Response(
+				'data: {"choices":[{"delta":{"content":"Solid week."}}]}\n\ndata: [DONE]\n\n',
+				{ status: 200 },
+			),
+	);
+	assert.equal(result.kind, 'sse');
+	assert.match(sse, /Solid week\./);
+	assert.deepEqual(
+		rpcs.find((c) => c.name === 'spend_coach_usage_slot')?.args,
+		{ p_user_id: 'user-1' },
+	);
+	assert.ok(!names(rpcs).includes('refund_coach_usage_slot'), names(rpcs).join(','));
+	assert.ok(!names(rpcs).includes('increment_coach_usage'));
+});
+
+test('a provider failure with nothing streamed refunds the ticket its own spend was issued', async () => {
+	const { result, rpcs } = await coachWithUpstream(() => new Response('upstream down', { status: 503 }));
+	assert.equal(result.kind, 'sse');
+	const refunds = rpcs.filter((c) => c.name === 'refund_coach_usage_slot');
+	assert.equal(refunds.length, 1, names(rpcs).join(','));
+	assert.deepEqual(refunds[0].args, { p_user_id: 'user-1', p_spend_id: TICKET });
+});
+
+test('an over-cap spend answers 429 and refunds nothing', async () => {
+	const { result, rpcs } = await coachWithUpstream(
+		() => {
+			throw new Error('the provider must not be called over the cap');
+		},
+		3,
+	);
+	assert.equal(parseJsonResult(result).status, 429);
+	assert.ok(!names(rpcs).includes('refund_coach_usage_slot'));
+});
+
+test('a spend that returns no ticket still enforces, and a failure then refunds nothing', async () => {
+	const { result, rpcs } = await coachWithUpstream(() => new Response('down', { status: 503 }), 1, null);
+	assert.equal(result.kind, 'sse');
+	assert.ok(names(rpcs).includes('spend_coach_usage_slot'));
+	assert.ok(!names(rpcs).includes('refund_coach_usage_slot'));
+});
+
+test('an unreadable spend denies with 503 before any provider call', async () => {
+	const rpcs: RpcCall[] = [];
+	let result!: Awaited<ReturnType<typeof handleCoach>>;
+	await captureConsoleError(async () => {
+		result = await handleCoach(
+			'Bearer fake-token',
+			{ messages: [{ role: 'user', content: 'hi' }] },
+			{
+				...baseConfig(),
+				createClient: () => {
+					const sb = paywalledStub(rpcs) as unknown as {
+						rpc: (n: string, a?: unknown, o?: unknown) => unknown;
+					};
+					const inner = sb.rpc;
+					sb.rpc = (n, a, o) =>
+						n === 'spend_coach_usage_slot'
+							? Promise.resolve({ data: null, error: { message: 'boom' } })
+							: inner(n, a, o);
+					return sb as unknown as SupabaseClient;
+				},
+			},
+		);
+	});
+	assert.equal(parseJsonResult(result).status, 503);
+	assert.ok(!names(rpcs).includes('refund_coach_usage_slot'));
 });

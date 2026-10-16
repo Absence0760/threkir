@@ -1,5 +1,198 @@
 [
   {
+    "id": "notifications-reactions-and-mentions",
+    "lang": "es",
+    "title": "Reacciones, menciones y tus notificaciones",
+    "summary": "Reacciona a carreras, da me gusta a comentarios y menciona a otros corredores, y elige qué notificaciones te llegan también por correo y al móvil.",
+    "kind": "how-to",
+    "category": "account",
+    "audience": [
+      "everyone"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/settings/notifications",
+      "/runs/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Reaccionar, dar me gusta y mencionar",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "En la carrera de otra persona, junto a los kudos, elige una reacción: **Imparable**, **Fuerte**, **Campeón**, **Bien hecho** u **Hola**. Puedes dejar más de una, y elegir otra vez una reacción la quita.",
+              "Para dar me gusta a un comentario, elige el corazón que tiene al lado. No puedes reaccionar a tu propia carrera ni dar me gusta a tu propio comentario.",
+              "Para mencionar a alguien en un comentario, escribe @ y el principio de su nombre, y elige a la persona en la lista que aparece. Solo se le avisa si ya puede ver la carrera y ninguno de los dos ha bloqueado al otro."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Las reacciones y los me gusta en comentarios se ven en la propia carrera. Las tarjetas del feed siguen mostrando solo el número de kudos y de comentarios."
+          }
+        ]
+      },
+      {
+        "heading": "Dónde aparecen las notificaciones",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Todas las notificaciones llegan a la app: bajo la campana en la web, y en la pestaña **Notificaciones** de tu perfil en la app móvil. Tú decides si además te llegan por correo o al móvil."
+          }
+        ]
+      },
+      {
+        "heading": "Elegir qué se envía por correo y push",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "En la web, abre [[route:/settings/notifications|Notificaciones]] en Configuración. En la app móvil, abre **Preferencias** en la pestaña **Tú** y desplázate hasta **Notificaciones**.",
+              "Ajusta **Notificaciones por correo** y **Notificaciones push** por separado."
+            ]
+          },
+          {
+            "type": "list",
+            "items": [
+              "**Solo importantes**, la opción predeterminada: lo que estás esperando o lo que cambia tus planes, como mensajes, recordatorios y cancelaciones de eventos, una plaza reservada para ti en una lista de espera, menciones, solicitudes de seguimiento y una exportación de datos terminada.",
+              "**Todas**: las importantes más las sociales, como kudos, comentarios, nuevos seguidores, reacciones y me gusta en comentarios.",
+              "**Desactivadas**: nada por ese canal. La app sigue mostrándolo todo."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Desactivar un solo tipo",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "En la web, la misma página te deja silenciar algunos tipos sin cambiar todo un canal: **Exportación de datos lista**, **Menciones**, **Reacciones a mis carreras**, **Me gusta en mis comentarios** y **Solicitudes de seguimiento**. Desmarca uno y deja de enviarse por correo y push, también al móvil, pero sigue apareciendo en la app."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Estas casillas solo sirven para quitar. Las reacciones y los me gusta en comentarios solo se envían cuando un canal está en **Todas**, y un canal en **Desactivadas** no envía nada, digan lo que digan las casillas."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Por ahora, las casillas por tipo solo están en la web. La app móvil muestra los ajustes de correo y push."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "private-profile-and-follow-requests",
+      "your-data-and-privacy",
+      "using-help"
+    ]
+  },
+  {
+    "id": "private-profile-and-follow-requests",
+    "lang": "es",
+    "title": "Haz tu perfil privado y aprueba seguidores",
+    "summary": "Activa un perfil privado para que solo los seguidores que apruebes vean tus carreras, y aprueba o rechaza las solicitudes de seguimiento según lleguen.",
+    "kind": "how-to",
+    "category": "account",
+    "audience": [
+      "everyone"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/settings/privacy",
+      "/follow-requests",
+      "/u/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Qué oculta un perfil privado",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Con un perfil privado, solo los seguidores que has aprobado ven tus carreras y otras actividades, y las listas de quién te sigue y a quién sigues. Los demás ven tu nombre, tu foto y tus cifras de seguidores, con **Este perfil es privado** donde estarían tus carreras."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Aun así pueden encontrarte por tu nombre y pedir seguirte. Para no aparecer tampoco en la búsqueda por nombre, desactiva **Mostrarme en la búsqueda por nombre** en la misma página.",
+              "Quien ya te sigue cuando lo activas sigue siéndolo.",
+              "Las rutas, los resultados de eventos y las insignias mantienen su propia visibilidad, porque cada uno se comparte por separado.",
+              "Un enlace en directo que envíes durante una carrera, incluido el de una alerta de seguridad, sigue funcionando para quienes lo reciben."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Actívalo",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "En la web, abre [[route:/settings/privacy|Privacidad y uso compartido]] en Configuración y marca **Perfil privado** en **Que te encuentren**.",
+              "En la app móvil, abre **Preferencias** en la pestaña **Tú** y activa **Perfil privado** en **Privacidad y uso compartido**."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "El cambio se guarda al momento."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Si lo vuelves a desactivar, se aprueban todas las solicitudes pendientes y esas personas empiezan a seguirte de inmediato."
+          }
+        ]
+      },
+      {
+        "heading": "Aprobar o rechazar solicitudes",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Cuando alguien pide seguirte, recibes una notificación. Las solicitudes de seguimiento cuentan como importantes, así que por defecto también te llegan por correo y como notificación push."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Abre la notificación. También puedes seleccionar **Ver solicitudes de seguimiento** en **Perfil privado** en la web, o tocar **Solicitudes de seguimiento** en **Perfil privado** en la app móvil.",
+              "Elige **Aprobar** para que esa persona vea tu perfil, o **Rechazar** para denegar la solicitud. No se le avisa cuando la rechazas."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Seguir a alguien con perfil privado",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Abre su perfil y elige **Solicitar seguir**.",
+              "Mientras esperas, el botón muestra **Solicitado**. Vuelve a elegirlo para retirar la solicitud.",
+              "Cuando la aprueben, el botón muestra **Siguiendo** y aparecen sus carreras."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Si dejas de seguir a alguien con perfil privado, tendrás que volver a pedirlo para ver sus carreras."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "your-data-and-privacy",
+      "notifications-reactions-and-mentions",
+      "privacy-zones"
+    ]
+  },
+  {
     "id": "using-help",
     "lang": "es",
     "title": "Encontrar ayuda en la app",
@@ -84,7 +277,7 @@
     "id": "what-pro-includes",
     "lang": "es",
     "title": "Qué incluye Pro",
-    "summary": "Todas las pantallas de Threkir son gratuitas; Pro amplía tu cupo del Entrenador IA y adelanta en la cola parte del trabajo en segundo plano.",
+    "summary": "Casi todo en Threkir es gratuito; Pro amplía tu cupo del Entrenador IA, añade algunos extras con IA y adelanta en la cola parte del trabajo en segundo plano.",
     "kind": "explainer",
     "category": "account",
     "audience": [
@@ -105,7 +298,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Nada en la app está bloqueado tras Pro. Las cuentas gratuitas tienen grabación ilimitada en el móvil y el reloj, rutas, planes de entrenamiento y las cifras que los sustentan, clubes y eventos, el feed social, contactos de seguridad, importaciones y copias de seguridad."
+            "text": "Casi nada en la app está bloqueado tras Pro. Las cuentas gratuitas tienen grabación ilimitada en el móvil y el reloj, rutas, planes de entrenamiento y las cifras que los sustentan, clubes y eventos, el feed social, contactos de seguridad, importaciones y copias de seguridad."
           }
         ]
       },
@@ -120,7 +313,8 @@
               "**Map-matching prioritario**: tus trazas GPS se ajustan a las calles antes que las de las cuentas gratuitas, así que están listas antes.",
               "**Exportaciones a la nube prioritarias**: hasta 8 exportaciones de paquetes GPX por hora en lugar de 2.",
               "**Generación de rutas en el servidor**: bucles trazados sobre la red de calles real cuando generas una ruta por distancia. Las cuentas gratuitas siguen teniendo generación de bucles, calculada en el navegador.",
-              "Descripciones de rutas más ricas: en la página de una ruta, **Mejorar con IA** convierte la descripción estándar en un párrafo más completo."
+              "Descripciones de rutas más ricas: en la página de una ruta, **Mejorar con IA** convierte la descripción estándar en un párrafo más completo.",
+              "**Registrar desde una foto**: haz una foto de una comida y tu registro de alimentos se rellena para que lo revises. Consulta [[guide:log-a-meal-from-a-photo|Registrar una comida desde una foto]]."
             ]
           },
           {
@@ -171,6 +365,7 @@
     ],
     "related": [
       "your-data-and-privacy",
+      "log-a-meal-from-a-photo",
       "using-help"
     ]
   },
@@ -202,10 +397,11 @@
           {
             "type": "list",
             "items": [
-              "Tu página de perfil, con tu nombre visible, tu foto, tus cifras de seguidores y tus carreras públicas, puede abrirla cualquiera que tenga su enlace.",
+              "Tu página de perfil, con tu nombre visible, tu foto, tus cifras de seguidores y tus carreras públicas, puede abrirla cualquiera que tenga su enlace. Con un perfil privado, solo los seguidores que apruebes ven tus carreras y tus listas de seguidores; consulta [[guide:private-profile-and-follow-requests|Haz tu perfil privado y aprueba seguidores]].",
               "Las carreras que haces públicas aparecen en tu perfil y en el feed. Las carreras privadas solo las ves tú.",
               "Tu pertenencia a un club público, y todo lo que publiques en él, pueden verlo las personas que pueden ver el club.",
-              "Mientras compartes un enlace en directo, cualquiera que tenga el enlace puede ver la carrera en curso."
+              "Mientras compartes un enlace en directo, cualquiera que tenga el enlace puede ver la carrera en curso.",
+              "Una foto que marques con **Mostrar en la página de la carrera**, en una carrera pública vinculada a una prueba, aparece en la página pública de esa prueba con su pie de foto y tu nombre. Desmárcala, o haz privada la carrera, para retirarla."
             ]
           },
           {
@@ -281,6 +477,7 @@
     ],
     "related": [
       "privacy-zones",
+      "private-profile-and-follow-requests",
       "live-tracking-and-safety",
       "what-pro-includes"
     ]
@@ -366,12 +563,35 @@
             "text": "Eliminar un club borra todos sus eventos, publicaciones y miembros para todo el mundo, y no se puede deshacer."
           }
         ]
+      },
+      {
+        "heading": "Traer un club desde Strava",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Si tu cuenta de Strava está conectada, abre [[route:/social|Social]] en la web, elige **Clubes** y luego **Mis clubes**. En **Tus clubes de Strava** ves los clubes de Strava a los que perteneces. Solo tú ves esta lista."
+          },
+          {
+            "type": "list",
+            "items": [
+              "**Crear en Threkir** abre el formulario de un club nuevo con su nombre y ubicación ya rellenos, y vincula los dos en cuanto creas el club.",
+              "**Vincular a mi club** lo une a un club que ya gestionas aquí: elígelo en **¿Cuál de tus clubes es este?** y selecciona **Vincular**.",
+              "**Desvincular** quita la conexión. Ninguno de los dos clubes cambia."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Solo un administrador del club en Strava puede vincularlo, y solo a un club del que sea propietario o administrador aquí. Si no aparece la sección, conecta primero Strava en [[route:/settings/integrations|Integraciones]], dentro de Configuración."
+          }
+        ]
       }
     ],
     "related": [
       "invite-members-and-roles",
       "recurring-events",
-      "set-up-a-race"
+      "set-up-a-race",
+      "import-your-history"
     ]
   },
   {
@@ -2262,6 +2482,93 @@
     ]
   },
   {
+    "id": "adjust-a-plan-with-ai",
+    "lang": "es",
+    "title": "Ajustar un plan de entrenamiento con IA",
+    "summary": "Describe con tus palabras un cambio en tu plan, revisa cada modificación sugerida y guarda solo cuando estés de acuerdo.",
+    "kind": "how-to",
+    "category": "running",
+    "audience": [
+      "runner"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "routes": [
+      "/plans/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Qué puede cambiar",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Ajustar con IA convierte una petición como *pasa mi tirada larga al sábado* o *haz más suave la semana que viene* en cambios en un plan que tienes guardado. Puede mover un entrenamiento a otro día de la misma semana, intercambiar dos días, subir o bajar un poco una semana, convertir una semana en semana de recuperación o saltar un entrenamiento."
+          },
+          {
+            "type": "p",
+            "text": "Cada cambio lo aplican las reglas de planes de Threkir. La IA nunca escribe un entrenamiento, una distancia ni un ritmo, así que una petición como *añade una sesión de cuestas* recibe una nota de que no puede hacerlo. Para todo lo demás, usa **Editar plan**."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Ajustar con IA solo está en la web, y puede que aún no esté activado. Si **Ajustar con IA** no aparece en **Ajustar plan**, no está disponible para ti."
+          }
+        ]
+      },
+      {
+        "heading": "Pedir un cambio",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Abre tu plan en la web y selecciona **Ajustar plan**.",
+              "Elige **Ajustar con IA**.",
+              "Escribe qué quieres cambiar y selecciona **Sugerir cambios**.",
+              "Lee los **Cambios sugeridos**: cada entrenamiento que se mueve, se salta o se suaviza, y cada objetivo semanal que cambia, antes y después.",
+              "Selecciona **Aplicar cambios sugeridos por la IA** para guardarlos. Hasta entonces, tu plan no ha cambiado; selecciona **Cancelar** para dejarlo como estaba."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Comprobaciones de seguridad antes de guardar",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Los cambios que llevarían una semana a la zona de alto riesgo de lesión según tu entrenamiento reciente no se pueden aplicar. La página indica qué semana.",
+              "Si los cambios hacen una semana más dura de lo que tu entrenamiento reciente permite, o ponen dos sesiones duras en días seguidos, se te pregunta **¿Aplicar cambios más duros?** y tienes que elegir **Aplicar igualmente**.",
+              "Una sugerencia que no se podía aplicar con seguridad se descarta, y la página te lo indica."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Qué utiliza",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Cada petición gasta uno de tus mensajes diarios del Entrenador IA, el mismo cupo que el del Entrenador.",
+              "Necesita el aviso de IA más reciente. Si se te pide aceptarlo, selecciona **Revísala en Ajustes** y acéptalo allí.",
+              "A la IA solo se envían los próximos entrenamientos de tu plan y el cambio que has escrito."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "También puedes pedirle al Entrenador que cambie tu plan. Responde con un enlace que abre Ajustar con IA con tu petición ya escrita."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "what-pro-includes",
+      "your-data-and-privacy"
+    ]
+  },
+  {
     "id": "import-your-history",
     "lang": "es",
     "title": "Importar tu historial de carreras",
@@ -2513,7 +2820,7 @@
           {
             "type": "note",
             "tone": "tip",
-            "text": "Para compartir todas tus carreras sin tener que acordarte, activa **Directo automático** en **Contactos de seguridad**, dentro de la pestaña **Tú**. Solo se aplica a ese móvil, y cualquiera con el enlace puede ver la carrera en curso."
+            "text": "Para compartir todas tus carreras sin tener que acordarte, activa **Directo automático** en **Contactos de seguridad**, dentro de la pestaña **Tú**. Solo se aplica a ese móvil. Su descripción indica quién puede seguirte: cualquiera con el enlace o solo tus contactos de seguridad (consulta la última sección)."
           },
           {
             "type": "illustration",
@@ -2583,12 +2890,278 @@
             "text": "Si sigues una ruta guardada, la pantalla de carrera te avisa cuando te desvías de ella, mostrando a qué distancia estás, y puede decirlo en voz alta si tienes activados los avisos de audio. Este aviso es para ti; no contacta con nadie."
           }
         ]
+      },
+      {
+        "heading": "Compartir solo con tus contactos de seguridad",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Donde está activado compartir solo con los contactos de seguridad, la descripción de **Directo automático** dice que nunca es público. La carrera en curso queda oculta para todos menos para ti hasta que salta una alerta de retraso o de salida de ruta. Solo entonces cada contacto confirmado recibe su propio enlace, en el correo o SMS de alerta."
+          },
+          {
+            "type": "list",
+            "items": [
+              "**Directo automático** se activa solo en cuanto configuras una alerta de retraso, salvo que tú lo hayas desactivado.",
+              "Tocar **Compartir enlace en vivo** sigue creando un enlace público, como se explica más arriba.",
+              "El enlace de un contacto muestra **Solo contactos de seguridad**. Es solo para esa persona, así que pídele que no lo reenvíe. Deja de funcionar cuando termina la carrera, cuando dejas de compartir o pasadas 48 horas."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Puede que compartir solo con los contactos de seguridad aún no esté activado. Hasta entonces, cualquiera con el enlace puede ver un directo automático."
+          }
+        ]
       }
     ],
     "related": [
       "privacy-zones",
       "record-your-first-run",
       "racing-in-a-race"
+    ]
+  },
+  {
+    "id": "location-permission",
+    "lang": "es",
+    "title": "Acceso a la ubicación para registrar carreras",
+    "summary": "Qué opción de ubicación elegir en Android y en iPhone, qué supone cada una para tus carreras y cómo cambiarla más adelante en los ajustes.",
+    "kind": "how-to",
+    "category": "running",
+    "audience": [
+      "runner"
+    ],
+    "platforms": [
+      "android",
+      "ios"
+    ],
+    "sections": [
+      {
+        "heading": "Por qué la app pide tu ubicación",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Tu ubicación dibuja el mapa de una carrera y mide su distancia y su ritmo. Sin ella, una carrera sigue registrando tiempo y pasos, pero sin mapa, distancia ni ritmo."
+          },
+          {
+            "type": "p",
+            "text": "Se te pregunta durante la configuración: después de la página **Acceso a la ubicación**, al tocar **Conceder permiso** se abre la solicitud de tu teléfono. Si la rechazas, la app te lo indica y te ofrece **Abrir ajustes**. Si aún no lo has permitido cuando tocas **INICIAR**, puede que tu teléfono vuelva a preguntar."
+          }
+        ]
+      },
+      {
+        "heading": "En Android",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "La primera solicitud de Android solo puede dar acceso mientras usas la app. Para que la carrera se siga registrando con la pantalla apagada hace falta **Permitir todo el tiempo**, y Android solo deja elegirlo en los ajustes."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "En la solicitud, deja seleccionada **Precisa** y toca **Mientras la aplicación está en uso**.",
+              "Antes de tu primera carrera, la app muestra **Permitir la ubicación todo el tiempo**. Toca **Abrir ajustes**.",
+              "En **Permisos**, toca **Ubicación**, elige **Permitir todo el tiempo** y vuelve a la app."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Si tocas **Iniciar de todos modos**, la carrera se registra con normalidad mientras la app está en pantalla. Con la pantalla apagada o en otra app, Android puede dejar de enviar tu ubicación: el reloj sigue corriendo y no se pierde nada de lo ya registrado, pero la distancia que recorres mientras tanto no se cuenta. Cuando ocurre, al volver aparece un mensaje que empieza por **El seguimiento se pausó mientras no estabas**, con un botón **Ajustes**."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "El aviso antes de una carrera aparece una sola vez. Solo vuelve si habías permitido el acceso todo el tiempo y después se retiró, por ejemplo porque Android restablece los permisos de las apps que no abres desde hace tiempo."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Con **Aproximada**, la ubicación es demasiado imprecisa para medir una carrera: verás **Ubicación aproximada — distancia en pausa** durante toda la carrera.",
+              "**Solo esta vez** sirve para la carrera que vas a empezar, y la próxima vez se te vuelve a preguntar.",
+              "Con **No permitir**, las carreras solo registran tiempo y pasos."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "En iPhone",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "En iPhone basta con el acceso mientras usas la app: una carrera sigue registrándose con la pantalla bloqueada o mientras usas otra app. La app nunca pide **Siempre**, y no lo necesitas."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "En la solicitud, toca **Permitir al usar la app**.",
+              "Deja activada la ubicación exacta en la solicitud. Sin ella, tu posición es demasiado imprecisa para medir la distancia, y la carrera muestra **Ubicación aproximada — distancia en pausa**."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "**Permitir una vez** sirve solo para esta carrera, y la próxima vez se te vuelve a preguntar. Con **No permitir**, las carreras solo registran tiempo y pasos."
+          }
+        ]
+      },
+      {
+        "heading": "Ahorro de batería",
+        "blocks": [
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Algunos teléfonos Android (Samsung, Xiaomi, OnePlus y otros) suspenden las apps para ahorrar batería, lo que puede detener el registro de una carrera larga con la pantalla apagada, incluso con **Permitir todo el tiempo**. Antes de tu primera carrera, la app muestra una vez **Mantener la grabación activa en segundo plano**: toca **Abrir ajustes** y excluye Threkir de la optimización de batería. Si tocaste **Ahora no**, abre la página de la app en los ajustes de tu teléfono, toca **Batería** y elige **Sin restricciones**. Los nombres cambian un poco según el fabricante."
+          }
+        ]
+      },
+      {
+        "heading": "Cambiarlo más adelante",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "En Android:"
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Abre los **Ajustes** de tu teléfono y toca **Aplicaciones** y luego **Threkir**.",
+              "Toca **Permisos** y luego **Ubicación**.",
+              "Elige **Permitir todo el tiempo** y activa **Usar ubicación precisa**."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "En iPhone:"
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Abre **Ajustes** › **Privacidad y seguridad** › **Localización** y comprueba que **Localización** está activada.",
+              "Toca **Threkir** y elige **Cuando se use la app**.",
+              "Activa **Ubicación exacta**."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Si la ubicación está desactivada o bloqueada cuando empiezas una carrera, la pantalla de carrera te lo indica y su botón **Ajustes** te lleva al sitio adecuado."
+          }
+        ]
+      },
+      {
+        "heading": "Qué hace la app con tu ubicación",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "La lee mientras registras una carrera y cuando un mapa se centra en ti, por ejemplo al crear una ruta o colocar una zona de privacidad. No te sigue entre carreras.",
+              "En Android, una notificación se muestra mientras se registra una carrera, si permites las notificaciones.",
+              "El recorrido de una carrera se queda en tu teléfono hasta que se sincroniza con tu cuenta o lo compartes, y quién puede verlo depende de tus ajustes de privacidad: consulta [[guide:your-data-and-privacy|tus datos y tu privacidad]].",
+              "Para ocultar dónde vives, configura [[guide:privacy-zones|zonas de privacidad]]. Tu posición en directo solo se comparte si activas el [[guide:live-tracking-and-safety|seguimiento en directo]]."
+            ]
+          }
+        ]
+      }
+    ],
+    "related": [
+      "record-your-first-run",
+      "privacy-zones",
+      "your-data-and-privacy",
+      "live-tracking-and-safety"
+    ]
+  },
+  {
+    "id": "log-a-meal-from-a-photo",
+    "lang": "es",
+    "title": "Registrar una comida desde una foto",
+    "summary": "Haz una foto de tu plato, deja que Threkir calcule qué hay en él, y revisa y edita cada elemento antes de que pase a tu registro de alimentos.",
+    "kind": "how-to",
+    "category": "running",
+    "audience": [
+      "runner"
+    ],
+    "requires": [
+      "pro"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/nutrition",
+      "/nutrition/log"
+    ],
+    "sections": [
+      {
+        "heading": "Antes de empezar",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Registrar desde una foto forma parte de Pro. Registrar alimentos a mano sigue siendo gratis.",
+              "Usa IA, así que necesita el aviso de IA más reciente. Si se te pide aceptarlo, abre Ajustes → Cuenta y acéptalo allí.",
+              "La foto solo se usa para calcular qué hay en el plato. Los datos de ubicación y de la cámara se eliminan antes de enviarla, y Threkir no guarda la foto."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Puede que aún no esté activado. Si no ves **Registrar desde una foto**, no está disponible para ti."
+          }
+        ]
+      },
+      {
+        "heading": "En la web",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Abre [[route:/nutrition|Nutrición]] y selecciona **Registrar comida** y luego **Registrar desde una foto**.",
+              "Selecciona **Elegir una foto** y escoge una imagen de tu comida.",
+              "Añade una **Nota (opcional)** si ayuda, por ejemplo media ración.",
+              "Selecciona **Estimar**."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "En la app móvil",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Abre **Fitness**, elige la pestaña **Nutrición** y toca el botón de cámara, **Registrar desde una foto**.",
+              "Toca **Hacer una foto** o **Elegir una foto**.",
+              "Añade una **Nota (opcional)** si ayuda y toca **Estimar**."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Revisar antes de guardar",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "En **Revísalo antes de guardar** aparece cada alimento con sus calorías, proteínas, carbohidratos y grasas. Son estimaciones, así que revísalas."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Cambia cualquier nombre o cifra que parezca incorrecto. Los elementos marcados con **Estimación poco fiable** son los que más conviene revisar.",
+              "Quita todo lo que no esté en tu plato.",
+              "Elige la **Comida** a la que pertenece.",
+              "Selecciona **Guardar entradas** para añadir lo que quede a tu registro de alimentos. Antes de eso no se guarda nada."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Si no se reconoce ningún alimento, o has registrado muchas fotos en la última hora, añade la comida a mano como siempre."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "what-pro-includes",
+      "your-data-and-privacy"
     ]
   },
   {
@@ -2620,7 +3193,7 @@
           {
             "type": "list",
             "items": [
-              "Se aplica a lo que ven los demás: carreras y rutas compartidas, tu perfil público, el feed, los mapas de calor y la página de seguimiento en directo.",
+              "Se aplica a lo que ven los demás: carreras y rutas compartidas, tu perfil público, el feed, los mapas de calor, la página de seguimiento en directo y los mapas de carrera que puede abrir un entrenador con el que trabajes.",
               "Se aplica tanto a las carreras que ya has grabado como a las nuevas, porque el recorrido se recorta cada vez que otra persona lo ve.",
               "Tú siempre ves tu recorrido completo, y los archivos que exportas para ti también lo conservan completo."
             ]
@@ -2727,7 +3300,7 @@
           {
             "type": "note",
             "tone": "tip",
-            "text": "En Android, elige **Permitir todo el tiempo** para la ubicación. Si solo das acceso mientras la app está abierta, no se cuenta la distancia que recorres con la pantalla apagada, aunque el reloj sigue corriendo."
+            "text": "En Android, elige **Permitir todo el tiempo** para la ubicación. Si solo das acceso mientras la app está abierta, puede que no se cuente la distancia que recorres con la pantalla apagada, aunque el reloj sigue corriendo. Consulta [[guide:location-permission|qué opción de ubicación elegir]]."
           },
           {
             "type": "illustration",
@@ -2799,6 +3372,7 @@
       }
     ],
     "related": [
+      "location-permission",
       "privacy-zones",
       "live-tracking-and-safety",
       "import-your-history"

@@ -1,9 +1,10 @@
-import { expect, test } from '../fixtures/mock-route';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient, getUserClient } from '../fixtures/local-supabase';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { clearNotifications, insertRun } from '../fixtures/simulate';
 import { readCount, readMaybeRow, readRows } from '../fixtures/db-read';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Social cross-surface journey — the full follow → engage → block arc
@@ -57,13 +58,6 @@ import { readCount, readMaybeRow, readRows } from '../fixtures/db-read';
  */
 
 const BLOCK_VERB_FOLLOW = /started following you/;
-
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-	);
-}
 
 test.describe('social journey — follow → engage → block severs the loop across two users', () => {
 	// The arc spans search/follow, feed, kudos, comment, two inboxes, a
@@ -120,8 +114,8 @@ test.describe('social journey — follow → engage → block severs the loop ac
 		// Dismiss the consent banner up-front in each context — the fixed
 		// dialog otherwise intercepts pointer events on the follow / kudos /
 		// comment / block affordances.
-		await ctxActor.addInitScript(setConsentAccepted);
-		await ctxPoster.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctxActor);
+		await acceptCookieConsent(ctxPoster);
 		const aPage = await ctxActor.newPage();
 		const bPage = await ctxPoster.newPage();
 

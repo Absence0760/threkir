@@ -125,8 +125,6 @@ class Preferences extends ChangeNotifier {
   static const _kTargetPaceSecPerKm = 'target_pace_sec_per_km';
   static const _kGoalsJson = 'goals_json';
   static const _kAdvancedGps = 'advanced_gps';
-  // Developer diagnostic, read through rawGpsDiagnosticAvailable.
-  static const _kDevRawGpsProvider = 'dev_raw_gps_provider';
   static const _kSplitIntervalMetres = 'split_interval_metres';
   static const _kUndoWindowS = 'undo_window_s';
   // Device-local: which pace the split cue reads out (SplitPaceMode).
@@ -164,6 +162,7 @@ class Preferences extends ChangeNotifier {
 
   static const _kBackgroundLocationNudgeDismissed =
       'background_location_nudge_dismissed';
+  static const _kLearnedStridePrefix = 'learned_stride_m';
 
   static const _kNotifDeniedHintShown = 'notif_denied_hint_shown';
 
@@ -268,7 +267,6 @@ class Preferences extends ChangeNotifier {
   int _targetPaceSecPerKm = 0;
   List<RunGoal> _goals = [];
   bool _advancedGps = false;
-  bool _devRawGpsProvider = false;
   int _splitIntervalMetres = 0;
   int _undoWindowS = kDefaultUndoWindowS;
   String _splitPaceMode = SplitPaceMode.split;
@@ -316,10 +314,6 @@ class Preferences extends ChangeNotifier {
   bool get turnByTurnCues => _turnByTurnCues;
   bool get onboarded => _onboarded;
   bool get advancedGps => _advancedGps;
-
-  /// The developer switch asking Android for raw `GPS_PROVIDER` fixes. Only
-  /// meaningful where `rawGpsDiagnosticAvailable` holds.
-  bool get devRawGpsProvider => _devRawGpsProvider;
 
   /// Custom split interval in metres. 0 means use the activity-type default
   /// (1 km for run/walk/hike, 5 km for cycling).
@@ -618,6 +612,22 @@ class Preferences extends ChangeNotifier {
     await clearVoiceCueTypes();
   }
 
+  /// The stride the GPS distance estimator last learned for [userId] doing
+  /// [activity] on this device, in metres, or null. Seeds the next run's
+  /// estimator, so a GPS gap before that run has learned its own stride is
+  /// still step-filled. Device-local and never synced: it calibrates this
+  /// phone's pedometer against the runner's GPS. Keyed by account, so a
+  /// second account on the phone never inherits the first one's stride.
+  double? learnedStrideM(String userId, String activity) =>
+      _prefs.getDouble('$_kLearnedStridePrefix:$userId:$activity');
+
+  Future<void> setLearnedStrideM(
+      String userId, String activity, double strideM) async {
+    if (!strideM.isFinite || strideM <= 0) return;
+    await _prefs.setDouble(
+        '$_kLearnedStridePrefix:$userId:$activity', strideM);
+  }
+
   /// Whether the one-time OEM battery-optimisation hint has been shown. Many
   /// Android OEMs (Samsung Stamina, Xiaomi MIUI, OnePlus) kill the recording
   /// foreground service unless the app is exempted from battery optimisation,
@@ -693,7 +703,6 @@ class Preferences extends ChangeNotifier {
     _onboarded = _prefs.getBool(_kOnboarded) ?? false;
     _targetPaceSecPerKm = _prefs.getInt(_kTargetPaceSecPerKm) ?? 0;
     _advancedGps = _prefs.getBool(_kAdvancedGps) ?? false;
-    _devRawGpsProvider = _prefs.getBool(_kDevRawGpsProvider) ?? false;
     _writeToHealthConnect = _prefs.getBool(_kWriteToHealthConnect) ?? false;
     _splitIntervalMetres = _prefs.getInt(_kSplitIntervalMetres) ?? 0;
     _undoWindowS = undoWindowSFromPref(_prefs.getInt(_kUndoWindowS));
@@ -859,12 +868,6 @@ class Preferences extends ChangeNotifier {
   Future<void> setAdvancedGps(bool v) async {
     _advancedGps = v;
     await _prefs.setBool(_kAdvancedGps, v);
-    notifyListeners();
-  }
-
-  Future<void> setDevRawGpsProvider(bool v) async {
-    _devRawGpsProvider = v;
-    await _prefs.setBool(_kDevRawGpsProvider, v);
     notifyListeners();
   }
 
@@ -1096,7 +1099,11 @@ class UnitFormat {
 
   /// Format pace: "5:30" (per km/mi based on unit).
   static String pace(double? secondsPerKm, DistanceUnit unit) {
-    if (secondsPerKm == null || secondsPerKm <= 0) return '--:--';
+    // `.round()` below throws on NaN and Infinity, and Infinity is what a
+    // 0 m distance divides to — a crash in the widget's build, not a label.
+    if (secondsPerKm == null || !secondsPerKm.isFinite || secondsPerKm <= 0) {
+      return '--:--';
+    }
     final secondsPerUnit = paceSecPerUnit(secondsPerKm, unit);
     // Round to whole seconds first, then split. Truncating the seconds field
     // in isolation diverged from web's formatPace (which rounds) on a
@@ -1128,7 +1135,9 @@ class UnitFormat {
 
   /// Format speed: "12.5 km/h" or "7.8 mph" (localised separator).
   static String speed(double? secondsPerKm, DistanceUnit unit) {
-    if (secondsPerKm == null || secondsPerKm <= 0) return '--';
+    if (secondsPerKm == null || !secondsPerKm.isFinite || secondsPerKm <= 0) {
+      return '--';
+    }
     final kmh = 3600 / secondsPerKm;
     final value = unit == DistanceUnit.mi ? kmh / 1.609344 : kmh;
     return formatFixed(value, 1, activeLocaleTag);
@@ -1285,8 +1294,9 @@ String formatElevationForPref(double? metres) =>
 /// Format a pace (seconds per km) using the active user unit pref,
 /// including the unit label (`/km` or `/mi`). Drop-in for surfaces that
 /// don't carry a Preferences dep — fixes feed/spectator/profile cards
-/// hard-coding `/km` for mile-unit users. Non-positive → em-dash.
-String formatPaceForPref(double secPerKm) => secPerKm <= 0
+/// hard-coding `/km` for mile-unit users. Non-positive or non-finite →
+/// em-dash.
+String formatPaceForPref(double secPerKm) => !secPerKm.isFinite || secPerKm <= 0
     ? '—'
     : '${UnitFormat.pace(secPerKm, activeDistanceUnit)} ${UnitFormat.paceLabel(activeDistanceUnit)}';
 
@@ -1295,6 +1305,9 @@ String formatPaceForPref(double secPerKm) => secPerKm <= 0
 /// the other pref-free formatters because every surface that shows an effort
 /// time also shows a distance from here.
 String formatEffortTime(double seconds) {
+  // `.round()` throws on NaN and Infinity; a negative renders as "-1:-30".
+  // Mirrors the guard in web's formatDuration.
+  if (!seconds.isFinite || seconds < 0) return '—';
   final total = seconds.round();
   final h = total ~/ 3600;
   final m = (total % 3600) ~/ 60;

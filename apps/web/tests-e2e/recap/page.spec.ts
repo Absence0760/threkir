@@ -1,8 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { originOf } from '../fixtures/base-url';
 import { browserYear } from '../fixtures/dates';
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 const CURRENT_YEAR = browserYear();
 
@@ -10,12 +11,7 @@ test.describe('/recap/[year] — anon visitor', () => {
 	test.use({ storageState: { cookies: [], origins: [] } });
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(context);
 	});
 
 	test('valid year still loads (no auth-wall redirect)', async ({ page }) => {

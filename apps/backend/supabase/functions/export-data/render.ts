@@ -44,6 +44,7 @@ export type RenderRunRow = {
 	hr_series_url: string | null;
 	is_public: boolean | null;
 	followers_only: boolean;
+	safety_audience: boolean;
 	event_id: string | null;
 	route_id: string | null;
 	race_listing_id: string | null;
@@ -92,6 +93,10 @@ export type RenderTrackPoint = {
 	ele?: number;
 	ts?: string;
 	bpm?: number;
+	/// A fix the recorder's distance estimator took that failed its track gate
+	/// (docs/features/gps_distance.md § Waypoint fields). The GPX is the run's
+	/// line, so it is left out, as the Go twin's `parseTrack` leaves it out.
+	offTrack?: boolean;
 };
 
 /// What a per-run GPX needs, and nothing else.
@@ -139,6 +144,7 @@ export const CSV_COLS = [
 	'external_id',
 	'is_public',
 	'followers_only',
+	'safety_audience',
 	'metadata',
 	'created_at',
 	'updated_at',
@@ -227,6 +233,7 @@ export function csvRow(r: RenderRunRow): string {
 		csvEscape(r.external_id ?? ''),
 		csvEscape(String(r.is_public ?? false)),
 		csvEscape(String(r.followers_only ?? false)),
+		csvEscape(String(r.safety_audience ?? false)),
 		csvEscape(JSON.stringify(md)),
 		csvEscape(r.created_at),
 		csvEscape(r.updated_at),
@@ -283,7 +290,7 @@ export function buildGpx(run: GpxRef, track: readonly RenderTrackPoint[]): strin
 		// A point we cannot place is dropped rather than written: an
 		// unplaceable trkpt is worth less than the rest of the file, and
 		// emitting it would put an unescaped value inside an attribute.
-		if (lat === null || lng === null) continue;
+		if (lat === null || lng === null || p.offTrack === true) continue;
 		const ele = gpxNumber(p.ele);
 		const eleTag = ele !== null ? `<ele>${ele}</ele>` : '';
 		const timeTag = p.ts ? `<time>${xmlEscape(String(p.ts))}</time>` : '';

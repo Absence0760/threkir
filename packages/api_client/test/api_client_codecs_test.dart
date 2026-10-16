@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
@@ -172,6 +173,147 @@ void main() {
       expect(p.containsKey('smoothedLat'), isFalse);
       expect(p.containsKey('smoothedLng'), isFalse);
       expect(p['lat'], 1);
+    });
+
+    // The fused barometric altitude rides beside the GPS `ele`, never in
+    // place of it (docs/features/gps_distance.md § Waypoint fields).
+    test('the barometric altitude round-trips as baroEle beside ele', () {
+      const w = Waypoint(
+        lat: 47.37,
+        lng: 8.54,
+        elevationMetres: 412,
+        baroElevationMetres: 405.25,
+      );
+      final json = ApiClient.debugWaypointToJson(w);
+      expect(json['ele'], 412);
+      expect(json['baroEle'], 405.25);
+      final back = ApiClient.debugWaypointFromJson(
+          jsonDecode(jsonEncode(json)) as Map<String, dynamic>);
+      expect(back.elevationMetres, 412);
+      expect(back.baroElevationMetres, 405.25);
+      expect(
+        ApiClient.debugWaypointToJson(const Waypoint(lat: 1, lng: 2))
+            .containsKey('baroEle'),
+        isFalse,
+      );
+    });
+
+    test('the cumulative credited distance round-trips as distM', () {
+      const w = Waypoint(lat: 47.37, lng: 8.54, cumulativeDistanceMetres: 812.4);
+      final json = ApiClient.debugWaypointToJson(w);
+      expect(json['distM'], 812.4);
+      final back = ApiClient.debugWaypointFromJson(
+          jsonDecode(jsonEncode(json)) as Map<String, dynamic>);
+      expect(back.cumulativeDistanceMetres, 812.4);
+      expect(
+        ApiClient.debugWaypointToJson(const Waypoint(lat: 1, lng: 2))
+            .containsKey('distM'),
+        isFalse,
+      );
+    });
+
+    test('an off-track fix round-trips as offTrack: true, an on-track one omits it',
+        () {
+      const w = Waypoint(
+          lat: 47.37, lng: 8.54, accuracyMetres: 38, cumulativeDistanceMetres: 90,
+          offTrack: true);
+      final json = ApiClient.debugWaypointToJson(w);
+      expect(json['offTrack'], isTrue);
+      final back = ApiClient.debugWaypointFromJson(
+          jsonDecode(jsonEncode(json)) as Map<String, dynamic>);
+      expect(back.offTrack, isTrue);
+      expect(back.cumulativeDistanceMetres, 90);
+      expect(
+        ApiClient.debugWaypointToJson(const Waypoint(lat: 1, lng: 2))
+            .containsKey('offTrack'),
+        isFalse,
+      );
+      expect(
+        ApiClient.debugWaypointFromJson(const {'lat': 1, 'lng': 2}).offTrack,
+        isFalse,
+      );
+    });
+
+    test('the uploaded track blob keeps off-track fixes in order, flagged', () {
+      final blob = ApiClient.debugTrackBlobJson(const [
+        Waypoint(lat: 47.37, lng: 8.54, cumulativeDistanceMetres: 0),
+        Waypoint(
+            lat: 47.3703, lng: 8.54, cumulativeDistanceMetres: 33, offTrack: true),
+        Waypoint(lat: 47.3706, lng: 8.54, cumulativeDistanceMetres: 66),
+      ]);
+      final points = (jsonDecode(blob) as List).cast<Map<String, dynamic>>();
+      expect(points.map((p) => p['offTrack']), [null, true, null]);
+      expect(points.map((p) => p['distM']), [0, 33, 66]);
+      expect(points[0].containsKey('offTrack'), isFalse);
+    });
+
+    test('the uploaded track blob carries baroEle on every fix that has one',
+        () {
+      final blob = ApiClient.debugTrackBlobJson(const [
+        Waypoint(
+            lat: 47.37, lng: 8.54, elevationMetres: 412, baroElevationMetres: 405.25),
+        Waypoint(lat: 47.371, lng: 8.54, elevationMetres: 398),
+        Waypoint(
+            lat: 47.372, lng: 8.54, elevationMetres: 420, baroElevationMetres: 409.5),
+      ]);
+      final points = (jsonDecode(blob) as List).cast<Map<String, dynamic>>();
+      expect(points.map((p) => p['baroEle']), [405.25, null, 409.5]);
+      expect(points.map((p) => p['ele']), [412, 398, 420]);
+      expect(points[1].containsKey('baroEle'), isFalse);
+    });
+
+    test('the track blob drops a non-finite barometric altitude only', () {
+      final blob = ApiClient.debugTrackBlobJson(const [
+        Waypoint(
+            lat: 1, lng: 2, elevationMetres: 30, baroElevationMetres: double.nan),
+      ]);
+      final p = (jsonDecode(blob) as List).single as Map<String, dynamic>;
+      expect(p.containsKey('baroEle'), isFalse);
+      expect(p['ele'], 30);
+    });
+  });
+
+  group('encodeTrackBlob / decodeTrackBlob', () {
+    test('a device backup keeps every per-fix field the upload path keeps',
+        () {
+      final track = [
+        Waypoint(
+          lat: 47.37,
+          lng: 8.54,
+          elevationMetres: 408,
+          timestamp: DateTime.utc(2026, 4, 10, 8),
+          bpm: 142,
+          accuracyMetres: 4.5,
+          speedMps: 3.1,
+          baroElevationMetres: 410.5,
+          cumulativeDistanceMetres: 0,
+        ),
+        Waypoint(
+          lat: 47.371,
+          lng: 8.541,
+          elevationMetres: 409,
+          timestamp: DateTime.utc(2026, 4, 10, 8, 0, 30),
+          bpm: 145,
+          accuracyMetres: 6,
+          speedMps: 3.2,
+          baroElevationMetres: 411.25,
+          cumulativeDistanceMetres: 132.4,
+        ),
+      ];
+      final back = ApiClient.decodeTrackBlob(ApiClient.encodeTrackBlob(track));
+      expect(back, hasLength(2));
+      expect(back.map((w) => w.bpm), [142, 145]);
+      expect(back.map((w) => w.baroElevationMetres), [410.5, 411.25]);
+      expect(back.map((w) => w.cumulativeDistanceMetres), [0.0, 132.4]);
+      expect(back.map((w) => w.accuracyMetres), [4.5, 6.0]);
+      expect(back.map((w) => w.speedMps), [3.1, 3.2]);
+      expect(back.last.timestamp, DateTime.utc(2026, 4, 10, 8, 0, 30));
+    });
+
+    test('the bytes are the gzipped blob the runs bucket stores', () {
+      const track = [Waypoint(lat: 1, lng: 2)];
+      expect(utf8.decode(gzip.decode(ApiClient.encodeTrackBlob(track))),
+          ApiClient.debugTrackBlobJson(track));
     });
   });
 
@@ -503,6 +645,25 @@ void main() {
       expect((decoded[0] as Map<String, dynamic>)['lat'], 47.37);
       expect((decoded[1] as Map<String, dynamic>)['lat'], 47.39);
       expect((decoded[1] as Map<String, dynamic>)['ele'], isNull);
+    });
+
+    test('the credited distance survives the gzipped blob, and an older '
+        'blob without it still decodes', () {
+      final stored = gzip.encode(utf8.encode(ApiClient.debugTrackBlobJson(const [
+        Waypoint(lat: 47.37, lng: 8.54, cumulativeDistanceMetres: 0),
+        Waypoint(lat: 47.371, lng: 8.54, cumulativeDistanceMetres: 111.2),
+        Waypoint(
+            lat: 47.372, lng: 8.54, cumulativeDistanceMetres: double.infinity),
+      ])));
+      final back = ApiClient.debugDecodeTrack(gzip.decode(stored));
+      expect(back.map((w) => w.cumulativeDistanceMetres), [0, 111.2, null]);
+      expect(back[2].lat, 47.372);
+
+      final legacy = ApiClient.debugDecodeTrack(gzip.decode(gzip.encode(
+          utf8.encode('[{"lat":47.37,"lng":8.54,"ele":408.5,'
+              '"ts":"2026-04-01T07:00:00.000Z"}]'))));
+      expect(legacy.single.cumulativeDistanceMetres, isNull);
+      expect(legacy.single.elevationMetres, 408.5);
     });
 
     test('a clean track encodes every point', () {

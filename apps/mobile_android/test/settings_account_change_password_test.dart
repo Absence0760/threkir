@@ -24,7 +24,7 @@ class _PasswordApi extends ApiClient {
   @override
   Future<Map<String, dynamic>?> fetchAiDisclosure() async => null;
   @override
-  Future<UserProfileRow?> fetchMyProfile() async => UserProfileRow(
+  Future<UserProfileRow?> fetchMyProfile() async => UserProfileRow(profilePrivate: false, 
         shadowHidden: false,
         id: 'u1',
         displayName: 'Runner',

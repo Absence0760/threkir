@@ -11,6 +11,7 @@ import { readJsonWithLimit } from '../_shared/body_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';
 import { isValidUuid } from '../_shared/input_validation.ts';
 import { findViewableRun } from './viewable_run.ts';
+import { withholdFromNonOwner } from './non_owner_points.ts';
 import { gunzipCapped, InflateLimitError } from '../_shared/gunzip_capped.ts';
 import { publishableKey, secretKey } from '../_shared/api_keys.ts';
 import {
@@ -22,8 +23,9 @@ import {
 } from '../_shared/smoothed_sidecar.ts';
 
 // Serves a privacy-zone-clipped track for a run the caller may see but does
-// not own: a public run, or (audience sharing, 20270802000003) a run whose
-// followers level or named-person grant admits the caller. Replaces
+// not own: a public run, (audience sharing, 20270802000003) a run whose
+// followers level or named-person grant admits the caller, or (coach run map,
+// 20270822000011) a run of an athlete the caller actively coaches. Replaces
 // direct Storage download for non-owner viewers (audit/storage High,
 // migration 20260619_001 dropped the public-runs Storage policy).
 //
@@ -38,7 +40,8 @@ import {
 //   4. Merge the job_worker's smoothed-position sidecar onto the points
 //      when it names this exact track (watch runs, recomputed runs).
 //   5. If the caller is not the owner, route the points through
-//      clip_track_for_user. Owners receive the unclipped track.
+//      clip_track_for_user and withhold the per-point keys that measure the
+//      run from its start (`distM`). Owners receive the unclipped track.
 //   6. Return the points as JSON.
 
 Deno.serve(withSentry('clip-public-track', async (req: Request) => {
@@ -168,7 +171,12 @@ Deno.serve(withSentry('clip-public-track', async (req: Request) => {
   // (audit/auth 2026-05-25).
   const isOwnerBypass = callerId !== null && callerId === ownerId;
   const isAudienceMember = audience === 'shared' && callerId !== null && callerId !== ownerId;
-  if (!run.is_public && !isAudienceMember && !isOwnerBypass) {
+  // A coach is admitted only by a row `coached_runs` returned for this caller:
+  // an active link, read as the caller, with the gate open (decisions § 1968).
+  // The coach's `runs` RLS policy would also return the row, which is why the
+  // base table is never read here — it carries no gate and no clip contract.
+  const isActiveCoach = audience === 'coach' && callerId !== null && callerId !== ownerId;
+  if (!run.is_public && !isAudienceMember && !isActiveCoach && !isOwnerBypass) {
     return Response.json({ error: 'not found' }, { status: 404 });
   }
 
@@ -263,7 +271,8 @@ Deno.serve(withSentry('clip-public-track', async (req: Request) => {
   if (clipErr) {
     return Response.json({ error: 'clip failed' }, { status: 500 });
   }
-  return Response.json({ points: clipped ?? [] });
+  const clippedPoints = Array.isArray(clipped) ? clipped : [];
+  return Response.json({ points: withholdFromNonOwner(clippedPoints) });
 }));
 
 /// Inflate a stored track or sidecar, bounded on the OUTPUT: the 5 MB cap on

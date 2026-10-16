@@ -331,6 +331,14 @@ var importantKinds = map[string]bool{
 	// A seat held for the recipient that lapses to the next person if they
 	// don't act: the definition of something they are waiting on.
 	"event_waitlist_slot": true,
+	// Someone addressed the recipient by name, which is closer to a direct
+	// message than to the social loop. reaction / comment_like stay out: they
+	// are the same kind of signal as kudos (decisions § 1971).
+	"mention": true,
+	// A private profile's owner is the only one who can let the asker in,
+	// and the asker sees nothing until they do. A plain follow stays out:
+	// it has already happened and asks nothing of the recipient.
+	"follow_request": true,
 }
 
 // kindMutePrefKey maps a notification kind to the user_settings.prefs key
@@ -356,6 +364,16 @@ var importantKinds = map[string]bool{
 // mute. See docs/backend/settings.md + decisions.md § 729.
 var kindMutePrefKey = map[string]string{
 	"data_export_ready": "notify_data_export_ready",
+	// The social signals from decisions § 1971. A mention reaches the default
+	// "important" set, so a runner who wants every other message but not
+	// these needs a control narrower than the channel; reaction and
+	// comment_like only go out under "all", where the same is true.
+	"reaction":     "notify_reaction",
+	"comment_like": "notify_comment_like",
+	"mention":      "notify_mention",
+	// Important for the same reason a mention is, and raised by someone else,
+	// so the owner needs a control narrower than the whole channel.
+	"follow_request": "notify_follow_request",
 }
 
 // kindMuted reports whether the recipient silenced this one kind. Only the
@@ -485,27 +503,39 @@ func pathForKind(kind, base string, n NotificationRow) string {
 		// go to the plan's OWNER (notify_plan_update notifies the owner of an
 		// edit someone else made; notify_plan_assigned notifies the athlete,
 		// who owns the assigned plan), so the owner-scoped detail page is
-		// correct for each — the /runs/{id} trap that caught run_completed
-		// doesn't apply here.
+		// correct for each.
 		return planPath(base, n)
 	case "message":
 		return base + "/messages"
 	case "club_post":
 		return clubPath(base, n)
-	case "kudos", "comment", "comment_reply":
+	case "kudos", "comment", "comment_reply", "reaction":
 		// The recipient owns the run these fire on, so the owner-scoped
 		// /runs/{id} detail page is correct.
 		return runPath(base, n)
+	case "comment_like", "mention":
+		// The recipient need not own the run, but they could read it when the
+		// row was written (the mention gate checks exactly that), and
+		// /runs/{id} serves a non-owner the shared view of any run their
+		// audience admits.
+		return runPath(base, n)
 	case "run_completed":
-		// Fires on a followee's run, so the recipient is NOT the owner —
-		// /runs/{id} fetches owner-scoped and renders "run not found" for
-		// them. The public share page is the only run surface a non-owner
-		// can read, matching notificationLinkFor on web.
+		// Fires on a followee's run, so the recipient is NOT the owner, and
+		// only on a public one (notify_run_completed skips is_public false).
+		// The anon-readable public share page renders it for anyone, signed
+		// in or not, matching notificationLinkFor on web. /runs/{id} would
+		// also serve it — a public run gets that page's non-owner branch
+		// since issue #666 — but that view needs a session.
 		return sharedRunPath(base, n)
 	case "follow":
 		// The recipient's own profile (/u/{id}), where their followers are
 		// shown — there is no /profile route, so the old target 404'd.
 		return profilePath(base, n)
+	case "follow_request":
+		// The recipient's pending requests, where approve and decline live.
+		// The actor's profile would be the wrong target: it is closed to the
+		// recipient unless that profile happens to be public.
+		return base + "/follow-requests"
 	case "challenge_complete":
 		return challengePath(base, n)
 	case "achievement":
@@ -727,10 +757,7 @@ func renderSafetyEmail(p SafetyEmailPayload, baseURL, locale string) (Email, boo
 		} else {
 			first = fmt.Sprintf(s.body[1], owner, formatTimeUTC(p.StartedAt))
 		}
-		ctaURL := base
-		if p.RunID != nil && *p.RunID != "" {
-			ctaURL = base + "/live/" + *p.RunID
-		}
+		ctaURL := safetyLiveURL(base, p.RunID, p.ViewToken)
 		return composeEmail(emailContent{
 			logoURL:   emailLogoURL(baseURL),
 			lang:      loc,
@@ -755,10 +782,7 @@ func renderSafetyEmail(p SafetyEmailPayload, baseURL, locale string) (Email, boo
 		} else {
 			first = fmt.Sprintf(s.body[1], owner, formatTimeUTC(p.StartedAt))
 		}
-		ctaURL := base
-		if p.RunID != nil && *p.RunID != "" {
-			ctaURL = base + "/live/" + *p.RunID
-		}
+		ctaURL := safetyLiveURL(base, p.RunID, p.ViewToken)
 		return composeEmail(emailContent{
 			logoURL:   emailLogoURL(baseURL),
 			lang:      loc,

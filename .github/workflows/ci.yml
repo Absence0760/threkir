@@ -534,8 +534,66 @@ jobs:
       # ui_kit and core_models carry 16 test files between them and were
       # absent from this list, so their suites — including every theme
       # guard added by the issue #666 rounds — had never run in CI.
-      - run: melos exec --scope="run_recorder" --scope="mobile_android" --scope="api_client" --scope="gpx_parser" --scope="ui_kit" --scope="core_models" -- flutter test
+      # mobile_android is deliberately absent: its suite runs sharded in
+      # test-mobile-android below. `dart analyze` stays whole-workspace here,
+      # so mobile_android is analysed once, not once per shard.
+      - run: melos exec --scope="run_recorder" --scope="api_client" --scope="gpx_parser" --scope="ui_kit" --scope="core_models" -- flutter test
       - run: melos exec -- dart analyze
+
+  # mobile_android's suite (661 test files on 2026-10-15) used to run inside
+  # test-packages' single `melos exec`, beside five other packages, on one
+  # hosted runner. That step took 21 min green on main (run 38736606802) and
+  # was then killed three times at ~22-24 min on PR #1164 with "The runner
+  # has received a shutdown signal" / exit 143 and no failing test — every
+  # other package had passed, and only mobile_android was still running. A
+  # runner that is shut down mid-suite is a capacity failure, so the fix is
+  # less work per runner, not a longer timeout or a retry.
+  #
+  # Sharded by FILE, not with `flutter test --total-shards`: package:test's
+  # sharding (test_core runner.dart `_shardSuite`) splits the test CASES
+  # inside each suite, so every shard would still compile and load all 661
+  # files — the cost being cut. Instead each shard takes every Nth file of
+  # the sorted list, round-robin so the alphabetically clustered heavy
+  # widget files (47 settings_*, 36 run_*, 24 route_*) spread across shards. N and the
+  # index come from the strategy context, so the matrix list is the only
+  # place the shard count is written; the modulo partition covers every
+  # file exactly once by construction. Four shards puts each at ~165 files,
+  # about 5-6 min of the 21, well under the slowest e2e lanes; a fifth
+  # would buy little against the ~1 min of setup each shard repeats.
+  test-mobile-android:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    name: Test mobile_android — shard ${{ matrix.shard }}/4
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - run: dart pub global activate melos 7.8.2
+      - run: melos bootstrap
+      - run: cp apps/mobile_android/.env.example apps/mobile_android/.env.development
+      - run: flutter precache
+      - name: Run this shard's share of the mobile_android test files
+        working-directory: apps/mobile_android
+        env:
+          SHARD_INDEX: ${{ strategy.job-index }}
+          SHARD_TOTAL: ${{ strategy.job-total }}
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(find test -name '*_test.dart' | LC_ALL=C sort | awk -v n="$SHARD_TOTAL" -v i="$SHARD_INDEX" '(NR - 1) % n == i')
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "::error::Shard $((SHARD_INDEX + 1)) of $SHARD_TOTAL was handed no mobile_android test files, so it would report green having run nothing. Either test/ moved or the matrix grew past the file count."
+            exit 1
+          fi
+          echo "Shard $((SHARD_INDEX + 1)) of $SHARD_TOTAL: ${#files[@]} test files"
+          flutter test "${files[@]}"
 
   # The run above is in UTC, the runner's zone, where a local calendar day is
   # always 24 hours and always starts at 00:00 UTC — so a test whose verdict
@@ -548,8 +606,9 @@ jobs:
   # +0/+1 flip, Kolkata for a half-hour positive offset with no DST. The Dart
   # VM reads the zone through the C library's localtime_r, which honours TZ
   # from the environment flutter_tester inherits. Separate from
-  # test-packages so the critical path does not grow; the file list is
-  # derived from the tag, so a new test opts in where it is written.
+  # test-packages and test-mobile-android so the critical path does not
+  # grow; the file list is derived from the tag, so a new test opts in
+  # where it is written.
   test-timezones:
     needs: changes
     if: needs.changes.outputs.code == 'true'
@@ -1169,7 +1228,8 @@ jobs:
     # the budget's old job spent 47 s repeating the `npm ci` + `vite build`
     # this job spends 69 s on, and deleting that duplicate gives a runner
     # slot back. Wall-clock on the gate is unchanged either way — the
-    # critical path is `test-packages` at 17 min (run 33175862509) and every
+    # critical path was `test-packages` at 17 min (run 33175862509; its
+    # mobile_android suite now runs sharded in `test-mobile-android`) and every
     # candidate here is two orders of magnitude under it — so the choice is
     # about runner-minutes and about a failure the gate actually waits for.
     # Bundling rather than splitting is what `parity-matrix` already decided
@@ -2788,7 +2848,7 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     name: Build mobile_android APK (smoke)
     runs-on: ubuntu-latest
-    # `flutter test` (in test-packages) catches Dart-level regressions
+    # `flutter test` (in test-mobile-android) catches Dart-level regressions
     # but does NOT exercise the Android Gradle build. Plugin pin
     # mismatches like the AGP 8.13 / Kotlin 2.2 / reactive_ble_mobile
     # compileSdk-33 case (apps/mobile_android/android/build.gradle.kts
@@ -2900,7 +2960,7 @@ jobs:
     timeout-minutes: 45
     # Runs the `integration_test/` harness (decisions § 1820) on a real
     # Android emulator: the real `main()`, real plugins, real
-    # SharedPreferences — the layer `test-packages`' headless widget tests
+    # SharedPreferences — the layer `test-mobile-android`'s headless widget tests
     # cannot reach. No Supabase stack is started, on purpose. Neither suite
     # touches the backend: onboarding is device-local, and Home is reachable
     # without a session (main.dart routes on the device-scoped `onboarded`
@@ -3001,7 +3061,7 @@ jobs:
     runs-on: macos-latest
     # The Flutter iOS target was the one shipped app surface nothing in CI
     # ever compiled. `build-mobile-android` covers the Gradle toolchain,
-    # `test-packages` covers the Dart, `ios-native-declarations` is a static
+    # `test-mobile-android` covers the Dart, `ios-native-declarations` is a static
     # Node guard that never invokes a compiler, and `test-watch-ios` builds
     # the SEPARATE native watchOS app — so a break in the Swift under
     # apps/mobile_ios/ios/Runner, in the Podfile, in the pbxproj, or in a
@@ -4046,6 +4106,10 @@ jobs:
         run: pnpm exec svelte-kit sync
       - name: Run Playwright suite (shard ${{ matrix.shard }}/14)
         working-directory: apps/web
+        env:
+          # Report-only pass of the e2e crash net (decisions § 1944): delete this
+          # line once every crash it lists is fixed or allowlisted with a reason.
+          CRASH_NET: report
         run: pnpm exec playwright test --config=tests-e2e/playwright.config.ts --shard=${{ matrix.shard }}/14
       - name: Upload Playwright report on failure
         if: failure()
@@ -4136,6 +4200,10 @@ jobs:
         run: pnpm exec svelte-kit sync
       - name: Run Playwright live-hub suite
         working-directory: apps/web
+        env:
+          # Report-only pass of the e2e crash net (decisions § 1944): delete this
+          # line once every crash it lists is fixed or allowlisted with a reason.
+          CRASH_NET: report
         run: pnpm exec playwright test --config=tests-e2e/playwright.livehub.config.ts
       - name: Upload Playwright report on failure
         if: failure()
@@ -4244,6 +4312,10 @@ jobs:
         run: pnpm exec svelte-kit sync
       - name: Run Playwright queued-export suite
         working-directory: apps/web
+        env:
+          # Report-only pass of the e2e crash net (decisions § 1944): delete this
+          # line once every crash it lists is fixed or allowlisted with a reason.
+          CRASH_NET: report
         run: pnpm exec playwright test --config=tests-e2e/playwright.exporthub.config.ts
       - name: Upload Playwright report on failure
         if: failure()
@@ -4354,6 +4426,10 @@ jobs:
         run: pnpm exec svelte-kit sync
       - name: Run Playwright SSO suite
         working-directory: apps/web
+        env:
+          # Report-only pass of the e2e crash net (decisions § 1944): delete this
+          # line once every crash it lists is fixed or allowlisted with a reason.
+          CRASH_NET: report
         run: pnpm exec playwright test --config=tests-e2e/playwright.sso.config.ts
       - name: Upload Playwright report on failure
         if: failure()
@@ -4411,12 +4487,103 @@ jobs:
         run: pnpm exec svelte-kit sync
       - name: Run the built-app Playwright suite
         working-directory: apps/web
+        env:
+          # Report-only pass of the e2e crash net (decisions § 1944): delete this
+          # line once every crash it lists is fixed or allowlisted with a reason.
+          CRASH_NET: report
         run: pnpm exec playwright test --config=tests-e2e/playwright.built.config.ts
       - name: Upload Playwright report on failure
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: playwright-report-built
+          path: |
+            apps/web/playwright-report
+            apps/web/test-results
+          retention-days: 7
+
+  e2e-web-configured:
+    needs: changes
+    if: needs.changes.outputs.web_e2e == 'true'
+    # Surfaces that render only on a build with an optional integration's
+    # public id set. Every other lane writes `PUBLIC_STRAVA_CLIENT_ID=` empty
+    # and the sharded suite pins what that build does ("Your Strava clubs"
+    # stays inert, the Strava card reads unconfigured), so the configured half
+    # had no browser coverage at all. playwright.configured.config.ts boots a
+    # dev server of its own with a dummy id; the `strava-clubs` Edge Function
+    # is mocked in the spec, so nothing reaches Strava. Unsharded, like the
+    # export-hub lane: one Supabase boot, signed in as the seeded users.
+    name: Web e2e — configured integrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: 10
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          # Node 24 — see e2e-web for why 22+ is mandatory (realtime-js
+          # needs native WebSocket).
+          node-version: 24.20.0
+          cache: pnpm
+      - uses: ./.github/actions/setup-supabase-cli
+        with:
+          version: 2.84.2
+      - name: Start local Supabase stack
+        uses: ./.github/actions/start-supabase
+      - name: Verify the seed loaded
+        working-directory: apps/backend
+        run: |
+          DB_URL=$(supabase status -o env | grep '^DB_URL=' | cut -d= -f2- | tr -d '"')
+          seeded=$(psql "$DB_URL" -tAc "select count(*) from auth.users where email = 'runner@test.com'")
+          if [ "$seeded" != "1" ]; then
+            echo "::error::supabase start did not seed runner@test.com — the suite cannot sign in"
+            exit 1
+          fi
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Cache Playwright browsers
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-
+      - uses: ./.github/actions/install-playwright
+      # The same .env every lane writes, Strava id empty included: the
+      # config's webServer.env sets the dummy id, and process.env wins over
+      # the .env files, so the override lives in one place.
+      - name: Write apps/web/.env from supabase status
+        working-directory: apps/backend
+        run: |
+          ANON_KEY=$(supabase status -o env | grep '^ANON_KEY=' | cut -d= -f2- | tr -d '"')
+          API_URL=$(supabase status -o env | grep '^API_URL=' | cut -d= -f2- | tr -d '"')
+          {
+            echo "PUBLIC_SUPABASE_URL=${API_URL}"
+            echo "PUBLIC_SUPABASE_ANON_KEY=${ANON_KEY}"
+            echo "PUBLIC_MAPTILER_KEY="
+            echo "PUBLIC_STRAVA_CLIENT_ID="
+            echo "PUBLIC_REVENUECAT_WEB_CHECKOUT_URL="
+            echo "PUBLIC_VAPID_PUBLIC_KEY="
+            echo "ANTHROPIC_API_KEY=ci-test-key-not-actually-called"
+            echo "PUBLIC_BYPASS_PAYWALL=true"
+          } > ../web/.env
+      - name: Sync SvelteKit generated types
+        working-directory: apps/web
+        run: pnpm exec svelte-kit sync
+      - name: Run Playwright configured-integrations suite
+        working-directory: apps/web
+        env:
+          # Report-only pass of the e2e crash net (decisions § 1944): delete this
+          # line once every crash it lists is fixed or allowlisted with a reason.
+          CRASH_NET: report
+        run: pnpm exec playwright test --config=tests-e2e/playwright.configured.config.ts
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-report-configured
           path: |
             apps/web/playwright-report
             apps/web/test-results
@@ -4552,6 +4719,7 @@ jobs:
       - changes
       - workflow-lint
       - test-packages
+      - test-mobile-android
       - test-timezones
       - test-worker
       - test-graph-cycle
@@ -4586,6 +4754,7 @@ jobs:
       - e2e-web-exporthub
       - e2e-web-sso
       - e2e-web-built
+      - e2e-web-configured
       - test-watch-ios
     steps:
       - name: Refuse to pass a draft

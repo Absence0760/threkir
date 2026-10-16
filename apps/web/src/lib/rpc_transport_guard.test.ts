@@ -33,7 +33,12 @@ const WEB = resolve(__dirname, '../..');
 const SCAN_ROOTS = [resolve(WEB, 'src'), resolve(WEB, 'lambda')];
 
 // A stable, all-scalar function that must still go out as a POST.
-const POST_EXEMPT: Record<string, string> = {};
+const POST_EXEMPT: Record<string, string> = {
+	safety_live_run:
+		'takes a safety contact\'s view token; a GET would put it in the query string and every request-URL log (decisions § 1966)',
+	safety_live_pings:
+		'takes a safety contact\'s view token; a GET would put it in the query string and every request-URL log (decisions § 1966)',
+};
 
 interface Site {
 	where: string;

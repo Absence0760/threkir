@@ -24,6 +24,13 @@ class RunSnapshot {
   /// threshold on this and never on `currentPosition != null`.
   final DateTime? positionFixedAt;
 
+  /// Wall-clock time the distance estimator last took a fix, or null before
+  /// the first. Under canopy the estimator keeps 20-50 m fixes that never
+  /// become [currentPosition], so distance can be advancing while
+  /// [positionFixedAt] ages: "has distance stopped" reads the later of the
+  /// two, "is the blue dot current" reads [positionFixedAt] alone.
+  final DateTime? distanceFixedAt;
+
   /// False when [currentPosition] is a fix the distance filter REJECTED
   /// (jitter below the movement threshold, or an implausible teleport). It
   /// still drives the blue dot at sensor rate, but it must never advance
@@ -45,12 +52,22 @@ class RunSnapshot {
   /// [currentPosition] onto the whole line. Null when no route is selected.
   final double? routeAlongMetres;
 
-  /// The full GPS track recorded so far (unmodifiable).
+  /// The run's line so far (unmodifiable): the fixes that passed the
+  /// recorder's accuracy and movement gates. Everything live reads this — the
+  /// map, route progress, elevation, climb — and none of it is ever flagged
+  /// [Waypoint.offTrack].
   final List<Waypoint> track;
 
-  /// True when the most recent GPS fix was rejected by the accuracy gate
-  /// (low-accuracy fix under tree cover / urban canyon), so distance is
-  /// not advancing even though the stopwatch keeps ticking. Lets the UI
+  /// Every fix stored so far (unmodifiable): [track]'s points plus each fix
+  /// the distance estimator took off the line, flagged [Waypoint.offTrack],
+  /// in recording order. What [RunRecorder.stop] saves, so the crash
+  /// checkpoint persists this and nothing live draws from it.
+  final List<Waypoint> storedTrack;
+
+  /// True when the most recent GPS fix was rejected outright (stating worse
+  /// than the estimator's 50 m cap, or invalid), so distance is not
+  /// advancing even though the stopwatch keeps ticking. A 20-50 m canopy fix
+  /// the estimator keeps does not set it: distance still moves. Lets the UI
   /// disclose "distance paused" instead of looking frozen. Cleared as soon
   /// as a fix passes the gate again. Always false before the first dropped
   /// fix and for indoor / no-GPS runs.
@@ -62,11 +79,13 @@ class RunSnapshot {
     this.currentPaceSecondsPerKm,
     this.currentPosition,
     this.positionFixedAt,
+    this.distanceFixedAt,
     this.positionTrusted = true,
     this.offRouteDistanceMetres,
     this.routeRemainingMetres,
     this.routeAlongMetres,
     this.track = const [],
+    this.storedTrack = const [],
     this.weakGps = false,
   });
 }

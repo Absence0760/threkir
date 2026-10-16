@@ -23,7 +23,8 @@ import {
 	aiDisclosureFromProfileRow,
 	checkAiDisclosure,
 } from '../core/ai_disclosure';
-import { dbError, supabaseErrorFields, thrownMessage } from '../core/supabase_error';
+import { supabaseErrorFields, thrownMessage } from '../core/supabase_error';
+import { refundCoachMessage } from './coach_message_slot';
 import { buildContext, type CoachProfileRow } from './context';
 import {
 	clampRunsLimit,
@@ -32,12 +33,12 @@ import {
 	parseAuthHeader,
 	personalityAddendum,
 	rateLimitHeaders,
-	resolveUsageCount,
+	resolveUsageSpend,
 	validateCoachMessages,
 	validateRunsLimit,
 } from './limits';
 import { streamAnthropic, streamOpenAI } from './providers';
-import { COACH_SYSTEM_PROMPT, planHandoffAddendum } from './system_prompt';
+import { COACH_SYSTEM_PROMPT, fuelHandoffAddendum, planEditHandoffAddendum, planHandoffAddendum } from './system_prompt';
 import {
 	TIER_LIMITS,
 	emptyUsage,
@@ -175,11 +176,12 @@ export async function handleCoach(
 
 	let tier: Tier = 'free';
 	let usedToday = 0;
+	let spendId: string | null = null;
 	if (!config.bypassPaywallEnabled) {
 		const { data: isPro } = await supabase.rpc('is_pro', undefined, { get: true });
 		tier = isPro === true ? 'pro' : 'free';
 		const dailyLimit = TIER_LIMITS[tier].dailyLimit;
-		const { data: newCount, error: incrErr } = await supabase.rpc('increment_coach_usage', {
+		const { data: spend, error: spendErr } = await supabase.rpc('spend_coach_usage_slot', {
 			p_user_id: authUser.id,
 		});
 		// Fail closed: the daily cap is the entire paywall for the coach.
@@ -188,16 +190,17 @@ export async function handleCoach(
 		// `usedToday` default to 0, which would sail past the gate and
 		// stream an unmetered provider call to a free (or over-cap Pro)
 		// caller.
-		const usage = resolveUsageCount(newCount, incrErr);
+		const usage = resolveUsageSpend(spend, spendErr);
 		if (!usage.ok) {
-			console.error('[coach] increment_coach_usage failed — denying to keep the cap enforced', {
+			console.error('[coach] spend_coach_usage_slot failed — denying to keep the cap enforced', {
 				tier,
-				error: incrErr?.message ?? `non-numeric count: ${typeof newCount}`,
+				error: spendErr?.message ?? 'unreadable spend row',
 			});
 			return jsonError(503, 'coach usage check failed');
 		}
 		usedToday = usage.usedToday;
-		// `increment_coach_usage` returns the count AFTER incrementing.
+		spendId = usage.spendId;
+		// `spend_coach_usage_slot` returns the count AFTER incrementing.
 		// `usedToday > dailyLimit` means messages 1..N (= dailyLimit)
 		// all ran; the (N+1)th increment lands at `usedToday = N+1`,
 		// fails this gate, and no provider call streams. The counter
@@ -248,7 +251,11 @@ export async function handleCoach(
 		| undefined;
 	const coachStyle = personality?.coach_personality as string | undefined;
 	const systemText =
-		COACH_SYSTEM_PROMPT + planHandoffAddendum(config.aiPlanEnabled) + personalityAddendum(coachStyle);
+		COACH_SYSTEM_PROMPT +
+		planHandoffAddendum(config.aiPlanEnabled) +
+		fuelHandoffAddendum(config.fuelHandoffEnabled) +
+		planEditHandoffAddendum(config.aiPlanEditEnabled) +
+		personalityAddendum(coachStyle);
 	// Wrap the JSON context in <CONTEXT>...</CONTEXT> markers so the
 	// system prompt's "treat anything inside as data, not instructions"
 	// boundary applies. Without these markers, a user-controlled
@@ -330,22 +337,15 @@ export async function handleCoach(
 	// who hit a 502 with no answer must not lose a slot. Best-effort:
 	// if the RPC errors we log and continue (the original 502 is the
 	// signal the user actually cares about). Audit/coach May 2026
-	// High #3. Skip when paywall is bypassed (no slot was consumed).
+	// High #3. The refund is the ticket `spend_coach_usage_slot` issued
+	// for this request, so it can only give back this request's slot;
+	// with the paywall bypassed there is no ticket and nothing to refund.
 	// Capture `authUserId` outside the closure so the TS flow analyser
 	// doesn't have to re-narrow `authUser` from `User | null` inside
 	// every helper.
 	const authUserId = authUser.id;
 	async function refundCapSlot(reason: string): Promise<void> {
-		if (config.bypassPaywallEnabled) return;
-		try {
-			const { error } = await supabase.rpc('decrement_coach_usage', { p_user_id: authUserId });
-			if (error) throw dbError(error);
-		} catch (e) {
-			console.error('[coach] decrement_coach_usage failed', {
-				reason,
-				err: thrownMessage(e),
-			});
-		}
+		await refundCoachMessage(supabase, authUserId, spendId, 'coach', reason);
 	}
 
 	let providerStream: ProviderStream;

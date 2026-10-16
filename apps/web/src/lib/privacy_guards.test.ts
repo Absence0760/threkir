@@ -556,7 +556,9 @@ test('client user_profiles selects only touch public-safe columns', () => {
 	// stack. This unit guard fails fast instead.
 	// 20270424000002 re-emits that grant list plus `handle` — the public
 	// @handle is cross-user readable by design (People search renders it).
-	const PUBLIC_SAFE = new Set(['id', 'display_name', 'avatar_url', 'created_at', 'handle']);
+	// 20270822000001 adds `profile_private`: a viewer needs it to render
+	// "Request to follow" on a private profile (decisions § 1967).
+	const PUBLIC_SAFE = new Set(['id', 'display_name', 'avatar_url', 'created_at', 'handle', 'profile_private']);
 	const root = resolve(__dirname, '..');
 	const walk = (dir: string, out: string[] = []): string[] => {
 		for (const ent of readdirSync(dir, { withFileTypes: true })) {

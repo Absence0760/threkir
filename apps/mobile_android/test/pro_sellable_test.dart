@@ -62,6 +62,30 @@ void main() {
     });
   });
 
+  group('plate_photo capability', () {
+    test('reads plate_photo, available only alongside the coach', () {
+      final p = parseProPerks('{"coach":true,"plate_photo":true}');
+      expect(p.platePhoto, isTrue);
+      expect(p.platePhotoAvailable, isTrue);
+      expect(parseProPerks('{"coach":false,"plate_photo":true}').platePhotoAvailable,
+          isFalse);
+      expect(parseProPerks('{"coach":true,"plate_photo":false}').platePhotoAvailable,
+          isFalse);
+    });
+
+    test('missing, non-boolean and camelCase values read as off, and it sells nothing', () {
+      for (final body in [
+        '{"coach":true}',
+        '{"coach":true,"plate_photo":"true"}',
+        '{"coach":true,"plate_photo":1}',
+        '{"coach":true,"platePhoto":true}',
+      ]) {
+        expect(parseProPerks(body).platePhotoAvailable, isFalse, reason: body);
+      }
+      expect(parseProPerks('{"plate_photo":true}').sellable, isFalse);
+    });
+  });
+
   group('ai_plan capability', () {
     test('reads ai_plan, available only alongside the coach', () {
       final p = parseProPerks('{"coach":true,"ai_plan":true}');

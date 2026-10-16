@@ -626,6 +626,24 @@ composer is a modal sheet, matching `gear_form_sheet` / `goal_editor_sheet`.
 > week. **A food database is therefore pulled forward from the depth tier
 > into the first nutrition release — nutrition does not ship without it.**
 
+- **Log from a photo** (built web + mobile, 2026-10-15, default-off behind
+  `PUBLIC_PLATE_PHOTO_ENABLED` / `PLATE_PHOTO_ENABLED`; [decisions § 1972](../architecture/decisions.md)).
+  A Pro L4 extra over the search composer, which stays underneath it and
+  works on every failure. The runner takes or picks a meal photo; it is
+  downscaled to a 1568 px JPEG on the device, metadata-stripped on the
+  device and again on the server (`plate_photo/image.ts`, the `exif_strip`
+  walk), sent once to the vision model in ONE forced tool call
+  (`propose_food_entries`, no thinking), and never stored — no bucket, no
+  worker. `validatePlateEstimate` whitelists and clamps every field (≤ 8
+  items, per-item ceilings such as 3000 kcal, names cleaned and capped at
+  120 chars) before the client sees it. The runner edits or removes each
+  proposed item, picks the meal slot, and only the kept items are written
+  (web `createFoodEntry`, mobile the offline-first `LocalFoodStore`). Gates:
+  AI disclosure v5, `is_pro()`, a 20/hour `plate-photo` throttle. Web
+  `PlatePhotoLogger.svelte` on `/nutrition/log`; mobile `plate_photo_screen.dart`
+  from a camera action on the nutrition screen (a phone camera is the
+  device-led half § 24 allows), shown when `/app-capabilities.json`
+  publishes `plate_photo`.
 - **Search-driven logging via two food sources** (shipped web + mobile,
   2026-06-20). Open Food Facts (free, no API key, open data —
   `world.openfoodfacts.org`) AND USDA FoodData Central

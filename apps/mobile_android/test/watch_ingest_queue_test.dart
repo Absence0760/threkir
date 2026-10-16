@@ -127,6 +127,17 @@ void main() {
       expect(run.track[4].elevationMetres, 30.0);
     });
 
+    test('each point keeps the credited distance the watch stamped', () {
+      final run = runFromWatchPayload(baseline()
+        ..['track'] = [
+          {'lat': 1.0, 'lng': 2.0, 'ts': '2026-05-19T08:00:00Z', 'distM': 0},
+          {'lat': 1.0, 'lng': 2.0, 'ts': '2026-05-19T08:00:05Z', 'distM': 14.25},
+          {'lat': 1.0, 'lng': 2.0, 'ts': '2026-05-19T08:00:10Z'},
+        ]);
+      expect(run.track.map((w) => w.cumulativeDistanceMetres),
+          [0.0, 14.25, null]);
+    });
+
     test('decimal bpm is floored to int (Waypoint.bpm is int?)', () {
       // Health Services + HKLiveWorkoutBuilder both emit doubles
       // (heart rate is technically a continuous measure). The

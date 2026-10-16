@@ -154,7 +154,7 @@ export const DEFINER_NEUTRALISERS = new Map([
   [
     'public_gym_workouts',
     {
-      why: 'drops `is_public = true`',
+      why: 'drops `is_public = true` and the private-profile clause (an approved follower or the owner)',
       sql: `create or replace view public.public_gym_workouts as
  select id, user_id, started_at, title, duration_s, is_public, set_count, volume_kg, created_at
    from gym_workouts w
@@ -171,7 +171,7 @@ export const DEFINER_NEUTRALISERS = new Map([
   [
     'public_gym_sets',
     {
-      why: "drops the parent workout's `is_public = true`; keeps the set→workout join, which is structure rather than access control",
+      why: "drops the parent workout's `is_public = true` and its owner's private-profile clause; keeps the set→workout join, which is structure rather than access control",
       sql: `create or replace view public.public_gym_sets as
  select s.id, s.workout_id, s.set_index, s.exercise_name, s.reps, s.weight_kg, s.duration_s
    from gym_sets s
@@ -191,7 +191,7 @@ export const DEFINER_NEUTRALISERS = new Map([
   [
     'public_profile_by_id',
     {
-      why: 'drops `shadow_hidden = false` and the mutual-block check; keeps `u.id = p_id`, which is the subject selector',
+      why: 'drops `shadow_hidden = false`, the mutual-block check and the private-profile clause; keeps `u.id = p_id`, which is the subject selector',
       sql: `create or replace function public.public_profile_by_id(p_id uuid)
  returns table(id uuid, display_name text, avatar_url text)
  language sql stable security definer set search_path to 'public'
@@ -294,6 +294,63 @@ $neutralised$;`,
                  values ((select id from auth.users order by id limit 1),
                          'pgtap-guard-witness@example.invalid');`,
         probe: `select count(*) from my_pending_safety_requests();`,
+      },
+    },
+  ],
+  [
+    'safety_live_run',
+    {
+      why: 'drops `private.safety_link_admits` — the token, the gate, the safety_audience mark, the live-stub and contact checks and the 48 h window, which together are the whole access control; keeps `r.id = p_run_id`, the subject',
+      sql: `create or replace function public.safety_live_run(p_run_id uuid, p_token uuid)
+ returns table(started_at timestamptz, duration_s integer, distance_m double precision, route_id uuid, owner_name text)
+ language sql stable security definer set search_path to 'public', 'private'
+as $neutralised$
+  select r.started_at, r.duration_s, r.distance_m::double precision,
+         case when is_public_route_by_id(r.route_id) then r.route_id else null end,
+         coalesce(p.display_name, '')
+    from runs r
+    left join user_profiles p on p.id = r.user_id
+   where r.id = p_run_id
+     and ${mine('r')};
+$neutralised$;`,
+      subject: 'runs r',
+      witness: {
+        setup: `insert into runs (id, user_id, started_at, duration_s, distance_m, source, is_public, metadata)
+                 values ('00000000-0000-0000-0000-00000000c5a1',
+                         (select id from auth.users order by id limit 1),
+                         now(), 0, 0, 'app', false, '{"in_progress": true}');`,
+        probe: `select count(*) from safety_live_run('00000000-0000-0000-0000-00000000c5a1',
+                                                     '00000000-0000-0000-0000-00000000c5a2');`,
+      },
+    },
+  ],
+  [
+    'safety_live_pings',
+    {
+      why: 'drops `private.safety_link_admits`, the whole access control (token, gate, safety_audience, live stub, confirmed contact, 48 h); keeps `p.run_id = p_run_id` and the `p_since` cursor, which select the rows asked about',
+      sql: `create or replace function public.safety_live_pings(p_run_id uuid, p_token uuid, p_since timestamptz default null)
+ returns table(lat double precision, lng double precision, distance_m double precision, elapsed_s integer, at timestamptz, coarse boolean)
+ language sql stable security definer set search_path to 'public', 'private'
+as $neutralised$
+  select p.lat, p.lng, p.distance_m::double precision, p.elapsed_s, p.at, p.coarse
+    from live_run_pings p
+   where p.run_id = p_run_id
+     and (p_since is null or p.at > p_since)
+     and ${mine('p')}
+   order by p.at desc
+   limit 1000;
+$neutralised$;`,
+      subject: 'live_run_pings p',
+      witness: {
+        setup: `insert into runs (id, user_id, started_at, duration_s, distance_m, source, is_public, metadata)
+                 values ('00000000-0000-0000-0000-00000000c5a3',
+                         (select id from auth.users order by id limit 1),
+                         now(), 0, 0, 'app', false, '{"in_progress": true}');
+                insert into live_run_pings (run_id, user_id, lat, lng)
+                 values ('00000000-0000-0000-0000-00000000c5a3',
+                         (select id from auth.users order by id limit 1), 10.5, 20.5);`,
+        probe: `select count(*) from safety_live_pings('00000000-0000-0000-0000-00000000c5a3',
+                                                       '00000000-0000-0000-0000-00000000c5a2');`,
       },
     },
   ],
@@ -478,12 +535,12 @@ as $neutralised$
          c.location_label, c.is_public, c.created_at, c.updated_at, c.join_policy,
          null::text, c.location_point, c.member_count, c.is_verified,
          c.requires_activity_waiver, c.website_url, c.instagram_url, c.strava_url,
-         c.facebook_url, c.shadow_hidden
+         c.facebook_url, c.shadow_hidden, c.strava_club_id
   from clubs c, center
   where (
       p_query is null
-      or c.name ilike '%' || p_query || '%'
-      or c.location_label ilike '%' || p_query || '%'
+      or c.name ilike '%' || private.like_escape(p_query) || '%'
+      or c.location_label ilike '%' || private.like_escape(p_query) || '%'
       or (
         center.pt is not null
         and c.location_point is not null
@@ -886,7 +943,7 @@ $neutralised$;`,
   [
     'public_run_counts',
     {
-      why: "drops `r.is_public = true`; keeps the caller's own `user_id = any(p_user_ids)`",
+      why: "drops `r.is_public = true` and the private-profile clause; keeps the caller's own `user_id = any(p_user_ids)`",
       sql: `create or replace function public.public_run_counts(p_user_ids uuid[])
  returns table(user_id uuid, public_run_count bigint)
  language sql stable security definer set search_path to 'public', 'pg_temp'
@@ -1173,6 +1230,23 @@ $neutralised$;`,
       },
     },
   ],
+  [
+    'coached_runs',
+    {
+      why: "drops `private.is_active_coach_of(auth.uid(), user_id)`, the coach_run_map gate and the self exclusion — every predicate that decides whether the caller coaches the run's owner. The view has no subject selector of its own; the assertion's `id = …` is",
+      sql: `create or replace view public.coached_runs as
+ select r.id, r.user_id, r.is_public, coalesce(r.metadata, '{}'::jsonb) as metadata
+   from runs r
+  where ${mine('r')};`,
+      subject: 'runs r — the run whose coaching check was dropped',
+      witness: {
+        setup: `update runs set is_public = is_public
+                 where id = (select id from runs order by id limit 1);`,
+        probe: `select count(*) from coached_runs
+                 where id = (select id from runs order by id limit 1);`,
+      },
+    },
+  ],
 ]);
 
 // Definer relations a zero-or-empty assertion reads and that deliberately have
@@ -1180,7 +1254,7 @@ $neutralised$;`,
 //
 // Registering one costs a copy of a definition to keep in step with the schema,
 // and buys a measurement only where an empty result is a claim about access
-// control. All three of these are outside that, for three different reasons,
+// control. Every entry below is outside that, each for its own reason,
 // and each was checked rather than assumed - the operator was pointed at it and
 // the verdict it would produce is recorded beside it. The list is CLOSED: the
 // validation phase re-derives the same set from the suite and fails if another
@@ -1212,5 +1286,11 @@ export const UNREGISTERED_DEFINER_RELATIONS = [
     assertion: 'an account that never signed in with Apple has nothing to read',
     reason:
       "the function carries no access-control filter to drop: its only WHERE is `user_id = p_user_id`, a subject selector, and who may call it at all is enforced by the EXECUTE grant (service_role only), which the same file's 42501 throws_ok assertions pin for authenticated and anon. The empty result claims that a user id with no stored token reads as nothing to revoke - delete-account's 'skipped' - not that a row is being hidden. Emptiness is not what it turns on either: two `results_eq` positives in the same transaction name the row the function DOES return for the account that has one",
+  },
+  {
+    relation: 'public_runs',
+    assertion: 'a safety stub is not in public_runs',
+    reason:
+      "the claim is that a safety-audience stub is a PRIVATE run (20270821000001 stores it `is_public = false`; a safety audience is reached through the per-contact spectator link, never a public flip), and the view's `is_public = true` is the subject selector that says which runs it is about - the same role `is_public = false` plays in the shared_runs replacement above. A replacement may only drop the access-control half (the private-profile / self / follower / in-progress disjunction), so the stub stays absent and the assertion would survive: an EXPECTED_SURVIVORS entry bought with a copy of the view's whole column list. Who reads the stub's pings is what the file's measured assertions are about, and those read `live_run_pings` through RLS, which operator 1 does mutate",
   },
 ];

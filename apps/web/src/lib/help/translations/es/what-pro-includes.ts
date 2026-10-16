@@ -3,14 +3,14 @@ import type { GuideTranslation } from '../../types';
 export const translation: GuideTranslation = {
 	id: 'what-pro-includes',
 	title: 'Qué incluye Pro',
-	summary: 'Todas las pantallas de Threkir son gratuitas; Pro amplía tu cupo del Entrenador IA y adelanta en la cola parte del trabajo en segundo plano.',
+	summary: 'Casi todo en Threkir es gratuito; Pro amplía tu cupo del Entrenador IA, añade algunos extras con IA y adelanta en la cola parte del trabajo en segundo plano.',
 	sections: [
 		{
 			heading: 'Lo que sigue siendo gratis',
 			blocks: [
 				{
 					type: 'p',
-					text: 'Nada en la app está bloqueado tras Pro. Las cuentas gratuitas tienen grabación ilimitada en el móvil y el reloj, rutas, planes de entrenamiento y las cifras que los sustentan, clubes y eventos, el feed social, contactos de seguridad, importaciones y copias de seguridad.',
+					text: 'Casi nada en la app está bloqueado tras Pro. Las cuentas gratuitas tienen grabación ilimitada en el móvil y el reloj, rutas, planes de entrenamiento y las cifras que los sustentan, clubes y eventos, el feed social, contactos de seguridad, importaciones y copias de seguridad.',
 				},
 			],
 		},
@@ -26,6 +26,7 @@ export const translation: GuideTranslation = {
 						'**Exportaciones a la nube prioritarias**: hasta 8 exportaciones de paquetes GPX por hora en lugar de 2.',
 						'**Generación de rutas en el servidor**: bucles trazados sobre la red de calles real cuando generas una ruta por distancia. Las cuentas gratuitas siguen teniendo generación de bucles, calculada en el navegador.',
 						'Descripciones de rutas más ricas: en la página de una ruta, **Mejorar con IA** convierte la descripción estándar en un párrafo más completo.',
+						'**Registrar desde una foto**: haz una foto de una comida y tu registro de alimentos se rellena para que lo revises. Consulta [[guide:log-a-meal-from-a-photo|Registrar una comida desde una foto]].',
 					],
 				},
 				{
@@ -76,9 +77,9 @@ export const translation: GuideTranslation = {
 	],
 	sources: {
 		title: '4267811678bae9e8',
-		summary: '959c30d7818df50f',
+		summary: 'ba5bf8caf5aaf36d',
 		's0.heading': '1319c99f2d10de2f',
-		's0.b0': '4512e0ee677c9a74',
+		's0.b0': '45a78cc3bef78017',
 		's1.heading': '28933395a25968d0',
 		's1.b0.i0': '719256df99c524da',
 		's1.b0.i1': '2cc8c412ba418164',
@@ -86,6 +87,7 @@ export const translation: GuideTranslation = {
 		's1.b0.i3': 'a120796543f347bd',
 		's1.b0.i4': 'abbb1f922ffbfa10',
 		's1.b0.i5': 'dd0fa90eed200d7c',
+		's1.b0.i6': '0d98bcce46d47d2f',
 		's1.b1': '076479f3bd42d0b5',
 		's2.heading': '912eb19f965419db',
 		's2.b0': 'ee79a267ee574aa9',

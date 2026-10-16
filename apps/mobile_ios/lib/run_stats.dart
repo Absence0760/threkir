@@ -23,6 +23,60 @@ String bestEffortDistanceLabel(AppLocalizations l10n, String key) {
   }
 }
 
+/// Whether every point of [track] carries the recorder's cumulative credited
+/// distance ([Waypoint.cumulativeDistanceMetres]): finite, non-negative and
+/// never decreasing. All or nothing, so a track that mixes stamped and
+/// unstamped points (an older recorder's points ahead of a resumed session's)
+/// measures on positions throughout rather than on two different axes.
+/// Mirrors `hasRecordedDistances` in `apps/web/src/lib/runs/run_stats.ts`.
+bool hasRecordedDistances(List<Waypoint> track) {
+  if (track.length < 2) return false;
+  var prev = 0.0;
+  for (final w in track) {
+    final d = w.cumulativeDistanceMetres;
+    if (d == null || !d.isFinite || d < prev) return false;
+    prev = d;
+  }
+  return true;
+}
+
+/// Distance along the run at each point of [track], metres: the axis splits
+/// and moving time are measured on (`docs/features/gps_distance.md` § Splits
+/// and moving time).
+///
+/// A track whose every point carries [Waypoint.cumulativeDistanceMetres] uses
+/// it, scaled so the last point reads [totalDistanceMetres] when that is given:
+/// the recorder's figure stops at the last stored fix while the run's distance
+/// also counts what the estimator credited after it, and the server recompute
+/// rewrites `distance_m` without touching the stored track. Otherwise the
+/// hop-sum over the line positions ([Waypoint.lineLat] / [Waypoint.lineLng]),
+/// unscaled, which is what every track before the key measures on. Pass
+/// [totalDistanceMetres] only with the whole stored track (the owner's): a
+/// privacy-clipped one ends short of the run and would be stretched. Mirrors
+/// `trackCumulativeMetres` in `apps/web/src/lib/runs/run_stats.ts`.
+List<double> trackCumulativeMetres(
+  List<Waypoint> track, {
+  double? totalDistanceMetres,
+}) {
+  final n = track.length;
+  if (n == 0) return const [];
+  if (hasRecordedDistances(track)) {
+    final last = track[n - 1].cumulativeDistanceMetres!;
+    final total = totalDistanceMetres;
+    final scale = total != null && total.isFinite && total > 0 && last > 0
+        ? total / last
+        : 1.0;
+    return [for (final w in track) w.cumulativeDistanceMetres! * scale];
+  }
+  final out = List<double>.filled(n, 0);
+  for (var i = 1; i < n; i++) {
+    final a = track[i - 1];
+    final b = track[i];
+    out[i] = out[i - 1] + haversineMetres(a.lineLat, a.lineLng, b.lineLat, b.lineLng);
+  }
+  return out;
+}
+
 /// Compute **moving time** from a GPS track — the subset of elapsed time
 /// during which the runner was actually moving, excluding stops at traffic
 /// lights, water fountains, and so on.
@@ -34,7 +88,9 @@ String bestEffortDistanceLabel(AppLocalizations l10n, String key) {
 /// way — as a post-processing step rather than a live pause.
 ///
 /// Algorithm: walk consecutive waypoint pairs. For each segment, compute
-/// `speed = distance / time`. If the segment's speed is above
+/// `speed = distance / time`, with distance read off [trackCumulativeMetres]
+/// (the estimator's credit when the track carries it, so a stop the filter
+/// held still is not moving time however far the raw fixes wandered). If the segment's speed is above
 /// [minSpeedMps], count its time toward moving time; otherwise exclude it.
 ///
 /// [minSpeedMps] defaults to 0.5 m/s (~1.8 km/h) — slower than a slow walk
@@ -49,6 +105,7 @@ Duration movingTimeOf(
 }) {
   if (track.length < 2) return Duration.zero;
 
+  final cum = trackCumulativeMetres(track);
   var movingMs = 0;
   for (var i = 1; i < track.length; i++) {
     final a = track[i - 1];
@@ -60,7 +117,7 @@ Duration movingTimeOf(
     final dtMs = bt.difference(at).inMilliseconds;
     if (dtMs <= 0) continue;
 
-    final distance = haversineMetres(a.lat, a.lng, b.lat, b.lng);
+    final distance = cum[i] - cum[i - 1];
     final speed = distance / (dtMs / 1000.0);
     if (speed >= minSpeedMps) {
       movingMs += dtMs;
@@ -190,12 +247,23 @@ class RunSplit {
 /// end time for every boundary it crossed, so the 2nd and later splits reported
 /// a 0:00 duration (which also poisoned the "fastest split" reduction). One
 /// interpolated split per tick fixes that.
+///
+/// Distance is [trackCumulativeMetres] with [totalDistanceMetres]: pass the
+/// run's distance and a track that carries the recorder's cumulative credit
+/// places every boundary on the same axis as the headline figure.
 List<RunSplit> computeSplitDurations(
   List<Waypoint> track,
   double tickLengthM,
-  DateTime startedAt,
-) {
+  DateTime startedAt, {
+  double? totalDistanceMetres,
+}) {
   if (track.length < 2 || tickLengthM <= 0) return const [];
+  // A track with no timestamp at all (a GPX route, a manual run's drawn
+  // line) has no split times: every boundary fell back to [startedAt], so it
+  // emitted one 0:00 split per tick. Web's computeRealSplits returns [] here.
+  if (!track.any((w) => w.timestamp != null)) return const [];
+  final cum =
+      trackCumulativeMetres(track, totalDistanceMetres: totalDistanceMetres);
   final splits = <RunSplit>[];
   var cumulative = 0.0;
   var nextTick = 1;
@@ -204,9 +272,9 @@ List<RunSplit> computeSplitDurations(
   for (var i = 1; i < track.length; i++) {
     final a = track[i - 1];
     final b = track[i];
-    final segStart = cumulative;
-    final segDist = haversineMetres(a.lat, a.lng, b.lat, b.lng);
-    cumulative += segDist;
+    final segStart = i == 1 ? 0.0 : cum[i - 1];
+    cumulative = cum[i];
+    final segDist = cumulative - segStart;
     final aTime = a.timestamp;
     // Fall back to the segment's own start, never to the run start. A GPX
     // import can leave a mid-track point untimestamped (route_parser sets

@@ -350,7 +350,7 @@ notes in `reviews/`). Repo secrets exist only for the release workflows:
 | `AWS_DEPLOY_ROLE_ARN_PROD` | Web deployment — IAM role assumed via OIDC when a `web@*` GitHub Release is published (see [releasing.md § Web (AWS deploy)](../ops/releasing.md#web-aws-deploy)) |
 | `AWS_DEPLOY_ROLE_ARN_PREVIEW` | Web deployment — same shape for the preview env (push to `main`) |
 | `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY`, `PUBLIC_MAPTILER_KEY` | Web build — inlined into `apps/web/.env` (deliberately not `.env.production`; see the comment in `release-web.yml`) before `npm run build` |
-| `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL`, `PUBLIC_REVENUECAT_WEB_PORTAL_URL`, `PUBLIC_SENTRY_DSN`, `PUBLIC_COACH_ENABLED`, `PUBLIC_ROUTE_GEN_ENABLED`, `PUBLIC_AI_PLAN_ENABLED`, `PUBLIC_LIVE_HUB_URL` | Web build, optional — unset values inline as empty and each surface degrades (Pro not sold, no Sentry, no AI plan assistant, Supabase Realtime live path) |
+| `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL`, `PUBLIC_REVENUECAT_WEB_PORTAL_URL`, `PUBLIC_SENTRY_DSN`, `PUBLIC_COACH_ENABLED`, `PUBLIC_ROUTE_GEN_ENABLED`, `PUBLIC_AI_PLAN_ENABLED`, `PUBLIC_PLATE_PHOTO_ENABLED`, `PUBLIC_COACH_FUEL_ENABLED`, `PUBLIC_AI_PLAN_EDIT_ENABLED`, `PUBLIC_LIVE_HUB_URL` | Web build, optional — unset values inline as empty and each surface degrades (Pro not sold, no Sentry, no AI plan assistant or AI plan edits, Supabase Realtime live path) |
 | `FLY_API_TOKEN` | `worker@*` / `osrm@*` / `graph-cycle@*` release workflows |
 
 A stale bare `AWS_DEPLOY_ROLE_ARN` (pre-dating the prod/preview split)
@@ -433,7 +433,8 @@ Full pipeline defined in `.github/workflows/ci.yml`, which is the full list. The
 
 | Job | Runner | What it does |
 |---|---|---|
-| `test-packages` | ubuntu-latest | `melos bootstrap` → scoped `flutter test` on `run_recorder` + `mobile_android` + `api_client` + `gpx_parser` |
+| `test-packages` | ubuntu-latest | `melos bootstrap` → scoped `flutter test` on `run_recorder` + `api_client` + `gpx_parser` + `ui_kit` + `core_models`, then `melos exec -- dart analyze` over the whole workspace (incl. `mobile_android`) |
+| `test-mobile-android` | ubuntu-latest ×4 | `flutter test` on `apps/mobile_android`, a 4-entry matrix sharded by file (every fourth sorted `*_test.dart`); split out of `test-packages` after one runner was shut down mid-suite on PR #1164 — see [testing.md § Which runner a package takes](../testing/testing.md) |
 | `test-worker` | ubuntu-latest | `go vet ./...` + `go test ./...` for `apps/job_worker` (incl. the GDPR Art 20 export-completeness guard) |
 | `test-graph-cycle` | ubuntu-latest | `go vet ./...` + `go test ./...` for the `apps/graph_cycle` street-graph cycle-search sidecar |
 | `parity-types` | ubuntu-latest | migration version-key + online-safety guards, `check_pnpm_overrides.mjs` (the security pins are declared in both lockfiles and actually resolved to, [§ 730](decisions.md)), `sync_deno_lock.mjs --check` ([§ 706](decisions.md)), `check_constraint_unions.mjs`, the web TS unit suite, the four `apps/web` tsc roots + their coverage guard ([§ 749](decisions.md) / [§ 752](decisions.md)), the two repo-root tsc roots + their coverage guard (`check:script-types`, `check:cloudfront-types`, `check:tsconfig-coverage` — [§ 757](decisions.md)), then `supabase start` → `npm run gen:types:check`. Every step prints its own `::error::` — the job name covers more than type drift, so it cannot say which one broke ([decisions.md § 711](decisions.md)) |

@@ -14,7 +14,7 @@
 import { assert, assertEquals } from 'https://deno.land/std@0.224.0/assert/mod.ts';
 import type { DbClient } from '../_shared/database.ts';
 import { storedPointEwkt } from './lib.ts';
-import { syncProviderPayload } from './write.ts';
+import { syncParkrunPayload, syncProviderPayload } from './write.ts';
 
 type Row = Record<string, unknown>;
 type Filter = { op: 'eq' | 'in'; col: string; val: unknown };
@@ -331,4 +331,36 @@ Deno.test('a failed ZIP lookup never moves or clears a stored point', async () =
   const update = db.statements.slice(before).find((s) => s.verb === 'update')!;
   assertEquals('location_point' in (update.payload as Row), false);
   assertEquals((update.payload as Row).name, 'Race 2 renamed');
+});
+
+const PARKRUN = JSON.parse(
+  Deno.readTextFileSync(new URL('./fixtures/parkrun_events.json', import.meta.url)),
+);
+const ALL_CHUNK = { kind: 'chunk' as const, index: 0, count: 1 };
+
+Deno.test('parkrun listings roll forward a week in place, and a second pass the same week writes nothing', async () => {
+  const db = memoryDb([]);
+  const wed = Date.UTC(2026, 9, 14, 12, 0);
+  const first = await syncParkrunPayload(db.client, PARKRUN, ALL_CHUNK, wed);
+  assert(first.ok);
+  assertEquals(first.summary.synced, 11);
+  const bushy = () => db.listings.find((r) => r.provider_race_id === '1')!;
+  const rush = () => db.listings.find((r) => r.provider_race_id === '1363')!;
+  const id = bushy().id;
+  assertEquals([bushy().race_date, rush().race_date], ['2026-10-17', '2026-10-18']);
+
+  const before = db.statements.length;
+  const thu = await syncParkrunPayload(db.client, PARKRUN, ALL_CHUNK, wed + 86_400_000);
+  assert(thu.ok);
+  assertEquals([thu.summary.synced, thu.summary.updated], [0, 0]);
+  assertEquals(db.statements.slice(before).filter((s) => s.verb !== 'select'), []);
+
+  // The Monday after: every event's next run is a week on, in the same rows.
+  const mon = await syncParkrunPayload(db.client, PARKRUN, ALL_CHUNK, wed + 5 * 86_400_000);
+  assert(mon.ok);
+  assertEquals([mon.summary.synced, mon.summary.updated], [0, 11]);
+  assertEquals(db.listings.length, 11);
+  assertEquals(bushy().id, id);
+  assertEquals([bushy().race_date, rush().race_date], ['2026-10-24', '2026-10-25']);
+  assertEquals(bushy().location_point, 'SRID=4326;POINT(-0.335791 51.410992)');
 });

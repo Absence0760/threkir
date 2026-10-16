@@ -26,9 +26,9 @@ export const translation: GuideTranslation = {
 					type: 'steps',
 					items: [
 						'Ouvrez [[route:/settings/integrations|Intégrations]] dans les Paramètres et repérez la carte UltraSignup.',
-						'Sous **Retrouver ton profil UltraSignup**, saisissez votre **Prénom** et votre **Nom** exactement comme lors de vos inscriptions aux courses, puis sélectionnez **Me trouver**.',
+						'Sous **Retrouver votre profil UltraSignup**, saisissez votre **Prénom** et votre **Nom** exactement comme lors de vos inscriptions aux courses, puis sélectionnez **Me trouver**.',
 						'UltraSignup liste toutes les personnes qui portent ce nom. Servez-vous de l\'âge, du nombre de résultats et des courses les plus récentes de chacune pour vous repérer.',
-						'Sous **Laquelle de ces personnes est toi ?**, sélectionnez **C\'est moi** sur votre ligne.',
+						'Sous **Laquelle de ces personnes êtes-vous ?**, sélectionnez **C\'est moi** sur votre ligne.',
 					],
 				},
 				{
@@ -38,7 +38,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'note',
 					tone: 'tip',
-					text: 'Si vous voyez **UltraSignup ne connaît personne sous ce nom. Vérifie l\'orthographe sous laquelle tu cours.**, essayez l\'orthographe exacte de vos inscriptions, y compris un éventuel deuxième prénom ou trait d\'union.',
+					text: 'Si vous voyez **UltraSignup ne connaît personne sous ce nom. Vérifiez l\'orthographe sous laquelle vous courez.**, essayez l\'orthographe exacte de vos inscriptions, y compris un éventuel deuxième prénom ou trait d\'union.',
 				},
 			],
 		},
@@ -64,7 +64,7 @@ export const translation: GuideTranslation = {
 				},
 				{
 					type: 'p',
-					text: 'Si vous voyez **Associe d\'abord ton profil UltraSignup dans les Réglages, puis importe depuis ici.**, associez votre profil comme indiqué ci-dessus, puis revenez.',
+					text: 'Si vous voyez **Associez d\'abord votre profil UltraSignup dans les Réglages, puis importez depuis ici.**, associez votre profil comme indiqué ci-dessus, puis revenez.',
 				},
 			],
 		},

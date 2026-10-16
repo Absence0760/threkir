@@ -22,6 +22,7 @@ import '../event_waitlist_offer.dart';
 import '../finisher_certificate.dart';
 import '../gym_routine.dart' show PlannedExercise, PlannedRoutine, PlannedSet;
 import '../local_gym_store.dart';
+import '../web_base_url.dart';
 import 'checkpoint_checkin_screen.dart';
 import 'session_detail_screen.dart';
 import '../l10n/date_format.dart';
@@ -57,12 +58,7 @@ bool canMarkEventAttendance(ClubView? club, String category) =>
 /// web link does.
 @visibleForTesting
 String eventWebUrl(String clubSlug, String eventId, {String? webBase}) {
-  var base = (webBase ??
-          (dotenv.isInitialized ? dotenv.maybeGet('WEB_BASE_URL') : null) ??
-          '')
-      .trim();
-  if (base.isEmpty) base = 'https://threkir.com';
-  if (base.endsWith('/')) base = base.substring(0, base.length - 1);
+  final base = resolveWebBaseUrl(override: webBase);
   return '$base/clubs/${Uri.encodeComponent(clubSlug)}/events/${Uri.encodeComponent(eventId)}';
 }
 
@@ -847,14 +843,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
   /// The public `/share/event/{id}` page the calendar entry links back to,
   /// matching web's canonical for the same event.
-  String _eventShareUrl(String eventId) {
-    final base =
-        ((dotenv.isInitialized ? dotenv.maybeGet('WEB_BASE_URL') : null) ??
-                'https://threkir.com')
-            .trim()
-            .replaceAll(RegExp(r'/+$'), '');
-    return '$base/share/event/$eventId';
-  }
+  String _eventShareUrl(String eventId) =>
+      '${resolveWebBaseUrl()}/share/event/$eventId';
 
   /// L4: a calendar hand-off that can't open says so and leaves the page as it
   /// was. Nothing on this screen depends on it.

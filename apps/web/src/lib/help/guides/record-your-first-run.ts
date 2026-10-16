@@ -27,7 +27,7 @@ export const guide: Guide = {
 				{
 					type: 'note',
 					tone: 'tip',
-					text: 'On Android, choose **Allow all the time** for location. With access only while the app is open, distance you cover with the screen off is not counted, although the clock keeps running.',
+					text: 'On Android, choose **Allow all the time** for location. With access only while the app is open, distance you cover with the screen off may not be counted, although the clock keeps running. See [[guide:location-permission|which location option to pick]].',
 				},
 				{
 					type: 'illustration',
@@ -98,5 +98,5 @@ export const guide: Guide = {
 			],
 		},
 	],
-	related: ['privacy-zones', 'live-tracking-and-safety', 'import-your-history'],
+	related: ['location-permission', 'privacy-zones', 'live-tracking-and-safety', 'import-your-history'],
 };

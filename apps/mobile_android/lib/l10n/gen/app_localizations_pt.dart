@@ -1134,6 +1134,10 @@ class AppLocalizationsPt extends AppLocalizations {
       'Inicia automaticamente a partilha em direto quando uma corrida começa neste telemóvel. A corrida em curso fica visível para qualquer pessoa com o link; quando a corrida termina, volta à sua visibilidade predefinida.';
 
   @override
+  String get safetyAutoLiveShareSafetySubtitle =>
+      'Inicia automaticamente uma partilha em direto quando uma corrida começa neste telemóvel. Nunca é pública: apenas os seus contactos de segurança confirmados a podem seguir, através do link que um alerta de atraso ou de saída de rota lhes envia. Ativada por predefinição assim que configurar um alerta.';
+
+  @override
   String get safetyOffRouteTitle => 'Alerta de saída de rota';
 
   @override
@@ -1147,6 +1151,10 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get runAutoLiveShareStarted =>
       'Em direto ativado — envie o link em “Partilhar link em direto”';
+
+  @override
+  String get runSafetyLiveShareStarted =>
+      'Partilha de segurança ativa — apenas os seus contactos de segurança podem seguir, e só depois de um alerta';
 
   @override
   String get runSafetyNudgeSolo =>
@@ -1385,7 +1393,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get onboardingLocationBodyAndroid =>
-      'O Threkir recolhe a sua localização GPS para registar uma corrida, incluindo com o ecrã desligado — uma notificação indica que há um registo a decorrer. A sua localização fica neste dispositivo enquanto não sincronizar nem partilhar uma corrida. O pedido seguinte concede o acesso durante a utilização da aplicação, que é tudo o que o primeiro pedido do Android pode dar; antes da sua primeira corrida, o Threkir propõe a passagem para «Permitir sempre», que mantém o seguimento fiável quando muda para outra aplicação. Se recusar, as corridas continuam a registar tempo e passos — mas sem mapa, distância ou ritmo.';
+      'O Threkir recolhe a sua localização GPS para registar uma corrida e continua a pedi-la com o ecrã desligado — uma notificação indica que há um registo a decorrer. A sua localização fica neste dispositivo enquanto não sincronizar nem partilhar uma corrida. O pedido seguinte concede o acesso durante a utilização da aplicação, que é tudo o que o primeiro pedido do Android pode dar; só com esse acesso, o Android pode deixar de enviar a sua localização com o ecrã desligado ou enquanto está noutra aplicação. Antes da sua primeira corrida, o Threkir propõe a passagem para «Permitir sempre», que mantém então o seguimento fiável. Se recusar, as corridas continuam a registar tempo e passos — mas sem mapa, distância ou ritmo.';
 
   @override
   String get onboardingLocationBodyIos =>
@@ -1934,6 +1942,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get runWeakGps => 'GPS fraco — distância pausada';
 
   @override
+  String get runWeakGpsApproximate =>
+      'Localização aproximada — distância pausada';
+
+  @override
   String get runA11yStarted => 'Corrida iniciada';
 
   @override
@@ -2132,6 +2144,10 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get runBackgroundLocationPaused =>
       'O registo foi pausado enquanto esteve fora — o tempo continuou a contar e nada se perdeu, mas a distância percorrida fora do ecrã não foi contabilizada. Defina a Localização como “Permitir sempre” para continuar a registar em segundo plano.';
+
+  @override
+  String get runPreciseLocationOff =>
+      'A localização exata está desativada — o mapa e a distância GPS desta corrida vão faltar ou ficar muito imprecisos, mas o tempo continua a ser registado. Ative a localização exata nas Definições para um percurso preciso.';
 
   @override
   String get runGpsSensorFailed =>
@@ -4721,6 +4737,21 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String profileNotifReaction(String name) {
+    return '$name reagiu à sua corrida';
+  }
+
+  @override
+  String profileNotifCommentLike(String name) {
+    return '$name gostou do seu comentário';
+  }
+
+  @override
+  String profileNotifMention(String name) {
+    return '$name mencionou-o num comentário';
+  }
+
+  @override
   String profileNotifFollow(String name) {
     return '$name começou a seguir o seu perfil';
   }
@@ -6575,7 +6606,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get coachConsentIntro =>
-      'As funcionalidades de IA da Threkir — o Coach, o assistente de rotas com IA e o assistente de planos com IA — enviam uma parte dos seus dados à Anthropic, o nosso fornecedor de modelos de IA nos Estados Unidos. Consoante a funcionalidade utilizada, essa parte inclui:';
+      'As funcionalidades de IA da Threkir enviam uma parte dos seus dados à Anthropic, o nosso fornecedor de modelos de IA nos Estados Unidos. Consoante a funcionalidade utilizada, essa parte inclui:';
 
   @override
   String get coachConsentBulletProfile =>
@@ -6600,6 +6631,14 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get coachConsentBulletPlanRequest =>
       'Para o assistente de planos com IA: a descrição do plano que escreve (prova-alvo, tempos-alvo e recentes, quantos dias pode treinar), usada apenas para preencher as definições do plano — o plano em si é criado pelo gerador próprio da Threkir, não pela IA.';
+
+  @override
+  String get coachConsentBulletPlatePhoto =>
+      'Para o registo por fotografia do prato: a fotografia da sua refeição que escolher, enviada só para estimar o que está no prato. A localização e os dados da câmara são removidos antes do envio, a Threkir não guarda a fotografia e nada é registado até rever e guardar.';
+
+  @override
+  String get coachConsentBulletPlanEdit =>
+      'Para os ajustes de plano com IA: os próximos treinos do plano que está a alterar (datas, tipos e distâncias) e a alteração que escreve, usados apenas para sugerir alterações que revê antes de qualquer gravação — a IA não pode adicionar treinos nem definir ritmos.';
 
   @override
   String get coachConsentProcessing =>
@@ -6995,7 +7034,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get settingsAccountAiConsentUpdateSubtitle =>
-      'As informações passaram a abranger mais funcionalidades. Leia-as e aceite-as para utilizar os assistentes de rotas e de planos com IA.';
+      'As informações passaram a abranger mais funcionalidades. Leia-as e aceite-as para utilizar todas as funcionalidades de IA que descrevem.';
 
   @override
   String get settingsAccountAiConsentGrantTitle => 'Ver as informações de IA';
@@ -9163,6 +9202,53 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get runSocialReactionsLabel => 'Reações';
+
+  @override
+  String get runSocialReactionFire => 'Em grande';
+
+  @override
+  String get runSocialReactionStrong => 'Forte';
+
+  @override
+  String get runSocialReactionTrophy => 'Campeão';
+
+  @override
+  String get runSocialReactionThumbsUp => 'Muito bem';
+
+  @override
+  String get runSocialReactionWave => 'Olá';
+
+  @override
+  String runSocialReactWith(String label) {
+    return 'Reagir com “$label”';
+  }
+
+  @override
+  String runSocialRemoveReaction(String label) {
+    return 'Remover a sua reação “$label”';
+  }
+
+  @override
+  String runSocialReactionError(String error) {
+    return 'Não foi possível atualizar a sua reação: $error';
+  }
+
+  @override
+  String get runSocialLikeComment => 'Gostar deste comentário';
+
+  @override
+  String get runSocialUnlikeComment => 'Deixar de gostar deste comentário';
+
+  @override
+  String runSocialLikeError(String error) {
+    return 'Não foi possível atualizar o seu gosto: $error';
+  }
+
+  @override
+  String get runSocialMentionSuggestions => 'Pessoas a mencionar';
+
+  @override
   String get runPhotosLoading => 'A carregar fotografias…';
 
   @override
@@ -10586,12 +10672,11 @@ class AppLocalizationsPt extends AppLocalizations {
   String get planPhaseGraduation => 'Semana de conclusão';
 
   @override
-  String get runBackgroundLocationNudgeTitle =>
-      'Permitir localização o tempo todo';
+  String get runBackgroundLocationNudgeTitle => 'Permitir sempre a localização';
 
   @override
   String get runBackgroundLocationNudgeBody =>
-      'O Android só concedeu a localização enquanto a app está aberta. Para uma distância precisa com o ecrã desligado, defina o acesso à localização como “Permitir o tempo todo” nas Definições. Pode começar mesmo assim — a gravação continua a funcionar enquanto a app estiver no ecrã.';
+      'O Android só concedeu a localização enquanto a app está aberta. Para uma distância precisa com o ecrã desligado, defina o acesso à localização como “Permitir sempre” nas Definições. Pode começar mesmo assim — a gravação continua a funcionar enquanto a app estiver no ecrã.';
 
   @override
   String get runBatteryOptHintTitle =>
@@ -11411,6 +11496,106 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get nutritionLogFood => 'Registar comida';
+
+  @override
+  String get nutritionLogFromPhoto => 'Registar a partir de uma fotografia';
+
+  @override
+  String get platePhotoTitle => 'Registar a partir de uma fotografia';
+
+  @override
+  String get platePhotoIntro =>
+      'Tire ou escolha uma fotografia da sua refeição. O Threkir estima o que está no prato, e verifica e edita cada entrada antes de guardar.';
+
+  @override
+  String get platePhotoTakePhoto => 'Tirar fotografia';
+
+  @override
+  String get platePhotoChoosePhoto => 'Escolher fotografia';
+
+  @override
+  String get platePhotoPreviewLabel => 'A fotografia da sua refeição';
+
+  @override
+  String get platePhotoNoteLabel => 'Nota (opcional)';
+
+  @override
+  String get platePhotoNoteHint => 'p. ex.: meia dose, sem molho';
+
+  @override
+  String get platePhotoEstimate => 'Estimar';
+
+  @override
+  String get platePhotoEstimating => 'A estimar…';
+
+  @override
+  String get platePhotoEmpty =>
+      'Nenhum alimento foi reconhecido nessa fotografia. Volte atrás e tente outra, ou adicione a refeição manualmente.';
+
+  @override
+  String get platePhotoReviewHeading => 'Verifique antes de guardar';
+
+  @override
+  String get platePhotoReviewHint =>
+      'São estimativas. Edite o que parecer errado e remova o que não estiver no prato.';
+
+  @override
+  String get platePhotoMealSlot => 'Refeição';
+
+  @override
+  String get platePhotoItemName => 'Alimento';
+
+  @override
+  String platePhotoRemoveItem(String name) {
+    return 'Remover $name';
+  }
+
+  @override
+  String get platePhotoLowConfidence => 'Estimativa incerta';
+
+  @override
+  String get platePhotoCalories => 'kcal';
+
+  @override
+  String get platePhotoProtein => 'Proteínas (g)';
+
+  @override
+  String get platePhotoCarbs => 'Hidratos de carbono (g)';
+
+  @override
+  String get platePhotoFat => 'Gordura (g)';
+
+  @override
+  String platePhotoSave(int count) {
+    return 'Guardar entradas ($count)';
+  }
+
+  @override
+  String get platePhotoSaving => 'A guardar…';
+
+  @override
+  String get platePhotoErrorConsent =>
+      'O registo por fotografia do prato precisa das informações atualizadas sobre IA. Aceite-as em Definições → Conta.';
+
+  @override
+  String get platePhotoErrorPro =>
+      'Registar a partir de uma fotografia é uma funcionalidade Pro.';
+
+  @override
+  String get platePhotoErrorRate =>
+      'Registou muitas fotografias nesta hora. Tente mais tarde ou adicione a refeição manualmente.';
+
+  @override
+  String get platePhotoErrorInvalid =>
+      'Não foi possível ler essa imagem. Tente outra fotografia.';
+
+  @override
+  String get platePhotoErrorNotUnderstood =>
+      'Não foi possível identificar a comida nessa fotografia. Tente outra ou adicione manualmente.';
+
+  @override
+  String get platePhotoErrorUnavailable =>
+      'Registar a partir de uma fotografia não está disponível agora. Adicione a refeição manualmente.';
 
   @override
   String get nutritionCalories => 'Calorias';
@@ -12672,6 +12857,22 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get roadbookWeightToggle => 'Líquido pelo peso corporal';
+
+  @override
+  String get roadbookWeightHint =>
+      'Ajusta a quantidade de líquido ao seu peso corporal, dentro do intervalo de 400–800 ml por hora que a medicina desportiva indica para a corrida. É uma base de planeamento, não um teste de suor.';
+
+  @override
+  String roadbookWeightUsing(String ml) {
+    return 'Líquido: $ml ml por hora com base no seu peso corporal.';
+  }
+
+  @override
+  String get roadbookWeightUnavailable =>
+      'Para basear o líquido no seu peso corporal, adicione o seu peso em Dados corporais e dê aí o consentimento para dados de saúde.';
+
+  @override
   String get roadbookColTarget => 'Meta';
 
   @override
@@ -13618,13 +13819,6 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get settingsTabSimWatchSubtitle =>
       'Estado em direto do relógio personalizado simulado';
-
-  @override
-  String get settingsDevRawGps => 'GPS bruto';
-
-  @override
-  String get settingsDevRawGpsSubtitle =>
-      'Regista apenas com o chip GPS em vez do serviço de localização combinado, para comparar a precisão da distância. Aplica-se a partir da próxima corrida.';
 
   @override
   String get simWatchTitle => 'Link do relógio simulado';
@@ -15837,6 +16031,165 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get profileMessage => 'Mensagem';
+
+  @override
+  String get routeDetailSendToFollower => 'Enviar para um seguidor';
+
+  @override
+  String get routeDetailSendDmTitle => 'Enviar esta rota';
+
+  @override
+  String get routeDetailSendDmIntro =>
+      'Escolha alguém que segue, ou que o segue. O link da rota chega à conversa com essa pessoa.';
+
+  @override
+  String get routeDetailSendDmLinkNote =>
+      'A pessoa recebe o link público de partilha, por isso qualquer pessoa a quem o reencaminhe também o pode abrir.';
+
+  @override
+  String get routeDetailSendDmPrivateNote =>
+      'Continua privada: só a pessoa a quem a envia pode abrir o link, e pode deixar de partilhar a qualquer momento.';
+
+  @override
+  String get routeDetailSendDmSearchPlaceholder => 'Procurar pessoas';
+
+  @override
+  String get routeDetailSendDmLoadFailed =>
+      'Não foi possível carregar para quem pode enviar.';
+
+  @override
+  String get routeDetailSendDmEmpty =>
+      'Ainda não segue ninguém e ninguém o segue.';
+
+  @override
+  String get routeDetailSendDmNoMatches =>
+      'Ninguém corresponde a essa pesquisa.';
+
+  @override
+  String get routeDetailSendDmRelationMutual => 'Seguem-se mutuamente';
+
+  @override
+  String get routeDetailSendDmRelationFollowsYou => 'Segue o seu perfil';
+
+  @override
+  String get routeDetailSendDmRelationYouFollow => 'Segue essa pessoa';
+
+  @override
+  String get routeDetailSendDmSend => 'Enviar';
+
+  @override
+  String get routeDetailSendDmSending => 'A enviar…';
+
+  @override
+  String routeDetailSendDmSent(String name) {
+    return 'Rota enviada para $name.';
+  }
+
+  @override
+  String get routeDetailSendDmOpenThread => 'Abrir conversa';
+
+  @override
+  String get routeDetailSendDmDone => 'Concluído';
+
+  @override
+  String get runPhotosRaceGalleryShow => 'Mostrar na página da prova';
+
+  @override
+  String get runPhotosRaceGalleryHide => 'Remover da página da prova';
+
+  @override
+  String get runPhotosRaceGalleryHint =>
+      'Toque na medalha de uma fotografia para a mostrar na página pública desta prova. Qualquer pessoa pode ver essa página e pode remover uma fotografia a qualquer momento.';
+
+  @override
+  String get runPhotosRaceGalleryPrivate =>
+      'Torne esta corrida pública para partilhar as fotografias na página da prova.';
+
+  @override
+  String runPhotosRaceGalleryError(String error) {
+    return 'Não foi possível atualizar a página da prova: $error';
+  }
+
+  @override
+  String get profileRequestToFollow => 'Pedir para seguir';
+
+  @override
+  String get profileRequested => 'Pedido enviado';
+
+  @override
+  String get profileRequestSent => 'Pedido para seguir enviado';
+
+  @override
+  String get profileRequestWithdrawn => 'Pedido para seguir retirado';
+
+  @override
+  String get profilePrivateTitle => 'Este perfil é privado';
+
+  @override
+  String profilePrivateBody(String name) {
+    return 'Siga $name para ver as corridas e quem essa pessoa segue. Cada pedido é aprovado.';
+  }
+
+  @override
+  String get profilePrivateRequestedBody =>
+      'O seu pedido aguarda aprovação. Verá as corridas quando for aprovado.';
+
+  @override
+  String profileNotifFollowRequest(String name) {
+    return '$name quer segui-lo';
+  }
+
+  @override
+  String get prefsPrivateProfile => 'Perfil privado';
+
+  @override
+  String get prefsPrivateProfileSubtitle =>
+      'Apenas os seguidores que aprovar veem as suas corridas, atividades e listas de seguidores. Continuam a poder encontrá-lo pelo nome e pedir para o seguir.';
+
+  @override
+  String get prefsPrivateProfileFailed =>
+      'Não foi possível alterar a privacidade do perfil.';
+
+  @override
+  String get followRequestsTitle => 'Pedidos para seguir';
+
+  @override
+  String get followRequestsEmptyTitle => 'Nenhum pedido pendente';
+
+  @override
+  String get followRequestsEmptyBody =>
+      'Quando alguém pedir para seguir o seu perfil privado, o pedido aparece aqui.';
+
+  @override
+  String get followRequestsApprove => 'Aprovar';
+
+  @override
+  String get followRequestsDecline => 'Recusar';
+
+  @override
+  String followRequestsApproved(String name) {
+    return '$name pode agora ver o seu perfil';
+  }
+
+  @override
+  String get followRequestsDeclinedBanner => 'Pedido recusado';
+
+  @override
+  String get followRequestsLoadError =>
+      'Não foi possível carregar os pedidos para seguir.';
+
+  @override
+  String get followRequestsActionFailed =>
+      'Não foi possível atualizar o pedido.';
+
+  @override
+  String get coachingAthleteMapsClippedNote =>
+      'Os mapas omitem as áreas que este atleta oculta com zonas de privacidade.';
+
+  @override
+  String coachingAthleteRunMapLabel(String date) {
+    return 'Mapa da corrida de $date, sem as zonas de privacidade do atleta';
+  }
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -16969,6 +17322,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Inicia automaticamente o compartilhamento ao vivo quando uma corrida começa neste telefone. A corrida em andamento fica visível para qualquer pessoa com o link; quando a corrida termina, ela volta à sua visibilidade padrão.';
 
   @override
+  String get safetyAutoLiveShareSafetySubtitle =>
+      'Inicia automaticamente o compartilhamento ao vivo quando uma corrida começa neste telefone. Nunca é público: somente seus contatos de segurança confirmados podem acompanhar, pelo link que um alerta de atraso ou de saída de rota envia a eles. Ativado por padrão assim que você configura um alerta.';
+
+  @override
   String get safetyOffRouteTitle => 'Alerta de saída de rota';
 
   @override
@@ -16982,6 +17339,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get runAutoLiveShareStarted =>
       'Ao vivo ativado — envie o link em “Compartilhar link ao vivo”';
+
+  @override
+  String get runSafetyLiveShareStarted =>
+      'Compartilhamento de segurança ativo — somente seus contatos de segurança podem acompanhar, e só depois de um alerta';
 
   @override
   String get runSafetyNudgeSolo =>
@@ -17220,7 +17581,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get onboardingLocationBodyAndroid =>
-      'O Threkir coleta sua localização GPS para gravar uma corrida, inclusive com a tela desligada — uma notificação mostra que há uma gravação em andamento. Sua localização fica neste dispositivo enquanto você não sincronizar nem compartilhar uma corrida. A próxima solicitação concede o acesso durante o uso do app, que é tudo o que a primeira solicitação do Android pode dar; antes da sua primeira corrida, o Threkir oferece a mudança para “Permitir sempre”, que mantém o rastreamento confiável quando você troca de app. Se recusar, as corridas continuam registrando tempo e passos — mas sem mapa, distância ou ritmo.';
+      'O Threkir coleta sua localização GPS para gravar uma corrida e continua pedindo a localização com a tela desligada — uma notificação mostra que há uma gravação em andamento. Sua localização fica neste dispositivo enquanto você não sincronizar nem compartilhar uma corrida. A próxima solicitação concede o acesso durante o uso do app, que é tudo o que a primeira solicitação do Android pode dar; só com esse acesso, o Android pode parar de enviar sua localização com a tela desligada ou enquanto você está em outro app. Antes da sua primeira corrida, o Threkir oferece a mudança para “Permitir o tempo todo”, que mantém o rastreamento confiável nesses casos. Se recusar, as corridas continuam registrando tempo e passos — mas sem mapa, distância ou ritmo.';
 
   @override
   String get onboardingLocationBodyIos =>
@@ -17770,6 +18131,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get runWeakGps => 'GPS fraco — distância pausada';
 
   @override
+  String get runWeakGpsApproximate =>
+      'Localização aproximada — distância pausada';
+
+  @override
   String get runA11yStarted => 'Corrida iniciada';
 
   @override
@@ -17967,6 +18332,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get runBackgroundLocationPaused =>
       'O rastreamento pausou enquanto você esteve fora — o tempo continuou correndo e nada foi perdido, mas a distância percorrida fora da tela não foi contada. Defina a Localização como “Permitir o tempo todo” para continuar rastreando em segundo plano.';
+
+  @override
+  String get runPreciseLocationOff =>
+      'A localização precisa está desativada — o mapa e a distância GPS desta corrida vão faltar ou ficar muito imprecisos, mas o tempo continua sendo registrado. Ative a localização precisa nos Ajustes para um trajeto preciso.';
 
   @override
   String get runGpsSensorFailed =>
@@ -20557,6 +20926,21 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
+  String profileNotifReaction(String name) {
+    return '$name reagiu à sua corrida';
+  }
+
+  @override
+  String profileNotifCommentLike(String name) {
+    return '$name curtiu seu comentário';
+  }
+
+  @override
+  String profileNotifMention(String name) {
+    return '$name mencionou você em um comentário';
+  }
+
+  @override
   String profileNotifFollow(String name) {
     return '$name começou a seguir você';
   }
@@ -22409,7 +22793,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get coachConsentIntro =>
-      'Os recursos de IA do Threkir — o Coach, o assistente de rotas com IA e o assistente de planos com IA — enviam uma parte dos seus dados à Anthropic, nosso provedor de modelos de IA nos Estados Unidos. Dependendo do recurso que você usa, essa parte inclui:';
+      'Os recursos de IA do Threkir enviam uma parte dos seus dados à Anthropic, nosso provedor de modelos de IA nos Estados Unidos. Dependendo do recurso que você usa, essa parte inclui:';
 
   @override
   String get coachConsentBulletProfile =>
@@ -22434,6 +22818,14 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get coachConsentBulletPlanRequest =>
       'Para o assistente de planos com IA: a descrição do plano que você digita (prova-alvo, tempos-alvo e recentes, quantos dias você pode treinar), usada apenas para preencher as configurações do plano — o plano em si é criado pelo gerador próprio do Threkir, não pela IA.';
+
+  @override
+  String get coachConsentBulletPlatePhoto =>
+      'Para o registro por foto do prato: a foto da sua refeição que você escolher, enviada só para estimar o que há no prato. Localização e dados da câmera são removidos antes do envio, o Threkir não guarda a foto e nada é registrado até você revisar e salvar.';
+
+  @override
+  String get coachConsentBulletPlanEdit =>
+      'Para os ajustes de plano com IA: os próximos treinos do plano que você está alterando (datas, tipos e distâncias) e a alteração que você digita, usados apenas para sugerir mudanças que você revisa antes de qualquer coisa ser salva — a IA não pode adicionar treinos nem definir ritmos.';
 
   @override
   String get coachConsentProcessing =>
@@ -22826,7 +23218,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get settingsAccountAiConsentUpdateSubtitle =>
-      'As informações agora cobrem mais recursos. Leia-as e aceite-as para usar os assistentes de rotas e de planos com IA.';
+      'As informações agora cobrem mais recursos. Leia-as e aceite-as para usar todos os recursos de IA que elas descrevem.';
 
   @override
   String get settingsAccountAiConsentGrantTitle => 'Ver as informações de IA';
@@ -24987,6 +25379,53 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String runSocialDeleteError(String error) {
     return 'Falha ao excluir: $error';
   }
+
+  @override
+  String get runSocialReactionsLabel => 'Reações';
+
+  @override
+  String get runSocialReactionFire => 'Pegando fogo';
+
+  @override
+  String get runSocialReactionStrong => 'Forte';
+
+  @override
+  String get runSocialReactionTrophy => 'Campeão';
+
+  @override
+  String get runSocialReactionThumbsUp => 'Mandou bem';
+
+  @override
+  String get runSocialReactionWave => 'Oi';
+
+  @override
+  String runSocialReactWith(String label) {
+    return 'Reagir com “$label”';
+  }
+
+  @override
+  String runSocialRemoveReaction(String label) {
+    return 'Remover sua reação “$label”';
+  }
+
+  @override
+  String runSocialReactionError(String error) {
+    return 'Não foi possível atualizar sua reação: $error';
+  }
+
+  @override
+  String get runSocialLikeComment => 'Curtir este comentário';
+
+  @override
+  String get runSocialUnlikeComment => 'Descurtir este comentário';
+
+  @override
+  String runSocialLikeError(String error) {
+    return 'Não foi possível atualizar sua curtida: $error';
+  }
+
+  @override
+  String get runSocialMentionSuggestions => 'Pessoas para mencionar';
 
   @override
   String get runPhotosLoading => 'Carregando fotos…';
@@ -27239,6 +27678,106 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get nutritionLogFood => 'Registrar comida';
 
   @override
+  String get nutritionLogFromPhoto => 'Registrar a partir de uma foto';
+
+  @override
+  String get platePhotoTitle => 'Registrar a partir de uma foto';
+
+  @override
+  String get platePhotoIntro =>
+      'Tire ou escolha uma foto da sua refeição. O Threkir estima o que há no prato, e você confere e edita cada item antes de salvar.';
+
+  @override
+  String get platePhotoTakePhoto => 'Tirar foto';
+
+  @override
+  String get platePhotoChoosePhoto => 'Escolher foto';
+
+  @override
+  String get platePhotoPreviewLabel => 'A foto da sua refeição';
+
+  @override
+  String get platePhotoNoteLabel => 'Observação (opcional)';
+
+  @override
+  String get platePhotoNoteHint => 'ex.: meia porção, sem molho';
+
+  @override
+  String get platePhotoEstimate => 'Estimar';
+
+  @override
+  String get platePhotoEstimating => 'Estimando…';
+
+  @override
+  String get platePhotoEmpty =>
+      'Nenhum alimento foi reconhecido nessa foto. Volte e tente outra, ou adicione a refeição manualmente.';
+
+  @override
+  String get platePhotoReviewHeading => 'Confira antes de salvar';
+
+  @override
+  String get platePhotoReviewHint =>
+      'São estimativas. Edite o que parecer errado e remova o que não estiver no prato.';
+
+  @override
+  String get platePhotoMealSlot => 'Refeição';
+
+  @override
+  String get platePhotoItemName => 'Alimento';
+
+  @override
+  String platePhotoRemoveItem(String name) {
+    return 'Remover $name';
+  }
+
+  @override
+  String get platePhotoLowConfidence => 'Estimativa incerta';
+
+  @override
+  String get platePhotoCalories => 'kcal';
+
+  @override
+  String get platePhotoProtein => 'Proteínas (g)';
+
+  @override
+  String get platePhotoCarbs => 'Carboidratos (g)';
+
+  @override
+  String get platePhotoFat => 'Gorduras (g)';
+
+  @override
+  String platePhotoSave(int count) {
+    return 'Salvar itens ($count)';
+  }
+
+  @override
+  String get platePhotoSaving => 'Salvando…';
+
+  @override
+  String get platePhotoErrorConsent =>
+      'O registro por foto do prato precisa das informações atualizadas sobre IA. Aceite-as em Configurações → Conta.';
+
+  @override
+  String get platePhotoErrorPro =>
+      'Registrar a partir de uma foto é um recurso Pro.';
+
+  @override
+  String get platePhotoErrorRate =>
+      'Você registrou muitas fotos nesta hora. Tente mais tarde ou adicione a refeição manualmente.';
+
+  @override
+  String get platePhotoErrorInvalid =>
+      'Não foi possível ler essa imagem. Tente outra foto.';
+
+  @override
+  String get platePhotoErrorNotUnderstood =>
+      'Não foi possível identificar a comida nessa foto. Tente outra ou adicione manualmente.';
+
+  @override
+  String get platePhotoErrorUnavailable =>
+      'Registrar a partir de uma foto não está disponível agora. Adicione a refeição manualmente.';
+
+  @override
   String get nutritionCalories => 'Calorias';
 
   @override
@@ -28496,6 +29035,22 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
+  String get roadbookWeightToggle => 'Líquido pelo peso corporal';
+
+  @override
+  String get roadbookWeightHint =>
+      'Ajusta a quantidade de líquido ao seu peso corporal, dentro da faixa de 400–800 ml por hora que a medicina esportiva indica para a corrida. É uma base de planejamento, não um teste de suor.';
+
+  @override
+  String roadbookWeightUsing(String ml) {
+    return 'Líquido: $ml ml por hora com base no seu peso corporal.';
+  }
+
+  @override
+  String get roadbookWeightUnavailable =>
+      'Para basear o líquido no seu peso corporal, adicione seu peso em Dados corporais e dê ali o consentimento para dados de saúde.';
+
+  @override
   String get roadbookColTarget => 'Meta';
 
   @override
@@ -29441,13 +29996,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get settingsTabSimWatchSubtitle =>
       'Status ao vivo do relógio personalizado simulado';
-
-  @override
-  String get settingsDevRawGps => 'GPS bruto';
-
-  @override
-  String get settingsDevRawGpsSubtitle =>
-      'Registra apenas com o chip GPS em vez do serviço de localização combinado, para comparar a precisão da distância. Vale a partir da próxima corrida.';
 
   @override
   String get simWatchTitle => 'Conexão do relógio simulado';
@@ -31658,4 +32206,162 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get profileMessage => 'Mensagem';
+
+  @override
+  String get routeDetailSendToFollower => 'Enviar para um seguidor';
+
+  @override
+  String get routeDetailSendDmTitle => 'Enviar esta rota';
+
+  @override
+  String get routeDetailSendDmIntro =>
+      'Escolha alguém que você segue ou que segue você. O link da rota chega na conversa de vocês.';
+
+  @override
+  String get routeDetailSendDmLinkNote =>
+      'A pessoa recebe o link público de compartilhamento, então qualquer um a quem ela repassar também poderá abri-lo.';
+
+  @override
+  String get routeDetailSendDmPrivateNote =>
+      'Continua privada: só a pessoa para quem você enviar pode abrir o link, e você pode parar de compartilhar a qualquer momento.';
+
+  @override
+  String get routeDetailSendDmSearchPlaceholder => 'Buscar pessoas';
+
+  @override
+  String get routeDetailSendDmLoadFailed =>
+      'Não foi possível carregar para quem você pode enviar.';
+
+  @override
+  String get routeDetailSendDmEmpty =>
+      'Você ainda não segue ninguém e ninguém segue você.';
+
+  @override
+  String get routeDetailSendDmNoMatches => 'Ninguém corresponde a essa busca.';
+
+  @override
+  String get routeDetailSendDmRelationMutual => 'Vocês se seguem';
+
+  @override
+  String get routeDetailSendDmRelationFollowsYou => 'Segue você';
+
+  @override
+  String get routeDetailSendDmRelationYouFollow => 'Você segue essa pessoa';
+
+  @override
+  String get routeDetailSendDmSend => 'Enviar';
+
+  @override
+  String get routeDetailSendDmSending => 'Enviando…';
+
+  @override
+  String routeDetailSendDmSent(String name) {
+    return 'Rota enviada para $name.';
+  }
+
+  @override
+  String get routeDetailSendDmOpenThread => 'Abrir conversa';
+
+  @override
+  String get routeDetailSendDmDone => 'Concluído';
+
+  @override
+  String get runPhotosRaceGalleryShow => 'Mostrar na página da prova';
+
+  @override
+  String get runPhotosRaceGalleryHide => 'Remover da página da prova';
+
+  @override
+  String get runPhotosRaceGalleryHint =>
+      'Toque na medalha de uma foto para mostrá-la na página pública desta prova. Qualquer pessoa pode ver essa página, e você pode remover uma foto a qualquer momento.';
+
+  @override
+  String get runPhotosRaceGalleryPrivate =>
+      'Torne esta corrida pública para compartilhar as fotos na página da prova.';
+
+  @override
+  String runPhotosRaceGalleryError(String error) {
+    return 'Não foi possível atualizar a página da prova: $error';
+  }
+
+  @override
+  String get profileRequestToFollow => 'Pedir para seguir';
+
+  @override
+  String get profileRequested => 'Solicitado';
+
+  @override
+  String get profileRequestSent => 'Solicitação para seguir enviada';
+
+  @override
+  String get profileRequestWithdrawn => 'Solicitação para seguir retirada';
+
+  @override
+  String get profilePrivateTitle => 'Este perfil é privado';
+
+  @override
+  String profilePrivateBody(String name) {
+    return 'Siga $name para ver as corridas e quem essa pessoa segue. Cada solicitação é aprovada.';
+  }
+
+  @override
+  String get profilePrivateRequestedBody =>
+      'Sua solicitação aguarda aprovação. Você verá as corridas quando ela for aprovada.';
+
+  @override
+  String profileNotifFollowRequest(String name) {
+    return '$name quer seguir você';
+  }
+
+  @override
+  String get prefsPrivateProfile => 'Perfil privado';
+
+  @override
+  String get prefsPrivateProfileSubtitle =>
+      'Somente seguidores que você aprovar veem suas corridas, atividades e listas de seguidores. As pessoas ainda podem encontrar você pelo nome e pedir para seguir.';
+
+  @override
+  String get prefsPrivateProfileFailed =>
+      'Não foi possível alterar a privacidade do perfil.';
+
+  @override
+  String get followRequestsTitle => 'Solicitações para seguir';
+
+  @override
+  String get followRequestsEmptyTitle => 'Nenhuma solicitação pendente';
+
+  @override
+  String get followRequestsEmptyBody =>
+      'Quando alguém pedir para seguir seu perfil privado, a solicitação aparece aqui.';
+
+  @override
+  String get followRequestsApprove => 'Aprovar';
+
+  @override
+  String get followRequestsDecline => 'Recusar';
+
+  @override
+  String followRequestsApproved(String name) {
+    return '$name agora pode ver seu perfil';
+  }
+
+  @override
+  String get followRequestsDeclinedBanner => 'Solicitação recusada';
+
+  @override
+  String get followRequestsLoadError =>
+      'Não foi possível carregar as solicitações para seguir.';
+
+  @override
+  String get followRequestsActionFailed =>
+      'Não foi possível atualizar a solicitação.';
+
+  @override
+  String get coachingAthleteMapsClippedNote =>
+      'Os mapas omitem as áreas que este atleta oculta com zonas de privacidade.';
+
+  @override
+  String coachingAthleteRunMapLabel(String date) {
+    return 'Mapa da corrida de $date, sem as zonas de privacidade do atleta';
+  }
 }

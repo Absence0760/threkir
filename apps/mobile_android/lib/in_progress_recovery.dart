@@ -72,7 +72,8 @@ InProgressEvaluation evaluateInProgressPartial(Run? partial, {DateTime? now}) {
   }
 
   final indoorEstimated = partial.metadata?[MetadataKeys.indoorEstimated] == true;
-  final hasEnoughGps = partial.track.length >= 3 &&
+  // Counted on the line, as it was before off-track fixes were stored.
+  final hasEnoughGps = trackLine(partial.track).length >= 3 &&
       partial.distanceMetres >= 50;
   final hasEnoughIndoor = indoorEstimated &&
       partial.duration.inSeconds >= 60;

@@ -59,8 +59,9 @@
 	import type { PlanWorkout } from '#lib/types.ts';
 	import { toRunGpx, downloadFile } from '#lib/routes/gpx.ts';
 	import { movingTimeSeconds, computeRealSplits } from '#lib/runs/run_stats.ts';
-	import { lineLat, lineLng } from '#lib/runs/track_line.ts';
+	import { lineLat, lineLng, trackLine } from '#lib/runs/track_line.ts';
 	import { computeElevationGain } from '#lib/routes/route_simplify.ts';
+	import { runAltitude } from '#lib/runs/run_altitude.ts';
 	import {
 		cadenceSpm,
 		elevationSeries,
@@ -245,6 +246,9 @@
 	/// length match); if no candidate clears the bar this stays
 	/// null and no UI renders.
 	let suggestedRoute = $state<RouteMatchCandidate | null>(null);
+	/// Reported by RunRaceResult: the linked listing, null when the run has
+	/// none or the listing is not publicly readable (so no race page exists).
+	let publicRaceListingId = $state<string | null>(null);
 
 	onMount(async () => {
 		// Wait for the auth store to hydrate AND the user profile to
@@ -298,7 +302,7 @@
 		// Background route-suggestion. Only kicks in for runs that
 		// aren't already linked to a route AND have a usable track —
 		// silent on empty / failure paths.
-		if (run && !run.route_id && run.track && run.track.length >= 2) {
+		if (run && !run.route_id && run.track && trackLine(run.track).length >= 2) {
 			void suggestRoute(run.track, run.distance_m);
 		}
 		// If the recorder linked this run to a structured workout, pull
@@ -763,7 +767,7 @@
 			return;
 		}
 		shareConfirmIntersectsZone =
-			zones.length > 0 && !!run.track && trackEntersAnyZone(run.track, zones);
+			zones.length > 0 && !!run.track && trackEntersAnyZone(trackLine(run.track), zones);
 		shareConfirmHasZones = zones.length > 0;
 		showShareConfirm = true;
 	}
@@ -822,10 +826,12 @@
 		if (!name) return;
 		savingRoute = true;
 		try {
+			const alt = runAltitude(run.track, run.source);
 			const { id } = await saveRunAsRoute(
 				run.id,
 				name,
-				run.track.map((p) => ({ lat: p.lat, lng: p.lng, ele: p.ele ?? null })),
+				alt.track.map((p) => ({ lat: p.lat, lng: p.lng, ele: p.ele ?? null })),
+				alt.minDeltaM,
 			);
 			showNameRoute = false;
 			showToast(m('runDetail.savedAsRoute'), 'success');
@@ -955,10 +961,12 @@
 		const title =
 			((run.metadata as Record<string, unknown> | null)?.[METADATA_KEYS.title] as string) ||
 			`Run ${new Date(run.started_at).toISOString().slice(0, 10)}`;
+		// The line: off-track fixes are distance input the recorder stored for
+		// the server replay, and the server exports leave them out too.
 		const gpx = toRunGpx(
 			title,
 			run.started_at,
-			run.track.map((p) => ({
+			trackLine(run.track).map((p) => ({
 				lat: p.lat,
 				lng: p.lng,
 				ele: p.ele ?? null,
@@ -999,17 +1007,22 @@
 	 *  10 km with ten minutes of traffic lights (decisions § 1223). */
 	let paceSeconds = $derived(movingSeconds > 0 ? movingSeconds : (run?.duration_s ?? 0));
 
+	/** The altitude series the climb, the profile and grade-adjusted pace read:
+	 *  the anchored barometer when the phone had one, else GPS altitude, with
+	 *  the noise band that series earns (lib/runs/run_altitude.ts). */
+	let altitude = $derived(run?.track ? runAltitude(run.track, run.source) : null);
+
 	/** The track the climb is measured over, or null when no point on it
 	 *  carried an altitude. A manual entry and a summary import have no track
 	 *  at all, and a track with no `ele` sums to 0 exactly as a flat run does,
 	 *  so the samples are the discriminator and not the answer (§ 1164). */
-	let elevationTrack = $derived(elevationSourceTrack(run?.track));
+	let elevationTrack = $derived(elevationSourceTrack(altitude?.track));
 
 	/** The route summary's rule, not a second one: an ungated sum integrates
 	 *  autocorrelated altitude error and reported 143 m of climb on a flat
 	 *  half-hour (decisions § 981). Null when nothing measured the altitude —
 	 *  a real 0 m over a track that did measure it still renders. */
-	let realElevationGain = $derived(elevationTrack ? Math.round(computeElevationGain(elevationTrack)) : null);
+	let realElevationGain = $derived(elevationTrack ? Math.round(computeElevationGain(elevationTrack, altitude?.minDeltaM)) : null);
 
 	/** What the page may say the climb was. The measured track wins — it is the
 	 *  same samples the elevation profile below is drawn from, so a different
@@ -1027,7 +1040,7 @@
 
 	/** Grade-adjusted pace (sec/km) — effort-equivalent flat pace over hilly
 	 *  terrain (Minetti 2002). Null on flat runs / tracks without elevation. */
-	let gradeAdjustedPace = $derived(run?.track ? gradeAdjustedPaceSecPerKm(run.track) : null);
+	let gradeAdjustedPace = $derived(altitude ? gradeAdjustedPaceSecPerKm(altitude.track) : null);
 
 	/** Only surface GAP when it differs from raw average pace by a margin
 	 *  worth showing — a near-flat run's GAP is the raw pace and the extra
@@ -1307,7 +1320,8 @@
 
 	/// Map track. Prefer the matched line when the worker has produced
 	/// one (status='matched' AND non-empty payload); fall back to the
-	/// raw recorded track. If neither exists (Strava sync without GPS,
+	/// raw recorded track's on-track fixes (`trackLine`: an off-track
+	/// fix is distance input, never line). If neither exists (Strava sync without GPS,
 	/// manual parkrun entry, HealthKit summary without polyline), the
 	/// map panel renders an empty state — we deliberately do NOT
 	/// synthesise a placeholder track. Stats below the map continue to
@@ -1316,7 +1330,7 @@
 	let baseTrack = $derived(
 		matchInfo?.track && matchInfo.track.length >= 2
 			? matchInfo.track
-			: run?.track ?? [],
+			: trackLine(run?.track ?? []),
 	);
 	let hasMapTrack = $derived(baseTrack.length >= 2);
 	// Gate the elevation chart on real samples, and carry the line across
@@ -1326,7 +1340,7 @@
 	// genuinely flat route); with an intermittent `ele` it fell to 0 m at
 	// every dropout. Null when too few points carry an altitude to draw a
 	// profile at all.
-	let elevationSamples = $derived(elevationSeries(baseTrack));
+	let elevationSamples = $derived(elevationSeries(runAltitude(baseTrack, run?.source).track));
 	/// Drawn smoothed over an along-track window: phone GPS altitude wanders
 	/// by metres between fixes, which the raw series drew as a sawtooth.
 	let elevations = $derived(
@@ -1364,14 +1378,16 @@
 	// when the preference flips. pace_s stays sec/km; the cell converts.
 	let splitsAreMiles = $derived(getUnit() === 'mi');
 	let splits = $derived(
-		run?.track ? computeRealSplits(run.track, splitsAreMiles ? METRES_PER_MILE : 1000) : []
+		run?.track
+			? computeRealSplits(run.track, splitsAreMiles ? METRES_PER_MILE : 1000, run.distance_m)
+			: []
 	);
 
 	/// First-half vs second-half pacing, and the same comparison on
 	/// grade-adjusted effort. Independent of the split tick length — the
 	/// halves are cut at the run's own midpoint, not at a split boundary.
-	let pacing = $derived(analysePacing(run?.track));
-	let splitGapPaces = $derived(gradeAdjustedSplitPaces(run?.track, splits));
+	let pacing = $derived(analysePacing(altitude?.track));
+	let splitGapPaces = $derived(gradeAdjustedSplitPaces(altitude?.track, splits));
 
 	/// Both grade-adjusted reads are gated on the same 2 s/km margin the
 	/// key-stat GAP cell uses: on flat ground GAP is the raw pace, and a
@@ -1419,7 +1435,7 @@
 	/// this build does not know.
 	let phaseReview = $derived.by(() => {
 		const strategy = parsePacingStrategy(run?.metadata?.[METADATA_KEYS.pacing_strategy]);
-		return strategy ? gradePhases(run?.track, strategy) : null;
+		return strategy ? gradePhases(run?.track ? trackLine(run.track) : null, strategy) : null;
 	});
 
 	function strategyPresetLabel(p: RacePhasePreset): string {
@@ -2103,9 +2119,16 @@
 			runOwnerId={run.user_id}
 			startedAt={run.started_at}
 			distanceM={run.distance_m}
+			onlisting={(id) => (publicRaceListingId = id)}
 		/>
 
-		<RunPhotos runId={run.id} runOwnerId={run.user_id} wrapperClass="section" />
+		<RunPhotos
+			runId={run.id}
+			runOwnerId={run.user_id}
+			raceListingId={publicRaceListingId}
+			runIsPublic={run.is_public === true}
+			wrapperClass="section"
+		/>
 
 		<FundraiserSection runId={run.id} isOwner={auth.user?.id === run.user_id} />
 
@@ -2120,7 +2143,7 @@
 				runId={run.id}
 				runOwnerId={run.user_id}
 				routeId={run.route_id}
-				track={run.track ?? []}
+				track={trackLine(run.track ?? [])}
 			/>
 		</section>
 		{#if run.route_id}

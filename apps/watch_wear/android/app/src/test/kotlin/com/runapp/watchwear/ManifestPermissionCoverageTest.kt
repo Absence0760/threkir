@@ -67,13 +67,7 @@ class ManifestPermissionCoverageTest {
     /// Runtime permissions the app deliberately does not ask for, each with
     /// the reason. Anything not here and not install-time must be in the
     /// launch array.
-    private val exempt = mapOf(
-        "ACCESS_COARSE_LOCATION" to
-            "the platform grants it alongside ACCESS_FINE_LOCATION, which IS " +
-                "requested; asking for both separately offers the runner an " +
-                "approximate-location choice that would silently degrade the " +
-                "GPS trace",
-    )
+    private val exempt = emptyMap<String, String>()
 
     /// Platform APIs this module calls that the system refuses without a
     /// manifest declaration, and the permission each one needs.
@@ -180,6 +174,22 @@ class ManifestPermissionCoverageTest {
             "the POST_NOTIFICATIONS request must sit behind a TIRAMISU " +
                 "version gate (minSdk is 30 and the permission is API 33+)",
             requestSite.contains("Build.VERSION_CODES.TIRAMISU"),
+        )
+    }
+
+    @Test
+    fun `fine location is requested together with coarse`() {
+        // ACCESS_COARSE_LOCATION used to be exempted on the theory that
+        // asking for it would offer an approximate choice. From Android 12
+        // that choice is offered either way, and a FINE request without
+        // COARSE is ignored with no dialog, so leaving it out cost every
+        // fresh install on Wear OS 4+ the location prompt itself.
+        val requested = requestedPermissions()
+        assertTrue("ACCESS_FINE_LOCATION must be requested", "ACCESS_FINE_LOCATION" in requested)
+        assertTrue(
+            "ACCESS_COARSE_LOCATION must be requested alongside FINE — " +
+                "Android 12+ ignores a FINE request without it",
+            "ACCESS_COARSE_LOCATION" in requested,
         )
     }
 

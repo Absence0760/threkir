@@ -57,6 +57,13 @@ test('formatDuration — under an hour is M:SS', () => {
 	assert.equal(formatDuration(599), '9:59');
 });
 
+test('formatDuration — rounds to the nearest second (the race-day split cases)', () => {
+	assert.equal(formatDuration(0.4), '0:00');
+	assert.equal(formatDuration(0.5), '0:01');
+	assert.equal(formatDuration(305.6), '5:06');
+	assert.equal(formatDuration(3725), '1:02:05');
+});
+
 test('formatDuration — an hour or more is H:MM:SS', () => {
 	assert.equal(formatDuration(3600), '1:00:00');
 	assert.equal(formatDuration(3661), '1:01:01');
@@ -71,6 +78,23 @@ test('formatDuration — a fractional projection rounds to a whole second field'
 	assert.equal(formatDuration(2631.6000000000004), '43:52');
 	assert.equal(formatDuration(59.6), '1:00');
 	assert.equal(formatDuration(3599.5), '1:00:00');
+});
+
+test('formatDuration — degenerate input gets the em dash, never NaN, Infinity or a sign', () => {
+	// Mirrors `formatEffortTime degenerate input` in preferences_helpers_test.dart.
+	const cases: Array<[number, string]> = [
+		[Number.POSITIVE_INFINITY, '—'],
+		[Number.NEGATIVE_INFINITY, '—'],
+		[Number.NaN, '—'],
+		[-90, '—'],
+		[-0, '0:00'],
+		[0, '0:00'],
+		[0.4, '0:00'],
+		[10, '0:10'],
+	];
+	for (const [input, expected] of cases) {
+		assert.equal(formatDuration(input), expected, `formatDuration(${input})`);
+	}
 });
 
 test('formatDate / formatDateShort — render the date, short omits the year', () => {

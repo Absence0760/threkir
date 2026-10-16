@@ -7,13 +7,17 @@
 -- instead of in production. Each legal kind round-trips; an unknown kind
 -- is rejected with 23514 at INSERT and UPDATE.
 --
+-- The refusals use a value no product surface would ever name. They once used
+-- 'like' and 'mention', and 'mention' became a real kind in 20270826000001 —
+-- the UPDATE refusal then passed the CHECK and read as a missing constraint.
+--
 -- Runs as the superuser (postgres) — the notifications INSERT policy is
 -- closed to everyone but the SECURITY DEFINER trigger functions, and the
 -- assertion under test is the CHECK, not RLS.
 
 begin;
 
-select plan(13);
+select plan(24);
 
 -- The seed user is the notification recipient; actor is left null
 -- (actor_id is nullable / on delete set null).
@@ -27,13 +31,17 @@ select lives_ok(
 from unnest(array[
   'kudos', 'comment', 'comment_reply', 'follow',
   'event_rsvp', 'event_cancel', 'plan_update', 'message',
-  'club_post', 'run_completed', 'event_reminder'
+  'club_post', 'run_completed', 'event_reminder', 'plan_assigned',
+  'achievement', 'challenge_complete', 'content_hidden',
+  'data_export_ready', 'refund_failed', 'event_waitlist_slot',
+  'follow_request',
+  'reaction', 'comment_like', 'mention'
 ]) as k;
 
 -- An unknown kind is rejected at INSERT, not deferred.
 select throws_ok(
   $$ insert into notifications (user_id, kind)
-     values ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'like') $$,
+     values ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'not_a_notification_kind') $$,
   '23514',
   null,
   'notifications rejects unknown kind at INSERT'
@@ -44,7 +52,7 @@ insert into notifications (id, user_id, kind)
   values ('11111111-1111-1111-1111-111111111111',
           'a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'kudos');
 select throws_ok(
-  $$ update notifications set kind = 'mention'
+  $$ update notifications set kind = 'not_a_notification_kind'
      where id = '11111111-1111-1111-1111-111111111111' $$,
   '23514',
   null,

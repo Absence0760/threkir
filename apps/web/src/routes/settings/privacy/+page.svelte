@@ -3,7 +3,13 @@
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { effective, updateUniversal } from '#lib/settings/settings.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
-	import { setDiscoverableArea, clearDiscoverableArea, fetchMyDiscoverableArea } from '#lib/core/data.ts';
+	import {
+		setDiscoverableArea,
+		clearDiscoverableArea,
+		fetchMyDiscoverableArea,
+		fetchMyProfilePrivate,
+		setProfilePrivate,
+	} from '#lib/core/data.ts';
 	import { NEARBY_RUNNERS_ENABLED } from '#lib/social/nearby_flag.ts';
 	import { geocodePlace } from '#lib/routes/geocoding.ts';
 	import { PRIVACY_ZONES_KEY, type PrivacyZone } from '#lib/routes/privacy.ts';
@@ -20,6 +26,10 @@
 	// it opts out. The `search_user_profiles` RPC reads the same key.
 	let discoverableInSearch = $state(true);
 	let discoverableNearby = $state(false);
+	// A column on user_profiles, not a prefs key: RLS and the public views read
+	// it (decisions § 1967), so it is written straight to the profile row.
+	let profilePrivate = $state(false);
+	let profilePrivateSaving = $state(false);
 	let nearbyAreaLabel = $state<string | null>(null);
 	let nearbyAreaInput = $state('');
 	let nearbySavingArea = $state(false);
@@ -47,7 +57,24 @@
 			nearbyAreaLabel = await fetchMyDiscoverableArea();
 		}
 		privacyZones = effective<PrivacyZone[]>(settings, PRIVACY_ZONES_KEY) ?? [];
+		profilePrivate = await fetchMyProfilePrivate();
 	});
+
+	// A refused write must not read as saved: the switch is a promise about who
+	// sees the runner's activity, so the checkbox rolls back on failure.
+	async function saveProfilePrivate() {
+		if (profilePrivateSaving) return;
+		const next = profilePrivate;
+		profilePrivateSaving = true;
+		try {
+			await setProfilePrivate(next);
+		} catch (e) {
+			profilePrivate = !next;
+			showToast(m('prefs.privateProfileFailed', { error: thrownMessage(e) }), 'error');
+		} finally {
+			profilePrivateSaving = false;
+		}
+	}
 
 	// Opt-in "runners nearby" area (issue #466). Geocodes the typed place to a
 	// coarse centroid via MapTiler (same path as ClubEditor), then hands it to
@@ -152,6 +179,22 @@
 	<section class="card">
 		<h2>{m('prefs.beingFoundHeading')}</h2>
 		<div class="form-stack">
+			<label class="checkbox-row">
+				<input
+					type="checkbox"
+					data-testid="private-profile-toggle"
+					bind:checked={profilePrivate}
+					disabled={profilePrivateSaving}
+					onchange={saveProfilePrivate}
+				/>
+				<span>
+					{m('prefs.privateProfile')}
+					<span class="hint">{m('prefs.privateProfileHint')}</span>
+				</span>
+			</label>
+			{#if profilePrivate}
+				<a class="link-row" href="/follow-requests">{m('prefs.followRequestsLink')}</a>
+			{/if}
 			<label class="checkbox-row">
 				<input type="checkbox" bind:checked={discoverableInSearch} onchange={() => prefs.save({ discoverable_in_search: discoverableInSearch })} />
 				<span>
@@ -324,6 +367,7 @@
 		color: var(--color-text-secondary);
 		line-height: 1.4;
 	}
+	.link-row { font-size: 0.9rem; margin-inline-start: 1.75rem; }
 	.nearby-area { margin-top: var(--space-sm); }
 	.nearby-area .hint { margin: 0 0 var(--space-xs); }
 	.nearby-area-row { display: flex; flex-wrap: wrap; gap: var(--space-sm); align-items: center; }

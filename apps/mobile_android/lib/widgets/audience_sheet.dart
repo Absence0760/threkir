@@ -1,11 +1,11 @@
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:ui_kit/ui_kit.dart' show ListSkeleton;
 
 import '../audience_level.dart';
 import '../auth_error.dart';
 import '../l10n/gen/app_localizations.dart';
+import '../web_base_url.dart';
 import 'confirm_destructive.dart';
 
 /// The in-app web link to a run or route: `/runs/{id}` or `/routes/{id}`.
@@ -13,11 +13,7 @@ import 'confirm_destructive.dart';
 /// the owner's audience admits, so it is the link a narrower level hands
 /// out. Host from `WEB_BASE_URL`, falling back to the prod site.
 String audienceLinkUrl(ShareableKind kind, String id, {String? webBase}) {
-  final base = (webBase ??
-          (dotenv.isInitialized ? dotenv.maybeGet('WEB_BASE_URL') : null) ??
-          'https://threkir.com')
-      .trim()
-      .replaceAll(RegExp(r'/+$'), '');
+  final base = resolveWebBaseUrl(override: webBase);
   return kind == ShareableKind.run ? '$base/runs/$id' : '$base/routes/$id';
 }
 

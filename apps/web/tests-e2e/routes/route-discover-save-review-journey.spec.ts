@@ -1,4 +1,5 @@
-import { expect, test, type Browser, type BrowserContext } from '@playwright/test';
+import type { Browser, BrowserContext } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import {
@@ -7,6 +8,7 @@ import {
 	type SagaUser
 } from '../fixtures/saga-users';
 import { insertRoute, deleteRoute } from '../fixtures/simulate';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Routes — CROSS-USER discover → save → review JOURNEY.
@@ -51,13 +53,6 @@ import { insertRoute, deleteRoute } from '../fixtures/simulate';
 
 const uniqueSuffix = () => `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-	);
-}
-
 /**
  * A context for a saga user with the cookie-consent choice pre-seeded —
  * the GDPR banner is a role="dialog" that floats over the explorer cards,
@@ -67,7 +62,7 @@ function setConsentAccepted() {
  */
 async function sagaContext(browser: Browser, user: SagaUser): Promise<BrowserContext> {
 	const ctx = await browser.newContext({ storageState: user.storageStatePath });
-	await ctx.addInitScript(setConsentAccepted);
+	await acceptCookieConsent(ctx);
 	return ctx;
 }
 

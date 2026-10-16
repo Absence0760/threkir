@@ -38,7 +38,11 @@ drive the worker:
   enqueued once per run by the `enqueue_safety_overdue_emails()` pg_cron scan
   when a live-broadcast run goes silent past the owner's
   `safety_overdue_minutes` window; carries started/last-seen **times + the
-  `/live/{run_id}` link, never coordinates**; docs/features/safety.md).
+  `/live/{run_id}` link, never coordinates**; docs/features/safety.md). On a
+  safety-audience run (decisions § 1964) the `overdue` and `off_route` payloads
+  (and the matching `safety_sms`) carry `view_token`, that contact's own link,
+  which the worker appends as `#k=<token>` — a fragment, so it never reaches a
+  server log.
   Crucially **not** gated on the runner's `email_notifications` preference — a
   safety contact opted in explicitly and must not be silenced by the runner's
   social-email setting. `decisions.md § 131`.
@@ -230,7 +234,7 @@ Shared pieces:
 
 | Email | Kind | Trigger | Localized | ADR |
 |---|---|---|---|---|
-| Notification → email (kudos, comment, follow, event RSVP/cancel/reminder, plan update, message, club post, run completed) | `notification_email` | `notifications` AFTER INSERT, gated on `email_notifications` | ✓ | §117 |
+| Notification → email (kudos, comment, reaction, comment like, mention, follow, follow request, event RSVP/cancel/reminder, plan update, message, club post, run completed) | `notification_email` | `notifications` AFTER INSERT, gated on `email_notifications` | ✓ | §117 |
 | **Event-day reminders** (scheduled) | `notification_email` (`event_reminder`) | hourly pg_cron `enqueue_event_reminders()` over `going` RSVPs in the next 24 h | ✓ | §117 |
 | **Welcome** ("thanks for signing up") | `lifecycle_email` (`welcome`) | `user_profiles` AFTER INSERT | ✓ | §119 |
 | **Pro-purchase receipt** | `lifecycle_email` (`pro_welcome`) | `user_profiles` AFTER UPDATE, `subscription_tier` → paid | ✓ | §121 |
@@ -688,6 +692,30 @@ neither, and neither carries a `List-Unsubscribe` header.
   is the candidate filter). The kind widen is the `NOT VALID` half in
   `20270726000002` and the `VALIDATE` in `20270726000022`. Goes live with the
   shared `SMTP_HOST` worker gate; no new credential.
+
+- [x] **Reactions, comment likes and mentions on every channel** — SHIPPED
+  2026-10-15 (migration `20270826000001`, kinds `reaction`, `comment_like`,
+  `mention`; `decisions.md § 1971`). `mention` is in `importantKinds` — someone
+  addressed the recipient by handle, which is closer to a direct message than
+  to the social loop — so the default `important` mode emails and pushes it;
+  `reaction` and `comment_like` are social-loop signals like kudos and leave
+  the inbox only under `all`. Each has its own opt-OUT `kindMutePrefKey`
+  (`notify_mention`, `notify_reaction`, `notify_comment_like`, web Settings →
+  Notifications), subtract-only like `notify_data_export_ready`. All three
+  deep-link to `/runs/{id}`, which serves a non-owner the shared view of any
+  run their audience admits — the mention gate already required that audience.
+- [x] **Follow requests reach the default mode** — `follow_request` (private
+  profiles, `decisions.md § 1967`) is in `importantKinds` since § 1983: only the
+  owner can let the asker in, so the default `important` mode emails and pushes
+  it, where a plain `follow` stays under `all`. Deep link `/follow-requests`.
+  Its own opt-OUT mute is `notify_follow_request` (web Settings →
+  Notifications), subtract-only like the other per-kind mutes. A requester
+  who asks, withdraws and asks again raises one notification (so one email
+  and push) per owner per 24 h, not one per ask: the trigger claims a row in
+  `private.follow_request_notices` before inserting, which the withdrawal does
+  not clear (migration `20270829000012`).
+  Copy in all seven locales; no new credential. The kind widen is the
+  `NOT VALID` half in `20270826000001` and the `VALIDATE` in `20270826000002`.
 
 ### Not planned (with reason)
 

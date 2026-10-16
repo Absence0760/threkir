@@ -15,6 +15,7 @@
 	} from '#lib/billing/revenuecat_links.ts';
 	import { coachEnabled } from '#lib/coach/coach_flag.ts';
 	import { routeGenEnabled } from '#lib/routes/route_gen_flag.ts';
+	import { platePhotoEnabled } from '#lib/nutrition/plate_photo_flag.ts';
 
 	// Pro is sellable only when at least one perk is actually live: the AI
 	// Coach (PUBLIC_COACH_ENABLED) or server route generation
@@ -26,6 +27,8 @@
 	// paywall.md.
 	const coachOn = coachEnabled();
 	const routeGenOn = routeGenEnabled();
+	// A Pro perk, but never what makes Pro sellable: it runs on the Coach's key.
+	const platePhotoOn = coachOn && platePhotoEnabled();
 	const proSellable = coachOn || routeGenOn;
 	// Selling Pro and selling it HERE are separate questions. With a perk live
 	// and no web checkout link, Pro is bought through the iPhone app's In-App
@@ -166,6 +169,15 @@
 						<div>
 							<strong>{m('upgrade.proFeatCoachTitle')}</strong>
 							<span class="feat-sub">{m('upgrade.proFeatCoachSub')}</span>
+						</div>
+					</li>
+				{/if}
+				{#if platePhotoOn}
+					<li data-testid="pro-feat-plate-photo">
+						<span class="check material-symbols" aria-hidden="true">check_circle</span>
+						<div>
+							<strong>{m('upgrade.proFeatPlatePhotoTitle')}</strong>
+							<span class="feat-sub">{m('upgrade.proFeatPlatePhotoSub')}</span>
 						</div>
 					</li>
 				{/if}

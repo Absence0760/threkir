@@ -190,8 +190,16 @@
 					: m('notificationsList.verbCommentNoDistance', { name });
 			case 'comment_reply':
 				return m('notificationsList.verbCommentReply', { name });
+			case 'reaction':
+				return m('notificationsList.verbReaction', { name });
+			case 'comment_like':
+				return m('notificationsList.verbCommentLike', { name });
+			case 'mention':
+				return m('notificationsList.verbMention', { name });
 			case 'follow':
 				return m('notificationsList.verbFollow', { name });
+			case 'follow_request':
+				return m('notificationsList.verbFollowRequest', { name });
 			case 'event_rsvp':
 				return item.event_title
 					? m('notificationsList.verbEventRsvpTitled', { name, title: item.event_title })

@@ -138,6 +138,11 @@ fun RunWatchApp(vm: RunViewModel, activity: Activity, isAmbient: Boolean = false
     val requestedPermissions = remember {
         buildList {
             add(Manifest.permission.ACCESS_FINE_LOCATION)
+            // From Android 12 a FINE request without COARSE is ignored
+            // outright and no dialog appears. Asking for both
+            // is also what makes the dialog re-offer Precise to a runner who
+            // granted Approximate before.
+            add(Manifest.permission.ACCESS_COARSE_LOCATION)
             add(Manifest.permission.BODY_SENSORS)
             // Needed for `TYPE_STEP_COUNTER` on API 29+. Granting is not
             // blocking — the step flow is silent if the user denies.
@@ -584,10 +589,11 @@ private fun PermissionNotice(
         item {
             Text(
                 stringResource(
-                    if (outcome.canStart) {
-                        R.string.perm_title_degraded
-                    } else {
-                        R.string.perm_title_blocked
+                    when {
+                        outcome.canStart -> R.string.perm_title_degraded
+                        PermissionCost.PreciseLocation in outcome.costs ->
+                            R.string.perm_title_precise
+                        else -> R.string.perm_title_blocked
                     }
                 ),
                 style = MaterialTheme.typography.title3,
@@ -668,6 +674,7 @@ private fun PermissionNotice(
 
 private fun permissionCostLabel(cost: PermissionCost): Int = when (cost) {
     PermissionCost.Location -> R.string.perm_cost_location
+    PermissionCost.PreciseLocation -> R.string.perm_cost_precise_location
     PermissionCost.HeartRate -> R.string.perm_cost_heart_rate
     PermissionCost.Steps -> R.string.perm_cost_steps
     PermissionCost.OngoingNotification -> R.string.perm_cost_notification

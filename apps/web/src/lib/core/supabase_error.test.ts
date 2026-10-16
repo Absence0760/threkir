@@ -77,7 +77,6 @@ test('every join-shaped write in data.ts absorbs a duplicate through the one pre
 	for (const fn of [
 		'bookmarkRoute',
 		'joinClub',
-		'followUser',
 		'joinChallenge',
 	]) {
 		const start = stripped.indexOf(`export async function ${fn}(`);
@@ -89,6 +88,23 @@ test('every join-shaped write in data.ts absorbs a duplicate through the one pre
 			`${fn} must absorb a duplicate insert — re-pressing it is the success case restated.`,
 		);
 	}
+});
+
+test('a follow absorbs a duplicate in SQL, so followUser has no client insert to guard', () => {
+	// Reason: followUser moved off a client insert onto the request_follow RPC
+	// (decisions § 1967), so the duplicate the predicate above guards is now
+	// absorbed where the rows are written. Both of its inserts must still say so.
+	const stripped = stripComments(readFileSync(resolve('src/lib/core/data.ts'), 'utf-8'));
+	const start = stripped.indexOf('export async function followUser(');
+	const body = stripped.slice(start, stripped.indexOf('\nexport ', start + 1));
+	assert.match(body, /\.rpc\('request_follow'/);
+	const sql = readFileSync(
+		resolve('../backend/supabase/migrations/20270822000001_private_profiles.sql'),
+		'utf-8',
+	);
+	const fn = sql.slice(sql.indexOf('create or replace function public.request_follow'));
+	const fnBody = fn.slice(0, fn.indexOf('$$;'));
+	assert.equal((fnBody.match(/on conflict do nothing/g) ?? []).length, 2);
 });
 
 test('thrownMessage reads a raw PostgREST error instead of printing [object Object]', () => {

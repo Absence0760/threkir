@@ -1,9 +1,10 @@
-import { expect, test } from '../fixtures/mock-route';
+import { expect, test } from '../fixtures/test';
 import type { MockRoute } from '../fixtures/mock-route';
 import type { Page } from '@playwright/test';
 
 import { deleteRun, insertRun } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * A static-map outage must not break the card it decorates (issue #902).
@@ -37,11 +38,8 @@ async function simulateStaticMapOutage(
 ): Promise<{ aborted: () => number; requested: () => string[] }> {
 	let aborted = 0;
 	const requested: string[] = [];
+	await acceptCookieConsent(page);
 	await page.addInitScript(() => {
-		localStorage.setItem(
-			'cookie_consent',
-			JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-		);
 		let bootstrap: { env: Record<string, string> } | undefined;
 		Object.defineProperty(window, '__sveltekit_dev', {
 			configurable: true,

@@ -7,6 +7,7 @@
 	import { browseClubsWithError, fetchMyClubsWithError, searchClubsWithError } from '#lib/core/data.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import ClubEditor from '#lib/components/ClubEditor.svelte';
+	import StravaClubsSection from '#lib/components/StravaClubsSection.svelte';
 	import Modal from '#lib/components/Modal.svelte';
 	import VerifiedBadge from '#lib/components/VerifiedBadge.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
@@ -25,6 +26,9 @@
 	let mineGen = $state(0);
 
 	let visible = $derived(subtab === 'browse' ? browseResults : myClubs);
+	let adminClubs = $derived(
+		myClubs.filter((c) => c.viewer_role === 'owner' || c.viewer_role === 'admin')
+	);
 	let loadError = $derived(subtab === 'browse' ? browseError : mineError);
 
 	async function loadBrowse() {
@@ -299,6 +303,12 @@
 	{:else}
 		{@render clubGrid()}
 	{/if}
+
+	<!-- Hidden rather than unmounted on Browse, so switching tabs does not
+	     re-ask Strava (the list is rate-limited per caller). -->
+	<div hidden={subtab !== 'mine'}>
+		<StravaClubsSection {adminClubs} />
+	</div>
 </div>
 
 <Modal

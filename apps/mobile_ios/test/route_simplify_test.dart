@@ -191,6 +191,26 @@ void main() {
     });
   });
 
+  group('noise band', () {
+    test('a wider band ignores a climb that fits inside it', () {
+      final track = [
+        for (final (i, ele) in [400.0, 408.0, 400.0, 409.0].indexed)
+          wp(0, i * 0.0001, ele: ele),
+      ];
+      expect(computeElevationGain(track), 17);
+      expect(computeElevationGain(track, minDeltaM: 10), 0);
+      expect(
+        computeElevationGain([...track, wp(0, 0.0005, ele: 411)],
+            minDeltaM: 10),
+        11,
+      );
+      expect(computeElevationLoss(track, minDeltaM: 10), 0);
+      final acc = ElevationGainAccumulator(minDeltaM: 10)
+        ..addAll([...track, wp(0, 0.0005, ele: 411)]);
+      expect(acc.gainMetres, 11);
+    });
+  });
+
   group('ElevationGainAccumulator', () {
     test('a flat track with sub-3 m jitter accumulates nothing', () {
       // The live run screen used to sum every positive delta, turning a 1 Hz

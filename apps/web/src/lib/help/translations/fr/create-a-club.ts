@@ -65,6 +65,28 @@ export const translation: GuideTranslation = {
 				},
 			],
 		},
+		{
+			heading: 'Importer un club depuis Strava',
+			blocks: [
+				{
+					type: 'p',
+					text: 'Si votre compte Strava est connecté, ouvrez [[route:/social|Social]] sur le web, choisissez **Clubs** puis **Mes clubs**. Sous **Vos clubs Strava**, vous voyez les clubs Strava dont vous êtes membre. Vous seul voyez cette liste.',
+				},
+				{
+					type: 'list',
+					items: [
+						'**Créer sur Threkir** ouvre le formulaire d\'un nouveau club avec son nom et son lieu déjà remplis, et lie les deux dès que vous créez le club.',
+						'**Lier à mon club** le relie à un club que vous gérez déjà ici : choisissez-le sous **Lequel de vos clubs est-ce ?** puis sélectionnez **Lier**.',
+						'**Délier** supprime le lien. Aucun des deux clubs n\'est modifié.',
+					],
+				},
+				{
+					type: 'note',
+					tone: 'caution',
+					text: 'Seul un administrateur du club sur Strava peut le lier, et seulement à un club dont il est propriétaire ou administrateur ici. Si la section n\'apparaît pas, connectez d\'abord Strava dans [[route:/settings/integrations|Intégrations]] dans les Paramètres.',
+				},
+			],
+		},
 	],
 	sources: {
 		title: 'ff916040a4a088ae',
@@ -91,5 +113,11 @@ export const translation: GuideTranslation = {
 		's2.b1.i1': '102566e11462e84f',
 		's2.b1.i2': '83bc170018336efe',
 		's2.b2': 'eb88a7323310e67e',
+		's3.heading': '78e0de8618ff020a',
+		's3.b0': '728fa56591eb888d',
+		's3.b1.i0': '57a98843d18952a0',
+		's3.b1.i1': '6866a373a29d0bdb',
+		's3.b1.i2': 'afe5b3477e772c36',
+		's3.b2': '0c5f0a91de4775f1',
 	},
 };

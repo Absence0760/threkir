@@ -164,6 +164,21 @@ void main() {
             reason: 'the weekday abbreviation the weight thickens');
       });
 
+      test('the given-reaction chip fill is not the cue, and primary type '
+          'cannot sit on it', () {
+        final tint = _thin(s.primary, 0.12, scaffold);
+        expect(_contrast(tint, scaffold), lessThan(1.2));
+        expect(_contrast(s.primary, tint), greaterThanOrEqualTo(_aaMark),
+            reason: 'the glyph and the border');
+        expect(_contrast(s.onSurfaceVariant, tint),
+            greaterThanOrEqualTo(_aaText),
+            reason: 'the count the weight thickens');
+        if (name == 'light') {
+          // 3.869:1 — the count was drawn in `primary` here first.
+          expect(_contrast(s.primary, tint), lessThan(_aaText));
+        }
+      });
+
       test('the leaderboard viewer row is invisible against its neighbour', () {
         // The tint composites over the CARD here, not over the neighbouring
         // row's own opaque fill, which is why the two rows differ by so little.

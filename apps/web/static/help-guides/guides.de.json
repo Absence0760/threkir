@@ -1,5 +1,198 @@
 [
   {
+    "id": "notifications-reactions-and-mentions",
+    "lang": "de",
+    "title": "Reaktionen, Erwähnungen und deine Benachrichtigungen",
+    "summary": "Reagiere auf Läufe, markiere Kommentare mit „Gefällt mir“ und erwähne andere Läufer, und lege dann fest, welche Benachrichtigungen dich auch per E-Mail und auf dem Handy erreichen.",
+    "kind": "how-to",
+    "category": "account",
+    "audience": [
+      "everyone"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/settings/notifications",
+      "/runs/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Reagieren, liken und erwähnen",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Wähle beim Lauf eines anderen neben den Kudos eine Reaktion: **Stark unterwegs**, **Kraftvoll**, **Meisterhaft**, **Gut gemacht** oder **Hallo**. Du kannst mehrere hinterlassen, und ein erneutes Wählen nimmt eine Reaktion zurück.",
+              "Um einen Kommentar mit „Gefällt mir“ zu markieren, wähle das Herz daneben. Auf deinen eigenen Lauf kannst du nicht reagieren, und deinen eigenen Kommentar kannst du nicht liken.",
+              "Um jemanden in einem Kommentar zu erwähnen, tippe @ und den Anfang des Namens und wähle die Person aus der Liste, die erscheint. Sie wird nur benachrichtigt, wenn sie den Lauf ohnehin sehen kann und keiner von euch den anderen blockiert hat."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Reaktionen und „Gefällt mir“ für Kommentare werden beim Lauf selbst angezeigt. Karten im Feed zeigen weiterhin nur die Zahl der Kudos und Kommentare."
+          }
+        ]
+      },
+      {
+        "heading": "Wo Benachrichtigungen erscheinen",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Jede Benachrichtigung landet in der App: unter der Glocke im Web und im Tab **Mitteilungen** deines Profils in der Handy-App. Ob sie dich auch per E-Mail oder auf dem Handy erreicht, entscheidest du."
+          }
+        ]
+      },
+      {
+        "heading": "Festlegen, was per E-Mail und Push kommt",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Öffne im Web in den Einstellungen [[route:/settings/notifications|Benachrichtigungen]]. Öffne in der Handy-App **Voreinstellungen** im Tab **Du** und scrolle zu **Benachrichtigungen**.",
+              "Stelle **E-Mail-Benachrichtigungen** und **Push-Benachrichtigungen** getrennt ein."
+            ]
+          },
+          {
+            "type": "list",
+            "items": [
+              "**Nur wichtige**, die Standardeinstellung: Dinge, auf die du wartest oder die deine Pläne ändern, etwa Nachrichten, Event-Erinnerungen und -Absagen, ein für dich reservierter Platz auf einer Warteliste, Erwähnungen, Follower-Anfragen und ein fertiger Datenexport.",
+              "**Alle**: die wichtigen plus die sozialen, etwa Kudos, Kommentare, neue Follower, Reaktionen und „Gefällt mir“ für Kommentare.",
+              "**Aus**: nichts über diesen Kanal. Die App zeigt trotzdem alles."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Eine einzelne Art abschalten",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Im Web kannst du auf derselben Seite einige Arten stummschalten, ohne einen ganzen Kanal zu ändern: **Datenexport fertig**, **Erwähnungen**, **Reaktionen auf meine Läufe**, **„Gefällt mir“ für meine Kommentare** und **Follower-Anfragen**. Nimmst du bei einer das Häkchen heraus, kommt sie nicht mehr per E-Mail und Push, auch nicht auf dem Handy, erscheint aber weiterhin in der App."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Diese Schalter schalten nur ab. Reaktionen und „Gefällt mir“ für Kommentare werden nur verschickt, wenn ein Kanal auf **Alle** steht, und ein Kanal auf **Aus** bleibt still, egal wie die Schalter stehen."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Die Schalter für einzelne Arten gibt es vorerst nur im Web. Die Handy-App zeigt die Einstellungen für E-Mail und Push."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "private-profile-and-follow-requests",
+      "your-data-and-privacy",
+      "using-help"
+    ]
+  },
+  {
+    "id": "private-profile-and-follow-requests",
+    "lang": "de",
+    "title": "Dein Profil privat machen und Follower annehmen",
+    "summary": "Schalte ein privates Profil ein, damit nur Follower, die du annimmst, deine Läufe sehen, und nimm Follower-Anfragen an oder lehne sie ab, sobald sie eintreffen.",
+    "kind": "how-to",
+    "category": "account",
+    "audience": [
+      "everyone"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/settings/privacy",
+      "/follow-requests",
+      "/u/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Was ein privates Profil verbirgt",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Bei einem privaten Profil sehen nur Follower, die du angenommen hast, deine Läufe und anderen Aktivitäten sowie die Listen, wer dir folgt und wem du folgst. Alle anderen sehen deinen Namen, dein Bild und deine Follower-Zahlen und an der Stelle deiner Läufe **Dieses Profil ist privat**."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Andere können dich weiterhin über deinen Namen finden und anfragen, dir zu folgen. Wenn du auch nicht in der Namenssuche erscheinen willst, schalte auf derselben Seite **Mich in der Namenssuche anzeigen** aus.",
+              "Wer dir schon folgt, wenn du es einschaltest, folgt dir weiterhin.",
+              "Routen, Event-Ergebnisse und Abzeichen behalten ihre eigene Sichtbarkeit, weil jedes davon einzeln geteilt wird.",
+              "Ein Live-Link, den du während eines Laufs verschickst, auch der Link in einem Sicherheitsalarm, funktioniert für die Empfänger weiterhin."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Einschalten",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Öffne im Web in den Einstellungen [[route:/settings/privacy|Datenschutz & Teilen]] und hake unter **Gefunden werden** die Option **Privates Profil** an.",
+              "Öffne in der Handy-App **Voreinstellungen** im Tab **Du** und schalte unter **Datenschutz & Teilen** die Option **Privates Profil** ein."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Die Änderung wird sofort gespeichert."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Schaltest du es wieder aus, werden alle noch offenen Anfragen angenommen, und diese Personen folgen dir sofort."
+          }
+        ]
+      },
+      {
+        "heading": "Anfragen annehmen oder ablehnen",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Wenn jemand anfragt, dir zu folgen, bekommst du eine Benachrichtigung. Follower-Anfragen gelten als wichtig, daher bekommst du sie standardmäßig auch per E-Mail und Push."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Öffne die Benachrichtigung. Du kannst auch im Web unter **Privates Profil** die Option **Follower-Anfragen ansehen** wählen oder in der Handy-App unter **Privates Profil** auf **Follower-Anfragen** tippen.",
+              "Wähle **Annehmen**, damit die Person dein Profil sehen kann, oder **Ablehnen**, um die Anfrage abzulehnen. Bei einer Ablehnung wird sie nicht benachrichtigt."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Jemandem mit privatem Profil folgen",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Öffne das Profil und wähle **Folgen anfragen**.",
+              "Solange du wartest, zeigt die Schaltfläche **Angefragt**. Wähle sie erneut, um die Anfrage zurückzuziehen.",
+              "Sobald die Person annimmt, zeigt die Schaltfläche **Folgt**, und die Läufe erscheinen."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Wenn du jemandem mit privatem Profil entfolgst, musst du erneut anfragen, um die Läufe zu sehen."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "your-data-and-privacy",
+      "notifications-reactions-and-mentions",
+      "privacy-zones"
+    ]
+  },
+  {
     "id": "using-help",
     "lang": "de",
     "title": "Hilfe in der App finden",
@@ -84,7 +277,7 @@
     "id": "what-pro-includes",
     "lang": "de",
     "title": "Was Pro umfasst",
-    "summary": "Jeder Bildschirm in Threkir ist kostenlos; Pro erhöht dein Kontingent beim KI-Coach und stellt einige Hintergrundaufgaben in der Warteschlange nach vorn.",
+    "summary": "Fast alles in Threkir ist kostenlos; Pro erhöht dein Kontingent beim KI-Coach, bringt ein paar KI-Extras und zieht einige Hintergrundaufgaben vor.",
     "kind": "explainer",
     "category": "account",
     "audience": [
@@ -105,7 +298,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Nichts in der App ist hinter Pro gesperrt. Kostenlose Konten bekommen unbegrenzte Aufzeichnung auf Handy und Uhr, Routen, Trainingspläne samt der Zahlen dahinter, Clubs und Events, den Social-Feed, Sicherheitskontakte, Importe und Backups."
+            "text": "Fast nichts in der App ist hinter Pro gesperrt. Kostenlose Konten bekommen unbegrenzte Aufzeichnung auf Handy und Uhr, Routen, Trainingspläne samt der Zahlen dahinter, Clubs und Events, den Social-Feed, Sicherheitskontakte, Importe und Backups."
           }
         ]
       },
@@ -120,7 +313,8 @@
               "**Vorrangiges Map-Matching**: Deine GPS-Aufzeichnungen werden vor denen kostenloser Konten an Straßen ausgerichtet und sind dadurch früher fertig.",
               "**Vorrangige Cloud-Exporte**: bis zu 8 GPX-Paket-Exporte pro Stunde statt 2.",
               "**Server-Routengenerierung**: Rundkurse, die auf dem echten Straßennetz berechnet werden, wenn du eine Route nach Distanz generierst. Kostenlose Konten bekommen weiterhin Rundkurs-Generierung, berechnet im Browser.",
-              "Ausführlichere Routenbeschreibungen: Auf der Seite einer Route macht **Mit KI verbessern** aus der Standardbeschreibung einen ausführlicheren Absatz."
+              "Ausführlichere Routenbeschreibungen: Auf der Seite einer Route macht **Mit KI verbessern** aus der Standardbeschreibung einen ausführlicheren Absatz.",
+              "**Aus einem Foto eintragen**: Fotografiere eine Mahlzeit, und dein Ernährungstagebuch wird zum Prüfen für dich ausgefüllt. Siehe [[guide:log-a-meal-from-a-photo|Eine Mahlzeit per Foto eintragen]]."
             ]
           },
           {
@@ -171,6 +365,7 @@
     ],
     "related": [
       "your-data-and-privacy",
+      "log-a-meal-from-a-photo",
       "using-help"
     ]
   },
@@ -202,10 +397,11 @@
           {
             "type": "list",
             "items": [
-              "Deine Profilseite mit Anzeigenamen, Bild, Follower-Zahlen und deinen öffentlichen Läufen kann jeder öffnen, der ihren Link hat.",
+              "Deine Profilseite mit Anzeigenamen, Bild, Follower-Zahlen und deinen öffentlichen Läufen kann jeder öffnen, der ihren Link hat. Bei einem privaten Profil sehen nur Follower, die du annimmst, deine Läufe und Follower-Listen; siehe [[guide:private-profile-and-follow-requests|Dein Profil privat machen und Follower annehmen]].",
               "Läufe, die du öffentlich machst, erscheinen in deinem Profil und im Feed. Private Läufe sind nur für dich sichtbar.",
               "Deine Mitgliedschaft in einem öffentlichen Club und alles, was du dort postest, können alle sehen, die den Club sehen können.",
-              "Solange du einen Live-Link teilst, kann jeder mit dem Link den laufenden Lauf sehen."
+              "Solange du einen Live-Link teilst, kann jeder mit dem Link den laufenden Lauf sehen.",
+              "Ein Foto, für das du **Auf der Rennseite zeigen** wählst, erscheint bei einem öffentlichen Lauf, der mit einem Rennen verknüpft ist, mit Bildunterschrift und deinem Namen auf der öffentlichen Seite dieses Rennens. Nimm das Häkchen heraus oder mach den Lauf privat, um es wieder zu entfernen."
             ]
           },
           {
@@ -281,6 +477,7 @@
     ],
     "related": [
       "privacy-zones",
+      "private-profile-and-follow-requests",
       "live-tracking-and-safety",
       "what-pro-includes"
     ]
@@ -366,12 +563,35 @@
             "text": "Das Löschen eines Clubs entfernt alle seine Events, Beiträge und Mitglieder für alle, und es kann nicht rückgängig gemacht werden."
           }
         ]
+      },
+      {
+        "heading": "Einen Club von Strava übernehmen",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Wenn dein Strava-Konto verbunden ist, öffne im Web [[route:/social|Community]], wähle **Clubs** und dann **Meine Clubs**. Unter **Deine Strava-Clubs** siehst du die Strava-Clubs, in denen du Mitglied bist. Nur du siehst diese Liste."
+          },
+          {
+            "type": "list",
+            "items": [
+              "**Auf Threkir einrichten** öffnet das Formular für einen neuen Club mit bereits ausgefülltem Namen und Ort und verknüpft beide, sobald du den Club erstellst.",
+              "**Mit meinem Club verknüpfen** verbindet ihn mit einem Club, den du hier schon leitest: Wähle ihn unter **Welcher deiner Clubs ist das?** aus und wähle **Verknüpfen**.",
+              "**Verknüpfung lösen** entfernt die Verbindung. Keiner der beiden Clubs wird verändert."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Nur ein Admin des Clubs auf Strava kann ihn verknüpfen, und nur mit einem Club, den er hier besitzt oder mitverwaltet. Fehlt der Abschnitt, verbinde zuerst Strava unter [[route:/settings/integrations|Integrationen]] in den Einstellungen."
+          }
+        ]
       }
     ],
     "related": [
       "invite-members-and-roles",
       "recurring-events",
-      "set-up-a-race"
+      "set-up-a-race",
+      "import-your-history"
     ]
   },
   {
@@ -2262,6 +2482,93 @@
     ]
   },
   {
+    "id": "adjust-a-plan-with-ai",
+    "lang": "de",
+    "title": "Einen Trainingsplan mit KI anpassen",
+    "summary": "Beschreibe eine Änderung an deinem Plan in eigenen Worten, prüfe jeden vorgeschlagenen Eingriff und speichere erst, wenn du einverstanden bist.",
+    "kind": "how-to",
+    "category": "running",
+    "audience": [
+      "runner"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "routes": [
+      "/plans/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Was es ändern kann",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Mit KI anpassen macht aus einer Bitte wie *leg meinen langen Lauf auf Samstag* oder *mach nächste Woche leichter* Änderungen an einem gespeicherten Plan. Es kann ein Training auf einen anderen Tag derselben Woche verschieben, zwei Tage tauschen, eine Woche etwas hoch- oder herunterskalieren, eine Woche zur Erholungswoche machen oder ein Training auslassen."
+          },
+          {
+            "type": "p",
+            "text": "Jede Änderung führen Threkirs eigene Planregeln aus. Die KI schreibt nie ein Training, eine Distanz oder eine Pace, daher bekommt eine Bitte wie *füge eine Bergeinheit hinzu* nur den Hinweis, dass das nicht geht. Für alles andere nutze **Plan bearbeiten**."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Mit KI anpassen gibt es nur im Web, und es ist eventuell noch nicht eingeschaltet. Steht **Mit KI anpassen** nicht unter **Plan anpassen**, ist es für dich nicht verfügbar."
+          }
+        ]
+      },
+      {
+        "heading": "Eine Änderung anfragen",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Öffne deinen Plan im Web und wähle **Plan anpassen**.",
+              "Wähle **Mit KI anpassen**.",
+              "Schreib, was geändert werden soll, und wähle dann **Änderungen vorschlagen**.",
+              "Lies die **Vorgeschlagene Änderungen**: jedes Training, das verschoben, ausgelassen oder erleichtert wird, und jedes geänderte Wochenziel, jeweils vorher und nachher.",
+              "Wähle **KI-Vorschläge übernehmen**, um sie zu speichern. Bis dahin hat sich an deinem Plan nichts geändert; wähle **Abbrechen**, um ihn so zu lassen."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Sicherheitsprüfungen vor dem Speichern",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Änderungen, die eine Woche gemessen an deinem bisherigen Training in den Bereich mit hohem Verletzungsrisiko bringen würden, lassen sich nicht übernehmen. Die Seite nennt die Woche.",
+              "Machen die Änderungen eine Woche härter, als dein bisheriges Training hergibt, oder legen sie zwei harte Einheiten auf aufeinanderfolgende Tage, wirst du **Härtere Änderungen übernehmen?** gefragt und musst **Trotzdem übernehmen** wählen.",
+              "Ein Vorschlag, der sich nicht sicher umsetzen ließ, wird weggelassen, und die Seite sagt dir das."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Was dafür verwendet wird",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Jede Anfrage verbraucht eine deiner täglichen KI-Coach-Nachrichten, dasselbe Kontingent wie beim Coach.",
+              "Sie setzt den aktuellen KI-Hinweis voraus. Wirst du gebeten, ihn zu akzeptieren, wähle **In den Einstellungen ansehen** und akzeptiere ihn dort.",
+              "An die KI gehen nur die anstehenden Trainings deines Plans und die Änderung, die du eingegeben hast."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Du kannst auch den Coach bitten, deinen Plan zu ändern. Er antwortet mit einem Link, der Mit KI anpassen mit deiner Bitte bereits ausgefüllt öffnet."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "what-pro-includes",
+      "your-data-and-privacy"
+    ]
+  },
+  {
     "id": "import-your-history",
     "lang": "de",
     "title": "Deine Laufhistorie importieren",
@@ -2513,7 +2820,7 @@
           {
             "type": "note",
             "tone": "tip",
-            "text": "Um jeden Lauf zu teilen, ohne daran denken zu müssen, schalte im Tab **Du** unter **Sicherheitskontakte** die Option **Automatisches Live-Teilen** ein. Sie gilt nur für dieses Handy, und der laufende Lauf kann von allen mit dem Link angesehen werden."
+            "text": "Um jeden Lauf zu teilen, ohne daran denken zu müssen, schalte im Tab **Du** unter **Sicherheitskontakte** die Option **Automatisches Live-Teilen** ein. Sie gilt nur für dieses Handy. Ihre Beschreibung sagt, wer mitverfolgen kann: alle mit dem Link oder nur deine Sicherheitskontakte (siehe letzten Abschnitt)."
           },
           {
             "type": "illustration",
@@ -2583,12 +2890,278 @@
             "text": "Wenn du einer gespeicherten Route folgst, warnt dich der Laufbildschirm, sobald du von ihr abweichst, zeigt an, wie weit du entfernt bist, und kann es bei eingeschalteten Sprachansagen auch laut sagen. Diese Warnung ist nur für dich; sie benachrichtigt niemanden."
           }
         ]
+      },
+      {
+        "heading": "Nur mit deinen Sicherheitskontakten teilen",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Wo das Teilen nur mit Sicherheitskontakten eingeschaltet ist, steht in der Beschreibung unter **Automatisches Live-Teilen**, dass das Teilen nie öffentlich ist. Der laufende Lauf ist dann für alle außer dir verborgen, bis ein Überfällig-Alarm oder ein Alarm wegen Verlassens der Route ausgelöst wird. Erst dann bekommt jeder bestätigte Kontakt einen eigenen Link in der Alarm-E-Mail oder -SMS."
+          },
+          {
+            "type": "list",
+            "items": [
+              "**Automatisches Live-Teilen** schaltet sich von selbst ein, sobald du einen Überfällig-Alarm einstellst, außer du hast es selbst ausgeschaltet.",
+              "Ein Tippen auf **Live-Link teilen** erstellt weiterhin einen öffentlichen Link, wie oben beschrieben.",
+              "Der Link eines Kontakts zeigt **Nur Sicherheitskontakte**. Er ist nur für diese Person gedacht, bitte sie also, ihn nicht weiterzugeben. Er funktioniert nicht mehr, wenn der Lauf endet, wenn du das Teilen beendest oder nach 48 Stunden."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Das Teilen nur mit Sicherheitskontakten ist eventuell noch nicht eingeschaltet. Bis dahin kann ein automatisches Live-Teilen von allen mit dem Link angesehen werden."
+          }
+        ]
       }
     ],
     "related": [
       "privacy-zones",
       "record-your-first-run",
       "racing-in-a-race"
+    ]
+  },
+  {
+    "id": "location-permission",
+    "lang": "de",
+    "title": "Standortzugriff für die Laufaufzeichnung",
+    "summary": "Welche Standortoption du unter Android und auf dem iPhone wählen solltest, was jede für deine Läufe bedeutet und wie du sie später in den Einstellungen änderst.",
+    "kind": "how-to",
+    "category": "running",
+    "audience": [
+      "runner"
+    ],
+    "platforms": [
+      "android",
+      "ios"
+    ],
+    "sections": [
+      {
+        "heading": "Warum die App nach deinem Standort fragt",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Dein Standort zeichnet die Karte eines Laufs und misst Distanz und Pace. Ohne ihn zeichnet ein Lauf weiterhin Zeit und Schritte auf, aber keine Karte, Distanz oder Pace."
+          },
+          {
+            "type": "p",
+            "text": "Du wirst bei der Einrichtung gefragt: Nach der Seite **Standortzugriff** öffnet ein Tippen auf **Berechtigung erteilen** die Abfrage deines Handys. Lehnst du ab, sagt dir die App das und bietet **Einstellungen öffnen** an. Hast du den Zugriff noch nicht erlaubt, wenn du auf **START** tippst, fragt dein Handy möglicherweise erneut."
+          }
+        ]
+      },
+      {
+        "heading": "Unter Android",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Androids erste Abfrage kann den Zugriff nur während der Nutzung der App erteilen. Damit der Lauf auch bei ausgeschaltetem Bildschirm erfasst wird, brauchst du **Immer zulassen**, und das lässt Android nur in den Einstellungen auswählen."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Lass in der Abfrage **Genau** ausgewählt und tippe auf **Während der Nutzung der App**.",
+              "Vor deinem ersten Lauf zeigt die App **Standort immer zulassen**. Tippe auf **Einstellungen öffnen**.",
+              "Tippe unter **Berechtigungen** auf **Standort**, wähle **Immer zulassen** und kehre dann zur App zurück."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Tippst du auf **Trotzdem starten**, zeichnet der Lauf ganz normal auf, solange die App im Vordergrund ist. Bei ausgeschaltetem Bildschirm oder in einer anderen App sendet Android deinen Standort möglicherweise nicht mehr: Die Uhr läuft weiter und nichts bereits Aufgezeichnetes geht verloren, aber die Distanz, die du in der Zeit zurücklegst, wird nicht gezählt. In dem Fall erscheint bei deiner Rückkehr eine Meldung, die mit **Die Aufzeichnung pausierte, während du weg warst** beginnt, mit einer Schaltfläche **Einstellungen**."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Der Hinweis vor einem Lauf erscheint einmal. Er kommt nur zurück, wenn du den Zugriff immer erlaubt hattest und dieser später entfernt wurde, zum Beispiel weil Android die Berechtigungen von Apps zurücksetzt, die du länger nicht geöffnet hast."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Mit **Ungefähr** ist der Standort zu grob, um einen Lauf zu messen: Du siehst den ganzen Lauf über **Ungefährer Standort — Distanz pausiert**.",
+              "**Nur dieses Mal** gilt für den Lauf, den du gleich startest, und beim nächsten Mal wirst du erneut gefragt.",
+              "Mit **Nicht zulassen** zeichnen Läufe nur Zeit und Schritte auf."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Auf dem iPhone",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Auf dem iPhone reicht der Zugriff während der Nutzung der App: Ein Lauf zeichnet weiter auf, wenn der Bildschirm gesperrt ist oder du eine andere App verwendest. Die App fragt nie nach **Immer**, und du brauchst es nicht."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Tippe in der Abfrage auf **Beim Verwenden der App erlauben**.",
+              "Lass den genauen Standort in der Abfrage eingeschaltet. Ohne ihn ist deine Position zu grob, um die Distanz zu messen, und der Lauf zeigt **Ungefährer Standort — Distanz pausiert**."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "**Einmal erlauben** gilt nur für diesen Lauf, und beim nächsten Mal wirst du erneut gefragt. Mit **Nicht erlauben** zeichnen Läufe nur Zeit und Schritte auf."
+          }
+        ]
+      },
+      {
+        "heading": "Energiesparfunktionen",
+        "blocks": [
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Manche Android-Handys (Samsung, Xiaomi, OnePlus und andere) versetzen Apps in den Ruhezustand, um Akku zu sparen. Das kann die Aufzeichnung eines langen Laufs bei ausgeschaltetem Bildschirm stoppen, selbst mit **Immer zulassen**. Vor deinem ersten Lauf zeigt die App einmal **Aufzeichnung im Hintergrund aktiv halten**: Tippe auf **Einstellungen öffnen** und nimm Threkir von der Akkuoptimierung aus. Hast du auf **Nicht jetzt** getippt, öffne die Seite der App in den Einstellungen deines Handys, tippe auf **Akku** und wähle **Nicht eingeschränkt**. Die Bezeichnungen unterscheiden sich je nach Hersteller etwas."
+          }
+        ]
+      },
+      {
+        "heading": "Später ändern",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Unter Android:"
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Öffne die **Einstellungen** deines Handys und tippe auf **Apps** und dann auf **Threkir**.",
+              "Tippe auf **Berechtigungen** und dann auf **Standort**.",
+              "Wähle **Immer zulassen** und schalte **Genauen Standort verwenden** ein."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Auf dem iPhone:"
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Öffne **Einstellungen** › **Datenschutz & Sicherheit** › **Ortungsdienste** und prüfe, ob die **Ortungsdienste** eingeschaltet sind.",
+              "Tippe auf **Threkir** und wähle **Beim Verwenden der App**.",
+              "Schalte **Genauer Standort** ein."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Ist der Standort beim Start eines Laufs aus oder blockiert, weist der Laufbildschirm darauf hin, und seine Schaltfläche **Einstellungen** bringt dich an die richtige Stelle."
+          }
+        ]
+      },
+      {
+        "heading": "Was die App mit deinem Standort macht",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Sie liest deinen Standort, während du einen Lauf aufzeichnest und wenn sich eine Karte auf dich zentriert, etwa wenn du eine Route erstellst oder eine Datenschutzzone setzt. Zwischen den Läufen verfolgt sie dich nicht.",
+              "Unter Android zeigt eine Benachrichtigung an, dass ein Lauf aufgezeichnet wird, sofern du Benachrichtigungen erlaubst.",
+              "Der Track eines Laufs bleibt auf deinem Handy, bis er mit deinem Konto synchronisiert wird oder du ihn teilst, und wer ihn sehen kann, richtet sich nach deinen Datenschutzeinstellungen: siehe [[guide:your-data-and-privacy|deine Daten und Datenschutz]].",
+              "Um zu verbergen, wo du wohnst, richte [[guide:privacy-zones|Datenschutzzonen]] ein. Deine Live-Position wird nur geteilt, wenn du [[guide:live-tracking-and-safety|Live-Tracking]] einschaltest."
+            ]
+          }
+        ]
+      }
+    ],
+    "related": [
+      "record-your-first-run",
+      "privacy-zones",
+      "your-data-and-privacy",
+      "live-tracking-and-safety"
+    ]
+  },
+  {
+    "id": "log-a-meal-from-a-photo",
+    "lang": "de",
+    "title": "Eine Mahlzeit per Foto eintragen",
+    "summary": "Fotografiere deinen Teller, lass Threkir schätzen, was darauf ist, und prüfe und bearbeite jeden Eintrag, bevor er in dein Ernährungstagebuch kommt.",
+    "kind": "how-to",
+    "category": "running",
+    "audience": [
+      "runner"
+    ],
+    "requires": [
+      "pro"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/nutrition",
+      "/nutrition/log"
+    ],
+    "sections": [
+      {
+        "heading": "Bevor du anfängst",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Das Eintragen per Foto gehört zu Pro. Essen von Hand einzutragen bleibt kostenlos.",
+              "Es nutzt KI und setzt deshalb den aktuellen KI-Hinweis voraus. Wirst du gebeten, ihn zu akzeptieren, öffne Einstellungen → Konto und akzeptiere ihn dort.",
+              "Das Foto wird nur genutzt, um zu schätzen, was auf dem Teller ist. Standort- und Kameradaten werden vor dem Senden entfernt, und Threkir behält das Foto nicht."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Es ist eventuell noch nicht eingeschaltet. Siehst du **Aus einem Foto eintragen** nicht, ist es für dich nicht verfügbar."
+          }
+        ]
+      },
+      {
+        "heading": "Im Web",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Öffne [[route:/nutrition|Ernährung]] und wähle **Essen erfassen**, dann **Aus einem Foto eintragen**.",
+              "Wähle **Foto auswählen** und such ein Bild deiner Mahlzeit aus.",
+              "Füge bei Bedarf eine **Notiz (optional)** hinzu, etwa halbe Portion.",
+              "Wähle **Schätzen**."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "In der Handy-App",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Öffne **Fitness**, wähle den Tab **Ernährung** und tippe auf die Kamera-Schaltfläche **Aus einem Foto eintragen**.",
+              "Tippe auf **Foto aufnehmen** oder **Foto auswählen**.",
+              "Füge bei Bedarf eine **Notiz (optional)** hinzu und tippe dann auf **Schätzen**."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Vor dem Speichern prüfen",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Unter **Vor dem Speichern prüfen** steht jedes Lebensmittel mit Kalorien, Eiweiß, Kohlenhydraten und Fett. Das sind Schätzungen, also prüfe sie."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Ändere jeden Namen und jede Zahl, die falsch aussieht. Einträge mit **Unsichere Schätzung** lohnen am ehesten einen zweiten Blick.",
+              "Entferne alles, was nicht auf deinem Teller ist.",
+              "Wähle die **Mahlzeit**, zu der das Essen gehört.",
+              "Wähle **Einträge speichern**, um den Rest in dein Ernährungstagebuch aufzunehmen. Vorher wird nichts gespeichert."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Wird kein Essen erkannt oder hast du in der letzten Stunde viele Fotos eingetragen, trag die Mahlzeit wie gewohnt von Hand ein."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "what-pro-includes",
+      "your-data-and-privacy"
     ]
   },
   {
@@ -2620,7 +3193,7 @@
           {
             "type": "list",
             "items": [
-              "Sie gilt für das, was andere sehen: geteilte Läufe und Routen, dein öffentliches Profil, den Feed, Heatmaps und die Live-Tracking-Seite.",
+              "Sie gilt für das, was andere sehen: geteilte Läufe und Routen, dein öffentliches Profil, den Feed, Heatmaps, die Live-Tracking-Seite und die Laufkarten, die ein Coach, mit dem du arbeitest, öffnen kann.",
               "Sie gilt für bereits aufgezeichnete Läufe ebenso wie für neue, denn der Track wird jedes Mal gekürzt, wenn jemand anderes ihn ansieht.",
               "Du selbst siehst immer deinen vollständigen Track, und Dateien, die du für dich exportierst, enthalten ebenfalls den vollständigen Track."
             ]
@@ -2727,7 +3300,7 @@
           {
             "type": "note",
             "tone": "tip",
-            "text": "Wähle unter Android für den Standort **Immer zulassen**. Mit Zugriff nur bei geöffneter App wird die Distanz, die du bei ausgeschaltetem Bildschirm zurücklegst, nicht gezählt, obwohl die Uhr weiterläuft."
+            "text": "Wähle unter Android für den Standort **Immer zulassen**. Mit Zugriff nur bei geöffneter App wird die Distanz, die du bei ausgeschaltetem Bildschirm zurücklegst, möglicherweise nicht gezählt, obwohl die Uhr weiterläuft. Lies, [[guide:location-permission|welche Standortoption du wählen solltest]]."
           },
           {
             "type": "illustration",
@@ -2799,6 +3372,7 @@
       }
     ],
     "related": [
+      "location-permission",
       "privacy-zones",
       "live-tracking-and-safety",
       "import-your-history"

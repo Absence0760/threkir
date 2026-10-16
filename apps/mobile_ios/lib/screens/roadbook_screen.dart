@@ -11,12 +11,14 @@ import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, ChoiceChipOption, Ch
 import '../elevation.dart';
 import '../fuel_plan.dart';
 import '../goal_time.dart';
+import '../health_consent.dart' show healthUseWeightKg;
 import '../l10n/gen/app_localizations.dart';
 import '../metrics.dart';
 import '../preferences.dart';
 import '../roadbook.dart';
 import '../share_sheet.dart';
 import '../route_markers.dart' show kindSpec;
+import '../weight_fluid_flag.dart';
 import '../widgets/metric_label.dart';
 import '../widgets/top_banner.dart';
 
@@ -254,6 +256,13 @@ class _RoadbookScreenState extends State<RoadbookScreen> {
   PacingModel _model = PacingModel.effort;
   bool _fueling = false;
   bool _heat = false;
+  // Opt-in weight-based fluid rate (decisions § 1976). It applies only when
+  // [_consentedWeightKg] is set: the runner's own latest body-metrics weight,
+  // passed through the Art 9 consent gate. Screen-local, like [_heat]. With
+  // the deploy gate off ([_weightFluidOffered]) no weight is read at all.
+  final bool _weightFluidOffered = weightFluidGate;
+  bool _weightFluid = false;
+  double? _consentedWeightKg;
   late final TextEditingController _goal;
 
   @override
@@ -263,6 +272,7 @@ class _RoadbookScreenState extends State<RoadbookScreen> {
     _goalSeconds = (km * _defaultSecPerKm).round().clamp(60, 1 << 30);
     _goal = TextEditingController(text: _elapsedLabel(_goalSeconds.toDouble()));
     unawaited(_loadPlan());
+    if (_weightFluidOffered) unawaited(_loadConsentedWeight());
     if (widget.initialMarkers != null) {
       _markers = widget.initialMarkers!;
     } else {
@@ -283,6 +293,27 @@ class _RoadbookScreenState extends State<RoadbookScreen> {
       _goal.text = _elapsedLabel(_goalSeconds.toDouble());
     });
   }
+
+  Future<void> _loadConsentedWeight() async {
+    final api = widget.api;
+    if (api == null || api.userId == null) return;
+    try {
+      final profile = await api.fetchMyProfile();
+      final weight = await api.fetchLatestBodyWeightKg();
+      if (!mounted) return;
+      setState(() => _consentedWeightKg = healthUseWeightKg(profile, weight));
+    } catch (e) {
+      // L4: without a weight the flat rate stands and the toggle says why.
+      debugPrint('roadbook: consented weight load failed: $e');
+    }
+  }
+
+  /// The per-hour fluid rate the plan uses: the weight-based baseline when the
+  /// runner opted in and a consented weight is on record, else the flat pref.
+  double? get _weightFluidMl =>
+      _weightFluidOffered && _weightFluid
+          ? weightFluidPerHourMl(_consentedWeightKg)
+          : null;
 
   void _persistPlan() {
     unawaited(saveRoadbookPlan(
@@ -353,7 +384,9 @@ class _RoadbookScreenState extends State<RoadbookScreen> {
             ),
         ],
         carbsPerHourG: widget.preferences?.carbsPerHourG ?? defaultCarbsPerHourG,
-        fluidPerHourMl: widget.preferences?.fluidPerHourMl ?? defaultFluidPerHourMl,
+        fluidPerHourMl: _weightFluidMl ??
+            widget.preferences?.fluidPerHourMl ??
+            defaultFluidPerHourMl,
         heatFactor: _heat ? heatFluidFactor : 1.0,
       );
 
@@ -535,6 +568,27 @@ class _RoadbookScreenState extends State<RoadbookScreen> {
                 ),
             ],
           ),
+          if (_fueling && _weightFluidOffered) ...[
+            SwitchListTile(
+              key: const Key('roadbook-weight-fluid'),
+              contentPadding: EdgeInsets.zero,
+              title: Text(l10n.roadbookWeightToggle),
+              value: _weightFluid && _consentedWeightKg != null,
+              onChanged: _consentedWeightKg == null
+                  ? null
+                  : (v) => setState(() => _weightFluid = v),
+            ),
+            Text(
+              _consentedWeightKg == null
+                  ? l10n.roadbookWeightUnavailable
+                  : _weightFluidMl != null
+                      ? l10n.roadbookWeightUsing(
+                          _weightFluidMl!.round().toString())
+                      : l10n.roadbookWeightHint,
+              key: const Key('roadbook-weight-hint'),
+              style: theme.textTheme.bodySmall,
+            ),
+          ],
           const SizedBox(height: 12),
           if (_markersFailed)
             Row(

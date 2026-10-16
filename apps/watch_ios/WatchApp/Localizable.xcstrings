@@ -1448,6 +1448,47 @@
         }
       }
     },
+    "Distance and map will be wrong. Turn on Precise Location in Settings > Privacy & Security > Location Services > Threkir, on this watch or in the Watch app on iPhone.": {
+      "comment": "In-run notice under 'Precise Location is off': what goes wrong and where to fix it. Menu names are Apple's own Settings labels in each language.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Distanz und Karte werden falsch sein. Aktiviere „Genauer Standort“ unter Einstellungen > Datenschutz & Sicherheit > Ortungsdienste > Threkir, auf dieser Uhr oder in der Watch-App auf dem iPhone."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La distancia y el mapa no serán correctos. Activa Ubicación exacta en Ajustes > Privacidad y seguridad > Localización > Threkir, en este reloj o en la app Watch del iPhone."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La distance et la carte seront fausses. Activez Position exacte dans Réglages > Confidentialité et sécurité > Service de localisation > Threkir, sur cette montre ou dans l’app Watch de l’iPhone."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "距離とマップが不正確になります。この Apple Watch または iPhone の Watch App で、設定 > プライバシーとセキュリティ > 位置情報サービス > Threkir から「正確な位置情報」をオンにしてください。"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A distância e o mapa ficarão incorretos. Ative Localização Exata em Ajustes > Privacidade e Segurança > Serviços de Localização > Threkir, neste relógio ou no app Watch do iPhone."
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A distância e o mapa ficarão incorretos. Ative Localização exata em Definições > Privacidade e segurança > Serviços de localização > Threkir, neste relógio ou na app Watch do iPhone."
+          }
+        }
+      }
+    },
     "Email": {
       "comment": "Sign-in sheet field label.",
       "localizations": {
@@ -2919,6 +2960,47 @@
           "stringUnit": {
             "state": "translated",
             "value": "Acelere o ritmo"
+          }
+        }
+      }
+    },
+    "Precise Location is off": {
+      "comment": "In-run notice heading when the runner has Precise Location off and declined full accuracy for this run. Uses Apple's own name for the setting.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Genauer Standort ist aus"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ubicación exacta desactivada"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Position exacte désactivée"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正確な位置情報がオフです"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Localização Exata desativada"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Localização exata desativada"
           }
         }
       }

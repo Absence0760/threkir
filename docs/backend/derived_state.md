@@ -302,7 +302,8 @@ retention cron referenced in a comment that was never created.
 ## `user_coach_usage`
 
 - **What it caches:** per-(user, UTC day) AI-coach message count. The cap RPCs
-  (`increment` / `get` / `decrement_coach_usage`, `20261002_001`) read a rolling
+  (`increment` / `get_coach_usage`, `20261002_001`, and the ticketed
+  `spend` / `refund_coach_usage_slot` that replaced `decrement`, `20270829000011`) read a rolling
   24h sum across today's bucket plus yesterday's when the window straddles UTC
   midnight.
 - **Authoritative read:** `sum(message_count) where user_id = ? and usage_date >=
@@ -316,7 +317,7 @@ retention cron referenced in a comment that was never created.
   (F9). Without it the table grows one row per user per day forever.
 - **Manual rebuild:** none — it is the source of truth, not a derived copy. The
   retention purge is the only maintenance.
-- **Writers:** the three definer RPCs and the retention cron, nothing else. No
+- **Writers:** the definer RPCs and the retention cron, nothing else. No
   client verb reaches the table (migration `20270505_001` revoked
   INSERT/UPDATE/DELETE from `anon` + `authenticated` and replaced the self-write
   policies with explicit denies) — a meter the metered party can rewrite is not a

@@ -1,5 +1,6 @@
 package com.runapp.watchwear
 
+import com.runapp.watchwear.recording.GnssSignalSummary
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
@@ -41,6 +42,7 @@ class QueuedRunSerializationTest {
         ),
         steps = 4_500,
         isPublic = true,
+        gnssSignal = GnssSignalSummary(samples = 1800, usedMedian = 0),
     )
 
     @Test
@@ -234,5 +236,54 @@ class QueuedRunSerializationTest {
         val decoded = json.decodeFromString(QueuedRun.serializer(), preEstimator)
         assertNull(decoded.distanceEstimator)
         assertNull(decoded.distanceStepFilledM)
+    }
+
+    @Test
+    fun `location provider round-trips through the queue`() {
+        for (provider in listOf("gps", "fused", "mixed")) {
+            val queued = sample.copy(locationProvider = provider)
+            val decoded = json.decodeFromString(
+                QueuedRun.serializer(),
+                json.encodeToString(QueuedRun.serializer(), queued),
+            )
+            assertEquals(queued, decoded)
+        }
+    }
+
+    @Test
+    fun `a run queued before the receiver decodes with no location provider`() {
+        val preReceiver = """
+        {
+            "id": "old-run",
+            "startedAtIso": "2026-05-01T08:00:00Z",
+            "durationS": 1800,
+            "distanceM": 5000.0,
+            "trackFilePath": "/old/path.json",
+            "distanceEstimator": "kalman_v1"
+        }
+        """.trimIndent()
+        val decoded = json.decodeFromString(QueuedRun.serializer(), preReceiver)
+        assertEquals("kalman_v1", decoded.distanceEstimator)
+        assertNull(decoded.locationProvider)
+    }
+    @Test
+    fun `a complete-track claim round-trips and an older queue entry claims none`() {
+        val queued = sample.copy(trackComplete = true)
+        val decoded = json.decodeFromString(
+            QueuedRun.serializer(),
+            json.encodeToString(QueuedRun.serializer(), queued),
+        )
+        assertTrue(decoded.trackComplete)
+        val older = """
+        {
+            "id": "old-run",
+            "startedAtIso": "2026-05-01T08:00:00Z",
+            "durationS": 1800,
+            "distanceM": 5000.0,
+            "trackFilePath": "/old/path.json",
+            "distanceEstimator": "kalman_v4"
+        }
+        """.trimIndent()
+        assertEquals(false, json.decodeFromString(QueuedRun.serializer(), older).trackComplete)
     }
 }

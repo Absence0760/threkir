@@ -12,6 +12,8 @@ import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:uuid/uuid.dart';
 
+import 'baro_altitude_anchor.dart';
+import 'gnss_signal_quality.dart';
 import 'gps_distance_estimator.dart';
 import 'run_snapshot.dart';
 
@@ -124,11 +126,37 @@ class RunRecorder {
   /// [clock] exists so tests can drive the monotonic gap the re-anchor escape
   /// in [_onPosition] gates on without waiting out real seconds. Production
   /// always takes the default.
+  ///
+  /// [gnssPositions] opens a stream of the satellite receiver's own fixes
+  /// (Android's `GPS_PROVIDER`), which the recorder prefers over the
+  /// platform's location stream whenever it is delivering. Null where the
+  /// platform stream is the only source (iOS). See [_onGnssPosition].
+  ///
+  /// [gnssStatus] opens the receiver's satellite-status readings (Android's
+  /// `GnssStatus`), summarised into `metadata.gnss_signal` on [stop]. Null
+  /// where the platform has no such API (iOS).
+  ///
+  /// [sourceArbitrationGateMetres] is the accuracy a receiver fix must state
+  /// to count as the receiver delivering. It is deliberately separate from
+  /// the estimator's own 50 m cap: a receiver under canopy sends 30 m fixes,
+  /// which the estimator keeps, but whether those should hold the fused
+  /// provider off is a question for the tree-covered corpus (#1098).
   RunRecorder({
     Stopwatch? clock,
+    Stream<Position> Function(Duration interval)? gnssPositions,
+    Stream<GnssStatusSample> Function()? gnssStatus,
+    double sourceArbitrationGateMetres = defaultSourceArbitrationGateMetres,
+    @visibleForTesting Stopwatch? sourceClock,
     @visibleForTesting int maxSmoothedStretchEvents = defaultMaxSmoothedStretchEvents,
   })  : _stopwatch = clock ?? Stopwatch(),
+        _sourceClock = (sourceClock ?? Stopwatch())..start(),
+        _gnssPositions = gnssPositions,
+        _gnssStatus = gnssStatus,
+        _sourceArbitrationGateMetres = sourceArbitrationGateMetres,
         _maxSmoothedStretchEvents = maxSmoothedStretchEvents;
+
+  static const double defaultSourceArbitrationGateMetres = 20;
+  final double _sourceArbitrationGateMetres;
 
   /// The most estimator inputs one stretch keeps for [stop]'s smoother replay.
   /// The replay runs on the UI isolate at stop and holds every input plus the
@@ -142,9 +170,9 @@ class RunRecorder {
   static const _uuid = Uuid();
 
   /// `metadata.distance_estimator` on a GPS-distance run whose saved distance
-  /// is the spec v1.3 smoother's ([smoothDistance]). The live screen reads the
+  /// is the spec v1.4 smoother's ([smoothDistance]). The live screen reads the
   /// forward filter; [stop] replays every stretch through the smoother.
-  static const distanceEstimatorVersion = 'kalman_v3';
+  static const distanceEstimatorVersion = 'kalman_v4';
 
   /// How often [prepare] retries opening the position stream when it is
   /// currently absent (services/permission denied at start, or the stream
@@ -161,6 +189,22 @@ class RunRecorder {
   // the closed snapshot sink.
   bool _disposed = false;
   StreamSubscription<Position>? _positionSub;
+  final Stream<Position> Function(Duration interval)? _gnssPositions;
+  StreamSubscription<Position>? _gnssSub;
+  final Stream<GnssStatusSample> Function()? _gnssStatus;
+  StreamSubscription<GnssStatusSample>? _gnssStatusSub;
+  GnssSignalAccumulator _gnssSignal = GnssSignalAccumulator();
+  // Source arbitration between the GNSS stream and the platform stream, on
+  // arrival time: the receiver's fix times are GNSS time and the fused
+  // provider's are not, so the two cannot be compared with each other.
+  final Stopwatch _sourceClock;
+  Duration? _lastGnssArrival;
+  int _gnssStreak = 0;
+  bool _onGnss = false;
+  int _gnssFixesRecorded = 0;
+  int _platformFixesRecorded = 0;
+  bool _feedingGnss = false;
+  DateTime? _gnssLastOpenAt;
   Timer? _timer;
   Timer? _gpsRetryTimer;
   final List<LapSplit> _laps = [];
@@ -201,6 +245,9 @@ class RunRecorder {
   double _distanceOffsetMetres = 0;
   double _stepFilledOffsetMetres = 0;
   double? _priorStrideM;
+  // The stride [prepare] was seeded with (the one persisted from this
+  // runner's earlier runs of this activity); every reset falls back to it.
+  double? _seedStrideM;
   // The estimator's clock (see [_estimatorFixTime]).
   double? _estFixT;
   Duration? _estFixMono;
@@ -208,7 +255,20 @@ class RunRecorder {
   double? _estStepT;
 
   double get _distanceMetres => _distanceOffsetMetres + _estimator.distanceM;
+  // The run's line: the fixes that passed the accuracy and movement gates, the
+  // only ones the map, the route match, elevation and the snapshot's [track]
+  // ever see.
   final List<Waypoint> _track = [];
+  // What [stop] saves: every fix the distance estimator took, in order, with
+  // the ones not on [_track] flagged [Waypoint.offTrack], so a server replay
+  // of the stored track sees the live input (gps_distance.md § Stored track).
+  // The line's points are the same objects, stamped once.
+  final List<Waypoint> _stored = [];
+  late final UnmodifiableListView<Waypoint> _storedView =
+      UnmodifiableListView(_stored);
+  // Whether [_stored] holds every fix the estimator took this run: false only
+  // for a session resumed from a checkpoint that did not say it did.
+  bool _storedComplete = true;
   // Single read-only view handed out on every snapshot. `UnmodifiableListView`
   // wraps `_track` by reference — appending to `_track` is still visible
   // through the view, and there's no new wrapper allocated per emission
@@ -234,6 +294,8 @@ class RunRecorder {
   /// 1-second timer re-emits the same fix forever, so this — not the
   /// snapshot's arrival — is the only honest measure of GPS liveness.
   DateTime? _currentWaypointAt;
+  // Wall-clock time the estimator last took a fix, canopy fixes included.
+  DateTime? _distanceFixAt;
   /// Last position that was appended to [_track]. Used to gate the next
   /// track append + distance accumulation on real movement.
   Position? _lastTrackedPosition;
@@ -316,7 +378,18 @@ class RunRecorder {
   // Remembered so the retry loop can re-open the position stream with the
   // same accuracy setting the caller passed to [prepare].
   LocationAccuracy _locationAccuracy = LocationAccuracy.bestForNavigation;
-  bool _rawGpsProvider = false;
+  // A receiver silent this long hands the run to the platform stream. It is
+  // longer than the estimator's own gap window, which already bridges a
+  // shorter silence on Doppler and the pedometer, better than fused would.
+  // The receiver takes the run back after this many consecutive fixes, each
+  // within the same window of the last, so a receiver flickering under
+  // canopy doesn't interleave two sources fix by fix.
+  static const Duration _gnssStaleAfter = Duration(seconds: 12);
+  static const int _gnssRetakeFixes = 3;
+  // A phone with no usable receiver errors on every open; the fused stream
+  // is already recording, so the receiver is retried slowly rather than on
+  // every retry tick.
+  static const Duration _gnssReopenInterval = Duration(seconds: 30);
   // The fix interval requested from Android, and the interval the estimator
   // scales its gap and freshness windows by. geolocator_android otherwise
   // falls back to 5000 ms, and on Android 13+ also sets that as the minimum
@@ -334,6 +407,12 @@ class RunRecorder {
   /// — Waypoints constructed without a sample carry `bpm: null`, which
   /// matches the pre-strap behaviour.
   int? _currentBpm;
+
+  /// Levels the phone barometer against GPS altitude; its fused altitude is
+  /// stamped on each new [Waypoint] as `baroElevationMetres`. Fed by
+  /// [setBarometricAltitude]; stays unanchored, and stamps nothing, on a phone
+  /// without a barometer. Times are [_sourceClock] seconds.
+  final BaroAltitudeAnchor _baroAnchor = BaroAltitudeAnchor();
 
   /// Treadmill (FTMS) distance source — an ADDITIVE, OPT-IN alternate to the
   /// GPS L1 distance path. Off by default: every field here stays untouched
@@ -400,15 +479,73 @@ class RunRecorder {
   bool get backgroundLocationLimited => _backgroundLocationLimited;
   bool _backgroundLocationLimited = false;
 
-  /// The Android location provider the position stream asks for: `'gps'`
-  /// (raw `GPS_PROVIDER` through `LocationManager`) when [prepare] was given
-  /// `rawGpsProvider`, else `'fused'`. Null off Android, which has one
-  /// provider. Saved as `metadata.location_provider` so a run recorded for the
-  /// GPS corpus says which stream produced it.
-  String? get locationProvider =>
-      defaultTargetPlatform == TargetPlatform.android
-          ? (_rawGpsProvider ? 'gps' : 'fused')
-          : null;
+  /// Whether this run records under a reduced-accuracy location grant:
+  /// iOS 14+ with Precise Location switched off, or Android 12+ with only
+  /// approximate (`ACCESS_COARSE_LOCATION`) granted. Fixes then arrive
+  /// kilometres off, so the accuracy gate drops them and the track, map and
+  /// GPS distance stay empty; on Android the `GPS_PROVIDER` bridge cannot
+  /// open at all without `ACCESS_FINE_LOCATION`.
+  ///
+  /// Like [backgroundLocationLimited] it is a limitation, not a failure:
+  /// the clock and pedometer still record, and callers disclose it rather
+  /// than refuse the run. On iOS [prepare] first asks once for temporary
+  /// full accuracy (purpose key [fullAccuracyPurposeKey]), which lasts the
+  /// app session; this is true only when that was declined. Android has no
+  /// temporary grant, and [Geolocator.requestPermission] cannot upgrade a
+  /// coarse grant there (it bundles `ACCESS_BACKGROUND_LOCATION`, and Android
+  /// 11+ ignores a request mixing it with a foreground permission), so the
+  /// caller re-requests or sends the runner to settings. An unreadable
+  /// status counts as precise. Resolved by [prepare], and cleared by the
+  /// first fix that clears the accuracy gate: a reduced grant cannot produce
+  /// one, so it proves the runner turned precision back on mid-run and a
+  /// later [RunSnapshot.weakGps] stall is ordinary weak signal.
+  bool get preciseLocationOff => _preciseLocationOff;
+  bool _preciseLocationOff = false;
+
+  /// The `NSLocationTemporaryUsageDescriptionDictionary` key in the iOS
+  /// Info.plist whose purpose string the temporary-full-accuracy prompt
+  /// shows.
+  static const String fullAccuracyPurposeKey = 'PreciseRunTracking';
+
+  /// Which Android stream the recorded fixes came from: `'gps'`, `'fused'`, or
+  /// `'mixed'` when the run fell back to fused for part of it. Counts restart
+  /// at [prepare], so a resumed session describes its own fixes. Null off
+  /// Android. Saved as `metadata.location_provider`.
+  String? get locationProvider {
+    if (defaultTargetPlatform != TargetPlatform.android) return null;
+    if (_gnssFixesRecorded > 0 && _platformFixesRecorded > 0) return 'mixed';
+    return _gnssFixesRecorded > 0 ? 'gps' : 'fused';
+  }
+
+  /// The receiver's signal quality over the recorded, unpaused part of the
+  /// session, as `metadata.gnss_signal`; null until a status reading has
+  /// arrived. Not read by the distance estimator.
+  Map<String, dynamic>? get gnssSignalMetadata => _gnssSignal.toMetadata();
+
+  /// Subscribes to [_gnssStatus] for the recording. L4: a failure only loses
+  /// the summary, so it is caught here and never reaches the fix streams.
+  void _openGnssStatusStream() {
+    final open = _gnssStatus;
+    if (_disposed || open == null || _gnssStatusSub != null) return;
+    try {
+      _gnssStatusSub = open().listen(
+        _onGnssStatus,
+        onError: (Object e, StackTrace st) {
+          debugPrint('RunRecorder: GNSS status stream error — $e');
+          _gnssStatusSub?.cancel();
+          _gnssStatusSub = null;
+        },
+        cancelOnError: true,
+      );
+    } catch (e) {
+      debugPrint('RunRecorder: GNSS status stream failed to open — $e');
+      _gnssStatusSub = null;
+    }
+  }
+
+  void _onGnssStatus(GnssStatusSample s) {
+    if (_recording && !_paused && !_treadmillMode) _gnssSignal.add(s);
+  }
 
   /// Whether [begin] has been called and time/distance are accumulating.
   bool get recording => _recording;
@@ -441,11 +578,10 @@ class RunRecorder {
   /// delivery is at risk. It sets [backgroundLocationLimited] so the caller
   /// can disclose the limitation.
   ///
-  /// [rawGpsProvider] is a developer diagnostic for #1090 item 6: on Android
-  /// it asks geolocator for the platform `LocationManager` (raw
-  /// `GPS_PROVIDER`) instead of the fused provider, which already smooths
-  /// before our filter sees a fix. Ignored on iOS. The saved run names the
-  /// provider it used in `metadata.location_provider`.
+  /// [initialStrideM] seeds the estimator's stride, so a GPS gap before this
+  /// run has learned one is still step-filled: the caller persists
+  /// [strideMetres] per runner and activity and passes it back here. Out of
+  /// range or null means no seed.
   Future<void> prepare({
     Route? route,
     int distanceFilterMetres = 3,
@@ -453,7 +589,7 @@ class RunRecorder {
     double maxSpeedMps = 10,
     LocationAccuracy accuracy = LocationAccuracy.bestForNavigation,
     double accuracyGateMetres = 20,
-    bool rawGpsProvider = false,
+    double? initialStrideM,
   }) async {
     if (_disposed) {
       throw StateError('RunRecorder.prepare() called after dispose()');
@@ -470,9 +606,12 @@ class RunRecorder {
       ..stop()
       ..reset();
     _track.clear();
+    _stored.clear();
+    _storedComplete = true;
     _laps.clear();
     _currentWaypoint = null;
     _currentWaypointAt = null;
+    _distanceFixAt = null;
     _lastTrackedPosition = null;
     _lastTrackedPositionAt = null;
     _lastTrackedElapsed = null;
@@ -491,12 +630,14 @@ class RunRecorder {
     _trackThresholdMetres =
         max(distanceFilterMetres.toDouble(), minMovementMetres);
     _maxSpeedMps = maxSpeedMps;
+    _seedStrideM = _validStride(initialStrideM);
     _resetDistance(0);
     _accuracyGateMetres = accuracyGateMetres;
     _locationAccuracy = accuracy;
-    _rawGpsProvider = rawGpsProvider;
+    _resetSourceArbitration();
     _lastAccuracyDropLogAt = null;
     _backgroundLocationLimited = false;
+    _preciseLocationOff = false;
     _resetTreadmill();
     _prepared = true;
 
@@ -525,6 +666,29 @@ class RunRecorder {
     _backgroundLocationLimited = _foregroundOnlyGrant(permission);
 
     _openPositionStream();
+    final preciseOff = await _resolvePreciseLocationOff();
+    if (!_disposed) _preciseLocationOff = preciseOff;
+  }
+
+  /// Reads the accuracy of the current grant for [preciseLocationOff],
+  /// asking iOS once for temporary full accuracy when it is reduced. Runs
+  /// after the stream is open because Core Location upgrades a live stream
+  /// in place when the grant changes. L4: a platform failure here only
+  /// loses the disclosure, so it is caught on its own and reads as precise.
+  Future<bool> _resolvePreciseLocationOff() async {
+    try {
+      var status = await Geolocator.getLocationAccuracy();
+      if (status == LocationAccuracyStatus.reduced &&
+          defaultTargetPlatform == TargetPlatform.iOS) {
+        status = await Geolocator.requestTemporaryFullAccuracy(
+          purposeKey: fullAccuracyPurposeKey,
+        );
+      }
+      return status == LocationAccuracyStatus.reduced;
+    } catch (e) {
+      debugPrint('RunRecorder: location accuracy check failed — $e');
+      return false;
+    }
   }
 
   /// Whether [permission] covers the foreground but not reliably the
@@ -552,25 +716,129 @@ class RunRecorder {
       permission != LocationPermission.deniedForever;
 
   /// Subscribe to [Geolocator.getPositionStream] with the accuracy settings
-  /// remembered from the last [prepare] call. Any stream error (commonly
-  /// thrown when the user toggles Location off mid-run) cancels the
-  /// subscription and clears [_positionSub] — the retry loop picks it back
-  /// up once services are available again.
+  /// remembered from the last [prepare] call, and to [_gnssPositions] where
+  /// there is one. Any stream error (commonly thrown when the user toggles
+  /// Location off mid-run) cancels that subscription and clears it — the
+  /// retry loop picks it back up once services are available again.
   void _openPositionStream() {
     if (_disposed) return;
-    _positionSub?.cancel();
-    _positionSub = Geolocator.getPositionStream(
-      locationSettings: _platformLocationSettings(),
-    ).listen(
-      _onPosition,
-      onError: (Object e, StackTrace st) {
-        debugPrint('RunRecorder: position stream error — $e');
-        _positionSub?.cancel();
-        _positionSub = null;
-      },
-      cancelOnError: true,
-    );
+    if (_positionSub == null) {
+      _positionSub = Geolocator.getPositionStream(
+        locationSettings: _platformLocationSettings(),
+      ).listen(
+        _onPlatformPosition,
+        onError: (Object e, StackTrace st) {
+          debugPrint('RunRecorder: position stream error — $e');
+          _positionSub?.cancel();
+          _positionSub = null;
+        },
+        cancelOnError: true,
+      );
+    }
+    _openGnssStream();
   }
+
+  /// The GNSS half of [_openPositionStream]. Separate so the retry loop can
+  /// reopen it alone: the platform stream also carries the foreground
+  /// service that keeps the process alive, so it stays open regardless.
+  void _openGnssStream() {
+    final open = _gnssPositions;
+    if (_disposed || open == null || _gnssSub != null) return;
+    final now = DateTime.now();
+    final last = _gnssLastOpenAt;
+    if (last != null && now.difference(last) < _gnssReopenInterval) return;
+    _gnssLastOpenAt = now;
+    try {
+      _gnssSub = open(_fixInterval).listen(
+        _onGnssPosition,
+        onError: (Object e, StackTrace st) {
+          debugPrint('RunRecorder: GNSS stream error — $e');
+          _gnssSub?.cancel();
+          _gnssSub = null;
+        },
+        cancelOnError: true,
+      );
+    } catch (e) {
+      debugPrint('RunRecorder: GNSS stream failed to open — $e');
+      _gnssSub = null;
+    }
+  }
+
+  void _resetSourceArbitration() {
+    _lastGnssArrival = null;
+    _gnssStreak = 0;
+    _onGnss = false;
+    _gnssFixesRecorded = 0;
+    _platformFixesRecorded = 0;
+    _gnssLastOpenAt = null;
+  }
+
+  /// A fix from the satellite receiver. Android's fused provider blends
+  /// non-GNSS estimates into both its position and its speed, biased the same
+  /// way, so the estimator cannot correct one against the other; the
+  /// receiver's speed is its own Doppler. The receiver therefore wins whenever
+  /// it is delivering steadily. Only a fix within
+  /// [_sourceArbitrationGateMetres] counts as delivering: under canopy a
+  /// receiver keeps sending 30 m fixes rather than falling silent. Those still
+  /// reach the estimator while the receiver holds the run, but they do not on
+  /// their own keep fused off.
+  void _onGnssPosition(Position pos) {
+    if (!_isUsableFix(pos) ||
+        !(pos.accuracy >= 0 && pos.accuracy <= _sourceArbitrationGateMetres)) {
+      if (_onGnss) _onPosition(pos);
+      return;
+    }
+    final now = _sourceClock.elapsed;
+    final last = _lastGnssArrival;
+    final steady = last != null && now - last <= _gnssStaleAfter;
+    _gnssStreak = steady ? _gnssStreak + 1 : 1;
+    _lastGnssArrival = now;
+    if (!_onGnss) {
+      if (_gnssStreak < _gnssRetakeFixes) return;
+      _switchSource(toGnss: true);
+    }
+    _feedingGnss = true;
+    _onPosition(pos);
+  }
+
+  /// A fix from the platform's location stream: the only source on iOS, the
+  /// fallback on Android while the receiver is silent.
+  void _onPlatformPosition(Position pos) {
+    if (_onGnss) {
+      final last = _lastGnssArrival!;
+      if (_sourceClock.elapsed - last <= _gnssStaleAfter) return;
+      _switchSource(toGnss: false);
+    }
+    _feedingGnss = false;
+    _onPosition(pos);
+  }
+
+  /// A source switch starts a new estimator stretch. The two sources disagree
+  /// on position by metres and on speed by up to a quarter, and the learned
+  /// Doppler scale, cross-check and accuracy scale would otherwise carry one
+  /// source's bias into the other for minutes. The stride carries over, but
+  /// only a receiver stretch may teach it (see [_sourceTeachesStride]).
+  void _switchSource({required bool toGnss}) {
+    final hadFixes = _gnssFixesRecorded + _platformFixesRecorded > 0;
+    _onGnss = toGnss;
+    if (!toGnss) _gnssStreak = 0;
+    if (!_recording || _paused) return;
+    if (hadFixes) {
+      _finishEstimatorSegment();
+      _startEstimatorSegment();
+    } else if (_estimator.learnStride != _sourceTeachesStride) {
+      // Nothing recorded yet, so the stretch opened at begin() is empty: swap
+      // it for one that learns (or not) for the source now holding the run.
+      _stretches.removeLast();
+      _newEstimator();
+    }
+  }
+
+  /// Whether a stretch on the current source may learn stride. Android's
+  /// fused provider blends non-GNSS speed in, #1106 measured it 25% fast, and
+  /// a stride learned there would fill later gaps 25% long. iOS has only the
+  /// platform stream, so every stretch counts.
+  bool get _sourceTeachesStride => _gnssPositions == null || _onGnss;
 
   /// Build the per-platform [LocationSettings] for the live position stream.
   ///
@@ -594,7 +862,10 @@ class RunRecorder {
   /// service, and an explicit 1 s [_fixInterval]. `distanceFilter: 0` keeps
   /// every fix flowing so software filtering can drive the blue dot at
   /// sensor rate. On Android `high`, `best` and `bestForNavigation` are the
-  /// same fused-provider request (`PRIORITY_HIGH_ACCURACY`).
+  /// same fused-provider request (`PRIORITY_HIGH_ACCURACY`). This stream is
+  /// the fallback there, not the primary source: see [_onGnssPosition].
+  /// geolocator's own `forceLocationManager` is no route to the receiver,
+  /// because on Android 12+ it asks `LocationManager` for `FUSED_PROVIDER`.
   LocationSettings _platformLocationSettings() {
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       return AppleSettings(
@@ -609,7 +880,6 @@ class RunRecorder {
     return AndroidSettings(
       accuracy: _locationAccuracy,
       intervalDuration: _fixInterval,
-      forceLocationManager: _rawGpsProvider,
       // Receive every fix from the OS; movement filtering happens in
       // software so the blue dot can refresh without inflating the track.
       distanceFilter: 0,
@@ -635,7 +905,9 @@ class RunRecorder {
     _gpsRetryTimer?.cancel();
     _gpsRetryTimer = Timer.periodic(_gpsRetryInterval, (_) async {
       if (!_prepared) return;
-      if (_positionSub != null) return;
+      if (_positionSub != null && (_gnssPositions == null || _gnssSub != null)) {
+        return;
+      }
       try {
         if (!await Geolocator.isLocationServiceEnabled()) return;
         final p = await Geolocator.checkPermission();
@@ -644,7 +916,7 @@ class RunRecorder {
         debugPrint('RunRecorder: GPS retry precheck failed — $e');
         return;
       }
-      if (!_prepared || _positionSub != null) return;
+      if (!_prepared) return;
       _openPositionStream();
     });
   }
@@ -662,6 +934,8 @@ class RunRecorder {
       ..start();
     _resetDistance(0);
     _track.clear();
+    _stored.clear();
+    _storedComplete = true;
     _laps.clear();
     _lastTrackedPosition = null;
     _lastTrackedPositionAt = null;
@@ -671,6 +945,8 @@ class RunRecorder {
     _resetTreadmillAccumulators();
     _recording = true;
     _paused = false;
+    _gnssSignal = GnssSignalAccumulator();
+    _openGnssStatusStream();
 
     // 1-second timer for elapsed time updates. Fires regardless of whether
     // we've received a GPS fix yet — during warmup or an indoor run the
@@ -691,7 +967,7 @@ class RunRecorder {
     double maxSpeedMps = 10,
     LocationAccuracy accuracy = LocationAccuracy.bestForNavigation,
     double accuracyGateMetres = 20,
-    bool rawGpsProvider = false,
+    double? initialStrideM,
   }) async {
     await prepare(
       route: route,
@@ -700,7 +976,7 @@ class RunRecorder {
       maxSpeedMps: maxSpeedMps,
       accuracy: accuracy,
       accuracyGateMetres: accuracyGateMetres,
-      rawGpsProvider: rawGpsProvider,
+      initialStrideM: initialStrideM,
     );
     begin();
   }
@@ -742,7 +1018,8 @@ class RunRecorder {
     double maxSpeedMps = 10,
     LocationAccuracy accuracy = LocationAccuracy.bestForNavigation,
     double accuracyGateMetres = 20,
-    bool rawGpsProvider = false,
+    double? initialStrideM,
+    bool trackComplete = false,
   }) async {
     Object? prepareError;
     try {
@@ -753,7 +1030,7 @@ class RunRecorder {
         maxSpeedMps: maxSpeedMps,
         accuracy: accuracy,
         accuracyGateMetres: accuracyGateMetres,
-        rawGpsProvider: rawGpsProvider,
+        initialStrideM: initialStrideM,
       );
     } catch (e) {
       // prepare() reset state, flipped _prepared true, and started the retry
@@ -767,6 +1044,7 @@ class RunRecorder {
       elapsed: elapsed,
       startedAt: startedAt,
       laps: laps,
+      trackComplete: trackComplete,
     );
     _beginResumed();
     if (prepareError != null) throw prepareError;
@@ -778,10 +1056,15 @@ class RunRecorder {
     required Duration elapsed,
     required DateTime startedAt,
     required List<LapSplit> laps,
+    required bool trackComplete,
   }) {
-    _track
+    _stored
       ..clear()
       ..addAll(track);
+    _storedComplete = trackComplete;
+    _track
+      ..clear()
+      ..addAll(trackLine(track));
     _resetDistance(distanceMetres);
     _elapsedOffset = elapsed;
     _startTime = startedAt;
@@ -845,6 +1128,8 @@ class RunRecorder {
     _resetTreadmillAccumulators();
     _recording = true;
     _paused = false;
+    _gnssSignal = GnssSignalAccumulator();
+    _openGnssStatusStream();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!_recording) return;
       _emitSnapshot();
@@ -867,6 +1152,8 @@ class RunRecorder {
     double minMovementMetres = 2,
     double maxSpeedMps = 10,
     double accuracyGateMetres = 20,
+    double? initialStrideM,
+    bool trackComplete = false,
   }) {
     debugPrepareWithoutStream(
       route: route,
@@ -874,6 +1161,7 @@ class RunRecorder {
       minMovementMetres: minMovementMetres,
       maxSpeedMps: maxSpeedMps,
       accuracyGateMetres: accuracyGateMetres,
+      initialStrideM: initialStrideM,
     );
     _seedResumeState(
       track: track,
@@ -881,6 +1169,7 @@ class RunRecorder {
       elapsed: elapsed,
       startedAt: startedAt,
       laps: laps,
+      trackComplete: trackComplete,
     );
     _beginResumed();
   }
@@ -896,7 +1185,7 @@ class RunRecorder {
     double minMovementMetres = 2,
     double maxSpeedMps = 10,
     double accuracyGateMetres = 20,
-    bool rawGpsProvider = false,
+    double? initialStrideM,
   }) {
     _startTime = null;
     _elapsedOffset = Duration.zero;
@@ -904,9 +1193,12 @@ class RunRecorder {
       ..stop()
       ..reset();
     _track.clear();
+    _stored.clear();
+    _storedComplete = true;
     _laps.clear();
     _currentWaypoint = null;
     _currentWaypointAt = null;
+    _distanceFixAt = null;
     _lastTrackedPosition = null;
     _lastTrackedPositionAt = null;
     _lastTrackedElapsed = null;
@@ -925,9 +1217,10 @@ class RunRecorder {
     _trackThresholdMetres =
         max(distanceFilterMetres.toDouble(), minMovementMetres);
     _maxSpeedMps = maxSpeedMps;
+    _seedStrideM = _validStride(initialStrideM);
     _resetDistance(0);
     _accuracyGateMetres = accuracyGateMetres;
-    _rawGpsProvider = rawGpsProvider;
+    _resetSourceArbitration();
     _resetTreadmill();
     _prepared = true;
   }
@@ -939,11 +1232,29 @@ class RunRecorder {
   /// Test-only: push a simulated [Position] through the same filter chain
   /// the live geolocator subscription would use.
   @visibleForTesting
-  void debugInjectPosition(Position pos) => _onPosition(pos);
+  void debugInjectPosition(Position pos) => _onPlatformPosition(pos);
+
+  /// Test-only: how many estimator stretches this recording has opened.
+  @visibleForTesting
+  int get debugStretchCount => _stretches.length;
+
+  /// Test-only: push a simulated fix as though the GNSS stream delivered it.
+  @visibleForTesting
+  void debugInjectGnssPosition(Position pos) => _onGnssPosition(pos);
 
   /// Test-only: read-only view of the track built so far.
   @visibleForTesting
   List<Waypoint> get debugTrack => List.unmodifiable(_track);
+
+  /// Test-only: every fix stored so far, off-track ones included.
+  @visibleForTesting
+  List<Waypoint> get debugStoredTrack => List.unmodifiable(_stored);
+
+  /// Whether the track [stop] will save holds every fix the distance
+  /// estimator took this session: always, unless the session was resumed from
+  /// a checkpoint that did not carry `track_complete`. The crash checkpoint
+  /// writes it so a resume of that checkpoint can say so again.
+  bool get storedTrackComplete => _storedComplete;
 
   /// Test-only: current GPS-accumulated distance (ignores treadmill mode).
   @visibleForTesting
@@ -1051,6 +1362,33 @@ class RunRecorder {
     _currentBpm = bpm;
   }
 
+  /// Feed the phone barometer's relative altitude, metres on the sensor's own
+  /// datum (`run_app/barometer`). Only the shape is used: [BaroAltitudeAnchor]
+  /// levels it against GPS altitude before anything is stamped. L4 — a bad
+  /// sample is dropped and the track keeps its GPS `elevationMetres`.
+  void setBarometricAltitude(double relativeAltitudeM) {
+    try {
+      _baroAnchor.addBarometer(_sourceSeconds(), relativeAltitudeM);
+    } catch (e) {
+      debugPrint('RunRecorder: barometer sample dropped — $e');
+    }
+  }
+
+  double _sourceSeconds() => _sourceClock.elapsed.inMicroseconds / 1e6;
+
+  /// Averages this fix's GPS altitude into the barometer's level and returns
+  /// the fused altitude for it, or null when there is none to stamp.
+  double? _baroElevationFor(Position pos) {
+    try {
+      final t = _sourceSeconds();
+      _baroAnchor.addGps(t, pos.altitude, pos.altitudeAccuracy);
+      return _round2(_baroAnchor.altitudeAt(t));
+    } catch (e) {
+      debugPrint('RunRecorder: barometric altitude skipped — $e');
+      return null;
+    }
+  }
+
   /// Feed the pedometer's run-relative cumulative step count. While GPS is
   /// good the estimator learns a stride from it; across a GPS gap longer than
   /// [GpsDistanceEstimator.gapS] the steps x stride fill the distance the
@@ -1074,10 +1412,17 @@ class RunRecorder {
   /// Stride learned from GPS + pedometer, metres. Null until learned.
   double? get strideMetres => _estimator.strideM ?? _priorStrideM;
 
+  static double? _validStride(double? m) => m != null &&
+          m.isFinite &&
+          m >= GpsDistanceEstimator.minStrideM &&
+          m <= GpsDistanceEstimator.maxStrideM
+      ? m
+      : null;
+
   void _resetDistance(double seedMetres) {
     _distanceOffsetMetres = seedMetres;
     _stepFilledOffsetMetres = 0;
-    _priorStrideM = null;
+    _priorStrideM = _seedStrideM;
     _stretches.clear();
     _distanceSeeded = seedMetres > 0;
     _newEstimator();
@@ -1125,11 +1470,13 @@ class RunRecorder {
       maxSpeedMps: _maxSpeedMps,
       expectedIntervalS: expectedIntervalS,
       initialStrideM: _priorStrideM,
+      learnStride: _sourceTeachesStride,
     );
     _stretches.add(_DistanceStretch(
       forward: _estimator,
       expectedIntervalS: expectedIntervalS,
       initialStrideM: _priorStrideM,
+      startM: _distanceOffsetMetres,
     ));
     _estFixT = null;
     _estFixMono = null;
@@ -1384,6 +1731,51 @@ class RunRecorder {
   bool _accuracyClearsGate(Position pos) =>
       pos.accuracy >= 0 && pos.accuracy <= _accuracyGateMetres;
 
+  /// Whether the estimator keeps a fix the map gate refused: a stated accuracy
+  /// within its [GpsDistanceEstimator.maxPosSigmaM]. Negative and NaN fail
+  /// closed, as they do at the map gate.
+  bool _estimatorTakes(Position pos) =>
+      pos.accuracy >= 0 && pos.accuracy <= GpsDistanceEstimator.maxPosSigmaM;
+
+  /// Feeds one fix to the estimator and keeps it for the stretch's smoother
+  /// replay. Returns the estimator time it was fed at and the kept event's
+  /// index, each null when that step failed or kept nothing.
+  ({double? t, int? event}) _feedEstimator(
+    Position pos,
+    ({
+      double? accuracyM,
+      double? speedMps,
+      double? speedAccuracyMps,
+      double? bearingDeg,
+    }) fix,
+  ) {
+    try {
+      final t = _estimatorFixTime(pos.timestamp);
+      _estimator.addFix(
+        t: t,
+        lat: pos.latitude,
+        lng: pos.longitude,
+        accuracyM: fix.accuracyM,
+        speedMps: fix.speedMps,
+        speedAccuracyMps: fix.speedAccuracyMps,
+        bearingDeg: fix.bearingDeg,
+      );
+      final event = _keepStretchEvent(GpsFixEvent(
+        t: t,
+        lat: pos.latitude,
+        lng: pos.longitude,
+        accuracyM: fix.accuracyM,
+        speedMps: fix.speedMps,
+        speedAccuracyMps: fix.speedAccuracyMps,
+        bearingDeg: fix.bearingDeg,
+      ));
+      return (t: t, event: event);
+    } catch (e) {
+      debugPrint('RunRecorder: estimator rejected fix — $e');
+      return (t: null, event: null);
+    }
+  }
+
   /// Drop the current fix, flag the stall, and log at most once per 5 s — an
   /// always-bad stream would otherwise log at the sensor's rate for the whole
   /// run.
@@ -1440,11 +1832,37 @@ class RunRecorder {
     }
 
     if (!_accuracyClearsGate(pos)) {
+      // Too coarse for the map, the track and the blue dot, but the
+      // estimator weights a fix by its stated accuracy and keeps one up to
+      // its own cap: under canopy 20-50 m is routine, and dropping those
+      // turned a stretch under trees into a gap, discarding the Doppler
+      // speed that stays good there.
+      if (_recording && _estimatorTakes(pos)) {
+        _weakGps = false;
+        _feedingGnss ? _gnssFixesRecorded++ : _platformFixesRecorded++;
+        final fix = _fixQuality(pos);
+        final (t: t, event: event) = _feedEstimator(pos, fix);
+        if (t != null) {
+          _distanceFixAt = DateTime.now();
+          // Stored for the server's replay, off the line. No barometric
+          // altitude: feeding the anchor a canopy fix's GPS altitude would
+          // move the climb the line's fixes measure.
+          _storeFix(_waypointFor(pos, fix, baroElevationMetres: null),
+              onLine: false, event: event);
+          _addPaceSample(t, _estimator.distanceM);
+        }
+        _emitSnapshot();
+        return;
+      }
       _dropFix('accuracy ${pos.accuracy.toStringAsFixed(1)}m outside '
           '0..${_accuracyGateMetres.toStringAsFixed(0)}m');
       return;
     }
     _weakGps = false;
+    _preciseLocationOff = false;
+    if (_recording) {
+      _feedingGnss ? _gnssFixesRecorded++ : _platformFixesRecorded++;
+    }
     final fix = _fixQuality(pos);
 
     // Always refresh the raw current position so the blue dot updates on
@@ -1459,60 +1877,20 @@ class RunRecorder {
     // synthetic injection in unit tests), and _calculatePace silently
     // returned null in those cases. Same lesson the speed-clamp learned
     // earlier in this file (see the "GPS-reported time" comment below).
-    _currentWaypoint = Waypoint(
-      lat: pos.latitude,
-      lng: pos.longitude,
-      // Keep the altitude whenever the platform reports a real vertical fix.
-      // Gating on `altitude != 0` dropped a legitimate sea-level reading; a
-      // finite positive altitudeAccuracy is the platform's signal that the
-      // vertical component is a measurement rather than the unset default
-      // (which reports 0 / non-finite accuracy).
-      elevationMetres: (pos.altitudeAccuracy.isFinite &&
-              pos.altitudeAccuracy > 0)
-          ? pos.altitude
-          : null,
-      timestamp: pos.timestamp,
-      bpm: _currentBpm,
-      accuracyMetres: _round2(fix.accuracyM),
-      speedMps: _round2(fix.speedMps),
-      speedAccuracyMps: _round2(fix.speedAccuracyMps),
-      bearingDeg: _round2(fix.bearingDeg),
-    );
+    _currentWaypoint =
+        _waypointFor(pos, fix, baroElevationMetres: _baroElevationFor(pos));
     _currentWaypointAt = DateTime.now();
 
     // Only append to the track and accumulate distance once the run has
     // officially started (post-[begin]).
     if (_recording) {
       // Distance comes from the estimator, which sees EVERY fix that cleared
-      // the gates above; the movement-gated rule below only decides what the
-      // track keeps for the map and the route match.
-      double? estT;
-      int? eventIndex;
-      final trackLengthBefore = _track.length;
-      try {
-        final t = _estimatorFixTime(pos.timestamp);
-        _estimator.addFix(
-          t: t,
-          lat: pos.latitude,
-          lng: pos.longitude,
-          accuracyM: fix.accuracyM,
-          speedMps: fix.speedMps,
-          speedAccuracyMps: fix.speedAccuracyMps,
-          bearingDeg: fix.bearingDeg,
-        );
-        estT = t;
-        eventIndex = _keepStretchEvent(GpsFixEvent(
-          t: t,
-          lat: pos.latitude,
-          lng: pos.longitude,
-          accuracyM: fix.accuracyM,
-          speedMps: fix.speedMps,
-          speedAccuracyMps: fix.speedAccuracyMps,
-          bearingDeg: fix.bearingDeg,
-        ));
-      } catch (e) {
-        debugPrint('RunRecorder: estimator rejected fix — $e');
-      }
+      // the gates above, and the coarser ones it keeps besides; the
+      // movement-gated rule below only decides which of them join the line
+      // the map and the route match read. The stored track keeps them all.
+      final (t: estT, event: eventIndex) = _feedEstimator(pos, fix);
+      var onLine = false;
+      if (estT != null) _distanceFixAt = _currentWaypointAt;
       final last = _lastTrackedPosition;
       final lastAt = _lastTrackedPositionAt;
       final lastElapsed = _lastTrackedElapsed;
@@ -1520,7 +1898,7 @@ class RunRecorder {
         _lastTrackedPosition = pos;
         _lastTrackedPositionAt = pos.timestamp;
         _lastTrackedElapsed = _stopwatch.elapsed;
-        _track.add(_currentWaypoint!);
+        onLine = true;
         _currentWaypointTrusted = true;
       } else {
         final delta = Geolocator.distanceBetween(
@@ -1570,7 +1948,7 @@ class RunRecorder {
           _lastTrackedPosition = pos;
           _lastTrackedPositionAt = pos.timestamp;
           _lastTrackedElapsed = _stopwatch.elapsed;
-          _track.add(_currentWaypoint!);
+          onLine = true;
           _currentWaypointTrusted = true;
         } else if (dtSec >= _gpsReanchorAfterSeconds ||
             monotonicGapSec >= _gpsReanchorAfterSeconds) {
@@ -1597,14 +1975,17 @@ class RunRecorder {
           _lastTrackedPosition = pos;
           _lastTrackedPositionAt = pos.timestamp;
           _lastTrackedElapsed = _stopwatch.elapsed;
-          _track.add(_currentWaypoint!);
+          onLine = true;
           _currentWaypointTrusted = true;
         } else {
           _currentWaypointTrusted = false;
         }
       }
-      if (eventIndex != null && _track.length > trackLengthBefore) {
-        _stretch?.trackLinks.add((track: trackLengthBefore, event: eventIndex));
+      // A fix the movement gate held back (jitter, a teleport) is still one
+      // the estimator took, so it is stored, off the line; one the estimator
+      // refused and the gate held back was never input to anything.
+      if (onLine || estT != null) {
+        _storeFix(_currentWaypoint!, onLine: onLine, event: eventIndex);
       }
       if (estT != null) _addPaceSample(estT, _estimator.distanceM);
     } else {
@@ -1612,6 +1993,58 @@ class RunRecorder {
     }
 
     _emitSnapshot();
+  }
+
+  /// The waypoint for [pos], carrying the fix quality the server replays.
+  Waypoint _waypointFor(
+    Position pos,
+    ({
+      double? accuracyM,
+      double? speedMps,
+      double? speedAccuracyMps,
+      double? bearingDeg,
+    }) fix, {
+    required double? baroElevationMetres,
+  }) =>
+      Waypoint(
+        lat: pos.latitude,
+        lng: pos.longitude,
+        // Keep the altitude whenever the platform reports a real vertical
+        // fix. Gating on `altitude != 0` dropped a legitimate sea-level
+        // reading; a finite positive altitudeAccuracy is the platform's
+        // signal that the vertical component is a measurement rather than
+        // the unset default (which reports 0 / non-finite accuracy).
+        elevationMetres:
+            (pos.altitudeAccuracy.isFinite && pos.altitudeAccuracy > 0)
+                ? pos.altitude
+                : null,
+        timestamp: pos.timestamp,
+        bpm: _currentBpm,
+        accuracyMetres: _round2(fix.accuracyM),
+        speedMps: _round2(fix.speedMps),
+        speedAccuracyMps: _round2(fix.speedAccuracyMps),
+        bearingDeg: _round2(fix.bearingDeg),
+        baroElevationMetres: baroElevationMetres,
+      );
+
+  /// Stores [w], stamped with the distance the run has credited so far
+  /// ([Waypoint.cumulativeDistanceMetres], the axis splits and moving time
+  /// are measured on; [stop] moves it onto the smoothed distance) and linked
+  /// to the estimator [event] it came from. A line fix also joins [_track]
+  /// and becomes the current position; any other is flagged
+  /// [Waypoint.offTrack] and touches neither.
+  void _storeFix(Waypoint w, {required bool onLine, int? event}) {
+    final index = _stored.length;
+    final stamped = w
+        .withCumulativeDistance(_round2(_reportedDistanceMetres))
+        .withOffTrack(!onLine);
+    _stored.add(stamped);
+    _stretch?.trackPoints.add(index);
+    if (event != null) _stretch?.trackLinks.add((track: index, event: event));
+    if (onLine) {
+      _track.add(stamped);
+      _currentWaypoint = stamped;
+    }
   }
 
   /// Headline distance: belt distance in treadmill mode, GPS-accumulated
@@ -1674,8 +2107,10 @@ class RunRecorder {
       currentPaceSecondsPerKm: pace,
       currentPosition: current,
       positionFixedAt: _currentWaypointAt,
+      distanceFixedAt: _distanceFixAt,
       positionTrusted: _currentWaypointTrusted,
       track: _trackView,
+      storedTrack: _storedView,
       offRouteDistanceMetres: offRoute,
       routeRemainingMetres: remaining,
       routeAlongMetres: along,
@@ -1893,11 +2328,15 @@ class RunRecorder {
     _gpsRetryTimer = null;
     await _positionSub?.cancel();
     _positionSub = null;
+    await _gnssSub?.cancel();
+    _gnssSub = null;
+    await _gnssStatusSub?.cancel();
+    _gnssStatusSub = null;
     _finishEstimatorSegment();
 
     final startedAt = _startTime ?? DateTime.now();
     final elapsed = _stopwatch.elapsed + _elapsedOffset;
-    final track = List<Waypoint>.of(_track);
+    final track = List<Waypoint>.of(_stored);
     var distanceMetres = _reportedDistanceMetres;
     var laps = _laps;
     var everyStretchSmoothed = false;
@@ -1908,6 +2347,7 @@ class RunRecorder {
       }
       laps = _smoothedLaps(smoothed);
       everyStretchSmoothed = _everyStretchSmoothed(smoothed);
+      _restampSmoothedDistances(track, smoothed);
     }
 
     final metadata = <String, dynamic>{};
@@ -1916,6 +2356,8 @@ class RunRecorder {
     if (provider != null && track.isNotEmpty) {
       metadata[MetadataKeys.locationProvider] = provider;
     }
+    final gnssSignal = gnssSignalMetadata;
+    if (gnssSignal != null) metadata[MetadataKeys.gnssSignal] = gnssSignal;
     if (_treadmillMode) {
       // Belt-measured distance is not GPS-measured, so the same exclusion the
       // pedometer-estimated indoor path uses applies: `indoor: true` keeps it
@@ -1932,6 +2374,9 @@ class RunRecorder {
       // and smooths the whole stored track.
       if (!_distanceSeeded && everyStretchSmoothed) {
         metadata[MetadataKeys.distanceEstimator] = distanceEstimatorVersion;
+      }
+      if (_storedComplete && track.isNotEmpty) {
+        metadata[MetadataKeys.trackComplete] = true;
       }
       final stepFilled = stepFilledDistanceMetres.round();
       if (stepFilled > 0) {
@@ -1970,6 +2415,7 @@ class RunRecorder {
           maxSpeedMps: stretch.forward.maxSpeedMps,
           expectedIntervalS: stretch.expectedIntervalS,
           initialStrideM: stretch.initialStrideM,
+          learnStride: stretch.forward.learnStride,
         );
         if (!smoothed.distanceM.isFinite) continue;
         for (final link in stretch.trackLinks) {
@@ -1988,6 +2434,37 @@ class RunRecorder {
       }
     }
     return out;
+  }
+
+  /// Moves every stretch's [Waypoint.cumulativeDistanceMetres] onto the
+  /// distance [stop] saves, so the last split ends on it: a fix the smoother
+  /// saw takes the smoothed cumulative at its event, offset by the stretches
+  /// before; any other point keeps its live stamp, offset by the corrections
+  /// of the stretches before it. Never decreasing, so a point the smoother did
+  /// not see cannot read past the smoothed one ahead of it.
+  void _restampSmoothedDistances(List<Waypoint> track,
+      List<({double correctionM, List<double> cumulativeM})?> smoothed) {
+    var before = 0.0;
+    var floor = 0.0;
+    for (var i = 0; i < _stretches.length; i++) {
+      final stretch = _stretches[i];
+      final s = i < smoothed.length ? smoothed[i] : null;
+      final events = <int, int>{
+        for (final link in stretch.trackLinks) link.track: link.event,
+      };
+      for (final index in stretch.trackPoints) {
+        if (index >= track.length) continue;
+        final event = events[index];
+        final live = track[index].cumulativeDistanceMetres;
+        final double? d = s != null && event != null && event < s.cumulativeM.length
+            ? stretch.startM + before + s.cumulativeM[event]
+            : (live == null ? null : live + before);
+        if (d == null || !d.isFinite) continue;
+        floor = max(floor, d);
+        track[index] = track[index].withCumulativeDistance(_round2(floor));
+      }
+      before += s?.correctionM ?? 0;
+    }
   }
 
   /// Whether [stop]'s distance is the smoother's for every stretch that had
@@ -2061,25 +2538,36 @@ class RunRecorder {
     _gpsRetryTimer = null;
     _positionSub?.cancel();
     _positionSub = null;
+    _gnssSub?.cancel();
+    _gnssSub = null;
+    _gnssStatusSub?.cancel();
+    _gnssStatusSub = null;
     _controller.close();
   }
 }
 
 /// One estimator stretch's inputs, kept so [RunRecorder.stop] can replay them
-/// through the smoother. [trackLinks] pairs each waypoint the stretch appended
-/// to the track with the fix event it came from.
+/// through the smoother. [trackLinks] pairs each waypoint the stretch stored
+/// (on the line or off it) with the fix event it came from.
 class _DistanceStretch {
   _DistanceStretch({
     required this.forward,
     required this.expectedIntervalS,
     required this.initialStrideM,
+    required this.startM,
   });
 
   final GpsDistanceEstimator forward;
+  /// The run's distance when the stretch began, before its own estimator
+  /// credited anything.
+  final double startM;
   final double expectedIntervalS;
   final double? initialStrideM;
   final List<GpsEvent> events = [];
   final List<({int track, int event})> trackLinks = [];
+  /// Every stored-track index the stretch appended, linked to an event or
+  /// not.
+  final List<int> trackPoints = [];
   bool smoothable = true;
   /// Reached [RunRecorder._maxSmoothedStretchEvents]: its inputs were dropped
   /// and its forward distance is what the run saves.

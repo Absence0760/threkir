@@ -1,7 +1,9 @@
-import { expect, test, type Browser } from '@playwright/test';
+import type { Browser } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient, resetRateLimit } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Routes — full-lifecycle JOURNEY (create → list → detail → publish →
@@ -54,12 +56,7 @@ test.describe('Routes — create → list → detail → publish → anon share 
 		// The seeded user's storageState already carries accepted cookie
 		// consent, but inject it on every navigation too so the GDPR banner
 		// never floats over the map / share surfaces and eats a click.
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(context);
 
 		// create_route is rate-limited (30/hour per user, migration
 		// 20260907_001). A shared-USER_A shard can blow through the cap;
@@ -269,11 +266,6 @@ async function newAnonContext(browser: Browser) {
 	const ctx = await browser.newContext({
 		storageState: { cookies: [], origins: [] }
 	});
-	await ctx.addInitScript(() => {
-		localStorage.setItem(
-			'cookie_consent',
-			JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-		);
-	});
+	await acceptCookieConsent(ctx);
 	return ctx;
 }

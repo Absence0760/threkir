@@ -7,28 +7,31 @@ to it, so write standard metropolitan French.
 Everything below is derived from the shipped catalogues (measured
 2026-10-04 at `28e1267ef`). Counts read "mobile / web" in strings.
 
-## Register — `vous` (but the catalogues are split; read this)
+## Register — `vous`, throughout
 
 **Use `vous`.** decisions.md § 1675 records that "the mobile ARB onboarding
-copy decides the register (… `vous` on French …)", and the phone is
-majority `vous` (332 strings against 139 with `tu`/`ton`/`ta`/`tes`).
+copy decides the register (… `vous` on French …)", and both French
+catalogues are now `vous` throughout: the last informal strings (about 590 on
+web, 220 on the phone, plus the help-guide labels that quote them) moved on
+2026-10-15. Re-measured then at `1fa9b9a2e`: web 912 strings carry `vous` /
+`votre` / `vos` and none carry `tu`; the phone 573 and none (the one web
+marker hit, `prefsHub.trainingSummary`, is "le ton du coach" — *tone*).
 
 - `discardChangesBody` (mobile) and `common.unsavedBody` (web): "Vous avez des modifications non enregistrées. Quitter sans enregistrer ?"
 - `clubInviteEnterCodeError` (mobile): "Saisissez le code d'invitation de votre lien."
 - `rateLimit.generic` (web): "Vous faites cela trop rapidement — veuillez patienter {wait} et réessayer."
 
-**Finding — the French catalogues mix both registers, and web leans the
-other way.** Web is majority **tu** (455 strings against 288 `vous`):
-`onboarding.step6Hint` "Les notifications push t'informent …",
-`runSocial.signInToGiveKudos` "Connecte-toi pour donner des kudos",
-`settingsAccount.passwordDesc` "Modifie le mot de passe qui te sert …".
-The phone has its own `tu` pockets: `settingsAccountSignOutFailed` "…
-vérifie ta connexion", `settingsAccountDeleteBody` "Cela supprime
-définitivement tes courses …". `tu` clusters in settings, preferences,
-plans, integrations, nutrition and the dashboard; `vous` in runs, profile,
-clubs, routes, coach, safety, sign-in and events. Until the user decides a
-migration, write new strings in `vous` and flag any batch key whose
-neighbours are `tu`. Never mix the two inside one string.
+That includes copy written in the user's own voice to someone else — coach
+suggestion chips ("Créez-moi un plan…"), the AI plan-adjust example
+(« déplacez ma sortie longue à samedi »), the live-share subject ("Suivez-moi
+en direct") — and the spoken cues ("Accélérez de {sec} secondes"), so a
+string never mixes the two. A batch string in `tu` is a regression, not a
+neighbour to match.
+
+Setting and field hints that describe what a control does stay in the third
+person ("Ajoute Muscu à la barre latérale…", "Copie chaque nouvelle sortie…");
+where the English is an instruction, use the `vous` imperative or an
+infinitive, never a bare `-e` form that reads as `tu`.
 
 Buttons are infinitives ("Enregistrer", "Mettre en pause", "Rejoindre");
 instructions use the `vous` imperative ("Saisissez", "Collez").
@@ -108,7 +111,7 @@ count of 0. Use `{count}` (ARB) / `#` (web).
 2. **split**: web `prefs.cue.splits` "Fractionnés" (wrong sense) vs mobile
    `prefsCueSplits` "Intermédiaires"; web `landing.previewSplits` "Temps
    au km".
-3. **tu / vous** — see Register.
+3. *(resolved 2026-10-15)* tu / vous — both catalogues are `vous`; see Register.
 4. **settings**: "Réglages" (mobile `navSettings`) vs "Paramètres" (web
    `shell.settings`).
 5. **elevation gain**: Dénivelé positif / Montée / Dénivelé + / Dénivelé.

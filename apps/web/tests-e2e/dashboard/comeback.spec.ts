@@ -1,7 +1,8 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { insertRun } from '../fixtures/simulate';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Comeback-load card on /dashboard.
@@ -14,13 +15,6 @@ import { insertRun } from '../fixtures/simulate';
  * a comeback with no real pre-break base shows nothing rather than a number,
  * and the ratio card never appears alongside this one.
  */
-
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-	);
-}
 
 const DAY_MS = 86_400_000;
 
@@ -68,7 +62,7 @@ test.describe('dashboard comeback-load card', () => {
 		browser,
 	}) => {
 		const ctx = await browser.newContext({ storageState: steep.storageStatePath });
-		await ctx.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
 			await page.goto('/dashboard');
@@ -86,7 +80,7 @@ test.describe('dashboard comeback-load card', () => {
 
 	test('a gentle first week back is confirmed as easing in', async ({ browser }) => {
 		const ctx = await browser.newContext({ storageState: easing.storageStatePath });
-		await ctx.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
 			await page.goto('/dashboard');
@@ -101,7 +95,7 @@ test.describe('dashboard comeback-load card', () => {
 
 	test('a comeback with no real pre-break base shows no card', async ({ browser }) => {
 		const ctx = await browser.newContext({ storageState: baseless.storageStatePath });
-		await ctx.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
 			await page.goto('/dashboard');

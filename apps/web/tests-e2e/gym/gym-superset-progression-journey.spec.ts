@@ -1,8 +1,10 @@
-import { expect, test, type BrowserContext, type Page } from '@playwright/test';
+import type { BrowserContext, Page } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { readRows } from '../fixtures/db-read';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Gym P2 supersets + P4 progression journey — the gym-programming engine's
@@ -97,12 +99,7 @@ test.describe('gym superset + progression journey — 3-member chain → guided 
 			});
 			// Pre-accept the cookie banner so the role="dialog" GDPR banner can't
 			// float over the editor modal / runner band.
-			await ctx.addInitScript(() => {
-				localStorage.setItem(
-					'cookie_consent',
-					JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-				);
-			});
+			await acceptCookieConsent(ctx);
 			const page = await ctx.newPage();
 
 			try {

@@ -31,7 +31,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'note',
 					tone: 'tip',
-					text: 'Um jeden Lauf zu teilen, ohne daran denken zu müssen, schalte im Tab **Du** unter **Sicherheitskontakte** die Option **Automatisches Live-Teilen** ein. Sie gilt nur für dieses Handy, und der laufende Lauf kann von allen mit dem Link angesehen werden.',
+					text: 'Um jeden Lauf zu teilen, ohne daran denken zu müssen, schalte im Tab **Du** unter **Sicherheitskontakte** die Option **Automatisches Live-Teilen** ein. Sie gilt nur für dieses Handy. Ihre Beschreibung sagt, wer mitverfolgen kann: alle mit dem Link oder nur deine Sicherheitskontakte (siehe letzten Abschnitt).',
 				},
 				{
 					type: 'illustration',
@@ -102,6 +102,28 @@ export const translation: GuideTranslation = {
 				},
 			],
 		},
+		{
+			heading: 'Nur mit deinen Sicherheitskontakten teilen',
+			blocks: [
+				{
+					type: 'p',
+					text: 'Wo das Teilen nur mit Sicherheitskontakten eingeschaltet ist, steht in der Beschreibung unter **Automatisches Live-Teilen**, dass das Teilen nie öffentlich ist. Der laufende Lauf ist dann für alle außer dir verborgen, bis ein Überfällig-Alarm oder ein Alarm wegen Verlassens der Route ausgelöst wird. Erst dann bekommt jeder bestätigte Kontakt einen eigenen Link in der Alarm-E-Mail oder -SMS.',
+				},
+				{
+					type: 'list',
+					items: [
+						'**Automatisches Live-Teilen** schaltet sich von selbst ein, sobald du einen Überfällig-Alarm einstellst, außer du hast es selbst ausgeschaltet.',
+						'Ein Tippen auf **Live-Link teilen** erstellt weiterhin einen öffentlichen Link, wie oben beschrieben.',
+						'Der Link eines Kontakts zeigt **Nur Sicherheitskontakte**. Er ist nur für diese Person gedacht, bitte sie also, ihn nicht weiterzugeben. Er funktioniert nicht mehr, wenn der Lauf endet, wenn du das Teilen beendest oder nach 48 Stunden.',
+					],
+				},
+				{
+					type: 'note',
+					tone: 'caution',
+					text: 'Das Teilen nur mit Sicherheitskontakten ist eventuell noch nicht eingeschaltet. Bis dahin kann ein automatisches Live-Teilen von allen mit dem Link angesehen werden.',
+				},
+			],
+		},
 	],
 	sources: {
 		title: 'cee4d0a20867ed19',
@@ -113,7 +135,8 @@ export const translation: GuideTranslation = {
 		's0.b1': 'f45b4fcfccc4fb7e',
 		's0.b2': '7845c9dd61f6fcbd',
 		's0.b3': '21b6940abd1d8d09',
-		's0.b4': '822ce03c51253ce8',
+		's0.b4': '5ac2ca8e766db07b',
+		's0.b5': 'eb575f135ac66d66',
 		's1.heading': '7fe0f3d3bca83ca6',
 		's1.b0': '8983069471135762',
 		's1.b1.i0': '6675420e0916edbb',
@@ -130,6 +153,11 @@ export const translation: GuideTranslation = {
 		's2.b3': '0694224872716044',
 		's3.heading': '4799e1fbd28720f2',
 		's3.b0': '2557edbaef77cc2c',
-		's0.b5': 'eb575f135ac66d66',
+		's4.heading': '77cc43259f01d7cd',
+		's4.b0': '5486560d83005e0c',
+		's4.b1.i0': '263589d27a310489',
+		's4.b1.i1': '5d8ab8e5ec1ecd1c',
+		's4.b1.i2': 'de89e5227402c8e0',
+		's4.b2': 'd3861ef7e8756240',
 	},
 };

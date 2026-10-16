@@ -5,7 +5,8 @@ import 'package:flutter/foundation.dart';
 
 enum EntityLinkKind { run, route }
 
-/// A run or route the OS opened the app with.
+/// A run or route to open: one the OS opened the app with, or one an in-app
+/// surface that holds no run store points at ([openRunLink]).
 @immutable
 class EntityLink {
   final EntityLinkKind kind;
@@ -52,11 +53,20 @@ EntityLink? parseEntityLink(Uri uri) {
   return kind == null ? null : EntityLink(kind, parts[1].toLowerCase());
 }
 
-/// Cross-boot handoff for a run or route link. [EntityLinkService] sets it;
-/// `HomeScreen` drains it into the owner's detail screen or the non-owner
-/// view. Global for the same reason as `pendingClubInviteToken`.
+/// Cross-boot handoff for a run or route link. [EntityLinkService] and
+/// [openRunLink] set it; `HomeScreen` drains it into the owner's detail screen
+/// or the non-owner view. Global for the same reason as
+/// `pendingClubInviteToken`.
 final ValueNotifier<EntityLink?> pendingEntityLink =
     ValueNotifier<EntityLink?>(null);
+
+/// Opens run [id] through the shell, which holds the run store and so is the
+/// one place that can tell the viewer's own run from someone else's. For a
+/// surface such as the inbox that cannot construct the owner's detail screen
+/// (the shape of `openSettings`, decisions § 710).
+void openRunLink(String id) {
+  pendingEntityLink.value = EntityLink(EntityLinkKind.run, id);
+}
 
 /// Routes run and route links into [pendingEntityLink]. The OS registration
 /// lives in the native projects (the AndroidManifest intent-filters for the

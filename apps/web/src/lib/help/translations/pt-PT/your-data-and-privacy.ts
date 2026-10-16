@@ -11,10 +11,11 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'A sua página de perfil, com o seu nome de apresentação, fotografia, número de seguidores e as suas corridas públicas, pode ser aberta por qualquer pessoa que tenha o link.',
+						'A sua página de perfil, com o seu nome de apresentação, fotografia, número de seguidores e as suas corridas públicas, pode ser aberta por qualquer pessoa que tenha o link. Com um perfil privado, só os seguidores que aprovar veem as suas corridas e listas de seguidores; consulte [[guide:private-profile-and-follow-requests|Tornar o seu perfil privado e aprovar seguidores]].',
 						'As corridas que tornar públicas aparecem no seu perfil e no feed. As corridas privadas só são visíveis para si.',
 						'A sua participação num clube público, e tudo o que publicar nele, pode ser vista por quem pode ver o clube.',
 						'Enquanto partilha um link em direto, a corrida em curso pode ser vista por qualquer pessoa com o link.',
+						'Uma fotografia que marque com **Mostrar na página da prova**, numa corrida pública associada a uma prova, aparece na página pública dessa prova com a legenda e o seu nome. Desmarque-a, ou torne a corrida privada, para a retirar.',
 					],
 				},
 				{
@@ -92,10 +93,11 @@ export const translation: GuideTranslation = {
 		title: 'd180bf422ce3bba9',
 		summary: '2b4cc5410b0eb4b6',
 		's0.heading': '4158a516fb61f91b',
-		's0.b0.i0': '6b0cdb0395bd2c4b',
+		's0.b0.i0': '6ef16a07f5e1d2dc',
 		's0.b0.i1': '9a700fce5a4094fc',
 		's0.b0.i2': 'dc76446c63a054d2',
 		's0.b0.i3': '483ea8dba216e43c',
+		's0.b0.i4': 'cc3a91ab3dc6a2a6',
 		's0.b1': '0bbe7c39a03a9a09',
 		's1.heading': 'ac353e580fc0908f',
 		's1.b0.i0': '7b3a2d8b5b822576',

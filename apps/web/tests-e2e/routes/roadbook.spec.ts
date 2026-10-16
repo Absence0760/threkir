@@ -1,4 +1,4 @@
-import { expect, test } from '../fixtures/mock-route';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { deleteRoute } from '../fixtures/simulate';
@@ -212,6 +212,21 @@ test.describe('/routes/[id]/roadbook', () => {
 			const after = (await carbsCells.nth(1).textContent())?.trim();
 			expect(after).not.toBe(before);
 		}).toPass();
+	});
+
+	test('an out-of-range ?carbs= in a link is dropped, not used or clamped', async ({ page }) => {
+		// A Coach-written or pasted link is never trusted (decisions § 1975): a
+		// rate over the Settings ceiling falls back to the runner's own rate.
+		routeId = await seedRoute();
+		await page.goto(`/routes/${routeId}/roadbook?goal=7200&fuel=1`);
+		const carbsCells = page.locator('[data-testid="fuel-carbs"]');
+		await expect(carbsCells.nth(1)).toContainText('g');
+		const baseline = (await carbsCells.nth(1).textContent())?.trim();
+
+		await page.goto(`/routes/${routeId}/roadbook?goal=7200&fuel=1&carbs=900`);
+		await expect(carbsCells.nth(1)).toHaveText(baseline ?? '');
+		await page.goto(`/routes/${routeId}/roadbook?goal=7200&fuel=1&carbs=1e2`);
+		await expect(carbsCells.nth(1)).toHaveText(baseline ?? '');
 	});
 
 	test('copy-as-text includes the cut-off limit time, not just the margin', async ({

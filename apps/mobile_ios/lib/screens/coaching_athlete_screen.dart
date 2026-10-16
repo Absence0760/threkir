@@ -18,6 +18,7 @@ import '../l10n/locale_support.dart';
 import '../preferences.dart';
 import '../training.dart';
 import '../training_labels.dart';
+import '../widgets/run_track_preview.dart';
 import '../widgets/top_banner.dart';
 
 /// Coach run-review surface — mobile mirror of web
@@ -48,6 +49,10 @@ class CoachingAthleteScreen extends StatefulWidget {
 class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
   bool _loading = true;
   List<AthleteRunSummary> _runs = const [];
+
+  /// The athlete's map, clipped against their privacy zones by
+  /// clip-public-track (decisions § 1968). Off until the server gate says so.
+  bool _showMaps = false;
   AthletePlanOverview? _overview;
   List<TrainingPlanRow> _myPlans = const [];
 
@@ -68,12 +73,14 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
         widget.api.fetchAthleteRuns(widget.athleteId, limit: 20),
         widget.api.fetchAthletePlanOverview(widget.athleteId),
         widget.api.fetchMyPlans(),
+        widget.api.coachRunMapEnabled(),
       ]);
       if (!mounted) return;
       setState(() {
         _runs = results[0] as List<AthleteRunSummary>;
         _overview = results[1] as AthletePlanOverview?;
         _myPlans = results[2] as List<TrainingPlanRow>;
+        _showMaps = results[3] as bool;
         _loading = false;
       });
     } catch (e) {
@@ -439,6 +446,13 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
                 style: theme.textTheme.titleMedium
                     ?.copyWith(fontWeight: FontWeight.w700)),
             const SizedBox(height: 8),
+            if (_showMaps && _runs.any((r) => r.hasTrack)) ...[
+              Text(l10n.coachingAthleteMapsClippedNote,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  )),
+              const SizedBox(height: 8),
+            ],
             if (_runs.isEmpty)
               Text(l10n.coachingAthleteNoRunsYet,
                   style: theme.textTheme.bodySmall?.copyWith(
@@ -460,9 +474,7 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
     final pace = paceSecPerKm == null
         ? '—'
         : '${UnitFormat.pace(paceSecPerKm, unit)} ${UnitFormat.paceLabel(unit)}';
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
+    final row = Row(
         children: [
           TextLane(
             width: 84,
@@ -493,7 +505,39 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
               ),
             ),
         ],
-      ),
+      );
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: _showMaps && r.hasTrack
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                row,
+                const SizedBox(height: 6),
+                Semantics(
+                  key: ValueKey('coach-run-map-${r.id}'),
+                  image: true,
+                  label: l10n.coachingAthleteRunMapLabel(
+                      formatDateShort(r.startedAt, activeLocaleTag)),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    // The preview paints to whatever box it is given, and a
+                    // list row's height is unbounded; the feed post's map
+                    // height keeps the two run maps one size.
+                    child: SizedBox(
+                      height: 120,
+                      child: RunTrackPreview(
+                        runId: r.id,
+                        trackUrl: r.trackUrl,
+                        api: widget.api,
+                        ownerUserId: widget.athleteId,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            )
+          : row,
     );
   }
 

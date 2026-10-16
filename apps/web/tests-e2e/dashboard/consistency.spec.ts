@@ -1,8 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { browserDayAt } from '../fixtures/dates';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { insertRun } from '../fixtures/simulate';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Training-consistency card on /dashboard (backlog #11, advanced analytics
@@ -16,13 +17,6 @@ import { insertRun } from '../fixtures/simulate';
  * stat; a runner with only a single week of activity never sees it (the
  * < 2-active-weeks self-hide).
  */
-
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-	);
-}
 
 test.describe('dashboard training-consistency card', () => {
 	let consistent: SagaUser;
@@ -71,7 +65,7 @@ test.describe('dashboard training-consistency card', () => {
 		browser,
 	}) => {
 		const ctx = await browser.newContext({ storageState: consistent.storageStatePath });
-		await ctx.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
 			await page.goto('/dashboard');
@@ -91,7 +85,7 @@ test.describe('dashboard training-consistency card', () => {
 
 	test('hides the card for a runner with only a single active week', async ({ browser }) => {
 		const ctx = await browser.newContext({ storageState: oneWeek.storageStatePath });
-		await ctx.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
 			await page.goto('/dashboard');

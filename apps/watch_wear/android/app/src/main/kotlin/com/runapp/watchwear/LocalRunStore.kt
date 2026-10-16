@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.runapp.watchwear.recording.GnssSignalSummary
 import com.runapp.watchwear.recording.migrateQueuedTracks
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -52,6 +53,15 @@ data class QueuedRun(
     /// without claiming an estimator it never ran.
     val distanceEstimator: String? = null,
     val distanceStepFilledM: Double? = null,
+    /// `metadata.location_provider`. Null on a run queued before the watch
+    /// recorded on the receiver, or with no track, and the key is omitted.
+    val locationProvider: String? = null,
+    /// `metadata.gnss_signal`. Null on a run queued before the watch read
+    /// satellite status, or with no reading, and the key is omitted.
+    val gnssSignal: GnssSignalSummary? = null,
+    /// `metadata.track_complete`. False on a run queued before the watch
+    /// stored its off-track fixes, and the key is omitted.
+    val trackComplete: Boolean = false,
 )
 
 private val Context.dataStore by preferencesDataStore(name = "watch_wear")

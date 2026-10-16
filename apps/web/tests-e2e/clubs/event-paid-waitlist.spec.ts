@@ -1,4 +1,4 @@
-import { expect, test } from '../fixtures/mock-route';
+import { expect, test } from '../fixtures/test';
 
 import { readCount, readMaybeRow } from '../fixtures/db-read';
 import { getAdminClient } from '../fixtures/local-supabase';

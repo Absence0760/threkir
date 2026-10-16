@@ -36,6 +36,7 @@ class MetadataKeys {
   static const String fastestHalfMarathonS = 'fastest_half_marathon_s';
   static const String fastestMarathonS = 'fastest_marathon_s';
   static const String garminId = 'garmin_id';
+  static const String gnssSignal = 'gnss_signal';
   static const String guidedRunId = 'guided_run_id';
   static const String gymAdherence = 'gym_adherence';
   static const String gymSessionDraft = 'gym_session_draft';
@@ -77,6 +78,7 @@ class MetadataKeys {
   static const String stravaId = 'strava_id';
   static const String subSport = 'sub_sport';
   static const String title = 'title';
+  static const String trackComplete = 'track_complete';
   static const String trackUrl = 'track_url';
   static const String watchWorkout = 'watch_workout';
   static const String workoutAdherence = 'workout_adherence';

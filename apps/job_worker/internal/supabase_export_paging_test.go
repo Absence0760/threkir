@@ -343,7 +343,10 @@ func TestExportTableOrderCoversEveryCompositeKey(t *testing.T) {
 	// another; a dropped row is one the subject never receives.
 	cases := map[string]string{
 		"user_follows":         "follower_id,followee_id",
+		"follow_requests":      "requester_id,target_id",
 		"run_kudos":            "user_id,run_id",
+		"run_reactions":        "user_id,run_id,reaction",
+		"run_comment_likes":    "user_id,comment_id",
 		"run_gear":             "run_id,gear_id",
 		"personal_records":     "user_id,distance",
 		"event_attendees":      "event_id,user_id,instance_start",

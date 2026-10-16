@@ -201,6 +201,22 @@ class _HangingApi extends ApiClient {
       Completer<List<PendingSafetyRequest>>().future;
 }
 
+/// The server's safety_audience gate reads open (decisions § 1964).
+class _SafetyAudienceApi extends ApiClient {
+  @override
+  String? get userId => 'me';
+
+  @override
+  Future<List<SafetyContact>> fetchMySafetyContacts() async => const [];
+
+  @override
+  Future<List<PendingSafetyRequest>> fetchPendingSafetyRequests() async =>
+      const [];
+
+  @override
+  Future<bool> safetyAudienceEnabled() async => true;
+}
+
 /// Records bag writes and reports `synced` so the pref controls enable —
 /// same shape as settings_email_notifications_test's fake. `service`
 /// returns null, so the screen renders the defaults (Off / switch off).
@@ -895,6 +911,84 @@ void main() {
         find.textContaining('SMS alerts need a mobile number for you'),
         findsOneWidget,
       );
+    });
+  });
+
+  group('SettingsSafetyScreen — auto-live-share on the safety audience', () {
+    Future<_FakeSettingsSync> pumpGateOpen(WidgetTester tester) async {
+      final sync = await _fakeSync();
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: SettingsSafetyScreen(
+              api: _SafetyAudienceApi(), settingsSync: sync),
+        ),
+      );
+      await tester.pumpAndSettle();
+      return sync;
+    }
+
+    SwitchListTile autoToggle(WidgetTester tester) =>
+        tester.widget<SwitchListTile>(find.widgetWithText(
+            SwitchListTile, 'Auto live share'));
+
+    testWidgets('with the gate open the switch says the share is never public',
+        (tester) async {
+      await pumpGateOpen(tester);
+      await _scrollTo(tester, find.text('Auto live share'));
+      expect(find.textContaining('It is never public'), findsOneWidget);
+      expect(find.textContaining('viewable by anyone with the link'),
+          findsNothing);
+      expect(autoToggle(tester).value, isFalse,
+          reason: 'nothing is armed, so nothing would watch the stub');
+    });
+
+    testWidgets('arming the overdue alert turns the unset switch on',
+        (tester) async {
+      final sync = await pumpGateOpen(tester);
+      await tester.tap(find.text('Off'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('30 min').last);
+      await tester.pumpAndSettle();
+      await _scrollTo(tester, find.text('Auto live share'));
+      expect(autoToggle(tester).value, isTrue);
+      expect(sync.deviceWrites, isEmpty,
+          reason: 'the default is derived, never written for the runner');
+    });
+
+    testWidgets('an explicit off wins over the default', (tester) async {
+      final sync = await pumpGateOpen(tester);
+      await tester.tap(find.text('Off'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('30 min').last);
+      await tester.pumpAndSettle();
+      await _scrollTo(tester, find.text('Auto live share'));
+      await tester.tap(find.widgetWithText(SwitchListTile, 'Auto live share'));
+      await tester.pumpAndSettle();
+      expect(sync.deviceWrites, [
+        {'auto_live_share': false},
+      ]);
+      expect(autoToggle(tester).value, isFalse);
+    });
+
+    testWidgets('with the gate closed an armed alert never defaults it on',
+        (tester) async {
+      final sync = await _fakeSync();
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: SettingsSafetyScreen(api: null, settingsSync: sync),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Off'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('30 min').last);
+      await tester.pumpAndSettle();
+      await _scrollTo(tester, find.text('Auto live share'));
+      expect(autoToggle(tester).value, isFalse);
     });
   });
 }

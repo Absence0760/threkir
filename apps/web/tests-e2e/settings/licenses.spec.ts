@@ -1,6 +1,7 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * /settings/licenses — third-party-license attribution page. A static
@@ -103,12 +104,7 @@ test.describe('/settings/licenses (anon)', () => {
 	test.use({ storageState: { cookies: [], origins: [] } });
 
 	test('anon visitor is redirected to /login', async ({ page }) => {
-		await page.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-			);
-		});
+		await acceptCookieConsent(page);
 
 		await page.goto('/settings/licenses');
 		await expect(page).toHaveURL(/\/login/, { timeout: 10_000 });

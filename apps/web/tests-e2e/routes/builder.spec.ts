@@ -1,4 +1,4 @@
-import { expect, test } from '../fixtures/mock-route';
+import { expect, test } from '../fixtures/test';
 import type { Page } from '@playwright/test';
 
 import { resetRateLimit } from '../fixtures/local-supabase';

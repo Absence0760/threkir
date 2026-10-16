@@ -234,7 +234,7 @@ test('every rate-limit trigger raises through enforce_create_rate_limit', () => 
 
 test('every LLM-spending endpoint carries a per-user rate-limit bucket', () => {
 	// Reason: Pro is a monthly price, not a per-call one. `/api/coach` is
-	// capped by increment_coach_usage and the two route-engine handlers by
+	// capped by spend_coach_usage_slot and the two route-engine handlers by
 	// checkRouteRateLimit, but route-describe and route-request shipped with
 	// neither — a single subscription (or one leaked Pro JWT) bought unbounded
 	// claude-opus-4-8 calls on the operator's key. The only backstop was the
@@ -243,54 +243,109 @@ test('every LLM-spending endpoint carries a per-user rate-limit bucket', () => {
 	// #lib/routes/rate_limit.ts was written for. Every handler that reaches a
 	// billed provider must hold a durable per-user ceiling, and it must be
 	// taken BEFORE the provider call.
-	for (const [file, marker] of [
-		['src/lib/routes/route_describe/handler.ts', 'anthropic.messages.create'],
-		['src/lib/routes/route_request/handler.ts', 'anthropic.messages.create'],
-		['src/lib/routes/generate/handler.ts', 'const fetcher: Fetcher'],
-		['src/lib/routes/osrm_proxy/handler.ts', 'const fetcher: Fetcher'],
+	for (const [file, gate, marker] of [
+		['src/lib/routes/route_describe/handler.ts', 'spendRouteRateLimitSlot(', 'anthropic.messages.create'],
+		['src/lib/routes/route_request/handler.ts', 'spendRouteRateLimitSlot(', 'anthropic.messages.create'],
+		['src/lib/nutrition/plate_photo/handler.ts', 'spendRouteRateLimitSlot(', 'anthropic.messages.create'],
+		['src/lib/routes/generate/handler.ts', 'checkRouteRateLimit(', 'const fetcher: Fetcher'],
+		['src/lib/routes/osrm_proxy/handler.ts', 'checkRouteRateLimit(', 'const fetcher: Fetcher'],
 	] as const) {
 		const source = read(file);
-		assert.match(
-			source,
-			/checkRouteRateLimit\(/,
+		const gateIdx = source.indexOf(gate);
+		assert.ok(
+			gateIdx > 0,
 			`${file} calls a billed provider and must take a per-user rate-limit slot ` +
-				'via checkRouteRateLimit — the per-IP WAF rule is not a per-user ceiling.',
+				`via ${gate.slice(0, -1)} — the per-IP WAF rule is not a per-user ceiling.`,
 		);
-		const gateIdx = source.indexOf('checkRouteRateLimit(');
 		const spendIdx = source.indexOf(marker);
 		assert.ok(
-			gateIdx > 0 && spendIdx > 0 && gateIdx < spendIdx,
+			spendIdx > 0 && gateIdx < spendIdx,
 			`${file}: the rate-limit check must precede the billed call (${marker}).`,
 		);
 		// The verdict is a three-value union; anything other than 'ok' has to
 		// deny, or a fail-closed 'error' silently grants the spend.
 		assert.match(
 			source,
-			/rl !== 'ok'|verdict === 'limited'/,
+			/rl !== 'ok'|rl\.verdict !== 'ok'|verdict === 'limited'/,
 			`${file} must deny on a non-'ok' rate-limit verdict (fail closed on 'error').`,
 		);
 	}
 });
 
-test('the AI plan assistant spends a coach daily-cap slot before its billed call, and refunds failures', () => {
-	// /api/coach/plan-request is open to free runners, so the per-user ceiling
-	// is the Coach's own daily counter rather than a Pro-only route bucket. It
-	// has to be taken before the Anthropic call, deny on an unreadable count
-	// (resolveUsageCount), and hand the slot back when the call yields nothing.
-	const file = 'src/lib/training/plan_request/handler.ts';
+test('the Anthropic handlers on a route bucket give the slot back when the model produces nothing usable', () => {
+	// A provider outage, a refusal or a reply the handler cannot use used to
+	// cost the runner one of a small hourly allowance (plate-photo is 20). The
+	// refund is ticketed (spend_rate_limit_slot / refund_rate_limit_slot,
+	// migration 20270827000001) because a bare decrement the handler can call
+	// is one the runner can call too.
+	const helper = read('src/lib/routes/rate_limit.ts');
+	assert.match(helper, /rpc\('spend_rate_limit_slot'/);
+	assert.match(helper, /rpc\('refund_rate_limit_slot'/);
+	assert.doesNotMatch(helper, /rpc\('decrement/, 'the refund must be ticketed, never a bare per-bucket decrement');
+	for (const [file, reasons] of [
+		['src/lib/nutrition/plate_photo/handler.ts', ['refusal', 'no_tool_use', 'provider_error']],
+		['src/lib/routes/route_request/handler.ts', ['refusal', 'no_tool_use', 'provider_error']],
+		['src/lib/routes/route_describe/handler.ts', ['refusal', 'empty_text', 'provider_error']],
+	] as const) {
+		const source = read(file);
+		assert.match(source, /refundRouteRateLimitSlot\(/, `${file} must refund through the shared helper.`);
+		for (const reason of reasons) {
+			assert.ok(source.includes(`await refundSlot('${reason}')`), `${file} must refund on ${reason}.`);
+		}
+		assert.ok(
+			source.indexOf('ANTHROPIC_API_KEY') < source.indexOf('spendRouteRateLimitSlot('),
+			`${file}: check the key before the throttle, so a misconfiguration never spends a slot.`,
+		);
+	}
+});
+
+test('the Coach-message cost rail takes the slot fail-closed and refunds only through its ticket', () => {
+	// One copy of the rail the Coach, the plan assistant and AI plan edits
+	// spend on (decisions § 1930, § 1981): open to free runners, so the
+	// per-user ceiling is the Coach's own daily counter rather than a Pro-only
+	// route bucket. The refund is ticketed (spend_coach_usage_slot /
+	// refund_coach_usage_slot, migration 20270829000011) for the reason the
+	// route buckets' is (§ 1990): a bare per-user decrement the handler can
+	// call, the runner can call after every successful message.
+	const file = 'src/lib/coach/coach_message_slot.ts';
 	const source = read(file);
-	const incrIdx = source.indexOf("rpc('increment_coach_usage'");
-	const spendIdx = source.indexOf('anthropic.messages.create');
-	assert.ok(
-		incrIdx > 0 && spendIdx > 0 && incrIdx < spendIdx,
-		`${file}: increment_coach_usage must precede the billed call.`,
-	);
-	assert.match(source, /resolveUsageCount\(/, `${file} must fail closed on an unreadable count.`);
+	assert.match(source, /rpc\('spend_coach_usage_slot'/, `${file} must take a counter slot.`);
+	assert.match(source, /resolveUsageSpend\(/, `${file} must fail closed on an unreadable count.`);
 	assert.match(source, /usedToday > dailyLimit/, `${file} must deny past the tier's daily limit.`);
-	assert.match(source, /rpc\('decrement_coach_usage'/, `${file} must refund a slot the call did not use.`);
-	const refunds = source.match(/await refundSlot\(/g) ?? [];
-	assert.ok(
-		refunds.length >= 3,
-		`${file} must refund on refusal, a missing tool call and a provider error (found ${refunds.length}).`,
-	);
+	assert.match(source, /rpc\('refund_coach_usage_slot'/, `${file} must be able to refund a slot.`);
+	assert.match(source, /p_spend_id: spendId/, `${file} must refund with the spend's own ticket.`);
+	for (const caller of [
+		file,
+		'src/lib/coach/handler.ts',
+		'src/lib/training/plan_request/handler.ts',
+		'src/lib/training/plan_edit/handler.ts',
+	]) {
+		const src = read(caller);
+		assert.doesNotMatch(
+			src,
+			/rpc\('(increment|decrement)_coach_usage'/,
+			`${caller}: spend through spend_coach_usage_slot and refund with its ticket; a bare counter call has no ticket to refund with.`,
+		);
+	}
+	const coach = read('src/lib/coach/handler.ts');
+	assert.match(coach, /rpc\('spend_coach_usage_slot'/, 'the Coach handler must spend through the ticketed RPC.');
+	assert.match(coach, /refundCoachMessage\(supabase, authUserId, spendId,/, 'the Coach handler must refund with its own ticket.');
+});
+
+test('the plan assistant and AI plan edits spend a Coach message before their billed call, and refund failures', () => {
+	for (const file of ['src/lib/training/plan_request/handler.ts', 'src/lib/training/plan_edit/handler.ts']) {
+		const source = read(file);
+		const spendIdx = source.indexOf('spendCoachMessage(');
+		const callIdx = source.indexOf('anthropic.messages.create');
+		assert.ok(
+			spendIdx > 0 && callIdx > 0 && spendIdx < callIdx,
+			`${file}: spendCoachMessage must precede the billed call.`,
+		);
+		assert.match(source, /refundCoachMessage\(/, `${file} must refund through the shared rail.`);
+		const refunds = source.match(/await refundSlot\(/g) ?? [];
+		assert.ok(
+			refunds.length >= 3,
+			`${file} must refund on refusal, a missing tool call and a provider error (found ${refunds.length}).`,
+		);
+	}
 });

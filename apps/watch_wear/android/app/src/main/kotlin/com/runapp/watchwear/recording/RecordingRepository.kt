@@ -38,6 +38,16 @@ object RecordingRepository {
         /// from pedometer steps across GPS gaps rather than from fixes. Written
         /// once, at the `Finished` transition, and null at every other stage.
         val distanceStepFilledM: Double? = null,
+        /// Which stream recorded a FINISHED run's track (`gps` / `fused` /
+        /// `mixed`, see `LocationSourceArbiter`). Written once, at the
+        /// `Finished` transition, and null at every other stage or when the
+        /// run has no track.
+        val locationProvider: String? = null,
+        /// The receiver's signal quality over a FINISHED run
+        /// (`metadata.gnss_signal`). Written once, at the `Finished`
+        /// transition, and null at every other stage or when no status
+        /// reading arrived.
+        val gnssSignal: GnssSignalSummary? = null,
         val paceSecPerKm: Double? = null,
         val bpm: Int? = null,
         /// What the FINISHED run may claim about its heart rate: the graded
@@ -68,6 +78,10 @@ object RecordingRepository {
         val trackPointCount: Int = 0,
         val latestPoint: GpsPoint? = null,
         val trackFilePath: String? = null,
+        /// Set on `Finished`: the file at [trackFilePath] holds every fix the
+        /// distance estimator took, off-track ones flagged, and is not empty.
+        /// Becomes `metadata.track_complete`.
+        val trackComplete: Boolean = false,
         val locationAvailable: Boolean = true,
         val activityType: String = "run",
         val laps: List<Lap> = emptyList(),

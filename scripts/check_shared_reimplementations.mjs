@@ -163,12 +163,6 @@ export const REGISTERED = [
 	},
 	{
 		kind: 'clone',
-		key: 'apps/web/src/lib/format/time.ts:formatDuration|apps/web/src/lib/runs/race_day.ts:fmtSplitTime',
-		reason:
-			'Real duplicate, filed. `fmtSplitTime` is `formatDuration` rebuilt in the race-day module. Not fixed here because `race_day.ts` is a mid-round tree for another lane and the change is a behavioural one (`formatDuration` is the localised formatter, `fmtSplitTime` is not).',
-	},
-	{
-		kind: 'clone',
 		key: 'apps/web/src/lib/nutrition/diary_day.ts:isoDateOf|apps/web/src/lib/nutrition/meal_detail.ts:localDateKey',
 		reason:
 			'Real duplicate, filed. Both render a local calendar day as `yyyy-mm-dd`. `diary_day` is half of a registered parity pair, so moving the function is a lockstep edit on the Dart side too — out of this lane, which may not run Flutter.',

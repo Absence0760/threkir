@@ -1221,3 +1221,71 @@ test("no source spells the supported locale set out instead of deriving it", () 
 		);
 	}
 });
+
+/**
+ * French surfaces that address the reader as `vous`. The French catalogue still
+ * mixes registers by area (`.claude/agents/i18n/languages/fr.md`); within one of
+ * these a `tu` string sits beside `vous` ones on the same screen, which is how
+ * the Strava clubs card, the plate-photo logger and the notification list each
+ * shipped half and half.
+ */
+const FR_VOUS_PREFIXES = [
+	"coachPage.consent",
+	"live.safety",
+	"notificationBell.",
+	"notificationsList.",
+	"nutrition.platePhoto",
+	"runSocial.",
+	"settingsAccount.aiConsent",
+	"stravaClubs.",
+	"upgrade.proFeatPlatePhoto",
+];
+// The pronouns and possessives, plus the imperatives these surfaces use: a
+// `tu` imperative carries no pronoun ("Vérifie avant d'enregistrer").
+const FR_TU =
+	/(?<![\p{L}])(?:tu|te|ton|ta|tes|toi|t'|vérifie|corrige|essaie|réessaie|saisis|prends|choisis|écris|reconnecte|clique)(?![\p{L}])|-toi(?![\p{L}])/iu;
+
+test("a French vous surface carries no tu string", async () => {
+	const fr = (await CATALOGUE_LOADERS.fr()) as Record<string, string>;
+	let checked = 0;
+	const offenders: string[] = [];
+	for (const [key, value] of Object.entries(fr)) {
+		if (!FR_VOUS_PREFIXES.some((p) => key.startsWith(p))) continue;
+		checked++;
+		if (FR_TU.test(value)) offenders.push(`${key}: ${value}`);
+	}
+	assert.ok(checked > 100, `only ${checked} keys matched the vous prefixes — renamed? Update this guard.`);
+	assert.deepEqual(offenders, [], "address the reader as vous on these surfaces");
+});
+
+test("the web race-gallery copy names a race event with the phone's word", async () => {
+	// A race event is `prova` in both Portuguese catalogues of the app;
+	// `corrida` is the runner's own run, so "página da corrida" read as the
+	// run's page rather than the race's.
+	for (const [tag, arb] of [["pt-BR", "app_pt_BR.arb"], ["pt-PT", "app_pt.arb"]] as const) {
+		const web = (await CATALOGUE_LOADERS[tag]()) as Record<string, string>;
+		const phone = JSON.parse(
+			readFileSync(join(SRC, "..", "..", "mobile_android", "lib", "l10n", arb), "utf8"),
+		) as Record<string, string>;
+		assert.equal(web["runPhotos.raceGalleryToggle"], phone.runPhotosRaceGalleryShow, `${tag} toggle label`);
+		for (const [key, value] of Object.entries(web)) {
+			if (key.startsWith("runPhotos.raceGallery")) {
+				assert.doesNotMatch(value, /página da corrida/, `${tag} ${key}`);
+			}
+		}
+	}
+});
+
+test("the pt-PT plan consent prompts name one disclosure and refer back to it", async () => {
+	// The disclosure is one notice, `o aviso de IA`; the plan-edit link once
+	// read "Reveja-as", a plural pointing at nothing in its own message.
+	const pt = (await CATALOGUE_LOADERS["pt-PT"]()) as Record<string, string>;
+	for (const [message, link] of [
+		["planDetail.aiAdjustErrorConsent", "planDetail.aiAdjustErrorConsentLink"],
+		["planEditor.aiErrorConsent", "planEditor.aiErrorConsentLink"],
+	]) {
+		assert.match(pt[message], /\baviso de IA\b/, `${message}: ${pt[message]}`);
+		assert.match(pt[link], /-o(?![\p{L}])/u, `${link}: ${pt[link]}`);
+		assert.doesNotMatch(pt[link], /-as(?![\p{L}])/u, `${link}: ${pt[link]}`);
+	}
+});

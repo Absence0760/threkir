@@ -1,5 +1,198 @@
 [
   {
+    "id": "notifications-reactions-and-mentions",
+    "lang": "fr",
+    "title": "Réactions, mentions et vos notifications",
+    "summary": "Réagissez aux courses, aimez des commentaires et mentionnez d'autres coureurs, puis choisissez quelles notifications vous parviennent aussi par e-mail et sur votre téléphone.",
+    "kind": "how-to",
+    "category": "account",
+    "audience": [
+      "everyone"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/settings/notifications",
+      "/runs/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Réagir, aimer et mentionner",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Sur la course de quelqu'un d'autre, à côté des kudos, choisissez une réaction : **En feu**, **Solide**, **Champion**, **Bien joué** ou **Coucou**. Vous pouvez en laisser plusieurs, et choisir de nouveau une réaction la retire.",
+              "Pour aimer un commentaire, choisissez le cœur à côté. Vous ne pouvez pas réagir à votre propre course ni aimer votre propre commentaire.",
+              "Pour mentionner quelqu'un dans un commentaire, tapez @ puis le début de son nom, et choisissez la personne dans la liste qui s'affiche. Elle n'est prévenue que si elle peut déjà voir la course et qu'aucun de vous deux n'a bloqué l'autre."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Les réactions et les j'aime sur les commentaires s'affichent sur la course elle-même. Les cartes du fil ne montrent toujours que le nombre de kudos et de commentaires."
+          }
+        ]
+      },
+      {
+        "heading": "Où arrivent les notifications",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Chaque notification arrive dans l'app : sous la cloche sur le web, et dans l'onglet **Notifications** de votre profil dans l'app mobile. C'est vous qui décidez si elle vous parvient aussi par e-mail ou sur votre téléphone."
+          }
+        ]
+      },
+      {
+        "heading": "Choisir ce qui est envoyé par e-mail et en push",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Sur le web, ouvrez [[route:/settings/notifications|Notifications]] dans les Paramètres. Dans l'app mobile, ouvrez **Préférences** dans l'onglet **Vous** et faites défiler jusqu'à **Notifications**.",
+              "Réglez séparément **Notifications par e-mail** et **Notifications push**."
+            ]
+          },
+          {
+            "type": "list",
+            "items": [
+              "**Importantes uniquement**, le réglage par défaut : ce que vous attendez ou ce qui change vos plans, comme les messages, les rappels et annulations d'événements, une place réservée pour vous sur une liste d'attente, les mentions, les demandes d'abonnement et un export de données terminé.",
+              "**Toutes** : les importantes, plus les notifications sociales comme les kudos, les commentaires, les nouveaux abonnés, les réactions et les j'aime sur les commentaires.",
+              "**Désactivées** : rien sur ce canal. L'app affiche toujours tout."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Désactiver un seul type",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Sur le web, la même page permet de couper certains types sans changer tout un canal : **Export de données prêt**, **Mentions**, **Réactions à mes courses**, **J'aime sur mes commentaires** et **Demandes d'abonnement**. Décochez-en un et il n'est plus envoyé par e-mail ni en push, y compris sur votre téléphone, mais il apparaît toujours dans l'app."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Ces cases ne font que couper. Les réactions et les j'aime sur les commentaires ne sont envoyés que lorsqu'un canal est réglé sur **Toutes**, et un canal réglé sur **Désactivées** reste muet quelles que soient les cases."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Les cases par type ne sont pour l'instant disponibles que sur le web. L'app mobile affiche les réglages e-mail et push."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "private-profile-and-follow-requests",
+      "your-data-and-privacy",
+      "using-help"
+    ]
+  },
+  {
+    "id": "private-profile-and-follow-requests",
+    "lang": "fr",
+    "title": "Rendre votre profil privé et accepter des abonnés",
+    "summary": "Activez un profil privé pour que seuls les abonnés que vous acceptez voient vos courses, puis acceptez ou refusez les demandes d'abonnement à mesure qu'elles arrivent.",
+    "kind": "how-to",
+    "category": "account",
+    "audience": [
+      "everyone"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/settings/privacy",
+      "/follow-requests",
+      "/u/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Ce que masque un profil privé",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Avec un profil privé, seuls les abonnés que vous avez acceptés voient vos courses et vos autres activités, ainsi que les listes de vos abonnés et de vos abonnements. Les autres voient votre nom, votre photo et vos nombres d'abonnés, avec **Ce profil est privé** à la place de vos courses."
+          },
+          {
+            "type": "list",
+            "items": [
+              "On peut toujours vous trouver par votre nom et demander à s'abonner. Pour ne plus apparaître non plus dans la recherche par nom, désactivez **M'afficher dans la recherche par nom** sur la même page.",
+              "Les personnes déjà abonnées quand vous l'activez restent abonnées.",
+              "Les itinéraires, les résultats d'événements et les badges gardent leur propre visibilité, car chacun est partagé séparément.",
+              "Un lien en direct que vous envoyez pendant une course, y compris le lien d'une alerte de sécurité, fonctionne toujours pour les personnes à qui vous l'avez envoyé."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "L'activer",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Sur le web, ouvrez [[route:/settings/privacy|Confidentialité et partage]] dans les Paramètres et cochez **Profil privé** sous **Être trouvé**.",
+              "Dans l'app mobile, ouvrez **Préférences** dans l'onglet **Vous** et activez **Profil privé** sous **Confidentialité et partage**."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "La modification est enregistrée immédiatement."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Le désactiver accepte toutes les demandes encore en attente : ces personnes deviennent aussitôt vos abonnés."
+          }
+        ]
+      },
+      {
+        "heading": "Accepter ou refuser les demandes",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Quand quelqu'un demande à s'abonner, vous recevez une notification. Les demandes d'abonnement comptent parmi les notifications importantes : par défaut, elles vous sont aussi envoyées par e-mail et en push."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Ouvrez la notification. Vous pouvez aussi sélectionner **Voir les demandes d'abonnement** sous **Profil privé** sur le web, ou toucher **Demandes d'abonnement** sous **Profil privé** dans l'app mobile.",
+              "Choisissez **Accepter** pour que cette personne voie votre profil, ou **Refuser** pour décliner la demande. Elle n'est pas prévenue en cas de refus."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Suivre quelqu'un qui a un profil privé",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Ouvrez son profil et choisissez **Demander à s'abonner**.",
+              "Le bouton affiche **Demande envoyée** pendant l'attente. Choisissez-le de nouveau pour retirer la demande.",
+              "Une fois la demande acceptée, le bouton affiche **Abonné** et ses courses apparaissent."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Si vous vous désabonnez d'une personne au profil privé, vous devez refaire une demande pour voir ses courses."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "your-data-and-privacy",
+      "notifications-reactions-and-mentions",
+      "privacy-zones"
+    ]
+  },
+  {
     "id": "using-help",
     "lang": "fr",
     "title": "Trouver de l'aide dans l'app",
@@ -84,7 +277,7 @@
     "id": "what-pro-includes",
     "lang": "fr",
     "title": "Ce que comprend Pro",
-    "summary": "Tous les écrans de Threkir sont gratuits ; Pro augmente votre quota de Coach IA et fait passer certains traitements en arrière-plan en tête de file.",
+    "summary": "Presque tout dans Threkir est gratuit ; Pro augmente votre quota de Coach IA, ajoute quelques extras basés sur l'IA et fait passer certains traitements en arrière-plan en priorité.",
     "kind": "explainer",
     "category": "account",
     "audience": [
@@ -105,7 +298,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Rien dans l'app n'est réservé à Pro. Les comptes gratuits bénéficient de l'enregistrement illimité sur téléphone et montre, des itinéraires, des plans d'entraînement et des chiffres qui les sous-tendent, des clubs et événements, du fil social, des contacts de sécurité, des imports et des sauvegardes."
+            "text": "Presque rien dans l'app n'est réservé à Pro. Les comptes gratuits bénéficient de l'enregistrement illimité sur téléphone et montre, des itinéraires, des plans d'entraînement et des chiffres qui les sous-tendent, des clubs et événements, du fil social, des contacts de sécurité, des imports et des sauvegardes."
           }
         ]
       },
@@ -120,7 +313,8 @@
               "**Map-matching prioritaire** : vos traces GPS sont calées sur les routes avant celles des comptes gratuits, elles sont donc prêtes plus tôt.",
               "**Exports cloud prioritaires** : jusqu'à 8 exports groupés GPX par heure au lieu de 2.",
               "**Génération de parcours côté serveur** : des boucles tracées sur le vrai réseau de rues quand vous générez un itinéraire par distance. Les comptes gratuits ont toujours la génération de boucles, calculée dans le navigateur.",
-              "Des descriptions d'itinéraire plus riches : sur la page d'un itinéraire, **Améliorer avec l'IA** transforme la description standard en un paragraphe plus complet."
+              "Des descriptions d'itinéraire plus riches : sur la page d'un itinéraire, **Améliorer avec l'IA** transforme la description standard en un paragraphe plus complet.",
+              "**Saisir depuis une photo** : photographiez un repas et votre journal alimentaire est prérempli pour que vous le vérifiiez. Voir [[guide:log-a-meal-from-a-photo|Saisir un repas depuis une photo]]."
             ]
           },
           {
@@ -171,6 +365,7 @@
     ],
     "related": [
       "your-data-and-privacy",
+      "log-a-meal-from-a-photo",
       "using-help"
     ]
   },
@@ -202,10 +397,11 @@
           {
             "type": "list",
             "items": [
-              "Votre page de profil, avec votre nom affiché, votre photo, vos nombres d'abonnés et vos courses publiques, peut être ouverte par toute personne disposant de son lien.",
+              "Votre page de profil, avec votre nom affiché, votre photo, vos nombres d'abonnés et vos courses publiques, peut être ouverte par toute personne disposant de son lien. Avec un profil privé, seuls les abonnés que vous acceptez voient vos courses et vos listes d'abonnés ; voir [[guide:private-profile-and-follow-requests|Rendre votre profil privé et accepter des abonnés]].",
               "Les courses que vous rendez publiques apparaissent sur votre profil et dans le fil. Les courses privées ne sont visibles que par vous.",
               "Votre appartenance à un club public, et tout ce que vous y publiez, peut être vu par les personnes qui peuvent voir le club.",
-              "Tant que vous partagez un lien en direct, la course en cours peut être vue par toute personne disposant du lien."
+              "Tant que vous partagez un lien en direct, la course en cours peut être vue par toute personne disposant du lien.",
+              "Une photo pour laquelle vous cochez **Afficher sur la page de la course**, sur une course publique liée à une course officielle, apparaît sur la page publique de cette course avec sa légende et votre nom. Décochez-la, ou rendez votre course privée, pour la retirer."
             ]
           },
           {
@@ -281,6 +477,7 @@
     ],
     "related": [
       "privacy-zones",
+      "private-profile-and-follow-requests",
       "live-tracking-and-safety",
       "what-pro-includes"
     ]
@@ -366,12 +563,35 @@
             "text": "Supprimer un club supprime tous ses événements, publications et membres pour tout le monde, et c'est irréversible."
           }
         ]
+      },
+      {
+        "heading": "Importer un club depuis Strava",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Si votre compte Strava est connecté, ouvrez [[route:/social|Social]] sur le web, choisissez **Clubs** puis **Mes clubs**. Sous **Vos clubs Strava**, vous voyez les clubs Strava dont vous êtes membre. Vous seul voyez cette liste."
+          },
+          {
+            "type": "list",
+            "items": [
+              "**Créer sur Threkir** ouvre le formulaire d'un nouveau club avec son nom et son lieu déjà remplis, et lie les deux dès que vous créez le club.",
+              "**Lier à mon club** le relie à un club que vous gérez déjà ici : choisissez-le sous **Lequel de vos clubs est-ce ?** puis sélectionnez **Lier**.",
+              "**Délier** supprime le lien. Aucun des deux clubs n'est modifié."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Seul un administrateur du club sur Strava peut le lier, et seulement à un club dont il est propriétaire ou administrateur ici. Si la section n'apparaît pas, connectez d'abord Strava dans [[route:/settings/integrations|Intégrations]] dans les Paramètres."
+          }
+        ]
       }
     ],
     "related": [
       "invite-members-and-roles",
       "recurring-events",
-      "set-up-a-race"
+      "set-up-a-race",
+      "import-your-history"
     ]
   },
   {
@@ -945,7 +1165,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Toutes les personnes ayant répondu pour cette occurrence (participe, peut-être ou en liste d'attente) sont prévenues. Celles qui ont payé reçoivent une notification du type *Une occurrence de « Tuesday Reformer » a été annulée — ton paiement est en cours de remboursement*, et le même texte part par e-mail ou par notification push à celles qui les reçoivent. Le message dit *en cours de* remboursement parce que le remboursement est lancé à ce moment-là et peut mettre quelques jours à arriver sur leur compte bancaire."
+            "text": "Toutes les personnes ayant répondu pour cette occurrence (participe, peut-être ou en liste d'attente) sont prévenues. Celles qui ont payé reçoivent une notification du type *Une occurrence de « Tuesday Reformer » a été annulée — votre paiement est en cours de remboursement*, et le même texte part par e-mail ou par notification push à celles qui les reçoivent. Le message dit *en cours de* remboursement parce que le remboursement est lancé à ce moment-là et peut mettre quelques jours à arriver sur leur compte bancaire."
           }
         ]
       },
@@ -1265,7 +1485,7 @@
           {
             "type": "list",
             "items": [
-              "Vous devez être admin ou organisateur d'événements du club. La page du club vous indique lequel avec **Tu es admin** ou **Tu es organisateur d'événements**.",
+              "Vous devez être admin ou organisateur d'événements du club. La page du club vous indique lequel avec **Vous êtes admin** ou **Vous êtes organisateur d'événements**.",
               "Le prix, la capacité, le calendrier de répétition et le plan de séance se règlent tous sur le web. L'app mobile peut créer un cours et l'affiche aux membres, mais elle n'a pas de champs pour le prix, la capacité ou le plan de séance.",
               "Si vous voulez joindre une séquence, créez-la d'abord : voir [[guide:build-a-session-plan|Créer un plan de séance]]."
             ]
@@ -2001,13 +2221,13 @@
             "type": "steps",
             "items": [
               "Ouvrez l'événement de la course.",
-              "S'il y a plusieurs parcours, choisissez le vôtre dans **Ton parcours** sur le web. Dans l'app mobile, on vous demande **Choisissez votre parcours** quand vous touchez **Je viens**.",
+              "S'il y a plusieurs parcours, choisissez le vôtre dans **Votre parcours** sur le web. Dans l'app mobile, on vous demande **Choisissez votre parcours** quand vous touchez **Je viens**.",
               "Touchez **Je participe**. Seule une inscription **Je participe** reçoit les alertes de course sur votre appareil ; **Peut-être** ne les reçoit pas."
             ]
           },
           {
             "type": "p",
-            "text": "Vous avez changé d'avis ? Sur le web, choisissez un autre parcours dans **Ton parcours** (vous verrez « Parcours mis à jour. »). Dans l'app mobile, touchez **Changer de parcours**. Fixez votre parcours avant de lancer l'enregistrement : votre téléphone ou votre montre le lit au début de l'enregistrement de la course, et votre résultat va au classement de ce parcours."
+            "text": "Vous avez changé d'avis ? Sur le web, choisissez un autre parcours dans **Votre parcours** (vous verrez « Parcours mis à jour. »). Dans l'app mobile, touchez **Changer de parcours**. Fixez votre parcours avant de lancer l'enregistrement : votre téléphone ou votre montre le lit au début de l'enregistrement de la course, et votre résultat va au classement de ce parcours."
           }
         ]
       },
@@ -2214,10 +2434,10 @@
           {
             "type": "list",
             "items": [
-              "Sur la page de l'événement, les coureurs voient les parcours. S'il y en a plusieurs, ils doivent en choisir un dans **Ton parcours** pour que **Je participe** fonctionne ; sinon, ils voient « Choisis d'abord ton parcours. »",
+              "Sur la page de l'événement, les coureurs voient les parcours. S'il y en a plusieurs, ils doivent en choisir un dans **Votre parcours** pour que **Je participe** fonctionne ; sinon, ils voient « Choisissez d'abord votre parcours. »",
               "Dans l'app mobile, toucher **Je viens** sur une course à plusieurs parcours leur demande **Choisissez votre parcours**, et ils peuvent utiliser **Changer de parcours** plus tard.",
               "Avec un seul parcours, personne n'a rien à choisir.",
-              "Les inscriptions payantes ne demandent pas encore de parcours. Un coureur qui a payé en choisit un ensuite depuis le même menu **Ton parcours**."
+              "Les inscriptions payantes ne demandent pas encore de parcours. Un coureur qui a payé en choisit un ensuite depuis le même menu **Votre parcours**."
             ]
           },
           {
@@ -2259,6 +2479,93 @@
       "racing-in-a-race",
       "follow-a-race-live",
       "race-results-explained"
+    ]
+  },
+  {
+    "id": "adjust-a-plan-with-ai",
+    "lang": "fr",
+    "title": "Ajuster un plan d'entraînement avec l'IA",
+    "summary": "Décrivez une modification de votre plan avec vos propres mots, vérifiez chaque changement proposé et n'enregistrez que si vous êtes d'accord.",
+    "kind": "how-to",
+    "category": "running",
+    "audience": [
+      "runner"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "routes": [
+      "/plans/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Ce que l'IA peut modifier",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Ajuster avec l'IA transforme une demande comme *déplace ma sortie longue au samedi* ou *allège la semaine prochaine* en modifications d'un plan que vous avez enregistré. Elle peut déplacer une séance vers un autre jour de la même semaine, échanger deux jours, augmenter ou réduire un peu une semaine, transformer une semaine en semaine de récupération, ou sauter une séance."
+          },
+          {
+            "type": "p",
+            "text": "Ce sont les règles de plan de Threkir qui appliquent chaque modification. L'IA n'écrit jamais une séance, une distance ou une allure : une demande comme *ajoute une séance de côtes* reçoit donc une note indiquant que ce n'est pas possible. Pour tout le reste, utilisez **Modifier le plan**."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Ajuster avec l'IA n'existe que sur le web et n'est peut-être pas encore activé. Si **Ajuster avec l'IA** n'apparaît pas sous **Ajuster le plan**, la fonction n'est pas disponible pour vous."
+          }
+        ]
+      },
+      {
+        "heading": "Demander une modification",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Ouvrez votre plan sur le web et sélectionnez **Ajuster le plan**.",
+              "Choisissez **Ajuster avec l'IA**.",
+              "Tapez ce que vous voulez changer, puis sélectionnez **Proposer des modifications**.",
+              "Lisez les **Modifications proposées** : chaque séance déplacée, sautée ou allégée, et chaque objectif hebdomadaire modifié, avant et après.",
+              "Sélectionnez **Appliquer les modifications proposées par l'IA** pour les enregistrer. Tant que vous ne l'avez pas fait, rien n'a changé dans votre plan ; sélectionnez **Annuler** pour le laisser tel quel."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Vérifications de sécurité avant l'enregistrement",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Des modifications qui feraient passer une semaine dans la zone de risque élevé de blessure par rapport à votre entraînement récent ne peuvent pas être appliquées. La page indique de quelle semaine il s'agit.",
+              "Si les modifications rendent une semaine plus dure que ce que votre entraînement récent permet, ou placent deux séances difficiles sur deux jours consécutifs, on vous demande **Appliquer des modifications plus dures ?** et vous devez choisir **Appliquer quand même**.",
+              "Une proposition qui ne pouvait pas être appliquée sans risque est écartée, et la page vous le signale."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Ce que la fonction utilise",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Chaque demande utilise l'un de vos messages quotidiens du Coach IA, le même quota que le Coach.",
+              "Elle nécessite la dernière version de l'avis sur l'IA. Si on vous demande de l'accepter, sélectionnez **La consulter dans les Réglages** et acceptez-la là.",
+              "Seules les séances à venir de votre plan et la modification que vous avez tapée sont envoyées à l'IA."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Vous pouvez aussi demander au Coach de modifier votre plan. Il répond par un lien qui ouvre Ajuster avec l'IA avec votre demande déjà remplie."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "what-pro-includes",
+      "your-data-and-privacy"
     ]
   },
   {
@@ -2416,9 +2723,9 @@
             "type": "steps",
             "items": [
               "Ouvrez [[route:/settings/integrations|Intégrations]] dans les Paramètres et repérez la carte UltraSignup.",
-              "Sous **Retrouver ton profil UltraSignup**, saisissez votre **Prénom** et votre **Nom** exactement comme lors de vos inscriptions aux courses, puis sélectionnez **Me trouver**.",
+              "Sous **Retrouver votre profil UltraSignup**, saisissez votre **Prénom** et votre **Nom** exactement comme lors de vos inscriptions aux courses, puis sélectionnez **Me trouver**.",
               "UltraSignup liste toutes les personnes qui portent ce nom. Servez-vous de l'âge, du nombre de résultats et des courses les plus récentes de chacune pour vous repérer.",
-              "Sous **Laquelle de ces personnes est toi ?**, sélectionnez **C'est moi** sur votre ligne."
+              "Sous **Laquelle de ces personnes êtes-vous ?**, sélectionnez **C'est moi** sur votre ligne."
             ]
           },
           {
@@ -2428,7 +2735,7 @@
           {
             "type": "note",
             "tone": "tip",
-            "text": "Si vous voyez **UltraSignup ne connaît personne sous ce nom. Vérifie l'orthographe sous laquelle tu cours.**, essayez l'orthographe exacte de vos inscriptions, y compris un éventuel deuxième prénom ou trait d'union."
+            "text": "Si vous voyez **UltraSignup ne connaît personne sous ce nom. Vérifiez l'orthographe sous laquelle vous courez.**, essayez l'orthographe exacte de vos inscriptions, y compris un éventuel deuxième prénom ou trait d'union."
           }
         ]
       },
@@ -2454,7 +2761,7 @@
           },
           {
             "type": "p",
-            "text": "Si vous voyez **Associe d'abord ton profil UltraSignup dans les Réglages, puis importe depuis ici.**, associez votre profil comme indiqué ci-dessus, puis revenez."
+            "text": "Si vous voyez **Associez d'abord votre profil UltraSignup dans les Réglages, puis importez depuis ici.**, associez votre profil comme indiqué ci-dessus, puis revenez."
           }
         ]
       }
@@ -2513,7 +2820,7 @@
           {
             "type": "note",
             "tone": "tip",
-            "text": "Pour partager chaque course sans avoir à y penser, activez **Partage en direct automatique** sous **Contacts de sécurité** dans l'onglet **Vous**. Ce réglage ne s'applique qu'à ce téléphone, et la course en cours peut être vue par toute personne qui a le lien."
+            "text": "Pour partager chaque course sans avoir à y penser, activez **Partage en direct automatique** sous **Contacts de sécurité** dans l'onglet **Vous**. Ce réglage ne s'applique qu'à ce téléphone. Sa description indique qui peut suivre : toute personne qui a le lien, ou seulement vos contacts de sécurité (voir la dernière section)."
           },
           {
             "type": "illustration",
@@ -2583,12 +2890,278 @@
             "text": "Si vous suivez un itinéraire enregistré, l'écran de course vous avertit quand vous vous en écartez, en indiquant à quelle distance vous êtes, et peut l'annoncer à voix haute si les annonces audio sont activées. Cet avertissement est pour vous ; il ne contacte personne."
           }
         ]
+      },
+      {
+        "heading": "Partager uniquement avec vos contacts de sécurité",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Là où le partage réservé aux contacts de sécurité est activé, la description sous **Partage en direct automatique** indique que le partage n'est jamais public. La course en cours est alors cachée à tous sauf vous, jusqu'à ce qu'une alerte de retard ou de sortie d'itinéraire se déclenche. C'est seulement à ce moment que chaque contact confirmé reçoit son propre lien, dans l'e-mail ou le SMS d'alerte."
+          },
+          {
+            "type": "list",
+            "items": [
+              "**Partage en direct automatique** s'active tout seul dès que vous réglez une alerte de retard, sauf si vous l'avez vous-même désactivé.",
+              "Toucher **Partager le lien en direct** crée toujours un lien public, comme décrit plus haut.",
+              "Le lien d'un contact affiche **Contacts de sécurité uniquement**. Il est réservé à cette personne : demandez-lui de ne pas le transférer. Il cesse de fonctionner à la fin de la course, quand vous arrêtez le partage, ou après 48 heures."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Le partage réservé aux contacts de sécurité n'est peut-être pas encore activé. D'ici là, un partage en direct automatique peut être vu par toute personne qui a le lien."
+          }
+        ]
       }
     ],
     "related": [
       "privacy-zones",
       "record-your-first-run",
       "racing-in-a-race"
+    ]
+  },
+  {
+    "id": "location-permission",
+    "lang": "fr",
+    "title": "Accès à la localisation pour enregistrer vos courses",
+    "summary": "Quelle option de localisation choisir sur Android et sur iPhone, ce que chacune change pour vos courses et comment la modifier plus tard dans les réglages.",
+    "kind": "how-to",
+    "category": "running",
+    "audience": [
+      "runner"
+    ],
+    "platforms": [
+      "android",
+      "ios"
+    ],
+    "sections": [
+      {
+        "heading": "Pourquoi l'app demande votre position",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Votre position trace la carte d'une course et mesure sa distance et son allure. Sans elle, une course enregistre toujours le temps et les pas, mais ni carte, ni distance, ni allure."
+          },
+          {
+            "type": "p",
+            "text": "La demande arrive pendant la configuration : après la page **Accès à la localisation**, toucher **Accorder l'autorisation** ouvre la demande de votre téléphone. Si vous refusez, l'app vous le signale et propose **Ouvrir les réglages**. Si vous n'avez toujours pas autorisé l'accès quand vous touchez **DÉMARRER**, votre téléphone peut vous le redemander."
+          }
+        ]
+      },
+      {
+        "heading": "Sur Android",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "La première demande d'Android ne peut accorder l'accès que pendant l'utilisation de l'app. Pour que la course reste suivie écran éteint, il faut **Toujours autoriser**, qu'Android ne permet de choisir que dans les paramètres."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Dans la demande, laissez **Précise** sélectionné et touchez **Lorsque vous utilisez l'appli**.",
+              "Avant votre première course, l'app affiche **Autoriser la localisation en permanence**. Touchez **Ouvrir les réglages**.",
+              "Sous **Autorisations**, touchez **Position**, choisissez **Toujours autoriser**, puis revenez dans l'app."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Si vous touchez **Démarrer quand même**, la course s'enregistre normalement tant que l'app est à l'écran. Écran éteint ou dans une autre app, Android peut cesser d'envoyer votre position : le chrono continue et rien de ce qui est déjà enregistré n'est perdu, mais la distance parcourue pendant ce temps n'est pas comptée. Dans ce cas, un message commençant par **Le suivi a été mis en pause pendant votre absence** s'affiche à votre retour, avec un bouton **Réglages**."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Le rappel avant une course ne s'affiche qu'une fois. Il revient seulement si vous aviez autorisé l'accès en permanence et que cet accès a été retiré ensuite, par exemple quand Android réinitialise les autorisations des apps que vous n'avez pas ouvertes depuis longtemps."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Avec **Approximative**, la position est trop imprécise pour mesurer une course : vous verrez **Position approximative — distance en pause** pendant toute la course.",
+              "**Uniquement cette fois-ci** vaut pour la course que vous allez lancer, et la question vous sera reposée la prochaine fois.",
+              "Avec **Ne pas autoriser**, les courses n'enregistrent que le temps et les pas."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Sur iPhone",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Sur iPhone, l'accès pendant l'utilisation de l'app suffit : une course continue de s'enregistrer écran verrouillé ou pendant que vous utilisez une autre app. L'app ne demande jamais **Toujours**, et vous n'en avez pas besoin."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Dans la demande, touchez **Autoriser lorsque l'app est active**.",
+              "Laissez la position exacte activée dans la demande. Sans elle, votre position est trop imprécise pour mesurer la distance, et la course affiche **Position approximative — distance en pause**."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "**Autoriser une fois** ne vaut que pour cette course, et la question vous sera reposée la prochaine fois. Avec **Ne pas autoriser**, les courses n'enregistrent que le temps et les pas."
+          }
+        ]
+      },
+      {
+        "heading": "Économiseurs de batterie",
+        "blocks": [
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Certains téléphones Android (Samsung, Xiaomi, OnePlus et d'autres) mettent les apps en veille pour économiser la batterie, ce qui peut interrompre l'enregistrement d'une longue course écran éteint, même avec **Toujours autoriser**. Avant votre première course, l'app affiche une fois **Maintenir l'enregistrement actif en arrière-plan** : touchez **Ouvrir les réglages** et excluez Threkir de l'optimisation de la batterie. Si vous avez touché **Pas maintenant**, ouvrez la page de l'app dans les paramètres de votre téléphone, touchez **Batterie** et choisissez **Sans restriction**. Les noms varient un peu d'un fabricant à l'autre."
+          }
+        ]
+      },
+      {
+        "heading": "Modifier plus tard",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Sur Android :"
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Ouvrez les **Paramètres** de votre téléphone et touchez **Applications**, puis **Threkir**.",
+              "Touchez **Autorisations**, puis **Position**.",
+              "Choisissez **Toujours autoriser** et activez **Utiliser la position exacte**."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Sur iPhone :"
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Ouvrez **Réglages** › **Confidentialité et sécurité** › **Service de localisation**, et vérifiez que **Service de localisation** est activé.",
+              "Touchez **Threkir** et choisissez **Lorsque l'app est active**.",
+              "Activez **Position exacte**."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Si la localisation est désactivée ou bloquée quand vous lancez une course, l'écran de course vous le signale et son bouton **Réglages** vous mène au bon endroit."
+          }
+        ]
+      },
+      {
+        "heading": "Ce que l'app fait de votre position",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Elle lit votre position pendant que vous enregistrez une course, et quand une carte se centre sur vous, par exemple quand vous créez un itinéraire ou placez une zone de confidentialité. Elle ne vous suit pas entre les courses.",
+              "Sur Android, une notification s'affiche pendant l'enregistrement d'une course, si vous autorisez les notifications.",
+              "Le tracé d'une course reste sur votre téléphone jusqu'à sa synchronisation avec votre compte ou jusqu'à ce que vous le partagiez, et qui peut le voir dépend de vos réglages de confidentialité : voir [[guide:your-data-and-privacy|vos données et votre vie privée]].",
+              "Pour masquer votre domicile, configurez des [[guide:privacy-zones|zones de confidentialité]]. Votre position en direct n'est partagée que si vous activez le [[guide:live-tracking-and-safety|suivi en direct]]."
+            ]
+          }
+        ]
+      }
+    ],
+    "related": [
+      "record-your-first-run",
+      "privacy-zones",
+      "your-data-and-privacy",
+      "live-tracking-and-safety"
+    ]
+  },
+  {
+    "id": "log-a-meal-from-a-photo",
+    "lang": "fr",
+    "title": "Saisir un repas depuis une photo",
+    "summary": "Photographiez votre assiette, laissez Threkir estimer ce qu'elle contient, puis vérifiez et modifiez chaque élément avant qu'il n'entre dans votre journal alimentaire.",
+    "kind": "how-to",
+    "category": "running",
+    "audience": [
+      "runner"
+    ],
+    "requires": [
+      "pro"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/nutrition",
+      "/nutrition/log"
+    ],
+    "sections": [
+      {
+        "heading": "Avant de commencer",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "La saisie depuis une photo fait partie de Pro. Saisir ses aliments à la main reste gratuit.",
+              "Elle utilise l'IA et nécessite donc la dernière version de l'avis sur l'IA. Si on vous demande de l'accepter, ouvrez Réglages → Compte et acceptez-la là.",
+              "La photo sert uniquement à estimer ce qu'il y a dans l'assiette. Les données de lieu et d'appareil sont retirées avant l'envoi, et Threkir ne conserve pas la photo."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Elle n'est peut-être pas encore activée. Si vous ne voyez pas **Saisir depuis une photo**, elle n'est pas disponible pour vous."
+          }
+        ]
+      },
+      {
+        "heading": "Sur le web",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Ouvrez [[route:/nutrition|Nutrition]] et sélectionnez **Enregistrer un aliment**, puis **Saisir depuis une photo**.",
+              "Sélectionnez **Choisir une photo** et choisissez une image de votre repas.",
+              "Ajoutez une **Note (facultatif)** si c'est utile, par exemple demi-portion.",
+              "Sélectionnez **Estimer**."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Dans l'app mobile",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Ouvrez **Fitness**, choisissez l'onglet **Nutrition** et touchez le bouton appareil photo, **Saisir depuis une photo**.",
+              "Touchez **Prendre une photo** ou **Choisir une photo**.",
+              "Ajoutez une **Note (facultatif)** si c'est utile, puis touchez **Estimer**."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Vérifier avant d'enregistrer",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Sous **Vérifiez avant d'enregistrer**, chaque aliment apparaît avec ses calories, protéines, glucides et lipides. Ce sont des estimations : vérifiez-les."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Corrigez tout nom ou chiffre qui semble faux. Les éléments marqués **Estimation incertaine** sont ceux qui méritent le plus d'être revus.",
+              "Supprimez tout ce qui n'est pas dans votre assiette.",
+              "Choisissez le **Repas** auquel appartient l'aliment.",
+              "Sélectionnez **Enregistrer les entrées** pour ajouter ce qui reste à votre journal alimentaire. Rien n'est enregistré avant."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Si aucun aliment n'est reconnu, ou si vous avez saisi beaucoup de photos dans la dernière heure, ajoutez le repas à la main comme d'habitude."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "what-pro-includes",
+      "your-data-and-privacy"
     ]
   },
   {
@@ -2620,7 +3193,7 @@
           {
             "type": "list",
             "items": [
-              "Elle s'applique à ce que voient les autres : courses et itinéraires partagés, votre profil public, le fil, les cartes de chaleur et la page de suivi en direct.",
+              "Elle s'applique à ce que voient les autres : courses et itinéraires partagés, votre profil public, le fil, les cartes de chaleur, la page de suivi en direct et les cartes de course qu'un coach avec qui vous travaillez peut ouvrir.",
               "Elle s'applique aux courses déjà enregistrées comme aux nouvelles, car le tracé est rogné chaque fois que quelqu'un d'autre le consulte.",
               "Vous voyez toujours votre propre tracé complet, et les fichiers que vous exportez pour vous-même conservent aussi le tracé complet."
             ]
@@ -2727,7 +3300,7 @@
           {
             "type": "note",
             "tone": "tip",
-            "text": "Sur Android, choisissez **Toujours autoriser** pour la localisation. Si l'accès n'est accordé que lorsque l'app est ouverte, la distance parcourue écran éteint n'est pas comptée, même si le chrono continue de tourner."
+            "text": "Sur Android, choisissez **Toujours autoriser** pour la localisation. Si l'accès n'est accordé que lorsque l'app est ouverte, la distance parcourue écran éteint risque de ne pas être comptée, même si le chrono continue de tourner. Voir [[guide:location-permission|quelle option de localisation choisir]]."
           },
           {
             "type": "illustration",
@@ -2799,6 +3372,7 @@
       }
     ],
     "related": [
+      "location-permission",
       "privacy-zones",
       "live-tracking-and-safety",
       "import-your-history"

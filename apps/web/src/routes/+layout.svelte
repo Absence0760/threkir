@@ -249,6 +249,12 @@
 		// now points crawlers at it (decisions.md § 677). The per-segment
 		// leaderboard at /segments/[id] stays gated: it names runners.
 		'/segments',
+		// The fuelling plan the Coach hands a fuelling question to (decisions
+		// § 1975). The mobile Coach opens it on the web host, where the runner
+		// is usually signed out, and the page needs no session: it plans from
+		// the link and the app defaults, and reads saved rates only for a
+		// signed-in runner.
+		'/nutrition/fuel',
 	];
 	// `/clubs/*` paths that REQUIRE auth — keep them out of the anon-
 	// allowed set so a signed-in user lands directly in the loggedIn

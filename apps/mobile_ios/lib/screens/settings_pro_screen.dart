@@ -224,7 +224,7 @@ class _SettingsProScreenState extends State<SettingsProScreen>
     try {
       if (!_store.configured) {
         if (webCheckout) {
-          await _openExternal(context, webUpgradeUrl);
+          await _openExternal(context, webUpgradeUrl());
         }
         return;
       }
@@ -250,7 +250,7 @@ class _SettingsProScreenState extends State<SettingsProScreen>
           break;
         case PurchaseResult.notConfigured:
           if (webCheckout) {
-            await _openExternal(context, webUpgradeUrl);
+            await _openExternal(context, webUpgradeUrl());
           }
           break;
       }
@@ -474,7 +474,7 @@ class _SettingsProScreenState extends State<SettingsProScreen>
                 title: Text(l10n.proSupport),
                 subtitle: Text(l10n.proSupportSubtitle),
                 trailing: const Icon(Icons.open_in_new, size: 18),
-                onTap: () => _openExternal(context, webUpgradeUrl),
+                onTap: () => _openExternal(context, webUpgradeUrl()),
               ),
           ],
         ),

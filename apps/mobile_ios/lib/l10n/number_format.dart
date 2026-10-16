@@ -32,5 +32,14 @@ String formatFixed(double value, int digits, String localeTag) {
     f.turnOffGrouping();
     return f;
   });
+  // intl prints NaN as "NaN", infinity as "∞", and keeps the sign of a
+  // negative that rounds to zero ("-0.0" for a training-stress balance of
+  // -0.04). None is a number a runner can read. Mirrors `formatDecimal` in
+  // apps/web/src/lib/format/number.ts.
+  if (!value.isFinite) return '—';
+  if (value.isNegative) {
+    final zero = fmt.format(0);
+    if (fmt.format(-value) == zero) return zero;
+  }
   return fmt.format(value);
 }

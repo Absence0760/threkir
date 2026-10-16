@@ -131,7 +131,10 @@ create temporary table append_only_registry (tbl name, reason text);
 insert into append_only_registry (tbl, reason) values
   ('global_segment_efforts', 'a catalogue effort is a record of a run that happened: insert + owner-delete policies only, no UPDATE policy and no UPDATE grant'),
   ('run_shares',             'a share grant is revoked by DELETE, never edited (decisions § 1876): no UPDATE grant, and the insert policy pins owner_id to the run''s real owner'),
-  ('route_shares',           'ditto for routes (decisions § 1876)');
+  ('route_shares',           'ditto for routes (decisions § 1876)'),
+  ('follow_requests',        'a request is withdrawn, declined or approved by DELETE (approval moves it into user_follows as the definer), never edited (decisions § 1967)'),
+  ('run_reactions',          'a reaction is toggled off by DELETE and on by a fresh INSERT, never edited (decisions § 1971): no UPDATE grant, the PK makes each reaction at-most-once, and the insert policy pins user_id to auth.uid() behind the visibility, block and self-reaction gates — a re-INSERT re-passes every one of them'),
+  ('run_comment_likes',      'ditto for comment likes (decisions § 1971): unliked by DELETE, the insert policy pins user_id to auth.uid() behind can_like_run_comment, and the notify trigger de-duplicates so a toggle does not re-notify');
 
 -- (1) The registry IS the withheld write map, in both directions, for both
 -- roles and both verbs. "Column-scoped" means the role lacks the table-level

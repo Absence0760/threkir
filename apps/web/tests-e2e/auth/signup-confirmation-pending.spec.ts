@@ -1,4 +1,5 @@
-import { expect, test } from '../fixtures/mock-route';
+import { expect, test } from '../fixtures/test';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * /login — a sign-up that returns no session (email confirmation
@@ -20,12 +21,7 @@ const PASSWORD = 'testtest';
 async function acceptCookies(page: import('@playwright/test').Page) {
 	// Pre-accept the cookie banner before the module reads localStorage
 	// (same reason as the signIn helper) so it can't intercept clicks.
-	await page.addInitScript(() => {
-		localStorage.setItem(
-			'cookie_consent',
-			JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-		);
-	});
+	await acceptCookieConsent(page);
 }
 
 async function submitSignUp(page: import('@playwright/test').Page, email: string) {

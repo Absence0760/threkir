@@ -142,6 +142,20 @@ test('groupNotifications: follows collapse regardless of actor', () => {
 	assert.equal(groups[0].otherCount, 2);
 });
 
+test('groupNotifications: follow requests collapse together, apart from follows', () => {
+	const groups = groupNotifications(
+		[
+			n({ id: 'r1', kind: 'follow_request', actor_id: 'u1', created_at: ago(1000) }),
+			n({ id: 'r2', kind: 'follow_request', actor_id: 'u2', created_at: ago(2000) }),
+			n({ id: 'f1', kind: 'follow', actor_id: 'u3', created_at: ago(1500) }),
+		],
+		NOW,
+	);
+	assert.equal(groups.length, 2);
+	const requests = groups.find((g) => g.lead.kind === 'follow_request');
+	assert.equal(requests?.otherCount, 1);
+});
+
 test('groupNotifications: event RSVPs collapse per event, distinct events split', () => {
 	const groups = groupNotifications(
 		[
@@ -254,4 +268,26 @@ test('groupNotifications: achievements group by id, a null id stays solo', () =>
 	const ach1 = groups.find((g) => g.lead.achievement_id === 'ach1');
 	assert.ok(ach1);
 	assert.equal(ach1.otherCount, 1);
+});
+
+test('groupNotifications: reactions, comment likes and mentions collapse per run and kind', () => {
+	const groups = groupNotifications(
+		[
+			n({ id: 'r1', kind: 'reaction', run_id: 'run1', actor_id: 'u1', created_at: ago(3000) }),
+			n({ id: 'r2', kind: 'reaction', run_id: 'run1', actor_id: 'u2', created_at: ago(2000) }),
+			n({ id: 'l1', kind: 'comment_like', run_id: 'run1', actor_id: 'u1', created_at: ago(1500) }),
+			n({ id: 'm1', kind: 'mention', run_id: 'run1', actor_id: 'u3', created_at: ago(1000) }),
+			n({ id: 'm2', kind: 'mention', run_id: 'run2', actor_id: 'u3', created_at: ago(500) }),
+		],
+		NOW,
+	);
+	assert.deepEqual(
+		groups.map((g) => [g.lead.id, g.otherCount]),
+		[
+			['m2', 0],
+			['m1', 0],
+			['l1', 0],
+			['r2', 1],
+		],
+	);
 });

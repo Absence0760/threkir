@@ -1,4 +1,4 @@
-"""GPS distance estimator — reference implementation, spec v1.3.
+"""GPS distance estimator — reference implementation, spec v1.4.
 
 Every port (Dart, TypeScript, Deno, Kotlin, Swift, Rust, Go) must reproduce
 gps_distance_vectors.json to 1e-3 m. Operation order matters only at the
@@ -12,11 +12,12 @@ Two entry points:
 """
 import math
 
-SPEC_VERSION = "1.3"
+SPEC_VERSION = "1.4"
 
 EARTH_RADIUS_M = 6371008.8
 Q_ACCEL = 0.6                     # m^2/s^3, white-acceleration spectral density (unvalidated, see doc)
 MIN_POS_SIGMA_M = 3.0             # floor on horizontal accuracy (and on the adapted sigma)
+MAX_POS_SIGMA_M = 50.0            # v1.4: a fix stating worse accuracy is ignored outright
 INIT_VEL_VAR = 25.0               # (m/s)^2 initial velocity variance
 MIN_SPEED_SIGMA_MPS = 0.3         # floor on Doppler speed accuracy
 DEFAULT_SPEED_SIGMA_MPS = 0.5     # used when the platform reports none
@@ -28,6 +29,14 @@ FRESH_FIX_S = 2.0                 # a fix this recent (x expected interval) coun
 STRIDE_WINDOW_STEPS = 50
 MIN_STRIDE_M, MAX_STRIDE_M = 0.4, 2.5
 STRIDE_EMA_ALPHA = 0.2
+# v1.4 — a fix teaches stride only when its credit is trustworthy: Doppler credit
+# with a speed accuracy this good, or position credit from a fix this accurate.
+STRIDE_MAX_SPEED_SIGMA_MPS = 1.0
+STRIDE_MAX_POS_SIGMA_M = 20.0
+# v1.4 — a fix stating worse accuracy than this is filtered and credited but takes no
+# part in the Doppler cross-check or the Doppler scale, both of which read raw fix
+# displacement: canopy noise there teaches a scale, not a bias.
+CHECK_MAX_POS_SIGMA_M = 20.0
 
 # v1.2 — innovation gate (2-D Mahalanobis, chi-square 2 dof at p = 0.001).
 GATE_CHI2 = 13.8155
@@ -135,8 +144,12 @@ class _Axis:
 
 
 class GpsDistanceEstimator:
-    def __init__(self, max_speed_mps=10.0, expected_interval_s=1.0, initial_stride_m=None, record=False):
+    def __init__(self, max_speed_mps=10.0, expected_interval_s=1.0, initial_stride_m=None, record=False,
+                 learn_stride=True):
+        """learn_stride: False for a stretch on a source whose speed is not its own
+        Doppler (Android's fused provider); its stride is used, never learned."""
         self.max_speed_mps = max_speed_mps
+        self.learn_stride = learn_stride
         scale = expected_interval_s if (_valid(expected_interval_s) and expected_interval_s > 1.0) else 1.0
         self._gap_s = GAP_S * scale
         self._fresh_fix_s = FRESH_FIX_S * scale
@@ -152,6 +165,7 @@ class GpsDistanceEstimator:
         self._last_steps = None
         self._last_step_t = None
         self._pending_step_m = 0.0
+        self._stride_ok = False
         # v1.2 state
         self.r_scale = 1.0
         self.rejected_fixes = 0
@@ -205,6 +219,8 @@ class GpsDistanceEstimator:
         stopped_hint: the caller knows the runner is stationary (post-hoc stop detection)."""
         if not (_valid(t) and _valid(lat) and _valid(lng)):
             return 0.0
+        if _valid(accuracy_m) and accuracy_m > MAX_POS_SIGMA_M:
+            return 0.0
         if self._lat0 is None:
             self._lat0, self._lng0 = lat, lng
         zx, zy = self._project(lat, lng)
@@ -215,10 +231,23 @@ class GpsDistanceEstimator:
             return 0.0
         dop, sa = _doppler_speed(speed_mps, speed_accuracy_mps, self.max_speed_mps)
         if self._t is None or t - self._t > self._gap_s:
-            # (Re-)anchor. Steps buffered across a real gap are committed now.
+            # (Re-)anchor. Steps buffered across a real gap are committed now, and the
+            # straight line across it, less its 1-sigma uncertainty, is a lower bound
+            # on the distance covered: the GPS credit makes up whatever the steps fall
+            # short of it.
+            gap_m = None
             if self._t is not None:
                 self.step_distance_m += self._pending_step_m
+                d = math.hypot(zx - self._x.p, zy - self._y.p)
+                lower = d - math.sqrt(self._x.a + self._y.a + 2.0 * r)
+                lower = min(lower, self.max_speed_mps * (t - self._t))
+                if lower > self._pending_step_m:
+                    gap_m = lower - self._pending_step_m
+                    self.gps_distance_m += gap_m
             self._pending_step_m = 0.0
+            self._stride_ok = self._stride_grade(accuracy_m, dop, sa)
+            if not self._stride_ok:
+                self._win_steps, self._win_m = 0, 0.0
             self._x, self._y = _Axis(zx, r), _Axis(zy, r)
             self._t = t
             self._xc_last = (zx, zy, t)
@@ -228,8 +257,8 @@ class GpsDistanceEstimator:
             zupt = stopped_hint or self._zupt_due(t, dop)
             self._record(t=t, anchor=True, chain_break=True, dt=0.0, pred=None,
                          zupt=zupt, dop=dop * self.doppler_scale if (dop is not None and self.doppler_trusted) else None,
-                         chord=None)
-            return 0.0
+                         chord=gap_m)
+            return 0.0 if gap_m is None else gap_m
         # The gap closed inside the gap window, so the filter integrates it: drop the buffer.
         self._pending_step_m = 0.0
         dt = t - self._t
@@ -291,7 +320,7 @@ class GpsDistanceEstimator:
         # 4. Doppler-vs-position cross-check: Doppler speed against the raw fixes'
         #    displacement projected on the Doppler bearing (unbiased on turns, unlike a
         #    filtered speed, which cuts corners).
-        if accepted:
+        if accepted and not (_valid(accuracy_m) and accuracy_m > CHECK_MAX_POS_SIGMA_M):
             lx, ly, lt = self._xc_last
             span = t - lt
             if (dop is not None and not zupt and _valid(bearing_deg)
@@ -359,10 +388,23 @@ class GpsDistanceEstimator:
                 speed, floor = math.hypot(self._x.v, self._y.v), POS_ONLY_STATIONARY_SPEED_MPS
             inc = 0.0 if speed < floor else min(speed, self.max_speed_mps) * dt
         self.gps_distance_m += inc
-        self._win_m += inc
+        self._stride_ok = self._stride_grade(accuracy_m, dop if use_dop is not None and chord is None else None, sa)
+        if self._stride_ok:
+            self._win_m += inc
+        else:
+            self._win_steps, self._win_m = 0, 0.0
         self._record(t=t, anchor=False, chain_break=chain_break, dt=dt, pred=pred,
                      zupt=zupt, dop=use_dop, chord=chord)
         return inc
+
+    def _stride_grade(self, accuracy_m, dop, sa):
+        """Whether a fix may teach stride. dop: the Doppler speed the fix was credited
+        from, or None when its credit came from position."""
+        if not self.learn_stride:
+            return False
+        if dop is not None:
+            return sa <= STRIDE_MAX_SPEED_SIGMA_MPS
+        return not (_valid(accuracy_m) and accuracy_m > STRIDE_MAX_POS_SIGMA_M)
 
     def add_steps(self, t, cumulative_steps):
         """Cumulative pedometer count. Learns stride while GPS is good; buffers
@@ -379,6 +421,8 @@ class GpsDistanceEstimator:
             self._last_step_inc_t = t
             self._zupt_released = False
         if self._t is not None and t - self._t <= self._fresh_fix_s:
+            if not self._stride_ok:
+                return
             self._win_steps += d
             if self._win_steps >= STRIDE_WINDOW_STEPS:
                 stride = self._win_m / self._win_steps
@@ -460,7 +504,8 @@ def _rts(records, s, e, axis):
     return out
 
 
-def smooth_distance(events, max_speed_mps=10.0, expected_interval_s=1.0, initial_stride_m=None):
+def smooth_distance(events, max_speed_mps=10.0, expected_interval_s=1.0, initial_stride_m=None,
+                    learn_stride=True):
     """Saved / recomputed distance. events: dicts {"type": "fix", t, lat, lng, acc,
     speed, speedAcc, bearing} | {"type": "steps", t, count} | {"type": "finish", t},
     in arrival order. Returns a dict:
@@ -479,6 +524,8 @@ def smooth_distance(events, max_speed_mps=10.0, expected_interval_s=1.0, initial
         t, lat, lng = ev["t"], ev["lat"], ev["lng"]
         if not (_valid(t) and _valid(lat) and _valid(lng)):
             continue
+        if _valid(ev.get("acc")) and ev["acc"] > MAX_POS_SIGMA_M:
+            continue
         if lat0 is None:
             lat0, lng0 = lat, lng
         if last_t is not None and t <= last_t:
@@ -494,7 +541,8 @@ def smooth_distance(events, max_speed_mps=10.0, expected_interval_s=1.0, initial
         flags = detect_stops([(t, x, y) for _, t, x, y in kept], expected_interval_s)
         hints = {kept[j][0] for j, f in enumerate(flags) if f}
 
-    est = GpsDistanceEstimator(max_speed_mps, expected_interval_s, initial_stride_m, record=True)
+    est = GpsDistanceEstimator(max_speed_mps, expected_interval_s, initial_stride_m, record=True,
+                               learn_stride=learn_stride)
     rec_event = []
     for i, ev in enumerate(events):
         if ev["type"] == "fix":
@@ -519,7 +567,8 @@ def smooth_distance(events, max_speed_mps=10.0, expected_interval_s=1.0, initial
                 sm[j] = (xs[j - s][0], ys[j - s][0], xs[j - s][1], ys[j - s][1])
             s = k
 
-    # Credit along the smoothed velocities: trapezoid per interval, gap re-anchors not credited.
+    # Credit along the smoothed velocities: trapezoid per interval; a gap re-anchor
+    # carries the forward pass's chord lower bound.
     def eff(k):
         r = recs[k]
         if r["zupt"]:
@@ -535,6 +584,7 @@ def smooth_distance(events, max_speed_mps=10.0, expected_interval_s=1.0, initial
     for k in range(len(recs)):
         r = recs[k]
         if r["anchor"]:
+            credit[k] = 0.0 if r["chord"] is None else r["chord"]
             continue
         credit[k] = r["chord"] if r["chord"] is not None else 0.5 * (effs[k - 1] + effs[k]) * r["dt"]
 

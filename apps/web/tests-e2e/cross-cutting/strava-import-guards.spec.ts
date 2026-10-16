@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { originOf } from '../fixtures/base-url';
 import { getUserClient, loadSupabaseEnv } from '../fixtures/local-supabase';

@@ -1,5 +1,7 @@
 package com.runapp.watchwear
 
+import com.runapp.watchwear.recording.GnssSignalSummary
+import com.runapp.watchwear.recording.toJson
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.addJsonObject
 import kotlinx.serialization.json.buildJsonArray
@@ -29,6 +31,9 @@ fun buildRunMetadata(
     lastModifiedAtIso: String,
     distanceEstimator: String? = null,
     distanceStepFilledM: Double? = null,
+    locationProvider: String? = null,
+    gnssSignal: GnssSignalSummary? = null,
+    trackComplete: Boolean = false,
 ): JsonObject = buildJsonObject {
     put("activity_type", activityType)
     if (avgBpm != null) put("avg_bpm", avgBpm)
@@ -48,6 +53,12 @@ fun buildRunMetadata(
     if (distanceEstimator != null && distanceStepFilledM != null && distanceStepFilledM > 0) {
         put("distance_step_filled_m", distanceStepFilledM)
     }
+    if (locationProvider != null) put("location_provider", locationProvider)
+    if (gnssSignal != null) put("gnss_signal", gnssSignal.toJson())
+    // The uploaded track holds every fix the estimator took, those past the
+    // 30 m gate flagged `offTrack`, so the server's replay sees the watch's
+    // own input (docs/features/gps_distance.md § Stored track).
+    if (trackComplete) put("track_complete", true)
     if (laps.isNotEmpty()) {
         put("laps", buildJsonArray {
             var prevMs = 0L

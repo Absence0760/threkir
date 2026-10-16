@@ -1969,3 +1969,73 @@ test('the opacity scan reads the badge block it claims to', () => {
 	const commented = /\.source-badge\s*\{([\s\S]*?)\}/.exec('.source-badge { /* opacity: 1 */ }');
 	assert.ok(commented && !/\bopacity\s*:/.test(commented[1].replace(/\/\*[\s\S]*?\*\//g, '')));
 });
+
+// The run-social chips (kudos, reactions, comment likes) mark the viewer's own
+// with a 12% primary tint over `transparent`. The chip sits on the run page's
+// section (--color-bg) and on the share view's card (--color-surface), so every
+// surface token is checked rather than a guess at one. Primary as the label on
+// that tint read 3.404-4.058:1 in light mode (3.855 on --color-bg, the run
+// page) — under AA for text, the same defect mobile measured at 3.869:1 on its
+// reaction chip. The label stays in a text token; the glyph alone carries
+// primary, and needs only the 3:1 non-text floor.
+const SOCIAL_CHIPS = ['kudos-btn', 'reaction-btn', 'like-btn'];
+const PRIMARY_TINT_OVER_TRANSPARENT =
+	/background:\s*color-mix\(\s*in srgb\s*,\s*var\(\s*--color-primary\s*\)\s*([\d.]+)%\s*,\s*transparent\s*\)/;
+const socialSource = readFileSync(resolve(__dirname, 'components/RunSocial.svelte'), 'utf-8');
+const socialStyle = socialSource.slice(socialSource.indexOf('<style>'));
+const givenChipRules = leafRules(socialStyle).filter((r) =>
+	SOCIAL_CHIPS.some((c) => subject(r.selector).includes(`.${c}.given`)),
+);
+
+for (const { label, marker } of THEMES) {
+	test(`a given social chip's label and glyph clear AA on its primary tint — ${label}`, () => {
+		const tinted = givenChipRules.filter((r) => PRIMARY_TINT_OVER_TRANSPARENT.test(r.body));
+		assert.equal(tinted.length, 2, 'expected the kudos and the reaction/like given tints');
+		const primary = resolveToken(marker, 'color-primary');
+		for (const rule of tinted) {
+			const pct = Number(rule.body.match(PRIMARY_TINT_OVER_TRANSPARENT)![1]);
+			const ink = rule.body.match(/(?<![\w-])color:\s*var\(\s*--([\w-]+)\s*\)/)?.[1];
+			assert.ok(ink, `${rule.selector} must name its label ink as a token`);
+			for (const surface of SURFACE_TOKENS) {
+				const ground = mixOverHex(primary, pct, resolveToken(marker, surface));
+				const text = contrastRatio(resolveToken(marker, ink!), ground);
+				assert.ok(
+					text >= AA_NORMAL,
+					`${rule.selector}: --${ink} on ${pct}% primary over --${surface} (${ground}) is ${text.toFixed(3)}:1 in ${label}; WCAG AA requires >=${AA_NORMAL}:1.`,
+				);
+				const glyph = contrastRatio(primary, ground);
+				assert.ok(
+					glyph >= AA_NON_TEXT,
+					`the given glyph on ${pct}% primary over --${surface} is ${glyph.toFixed(3)}:1 in ${label}; 1.4.11 requires >=${AA_NON_TEXT}:1.`,
+				);
+			}
+		}
+	});
+}
+
+test('only the glyph of a given social chip is painted primary', () => {
+	// A primary `color` anywhere else that can match a given chip — the kudos
+	// hover rule did, at higher specificity than `.given` — puts the label
+	// back on the tint at the failing ratio.
+	for (const rule of leafRules(socialStyle)) {
+		if (!/(?<![\w-])color:\s*var\(\s*--color-primary\s*\)/.test(rule.body)) continue;
+		for (const sel of rule.selector.split(',').map((s) => s.trim())) {
+			const chip = SOCIAL_CHIPS.find((c) => sel.includes(`.${c}`));
+			if (!chip) continue;
+			const glyphOnly = /\.material-symbols$/.test(sel);
+			const excludesGiven = sel.includes(':not(.given)');
+			assert.ok(
+				glyphOnly || excludesGiven,
+				`RunSocial.svelte:${rule.line} \`${sel}\` paints the label primary on a chip that can be given; scope it with :not(.given) or to .material-symbols.`,
+			);
+		}
+	}
+});
+
+test('a given reaction is marked by its count weight, not by colour alone', () => {
+	// The reaction glyph does not change when given (kudos and likes swap
+	// favorite_border for favorite), so the count's weight is the non-colour cue.
+	const rule = leafRules(socialStyle).find((r) => r.selector === '.reaction-btn.given .reaction-count');
+	assert.ok(rule, 'RunSocial.svelte must style .reaction-btn.given .reaction-count');
+	assert.match(rule!.body, /font-weight:\s*700/);
+});

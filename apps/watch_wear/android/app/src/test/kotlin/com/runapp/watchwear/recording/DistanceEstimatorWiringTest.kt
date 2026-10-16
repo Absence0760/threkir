@@ -26,8 +26,8 @@ class DistanceEstimatorWiringTest {
     }
 
     @Test
-    fun `every gated fix reaches the estimator with its Doppler inputs on a monotonic clock`() {
-        val onGps = body(serviceSrc, "private fun onGps(p: GpsPoint)")
+    fun `every fed fix reaches the estimator with its Doppler inputs on a monotonic clock`() {
+        val onGps = body(serviceSrc, ON_GPS)
         assertTrue(onGps.contains("distanceEstimator.addFix("))
         for (arg in listOf("p.accuracyM", "p.speedMps", "p.speedAccuracyMps", "p.bearingDeg")) {
             assertTrue("onGps must pass $arg", onGps.contains(arg))
@@ -37,6 +37,36 @@ class DistanceEstimatorWiringTest {
             onGps.contains("p.elapsedRealtimeMs ?: SystemClock.elapsedRealtime()"),
         )
         assertFalse("raw hop-summing must not come back", serviceSrc.contains("haversineM("))
+    }
+
+    @Test
+    fun `a fix past the track gate still feeds the estimator`() {
+        val onGps = body(serviceSrc, ON_GPS)
+        val fed = onGps.indexOf("distanceEstimator.addFix(")
+        val gated = onGps.indexOf("if (!track)")
+        assertTrue("onGps must gate the line on the fix's verdict", gated >= 0)
+        assertTrue("the estimator takes the fix before the track gate", fed in 0 until gated)
+    }
+
+    @Test
+    fun `every fix the estimator took is stored, with its distM and its track verdict`() {
+        // docs/features/gps_distance.md § Stored track: the server replays the
+        // stored track, so a fix past the 30 m gate is stored flagged
+        // `offTrack` rather than left out.
+        val onGps = body(serviceSrc, ON_GPS)
+        val fed = onGps.indexOf("distanceEstimator.addFix(")
+        val stored = onGps.indexOf("trackWriter?.append(p, distM = newDistance, offTrack = !track)")
+        assertTrue("onGps must store every fed fix, flagged by the gate's verdict", stored >= 0)
+        assertFalse("no fix is gated out of the stored track", onGps.contains("if (track) trackWriter?.append("))
+        assertTrue("the fix is stored after the estimator has credited it", stored > fed)
+        assertFalse("no fix is stored without its distM", onGps.contains("trackWriter?.append(p)"))
+    }
+
+    @Test
+    fun `the finished run and the checkpoint claim a complete track only when one was written`() {
+        val stop = body(serviceSrc, "private fun stopRecording()")
+        assertTrue(stop.contains("trackComplete = storedPoints > 0"))
+        assertTrue(serviceSrc.contains("trackComplete = file.pointCount > 0"))
     }
 
     @Test
@@ -56,29 +86,70 @@ class DistanceEstimatorWiringTest {
     fun `a pause closes the segment so the paused span is never credited`() {
         assertTrue(body(serviceSrc, "private fun pauseRecording()").contains("closeDistanceSegment()"))
         assertTrue(body(serviceSrc, "private fun stopRecording()").contains("closeDistanceSegment()"))
-        val close = body(serviceSrc, "private fun closeDistanceSegment()")
+        val close = body(serviceSrc, CLOSE_SEGMENT)
         assertTrue("finish() commits steps buffered across a trailing gap", close.contains(".finish("))
         assertTrue(
             "the next segment keeps the learned stride",
-            close.contains("distanceEstimator = segment.nextSegment()"),
+            close.contains("distanceEstimator = segment.nextSegment(learnStride)"),
         )
     }
 
     @Test
+    fun `a source switch opens a segment that learns stride only on the receiver`() {
+        assertTrue(serviceSrc.contains("closeDistanceSegment(learnStride = onReceiver)"))
+        assertTrue(serviceSrc.contains("segment.nextSegment(learnStride = onReceiver)"))
+    }
+
+    @Test
     fun `live pace reads the estimator's distance, sealed with every segment`() {
-        val onGps = body(serviceSrc, "private fun onGps(p: GpsPoint)")
+        val onGps = body(serviceSrc, ON_GPS)
         assertTrue(onGps.contains("livePace.add(t, distanceEstimator.distanceM)"))
         assertTrue(onGps.contains("livePace.secondsPerKm"))
         assertFalse(
             "pace is the rolling window, not the whole-run average",
             onGps.contains("elapsedS / newDistance"),
         )
-        assertTrue(body(serviceSrc, "private fun closeDistanceSegment()").contains("livePace.seal()"))
+        assertTrue(body(serviceSrc, CLOSE_SEGMENT).contains("livePace.seal()"))
+    }
+
+    @Test
+    fun `a canopy fix feeds distance and pace and is stored, but stays off the map and the route match`() {
+        assertTrue(gpsSrc.contains("loc.accuracy > ESTIMATOR_ACCURACY_CAP_M) continue"))
+        val onFix = body(serviceSrc, "private fun onFix(p: GpsPoint, fromReceiver: Boolean)")
+        assertTrue(onFix.contains("onGps(p, track = verdict.track)"))
+        val onGps = body(serviceSrc, "private fun onGps(p: GpsPoint, track: Boolean)")
+        val fed = onGps.indexOf("distanceEstimator.addFix(")
+        val stored = onGps.indexOf("trackWriter?.append(p, distM = newDistance, offTrack = !track)")
+        val offTrackReturn = onGps.indexOf("if (!track) {")
+        val routeMatch = onGps.indexOf("RouteMath.routeProgress(")
+        val overlay = onGps.indexOf("trackOverlay.add(posLL)")
+        assertTrue("the fix is credited before anything else", fed in 0 until stored)
+        assertTrue("an off-track fix returns before the route match", offTrackReturn in stored until routeMatch)
+        assertTrue("and before the map overlay", offTrackReturn < overlay)
+    }
+
+    @Test
+    fun `only a receiver segment learns stride`() {
+        assertTrue(
+            "every session starts on fused, which may not teach stride",
+            Regex("""GpsDistanceEstimator\(\s*GpsDistanceEstimator\.maxSpeedMpsFor\(activity\),\s*learnStride = false,""")
+                .containsMatchIn(serviceSrc),
+        )
+        val onFix = body(serviceSrc, "private fun onFix(p: GpsPoint, fromReceiver: Boolean)")
+        assertTrue(onFix.contains("closeDistanceSegment(learnStride = onReceiver)"))
+        assertTrue(onFix.contains("segment.nextSegment(learnStride = onReceiver)"))
+        val close = body(serviceSrc, "private fun closeDistanceSegment(learnStride: Boolean")
+        assertTrue(close.contains("distanceEstimator = segment.nextSegment(learnStride)"))
     }
 
     @Test
     fun `the finished run carries the step-filled share to the queue`() {
         val stop = body(serviceSrc, "private fun stopRecording()")
         assertTrue(stop.contains("distanceStepFilledM = stepFilledM"))
+    }
+
+    private companion object {
+        const val ON_GPS = "private fun onGps(p: GpsPoint, track: Boolean)"
+        const val CLOSE_SEGMENT = "private fun closeDistanceSegment(learnStride: Boolean"
     }
 }

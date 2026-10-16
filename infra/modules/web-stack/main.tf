@@ -87,6 +87,17 @@ locals {
     # 503 unless this is truthy (decisions § 1930). Unset in the sops file
     # means off.
     "AI_PLAN_ENABLED",
+    # Server half of PUBLIC_PLATE_PHOTO_ENABLED: /api/coach/plate-photo answers
+    # 503 unless this is truthy (decisions § 1972). Unset means off.
+    "PLATE_PHOTO_ENABLED",
+    # Server half of PUBLIC_COACH_FUEL_ENABLED: the coach system prompt carries
+    # the fuelling handoff only when this is truthy (decisions § 1975). Unset
+    # in the sops file means off.
+    "COACH_FUEL_ENABLED",
+    # Server half of PUBLIC_AI_PLAN_EDIT_ENABLED: /api/coach/plan-edit answers
+    # 503 unless this is truthy (decisions § 1979), and the Coach links into
+    # AI plan edits only when it is. Unset in the sops file means off.
+    "AI_PLAN_EDIT_ENABLED",
   ]
 
   # The two X-Engine-Key credentials the generate-route handler sends. Same
@@ -1771,13 +1782,20 @@ resource "aws_cloudfront_response_headers_policy" "security" {
         # in `.ingest.de.sentry.io`. That mismatch blocks every event
         # with no server-side symptom at all. A SaaS org's region
         # cannot be changed after creation, so this will not drift
-        # back to the US host without a new org. `*.supabase.co` covers
-        # REST + Realtime + Storage; `*.maptiler.com` covers tile
-        # fetches. `wss://*.threkir.com` covers the Go live-hub WS
-        # upgrade — the spectator page would otherwise be CSP-blocked
-        # the moment PUBLIC_LIVE_HUB_URL lands in prod. /audit/owasp
-        # May 2026 High #2a.
-        "connect-src 'self' https://*.supabase.co https://api.threkir.com https://*.maptiler.com https://*.ingest.de.sentry.io wss://*.threkir.com",
+        # back to the US host without a new org. `https://*.supabase.co`
+        # covers REST + Auth + Storage; Realtime is a WebSocket to
+        # `wss://<ref>.supabase.co/realtime/v1` and needs its own entry,
+        # because an `https` scheme-part does not match a `wss` URL
+        # (CSP3 § 6.7.2.9 lets only http→https, ws→wss/http/https and
+        # wss→https match; nothing upgrades https to wss). Without it
+        # every postgres_changes channel — the live spectator page,
+        # notifications, club and event pages — fails to connect with
+        # no server-side symptom. `*.maptiler.com` covers tile fetches.
+        # `wss://*.threkir.com` covers the Go live-hub WS upgrade — the
+        # spectator page would otherwise be CSP-blocked the moment
+        # PUBLIC_LIVE_HUB_URL lands in prod. /audit/owasp May 2026
+        # High #2a.
+        "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.threkir.com https://*.maptiler.com https://*.ingest.de.sentry.io wss://*.threkir.com",
         "worker-src 'self' blob:",
         "manifest-src 'self'",
         "object-src 'none'",

@@ -1,7 +1,8 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { insertRun } from '../fixtures/simulate';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Training-load-ramp card on /dashboard.
@@ -14,13 +15,6 @@ import { insertRun } from '../fixtures/simulate';
  * too little history to divide by sees no card at all rather than a zeroed
  * ratio that would read as "safe".
  */
-
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-	);
-}
 
 const DAY_MS = 86_400_000;
 
@@ -80,7 +74,7 @@ test.describe('dashboard training-load-ramp card', () => {
 
 	test('a spike week is shown as the high-risk band', async ({ browser }) => {
 		const ctx = await browser.newContext({ storageState: spiking.storageStatePath });
-		await ctx.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
 			await page.goto('/dashboard');
@@ -97,7 +91,7 @@ test.describe('dashboard training-load-ramp card', () => {
 
 	test('a steady month is shown as the optimal band', async ({ browser }) => {
 		const ctx = await browser.newContext({ storageState: steady.storageStatePath });
-		await ctx.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
 			await page.goto('/dashboard');
@@ -110,7 +104,7 @@ test.describe('dashboard training-load-ramp card', () => {
 
 	test('too little history shows no card rather than a zeroed ratio', async ({ browser }) => {
 		const ctx = await browser.newContext({ storageState: thin.storageStatePath });
-		await ctx.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
 			await page.goto('/dashboard');

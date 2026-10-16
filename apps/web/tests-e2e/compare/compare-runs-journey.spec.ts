@@ -1,6 +1,7 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { COMPARE_HEADLINE, COMPARE_SECTIONS } from '../../src/lib/settings/compare_features';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * /compare — visitor conversion JOURNEY (long-workflow).
@@ -41,13 +42,6 @@ import { COMPARE_HEADLINE, COMPARE_SECTIONS } from '../../src/lib/settings/compa
  * dialog can never sit over a link we click.
  */
 
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-	);
-}
-
 // A feature row that is unambiguously yes / no / partial across the
 // three providers is the most honest one to walk — its three cells must
 // render three DIFFERENT glyphs + sr-only labels. Derive it from the
@@ -68,7 +62,7 @@ test.describe('/compare — visitor conversion journey (anon, static marketing p
 	test.use({ storageState: { cookies: [], origins: [] } });
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(context);
 	});
 
 	test('a visitor reads the headline, a feature verdict, then converts via the internal + donate links', async ({

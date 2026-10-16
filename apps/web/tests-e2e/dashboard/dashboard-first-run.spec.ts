@@ -1,7 +1,8 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { insertRun } from '../fixtures/simulate';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * The dashboard's brand-new-account state (#905).
@@ -21,13 +22,6 @@ import { insertRun } from '../fixtures/simulate';
  * needs no seeding — which is exactly the state under test.
  */
 
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-	);
-}
-
 test.describe('dashboard first-run state', () => {
 	let user: SagaUser;
 
@@ -43,7 +37,7 @@ test.describe('dashboard first-run state', () => {
 		browser,
 	}) => {
 		const ctx = await browser.newContext({ storageState: user.storageStatePath });
-		await ctx.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 
 		try {

@@ -14,11 +14,18 @@ import 'package:core_models/core_models.dart';
 /// job_worker's distance_recompute handler accepts.
 const List<RunSource> recomputableSources = [RunSource.app, RunSource.watch];
 
-/// The estimator a recompute applies: spec v1.3's smoother. A run already
-/// carrying it has nothing to gain; a run a recompute stamped `kalman_v2`
-/// (spec v1.2's smoother) or `kalman_v1` (spec v1.1's forward filter) is
-/// offered again.
-const String currentDistanceEstimator = 'kalman_v3';
+/// The estimator a recompute applies: spec v1.4's smoother. A run already
+/// carrying it has nothing to gain; a run a recompute stamped `kalman_v3`
+/// (spec v1.3's smoother), `kalman_v2` (spec v1.2's) or `kalman_v1` (spec
+/// v1.1's forward filter) is offered again.
+const String currentDistanceEstimator = 'kalman_v4';
+
+/// Live stamps of recorders that feed their estimator fixes their track gate
+/// refuses (spec v1.4 on): such a run's stored track holds every fix the
+/// estimator took only when it says `track_complete`, so a replay of any
+/// other would credit each canopy stretch its chord and read short. A spec
+/// bump adds its value. Mirrors `trackGatedEstimators` in the job_worker.
+const List<String> trackGatedEstimators = ['kalman_v4'];
 
 /// The four fields the predicate reads, so a server row and a local [Run]
 /// can both be asked. A local [Run] carries no owner id and keeps its
@@ -69,16 +76,30 @@ bool canRecomputeDistance(RecomputeCandidate? run, String? viewerId) {
   // an unknown one is not the estimator's to overwrite.
   final distanceSource = metadata[MetadataKeys.distanceSource];
   if (distanceSource is String && distanceSource.isNotEmpty) return false;
-  // Stamped live by a recorder that ran the estimator over every fix (the
-  // watches stamp `kalman_v1`) and never recomputed: the stored track is
-  // movement-gated, so a replay would see fewer fixes than the live figure.
-  if (metadata.containsKey(MetadataKeys.distanceEstimator) &&
+  // Stamped by the phone recorder, which saved the smoother's figure over
+  // every fix, and never recomputed: its stored track is movement-gated, so
+  // a replay would see fewer fixes than the save did. A watch stamp
+  // (`kalman_v1`, the wrist's forward filter) is no bar: the watch stored
+  // every fix that filter took, so the replay gains the smoother.
+  if (run.source != RunSource.watch &&
+      metadata.containsKey(MetadataKeys.distanceEstimator) &&
       !metadata.containsKey(MetadataKeys.distanceRecomputedAt)) {
     return false;
   }
-  if (metadata[MetadataKeys.distanceEstimator] == currentDistanceEstimator) {
+  // Stamped live by a v1.4 recorder whose track omits the canopy fixes its
+  // estimator took. The Wear OS and watchOS builds before track_complete
+  // stamp `kalman_v1`, whose track the replay reproduces.
+  final estimator = metadata[MetadataKeys.distanceEstimator];
+  final recomputed = metadata.containsKey(MetadataKeys.distanceRecomputedAt);
+  if (!recomputed &&
+      estimator is String &&
+      trackGatedEstimators.contains(estimator) &&
+      metadata[MetadataKeys.trackComplete] != true) {
     return false;
   }
+  // A recompute already applied the current smoother. A live stamp names
+  // the recorder's forward filter, which the replay improves on.
+  if (recomputed && estimator == currentDistanceEstimator) return false;
   return true;
 }
 

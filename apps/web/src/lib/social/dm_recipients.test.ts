@@ -58,6 +58,20 @@ test('candidates are ordered by display name, case- and accent-insensitively', (
 	);
 });
 
+test('the order is the folded order the Dart twin computes, not a host collation', () => {
+	// A collation files Ø beside O; the fold keeps Ø a base letter of its own,
+	// which code-unit order puts after z. Dart has no collator, so only the
+	// folded answer is one both platforms can give (decisions § 1337, § 1956).
+	const out = dmRecipientCandidates(
+		[profile('1', 'Zaragoza'), profile('2', 'Ørsted')],
+		[profile('3', 'Åre')]
+	);
+	assert.deepEqual(
+		out.map((r) => r.displayName),
+		['Åre', 'Zaragoza', 'Ørsted']
+	);
+});
+
 test('unnamed candidates sort last, and ties break on id so the order is total', () => {
 	const out = dmRecipientCandidates(
 		[profile('z-id'), profile('a-id'), profile('m', 'Mo')],

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart';
 
 import '../auth_error.dart';
+import '../entity_link.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../notification_groups.dart';
 import '../preferences.dart';
@@ -20,9 +21,12 @@ import '../widgets/run_list_tile.dart';
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/undo_bar.dart';
+import 'challenge_detail_screen.dart';
 import 'club_detail_screen.dart';
 import 'event_detail_screen.dart';
+import 'follow_requests_screen.dart';
 import 'message_thread_screen.dart';
+import 'plan_detail_screen.dart';
 import 'public_run_screen.dart';
 
 /// Page size for the followers / following tabs. Same value as the
@@ -44,6 +48,16 @@ const int _kProfileRunsLimit = 30;
 
 /// The overflow menu's entries on another runner's profile.
 enum _ProfileMenuAction { report, block }
+
+const Set<String> _kRunNotificationKinds = {
+  'kudos',
+  'comment',
+  'comment_reply',
+  'reaction',
+  'comment_like',
+  'mention',
+  'run_completed',
+};
 
 /// Public profile screen — mirrors the web `/u/[id]` page (decisions §31).
 ///
@@ -389,24 +403,50 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (!mounted) return;
     setState(() => _followBusy = true);
     final wasFollowing = summary.viewerFollows;
-    // Optimistic update
-    setState(() {
-      _summary = ProfileSummary(
-        id: summary.id,
-        displayName: summary.displayName,
-        avatarUrl: summary.avatarUrl,
-        followerCount: wasFollowing
-            ? (summary.followerCount - 1).clamp(0, 1 << 30)
-            : summary.followerCount + 1,
-        followingCount: summary.followingCount,
-        viewerFollows: !wasFollowing,
-      );
-    });
+    final wasRequested = summary.viewerRequested;
+    // Optimistic only for a public profile's follow and for any unfollow: a
+    // tap on a private profile files a request the server decides on, so the
+    // button waits for the answer rather than guessing it.
+    if (wasFollowing || !summary.profilePrivate) {
+      setState(() {
+        _summary = summary.copyWith(
+          followerCount: wasFollowing
+              ? (summary.followerCount - 1).clamp(0, 1 << 30)
+              : summary.followerCount + 1,
+          viewerFollows: !wasFollowing,
+          contentVisible: wasFollowing ? !summary.profilePrivate : null,
+        );
+      });
+    }
     try {
+      final l10n = AppLocalizations.of(context);
       if (wasFollowing) {
         await widget.api.unfollowUser(widget.userId);
+        if (summary.profilePrivate && mounted) {
+          setState(() {
+            _runs = const [];
+            _followers = const [];
+            _following = const [];
+          });
+        }
+      } else if (wasRequested) {
+        await widget.api.cancelFollowRequest(widget.userId);
+        if (!mounted) return;
+        setState(() => _summary = summary.copyWith(viewerRequested: false));
+        showTopBanner(context, l10n.profileRequestWithdrawn);
       } else {
-        await widget.api.followUser(widget.userId);
+        final outcome = await widget.api.followUser(widget.userId);
+        if (!mounted) return;
+        if (outcome == FollowOutcome.requested) {
+          setState(() => _summary = summary.copyWith(viewerRequested: true));
+          showTopBanner(context, l10n.profileRequestSent);
+        } else if (summary.profilePrivate) {
+          setState(() => _summary = summary.copyWith(
+                followerCount: summary.followerCount + 1,
+                viewerFollows: true,
+                contentVisible: true,
+              ));
+        }
       }
     } catch (e) {
       debugPrint('profile follow update failed: $e');
@@ -472,15 +512,12 @@ class _ProfileScreenState extends State<ProfileScreen>
       // that or the Follow button would lie until reload.
       setState(() {
         _blocked = true;
-        _summary = ProfileSummary(
-          id: summary.id,
-          displayName: summary.displayName,
-          avatarUrl: summary.avatarUrl,
+        _summary = summary.copyWith(
           followerCount: summary.viewerFollows
               ? (summary.followerCount - 1).clamp(0, 1 << 30)
               : summary.followerCount,
-          followingCount: summary.followingCount,
           viewerFollows: false,
+          viewerRequested: false,
         );
       });
       showTopBanner(
@@ -689,10 +726,23 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (_loadError != null) {
       return ErrorState(message: l10n.profileLoadError, onRetry: _load);
     }
-    if (_summary == null) {
+    final summary = _summary;
+    if (summary == null) {
       return EmptyState(
         icon: Icons.person_off_outlined,
         title: l10n.profileNotFound,
+      );
+    }
+    if (!summary.contentVisible && tab != ProfileTab.notifications) {
+      return EmptyState(
+        key: const ValueKey('profile-private-panel'),
+        icon: Icons.lock_outline,
+        title: l10n.profilePrivateTitle,
+        body: summary.viewerRequested
+            ? l10n.profilePrivateRequestedBody
+            : l10n.profilePrivateBody(
+                summary.displayName ?? l10n.profileThisRunner,
+              ),
       );
     }
     return _tabView(theme, l10n, tab);
@@ -764,18 +814,28 @@ class _ProfileScreenState extends State<ProfileScreen>
             Row(
               children: [
                 Expanded(
-                  child: s.viewerFollows
+                  child: s.viewerFollows || s.viewerRequested
                       ? OutlinedButton.icon(
                           key: const ValueKey('profile-follow'),
                           onPressed: _followBusy ? null : _toggleFollow,
-                          icon: const Icon(Icons.check),
-                          label: Text(l10n.profileFollowing),
+                          icon: Icon(
+                            s.viewerFollows ? Icons.check : Icons.schedule,
+                          ),
+                          label: Text(
+                            s.viewerFollows
+                                ? l10n.profileFollowing
+                                : l10n.profileRequested,
+                          ),
                         )
                       : FilledButton.icon(
                           key: const ValueKey('profile-follow'),
                           onPressed: _followBusy ? null : _toggleFollow,
                           icon: const Icon(Icons.person_add_alt_1),
-                          label: Text(l10n.profileFollow),
+                          label: Text(
+                            s.profilePrivate
+                                ? l10n.profileRequestToFollow
+                                : l10n.profileFollow,
+                          ),
                         ),
                 ),
                 // Same gate as web's `/u/[id]`: another runner's profile,
@@ -942,23 +1002,30 @@ class _ProfileScreenState extends State<ProfileScreen>
         itemCount: _runs.length,
         itemBuilder: (_, i) {
           final r = _runs[i];
-          // The run row, shared with Fitness -> Runs. Tap-into-detail routes
-          // through `PublicRunScreen` (which takes a `runId`) so this works
-          // for non-owner viewers too, and `ownerUserId` sends the thumbnail
-          // through the clipping function when the profile is not the
-          // viewer's own.
+          // The run row, shared with Fitness -> Runs. Another runner's run
+          // opens `PublicRunScreen` (which takes a `runId`); the viewer's own
+          // goes through the shell, which holds the run store and opens the
+          // owner's detail screen. `ownerUserId` sends the thumbnail through
+          // the clipping function when the profile is not the viewer's own.
           return RunListTile.public(
             key: ValueKey(r.id),
             row: r,
             ownerUserId: widget.userId,
             unit: activeDistanceUnit,
             api: widget.api,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => PublicRunScreen(api: widget.api, runId: r.id),
-              ),
-            ),
+            onTap: () {
+              if (_isSelf) {
+                openRunLink(r.id);
+                return;
+              }
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      PublicRunScreen(api: widget.api, runId: r.id),
+                ),
+              );
+            },
           );
         },
       ),
@@ -1308,7 +1375,10 @@ class _ProfileScreenState extends State<ProfileScreen>
         name: item.actor?.displayName,
         avatarUrl: item.actor?.avatarUrl,
       );
-    } else if ((kind == 'event_rsvp' || kind == 'event_waitlist_slot') &&
+    } else if ((kind == 'event_rsvp' ||
+            kind == 'event_cancel' ||
+            kind == 'event_reminder' ||
+            kind == 'event_waitlist_slot') &&
         item.row.eventId != null &&
         item.eventClubSlug != null) {
       await Navigator.of(context).push(
@@ -1330,11 +1400,44 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
         ),
       );
-    } else if (kind == 'run_completed' && item.row.runId != null) {
+    } else if (_kRunNotificationKinds.contains(kind) && item.row.runId != null) {
+      // A reply, a comment like or a mention need not be on the recipient's
+      // own run, and this screen holds no run store to tell, so the shell
+      // decides: the owner's detail screen for a run on this device, else the
+      // non-owner view, as web's /runs/[id] and the push path do.
+      openRunLink(item.row.runId!);
+    } else if (kind == 'follow' && item.row.actorId != null) {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) =>
-              PublicRunScreen(api: widget.api, runId: item.row.runId!),
+              ProfileScreen(api: widget.api, userId: item.row.actorId!),
+        ),
+      );
+    } else if ((kind == 'plan_update' || kind == 'plan_assigned') &&
+        item.row.planId != null) {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => PlanDetailScreen(
+            training: TrainingService(),
+            planId: item.row.planId!,
+          ),
+        ),
+      );
+    } else if (kind == 'challenge_complete' && item.row.challengeId != null) {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => ChallengeDetailScreen(
+            social: SocialService(),
+            challengeId: item.row.challengeId!,
+          ),
+        ),
+      );
+    } else if (kind == 'achievement') {
+      _tabs.animateTo(_tabOrder.indexOf(ProfileTab.badges));
+    } else if (kind == 'follow_request') {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => FollowRequestsScreen(api: widget.api),
         ),
       );
     } else if (kind == 'data_export_ready') {
@@ -1380,8 +1483,16 @@ class _ProfileScreenState extends State<ProfileScreen>
         return l10n.profileNotifComment(name, dist);
       case 'comment_reply':
         return l10n.profileNotifCommentReply(name);
+      case 'reaction':
+        return l10n.profileNotifReaction(name);
+      case 'comment_like':
+        return l10n.profileNotifCommentLike(name);
+      case 'mention':
+        return l10n.profileNotifMention(name);
       case 'follow':
         return l10n.profileNotifFollow(name);
+      case 'follow_request':
+        return l10n.profileNotifFollowRequest(name);
       case 'event_rsvp':
         return item.eventTitle != null
             ? l10n.profileNotifEventRsvpTitled(name, item.eventTitle!)

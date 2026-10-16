@@ -409,8 +409,9 @@
 		}
 	}
 
-	async function acceptUpdatedAiDisclosure() {
+	async function acceptAiDisclosure() {
 		if (aiConsentAccepting) return;
+		const wasStale = aiConsentStale;
 		aiConsentAccepting = true;
 		try {
 			const { data, error } = await supabase
@@ -425,7 +426,10 @@
 				throw new Error('consent not recorded');
 			}
 			aiDisclosure = { version: row.version, acceptedAt: row.accepted_at };
-			showToast(m('settingsAccount.aiConsentUpdatedToast'), 'success');
+			showToast(
+				m(wasStale ? 'settingsAccount.aiConsentUpdatedToast' : 'settingsAccount.aiConsentAcceptedToast'),
+				'success',
+			);
 		} catch (e) {
 			showToast(m('settingsAccount.saveFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
@@ -1777,7 +1781,7 @@
 		{/if}
 	</section>
 
-	<section class="card">
+	<section class="card" id="ai-consent" data-testid="ai-consent">
 		<h2>{m('settingsAccount.coachConsentHeading')}</h2>
 		{#if aiConsentGranted}
 			<p class="section-desc">{m('settingsAccount.coachConsentActive')}</p>
@@ -1789,7 +1793,7 @@
 				{#if aiConsentStale}
 					<button
 						class="btn btn-primary"
-						onclick={acceptUpdatedAiDisclosure}
+						onclick={acceptAiDisclosure}
 						disabled={aiConsentAccepting}
 					>
 						<span class="material-symbols">verified_user</span>
@@ -1811,6 +1815,20 @@
 			</div>
 		{:else}
 			<p class="section-desc">{m('settingsAccount.coachConsentInactive')}</p>
+			{#if profileLoad === 'ready'}
+				<AiDisclosureNotice />
+				<div class="btn-row">
+					<button
+						class="btn btn-primary"
+						onclick={acceptAiDisclosure}
+						disabled={aiConsentAccepting}
+						data-testid="ai-consent-accept"
+					>
+						<span class="material-symbols">verified_user</span>
+						{aiConsentAccepting ? m('settingsAccount.aiConsentAccepting') : m('coachPage.consentAccept')}
+					</button>
+				</div>
+			{/if}
 		{/if}
 	</section>
 

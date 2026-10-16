@@ -1,6 +1,8 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -132,6 +134,41 @@ Future<void> _pump(
 void main() {
   setUpAll(_ensureSupabase);
 
+  group('coachPlanAdjustWebUri', () {
+    const id = '11111111-2222-4333-8444-555555555555';
+
+    test('opens the web plan page carrying only the change request', () {
+      final uri = coachPlanAdjustWebUri(
+          '/plans/$id?adjust=Move%20my%20long%20run%20to%20Sunday&x=1',
+          'https://threkir.com/');
+      expect(uri, isNotNull);
+      expect(uri!.host, 'threkir.com');
+      expect(uri.path, '/plans/$id');
+      expect(uri.queryParameters, {'adjust': 'Move my long run to Sunday'});
+    });
+
+    test('anything else is not a plan-edit link', () {
+      for (final href in [
+        '/plans/$id',
+        '/plans/$id?adjust=%20',
+        '/plans/new?adjust=x',
+        '/plans/not-a-uuid?adjust=x',
+        'https://evil.example/plans/$id?adjust=x',
+        '//evil.example/plans/$id?adjust=x',
+        '/plans/$id/edit?adjust=x',
+      ]) {
+        expect(coachPlanAdjustWebUri(href, 'https://threkir.com'), isNull,
+            reason: href);
+      }
+    });
+
+    test('a non-web base never becomes a launch target', () {
+      expect(
+          coachPlanAdjustWebUri('/plans/$id?adjust=x', 'javascript:alert(1)'),
+          isNull);
+    });
+  });
+
   group('coachPlanLinkDescription', () {
     test('reads a decoded description off a /plans/new link', () {
       expect(
@@ -245,6 +282,84 @@ void main() {
 
       final wizard = tester.widget<PlanNewScreen>(find.byType(PlanNewScreen));
       expect(wizard.initialDescription, 'A sub-2 half on 14 March');
+    });
+  });
+
+  group('CoachScreen — web handoff links', () {
+    const launcher = MethodChannel('plugins.flutter.io/url_launcher');
+    const planId = '11111111-2222-4333-8444-555555555555';
+
+    Future<List<Uri>> tapCoachLink(
+        WidgetTester tester, String text, String href,
+        {String env = 'WEB_BASE_URL=https://preview.threkir.com'}) async {
+      dotenv.loadFromString(
+        envString: env,
+        isOptional: true,
+      );
+      final launched = <Uri>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(launcher,
+          (call) async {
+        if (call.method == 'launch' || call.method == 'launchUrl') {
+          launched.add(Uri.parse((call.arguments as Map)['url'] as String));
+        }
+        return true;
+      });
+      addTearDown(() => tester.binding.defaultBinaryMessenger
+          .setMockMethodCallHandler(launcher, null));
+      await _pump(
+        tester,
+        aiPlan: false,
+        plan: _plan(),
+        messages: [
+          CoachMessageRow(
+            id: 'm1',
+            userId: 'u1',
+            role: 'assistant',
+            content: '[$text]($href)',
+            createdAt: DateTime(2026, 10, 1),
+          ),
+        ],
+      );
+      final markdown = tester.widget<MarkdownBody>(find.byType(MarkdownBody));
+      markdown.onTapLink!(text, href, '');
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      return launched;
+    }
+
+    realtimeWidgetTest('an "Adjust my plan" link opens the web plan page',
+        (tester) async {
+      final launched = await tapCoachLink(tester, 'Adjust my plan',
+          '/plans/$planId?adjust=Move%20my%20long%20run%20to%20Sunday');
+      expect(launched, hasLength(1));
+      expect(launched.single.origin, 'https://preview.threkir.com');
+      expect(launched.single.path, '/plans/$planId');
+      expect(launched.single.queryParameters,
+          {'adjust': 'Move my long run to Sunday'});
+      expect(find.byType(PlanNewScreen), findsNothing);
+    });
+
+    realtimeWidgetTest(
+        'an "Adjust my plan" link with a blank WEB_BASE_URL opens production',
+        (tester) async {
+      final launched = await tapCoachLink(tester, 'Adjust my plan',
+          '/plans/$planId?adjust=Move%20my%20long%20run%20to%20Sunday',
+          env: 'WEB_BASE_URL=');
+      expect(launched, hasLength(1));
+      expect(launched.single.origin, 'https://threkir.com');
+      expect(launched.single.path, '/plans/$planId');
+    });
+
+    realtimeWidgetTest('a "Plan your fuelling" link opens the web fuelling page',
+        (tester) async {
+      final launched = await tapCoachLink(tester, 'Plan your fuelling',
+          '/nutrition/fuel?duration=9000&carbs=70&heat=1');
+      expect(launched, hasLength(1));
+      expect(launched.single.origin, 'https://preview.threkir.com');
+      expect(launched.single.path, '/nutrition/fuel');
+      expect(launched.single.queryParameters,
+          {'duration': '9000', 'carbs': '70', 'heat': '1'});
     });
   });
 }

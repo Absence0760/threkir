@@ -7,6 +7,8 @@ import {
 	mergeFeedPages,
 	mergeProfilePages,
 	mergeRecencyPages,
+	readChunked,
+	queryChunked,
 	FEED_FOLLOWEE_CHUNK
 } from './feed_merge';
 
@@ -230,3 +232,100 @@ test('a row present in two chunks keeps the later chunk, as documented', () => {
 	assert.equal(feed[0].note, 'fresh');
 });
 
+
+test('readChunked runs one query per bounded chunk and concatenates in order', async () => {
+	const ids = Array.from({ length: 250 }, (_, i) => `id-${i}`);
+	const seen: string[][] = [];
+	const rows = await readChunked(ids, async (part) => {
+		seen.push(part);
+		return part.map((id) => ({ id }));
+	});
+	assert.deepEqual(
+		seen.map((p) => p.length),
+		[100, 100, 50]
+	);
+	assert.ok(seen.every((p) => p.length <= FEED_FOLLOWEE_CHUNK));
+	assert.deepEqual(
+		rows.map((r) => r.id),
+		ids
+	);
+});
+
+test('readChunked issues no query for an empty id list', async () => {
+	let calls = 0;
+	const rows = await readChunked([], async () => {
+		calls++;
+		return [1];
+	});
+	assert.deepEqual(rows, []);
+	assert.equal(calls, 0);
+});
+
+test('readChunked rejects when any chunk rejects', async () => {
+	const ids = Array.from({ length: 150 }, (_, i) => `id-${i}`);
+	await assert.rejects(
+		readChunked(ids, async (part) => {
+			if (part[0] === 'id-100') throw new Error('chunk 2 failed');
+			return part;
+		}),
+		/chunk 2 failed/
+	);
+});
+
+test('queryChunked runs one query per bounded chunk and concatenates the rows in order', async () => {
+	const ids = Array.from({ length: 250 }, (_, i) => `id-${i}`);
+	const seen: string[][] = [];
+	const res = await queryChunked(ids, async (part) => {
+		seen.push(part);
+		return { data: part.map((id) => ({ id })), error: null };
+	});
+	assert.deepEqual(
+		seen.map((p) => p.length),
+		[100, 100, 50]
+	);
+	assert.equal(res.error, null);
+	assert.deepEqual(
+		res.data?.map((r) => r.id),
+		ids
+	);
+});
+
+test('queryChunked reaches every row past the bound, where one unchunked in-filter came back empty', async () => {
+	// The failure this exists for: past the bound a gateway answers 200 with
+	// an EMPTY match (decisions § 653). Model that server and ask it for 230
+	// ids — one query sees nothing, the chunked read sees all of them.
+	const server = async (part: string[]) => ({
+		data: part.length > FEED_FOLLOWEE_CHUNK ? [] : part.map((id) => ({ id })),
+		error: null
+	});
+	const ids = Array.from({ length: 230 }, (_, i) => `u-${i}`);
+	assert.deepEqual((await server(ids)).data, []);
+	const res = await queryChunked(ids, server);
+	assert.equal(res.data?.length, 230);
+});
+
+test('queryChunked issues no query for an empty id list', async () => {
+	let calls = 0;
+	const res = await queryChunked<string, Error>([], async () => {
+		calls++;
+		return { data: ['x'], error: null };
+	});
+	assert.deepEqual(res, { data: [], error: null });
+	assert.equal(calls, 0);
+});
+
+test('queryChunked reports the first failed chunk and no partial rows', async () => {
+	const ids = Array.from({ length: 250 }, (_, i) => `id-${i}`);
+	const res = await queryChunked(ids, async (part) =>
+		part[0] === 'id-100'
+			? { data: null, error: { message: 'chunk 2 failed' } }
+			: { data: part, error: null }
+	);
+	assert.equal(res.data, null);
+	assert.deepEqual(res.error, { message: 'chunk 2 failed' });
+});
+
+test('queryChunked treats a write chunk with no returned rows as success', async () => {
+	const res = await queryChunked(['a', 'b'], async () => ({ data: null, error: null }));
+	assert.deepEqual(res, { data: [], error: null });
+});

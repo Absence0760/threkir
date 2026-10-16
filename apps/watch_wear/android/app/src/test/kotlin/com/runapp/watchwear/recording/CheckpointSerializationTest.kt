@@ -50,6 +50,7 @@ class CheckpointSerializationTest {
         steps = 6_400,
         privacyDefault = "public",
         pausedAccumulatedMs = 120_000,
+        gnssSignal = GnssSignalSummary(samples = 900, usedMedian = 12, cn0MedianDbHz = 36.4, cn0P10DbHz = 29.0, l5Fraction = 0.25),
     )
 
     @Test
@@ -83,6 +84,29 @@ class CheckpointSerializationTest {
         val decoded = json.decodeFromString(Checkpoint.serializer(), v1Json)
         assertEquals(0L, decoded.bpmSum)
         assertEquals(0L, decoded.bpmCount)
+    }
+
+    @Test
+    fun `a checkpoint from a build that gated its track claims no complete track`() {
+        // Its track file holds only the fixes inside the 30 m gate, so a
+        // recovered run of that vintage must not stamp track_complete.
+        val older = """
+        {
+            "runId": "old-run",
+            "startedAtMs": 1700000000000,
+            "savedAtMs": 1700000900000,
+            "distanceM": 5000.0,
+            "trackFilePath": "/old/path.json",
+            "trackPointCount": 1200,
+            "distanceEstimator": "kalman_v4"
+        }
+        """.trimIndent()
+        assertEquals(false, json.decodeFromString(Checkpoint.serializer(), older).trackComplete)
+        val current = sample.copy(trackComplete = true)
+        assertEquals(
+            current,
+            json.decodeFromString(Checkpoint.serializer(), json.encodeToString(Checkpoint.serializer(), current)),
+        )
     }
 
     @Test
@@ -213,6 +237,7 @@ class CheckpointSerializationTest {
         assertNull(decoded.steps)
         assertNull(decoded.privacyDefault)
         assertEquals(0L, decoded.pausedAccumulatedMs)
+        assertNull(decoded.gnssSignal)
     }
 
     @Test
@@ -421,5 +446,34 @@ class CheckpointSerializationTest {
         )
         assertEquals("kalman_v1", decoded.distanceEstimator)
         assertEquals(78.4, decoded.distanceStepFilledM!!, 0.0)
+    }
+
+    @Test
+    fun `location provider round-trips so a recovered run names its stream`() {
+        for (provider in listOf("gps", "fused", "mixed")) {
+            val decoded = json.decodeFromString(
+                Checkpoint.serializer(),
+                json.encodeToString(Checkpoint.serializer(), sample.copy(locationProvider = provider)),
+            )
+            assertEquals(provider, decoded.locationProvider)
+        }
+    }
+
+    @Test
+    fun `a checkpoint from before the receiver decodes with no location provider`() {
+        val preReceiver = """
+        {
+            "runId": "old-run",
+            "startedAtMs": 1700000000000,
+            "savedAtMs": 1700000900000,
+            "distanceM": 5000.0,
+            "trackFilePath": "/old/path.json",
+            "trackPointCount": 1200,
+            "distanceEstimator": "kalman_v1"
+        }
+        """.trimIndent()
+        val decoded = json.decodeFromString(Checkpoint.serializer(), preReceiver)
+        assertEquals("kalman_v1", decoded.distanceEstimator)
+        assertNull(decoded.locationProvider)
     }
 }

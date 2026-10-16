@@ -1087,6 +1087,10 @@ class AppLocalizationsJa extends AppLocalizations {
       'この端末でランを開始すると自動的にライブ共有を開始します。進行中のランはリンクを知っている人なら誰でも見られます。ランが終了すると、既定の公開設定に戻ります。';
 
   @override
+  String get safetyAutoLiveShareSafetySubtitle =>
+      'このスマートフォンでランを開始すると、自動的にライブ共有を開始します。公開されることはありません。確認済みの安全連絡先だけが、遅延アラートまたはルート逸脱アラートで届くリンクから追跡できます。アラートを設定すると既定でオンになります。';
+
+  @override
   String get safetyOffRouteTitle => 'ルート逸脱アラート';
 
   @override
@@ -1098,6 +1102,10 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get runAutoLiveShareStarted => 'ライブ共有中 — 「ライブリンクを共有」でリンクを送れます';
+
+  @override
+  String get runSafetyLiveShareStarted =>
+      '安全共有がオンです。安全連絡先だけが、アラートが送られた後にのみ追跡できます';
 
   @override
   String get runSafetyNudgeSolo =>
@@ -1322,7 +1330,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get onboardingLocationBodyAndroid =>
-      'Threkir はランを記録するために GPS の位置情報を取得します。画面がオフの間も記録し、記録中は通知が表示されます。位置情報は、ランを同期または共有しないかぎりこの端末に残ります。次の確認画面で許可されるのは「アプリの使用中のみ」で、Android の最初の確認ではそれ以上は許可できません。最初のランの前に、他のアプリに切り替えても記録を安定させる「常に許可」への変更を案内します。許可しない場合も時間と歩数は記録されますが、地図・距離・ペースは記録されません。';
+      'Threkir はランを記録するために GPS の位置情報を取得し、画面がオフの間も取得を求め続けます。記録中は通知が表示されます。位置情報は、ランを同期または共有しないかぎりこの端末に残ります。次の確認画面で許可されるのは「アプリの使用中のみ」で、Android の最初の確認ではそれ以上は許可できません。この許可だけでは、画面がオフのときや他のアプリの使用中に Android が位置情報の送信を止めることがあります。最初のランの前に、その間も記録を安定させる「常に許可」への変更を案内します。許可しない場合も時間と歩数は記録されますが、地図・距離・ペースは記録されません。';
 
   @override
   String get onboardingLocationBodyIos =>
@@ -1853,6 +1861,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runWeakGps => 'GPSが弱い — 距離は一時停止中';
 
   @override
+  String get runWeakGpsApproximate => 'おおよその位置情報 — 距離は一時停止中';
+
+  @override
   String get runA11yStarted => 'ランを開始しました';
 
   @override
@@ -2031,6 +2042,10 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get runBackgroundLocationPaused =>
       'アプリを離れている間、位置情報の記録が一時停止しました — タイムは計測を続け、記録済みのデータは失われていませんが、画面外で進んだ距離は加算されていません。バックグラウンドでも記録するには、位置情報を「常に許可」に設定してください。';
+
+  @override
+  String get runPreciseLocationOff =>
+      '正確な位置情報がオフです — このランの地図とGPS距離は表示されないか大きくずれますが、タイムは記録を続けます。正確なルートを記録するには、設定で正確な位置情報をオンにしてください。';
 
   @override
   String get runGpsSensorFailed => 'GPSなしで記録中 — センサーを開始できませんでした。';
@@ -4454,6 +4469,21 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String profileNotifReaction(String name) {
+    return '$nameがあなたのランにリアクションしました';
+  }
+
+  @override
+  String profileNotifCommentLike(String name) {
+    return '$nameがあなたのコメントに「いいね」しました';
+  }
+
+  @override
+  String profileNotifMention(String name) {
+    return '$nameがコメントであなたをメンションしました';
+  }
+
+  @override
   String profileNotifFollow(String name) {
     return '$nameがあなたをフォローしました';
   }
@@ -6209,7 +6239,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get coachConsentIntro =>
-      'ThrekirのAI機能（コーチ、AIルートアシスタント、AIプランアシスタント）は、あなたのデータの一部を、米国のAIモデルプロバイダーである Anthropic に送信します。利用する機能に応じて、その一部には以下が含まれます：';
+      'ThrekirのAI機能は、あなたのデータの一部を、米国のAIモデルプロバイダーである Anthropic に送信します。利用する機能に応じて、その一部には以下が含まれます：';
 
   @override
   String get coachConsentBulletProfile => '生年月日、性別、設定済みの心拍ゾーン。';
@@ -6230,6 +6260,14 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get coachConsentBulletPlanRequest =>
       'AIプランアシスタント利用時: 入力したプランの説明（目標レース、目標タイムと最近のタイム、トレーニングできる日数）。プラン設定の入力にのみ使用し、プラン自体はAIではなくThrekir独自のジェネレーターが作成します。';
+
+  @override
+  String get coachConsentBulletPlatePhoto =>
+      '食事写真による記録：あなたが選んだ食事の写真を、お皿の内容を推定するためだけに送信します。位置情報やカメラの情報は送信前に削除され、Threkirは写真を保存せず、確認して保存するまで何も記録されません。';
+
+  @override
+  String get coachConsentBulletPlanEdit =>
+      'AIプラン調整利用時: 変更するプランの今後のワークアウト（日付、種類、距離）と入力した変更内容。保存前に確認する変更案の作成にのみ使用し、AIがワークアウトを追加したりペースを設定したりすることはありません。';
 
   @override
   String get coachConsentProcessing =>
@@ -6599,7 +6637,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get settingsAccountAiConsentUpdateSubtitle =>
-      '説明の対象となる機能が増えました。内容を確認して同意すると、AIルートアシスタントとAIプランアシスタントを利用できます。';
+      '説明の対象となる機能が増えました。内容を確認して同意すると、記載されているすべてのAI機能を利用できます。';
 
   @override
   String get settingsAccountAiConsentGrantTitle => 'AIの説明を確認する';
@@ -8678,6 +8716,53 @@ class AppLocalizationsJa extends AppLocalizations {
   String runSocialDeleteError(String error) {
     return '削除に失敗しました: $error';
   }
+
+  @override
+  String get runSocialReactionsLabel => 'リアクション';
+
+  @override
+  String get runSocialReactionFire => '絶好調';
+
+  @override
+  String get runSocialReactionStrong => '力強い';
+
+  @override
+  String get runSocialReactionTrophy => 'チャンピオン';
+
+  @override
+  String get runSocialReactionThumbsUp => 'いいね';
+
+  @override
+  String get runSocialReactionWave => 'やあ';
+
+  @override
+  String runSocialReactWith(String label) {
+    return '「$label」でリアクション';
+  }
+
+  @override
+  String runSocialRemoveReaction(String label) {
+    return '「$label」のリアクションを取り消す';
+  }
+
+  @override
+  String runSocialReactionError(String error) {
+    return 'リアクションを更新できませんでした: $error';
+  }
+
+  @override
+  String get runSocialLikeComment => 'このコメントに「いいね」';
+
+  @override
+  String get runSocialUnlikeComment => '「いいね」を取り消す';
+
+  @override
+  String runSocialLikeError(String error) {
+    return '「いいね」を更新できませんでした: $error';
+  }
+
+  @override
+  String get runSocialMentionSuggestions => 'メンションする人';
 
   @override
   String get runPhotosLoading => '写真を読み込み中…';
@@ -10842,6 +10927,100 @@ class AppLocalizationsJa extends AppLocalizations {
   String get nutritionLogFood => '食事を記録';
 
   @override
+  String get nutritionLogFromPhoto => '写真から記録';
+
+  @override
+  String get platePhotoTitle => '写真から記録';
+
+  @override
+  String get platePhotoIntro =>
+      '食事の写真を撮るか選んでください。Threkirがお皿の内容を推定し、保存する前にすべての項目を確認・編集できます。';
+
+  @override
+  String get platePhotoTakePhoto => '写真を撮る';
+
+  @override
+  String get platePhotoChoosePhoto => '写真を選ぶ';
+
+  @override
+  String get platePhotoPreviewLabel => '選んだ食事の写真';
+
+  @override
+  String get platePhotoNoteLabel => 'メモ（任意）';
+
+  @override
+  String get platePhotoNoteHint => '例：半人前、ドレッシングなし';
+
+  @override
+  String get platePhotoEstimate => '推定する';
+
+  @override
+  String get platePhotoEstimating => '推定中…';
+
+  @override
+  String get platePhotoEmpty => 'その写真から食品を認識できませんでした。戻って別の写真を試すか、手動で追加してください。';
+
+  @override
+  String get platePhotoReviewHeading => '保存する前に確認してください';
+
+  @override
+  String get platePhotoReviewHint => 'これは推定値です。違っているものは編集し、写っていないものは削除してください。';
+
+  @override
+  String get platePhotoMealSlot => '食事';
+
+  @override
+  String get platePhotoItemName => '食品';
+
+  @override
+  String platePhotoRemoveItem(String name) {
+    return '$name を削除';
+  }
+
+  @override
+  String get platePhotoLowConfidence => '推定の確度が低い';
+
+  @override
+  String get platePhotoCalories => 'kcal';
+
+  @override
+  String get platePhotoProtein => 'たんぱく質 (g)';
+
+  @override
+  String get platePhotoCarbs => '炭水化物 (g)';
+
+  @override
+  String get platePhotoFat => '脂質 (g)';
+
+  @override
+  String platePhotoSave(int count) {
+    return '項目を保存（$count件）';
+  }
+
+  @override
+  String get platePhotoSaving => '保存中…';
+
+  @override
+  String get platePhotoErrorConsent =>
+      '食事写真による記録には、更新されたAIに関する説明への同意が必要です。設定 → アカウントで同意してください。';
+
+  @override
+  String get platePhotoErrorPro => '写真からの記録はProの機能です。';
+
+  @override
+  String get platePhotoErrorRate => 'この1時間に多くの写真を記録しました。後でもう一度試すか、手動で追加してください。';
+
+  @override
+  String get platePhotoErrorInvalid => 'その画像を読み込めませんでした。別の写真を試してください。';
+
+  @override
+  String get platePhotoErrorNotUnderstood =>
+      'その写真の食品を判別できませんでした。別の写真を試すか、手動で追加してください。';
+
+  @override
+  String get platePhotoErrorUnavailable => '現在、写真からの記録は利用できません。手動で追加してください。';
+
+  @override
   String get nutritionCalories => 'カロリー';
 
   @override
@@ -12065,6 +12244,22 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String get roadbookWeightToggle => '体重から水分量を計算';
+
+  @override
+  String get roadbookWeightHint =>
+      '水分量を体重に合わせて調整します。ランニングに対してスポーツ医学のガイドラインが示す1時間あたり400〜800 mlの範囲内です。計画用の目安であり、発汗テストではありません。';
+
+  @override
+  String roadbookWeightUsing(String ml) {
+    return '水分: 体重から1時間あたり $ml ml。';
+  }
+
+  @override
+  String get roadbookWeightUnavailable =>
+      '体重から水分量を計算するには、身体データで体重を追加し、そこで健康データの利用に同意してください。';
+
+  @override
   String get roadbookColTarget => '目標';
 
   @override
@@ -12983,13 +13178,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get settingsTabSimWatchSubtitle => 'シミュレーション中のカスタムウォッチのライブ状態';
-
-  @override
-  String get settingsDevRawGps => '生のGPS';
-
-  @override
-  String get settingsDevRawGpsSubtitle =>
-      '統合位置情報サービスではなくGPSチップのみで記録し、距離の精度を比較します。次のランから適用されます。';
 
   @override
   String get simWatchTitle => 'シミュレータウォッチ接続';
@@ -15092,4 +15280,154 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get profileMessage => 'メッセージ';
+
+  @override
+  String get routeDetailSendToFollower => 'フォロワーに送る';
+
+  @override
+  String get routeDetailSendDmTitle => 'このルートを送る';
+
+  @override
+  String get routeDetailSendDmIntro =>
+      'フォローしている人、またはあなたをフォローしている人を選んでください。ルートのリンクがその人とのメッセージに届きます。';
+
+  @override
+  String get routeDetailSendDmLinkNote => '相手には公開共有リンクが届きます。転送された人も開くことができます。';
+
+  @override
+  String get routeDetailSendDmPrivateNote =>
+      '非公開のままです。送った相手だけがリンクを開け、いつでも共有を解除できます。';
+
+  @override
+  String get routeDetailSendDmSearchPlaceholder => 'ユーザーを検索';
+
+  @override
+  String get routeDetailSendDmLoadFailed => '送信できる相手を読み込めませんでした。';
+
+  @override
+  String get routeDetailSendDmEmpty => 'まだ誰もフォローしておらず、フォロワーもいません。';
+
+  @override
+  String get routeDetailSendDmNoMatches => '該当する人がいません。';
+
+  @override
+  String get routeDetailSendDmRelationMutual => '相互フォロー';
+
+  @override
+  String get routeDetailSendDmRelationFollowsYou => 'あなたをフォロー中';
+
+  @override
+  String get routeDetailSendDmRelationYouFollow => 'フォロー中';
+
+  @override
+  String get routeDetailSendDmSend => '送信';
+
+  @override
+  String get routeDetailSendDmSending => '送信中…';
+
+  @override
+  String routeDetailSendDmSent(String name) {
+    return '$name にルートを送信しました。';
+  }
+
+  @override
+  String get routeDetailSendDmOpenThread => 'メッセージを開く';
+
+  @override
+  String get routeDetailSendDmDone => '完了';
+
+  @override
+  String get runPhotosRaceGalleryShow => 'レースページに表示';
+
+  @override
+  String get runPhotosRaceGalleryHide => 'レースページから削除';
+
+  @override
+  String get runPhotosRaceGalleryHint =>
+      '写真のメダルをタップすると、このレースの公開ページに表示されます。このページは誰でも閲覧でき、写真はいつでも取り下げられます。';
+
+  @override
+  String get runPhotosRaceGalleryPrivate => 'このランを公開すると、写真をレースページで共有できます。';
+
+  @override
+  String runPhotosRaceGalleryError(String error) {
+    return 'レースページを更新できませんでした: $error';
+  }
+
+  @override
+  String get profileRequestToFollow => 'フォローをリクエスト';
+
+  @override
+  String get profileRequested => 'リクエスト済み';
+
+  @override
+  String get profileRequestSent => 'フォローリクエストを送信しました';
+
+  @override
+  String get profileRequestWithdrawn => 'フォローリクエストを取り消しました';
+
+  @override
+  String get profilePrivateTitle => 'このプロフィールは非公開です';
+
+  @override
+  String profilePrivateBody(String name) {
+    return '$nameさんをフォローすると、ランとフォロー中のユーザーを見られます。リクエストはそれぞれ承認が必要です。';
+  }
+
+  @override
+  String get profilePrivateRequestedBody =>
+      'リクエストは承認待ちです。承認されるとランを見られるようになります。';
+
+  @override
+  String profileNotifFollowRequest(String name) {
+    return '$nameさんがフォローをリクエストしました';
+  }
+
+  @override
+  String get prefsPrivateProfile => '非公開プロフィール';
+
+  @override
+  String get prefsPrivateProfileSubtitle =>
+      '承認したフォロワーだけが、あなたのラン、アクティビティ、フォロワー一覧を見られます。名前で検索してフォローをリクエストすることはできます。';
+
+  @override
+  String get prefsPrivateProfileFailed => 'プロフィールの公開設定を変更できませんでした。';
+
+  @override
+  String get followRequestsTitle => 'フォローリクエスト';
+
+  @override
+  String get followRequestsEmptyTitle => '保留中のリクエストはありません';
+
+  @override
+  String get followRequestsEmptyBody => '誰かが非公開プロフィールのフォローをリクエストすると、ここに表示されます。';
+
+  @override
+  String get followRequestsApprove => '承認';
+
+  @override
+  String get followRequestsDecline => '拒否';
+
+  @override
+  String followRequestsApproved(String name) {
+    return '$nameさんがあなたのプロフィールを見られるようになりました';
+  }
+
+  @override
+  String get followRequestsDeclinedBanner => 'リクエストを拒否しました';
+
+  @override
+  String get followRequestsLoadError => 'フォローリクエストを読み込めませんでした。';
+
+  @override
+  String get followRequestsActionFailed => 'リクエストを更新できませんでした。';
+
+  @override
+  String get coachingAthleteMapsClippedNote =>
+      '地図には、このアスリートがプライバシーゾーンで非表示にしている範囲は含まれません。';
+
+  @override
+  String coachingAthleteRunMapLabel(String date) {
+    return '$dateのランの地図（アスリートのプライバシーゾーンを除く）';
+  }
 }

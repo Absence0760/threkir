@@ -50,19 +50,25 @@ interface StubOpts {
 	isPro?: boolean;
 	usage?: unknown;
 	usageError?: unknown;
-	decrementError?: unknown;
+	refundError?: unknown;
 }
 
+const TICKET = '5e5e0000-0000-0000-0000-0000000071a1';
+const REFUND = { p_user_id: 'user-1', p_spend_id: TICKET };
+
 /// Enough Supabase for auth.getUser + the RPCs the handler reads, recording
-/// every RPC name so a test can assert what was (and was not) spent.
+/// every RPC name so a test can assert what was (and was not) spent, and every
+/// refund's arguments so it can assert which ticket was handed back. A numeric
+/// `usage` is the spend row's count; anything else is the RPC's raw `data`.
 function stubSupabase(opts: StubOpts = {}) {
 	const calls: string[] = [];
+	const refunds: unknown[] = [];
 	const factory = () =>
 		({
 			auth: {
 				getUser: async () => ({ data: { user: { id: 'user-1' } }, error: null }),
 			},
-			rpc: (name: string) => {
+			rpc: (name: string, args?: unknown) => {
 				calls.push(name);
 				if (name === 'get_my_profile') {
 					return {
@@ -76,19 +82,21 @@ function stubSupabase(opts: StubOpts = {}) {
 					};
 				}
 				if (name === 'is_pro') return Promise.resolve({ data: opts.isPro === true, error: null });
-				if (name === 'increment_coach_usage') {
+				if (name === 'spend_coach_usage_slot') {
+					const usage = opts.usage === undefined ? 1 : opts.usage;
 					return Promise.resolve({
-						data: opts.usage === undefined ? 1 : opts.usage,
+						data: typeof usage === 'number' ? [{ used: usage, spend_id: TICKET }] : usage,
 						error: opts.usageError ?? null,
 					});
 				}
-				if (name === 'decrement_coach_usage') {
-					return Promise.resolve({ data: null, error: opts.decrementError ?? null });
+				if (name === 'refund_coach_usage_slot') {
+					refunds.push(args);
+					return Promise.resolve({ data: true, error: opts.refundError ?? null });
 				}
 				return Promise.resolve({ data: null, error: null });
 			},
 		}) as never;
-	return { factory, calls };
+	return { factory, calls, refunds };
 }
 
 /// A fake model client. `respond` decides what `messages.create` does; the
@@ -187,7 +195,7 @@ test('refuses a caller whose acceptance predates the plan disclosure', async () 
 		assert.equal(r.status, 403, `version ${version}`);
 		assert.equal(r.body.code, 'ai_disclosure_required');
 		assert.equal(r.body.required_version, 3);
-		assert.ok(!calls.includes('increment_coach_usage'), 'a consent refusal spent a slot');
+		assert.ok(!calls.includes('spend_coach_usage_slot'), 'a consent refusal spent a slot');
 	}
 });
 
@@ -232,7 +240,7 @@ test('a missing key is a 503 and spends no slot', async () => {
 		}),
 	);
 	assert.equal(r.status, 503);
-	assert.ok(!calls.includes('increment_coach_usage'));
+	assert.ok(!calls.includes('spend_coach_usage_slot'));
 });
 
 test('over the daily cap is a 429 carrying used / limit / tier, and no model call', async () => {
@@ -308,13 +316,13 @@ test('the dev bypass skips the counter entirely', async () => {
 	);
 	assert.equal(r.status, 200);
 	assert.ok(!calls.includes('is_pro'));
-	assert.ok(!calls.includes('increment_coach_usage'));
+	assert.ok(!calls.includes('spend_coach_usage_slot'));
 });
 
 // ───────────────────────── provider outcomes ─────────────────────────
 
 test('a provider failure is a 503 and refunds the slot', async () => {
-	const { factory, calls } = stubSupabase();
+	const { factory, refunds } = stubSupabase();
 	const model = stubModel(() => {
 		throw new Error('upstream 529 quoting: a sub-2 half on 14 March');
 	});
@@ -327,12 +335,12 @@ test('a provider failure is a 503 and refunds the slot', async () => {
 	);
 	assert.equal(r.status, 503);
 	assert.equal(r.body.error, 'plan assistant unavailable');
-	assert.ok(calls.includes('decrement_coach_usage'));
+	assert.deepEqual(refunds, [REFUND]);
 	assert.doesNotMatch(JSON.stringify(r.body), /14 March/);
 });
 
 test('a refund that itself fails still answers the original 503', async () => {
-	const { factory } = stubSupabase({ decrementError: { message: 'nope' } });
+	const { factory } = stubSupabase({ refundError: { message: 'nope' } });
 	const model = stubModel(() => {
 		throw new Error('timeout');
 	});
@@ -347,7 +355,7 @@ test('a refund that itself fails still answers the original 503', async () => {
 });
 
 test('a refusal is a 422 and refunds the slot', async () => {
-	const { factory, calls } = stubSupabase();
+	const { factory, refunds } = stubSupabase();
 	const model = stubModel(() => ({ stop_reason: 'refusal', content: [] }));
 	const r = parse(
 		await handlePlanRequest('Bearer x', VALID, {
@@ -357,11 +365,11 @@ test('a refusal is a 422 and refunds the slot', async () => {
 		}),
 	);
 	assert.equal(r.status, 422);
-	assert.ok(calls.includes('decrement_coach_usage'));
+	assert.deepEqual(refunds, [REFUND]);
 });
 
 test('a response with no tool_use block is a 422 and refunds the slot', async () => {
-	const { factory, calls } = stubSupabase();
+	const { factory, refunds } = stubSupabase();
 	const model = stubModel(() => ({
 		stop_reason: 'end_turn',
 		content: [{ type: 'text', text: 'Here is a 16-week plan: ...' }],
@@ -374,7 +382,7 @@ test('a response with no tool_use block is a 422 and refunds the slot', async ()
 		}),
 	);
 	assert.equal(r.status, 422);
-	assert.ok(calls.includes('decrement_coach_usage'));
+	assert.deepEqual(refunds, [REFUND]);
 });
 
 test('the bypass never refunds, because it never spent', async () => {
@@ -386,7 +394,7 @@ test('the bypass never refunds, because it never spent', async () => {
 		createClient: factory,
 		createAnthropic: model.create,
 	});
-	assert.ok(!calls.includes('decrement_coach_usage'));
+	assert.ok(!calls.includes('refund_coach_usage_slot'));
 });
 
 test('success returns the validated inputs, never the raw tool input', async () => {
@@ -415,7 +423,7 @@ test('success returns the validated inputs, never the raw tool input', async () 
 	assert.equal(r.body.inputs?.daysPerWeek, 7);
 	assert.ok(r.body.inputs?.assumptions.includes('days_per_week_clamped'));
 	assert.ok(!('workouts' in (r.body.inputs as object)), 'an un-asked-for field crossed the boundary');
-	assert.ok(!calls.includes('decrement_coach_usage'));
+	assert.ok(!calls.includes('refund_coach_usage_slot'));
 });
 
 test('the request forces the extraction tool, delimits the runner text, and names today', async () => {

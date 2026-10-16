@@ -116,14 +116,19 @@ export const ELEVATION_GAIN_MIN_DELTA_M = 3;
  *    carried across the gap, so an intermittent dropout (tree cover, a tunnel,
  *    satellite reacquisition on a long ultra) doesn't silently erase the climb
  *    that spans the missing samples.
- * 2. A change only counts once it clears [ELEVATION_GAIN_MIN_DELTA_M].
+ * 2. A change only counts once it clears `minDeltaM`, which defaults to
+ *    [ELEVATION_GAIN_MIN_DELTA_M]. A recorded run passes the band
+ *    `runAltitude` (lib/runs/run_altitude.ts) picks for its altitude source.
  *
  * Callers must pass the raw track. Running this over an RDP-simplified
  * polyline reads a hill as flat: RDP measures perpendicular distance in 2-D
  * only, so a straight road over a summit collapses to its endpoints and the
  * climb between them disappears.
  */
-export function computeElevationGain(track: LatLng[]): number {
+export function computeElevationGain(
+	track: LatLng[],
+	minDeltaM: number = ELEVATION_GAIN_MIN_DELTA_M,
+): number {
 	let gain = 0;
 	let ref: number | null = null;
 	for (const p of track) {
@@ -134,10 +139,10 @@ export function computeElevationGain(track: LatLng[]): number {
 			continue;
 		}
 		const delta = ele - ref;
-		if (delta >= ELEVATION_GAIN_MIN_DELTA_M) {
+		if (delta >= minDeltaM) {
 			gain += delta;
 			ref = ele;
-		} else if (delta <= -ELEVATION_GAIN_MIN_DELTA_M) {
+		} else if (delta <= -minDeltaM) {
 			// A real descent — move the reference down so the next climb is
 			// measured from the valley, not from the previous summit.
 			ref = ele;
@@ -167,6 +172,7 @@ export interface RouteSummary {
 export function summarizeRouteFromTrack(
 	track: LatLng[],
 	epsilonMetres = 10,
+	elevationMinDeltaM: number = ELEVATION_GAIN_MIN_DELTA_M,
 ): RouteSummary {
 	const simplified = simplifyTrack(track, epsilonMetres);
 	const waypoints = simplified.map((p) => ({
@@ -191,6 +197,6 @@ export function summarizeRouteFromTrack(
 		// Gain comes off the RAW track. Measuring it over `simplified` read a
 		// hill as flat — RDP works in 2-D, so a straight road over a summit
 		// collapses to its endpoints and the climb between them vanished.
-		elevation_m: computeElevationGain(track),
+		elevation_m: computeElevationGain(track, elevationMinDeltaM),
 	};
 }

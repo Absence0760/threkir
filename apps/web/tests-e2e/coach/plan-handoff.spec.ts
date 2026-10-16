@@ -1,8 +1,10 @@
 import type { Page } from '@playwright/test';
 
 import { browserDate } from '../fixtures/dates';
-import { expect, test, type MockRoute } from '../fixtures/mock-route';
+import type { MockRoute } from '../fixtures/mock-route';
+import { expect, test } from '../fixtures/test';
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * /coach → the AI plan assistant handoff (decisions § 1930). The coach never
@@ -21,12 +23,7 @@ test.describe('/coach — plan handoff', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(context);
 	});
 
 	async function emptyActiveThread(page: Page, mockRoute: MockRoute) {

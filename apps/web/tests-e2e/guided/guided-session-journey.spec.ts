@@ -1,6 +1,7 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent, setStorageOnLoad } from '../fixtures/helpers';
 
 /**
  * Guided-session discovery → preview → compare journey.
@@ -81,20 +82,6 @@ const RUNS = [
 	}
 ] as const;
 
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-	);
-}
-
-// initLocale() in i18n/store.svelte.ts reads localStorage['locale'] on
-// first client mount and swaps the catalogue. Seeding it before the SPA
-// boots drives the whole library into German on every surface.
-function setLocaleGerman() {
-	localStorage.setItem('locale', 'de');
-}
-
 test.describe('Guided session — discovery → preview → compare journey', () => {
 	test.describe('anon visitor: full library → detail → compare a second run', () => {
 		test.use({ storageState: { cookies: [], origins: [] } });
@@ -103,7 +90,7 @@ test.describe('Guided session — discovery → preview → compare journey', ()
 			// Pre-accept the cookie banner: it is a role="dialog" that
 			// floats over the page and would otherwise intercept the
 			// card clicks we drive below.
-			await context.addInitScript(setConsentAccepted);
+			await acceptCookieConsent(context);
 		});
 
 		test('browse the library, drill into one run end-to-end, then compare a different run', async ({
@@ -176,8 +163,10 @@ test.describe('Guided session — discovery → preview → compare journey', ()
 			context,
 			page
 		}) => {
-			// Seed the locale before any navigation so initLocale() boots German.
-			await context.addInitScript(setLocaleGerman);
+			// initLocale() in i18n/store.svelte.ts reads localStorage['locale'] on
+			// first client mount and swaps the catalogue. Seeding it before the SPA
+			// boots drives the whole library into German on every surface.
+			await setStorageOnLoad(context, { local: { locale: 'de' } });
 
 			await test.step('/guided hero + cards localize', async () => {
 				await page.goto('/guided');

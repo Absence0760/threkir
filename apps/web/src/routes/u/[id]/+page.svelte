@@ -11,6 +11,7 @@
 	import { activityTypeLabel } from '#lib/runs/activity_type.svelte.ts';
 	import { goto } from '$app/navigation';
 	import { supabase } from '#lib/core/supabase.ts';
+	import { queryChunked } from '#lib/social/feed_merge.ts';
 	import {
 		fetchPublicProfile,
 		fetchPublicRunsByUser,
@@ -21,6 +22,7 @@
 		fetchEngagementSummaries,
 		followUser,
 		unfollowUser,
+		cancelFollowRequest,
 		blockUser,
 		unblockUser,
 		isBlockedByViewer,
@@ -310,11 +312,15 @@
 		for (const p of followers) if (p.id !== viewerId) ids.add(p.id);
 		for (const p of following) if (p.id !== viewerId) ids.add(p.id);
 		if (ids.size === 0) return;
-		const { data, error } = await supabase
-			.from('user_follows')
-			.select('followee_id')
-			.eq('follower_id', viewerId)
-			.in('followee_id', [...ids]);
+		// Followers + Following both page in on demand, so the union outgrows
+		// one `in` filter (decisions § 653) — read it in bounded chunks.
+		const { data, error } = await queryChunked([...ids], (part) =>
+			supabase
+				.from('user_follows')
+				.select('followee_id')
+				.eq('follower_id', viewerId)
+				.in('followee_id', part)
+		);
 		if (error || !data) return;
 		viewerFollows = new Set(data.map((r) => r.followee_id as string));
 	}
@@ -433,6 +439,9 @@
 	}
 
 
+	// Three states, not two: following, a pending request to a private profile,
+	// or neither. Unfollowing a private profile closes its content again, so
+	// the sections reload rather than keep what an approved follower saw.
 	async function toggleFollow() {
 		if (!profile || !auth.loggedIn || isSelf) return;
 		busy = true;
@@ -443,14 +452,29 @@
 					...profile,
 					viewer_follows: false,
 					follower_count: Math.max(profile.follower_count - 1, 0),
+					content_visible: !profile.profile_private,
 				};
+				if (profile.profile_private) {
+					runs = [];
+					followers = [];
+					following = [];
+				}
+			} else if (profile.viewer_requested) {
+				await cancelFollowRequest(profile.id);
+				profile = { ...profile, viewer_requested: false };
+				showToast(m('profile.requestWithdrawn'), 'success');
 			} else {
-				await followUser(profile.id);
-				profile = {
-					...profile,
-					viewer_follows: true,
-					follower_count: profile.follower_count + 1,
-				};
+				const outcome = await followUser(profile.id);
+				if (outcome === 'requested') {
+					profile = { ...profile, viewer_requested: true };
+					showToast(m('profile.requestSent'), 'success');
+				} else {
+					profile = {
+						...profile,
+						viewer_follows: true,
+						follower_count: profile.follower_count + 1,
+					};
+				}
 			}
 		} catch (e) {
 			showToast(m('profile.updateFollowError', { error: thrownMessage(e) }), 'error');
@@ -518,7 +542,17 @@
 		}
 		try {
 			if (wasFollowing) await unfollowUser(targetId);
-			else await followUser(targetId);
+			else if ((await followUser(targetId)) === 'requested') {
+				// A private profile: nothing is followed yet, so undo the
+				// optimistic flip and say a request went out instead.
+				const pending = new Set(viewerFollows);
+				pending.delete(targetId);
+				viewerFollows = pending;
+				if (isSelf && profile) {
+					profile.following_count = Math.max(profile.following_count - 1, 0);
+				}
+				showToast(m('profile.requestSent'), 'success');
+			}
 		} catch (e) {
 			// Roll back the optimistic flip.
 			const rollback = new Set(viewerFollows);
@@ -660,7 +694,17 @@
 				{/if}
 			</div>
 			<div class="profile-info">
-				<h1>{profile.display_name ?? m('profile.runnerFallback')}</h1>
+				<h1>
+					{profile.display_name ?? m('profile.runnerFallback')}
+					{#if profile.profile_private}
+						<span
+							class="material-symbols private-mark"
+							title={m('profile.privateBadge')}
+							aria-label={m('profile.privateBadge')}
+							role="img">lock</span
+						>
+					{/if}
+				</h1>
 				<div class="counts">
 					<button class="count" type="button" onclick={() => setTab('runs')}>
 						<span class="count-num">{runs.length}</span>
@@ -679,16 +723,31 @@
 			<div class="head-actions">
 				{#if !isSelf && auth.loggedIn}
 					<button
-						class="btn {profile.viewer_follows ? 'btn-outline' : 'btn-primary'} btn-follow"
+						class="btn {profile.viewer_follows || profile.viewer_requested ? 'btn-outline' : 'btn-primary'} btn-follow"
 						type="button"
 						disabled={busy}
 						onclick={toggleFollow}
-						aria-label={profile.viewer_follows ? m('profile.unfollow') : m('profile.follow')}
+						data-testid="profile-follow-button"
+						aria-label={profile.viewer_follows
+							? m('profile.unfollow')
+							: profile.viewer_requested
+								? m('profile.withdrawRequest')
+								: profile.profile_private
+									? m('profile.requestToFollow')
+									: m('profile.follow')}
 					>
 						<span class="material-symbols" aria-hidden="true">
-							{profile.viewer_follows ? 'check' : 'person_add'}
+							{profile.viewer_follows ? 'check' : profile.viewer_requested ? 'schedule' : 'person_add'}
 						</span>
-						<span>{profile.viewer_follows ? m('profile.following') : m('profile.follow')}</span>
+						<span>
+							{profile.viewer_follows
+								? m('profile.following')
+								: profile.viewer_requested
+									? m('profile.requested')
+									: profile.profile_private
+										? m('profile.requestToFollow')
+										: m('profile.follow')}
+						</span>
 					</button>
 					<a
 						class="btn btn-outline btn-message"
@@ -805,7 +864,17 @@
 			{/if}
 		</div>
 
-		{#if tab === 'runs'}
+		{#if !profile.content_visible && tab !== 'notifications'}
+			<div class="empty-card" data-testid="profile-private-panel">
+				<span class="material-symbols empty-icon" aria-hidden="true">lock</span>
+				<h3>{m('profile.privateTitle')}</h3>
+				<p class="empty-text">
+					{profile.viewer_requested
+						? m('profile.privateRequestedText')
+						: m('profile.privateText', { name: profile.display_name ?? m('profile.thisRunner') })}
+				</p>
+			</div>
+		{:else if tab === 'runs'}
 			{#if runsError !== null}
 				{@render sectionError(runsError, loadRuns)}
 			{:else if runsLoading}
@@ -1277,6 +1346,12 @@
 		font-size: 1.75rem;
 		font-weight: 700;
 		margin: 0 0 var(--space-sm) 0;
+	}
+
+	.private-mark {
+		font-size: 1.1rem;
+		vertical-align: middle;
+		color: var(--color-text-secondary);
 	}
 
 	.counts {

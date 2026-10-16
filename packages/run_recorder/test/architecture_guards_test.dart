@@ -286,29 +286,69 @@ void main() {
     // GPX/TCX/FIT exports also embed Run.track[i].timestamp, so wall-clock
     // would mean "process time" rather than "GPS time" in shared files.
     // Fixed in decisions.md §46 — this guard pins the policy.
-    final assignment = RegExp(
-      r'_currentWaypoint\s*=\s*Waypoint\((?:[^()]|\([^()]*\))*\)',
-      multiLine: true,
+    //
+    // The fix's waypoint is built by _waypointFor (shared with the stored
+    // track, which flags off-line fixes), and _storeFix re-assigns the
+    // current position to that same waypoint restamped with distance. So
+    // the guard pins both halves: every assignment comes from one of those
+    // sources, and the builder reads the fix's own timestamp.
+    final assignments = RegExp(r'_currentWaypoint\s*=\s*([^;]+);')
+        .allMatches(source)
+        .map((m) => m.group(1)!.trim())
+        .toList();
+    expect(
+      assignments,
+      isNotEmpty,
+      reason: 'Could not find any _currentWaypoint assignment — rename? '
+          'Update the guard to match the new shape.',
+    );
+    for (final rhs in assignments) {
+      expect(
+        rhs == 'null' ||
+            rhs == 'stamped' ||
+            rhs.startsWith('_waypointFor(pos'),
+        isTrue,
+        reason: '_currentWaypoint = $rhs — the current position must be '
+            'the waypoint of the fix itself (built by _waypointFor(pos, '
+            '...), or that waypoint restamped by _storeFix), so its '
+            'timestamp is the GPS time. A new source needs the same '
+            'pos.timestamp proof here.',
+      );
+    }
+
+    final builder = RegExp(
+      r'Waypoint _waypointFor\([\s\S]*?=>\s*Waypoint\((?:[^()]|\([^()]*\))*\)',
     ).firstMatch(source)?.group(0);
     expect(
-      assignment,
+      builder,
       isNotNull,
-      reason: 'Could not find the _currentWaypoint = Waypoint(...) '
-          'assignment — rename? Update the guard to match the new shape.',
+      reason: 'Could not find the _waypointFor(...) => Waypoint(...) '
+          'builder — rename? Update the guard to match the new shape.',
     );
     expect(
-      assignment,
+      builder,
       contains('timestamp: pos.timestamp'),
-      reason: 'The _currentWaypoint constructor must read timestamp from '
+      reason: 'The waypoint of a fix must read timestamp from '
           'pos.timestamp (GPS-reported), not DateTime.now() — see '
           'decisions.md §46. Reverting this re-introduces the silent '
           '_calculatePace = null bug under fix-batching.',
     );
     expect(
-      assignment,
+      builder,
       isNot(contains('DateTime.now()')),
       reason: 'Same as above — DateTime.now() must not appear inside the '
-          '_currentWaypoint constructor.',
+          'waypoint builder.',
+    );
+
+    final store = RegExp(r'void _storeFix\([\s\S]*?\n  \}')
+        .firstMatch(source)
+        ?.group(0);
+    expect(store, isNotNull, reason: '_storeFix moved — update the guard.');
+    expect(
+      store,
+      isNot(contains('DateTime.now()')),
+      reason: '_storeFix hands its waypoint to _currentWaypoint, so it '
+          'must not restamp it with wall-clock time.',
     );
   });
 

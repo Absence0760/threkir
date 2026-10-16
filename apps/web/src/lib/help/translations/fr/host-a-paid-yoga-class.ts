@@ -16,7 +16,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'Vous devez être admin ou organisateur d\'événements du club. La page du club vous indique lequel avec **Tu es admin** ou **Tu es organisateur d\'événements**.',
+						'Vous devez être admin ou organisateur d\'événements du club. La page du club vous indique lequel avec **Vous êtes admin** ou **Vous êtes organisateur d\'événements**.',
 						'Le prix, la capacité, le calendrier de répétition et le plan de séance se règlent tous sur le web. L\'app mobile peut créer un cours et l\'affiche aux membres, mais elle n\'a pas de champs pour le prix, la capacité ou le plan de séance.',
 						'Si vous voulez joindre une séquence, créez-la d\'abord : voir [[guide:build-a-session-plan|Créer un plan de séance]].',
 					],

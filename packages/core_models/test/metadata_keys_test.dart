@@ -13,11 +13,13 @@ void main() {
       expect(MetadataKeys.createdByUserId, 'created_by_user_id');
       expect(MetadataKeys.lastModifiedAt, 'last_modified_at');
       expect(MetadataKeys.trackUrl, 'track_url');
+      expect(MetadataKeys.trackComplete, 'track_complete');
       expect(MetadataKeys.distanceEstimator, 'distance_estimator');
       expect(MetadataKeys.distanceRecomputedAt, 'distance_recomputed_at');
       expect(MetadataKeys.distanceRecordedM, 'distance_recorded_m');
       expect(MetadataKeys.distanceStepFilledM, 'distance_step_filled_m');
       expect(MetadataKeys.locationProvider, 'location_provider');
+      expect(MetadataKeys.gnssSignal, 'gnss_signal');
       expect(MetadataKeys.isDnf, 'is_dnf');
       expect(MetadataKeys.recoveredFromCrash, 'recovered_from_crash');
       expect(MetadataKeys.workoutStepResults, 'workout_step_results');
@@ -87,6 +89,7 @@ void main() {
         MetadataKeys.stravaId,
         MetadataKeys.subSport,
         MetadataKeys.title,
+        MetadataKeys.trackComplete,
         MetadataKeys.trackUrl,
         MetadataKeys.workoutAdherence,
         MetadataKeys.workoutStepResults,

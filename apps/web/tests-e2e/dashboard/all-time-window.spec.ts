@@ -1,7 +1,9 @@
-import { expect, test, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { insertRun } from '../fixtures/simulate';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * The period drilldown's all-time tab must roll up the runner's REAL
@@ -34,13 +36,6 @@ const allCount = 2;
 
 function kmLabel(metres: number): string {
 	return `${(metres / METRES_PER_KM).toFixed(2)} km`;
-}
-
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-	);
 }
 
 // Asserts rather than snapshotting: the all-time tab shows an em dash while
@@ -86,7 +81,7 @@ test.describe('dashboard all-time drilldown vs the fetch window', () => {
 		browser
 	}) => {
 		const ctx = await browser.newContext({ storageState: user.storageStatePath });
-		await ctx.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 
 		try {
@@ -131,7 +126,7 @@ test.describe('dashboard all-time drilldown vs the fetch window', () => {
 		// is exactly what #332 removed. The recent run is inside this week,
 		// so the week roll-up comes from the prop set with no re-fetch.
 		const ctx = await browser.newContext({ storageState: user.storageStatePath });
-		await ctx.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 
 		try {

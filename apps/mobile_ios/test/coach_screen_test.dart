@@ -343,6 +343,32 @@ void main() {
       await _drain(tester);
     });
 
+    testWidgets('a first open remembers the server grant, so the next opens '
+        'straight into the chat', (tester) async {
+      final first = _SlowConsentApi(answer: const {
+        'ai_disclosure_version': 2,
+        'coach_consent_at': '2026-01-01T00:00:00Z',
+      });
+      await _pump(tester, api: first);
+      expect(find.byType(FullBodyLoader), findsOneWidget);
+      first.release.complete();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      final remembered = AiDisclosureMemo.peek('u-viewer');
+      expect(remembered, isNotNull);
+      expect(checkAiDisclosure(remembered!, kAiDisclosureVersionCoach).ok,
+          isTrue);
+      await _drain(tester);
+
+      final second = _SlowConsentApi();
+      await _pump(tester, api: second);
+      expect(find.byType(FullBodyLoader), findsNothing);
+      expect(find.text("Before you use Threkir's AI features"), findsNothing);
+      second.release.complete();
+      await tester.pump();
+      await _drain(tester);
+    });
+
     testWidgets('with nothing remembered it waits for the server',
         (tester) async {
       final api = _SlowConsentApi();

@@ -2,12 +2,12 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'ai_disclosure.dart';
 import 'payload_hash.dart';
 import 'training.dart';
+import 'web_base_url.dart';
 
 /// Network glue for the plan wizard's "Describe the plan you want" box. It
 /// posts the runner's description to `/api/coach/plan-request` and resolves
@@ -202,11 +202,6 @@ Future<PlanRequestHttpResponse> _defaultPost(
   }
 }
 
-String _webBase() =>
-    ((dotenv.isInitialized ? dotenv.maybeGet('WEB_BASE_URL') : null) ??
-            'https://threkir.com')
-        .replaceAll(RegExp(r'/$'), '');
-
 Future<String?> _currentToken() async =>
     Supabase.instance.client.auth.currentSession?.accessToken;
 
@@ -227,7 +222,9 @@ Future<PlanRequestInputs> requestPlanInputs(
 }) async {
   final send = post ?? _defaultPost;
   final body = jsonEncode({'request': request, 'today': todayIso});
-  final uri = Uri.parse('${baseUrl ?? _webBase()}/api/coach/plan-request');
+  final uri = Uri.parse(
+    '${resolveWebBaseUrl(override: baseUrl)}/api/coach/plan-request',
+  );
   // Production Lambda reads `x-supabase-authorization` only (CloudFront's OAC
   // sigv4-signs `Authorization`), and OAC cannot hash a streamed body, so the
   // client supplies the payload hash or the Function URL 403s (#590).

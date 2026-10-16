@@ -2,6 +2,8 @@ import 'dart:math';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
+import 'web_base_url.dart';
+
 /// Strava OAuth helper surface for the mobile clients. Its web counterpart
 /// under `integrations/` runs the shipped flow against a browser redirect;
 /// this one is unconfigured on every build today, so the two are NOT a
@@ -10,8 +12,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 /// covers the *connect* half of the flow.
 ///
 /// Today the mobile clients defer OAuth to the web (`_connectStrava`
-/// in `settings_screen.dart` opens `https://threkir.com/settings/
-/// integrations` in the browser). Once a native URL-scheme callback
+/// in `settings_integrations_screen.dart` opens [stravaWebConnectUrl] in
+/// the browser). Once a native URL-scheme callback
 /// lands (e.g. `threkir://strava-callback`) the connect button can
 /// invoke [stravaAuthUrl] to build the authorize URL with a mobile-
 /// flavoured redirect, and [completeStravaOAuth] (defined in
@@ -37,6 +39,11 @@ const _kStravaScope = 'activity:read_all,read';
 /// ASWebAuthenticationSession matches the scheme at runtime.
 const String kStravaCallbackScheme = 'threkir';
 const String kStravaCallbackUri = '$kStravaCallbackScheme://strava-callback';
+
+/// The web integrations page an unconfigured build sends the runner to for
+/// the connect half, on the build's configured origin.
+String stravaWebConnectUrl({String? webBase}) =>
+    webPageUrl('/settings/integrations', override: webBase);
 
 /// Result of parsing a Strava OAuth callback URL.
 ///

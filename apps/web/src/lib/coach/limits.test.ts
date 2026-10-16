@@ -11,7 +11,7 @@ import {
 	parseAuthHeader,
 	personalityAddendum,
 	rateLimitHeaders,
-	resolveUsageCount,
+	resolveUsageSpend,
 	validateCoachMessages,
 	validateRunsLimit,
 } from './limits';
@@ -344,36 +344,49 @@ test('validateRunsLimit — rejects values only Number() coercion reads as a cou
 	}
 });
 
-// ─────────────── resolveUsageCount (fail-closed paywall) ───────────────
+// ─────────────── resolveUsageSpend (fail-closed paywall) ───────────────
 
-test('resolveUsageCount — a finite non-negative count enforces (the gate runs)', () => {
-	assert.deepEqual(resolveUsageCount(1, null), { ok: true, usedToday: 1 });
-	assert.deepEqual(resolveUsageCount(0, null), { ok: true, usedToday: 0 });
-	assert.deepEqual(resolveUsageCount(11, null), { ok: true, usedToday: 11 });
+const T = '7e000000-0000-0000-0000-0000000000a1';
+const spendRow = (used: unknown, spend_id: unknown = T) => [{ used, spend_id }];
+
+test('resolveUsageSpend — a finite non-negative count enforces and carries its ticket', () => {
+	assert.deepEqual(resolveUsageSpend(spendRow(1), null), { ok: true, usedToday: 1, spendId: T });
+	assert.deepEqual(resolveUsageSpend(spendRow(0), null), { ok: true, usedToday: 0, spendId: T });
+	assert.deepEqual(resolveUsageSpend(spendRow(11), null), { ok: true, usedToday: 11, spendId: T });
 });
 
-test('resolveUsageCount — an RPC error DENIES, never defaults to 0', () => {
+test('resolveUsageSpend — a missing ticket still enforces the cap, with nothing to refund', () => {
+	for (const badTicket of [null, undefined, 42, {}]) {
+		assert.deepEqual(
+			resolveUsageSpend([{ used: 3, spend_id: badTicket }], null),
+			{ ok: true, usedToday: 3, spendId: null },
+			String(badTicket),
+		);
+	}
+});
+
+test('resolveUsageSpend — an RPC error DENIES, never defaults to 0', () => {
 	// Regression: the handler used to drop the `error` and default
 	// `usedToday` to 0 on a failed increment, which passed the
 	// `usedToday > dailyLimit` gate and streamed an UNMETERED provider
 	// call. The cap is the whole paywall — an unenforceable cap must
 	// fail closed (handler → 503), not fail open.
-	assert.deepEqual(resolveUsageCount(null, { message: 'rpc boom' }), { ok: false });
-	assert.deepEqual(resolveUsageCount(5, new Error('still errored')), { ok: false });
+	assert.deepEqual(resolveUsageSpend(null, { message: 'rpc boom' }), { ok: false });
+	assert.deepEqual(resolveUsageSpend(spendRow(5), new Error('still errored')), { ok: false });
 });
 
-test('resolveUsageCount — a non-numeric / undefined / null data DENIES', () => {
-	for (const bad of [undefined, null, 'NaN', {}, [], true, false]) {
+test('resolveUsageSpend — anything but exactly one row DENIES', () => {
+	for (const bad of [undefined, null, 'NaN', {}, [], 5, true, [null], [{}], spendRow(1).concat(spendRow(2))]) {
 		assert.deepEqual(
-			resolveUsageCount(bad, null),
+			resolveUsageSpend(bad, null),
 			{ ok: false },
 			`expected deny for ${JSON.stringify(bad)}`,
 		);
 	}
 });
 
-test('resolveUsageCount — NaN / Infinity / negative data DENIES (no false enforce)', () => {
-	assert.deepEqual(resolveUsageCount(NaN, null), { ok: false });
-	assert.deepEqual(resolveUsageCount(Infinity, null), { ok: false });
-	assert.deepEqual(resolveUsageCount(-1, null), { ok: false });
+test('resolveUsageSpend — a NaN / Infinity / negative / fractional / string count DENIES', () => {
+	for (const bad of [NaN, Infinity, -1, 1.5, '3', null]) {
+		assert.deepEqual(resolveUsageSpend(spendRow(bad), null), { ok: false }, String(bad));
+	}
 });

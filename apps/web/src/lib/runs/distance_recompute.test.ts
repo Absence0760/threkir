@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
 	CURRENT_DISTANCE_ESTIMATOR,
 	RECOMPUTABLE_SOURCES,
+	TRACK_GATED_ESTIMATORS,
 	canRecomputeDistance,
 	classifyRecomputeError,
 	mapMatchedDistanceM,
@@ -71,11 +72,21 @@ test('an in-progress stub, a manual entry and an indoor run are never offered', 
 });
 
 test('a run already on the current estimator is not offered again', () => {
-	assert.equal(CURRENT_DISTANCE_ESTIMATOR, 'kalman_v3');
+	assert.equal(CURRENT_DISTANCE_ESTIMATOR, 'kalman_v4');
 	assert.equal(
-		canRecomputeDistance(run({ metadata: { distance_estimator: 'kalman_v3' } }), OWNER),
+		canRecomputeDistance(run({ metadata: { distance_estimator: 'kalman_v4' } }), OWNER),
 		false,
 	);
+	assert.equal(
+		canRecomputeDistance(
+			run({
+				metadata: { distance_estimator: 'kalman_v4', distance_recomputed_at: '2026-10-08T08:00:00Z' },
+			}),
+			OWNER,
+		),
+		false,
+	);
+	// A run recomputed under spec v1.3 gains v1.4's gap chord and canopy fixes.
 	assert.equal(
 		canRecomputeDistance(
 			run({
@@ -83,7 +94,7 @@ test('a run already on the current estimator is not offered again', () => {
 			}),
 			OWNER,
 		),
-		false,
+		true,
 	);
 	assert.equal(
 		canRecomputeDistance(
@@ -97,12 +108,15 @@ test('a run already on the current estimator is not offered again', () => {
 	);
 });
 
-test('a run its recorder stamped live is not offered, whatever the estimator', () => {
-	// The Wear OS and watchOS recorders stamp kalman_v1 on every run; the
-	// worker skips a live stamp because the stored track is movement-gated.
+test('a phone run its recorder stamped is not offered; a watch run its recorder stamped is', () => {
+	// The phone's stored track is movement-gated, so the worker skips its
+	// stamp. The Wear OS and watchOS recorders stamp kalman_v1 and store every
+	// fix their filter took, so the worker replays them.
 	for (const estimator of ['kalman_v1', 'something_older']) {
-		const candidate = run({ source: 'watch', metadata: { distance_estimator: estimator } });
-		assert.equal(canRecomputeDistance(candidate, OWNER), false, estimator);
+		const phone = run({ metadata: { distance_estimator: estimator } });
+		assert.equal(canRecomputeDistance(phone, OWNER), false, estimator);
+		const watch = run({ source: 'watch', metadata: { distance_estimator: estimator } });
+		assert.equal(canRecomputeDistance(watch, OWNER), true, estimator);
 	}
 	assert.equal(canRecomputeDistance(run({ metadata: { distance_estimator: null } }), OWNER), false);
 });
@@ -117,6 +131,51 @@ test('a run a recompute stamped kalman_v1 (the v1.1 forward filter) is offered a
 			OWNER,
 		),
 		true,
+	);
+});
+
+test('a watch run stamped live by a v1.4 recorder is offered only when its track is complete', () => {
+	// Since spec v1.4 the estimator takes 30-50 m canopy fixes the track gate
+	// refuses; without track_complete the stored track omits them and the
+	// replay would credit each canopy stretch only its chord.
+	assert.deepEqual([...TRACK_GATED_ESTIMATORS], ['kalman_v4']);
+	const watch = (metadata: Record<string, unknown>) => run({ source: 'watch', metadata: metadata as never });
+	assert.equal(canRecomputeDistance(watch({ distance_estimator: 'kalman_v4' }), OWNER), false);
+	assert.equal(
+		canRecomputeDistance(watch({ distance_estimator: 'kalman_v4', track_complete: false }), OWNER),
+		false,
+	);
+	assert.equal(
+		canRecomputeDistance(watch({ distance_estimator: 'kalman_v4', track_complete: 'true' }), OWNER),
+		false,
+	);
+	// A complete track replays to the recorder's figure and gains the smoother.
+	assert.equal(
+		canRecomputeDistance(watch({ distance_estimator: 'kalman_v4', track_complete: true }), OWNER),
+		true,
+	);
+	// The older cases keep their answers: a watch build before the flag
+	// stamps kalman_v1 and stored every fix its estimator took.
+	assert.equal(canRecomputeDistance(watch({ distance_estimator: 'kalman_v1' }), OWNER), true);
+	// A recompute stamped it: the stamp no longer names the recorder.
+	assert.equal(
+		canRecomputeDistance(
+			watch({ distance_estimator: 'kalman_v3', distance_recomputed_at: '2026-10-08T08:00:00Z' }),
+			OWNER,
+		),
+		true,
+	);
+	assert.equal(
+		canRecomputeDistance(
+			watch({ distance_estimator: 'kalman_v4', distance_recomputed_at: '2026-10-08T08:00:00Z' }),
+			OWNER,
+		),
+		false,
+	);
+	// The phone's own stamp is refused whatever it says about its track.
+	assert.equal(
+		canRecomputeDistance(run({ metadata: { distance_estimator: 'kalman_v4', track_complete: true } }), OWNER),
+		false,
 	);
 });
 

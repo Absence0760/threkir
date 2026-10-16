@@ -1,6 +1,7 @@
 import { gunzipSync } from 'node:zlib';
 
-import { expect, test, type BrowserContext } from '@playwright/test';
+import type { BrowserContext } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { clipPointsToZones, isInAnyZone } from '../../src/lib/routes/privacy';
 import { getAdminClient, getUserClient, loadSupabaseEnv } from '../fixtures/local-supabase';
@@ -12,6 +13,7 @@ import {
 	setUserSetting,
 	insertLivePings
 } from '../fixtures/simulate';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Privacy-zone track clipping — the SAME-RUN, EVERY-SURFACE journey.
@@ -95,13 +97,6 @@ const PLANTED_TRACK = [...IN_ZONE, ...OUT_OF_ZONE];
 // The pure reference for what a non-owner MUST receive on every surface.
 const EXPECTED_CLIPPED = clipPointsToZones(PLANTED_TRACK, [ZONE]);
 
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-	);
-}
-
 async function newAcceptedContext(
 	browser: import('@playwright/test').Browser,
 	storageStatePath?: string
@@ -111,7 +106,7 @@ async function newAcceptedContext(
 	);
 	// Pre-accept the cookie banner (role="dialog", floats over modals
 	// and the live page's "Load map" consent gate).
-	await ctx.addInitScript(setConsentAccepted);
+	await acceptCookieConsent(ctx);
 	return ctx;
 }
 

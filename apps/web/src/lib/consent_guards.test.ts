@@ -6,7 +6,7 @@
 
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { stripComments } from './core/strip_comments';
@@ -511,7 +511,7 @@ test('the AI plan assistant gates on the plan disclosure, above the route-AI ver
 	);
 	const gateIdx = source.indexOf('gateAiDisclosure(');
 	const anthropicIdx = source.indexOf('new Anthropic(');
-	const counterIdx = source.indexOf("rpc('increment_coach_usage'");
+	const counterIdx = source.indexOf('spendCoachMessage(');
 	assert.ok(
 		gateIdx > 0 && gateIdx < anthropicIdx && gateIdx < counterIdx,
 		`${file} must run the consent gate before the daily counter and the Anthropic client.`,
@@ -520,4 +520,96 @@ test('the AI plan assistant gates on the plan disclosure, above the route-AI ver
 		.slice(gateIdx, source.indexOf('Cost cap', gateIdx))
 		.includes('bypassPaywallEnabled');
 	assert.ok(!bypassInGate, `${file} must not let bypassPaywallEnabled skip the consent gate.`);
+});
+
+test('AI plan edits gate on the v4 plan-edit disclosure, before the plan read, the counter and the model', () => {
+	// /api/coach/plan-edit ships the runner's plan and change request to
+	// Anthropic so a model can propose changes to the plan — a purpose the v1
+	// copy's "the active plan" did not describe (decisions § 571, § 1980). It
+	// must require AI_DISCLOSURE_VERSION_PLAN_EDIT_AI, and the dev paywall
+	// bypass must not reach the consent branch.
+	const gate = read('src/lib/core/ai_disclosure.ts');
+	assert.match(gate, /AI_DISCLOSURE_VERSION_PLAN_EDIT_AI\s*=\s*4/);
+	const file = 'src/lib/training/plan_edit/handler.ts';
+	const source = read(file);
+	assert.match(source, /gateAiDisclosure\([\s\S]*?AI_DISCLOSURE_VERSION_PLAN_EDIT_AI/);
+	const gateIdx = source.indexOf('gateAiDisclosure(');
+	const loadIdx = source.indexOf('await loadPlan(');
+	const counterIdx = source.indexOf('spendCoachMessage(');
+	const anthropicIdx = source.indexOf('new Anthropic(');
+	assert.ok(
+		gateIdx > 0 && gateIdx < loadIdx && gateIdx < counterIdx && gateIdx < anthropicIdx,
+		`${file} must run the consent gate before it reads the plan, spends a slot or builds a client.`,
+	);
+	const bypassInGate = source
+		.slice(gateIdx, source.indexOf('ANTHROPIC_API_KEY', gateIdx))
+		.includes('bypassPaywallEnabled');
+	assert.ok(!bypassInGate, `${file} must not let bypassPaywallEnabled skip the consent gate.`);
+});
+
+test('the plate-photo logger gates on the v5 disclosure before Pro, the throttle and the model', () => {
+	// /api/coach/plate-photo ships a photo of the runner's meal to Anthropic, a
+	// payload no earlier disclosure described (decisions § 1972). It must
+	// require AI_DISCLOSURE_VERSION_FOOD_PHOTO_AI, ahead of every billed step,
+	// and the dev bypass must not reach the consent branch.
+	const gate = read('src/lib/core/ai_disclosure.ts');
+	assert.match(gate, /AI_DISCLOSURE_VERSION_FOOD_PHOTO_AI\s*=\s*5/);
+	const file = 'src/lib/nutrition/plate_photo/handler.ts';
+	const source = read(file);
+	assert.match(
+		source,
+		/gateAiDisclosure\([\s\S]*?AI_DISCLOSURE_VERSION_FOOD_PHOTO_AI/,
+		`${file} must gate on the plate-photo disclosure before calling Anthropic.`,
+	);
+	const gateIdx = source.indexOf('gateAiDisclosure(');
+	for (const later of ["rpc('is_pro'", 'spendRouteRateLimitSlot(', 'new Anthropic(']) {
+		const idx = source.indexOf(later);
+		assert.ok(gateIdx > 0 && idx > gateIdx, `${file}: the consent gate must precede ${later}.`);
+	}
+	const bypassInGate = source
+		.slice(gateIdx, source.indexOf('Paywall', gateIdx))
+		.includes('bypassPaywallEnabled');
+	assert.ok(!bypassInGate, `${file} must not let bypassPaywallEnabled skip the consent gate.`);
+});
+
+test('every AI consent prompt sends the runner to the one place that can record it', () => {
+	// The AI features used to point at two places: the plate-photo logger and
+	// the plan assistant at /coach, AI plan edits at /settings/account. /coach
+	// only asks a runner with NO record, so a stale acceptance sent there met a
+	// working chat and nothing to accept. Every `*ConsentLink` anchor now
+	// takes AI_CONSENT_HREF, and that target must accept from every state.
+	const gate = read('src/lib/core/ai_disclosure.ts');
+	const href = gate.match(/export const AI_CONSENT_HREF = '([^']+)'/)?.[1];
+	assert.ok(href, 'ai_disclosure.ts must export AI_CONSENT_HREF');
+	const [path, anchor] = href.split('#');
+	assert.equal(path, '/settings/account');
+
+	const settings = stripComments(read('src/routes/settings/account/+page.svelte'));
+	assert.ok(settings.includes(`id="${anchor}"`), `the ${path} consent section must carry id="${anchor}"`);
+	const accepts = settings.match(/onclick=\{acceptAiDisclosure\}/g) ?? [];
+	assert.equal(accepts.length, 2, `${path} must offer acceptance both for a stale record and for none`);
+
+	const files = [
+		'src/lib/components/PlatePhotoLogger.svelte',
+		'src/lib/components/PlanAiAdjust.svelte',
+		'src/lib/components/PlanEditor.svelte',
+	];
+	const found = new Set<string>();
+	const walk = (dir: string) => {
+		for (const e of readdirSync(dir, { withFileTypes: true })) {
+			const p = `${dir}/${e.name}`;
+			if (e.isDirectory()) walk(p);
+			else if (e.name.endsWith('.svelte') && /ConsentLink'\)/.test(read(p))) found.add(p);
+		}
+	};
+	walk('src');
+	assert.deepEqual([...found].sort(), [...files].sort(), 'a new AI consent link must be added to this guard');
+	for (const file of files) {
+		const source = read(file);
+		const links = source.match(/<a [^>]*>\{[mt]\('[\w.]+ConsentLink'\)\}<\/a>/g) ?? [];
+		assert.ok(links.length > 0, `${file}: consent link not found`);
+		for (const a of links) {
+			assert.ok(a.startsWith('<a href={AI_CONSENT_HREF}>'), `${file}: ${a} must use AI_CONSENT_HREF`);
+		}
+	}
 });

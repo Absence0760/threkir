@@ -22,11 +22,11 @@ type DistanceRecomputePayload struct {
 }
 
 // DistanceEstimatorCurrent is the value stamped in
-// metadata.distance_estimator: the spec-v1.3 smoother. "kalman_v2" was the
-// spec-v1.2 smoother and "kalman_v1" the v1 / v1.1 forward filter; a run
-// recomputed under either is eligible again (the skip below looks only at
+// metadata.distance_estimator: the spec-v1.4 smoother. "kalman_v3" was the
+// spec-v1.3 smoother, "kalman_v2" the spec-v1.2 one and "kalman_v1" the v1 /
+// v1.1 forward filter; a run recomputed under any of them is eligible again (the skip below looks only at
 // whether a recompute has ever stamped the run, not at which estimator).
-const DistanceEstimatorCurrent = "kalman_v3"
+const DistanceEstimatorCurrent = "kalman_v4"
 
 // The two values of metadata.distance_estimator_pass: which of the
 // smoother's passes the recompute kept. A track with Doppler always keeps
@@ -127,6 +127,7 @@ func (w *Worker) handleDistanceRecompute(ctx context.Context, job *Job) error {
 		if pass == EstimatorPassForward {
 			rawDistanceM, cum = replay.ForwardM, replay.ForwardCumM
 		}
+		rawDistanceM += gapStepTopUpM(replay.GapM, metaStepFilledM(meta))
 		distanceM := math.Round(rawDistanceM*100) / 100
 
 		// The line follows the figure the run now carries, so only a
@@ -197,12 +198,53 @@ func metaIsTrue(meta map[string]json.RawMessage, key string) bool {
 	return json.Unmarshal(meta[key], &b) == nil && b
 }
 
+// metaStepFilledM is metadata.distance_step_filled_m when it is a finite
+// positive number, else 0.
+func metaStepFilledM(meta map[string]json.RawMessage) float64 {
+	var v float64
+	if json.Unmarshal(meta[schema.MetaDistanceStepFilledM], &v) != nil || math.IsNaN(v) || math.IsInf(v, 0) || v <= 0 {
+		return 0
+	}
+	return v
+}
+
+// gapStepTopUpM is what the recompute adds to a replayed pass for the
+// pedometer's share of the run's GPS gaps. The recorder credited each gap
+// max(chord lower bound, steps x stride) (spec v1.4 item 9); the replay has
+// no steps, so it credited each gap its chord lower bound, gapM in total,
+// and the recorder's steps arrive only as the run total stepFilledM. The
+// pair is credited max(gapM, stepFilledM): exact whenever every gap's
+// steps fall on the same side of its chord (one gap, or a run whose stride
+// is honest), and short, never long, otherwise. Adding stepFilledM on top
+// would count each gap twice. The bests stay on the replay's cumulative,
+// which holds the chords only and so can only make them slower.
+func gapStepTopUpM(gapM, stepFilledM float64) float64 {
+	return math.Max(gapM, stepFilledM) - gapM
+}
+
 func metaString(meta map[string]json.RawMessage, key string) string {
 	var s string
 	if json.Unmarshal(meta[key], &s) != nil {
 		return ""
 	}
 	return s
+}
+
+// onTrackRaw is the line of a replayed track for the road matcher and the
+// road classifier: the raw position of every coordinate-bearing point that
+// is not off-track. An off-track fix is one the recorder's estimator took
+// and its track gate refused (spec v1.4 canopy fixes stated 30-50 m on a
+// watch), so it belongs to the distance replay and to nothing that matches
+// the line to a road or a route.
+func onTrackRaw(pts []RecordedTrackPoint) []TrackPoint {
+	raw := make([]TrackPoint, 0, len(pts))
+	for _, p := range pts {
+		if p.OffTrack {
+			continue
+		}
+		raw = append(raw, TrackPoint{Lat: *p.Lat, Lng: *p.Lng, Timestamp: p.Timestamp})
+	}
+	return raw
 }
 
 // distanceRecomputeSkipReason returns why a run's distance is not the
@@ -227,14 +269,33 @@ func distanceRecomputeSkipReason(run *DistanceRecomputeRun, meta map[string]json
 		// pedometer / treadmill today; any provenance tag names a
 		// non-GPS source, and an unknown one is not ours to overwrite.
 		return "distance came from " + metaString(meta, schema.MetaDistanceSource)
-	case meta[schema.MetaDistanceEstimator] != nil && meta[schema.MetaDistanceRecomputedAt] == nil:
-		// Stamped by a recorder that ran the estimator live over every
-		// fix; the stored track is movement-gated, so a replay would see
-		// fewer fixes than the live figure did.
+	case meta[schema.MetaDistanceEstimator] != nil && meta[schema.MetaDistanceRecomputedAt] == nil &&
+		run.Source != "watch":
+		// Stamped by the phone recorder, which saved the smoother's figure
+		// over every fix; its stored track is movement-gated, so a replay
+		// would see fewer fixes than the save did. The Wear OS and watchOS
+		// recorders store every fix their forward filter took, so a watch
+		// run's track replays whole and gains the smoother.
 		return "recorded live by " + metaString(meta, schema.MetaDistanceEstimator)
+	case meta[schema.MetaDistanceEstimator] != nil && meta[schema.MetaDistanceRecomputedAt] == nil &&
+		trackGatedEstimators[metaString(meta, schema.MetaDistanceEstimator)] &&
+		!metaIsTrue(meta, schema.MetaTrackComplete):
+		// A recorder from spec v1.4 on feeds its estimator fixes up to
+		// 50 m but, unless it says track_complete, stored only those
+		// within its track gate, so the replay would see each canopy
+		// stretch as a gap and credit only its chord.
+		return "track omits fixes " + metaString(meta, schema.MetaDistanceEstimator) + " took"
 	}
 	return ""
 }
+
+// trackGatedEstimators are the live stamps of recorders that feed their
+// estimator fixes their track gate refuses (spec v1.4 on), so their stored
+// track is complete only when the run says track_complete. A spec bump adds
+// its value. Recorders before v1.4 gated the estimator and the track at one
+// accuracy, and the Wear OS and watchOS builds stamp their forward filter
+// "kalman_v1" whatever the spec, so those stamps are judged as complete.
+var trackGatedEstimators = map[string]bool{"kalman_v4": true}
 
 // mergeDistanceMetadata adds the recompute's four keys to the bag, sets
 // smoothed_sidecar_sha256 to sidecarSHA (removing it when that is ""), and
@@ -268,7 +329,7 @@ func mergeDistanceMetadata(meta map[string]json.RawMessage, previousDistanceM fl
 // because the stored distance_m of an old run is the inflated hop-sum.
 //
 // A transient matcher failure (an engine 5xx, a timeout) is returned, so the
-// job is deferred and retried rather than stamping the run kalman_v3 with a
+// job is deferred and retried rather than stamping the run kalman_v4 with a
 // figure its classification never decided: a stamped run is no longer offered
 // Recalculate, so an outage would have pinned every road run it touched to the
 // forward pass for good. Only a non-transient matcher verdict keeps the
@@ -288,10 +349,7 @@ func (w *Worker) distanceEstimatorPass(
 	if !ok {
 		return EstimatorPassForward, "no road matcher to classify a position-only track", nil
 	}
-	raw := make([]TrackPoint, 0, len(pts))
-	for _, p := range pts {
-		raw = append(raw, TrackPoint{Lat: *p.Lat, Lng: *p.Lng, Timestamp: p.Timestamp})
-	}
+	raw := onTrackRaw(pts)
 	out, road, err := rm.MatchWithRoadDistance(ctx, raw)
 	if err != nil {
 		if isTransient(err) {

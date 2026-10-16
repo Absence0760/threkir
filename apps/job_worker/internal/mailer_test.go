@@ -37,8 +37,8 @@ func pushPrefs(mode string) map[string]interface{} {
 }
 
 func TestShouldEmail_Matrix(t *testing.T) {
-	important := []string{"event_reminder", "event_cancel", "plan_update", "message", "data_export_ready", "refund_failed", "event_waitlist_slot"}
-	social := []string{"kudos", "comment", "comment_reply", "follow", "club_post", "run_completed", "event_rsvp"}
+	important := []string{"event_reminder", "event_cancel", "plan_update", "message", "data_export_ready", "refund_failed", "event_waitlist_slot", "mention", "follow_request"}
+	social := []string{"kudos", "comment", "comment_reply", "follow", "club_post", "run_completed", "event_rsvp", "reaction", "comment_like"}
 
 	for _, k := range important {
 		if !shouldEmail(k, emailPrefs(emailModeImportant)) {
@@ -215,7 +215,11 @@ func TestRenderNotificationEmail_AllKinds(t *testing.T) {
 		{"kudos", NotificationRow{Kind: "kudos", RunID: &run}, base + "/runs/run-1"},
 		{"comment", NotificationRow{Kind: "comment", RunID: &run}, base + "/runs/run-1"},
 		{"comment_reply", NotificationRow{Kind: "comment_reply", RunID: &run}, base + "/runs/run-1"},
+		{"reaction", NotificationRow{Kind: "reaction", RunID: &run}, base + "/runs/run-1"},
+		{"comment_like", NotificationRow{Kind: "comment_like", RunID: &run}, base + "/runs/run-1"},
+		{"mention", NotificationRow{Kind: "mention", RunID: &run}, base + "/runs/run-1"},
 		{"follow", NotificationRow{Kind: "follow", UserID: "usr-1"}, base + "/u/usr-1"},
+		{"follow_request", NotificationRow{Kind: "follow_request", UserID: "usr-1"}, base + "/follow-requests"},
 		{"challenge_complete", NotificationRow{Kind: "challenge_complete"}, base + "/challenges"},
 		{"achievement", NotificationRow{Kind: "achievement", UserID: "usr-1"}, base + "/u/usr-1?tab=notifications"},
 		{"content_hidden", NotificationRow{Kind: "content_hidden", UserID: "usr-1"}, base + "/u/usr-1?tab=notifications"},
@@ -320,6 +324,11 @@ func TestPathForKind(t *testing.T) {
 		{"kudos", "kudos", NotificationRow{RunID: &run}, base + "/runs/r1"},
 		{"comment", "comment", NotificationRow{RunID: &run}, base + "/runs/r1"},
 		{"comment_reply", "comment_reply", NotificationRow{RunID: &run}, base + "/runs/r1"},
+		{"reaction", "reaction", NotificationRow{RunID: &run}, base + "/runs/r1"},
+		// Not necessarily the recipient's run, but one their audience admits;
+		// /runs/{id} serves a non-owner the shared view of exactly those.
+		{"comment_like", "comment_like", NotificationRow{RunID: &run}, base + "/runs/r1"},
+		{"mention", "mention", NotificationRow{RunID: &run}, base + "/runs/r1"},
 		{"run nil id → inbox", "kudos", NotificationRow{UserID: "u1"}, inbox},
 		// A followee's run → the public share page. /runs/{id} reads
 		// owner-scoped, so it renders "run not found" for the follower this

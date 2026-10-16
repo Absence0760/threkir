@@ -159,7 +159,7 @@ import {
 } from '../training/relink_candidates';
 import type { GeneratedPlan, GoalEvent, PlanPhase } from '../training/training';
 import { auth } from '../stores/auth.svelte';
-import { lineLngLat } from '../runs/track_line';
+import { lineLngLat, trackLine } from '../runs/track_line';
 import {
 	mergeSmoothedSidecar,
 	needsSmoothedSidecar,
@@ -204,6 +204,14 @@ import {
 } from '../social/event_gym_template';
 import { m } from '../i18n/store.svelte';
 import { rateLimitErrorMessage } from '../i18n/rate_limit_message';
+import {
+	DM_THREAD_ORDER,
+	DM_THREAD_PAGE_SIZE,
+	dmPageBeforeFilter,
+	dmPageFromRows,
+	type DmOrderKey,
+	type DmPage,
+} from '../social/dm_thread';
 import type { ParsedResultRow } from '../runs/event_results_csv';
 import {
 	applyRunMetadataPatch,
@@ -218,6 +226,8 @@ import {
 	mergeFeedPages,
 	mergeProfilePages,
 	mergeRecencyPages,
+	readChunked,
+	queryChunked,
 	FEED_FOLLOWEE_CHUNK
 } from '../social/feed_merge';
 import { deleteRunsBounded } from './bulk_delete';
@@ -844,8 +854,14 @@ async function fetchTrack(path: string) {
 /// must use [fetchClippedTrackForRun] instead, which routes through the
 /// `clip-public-track` Edge Function so the privacy-zone clip happens
 /// server-side and the unclipped blob never crosses the wire.
+///
+/// Every caller draws the track (the runs-list thumbnail, the personal
+/// heatmap, the owner's share page), so it returns the line: the stored
+/// off-track fixes, kept only for the server's distance replay, are dropped
+/// here (`trackLine`), as `clip-public-track` drops them for a non-owner.
 export async function fetchTrackByPath(path: string) {
-	return fetchTrack(path);
+	const points = await fetchTrack(path);
+	return Array.isArray(points) ? trackLine(points) : points;
 }
 
 /// Owner-only fetch of the indoor/treadmill HR sidecar
@@ -941,10 +957,12 @@ export async function fetchRoutesIntersectingTrack(
 	maxResults = 10,
 ): Promise<RouteMatchCandidate[]> {
 	const userId = auth.user?.id;
-	if (!userId || track.length < 2) return [];
+	// Matched on the line: an off-track fix is distance input, not path.
+	const line = trackLine(track);
+	if (!userId || line.length < 2) return [];
 	const geojson = {
 		type: 'LineString' as const,
-		coordinates: track.map(lineLngLat),
+		coordinates: line.map(lineLngLat),
 	};
 	const { data, error } = await supabase.rpc('routes_intersecting_track', {
 		caller_user_id: userId,
@@ -1367,10 +1385,9 @@ export async function fetchShares(kind: ShareableKind, id: string): Promise<Shar
 	if (error) throw dbError(error);
 	const ids = (rows ?? []).map((r) => r.recipient_id);
 	if (ids.length === 0) return [];
-	const { data: profiles, error: profilesError } = await supabase
-		.from('user_profiles')
-		.select('id, display_name, avatar_url')
-		.in('id', ids);
+	const { data: profiles, error: profilesError } = await queryChunked(ids, (part) =>
+		supabase.from('user_profiles').select('id, display_name, avatar_url').in('id', part)
+	);
 	if (profilesError) throw dbError(profilesError);
 	const byId = new Map((profiles ?? []).map((p) => [p.id, p] as const));
 	return (rows ?? []).map((r) => ({
@@ -1536,16 +1553,24 @@ export async function fetchFitnessSnapshots(limit = 60): Promise<FitnessSnapshot
 /// 10 m epsilon the Android path uses), sums elevation gain, and
 /// inserts a `routes` row for the current user. Throws if the run has
 /// no track (manual-entry runs); the caller should gate the button.
+/// `track` carries the run's chosen altitude series and
+/// `elevationMinDeltaM` its noise band (`runAltitude`), so the route's
+/// climb is the figure the run page showed.
 ///
 /// Returns the new route id so the caller can navigate to it.
 export async function saveRunAsRoute(
 	runId: string,
 	name: string,
 	track: Array<{ lat: number; lng: number; ele?: number | null }>,
+	elevationMinDeltaM?: number,
 ): Promise<{ id: string }> {
 	const { summarizeRouteFromTrack } = await import('../routes/route_simplify');
 	if (track.length < 2) throw new Error('Not enough GPS points to save a route');
-	const { waypoints, distance_m, elevation_m } = summarizeRouteFromTrack(track, 10);
+	const { waypoints, distance_m, elevation_m } = summarizeRouteFromTrack(
+		track,
+		10,
+		elevationMinDeltaM,
+	);
 
 	const { data: authUser } = await supabase.auth.getUser();
 	const userId = authUser.user?.id;
@@ -2155,8 +2180,12 @@ export async function fetchRoutesWithError(): Promise<{
 	let saved: RouteListItem[] = [];
 	if (savedIds.length > 0) {
 		const [savedBaseRes, savedPublicRes] = await Promise.all([
-			supabase.from('routes').select(ROUTE_LIST_COLS).in('id', savedIds),
-			supabase.from('public_routes').select(PUBLIC_ROUTE_LIST_COLS).in('id', savedIds),
+			queryChunked(savedIds, (part) =>
+				supabase.from('routes').select(ROUTE_LIST_COLS).in('id', part)
+			),
+			queryChunked(savedIds, (part) =>
+				supabase.from('public_routes').select(PUBLIC_ROUTE_LIST_COLS).in('id', part)
+			),
 		]);
 		// Either half missing is a whole class of bookmark gone: the base table
 		// carries the runner's own + club-visible saved routes, the view
@@ -3278,7 +3307,9 @@ export async function fetchClubBySlug(
 export async function fetchClubNames(ids: string[]): Promise<Record<string, string>> {
 	const wanted = [...new Set(ids.filter(isEntityId))];
 	if (wanted.length === 0) return {};
-	const { data, error } = await supabase.from('clubs').select('id, name').in('id', wanted);
+	const { data, error } = await queryChunked(wanted, (part) =>
+		supabase.from('clubs').select('id, name').in('id', part)
+	);
 	if (error) throw dbError(error);
 	const out: Record<string, string> = {};
 	for (const c of (data ?? []) as { id: string; name: string | null }[]) {
@@ -3563,8 +3594,8 @@ async function fetchProfilesByIds(
 ): Promise<Map<string, { id: string; display_name: string | null; avatar_url: string | null }>> {
 	if (userIds.length === 0) return new Map();
 	const pages = await Promise.all(
-		chunk(userIds, FEED_FOLLOWEE_CHUNK).map((ids) =>
-			supabase.from('user_profiles').select('id, display_name, avatar_url').in('id', ids)
+		chunk(userIds, FEED_FOLLOWEE_CHUNK).map((part) =>
+			supabase.from('user_profiles').select('id, display_name, avatar_url').in('id', part)
 		)
 	);
 	return mergeProfilePages(
@@ -3620,12 +3651,14 @@ export async function approveMember(clubId: string, userId: string): Promise<voi
 
 export async function bulkApproveMembers(clubId: string, userIds: string[]): Promise<void> {
 	if (userIds.length === 0) return;
-	const { error } = await supabase
-		.from(TABLES.club_members)
-		.update({ status: 'active' })
-		.eq('club_id', clubId)
-		.eq('status', 'pending')
-		.in('user_id', userIds);
+	const { error } = await queryChunked(userIds, (part) =>
+		supabase
+			.from(TABLES.club_members)
+			.update({ status: 'active' })
+			.eq('club_id', clubId)
+			.eq('status', 'pending')
+			.in('user_id', part)
+	);
 	if (error) throw dbError(error);
 }
 
@@ -3907,11 +3940,13 @@ async function enrichEvents(events: Event[]): Promise<EventWithMeta[]> {
 	// next instance is picked, so this read cannot join the parallel batch
 	// below — the counts RPC is keyed on the instant this resolves to. Only
 	// future exceptions can move the answer, so the scan stays small.
-	const { data: exceptionRows } = await supabase
-		.from('event_exceptions')
-		.select('event_id, instance_start')
-		.in('event_id', ids)
-		.gte('instance_start', now.toISOString());
+	const { data: exceptionRows } = await queryChunked(ids, (part) =>
+		supabase
+			.from('event_exceptions')
+			.select('event_id, instance_start')
+			.in('event_id', part)
+			.gte('instance_start', now.toISOString())
+	);
 	const cancelledByEvent = new Map<string, string[]>();
 	for (const row of (exceptionRows ?? []) as { event_id: string; instance_start: string }[]) {
 		const list = cancelledByEvent.get(row.event_id);
@@ -3949,11 +3984,13 @@ async function enrichEvents(events: Event[]): Promise<EventWithMeta[]> {
 		p_next_starts: nextStarts,
 	});
 	const rsvpPromise = userId
-		? supabase
-				.from(TABLES.event_attendees)
-				.select('event_id, status, instance_start')
-				.in('event_id', ids)
-				.eq('user_id', userId)
+		? queryChunked(ids, (part) =>
+				supabase
+					.from(TABLES.event_attendees)
+					.select('event_id, status, instance_start')
+					.in('event_id', part)
+					.eq('user_id', userId)
+			)
 		: Promise.resolve({ data: [] as { event_id: string; status: string; instance_start: string }[] });
 
 	const [countRes, rsvpRes] = await Promise.all([countsPromise, rsvpPromise]);
@@ -4793,10 +4830,9 @@ export async function fetchEventResults(
 	const userIds = rows.map((r) => r.user_id).filter((id): id is string => id !== null);
 	const byId = new Map<string, { display_name: string | null; avatar_url: string | null }>();
 	if (userIds.length > 0) {
-		const { data: profiles } = await supabase
-			.from('user_profiles')
-			.select('id, display_name, avatar_url')
-			.in('id', userIds);
+		const { data: profiles } = await queryChunked(userIds, (part) =>
+			supabase.from('user_profiles').select('id, display_name, avatar_url').in('id', part)
+		);
 		for (const p of profiles ?? [])
 			byId.set(p.id, { display_name: p.display_name, avatar_url: p.avatar_url });
 	}
@@ -4972,10 +5008,9 @@ export async function fetchPendingEventResultClaims(
 	const rows = data ?? [];
 	if (rows.length === 0) return [];
 	const claimantIds = [...new Set(rows.map((r) => r.claimant_id))];
-	const { data: profiles } = await supabase
-		.from('user_profiles')
-		.select('id, display_name')
-		.in('id', claimantIds);
+	const { data: profiles } = await queryChunked(claimantIds, (part) =>
+		supabase.from('user_profiles').select('id, display_name').in('id', part)
+	);
 	const byId = new Map<string, string | null>();
 	for (const p of profiles ?? []) byId.set(p.id, p.display_name);
 	return rows.map((r) => ({
@@ -5271,7 +5306,9 @@ export async function saveEventCourses(
 	const table = () => supabase.from(TABLES.event_courses);
 	await applyCourseSave(planCourseSave(existing, drafts), {
 		delete: async (ids) => {
-			const { data, error } = await table().delete().in('id', ids).select('id');
+			const { data, error } = await queryChunked(ids, (part) =>
+				table().delete().in('id', part).select('id')
+			);
 			return { error, rows: data?.length ?? 0 };
 		},
 		update: async (id, patch) => {
@@ -5440,16 +5477,17 @@ async function enrichPosts(posts: ClubPost[]): Promise<ClubPostWithAuthor[]> {
 	const topLevelIds = posts.filter((p) => !p.parent_post_id).map((p) => p.id);
 
 	const [profilesRes, repliesRes] = await Promise.all([
-		supabase
-			.from('user_profiles')
-			.select('id, display_name, avatar_url')
-			.in('id', authorIds),
+		queryChunked(authorIds, (part) =>
+			supabase.from('user_profiles').select('id, display_name, avatar_url').in('id', part)
+		),
 		topLevelIds.length > 0
-			? supabase
-					.from(TABLES.club_posts)
-					.select('parent_post_id')
-					.in('parent_post_id', topLevelIds)
-					.limit(5000)
+			? queryChunked(topLevelIds, (part) =>
+					supabase
+						.from(TABLES.club_posts)
+						.select('parent_post_id')
+						.in('parent_post_id', part)
+						.limit(5000)
+				)
 			: Promise.resolve({ data: [] as { parent_post_id: string }[] })
 	]);
 
@@ -5551,13 +5589,17 @@ export async function fetchClubTemplatesForClubs(
 ): Promise<Map<string, TrainingPlan[]>> {
 	const grouped = new Map<string, TrainingPlan[]>();
 	if (clubIds.length === 0) return grouped;
-	const { data, error } = await supabase
-		.from('training_plans')
-		.select('*')
-		.eq('is_template', true)
-		.in('club_id', clubIds)
-		.order('created_at', { ascending: false })
-		.limit(limitPerClub * clubIds.length);
+	// Each club lands in exactly one chunk, so its own created_at order
+	// survives the merge — the grouping below is per club.
+	const { data, error } = await queryChunked(clubIds, (part) =>
+		supabase
+			.from('training_plans')
+			.select('*')
+			.eq('is_template', true)
+			.in('club_id', part)
+			.order('created_at', { ascending: false })
+			.limit(limitPerClub * part.length)
+	);
 	if (error) {
 		console.error('fetchClubTemplatesForClubs failed', error);
 		return grouped;
@@ -5878,15 +5920,18 @@ export async function fetchPlan(id: string): Promise<{
 		return { plan, weeks, workouts: [], error };
 	}
 	const weekIds = weeks.map((w) => w.id);
-	const { data: woData } = await supabase
-		.from('plan_workouts')
-		.select('*')
-		.in('week_id', weekIds)
-		.order('scheduled_date', { ascending: true });
+	const { data: woData } = await queryChunked(weekIds, (part) =>
+		supabase.from('plan_workouts').select('*').in('week_id', part)
+	);
+	// Ordered here rather than per chunk: each chunk's order says nothing
+	// about where its rows sit against another chunk's.
+	const workouts = ((woData ?? []) as PlanWorkout[])
+		.slice()
+		.sort((a, b) => (a.scheduled_date < b.scheduled_date ? -1 : a.scheduled_date > b.scheduled_date ? 1 : 0));
 	return {
 		plan,
 		weeks,
-		workouts: (woData ?? []) as PlanWorkout[],
+		workouts,
 		error
 	};
 }
@@ -6188,12 +6233,14 @@ export async function autoMatchRunToPlanWorkout(
 	);
 	if (weekIds.length === 0) return null;
 
-	const { data: candidates } = await supabase
-		.from('plan_workouts')
-		.select('id, target_distance_m, completed_run_id, week_id')
-		.in('week_id', weekIds)
-		.eq('scheduled_date', runIsoDate)
-		.is('completed_run_id', null);
+	const { data: candidates } = await queryChunked(weekIds, (part) =>
+		supabase
+			.from('plan_workouts')
+			.select('id, target_distance_m, completed_run_id, week_id')
+			.in('week_id', part)
+			.eq('scheduled_date', runIsoDate)
+			.is('completed_run_id', null)
+	);
 	if (!candidates || candidates.length === 0) return null;
 	const withDistance = candidates
 		.filter((c) => c.target_distance_m != null)
@@ -6244,11 +6291,13 @@ export async function fetchRelinkCandidateRuns(
 	);
 	const linkedRunIds: string[] = [];
 	if (weekIds.length > 0) {
-		const { data: linkedRows } = await supabase
-			.from('plan_workouts')
-			.select('completed_run_id')
-			.in('week_id', weekIds)
-			.not('completed_run_id', 'is', null);
+		const { data: linkedRows } = await queryChunked(weekIds, (part) =>
+			supabase
+				.from('plan_workouts')
+				.select('completed_run_id')
+				.in('week_id', part)
+				.not('completed_run_id', 'is', null)
+		);
 		for (const row of linkedRows ?? []) {
 			const id = (row as { completed_run_id: string | null }).completed_run_id;
 			if (id) linkedRunIds.push(id);
@@ -6389,71 +6438,154 @@ export interface ProfileSummary extends PublicProfile {
 	follower_count: number;
 	following_count: number;
 	viewer_follows: boolean;
+	/// The owner made the profile private (decisions § 1967): follows become
+	/// requests and the runs / follower lists open only to approved followers.
+	profile_private: boolean;
+	/// The viewer has a pending request to follow this profile.
+	viewer_requested: boolean;
+	/// Whether the viewer may read the profile's activity and lists — the
+	/// owner, anyone for a public profile, an approved follower for a private one.
+	content_visible: boolean;
 }
 
-/// Public-by-default user profile lookup. Returns null when the user
-/// doesn't exist or RLS hides the row (shouldn't happen now that
-/// user_profiles has a public-read policy, but a defensive null is
-/// cheap insurance).
+/// User profile lookup. The counts and the viewer's own follow / request
+/// state come from `profile_follow_summary`, because on a private profile the
+/// follow rows behind the counts are closed to a viewer who is not an
+/// approved follower. Returns null when the user doesn't exist, is hidden, or
+/// a block stands between the two.
 export async function fetchPublicProfile(
 	userId: string
 ): Promise<{ profile: ProfileSummary | null; error: string | null }> {
-	const { data: sessionData } = await supabase.auth.getSession();
-	const viewerId = sessionData.session?.user?.id;
-
-	const [profileRes, followerRes, followingRes, viewerRes] = await Promise.all([
+	const [profileRes, summaryRes] = await Promise.all([
 		supabase
 			.from('user_profiles')
 			.select('id, display_name, avatar_url')
 			.eq('id', userId)
 			.maybeSingle(),
-		supabase
-			.from('user_follows')
-			.select('*', { count: 'exact', head: true })
-			.eq('followee_id', userId),
-		supabase
-			.from('user_follows')
-			.select('*', { count: 'exact', head: true })
-			.eq('follower_id', userId),
-		viewerId && viewerId !== userId
-			? supabase
-					.from('user_follows')
-					.select('follower_id')
-					.eq('follower_id', viewerId)
-					.eq('followee_id', userId)
-					.maybeSingle()
-			: Promise.resolve({ data: null }),
+		supabase.rpc('profile_follow_summary', { p_user_id: userId }, { get: true }).maybeSingle(),
 	]);
 
 	// Surface a query error so the profile page can show a "couldn't load —
 	// retry" state instead of the not-found page (a real error otherwise
 	// reads as a missing user when the row just comes back null).
-	const error = (profileRes as { error?: { message?: string } | null }).error?.message ?? null;
-	if (!profileRes.data) return { profile: null, error };
+	const error =
+		(profileRes as { error?: { message?: string } | null }).error?.message ??
+		(summaryRes as { error?: { message?: string } | null }).error?.message ??
+		null;
+	if (!profileRes.data || !summaryRes.data) return { profile: null, error };
+	const summary = summaryRes.data;
 
 	return {
 		profile: {
 			id: profileRes.data.id,
 			display_name: profileRes.data.display_name,
 			avatar_url: profileRes.data.avatar_url,
-			follower_count: followerRes.count ?? 0,
-			following_count: followingRes.count ?? 0,
-			viewer_follows: viewerRes.data != null,
+			follower_count: Number(summary.follower_count) || 0,
+			following_count: Number(summary.following_count) || 0,
+			viewer_follows: summary.viewer_follows === true,
+			profile_private: summary.profile_private === true,
+			viewer_requested: summary.viewer_requested === true,
+			content_visible: summary.content_visible === true,
 		},
 		error: null
 	};
 }
 
-export async function followUser(targetUserId: string): Promise<void> {
+/// What a follow tap did: followed a public profile at once, or filed a
+/// request with a private one.
+export type FollowOutcome = 'following' | 'requested';
+
+/// Follow `targetUserId`, or ask to when their profile is private. One RPC so
+/// the client never has to read the target's privacy and race its change; the
+/// server writes through the same RLS a direct insert would hit.
+export async function followUser(targetUserId: string): Promise<FollowOutcome> {
 	const { data: sessionData } = await supabase.auth.getSession();
 	const userId = sessionData.session?.user?.id;
 	if (!userId) throw new Error('Not signed in');
 	if (userId === targetUserId) throw new Error("Can't follow yourself");
+	const { data, error } = await supabase.rpc('request_follow', { p_target: targetUserId });
+	if (error) throw dbError(error);
+	return data === 'requested' ? 'requested' : 'following';
+}
+
+/// Withdraw the viewer's pending request to follow `targetUserId`.
+export async function cancelFollowRequest(targetUserId: string): Promise<void> {
+	const { data: sessionData } = await supabase.auth.getSession();
+	const userId = sessionData.session?.user?.id;
+	if (!userId) throw new Error('Not signed in');
 	const { error } = await supabase
-		.from('user_follows')
-		.insert({ follower_id: userId, followee_id: targetUserId });
-	// Treat duplicate (already following) as a no-op.
-	if (error && !isDuplicateKeyError(error)) throw dbError(error);
+		.from(TABLES.follow_requests)
+		.delete()
+		.eq('requester_id', userId)
+		.eq('target_id', targetUserId);
+	if (error) throw dbError(error);
+}
+
+export interface IncomingFollowRequest extends PublicProfile {
+	requested_at: string;
+}
+
+/// Requests to follow the signed-in user, newest first.
+export async function fetchIncomingFollowRequests(): Promise<IncomingFollowRequest[]> {
+	const { data: sessionData } = await supabase.auth.getSession();
+	const userId = sessionData.session?.user?.id;
+	if (!userId) return [];
+	const { data, error } = await supabase
+		.from(TABLES.follow_requests)
+		.select('requester_id, requested_at')
+		.eq('target_id', userId)
+		.order('requested_at', { ascending: false })
+		.order('requester_id', { ascending: false })
+		.limit(200);
+	if (error) throw dbError(error);
+	const rows = data ?? [];
+	const profiles = await profilesInEdgeOrder(rows.map((r) => r.requester_id));
+	const at = new Map(rows.map((r) => [r.requester_id, r.requested_at]));
+	return profiles.map((p) => ({ ...p, requested_at: at.get(p.id) ?? '' }));
+}
+
+export async function approveFollowRequest(requesterId: string): Promise<void> {
+	const { error } = await supabase.rpc('approve_follow_request', { p_requester: requesterId });
+	if (error) throw dbError(error);
+}
+
+export async function declineFollowRequest(requesterId: string): Promise<void> {
+	const { data: sessionData } = await supabase.auth.getSession();
+	const userId = sessionData.session?.user?.id;
+	if (!userId) throw new Error('Not signed in');
+	const { error } = await supabase
+		.from(TABLES.follow_requests)
+		.delete()
+		.eq('requester_id', requesterId)
+		.eq('target_id', userId);
+	if (error) throw dbError(error);
+}
+
+/// The signed-in user's own private-profile switch.
+export async function fetchMyProfilePrivate(): Promise<boolean> {
+	const { data: sessionData } = await supabase.auth.getSession();
+	const userId = sessionData.session?.user?.id;
+	if (!userId) return false;
+	const { data, error } = await supabase
+		.from('user_profiles')
+		.select('profile_private')
+		.eq('id', userId)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	return data?.profile_private === true;
+}
+
+/// Turning it off approves every pending request (a trigger does it in the
+/// same statement), so nobody is left asking a profile that no longer asks.
+export async function setProfilePrivate(next: boolean): Promise<void> {
+	const { data: sessionData } = await supabase.auth.getSession();
+	const userId = sessionData.session?.user?.id;
+	if (!userId) throw new Error('Not signed in');
+	const { error } = await supabase
+		.from('user_profiles')
+		.update({ profile_private: next })
+		.eq('id', userId);
+	if (error) throw dbError(error);
 }
 
 export async function unfollowUser(targetUserId: string): Promise<void> {
@@ -6603,12 +6735,14 @@ export async function fetchSuggestedPeople(limit = 12): Promise<PeopleSuggestion
 		.eq('status', 'active');
 	const myClubIds = (myMemberRows ?? []).map((r) => r.club_id as string);
 	if (myClubIds.length > 0) {
-		const { data: coMemberRows } = await supabase
-			.from(TABLES.club_members)
-			.select('user_id, club_id')
-			.in('club_id', myClubIds)
-			.eq('status', 'active')
-			.neq('user_id', viewerId);
+		const { data: coMemberRows } = await queryChunked(myClubIds, (part) =>
+			supabase
+				.from(TABLES.club_members)
+				.select('user_id, club_id')
+				.in('club_id', part)
+				.eq('status', 'active')
+				.neq('user_id', viewerId)
+		);
 		for (const row of coMemberRows ?? []) {
 			const uid = row.user_id as string;
 			sharedClubs.set(uid, (sharedClubs.get(uid) ?? 0) + 1);
@@ -6627,12 +6761,14 @@ export async function fetchSuggestedPeople(limit = 12): Promise<PeopleSuggestion
 		.eq('status', 'going');
 	const myEventIds = (myRsvpRows ?? []).map((r) => r.event_id as string);
 	if (myEventIds.length > 0) {
-		const { data: coAttendeeRows } = await supabase
-			.from(TABLES.event_attendees)
-			.select('user_id, event_id')
-			.in('event_id', myEventIds)
-			.eq('status', 'going')
-			.neq('user_id', viewerId);
+		const { data: coAttendeeRows } = await queryChunked(myEventIds, (part) =>
+			supabase
+				.from(TABLES.event_attendees)
+				.select('user_id, event_id')
+				.in('event_id', part)
+				.eq('status', 'going')
+				.neq('user_id', viewerId)
+		);
 		for (const row of coAttendeeRows ?? []) {
 			const uid = row.user_id as string;
 			sharedEvents.set(uid, (sharedEvents.get(uid) ?? 0) + 1);
@@ -6642,11 +6778,13 @@ export async function fetchSuggestedPeople(limit = 12): Promise<PeopleSuggestion
 	const candidateIds = new Set<string>([...sharedClubs.keys(), ...sharedEvents.keys()]);
 	if (candidateIds.size === 0) return [];
 
-	const { data: followedRows } = await supabase
-		.from('user_follows')
-		.select('followee_id')
-		.eq('follower_id', viewerId)
-		.in('followee_id', [...candidateIds]);
+	const { data: followedRows } = await queryChunked([...candidateIds], (part) =>
+		supabase
+			.from('user_follows')
+			.select('followee_id')
+			.eq('follower_id', viewerId)
+			.in('followee_id', part)
+	);
 	for (const r of followedRows ?? []) {
 		candidateIds.delete(r.followee_id as string);
 	}
@@ -6709,11 +6847,13 @@ export async function fetchNearbyRunners(radiusM = 25000): Promise<NearbyRunner[
 	if (rows.length === 0) return [];
 
 	const ids = rows.map((r) => r.id);
-	const { data: followedRows } = await supabase
-		.from('user_follows')
-		.select('followee_id')
-		.eq('follower_id', viewerId)
-		.in('followee_id', ids);
+	const { data: followedRows } = await queryChunked(ids, (part) =>
+		supabase
+			.from('user_follows')
+			.select('followee_id')
+			.eq('follower_id', viewerId)
+			.in('followee_id', part)
+	);
 	const following = new Set((followedRows ?? []).map((r) => r.followee_id as string));
 
 	return rows.map((r) => ({
@@ -6769,11 +6909,13 @@ export async function fetchMyDiscoverableArea(): Promise<string | null> {
 /// blocks error would be a worse regression than the rare leak.
 async function filterOutBlocked(viewerId: string, candidateIds: string[]): Promise<string[]> {
 	if (candidateIds.length === 0) return candidateIds;
-	const { data, error } = await supabase
-		.from(TABLES.user_blocks)
-		.select('blocked_id')
-		.eq('blocker_id', viewerId)
-		.in('blocked_id', candidateIds);
+	const { data, error } = await queryChunked(candidateIds, (part) =>
+		supabase
+			.from(TABLES.user_blocks)
+			.select('blocked_id')
+			.eq('blocker_id', viewerId)
+			.in('blocked_id', part)
+	);
 	if (error) return candidateIds;
 	const blocked = new Set((data ?? []).map((r) => r.blocked_id as string));
 	return candidateIds.filter((id) => !blocked.has(id));
@@ -6794,10 +6936,12 @@ async function hydratePeopleSuggestions(
 	const visibleIds = viewerId ? await filterOutBlocked(viewerId, ids) : ids;
 	if (visibleIds.length === 0) return [];
 	const [profilesRes, countsRes, followsRes] = await Promise.all([
-		supabase
-			.from('user_profiles')
-			.select('id, display_name, avatar_url, handle')
-			.in('id', visibleIds),
+		queryChunked(visibleIds, (part) =>
+			supabase
+				.from('user_profiles')
+				.select('id, display_name, avatar_url, handle')
+				.in('id', part)
+		),
 		// Public-run counts via a SECURITY DEFINER GROUP BY RPC — one small row
 		// per candidate, not one row per public run (which also can't be read
 		// off the base runs table by a non-owner since 20260701_001 dropped the
@@ -6805,11 +6949,13 @@ async function hydratePeopleSuggestions(
 		// everyone but the viewer). See public_run_counts (migration 20270118_001).
 		supabase.rpc('public_run_counts', { p_user_ids: visibleIds }),
 		viewerId
-			? supabase
-					.from('user_follows')
-					.select('followee_id')
-					.eq('follower_id', viewerId)
-					.in('followee_id', visibleIds)
+			? queryChunked(visibleIds, (part) =>
+					supabase
+						.from('user_follows')
+						.select('followee_id')
+						.eq('follower_id', viewerId)
+						.in('followee_id', part)
+				)
 			: Promise.resolve({ data: [] as { followee_id: string }[] } as { data: { followee_id: string }[] }),
 	]);
 	const counts = new Map<string, number>();
@@ -6855,14 +7001,16 @@ const FOLLOWING_ORDER: readonly KeysetKey[] = [
 /// profile row is dropped here, AFTER the cursor was taken from the edge, so
 /// it neither ends the list early nor shifts the next page.
 async function profilesInEdgeOrder(ids: string[]): Promise<PublicProfile[]> {
-	if (ids.length === 0) return [];
-	const { data: profiles, error } = await supabase
-		.from('user_profiles')
-		.select('id, display_name, avatar_url')
-		.in('id', ids);
-	if (error) throw dbError(error);
+	const profiles = await readChunked(ids, async (part) => {
+		const { data, error } = await supabase
+			.from('user_profiles')
+			.select('id, display_name, avatar_url')
+			.in('id', part);
+		if (error) throw dbError(error);
+		return data ?? [];
+	});
 	const byId = new Map<string, PublicProfile>();
-	for (const p of profiles ?? []) byId.set(p.id, p);
+	for (const p of profiles) byId.set(p.id, p);
 	return ids.map((id) => byId.get(id)).filter((p): p is PublicProfile => p != null);
 }
 
@@ -6983,11 +7131,11 @@ export async function fetchFollowingFeed(
 	// Each chunk applies the same cursor + ordering + limit; the global
 	// top-`limit` is a subset of the union of per-chunk results, which
 	// mergeFeedPages collapses back down.
-	const queryChunk = async (ids: string[]) => {
+	const queryChunk = async (part: string[]) => {
 		let q = supabase
 			.from('public_runs')
 			.select('*')
-			.in('user_id', ids)
+			.in('user_id', part)
 			.gte('started_at', cutoff)
 			.order('started_at', { ascending: false })
 			.order('id', { ascending: false })
@@ -7115,12 +7263,12 @@ async function fetchFollowingLifts(
 	if (filteredAuthors.length === 0) return [];
 
 	const cutoff = new Date(Date.now() - FEED_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
-	const queryChunk = async (ids: string[]) => {
+	const queryChunk = async (part: string[]) => {
 		let q = supabase
 			.from('public_gym_workouts')
 			.select('id, user_id, started_at, title, set_count, volume_kg')
 			.eq('is_public', true)
-			.in('user_id', ids)
+			.in('user_id', part)
 			.gte('started_at', cutoff)
 			.order('started_at', { ascending: false })
 			.order('id', { ascending: false })
@@ -7216,15 +7364,18 @@ export async function fetchEngagementSummaries(
 	// Counts come from a server-side GROUP BY (run_engagement_counts) so the
 	// wire payload is one small row per run, not every kudos + comment row on
 	// the page (a popular share used to ship hundreds of rows to compute one
-	// integer). viewer_has_kudos stays a narrow per-run .in() lookup.
+	// integer). viewer_has_kudos stays a narrow per-run `in` lookup, chunked
+	// because the caller's run list has no ceiling of its own.
 	const [counts, viewerKudos] = await Promise.all([
 		supabase.rpc('run_engagement_counts', { p_run_ids: runIds }),
 		viewerId
-			? supabase
-					.from(TABLES.run_kudos)
-					.select('run_id')
-					.eq('user_id', viewerId)
-					.in('run_id', runIds)
+			? queryChunked(runIds, (part) =>
+					supabase
+						.from(TABLES.run_kudos)
+						.select('run_id')
+						.eq('user_id', viewerId)
+						.in('run_id', part)
+				)
 			: Promise.resolve({ data: [] as { run_id: string }[] }),
 	]);
 
@@ -7364,10 +7515,9 @@ export async function fetchRunCommentsWithError(
 	if (!rows || rows.length === 0) return { comments: [], error: null };
 
 	const authorIds = Array.from(new Set(rows.map((r) => r.author_id)));
-	const { data: profiles } = await supabase
-		.from('user_profiles')
-		.select('id, display_name, avatar_url')
-		.in('id', authorIds);
+	const { data: profiles } = await queryChunked(authorIds, (part) =>
+		supabase.from('user_profiles').select('id, display_name, avatar_url').in('id', part)
+	);
 	const byId = new Map<string, PublicProfile>();
 	for (const p of profiles ?? []) byId.set(p.id, p);
 
@@ -7402,6 +7552,129 @@ export async function deleteRunComment(commentId: string): Promise<void> {
 	if (error) throw dbError(error);
 }
 
+// ─────────── Reactions, comment likes, mentions (decisions § 1971) ───────────
+
+export interface ReactionSummaryRow {
+	reaction: string;
+	reaction_count: number;
+	viewer_reacted: boolean;
+}
+
+/// Per-reaction counts on a run plus the viewer's own. The RPC is INVOKER, so
+/// RLS decides what is counted and a run the viewer cannot read returns no
+/// rows. A failed read is reported, not folded into "no reactions".
+export async function fetchRunReactionSummary(
+	runId: string,
+): Promise<{ rows: ReactionSummaryRow[]; error: string | null }> {
+	const { data, error } = await supabase.rpc('run_reaction_summary', { p_run_id: runId }, { get: true });
+	if (error) return { rows: [], error: `${error.message}${error.code ? ` (${error.code})` : ''}` };
+	return { rows: (data ?? []) as ReactionSummaryRow[], error: null };
+}
+
+/// `true` when a new row was inserted, `false` when the viewer already had
+/// this reaction (a 23505 no-op) — the same contract as `giveKudos`.
+export async function addRunReaction(runId: string, reaction: string): Promise<boolean> {
+	const userId = await currentViewerId();
+	if (!userId) throw new Error('Not signed in');
+	const { error } = await supabase
+		.from(TABLES.run_reactions)
+		.insert({ user_id: userId, run_id: runId, reaction });
+	if (error) {
+		if (isDuplicateKeyError(error)) return false;
+		throw dbError(error);
+	}
+	return true;
+}
+
+/// `true` when a row was deleted, `false` when there was nothing to remove.
+export async function removeRunReaction(runId: string, reaction: string): Promise<boolean> {
+	const userId = await currentViewerId();
+	if (!userId) throw new Error('Not signed in');
+	const { data, error } = await supabase
+		.from(TABLES.run_reactions)
+		.delete()
+		.eq('run_id', runId)
+		.eq('user_id', userId)
+		.eq('reaction', reaction)
+		.select('user_id');
+	if (error) throw dbError(error);
+	return (data ?? []).length > 0;
+}
+
+export interface CommentLikeSummary {
+	count: number;
+	viewer_liked: boolean;
+}
+
+/// Like counts for every liked comment on a run, keyed by comment id. A
+/// comment absent from the map has no likes.
+export async function fetchRunCommentLikeSummary(
+	runId: string,
+): Promise<{ likes: Map<string, CommentLikeSummary>; error: string | null }> {
+	const { data, error } = await supabase.rpc('run_comment_like_summary', { p_run_id: runId }, { get: true });
+	const likes = new Map<string, CommentLikeSummary>();
+	if (error) return { likes, error: `${error.message}${error.code ? ` (${error.code})` : ''}` };
+	for (const row of data ?? []) {
+		likes.set(row.comment_id, {
+			count: Math.max(0, Number(row.like_count) || 0),
+			viewer_liked: row.viewer_liked === true,
+		});
+	}
+	return { likes, error: null };
+}
+
+/// `true` on a new like, `false` when the viewer had already liked it.
+export async function likeRunComment(commentId: string): Promise<boolean> {
+	const userId = await currentViewerId();
+	if (!userId) throw new Error('Not signed in');
+	const { error } = await supabase
+		.from(TABLES.run_comment_likes)
+		.insert({ user_id: userId, comment_id: commentId });
+	if (error) {
+		if (isDuplicateKeyError(error)) return false;
+		throw dbError(error);
+	}
+	return true;
+}
+
+/// `true` when a like was removed, `false` when there was none.
+export async function unlikeRunComment(commentId: string): Promise<boolean> {
+	const userId = await currentViewerId();
+	if (!userId) throw new Error('Not signed in');
+	const { data, error } = await supabase
+		.from(TABLES.run_comment_likes)
+		.delete()
+		.eq('comment_id', commentId)
+		.eq('user_id', userId)
+		.select('user_id');
+	if (error) throw dbError(error);
+	return (data ?? []).length > 0;
+}
+
+/// Resolve mentioned handles to profile ids, so a comment can link the ones
+/// that name a real runner and leave the rest as plain text. Handles are
+/// stored lowercase (decisions § 269), so the lookup is an exact match.
+export async function resolveMentionHandles(handles: string[]): Promise<Map<string, string>> {
+	const out = new Map<string, string>();
+	const wanted = Array.from(new Set(handles.map((h) => h.toLowerCase()))).slice(0, 200);
+	let rows: { id: string; handle: string | null }[];
+	try {
+		rows = await readChunked(wanted, async (part) => {
+			const { data, error } = await supabase
+				.from('user_profiles')
+				.select('id, handle')
+				.in('handle', part);
+			if (error) throw dbError(error);
+			return data ?? [];
+		});
+	} catch (error) {
+		console.error('resolveMentionHandles failed', error);
+		return out;
+	}
+	for (const row of rows) if (row.handle) out.set(row.handle, row.id);
+	return out;
+}
+
 // --- Run photos (decisions §36) ---
 
 export interface RunPhoto {
@@ -7424,6 +7697,10 @@ export interface RunPhoto {
 	/// Set when the photo is tagged to an event gallery (#49).
 	event_id: string | null;
 	event_instance_start: string | null;
+	/// The owner opted this photo into the public race-listing page
+	/// (`set_run_photo_race_gallery`, decisions § 1961). Shown there only
+	/// while the run is public and linked to that listing.
+	race_gallery: boolean;
 	url: string;
 	thumbUrl: string | null;
 }
@@ -7441,7 +7718,7 @@ export interface RunPhoto {
 /// `event_gallery_photos` (20270807000003), returns a hidden photo only to its
 /// owner and the event's stewards — RLS alone cannot, because a photo on a
 /// public run is readable through the run path.
-export interface EventPhoto extends Omit<RunPhoto, 'run_id'> {
+export interface EventPhoto extends Omit<RunPhoto, 'run_id' | 'race_gallery'> {
 	uploader_name: string | null;
 	hidden_at: string | null;
 }
@@ -7611,6 +7888,63 @@ export async function setEventPhotoHidden(photoId: string, hidden: boolean): Pro
 	const { error } = await supabase.rpc('set_event_photo_hidden', {
 		p_photo_id: photoId,
 		p_hidden: hidden,
+	});
+	if (error) throw dbError(error);
+}
+
+/// A runner's photo on a public race-listing page. Deliberately carries no
+/// run id, owner id or original-file URL: the page is logged-out and indexed,
+/// so it shows the processed thumbnail and the uploader's public name only.
+export interface RaceListingPhoto {
+	id: string;
+	thumbUrl: string;
+	caption: string | null;
+	createdAt: string;
+	displayName: string | null;
+}
+
+/// Opted-in photos for a race listing (`race_listing_photos`, decisions
+/// § 1961). The RPC applies every visibility rule — opt-in, public run linked
+/// to this listing, processed thumbnail, not hidden — so the client filters
+/// nothing. A failure resolves to `[]` and is logged: the race page is
+/// logged-out, and an empty gallery is hidden rather than shown as an error.
+export async function fetchRaceListingPhotos(
+	listingId: string,
+	limit = 24,
+): Promise<RaceListingPhoto[]> {
+	const { data, error } = await supabase.rpc(
+		'race_listing_photos',
+		{ p_listing_id: listingId, p_limit: limit },
+		{ get: true },
+	);
+	if (error) {
+		console.error('fetchRaceListingPhotos failed', error);
+		return [];
+	}
+	const rows = data ?? [];
+	if (rows.length === 0) return [];
+	const signed = await signRunPhotoPaths(rows.map((r) => r.thumb_512_path));
+	const out: RaceListingPhoto[] = [];
+	for (const r of rows) {
+		const thumbUrl = signed[r.thumb_512_path];
+		if (!thumbUrl) continue;
+		out.push({
+			id: r.id,
+			thumbUrl,
+			caption: (r.caption as string | null) ?? null,
+			createdAt: r.created_at,
+			displayName: (r.display_name as string | null) ?? null,
+		});
+	}
+	return out;
+}
+
+/// Show one of the caller's run photos on its race-listing page, or withdraw
+/// it. Owner-only, enforced by the RPC.
+export async function setRunPhotoRaceGallery(photoId: string, shared: boolean): Promise<void> {
+	const { error } = await supabase.rpc('set_run_photo_race_gallery', {
+		p_photo_id: photoId,
+		p_shared: shared,
 	});
 	if (error) throw dbError(error);
 }
@@ -9020,6 +9354,62 @@ export async function setRunExpectedReturn(
 	return data === true;
 }
 
+/// The run a safety contact's escalation link admits (decisions § 1964), or
+/// null when it admits nothing: a wrong token, an ended or concluded run, an
+/// expired link and a closed gate all read the same. POST, never `get: true`,
+/// so the token travels in the body and stays out of request-URL logs.
+export async function fetchSafetyLiveRun(
+	runId: string,
+	token: string,
+): Promise<{
+	started_at: string;
+	duration_s: number;
+	distance_m: number;
+	route_id: string | null;
+	owner_name: string;
+} | null> {
+	const { data, error } = await supabase.rpc('safety_live_run', {
+		p_run_id: runId,
+		p_token: token,
+	});
+	if (error) throw dbError(error);
+	const row = singleEmbed(data);
+	if (!row) return null;
+	return {
+		started_at: row.started_at,
+		duration_s: Number(row.duration_s ?? 0),
+		distance_m: Number(row.distance_m ?? 0),
+		route_id: row.route_id ?? null,
+		owner_name: row.owner_name ?? '',
+	};
+}
+
+/// Privacy-clipped pings for a safety contact's link. Without `since` the
+/// newest 1000, newest first (the backlog); with it, what arrived after it,
+/// oldest first (the poll). Empty when the link admits nothing.
+export async function fetchSafetyLivePings(
+	runId: string,
+	token: string,
+	since: string | null = null,
+): Promise<
+	Array<{
+		lat: number;
+		lng: number;
+		distance_m: number | null;
+		elapsed_s: number | null;
+		at: string;
+		coarse: boolean;
+	}>
+> {
+	const { data, error } = await supabase.rpc('safety_live_pings', {
+		p_run_id: runId,
+		p_token: token,
+		...(since ? { p_since: since } : {}),
+	});
+	if (error) throw dbError(error);
+	return Array.isArray(data) ? data : [];
+}
+
 /// Decline a pending request / withdraw from a confirmed one.
 export async function declineSafetyRequest(id: string): Promise<boolean> {
 	const { data, error } = await supabase.rpc('decline_safety_contact', { p_id: id });
@@ -9230,10 +9620,9 @@ export async function fetchEffortsForRunWithError(
 	if (!efforts || efforts.length === 0) return { efforts: [], error: null };
 
 	const segmentIds = Array.from(new Set(efforts.map((e) => e.segment_id)));
-	const { data: segments } = await supabase
-		.from(TABLES.segments)
-		.select('*')
-		.in('id', segmentIds);
+	const { data: segments } = await queryChunked(segmentIds, (part) =>
+		supabase.from(TABLES.segments).select('*').in('id', part)
+	);
 	const bySeg = new Map<string, Segment>();
 	for (const s of segments ?? []) bySeg.set(s.id, s as Segment);
 
@@ -9584,10 +9973,9 @@ export async function fetchGlobalEffortsForRun(
 	if (error || !efforts || efforts.length === 0) return [];
 
 	const segmentIds = Array.from(new Set(efforts.map((e) => e.global_segment_id)));
-	const { data: segments } = await supabase
-		.from(TABLES.global_segments)
-		.select('*')
-		.in('id', segmentIds);
+	const { data: segments } = await queryChunked(segmentIds, (part) =>
+		supabase.from(TABLES.global_segments).select('*').in('id', part)
+	);
 	const bySeg = new Map<string, GlobalSegment>();
 	for (const s of segments ?? []) bySeg.set(s.id, asGlobalSegment(s));
 
@@ -9880,7 +10268,8 @@ export interface DmThread {
 /// conversation instead of pulling the newest 500 full message bodies and
 /// folding them in JS (which over-fetched AND silently dropped older partners
 /// once a heavy inbox's newest 500 messages spanned fewer conversations than
-/// it had). Partner name/avatar stays a single .in() profile lookup.
+/// it had). Partner name/avatar is a chunked `in` profile lookup, since the
+/// partner set has no ceiling of its own.
 export async function fetchDmThreads(): Promise<DmThread[]> {
 	const me = auth.user?.id;
 	if (!me) return [];
@@ -9908,10 +10297,9 @@ export async function fetchDmThreads(): Promise<DmThread[]> {
 	const byPartner = new Map(threads.map((t) => [t.partnerId, t]));
 	const partnerIds = [...byPartner.keys()];
 	if (partnerIds.length > 0) {
-		const { data: profiles } = await supabase
-			.from('user_profiles')
-			.select('id, display_name, avatar_url')
-			.in('id', partnerIds);
+		const { data: profiles } = await queryChunked(partnerIds, (part) =>
+			supabase.from('user_profiles').select('id, display_name, avatar_url').in('id', part)
+		);
 		for (const p of profiles ?? []) {
 			const t = byPartner.get(p.id as string);
 			if (t) {
@@ -9925,25 +10313,38 @@ export async function fetchDmThreads(): Promise<DmThread[]> {
 	return [...byPartner.values()];
 }
 
-/// Full message history with one partner, oldest-first for rendering.
-export async function fetchDmThread(otherId: string, limit = 200): Promise<DirectMessage[]> {
+/// One page of the conversation with `otherId`, oldest message first.
+///
+/// Keyset-paged from the newest end on `(created_at, id)`: `before` is the
+/// oldest message already shown, and the page holds the `limit` messages before
+/// it, so the first read is the current end of the conversation however long
+/// it is. Mirrors mobile's `fetchDmThread`. The pair is matched as both columns
+/// IN the two ids, which with the table's `sender_id <> recipient_id` CHECK is
+/// exactly the two directions of this conversation, and leaves the `or` tree
+/// to the keyset. Throws on a failed read.
+export async function fetchDmThread(
+	otherId: string,
+	opts: { before?: DmOrderKey; limit?: number } = {},
+): Promise<DmPage<DirectMessage>> {
 	const me = auth.user?.id;
-	if (!me) return [];
-	const { data, error } = await supabase
+	if (!me) return { messages: [], hasMore: false };
+	const limit = opts.limit ?? DM_THREAD_PAGE_SIZE;
+	const pair = [me, otherId];
+	let query = supabase
 		.from(TABLES.direct_messages)
 		.select('*')
-		.or(
-			`and(sender_id.eq.${me},recipient_id.eq.${otherId}),and(sender_id.eq.${otherId},recipient_id.eq.${me})`,
-		)
-		.order('created_at', { ascending: true })
-		.limit(limit);
-	// Throw rather than returning [] — the caller can't tell a transient
-	// failure (network blip, RLS denial, dead session) from a genuinely
-	// empty conversation, and rendering the empty-thread copy on a blip
-	// leaves the user on the previous pane with no sign anything broke.
+		.in('sender_id', pair)
+		.in('recipient_id', pair);
+	if (opts.before) query = query.or(dmPageBeforeFilter(opts.before));
+	for (const k of DM_THREAD_ORDER) {
+		query = query.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+	}
+	const { data, error } = await query.limit(limit + 1);
+	// Throw rather than returning an empty page: the caller can't tell a
+	// transient failure (network blip, RLS denial, dead session) from a
+	// genuinely empty conversation.
 	if (error) throw new Error(`fetchDmThread failed: ${error.message}`);
-	if (!data) return [];
-	return data as DirectMessage[];
+	return dmPageFromRows((data ?? []) as DirectMessage[], limit);
 }
 
 /// Send a message. RLS enforces the no-block + follow-graph gate; a
@@ -9976,7 +10377,7 @@ export async function sendDm(
 		.single();
 	if (error || !data) {
 		if (error?.code === '42501') {
-			throw new Error("You can only message people you follow (or who follow you), and who haven't blocked you.");
+			throw new Error(m('messages.sendNotAllowed'));
 		}
 		const friendly = rateLimitErrorMessage(m, error);
 		if (friendly) throw new Error(friendly);
@@ -10160,6 +10561,10 @@ export interface AthleteRunSummary {
 	route_id: string | null;
 	activity_type: string;
 	metadata: Record<string, unknown> | null;
+	/// Whether the run carries a GPS track. Only the fact: the path is not
+	/// kept, and the coach's map is served clipped by `clip-public-track`
+	/// (decisions § 1968), never read from Storage.
+	has_track: boolean;
 }
 
 export async function fetchAthleteRuns(
@@ -10169,7 +10574,7 @@ export async function fetchAthleteRuns(
 	if (!auth.user?.id || !athleteId) return [];
 	const { data, error } = await supabase
 		.from(TABLES.runs)
-		.select('id, started_at, distance_m, duration_s, is_public, source, route_id, activity_type, metadata')
+		.select('id, started_at, distance_m, duration_s, is_public, source, route_id, activity_type, metadata, track_url')
 		.eq('user_id', athleteId)
 		.order('started_at', { ascending: false })
 		.limit(limit);
@@ -10184,7 +10589,31 @@ export async function fetchAthleteRuns(
 		route_id: (r.route_id as string | null) ?? null,
 		activity_type: (r.activity_type as string | null) ?? 'run',
 		metadata: (r.metadata as Record<string, unknown> | null) ?? null,
+		has_track: r.track_url != null,
 	}));
+}
+
+/// Whether a linked coach is served the athlete's clipped run map (the
+/// server's `coach_run_map` flag, decisions § 1968). Fail-closed: a read
+/// failure is "off" and is not cached, so a later mount can find out.
+let coachRunMapProbe: Promise<boolean> | null = null;
+export function coachRunMapEnabled(): Promise<boolean> {
+	if (coachRunMapProbe) return coachRunMapProbe;
+	const probe = (async () => {
+		try {
+			const { data, error } = await supabase.rpc('coach_run_map_enabled', undefined, { get: true });
+			if (error) {
+				coachRunMapProbe = null;
+				return false;
+			}
+			return data === true;
+		} catch {
+			coachRunMapProbe = null;
+			return false;
+		}
+	})();
+	coachRunMapProbe = probe;
+	return probe;
 }
 
 /// The athlete's active training plan + per-workout compliance for the
@@ -11149,13 +11578,19 @@ export async function fetchGymRoutineDetail(id: string): Promise<GymRoutineDetai
 	if (exercises.length === 0) {
 		return { routine: routine as GymRoutineSummary, exercises: [] };
 	}
-	const { data: setRows, error: sErr } = await supabase
-		.from(TABLES.gym_routine_sets)
-		.select(
-			'routine_exercise_id, set_index, set_type, target_reps_min, target_reps_max, target_weight_kg, target_rpe, rest_s, target_duration_s, target_distance_m',
-		)
-		.in('routine_exercise_id', exercises.map((e) => e.id))
-		.order('set_index', { ascending: true });
+	// Every exercise's sets come back from one chunk, so the per-exercise
+	// set_index order the grouping below relies on survives the merge.
+	const { data: setRows, error: sErr } = await queryChunked(
+		exercises.map((e) => e.id),
+		(part) =>
+			supabase
+				.from(TABLES.gym_routine_sets)
+				.select(
+					'routine_exercise_id, set_index, set_type, target_reps_min, target_reps_max, target_weight_kg, target_rpe, rest_s, target_duration_s, target_distance_m',
+				)
+				.in('routine_exercise_id', part)
+				.order('set_index', { ascending: true }),
+	);
 	// The planned sets ARE the prescription — dropping them silently turns a
 	// 5x5 into a bare exercise list.
 	if (sErr) throw dbError(sErr);
@@ -11979,10 +12414,9 @@ export async function fetchNutritionPlan(
 /// Plans by id, for resolving the plans the caller's assignments point at.
 export async function fetchNutritionPlansByIds(ids: string[]): Promise<NutritionPlan[]> {
 	if (ids.length === 0) return [];
-	const { data, error } = await supabase
-		.from(TABLES.nutrition_plans)
-		.select(NUTRITION_PLAN_COLS)
-		.in('id', ids);
+	const { data, error } = await queryChunked(ids, (part) =>
+		supabase.from(TABLES.nutrition_plans).select(NUTRITION_PLAN_COLS).in('id', part)
+	);
 	if (error) throw dbError(error);
 	return (data ?? []).map(asNutritionPlan);
 }
@@ -13062,11 +13496,11 @@ export async function fetchFollowingBadgeAwards(opts?: {
 	// cursor + ordering + limit; the global top-`limit` is a subset of the
 	// union, which mergeRecencyPages collapses back down (earned_at desc,
 	// id desc).
-	const queryChunk = async (ids: string[]) => {
+	const queryChunk = async (part: string[]) => {
 		let q = supabase
 			.from(TABLES.achievements)
 			.select('*')
-			.in('user_id', ids)
+			.in('user_id', part)
 			.eq('is_public', true)
 			.order('earned_at', { ascending: false })
 			.order('id', { ascending: false })
@@ -13148,11 +13582,13 @@ export async function fetchChallenges(
 	const mineSet = new Set<string>();
 	const myCompletedAt = new Map<string, string | null>();
 	if (userId) {
-		const { data: parts, error: partsError } = await supabase
-			.from(TABLES.challenge_participants)
-			.select('challenge_id, completed_at')
-			.eq('user_id', userId)
-			.in('challenge_id', ids);
+		const { data: parts, error: partsError } = await queryChunked(ids, (part) =>
+			supabase
+				.from(TABLES.challenge_participants)
+				.select('challenge_id, completed_at')
+				.eq('user_id', userId)
+				.in('challenge_id', part)
+		);
 		// `joined` drives the Join affordance; a dropped error offered "Join"
 		// on every challenge the caller is already in.
 		if (partsError) throw dbError(partsError);

@@ -294,7 +294,7 @@ Until step 4 lands, treat the secret as compromised-if-logs-are: the channel is 
 Every deploy starts with a merge, so the merge gate is the first production
 control. Branch protection on `main` requires **exactly one status context**:
 `CI gate`, the aggregator job in `.github/workflows/ci.yml`. It waits on the
-other 37 jobs in that file and fails if any of them reports anything but
+other 40 jobs in that file and fails if any of them reports anything but
 success or skipped.
 
 `build-mobile-ios` joined the required set on 2026-09-20. It compiles
@@ -654,6 +654,43 @@ Migration `20270808000011` (decisions § 1918) changes a timezoned series' occur
 ### Audience sharing — after the CISO / Security Analyst review
 
 The followers level and named-person run / route shares ([sharing.md](../features/sharing.md), decisions § 1874) ship closed: no migration writes the `audience_sharing` row of `private.feature_flags`, so prod answers exactly as before. Open it only after the CISO / Security Analyst has reviewed the audience oracles, the `shared_runs` / `shared_routes` projections, and the `clip-public-track` branch — then, in the prod SQL editor: `insert into private.feature_flags (name, enabled) values ('audience_sharing', true) on conflict (name) do update set enabled = true, updated_at = now();`. Closing it again is the same statement with `false`; every read path falls back at once, and existing grants stay inert until it reopens.
+
+### Coach run map — after the CISO / Security Analyst review
+
+A linked coach's clipped view of the athlete's run map ([coach_roster.md § Coach run map](../features/coach_roster.md#coach-run-map-decisions--1968), decisions § 1968) ships closed: no migration writes the `coach_run_map` row of `private.feature_flags`, so a coach keeps run rows and stats only, as before. Open it only after the CISO / Security Analyst has reviewed the `coached_runs` view and the coach branch of `clip-public-track` — then, in the prod SQL editor: `insert into private.feature_flags (name, enabled) values ('coach_run_map', true) on conflict (name) do update set enabled = true, updated_at = now();`. Closing it again is the same statement with `false`; both clients stop drawing the map and the view empties at once.
+
+### Safety-contacts live audience — after the CISO and counsel reviews
+
+A live share that runs on the runner's confirmed safety contacts only, with no public flip ([safety.md § Safety-contacts-only audience](../features/safety.md#safety-contacts-only-audience-2026-10-15-decisions-1964), decisions § 1964 – § 1966), ships closed: no migration writes the `safety_audience` row of `private.feature_flags` (`seed.sql` opens it for local and CI only), so every client keeps the old explicit, public live share. Opening it also turns the automatic live share on by default for a runner who armed an overdue window or the off-route alert (§ 1965), so the reviews cover that default too. Order, from safety.md's checklist:
+
+1. CISO review of the per-contact capability links, the admission predicate, the 48 h window, the fragment transport and the default-on rule.
+2. Counsel review of the same, plus the contact-facing copy in all seven locales (the `/live/[id]` notice and closed-link state, and the overdue / off-route email and SMS that now carry a personal link).
+3. Then, in the prod SQL editor: `insert into private.feature_flags (name, enabled) values ('safety_audience', true) on conflict (name) do update set enabled = true, updated_at = now();`. The same statement with `false` is the rollback; the default reverts for everyone who never touched the switch, and every outstanding link stops admitting on its next poll.
+
+### AI features beside the Coach — paired flags, one sign-off each
+
+Each ships default off with two halves: a `PUBLIC_*` flag in the web build (`release-web.yml`, [apps/web/deployment.md § fail-closed feature gates](../../apps/web/deployment.md)) and an unprefixed key in the coach Lambda's sops file (`coach_config_keys`). Set both halves together, and only after the sign-off in the right-hand column. Each also needs `PUBLIC_COACH_ENABLED`.
+
+| Feature | Web flag | Lambda key | Sign-off before flipping |
+|---|---|---|---|
+| AI plan assistant on `/plans/new` (decisions § 1930) | `PUBLIC_AI_PLAN_ENABLED` | `AI_PLAN_ENABLED` | owner + counsel on superseding § 12 in part; counsel / CISO on the v3 AI-disclosure copy |
+| Adjust with AI on `/plans/[id]` (§ 1979 – § 1981) | `PUBLIC_AI_PLAN_EDIT_ENABLED` | `AI_PLAN_EDIT_ENABLED` | owner + counsel on § 1979; counsel / CISO on the v4 AI-disclosure copy |
+| Log from a photo on `/nutrition/log` (§ 1972 – § 1973) | `PUBLIC_PLATE_PHOTO_ENABLED` | `PLATE_PHOTO_ENABLED` | counsel / CISO on the v5 AI-disclosure copy; owner on the vision spend |
+| Coach fuelling handoff to `/nutrition/fuel` (§ 1975) | `PUBLIC_COACH_FUEL_ENABLED` | `COACH_FUEL_ENABLED` | owner + counsel ([race_fueling_plan.md](../features/race_fueling_plan.md) pre-deploy checklist); no new disclosure rung |
+
+The disclosure copy is **not** behind these flags. The disclosure migrations (`20270816000001` v3, `20270825000001` v4, `20270826000003` v5) apply with the next `db push`, and the web and mobile releases that carry them show every bullet up to v5 in the AI disclosure (`AiDisclosureNotice.svelte`, `widgets/ai_disclosure_notice.dart`) and record a v5 acceptance, whatever the flags say. So the v3 – v5 copy sign-offs gate those releases, not only each flag flip.
+
+### Adaptive fitness gate — after the CISO / Security Analyst review
+
+The CTL/ATL/TSB direction gate on the adaptive re-plan (decisions § 144, § 1977) is built on web and mobile and off. Flip `PUBLIC_ADAPTIVE_FITNESS_GATE` (web build) and `ADAPTIVE_FITNESS_GATE` (the mobile dotenv, [apps/mobile_android/deployment.md](../../apps/mobile_android/deployment.md)) only after the CISO / Security Analyst signs off on health-derived load feeding a prescription. § 1977 records the verification behind the request.
+
+### Weight-based fluid — after the CISO / counsel review
+
+The "Fluid from body weight" toggle on the roadbook and `/nutrition/fuel` (decisions § 1976) is built on web and mobile and off. Off, neither surface reads a body weight, the toggle is hidden, and the flat fluid rate stands whatever `?bw=1` a link carries. Flip `PUBLIC_WEIGHT_FLUID_ENABLED` (web build) and `WEIGHT_FLUID_ENABLED` (the mobile dotenv, [apps/mobile_android/deployment.md](../../apps/mobile_android/deployment.md)) together, only after its [pre-deploy checklist](../features/race_fueling_plan.md) item lands: the CISO / counsel review of a new Art 9 use of body weight against the health-data consent copy. If the review finds the consent copy lists its uses exhaustively, fuelling is added to it before the flip.
+
+### Upcoming parkruns — after parkrun's written permission
+
+The parkrun leg of `race-listings-sync` and `race-listings-sweep` (decisions § 1958) is off unless the function secret `PARKRUN_EVENTS_ENABLED` is the literal `true`; off, the sweep makes no parkrun request. Get parkrun's written permission to list its events (issue #1148 step 1), land whatever it asks for (attribution, link wording; see the [followups](../product/followups.md) entry), then `supabase secrets set PARKRUN_EVENTS_ENABLED=true`. It rides the RunSignUp sweep below, so that sweep must be armed first. Unset it to turn the leg off again.
 
 ### Security emails — two auth settings, no new secret
 

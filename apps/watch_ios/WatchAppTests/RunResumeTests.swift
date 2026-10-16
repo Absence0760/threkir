@@ -33,7 +33,8 @@ final class RunResumeTests: XCTestCase {
         steps: Int? = nil,
         laps: [LapMark]? = nil,
         distance: Double = 61_000,
-        trackFileURL: URL? = nil
+        trackFileURL: URL? = nil,
+        trackComplete: Bool? = nil
     ) -> RunCheckpoint {
         RunCheckpoint(
             id: id,
@@ -50,7 +51,8 @@ final class RunResumeTests: XCTestCase {
             activityType: RunActivityType.hike.rawValue,
             pausedAt: pausedAt,
             hrMeanUngraded: hrMeanUngraded,
-            hrCoveredSeconds: hrCoveredSeconds
+            hrCoveredSeconds: hrCoveredSeconds,
+            trackComplete: trackComplete
         )
     }
 
@@ -291,6 +293,7 @@ final class RunResumeTests: XCTestCase {
         XCTAssertNil(cp.pausedAt, "an older checkpoint is a recording one, not a paused one")
         XCTAssertNil(cp.hrMeanUngraded)
         XCTAssertNil(cp.hrCoveredSeconds)
+        XCTAssertNil(cp.trackComplete, "an older build's track file holds only the gated fixes")
     }
 
     // MARK: - WorkoutManager
@@ -303,18 +306,26 @@ final class RunResumeTests: XCTestCase {
         return announcer
     }
 
-    private func seededRun(points: Int) -> (CheckpointStore, RunCheckpoint) {
+    private func seededRun(
+        points: Int,
+        offTrackLast: Bool = false,
+        trackComplete: Bool? = nil
+    ) -> (CheckpointStore, RunCheckpoint) {
         let id = "resume-wm-\(UUID().uuidString.lowercased())"
         let store = CheckpointStore(runId: id)
         store.appendTrackPoints((0..<points).map {
-            TrackPointRecord(lat: 46.0 + Double($0) * 0.001, lng: 7.0, ele: 1200, ts: "2026-04-15T07:30:01Z")
+            TrackPointRecord(
+                lat: 46.0 + Double($0) * 0.001, lng: 7.0, ele: 1200, ts: "2026-04-15T07:30:01Z",
+                offTrack: offTrackLast && $0 == points - 1 ? true : nil
+            )
         })
         store.closeAppendHandle()
         let cp = checkpoint(
             id: id,
             steps: 41_000,
             laps: [LapMark(index: 1, atSeconds: 3600, distanceMetres: 9000)],
-            trackFileURL: store.trackFileURL
+            trackFileURL: store.trackFileURL,
+            trackComplete: trackComplete
         )
         store.write(checkpoint: cp)
         return (store, cp)
@@ -360,6 +371,67 @@ final class RunResumeTests: XCTestCase {
         XCTAssertEqual(wm.distanceMetres, 61_000, accuracy: 0.001,
                        "the first fix anchors a fresh segment; 20 km of straight line is not invented")
         XCTAssertEqual(wm.trackPointCount, 4, "and is appended to the same run's track")
+    }
+
+    private func fix(lat: Double, accuracy: Double, at date: Date) -> CLLocation {
+        CLLocation(
+            coordinate: CLLocationCoordinate2D(latitude: lat, longitude: 7.0),
+            altitude: 1200, horizontalAccuracy: accuracy, verticalAccuracy: 5,
+            course: 0, courseAccuracy: 5, speed: 2.8, speedAccuracy: 0.3,
+            timestamp: date
+        )
+    }
+
+    func testACanopyFixIsStoredFlaggedAndTheRunClaimsACompleteTrack() {
+        let (store, cp) = seededRun(points: 3, trackComplete: true)
+        defer { store.clear() }
+        let wm = WorkoutManager()
+        wm.announcer = silentAnnouncer()
+        wm.restoreRun(from: cp, plan: RunResumePlan.make(
+            checkpoint: cp, now: checkpointedAt(cp), workoutSessionSurvived: true
+        ))
+        let now = Date()
+        wm.locationManager(CLLocationManager(), didUpdateLocations: [
+            fix(lat: 46.01, accuracy: 5, at: now),
+            fix(lat: 46.01 + 2.8 / 111_195, accuracy: 40, at: now.addingTimeInterval(1)),
+        ])
+        XCTAssertEqual(wm.trackPointCount, 5, "both fixes the estimator took are stored")
+        XCTAssertEqual(wm.mapPosition?.latitude ?? 0, 46.01, accuracy: 1e-9,
+                       "the canopy fix never moves the map")
+        wm.stop()
+        var flags: [Bool] = []
+        var distM: [Double?] = []
+        store.forEachTrackPoint { flags.append($0.isOffTrack); distM.append($0.distM) }
+        XCTAssertEqual(flags, [false, false, false, false, true])
+        XCTAssertNotNil(distM.last ?? nil, "distM is stamped on the off-track fix too")
+        XCTAssertEqual(wm.finishedRun?.trackComplete, true)
+    }
+
+    func testAResumedTrailSkipsAStoredOffTrackFix() {
+        let (store, cp) = seededRun(points: 5, offTrackLast: true, trackComplete: true)
+        defer { store.clear() }
+        let wm = WorkoutManager()
+        wm.announcer = silentAnnouncer()
+        wm.restoreRun(from: cp, plan: RunResumePlan.make(
+            checkpoint: cp, now: checkpointedAt(cp), workoutSessionSurvived: true
+        ))
+        XCTAssertEqual(wm.trackPointCount, 5, "the stored track counts every fix")
+        XCTAssertEqual(wm.mapPosition?.latitude ?? 0, 46.003, accuracy: 1e-9,
+                       "the map ends on the last fix on the line")
+        XCTAssertTrue(wm.storedTrackComplete)
+    }
+
+    func testARunContinuedFromAnOlderCheckpointClaimsNoCompleteTrack() {
+        let (store, cp) = seededRun(points: 3)
+        defer { store.clear() }
+        let wm = WorkoutManager()
+        wm.announcer = silentAnnouncer()
+        wm.restoreRun(from: cp, plan: RunResumePlan.make(
+            checkpoint: cp, now: checkpointedAt(cp), workoutSessionSurvived: false
+        ))
+        XCTAssertFalse(wm.storedTrackComplete)
+        wm.stop()
+        XCTAssertEqual(wm.finishedRun?.trackComplete, false)
     }
 
     func testAContinuedRunStopsAsOneRun() {

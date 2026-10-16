@@ -1,9 +1,10 @@
-import { expect, test } from '../fixtures/mock-route';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { clearNotifications, deleteRun, insertRun } from '../fixtures/simulate';
 import { USER_A, USER_C_PRO } from '../fixtures/users';
 import { readCount } from '../fixtures/db-read';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Notifications journey — cross-user engagement drives ONE notification
@@ -52,13 +53,6 @@ import { readCount } from '../fixtures/db-read';
  * WORKFLOW, driven by USER_C_PRO entirely through the UI, exercising
  * kudos + comment + follow together.
  */
-
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-	);
-}
 
 test.describe('notifications journey — engagement → bell → inbox → read', () => {
 	test.describe.configure({ timeout: 90_000 });
@@ -129,8 +123,8 @@ test.describe('notifications journey — engagement → bell → inbox → read'
 		// Pre-accept the consent banner in both contexts so the fixed
 		// dialog can't intercept pointer events on the kudos button,
 		// composer, Follow toggle, or bell/inbox controls.
-		await ctxMorgan.addInitScript(setConsentAccepted);
-		await ctxRunner.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctxMorgan);
+		await acceptCookieConsent(ctxRunner);
 		const morgan = await ctxMorgan.newPage();
 		const runner = await ctxRunner.newPage();
 

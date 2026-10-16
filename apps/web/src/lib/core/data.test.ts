@@ -473,7 +473,7 @@ test('live spectator next-cutoff card sources waypoints through the clipped rout
 	);
 });
 
-test('plans/new loads club templates with one batched query, not one per club', () => {
+test('plans/new loads club templates in bounded chunks, not one query per club', () => {
 	// Reason: the template picker used to call fetchClubTemplates inside a
 	// clubs.map — one round-trip per club (N+1, audit/db-performance
 	// Medium). The scope is a single training_plans read filtered on all
@@ -495,10 +495,18 @@ test('plans/new loads club templates with one batched query, not one per club', 
 		/export async function fetchClubTemplatesForClubs[\s\S]*?\n}/,
 	);
 	assert.ok(fnMatch, 'Could not locate fetchClubTemplatesForClubs — rename?');
+	// One query per FEED_FOLLOWEE_CHUNK of clubs, not one per club: the id
+	// list is the viewer's whole club set, which has no ceiling under the
+	// in-filter bound (decisions § 653).
 	assert.match(
 		fnMatch![0],
-		/\.in\('club_id', clubIds\)/,
-		'fetchClubTemplatesForClubs must filter all club ids in ONE query.',
+		/queryChunked\(clubIds, \(part\) =>[\s\S]*?\.in\('club_id', part\)/,
+		'fetchClubTemplatesForClubs must filter the club ids per bounded chunk, not per club.',
+	);
+	assert.match(
+		fnMatch![0],
+		/\.limit\(limitPerClub \* part\.length\)/,
+		'Each chunk scales its limit by the clubs IN that chunk, so no club is starved.',
 	);
 });
 
@@ -700,6 +708,34 @@ test('the profile-join fetchers chunk `.in()` so >~100 members are not lost', ()
 			`${fn} must not rebuild the unchunked inline profile-join (issue #325).`,
 		);
 	}
+});
+
+test('the follow-request and mention-handle joins read their `in` list through readChunked', () => {
+	// Reason: neither id list has a ceiling under FEED_FOLLOWEE_CHUNK —
+	// fetchIncomingFollowRequests reads up to 200 requests and
+	// resolveMentionHandles takes up to 200 handles — and an `in` filter past
+	// the gateway's request-line budget can come back as an empty 200 rather
+	// than an error (decisions § 653): every request would render nameless,
+	// every @mention as plain text. Both route through readChunked.
+	const source = stripComments(read('src/lib/core/data.ts'));
+	const cases: [string, RegExp][] = [
+		['async function profilesInEdgeOrder(', /\.in\('id', ids\)/],
+		['export async function resolveMentionHandles(', /\.in\('handle', wanted\)/],
+	];
+	for (const [decl, unchunked] of cases) {
+		const start = source.indexOf(decl);
+		assert.ok(start >= 0, `Could not locate ${decl} — rename?`);
+		const body = source.slice(start, source.indexOf('\n}', start));
+		assert.match(body, /await readChunked\(/, `${decl} must read through readChunked.`);
+		assert.match(body, /\.in\('(id|handle)', part\)/, `${decl} must filter on the chunk.`);
+		assert.doesNotMatch(body, unchunked, `${decl} must not filter on the whole list.`);
+	}
+	const reqs = source.slice(source.indexOf('export async function fetchIncomingFollowRequests('));
+	assert.match(
+		reqs.slice(0, reqs.indexOf('\n}')),
+		/await profilesInEdgeOrder\(/,
+		'fetchIncomingFollowRequests must join profiles through the chunked profilesInEdgeOrder.',
+	);
 });
 
 test('fetchFollowingBadgeAwards chunks the followee `.in()` (no silently-empty badge feed)', () => {

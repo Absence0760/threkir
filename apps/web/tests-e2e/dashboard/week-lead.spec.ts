@@ -1,9 +1,11 @@
-import { expect, test, type Locator } from '@playwright/test';
+import type { Locator } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { noonOnBrowserDay } from '../fixtures/dates';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { insertRun } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * /dashboard leads with this week (#905 workstream 3).
@@ -17,13 +19,6 @@ import { USER_A } from '../fixtures/users';
  * Nothing below it moved out of existence, so the stat grid and the plan hero
  * are asserted present as well as ordered.
  */
-
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-	);
-}
 
 async function precedes(a: Locator, b: Locator): Promise<boolean> {
 	const other = await b.elementHandle();
@@ -64,7 +59,7 @@ test.describe('/dashboard — this week leads', () => {
 			{ width: 390, height: 844 },
 		]) {
 			const ctx = await browser.newContext({ storageState: user.storageStatePath, viewport });
-			await ctx.addInitScript(setConsentAccepted);
+			await acceptCookieConsent(ctx);
 			const page = await ctx.newPage();
 			try {
 				await page.goto('/dashboard');
@@ -94,11 +89,9 @@ test.describe('/dashboard — this week leads', () => {
 
 	test('a weekly distance goal replaces the recent average as the yardstick', async ({ browser }) => {
 		const ctx = await browser.newContext({ storageState: user.storageStatePath });
-		await ctx.addInitScript(setConsentAccepted);
-		await ctx.addInitScript(
-			([key, value]) => localStorage.setItem(key, value),
-			[`run_app.goals_v1:${user.id}`, JSON.stringify([{ id: 'wk', period: 'week', distance_m: 20_000 }])] as const,
-		);
+		await acceptCookieConsent(ctx, {
+			[`run_app.goals_v1:${user.id}`]: JSON.stringify([{ id: 'wk', period: 'week', distance_m: 20_000 }])
+		});
 		const page = await ctx.newPage();
 		try {
 			await page.goto('/dashboard');

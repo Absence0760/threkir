@@ -21,6 +21,8 @@ Disallow: /clubs
 # In-app help (readable signed out, but noindex and not for search). The
 # public, indexable guides are /learn.
 Disallow: /help
+# The fuelling planner: readable signed out for a Coach hand-off, noindex.
+Disallow: /nutrition
 Disallow: /auth
 
 # Sitemap — prerendered at build time from `public_routes` + `public_runs`

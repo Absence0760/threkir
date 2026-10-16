@@ -36,7 +36,7 @@ import {
 	aiDisclosureDenialBody,
 	gateAiDisclosure,
 } from '../../core/ai_disclosure';
-import { checkRouteRateLimit } from '../rate_limit';
+import { refundRouteRateLimitSlot, spendRouteRateLimitSlot } from '../rate_limit';
 import { supabaseErrorFields, thrownMessage } from '../../core/supabase_error';
 
 /// Per-user ceiling on the billed Anthropic call. Same shape and size as
@@ -48,13 +48,12 @@ export const ROUTE_REQUEST_RATE_MAX = 60;
 export const ROUTE_REQUEST_RATE_WINDOW_S = 3600;
 import { validateConstraints, type RouteConstraints } from './constraints';
 
-/// Matches the model used by route-describe + the coach (decisions.md;
-/// claude-api skill: default to Opus 4.8 with adaptive thinking).
+/// Matches the model used by route-describe + the coach.
 const ROUTE_REQUEST_MODEL = 'claude-opus-4-8';
 
-/// Tool-use output is one small JSON object; adaptive thinking draws from
-/// the same ceiling, so leave headroom for a thinking block plus the
-/// tool_use block. 1024 mirrors route-describe.
+/// One small tool_use object. No thinking block: the API refuses extended
+/// thinking alongside a forced tool_choice (decisions § 1930), and the forced
+/// tool is what keeps the output a typed object rather than prose.
 const ROUTE_REQUEST_MAX_TOKENS = 1024;
 
 /// Hard wall-clock cap so a slow model call can't hang the request.
@@ -65,6 +64,17 @@ const ROUTE_REQUEST_TIMEOUT_MS = 12_000;
 /// attempt; truncate rather than reject so a verbose-but-legitimate
 /// request still yields constraints.
 export const MAX_REQUEST_TEXT_CHARS = 600;
+
+/// The structural surface the handler uses — narrow enough that a test can
+/// hand in a fake without the SDK's whole client.
+export interface RouteRequestModelClient {
+	messages: {
+		create(
+			body: Anthropic.MessageCreateParamsNonStreaming,
+			options?: { timeout?: number },
+		): PromiseLike<Anthropic.Message>;
+	};
+}
 
 export interface RouteRequestConfig {
 	anthropicApiKey: string | undefined;
@@ -77,6 +87,8 @@ export interface RouteRequestConfig {
 	/// (consent, tier) are exercisable without a live Supabase. Same hook
 	/// `CoachConfig` carries.
 	createClient?: SupabaseClientFactory;
+	/// Same hook for the model: unset in both wrappers, a fake in unit tests.
+	createAnthropic?: (apiKey: string) => RouteRequestModelClient;
 }
 
 export interface RouteRequestResult {
@@ -258,24 +270,8 @@ export async function handleRouteRequest(
 		return json(403, { error: 'pro required', upgrade: true });
 	}
 
-	// Per-user ceiling on the billed fan-out. Pro is a monthly price, not a
-	// per-call one, so without this a single subscription (or one leaked Pro
-	// JWT) buys unbounded Opus calls on the operator's key — the per-IP WAF
-	// rule can't see a JWT spread over an IP pool. Only Pro callers reach
-	// here, so a free caller is never charged a slot. Fail-closed: a throttle
-	// error denies, and the manual form still works.
-	if (!config.bypassPaywallEnabled) {
-		const rl = await checkRouteRateLimit(
-			supabase,
-			userRes.data.user.id,
-			ROUTE_REQUEST_RATE_BUCKET,
-			ROUTE_REQUEST_RATE_MAX,
-			ROUTE_REQUEST_RATE_WINDOW_S,
-		);
-		if (rl !== 'ok') return json(429, { error: 'rate_limited' });
-	}
-
-	// Pro path. Missing key → 503 (operator config). The client keeps the
+	// Pro path. Missing key → 503 (operator config), checked before the
+	// throttle so a misconfiguration never spends a slot. The client keeps the
 	// manual form; there is no deterministic constraint extraction to fall
 	// back to.
 	if (!config.anthropicApiKey) {
@@ -283,8 +279,35 @@ export async function handleRouteRequest(
 		return json(503, { error: 'route assistant unavailable' });
 	}
 
+	// Per-user ceiling on the billed fan-out. Pro is a monthly price, not a
+	// per-call one, so without this a single subscription (or one leaked Pro
+	// JWT) buys unbounded Opus calls on the operator's key — the per-IP WAF
+	// rule can't see a JWT spread over an IP pool. Only Pro callers reach
+	// here, so a free caller is never charged a slot. Fail-closed: a throttle
+	// error denies, and the manual form still works. A call that produces
+	// nothing usable gives its slot back.
+	const userId = userRes.data.user.id;
+	let spendId: string | null = null;
+	if (!config.bypassPaywallEnabled) {
+		const rl = await spendRouteRateLimitSlot(
+			supabase,
+			userId,
+			ROUTE_REQUEST_RATE_BUCKET,
+			ROUTE_REQUEST_RATE_MAX,
+			ROUTE_REQUEST_RATE_WINDOW_S,
+		);
+		if (rl.verdict !== 'ok') return json(429, { error: 'rate_limited' });
+		spendId = rl.spendId;
+	}
+
+	async function refundSlot(reason: string): Promise<void> {
+		await refundRouteRateLimitSlot(supabase, userId, ROUTE_REQUEST_RATE_BUCKET, spendId, reason);
+	}
+
 	try {
-		const anthropic = new Anthropic({ apiKey: config.anthropicApiKey });
+		const anthropic: RouteRequestModelClient = config.createAnthropic
+			? config.createAnthropic(config.anthropicApiKey)
+			: new Anthropic({ apiKey: config.anthropicApiKey });
 		const userContent =
 			`Runner's request: ${input.requestText}\n\n` +
 			(input.locationLabel
@@ -296,7 +319,6 @@ export async function handleRouteRequest(
 			{
 				model: ROUTE_REQUEST_MODEL,
 				max_tokens: ROUTE_REQUEST_MAX_TOKENS,
-				thinking: { type: 'adaptive' },
 				system: SYSTEM_PROMPT,
 				// Force the tool so the output is a typed constraint object,
 				// never prose. tool_choice pins the single extraction tool.
@@ -311,6 +333,7 @@ export async function handleRouteRequest(
 		// usable tool call — surface it as unavailable, manual form unaffected.
 		if (message.stop_reason === 'refusal') {
 			console.warn('[route-request] model refused');
+			await refundSlot('refusal');
 			return json(422, { error: 'could not understand request' });
 		}
 
@@ -323,6 +346,7 @@ export async function handleRouteRequest(
 			// model still didn't produce one, treat the request as
 			// un-extractable rather than 500-ing.
 			console.warn('[route-request] no tool_use block in model response');
+			await refundSlot('no_tool_use');
 			return json(422, { error: 'could not understand request' });
 		}
 
@@ -343,6 +367,7 @@ export async function handleRouteRequest(
 			message: thrownMessage(e),
 			stack: e instanceof Error ? e.stack : undefined,
 		});
+		await refundSlot('provider_error');
 		return json(503, { error: 'route assistant unavailable' });
 	}
 }

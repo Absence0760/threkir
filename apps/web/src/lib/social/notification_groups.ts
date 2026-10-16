@@ -56,10 +56,15 @@ function targetKeyFor(n: GroupableNotification): string {
 		case 'comment':
 		case 'comment_reply':
 		case 'run_completed':
+		case 'reaction':
+		case 'comment_like':
+		case 'mention':
 			return n.run_id ? `run:${n.run_id}` : solo;
 		case 'follow':
 			// Followers all target the recipient — collapse them together.
 			return 'follow';
+		case 'follow_request':
+			return 'follow_request';
 		case 'event_rsvp':
 		case 'event_cancel':
 		case 'event_reminder':

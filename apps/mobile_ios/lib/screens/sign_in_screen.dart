@@ -3,7 +3,6 @@ import 'dart:io' show Platform;
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
@@ -11,6 +10,7 @@ import '../apple_auth.dart';
 import '../auth_error.dart';
 import '../google_auth.dart';
 import '../l10n/gen/app_localizations.dart';
+import '../web_base_url.dart';
 import '../widgets/password_field.dart';
 import '../widgets/top_banner.dart';
 import 'sign_up_screen.dart';
@@ -137,14 +137,7 @@ class _SignInScreenState extends State<SignInScreen> {
       _errorKind = null;
     });
     try {
-      var webBase =
-          (dotenv.isInitialized ? dotenv.maybeGet('WEB_BASE_URL') : null)
-                  ?.trim() ??
-              '';
-      if (webBase.isEmpty) webBase = 'https://threkir.com';
-      if (webBase.endsWith('/')) {
-        webBase = webBase.substring(0, webBase.length - 1);
-      }
+      final webBase = resolveWebBaseUrl();
       await widget.apiClient.sendPasswordResetEmail(
         email: email,
         redirectTo: '$webBase/auth/reset',

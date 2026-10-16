@@ -12,7 +12,7 @@
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import RunEditor from '#lib/components/RunEditor.svelte';
 	import GymEditor from '#lib/components/GymEditor.svelte';
-	import FoodLogEditor from '#lib/components/FoodLogEditor.svelte';
+	import LogFoodPanel from '#lib/components/LogFoodPanel.svelte';
 	import Modal from '#lib/components/Modal.svelte';
 	import { goto } from '$app/navigation';
 	import { formatWeight } from '#lib/format/units.svelte.ts';
@@ -590,7 +590,7 @@
 	narrow
 	onclose={() => (showFoodModal = false)}
 >
-	<FoodLogEditor oncreated={onFoodLogged} />
+	<LogFoodPanel oncreated={onFoodLogged} />
 </Modal>
 
 <style>

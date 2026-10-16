@@ -43,6 +43,16 @@ The `privacy_default` value `followers` used to mean private, because a run had 
 
 - [ ] **CISO / Security Analyst review** of the audience oracles, the `shared_*` projections, and the `clip-public-track` branch, before `insert into private.feature_flags (name, enabled) values ('audience_sharing', true)` runs in prod. Recorded in [deployment.md](../ops/deployment.md).
 
+## Private profiles (decisions § 1967)
+
+The account-level complement to the per-run levels above, and **not** behind the `audience_sharing` gate: `user_profiles.profile_private` defaults false, so nothing changes for anyone until they turn it on (Settings → Privacy on web, the Privacy group of Preferences on mobile). Migrations `20270822000001` + `20270822000002`.
+
+- **What closes.** A private profile's public runs, gym sessions and food entries, their photos, kudos and comments, its follower and following lists, and its share page (`/share/profile/{id}` is not-found, so nothing unfurls) open only to the owner and to **approved followers**. A segment or challenge leaderboard keeps the effort but drops the name for a viewer outside that set.
+- **What stays.** Name, avatar and handle, so the profile can be found and asked; the follower and following **counts**; routes, event results, recaps and badges, each published individually; a run's live safety link while the broadcast is in progress (the runner sent it to be watched); a run shared with named people or followers (those audiences are the owner's own choice).
+- **Requests.** Follow on a private profile becomes **Request to follow**, then **Requested** (tap again to withdraw). The owner gets a `follow_request` notification (inbox, plus email and push under the default `important` channel mode, muted on its own by `notify_follow_request`; decisions § 1983) and approves or declines on `/follow-requests` (web) or the Follow requests screen (mobile, from Settings or the notification). Turning the switch off approves every pending request. A block clears a request either way. One requester raises at most one `follow_request` notification a day for the same owner: withdrawing deletes the unread notification, so without a cooldown ask, withdraw, ask again would email and push the owner every time. The request itself is still filed and listed; only the notification is held back until 24 h after the last one (`private.follow_request_notices`, migration `20270829000012`).
+- **No prod gate.** Default-off is the gate; there is no sign-off item. Shipping it does change behaviour for one population: an old phone build that inserts into `user_follows` directly gets a refusal on a private target and shows its generic follow error.
+- **Tests.** pgtap `private_profiles_test.sql`; web unit `notification_link.test.ts` / `notification_groups.test.ts`; Playwright `tests-e2e/social/private-profile.spec.ts`; mobile `follow_requests_screen_test.dart`, the private cases in `profile_screen_test.dart` and `people_screen_test.dart`.
+
 ## Known limits
 
 - **`routes.run_count` drift.** The count's authoritative query asks whether each runner can see the route, which a follow, a grant or the gate can now change without touching a run row. It is the same accepted, self-healing drift [derived_state.md](../backend/derived_state.md#routesrun_count) already records for a route's own visibility flip.

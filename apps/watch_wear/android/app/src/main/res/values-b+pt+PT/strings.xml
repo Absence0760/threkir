@@ -129,8 +129,10 @@
     <string name="done">Concluído</string>
 
     <string name="perm_title_blocked">Localização necessária</string>
+    <string name="perm_title_precise">Localização precisa desligada</string>
     <string name="perm_title_degraded">Algumas funcionalidades desligadas</string>
     <string name="perm_cost_location">Sem localização esta corrida regista apenas o tempo — sem percurso, distância ou ritmo.</string>
+    <string name="perm_cost_precise_location">A localização aproximada não basta para registar o percurso, a distância ou o ritmo. Escolha “Precisa” ou ative “Utilizar localização exata”.</string>
     <string name="perm_cost_heart_rate">A frequência cardíaca não será registada.</string>
     <string name="perm_cost_steps">Os passos não serão registados.</string>
     <string name="perm_cost_notification">Sem indicador de corrida no mostrador durante a gravação.</string>

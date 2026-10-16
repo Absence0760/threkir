@@ -40,6 +40,11 @@
 	<string>Threkir uses your location to track runs.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Threkir continues tracking runs in the background so you don't lose data if you take a call or lock your phone.</string>
+	<key>NSLocationTemporaryUsageDescriptionDictionary</key>
+	<dict>
+		<key>PreciseRunTracking</key>
+		<string>Threkir needs your precise location to map this run and measure its distance accurately.</string>
+	</dict>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Threkir reads workouts, distance, heart rate and body weight from Apple Health so runs you've recorded in other apps can be imported into your history and your calorie estimate uses your real weight.</string>
 	<key>NSHealthUpdateUsageDescription</key>
@@ -49,13 +54,13 @@
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Threkir connects to your Bluetooth heart-rate strap so it can stream live BPM into your run.</string>
 	<key>NSMotionUsageDescription</key>
-	<string>Threkir uses motion data to count steps and estimate cadence on treadmill runs without GPS.</string>
+	<string>Threkir uses motion data to count steps and estimate cadence, and the barometer to measure the climb on your runs.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Threkir lets you attach photos from your library to your runs.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Threkir saves shared run cards back to your Photos library when you tap "Save to Photos."</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Threkir uses the camera to scan a food product's barcode so it can look up its nutrition and log it for you.</string>
+	<string>Threkir uses the camera to scan a food product's barcode, or to photograph a meal you want to log, so it can look up or estimate the nutrition for you.</string>
 	<key>NSCalendarsWriteOnlyAccessUsageDescription</key>
 	<string>Threkir adds a club event you choose to your calendar. It never reads what else is in there.</string>
 	<key>NSCalendarsUsageDescription</key>

@@ -223,28 +223,35 @@ func (c *SupabaseClient) DownloadTrack(ctx context.Context, path string) ([]Trac
 }
 
 // storedTrackPoint is a TrackPoint plus the smoother's filtered position
-// (docs/features/gps_distance.md § Waypoint fields).
+// and the off-track flag (docs/features/gps_distance.md § Waypoint fields).
 type storedTrackPoint struct {
 	TrackPoint
 	SmoothedLat *float64 `json:"smoothedLat,omitempty"`
 	SmoothedLng *float64 `json:"smoothedLng,omitempty"`
+	OffTrack    bool     `json:"offTrack,omitempty"`
 }
 
-// parseTrack decodes a stored track for the matcher, taking the smoothed
-// position of a waypoint that carries both smoothedLat and smoothedLng:
-// the filtered line is what route-matching should follow. Raw lat/lng
-// stay in the stored file; the matched output carries no smoothed keys.
+// parseTrack decodes a stored track for the matcher and the GPX export:
+// the line, so it drops every off-track fix (a fix the distance estimator
+// took that failed the recorder's track gate) and takes the smoothed
+// position of a waypoint that carries both smoothedLat and smoothedLng.
+// Raw lat/lng stay in the stored file; the output carries neither the
+// smoothed keys nor the flag.
 func parseTrack(body []byte) ([]TrackPoint, error) {
 	stored, err := decodeTrack[storedTrackPoint](body)
 	if err != nil {
 		return nil, err
 	}
-	pts := make([]TrackPoint, len(stored))
-	for i, sp := range stored {
-		pts[i] = sp.TrackPoint
-		if sp.SmoothedLat != nil && sp.SmoothedLng != nil {
-			pts[i].Lat, pts[i].Lng = *sp.SmoothedLat, *sp.SmoothedLng
+	pts := make([]TrackPoint, 0, len(stored))
+	for _, sp := range stored {
+		if sp.OffTrack {
+			continue
 		}
+		p := sp.TrackPoint
+		if sp.SmoothedLat != nil && sp.SmoothedLng != nil {
+			p.Lat, p.Lng = *sp.SmoothedLat, *sp.SmoothedLng
+		}
+		pts = append(pts, p)
 	}
 	return pts, nil
 }
@@ -1426,10 +1433,13 @@ var orderByTable = map[string]string{
 	schema.TableEventAttendees:           "event_id,user_id,instance_start",
 	schema.TableEventExceptions:          "event_id,instance_start",
 	schema.TableEventPricing:             "event_id,instance_start",
+	schema.TableFollowRequests:           "requester_id,target_id",
 	schema.TableInstructorPayoutAccounts: "user_id",
 	schema.TablePersonalRecords:          "user_id,distance",
 	schema.TableRunGear:                  "run_id,gear_id",
+	schema.TableRunCommentLikes:          "user_id,comment_id",
 	schema.TableRunKudos:                 "user_id,run_id",
+	schema.TableRunReactions:             "user_id,run_id,reaction",
 	schema.TableSavedRoutes:              "user_id,route_id",
 	schema.TableSignInDevices:            "user_id,browser,platform",
 	schema.TableUserBlocks:               "blocker_id,blocked_id",
@@ -1585,7 +1595,7 @@ func (c *SupabaseClient) StreamExportRuns(ctx context.Context, userID string, em
 // TestExportRunProjectionCoversEveryRunsColumn.
 const exportRunsSelect = "id,user_id,started_at,concluded_at,duration_s,distance_m," +
 	"elevation_gain_m,source,activity_type,is_dnf,external_id,metadata,track_url," +
-	"hr_series_url,is_public,followers_only,event_id,route_id,race_listing_id,fastest_5k_s," +
+	"hr_series_url,is_public,followers_only,safety_audience,event_id,route_id,race_listing_id,fastest_5k_s," +
 	"fastest_10k_s,fastest_half_marathon_s,fastest_marathon_s,created_at,updated_at"
 
 // ExportRunRow mirrors dataexport.ExportRun. We don't import the
@@ -1609,6 +1619,7 @@ type ExportRunRow struct {
 	HrSeriesURL          *string                `json:"hr_series_url"`
 	IsPublic             *bool                  `json:"is_public"`
 	FollowersOnly        bool                   `json:"followers_only"`
+	SafetyAudience       bool                   `json:"safety_audience"`
 	EventID              *string                `json:"event_id"`
 	RouteID              *string                `json:"route_id"`
 	RaceListingID        *string                `json:"race_listing_id"`
@@ -1750,7 +1761,7 @@ func (c *SupabaseClient) FetchExportProfile(ctx context.Context, userID string) 
 	// archive that disagrees with the controller's own account.
 	//
 	q.Set("select", "id,display_name,handle,avatar_url,preferred_unit,created_at,onboarded_at,"+
-		"date_of_birth,gender,height_cm,parkrun_number,"+
+		"date_of_birth,gender,height_cm,parkrun_number,profile_private,"+
 		"subscription_tier,subscription_at,billing_issue_at,"+
 		"terms_accepted_at,age_confirmed_at,coach_consent_at,health_data_consent_at,ai_disclosure_version")
 	q.Set("limit", "1")
@@ -2242,6 +2253,23 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 			filter: "runs.user_id=eq." + uid,
 			sel:    "*,runs!inner(user_id)",
 		},
+		// run_reactions and run_comment_likes (decisions § 1971): the ones
+		// the subject left, then the ones left on their runs / comments.
+		// Same inner-join shape as the kudos pair above; a like carries no
+		// run owner either, so it joins the comment and filters on its
+		// author.
+		{name: "run_reactions.json", table: schema.TableRunReactions, filter: uidEq, sel: "*"},
+		{name: "run_comment_likes.json", table: schema.TableRunCommentLikes, filter: uidEq, sel: "*"},
+		{
+			name: "run_reactions_received.json", table: schema.TableRunReactions,
+			filter: "runs.user_id=eq." + uid,
+			sel:    "*,runs!inner(user_id)",
+		},
+		{
+			name: "run_comment_likes_received.json", table: schema.TableRunCommentLikes,
+			filter: "run_comments.author_id=eq." + uid,
+			sel:    "*,run_comments!inner(author_id)",
+		},
 		// run_photos metadata. The image bytes themselves are bundled
 		// under `photos/` by BuildBackupZip via DownloadPhoto, keyed off
 		// each row's `storage_path` (audit-findings 2026-05-30 High).
@@ -2288,6 +2316,19 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 		{
 			name: "followers.json", table: schema.TableUserFollows,
 			filter: "followee_id=eq." + uid, sel: "*",
+		},
+		// follow_requests — pending follows of a private profile (migration
+		// 20270822000001), both legs: requests the subject made and requests
+		// made to them. Keyed by requester_id / target_id, neither of which the
+		// guard's owner-FK scan names, so both are wired in explicitly. An
+		// approved or declined request is deleted, so there is no history.
+		{
+			name: "follow_requests_sent.json", table: schema.TableFollowRequests,
+			filter: "requester_id=eq." + uid, sel: "*",
+		},
+		{
+			name: "follow_requests_received.json", table: schema.TableFollowRequests,
+			filter: "target_id=eq." + uid, sel: "*",
 		},
 		// event_attendees — RSVPs.
 		{name: "event_attendees.json", table: schema.TableEventAttendees, filter: uidEq, sel: "*"},

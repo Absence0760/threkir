@@ -38,6 +38,33 @@ class Waypoint {
   @JsonKey(includeIfNull: false)
   final double? smoothedLng;
 
+  /// The phone barometer's altitude for this fix, metres, anchored to GPS
+  /// altitude over a long window (`docs/features/gps_distance.md`
+  /// § Waypoint fields). [elevationMetres] stays the GPS altitude. Omitted on
+  /// a phone with no barometer, before the anchor has a GPS altitude to
+  /// level against, and on every track recorded before it existed.
+  @JsonKey(includeIfNull: false)
+  final double? baroElevationMetres;
+
+  /// The run's distance credited up to and including this fix, metres: the
+  /// GPS distance estimator's cumulative figure as the recorder saved it
+  /// (`docs/features/gps_distance.md` § Waypoint fields; `distM` in the
+  /// uploaded track). Splits and moving time read it through
+  /// `trackCumulativeMetres`. Omitted on imports and on every track recorded
+  /// before it existed.
+  @JsonKey(includeIfNull: false)
+  final double? cumulativeDistanceMetres;
+
+  /// A fix the GPS distance estimator took that failed the recorder's track
+  /// gate (a 20-50 m canopy fix on the phone, 30-50 m on the watches, or a
+  /// phone fix the movement gate held back). Stored so the server can replay
+  /// the whole estimator input (`docs/features/gps_distance.md` § Stored
+  /// track); everything that draws, matches or measures the line skips it,
+  /// and only a distance replay reads it. Serialised only when true, so every
+  /// older track reads as all on-track.
+  @JsonKey(includeIfNull: false, toJson: _trueOrNull, fromJson: _isTrue)
+  final bool offTrack;
+
   const Waypoint({
     required this.lat,
     required this.lng,
@@ -50,6 +77,9 @@ class Waypoint {
     this.bearingDeg,
     this.smoothedLat,
     this.smoothedLng,
+    this.baroElevationMetres,
+    this.cumulativeDistanceMetres,
+    this.offTrack = false,
   });
 
   /// Whether the stored track carries a usable smoothed position for this
@@ -80,7 +110,50 @@ class Waypoint {
         bearingDeg: bearingDeg,
         smoothedLat: smoothedLat,
         smoothedLng: smoothedLng,
+        baroElevationMetres: baroElevationMetres,
+        cumulativeDistanceMetres: cumulativeDistanceMetres,
+        offTrack: offTrack,
       );
+
+  /// This fix with its cumulative credited distance set (or cleared).
+  Waypoint withCumulativeDistance(double? cumulativeDistanceMetres) =>
+      Waypoint(
+        lat: lat,
+        lng: lng,
+        elevationMetres: elevationMetres,
+        timestamp: timestamp,
+        bpm: bpm,
+        accuracyMetres: accuracyMetres,
+        speedMps: speedMps,
+        speedAccuracyMps: speedAccuracyMps,
+        bearingDeg: bearingDeg,
+        smoothedLat: smoothedLat,
+        smoothedLng: smoothedLng,
+        baroElevationMetres: baroElevationMetres,
+        cumulativeDistanceMetres: cumulativeDistanceMetres,
+        offTrack: offTrack,
+      );
+
+  /// This fix marked off the track line (or back on it).
+  Waypoint withOffTrack(bool offTrack) => Waypoint(
+        lat: lat,
+        lng: lng,
+        elevationMetres: elevationMetres,
+        timestamp: timestamp,
+        bpm: bpm,
+        accuracyMetres: accuracyMetres,
+        speedMps: speedMps,
+        speedAccuracyMps: speedAccuracyMps,
+        bearingDeg: bearingDeg,
+        smoothedLat: smoothedLat,
+        smoothedLng: smoothedLng,
+        baroElevationMetres: baroElevationMetres,
+        cumulativeDistanceMetres: cumulativeDistanceMetres,
+        offTrack: offTrack,
+      );
+
+  static Object? _trueOrNull(bool v) => v ? true : null;
+  static bool _isTrue(Object? v) => v == true;
 
   factory Waypoint.fromJson(Map<String, dynamic> json) =>
       _$WaypointFromJson(json);
@@ -119,7 +192,9 @@ List<Waypoint> finiteWaypoints(List<Waypoint> track) {
         _nonFinite(w.speedAccuracyMps) ||
         _nonFinite(w.bearingDeg) ||
         _nonFinite(w.smoothedLat) ||
-        _nonFinite(w.smoothedLng)) {
+        _nonFinite(w.smoothedLng) ||
+        _nonFinite(w.baroElevationMetres) ||
+        _nonFinite(w.cumulativeDistanceMetres)) {
       needsFilter = true;
       break;
     }
@@ -141,7 +216,25 @@ List<Waypoint> finiteWaypoints(List<Waypoint> track) {
           // A half-finite smoothed pair is no position: both or neither.
           smoothedLat: _finiteSmoothedPair(w) ? w.smoothedLat : null,
           smoothedLng: _finiteSmoothedPair(w) ? w.smoothedLng : null,
+          baroElevationMetres: _finiteOrNull(w.baroElevationMetres),
+          cumulativeDistanceMetres: _finiteOrNull(w.cumulativeDistanceMetres),
+          offTrack: w.offTrack,
         ),
+  ];
+}
+
+/// The fixes of [track] that belong on the run's line: every waypoint not
+/// flagged [Waypoint.offTrack]. The map line, route match, elevation, climb,
+/// segment and pace readers take this; only a distance replay reads the
+/// stored track whole.
+///
+/// Returns the input list itself when no point is flagged, so an older track
+/// (none carry the flag) allocates nothing.
+List<Waypoint> trackLine(List<Waypoint> track) {
+  if (!track.any((w) => w.offTrack)) return track;
+  return <Waypoint>[
+    for (final w in track)
+      if (!w.offTrack) w,
   ];
 }
 

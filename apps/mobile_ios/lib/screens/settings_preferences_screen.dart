@@ -24,6 +24,7 @@ import '../typed_decimal.dart';
 import '../undo_queue.dart';
 import '../weekly_goal.dart';
 import '../widgets/top_banner.dart';
+import 'follow_requests_screen.dart';
 import 'nearby_area_screen.dart';
 import 'privacy_zones_screen.dart';
 import 'settings_body_metrics_screen.dart';
@@ -106,6 +107,11 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
   final bool _nearbyGate = nearbyRunnersGate;
   String? _nearbyAreaLabel;
 
+  /// user_profiles.profile_private, not a prefs key: RLS and the public views
+  /// read it (decisions § 1967), so it is read and written on the profile row.
+  bool _profilePrivate = false;
+  bool _profilePrivateSaving = false;
+
   /// Date of birth lives in two stores under two rules (decisions § 718).
   /// [_profileDob] is the `user_profiles` age record behind the under-18
   /// discoverability floor — written whenever the runner picks a date — and
@@ -124,6 +130,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
     widget.settingsSync?.addListener(_onChange);
     WidgetsBinding.instance.addPostFrameCallback((_) => _maybeBackfillLocale());
     if (_nearbyGate) _loadNearbyAreaLabel();
+    _loadProfilePrivate();
     _loadHealthProfile();
   }
 
@@ -1001,6 +1008,50 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
     } catch (e) {
       debugPrint('discoverable area label read failed: $e');
     }
+  }
+
+  /// Best-effort (L4) on read: a failed read leaves the switch off, which is
+  /// the account's state until its owner turned it on.
+  Future<void> _loadProfilePrivate() async {
+    final api = widget.apiClient;
+    if (api == null) return;
+    try {
+      final value = await api.fetchMyProfilePrivate();
+      if (!mounted) return;
+      setState(() => _profilePrivate = value);
+    } catch (e) {
+      debugPrint('profile privacy read failed: $e');
+    }
+  }
+
+  /// A refused write must not read as saved — the switch is a promise about
+  /// who sees the runner's activity — so it rolls back on failure.
+  Future<void> _editProfilePrivate(bool next) async {
+    final api = widget.apiClient;
+    if (api == null || _profilePrivateSaving) return;
+    setState(() {
+      _profilePrivate = next;
+      _profilePrivateSaving = true;
+    });
+    try {
+      await api.setProfilePrivate(next);
+    } catch (e) {
+      debugPrint('profile privacy write failed: $e');
+      if (!mounted) return;
+      setState(() => _profilePrivate = !next);
+      showTopBanner(context, AppLocalizations.of(context).prefsPrivateProfileFailed);
+    } finally {
+      if (mounted) setState(() => _profilePrivateSaving = false);
+    }
+  }
+
+  Future<void> _openFollowRequests() async {
+    final api = widget.apiClient;
+    if (api == null) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute<void>(builder: (_) => FollowRequestsScreen(api: api)),
+    );
   }
 
   Future<void> _openNearbyArea() async {
@@ -1907,6 +1958,23 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
                           ? (_) => _editStravaAutoShare()
                           : null,
                     ),
+                    if (widget.apiClient != null) ...[
+                      SwitchListTile(
+                        key: const ValueKey('prefs-private-profile'),
+                        title: Text(l10n.prefsPrivateProfile),
+                        subtitle: Text(l10n.prefsPrivateProfileSubtitle),
+                        value: _profilePrivate,
+                        onChanged:
+                            _profilePrivateSaving ? null : _editProfilePrivate,
+                      ),
+                      if (_profilePrivate)
+                        ListTile(
+                          key: const ValueKey('prefs-follow-requests'),
+                          title: Text(l10n.followRequestsTitle),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: _openFollowRequests,
+                        ),
+                    ],
                     SwitchListTile(
                       title: Text(l10n.prefsDiscoverable),
                       subtitle: Text(l10n.prefsDiscoverableSubtitle),

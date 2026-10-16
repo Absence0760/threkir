@@ -1,6 +1,7 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
+import { acceptCookieConsent, setStorageOnLoad } from '../fixtures/helpers';
 
 /**
  * Cookie-consent banner on every page until accepted/rejected.
@@ -67,22 +68,12 @@ test.describe('Cookie consent banner', () => {
 	test('banner does NOT show when a choice is already stored', async ({ context, page }) => {
 		// Seed the storage state with an accepted choice BEFORE the
 		// first goto so the banner has no chance to flash.
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-			);
-		});
+		await acceptCookieConsent(context);
 		await page.goto('/');
 		await expect(page.getByRole('dialog', { name: /Cookies/ })).toHaveCount(0);
 
 		// Same for a rejected choice — never show.
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'rejected', timestamp: Date.now() })
-			);
-		});
+		await setStorageOnLoad(context, { consent: 'rejected' });
 		await page.goto('/privacy');
 		await expect(page.getByRole('dialog', { name: /Cookies/ })).toHaveCount(0);
 	});
@@ -116,9 +107,7 @@ test.describe('Cookie consent banner', () => {
 		// storageState so the banner doesn't intercept clicks across the
 		// suite. This regression-pin specifically needs the banner to
 		// render — strip the key before navigating.
-		await page.addInitScript(() => {
-			localStorage.removeItem('cookie_consent');
-		});
+		await setStorageOnLoad(page, { local: { cookie_consent: null } });
 		let plantedId: string | null = null;
 		try {
 			await page.goto('/runs/new');

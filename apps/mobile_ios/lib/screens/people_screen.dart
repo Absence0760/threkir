@@ -202,8 +202,12 @@ class _PeopleScreenState extends State<PeopleScreen> {
     try {
       if (wasFollowing) {
         await widget.api.unfollowUser(id);
-      } else {
-        await widget.api.followUser(id);
+      } else if (await widget.api.followUser(id) == FollowOutcome.requested) {
+        // A private profile: a request went out, nothing is followed yet.
+        if (!mounted) return;
+        setState(() => _flipFollow(id, false));
+        showTopBanner(
+            context, AppLocalizations.of(context).profileRequestSent);
       }
     } catch (e) {
       if (!mounted) return;

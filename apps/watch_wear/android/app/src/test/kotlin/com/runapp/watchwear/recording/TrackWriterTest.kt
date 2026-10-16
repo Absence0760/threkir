@@ -137,6 +137,43 @@ class TrackWriterTest {
     }
 
     @Test
+    fun `an off-track fix is stored flagged and an on-track one omits the key`() {
+        // docs/features/gps_distance.md § Stored track: a canopy fix the
+        // estimator took past the 30 m gate is stored for the server's
+        // replay, `"offTrack":true`, and never written `false`, so every
+        // older track reads as all on-track.
+        val w = TrackWriter(trackFile)
+        w.open()
+        w.append(GpsPoint(lat = 51.5, lng = -0.1, ele = null, epochMs = 1_716_000_000_000), distM = 0.0)
+        w.append(
+            GpsPoint(lat = 51.5001, lng = -0.1, ele = null, epochMs = 1_716_000_001_000, accuracyM = 38.0),
+            distM = 11.1,
+            offTrack = true,
+        )
+        w.append(GpsPoint(lat = 51.5002, lng = -0.1, ele = null, epochMs = 1_716_000_002_000), distM = 22.2)
+        val out = w.close().readText()
+        val arr = Json.parseToJsonElement(out).jsonArray
+        assertEquals(3, arr.size)
+        assertNull(arr[0].jsonObject["offTrack"])
+        assertEquals("true", arr[1].jsonObject["offTrack"]!!.jsonPrimitive.content)
+        assertEquals(11.1, arr[1].jsonObject["distM"]!!.jsonPrimitive.content.toDouble(), 1e-9)
+        assertNull(arr[2].jsonObject["offTrack"])
+        assertFalse(out.contains("\"offTrack\":false"))
+        assertEquals(3, w.pointCount)
+    }
+
+    @Test
+    fun `the line skips off-track fixes and keeps the order of the rest`() {
+        val raw = """[{"lat":1.0,"lng":2.0},{"lat":1.1,"lng":2.0,"offTrack":true},""" +
+            """{"lat":1.2,"lng":2.0,"offTrack":false},{"lat":"x","lng":2.0}]"""
+        assertEquals(
+            listOf(RouteMath.LatLng(1.0, 2.0), RouteMath.LatLng(1.2, 2.0)),
+            trackLineLatLngs(raw),
+        )
+        assertEquals(emptyList<RouteMath.LatLng>(), trackLineLatLngs("{}"))
+    }
+
+    @Test
     fun `pointCount tracks each append`() {
         // `RunRecordingService` reads `pointCount` for the live
         // notification ("12 km · 5800 points"). An off-by-one in
@@ -241,5 +278,20 @@ class TrackWriterTest {
             val keys = el.jsonObject.keys
             assertEquals(setOf("lat", "lng", "ele", "ts"), keys)
         }
+    }
+
+    @Test
+    fun `the credited distance is written as distM, rounded to the centimetre`() {
+        val w = TrackWriter(trackFile)
+        w.open()
+        w.append(GpsPoint(lat = 51.5, lng = -0.1, ele = null, epochMs = 0), distM = 0.0)
+        w.append(GpsPoint(lat = 51.5, lng = -0.1, ele = null, epochMs = 1000), distM = 812.4049)
+        w.append(GpsPoint(lat = 51.5, lng = -0.1, ele = null, epochMs = 2000), distM = Double.NaN)
+        w.append(GpsPoint(lat = 51.5, lng = -0.1, ele = null, epochMs = 3000))
+        val arr = Json.parseToJsonElement(w.close().readText()).jsonArray
+        assertEquals(0.0, arr[0].jsonObject["distM"]!!.jsonPrimitive.content.toDouble(), 0.0)
+        assertEquals(812.4, arr[1].jsonObject["distM"]!!.jsonPrimitive.content.toDouble(), 1e-9)
+        assertEquals(setOf("lat", "lng", "ele", "ts"), arr[2].jsonObject.keys)
+        assertEquals(setOf("lat", "lng", "ele", "ts"), arr[3].jsonObject.keys)
     }
 }

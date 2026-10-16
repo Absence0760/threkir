@@ -92,6 +92,9 @@ type trackReplay struct {
 	SmoothedCumM []float64
 	ForwardCumM  []float64
 	Positions    []*gpsdistance.LatLng
+	// GapM is the chord lower bound both passes credit across GPS gaps
+	// (gpsdistance.SmoothResult.GapM).
+	GapM float64
 }
 
 // replayRecordedTrack replays every timestamped point of pts (all
@@ -141,6 +144,7 @@ func replayRecordedTrack(pts []RecordedTrackPoint, maxSpeedMps float64) trackRep
 		SmoothedCumM: make([]float64, len(pts)),
 		ForwardCumM:  make([]float64, len(pts)),
 		Positions:    make([]*gpsdistance.LatLng, len(pts)),
+		GapM:         res.GapM,
 	}
 	var sm, fw float64
 	for i, ev := range eventOf {

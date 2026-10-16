@@ -755,6 +755,7 @@ class ClubRow {
   static const String colStravaUrl = 'strava_url';
   static const String colFacebookUrl = 'facebook_url';
   static const String colShadowHidden = 'shadow_hidden';
+  static const String colStravaClubId = 'strava_club_id';
 
   final String id;
   final String ownerId;
@@ -777,6 +778,7 @@ class ClubRow {
   final String? stravaUrl;
   final String? facebookUrl;
   final bool shadowHidden;
+  final int? stravaClubId;
 
   const ClubRow({
     required this.id,
@@ -800,6 +802,7 @@ class ClubRow {
     this.stravaUrl,
     this.facebookUrl,
     required this.shadowHidden,
+    this.stravaClubId,
   });
 
   factory ClubRow.fromJson(Map<String, dynamic> json) => ClubRow(
@@ -824,6 +827,7 @@ class ClubRow {
     stravaUrl: json['strava_url'] as String?,
     facebookUrl: json['facebook_url'] as String?,
     shadowHidden: (json['shadow_hidden'] as bool?) ?? false,
+    stravaClubId: (json['strava_club_id'] as num?)?.toInt(),
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -848,6 +852,7 @@ class ClubRow {
     colStravaUrl: stravaUrl,
     colFacebookUrl: facebookUrl,
     colShadowHidden: shadowHidden,
+    colStravaClubId: stravaClubId,
   };
 
   ClubRow copyWith({
@@ -872,6 +877,7 @@ class ClubRow {
     String? stravaUrl,
     String? facebookUrl,
     bool? shadowHidden,
+    int? stravaClubId,
   }) => ClubRow(
     id: id ?? this.id,
     ownerId: ownerId ?? this.ownerId,
@@ -894,6 +900,7 @@ class ClubRow {
     stravaUrl: stravaUrl ?? this.stravaUrl,
     facebookUrl: facebookUrl ?? this.facebookUrl,
     shadowHidden: shadowHidden ?? this.shadowHidden,
+    stravaClubId: stravaClubId ?? this.stravaClubId,
   );
 }
 
@@ -2441,6 +2448,47 @@ class FitnessSnapshotRow {
     notes: notes ?? this.notes,
     createdAt: createdAt ?? this.createdAt,
     snapshotDay: snapshotDay ?? this.snapshotDay,
+  );
+}
+
+/// Row shape for the `follow_requests` table. Mirrors the Supabase schema
+/// exactly — field names are snake_case to match the JSON wire format.
+class FollowRequestRow {
+  static const String table = 'follow_requests';
+  static const String colRequesterId = 'requester_id';
+  static const String colTargetId = 'target_id';
+  static const String colRequestedAt = 'requested_at';
+
+  final String requesterId;
+  final String targetId;
+  final DateTime requestedAt;
+
+  const FollowRequestRow({
+    required this.requesterId,
+    required this.targetId,
+    required this.requestedAt,
+  });
+
+  factory FollowRequestRow.fromJson(Map<String, dynamic> json) => FollowRequestRow(
+    requesterId: json['requester_id'] as String,
+    targetId: json['target_id'] as String,
+    requestedAt: parseIsoStrictRequired(json['requested_at'], 'requested_at'),
+  );
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    colRequesterId: requesterId,
+    colTargetId: targetId,
+    colRequestedAt: requestedAt.toIso8601String(),
+  };
+
+  FollowRequestRow copyWith({
+    String? requesterId,
+    String? targetId,
+    DateTime? requestedAt,
+  }) => FollowRequestRow(
+    requesterId: requesterId ?? this.requesterId,
+    targetId: targetId ?? this.targetId,
+    requestedAt: requestedAt ?? this.requestedAt,
   );
 }
 
@@ -5790,6 +5838,47 @@ class RouteRow {
   );
 }
 
+/// Row shape for the `run_comment_likes` table. Mirrors the Supabase schema
+/// exactly — field names are snake_case to match the JSON wire format.
+class RunCommentLikeRow {
+  static const String table = 'run_comment_likes';
+  static const String colUserId = 'user_id';
+  static const String colCommentId = 'comment_id';
+  static const String colLikedAt = 'liked_at';
+
+  final String userId;
+  final String commentId;
+  final DateTime likedAt;
+
+  const RunCommentLikeRow({
+    required this.userId,
+    required this.commentId,
+    required this.likedAt,
+  });
+
+  factory RunCommentLikeRow.fromJson(Map<String, dynamic> json) => RunCommentLikeRow(
+    userId: json['user_id'] as String,
+    commentId: json['comment_id'] as String,
+    likedAt: parseIsoStrictRequired(json['liked_at'], 'liked_at'),
+  );
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    colUserId: userId,
+    colCommentId: commentId,
+    colLikedAt: likedAt.toIso8601String(),
+  };
+
+  RunCommentLikeRow copyWith({
+    String? userId,
+    String? commentId,
+    DateTime? likedAt,
+  }) => RunCommentLikeRow(
+    userId: userId ?? this.userId,
+    commentId: commentId ?? this.commentId,
+    likedAt: likedAt ?? this.likedAt,
+  );
+}
+
 /// Row shape for the `run_comments` table. Mirrors the Supabase schema
 /// exactly — field names are snake_case to match the JSON wire format.
 class RunCommentRow {
@@ -6054,6 +6143,7 @@ class RunPhotoRow {
   static const String colEventInstanceStart = 'event_instance_start';
   static const String colHiddenAt = 'hidden_at';
   static const String colHiddenBy = 'hidden_by';
+  static const String colRaceGallery = 'race_gallery';
 
   final String id;
   final String? runId;
@@ -6067,6 +6157,7 @@ class RunPhotoRow {
   final DateTime? eventInstanceStart;
   final DateTime? hiddenAt;
   final String? hiddenBy;
+  final bool raceGallery;
 
   const RunPhotoRow({
     required this.id,
@@ -6081,6 +6172,7 @@ class RunPhotoRow {
     this.eventInstanceStart,
     this.hiddenAt,
     this.hiddenBy,
+    required this.raceGallery,
   });
 
   factory RunPhotoRow.fromJson(Map<String, dynamic> json) => RunPhotoRow(
@@ -6096,6 +6188,7 @@ class RunPhotoRow {
     eventInstanceStart: parseIsoStrictValue(json['event_instance_start']),
     hiddenAt: parseIsoStrictValue(json['hidden_at']),
     hiddenBy: json['hidden_by'] as String?,
+    raceGallery: (json['race_gallery'] as bool?) ?? false,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -6111,6 +6204,7 @@ class RunPhotoRow {
     colEventInstanceStart: eventInstanceStart?.toIso8601String(),
     colHiddenAt: hiddenAt?.toIso8601String(),
     colHiddenBy: hiddenBy,
+    colRaceGallery: raceGallery,
   };
 
   RunPhotoRow copyWith({
@@ -6126,6 +6220,7 @@ class RunPhotoRow {
     DateTime? eventInstanceStart,
     DateTime? hiddenAt,
     String? hiddenBy,
+    bool? raceGallery,
   }) => RunPhotoRow(
     id: id ?? this.id,
     runId: runId ?? this.runId,
@@ -6139,6 +6234,55 @@ class RunPhotoRow {
     eventInstanceStart: eventInstanceStart ?? this.eventInstanceStart,
     hiddenAt: hiddenAt ?? this.hiddenAt,
     hiddenBy: hiddenBy ?? this.hiddenBy,
+    raceGallery: raceGallery ?? this.raceGallery,
+  );
+}
+
+/// Row shape for the `run_reactions` table. Mirrors the Supabase schema
+/// exactly — field names are snake_case to match the JSON wire format.
+class RunReactionRow {
+  static const String table = 'run_reactions';
+  static const String colUserId = 'user_id';
+  static const String colRunId = 'run_id';
+  static const String colReaction = 'reaction';
+  static const String colReactedAt = 'reacted_at';
+
+  final String userId;
+  final String runId;
+  final String reaction;
+  final DateTime reactedAt;
+
+  const RunReactionRow({
+    required this.userId,
+    required this.runId,
+    required this.reaction,
+    required this.reactedAt,
+  });
+
+  factory RunReactionRow.fromJson(Map<String, dynamic> json) => RunReactionRow(
+    userId: json['user_id'] as String,
+    runId: json['run_id'] as String,
+    reaction: json['reaction'] as String,
+    reactedAt: parseIsoStrictRequired(json['reacted_at'], 'reacted_at'),
+  );
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    colUserId: userId,
+    colRunId: runId,
+    colReaction: reaction,
+    colReactedAt: reactedAt.toIso8601String(),
+  };
+
+  RunReactionRow copyWith({
+    String? userId,
+    String? runId,
+    String? reaction,
+    DateTime? reactedAt,
+  }) => RunReactionRow(
+    userId: userId ?? this.userId,
+    runId: runId ?? this.runId,
+    reaction: reaction ?? this.reaction,
+    reactedAt: reactedAt ?? this.reactedAt,
   );
 }
 
@@ -6226,6 +6370,7 @@ class RunRow {
   static const String colFastestMarathonS = 'fastest_marathon_s';
   static const String colConcludedAt = 'concluded_at';
   static const String colFollowersOnly = 'followers_only';
+  static const String colSafetyAudience = 'safety_audience';
 
   final String id;
   final String userId;
@@ -6252,6 +6397,7 @@ class RunRow {
   final int? fastestMarathonS;
   final DateTime? concludedAt;
   final bool followersOnly;
+  final bool safetyAudience;
 
   const RunRow({
     required this.id,
@@ -6279,6 +6425,7 @@ class RunRow {
     this.fastestMarathonS,
     this.concludedAt,
     required this.followersOnly,
+    required this.safetyAudience,
   });
 
   factory RunRow.fromJson(Map<String, dynamic> json) => RunRow(
@@ -6307,6 +6454,7 @@ class RunRow {
     fastestMarathonS: (json['fastest_marathon_s'] as num?)?.toInt(),
     concludedAt: parseIsoStrictValue(json['concluded_at']),
     followersOnly: (json['followers_only'] as bool?) ?? false,
+    safetyAudience: (json['safety_audience'] as bool?) ?? false,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -6335,6 +6483,7 @@ class RunRow {
     colFastestMarathonS: fastestMarathonS,
     colConcludedAt: concludedAt?.toIso8601String(),
     colFollowersOnly: followersOnly,
+    colSafetyAudience: safetyAudience,
   };
 
   RunRow copyWith({
@@ -6363,6 +6512,7 @@ class RunRow {
     int? fastestMarathonS,
     DateTime? concludedAt,
     bool? followersOnly,
+    bool? safetyAudience,
   }) => RunRow(
     id: id ?? this.id,
     userId: userId ?? this.userId,
@@ -6389,6 +6539,7 @@ class RunRow {
     fastestMarathonS: fastestMarathonS ?? this.fastestMarathonS,
     concludedAt: concludedAt ?? this.concludedAt,
     followersOnly: followersOnly ?? this.followersOnly,
+    safetyAudience: safetyAudience ?? this.safetyAudience,
   );
 }
 
@@ -7253,6 +7404,7 @@ class UserProfileRow {
   static const String colTierUpdatedEventTs = 'tier_updated_event_ts';
   static const String colHandle = 'handle';
   static const String colAiDisclosureVersion = 'ai_disclosure_version';
+  static const String colProfilePrivate = 'profile_private';
 
   final String id;
   final String? displayName;
@@ -7275,6 +7427,7 @@ class UserProfileRow {
   final int? tierUpdatedEventTs;
   final String? handle;
   final int? aiDisclosureVersion;
+  final bool profilePrivate;
 
   const UserProfileRow({
     required this.id,
@@ -7298,6 +7451,7 @@ class UserProfileRow {
     this.tierUpdatedEventTs,
     this.handle,
     this.aiDisclosureVersion,
+    required this.profilePrivate,
   });
 
   factory UserProfileRow.fromJson(Map<String, dynamic> json) => UserProfileRow(
@@ -7322,6 +7476,7 @@ class UserProfileRow {
     tierUpdatedEventTs: (json['tier_updated_event_ts'] as num?)?.toInt(),
     handle: json['handle'] as String?,
     aiDisclosureVersion: (json['ai_disclosure_version'] as num?)?.toInt(),
+    profilePrivate: (json['profile_private'] as bool?) ?? false,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -7346,6 +7501,7 @@ class UserProfileRow {
     colTierUpdatedEventTs: tierUpdatedEventTs,
     colHandle: handle,
     colAiDisclosureVersion: aiDisclosureVersion,
+    colProfilePrivate: profilePrivate,
   };
 
   UserProfileRow copyWith({
@@ -7370,6 +7526,7 @@ class UserProfileRow {
     int? tierUpdatedEventTs,
     String? handle,
     int? aiDisclosureVersion,
+    bool? profilePrivate,
   }) => UserProfileRow(
     id: id ?? this.id,
     displayName: displayName ?? this.displayName,
@@ -7392,6 +7549,7 @@ class UserProfileRow {
     tierUpdatedEventTs: tierUpdatedEventTs ?? this.tierUpdatedEventTs,
     handle: handle ?? this.handle,
     aiDisclosureVersion: aiDisclosureVersion ?? this.aiDisclosureVersion,
+    profilePrivate: profilePrivate ?? this.profilePrivate,
   );
 }
 

@@ -1,8 +1,9 @@
-import { expect, test } from '../fixtures/mock-route';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_B } from '../fixtures/users';
 import { readRows } from '../fixtures/db-read';
+import { setStorageOnLoad } from '../fixtures/helpers';
 
 /**
  * /settings/integrations — connected-state UI + disconnect flow.
@@ -513,9 +514,7 @@ test.describe('/settings/integrations — connected-state UI (planted rows)', ()
 
 		// OAuth 2.0 §10.12: completeStravaOAuth refuses to exchange unless
 		// the echoed state matches what it stashed before redirecting out.
-		await page.addInitScript(() => {
-			sessionStorage.setItem('strava_oauth_state', 'e2e-connect-state');
-		});
+		await setStorageOnLoad(page, { session: { strava_oauth_state: 'e2e-connect-state' } });
 
 		let sawConnect = false;
 		await mockRoute(page, '**/functions/v1/strava-import**', async (route) => {

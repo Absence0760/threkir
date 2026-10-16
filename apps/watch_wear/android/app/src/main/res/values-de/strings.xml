@@ -129,8 +129,10 @@
     <string name="done">Fertig</string>
 
     <string name="perm_title_blocked">Standort erforderlich</string>
+    <string name="perm_title_precise">Genauer Standort aus</string>
     <string name="perm_title_degraded">Einige Funktionen aus</string>
     <string name="perm_cost_location">Ohne Standort zeichnet dieser Lauf nur die Zeit auf — keine Route, Distanz oder Pace.</string>
+    <string name="perm_cost_precise_location">Der ungefähre Standort ist zu grob für Route, Distanz oder Pace. Wähle „Genau“ oder aktiviere „Genauen Standort verwenden“.</string>
     <string name="perm_cost_heart_rate">Herzfrequenz wird nicht aufgezeichnet.</string>
     <string name="perm_cost_steps">Schritte werden nicht aufgezeichnet.</string>
     <string name="perm_cost_notification">Kein Lauf-Chip auf dem Zifferblatt während der Aufzeichnung.</string>

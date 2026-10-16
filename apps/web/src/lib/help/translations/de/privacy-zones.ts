@@ -15,7 +15,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'Sie gilt für das, was andere sehen: geteilte Läufe und Routen, dein öffentliches Profil, den Feed, Heatmaps und die Live-Tracking-Seite.',
+						'Sie gilt für das, was andere sehen: geteilte Läufe und Routen, dein öffentliches Profil, den Feed, Heatmaps, die Live-Tracking-Seite und die Laufkarten, die ein Coach, mit dem du arbeitest, öffnen kann.',
 						'Sie gilt für bereits aufgezeichnete Läufe ebenso wie für neue, denn der Track wird jedes Mal gekürzt, wenn jemand anderes ihn ansieht.',
 						'Du selbst siehst immer deinen vollständigen Track, und Dateien, die du für dich exportierst, enthalten ebenfalls den vollständigen Track.',
 					],
@@ -88,9 +88,10 @@ export const translation: GuideTranslation = {
 		summary: '04c4913e2da59def',
 		's0.heading': '27ee9eff5654fc40',
 		's0.b0': '0786f273bb90019e',
-		's0.b1.i0': 'ae791e6bb37bf75e',
+		's0.b1.i0': 'd76fc2aebe831b0b',
 		's0.b1.i1': 'f895445f10db7b57',
 		's0.b1.i2': '591dec4de03df2a3',
+		's0.b2': '9bfc49abe8494ae1',
 		's1.heading': 'cc3973572fe81b73',
 		's1.b0.i0': 'a9f7c5a79d8779f0',
 		's1.b0.i1': 'de234d8646b8454f',
@@ -109,6 +110,5 @@ export const translation: GuideTranslation = {
 		's3.b0.i1': '7e6aff2443fca79b',
 		's3.b0.i2': '2d441105a1624ed1',
 		's3.b1': '20c32d436fe0799c',
-		's0.b2': '9bfc49abe8494ae1',
 	},
 };

@@ -197,13 +197,15 @@ test('a spec that calls mockRoute takes `test` from the fixture', () => {
 		if (rel.startsWith('fixtures/mock-route')) continue;
 		const source = stripComments(readFileSync(file, 'utf8'));
 		if (!/\bmockRoute\(/.test(source)) continue;
-		if (!/from\s+'(?:\.\.\/)+fixtures\/mock-route'/.test(source)) offenders.push(rel);
+		if (!/import\s*\{[^}]*\btest\b[^}]*\}\s*from\s+'(?:\.\.\/)+fixtures\/test'/.test(source)) {
+			offenders.push(rel);
+		}
 	}
 	assert.deepEqual(
 		offenders,
 		[],
-		'These files use `mockRoute` without importing `test` from fixtures/mock-route, so the ' +
-			`fixture that provides it is not in scope: ${offenders.join(' ')}`
+		'These files use `mockRoute` without importing `test` from fixtures/test (the crash net, ' +
+			`which extends mock-route), so the fixture that provides it is not in scope: ${offenders.join(' ')}`
 	);
 });
 

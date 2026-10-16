@@ -1,7 +1,8 @@
-import { expect, test } from '../fixtures/mock-route';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * /share/run/[id] — read-only gear chip on the public share page.
@@ -27,12 +28,7 @@ test.describe('/share/run/[id] — gear chip (anon)', () => {
 	let plantedRunId: string | null = null;
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-			);
-		});
+		await acceptCookieConsent(context);
 
 		const admin = getAdminClient();
 		const inserted = await admin

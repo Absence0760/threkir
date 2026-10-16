@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * /guided depth coverage — gaps the page.spec.ts smoke suite leaves
@@ -25,18 +26,11 @@ const KNOWN = [
 	{ id: 'first-timer-15', minutes: 15, cueCount: 11, lastStamp: '15:00' }
 ];
 
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-	);
-}
-
 test.describe('/guided — index↔detail cue-count parity (anon)', () => {
 	test.use({ storageState: { cookies: [], origins: [] } });
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(context);
 	});
 
 	for (const r of KNOWN) {
@@ -104,7 +98,7 @@ test.describe('/guided/[id] — unknown id is an in-page empty state, not a 404'
 	test.use({ storageState: { cookies: [], origins: [] } });
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(context);
 	});
 
 	test('an unknown id serves a 200 SPA shell + the empty state, no redirect', async ({

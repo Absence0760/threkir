@@ -29,6 +29,43 @@ const double heatFluidFactor = 1.5;
 /// Carbs per gel, for the [FuelLeg.carryToNextAid] gel count.
 const double gelCarbsG = 25;
 
+/// Weight-based fluid baseline (decisions § 1976). Sweat loss at a given pace
+/// and climate scales with metabolic heat production, and the energy cost of
+/// running is proportional to body mass (~1 kcal/kg/km, the constant
+/// [runCalories] uses), so the moderate-conditions default above is read as the
+/// rate for a 70 kg reference runner and scaled by mass. The result is held to
+/// the 0.4–0.8 L/h band the ACSM position stand gives for marathon running
+/// (Sawka et al., "Exercise and fluid replacement", Med Sci Sports Exerc 2007;
+/// 39(2):377–390: higher for heavier, faster runners in the warm, lower for
+/// lighter, slower ones in the cool). The 800 ml/h ceiling also keeps the
+/// baseline below the overdrinking that drives exercise-associated
+/// hyponatremia. It is a planning baseline, not a measured sweat rate; heat
+/// still multiplies it, as it multiplies the flat rate.
+const double weightFluidReferenceKg = 70;
+const double weightFluidMinMl = 400;
+const double weightFluidMaxMl = 800;
+const double weightFluidRoundMl = 25;
+
+/// The body-metrics weight range; outside it the weight is not used.
+const double weightFluidMinKg = 20;
+const double weightFluidMaxKg = 250;
+
+/// Per-hour fluid baseline from body weight, or null when the weight is absent
+/// or outside the body-metrics range, so the caller falls back to the flat
+/// rate. The caller decides whether a weight may be used at all (Art 9
+/// consent).
+double? weightFluidPerHourMl(double? weightKg) {
+  if (weightKg == null ||
+      !weightKg.isFinite ||
+      weightKg < weightFluidMinKg ||
+      weightKg > weightFluidMaxKg) {
+    return null;
+  }
+  final scaled = defaultFluidPerHourMl * weightKg / weightFluidReferenceKg;
+  final rounded = (scaled / weightFluidRoundMl).round() * weightFluidRoundMl;
+  return math.min(weightFluidMaxMl, math.max(weightFluidMinMl, rounded));
+}
+
 /// Minimal per-leg input. The surface maps each `RoadbookLeg` to one of these.
 class FuelLegInput {
   final double projectedElapsedS;

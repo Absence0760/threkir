@@ -2,8 +2,8 @@ import XCTest
 import CoreLocation
 @testable import WatchApp
 
-/// The recording stack's GPS-resilience pair: the self-heal retry decision and
-/// the indoor-vs-lost banner.
+/// The recording stack's GPS-resilience decisions: the self-heal retry, the
+/// indoor-vs-lost banner, and what to do when Precise Location is off.
 ///
 /// **Host-tested only, and that is the honest ceiling.** A watchOS simulator
 /// serves whatever location Xcode is configured to serve; it does not wedge
@@ -145,6 +145,50 @@ final class GpsHealthTests: XCTestCase {
         XCTAssertEqual(GpsHealth.banner(lastAcceptedFixAge: 120), .lost)
     }
 
+    // MARK: - Precise Location
+
+    func testFullAccuracyNeedsNothing() {
+        XCTAssertEqual(
+            GpsHealth.precisionStep(authorized: true, reducedAccuracy: false, alreadyAsked: false),
+            .precise
+        )
+        XCTAssertEqual(
+            GpsHealth.precisionStep(authorized: true, reducedAccuracy: false, alreadyAsked: true),
+            .precise
+        )
+    }
+
+    func testReducedAccuracyAsksForFullAccuracyFirst() {
+        XCTAssertEqual(
+            GpsHealth.precisionStep(authorized: true, reducedAccuracy: true, alreadyAsked: false),
+            .requestFullAccuracy
+        )
+    }
+
+    func testReducedAccuracyAfterAskingWarnsRatherThanAskingAgain() {
+        // A decline is the runner's answer for this run; a second sheet on the
+        // next authorization callback would land mid-stride.
+        XCTAssertEqual(
+            GpsHealth.precisionStep(authorized: true, reducedAccuracy: true, alreadyAsked: true),
+            .warnReduced
+        )
+    }
+
+    func testAnUnauthorizedManagerNeitherAsksNorWarns() {
+        // The no-GPS banner already covers a missing grant, and the precision
+        // notice would send the runner to the wrong setting.
+        for asked in [false, true] {
+            XCTAssertEqual(
+                GpsHealth.precisionStep(authorized: false, reducedAccuracy: true, alreadyAsked: asked),
+                .precise
+            )
+        }
+    }
+
+    func testRecorderStartsWithNoPrecisionNotice() {
+        XCTAssertFalse(WorkoutManager().preciseLocationOff)
+    }
+
     // MARK: - Wiring: the recorder stamps the banner's clock from real fixes
 
     func testRecorderStartsIndoorAndClearsOnTheFirstAcceptedFix() {
@@ -161,13 +205,22 @@ final class GpsHealthTests: XCTestCase {
     }
 
     func testARejectedFixDoesNotClearTheIndoorBanner() {
-        // A 50 m fix is dropped by the accuracy gate, so it banks no distance
+        // A 51 m fix is past the estimator's 50 m cap, so it banks no distance
         // — telling the runner GPS is fine while the distance sits at zero
         // would be the lie the banner exists to prevent.
         let wm = WorkoutManager()
-        wm.locationManager(CLLocationManager(), didUpdateLocations: [fix(accuracy: 50)])
+        wm.locationManager(CLLocationManager(), didUpdateLocations: [fix(accuracy: 51)])
         wm.refreshGpsBanner()
         XCTAssertEqual(wm.gpsBanner, .noFixYet)
+    }
+
+    func testACanopyFixTheEstimatorKeepsClearsTheIndoorBanner() {
+        // 40 m is past the track gate but inside the estimator's cap: it can
+        // move distance, so GPS is not lost.
+        let wm = WorkoutManager()
+        wm.locationManager(CLLocationManager(), didUpdateLocations: [fix(accuracy: 40)])
+        wm.refreshGpsBanner()
+        XCTAssertEqual(wm.gpsBanner, .healthy)
     }
 
     private func fix(accuracy: Double) -> CLLocation {

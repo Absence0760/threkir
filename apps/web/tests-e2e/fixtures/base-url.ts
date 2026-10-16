@@ -8,10 +8,10 @@
  * bare Node `fetch` has no `baseURL` notion), and those resolve it from the
  * lane they are running in rather than restating a literal.
  *
- * Four lanes besides the sharded suite run on their own ports (livehub
- * :7778, exporthub :7779, sso :7780, built :7781), so a spec that re-derives
- * `process.env.PLAYWRIGHT_BASE_URL` is wrong in four of the five lanes even
- * when it is right in the fifth. `fixtures/base-url.test.ts` fails the build
+ * Five lanes besides the sharded suite run on their own ports (livehub
+ * :7778, exporthub :7779, sso :7780, built :7781, configured :7782), so a spec
+ * that re-derives `process.env.PLAYWRIGHT_BASE_URL` is wrong in five of the six
+ * lanes even when it is right in the sixth. `fixtures/base-url.test.ts` fails the build
  * on any literal dev-server origin outside this module and the lane configs.
  */
 

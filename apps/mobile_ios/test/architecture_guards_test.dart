@@ -205,15 +205,30 @@ void main() {
         reason: 'the _begin() hook must gate through '
             'shouldStartBroadcastOnRunStart',
       );
-      final hookWindow = sideEffects.substring(gateIdx, gateIdx + 500);
+      // The whole unawaited(...) call the gate guards, balanced on its
+      // parentheses, so a longer .then() cannot push its catchError out of
+      // view.
+      final callIdx = sideEffects.indexOf('unawaited(', gateIdx);
       expect(
-        hookWindow.contains('unawaited(_startLiveBroadcast()'),
+        callIdx > -1 &&
+            sideEffects.startsWith('unawaited(_startLiveBroadcast(', callIdx),
         isTrue,
         reason: 'the auto share is fire-and-forget — _begin() must not '
             'await the network before starting the clock',
       );
+      var depth = 0;
+      var callEnd = callIdx;
+      for (var i = callIdx; i < sideEffects.length; i++) {
+        final c = sideEffects[i];
+        if (c == '(') depth++;
+        if (c == ')' && --depth == 0) {
+          callEnd = i + 1;
+          break;
+        }
+      }
+      final hookCall = sideEffects.substring(callIdx, callEnd);
       expect(
-        hookWindow.contains('catchError'),
+        hookCall.contains('catchError'),
         isTrue,
         reason: 'the auto share needs its own error path (L4) so a '
             'failure cannot surface as an unhandled zone error mid-start',
@@ -422,9 +437,11 @@ void main() {
       // Reason: the live counter used to sum every positive altitude delta
       // with no noise band and no dropout carry, so a flat 10K read ~1,200 m
       // on the run screen and ~38 m on the run-detail screen minutes later.
-      // computeElevationGain / ElevationGainAccumulator in route_simplify.dart
-      // are the ONE elevation-gain contract (3 m gate + dropout carry); the
-      // screen must feed the accumulator, not re-derive the arithmetic.
+      // computeRunElevationGain / RunElevationGainAccumulator in
+      // run_altitude.dart are the ONE recorded-run elevation-gain contract
+      // (the barometer-or-GPS series and its band, over route_simplify.dart's
+      // gate + dropout carry); the screen must feed that accumulator, not
+      // re-derive the arithmetic or pick a band of its own.
       final body = _extractMethodBody(
         source,
         r'void _onSnapshot\(RunSnapshot snapshot\)\s*\{',
@@ -433,7 +450,13 @@ void main() {
         body,
         contains('_elevationGain.add('),
         reason: '_onSnapshot must append new waypoints to the shared '
-            'ElevationGainAccumulator.',
+            'RunElevationGainAccumulator.',
+      );
+      expect(
+        source,
+        contains('final RunElevationGainAccumulator _elevationGain'),
+        reason: 'The live gain must be the run_altitude.dart accumulator, '
+            'so it reads the same series and band as the run-detail figure.',
       );
       expect(
         body.contains('_elevationGainMetres +='),
@@ -443,9 +466,14 @@ void main() {
       );
       expect(
         source,
-        contains("import '../route_simplify.dart';"),
-        reason: 'The gate constant and the accumulator live in '
-            'route_simplify.dart; do not fork a second 3 m threshold here.',
+        contains("import '../run_altitude.dart';"),
+        reason: 'The accumulator and its bands live in run_altitude.dart.',
+      );
+      expect(
+        RegExp(r'minDeltaM|kElevationGain\w*MinDeltaM').hasMatch(source),
+        isFalse,
+        reason: 'The noise bands belong to run_altitude.dart and '
+            'route_simplify.dart; do not fork a threshold here.',
       );
     });
 
@@ -580,6 +608,25 @@ void main() {
         reason: '_saveInProgress must call WorkoutRunner.reviewMetadata '
             'so a crashed workout keeps its review on recovery.',
       );
+    });
+
+    test('_saveInProgress checkpoints the stored track, not the line', () {
+      // Reason: the recorder stores every fix its distance estimator took,
+      // off-track ones flagged, so the server can replay the run's own
+      // input (gps_distance.md § Stored track). The live line drops those
+      // fixes; a checkpoint written from it would lose them on a resume or
+      // a crash recovery, and its `track_complete` would then be false.
+      final body = _extractMethodBody(
+        source,
+        r'Future<void> _saveInProgress\(\)\s*async\s*\{',
+      );
+      expect(body, contains('List.unmodifiable(_storedTrack)'),
+          reason: 'the checkpoint must persist the stored track');
+      expect(body, contains('storedTrackComplete'),
+          reason: 'the checkpoint carries track_complete for the resume');
+      expect(source, contains('trackComplete:'),
+          reason: 'the resume hands the checkpoint\'s claim back to the '
+              'recorder');
     });
 
     test('_stop stamps workout review metadata via the same helper', () {
@@ -2232,6 +2279,27 @@ void main() {
       );
     });
 
+    test('the coach view clips the athlete map as the athlete, not the coach',
+        () {
+      // Reason: decisions § 1968 serves a linked coach the athlete's run map
+      // only through clip-public-track. Without ownerUserId the preview
+      // would take the owner branch and ask Storage for the raw bytes.
+      final source =
+          File('lib/screens/coaching_athlete_screen.dart').readAsStringSync();
+      expect(
+        source,
+        matches(RegExp(r'RunTrackPreview\([^)]*runId: r\.id', dotAll: true)),
+        reason: 'the coach view must thread the run id into RunTrackPreview.',
+      );
+      expect(
+        source,
+        matches(RegExp(r'RunTrackPreview\([^)]*ownerUserId: widget\.athleteId',
+            dotAll: true)),
+        reason: 'the coach view must name the athlete as the owner, so the '
+            'privacy-zone clip runs against the athlete\'s zones.',
+      );
+    });
+
     test('RunTrackPreview cache is bounded (LRU)', () {
       // Reason: without the cap a long session through 1000+ runs
       // holds every deserialised track in memory until app restart.
@@ -2793,7 +2861,7 @@ void main() {
     // landed without the call-site fix.
     //
     // Pin the discipline statically so the next regression fails the
-    // `Test Flutter packages` job in PR CI before it reaches Postgres.
+    // `Test mobile_android` job in PR CI before it reaches Postgres.
     // The fix at any failing call site is "enumerate the columns
     // explicitly via the constants in social_service.dart /
     // api_client.dart", or for nested embeds use the `($_safeCols)`

@@ -20,10 +20,10 @@
 		"rclt"
 	],
 	"subset": {
-		"bytes": 71528,
-		"sha256": "0722efdc2ec332c3215ccbb7bca383e337e2be5124f4eb8adc435a420c214ed7",
-		"glyphs": 317,
-		"ligatures": 426
+		"bytes": 71640,
+		"sha256": "10a3f1a81531efcd06fd174f0a4d6b89c7e14d9e66ff24ee423d5ae4ba16621d",
+		"glyphs": 319,
+		"ligatures": 429
 	},
 	"icons": [
 		"10k",
@@ -37,6 +37,7 @@
 		"add_location_alt",
 		"add_photo_alternate",
 		"add_road",
+		"adjust",
 		"ads_click",
 		"alt_route",
 		"anchor",
@@ -237,6 +238,7 @@
 		"person_search",
 		"phone_android",
 		"phone_iphone",
+		"photo",
 		"photo_camera",
 		"photo_library",
 		"pin_drop",

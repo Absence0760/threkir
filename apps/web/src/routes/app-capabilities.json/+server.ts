@@ -3,6 +3,7 @@ import { webCheckoutAvailable } from '#lib/billing/revenuecat.ts';
 import { coachEnabled } from '#lib/coach/coach_flag.ts';
 import { routeGenEnabled } from '#lib/routes/route_gen_flag.ts';
 import { aiPlanEnabled } from '#lib/training/ai_plan_flag.ts';
+import { platePhotoEnabled } from '#lib/nutrition/plate_photo_flag.ts';
 
 // Build-time capability manifest for the native clients. `adapter-static`
 // prerenders this once (like /sitemap.xml) into a plain file in `build/`,
@@ -31,6 +32,10 @@ import { aiPlanEnabled } from '#lib/training/ai_plan_flag.ts';
 // under. A native client reads it to decide whether to offer the assistant
 // and the coach's `/plans/new?describe=` handoff; it is not a Pro perk.
 //
+// `plate_photo` is whether the plate-photo logger is live, under the same
+// `coachEnabled() && platePhotoEnabled()` /nutrition/log renders it under. The
+// endpoint is a Pro perk checked per call; this answer sells nothing.
+//
 // Public by construction: every value derives from a PUBLIC_ var present in
 // the client bundle every visitor downloads. Nothing here is a secret.
 //
@@ -45,6 +50,7 @@ export const GET: RequestHandler = () =>
 			route_gen: routeGenEnabled(),
 			web_checkout: webCheckoutAvailable(),
 			ai_plan: coachEnabled() && aiPlanEnabled(),
+			plate_photo: coachEnabled() && platePhotoEnabled(),
 		}),
 		{
 			headers: {

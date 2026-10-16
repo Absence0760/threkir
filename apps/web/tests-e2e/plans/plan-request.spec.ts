@@ -1,4 +1,4 @@
-import { expect, test } from '../fixtures/mock-route';
+import { expect, test } from '../fixtures/test';
 
 import { browserDate } from '../fixtures/dates';
 import { USER_A } from '../fixtures/users';
@@ -174,7 +174,7 @@ test.describe('/plans/new — AI plan request', () => {
 		expect(bodies).toHaveLength(1);
 	});
 
-	test('a consent refusal links to /coach to accept the updated disclosure', async ({ page, mockRoute }) => {
+	test('a consent refusal links to Settings to accept the updated disclosure', async ({ page, mockRoute }) => {
 		await mockRoute(page, '**/api/coach/plan-request', async (route) => {
 			await route.fulfill({
 				status: 403,
@@ -192,7 +192,7 @@ test.describe('/plans/new — AI plan request', () => {
 		const error = editor.locator('.ai-error');
 		await expect(error).toBeVisible({ timeout: 10_000 });
 		await expect(error).toContainText('updated AI disclosure');
-		await expect(error.getByRole('link')).toHaveAttribute('href', '/coach');
+		await expect(error.getByRole('link')).toHaveAttribute('href', '/settings/account#ai-consent');
 		await expect(editor.locator('.ai-applied')).toHaveCount(0);
 	});
 

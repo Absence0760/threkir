@@ -3,7 +3,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { COACH_SYSTEM_PROMPT, planHandoffAddendum } from './system_prompt';
+import { COACH_SYSTEM_PROMPT, fuelHandoffAddendum, planEditHandoffAddendum, planHandoffAddendum } from './system_prompt';
 
 test('system prompt declares the <CONTEXT> boundary', () => {
 	// audit/coach May 2026 Medium #4 + Low #11 — OWASP LLM01 prompt
@@ -114,4 +114,72 @@ test('the handoff addenda leak no operational secret either', () => {
 	for (const text of [planHandoffAddendum(true), planHandoffAddendum(false)]) {
 		for (const k of FORBIDDEN) assert.equal(text.includes(k), false, k);
 	}
+});
+
+test('system prompt still forbids the coach prescribing foods, products, supplements, calorie targets or a fuel rate', () => {
+	// decisions § 12 / § 1975: the fuelling handoff hands the NUMBERS to the
+	// deterministic fuelling plan; it does not let the model prescribe. The
+	// base prompt carries the prohibition whatever the flag says.
+	assert.match(
+		COACH_SYSTEM_PROMPT,
+		/You do NOT:[\s\S]*Give nutrition or diet prescriptions\.[^\n]*do NOT prescribe specific foods, products or brands, calorie targets, or supplements/,
+	);
+	assert.match(COACH_SYSTEM_PROMPT, /never state a carbohydrate, fluid or sodium amount of your own/);
+});
+
+test('fuelHandoffAddendum(true) asks for exactly one fuelling-plan link carrying a duration', () => {
+	const out = fuelHandoffAddendum(true);
+	assert.ok(out.includes('[Plan your fuelling](/nutrition/fuel?duration=<seconds>)'), out);
+	assert.match(out, /exactly one markdown link/);
+	assert.match(out, /Do not prescribe/);
+	assert.match(out, /whole seconds between 600 and 604800/);
+	assert.match(out, /Never invent a duration/);
+	assert.match(out, /ask the runner how long they expect to be out/);
+});
+
+test('fuelHandoffAddendum(true) carries a rate only when the runner stated it', () => {
+	const out = fuelHandoffAddendum(true);
+	assert.match(out, /&carbs=<grams per hour>/);
+	assert.match(out, /&fluid=<millilitres per hour>/);
+	assert.match(out, /only when the runner has told you their own per-hour figure in this conversation/);
+	assert.match(out, /Otherwise leave them out: the page uses the rates saved in the runner's settings/);
+	assert.match(out, /&heat=1` only when the runner says the conditions will be hot/);
+});
+
+test('fuelHandoffAddendum(true) restates every still-forbidden kind of content', () => {
+	const out = fuelHandoffAddendum(true);
+	assert.match(out, /never name a food, drink, product, brand or supplement/);
+	assert.match(out, /never give a calorie target/);
+	assert.match(out, /never state a carbohydrate, fluid or sodium amount of your own/);
+	assert.match(out, /The numbers come from the page, not from you/);
+	// The handoff never asks for a body measurement: weight-based fluid is the
+	// page's consent-gated choice, not something the model passes along.
+	assert.doesNotMatch(out, /weight|kg\b|body mass/i);
+});
+
+test('fuelHandoffAddendum(false) is empty, so the system text is unchanged while the flag is off', () => {
+	assert.equal(fuelHandoffAddendum(false), '');
+});
+
+test('fuelHandoffAddendum is deterministic and leaks no operational secret', () => {
+	assert.equal(fuelHandoffAddendum(true), fuelHandoffAddendum(true));
+	assert.ok(!/\d{4}-\d{2}-\d{2}/.test(fuelHandoffAddendum(true)));
+	for (const k of ['ANTHROPIC_API_KEY', 'service_role', 'SUPABASE_SECRET_KEY', 'sb_secret_', 'COACH_FUEL_ENABLED']) {
+		assert.equal(fuelHandoffAddendum(true).includes(k), false, k);
+	}
+});
+
+test('planEditHandoffAddendum(true) asks for one adjust link on the context plan, never an invented id', () => {
+	const out = planEditHandoffAddendum(true);
+	assert.match(out, /\[Adjust my plan\]\(\/plans\/<plan id>\?adjust=<request>\)/);
+	assert.match(out, /exactly one markdown link/);
+	assert.match(out, /Never invent a plan id/);
+	assert.match(out, /do not rewrite workouts or dates yourself/);
+	assert.match(out, /percent-encode/);
+});
+
+test('planEditHandoffAddendum(false) is empty, so the system text is unchanged while the feature is off', () => {
+	assert.equal(planEditHandoffAddendum(false), '');
+	assert.equal(planEditHandoffAddendum(true), planEditHandoffAddendum(true));
+	assert.ok(!/\d{4}-\d{2}-\d{2}/.test(planEditHandoffAddendum(true)));
 });

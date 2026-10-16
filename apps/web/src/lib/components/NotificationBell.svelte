@@ -133,8 +133,16 @@
 					: m('notificationBell.commentNoDistance', { name });
 			case 'comment_reply':
 				return m('notificationBell.commentReply', { name });
+			case 'reaction':
+				return m('notificationBell.reaction', { name });
+			case 'comment_like':
+				return m('notificationBell.commentLike', { name });
+			case 'mention':
+				return m('notificationBell.mention', { name });
 			case 'follow':
 				return m('notificationBell.follow', { name });
+			case 'follow_request':
+				return m('notificationBell.followRequest', { name });
 			case 'event_rsvp':
 				return item.event_title
 					? m('notificationBell.eventRsvpTitled', { name, title: item.event_title })

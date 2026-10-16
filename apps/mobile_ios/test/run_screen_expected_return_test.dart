@@ -24,6 +24,7 @@ import '../lib/screens/run_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/widgets/live_share_indicator.dart';
 import '../lib/training_service.dart';
+import 'pre_run_dialogs.dart';
 
 /// The per-run "not back by X" deadline, driven end-to-end from the
 /// live-share sheet (docs/features/safety.md, decisions §240 + §719).
@@ -50,6 +51,7 @@ class _LiveApi extends ApiClient {
     required String runId,
     required DateTime startedAt,
     String activityType = 'run',
+    bool safetyAudience = false,
   }) async {
     calls.add('begin');
   }
@@ -313,6 +315,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final prefs = Preferences();
     await prefs.init();
+    await markPreRunDialogsSeen(prefs);
     await prefs.setPrivacyDefault(privacyDefault);
 
     final api = _LiveApi();

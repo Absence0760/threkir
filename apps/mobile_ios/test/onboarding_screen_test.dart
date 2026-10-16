@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/preferences.dart';
+import '../lib/screens/help_screen.dart';
 import '../lib/screens/onboarding_screen.dart';
 
 /// Stub the geolocator platform channel so the final-page "Grant
@@ -93,6 +94,29 @@ void main() {
       await _pump(tester, prefs: prefs);
       expect(find.text('Next'), findsOneWidget);
       expect(find.text('Grant permission'), findsNothing);
+    });
+
+    testWidgets('the Location page links to the location-permission guide',
+        (tester) async {
+      // Reason: the location choice is the setup step runners find most
+      // confusing, so the page that explains it offers the full guide —
+      // and only that page does.
+      final prefs = await _makePrefs();
+      await _pump(tester, prefs: prefs);
+      expect(find.text('Read the guide'), findsNothing);
+      for (var i = 0; i < 2; i++) {
+        await tester.tap(find.text('Next'));
+        await tester.pumpAndSettle();
+      }
+      expect(find.text('Location access'), findsOneWidget);
+      final readGuide = find.widgetWithText(TextButton, 'Read the guide');
+      await tester.ensureVisible(readGuide);
+      await tester.pumpAndSettle();
+      await tester.tap(readGuide);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      final guide = tester.widget<GuideScreen>(find.byType(GuideScreen));
+      expect(guide.guideId, 'location-permission');
     });
 
     testWidgets('renders four page indicator dots (3 info + privacy)',

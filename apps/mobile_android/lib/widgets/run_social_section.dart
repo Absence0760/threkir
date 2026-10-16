@@ -5,6 +5,8 @@ import 'package:ui_kit/ui_kit.dart' show IdentityAvatar, ListSkeleton;
 import '../auth_error.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
+import '../mentions.dart';
+import '../run_reactions.dart';
 import '../screens/profile_screen.dart';
 import '../social_service.dart';
 import '../widgets/report_sheet.dart';
@@ -49,6 +51,19 @@ class _RunSocialSectionState extends State<RunSocialSection> {
   PublicProfile? _viewerProfile;
 
   String? _replyTo;
+
+  List<ReactionTally> _reactions = reactionTallies(const []);
+  String? _reactionBusy;
+  Map<String, ({int count, bool viewerLiked})> _likes = const {};
+  String? _likeBusy;
+  Map<String, String> _mentionIds = const {};
+
+  // The @mention picker serves one composer at a time.
+  TextEditingController? _mentionCtrl;
+  int _mentionStart = 0;
+  int _mentionCaret = 0;
+  List<PeopleSuggestion> _mentionPeople = const [];
+  int _mentionSeq = 0;
 
   final _draftCtrl = TextEditingController();
   final _replyCtrl = TextEditingController();
@@ -106,10 +121,147 @@ class _RunSocialSectionState extends State<RunSocialSection> {
         _viewerProfile = viewer;
         _loading = false;
       });
+      await _loadExtras(cs);
     } catch (_) {
       if (!mounted) return;
       setState(() => _loading = false);
     }
+  }
+
+  // Reactions, comment likes and mention links are an L4 layer over kudos and
+  // comments: each read fails on its own, is logged, and leaves its part
+  // empty without touching the comments already on screen.
+  Future<void> _loadExtras(List<RunCommentWithAuthor> cs) async {
+    try {
+      final rows = await widget.api.fetchRunReactionSummary(widget.runId);
+      if (mounted) setState(() => _reactions = reactionTallies(rows));
+    } catch (e) {
+      debugPrint('run social reactions error: $e');
+    }
+    try {
+      final likes = await widget.api.fetchRunCommentLikeSummary(widget.runId);
+      if (mounted) setState(() => _likes = likes);
+    } catch (e) {
+      debugPrint('run social likes error: $e');
+    }
+    try {
+      final ids = await widget.api.resolveMentionHandles([
+        for (final c in cs) ...parseMentionHandles(c.comment.body),
+      ]);
+      if (mounted) setState(() => _mentionIds = ids);
+    } catch (e) {
+      debugPrint('run social mentions error: $e');
+    }
+  }
+
+  String _reactionLabel(AppLocalizations l10n, String key) => switch (key) {
+        'fire' => l10n.runSocialReactionFire,
+        'strong' => l10n.runSocialReactionStrong,
+        'trophy' => l10n.runSocialReactionTrophy,
+        'thumbs_up' => l10n.runSocialReactionThumbsUp,
+        _ => l10n.runSocialReactionWave,
+      };
+
+  Future<void> _toggleReaction(String key) async {
+    if (_reactionBusy != null || _viewerId == null) return;
+    if (widget.runOwnerId != null && widget.runOwnerId == _viewerId) return;
+    final tally = _reactions.firstWhere((t) => t.key == key);
+    final nowReacted = !tally.viewerReacted;
+    setState(() => _reactionBusy = key);
+    try {
+      final changed = nowReacted
+          ? await widget.api.addRunReaction(widget.runId, key)
+          : await widget.api.removeRunReaction(widget.runId, key);
+      if (!mounted) return;
+      setState(
+        () => _reactions = applyReactionToggle(_reactions, key, nowReacted, changed),
+      );
+    } catch (e) {
+      debugPrint('run social reaction error: $e');
+      if (!mounted) return;
+      final l10n = AppLocalizations.of(context);
+      showTopBanner(context, l10n.runSocialReactionError(friendlyError(l10n, e)));
+    } finally {
+      if (mounted) setState(() => _reactionBusy = null);
+    }
+  }
+
+  Future<void> _toggleLike(RunCommentRow c) async {
+    if (_likeBusy != null || _viewerId == null || c.authorId == _viewerId) return;
+    final before = _likes[c.id] ?? (count: 0, viewerLiked: false);
+    final nowLiked = !before.viewerLiked;
+    setState(() => _likeBusy = c.id);
+    try {
+      final changed = nowLiked
+          ? await widget.api.likeRunComment(c.id)
+          : await widget.api.unlikeRunComment(c.id);
+      if (!mounted) return;
+      final delta = changed ? (nowLiked ? 1 : -1) : 0;
+      setState(() {
+        _likes = {
+          ..._likes,
+          c.id: (count: (before.count + delta).clamp(0, 1 << 30), viewerLiked: nowLiked),
+        };
+      });
+    } catch (e) {
+      debugPrint('run social like error: $e');
+      if (!mounted) return;
+      final l10n = AppLocalizations.of(context);
+      showTopBanner(context, l10n.runSocialLikeError(friendlyError(l10n, e)));
+    } finally {
+      if (mounted) setState(() => _likeBusy = null);
+    }
+  }
+
+  void _closeMentions() {
+    if (_mentionCtrl == null && _mentionPeople.isEmpty) return;
+    setState(() {
+      _mentionCtrl = null;
+      _mentionPeople = const [];
+    });
+  }
+
+  Future<void> _onComposerChanged(TextEditingController ctrl) async {
+    final caret = ctrl.selection.baseOffset < 0
+        ? ctrl.text.length
+        : ctrl.selection.baseOffset;
+    final q = activeMentionQuery(ctrl.text, caret);
+    if (q == null || q.query.isEmpty) {
+      _closeMentions();
+      return;
+    }
+    final seq = ++_mentionSeq;
+    try {
+      // decisions § 269's search: the opt-out, minor and block filters all
+      // apply, so the picker never offers someone People search would not.
+      final found = await widget.api.searchPeople('@${q.query}', limit: 8);
+      if (!mounted || seq != _mentionSeq) return;
+      setState(() {
+        _mentionCtrl = ctrl;
+        _mentionStart = q.start;
+        _mentionCaret = caret;
+        _mentionPeople = [for (final p in found) if (p.handle != null) p];
+      });
+    } catch (e) {
+      debugPrint('run social mention search error: $e');
+    }
+  }
+
+  void _pickMention(PeopleSuggestion person) {
+    final ctrl = _mentionCtrl;
+    final handle = person.handle;
+    if (ctrl == null || handle == null) return;
+    final next = insertMention(ctrl.text, _mentionStart, _mentionCaret, handle);
+    ctrl.value = TextEditingValue(
+      text: next.text,
+      selection: TextSelection.collapsed(offset: next.caret),
+    );
+    _closeMentions();
+  }
+
+  Widget? _mentionPickerFor(TextEditingController ctrl) {
+    if (_mentionCtrl != ctrl || _mentionPeople.isEmpty) return null;
+    return _MentionPicker(people: _mentionPeople, onPick: _pickMention);
   }
 
   Future<void> _toggleKudos() async {
@@ -170,6 +322,7 @@ class _RunSocialSectionState extends State<RunSocialSection> {
         parentCommentId: parentId,
       );
       ctrl.clear();
+      _closeMentions();
       if (!mounted) return;
       // Optimistically append the new comment. Was: re-fetch the whole
       // engagement + comments list — a 200-comment thread paid for the
@@ -331,6 +484,24 @@ class _RunSocialSectionState extends State<RunSocialSection> {
               ),
             ],
           ),
+          const SizedBox(height: 8),
+          Semantics(
+            container: true,
+            label: l10n.runSocialReactionsLabel,
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final r in _reactions)
+                  _ReactionChip(
+                    tally: r,
+                    label: _reactionLabel(l10n, r.key),
+                    disabled: _reactionBusy != null || _viewerId == null || isOwn,
+                    onTap: () => _toggleReaction(r.key),
+                  ),
+              ],
+            ),
+          ),
           const SizedBox(height: 12),
 
           // Comments list
@@ -348,6 +519,13 @@ class _RunSocialSectionState extends State<RunSocialSection> {
             for (final c in topLevel) ...[
               _CommentTile(
                 entry: c,
+                like: _likes[c.comment.id] ?? (count: 0, viewerLiked: false),
+                canLike: _viewerId != null &&
+                    c.comment.authorId != _viewerId &&
+                    _likeBusy == null,
+                onLike: () => _toggleLike(c.comment),
+                mentionIds: _mentionIds,
+                onMentionTap: _openAuthor,
                 canDelete: _canDelete(c.comment),
                 onAuthorTap: () => _openAuthor(c.author.id),
                 onReply: _viewerId == null
@@ -366,6 +544,13 @@ class _RunSocialSectionState extends State<RunSocialSection> {
                   padding: const EdgeInsets.only(left: 36),
                   child: _CommentTile(
                     entry: r,
+                    like: _likes[r.comment.id] ?? (count: 0, viewerLiked: false),
+                    canLike: _viewerId != null &&
+                        r.comment.authorId != _viewerId &&
+                        _likeBusy == null,
+                    onLike: () => _toggleLike(r.comment),
+                    mentionIds: _mentionIds,
+                    onMentionTap: _openAuthor,
                     canDelete: _canDelete(r.comment),
                     onAuthorTap: () => _openAuthor(r.author.id),
                     onReply: null,
@@ -385,6 +570,8 @@ class _RunSocialSectionState extends State<RunSocialSection> {
                     posting: _posting,
                     onPost: () => _postComment(parentId: c.comment.id),
                     onCancel: () => setState(() => _replyTo = null),
+                    onChanged: () => _onComposerChanged(_replyCtrl),
+                    picker: _mentionPickerFor(_replyCtrl),
                   ),
                 ),
             ],
@@ -396,6 +583,8 @@ class _RunSocialSectionState extends State<RunSocialSection> {
               hint: l10n.runSocialCommentHint,
               posting: _posting,
               onPost: () => _postComment(),
+              onChanged: () => _onComposerChanged(_draftCtrl),
+              picker: _mentionPickerFor(_draftCtrl),
             ),
           ],
         ],
@@ -446,6 +635,11 @@ class _KudosPill extends StatelessWidget {
 
 class _CommentTile extends StatelessWidget {
   final RunCommentWithAuthor entry;
+  final ({int count, bool viewerLiked}) like;
+  final bool canLike;
+  final VoidCallback onLike;
+  final Map<String, String> mentionIds;
+  final void Function(String userId) onMentionTap;
   final bool canDelete;
   final VoidCallback onAuthorTap;
   final VoidCallback? onReply;
@@ -455,6 +649,11 @@ class _CommentTile extends StatelessWidget {
 
   const _CommentTile({
     required this.entry,
+    required this.like,
+    required this.canLike,
+    required this.onLike,
+    required this.mentionIds,
+    required this.onMentionTap,
     required this.canDelete,
     required this.onAuthorTap,
     required this.onReply,
@@ -515,9 +714,36 @@ class _CommentTile extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 2),
-                Text(entry.comment.body, style: theme.textTheme.bodyMedium),
+                _MentionText(
+                  body: entry.comment.body,
+                  mentionIds: mentionIds,
+                  onTap: onMentionTap,
+                ),
                 OverflowBar(
                   children: [
+                    Semantics(
+                      button: true,
+                      toggled: like.viewerLiked,
+                      label: like.viewerLiked
+                          ? l10n.runSocialUnlikeComment
+                          : l10n.runSocialLikeComment,
+                      child: TextButton.icon(
+                        key: ValueKey('comment-like-${entry.comment.id}'),
+                        onPressed: canLike ? onLike : null,
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          minimumSize: const Size(48, 48),
+                        ),
+                        icon: Icon(
+                          like.viewerLiked ? Icons.favorite : Icons.favorite_border,
+                          size: 18,
+                          color: like.viewerLiked
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.onSurfaceVariant,
+                        ),
+                        label: Text(like.count > 0 ? '${like.count}' : ''),
+                      ),
+                    ),
                     if (onReply != null)
                       TextButton(
                         onPressed: onReply,
@@ -567,6 +793,8 @@ class _Composer extends StatelessWidget {
   final bool posting;
   final VoidCallback onPost;
   final VoidCallback? onCancel;
+  final VoidCallback? onChanged;
+  final Widget? picker;
 
   const _Composer({
     required this.controller,
@@ -574,6 +802,8 @@ class _Composer extends StatelessWidget {
     required this.posting,
     required this.onPost,
     this.onCancel,
+    this.onChanged,
+    this.picker,
   });
 
   @override
@@ -583,15 +813,22 @@ class _Composer extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
-          child: TextField(
-            controller: controller,
-            maxLines: null,
-            minLines: 1,
-            textInputAction: TextInputAction.newline,
-            decoration: InputDecoration(
-              hintText: hint,
-              isDense: true,
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextField(
+                controller: controller,
+                maxLines: null,
+                minLines: 1,
+                textInputAction: TextInputAction.newline,
+                onChanged: onChanged == null ? null : (_) => onChanged!(),
+                decoration: InputDecoration(
+                  hintText: hint,
+                  isDense: true,
+                ),
+              ),
+              ?picker,
+            ],
           ),
         ),
         const SizedBox(width: 8),
@@ -619,3 +856,162 @@ class _Composer extends StatelessWidget {
   }
 }
 
+
+class _ReactionChip extends StatelessWidget {
+  final ReactionTally tally;
+  final String label;
+  final bool disabled;
+  final VoidCallback onTap;
+
+  const _ReactionChip({
+    required this.tally,
+    required this.label,
+    required this.disabled,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    final on = tally.viewerReacted;
+    final accent = on ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant;
+    return Semantics(
+      button: true,
+      toggled: on,
+      label: on ? l10n.runSocialRemoveReaction(label) : l10n.runSocialReactWith(label),
+      excludeSemantics: true,
+      child: Tooltip(
+        message: label,
+        child: OutlinedButton(
+          key: ValueKey('reaction-${tally.key}'),
+          onPressed: disabled ? null : onTap,
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(48, 48),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            shape: const StadiumBorder(),
+            backgroundColor: on ? theme.colorScheme.primary.withValues(alpha: 0.12) : null,
+            side: BorderSide(color: on ? theme.colorScheme.primary : theme.colorScheme.outlineVariant),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(reactionIcons[tally.key], size: 18, color: accent),
+              if (tally.count > 0) ...[
+                const SizedBox(width: 4),
+                Text(
+                  '${tally.count}',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontWeight: on ? FontWeight.w700 : null,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A comment body with every mention of a real runner drawn as a tappable
+/// link to their profile; an unknown handle stays plain text.
+class _MentionText extends StatelessWidget {
+  final String body;
+  final Map<String, String> mentionIds;
+  final void Function(String userId) onTap;
+
+  const _MentionText({
+    required this.body,
+    required this.mentionIds,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final base = theme.textTheme.bodyMedium;
+    final segments = splitMentions(body);
+    if (!segments.any((s) => s.isMention && mentionIds.containsKey(s.handle))) {
+      return Text(body, style: base);
+    }
+    return Text.rich(
+      TextSpan(
+        style: base,
+        children: [
+          for (final seg in segments)
+            if (seg.isMention && mentionIds.containsKey(seg.handle))
+              WidgetSpan(
+                alignment: PlaceholderAlignment.baseline,
+                baseline: TextBaseline.alphabetic,
+                child: Semantics(
+                  link: true,
+                  child: GestureDetector(
+                    key: ValueKey('mention-${seg.handle}'),
+                    onTap: () => onTap(mentionIds[seg.handle]!),
+                    child: Text(
+                      seg.text,
+                      style: base?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              )
+            else
+              TextSpan(text: seg.text),
+        ],
+      ),
+    );
+  }
+}
+
+class _MentionPicker extends StatelessWidget {
+  final List<PeopleSuggestion> people;
+  final void Function(PeopleSuggestion) onPick;
+
+  const _MentionPicker({required this.people, required this.onPick});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Semantics(
+      container: true,
+      label: AppLocalizations.of(context).runSocialMentionSuggestions,
+      child: Card(
+        margin: const EdgeInsets.only(top: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final p in people)
+              ListTile(
+                key: ValueKey('mention-pick-${p.handle}'),
+                dense: true,
+                minTileHeight: 48,
+                leading: IdentityAvatar(
+                  seed: p.id,
+                  name: p.displayName,
+                  size: 28,
+                  imageUrl: p.avatarUrl,
+                ),
+                title: Text(
+                  p.displayName ?? AppLocalizations.of(context).runSocialRunnerFallback,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                subtitle: Text(
+                  '@${p.handle}',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                onTap: () => onPick(p),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}

@@ -13,8 +13,13 @@
 ///
 ///   1  AI Coach only.
 ///   2  The Coach plus the AI route assistant.
-///   3  All AI features: v2 plus the AI plan assistant (the typed plan
-///      description, sent only to extract plan-wizard settings).
+///   3  v2 plus the AI plan assistant (the typed plan description, sent
+///      only to extract plan-wizard settings).
+///   4  v3 plus AI plan edits (the active plan's upcoming workouts and the
+///      typed change request, sent only to propose edits the runner
+///      reviews before anything is saved).
+///   5  All AI features: v4 plus the plate-photo logger (one meal photo,
+///      sent only to propose food-log rows the runner edits before saving).
 ///
 /// Adding the next AI feature means a new version with new copy, not a new
 /// boolean and not quietly widening what an existing acceptance covers.
@@ -43,9 +48,22 @@ const int kAiDisclosureVersionRouteAi = 2;
 /// the route copy described.
 const int kAiDisclosureVersionPlanAi = 3;
 
+/// Minimum disclosure version AI plan edits require (`/api/coach/plan-edit`,
+/// web-only). Its own rung even though the v1 Coach copy already names the
+/// active plan: the Coach sends the plan so it can comment on it, while plan
+/// edits send it with the runner's change request so the model can propose
+/// changes to it — a new purpose (decisions § 571).
+const int kAiDisclosureVersionPlanEditAi = 4;
+
+/// Minimum disclosure version the plate-photo logger requires
+/// (`/api/coach/plate-photo`). Its own rung because it sends a photograph of
+/// the runner's meal — a payload that can carry anything in frame — to
+/// estimate food-log rows (decisions § 1972).
+const int kAiDisclosureVersionFoodPhotoAi = 5;
+
 /// The newest disclosure this build knows how to present. Must equal the SQL
 /// `ai_disclosure_current_version()` and web's `AI_DISCLOSURE_CURRENT_VERSION`.
-const int kAiDisclosureCurrentVersion = kAiDisclosureVersionPlanAi;
+const int kAiDisclosureCurrentVersion = kAiDisclosureVersionFoodPhotoAi;
 
 /// Machine-readable marker on every AI-consent denial. It rides a `code`
 /// field rather than `error` because the endpoints already use `error` for

@@ -1,6 +1,7 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { USER_A, USER_C_PRO } from '../fixtures/users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * /settings/upgrade — two-tier Free vs Pro comparison + one-off donate
@@ -17,12 +18,7 @@ test.describe('/settings/upgrade — free user', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-			);
-		});
+		await acceptCookieConsent(context);
 	});
 
 	test('Pro pricing card renders for a free user', async ({ page }) => {
@@ -44,18 +40,20 @@ test.describe('/settings/upgrade — free user', () => {
 		await expect(page.locator('.plan-option .plan-price', { hasText: '/ month' })).toBeVisible();
 	});
 
-	test('two-tier grid: Free tier shows $0 forever + 4 features; Pro tier shows the price + 5 features + "Most popular" flag', async ({
+	test('two-tier grid: Free tier shows $0 forever + 4 features; Pro tier shows the price + 6 features + "Most popular" flag', async ({
 		page,
 	}) => {
 		// Pin the polished two-card structure. Each tier carries a
 		// `check_circle` icon per feature — 4 on Free (Recording,
-		// Routes/plans/clubs, Strava/parkrun/Garmin, AI Coach) and 5 on
-		// Pro (AI Coach 10/day, Server route generation, Priority
-		// map-matching, Priority exports, Everything in Free). The Coach
-		// bullets render because PUBLIC_COACH_ENABLED=true in the e2e env;
-		// the route-gen bullet because PUBLIC_ROUTE_GEN_ENABLED=true
-		// (decisions §204) — each flagged perk's bullet hides with its
-		// flag so the card never advertises a dead feature. The Pro
+		// Routes/plans/clubs, Strava/parkrun/Garmin, AI Coach) and 6 on
+		// Pro (AI Coach 10/day, Log meals from a photo, Server route
+		// generation, Priority map-matching, Priority exports, Everything in
+		// Free). The Coach bullets render because PUBLIC_COACH_ENABLED=true in
+		// the e2e env; the photo bullet because PUBLIC_PLATE_PHOTO_ENABLED=true
+		// as well (decisions § 1972); the route-gen bullet because
+		// PUBLIC_ROUTE_GEN_ENABLED=true (decisions §204) — each flagged
+		// perk's bullet hides with its flag so the card never advertises a
+		// dead feature. The Pro
 		// daily Coach cap was lowered from Unlimited to 10/day in
 		// May 2026 to bound worst-case Anthropic spend per the
 		// cost-controls hardening pass — see TIER_LIMITS.pro.dailyLimit
@@ -77,9 +75,10 @@ test.describe('/settings/upgrade — free user', () => {
 		await expect(proCard.locator('.tier-flag')).toHaveText(/Most popular/i);
 		await expect(proCard.locator('.price-amount')).toContainText(/79\.99|79,99/);
 		await expect(proCard.locator('.price-period')).toHaveText('/ year');
-		await expect(proCard.locator('.tier-features > li')).toHaveCount(5);
-		await expect(proCard.locator('.tier-features .check')).toHaveCount(5);
+		await expect(proCard.locator('.tier-features > li')).toHaveCount(6);
+		await expect(proCard.locator('.tier-features .check')).toHaveCount(6);
 		await expect(proCard).toContainText(/AI Coach\s+—\s+10\/day/i);
+		await expect(proCard.getByTestId('pro-feat-plate-photo')).toContainText('Log meals from a photo');
 		await expect(proCard).toContainText(/Server route generation/i);
 
 		// Free tier carries the "You're on Free." note and NO active
@@ -223,12 +222,7 @@ test.describe('/settings/upgrade — Pro user', () => {
 	test.use({ storageState: USER_C_PRO.storageStatePath });
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-			);
-		});
+		await acceptCookieConsent(context);
 	});
 
 	test('Pro tier card flips to active state: "Active" badge + Manage subscription CTA + no Get Pro button', async ({
@@ -274,12 +268,7 @@ test.describe('/settings/upgrade — anon', () => {
 	test.use({ storageState: { cookies: [], origins: [] } });
 
 	test('anon visitor is auth-walled to /login', async ({ page, context }) => {
-		await context.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-			);
-		});
+		await acceptCookieConsent(context);
 		// /settings/upgrade is NOT in the anon-allowed list — anon
 		// users must be redirected to /login with a return_to.
 		await page.goto('/settings/upgrade');

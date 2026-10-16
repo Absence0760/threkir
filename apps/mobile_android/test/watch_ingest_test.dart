@@ -52,6 +52,18 @@ class _FakeApiClient extends ApiClient {
   }
 }
 
+class _RunCapturingApiClient extends _FakeApiClient {
+  _RunCapturingApiClient({super.fakeUserId});
+
+  final List<Run> runs = [];
+
+  @override
+  Future<void> saveRun(Run run, {bool? isPublic, bool followersOnly = false}) async {
+    await super.saveRun(run, isPublic: isPublic, followersOnly: followersOnly);
+    runs.add(run);
+  }
+}
+
 Map<String, dynamic> _payload(String id) => {
       'id': id,
       'started_at': '2026-10-08T06:00:00.000Z',
@@ -281,6 +293,31 @@ void main() {
 
       expect(api.saved, isEmpty);
       expect(queue.pendingCount, 1);
+    });
+  });
+
+  group('WatchIngest — the credited distance reaches the upload', () {
+    test('distM the watch stamped survives the queue file into the track blob',
+        () async {
+      final api = _RunCapturingApiClient(fakeUserId: 'user-a');
+      final payload = {
+        ..._payload('r1'),
+        'track': jsonEncode([
+          {'lat': 51.5, 'lng': -0.1, 'ts': '2026-10-08T06:00:00Z', 'distM': 0},
+          {'lat': 51.5001, 'lng': -0.1, 'ts': '2026-10-08T06:00:05Z', 'distM': 14.25},
+          {'lat': 51.5002, 'lng': -0.1, 'ts': '2026-10-08T06:00:10Z', 'distM': 26.5},
+        ]),
+      };
+
+      expect(await WatchIngest.handle(payload, queue: queue, api: api), isTrue);
+      await queue.drain(api);
+
+      expect(queue.pendingCount, 0);
+      final run = api.runs.single;
+      expect(run.track.map((w) => w.cumulativeDistanceMetres), [0, 14.25, 26.5]);
+      final blob = jsonDecode(ApiClient.debugTrackBlobJson(run.track)) as List;
+      expect(blob.map((p) => (p as Map<String, dynamic>)['distM']),
+          [0, 14.25, 26.5]);
     });
   });
 }

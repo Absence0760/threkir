@@ -1,0 +1,11 @@
+{
+  "source": "packages/core_models/lib/src/activity_type.dart ActivityType.maxSpeedMps",
+  "unknownActivityCap": "run",
+  "capsMps": {
+    "run": 10,
+    "walk": 5,
+    "cycle": 25,
+    "hike": 6,
+    "stroller": 9
+  }
+}

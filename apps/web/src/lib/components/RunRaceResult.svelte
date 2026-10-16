@@ -27,8 +27,11 @@
 		runOwnerId: string;
 		startedAt: string;
 		distanceM: number | null;
+		/// The publicly readable listing the run is linked to, reported after
+		/// every load so a just-confirmed match reaches the photo toggle.
+		onlisting?: (listingId: string | null) => void;
 	}
-	let { runId, runOwnerId, startedAt, distanceM }: Props = $props();
+	let { runId, runOwnerId, startedAt, distanceM, onlisting }: Props = $props();
 
 	const isOwner = $derived(auth.user?.id === runOwnerId);
 
@@ -64,6 +67,7 @@
 		} catch {
 			result = null;
 		}
+		onlisting?.(result?.race_listing?.id ?? null);
 		// Auto-match seam: only offer a candidate when no official result is
 		// already stamped. Best-effort — a failure here must never break the page.
 		if (!hasResult && isOwner) {

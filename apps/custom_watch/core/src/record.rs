@@ -2239,8 +2239,9 @@ impl Recorder {
     /// Feed the estimator and bank what it credits, into the run total and
     /// into the pace bucket for the speed it credited at. RMC's speed over
     /// ground is the receiver's Doppler figure and its course the bearing;
-    /// NMEA carries no horizontal accuracy in metres, so the estimator's 3 m
-    /// floor stands in for it.
+    /// the horizontal and speed accuracies are the receiver's own UBX-NAV-PVT
+    /// `hAcc` / `sAcc` when a fresh PVT rode the fix ([`crate::fix`]), and
+    /// `None` otherwise, which leaves the estimator on its own floors.
     fn credit_estimated(&mut self, fix: &Fix) -> f64 {
         let t = f64::from(fix.uptime_s);
         let prev_t = self.gps.last_fix_t();
@@ -2248,9 +2249,9 @@ impl Recorder {
             t,
             fix.lat_deg,
             fix.lon_deg,
-            None,
+            fix.h_acc_m.map(f64::from),
             Some(f64::from(fix.speed_mps)),
-            None,
+            fix.s_acc_mps.map(f64::from),
             fix.course_deg.map(f64::from),
         );
         if inc > 0.0 {
@@ -3282,6 +3283,19 @@ fn segment_distance_m(a: &Fix, b: &Fix) -> f64 {
 mod tests {
     use super::*;
 
+    /// Every run this recorder writes is synced as `activity_type: 'run'`
+    /// (`sim_watch_sync.payloadFromBlob`), so its one ceiling is the run row
+    /// of `fixtures/activity_speed_caps.json`, the table every port reads.
+    #[test]
+    fn the_speed_ceiling_is_the_shared_run_cap() {
+        let doc: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../../fixtures/activity_speed_caps.json"
+        ))
+        .expect("caps parse");
+        let run = doc["capsMps"]["run"].as_f64().expect("run cap");
+        assert_eq!(MAX_SPEED_MPS, run);
+    }
+
     fn fix(lat: f64, lon: f64, speed: f32, t: u32) -> Fix {
         Fix {
             lat_deg: lat,
@@ -3293,6 +3307,8 @@ mod tests {
             time_of_day: None,
             date: None,
             uptime_s: t,
+            h_acc_m: None,
+            s_acc_mps: None,
         }
     }
 
@@ -3571,22 +3587,46 @@ mod tests {
 
     #[test]
     fn full_rate_filter_is_not_loosened_by_the_interval_hook() {
-        // At the default 1 s cadence the fixed 100 m ceiling still applies
-        // even when a signal gap makes the implied speed plausible: a 150 m
-        // hop after 30 s dark is corrupt at 1 Hz, exactly as before the hook.
+        // At the default 1 s cadence the fixed 100 m one-hop ceiling still
+        // applies even when a signal gap makes the implied speed plausible: a
+        // 150 m hop after 30 s dark is no track segment at 1 Hz (it re-anchors
+        // and banks no moving time), where a 30 s interval takes the same hop
+        // as a 5 m/s segment. Distance is the estimator's either way: spec
+        // v1.4 credits each 30 s gap its chord less the 1-sigma uncertainty of
+        // both ends, 144.113 m (scripts/gps_distance/reference.py).
+        let hops = [(40.00135, 30), (40.0027, 60), (40.00405, 90)];
         let mut r = Recorder::new();
         r.start(0);
         r.on_fix(&fix(40.0, -105.0, 4.0, 0));
-        r.on_fix(&fix(40.00135, -105.0, 4.0, 30));
-        assert_eq!(r.snapshot().distance_m, 0.0);
+        r.on_fix(&fix(hops[0].0, -105.0, 4.0, hops[0].1));
+        assert_eq!(r.snapshot().moving_s, 0);
         // An explicit interval of 1 (Performance) is the same filter, and a
         // zero interval clamps to 1 rather than dividing the gate away.
         r.set_fix_interval_s(1);
-        r.on_fix(&fix(40.0027, -105.0, 4.0, 60));
-        assert_eq!(r.snapshot().distance_m, 0.0);
+        r.on_fix(&fix(hops[1].0, -105.0, 4.0, hops[1].1));
+        assert_eq!(r.snapshot().moving_s, 0);
         r.set_fix_interval_s(0);
-        r.on_fix(&fix(40.00405, -105.0, 4.0, 90));
-        assert_eq!(r.snapshot().distance_m, 0.0);
+        r.on_fix(&fix(hops[2].0, -105.0, 4.0, hops[2].1));
+        let s = r.snapshot();
+        assert_eq!(s.moving_s, 0, "no 150 m hop became a segment at 1 Hz");
+        assert!(
+            (s.distance_m - 432.340075).abs() < 1e-3,
+            "three gap chords (got {} m)",
+            s.distance_m
+        );
+
+        let mut throttled = Recorder::new();
+        throttled.set_fix_interval_s(30);
+        throttled.start(0);
+        throttled.on_fix(&fix(40.0, -105.0, 4.0, 0));
+        for (lat, t) in hops {
+            throttled.on_fix(&fix(lat, -105.0, 4.0, t));
+        }
+        assert_eq!(
+            throttled.snapshot().moving_s,
+            90,
+            "the hook loosens the ceiling only for a throttled interval"
+        );
     }
 
     #[test]
@@ -3971,7 +4011,7 @@ mod tests {
     }
 
     #[test]
-    fn dropout_reacquire_rebases_anchor_without_crediting_gap() {
+    fn dropout_reacquire_rebases_anchor_and_credits_the_gap_chord() {
         // run_recorder's #330: a hop that fails the one-hop cap after a real
         // signal gap re-anchors instead of freezing distance forever.
         let mut r = Recorder::new();
@@ -3986,12 +4026,18 @@ mod tests {
         assert_eq!(r.snapshot().moving_s, 1);
 
         // 41 s dropout during which the runner moved ~150 m: past MAX_JUMP_M
-        // and past the estimator's 10 s gap, so neither credits the gap — but
-        // both anchors rebase (and the point is stored so the flash track
-        // carries the reacquire position).
+        // and past the estimator's 10 s gap. Both anchors rebase (and the
+        // point is stored so the flash track carries the reacquire position);
+        // the gap banks no moving time, and the estimator credits the
+        // straight line across it less the 1-sigma uncertainty of both ends
+        // (spec v1.4), 145.593 m by scripts/gps_distance/reference.py.
         r.on_fix(&fix(40.00140, -105.0, 3.0, 42));
         let s = r.snapshot();
-        assert_eq!(s.distance_m, dist_before, "gap distance never credited");
+        let gap = s.distance_m - dist_before;
+        assert!(
+            (gap - 145.592732).abs() < 1e-3,
+            "gap credited its chord lower bound (got {gap} m)"
+        );
         assert_eq!(s.moving_s, 1, "gap banks no moving time");
         assert!(r.last_fix_stored(), "reacquire point stored to the track");
 
@@ -4001,7 +4047,7 @@ mod tests {
         // was rejected and distance stayed frozen.
         r.on_fix(&fix(40.00145, -105.0, 3.0, 43));
         let s = r.snapshot();
-        let resumed = s.distance_m - dist_before;
+        let resumed = s.distance_m - dist_before - gap;
         assert!(
             (resumed - 3.0).abs() < 1e-9,
             "recording resumed from the reacquire point (got {resumed} m)"

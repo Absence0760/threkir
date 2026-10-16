@@ -82,7 +82,12 @@ export default defineConfig({
 		// The built-app lane (tests-e2e/built) needs a production build with a
 		// Sentry DSN, which only playwright.built.config.ts makes. Under
 		// `vite dev` Sentry never initialises and every case there fails.
-		'**/built/**'
+		'**/built/**',
+		// The configured lane (tests-e2e/configured) needs a dev server with
+		// optional integration ids set (PUBLIC_STRAVA_CLIENT_ID), which only
+		// playwright.configured.config.ts boots. This lane builds without
+		// them and pins the unconfigured behaviour instead.
+		'**/configured/**'
 	],
 
 	// Stable on CI even with the dev server taking a beat to warm up.

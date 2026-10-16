@@ -1,4 +1,4 @@
-// GPS distance estimator, spec v1.3. docs/features/gps_distance.md is the spec
+// GPS distance estimator, spec v1.4. docs/features/gps_distance.md is the spec
 // and scripts/gps_distance/reference.py the reference; every port must
 // reproduce fixtures/gps_distance_vectors.json to 1e-3 m, so keep the
 // formulas in the reference's order. A copy of apps/web/src/lib/runs/gps_distance.ts
@@ -9,11 +9,12 @@
 // screen runs; smoothDistance is the saved / recomputed figure, a forward pass
 // plus a Rauch-Tung-Striebel backward pass over the whole run.
 
-export const SPEC_VERSION = '1.3';
+export const SPEC_VERSION = '1.4';
 
 export const EARTH_RADIUS_M = 6371008.8;
 export const Q_ACCEL = 0.6;
 export const MIN_POS_SIGMA_M = 3.0;
+export const MAX_POS_SIGMA_M = 50.0;
 export const INIT_VEL_VAR = 25.0;
 export const MIN_SPEED_SIGMA_MPS = 0.3;
 export const DEFAULT_SPEED_SIGMA_MPS = 0.5;
@@ -26,6 +27,9 @@ export const STRIDE_WINDOW_STEPS = 50;
 export const MIN_STRIDE_M = 0.4;
 export const MAX_STRIDE_M = 2.5;
 export const STRIDE_EMA_ALPHA = 0.2;
+export const STRIDE_MAX_SPEED_SIGMA_MPS = 1.0;
+export const STRIDE_MAX_POS_SIGMA_M = 20.0;
+export const CHECK_MAX_POS_SIGMA_M = 20.0;
 
 export const GATE_CHI2 = 13.8155;
 export const GATE_MAX_REJECTS = 5;
@@ -178,6 +182,8 @@ type FixRecord = {
 
 export class GpsDistanceEstimator {
 	readonly maxSpeedMps: number;
+	/** False for a stretch on a source whose speed is not its own Doppler (Android's fused provider): its stride is used, never learned. */
+	readonly learnStride: boolean;
 	private readonly gapS: number;
 	private readonly freshFixS: number;
 	gpsDistanceM = 0;
@@ -199,6 +205,7 @@ export class GpsDistanceEstimator {
 	private lastSteps: number | null = null;
 	private lastStepT: number | null = null;
 	private pendingStepM = 0;
+	private strideOk = false;
 	private rejectStreak = 0;
 	private xcDoppler = 0;
 	private xcPos = 0;
@@ -222,8 +229,10 @@ export class GpsDistanceEstimator {
 		expectedIntervalS: MaybeNumber = 1.0,
 		initialStrideM: number | null = null,
 		record = false,
+		learnStride = true,
 	) {
 		this.maxSpeedMps = maxSpeedMps;
+		this.learnStride = learnStride;
 		const scale = intervalScale(expectedIntervalS);
 		this.gapS = GAP_S * scale;
 		this.freshFixS = FRESH_FIX_S * scale;
@@ -292,6 +301,7 @@ export class GpsDistanceEstimator {
 		stoppedHint = false,
 	): number {
 		if (!(valid(t) && valid(lat) && valid(lng))) return 0;
+		if (valid(accuracyM) && accuracyM > MAX_POS_SIGMA_M) return 0;
 		if (this.lat0 === null) {
 			this.lat0 = lat;
 			this.lng0 = lng;
@@ -304,9 +314,27 @@ export class GpsDistanceEstimator {
 		const doppler = dopplerSpeed(speedMps, speedAccuracyMps, this.maxSpeedMps);
 		const dop = doppler === null ? null : doppler.s;
 		if (this.t === null || t - this.t > this.gapS || this.x === null || this.y === null) {
-			// (Re-)anchor. Steps buffered across a real gap are committed now.
-			if (this.t !== null) this.stepDistanceM += this.pendingStepM;
+			// (Re-)anchor. Steps buffered across a real gap are committed now, and
+			// the straight line across it, less its 1-sigma uncertainty, is a lower
+			// bound on the distance covered: the GPS credit makes up whatever the
+			// steps fall short of it.
+			let gapM: number | null = null;
+			if (this.t !== null && this.x !== null && this.y !== null) {
+				this.stepDistanceM += this.pendingStepM;
+				const d = Math.hypot(zx - this.x.p, zy - this.y.p);
+				let lower = d - Math.sqrt(this.x.a + this.y.a + 2.0 * r);
+				lower = Math.min(lower, this.maxSpeedMps * (t - this.t));
+				if (lower > this.pendingStepM) {
+					gapM = lower - this.pendingStepM;
+					this.gpsDistanceM += gapM;
+				}
+			}
 			this.pendingStepM = 0;
+			this.strideOk = this.strideGrade(accuracyM, dop !== null, doppler === null ? null : doppler.sa);
+			if (!this.strideOk) {
+				this.winSteps = 0;
+				this.winM = 0;
+			}
 			this.x = new Axis(zx, r);
 			this.y = new Axis(zy, r);
 			this.t = t;
@@ -323,12 +351,12 @@ export class GpsDistanceEstimator {
 					pred: null,
 					zupt,
 					dop: dop !== null && this.dopplerTrusted ? dop * this.dopplerScale : null,
-					chord: null,
+					chord: gapM,
 				},
 				this.x,
 				this.y,
 			);
-			return 0;
+			return gapM === null ? 0 : gapM;
 		}
 		// The gap closed inside the gap window, so the filter integrates it: drop the buffer.
 		this.pendingStepM = 0;
@@ -400,7 +428,7 @@ export class GpsDistanceEstimator {
 
 		// 4. Doppler-vs-position cross-check, on the raw fixes' displacement
 		//    projected on the Doppler bearing.
-		if (accepted) {
+		if (accepted && !(valid(accuracyM) && accuracyM > CHECK_MAX_POS_SIGMA_M)) {
 			const [lx, ly, lt] = this.xcLast as [number, number, number];
 			const span = t - lt;
 			if (
@@ -498,9 +526,26 @@ export class GpsDistanceEstimator {
 			inc = speed < floor ? 0 : Math.min(speed, this.maxSpeedMps) * dt;
 		}
 		this.gpsDistanceM += inc;
-		this.winM += inc;
+		this.strideOk = this.strideGrade(
+			accuracyM,
+			useDop !== null && chord === null,
+			doppler === null ? null : doppler.sa,
+		);
+		if (this.strideOk) {
+			this.winM += inc;
+		} else {
+			this.winSteps = 0;
+			this.winM = 0;
+		}
 		this.record({ anchor: false, chainBreak, dt, pred, zupt, dop: useDop, chord }, x, y);
 		return inc;
+	}
+
+	/** Whether a fix may teach stride: by its Doppler sigma when its credit came from Doppler, else by its position accuracy. */
+	private strideGrade(accuracyM: MaybeNumber, fromDoppler: boolean, sa: number | null): boolean {
+		if (!this.learnStride) return false;
+		if (fromDoppler) return sa !== null && sa <= STRIDE_MAX_SPEED_SIGMA_MPS;
+		return !(valid(accuracyM) && accuracyM > STRIDE_MAX_POS_SIGMA_M);
 	}
 
 	/**
@@ -521,6 +566,7 @@ export class GpsDistanceEstimator {
 			this.zuptReleased = false;
 		}
 		if (this.t !== null && t - this.t <= this.freshFixS) {
+			if (!this.strideOk) return;
 			this.winSteps += d;
 			if (this.winSteps >= STRIDE_WINDOW_STEPS) {
 				const stride = this.winM / this.winSteps;
@@ -663,6 +709,7 @@ export function smoothDistance(
 	maxSpeedMps = 10.0,
 	expectedIntervalS: MaybeNumber = 1.0,
 	initialStrideM: number | null = null,
+	learnStride = true,
 ): SmoothedDistance {
 	// Fixes exactly as the estimator would take them.
 	const kept: Array<[number, number, number, number]> = [];
@@ -674,6 +721,7 @@ export function smoothDistance(
 		if (ev.type !== 'fix') return;
 		const { t, lat, lng } = ev;
 		if (!(valid(t) && valid(lat) && valid(lng))) return;
+		if (valid(ev.acc) && ev.acc > MAX_POS_SIGMA_M) return;
 		if (lat0 === null || lng0 === null) {
 			lat0 = lat;
 			lng0 = lng;
@@ -696,7 +744,13 @@ export function smoothDistance(
 		});
 	}
 
-	const est = new GpsDistanceEstimator(maxSpeedMps, expectedIntervalS, initialStrideM, true);
+	const est = new GpsDistanceEstimator(
+		maxSpeedMps,
+		expectedIntervalS,
+		initialStrideM,
+		true,
+		learnStride,
+	);
 	const recs = est.records as FixRecord[];
 	const recEvent: number[] = [];
 	events.forEach((ev, i) => {
@@ -725,7 +779,8 @@ export function smoothDistance(
 		}
 	}
 
-	// Credit along the smoothed velocities: trapezoid per interval, gap re-anchors not credited.
+	// Credit along the smoothed velocities: trapezoid per interval; a gap re-anchor
+	// carries the forward pass's chord lower bound.
 	const effs = recs.map((r, k) => {
 		if (r.zupt) return 0;
 		let speed: number;
@@ -740,7 +795,7 @@ export function smoothDistance(
 		return speed < floor ? 0 : Math.min(speed, maxSpeedMps);
 	});
 	const credit = recs.map((r, k) => {
-		if (r.anchor) return 0;
+		if (r.anchor) return r.chord !== null ? r.chord : 0;
 		return r.chord !== null ? r.chord : 0.5 * (effs[k - 1] + effs[k]) * r.dt;
 	});
 

@@ -1,19 +1,13 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { RUNNER_PUBLIC_ROUTE_ID } from '../fixtures/seeded-data';
 import { USER_A } from '../fixtures/users';
 import { readRow } from '../fixtures/db-read';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 const SYDNEY_CLUB_ID = 'c1111111-0000-0000-0000-000000000001';
 const SYDNEY_SLUG = 'richmond-run-club';
-
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-	);
-}
 
 async function restoreRouteToPersonal() {
 	await getAdminClient()
@@ -41,7 +35,7 @@ test.describe('/routes — owner transfers a personal route into Richmond Run Cl
 	test.use({ storageState: USER_A.storageStatePath });
 
 	test.beforeEach(async ({ context }) => {
-		await context.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(context);
 		await restoreRouteToPersonal();
 	});
 

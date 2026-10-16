@@ -34,12 +34,36 @@ function formatter(locale: string | undefined, min: number, max: number): Intl.N
 /// `'1,234.5'`. `digits` pins both the minimum and maximum fraction
 /// digits so the width matches the old `toFixed(digits)` exactly.
 export function formatDecimal(value: number, digits: number, locale?: string): string {
-	return formatter(locale, digits, digits).format(value);
+	return formatLabel(formatter(locale, digits, digits), value);
 }
 
 /// Grouped integer: `formatInteger(1234, 'de')` → `'1.234'`,
 /// `(1234, 'fr')` → `'1 234'`. Used for whole-unit labels (metres, yards,
 /// feet) where the old code emitted an ungrouped `Math.round` string.
 export function formatInteger(value: number, locale?: string): string {
-	return formatter(locale, 0, 0).format(value);
+	return formatLabel(formatter(locale, 0, 0), value);
+}
+
+/// A whole number with an explicit sign either side of zero — "+3", "-2",
+/// "0" — for a balance such as training-stress balance, where a plain
+/// `toFixed(0)` printed "-0" for -0.3 and the dashboard prefixed "+" onto a
+/// value that then rounded to "0".
+export function formatSignedInteger(value: number, locale?: string): string {
+	if (!Number.isFinite(value)) return '—';
+	const whole = Math.round(value);
+	return (whole > 0 ? '+' : '') + formatInteger(whole, locale);
+}
+
+/// Intl prints NaN as "NaN", Infinity as "∞", and keeps the sign of a
+/// negative that rounds to zero ("-0", "-0.0" for a training-stress balance
+/// of -0.04). None is a number a runner can read, so a non-finite value is
+/// the em dash and a negative zero loses its sign. Mirrors `formatFixed` in
+/// apps/mobile_android/lib/l10n/number_format.dart.
+function formatLabel(nf: Intl.NumberFormat, value: number): string {
+	if (!Number.isFinite(value)) return '—';
+	if (value < 0 || Object.is(value, -0)) {
+		const zero = nf.format(0);
+		if (nf.format(-value) === zero) return zero;
+	}
+	return nf.format(value);
 }

@@ -283,6 +283,41 @@ test('resolveTrainingPaces: fall-back produces a valid pace set', () => {
 	assert.ok(p.easy > 0 && p.interval > 0);
 });
 
+test('resolveTrainingPaces: a degenerate goal distance falls back instead of a non-finite pace (twin parity)', () => {
+	// A 0 m goal distance divided every anchor to Infinity, which each band
+	// rounded to and `fmtPace` printed as "Infinity:NaN/km". Same table as
+	// training_test.dart.
+	const fallback = resolveTrainingPacesWithMeta({ goalDistanceM: 10_000 });
+	const cases: Array<{ goalDistanceM: number; goalTimeSec?: number; recent5kSec?: number }> = [
+		{ goalDistanceM: 0, goalTimeSec: 1200 },
+		{ goalDistanceM: 0, recent5kSec: 1200 },
+		{ goalDistanceM: -5000, goalTimeSec: 1200 },
+		{ goalDistanceM: Number.NaN, goalTimeSec: 1200 },
+	];
+	for (const input of cases) {
+		const got = resolveTrainingPacesWithMeta(input);
+		const label = JSON.stringify(input);
+		assert.equal(got.isFallback, true, label);
+		assert.equal(got.goalPaceSecPerKm, 600, label);
+		assert.deepEqual(got.paces, fallback.paces, label);
+	}
+});
+
+test('resolveTrainingPaces: a real goal time or recent 5K is an anchor, not the fallback (twin parity)', () => {
+	// The degenerate-pace guard sits after the anchor branches; a usable
+	// anchor must still come through it unchanged. Same cases as
+	// training_test.dart and training_paces.rs.
+	const goal = resolveTrainingPacesWithMeta({ goalDistanceM: 10_000, goalTimeSec: 2400 });
+	assert.equal(goal.isFallback, false);
+	assert.equal(goal.goalPaceSecPerKm, 240);
+	assert.deepEqual(goal.paces, pacesFromGoalPace(240));
+
+	const recent = resolveTrainingPacesWithMeta({ goalDistanceM: 10_000, recent5kSec: 1200 });
+	assert.equal(recent.isFallback, false);
+	assert.ok(Math.abs(recent.goalPaceSecPerKm - riegelPredict(5000, 1200, 10_000) / 10) < 1e-9);
+	assert.deepEqual(recent.paces, pacesFromGoalPace(recent.goalPaceSecPerKm));
+});
+
 test('resolveTrainingPaces: a zero recent5kSec/goalTimeSec is treated as no anchor (twin parity)', () => {
 	// A 0 anchor is "no usable time", not a real one. Web's JS truthiness already
 	// fell through to the conservative fallback; the Dart twin used `!= null` and
@@ -909,6 +944,10 @@ test('fmtHms — zero/null/negative render the em-dash placeholder', () => {
 	assert.equal(fmtHms(undefined), '—');
 	// A negative is truthy in JS; the <= 0 guard must still placeholder it.
 	assert.equal(fmtHms(-90), '—');
+	// Infinity is truthy and > 0 too, and printed "Infinity:NaN:NaN". The Dart
+	// twin takes an `int?`, which cannot hold either of these.
+	assert.equal(fmtHms(Number.POSITIVE_INFINITY), '—');
+	assert.equal(fmtHms(Number.NaN), '—');
 });
 
 test('fmtHms — formats a positive duration', () => {

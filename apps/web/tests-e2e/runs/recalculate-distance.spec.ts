@@ -1,4 +1,4 @@
-import { expect, test } from '../fixtures/mock-route';
+import { expect, test } from '../fixtures/test';
 
 import { browserDayAt } from '../fixtures/dates';
 import { readRows } from '../fixtures/db-read';
@@ -14,8 +14,10 @@ import { USER_A, USER_B } from '../fixtures/users';
  * re-derive its distance with the GPS distance estimator. The action goes
  * through a ConfirmDialog, calls `request_distance_recompute`, and says what
  * happened either way. It is not offered on an import, on a pedometer
- * distance, on a run already on `kalman_v3`, on a trackless run, or to anyone
- * but the owner. A recomputed run shows the recorder's original figure.
+ * distance, on a run already on `kalman_v4`, on a trackless run, on a v1.4
+ * watch run whose stored track omits the canopy fixes its estimator took (no
+ * `metadata.track_complete`), or to anyone but the owner. A recomputed run
+ * shows the recorder's original figure.
  */
 
 const TRACK_START_MS = Date.parse(browserDayAt(-1, 7));
@@ -54,7 +56,7 @@ test.afterEach(async () => {
 
 async function plant(opts: {
 	title: string;
-	source?: 'app' | 'strava';
+	source?: 'app' | 'watch' | 'strava';
 	metadata?: Record<string, unknown>;
 	track?: boolean;
 	is_public?: boolean;
@@ -150,7 +152,7 @@ test.describe('owner', () => {
 		const id = await plant({
 			title: 'Already fixed',
 			metadata: {
-				distance_estimator: 'kalman_v3',
+				distance_estimator: 'kalman_v4',
 				distance_recorded_m: 6_308,
 				distance_recomputed_at: browserDayAt(0, 6),
 			},
@@ -163,6 +165,56 @@ test.describe('owner', () => {
 		await expect(page.getByTestId('distance-recorded-note')).toContainText('Originally recorded:');
 		await expect(page.getByTestId('distance-recorded-note')).toContainText(/\d/);
 		await expect(page.getByTestId('recalculate-distance')).toHaveCount(0);
+	});
+
+	test('a run recomputed under kalman_v3 is offered the action again', async ({ page }) => {
+		const id = await plant({
+			title: 'Smoothed under v3',
+			metadata: {
+				distance_estimator: 'kalman_v3',
+				distance_recorded_m: 6_308,
+				distance_recomputed_at: browserDayAt(0, 6),
+			},
+		});
+
+		await page.goto(`/runs/${id}`);
+		await expect(page.getByRole('heading', { name: 'Smoothed under v3' })).toBeVisible({
+			timeout: 10_000,
+		});
+		await expect(page.getByTestId('distance-recorded-note')).toContainText('Originally recorded:');
+		await expect(page.getByTestId('recalculate-distance')).toBeVisible();
+	});
+
+	test('a v1.4 watch run is offered the action, and queued, only when its track is complete', async ({
+		page,
+	}) => {
+		const incomplete = await plant({
+			title: 'Watch, canopy fixes left out',
+			source: 'watch',
+			metadata: { distance_estimator: 'kalman_v4' },
+		});
+		const complete = await plant({
+			title: 'Watch, every fix stored',
+			source: 'watch',
+			metadata: { distance_estimator: 'kalman_v4', track_complete: true },
+		});
+
+		// runs_enqueue_watch_distance_recompute (20270829000031) queued the
+		// complete one when its track was named, and left the other alone.
+		expect(await recomputeJobs(incomplete), 'no automatic recompute of an incomplete track').toHaveLength(0);
+		expect(await recomputeJobs(complete), 'one automatic recompute of a complete track').toHaveLength(1);
+
+		await page.goto(`/runs/${incomplete}`);
+		await expect(page.getByRole('heading', { name: 'Watch, canopy fixes left out' })).toBeVisible({
+			timeout: 10_000,
+		});
+		await expect(page.getByTestId('recalculate-distance')).toHaveCount(0);
+
+		await page.goto(`/runs/${complete}`);
+		await expect(page.getByRole('heading', { name: 'Watch, every fix stored' })).toBeVisible({
+			timeout: 10_000,
+		});
+		await expect(page.getByTestId('recalculate-distance')).toBeVisible();
 	});
 
 	test('imports, pedometer, live-stamped and trackless runs are not offered the action', async ({

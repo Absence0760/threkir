@@ -94,24 +94,69 @@ final class WorkoutManagerDistanceTests: XCTestCase {
         XCTAssertLessThan(wm.distanceMetres, 2.8 * 60 * 1.2)
     }
 
-    func testGapOverTenSecondsCreditsNothingForTheGap() {
+    func testGapOverTenSecondsCreditsTheChordAcrossTheGap() {
         let wm = WorkoutManager()
         feed(wm, run(from: 51.5, at: 0, seconds: 20))
         let before = wm.distanceMetres
-        // 60 s later and ~170 m north: the estimator re-anchors and the
-        // un-sampled span is not invented.
+        // 60 s later and ~167 m north: the estimator re-anchors rather than
+        // integrating the jump, and credits the straight line across the gap
+        // less the 1-sigma uncertainty of both ends (spec v1.4), a lower bound
+        // on the path. 103.453 m is scripts/gps_distance/reference.py's figure.
         feed(wm, [loc(51.5 + 0.0015, at: 80)])
-        XCTAssertEqual(wm.distanceMetres, before, accuracy: 0.0001)
+        XCTAssertEqual(wm.distanceMetres, before + 103.4528, accuracy: 0.001)
         feed(wm, [loc(51.5 + 0.0015 + 2.8 / 111_195, at: 81)])
-        XCTAssertEqual(wm.distanceMetres, before + 2.8, accuracy: 0.01)
+        XCTAssertEqual(wm.distanceMetres, before + 103.4528 + 2.8, accuracy: 0.01)
     }
 
-    func testBadAccuracyFixIsIgnored() {
+    func testACanopyStretchMovesDistanceAndIsStoredButNotOnTheMap() {
+        // Five clean seconds, then ten at 40 m: past the 30 m track gate,
+        // inside the estimator's 50 m cap, Doppler still good. 2.8 m/s over
+        // 15 s by scripts/gps_distance/reference.py. Every one of the 16 fixes
+        // the estimator took is stored, the ten canopy ones flagged offTrack
+        // (docs/features/gps_distance.md § Stored track), so the server's
+        // replay sees the watch's input; the mini-map and its position are
+        // exactly what the six clean fixes alone draw.
+        let wm = WorkoutManager()
+        let degPerSecond = 2.8 / 111_195
+        let fixes = (0...15).map {
+            loc(51.5 + Double($0) * degPerSecond, at: Double($0), accuracy: $0 <= 5 ? 5 : 40)
+        }
+        feed(wm, fixes)
+        XCTAssertEqual(wm.distanceMetres, 2.8 * 15, accuracy: 0.01)
+        XCTAssertEqual(wm.trackPointCount, 16)
+        XCTAssertEqual(wm.mapPosition?.latitude ?? 0, 51.5 + 5 * degPerSecond, accuracy: 1e-12)
+        let cleanOnly = WorkoutManager()
+        feed(cleanOnly, Array(fixes.prefix(6)))
+        XCTAssertEqual(wm.mapTrail, cleanOnly.mapTrail, "the map line is the clean fixes alone")
+        XCTAssertTrue(wm.storedTrackComplete)
+    }
+
+    func testAFixExactlyAtTheTrackGateIsOffTheLine() {
+        // The gate is strict: 30 m is stored flagged, as before it was left out.
+        let wm = WorkoutManager()
+        feed(wm, [loc(51.5, at: 0), loc(51.5 + 2.8 / 111_195, at: 1, accuracy: 30)])
+        XCTAssertEqual(wm.trackPointCount, 2)
+        XCTAssertEqual(wm.mapPosition?.latitude ?? 0, 51.5, accuracy: 1e-12)
+    }
+
+    func testFixPastTheAccuracyCapIsIgnored() {
+        // 51 m is past the estimator's 50 m cap: dropped before it is fed.
+        let wm = WorkoutManager()
+        feed(wm, run(from: 51.5, at: 0, seconds: 5))
+        let banked = wm.distanceMetres
+        feed(wm, [loc(51.6, at: 6, accuracy: 51)])
+        XCTAssertEqual(wm.distanceMetres, banked, accuracy: 0.0001)
+    }
+
+    func testFixAtTheAccuracyCapCreditsItsDopplerNotItsPosition() {
+        // A 50 m fix is weighted, not dropped (spec v1.4): its ~11 km jump is
+        // refused by the innovation gate, but its Doppler still credits the
+        // second, 2.8 m.
         let wm = WorkoutManager()
         feed(wm, run(from: 51.5, at: 0, seconds: 5))
         let banked = wm.distanceMetres
         feed(wm, [loc(51.6, at: 6, accuracy: 50)])
-        XCTAssertEqual(wm.distanceMetres, banked, accuracy: 0.0001)
+        XCTAssertEqual(wm.distanceMetres, banked + 2.8, accuracy: 0.0001)
     }
 
     // MARK: - The pause boundary (#371)
@@ -164,6 +209,16 @@ final class WorkoutManagerDistanceTests: XCTestCase {
                        "a segment that learned nothing passes on the stride it carried")
     }
 
+    /// Each stored fix carries the run's credited distance as `distM`, the
+    /// axis splits and moving time are measured on.
+    func testStoredDistanceIsTheCreditedFigureToTheCentimetre() {
+        XCTAssertEqual(WorkoutManager.storedDistance(0), 0)
+        XCTAssertEqual(WorkoutManager.storedDistance(812.4049), 812.4)
+        XCTAssertNil(WorkoutManager.storedDistance(.nan))
+        XCTAssertNil(WorkoutManager.storedDistance(.infinity))
+        XCTAssertNil(WorkoutManager.storedDistance(-1))
+    }
+
     func testStopKeepsTheBankedFigure() {
         let wm = WorkoutManager()
         wm.state = .recording
@@ -175,8 +230,20 @@ final class WorkoutManagerDistanceTests: XCTestCase {
         XCTAssertEqual(wm.finishedRun?.distanceStepFilledMetres ?? -1, 0)
     }
 
-    func testCyclingRaisesTheSpeedCap() {
-        XCTAssertEqual(WorkoutManager.maxSpeedMps(for: .run), 10)
-        XCTAssertEqual(WorkoutManager.maxSpeedMps(for: .cycle), 25)
+    /// `fixtures/activity_speed_caps.json` is the phone's
+    /// `ActivityType.maxSpeedMps`, the one table every port's tests read.
+    func testEverySpeedCapMatchesTheSharedFixture() throws {
+        let url = URL(fileURLWithPath: "\(#filePath)")
+            .deletingLastPathComponent() // WatchAppTests
+            .deletingLastPathComponent() // watch_ios
+            .deletingLastPathComponent() // apps
+            .deletingLastPathComponent() // repo root
+            .appendingPathComponent("fixtures/activity_speed_caps.json")
+        struct Fixture: Decodable { let capsMps: [String: Double] }
+        let caps = try JSONDecoder().decode(Fixture.self, from: Data(contentsOf: url)).capsMps
+        for activity in RunActivityType.allCases {
+            let want = try XCTUnwrap(caps[activity.rawValue], "fixture has no cap for \(activity.rawValue)")
+            XCTAssertEqual(WorkoutManager.maxSpeedMps(for: activity), want, activity.rawValue)
+        }
     }
 }

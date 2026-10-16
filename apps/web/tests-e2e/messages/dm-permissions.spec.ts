@@ -1,8 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A, USER_B, USER_C_PRO } from '../fixtures/users';
 import { readRows } from '../fixtures/db-read';
+import { setStorageOnLoad } from '../fixtures/helpers';
 
 /**
  * /messages — DM permission boundaries + unread plumbing (#55).
@@ -64,6 +65,27 @@ test.describe('/messages — permission boundaries', () => {
 					.eq('recipient_id', USER_C_PRO.id)
 			);
 			expect(data.length).toBe(0);
+		} finally {
+			await ctx.close();
+		}
+	});
+
+	test('the follow-gate refusal reads in the runner\'s own language', async ({ browser }) => {
+		const ctx = await browser.newContext({ storageState: USER_B.storageStatePath, locale: 'de-DE' });
+		const page = await ctx.newPage();
+		try {
+			await setStorageOnLoad(page, { local: { locale: 'de' } });
+			await page.goto(`/messages/${USER_C_PRO.id}`);
+
+			const composer = page.getByPlaceholder('Nachricht…');
+			await expect(composer).toBeVisible({ timeout: 10_000 });
+			await composer.fill(`e2e-should-fail-de ${Date.now()}`);
+			await page.getByRole('button', { name: 'Senden' }).click();
+
+			const alert = page.locator('.send-error[role="alert"]');
+			await expect(alert).toBeVisible({ timeout: 10_000 });
+			await expect(alert).toContainText('Du kannst nur Personen schreiben, denen du folgst');
+			await expect(alert).not.toContainText(/can only message/i);
 		} finally {
 			await ctx.close();
 		}

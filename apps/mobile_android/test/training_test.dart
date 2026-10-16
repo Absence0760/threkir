@@ -321,6 +321,59 @@ void main() {
       expect(p.interval > 0, isTrue);
     });
 
+    test('a degenerate goal distance falls back instead of a non-finite pace (twin parity)', () {
+      // A 0 m goal distance divided every anchor to Infinity, and each band's
+      // `.round()` threw. Same table as training.test.ts.
+      final fallback = resolveTrainingPacesWithMeta(goalDistanceM: 10000);
+      final cases = <(double, int?, int?)>[
+        (0.0, 1200, null),
+        (0.0, null, 1200),
+        (-5000.0, 1200, null),
+        (double.nan, 1200, null),
+      ];
+      for (final (distance, goalTime, recent5k) in cases) {
+        final got = resolveTrainingPacesWithMeta(
+          goalDistanceM: distance,
+          goalTimeSec: goalTime,
+          recent5kSec: recent5k,
+        );
+        final label = '($distance, $goalTime, $recent5k)';
+        expect(got.isFallback, isTrue, reason: label);
+        expect(got.goalPaceSecPerKm, 600, reason: label);
+        expect(got.paces.easy, fallback.paces.easy, reason: label);
+        expect(got.paces.marathon, fallback.paces.marathon, reason: label);
+        expect(got.paces.tempo, fallback.paces.tempo, reason: label);
+        expect(got.paces.interval, fallback.paces.interval, reason: label);
+        expect(got.paces.repetition, fallback.paces.repetition, reason: label);
+      }
+    });
+
+    test('a real goal time or recent 5K is an anchor, not the fallback (twin parity)', () {
+      // The degenerate-pace guard sits after the anchor branches; a usable
+      // anchor must still come through it unchanged. Same cases as
+      // training.test.ts and training_paces.rs.
+      void samePaces(TrainingPaces got, TrainingPaces want) {
+        expect(got.easy, want.easy);
+        expect(got.marathon, want.marathon);
+        expect(got.tempo, want.tempo);
+        expect(got.interval, want.interval);
+        expect(got.repetition, want.repetition);
+      }
+
+      final goal =
+          resolveTrainingPacesWithMeta(goalDistanceM: 10000, goalTimeSec: 2400);
+      expect(goal.isFallback, isFalse);
+      expect(goal.goalPaceSecPerKm, 240);
+      samePaces(goal.paces, pacesFromGoalPace(240));
+
+      final recent =
+          resolveTrainingPacesWithMeta(goalDistanceM: 10000, recent5kSec: 1200);
+      expect(recent.isFallback, isFalse);
+      expect(recent.goalPaceSecPerKm,
+          closeTo(riegelPredict(5000, 1200, 10000) / 10, 1e-9));
+      samePaces(recent.paces, pacesFromGoalPace(recent.goalPaceSecPerKm));
+    });
+
     test('a zero recent5kSec/goalTimeSec is treated as no anchor (twin parity)', () {
       // Regression: `0 != null` ran Riegel on a 0 time → goalPace 0 → every band
       // 0:00/km + isFallback wrongly false. A 0 anchor is "no usable time" and

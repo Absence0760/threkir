@@ -36,7 +36,7 @@ RunFeedEntry _runEntry({
   String? authorName = 'Alex Runner',
 }) =>
     RunFeedEntry(
-      run: RunRow(
+      run: RunRow(safetyAudience: false, 
         id: id,
         userId: authorId,
         startedAt: DateTime.utc(2026, 6, 10, 7),
@@ -51,7 +51,7 @@ RunFeedEntry _runEntry({
       author: _author(id: authorId, name: authorName),
     );
 
-UserProfileRow _profileRow(String id, String name) => UserProfileRow(shadowHidden: false, 
+UserProfileRow _profileRow(String id, String name) => UserProfileRow(profilePrivate: false, shadowHidden: false, 
       id: id,
       displayName: name,
     );

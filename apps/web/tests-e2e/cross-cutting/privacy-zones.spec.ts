@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { isInAnyZone } from '../../src/lib/routes/privacy';
 import { originOf } from '../fixtures/base-url';

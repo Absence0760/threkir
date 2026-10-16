@@ -1,7 +1,9 @@
 import type { Page } from '@playwright/test';
 
 import { originOf } from '../fixtures/base-url';
-import { expect, test, type MockRoute } from '../fixtures/mock-route';
+import type { MockRoute } from '../fixtures/mock-route';
+import { expect, test } from '../fixtures/test';
+import { setStorageOnLoad } from '../fixtures/helpers';
 
 /**
  * Accepting error reporting must leave the app rendering (decisions § 1896).
@@ -104,10 +106,9 @@ test.describe('built app with error reporting accepted', () => {
 		mockRoute
 	}) => {
 		const origin = originOf(baseURL);
-		await context.addInitScript(
-			([key, value]) => localStorage.setItem(key, value),
-			[CONSENT_KEY, JSON.stringify({ choice: 'accepted', timestamp: Date.now() })] as const
-		);
+		await setStorageOnLoad(context, {
+			local: { [CONSENT_KEY]: JSON.stringify({ choice: 'accepted', timestamp: Date.now() }) }
+		});
 
 		// `/` is prerendered, so its heading is in the HTML whether or not the
 		// client starts; the uncaught-error check is what fails there. /help and

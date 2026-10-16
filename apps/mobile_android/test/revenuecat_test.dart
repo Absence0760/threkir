@@ -263,7 +263,7 @@ void main() {
     test('falls back to the web page on Android when the SDK has no key',
         () async {
       debugDefaultTargetPlatformOverride = TargetPlatform.android;
-      expect(await resolveManageSubscriptionUrl('user-1'), webUpgradeUrl);
+      expect(await resolveManageSubscriptionUrl('user-1'), webUpgradeUrl());
     });
 
     test('falls back to Apple, not the page that sells Pro, on iOS',

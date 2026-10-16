@@ -95,6 +95,22 @@ export type TrackPoint = {
 	/// go through `lineLat` / `lineLng` (lib/runs/track_line.ts).
 	smoothedLat?: number;
 	smoothedLng?: number;
+	/// The phone barometer's altitude for this fix, metres, anchored to GPS
+	/// altitude over a long window (docs/features/gps_distance.md § Waypoint
+	/// fields); `ele` stays the GPS altitude. Climb and the profile read it
+	/// through `runAltitude` (lib/runs/run_altitude.ts).
+	baroEle?: number;
+	/// The run's distance credited up to and including this fix, metres:
+	/// the GPS distance estimator's cumulative figure as the recorder saved it
+	/// (docs/features/gps_distance.md § Waypoint fields). Splits and moving
+	/// time read it through `trackCumulativeMetres` (lib/runs/run_stats.ts).
+	distM?: number;
+	/// A fix the distance estimator took that failed the recorder's track
+	/// gate (docs/features/gps_distance.md § Waypoint fields): stored for the
+	/// server's distance replay, never drawn. Absent, never `false`, on every
+	/// other point. Line readers go through `trackLine`
+	/// (lib/runs/track_line.ts).
+	offTrack?: boolean;
 };
 
 // `track` is populated on-demand by `data.ts#fetchRunById` from the gzipped
@@ -580,7 +596,11 @@ export type NotificationKind =
 	| 'content_hidden'
 	| 'data_export_ready'
 	| 'refund_failed'
-	| 'event_waitlist_slot';
+	| 'event_waitlist_slot'
+	| 'follow_request'
+	| 'reaction'
+	| 'comment_like'
+	| 'mention';
 
 // `invite_token` is excluded from the base type because the column-
 // level grant lockdown (migrations 20260801_001 + 20260818_001 redo)
@@ -600,7 +620,11 @@ export type NotificationKind =
 // it server-side). The column is grantable to anon/authenticated; if
 // a future client surface ever needs to render the point (a map pin
 // on a club's page), reintroduce it here + extend CLUB_SELECT_COLS.
-export type Club = Omit<ClubRow, 'join_policy' | 'invite_token' | 'location_point'> & {
+//
+// `strava_club_id` (migration 20270819001953) is granted but no club surface
+// reads it: the Strava link is listed and written through the `strava-clubs`
+// Edge Function (decisions § 1959), so the browse and member reads leave it out.
+export type Club = Omit<ClubRow, 'join_policy' | 'invite_token' | 'location_point' | 'strava_club_id'> & {
 	join_policy: JoinPolicy;
 };
 // `activity_waiver_ack_at` is omitted for the same reason `Route` omits

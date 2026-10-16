@@ -23,10 +23,13 @@ const ORDER_BY_TABLE: Record<string, string> = {
 	event_attendees: 'event_id,user_id,instance_start',
 	event_exceptions: 'event_id,instance_start',
 	event_pricing: 'event_id,instance_start',
+	follow_requests: 'requester_id,target_id',
 	instructor_payout_accounts: 'user_id',
 	personal_records: 'user_id,distance',
+	run_comment_likes: 'user_id,comment_id',
 	run_gear: 'run_id,gear_id',
 	run_kudos: 'user_id,run_id',
+	run_reactions: 'user_id,run_id,reaction',
 	saved_routes: 'user_id,route_id',
 	sign_in_devices: 'user_id,browser,platform',
 	user_blocks: 'blocker_id,blocked_id',
@@ -98,6 +101,24 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 			filter: `runs.user_id=eq.${uid}`,
 			select: '*,runs!inner(user_id)',
 		},
+		// run_reactions + run_comment_likes (decisions § 1971), left and
+		// received. A like names no run owner, so its received half joins the
+		// comment and filters on the comment's author. Mirror of the Go
+		// worker's exportPersonalDataSpecs.
+		{ entry: 'run_reactions.json', table: 'run_reactions', filter: uidEq, select: '*' },
+		{ entry: 'run_comment_likes.json', table: 'run_comment_likes', filter: uidEq, select: '*' },
+		{
+			entry: 'run_reactions_received.json',
+			table: 'run_reactions',
+			filter: `runs.user_id=eq.${uid}`,
+			select: '*,runs!inner(user_id)',
+		},
+		{
+			entry: 'run_comment_likes_received.json',
+			table: 'run_comment_likes',
+			filter: `run_comments.author_id=eq.${uid}`,
+			select: '*,run_comments!inner(author_id)',
+		},
 		{
 			entry: 'run_photos.json',
 			table: 'run_photos',
@@ -137,6 +158,20 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 			entry: 'followers.json',
 			table: 'user_follows',
 			filter: `followee_id=eq.${uid}`,
+			select: '*',
+		},
+		// follow_requests — pending follows of a private profile (migration
+		// 20270822000001), both legs. Mirrors the Go worker's entries.
+		{
+			entry: 'follow_requests_sent.json',
+			table: 'follow_requests',
+			filter: `requester_id=eq.${uid}`,
+			select: '*',
+		},
+		{
+			entry: 'follow_requests_received.json',
+			table: 'follow_requests',
+			filter: `target_id=eq.${uid}`,
 			select: '*',
 		},
 		{ entry: 'event_attendees.json', table: 'event_attendees', filter: uidEq, select: '*' },
@@ -468,7 +503,7 @@ export const BACKUP_VERSION = 1;
 /// degrades to `GenericStringError[]` at the call site.
 // prettier-ignore
 export const PROFILE_SELECT =
-	'id,display_name,handle,avatar_url,preferred_unit,created_at,onboarded_at,date_of_birth,gender,height_cm,parkrun_number,subscription_tier,subscription_at,billing_issue_at,terms_accepted_at,age_confirmed_at,coach_consent_at,health_data_consent_at,ai_disclosure_version';
+	'id,display_name,handle,avatar_url,preferred_unit,created_at,onboarded_at,date_of_birth,gender,height_cm,parkrun_number,profile_private,subscription_tier,subscription_at,billing_issue_at,terms_accepted_at,age_confirmed_at,coach_consent_at,health_data_consent_at,ai_disclosure_version';
 
 /// Strip `id` from the profile so the archive is re-homeable —
 /// restore stamps the new owner's uid. Mirrors the Go worker's

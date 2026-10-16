@@ -48,6 +48,7 @@ const REF: RenderRunRow = {
 		'22222222-2222-2222-2222-222222222222/11111111-1111-1111-1111-111111111111.hr.json.gz',
 	is_public: false,
 	followers_only: false,
+	safety_audience: false,
 	event_id: null,
 	route_id: null,
 	race_listing_id: null,
@@ -95,7 +96,7 @@ Deno.test('csvRow emits exactly one value per declared column', () => {
 	// A column added to CSV_COLS without a matching value in csvRow shifts
 	// every later field by one for the whole export, silently — a consumer
 	// reads `is_public` out of the `external_id` slot and nothing errors.
-	assertEquals(CSV_COLS.length, 27);
+	assertEquals(CSV_COLS.length, 28);
 	assertEquals(csvFields(csvRow(REF)).length, CSV_COLS.length);
 });
 
@@ -112,12 +113,25 @@ Deno.test('csvRow puts each value under the header its name promises', () => {
 	assertEquals(at('title'), 'Morning run');
 	assertEquals(at('is_public'), 'false');
 	assertEquals(at('followers_only'), 'false');
+	assertEquals(at('safety_audience'), 'false');
 	assertEquals(at('created_at'), REF.created_at);
 	assertEquals(at('updated_at'), REF.updated_at);
 	// The Storage path is deliberately absent from the CSV: it is a key into
 	// the owner's folder that any live session JWT could then fetch directly.
 	assert(!CSV_COLS.includes('track_url'));
 	assert(!csvRow(REF).includes('.json.gz'));
+});
+
+Deno.test('a safety-audience live share exports its flag under its own header', () => {
+	// The three visibility cells are adjacent booleans, so REF's all-false row
+	// cannot tell one slot from the next. A run shared live on the
+	// safety-contacts audience (decisions § 1964) is private, not
+	// followers-only, and has the safety flag on.
+	const row = csvFields(csvRow({ ...REF, is_public: false, followers_only: false, safety_audience: true }));
+	const at = (col: string) => row[CSV_COLS.indexOf(col)];
+	assertEquals(at('is_public'), 'false');
+	assertEquals(at('followers_only'), 'false');
+	assertEquals(at('safety_audience'), 'true');
 });
 
 Deno.test('the seven columns that reached no format now reach the CSV', () => {
@@ -419,4 +433,17 @@ Deno.test('buildGpx emits no character an XML parser would refuse, whatever the 
 	);
 	assert(!XML_FORBIDDEN.test(gpx), `forbidden character in ${JSON.stringify(gpx)}`);
 	assert(gpx.includes('<name>Bell� lap �</name>'), 'the title keeps every character it can');
+});
+
+Deno.test('buildGpx leaves out an off-track fix, as the run line does', () => {
+	// An off-track fix is distance input the recorder stored for the server
+	// replay; the GPX is the line, and the Go twin's parseTrack drops it too.
+	const gpx = buildGpx(GPX_REF, [
+		{ lat: 1, lng: 2 },
+		{ lat: 1.5, lng: 2.5, offTrack: true },
+		{ lat: 3, lng: 4, offTrack: false },
+	]);
+	assertEquals(gpx.match(/<trkpt /g)?.length, 2);
+	assert(!gpx.includes('lat="1.5"'), 'the off-track fix reached the GPX');
+	assert(gpx.includes('<trkpt lat="3" lon="4">'));
 });

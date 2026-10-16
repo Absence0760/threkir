@@ -18,7 +18,7 @@ gate.
 What the Pro tier changes:
 
 - **Higher AI Coach daily cap (10/day vs 2/day for free).** Both tiers
-  go through the same `increment_coach_usage` RPC and the same
+  go through the same `spend_coach_usage_slot` RPC and the same
   `usedToday > dailyLimit` gate in `apps/web/src/lib/coach/handler.ts`;
   only the resolved cap differs. Free users get
   `TIER_LIMITS.free.dailyLimit = 2` messages per UTC day, then the
@@ -29,13 +29,15 @@ What the Pro tier changes:
   `bypassPaywallEnabled: false`, so a caller that POSTs directly to
   `/api/coach` from devtools still gets a 429 once they exceed their
   tier's cap with `{ error: 'daily_limit', tier, limit }`. The gate is
-  fail-closed: the `increment_coach_usage` RPC result is resolved through
-  the pure `resolveUsageCount(data, error)` helper in `coach/limits.ts`,
-  which denies (handler returns a transient 503) on an RPC error or a
-  non-finite/negative count rather than defaulting the count to 0 — so an
+  fail-closed: the `spend_coach_usage_slot` RPC result is resolved through
+  the pure `resolveUsageSpend(data, error)` helper in `coach/limits.ts`,
+  which denies (handler returns a transient 503) on an RPC error or an
+  unreadable or negative count rather than defaulting the count to 0 — so an
   unenforceable cap never streams an unmetered provider call. On a
-  provider failure the slot is **refunded** (`decrement_coach_usage`) only
-  when the stream yielded **zero** tokens; a partial answer keeps the slot
+  provider failure the slot is **refunded** (`refund_coach_usage_slot`,
+  with the ticket that request's spend returned, so a runner cannot refund a
+  message that succeeded — decisions § 1990) only when the stream yielded
+  **zero** tokens; a partial answer keeps the slot
   AND is persisted to `coach_messages` (via the same service-role writer
   the happy path uses) so what the user paid for survives a reload —
   content-persisted ⟺ slot-consumed, never a charged slot with a lost
@@ -107,7 +109,8 @@ its "Get Pro" CTA for a "Pro — coming soon" teaser
 app never sells a hollow subscription and leads with donations instead.
 Each flagged perk's card bullet is additionally gated on its own flag
 (the Coach bullets on `coachOn`, the route-generation bullet on
-`routeGenOn`), so a partially-live deploy (e.g. Lean: Coach on, engines
+`routeGenOn`, the plate-photo bullet on `coachOn && platePhotoEnabled()`
+— a perk that never on its own makes Pro sellable), so a partially-live deploy (e.g. Lean: Coach on, engines
 still deferred) sells Pro without advertising the dead perk. Setting
 each flag true (only once its feature is actually live) restores the
 full card with no code change. The tier machinery (`subscription_tier`,
@@ -155,9 +158,12 @@ they also sit beside Restore Purchases. Pinned by
 A Flutter binary has no server-rendered env, so the web build publishes
 the two flags it already reads as a prerendered manifest at
 **`/app-capabilities.json`** (`apps/web/src/routes/app-capabilities.json/+server.ts`,
-body `{coach, route_gen, web_checkout}`, derived from the *same*
-`coachEnabled()` / `routeGenEnabled()` / `webCheckoutAvailable()` gates —
-there is no second flag to keep in sync).
+body `{coach, route_gen, web_checkout, ai_plan, plate_photo}`, derived from
+the *same* `coachEnabled()` / `routeGenEnabled()` / `webCheckoutAvailable()`
+gates, and `coachEnabled() && aiPlanEnabled()` / `coachEnabled() &&
+platePhotoEnabled()` for the last two — there is no second flag to keep in
+sync). `ai_plan` and `plate_photo` only tell the phone whether to offer the
+AI plan box and the plate-photo camera action; they sell nothing.
 `apps/mobile_android/lib/pro_sellable.dart` (twin-mirrored) fetches it
 from `WEB_BASE_URL` — the origin the app already calls for `/api/coach`
 — and `SettingsProScreen` swaps the "Subscribe to Pro" tile for the
@@ -253,11 +259,13 @@ flow requires an admin SQL session; from a client there is no way.
 
 | Perk | Feature key | Enforcement point |
 |---|---|---|
-| Higher AI Coach daily cap (10/day vs 2/day) | `ai_coach` | Server: `apps/web/src/lib/coach/handler.ts` checks `is_pro()` via the auth context, resolves `TIER_LIMITS[tier].dailyLimit`, and runs the same `increment_coach_usage` + `usedToday > dailyLimit` gate for both tiers. A free user's 3rd attempt of a UTC day returns 429 with `{ error: 'daily_limit', tier: 'free', limit: 2 }`; a Pro user's 11th attempt returns 429 with `{ error: 'daily_limit', tier: 'pro', limit: 10 }`. Client: `CoachChat.svelte` reads back the tier and limit from the SSE `meta` event and shows the "Free badge · N of 2 remaining" or "Pro badge · N of 10 remaining · priority context window" footer. The composer is replaced with a `.limit-bar` block when `usedToday >= dailyLimit`. |
+| Higher AI Coach daily cap (10/day vs 2/day) | `ai_coach` | Server: `apps/web/src/lib/coach/handler.ts` checks `is_pro()` via the auth context, resolves `TIER_LIMITS[tier].dailyLimit`, and runs the same `spend_coach_usage_slot` + `usedToday > dailyLimit` gate for both tiers. A free user's 3rd attempt of a UTC day returns 429 with `{ error: 'daily_limit', tier: 'free', limit: 2 }`; a Pro user's 11th attempt returns 429 with `{ error: 'daily_limit', tier: 'pro', limit: 10 }`. Client: `CoachChat.svelte` reads back the tier and limit from the SSE `meta` event and shows the "Free badge · N of 2 remaining" or "Pro badge · N of 10 remaining · priority context window" footer. The composer is replaced with a `.limit-bar` block when `usedToday >= dailyLimit`. |
 | Priority processing — coach context | `priority_processing` | Server: `/api/coach/+server.ts` derives `tier` from `is_pro()` then resolves a `TIER_LIMITS` budget (`maxTokens`, `maxRunsLimit`, `dailyLimit`). Pro gets 2048 max-tokens + 75-runs context cap; free gets 768 + 30. Budget is echoed in `X-Coach-Tier` / `X-RateLimit-*` headers and the response body's `tier` + `limits`, so clients can render the right footer state without parsing headers. |
-| AI route description | _(no key — perk, not gate)_ | Server: `apps/web/src/lib/routes/route_describe/handler.ts` verifies the JWT, gates on `is_pro()` (fail-closed: an RPC error or a free caller serves the templated text, never the model), then calls `claude-opus-4-8` (adaptive thinking, 400-token cap, 12 s timeout). Reached via `/api/coach/route-describe` (dev `+server.ts`; prod routed inside the coach Lambda by `rawPath.includes('/route-describe')`). Every failure mode — not-Pro, missing `ANTHROPIC_API_KEY`, model error, `stop_reason:'refusal'`, empty completion, timeout — returns 200 with `{ description: <templated>, source: 'template' }`; a free caller also gets `upgrade:true`. Client: `/routes/[id]` renders `localisedTemplate` instantly, then swaps in the AI text on a `source:'ai'` 200 with an `auto_awesome` attribution. |
-| AI route request (natural language → generator constraints) | _(no key — perk, not gate)_ | Server: `apps/web/src/lib/routes/route_request/handler.ts` verifies the JWT, gates on `is_pro()` **fail-closed** (an RPC error returns 503 `route assistant unavailable`; a free caller gets 403 `{ error: 'pro required', upgrade: true }` — never the model), then makes a single tool-forced `claude-opus-4-8` call that extracts a constraints object, re-validated / clamped by `validateConstraints` before it can reach the deterministic generator. Reached via `/api/coach/route-request` (dev `+server.ts`; prod routed inside the coach Lambda by `rawPath.includes('/route-request')`). The NL box is purely additive — the manual generator form keeps working on every failure mode. Client: the 403's `upgrade:true` surfaces a Pro upsell on the NL box without implying the manual form failed. |
-| AI plan assistant (natural language → plan-wizard inputs) | _(no key — spends a Coach message)_ | Server: `apps/web/src/lib/training/plan_request/handler.ts` verifies the JWT, requires AI disclosure v3, then spends one message from the **AI Coach daily counter** (`increment_coach_usage`, `TIER_LIMITS` free 2 / Pro 10, fail-closed 503 on an RPC error, 429 `daily_limit` over the cap, refunded via `decrement_coach_usage` on any provider failure). Not Pro-gated: a free runner can use it inside the same cap that bounds Coach spend. One tool-forced `claude-opus-4-8` call extracts wizard inputs, clamped by `validatePlanInputs` before the deterministic generator sees them (decisions § 1930). Reached via `/api/coach/plan-request`. Client: the box on `/plans/new`, shown only when `PUBLIC_COACH_ENABLED` and `PUBLIC_AI_PLAN_ENABLED` are both on; the manual wizard keeps working on every failure. |
+| AI route description | _(no key — perk, not gate)_ | Server: `apps/web/src/lib/routes/route_describe/handler.ts` verifies the JWT, gates on `is_pro()` (fail-closed: an RPC error or a free caller serves the templated text, never the model), takes a `route-describe` slot (60/hour per user, `spendRouteRateLimitSlot`, fail-closed to the template), then calls `claude-opus-4-8` (adaptive thinking, 400-token cap, 12 s timeout). A refusal, an empty completion or a provider failure refunds the slot (`refund_rate_limit_slot`, migration `20270827000001`). Reached via `/api/coach/route-describe` (dev `+server.ts`; prod routed inside the coach Lambda by `rawPath.includes('/route-describe')`). Every failure mode — not-Pro, missing `ANTHROPIC_API_KEY`, model error, `stop_reason:'refusal'`, empty completion, timeout — returns 200 with `{ description: <templated>, source: 'template' }`; a free caller also gets `upgrade:true`. Client: `/routes/[id]` renders `localisedTemplate` instantly, then swaps in the AI text on a `source:'ai'` 200 with an `auto_awesome` attribution. |
+| AI route request (natural language → generator constraints) | _(no key — perk, not gate)_ | Server: `apps/web/src/lib/routes/route_request/handler.ts` verifies the JWT, gates on `is_pro()` **fail-closed** (an RPC error returns 503 `route assistant unavailable`; a free caller gets 403 `{ error: 'pro required', upgrade: true }` — never the model), takes a `route-request` slot (60/hour per user, `spendRouteRateLimitSlot`, fail-closed 429), then makes a single tool-forced `claude-opus-4-8` call that extracts a constraints object, re-validated / clamped by `validateConstraints` before it can reach the deterministic generator. A refusal, a reply with no tool call or a provider failure refunds the slot. Reached via `/api/coach/route-request` (dev `+server.ts`; prod routed inside the coach Lambda by `rawPath.includes('/route-request')`). The NL box is purely additive — the manual generator form keeps working on every failure mode. Client: the 403's `upgrade:true` surfaces a Pro upsell on the NL box without implying the manual form failed. |
+| AI plan assistant (natural language → plan-wizard inputs) | _(no key — spends a Coach message)_ | Server: `apps/web/src/lib/training/plan_request/handler.ts` verifies the JWT, requires AI disclosure v3, then spends one message from the **AI Coach daily counter** (`spend_coach_usage_slot`, `TIER_LIMITS` free 2 / Pro 10, fail-closed 503 on an RPC error, 429 `daily_limit` over the cap, refunded via `refund_coach_usage_slot` with that spend's ticket on any provider failure). Not Pro-gated: a free runner can use it inside the same cap that bounds Coach spend. One tool-forced `claude-opus-4-8` call extracts wizard inputs, clamped by `validatePlanInputs` before the deterministic generator sees them (decisions § 1930). Reached via `/api/coach/plan-request`. Client: the box on `/plans/new`, shown only when `PUBLIC_COACH_ENABLED` and `PUBLIC_AI_PLAN_ENABLED` are both on; the manual wizard keeps working on every failure. |
+| AI plan edits (natural language → typed plan-edit operations) | _(no key — spends a Coach message)_ | Server: `apps/web/src/lib/training/plan_edit/handler.ts` verifies the JWT, requires AI disclosure v4, reads the caller's own plan (404 / 409 before any spend), then spends one message from the **AI Coach daily counter** (`spend_coach_usage_slot`, fail-closed 503 on an RPC error, 429 `daily_limit` over the cap, refunded via `refund_coach_usage_slot` with that spend's ticket on any provider failure). Not Pro-gated (decisions § 1981). One tool-forced `claude-opus-4-8` call, validated by `validatePlanEditOps`. Reached via `/api/coach/plan-edit`. Client: Adjust with AI on `/plans/[id]`, shown only when `PUBLIC_COACH_ENABLED` and `PUBLIC_AI_PLAN_EDIT_ENABLED` are both on. |
+| Plate-photo logger (meal photo → proposed food-log entries) | _(no key — perk, not gate)_ | Server: `apps/web/src/lib/nutrition/plate_photo/handler.ts` refuses with 503 unless `PLATE_PHOTO_ENABLED` (Lambda) / `PUBLIC_PLATE_PHOTO_ENABLED` (dev) is truthy, verifies the JWT, requires AI disclosure **v5** (the bypass never skips it), gates on `is_pro()` **fail-closed** (an RPC error is 503, a free caller 403 `upgrade: true`), then takes a `plate-photo` slot through `spendRouteRateLimitSlot` (20/hour per user, fail-closed); a refusal, a reply with no tool call or a provider failure refunds it. The refund is ticketed (`spend_rate_limit_slot` returns a ticket the handler keeps server-side, `refund_rate_limit_slot` consumes it, migration `20270827000001`) because the handler holds only the caller's JWT, so a bare per-bucket decrement would let a runner reset their own ceiling after a successful call. Pro + throttle rather than a Coach message because a vision call is the most expensive single request the app makes. Client: `LogFoodPanel` — every Log food surface (`/nutrition` and `/history` dialogs, `/nutrition/log`) — offers the control only under `coachEnabled() && platePhotoEnabled()`, and the `/settings/upgrade` Pro card lists it under the same gate; a consent refusal links to `AI_CONSENT_HREF` (Settings → Account); mobile reads `plate_photo` from `/app-capabilities.json`. [decisions § 1972](../architecture/decisions.md). |
 | Priority map-matching | `priority_processing` | DB: every enqueue site for `kind='map_match'` jobs (the auto-trigger `runs_enqueue_match_job` and the manual-rematch RPC `enqueue_run_rematch`) calls `job_scheduled_at_for_user(uuid)` from migration `20260730_001`. Pro / lifetime → `now()` (front of queue); free → `now() + 30 s` (defers behind Pro). The worker's `claim_next_job` orders by `(scheduled_at, id)` so Pro jobs are always claimable strictly before free jobs enqueued at the same instant. **Future job kinds follow the same pattern** — call the helper at enqueue time; don't inline `case ... subscription_tier ...`. See [decisions.md § 57](../architecture/decisions.md#57-map-matching-is-free-queue-priority-is-the-pro-perk). |
 
 `PRO_ONLY_FEATURES` in `features.ts` is empty today — every screen is

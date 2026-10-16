@@ -22,6 +22,7 @@
 	} from '#lib/routes/basemap_contrast.ts';
 	import { watchMapResize } from '#lib/routes/map_resize.ts';
 	import { supabase } from '#lib/core/supabase.ts';
+	import { queryChunked } from '#lib/social/feed_merge.ts';
 	import {
 		fetchRecentRacePings,
 		fetchLatestRacePings,
@@ -232,17 +233,23 @@
 		const followsViewer = new Set<string>();
 		if (viewerId && runnerIds.size > 0) {
 			const ids = [...runnerIds];
+			// A race field is hundreds of runners, past what one `in` filter
+			// carries (decisions § 653), so each probe reads in bounded chunks.
 			const [vfr, rfv] = await Promise.all([
-				supabase
-					.from('user_follows')
-					.select('followee_id')
-					.eq('follower_id', viewerId)
-					.in('followee_id', ids),
-				supabase
-					.from('user_follows')
-					.select('follower_id')
-					.eq('followee_id', viewerId)
-					.in('follower_id', ids)
+				queryChunked(ids, (part) =>
+					supabase
+						.from('user_follows')
+						.select('followee_id')
+						.eq('follower_id', viewerId)
+						.in('followee_id', part)
+				),
+				queryChunked(ids, (part) =>
+					supabase
+						.from('user_follows')
+						.select('follower_id')
+						.eq('followee_id', viewerId)
+						.in('follower_id', part)
+				)
 			]);
 			for (const row of vfr.data ?? []) viewerFollows.add(row.followee_id);
 			for (const row of rfv.data ?? []) followsViewer.add(row.follower_id);
@@ -260,10 +267,9 @@
 		);
 		const realNames = new Map<string, string | null>();
 		if (revealIds.length > 0) {
-			const { data } = await supabase
-				.from('user_profiles')
-				.select('id, display_name')
-				.in('id', revealIds);
+			const { data } = await queryChunked(revealIds, (part) =>
+				supabase.from('user_profiles').select('id, display_name').in('id', part)
+			);
 			for (const p of data ?? []) realNames.set(p.id, p.display_name);
 		}
 		for (const id of runnerIds) {

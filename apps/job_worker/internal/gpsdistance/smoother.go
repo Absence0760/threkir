@@ -47,6 +47,10 @@ type SmoothResult struct {
 	PositionOnly       bool
 	ForwardDistanceM   float64
 	ForwardCumulativeM []float64
+	// GapM is the chord lower bound credited across every gap re-anchor
+	// beyond the steps committed for it (spec v1.4 item 9): GPS credit that
+	// both passes carry, and that the pedometer would have replaced.
+	GapM float64
 }
 
 // StopFix is one accepted fix in the local plane, for DetectStops.
@@ -158,6 +162,9 @@ func SmoothDistance(events []Event, o Options) SmoothResult {
 		if !(finite(f.T) && finite(f.Lat) && finite(f.Lng)) {
 			continue
 		}
+		if validPtr(f.AccuracyM) && *f.AccuracyM > MaxPosSigmaM {
+			continue
+		}
 		if !haveOrigin {
 			lat0, lng0, haveOrigin = f.Lat, f.Lng, true
 		}
@@ -222,7 +229,8 @@ func SmoothDistance(events []Event, o Options) SmoothResult {
 		}
 	}
 
-	// Credit along the smoothed velocities: trapezoid per interval, gap re-anchors not credited.
+	// Credit along the smoothed velocities: trapezoid per interval; a gap
+	// re-anchor carries the forward pass's chord lower bound.
 	effs := make([]float64, len(recs))
 	for k, r := range recs {
 		if r.zupt {
@@ -237,9 +245,14 @@ func SmoothDistance(events []Event, o Options) SmoothResult {
 		}
 	}
 	credit := make([]float64, len(recs))
+	var gapM float64
 	for k, r := range recs {
 		switch {
 		case r.anchor:
+			if r.hasChord {
+				credit[k] = r.chord
+				gapM += r.chord
+			}
 		case r.hasChord:
 			credit[k] = r.chord
 		default:
@@ -254,6 +267,7 @@ func SmoothDistance(events []Event, o Options) SmoothResult {
 		PositionOnly:       !hasDoppler,
 		ForwardDistanceM:   est.DistanceM(),
 		ForwardCumulativeM: forwardCum,
+		GapM:               gapM,
 	}
 	var gps, stepM float64
 	for i, ev := range events {

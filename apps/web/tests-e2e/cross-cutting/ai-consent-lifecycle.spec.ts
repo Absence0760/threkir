@@ -1,5 +1,5 @@
-import { AI_DISCLOSURE_CURRENT_VERSION } from '../../src/lib/core/ai_disclosure';
-import { expect, test } from '../fixtures/mock-route';
+import { AI_CONSENT_HREF, AI_DISCLOSURE_CURRENT_VERSION } from '../../src/lib/core/ai_disclosure';
+import { expect, test } from '../fixtures/test';
 
 import { readRow } from '../fixtures/db-read';
 import { getAdminClient } from '../fixtures/local-supabase';
@@ -142,10 +142,12 @@ test.describe('AI-processing consent — gate, record, withdraw, re-engage', () 
 			const dialog = page.locator('.coach-consent');
 			await expect(dialog).toBeVisible({ timeout: 15_000 });
 			// The rendered copy must name every rung the recorded version
-			// covers — accepting v3 over copy that omits the plan assistant
+			// covers — accepting v4 over copy that omits plan edits
 			// would record a consent that was never actually disclosed.
 			await expect(dialog).toContainText('For the AI route assistant:');
 			await expect(dialog).toContainText('For the AI plan assistant:');
+			await expect(dialog).toContainText('For AI plan edits:');
+			await expect(dialog).toContainText('For the plate-photo logger:');
 			// Render-gated, not disabled: the composer does not exist yet.
 			await expect(page.getByPlaceholder(/Ask about today/)).toHaveCount(0);
 			expect(coachCalls).toBe(0);
@@ -195,6 +197,40 @@ test.describe('AI-processing consent — gate, record, withdraw, re-engage', () 
 			await page.goto('/coach');
 			await expect(page.locator('.coach-consent')).toBeVisible({ timeout: 15_000 });
 			await expect(page.getByPlaceholder(/Ask about today/)).toHaveCount(0);
+		} finally {
+			await ctx.close();
+		}
+	});
+
+	test('the consent link target accepts from no record and from a stale one', async ({ browser }) => {
+		// Every AI feature's consent prompt links to AI_CONSENT_HREF. That page
+		// has to record the disclosure whatever state the runner is in — /coach
+		// only asks a runner with no record, so a stale one sent there had
+		// nothing to accept.
+		const ctx = await browser.newContext({ storageState: user.storageStatePath });
+		try {
+			for (const start of [null, CURRENT_VERSION - 1]) {
+				await setConsent(start);
+				// A fresh page per state: AI_CONSENT_HREF carries a fragment, so a
+				// second goto from the same page is a same-document hash change
+				// that never reloads, and the section would still show the record
+				// the first pass accepted.
+				const page = await ctx.newPage();
+				await page.goto(AI_CONSENT_HREF);
+				const section = page.getByTestId('ai-consent');
+				await expect(section).toContainText('For the plate-photo logger:', { timeout: 15_000 });
+				const accept =
+					start == null
+						? section.getByTestId('ai-consent-accept')
+						: section.getByRole('button', { name: 'Accept the updated disclosure' });
+				await accept.click();
+				await expect(section.getByRole('button', { name: 'Withdraw consent' })).toBeVisible({ timeout: 10_000 });
+				await expect(accept).toHaveCount(0);
+				const rec = await consentRecord();
+				expect(rec.ai_disclosure_version).toBe(CURRENT_VERSION);
+				expect(rec.coach_consent_at).not.toBeNull();
+				await page.close();
+			}
 		} finally {
 			await ctx.close();
 		}

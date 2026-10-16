@@ -87,7 +87,7 @@ export async function insertRun(opts: {
 	started_at?: string;
 	duration_s: number;
 	distance_m: number;
-	source?: 'app' | 'strava' | 'parkrun' | 'healthkit';
+	source?: 'app' | 'watch' | 'strava' | 'parkrun' | 'healthkit';
 	is_public?: boolean;
 	/** Real `runs.activity_type` column (20261207_001). Defaults to 'run'. */
 	activity_type?: 'run' | 'walk' | 'hike' | 'cycle' | 'stroller';

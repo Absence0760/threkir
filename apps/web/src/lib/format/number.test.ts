@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { formatDecimal, formatInteger } from './number';
+import { formatDecimal, formatInteger, formatSignedInteger } from './number';
 
 // de uses "." for grouping + "," for decimal; en/ja use "," + ".". fr uses a
 // narrow no-break space for grouping (ICU-version-sensitive), so fr is
@@ -46,4 +46,46 @@ test('default (undefined) locale returns a string without throwing', () => {
 test('repeated calls are stable (memoised formatter)', () => {
 	assert.equal(formatDecimal(5.21, 2, 'de'), formatDecimal(5.21, 2, 'de'));
 	assert.equal(formatInteger(1234, 'en'), formatInteger(1234, 'en'));
+});
+
+test('degenerate input never reaches the label as NaN, ∞ or a signed zero', () => {
+	// A training-stress balance of -0.04 rendered "-0.0"; a 0 m distance
+	// divided to NaN rendered "NaN km". Same table as `formatFixed degenerate
+	// input` in number_format_test.dart.
+	const cases: Array<[number, number, string]> = [
+		[Number.NaN, 1, '—'],
+		[Number.POSITIVE_INFINITY, 1, '—'],
+		[Number.NEGATIVE_INFINITY, 1, '—'],
+		[-0, 1, '0.0'],
+		[-0.04, 1, '0.0'],
+		[-0.05, 1, '-0.1'],
+		[-0.3, 1, '-0.3'],
+		[-0.004, 2, '0.00'],
+		[-0.3, 0, '0'],
+		[-0.5, 0, '-1'],
+	];
+	for (const [value, digits, expected] of cases) {
+		assert.equal(formatDecimal(value, digits, 'en'), expected, `formatDecimal(${value}, ${digits})`);
+	}
+	assert.equal(formatDecimal(-0.04, 1, 'de'), '0,0');
+	assert.equal(formatInteger(-0.3, 'en'), '0');
+	assert.equal(formatInteger(Number.NaN, 'en'), '—');
+});
+
+test('formatSignedInteger: a sign either side of zero, never "-0" or "+0"', () => {
+	const cases: Array<[number, string]> = [
+		[12.4, '+12'],
+		[0.3, '0'],
+		[0, '0'],
+		[-0, '0'],
+		[-0.3, '0'],
+		[-0.5, '0'],
+		[-0.6, '-1'],
+		[-12.4, '-12'],
+		[Number.NaN, '—'],
+		[Number.NEGATIVE_INFINITY, '—'],
+	];
+	for (const [value, expected] of cases) {
+		assert.equal(formatSignedInteger(value, 'en'), expected, `formatSignedInteger(${value})`);
+	}
 });

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import {
 	createSagaUsers,
@@ -8,6 +8,7 @@ import {
 import { getAdminClient, getUserClient } from '../fixtures/local-supabase';
 import { deleteClub, setClubMemberRole } from '../fixtures/simulate';
 import { readCount, readMaybeRow } from '../fixtures/db-read';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Club membership + role-operations LIFECYCLE journey.
@@ -59,16 +60,6 @@ import { readCount, readMaybeRow } from '../fixtures/db-read';
  * members/posts), deleteSagaUsers wipes the auth.users rows.
  */
 
-function setConsentAccepted() {
-	// Saga contexts start cookieless; the consent banner is a
-	// role="dialog" that floats over the hero actions + admin panels,
-	// intercepting clicks. Pre-accept it before any navigation.
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-	);
-}
-
 const uniqueSuffix = () => `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
 test.describe('saga: request-to-join → approve → post → promote → remove → access revoked', () => {
@@ -98,8 +89,11 @@ test.describe('saga: request-to-join → approve → post → promote → remove
 		const joinerCtx = await browser.newContext({
 			storageState: joiner.storageStatePath
 		});
-		await ownerCtx.addInitScript(setConsentAccepted);
-		await joinerCtx.addInitScript(setConsentAccepted);
+		// Saga contexts start cookieless; the consent banner is a
+		// role="dialog" that floats over the hero actions + admin panels,
+		// intercepting clicks. Pre-accept it before any navigation.
+		await acceptCookieConsent(ownerCtx);
+		await acceptCookieConsent(joinerCtx);
 		const ownerPage = await ownerCtx.newPage();
 		const joinerPage = await joinerCtx.newPage();
 

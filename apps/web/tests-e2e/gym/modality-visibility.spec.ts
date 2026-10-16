@@ -1,8 +1,10 @@
-import { expect, test, type Browser, type Page } from '@playwright/test';
+import type { Browser, Page } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { readRow } from '../fixtures/db-read';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * The show_gym / show_nutrition switches on web (decisions § 1739 amendment).
@@ -48,12 +50,7 @@ test.describe('gym and nutrition visibility switches', () => {
 	async function openPage(browser: Browser): Promise<Page> {
 		const ctx = await browser.newContext({ storageState: user.storageStatePath });
 		// The consent banner is a role="dialog" that can sit over the nav.
-		await ctx.addInitScript(() => {
-			localStorage.setItem(
-				'cookie_consent',
-				JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-			);
-		});
+		await acceptCookieConsent(ctx);
 		return ctx.newPage();
 	}
 

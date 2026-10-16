@@ -11,10 +11,10 @@
 // it. The runner still reviews it and presses Create.
 //
 // Cost: one plan request is one coach-equivalent call, so it spends a slot of
-// the AI Coach's own daily counter (`increment_coach_usage`) at the caller's
+// the AI Coach's own daily counter (`spend_coach_usage_slot`) at the caller's
 // tier rather than being Pro-gated — free runners get it inside the same
 // daily cap. Fail-closed: an unreadable counter denies. A provider failure,
-// refusal or missing tool call refunds the slot.
+// refusal or missing tool call refunds the slot with that spend's ticket.
 //
 // Wrapped twice, exactly like the route-request + coach handlers
 // (decisions.md § 53):
@@ -26,18 +26,23 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
 
-import { parseAuthHeader, resolveUsageCount } from '../../coach/limits';
-import { TIER_LIMITS, type SupabaseClientFactory, type Tier } from '../../coach/types';
+import {
+	forcedToolUse,
+	refundCoachMessage,
+	spendCoachMessage,
+} from '../../coach/coach_message_slot';
+import { parseAuthHeader } from '../../coach/limits';
+import type { SupabaseClientFactory } from '../../coach/types';
 import {
 	AI_DISCLOSURE_VERSION_PLAN_AI,
 	aiDisclosureDenialBody,
 	gateAiDisclosure,
 } from '../../core/ai_disclosure';
-import { dbError, thrownMessage } from '../../core/supabase_error';
+import { providerErrorFields } from '../../core/provider_error';
 import { isoEpochDay, validatePlanInputs, type PlanRequestInputs } from './inputs';
 
 /// Matches the model used by the route assistant + the coach.
-const PLAN_REQUEST_MODEL = 'claude-opus-4-8';
+export const PLAN_REQUEST_MODEL = 'claude-opus-4-8';
 
 /// One small tool_use object. No thinking block: the API refuses extended
 /// thinking alongside a forced tool_choice, and the forced tool is what keeps
@@ -269,37 +274,15 @@ export async function handlePlanRequest(
 	}
 
 	// Cost cap: the Coach's daily counter at the caller's tier.
+	let spendId: string | null = null;
 	if (!config.bypassPaywallEnabled) {
-		const proRes = await supabase.rpc('is_pro', undefined, { get: true });
-		const tier: Tier = proRes.data === true ? 'pro' : 'free';
-		const dailyLimit = TIER_LIMITS[tier].dailyLimit;
-		const { data: newCount, error: incrErr } = await supabase.rpc('increment_coach_usage', {
-			p_user_id: userId,
-		});
-		const usage = resolveUsageCount(newCount, incrErr);
-		if (!usage.ok) {
-			console.error('[plan-request] increment_coach_usage failed — denying to keep the cap enforced', {
-				tier,
-				error: incrErr?.message ?? `non-numeric count: ${typeof newCount}`,
-			});
-			return json(503, { error: 'plan assistant unavailable' });
-		}
-		if (usage.usedToday > dailyLimit) {
-			return json(429, { error: 'daily_limit', used: usage.usedToday, limit: dailyLimit, tier });
-		}
+		const slot = await spendCoachMessage(supabase, userId, 'plan-request', 'plan assistant unavailable');
+		if (!slot.ok) return json(slot.status, slot.payload);
+		spendId = slot.spendId;
 	}
 
 	async function refundSlot(reason: string): Promise<void> {
-		if (config.bypassPaywallEnabled) return;
-		try {
-			const { error } = await supabase.rpc('decrement_coach_usage', { p_user_id: userId });
-			if (error) throw dbError(error);
-		} catch (e) {
-			console.error('[plan-request] decrement_coach_usage failed', {
-				reason,
-				err: thrownMessage(e),
-			});
-		}
+		await refundCoachMessage(supabase, userId, spendId, 'plan-request', reason);
 	}
 
 	const today = resolveToday(input.clientToday, (config.now ?? Date.now)());
@@ -327,9 +310,7 @@ export async function handlePlanRequest(
 			return json(422, { error: 'could not understand request' });
 		}
 
-		const toolUse = message.content.find(
-			(b): b is Anthropic.ToolUseBlock => b.type === 'tool_use' && b.name === EXTRACT_TOOL.name,
-		);
+		const toolUse = forcedToolUse(message, EXTRACT_TOOL.name);
 		if (!toolUse) {
 			console.warn('[plan-request] no tool_use block in model response');
 			await refundSlot('no_tool_use');
@@ -350,14 +331,4 @@ export async function handlePlanRequest(
 	}
 }
 
-/// The loggable part of a provider failure: never the message, which for an
-/// SDK APIError embeds the response body.
-export function providerErrorFields(e: unknown): Record<string, unknown> {
-	if (!e || typeof e !== 'object') return { kind: typeof e };
-	const o = e as { name?: unknown; status?: unknown; error?: { error?: { type?: unknown } } };
-	return {
-		name: typeof o.name === 'string' ? o.name : 'unknown',
-		status: typeof o.status === 'number' ? o.status : null,
-		type: typeof o.error?.error?.type === 'string' ? o.error.error.type : null,
-	};
-}
+export { providerErrorFields };

@@ -53,8 +53,12 @@ Deno.test('buildBackupSpecs covers the Go worker table set', () => {
 	// added run_shares + route_shares, each on both legs (owner + recipient).
 	// New-device sign-in alerts (migration 20270804000002) added sign_in_devices.
 	// Nutrition programming P1 (migration 20270815000001) added nutrition_plans
-	// + nutrition_plan_assignments.
-	assertEquals(specs.length, 68, `expected 68 specs, got ${specs.length}`);
+	// + nutrition_plan_assignments. Private profiles (migration
+	// 20270822000001) added follow_requests on both legs (sent + received).
+	// Reactions and comment likes (migration 20270826000001) added
+	// run_reactions + run_comment_likes, each on both legs (left by the subject
+	// + received on their runs / comments).
+	assertEquals(specs.length, 74, `expected 74 specs, got ${specs.length}`);
 	const entries = new Set(specs.map((s) => s.entry));
 	for (const expected of [
 		'coach_messages.json',
@@ -62,9 +66,15 @@ Deno.test('buildBackupSpecs covers the Go worker table set', () => {
 		'training_plans.json',
 		'integrations.json',
 		'run_kudos.json',
+		'follow_requests_sent.json',
+		'follow_requests_received.json',
 		'run_comments.json',
 		'run_kudos_received.json',
 		'run_comments_received.json',
+		'run_reactions.json',
+		'run_reactions_received.json',
+		'run_comment_likes.json',
+		'run_comment_likes_received.json',
 		'run_photos.json',
 		'segment_efforts.json',
 		'gear.json',
@@ -319,6 +329,23 @@ Deno.test('meal_templates exported owner-scoped with items nested (GDPR Art 20)'
 	assertEquals(templates.table, 'meal_templates');
 	assertEquals(templates.filter, `user_id=eq.${TEST_UID}`);
 	assertEquals(templates.select.includes('meal_template_items'), true);
+});
+
+Deno.test('run reactions + comment likes exported left and received, via inner joins (GDPR Art 20)', () => {
+	const specs = buildBackupSpecs(TEST_UID);
+	const by = (entry: string) => {
+		const spec = specs.find((s) => s.entry === entry);
+		assertExists(spec);
+		return spec;
+	};
+	assertEquals(by('run_reactions.json').filter, `user_id=eq.${TEST_UID}`);
+	assertEquals(by('run_comment_likes.json').filter, `user_id=eq.${TEST_UID}`);
+	const reactionsIn = by('run_reactions_received.json');
+	assertEquals(reactionsIn.filter, `runs.user_id=eq.${TEST_UID}`);
+	assertEquals(reactionsIn.select, '*,runs!inner(user_id)');
+	const likesIn = by('run_comment_likes_received.json');
+	assertEquals(likesIn.filter, `run_comments.author_id=eq.${TEST_UID}`);
+	assertEquals(likesIn.select, '*,run_comments!inner(author_id)');
 });
 
 Deno.test('direct_messages exported in both directions (GDPR Art 20)', () => {
@@ -659,6 +686,8 @@ Deno.test('every spec is read under a total order so offset paging cannot skip a
 	// The tables whose primary key is not a bare `id`.
 	assertEquals(orderForTable('user_follows'), 'follower_id,followee_id');
 	assertEquals(orderForTable('run_kudos'), 'user_id,run_id');
+	assertEquals(orderForTable('run_reactions'), 'user_id,run_id,reaction');
+	assertEquals(orderForTable('run_comment_likes'), 'user_id,comment_id');
 	assertEquals(orderForTable('run_gear'), 'run_id,gear_id');
 	assertEquals(orderForTable('personal_records'), 'user_id,distance');
 	assertEquals(orderForTable('event_attendees'), 'event_id,user_id,instance_start');

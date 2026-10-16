@@ -51,8 +51,8 @@ The web app's blast radius runs through these stacks: a permissive OIDC trust po
    - `aws_kms_alias` exists alongside the key (sops + future rotation are easier with aliases)
 
 8. **Secrets handling.**
-   - `infra/.sops.yaml` `creation_rules` cover `envs/prod/secrets.enc.yaml` and `envs/preview/secrets.enc.yaml`. ARNs may be placeholders (e.g. `REPLACE_PROD_KMS_ARN`) until first apply — document if so.
-   - **`infra/envs/*/secrets.enc.yaml` files, if present, are actually encrypted.** Open and confirm the file contains `sops:` metadata at the bottom and ENC[ blocks, not plaintext.
+   - **No ciphertext lives in this public repo.** Prod secrets are sops files in the private estate repo (`../infra-secrets/threkir/<env>.sops.yaml`), whose creation rules live in `../infra-secrets/.sops.yaml`. Confirm `infra/.sops.yaml` still declares NO `creation_rules` (so `sops --encrypt` under `infra/` fails closed), `infra/.gitignore` still blocks `secrets.enc.yaml`, and no `*.sops.yaml` / `secrets.enc.yaml` is tracked (`git ls-files infra | grep -E 'sops\.yaml$|secrets\.enc\.yaml$'` should print only `infra/.sops.yaml`). Any tracked ciphertext is a finding even if encrypted — public history is exposure.
+   - The `secrets_file` var in `infra/envs/<env>/main.tf` defaults to the estate path, and the slot name is spelled only in `bin/lib/estate.sh` (`scripts/check_estate_slot.mjs`).
    - **`infra/envs/*/terraform.tfvars` is gitignored.** `terraform.tfvars.example` is committed as a template; the real file is per-developer / per-env.
    - Variables holding secrets (`public_supabase_anon_key` is publishable so it's borderline; any real secret) marked `sensitive = true`.
    - No `output` exposes a sensitive value without `sensitive = true`.

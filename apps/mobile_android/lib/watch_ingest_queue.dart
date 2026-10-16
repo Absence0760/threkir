@@ -368,6 +368,10 @@ cm.Run runFromWatchPayload(Map<String, dynamic> raw) {
           speedMps: _finiteOrNull(p['speedMps']),
           speedAccuracyMps: _finiteOrNull(p['speedAccuracyMps']),
           bearingDeg: _finiteOrNull(p['bearingDeg']),
+          cumulativeDistanceMetres: _finiteOrNull(p['distM']),
+          // A fix the wrist's estimator took past its 30 m track gate,
+          // stored for the server's replay and skipped by every line reader.
+          offTrack: p['offTrack'] == true,
         ));
       }
     }
@@ -401,11 +405,18 @@ cm.Run runFromWatchPayload(Map<String, dynamic> raw) {
   // `runRowFromRun`, so it is a link on the row rather than a bag key by the
   // time it reaches Postgres — the run detail can then get back to the event
   // without joining through `event_results`, which only carries a finisher.
-  // Recorded through the shared GPS distance estimator on the wrist, so the
-  // server recompute must not run the track through it a second time.
+  // The wrist's forward filter, stamped so the server can tell a Wear OS /
+  // watchOS run (whose track holds every fix that filter took, and which the
+  // runs_enqueue_watch_distance_recompute trigger queues for the smoother)
+  // from a custom-watch breadcrumb track, which carries no stamp.
   final estimator = raw['distance_estimator'];
   if (estimator is String && estimator.isNotEmpty) {
     metadata[cm.MetadataKeys.distanceEstimator] = estimator;
+  }
+  // The wrist stored every fix its estimator took, off-track ones flagged,
+  // so the server replay of this track sees the watch's own input.
+  if (raw['track_complete'] == true) {
+    metadata[cm.MetadataKeys.trackComplete] = true;
   }
   final stepFilled = raw['distance_step_filled_m'];
   if (stepFilled is num && stepFilled.toDouble().isFinite && stepFilled > 0) {

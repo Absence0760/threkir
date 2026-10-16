@@ -13,8 +13,13 @@ import { thrownMessage } from './supabase_error';
 //
 //   1  AI Coach only.
 //   2  The Coach plus the AI route assistant.
-//   3  All AI features: v2 plus the AI plan assistant (the typed plan
-//      description, sent only to extract plan-wizard settings).
+//   3  v2 plus the AI plan assistant (the typed plan description, sent
+//      only to extract plan-wizard settings).
+//   4  v3 plus AI plan edits (the active plan's upcoming workouts and the
+//      typed change request, sent only to propose edits the runner
+//      reviews before anything is saved).
+//   5  All AI features: v4 plus the plate-photo logger (one meal photo,
+//      sent only to propose food-log rows the runner edits before saving).
 //
 // Every AI endpoint declares its minimum. Adding the next AI feature means
 // a new version with new copy, not a new boolean column and not quietly
@@ -45,11 +50,37 @@ export const AI_DISCLOSURE_VERSION_ROUTE_AI = 2;
 export const AI_DISCLOSURE_VERSION_PLAN_AI = 3;
 
 /**
+ * Minimum disclosure version /api/coach/plan-edit requires. Its own rung even
+ * though the v1 Coach copy already names the active plan: the Coach sends the
+ * plan so it can comment on it, while plan edits send it with the runner's
+ * change request so the model can propose changes to it — a new purpose
+ * (decisions § 571).
+ */
+export const AI_DISCLOSURE_VERSION_PLAN_EDIT_AI = 4;
+
+/**
+ * Minimum disclosure version /api/coach/plate-photo requires. Its own rung
+ * because it sends a photograph of the runner's meal — a payload that can
+ * carry anything in frame — to estimate food_log rows, a purpose no earlier
+ * copy described (decisions § 1972). Rung 4 belongs to AI plan edits.
+ */
+export const AI_DISCLOSURE_VERSION_FOOD_PHOTO_AI = 5;
+
+/**
  * The newest disclosure this build knows how to present. Must equal the
  * SQL `ai_disclosure_current_version()`; `ai_disclosure.test.ts` reads the
  * newest migration that defines it and fails if they drift.
  */
-export const AI_DISCLOSURE_CURRENT_VERSION = AI_DISCLOSURE_VERSION_PLAN_AI;
+export const AI_DISCLOSURE_CURRENT_VERSION = AI_DISCLOSURE_VERSION_FOOD_PHOTO_AI;
+
+/**
+ * Where every AI feature sends a runner its endpoint refused for consent.
+ * Settings → Account records the disclosure from every state — never
+ * accepted, withdrawn, or accepted at an older version — while /coach only
+ * asks a runner with no record at all, so a stale acceptance sent there would
+ * land in a working chat with nothing to accept.
+ */
+export const AI_CONSENT_HREF = '/settings/account#ai-consent';
 
 /**
  * Machine-readable marker on every AI-consent denial. It rides a `code`

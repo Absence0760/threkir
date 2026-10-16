@@ -16,7 +16,7 @@
 /// Run with `cd apps/backend && deno test --no-check --allow-read --allow-env
 /// supabase/functions/clip-public-track/wiring.test.ts`.
 
-import { assert } from 'https://deno.land/std@0.224.0/assert/mod.ts';
+import { assert, assertEquals } from 'https://deno.land/std@0.224.0/assert/mod.ts';
 
 const SRC = await Deno.readTextFile(new URL('./index.ts', import.meta.url));
 
@@ -67,8 +67,8 @@ Deno.test('the owner bypass demands an identified caller', () => {
     'the visibility bypass must require a non-null caller AND an owner match',
   );
   assert(
-    /if \(!run\.is_public && !isAudienceMember && !isOwnerBypass\) \{/.test(SRC),
-    'a non-public row must be refused to everyone but its owner and its admitted audience',
+    /if \(!run\.is_public && !isAudienceMember && !isActiveCoach && !isOwnerBypass\) \{/.test(SRC),
+    'a non-public row must be refused to everyone but its owner, its admitted audience and its athlete\'s active coach',
   );
 });
 
@@ -94,6 +94,29 @@ Deno.test('an audience member is only ever a caller shared_runs returned the row
     /userClient\s*\.from\(view\)/.test(SRC),
     'the views must be read as the caller — the service role would see every audience at once',
   );
+});
+
+Deno.test('a coach is only ever a caller coached_runs returned the row for', () => {
+  // decisions § 1968: the coach branch is named by where the row came from —
+  // `coached_runs`, read as the caller, which applies the active link and the
+  // coach_run_map gate — never by the base `runs` table, whose coach RLS policy
+  // carries neither the gate nor the clip contract.
+  assert(
+    /const isActiveCoach = audience === 'coach' && callerId !== null && callerId !== ownerId;/.test(SRC),
+    'the coach branch must come from the coached_runs read, for an identified non-owner',
+  );
+  assert(
+    !/(userClient|adminClient)\s*\.from\(['"]runs['"]\)/.test(SRC),
+    'the run row must never be read from the base runs table (the Storage bucket of the same name is a different call)',
+  );
+});
+
+Deno.test('a coached run is clipped like every other non-owner read', () => {
+  const ownerReturn = SRC.indexOf('if (callerId === ownerId) {');
+  assert(ownerReturn !== -1, 'the owner return is gone');
+  assert(!/audience === 'coach'[^\n]*\{\s*return Response\.json\(\{ points: served/.test(SRC),
+    'a coach must never be handed the unclipped points');
+  assert(SRC.indexOf("'clip_track_for_user'") > ownerReturn, 'every non-owner falls through to the clip');
 });
 
 Deno.test('a shared run is clipped exactly like a public one', () => {
@@ -203,4 +226,35 @@ Deno.test('the sidecar is requested only when the row names this track', () => {
   assert(gate !== -1, 'the metadata gate on the sidecar request is gone');
   assert(gate < SRC.indexOf('.download(smoothedSidecarPath(ownerId, runId))'), 'the gate must precede the request');
   assert(/\.select\('user_id, is_public, metadata'\)/.test(SRC), 'the row read must carry the metadata the gate reads');
+});
+
+Deno.test('a non-owner is never served the credited distance, and the owner keeps it', () => {
+  // `distM` on the first point after a trimmed start zone is the distance run
+  // inside the zone (decisions § 33). `clip_track_for_user` removes it
+  // (20270829000021) and the handler withholds it again from what it returns;
+  // the owner's return precedes both and serves the stored points whole.
+  assert(
+    /import \{ withholdFromNonOwner \} from '\.\/non_owner_points\.ts';/.test(SRC),
+    'the non-owner withholding helper is no longer imported',
+  );
+  assert(
+    /return Response\.json\(\{ points: withholdFromNonOwner\(clippedPoints\) \}\);/.test(SRC),
+    'the clipped response must pass through withholdFromNonOwner',
+  );
+  const ownerReturn = SRC.indexOf('if (callerId === ownerId) {');
+  assert(ownerReturn !== -1, 'the owner return is gone');
+  assert(
+    ownerReturn < SRC.indexOf('withholdFromNonOwner(clippedPoints)'),
+    'the owner return must precede the withholding, so the owner keeps distM',
+  );
+  assert(
+    !/withholdFromNonOwner\(served\)/.test(SRC),
+    'the owner\'s points must not be stripped',
+  );
+  const responses = SRC.match(/Response\.json\(\{ points: [^}]*\}/g) ?? [];
+  assertEquals(
+    responses,
+    ['Response.json({ points: served }', 'Response.json({ points: withholdFromNonOwner(clippedPoints) }'],
+    'exactly two track responses: the owner\'s, and the withheld non-owner one',
+  );
 });

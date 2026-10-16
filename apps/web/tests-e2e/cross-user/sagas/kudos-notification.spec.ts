@@ -1,4 +1,4 @@
-import { expect, test } from '../../fixtures/mock-route';
+import { expect, test } from '../../fixtures/test';
 
 import { RUNNER_PUBLIC_RUN_ID } from '../../fixtures/seeded-data';
 import {
@@ -7,13 +7,7 @@ import {
 } from '../../fixtures/simulate';
 import { getAdminClient } from '../../fixtures/local-supabase';
 import { USER_A, USER_B } from '../../fixtures/users';
-
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-	);
-}
+import { acceptCookieConsent } from '../../fixtures/helpers';
 
 /**
  * Cross-user kudos saga: USER_B (alex) gives kudos to USER_A's public
@@ -66,8 +60,8 @@ test.describe('saga: alex kudos runner → runner inbox row + bell + click-throu
 		// Dismiss the consent banner up-front in each context — without
 		// it the fixed-position dialog intercepts pointer events on the
 		// kudos button + inbox rows we click below.
-		await ctxAlex.addInitScript(setConsentAccepted);
-		await ctxRunner.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctxAlex);
+		await acceptCookieConsent(ctxRunner);
 		const alex = await ctxAlex.newPage();
 		const runner = await ctxRunner.newPage();
 
@@ -137,7 +131,7 @@ test.describe('saga: alex kudos runner → runner inbox row + bell + click-throu
 		const ctxRunner = await browser.newContext({
 			storageState: USER_A.storageStatePath
 		});
-		await ctxRunner.addInitScript(setConsentAccepted);
+		await acceptCookieConsent(ctxRunner);
 		const runner = await ctxRunner.newPage();
 		try {
 			await runner.goto(`/u/${USER_A.id}?tab=notifications`);

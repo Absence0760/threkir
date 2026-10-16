@@ -1,10 +1,11 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { isInAnyZone } from '../../src/lib/routes/privacy';
 import { getAdminClient, loadSupabaseEnv } from '../fixtures/local-supabase';
 import { deleteRun, insertRun, setUserSetting } from '../fixtures/simulate';
 import { USER_A, USER_C_PRO } from '../fixtures/users';
 import { readRow } from '../fixtures/db-read';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * Privacy + data-rights JOURNEY — ONE public run with a real GPS track
@@ -143,12 +144,7 @@ test.describe('privacy + data-rights journey', () => {
 				});
 				// Pre-accept cookie consent so the clip EF (a third-party-ish
 				// fetch behind consent gating) is allowed to fire.
-				await ctx.addInitScript(() => {
-					localStorage.setItem(
-						'cookie_consent',
-						JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-					);
-				});
+				await acceptCookieConsent(ctx);
 				const guestPage = await ctx.newPage();
 				try {
 					const efPromise = guestPage.waitForResponse(
@@ -204,12 +200,7 @@ test.describe('privacy + data-rights journey', () => {
 					.newContext({ storageState: USER_A.storageStatePath })
 					.then((c) => c.newPage());
 				try {
-					await page.addInitScript(() => {
-						localStorage.setItem(
-							'cookie_consent',
-							JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-						);
-					});
+					await acceptCookieConsent(page);
 					await page.goto('/settings/account');
 
 					// The signed-URL response carries the run count + format; we

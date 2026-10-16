@@ -51,3 +51,22 @@ test('paceParts keeps seconds in 0-59 after rollover', () => {
 		assert.ok(paceParts(x).seconds <= 59, `${x} produced seconds > 59`);
 	}
 });
+
+test('a degenerate pace gets the placeholder, never NaN, Infinity or a sign', () => {
+	// What a brand-new account's minimal data divides to: seconds over a 0 m
+	// run is Infinity, 0 s over 0 m is NaN, and a 10 s / 3 m run is a real
+	// (slow) 55:33. Mirrors `UnitFormat.pace degenerate input` in
+	// preferences_helpers_test.dart.
+	const cases: Array<[number, string]> = [
+		[Number.POSITIVE_INFINITY, '--:--'],
+		[Number.NEGATIVE_INFINITY, '--:--'],
+		[Number.NaN, '--:--'],
+		[-1, '--:--'],
+		[-0, '0:00'],
+		[0, '0:00'],
+		[3333.3, '55:33'],
+	];
+	for (const [input, expected] of cases) {
+		assert.equal(paceMinutesSeconds(input), expected, `paceMinutesSeconds(${input})`);
+	}
+});

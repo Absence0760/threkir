@@ -527,6 +527,8 @@ mod tests {
             time_of_day: None,
             date: None,
             uptime_s,
+            h_acc_m: None,
+            s_acc_mps: None,
         }
     }
 

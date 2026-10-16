@@ -7,6 +7,7 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
 import 'package:core_models/core_models.dart'
     show ActivityType, DistanceUnit, PlanWorkoutRow, TrainingPlanRow;
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderProxyBox;
 import 'package:flutter/scheduler.dart';
@@ -25,11 +26,12 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import '../auth_error.dart';
 import '../audio_cues.dart';
 import '../backend_timeout.dart';
+import '../barometer_bridge.dart';
 import '../ble_heart_rate.dart';
 import '../ble_readiness_labels.dart';
 import '../ble_treadmill.dart';
 import '../dev_auto_login.dart' show isLocalSupabaseUrl;
-import '../raw_gps_diagnostic.dart';
+import '../gnss_location_bridge.dart';
 import '../embedded_bests.dart';
 import '../goal_time.dart';
 import '../guided_runs.dart';
@@ -56,8 +58,9 @@ import '../roadbook.dart';
 import '../route_geometry.dart';
 import '../route_markers.dart' show parseTarget;
 import '../route_match.dart';
-import '../route_simplify.dart';
+import '../run_altitude.dart';
 import '../run_stop_dock.dart';
+import '../safety_live_audience.dart';
 import '../safety_nudge.dart';
 import '../settings_sync.dart';
 import '../sim_watch_link.dart' show maybeDevBackendUrl;
@@ -66,6 +69,7 @@ import '../turn_cue_announcer.dart';
 import '../turn_cues.dart';
 import '../typed_decimal.dart';
 import '../watch_settings.dart';
+import '../web_base_url.dart';
 import '../widgets/cutoff_card.dart';
 import 'route_picker_screen.dart';
 import '../background_location_nudge.dart';
@@ -91,6 +95,7 @@ import '../widgets/track_preview.dart' show projectTrack;
 import '../widgets/upcoming_event_card.dart';
 import '../widgets/workout_execution_band.dart';
 import 'event_detail_screen.dart';
+import 'help_screen.dart';
 import 'plan_detail_screen.dart';
 import 'plans_screen.dart';
 import 'run_detail_screen.dart';
@@ -474,7 +479,13 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   Duration _elapsed = Duration.zero;
   double _distanceMetres = 0;
   double? _pace;
+  // The run's line, as the recorder's snapshot carries it: what the map, the
+  // elevation gain and every live reader draw from.
   List<cm.Waypoint> _track = [];
+  // Every fix the recorder stored, off-track ones included: what the crash
+  // checkpoint persists, so a resumed or recovered run keeps the input the
+  // server replays (gps_distance.md § Stored track). Nothing draws from it.
+  List<cm.Waypoint> _storedTrack = [];
   cm.Waypoint? _currentPosition;
   // Where the recorder matched the runner on the followed route, metres from
   // its start. Everything that places the runner on the route (turn cues,
@@ -506,9 +517,11 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   // in _onSnapshot. The naive O(n) rescan of the full track on every
   // build was the hottest per-frame work in the run screen — a 60-minute
   // run rescans 3600+ points every tween tick (~60 Hz). This is the same
-  // noise gate + dropout carry computeElevationGain applies to the
-  // finished track, so the live figure and the run-detail figure agree.
-  final ElevationGainAccumulator _elevationGain = ElevationGainAccumulator();
+  // noise gate + dropout carry computeRunElevationGain applies to the
+  // finished track, over the same barometer-or-GPS series, so the live
+  // figure and the run-detail figure agree.
+  final RunElevationGainAccumulator _elevationGain =
+      RunElevationGainAccumulator();
   int _elevationProcessedCount = 0;
 
   // Reentrancy guard on start — prevents rapid taps from spawning
@@ -550,6 +563,13 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   // stop path uses it to resolve the saved run's visibility — the live
   // window's public opt-in must not silently outlive the run (issue #664).
   bool _liveBroadcastBegun = false;
+  // The begun stub is (or was made) public. A broadcast on the safety-contacts
+  // audience (decisions § 1964) never was, so the stop path has no public flip
+  // to resolve for it.
+  bool _liveBroadcastPublic = false;
+  // The server's safety_audience gate, probed once per screen. Fail closed:
+  // false until the probe answers, so nothing defaults on before then.
+  bool _safetyAudienceEnabled = false;
   // The `runs.concluded_at` stamp is owed for this run id and hasn't landed.
   // Tracked separately from the broadcaster's attached state: an explicit
   // stop-share detaches the pump whether or not its conclude call succeeded,
@@ -671,6 +691,9 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   // Distance remaining on selected route
   double? _routeRemaining;
 
+  // Phone barometer, levelled against GPS altitude inside the recorder.
+  StreamSubscription<double>? _baroSub;
+
   // Step tracking
   StreamSubscription<StepCount>? _stepSub;
   int _startSteps = 0;
@@ -765,6 +788,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     _maybePreloadWorkoutRunner();
     _refreshUpcomingEvent();
     _refreshPlanOverview();
+    unawaited(_probeSafetyAudience());
     // Drain after first frame: if a deeper screen set
     // `pendingStartWorkout` *before* this State existed (lazy tab
     // construction), we'd have missed the listener fire. Run once
@@ -1246,9 +1270,13 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   /// run starts (persona #57). Non-blocking — the run proceeds either
   /// way; recording still works while the app is on screen. Shows once:
   /// a dismissal persists (issue #266) and only re-arms if always-on is
-  /// later granted then revoked.
-  Future<void> _maybeNudgeBackgroundLocation() async {
-    if (!Platform.isAndroid) return;
+  /// later granted then revoked. Returns false when the runner left for the
+  /// location guide or for Settings, so the start is abandoned rather than
+  /// the countdown and recording running out behind them; they tap START
+  /// again on their return.
+  Future<bool> _maybeNudgeBackgroundLocation() async {
+    final isAndroid = defaultTargetPlatform == TargetPlatform.android;
+    if (!isAndroid) return true;
     final foreground = await Permission.location.isGranted;
     final always = await Permission.locationAlways.isGranted;
     if (shouldRearmBackgroundLocationNudge(
@@ -1262,12 +1290,12 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       }
     }
     if (!shouldNudgeBackgroundLocation(
-      isAndroid: Platform.isAndroid,
+      isAndroid: isAndroid,
       foregroundGranted: foreground,
       alwaysGranted: always,
       alreadyDismissed: widget.preferences.backgroundLocationNudgeDismissed,
     )) {
-      return;
+      return true;
     }
     // Mark dismissed up front so a crash / early-dismiss can't re-trigger
     // it on the next run — either dialog action is an informed choice, and
@@ -1277,42 +1305,64 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     } catch (e) {
       debugPrint('setBackgroundLocationNudgeDismissed failed: $e');
     }
-    if (!mounted) return;
-    final openSettings = await showDialog<bool>(
+    if (!mounted) return false;
+    final choice = await showDialog<_BackgroundLocationChoice>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(_l10n.runBackgroundLocationNudgeTitle),
         content: Text(_l10n.runBackgroundLocationNudgeBody),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
+            onPressed: () =>
+                Navigator.pop(ctx, _BackgroundLocationChoice.readGuide),
+            child: Text(_l10n.infoTipReadGuide),
+          ),
+          TextButton(
+            onPressed: () =>
+                Navigator.pop(ctx, _BackgroundLocationChoice.startAnyway),
             child: Text(_l10n.runStartAnyway),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
+            onPressed: () =>
+                Navigator.pop(ctx, _BackgroundLocationChoice.openSettings),
             child: Text(_l10n.runOpenSettings),
           ),
         ],
       ),
     );
-    if (openSettings == true) {
-      await openAppSettings();
+    switch (choice) {
+      case _BackgroundLocationChoice.readGuide:
+        if (mounted) await openGuide(context, 'location-permission');
+        return false;
+      case _BackgroundLocationChoice.openSettings:
+        try {
+          await openAppSettings();
+        } catch (e) {
+          debugPrint('openAppSettings (background location) failed: $e');
+        }
+        return false;
+      case _BackgroundLocationChoice.startAnyway:
+      case null:
+        return true;
     }
   }
 
   /// One-time OEM battery-optimisation disclosure. Aggressive OEM app-killers
   /// (Samsung Stamina, Xiaomi, OnePlus) freeze the recording foreground
   /// service mid-run unless the app is exempted from battery optimisation,
-  /// silently truncating a long effort. Surface a single dismissible hint
+  /// silently truncating the run. Shown once, on the first START, with no
+  /// run-length gate. Surface a single dismissible hint
   /// deep-linking to the battery-optimisation settings (App Info as the
-  /// fallback). Android-only, non-blocking — the run proceeds either way.
-  /// Wrapped so a settings-deep-link failure can't abort the run start.
-  Future<void> _maybeShowBatteryOptHint() async {
+  /// fallback). Android-only and never a gate on the run itself. Returns
+  /// false when the runner went to Settings, so the start is abandoned
+  /// rather than recording behind the settings screen.
+  Future<bool> _maybeShowBatteryOptHint() async {
+    final isAndroid = defaultTargetPlatform == TargetPlatform.android;
     if (!shouldShowBatteryOptHint(
-      isAndroid: Platform.isAndroid,
+      isAndroid: isAndroid,
       alreadyShown: widget.preferences.batteryOptHintShown,
     )) {
-      return;
+      return true;
     }
     // Mark shown up front so a crash / early-dismiss can't re-trigger it on
     // the next run — the hint is informational, once is enough.
@@ -1321,7 +1371,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     } catch (e) {
       debugPrint('setBatteryOptHintShown failed: $e');
     }
-    if (!mounted) return;
+    if (!mounted) return false;
     final openSettings = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -1339,12 +1389,12 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         ],
       ),
     );
-    if (openSettings == true) {
-      await openBatteryOptimisationExemption(
-        isAndroid: Platform.isAndroid,
-        openAppSettingsFallback: openAppSettings,
-      );
-    }
+    if (openSettings != true) return true;
+    await openBatteryOptimisationExemption(
+      isAndroid: isAndroid,
+      openAppSettingsFallback: openAppSettings,
+    );
+    return false;
   }
 
   Future<void> _selectRoute() async {
@@ -1372,13 +1422,13 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       _startRequested = false;
       return;
     }
-    await _maybeNudgeBackgroundLocation();
-    if (!mounted) {
+    final proceed = await _maybeNudgeBackgroundLocation();
+    if (!mounted || !proceed) {
       _startRequested = false;
       return;
     }
-    await _maybeShowBatteryOptHint();
-    if (!mounted) {
+    final proceedAfterBatteryHint = await _maybeShowBatteryOptHint();
+    if (!mounted || !proceedAfterBatteryHint) {
       _startRequested = false;
       return;
     }
@@ -1427,7 +1477,10 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   }
 
   void _preload() {
-    _recorder = RunRecorder();
+    _recorder = RunRecorder(
+      gnssPositions: gnssPositionsForPlatform(),
+      gnssStatus: gnssStatusForPlatform(),
+    );
     _snapshotSub = _recorder!.snapshots.listen(_onSnapshot);
 
     _wireLockScreenControls();
@@ -1435,6 +1488,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // Pedometer sensor stream. We subscribe now, but don't count steps
     // toward the run until _begin sets a baseline.
     _subscribeToPedometer();
+    _subscribeToBarometer();
 
     // Keep the screen awake from the start of the countdown onward,
     // unless the user has turned the wakelock off in Settings.
@@ -1461,11 +1515,55 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       distanceFilterMetres: adv ? 2 : _activityType.gpsDistanceFilter,
       minMovementMetres: adv ? 1 : _activityType.minMovementMetres,
       maxSpeedMps: _activityType.maxSpeedMps,
-      rawGpsProvider: _rawGpsProvider,
+      initialStrideM: _persistedStrideM(),
     )
         .catchError((Object e) {
       _prepareError = e;
     });
+  }
+
+  /// Feed the phone barometer to the recorder from the countdown on, so the
+  /// anchor has levelled against GPS altitude by the time the run starts. A
+  /// phone without one errors once and the climb falls back to GPS altitude
+  /// (`run_altitude.dart`); nothing retries, because a missing sensor does not
+  /// come back mid-run.
+  void _subscribeToBarometer() {
+    _baroSub?.cancel();
+    _baroSub = barometricAltitudes().listen(
+      (m) => _recorder?.setBarometricAltitude(m),
+      onError: (Object e) {
+        debugPrint('Barometer unavailable: $e');
+        _baroSub?.cancel();
+        _baroSub = null;
+      },
+    );
+  }
+
+  /// The stride this runner's earlier runs of this activity taught the
+  /// estimator on this phone, or null.
+  double? _persistedStrideM() {
+    final userId = widget.apiClient?.userId;
+    if (userId == null) return null;
+    try {
+      return widget.preferences.learnedStrideM(userId, _activityType.name);
+    } catch (e) {
+      debugPrint('stride seed unavailable: $e');
+      return null;
+    }
+  }
+
+  /// Keeps the stride this run ended with for the next run of the activity.
+  /// An auxiliary write: a failure costs only the next run's seed.
+  Future<void> _persistStride(RunRecorder recorder) async {
+    final userId = widget.apiClient?.userId;
+    final stride = recorder.strideMetres;
+    if (userId == null || stride == null) return;
+    try {
+      await widget.preferences
+          .setLearnedStrideM(userId, _activityType.name, stride);
+    } catch (e) {
+      debugPrint('stride not persisted: $e');
+    }
   }
 
   /// Subscribe to the pedometer stream. On error, wait a bit and retry —
@@ -1667,9 +1765,12 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   /// runner's default unless they explicitly keep it public (issue
   /// #664). Skipped on anonymous sessions — only signed-in users
   /// can broadcast. Returns whether the broadcaster is attached.
-  Future<bool> _startLiveBroadcast() async {
+  Future<bool> _startLiveBroadcast({
+    LiveShareAudience audience = LiveShareAudience.public,
+  }) async {
     final api = widget.apiClient;
     if (api == null || api.userId == null) return false;
+    final wantPublic = audience == LiveShareAudience.public;
     _runId ??= _uuid.v4();
     // LiveHubClient stays nil-effect when `LIVE_HUB_URL` is unset
     // — the broadcaster falls back to the legacy
@@ -1696,9 +1797,17 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
             runId: _runId!,
             startedAt: _runStartedAtWall ?? DateTime.now(),
             activityType: _activityType.name,
+            safetyAudience: !wantPublic,
           )
           .timeout(kBackendLoadTimeout);
+      // The begin ignores duplicates, so a manual share over a stub the
+      // automatic share created for the safety audience must widen it here,
+      // or the link the runner just handed out would open nothing.
+      if (wantPublic && _liveBroadcastBegun && !_liveBroadcastPublic) {
+        await api.makeRunPublic(_runId!).timeout(kBackendLoadTimeout);
+      }
       _liveBroadcaster!.attach(_runId!);
+      if (wantPublic || !_liveBroadcastBegun) _liveBroadcastPublic = wantPublic;
       _liveBroadcastBegun = true;
       _liveConcludeOwed = true;
       _liveShareActive.value = true;
@@ -1709,21 +1818,43 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     }
   }
 
-  /// The auto_live_share device pref (docs/features/safety.md). False
-  /// when settings aren't available (signed out, sync not wired) —
-  /// fail-closed: no silent broadcast without the explicit opt-in.
+  /// The effective auto_live_share (docs/features/safety.md, decisions
+  /// § 1964): the device pref when the runner set it, else ON only for the
+  /// safety-contacts audience with an armed escalation
+  /// ([effectiveAutoLiveShare]). False when settings aren't available
+  /// (signed out, sync not wired) — fail-closed: no silent broadcast.
   bool get _autoLiveShareEnabled {
     final service = widget.settingsSync?.service;
     if (service == null) return false;
     try {
-      return service.effective<bool>(
-            SettingsKeys.autoLiveShare,
-            fallback: false,
-          ) ==
-          true;
+      return effectiveAutoLiveShare(
+        explicitPref: service.effective<bool>(SettingsKeys.autoLiveShare),
+        safetyAudienceEnabled: _safetyAudienceEnabled,
+        safetyNetArmed: safetyNetArmed(
+          overdueMinutes:
+              service.effective<num>(SettingsKeys.safetyOverdueMinutes),
+          offRouteAlerts:
+              service.effective<bool>(SettingsKeys.safetyOffRouteAlerts),
+        ),
+      );
     } catch (e) {
       debugPrint('auto_live_share read failed: $e');
       return false;
+    }
+  }
+
+  /// Ask the server once whether the safety-contacts audience is live. L4:
+  /// a failure leaves the gate read as closed, which only means the automatic
+  /// share keeps the explicit-opt-in public behaviour it had before.
+  Future<void> _probeSafetyAudience() async {
+    final api = widget.apiClient;
+    if (api == null || api.userId == null) return;
+    try {
+      final enabled =
+          await api.safetyAudienceEnabled().timeout(kBackendLoadTimeout);
+      if (mounted) _safetyAudienceEnabled = enabled;
+    } catch (e) {
+      debugPrint('safety_audience probe failed: $e');
     }
   }
 
@@ -1848,17 +1979,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     }
   }
 
-  /// Base URL of the spectator web app. Reads `WEB_BASE_URL` from dotenv
-  /// (a `--dart-define`, or `.env.development` in debug) when set;
-  /// otherwise falls back to the production host
-  /// so a freshly-installed app still produces a working link.
-  String _liveLinkBase() {
-    final fromEnv = dotenv.env['WEB_BASE_URL'] ?? '';
-    if (fromEnv.isNotEmpty) {
-      return fromEnv.replaceAll(RegExp(r'/+$'), '');
-    }
-    return 'https://threkir.com';
-  }
+  /// Base URL of the spectator web app.
+  String _liveLinkBase() => resolveWebBaseUrl();
 
   Future<void> _begin() async {
     // In the common case prepare has already completed during the 3-second
@@ -1872,6 +1994,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     final prepareError = _prepareError;
     if (prepareError != null) {
       _notifyGpsUnavailable(prepareError);
+    } else if (_recorder?.preciseLocationOff == true) {
+      _notifyPreciseLocationOff();
     }
     _leftForegroundAt = null;
     _backgroundLimitDisclosed = false;
@@ -1972,9 +2096,15 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       liveShareRequested: _liveShareRequested,
       broadcasterActive: _liveBroadcaster?.isActive ?? false,
     )) {
-      unawaited(_startLiveBroadcast().then((attached) {
+      final audience = _liveShareRequested
+          ? LiveShareAudience.public
+          : autoLiveShareAudience(
+              safetyAudienceEnabled: _safetyAudienceEnabled);
+      unawaited(_startLiveBroadcast(audience: audience).then((attached) {
         if (attached && mounted) {
-          _showTopBanner(_l10n.runAutoLiveShareStarted);
+          _showTopBanner(audience == LiveShareAudience.safetyContacts
+              ? _l10n.runSafetyLiveShareStarted
+              : _l10n.runAutoLiveShareStarted);
         }
       }).catchError((Object e) {
         debugPrint('auto live share failed: $e');
@@ -2279,7 +2409,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // (below) is what carries an indoor run's distance across a resume.
     final indoorEstimateResumed =
         partial.metadata?[cm.MetadataKeys.indoorEstimated] == true;
-    _track = List<cm.Waypoint>.from(partial.track);
+    _storedTrack = List<cm.Waypoint>.from(partial.track);
+    _track = List<cm.Waypoint>.from(cm.trackLine(partial.track));
     _distanceMetres = indoorEstimateResumed ? 0 : partial.distanceMetres;
     _elapsed = partial.duration;
     _lapCount = restoredLaps.length;
@@ -2294,10 +2425,14 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     _lastTickNotified = UnitFormat.activityTicks(
         _displayDistanceMetres, resumeTickInterval);
 
-    _recorder = RunRecorder();
+    _recorder = RunRecorder(
+      gnssPositions: gnssPositionsForPlatform(),
+      gnssStatus: gnssStatusForPlatform(),
+    );
     _snapshotSub = _recorder!.snapshots.listen(_onSnapshot);
     _wireLockScreenControls();
     _subscribeToPedometer();
+    _subscribeToBarometer();
     if (widget.preferences.keepScreenOn) {
       WakelockPlus.enable();
     }
@@ -2314,7 +2449,9 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         distanceFilterMetres: adv ? 2 : _activityType.gpsDistanceFilter,
         minMovementMetres: adv ? 1 : _activityType.minMovementMetres,
         maxSpeedMps: _activityType.maxSpeedMps,
-        rawGpsProvider: _rawGpsProvider,
+        initialStrideM: _persistedStrideM(),
+        trackComplete:
+            partial.metadata?[cm.MetadataKeys.trackComplete] == true,
       );
     } catch (e) {
       _notifyGpsUnavailable(e);
@@ -2535,10 +2672,18 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       // a total GPS blackout would otherwise look permanently healthy.
       // Also latch _everHadGpsFix so we know whether to fall back to the
       // pedometer for distance.
+      // GPS-lost is about distance, so it reads the later of the blue dot's
+      // fix and the estimator's: under canopy the estimator keeps 20-50 m
+      // fixes that never move the dot.
       final fixedAt = snapshot.positionFixedAt;
       if (fixedAt != null) {
         _lastSnapshotAt = fixedAt;
         if (!_everHadGpsFix) _everHadGpsFix = true;
+      }
+      final distanceAt = snapshot.distanceFixedAt;
+      final lastAt = _lastSnapshotAt;
+      if (distanceAt != null && (lastAt == null || distanceAt.isAfter(lastAt))) {
+        _lastSnapshotAt = distanceAt;
       }
       final positionFresh = fixedAt != null &&
           DateTime.now().difference(fixedAt) <= _gpsLostThreshold;
@@ -2568,6 +2713,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       _distanceMetres = snapshot.distanceMetres;
       _pace = snapshot.currentPaceSecondsPerKm;
       _track = track;
+      _storedTrack = snapshot.storedTrack;
       _currentPosition = snapshot.currentPosition;
       _offRouteDistance = snapshot.offRouteDistanceMetres;
       _routeRemaining = snapshot.routeRemainingMetres;
@@ -3105,11 +3251,6 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     _liveActivity.update(frame);
   }
 
-  bool get _rawGpsProvider =>
-      widget.preferences.devRawGpsProvider &&
-      rawGpsDiagnosticAvailable(
-          backendUrl: widget.devBackendUrl ?? maybeDevBackendUrl());
-
   /// Serialise the in-progress run to disk. Runs every 10s via
   /// [_incrementalSaveTimer] so a crash mid-run is recoverable.
   Future<void> _saveInProgress() async {
@@ -3141,6 +3282,14 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       if (_steps > 0) cm.MetadataKeys.steps: _steps,
       if (_everHadGpsFix && _recorder?.locationProvider != null)
         cm.MetadataKeys.locationProvider: _recorder!.locationProvider,
+      if (_recorder?.gnssSignalMetadata != null)
+        cm.MetadataKeys.gnssSignal: _recorder!.gnssSignalMetadata,
+      // Carried so a resume of this checkpoint can claim it again on save.
+      if (!indoorEstimate &&
+          !(_recorder?.treadmillMode ?? false) &&
+          _storedTrack.isNotEmpty &&
+          (_recorder?.storedTrackComplete ?? false))
+        cm.MetadataKeys.trackComplete: true,
       // The active race strategy, so a crash-recovered run resumes its
       // phases (and the final save keeps the metadata the runner actually
       // executed against).
@@ -3181,7 +3330,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       duration: _elapsed,
       distanceMetres:
           indoorEstimate ? _displayDistanceMetres : _distanceMetres,
-      track: List.unmodifiable(_track),
+      track: List.unmodifiable(_storedTrack),
       routeId: _selectedRoute?.id,
       source: cm.RunSource.app,
       metadata: metadata,
@@ -3272,6 +3421,22 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       duration: const Duration(seconds: 6),
       actionLabel: actionLabel,
       onAction: onAction,
+    );
+  }
+
+  /// The grant is approximate (iOS Precise Location off, Android
+  /// approximate only), so the map and GPS distance will be missing or far
+  /// off while the clock still records. The in-app remedy has already been
+  /// offered by the time this shows — the recorder asked iOS for temporary
+  /// full accuracy, and [_maybeRequestPermission]'s FINE + COARSE request is
+  /// Android 12+'s upgrade-to-precise prompt — so Settings is what is left.
+  void _notifyPreciseLocationOff() {
+    if (!mounted) return;
+    _showTopBanner(
+      _l10n.runPreciseLocationOff,
+      duration: const Duration(seconds: 8),
+      actionLabel: _l10n.runSettings,
+      onAction: () => Geolocator.openAppSettings(),
     );
   }
 
@@ -3367,8 +3532,10 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     if (_stopRequested || recorder == null) return;
     _stopRequested = true;
     final raw = await recorder.stop();
+    unawaited(_persistStride(recorder));
     _snapshotSub?.cancel();
     _stepSub?.cancel();
+    _baroSub?.cancel();
     _incrementalSaveTimer?.cancel();
     _gpsLostCheckTimer?.cancel();
     _permissionWatchdogTimer?.cancel();
@@ -3467,7 +3634,9 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // the api_client save path lifts them onto the promoted fastest_*_s
     // columns (20270325_001) so the SQL `personal_records` trigger can
     // pick up a sub-20 5k inside an 18 km long run. Helper is null-safe
-    // + idempotent + a no-op for tracks under 3 points.
+    // + idempotent + a no-op for tracks under 3 points. The whole stored
+    // track, off-track fixes included: the bests replay it through the
+    // distance estimator, and those fixes are the estimator's input.
     final enrichedMetadata = enrichMetadataWithEmbeddedBests(
       track: raw.track,
       metadata: metadata,
@@ -3564,7 +3733,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         run.track.length >= 2) {
       try {
         final candidates = await api
-            .fetchRoutesIntersectingTrack(run.track, maxResults: 5)
+            .fetchRoutesIntersectingTrack(cm.trackLine(run.track),
+                maxResults: 5)
             .timeout(kBackendLoadTimeout);
         final match = bestStrongRouteMatch(
           candidates,
@@ -3707,8 +3877,10 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       broadcasterActiveAtStop: broadcasterActiveAtStop,
       defaultPublic: widget.preferences.newRunsArePublic,
       signedIn: api != null && api.userId != null,
+      broadcastWasPublic: _liveBroadcastPublic,
     );
     _liveBroadcastBegun = false;
+    _liveBroadcastPublic = false;
     if (action == PostLiveVisibilityAction.none) return;
 
     var keepPublic = false;
@@ -3778,6 +3950,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   void _discard() {
     _snapshotSub?.cancel();
     _stepSub?.cancel();
+    _baroSub?.cancel();
     _treadmillSub?.cancel();
     _treadmillSub = null;
     _treadmillStatusSub?.cancel();
@@ -3803,6 +3976,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // never chose to share.
     _liveShareRequested = false;
     _liveBroadcastBegun = false;
+    _liveBroadcastPublic = false;
     _liveConcludeOwed = false;
     _liveShareActive.value = false;
     _pedometerRetries = 0;
@@ -3839,6 +4013,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       _distanceMetres = 0;
       _pace = null;
       _track = [];
+      _storedTrack = [];
       _currentPosition = null;
       _routeAlong = null;
       _lastTickNotified = 0;
@@ -3883,6 +4058,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     _trainingDebounce?.cancel();
     _snapshotSub?.cancel();
     _stepSub?.cancel();
+    _baroSub?.cancel();
     _countdownTimer?.cancel();
     _incrementalSaveTimer?.cancel();
     _gpsLostCheckTimer?.cancel();
@@ -4868,6 +5044,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                 permissionLost: _permissionLost,
                 gpsLost: _gpsLost,
                 weakGps: _weakGps,
+                weakGpsApproximate:
+                    _weakGps && _recorder?.preciseLocationOff == true,
                 safetyNudgeVisible: _safetyNudgeVisible,
                 onSafetyNudgeShare: _onSafetyNudgeShare,
                 onSafetyNudgeDismiss: _dismissSafetyNudge,
@@ -5083,7 +5261,9 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
 
   Widget _buildFinished(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final track = _finishedRun?.track ?? <cm.Waypoint>[];
+    // The line, exactly what the live map drew; off-track fixes are stored
+    // for the server's distance replay only.
+    final track = cm.trackLine(_finishedRun?.track ?? <cm.Waypoint>[]);
     // Derived metric: "moving time" — elapsed with stops excluded, computed
     // from the GPS track. Replaces the old live auto-pause.
     final movingTime = movingTimeOf(track);
@@ -5595,6 +5775,7 @@ class RunTopBanners extends StatelessWidget {
     required this.permissionLost,
     required this.gpsLost,
     required this.weakGps,
+    this.weakGpsApproximate = false,
     required this.safetyNudgeVisible,
     required this.onSafetyNudgeShare,
     required this.onSafetyNudgeDismiss,
@@ -5606,6 +5787,10 @@ class RunTopBanners extends StatelessWidget {
   final bool permissionLost;
   final bool gpsLost;
   final bool weakGps;
+
+  /// The weak-GPS stall is the approximate location grant, not the sky, so
+  /// the strip names that cause instead of blaming the signal.
+  final bool weakGpsApproximate;
   final bool safetyNudgeVisible;
   final VoidCallback onSafetyNudgeShare;
   final VoidCallback onSafetyNudgeDismiss;
@@ -5696,7 +5881,9 @@ class RunTopBanners extends StatelessWidget {
                         color: semantic.onWarning, size: 18),
                     const SizedBox(width: 8),
                     Text(
-                      l10n.runWeakGps,
+                      weakGpsApproximate
+                          ? l10n.runWeakGpsApproximate
+                          : l10n.runWeakGps,
                       style: TextStyle(
                           color: semantic.onWarning,
                           fontWeight: FontWeight.w600),
@@ -6097,8 +6284,12 @@ PostLiveVisibilityAction postLiveVisibilityActionOnStop({
   required bool broadcasterActiveAtStop,
   required bool defaultPublic,
   required bool signedIn,
+  bool broadcastWasPublic = true,
 }) {
   if (!broadcastBegun || !signedIn) return PostLiveVisibilityAction.none;
+  // A safety-contacts broadcast (decisions § 1964) never flipped the run
+  // public, so there is no public window to close and nothing to ask.
+  if (!broadcastWasPublic) return PostLiveVisibilityAction.none;
   if (defaultPublic) return PostLiveVisibilityAction.none;
   return broadcasterActiveAtStop
       ? PostLiveVisibilityAction.prompt
@@ -6136,13 +6327,13 @@ class _LastRunCard extends StatelessWidget {
             ),
             child: Row(
               children: [
-                if (run.track.length >= 2)
+                if (cm.trackLine(run.track).length >= 2)
                   SizedBox(
                     width: 72,
                     height: 56,
                     child: CustomPaint(
                       painter: _TrackSparkPainter(
-                        track: run.track,
+                        track: cm.trackLine(run.track),
                         color: theme.colorScheme.primary,
                       ),
                     ),
@@ -6500,3 +6691,5 @@ class _TrackSparkPainter extends CustomPainter {
   bool shouldRepaint(covariant _TrackSparkPainter old) =>
       old.track != track || old.color != color;
 }
+
+enum _BackgroundLocationChoice { readGuide, startAnyway, openSettings }

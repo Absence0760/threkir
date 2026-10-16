@@ -1,9 +1,10 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { deleteEvent, insertEvent } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
 import { readRows } from '../fixtures/db-read';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * /clubs/[slug]/events/[id] — event detail + per-instance RSVP +
@@ -367,12 +368,7 @@ test.describe('/clubs/[slug]/events/[id] — RSVP', () => {
 
 		const anonCtx = await browser.newContext({ storageState: { cookies: [], origins: [] } });
 		try {
-			await anonCtx.addInitScript(() => {
-				localStorage.setItem(
-					'cookie_consent',
-					JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
-				);
-			});
+			await acceptCookieConsent(anonCtx);
 			const anon = await anonCtx.newPage();
 			await anon.goto(`/clubs/richmond-run-club/events/${localEventId}`);
 			await expect(

@@ -169,7 +169,7 @@ export function formatElevation(metres: number | null | undefined): string {
 /// canonical unit stored on `plan_workouts`); we convert to /mi when
 /// the user prefers miles.
 export function fmtPace(secPerKm: number | null | undefined): string {
-	if (secPerKm == null || secPerKm <= 0) return '—';
+	if (secPerKm == null || !Number.isFinite(secPerKm) || secPerKm <= 0) return '—';
 	const sec = unit.value === 'mi' ? secPerKm * (METRES_PER_MILE / 1000) : secPerKm;
 	return `${paceMinutesSeconds(sec)}/${unit.value}`;
 }

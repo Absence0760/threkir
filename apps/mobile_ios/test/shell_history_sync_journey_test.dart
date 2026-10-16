@@ -43,6 +43,7 @@ import '../lib/training_service.dart';
 import '../lib/widgets/run_list_tile.dart';
 import 'pump_until.dart';
 import 'store_write_watch.dart';
+import 'pre_run_dialogs.dart';
 
 class _FakeGeolocatorPlatform extends GeolocatorPlatform {
   StreamController<Position>? _positions;
@@ -113,7 +114,7 @@ class _JourneyApi extends ApiClient {
   Stream<String?> get authUserChanges => const Stream<String?>.empty();
 
   @override
-  Future<cm.UserProfileRow?> fetchMyProfile() async => cm.UserProfileRow(
+  Future<cm.UserProfileRow?> fetchMyProfile() async => cm.UserProfileRow(profilePrivate: false, 
     shadowHidden: false,
     id: 'journey-runner',
     displayName: null,
@@ -262,6 +263,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final prefs = Preferences();
     await prefs.init();
+    await markPreRunDialogsSeen(prefs);
     final runStore = LocalRunStore();
     await runStore.init(overrideDirectory: tempDir('history_runs_'));
     final gearStore = LocalGearStore();

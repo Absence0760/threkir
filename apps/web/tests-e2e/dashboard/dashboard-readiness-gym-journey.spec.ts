@@ -1,10 +1,12 @@
-import { expect, test, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 import { noonOnBrowserDay } from '../fixtures/dates';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { expandTrainingLoad } from '../fixtures/dashboard';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { insertRun, setUserSetting } from '../fixtures/simulate';
+import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * End-to-end readiness journey: gym sessions folding into the dashboard
@@ -40,13 +42,6 @@ import { insertRun, setUserSetting } from '../fixtures/simulate';
  * +page.svelte lines 1164-1195) and the `data-testid="gym-readiness-note"`
  * disclosure (lines 1205-1215).
  */
-
-function setConsentAccepted() {
-	localStorage.setItem(
-		'cookie_consent',
-		JSON.stringify({ choice: 'accepted', timestamp: Date.now() }),
-	);
-}
 
 /** Read the numeric value out of the Fitness-card metric whose label
  *  matches `labelRe` (CTL/ATL/TSB). The card renders one
@@ -136,7 +131,7 @@ test.describe('dashboard readiness — gym sessions fold into CTL/ATL/TSB', () =
 			const ctx = await browser.newContext({ storageState: subject.storageStatePath });
 			// Saga users have not accepted the cookie banner — pre-accept so the
 			// GDPR banner can't float over the Fitness card.
-			await ctx.addInitScript(setConsentAccepted);
+			await acceptCookieConsent(ctx);
 			const page = await ctx.newPage();
 
 			let atlIncluded = 0;

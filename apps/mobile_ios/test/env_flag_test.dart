@@ -267,6 +267,7 @@ void main() {
       'OFF_ROUTE_ESCALATION_ENABLED': 'lib/off_route_flag.dart',
       'ADAPTIVE_FITNESS_GATE': 'lib/adaptive_fitness_flag.dart',
       'WEIGH_IN_GATE': 'lib/weigh_in_flag.dart',
+      'WEIGHT_FLUID_ENABLED': 'lib/weight_fluid_flag.dart',
     };
 
     for (final owner in owners.entries) {
@@ -392,6 +393,7 @@ void main() {
       'OFF_ROUTE_ESCALATION_ENABLED',
       'ADAPTIVE_FITNESS_GATE',
       'WEIGH_IN_GATE',
+      'WEIGHT_FLUID_ENABLED',
       'TILE_URL_TEMPLATE',
       'USDA_FDC_API_KEY',
     ]) {

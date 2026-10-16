@@ -2388,6 +2388,7 @@ export const messages = {
 	"coachingAthlete.assignedByYou": "あなたが割り当て",
 	"coachingAthlete.assignAfterOne": "{name}さんのプラン「{plan}」は{end}まで続きます。割り当てるプランはこれと重ねられないため、この日より後に開始してください。",
 	"coachingAthlete.assignAfterTwo": "{name}さんのプラン「{plan}」は{end}まで続き、その後「{next}」が{nextStart}〜{nextEnd}に予定されています。割り当てるプランはどちらとも重ねられません。",
+	"coachingAthlete.assignAfterMany": "{name}さんにはこれから{count}件のプランがあります：{plans}。割り当てるプランはいずれとも重ねられないため、{end}より後か、プランの間の空いた期間に開始してください。",
 	"coachingAthlete.assignOverlapNamed": "その期間は{name}さんのプラン「{plan}」（{start}〜{end}）と重なっています。終了後の開始日を選んでください。",
 	"coachingAthlete.assignOverlap": "その期間は{name}さんのアクティブなプランのいずれかと重なっています。終了後の開始日を選んでください。",
 	"compare.cellYes": "あり",

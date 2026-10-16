@@ -2392,6 +2392,7 @@ export const messages = {
 	"coachingAthlete.assignedByYou": "Atribuído por você",
 	"coachingAthlete.assignAfterOne": "O plano “{plan}” de {name} vai até {end}. Um plano atribuído não pode se sobrepor a ele, então comece-o depois dessa data.",
 	"coachingAthlete.assignAfterTwo": "O plano “{plan}” de {name} vai até {end}, e “{next}” vai de {nextStart} a {nextEnd}. Um plano atribuído não pode se sobrepor a nenhum deles.",
+	"coachingAthlete.assignAfterMany": "{name} ainda tem {count} planos pela frente: {plans}. Um plano atribuído não pode se sobrepor a nenhum deles, então comece-o depois de {end} ou em um intervalo entre eles.",
 	"coachingAthlete.assignOverlapNamed": "Essas datas se sobrepõem ao plano “{plan}” de {name} ({start} – {end}). Escolha uma data de início depois que ele terminar.",
 	"coachingAthlete.assignOverlap": "Essas datas se sobrepõem a um dos planos ativos de {name}. Escolha uma data de início depois que ele terminar.",
 	"compare.cellYes": "Sim",

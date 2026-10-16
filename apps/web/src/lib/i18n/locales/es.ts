@@ -2393,6 +2393,7 @@ export const messages = {
 	"coachingAthlete.assignedByYou": "Asignado por ti",
 	"coachingAthlete.assignAfterOne": "El plan «{plan}» de {name} dura hasta el {end}. Un plan asignado no puede solaparse con él, así que haz que empiece después de esa fecha.",
 	"coachingAthlete.assignAfterTwo": "El plan «{plan}» de {name} dura hasta el {end}, y «{next}» va del {nextStart} al {nextEnd}. Un plan asignado no puede solaparse con ninguno de los dos.",
+	"coachingAthlete.assignAfterMany": "{name} tiene {count} planes por delante: {plans}. Un plan asignado no puede solaparse con ninguno, así que haz que empiece después del {end} o en un hueco entre ellos.",
 	"coachingAthlete.assignOverlapNamed": "Esas fechas se solapan con el plan «{plan}» de {name} ({start} – {end}). Elige una fecha de inicio posterior a su fin.",
 	"coachingAthlete.assignOverlap": "Esas fechas se solapan con uno de los planes activos de {name}. Elige una fecha de inicio posterior a su fin.",
 	"compare.cellYes": "Sí",

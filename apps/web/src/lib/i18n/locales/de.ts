@@ -2393,6 +2393,7 @@ export const messages = {
 	"coachingAthlete.assignedByYou": "Von dir zugewiesen",
 	"coachingAthlete.assignAfterOne": "{name}s Plan „{plan}“ läuft bis {end}. Ein zugewiesener Plan darf sich nicht damit überschneiden, beginne ihn also nach diesem Datum.",
 	"coachingAthlete.assignAfterTwo": "{name}s Plan „{plan}“ läuft bis {end}, und „{next}“ läuft {nextStart} – {nextEnd}. Ein zugewiesener Plan darf sich mit keinem der beiden überschneiden.",
+	"coachingAthlete.assignAfterMany": "{name} hat noch {count} Pläne vor sich: {plans}. Ein zugewiesener Plan darf sich mit keinem davon überschneiden, beginne ihn also nach {end} oder in einer Lücke dazwischen.",
 	"coachingAthlete.assignOverlapNamed": "Diese Daten überschneiden sich mit {name}s Plan „{plan}“ ({start} – {end}). Wähle ein Startdatum nach dessen Ende.",
 	"coachingAthlete.assignOverlap": "Diese Daten überschneiden sich mit einem aktiven Plan von {name}. Wähle ein Startdatum nach dessen Ende.",
 	"compare.cellYes": "Ja",

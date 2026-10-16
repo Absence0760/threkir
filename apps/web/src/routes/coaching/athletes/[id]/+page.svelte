@@ -104,9 +104,9 @@
 
 	onMount(load);
 
-	// The athlete's plans an assignment must not overlap: the one shown and
-	// the one queued after it, while they still hold dates.
-	const blockers = $derived(assignBlockers(overview?.plan, overview?.upcoming, localTodayISO()));
+	// The athlete's plans an assignment must not overlap: every active plan
+	// they hold that still holds dates, not only the one shown.
+	const blockers = $derived(assignBlockers(overview?.activePlans ?? [], localTodayISO()));
 	const athleteName = $derived(link?.display_name ?? m('coachingAthlete.runnerFallback'));
 
 	// The athlete's active plan, if any, was assigned by THIS coach.
@@ -325,7 +325,7 @@
 								end: formatDate(blockers[0].end_date)
 							})}
 						</p>
-					{:else if blockers.length > 1}
+					{:else if blockers.length === 2}
 						<p class="assign-hint" data-testid="assign-blockers">
 							{m('coachingAthlete.assignAfterTwo', {
 								name: athleteName,
@@ -334,6 +334,15 @@
 								next: blockers[1].name,
 								nextStart: formatDate(blockers[1].start_date),
 								nextEnd: formatDate(blockers[1].end_date)
+							})}
+						</p>
+					{:else if blockers.length > 2}
+						<p class="assign-hint" data-testid="assign-blockers">
+							{m('coachingAthlete.assignAfterMany', {
+								name: athleteName,
+								count: blockers.length,
+								plans: blockers.map((p) => p.name).join(', '),
+								end: formatDate(blockers[blockers.length - 1].end_date)
 							})}
 						</p>
 					{/if}

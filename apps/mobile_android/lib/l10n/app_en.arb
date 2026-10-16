@@ -8377,6 +8377,10 @@
   "@planOverlapConflict": {
     "description": "Error when the server refuses a new plan because an active plan overlaps its dates (changed since the overlap check)"
   },
+  "planDetailDuplicateWeekOverlap": "Duplicating this week would push the plan into another active plan's dates. Move or end that plan first.",
+  "@planDetailDuplicateWeekOverlap": {
+    "description": "Banner when duplicating a plan week is refused because the extra week would overlap another active plan"
+  },
   "planNewImportButton": "Import a plan",
   "@planNewImportButton": {
     "description": "Button on the new-plan screen that opens the plan import sheet (paste a plan table or JSON export)"

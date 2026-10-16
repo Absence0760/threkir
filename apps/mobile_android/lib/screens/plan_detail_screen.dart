@@ -797,6 +797,10 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
       showTopBanner(
           context, l10n.planDetailDuplicateWeekDone(week.weekIndex + 1));
       await _load();
+    } on ActivePlanExistsError {
+      if (!mounted) return;
+      setState(() => _bulkBusy = false);
+      showTopBanner(context, l10n.planDetailDuplicateWeekOverlap);
     } catch (e) {
       debugPrint('plan detail bulk failed: $e');
       if (!mounted) return;

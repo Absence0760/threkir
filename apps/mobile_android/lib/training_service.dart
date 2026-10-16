@@ -139,6 +139,13 @@ String clonedPlanEndIso(TrainingPlanRow template, DateTime start) {
 bool _isOverlapViolation(Object e) =>
     e is PostgrestException && e.code == '23P01';
 
+/// [error] as a plan write should surface it: the overlap constraint's
+/// refusal (23P01) becomes [ActivePlanExistsError], anything else is
+/// returned unchanged. Web twin: `dbError`'s `PlanOverlapError` mapping in
+/// `apps/web/src/lib/core/supabase_error.ts`.
+Object planWriteError(Object error) =>
+    _isOverlapViolation(error) ? const ActivePlanExistsError() : error;
+
 /// A public-library plan paired with its author's public handle. The
 /// browse + preview surfaces show the handle but never any other author
 /// data. Mirrors web `core/data.ts:PublicPlanLibraryEntry`.
@@ -599,14 +606,22 @@ class TrainingService extends ChangeNotifier {
   /// (plan_id, week_index) re-index is atomic server-side (duplicate_plan_week
   /// RPC) — a client-side multi-update would transiently break the unique
   /// index. Mirrors web `core/data.ts:duplicatePlanWeek`. Returns the new week id.
+  ///
+  /// Pushing the end date back a week can run into the next queued plan;
+  /// the constraint refuses that and it surfaces as [ActivePlanExistsError].
   Future<String> duplicatePlanWeek(String planId, int weekIndex) async {
-    final newId = await _c.rpc(
-      'duplicate_plan_week',
-      params: {
-        'p_plan_id': planId,
-        'p_week_index': weekIndex,
-      },
-    );
+    final Object? newId;
+    try {
+      newId = await _c.rpc(
+        'duplicate_plan_week',
+        params: {
+          'p_plan_id': planId,
+          'p_week_index': weekIndex,
+        },
+      );
+    } catch (e, s) {
+      Error.throwWithStackTrace(planWriteError(e), s);
+    }
     notifyListeners();
     return newId as String;
   }

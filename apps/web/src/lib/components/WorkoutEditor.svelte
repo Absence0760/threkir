@@ -25,6 +25,7 @@
 		onSaved: () => void;
 	}
 	let { workout, onClose, onSaved }: Props = $props();
+	const uid = $props.id();
 
 	// All inputs are rendered + stored in the user's preferred unit so
 	// the form matches the rest of the app. Conversion to the canonical
@@ -372,41 +373,42 @@
 >
 	<div class="editor-form">
 		<div class="field">
-			<label>
-				<span>{t('workoutEditor.kind')}</span>
-				<select bind:value={kind} aria-describedby="wo-kind-hint">
-					{#each kindOptions as k}
-						<option value={k}>{workoutKindLabel(k)}</option>
-					{/each}
-				</select>
-			</label>
+			<label class="field-label" for="{uid}-kind">{t('workoutEditor.kind')}</label>
+			<select id="{uid}-kind" bind:value={kind} aria-describedby="wo-kind-hint">
+				{#each kindOptions as k}
+					<option value={k}>{workoutKindLabel(k)}</option>
+				{/each}
+			</select>
 			<span class="hint" id="wo-kind-hint">{t('workoutEditor.kindHint')}</span>
 		</div>
 
 		{#if kind === 'race'}
 			<div class="field">
-				<label>
-					<span>{t('workoutEditor.raceName')}</span>
-					<input
-						type="text"
-						bind:value={raceName}
-						maxlength="120"
-						aria-describedby="wo-race-name-hint"
-					/>
-				</label>
+				<label class="field-label" for="{uid}-race-name">{t('workoutEditor.raceName')}</label>
+				<input
+					id="{uid}-race-name"
+					type="text"
+					bind:value={raceName}
+					maxlength="120"
+					aria-describedby="wo-race-name-hint"
+				/>
 				<span class="hint" id="wo-race-name-hint">{t('workoutEditor.raceNameHint')}</span>
 			</div>
 
 			<div class="field">
-				<label>
-					<span>{t('workoutEditor.racePriority')}</span>
-					<select bind:value={racePriority} aria-describedby="wo-race-priority-hint">
-						<option value="">{t('workoutEditor.racePriorityAuto')}</option>
-						<option value="A">{t('workoutEditor.racePriorityA')}</option>
-						<option value="B">{t('workoutEditor.racePriorityB')}</option>
-						<option value="C">{t('workoutEditor.racePriorityC')}</option>
-					</select>
-				</label>
+				<label class="field-label" for="{uid}-race-priority"
+					>{t('workoutEditor.racePriority')}</label
+				>
+				<select
+					id="{uid}-race-priority"
+					bind:value={racePriority}
+					aria-describedby="wo-race-priority-hint"
+				>
+					<option value="">{t('workoutEditor.racePriorityAuto')}</option>
+					<option value="A">{t('workoutEditor.racePriorityA')}</option>
+					<option value="B">{t('workoutEditor.racePriorityB')}</option>
+					<option value="C">{t('workoutEditor.racePriorityC')}</option>
+				</select>
 				<span class="hint" id="wo-race-priority-hint">{t('workoutEditor.racePriorityHint')}</span>
 			</div>
 

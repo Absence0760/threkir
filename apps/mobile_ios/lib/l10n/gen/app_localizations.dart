@@ -9544,6 +9544,30 @@ abstract class AppLocalizations {
   /// **'Goal race'**
   String get planNewGoalRace;
 
+  /// Goal-race dropdown entry for an ultra distance the runner types in
+  ///
+  /// In en, this message translates to:
+  /// **'Other ultra distance'**
+  String get planNewUltraOther;
+
+  /// Label of the ultra race-distance field; the placeholder is km or mi
+  ///
+  /// In en, this message translates to:
+  /// **'Race distance ({unit})'**
+  String planNewUltraDistance(String unit);
+
+  /// Hint under the ultra race-distance field
+  ///
+  /// In en, this message translates to:
+  /// **'Ultra courses vary — Comrades runs 86–90 km depending on the year. Enter your race\'s exact distance. Long runs are set by time on feet, not pace.'**
+  String get planNewUltraDistanceHint;
+
+  /// Shown when the ultra distance typed is not longer than a marathon
+  ///
+  /// In en, this message translates to:
+  /// **'An ultra is longer than a marathon. Pick Marathon, or enter a longer distance.'**
+  String get planNewUltraDistanceTooShort;
+
   /// Start-date tile title
   ///
   /// In en, this message translates to:

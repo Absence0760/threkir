@@ -5764,6 +5764,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get planNewGoalRace => 'Goal race';
 
   @override
+  String get planNewUltraOther => 'Other ultra distance';
+
+  @override
+  String planNewUltraDistance(String unit) {
+    return 'Race distance ($unit)';
+  }
+
+  @override
+  String get planNewUltraDistanceHint =>
+      'Ultra courses vary — Comrades runs 86–90 km depending on the year. Enter your race\'s exact distance. Long runs are set by time on feet, not pace.';
+
+  @override
+  String get planNewUltraDistanceTooShort =>
+      'An ultra is longer than a marathon. Pick Marathon, or enter a longer distance.';
+
+  @override
   String get planNewStartDate => 'Start date';
 
   @override

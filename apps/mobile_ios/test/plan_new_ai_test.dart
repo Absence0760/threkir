@@ -121,10 +121,15 @@ TextEditingController _weeksField(WidgetTester tester) => tester
         w is TextField && w.decoration?.hintText == _en.planNewOverrideHint))
     .controller!;
 
-GoalEvent? _goal(WidgetTester tester) => tester
-    .widget<DropdownButtonFormField<GoalEvent>>(
-        find.byType(DropdownButtonFormField<GoalEvent>))
-    .initialValue;
+GoalEvent? _goal(WidgetTester tester) {
+  final value = tester
+      .widget<DropdownButtonFormField<String>>(find.byWidgetPredicate((w) =>
+          w is DropdownButtonFormField<String> &&
+          w.key is ValueKey<String> &&
+          (w.key as ValueKey<String>).value.startsWith('plan-new-goal-')))
+      .initialValue;
+  return value == null ? null : goalEventFromDb(value);
+}
 
 int? _days(WidgetTester tester) => tester
     .widget<DropdownButtonFormField<int>>(

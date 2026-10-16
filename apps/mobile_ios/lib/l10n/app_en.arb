@@ -7799,6 +7799,27 @@
   "@planNewGoalRace": {
     "description": "Goal-race dropdown label"
   },
+  "planNewUltraOther": "Other ultra distance",
+  "@planNewUltraOther": {
+    "description": "Goal-race dropdown entry for an ultra distance the runner types in"
+  },
+  "planNewUltraDistance": "Race distance ({unit})",
+  "@planNewUltraDistance": {
+    "description": "Label of the ultra race-distance field; the placeholder is km or mi",
+    "placeholders": {
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "planNewUltraDistanceHint": "Ultra courses vary — Comrades runs 86–90 km depending on the year. Enter your race's exact distance. Long runs are set by time on feet, not pace.",
+  "@planNewUltraDistanceHint": {
+    "description": "Hint under the ultra race-distance field"
+  },
+  "planNewUltraDistanceTooShort": "An ultra is longer than a marathon. Pick Marathon, or enter a longer distance.",
+  "@planNewUltraDistanceTooShort": {
+    "description": "Shown when the ultra distance typed is not longer than a marathon"
+  },
   "planNewStartDate": "Start date",
   "@planNewStartDate": {
     "description": "Start-date tile title"

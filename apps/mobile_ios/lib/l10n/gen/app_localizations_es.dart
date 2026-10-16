@@ -5818,6 +5818,22 @@ class AppLocalizationsEs extends AppLocalizations {
   String get planNewGoalRace => 'Carrera objetivo';
 
   @override
+  String get planNewUltraOther => 'Otra distancia de ultra';
+
+  @override
+  String planNewUltraDistance(String unit) {
+    return 'Distancia de la carrera ($unit)';
+  }
+
+  @override
+  String get planNewUltraDistanceHint =>
+      'Los recorridos de ultra varían: la Comrades mide entre 86 y 90 km según el año. Introduce la distancia exacta de tu carrera. Las tiradas largas se marcan por tiempo en movimiento, no por ritmo.';
+
+  @override
+  String get planNewUltraDistanceTooShort =>
+      'Un ultra es más largo que un maratón. Elige Maratón o introduce una distancia mayor.';
+
+  @override
   String get planNewStartDate => 'Fecha de inicio';
 
   @override

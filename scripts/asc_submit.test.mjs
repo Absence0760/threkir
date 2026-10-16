@@ -1,8 +1,10 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { generateKeyPairSync, verify } from 'node:crypto';
-import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
@@ -12,11 +14,13 @@ import {
 	WHATS_NEW_MAX,
 	buildToken,
 	describeErrors,
+	FIRST_VERSION_NOTICE,
 	extractWhatsNew,
 	makeApi,
 	missingEnv,
 	planVersion,
 	submit,
+	whatsNewRequired,
 } from './asc_submit.mjs';
 
 /**
@@ -82,6 +86,32 @@ test(`a note over ${WHATS_NEW_MAX} characters fails and is never truncated`, () 
 	assert.throws(() => extractWhatsNew(`## What's New\n${exact}y`), new RegExp(`${WHATS_NEW_MAX + 1} characters.*never cut short`));
 	// Characters, not UTF-16 units: an emoji-free note in Japanese counts one per character.
 	assert.equal([...extractWhatsNew(`## What's New\n${'走'.repeat(WHATS_NEW_MAX)}`)].length, WHATS_NEW_MAX);
+});
+
+test('before the first release a missing section is allowed, and a present one is still checked', () => {
+	const lenient = { required: false };
+	for (const body of [null, '', "## What's Changed\n* feat: x in #1"]) assert.equal(extractWhatsNew(body, lenient), '');
+	assert.equal(extractWhatsNew("## What's New\nHello", lenient), 'Hello');
+	assert.throws(() => extractWhatsNew("## What's New\nA\n## What's New\nB", lenient), /2 "## What's New" sections/);
+	assert.throws(() => extractWhatsNew(`## What's New\n${'x'.repeat(WHATS_NEW_MAX + 1)}`, lenient), /never cut short/);
+	assert.throws(() => extractWhatsNew("## What's New\n<!-- placeholder -->", lenient), /is empty/);
+});
+
+test('the whats-new command with no API key in its environment applies the strict rule', () => {
+	const dir = mkdtempSync(join(tmpdir(), 'asc-submit-'));
+	const body = join(dir, 'body.md');
+	const out = join(dir, 'out.txt');
+	/** @type {Record<string, string>} */
+	const env = { PATH: process.env.PATH ?? '' };
+	const cli = () => spawnSync(process.execPath, [resolve(root, 'scripts/asc_submit.mjs'), 'whats-new', body, out], { env, encoding: 'utf8' });
+	writeFileSync(body, "## What's Changed\n* feat: x in #1\n");
+	const missing = cli();
+	assert.equal(missing.status, 1, missing.stdout);
+	assert.match(missing.stdout, /^::error::.*no "## What's New" section/m);
+	writeFileSync(body, "## What's New\nPlans chain now.\n\n## What's Changed\n* feat: x\n");
+	const present = cli();
+	assert.equal(present.status, 0, present.stdout);
+	assert.equal(readFileSync(out, 'utf8'), 'Plans chain now.');
 });
 
 // --- Token ---------------------------------------------------------------------
@@ -377,7 +407,9 @@ function run(asc, over = {}) {
 test('a fresh release: waits for processing, creates the version, attaches, writes every locale, phases, submits', async () => {
 	const asc = fakeAsc({ buildStates: ['UNLISTED', 'PROCESSING', 'VALID'], localizations: ['en-US', 'de-DE'] });
 	const { result, sleeps } = run(asc);
-	assert.match(await result, /1\.0\.12 with build 5120 is submitted for review \(WAITING_FOR_REVIEW\).*7-day phased release/);
+	const done = await result;
+	assert.equal(done.level, 'info');
+	assert.match(done.message, /1\.0\.12 with build 5120 is submitted for review \(WAITING_FOR_REVIEW\).*7-day phased release/);
 	assert.deepEqual(sleeps, [60_000, 60_000], 'unlisted, then processing, then valid');
 
 	const created = asc.versions.find((v) => v.attributes.versionString === '1.0.12');
@@ -411,7 +443,7 @@ test('re-running after success writes nothing', async () => {
 	const asc = fakeAsc();
 	await run(asc).result;
 	const before = asc.writes().length;
-	assert.match(await run(asc).result, /already WAITING_FOR_REVIEW with build 5120; nothing to do/);
+	assert.match((await run(asc).result).message, /already WAITING_FOR_REVIEW with build 5120; nothing to do/);
 	assert.equal(asc.writes().length, before);
 });
 
@@ -496,10 +528,41 @@ test('an API refusal fails the run with Apple\'s code and detail, and the token 
 	);
 });
 
-test('an empty What\'s New file is refused before any request', async () => {
+test('an empty What\'s New file is refused before anything is written', async () => {
 	const asc = fakeAsc();
 	await assert.rejects(run(asc, { whatsNew: '  \n' }).result, /is empty/);
-	assert.deepEqual(asc.requests, []);
+	assert.deepEqual(asc.writes(), []);
+	assert.ok(!asc.requests.some((r) => r.path.startsWith('/v1/builds')), 'it waited on processing first');
+});
+
+/** The live record today: version "1.0", rejected under 2.1, resubmitted by hand (#1113). */
+const PRE_RELEASE = [{ type: 'appStoreVersions', id: 'v1', attributes: { versionString: '1.0', appVersionState: 'REJECTED', releaseType: 'MANUAL' }, build: 'b-old', phased: null }];
+
+test('before the first release, submit ends at notice level with nothing written and no wait', async () => {
+	for (const whatsNew of ['Plans chain now.', '']) {
+		const asc = fakeAsc({ versions: structuredClone(PRE_RELEASE) });
+		const { result, sleeps } = run(asc, { whatsNew });
+		assert.deepEqual(await result, { level: 'notice', message: FIRST_VERSION_NOTICE });
+		assert.match(FIRST_VERSION_NOTICE, /starts after the first one is released.*TestFlight.*#1113/);
+		assert.deepEqual(asc.writes(), []);
+		assert.deepEqual(sleeps, []);
+	}
+});
+
+test('the What\'s New check is lenient only when App Store Connect says nothing is released', async () => {
+	/** @param {import('./asc_submit.mjs').Fetcher} fetcher */
+	const api = (fetcher) => makeApi({ fetcher, token: () => buildToken({ keyId: KID, issuerId: ISSUER, privateKeyPem: PEM, nowS: NOW }) });
+	assert.equal(await whatsNewRequired(api(fakeAsc({ versions: structuredClone(PRE_RELEASE) }).fetcher)), false);
+	assert.equal(await whatsNewRequired(api(fakeAsc().fetcher)), true);
+	/** @type {string[]} */
+	const logged = [];
+	const down = api(async () => ({ ok: false, status: 503, text: async () => '' }));
+	assert.equal(await whatsNewRequired(down, (line) => logged.push(line)), true, 'a failed read must keep the strict rule');
+	assert.match(logged.join('\n'), /HTTP 503.*applying the full What's New check/s);
+	const thrown = api(async () => {
+		throw new Error('network down');
+	});
+	assert.equal(await whatsNewRequired(thrown), true);
 });
 
 // --- Wiring --------------------------------------------------------------------
@@ -530,6 +593,10 @@ test("release-ios.yml checks What's New before the build and submits after the u
 	assert.match(note, /gh api "repos\/\$GITHUB_REPOSITORY\/releases\/tags\/\$TAG"/);
 	assert.match(note, /node scripts\/asc_submit\.mjs whats-new "\$RUNNER_TEMP\/release-body\.md" "\$RUNNER_TEMP\/whats-new\.txt"/);
 	assert.ok(!/\bif:/.test(note) && !/continue-on-error/.test(note), 'the note check must not be skippable');
+	for (const name of ['APP_STORE_CONNECT_API_KEY_ID', 'APP_STORE_CONNECT_API_ISSUER_ID', 'APP_STORE_CONNECT_API_PRIVATE_KEY']) {
+		assert.ok(note.includes(`${name}: \${{ secrets.${name} }}`), `the note check cannot tell a first version without ${name}`);
+	}
+	assert.ok(!/\$\{\{ secrets\./.test(note.split('run:')[1] ?? ''), 'a secret is interpolated into the shell');
 
 	const probe = stepBody(PROBE_STEP);
 	assert.match(probe, /id: uploaded/);

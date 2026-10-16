@@ -128,11 +128,16 @@ jobs:
       # after it. Read through the API rather than from the event payload, which
       # is frozen at publish time: editing the Release and re-running the job
       # picks the edit up. Never falls back to the generated notes
-      # (decisions § 2040).
+      # (decisions § 2040). Until the app's first App Store version is released
+      # nothing submits a note, so a missing section is allowed then; the key
+      # is what tells, and a failed read keeps the strict rule.
       - name: The GitHub Release carries a What's New for the App Store
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.event.release.tag_name }}
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+          APP_STORE_CONNECT_API_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_API_PRIVATE_KEY }}
         run: |
           gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" --jq '.body // ""' > "$RUNNER_TEMP/release-body.md"
           node scripts/asc_submit.mjs whats-new "$RUNNER_TEMP/release-body.md" "$RUNNER_TEMP/whats-new.txt"
@@ -375,7 +380,9 @@ jobs:
       # it for review. Re-running is safe; a version in progress under another
       # number, a rejection awaiting a reply, or anything else it does not
       # recognise fails the job rather than being guessed past
-      # (scripts/asc_submit.mjs, decisions § 2040).
+      # (scripts/asc_submit.mjs, decisions § 2040). While the app has no
+      # released version it ends green with a notice instead: the first
+      # submission is the owner's, from TestFlight (#1113).
       - name: Submit the build for App Store review
         env:
           APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}

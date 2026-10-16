@@ -12,6 +12,9 @@
 //       Apple's 4000 characters fails here, in seconds, rather than after a
 //       half-hour build. Generated notes are never a fallback: they are a
 //       developer changelog, not something to put in front of every user.
+//       Until the app's first version is released, nothing submits a note, so
+//       a missing section is allowed (one that is present is still checked);
+//       when App Store Connect cannot be read to tell, the strict rule holds.
 //
 //   uploaded
 //       Before the TestFlight upload. Writes `uploaded=true|false` to
@@ -25,7 +28,10 @@
 //       localization the version has, sets the release to go out on approval
 //       as a 7-day phased release, and submits it for review. Each step is a
 //       no-op when already true, so re-running is safe; anything it does not
-//       recognise fails the job rather than being guessed past.
+//       recognise fails the job rather than being guessed past. While the app
+//       has no released version it ends green with a notice: the first
+//       submission is the owner's (issue #1113), and the build is in TestFlight
+//       for it.
 //
 // Reads, for `uploaded` and `submit` (the first missing one is named, never a
 // value):
@@ -36,6 +42,8 @@
 //   ASC_BUILD_NUMBER                   the build number, CFBundleVersion
 // and for `submit` also
 //   WHATS_NEW_FILE                     the file `whats-new` wrote
+// `whats-new` reads the three API key variables when they are set, to learn
+// whether the app has a released version; unset, it applies the strict rule.
 //
 // Nothing secret is printed: not the key, not the JWT. App Store Connect's
 // error bodies carry an error code and a description of the request, never a
@@ -61,6 +69,9 @@ export const WHATS_NEW_MAX = 4000;
 /** Processing usually takes 5-15 minutes; past an hour, something is wrong. */
 export const PROCESSING_TIMEOUT_MS = 60 * 60 * 1000;
 export const PROCESSING_POLL_MS = 60 * 1000;
+
+/** The App Store Connect API key, without which nothing in App Store Connect can be read. */
+export const ASC_KEY_ENV = ['APP_STORE_CONNECT_API_KEY_ID', 'APP_STORE_CONNECT_API_ISSUER_ID', 'APP_STORE_CONNECT_API_PRIVATE_KEY'];
 
 export const REQUIRED_ENV = [
 	'APP_STORE_CONNECT_API_KEY_ID',
@@ -129,14 +140,18 @@ const SECTION_END = /^#{1,2}[ \t]/;
  * body, as plain text. Throws, naming what to fix, when there is none, it is
  * empty once HTML comments are removed (a template's placeholder), there are
  * two such sections, or it is over Apple's limit. Never truncates: a note cut
- * mid-sentence would go to every user.
+ * mid-sentence would go to every user. With `required: false` (the app has no
+ * released version, so no note will be submitted) a body with no section
+ * returns '' instead; one that has a section is checked exactly as always.
  *
  * @param {string | null | undefined} body
+ * @param {{ required?: boolean }} [options]
  * @returns {string}
  */
-export function extractWhatsNew(body) {
+export function extractWhatsNew(body, { required = true } = {}) {
 	const lines = (body ?? '').replace(/\r\n?/g, '\n').split('\n');
 	const starts = lines.flatMap((line, i) => (WHATS_NEW_LINE.test(line) ? [i] : []));
+	if (starts.length === 0 && !required) return '';
 	if (starts.length === 0) {
 		throw new Error(
 			`The GitHub Release body has no "## ${WHATS_NEW_HEADING}" section. Edit the Release, add that heading with the note App Store users should read under it, and re-run the job. Generated notes are never used in its place.`,
@@ -426,6 +441,37 @@ export function planVersion(versions, versionString) {
 	return { action: 'create' };
 }
 
+/** @param {Resource[]} versions */
+export function hasReleasedVersion(versions) {
+	return versions.some((v) => RELEASED.has(versionState(v)));
+}
+
+/** @param {Api} api @param {string} appId */
+async function listVersions(api, appId) {
+	return many(await api.get(`/v1/apps/${q(appId)}/appStoreVersions?filter[platform]=IOS&limit=200`));
+}
+
+/**
+ * Whether this release's note will be submitted: true once the app has a
+ * released version. Fails closed: a read that errors answers true, so the
+ * strict What's New check applies.
+ *
+ * @param {Api} api
+ * @param {(line: string) => void} [log]
+ */
+export async function whatsNewRequired(api, log = () => {}) {
+	try {
+		return hasReleasedVersion(await listVersions(api, await findApp(api)));
+	} catch (err) {
+		log(`Could not read App Store Connect to tell whether the app has a released version (${err instanceof Error ? err.message : 'no reason given'}); applying the full What's New check.`);
+		return true;
+	}
+}
+
+/** The message a release ends on while the app has no released version. */
+export const FIRST_VERSION_NOTICE =
+	"The app has no released App Store version yet, so automatic submission starts after the first one is released. This build is in TestFlight for the manual first submission (issue #1113).";
+
 /** @param {Resource} version @param {string} name */
 function related(version, name) {
 	return version.relationships?.[name]?.data ?? null;
@@ -519,19 +565,21 @@ export async function ensureSubmitted(api, { appId, versionId, versionString, lo
  */
 
 /**
- * The whole TestFlight-to-review path. Returns a one-line verdict; throws on
- * anything it cannot confirm.
+ * The whole TestFlight-to-review path. Returns a one-line verdict, at
+ * `notice` level when it stops because the app has no released version;
+ * throws on anything it cannot confirm.
  *
  * @param {SubmitInput} input
- * @returns {Promise<string>}
+ * @returns {Promise<{ level: 'info' | 'notice', message: string }>}
  */
 export async function submit({ api, version, buildNumber, whatsNew, sleep, now, timeoutMs, pollMs, log = () => {} }) {
 	if (!VERSION_PATTERN.test(version)) throw new Error(`ASC_VERSION ${version} is not one to three dot-separated integers.`);
 	if (!BUILD_NUMBER_PATTERN.test(buildNumber)) throw new Error(`ASC_BUILD_NUMBER ${buildNumber} is not a whole number.`);
-	const note = extractWhatsNew(`## ${WHATS_NEW_HEADING}\n${whatsNew}`);
 
 	const appId = await findApp(api);
-	const versions = many(await api.get(`/v1/apps/${q(appId)}/appStoreVersions?filter[platform]=IOS&limit=200`));
+	const versions = await listVersions(api, appId);
+	if (!hasReleasedVersion(versions)) return { level: 'notice', message: FIRST_VERSION_NOTICE };
+	const note = extractWhatsNew(`## ${WHATS_NEW_HEADING}\n${whatsNew}`);
 	const plan = planVersion(versions, version);
 
 	const build = await waitForBuild(api, { appId, version, buildNumber, sleep, now, timeoutMs, pollMs, log });
@@ -542,7 +590,7 @@ export async function submit({ api, version, buildNumber, whatsNew, sleep, now, 
 		if (related(current, 'build')?.id !== build.id) {
 			throw new Error(`App Store version ${version} is already ${versionState(current)} with a different build attached. Nothing was changed; a submitted version's build can only be swapped by hand, after removing it from review.`);
 		}
-		return `Version ${version} is already ${versionState(current)} with build ${buildNumber}; nothing to do.`;
+		return { level: 'info', message: `Version ${version} is already ${versionState(current)} with build ${buildNumber}; nothing to do.` };
 	}
 
 	let versionId;
@@ -606,9 +654,13 @@ export async function submit({ api, version, buildNumber, whatsNew, sleep, now, 
 	if (outcome === 'submitted' && EDITABLE.has(state) && state !== 'READY_FOR_REVIEW') {
 		throw new Error(`The review submission was sent, but version ${version} still reads ${state}, so the submission is unconfirmed. Check App Store Connect before re-running.`);
 	}
-	return outcome === 'already'
-		? `Version ${version} was already with App Review (${state}); its build, What's New and release settings are confirmed.`
-		: `Version ${version} with build ${buildNumber} is submitted for review (${state}). Once approved it releases automatically as a 7-day phased release.`;
+	return {
+		level: 'info',
+		message:
+			outcome === 'already'
+				? `Version ${version} was already with App Review (${state}); its build, What's New and release settings are confirmed.`
+				: `Version ${version} with build ${buildNumber} is submitted for review (${state}). Once approved it releases automatically as a 7-day phased release.`,
+	};
 }
 
 // --- CLI -----------------------------------------------------------------------
@@ -643,9 +695,17 @@ async function main(argv, env) {
 	if (command === 'whats-new') {
 		const [bodyFile, outFile] = args;
 		if (!bodyFile || !outFile) throw new Error('Usage: node scripts/asc_submit.mjs whats-new <release-body.md> <out.txt>');
-		const note = extractWhatsNew(readFileSync(bodyFile, 'utf8'));
+		// Without the key there is nothing to ask, so the strict rule holds.
+		const required = missingEnv(env, ASC_KEY_ENV).length
+			? true
+			: await whatsNewRequired(apiFromEnv(env), (line) => console.log(line));
+		const note = extractWhatsNew(readFileSync(bodyFile, 'utf8'), { required });
 		writeFileSync(outFile, note);
-		console.log(`What's New: ${[...note].length} of ${WHATS_NEW_MAX} characters, written to every localization the App Store version has.`);
+		if (note === '') {
+			console.log(`::notice::The Release has no "## ${WHATS_NEW_HEADING}" section, which is allowed until the app's first App Store version is released: nothing will be submitted. Add one to every mobile_ios Release after that.`);
+		} else {
+			console.log(`What's New: ${[...note].length} of ${WHATS_NEW_MAX} characters, written to every localization the App Store version has.`);
+		}
 		return;
 	}
 	if (command === 'uploaded') {
@@ -660,7 +720,7 @@ async function main(argv, env) {
 	}
 	if (command === 'submit') {
 		requireEnv(env, [...REQUIRED_ENV, 'WHATS_NEW_FILE']);
-		const verdict = await submit({
+		const { level, message } = await submit({
 			api: apiFromEnv(env),
 			version: /** @type {string} */ (env.ASC_VERSION).trim(),
 			buildNumber: /** @type {string} */ (env.ASC_BUILD_NUMBER).trim(),
@@ -669,7 +729,7 @@ async function main(argv, env) {
 			now: () => Date.now(),
 			log: (line) => console.log(line),
 		});
-		console.log(verdict);
+		console.log(level === 'notice' ? `::notice::${message}` : message);
 		return;
 	}
 	throw new Error('Usage: node scripts/asc_submit.mjs whats-new <body> <out> | uploaded | submit');

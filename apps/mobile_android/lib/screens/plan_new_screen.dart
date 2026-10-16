@@ -30,6 +30,7 @@ import '../widgets/plan_import_sheet.dart';
 import '../widgets/plan_overlap_dialog.dart';
 import '../widgets/top_banner.dart';
 import 'plan_detail_screen.dart';
+import 'season_plan_screen.dart';
 
 /// A club plan template paired with the owning club's display name, for the
 /// "Start from a club template" picker. Mirrors the web `/plans/new`
@@ -667,6 +668,18 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
     }
   }
 
+  void _openSeason() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => SeasonPlanScreen(
+          training: widget.training,
+          apiClient: widget.apiClient,
+          loadAiAvailable: widget.loadAiPlanAvailable,
+        ),
+      ),
+    );
+  }
+
   Future<void> _importPlan() async {
     final planId = await showPlanImportSheet(context, widget.training);
     if (planId == null || !mounted) return;
@@ -799,6 +812,15 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
               onPressed: _importPlan,
               icon: const Icon(Icons.content_paste, size: 18),
               label: Text(l10n.planNewImportButton),
+            ),
+          ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              key: const Key('planNewSeason'),
+              onPressed: _openSeason,
+              icon: const Icon(Icons.event_note, size: 18),
+              label: Text(l10n.seasonPlanTitle),
             ),
           ),
           const SizedBox(height: 12),

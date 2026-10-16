@@ -15793,4 +15793,273 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get stravaClubsErrUnlink => 'リンクを解除できませんでした。もう一度お試しください。';
+
+  @override
+  String get seasonPlanTitle => 'シーズンを計画';
+
+  @override
+  String get seasonPlanIntro =>
+      'シーズンのレースを入力してください。A レースごとに専用のプランを作り、プランは回復期間をはさんで順に続きます。B・C レースはその日を含むプランに入ります。';
+
+  @override
+  String get seasonPlanDescribeTitle => 'シーズンを説明';
+
+  @override
+  String get seasonPlanDescribeHint =>
+      'レース名、日付、距離、そしてどれが最も大切かを書いてください。レースは下に一覧表示されるので確認してください。確定するまで何も計画されません。';
+
+  @override
+  String get seasonPlanDescribePlaceholder =>
+      '例：11月14日のリッチモンド・マラソン、4月3日に調整レースとしてツーオーシャンズ、6月13日にコムラッズ。';
+
+  @override
+  String get seasonPlanDescribeButton => 'レースを探す';
+
+  @override
+  String get seasonPlanDescribeWorking => '読み取り中…';
+
+  @override
+  String get seasonPlanDescribeFound => '説明から見つかったレースです。続ける前にそれぞれ確認してください。';
+
+  @override
+  String get seasonPlanDescribeAssumed =>
+      '一部の項目は自動で補われました。各レースの日付・距離・優先度を確認してください。';
+
+  @override
+  String get seasonPlanErrorConsent =>
+      'シーズンアシスタントには更新された AI に関する説明への同意が必要です。下でレースを自分で追加することもできます。';
+
+  @override
+  String get seasonPlanErrorDailyLimit =>
+      '本日の AI リクエストを使い切りました。下でレースを自分で追加するか、明日もう一度お試しください。';
+
+  @override
+  String get seasonPlanErrorNotUnderstood => 'レースが見つかりませんでした。下で自分で追加してください。';
+
+  @override
+  String get seasonPlanErrorInvalid => 'その説明は使用できませんでした。下でレースを自分で追加してください。';
+
+  @override
+  String get seasonPlanErrorSignIn =>
+      'アシスタントを使うには再度サインインしてください。下でレースを追加することもできます。';
+
+  @override
+  String get seasonPlanErrorUnavailable =>
+      '現在アシスタントは利用できません。下でレースを自分で追加してください。';
+
+  @override
+  String get seasonPlanRacesTitle => 'あなたのレース';
+
+  @override
+  String get seasonPlanRacesHint =>
+      'A レースはシーズンの目標で、それぞれ専用のプランを持ちます。B レースは本気で走る調整レース、C レースは練習として走るレースです。';
+
+  @override
+  String get seasonPlanNoRaces => 'まだレースがありません。上でシーズンを説明するか、レースを追加してください。';
+
+  @override
+  String seasonPlanRaceLegend(int n) {
+    return 'レース $n';
+  }
+
+  @override
+  String seasonPlanRemoveRace(int n) {
+    return 'レース $n を削除';
+  }
+
+  @override
+  String get seasonPlanRaceName => '名前';
+
+  @override
+  String get seasonPlanRaceDate => '日付';
+
+  @override
+  String seasonPlanRaceDistance(String unit) {
+    return '距離（$unit）';
+  }
+
+  @override
+  String get seasonPlanRacePriority => '優先度';
+
+  @override
+  String get seasonPlanPriorityA => 'A — 目標レース';
+
+  @override
+  String get seasonPlanPriorityB => 'B — 調整レース';
+
+  @override
+  String get seasonPlanPriorityC => 'C — 練習レース';
+
+  @override
+  String get seasonPlanRaceGoal => '目標タイム（任意）';
+
+  @override
+  String get seasonPlanAddRace => 'レースを追加';
+
+  @override
+  String get seasonPlanDaysPerWeek => '週の日数';
+
+  @override
+  String get seasonPlanDaysPerWeekHint => '週に何日トレーニングできるか。シーズン中のすべてのプランに使われます。';
+
+  @override
+  String get seasonPlanPreviewButton => 'レースを確定してプランをプレビュー';
+
+  @override
+  String get seasonPlanPreviewTitle => 'あなたのシーズン';
+
+  @override
+  String get seasonPlanRefusedEmpty => 'レースを 1 つ以上追加してください。';
+
+  @override
+  String seasonPlanRefusedInvalid(String races) {
+    return '次のレースを確認してください：$races。それぞれ 80 文字以内の名前、日付、距離が必要です。';
+  }
+
+  @override
+  String seasonPlanRefusedNotAhead(String races) {
+    return '次のレースは今日またはすでに過ぎています：$races。削除するか日付を変更してください。';
+  }
+
+  @override
+  String get seasonPlanRefusedNoA =>
+      '少なくとも 1 つのレースを A にしてください。シーズンのプランは A レースのために作られます。';
+
+  @override
+  String seasonPlanRefusedFirstTooSoon(String races) {
+    return '$races まで 4 週間未満で、プランを作るには早すぎます。B か C にするか、もっと後の A レースを計画してください。';
+  }
+
+  @override
+  String seasonPlanRefusedTooClose(String races) {
+    return '$races は近すぎて、間に回復期間と 4 週間以上のプランを入れられません。どちらかを B レースにしてください。';
+  }
+
+  @override
+  String seasonPlanPreviewHint(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 件のプラン',
+    );
+    return '$_temp0。アプリ独自のジェネレーターで作成されます。確認してから作成してください。';
+  }
+
+  @override
+  String seasonPlanPlanWindow(String start, String end, int weeks) {
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '$weeks 週間',
+    );
+    return '$start – $end · $_temp0';
+  }
+
+  @override
+  String seasonPlanPlanGoal(String distance, String date) {
+    return '目標：$date に $distance';
+  }
+
+  @override
+  String seasonPlanPlanGoalTime(String time) {
+    return '目標タイム $time';
+  }
+
+  @override
+  String get seasonPlanPlanRaces => 'このプランのレース';
+
+  @override
+  String seasonPlanPlanRaceLine(
+    String priority,
+    String name,
+    String distance,
+    String date,
+  ) {
+    return '$priority · $name · $distance · $date';
+  }
+
+  @override
+  String get seasonPlanPlanCreated => '作成済み';
+
+  @override
+  String seasonPlanRecoveryLine(String race, int days, String from, String to) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days 日',
+    );
+    return '$race 後の回復：プランなしで $_temp0（$from – $to）';
+  }
+
+  @override
+  String get seasonPlanUnplacedTitle => 'どのプランにも入っていません';
+
+  @override
+  String seasonPlanUnplacedBefore(String race, String date) {
+    return '$date の $race は最初のプランが始まる前です。';
+  }
+
+  @override
+  String seasonPlanUnplacedBetween(String race, String date) {
+    return '$date の $race は 2 つのプランの間の回復期間にあります。';
+  }
+
+  @override
+  String seasonPlanUnplacedAfter(String race, String date) {
+    return '$date の $race は最後の A レースの後です。';
+  }
+
+  @override
+  String seasonPlanUnplacedSameDay(String race, String date) {
+    return '$date の $race は同じプランの別のレースと同じ日です。';
+  }
+
+  @override
+  String get seasonPlanUnplacedHint => 'これらのレースは追加されません。含めるには日付か優先度を変更してください。';
+
+  @override
+  String get seasonPlanCreating => '作成中…';
+
+  @override
+  String get seasonPlanRetry => '残りのプランを作成';
+
+  @override
+  String seasonPlanCreateButton(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 件のプランを作成',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String seasonPlanBlocked(String plan, String existing) {
+    return '$plan はあなたのプラン $existing と重なります。何も作成されていません。先にそのプランを終了するか移動してください。';
+  }
+
+  @override
+  String seasonPlanFailedNone(String error) {
+    return 'プランは作成されませんでした：$error';
+  }
+
+  @override
+  String seasonPlanFailedPartial(String created, String failed, String error) {
+    return '作成済み：$created。未作成：$failed（$error）。';
+  }
+
+  @override
+  String get seasonPlanReviewDisclosure => 'AI に関する説明を確認';
+
+  @override
+  String get seasonPlanRaceDatePick => 'レース日を選択';
+
+  @override
+  String get seasonPlanRaceGoalHint =>
+      'h:mm:ss（例：3:45:00）。目標タイムがなければ空欄のままにしてください。';
+
+  @override
+  String seasonPlanRowInvalid(int n) {
+    return 'レース $n には名前・レース日・距離が必要です。目標タイムは空欄にするか h:mm:ss で入力してください。';
+  }
 }

@@ -313,8 +313,16 @@ class _AdoptTraining extends TrainingService {
     ),
   ];
 
+  /// Holds the overlap lookup open until completed, when set.
+  Completer<void>? lookupGate;
+  int lookupCalls = 0;
+
   @override
-  Future<List<TrainingPlanRow>> fetchActivePlans() async => const [];
+  Future<List<TrainingPlanRow>> fetchActivePlans() async {
+    lookupCalls++;
+    await lookupGate?.future;
+    return const [];
+  }
 
   @override
   Future<String> clonePlanTemplate({
@@ -464,6 +472,46 @@ void main() {
         expect(training.cloneCalls, 1);
         // Gate left pending intentionally: completing it would navigate to
         // PlanDetailScreen (unstubbed). cloneCalls is the assertion.
+      },
+    );
+
+    realtimeWidgetTest(
+      'a second Adopt tap during the overlap lookup clones only once',
+      (tester) async {
+        final training = _AdoptTraining()..lookupGate = Completer<void>();
+        await tester.pumpWidget(
+          MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: ClubDetailScreen(
+              social: _FakeSocial(),
+              training: training,
+              apiClient: _FakeApi(const []),
+              slug: 'track-club',
+            ),
+          ),
+        );
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 50));
+        await tester.tap(find.text('Templates'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 50));
+
+        final adopt = find.widgetWithText(FilledButton, 'Adopt');
+        await tester.tap(adopt);
+        await tester.pump();
+        await tester.tap(adopt, warnIfMissed: false);
+        await tester.pump();
+        expect(training.lookupCalls, 1);
+
+        training.lookupGate!.complete();
+        await tester.pump();
+        await tester.pump();
+        expect(training.cloneCalls, 1);
+        // The clone gate stays pending: completing it would navigate to the
+        // unstubbed PlanDetailScreen.
       },
     );
   });

@@ -1353,10 +1353,16 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
     final startIso = toIsoDate(today);
     final endIso = clonedPlanEndIso(t, startIso,
         start: planRowStartIso, end: planRowEndIso);
+    // Held across the overlap lookup too: it is a network read, and a second
+    // tap inside it would otherwise clone the template twice.
+    setState(() => _adoptingPlanId = t.id);
     final action = await confirmPlanOverlap(context, widget.training,
         startIso: startIso, endIso: endIso);
-    if (action == null || !mounted) return;
-    setState(() => _adoptingPlanId = t.id);
+    if (!mounted) return;
+    if (action == null) {
+      setState(() => _adoptingPlanId = null);
+      return;
+    }
     try {
       final newId = await widget.training
           .clonePlanTemplate(templateId: t.id, startDate: today, onOverlap: action)

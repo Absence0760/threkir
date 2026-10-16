@@ -8377,6 +8377,27 @@
   "@planOverlapConflict": {
     "description": "Error when the server refuses a new plan because an active plan overlaps its dates (changed since the overlap check)"
   },
+  "planOverlapTrimBlocked": "{plan} has completed workouts after {date}. Replace it instead, or start the new plan later.",
+  "@planOverlapTrimBlocked": {
+    "description": "Error when the runner chose to end an overlapping plan early but the server refused because that plan has completed workouts after the new end date; nothing changed. plan is that plan's name, date is the formatted end date the trim would have given it (the day before the new plan starts)",
+    "placeholders": {
+      "plan": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planOverlapTrimBlockedUnnamed": "The plan you chose to end early has completed workouts after {date}. Replace it instead, or start the new plan later.",
+  "@planOverlapTrimBlockedUnnamed": {
+    "description": "Same refusal as planOverlapTrimBlocked when the plan's name could not be looked up. date is the formatted end date the trim would have given it (the day before the new plan starts)",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "planDetailDuplicateWeekOverlap": "Duplicating this week would push the plan into another active plan's dates. Move or end that plan first.",
   "@planDetailDuplicateWeekOverlap": {
     "description": "Banner when duplicating a plan week is refused because the extra week would overlap another active plan"

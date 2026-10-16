@@ -275,4 +275,56 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets(
+      'a trim refused for completed workouts names the plan and the date', (
+    tester,
+  ) async {
+    final training = _Training(
+      activePlans: [
+        _row(
+          'old',
+          'Marathon block',
+          DateTime(2027, 1, 1),
+          DateTime(2027, 4, 1),
+        ),
+      ],
+      createError: const PlanTrimBlockedError(
+        planName: 'Marathon block',
+        trimEndIso: '2027-03-27',
+      ),
+    );
+    final result = await _open(tester, training);
+    await _paste(tester, _plan);
+    await _create(tester);
+    await tester.tap(find.byKey(const Key('planOverlapTrim')));
+    await tester.pumpAndSettle();
+    expect(training.createCalls, 1);
+    expect(result.closed, isFalse);
+    expect(
+      find.textContaining(RegExp(
+          r'^Marathon block has completed workouts after .*27.*\. '
+          r'Replace it instead, or start the new plan later\.$')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('a trim refusal whose plan could not be named still says why', (
+    tester,
+  ) async {
+    final training = _Training(
+      createError: const PlanTrimBlockedError(
+        planName: null,
+        trimEndIso: '2027-03-27',
+      ),
+    );
+    await _open(tester, training);
+    await _paste(tester, _plan);
+    await _create(tester);
+    expect(
+      find.textContaining(
+          'The plan you chose to end early has completed workouts after'),
+      findsOneWidget,
+    );
+  });
 }

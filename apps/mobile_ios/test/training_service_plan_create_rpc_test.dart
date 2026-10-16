@@ -41,6 +41,9 @@ class _FakePostgrest {
   /// When set, every RPC answers with this SQLSTATE instead of an id.
   String? rpcErrorCode;
 
+  /// What a list read of `training_plans` (the active-plan lookup) returns.
+  List<Map<String, Object?>> activePlans = const [];
+
   int get port => _server.port;
 
   Future<void> close() => _server.close(force: true);
@@ -60,6 +63,10 @@ class _FakePostgrest {
       } else {
         res.write(jsonEncode('new-plan-id'));
       }
+    } else if (req.method == 'GET' &&
+        path == '/rest/v1/training_plans' &&
+        !(req.headers.value('accept') ?? '').contains('vnd.pgrst.object')) {
+      res.write(jsonEncode(activePlans));
     } else if (req.method == 'GET' && path == '/rest/v1/training_plans') {
       res.write(jsonEncode({
         'id': 'new-plan-id',
@@ -210,5 +217,59 @@ void main() {
       training.clonePublicPlan(templateId: 'tmpl-2', startDate: start),
       throwsA(isA<ActivePlanExistsError>()),
     );
+  });
+
+  group('a trim refused for completed workouts (TR001)', () {
+    Map<String, Object?> active(String name, String startIso, String endIso) => {
+          'id': 'plan-$name',
+          'user_id': 'viewer-1',
+          'name': name,
+          'goal_event': 'distance_10k',
+          'goal_distance_m': 10000,
+          'start_date': startIso,
+          'end_date': endIso,
+          'days_per_week': 4,
+          'status': 'active',
+          'source': 'generated',
+          'is_template': false,
+          'is_public_template': false,
+        };
+
+    setUp(() {
+      fake.rpcErrorCode = 'TR001';
+      fake.activePlans = [
+        active('Winter base', '2031-01-05', '2031-03-29'),
+        active('Summer 5k', '2031-06-01', '2031-07-20'),
+      ];
+    });
+
+    Matcher blocked(String? planName) => isA<PlanTrimBlockedError>()
+        .having((e) => e.planName, 'planName', planName)
+        .having((e) => e.trimEndIso, 'trimEndIso', '2031-03-01');
+
+    test('createPlan names the plan that runs into the new start', () async {
+      await expectLater(create(plan(), onOverlap: PlanOverlapAction.trim),
+          throwsA(blocked('Winter base')));
+    });
+
+    test('both clone RPCs map it the same way', () async {
+      await expectLater(
+        training.clonePlanTemplate(
+            templateId: 'tmpl-1', startDate: start, onOverlap: PlanOverlapAction.trim),
+        throwsA(blocked('Winter base')),
+      );
+      await expectLater(
+        training.clonePublicPlan(
+            templateId: 'tmpl-2', startDate: start, onOverlap: PlanOverlapAction.trim),
+        throwsA(blocked('Winter base')),
+      );
+    });
+
+    test('with no plan found in the way it still reports the refusal, unnamed',
+        () async {
+      fake.activePlans = const [];
+      await expectLater(create(plan(), onOverlap: PlanOverlapAction.trim),
+          throwsA(blocked(null)));
+    });
   });
 }

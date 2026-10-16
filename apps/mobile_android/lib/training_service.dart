@@ -127,6 +127,8 @@ String dayBeforeIso(String iso) {
 bool _isOverlapViolation(Object e) =>
     e is PostgrestException && e.code == '23P01';
 
+bool _isTrimBlocked(Object e) => e is PostgrestException && e.code == 'TR001';
+
 /// [error] as a plan write should surface it: the overlap constraint's
 /// refusal (23P01) becomes [ActivePlanExistsError], anything else is
 /// returned unchanged. Web twin: `dbError`'s `PlanOverlapError` mapping in
@@ -154,6 +156,22 @@ class ActivePlanExistsError implements Exception {
 
   @override
   String toString() => 'active_plan_exists';
+}
+
+/// A create or clone that chose [PlanOverlapAction.trim] was refused because
+/// the plan it would end has completed workouts after the cut
+/// (`trim_training_plan`'s SQLSTATE TR001, decisions § 2061). The whole
+/// create rolled back, so nothing changed. [planName] is the plan a
+/// follow-up lookup found in the way, null when that lookup failed;
+/// [trimEndIso] is the end date the trim would have given it.
+class PlanTrimBlockedError implements Exception {
+  final String? planName;
+  final String trimEndIso;
+
+  const PlanTrimBlockedError({required this.planName, required this.trimEndIso});
+
+  @override
+  String toString() => 'plan_trim_blocked';
 }
 
 class TrainingService extends ChangeNotifier {
@@ -403,19 +421,19 @@ class TrainingService extends ChangeNotifier {
     DateTime? startDate,
     PlanOverlapAction onOverlap = PlanOverlapAction.refuse,
   }) async {
+    final startIso = toIsoDate(startDate ?? DateTime.now());
     final Object? newId;
     try {
       newId = await _c.rpc(
         'clone_plan_template',
         params: {
           'template_id': templateId,
-          'new_start_date': toIsoDate(startDate ?? DateTime.now()),
+          'new_start_date': startIso,
           'p_overlap': onOverlap.name,
         },
       );
-    } catch (e) {
-      if (_isOverlapViolation(e)) throw const ActivePlanExistsError();
-      rethrow;
+    } catch (e, st) {
+      Error.throwWithStackTrace(await _planCreateError(e, startIso), st);
     }
     notifyListeners();
     return newId as String;
@@ -468,19 +486,19 @@ class TrainingService extends ChangeNotifier {
     DateTime? startDate,
     PlanOverlapAction onOverlap = PlanOverlapAction.refuse,
   }) async {
+    final startIso = toIsoDate(startDate ?? DateTime.now());
     final Object? newId;
     try {
       newId = await _c.rpc(
         'clone_public_plan',
         params: {
           'template_id': templateId,
-          'new_start_date': toIsoDate(startDate ?? DateTime.now()),
+          'new_start_date': startIso,
           'p_overlap': onOverlap.name,
         },
       );
-    } catch (e) {
-      if (_isOverlapViolation(e)) throw const ActivePlanExistsError();
-      rethrow;
+    } catch (e, st) {
+      Error.throwWithStackTrace(await _planCreateError(e, startIso), st);
     }
     notifyListeners();
     return newId as String;
@@ -867,9 +885,8 @@ class TrainingService extends ChangeNotifier {
         ],
         'p_overlap': onOverlap.name,
       });
-    } catch (e) {
-      if (_isOverlapViolation(e)) throw const ActivePlanExistsError();
-      rethrow;
+    } catch (e, st) {
+      Error.throwWithStackTrace(await _planCreateError(e, toIsoDate(startDate)), st);
     }
 
     final row = await _c
@@ -987,6 +1004,29 @@ class TrainingService extends ChangeNotifier {
           : {'skipped_at': null},
     ).eq('id', workoutId);
     notifyListeners();
+  }
+
+  /// [error] from a create or clone RPC as the caller should surface it: the
+  /// overlap refusal (23P01) as [ActivePlanExistsError], the trim refusal
+  /// (TR001) as [PlanTrimBlockedError] naming the active plan that starts
+  /// before [newStartIso] and runs into it, anything else unchanged. The
+  /// RPC rolled back, so that plan still has its old dates.
+  Future<Object> _planCreateError(Object error, String newStartIso) async {
+    if (_isOverlapViolation(error)) return const ActivePlanExistsError();
+    if (!_isTrimBlocked(error)) return error;
+    String? planName;
+    try {
+      for (final p in await fetchActivePlans()) {
+        if (planRowStartIso(p).compareTo(newStartIso) < 0 &&
+            planRowEndIso(p).compareTo(newStartIso) >= 0) {
+          planName = p.name;
+        }
+      }
+    } catch (lookup) {
+      debugPrint('plan trim refusal: active plan lookup failed: $lookup');
+    }
+    return PlanTrimBlockedError(
+        planName: planName, trimEndIso: dayBeforeIso(newStartIso));
   }
 
   /// Writes the B/C race taper's per-workout patches (`raceTaperPatch`,

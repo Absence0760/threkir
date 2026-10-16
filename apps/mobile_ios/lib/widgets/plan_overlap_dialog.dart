@@ -116,3 +116,21 @@ Future<PlanOverlapAction?> confirmPlanOverlap(
     },
   );
 }
+
+/// The message a create or clone refused over overlapping plans shows: the
+/// overlap refusal ([ActivePlanExistsError]) or the trim refusal
+/// ([PlanTrimBlockedError]). Null for any other failure, which the caller
+/// words itself.
+String? planOverlapErrorText(BuildContext context, Object error) {
+  final l10n = AppLocalizations.of(context);
+  if (error is ActivePlanExistsError) return l10n.planOverlapConflict;
+  if (error is PlanTrimBlockedError) {
+    final tag = localeToTag(Localizations.localeOf(context));
+    final date = formatDateMed(parseIsoDate(error.trimEndIso), tag);
+    final name = error.planName;
+    return name == null
+        ? l10n.planOverlapTrimBlockedUnnamed(date)
+        : l10n.planOverlapTrimBlocked(name, date);
+  }
+  return null;
+}

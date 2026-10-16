@@ -1379,9 +1379,8 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
       final l10n = AppLocalizations.of(context);
       showTopBanner(
           context,
-          e is ActivePlanExistsError
-              ? l10n.planOverlapConflict
-              : l10n.clubDetailAdoptFailed(friendlyError(l10n, e)));
+          planOverlapErrorText(context, e) ??
+              l10n.clubDetailAdoptFailed(friendlyError(l10n, e)));
     } finally {
       if (mounted) setState(() => _adoptingPlanId = null);
     }

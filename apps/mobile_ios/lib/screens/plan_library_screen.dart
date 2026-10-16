@@ -268,9 +268,8 @@ class _PlanLibraryPreviewScreenState extends State<PlanLibraryPreviewScreen> {
         setState(() => _cloning = false);
         showTopBanner(
             context,
-            e is ActivePlanExistsError
-                ? l10n.planOverlapConflict
-                : l10n.planLibraryCloneFailed(friendlyError(l10n, e)));
+            planOverlapErrorText(context, e) ??
+                l10n.planLibraryCloneFailed(friendlyError(l10n, e)));
       }
     }
   }

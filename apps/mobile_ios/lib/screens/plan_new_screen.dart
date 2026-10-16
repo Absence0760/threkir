@@ -475,7 +475,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
       );
 
   String _createError(AppLocalizations l10n, Object e) =>
-      e is ActivePlanExistsError ? l10n.planOverlapConflict : friendlyError(l10n, e);
+      planOverlapErrorText(context, e) ?? friendlyError(l10n, e);
 
   Future<void> _pickTemplate() async {
     if (_templates.isEmpty || _cloning) return;
@@ -514,9 +514,8 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
         setState(() => _cloning = false);
         showTopBanner(
             context,
-            e is ActivePlanExistsError
-                ? l10n.planOverlapConflict
-                : l10n.planNewTemplateCloneFailed);
+            planOverlapErrorText(context, e) ??
+                l10n.planNewTemplateCloneFailed);
       }
     }
   }
@@ -577,9 +576,8 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
         setState(() => _creatingStarter = false);
         showTopBanner(
             context,
-            e is ActivePlanExistsError
-                ? l10n.planOverlapConflict
-                : l10n.planNewStarterCreateFailed);
+            planOverlapErrorText(context, e) ??
+                l10n.planNewStarterCreateFailed);
       }
     }
   }

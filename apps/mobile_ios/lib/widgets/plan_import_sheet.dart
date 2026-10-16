@@ -106,9 +106,8 @@ class _PlanImportSheetState extends State<PlanImportSheet> {
       if (mounted) {
         setState(() {
           _creating = false;
-          _createError = e is ActivePlanExistsError
-              ? l10n.planOverlapConflict
-              : l10n.planImportCreateFailed;
+          _createError =
+              planOverlapErrorText(context, e) ?? l10n.planImportCreateFailed;
         });
       }
     }

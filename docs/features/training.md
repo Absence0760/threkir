@@ -189,12 +189,24 @@ The panel renders the verdict + the signed delta (`X faster` / `X slower`) as a 
 
 A plan used to know one race: its `end_date`, with `goal_distance_m` / `goal_time_seconds`. A Comrades block that runs through Two Oceans had no way to say so, and the countdown, race-week panel and goal all keyed on the end date. Migration `20270830000002` gives a `race` workout its own `race_name` and `race_priority` (A / B / C; both only legal on `kind = 'race'`), with the race distance in `target_distance_m` and its goal time in `target_duration_seconds` (decisions § 2009).
 
-`planRaces(plan, workouts)` lists every race, sorted by date (ties by workout id). An unset priority is **A** on the plan's end date and **C** anywhere else; the end-date race takes the plan goal for a missing distance or goal time, and a plan with no race workout on its end date gets a synthetic A race there from the plan goal, so every existing plan still has its race. `nextRace(races, today)` is the first race on or after today (race day counts).
+`planRaces(plan, workouts)` lists every race, sorted by date (ties by workout id). An unset priority is **A** on the plan's end date and **C** anywhere else; the end-date race takes the plan goal for a missing distance or goal time, and a plan with no race workout on its end date gets a synthetic A race there from the plan goal, so every existing plan still has its race — unless the plan was ended early (`trimmed_at`, set by `trim_training_plan`), whose end date is the day it was cut short and whose goal race no longer happens inside it. `nextRace(races, today)` is the first race on or after today (race day counts).
 
-- **`/plans/[id]`** — the hero relation pill, the race-week `RaceDayPanel` (within 21 days) and its distance / goal follow `nextRace`, so a B race mid-block gets its own run-in; a named race before the end date reads *Two Oceans in 12 days*. When a plan holds more than one race, a **Races in this plan** list shows each one's priority chip, name (the plan name for the synthetic race), date, distance and goal time, marking the next. The hero's goal chips still describe the plan's A goal.
+- **`/plans/[id]`** — the hero relation pill, the race-week `RaceDayPanel` (within 21 days) and its distance / goal follow `nextRace`, so a B race mid-block gets its own run-in; a named race before the end date reads *Two Oceans in 12 days*. When a plan holds more than one race, a **Races in this plan** list shows each one's priority chip, name (the plan name for the synthetic race), date, distance and goal time, marking the next. Once the next race is not the A race on the end date, the hero leads with *Next race: Two Oceans* and its distance, goal time and date follow that race; the plan's A goal stays in the races list. Mobile's plan detail does the same (`_heroRace`).
 - **`/dashboard`** — the plan hero's countdown, goal time and date follow the current plan's next race.
 - **Workout editor** — a `race` workout gains Race name, Priority (A / B / C, or *Auto*) and Goal time inputs. Changing a workout to any other kind clears `race_name` / `race_priority` in the same write (`updatePlanWorkout` does it for every caller, since the database rejects them), and clears the goal time when the workout was a race.
 - **Import / export** — see *Paste-a-template import* below: optional `Race | Priority | Goal` columns.
+
+### Taper and recovery around B / C races (`race_taper.ts` ↔ `race_taper.dart`)
+
+Week phases come from position toward the end date, so they only taper for the A race. **Adjust plan → Taper around B/C races** (web + mobile; offered only while a B or C race is still ahead) runs `raceTaperProposals(workouts, races, today)` and previews the result like a re-plan; Apply writes each `raceTaperPatch` and restates every touched week's `target_volume_m` (decisions § 2051):
+
+| Window | B race | C race |
+| --- | --- | --- |
+| Before | days −6…−3 at 65% volume, quality (tempo / interval / marathon pace) and the long run run easy | days −3…−1 at 80%, quality and the long run easy |
+| Last 2 days | shakeout: half distance, at most 5 km, quality and long run easy | — |
+| After | one easy day per 3 km raced, 4–7 days (5 with no distance): quality run easy at its distance, the long run at 75% | 2 days, same rule |
+
+Never touched: workouts before today, done (linked or ticked) or skipped, rest days, any `race` workout, and workouts in `taper` / `race` weeks (the A race's own taper). A race on or before today gets no window. A workout inside two windows takes shakeout over taper over recovery, then the B race, then the earlier race. Easy, recovery and walk/run days keep their kind and only shorten. Pinned by 9 mirror tests per twin, `tests-e2e/plans/plan-races.spec.ts` and `test/plan_detail_adjust_test.dart`.
 
 `clone_plan_template`, `clone_public_plan` and `assign_plan_to_athlete` copy the two columns; `duplicate_plan_week` deliberately does not, so a copied race week does not invent a second race of the same name.
 

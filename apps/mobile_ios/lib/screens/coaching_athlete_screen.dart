@@ -106,22 +106,15 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
   static String _startIso(TrainingPlanRow p) => toIsoDate(p.startDate);
   static String _endIso(TrainingPlanRow p) => toIsoDate(p.endDate);
 
-  /// The athlete's plans an assignment must not overlap: the one shown and
-  /// the one queued after it, while they still hold dates. Web twin: the
+  /// The athlete's plans an assignment must not overlap: every active plan
+  /// they hold that still holds dates, not only the one shown. Web twin: the
   /// `blockers` derived on `/coaching/athletes/[id]`.
   List<TrainingPlanRow> get _blockers {
     final o = _overview;
     if (o == null) return const [];
-    final shownEnd = _endIso(o.plan);
-    TrainingPlanRow? next;
-    for (final p in o.activePlans) {
-      if (_startIso(p).compareTo(shownEnd) > 0 &&
-          (next == null || _startIso(p).compareTo(_startIso(next)) < 0)) {
-        next = p;
-      }
-    }
-    return assignBlockers(o.plan, next, _todayISO(),
-        start: _startIso, end: _endIso);
+    // An overview built before activePlans existed still names its own plan.
+    final active = o.activePlans.isEmpty ? [o.plan] : o.activePlans;
+    return assignBlockers(active, _todayISO(), start: _startIso, end: _endIso);
   }
 
   DateTime _firstFreeStart() =>
@@ -337,7 +330,7 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
             key: const ValueKey('assign-blockers'),
             style: muted,
           ),
-        ] else if (blockers.length > 1) ...[
+        ] else if (blockers.length == 2) ...[
           const SizedBox(height: 4),
           Text(
             l10n.coachingAthleteAssignAfterTwo(
@@ -347,6 +340,18 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
               blockers[1].name,
               date(blockers[1].startDate),
               date(blockers[1].endDate),
+            ),
+            key: const ValueKey('assign-blockers'),
+            style: muted,
+          ),
+        ] else if (blockers.length > 2) ...[
+          const SizedBox(height: 4),
+          Text(
+            l10n.coachingAthleteAssignAfterMany(
+              name,
+              blockers.length,
+              blockers.map((p) => p.name).join(', '),
+              date(blockers.last.endDate),
             ),
             key: const ValueKey('assign-blockers'),
             style: muted,

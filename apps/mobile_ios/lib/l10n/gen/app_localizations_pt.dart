@@ -12777,6 +12777,16 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String coachingAthleteAssignAfterMany(
+    String name,
+    int count,
+    String plans,
+    String end,
+  ) {
+    return '$name tem ainda $count planos pela frente: $plans. Um plano atribuído não pode sobrepor-se a nenhum deles, por isso comece-o depois de $end ou num intervalo entre eles.';
+  }
+
+  @override
   String coachingAthleteAssignOverlapNamed(
     String name,
     String plan,
@@ -29268,6 +29278,16 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
     String nextEnd,
   ) {
     return 'O plano “$plan” de $name vai até $end, e “$next” vai de $nextStart a $nextEnd. Um plano atribuído não pode se sobrepor a nenhum deles.';
+  }
+
+  @override
+  String coachingAthleteAssignAfterMany(
+    String name,
+    int count,
+    String plans,
+    String end,
+  ) {
+    return '$name ainda tem $count planos pela frente: $plans. Um plano atribuído não pode se sobrepor a nenhum deles, então comece-o depois de $end ou em um intervalo entre eles.';
   }
 
   @override

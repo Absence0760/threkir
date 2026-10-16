@@ -412,6 +412,46 @@ void main() {
     expect(find.textContaining('try again'), findsNothing);
   });
 
+  testWidgets(
+      'with three plans ahead every one is named and the picker starts after '
+      'the last', (tester) async {
+    final prefs = await _prefs();
+    final own = _athletePlan('own', 'Spring Half', -5, 20);
+    final queued = _athletePlan('q', 'Autumn Full', 21, 50);
+    final third = _athletePlan('t', 'Winter Ultra', 60, 90);
+    final api = _FakeApi(
+        plans: [_sourcePlan()], overview: _overviewOf(own, [third, own, queued]));
+    await _pump(tester, api, prefs);
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    expect(
+        find.text(l10n.coachingAthleteAssignAfterMany('Alice Runner', 3,
+            'Spring Half, Autumn Full, Winter Ultra', formatDateMed(_day(90), 'en'))),
+        findsOneWidget);
+    expect(find.text(formatDateMed(_day(91), 'en')), findsOneWidget);
+  });
+
+  testWidgets(
+      'a refusal names the plan in the way even when it is neither the one '
+      'shown nor the one after it', (tester) async {
+    final prefs = await _prefs();
+    final shown = _athletePlan('a', 'Shown Block', 40, 60);
+    final after = _athletePlan('b', 'After Block', 70, 90);
+    final early = _athletePlan('c', 'Early Block', 5, 30);
+    final api = _FakeApi(
+      plans: [_sourcePlan()],
+      assignOverlap: true,
+      overviewAfterRefusal: _overviewOf(shown, [shown, after, early]),
+    );
+    await _pump(tester, api, prefs);
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    await pickSourceAndAssign(tester, l10n);
+    await tester.pump();
+    expect(
+        find.text(l10n.coachingAthleteAssignOverlapNamed('Alice Runner',
+            'Early Block', formatDateMed(_day(5), 'en'), formatDateMed(_day(30), 'en'))),
+        findsOneWidget);
+  });
+
   testWidgets('an overlap refusal it cannot attribute still says what to do',
       (tester) async {
     final prefs = await _prefs();

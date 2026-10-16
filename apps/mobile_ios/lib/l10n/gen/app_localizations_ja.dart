@@ -12166,6 +12166,16 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String coachingAthleteAssignAfterMany(
+    String name,
+    int count,
+    String plans,
+    String end,
+  ) {
+    return '$nameさんにはこれから$count件のプランがあります：$plans。割り当てるプランはいずれとも重ねられないため、$endより後か、プランの間の空いた期間に開始してください。';
+  }
+
+  @override
   String coachingAthleteAssignOverlapNamed(
     String name,
     String plan,

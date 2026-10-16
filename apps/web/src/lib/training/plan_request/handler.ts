@@ -146,7 +146,10 @@ const SYSTEM_PROMPT =
 	'time to whole seconds ("sub-2" for a half = 7200, "26:30" = 1590, ' +
 	'"3:45" for a marathon = 13500). Map "5k"/"parkrun" to distance_5k, ' +
 	'"10k" to distance_10k, "half"/"half marathon"/"13.1" to distance_half, ' +
-	'and "marathon"/"full"/"26.2" to distance_full. When the runner has never ' +
+	'and "marathon"/"full"/"26.2" to distance_full. A race longer than a ' +
+	'marathon is an ultra: put its distance in kilometres in ultra_distance_km ' +
+	'and omit goal_event ("50k" = 50, "Two Oceans" = 56, "Comrades" = the ' +
+	'distance stated, else 90, "100 miles" = 160.934, "50 miles" = 80.467; give miles to three decimals). When the runner has never ' +
 	'run before, wants couch to 5k, or calls themself a complete beginner, ' +
 	'set beginner_walk_run true. A recent race time over 5K goes in ' +
 	'recent_5k_sec; a goal time for the goal race goes in goal_time_sec. ' +
@@ -166,6 +169,11 @@ export const EXTRACT_TOOL: Anthropic.Tool = {
 				type: 'string',
 				enum: ['distance_5k', 'distance_10k', 'distance_half', 'distance_full'],
 				description: 'The race distance the plan trains for. Omit if unspecified.',
+			},
+			ultra_distance_km: {
+				type: 'number',
+				description:
+					'The race distance in kilometres when it is longer than a marathon (an ultra). Omit for road races and when unspecified.',
 			},
 			race_date: {
 				type: 'string',

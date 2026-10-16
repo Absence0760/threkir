@@ -45,7 +45,6 @@
 		type RecentVolume,
 	} from '#lib/training/plan_ramp.ts';
 	import { parsePlanMarkdown, parsePlanJson } from '#lib/training/plan_serialize.ts';
-	import { RACE_GOAL_MAX_HOURS } from '#lib/training/plan_races.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { ageFromDob } from '#lib/nutrition/nutrition_targets.ts';
 	import { healthUseDob } from '#lib/core/health_consent.ts';
@@ -300,7 +299,11 @@
 		exitImportMode();
 		beginnerWalkRun = inputs.beginnerWalkRun;
 		goalEvent = inputs.goalEvent;
-		ultraChoice = null;
+		// An ultra arrives as `custom` plus its distance and selects the
+		// matching Ultra entry, so the distance field shows what was heard.
+		const ultra = inputs.goalEvent === 'custom' && inputs.goalDistanceM != null;
+		ultraChoice = ultra ? (ultraPresetFor(inputs.goalDistanceM!) ?? 'ultra_other') : null;
+		if (ultra) ultraDistanceM = inputs.goalDistanceM;
 		daysPerWeek = inputs.daysPerWeek;
 		// A fill replaces the shape of the plan, not just the fields this
 		// description happened to name: a second fill must not inherit the

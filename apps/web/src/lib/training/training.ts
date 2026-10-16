@@ -825,6 +825,16 @@ export function ultraPhaseFor(weekIndex: number, totalWeeks: number, distanceM: 
 	return 'peak';
 }
 
+/// Phase of a week in a plan toward `goalDistanceM`: the ultra split for a
+/// distance past the marathon, the road one otherwise. The one rule anything
+/// rebuilding phases for a plan it did not generate (a pasted import) uses,
+/// so it agrees with the generator.
+export function planPhaseFor(weekIndex: number, totalWeeks: number, goalDistanceM: number): PlanPhase {
+	return isUltraDistance(goalDistanceM)
+		? ultraPhaseFor(weekIndex, totalWeeks, goalDistanceM)
+		: phaseFor(weekIndex, totalWeeks);
+}
+
 /// Most a build week may grow over the build week before it. The 10% rule is
 /// a convention rather than a measured threshold, but it is the one every
 /// published ultra plan honours, and a plan too short to reach its peak inside

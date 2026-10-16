@@ -858,6 +858,13 @@ PlanPhase ultraPhaseFor(int weekIndex, int totalWeeks, double distanceM) {
   return PlanPhase.peak;
 }
 
+/// Phase of a week in a plan toward [goalDistanceM]: the ultra split for a
+/// distance past the marathon, the road one otherwise. Mirrors training.ts.
+PlanPhase planPhaseFor(int weekIndex, int totalWeeks, double goalDistanceM) =>
+    isUltraDistance(goalDistanceM)
+        ? ultraPhaseFor(weekIndex, totalWeeks, goalDistanceM)
+        : phaseFor(weekIndex, totalWeeks);
+
 /// Most a build week may grow over the build week before it.
 const double kUltraMaxWeeklyRamp = 1.1;
 

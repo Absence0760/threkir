@@ -27,7 +27,7 @@
 	import { isCyclePlansEnabled } from '#lib/training/cycle_plan_flag.ts';
 	import { replanRemaining, type ReplanChange, type ReplanWeek } from '#lib/training/plan_replan.ts';
 	import {
-		raceTaperPatch,
+		raceTaperAdjustments,
 		raceTaperProposals,
 		type RaceTaperChange
 	} from '#lib/training/race_taper.ts';
@@ -375,7 +375,8 @@
 				targetDistanceM: x.target_distance_m,
 				phase: wk.phase,
 				completed: isWorkoutCompleted(x),
-				skipped: isWorkoutSkipped(x)
+				skipped: isWorkoutSkipped(x),
+				taperApplied: x.race_taper_applied_at != null
 			}))
 		);
 		const changes = raceTaperProposals({ workouts: input, races, today });
@@ -414,7 +415,7 @@
 			const changes = taperPreview;
 			await applyWorkoutAdjustments(
 				plan.id,
-				changes.map((c) => ({ id: c.workoutId, ...raceTaperPatch(c) }))
+				raceTaperAdjustments(changes, new Date().toISOString())
 			);
 			showToast(m('planDetail.replanApplied', { n: changes.length }));
 			taperPreview = null;

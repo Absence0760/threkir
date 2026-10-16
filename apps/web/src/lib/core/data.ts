@@ -6497,6 +6497,7 @@ export type WorkoutAdjustment = { id: string } & Partial<{
 	notes: string | null;
 	race_name: string | null;
 	race_priority: RacePriority | null;
+	race_taper_applied_at: string | null;
 }>;
 
 /// Write a batch of workout patches to one plan and restate the volume of

@@ -14,7 +14,10 @@ PlanRace _race(String date, String priority, double? distanceM) => PlanRace(
     );
 
 RaceTaperWorkout _wo(String id, String date, String kind, double? distanceM,
-        {String? phase = 'build', bool completed = false, bool skipped = false}) =>
+        {String? phase = 'build',
+        bool completed = false,
+        bool skipped = false,
+        bool taperApplied = false}) =>
     RaceTaperWorkout(
       id: id,
       scheduledDate: date,
@@ -23,6 +26,7 @@ RaceTaperWorkout _wo(String id, String date, String kind, double? distanceM,
       phase: phase,
       completed: completed,
       skipped: skipped,
+      taperApplied: taperApplied,
     );
 
 const _today = '2027-03-01';
@@ -205,5 +209,39 @@ void main() {
       'structure': null,
     });
     expect(raceTaperPatch(changes[1]), {'target_distance_m': 5200});
+  });
+
+  test(
+      'raceTaperProposals: a workout an applied taper already eased is not cut again',
+      () {
+    final workouts = [
+      _wo('w-int', '2027-03-30', 'interval', 10000),
+      _wo('w-easy', '2027-03-31', 'easy', 8000),
+    ];
+    final first = raceTaperProposals(
+        workouts: workouts, races: [_twoOceans], today: _today);
+    List<RaceTaperWorkout> applied({required bool stamped}) => [
+          for (final w in workouts)
+            () {
+              final c = first.firstWhere((x) => x.workoutId == w.id);
+              return _wo(w.id, w.scheduledDate, c.toKind, c.toMetres,
+                  taperApplied: stamped);
+            }(),
+        ];
+    expect(
+        _summary(raceTaperProposals(
+            workouts: applied(stamped: true),
+            races: [_twoOceans],
+            today: _today)),
+        isEmpty);
+    expect(
+        _summary(raceTaperProposals(
+            workouts: applied(stamped: false),
+            races: [_twoOceans],
+            today: _today)),
+        [
+          ['w-int', RaceTaperReason.preRace, 'easy', 4225, false],
+          ['w-easy', RaceTaperReason.preRace, 'easy', 3380, false],
+        ]);
   });
 }

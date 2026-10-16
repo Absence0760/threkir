@@ -66,6 +66,10 @@ class RaceTaperWorkout {
   final bool completed;
   final bool skipped;
 
+  /// Already eased by an applied taper (`race_taper_applied_at`). Its
+  /// distance is the eased one, so scaling it again would compound.
+  final bool taperApplied;
+
   const RaceTaperWorkout({
     required this.id,
     required this.scheduledDate,
@@ -74,6 +78,7 @@ class RaceTaperWorkout {
     this.phase,
     this.completed = false,
     this.skipped = false,
+    this.taperApplied = false,
   });
 }
 
@@ -178,8 +183,8 @@ double? _scaled(double? m, double scale) =>
 /// The proposed changes around every B and C race dated after [today],
 /// sorted by date then workout id. Expects [races] sorted, as [planRaces]
 /// returns them. Only workouts dated today or later that are not done,
-/// skipped, a rest day, a race, or inside the A race's taper/race weeks are
-/// touched. A workout inside two races' windows takes the stronger rule
+/// skipped, a rest day, a race, already eased by an applied taper, or inside
+/// the A race's taper/race weeks are touched. A workout inside two races' windows takes the stronger rule
 /// (shakeout, then taper, then recovery; then the B race, then the earlier
 /// race). A workout the rule would leave unchanged yields no change.
 List<RaceTaperChange> raceTaperProposals({
@@ -196,7 +201,7 @@ List<RaceTaperChange> raceTaperProposals({
   final changes = <RaceTaperChange>[];
   for (final w in workouts) {
     if (w.scheduledDate.compareTo(today) < 0) continue;
-    if (w.completed || w.skipped) continue;
+    if (w.completed || w.skipped || w.taperApplied) continue;
     if (w.kind == 'rest' || w.kind == 'race') continue;
     if (w.phase != null && _protectedPhases.contains(w.phase)) continue;
     RaceTaperReason? bestReason;

@@ -1,14 +1,14 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 import type { PlanRace } from './plan_races';
-import { raceTaperPatch, raceTaperProposals, type RaceTaperWorkout } from './race_taper';
+import { raceTaperAdjustments, raceTaperPatch, raceTaperProposals, type RaceTaperWorkout } from './race_taper';
 
 function race(date: string, priority: 'A' | 'B' | 'C', distanceM: number | null): PlanRace {
 	return { date, name: `race-${date}`, priority, distanceM, goalTimeSec: null, workoutId: `r-${date}` };
 }
 
 function wo(id: string, scheduledDate: string, kind: string, targetDistanceM: number | null, extra: Partial<RaceTaperWorkout> = {}): RaceTaperWorkout {
-	return { id, scheduledDate, kind, targetDistanceM, phase: 'build', completed: false, skipped: false, ...extra };
+	return { id, scheduledDate, kind, targetDistanceM, phase: 'build', completed: false, skipped: false, taperApplied: false, ...extra };
 }
 
 const TODAY = '2027-03-01';
@@ -163,4 +163,32 @@ test('raceTaperPatch: writes only the columns that change', () => {
 		structure: null
 	});
 	assert.deepEqual(raceTaperPatch(easy), { target_distance_m: 5200 });
+});
+
+test('raceTaperAdjustments: stamps every applied change so it is not proposed again', () => {
+	const changes = raceTaperProposals({
+		workouts: [wo('w-easy', '2027-03-31', 'easy', 8000)],
+		races: [twoOceans],
+		today: TODAY
+	});
+	assert.deepEqual(raceTaperAdjustments(changes, '2027-03-02T08:00:00.000Z'), [
+		{ id: 'w-easy', target_distance_m: 5200, race_taper_applied_at: '2027-03-02T08:00:00.000Z' }
+	]);
+});
+
+test('raceTaperProposals: a workout an applied taper already eased is not cut again', () => {
+	const workouts = [wo('w-int', '2027-03-30', 'interval', 10000), wo('w-easy', '2027-03-31', 'easy', 8000)];
+	const first = raceTaperProposals({ workouts, races: [twoOceans], today: TODAY });
+	const applied = workouts.map((w) => {
+		const c = first.find((x) => x.workoutId === w.id)!;
+		return { ...w, kind: c.toKind, targetDistanceM: c.toMetres, taperApplied: true };
+	});
+	assert.deepEqual(summary(raceTaperProposals({ workouts: applied, races: [twoOceans], today: TODAY })), []);
+	assert.deepEqual(
+		summary(raceTaperProposals({ workouts: applied.map((w) => ({ ...w, taperApplied: false })), races: [twoOceans], today: TODAY })),
+		[
+			['w-int', 'pre_race', 'easy', 4225, false],
+			['w-easy', 'pre_race', 'easy', 3380, false]
+		]
+	);
 });

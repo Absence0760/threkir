@@ -56,6 +56,9 @@ export type RaceTaperWorkout = {
 	/// Linked to a run or ticked done by hand.
 	completed: boolean;
 	skipped: boolean;
+	/// Already eased by an applied taper (`race_taper_applied_at`). Its
+	/// distance is the eased one, so scaling it again would compound.
+	taperApplied: boolean;
 };
 
 export type RaceTaperChange = {
@@ -147,12 +150,12 @@ function adjust(
 
 /// The proposed changes around every B and C race dated after `today`,
 /// sorted by date then workout id. Expects `races` sorted, as `planRaces`
-/// returns them. Only workouts dated today or later that
-/// are not done, skipped, a rest day, a race, or inside the A race's
-/// taper/race weeks are touched. A workout inside two races' windows takes
-/// the stronger rule (shakeout, then taper, then recovery; then the B race,
-/// then the earlier race). A workout the rule would leave unchanged yields
-/// no change.
+/// returns them. Only workouts dated today or later that are not done,
+/// skipped, a rest day, a race, already eased by an applied taper, or inside
+/// the A race's taper/race weeks are touched. A workout inside two races'
+/// windows takes the stronger rule (shakeout, then taper, then recovery; then
+/// the B race, then the earlier race). A workout the rule would leave
+/// unchanged yields no change.
 export function raceTaperProposals(input: {
 	workouts: RaceTaperWorkout[];
 	races: PlanRace[];
@@ -164,7 +167,7 @@ export function raceTaperProposals(input: {
 	const changes: RaceTaperChange[] = [];
 	for (const w of input.workouts) {
 		if (w.scheduledDate < input.today) continue;
-		if (w.completed || w.skipped) continue;
+		if (w.completed || w.skipped || w.taperApplied) continue;
 		if (w.kind === 'rest' || w.kind === 'race') continue;
 		if (w.phase != null && PROTECTED_PHASES.has(w.phase)) continue;
 		let best: Window | null = null;
@@ -217,4 +220,15 @@ export function raceTaperPatch(c: RaceTaperChange): RaceTaperPatch {
 		patch.structure = null;
 	}
 	return patch;
+}
+
+/// Every change as an `apply_workout_adjustments` entry, each stamped with
+/// `race_taper_applied_at` so the next proposal leaves the eased workout
+/// alone. Web-only: mobile's `TrainingService.applyRaceTaper` stamps the
+/// same column.
+export function raceTaperAdjustments(
+	changes: RaceTaperChange[],
+	appliedAt: string
+): Array<RaceTaperPatch & { id: string; race_taper_applied_at: string }> {
+	return changes.map((c) => ({ id: c.workoutId, ...raceTaperPatch(c), race_taper_applied_at: appliedAt }));
 }

@@ -8843,10 +8843,11 @@ class ApiClient {
         .eq(TrainingPlanRow.colUserId, athleteId)
         .eq('status', 'active')
         .eq('is_template', false);
-    final plan = pick((planRows as List)
+    final active = (planRows as List)
         .cast<Map<String, dynamic>>()
         .map(TrainingPlanRow.fromJson)
-        .toList());
+        .toList();
+    final plan = pick(active);
     if (plan == null) return null;
     final weekRows = await _client
         .from(PlanWeekRow.table)
@@ -8885,6 +8886,7 @@ class ApiClient {
       weeks: weeks,
       workouts: workouts,
       completionPct: pct,
+      activePlans: active,
     );
   }
 
@@ -8906,9 +8908,10 @@ class ApiClient {
   }
 
   /// Assign one of the coach's plans to a linked athlete via the
-  /// `assign_plan_to_athlete` RPC (migration 20270106_001). The thrown error
-  /// carries the RPC's raise text (e.g. the athlete already has an active
-  /// plan), which the caller surfaces. Returns the new plan id.
+  /// `assign_plan_to_athlete` RPC (migration 20270106_001). An overlap with
+  /// one of the athlete's active plans throws [PlanAssignOverlapException];
+  /// any other refusal throws an Exception carrying the RPC's raise text,
+  /// which the caller surfaces. Returns the new plan id.
   Future<String> assignPlanToAthlete({
     required String sourcePlanId,
     required String athleteId,
@@ -8923,9 +8926,12 @@ class ApiClient {
       });
       return res as String;
     } on PostgrestException catch (e) {
-      // Surface the RPC's RAISE text verbatim (e.g. "athlete already has an
-      // active plan") rather than the noisy PostgrestException.toString(), so
-      // the caller can show it directly without re-parsing the SQLSTATE.
+      // An overlap with one of the athlete's active plans is 23P01
+      // (migration 20270830000008); typed so the caller can say which dates
+      // to pick instead of showing the raw raise text.
+      if (e.code == '23P01') throw PlanAssignOverlapException(e.message);
+      // Any other refusal: the RPC's RAISE text verbatim rather than the noisy
+      // PostgrestException.toString(), so the caller can show it directly.
       throw Exception(e.message);
     }
   }
@@ -9410,12 +9416,28 @@ class AthletePlanOverview {
   final List<PlanWorkoutRow> workouts;
   final int completionPct;
 
+  /// Every active plan the athlete holds, [plan] included — what a coach's
+  /// assignment must not overlap (plan chaining, decisions § 2008).
+  final List<TrainingPlanRow> activePlans;
+
   const AthletePlanOverview({
     required this.plan,
     required this.weeks,
     required this.workouts,
     required this.completionPct,
+    this.activePlans = const [],
   });
+}
+
+/// `assign_plan_to_athlete` refused because the assigned window overlaps one
+/// of the athlete's active plans (SQLSTATE 23P01). [message] is the server's
+/// text, which names the plans in the way.
+class PlanAssignOverlapException implements Exception {
+  const PlanAssignOverlapException(this.message);
+  final String message;
+
+  @override
+  String toString() => 'PlanAssignOverlapException: $message';
 }
 
 /// One set in a [ApiClient.createGymWorkout] / `updateGymWorkout` call,

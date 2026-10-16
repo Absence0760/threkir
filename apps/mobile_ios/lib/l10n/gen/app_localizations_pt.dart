@@ -6460,7 +6460,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get planDetailPublishNoClubs =>
-      'Precisa ser dono ou administrador de um clube para publicar um modelo.';
+      'Tem de ser proprietário ou administrador de um clube para publicar um modelo.';
 
   @override
   String planDetailPublishSuccess(String name) {

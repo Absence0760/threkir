@@ -1784,7 +1784,7 @@
   "planDetailEditTooltip": "Editar treino",
   "planDetailPublishLoadClubsTimeout": "Não foi possível carregar os seus clubes — verifique a sua rede.",
   "planDetailPublishLoadClubsFailed": "Não foi possível carregar os seus clubes.",
-  "planDetailPublishNoClubs": "Precisa ser dono ou administrador de um clube para publicar um modelo.",
+  "planDetailPublishNoClubs": "Tem de ser proprietário ou administrador de um clube para publicar um modelo.",
   "planDetailPublishSuccess": "“{name}” publicado como modelo do clube.",
   "planDetailPublishFailed": "Falha ao publicar: {error}",
   "planDetailPublishPickerTitle": "Publicar no clube",

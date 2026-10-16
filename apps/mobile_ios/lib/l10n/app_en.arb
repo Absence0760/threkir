@@ -8422,6 +8422,19 @@
   "@planDetailPublishTooltip": {
     "description": "Publish-as-template AppBar action tooltip"
   },
+  "planDetailRacesTitle": "Races in this plan",
+  "@planDetailRacesTitle": {
+    "description": "Heading of the plan detail card listing every race the plan builds toward (shown only when the plan has more than one race)"
+  },
+  "planDetailRacePriority": "Priority {priority}",
+  "@planDetailRacePriority": {
+    "description": "Screen-reader label for a race's priority badge on plan detail; priority is the letter A, B or C",
+    "placeholders": {
+      "priority": {
+        "type": "String"
+      }
+    }
+  },
   "planDetailDaysPerWeek": "{count} days/wk",
   "@planDetailDaysPerWeek": {
     "description": "Days-per-week meta on the hero card",

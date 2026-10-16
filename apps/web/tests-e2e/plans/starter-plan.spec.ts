@@ -43,11 +43,9 @@ test.describe('/plans/new starter library', () => {
 		).toBeVisible({ timeout: 10_000 });
 
 		await page.getByLabel('Starter plan').selectOption('half_12wk');
-		// Scope to the starter section — the from-scratch PlanEditor also has a
-		// "Create plan" submit button.
 		await page
 			.locator('.starter-picker')
-			.getByRole('button', { name: 'Create plan' })
+			.getByRole('button', { name: 'Start this plan' })
 			.click();
 		// The starter overlaps the seeded plan, so the create asks first
 		// (decisions § 2050); Replace completes the seed plan, as before.

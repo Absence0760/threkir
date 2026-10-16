@@ -2932,7 +2932,7 @@ export const messages = {
 	"plansNew.starterHeading": "Mit einem integrierten Plan starten",
 	"plansNew.starterHint": "Wähle einen bewährten Trainingsplan – wir planen ihn ab deinem Startdatum; du kannst ihn danach anpassen.",
 	"plansNew.starterLabel": "Startplan",
-	"plansNew.createStarter": "Plan erstellen",
+	"plansNew.createStarter": "Diesen Plan starten",
 	"plansNew.creating": "Wird erstellt…",
 	"plansNew.starterC25k": "Couch-to-5K (Anfänger Geh-Lauf)",
 	"plansNew.starterHalf12": "Halbmarathon – 12 Wochen",

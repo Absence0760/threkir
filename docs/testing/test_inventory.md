@@ -1617,9 +1617,9 @@ The registered parity pair behind "Your Strava clubs" ([decisions § 1959](../ar
 
 The `strava-clubs` wrappers against a fake at the http boundary: `list` posts `{action: 'list'}` and grades the answer, a malformed body and a failed call throw, `link` posts both ids, each refusal body becomes a `StravaClubLinkFailure` naming it (one declaration looping over six codes), and `unlink_club_strava` is called with `p_club_id`, a `false` answer being the not-an-admin refusal.
 
-### Your Strava clubs section — `apps/mobile_android/test/strava_clubs_section_test.dart` (14 widget)
+### Your Strava clubs section — `apps/mobile_android/test/strava_clubs_section_test.dart` (19 widget)
 
-The mobile mirror of web's `tests-e2e/clubs/strava-clubs.spec.ts` and `tests-e2e/configured/strava-clubs.spec.ts` on `ClubsScreen`: the inert build never asks Strava, a not-connected runner sees nothing, the rows and the actions each allows, link through the picker, a refused link, a cancelled picker, unlink with Undo and with the window closing, a failed load staying inside the section, a dead grant, no clubs, the section under an empty My clubs, and Set up opening the form prefilled.
+The mobile mirror of web's `tests-e2e/clubs/strava-clubs.spec.ts` and `tests-e2e/configured/strava-clubs.spec.ts` on `ClubsScreen`: the inert build never asks Strava, a not-connected runner sees nothing, the rows and the actions each allows, link through the picker, a refused link and a reasonless failure each saying so rather than "linked", a picker listing only the clubs the runner owns or administers, a link moving a club off the Strava club it was linked to before, no unlink on a row linked to someone else's club, a cancelled picker, unlink with Undo, with the window closing and with a refused commit that puts the link back, a failed load staying inside the section, a dead grant, no clubs, the section under an empty My clubs, and Set up opening the form prefilled.
 
 ### Exercise catalogue shadow resolution — `apps/web/src/lib/gym/exercise_catalogue.test.ts` (11) · `packages/core_models/test/exercise_catalogue_test.dart` (10)
 

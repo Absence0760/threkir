@@ -3293,7 +3293,7 @@ jobs:
   schema-codegen-drift:
     needs: changes
     if: needs.changes.outputs.code == 'true'
-    name: Kotlin row codegen drift
+    name: Codegen drift (row classes, mobile l10n)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -3315,6 +3315,22 @@ jobs:
           if ! git diff --exit-code packages/core_models/lib/src/generated/db_rows.dart apps/watch_wear/android/app/src/main/kotlin/com/runapp/watchwear/generated/DbRows.kt; then
             echo "::error::Generated row classes are out of sync with migrations."
             echo "Run 'dart run scripts/gen_dart_models.dart' locally and commit the result."
+            exit 1
+          fi
+      # The committed Flutter l10n output must be what gen-l10n makes of the
+      # ARBs. l10n_generated_parity_test.dart compares wording but skips ICU
+      # plural/select messages, so drift inside one of those was invisible.
+      # pub get comes first because the formatter picks its style from the
+      # package's resolved language version; without it every run reports
+      # formatting-only drift.
+      - name: Fail if the committed Flutter l10n output drifted from the ARBs
+        run: |
+          for app in mobile_android mobile_ios; do
+            (cd "apps/$app" && flutter pub get && flutter gen-l10n)
+          done
+          if ! git diff --exit-code apps/mobile_android/lib/l10n/gen apps/mobile_ios/lib/l10n/gen; then
+            echo "::error::Committed lib/l10n/gen output is out of sync with the ARBs."
+            echo "Run 'flutter pub get && flutter gen-l10n' in apps/mobile_android and apps/mobile_ios, and commit both lib/l10n/gen trees."
             exit 1
           fi
 

@@ -4843,6 +4843,7 @@ export type Database = {
           source: string
           start_date: string
           status: string
+          trimmed_at: string | null
           updated_at: string | null
           user_id: string
           vdot: number | null
@@ -4867,6 +4868,7 @@ export type Database = {
           source?: string
           start_date: string
           status?: string
+          trimmed_at?: string | null
           updated_at?: string | null
           user_id: string
           vdot?: number | null
@@ -4891,6 +4893,7 @@ export type Database = {
           source?: string
           start_date?: string
           status?: string
+          trimmed_at?: string | null
           updated_at?: string | null
           user_id?: string
           vdot?: number | null
@@ -7233,6 +7236,10 @@ export type Database = {
       set_safety_sms_opt_in: {
         Args: { p_id: string; p_opt_in: boolean }
         Returns: boolean
+      }
+      shift_training_plan: {
+        Args: { p_days: number; p_plan_id: string; p_shift_following?: boolean }
+        Returns: undefined
       }
       sign_in_browser_class: { Args: { p_ua: string }; Returns: string }
       sign_in_platform_class: { Args: { p_ua: string }; Returns: string }

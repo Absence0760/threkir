@@ -1808,6 +1808,21 @@ export function stampedThroughRpc(landings, stamped) {
  */
 export const FILTERED_RPC_ARGUMENTS = [
   {
+    file: 'plan_chaining_followups_test.sql',
+    description: 'shifting a block with the queued plans following it succeeds',
+    columns: [
+      'plan_workouts.scheduled_date',
+      'training_plans.end_date',
+      'training_plans.start_date',
+    ],
+    readBack: 'both blocks moved a week and still meet end to start',
+    reason:
+      'The `lives_ok` measures that a shift carrying the queued plan does not trip the overlap ' +
+      'constraint the shift alone tripped one assertion earlier. The dates are `+ p_days` over the ' +
+      'stored ones, never the argument itself, so the named read-back states both plans\' new ' +
+      'windows and the assertion after it states the moved workouts.',
+  },
+  {
     file: 'checkpoint_crossings_test.sql',
     description: 'an event organiser can write a crossing via upsert_checkpoint_crossing',
     columns: [

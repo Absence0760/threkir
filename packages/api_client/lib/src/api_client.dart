@@ -7040,6 +7040,51 @@ class ApiClient {
     return stravaSyncResultFromResponse(res.data);
   }
 
+  /// The signed-in runner's own Strava clubs (decisions § 1959), fetched per
+  /// call and never stored. Not being connected comes back as a status, so the
+  /// caller renders nothing rather than an error; a transport failure or a body
+  /// in none of the three shapes throws. Mirrors web `fetchMyStravaClubs`.
+  Future<StravaClubsResult> fetchMyStravaClubs() async {
+    final res = await _client.functions.invoke(
+      'strava-clubs',
+      body: {'action': 'list'},
+    );
+    return parseStravaClubsResult(res.data);
+  }
+
+  /// Record that a Threkir club IS this Strava club. The function checks on
+  /// Strava that the caller administers the Strava club, and in SQL that they
+  /// administer the Threkir one; a refusal throws [StravaClubLinkFailure]
+  /// naming which. Mirrors web `linkStravaClub`.
+  Future<void> linkStravaClub(String clubId, int stravaClubId) async {
+    try {
+      await _client.functions.invoke(
+        'strava-clubs',
+        body: {
+          'action': 'link',
+          'club_id': clubId,
+          'strava_club_id': stravaClubId,
+        },
+      );
+    } on FunctionException catch (e) {
+      final details = e.details;
+      final code = details is Map ? details['error'] : null;
+      throw StravaClubLinkFailure(
+          stravaClubLinkError(code is String ? code : null));
+    }
+  }
+
+  /// Clear a club's Strava link. Needs no Strava call, so it is a plain RPC
+  /// gated on the caller administering the Threkir club; a `false` answer is
+  /// that refusal. Mirrors web `unlinkStravaClub`.
+  Future<void> unlinkStravaClub(String clubId) async {
+    final data =
+        await _client.rpc('unlink_club_strava', params: {'p_club_id': clubId});
+    if (data != true) {
+      throw const StravaClubLinkFailure(StravaClubLinkError.notClubAdmin);
+    }
+  }
+
   /// Lightweight count of a user's runs, capped by [limit]. The coach
   /// context strip uses this to show how much history the model is
   /// reasoning over — only the count matters, so the column projection

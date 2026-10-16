@@ -450,6 +450,14 @@ export function parsePlanMarkdown(text: string): ParsedPlan {
 	}
 
 	const start = startDate && ISO_DATE.test(startDate) ? startDate : rows[0].scheduled_date;
+	// create_training_plan refuses a workout outside the plan's window, so a
+	// hand-written table dated before its own "Start date" line is refused
+	// here, readably, rather than as a raw server code on create.
+	if (rows[0].scheduled_date < start) {
+		throw new PlanParseError(
+			`The workout on ${rows[0].scheduled_date} is before the plan's start date, ${start}.`,
+		);
+	}
 	const endDate = rows[rows.length - 1].scheduled_date;
 
 	return {

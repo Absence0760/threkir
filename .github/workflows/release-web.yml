@@ -365,51 +365,47 @@ jobs:
 
       - name: Sync static build to S3
         run: |
-          # Hashed assets get a year-long immutable cache; HTML gets
-          # a short cache so route-table changes propagate within the
-          # next page load. app-capabilities.json rides with the HTML:
-          # the native clients read it to decide whether Pro is sellable
-          # (decisions §466), so an immutable year-long cache would keep
-          # a mobile storefront selling a perk the deploy has turned off.
+          # Only `_app/immutable/*` gets the year-long immutable cache,
+          # because only those names carry a content hash: a changed file is
+          # a new URL, so a browser holding the old one is never wrong.
+          # Everything else keeps its name across deploys and rides the 60 s
+          # revalidating cache. The rule is the path, not a list of
+          # exceptions (decisions § 2006): when the exceptions were the
+          # list, `_app/env.js` -- the runtime PUBLIC_* flags, unhashed --
+          # was pinned for a year, and browsers that loaded it before
+          # PUBLIC_COACH_ENABLED was set kept hiding the Coach after it was
+          # on. `_app/version.json`, robots.txt, the web manifest and the
+          # app-capabilities.json the native storefronts read (decisions
+          # § 466) were pinned the same way.
           #
-          # The filter list needs nothing added for the SPA shell's move to
-          # 200.html, and the reason is worth writing down because it is not
-          # obvious in either direction (decisions § 1265). Pass 2's
-          # `--exclude "*"` + `--include "*.html"` matches 200.html on the
-          # last-match-wins rule, so it uploads with the 60 s cache like any
-          # other HTML. And pass 1's `--exclude "*.html"` applies to the
-          # DESTINATION listing as well as the source, so `--delete` never
-          # considers an HTML key — which is the only reason index.html has
-          # survived every deploy to date. `--exclude "index.html"` beside it
-          # is subsumed by that glob and has been redundant since the glob was
-          # added; it is left as documentation of intent.
-          #
-          # `.well-known/*` rides the short cache too: assetlinks.json is the
-          # Android App Links statement (decisions § 1923) and security.txt
-          # carries an Expires date, and neither has a hashed name, so an
-          # immutable year would pin a stale fingerprint or contact at the
-          # edge. Content-Type comes from the extension (application/json,
-          # text/plain), which is what Android's verifier requires.
+          # Both passes `--delete`, each over its own half of the tree:
+          # filters apply to the destination listing too, so pass 1 prunes
+          # only stale hashed chunks and pass 2 everything else that the
+          # build no longer has. Pass 2 runs second so new HTML never points
+          # at a chunk not yet uploaded.
           #
           # apple-app-site-association is the one file the extension rule
           # cannot type: Apple requires the name with no extension, and
           # `aws s3 sync` would guess a non-JSON Content-Type for it, which
           # iOS's associated-domains fetch rejects. So pass 2 leaves it out
-          # (the exclude after the include wins) and a dedicated `cp` sets
-          # application/json with the same short cache (decisions § 1924).
+          # (which also keeps its `--delete` off it) and a dedicated `cp`
+          # sets application/json with the same short cache (decisions
+          # § 1924). The rest of .well-known/ takes its Content-Type from
+          # the extension, which is what Android's verifier requires
+          # (decisions § 1923).
+          #
+          # `apps/web/src/lib/release_web_cache.test.ts` evaluates these
+          # filters the way the CLI does and fails on any unhashed path
+          # that would land on the immutable cache.
           aws s3 sync apps/web/build/ "s3://${{ steps.aws.outputs.bucket }}/" \
             --delete \
             --cache-control "public,max-age=31536000,immutable" \
-            --exclude "index.html" \
-            --exclude "*.html" \
-            --exclude "app-capabilities.json" \
-            --exclude ".well-known/*"
-          aws s3 sync apps/web/build/ "s3://${{ steps.aws.outputs.bucket }}/" \
-            --cache-control "public,max-age=60,must-revalidate" \
             --exclude "*" \
-            --include "*.html" \
-            --include "app-capabilities.json" \
-            --include ".well-known/*" \
+            --include "_app/immutable/*"
+          aws s3 sync apps/web/build/ "s3://${{ steps.aws.outputs.bucket }}/" \
+            --delete \
+            --cache-control "public,max-age=60,must-revalidate" \
+            --exclude "_app/immutable/*" \
             --exclude ".well-known/apple-app-site-association"
           aws s3 cp apps/web/build/.well-known/apple-app-site-association \
             "s3://${{ steps.aws.outputs.bucket }}/.well-known/apple-app-site-association" \

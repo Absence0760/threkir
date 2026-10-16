@@ -7,6 +7,7 @@ import 'training.dart' show TrainingGender;
 
 import 'health_consent.dart';
 import 'nutrition_targets.dart' show ageFromDob;
+import 'plan_copy.dart';
 import 'plan_current.dart';
 import 'plan_ramp.dart';
 import 'plan_week.dart';
@@ -340,20 +341,12 @@ class TrainingService extends ChangeNotifier {
     }
 
     final templateRow = await _c.from('training_plans').insert({
+      ...planHeadCopyFields(source),
       'user_id': uid,
-      'name': source.name,
-      'goal_event': source.goalEvent,
-      'goal_distance_m': source.goalDistanceM,
-      'goal_time_seconds': source.goalTimeSeconds,
-      'start_date': toIsoDate(source.startDate),
-      'end_date': toIsoDate(source.endDate),
-      'days_per_week': source.daysPerWeek,
       'vdot': null,
       'current_5k_seconds': null,
       'status': 'completed',
-      'source': source.source,
       'notes': null,
-      'rules': source.rules,
       'is_template': true,
       'club_id': clubId,
       'parent_template_id': null,
@@ -365,16 +358,10 @@ class TrainingService extends ChangeNotifier {
       return newPlanId;
     }
 
-    final weekRes = await _c.from('plan_weeks').insert([
-      for (final w in src.weeks)
-        {
-          'plan_id': newPlanId,
-          'week_index': w.weekIndex,
-          'phase': w.phase,
-          'target_volume_m': w.targetVolumeM,
-          'notes': w.notes,
-        },
-    ]).select('id, week_index');
+    final weekRes = await _c
+        .from('plan_weeks')
+        .insert(planWeekCopyRows(src.weeks, newPlanId))
+        .select('id, week_index');
 
     final byIdx = <int, String>{};
     for (final r in weekRes as List) {
@@ -387,24 +374,7 @@ class TrainingService extends ChangeNotifier {
       if (newId != null) oldToNew[w.id] = newId;
     }
 
-    final workoutPayload = <Map<String, dynamic>>[];
-    for (final w in src.workouts) {
-      final newWeekId = oldToNew[w.weekId];
-      if (newWeekId == null) continue;
-      workoutPayload.add({
-        'week_id': newWeekId,
-        'scheduled_date': toIsoDate(w.scheduledDate),
-        'kind': w.kind,
-        'target_distance_m': w.targetDistanceM,
-        'target_duration_seconds': w.targetDurationSeconds,
-        'target_pace_sec_per_km': w.targetPaceSecPerKm,
-        'target_pace_tolerance_sec': w.targetPaceToleranceSec,
-        'structure': w.structure,
-        'notes': w.notes,
-        'race_name': w.raceName,
-        'race_priority': w.racePriority,
-      });
-    }
+    final workoutPayload = planWorkoutCopyRows(src.workouts, oldToNew);
     if (workoutPayload.isNotEmpty) {
       await _c.from('plan_workouts').insert(workoutPayload);
     }
@@ -525,14 +495,8 @@ class TrainingService extends ChangeNotifier {
     }
 
     final templateRow = await _c.from('training_plans').insert({
+      ...planHeadCopyFields(source),
       'user_id': uid,
-      'name': source.name,
-      'goal_event': source.goalEvent,
-      'goal_distance_m': source.goalDistanceM,
-      'goal_time_seconds': source.goalTimeSeconds,
-      'start_date': toIsoDate(source.startDate),
-      'end_date': toIsoDate(source.endDate),
-      'days_per_week': source.daysPerWeek,
       'vdot': null,
       'current_5k_seconds': null,
       'status': 'completed',
@@ -549,16 +513,10 @@ class TrainingService extends ChangeNotifier {
       return newPlanId;
     }
 
-    final weekRes = await _c.from('plan_weeks').insert([
-      for (final w in src.weeks)
-        {
-          'plan_id': newPlanId,
-          'week_index': w.weekIndex,
-          'phase': w.phase,
-          'target_volume_m': w.targetVolumeM,
-          'notes': w.notes,
-        },
-    ]).select('id, week_index');
+    final weekRes = await _c
+        .from('plan_weeks')
+        .insert(planWeekCopyRows(src.weeks, newPlanId))
+        .select('id, week_index');
 
     final byIdx = <int, String>{};
     for (final r in weekRes as List) {
@@ -571,24 +529,7 @@ class TrainingService extends ChangeNotifier {
       if (newId != null) oldToNew[w.id] = newId;
     }
 
-    final workoutPayload = <Map<String, dynamic>>[];
-    for (final w in src.workouts) {
-      final newWeekId = oldToNew[w.weekId];
-      if (newWeekId == null) continue;
-      workoutPayload.add({
-        'week_id': newWeekId,
-        'scheduled_date': toIsoDate(w.scheduledDate),
-        'kind': w.kind,
-        'target_distance_m': w.targetDistanceM,
-        'target_duration_seconds': w.targetDurationSeconds,
-        'target_pace_sec_per_km': w.targetPaceSecPerKm,
-        'target_pace_tolerance_sec': w.targetPaceToleranceSec,
-        'structure': w.structure,
-        'notes': w.notes,
-        'race_name': w.raceName,
-        'race_priority': w.racePriority,
-      });
-    }
+    final workoutPayload = planWorkoutCopyRows(src.workouts, oldToNew);
     if (workoutPayload.isNotEmpty) {
       await _c.from('plan_workouts').insert(workoutPayload);
     }

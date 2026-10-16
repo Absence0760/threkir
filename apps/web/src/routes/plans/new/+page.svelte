@@ -509,6 +509,7 @@
 		initialGoalEvent={racePreset?.ok
 			? (racePreset.preset.goalEvent ?? undefined)
 			: goalPreset?.goalEvent}
+		initialGoalDistanceM={racePreset?.ok && racePreset.preset.goalEvent == null ? raceDistanceM : null}
 		initialBeginnerWalkRun={goalPreset?.beginnerWalkRun}
 		{initialName}
 		initialStartDate={racePreset?.ok ? racePreset.preset.startDate : undefined}

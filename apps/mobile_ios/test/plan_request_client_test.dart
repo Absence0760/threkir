@@ -253,6 +253,32 @@ void main() {
       expect(parsePlanRequestInputs('inputs'), isNull);
     });
 
+    test('reads an ultra as a custom goal with its distance', () {
+      final parsed = parsePlanRequestInputs(_inputs({
+        'goalEvent': 'custom',
+        'goalDistanceM': 56000,
+        'goalTimeSec': 30 * 3600,
+      }))!;
+      expect(parsed.goalEvent, GoalEvent.custom);
+      expect(parsed.goalDistanceM, 56000);
+      expect(parsed.goalTimeSec, 30 * 3600);
+      expect(parsePlanRequestInputs(_inputs({}))!.goalDistanceM, isNull);
+    });
+
+    test('refuses an ultra distance outside the band or on a road rung', () {
+      for (final override in <Map<String, dynamic>>[
+        {'goalEvent': 'custom'},
+        {'goalEvent': 'custom', 'goalDistanceM': null},
+        {'goalEvent': 'custom', 'goalDistanceM': '56000'},
+        {'goalEvent': 'custom', 'goalDistanceM': 42195},
+        {'goalEvent': 'custom', 'goalDistanceM': 400001},
+        {'goalEvent': 'distance_full', 'goalDistanceM': 56000},
+      ]) {
+        expect(parsePlanRequestInputs(_inputs(override)), isNull,
+            reason: '$override');
+      }
+    });
+
     test('accepts integral doubles as whole numbers', () {
       final parsed =
           parsePlanRequestInputs(_inputs({'daysPerWeek': 5.0, 'weeks': 10.0}))!;

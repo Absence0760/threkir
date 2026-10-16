@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'ai_disclosure.dart';
 import 'payload_hash.dart';
+import 'plan_races.dart' show raceGoalMaxHours;
 import 'training.dart';
 import 'web_base_url.dart';
 
@@ -69,7 +70,13 @@ enum PlanRequestAssumption {
 }
 
 class PlanRequestInputs {
+  /// A road rung, or [GoalEvent.custom] for an ultra, whose distance is then
+  /// [goalDistanceM].
   final GoalEvent goalEvent;
+
+  /// Metres, set only with a custom (ultra) goal: past the marathon and at
+  /// most 400 km. Mirrors `PlanRequestInputs.goalDistanceM` on web.
+  final double? goalDistanceM;
 
   /// ISO `yyyy-mm-dd`; the server only sends a future date within two years.
   final String? raceDate;
@@ -83,6 +90,7 @@ class PlanRequestInputs {
 
   const PlanRequestInputs({
     required this.goalEvent,
+    this.goalDistanceM,
     required this.raceDate,
     required this.goalTimeSec,
     required this.recent5kSec,
@@ -99,7 +107,11 @@ const Map<String, GoalEvent> _goalEvents = {
   'distance_10k': GoalEvent.distance10k,
   'distance_half': GoalEvent.distanceHalf,
   'distance_full': GoalEvent.distanceFull,
+  'custom': GoalEvent.custom,
 };
+
+/// The top of the server's ultra band (`MAX_ULTRA_DISTANCE_M` on web).
+const double _maxUltraDistanceM = 400000;
 
 final RegExp _isoDate = RegExp(r'^\d{4}-\d{2}-\d{2}$');
 
@@ -132,6 +144,20 @@ PlanRequestInputs? parsePlanRequestInputs(Object? raw) {
   try {
     final goal = _goalEvents[raw['goalEvent']];
     if (goal == null) return null;
+    // A custom goal is an ultra and must carry its distance; a road rung must
+    // not carry one.
+    final rawDistance = raw['goalDistanceM'];
+    double? goalDistanceM;
+    if (goal == GoalEvent.custom) {
+      if (rawDistance is! num ||
+          !isUltraDistance(rawDistance.toDouble()) ||
+          rawDistance > _maxUltraDistanceM) {
+        return null;
+      }
+      goalDistanceM = rawDistance.toDouble();
+    } else if (rawDistance != null) {
+      return null;
+    }
 
     final raceDate = raw['raceDate'];
     if (raceDate != null &&
@@ -157,8 +183,10 @@ PlanRequestInputs? parsePlanRequestInputs(Object? raw) {
 
     return PlanRequestInputs(
       goalEvent: goal,
+      goalDistanceM: goalDistanceM,
       raceDate: raceDate as String?,
-      goalTimeSec: _optInt(raw['goalTimeSec'], 1, 10 * 3600 - 1),
+      goalTimeSec: _optInt(raw['goalTimeSec'], 1,
+          goal == GoalEvent.custom ? raceGoalMaxHours * 3600 - 1 : 10 * 3600 - 1),
       recent5kSec: _optInt(raw['recent5kSec'], 12 * 60, 60 * 60 - 1),
       daysPerWeek: _reqInt(raw['daysPerWeek'], 3, 7),
       weeks: _optInt(raw['weeks'], 4, 24),

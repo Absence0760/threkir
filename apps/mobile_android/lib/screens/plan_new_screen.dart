@@ -366,6 +366,12 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
     _beginnerWalkRun = inputs.beginnerWalkRun;
     _goal = inputs.goalEvent;
     _ultraChoice = null;
+    // An ultra arrives as custom plus its distance and selects the matching
+    // Ultra entry, so the distance field shows what was heard.
+    final ultraM = inputs.goalDistanceM;
+    if (inputs.goalEvent == GoalEvent.custom && ultraM != null) {
+      _selectUltra(_ultraPresetFor(ultraM) ?? _kUltraOther, ultraM);
+    }
     _daysPerWeek = inputs.daysPerWeek;
     // A fill replaces the shape of the plan, not just the fields this
     // description happened to name: a second fill must not inherit the first

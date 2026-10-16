@@ -8,7 +8,7 @@ function race(date: string, priority: 'A' | 'B' | 'C', distanceM: number | null)
 }
 
 function wo(id: string, scheduledDate: string, kind: string, targetDistanceM: number | null, extra: Partial<RaceTaperWorkout> = {}): RaceTaperWorkout {
-	return { id, scheduledDate, kind, targetDistanceM, phase: 'build', completed: false, skipped: false, taperApplied: false, ...extra };
+	return { id, scheduledDate, kind, targetDistanceM, targetDurationSeconds: null, structure: null, notes: null, phase: 'build', completed: false, skipped: false, taperApplied: false, ...extra };
 }
 
 const TODAY = '2027-03-01';
@@ -191,4 +191,92 @@ test('raceTaperProposals: a workout an applied taper already eased is not cut ag
 			['w-easy', 'pre_race', 'easy', 3380, false]
 		]
 	);
+});
+
+test('raceTaperProposals: duration shrinks by the factor the distance moved', () => {
+	const changes = raceTaperProposals({
+		workouts: [
+			wo('w-easy', '2027-03-30', 'easy', 8000, { targetDurationSeconds: 2400 }),
+			wo('w-timed', '2027-03-31', 'easy', null, { targetDurationSeconds: 3600 }),
+			wo('w-tempo', '2027-04-02', 'tempo', 12000, { targetDurationSeconds: 3600 })
+		],
+		races: [twoOceans],
+		today: TODAY
+	});
+	assert.deepEqual(
+		changes.map((c) => [c.workoutId, c.toMetres, c.fromDurationS, c.toDurationS]),
+		[
+			['w-easy', 5200, 2400, 1560],
+			['w-timed', null, 3600, 2340],
+			// The shakeout's 5 km cap is the factor: 5000 / 12000 of 3600 s.
+			['w-tempo', 5000, 3600, 1500]
+		]
+	);
+	assert.deepEqual(raceTaperPatch(changes[1]), { target_duration_seconds: 2340 });
+});
+
+test('raceTaperProposals: a walk/run day loses repeats with the session, and the notes that described them', () => {
+	const intervals = {
+		warmup: { duration_s: 300, pace: 'easy' },
+		repeats: { count: 8, duration_s: 90, recovery_duration_s: 120, recovery_pace: 'walk' },
+		cooldown: { duration_s: 300, pace: 'easy' }
+	};
+	const continuous = {
+		warmup: { duration_s: 300, pace: 'easy' },
+		repeats: { count: 1, duration_s: 1800, recovery_pace: 'walk' },
+		cooldown: { duration_s: 300, pace: 'easy' }
+	};
+	const [wr, grad] = raceTaperProposals({
+		workouts: [
+			wo('w-wr', '2027-03-30', 'walk_run', 4000, {
+				targetDurationSeconds: 2160,
+				structure: intervals,
+				notes: 'Walk 5 min, then run 90s / walk 120s × 8, walk 5 min.'
+			}),
+			wo('w-grad', '2027-03-31', 'walk_run', 5000, { targetDurationSeconds: 2400, structure: continuous })
+		],
+		races: [twoOceans],
+		today: TODAY
+	});
+	// 8 repeats × 0.65 = 5.2 → 5; 300 + 5 × 90 + 4 × 120 + 300 = 1530 s.
+	assert.deepEqual(raceTaperPatch(wr), {
+		target_distance_m: 2600,
+		target_duration_seconds: 1530,
+		structure: { ...intervals, repeats: { ...intervals.repeats, count: 5 } },
+		notes: null
+	});
+	// One continuous run: 1800 s × 0.65 = 1170 s; 300 + 1170 + 300 = 1770 s.
+	assert.deepEqual(raceTaperPatch(grad), {
+		target_distance_m: 3250,
+		target_duration_seconds: 1770,
+		structure: { ...continuous, repeats: { ...continuous.repeats, duration_s: 1170 } }
+	});
+});
+
+test('raceTaperProposals: a session whose kind changes loses the notes and structure that described it', () => {
+	const changes = raceTaperProposals({
+		workouts: [
+			wo('w-int', '2027-03-29', 'interval', 10000, { notes: '6x800 at 5K pace', structure: { repeats: { count: 6 } } }),
+			wo('w-long', '2027-03-30', 'long', 20000, { notes: 'Last 5 km at marathon pace', structure: { steady: { distance_m: 5000 } } }),
+			wo('w-easy', '2027-03-31', 'easy', 8000, { notes: 'Flat route' })
+		],
+		races: [twoOceans],
+		today: TODAY
+	});
+	assert.deepEqual(raceTaperPatch(changes[0]), {
+		kind: 'easy',
+		target_distance_m: 6500,
+		target_pace_sec_per_km: null,
+		target_pace_tolerance_sec: null,
+		structure: null,
+		notes: null
+	});
+	assert.deepEqual(raceTaperPatch(changes[1]), {
+		kind: 'easy',
+		target_distance_m: 13000,
+		structure: null,
+		notes: null
+	});
+	// Same kind, only shorter: the runner's own note still fits.
+	assert.deepEqual(raceTaperPatch(changes[2]), { target_distance_m: 5200 });
 });

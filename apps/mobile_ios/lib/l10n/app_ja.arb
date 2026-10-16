@@ -1779,6 +1779,7 @@
   "planDetailRaceTaperPre": "{change} — {race}に向けたテーパリング",
   "planDetailRaceTaperShakeout": "{change} — {race}前の軽い調整ラン",
   "planDetailRaceTaperPost": "{change} — {race}後の回復",
+  "planDetailRaceTaperNotesCleared": "メモを削除",
   "planDetailHeroNextRace": "次のレース: {name}",
   "planDetailAdjustPauseDesc": "何も削除せずに、再開するまでプランを保留します。体調不良、けが、旅行のときに使います。",
   "planDetailAdjustResumeDesc": "このプランを再びアクティブなプランにします。再開する準備ができたときに使います。",

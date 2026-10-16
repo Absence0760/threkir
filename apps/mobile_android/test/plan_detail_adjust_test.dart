@@ -120,13 +120,21 @@ PlanWeekRow _week(String id, int idx, String phase, double vol) => PlanWeekRow(
     id: id, planId: 'plan-1', weekIndex: idx, phase: phase, targetVolumeM: vol);
 
 PlanWorkoutRow _wo(String id, String weekId, DateTime date, String kind,
-        double? dist, {String? raceName, String? racePriority}) =>
+        double? dist,
+        {String? raceName,
+        String? racePriority,
+        int? durationS,
+        Object? structure,
+        String? notes}) =>
     PlanWorkoutRow(
       id: id,
       weekId: weekId,
       scheduledDate: date,
       kind: kind,
       targetDistanceM: dist,
+      targetDurationSeconds: durationS,
+      structure: structure,
+      notes: notes,
       manuallyCompleted: false,
       raceName: raceName,
       racePriority: racePriority,
@@ -212,8 +220,9 @@ _FakeTraining _missedLongPlan({String status = 'active'}) {
 }
 
 /// A plan whose next race is a B race ten days out, with an interval five
-/// days before it and a tempo two days before it — the shape
-/// `raceTaperProposals` eases and cuts to a shakeout.
+/// days before it (its notes describe the intervals) and a one-hour tempo two
+/// days before it — the shape `raceTaperProposals` eases and cuts to a
+/// shakeout, clearing the interval's notes and shortening the tempo's time.
 _FakeTraining _bRacePlan() {
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
@@ -235,8 +244,10 @@ _FakeTraining _bRacePlan() {
     ),
     [_week('w0', 0, 'build', 40000), _week('w1', 1, 'build', 42000)],
     [
-      _wo('int', 'w0', today.add(const Duration(days: 5)), 'interval', 10000),
-      _wo('tempo', 'w1', today.add(const Duration(days: 8)), 'tempo', 12000),
+      _wo('int', 'w0', today.add(const Duration(days: 5)), 'interval', 10000,
+          notes: '6x800 at 5K pace'),
+      _wo('tempo', 'w1', today.add(const Duration(days: 8)), 'tempo', 12000,
+          durationS: 3600),
       _wo('b-race', 'w1', today.add(const Duration(days: 10)), 'race', 21097.5,
           raceName: 'Two Oceans Half', racePriority: 'B'),
     ],
@@ -268,6 +279,13 @@ void main() {
       expect(find.textContaining('taper for Two Oceans Half'), findsOneWidget);
       expect(find.textContaining('shakeout before Two Oceans Half'),
           findsOneWidget);
+      // The tempo's hour shrinks with its distance: 5000 / 12000 of 3600 s.
+      expect(find.textContaining('1:00:00 → '), findsOneWidget);
+      expect(find.textContaining('25:00 — shakeout'), findsOneWidget);
+      expect(find.byKey(const Key('planDetailRaceTaperNotesCleared-int')),
+          findsOneWidget);
+      expect(find.byKey(const Key('planDetailRaceTaperNotesCleared-tempo')),
+          findsNothing);
       expect(training.taperPatches, isNull);
 
       await _tapApply(tester,
@@ -280,8 +298,11 @@ void main() {
         'target_pace_sec_per_km': null,
         'target_pace_tolerance_sec': null,
         'structure': null,
+        'notes': null,
       });
       expect(training.taperPatches!['tempo']!['target_distance_m'], 5000);
+      expect(
+          training.taperPatches!['tempo']!['target_duration_seconds'], 1500);
       expect(training.taperPatches!.containsKey('b-race'), isFalse);
       expect(training.taperPlanId, 'plan-1');
       await tester.pump(const Duration(seconds: 4));

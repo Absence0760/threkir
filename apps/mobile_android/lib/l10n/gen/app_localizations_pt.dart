@@ -6462,6 +6462,9 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get planDetailRaceTaperNotesCleared => 'Notas apagadas';
+
+  @override
   String planDetailHeroNextRace(String name) {
     return 'Próxima prova: $name';
   }
@@ -22973,6 +22976,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String planDetailRaceTaperPost(String change, String race) {
     return '$change — recuperação depois de $race';
   }
+
+  @override
+  String get planDetailRaceTaperNotesCleared => 'Notas apagadas';
 
   @override
   String planDetailHeroNextRace(String name) {

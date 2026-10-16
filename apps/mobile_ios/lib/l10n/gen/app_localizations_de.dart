@@ -6474,6 +6474,9 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get planDetailRaceTaperNotesCleared => 'Notizen entfernt';
+
+  @override
   String planDetailHeroNextRace(String name) {
     return 'Nächster Wettkampf: $name';
   }

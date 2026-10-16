@@ -1779,6 +1779,7 @@
   "planDetailRaceTaperPre": "{change} — polimento para {race}",
   "planDetailRaceTaperShakeout": "{change} — corrida de ativação antes de {race}",
   "planDetailRaceTaperPost": "{change} — recuperação depois de {race}",
+  "planDetailRaceTaperNotesCleared": "Notas apagadas",
   "planDetailHeroNextRace": "Próxima prova: {name}",
   "planDetailAdjustPauseDesc": "Põe o plano em espera sem apagar nada, até o retomar. Use em caso de doença, lesão ou viagem.",
   "planDetailAdjustResumeDesc": "Volta a tornar este o seu plano ativo. Use quando estiver pronto para o retomar.",

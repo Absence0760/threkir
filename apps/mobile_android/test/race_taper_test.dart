@@ -14,7 +14,10 @@ PlanRace _race(String date, String priority, double? distanceM) => PlanRace(
     );
 
 RaceTaperWorkout _wo(String id, String date, String kind, double? distanceM,
-        {String? phase = 'build',
+        {int? durationS,
+        Object? structure,
+        String? notes,
+        String? phase = 'build',
         bool completed = false,
         bool skipped = false,
         bool taperApplied = false}) =>
@@ -23,6 +26,9 @@ RaceTaperWorkout _wo(String id, String date, String kind, double? distanceM,
       scheduledDate: date,
       kind: kind,
       targetDistanceM: distanceM,
+      targetDurationSeconds: durationS,
+      structure: structure,
+      notes: notes,
       phase: phase,
       completed: completed,
       skipped: skipped,
@@ -243,5 +249,117 @@ void main() {
           ['w-int', RaceTaperReason.preRace, 'easy', 4225, false],
           ['w-easy', RaceTaperReason.preRace, 'easy', 3380, false],
         ]);
+  });
+
+  test('raceTaperProposals: duration shrinks by the factor the distance moved',
+      () {
+    final changes = raceTaperProposals(
+      workouts: [
+        _wo('w-easy', '2027-03-30', 'easy', 8000, durationS: 2400),
+        _wo('w-timed', '2027-03-31', 'easy', null, durationS: 3600),
+        _wo('w-tempo', '2027-04-02', 'tempo', 12000, durationS: 3600),
+      ],
+      races: [_twoOceans],
+      today: _today,
+    );
+    expect([
+      for (final c in changes)
+        [c.workoutId, c.toMetres, c.fromDurationS, c.toDurationS]
+    ], [
+      ['w-easy', 5200, 2400, 1560],
+      ['w-timed', null, 3600, 2340],
+      // The shakeout's 5 km cap is the factor: 5000 / 12000 of 3600 s.
+      ['w-tempo', 5000, 3600, 1500],
+    ]);
+    expect(raceTaperPatch(changes[1]), {'target_duration_seconds': 2340});
+  });
+
+  test(
+      'raceTaperProposals: a walk/run day loses repeats with the session, and '
+      'the notes that described them', () {
+    const intervals = {
+      'warmup': {'duration_s': 300, 'pace': 'easy'},
+      'repeats': {
+        'count': 8,
+        'duration_s': 90,
+        'recovery_duration_s': 120,
+        'recovery_pace': 'walk',
+      },
+      'cooldown': {'duration_s': 300, 'pace': 'easy'},
+    };
+    const continuous = {
+      'warmup': {'duration_s': 300, 'pace': 'easy'},
+      'repeats': {'count': 1, 'duration_s': 1800, 'recovery_pace': 'walk'},
+      'cooldown': {'duration_s': 300, 'pace': 'easy'},
+    };
+    final changes = raceTaperProposals(
+      workouts: [
+        _wo('w-wr', '2027-03-30', 'walk_run', 4000,
+            durationS: 2160,
+            structure: intervals,
+            notes: 'Walk 5 min, then run 90s / walk 120s × 8, walk 5 min.'),
+        _wo('w-grad', '2027-03-31', 'walk_run', 5000,
+            durationS: 2400, structure: continuous),
+      ],
+      races: [_twoOceans],
+      today: _today,
+    );
+    // 8 repeats × 0.65 = 5.2 → 5; 300 + 5 × 90 + 4 × 120 + 300 = 1530 s.
+    expect(raceTaperPatch(changes[0]), {
+      'target_distance_m': 2600,
+      'target_duration_seconds': 1530,
+      'structure': {
+        ...intervals,
+        'repeats': {...intervals['repeats']!, 'count': 5},
+      },
+      'notes': null,
+    });
+    // One continuous run: 1800 s × 0.65 = 1170 s; 300 + 1170 + 300 = 1770 s.
+    expect(raceTaperPatch(changes[1]), {
+      'target_distance_m': 3250,
+      'target_duration_seconds': 1770,
+      'structure': {
+        ...continuous,
+        'repeats': {...continuous['repeats']!, 'duration_s': 1170},
+      },
+    });
+  });
+
+  test(
+      'raceTaperProposals: a session whose kind changes loses the notes and '
+      'structure that described it', () {
+    final changes = raceTaperProposals(
+      workouts: [
+        _wo('w-int', '2027-03-29', 'interval', 10000,
+            notes: '6x800 at 5K pace',
+            structure: const {
+              'repeats': {'count': 6}
+            }),
+        _wo('w-long', '2027-03-30', 'long', 20000,
+            notes: 'Last 5 km at marathon pace',
+            structure: const {
+              'steady': {'distance_m': 5000}
+            }),
+        _wo('w-easy', '2027-03-31', 'easy', 8000, notes: 'Flat route'),
+      ],
+      races: [_twoOceans],
+      today: _today,
+    );
+    expect(raceTaperPatch(changes[0]), {
+      'kind': 'easy',
+      'target_distance_m': 6500,
+      'target_pace_sec_per_km': null,
+      'target_pace_tolerance_sec': null,
+      'structure': null,
+      'notes': null,
+    });
+    expect(raceTaperPatch(changes[1]), {
+      'kind': 'easy',
+      'target_distance_m': 13000,
+      'structure': null,
+      'notes': null,
+    });
+    // Same kind, only shorter: the runner's own note still fits.
+    expect(raceTaperPatch(changes[2]), {'target_distance_m': 5200});
   });
 }

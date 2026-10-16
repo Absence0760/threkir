@@ -690,6 +690,7 @@ export const messages = {
 	"planDetail.raceTaperPre": "{change} — {race}に向けたテーパリング",
 	"planDetail.raceTaperShakeout": "{change} — {race}前の軽い調整ラン",
 	"planDetail.raceTaperPost": "{change} — {race}後の回復",
+	"planDetail.raceTaperNotesCleared": "メモを削除",
 	"planDetail.heroNextRace": "次のレース: {name}",
 	"planDetail.adjustPauseDesc": "何も削除せずに、再開するまでプランを一時停止します。体調不良、けが、旅行のときに使います。",
 	"planDetail.adjustResumeDesc": "このプランを再びアクティブなプランにします。プランを再開する準備ができたときに使います。",

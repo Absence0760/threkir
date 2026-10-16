@@ -58,6 +58,11 @@ class RaceTaperWorkout {
   final String scheduledDate;
   final String kind;
   final double? targetDistanceM;
+  final int? targetDurationSeconds;
+
+  /// The workout's `structure` jsonb; only a walk/run's is rebuilt.
+  final Object? structure;
+  final String? notes;
 
   /// Phase of the week the workout sits in, when known.
   final String? phase;
@@ -75,6 +80,9 @@ class RaceTaperWorkout {
     required this.scheduledDate,
     required this.kind,
     required this.targetDistanceM,
+    this.targetDurationSeconds,
+    this.structure,
+    this.notes,
     this.phase,
     this.completed = false,
     this.skipped = false,
@@ -93,9 +101,20 @@ class RaceTaperChange {
   final String toKind;
   final double? fromMetres;
   final double? toMetres;
+  final int? fromDurationS;
+  final int? toDurationS;
 
   /// The session loses its pace target, tolerance and interval structure.
   final bool clearsPace;
+
+  /// `structure` is rewritten to [toStructure]: a walk/run's repeats cut to
+  /// the shorter session, or null when the kind changes under it.
+  final bool structureChanged;
+  final Map<String, Object?>? toStructure;
+
+  /// The notes described a session that no longer exists (the kind changed,
+  /// or a walk/run's structure was rebuilt), so they are cleared.
+  final bool clearsNotes;
 
   const RaceTaperChange({
     required this.workoutId,
@@ -108,7 +127,12 @@ class RaceTaperChange {
     required this.toKind,
     required this.fromMetres,
     required this.toMetres,
+    this.fromDurationS,
+    this.toDurationS,
     required this.clearsPace,
+    this.structureChanged = false,
+    this.toStructure,
+    this.clearsNotes = false,
   });
 }
 
@@ -143,6 +167,59 @@ RaceTaperReason? _windowFor(PlanRace race, int offset) {
 
 double? _scaled(double? m, double scale) =>
     m == null ? null : (m * scale).roundToDouble();
+
+/// A walk/run structure cut by [factor]: the repeat count scales (rounded, at
+/// least one) and the run and walk lengths stay — they are the runner's stage
+/// of the progression, which a taper week does not move. A single continuous
+/// run (count 1) scales its run length instead. Null when nothing changes.
+Map<String, Object?>? _scaledWalkRun(Object? structure, double factor) {
+  if (structure is! Map || structure['repeats'] is! Map) return null;
+  final s = Map<String, Object?>.from(structure);
+  final reps = Map<String, Object?>.from(structure['repeats'] as Map);
+  final rawCount = reps['count'];
+  final count = rawCount is num ? rawCount : 1;
+  if (count > 1) {
+    final next = (count * factor).round();
+    final clamped = next < 1 ? 1 : next;
+    if (clamped == count) return null;
+    return {...s, 'repeats': {...reps, 'count': clamped}};
+  }
+  final dur = reps['duration_s'];
+  if (dur is! num) return null;
+  final next = (dur * factor).round();
+  final clamped = next < 1 ? 1 : next;
+  if (clamped == dur) return null;
+  return {...s, 'repeats': {...reps, 'duration_s': clamped}};
+}
+
+num _secs(Object? v) => v is num && v.isFinite ? v : 0;
+
+/// Total seconds a walk/run structure prescribes: warm-up, every run, the
+/// walks between them, cool-down.
+num _walkRunSeconds(Map<String, Object?> structure) {
+  final reps = structure['repeats'] is Map ? structure['repeats'] as Map : const {};
+  final rawCount = reps['count'];
+  final count = rawCount is num ? rawCount : 1;
+  final warm = structure['warmup'] is Map
+      ? _secs((structure['warmup'] as Map)['duration_s'])
+      : 0;
+  final cool = structure['cooldown'] is Map
+      ? _secs((structure['cooldown'] as Map)['duration_s'])
+      : 0;
+  return warm +
+      count * _secs(reps['duration_s']) +
+      (count - 1 < 0 ? 0 : count - 1) * _secs(reps['recovery_duration_s']) +
+      cool;
+}
+
+/// The rule's volume factor before any cap: what a session with no distance
+/// is scaled by.
+double _ruleScale(RaceTaperWorkout w, RaceTaperReason reason, String priority) =>
+    switch (reason) {
+      RaceTaperReason.shakeout => shakeoutScale,
+      RaceTaperReason.preRace => priority == 'B' ? bTaperScale : cTaperScale,
+      RaceTaperReason.postRace => w.kind == 'long' ? recoveryLongScale : 1,
+    };
 
 ({String toKind, double? toMetres, bool clearsPace}) _adjust(
     RaceTaperWorkout w, RaceTaperReason reason, String priority) {
@@ -186,7 +263,10 @@ double? _scaled(double? m, double scale) =>
 /// skipped, a rest day, a race, already eased by an applied taper, or inside
 /// the A race's taper/race weeks are touched. A workout inside two races' windows takes the stronger rule
 /// (shakeout, then taper, then recovery; then the B race, then the earlier
-/// race). A workout the rule would leave unchanged yields no change.
+/// race). A workout the rule would leave unchanged yields no change. The
+/// whole prescription eases together (issue #1183): duration by the factor
+/// the distance moved, a walk/run's repeats cut to match, and notes cleared
+/// once they describe a session that no longer exists.
 List<RaceTaperChange> raceTaperProposals({
   required List<RaceTaperWorkout> workouts,
   required List<PlanRace> races,
@@ -222,9 +302,40 @@ List<RaceTaperChange> raceTaperProposals({
     }
     if (bestReason == null || bestRace == null) continue;
     final a = _adjust(w, bestReason, bestRace.priority);
-    if (a.toKind == w.kind &&
+    // The factor the distance actually moved by (the shakeout's 5 km cap
+    // included), so duration and structure shrink with it; the rule's own
+    // factor when there is no distance to measure by.
+    final from = w.targetDistanceM;
+    final factor = from != null && from > 0 && a.toMetres != null
+        ? a.toMetres! / from
+        : _ruleScale(w, bestReason, bestRace.priority);
+    final kindChanged = a.toKind != w.kind;
+    Map<String, Object?>? toStructure;
+    var structureChanged = false;
+    Map<String, Object?>? rebuiltWalkRun;
+    if (!a.clearsPace && kindChanged && w.structure != null) {
+      structureChanged = true;
+    } else if (!a.clearsPace && w.kind == 'walk_run') {
+      rebuiltWalkRun = _scaledWalkRun(w.structure, factor);
+      if (rebuiltWalkRun != null) {
+        toStructure = rebuiltWalkRun;
+        structureChanged = true;
+      }
+    }
+    final fromDuration = w.targetDurationSeconds;
+    final int? toDurationS = fromDuration == null
+        ? null
+        : rebuiltWalkRun != null && _walkRunSeconds(rebuiltWalkRun) > 0
+            ? _walkRunSeconds(rebuiltWalkRun).round()
+            : (fromDuration * factor).round();
+    final clearsNotes =
+        w.notes != null && (kindChanged || rebuiltWalkRun != null);
+    if (!kindChanged &&
         a.toMetres == w.targetDistanceM &&
-        !a.clearsPace) {
+        !a.clearsPace &&
+        toDurationS == fromDuration &&
+        !structureChanged &&
+        !clearsNotes) {
       continue;
     }
     changes.add(RaceTaperChange(
@@ -238,7 +349,12 @@ List<RaceTaperChange> raceTaperProposals({
       toKind: a.toKind,
       fromMetres: w.targetDistanceM,
       toMetres: a.toMetres,
+      fromDurationS: fromDuration,
+      toDurationS: toDurationS,
       clearsPace: a.clearsPace,
+      structureChanged: structureChanged,
+      toStructure: toStructure,
+      clearsNotes: clearsNotes,
     ));
   }
   changes.sort((x, y) {
@@ -254,10 +370,16 @@ Map<String, Object?> raceTaperPatch(RaceTaperChange c) {
   final patch = <String, Object?>{};
   if (c.toKind != c.fromKind) patch['kind'] = c.toKind;
   if (c.toMetres != c.fromMetres) patch['target_distance_m'] = c.toMetres;
+  if (c.toDurationS != c.fromDurationS) {
+    patch['target_duration_seconds'] = c.toDurationS;
+  }
   if (c.clearsPace) {
     patch['target_pace_sec_per_km'] = null;
     patch['target_pace_tolerance_sec'] = null;
     patch['structure'] = null;
+  } else if (c.structureChanged) {
+    patch['structure'] = c.toStructure;
   }
+  if (c.clearsNotes) patch['notes'] = null;
   return patch;
 }

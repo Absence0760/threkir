@@ -24,7 +24,7 @@ import '../plan_week.dart';
 import '../race_taper.dart';
 import '../social_service.dart' show ClubView, RecentRunRow, SocialService;
 import '../metrics.dart';
-import '../goal_time.dart' show formatRaceGoalTimeS;
+import '../goal_time.dart' show formatGoalTimeS, formatRaceGoalTimeS;
 import '../training.dart';
 import '../training_labels.dart';
 import '../training_load.dart';
@@ -425,6 +425,9 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
               scheduledDate: toIsoDate(x.scheduledDate),
               kind: x.kind,
               targetDistanceM: x.targetDistanceM,
+              targetDurationSeconds: x.targetDurationSeconds,
+              structure: x.structure,
+              notes: x.notes,
               phase: w.phase,
               completed: _isWorkoutCompleted(x),
               skipped: _isWorkoutSkipped(x),
@@ -477,13 +480,14 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
   }
 
   String _taperChangeLabel(AppLocalizations l10n, RaceTaperChange c) {
-    String side(String kind, double? metres) {
-      final label = workoutKindLabel(l10n, workoutKindFromDb(kind));
-      return metres != null ? '$label ${fmtKm(metres)}' : label;
-    }
+    String side(String kind, double? metres, int? seconds) => [
+          workoutKindLabel(l10n, workoutKindFromDb(kind)),
+          if (metres != null) fmtKm(metres),
+          if (seconds != null) formatGoalTimeS(seconds),
+        ].join(' ');
 
-    final change =
-        '${side(c.fromKind, c.fromMetres)} → ${side(c.toKind, c.toMetres)}';
+    final change = '${side(c.fromKind, c.fromMetres, c.fromDurationS)} → '
+        '${side(c.toKind, c.toMetres, c.toDurationS)}';
     final race = c.raceName ?? c.raceDate;
     return switch (c.reason) {
       RaceTaperReason.shakeout => l10n.planDetailRaceTaperShakeout(change, race),
@@ -1358,8 +1362,19 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
                             )),
                       ),
                       Expanded(
-                        child: Text(_taperChangeLabel(l10n, c),
-                            style: theme.textTheme.bodySmall),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(_taperChangeLabel(l10n, c),
+                                style: theme.textTheme.bodySmall),
+                            if (c.clearsNotes)
+                              Text(l10n.planDetailRaceTaperNotesCleared,
+                                  key: Key('planDetailRaceTaperNotesCleared-${c.workoutId}'),
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  )),
+                          ],
+                        ),
                       ),
                     ],
                   ),

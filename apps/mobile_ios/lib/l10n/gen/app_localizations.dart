@@ -10522,6 +10522,12 @@ abstract class AppLocalizations {
   /// **'{change} — recovery after {race}'**
   String planDetailRaceTaperPost(String change, String race);
 
+  /// Second line under a proposed taper change: the workout's notes described the old session, so applying clears them
+  ///
+  /// In en, this message translates to:
+  /// **'Notes cleared'**
+  String get planDetailRaceTaperNotesCleared;
+
   /// Plan-detail hero line naming the next race the hero's distance, goal and date now describe (a B or C race before the plan's A race)
   ///
   /// In en, this message translates to:

@@ -1779,6 +1779,7 @@
   "planDetailRaceTaperPre": "{change} — Tapering für {race}",
   "planDetailRaceTaperShakeout": "{change} — Auflockerungslauf vor {race}",
   "planDetailRaceTaperPost": "{change} — Erholung nach {race}",
+  "planDetailRaceTaperNotesCleared": "Notizen entfernt",
   "planDetailHeroNextRace": "Nächster Wettkampf: {name}",
   "planDetailAdjustPauseDesc": "Legt den Plan still, ohne etwas zu löschen, bis du ihn fortsetzt. Nutze das bei Krankheit, Verletzung oder Reisen.",
   "planDetailAdjustResumeDesc": "Macht das wieder zu deinem aktiven Plan. Nutze das, wenn du bereit bist, wieder einzusteigen.",

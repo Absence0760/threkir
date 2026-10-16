@@ -78,6 +78,20 @@ async function raceWorkouts(): Promise<
 	}));
 }
 
+async function workoutIdOn(date: string): Promise<string> {
+	const weeks = await importedPlanWeeks();
+	const row = await readRow(
+		`the workout on ${date}`,
+		getAdminClient()
+			.from('plan_workouts')
+			.select('id')
+			.in('week_id', weeks.map((w) => w.id))
+			.eq('scheduled_date', date)
+			.single()
+	);
+	return row.id;
+}
+
 const TAPER_PLAN_MD = () =>
 	[
 		`# ${PLAN_NAME}`,
@@ -87,7 +101,7 @@ const TAPER_PLAN_MD = () =>
 		'',
 		'| Week | Date | Type | Distance | Pace | Notes | Race | Priority | Goal |',
 		'| --- | --- | --- | --- | --- | --- | --- | --- | --- |',
-		`| 1 | ${browserDate(5)} | interval | 10.00 km | | |  |  |  |`,
+		`| 1 | ${browserDate(5)} | interval | 10.00 km | | 6x800 at 5K pace |  |  |  |`,
 		`| 2 | ${browserDate(8)} | tempo | 12.00 km | | |  |  |  |`,
 		`| 2 | ${browserDate(10)} | race | 56.00 km | | | ${B_RACE} | B |  |`,
 		`| 6 | ${browserDate(40)} | race | 90.00 km | | | ${A_RACE} | A |  |`,
@@ -174,6 +188,14 @@ test.describe('races in a plan', () => {
 
 	test('Adjust plan proposes a taper before a B race and applies it', async ({ page }) => {
 		await importPlan(page, TAPER_PLAN_MD());
+		// The table carries no duration, so the tempo is made an hour long
+		// directly: the taper must shorten its time with its distance (#1183).
+		const tempoId = await workoutIdOn(browserDate(8));
+		await readRows(
+			'the tempo duration update',
+			getAdminClient().from('plan_workouts').update({ target_duration_seconds: 3600 }).eq('id', tempoId).select('id')
+		);
+		await page.reload();
 
 		await page.getByRole('button', { name: 'Adjust plan' }).click();
 		const dialog = page.getByTestId('adjust-plan-dialog');
@@ -185,6 +207,12 @@ test.describe('races in a plan', () => {
 		await expect(rows).toHaveCount(2);
 		await expect(rows.nth(0)).toContainText(`taper for ${B_RACE}`);
 		await expect(rows.nth(1)).toContainText(`shakeout before ${B_RACE}`);
+		// The interval's notes describe intervals; an easy run clears them.
+		await expect(rows.nth(0).getByTestId('race-taper-notes-cleared')).toHaveText('Notes cleared');
+		await expect(rows.nth(1).getByTestId('race-taper-notes-cleared')).toHaveCount(0);
+		// 5000 / 12000 of the hour: 1:00:00 → 25:00.
+		await expect(rows.nth(1)).toContainText('1:00:00 →');
+		await expect(rows.nth(1)).toContainText('25:00 — shakeout');
 
 		await preview.getByRole('button', { name: 'Apply' }).click();
 		await expect(preview).toBeHidden({ timeout: 10_000 });
@@ -196,6 +224,18 @@ test.describe('races in a plan', () => {
 		// apply_workout_adjustments restates each touched week from what it holds.
 		expect(byDate.get(browserDate(5))?.week_volume_m).toBe(6500);
 		expect(byDate.get(browserDate(8))?.week_volume_m).toBe(61000);
+		const eased = await readRows(
+			'the eased workouts',
+			getAdminClient()
+				.from('plan_workouts')
+				.select('scheduled_date, notes, target_duration_seconds')
+				.in('id', [await workoutIdOn(browserDate(5)), tempoId])
+				.order('scheduled_date')
+		);
+		expect(eased).toEqual([
+			{ scheduled_date: browserDate(5), notes: null, target_duration_seconds: null },
+			{ scheduled_date: browserDate(8), notes: null, target_duration_seconds: 1500 }
+		]);
 	});
 
 	test('a failed taper apply changes nothing and reloads the plan', async ({ page }) => {

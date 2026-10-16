@@ -15495,4 +15495,85 @@ class AppLocalizationsJa extends AppLocalizations {
   String coachingAthleteRunMapLabel(String date) {
     return '$dateのランの地図（アスリートのプライバシーゾーンを除く）';
   }
+
+  @override
+  String get stravaClubsHeading => 'あなたの Strava クラブ';
+
+  @override
+  String get stravaClubsIntro => 'Strava で参加しているクラブです。このリストはあなたにしか表示されません。';
+
+  @override
+  String get stravaClubsEmpty => 'Strava で参加しているクラブはありません。';
+
+  @override
+  String get stravaClubsLoadError => 'Strava クラブを読み込めませんでした。';
+
+  @override
+  String get stravaClubsReconnectText =>
+      'Strava との接続の有効期限が切れたため、Strava クラブを表示できません。';
+
+  @override
+  String get stravaClubsReconnect => 'Strava を再接続';
+
+  @override
+  String get stravaClubsSetUp => 'Threkir で立ち上げる';
+
+  @override
+  String get stravaClubsLinkToMine => '自分のクラブとリンク';
+
+  @override
+  String get stravaClubsPickClubLabel => 'これはあなたのどのクラブですか？';
+
+  @override
+  String get stravaClubsAdminOnly =>
+      'このクラブを Threkir に追加できるのは、Strava でこのクラブの管理者になっている人だけです。';
+
+  @override
+  String stravaClubsViewOnThrekir(String name) {
+    return '$name を見る';
+  }
+
+  @override
+  String get stravaClubsUnlink => 'リンクを解除';
+
+  @override
+  String stravaClubsLinked(String name) {
+    return '$name とリンクしました。';
+  }
+
+  @override
+  String get stravaClubsLinkedNew => 'クラブを Strava のクラブとリンクしました。';
+
+  @override
+  String stravaClubsUnlinked(String name) {
+    return '$name と Strava のリンクを解除しました。';
+  }
+
+  @override
+  String get stravaClubsSetUpNote => 'クラブを作成すると、Strava のクラブとリンクされます。';
+
+  @override
+  String stravaClubsCreatedNotLinked(String reason) {
+    return 'クラブは作成されましたが、Strava とリンクできませんでした：$reason';
+  }
+
+  @override
+  String get stravaClubsErrAdminRequired =>
+      'Strava によると、あなたはこのクラブの管理者ではないため、リンクできません。';
+
+  @override
+  String get stravaClubsErrAlreadyLinked =>
+      'この Strava クラブは、すでに Threkir の別のクラブとリンクされています。';
+
+  @override
+  String get stravaClubsErrNotClubAdmin => 'リンクできるのは、Threkir クラブのオーナーか管理者だけです。';
+
+  @override
+  String get stravaClubsErrReconnect => '設定で Strava を再接続してから、もう一度お試しください。';
+
+  @override
+  String get stravaClubsErrGeneric => 'クラブをリンクできませんでした。もう一度お試しください。';
+
+  @override
+  String get stravaClubsErrUnlink => 'リンクを解除できませんでした。もう一度お試しください。';
 }

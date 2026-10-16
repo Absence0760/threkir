@@ -26816,6 +26816,144 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Map of the run on {date}, with the athlete\'s privacy zones removed'**
   String coachingAthleteRunMapLabel(String date);
+
+  /// Heading of the Your Strava clubs section on My clubs
+  ///
+  /// In en, this message translates to:
+  /// **'Your Strava clubs'**
+  String get stravaClubsHeading;
+
+  /// Intro under the heading
+  ///
+  /// In en, this message translates to:
+  /// **'Clubs you belong to on Strava. Only you can see this list.'**
+  String get stravaClubsIntro;
+
+  /// Shown when the runner is in no Strava clubs
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re not in any clubs on Strava.'**
+  String get stravaClubsEmpty;
+
+  /// The Strava clubs list failed to load; a Retry button follows
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your Strava clubs.'**
+  String get stravaClubsLoadError;
+
+  /// The Strava grant has expired
+  ///
+  /// In en, this message translates to:
+  /// **'Your Strava connection has expired, so your Strava clubs can’t be shown.'**
+  String get stravaClubsReconnectText;
+
+  /// Button opening Settings > Integrations to reconnect Strava
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnect Strava'**
+  String get stravaClubsReconnect;
+
+  /// Button: create a Threkir club from this Strava club
+  ///
+  /// In en, this message translates to:
+  /// **'Set up on Threkir'**
+  String get stravaClubsSetUp;
+
+  /// Button: link this Strava club to one of my existing Threkir clubs
+  ///
+  /// In en, this message translates to:
+  /// **'Link to my club'**
+  String get stravaClubsLinkToMine;
+
+  /// Title of the dialog picking which of my Threkir clubs this Strava club is
+  ///
+  /// In en, this message translates to:
+  /// **'Which of your clubs is this?'**
+  String get stravaClubsPickClubLabel;
+
+  /// Shown on a Strava club the runner does not administer
+  ///
+  /// In en, this message translates to:
+  /// **'Only an admin of this club on Strava can bring it to Threkir.'**
+  String get stravaClubsAdminOnly;
+
+  /// Button opening the linked Threkir club; name is the club name
+  ///
+  /// In en, this message translates to:
+  /// **'View {name}'**
+  String stravaClubsViewOnThrekir(String name);
+
+  /// Button removing the link between a Strava club and a Threkir club
+  ///
+  /// In en, this message translates to:
+  /// **'Unlink'**
+  String get stravaClubsUnlink;
+
+  /// Banner after linking; name is the Threkir club name
+  ///
+  /// In en, this message translates to:
+  /// **'Linked to {name}.'**
+  String stravaClubsLinked(String name);
+
+  /// Banner after a new club was created and linked to its Strava club
+  ///
+  /// In en, this message translates to:
+  /// **'Your club is linked to its Strava club.'**
+  String get stravaClubsLinkedNew;
+
+  /// Undo bar message after unlinking; name is the Threkir club name
+  ///
+  /// In en, this message translates to:
+  /// **'Unlinked {name} from Strava.'**
+  String stravaClubsUnlinked(String name);
+
+  /// Note on the new-club form when it came from a Strava club
+  ///
+  /// In en, this message translates to:
+  /// **'Once your club is created it will be linked to its Strava club.'**
+  String get stravaClubsSetUpNote;
+
+  /// Banner when the club was created but the Strava link failed; reason is one of the stravaClubsErr* sentences
+  ///
+  /// In en, this message translates to:
+  /// **'Your club was created, but it isn’t linked to Strava: {reason}'**
+  String stravaClubsCreatedNotLinked(String reason);
+
+  /// Link refused: not a Strava admin of the club
+  ///
+  /// In en, this message translates to:
+  /// **'Strava says you aren’t an admin of this club, so it can’t be linked.'**
+  String get stravaClubsErrAdminRequired;
+
+  /// Link refused: Strava club already linked elsewhere
+  ///
+  /// In en, this message translates to:
+  /// **'This Strava club is already linked to another club on Threkir.'**
+  String get stravaClubsErrAlreadyLinked;
+
+  /// Link refused: not an owner/admin of the Threkir club
+  ///
+  /// In en, this message translates to:
+  /// **'Only an owner or admin of the Threkir club can link it.'**
+  String get stravaClubsErrNotClubAdmin;
+
+  /// Link refused: the Strava connection needs reconnecting
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnect Strava in Settings, then try again.'**
+  String get stravaClubsErrReconnect;
+
+  /// Link failed for another reason
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t link the club. Try again.'**
+  String get stravaClubsErrGeneric;
+
+  /// Unlink failed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t unlink the club. Try again.'**
+  String get stravaClubsErrUnlink;
 }
 
 class _AppLocalizationsDelegate

@@ -6188,10 +6188,23 @@ export class ActivePlanExistsError extends Error {
 	}
 }
 
-/// The caller's active plans (templates included — the exclusion constraint
+/// The signed-in user's active plans a new plan over [startIso, endIso] would
+/// collide with — what the plan creator names before offering replace / trim.
+/// Session-read for the same reason createTrainingPlan is.
+export async function fetchMyOverlappingActivePlans(
+	startIso: string,
+	endIso: string
+): Promise<Pick<TrainingPlan, 'id' | 'name' | 'start_date' | 'end_date'>[]> {
+	const { data: { session } } = await supabase.auth.getSession();
+	const userId = session?.user?.id;
+	if (!userId) return [];
+	return fetchOverlappingActivePlans(userId, startIso, endIso);
+}
+
+/// The user's active plans (templates included — the exclusion constraint
 /// covers every active row) whose inclusive window shares a day with
 /// [startIso, endIso].
-export async function fetchOverlappingActivePlans(
+async function fetchOverlappingActivePlans(
 	userId: string,
 	startIso: string,
 	endIso: string

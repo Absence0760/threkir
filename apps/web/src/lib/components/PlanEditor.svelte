@@ -6,7 +6,7 @@
 	import { onMount, untrack } from 'svelte';
 	import { replaceState } from '$app/navigation';
 	import { page } from '$app/state';
-	import { createTrainingPlan, fetchActivePlanOverview, fetchRuns } from '#lib/core/data.ts';
+	import { createTrainingPlan, fetchMyOverlappingActivePlans, fetchRuns } from '#lib/core/data.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
 	import {
@@ -25,6 +25,8 @@
 		TrainingGender,
 	} from '#lib/training/training.ts';
 	import { isSundayIso, nextSundayIso } from '#lib/training/plan_start.ts';
+	import { shiftIsoDate } from '#lib/training/plan_bulk_ops.ts';
+	import type { TrainingPlan } from '#lib/types.ts';
 	import {
 		CHRONIC_WINDOW_WEEKS,
 		openingWeekVolumeM,
@@ -580,16 +582,37 @@
 		{ value: 'distance_full', label: t('planEditor.marathon') }
 	]);
 
-	/// The schema enforces one active plan per user via a partial unique
-	/// index, and `createTrainingPlan` enforces it by auto-completing
-	/// any existing active plan inside the same transaction. That used
-	/// to happen silently — clicking "Create plan" on the wizard would
-	/// transparently flip the user's current plan to `completed` with
-	/// no warning. This dialog gates the create on an explicit
-	/// confirmation when a previous active plan exists; the user gets
-	/// to see what they're about to retire and can cancel.
-	let showReplaceConfirm = $state(false);
-	let existingActiveName = $state<string | null>(null);
+	/// Active plans may chain but not overlap (decisions § 2008). A new plan
+	/// whose window misses every active plan is created straight away; one
+	/// that overlaps asks first, naming each plan it collides with, because
+	/// both ways through change an existing plan: replacing completes it,
+	/// ending it early deletes its workouts after the day before this start.
+	let overlapping = $state<Pick<TrainingPlan, 'id' | 'name' | 'start_date' | 'end_date'>[]>([]);
+	const showOverlapConfirm = $derived(overlapping.length > 0);
+	const trimTo = $derived(startDate ? shiftIsoDate(startDate, -1) : '');
+	const canTrim = $derived(
+		overlapping.length > 0 && overlapping.every((p) => p.start_date <= trimTo)
+	);
+	const fmtDay = (iso: string) =>
+		parseISO(iso).toLocaleDateString(activeFormatLocale(), { dateStyle: 'medium' });
+	const overlapMessage = $derived(
+		t('planEditor.overlapMessage', {
+			plans: overlapping
+				.map((p) =>
+					t('planEditor.overlapPlanItem', {
+						name: p.name,
+						start: fmtDay(p.start_date),
+						end: fmtDay(p.end_date)
+					})
+				)
+				.join(', ')
+		}) + (canTrim ? '' : ' ' + t('planEditor.overlapNoTrim'))
+	);
+	const trimLabel = $derived(
+		overlapping.length === 1
+			? t('planEditor.overlapTrimOne', { name: overlapping[0].name, date: trimTo ? fmtDay(trimTo) : '' })
+			: t('planEditor.overlapTrimMany', { date: trimTo ? fmtDay(trimTo) : '' })
+	);
 
 	async function submit(e: Event) {
 		e.preventDefault();
@@ -619,14 +642,13 @@
 		busy = true;
 		error = null;
 		try {
-			const active = await fetchActivePlanOverview();
-			if (active?.plan) {
-				existingActiveName = active.plan.name;
-				showReplaceConfirm = true;
+			const hits = await fetchMyOverlappingActivePlans(startDate, plan.endDate);
+			if (hits.length > 0) {
+				overlapping = hits;
 				busy = false;
 				return;
 			}
-			await proceedWithCreate();
+			await proceedWithCreate('replace');
 		} catch (e: unknown) {
 			error = describeError(e);
 			console.error('Plan create failed', e);
@@ -639,7 +661,7 @@
 		return formatISO(d);
 	}
 
-	async function proceedWithCreate() {
+	async function proceedWithCreate(overlap: 'replace' | 'trim') {
 		busy = true;
 		error = null;
 		try {
@@ -654,6 +676,7 @@
 				startDate,
 				daysPerWeek,
 				generated: plan!,
+				overlap,
 			});
 			oncreated?.(created);
 		} catch (e: unknown) {
@@ -661,14 +684,12 @@
 			console.error('Plan create failed', e);
 		} finally {
 			busy = false;
-			showReplaceConfirm = false;
-			existingActiveName = null;
+			overlapping = [];
 		}
 	}
 
-	function cancelReplace() {
-		showReplaceConfirm = false;
-		existingActiveName = null;
+	function cancelOverlap() {
+		overlapping = [];
 	}
 </script>
 
@@ -1014,16 +1035,17 @@
 </form>
 
 <ConfirmDialog
-	open={showReplaceConfirm}
-	title={t('planEditor.replaceActivePlanTitle')}
-	message={existingActiveName
-		? t('planEditor.replaceActivePlanNamed', { name: existingActiveName })
-		: t('planEditor.replaceActivePlanUnnamed')}
+	open={showOverlapConfirm}
+	title={t('planEditor.overlapTitle')}
+	message={overlapMessage}
 	confirmLabel={t('planEditor.replacePlan')}
-	cancelLabel={t('planEditor.keepCurrent')}
+	cancelLabel={t('common.cancel')}
+	altLabel={canTrim ? trimLabel : undefined}
+	onalt={canTrim ? () => proceedWithCreate('trim') : undefined}
 	danger={true}
-	onconfirm={proceedWithCreate}
-	oncancel={cancelReplace}
+	onconfirm={() => proceedWithCreate('replace')}
+	oncancel={cancelOverlap}
+	data-testid="plan-overlap-dialog"
 />
 
 <style>

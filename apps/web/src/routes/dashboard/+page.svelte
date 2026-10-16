@@ -1249,6 +1249,16 @@
 					{/if}
 				</div>
 
+				{#if planOverview.upcoming}
+					<a class="plan-hero-next" href="/plans/{planOverview.upcoming.id}" data-testid="plan-hero-next">
+						<span class="material-symbols">event_upcoming</span>
+						{m('dash.planUpNext', {
+							name: planOverview.upcoming.name,
+							date: fmtRaceDate(planOverview.upcoming.start_date)
+						})}
+					</a>
+				{/if}
+
 				<footer class="plan-hero-actions">
 					<a class="btn btn-primary btn-sm plan-hero-cta" href="/plans/{planOverview.plan.id}">
 						<span class="material-symbols">calendar_month</span>
@@ -2691,6 +2701,19 @@
 		color: var(--color-primary);
 	}
 	.plan-hero-manage :global(.material-symbols) { font-size: 1.05rem; }
+	.plan-hero-next {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2xs);
+		font-size: 0.85rem;
+		color: var(--color-text-secondary);
+		text-decoration: none;
+		overflow-wrap: anywhere;
+	}
+	.plan-hero-next:hover {
+		color: var(--color-primary);
+	}
+	.plan-hero-next :global(.material-symbols) { font-size: 1.05rem; }
 
 	.today-label {
 		font-size: var(--font-size-section-label);

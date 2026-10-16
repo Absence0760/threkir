@@ -164,6 +164,13 @@
 // 28 KB to 16 (/gym 27 to 17, /history 24 to 14), at most 7 parts per route.
 // MAX_CORE_CATALOGUE_KB is 11 (~10% over ja, 10). MAX_CODE_KB is 2243: 2057
 // plus the same 186 KB of cover, lowered for the reason given above.
+// Raised to 2259 for season planning (#1181), which measured 2238 -> 2254 KB
+// (+16, 475 -> 481 files) on the production build: the new /plans/season
+// route node (8.4), the season builder, season-request client and ultra
+// generator chunks, /plans/new +0.6, and ~0.2 on the root layout + entry for
+// the time-zone writer. No dependency and no duplicate; it is route-split
+// feature code, so the ceiling moves by exactly what was measured and keeps
+// the 5 KB of cover main had (decisions § 2072).
 // MAX_LARGEST_CHUNK_KB stays 350, unchanged: 245 KB * the 33% headroom that
 // number was always justified by is 326, so the existing figure still states
 // the rule. What changed is the population it measures, not the ceiling.
@@ -198,7 +205,7 @@ export const CLIENT_MANIFEST = join(
 );
 export const LOCALES_DIR = join(WEB_DIR, 'src', 'lib', 'i18n', 'locales');
 
-export const MAX_CODE_KB = 2243;
+export const MAX_CODE_KB = 2259;
 export const MAX_CORE_CATALOGUE_KB = 11;
 export const MAX_AREA_CATALOGUE_KB = 14;
 export const MAX_LARGEST_CHUNK_KB = 350;

@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'ai_disclosure.dart';
 import 'payload_hash.dart';
+import 'plan_races.dart' show raceGoalMaxHours;
 import 'training.dart';
 import 'web_base_url.dart';
 
@@ -69,7 +70,13 @@ enum PlanRequestAssumption {
 }
 
 class PlanRequestInputs {
+  /// A road rung, or [GoalEvent.custom] for an ultra, whose distance is then
+  /// [goalDistanceM].
   final GoalEvent goalEvent;
+
+  /// Metres, set only with a custom (ultra) goal: past the marathon and at
+  /// most 400 km. Mirrors `PlanRequestInputs.goalDistanceM` on web.
+  final double? goalDistanceM;
 
   /// ISO `yyyy-mm-dd`; the server only sends a future date within two years.
   final String? raceDate;
@@ -83,6 +90,7 @@ class PlanRequestInputs {
 
   const PlanRequestInputs({
     required this.goalEvent,
+    this.goalDistanceM,
     required this.raceDate,
     required this.goalTimeSec,
     required this.recent5kSec,
@@ -99,7 +107,11 @@ const Map<String, GoalEvent> _goalEvents = {
   'distance_10k': GoalEvent.distance10k,
   'distance_half': GoalEvent.distanceHalf,
   'distance_full': GoalEvent.distanceFull,
+  'custom': GoalEvent.custom,
 };
+
+/// The top of the server's ultra band (`MAX_ULTRA_DISTANCE_M` on web).
+const double _maxUltraDistanceM = 400000;
 
 final RegExp _isoDate = RegExp(r'^\d{4}-\d{2}-\d{2}$');
 
@@ -132,6 +144,20 @@ PlanRequestInputs? parsePlanRequestInputs(Object? raw) {
   try {
     final goal = _goalEvents[raw['goalEvent']];
     if (goal == null) return null;
+    // A custom goal is an ultra and must carry its distance; a road rung must
+    // not carry one.
+    final rawDistance = raw['goalDistanceM'];
+    double? goalDistanceM;
+    if (goal == GoalEvent.custom) {
+      if (rawDistance is! num ||
+          !isUltraDistance(rawDistance.toDouble()) ||
+          rawDistance > _maxUltraDistanceM) {
+        return null;
+      }
+      goalDistanceM = rawDistance.toDouble();
+    } else if (rawDistance != null) {
+      return null;
+    }
 
     final raceDate = raw['raceDate'];
     if (raceDate != null &&
@@ -157,8 +183,10 @@ PlanRequestInputs? parsePlanRequestInputs(Object? raw) {
 
     return PlanRequestInputs(
       goalEvent: goal,
+      goalDistanceM: goalDistanceM,
       raceDate: raceDate as String?,
-      goalTimeSec: _optInt(raw['goalTimeSec'], 1, 10 * 3600 - 1),
+      goalTimeSec: _optInt(raw['goalTimeSec'], 1,
+          goal == GoalEvent.custom ? raceGoalMaxHours * 3600 - 1 : 10 * 3600 - 1),
       recent5kSec: _optInt(raw['recent5kSec'], 12 * 60, 60 * 60 - 1),
       daysPerWeek: _reqInt(raw['daysPerWeek'], 3, 7),
       weeks: _optInt(raw['weeks'], 4, 24),
@@ -210,21 +238,21 @@ Future<String?> _refreshToken() async =>
         .session
         ?.accessToken;
 
-/// Extract plan-wizard inputs from a plain-English description. [todayIso] is
-/// the runner's calendar day, so relative dates resolve against it.
-Future<PlanRequestInputs> requestPlanInputs(
-  String request,
-  String todayIso, {
+/// One POST to an AI-planner endpoint under `/api/coach/` — the plan
+/// assistant and the season request share it. Sends [body] with the auth and
+/// payload-hash headers, refreshes the JWT once on a 401 and replays, and
+/// resolves to the decoded 200 body (null when it is not JSON). Every other
+/// outcome throws a typed [PlanRequestError].
+Future<Object?> postPlanAssistantRequest(
+  String path,
+  String body, {
   PlanRequestPoster? post,
   Future<String?> Function()? currentToken,
   Future<String?> Function()? refreshToken,
   String? baseUrl,
 }) async {
   final send = post ?? _defaultPost;
-  final body = jsonEncode({'request': request, 'today': todayIso});
-  final uri = Uri.parse(
-    '${resolveWebBaseUrl(override: baseUrl)}/api/coach/plan-request',
-  );
+  final uri = Uri.parse('${resolveWebBaseUrl(override: baseUrl)}$path');
   // Production Lambda reads `x-supabase-authorization` only (CloudFront's OAC
   // sigv4-signs `Authorization`), and OAC cannot hash a streamed body, so the
   // client supplies the payload hash or the Function URL 403s (#590).
@@ -275,7 +303,27 @@ Future<PlanRequestInputs> requestPlanInputs(
     throw PlanRequestError(
         planRequestErrorKind(res.statusCode, code is String ? code : null));
   }
+  return json;
+}
 
+/// Extract plan-wizard inputs from a plain-English description. [todayIso] is
+/// the runner's calendar day, so relative dates resolve against it.
+Future<PlanRequestInputs> requestPlanInputs(
+  String request,
+  String todayIso, {
+  PlanRequestPoster? post,
+  Future<String?> Function()? currentToken,
+  Future<String?> Function()? refreshToken,
+  String? baseUrl,
+}) async {
+  final json = await postPlanAssistantRequest(
+    '/api/coach/plan-request',
+    jsonEncode({'request': request, 'today': todayIso}),
+    post: post,
+    currentToken: currentToken,
+    refreshToken: refreshToken,
+    baseUrl: baseUrl,
+  );
   final inputs = parsePlanRequestInputs(json is Map ? json['inputs'] : null);
   if (inputs == null) {
     throw const PlanRequestError(PlanRequestErrorKind.unavailable);

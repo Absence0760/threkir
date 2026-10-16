@@ -445,6 +445,25 @@ test('the request forces the extraction tool, delimits the runner text, and name
 	assert.equal(user.split('</runner_description>').length, 2);
 });
 
+test('an ultra the model extracts comes back as a custom goal and its distance', async () => {
+	const { factory } = stubSupabase();
+	const model = stubModel(() => toolMessage({ ultra_distance_km: 56, goal_time_sec: 6 * 3600, days_per_week: 5 }));
+	const r = parse(
+		await handlePlanRequest('Bearer x', VALID, {
+			...baseConfig(),
+			createClient: factory,
+			createAnthropic: model.create,
+		}),
+	);
+	assert.equal(r.status, 200);
+	assert.equal(r.body.inputs?.goalEvent, 'custom');
+	assert.equal(r.body.inputs?.goalDistanceM, 56_000);
+	assert.equal(r.body.inputs?.goalTimeSec, 6 * 3600);
+	// The model is told how to report one.
+	const system = JSON.stringify(model.seen.body?.system ?? '');
+	assert.match(system, /ultra_distance_km/);
+});
+
 test('every goal event the tool advertises is one the validator accepts', () => {
 	const props = EXTRACT_TOOL.input_schema.properties as Record<string, { enum?: string[] }>;
 	const advertised = props.goal_event?.enum ?? [];
@@ -463,6 +482,7 @@ test('the tool schema names exactly the fields the validator reads', () => {
 		'plan_name',
 		'race_date',
 		'recent_5k_sec',
+		'ultra_distance_km',
 		'weeks',
 	]);
 });

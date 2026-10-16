@@ -488,12 +488,33 @@ ParsedPlan parsePlanMarkdown(String text) {
   for (final r in rows) {
     byWeek.putIfAbsent(r.weekIndex, () => []).add(r);
   }
+  final goalEvent =
+      goalEventToken != null && _goalEvents.contains(goalEventToken)
+      ? goalEventFromDb(goalEventToken)
+      : GoalEvent.custom;
+  // A known event takes its canonical distance: the "Goal distance" line is
+  // rounded to 2 dp of km, so trusting it would turn 42195 m into 42200.
+  final double resolvedDistance;
+  if (goalEvent != GoalEvent.custom) {
+    resolvedDistance = kGoalDistancesM[goalEvent]!;
+  } else if (goalDistanceM != null && goalDistanceM > 0) {
+    resolvedDistance = goalDistanceM;
+  } else {
+    resolvedDistance = rows.fold<double>(
+      0,
+      (m, r) => (r.targetDistanceM ?? 0) > m ? r.targetDistanceM! : m,
+    );
+  }
+  if (!(resolvedDistance > 0)) {
+    throw const PlanParseError('Could not determine a goal distance.');
+  }
   final weekIndexes = byWeek.keys.toList()..sort();
   final weeks = [
     for (final weekIndex in weekIndexes)
       GeneratedWeek(
         weekIndex: weekIndex,
-        phase: phaseFor(weekIndex, totalWeeks),
+        // The generator's own rule, so a pasted ultra plan tapers as one.
+        phase: planPhaseFor(weekIndex, totalWeeks, resolvedDistance),
         targetVolumeM: byWeek[weekIndex]!.fold<double>(
           0,
           (s, w) => s + (w.targetDistanceM ?? 0),
@@ -515,26 +536,6 @@ ParsedPlan parsePlanMarkdown(String text) {
       ),
   ];
 
-  final goalEvent =
-      goalEventToken != null && _goalEvents.contains(goalEventToken)
-      ? goalEventFromDb(goalEventToken)
-      : GoalEvent.custom;
-  // A known event takes its canonical distance: the "Goal distance" line is
-  // rounded to 2 dp of km, so trusting it would turn 42195 m into 42200.
-  final double resolvedDistance;
-  if (goalEvent != GoalEvent.custom) {
-    resolvedDistance = kGoalDistancesM[goalEvent]!;
-  } else if (goalDistanceM != null && goalDistanceM > 0) {
-    resolvedDistance = goalDistanceM;
-  } else {
-    resolvedDistance = rows.fold<double>(
-      0,
-      (m, r) => (r.targetDistanceM ?? 0) > m ? r.targetDistanceM! : m,
-    );
-  }
-  if (!(resolvedDistance > 0)) {
-    throw const PlanParseError('Could not determine a goal distance.');
-  }
 
   final start = startDate != null && _isoDate.hasMatch(startDate)
       ? startDate

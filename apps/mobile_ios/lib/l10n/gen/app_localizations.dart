@@ -9544,6 +9544,30 @@ abstract class AppLocalizations {
   /// **'Goal race'**
   String get planNewGoalRace;
 
+  /// Goal-race dropdown entry for an ultra distance the runner types in
+  ///
+  /// In en, this message translates to:
+  /// **'Other ultra distance'**
+  String get planNewUltraOther;
+
+  /// Label of the ultra race-distance field; the placeholder is km or mi
+  ///
+  /// In en, this message translates to:
+  /// **'Race distance ({unit})'**
+  String planNewUltraDistance(String unit);
+
+  /// Hint under the ultra race-distance field
+  ///
+  /// In en, this message translates to:
+  /// **'Ultra courses vary — Comrades runs 86–90 km depending on the year. Enter your race\'s exact distance. Long runs are set by time on feet, not pace.'**
+  String get planNewUltraDistanceHint;
+
+  /// Shown when the ultra distance typed is not longer than a marathon
+  ///
+  /// In en, this message translates to:
+  /// **'An ultra is longer than a marathon. Pick Marathon, or enter a longer distance.'**
+  String get planNewUltraDistanceTooShort;
+
   /// Start-date tile title
   ///
   /// In en, this message translates to:
@@ -9759,6 +9783,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'A walk-run plan for new runners builds to a 5K, so the goal was set to 5K with no goal time.'**
   String get planNewAiAssumptionBeginner5k;
+
+  /// AI season-request assumption: a race entry with no usable name was dropped
+  ///
+  /// In en, this message translates to:
+  /// **'A race that couldn\'t be read was left out.'**
+  String get planNewSeasonAssumptionRaceDroppedInvalid;
+
+  /// AI season-request assumption: a race was dropped because its date was not a future date within two years
+  ///
+  /// In en, this message translates to:
+  /// **'A race was left out because its date couldn\'t be used — it has to be a future date within two years.'**
+  String get planNewSeasonAssumptionRaceDroppedDate;
+
+  /// AI season-request assumption: a race was dropped because its distance was outside 5-400 km
+  ///
+  /// In en, this message translates to:
+  /// **'A race was left out because its distance is outside what the planner supports (5 km to 400 km).'**
+  String get planNewSeasonAssumptionRaceDroppedDistance;
+
+  /// AI season-request assumption: a date with no year had passed this year and was moved to next year
+  ///
+  /// In en, this message translates to:
+  /// **'A date given without a year had already passed this year, so it was moved to next year.'**
+  String get planNewSeasonAssumptionRaceDateNextYear;
+
+  /// AI season-request assumption: a race's goal time was out of range for its distance and was removed
+  ///
+  /// In en, this message translates to:
+  /// **'A goal time looked out of range for its distance, so that race has no goal time.'**
+  String get planNewSeasonAssumptionGoalTimeDropped;
+
+  /// AI season-request assumption: a race named twice was merged into one entry
+  ///
+  /// In en, this message translates to:
+  /// **'A race mentioned twice is listed once.'**
+  String get planNewSeasonAssumptionRaceDuplicateMerged;
+
+  /// AI season-request assumption: only the first 12 races were kept
+  ///
+  /// In en, this message translates to:
+  /// **'Only the first 12 races are listed — a season can hold up to 12.'**
+  String get planNewSeasonAssumptionRacesCapped;
+
+  /// AI season-request assumption: races with no A/B/C priority were given priority B
+  ///
+  /// In en, this message translates to:
+  /// **'Races without a priority were set to B.'**
+  String get planNewSeasonAssumptionPriorityDefault;
+
+  /// AI season-request assumption: no race was priority A, so the longest race was made the A race
+  ///
+  /// In en, this message translates to:
+  /// **'No race was marked as your A race, so the longest one is.'**
+  String get planNewSeasonAssumptionPriorityAAssigned;
 
   /// Error when the AI plan assistant needs the runner to accept the updated AI disclosure first
   ///
@@ -10521,6 +10599,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{change} — recovery after {race}'**
   String planDetailRaceTaperPost(String change, String race);
+
+  /// Second line under a proposed taper change: the workout's notes described the old session, so applying clears them
+  ///
+  /// In en, this message translates to:
+  /// **'Notes cleared'**
+  String get planDetailRaceTaperNotesCleared;
 
   /// Plan-detail hero line naming the next race the hero's distance, goal and date now describe (a B or C race before the plan's A race)
   ///
@@ -27157,6 +27241,383 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t unlink the club. Try again.'**
   String get stravaClubsErrUnlink;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'Plan a season'**
+  String get seasonPlanTitle;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'List the races in your season. Each A race gets its own plan, the plans run one after another with recovery between them, and each B or C race goes into the plan it falls inside.'**
+  String get seasonPlanIntro;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'Describe your season'**
+  String get seasonPlanDescribeTitle;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'Name your races, their dates and distances, and which ones matter most. The races are listed below for you to check; nothing is planned until you confirm them.'**
+  String get seasonPlanDescribeHint;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Richmond Marathon on 14 November, then Two Oceans on 3 April as a tune-up, and Comrades on 13 June.'**
+  String get seasonPlanDescribePlaceholder;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'Find my races'**
+  String get seasonPlanDescribeButton;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'Reading…'**
+  String get seasonPlanDescribeWorking;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'Races found in your description. Check each one before you continue.'**
+  String get seasonPlanDescribeFound;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'The season assistant needs the updated AI disclosure. You can still add your races below.'**
+  String get seasonPlanErrorConsent;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve used today\'s AI requests. Add your races below yourself, or try again tomorrow.'**
+  String get seasonPlanErrorDailyLimit;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'No races could be found in that. Add them below yourself.'**
+  String get seasonPlanErrorNotUnderstood;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'That description couldn\'t be used. Add your races below yourself.'**
+  String get seasonPlanErrorInvalid;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in again to use the assistant. You can still add your races below.'**
+  String get seasonPlanErrorSignIn;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'The assistant isn\'t available right now. Add your races below yourself.'**
+  String get seasonPlanErrorUnavailable;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'Your races'**
+  String get seasonPlanRacesTitle;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'A races are the ones the season builds to, and each gets its own plan. B races are tune-ups you race properly; C races are run as training.'**
+  String get seasonPlanRacesHint;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'No races yet. Describe your season above or add a race.'**
+  String get seasonPlanNoRaces;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'Race {n}'**
+  String seasonPlanRaceLegend(int n);
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'Remove race {n}'**
+  String seasonPlanRemoveRace(int n);
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get seasonPlanRaceName;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get seasonPlanRaceDate;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'Distance ({unit})'**
+  String seasonPlanRaceDistance(String unit);
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'Priority'**
+  String get seasonPlanRacePriority;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'A — goal race'**
+  String get seasonPlanPriorityA;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'B — tune-up'**
+  String get seasonPlanPriorityB;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'C — training race'**
+  String get seasonPlanPriorityC;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'Goal time (optional)'**
+  String get seasonPlanRaceGoal;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'Add a race'**
+  String get seasonPlanAddRace;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'Days per week'**
+  String get seasonPlanDaysPerWeek;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'How many days a week you can train, used for every plan in the season.'**
+  String get seasonPlanDaysPerWeekHint;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm races and preview plans'**
+  String get seasonPlanPreviewButton;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'Your season'**
+  String get seasonPlanPreviewTitle;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'Add at least one race.'**
+  String get seasonPlanRefusedEmpty;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'Check these races: {races}. Each needs a name of up to 80 characters, a date and a distance.'**
+  String seasonPlanRefusedInvalid(String races);
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'These races are today or already past: {races}. Remove them or change the date.'**
+  String seasonPlanRefusedNotAhead(String races);
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'Mark at least one race as A. A races are the ones the season builds plans for.'**
+  String get seasonPlanRefusedNoA;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'{races} is less than four weeks away, too soon for a plan. Make it a B or C race, or plan for a later A race.'**
+  String seasonPlanRefusedFirstTooSoon(String races);
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'{races} are too close together for recovery and a plan of at least four weeks between them. Make one of them a B race.'**
+  String seasonPlanRefusedTooClose(String races);
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} plan} other{{count} plans}}, built by the app\'s own generator. Check them, then create them.'**
+  String seasonPlanPreviewHint(int count);
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'{start} – {end} · {weeks, plural, one{{weeks} week} other{{weeks} weeks}}'**
+  String seasonPlanPlanWindow(String start, String end, int weeks);
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'Goal: {distance} on {date}'**
+  String seasonPlanPlanGoal(String distance, String date);
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'goal time {time}'**
+  String seasonPlanPlanGoalTime(String time);
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'Races in this plan'**
+  String get seasonPlanPlanRaces;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'{priority} · {name} · {distance} · {date}'**
+  String seasonPlanPlanRaceLine(
+    String priority,
+    String name,
+    String distance,
+    String date,
+  );
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'Created'**
+  String get seasonPlanPlanCreated;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'Recovery after {race}: {days, plural, one{{days} day} other{{days} days}} with no plan ({from} – {to})'**
+  String seasonPlanRecoveryLine(String race, int days, String from, String to);
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'Not in any plan'**
+  String get seasonPlanUnplacedTitle;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'{race} on {date} is before the first plan starts.'**
+  String seasonPlanUnplacedBefore(String race, String date);
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'{race} on {date} falls in the recovery between two plans.'**
+  String seasonPlanUnplacedBetween(String race, String date);
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'{race} on {date} is after the last A race.'**
+  String seasonPlanUnplacedAfter(String race, String date);
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'{race} on {date} is on the same day as another race in its plan.'**
+  String seasonPlanUnplacedSameDay(String race, String date);
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'These races won\'t be added. Change their date or priority to include them.'**
+  String get seasonPlanUnplacedHint;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'Creating…'**
+  String get seasonPlanCreating;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'Create the remaining plans'**
+  String get seasonPlanRetry;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Create {count} plan} other{Create {count} plans}}'**
+  String seasonPlanCreateButton(int count);
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'{plan} would overlap your plan {existing}. Nothing was created. End or move that plan first.'**
+  String seasonPlanBlocked(String plan, String existing);
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'No plans were created: {error}'**
+  String seasonPlanFailedNone(String error);
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'Created: {created}. Not created yet: {failed} ({error}).'**
+  String seasonPlanFailedPartial(String created, String failed, String error);
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'Review the AI disclosure'**
+  String get seasonPlanReviewDisclosure;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'Pick the race day'**
+  String get seasonPlanRaceDatePick;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'h:mm:ss, e.g. 3:45:00. Leave blank for no goal time.'**
+  String get seasonPlanRaceGoalHint;
+
+  /// Season planner (issue #1181)
+  ///
+  /// In en, this message translates to:
+  /// **'Race {n} needs a name, a race day, a distance, and either no goal time or one written h:mm:ss.'**
+  String seasonPlanRowInvalid(int n);
 }
 
 class _AppLocalizationsDelegate

@@ -45,7 +45,10 @@ export const AI_DISCLOSURE_VERSION_ROUTE_AI = 2;
  * Minimum disclosure version /api/coach/plan-request requires. Its own rung
  * because it sends the typed plan description (goal race, target and recent
  * times, training days) to extract plan-wizard settings — a payload and
- * purpose neither the Coach nor the route copy described.
+ * purpose neither the Coach nor the route copy described. Also required by
+ * /api/coach/season-request, which sends the same kind of description (goal
+ * races, dates, target times) for the same purpose: filling the planner's
+ * own fields, here the season's race list.
  */
 export const AI_DISCLOSURE_VERSION_PLAN_AI = 3;
 

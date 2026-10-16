@@ -7799,6 +7799,27 @@
   "@planNewGoalRace": {
     "description": "Goal-race dropdown label"
   },
+  "planNewUltraOther": "Other ultra distance",
+  "@planNewUltraOther": {
+    "description": "Goal-race dropdown entry for an ultra distance the runner types in"
+  },
+  "planNewUltraDistance": "Race distance ({unit})",
+  "@planNewUltraDistance": {
+    "description": "Label of the ultra race-distance field; the placeholder is km or mi",
+    "placeholders": {
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "planNewUltraDistanceHint": "Ultra courses vary — Comrades runs 86–90 km depending on the year. Enter your race's exact distance. Long runs are set by time on feet, not pace.",
+  "@planNewUltraDistanceHint": {
+    "description": "Hint under the ultra race-distance field"
+  },
+  "planNewUltraDistanceTooShort": "An ultra is longer than a marathon. Pick Marathon, or enter a longer distance.",
+  "@planNewUltraDistanceTooShort": {
+    "description": "Shown when the ultra distance typed is not longer than a marathon"
+  },
   "planNewStartDate": "Start date",
   "@planNewStartDate": {
     "description": "Start-date tile title"
@@ -7962,6 +7983,42 @@
   "planNewAiAssumptionBeginner5k": "A walk-run plan for new runners builds to a 5K, so the goal was set to 5K with no goal time.",
   "@planNewAiAssumptionBeginner5k": {
     "description": "AI plan-assistant assumption: a beginner walk-run plan always targets a 5K with no goal time"
+  },
+  "planNewSeasonAssumptionRaceDroppedInvalid": "A race that couldn't be read was left out.",
+  "@planNewSeasonAssumptionRaceDroppedInvalid": {
+    "description": "AI season-request assumption: a race entry with no usable name was dropped"
+  },
+  "planNewSeasonAssumptionRaceDroppedDate": "A race was left out because its date couldn't be used — it has to be a future date within two years.",
+  "@planNewSeasonAssumptionRaceDroppedDate": {
+    "description": "AI season-request assumption: a race was dropped because its date was not a future date within two years"
+  },
+  "planNewSeasonAssumptionRaceDroppedDistance": "A race was left out because its distance is outside what the planner supports (5 km to 400 km).",
+  "@planNewSeasonAssumptionRaceDroppedDistance": {
+    "description": "AI season-request assumption: a race was dropped because its distance was outside 5-400 km"
+  },
+  "planNewSeasonAssumptionRaceDateNextYear": "A date given without a year had already passed this year, so it was moved to next year.",
+  "@planNewSeasonAssumptionRaceDateNextYear": {
+    "description": "AI season-request assumption: a date with no year had passed this year and was moved to next year"
+  },
+  "planNewSeasonAssumptionGoalTimeDropped": "A goal time looked out of range for its distance, so that race has no goal time.",
+  "@planNewSeasonAssumptionGoalTimeDropped": {
+    "description": "AI season-request assumption: a race's goal time was out of range for its distance and was removed"
+  },
+  "planNewSeasonAssumptionRaceDuplicateMerged": "A race mentioned twice is listed once.",
+  "@planNewSeasonAssumptionRaceDuplicateMerged": {
+    "description": "AI season-request assumption: a race named twice was merged into one entry"
+  },
+  "planNewSeasonAssumptionRacesCapped": "Only the first 12 races are listed — a season can hold up to 12.",
+  "@planNewSeasonAssumptionRacesCapped": {
+    "description": "AI season-request assumption: only the first 12 races were kept"
+  },
+  "planNewSeasonAssumptionPriorityDefault": "Races without a priority were set to B.",
+  "@planNewSeasonAssumptionPriorityDefault": {
+    "description": "AI season-request assumption: races with no A/B/C priority were given priority B"
+  },
+  "planNewSeasonAssumptionPriorityAAssigned": "No race was marked as your A race, so the longest one is.",
+  "@planNewSeasonAssumptionPriorityAAssigned": {
+    "description": "AI season-request assumption: no race was priority A, so the longest race was made the A race"
   },
   "planNewAiErrorConsent": "The plan assistant needs the updated AI disclosure.",
   "@planNewAiErrorConsent": {
@@ -8699,6 +8756,10 @@
         "type": "String"
       }
     }
+  },
+  "planDetailRaceTaperNotesCleared": "Notes cleared",
+  "@planDetailRaceTaperNotesCleared": {
+    "description": "Second line under a proposed taper change: the workout's notes described the old session, so applying clears them"
   },
   "planDetailHeroNextRace": "Next race: {name}",
   "@planDetailHeroNextRace": {
@@ -21468,5 +21529,411 @@
   "stravaClubsErrUnlink": "Couldn't unlink the club. Try again.",
   "@stravaClubsErrUnlink": {
     "description": "Unlink failed"
+  },
+  "seasonPlanTitle": "Plan a season",
+  "@seasonPlanTitle": {
+    "description": "Season planner (issue #1181)"
+  },
+  "seasonPlanIntro": "List the races in your season. Each A race gets its own plan, the plans run one after another with recovery between them, and each B or C race goes into the plan it falls inside.",
+  "@seasonPlanIntro": {
+    "description": "Season planner (issue #1181)"
+  },
+  "seasonPlanDescribeTitle": "Describe your season",
+  "@seasonPlanDescribeTitle": {
+    "description": "Season planner (issue #1181)"
+  },
+  "seasonPlanDescribeHint": "Name your races, their dates and distances, and which ones matter most. The races are listed below for you to check; nothing is planned until you confirm them.",
+  "@seasonPlanDescribeHint": {
+    "description": "Season planner (issue #1181)"
+  },
+  "seasonPlanDescribePlaceholder": "e.g. Richmond Marathon on 14 November, then Two Oceans on 3 April as a tune-up, and Comrades on 13 June.",
+  "@seasonPlanDescribePlaceholder": {
+    "description": "Season planner (issue #1181)"
+  },
+  "seasonPlanDescribeButton": "Find my races",
+  "@seasonPlanDescribeButton": {
+    "description": "Season planner (issue #1181)"
+  },
+  "seasonPlanDescribeWorking": "Reading…",
+  "@seasonPlanDescribeWorking": {
+    "description": "Season planner (issue #1181)"
+  },
+  "seasonPlanDescribeFound": "Races found in your description. Check each one before you continue.",
+  "@seasonPlanDescribeFound": {
+    "description": "Season planner (issue #1181)"
+  },
+  "seasonPlanErrorConsent": "The season assistant needs the updated AI disclosure. You can still add your races below.",
+  "@seasonPlanErrorConsent": {
+    "description": "Season planner (issue #1181)"
+  },
+  "seasonPlanErrorDailyLimit": "You've used today's AI requests. Add your races below yourself, or try again tomorrow.",
+  "@seasonPlanErrorDailyLimit": {
+    "description": "Season planner (issue #1181)"
+  },
+  "seasonPlanErrorNotUnderstood": "No races could be found in that. Add them below yourself.",
+  "@seasonPlanErrorNotUnderstood": {
+    "description": "Season planner (issue #1181)"
+  },
+  "seasonPlanErrorInvalid": "That description couldn't be used. Add your races below yourself.",
+  "@seasonPlanErrorInvalid": {
+    "description": "Season planner (issue #1181)"
+  },
+  "seasonPlanErrorSignIn": "Sign in again to use the assistant. You can still add your races below.",
+  "@seasonPlanErrorSignIn": {
+    "description": "Season planner (issue #1181)"
+  },
+  "seasonPlanErrorUnavailable": "The assistant isn't available right now. Add your races below yourself.",
+  "@seasonPlanErrorUnavailable": {
+    "description": "Season planner (issue #1181)"
+  },
+  "seasonPlanRacesTitle": "Your races",
+  "@seasonPlanRacesTitle": {
+    "description": "Season planner (issue #1181)"
+  },
+  "seasonPlanRacesHint": "A races are the ones the season builds to, and each gets its own plan. B races are tune-ups you race properly; C races are run as training.",
+  "@seasonPlanRacesHint": {
+    "description": "Season planner (issue #1181)"
+  },
+  "seasonPlanNoRaces": "No races yet. Describe your season above or add a race.",
+  "@seasonPlanNoRaces": {
+    "description": "Season planner (issue #1181)"
+  },
+  "seasonPlanRaceLegend": "Race {n}",
+  "@seasonPlanRaceLegend": {
+    "description": "Season planner (issue #1181)",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "seasonPlanRemoveRace": "Remove race {n}",
+  "@seasonPlanRemoveRace": {
+    "description": "Season planner (issue #1181)",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "seasonPlanRaceName": "Name",
+  "@seasonPlanRaceName": {
+    "description": "Season planner (issue #1181)"
+  },
+  "seasonPlanRaceDate": "Date",
+  "@seasonPlanRaceDate": {
+    "description": "Season planner (issue #1181)"
+  },
+  "seasonPlanRaceDistance": "Distance ({unit})",
+  "@seasonPlanRaceDistance": {
+    "description": "Season planner (issue #1181)",
+    "placeholders": {
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "seasonPlanRacePriority": "Priority",
+  "@seasonPlanRacePriority": {
+    "description": "Season planner (issue #1181)"
+  },
+  "seasonPlanPriorityA": "A — goal race",
+  "@seasonPlanPriorityA": {
+    "description": "Season planner (issue #1181)"
+  },
+  "seasonPlanPriorityB": "B — tune-up",
+  "@seasonPlanPriorityB": {
+    "description": "Season planner (issue #1181)"
+  },
+  "seasonPlanPriorityC": "C — training race",
+  "@seasonPlanPriorityC": {
+    "description": "Season planner (issue #1181)"
+  },
+  "seasonPlanRaceGoal": "Goal time (optional)",
+  "@seasonPlanRaceGoal": {
+    "description": "Season planner (issue #1181)"
+  },
+  "seasonPlanAddRace": "Add a race",
+  "@seasonPlanAddRace": {
+    "description": "Season planner (issue #1181)"
+  },
+  "seasonPlanDaysPerWeek": "Days per week",
+  "@seasonPlanDaysPerWeek": {
+    "description": "Season planner (issue #1181)"
+  },
+  "seasonPlanDaysPerWeekHint": "How many days a week you can train, used for every plan in the season.",
+  "@seasonPlanDaysPerWeekHint": {
+    "description": "Season planner (issue #1181)"
+  },
+  "seasonPlanPreviewButton": "Confirm races and preview plans",
+  "@seasonPlanPreviewButton": {
+    "description": "Season planner (issue #1181)"
+  },
+  "seasonPlanPreviewTitle": "Your season",
+  "@seasonPlanPreviewTitle": {
+    "description": "Season planner (issue #1181)"
+  },
+  "seasonPlanRefusedEmpty": "Add at least one race.",
+  "@seasonPlanRefusedEmpty": {
+    "description": "Season planner (issue #1181)"
+  },
+  "seasonPlanRefusedInvalid": "Check these races: {races}. Each needs a name of up to 80 characters, a date and a distance.",
+  "@seasonPlanRefusedInvalid": {
+    "description": "Season planner (issue #1181)",
+    "placeholders": {
+      "races": {
+        "type": "String"
+      }
+    }
+  },
+  "seasonPlanRefusedNotAhead": "These races are today or already past: {races}. Remove them or change the date.",
+  "@seasonPlanRefusedNotAhead": {
+    "description": "Season planner (issue #1181)",
+    "placeholders": {
+      "races": {
+        "type": "String"
+      }
+    }
+  },
+  "seasonPlanRefusedNoA": "Mark at least one race as A. A races are the ones the season builds plans for.",
+  "@seasonPlanRefusedNoA": {
+    "description": "Season planner (issue #1181)"
+  },
+  "seasonPlanRefusedFirstTooSoon": "{races} is less than four weeks away, too soon for a plan. Make it a B or C race, or plan for a later A race.",
+  "@seasonPlanRefusedFirstTooSoon": {
+    "description": "Season planner (issue #1181)",
+    "placeholders": {
+      "races": {
+        "type": "String"
+      }
+    }
+  },
+  "seasonPlanRefusedTooClose": "{races} are too close together for recovery and a plan of at least four weeks between them. Make one of them a B race.",
+  "@seasonPlanRefusedTooClose": {
+    "description": "Season planner (issue #1181)",
+    "placeholders": {
+      "races": {
+        "type": "String"
+      }
+    }
+  },
+  "seasonPlanPreviewHint": "{count, plural, one{{count} plan} other{{count} plans}}, built by the app's own generator. Check them, then create them.",
+  "@seasonPlanPreviewHint": {
+    "description": "Season planner (issue #1181)",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "seasonPlanPlanWindow": "{start} – {end} · {weeks, plural, one{{weeks} week} other{{weeks} weeks}}",
+  "@seasonPlanPlanWindow": {
+    "description": "Season planner (issue #1181)",
+    "placeholders": {
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      },
+      "weeks": {
+        "type": "int"
+      }
+    }
+  },
+  "seasonPlanPlanGoal": "Goal: {distance} on {date}",
+  "@seasonPlanPlanGoal": {
+    "description": "Season planner (issue #1181)",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "seasonPlanPlanGoalTime": "goal time {time}",
+  "@seasonPlanPlanGoalTime": {
+    "description": "Season planner (issue #1181)",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "seasonPlanPlanRaces": "Races in this plan",
+  "@seasonPlanPlanRaces": {
+    "description": "Season planner (issue #1181)"
+  },
+  "seasonPlanPlanRaceLine": "{priority} · {name} · {distance} · {date}",
+  "@seasonPlanPlanRaceLine": {
+    "description": "Season planner (issue #1181)",
+    "placeholders": {
+      "priority": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      },
+      "distance": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "seasonPlanPlanCreated": "Created",
+  "@seasonPlanPlanCreated": {
+    "description": "Season planner (issue #1181)"
+  },
+  "seasonPlanRecoveryLine": "Recovery after {race}: {days, plural, one{{days} day} other{{days} days}} with no plan ({from} – {to})",
+  "@seasonPlanRecoveryLine": {
+    "description": "Season planner (issue #1181)",
+    "placeholders": {
+      "race": {
+        "type": "String"
+      },
+      "days": {
+        "type": "int"
+      },
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "seasonPlanUnplacedTitle": "Not in any plan",
+  "@seasonPlanUnplacedTitle": {
+    "description": "Season planner (issue #1181)"
+  },
+  "seasonPlanUnplacedBefore": "{race} on {date} is before the first plan starts.",
+  "@seasonPlanUnplacedBefore": {
+    "description": "Season planner (issue #1181)",
+    "placeholders": {
+      "race": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "seasonPlanUnplacedBetween": "{race} on {date} falls in the recovery between two plans.",
+  "@seasonPlanUnplacedBetween": {
+    "description": "Season planner (issue #1181)",
+    "placeholders": {
+      "race": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "seasonPlanUnplacedAfter": "{race} on {date} is after the last A race.",
+  "@seasonPlanUnplacedAfter": {
+    "description": "Season planner (issue #1181)",
+    "placeholders": {
+      "race": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "seasonPlanUnplacedSameDay": "{race} on {date} is on the same day as another race in its plan.",
+  "@seasonPlanUnplacedSameDay": {
+    "description": "Season planner (issue #1181)",
+    "placeholders": {
+      "race": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "seasonPlanUnplacedHint": "These races won't be added. Change their date or priority to include them.",
+  "@seasonPlanUnplacedHint": {
+    "description": "Season planner (issue #1181)"
+  },
+  "seasonPlanCreating": "Creating…",
+  "@seasonPlanCreating": {
+    "description": "Season planner (issue #1181)"
+  },
+  "seasonPlanRetry": "Create the remaining plans",
+  "@seasonPlanRetry": {
+    "description": "Season planner (issue #1181)"
+  },
+  "seasonPlanCreateButton": "{count, plural, one{Create {count} plan} other{Create {count} plans}}",
+  "@seasonPlanCreateButton": {
+    "description": "Season planner (issue #1181)",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "seasonPlanBlocked": "{plan} would overlap your plan {existing}. Nothing was created. End or move that plan first.",
+  "@seasonPlanBlocked": {
+    "description": "Season planner (issue #1181)",
+    "placeholders": {
+      "plan": {
+        "type": "String"
+      },
+      "existing": {
+        "type": "String"
+      }
+    }
+  },
+  "seasonPlanFailedNone": "No plans were created: {error}",
+  "@seasonPlanFailedNone": {
+    "description": "Season planner (issue #1181)",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "seasonPlanFailedPartial": "Created: {created}. Not created yet: {failed} ({error}).",
+  "@seasonPlanFailedPartial": {
+    "description": "Season planner (issue #1181)",
+    "placeholders": {
+      "created": {
+        "type": "String"
+      },
+      "failed": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "seasonPlanReviewDisclosure": "Review the AI disclosure",
+  "@seasonPlanReviewDisclosure": {
+    "description": "Season planner (issue #1181)"
+  },
+  "seasonPlanRaceDatePick": "Pick the race day",
+  "@seasonPlanRaceDatePick": {
+    "description": "Season planner (issue #1181)"
+  },
+  "seasonPlanRaceGoalHint": "h:mm:ss, e.g. 3:45:00. Leave blank for no goal time.",
+  "@seasonPlanRaceGoalHint": {
+    "description": "Season planner (issue #1181)"
+  },
+  "seasonPlanRowInvalid": "Race {n} needs a name, a race day, a distance, and either no goal time or one written h:mm:ss.",
+  "@seasonPlanRowInvalid": {
+    "description": "Season planner (issue #1181)",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
   }
 }

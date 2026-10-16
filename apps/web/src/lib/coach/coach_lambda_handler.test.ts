@@ -132,6 +132,7 @@ test('each sub-path enforces its own byte cap, measured in bytes', async () => {
 		['/api/coach/plan-request', 16 * 1024],
 		['/api/coach/plate-photo', 4 * 1024 * 1024 + 16 * 1024],
 		['/api/coach/plan-edit', 16 * 1024],
+		['/api/coach/season-request', 16 * 1024],
 	];
 	for (const [rawPath, limit] of cases) {
 		const over = await invoke({ rawPath, body: 'x'.repeat(limit + 1) });
@@ -245,6 +246,7 @@ test('the provider check does not gate the non-streaming sub-paths', async () =>
 			'/api/coach/plan-request',
 			'/api/coach/plate-photo',
 			'/api/coach/plan-edit',
+			'/api/coach/season-request',
 		]) {
 			const out = await invoke({ rawPath, body: '{}' });
 			assert.notEqual(out.status, 503, `${rawPath} was gated on COACH_PROVIDER`);
@@ -272,6 +274,7 @@ test('a missing env var answers a generic 503 and never names itself on the wire
 			'/api/coach/plan-request',
 			'/api/coach/plate-photo',
 			'/api/coach/plan-edit',
+			'/api/coach/season-request',
 		]) {
 			const out = await invoke({
 				rawPath,
@@ -303,6 +306,7 @@ test('a sub-path refusal forwards the core\'s own status, headers and body', asy
 		'/api/coach/plan-request',
 		'/api/coach/plate-photo',
 		'/api/coach/plan-edit',
+		'/api/coach/season-request',
 	]) {
 		const out = await invoke({ rawPath, body: '{}' });
 		assert.equal(out.headers?.['content-type'], 'application/json', rawPath);
@@ -321,9 +325,13 @@ test('a sub-path refusal forwards the core\'s own status, headers and body', asy
 		/JSON\.parse\(result\.body\)/,
 		'a dispatcher that re-parses the core\'s body has already discarded its headers.',
 	);
+	// One per SUB_PATHS entry, derived so a new sub-path is counted without
+	// anyone remembering to bump a literal.
+	const subPaths = (src.match(/const SUB_PATHS = \[([\s\S]*?)\]\.map\(/)?.[1].match(/segment: '/g) ?? []).length;
+	assert.ok(subPaths >= 6, `found only ${subPaths} sub-paths — SUB_PATHS parse broken?`);
 	assert.equal(
 		(src.match(/writeResult\(responseStream, result\)/g) ?? []).length,
-		5,
+		subPaths,
 		'every non-streaming sub-dispatcher must forward the core result verbatim.',
 	);
 });
@@ -362,6 +370,8 @@ test('a sub-path is matched by its whole path, not by a substring of it', async 
 		'/api/coach/plate-photo/extra',
 		'/api/coach/plan-editX',
 		'/api/coach/plan-edit/extra',
+		'/api/coach/season-requestX',
+		'/api/coach/season-request/extra',
 	]) {
 		const out = await invoke({ rawPath, body: CHAT_BODY });
 		assert.equal(
@@ -410,6 +420,8 @@ test('an unknown path under the prefix never reaches the coach turn or its large
 		['/api/coach/plate-photo/', 400],
 		['/api/coach/plan-edit', 400],
 		['/api/coach/plan-edit/', 400],
+		['/api/coach/season-request', 400],
+		['/api/coach/season-request/', 400],
 	] as Array<[string, number]>) {
 		const out = await invoke({ rawPath, body: CHAT_BODY });
 		assert.equal(out.status, status, `${rawPath} no longer routes`);

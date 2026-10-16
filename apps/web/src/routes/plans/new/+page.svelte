@@ -451,6 +451,12 @@
 		<p class="picker-hint field-hint" id="starter-start-date-hint">{m('plansNew.startDateHint')}</p>
 	</section>
 
+	<section class="season-entry" data-testid="season-entry">
+		<h2>{m('seasonPlanner.entryTitle')}</h2>
+		<p class="picker-hint">{m('seasonPlanner.entryHint')}</p>
+		<a class="btn btn-secondary" href="/plans/season">{m('seasonPlanner.entryLink')}</a>
+	</section>
+
 	{#if !loadingTemplates && templates.length > 0}
 		<section class="template-picker">
 			<h2>{m('plansNew.templateHeading')}</h2>
@@ -509,6 +515,7 @@
 		initialGoalEvent={racePreset?.ok
 			? (racePreset.preset.goalEvent ?? undefined)
 			: goalPreset?.goalEvent}
+		initialGoalDistanceM={racePreset?.ok && racePreset.preset.goalEvent == null ? raceDistanceM : null}
 		initialBeginnerWalkRun={goalPreset?.beginnerWalkRun}
 		{initialName}
 		initialStartDate={racePreset?.ok ? racePreset.preset.startDate : undefined}
@@ -634,7 +641,8 @@
 	}
 
 	.template-picker,
-	.starter-picker {
+	.starter-picker,
+	.season-entry {
 		background: var(--color-surface);
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-lg);
@@ -642,7 +650,8 @@
 		margin-bottom: var(--space-lg);
 	}
 	.template-picker h2,
-	.starter-picker h2 {
+	.starter-picker h2,
+	.season-entry h2 {
 		font-size: 1.1rem;
 		font-weight: 700;
 		margin: 0 0 0.2rem 0;

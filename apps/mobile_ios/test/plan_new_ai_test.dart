@@ -48,6 +48,7 @@ class _Assistant {
 
 PlanRequestInputs _inputs({
   GoalEvent goalEvent = GoalEvent.distanceHalf,
+  double? goalDistanceM,
   String? raceDate,
   int? goalTimeSec,
   int? recent5kSec,
@@ -59,6 +60,7 @@ PlanRequestInputs _inputs({
 }) =>
     PlanRequestInputs(
       goalEvent: goalEvent,
+      goalDistanceM: goalDistanceM,
       raceDate: raceDate,
       goalTimeSec: goalTimeSec,
       recent5kSec: recent5kSec,
@@ -121,10 +123,15 @@ TextEditingController _weeksField(WidgetTester tester) => tester
         w is TextField && w.decoration?.hintText == _en.planNewOverrideHint))
     .controller!;
 
-GoalEvent? _goal(WidgetTester tester) => tester
-    .widget<DropdownButtonFormField<GoalEvent>>(
-        find.byType(DropdownButtonFormField<GoalEvent>))
-    .initialValue;
+GoalEvent? _goal(WidgetTester tester) {
+  final value = tester
+      .widget<DropdownButtonFormField<String>>(find.byWidgetPredicate((w) =>
+          w is DropdownButtonFormField<String> &&
+          w.key is ValueKey<String> &&
+          (w.key as ValueKey<String>).value.startsWith('plan-new-goal-')))
+      .initialValue;
+  return value == null ? null : goalEventFromDb(value);
+}
 
 int? _days(WidgetTester tester) => tester
     .widget<DropdownButtonFormField<int>>(
@@ -186,6 +193,48 @@ void main() {
     expect(find.textContaining(_en.planNewAiAppliedRecent5k), findsOneWidget);
     expect(find.textContaining(_en.planNewAiAssumptionWeeksClamped),
         findsOneWidget);
+  });
+
+  testWidgets('an ultra fill selects the Ultra entry and shows its distance',
+      (tester) async {
+    final assistant = _Assistant([
+      _inputs(
+          goalEvent: GoalEvent.custom,
+          goalDistanceM: 56000,
+          goalTimeSec: 11 * 3600),
+      _inputs(goalEvent: GoalEvent.custom, goalDistanceM: 160934),
+      _inputs(goalEvent: GoalEvent.custom, goalDistanceM: 70000),
+      _inputs(goalEvent: GoalEvent.distanceFull),
+    ]);
+    await _pump(tester, assistant: assistant);
+
+    String? choice() => tester
+        .widget<DropdownButtonFormField<String>>(find.byWidgetPredicate((w) =>
+            w is DropdownButtonFormField<String> &&
+            w.key is ValueKey<String> &&
+            (w.key as ValueKey<String>).value.startsWith('plan-new-goal-')))
+        .initialValue;
+    String distance() => tester
+        .widget<TextField>(find.byKey(const Key('plan-new-ultra-distance')))
+        .controller!
+        .text;
+
+    await _describe(tester, 'Two Oceans in 11 hours');
+    expect(choice(), 'ultra_56k');
+    expect(distance(), '56');
+    expect(_fieldByHint(tester, 'h').text, '11');
+
+    await _describe(tester, 'a 100 mile race');
+    expect(choice(), 'ultra_100mi');
+
+    await _describe(tester, 'a 70 km trail race');
+    expect(choice(), 'ultra_other');
+    expect(distance(), '70');
+
+    // A road fill clears the Ultra entry and its distance field.
+    await _describe(tester, 'a marathon');
+    expect(_goal(tester), GoalEvent.distanceFull);
+    expect(find.byKey(const Key('plan-new-ultra-distance')), findsNothing);
   });
 
   testWidgets('a beginner fill ticks the walk-run box', (tester) async {

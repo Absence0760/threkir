@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart';
 
 import '../column_limits.dart';
+import '../preferences.dart' show activeDistanceUnit;
 import '../backend_timeout.dart';
 import '../auth_error.dart';
 import '../l10n/date_format.dart';
@@ -13,6 +14,7 @@ import '../l10n/number_format.dart';
 import '../metrics.dart';
 import '../plan_ramp.dart';
 import '../plan_overlap.dart';
+import '../plan_races.dart' show raceGoalMaxHours;
 import '../plan_request_client.dart';
 import '../plan_start.dart';
 import '../pro_sellable.dart';
@@ -28,6 +30,7 @@ import '../widgets/plan_import_sheet.dart';
 import '../widgets/plan_overlap_dialog.dart';
 import '../widgets/top_banner.dart';
 import 'plan_detail_screen.dart';
+import 'season_plan_screen.dart';
 
 /// A club plan template paired with the owning club's display name, for the
 /// "Start from a club template" picker. Mirrors the web `/plans/new`
@@ -134,8 +137,15 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
   final _recent5kSecCtrl = TextEditingController();
   final _weekOverrideCtrl = TextEditingController();
   final _aiCtrl = TextEditingController();
+  final _ultraDistanceCtrl = TextEditingController();
 
   GoalEvent _goal = GoalEvent.distanceHalf;
+  // An ultra goal is stored as `custom` plus its distance — the distance is
+  // what the generator plans from — and `_ultraChoice` remembers which entry
+  // the runner picked (a [kUltraPresets] id or [_kUltraOther]). Mirrors web
+  // PlanEditor.
+  String? _ultraChoice;
+  double? _ultraDistanceM;
   DateTime _startDate = _nextSunday();
   int _daysPerWeek = 4;
 
@@ -202,6 +212,63 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
 
   static DateTime _nextSunday() =>
       nextSunday(DateTime.now().add(const Duration(days: 7)));
+
+  static const _kUltraOther = 'ultra_other';
+  static const _kUltraLabels = {
+    'ultra_50k': '50 km',
+    'ultra_56k': '56 km',
+    'ultra_90k': '90 km',
+    'ultra_100mi': '100 mi',
+  };
+  static const _kMetresPerMile = 1609.344;
+
+  double get _metresPerUnit =>
+      activeDistanceUnit == DistanceUnit.mi ? _kMetresPerMile : 1000;
+
+  /// The preset a distance is, to the metre, or null.
+  static String? _ultraPresetFor(double distanceM) {
+    for (final p in kUltraPresets) {
+      if ((p.distanceM - distanceM).abs() < 1) return p.id;
+    }
+    return null;
+  }
+
+  double get _goalDistanceM => _goal != GoalEvent.custom
+      ? kGoalDistancesM[_goal]!
+      : _ultraChoice != null
+          ? (_ultraDistanceM ?? 0)
+          : 10000;
+
+  // An ultra entry whose typed distance is not past the marathon plans
+  // nothing: the generator would quietly build a road plan under an ultra
+  // label.
+  bool get _ultraDistanceInvalid =>
+      _ultraChoice != null && !isUltraDistance(_goalDistanceM);
+
+  void _selectUltra(String choice, double distanceM) {
+    _ultraChoice = choice;
+    _goal = GoalEvent.custom;
+    _ultraDistanceM = distanceM;
+    final shown = ((distanceM / _metresPerUnit) * 10).round() / 10;
+    _ultraDistanceCtrl.text = shown == shown.roundToDouble()
+        ? shown.round().toString()
+        : shown.toString();
+  }
+
+  void _onGoalChanged(String value) {
+    if (value == _kUltraOther) {
+      _selectUltra(value, _ultraDistanceM ?? 70000);
+      return;
+    }
+    for (final p in kUltraPresets) {
+      if (p.id == value) {
+        _selectUltra(value, p.distanceM);
+        return;
+      }
+    }
+    _ultraChoice = null;
+    _goal = goalEventFromDb(value);
+  }
 
   @override
   void initState() {
@@ -298,6 +365,13 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
     _racePreset = null;
     _beginnerWalkRun = inputs.beginnerWalkRun;
     _goal = inputs.goalEvent;
+    _ultraChoice = null;
+    // An ultra arrives as custom plus its distance and selects the matching
+    // Ultra entry, so the distance field shows what was heard.
+    final ultraM = inputs.goalDistanceM;
+    if (inputs.goalEvent == GoalEvent.custom && ultraM != null) {
+      _selectUltra(_ultraPresetFor(ultraM) ?? _kUltraOther, ultraM);
+    }
     _daysPerWeek = inputs.daysPerWeek;
     // A fill replaces the shape of the plan, not just the fields this
     // description happened to name: a second fill must not inherit the first
@@ -353,7 +427,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
   RacePlanRefusal? _applyAiRaceDate(String raceDate, int? requestedWeeks) {
     final result = racePlanPreset(
       raceDateIso: raceDate,
-      distanceM: kGoalDistancesM[_goal],
+      distanceM: _goalDistanceM,
       todayIso: toIsoDate(DateTime.now()),
     );
     final preset = result.preset;
@@ -407,7 +481,14 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
     _racePreset = result;
     final preset = result.preset;
     if (preset == null) return;
-    if (preset.goalEvent != null) _goal = preset.goalEvent!;
+    if (preset.goalEvent != null) {
+      _goal = preset.goalEvent!;
+    } else {
+      final d = widget.raceDistanceM?.toDouble();
+      if (d != null && isUltraDistance(d)) {
+        _selectUltra(_ultraPresetFor(d) ?? _kUltraOther, d);
+      }
+    }
     final start = DateTime.tryParse(preset.startDate);
     if (start != null) _startDate = DateTime(start.year, start.month, start.day);
     _weekOverride = preset.weeks;
@@ -593,6 +674,18 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
     }
   }
 
+  void _openSeason() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => SeasonPlanScreen(
+          training: widget.training,
+          apiClient: widget.apiClient,
+          loadAiAvailable: widget.loadAiPlanAvailable,
+        ),
+      ),
+    );
+  }
+
   Future<void> _importPlan() async {
     final planId = await showPlanImportSheet(context, widget.training);
     if (planId == null || !mounted) return;
@@ -624,9 +717,11 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
   bool get _recent5kNeedsConfirm => _recent5kTotal != null && !_recent5kConfirmed;
 
   GeneratedPlan? _preview() {
+    if (_ultraDistanceInvalid) return null;
     try {
       return generatePlan(GeneratePlanInput(
         goalEvent: _goal,
+        goalDistanceM: _goalDistanceM,
         startDate: _startDate,
         daysPerWeek: _daysPerWeek,
         goalTimeSec: _goalTimeSec,
@@ -691,6 +786,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
     _recent5kSecCtrl.dispose();
     _weekOverrideCtrl.dispose();
     _aiCtrl.dispose();
+    _ultraDistanceCtrl.dispose();
     super.dispose();
   }
 
@@ -722,6 +818,15 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
               onPressed: _importPlan,
               icon: const Icon(Icons.content_paste, size: 18),
               label: Text(l10n.planNewImportButton),
+            ),
+          ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              key: const Key('planNewSeason'),
+              onPressed: _openSeason,
+              icon: const Icon(Icons.event_note, size: 18),
+              label: Text(l10n.seasonPlanTitle),
             ),
           ),
           const SizedBox(height: 12),
@@ -762,23 +867,59 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
               ),
             ),
           const SizedBox(height: 12),
-          DropdownButtonFormField<GoalEvent>(
+          DropdownButtonFormField<String>(
             key: ValueKey('plan-new-goal-$_aiFillCount'),
-            initialValue: _goal,
+            initialValue: _ultraChoice ?? goalEventDbValue(_goal),
+            // The widest entry sizes a non-expanded dropdown, and "Other
+            // ultra distance" overflows a narrow phone in the longer locales.
+            isExpanded: true,
             decoration: InputDecoration(labelText: l10n.planNewGoalRace),
-            items: const [
-              GoalEvent.distance5k,
-              GoalEvent.distance10k,
-              GoalEvent.distanceHalf,
-              GoalEvent.distanceFull,
-            ]
-                .map((g) =>
-                    DropdownMenuItem(value: g, child: Text(goalEventLabel(g))))
-                .toList(),
+            items: [
+              for (final g in const [
+                GoalEvent.distance5k,
+                GoalEvent.distance10k,
+                GoalEvent.distanceHalf,
+                GoalEvent.distanceFull,
+              ])
+                DropdownMenuItem(
+                    value: goalEventDbValue(g),
+                    child: Text(goalEventLabel(g))),
+              for (final p in kUltraPresets)
+                DropdownMenuItem(
+                    value: p.id, child: Text(_kUltraLabels[p.id]!)),
+              DropdownMenuItem(
+                  value: _kUltraOther,
+                  child: Text(l10n.planNewUltraOther,
+                      overflow: TextOverflow.ellipsis)),
+            ],
             onChanged: (v) {
-              if (v != null) setState(() => _goal = v);
+              if (v != null) setState(() => _onGoalChanged(v));
             },
           ),
+          if (_ultraChoice != null) ...[
+            const SizedBox(height: 12),
+            TextField(
+              key: const Key('plan-new-ultra-distance'),
+              controller: _ultraDistanceCtrl,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
+                labelText: l10n.planNewUltraDistance(
+                    activeDistanceUnit == DistanceUnit.mi ? 'mi' : 'km'),
+                helperText: l10n.planNewUltraDistanceHint,
+                helperMaxLines: 4,
+                errorText: _ultraDistanceInvalid
+                    ? l10n.planNewUltraDistanceTooShort
+                    : null,
+                errorMaxLines: 3,
+              ),
+              onChanged: (s) {
+                final n = double.tryParse(s.trim().replaceAll(',', '.'));
+                setState(() => _ultraDistanceM =
+                    n == null || !n.isFinite || n <= 0 ? null : n * _metresPerUnit);
+              },
+            ),
+          ],
           const SizedBox(height: 12),
           ListTile(
             contentPadding: EdgeInsets.zero,
@@ -823,7 +964,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
               Expanded(
                 child: _numField(
                   _goalHoursCtrl, 'h',
-                  (v) => setState(() => _goalHours = v), 0, 9),
+                  (v) => setState(() => _goalHours = v), 0, raceGoalMaxHours),
               ),
               const Text(' : '),
               Expanded(
@@ -909,7 +1050,8 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
             (v) => setState(() => _weekOverride = v),
             4,
             24,
-            labelText: l10n.planNewOverrideLabel(defaultPlanWeeks(_goal)),
+            labelText: l10n.planNewOverrideLabel(
+                defaultPlanWeeks(_goal, _goalDistanceM)),
           ),
           if (_error != null) ...[
             const SizedBox(height: 12),

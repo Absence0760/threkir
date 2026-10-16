@@ -277,6 +277,7 @@ The foundation under both the generator and any hand-built plan: a data model fo
   - [x] Shift a plan atomically, optionally carrying the plans queued after it (`shift_training_plan`)
   - [x] A/B/C races inside one plan (`plan_workouts.race_name` / `race_priority`; `plan_races.ts` ↔ `plan_races.dart`): the countdown, race-week panel and plan header follow the next race, a plan with several races lists them, and an Adjust-plan option proposes a taper and recovery around B/C races (`race_taper.ts` ↔ `race_taper.dart`)
   - [x] Plan import on mobile (`plan_serialize.dart`, parse half) with the optional Race / Priority / Goal columns on both platforms
+  - [x] Plan a season (issue #1181, web `/plans/season` + mobile Plan a season): a confirmed race list becomes one chained plan per A race with a recovery gap after each and B/C races written into the plan holding them (`season_plan.ts` ↔ `season_plan.dart`); see [training.md § Season planning](../features/training.md#season-planning-season_plants--season_plandart). The AI race extraction behind Describe your season and ultra distances in the generator are their own pieces of #1181
 
 - [x] Sharing and handoff:
   - [x] Export a plan as markdown or JSON (round-trip with the paste-import path) — `planToMarkdown` / `planToJson` (`lib/training/plan_serialize.ts`); the `/plans/[id]` header Export menu copies Markdown to the clipboard or downloads `.md` / `.json`. Re-importing an export reproduces the same workouts (round-trip unit-tested)

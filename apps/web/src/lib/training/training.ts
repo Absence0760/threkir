@@ -422,6 +422,9 @@ export interface GeneratedWorkout {
 	notes: string | null;
 	race_name?: string | null;
 	race_priority?: RacePriority | null;
+	/// Set only on a workout read from a JSON export a B/C race taper had
+	/// eased (decisions § 2063); the generator never sets it.
+	race_taper_applied_at?: string | null;
 }
 
 export interface GeneratedWeek {

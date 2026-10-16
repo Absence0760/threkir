@@ -182,6 +182,44 @@ void main() {
         toIsoDate(generated.weeks.first.workouts.first.scheduledDate));
   });
 
+  test('createPlan passes an imported workout\'s taper stamp through', () async {
+    final g = plan();
+    final first = g.weeks.first.workouts.first;
+    final stamped = GeneratedPlan(
+      weeks: [
+        GeneratedWeek(
+          weekIndex: g.weeks.first.weekIndex,
+          phase: g.weeks.first.phase,
+          targetVolumeM: g.weeks.first.targetVolumeM,
+          workouts: [
+            GeneratedWorkout(
+              scheduledDate: first.scheduledDate,
+              kind: first.kind,
+              targetDistanceM: first.targetDistanceM,
+              raceTaperAppliedAt: '2031-03-01T08:00:00.000Z',
+            ),
+            ...g.weeks.first.workouts.skip(1),
+          ],
+        ),
+        ...g.weeks.skip(1),
+      ],
+      paces: g.paces,
+      vdot: g.vdot,
+      endDate: g.endDate,
+      goalDistanceM: g.goalDistanceM,
+      pacesAreFallback: g.pacesAreFallback,
+    );
+    await create(stamped);
+    final body = fake.requests
+        .singleWhere((r) => r.path == '/rest/v1/rpc/create_training_plan')
+        .body! as Map<String, dynamic>;
+    final workouts = ((body['p_weeks'] as List).first
+        as Map<String, dynamic>)['workouts'] as List;
+    expect((workouts[0] as Map)['race_taper_applied_at'],
+        '2031-03-01T08:00:00.000Z');
+    expect((workouts[1] as Map)['race_taper_applied_at'], isNull);
+  });
+
   test('createPlan carries the runner\'s overlap choice', () async {
     await create(plan(), onOverlap: PlanOverlapAction.trim);
     final body = fake.requests

@@ -6104,7 +6104,8 @@ export async function createTrainingPlan(input: {
 				structure: (wo.structure ?? null) as unknown as Json,
 				notes: wo.notes ?? null,
 				race_name: wo.kind === 'race' ? wo.race_name?.trim() || null : null,
-				race_priority: wo.kind === 'race' ? (wo.race_priority ?? null) : null
+				race_priority: wo.kind === 'race' ? (wo.race_priority ?? null) : null,
+				race_taper_applied_at: wo.race_taper_applied_at ?? null
 			}))
 		})),
 		p_overlap: input.overlap ?? 'refuse'

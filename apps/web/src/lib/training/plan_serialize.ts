@@ -61,6 +61,10 @@ export interface ExportWorkout {
 	target_duration_seconds?: number | null;
 	race_name?: string | null;
 	race_priority?: string | null;
+	/// JSON only: when a B/C race taper eased this workout (decisions § 2063).
+	/// The Markdown table is a prescription people edit by hand, so it does not
+	/// carry the stamp; the JSON export is the machine round-trip and does.
+	race_taper_applied_at?: string | null;
 }
 
 export interface ExportPlan {
@@ -504,14 +508,51 @@ export function parsePlanJson(text: string): ParsedPlan {
 	}
 	// Re-route through the Markdown builder so JSON + Markdown share one
 	// reconstruction path (phase recompute, volume summing, validation).
-	return parsePlanMarkdown(
+	const workouts = p.workouts as ExportWorkout[];
+	const parsed = parsePlanMarkdown(
 		planToMarkdown({
 			name: p.name ?? 'Imported plan',
 			goalEvent: p.goalEvent ?? 'custom',
 			goalDistanceM: p.goalDistanceM ?? 0,
 			goalTimeSec: p.goalTimeSec ?? null,
 			startDate: p.startDate ?? '',
-			workouts: p.workouts as ExportWorkout[],
+			workouts,
 		}),
 	);
+	return withTaperStamps(parsed, workouts);
+}
+
+const TAPER_STAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
+
+/// The table drops `race_taper_applied_at`, so the JSON import lays each
+/// workout's stamp back onto the parsed plan, matching the n-th workout of a
+/// date and kind to the n-th the table produced (every sort on the way is
+/// stable). Without it a tapered plan re-imported would be offered, and cut
+/// by, the same taper again.
+function withTaperStamps(parsed: ParsedPlan, workouts: ExportWorkout[]): ParsedPlan {
+	const queues = new Map<string, (string | null)[]>();
+	const ordered = [...workouts].sort((a, b) =>
+		a.scheduled_date < b.scheduled_date ? -1 : a.scheduled_date > b.scheduled_date ? 1 : 0,
+	);
+	for (const w of ordered) {
+		const raw = w.race_taper_applied_at ?? null;
+		if (raw != null && (typeof raw !== 'string' || !TAPER_STAMP.test(raw))) {
+			throw new PlanParseError(`Couldn't read race_taper_applied_at "${String(raw)}" on ${w.scheduled_date}.`);
+		}
+		const key = `${w.scheduled_date}|${w.kind}`;
+		queues.set(key, [...(queues.get(key) ?? []), raw]);
+	}
+	return {
+		...parsed,
+		generated: {
+			...parsed.generated,
+			weeks: parsed.generated.weeks.map((wk) => ({
+				...wk,
+				workouts: wk.workouts.map((wo) => ({
+					...wo,
+					race_taper_applied_at: queues.get(`${wo.scheduled_date}|${wo.kind}`)?.shift() ?? null,
+				})),
+			})),
+		},
+	};
 }

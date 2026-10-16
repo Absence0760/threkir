@@ -63,6 +63,14 @@ class _FakeTraining extends TrainingService {
   }) async {
     if (targetDistanceM != null) updated[workoutId] = targetDistanceM;
   }
+
+  @override
+  Future<void> applyReplan({
+    required String planId,
+    required Map<String, double> distances,
+  }) async {
+    updated.addAll(distances);
+  }
 }
 
 class _FakeSocial extends SocialService {

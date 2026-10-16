@@ -29,6 +29,10 @@ class _FakeTraining extends TrainingService {
 
   /// Makes `applyRaceTaper` fail the way a refused RPC would.
   Object? taperError;
+  String? replanPlanId;
+
+  /// Makes `applyReplan` fail the way a refused RPC would.
+  Object? replanError;
 
   /// Makes `resumePlan` refuse the way the one-active index would.
   bool resumeBlocked = false;
@@ -66,6 +70,16 @@ class _FakeTraining extends TrainingService {
     PlanWorkoutRaceFields? race,
   }) async {
     if (targetDistanceM != null) updated[workoutId] = targetDistanceM;
+  }
+
+  @override
+  Future<void> applyReplan({
+    required String planId,
+    required Map<String, double> distances,
+  }) async {
+    if (replanError != null) throw replanError!;
+    replanPlanId = planId;
+    updated.addAll(distances);
   }
 
   @override
@@ -370,6 +384,30 @@ void main() {
       await pumpUntil(tester, () => training.updated.isNotEmpty,
           describe: 'the re-plan to write its week updates');
       expect(training.updated['next'], (22000 * 1.15).round());
+      expect(training.replanPlanId, 'plan-1');
+      await tester.pump(const Duration(seconds: 4));
+    });
+
+    testWidgets(
+        'a failed re-plan shows the error and re-fetches the plan, dropping the preview',
+        (tester) async {
+      final training = _missedLongPlan()..replanError = Exception('boom');
+      await _pump(tester, training: training, social: _FakeSocial(const []));
+      await _openAdjust(tester);
+      await _chooseAdjustment(tester, 'Re-plan remaining weeks');
+      expect(find.text('Proposed changes'), findsOneWidget);
+      final fetchesBefore = training.fetchCount;
+
+      await tester.tap(find.text('Apply changes'));
+      await pumpUntil(tester, () => training.fetchCount > fetchesBefore,
+          describe: 'the failed re-plan to re-fetch the plan');
+      await pumpUntil(
+          tester, () => !tester.any(find.byType(FullBodyLoader)),
+          describe: 'the re-fetch to finish');
+      expect(find.textContaining("Couldn't update the plan"), findsOneWidget);
+      expect(find.text('Proposed changes'), findsNothing);
+      expect(training.updated, isEmpty);
+      await tester.pump(const Duration(seconds: 4));
     });
 
     testWidgets('Adaptive re-plan is reachable from the same dialog',

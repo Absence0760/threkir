@@ -1030,15 +1030,32 @@ class TrainingService extends ChangeNotifier {
   }
 
   /// Writes the B/C race taper's per-workout patches (`raceTaperPatch`,
-  /// decisions § 2051) through `apply_workout_adjustments`, which also
-  /// restates each touched week's volume — all in one transaction, so a
-  /// failure changes nothing (decisions § 2061). Unlike [updateWorkout] a
-  /// patch may clear the pace target and the interval structure. Mirrors
-  /// web `applyRaceTaper` on the plan page.
+  /// decisions § 2051) through [_applyWorkoutAdjustments]. Unlike
+  /// [updateWorkout] a patch may clear the pace target and the interval
+  /// structure. Mirrors web `applyRaceTaper` on the plan page.
   Future<void> applyRaceTaper({
     required String planId,
     required Map<String, Map<String, Object?>> patches,
-  }) async {
+  }) =>
+      _applyWorkoutAdjustments(planId, patches);
+
+  /// Writes a re-plan's proposed distances — `target_distance_m` and nothing
+  /// else, no load value (decisions § 1977) — through
+  /// [_applyWorkoutAdjustments]. Mirrors web `applyReplan` on the plan page.
+  Future<void> applyReplan({
+    required String planId,
+    required Map<String, double> distances,
+  }) =>
+      _applyWorkoutAdjustments(planId, {
+        for (final e in distances.entries)
+          e.key: {PlanWorkoutRow.colTargetDistanceM: e.value},
+      });
+
+  /// One `apply_workout_adjustments` call: it writes every patch and
+  /// restates each touched week's `target_volume_m` in one transaction, so a
+  /// failure changes nothing (decisions § 2061).
+  Future<void> _applyWorkoutAdjustments(
+      String planId, Map<String, Map<String, Object?>> patches) async {
     final changes = [
       for (final e in patches.entries)
         if (e.value.isNotEmpty) {'id': e.key, ...e.value},

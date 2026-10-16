@@ -728,17 +728,20 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
     }
   }
 
-  Future<void> _applyReplan() async {
+  /// Writes every proposed distance in one transaction; a failure re-fetches
+  /// the plan so nothing stale stays on screen, like the taper path.
+  Future<void> _applyReplan(TrainingPlanRow plan) async {
     final changes = _replanPreview;
     if (changes == null || _bulkBusy) return;
     final l10n = AppLocalizations.of(context);
     setState(() => _bulkBusy = true);
     try {
-      for (final c in changes) {
-        await widget.training
-            .updateWorkout(c.workoutId, targetDistanceM: c.toMetres)
-            .timeout(kBackendLoadTimeout);
-      }
+      await widget.training
+          .applyReplan(
+            planId: plan.id,
+            distances: {for (final c in changes) c.workoutId: c.toMetres},
+          )
+          .timeout(kBackendLoadTimeout);
       if (!mounted) return;
       setState(() {
         _replanPreview = null;
@@ -750,8 +753,13 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
     } catch (e) {
       debugPrint('plan detail bulk failed: $e');
       if (!mounted) return;
-      setState(() => _bulkBusy = false);
+      setState(() {
+        _replanPreview = null;
+        _adaptiveInfo = null;
+        _bulkBusy = false;
+      });
       showTopBanner(context, l10n.planDetailBulkFailed(friendlyError(l10n, e)));
+      await _load();
     }
   }
 
@@ -1441,7 +1449,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
                   ),
                   const SizedBox(width: 8),
                   FilledButton(
-                    onPressed: _bulkBusy ? null : _applyReplan,
+                    onPressed: _bulkBusy ? null : () => _applyReplan(p),
                     child: Text(l10n.planDetailReplanApply),
                   ),
                 ],

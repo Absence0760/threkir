@@ -91,6 +91,7 @@ export function planWorkoutCopyRows(
 	notes: string | null;
 	race_name: string | null;
 	race_priority: PlanWorkout['race_priority'];
+	race_taper_applied_at: string | null;
 }[] {
 	const rows = [];
 	for (const w of workouts) {
@@ -110,6 +111,7 @@ export function planWorkoutCopyRows(
 			notes: w.notes,
 			race_name: w.race_name,
 			race_priority: w.race_priority,
+			race_taper_applied_at: w.race_taper_applied_at,
 		});
 	}
 	return rows;

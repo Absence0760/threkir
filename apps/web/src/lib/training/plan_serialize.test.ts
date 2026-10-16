@@ -310,3 +310,18 @@ test('parsePlanMarkdown keeps a 120-character race name and rejects a 121-charac
 	assert.equal(flattenRaces(parsePlanMarkdown(table(longest)))[0].race_name, longest);
 	assert.throws(() => parsePlanMarkdown(table(longest + 'R')), /longer than 120 characters/);
 });
+
+test('parsePlanMarkdown refuses a workout dated before the plan\'s own start date', () => {
+	const md = (start: string) =>
+		[
+			'# Early row',
+			`- Start date: ${start}`,
+			'| Week | Date | Type | Distance | Pace | Notes |',
+			'| --- | --- | --- | --- | --- | --- |',
+			'| 1 | 2027-03-07 | easy | 5 km | | |',
+			'| 1 | 2027-03-10 | long | 12 km | | |',
+		].join('\n');
+	assert.throws(() => parsePlanMarkdown(md('2027-03-08')), /2027-03-07 is before the plan's start date, 2027-03-08/);
+	assert.equal(parsePlanMarkdown(md('2027-03-07')).startDate, '2027-03-07');
+	assert.equal(parsePlanMarkdown(md('2027-03-01')).startDate, '2027-03-01');
+});

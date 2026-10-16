@@ -523,6 +523,15 @@ ParsedPlan parsePlanMarkdown(String text) {
   final start = startDate != null && _isoDate.hasMatch(startDate)
       ? startDate
       : rows.first.scheduledDate;
+  // create_training_plan refuses a workout outside the plan's window, so a
+  // hand-written table dated before its own "Start date" line is refused
+  // here, readably, rather than as a raw server code on create.
+  if (rows.first.scheduledDate.compareTo(start) < 0) {
+    throw PlanParseError(
+      'The workout on ${rows.first.scheduledDate} is before the plan\'s start '
+      'date, $start.',
+    );
+  }
 
   return ParsedPlan(
     name: name.isEmpty ? 'Imported plan' : name,

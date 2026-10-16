@@ -428,4 +428,22 @@ void main() {
         throwsA(isA<PlanParseError>().having(
             (e) => e.message, 'message', contains('longer than 120 characters'))));
   });
+
+  test("parsePlanMarkdown refuses a workout dated before the plan's own start "
+      'date', () {
+    String md(String start) => _table([
+          '# Early row',
+          '- Start date: $start',
+          '| Week | Date | Type | Distance | Pace | Notes |',
+          '| --- | --- | --- | --- | --- | --- |',
+          '| 1 | 2027-03-07 | easy | 5 km | | |',
+          '| 1 | 2027-03-10 | long | 12 km | | |',
+        ]);
+    expect(
+        () => parsePlanMarkdown(md('2027-03-08')),
+        throwsA(isA<PlanParseError>().having((e) => e.message, 'message',
+            contains("2027-03-07 is before the plan's start date, 2027-03-08"))));
+    expect(parsePlanMarkdown(md('2027-03-07')).startDate, '2027-03-07');
+    expect(parsePlanMarkdown(md('2027-03-01')).startDate, '2027-03-01');
+  });
 }

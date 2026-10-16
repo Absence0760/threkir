@@ -16423,10 +16423,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Races found in your description. Check each one before you continue.';
 
   @override
-  String get seasonPlanDescribeAssumed =>
-      'Some details were filled in for you. Check the date, distance and priority of every race.';
-
-  @override
   String get seasonPlanErrorConsent =>
       'The season assistant needs the updated AI disclosure. You can still add your races below.';
 

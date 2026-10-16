@@ -16608,10 +16608,6 @@ class AppLocalizationsDe extends AppLocalizations {
       'Rennen aus deiner Beschreibung. Prüfe jedes, bevor du weitermachst.';
 
   @override
-  String get seasonPlanDescribeAssumed =>
-      'Einige Angaben wurden für dich ergänzt. Prüfe Datum, Distanz und Priorität jedes Rennens.';
-
-  @override
   String get seasonPlanErrorConsent =>
       'Der Saison-Assistent braucht den aktualisierten KI-Hinweis. Du kannst deine Rennen trotzdem unten eintragen.';
 

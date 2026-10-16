@@ -16633,10 +16633,6 @@ class AppLocalizationsFr extends AppLocalizations {
       'Courses trouvées dans ta description. Vérifie chacune avant de continuer.';
 
   @override
-  String get seasonPlanDescribeAssumed =>
-      'Certains détails ont été complétés pour toi. Vérifie la date, la distance et la priorité de chaque course.';
-
-  @override
   String get seasonPlanErrorConsent =>
       'L’assistant de saison nécessite la nouvelle information sur l’IA. Tu peux quand même ajouter tes courses ci-dessous.';
 

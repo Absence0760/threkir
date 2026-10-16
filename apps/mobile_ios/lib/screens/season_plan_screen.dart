@@ -88,7 +88,8 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
   bool _aiAvailable = false;
   bool _aiBusy = false;
   PlanRequestErrorKind? _aiError;
-  bool? _aiFoundAssumed;
+  bool _aiFound = false;
+  List<String> _aiAssumptions = const [];
 
   TrainingGender _viewerGender;
   int? _viewerAge;
@@ -196,14 +197,22 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
     setState(() {
       _aiBusy = true;
       _aiError = null;
-      _aiFoundAssumed = null;
+      _aiFound = false;
+      _aiAssumptions = const [];
     });
     try {
       final result = await (widget.requestSeasonRacesFn ?? requestSeasonRaces)(
           text, _today());
       if (!mounted) return;
       if (result.races.isEmpty) {
-        setState(() => _aiError = PlanRequestErrorKind.notUnderstood);
+        setState(() {
+          _aiAssumptions = result.assumptions;
+          _aiError = PlanRequestErrorKind.notUnderstood;
+          if (_rows.isEmpty) {
+            _rows.add(
+                _RaceRow(key: _nextKey++, priority: SeasonRacePriority.a));
+          }
+        });
         return;
       }
       setState(() {
@@ -213,7 +222,8 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
         _rows
           ..clear()
           ..addAll(result.races.map(_rowFrom));
-        _aiFoundAssumed = result.assumptions.isNotEmpty;
+        _aiFound = true;
+        _aiAssumptions = result.assumptions;
       });
     } catch (e) {
       if (e is! PlanRequestError) {
@@ -522,6 +532,10 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
   Widget _describeCard(ThemeData theme, AppLocalizations l10n) {
     final cs = theme.colorScheme;
     final error = _aiError;
+    final assumptions = [
+      for (final a in _aiAssumptions)
+        if (seasonAssumptionLabel(l10n, a) case final label?) label,
+    ];
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -585,7 +599,7 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
                 ),
               ),
             ],
-            if (_aiFoundAssumed != null) ...[
+            if (_aiFound || assumptions.isNotEmpty) ...[
               const SizedBox(height: 8),
               Semantics(
                 liveRegion: true,
@@ -600,10 +614,11 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(l10n.seasonPlanDescribeFound,
-                          style: TextStyle(color: cs.onSecondaryContainer)),
-                      if (_aiFoundAssumed!)
-                        Text(l10n.seasonPlanDescribeAssumed,
+                      if (_aiFound)
+                        Text(l10n.seasonPlanDescribeFound,
+                            style: TextStyle(color: cs.onSecondaryContainer)),
+                      for (final line in assumptions)
+                        Text('• $line',
                             style: TextStyle(color: cs.onSecondaryContainer)),
                     ],
                   ),

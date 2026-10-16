@@ -27293,12 +27293,6 @@ abstract class AppLocalizations {
   /// Season planner (issue #1181)
   ///
   /// In en, this message translates to:
-  /// **'Some details were filled in for you. Check the date, distance and priority of every race.'**
-  String get seasonPlanDescribeAssumed;
-
-  /// Season planner (issue #1181)
-  ///
-  /// In en, this message translates to:
   /// **'The season assistant needs the updated AI disclosure. You can still add your races below.'**
   String get seasonPlanErrorConsent;
 

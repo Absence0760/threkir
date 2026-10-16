@@ -21562,10 +21562,6 @@
   "@seasonPlanDescribeFound": {
     "description": "Season planner (issue #1181)"
   },
-  "seasonPlanDescribeAssumed": "Some details were filled in for you. Check the date, distance and priority of every race.",
-  "@seasonPlanDescribeAssumed": {
-    "description": "Season planner (issue #1181)"
-  },
   "seasonPlanErrorConsent": "The season assistant needs the updated AI disclosure. You can still add your races below.",
   "@seasonPlanErrorConsent": {
     "description": "Season planner (issue #1181)"

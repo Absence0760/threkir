@@ -112,8 +112,9 @@ Widget _host(TrainingService t,
     );
 
 Future<SeasonRequestResult> Function(String, String) _returns(
-        List<SeasonRace> races) =>
-    (_, __) async => SeasonRequestResult(races: races, assumptions: const []);
+        List<SeasonRace> races,
+        [List<String> assumptions = const []]) =>
+    (_, __) async => SeasonRequestResult(races: races, assumptions: assumptions);
 
 Future<void> _pumpScreen(WidgetTester tester, Widget host) async {
   await tester.binding.setSurfaceSize(const Size(800, 6000));
@@ -322,5 +323,105 @@ void main() {
     await tester.tap(find.byKey(const Key('season-preview')));
     await tester.pump();
     expect(find.byKey(const Key('season-row-error')), findsOneWidget);
+  });
+
+  testWidgets(
+      'each assumption the request made gets its own line, unknown ones skipped',
+      (tester) async {
+    await _pumpScreen(
+        tester,
+        _host(
+            _FakeTraining(),
+            _returns([_richmond, _comrades],
+                ['race_date_next_year', 'priority_default', 'not_a_key'])));
+    await tester.enterText(
+        find.byKey(const Key('season-describe')), 'Richmond and Comrades');
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('season-find-races')));
+    await tester.pumpAndSettle();
+
+    final found = find.byKey(const Key('season-ai-found'));
+    expect(
+        find.descendant(
+            of: found,
+            matching: find.text(
+                '• A date given without a year had already passed this year, so it was moved to next year.')),
+        findsOneWidget);
+    expect(
+        find.descendant(
+            of: found,
+            matching: find.text('• Races without a priority were set to B.')),
+        findsOneWidget);
+    expect(find.textContaining('not_a_key'), findsNothing);
+    expect(
+        tester.widget<TextField>(find.byKey(const Key('season-name-0'))).controller!.text,
+        'Richmond Marathon');
+    expect(
+        tester.widget<TextField>(find.byKey(const Key('season-goal-0'))).controller!.text,
+        '3:30:00');
+    expect(
+        tester.widget<TextField>(find.byKey(const Key('season-name-1'))).controller!.text,
+        'Comrades');
+  });
+
+  testWidgets(
+      'a request that found no races explains why and leaves a race to fill in',
+      (tester) async {
+    await _pumpScreen(tester,
+        _host(_FakeTraining(), _returns(const [], ['race_dropped_distance'])));
+    await tester.enterText(
+        find.byKey(const Key('season-describe')), 'A 2 km fun run');
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('season-find-races')));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('No races could be found'), findsOneWidget);
+    expect(
+        find.text(
+            '• A race was left out because its distance is outside what the planner supports (5 km to 400 km).'),
+        findsOneWidget);
+    expect(find.byKey(const Key('season-name-0')), findsOneWidget);
+    expect(find.byKey(const Key('season-name-1')), findsNothing);
+    expect(
+        tester.widget<TextField>(find.byKey(const Key('season-name-0'))).controller!.text,
+        '');
+  });
+
+  testWidgets('a 56 km + 90 km season previews as two chained plans',
+      (tester) async {
+    await _pumpScreen(
+        tester,
+        _host(
+            _FakeTraining(),
+            _returns(const [
+              SeasonRace(
+                  name: 'Two Oceans',
+                  date: '2027-04-03',
+                  distanceM: 56000,
+                  priority: SeasonRacePriority.a),
+              SeasonRace(
+                  name: 'Comrades',
+                  date: '2027-06-13',
+                  distanceM: 90000,
+                  priority: SeasonRacePriority.a),
+            ])));
+    await _describeAndPreview(tester);
+
+    expect(find.byKey(const Key('season-refusal')), findsNothing);
+    expect(
+        find.descendant(
+            of: find.byKey(const Key('season-plan-0')),
+            matching: find.text('Two Oceans')),
+        findsOneWidget);
+    expect(
+        find.descendant(
+            of: find.byKey(const Key('season-plan-1')),
+            matching: find.text('Comrades')),
+        findsOneWidget);
+    expect(find.textContaining('16 weeks'), findsOneWidget);
+    expect(find.textContaining('8 weeks'), findsOneWidget);
+    expect(find.textContaining('Recovery after Two Oceans: 21 days'),
+        findsOneWidget);
+    expect(find.text('Create 2 plans'), findsOneWidget);
   });
 }

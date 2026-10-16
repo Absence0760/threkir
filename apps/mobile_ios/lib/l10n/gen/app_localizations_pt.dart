@@ -16600,10 +16600,6 @@ class AppLocalizationsPt extends AppLocalizations {
       'Provas encontradas na sua descrição. Verifique cada uma antes de continuar.';
 
   @override
-  String get seasonPlanDescribeAssumed =>
-      'Alguns dados foram preenchidos automaticamente. Verifique a data, a distância e a prioridade de cada prova.';
-
-  @override
   String get seasonPlanErrorConsent =>
       'O assistente de época precisa do aviso de IA atualizado. Pode adicionar as suas provas abaixo na mesma.';
 
@@ -33432,10 +33428,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get seasonPlanDescribeFound =>
       'Provas encontradas na sua descrição. Confira cada uma antes de continuar.';
-
-  @override
-  String get seasonPlanDescribeAssumed =>
-      'Alguns dados foram preenchidos para você. Confira a data, a distância e a prioridade de cada prova.';
 
   @override
   String get seasonPlanErrorConsent =>

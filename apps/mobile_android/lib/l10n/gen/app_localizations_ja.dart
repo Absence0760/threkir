@@ -15822,10 +15822,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get seasonPlanDescribeFound => '説明から見つかったレースです。続ける前にそれぞれ確認してください。';
 
   @override
-  String get seasonPlanDescribeAssumed =>
-      '一部の項目は自動で補われました。各レースの日付・距離・優先度を確認してください。';
-
-  @override
   String get seasonPlanErrorConsent =>
       'シーズンアシスタントには更新された AI に関する説明への同意が必要です。下でレースを自分で追加することもできます。';
 

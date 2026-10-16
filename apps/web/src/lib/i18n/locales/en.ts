@@ -310,6 +310,8 @@ export const en = {
 	"dash.loadErrorTitle": "Couldn’t load your dashboard.",
 	"dash.loadErrorBody": "We couldn’t reach your runs. Nothing has been lost — try again.",
 	"dash.retry": "Retry",
+	"dash.planLoadErrorTitle": "Couldn’t load your training plan",
+	"dash.planLoadErrorBody": "Your plan is still there. Try again in a moment.",
 	"dash.hidePrFailed": "Couldn't update your hidden records: {error}",
 	"dash.welcomeBackTitle": "Welcome back",
 	"dash.welcomeBackBody": "Let's ease in. Your old PBs are still here whenever you're ready.",

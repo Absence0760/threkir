@@ -122,3 +122,19 @@ test('dashboard: the weekly mileage chart is derived from the week_start_day it 
 		'the "This week" tile takes its window from the same helper',
 	);
 });
+
+test('dashboard: a failed plan read shows a load error, not the create-a-plan promo', () => {
+	// planOverviewFor used to drop the Supabase error, so a failed read came
+	// back as "no plan" and the dashboard offered to create one over a plan
+	// that exists. The read now reports the error and the plan slot says so.
+	const data = readFileSync(resolve(import.meta.dirname, 'data.ts'), 'utf8');
+	const reader = data.slice(data.indexOf('async function planOverviewFor('));
+	const body = reader.slice(0, reader.indexOf('\n}\n'));
+	assert.match(body, /error: rowsErr \} = await supabase/);
+	assert.match(body, /if \(rowsErr\) return \{ overview: null, error: rowsErr\.message \}/);
+	assert.match(body, /if \(planErr\) return \{ overview: null, error: planErr \}/);
+	assert.match(SRC, /planLoadError = planRead\.error/);
+	const errorBranch = SRC.indexOf('{:else if planLoadError}');
+	const promoBranch = SRC.indexOf('{:else if !planOverview}');
+	assert.ok(errorBranch > 0 && errorBranch < promoBranch, 'the error branch must precede the promo');
+});

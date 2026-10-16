@@ -13,7 +13,8 @@
 		fetchMyPlans,
 		assignPlanToAthlete,
 		type CoachAthleteLink,
-		type AthleteRunSummary
+		type AthleteRunSummary,
+		type PlanOverviewRead
 	} from '#lib/core/data.ts';
 	import type { ActivePlanOverview, PlanWorkout, TrainingPlan } from '#lib/types.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
@@ -75,12 +76,19 @@
 				loading = false;
 				return;
 			}
-			[runs, overview, myPlans, showMaps] = await Promise.all([
+			let planRead: PlanOverviewRead;
+			[runs, planRead, myPlans, showMaps] = await Promise.all([
 				fetchAthleteRuns(id, 20),
 				fetchAthletePlanOverview(id),
 				fetchMyPlans(),
 				coachRunMapEnabled()
 			]);
+			if (planRead.error) {
+				loadError = planRead.error;
+				loading = false;
+				return;
+			}
+			overview = planRead.overview;
 		} catch (e) {
 			// A rejected fetch (auth/timeout/RLS) would otherwise leave the
 			// page stuck on its loading spinner forever — surface it with a
@@ -112,7 +120,9 @@
 			);
 			assignSelectedId = '';
 			// Reload the overview so the freshly-assigned plan shows immediately.
-			overview = await fetchAthletePlanOverview(id);
+			const planRead = await fetchAthletePlanOverview(id);
+			if (planRead.error) loadError = planRead.error;
+			else overview = planRead.overview;
 		} catch (e) {
 			// The RPC raises a specific message (e.g. already has an active plan);
 			// surface it rather than a swallowed failure.

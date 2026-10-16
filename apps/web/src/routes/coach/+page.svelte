@@ -163,12 +163,11 @@
 			return;
 		}
 		// No (or stale) query param — default to the user's active plan.
-		try {
-			const overview = await fetchActivePlanOverview();
-			planId = overview?.plan.id ?? null;
-		} catch (_) {
-			planId = null;
-		}
+		const { overview, error } = await fetchActivePlanOverview();
+		// A failed read leaves the chat on recent runs only; the chat's own
+		// context strip reads the plan again and says it could not load.
+		if (error) console.error('[coach] active plan lookup failed', { message: error });
+		planId = overview?.plan.id ?? null;
 	}
 
 	function pickPlan(next: string) {

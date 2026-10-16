@@ -435,6 +435,11 @@ class GeneratedWorkout {
   final WorkoutStructure? structure;
   final String? notes;
 
+  /// Set only on a `race` workout read from an imported plan; the
+  /// generator never names a race. Mirrors training.ts.
+  final String? raceName;
+  final String? racePriority;
+
   const GeneratedWorkout({
     required this.scheduledDate,
     required this.kind,
@@ -444,6 +449,8 @@ class GeneratedWorkout {
     this.targetPaceToleranceSec,
     this.structure,
     this.notes,
+    this.raceName,
+    this.racePriority,
   });
 }
 

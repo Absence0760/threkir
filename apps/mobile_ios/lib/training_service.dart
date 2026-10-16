@@ -901,6 +901,11 @@ class TrainingService extends ChangeNotifier {
           'target_pace_tolerance_sec': wo.targetPaceToleranceSec,
           'structure': wo.structure?.toJson(),
           'notes': wo.notes,
+          'race_name': wo.kind == WorkoutKind.race
+              ? TrainingService.trimToNull(wo.raceName)
+              : null,
+          'race_priority':
+              wo.kind == WorkoutKind.race ? wo.racePriority : null,
         });
       }
     }

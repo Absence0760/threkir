@@ -54,6 +54,7 @@ class _FakeTraining extends TrainingService {
   Future<void> updateWorkout(
     String workoutId, {
     String? kind,
+    String? fromKind,
     double? targetDistanceM,
     int? targetPaceSecPerKm,
     String? notes,

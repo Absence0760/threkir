@@ -51,11 +51,15 @@ typedef PlanWorkoutRaceFields = ({
 /// argument leaves its column alone, except inside [race]: that writes the
 /// race name, priority and goal time as given, nulls included. A [kind]
 /// other than `race` clears the race name and priority instead, since the
-/// table allows them only on race rows (23514 otherwise). [notes] is
+/// table allows them only on race rows (23514 otherwise), and when the row
+/// was a race ([fromKind]) it clears the race's goal time too, so a former
+/// race does not keep its finish time as a duration target. Matches web's
+/// `WorkoutEditor` save. [notes] is
 /// trimmed and an empty result nulls the column, matching web's
 /// `updatePlanWorkout`.
 Map<String, dynamic> planWorkoutPatch({
   String? kind,
+  String? fromKind,
   double? targetDistanceM,
   int? targetPaceSecPerKm,
   String? notes,
@@ -66,6 +70,9 @@ Map<String, dynamic> planWorkoutPatch({
   if (kind != null && kind != 'race') {
     patch[PlanWorkoutRow.colRaceName] = null;
     patch[PlanWorkoutRow.colRacePriority] = null;
+    if (fromKind == 'race') {
+      patch[PlanWorkoutRow.colTargetDurationSeconds] = null;
+    }
   } else if (race != null) {
     patch[PlanWorkoutRow.colRaceName] = TrainingService.trimToNull(race.name);
     patch[PlanWorkoutRow.colRacePriority] = race.priority;
@@ -1101,6 +1108,7 @@ class TrainingService extends ChangeNotifier {
   Future<void> updateWorkout(
     String workoutId, {
     String? kind,
+    String? fromKind,
     double? targetDistanceM,
     int? targetPaceSecPerKm,
     String? notes,
@@ -1108,6 +1116,7 @@ class TrainingService extends ChangeNotifier {
   }) async {
     final patch = planWorkoutPatch(
       kind: kind,
+      fromKind: fromKind,
       targetDistanceM: targetDistanceM,
       targetPaceSecPerKm: targetPaceSecPerKm,
       notes: notes,

@@ -80,7 +80,7 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
     _notesCtl = TextEditingController(text: w.notes ?? '');
     _raceNameCtl = TextEditingController(text: w.raceName ?? '');
     _raceGoalCtl = TextEditingController(
-      text: w.targetDurationSeconds == null
+      text: w.kind != 'race' || w.targetDurationSeconds == null
           ? ''
           : formatGoalTimeS(w.targetDurationSeconds!),
     );
@@ -280,8 +280,7 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
     int? goalTimeSec;
     String? raceGoalError;
     if (isRace && goalText.isNotEmpty) {
-      goalTimeSec = parseGoalTimeS(goalText,
-          distanceM: distanceM ?? widget.workout.targetDistanceM);
+      goalTimeSec = parseRaceGoalTimeS(goalText);
       if (goalTimeSec == null) raceGoalError = l10n.workoutEditErrRaceGoalTime;
     }
 
@@ -302,6 +301,7 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
       await widget.training.updateWorkout(
         widget.workout.id,
         kind: workoutKindDbValue(_kind),
+        fromKind: widget.workout.kind,
         targetDistanceM: distanceM,
         targetPaceSecPerKm: paceSecPerKm,
         notes: _notesCtl.text.trim(),

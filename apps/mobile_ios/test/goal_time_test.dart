@@ -42,11 +42,47 @@ void main() {
   });
 
   group('formatGoalTimeS', () {
-    test('round-trips through parseGoalTimeS', () {
+    test('is always h:mm:ss, a sub-hour time included', () {
       expect(formatGoalTimeS(12600), '3:30:00');
-      expect(formatGoalTimeS(1500), '25:00');
-      expect(parseGoalTimeS(formatGoalTimeS(12600)), 12600);
-      expect(parseGoalTimeS(formatGoalTimeS(1500), distanceM: 5000), 1500);
+      expect(formatGoalTimeS(1500), '0:25:00');
+      expect(formatGoalTimeS(2700), '0:45:00');
+      expect(formatGoalTimeS(45), '0:00:45');
+    });
+
+    test('round-trips through parseGoalTimeS with or without a distance', () {
+      for (final s in [45, 1500, 2700, 3599, 12600, 45000]) {
+        expect(parseGoalTimeS(formatGoalTimeS(s)), s);
+        expect(parseGoalTimeS(formatGoalTimeS(s), distanceM: 5000), s);
+      }
+    });
+  });
+
+  group('parseRaceGoalTimeS', () {
+    test('a 45-minute goal round-trips unchanged with no distance', () {
+      expect(parseRaceGoalTimeS(formatGoalTimeS(2700)), 2700);
+    });
+
+    test('reads h:mm:ss and an explicit h:mm, both in hours', () {
+      expect(parseRaceGoalTimeS('6:30:00'), 23400);
+      expect(parseRaceGoalTimeS('0:45:00'), 2700);
+      expect(parseRaceGoalTimeS('6:30'), 23400);
+      expect(parseRaceGoalTimeS(' 3:05:09 '), 11109);
+    });
+
+    test('never pace-guesses a two-part value into minutes', () {
+      expect(parseRaceGoalTimeS('45:00'), 45 * 3600);
+    });
+
+    test('rejects bare numbers, junk, zero and out-of-range fields', () {
+      expect(parseRaceGoalTimeS(''), isNull);
+      expect(parseRaceGoalTimeS('90'), isNull);
+      expect(parseRaceGoalTimeS('abc'), isNull);
+      expect(parseRaceGoalTimeS('1:2:3:4'), isNull);
+      expect(parseRaceGoalTimeS('0:00:00'), isNull);
+      expect(parseRaceGoalTimeS('1:60:00'), isNull);
+      expect(parseRaceGoalTimeS('1:30:75'), isNull);
+      expect(parseRaceGoalTimeS('-1:30'), isNull);
+      expect(parseRaceGoalTimeS('1::30'), isNull);
     });
   });
 }

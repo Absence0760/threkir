@@ -12757,8 +12757,36 @@ class AppLocalizationsDe extends AppLocalizations {
   String get coachingAthleteAssignedByYou => 'Von dir zugewiesen';
 
   @override
-  String get coachingAthleteCannotAssignHasPlan =>
-      'Dieser Athlet hat bereits einen aktiven Plan. Er muss ihn beenden, bevor du einen neuen zuweisen kannst.';
+  String coachingAthleteAssignAfterOne(String name, String plan, String end) {
+    return '${name}s Plan „$plan“ läuft bis $end. Ein zugewiesener Plan darf sich nicht damit überschneiden, beginne ihn also nach diesem Datum.';
+  }
+
+  @override
+  String coachingAthleteAssignAfterTwo(
+    String name,
+    String plan,
+    String end,
+    String next,
+    String nextStart,
+    String nextEnd,
+  ) {
+    return '${name}s Plan „$plan“ läuft bis $end, und „$next“ läuft $nextStart – $nextEnd. Ein zugewiesener Plan darf sich mit keinem der beiden überschneiden.';
+  }
+
+  @override
+  String coachingAthleteAssignOverlapNamed(
+    String name,
+    String plan,
+    String start,
+    String end,
+  ) {
+    return 'Diese Daten überschneiden sich mit ${name}s Plan „$plan“ ($start – $end). Wähle ein Startdatum nach dessen Ende.';
+  }
+
+  @override
+  String coachingAthleteAssignOverlap(String name) {
+    return 'Diese Daten überschneiden sich mit einem aktiven Plan von $name. Wähle ein Startdatum nach dessen Ende.';
+  }
 
   @override
   String get coachingAthleteComplete => 'abgeschlossen';

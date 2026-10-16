@@ -92,7 +92,11 @@ comment alone counts as empty) or over App Store Connect's 4000 characters.
 The heading is level 2 and reads `What's New` (any case, either apostrophe); the
 section runs to the next level-1 or level-2 heading, so `### Fixed` inside it is
 kept. Fix the Release body and re-run the job: it reads the body live, not
-from the publish event.
+from the publish event. **Until the app's first App Store version is
+released** nothing submits a note, so a missing section is allowed then (one
+that is present is still checked), and the submission step ends green with a
+notice that the build is in TestFlight for the manual first submission
+(#1113). If App Store Connect cannot be read to tell, the strict rule applies.
 
 ```bash
 gh release create mobile_ios@1.0.12 --title "iOS 1.0.12" --generate-notes --notes-start-tag mobile_ios@1.0.11 --notes "## What's New
@@ -162,7 +166,8 @@ no-op when already done. It fails the job, changing nothing it cannot finish,
 when another version is in progress under a different number, when App Review
 returned a rejection that is waiting for a reply, or when a submitted version
 holds another build. The app's first version is left to the owner, because
-Apple takes no What's New on it. Pause the rollout with **Pause Phased
+Apple takes no What's New on it: while nothing is released, the step ends
+green with a `::notice::` saying so, not red. Pause the rollout with **Pause Phased
 Release** on the version page in App Store Connect. The runbook is
 [`apps/mobile_ios/deployment.md`](../../apps/mobile_ios/deployment.md#app-store-submission).
 

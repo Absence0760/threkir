@@ -441,31 +441,19 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
     if (changes.isEmpty) showTopBanner(context, l10n.planDetailRaceTaperNone);
   }
 
-  /// Writes each proposed patch, then restates every touched week's volume
-  /// from the patched distances. Web twin: `applyRaceTaper`.
-  Future<void> _applyRaceTaper() async {
+  /// Writes every proposed patch in one transaction; the server restates
+  /// each touched week's volume. A failure re-fetches the plan so nothing
+  /// stale stays on screen. Web twin: `applyRaceTaper`.
+  Future<void> _applyRaceTaper(TrainingPlanRow plan) async {
     final changes = _taperPreview;
     if (changes == null || _bulkBusy) return;
     final l10n = AppLocalizations.of(context);
-    final byWorkout = {for (final c in changes) c.workoutId: c};
-    final weekVolumes = <String, double>{};
-    for (final w in _weeks) {
-      final rows = _byWeek[w.id] ?? const <PlanWorkoutRow>[];
-      if (!rows.any((x) => byWorkout.containsKey(x.id))) continue;
-      var vol = 0.0;
-      for (final x in rows) {
-        if (x.kind == 'rest') continue;
-        final c = byWorkout[x.id];
-        vol += (c != null ? c.toMetres : x.targetDistanceM) ?? 0;
-      }
-      weekVolumes[w.id] = vol;
-    }
     setState(() => _bulkBusy = true);
     try {
       await widget.training
           .applyRaceTaper(
+            planId: plan.id,
             patches: {for (final c in changes) c.workoutId: raceTaperPatch(c)},
-            weekVolumes: weekVolumes,
           )
           .timeout(kBackendLoadTimeout);
       if (!mounted) return;
@@ -478,8 +466,12 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
     } catch (e) {
       debugPrint('plan detail race taper failed: $e');
       if (!mounted) return;
-      setState(() => _bulkBusy = false);
+      setState(() {
+        _taperPreview = null;
+        _bulkBusy = false;
+      });
       showTopBanner(context, l10n.planDetailBulkFailed(friendlyError(l10n, e)));
+      await _load();
     }
   }
 
@@ -1375,7 +1367,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
                   ),
                   const SizedBox(width: 8),
                   FilledButton(
-                    onPressed: _bulkBusy ? null : _applyRaceTaper,
+                    onPressed: _bulkBusy ? null : () => _applyRaceTaper(p),
                     child: Text(l10n.planDetailReplanApply),
                   ),
                 ],

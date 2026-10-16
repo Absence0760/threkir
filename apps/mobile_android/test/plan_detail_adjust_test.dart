@@ -24,7 +24,11 @@ class _FakeTraining extends TrainingService {
   final List<String> resumed = [];
   final Map<String, double> updated = {};
   Map<String, Map<String, Object?>>? taperPatches;
-  Map<String, double>? taperWeekVolumes;
+  String? taperPlanId;
+  int fetchCount = 0;
+
+  /// Makes `applyRaceTaper` fail the way a refused RPC would.
+  Object? taperError;
 
   /// Makes `resumePlan` refuse the way the one-active index would.
   bool resumeBlocked = false;
@@ -38,6 +42,7 @@ class _FakeTraining extends TrainingService {
         List<PlanWeekRow> weeks,
         List<PlanWorkoutRow> workouts
       })> fetchPlan(String id) async {
+    fetchCount++;
     return (plan: plan, weeks: weeks, workouts: workouts);
   }
 
@@ -65,11 +70,12 @@ class _FakeTraining extends TrainingService {
 
   @override
   Future<void> applyRaceTaper({
+    required String planId,
     required Map<String, Map<String, Object?>> patches,
-    required Map<String, double> weekVolumes,
   }) async {
+    if (taperError != null) throw taperError!;
+    taperPlanId = planId;
     taperPatches = patches;
-    taperWeekVolumes = weekVolumes;
   }
 }
 
@@ -254,7 +260,34 @@ void main() {
       });
       expect(training.taperPatches!['tempo']!['target_distance_m'], 5000);
       expect(training.taperPatches!.containsKey('b-race'), isFalse);
-      expect(training.taperWeekVolumes, {'w0': 6500, 'w1': 5000 + 21097.5});
+      expect(training.taperPlanId, 'plan-1');
+      await tester.pump(const Duration(seconds: 4));
+    });
+
+    testWidgets(
+        'a failed taper shows the error and re-fetches the plan, dropping the preview',
+        (tester) async {
+      final training = _bRacePlan()..taperError = Exception('boom');
+      await _pump(tester, training: training, social: _FakeSocial(const []));
+      await _openAdjust(tester);
+      await _chooseAdjustment(tester, 'Taper around B/C races');
+      expect(find.byKey(const Key('planDetailRaceTaperPreview')),
+          findsOneWidget);
+      final fetchesBefore = training.fetchCount;
+
+      final apply = find.descendant(
+          of: find.byKey(const Key('planDetailRaceTaperPreview')),
+          matching: find.text('Apply changes'));
+      await tester.ensureVisible(apply);
+      await tester.tap(apply);
+      await pumpUntil(tester, () => training.fetchCount > fetchesBefore,
+          describe: 'the failed taper to re-fetch the plan');
+      await pumpUntil(
+          tester, () => !tester.any(find.byType(FullBodyLoader)),
+          describe: 'the re-fetch to finish');
+      expect(find.textContaining("Couldn't update the plan"), findsOneWidget);
+      expect(find.byKey(const Key('planDetailRaceTaperPreview')), findsNothing);
+      expect(training.taperPatches, isNull);
       await tester.pump(const Duration(seconds: 4));
     });
 

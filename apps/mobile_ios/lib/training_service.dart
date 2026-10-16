@@ -1005,22 +1005,24 @@ class TrainingService extends ChangeNotifier {
   }
 
   /// Writes the B/C race taper's per-workout patches (`raceTaperPatch`,
-  /// decisions § 2051) and restates each touched week's volume. Unlike
-  /// [updateWorkout] a patch may clear the pace target and the interval
-  /// structure. Mirrors web `applyRaceTaper` on the plan page.
+  /// decisions § 2051) through `apply_workout_adjustments`, which also
+  /// restates each touched week's volume — all in one transaction, so a
+  /// failure changes nothing (decisions § 2061). Unlike [updateWorkout] a
+  /// patch may clear the pace target and the interval structure. Mirrors
+  /// web `applyRaceTaper` on the plan page.
   Future<void> applyRaceTaper({
+    required String planId,
     required Map<String, Map<String, Object?>> patches,
-    required Map<String, double> weekVolumes,
   }) async {
-    for (final e in patches.entries) {
-      if (e.value.isEmpty) continue;
-      await _c.from(PlanWorkoutRow.table).update(e.value).eq('id', e.key);
-    }
-    for (final e in weekVolumes.entries) {
-      await _c
-          .from(PlanWeekRow.table)
-          .update({PlanWeekRow.colTargetVolumeM: e.value}).eq('id', e.key);
-    }
+    final changes = [
+      for (final e in patches.entries)
+        if (e.value.isNotEmpty) {'id': e.key, ...e.value},
+    ];
+    if (changes.isEmpty) return;
+    await _c.rpc('apply_workout_adjustments', params: {
+      'p_plan_id': planId,
+      'p_changes': changes,
+    });
     notifyListeners();
   }
 

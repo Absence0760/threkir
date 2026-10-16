@@ -70,7 +70,10 @@ export function planWeekCopyRows(
 /// NOT NULL FK, so there is nothing honest to write.
 ///
 /// Completion state (`completed_at`, `completed_run_id`, `manually_completed`,
-/// `skipped_at`) is deliberately not copied: a template starts fresh.
+/// `skipped_at`) is deliberately not copied: a template starts fresh. The
+/// race fields are: a B race in the middle of a block is part of the design,
+/// and the clone RPCs carry them on, so dropping them here would turn every
+/// published tune-up race into an unnamed A race.
 export function planWorkoutCopyRows(
 	workouts: PlanWorkout[],
 	newWeekIdByOldId: Map<string, string>,
@@ -86,6 +89,8 @@ export function planWorkoutCopyRows(
 	pace_zone: string | null;
 	structure: PlanWorkout['structure'];
 	notes: string | null;
+	race_name: string | null;
+	race_priority: PlanWorkout['race_priority'];
 }[] {
 	const rows = [];
 	for (const w of workouts) {
@@ -103,6 +108,8 @@ export function planWorkoutCopyRows(
 			pace_zone: w.pace_zone,
 			structure: w.structure,
 			notes: w.notes,
+			race_name: w.race_name,
+			race_priority: w.race_priority,
 		});
 	}
 	return rows;

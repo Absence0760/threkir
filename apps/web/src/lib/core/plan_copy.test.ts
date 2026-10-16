@@ -75,6 +75,8 @@ const sourceWorkout = {
 	pace_zone: 'threshold',
 	structure: { reps: 4, on_m: 1600 },
 	notes: '4x1600m at threshold',
+	race_name: null,
+	race_priority: null,
 	completed_at: '2026-01-06T09:12:00Z',
 	completed_run_id: 'run-9',
 	manually_completed: true,
@@ -105,6 +107,31 @@ test('a published workout keeps every plan-design field the source carried', () 
 	assert.equal(row.scheduled_date, '2026-01-06');
 	assert.equal(row.target_distance_m, 12000);
 	assert.equal(row.target_duration_seconds, 3300);
+});
+
+test('a published race workout keeps its name and priority', () => {
+	// Reason: a multi-race plan carries its tune-up races as `race` workouts
+	// with their own name, A/B/C priority and goal time. Publishing dropped
+	// the name and priority, so a cloner's B race came back unnamed and read
+	// as a second A race, with the taper logic keyed on the wrong one.
+	const [row] = planWorkoutCopyRows(
+		[
+			{
+				...sourceWorkout,
+				kind: 'race',
+				race_name: 'Two Oceans',
+				race_priority: 'B',
+				target_distance_m: 56000,
+				target_duration_seconds: 19800,
+			},
+		],
+		new Map([['week-1', 'new-week-1']]),
+	);
+	assert.equal(row.kind, 'race');
+	assert.equal(row.race_name, 'Two Oceans');
+	assert.equal(row.race_priority, 'B');
+	assert.equal(row.target_distance_m, 56000);
+	assert.equal(row.target_duration_seconds, 19800);
 });
 
 test('a published workout starts fresh — no completion state rides along', () => {
@@ -224,6 +251,7 @@ test('every training_plans column is either copied on publish or excused', () =>
 		['assigned_by_coach_id', 'a coach assignment is not a property of the design'],
 		['created_at', 'server-maintained'],
 		['updated_at', 'server-maintained'],
+		['trimmed_at', "publisher-private plan state: when the owner ended the plan early — the published copy was never trimmed"],
 	]);
 	const copied = planHeadCopyFields(sourcePlan);
 	const missing = rowColumns('training_plans').filter(

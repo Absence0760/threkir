@@ -16,7 +16,7 @@ import { USER_A } from '../fixtures/users';
  * "Apply AI-suggested changes", an edit that stacks hard days needs a second
  * confirmation, a consent refusal points at Settings, and the Coach's
  * `?adjust=` handoff runs once. Throwaway plan (status `completed` to dodge the
- * one-active unique index; editing gates on dates, not status).
+ * active-plan overlap constraint; editing gates on dates, not status).
  */
 test.describe('/plans/[id] — Adjust with AI', () => {
 	test.use({ storageState: USER_A.storageStatePath });

@@ -8,7 +8,7 @@ import { USER_A } from '../fixtures/users';
  * surfaces): the overall base→build→peak→taper phase marker and the
  * longest-long-run stat. Pure derivations are unit-tested
  * (plan_progress.ts); this pins the Svelte render. Seeds a throwaway
- * plan (status `completed` to dodge the one-active unique index — the
+ * plan (status `completed` to dodge the active-plan overlap constraint — the
  * surface gates on dates/phases, not status) spanning a base + build
  * week with a completed 24 km long run in the current (base) week.
  */

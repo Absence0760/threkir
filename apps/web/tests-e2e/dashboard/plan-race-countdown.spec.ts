@@ -9,7 +9,7 @@ import { createSagaUsers, deleteSagaUsers } from '../fixtures/saga-users';
  * (plan_week.ts), the helper mobile's NextRaceCard shares. page.spec.ts only
  * matches /Race in \d+ day/ against the seed plan; this pins the exact count
  * for each state against dates set relative to the browser's day. A saga user,
- * so the one-active-plan index never meets the seed plan.
+ * so the active-plan overlap constraint never meets the seed plan.
  */
 test.describe('/dashboard — plan race countdown', () => {
 	test.describe.configure({ timeout: 120_000 });

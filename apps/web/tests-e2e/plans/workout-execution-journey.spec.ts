@@ -134,11 +134,10 @@ test.describe('structured workout execution → plan progress journey', () => {
 				// status 'abandoned', NOT 'active': /plans/[id] loads by id and
 				// its progress/adherence surfaces compute from workouts + linked
 				// runs regardless of status (the detail page never gates the
-				// progress UI on plan.status). But `training_plans_one_active`
-				// is a DB partial-unique index (one active plan per user) and
-				// USER_A's seed Richmond Half is already active, so a second
-				// active plan dup-keys it on insert (the status CHECK only
-				// admits active/completed/abandoned — no 'draft').
+				// progress UI on plan.status). But `training_plans_active_no_overlap`
+				// refuses a second active plan whose window overlaps USER_A's
+				// active seed Richmond Half, which this one does (the status CHECK
+				// only admits active/completed/abandoned — no 'draft').
 				status: 'abandoned',
 				start_date: iso(start),
 				end_date: iso(new Date(Date.now() + 26 * DAY_MS))

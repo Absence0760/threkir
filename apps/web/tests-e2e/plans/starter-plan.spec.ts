@@ -9,7 +9,7 @@ import { readMaybeRow } from '../fixtures/db-read';
  * (starter_plans.ts) is unit-tested; this pins the picker UI: choosing a
  * starter instantiates it via generatePlan → createTrainingPlan and lands on
  * the new plan's detail. `createTrainingPlan` already auto-completes the prior
- * active plan, so the one-active index can't reject the create — the test must
+ * active plan, so the active-plan overlap constraint can't reject the create — the test must
  * NOT delete USER_A's plans wholesale (that would destroy the shared seeded
  * `Richmond Half` plan other specs depend on). Cleanup removes only the plan
  * THIS test creates and restores the seed plan to active.
@@ -20,7 +20,7 @@ const CREATED_PLAN_NAME = 'Half Marathon — 12 weeks';
 
 async function cleanup() {
 	const admin = getAdminClient();
-	// Delete the test-created starter FIRST (frees the one-active slot), then
+	// Delete the test-created starter FIRST (clears the overlap), then
 	// restore the seeded plan to active — never both active at once.
 	await admin
 		.from('training_plans')

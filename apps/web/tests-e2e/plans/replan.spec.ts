@@ -9,7 +9,7 @@ import { USER_A } from '../fixtures/users';
  * preview → apply UI: a plan with a missed long run in a past build week
  * should propose bumping the next future long run, and applying it writes
  * the new distance. Throwaway plan (status `completed` to dodge the
- * one-active unique index; re-planning gates on dates, not status).
+ * active-plan overlap constraint; re-planning gates on dates, not status).
  */
 
 test.describe('/plans/[id] re-plan', () => {

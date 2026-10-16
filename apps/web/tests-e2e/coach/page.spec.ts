@@ -30,7 +30,7 @@ test.describe('/coach', () => {
 		// "test · 12w" assertion. Sweep any non-seed plans (including
 		// abandoned and template clones) so the dropdown order is
 		// stable. Restore Richmond Half to active in case a prior run's
-		// Replace-plan flow left it completed.
+		// Replace flow left it completed.
 		const admin = getAdminClient();
 		await admin
 			.from('training_plans')

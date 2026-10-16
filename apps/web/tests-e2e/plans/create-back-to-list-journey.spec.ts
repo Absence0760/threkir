@@ -76,9 +76,7 @@ test.describe('/plans — create then back to the list', () => {
 			await expect(submit).toBeEnabled({ timeout: 5_000 });
 			await submit.click();
 
-			const replace = page.locator('.modal.modal-narrow', {
-				hasText: /Replace your active plan/
-			});
+			const replace = page.getByTestId('plan-overlap-dialog');
 			await expect(replace).toBeVisible({ timeout: 5_000 });
 			await replace.getByRole('button', { name: 'Replace plan' }).click();
 

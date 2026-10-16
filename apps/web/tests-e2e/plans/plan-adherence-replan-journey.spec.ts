@@ -57,7 +57,7 @@ import { readRow, readRows } from '../fixtures/db-read';
  * Cleanup: service-role deletePlan (cascades weeks + workouts) + deleteRun
  * for every run created, and the seed's Richmond Half is restored to
  * `active` (createTrainingPlan auto-demotes the active plan to claim the
- * one-active slot — same restore as starter-plan.spec.ts) so downstream
+ * overlapping window — same restore as starter-plan.spec.ts) so downstream
  * specs see it active.
  */
 
@@ -80,7 +80,7 @@ test.describe('plan adherence + re-plan journey', () => {
 			plantedPlanId = null;
 		}
 		// createTrainingPlan auto-completes the seed's active Richmond Half to
-		// claim the one-active slot. Restore it so the rest of the suite is
+		// make room for the overlapping new plan. Restore it so the rest of the suite is
 		// unaffected.
 		await setPlanStatus(SEED_PLAN_ID, 'active').catch(() => {});
 	});

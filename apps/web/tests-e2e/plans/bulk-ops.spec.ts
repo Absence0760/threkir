@@ -9,7 +9,7 @@ import { USER_A } from '../fixtures/users';
  * field math is unit-tested (plan_bulk_ops.ts); this pins the
  * orchestration (multi-row update + reload) end-to-end by polling the
  * DB for the mutation. Throwaway plan (status `completed` to dodge the
- * one-active unique index).
+ * active-plan overlap constraint).
  */
 
 test.describe('/plans/[id] bulk ops', () => {

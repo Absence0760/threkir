@@ -17,7 +17,7 @@ import { USER_A } from '../fixtures/users';
  * current-week date window, the planned-volume baseline, the run
  * summation, and the conditional render. We seed a throwaway plan whose
  * start_date puts "today" inside week 0 (status `completed` to dodge the
- * one-active-plan unique index — adherence gates on dates, not status),
+ * active-plan overlap constraint — adherence gates on dates, not status),
  * a build week with a 40 km target, an uncompleted long run dated
  * yesterday, and two runs that over-run the week to ~52 km (+30%).
  */

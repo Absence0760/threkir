@@ -19,7 +19,7 @@ import { USER_A } from '../fixtures/users';
  *   1. Create via the /plans/new Training wizard (PlanEditor → the
  *      Riegel → VDOT → week-phasing generator → row insert). The seed
  *      has an active plan, so the create flow gates on the
- *      Replace-plan ConfirmDialog; confirm it and land on /plans/[id].
+ *      overlap dialog; Replace and land on /plans/[id].
  *   2. Verify the progress surface on the generated plan: the
  *      progress ring (.progress-ring + .pct), the today card
  *      (section.today), the phase marker (.phase-marker / base→…→taper)
@@ -51,7 +51,7 @@ import { USER_A } from '../fixtures/users';
  *
  * Cleanup: service-role deletePlan + deleteRun safety net, and the
  * seed's Richmond Half is restored to `active` (the create flow
- * demotes it to take the one-active-plan slot — same restore as
+ * demotes it because its window overlaps the new plan — same restore as
  * plans/create.spec.ts) so downstream specs see it active.
  */
 
@@ -74,7 +74,7 @@ test.describe('plan progress journey', () => {
 			plantedPlanId = null;
 		}
 		// The create flow auto-demotes the seed's active Richmond Half to
-		// `completed` to claim the one-active slot. Restore it so the rest
+		// `completed` because its window overlaps the new plan. Restore it so the rest
 		// of the suite (e.g. /coach active-plan default) is unaffected.
 		await setPlanStatus(SEED_PLAN_ID, 'active').catch(() => {});
 	});
@@ -102,11 +102,9 @@ test.describe('plan progress journey', () => {
 			await expect(submit).toBeEnabled({ timeout: 5_000 });
 			await submit.click();
 
-			// Seed has an active plan → Replace-plan ConfirmDialog gates
-			// the create. Confirm to proceed.
-			const replace = page.locator('.modal.modal-narrow', {
-				hasText: /Replace your active plan/
-			});
+			// The seeded active plan overlaps this window → the overlap
+			// dialog gates the create. Replace to proceed.
+			const replace = page.getByTestId('plan-overlap-dialog');
 			await expect(replace).toBeVisible({ timeout: 5_000 });
 			await replace.getByRole('button', { name: 'Replace plan' }).click();
 

@@ -8,7 +8,7 @@ import { USER_A } from '../fixtures/users';
  * shift plan) now route through a ConfirmDialog — each rewrites or re-dates a
  * chunk of the plan and can't be cleanly undone. This pins the two halves of
  * the contract: Cancel performs no mutation, Confirm runs it. Throwaway plan
- * is `completed` to dodge the one-active unique index (the bulk ops gate on
+ * is `completed` to dodge the active-plan overlap constraint (the bulk ops gate on
  * ownership, not status).
  */
 

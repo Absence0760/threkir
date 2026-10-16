@@ -138,8 +138,8 @@ test.describe('Unit pref propagation — EventEditor + RaceDayPanel', () => {
 				end_date: endIso,
 				// 'completed' — not 'active' — because the seed already
 				// gives USER_A an active plan (Richmond Half 2026) and the
-				// partial unique index `training_plans_one_active`
-				// forbids a second. RaceDayPanel only gates on end_date,
+				// exclusion constraint `training_plans_active_no_overlap`
+				// forbids a second over the same days. RaceDayPanel only gates on end_date,
 				// not status, so this still exercises the panel.
 				status: 'completed',
 				days_per_week: 4

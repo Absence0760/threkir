@@ -4,19 +4,19 @@ import { deletePlan, setPlanStatus } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
 
 /**
- * /plans Replace-plan ConfirmDialog — Confirm path.
+ * /plans overlap dialog — Replace path.
  *
  * The Cancel branch is already pinned by tests-e2e/plans/create.spec.ts.
  * This saga covers the Confirm path end-to-end:
  *
  *  1. The seed's "Richmond Half 2026" card is showing as active.
  *  2. Open the New-plan wizard, fill it, click "Create plan".
- *  3. Replace-plan ConfirmDialog appears → click "Replace plan".
+ *  3. Overlap dialog appears → click "Replace plan".
  *  4. Land on /plans/<new-id>.
  *  5. Back on /plans: the new plan card has `.card-active`, and the
  *     Richmond Half card now shows the `status-completed` badge (the
- *     seed's plan was auto-demoted by createTrainingPlan so the new
- *     one could take the per-user "one active plan" slot).
+ *     seed's plan overlapped the new window, and Replace completes
+ *     the overlapping plans — decisions § 2008).
  *
  * The active-card-class flip is what `.card-active` encodes; absence
  * of `.card-active` on the seed card combined with a visible
@@ -75,9 +75,7 @@ test.describe('/plans — Replace active plan confirm path', () => {
 			await expect(submit).toBeEnabled({ timeout: 5_000 });
 			await submit.click();
 
-			const confirm = page.locator('.modal.modal-narrow', {
-				hasText: /Replace your active plan/,
-			});
+			const confirm = page.getByTestId('plan-overlap-dialog');
 			await expect(confirm).toBeVisible({ timeout: 5_000 });
 			await expect(confirm).toContainText('Richmond Half 2026');
 			await confirm.getByRole('button', { name: 'Replace plan' }).click();

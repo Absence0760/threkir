@@ -5958,6 +5958,42 @@ class AppLocalizationsEs extends AppLocalizations {
       'Un plan de caminar y correr para principiantes lleva a los 5 km, así que el objetivo se fijó en 5 km sin tiempo objetivo.';
 
   @override
+  String get planNewSeasonAssumptionRaceDroppedInvalid =>
+      'Se omitió una carrera que no se pudo leer.';
+
+  @override
+  String get planNewSeasonAssumptionRaceDroppedDate =>
+      'Se omitió una carrera porque no se pudo usar su fecha: debe ser futura y estar a menos de dos años.';
+
+  @override
+  String get planNewSeasonAssumptionRaceDroppedDistance =>
+      'Se omitió una carrera porque su distancia está fuera de lo que admite el planificador (de 5 km a 400 km).';
+
+  @override
+  String get planNewSeasonAssumptionRaceDateNextYear =>
+      'Una fecha sin año ya había pasado este año, así que se movió al año que viene.';
+
+  @override
+  String get planNewSeasonAssumptionGoalTimeDropped =>
+      'Un tiempo objetivo parecía fuera de rango para su distancia, así que esa carrera no tiene tiempo objetivo.';
+
+  @override
+  String get planNewSeasonAssumptionRaceDuplicateMerged =>
+      'Una carrera mencionada dos veces aparece una sola vez.';
+
+  @override
+  String get planNewSeasonAssumptionRacesCapped =>
+      'Solo se muestran las 12 primeras carreras: una temporada admite hasta 12.';
+
+  @override
+  String get planNewSeasonAssumptionPriorityDefault =>
+      'Las carreras sin prioridad se marcaron como B.';
+
+  @override
+  String get planNewSeasonAssumptionPriorityAAssigned =>
+      'Ninguna carrera estaba marcada como carrera A, así que lo es la más larga.';
+
+  @override
   String get planNewAiErrorConsent =>
       'El asistente de planes necesita el aviso de IA actualizado.';
 

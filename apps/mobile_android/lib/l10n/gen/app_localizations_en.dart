@@ -5903,6 +5903,42 @@ class AppLocalizationsEn extends AppLocalizations {
       'A walk-run plan for new runners builds to a 5K, so the goal was set to 5K with no goal time.';
 
   @override
+  String get planNewSeasonAssumptionRaceDroppedInvalid =>
+      'A race that couldn\'t be read was left out.';
+
+  @override
+  String get planNewSeasonAssumptionRaceDroppedDate =>
+      'A race was left out because its date couldn\'t be used — it has to be a future date within two years.';
+
+  @override
+  String get planNewSeasonAssumptionRaceDroppedDistance =>
+      'A race was left out because its distance is outside what the planner supports (5 km to 400 km).';
+
+  @override
+  String get planNewSeasonAssumptionRaceDateNextYear =>
+      'A date given without a year had already passed this year, so it was moved to next year.';
+
+  @override
+  String get planNewSeasonAssumptionGoalTimeDropped =>
+      'A goal time looked out of range for its distance, so that race has no goal time.';
+
+  @override
+  String get planNewSeasonAssumptionRaceDuplicateMerged =>
+      'A race mentioned twice is listed once.';
+
+  @override
+  String get planNewSeasonAssumptionRacesCapped =>
+      'Only the first 12 races are listed — a season can hold up to 12.';
+
+  @override
+  String get planNewSeasonAssumptionPriorityDefault =>
+      'Races without a priority were set to B.';
+
+  @override
+  String get planNewSeasonAssumptionPriorityAAssigned =>
+      'No race was marked as your A race, so the longest one is.';
+
+  @override
   String get planNewAiErrorConsent =>
       'The plan assistant needs the updated AI disclosure.';
 

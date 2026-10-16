@@ -5622,6 +5622,40 @@ class AppLocalizationsJa extends AppLocalizations {
       '初心者向けのウォーク・ランプランは5kmを目指すため、目標を5km（目標タイムなし）にしました。';
 
   @override
+  String get planNewSeasonAssumptionRaceDroppedInvalid => '読み取れなかったレースを除外しました。';
+
+  @override
+  String get planNewSeasonAssumptionRaceDroppedDate =>
+      '日付を使用できなかったため、レースを1件除外しました。今日より後で、2年以内の日付である必要があります。';
+
+  @override
+  String get planNewSeasonAssumptionRaceDroppedDistance =>
+      '距離がプランナーの対応範囲（5km〜400km）外のため、レースを1件除外しました。';
+
+  @override
+  String get planNewSeasonAssumptionRaceDateNextYear =>
+      '年のない日付が今年はすでに過ぎていたため、来年の日付にしました。';
+
+  @override
+  String get planNewSeasonAssumptionGoalTimeDropped =>
+      '目標タイムがその距離に対して範囲外に見えたため、そのレースには目標タイムを設定していません。';
+
+  @override
+  String get planNewSeasonAssumptionRaceDuplicateMerged =>
+      '2回書かれていたレースは1件にまとめました。';
+
+  @override
+  String get planNewSeasonAssumptionRacesCapped =>
+      '最初の12レースのみを表示しています。1シーズンに含められるのは12レースまでです。';
+
+  @override
+  String get planNewSeasonAssumptionPriorityDefault => '優先度のないレースはBにしました。';
+
+  @override
+  String get planNewSeasonAssumptionPriorityAAssigned =>
+      'Aレースの指定がなかったため、最も長いレースをAレースにしました。';
+
+  @override
   String get planNewAiErrorConsent => 'プランアシスタントを使うには、更新されたAIに関する説明への同意が必要です。';
 
   @override

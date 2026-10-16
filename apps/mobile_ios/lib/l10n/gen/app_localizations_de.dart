@@ -5971,6 +5971,42 @@ class AppLocalizationsDe extends AppLocalizations {
       'Ein Geh-Lauf-Plan für Einsteiger führt zu 5 km, daher wurde das Ziel auf 5 km ohne Zielzeit gesetzt.';
 
   @override
+  String get planNewSeasonAssumptionRaceDroppedInvalid =>
+      'Ein Wettkampf, der nicht gelesen werden konnte, wurde weggelassen.';
+
+  @override
+  String get planNewSeasonAssumptionRaceDroppedDate =>
+      'Ein Wettkampf wurde weggelassen, weil sein Datum nicht übernommen werden konnte — es muss in der Zukunft und höchstens zwei Jahre entfernt liegen.';
+
+  @override
+  String get planNewSeasonAssumptionRaceDroppedDistance =>
+      'Ein Wettkampf wurde weggelassen, weil seine Distanz außerhalb dessen liegt, was der Planer unterstützt (5 km bis 400 km).';
+
+  @override
+  String get planNewSeasonAssumptionRaceDateNextYear =>
+      'Ein Datum ohne Jahr lag in diesem Jahr schon zurück und wurde daher auf das nächste Jahr gesetzt.';
+
+  @override
+  String get planNewSeasonAssumptionGoalTimeDropped =>
+      'Eine Zielzeit wirkte für ihre Distanz unrealistisch, daher hat dieser Wettkampf keine Zielzeit.';
+
+  @override
+  String get planNewSeasonAssumptionRaceDuplicateMerged =>
+      'Ein doppelt genannter Wettkampf wird nur einmal aufgeführt.';
+
+  @override
+  String get planNewSeasonAssumptionRacesCapped =>
+      'Nur die ersten 12 Wettkämpfe werden aufgeführt — eine Saison umfasst höchstens 12.';
+
+  @override
+  String get planNewSeasonAssumptionPriorityDefault =>
+      'Wettkämpfe ohne Priorität wurden auf B gesetzt.';
+
+  @override
+  String get planNewSeasonAssumptionPriorityAAssigned =>
+      'Kein Wettkampf war als A-Wettkampf markiert, daher ist es der längste.';
+
+  @override
   String get planNewAiErrorConsent =>
       'Der Plan-Assistent benötigt die aktualisierte KI-Information.';
 

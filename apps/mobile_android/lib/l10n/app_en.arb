@@ -7963,6 +7963,42 @@
   "@planNewAiAssumptionBeginner5k": {
     "description": "AI plan-assistant assumption: a beginner walk-run plan always targets a 5K with no goal time"
   },
+  "planNewSeasonAssumptionRaceDroppedInvalid": "A race that couldn't be read was left out.",
+  "@planNewSeasonAssumptionRaceDroppedInvalid": {
+    "description": "AI season-request assumption: a race entry with no usable name was dropped"
+  },
+  "planNewSeasonAssumptionRaceDroppedDate": "A race was left out because its date couldn't be used — it has to be a future date within two years.",
+  "@planNewSeasonAssumptionRaceDroppedDate": {
+    "description": "AI season-request assumption: a race was dropped because its date was not a future date within two years"
+  },
+  "planNewSeasonAssumptionRaceDroppedDistance": "A race was left out because its distance is outside what the planner supports (5 km to 400 km).",
+  "@planNewSeasonAssumptionRaceDroppedDistance": {
+    "description": "AI season-request assumption: a race was dropped because its distance was outside 5-400 km"
+  },
+  "planNewSeasonAssumptionRaceDateNextYear": "A date given without a year had already passed this year, so it was moved to next year.",
+  "@planNewSeasonAssumptionRaceDateNextYear": {
+    "description": "AI season-request assumption: a date with no year had passed this year and was moved to next year"
+  },
+  "planNewSeasonAssumptionGoalTimeDropped": "A goal time looked out of range for its distance, so that race has no goal time.",
+  "@planNewSeasonAssumptionGoalTimeDropped": {
+    "description": "AI season-request assumption: a race's goal time was out of range for its distance and was removed"
+  },
+  "planNewSeasonAssumptionRaceDuplicateMerged": "A race mentioned twice is listed once.",
+  "@planNewSeasonAssumptionRaceDuplicateMerged": {
+    "description": "AI season-request assumption: a race named twice was merged into one entry"
+  },
+  "planNewSeasonAssumptionRacesCapped": "Only the first 12 races are listed — a season can hold up to 12.",
+  "@planNewSeasonAssumptionRacesCapped": {
+    "description": "AI season-request assumption: only the first 12 races were kept"
+  },
+  "planNewSeasonAssumptionPriorityDefault": "Races without a priority were set to B.",
+  "@planNewSeasonAssumptionPriorityDefault": {
+    "description": "AI season-request assumption: races with no A/B/C priority were given priority B"
+  },
+  "planNewSeasonAssumptionPriorityAAssigned": "No race was marked as your A race, so the longest one is.",
+  "@planNewSeasonAssumptionPriorityAAssigned": {
+    "description": "AI season-request assumption: no race was priority A, so the longest race was made the A race"
+  },
   "planNewAiErrorConsent": "The plan assistant needs the updated AI disclosure.",
   "@planNewAiErrorConsent": {
     "description": "Error when the AI plan assistant needs the runner to accept the updated AI disclosure first"

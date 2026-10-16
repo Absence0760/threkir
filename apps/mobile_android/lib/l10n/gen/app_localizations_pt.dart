@@ -5963,6 +5963,42 @@ class AppLocalizationsPt extends AppLocalizations {
       'Um plano de caminhada-corrida para principiantes leva aos 5 km, por isso o objetivo ficou em 5 km sem tempo objetivo.';
 
   @override
+  String get planNewSeasonAssumptionRaceDroppedInvalid =>
+      'Foi deixada de fora uma prova que não foi possível ler.';
+
+  @override
+  String get planNewSeasonAssumptionRaceDroppedDate =>
+      'Foi deixada de fora uma prova porque não foi possível usar a data — tem de ser uma data futura e a menos de dois anos.';
+
+  @override
+  String get planNewSeasonAssumptionRaceDroppedDistance =>
+      'Foi deixada de fora uma prova porque a distância está fora do que o planeador suporta (5 km a 400 km).';
+
+  @override
+  String get planNewSeasonAssumptionRaceDateNextYear =>
+      'Uma data indicada sem ano já tinha passado este ano, por isso passou para o próximo ano.';
+
+  @override
+  String get planNewSeasonAssumptionGoalTimeDropped =>
+      'Um tempo objetivo parecia fora do intervalo para a distância, por isso essa prova ficou sem tempo objetivo.';
+
+  @override
+  String get planNewSeasonAssumptionRaceDuplicateMerged =>
+      'Uma prova mencionada duas vezes aparece só uma vez.';
+
+  @override
+  String get planNewSeasonAssumptionRacesCapped =>
+      'Só são listadas as primeiras 12 provas — uma época pode ter até 12.';
+
+  @override
+  String get planNewSeasonAssumptionPriorityDefault =>
+      'As provas sem prioridade ficaram com B.';
+
+  @override
+  String get planNewSeasonAssumptionPriorityAAssigned =>
+      'Nenhuma prova estava marcada como prova A, por isso a mais longa passou a sê-lo.';
+
+  @override
   String get planNewAiErrorConsent =>
       'O assistente de planos precisa do aviso de IA atualizado.';
 
@@ -22477,6 +22513,42 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get planNewAiAssumptionBeginner5k =>
       'Um plano de caminhada e corrida para iniciantes leva aos 5 km, então o objetivo ficou em 5 km sem tempo-alvo.';
+
+  @override
+  String get planNewSeasonAssumptionRaceDroppedInvalid =>
+      'Uma prova que não pôde ser lida ficou de fora.';
+
+  @override
+  String get planNewSeasonAssumptionRaceDroppedDate =>
+      'Uma prova ficou de fora porque a data não pôde ser usada — ela precisa ser futura e estar a menos de dois anos.';
+
+  @override
+  String get planNewSeasonAssumptionRaceDroppedDistance =>
+      'Uma prova ficou de fora porque a distância está fora do que o planejador suporta (5 km a 400 km).';
+
+  @override
+  String get planNewSeasonAssumptionRaceDateNextYear =>
+      'Uma data informada sem ano já tinha passado neste ano, então foi movida para o ano que vem.';
+
+  @override
+  String get planNewSeasonAssumptionGoalTimeDropped =>
+      'Um tempo-alvo parecia fora da faixa para a distância, então essa prova ficou sem tempo-alvo.';
+
+  @override
+  String get planNewSeasonAssumptionRaceDuplicateMerged =>
+      'Uma prova mencionada duas vezes aparece uma vez só.';
+
+  @override
+  String get planNewSeasonAssumptionRacesCapped =>
+      'Só as 12 primeiras provas são listadas — uma temporada comporta até 12.';
+
+  @override
+  String get planNewSeasonAssumptionPriorityDefault =>
+      'Provas sem prioridade ficaram como B.';
+
+  @override
+  String get planNewSeasonAssumptionPriorityAAssigned =>
+      'Nenhuma prova estava marcada como prova A, então a mais longa passou a ser.';
 
   @override
   String get planNewAiErrorConsent =>

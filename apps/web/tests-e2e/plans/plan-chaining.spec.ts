@@ -20,7 +20,7 @@ import { USER_B } from '../fixtures/users';
  * plan and a public-library clone all show the same dialog, and a plan that
  * appears after the wizard opened is named rather than silently replaced.
  * Ending a plan early over a completed workout is refused by the server
- * (TR001, decisions § 2060) and the wizard says why.
+ * (TR001, decisions § 2062) and the wizard says why.
  *
  * Runs as USER_B with a planted active plan, so USER_A's seeded "Richmond
  * Half 2026" — which other specs need active and untrimmed — is never touched.

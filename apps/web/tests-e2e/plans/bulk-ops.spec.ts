@@ -81,7 +81,7 @@ test.describe('/plans/[id] bulk ops', () => {
 				.click();
 
 			// The week's volume is restated from the workouts it now holds: the
-			// one tempo session at 60% (apply_workout_adjustments, § 2060).
+			// one tempo session at 60% (apply_workout_adjustments, § 2062).
 			await expect
 				.poll(async () => (await admin.from('plan_weeks').select('target_volume_m').eq('id', weekId).single()).data?.target_volume_m)
 				.toBe(7_200);

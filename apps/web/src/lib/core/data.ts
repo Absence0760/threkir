@@ -69,6 +69,7 @@ import {
 	type OccurrenceRefundSummary
 } from '../social/paid_registration';
 import { planHeadCopyFields, planWeekCopyRows, planWorkoutCopyRows } from './plan_copy';
+import { shiftIsoDate } from '../training/plan_bulk_ops';
 import { clubSlug, CLUB_SLUG_FALLBACK } from '../social/club_slug';
 import {
 	ROUTE_LIST_COLS,
@@ -5954,27 +5955,46 @@ export async function fetchWorkout(
 export async function fetchActivePlanOverview(): Promise<ActivePlanOverview | null> {
 	const userId = auth.user?.id;
 	if (!userId) return null;
-	const { data: plan } = await supabase
+	return planOverviewFor(userId);
+}
+
+/// The overview of `userId`'s current plan (plan_current.ts), or of the next
+/// one to start when nothing is current, so a runner whose only plan is queued
+/// sees it counting down rather than an empty card. `upcoming` is the plan
+/// after the one shown.
+async function planOverviewFor(userId: string): Promise<ActivePlanOverview | null> {
+	const { data: rows } = await supabase
 		.from('training_plans')
 		.select('*')
 		.eq('user_id', userId)
 		.eq('status', 'active')
-		.maybeSingle();
-	if (!plan) return null;
-	const { weeks, workouts } = await fetchPlan(plan.id);
+		.eq('is_template', false);
+	const active = (rows ?? []) as TrainingPlan[];
+	if (active.length === 0) return null;
 	// Local-tz today — `toISOString().slice(0,10)` returns the UTC date,
 	// which rolls a calendar day early/late depending on the viewer's TZ.
 	const { todayISO } = await import('../training/training');
+	const { pickCurrentPlan } = await import('../training/plan_current');
 	const { planWorkoutProgress } = await import('../training/plan_progress');
 	const today = todayISO();
+	const picked = pickCurrentPlan(active, today);
+	const plan = picked.current ?? picked.upcoming;
+	if (!plan) return null;
+	const next = active
+		.filter((p) => p.start_date > plan.end_date)
+		.reduce<TrainingPlan | null>((a, p) => (!a || p.start_date < a.start_date ? p : a), null);
+	const { weeks, workouts } = await fetchPlan(plan.id);
 	const todayWorkout = workouts.find((w) => w.scheduled_date === today) ?? null;
 	const completionPct = planWorkoutProgress(workouts).pct;
 	return {
-		plan: plan as TrainingPlan,
+		plan,
 		weeks: weeks ?? [],
 		workouts: workouts ?? [],
 		todayWorkout,
-		completionPct
+		completionPct,
+		upcoming: next
+			? { id: next.id, name: next.name, start_date: next.start_date, end_date: next.end_date }
+			: null
 	};
 }
 
@@ -5994,6 +6014,11 @@ export async function createTrainingPlan(input: {
 	daysPerWeek: number;
 	notes?: string;
 	generated: GeneratedPlan;
+	/// What to do with active plans the new window overlaps: complete them
+	/// ('replace', the default) or end each the day before the new plan
+	/// starts ('trim'). Active plans outside the window are left alone, so
+	/// the new plan chains before or after them.
+	overlap?: 'replace' | 'trim';
 }): Promise<TrainingPlan> {
 	// Read the id from the session directly rather than from the auth store.
 	// The store's `user` object is populated by a background profile fetch
@@ -6035,13 +6060,37 @@ export async function createTrainingPlan(input: {
 	}
 
 	markListsStale('plans');
-	// Auto-complete any existing active plan so the partial unique index
-	// (one-active-per-user) doesn't reject the insert.
-	await supabase
-		.from('training_plans')
-		.update({ status: 'completed' })
-		.eq('user_id', userId)
-		.eq('status', 'active');
+	const overlapping = await fetchOverlappingActivePlans(
+		userId,
+		input.startDate,
+		input.generated.endDate
+	);
+	if (overlapping.length > 0) {
+		if ((input.overlap ?? 'replace') === 'trim') {
+			const trimTo = shiftIsoDate(input.startDate, -1);
+			if (overlapping.some((p) => p.start_date > trimTo)) {
+				throw new Error(
+					'A plan that starts on or after the new start date cannot be ended early to make room. Replace it instead.'
+				);
+			}
+			for (const p of overlapping) {
+				const { error } = await supabase.rpc('trim_training_plan', {
+					p_plan_id: p.id,
+					p_new_end_date: trimTo
+				});
+				if (error) throw dbError(error);
+			}
+		} else {
+			const { error } = await supabase
+				.from('training_plans')
+				.update({ status: 'completed' })
+				.in(
+					'id',
+					overlapping.map((p) => p.id)
+				);
+			if (error) throw dbError(error);
+		}
+	}
 
 	const { data: plan, error: planErr } = await supabase
 		.from('training_plans')
@@ -6128,8 +6177,8 @@ export async function pausePlan(id: string): Promise<void> {
 	await updatePlanStatus(id, 'paused');
 }
 
-/// Thrown by resumePlan when the user already has another active plan — the
-/// `training_plans_one_active` unique index would reject the resume, so we
+/// Thrown by resumePlan when another active plan overlaps the paused plan's
+/// window — `training_plans_active_no_overlap` would reject the resume, so we
 /// refuse up front with a clear signal the UI can translate rather than
 /// silently completing the other plan.
 export class ActivePlanExistsError extends Error {
@@ -6139,19 +6188,41 @@ export class ActivePlanExistsError extends Error {
 	}
 }
 
-/// Resume a paused plan back to 'active'. Refuses (throws
-/// ActivePlanExistsError) when another active plan already exists for the
-/// user, since the one-active partial unique index would reject it — the
-/// runner must pause/finish the other plan first. Non-destructive by design.
-export async function resumePlan(id: string, userId: string): Promise<void> {
-	const { data: active, error: qErr } = await supabase
+/// The caller's active plans (templates included — the exclusion constraint
+/// covers every active row) whose inclusive window shares a day with
+/// [startIso, endIso].
+export async function fetchOverlappingActivePlans(
+	userId: string,
+	startIso: string,
+	endIso: string
+): Promise<Pick<TrainingPlan, 'id' | 'name' | 'start_date' | 'end_date'>[]> {
+	const { data, error } = await supabase
 		.from('training_plans')
-		.select('id')
+		.select('id, name, start_date, end_date')
 		.eq('user_id', userId)
 		.eq('status', 'active')
-		.limit(1);
-	if (qErr) throw dbError(qErr);
-	if (active && active.length > 0) throw new ActivePlanExistsError();
+		.lte('start_date', endIso)
+		.gte('end_date', startIso)
+		.order('start_date', { ascending: true });
+	if (error) throw dbError(error);
+	return data ?? [];
+}
+
+/// Resume a paused plan back to 'active'. Refuses (throws
+/// ActivePlanExistsError) when another active plan overlaps its window; a
+/// plan queued before or after it does not block. Non-destructive by design.
+export async function resumePlan(id: string, userId: string): Promise<void> {
+	const { data: plan, error: planErr } = await supabase
+		.from('training_plans')
+		.select('start_date, end_date')
+		.eq('id', id)
+		.maybeSingle();
+	if (planErr) throw dbError(planErr);
+	if (!plan) throw new Error('Plan not found.');
+	const others = (await fetchOverlappingActivePlans(userId, plan.start_date, plan.end_date)).filter(
+		(p) => p.id !== id
+	);
+	if (others.length > 0) throw new ActivePlanExistsError();
 	await updatePlanStatus(id, 'active');
 }
 
@@ -10639,26 +10710,7 @@ export async function fetchAthletePlanOverview(
 	athleteId: string
 ): Promise<ActivePlanOverview | null> {
 	if (!auth.user?.id || !athleteId) return null;
-	const { data: plan } = await supabase
-		.from('training_plans')
-		.select('*')
-		.eq('user_id', athleteId)
-		.eq('status', 'active')
-		.maybeSingle();
-	if (!plan) return null;
-	const { weeks, workouts } = await fetchPlan(plan.id);
-	const { todayISO } = await import('../training/training');
-	const { planWorkoutProgress } = await import('../training/plan_progress');
-	const today = todayISO();
-	const todayWorkout = workouts.find((w) => w.scheduled_date === today) ?? null;
-	const completionPct = planWorkoutProgress(workouts).pct;
-	return {
-		plan: plan as TrainingPlan,
-		weeks: weeks ?? [],
-		workouts: workouts ?? [],
-		todayWorkout,
-		completionPct,
-	};
+	return planOverviewFor(athleteId);
 }
 
 /// Assigns a coach's plan to a linked athlete via the assign_plan_to_athlete

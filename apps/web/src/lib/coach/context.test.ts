@@ -147,7 +147,7 @@ test('buildContext caps plan_weeks + plan_workouts row counts', async () => {
 	// PostgREST): a plan with far more than the caps' worth of weeks +
 	// workouts must not send them all. Fails before the fix (unbounded →
 	// full history returned) and passes after (arrays clamped to the caps).
-	const planRow = { id: 'p1', start_date: '2026-06-01', status: 'active' };
+	const planRow = { id: 'p1', start_date: '2026-06-01', end_date: '2099-12-31', status: 'active', is_template: false };
 	const weeks = Array.from({ length: COACH_PLAN_WEEKS_CAP + 12 }, (_, i) => ({
 		id: `w${i}`,
 		plan_id: 'p1',
@@ -159,7 +159,7 @@ test('buildContext caps plan_weeks + plan_workouts row counts', async () => {
 	);
 	const ctx = await buildContext(
 		fakeSupabase({
-			training_plans: planRow,
+			training_plans: [planRow],
 			plan_weeks: weeks,
 			plan_workouts: workouts,
 		}) as never,
@@ -232,6 +232,10 @@ function fakeSupabase(tableData: Record<string, unknown>) {
 						: result,
 				);
 			q.maybeSingle = () => Promise.resolve(result);
+			q.then = (
+				onFulfilled: (v: unknown) => unknown,
+				onRejected?: (e: unknown) => unknown,
+			) => Promise.resolve(result).then(onFulfilled, onRejected);
 			return q;
 		},
 	};
@@ -342,8 +346,8 @@ function coachTenantFixture() {
 			{ id: 'run-b', user_id: COACH, started_at: soon, distance_m: 5000, duration_s: 1500, metadata: { activity_type: 'run' }, route_id: null },
 		],
 		training_plans: [
-			{ id: 'plan-a', user_id: ATHLETE, status: 'active', is_template: false },
-			{ id: 'plan-b', user_id: COACH, status: 'active', is_template: false },
+			{ id: 'plan-a', user_id: ATHLETE, status: 'active', is_template: false, start_date: '2026-01-04', end_date: '2099-12-31' },
+			{ id: 'plan-b', user_id: COACH, status: 'active', is_template: false, start_date: '2026-01-04', end_date: '2099-12-31' },
 		],
 		plan_weeks: [
 			{ id: 'week-a', plan_id: 'plan-a', week_index: 0 },

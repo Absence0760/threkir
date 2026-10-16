@@ -50,6 +50,24 @@ export class DbError extends Error {
 	}
 }
 
+/// SQLSTATE 23P01 — `exclusion_violation`. The only exclusion constraint in
+/// the schema is training_plans_active_no_overlap (decisions § 2008), so a
+/// date shift, re-plan, resume or week duplication that would make two active
+/// plans share a day lands here. Raw, it reads as a code; this says what
+/// happened and what to do about it.
+export class PlanOverlapError extends DbError {
+	constructor(status?: number) {
+		super('', '23P01', status);
+		this.name = 'PlanOverlapError';
+		this.message =
+			'These dates overlap another active training plan. End that plan earlier or pick dates after it.';
+	}
+}
+
+export function isPlanOverlapError(err: unknown): boolean {
+	return typeof err === 'object' && err !== null && (err as { code?: unknown }).code === '23P01';
+}
+
 /// Turn a Supabase result's `error` into something fit to throw. An `Error`
 /// that is not postgrest-js's own `PostgrestError` (auth-js, storage-js and
 /// functions-js all throw real subclasses, and a FunctionsHttpError's
@@ -60,6 +78,11 @@ export function dbError(e: unknown): Error {
 	let err: DbError;
 	if (e && typeof e === 'object') {
 		const { message, code, status } = e as { message?: unknown; code?: unknown; status?: unknown };
+		if (code === '23P01') {
+			const overlap = new PlanOverlapError(typeof status === 'number' ? status : undefined);
+			Error.captureStackTrace?.(overlap, dbError);
+			return overlap;
+		}
 		err = new DbError(
 			typeof message === 'string' ? message : '',
 			typeof code === 'string' && code !== '' ? code : undefined,
@@ -80,7 +103,7 @@ export function dbError(e: unknown): Error {
 /// keeps "invalid invite token (P0001)" from replacing "This invite link is
 /// invalid or expired". Use `thrownMessage` where the detail is the point.
 export function appErrorMessage(e: unknown): string | null {
-	return e instanceof Error && !(e instanceof DbError) ? e.message : null;
+	return e instanceof Error && (!(e instanceof DbError) || e instanceof PlanOverlapError) ? e.message : null;
 }
 
 /// The user-facing detail of a thrown value. The data layer throws `DbError`

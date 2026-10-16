@@ -7,6 +7,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { TABLES } from '../core/schema';
 import { distinctExerciseCount } from '../gym/gym_prs';
+import { pickCurrentPlan } from '../training/plan_current';
 
 export interface CoachContext {
 	data?: unknown;
@@ -19,6 +20,23 @@ export interface CoachProfileRow {
 	display_name: string | null;
 	preferred_unit: string | null;
 	health_data_consent_at: string | null;
+}
+
+/// Several plans can be active at once when their windows don't overlap
+/// (decisions § 2008); the coach talks about the one plan_current.ts picks, or
+/// the next to start when none is current. The handler has no viewer timezone,
+/// so "today" is the UTC date — off by at most the one handover day.
+async function currentPlanRow(supabase: SupabaseClient, userId: string): Promise<unknown> {
+	const { data } = await supabase
+		.from('training_plans')
+		.select('*')
+		.eq('user_id', userId)
+		.eq('status', 'active')
+		.eq('is_template', false)
+		.order('start_date', { ascending: true });
+	const rows = (data ?? []) as { start_date: string; end_date: string }[];
+	const { current, upcoming } = pickCurrentPlan(rows, new Date().toISOString().slice(0, 10));
+	return current ?? upcoming;
 }
 
 export async function buildContext(
@@ -82,19 +100,16 @@ export async function buildContext(
 		// active plan). The `.eq('user_id', userId)` keeps this the caller's own
 		// data; plan_weeks/plan_workouts inherit the scope transitively through
 		// the plan (they carry no user_id column).
-		const { data: plan } = planId
-			? await supabase
-					.from('training_plans')
-					.select('*')
-					.eq('id', planId)
-					.eq('user_id', userId)
-					.maybeSingle()
-			: await supabase
-					.from('training_plans')
-					.select('*')
-					.eq('user_id', userId)
-					.eq('status', 'active')
-					.maybeSingle();
+		const plan: unknown = planId
+			? (
+					await supabase
+						.from('training_plans')
+						.select('*')
+						.eq('id', planId)
+						.eq('user_id', userId)
+						.maybeSingle()
+				).data
+			: await currentPlanRow(supabase, userId);
 		let weeks: unknown[] = [];
 		let workouts: unknown[] = [];
 		if (plan && typeof plan === 'object' && 'id' in plan) {

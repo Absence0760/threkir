@@ -5,7 +5,16 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { inspect } from 'node:util';
 
-import { appErrorMessage, DbError, dbError, supabaseErrorFields, isDuplicateKeyError, thrownMessage } from './supabase_error';
+import {
+	appErrorMessage,
+	DbError,
+	dbError,
+	isPlanOverlapError,
+	PlanOverlapError,
+	supabaseErrorFields,
+	isDuplicateKeyError,
+	thrownMessage
+} from './supabase_error';
 import { stripComments } from './strip_comments';
 
 test('supabaseErrorFields keeps only code + message, drops details/hint', () => {
@@ -217,4 +226,25 @@ test('appErrorMessage reads an app-raised Error and leaves a database failure to
 	assert.equal(appErrorMessage({ message: 'invalid invite token', code: 'P0001' }), null);
 	assert.equal(appErrorMessage('x'), null);
 	assert.equal(appErrorMessage(undefined), null);
+});
+
+test('dbError turns a 23P01 plan-window overlap into a readable PlanOverlapError', () => {
+	// Reason: training_plans_active_no_overlap is the schema's one exclusion
+	// constraint; a shift or re-plan that trips it otherwise toasts a raw
+	// constraint name and code (decisions § 2008).
+	const err = dbError({
+		message: 'conflicting key value violates exclusion constraint "training_plans_active_no_overlap"',
+		code: '23P01',
+		details: 'Key (user_id, daterange(...))',
+		hint: null
+	});
+	assert.ok(err instanceof PlanOverlapError);
+	assert.ok(err instanceof DbError);
+	assert.equal((err as DbError).code, '23P01');
+	assert.match(err.message, /overlap another active training plan/);
+	assert.doesNotMatch(err.message, /23P01|exclusion|Key \(/);
+	assert.equal(thrownMessage(err), err.message);
+	assert.equal(appErrorMessage(err), err.message);
+	assert.equal(isPlanOverlapError(err), true);
+	assert.equal(isPlanOverlapError({ code: '23505' }), false);
 });

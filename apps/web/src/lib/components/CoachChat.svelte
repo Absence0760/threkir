@@ -11,6 +11,8 @@
 	import ChipDropdown from '#lib/components/ChipDropdown.svelte';
 	import { TIER_LIMITS } from '#lib/coach/types.ts';
 	import { aiPlanEnabled } from '#lib/training/ai_plan_flag.ts';
+	import { pickCurrentPlan } from '#lib/training/plan_current.ts';
+	import { todayISO } from '#lib/training/training.ts';
 	import type { CoachMessageRole } from '#lib/coach/types.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
 	import type { TrainingPlan } from '#lib/types.ts';
@@ -342,15 +344,24 @@
 		let planName: string | null = null;
 		let planWeeks: number | null = null;
 		try {
-			const planQuery = planId
-				? supabase.from('training_plans').select('id, name').eq('id', planId).maybeSingle()
-				: supabase
-						.from('training_plans')
-						.select('id, name')
-						.eq('user_id', userId)
-						.eq('status', 'active')
-						.maybeSingle();
-			const { data: plan } = await planQuery;
+			let plan: { id: string; name: string } | null = null;
+			if (planId) {
+				const { data } = await supabase
+					.from('training_plans')
+					.select('id, name')
+					.eq('id', planId)
+					.maybeSingle();
+				plan = data;
+			} else {
+				const { data } = await supabase
+					.from('training_plans')
+					.select('id, name, start_date, end_date')
+					.eq('user_id', userId)
+					.eq('status', 'active')
+					.eq('is_template', false);
+				const picked = pickCurrentPlan(data ?? [], todayISO());
+				plan = picked.current ?? picked.upcoming;
+			}
 			if (plan) {
 				planName = plan.name;
 				const { count } = await supabase

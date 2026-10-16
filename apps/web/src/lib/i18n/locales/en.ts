@@ -635,7 +635,7 @@ export const en = {
 	"planDetail.resumeConfirmMessage": "This plan becomes your active plan again.",
 	"planDetail.pauseDone": "Plan paused.",
 	"planDetail.resumeDone": "Plan resumed.",
-	"planDetail.resumeBlocked": "You already have an active plan. Pause or finish it first.",
+	"planDetail.resumeBlocked": "Another active plan overlaps these dates. Pause, finish or end it earlier first.",
 	"planDetail.cycleAdjustCycle": "Adjust for my cycle",
 	"planDetail.cycleAdjustPregnancy": "Adjust for pregnancy",
 	"planDetail.cycleAdjustConfigure": "Set up cycle or pregnancy tracking in Settings",

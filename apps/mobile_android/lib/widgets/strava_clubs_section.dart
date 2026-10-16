@@ -84,7 +84,7 @@ class StravaClubsController extends ChangeNotifier {
     if (!_disposed) notifyListeners();
   }
 
-  bool get isDisposed => _disposed;
+  bool get mounted => !_disposed;
 
   @override
   void dispose() {
@@ -199,7 +199,7 @@ class _StravaClubsSectionState extends State<StravaClubsSection> {
         message: l10n.stravaClubsUnlinked(before.name),
         commit: () => controller.api.unlinkStravaClub(before.id),
         restore: () {
-          if (!controller.isDisposed) {
+          if (controller.mounted) {
             controller.setLinked(club.stravaClubId, before);
           }
         },

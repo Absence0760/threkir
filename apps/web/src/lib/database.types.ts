@@ -7260,6 +7260,10 @@ export type Database = {
         Returns: string
       }
       sweep_challenge_completions: { Args: never; Returns: undefined }
+      trim_training_plan: {
+        Args: { p_new_end_date: string; p_plan_id: string }
+        Returns: undefined
+      }
       try_consume_strava_quota: {
         Args: { p_day_limit?: number; p_short_limit?: number }
         Returns: boolean

@@ -177,10 +177,9 @@ select throws_ok(
 );
 
 -- ── training_plans.days_per_week: 3..7 ──────────────────────────────────────
--- `training_plans_one_active` is a partial unique index on (user_id) where
--- status = 'active', so every plan here is filed completed: the subject is the
--- bound, and a second active plan would fail with a 23505 that says nothing
--- about it.
+-- `training_plans_active_no_overlap` refuses two active plans over the same
+-- dates, so every plan here is filed completed: the subject is the bound, and
+-- a second active plan would fail with a 23P01 that says nothing about it.
 select lives_ok(
   $$ insert into training_plans (user_id, name, goal_event, goal_distance_m,
                                  start_date, end_date, days_per_week, status)

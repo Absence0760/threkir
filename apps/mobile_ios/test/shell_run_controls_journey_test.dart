@@ -36,6 +36,7 @@ import '../lib/screens/home_screen.dart';
 import '../lib/screens/run_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
+import 'pre_run_dialogs.dart';
 import 'pump_until.dart';
 import 'store_write_watch.dart';
 
@@ -225,6 +226,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final prefs = Preferences();
     await prefs.init();
+    await markPreRunDialogsSeen(prefs);
     final store = runStore ?? LocalRunStore();
     if (runStore == null) {
       await store.init(overrideDirectory: tempDir('controls_runs_'));

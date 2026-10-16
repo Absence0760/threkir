@@ -5873,6 +5873,10 @@ export type Database = {
       }
       ai_disclosure_current_version: { Args: never; Returns: number }
       am_i_admin: { Args: never; Returns: boolean }
+      apply_workout_adjustments: {
+        Args: { p_changes: Json; p_plan_id: string }
+        Returns: undefined
+      }
       approve_event_result: {
         Args: {
           p_approve: boolean

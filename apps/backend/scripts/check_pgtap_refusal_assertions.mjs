@@ -1850,6 +1850,20 @@ export const FILTERED_RPC_ARGUMENTS = [
       'windows and the assertion after it states the moved workouts.',
   },
   {
+    file: 'plan_review_followups_test.sql',
+    description: 'the owner shifts plan 6 a week',
+    columns: [
+      'plan_workouts.scheduled_date',
+      'training_plans.end_date',
+      'training_plans.start_date',
+    ],
+    readBack: 'shifting a trimmed plan keeps its stamp',
+    reason:
+      'The subject is the trimmed_at trigger: a shift keeps the plan\'s length, so the stamp ' +
+      'must survive it. The dates are `+ p_days` over the stored ones, and the named read-back ' +
+      'states the shifted window beside the stamp.',
+  },
+  {
     file: 'checkpoint_crossings_test.sql',
     description: 'an event organiser can write a crossing via upsert_checkpoint_crossing',
     columns: [

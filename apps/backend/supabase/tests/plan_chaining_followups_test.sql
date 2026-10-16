@@ -138,7 +138,7 @@ where week_id = 'eeeeeeee-0000-0000-0000-0000000f0003' and scheduled_date = '203
 set local role authenticated;
 select throws_ok(
   $$ select trim_training_plan('dddddddd-0000-0000-0000-0000000f0003', '2032-01-07') $$,
-  'P0001', null,
+  'TR001', 'trim_training_plan: completed workouts fall after 2032-01-07',
   'a trim that would delete a completed workout is refused'
 );
 reset role;

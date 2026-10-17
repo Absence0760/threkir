@@ -1772,7 +1772,6 @@
   "planDetailDaysPerWeek": "{count} dias/sem.",
   "planDetailCurrentWeek": "Esta semana",
   "planDetailToday": "HOJE",
-  "planDetailCompleted": "Concluído",
   "planDetailWeek": "Semana {number}",
   "planDetailDriftOverFlag": "Nesta semana, até agora {pct}% acima do plano — vá com calma nos dias fáceis para não cavar um buraco de fadiga.",
   "planDetailDriftUnderFlag": "Até agora, esta semana correu {done} dos {planned} planeados até aqui.",

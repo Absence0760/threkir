@@ -1772,7 +1772,6 @@
   "planDetailDaysPerWeek": "{count} jours/sem.",
   "planDetailCurrentWeek": "Cette semaine",
   "planDetailToday": "AUJOURD'HUI",
-  "planDetailCompleted": "Terminé",
   "planDetailWeek": "Semaine {number}",
   "planDetailDriftOverFlag": "{pct}% au-dessus du plan cette semaine pour l'instant — lève le pied les jours faciles pour ne pas creuser un trou de fatigue.",
   "planDetailDriftUnderFlag": "Cette semaine, vous en êtes à {done} sur les {planned} prévus à ce stade.",

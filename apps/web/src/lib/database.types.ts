@@ -6673,6 +6673,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      move_plan_workout: {
+        Args: { p_date: string; p_workout_id: string }
+        Returns: string
+      }
       my_active_challenges: {
         Args: never
         Returns: {
@@ -6898,6 +6902,10 @@ export type Database = {
         Returns: undefined
       }
       request_follow: { Args: { p_target: string }; Returns: string }
+      reschedule_plan_workouts: {
+        Args: { p_moves: Json; p_plan_id: string }
+        Returns: undefined
+      }
       resolve_target_reports: {
         Args: {
           p_resolution?: string

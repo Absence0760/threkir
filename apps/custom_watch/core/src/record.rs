@@ -6508,6 +6508,7 @@ mod tests {
                 target_duration_s: 0,
                 target_pace_s_per_km: 300,
                 tolerance_s_per_km: 10,
+                paced: true,
             },
             WorkoutStep {
                 kind: WorkoutStepKind::Rep,
@@ -6517,6 +6518,7 @@ mod tests {
                 target_duration_s: 0,
                 target_pace_s_per_km: 300,
                 tolerance_s_per_km: 10,
+                paced: true,
             },
         ]
     }
@@ -6531,6 +6533,7 @@ mod tests {
             target_duration_s: duration_s,
             target_pace_s_per_km: 300,
             tolerance_s_per_km: 10,
+            paced: true,
         }]
     }
 

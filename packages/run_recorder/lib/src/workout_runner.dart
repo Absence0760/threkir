@@ -101,7 +101,7 @@ class WorkoutRunner {
 
   PaceAdherence get paceAdherence {
     final s = currentStep;
-    if (s == null) return PaceAdherence.onPace;
+    if (s == null || !s.paced) return PaceAdherence.onPace;
     final actual = stepAveragePaceSecPerKm;
     if (actual == null) return PaceAdherence.onPace;
     final diff = actual - s.targetPaceSecPerKm; // positive = slower
@@ -455,6 +455,11 @@ class WorkoutStep {
   final int targetPaceSecPerKm;
   final int toleranceSecPerKm;
   final String label;
+  // False for every step of a walk-run (C25K) session: the runner reports
+  // no adherence and emits no drift cue, because a beginner's run and walk
+  // intervals are effort-led, not a pace test. [targetPaceSecPerKm] still
+  // carries the plan's easy pace for distance estimates.
+  final bool paced;
 
   const WorkoutStep({
     required this.kind,
@@ -465,6 +470,7 @@ class WorkoutStep {
     required this.targetPaceSecPerKm,
     this.toleranceSecPerKm = 10,
     required this.label,
+    this.paced = true,
   });
 
   bool get isDurationBased =>
@@ -623,6 +629,18 @@ List<WorkoutStep> expandWorkoutSteps({
     return paces[fallbackKey ?? 'easy'] ?? 360;
   }
 
+  // Walk-run sessions (recovery_pace == 'walk') relabel the work/rest
+  // intervals as Run / Walk and tag the rest step as a walk so the
+  // recorder's TTS announces "Run"/"Walk" instead of "Rep"/"Recovery"
+  // (persona #22). Every step of one, the walking warm-up and cool-down
+  // included, is unpaced.
+  final repeats = structure['repeats'];
+  final isWalkRun = repeats is Map &&
+      (repeats['rep'] is Map
+          ? (repeats['recovery'] is Map &&
+              (repeats['recovery'] as Map)['pace'] == 'walk')
+          : repeats['recovery_pace'] == 'walk');
+
   // Read either `distance_m` (legacy + Phase 2 default) or `duration_s`
   // (v2 — time-based steps). When both are present, distance wins so
   // existing plans don't change behaviour. Returns null if neither is
@@ -646,6 +664,7 @@ List<WorkoutStep> expandWorkoutSteps({
         targetPaceSecPerKm: resolvePaceFrom(block, paceFallback),
         toleranceSecPerKm: toleranceSecPerKm,
         label: label,
+        paced: !isWalkRun,
       );
     }
     if (dur != null && dur > 0) {
@@ -658,6 +677,7 @@ List<WorkoutStep> expandWorkoutSteps({
         targetPaceSecPerKm: resolvePaceFrom(block, paceFallback),
         toleranceSecPerKm: toleranceSecPerKm,
         label: label,
+        paced: !isWalkRun,
       );
     }
     return null;
@@ -682,7 +702,6 @@ List<WorkoutStep> expandWorkoutSteps({
   //      recovery_distance_m | recovery_duration_s, recovery_pace}`
   // Both shapes can now use `duration_s` instead of `distance_m` for
   // either the rep or the recovery (v2 time-based reps).
-  final repeats = structure['repeats'];
   if (repeats is Map) {
     final count = (repeats['count'] as num?)?.toInt() ?? 0;
     if (count > 0) {
@@ -710,11 +729,6 @@ List<WorkoutStep> expandWorkoutSteps({
         if (recBlock.isEmpty) recBlock = null;
       }
 
-      // Walk-run sessions (recovery_pace == 'walk') relabel the work/rest
-      // intervals as Run / Walk and tag the rest step as a walk so the
-      // recorder's TTS announces "Run"/"Walk" instead of "Rep"/"Recovery"
-      // (persona #22).
-      final isWalkRun = recBlock != null && recBlock['pace'] == 'walk';
       for (var i = 0; i < count; i++) {
         final repStep = buildStep(
           block: repBlock,

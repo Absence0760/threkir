@@ -6078,9 +6078,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get planDetailToday => '今日';
 
   @override
-  String get planDetailCompleted => '完了';
-
-  @override
   String planDetailWeek(int number) {
     return '第$number週';
   }

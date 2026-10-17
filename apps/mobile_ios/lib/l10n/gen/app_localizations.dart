@@ -10480,12 +10480,6 @@ abstract class AppLocalizations {
   /// **'TODAY'**
   String get planDetailToday;
 
-  /// Completed marker on the today card
-  ///
-  /// In en, this message translates to:
-  /// **'Completed'**
-  String get planDetailCompleted;
-
   /// Week-card title
   ///
   /// In en, this message translates to:

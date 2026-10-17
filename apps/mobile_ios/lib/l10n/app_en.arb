@@ -8641,10 +8641,6 @@
   "@planDetailToday": {
     "description": "Today-card eyebrow label"
   },
-  "planDetailCompleted": "Completed",
-  "@planDetailCompleted": {
-    "description": "Completed marker on the today card"
-  },
   "planDetailWeek": "Week {number}",
   "@planDetailWeek": {
     "description": "Week-card title",

@@ -57,6 +57,8 @@ A workout with no `structure` (e.g. "Easy 8 km") expands to a **single step** co
 
 **Walk-run (C25K / Galloway) — persona #22, decisions §91.** A rep or recovery block may carry `duration_s` / `recovery_duration_s` instead of distances; the runner builds duration-based steps (end condition is elapsed time, not distance). When `recovery_pace == 'walk'`, `expandWorkoutSteps` relabels the work intervals **Run i/n** (kept `WorkoutStepKind.rep`) and the rest intervals **Walk i/n** (tagged `WorkoutStepKind.walk`), so the transition cue announces "Run 1 of 8. 1 minute." / "Walk 1 of 7. 1 minute 30 seconds." (duration spoken instead of distance + pace). Example: warmup-walk → 8× (run 60s / walk 90s) → cooldown-walk expands to **17 steps** (1 + 8 runs + 7 walks + 1).
 
+**A walk-run session is not a pace test (decisions § 2074).** Every step of one, the walking warm-up and cool-down included, expands with `WorkoutStep.paced == false`: `paceAdherence` reads `onPace`, no `PaceDriftEvent` fires, and the band hides its pace pip. The voice says only the Run / Walk transitions and the end-of-step warning. `targetPaceSecPerKm` still carries the plan's easy pace, which the distance estimate and the band header read. The custom watch receives the same contract as flag bit 0 (`WORKOUT_FLAG_UNPACED`) of the `WKT1` header, which is whole-frame because the expander makes a whole session unpaced or none of it.
+
 Step resolution for symbolic paces (`'easy'`, `'jog'`): look up on the plan's `paces` bag (VDOT-derived, already stored on `training_plans`). `'easy'` → `paces.easy`, `'jog'` → `paces.recovery`. Numeric paces in `repeats.pace_sec_per_km` / `steady.pace_sec_per_km` pass through unchanged.
 
 ### `WorkoutStep` shape

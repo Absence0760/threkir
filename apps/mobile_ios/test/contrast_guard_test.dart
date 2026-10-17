@@ -13,7 +13,6 @@ import '../lib/preferences.dart';
 import '../lib/screens/gear_screen.dart';
 import '../lib/widgets/run_segment_efforts.dart';
 import '../lib/widgets/todays_workout_card.dart';
-import '../lib/training_service.dart';
 import '../lib/widgets/workout_review_section.dart';
 
 /// Mobile contrast guard — the Dart counterpart to web's
@@ -200,27 +199,6 @@ void main() {
       targetPaceSecPerKm: 330,
       manuallyCompleted: false,
     );
-    final overview = ActivePlanOverview(
-      plan: TrainingPlanRow(
-        id: 'p1',
-        userId: 'u1',
-        name: 'Plan',
-        goalEvent: 'marathon',
-        goalDistanceM: 42195,
-        startDate: DateTime(2026, 1, 1),
-        endDate: DateTime(2026, 5, 31),
-        daysPerWeek: 4,
-        status: 'active',
-        source: 'generated',
-        isTemplate: false,
-        isPublicTemplate: false,
-      ),
-      weeks: const [],
-      workouts: [workout],
-      todayWorkout: workout,
-      completionPct: 0,
-      currentWeekIndex: 0,
-    );
     for (final (name, theme) in [
       ('light', AppTheme.light),
       ('dark', AppTheme.dark),
@@ -230,7 +208,7 @@ void main() {
           theme: theme,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: Scaffold(body: TodaysWorkoutCard(overview: overview)),
+          home: Scaffold(body: TodaysWorkoutCard(workout: workout)),
         ));
         await tester.pump();
         final card = find.byType(TodaysWorkoutCard);

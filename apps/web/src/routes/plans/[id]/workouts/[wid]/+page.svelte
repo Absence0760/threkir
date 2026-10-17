@@ -498,9 +498,11 @@
 
 <ConfirmDialog
 	open={showUnlinkConfirm}
-	title={t('workoutDetail.unlinkRunTitle')}
-	message={t('workoutDetail.unlinkRunMessage')}
-	confirmLabel={t('workoutDetail.unlink')}
+	title={workout?.completed_run_id ? t('workoutDetail.unlinkRunTitle') : t('workoutDetail.markNotDoneTitle')}
+	message={workout?.completed_run_id
+		? t('workoutDetail.unlinkRunMessage')
+		: t('workoutDetail.markNotDoneMessage')}
+	confirmLabel={workout?.completed_run_id ? t('workoutDetail.unlink') : t('workoutDetail.markNotDone')}
 	onconfirm={confirmUnlink}
 	oncancel={() => showUnlinkConfirm = false}
 	danger

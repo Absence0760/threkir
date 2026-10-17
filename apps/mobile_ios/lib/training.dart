@@ -5,7 +5,7 @@
 // suites. See docs/features/training.md.
 
 import 'dart:math';
-import 'package:core_models/core_models.dart' show DistanceUnit;
+import 'package:core_models/core_models.dart' show DistanceUnit, PlanWorkoutRow;
 
 import 'l10n/locale_support.dart' show activeLocaleTag;
 import 'l10n/number_format.dart' show formatFixed;
@@ -263,6 +263,13 @@ bool isMastersAge(int? age) => age != null && age >= kMastersAge;
 /// achievement (it isn't done). Read sites that filter the active
 /// to-do set exclude skipped alongside completed.
 bool isWorkoutSkipped(DateTime? skippedAt) => skippedAt != null;
+
+/// Web `isWorkoutCompleted` twin — a planned workout is done when a tracked
+/// run is linked to it OR the runner marked it done by hand. Every surface
+/// that says "done" reads it through here, so the workout screen, the plan
+/// rows, the calendar, the strip and the Today card cannot disagree.
+bool isWorkoutCompleted(PlanWorkoutRow wo) =>
+    wo.completedRunId != null || wo.manuallyCompleted;
 
 TrainingPaces pacesFromGoalPace(
   double goalPaceSecPerKm, [

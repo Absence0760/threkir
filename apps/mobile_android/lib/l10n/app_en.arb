@@ -8402,11 +8402,11 @@
       }
     }
   },
-  "planOverlapReplaceHint": "Replace marks the overlapping plans as completed. You can still find them under Manage plans.",
+  "planOverlapReplaceHint": "Replace marks the overlapping plans as abandoned. You can still find them under Manage plans.",
   "@planOverlapReplaceHint": {
     "description": "Plan-overlap dialog hint when only Replace is offered"
   },
-  "planOverlapTrimHint": "End {name} early to keep its finished weeks and remove its workouts after {date}, or replace it to mark it completed.",
+  "planOverlapTrimHint": "End {name} early to keep its finished weeks and remove its workouts after {date}, or replace it to mark it abandoned.",
   "@planOverlapTrimHint": {
     "description": "Plan-overlap dialog hint when the overlapping plan started earlier and can be ended the day before the new plan starts. date is that formatted end date",
     "placeholders": {
@@ -8439,7 +8439,7 @@
       }
     }
   },
-  "planOverlapTrimHintMany": "End them early to keep their finished weeks and remove their workouts after {date}, or replace them to mark them completed.",
+  "planOverlapTrimHintMany": "End them early to keep their finished weeks and remove their workouts after {date}, or replace them to mark them abandoned.",
   "@planOverlapTrimHintMany": {
     "description": "Plan-overlap dialog hint when several overlapping plans can be ended the day before the new plan starts. date is that formatted end date",
     "placeholders": {
@@ -8640,10 +8640,6 @@
   "planDetailToday": "TODAY",
   "@planDetailToday": {
     "description": "Today-card eyebrow label"
-  },
-  "planDetailCompleted": "Completed",
-  "@planDetailCompleted": {
-    "description": "Completed marker on the today card"
   },
   "planDetailWeek": "Week {number}",
   "@planDetailWeek": {
@@ -8995,6 +8991,22 @@
   "workoutUnlinkTitle": "Unlink run",
   "workoutUnlinkBody": "Unlink the matched run? The workout will show as not yet done.",
   "workoutUnlinkError": "Couldn't unlink the run. Try again.",
+  "workoutMarkNotDone": "Mark not done",
+  "workoutMarkNotDoneTitle": "Mark not done?",
+  "@workoutMarkNotDoneTitle": {
+    "description": "Confirm dialog title before clearing a hand-marked done workout"
+  },
+  "workoutMarkNotDoneBody": "The workout will show as not yet done.",
+  "@workoutMarkNotDoneBody": {
+    "description": "Confirm dialog body before clearing a hand-marked done workout"
+  },
+  "@workoutMarkNotDone": {
+    "description": "Button on a workout the runner marked done by hand (no linked run); clears the done mark"
+  },
+  "workoutMarkNotDoneError": "Couldn't update the workout. Try again.",
+  "@workoutMarkNotDoneError": {
+    "description": "Error banner when clearing a hand-marked done workout fails"
+  },
   "@workoutUnlink": {
     "description": "Unlink-completed-run button"
   },
@@ -14150,11 +14162,19 @@
   },
   "ttsStepHalfway": "Halfway through this rep",
   "@ttsStepHalfway": {
-    "description": "Spoken in-step progress cue at the halfway point"
+    "description": "Spoken in-step progress cue at the halfway point of a paced interval rep (never on a warm-up, recovery, steady block or walk-run interval)"
   },
   "ttsStepLastFifty": "Fifty metres to go",
   "@ttsStepLastFifty": {
-    "description": "Spoken in-step progress cue near the end of a rep"
+    "description": "Spoken in-step progress cue in the last 50 m of a distance rep, for a runner who uses kilometres"
+  },
+  "ttsStepLastFiftyYards": "Fifty yards to go",
+  "@ttsStepLastFiftyYards": {
+    "description": "Spoken in-step progress cue near the end of a distance rep, for a runner who uses miles (the cue fires inside the last 50 m, about 55 yards)"
+  },
+  "ttsStepLastTenSeconds": "Ten seconds to go",
+  "@ttsStepLastTenSeconds": {
+    "description": "Spoken in-step progress cue in the last ten seconds of a timed step (a walk-run interval, a timed rep or a timed warm-up)"
   },
   "ttsPaceDriftAhead": "Ease up — {delta} seconds ahead pace.",
   "@ttsPaceDriftAhead": {

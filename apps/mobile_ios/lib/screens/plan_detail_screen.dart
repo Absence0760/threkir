@@ -36,6 +36,7 @@ import '../widgets/current_week_strip.dart';
 import '../widgets/disclosure_section.dart';
 import '../widgets/plan_calendar.dart';
 import '../widgets/plan_races_list.dart';
+import '../widgets/todays_workout_card.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/workout_edit_sheet.dart';
 import 'workout_detail_screen.dart';
@@ -61,11 +62,6 @@ const DisclosureState _kDisclosureDefaults = {
   'weeks': true,
   'share': true,
 };
-
-/// Web `isWorkoutCompleted` twin — a planned workout is done when a tracked
-/// run is linked OR the runner manually marked it complete.
-bool _isWorkoutCompleted(PlanWorkoutRow wo) =>
-    wo.completedRunId != null || wo.manuallyCompleted;
 
 /// Web `isWorkoutSkipped` twin — deliberately dropped, off the books.
 bool _isWorkoutSkipped(PlanWorkoutRow wo) => isWorkoutSkipped(wo.skippedAt);
@@ -323,7 +319,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
     final missed = (_byWeek[week.id] ?? const <PlanWorkoutRow>[]).where((w) =>
         w.kind == 'long' &&
         toIsoDate(w.scheduledDate).compareTo(today) < 0 &&
-        !_isWorkoutCompleted(w) &&
+        !isWorkoutCompleted(w) &&
         !_isWorkoutSkipped(w));
     if (missed.isEmpty) return null;
     final next = idx + 1 < _weeks.length ? _weeks[idx + 1] : null;
@@ -376,7 +372,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
                   scheduledDate: toIsoDate(x.scheduledDate),
                   kind: x.kind,
                   targetDistanceM: x.targetDistanceM,
-                  completed: _isWorkoutCompleted(x),
+                  completed: isWorkoutCompleted(x),
                   skipped: _isWorkoutSkipped(x),
                   isPast: toIsoDate(x.scheduledDate).compareTo(today) < 0,
                 ))
@@ -429,7 +425,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
               structure: x.structure,
               notes: x.notes,
               phase: w.phase,
-              completed: _isWorkoutCompleted(x),
+              completed: isWorkoutCompleted(x),
               skipped: _isWorkoutSkipped(x),
               taperApplied: x.raceTaperAppliedAt != null,
             ),
@@ -980,7 +976,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
         .expand((x) => x)
         .where((w) => w.kind != 'rest' && !_isWorkoutSkipped(w))
         .toList();
-    final done = allActive.where(_isWorkoutCompleted).length;
+    final done = allActive.where(isWorkoutCompleted).length;
     final pct =
         allActive.isEmpty ? 0 : (100 * done / allActive.length).round();
     final body = _bodyList(
@@ -1021,7 +1017,10 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
         ],
         if (todayWorkout != null) ...[
           const SizedBox(height: 12),
-          _todayCard(theme, l10n, p, todayWorkout),
+          TodaysWorkoutCard(
+            workout: todayWorkout,
+            onTap: () => _openWorkout(todayWorkout),
+          ),
         ],
         if (_weeks.isNotEmpty) ...[
           const SizedBox(height: 16),
@@ -1599,72 +1598,6 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
     );
   }
 
-  Widget _todayCard(ThemeData theme, AppLocalizations l10n, TrainingPlanRow p,
-      PlanWorkoutRow wo) {
-    final kind = workoutKindFromDb(wo.kind);
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: () => _openWorkout(wo),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              theme.colorScheme.primaryContainer,
-              theme.colorScheme.surfaceContainerHighest,
-            ],
-          ),
-          border: Border.all(color: theme.dividerColor),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(l10n.planDetailToday,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.primary,
-                  letterSpacing: 0.8,
-                  fontWeight: FontWeight.w700,
-                )),
-            const SizedBox(height: 4),
-            Text(workoutKindLabel(l10n, kind),
-                style: theme.textTheme.titleLarge
-                    ?.copyWith(fontWeight: FontWeight.w700)),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                if (wo.targetDistanceM != null) ...[
-                  Text(fmtKm(wo.targetDistanceM)),
-                  const SizedBox(width: 8),
-                ],
-                if (wo.targetPaceSecPerKm != null)
-                  Text(
-                    l10n.todaysWorkoutAtPace(fmtPace(wo.targetPaceSecPerKm)),
-                    style: TextStyle(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                if (_isWorkoutCompleted(wo)) ...[
-                  const SizedBox(width: 10),
-                  Icon(Icons.check_circle,
-                      color: theme.colorScheme.primary, size: 18),
-                  const SizedBox(width: 3),
-                  Flexible(
-                    child: Text(l10n.planDetailCompleted,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: theme.colorScheme.primary)),
-                  ),
-                ],
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _weekCard(ThemeData theme, AppLocalizations l10n, TrainingPlanRow p,
       PlanWeekRow w, int currentWeek) {
     final phase = planPhaseFromDb(w.phase);
@@ -1800,7 +1733,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
                   style: theme.textTheme.bodySmall),
               const SizedBox(width: 6),
             ],
-            if (_isWorkoutCompleted(wo))
+            if (isWorkoutCompleted(wo))
               Icon(Icons.check_circle, color: theme.colorScheme.primary, size: 16)
             else if (isSkipped)
               Icon(Icons.skip_next, color: theme.colorScheme.outline, size: 16),

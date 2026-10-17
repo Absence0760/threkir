@@ -1197,9 +1197,9 @@
 				{#if returnMessage}
 					<div class="ramp-note" role="status" data-testid="plan-return-note">
 						<h3>{t('planEditor.returnTitle')}</h3>
-						<p>{returnMessage}</p>
+						<p id="plan-return-body">{returnMessage}</p>
 						<label class="confirm-recent">
-							<input type="checkbox" bind:checked={easeBack} />
+							<input type="checkbox" bind:checked={easeBack} aria-describedby="plan-return-body" />
 							<span>{t('planEditor.returnEaseBack')}</span>
 						</label>
 						<button type="button" class="btn btn-secondary" onclick={() => setWalkRun(true)}>

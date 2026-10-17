@@ -37,8 +37,8 @@ func pushPrefs(mode string) map[string]interface{} {
 }
 
 func TestShouldEmail_Matrix(t *testing.T) {
-	important := []string{"event_reminder", "event_cancel", "plan_update", "message", "data_export_ready", "refund_failed", "event_waitlist_slot", "mention", "follow_request", "workout_reminder"}
-	social := []string{"kudos", "comment", "comment_reply", "follow", "club_post", "run_completed", "event_rsvp", "reaction", "comment_like"}
+	important := []string{"event_reminder", "event_cancel", "plan_update", "message", "data_export_ready", "refund_failed", "event_waitlist_slot", "mention", "follow_request"}
+	social := []string{"kudos", "comment", "comment_reply", "follow", "club_post", "run_completed", "event_rsvp", "reaction", "comment_like", "workout_reminder"}
 
 	for _, k := range important {
 		if !shouldEmail(k, emailPrefs(emailModeImportant)) {

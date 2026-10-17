@@ -339,9 +339,14 @@ var importantKinds = map[string]bool{
 	// and the asker sees nothing until they do. A plain follow stays out:
 	// it has already happened and asks nothing of the recipient.
 	"follow_request": true,
-	// The runner's own plan, on the morning it asks something of them —
-	// an event_reminder for a session they scheduled. At most one a day,
-	// and only on a day with an outstanding workout (20270913000001).
+}
+
+// pushImportantKinds are carried by the default "important" PUSH mode but not
+// by the default email mode. workout_reminder is the runner's own plan on the
+// morning it asks something of them, at most one a day (20270913000001): a
+// push is the right weight for that, and a daily email by default is not, so
+// email is opt-in through email_notifications = all (decisions § 2098).
+var pushImportantKinds = map[string]bool{
 	"workout_reminder": true,
 }
 

@@ -236,7 +236,7 @@ Shared pieces:
 |---|---|---|---|---|
 | Notification → email (kudos, comment, reaction, comment like, mention, follow, follow request, event RSVP/cancel/reminder, plan update, message, club post, run completed) | `notification_email` | `notifications` AFTER INSERT, gated on `email_notifications` | ✓ | §117 |
 | **Event-day reminders** (scheduled) | `notification_email` (`event_reminder`) | hourly pg_cron `enqueue_event_reminders()` over `going` RSVPs in the next 24 h | ✓ | §117 |
-| **Today's-workout reminder** (scheduled) | `notification_email` (`workout_reminder`) | hourly pg_cron `enqueue_workout_reminders()`: one per runner per local morning (07:00-11:59 in `prefs.time_zone`) when the active plan's day holds an outstanding workout; `notify_workout_reminder = 'off'` withholds the row itself | ✓ | §2087 |
+| **Today's-workout reminder** (scheduled) | `notification_email` (`workout_reminder`) | hourly pg_cron `enqueue_workout_reminders()`: one per runner per local morning (07:00-11:59 in `prefs.time_zone`, nobody without a known zone) when the active plan's day holds an outstanding workout; emailed only under `email_notifications = all` (pushed under the default); `notify_workout_reminder = 'off'` withholds the row itself | ✓ | §2087 |
 | **Welcome** ("thanks for signing up") | `lifecycle_email` (`welcome`) | `user_profiles` AFTER INSERT | ✓ | §119 |
 | **Pro-purchase receipt** | `lifecycle_email` (`pro_welcome`) | `user_profiles` AFTER UPDATE, `subscription_tier` → paid | ✓ | §121 |
 | **Payment-failed dunning** | `lifecycle_email` (`payment_failed`) | `user_profiles` AFTER UPDATE, `billing_issue_at` null→non-null | ✓ | §121 |
@@ -719,8 +719,11 @@ neither, and neither carries a `List-Unsubscribe` header.
   `NOT VALID` half in `20270826000001` and the `VALIDATE` in `20270826000002`.
 - [x] **Today's-workout reminder** — `workout_reminder` (issue #1186,
   `decisions.md § 2087`) is raised by the hourly `enqueue_workout_reminders()`
-  cron, not a trigger, and is in `importantKinds`, so the default mode emails
-  and pushes it. Deep link `/plans/{plan_id}`. Its opt-OUT mute
+  cron, not a trigger. It is in `pushImportantKinds`, not `importantKinds`, so
+  the default `important` mode pushes it and does not email it: a daily email
+  by default is too heavy for a morning nudge, and `email_notifications = all`
+  opts in (decisions § 2098). Only a runner with a known `time_zone` is
+  reminded (decisions § 2097). Deep link `/plans/{plan_id}`. Its opt-OUT mute
   `notify_workout_reminder` is the one per-kind mute applied before the row
   exists as well as in `kindMuted`. One per runner per local day, claimed in
   `private.workout_reminder_claims`. The kind widen is the `NOT VALID` half in

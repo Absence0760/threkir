@@ -51,7 +51,7 @@ func shouldPush(kind string, prefs map[string]interface{}) bool {
 	case pushModeAll:
 		return true
 	default: // pushModeImportant
-		return importantKinds[kind]
+		return importantKinds[kind] || pushImportantKinds[kind]
 	}
 }
 

@@ -65,10 +65,19 @@ func TestWorkoutReminder_WithoutAPlanLandsOnThePlansList(t *testing.T) {
 	}
 }
 
-func TestWorkoutReminder_ReachesTheDefaultImportantModeAndHasItsOwnMute(t *testing.T) {
+func TestWorkoutReminder_PushesByDefaultEmailsOnlyWhenOptedInAndHasItsOwnMute(t *testing.T) {
 	def := map[string]interface{}{}
-	if !shouldEmail("workout_reminder", def) || !shouldPush("workout_reminder", def) {
-		t.Error("a workout reminder should go out on both channels under the default important mode")
+	if !shouldPush("workout_reminder", def) {
+		t.Error("a workout reminder should push under the default important mode")
+	}
+	if shouldEmail("workout_reminder", def) {
+		t.Error("a workout reminder must not email every morning under the default important mode")
+	}
+	if !shouldEmail("workout_reminder", emailPrefs(emailModeAll)) {
+		t.Error("email_notifications = all opts in to the reminder email")
+	}
+	if shouldPush("workout_reminder", pushPrefs(pushModeOff)) {
+		t.Error("push_notifications = off silences the reminder push")
 	}
 
 	muted := map[string]interface{}{"notify_workout_reminder": "off"}
@@ -80,7 +89,7 @@ func TestWorkoutReminder_ReachesTheDefaultImportantModeAndHasItsOwnMute(t *testi
 	}
 
 	notOff := map[string]interface{}{"notify_workout_reminder": false}
-	if !shouldEmail("workout_reminder", notOff) {
+	if !shouldPush("workout_reminder", notOff) {
 		t.Error("only the literal \"off\" mutes")
 	}
 

@@ -156,6 +156,17 @@ test('groupNotifications: follow requests collapse together, apart from follows'
 	assert.equal(requests?.otherCount, 1);
 });
 
+test('groupNotifications: workout reminders on the same plan never collapse', () => {
+	const groups = groupNotifications(
+		[
+			n({ id: 'w1', kind: 'workout_reminder', plan_id: 'p1', created_at: ago(1000) }),
+			n({ id: 'w2', kind: 'workout_reminder', plan_id: 'p1', created_at: ago(2000) }),
+		],
+		NOW,
+	);
+	assert.equal(groups.length, 2);
+});
+
 test('groupNotifications: event RSVPs collapse per event, distinct events split', () => {
 	const groups = groupNotifications(
 		[

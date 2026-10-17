@@ -6461,6 +6461,10 @@
       }
     }
   },
+  "profileNotifWorkoutReminder": "Today's workout is waiting in your plan",
+  "@profileNotifWorkoutReminder": {
+    "description": "Notification inbox line for the morning reminder that today has a workout on the runner's active training plan"
+  },
   "profileNotifEventCancelTitled": "An occurrence of \"{title}\" was cancelled",
   "@profileNotifEventCancelTitled": {
     "description": "Notification text for a cancelled event occurrence, when the event title is known",
@@ -9152,24 +9156,6 @@
   "@workoutStructCooldown": {
     "description": "Structure-list cooldown label"
   },
-  "workoutStructWarmupValue": "{distance} @ easy",
-  "@workoutStructWarmupValue": {
-    "description": "Structure-list warmup value (distance at easy pace)",
-    "placeholders": {
-      "distance": {
-        "type": "String"
-      }
-    }
-  },
-  "workoutStructCooldownValue": "{distance} @ easy",
-  "@workoutStructCooldownValue": {
-    "description": "Structure-list cooldown value (distance at easy pace)",
-    "placeholders": {
-      "distance": {
-        "type": "String"
-      }
-    }
-  },
   "workoutAdviceEasy": "Conversational pace. If you can't hold a conversation, you're running it too fast.",
   "@workoutAdviceEasy": {
     "description": "Advice text for easy / recovery workouts"
@@ -11836,6 +11822,14 @@
   "prefsEmailNewDeviceAlertsHint": "Email me the first time my account signs in from a browser or device it hasn't used before. Password-change notices always send and can't be turned off.",
   "@prefsEmailNewDeviceAlertsHint": {
     "description": "Subtitle for the new-device sign-in alert toggle; says the password-change notice cannot be turned off"
+  },
+  "prefsNotifyWorkoutReminder": "Today's workout",
+  "@prefsNotifyWorkoutReminder": {
+    "description": "Title of the switch that turns the morning today's-workout reminder on or off"
+  },
+  "prefsNotifyWorkoutReminderHint": "On the morning of a planned workout, remind me in the inbox and by email and push.",
+  "@prefsNotifyWorkoutReminderHint": {
+    "description": "Subtitle of the today's-workout reminder switch; it covers the inbox, email and push"
   },
   "prefsEmailReOptInFailed": "Couldn't lift your earlier unsubscribe. Emails may still be blocked — try again.",
   "@prefsEmailReOptInFailed": {
@@ -22266,6 +22260,395 @@
   "workoutMoveSaveFirst": "Save or discard your changes before moving this workout.",
   "@workoutMoveSaveFirst": {
     "description": "Shown when the runner taps Move with unsaved edits in the workout editor"
+  },
+  "workoutSummaryMin": "{n} min",
+  "@workoutSummaryMin": {
+    "description": "A whole number of minutes in a walk-run pattern",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "workoutSummarySec": "{n} s",
+  "@workoutSummarySec": {
+    "description": "A number of seconds in a walk-run pattern",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "workoutSummaryMinSec": "{m} min {s} s",
+  "@workoutSummaryMinSec": {
+    "description": "Minutes and seconds in a walk-run pattern",
+    "placeholders": {
+      "m": {
+        "type": "int"
+      },
+      "s": {
+        "type": "int"
+      }
+    }
+  },
+  "workoutSummaryIntervals": "{count} × ({run} run / {walk} walk)",
+  "@workoutSummaryIntervals": {
+    "description": "Walk-run intervals: count x (run time / walk time)",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "run": {
+        "type": "String"
+      },
+      "walk": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutSummaryContinuous": "{run} run",
+  "@workoutSummaryContinuous": {
+    "description": "One continuous run in a walk-run plan's graduation week",
+    "placeholders": {
+      "run": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutSummaryWarmup": "{duration} warm-up",
+  "@workoutSummaryWarmup": {
+    "description": "Timed warm-up walk in a walk-run pattern",
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutSummaryCooldown": "{duration} cool-down",
+  "@workoutSummaryCooldown": {
+    "description": "Timed cool-down walk in a walk-run pattern",
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutSummaryWithBoth": "{warmup}, {main}, {cooldown}",
+  "@workoutSummaryWithBoth": {
+    "description": "Walk-run pattern joined: warm-up, main set, cool-down",
+    "placeholders": {
+      "warmup": {
+        "type": "String"
+      },
+      "main": {
+        "type": "String"
+      },
+      "cooldown": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutSummaryWithWarmup": "{warmup}, {main}",
+  "@workoutSummaryWithWarmup": {
+    "description": "Walk-run pattern joined: warm-up, main set",
+    "placeholders": {
+      "warmup": {
+        "type": "String"
+      },
+      "main": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutSummaryWithCooldown": "{main}, {cooldown}",
+  "@workoutSummaryWithCooldown": {
+    "description": "Walk-run pattern joined: main set, cool-down",
+    "placeholders": {
+      "main": {
+        "type": "String"
+      },
+      "cooldown": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutSummaryAbout": "about {duration}",
+  "@workoutSummaryAbout": {
+    "description": "Approximate session length",
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutZoneNamed": "Zone {code} · {name}",
+  "@workoutZoneNamed": {
+    "description": "Pace-zone chip with the zone's name, e.g. Zone T · Tempo",
+    "placeholders": {
+      "code": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutZoneRaw": "Zone {code}",
+  "@workoutZoneRaw": {
+    "description": "Pace-zone chip for a free-text zone code",
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutEffortJog": "jog",
+  "@workoutEffortJog": {
+    "description": "Recovery effort between reps: an easy jog"
+  },
+  "workoutEffortEasy": "easy",
+  "@workoutEffortEasy": {
+    "description": "Recovery effort between reps: easy running"
+  },
+  "workoutEffortWalk": "walk",
+  "@workoutEffortWalk": {
+    "description": "Recovery effort between reps: walking"
+  },
+  "workoutTaglineWalkRun": "Walk-run session. Alternate running and walking on the timer.",
+  "@workoutTaglineWalkRun": {
+    "description": "Workout-detail tagline for a walk-run session"
+  },
+  "workoutMetricSession": "Session",
+  "@workoutMetricSession": {
+    "description": "Workout-detail metric label for a walk-run session's length and pattern"
+  },
+  "workoutStructRepeatsMain": "{count}× {distance}",
+  "@workoutStructRepeatsMain": {
+    "description": "Repeats step: count x rep distance or time",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "distance": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutStructRecovery": "Recovery",
+  "@workoutStructRecovery": {
+    "description": "Sub-row label for the recovery between reps"
+  },
+  "workoutStructRecoveryDetail": "{distance} {effort}",
+  "@workoutStructRecoveryDetail": {
+    "description": "Recovery between reps: distance or time, then effort",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      },
+      "effort": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutStructTotal": "Total: {value}",
+  "@workoutStructTotal": {
+    "description": "Structure total line",
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutStructAtEasy": "@ easy",
+  "@workoutStructAtEasy": {
+    "description": "Second line of a warm-up / cool-down step: at easy pace"
+  },
+  "workoutStructAtPace": "@ {pace}",
+  "@workoutStructAtPace": {
+    "description": "Second line of a step: at the given pace",
+    "placeholders": {
+      "pace": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutTimelineLabel": "Workout segment timeline",
+  "@workoutTimelineLabel": {
+    "description": "Screen-reader label of the proportional segment bar"
+  },
+  "workoutFreeFormTitle": "Free-form run",
+  "@workoutFreeFormTitle": {
+    "description": "Placeholder title when a workout has no segments"
+  },
+  "workoutFreeFormHint": "No segments to follow — just run the distance at the suggested pace.",
+  "@workoutFreeFormHint": {
+    "description": "Placeholder hint when a workout has no segments"
+  },
+  "workoutTaglineStructured": "Structured workout — follow each segment as written.",
+  "@workoutTaglineStructured": {
+    "description": "Workout-detail tagline for a structured session"
+  },
+  "workoutTaglineEasy": "Free-form easy effort. Run by feel.",
+  "@workoutTaglineEasy": {
+    "description": "Workout-detail tagline for an easy or recovery run"
+  },
+  "workoutTaglineLong": "Free-form long run. Pace yourself for the back half.",
+  "@workoutTaglineLong": {
+    "description": "Workout-detail tagline for a long run"
+  },
+  "workoutTaglineRest": "Rest day. Light movement only if you feel like it.",
+  "@workoutTaglineRest": {
+    "description": "Workout-detail tagline for a rest day"
+  },
+  "workoutTaglineRace": "Race day. Trust the taper.",
+  "@workoutTaglineRace": {
+    "description": "Workout-detail tagline for race day"
+  },
+  "workoutTaglineFreeForm": "Free-form run.",
+  "@workoutTaglineFreeForm": {
+    "description": "Workout-detail tagline for any other free-form run"
+  },
+  "workoutKindShortEasy": "E",
+  "@workoutKindShortEasy": {
+    "description": "Abbreviation of the Easy workout kind for a narrow plan-calendar cell (2-4 characters)"
+  },
+  "workoutKindShortLong": "L",
+  "@workoutKindShortLong": {
+    "description": "Abbreviation of the Long run workout kind for a narrow plan-calendar cell (2-4 characters)"
+  },
+  "workoutKindShortRecovery": "Rec",
+  "@workoutKindShortRecovery": {
+    "description": "Abbreviation of the Recovery workout kind for a narrow plan-calendar cell (2-4 characters)"
+  },
+  "workoutKindShortTempo": "T",
+  "@workoutKindShortTempo": {
+    "description": "Abbreviation of the Tempo workout kind for a narrow plan-calendar cell (2-4 characters)"
+  },
+  "workoutKindShortInterval": "Int",
+  "@workoutKindShortInterval": {
+    "description": "Abbreviation of the Intervals workout kind for a narrow plan-calendar cell (2-4 characters)"
+  },
+  "workoutKindShortMarathonPace": "MP",
+  "@workoutKindShortMarathonPace": {
+    "description": "Abbreviation of the Marathon pace workout kind for a narrow plan-calendar cell (2-4 characters)"
+  },
+  "workoutKindShortWalkRun": "W/R",
+  "@workoutKindShortWalkRun": {
+    "description": "Abbreviation of the Walk-run workout kind for a narrow plan-calendar cell (2-4 characters)"
+  },
+  "workoutKindShortRace": "Race",
+  "@workoutKindShortRace": {
+    "description": "Abbreviation of the Race workout kind for a narrow plan-calendar cell (2-4 characters)"
+  },
+  "workoutKindShortRest": "Rest",
+  "@workoutKindShortRest": {
+    "description": "Abbreviation of the Rest workout kind for a narrow plan-calendar cell (2-4 characters)"
+  },
+  "planDetailAriaCompletedSuffix": ", completed",
+  "@planDetailAriaCompletedSuffix": {
+    "description": "Appended to a plan workout's screen-reader label when it is done"
+  },
+  "planDetailAriaSkippedSuffix": ", skipped",
+  "@planDetailAriaSkippedSuffix": {
+    "description": "Appended to a plan workout's screen-reader label when it was skipped"
+  },
+  "planDetailAriaMissedSuffix": ", missed",
+  "@planDetailAriaMissedSuffix": {
+    "description": "Appended to a plan workout's screen-reader label when its day has passed and it was neither done nor skipped"
+  },
+  "planDetailAriaTodaySuffix": ", today",
+  "@planDetailAriaTodaySuffix": {
+    "description": "Appended to a plan workout's screen-reader label when it is scheduled today"
+  },
+  "planDetailNextUp": "Next up",
+  "@planDetailNextUp": {
+    "description": "Plan-detail Today card label when today has no workout and the next one is shown"
+  },
+  "planDetailGoAndRunIt": "Go and run it.",
+  "@planDetailGoAndRunIt": {
+    "description": "Plan-detail Today card body on race day"
+  },
+  "planDetailRestDayTitle": "Rest day",
+  "@planDetailRestDayTitle": {
+    "description": "Plan-detail Today card title on a rest day"
+  },
+  "planDetailRestDayHint": "No workout scheduled — recover and roll into tomorrow.",
+  "@planDetailRestDayHint": {
+    "description": "Plan-detail Today card hint on a rest day"
+  },
+  "planDetailTodayLabel": "Today",
+  "@planDetailTodayLabel": {
+    "description": "Plan-detail Today card label"
+  },
+  "planDetailRaceDayTitle": "Race day",
+  "@planDetailRaceDayTitle": {
+    "description": "Plan-detail Today card label on race day"
+  },
+  "planDetailWorkoutCompletion": "Workout completion",
+  "@planDetailWorkoutCompletion": {
+    "description": "Screen-reader name of the plan's progress ring"
+  },
+  "planDetailFirstWeek": "First week",
+  "@planDetailFirstWeek": {
+    "description": "Current-week strip heading before the plan has started"
+  },
+  "planDetailAssignedBy": "Assigned by {name}",
+  "@planDetailAssignedBy": {
+    "description": "Chip on a plan a coach assigned",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailAssignedByCoach": "Assigned by your coach",
+  "@planDetailAssignedByCoach": {
+    "description": "Chip on a coach-assigned plan when the coach's name is unknown"
+  },
+  "planDetailWeekOfN": "Week {week} of {total}",
+  "@planDetailWeekOfN": {
+    "description": "Plan-detail header: which week of the plan today is in",
+    "placeholders": {
+      "week": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "planDetailPausedChip": "Paused",
+  "@planDetailPausedChip": {
+    "description": "Plan-detail header chip on a paused plan"
+  },
+  "planDetailWeekDoneCount": "{done} / {total} done",
+  "@planDetailWeekDoneCount": {
+    "description": "How many of a week's workouts are done",
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "planDetailEarlierWeeks": "{count, plural, one{1 earlier week} other{{count} earlier weeks}}",
+  "@planDetailEarlierWeeks": {
+    "description": "Summary row standing in for the plan's finished weeks",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planDetailShowEarlierWeeks": "Show earlier weeks",
+  "@planDetailShowEarlierWeeks": {
+    "description": "Expands the finished weeks"
+  },
+  "planDetailHideEarlierWeeks": "Hide earlier weeks",
+  "@planDetailHideEarlierWeeks": {
+    "description": "Collapses the finished weeks"
   },
   "planNewStartingPoint": "Where are you starting from?",
   "@planNewStartingPoint": {

@@ -28,6 +28,12 @@ import com.runapp.watchwear.MainActivity
 import com.runapp.watchwear.Pedometer
 import com.runapp.watchwear.R
 import com.runapp.watchwear.tiles.formatElapsed
+import com.runapp.watchwear.workout.HapticPattern
+import com.runapp.watchwear.workout.WorkoutCue
+import com.runapp.watchwear.workout.WorkoutPush
+import com.runapp.watchwear.workout.WorkoutRunner
+import com.runapp.watchwear.workout.parseWorkoutPush
+import com.runapp.watchwear.workout.workoutCue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -136,6 +142,14 @@ class RunRecordingService : Service() {
     /// live pace drifts >30 s from the target.
     private var targetPaceSecPerKm: Int? = null
 
+    /// Today's workout, when the runner started this run following it. Fed
+    /// the run's totals on the ticker; while it [WorkoutRunner.ownsPaceCues]
+    /// the general target-pace alert stands down (decisions § 2076). Guarded
+    /// by [workoutLock]: the ticker feeds it on `Dispatchers.Default` and the
+    /// lap press skips on the main thread.
+    private var workoutRunner: WorkoutRunner? = null
+    private val workoutLock = Any()
+
     /// Distance-display unit for this run, parsed once from the
     /// ACTION_START intent. Stamped into `RecordingRepository.Metrics` so
     /// the active-run tile renders in the runner's chosen unit.
@@ -212,6 +226,7 @@ class RunRecordingService : Service() {
                 }.getOrDefault(DistanceUnit.KM),
                 privacyDefault = intent.getStringExtra(EXTRA_PRIVACY_DEFAULT),
                 voiceFeedbackEnabled = intent.getBooleanExtra(EXTRA_AUDIO_CUES, true),
+                workoutJson = intent.getStringExtra(EXTRA_WORKOUT_JSON),
             )
             ACTION_PAUSE -> pauseRecording()
             ACTION_RESUME -> resumeRecording()
@@ -242,6 +257,7 @@ class RunRecordingService : Service() {
         unit: DistanceUnit,
         privacyDefault: String?,
         voiceFeedbackEnabled: Boolean,
+        workoutJson: String?,
     ) {
         if (RecordingRepository.metrics.value.isActive) return
 
@@ -282,6 +298,12 @@ class RunRecordingService : Service() {
         routeWaypoints = parseRouteWaypoints(routeWaypointsJson)
         routeMatchedAlongM = null
         routeMatchedAtDistanceM = 0.0
+        // The view model already refused a push from another day; a payload
+        // that does not decode here runs the recording free rather than
+        // refusing to record.
+        val runner = workoutJson?.let { parseWorkoutPush(it) as? WorkoutPush.Workout }
+            ?.let { WorkoutRunner(it.workout) }
+        synchronized(workoutLock) { workoutRunner = runner }
         cues?.announceStart()
 
         val file = TrackWriter.fileFor(applicationContext, runId)
@@ -300,6 +322,7 @@ class RunRecordingService : Service() {
                 trackFilePath = file.absolutePath,
                 routeWaypoints = routeWaypoints,
                 preferredUnit = preferredUnit,
+                workoutView = runner?.view(),
                 hrAvailability = if (BuildConfig.ENABLE_HR) {
                     HeartRateAvailability.Acquiring
                 } else {
@@ -426,6 +449,7 @@ class RunRecordingService : Service() {
                 val elapsed = activeElapsedMs()
                 advanceHrCoverage(elapsed)
                 RecordingRepository.update { it.copy(elapsedMs = elapsed) }
+                feedWorkout(elapsed)
                 tickIndex++
                 if (tickIndex % NOTIFICATION_THROTTLE_TICKS == 0) {
                     refreshNotification(elapsed, RecordingRepository.metrics.value.distanceM)
@@ -460,6 +484,34 @@ class RunRecordingService : Service() {
         )
         laps.add(lap)
         RecordingRepository.update { it.copy(laps = laps.toList()) }
+        // The lap press also skips the workout's current step, Garmin's
+        // grammar and the custom watch's (decisions § 354): a wrist has no
+        // spare control mid-run.
+        val events = synchronized(workoutLock) { workoutRunner?.skipStep() } ?: return
+        publishWorkout(events)
+    }
+
+    /// One feed of the run's totals to the workout runner, on the ACTIVE
+    /// clock, so a timed recovery does not run out while the runner has
+    /// paused the recording. A paused run is not fed at all: its distance
+    /// and clock stand still, and a still sample would only re-raise drift.
+    private fun feedWorkout(activeElapsedMs: Long) {
+        if (isPaused()) return
+        val distanceM = RecordingRepository.metrics.value.distanceM
+        val events = synchronized(workoutLock) {
+            workoutRunner?.onTotals(distanceM, activeElapsedMs / 1000.0, System.currentTimeMillis())
+        } ?: return
+        publishWorkout(events)
+    }
+
+    private fun publishWorkout(events: List<com.runapp.watchwear.workout.WorkoutEvent>) {
+        val view = synchronized(workoutLock) { workoutRunner?.view() }
+        RecordingRepository.update { it.copy(workoutView = view) }
+        when (val cue = workoutCue(events)) {
+            is WorkoutCue.Vibrate -> vibrate(cue.pattern, "workout step")
+            is WorkoutCue.PaceAlert -> firePaceAlert(cue.tooSlow)
+            null -> Unit
+        }
     }
 
     private fun pauseRecording() {
@@ -514,6 +566,11 @@ class RunRecordingService : Service() {
             activeElapsedMs = finalElapsed,
         )
 
+        val workoutReview = synchronized(workoutLock) {
+            val review = workoutRunner?.review()
+            workoutRunner = null
+            review
+        }
         val storedPoints = trackWriter?.pointCount ?: 0
         val locationProvider = locationProviderForTrack(storedPoints)
         val file = trackWriter?.close()
@@ -532,6 +589,8 @@ class RunRecordingService : Service() {
                 trackComplete = storedPoints > 0,
                 laps = laps.toList(),
                 activityType = activityType,
+                workoutView = null,
+                workoutReview = workoutReview,
             )
         }
 
@@ -766,8 +825,10 @@ class RunRecordingService : Service() {
         //    already implicit — onGps skips when paused)
         //  - the drift is >30 s/km in either direction
         //  - we haven't already fired an alert in the last 30 s
+        // A live workout judges pace against its own step (decisions § 2076).
+        val workoutOwnsPace = synchronized(workoutLock) { workoutRunner?.ownsPaceCues == true }
         val target = targetPaceSecPerKm
-        if (target != null && target > 0 && pace != null) {
+        if (!workoutOwnsPace && target != null && target > 0 && pace != null) {
             // Gate in `shouldFirePaceAlert` so the drift threshold +
             // rate-limit windowing are unit-testable in isolation
             // (see `PaceAlertTest.kt`).
@@ -821,6 +882,7 @@ class RunRecordingService : Service() {
                 locationProvider = locationProviderForTrack(file.pointCount),
                 gnssSignal = gnssSignalSummary(),
                 trackComplete = file.pointCount > 0,
+                workoutReview = synchronized(workoutLock) { workoutRunner?.review() },
             )
         )
     }
@@ -832,13 +894,7 @@ class RunRecordingService : Service() {
     /// for "speed up" (tooSlow=true), one for "slow down" (tooSlow=false).
     /// The direction is distinguishable by feel alone, so runners
     /// notice even with TTS muted or headphones paused.
-    @Suppress("DEPRECATION")
     private fun firePaceAlert(tooSlow: Boolean) {
-        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            (getSystemService(VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
-        } else {
-            getSystemService(VIBRATOR_SERVICE) as Vibrator
-        }
         val effect = if (tooSlow) {
             // Two ~180 ms pulses with a ~180 ms gap, matching the
             // "speed up" cue on Android. `timings` is [off, on, off, on].
@@ -850,7 +906,22 @@ class RunRecordingService : Service() {
         } else {
             VibrationEffect.createOneShot(220, VibrationEffect.DEFAULT_AMPLITUDE)
         }
+        vibrate(effect, "pace alert")
+        cues?.announcePaceAlert(tooSlow)
+    }
+
+    private fun vibrate(pattern: HapticPattern, what: String) {
+        vibrate(VibrationEffect.createWaveform(pattern.timingsMs, -1), what)
+    }
+
+    @Suppress("DEPRECATION")
+    private fun vibrate(effect: VibrationEffect, what: String) {
         try {
+            val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                (getSystemService(VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
+            } else {
+                getSystemService(VIBRATOR_SERVICE) as Vibrator
+            }
             vibrator.vibrate(effect)
         } catch (e: Throwable) {
             // A watch with no vibrator is rare; a MISSING `VIBRATE`
@@ -858,11 +929,10 @@ class RunRecordingService : Service() {
             // it was the state of this manifest, so the haptic half of the
             // pace alert had never fired on any watch and the silence read as
             // hardware (decisions § 1302). Logged rather than swallowed: the
-            // alert is L4, so the run is untouched either way, but a cue that
+            // cue is L4, so the run is untouched either way, but a cue that
             // silently does not exist must leave a trace.
-            android.util.Log.w(TAG, "pace-alert haptic refused", e)
+            android.util.Log.w(TAG, "$what haptic refused", e)
         }
-        cues?.announcePaceAlert(tooSlow)
     }
 
     private fun realtimeS(): Double = SystemClock.elapsedRealtime() / 1000.0
@@ -1055,6 +1125,9 @@ class RunRecordingService : Service() {
         /// `voice_feedback_enabled`. Absent means ON, the registry default;
         /// only an explicit `false` silences the wrist.
         const val EXTRA_AUDIO_CUES = "audio_cues"
+        /// Today's workout as the phone pushed it (`WorkoutBridge`), JSON
+        /// text. Absent means a free run.
+        const val EXTRA_WORKOUT_JSON = "workout_json"
 
         private const val NOTIFICATION_ID = 1001
         private const val CHANNEL_ID = "run_recording"
@@ -1112,6 +1185,7 @@ class RunRecordingService : Service() {
             preferredUnit: DistanceUnit = DistanceUnit.KM,
             privacyDefault: String? = null,
             voiceFeedbackEnabled: Boolean = true,
+            workoutJson: String? = null,
         ) {
             val intent = Intent(context, RunRecordingService::class.java).apply {
                 action = ACTION_START
@@ -1128,6 +1202,7 @@ class RunRecordingService : Service() {
                 if (targetPaceSecPerKm != null && targetPaceSecPerKm > 0) {
                     putExtra(EXTRA_TARGET_PACE_SEC_PER_KM, targetPaceSecPerKm)
                 }
+                if (!workoutJson.isNullOrEmpty()) putExtra(EXTRA_WORKOUT_JSON, workoutJson)
             }
             context.startForegroundService(intent)
         }

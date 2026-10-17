@@ -253,4 +253,22 @@
     <string name="tts_run_complete_mi">Run complete. %1$s miles in %2$d minutes.</string>
     <string name="tts_pace_alert_fast">Pick up the pace</string>
     <string name="tts_pace_alert_slow">Slow down</string>
+
+    <!-- Today's workout, pushed by the phone (WorkoutBridge) -->
+    <string name="workout">Workout</string>
+    <string name="workout_off">Off</string>
+    <plurals name="workout_step_count">
+        <item quantity="one">%1$d step</item>
+        <item quantity="other">%1$d steps</item>
+    </plurals>
+    <string name="cd_workout_on">Today\'s workout, %1$s, on, tap to run free</string>
+    <string name="cd_workout_off">Today\'s workout, off, tap to follow it</string>
+    <string name="workout_step_warmup">Warm-up</string>
+    <string name="workout_step_rep">Rep</string>
+    <string name="workout_step_recovery">Recovery</string>
+    <string name="workout_step_walk">Walk</string>
+    <string name="workout_step_steady">Steady</string>
+    <string name="workout_step_cooldown">Cool-down</string>
+    <string name="workout_done">Workout done</string>
+    <string name="cd_mark_lap_skip_step">Mark lap and skip to the next step</string>
 </resources>

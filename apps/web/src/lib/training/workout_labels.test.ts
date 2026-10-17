@@ -72,6 +72,24 @@ test('every workoutKind key the map names exists in the catalogue', () => {
 	}
 });
 
+test('workoutKindShortLabel maps every workout_kind, each key in the catalogue', () => {
+	const src = readFileSync(join(__dirname, 'workout_labels.ts'), 'utf-8');
+	const block = src.match(/const WORKOUT_KIND_SHORT_KEY[^{]*\{([^}]*)\}/);
+	assert.ok(block, 'workout_labels.ts no longer declares WORKOUT_KIND_SHORT_KEY');
+	const kinds = [...block[1].matchAll(/^\t([a-z_]+):/gm)].map((m) => m[1]).sort();
+	assert.deepEqual(kinds, databaseWorkoutKinds());
+	for (const [, key] of block[1].matchAll(/'(workoutKindShort\.[a-z_]+)'/g)) {
+		assert.ok(key in en, `${key} is absent from en.ts`);
+	}
+});
+
+test('every short kind label is at most four characters, so it fits a 360 px grid cell', () => {
+	for (const [key, value] of Object.entries(en)) {
+		if (!key.startsWith('workoutKindShort.')) continue;
+		assert.ok([...value].length <= 4, `${key} = "${value}" is longer than four characters`);
+	}
+});
+
 // `x.charAt(0).toUpperCase() + x.slice(1)` and the `x[0]` spelling of it.
 //
 // Deliberately NOT scoped to identifiers containing "kind": the defect this

@@ -4567,6 +4567,9 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String get profileNotifWorkoutReminder => '今日のワークアウトがプランで待っています';
+
+  @override
   String profileNotifEventCancelTitled(String title) {
     return '「$title」の開催が1回キャンセルされました';
   }
@@ -6469,16 +6472,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get workoutStructCooldown => 'クールダウン';
-
-  @override
-  String workoutStructWarmupValue(String distance) {
-    return '$distance @ イージー';
-  }
-
-  @override
-  String workoutStructCooldownValue(String distance) {
-    return '$distance @ イージー';
-  }
 
   @override
   String get workoutAdviceEasy => '会話できるペースで。会話を続けられないなら速すぎます。';
@@ -8391,6 +8384,13 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get prefsEmailNewDeviceAlertsHint =>
       'これまで使われたことのないブラウザやデバイスからアカウントにサインインがあったときに、メールで知らせます。パスワード変更の通知は常に送信され、オフにすることはできません。';
+
+  @override
+  String get prefsNotifyWorkoutReminder => '今日のワークアウト';
+
+  @override
+  String get prefsNotifyWorkoutReminderHint =>
+      'ワークアウトが予定されている日の朝に、受信箱・メール・プッシュでお知らせします。';
 
   @override
   String get prefsEmailReOptInFailed =>
@@ -16281,6 +16281,239 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get workoutMoveSaveFirst => 'このワークアウトを移動する前に、変更を保存するか破棄してください。';
+
+  @override
+  String workoutSummaryMin(int n) {
+    return '$n分';
+  }
+
+  @override
+  String workoutSummarySec(int n) {
+    return '$n秒';
+  }
+
+  @override
+  String workoutSummaryMinSec(int m, int s) {
+    return '$m分$s秒';
+  }
+
+  @override
+  String workoutSummaryIntervals(int count, String run, String walk) {
+    return '$count × (ラン $run / ウォーク $walk)';
+  }
+
+  @override
+  String workoutSummaryContinuous(String run) {
+    return 'ラン $run';
+  }
+
+  @override
+  String workoutSummaryWarmup(String duration) {
+    return 'ウォームアップ $duration';
+  }
+
+  @override
+  String workoutSummaryCooldown(String duration) {
+    return 'クールダウン $duration';
+  }
+
+  @override
+  String workoutSummaryWithBoth(String warmup, String main, String cooldown) {
+    return '$warmup、$main、$cooldown';
+  }
+
+  @override
+  String workoutSummaryWithWarmup(String warmup, String main) {
+    return '$warmup、$main';
+  }
+
+  @override
+  String workoutSummaryWithCooldown(String main, String cooldown) {
+    return '$main、$cooldown';
+  }
+
+  @override
+  String workoutSummaryAbout(String duration) {
+    return '約$duration';
+  }
+
+  @override
+  String workoutZoneNamed(String code, String name) {
+    return 'ゾーン $code · $name';
+  }
+
+  @override
+  String workoutZoneRaw(String code) {
+    return 'ゾーン $code';
+  }
+
+  @override
+  String get workoutEffortJog => 'ジョグ';
+
+  @override
+  String get workoutEffortEasy => 'イージー';
+
+  @override
+  String get workoutEffortWalk => 'ウォーク';
+
+  @override
+  String get workoutTaglineWalkRun => 'ウォークランのセッション。タイマーに合わせてランとウォークを交互に。';
+
+  @override
+  String get workoutMetricSession => 'セッション';
+
+  @override
+  String workoutStructRepeatsMain(int count, String distance) {
+    return '$count× $distance';
+  }
+
+  @override
+  String get workoutStructRecovery => 'リカバリー';
+
+  @override
+  String workoutStructRecoveryDetail(String distance, String effort) {
+    return '$distance $effort';
+  }
+
+  @override
+  String workoutStructTotal(String value) {
+    return '合計: $value';
+  }
+
+  @override
+  String get workoutStructAtEasy => '@ イージー';
+
+  @override
+  String workoutStructAtPace(String pace) {
+    return '@ $pace';
+  }
+
+  @override
+  String get workoutTimelineLabel => 'ワークアウトのセグメントタイムライン';
+
+  @override
+  String get workoutFreeFormTitle => '自由なラン';
+
+  @override
+  String get workoutFreeFormHint => '従うセグメントはなし — 提案ペースで距離を走るだけ。';
+
+  @override
+  String get workoutTaglineStructured => '構造化ワークアウト — 各セグメントを記載どおりに進めよう。';
+
+  @override
+  String get workoutTaglineEasy => '自由なイージーラン。感覚で走ろう。';
+
+  @override
+  String get workoutTaglineLong => '自由なロングラン。後半に備えてペース配分しよう。';
+
+  @override
+  String get workoutTaglineRest => '休養日。気が向いたら軽く動く程度に。';
+
+  @override
+  String get workoutTaglineRace => 'レース当日。テーパリングを信じよう。';
+
+  @override
+  String get workoutTaglineFreeForm => '自由なラン。';
+
+  @override
+  String get workoutKindShortEasy => 'E';
+
+  @override
+  String get workoutKindShortLong => 'L';
+
+  @override
+  String get workoutKindShortRecovery => '回復';
+
+  @override
+  String get workoutKindShortTempo => 'T';
+
+  @override
+  String get workoutKindShortInterval => 'IV';
+
+  @override
+  String get workoutKindShortMarathonPace => 'MP';
+
+  @override
+  String get workoutKindShortWalkRun => 'WR';
+
+  @override
+  String get workoutKindShortRace => '本番';
+
+  @override
+  String get workoutKindShortRest => '休';
+
+  @override
+  String get planDetailAriaCompletedSuffix => '、完了';
+
+  @override
+  String get planDetailAriaSkippedSuffix => '、スキップ';
+
+  @override
+  String get planDetailAriaMissedSuffix => '、未実施';
+
+  @override
+  String get planDetailAriaTodaySuffix => '、今日';
+
+  @override
+  String get planDetailNextUp => '次は';
+
+  @override
+  String get planDetailGoAndRunIt => 'さあ、走ろう。';
+
+  @override
+  String get planDetailRestDayTitle => '休養日';
+
+  @override
+  String get planDetailRestDayHint => '予定されたワークアウトはありません。回復して明日に備えましょう。';
+
+  @override
+  String get planDetailTodayLabel => '今日';
+
+  @override
+  String get planDetailRaceDayTitle => 'レース当日';
+
+  @override
+  String get planDetailWorkoutCompletion => 'ワークアウトの達成状況';
+
+  @override
+  String get planDetailFirstWeek => '最初の週';
+
+  @override
+  String planDetailAssignedBy(String name) {
+    return '$nameさんが割り当て';
+  }
+
+  @override
+  String get planDetailAssignedByCoach => 'コーチが割り当て';
+
+  @override
+  String planDetailWeekOfN(int week, int total) {
+    return '第$week週／全$total週';
+  }
+
+  @override
+  String get planDetailPausedChip => '一時停止中';
+
+  @override
+  String planDetailWeekDoneCount(int done, int total) {
+    return '$done / $total 完了';
+  }
+
+  @override
+  String planDetailEarlierWeeks(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'これまでの$count週',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planDetailShowEarlierWeeks => 'これまでの週を表示';
+
+  @override
+  String get planDetailHideEarlierWeeks => 'これまでの週を隠す';
 
   @override
   String get planNewStartingPoint => '今のあなたの状態は？';

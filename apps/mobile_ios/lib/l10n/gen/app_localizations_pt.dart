@@ -4837,6 +4837,10 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get profileNotifWorkoutReminder =>
+      'O seu treino de hoje está à sua espera no plano';
+
+  @override
   String profileNotifEventCancelTitled(String title) {
     return 'Uma ocorrência de “$title” foi cancelada';
   }
@@ -6843,16 +6847,6 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get workoutStructCooldown => 'Desaquecimento';
-
-  @override
-  String workoutStructWarmupValue(String distance) {
-    return '$distance @ leve';
-  }
-
-  @override
-  String workoutStructCooldownValue(String distance) {
-    return '$distance @ leve';
-  }
 
   @override
   String get workoutAdviceEasy =>
@@ -8865,6 +8859,13 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get prefsEmailNewDeviceAlertsHint =>
       'Avise por e-mail na primeira vez que for iniciada sessão na minha conta a partir de um navegador ou dispositivo ainda não utilizado. Os avisos de alteração da palavra-passe são sempre enviados e não podem ser desativados.';
+
+  @override
+  String get prefsNotifyWorkoutReminder => 'Treino de hoje';
+
+  @override
+  String get prefsNotifyWorkoutReminderHint =>
+      'Na manhã de um treino planeado, lembre-me na caixa de entrada, por e-mail e por push.';
 
   @override
   String get prefsEmailReOptInFailed =>
@@ -17080,6 +17081,246 @@ class AppLocalizationsPt extends AppLocalizations {
       'Guarde ou descarte as suas alterações antes de mover este treino.';
 
   @override
+  String workoutSummaryMin(int n) {
+    return '$n min';
+  }
+
+  @override
+  String workoutSummarySec(int n) {
+    return '$n s';
+  }
+
+  @override
+  String workoutSummaryMinSec(int m, int s) {
+    return '$m min $s s';
+  }
+
+  @override
+  String workoutSummaryIntervals(int count, String run, String walk) {
+    return '$count × ($run a correr / $walk a caminhar)';
+  }
+
+  @override
+  String workoutSummaryContinuous(String run) {
+    return '$run a correr';
+  }
+
+  @override
+  String workoutSummaryWarmup(String duration) {
+    return '$duration de aquecimento';
+  }
+
+  @override
+  String workoutSummaryCooldown(String duration) {
+    return '$duration de desaquecimento';
+  }
+
+  @override
+  String workoutSummaryWithBoth(String warmup, String main, String cooldown) {
+    return '$warmup, $main, $cooldown';
+  }
+
+  @override
+  String workoutSummaryWithWarmup(String warmup, String main) {
+    return '$warmup, $main';
+  }
+
+  @override
+  String workoutSummaryWithCooldown(String main, String cooldown) {
+    return '$main, $cooldown';
+  }
+
+  @override
+  String workoutSummaryAbout(String duration) {
+    return 'cerca de $duration';
+  }
+
+  @override
+  String workoutZoneNamed(String code, String name) {
+    return 'Zona $code · $name';
+  }
+
+  @override
+  String workoutZoneRaw(String code) {
+    return 'Zona $code';
+  }
+
+  @override
+  String get workoutEffortJog => 'trote';
+
+  @override
+  String get workoutEffortEasy => 'leve';
+
+  @override
+  String get workoutEffortWalk => 'a caminhar';
+
+  @override
+  String get workoutTaglineWalkRun =>
+      'Sessão de caminhada-corrida. Alterne entre correr e caminhar ao ritmo do temporizador.';
+
+  @override
+  String get workoutMetricSession => 'Sessão';
+
+  @override
+  String workoutStructRepeatsMain(int count, String distance) {
+    return '$count× $distance';
+  }
+
+  @override
+  String get workoutStructRecovery => 'Recuperação';
+
+  @override
+  String workoutStructRecoveryDetail(String distance, String effort) {
+    return '$distance ($effort)';
+  }
+
+  @override
+  String workoutStructTotal(String value) {
+    return 'Total: $value';
+  }
+
+  @override
+  String get workoutStructAtEasy => '@ leve';
+
+  @override
+  String workoutStructAtPace(String pace) {
+    return '@ $pace';
+  }
+
+  @override
+  String get workoutTimelineLabel => 'Linha do tempo dos segmentos do treino';
+
+  @override
+  String get workoutFreeFormTitle => 'Corrida livre';
+
+  @override
+  String get workoutFreeFormHint =>
+      'Sem segmentos a seguir — apenas corra a distância no ritmo sugerido.';
+
+  @override
+  String get workoutTaglineStructured =>
+      'Treino estruturado — siga cada segmento como está descrito.';
+
+  @override
+  String get workoutTaglineEasy => 'Esforço leve livre. Corra pelo feeling.';
+
+  @override
+  String get workoutTaglineLong =>
+      'Longão livre. Controlo o ritmo para a segunda metade.';
+
+  @override
+  String get workoutTaglineRest =>
+      'Dia de descanso. Movimento leve só se quiser.';
+
+  @override
+  String get workoutTaglineRace => 'Dia de prova. Confie no polimento.';
+
+  @override
+  String get workoutTaglineFreeForm => 'Corrida livre.';
+
+  @override
+  String get workoutKindShortEasy => 'L';
+
+  @override
+  String get workoutKindShortLong => 'Lg';
+
+  @override
+  String get workoutKindShortRecovery => 'Rec';
+
+  @override
+  String get workoutKindShortTempo => 'T';
+
+  @override
+  String get workoutKindShortInterval => 'Int';
+
+  @override
+  String get workoutKindShortMarathonPace => 'RM';
+
+  @override
+  String get workoutKindShortWalkRun => 'C/C';
+
+  @override
+  String get workoutKindShortRace => 'Prova';
+
+  @override
+  String get workoutKindShortRest => 'Desc';
+
+  @override
+  String get planDetailAriaCompletedSuffix => ', concluído';
+
+  @override
+  String get planDetailAriaSkippedSuffix => ', ignorado';
+
+  @override
+  String get planDetailAriaMissedSuffix => ', falhado';
+
+  @override
+  String get planDetailAriaTodaySuffix => ', hoje';
+
+  @override
+  String get planDetailNextUp => 'A seguir';
+
+  @override
+  String get planDetailGoAndRunIt => 'Vá e corra!';
+
+  @override
+  String get planDetailRestDayTitle => 'Dia de descanso';
+
+  @override
+  String get planDetailRestDayHint =>
+      'Nenhum treino agendado — recupere-se e siga para amanhã.';
+
+  @override
+  String get planDetailTodayLabel => 'Hoje';
+
+  @override
+  String get planDetailRaceDayTitle => 'Dia da prova';
+
+  @override
+  String get planDetailWorkoutCompletion => 'Conclusão dos treinos';
+
+  @override
+  String get planDetailFirstWeek => 'Primeira semana';
+
+  @override
+  String planDetailAssignedBy(String name) {
+    return 'Atribuído por $name';
+  }
+
+  @override
+  String get planDetailAssignedByCoach => 'Atribuído pelo seu treinador';
+
+  @override
+  String planDetailWeekOfN(int week, int total) {
+    return 'Semana $week de $total';
+  }
+
+  @override
+  String get planDetailPausedChip => 'Pausado';
+
+  @override
+  String planDetailWeekDoneCount(int done, int total) {
+    return '$done / $total feitos';
+  }
+
+  @override
+  String planDetailEarlierWeeks(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count semanas anteriores',
+      one: '1 semana anterior',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planDetailShowEarlierWeeks => 'Mostrar semanas anteriores';
+
+  @override
+  String get planDetailHideEarlierWeeks => 'Ocultar semanas anteriores';
+
+  @override
   String get planNewStartingPoint => 'De onde está a partir?';
 
   @override
@@ -22067,6 +22308,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
+  String get profileNotifWorkoutReminder =>
+      'Seu treino de hoje está esperando no seu plano';
+
+  @override
   String profileNotifEventCancelTitled(String title) {
     return 'Uma ocorrência de “$title” foi cancelada';
   }
@@ -24075,16 +24320,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get workoutStructCooldown => 'Desaquecimento';
 
   @override
-  String workoutStructWarmupValue(String distance) {
-    return '$distance @ leve';
-  }
-
-  @override
-  String workoutStructCooldownValue(String distance) {
-    return '$distance @ leve';
-  }
-
-  @override
   String get workoutAdviceEasy =>
       'Ritmo de conversa. Se você não consegue conversar, está correndo rápido demais.';
 
@@ -26086,6 +26321,13 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get prefsEmailNewDeviceAlertsHint =>
       'Avise por e-mail na primeira vez que minha conta for acessada de um navegador ou dispositivo que ela ainda não usou. Os avisos de alteração de senha são sempre enviados e não podem ser desativados.';
+
+  @override
+  String get prefsNotifyWorkoutReminder => 'Treino de hoje';
+
+  @override
+  String get prefsNotifyWorkoutReminderHint =>
+      'Na manhã de um treino planejado, me lembre na caixa de entrada, por e-mail e por push.';
 
   @override
   String get prefsEmailReOptInFailed =>
@@ -34294,6 +34536,246 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get workoutMoveSaveFirst =>
       'Salve ou descarte suas alterações antes de mover este treino.';
+
+  @override
+  String workoutSummaryMin(int n) {
+    return '$n min';
+  }
+
+  @override
+  String workoutSummarySec(int n) {
+    return '$n s';
+  }
+
+  @override
+  String workoutSummaryMinSec(int m, int s) {
+    return '$m min $s s';
+  }
+
+  @override
+  String workoutSummaryIntervals(int count, String run, String walk) {
+    return '$count × ($run correndo / $walk caminhando)';
+  }
+
+  @override
+  String workoutSummaryContinuous(String run) {
+    return '$run correndo';
+  }
+
+  @override
+  String workoutSummaryWarmup(String duration) {
+    return '$duration de aquecimento';
+  }
+
+  @override
+  String workoutSummaryCooldown(String duration) {
+    return '$duration de desaquecimento';
+  }
+
+  @override
+  String workoutSummaryWithBoth(String warmup, String main, String cooldown) {
+    return '$warmup, $main, $cooldown';
+  }
+
+  @override
+  String workoutSummaryWithWarmup(String warmup, String main) {
+    return '$warmup, $main';
+  }
+
+  @override
+  String workoutSummaryWithCooldown(String main, String cooldown) {
+    return '$main, $cooldown';
+  }
+
+  @override
+  String workoutSummaryAbout(String duration) {
+    return 'cerca de $duration';
+  }
+
+  @override
+  String workoutZoneNamed(String code, String name) {
+    return 'Zona $code · $name';
+  }
+
+  @override
+  String workoutZoneRaw(String code) {
+    return 'Zona $code';
+  }
+
+  @override
+  String get workoutEffortJog => 'trote';
+
+  @override
+  String get workoutEffortEasy => 'leve';
+
+  @override
+  String get workoutEffortWalk => 'caminhando';
+
+  @override
+  String get workoutTaglineWalkRun =>
+      'Sessão de caminhada-corrida. Alterne entre correr e caminhar seguindo o cronômetro.';
+
+  @override
+  String get workoutMetricSession => 'Sessão';
+
+  @override
+  String workoutStructRepeatsMain(int count, String distance) {
+    return '$count× $distance';
+  }
+
+  @override
+  String get workoutStructRecovery => 'Recuperação';
+
+  @override
+  String workoutStructRecoveryDetail(String distance, String effort) {
+    return '$distance ($effort)';
+  }
+
+  @override
+  String workoutStructTotal(String value) {
+    return 'Total: $value';
+  }
+
+  @override
+  String get workoutStructAtEasy => '@ leve';
+
+  @override
+  String workoutStructAtPace(String pace) {
+    return '@ $pace';
+  }
+
+  @override
+  String get workoutTimelineLabel => 'Linha do tempo dos segmentos do treino';
+
+  @override
+  String get workoutFreeFormTitle => 'Corrida livre';
+
+  @override
+  String get workoutFreeFormHint =>
+      'Sem segmentos a seguir — apenas corra a distância no ritmo sugerido.';
+
+  @override
+  String get workoutTaglineStructured =>
+      'Treino estruturado — siga cada segmento como está descrito.';
+
+  @override
+  String get workoutTaglineEasy => 'Esforço leve livre. Corra pelo feeling.';
+
+  @override
+  String get workoutTaglineLong =>
+      'Longão livre. Controle o ritmo para a segunda metade.';
+
+  @override
+  String get workoutTaglineRest =>
+      'Dia de descanso. Movimento leve só se você quiser.';
+
+  @override
+  String get workoutTaglineRace => 'Dia de prova. Confie no polimento.';
+
+  @override
+  String get workoutTaglineFreeForm => 'Corrida livre.';
+
+  @override
+  String get workoutKindShortEasy => 'L';
+
+  @override
+  String get workoutKindShortLong => 'Lg';
+
+  @override
+  String get workoutKindShortRecovery => 'Rec';
+
+  @override
+  String get workoutKindShortTempo => 'T';
+
+  @override
+  String get workoutKindShortInterval => 'Int';
+
+  @override
+  String get workoutKindShortMarathonPace => 'RM';
+
+  @override
+  String get workoutKindShortWalkRun => 'C/C';
+
+  @override
+  String get workoutKindShortRace => 'Prova';
+
+  @override
+  String get workoutKindShortRest => 'Desc';
+
+  @override
+  String get planDetailAriaCompletedSuffix => ', concluído';
+
+  @override
+  String get planDetailAriaSkippedSuffix => ', ignorado';
+
+  @override
+  String get planDetailAriaMissedSuffix => ', não realizado';
+
+  @override
+  String get planDetailAriaTodaySuffix => ', hoje';
+
+  @override
+  String get planDetailNextUp => 'A seguir';
+
+  @override
+  String get planDetailGoAndRunIt => 'Vá e corra!';
+
+  @override
+  String get planDetailRestDayTitle => 'Dia de descanso';
+
+  @override
+  String get planDetailRestDayHint =>
+      'Nenhum treino agendado — recupere-se e siga para amanhã.';
+
+  @override
+  String get planDetailTodayLabel => 'Hoje';
+
+  @override
+  String get planDetailRaceDayTitle => 'Dia da prova';
+
+  @override
+  String get planDetailWorkoutCompletion => 'Conclusão dos treinos';
+
+  @override
+  String get planDetailFirstWeek => 'Primeira semana';
+
+  @override
+  String planDetailAssignedBy(String name) {
+    return 'Atribuído por $name';
+  }
+
+  @override
+  String get planDetailAssignedByCoach => 'Atribuído pelo seu treinador';
+
+  @override
+  String planDetailWeekOfN(int week, int total) {
+    return 'Semana $week de $total';
+  }
+
+  @override
+  String get planDetailPausedChip => 'Pausado';
+
+  @override
+  String planDetailWeekDoneCount(int done, int total) {
+    return '$done / $total feitos';
+  }
+
+  @override
+  String planDetailEarlierWeeks(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count semanas anteriores',
+      one: '1 semana anterior',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planDetailShowEarlierWeeks => 'Mostrar semanas anteriores';
+
+  @override
+  String get planDetailHideEarlierWeeks => 'Ocultar semanas anteriores';
 
   @override
   String get planNewStartingPoint => 'De onde você está começando?';

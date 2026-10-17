@@ -269,6 +269,16 @@ data class UiState(
     /// Null means "no target — don't fire pace alerts". Set via the
     /// pre-run Pace chip; flows through `ACTION_START` to the service.
     val targetPaceSecPerKm: Int? = null,
+    /// Today's planned workout as the phone last pushed it, on the watch's
+    /// own calendar day. Null: no push, nothing today, or a push from
+    /// another day.
+    val todaysWorkout: com.runapp.watchwear.workout.PushedWorkout? = null,
+    /// Whether Start runs [todaysWorkout]. On by default, so a runner with a
+    /// session today gets it without a tap; the pre-run chip turns it off
+    /// for a free run.
+    val followWorkout: Boolean = true,
+    /// The live step, while a run follows a workout.
+    val workoutView: com.runapp.watchwear.workout.WorkoutView? = null,
     /// Live step count for the current run from the pedometer. Null
     /// when the device has no step sensor or no samples have arrived.
     val steps: Int? = null,
@@ -464,6 +474,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     private val sessionBridge = SessionBridge(application)
     private val routeStore = LocalRouteStore(application)
     private val routesBridge = RoutesBridge(application)
+    private val workoutBridge = WorkoutBridge(application)
     private val checkpoints = CheckpointStore(application)
     private val networkWatcher = NetworkWatcher(application)
     /// MapTiler tile source — process-wide singleton shared with
@@ -584,6 +595,64 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         checkRecovery()
         loadCachedRoutes()
         observeRoutesBridge()
+        observeWorkoutBridge()
+    }
+
+    /// The latest today's-workout push the watch applied. Held whole rather
+    /// than as the offered workout, so the day check runs again at Start: a
+    /// pre-run screen left open past midnight must not arm yesterday's
+    /// session.
+    private var workoutDelivery: WorkoutPushDelivery? = null
+    private var lastAppliedWorkoutPushMs: Long = 0L
+    /// The workout this watch last started a run on. It is not offered again
+    /// once that run exists, until the phone pushes something else: the phone
+    /// only learns the workout is done when it next reads the plan, and a
+    /// second Start must not run the same session twice.
+    private var startedWorkoutId: String? = null
+
+    /// Listen for today's planned workout from the paired phone
+    /// (`WearWorkoutBridge`). The Data Layer keeps the item in the watch's
+    /// own graph, so the cold-start read answers with no phone in range.
+    private fun observeWorkoutBridge() {
+        launchGuarded {
+            try {
+                workoutBridge.current()?.let(::applyWorkoutPush)
+            } catch (e: Throwable) {
+                Log.w(TAG, "today's workout cold-start read failed", e)
+            }
+        }
+        launchGuarded {
+            workoutBridge.events
+                .catch { e -> Log.w(TAG, "workout bridge stream failed", e) }
+                .collect { delivery ->
+                    try {
+                        applyWorkoutPush(delivery)
+                    } catch (e: Throwable) {
+                        Log.w(TAG, "workout bridge event failed", e)
+                    }
+                }
+        }
+    }
+
+    private fun applyWorkoutPush(delivery: WorkoutPushDelivery) {
+        if (!shouldApplyRoutesPush(lastAppliedWorkoutPushMs, delivery.updatedAtMs)) return
+        lastAppliedWorkoutPushMs = maxOf(lastAppliedWorkoutPushMs, delivery.updatedAtMs)
+        workoutDelivery = delivery
+        refreshTodaysWorkout()
+    }
+
+    private fun refreshTodaysWorkout() {
+        val offered = com.runapp.watchwear.workout.offeredWorkout(
+            workoutDelivery?.push,
+            java.time.LocalDate.now(),
+        )?.takeIf { it.planWorkoutId != startedWorkoutId }
+        _state.value = _state.value.copy(todaysWorkout = offered)
+    }
+
+    /// The pre-run chip: follow today's workout, or run free.
+    fun toggleFollowWorkout() {
+        if (_state.value.stage != Stage.PreRun) return
+        _state.value = _state.value.copy(followWorkout = !_state.value.followWorkout)
     }
 
     /// Tracks the `updated_at_ms` of the last phone push the watch
@@ -664,6 +733,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                             routeWaypoints = m.routeWaypoints,
                             trackOverlayPoints = m.trackOverlayPoints,
                             steps = m.steps,
+                            workoutView = m.workoutView,
                         )
                         maybePushRacePing(m)
                         try {
@@ -1324,6 +1394,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                     locationProvider = cp.locationProvider,
                     gnssSignal = cp.gnssSignal,
                     trackComplete = cp.trackComplete,
+                    workoutReview = cp.workoutReview,
                 )
             )
             checkpoints.clear()
@@ -1466,6 +1537,10 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         checkBatteryLevel()
         val runId = UUID.randomUUID().toString()
         val route = _state.value.selectedRoute
+        refreshTodaysWorkout()
+        val followed = _state.value.todaysWorkout?.takeIf { _state.value.followWorkout }
+        val workoutJson = followed?.let { workoutDelivery?.workoutJson }
+        if (workoutJson != null) startedWorkoutId = followed.planWorkoutId
         _state.value = _state.value.copy(
             stage = Stage.Running,
             elapsedMs = 0,
@@ -1480,6 +1555,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
             offRouteDistanceM = null,
             routeRemainingM = null,
             raceRun = null,
+            workoutView = null,
         )
         RunRecordingService.start(
             context = getApplication(),
@@ -1490,6 +1566,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
             preferredUnit = _state.value.preferredUnit,
             privacyDefault = universalPrivacyDefault,
             voiceFeedbackEnabled = _state.value.voiceFeedbackEnabled,
+            workoutJson = workoutJson,
         )
     }
 
@@ -1793,6 +1870,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                     locationProvider = m.locationProvider,
                     gnssSignal = m.gnssSignal,
                     trackComplete = m.trackComplete,
+                    workoutReview = m.workoutReview,
                 )
             )
             rememberLastRun(m, runId, durationS)
@@ -1868,7 +1946,9 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
             thisRunId = null,
             thisRunSynced = false,
             syncFault = null,
+            workoutView = null,
         )
+        refreshTodaysWorkout()
     }
 
     /// Drop the run the PostRun `×` is showing — the queue entry and the track
@@ -2197,6 +2277,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
             locationProvider = run.locationProvider,
             gnssSignal = run.gnssSignal,
             trackComplete = run.trackComplete && trackFile != null,
+            workout = run.workoutReview,
         )
         supabase.saveRun(
             runId = run.id,

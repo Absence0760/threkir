@@ -7930,6 +7930,12 @@ abstract class AppLocalizations {
   /// **'{name} assigned you a training plan'**
   String profileNotifPlanAssigned(String name);
 
+  /// Notification inbox line for the morning reminder that today has a workout on the runner's active training plan
+  ///
+  /// In en, this message translates to:
+  /// **'Today\'s workout is waiting in your plan'**
+  String get profileNotifWorkoutReminder;
+
   /// Notification text for a cancelled event occurrence, when the event title is known
   ///
   /// In en, this message translates to:
@@ -11128,18 +11134,6 @@ abstract class AppLocalizations {
   /// **'Cooldown'**
   String get workoutStructCooldown;
 
-  /// Structure-list warmup value (distance at easy pace)
-  ///
-  /// In en, this message translates to:
-  /// **'{distance} @ easy'**
-  String workoutStructWarmupValue(String distance);
-
-  /// Structure-list cooldown value (distance at easy pace)
-  ///
-  /// In en, this message translates to:
-  /// **'{distance} @ easy'**
-  String workoutStructCooldownValue(String distance);
-
   /// Advice text for easy / recovery workouts
   ///
   /// In en, this message translates to:
@@ -14313,6 +14307,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Email me the first time my account signs in from a browser or device it hasn\'t used before. Password-change notices always send and can\'t be turned off.'**
   String get prefsEmailNewDeviceAlertsHint;
+
+  /// Title of the switch that turns the morning today's-workout reminder on or off
+  ///
+  /// In en, this message translates to:
+  /// **'Today\'s workout'**
+  String get prefsNotifyWorkoutReminder;
+
+  /// Subtitle of the today's-workout reminder switch; it covers the inbox, email and push
+  ///
+  /// In en, this message translates to:
+  /// **'On the morning of a planned workout, remind me in the inbox and by email and push.'**
+  String get prefsNotifyWorkoutReminderHint;
 
   /// Shown when lifting a prior one-click unsubscribe block fails after re-opting into an email stream
   ///
@@ -27972,6 +27978,378 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Save or discard your changes before moving this workout.'**
   String get workoutMoveSaveFirst;
+
+  /// A whole number of minutes in a walk-run pattern
+  ///
+  /// In en, this message translates to:
+  /// **'{n} min'**
+  String workoutSummaryMin(int n);
+
+  /// A number of seconds in a walk-run pattern
+  ///
+  /// In en, this message translates to:
+  /// **'{n} s'**
+  String workoutSummarySec(int n);
+
+  /// Minutes and seconds in a walk-run pattern
+  ///
+  /// In en, this message translates to:
+  /// **'{m} min {s} s'**
+  String workoutSummaryMinSec(int m, int s);
+
+  /// Walk-run intervals: count x (run time / walk time)
+  ///
+  /// In en, this message translates to:
+  /// **'{count} × ({run} run / {walk} walk)'**
+  String workoutSummaryIntervals(int count, String run, String walk);
+
+  /// One continuous run in a walk-run plan's graduation week
+  ///
+  /// In en, this message translates to:
+  /// **'{run} run'**
+  String workoutSummaryContinuous(String run);
+
+  /// Timed warm-up walk in a walk-run pattern
+  ///
+  /// In en, this message translates to:
+  /// **'{duration} warm-up'**
+  String workoutSummaryWarmup(String duration);
+
+  /// Timed cool-down walk in a walk-run pattern
+  ///
+  /// In en, this message translates to:
+  /// **'{duration} cool-down'**
+  String workoutSummaryCooldown(String duration);
+
+  /// Walk-run pattern joined: warm-up, main set, cool-down
+  ///
+  /// In en, this message translates to:
+  /// **'{warmup}, {main}, {cooldown}'**
+  String workoutSummaryWithBoth(String warmup, String main, String cooldown);
+
+  /// Walk-run pattern joined: warm-up, main set
+  ///
+  /// In en, this message translates to:
+  /// **'{warmup}, {main}'**
+  String workoutSummaryWithWarmup(String warmup, String main);
+
+  /// Walk-run pattern joined: main set, cool-down
+  ///
+  /// In en, this message translates to:
+  /// **'{main}, {cooldown}'**
+  String workoutSummaryWithCooldown(String main, String cooldown);
+
+  /// Approximate session length
+  ///
+  /// In en, this message translates to:
+  /// **'about {duration}'**
+  String workoutSummaryAbout(String duration);
+
+  /// Pace-zone chip with the zone's name, e.g. Zone T · Tempo
+  ///
+  /// In en, this message translates to:
+  /// **'Zone {code} · {name}'**
+  String workoutZoneNamed(String code, String name);
+
+  /// Pace-zone chip for a free-text zone code
+  ///
+  /// In en, this message translates to:
+  /// **'Zone {code}'**
+  String workoutZoneRaw(String code);
+
+  /// Recovery effort between reps: an easy jog
+  ///
+  /// In en, this message translates to:
+  /// **'jog'**
+  String get workoutEffortJog;
+
+  /// Recovery effort between reps: easy running
+  ///
+  /// In en, this message translates to:
+  /// **'easy'**
+  String get workoutEffortEasy;
+
+  /// Recovery effort between reps: walking
+  ///
+  /// In en, this message translates to:
+  /// **'walk'**
+  String get workoutEffortWalk;
+
+  /// Workout-detail tagline for a walk-run session
+  ///
+  /// In en, this message translates to:
+  /// **'Walk-run session. Alternate running and walking on the timer.'**
+  String get workoutTaglineWalkRun;
+
+  /// Workout-detail metric label for a walk-run session's length and pattern
+  ///
+  /// In en, this message translates to:
+  /// **'Session'**
+  String get workoutMetricSession;
+
+  /// Repeats step: count x rep distance or time
+  ///
+  /// In en, this message translates to:
+  /// **'{count}× {distance}'**
+  String workoutStructRepeatsMain(int count, String distance);
+
+  /// Sub-row label for the recovery between reps
+  ///
+  /// In en, this message translates to:
+  /// **'Recovery'**
+  String get workoutStructRecovery;
+
+  /// Recovery between reps: distance or time, then effort
+  ///
+  /// In en, this message translates to:
+  /// **'{distance} {effort}'**
+  String workoutStructRecoveryDetail(String distance, String effort);
+
+  /// Structure total line
+  ///
+  /// In en, this message translates to:
+  /// **'Total: {value}'**
+  String workoutStructTotal(String value);
+
+  /// Second line of a warm-up / cool-down step: at easy pace
+  ///
+  /// In en, this message translates to:
+  /// **'@ easy'**
+  String get workoutStructAtEasy;
+
+  /// Second line of a step: at the given pace
+  ///
+  /// In en, this message translates to:
+  /// **'@ {pace}'**
+  String workoutStructAtPace(String pace);
+
+  /// Screen-reader label of the proportional segment bar
+  ///
+  /// In en, this message translates to:
+  /// **'Workout segment timeline'**
+  String get workoutTimelineLabel;
+
+  /// Placeholder title when a workout has no segments
+  ///
+  /// In en, this message translates to:
+  /// **'Free-form run'**
+  String get workoutFreeFormTitle;
+
+  /// Placeholder hint when a workout has no segments
+  ///
+  /// In en, this message translates to:
+  /// **'No segments to follow — just run the distance at the suggested pace.'**
+  String get workoutFreeFormHint;
+
+  /// Workout-detail tagline for a structured session
+  ///
+  /// In en, this message translates to:
+  /// **'Structured workout — follow each segment as written.'**
+  String get workoutTaglineStructured;
+
+  /// Workout-detail tagline for an easy or recovery run
+  ///
+  /// In en, this message translates to:
+  /// **'Free-form easy effort. Run by feel.'**
+  String get workoutTaglineEasy;
+
+  /// Workout-detail tagline for a long run
+  ///
+  /// In en, this message translates to:
+  /// **'Free-form long run. Pace yourself for the back half.'**
+  String get workoutTaglineLong;
+
+  /// Workout-detail tagline for a rest day
+  ///
+  /// In en, this message translates to:
+  /// **'Rest day. Light movement only if you feel like it.'**
+  String get workoutTaglineRest;
+
+  /// Workout-detail tagline for race day
+  ///
+  /// In en, this message translates to:
+  /// **'Race day. Trust the taper.'**
+  String get workoutTaglineRace;
+
+  /// Workout-detail tagline for any other free-form run
+  ///
+  /// In en, this message translates to:
+  /// **'Free-form run.'**
+  String get workoutTaglineFreeForm;
+
+  /// Abbreviation of the Easy workout kind for a narrow plan-calendar cell (2-4 characters)
+  ///
+  /// In en, this message translates to:
+  /// **'E'**
+  String get workoutKindShortEasy;
+
+  /// Abbreviation of the Long run workout kind for a narrow plan-calendar cell (2-4 characters)
+  ///
+  /// In en, this message translates to:
+  /// **'L'**
+  String get workoutKindShortLong;
+
+  /// Abbreviation of the Recovery workout kind for a narrow plan-calendar cell (2-4 characters)
+  ///
+  /// In en, this message translates to:
+  /// **'Rec'**
+  String get workoutKindShortRecovery;
+
+  /// Abbreviation of the Tempo workout kind for a narrow plan-calendar cell (2-4 characters)
+  ///
+  /// In en, this message translates to:
+  /// **'T'**
+  String get workoutKindShortTempo;
+
+  /// Abbreviation of the Intervals workout kind for a narrow plan-calendar cell (2-4 characters)
+  ///
+  /// In en, this message translates to:
+  /// **'Int'**
+  String get workoutKindShortInterval;
+
+  /// Abbreviation of the Marathon pace workout kind for a narrow plan-calendar cell (2-4 characters)
+  ///
+  /// In en, this message translates to:
+  /// **'MP'**
+  String get workoutKindShortMarathonPace;
+
+  /// Abbreviation of the Walk-run workout kind for a narrow plan-calendar cell (2-4 characters)
+  ///
+  /// In en, this message translates to:
+  /// **'W/R'**
+  String get workoutKindShortWalkRun;
+
+  /// Abbreviation of the Race workout kind for a narrow plan-calendar cell (2-4 characters)
+  ///
+  /// In en, this message translates to:
+  /// **'Race'**
+  String get workoutKindShortRace;
+
+  /// Abbreviation of the Rest workout kind for a narrow plan-calendar cell (2-4 characters)
+  ///
+  /// In en, this message translates to:
+  /// **'Rest'**
+  String get workoutKindShortRest;
+
+  /// Appended to a plan workout's screen-reader label when it is done
+  ///
+  /// In en, this message translates to:
+  /// **', completed'**
+  String get planDetailAriaCompletedSuffix;
+
+  /// Appended to a plan workout's screen-reader label when it was skipped
+  ///
+  /// In en, this message translates to:
+  /// **', skipped'**
+  String get planDetailAriaSkippedSuffix;
+
+  /// Appended to a plan workout's screen-reader label when its day has passed and it was neither done nor skipped
+  ///
+  /// In en, this message translates to:
+  /// **', missed'**
+  String get planDetailAriaMissedSuffix;
+
+  /// Appended to a plan workout's screen-reader label when it is scheduled today
+  ///
+  /// In en, this message translates to:
+  /// **', today'**
+  String get planDetailAriaTodaySuffix;
+
+  /// Plan-detail Today card label when today has no workout and the next one is shown
+  ///
+  /// In en, this message translates to:
+  /// **'Next up'**
+  String get planDetailNextUp;
+
+  /// Plan-detail Today card body on race day
+  ///
+  /// In en, this message translates to:
+  /// **'Go and run it.'**
+  String get planDetailGoAndRunIt;
+
+  /// Plan-detail Today card title on a rest day
+  ///
+  /// In en, this message translates to:
+  /// **'Rest day'**
+  String get planDetailRestDayTitle;
+
+  /// Plan-detail Today card hint on a rest day
+  ///
+  /// In en, this message translates to:
+  /// **'No workout scheduled — recover and roll into tomorrow.'**
+  String get planDetailRestDayHint;
+
+  /// Plan-detail Today card label
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get planDetailTodayLabel;
+
+  /// Plan-detail Today card label on race day
+  ///
+  /// In en, this message translates to:
+  /// **'Race day'**
+  String get planDetailRaceDayTitle;
+
+  /// Screen-reader name of the plan's progress ring
+  ///
+  /// In en, this message translates to:
+  /// **'Workout completion'**
+  String get planDetailWorkoutCompletion;
+
+  /// Current-week strip heading before the plan has started
+  ///
+  /// In en, this message translates to:
+  /// **'First week'**
+  String get planDetailFirstWeek;
+
+  /// Chip on a plan a coach assigned
+  ///
+  /// In en, this message translates to:
+  /// **'Assigned by {name}'**
+  String planDetailAssignedBy(String name);
+
+  /// Chip on a coach-assigned plan when the coach's name is unknown
+  ///
+  /// In en, this message translates to:
+  /// **'Assigned by your coach'**
+  String get planDetailAssignedByCoach;
+
+  /// Plan-detail header: which week of the plan today is in
+  ///
+  /// In en, this message translates to:
+  /// **'Week {week} of {total}'**
+  String planDetailWeekOfN(int week, int total);
+
+  /// Plan-detail header chip on a paused plan
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get planDetailPausedChip;
+
+  /// How many of a week's workouts are done
+  ///
+  /// In en, this message translates to:
+  /// **'{done} / {total} done'**
+  String planDetailWeekDoneCount(int done, int total);
+
+  /// Summary row standing in for the plan's finished weeks
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{1 earlier week} other{{count} earlier weeks}}'**
+  String planDetailEarlierWeeks(int count);
+
+  /// Expands the finished weeks
+  ///
+  /// In en, this message translates to:
+  /// **'Show earlier weeks'**
+  String get planDetailShowEarlierWeeks;
+
+  /// Collapses the finished weeks
+  ///
+  /// In en, this message translates to:
+  /// **'Hide earlier weeks'**
+  String get planDetailHideEarlierWeeks;
 
   /// Plan wizard: the first question, which decides the fields that apply
   ///

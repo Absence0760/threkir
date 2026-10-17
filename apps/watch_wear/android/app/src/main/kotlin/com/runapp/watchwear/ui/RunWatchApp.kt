@@ -272,6 +272,9 @@ fun RunWatchApp(vm: RunViewModel, activity: Activity, isAmbient: Boolean = false
                             selectedRouteName = state.selectedRoute?.name,
                             selectedRouteWaypoints = state.selectedRoute?.toLatLngs() ?: emptyList(),
                             targetPaceSecPerKm = state.targetPaceSecPerKm,
+                            todaysWorkout = state.todaysWorkout,
+                            followWorkout = state.followWorkout,
+                            onToggleWorkout = vm::toggleFollowWorkout,
                             onCycleActivity = {
                                 val order = listOf("run", "walk", "hike", "cycle")
                                 val next = order[(order.indexOf(state.activityType) + 1) % order.size]
@@ -325,6 +328,7 @@ fun RunWatchApp(vm: RunViewModel, activity: Activity, isAmbient: Boolean = false
                     trackOverlayPoints = state.trackOverlayPoints,
                     ambient = isAmbient,
                     raceRun = state.raceRun,
+                    workoutView = state.workoutView,
                     onPause = vm::pause,
                     onResume = vm::resume,
                     onLap = vm::markLap,
@@ -699,6 +703,9 @@ private fun PreRunScreen(
     selectedRouteName: String?,
     selectedRouteWaypoints: List<com.runapp.watchwear.recording.RouteMath.LatLng>,
     targetPaceSecPerKm: Int?,
+    todaysWorkout: com.runapp.watchwear.workout.PushedWorkout?,
+    followWorkout: Boolean,
+    onToggleWorkout: () -> Unit,
     onCycleActivity: () -> Unit,
     onCyclePace: () -> Unit,
     onOpenRoutePicker: () -> Unit,
@@ -1206,6 +1213,21 @@ private fun PreRunScreen(
                     }
                 }
             }
+            if (todaysWorkout != null) {
+                item(key = "workout") {
+                    val summary = workoutSummaryLabel(todaysWorkout, preferredUnit)
+                    PreRunSettingChip(
+                        label = stringResource(R.string.workout),
+                        value = if (followWorkout) summary else stringResource(R.string.workout_off),
+                        contentDescription = if (followWorkout) {
+                            stringResource(R.string.cd_workout_on, summary)
+                        } else {
+                            stringResource(R.string.cd_workout_off)
+                        },
+                        onClick = onToggleWorkout,
+                    )
+                }
+            }
             item(key = "activity") {
                 val label = activityLabel(activityType)
                 PreRunSettingChip(
@@ -1654,6 +1676,8 @@ private fun RunningScreen(
     /// Race mode for this run. While it is live (not ended), Stop pauses and
     /// the held button on the paused screen is "Finish race".
     raceRun: com.runapp.watchwear.RaceRunState?,
+    /// The live step of today's workout; null on a free run.
+    workoutView: com.runapp.watchwear.workout.WorkoutView?,
     onPause: () -> Unit,
     onResume: () -> Unit,
     onLap: () -> Unit,
@@ -1817,6 +1841,15 @@ private fun RunningScreen(
                 distanceLabel(distanceM, preferredUnit),
                 style = MaterialTheme.typography.body2.copy(shadow = captionShadow),
             )
+            if (workoutView != null) {
+                Text(
+                    workoutStepLine(workoutView, preferredUnit),
+                    style = MaterialTheme.typography.caption2.copy(shadow = captionShadow),
+                    color = DuskPalette.lilac,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                )
+            }
         }
 
         // Bottom secondary metrics. Anchored above where the curved
@@ -1903,7 +1936,11 @@ private fun RunningScreen(
             // fix on the mobile twin (commit 6b2ef21).
             val resumeCd = stringResource(R.string.cd_resume_run)
             val pauseCd = stringResource(R.string.cd_pause_run)
-            val lapCd = stringResource(R.string.cd_mark_lap)
+            val lapCd = if (workoutView?.step != null) {
+                stringResource(R.string.cd_mark_lap_skip_step)
+            } else {
+                stringResource(R.string.cd_mark_lap)
+            }
             val resumeLabel = stringResource(R.string.resume_short)
             val lapLabel = stringResource(R.string.lap)
             Box(modifier = Modifier.fillMaxSize()) {
@@ -2548,6 +2585,46 @@ private fun PostRunScreen(
             }
         }
     }
+}
+
+/// The pre-run chip's summary of today's workout: its step count and what it
+/// covers, distance and time both when it mixes the two axes.
+@Composable
+private fun workoutSummaryLabel(
+    workout: com.runapp.watchwear.workout.PushedWorkout,
+    unit: com.runapp.watchwear.recording.DistanceUnit,
+): String = listOfNotNull(
+    pluralStringResource(R.plurals.workout_step_count, workout.steps.size, workout.steps.size),
+    workout.totalDistanceM?.let { distanceLabel(it.toDouble(), unit) },
+    workout.totalDurationS?.let { formatDuration(it) },
+).joinToString(" · ")
+
+/// The running screen's step line: what the step is, and what is left of it
+/// on its own axis.
+@Composable
+private fun workoutStepLine(
+    view: com.runapp.watchwear.workout.WorkoutView,
+    unit: com.runapp.watchwear.recording.DistanceUnit,
+): String {
+    val step = view.step ?: return stringResource(R.string.workout_done)
+    val kind = stringResource(
+        when (step.kind) {
+            com.runapp.watchwear.workout.StepKind.Warmup -> R.string.workout_step_warmup
+            com.runapp.watchwear.workout.StepKind.Rep -> R.string.workout_step_rep
+            com.runapp.watchwear.workout.StepKind.Recovery -> R.string.workout_step_recovery
+            com.runapp.watchwear.workout.StepKind.Walk -> R.string.workout_step_walk
+            com.runapp.watchwear.workout.StepKind.Steady -> R.string.workout_step_steady
+            com.runapp.watchwear.workout.StepKind.Cooldown -> R.string.workout_step_cooldown
+        },
+    )
+    val name = if (step.repIndex != null && step.repTotal != null) {
+        "$kind ${step.repIndex}/${step.repTotal}"
+    } else {
+        kind
+    }
+    val left = view.remainingS?.let { formatDuration(it) }
+        ?: view.remainingM?.let { distanceLabel(it, unit) }
+    return listOfNotNull(name, left).joinToString(" · ")
 }
 
 private fun formatDuration(totalS: Int): String {

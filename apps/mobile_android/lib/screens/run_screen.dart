@@ -6,7 +6,7 @@ import 'dart:ui';
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
 import 'package:core_models/core_models.dart'
-    show ActivityType, DistanceUnit, PlanWorkoutRow, TrainingPlanRow;
+    show ActivityType, DistanceUnit, PlanWorkoutRow;
 import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderProxyBox;
@@ -80,7 +80,7 @@ import '../run_notification_bridge.dart';
 import '../run_stats.dart';
 import '../share_sheet.dart';
 import '../social_service.dart';
-import '../training.dart';
+import '../plan_workout_steps.dart';
 import '../training_service.dart';
 import '../fab_clearance.dart';
 import '../widgets/collapsible_panel.dart';
@@ -1000,61 +1000,18 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       final plan = await widget.training
           .fetchPlanForWorkout(wo)
           .timeout(kBackendLoadTimeout);
-      paces = _pacesFromPlan(plan);
+      paces = planPaceBag(plan);
     } catch (e) {
       debugPrint('Failed to load plan paces for workout ${wo.id}: $e');
     }
     if (!mounted) return;
-    final structure = wo.structure is Map<String, dynamic>
-        ? wo.structure as Map<String, dynamic>
-        : null;
-    final steps = expandWorkoutSteps(
-      structure: structure,
-      paces: paces,
-      toleranceSecPerKm: wo.targetPaceToleranceSec ?? 10,
-      fallbackDistanceMetres: wo.targetDistanceM,
-      fallbackPaceSecPerKm: wo.targetPaceSecPerKm,
-    );
+    final steps = expandPlanWorkoutSteps(wo, paces: paces);
     if (steps.isEmpty) return;
     final runner = WorkoutRunner(steps: steps);
     _workoutEventsSub = runner.events.listen(_onWorkoutEvent);
     _workoutRunner = runner;
     _activeWorkoutId = wo.id;
     _publishWorkoutBand();
-  }
-
-  /// Build the symbolic pace bag that resolves `'easy'`, `'jog'`,
-  /// `'tempo'`, etc. for [expandWorkoutSteps]. Plans on this codebase
-  /// don't store an explicit `paces` jsonb today — we re-derive from
-  /// the goal pace using the same `resolveTrainingPaces` helper the
-  /// generator uses, which keeps the running-time bands identical to
-  /// what the editor showed.
-  Map<String, int> _pacesFromPlan(TrainingPlanRow? plan) {
-    if (plan == null) return const {};
-    try {
-      final tp = resolveTrainingPaces(
-        goalDistanceM: plan.goalDistanceM,
-        goalTimeSec: plan.goalTimeSeconds,
-        recent5kSec: plan.current5kSeconds,
-      );
-      return <String, int>{
-        'easy': tp.easy,
-        'jog': tp.easy + 60,
-        'marathon': tp.marathon,
-        'tempo': tp.tempo,
-        'interval': tp.interval,
-        'repetition': tp.repetition,
-      };
-    } catch (e, st) {
-      // L4 (auxiliary): pace-bag derivation is a hint for the workout
-      // runner; if it throws (NaN goal pace, divide-by-zero on a
-      // 0-distance plan), the runner falls back to step-local
-      // targets. Log so the failure surfaces in `flutter logs`
-      // without masking a deeper bug, but never let this block the
-      // recording layer below.
-      debugPrint('run_screen: _pacesFromPlan failed: $e\n$st');
-      return const {};
-    }
   }
 
   void _onWorkoutEvent(WorkoutExecEvent e) {
@@ -4327,21 +4284,12 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       final plan = await widget.training
           .fetchPlanForWorkout(wo)
           .timeout(kBackendLoadTimeout);
-      paces = _pacesFromPlan(plan);
+      paces = planPaceBag(plan);
     } catch (e) {
       debugPrint('fetchPlanForWorkout failed for ${wo.id}: $e');
     }
     if (!mounted) return;
-    final structure = wo.structure is Map<String, dynamic>
-        ? wo.structure as Map<String, dynamic>
-        : null;
-    final steps = expandWorkoutSteps(
-      structure: structure,
-      paces: paces,
-      toleranceSecPerKm: wo.targetPaceToleranceSec ?? 10,
-      fallbackDistanceMetres: wo.targetDistanceM,
-      fallbackPaceSecPerKm: wo.targetPaceSecPerKm,
-    );
+    final steps = expandPlanWorkoutSteps(wo, paces: paces);
     if (steps.isEmpty) {
       if (mounted) {
         showTopBanner(context, _l10n.runWorkoutNoStructure);

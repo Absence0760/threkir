@@ -117,6 +117,53 @@ class _PlanTraining extends TrainingService {
   }
 }
 
+/// A plan that starts in five days: nothing is due today, so only its
+/// "Starts in N days" card sits above the welcome block.
+class _NotStartedPlanTraining extends TrainingService {
+  @override
+  Future<ActivePlanOverview?> fetchActiveOverview() async {
+    final now = DateTime.now();
+    final start = DateTime(now.year, now.month, now.day + 5);
+    final workout = PlanWorkoutRow(
+      id: 'wo-1',
+      weekId: 'wk-1',
+      scheduledDate: start,
+      kind: 'easy',
+      targetDistanceM: 5000,
+      manuallyCompleted: false,
+    );
+    return ActivePlanOverview(
+      plan: TrainingPlanRow(
+        id: 'plan-1',
+        userId: 'u1',
+        name: 'First 5k',
+        goalEvent: '5k',
+        goalDistanceM: 5000,
+        startDate: start,
+        endDate: start.add(const Duration(days: 56)),
+        daysPerWeek: 3,
+        status: 'active',
+        source: 'app',
+        isTemplate: false,
+        isPublicTemplate: false,
+      ),
+      weeks: [
+        PlanWeekRow(
+          id: 'wk-1',
+          planId: 'plan-1',
+          weekIndex: 0,
+          phase: 'base',
+          targetVolumeM: 10000,
+        ),
+      ],
+      workouts: [workout],
+      todayWorkout: null,
+      completionPct: 0,
+      currentWeekIndex: 0,
+    );
+  }
+}
+
 final _dirs = <Directory>[];
 
 Future<Directory> _tmp(String tag) async {
@@ -299,6 +346,24 @@ void main() {
           describe: 'the plan overview to resolve');
 
       expect(find.text('Welcome!'), findsOneWidget);
+      expect(
+          find.text('Your dashboard fills in once you record a run, set a '
+              'goal, or import your history.'),
+          findsNothing);
+    });
+
+    testWidgets('points at the plan card before the plan has started, when '
+        'only its countdown sits above', (tester) async {
+      final s = await _stores();
+      await _pump(tester, s, training: _NotStartedPlanTraining());
+      await pumpUntil(
+          tester,
+          () => find
+              .textContaining('Your plan is ready above')
+              .evaluate()
+              .isNotEmpty,
+          describe: 'the plan overview to resolve');
+      expect(find.textContaining('Starts in 5 days'), findsOneWidget);
       expect(
           find.text('Your dashboard fills in once you record a run, set a '
               'goal, or import your history.'),

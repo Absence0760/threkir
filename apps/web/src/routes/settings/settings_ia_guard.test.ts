@@ -63,6 +63,7 @@ const HOMES: Record<string, Home> = {
 	notify_reaction: { page: 'notifications' },
 	notify_comment_like: { page: 'notifications' },
 	notify_follow_request: { page: 'notifications' },
+	notify_workout_reminder: { page: 'notifications' },
 	email_new_device_alerts: { page: 'notifications' },
 	locale: {
 		page: 'display',

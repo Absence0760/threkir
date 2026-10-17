@@ -1413,7 +1413,9 @@ class _ProfileScreenState extends State<ProfileScreen>
               ProfileScreen(api: widget.api, userId: item.row.actorId!),
         ),
       );
-    } else if ((kind == 'plan_update' || kind == 'plan_assigned') &&
+    } else if ((kind == 'plan_update' ||
+            kind == 'plan_assigned' ||
+            kind == 'workout_reminder') &&
         item.row.planId != null) {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
@@ -1522,6 +1524,8 @@ class _ProfileScreenState extends State<ProfileScreen>
         return l10n.profileNotifPlanUpdate(name);
       case 'plan_assigned':
         return l10n.profileNotifPlanAssigned(name);
+      case 'workout_reminder':
+        return l10n.profileNotifWorkoutReminder;
       case 'achievement':
         return l10n.profileNotifAchievement;
       case 'challenge_complete':

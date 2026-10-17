@@ -92,6 +92,12 @@ class SettingsKeys {
   /// 20270804000002). The password-changed notice has no key: it cannot be
   /// turned off.
   static const emailNewDeviceAlerts = 'email_new_device_alerts';
+  /// Opt-OUT for the morning "today's workout" reminder — `'on'` | `'off'`
+  /// (default `'on'`; only the literal `'off'` mutes). Read by
+  /// `enqueue_workout_reminders()`, which raises no notification at all for a
+  /// muted runner, and by the Go worker's `kindMuted` on email and push
+  /// (migration 20270913000001).
+  static const notifyWorkoutReminder = 'notify_workout_reminder';
   /// The user's preferred language for server-sent email, as a BCP-47 tag
   /// (`en`/`de`/`fr`/`es`/`ja`/`pt-BR`). Written by the clients as a side
   /// effect of the language picker so the Go worker can localize email

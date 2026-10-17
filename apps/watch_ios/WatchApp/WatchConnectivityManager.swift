@@ -87,6 +87,12 @@ class WatchConnectivityManager: NSObject, ObservableObject, WCSessionDelegate {
     /// long before the app is on screen.
     @Published var savedRoutes: [ArmedRoute] = SavedRoutesStore.load()
 
+    /// Today's workout as the phone last pushed it (`watch_workout_push.dart`
+    /// via `WatchIngestBridge.push_workout`), restored from disk for the
+    /// reason `armedRoute` is. The recorder reads the store itself at Start;
+    /// this copy is what the pre-run screen offers.
+    @Published private(set) var todaysWorkout: WorkoutPush? = PushedWorkoutStore.load()
+
     /// The phone's default activity, published so the idle picker can be
     /// primed with it the moment it lands rather than on the next launch.
     @Published private(set) var defaultActivityType: RunActivityType? = DefaultActivityType.stored()
@@ -362,6 +368,14 @@ class WatchConnectivityManager: NSObject, ObservableObject, WCSessionDelegate {
             SavedRoutesStore.save(routes)
             DispatchQueue.main.async { self.savedRoutes = routes }
         }
+        // Today's workout. Every push is applied, the "nothing today" value
+        // and a payload this build refuses included: both drop the workout
+        // the wrist held, because the phone has since replaced it.
+        if let json = payload[Self.todaysWorkoutKey] as? String {
+            PushedWorkoutStore.save(json: json)
+            let push = WorkoutPush.decode(json)
+            DispatchQueue.main.async { self.todaysWorkout = push }
+        }
         // Arm / Go / End. Fail-closed the same way: a status word this build
         // does not know leaves the wrist where it was, rather than clearing a
         // race that is still running.
@@ -382,6 +396,10 @@ class WatchConnectivityManager: NSObject, ObservableObject, WCSessionDelegate {
     /// Drop the armed route from the wrist. The phone is the only writer, so
     /// without this the runner's only way out of a route they no longer want
     /// is to go back to the phone.
+    /// The `transferUserInfo` key the phone's `WatchIngestBridge.workoutUserInfo`
+    /// writes today's workout under.
+    static let todaysWorkoutKey = "todays_workout"
+
     func clearArmedRoute() {
         ArmedRouteStore.clear()
         armedRoute = nil

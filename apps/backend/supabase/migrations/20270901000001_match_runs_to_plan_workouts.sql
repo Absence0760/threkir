@@ -1,5 +1,5 @@
 -- Run-to-workout matching moves into the database (issue #1186, decisions
--- § 2073).
+-- § 2079).
 --
 -- Until now each client linked a freshly saved run to a planned workout
 -- itself (`autoMatchRunToPlanWorkout` in web data.ts and api_client.dart).

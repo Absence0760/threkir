@@ -107,6 +107,64 @@ void main() {
       expect(steps[2].targetDurationSec, 90);
     });
 
+    test('every walk-run step is unpaced, warm-up and cool-down included', () {
+      for (final repeats in <Map<String, dynamic>>[
+        // Generator shape.
+        {
+          'count': 3,
+          'duration_s': 60,
+          'pace_sec_per_km': 420,
+          'recovery_duration_s': 90,
+          'recovery_pace': 'walk',
+        },
+        // Spec shape.
+        {
+          'count': 3,
+          'rep': {'duration_s': 60, 'pace_sec_per_km': 420},
+          'recovery': {'duration_s': 90, 'pace': 'walk'},
+        },
+        // Graduation week: one continuous run, no walk break left.
+        {
+          'count': 1,
+          'duration_s': 1500,
+          'pace_sec_per_km': 420,
+          'recovery_pace': 'walk',
+        },
+      ]) {
+        final steps = expandWorkoutSteps(
+          structure: {
+            'warmup': {'duration_s': 300, 'pace': 'easy'},
+            'repeats': repeats,
+            'cooldown': {'duration_s': 300, 'pace': 'easy'},
+          },
+          paces: const {'easy': 360},
+          toleranceSecPerKm: 10,
+        );
+        expect(steps, isNotEmpty);
+        expect(steps.every((s) => !s.paced), isTrue,
+            reason: 'walk-run is effort-led: $repeats');
+      }
+    });
+
+    test('an interval session stays paced end to end', () {
+      final steps = expandWorkoutSteps(
+        structure: {
+          'warmup': {'distance_m': 1000, 'pace': 'easy'},
+          'repeats': {
+            'count': 2,
+            'distance_m': 400,
+            'pace_sec_per_km': 240,
+            'recovery_distance_m': 200,
+            'recovery_pace': 'jog',
+          },
+          'cooldown': {'distance_m': 1000, 'pace': 'easy'},
+        },
+        paces: const {'easy': 360, 'jog': 420},
+        toleranceSecPerKm: 10,
+      );
+      expect(steps.every((s) => s.paced), isTrue);
+    });
+
     test('no structure with fallback → single steady step', () {
       final steps = expandWorkoutSteps(
         structure: null,
@@ -792,6 +850,33 @@ void main() {
       // (and clear paceAdherence) before we read it.
       runner.onSnapshot(_snap(distance: 380, elapsedSec: 105));
       expect(runner.paceAdherence, PaceAdherence.wayBehind);
+      runner.dispose();
+    });
+
+    test('an unpaced step reports onPace and never emits a drift cue',
+        () async {
+      // A C25K walk interval at a brisk walk (~12:00/km) against the plan's
+      // easy pace (5:00/km) — 420 s/km off, far past twice the tolerance.
+      final runner = WorkoutRunner(steps: const [
+        WorkoutStep(
+          kind: WorkoutStepKind.walk,
+          targetDistanceMetres: 0,
+          targetDurationSec: 600,
+          targetPaceSecPerKm: 300,
+          label: 'Walk 1/7',
+          paced: false,
+        ),
+      ]);
+      final drift = <PaceDriftEvent>[];
+      runner.events.listen((e) {
+        if (e is PaceDriftEvent) drift.add(e);
+      });
+      runner.onSnapshot(_snap(distance: 0, elapsedSec: 0));
+      runner.onSnapshot(_snap(distance: 100, elapsedSec: 72));
+      runner.onSnapshot(_snap(distance: 200, elapsedSec: 144));
+      await Future<void>.delayed(Duration.zero);
+      expect(runner.paceAdherence, PaceAdherence.onPace);
+      expect(drift, isEmpty);
       runner.dispose();
     });
   });

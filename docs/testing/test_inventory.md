@@ -99,9 +99,9 @@ Round-trips the canonical `metadata.laps` shape through `lapsToCanonicalJson` an
 
 Static source-level guards on the recorder package itself: no banned imports, no `print` in production, the public-API surface stays minimal, etc. Same shape as `apps/mobile_android/test/architecture_guards_test.dart` — read the `reason:` strings before rubber-stamping a fix; failures usually mean a recent change reversed an optimisation we deliberately codified.
 
-### `packages/run_recorder/test/workout_runner_test.dart` — 46 tests
+### `packages/run_recorder/test/workout_runner_test.dart` — 47 tests
 
-The structured-workout step engine — step expansion (warmup → reps → recovery → cooldown), auto-advance, halfway / last-50 m progress signals, skip / abandon, and pace-adherence "wayBehind" classification. Three cases pin the walk-run contract (decisions § 2074): every step of a walk-run session expands unpaced in both repeat shapes and the graduation week, an interval session stays paced, and an unpaced step reads on pace and emits no drift cue. One more pins where the halfway cue plays (paced reps only), and the duration-step countdown asserts `lastTenSeconds`, never `lastFiftyMetres`. See [workout_execution.md](../features/workout_execution.md) for the runner state machine + UI contract.
+The structured-workout step engine — step expansion (warmup → reps → recovery → cooldown), auto-advance, halfway / last-50 m progress signals, skip / abandon, and pace-adherence "wayBehind" classification. Three cases pin the walk-run contract (decisions § 2074): every step of a walk-run session expands unpaced in both repeat shapes and the graduation week, an interval session stays paced, and an unpaced step reads on pace and emits no drift cue. One more pins where the halfway cue plays (paced reps only), and the duration-step countdown asserts `lastTenSeconds`, never `lastFiftyMetres`. `ownsPaceCues` is pinned true from arming until complete or abandon, the window in which the run screen's general pace alert stands down (decisions § 2076). See [workout_execution.md](../features/workout_execution.md) for the runner state machine + UI contract.
 
 ### `packages/run_recorder/test/geolocator_platform_fake_test.dart` — 26 tests
 

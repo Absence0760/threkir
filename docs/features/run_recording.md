@@ -132,7 +132,9 @@ The 1-second elapsed-time timer inside `begin()` emits snapshots unconditionally
       editable here or on web /settings/recording, which writes the
       universal bag so the choice reaches this phone (decisions.md § 469);
       the pace alert speaks the correction amount and, under an active
-      phase plan, re-anchors to the phase's target pace
+      phase plan, re-anchors to the phase's target pace; it stands down
+      while a structured workout's runner owns the pace cues
+      (WorkoutRunner.ownsPaceCues, decisions.md § 2076)
     - Every 10s: _saveInProgress writes current state to runs/in_progress.json
     - Every 2s: _checkGpsHealth flips _gpsLost if the last ACCEPTED fix
       (snapshot.positionFixedAt, mirrored into _lastSnapshotAt) is stale.

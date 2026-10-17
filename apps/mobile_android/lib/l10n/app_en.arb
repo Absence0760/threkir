@@ -9122,24 +9122,6 @@
   "@workoutStructCooldown": {
     "description": "Structure-list cooldown label"
   },
-  "workoutStructWarmupValue": "{distance} @ easy",
-  "@workoutStructWarmupValue": {
-    "description": "Structure-list warmup value (distance at easy pace)",
-    "placeholders": {
-      "distance": {
-        "type": "String"
-      }
-    }
-  },
-  "workoutStructCooldownValue": "{distance} @ easy",
-  "@workoutStructCooldownValue": {
-    "description": "Structure-list cooldown value (distance at easy pace)",
-    "placeholders": {
-      "distance": {
-        "type": "String"
-      }
-    }
-  },
   "workoutAdviceEasy": "Conversational pace. If you can't hold a conversation, you're running it too fast.",
   "@workoutAdviceEasy": {
     "description": "Advice text for easy / recovery workouts"
@@ -22236,5 +22218,252 @@
   "workoutMoveSaveFirst": "Save or discard your changes before moving this workout.",
   "@workoutMoveSaveFirst": {
     "description": "Shown when the runner taps Move with unsaved edits in the workout editor"
+  },
+  "workoutSummaryMin": "{n} min",
+  "@workoutSummaryMin": {
+    "description": "A whole number of minutes in a walk-run pattern",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "workoutSummarySec": "{n} s",
+  "@workoutSummarySec": {
+    "description": "A number of seconds in a walk-run pattern",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "workoutSummaryMinSec": "{m} min {s} s",
+  "@workoutSummaryMinSec": {
+    "description": "Minutes and seconds in a walk-run pattern",
+    "placeholders": {
+      "m": {
+        "type": "int"
+      },
+      "s": {
+        "type": "int"
+      }
+    }
+  },
+  "workoutSummaryIntervals": "{count} × ({run} run / {walk} walk)",
+  "@workoutSummaryIntervals": {
+    "description": "Walk-run intervals: count x (run time / walk time)",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "run": {
+        "type": "String"
+      },
+      "walk": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutSummaryContinuous": "{run} run",
+  "@workoutSummaryContinuous": {
+    "description": "One continuous run in a walk-run plan's graduation week",
+    "placeholders": {
+      "run": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutSummaryWarmup": "{duration} warm-up",
+  "@workoutSummaryWarmup": {
+    "description": "Timed warm-up walk in a walk-run pattern",
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutSummaryCooldown": "{duration} cool-down",
+  "@workoutSummaryCooldown": {
+    "description": "Timed cool-down walk in a walk-run pattern",
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutSummaryWithBoth": "{warmup}, {main}, {cooldown}",
+  "@workoutSummaryWithBoth": {
+    "description": "Walk-run pattern joined: warm-up, main set, cool-down",
+    "placeholders": {
+      "warmup": {
+        "type": "String"
+      },
+      "main": {
+        "type": "String"
+      },
+      "cooldown": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutSummaryWithWarmup": "{warmup}, {main}",
+  "@workoutSummaryWithWarmup": {
+    "description": "Walk-run pattern joined: warm-up, main set",
+    "placeholders": {
+      "warmup": {
+        "type": "String"
+      },
+      "main": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutSummaryWithCooldown": "{main}, {cooldown}",
+  "@workoutSummaryWithCooldown": {
+    "description": "Walk-run pattern joined: main set, cool-down",
+    "placeholders": {
+      "main": {
+        "type": "String"
+      },
+      "cooldown": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutSummaryAbout": "about {duration}",
+  "@workoutSummaryAbout": {
+    "description": "Approximate session length",
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutZoneNamed": "Zone {code} · {name}",
+  "@workoutZoneNamed": {
+    "description": "Pace-zone chip with the zone's name, e.g. Zone T · Tempo",
+    "placeholders": {
+      "code": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutZoneRaw": "Zone {code}",
+  "@workoutZoneRaw": {
+    "description": "Pace-zone chip for a free-text zone code",
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutEffortJog": "jog",
+  "@workoutEffortJog": {
+    "description": "Recovery effort between reps: an easy jog"
+  },
+  "workoutEffortEasy": "easy",
+  "@workoutEffortEasy": {
+    "description": "Recovery effort between reps: easy running"
+  },
+  "workoutEffortWalk": "walk",
+  "@workoutEffortWalk": {
+    "description": "Recovery effort between reps: walking"
+  },
+  "workoutTaglineWalkRun": "Walk-run session. Alternate running and walking on the timer.",
+  "@workoutTaglineWalkRun": {
+    "description": "Workout-detail tagline for a walk-run session"
+  },
+  "workoutMetricSession": "Session",
+  "@workoutMetricSession": {
+    "description": "Workout-detail metric label for a walk-run session's length and pattern"
+  },
+  "workoutStructRepeatsMain": "{count}× {distance}",
+  "@workoutStructRepeatsMain": {
+    "description": "Repeats step: count x rep distance or time",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "distance": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutStructRecovery": "Recovery",
+  "@workoutStructRecovery": {
+    "description": "Sub-row label for the recovery between reps"
+  },
+  "workoutStructRecoveryDetail": "{distance} {effort}",
+  "@workoutStructRecoveryDetail": {
+    "description": "Recovery between reps: distance or time, then effort",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      },
+      "effort": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutStructTotal": "Total: {value}",
+  "@workoutStructTotal": {
+    "description": "Structure total line",
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutStructAtEasy": "@ easy",
+  "@workoutStructAtEasy": {
+    "description": "Second line of a warm-up / cool-down step: at easy pace"
+  },
+  "workoutStructAtPace": "@ {pace}",
+  "@workoutStructAtPace": {
+    "description": "Second line of a step: at the given pace",
+    "placeholders": {
+      "pace": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutTimelineLabel": "Workout segment timeline",
+  "@workoutTimelineLabel": {
+    "description": "Screen-reader label of the proportional segment bar"
+  },
+  "workoutFreeFormTitle": "Free-form run",
+  "@workoutFreeFormTitle": {
+    "description": "Placeholder title when a workout has no segments"
+  },
+  "workoutFreeFormHint": "No segments to follow — just run the distance at the suggested pace.",
+  "@workoutFreeFormHint": {
+    "description": "Placeholder hint when a workout has no segments"
+  },
+  "workoutTaglineStructured": "Structured workout — follow each segment as written.",
+  "@workoutTaglineStructured": {
+    "description": "Workout-detail tagline for a structured session"
+  },
+  "workoutTaglineEasy": "Free-form easy effort. Run by feel.",
+  "@workoutTaglineEasy": {
+    "description": "Workout-detail tagline for an easy or recovery run"
+  },
+  "workoutTaglineLong": "Free-form long run. Pace yourself for the back half.",
+  "@workoutTaglineLong": {
+    "description": "Workout-detail tagline for a long run"
+  },
+  "workoutTaglineRest": "Rest day. Light movement only if you feel like it.",
+  "@workoutTaglineRest": {
+    "description": "Workout-detail tagline for a rest day"
+  },
+  "workoutTaglineRace": "Race day. Trust the taper.",
+  "@workoutTaglineRace": {
+    "description": "Workout-detail tagline for race day"
+  },
+  "workoutTaglineFreeForm": "Free-form run.",
+  "@workoutTaglineFreeForm": {
+    "description": "Workout-detail tagline for any other free-form run"
   }
 }

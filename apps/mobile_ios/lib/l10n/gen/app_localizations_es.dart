@@ -6815,16 +6815,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String get workoutStructCooldown => 'Enfriamiento';
 
   @override
-  String workoutStructWarmupValue(String distance) {
-    return '$distance @ suave';
-  }
-
-  @override
-  String workoutStructCooldownValue(String distance) {
-    return '$distance @ suave';
-  }
-
-  @override
   String get workoutAdviceEasy =>
       'Ritmo de conversación. Si no puedes mantener una conversación, vas demasiado rápido.';
 
@@ -17044,4 +17034,145 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get workoutMoveSaveFirst =>
       'Guarda o descarta tus cambios antes de mover este entrenamiento.';
+
+  @override
+  String workoutSummaryMin(int n) {
+    return '$n min';
+  }
+
+  @override
+  String workoutSummarySec(int n) {
+    return '$n s';
+  }
+
+  @override
+  String workoutSummaryMinSec(int m, int s) {
+    return '$m min $s s';
+  }
+
+  @override
+  String workoutSummaryIntervals(int count, String run, String walk) {
+    return '$count × ($run corriendo / $walk caminando)';
+  }
+
+  @override
+  String workoutSummaryContinuous(String run) {
+    return '$run corriendo';
+  }
+
+  @override
+  String workoutSummaryWarmup(String duration) {
+    return '$duration de calentamiento';
+  }
+
+  @override
+  String workoutSummaryCooldown(String duration) {
+    return '$duration de enfriamiento';
+  }
+
+  @override
+  String workoutSummaryWithBoth(String warmup, String main, String cooldown) {
+    return '$warmup, $main, $cooldown';
+  }
+
+  @override
+  String workoutSummaryWithWarmup(String warmup, String main) {
+    return '$warmup, $main';
+  }
+
+  @override
+  String workoutSummaryWithCooldown(String main, String cooldown) {
+    return '$main, $cooldown';
+  }
+
+  @override
+  String workoutSummaryAbout(String duration) {
+    return 'unos $duration';
+  }
+
+  @override
+  String workoutZoneNamed(String code, String name) {
+    return 'Zona $code · $name';
+  }
+
+  @override
+  String workoutZoneRaw(String code) {
+    return 'Zona $code';
+  }
+
+  @override
+  String get workoutEffortJog => 'trote';
+
+  @override
+  String get workoutEffortEasy => 'suave';
+
+  @override
+  String get workoutEffortWalk => 'caminando';
+
+  @override
+  String get workoutTaglineWalkRun =>
+      'Sesión de caminar-correr. Alterna correr y caminar según el temporizador.';
+
+  @override
+  String get workoutMetricSession => 'Sesión';
+
+  @override
+  String workoutStructRepeatsMain(int count, String distance) {
+    return '$count× $distance';
+  }
+
+  @override
+  String get workoutStructRecovery => 'Recuperación';
+
+  @override
+  String workoutStructRecoveryDetail(String distance, String effort) {
+    return '$distance ($effort)';
+  }
+
+  @override
+  String workoutStructTotal(String value) {
+    return 'Total: $value';
+  }
+
+  @override
+  String get workoutStructAtEasy => '@ suave';
+
+  @override
+  String workoutStructAtPace(String pace) {
+    return '@ $pace';
+  }
+
+  @override
+  String get workoutTimelineLabel =>
+      'Línea de tiempo de los segmentos del entrenamiento';
+
+  @override
+  String get workoutFreeFormTitle => 'Carrera libre';
+
+  @override
+  String get workoutFreeFormHint =>
+      'Sin segmentos que seguir: solo corre la distancia al ritmo sugerido.';
+
+  @override
+  String get workoutTaglineStructured =>
+      'Entrenamiento estructurado: sigue cada segmento tal como está.';
+
+  @override
+  String get workoutTaglineEasy =>
+      'Esfuerzo suave libre. Corre según las sensaciones.';
+
+  @override
+  String get workoutTaglineLong =>
+      'Tirada larga libre. Dosifícate para la segunda mitad.';
+
+  @override
+  String get workoutTaglineRest =>
+      'Día de descanso. Movimiento ligero solo si te apetece.';
+
+  @override
+  String get workoutTaglineRace =>
+      'Día de carrera. Confía en la puesta a punto.';
+
+  @override
+  String get workoutTaglineFreeForm => 'Carrera libre.';
 }

@@ -11092,18 +11092,6 @@ abstract class AppLocalizations {
   /// **'Cooldown'**
   String get workoutStructCooldown;
 
-  /// Structure-list warmup value (distance at easy pace)
-  ///
-  /// In en, this message translates to:
-  /// **'{distance} @ easy'**
-  String workoutStructWarmupValue(String distance);
-
-  /// Structure-list cooldown value (distance at easy pace)
-  ///
-  /// In en, this message translates to:
-  /// **'{distance} @ easy'**
-  String workoutStructCooldownValue(String distance);
-
   /// Advice text for easy / recovery workouts
   ///
   /// In en, this message translates to:
@@ -27936,6 +27924,204 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Save or discard your changes before moving this workout.'**
   String get workoutMoveSaveFirst;
+
+  /// A whole number of minutes in a walk-run pattern
+  ///
+  /// In en, this message translates to:
+  /// **'{n} min'**
+  String workoutSummaryMin(int n);
+
+  /// A number of seconds in a walk-run pattern
+  ///
+  /// In en, this message translates to:
+  /// **'{n} s'**
+  String workoutSummarySec(int n);
+
+  /// Minutes and seconds in a walk-run pattern
+  ///
+  /// In en, this message translates to:
+  /// **'{m} min {s} s'**
+  String workoutSummaryMinSec(int m, int s);
+
+  /// Walk-run intervals: count x (run time / walk time)
+  ///
+  /// In en, this message translates to:
+  /// **'{count} × ({run} run / {walk} walk)'**
+  String workoutSummaryIntervals(int count, String run, String walk);
+
+  /// One continuous run in a walk-run plan's graduation week
+  ///
+  /// In en, this message translates to:
+  /// **'{run} run'**
+  String workoutSummaryContinuous(String run);
+
+  /// Timed warm-up walk in a walk-run pattern
+  ///
+  /// In en, this message translates to:
+  /// **'{duration} warm-up'**
+  String workoutSummaryWarmup(String duration);
+
+  /// Timed cool-down walk in a walk-run pattern
+  ///
+  /// In en, this message translates to:
+  /// **'{duration} cool-down'**
+  String workoutSummaryCooldown(String duration);
+
+  /// Walk-run pattern joined: warm-up, main set, cool-down
+  ///
+  /// In en, this message translates to:
+  /// **'{warmup}, {main}, {cooldown}'**
+  String workoutSummaryWithBoth(String warmup, String main, String cooldown);
+
+  /// Walk-run pattern joined: warm-up, main set
+  ///
+  /// In en, this message translates to:
+  /// **'{warmup}, {main}'**
+  String workoutSummaryWithWarmup(String warmup, String main);
+
+  /// Walk-run pattern joined: main set, cool-down
+  ///
+  /// In en, this message translates to:
+  /// **'{main}, {cooldown}'**
+  String workoutSummaryWithCooldown(String main, String cooldown);
+
+  /// Approximate session length
+  ///
+  /// In en, this message translates to:
+  /// **'about {duration}'**
+  String workoutSummaryAbout(String duration);
+
+  /// Pace-zone chip with the zone's name, e.g. Zone T · Tempo
+  ///
+  /// In en, this message translates to:
+  /// **'Zone {code} · {name}'**
+  String workoutZoneNamed(String code, String name);
+
+  /// Pace-zone chip for a free-text zone code
+  ///
+  /// In en, this message translates to:
+  /// **'Zone {code}'**
+  String workoutZoneRaw(String code);
+
+  /// Recovery effort between reps: an easy jog
+  ///
+  /// In en, this message translates to:
+  /// **'jog'**
+  String get workoutEffortJog;
+
+  /// Recovery effort between reps: easy running
+  ///
+  /// In en, this message translates to:
+  /// **'easy'**
+  String get workoutEffortEasy;
+
+  /// Recovery effort between reps: walking
+  ///
+  /// In en, this message translates to:
+  /// **'walk'**
+  String get workoutEffortWalk;
+
+  /// Workout-detail tagline for a walk-run session
+  ///
+  /// In en, this message translates to:
+  /// **'Walk-run session. Alternate running and walking on the timer.'**
+  String get workoutTaglineWalkRun;
+
+  /// Workout-detail metric label for a walk-run session's length and pattern
+  ///
+  /// In en, this message translates to:
+  /// **'Session'**
+  String get workoutMetricSession;
+
+  /// Repeats step: count x rep distance or time
+  ///
+  /// In en, this message translates to:
+  /// **'{count}× {distance}'**
+  String workoutStructRepeatsMain(int count, String distance);
+
+  /// Sub-row label for the recovery between reps
+  ///
+  /// In en, this message translates to:
+  /// **'Recovery'**
+  String get workoutStructRecovery;
+
+  /// Recovery between reps: distance or time, then effort
+  ///
+  /// In en, this message translates to:
+  /// **'{distance} {effort}'**
+  String workoutStructRecoveryDetail(String distance, String effort);
+
+  /// Structure total line
+  ///
+  /// In en, this message translates to:
+  /// **'Total: {value}'**
+  String workoutStructTotal(String value);
+
+  /// Second line of a warm-up / cool-down step: at easy pace
+  ///
+  /// In en, this message translates to:
+  /// **'@ easy'**
+  String get workoutStructAtEasy;
+
+  /// Second line of a step: at the given pace
+  ///
+  /// In en, this message translates to:
+  /// **'@ {pace}'**
+  String workoutStructAtPace(String pace);
+
+  /// Screen-reader label of the proportional segment bar
+  ///
+  /// In en, this message translates to:
+  /// **'Workout segment timeline'**
+  String get workoutTimelineLabel;
+
+  /// Placeholder title when a workout has no segments
+  ///
+  /// In en, this message translates to:
+  /// **'Free-form run'**
+  String get workoutFreeFormTitle;
+
+  /// Placeholder hint when a workout has no segments
+  ///
+  /// In en, this message translates to:
+  /// **'No segments to follow — just run the distance at the suggested pace.'**
+  String get workoutFreeFormHint;
+
+  /// Workout-detail tagline for a structured session
+  ///
+  /// In en, this message translates to:
+  /// **'Structured workout — follow each segment as written.'**
+  String get workoutTaglineStructured;
+
+  /// Workout-detail tagline for an easy or recovery run
+  ///
+  /// In en, this message translates to:
+  /// **'Free-form easy effort. Run by feel.'**
+  String get workoutTaglineEasy;
+
+  /// Workout-detail tagline for a long run
+  ///
+  /// In en, this message translates to:
+  /// **'Free-form long run. Pace yourself for the back half.'**
+  String get workoutTaglineLong;
+
+  /// Workout-detail tagline for a rest day
+  ///
+  /// In en, this message translates to:
+  /// **'Rest day. Light movement only if you feel like it.'**
+  String get workoutTaglineRest;
+
+  /// Workout-detail tagline for race day
+  ///
+  /// In en, this message translates to:
+  /// **'Race day. Trust the taper.'**
+  String get workoutTaglineRace;
+
+  /// Workout-detail tagline for any other free-form run
+  ///
+  /// In en, this message translates to:
+  /// **'Free-form run.'**
+  String get workoutTaglineFreeForm;
 }
 
 class _AppLocalizationsDelegate

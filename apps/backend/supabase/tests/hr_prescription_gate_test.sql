@@ -27,16 +27,17 @@ insert into plan_weeks (id, plan_id, week_index, phase, target_volume_m) values
 insert into plan_workouts (id, week_id, scheduled_date, kind, target_distance_m) values
   ('2095dddd-0000-0000-0000-0000000000a1', '2095cccc-0000-0000-0000-0000000000a1', current_date + 2, 'easy', 8000);
 
--- Five easy runs at 6:00/km, 140 bpm then 150: a 7.14 % drift with the gate open.
+-- Six easy runs at 6:00/km, three at 140 bpm then three at 150: a 7.14 % drift
+-- with the gate open.
 insert into runs (id, user_id, started_at, duration_s, distance_m, source, is_dnf, metadata)
 select ('2095eeee-0000-0000-0000-0000000000' || lpad(n::text, 2, '0'))::uuid, '2095aaaa-0000-0000-0000-0000000000a1',
        now() - (days || ' days')::interval, 3600, 10000, 'app', false,
        jsonb_build_object('activity_type', 'run', 'avg_bpm', bpm)
-from (values (1, 40, 140), (2, 33, 140), (3, 26, 140), (4, 10, 150), (5, 3, 150)) v(n, days, bpm);
+from (values (1, 40, 140), (2, 33, 140), (3, 26, 140), (6, 12, 150), (4, 10, 150), (5, 3, 150)) v(n, days, bpm);
 insert into plan_workouts (week_id, scheduled_date, kind, target_distance_m, completed_run_id)
 select '2095cccc-0000-0000-0000-0000000000a1', (now() - (days || ' days')::interval)::date, 'easy', 10000,
        ('2095eeee-0000-0000-0000-0000000000' || lpad(n::text, 2, '0'))::uuid
-from (values (1, 40), (2, 33), (3, 26), (4, 10), (5, 3)) v(n, days);
+from (values (1, 40), (2, 33), (3, 26), (6, 12), (4, 10), (5, 3)) v(n, days);
 
 -- Gate shut.
 insert into private.feature_flags (name, enabled) values ('hr_prescription', false)

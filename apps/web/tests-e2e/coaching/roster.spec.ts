@@ -160,12 +160,13 @@ test.describe('coach roster dashboard', () => {
 	test.describe('easy-HR drift', () => {
 		// The chip off the real coach_roster_summary: mean heart rate on planned
 		// easy runs at the athlete's median easy pace, the last 14 days against
-		// the 42 before (migration 20270915000003). Every run covers 8 km in
-		// 40 min (5:00/km, so all sit on the median); the earlier three average
-		// 140 bpm and the recent two 150, so heart rate at the same pace is
-		// 150/140 - 1 = 7.14 % higher and the chip reads +7 %. The second athlete has
-		// the same runs and no health-data consent, so the SQL computes nothing
-		// for them (decisions § 2092). Saga users, so no seed row is touched and
+		// the 42 before (migrations 20270915000003 + 20270917000001). Every run
+		// covers 8 km in 40 min (5:00/km), so all sit on the median and both
+		// windows share a mean pace. The earlier three average 140 bpm and the
+		// recent three 150 (three recent runs is the floor), so heart rate at the
+		// same pace is 150/140 - 1 = 7.14 % higher and the chip reads +7 %. The
+		// second athlete has the same runs and no health-data consent, so the SQL
+		// computes nothing for them (decisions § 2092). Saga users, so no seed row is touched and
 		// the spec re-runs on a used database. The chip is behind
 		// PUBLIC_HR_PRESCRIPTION_ENABLED, on in .env.development; its off state is
 		// pinned by src/lib/training/hr_prescription_flag.test.ts.
@@ -201,6 +202,7 @@ test.describe('coach roster dashboard', () => {
 				[34, 140],
 				[27, 140],
 				[20, 140],
+				[11, 150],
 				[8, 150],
 				[3, 150]
 			] as const) {

@@ -5,7 +5,7 @@
 -- 20270915000003 (decisions § 2093) the drift is heart rate at the same pace,
 -- and a malformed avg_bpm on one run cannot fail the roster.
 begin;
-select plan(10);
+select plan(12);
 
 set local timezone = 'UTC';
 insert into private.feature_flags (name, enabled) values ('hr_prescription', true)
@@ -37,7 +37,7 @@ from (values ('a'), ('b')) v(t);
 -- over the older window and 150 bpm over the last 14 days -- more beats at the
 -- same pace, so the drift is 150/140 - 1 = 7.14 %.
 create temp table _runs (n int, days int, bpm int) on commit drop;
-insert into _runs values (1, 40, 140), (2, 33, 140), (3, 26, 140), (4, 10, 150), (5, 3, 150);
+insert into _runs values (1, 40, 140), (2, 33, 140), (3, 26, 140), (8, 12, 150), (4, 10, 150), (5, 3, 150);
 insert into runs (id, user_id, started_at, duration_s, distance_m, source, is_dnf, metadata)
 select ('2085ffff-2222-0000-0000-00000000' || t || lpad(n::text, 2, '0'))::uuid, u,
        now() - (days || ' days')::interval, 3600, 10000, 'app', false,
@@ -71,8 +71,8 @@ select is(
   'recent_workouts is newest first, in the shape isWorkoutMissed takes');
 select is(
   (select jsonb_array_length(recent_workouts) from coach_roster_summary() where athlete_id = '2085eeee-0000-0000-0000-0000000000a1'),
-  6,
-  'recent_workouts holds the last 28 local days: three run workouts, the two unrun, the skipped one; no rest day, nothing from today on, nothing older');
+  7,
+  'recent_workouts holds the last 28 local days: four run workouts, the two unrun, the skipped one; no rest day, nothing from today on, nothing older');
 select ok(
   (select bool_or((w ->> 'skipped')::boolean) from coach_roster_summary(), jsonb_array_elements(recent_workouts) w
     where athlete_id = '2085eeee-0000-0000-0000-0000000000a1'),
@@ -112,7 +112,7 @@ set local "request.jwt.claims" = '{}';
 delete from plan_workouts where completed_run_id in ('2085ffff-2222-0000-0000-00000000a106', '2085ffff-2222-0000-0000-00000000a107');
 delete from runs where id in ('2085ffff-2222-0000-0000-00000000a106', '2085ffff-2222-0000-0000-00000000a107');
 
--- One recent run alone is too little to compare.
+-- Two recent runs are too few: one hot day among them could drive the chip.
 set local role authenticated;
 set local "request.jwt.claims" = '{"sub":"2085eeee-0000-0000-0000-0000000000a1","role":"authenticated"}';
 delete from runs where id = '2085ffff-2222-0000-0000-00000000a105';
@@ -120,8 +120,59 @@ set local "request.jwt.claims" = '{"sub":"2085eeee-0000-0000-0000-0000000000c1",
 select is(
   (select easy_hr_drift_pct from coach_roster_summary() where athlete_id = '2085eeee-0000-0000-0000-0000000000a1'),
   null,
-  'fewer than two recent easy runs gives no drift');
+  'fewer than three recent easy runs gives no drift');
 reset role;
+
+-- Two athletes whose windows ran at different paces: 6:15/km then 5:45/km
+-- (both inside 15 s/km of their 6:00 median), and 6:00/km then 7:00/km.
+-- Faster or slower recent runs are not drift, so neither gets a figure.
+set local "request.jwt.claims" = '{}';
+insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at) values
+  ('2085eeee-0000-0000-0000-0000000000d1', 'authenticated', 'authenticated', 'split@crhd.local', '', now(), now()),
+  ('2085eeee-0000-0000-0000-0000000000d2', 'authenticated', 'authenticated', 'shift@crhd.local', '', now(), now())
+on conflict (id) do nothing;
+insert into user_profiles (id, display_name, health_data_consent_at) values
+  ('2085eeee-0000-0000-0000-0000000000d1', 'Split', now()),
+  ('2085eeee-0000-0000-0000-0000000000d2', 'Shift', now())
+on conflict (id) do nothing;
+insert into coach_athletes (coach_id, athlete_id, status, invite_token, accepted_at) values
+  ('2085eeee-0000-0000-0000-0000000000c1', '2085eeee-0000-0000-0000-0000000000d1', 'active', 'crhd-d1', now()),
+  ('2085eeee-0000-0000-0000-0000000000c1', '2085eeee-0000-0000-0000-0000000000d2', 'active', 'crhd-d2', now());
+insert into training_plans (id, user_id, name, goal_event, goal_distance_m, start_date, end_date, days_per_week, status)
+select ('2085ffff-0000-0000-0000-0000000000' || t || '1')::uuid, u, 'P ' || t, 'distance_10k', 10000,
+       current_date - 56, current_date + 7, 4, 'active'
+from (values ('d', '2085eeee-0000-0000-0000-0000000000d1'::uuid), ('e', '2085eeee-0000-0000-0000-0000000000d2'::uuid)) v(t, u);
+insert into plan_weeks (id, plan_id, week_index, phase, target_volume_m)
+select ('2085ffff-1111-0000-0000-0000000000' || t || '1')::uuid, ('2085ffff-0000-0000-0000-0000000000' || t || '1')::uuid, 0, 'build', 30000
+from (values ('d'), ('e')) v(t);
+create temp table _paced (t text, n int, days int, secs int, bpm int) on commit drop;
+insert into _paced values
+  ('d', 1, 40, 3750, 140), ('d', 2, 33, 3750, 140), ('d', 3, 26, 3750, 140),
+  ('d', 4, 12, 3450, 150), ('d', 5, 10, 3450, 150), ('d', 6, 3, 3450, 150),
+  ('e', 1, 40, 3600, 140), ('e', 2, 33, 3600, 140), ('e', 3, 26, 3600, 140),
+  ('e', 4, 12, 4200, 150), ('e', 5, 10, 4200, 150), ('e', 6, 3, 4200, 150);
+insert into runs (id, user_id, started_at, duration_s, distance_m, source, is_dnf, metadata)
+select ('2085ffff-3333-0000-0000-00000000' || t || lpad(n::text, 3, '0'))::uuid,
+       case t when 'd' then '2085eeee-0000-0000-0000-0000000000d1'::uuid else '2085eeee-0000-0000-0000-0000000000d2'::uuid end,
+       now() - (days || ' days')::interval, secs, 10000, 'app', false,
+       jsonb_build_object('activity_type', 'run', 'avg_bpm', bpm)
+from _paced;
+insert into plan_workouts (week_id, scheduled_date, kind, target_distance_m, completed_run_id)
+select ('2085ffff-1111-0000-0000-0000000000' || t || '1')::uuid, (now() - (days || ' days')::interval)::date, 'easy', 10000,
+       ('2085ffff-3333-0000-0000-00000000' || t || lpad(n::text, 3, '0'))::uuid
+from _paced;
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"2085eeee-0000-0000-0000-0000000000c1","role":"authenticated"}';
+select is(
+  (select easy_hr_drift_pct from coach_roster_summary() where athlete_id = '2085eeee-0000-0000-0000-0000000000d1'),
+  null,
+  'recent runs at 5:45/km against older ones at 6:15/km are a pace change, not drift');
+select is(
+  (select easy_hr_drift_pct from coach_roster_summary() where athlete_id = '2085eeee-0000-0000-0000-0000000000d2'),
+  null,
+  'recent runs at 7:00/km against older ones at 6:00/km give no drift');
+reset role;
+set local "request.jwt.claims" = '{}';
 
 -- An athlete's own call sees nothing of anyone.
 set local role authenticated;

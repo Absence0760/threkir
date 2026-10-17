@@ -189,4 +189,21 @@
     <string name="tts_run_complete_mi">ラン完了。%2$d分で%1$sマイル。</string>
     <string name="tts_pace_alert_fast">ペースを上げましょう</string>
     <string name="tts_pace_alert_slow">ペースを落としましょう</string>
+
+    <!-- Today's workout, pushed by the phone (WorkoutBridge) -->
+    <string name="workout">ワークアウト</string>
+    <string name="workout_off">オフ</string>
+    <plurals name="workout_step_count">
+        <item quantity="other">%1$d ステップ</item>
+    </plurals>
+    <string name="cd_workout_on">今日のワークアウト、%1$s、オン、タップして自由に走る</string>
+    <string name="cd_workout_off">今日のワークアウト、オフ、タップして従う</string>
+    <string name="workout_step_warmup">ウォームアップ</string>
+    <string name="workout_step_rep">レップ</string>
+    <string name="workout_step_recovery">回復</string>
+    <string name="workout_step_walk">ウォーク</string>
+    <string name="workout_step_steady">一定</string>
+    <string name="workout_step_cooldown">クールダウン</string>
+    <string name="workout_done">ワークアウト完了</string>
+    <string name="cd_mark_lap_skip_step">ラップを記録して次のステップへ進む</string>
 </resources>

@@ -183,3 +183,8 @@ private fun JsonObject.int(key: String): Int? {
     if (p.doubleOrNull != l.toDouble()) return null
     return l.takeIf { it in Int.MIN_VALUE..Int.MAX_VALUE }?.toInt()
 }
+
+/// The workout the pre-run screen offers from [push], or null: only a
+/// workout scheduled for [today] on the watch's own calendar.
+fun offeredWorkout(push: WorkoutPush?, today: LocalDate): PushedWorkout? =
+    (push as? WorkoutPush.Workout)?.workout?.takeIf { it.isFor(today) }

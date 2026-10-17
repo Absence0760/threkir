@@ -2,6 +2,8 @@ package com.runapp.watchwear
 
 import com.runapp.watchwear.recording.GnssSignalSummary
 import com.runapp.watchwear.recording.toJson
+import com.runapp.watchwear.workout.WorkoutReview
+import com.runapp.watchwear.workout.metadataEntries
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.addJsonObject
 import kotlinx.serialization.json.buildJsonArray
@@ -34,6 +36,7 @@ fun buildRunMetadata(
     locationProvider: String? = null,
     gnssSignal: GnssSignalSummary? = null,
     trackComplete: Boolean = false,
+    workout: WorkoutReview? = null,
 ): JsonObject = buildJsonObject {
     put("activity_type", activityType)
     if (avgBpm != null) put("avg_bpm", avgBpm)
@@ -59,6 +62,12 @@ fun buildRunMetadata(
     // 30 m gate flagged `offTrack`, so the server's replay sees the watch's
     // own input (docs/features/gps_distance.md § Stored track).
     if (trackComplete) put("track_complete", true)
+    // The database matcher links the run to the plan workout by
+    // `plan_workout_id` (decisions § 2079); the other two are the review both
+    // run detail screens render.
+    if (workout != null) {
+        for ((key, value) in workout.metadataEntries()) put(key, value)
+    }
     if (laps.isNotEmpty()) {
         put("laps", buildJsonArray {
             var prevMs = 0L

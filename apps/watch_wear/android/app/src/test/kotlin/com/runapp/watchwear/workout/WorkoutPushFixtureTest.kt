@@ -129,6 +129,18 @@ class WorkoutPushFixtureTest {
     }
 
     @Test
+    fun `only a workout for today is offered`() {
+        val payload = fixture["cases"]!!.jsonArray.first().jsonObject["payload"]!!.jsonObject
+        val push = decode(payload)
+        val day = (push as WorkoutPush.Workout).workout.scheduledDate
+        assertEquals(push.workout, offeredWorkout(push, day))
+        assertEquals(null, offeredWorkout(push, day.plusDays(1)))
+        assertEquals(null, offeredWorkout(WorkoutPush.None, day))
+        assertEquals(null, offeredWorkout(WorkoutPush.Rejected, day))
+        assertEquals(null, offeredWorkout(null, day))
+    }
+
+    @Test
     fun `the payload version matches the phone writer`() {
         val src = File("../../../../apps/mobile_android/lib/watch_workout_push.dart").readText()
         val phone = Regex("""const int kWatchWorkoutPayloadVersion = (\d+);""").find(src)

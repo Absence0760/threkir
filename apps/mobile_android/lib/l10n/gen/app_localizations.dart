@@ -9538,12 +9538,6 @@ abstract class AppLocalizations {
   /// **'Couldn\'t load training plans. Tap retry to try again.'**
   String get plansLoadError;
 
-  /// Hint under the built-in starter plans on the empty plans list. {date} is a localized short date, always a Sunday
-  ///
-  /// In en, this message translates to:
-  /// **'Each starts on {date}.'**
-  String plansStarterStartsOn(String date);
-
   /// Status pill on an active plan in the plans list. Lowercase, like the other status pills
   ///
   /// In en, this message translates to:
@@ -9694,12 +9688,6 @@ abstract class AppLocalizations {
   /// **'e.g. Autumn half marathon'**
   String get planNewNameHint;
 
-  /// Inline hint below the plan-name field explaining why the Create button is disabled when the name is empty
-  ///
-  /// In en, this message translates to:
-  /// **'Add a plan name to enable Create.'**
-  String get planNewNameRequiredHint;
-
   /// Default plan name prefilled when the plan wizard opens preselected to a goal (from the onboarding nudge)
   ///
   /// In en, this message translates to:
@@ -9796,17 +9784,11 @@ abstract class AppLocalizations {
   /// **'This is a time I could run today — it reflects my current fitness.'**
   String get planNewRecent5kConfirm;
 
-  /// Recent-5K unconfirmed warning
+  /// Warning under an entered but unconfirmed recent 5K time
   ///
   /// In en, this message translates to:
-  /// **'Until you confirm, paces stay on the conservative goal-based estimate. Anchoring on an old result can prescribe paces that are too fast for a returning runner.'**
+  /// **'Until you confirm, paces come from your goal time, or from a cautious default if you leave it blank. An old result can set paces that are too fast for a returning runner, and so can an ambitious goal.'**
   String get planNewRecent5kWarning;
-
-  /// Override-weeks field hint
-  ///
-  /// In en, this message translates to:
-  /// **'Override total weeks'**
-  String get planNewOverrideHint;
 
   /// Override-weeks field label with default count
   ///
@@ -10132,35 +10114,11 @@ abstract class AppLocalizations {
   /// **'Week outline'**
   String get planNewWeekOutline;
 
-  /// More-weeks preview footer
-  ///
-  /// In en, this message translates to:
-  /// **'+ {count} more weeks'**
-  String planNewMoreWeeks(int count);
-
   /// Active-sessions count on a preview week row
   ///
   /// In en, this message translates to:
   /// **'{count} sessions'**
   String planNewSessions(int count);
-
-  /// Plan-new club-template picker
-  ///
-  /// In en, this message translates to:
-  /// **'Start from a club template'**
-  String get planNewTemplateTitle;
-
-  /// Plan-new club-template picker
-  ///
-  /// In en, this message translates to:
-  /// **'Adopt a plan a club you belong to has published. It clones into your account with the start date below — edit it like any other plan.'**
-  String get planNewTemplateSubtitle;
-
-  /// Plan-new club-template picker
-  ///
-  /// In en, this message translates to:
-  /// **'Browse templates'**
-  String get planNewTemplateButton;
 
   /// Plan-new club-template picker
   ///
@@ -10173,18 +10131,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t adopt that template.'**
   String get planNewTemplateCloneFailed;
-
-  /// Plan-new club-template picker
-  ///
-  /// In en, this message translates to:
-  /// **'Choose a template'**
-  String get planNewTemplatePickerTitle;
-
-  /// Plan-new club-template picker
-  ///
-  /// In en, this message translates to:
-  /// **'Cancel'**
-  String get planNewTemplatePickerCancel;
 
   /// Public plan library
   ///
@@ -10363,32 +10309,8 @@ abstract class AppLocalizations {
   /// Plan-new built-in starter-plan picker
   ///
   /// In en, this message translates to:
-  /// **'Pick a proven training plan and we\'ll schedule it from your start date — you can tweak it after.'**
-  String get planNewStarterSubtitle;
-
-  /// Plan-new built-in starter-plan picker
-  ///
-  /// In en, this message translates to:
-  /// **'Browse starter plans'**
-  String get planNewStarterButton;
-
-  /// Plan-new built-in starter-plan picker
-  ///
-  /// In en, this message translates to:
   /// **'Creating…'**
   String get planNewStarterCreating;
-
-  /// Plan-new built-in starter-plan picker
-  ///
-  /// In en, this message translates to:
-  /// **'Choose a starter plan'**
-  String get planNewStarterPickerTitle;
-
-  /// Plan-new built-in starter-plan picker
-  ///
-  /// In en, this message translates to:
-  /// **'Cancel'**
-  String get planNewStarterPickerCancel;
 
   /// Toast when creating from a starter plan fails
   ///
@@ -28050,6 +27972,240 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Save or discard your changes before moving this workout.'**
   String get workoutMoveSaveFirst;
+
+  /// Plan wizard: the first question, which decides the fields that apply
+  ///
+  /// In en, this message translates to:
+  /// **'Where are you starting from?'**
+  String get planNewStartingPoint;
+
+  /// Plan wizard starting point: has never run
+  ///
+  /// In en, this message translates to:
+  /// **'I\'ve never run'**
+  String get planNewStartingPointNew;
+
+  /// Plan wizard starting point: what the never-run choice builds
+  ///
+  /// In en, this message translates to:
+  /// **'A walk-run plan on 2 or 3 days a week that builds up to running without a walk break.'**
+  String get planNewStartingPointNewHint;
+
+  /// Plan wizard starting point: runs a bit, wants to build up
+  ///
+  /// In en, this message translates to:
+  /// **'I run a bit and want to build up'**
+  String get planNewStartingPointBuilding;
+
+  /// Plan wizard starting point: what the building-up choice builds
+  ///
+  /// In en, this message translates to:
+  /// **'No race in mind: pick a distance to build towards, with no goal time.'**
+  String get planNewStartingPointBuildingHint;
+
+  /// Plan wizard starting point: training for a race
+  ///
+  /// In en, this message translates to:
+  /// **'I\'m training for a race'**
+  String get planNewStartingPointRace;
+
+  /// Plan wizard starting point: what the race choice asks for
+  ///
+  /// In en, this message translates to:
+  /// **'A goal race, and a goal time if you have one.'**
+  String get planNewStartingPointRaceHint;
+
+  /// Helper under the start date for a walk-run plan, which may start on any day
+  ///
+  /// In en, this message translates to:
+  /// **'Week 1 begins here. A walk-run plan can start on any day, today included.'**
+  String get planNewStartDateHintWalkRun;
+
+  /// Helper under days per week
+  ///
+  /// In en, this message translates to:
+  /// **'How many days a week the plan puts a run on; the rest are rest days. Pick the number you can hold every week, not the number your best week had.'**
+  String get planNewDaysPerWeekHint;
+
+  /// Helper under days per week for a walk-run plan
+  ///
+  /// In en, this message translates to:
+  /// **'A walk-run plan puts a rest day after every session, so it runs 2 or 3 days a week.'**
+  String get planNewDaysPerWeekWalkRunHint;
+
+  /// Helper under the goal race
+  ///
+  /// In en, this message translates to:
+  /// **'Sets how many weeks the plan runs and how far the long runs build to. Pick the distance you are training towards, not one you have already run.'**
+  String get planNewGoalRaceHint;
+
+  /// Helper under the goal time
+  ///
+  /// In en, this message translates to:
+  /// **'Drives the pace targets. Leave blank for a volume-only plan.'**
+  String get planNewGoalTimeHint;
+
+  /// Helper under the override-weeks field
+  ///
+  /// In en, this message translates to:
+  /// **'Leave blank for the usual length for your goal race. Set it when you are working back from a race date that is closer or further off.'**
+  String get planNewOverrideHelp;
+
+  /// Helper under the plan name
+  ///
+  /// In en, this message translates to:
+  /// **'What the plan is called in your plans list and at the top of every week. It has no effect on the schedule.'**
+  String get planNewNameHelp;
+
+  /// Subtitle of the recent-5K confirm switch: what happens if it stays off
+  ///
+  /// In en, this message translates to:
+  /// **'Leave it unticked and your paces come from your goal time instead of the time above.'**
+  String get planNewRecent5kConfirmHint;
+
+  /// Warning under a goal time faster than recent runs project. {predicted} is a duration like 1:02:30
+  ///
+  /// In en, this message translates to:
+  /// **'Your goal is quicker than your recent runs suggest: they point to about {predicted} for this distance. Paces are set from the goal, so if it\'s ambitious, every pace in the plan is too. A slower goal, or a recent 5K you confirm below, sets them from what you can run now.'**
+  String planNewGoalAheadOfRecent(String predicted);
+
+  /// Heading of the note for a runner coming back from a break
+  ///
+  /// In en, this message translates to:
+  /// **'Coming back from a break'**
+  String get planNewReturnTitle;
+
+  /// Body of the comeback note. {weeks} whole weeks off; {pre} and {cap} are formatted distances
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve had about {weeks} weeks off. Before that you averaged {pre} a week, so week 1 asks for no more than {cap} and each week adds at most 10% until the plan reaches its own schedule. Speed sessions in those weeks become easy runs.'**
+  String planNewReturnBody(int weeks, String pre, String cap);
+
+  /// Switch on the comeback note: cap the opening weeks
+  ///
+  /// In en, this message translates to:
+  /// **'Ease me back in'**
+  String get planNewReturnEaseBack;
+
+  /// Button on the comeback note: switch to a walk-run plan
+  ///
+  /// In en, this message translates to:
+  /// **'Return with walk-run intervals instead'**
+  String get planNewReturnWalkRun;
+
+  /// Note when the runner has too little recent running to check the plan against. {opening} is a formatted distance
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve run in fewer than 3 of the last 4 weeks, so this plan can\'t be checked against your recent training. If week 1 ({opening}) is more than you\'ve been running, fewer days or walk-run intervals make a gentler start.'**
+  String planNewThinHistory(String opening);
+
+  /// Button on the thin-history note: switch to a walk-run plan
+  ///
+  /// In en, this message translates to:
+  /// **'Start with walk-run intervals'**
+  String get planNewThinHistoryWalkRun;
+
+  /// What a distance-based starter plan asks for
+  ///
+  /// In en, this message translates to:
+  /// **'{weeks} weeks · {days} days a week'**
+  String planNewStarterSummary(int weeks, int days);
+
+  /// What a timed (walk-run) starter plan asks for; {min} and {max} are session minutes
+  ///
+  /// In en, this message translates to:
+  /// **'{weeks} weeks · {days} days a week · {min}–{max} min a session'**
+  String planNewStarterSummaryTimed(int weeks, int days, int min, int max);
+
+  /// When a starter offered on the empty plans list begins. {date} is a localized short date
+  ///
+  /// In en, this message translates to:
+  /// **'Starts {date}'**
+  String plansStarterStarts(String date);
+
+  /// Helper under the start date: why only Sundays can be picked
+  ///
+  /// In en, this message translates to:
+  /// **'Week 1 begins here. The plan\'s weeks run Sunday to Saturday, so only a Sunday can be picked.'**
+  String get planNewStartDateHint;
+
+  /// Date picker heading when only Sundays can be picked
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a Sunday'**
+  String get planNewStartDatePickerHelp;
+
+  /// Date picker heading for a walk-run plan, which may start any day
+  ///
+  /// In en, this message translates to:
+  /// **'Pick any day'**
+  String get planNewStartDatePickerHelpWalkRun;
+
+  /// Label of the hours box of a time entry
+  ///
+  /// In en, this message translates to:
+  /// **'Hours'**
+  String get planNewHoursLabel;
+
+  /// Label of the minutes box of a time entry
+  ///
+  /// In en, this message translates to:
+  /// **'Minutes'**
+  String get planNewMinutesLabel;
+
+  /// Label of the seconds box of a time entry
+  ///
+  /// In en, this message translates to:
+  /// **'Seconds'**
+  String get planNewSecondsLabel;
+
+  /// Error under an empty plan name
+  ///
+  /// In en, this message translates to:
+  /// **'Add a plan name.'**
+  String get planNewNameRequired;
+
+  /// Plan wizard card that opens the built-in and club plans
+  ///
+  /// In en, this message translates to:
+  /// **'Start from a ready-made plan'**
+  String get planNewReadyMadeTitle;
+
+  /// Body of the ready-made plans card
+  ///
+  /// In en, this message translates to:
+  /// **'A built-in plan, or one a club you belong to has published. You can edit it after.'**
+  String get planNewReadyMadeBody;
+
+  /// Button on the ready-made plans card
+  ///
+  /// In en, this message translates to:
+  /// **'Browse ready-made plans'**
+  String get planNewReadyMadeButton;
+
+  /// Section heading in the ready-made plans sheet: built-in starter plans
+  ///
+  /// In en, this message translates to:
+  /// **'Built-in plans'**
+  String get planNewReadyMadeBuiltIn;
+
+  /// Section heading in the ready-made plans sheet: club templates
+  ///
+  /// In en, this message translates to:
+  /// **'From your clubs'**
+  String get planNewReadyMadeClubs;
+
+  /// Divider above the build-your-own form in the plan wizard
+  ///
+  /// In en, this message translates to:
+  /// **'Or build your own'**
+  String get planNewBuildOwn;
+
+  /// Compact plan summary beside Create: length and end date. {date} is a localized date
+  ///
+  /// In en, this message translates to:
+  /// **'{weeks, plural, one{{weeks} week} other{{weeks} weeks}} · ends {date}'**
+  String planNewSummary(int weeks, String date);
 }
 
 class _AppLocalizationsDelegate

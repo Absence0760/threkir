@@ -6,9 +6,11 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ui_kit/ui_kit.dart';
 import '../lib/backend_timeout.dart';
+import '../lib/l10n/date_format.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/plan_ramp.dart';
 import '../lib/race_plan_preset.dart';
+import '../lib/race_predictor.dart' show EffortForPrediction;
 import '../lib/screens/plan_new_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/training.dart';
@@ -25,18 +27,35 @@ Future<void> _pump(WidgetTester tester) {
   );
 }
 
-/// Serves a fixed chronic-volume read to the ramp note. The demographic
+/// [metres] in each of the [weeks] most recent seven-day windows, so the
+/// ramp check reads a chronic base of `metres * weeks / 4` a week.
+PlanRunHistory _history(double metres, {int weeks = 4, List<int>? daysAgo}) {
+  final now = DateTime.now();
+  return PlanRunHistory(
+    runs: [
+      for (final d in daysAgo ?? [for (var w = 0; w < weeks; w++) 1 + 7 * w])
+        RunForVolume(
+          startedAt: now.subtract(Duration(days: d)).toUtc().toIso8601String(),
+          distanceM: metres,
+          activityType: 'run',
+        ),
+    ],
+    efforts: const [],
+  );
+}
+
+/// Serves a fixed run history to the ramp note. The demographic
 /// fetches return quietly so no network is touched in the widget test.
 class _RampTraining extends TrainingService {
-  final RecentVolume? volume;
-  _RampTraining(this.volume);
+  final PlanRunHistory? history;
+  _RampTraining(this.history);
 
   @override
   Future<TrainingGender> fetchViewerGender() async => null;
   @override
   Future<int?> fetchViewerAge() async => null;
   @override
-  Future<RecentVolume?> fetchRecentRunVolume() async => volume;
+  Future<PlanRunHistory?> fetchPlanRunHistory() async => history;
   @override
   Future<List<TrainingPlanRow>> fetchClubTemplates(String clubId) async =>
       const [];
@@ -193,12 +212,20 @@ class _LookupGateTraining extends TrainingService {
 
 /// The goal dropdown's selected entry: a goal_event db value, or an ultra
 /// entry id.
-String? _goalValue(WidgetTester tester) => tester
-    .widget<DropdownButtonFormField<String>>(find.byWidgetPredicate((w) =>
-        w is DropdownButtonFormField<String> &&
-        w.key is ValueKey<String> &&
-        (w.key as ValueKey<String>).value.startsWith('plan-new-goal-')))
-    .initialValue;
+String? _goalValue(WidgetTester tester) {
+  for (final chip in tester.widgetList<ChoiceChip>(find.byType(ChoiceChip))) {
+    final key = chip.key;
+    if (chip.selected &&
+        key is ValueKey<String> &&
+        key.value.startsWith('plan-new-goal-')) {
+      return key.value.substring('plan-new-goal-'.length);
+    }
+  }
+  return null;
+}
+
+/// How the start date reads on the wizard.
+String _shownDate(String iso) => formatDateMed(DateTime.parse(iso), 'en');
 
 /// Records the plan the wizard asks to create, then throws to keep the
 /// screen on the wizard (a real success navigates to the Supabase-backed
@@ -213,7 +240,7 @@ class _RecordingTraining extends TrainingService {
   @override
   Future<int?> fetchViewerAge() async => null;
   @override
-  Future<RecentVolume?> fetchRecentRunVolume() async => null;
+  Future<PlanRunHistory?> fetchPlanRunHistory() async => null;
   @override
   Future<List<TrainingPlanRow>> fetchClubTemplates(String clubId) async =>
       const [];
@@ -342,47 +369,54 @@ void main() {
       expect(warnFinder, findsNothing);
     });
 
-    testWidgets('entering a 5K time surfaces the confirm box + warning',
-        (tester) async {
-      // Reason: a returning runner typing an old PR must be told the time
-      // isn't trusted until confirmed, and that unconfirmed leaves paces on
-      // the conservative goal-based estimate — otherwise the engine would
-      // prescribe dangerously fast paces.
-      await _pump(tester);
-      await tester.pump();
-      // The form is a lazy ListView and the recent-5K field sits below the
-      // starter-plan picker, so it isn't built initially. Pass the bare
-      // finder (no `.last` — the 'min' hint is unique) so scrollUntilVisible
-      // can scroll-and-build it; `.last` over a not-yet-built finder throws
-      // "Bad state: No element" and breaks the scroll loop.
-      final minField = find.widgetWithText(TextField, 'min');
+    Future<void> enterTime(WidgetTester tester, {String? seconds}) async {
+      // The recent-5K boxes are the second Minutes / Seconds pair; the goal
+      // time's come first.
+      final minutes = find.widgetWithText(TextField, 'Minutes').at(1);
       await tester.scrollUntilVisible(
-        minField,
+        find.widgetWithText(TextField, 'Minutes').last,
         200,
         scrollable: find.byType(Scrollable).first,
       );
-      await tester.enterText(minField, '22');
+      await tester.enterText(minutes, '22');
       await tester.pump();
-      expect(confirmFinder, findsOneWidget);
-      expect(warnFinder, findsOneWidget);
+      if (seconds != null) {
+        await tester.enterText(
+            find.widgetWithText(TextField, 'Seconds').at(1), seconds);
+        await tester.pump();
+      }
+    }
+
+    testWidgets('minutes alone are not yet a time, so nothing warns',
+        (tester) async {
+      await _pump(tester);
+      await tester.pump();
+      await enterTime(tester);
+      expect(confirmFinder, findsNothing);
+      expect(warnFinder, findsNothing);
     });
 
-    testWidgets('ticking the confirm box clears the warning', (tester) async {
+    testWidgets('a complete 5K time surfaces the confirm switch + warning',
+        (tester) async {
+      // Reason: a returning runner typing an old PR must be told the time
+      // isn't trusted until confirmed, otherwise the engine would prescribe
+      // dangerously fast paces.
       await _pump(tester);
       await tester.pump();
-      final minField = find.widgetWithText(TextField, 'min');
-      await tester.scrollUntilVisible(
-        minField,
-        200,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.enterText(minField, '22');
+      await enterTime(tester, seconds: '30');
+      expect(confirmFinder, findsOneWidget);
+      expect(warnFinder, findsOneWidget);
+      expect(find.byKey(const Key('plan-new-recent5k-confirm')), findsOneWidget);
+    });
+
+    testWidgets('switching the confirm on clears the warning', (tester) async {
+      await _pump(tester);
       await tester.pump();
-      // Tap the tile title (the raw Checkbox sits below the fold); the
-      // CheckboxListTile toggles from a tap anywhere on the tile.
-      await tester.ensureVisible(confirmFinder);
+      await enterTime(tester, seconds: '30');
+      final toggle = find.byKey(const Key('plan-new-recent5k-confirm'));
+      await tester.ensureVisible(toggle);
       await tester.pump();
-      await tester.tap(confirmFinder);
+      await tester.tap(toggle);
       await tester.pump();
       expect(warnFinder, findsNothing);
     });
@@ -414,20 +448,9 @@ void main() {
     testWidgets('hidden when the viewer has no club templates',
         (tester) async {
       await pumpWithTemplates(tester, clubs: const [], templates: const {});
-      expect(find.text('Start from a club template'), findsNothing);
-    });
-
-    testWidgets('shows the template card when a club has a template',
-        (tester) async {
-      await pumpWithTemplates(
-        tester,
-        clubs: [_club('club-1', 'Trail Club')],
-        templates: {
-          'club-1': [_template('tpl-1', 'Spring Half')],
-        },
-      );
-      expect(find.text('Start from a club template'), findsOneWidget);
-      expect(find.text('Browse templates'), findsOneWidget);
+      await tester.tap(find.text('Browse ready-made plans'));
+      await tester.pumpAndSettle();
+      expect(find.text('From your clubs'), findsNothing);
     });
 
     testWidgets('opening the picker lists each template with its club',
@@ -439,9 +462,9 @@ void main() {
           'club-1': [_template('tpl-1', 'Spring Half')],
         },
       );
-      await tester.tap(find.text('Browse templates'));
+      await tester.tap(find.text('Browse ready-made plans'));
       await tester.pumpAndSettle();
-      expect(find.text('Choose a template'), findsOneWidget);
+      expect(find.text('From your clubs'), findsOneWidget);
       expect(find.text('Spring Half'), findsOneWidget);
       expect(find.text('Trail Club'), findsOneWidget);
     });
@@ -736,7 +759,7 @@ void main() {
 
     testWidgets('a starter plan creates once', (tester) async {
       final t = await pumpLookup(tester);
-      final browse = find.text('Browse starter plans');
+      final browse = find.byKey(const Key('plan-new-ready-made-open'));
       await tester.tap(browse);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Marathon — 16 weeks'));
@@ -745,7 +768,7 @@ void main() {
 
       await tester.tap(browse, warnIfMissed: false);
       await tester.pumpAndSettle();
-      expect(find.text('Choose a starter plan'), findsNothing,
+      expect(find.text('Built-in plans'), findsNothing,
           reason: 'the picker must not reopen while the first pick is '
               'still being checked');
       expect(t.lookupCalls, 1);
@@ -762,20 +785,22 @@ void main() {
           'club-1': [_template('tpl-1', 'Spring Half')],
         },
       );
-      final browse = find.text('Browse templates');
-      await pumpUntil(tester, () => tester.any(browse),
-          describe: 'the club templates to load');
-      await tester.ensureVisible(browse);
+      final browse = find.byKey(const Key('plan-new-ready-made-open'));
+      await tester.runAsync(() async {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      });
       await tester.pump();
       await tester.tap(browse);
       await tester.pumpAndSettle();
+      await pumpUntil(tester, () => tester.any(find.text('Spring Half')),
+          describe: 'the club templates to load');
       await tester.tap(find.text('Spring Half'));
       await tester.pumpAndSettle();
       expect(t.lookupCalls, 1);
 
       await tester.tap(browse, warnIfMissed: false);
       await tester.pumpAndSettle();
-      expect(find.text('Choose a template'), findsNothing,
+      expect(find.text('From your clubs'), findsNothing,
           reason: 'the picker must not reopen while the first pick is '
               'still being checked');
       expect(t.lookupCalls, 1);
@@ -811,10 +836,15 @@ void main() {
         tester.widget<CheckboxListTile>(find.widgetWithText(
             CheckboxListTile, 'New to running? Use a walk-run plan'));
 
-    testWidgets('initialBeginnerWalkRun ticks the walk-run toggle on mount',
+    testWidgets('initialBeginnerWalkRun answers the first question: never run',
         (tester) async {
       await pumpPreset(tester, goal: GoalEvent.distance5k, beginner: true);
-      expect(beginnerTile(tester).value, isTrue);
+      final radio = tester.widget<RadioGroup<Object?>>(
+          find.byWidgetPredicate((w) => w is RadioGroup));
+      expect(radio.groupValue.toString(), endsWith('newRunner'));
+      // Never run means no race fields, the walk-run toggle among them.
+      expect(find.text('New to running? Use a walk-run plan'), findsNothing);
+      expect(find.byKey(const Key('plan-new-goal-distance_5k')), findsNothing);
     });
 
     testWidgets('defaults leave the walk-run toggle unticked', (tester) async {
@@ -856,7 +886,7 @@ void main() {
       );
       await tester.ensureVisible(toggle);
       await tester.pumpAndSettle();
-      await tester.tap(find.byType(CheckboxListTile).first);
+      await tester.tap(toggle);
       await tester.pump();
       await tester.scrollUntilVisible(
         find.text('Week outline'),
@@ -866,15 +896,18 @@ void main() {
       // The duration-based week outline is still rendered...
       expect(find.text('Week outline'), findsOneWidget);
       // ...but the pace zones + VDOT line are gone.
+      final preview = find.byKey(const Key('plan-new-preview'));
       for (final label in paceLabels) {
-        expect(find.text(label), findsNothing, reason: 'pace pill "$label"');
+        expect(find.descendant(of: preview, matching: find.text(label)),
+            findsNothing,
+            reason: 'pace pill "$label"');
       }
       expect(find.textContaining('Daniels VDOT'), findsNothing);
     });
   });
 
   group('PlanNewScreen — opening-week ramp note', () {
-    Future<void> pumpTall(WidgetTester tester, RecentVolume? volume) {
+    Future<void> pumpTall(WidgetTester tester, PlanRunHistory? volume) {
       tester.view.physicalSize = const Size(1200, 6000);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -892,7 +925,7 @@ void main() {
         (tester) async {
       await pumpTall(
         tester,
-        const RecentVolume(weeklyM: 2000, acuteM: 2000, activeWeeks: 4),
+        _history(2000),
       );
       await tester.pump();
       expect(find.text('Plan vs. your recent training'), findsOneWidget);
@@ -903,21 +936,29 @@ void main() {
         (tester) async {
       await pumpTall(
         tester,
-        const RecentVolume(weeklyM: 1000000, acuteM: 1000000, activeWeeks: 4),
+        _history(1000000),
       );
       await tester.pump();
       expect(find.textContaining('This plan peaks at'), findsOneWidget);
     });
 
-    testWidgets('too little history says nothing at all', (tester) async {
-      // The gate the check exists for: two active weeks is arithmetic on
-      // noise, and a confident verdict off it would be worse than silence.
-      await pumpTall(
-        tester,
-        const RecentVolume(weeklyM: 2000, acuteM: 2000, activeWeeks: 2),
-      );
+    testWidgets('too little history cannot be checked, and says so',
+        (tester) async {
+      // Two active weeks is arithmetic on noise, so there is no ramp verdict.
+      // The runner it leaves unchecked is the one a big first week hurts, so
+      // the wizard says it could not check and offers the gentle start.
+      await pumpTall(tester, _history(4000, weeks: 2));
       await tester.pump();
-      expect(find.text('Plan vs. your recent training'), findsNothing);
+      expect(find.textContaining('Week 1 asks for'), findsNothing);
+      expect(find.byKey(const Key('plan-new-thin-history')), findsOneWidget);
+      await tester.tap(find.text('Start with walk-run intervals'));
+      await tester.pump();
+      expect(find.byKey(const Key('plan-new-thin-history')), findsNothing);
+      expect(
+          tester
+              .widget<CheckboxListTile>(find.byType(CheckboxListTile).first)
+              .value,
+          isTrue);
     });
 
     testWidgets('a failed volume read leaves the wizard untouched',
@@ -931,7 +972,7 @@ void main() {
     testWidgets('a walk-run plan is not told it is gentle', (tester) async {
       await pumpTall(
         tester,
-        const RecentVolume(weeklyM: 1000000, acuteM: 1000000, activeWeeks: 4),
+        _history(1000000),
       );
       await tester.pump();
       expect(find.textContaining('This plan peaks at'), findsOneWidget);
@@ -996,11 +1037,17 @@ void main() {
       expect(field.controller?.text, 'Walk-run to 5K');
     });
 
-    testWidgets('a no-preset plan shows the inline name-required hint (#263)',
+    testWidgets('a cleared plan name is marked required (#263)',
         (tester) async {
       await pumpTall(tester);
       await tester.pump();
-      expect(find.text('Add a plan name to enable Create.'), findsOneWidget);
+      final name = find.widgetWithText(TextField, 'Plan name');
+      expect(find.text('Add a plan name.'), findsNothing);
+      await tester.enterText(name, 'x');
+      await tester.pump();
+      await tester.enterText(name, '');
+      await tester.pump();
+      expect(find.text('Add a plan name.'), findsOneWidget);
     });
   });
 
@@ -1124,7 +1171,7 @@ void main() {
 
       expect(find.byKey(const Key('plan-new-race-note')), findsOneWidget);
       expect(find.textContaining('${expected.weeks}-week plan'), findsOneWidget);
-      expect(find.text(expected.startDate), findsOneWidget);
+      expect(find.text(_shownDate(expected.startDate)), findsOneWidget);
       expect(_goalValue(tester), 'distance_half');
       expect(fieldTexts(tester), contains('Autumn Half'));
       expect(fieldTexts(tester), contains('${expected.weeks}'));
@@ -1170,7 +1217,7 @@ void main() {
       await pumpRace(tester, raceDateIso: raceIso, distanceM: 30000);
       await tester.pump();
       expect(_goalValue(tester), 'distance_half'); // the wizard default
-      expect(find.text(expected.startDate), findsOneWidget);
+      expect(find.text(_shownDate(expected.startDate)), findsOneWidget);
     });
 
     testWidgets('an ultra race preselects its ultra distance', (tester) async {
@@ -1184,7 +1231,7 @@ void main() {
       await tester.pump();
       expect(_goalValue(tester), 'ultra_50k');
       expect(find.byKey(const Key('plan-new-ultra-distance')), findsOneWidget);
-      expect(find.text(expected.startDate), findsOneWidget);
+      expect(find.text(_shownDate(expected.startDate)), findsOneWidget);
       expect(fieldTexts(tester), contains('${expected.weeks}'));
     });
 
@@ -1219,9 +1266,10 @@ void main() {
     }
 
     Future<void> pickGoal(WidgetTester tester, String label) async {
-      await tester.tap(find.byKey(const ValueKey('plan-new-goal-0')));
+      final chip = find.widgetWithText(ChoiceChip, label);
+      await tester.ensureVisible(chip);
       await tester.pumpAndSettle();
-      await tester.tap(find.text(label).last);
+      await tester.tap(chip);
       await tester.pumpAndSettle();
     }
 
@@ -1243,8 +1291,6 @@ void main() {
 
     testWidgets('the goal list offers the ultra distances', (tester) async {
       await pumpUltra(tester);
-      await tester.tap(find.byKey(const ValueKey('plan-new-goal-0')));
-      await tester.pumpAndSettle();
       for (final label in [
         '50 km',
         '56 km',
@@ -1323,5 +1369,111 @@ void main() {
       expect(tester.widget<FilledButton>(button).onPressed, isNull);
     });
   });
-}
 
+  group('PlanNewScreen — where the runner is starting from (#1186)', () {
+    Future<void> pumpTall(WidgetTester tester, {PlanRunHistory? history}) {
+      tester.view.physicalSize = const Size(1200, 6000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      return tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: PlanNewScreen(training: _RampTraining(history)),
+        ),
+      );
+    }
+
+    DateTime today() {
+      final n = DateTime.now();
+      return DateTime(n.year, n.month, n.day);
+    }
+
+    testWidgets('never run: walk-run, no race fields, 2 or 3 days, starts tomorrow',
+        (tester) async {
+      await pumpTall(tester);
+      await tester.pump();
+      expect(find.byKey(const Key('plan-new-goal-distance_half')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('plan-new-starting-newRunner')));
+      await tester.pump();
+
+      expect(find.byKey(const Key('plan-new-goal-distance_half')), findsNothing);
+      expect(find.text('Goal time · optional'), findsNothing);
+      expect(find.textContaining('Riegel equivalence'), findsNothing);
+      expect(find.byKey(const Key('plan-new-days-2')), findsOneWidget);
+      expect(find.byKey(const Key('plan-new-days-3')), findsOneWidget);
+      expect(find.byKey(const Key('plan-new-days-4')), findsNothing);
+      final tomorrow = today().add(const Duration(days: 1));
+      expect(find.text(formatDateMed(tomorrow, 'en')), findsOneWidget);
+      expect(find.textContaining('can start on any day, today included'),
+          findsOneWidget);
+    });
+
+    testWidgets('building up: a distance but no goal time', (tester) async {
+      await pumpTall(tester);
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('plan-new-starting-building')));
+      await tester.pump();
+      expect(find.byKey(const Key('plan-new-goal-distance_half')), findsOneWidget);
+      expect(find.text('Goal time · optional'), findsNothing);
+      expect(find.byKey(const Key('plan-new-days-7')), findsOneWidget);
+    });
+
+    testWidgets('a runner back from a break gets a capped opening week',
+        (tester) async {
+      // Four 40 km weeks that ended 60 days ago, and nothing since.
+      await pumpTall(tester,
+          history: _history(40000, daysAgo: [60, 67, 74, 81]));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('plan-new-goal-distance_full')));
+      await tester.pump();
+
+      final note = find.byKey(const Key('plan-new-return-note'));
+      expect(note, findsOneWidget);
+      expect(find.textContaining('about 9 weeks off'), findsOneWidget);
+      double weekOneKm() => double.parse(RegExp(r'[\d.]+')
+          .firstMatch(tester
+              .widget<Text>(find.byKey(const Key('plan-new-week-km-0')))
+              .data!)!
+          .group(0)!);
+      expect(weekOneKm(), lessThanOrEqualTo(20));
+
+      await tester.tap(find.byKey(const Key('plan-new-ease-back')));
+      await tester.pump();
+      expect(weekOneKm(), greaterThan(20));
+
+      await tester.tap(find.text('Return with walk-run intervals instead'));
+      await tester.pump();
+      expect(
+          tester
+              .widget<CheckboxListTile>(find.byType(CheckboxListTile).first)
+              .value,
+          isTrue);
+      expect(note, findsNothing);
+    });
+
+    testWidgets('a goal well ahead of recent runs is called out',
+        (tester) async {
+      // Six recent 5 km runs in 30:00: about 62 minutes for a 10K.
+      final efforts = [
+        for (final d in [2, 5, 9, 12, 16, 19])
+          EffortForPrediction(distanceM: 5000, durationS: 1800, ageDays: d.toDouble()),
+      ];
+      await pumpTall(tester,
+          history: PlanRunHistory(
+              runs: _history(5000, daysAgo: [2, 5, 9, 12, 16, 19]).runs,
+              efforts: efforts));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('plan-new-goal-distance_10k')));
+      await tester.pump();
+      await tester.enterText(find.widgetWithText(TextField, 'Minutes').first, '40');
+      await tester.pump();
+      expect(find.byKey(const Key('plan-new-goal-ahead')), findsOneWidget);
+
+      await tester.enterText(find.widgetWithText(TextField, 'Minutes').first, '59');
+      await tester.pump();
+      expect(find.byKey(const Key('plan-new-goal-ahead')), findsNothing);
+    });
+  });
+}

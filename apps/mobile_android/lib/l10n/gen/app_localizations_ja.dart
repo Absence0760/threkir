@@ -5484,11 +5484,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get plansLoadError => 'トレーニングプランを読み込めませんでした。再試行をタップしてください。';
 
   @override
-  String plansStarterStartsOn(String date) {
-    return 'いずれも$dateに開始します。';
-  }
-
-  @override
   String get plansStatusActive => 'アクティブ';
 
   @override
@@ -5576,9 +5571,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get planNewNameHint => '例：秋のハーフマラソン';
 
   @override
-  String get planNewNameRequiredHint => '「作成」を有効にするにはプラン名を入力してください。';
-
-  @override
   String planNewDefaultName(String goal) {
     return '$goal プラン';
   }
@@ -5639,10 +5631,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get planNewRecent5kWarning =>
-      '確認するまで、ペースは目標に基づく控えめな推定値のままです。古い結果を基準にすると、復帰ランナーには速すぎるペースが設定される恐れがあります。';
-
-  @override
-  String get planNewOverrideHint => '合計週数を上書き';
+      '確認するまで、ペースは目標タイムから、空欄の場合は控えめな既定値から設定されます。古い記録を基準にすると再開ランナーには速すぎるペースになることがあり、意欲的な目標でも同じことが起こります。';
 
   @override
   String planNewOverrideLabel(int count) {
@@ -5842,36 +5831,15 @@ class AppLocalizationsJa extends AppLocalizations {
   String get planNewWeekOutline => '週の概要';
 
   @override
-  String planNewMoreWeeks(int count) {
-    return '+ さらに$count週';
-  }
-
-  @override
   String planNewSessions(int count) {
     return '$countセッション';
   }
-
-  @override
-  String get planNewTemplateTitle => 'クラブのテンプレートから始める';
-
-  @override
-  String get planNewTemplateSubtitle =>
-      '所属クラブが公開したプランを取り込みます。下の開始日でアカウントに複製され、他のプランと同様に編集できます。';
-
-  @override
-  String get planNewTemplateButton => 'テンプレートを見る';
 
   @override
   String get planNewTemplateCloning => '取り込み中…';
 
   @override
   String get planNewTemplateCloneFailed => 'テンプレートを取り込めませんでした。';
-
-  @override
-  String get planNewTemplatePickerTitle => 'テンプレートを選択';
-
-  @override
-  String get planNewTemplatePickerCancel => 'キャンセル';
 
   @override
   String get planLibraryTitle => '公開プランライブラリ';
@@ -5983,20 +5951,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get planNewStarterTitle => '組み込みプランから始める';
 
   @override
-  String get planNewStarterSubtitle =>
-      '実績のあるトレーニングプランを選ぶと、開始日からスケジュールします。後で調整できます。';
-
-  @override
-  String get planNewStarterButton => 'スタータープランを見る';
-
-  @override
   String get planNewStarterCreating => '作成中…';
-
-  @override
-  String get planNewStarterPickerTitle => 'スタータープランを選ぶ';
-
-  @override
-  String get planNewStarterPickerCancel => 'キャンセル';
 
   @override
   String get planNewStarterCreateFailed => 'そのプランを作成できませんでした。';
@@ -16326,4 +16281,149 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get workoutMoveSaveFirst => 'このワークアウトを移動する前に、変更を保存するか破棄してください。';
+
+  @override
+  String get planNewStartingPoint => '今のあなたの状態は？';
+
+  @override
+  String get planNewStartingPointNew => '走ったことがない';
+
+  @override
+  String get planNewStartingPointNewHint =>
+      '週2〜3日のウォーク＆ランプランで、歩きを挟まずに走れるようになるまで積み上げます。';
+
+  @override
+  String get planNewStartingPointBuilding => '少し走っていて、距離を伸ばしたい';
+
+  @override
+  String get planNewStartingPointBuildingHint =>
+      '出場予定のレースなし：目標距離を選びます。目標タイムはありません。';
+
+  @override
+  String get planNewStartingPointRace => 'レースに向けてトレーニングしている';
+
+  @override
+  String get planNewStartingPointRaceHint => '目標レースと、あれば目標タイム。';
+
+  @override
+  String get planNewStartDateHintWalkRun =>
+      'ここから第1週が始まります。ウォーク＆ランプランは今日を含めどの日からでも始められます。';
+
+  @override
+  String get planNewDaysPerWeekHint =>
+      'プランが週に何日ランを組むかです。残りは休養日になります。調子の良かった週ではなく、毎週続けられる日数を選んでください。';
+
+  @override
+  String get planNewDaysPerWeekWalkRunHint =>
+      'ウォーク＆ランプランは各セッションの翌日を休養日にするため、週2〜3日になります。';
+
+  @override
+  String get planNewGoalRaceHint =>
+      'プランの週数と、ロング走をどこまで伸ばすかを決めます。すでに走った距離ではなく、これから目指す距離を選んでください。';
+
+  @override
+  String get planNewGoalTimeHint => 'ペース目標を決めます。距離だけのプランにする場合は空欄のままにしてください。';
+
+  @override
+  String get planNewOverrideHelp =>
+      '空欄にすると、目標レースの標準的な週数が使われます。レース当日から逆算する場合に週数を指定してください。';
+
+  @override
+  String get planNewNameHelp => 'プラン一覧と各週の見出しに表示される名前です。スケジュールには影響しません。';
+
+  @override
+  String get planNewRecent5kConfirmHint =>
+      'チェックを入れない場合、ペースは上のタイムではなく目標タイムから設定されます。';
+
+  @override
+  String planNewGoalAheadOfRecent(String predicted) {
+    return '目標が最近のランから見込まれるタイムより速くなっています。最近のランからは、この距離でおよそ$predictedと予測されます。ペースは目標から設定されるため、目標が意欲的だとプランのすべてのペースも速くなります。目標を遅めにするか、下で最近の5Kを確認すると、今走れるペースに合わせられます。';
+  }
+
+  @override
+  String get planNewReturnTitle => 'ブランクからの復帰';
+
+  @override
+  String planNewReturnBody(int weeks, String pre, String cap) {
+    return '約$weeks週間のブランクがありました。それ以前は週平均$pre走っていたので、第1週は最大$capまでとし、プラン本来のスケジュールに追いつくまで毎週の増加は最大10%に抑えます。この期間のスピード練習はイージーランに置き換わります。';
+  }
+
+  @override
+  String get planNewReturnEaseBack => '無理なく再開する';
+
+  @override
+  String get planNewReturnWalkRun => '代わりにウォーク＆ランで復帰する';
+
+  @override
+  String planNewThinHistory(String opening) {
+    return '直近4週間のうち走ったのは3週未満のため、このプランを最近のトレーニングと比較できません。第1週（$opening）が最近の走行量より多い場合は、日数を減らすかウォーク＆ランにすると無理なく始められます。';
+  }
+
+  @override
+  String get planNewThinHistoryWalkRun => 'ウォーク＆ランで始める';
+
+  @override
+  String planNewStarterSummary(int weeks, int days) {
+    return '$weeks週間・週$days日';
+  }
+
+  @override
+  String planNewStarterSummaryTimed(int weeks, int days, int min, int max) {
+    return '$weeks週間・週$days日・1回$min〜$max分';
+  }
+
+  @override
+  String plansStarterStarts(String date) {
+    return '$date開始';
+  }
+
+  @override
+  String get planNewStartDateHint =>
+      'ここから第1週が始まります。プランの週は日曜日から土曜日までのため、選べるのは日曜日だけです。';
+
+  @override
+  String get planNewStartDatePickerHelp => '日曜日を選んでください';
+
+  @override
+  String get planNewStartDatePickerHelpWalkRun => '好きな日を選んでください';
+
+  @override
+  String get planNewHoursLabel => '時間';
+
+  @override
+  String get planNewMinutesLabel => '分';
+
+  @override
+  String get planNewSecondsLabel => '秒';
+
+  @override
+  String get planNewNameRequired => 'プラン名を入力してください。';
+
+  @override
+  String get planNewReadyMadeTitle => '用意されたプランから始める';
+
+  @override
+  String get planNewReadyMadeBody => '組み込みのプラン、または所属クラブが公開したプランです。作成後に編集できます。';
+
+  @override
+  String get planNewReadyMadeButton => '用意されたプランを見る';
+
+  @override
+  String get planNewReadyMadeBuiltIn => '組み込みプラン';
+
+  @override
+  String get planNewReadyMadeClubs => '所属クラブから';
+
+  @override
+  String get planNewBuildOwn => 'または自分で作成';
+
+  @override
+  String planNewSummary(int weeks, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '$weeks週間',
+    );
+    return '$_temp0・$date終了';
+  }
 }

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ui_kit/ui_kit.dart' show EmptyState, ListSkeleton, ProgressBar;
 import '../lib/l10n/gen/app_localizations.dart';
+import '../lib/plan_labels.dart' show starterStartDate;
 import '../lib/screens/plan_library_screen.dart';
 import '../lib/screens/plans_screen.dart';
 import '../lib/training.dart';
@@ -493,14 +494,33 @@ void main() {
       await tester.pump(const Duration(seconds: 1));
     });
 
-    testWidgets('the starter start date is the next Sunday a week out', (_) async {
-      // Wednesday 2026-10-14 → a week out is 2026-10-21 → Sunday 2026-10-25.
+    testWidgets('Couch to 5K starts tomorrow and says what it asks',
+        (tester) async {
+      final training = _FakeTraining([]);
+      await _pumpSignedIn(tester, training);
       expect(
-          planStarterStartDate(DateTime(2026, 10, 14, 18)),
+        tester
+            .widget<Text>(find.byKey(const Key('planStarterSummary-c25k')))
+            .data,
+        matches(RegExp(r'^9 weeks · 3 days a week · \d+–\d+ min a session · Starts ')),
+      );
+      await tester.tap(find.byKey(const Key('planStarter-c25k')));
+      await tester.pump();
+      await tester.pump();
+      expect(training.created!.start, _today().add(const Duration(days: 1)));
+      await tester.pump(const Duration(seconds: 1));
+    });
+
+    testWidgets('a starter start date: tomorrow for walk-run, else a Sunday a week out',
+        (_) async {
+      // Wednesday 2026-10-14 → a week out is 2026-10-21 → Sunday 2026-10-25.
+      expect(starterStartDate('half_12wk', DateTime(2026, 10, 14, 18)),
           DateTime(2026, 10, 25));
       // Sunday → the Sunday a week later, never today.
-      expect(planStarterStartDate(DateTime(2026, 10, 18)),
+      expect(starterStartDate('marathon_16wk', DateTime(2026, 10, 18)),
           DateTime(2026, 10, 25));
+      expect(starterStartDate('c25k', DateTime(2026, 10, 14, 18)),
+          DateTime(2026, 10, 15));
     });
   });
 }

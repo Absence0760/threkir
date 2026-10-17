@@ -9,7 +9,9 @@
 library;
 
 import 'l10n/gen/app_localizations.dart';
+import 'plan_start.dart';
 import 'preferences.dart' show formatDistanceForPref;
+import 'starter_plans.dart';
 import 'training.dart';
 
 String goalEventLabel(AppLocalizations l10n, GoalEvent g) => switch (g) {
@@ -61,3 +63,23 @@ String starterPlanName(AppLocalizations l10n, String id) => switch (id) {
       'marathon_16wk' => l10n.planNewStarterMarathon16,
       _ => id,
     };
+
+/// What a starter asks of the runner, "9 weeks · 3 days a week · 30–45 min a
+/// session", for the line under its name on every surface that offers it.
+/// Mirrors `starterSummaryText` in web `training/starter_labels.ts`.
+String? starterSummaryText(AppLocalizations l10n, String id) {
+  final s = starterSummary(id);
+  if (s == null) return null;
+  final minutes = s.sessionMinutes;
+  return minutes == null
+      ? l10n.planNewStarterSummary(s.weeks, s.daysPerWeek)
+      : l10n.planNewStarterSummaryTimed(
+          s.weeks, s.daysPerWeek, minutes.min, minutes.max);
+}
+
+/// When a starter picked on [today] begins: tomorrow for the walk-run starter,
+/// which has no weekday roles, otherwise the Sunday at least a week out
+/// (decisions § 735). Mirrors `starterStartIso` in web
+/// `training/starter_labels.ts`.
+DateTime starterStartDate(String id, DateTime today) => defaultPlanStart(today,
+    walkRun: starterById(id)?.beginnerWalkRun ?? false);

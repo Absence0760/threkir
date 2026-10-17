@@ -37,4 +37,44 @@ void main() {
       expect(a, isNull);
     },
   );
+
+  group('planRunHistoryFromRows', () {
+    final now = DateTime.utc(2026, 10, 17, 12);
+    Map<String, dynamic> row(int daysAgo, double m, int s,
+            {String type = 'run', String source = 'app', Map? metadata}) =>
+        {
+          'id': 'r$daysAgo',
+          'started_at':
+              now.subtract(Duration(days: daysAgo)).toIso8601String(),
+          'distance_m': m,
+          'duration_s': s,
+          'activity_type': type,
+          'source': source,
+          'metadata': metadata,
+        };
+
+    test('every row counts toward volume; only recent qualifying runs are efforts',
+        () {
+      final h = planRunHistoryFromRows([
+        row(2, 5000, 1800),
+        row(3, 20000, 2400, type: 'cycle'),
+        row(4, 5000, 1800, metadata: {'indoor': true}),
+        row(120, 10000, 3600),
+      ], now.millisecondsSinceEpoch);
+      expect(h.runs, hasLength(4));
+      expect(h.efforts, hasLength(1));
+      expect(h.efforts.single.distanceM, 5000);
+      expect(h.efforts.single.durationS, 1800);
+      expect(h.efforts.single.ageDays, closeTo(2, 1e-9));
+    });
+
+    test('a row with no start time counts nowhere as an effort', () {
+      final h = planRunHistoryFromRows([
+        {'id': 'x', 'started_at': null, 'distance_m': 5000, 'duration_s': 1800},
+      ], now.millisecondsSinceEpoch);
+      expect(h.runs, hasLength(1));
+      expect(h.efforts, isEmpty);
+    });
+  });
 }
+

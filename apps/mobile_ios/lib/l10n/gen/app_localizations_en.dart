@@ -5758,11 +5758,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Couldn\'t load training plans. Tap retry to try again.';
 
   @override
-  String plansStarterStartsOn(String date) {
-    return 'Each starts on $date.';
-  }
-
-  @override
   String get plansStatusActive => 'active';
 
   @override
@@ -5850,9 +5845,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get planNewNameHint => 'e.g. Autumn half marathon';
 
   @override
-  String get planNewNameRequiredHint => 'Add a plan name to enable Create.';
-
-  @override
   String planNewDefaultName(String goal) {
     return '$goal plan';
   }
@@ -5915,10 +5907,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get planNewRecent5kWarning =>
-      'Until you confirm, paces stay on the conservative goal-based estimate. Anchoring on an old result can prescribe paces that are too fast for a returning runner.';
-
-  @override
-  String get planNewOverrideHint => 'Override total weeks';
+      'Until you confirm, paces come from your goal time, or from a cautious default if you leave it blank. An old result can set paces that are too fast for a returning runner, and so can an ambitious goal.';
 
   @override
   String planNewOverrideLabel(int count) {
@@ -6129,36 +6118,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get planNewWeekOutline => 'Week outline';
 
   @override
-  String planNewMoreWeeks(int count) {
-    return '+ $count more weeks';
-  }
-
-  @override
   String planNewSessions(int count) {
     return '$count sessions';
   }
-
-  @override
-  String get planNewTemplateTitle => 'Start from a club template';
-
-  @override
-  String get planNewTemplateSubtitle =>
-      'Adopt a plan a club you belong to has published. It clones into your account with the start date below — edit it like any other plan.';
-
-  @override
-  String get planNewTemplateButton => 'Browse templates';
 
   @override
   String get planNewTemplateCloning => 'Adopting…';
 
   @override
   String get planNewTemplateCloneFailed => 'Couldn\'t adopt that template.';
-
-  @override
-  String get planNewTemplatePickerTitle => 'Choose a template';
-
-  @override
-  String get planNewTemplatePickerCancel => 'Cancel';
 
   @override
   String get planLibraryTitle => 'Public plan library';
@@ -6273,20 +6241,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get planNewStarterTitle => 'Start from a built-in plan';
 
   @override
-  String get planNewStarterSubtitle =>
-      'Pick a proven training plan and we\'ll schedule it from your start date — you can tweak it after.';
-
-  @override
-  String get planNewStarterButton => 'Browse starter plans';
-
-  @override
   String get planNewStarterCreating => 'Creating…';
-
-  @override
-  String get planNewStarterPickerTitle => 'Choose a starter plan';
-
-  @override
-  String get planNewStarterPickerCancel => 'Cancel';
 
   @override
   String get planNewStarterCreateFailed => 'Couldn\'t create that plan.';
@@ -16944,4 +16899,154 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get workoutMoveSaveFirst =>
       'Save or discard your changes before moving this workout.';
+
+  @override
+  String get planNewStartingPoint => 'Where are you starting from?';
+
+  @override
+  String get planNewStartingPointNew => 'I\'ve never run';
+
+  @override
+  String get planNewStartingPointNewHint =>
+      'A walk-run plan on 2 or 3 days a week that builds up to running without a walk break.';
+
+  @override
+  String get planNewStartingPointBuilding => 'I run a bit and want to build up';
+
+  @override
+  String get planNewStartingPointBuildingHint =>
+      'No race in mind: pick a distance to build towards, with no goal time.';
+
+  @override
+  String get planNewStartingPointRace => 'I\'m training for a race';
+
+  @override
+  String get planNewStartingPointRaceHint =>
+      'A goal race, and a goal time if you have one.';
+
+  @override
+  String get planNewStartDateHintWalkRun =>
+      'Week 1 begins here. A walk-run plan can start on any day, today included.';
+
+  @override
+  String get planNewDaysPerWeekHint =>
+      'How many days a week the plan puts a run on; the rest are rest days. Pick the number you can hold every week, not the number your best week had.';
+
+  @override
+  String get planNewDaysPerWeekWalkRunHint =>
+      'A walk-run plan puts a rest day after every session, so it runs 2 or 3 days a week.';
+
+  @override
+  String get planNewGoalRaceHint =>
+      'Sets how many weeks the plan runs and how far the long runs build to. Pick the distance you are training towards, not one you have already run.';
+
+  @override
+  String get planNewGoalTimeHint =>
+      'Drives the pace targets. Leave blank for a volume-only plan.';
+
+  @override
+  String get planNewOverrideHelp =>
+      'Leave blank for the usual length for your goal race. Set it when you are working back from a race date that is closer or further off.';
+
+  @override
+  String get planNewNameHelp =>
+      'What the plan is called in your plans list and at the top of every week. It has no effect on the schedule.';
+
+  @override
+  String get planNewRecent5kConfirmHint =>
+      'Leave it unticked and your paces come from your goal time instead of the time above.';
+
+  @override
+  String planNewGoalAheadOfRecent(String predicted) {
+    return 'Your goal is quicker than your recent runs suggest: they point to about $predicted for this distance. Paces are set from the goal, so if it\'s ambitious, every pace in the plan is too. A slower goal, or a recent 5K you confirm below, sets them from what you can run now.';
+  }
+
+  @override
+  String get planNewReturnTitle => 'Coming back from a break';
+
+  @override
+  String planNewReturnBody(int weeks, String pre, String cap) {
+    return 'You\'ve had about $weeks weeks off. Before that you averaged $pre a week, so week 1 asks for no more than $cap and each week adds at most 10% until the plan reaches its own schedule. Speed sessions in those weeks become easy runs.';
+  }
+
+  @override
+  String get planNewReturnEaseBack => 'Ease me back in';
+
+  @override
+  String get planNewReturnWalkRun => 'Return with walk-run intervals instead';
+
+  @override
+  String planNewThinHistory(String opening) {
+    return 'You\'ve run in fewer than 3 of the last 4 weeks, so this plan can\'t be checked against your recent training. If week 1 ($opening) is more than you\'ve been running, fewer days or walk-run intervals make a gentler start.';
+  }
+
+  @override
+  String get planNewThinHistoryWalkRun => 'Start with walk-run intervals';
+
+  @override
+  String planNewStarterSummary(int weeks, int days) {
+    return '$weeks weeks · $days days a week';
+  }
+
+  @override
+  String planNewStarterSummaryTimed(int weeks, int days, int min, int max) {
+    return '$weeks weeks · $days days a week · $min–$max min a session';
+  }
+
+  @override
+  String plansStarterStarts(String date) {
+    return 'Starts $date';
+  }
+
+  @override
+  String get planNewStartDateHint =>
+      'Week 1 begins here. The plan\'s weeks run Sunday to Saturday, so only a Sunday can be picked.';
+
+  @override
+  String get planNewStartDatePickerHelp => 'Pick a Sunday';
+
+  @override
+  String get planNewStartDatePickerHelpWalkRun => 'Pick any day';
+
+  @override
+  String get planNewHoursLabel => 'Hours';
+
+  @override
+  String get planNewMinutesLabel => 'Minutes';
+
+  @override
+  String get planNewSecondsLabel => 'Seconds';
+
+  @override
+  String get planNewNameRequired => 'Add a plan name.';
+
+  @override
+  String get planNewReadyMadeTitle => 'Start from a ready-made plan';
+
+  @override
+  String get planNewReadyMadeBody =>
+      'A built-in plan, or one a club you belong to has published. You can edit it after.';
+
+  @override
+  String get planNewReadyMadeButton => 'Browse ready-made plans';
+
+  @override
+  String get planNewReadyMadeBuiltIn => 'Built-in plans';
+
+  @override
+  String get planNewReadyMadeClubs => 'From your clubs';
+
+  @override
+  String get planNewBuildOwn => 'Or build your own';
+
+  @override
+  String planNewSummary(int weeks, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '$weeks weeks',
+      one: '$weeks week',
+    );
+    return '$_temp0 · ends $date';
+  }
 }

@@ -2586,18 +2586,6 @@
   "@runResumeDiscardedBanner": {
     "description": "Banner shown after the user discards a recovered partial from the resume prompt"
   },
-  "runStartWorkout": "Start workout",
-  "@runStartWorkout": {
-    "description": "Option in the workout-entry sheet to begin a structured workout"
-  },
-  "runStartWorkoutSubtitle": "Run with live step targets, audio cues, and a planned-vs-actual review.",
-  "@runStartWorkoutSubtitle": {
-    "description": "Subtitle of the Start-workout option in the workout-entry sheet"
-  },
-  "runViewWorkoutDetails": "View details",
-  "@runViewWorkoutDetails": {
-    "description": "Option in the workout-entry sheet to open the workout detail screen"
-  },
   "runWorkoutNoStructure": "This workout has no runnable structure.",
   "@runWorkoutNoStructure": {
     "description": "Banner shown when a selected workout has no runnable steps"
@@ -13665,17 +13653,29 @@
   "@workoutEditKindLabel": {
     "description": "Label for the workout kind dropdown"
   },
-  "workoutEditDistanceLabel": "Target distance (km)",
+  "workoutEditDistanceLabel": "Target distance ({unit})",
   "@workoutEditDistanceLabel": {
-    "description": "Label for the target distance field (km)"
+    "description": "Label for the target distance field, in the runner's distance unit",
+    "placeholders": {
+      "unit": {
+        "type": "String",
+        "example": "km"
+      }
+    }
   },
   "workoutEditDistanceHint": "e.g. 8.0",
   "@workoutEditDistanceHint": {
     "description": "Example hint for the target distance field"
   },
-  "workoutEditPaceLabel": "Target pace (mm:ss /km)",
+  "workoutEditPaceLabel": "Target pace (mm:ss /{unit})",
   "@workoutEditPaceLabel": {
-    "description": "Label for the target pace field"
+    "description": "Label for the target pace field, per the runner's distance unit",
+    "placeholders": {
+      "unit": {
+        "type": "String",
+        "example": "km"
+      }
+    }
   },
   "workoutEditPaceHint": "e.g. 5:30",
   "@workoutEditPaceHint": {
@@ -13729,9 +13729,15 @@
   "@workoutEditSave": {
     "description": "Button to save the workout"
   },
-  "workoutEditErrDistance": "Enter a positive distance in km",
+  "workoutEditErrDistance": "Enter a positive distance in {unit}",
   "@workoutEditErrDistance": {
-    "description": "Validation error for the distance field"
+    "description": "Validation error for the distance field",
+    "placeholders": {
+      "unit": {
+        "type": "String",
+        "example": "km"
+      }
+    }
   },
   "workoutEditErrPace": "Pace must look like 5:30",
   "@workoutEditErrPace": {
@@ -14362,6 +14368,14 @@
   "ttsStepCooldown": "Cooldown",
   "@ttsStepCooldown": {
     "description": "Spoken workout-step intro: cooldown"
+  },
+  "ttsStepWarmupWalk": "Warm-up walk",
+  "@ttsStepWarmupWalk": {
+    "description": "Spoken intro of the walking warm-up that opens a walk-run (couch-to-5k) session, said instead of plain 'Warmup' so a beginner knows to walk"
+  },
+  "ttsStepCooldownWalk": "Cool-down walk",
+  "@ttsStepCooldownWalk": {
+    "description": "Spoken intro of the walking cool-down that closes a walk-run (couch-to-5k) session"
   },
   "ttsStepRep": "Rep",
   "@ttsStepRep": {

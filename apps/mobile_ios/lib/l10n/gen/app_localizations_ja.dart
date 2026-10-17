@@ -1920,15 +1920,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runResumeDiscardedBanner => '前回のランを破棄しました。';
 
   @override
-  String get runStartWorkout => 'ワークアウトを開始';
-
-  @override
-  String get runStartWorkoutSubtitle => 'ライブのステップ目標、音声ガイド、計画と実績の振り返り付きで走ります。';
-
-  @override
-  String get runViewWorkoutDetails => '詳細を見る';
-
-  @override
   String get runWorkoutNoStructure => 'このワークアウトには実行可能な構成がありません。';
 
   @override
@@ -9692,13 +9683,17 @@ class AppLocalizationsJa extends AppLocalizations {
   String get workoutEditKindLabel => '種類';
 
   @override
-  String get workoutEditDistanceLabel => '目標距離 (km)';
+  String workoutEditDistanceLabel(String unit) {
+    return '目標距離 ($unit)';
+  }
 
   @override
   String get workoutEditDistanceHint => '例：8.0';
 
   @override
-  String get workoutEditPaceLabel => '目標ペース (mm:ss /km)';
+  String workoutEditPaceLabel(String unit) {
+    return '目標ペース (mm:ss /$unit)';
+  }
 
   @override
   String get workoutEditPaceHint => '例：5:30';
@@ -9740,7 +9735,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get workoutEditSave => '保存';
 
   @override
-  String get workoutEditErrDistance => '正の距離を km で入力してください';
+  String workoutEditErrDistance(String unit) {
+    return '正の距離を $unit で入力してください';
+  }
 
   @override
   String get workoutEditErrPace => 'ペースは 5:30 の形式で入力してください';
@@ -10137,6 +10134,12 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get ttsStepCooldown => 'クールダウン';
+
+  @override
+  String get ttsStepWarmupWalk => 'ウォームアップのウォーク';
+
+  @override
+  String get ttsStepCooldownWalk => 'クールダウンのウォーク';
 
   @override
   String get ttsStepRep => 'レップ';

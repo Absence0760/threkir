@@ -40,3 +40,11 @@ export function paceMinutesSeconds(secPerUnit: number): string {
 export function isMeaningfulPace(seconds: number, metres: number): boolean {
 	return Number.isFinite(seconds) && Number.isFinite(metres) && seconds > 0 && metres > 0;
 }
+
+/// A pace tolerance is stored as seconds per km (`target_pace_tolerance_sec`).
+/// Next to a /mi pace it has to be per mile too, and say so: "±10s" beside
+/// "8:03/mi" read as ten seconds a mile when it meant sixteen.
+export function paceToleranceLabel(secPerKm: number, unit: 'km' | 'mi'): string {
+	const sec = unit === 'mi' ? secPerKm * (1609.344 / 1000) : secPerKm;
+	return `±${Math.round(sec)}s/${unit}`;
+}

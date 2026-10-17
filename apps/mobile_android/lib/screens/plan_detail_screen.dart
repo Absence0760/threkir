@@ -1021,6 +1021,11 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
           TodaysWorkoutCard(
             workout: todayWorkout,
             onTap: () => _openWorkout(todayWorkout),
+            // Only the plan's runner starts its workout: a coach or a
+            // template viewer reading the plan has nothing to record.
+            onStart: _isOwner(p) && !p.isTemplate
+                ? () => _startWorkout(todayWorkout)
+                : null,
           ),
         ],
         if (_weeks.isNotEmpty) ...[
@@ -1800,11 +1805,15 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
     );
     if (!mounted) return;
     if (result != null) {
-      pendingStartWorkout.value = result;
-      Navigator.of(context).popUntil((r) => r.isFirst);
+      _startWorkout(result);
       return;
     }
     _load();
+  }
+
+  void _startWorkout(PlanWorkoutRow wo) {
+    pendingStartWorkout.value = wo;
+    Navigator.of(context).popUntil((r) => r.isFirst);
   }
 }
 

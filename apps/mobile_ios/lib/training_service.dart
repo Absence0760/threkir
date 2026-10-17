@@ -48,9 +48,17 @@ typedef PlanWorkoutRaceFields = ({
   int? goalTimeSec,
 });
 
+/// A workout's distance and pace targets, written together by
+/// [TrainingService.updateWorkout]: a null field clears its column, so an
+/// emptied field in the edit sheet removes the target instead of keeping it.
+typedef PlanWorkoutTargets = ({double? distanceM, int? paceSecPerKm});
+
 /// The `plan_workouts` patch [TrainingService.updateWorkout] sends. A null
-/// argument leaves its column alone, except inside [race]: that writes the
-/// race name, priority and goal time as given, nulls included. A [kind]
+/// argument leaves its column alone, except inside [race] and [targets]:
+/// those write their columns as given, nulls included. A `rest` [kind]
+/// clears every target (distance, pace, pace range, tolerance, zone and
+/// structure), as web's `WorkoutEditor` does, so a day switched to rest
+/// cannot keep the tempo it used to be. A [kind]
 /// other than `race` clears the race name and priority instead, since the
 /// table allows them only on race rows (23514 otherwise), and when the row
 /// was a race ([fromKind]) it clears the race's goal time too, so a former
@@ -61,8 +69,7 @@ typedef PlanWorkoutRaceFields = ({
 Map<String, dynamic> planWorkoutPatch({
   String? kind,
   String? fromKind,
-  double? targetDistanceM,
-  int? targetPaceSecPerKm,
+  PlanWorkoutTargets? targets,
   String? notes,
   PlanWorkoutRaceFields? race,
 }) {
@@ -79,11 +86,16 @@ Map<String, dynamic> planWorkoutPatch({
     patch[PlanWorkoutRow.colRacePriority] = race.priority;
     patch[PlanWorkoutRow.colTargetDurationSeconds] = race.goalTimeSec;
   }
-  if (targetDistanceM != null) {
-    patch[PlanWorkoutRow.colTargetDistanceM] = targetDistanceM;
-  }
-  if (targetPaceSecPerKm != null) {
-    patch[PlanWorkoutRow.colTargetPaceSecPerKm] = targetPaceSecPerKm;
+  if (kind == 'rest') {
+    patch[PlanWorkoutRow.colTargetDistanceM] = null;
+    patch[PlanWorkoutRow.colTargetPaceSecPerKm] = null;
+    patch[PlanWorkoutRow.colTargetPaceEndSecPerKm] = null;
+    patch[PlanWorkoutRow.colTargetPaceToleranceSec] = null;
+    patch[PlanWorkoutRow.colPaceZone] = null;
+    patch[PlanWorkoutRow.colStructure] = null;
+  } else if (targets != null) {
+    patch[PlanWorkoutRow.colTargetDistanceM] = targets.distanceM;
+    patch[PlanWorkoutRow.colTargetPaceSecPerKm] = targets.paceSecPerKm;
   }
   if (notes != null) {
     patch[PlanWorkoutRow.colNotes] = TrainingService.trimToNull(notes);
@@ -1100,16 +1112,14 @@ class TrainingService extends ChangeNotifier {
     String workoutId, {
     String? kind,
     String? fromKind,
-    double? targetDistanceM,
-    int? targetPaceSecPerKm,
+    PlanWorkoutTargets? targets,
     String? notes,
     PlanWorkoutRaceFields? race,
   }) async {
     final patch = planWorkoutPatch(
       kind: kind,
       fromKind: fromKind,
-      targetDistanceM: targetDistanceM,
-      targetPaceSecPerKm: targetPaceSecPerKm,
+      targets: targets,
       notes: notes,
       race: race,
     );

@@ -3449,24 +3449,6 @@ abstract class AppLocalizations {
   /// **'Discarded your previous run.'**
   String get runResumeDiscardedBanner;
 
-  /// Option in the workout-entry sheet to begin a structured workout
-  ///
-  /// In en, this message translates to:
-  /// **'Start workout'**
-  String get runStartWorkout;
-
-  /// Subtitle of the Start-workout option in the workout-entry sheet
-  ///
-  /// In en, this message translates to:
-  /// **'Run with live step targets, audio cues, and a planned-vs-actual review.'**
-  String get runStartWorkoutSubtitle;
-
-  /// Option in the workout-entry sheet to open the workout detail screen
-  ///
-  /// In en, this message translates to:
-  /// **'View details'**
-  String get runViewWorkoutDetails;
-
   /// Banner shown when a selected workout has no runnable steps
   ///
   /// In en, this message translates to:
@@ -16647,11 +16629,11 @@ abstract class AppLocalizations {
   /// **'Kind'**
   String get workoutEditKindLabel;
 
-  /// Label for the target distance field (km)
+  /// Label for the target distance field, in the runner's distance unit
   ///
   /// In en, this message translates to:
-  /// **'Target distance (km)'**
-  String get workoutEditDistanceLabel;
+  /// **'Target distance ({unit})'**
+  String workoutEditDistanceLabel(String unit);
 
   /// Example hint for the target distance field
   ///
@@ -16659,11 +16641,11 @@ abstract class AppLocalizations {
   /// **'e.g. 8.0'**
   String get workoutEditDistanceHint;
 
-  /// Label for the target pace field
+  /// Label for the target pace field, per the runner's distance unit
   ///
   /// In en, this message translates to:
-  /// **'Target pace (mm:ss /km)'**
-  String get workoutEditPaceLabel;
+  /// **'Target pace (mm:ss /{unit})'**
+  String workoutEditPaceLabel(String unit);
 
   /// Example hint for the target pace field
   ///
@@ -16746,8 +16728,8 @@ abstract class AppLocalizations {
   /// Validation error for the distance field
   ///
   /// In en, this message translates to:
-  /// **'Enter a positive distance in km'**
-  String get workoutEditErrDistance;
+  /// **'Enter a positive distance in {unit}'**
+  String workoutEditErrDistance(String unit);
 
   /// Validation error for the pace field
   ///
@@ -17414,6 +17396,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cooldown'**
   String get ttsStepCooldown;
+
+  /// Spoken intro of the walking warm-up that opens a walk-run (couch-to-5k) session, said instead of plain 'Warmup' so a beginner knows to walk
+  ///
+  /// In en, this message translates to:
+  /// **'Warm-up walk'**
+  String get ttsStepWarmupWalk;
+
+  /// Spoken intro of the walking cool-down that closes a walk-run (couch-to-5k) session
+  ///
+  /// In en, this message translates to:
+  /// **'Cool-down walk'**
+  String get ttsStepCooldownWalk;
 
   /// Spoken workout-step intro: a rep with no index
   ///

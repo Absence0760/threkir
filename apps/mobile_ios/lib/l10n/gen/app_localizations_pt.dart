@@ -2002,16 +2002,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get runResumeDiscardedBanner => 'Corrida anterior descartada.';
 
   @override
-  String get runStartWorkout => 'Iniciar treino';
-
-  @override
-  String get runStartWorkoutSubtitle =>
-      'Corra com metas de etapa em direto, avisos de áudio e uma análise de planeado vs. realizado.';
-
-  @override
-  String get runViewWorkoutDetails => 'Ver detalhes';
-
-  @override
   String get runWorkoutNoStructure =>
       'Este treino não tem uma estrutura executável.';
 
@@ -10210,13 +10200,17 @@ class AppLocalizationsPt extends AppLocalizations {
   String get workoutEditKindLabel => 'Tipo';
 
   @override
-  String get workoutEditDistanceLabel => 'Distância alvo (km)';
+  String workoutEditDistanceLabel(String unit) {
+    return 'Distância alvo ($unit)';
+  }
 
   @override
   String get workoutEditDistanceHint => 'ex. 8.0';
 
   @override
-  String get workoutEditPaceLabel => 'Ritmo alvo (mm:ss /km)';
+  String workoutEditPaceLabel(String unit) {
+    return 'Ritmo alvo (mm:ss /$unit)';
+  }
 
   @override
   String get workoutEditPaceHint => 'ex. 5:30';
@@ -10259,7 +10253,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get workoutEditSave => 'Guardar';
 
   @override
-  String get workoutEditErrDistance => 'Insira uma distância positiva em km';
+  String workoutEditErrDistance(String unit) {
+    return 'Insira uma distância positiva em $unit';
+  }
 
   @override
   String get workoutEditErrPace => 'O ritmo deve ter o formato 5:30';
@@ -10661,6 +10657,12 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get ttsStepCooldown => 'Desaquecimento';
+
+  @override
+  String get ttsStepWarmupWalk => 'Caminhada de aquecimento';
+
+  @override
+  String get ttsStepCooldownWalk => 'Caminhada de desaquecimento';
 
   @override
   String get ttsStepRep => 'Repetição';
@@ -18903,16 +18905,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get runResumeDiscardedBanner => 'Corrida anterior descartada.';
 
   @override
-  String get runStartWorkout => 'Iniciar treino';
-
-  @override
-  String get runStartWorkoutSubtitle =>
-      'Corra com metas de etapa ao vivo, avisos de áudio e uma análise de planejado vs. realizado.';
-
-  @override
-  String get runViewWorkoutDetails => 'Ver detalhes';
-
-  @override
   String get runWorkoutNoStructure =>
       'Este treino não tem uma estrutura executável.';
 
@@ -27101,13 +27093,17 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get workoutEditKindLabel => 'Tipo';
 
   @override
-  String get workoutEditDistanceLabel => 'Distância alvo (km)';
+  String workoutEditDistanceLabel(String unit) {
+    return 'Distância alvo ($unit)';
+  }
 
   @override
   String get workoutEditDistanceHint => 'ex. 8.0';
 
   @override
-  String get workoutEditPaceLabel => 'Ritmo alvo (mm:ss /km)';
+  String workoutEditPaceLabel(String unit) {
+    return 'Ritmo alvo (mm:ss /$unit)';
+  }
 
   @override
   String get workoutEditPaceHint => 'ex. 5:30';
@@ -27150,7 +27146,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get workoutEditSave => 'Salvar';
 
   @override
-  String get workoutEditErrDistance => 'Insira uma distância positiva em km';
+  String workoutEditErrDistance(String unit) {
+    return 'Insira uma distância positiva em $unit';
+  }
 
   @override
   String get workoutEditErrPace => 'O ritmo deve ter o formato 5:30';
@@ -27552,6 +27550,12 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get ttsStepCooldown => 'Desaquecimento';
+
+  @override
+  String get ttsStepWarmupWalk => 'Caminhada de aquecimento';
+
+  @override
+  String get ttsStepCooldownWalk => 'Caminhada de desaquecimento';
 
   @override
   String get ttsStepRep => 'Repetição';

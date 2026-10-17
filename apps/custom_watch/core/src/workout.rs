@@ -20,8 +20,14 @@
 //! - **The halfway progress cue** — a display-only banner has no chime to
 //!   carry it, and the page's live progress already says "past half". The
 //!   end-of-step warning IS ported (it is the time-critical one: get ready).
-//! - **Pace-drift events** — the configured pace-band alert and this page's
-//!   adherence flag own that surface on the watch.
+//! - **Pace-drift events** — this page's adherence flag owns that surface on
+//!   the watch. The configured pace-band alert stands down while a workout
+//!   is live, the phone's `ownsPaceCues` (decisions § 2076), and an unpaced
+//!   (walk-run) step flags no adherence at all (§ 2074).
+//! - **The "Warm-up walk" / "Cool-down walk" wording** — the phone says it so
+//!   a beginner doesn't start running on "Warmup". The watch banner keeps the
+//!   kind's WARMUP / COOLDOWN: the kind byte carries no `paced` bit, and a
+//!   silent banner the runner glances at is not the cue that sets them off.
 //! - **The Dart event stream** — a `no_std` core carries no streams. Edges
 //!   travel as monotonic counters in [`WorkoutView`] ([`transition_seq`,
 //!   `ending_seq`](WorkoutView)); the alert engine fires a banner when one

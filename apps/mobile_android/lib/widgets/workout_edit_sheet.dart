@@ -6,6 +6,7 @@ import '../goal_time.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../plan_move.dart';
 import '../plan_races.dart';
+import '../preferences.dart' show activeDistanceUnit;
 import '../training.dart';
 import '../training_labels.dart';
 import '../training_service.dart';
@@ -14,7 +15,8 @@ import 'full_screen_form.dart';
 import 'workout_move_sheet.dart';
 
 /// Full-screen dialog for inline editing of a planned workout's kind,
-/// target distance, target pace, and notes, plus — on a `race` workout — the
+/// target distance, target pace (both in the runner's unit; empty clears),
+/// and notes, plus — on a `race` workout — the
 /// race's name, A/B/C priority and goal time. The caller is responsible
 /// for refreshing the plan view after the sheet returns. Presentation
 /// goes through [showFullScreenForm], the shared create/edit-entity wrapper.
@@ -64,6 +66,10 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
   late final TextEditingController _raceNameCtl;
   late final TextEditingController _raceGoalCtl;
   String? _racePriority;
+  // Targets are typed and shown in the runner's unit and stored per km.
+  late final bool _miles;
+  late final String _initialDistanceText;
+  late final String _initialPaceText;
   bool _saving = false;
   String? _distanceError;
   String? _paceError;
@@ -75,16 +81,15 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
     super.initState();
     final w = widget.workout;
     _kind = workoutKindFromDb(w.kind);
-    _distanceCtl = TextEditingController(
-      text: w.targetDistanceM == null
-          ? ''
-          : (w.targetDistanceM! / 1000).toStringAsFixed(1),
-    );
-    _paceCtl = TextEditingController(
-      text: w.targetPaceSecPerKm == null
-          ? ''
-          : _paceToEditText(w.targetPaceSecPerKm!),
-    );
+    _miles = activeDistanceUnit == DistanceUnit.mi;
+    _initialDistanceText = w.targetDistanceM == null
+        ? ''
+        : (w.targetDistanceM! / _metresPerUnit).toStringAsFixed(1);
+    _initialPaceText = w.targetPaceSecPerKm == null
+        ? ''
+        : _paceToEditText((w.targetPaceSecPerKm! * _kmPerUnit).round());
+    _distanceCtl = TextEditingController(text: _initialDistanceText);
+    _paceCtl = TextEditingController(text: _initialPaceText);
     _notesCtl = TextEditingController(text: w.notes ?? '');
     _raceNameCtl = TextEditingController(text: w.raceName ?? '');
     _raceGoalCtl = TextEditingController(
@@ -98,6 +103,10 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
   }
 
   late final String _initialSnapshot;
+
+  double get _metresPerUnit => _miles ? 1609.344 : 1000;
+  double get _kmPerUnit => _metresPerUnit / 1000;
+  String get _unitLabel => _miles ? 'mi' : 'km';
 
   String _snapshot() => [
         _kind.name,
@@ -141,10 +150,12 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
           ),
           const SizedBox(height: 8),
           TextField(
+            key: const Key('workoutEditDistance'),
             controller: _distanceCtl,
+            enabled: _kind != WorkoutKind.rest,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: InputDecoration(
-              labelText: l10n.workoutEditDistanceLabel,
+              labelText: l10n.workoutEditDistanceLabel(_unitLabel),
               hintText: l10n.workoutEditDistanceHint,
               errorText: _distanceError,
             ),
@@ -156,10 +167,12 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
           ),
           const SizedBox(height: 8),
           TextField(
+            key: const Key('workoutEditPace'),
             controller: _paceCtl,
+            enabled: _kind != WorkoutKind.rest,
             keyboardType: TextInputType.text,
             decoration: InputDecoration(
-              labelText: l10n.workoutEditPaceLabel,
+              labelText: l10n.workoutEditPaceLabel(_unitLabel),
               hintText: l10n.workoutEditPaceHint,
               errorText: _paceError,
             ),
@@ -289,26 +302,41 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
     final l10n = AppLocalizations.of(context);
     // Validate both targets in one pass so each invalid field is flagged
     // inline at once (sign_up_screen idiom).
+    // An emptied field clears its target. A field left as it was keeps the
+    // stored value: the text is rounded for display, and re-reading it
+    // would nudge an untouched 8.05 km target to 8.1.
     final distanceText = _distanceCtl.text.trim();
     double? distanceM;
     String? distanceError;
-    if (distanceText.isNotEmpty) {
-      final km = parseTypedDecimal(distanceText);
-      if (km == null || km <= 0) {
-        distanceError = l10n.workoutEditErrDistance;
+    if (distanceText == _initialDistanceText) {
+      distanceM = widget.workout.targetDistanceM;
+    } else if (distanceText.isNotEmpty) {
+      final v = parseTypedDecimal(distanceText);
+      if (v == null || v <= 0) {
+        distanceError = l10n.workoutEditErrDistance(_unitLabel);
       } else {
-        distanceM = km * 1000;
+        distanceM = v * _metresPerUnit;
       }
     }
 
     final paceText = _paceCtl.text.trim();
     int? paceSecPerKm;
     String? paceError;
-    if (paceText.isNotEmpty) {
-      paceSecPerKm = _parsePaceMmSs(paceText);
-      if (paceSecPerKm == null) {
+    if (paceText == _initialPaceText) {
+      paceSecPerKm = widget.workout.targetPaceSecPerKm;
+    } else if (paceText.isNotEmpty) {
+      final perUnit = _parsePaceMmSs(paceText);
+      if (perUnit == null) {
         paceError = l10n.workoutEditErrPace;
+      } else {
+        paceSecPerKm = (perUnit / _kmPerUnit).round();
       }
+    }
+
+    // A rest day has no targets to validate: the patch clears them all.
+    if (_kind == WorkoutKind.rest) {
+      distanceError = null;
+      paceError = null;
     }
 
     final isRace = _kind == WorkoutKind.race;
@@ -338,8 +366,7 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
         widget.workout.id,
         kind: workoutKindDbValue(_kind),
         fromKind: widget.workout.kind,
-        targetDistanceM: distanceM,
-        targetPaceSecPerKm: paceSecPerKm,
+        targets: (distanceM: distanceM, paceSecPerKm: paceSecPerKm),
         notes: _notesCtl.text.trim(),
         race: isRace
             ? (

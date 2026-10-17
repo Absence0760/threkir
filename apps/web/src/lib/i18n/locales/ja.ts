@@ -4827,6 +4827,7 @@ export const messages = {
 	"prefs.hrMedicationAffectedHint": "たとえばβ遮断薬です。年齢ベースのゾーンや心拍数によるトレーニング負荷が低く出るため、トレーニング負荷は信頼性が低いと表示されます。これは健康データで、同意を撤回すると消去されます。",
 	"prefs.hrMedicationNeedsConsent": "これは健康データのため、先に健康データへの同意が必要です。",
 	"prefs.hrMedicationGiveConsent": "身体データで同意する",
+	"prefs.hrMedicationConsentCheckFailed": "健康データの同意を確認できなかったため、今はオフのままです。ページを再読み込みしてもう一度お試しください。",
 	"prefs.hrMedicationSetMaxHr": "ゾーンを自分に合わせるため、きつい運動やテストで測った最大心拍数を上に入力してください。",
 	"prefs.demographicsHeading": "属性情報・身体データ",
 	"prefs.demographicsDesc": "任意です。性別と年齢区分はセグメントのリーダーボードの絞り込み（Stravaと同じ区分）に、身長と体重は栄養のカロリー・マクロ目標に使用されます。使用したくない項目は空欄のままにしてください。",

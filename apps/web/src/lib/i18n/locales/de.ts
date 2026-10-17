@@ -4832,6 +4832,7 @@ export const messages = {
 	"prefs.hrMedicationAffectedHint": "Zum Beispiel ein Betablocker. Altersbasierte Zonen und die Herzfrequenz-Trainingslast fallen zu niedrig aus, deshalb wird die Trainingslast als weniger verlässlich markiert. Das ist ein Gesundheitsdatum und wird gelöscht, wenn du deine Einwilligung widerrufst.",
 	"prefs.hrMedicationNeedsConsent": "Das ist ein Gesundheitsdatum und braucht zuerst deine Gesundheitsdaten-Einwilligung.",
 	"prefs.hrMedicationGiveConsent": "In den Körperdaten einwilligen",
+	"prefs.hrMedicationConsentCheckFailed": "Deine Einwilligung zu Gesundheitsdaten konnte nicht geprüft werden, daher bleibt dies vorerst aus. Lade die Seite neu, um es noch einmal zu versuchen.",
 	"prefs.hrMedicationSetMaxHr": "Trag oben eine gemessene maximale Herzfrequenz ein, aus einer harten Belastung oder einem Test, damit deine Zonen zu dir passen.",
 	"prefs.demographicsHeading": "Demografische Daten & Körpermaße",
 	"prefs.demographicsDesc": "Optional. Geschlecht und Altersgruppe steuern die Filter der Segment-Bestenlisten (dieselben Gruppen wie bei Strava); Größe und Gewicht steuern deine Kalorien- und Makro-Ziele für die Ernährung. Lass ein Feld leer, um diese Nutzung zu überspringen.",

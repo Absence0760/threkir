@@ -576,6 +576,30 @@ test.describe('settings preference pages', () => {
 		}
 	});
 
+	test('a failed health-consent read shuts the medication toggle and loads the rest of the page', async ({
+		page
+	}) => {
+		// The consent read decides only whether the Art 9 medication toggle may
+		// be turned on (decisions § 2092). It used to throw out of the page
+		// loader, so one failed read left every training preference unloaded.
+		// The app shell reads the same RPC for the signed-in profile, so the
+		// failure is armed only once the shell has loaded, and the page is then
+		// reached by a client-side navigation that reads it again.
+		await page.goto('/settings/display');
+		await expect(page.getByRole('button', { name: 'Miles', exact: true })).toBeVisible({ timeout: 10_000 });
+		await page.route('**/rest/v1/rpc/get_my_profile**', (route) =>
+			route.fulfill({ status: 500, contentType: 'application/json', body: '{"message":"boom"}' })
+		);
+		await page.locator('a[href="/settings/training"]').first().click();
+		await expect(page).toHaveURL(/\/settings\/training$/);
+		await expect(page.getByTestId('hr-medication-consent-failed')).toBeVisible({ timeout: 10_000 });
+		await expect(page.getByTestId('hr-medication-toggle')).toBeDisabled();
+		// The form rendered at all: a loader throw leaves the page in its
+		// failed phase, with an alert and no fields.
+		await expect(page.getByTestId('carbs-per-hour')).toBeVisible();
+		await expect(page.getByTestId('max-hr')).toBeVisible();
+	});
+
 	test('theme toggle: Dark applies html[data-theme] + survives reload', async ({
 		page
 	}) => {

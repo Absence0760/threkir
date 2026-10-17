@@ -5788,7 +5788,8 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get plansAbandonBody => 'Depois pode criar um novo plano.';
+  String get plansAbandonBody =>
+      'As semanas, os treinos e as corridas associadas a este plano mantêm-se. Depois pode criar um novo plano.';
 
   @override
   String plansActionFailed(String error) {
@@ -5796,20 +5797,7 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String plansDaysPerWeek(int count) {
-    return '$count dias/sem.';
-  }
-
-  @override
   String get plansStatusUpcoming => 'próximo';
-
-  @override
-  String get plansSignInTitle =>
-      'Inicie sessão para utilizar os planos de treino';
-
-  @override
-  String get plansSignInBody =>
-      'Os planos sincronizam com a sua conta e acompanham-no em todos os dispositivos. Vá a Definições → Entrar para começar.';
 
   @override
   String get plansEmptyTitle => 'Nenhum plano ainda.';
@@ -5825,6 +5813,89 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get plansLoadError =>
       'Não foi possível carregar os planos de treino. Toque em tentar novamente.';
+
+  @override
+  String plansStarterStartsOn(String date) {
+    return 'Cada um começa a $date.';
+  }
+
+  @override
+  String get plansStatusActive => 'Ativo';
+
+  @override
+  String get plansStatusPaused => 'Pausado';
+
+  @override
+  String get plansStatusCompleted => 'Concluído';
+
+  @override
+  String get plansStatusAbandoned => 'Abandonado';
+
+  @override
+  String get plansFilterGroupLabel => 'Filtrar planos por status';
+
+  @override
+  String get plansFilterAll => 'Todos';
+
+  @override
+  String get plansFilterActive => 'Ativos';
+
+  @override
+  String get plansFilterPaused => 'Pausados';
+
+  @override
+  String get plansFilterCompleted => 'Concluídos';
+
+  @override
+  String get plansFilterAbandoned => 'Abandonados';
+
+  @override
+  String plansNoFilteredPlans(String status) {
+    return 'Nenhum plano $status.';
+  }
+
+  @override
+  String get plansShowAllPlans => 'Mostrar todos os planos';
+
+  @override
+  String get plansHeroGoal => 'Objetivo';
+
+  @override
+  String get plansHeroTarget => 'Meta';
+
+  @override
+  String get plansGoalFinish => 'Terminar';
+
+  @override
+  String get plansEventHalf => 'Meia-maratona';
+
+  @override
+  String get plansEventFull => 'Maratona';
+
+  @override
+  String get plansEventCustom => 'Personalizado';
+
+  @override
+  String plansWeekOf(int week, int total) {
+    return 'Semana $week de $total';
+  }
+
+  @override
+  String get plansEnded => 'Encerrado';
+
+  @override
+  String get plansProgressLabel => 'Progresso do plano';
+
+  @override
+  String plansMetaWeeks(int weeks, int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '$weeks semanas · $days dias/semana',
+      one: '$weeks semana · $days dias/semana',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get planNewTitle => 'Novo plano';
@@ -6183,16 +6254,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get planLibraryAnonymous => 'um corredor';
 
   @override
-  String planLibraryWeeks(int weeks) {
-    return '$weeks semanas';
-  }
-
-  @override
-  String planLibraryDaysPerWeek(int days) {
-    return '$days×/semana';
-  }
-
-  @override
   String get planLibraryClone => 'Clonar nos meus planos';
 
   @override
@@ -6219,6 +6280,17 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String planLibraryPreviewWeek(int n) {
     return 'Semana $n';
+  }
+
+  @override
+  String planLibraryPreviewWeekRuns(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count corridas',
+      one: '$count corrida',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -22837,7 +22909,8 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String get plansAbandonBody => 'Depois você pode criar um novo plano.';
+  String get plansAbandonBody =>
+      'As semanas, os treinos e as corridas vinculadas do plano são mantidos. Depois você pode criar um novo plano.';
 
   @override
   String plansActionFailed(String error) {
@@ -22845,19 +22918,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String plansDaysPerWeek(int count) {
-    return '$count dias/sem.';
-  }
-
-  @override
   String get plansStatusUpcoming => 'agendado';
-
-  @override
-  String get plansSignInTitle => 'Entre para usar os planos de treino';
-
-  @override
-  String get plansSignInBody =>
-      'Os planos sincronizam com a sua conta e acompanham você em todos os dispositivos. Vá em Configurações → Entrar para conectar.';
 
   @override
   String get plansEmptyTitle => 'Nenhum plano ainda.';
@@ -22873,6 +22934,89 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get plansLoadError =>
       'Não foi possível carregar os planos de treino. Toque em tentar novamente.';
+
+  @override
+  String plansStarterStartsOn(String date) {
+    return 'Cada um começa em $date.';
+  }
+
+  @override
+  String get plansStatusActive => 'ativo';
+
+  @override
+  String get plansStatusPaused => 'pausado';
+
+  @override
+  String get plansStatusCompleted => 'concluído';
+
+  @override
+  String get plansStatusAbandoned => 'abandonado';
+
+  @override
+  String get plansFilterGroupLabel => 'Filtrar planos por status';
+
+  @override
+  String get plansFilterAll => 'Todos';
+
+  @override
+  String get plansFilterActive => 'Ativos';
+
+  @override
+  String get plansFilterPaused => 'Pausados';
+
+  @override
+  String get plansFilterCompleted => 'Concluídos';
+
+  @override
+  String get plansFilterAbandoned => 'Abandonados';
+
+  @override
+  String plansNoFilteredPlans(String status) {
+    return 'Nenhum plano $status.';
+  }
+
+  @override
+  String get plansShowAllPlans => 'Mostrar todos os planos';
+
+  @override
+  String get plansHeroGoal => 'Objetivo';
+
+  @override
+  String get plansHeroTarget => 'Meta';
+
+  @override
+  String get plansGoalFinish => 'Terminar';
+
+  @override
+  String get plansEventHalf => 'Meia-maratona';
+
+  @override
+  String get plansEventFull => 'Maratona';
+
+  @override
+  String get plansEventCustom => 'Personalizado';
+
+  @override
+  String plansWeekOf(int week, int total) {
+    return 'Semana $week de $total';
+  }
+
+  @override
+  String get plansEnded => 'Encerrado';
+
+  @override
+  String get plansProgressLabel => 'Progresso do plano';
+
+  @override
+  String plansMetaWeeks(int weeks, int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '$weeks semanas · $days dias/semana',
+      one: '$weeks semana · $days dias/semana',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get planNewTitle => 'Novo plano';
@@ -23231,16 +23375,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get planLibraryAnonymous => 'um corredor';
 
   @override
-  String planLibraryWeeks(int weeks) {
-    return '$weeks semanas';
-  }
-
-  @override
-  String planLibraryDaysPerWeek(int days) {
-    return '$days×/semana';
-  }
-
-  @override
   String get planLibraryClone => 'Clonar nos meus planos';
 
   @override
@@ -23267,6 +23401,17 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String planLibraryPreviewWeek(int n) {
     return 'Semana $n';
+  }
+
+  @override
+  String planLibraryPreviewWeekRuns(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count corridas',
+      one: '$count corrida',
+    );
+    return '$_temp0';
   }
 
   @override

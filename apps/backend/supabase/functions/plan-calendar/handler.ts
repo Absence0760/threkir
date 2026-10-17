@@ -15,9 +15,10 @@
 /// bucket, so the secret read cannot be ground at network rate from one
 /// address; then the secret; then a per-feed bucket, so one leaked URL
 /// hammered from many addresses is capped too. Both buckets fail closed.
-/// The per-IP one is skipped for a caller the trusted header does not name
-/// (planCalendarIpLimiter): calendar providers poll from shared pools, and a
-/// single shared bucket for unnamed callers would let one lock every feed out.
+/// A caller the trusted header does not name shares one high bucket instead
+/// of the per-address one (planCalendarIpLimiter): calendar providers poll
+/// from shared pools, and the low per-address bucket shared by every unnamed
+/// caller would let one lock every feed out.
 
 import {
   buildPlanFeedIcs,

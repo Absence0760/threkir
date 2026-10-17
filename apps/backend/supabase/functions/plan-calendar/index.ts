@@ -25,7 +25,13 @@ import type { Database, DbClient } from '../_shared/database.ts';
 import { checkRateLimit, ipBucketKey, trustedRequestIp } from '../_shared/rate_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';
 import { secretKey } from '../_shared/api_keys.ts';
-import { feedBucketKey, PLAN_CALENDAR_IP_PER_HOUR, planCalendarIpLimiter } from './lib.ts';
+import {
+  feedBucketKey,
+  PLAN_CALENDAR_IP_PER_HOUR,
+  PLAN_CALENDAR_UNNAMED_PER_HOUR,
+  planCalendarIpLimiter,
+  unnamedBucketKey,
+} from './lib.ts';
 import { makePlanCalendarHandler } from './handler.ts';
 
 let admin: DbClient | null = null;
@@ -38,10 +44,17 @@ function adminClient(): DbClient {
 }
 
 const handler = makePlanCalendarHandler({
-  limitByIp: planCalendarIpLimiter(trustedRequestIp, async (req) =>
-    checkRateLimit(adminClient(), await ipBucketKey(req), 'plan-calendar:anon', PLAN_CALENDAR_IP_PER_HOUR, 3600, {
-      failClosed: true,
-    })),
+  limitByIp: planCalendarIpLimiter(
+    trustedRequestIp,
+    async (req) =>
+      checkRateLimit(adminClient(), await ipBucketKey(req), 'plan-calendar:anon', PLAN_CALENDAR_IP_PER_HOUR, 3600, {
+        failClosed: true,
+      }),
+    async () =>
+      checkRateLimit(adminClient(), await unnamedBucketKey(), 'plan-calendar:unnamed', PLAN_CALENDAR_UNNAMED_PER_HOUR, 3600, {
+        failClosed: true,
+      }),
+  ),
   limitByFeed: async (feedId) =>
     checkRateLimit(adminClient(), await feedBucketKey(feedId), 'plan-calendar:feed', 30, 3600, {
       failClosed: true,

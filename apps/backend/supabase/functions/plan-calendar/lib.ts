@@ -83,15 +83,30 @@ export async function feedBucketKey(feedId: string): Promise<string> {
 /// The per-feed bucket (30 an hour, after the secret check) is the tight one.
 export const PLAN_CALENDAR_IP_PER_HOUR = 3600;
 
-/// The per-address limiter, applied only to a caller the trusted header
-/// names. A request it does not name is left to the per-feed bucket rather
-/// than put in one bucket shared by every such caller, where one client
-/// could lock every feed out.
+/// The ceiling shared by every caller the trusted header does not name.
+/// The hosted gateway names every request, so this bucket is normally empty;
+/// it exists so an unnamed path still cannot read secret hashes without
+/// bound. High, so one such client cannot lock the others out at the rate a
+/// calendar polls.
+export const PLAN_CALENDAR_UNNAMED_PER_HOUR = 20_000;
+
+/// The per-address limiter. A caller the trusted header names gets its own
+/// bucket; every unnamed caller shares one high bucket rather than the low
+/// per-address one, where a single client could lock every feed out. Both
+/// fail closed through `check`.
 export function planCalendarIpLimiter(
-  ipOf: (req: Request) => string | null,
-  check: (req: Request) => Promise<Response | null>,
+	ipOf: (req: Request) => string | null,
+	checkNamed: (req: Request) => Promise<Response | null>,
+	checkUnnamed: () => Promise<Response | null>,
 ): (req: Request) => Promise<Response | null> {
-  return (req) => (ipOf(req) === null ? Promise.resolve(null) : check(req));
+	return (req) => (ipOf(req) === null ? checkUnnamed() : checkNamed(req));
+}
+
+/// The rate-limit key every unnamed caller shares, in the same UUIDv8 shape
+/// as the other synthetic keys.
+export async function unnamedBucketKey(): Promise<string> {
+	const hex = await sha256Hex('plan-calendar-unnamed-v1');
+	return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-8${hex.slice(13, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
 }
 
 // ─────────────────── feed document ───────────────────

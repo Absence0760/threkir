@@ -1641,7 +1641,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
                 ],
                 if (wo.targetPaceSecPerKm != null)
                   Text(
-                    '@ ${fmtPace(wo.targetPaceSecPerKm)}',
+                    l10n.todaysWorkoutAtPace(fmtPace(wo.targetPaceSecPerKm)),
                     style: TextStyle(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),

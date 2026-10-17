@@ -112,7 +112,7 @@ class TodaysWorkoutCard extends StatelessWidget {
                               const SizedBox(width: 3),
                               Flexible(
                                 child: Text(
-                                  '@ ${fmtPace(w.targetPaceSecPerKm)}',
+                                  l10n.todaysWorkoutAtPace(fmtPace(w.targetPaceSecPerKm)),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(

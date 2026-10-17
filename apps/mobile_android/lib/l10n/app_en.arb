@@ -13790,6 +13790,16 @@
   "@todaysWorkoutToday": {
     "description": "Badge for today's scheduled workout"
   },
+  "todaysWorkoutAtPace": "@ {pace}",
+  "@todaysWorkoutAtPace": {
+    "description": "Target pace on the Today card, read as 'at <pace>'. {pace} is already formatted with its unit, e.g. 5:30 /km",
+    "placeholders": {
+      "pace": {
+        "type": "String",
+        "example": "5:30 /km"
+      }
+    }
+  },
   "errorStateRetry": "Retry",
   "@errorStateRetry": {
     "description": "Retry button on the shared error state"

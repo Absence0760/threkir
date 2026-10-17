@@ -16797,6 +16797,12 @@ abstract class AppLocalizations {
   /// **'TODAY\'S WORKOUT'**
   String get todaysWorkoutToday;
 
+  /// Target pace on the Today card, read as 'at <pace>'. {pace} is already formatted with its unit, e.g. 5:30 /km
+  ///
+  /// In en, this message translates to:
+  /// **'@ {pace}'**
+  String todaysWorkoutAtPace(String pace);
+
   /// Retry button on the shared error state
   ///
   /// In en, this message translates to:

@@ -10293,6 +10293,11 @@ class AppLocalizationsEs extends AppLocalizations {
   String get todaysWorkoutToday => 'ENTRENAMIENTO DE HOY';
 
   @override
+  String todaysWorkoutAtPace(String pace) {
+    return '@ $pace';
+  }
+
+  @override
   String get errorStateRetry => 'Reintentar';
 
   @override

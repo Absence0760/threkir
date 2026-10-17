@@ -10294,6 +10294,11 @@ class AppLocalizationsPt extends AppLocalizations {
   String get todaysWorkoutToday => 'TREINO DE HOJE';
 
   @override
+  String todaysWorkoutAtPace(String pace) {
+    return '@ $pace';
+  }
+
+  @override
   String get errorStateRetry => 'Tentar novamente';
 
   @override
@@ -27127,6 +27132,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get todaysWorkoutToday => 'TREINO DE HOJE';
+
+  @override
+  String todaysWorkoutAtPace(String pace) {
+    return '@ $pace';
+  }
 
   @override
   String get errorStateRetry => 'Tentar novamente';

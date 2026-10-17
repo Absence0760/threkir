@@ -6,7 +6,7 @@
 -- every other writer.
 
 begin;
-select plan(24);
+select plan(25);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -209,6 +209,12 @@ select is(
    where w.plan_id = 'b2b2b2b2-0000-0000-0000-000000000001'),
   row('2031-03-01'::date, '2031-03-14'::date, 14::bigint)::text,
   'every row moved two days earlier and none was lost'
+);
+select is(
+  (select row(start_date, end_date)::text from training_plans
+   where id = 'b2b2b2b2-0000-0000-0000-000000000001'),
+  row('2031-03-01'::date, '2031-03-14'::date)::text,
+  'the plan window moved two days earlier with its workouts'
 );
 
 select * from finish();

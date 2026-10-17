@@ -1808,6 +1808,34 @@ export function stampedThroughRpc(landings, stamped) {
  */
 export const FILTERED_RPC_ARGUMENTS = [
   {
+    file: 'move_plan_workout_test.sql',
+    description: 'a dense plan shifts by a single day',
+    columns: [
+      'plan_workouts.scheduled_date',
+      'training_plans.end_date',
+      'training_plans.start_date',
+    ],
+    readBack: 'the plan window moved two days earlier with its workouts',
+    reason:
+      'The `lives_ok` measures that a +1 shift on a plan with a workout every day no longer meets ' +
+      'the next day\'s row. The dates are `+ p_days` over the stored ones, never the argument ' +
+      'itself; the net of both shifts is read back as the plan window here and as the workouts\' ' +
+      'span in the assertion before it.',
+  },
+  {
+    file: 'move_plan_workout_test.sql',
+    description: 'and back by three',
+    columns: [
+      'plan_workouts.scheduled_date',
+      'training_plans.end_date',
+      'training_plans.start_date',
+    ],
+    readBack: 'every row moved two days earlier and none was lost',
+    reason:
+      'Same shift, the other direction; the two read-backs after it state the net -2 days for ' +
+      'both the workouts and the plan window, which neither shift alone would produce.',
+  },
+  {
     file: 'atomic_plan_create_test.sql',
     description: 'an overlapping create with trim succeeds',
     columns: ['training_plans.goal_event', 'training_plans.notes', 'training_plans.vdot'],

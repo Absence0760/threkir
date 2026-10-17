@@ -3651,6 +3651,7 @@
   "coachingAthleteStatusDone": "Fait",
   "coachingAthleteStatusMissed": "Manqué",
   "coachingAthleteStatusUpcoming": "À venir",
+  "coachingAthleteStatusSkipped": "Ignoré",
   "coachingAthleteRecentRuns": "Courses récentes",
   "coachingAthleteNoRunsYet": "Aucune course enregistrée pour l'instant.",
   "coachingAthletePrivate": "Privé",

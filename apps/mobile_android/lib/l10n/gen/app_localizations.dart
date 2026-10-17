@@ -21062,6 +21062,12 @@ abstract class AppLocalizations {
   /// **'Upcoming'**
   String get coachingAthleteStatusUpcoming;
 
+  /// Workout status pill: the athlete deliberately skipped this workout, so it is not a miss
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped'**
+  String get coachingAthleteStatusSkipped;
+
   /// Heading of the recent-runs card on the athlete review screen
   ///
   /// In en, this message translates to:

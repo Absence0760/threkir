@@ -16897,6 +16897,10 @@
   "@coachingAthleteStatusUpcoming": {
     "description": "Workout status pill: upcoming"
   },
+  "coachingAthleteStatusSkipped": "Skipped",
+  "@coachingAthleteStatusSkipped": {
+    "description": "Workout status pill: the athlete deliberately skipped this workout, so it is not a miss"
+  },
   "coachingAthleteRecentRuns": "Recent runs",
   "@coachingAthleteRecentRuns": {
     "description": "Heading of the recent-runs card on the athlete review screen"

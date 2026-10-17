@@ -12879,6 +12879,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get coachingAthleteStatusUpcoming => 'Próximo';
 
   @override
+  String get coachingAthleteStatusSkipped => 'Ignorado';
+
+  @override
   String get coachingAthleteRecentRuns => 'Corridas recentes';
 
   @override
@@ -29712,6 +29715,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get coachingAthleteStatusUpcoming => 'Próximo';
+
+  @override
+  String get coachingAthleteStatusSkipped => 'Ignorado';
 
   @override
   String get coachingAthleteRecentRuns => 'Corridas recentes';

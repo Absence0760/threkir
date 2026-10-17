@@ -479,6 +479,46 @@ void main() {
     expect(find.text(l10n.coachingAthleteAssignedByYou), findsOneWidget);
   });
 
+  testWidgets('a past skipped workout reads Skipped, not Missed, and is off '
+      'the books', (tester) async {
+    final prefs = await _prefs();
+    final yesterday = DateTime.now().subtract(const Duration(days: 1));
+    final overview = AthletePlanOverview(
+      plan: _plan('p1', 'My Plan'),
+      weeks: const [],
+      workouts: [
+        PlanWorkoutRow(
+          id: 'skipped',
+          weekId: 'wk1',
+          scheduledDate: yesterday,
+          kind: 'easy',
+          manuallyCompleted: false,
+          skippedAt: yesterday,
+        ),
+        PlanWorkoutRow(
+          id: 'missed',
+          weekId: 'wk1',
+          scheduledDate: yesterday,
+          kind: 'tempo',
+          manuallyCompleted: false,
+        ),
+      ],
+      completionPct: 0,
+    );
+    await _pump(tester, _FakeApi(overview: overview), prefs);
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    expect(find.text(l10n.coachingAthleteStatusSkipped), findsOneWidget);
+    expect(find.text(l10n.coachingAthleteStatusMissed), findsOneWidget);
+    expect(
+      find.textContaining(l10n.coachingAthleteDoneCount(0, 1), findRichText: true),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining(l10n.coachingAthleteMissedCount(1), findRichText: true),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('every workout kind renders the catalogue label, not the raw '
       'db value', (tester) async {
     final prefs = await _prefs();

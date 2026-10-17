@@ -12903,6 +12903,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get coachingAthleteStatusUpcoming => 'À venir';
 
   @override
+  String get coachingAthleteStatusSkipped => 'Ignoré';
+
+  @override
   String get coachingAthleteRecentRuns => 'Courses récentes';
 
   @override

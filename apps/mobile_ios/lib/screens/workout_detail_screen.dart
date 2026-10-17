@@ -436,30 +436,47 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
 
     if (s.warmup != null) {
       add(l10n.workoutStructWarmup,
-          l10n.workoutStructWarmupValue(fmtKm(s.warmup!['distance_m'] as num, 1)));
+          l10n.workoutStructWarmupValue(_stepAmount(s.warmup!, 1)));
     }
     if (s.repeats != null) {
       final r = s.repeats!;
-      add(l10n.workoutStructRepeats,
-          '${r['count']}× ${fmtKm(r['distance_m'] as num, 2)} @ '
-          '${fmtPace((r['pace_sec_per_km'] as num).toInt())} with '
-          '${fmtKm(r['recovery_distance_m'] as num, 2)} ${r['recovery_pace']}');
+      final pace = r['pace_sec_per_km'] as num?;
+      final hasRecovery =
+          r['recovery_distance_m'] != null || r['recovery_duration_s'] != null;
+      add(
+          l10n.workoutStructRepeats,
+          '${r['count']}× ${_stepAmount(r, 2)} @ '
+          '${fmtPace(pace?.toInt())}'
+          '${hasRecovery ? ' with ${_stepAmount(r, 2, recovery: true)} ${r['recovery_pace'] ?? ''}' : ''}');
     }
     if (s.steady != null) {
       final st = s.steady!;
       add(l10n.workoutStructSteady,
-          '${fmtKm(st['distance_m'] as num, 1)} @ '
-          '${fmtPace((st['pace_sec_per_km'] as num).toInt())}');
+          '${_stepAmount(st, 1)} @ '
+          '${fmtPace((st['pace_sec_per_km'] as num?)?.toInt())}');
     }
     if (s.cooldown != null) {
       add(l10n.workoutStructCooldown,
-          l10n.workoutStructCooldownValue(
-              fmtKm(s.cooldown!['distance_m'] as num, 1)));
+          l10n.workoutStructCooldownValue(_stepAmount(s.cooldown!, 1)));
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: items,
     );
+  }
+
+  // A step reads as its distance when it has one, else its duration: the
+  // walk-run generator writes only `duration_s`, and a hard `as num` cast on
+  // the missing `distance_m` threw. Mirrors web's `stepAmount`.
+  String _stepAmount(Map<String, dynamic> step, int digits,
+      {bool recovery = false}) {
+    final distance =
+        step[recovery ? 'recovery_distance_m' : 'distance_m'] as num?;
+    if (distance != null) return fmtKm(distance, digits);
+    final duration =
+        step[recovery ? 'recovery_duration_s' : 'duration_s'] as num?;
+    if (duration != null) return fmtHms(duration.toInt());
+    return '—';
   }
 
   String _advice(AppLocalizations l10n, WorkoutKind k) => switch (k) {

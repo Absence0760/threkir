@@ -4091,6 +4091,7 @@ export const messages = {
 	"workoutDetail.atEasy": "@ locker",
 	"workoutDetail.repeats": "Wiederholungen",
 	"workoutDetail.repeatsDetail": "{count}× {distance} @ {pace} mit {recoveryDistance} {recoveryPace}",
+	"workoutDetail.repeatsDetailNoRecovery": "{count}× {distance} @ {pace}",
 	"workoutDetail.steady": "Gleichmäßig",
 	"workoutDetail.atPace": "@ {pace}",
 	"workoutDetail.cooldown": "Abwärmen",

@@ -41,3 +41,15 @@ export function overlappingPlans<T extends PlanWindow>(
 ): T[] {
 	return plans.filter((p) => p.start_date <= endIso && p.end_date >= startIso);
 }
+
+/// An `active` plan whose last day is behind `todayIso` (the runner's local
+/// day): its dates have run out but nothing has written `completed`, which
+/// only the runner confirming "Finish plan" does. A paused, completed or
+/// abandoned plan is never finished in this sense, and the end day itself is
+/// still inside the plan.
+export function isPlanFinished(
+	plan: { status: string; end_date: string },
+	todayIso: string
+): boolean {
+	return plan.status === 'active' && plan.end_date < todayIso;
+}

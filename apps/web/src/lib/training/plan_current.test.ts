@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { overlappingPlans, pickCurrentPlan } from './plan_current';
+import { isPlanFinished, overlappingPlans, pickCurrentPlan } from './plan_current';
 
 const marathon = { id: 'marathon', start_date: '2026-08-02', end_date: '2026-11-15' };
 const ultra = { id: 'ultra', start_date: '2026-11-16', end_date: '2027-06-14' };
@@ -69,4 +69,17 @@ test('overlappingPlans: a window ending on a plan start day overlaps', () => {
 test('overlappingPlans: a window inside a plan overlaps, one wholly before it does not', () => {
 	assert.deepEqual(overlappingPlans([marathon], '2026-09-01', '2026-09-07').map((p) => p.id), ['marathon']);
 	assert.deepEqual(overlappingPlans([marathon], '2026-07-01', '2026-08-01').map((p) => p.id), []);
+});
+
+test('isPlanFinished: an active plan is finished from the day after its end day', () => {
+	const active = { ...marathon, status: 'active' };
+	assert.equal(isPlanFinished(active, '2026-11-14'), false);
+	assert.equal(isPlanFinished(active, '2026-11-15'), false);
+	assert.equal(isPlanFinished(active, '2026-11-16'), true);
+});
+
+test('isPlanFinished: only an active plan can be finished', () => {
+	for (const status of ['paused', 'completed', 'abandoned']) {
+		assert.equal(isPlanFinished({ ...marathon, status }, '2027-01-01'), false, status);
+	}
 });

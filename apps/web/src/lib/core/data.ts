@@ -6150,6 +6150,19 @@ export async function pausePlan(id: string): Promise<void> {
 	await updatePlanStatus(id, 'paused');
 }
 
+/// File an active plan whose dates have run out under Completed (the "Finish
+/// plan" prompt, `isPlanFinished`). Scoped to `status = 'active'` so a plan
+/// paused or abandoned in another tab is never relabelled as finished.
+export async function finishPlan(id: string): Promise<void> {
+	markListsStale('plans');
+	const { error } = await supabase
+		.from('training_plans')
+		.update({ status: 'completed' })
+		.eq('id', id)
+		.eq('status', 'active');
+	if (error) throw dbError(error);
+}
+
 /// Thrown by resumePlan when another active plan overlaps the paused plan's
 /// window — `training_plans_active_no_overlap` would reject the resume, so we
 /// refuse up front with a clear signal the UI can translate rather than

@@ -40,6 +40,8 @@
 	import { workoutKindMarkVar } from '#lib/training/workout_kind_color.ts';
 	import { isAdaptiveFitnessGateEnabled } from '#lib/training/adaptive_fitness_flag.ts';
 	import WorkoutEditor from '#lib/components/WorkoutEditor.svelte';
+	import FinishPlanPrompt from '#lib/components/FinishPlanPrompt.svelte';
+	import { isPlanFinished } from '#lib/training/plan_current.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import PlanAiAdjust from '#lib/components/PlanAiAdjust.svelte';
 	import { coachEnabled } from '#lib/coach/coach_flag.ts';
@@ -1349,6 +1351,10 @@
 			</div>
 		</header>
 
+		{#if isOwner && !plan.is_template && isPlanFinished(plan, today)}
+			<div class="finish-plan-slot"><FinishPlanPrompt {plan} onfinished={load} /></div>
+		{/if}
+
 		{#if isOwner && !plan.is_template && replanPreview}
 			<section class="replan-preview" aria-label={m('planDetail.replanPreviewAria')}>
 				<h3 tabindex="-1" bind:this={replanPreviewHeading}>{m('planDetail.replanPreviewTitle')}</h3>
@@ -2069,6 +2075,9 @@
 <style>
 	.page {
 		padding: var(--page-padding-y) var(--page-padding-x);
+	}
+	.finish-plan-slot {
+		margin: var(--space-lg) 0;
 	}
 	.back {
 		display: inline-flex;

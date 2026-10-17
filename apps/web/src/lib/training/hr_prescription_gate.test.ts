@@ -1,12 +1,13 @@
 // The heart-rate prescription gate, and whether the surfaces it gates are
 // actually behind it. Invocation:
-//   npx tsx --test src/lib/training/hr_prescription_flag.test.ts
+//   npx tsx --test src/lib/training/hr_prescription_gate.test.ts
 //
-// `hrPrescriptionEnabled` reads `$app/env/public`, so the module cannot be
-// imported here; its parse is pinned in `core/env_flag.test.ts`. What this
-// pins is the half the CISO / counsel review rests on (decisions § 2092,
-// § 150): with the flag off, no bpm target, medication setting or HR-drift
-// flag renders, and the workout editor never writes a bpm target.
+// `hrPrescriptionEnabled` reads the server's gate through Supabase, so the
+// module is pinned from its source here. What this pins is the half the CISO /
+// counsel review rests on (decisions § 2092, § 2108, § 150): with the server
+// gate shut, no bpm target, medication setting or HR-drift flag renders, the
+// workout editor never writes a bpm target, and no build flag of the client's
+// own can turn any of it on.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -26,24 +27,28 @@ const SURFACES = [
 	{ path: 'src/routes/settings/training/+page.svelte', affordances: ['data-testid="hr-medication"'] },
 ] as const;
 
-test('the gate is fail-closed and routed through the canonical parse', () => {
-	const source = read('src/lib/training/hr_prescription_flag.ts');
-	assert.match(source, /isTruthyFlagValue\(PUBLIC_HR_PRESCRIPTION_ENABLED\)/);
-	assert.doesNotMatch(source, /\?\?\s*(true|'1'|'true')/, 'the gate must not default to on');
-	assert.match(read('src/env.ts'), /\bPUBLIC_HR_PRESCRIPTION_ENABLED:\s*\{\s*public:\s*true,\s*schema:\s*optional\s*\}/);
+test('the gate is the server row, read fail-closed, and no client build flag exists', () => {
+	const source = read('src/lib/training/hr_prescription_gate.ts');
+	assert.match(source, /rpc\('hr_prescription_enabled', undefined, \{ get: true \}\)/);
+	assert.match(source, /return data === true;/, 'only a literal true opens the gate');
+	assert.equal((source.match(/return false;/g) ?? []).length, 2, 'an error and a throw both read off');
+	assert.doesNotMatch(read('src/env.ts'), /HR_PRESCRIPTION/);
+	assert.doesNotMatch(read('.env.example'), /HR_PRESCRIPTION/);
+	assert.doesNotMatch(read('.env.development'), /HR_PRESCRIPTION/);
 });
 
 for (const spec of SURFACES) {
 	test(`${spec.path}: every heart-rate affordance renders only under the gate`, () => {
 		const page = read(spec.path);
-		assert.match(page, /const hrPrescription = hrPrescriptionEnabled\(\);/, 'the surface must resolve the gate once');
+		assert.match(page, /let hrPrescription = \$state\(false\);/, 'the surface must start with the gate shut');
+		assert.match(page, /hrPrescriptionEnabled\(\)/, 'the surface must ask the server gate');
 		const template = page.slice(page.indexOf('</script>'));
 		const guarded = insideIfBranch(template, 'hrPrescription');
 		for (const needle of spec.affordances) {
 			let at = template.indexOf(needle);
 			assert.notEqual(at, -1, `${needle} is no longer rendered — the guard is stale`);
 			while (at !== -1) {
-				assert.ok(guarded(at), `${needle} at offset ${at} renders with PUBLIC_HR_PRESCRIPTION_ENABLED off`);
+				assert.ok(guarded(at), `${needle} at offset ${at} renders with the server gate shut`);
 				at = template.indexOf(needle, at + needle.length);
 			}
 		}

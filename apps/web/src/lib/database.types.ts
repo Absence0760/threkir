@@ -6628,6 +6628,7 @@ export type Database = {
           unsettled_cents: number
         }[]
       }
+      hr_prescription_enabled: { Args: never; Returns: boolean }
       increment_coach_usage: { Args: { p_user_id: string }; Returns: number }
       invoke_event_refund_sweep: { Args: never; Returns: number }
       invoke_race_listings_sweep: { Args: never; Returns: number }

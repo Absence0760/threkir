@@ -38,7 +38,6 @@ export const variables = defineEnvVars({
 	PUBLIC_VAPID_PUBLIC_KEY: { public: true, schema: optional },
 	PUBLIC_WEIGH_IN_ENABLED: { public: true, schema: optional },
 	PUBLIC_WEIGHT_FLUID_ENABLED: { public: true, schema: optional },
-	PUBLIC_HR_PRESCRIPTION_ENABLED: { public: true, schema: optional },
 
 	ANTHROPIC_API_KEY: { schema: optional },
 	APP_RELEASE: { schema: optional },

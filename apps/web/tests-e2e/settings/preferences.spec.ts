@@ -536,8 +536,8 @@ test.describe('settings preference pages', () => {
 	test('the heart-rate medication flag saves and asks for a measured max', async ({
 		page
 	}) => {
-		// decisions § 2092: Art 9, behind PUBLIC_HR_PRESCRIPTION_ENABLED (on in
-		// .env.development) and the health-data consent USER_A has in the seed.
+		// decisions § 2092: Art 9, behind the server's hr_prescription gate (open
+		// in the seed) and the health-data consent USER_A has in the seed.
 		const admin = getAdminClient();
 		const before = await readRow(
 			'user_settings before the HR-medication toggle',

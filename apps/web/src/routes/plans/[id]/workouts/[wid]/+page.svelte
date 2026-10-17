@@ -16,7 +16,7 @@
 	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
 	import { isEditedByCoach } from '#lib/training/workout_prescription.ts';
 	import { hrTargetLabel, rpeTargetLabel } from '#lib/training/workout_target_label.ts';
-	import { hrPrescriptionEnabled } from '#lib/training/hr_prescription_flag.ts';
+	import { hrPrescriptionEnabled } from '#lib/training/hr_prescription_gate.ts';
 	import { fmtKm, fmtPace, fmtPaceTolerance } from '#lib/format/units.svelte.ts';
 	import { formatDateShort } from '#lib/format/time.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
@@ -42,7 +42,10 @@
 	let wid = $derived(page.params.wid as string);
 	let workout = $state<PlanWorkout | null>(null);
 	let ownerId = $state<string | null>(null);
-	const hrPrescription = hrPrescriptionEnabled();
+	let hrPrescription = $state(false);
+	onMount(() => {
+		void hrPrescriptionEnabled().then((on) => (hrPrescription = on));
+	});
 	let loading = $state(true);
 	let loadError = $state(false);
 	let showUnlinkConfirm = $state(false);

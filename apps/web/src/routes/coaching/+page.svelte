@@ -25,14 +25,17 @@
 		isEasyHrDriftFlagged,
 		loadTrend
 	} from '#lib/training/coach_load.ts';
-	import { hrPrescriptionEnabled } from '#lib/training/hr_prescription_flag.ts';
+	import { hrPrescriptionEnabled } from '#lib/training/hr_prescription_gate.ts';
 	import { rosterRisk, sortRoster, type RosterSortKey } from './roster_sort';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 
-	const hrPrescription = hrPrescriptionEnabled();
+	let hrPrescription = $state(false);
+	onMount(() => {
+		void hrPrescriptionEnabled().then((on) => (hrPrescription = on));
+	});
 
 	function missStreak(r: CoachRosterRow): number {
 		return r.athlete_today ? consecutiveMissedWorkouts(r.recent_workouts, r.athlete_today) : 0;

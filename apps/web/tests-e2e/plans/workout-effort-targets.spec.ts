@@ -8,7 +8,7 @@ import { USER_B, USER_C_PRO } from '../fixtures/users';
  * Effort and heart-rate targets on a planned workout, and "updated by your
  * coach" (issue #1186, decisions § 2092). USER_B coaches USER_C_PRO, who has
  * health-data consent in the seed, so the coach may set a bpm cap; the bpm
- * fields are behind PUBLIC_HR_PRESCRIPTION_ENABLED, on in .env.development.
+ * fields are behind the server's hr_prescription gate, which seed.sql opens.
  * The athlete then sees both targets and the provenance line on the workout.
  */
 test.describe('workout effort + heart-rate targets', () => {

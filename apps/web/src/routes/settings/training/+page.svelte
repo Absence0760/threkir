@@ -2,7 +2,7 @@
 	import { effective } from '#lib/settings/settings.ts';
 	import { supabase } from '#lib/core/supabase.ts';
 	import { dbError } from '#lib/core/supabase_error.ts';
-	import { hrPrescriptionEnabled } from '#lib/training/hr_prescription_flag.ts';
+	import { hrPrescriptionEnabled } from '#lib/training/hr_prescription_gate.ts';
 	import { m, currentLocale } from '#lib/i18n/store.svelte.ts';
 	import {
 		MAX_HR_BPM_MIN,
@@ -70,7 +70,7 @@
 	// server re-checks on write. A runner on a beta blocker is told to set a
 	// measured max, and their HR-derived training load is labelled
 	// low-confidence.
-	const hrPrescription = hrPrescriptionEnabled();
+	let hrPrescription = $state(false);
 	let hrMedicationAffected = $state(false);
 	let healthConsentGranted = $state(false);
 	let consentCheckFailed = $state(false);
@@ -96,6 +96,7 @@
 			z5 = zones.z5?.toString() ?? '';
 		}
 		excludeGymFromReadiness = effective<boolean>(settings, 'exclude_gym_from_readiness', false) === true;
+		hrPrescription = await hrPrescriptionEnabled();
 		if (hrPrescription) {
 			hrMedicationAffected = effective<boolean>(settings, 'hr_medication_affected', false) === true;
 			// Its own failure domain: the consent read only decides whether the

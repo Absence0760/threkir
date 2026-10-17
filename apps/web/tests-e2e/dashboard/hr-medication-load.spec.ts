@@ -9,9 +9,9 @@ import { insertRun, setUserSetting } from '../fixtures/simulate';
 /**
  * The training-load chart says its heart-rate load is less reliable when the
  * runner has said a medication affects their heart rate (decisions § 2092).
- * The label is behind the fail-closed PUBLIC_HR_PRESCRIPTION_ENABLED, which is
- * on in .env.development; its off state (no label whatever the setting) is
- * pinned by src/lib/training/hr_prescription_flag.test.ts, the same split
+ * The label is behind the fail-closed server hr_prescription gate, which
+ * seed.sql opens; its off state (no label whatever the setting) is
+ * pinned by src/lib/training/hr_prescription_gate.test.ts, the same split
  * every default-off Art 9 gate uses. Saga users, because the flag needs the
  * health-data consent and planting it on a shared seed user would change
  * every other spec's surfaces.

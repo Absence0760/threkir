@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { untrack } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { appErrorMessage, DbError } from '#lib/core/supabase_error.ts';
 	import {
 		markWorkoutCompleted,
@@ -24,7 +24,7 @@
 		type ParsedRange,
 		type RangeBounds
 	} from '#lib/training/workout_prescription.ts';
-	import { hrPrescriptionEnabled } from '#lib/training/hr_prescription_flag.ts';
+	import { hrPrescriptionEnabled } from '#lib/training/hr_prescription_gate.ts';
 	import type { WorkoutMoveDay } from '#lib/training/plan_move.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { getUnit } from '#lib/format/units.svelte.ts';
@@ -108,7 +108,10 @@
 	let goalSec = $state<number | null>(initialGoal != null ? initialGoal % 60 : null);
 	let rpeMin = $state<number | null>(untrack(() => workout.target_rpe_min ?? null));
 	let rpeMax = $state<number | null>(untrack(() => workout.target_rpe_max ?? null));
-	const hrPrescription = hrPrescriptionEnabled();
+	let hrPrescription = $state(false);
+	onMount(() => {
+		void hrPrescriptionEnabled().then((on) => (hrPrescription = on));
+	});
 	let hrMin = $state<number | null>(untrack(() => workout.target_hr_min_bpm ?? null));
 	let hrMax = $state<number | null>(untrack(() => workout.target_hr_max_bpm ?? null));
 

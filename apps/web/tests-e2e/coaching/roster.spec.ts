@@ -167,9 +167,9 @@ test.describe('coach roster dashboard', () => {
 		// same pace is 150/140 - 1 = 7.14 % higher and the chip reads +7 %. The
 		// second athlete has the same runs and no health-data consent, so the SQL
 		// computes nothing for them (decisions § 2092). Saga users, so no seed row is touched and
-		// the spec re-runs on a used database. The chip is behind
-		// PUBLIC_HR_PRESCRIPTION_ENABLED, on in .env.development; its off state is
-		// pinned by src/lib/training/hr_prescription_flag.test.ts.
+		// the spec re-runs on a used database. The chip is behind the
+		// server's hr_prescription gate, which seed.sql opens; its off state is
+		// pinned by src/lib/training/hr_prescription_gate.test.ts and pgTAP.
 		test.describe.configure({ timeout: 90_000 });
 
 		let coach: SagaUser;

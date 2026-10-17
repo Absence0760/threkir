@@ -7,7 +7,7 @@ import 'package:ui_kit/ui_kit.dart' show SectionHeader;
 
 import '../adaptive_width.dart';
 import '../goals.dart';
-import '../hr_prescription_flag.dart';
+import '../hr_prescription_gate.dart';
 import '../hr_zones.dart'
     show kMaxHrBpmMax, kMaxHrBpmMin, kRestingHrBpmMax, kRestingHrBpmMin;
 import '../l10n/gen/app_localizations.dart';

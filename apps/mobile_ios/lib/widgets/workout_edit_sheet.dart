@@ -4,7 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 
 import '../auth_error.dart';
 import '../goal_time.dart';
-import '../hr_prescription_flag.dart';
+import '../hr_prescription_gate.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../plan_move.dart';
 import '../plan_races.dart';

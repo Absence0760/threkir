@@ -19,7 +19,7 @@ import '../plan_assign.dart';
 import '../preferences.dart';
 import '../training.dart';
 import '../training_labels.dart';
-import '../hr_prescription_flag.dart';
+import '../hr_prescription_gate.dart';
 import '../training_service.dart' show TrainingService, currentOrUpcomingPlan;
 import '../widgets/run_track_preview.dart';
 import '../widgets/top_banner.dart';

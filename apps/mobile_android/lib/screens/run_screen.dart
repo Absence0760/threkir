@@ -37,7 +37,7 @@ import '../goal_time.dart';
 import '../guided_runs.dart';
 import '../health_connect_exporter.dart';
 import '../activity_type_labels.dart';
-import '../hr_prescription_flag.dart';
+import '../hr_prescription_gate.dart';
 import '../workout_target_label.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';

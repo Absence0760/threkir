@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 
 import '../auth_error.dart';
 import '../coach_load.dart';
-import '../hr_prescription_flag.dart';
+import '../hr_prescription_gate.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/date_format.dart';
 import '../l10n/locale_support.dart';

@@ -27,10 +27,13 @@
 	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
 	import { assignBlockers, assignCollision, firstStartAfter } from '#lib/training/plan_assign.ts';
 	import { hrTargetLabel, rpeTargetLabel } from '#lib/training/workout_target_label.ts';
-	import { hrPrescriptionEnabled } from '#lib/training/hr_prescription_flag.ts';
+	import { hrPrescriptionEnabled } from '#lib/training/hr_prescription_gate.ts';
 
 	const athleteId = $derived(page.params.id);
-	const hrPrescription = hrPrescriptionEnabled();
+	let hrPrescription = $state(false);
+	onMount(() => {
+		void hrPrescriptionEnabled().then((on) => (hrPrescription = on));
+	});
 
 	let loading = $state(true);
 	let loadError = $state<string | null>(null);

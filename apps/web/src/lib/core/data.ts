@@ -3229,6 +3229,8 @@ export interface RaceResultForRun {
 	overall_place: number | null;
 	age_group_place: number | null;
 	age_group: string | null;
+	division_award_place: number | null;
+	division_award: string | null;
 }
 
 export async function fetchRaceResultForRun(runId: string): Promise<RaceResultForRun | null> {
@@ -3256,7 +3258,9 @@ export async function fetchRaceResultForRun(runId: string): Promise<RaceResultFo
 		gun_time: (meta.gun_time as string) ?? null,
 		overall_place: (meta.overall_place as number) ?? null,
 		age_group_place: (meta.age_group_place as number) ?? null,
-		age_group: (meta.age_group as string) ?? null
+		age_group: (meta.age_group as string) ?? null,
+		division_award_place: (meta.division_award_place as number) ?? null,
+		division_award: (meta.division_award as string) ?? null
 	};
 }
 

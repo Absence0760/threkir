@@ -2262,7 +2262,10 @@ BEGIN
               'expected_return_at', '2026-05-01T01:00:00Z',
               -- 20270627000001 / 20270628000001 strip-list additions:
               'guided_run_id', 'easy-30',
-              'indoor_source', 'treadmill'
+              'indoor_source', 'treadmill',
+              -- 20270909000001 strip-list additions:
+              'division_award', 'M Masters',
+              'division_award_place', 2
             ))
     RETURNING id INTO v_run_id;
 
@@ -2316,7 +2319,9 @@ BEGIN
      OR v_public_metadata ? 'safety_escalated_at'
      OR v_public_metadata ? 'expected_return_at'
      OR v_public_metadata ? 'guided_run_id'
-     OR v_public_metadata ? 'indoor_source' THEN
+     OR v_public_metadata ? 'indoor_source'
+     OR v_public_metadata ? 'division_award'
+     OR v_public_metadata ? 'division_award_place' THEN
     RAISE EXCEPTION 'public_runs: metadata strip list incomplete — leaked at least one denylisted key';
   END IF;
 

@@ -4086,6 +4086,7 @@ export const messages = {
 	"workoutDetail.atEasy": "@ イージー",
 	"workoutDetail.repeats": "リピート",
 	"workoutDetail.repeatsDetail": "{count}× {distance} @ {pace}、リカバリー {recoveryDistance} {recoveryPace}",
+	"workoutDetail.repeatsDetailNoRecovery": "{count}× {distance} @ {pace}",
 	"workoutDetail.steady": "ステディ",
 	"workoutDetail.atPace": "@ {pace}",
 	"workoutDetail.cooldown": "クールダウン",

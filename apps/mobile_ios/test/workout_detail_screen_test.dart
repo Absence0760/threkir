@@ -10,6 +10,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/relink_candidates.dart';
 import '../lib/screens/workout_detail_screen.dart';
+import '../lib/training.dart';
 import '../lib/training_service.dart';
 
 PlanWorkoutRow _completedWorkout({String? completedRunId = 'run-current'}) {
@@ -250,6 +251,51 @@ void main() {
           tester.widget<Text>(find.byKey(const Key('workoutDetailHeading'))).data,
           'Race');
       expect(find.text('RACE PRIORITY'), findsNothing);
+    });
+  });
+
+  group('WorkoutDetailScreen — walk-run structure', () {
+    // The C25K generator writes only duration_s / recovery_duration_s; the
+    // structure list cast `distance_m as num` and threw on null.
+    PlanWorkoutRow walkRunRow(int weekIndex) {
+      final plan = generatePlan(GeneratePlanInput(
+        goalEvent: GoalEvent.distance5k,
+        startDate: DateTime(2026, 6, 1),
+        daysPerWeek: 3,
+        beginnerWalkRun: true,
+      ));
+      final g = plan.weeks[weekIndex].workouts
+          .firstWhere((w) => w.kind == WorkoutKind.walkRun);
+      return PlanWorkoutRow(
+        id: 'fake-workout-id',
+        weekId: 'week-1',
+        scheduledDate: g.scheduledDate,
+        kind: workoutKindDbValue(g.kind),
+        targetDistanceM: g.targetDistanceM,
+        targetDurationSeconds: g.targetDurationSeconds,
+        targetPaceSecPerKm: g.targetPaceSecPerKm,
+        structure: g.structure!.toJson(),
+        manuallyCompleted: false,
+      );
+    }
+
+    testWidgets('renders steps as durations instead of throwing',
+        (tester) async {
+      await _pumpWith(tester, _FakeTraining(walkRunRow(0), const []));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      // Week 1: walk 5 min, run 1:00 / walk 1:30 x 8, walk 5 min.
+      expect(find.text('5:00 @ easy'), findsNWidgets(2));
+      expect(find.textContaining('8× 1:00 @ '), findsOneWidget);
+      expect(find.textContaining('with 1:30 walk'), findsOneWidget);
+    });
+
+    testWidgets('the graduation run has no recovery clause', (tester) async {
+      await _pumpWith(tester, _FakeTraining(walkRunRow(8), const []));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.textContaining('1× 25:00 @ '), findsOneWidget);
+      expect(find.textContaining(' with '), findsNothing);
     });
   });
 

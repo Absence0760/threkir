@@ -1,8 +1,8 @@
--- Pins 20270912000001 (issue #1186, decisions § 2085): the RPE and heart-rate
+-- Pins 20270912000001 (issue #1186, decisions § 2087): the RPE and heart-rate
 -- targets on plan_workouts, the Art 9 consent rule on the bpm range, what the
 -- withdrawal clears, and which copy paths carry which range.
 begin;
-select plan(17);
+select plan(21);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at) values
   ('2085aaaa-0000-0000-0000-0000000000c1', 'authenticated', 'authenticated', 'coach@pwet.local', '', now(), now()),
@@ -111,6 +111,29 @@ select is(
     where wk.plan_id = (select plan_id from _cloned)),
   '(3,4)',
   'clone_plan_template carries the RPE range');
+
+-- ─────────── the medication flag rests on the same consent ───────────
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"2085aaaa-0000-0000-0000-0000000000b1","role":"authenticated"}';
+select throws_ok(
+  $$ insert into user_settings (user_id, prefs) values ('2085aaaa-0000-0000-0000-0000000000b1', '{"hr_medication_affected": true}') $$,
+  '42501', null, 'a runner without health-data consent cannot turn the medication flag on');
+select lives_ok(
+  $$ insert into user_settings (user_id, prefs) values ('2085aaaa-0000-0000-0000-0000000000b1', '{"hr_medication_affected": false, "preferred_unit": "mi"}') $$,
+  'turning it off, or never on, needs no consent');
+select lives_ok(
+  $$ update user_settings set prefs = '{"hr_medication_affected": false, "preferred_unit": "km"}' where user_id = '2085aaaa-0000-0000-0000-0000000000b1' $$,
+  'an unrelated settings write without consent still lands');
+reset role;
+select set_config('app.consent_write', 'on', true);
+update user_profiles set health_data_consent_at = now() where id = '2085aaaa-0000-0000-0000-0000000000b1';
+select set_config('app.consent_write', '', true);
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"2085aaaa-0000-0000-0000-0000000000b1","role":"authenticated"}';
+select lives_ok(
+  $$ update user_settings set prefs = prefs || '{"hr_medication_affected": true}' where user_id = '2085aaaa-0000-0000-0000-0000000000b1' $$,
+  'once consent is on record the runner turns it on');
+reset role;
 
 -- ─────────── withdrawal ───────────
 set local role authenticated;

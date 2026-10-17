@@ -1103,12 +1103,13 @@ $neutralised$;`,
       sql: `create or replace function public.coach_roster_summary()
  returns table(athlete_id uuid, display_name text, avatar_url text, last_run_at timestamptz,
                runs_7d integer, distance_7d_m double precision, load_acute double precision,
-               load_chronic double precision, active_plan_id uuid, plan_completion_pct integer)
+               load_chronic double precision, active_plan_id uuid, plan_completion_pct integer,
+               athlete_today date, recent_workouts jsonb, easy_hr_drift_pct double precision)
  language sql stable security definer set search_path to 'public'
 as $neutralised$
   select p.id, p.display_name, p.avatar_url, null::timestamptz,
          0, 0::double precision, 0::double precision, 0::double precision,
-         null::uuid, 0
+         null::uuid, 0, null::date, '[]'::jsonb, null::double precision
   from coach_athletes ca
   join user_profiles p on p.id = ca.athlete_id
   where ${mine('ca')};

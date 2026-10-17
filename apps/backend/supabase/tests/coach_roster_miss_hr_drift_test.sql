@@ -1,4 +1,4 @@
--- Pins 20270912000002 (issue #1186, decisions § 2085): the roster's
+-- Pins 20270912000002 (issue #1186, decisions § 2087): the roster's
 -- recent_workouts (the input the client derives misses from), athlete_today,
 -- and the easy-run HR drift, which is computed only for an athlete with
 -- health-data consent and only from planned easy / recovery runs.

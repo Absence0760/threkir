@@ -1808,6 +1808,16 @@ export function stampedThroughRpc(landings, stamped) {
  */
 export const FILTERED_RPC_ARGUMENTS = [
   {
+    file: 'plan_workout_effort_targets_test.sql',
+    description: 'the owner duplicates the week',
+    columns: ['plan_weeks.week_index'],
+    readBack: "duplicate_plan_week carries both ranges within the owner's own plan",
+    reason:
+      'The copy lands one week after the source (week_index + 1, dates + 7). The read-back finds ' +
+      'it by the source date plus seven days, which a server that stopped computing the next ' +
+      'week would not have written.',
+  },
+  {
     file: 'move_plan_workout_test.sql',
     description: 'a dense plan shifts by a single day',
     columns: [

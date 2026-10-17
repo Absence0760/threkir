@@ -1,5 +1,5 @@
 -- Effort and heart-rate targets on a planned workout (issue #1186, persona
--- "coach, and an older athlete on beta-blockers"; decisions § 2085).
+-- "coach, and an older athlete on beta-blockers"; decisions § 2087).
 --
 -- plan_workouts carried pace, distance, duration, structure and notes, so a
 -- coach could not prescribe "easy = RPE 3-4" or "cap at 125 bpm". Four
@@ -14,17 +14,19 @@
 -- fields' kind rule.
 --
 -- A bpm target is HR-derived prescription about one person, which is Art 9
--- health data. It is fail-closed in three places:
+-- health data. It is fail-closed in four places:
 --
 --   1. private.check_plan_workout_hr_target refuses a non-null bpm target
 --      (42501) unless the PLAN OWNER has health_data_consent_at on record, and
 --      refuses one on a template plan (23514) -- a template is copied to other
 --      people, and the prescription is not theirs. It runs for a coach's write
 --      too, because it is the athlete's consent that the target rests on.
---   2. withdraw_health_data_consent nulls the owner's bpm targets and drops
+--   2. private.check_hr_medication_setting refuses turning on the
+--      `hr_medication_affected` prefs key without the same consent (42501).
+--   3. withdraw_health_data_consent nulls the owner's bpm targets and drops
 --      the `hr_medication_affected` settings key in the same transaction
 --      (Art 7(3)), alongside height, gender and the weight series.
---   3. The three cross-user copy paths (clone_plan_template,
+--   4. The three cross-user copy paths (clone_plan_template,
 --      clone_public_plan, assign_plan_to_athlete) carry the RPE range and
 --      NOT the bpm range; the owner-to-owner paths (create_training_plan,
 --      duplicate_plan_week) carry both. Each is re-emitted whole from its
@@ -115,6 +117,44 @@ create trigger plan_workouts_check_hr_target
   before insert or update of target_hr_min_bpm, target_hr_max_bpm, week_id on plan_workouts
   for each row execute function private.check_plan_workout_hr_target();
 
+-- The medication-affected flag lives in the universal prefs bag
+-- (`hr_medication_affected`, settings.md). A medication is Art 9 health data,
+-- so turning it on needs the owner's health_data_consent_at, the same
+-- consent the bpm target rests on. Only a change that turns it on is checked:
+-- an unrelated settings write never trips over a value already stored, and
+-- withdrawal (below) removes the key outright.
+create or replace function private.check_hr_medication_setting()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_catalog
+as $$
+begin
+  if coalesce(new.prefs -> 'hr_medication_affected', 'false'::jsonb) <> 'true'::jsonb then
+    return new;
+  end if;
+  if tg_op = 'UPDATE'
+     and (old.prefs -> 'hr_medication_affected') is not distinct from (new.prefs -> 'hr_medication_affected') then
+    return new;
+  end if;
+  if not exists (
+    select 1 from user_profiles up
+    where up.id = new.user_id and up.health_data_consent_at is not null
+  ) then
+    raise exception using
+      errcode = 'insufficient_privilege',
+      message = 'user_settings: hr_medication_affected needs health-data consent';
+  end if;
+  return new;
+end;
+$$;
+
+revoke execute on function private.check_hr_medication_setting() from public, anon, authenticated;
+
+create trigger user_settings_check_hr_medication
+  before insert or update of prefs on user_settings
+  for each row execute function private.check_hr_medication_setting();
+
 -- Withdrawal re-emitted from 20270605_001, plus the two Art 9 items this
 -- change adds.
 create or replace function withdraw_health_data_consent()
@@ -146,7 +186,7 @@ begin
   -- transaction — no partial-failure window between two client calls.
   delete from body_metrics where user_id = v_uid;
   -- Heart-rate prescription on the runner's own plans, and the
-  -- medication-affected flag (§ 2085).
+  -- medication-affected flag (§ 2087).
   update plan_workouts pw
      set target_hr_min_bpm = null, target_hr_max_bpm = null
     from plan_weeks pwk

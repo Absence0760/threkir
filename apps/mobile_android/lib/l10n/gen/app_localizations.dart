@@ -1085,6 +1085,78 @@ abstract class AppLocalizations {
   /// **'Resting heart rate'**
   String get readinessContributorRestingHr;
 
+  /// Quiet label on the hairline that separates the Home dashboard Today cards from the trend cards below. Not a shouting header.
+  ///
+  /// In en, this message translates to:
+  /// **'Trends'**
+  String get dashboardTrendsDivider;
+
+  /// Home dashboard trend group heading, collapsible: the weekly distance cards
+  ///
+  /// In en, this message translates to:
+  /// **'Volume'**
+  String get dashboardTrendGroupVolume;
+
+  /// One-line description under the Volume trend group heading
+  ///
+  /// In en, this message translates to:
+  /// **'How much you have run, week by week'**
+  String get dashboardTrendGroupVolumeHint;
+
+  /// Home dashboard trend group heading, collapsible: readiness, fitness, load ramp and training-load chart
+  ///
+  /// In en, this message translates to:
+  /// **'Fitness and form'**
+  String get dashboardTrendGroupFitness;
+
+  /// One-line description under the Fitness and form trend group heading
+  ///
+  /// In en, this message translates to:
+  /// **'Readiness, fitness and training load'**
+  String get dashboardTrendGroupFitnessHint;
+
+  /// Home dashboard trend group heading, collapsible: personal bests and the race predictor
+  ///
+  /// In en, this message translates to:
+  /// **'Performance'**
+  String get dashboardTrendGroupPerformance;
+
+  /// One-line description under the Performance trend group heading
+  ///
+  /// In en, this message translates to:
+  /// **'Personal bests and predicted race times'**
+  String get dashboardTrendGroupPerformanceHint;
+
+  /// Home dashboard trend group heading, collapsible: training intensity (time in heart-rate zones)
+  ///
+  /// In en, this message translates to:
+  /// **'Effort'**
+  String get dashboardTrendGroupEffort;
+
+  /// One-line description under the Effort trend group heading
+  ///
+  /// In en, this message translates to:
+  /// **'How hard your training has been'**
+  String get dashboardTrendGroupEffortHint;
+
+  /// Home dashboard trend group heading, collapsible: the latest logged sessions (recent lifts)
+  ///
+  /// In en, this message translates to:
+  /// **'Recent'**
+  String get dashboardTrendGroupRecent;
+
+  /// One-line description under the Recent trend group heading
+  ///
+  /// In en, this message translates to:
+  /// **'Your latest sessions'**
+  String get dashboardTrendGroupRecentHint;
+
+  /// Footnote on the readiness card: the score is computed from training balance (TSB) alone, because no sleep or resting heart rate is read yet. Shown only while neither of those contributes.
+  ///
+  /// In en, this message translates to:
+  /// **'Scored from your training load only. Sleep and resting heart rate are not part of it yet.'**
+  String get readinessFromLoadOnly;
+
   /// Training intensity legend: heart-rate zone 1, named as on web Preferences
   ///
   /// In en, this message translates to:
@@ -3448,24 +3520,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Discarded your previous run.'**
   String get runResumeDiscardedBanner;
-
-  /// Option in the workout-entry sheet to begin a structured workout
-  ///
-  /// In en, this message translates to:
-  /// **'Start workout'**
-  String get runStartWorkout;
-
-  /// Subtitle of the Start-workout option in the workout-entry sheet
-  ///
-  /// In en, this message translates to:
-  /// **'Run with live step targets, audio cues, and a planned-vs-actual review.'**
-  String get runStartWorkoutSubtitle;
-
-  /// Option in the workout-entry sheet to open the workout detail screen
-  ///
-  /// In en, this message translates to:
-  /// **'View details'**
-  String get runViewWorkoutDetails;
 
   /// Banner shown when a selected workout has no runnable steps
   ///
@@ -10267,13 +10321,13 @@ abstract class AppLocalizations {
   /// Plan-overlap dialog hint when only Replace is offered
   ///
   /// In en, this message translates to:
-  /// **'Replace marks the overlapping plans as completed. You can still find them under Manage plans.'**
+  /// **'Replace marks the overlapping plans as abandoned. You can still find them under Manage plans.'**
   String get planOverlapReplaceHint;
 
   /// Plan-overlap dialog hint when the overlapping plan started earlier and can be ended the day before the new plan starts. date is that formatted end date
   ///
   /// In en, this message translates to:
-  /// **'End {name} early to keep its finished weeks and remove its workouts after {date}, or replace it to mark it completed.'**
+  /// **'End {name} early to keep its finished weeks and remove its workouts after {date}, or replace it to mark it abandoned.'**
   String planOverlapTrimHint(String name, String date);
 
   /// Plan-overlap dialog button: end the overlapping plan the day before the new one starts, so both stay active back to back
@@ -10291,7 +10345,7 @@ abstract class AppLocalizations {
   /// Plan-overlap dialog hint when several overlapping plans can be ended the day before the new plan starts. date is that formatted end date
   ///
   /// In en, this message translates to:
-  /// **'End them early to keep their finished weeks and remove their workouts after {date}, or replace them to mark them completed.'**
+  /// **'End them early to keep their finished weeks and remove their workouts after {date}, or replace them to mark them abandoned.'**
   String planOverlapTrimHintMany(String date);
 
   /// Error when the server refuses a new plan because an active plan overlaps its dates (changed since the overlap check)
@@ -10479,12 +10533,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'TODAY'**
   String get planDetailToday;
-
-  /// Completed marker on the today card
-  ///
-  /// In en, this message translates to:
-  /// **'Completed'**
-  String get planDetailCompleted;
 
   /// Week-card title
   ///
@@ -10905,6 +10953,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t unlink the run. Try again.'**
   String get workoutUnlinkError;
+
+  /// Button on a workout the runner marked done by hand (no linked run); clears the done mark
+  ///
+  /// In en, this message translates to:
+  /// **'Mark not done'**
+  String get workoutMarkNotDone;
+
+  /// Confirm dialog title before clearing a hand-marked done workout
+  ///
+  /// In en, this message translates to:
+  /// **'Mark not done?'**
+  String get workoutMarkNotDoneTitle;
+
+  /// Confirm dialog body before clearing a hand-marked done workout
+  ///
+  /// In en, this message translates to:
+  /// **'The workout will show as not yet done.'**
+  String get workoutMarkNotDoneBody;
+
+  /// Error banner when clearing a hand-marked done workout fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t update the workout. Try again.'**
+  String get workoutMarkNotDoneError;
 
   /// Skipped badge on workout detail
   ///
@@ -16629,11 +16701,11 @@ abstract class AppLocalizations {
   /// **'Kind'**
   String get workoutEditKindLabel;
 
-  /// Label for the target distance field (km)
+  /// Label for the target distance field, in the runner's distance unit
   ///
   /// In en, this message translates to:
-  /// **'Target distance (km)'**
-  String get workoutEditDistanceLabel;
+  /// **'Target distance ({unit})'**
+  String workoutEditDistanceLabel(String unit);
 
   /// Example hint for the target distance field
   ///
@@ -16641,11 +16713,11 @@ abstract class AppLocalizations {
   /// **'e.g. 8.0'**
   String get workoutEditDistanceHint;
 
-  /// Label for the target pace field
+  /// Label for the target pace field, per the runner's distance unit
   ///
   /// In en, this message translates to:
-  /// **'Target pace (mm:ss /km)'**
-  String get workoutEditPaceLabel;
+  /// **'Target pace (mm:ss /{unit})'**
+  String workoutEditPaceLabel(String unit);
 
   /// Example hint for the target pace field
   ///
@@ -16728,8 +16800,8 @@ abstract class AppLocalizations {
   /// Validation error for the distance field
   ///
   /// In en, this message translates to:
-  /// **'Enter a positive distance in km'**
-  String get workoutEditErrDistance;
+  /// **'Enter a positive distance in {unit}'**
+  String workoutEditErrDistance(String unit);
 
   /// Validation error for the pace field
   ///
@@ -16796,6 +16868,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'TODAY\'S WORKOUT'**
   String get todaysWorkoutToday;
+
+  /// Target pace on the Today card, read as 'at <pace>'. {pace} is already formatted with its unit, e.g. 5:30 /km
+  ///
+  /// In en, this message translates to:
+  /// **'@ {pace}'**
+  String todaysWorkoutAtPace(String pace);
 
   /// Retry button on the shared error state
   ///
@@ -17247,29 +17325,53 @@ abstract class AppLocalizations {
   /// **'Workout complete. Nice work.'**
   String get ttsWorkoutComplete;
 
-  /// Spoken in-step progress cue at the halfway point
+  /// Spoken in-step progress cue at the halfway point of a paced interval rep (never on a warm-up, recovery, steady block or walk-run interval)
   ///
   /// In en, this message translates to:
   /// **'Halfway through this rep'**
   String get ttsStepHalfway;
 
-  /// Spoken in-step progress cue near the end of a rep
+  /// Spoken in-step progress cue in the last 50 m of a distance rep, for a runner who uses kilometres
   ///
   /// In en, this message translates to:
   /// **'Fifty metres to go'**
   String get ttsStepLastFifty;
 
-  /// Spoken nudge when the runner is ahead of target pace by delta seconds per km
+  /// Spoken in-step progress cue near the end of a distance rep, for a runner who uses miles (the cue fires inside the last 50 m, about 55 yards)
   ///
   /// In en, this message translates to:
-  /// **'Ease up — {delta} seconds ahead pace.'**
-  String ttsPaceDriftAhead(int delta);
+  /// **'Fifty yards to go'**
+  String get ttsStepLastFiftyYards;
 
-  /// Spoken nudge when the runner is behind target pace by delta seconds per km
+  /// Spoken in-step progress cue in the last ten seconds of a timed step (a walk-run interval, a timed rep or a timed warm-up)
   ///
   /// In en, this message translates to:
-  /// **'Pick it up — {delta} seconds behind pace.'**
-  String ttsPaceDriftBehind(int delta);
+  /// **'Ten seconds to go'**
+  String get ttsStepLastTenSeconds;
+
+  /// Spoken nudge during a structured-workout step when the runner is ahead of the step's target pace by delta seconds per kilometre
+  ///
+  /// In en, this message translates to:
+  /// **'Ease up — {delta} seconds per kilometre ahead of pace.'**
+  String ttsPaceDriftAheadKm(int delta);
+
+  /// Spoken nudge during a structured-workout step when the runner is ahead of the step's target pace by delta seconds per mile
+  ///
+  /// In en, this message translates to:
+  /// **'Ease up — {delta} seconds per mile ahead of pace.'**
+  String ttsPaceDriftAheadMi(int delta);
+
+  /// Spoken nudge during a structured-workout step when the runner is behind the step's target pace by delta seconds per kilometre
+  ///
+  /// In en, this message translates to:
+  /// **'Pick it up — {delta} seconds per kilometre behind pace.'**
+  String ttsPaceDriftBehindKm(int delta);
+
+  /// Spoken nudge during a structured-workout step when the runner is behind the step's target pace by delta seconds per mile
+  ///
+  /// In en, this message translates to:
+  /// **'Pick it up — {delta} seconds per mile behind pace.'**
+  String ttsPaceDriftBehindMi(int delta);
 
   /// Spoken speed in km/h appended to a split cue
   ///
@@ -17366,6 +17468,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cooldown'**
   String get ttsStepCooldown;
+
+  /// Spoken intro of the walking warm-up that opens a walk-run (couch-to-5k) session, said instead of plain 'Warmup' so a beginner knows to walk
+  ///
+  /// In en, this message translates to:
+  /// **'Warm-up walk'**
+  String get ttsStepWarmupWalk;
+
+  /// Spoken intro of the walking cool-down that closes a walk-run (couch-to-5k) session
+  ///
+  /// In en, this message translates to:
+  /// **'Cool-down walk'**
+  String get ttsStepCooldownWalk;
 
   /// Spoken workout-step intro: a rep with no index
   ///
@@ -21062,6 +21176,12 @@ abstract class AppLocalizations {
   /// **'Upcoming'**
   String get coachingAthleteStatusUpcoming;
 
+  /// Workout status pill: the athlete deliberately skipped this workout, so it is not a miss
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped'**
+  String get coachingAthleteStatusSkipped;
+
   /// Heading of the recent-runs card on the athlete review screen
   ///
   /// In en, this message translates to:
@@ -22291,6 +22411,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Official result imported.'**
   String get racesImported;
+
+  /// Run detail: asks whether this run was a planned workout from a later day, done early. {day} is a weekday name.
+  ///
+  /// In en, this message translates to:
+  /// **'Did you do {day}\'s planned workout early?'**
+  String planLinkPromptEarly(String day);
+
+  /// Run detail: asks whether this run was a planned workout from an earlier day, done late. {day} is a weekday name.
+  ///
+  /// In en, this message translates to:
+  /// **'Did you do {day}\'s planned workout late?'**
+  String planLinkPromptLate(String day);
+
+  /// Run detail: links the run to the asked-about planned workout
+  ///
+  /// In en, this message translates to:
+  /// **'Link to plan'**
+  String get planLinkConfirm;
+
+  /// Run detail: dismisses the asked-about planned workout and shows the next one, if any
+  ///
+  /// In en, this message translates to:
+  /// **'Not this one'**
+  String get planLinkDismiss;
+
+  /// Toast after a run is linked to a planned workout from the run-detail prompt
+  ///
+  /// In en, this message translates to:
+  /// **'Linked to your plan.'**
+  String get planLinkLinked;
+
+  /// Error after linking a run to a planned workout fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t link this to your plan. Try again.'**
+  String get planLinkFailed;
 
   /// Heading for the imported official-result panel
   ///
@@ -25598,6 +25754,42 @@ abstract class AppLocalizations {
   /// **'No more sessions scheduled in your plan.'**
   String get dashboardLeadNoNextSession;
 
+  /// Heading of the Finish plan prompt shown on Home and plan detail once an active plan's last day has passed. name is the plan's name
+  ///
+  /// In en, this message translates to:
+  /// **'{name} has ended'**
+  String planFinishTitle(String name);
+
+  /// Body of the Finish plan prompt. date is the plan's formatted last day
+  ///
+  /// In en, this message translates to:
+  /// **'Its last day was {date}. Finish it to move it to your completed plans.'**
+  String planFinishBody(String date);
+
+  /// Button that marks an active plan whose dates have run out as completed; also the Run tab plan chip's label for such a plan
+  ///
+  /// In en, this message translates to:
+  /// **'Finish plan'**
+  String get planFinishAction;
+
+  /// Finish plan button label while the status write is in flight
+  ///
+  /// In en, this message translates to:
+  /// **'Finishing…'**
+  String get planFinishFinishing;
+
+  /// Banner after a plan was finished. name is the plan's name
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is in your completed plans.'**
+  String planFinishDone(String name);
+
+  /// Error banner when finishing a plan failed; nothing changed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t finish the plan. Try again.'**
+  String get planFinishFailed;
+
   /// Button on the dashboard week card that opens the manual add-a-run form
   ///
   /// In en, this message translates to:
@@ -27672,6 +27864,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Race {n} needs a name, a race day, a distance, and either no goal time or one written h:mm:ss.'**
   String seasonPlanRowInvalid(int n);
+
+  /// Button in the workout editor, and title of the sheet it opens, to move a planned workout to another day of its week
+  ///
+  /// In en, this message translates to:
+  /// **'Move to another day'**
+  String get workoutMoveAction;
+
+  /// Explains the move sheet: days of the same week; a workout already on the chosen day swaps into the moved one's old day
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a day in this week. A workout already on that day takes this one\'s old day.'**
+  String get workoutMoveHint;
+
+  /// Subtitle on a day in the move sheet that already holds a workout; kind is that workout's type (e.g. Rest)
+  ///
+  /// In en, this message translates to:
+  /// **'Swaps with {kind}'**
+  String workoutMoveSwapsWith(String kind);
+
+  /// Inline error when moving a workout fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t move this workout: {error}'**
+  String workoutMoveError(String error);
+
+  /// Shown when the runner taps Move with unsaved edits in the workout editor
+  ///
+  /// In en, this message translates to:
+  /// **'Save or discard your changes before moving this workout.'**
+  String get workoutMoveSaveFirst;
 }
 
 class _AppLocalizationsDelegate

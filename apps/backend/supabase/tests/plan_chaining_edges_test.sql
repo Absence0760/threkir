@@ -186,9 +186,9 @@ reset role;
 select is(
   (select array_agg(row(name, status)::text order by start_date) from training_plans
    where user_id = '7e7e7e7e-0000-0000-0000-0000000a0002'),
-  array[row('Block A', 'completed')::text, row('Spans A and B', 'active')::text, row('Block B', 'completed')::text,
+  array[row('Block A', 'abandoned')::text, row('Spans A and B', 'active')::text, row('Block B', 'abandoned')::text,
         row('Block C', 'active')::text, row('Block D', 'paused')::text, row('Over the paused one', 'active')::text],
-  'replace completed both plans it overlapped and left the queued and the paused plan as they were'
+  'replace abandoned both plans it overlapped and left the queued and the paused plan as they were'
 );
 
 -- ─────────── assign_plan_to_athlete ───────────

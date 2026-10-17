@@ -628,6 +628,43 @@ class AppLocalizationsJa extends AppLocalizations {
   String get readinessContributorRestingHr => '安静時心拍数';
 
   @override
+  String get dashboardTrendsDivider => 'トレンド';
+
+  @override
+  String get dashboardTrendGroupVolume => '走行量';
+
+  @override
+  String get dashboardTrendGroupVolumeHint => '週ごとの走行距離';
+
+  @override
+  String get dashboardTrendGroupFitness => '体力とコンディション';
+
+  @override
+  String get dashboardTrendGroupFitnessHint => '準備度・体力・トレーニング負荷';
+
+  @override
+  String get dashboardTrendGroupPerformance => 'パフォーマンス';
+
+  @override
+  String get dashboardTrendGroupPerformanceHint => '自己ベストと予想レースタイム';
+
+  @override
+  String get dashboardTrendGroupEffort => '強度';
+
+  @override
+  String get dashboardTrendGroupEffortHint => 'これまでのトレーニングのきつさ';
+
+  @override
+  String get dashboardTrendGroupRecent => '最近';
+
+  @override
+  String get dashboardTrendGroupRecentHint => '最近のセッション';
+
+  @override
+  String get readinessFromLoadOnly =>
+      'トレーニング負荷のみから算出しています。睡眠と安静時心拍数はまだ含まれていません。';
+
+  @override
   String get intensityZone1 => 'Z1（リカバリー）';
 
   @override
@@ -1918,15 +1955,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get runResumeDiscardedBanner => '前回のランを破棄しました。';
-
-  @override
-  String get runStartWorkout => 'ワークアウトを開始';
-
-  @override
-  String get runStartWorkoutSubtitle => 'ライブのステップ目標、音声ガイド、計画と実績の振り返り付きで走ります。';
-
-  @override
-  String get runViewWorkoutDetails => '詳細を見る';
 
   @override
   String get runWorkoutNoStructure => 'このワークアウトには実行可能な構成がありません。';
@@ -5925,11 +5953,11 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get planOverlapReplaceHint =>
-      '置き換えると、重なっているプランは完了としてマークされます。「プランの管理」から引き続き確認できます。';
+      '置き換えると、重なっているプランは中止としてマークされます。「プランの管理」から引き続き確認できます。';
 
   @override
   String planOverlapTrimHint(String name, String date) {
-    return '$nameを早めに終了すると、終えた週は残り、$dateより後のワークアウトは削除されます。置き換えると完了としてマークされます。';
+    return '$nameを早めに終了すると、終えた週は残り、$dateより後のワークアウトは削除されます。置き換えると中止としてマークされます。';
   }
 
   @override
@@ -5944,7 +5972,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String planOverlapTrimHintMany(String date) {
-    return '早めに終了すると、終えた週は残り、$dateより後のワークアウトは削除されます。置き換えると完了としてマークされます。';
+    return '早めに終了すると、終えた週は残り、$dateより後のワークアウトは削除されます。置き換えると中止としてマークされます。';
   }
 
   @override
@@ -6076,9 +6104,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get planDetailToday => '今日';
-
-  @override
-  String get planDetailCompleted => '完了';
 
   @override
   String planDetailWeek(int number) {
@@ -6347,6 +6372,18 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get workoutUnlinkError => 'ランのリンクを解除できませんでした。もう一度お試しください。';
+
+  @override
+  String get workoutMarkNotDone => '未完了にする';
+
+  @override
+  String get workoutMarkNotDoneTitle => '未完了にしますか？';
+
+  @override
+  String get workoutMarkNotDoneBody => 'ワークアウトは未完了として表示されます。';
+
+  @override
+  String get workoutMarkNotDoneError => 'ワークアウトを更新できませんでした。もう一度お試しください。';
 
   @override
   String get workoutSkipped => 'スキップ済み';
@@ -9683,13 +9720,17 @@ class AppLocalizationsJa extends AppLocalizations {
   String get workoutEditKindLabel => '種類';
 
   @override
-  String get workoutEditDistanceLabel => '目標距離 (km)';
+  String workoutEditDistanceLabel(String unit) {
+    return '目標距離 ($unit)';
+  }
 
   @override
   String get workoutEditDistanceHint => '例：8.0';
 
   @override
-  String get workoutEditPaceLabel => '目標ペース (mm:ss /km)';
+  String workoutEditPaceLabel(String unit) {
+    return '目標ペース (mm:ss /$unit)';
+  }
 
   @override
   String get workoutEditPaceHint => '例：5:30';
@@ -9731,7 +9772,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get workoutEditSave => '保存';
 
   @override
-  String get workoutEditErrDistance => '正の距離を km で入力してください';
+  String workoutEditErrDistance(String unit) {
+    return '正の距離を $unit で入力してください';
+  }
 
   @override
   String get workoutEditErrPace => 'ペースは 5:30 の形式で入力してください';
@@ -9775,6 +9818,11 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get todaysWorkoutToday => '今日のワークアウト';
+
+  @override
+  String todaysWorkoutAtPace(String pace) {
+    return '@ $pace';
+  }
 
   @override
   String get errorStateRetry => '再試行';
@@ -10027,13 +10075,29 @@ class AppLocalizationsJa extends AppLocalizations {
   String get ttsStepLastFifty => '残り五十メートル';
 
   @override
-  String ttsPaceDriftAhead(int delta) {
-    return '少し緩めましょう — $delta秒速すぎます。';
+  String get ttsStepLastFiftyYards => '残り五十ヤード';
+
+  @override
+  String get ttsStepLastTenSeconds => '残り十秒';
+
+  @override
+  String ttsPaceDriftAheadKm(int delta) {
+    return '少し緩めましょう — 1キロメートルあたり$delta秒速すぎます。';
   }
 
   @override
-  String ttsPaceDriftBehind(int delta) {
-    return '少し上げましょう — $delta秒遅れています。';
+  String ttsPaceDriftAheadMi(int delta) {
+    return '少し緩めましょう — 1マイルあたり$delta秒速すぎます。';
+  }
+
+  @override
+  String ttsPaceDriftBehindKm(int delta) {
+    return '少し上げましょう — 1キロメートルあたり$delta秒遅れています。';
+  }
+
+  @override
+  String ttsPaceDriftBehindMi(int delta) {
+    return '少し上げましょう — 1マイルあたり$delta秒遅れています。';
   }
 
   @override
@@ -10107,6 +10171,12 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get ttsStepCooldown => 'クールダウン';
+
+  @override
+  String get ttsStepWarmupWalk => 'ウォームアップのウォーク';
+
+  @override
+  String get ttsStepCooldownWalk => 'クールダウンのウォーク';
 
   @override
   String get ttsStepRep => 'レップ';
@@ -12266,6 +12336,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get coachingAthleteStatusUpcoming => '予定';
 
   @override
+  String get coachingAthleteStatusSkipped => 'スキップ';
+
+  @override
   String get coachingAthleteRecentRuns => '最近のラン';
 
   @override
@@ -12950,6 +13023,28 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get racesImported => '公式結果をインポートしました。';
+
+  @override
+  String planLinkPromptEarly(String day) {
+    return '$dayに予定していたワークアウトを前倒しで行いましたか？';
+  }
+
+  @override
+  String planLinkPromptLate(String day) {
+    return '$dayに予定していたワークアウトを後から行いましたか？';
+  }
+
+  @override
+  String get planLinkConfirm => 'プランにリンク';
+
+  @override
+  String get planLinkDismiss => 'これではない';
+
+  @override
+  String get planLinkLinked => 'プランにリンクしました。';
+
+  @override
+  String get planLinkFailed => 'プランにリンクできませんでした。もう一度お試しください。';
 
   @override
   String get racesOfficialResult => '公式結果';
@@ -14854,6 +14949,30 @@ class AppLocalizationsJa extends AppLocalizations {
   String get dashboardLeadNoNextSession => 'プランに予定されているセッションはもうありません。';
 
   @override
+  String planFinishTitle(String name) {
+    return '$nameは終了しました';
+  }
+
+  @override
+  String planFinishBody(String date) {
+    return '最終日は$dateでした。完了すると、完了したプランに移動します。';
+  }
+
+  @override
+  String get planFinishAction => 'プランを完了';
+
+  @override
+  String get planFinishFinishing => '完了しています…';
+
+  @override
+  String planFinishDone(String name) {
+    return '$nameを完了したプランに移動しました。';
+  }
+
+  @override
+  String get planFinishFailed => 'プランを完了できませんでした。もう一度お試しください。';
+
+  @override
   String get dashboardLeadAddRun => 'ランを追加';
 
   @override
@@ -16090,4 +16209,24 @@ class AppLocalizationsJa extends AppLocalizations {
   String seasonPlanRowInvalid(int n) {
     return 'レース $n には名前・レース日・距離が必要です。目標タイムは空欄にするか h:mm:ss で入力してください。';
   }
+
+  @override
+  String get workoutMoveAction => '別の日に移動';
+
+  @override
+  String get workoutMoveHint =>
+      'この週の日を選んでください。移動先の日にすでにワークアウトがある場合は、日付が入れ替わります。';
+
+  @override
+  String workoutMoveSwapsWith(String kind) {
+    return '$kindと入れ替え';
+  }
+
+  @override
+  String workoutMoveError(String error) {
+    return 'このワークアウトを移動できませんでした: $error';
+  }
+
+  @override
+  String get workoutMoveSaveFirst => 'このワークアウトを移動する前に、変更を保存するか破棄してください。';
 }

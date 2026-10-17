@@ -94,6 +94,20 @@ class ReadinessCard extends StatelessWidget {
                 ],
               ),
             ],
+            // Nothing reads sleep or resting HR yet, so the score is training
+            // balance alone; say so in words rather than leave one chip to
+            // imply it. Goes away by itself once either input contributes.
+            if (readiness.contributors
+                .every((c) => c.kind == ReadinessContributorKind.form)) ...[
+              const SizedBox(height: 8),
+              Text(
+                l10n.readinessFromLoadOnly,
+                key: const Key('readinessLoadOnly'),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
           ],
         ),
       ),

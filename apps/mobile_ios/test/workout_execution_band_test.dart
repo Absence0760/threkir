@@ -284,6 +284,33 @@ void main() {
       );
       expect(find.text('—'), findsOneWidget);
     });
+
+    testWidgets('an unpaced walk-run step shows no pace pip', (tester) async {
+      await _pumpBand(
+        tester,
+        state: const WorkoutBandState(
+          step: WorkoutStep(
+            kind: WorkoutStepKind.walk,
+            targetDistanceMetres: 0,
+            targetDurationSec: 90,
+            targetPaceSecPerKm: 300,
+            label: 'Walk 1/7',
+            paced: false,
+          ),
+          totalSteps: 17,
+          currentIndex: 2,
+          progress: 0.5,
+          remainingMetres: 0,
+          remainingDuration: Duration(seconds: 45),
+          actualPaceSecPerKm: 720,
+          adherence: PaceAdherence.onPace,
+          complete: false,
+          abandoned: false,
+        ),
+      );
+      expect(find.text('+420s'), findsNothing);
+      expect(find.textContaining('Walk 1/7'), findsOneWidget);
+    });
   });
 
   group('WorkoutExecutionBand — distance pref propagation', () {

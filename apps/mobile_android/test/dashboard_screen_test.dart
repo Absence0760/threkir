@@ -111,6 +111,47 @@ class _FakeTraining extends TrainingService {
   Future<ActivePlanOverview?> fetchActiveOverview() async => overview;
 }
 
+/// A plan whose dates ran out two days ago, still `active`: nothing writes
+/// `completed` on a clock, so Home asks the runner to finish it.
+class _FinishableTraining extends TrainingService {
+  ActivePlanOverview? overview;
+  final finished = <String>[];
+  _FinishableTraining(this.overview);
+  @override
+  Future<ActivePlanOverview?> fetchActiveOverview() async => overview;
+  @override
+  Future<void> finishPlan(String id) async {
+    finished.add(id);
+    overview = null;
+  }
+}
+
+ActivePlanOverview _endedOverview() {
+  final today = DateTime.now();
+  final plan = TrainingPlanRow(
+    id: 'plan-ended',
+    userId: 'u1',
+    name: 'Spring Half',
+    goalEvent: 'distance_half',
+    goalDistanceM: 21097,
+    startDate: today.subtract(const Duration(days: 60)),
+    endDate: today.subtract(const Duration(days: 2)),
+    daysPerWeek: 4,
+    status: 'active',
+    source: 'app',
+    isTemplate: false,
+    isPublicTemplate: false,
+  );
+  return ActivePlanOverview(
+    plan: plan,
+    weeks: const [],
+    workouts: const [],
+    todayWorkout: null,
+    completionPct: 90,
+    currentWeekIndex: 8,
+  );
+}
+
 ActivePlanOverview _overviewWithTodayWorkout({String kind = 'long'}) {
   // Build a minimal but complete overview shape — the
   // TodaysWorkoutCard reads `todayWorkout.kind` + the target distance
@@ -788,6 +829,64 @@ void main() {
           dir.deleteSync(recursive: true);
         }
       });
+    });
+
+    testWidgets('an ended plan asks to be finished, and finishing clears it',
+        (tester) async {
+      final training = _FinishableTraining(_endedOverview());
+      await tester.runAsync(() async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = Preferences();
+        await prefs.init();
+
+        final dir = Directory.systemTemp.createTempSync('dashboard_finish_plan_');
+        try {
+          final seedStore = LocalRunStore();
+          await seedStore.init(overrideDirectory: dir);
+          await seedStore.save(_run(id: 'r1'));
+          final runStore = LocalRunStore();
+          await runStore.init(overrideDirectory: dir);
+
+          await tester.pumpWidget(
+            MaterialApp(
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: DashboardScreen(
+                runStore: runStore,
+                routeStore: LocalRouteStore(),
+                gymStore: LocalGymStore(),
+                foodStore: LocalFoodStore(),
+                preferences: prefs,
+                training: training,
+              ),
+            ),
+          );
+          await tester.pump();
+          await tester.pump();
+          await tester.pump();
+
+          final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+          final card = find.byKey(const Key('dashboardFinishPlan'));
+          await tester.scrollUntilVisible(card, 200,
+              scrollable: find.byType(Scrollable).first);
+          expect(find.text(l10n.planFinishTitle('Spring Half')), findsOneWidget);
+          expect(find.byKey(const Key('dashboardNextRace')), findsNothing);
+          // The week lead is handed no plan, so it does not claim the plan
+          // simply has nothing left scheduled.
+          expect(find.text(l10n.dashboardLeadNoNextSession), findsNothing);
+
+          await tester.tap(find.byKey(const Key('finishPlanButton')));
+          await tester.pump();
+          await tester.pump();
+          await tester.pump();
+          expect(training.finished, ['plan-ended']);
+          expect(card, findsNothing);
+        } finally {
+          dir.deleteSync(recursive: true);
+        }
+      });
+      // Let the confirmation banner's auto-dismiss timer run out.
+      await tester.pump(const Duration(seconds: 6));
     });
 
     testWidgets(

@@ -2833,6 +2833,17 @@ INSERT INTO runs (user_id, started_at, duration_s, distance_m, source, is_public
   ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', now() - interval '3 hours', 1980, 8000.0, 'app', false,
     '{"activity_type":"run","title":"Morning easy 8K","avg_bpm":148,"steps":9800}'::jsonb);
 
+-- The database matcher (20270901000001) links this run to today's planned
+-- easy 8 km. Unlink it, as the Unlink control would, so today's workout stays
+-- open and the start-from-today path stays exercisable out of the box.
+UPDATE plan_workouts
+SET completed_run_id = null, completed_at = null
+WHERE completed_run_id IN (
+  SELECT id FROM runs
+  WHERE user_id = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'
+    AND metadata->>'title' = 'Morning easy 8K'
+);
+
 -- ════════════════════════════════════════════════════════════════════════════
 -- Club templates for Richmond Run Club — so the Templates tab is populated.
 --

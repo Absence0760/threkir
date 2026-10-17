@@ -74,3 +74,16 @@ List<T> overlappingPlans<T>(
         if (start(p).compareTo(endIso) <= 0 && end(p).compareTo(startIso) >= 0)
           p,
     ];
+
+/// An `active` plan whose last day is behind [todayIso] (the runner's local
+/// day): its dates have run out but nothing has written `completed`, which
+/// only the runner confirming "Finish plan" does. A paused, completed or
+/// abandoned plan is never finished in this sense, and the end day itself is
+/// still inside the plan.
+bool isPlanFinished({
+  required String status,
+  required String endIso,
+  required String todayIso,
+}) =>
+    status == 'active' && endIso.compareTo(todayIso) < 0;
+

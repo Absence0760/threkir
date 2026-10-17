@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ui_kit/ui_kit.dart';
+import '../lib/backend_timeout.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/plan_ramp.dart';
 import '../lib/race_plan_preset.dart';
@@ -100,6 +101,39 @@ class _GateTraining extends TrainingService {
     // Supabase-backed and unbuildable in a widget test). The test only
     // asserts the gate reached createPlan.
     throw Exception('test: skip navigation');
+  }
+}
+
+/// A create that never completes, so the screen's own timeout is the only
+/// thing that can end it.
+class _HangingCreateTraining extends TrainingService {
+  int createCalls = 0;
+
+  @override
+  Future<TrainingGender> fetchViewerGender() async => null;
+  @override
+  Future<int?> fetchViewerAge() async => null;
+  @override
+  Future<List<TrainingPlanRow>> fetchClubTemplates(String clubId) async =>
+      const [];
+  @override
+  Future<List<TrainingPlanRow>> fetchActivePlans() async => const [];
+
+  @override
+  Future<TrainingPlanRow> createPlan({
+    required String name,
+    required GoalEvent goalEvent,
+    required double goalDistanceM,
+    int? goalTimeSec,
+    int? recent5kSec,
+    required DateTime startDate,
+    required int daysPerWeek,
+    String? notes,
+    required GeneratedPlan generated,
+    PlanOverlapAction onOverlap = PlanOverlapAction.refuse,
+  }) {
+    createCalls++;
+    return Completer<TrainingPlanRow>().future;
   }
 }
 
@@ -563,6 +597,96 @@ void main() {
       await tapCreate(tester);
       expect(find.text(title), findsNothing);
       expect(training.createCalled, isTrue);
+    });
+  });
+
+  group('PlanNewScreen — a create that never answers', () {
+    testWidgets('times out, shows an error and frees the Create button',
+        (tester) async {
+      final training = _HangingCreateTraining();
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: PlanNewScreen(training: training),
+        ),
+      );
+      await tester.pump();
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Plan name'), 'Autumn half');
+      await tester.pump();
+      final create = find.widgetWithText(FilledButton, 'Create plan');
+      await tester.scrollUntilVisible(create, 300,
+          scrollable: find.byType(Scrollable).first);
+      await tester.tap(create);
+      await tester.pump();
+      await pumpUntil(tester, () => training.createCalls == 1,
+          describe: 'the create to start');
+      await tester.pump();
+      expect(find.widgetWithText(FilledButton, 'Creating…'), findsOneWidget);
+
+      await tester.pump(kBackendLoadTimeout);
+      await tester.pump();
+      expect(find.text('Something went wrong. Please try again.'),
+          findsOneWidget);
+      expect(tester.widget<FilledButton>(create).onPressed, isNotNull);
+      expect(training.createCalls, 1);
+    });
+  });
+
+  group('PlanNewScreen — an out-of-range number', () {
+    // "7" then "75" in minutes used to keep 7 in state while the field
+    // showed 75, and the plan was created with 7.
+    testWidgets('shows an error, blocks Create, and never creates',
+        (tester) async {
+      final training = _GateTraining();
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: PlanNewScreen(training: training),
+        ),
+      );
+      await tester.pump();
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Plan name'), 'Autumn half');
+      final minutes = find.byKey(const Key('planNewGoalMinutes'));
+      await tester.scrollUntilVisible(minutes, 200,
+          scrollable: find.byType(Scrollable).first);
+      await tester.enterText(minutes, '7');
+      await tester.pump();
+      expect(find.text('Enter a value between 0 and 59.'), findsNothing);
+
+      await tester.enterText(minutes, '75');
+      await tester.pump();
+      expect(find.text('75'), findsOneWidget,
+          reason: 'the raw text stays so the runner can see what to fix');
+      expect(find.text('Enter a value between 0 and 59.'), findsOneWidget);
+
+      final create = find.widgetWithText(FilledButton, 'Create plan');
+      await tester.scrollUntilVisible(create, 300,
+          scrollable: find.byType(Scrollable).first);
+      expect(tester.widget<FilledButton>(create).onPressed, isNull);
+      await tester.tap(create, warnIfMissed: false);
+      await tester.pumpAndSettle();
+      expect(training.createCalled, isFalse);
+    });
+
+    testWidgets('only digits can be typed', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: PlanNewScreen(training: _GateTraining()),
+        ),
+      );
+      await tester.pump();
+      final minutes = find.byKey(const Key('planNewGoalMinutes'));
+      await tester.scrollUntilVisible(minutes, 200,
+          scrollable: find.byType(Scrollable).first);
+      await tester.enterText(minutes, '4-2.');
+      await tester.pump();
+      expect(find.text('42'), findsOneWidget);
     });
   });
 

@@ -4853,5 +4853,21 @@
   "planDetailAriaCompletedSuffix": "、完了",
   "planDetailAriaSkippedSuffix": "、スキップ",
   "planDetailAriaMissedSuffix": "、未実施",
-  "planDetailAriaTodaySuffix": "、今日"
+  "planDetailAriaTodaySuffix": "、今日",
+  "planDetailNextUp": "次は",
+  "planDetailGoAndRunIt": "さあ、走ろう。",
+  "planDetailRestDayTitle": "休養日",
+  "planDetailRestDayHint": "予定されたワークアウトはありません。回復して明日に備えましょう。",
+  "planDetailTodayLabel": "今日",
+  "planDetailRaceDayTitle": "レース当日",
+  "planDetailWorkoutCompletion": "ワークアウトの達成状況",
+  "planDetailFirstWeek": "最初の週",
+  "planDetailAssignedBy": "{name}さんが割り当て",
+  "planDetailAssignedByCoach": "コーチが割り当て",
+  "planDetailWeekOfN": "第{week}週／全{total}週",
+  "planDetailPausedChip": "一時停止中",
+  "planDetailWeekDoneCount": "{done} / {total} 完了",
+  "planDetailEarlierWeeks": "{count, plural, other{これまでの{count}週}}",
+  "planDetailShowEarlierWeeks": "これまでの週を表示",
+  "planDetailHideEarlierWeeks": "これまでの週を隠す"
 }

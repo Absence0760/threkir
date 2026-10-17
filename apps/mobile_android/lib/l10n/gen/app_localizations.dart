@@ -27936,6 +27936,180 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Save or discard your changes before moving this workout.'**
   String get workoutMoveSaveFirst;
+
+  /// Abbreviation of the Easy workout kind for a narrow plan-calendar cell (2-4 characters)
+  ///
+  /// In en, this message translates to:
+  /// **'E'**
+  String get workoutKindShortEasy;
+
+  /// Abbreviation of the Long run workout kind for a narrow plan-calendar cell (2-4 characters)
+  ///
+  /// In en, this message translates to:
+  /// **'L'**
+  String get workoutKindShortLong;
+
+  /// Abbreviation of the Recovery workout kind for a narrow plan-calendar cell (2-4 characters)
+  ///
+  /// In en, this message translates to:
+  /// **'Rec'**
+  String get workoutKindShortRecovery;
+
+  /// Abbreviation of the Tempo workout kind for a narrow plan-calendar cell (2-4 characters)
+  ///
+  /// In en, this message translates to:
+  /// **'T'**
+  String get workoutKindShortTempo;
+
+  /// Abbreviation of the Intervals workout kind for a narrow plan-calendar cell (2-4 characters)
+  ///
+  /// In en, this message translates to:
+  /// **'Int'**
+  String get workoutKindShortInterval;
+
+  /// Abbreviation of the Marathon pace workout kind for a narrow plan-calendar cell (2-4 characters)
+  ///
+  /// In en, this message translates to:
+  /// **'MP'**
+  String get workoutKindShortMarathonPace;
+
+  /// Abbreviation of the Walk-run workout kind for a narrow plan-calendar cell (2-4 characters)
+  ///
+  /// In en, this message translates to:
+  /// **'W/R'**
+  String get workoutKindShortWalkRun;
+
+  /// Abbreviation of the Race workout kind for a narrow plan-calendar cell (2-4 characters)
+  ///
+  /// In en, this message translates to:
+  /// **'Race'**
+  String get workoutKindShortRace;
+
+  /// Abbreviation of the Rest workout kind for a narrow plan-calendar cell (2-4 characters)
+  ///
+  /// In en, this message translates to:
+  /// **'Rest'**
+  String get workoutKindShortRest;
+
+  /// Appended to a plan workout's screen-reader label when it is done
+  ///
+  /// In en, this message translates to:
+  /// **', completed'**
+  String get planDetailAriaCompletedSuffix;
+
+  /// Appended to a plan workout's screen-reader label when it was skipped
+  ///
+  /// In en, this message translates to:
+  /// **', skipped'**
+  String get planDetailAriaSkippedSuffix;
+
+  /// Appended to a plan workout's screen-reader label when its day has passed and it was neither done nor skipped
+  ///
+  /// In en, this message translates to:
+  /// **', missed'**
+  String get planDetailAriaMissedSuffix;
+
+  /// Appended to a plan workout's screen-reader label when it is scheduled today
+  ///
+  /// In en, this message translates to:
+  /// **', today'**
+  String get planDetailAriaTodaySuffix;
+
+  /// Plan-detail Today card label when today has no workout and the next one is shown
+  ///
+  /// In en, this message translates to:
+  /// **'Next up'**
+  String get planDetailNextUp;
+
+  /// Plan-detail Today card body on race day
+  ///
+  /// In en, this message translates to:
+  /// **'Go and run it.'**
+  String get planDetailGoAndRunIt;
+
+  /// Plan-detail Today card title on a rest day
+  ///
+  /// In en, this message translates to:
+  /// **'Rest day'**
+  String get planDetailRestDayTitle;
+
+  /// Plan-detail Today card hint on a rest day
+  ///
+  /// In en, this message translates to:
+  /// **'No workout scheduled — recover and roll into tomorrow.'**
+  String get planDetailRestDayHint;
+
+  /// Plan-detail Today card label
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get planDetailTodayLabel;
+
+  /// Plan-detail Today card label on race day
+  ///
+  /// In en, this message translates to:
+  /// **'Race day'**
+  String get planDetailRaceDayTitle;
+
+  /// Screen-reader name of the plan's progress ring
+  ///
+  /// In en, this message translates to:
+  /// **'Workout completion'**
+  String get planDetailWorkoutCompletion;
+
+  /// Current-week strip heading before the plan has started
+  ///
+  /// In en, this message translates to:
+  /// **'First week'**
+  String get planDetailFirstWeek;
+
+  /// Chip on a plan a coach assigned
+  ///
+  /// In en, this message translates to:
+  /// **'Assigned by {name}'**
+  String planDetailAssignedBy(String name);
+
+  /// Chip on a coach-assigned plan when the coach's name is unknown
+  ///
+  /// In en, this message translates to:
+  /// **'Assigned by your coach'**
+  String get planDetailAssignedByCoach;
+
+  /// Plan-detail header: which week of the plan today is in
+  ///
+  /// In en, this message translates to:
+  /// **'Week {week} of {total}'**
+  String planDetailWeekOfN(int week, int total);
+
+  /// Plan-detail header chip on a paused plan
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get planDetailPausedChip;
+
+  /// How many of a week's workouts are done
+  ///
+  /// In en, this message translates to:
+  /// **'{done} / {total} done'**
+  String planDetailWeekDoneCount(int done, int total);
+
+  /// Summary row standing in for the plan's finished weeks
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{1 earlier week} other{{count} earlier weeks}}'**
+  String planDetailEarlierWeeks(int count);
+
+  /// Expands the finished weeks
+  ///
+  /// In en, this message translates to:
+  /// **'Show earlier weeks'**
+  String get planDetailShowEarlierWeeks;
+
+  /// Collapses the finished weeks
+  ///
+  /// In en, this message translates to:
+  /// **'Hide earlier weeks'**
+  String get planDetailHideEarlierWeeks;
 }
 
 class _AppLocalizationsDelegate

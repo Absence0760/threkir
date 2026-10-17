@@ -21,12 +21,8 @@ Color _kindEdgeColor(WidgetTester tester, Finder label) {
 
 void main() {
   testWidgets('renders the start month with workout pills', (tester) async {
-    // Use a plan range entirely in the past so the calendar's "open
-    // to today's month if in range" heuristic falls back to month 0
-    // (the start month) regardless of when this test runs. Without
-    // that, a wall-clock date inside the range opens the calendar on
-    // the wrong month and the TEMPO pill — which lives in the start
-    // month — is off-screen on first paint.
+    // "Today" is the plan's first day, so the calendar opens on the start
+    // month, where the TEMPO pill lives.
     final start = DateTime(2024, 4, 1);
     final end = DateTime(2024, 6, 30);
     final wo = PlanWorkoutRow(
@@ -45,6 +41,7 @@ void main() {
         body: PlanCalendar(
           startDate: start,
           endDate: end,
+          today: start,
           workouts: [wo],
         ),
       ),
@@ -69,6 +66,7 @@ void main() {
         body: PlanCalendar(
           startDate: start,
           endDate: end,
+          today: start,
           workouts: const [],
         ),
       ),
@@ -105,6 +103,7 @@ void main() {
         body: PlanCalendar(
           startDate: start,
           endDate: end,
+          today: start,
           workouts: [wo],
         ),
       ),
@@ -134,6 +133,7 @@ void main() {
         body: PlanCalendar(
           startDate: start,
           endDate: end,
+          today: start,
           workouts: [wo],
         ),
       ),
@@ -157,6 +157,7 @@ void main() {
               child: PlanCalendar(
                 startDate: start,
                 endDate: end,
+                today: start,
                 workouts: const [],
               ),
             ),
@@ -187,6 +188,7 @@ void main() {
         body: PlanCalendar(
           startDate: start,
           endDate: end,
+          today: start,
           workouts: [
             PlanWorkoutRow(
               id: 'wo1',
@@ -232,6 +234,7 @@ void main() {
         body: PlanCalendar(
           startDate: start,
           endDate: end,
+          today: start,
           workouts: [
             PlanWorkoutRow(
               id: 'wo1',
@@ -253,5 +256,97 @@ void main() {
         findsNothing);
     // The dim still applies to the empty cells around it.
     expect(find.byType(Opacity), findsWidgets);
+  });
+
+  group('states, week start and clock', () {
+    Future<void> pump(WidgetTester tester,
+        {required DateTime today,
+        String weekStartDay = 'monday',
+        List<PlanWorkoutRow> workouts = const [],
+        double width = 800}) async {
+      tester.view.physicalSize = Size(width, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(MaterialApp(
+        theme: AppTheme.light,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: PlanCalendar(
+              key: ValueKey('$today/$weekStartDay'),
+              startDate: DateTime(2026, 3, 2),
+              endDate: DateTime(2026, 5, 31),
+              workouts: workouts,
+              today: today,
+              weekStartDay: weekStartDay,
+            ),
+          ),
+        ),
+      ));
+      await tester.pump();
+    }
+
+    String firstHeader(WidgetTester tester) {
+      final row = find.ancestor(
+          of: find.text('Mon'), matching: find.byType(Row)).first;
+      return tester
+          .widgetList<Text>(find.descendant(of: row, matching: find.byType(Text)))
+          .first
+          .data!;
+    }
+
+    testWidgets('the grid starts on Monday by default and on Sunday when the '
+        'runner picked it', (tester) async {
+      await pump(tester, today: DateTime(2026, 3, 10));
+      expect(firstHeader(tester), 'Mon');
+      await pump(tester, today: DateTime(2026, 3, 10), weekStartDay: 'sunday');
+      expect(firstHeader(tester), 'Sun');
+    });
+
+    testWidgets('opens on the injected day, and on the race month once the '
+        'plan is over', (tester) async {
+      await pump(tester, today: DateTime(2026, 4, 20));
+      expect(find.text('April 2026'), findsOneWidget);
+      await pump(tester, today: DateTime(2026, 8, 1));
+      expect(find.text('May 2026'), findsOneWidget);
+    });
+
+    testWidgets('a past open workout reads as missed, to sight and to a screen '
+        'reader', (tester) async {
+      await pump(tester, today: DateTime(2026, 3, 12), workouts: [
+        PlanWorkoutRow(
+          id: 'm',
+          weekId: 'w',
+          scheduledDate: DateTime(2026, 3, 10),
+          kind: 'tempo',
+          targetDistanceM: 8000,
+          manuallyCompleted: false,
+        ),
+      ]);
+      expect(find.byIcon(Icons.event_busy), findsOneWidget);
+      expect(
+        find.byWidgetPredicate((w) =>
+            w is Semantics &&
+            (w.properties.label ?? '').endsWith('Tempo, 8.0 km, missed')),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('below 600 dp a cell names its kind by abbreviation',
+        (tester) async {
+      await pump(tester, today: DateTime(2026, 3, 2), width: 360, workouts: [
+        PlanWorkoutRow(
+          id: 'i',
+          weekId: 'w',
+          scheduledDate: DateTime(2026, 3, 4),
+          kind: 'interval',
+          targetDistanceM: 9000,
+          manuallyCompleted: false,
+        ),
+      ]);
+      expect(find.text('INTERVALS'), findsNothing);
+      expect(find.text('Int'), findsOneWidget);
+    });
   });
 }

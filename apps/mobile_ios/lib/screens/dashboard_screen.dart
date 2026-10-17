@@ -1153,6 +1153,9 @@ class _DashboardScreenState extends State<DashboardScreen>
         ],
       );
     } else if (!hasLocalHistory) {
+      // A plan that has not started yet has no workout today, but its
+      // "Starts in N days" card still sits above the welcome block.
+      final raceCard = _nextRaceCard(now);
       content = CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
@@ -1172,7 +1175,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                   ),
                 // Onboarding can mint a plan before the first run, so its
                 // race day shows here too, not only once there is history.
-                if (_nextRaceCard(now) case final raceCard?)
+                if (raceCard != null)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                     child: raceCard,
@@ -1192,7 +1195,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             hasScrollBody: false,
             child: _WelcomeEmpty(
               theme: theme,
-              planAbove: heroWorkoutCard != null,
+              planAbove: heroWorkoutCard != null || raceCard != null,
               onStartRun: widget.onStartRun,
               // Hidden only from the account that said it does not lift (the
               // setup wizard's track step, or Settings); that is the one answer

@@ -17052,6 +17052,108 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get workoutMoveSaveFirst =>
       'Guarde ou descarte as suas alterações antes de mover este treino.';
+
+  @override
+  String get workoutKindShortEasy => 'L';
+
+  @override
+  String get workoutKindShortLong => 'Lg';
+
+  @override
+  String get workoutKindShortRecovery => 'Rec';
+
+  @override
+  String get workoutKindShortTempo => 'T';
+
+  @override
+  String get workoutKindShortInterval => 'Int';
+
+  @override
+  String get workoutKindShortMarathonPace => 'RM';
+
+  @override
+  String get workoutKindShortWalkRun => 'C/C';
+
+  @override
+  String get workoutKindShortRace => 'Prova';
+
+  @override
+  String get workoutKindShortRest => 'Desc';
+
+  @override
+  String get planDetailAriaCompletedSuffix => ', concluído';
+
+  @override
+  String get planDetailAriaSkippedSuffix => ', ignorado';
+
+  @override
+  String get planDetailAriaMissedSuffix => ', falhado';
+
+  @override
+  String get planDetailAriaTodaySuffix => ', hoje';
+
+  @override
+  String get planDetailNextUp => 'A seguir';
+
+  @override
+  String get planDetailGoAndRunIt => 'Vá e corra!';
+
+  @override
+  String get planDetailRestDayTitle => 'Dia de descanso';
+
+  @override
+  String get planDetailRestDayHint =>
+      'Nenhum treino agendado — recupere-se e siga para amanhã.';
+
+  @override
+  String get planDetailTodayLabel => 'Hoje';
+
+  @override
+  String get planDetailRaceDayTitle => 'Dia da prova';
+
+  @override
+  String get planDetailWorkoutCompletion => 'Conclusão dos treinos';
+
+  @override
+  String get planDetailFirstWeek => 'Primeira semana';
+
+  @override
+  String planDetailAssignedBy(String name) {
+    return 'Atribuído por $name';
+  }
+
+  @override
+  String get planDetailAssignedByCoach => 'Atribuído pelo seu treinador';
+
+  @override
+  String planDetailWeekOfN(int week, int total) {
+    return 'Semana $week de $total';
+  }
+
+  @override
+  String get planDetailPausedChip => 'Pausado';
+
+  @override
+  String planDetailWeekDoneCount(int done, int total) {
+    return '$done / $total feitos';
+  }
+
+  @override
+  String planDetailEarlierWeeks(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count semanas anteriores',
+      one: '1 semana anterior',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planDetailShowEarlierWeeks => 'Mostrar semanas anteriores';
+
+  @override
+  String get planDetailHideEarlierWeeks => 'Ocultar semanas anteriores';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -30764,7 +30866,8 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get racesAgeGroupPlace => 'Classificação por categoria';
 
   @override
-  String get racesDivisionAwardPlace => 'Classificação na categoria de premiação';
+  String get racesDivisionAwardPlace =>
+      'Classificação na categoria de premiação';
 
   @override
   String get racesAgeGroup => 'Categoria de idade';
@@ -34088,4 +34191,106 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get workoutMoveSaveFirst =>
       'Salve ou descarte suas alterações antes de mover este treino.';
+
+  @override
+  String get workoutKindShortEasy => 'L';
+
+  @override
+  String get workoutKindShortLong => 'Lg';
+
+  @override
+  String get workoutKindShortRecovery => 'Rec';
+
+  @override
+  String get workoutKindShortTempo => 'T';
+
+  @override
+  String get workoutKindShortInterval => 'Int';
+
+  @override
+  String get workoutKindShortMarathonPace => 'RM';
+
+  @override
+  String get workoutKindShortWalkRun => 'C/C';
+
+  @override
+  String get workoutKindShortRace => 'Prova';
+
+  @override
+  String get workoutKindShortRest => 'Desc';
+
+  @override
+  String get planDetailAriaCompletedSuffix => ', concluído';
+
+  @override
+  String get planDetailAriaSkippedSuffix => ', ignorado';
+
+  @override
+  String get planDetailAriaMissedSuffix => ', não realizado';
+
+  @override
+  String get planDetailAriaTodaySuffix => ', hoje';
+
+  @override
+  String get planDetailNextUp => 'A seguir';
+
+  @override
+  String get planDetailGoAndRunIt => 'Vá e corra!';
+
+  @override
+  String get planDetailRestDayTitle => 'Dia de descanso';
+
+  @override
+  String get planDetailRestDayHint =>
+      'Nenhum treino agendado — recupere-se e siga para amanhã.';
+
+  @override
+  String get planDetailTodayLabel => 'Hoje';
+
+  @override
+  String get planDetailRaceDayTitle => 'Dia da prova';
+
+  @override
+  String get planDetailWorkoutCompletion => 'Conclusão dos treinos';
+
+  @override
+  String get planDetailFirstWeek => 'Primeira semana';
+
+  @override
+  String planDetailAssignedBy(String name) {
+    return 'Atribuído por $name';
+  }
+
+  @override
+  String get planDetailAssignedByCoach => 'Atribuído pelo seu treinador';
+
+  @override
+  String planDetailWeekOfN(int week, int total) {
+    return 'Semana $week de $total';
+  }
+
+  @override
+  String get planDetailPausedChip => 'Pausado';
+
+  @override
+  String planDetailWeekDoneCount(int done, int total) {
+    return '$done / $total feitos';
+  }
+
+  @override
+  String planDetailEarlierWeeks(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count semanas anteriores',
+      one: '1 semana anterior',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planDetailShowEarlierWeeks => 'Mostrar semanas anteriores';
+
+  @override
+  String get planDetailHideEarlierWeeks => 'Ocultar semanas anteriores';
 }

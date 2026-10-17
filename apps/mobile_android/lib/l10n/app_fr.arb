@@ -4853,5 +4853,21 @@
   "planDetailAriaCompletedSuffix": ", terminé",
   "planDetailAriaSkippedSuffix": ", ignoré",
   "planDetailAriaMissedSuffix": ", manqué",
-  "planDetailAriaTodaySuffix": ", aujourd'hui"
+  "planDetailAriaTodaySuffix": ", aujourd'hui",
+  "planDetailNextUp": "À venir",
+  "planDetailGoAndRunIt": "Allez-y, courez !",
+  "planDetailRestDayTitle": "Jour de repos",
+  "planDetailRestDayHint": "Aucune séance prévue — récupérez et préparez demain.",
+  "planDetailTodayLabel": "Aujourd'hui",
+  "planDetailRaceDayTitle": "Jour de course",
+  "planDetailWorkoutCompletion": "Progression des séances",
+  "planDetailFirstWeek": "Première semaine",
+  "planDetailAssignedBy": "Attribué par {name}",
+  "planDetailAssignedByCoach": "Attribué par votre coach",
+  "planDetailWeekOfN": "Semaine {week} sur {total}",
+  "planDetailPausedChip": "En pause",
+  "planDetailWeekDoneCount": "{done} / {total} faites",
+  "planDetailEarlierWeeks": "{count, plural, one{1 semaine précédente} other{{count} semaines précédentes}}",
+  "planDetailShowEarlierWeeks": "Afficher les semaines précédentes",
+  "planDetailHideEarlierWeeks": "Masquer les semaines précédentes"
 }

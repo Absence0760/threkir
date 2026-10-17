@@ -17059,4 +17059,106 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get workoutMoveSaveFirst =>
       'Speichere oder verwirf deine Änderungen, bevor du dieses Training verschiebst.';
+
+  @override
+  String get workoutKindShortEasy => 'Lo';
+
+  @override
+  String get workoutKindShortLong => 'LL';
+
+  @override
+  String get workoutKindShortRecovery => 'Erh';
+
+  @override
+  String get workoutKindShortTempo => 'T';
+
+  @override
+  String get workoutKindShortInterval => 'Int';
+
+  @override
+  String get workoutKindShortMarathonPace => 'MT';
+
+  @override
+  String get workoutKindShortWalkRun => 'G/L';
+
+  @override
+  String get workoutKindShortRace => 'WK';
+
+  @override
+  String get workoutKindShortRest => 'Ruhe';
+
+  @override
+  String get planDetailAriaCompletedSuffix => ', abgeschlossen';
+
+  @override
+  String get planDetailAriaSkippedSuffix => ', übersprungen';
+
+  @override
+  String get planDetailAriaMissedSuffix => ', verpasst';
+
+  @override
+  String get planDetailAriaTodaySuffix => ', heute';
+
+  @override
+  String get planDetailNextUp => 'Als Nächstes';
+
+  @override
+  String get planDetailGoAndRunIt => 'Los, lauf ihn!';
+
+  @override
+  String get planDetailRestDayTitle => 'Ruhetag';
+
+  @override
+  String get planDetailRestDayHint =>
+      'Keine Einheit geplant – erhol dich und starte frisch in morgen.';
+
+  @override
+  String get planDetailTodayLabel => 'Heute';
+
+  @override
+  String get planDetailRaceDayTitle => 'Wettkampftag';
+
+  @override
+  String get planDetailWorkoutCompletion => 'Trainingsfortschritt';
+
+  @override
+  String get planDetailFirstWeek => 'Erste Woche';
+
+  @override
+  String planDetailAssignedBy(String name) {
+    return 'Zugewiesen von $name';
+  }
+
+  @override
+  String get planDetailAssignedByCoach => 'Von deinem Coach zugewiesen';
+
+  @override
+  String planDetailWeekOfN(int week, int total) {
+    return 'Woche $week von $total';
+  }
+
+  @override
+  String get planDetailPausedChip => 'Pausiert';
+
+  @override
+  String planDetailWeekDoneCount(int done, int total) {
+    return '$done / $total erledigt';
+  }
+
+  @override
+  String planDetailEarlierWeeks(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count frühere Wochen',
+      one: '1 frühere Woche',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planDetailShowEarlierWeeks => 'Frühere Wochen zeigen';
+
+  @override
+  String get planDetailHideEarlierWeeks => 'Frühere Wochen ausblenden';
 }

@@ -944,6 +944,17 @@ class TrainingService extends ChangeNotifier {
   /// RLS policies on `plan_workouts` run (`private.is_active_coach_of`), so a
   /// screen offers an edit only where the write will be allowed. Mirrors web
   /// `isActiveCoachOf`.
+  /// One user's display name, or null when the profile is unreadable or
+  /// unnamed. Web twin `fetchDisplayName` in `core/data.ts`.
+  Future<String?> fetchDisplayName(String userId) async {
+    final row = await _c
+        .from('user_profiles')
+        .select('display_name')
+        .eq('id', userId)
+        .maybeSingle();
+    return row?['display_name'] as String?;
+  }
+
   Future<bool> isActiveCoachOf(String athleteId) async {
     final uid = _uid;
     if (uid == null || uid == athleteId) return false;

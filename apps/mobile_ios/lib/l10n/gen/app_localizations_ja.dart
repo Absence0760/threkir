@@ -16254,4 +16254,104 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get workoutMoveSaveFirst => 'このワークアウトを移動する前に、変更を保存するか破棄してください。';
+
+  @override
+  String get workoutKindShortEasy => 'E';
+
+  @override
+  String get workoutKindShortLong => 'L';
+
+  @override
+  String get workoutKindShortRecovery => '回復';
+
+  @override
+  String get workoutKindShortTempo => 'T';
+
+  @override
+  String get workoutKindShortInterval => 'IV';
+
+  @override
+  String get workoutKindShortMarathonPace => 'MP';
+
+  @override
+  String get workoutKindShortWalkRun => 'WR';
+
+  @override
+  String get workoutKindShortRace => '本番';
+
+  @override
+  String get workoutKindShortRest => '休';
+
+  @override
+  String get planDetailAriaCompletedSuffix => '、完了';
+
+  @override
+  String get planDetailAriaSkippedSuffix => '、スキップ';
+
+  @override
+  String get planDetailAriaMissedSuffix => '、未実施';
+
+  @override
+  String get planDetailAriaTodaySuffix => '、今日';
+
+  @override
+  String get planDetailNextUp => '次は';
+
+  @override
+  String get planDetailGoAndRunIt => 'さあ、走ろう。';
+
+  @override
+  String get planDetailRestDayTitle => '休養日';
+
+  @override
+  String get planDetailRestDayHint => '予定されたワークアウトはありません。回復して明日に備えましょう。';
+
+  @override
+  String get planDetailTodayLabel => '今日';
+
+  @override
+  String get planDetailRaceDayTitle => 'レース当日';
+
+  @override
+  String get planDetailWorkoutCompletion => 'ワークアウトの達成状況';
+
+  @override
+  String get planDetailFirstWeek => '最初の週';
+
+  @override
+  String planDetailAssignedBy(String name) {
+    return '$nameさんが割り当て';
+  }
+
+  @override
+  String get planDetailAssignedByCoach => 'コーチが割り当て';
+
+  @override
+  String planDetailWeekOfN(int week, int total) {
+    return '第$week週／全$total週';
+  }
+
+  @override
+  String get planDetailPausedChip => '一時停止中';
+
+  @override
+  String planDetailWeekDoneCount(int done, int total) {
+    return '$done / $total 完了';
+  }
+
+  @override
+  String planDetailEarlierWeeks(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'これまでの$count週',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planDetailShowEarlierWeeks => 'これまでの週を表示';
+
+  @override
+  String get planDetailHideEarlierWeeks => 'これまでの週を隠す';
 }

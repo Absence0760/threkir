@@ -259,6 +259,56 @@ void main() {
     expect(find.text('Added by a runner'), findsOneWidget);
   });
 
+  testWidgets('the card body away from the name opens the race detail screen',
+      (tester) async {
+    final service = _FakeRaceService(
+      results: [_listing('r-body', 'Body Tap 10K', distanceM: 10000, verified: false)],
+    );
+    await tester.pumpWidget(_app(service));
+    await tester.pump();
+    await tester.tap(find.textContaining('Richmond, VA'));
+    await tester.pumpAndSettle();
+    expect(find.byType(RaceDetailScreen), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.byType(RaceDetailScreen), findsNothing);
+    await tester.tap(find.text('Unverified'));
+    await tester.pumpAndSettle();
+    expect(find.byType(RaceDetailScreen), findsOneWidget);
+  });
+
+  testWidgets("a card's action is its own target and does not open the race",
+      (tester) async {
+    final service = _FakeRaceService(
+      results: [_listing('r-act', 'Action Tap 10K', distanceM: 10000)],
+    );
+    await tester.pumpWidget(_app(service));
+    await tester.pump();
+    await tester.tap(find.widgetWithText(FilledButton, 'Import my result'));
+    await tester.pumpAndSettle();
+    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(find.byType(RaceDetailScreen), findsNothing);
+  });
+
+  testWidgets('a screen reader hears the race as one button beside its actions',
+      (tester) async {
+    final handle = tester.ensureSemantics();
+    final service = _FakeRaceService(
+      results: [_listing('r-sem', 'Sem Half', distanceM: 21097)],
+    );
+    await tester.pumpWidget(_app(service));
+    await tester.pump();
+    final card = tester.getSemantics(find.text('Sem Half'));
+    expect(card.label, contains('Sem Half'));
+    expect(card.label, contains('Richmond, VA'));
+    expect(card.label, isNot(contains('Import my result')));
+    expect(card, containsSemantics(isButton: true, hasTapAction: true));
+    final import = tester.getSemantics(
+        find.widgetWithText(FilledButton, 'Import my result'));
+    expect(import.label, 'Import my result');
+    handle.dispose();
+  });
+
   testWidgets('an unverified listing shows the unverified badge', (tester) async {
     final service = _FakeRaceService(
       results: [_listing('r2', 'Crowd Race', verified: false)],

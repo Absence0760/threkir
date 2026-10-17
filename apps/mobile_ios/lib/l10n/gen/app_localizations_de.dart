@@ -12888,6 +12888,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get coachingAthleteStatusUpcoming => 'Anstehend';
 
   @override
+  String get coachingAthleteStatusSkipped => 'Übersprungen';
+
+  @override
   String get coachingAthleteRecentRuns => 'Letzte Läufe';
 
   @override

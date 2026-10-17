@@ -3651,6 +3651,7 @@
   "coachingAthleteStatusDone": "完了",
   "coachingAthleteStatusMissed": "未実施",
   "coachingAthleteStatusUpcoming": "予定",
+  "coachingAthleteStatusSkipped": "スキップ",
   "coachingAthleteRecentRuns": "最近のラン",
   "coachingAthleteNoRunsYet": "まだ記録されたランがありません。",
   "coachingAthletePrivate": "非公開",

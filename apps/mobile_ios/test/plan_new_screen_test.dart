@@ -566,6 +566,62 @@ void main() {
     });
   });
 
+  group('PlanNewScreen — an out-of-range number', () {
+    // "7" then "75" in minutes used to keep 7 in state while the field
+    // showed 75, and the plan was created with 7.
+    testWidgets('shows an error, blocks Create, and never creates',
+        (tester) async {
+      final training = _GateTraining();
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: PlanNewScreen(training: training),
+        ),
+      );
+      await tester.pump();
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Plan name'), 'Autumn half');
+      final minutes = find.byKey(const Key('planNewGoalMinutes'));
+      await tester.scrollUntilVisible(minutes, 200,
+          scrollable: find.byType(Scrollable).first);
+      await tester.enterText(minutes, '7');
+      await tester.pump();
+      expect(find.text('Enter a value between 0 and 59.'), findsNothing);
+
+      await tester.enterText(minutes, '75');
+      await tester.pump();
+      expect(find.text('75'), findsOneWidget,
+          reason: 'the raw text stays so the runner can see what to fix');
+      expect(find.text('Enter a value between 0 and 59.'), findsOneWidget);
+
+      final create = find.widgetWithText(FilledButton, 'Create plan');
+      await tester.scrollUntilVisible(create, 300,
+          scrollable: find.byType(Scrollable).first);
+      expect(tester.widget<FilledButton>(create).onPressed, isNull);
+      await tester.tap(create, warnIfMissed: false);
+      await tester.pumpAndSettle();
+      expect(training.createCalled, isFalse);
+    });
+
+    testWidgets('only digits can be typed', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: PlanNewScreen(training: _GateTraining()),
+        ),
+      );
+      await tester.pump();
+      final minutes = find.byKey(const Key('planNewGoalMinutes'));
+      await tester.scrollUntilVisible(minutes, 200,
+          scrollable: find.byType(Scrollable).first);
+      await tester.enterText(minutes, '4-2.');
+      await tester.pump();
+      expect(find.text('42'), findsOneWidget);
+    });
+  });
+
   group('PlanNewScreen — a second tap during the overlap lookup', () {
     Future<_LookupGateTraining> pumpLookup(WidgetTester tester,
         {List<ClubView> clubs = const [],

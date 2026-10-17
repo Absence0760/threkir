@@ -12268,6 +12268,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get coachingAthleteStatusUpcoming => '予定';
 
   @override
+  String get coachingAthleteStatusSkipped => 'スキップ';
+
+  @override
   String get coachingAthleteRecentRuns => '最近のラン';
 
   @override

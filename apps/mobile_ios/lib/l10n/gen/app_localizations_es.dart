@@ -12876,6 +12876,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get coachingAthleteStatusUpcoming => 'Próximo';
 
   @override
+  String get coachingAthleteStatusSkipped => 'Saltado';
+
+  @override
   String get coachingAthleteRecentRuns => 'Carreras recientes';
 
   @override

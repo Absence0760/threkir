@@ -1,6 +1,6 @@
 /**
  * Fail-closed deploy gate for heart-rate prescription and medication-affected
- * heart rate (issue #1186, decisions § 2087).
+ * heart rate (issue #1186, decisions § 2092).
  *
  * Three Art 9 surfaces sit behind it: the bpm target on a planned workout
  * (editor, workout detail, the coach's view, the live runner), the "heart rate

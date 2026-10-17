@@ -1,6 +1,6 @@
 -- The coach roster gains a consecutive-miss input and an easy-run HR-drift
 -- flag (issue #1186, persona "coach, and an older athlete on beta-blockers";
--- decisions § 2087).
+-- decisions § 2092).
 --
 -- Three columns join coach_roster_summary:
 --

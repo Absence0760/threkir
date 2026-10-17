@@ -546,7 +546,7 @@ void main() {
 
   testWidgets(
       'a workout row shows its effort targets and opens the edit sheet for '
-      'the coach (decisions § 2087)', (tester) async {
+      'the coach (decisions § 2092)', (tester) async {
     await tester.binding.setSurfaceSize(const Size(500, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final prefs = await _prefs();
@@ -571,7 +571,7 @@ void main() {
     final training = _EditTraining();
     await _pump(tester, _FakeApi(overview: overview), prefs,
         training: training, hrPrescription: true);
-    expect(find.textContaining('RPE 3–4 · Cap 125 bpm'), findsOneWidget);
+    expect(find.textContaining('Effort 3–4/10 · Cap 125 bpm'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('coachWorkoutRow-easy-1')));
     await tester.pumpAndSettle();

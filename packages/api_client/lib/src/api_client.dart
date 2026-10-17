@@ -9266,7 +9266,7 @@ class CoachRosterRow {
   final Object? recentWorkouts;
 
   /// Easy-run efficiency drift, per cent. Null without health-data consent
-  /// or too few runs to compare (decisions § 2087).
+  /// or too few runs to compare (decisions § 2092).
   final double? easyHrDriftPct;
 
   const CoachRosterRow({

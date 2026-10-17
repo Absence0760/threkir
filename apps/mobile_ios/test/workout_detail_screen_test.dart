@@ -601,7 +601,7 @@ void main() {
     });
   });
 
-  group('WorkoutDetailScreen — effort targets and provenance (decisions § 2087)',
+  group('WorkoutDetailScreen — effort targets and provenance (decisions § 2092)',
       () {
     PlanWorkoutRow edited({String? updatedBy = 'coach-id'}) => PlanWorkoutRow(
           id: 'fake-workout-id',
@@ -638,7 +638,7 @@ void main() {
         (tester) async {
       await pump(tester, _OwnerTraining(edited(), owner: 'me', viewer: 'me'),
           hr: true);
-      expect(find.text('RPE 3–4'), findsOneWidget);
+      expect(find.text('Effort 3–4/10'), findsOneWidget);
       expect(find.text('Cap 125 bpm'), findsOneWidget);
       expect(find.byKey(const Key('workoutDetailCoachEdited')), findsOneWidget);
       expect(find.textContaining('Updated by your coach'), findsOneWidget);
@@ -648,7 +648,7 @@ void main() {
         (tester) async {
       await pump(tester, _OwnerTraining(edited(), owner: 'me', viewer: 'me'),
           hr: false);
-      expect(find.text('RPE 3–4'), findsOneWidget);
+      expect(find.text('Effort 3–4/10'), findsOneWidget);
       expect(find.byKey(const Key('workoutDetailHrTarget')), findsNothing);
     });
 

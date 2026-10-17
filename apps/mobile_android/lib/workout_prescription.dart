@@ -1,5 +1,5 @@
 /// Effort and heart-rate targets on a planned workout, and who last edited it
-/// (issue #1186, decisions § 2087).
+/// (issue #1186, decisions § 2092).
 ///
 /// `plan_workouts.target_rpe_min/max` (1..10) and `target_hr_min_bpm/max_bpm`
 /// (30..230) are each a range with either end open: "RPE 3-4" sets both,

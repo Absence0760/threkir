@@ -1,4 +1,4 @@
--- Pins 20270912000001 (issue #1186, decisions § 2087): the RPE and heart-rate
+-- Pins 20270912000001 (issue #1186, decisions § 2092): the RPE and heart-rate
 -- targets on plan_workouts, the Art 9 consent rule on the bpm range, what the
 -- withdrawal clears, and which copy paths carry which range.
 begin;

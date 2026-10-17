@@ -10987,25 +10987,25 @@ abstract class AppLocalizations {
   /// An effort target with both ends, e.g. RPE 3-4
   ///
   /// In en, this message translates to:
-  /// **'RPE {min}–{max}'**
+  /// **'Effort {min}–{max}/10'**
   String workoutTargetRpeBetween(int min, int max);
 
   /// An effort target of one value
   ///
   /// In en, this message translates to:
-  /// **'RPE {value}'**
+  /// **'Effort {value}/10'**
   String workoutTargetRpeExact(int value);
 
   /// An effort target with only an upper end
   ///
   /// In en, this message translates to:
-  /// **'RPE up to {max}'**
+  /// **'Effort up to {max}/10'**
   String workoutTargetRpeAtMost(int max);
 
   /// An effort target with only a lower end
   ///
   /// In en, this message translates to:
-  /// **'RPE {min} or harder'**
+  /// **'Effort {min}/10 or harder'**
   String workoutTargetRpeAtLeast(int min);
 
   /// A heart-rate target range in beats per minute
@@ -16842,13 +16842,13 @@ abstract class AppLocalizations {
   /// Lower end of the effort (RPE 1-10) target field
   ///
   /// In en, this message translates to:
-  /// **'Effort from (RPE)'**
+  /// **'Effort from (1–10)'**
   String get workoutEditRpeFromLabel;
 
   /// Upper end of the effort (RPE 1-10) target field
   ///
   /// In en, this message translates to:
-  /// **'Effort up to (RPE)'**
+  /// **'Effort up to (1–10)'**
   String get workoutEditRpeToLabel;
 
   /// Explains the RPE scale under the effort target fields

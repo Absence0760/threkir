@@ -50,7 +50,7 @@ class CoachingScreen extends StatefulWidget {
   final ApiClient api;
   final Preferences preferences;
 
-  /// The heart-rate prescription gate (decisions § 2087); null reads the
+  /// The heart-rate prescription gate (decisions § 2092); null reads the
   /// deploy flag. A test passes it directly.
   final bool? hrPrescription;
 

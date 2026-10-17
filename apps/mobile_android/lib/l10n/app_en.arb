@@ -9071,7 +9071,7 @@
       }
     }
   },
-  "workoutTargetRpeBetween": "RPE {min}–{max}",
+  "workoutTargetRpeBetween": "Effort {min}–{max}/10",
   "@workoutTargetRpeBetween": {
     "description": "An effort target with both ends, e.g. RPE 3-4",
     "placeholders": {
@@ -9083,7 +9083,7 @@
       }
     }
   },
-  "workoutTargetRpeExact": "RPE {value}",
+  "workoutTargetRpeExact": "Effort {value}/10",
   "@workoutTargetRpeExact": {
     "description": "An effort target of one value",
     "placeholders": {
@@ -9092,7 +9092,7 @@
       }
     }
   },
-  "workoutTargetRpeAtMost": "RPE up to {max}",
+  "workoutTargetRpeAtMost": "Effort up to {max}/10",
   "@workoutTargetRpeAtMost": {
     "description": "An effort target with only an upper end",
     "placeholders": {
@@ -9101,7 +9101,7 @@
       }
     }
   },
-  "workoutTargetRpeAtLeast": "RPE {min} or harder",
+  "workoutTargetRpeAtLeast": "Effort {min}/10 or harder",
   "@workoutTargetRpeAtLeast": {
     "description": "An effort target with only a lower end",
     "placeholders": {
@@ -13853,11 +13853,11 @@
   "@workoutEditPaceHint": {
     "description": "Example hint for the target pace field"
   },
-  "workoutEditRpeFromLabel": "Effort from (RPE)",
+  "workoutEditRpeFromLabel": "Effort from (1–10)",
   "@workoutEditRpeFromLabel": {
     "description": "Lower end of the effort (RPE 1-10) target field"
   },
-  "workoutEditRpeToLabel": "Effort up to (RPE)",
+  "workoutEditRpeToLabel": "Effort up to (1–10)",
   "@workoutEditRpeToLabel": {
     "description": "Upper end of the effort (RPE 1-10) target field"
   },

@@ -43,7 +43,7 @@ class CoachingAthleteScreen extends StatefulWidget {
   /// it; null builds the app's own service on first use.
   final TrainingService? training;
 
-  /// The heart-rate prescription gate (decisions § 2087); null reads the
+  /// The heart-rate prescription gate (decisions § 2092); null reads the
   /// deploy flag. A test passes it directly.
   final bool? hrPrescription;
 

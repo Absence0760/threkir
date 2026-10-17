@@ -10,7 +10,7 @@
 		points: TrainingLoadPoint[];
 		hasHr: boolean;
 		/// The runner said their heart rate is medication-affected and the
-		/// curve reads it (`isTrimpLowConfidence`, decisions § 2087).
+		/// curve reads it (`isTrimpLowConfidence`, decisions § 2092).
 		lowConfidence?: boolean;
 	}
 	let { points, hasHr, lowConfidence = false }: Props = $props();

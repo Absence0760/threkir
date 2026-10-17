@@ -4,7 +4,7 @@
 //
 // `hrPrescriptionEnabled` reads `$app/env/public`, so the module cannot be
 // imported here; its parse is pinned in `core/env_flag.test.ts`. What this
-// pins is the half the CISO / counsel review rests on (decisions § 2087,
+// pins is the half the CISO / counsel review rests on (decisions § 2092,
 // § 150): with the flag off, no bpm target, medication setting or HR-drift
 // flag renders, and the workout editor never writes a bpm target.
 

@@ -4,8 +4,7 @@ import 'workout_prescription.dart';
 /// The read-only line for a planned workout's effort and heart-rate targets:
 /// "RPE 3–4", "Cap 125 bpm". The shape comes from [rangeShape]; the words
 /// are the catalogue's, so every surface that shows a target (workout
-/// detail, the coach's view, the live runner) reads the same. Mirrors web's
-/// `training/workout_target_label.ts`.
+/// detail, the coach's view, the live runner) reads the same.
 String? rpeTargetLabel(AppLocalizations l10n, int? min, int? max) {
   switch (rangeShape(min, max)) {
     case RangeShape.between:

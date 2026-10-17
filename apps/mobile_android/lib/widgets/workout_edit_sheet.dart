@@ -26,7 +26,7 @@ import 'workout_move_sheet.dart';
 /// A non-empty [moveDays] (from `workoutMoveDays`) adds "Move to another
 /// day", which opens [showWorkoutMoveSheet]. Every non-rest workout also
 /// takes an effort range (RPE), and a heart-rate range when [hrPrescription]
-/// is on (null reads the deploy gate, decisions § 2087).
+/// is on (null reads the deploy gate, decisions § 2092).
 Future<bool> showWorkoutEditSheet(
   BuildContext context, {
   required PlanWorkoutRow workout,

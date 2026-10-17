@@ -10797,7 +10797,7 @@ export interface CoachRosterRow {
 	/// The current plan's non-rest workouts over the last 28 local days.
 	recent_workouts: RosterRecentWorkout[];
 	/// Easy-run efficiency drift, per cent. Null without health-data consent
-	/// or too few runs to compare (decisions § 2087).
+	/// or too few runs to compare (decisions § 2092).
 	easy_hr_drift_pct: number | null;
 }
 

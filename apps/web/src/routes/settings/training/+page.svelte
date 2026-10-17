@@ -65,7 +65,7 @@
 	// dashboard readiness stays run-only. Default off (gym counts).
 	let excludeGymFromReadiness = $state(false);
 
-	// "My heart rate is affected by medication" (decisions § 2087). Art 9, so
+	// "My heart rate is affected by medication" (decisions § 2092). Art 9, so
 	// it is behind the deploy gate and the health-data consent, which the
 	// server re-checks on write. A runner on a beta blocker is told to set a
 	// measured max, and their HR-derived training load is labelled

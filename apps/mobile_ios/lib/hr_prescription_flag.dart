@@ -13,7 +13,7 @@ const String kHrPrescriptionEnvKey = 'HR_PRESCRIPTION_ENABLED';
 bool hrPrescriptionEnabled(String? raw) => isTruthyFlagValue(raw);
 
 /// The heart-rate prescription gate — the mobile twin of web's
-/// `training/hr_prescription_flag.ts` (decisions § 2087).
+/// `training/hr_prescription_flag.ts` (decisions § 2092).
 ///
 /// Three Art 9 surfaces sit behind it: the bpm target on a planned workout,
 /// the "heart rate is medication-affected" setting with its low-confidence

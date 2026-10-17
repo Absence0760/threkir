@@ -643,7 +643,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   String? _activeWorkoutId;
 
   /// The planned workout the runner is executing, for its effort /
-  /// heart-rate target line on the band (decisions § 2087).
+  /// heart-rate target line on the band (decisions § 2092).
   PlanWorkoutRow? _activeWorkoutRow;
   final ValueNotifier<WorkoutBandState> _workoutBand =
       ValueNotifier(WorkoutBandState.empty);

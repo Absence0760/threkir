@@ -501,7 +501,7 @@ void main() {
       expect(training.lastUpdate!.targetPaceSecPerKm, 298);
     });
 
-    group('effort and heart-rate targets (decisions § 2087)', () {
+    group('effort and heart-rate targets (decisions § 2092)', () {
       Future<void> save(WidgetTester tester) async {
         await tester.ensureVisible(find.text('Save'));
         await tester.tap(find.text('Save'));

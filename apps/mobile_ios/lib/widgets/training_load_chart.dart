@@ -31,7 +31,7 @@ class TrainingLoadChart extends StatelessWidget {
   final bool includesLifts;
 
   /// The runner said their heart rate is medication-affected and the curve
-  /// reads it (`isTrimpLowConfidence`, decisions § 2087).
+  /// reads it (`isTrimpLowConfidence`, decisions § 2092).
   final bool lowConfidence;
 
   const TrainingLoadChart({

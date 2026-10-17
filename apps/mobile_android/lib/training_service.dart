@@ -125,7 +125,7 @@ typedef PlanWorkoutTargets = ({double? distanceM, int? paceSecPerKm});
 
 /// A workout's effort range (RPE 1..10) or heart-rate range (bpm), written
 /// together by [TrainingService.updateWorkout]. Either end may be null, and a
-/// null end clears its column (decisions § 2087).
+/// null end clears its column (decisions § 2092).
 typedef PlanWorkoutRange = ({int? min, int? max});
 
 /// The `plan_workouts` patch [TrainingService.updateWorkout] sends. A null

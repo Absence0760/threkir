@@ -1,5 +1,5 @@
 -- Effort and heart-rate targets on a planned workout (issue #1186, persona
--- "coach, and an older athlete on beta-blockers"; decisions § 2087).
+-- "coach, and an older athlete on beta-blockers"; decisions § 2092).
 --
 -- plan_workouts carried pace, distance, duration, structure and notes, so a
 -- coach could not prescribe "easy = RPE 3-4" or "cap at 125 bpm". Four
@@ -186,7 +186,7 @@ begin
   -- transaction — no partial-failure window between two client calls.
   delete from body_metrics where user_id = v_uid;
   -- Heart-rate prescription on the runner's own plans, and the
-  -- medication-affected flag (§ 2087).
+  -- medication-affected flag (§ 2092).
   update plan_workouts pw
      set target_hr_min_bpm = null, target_hr_max_bpm = null
     from plan_weeks pwk

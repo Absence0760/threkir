@@ -1,5 +1,5 @@
 // "My heart rate is affected by medication" on mobile Preferences (decisions
-// § 2087). Art 9: the switch exists only under the deploy gate, can be turned
+// § 2092). Art 9: the switch exists only under the deploy gate, can be turned
 // on only with health-data consent on record, and asks for a measured max
 // heart rate once it is on.
 

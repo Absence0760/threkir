@@ -6765,22 +6765,22 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String workoutTargetRpeBetween(int min, int max) {
-    return 'RPE $min–$max';
+    return 'Esfuerzo $min–$max/10';
   }
 
   @override
   String workoutTargetRpeExact(int value) {
-    return 'RPE $value';
+    return 'Esfuerzo $value/10';
   }
 
   @override
   String workoutTargetRpeAtMost(int max) {
-    return 'RPE hasta $max';
+    return 'Esfuerzo hasta $max/10';
   }
 
   @override
   String workoutTargetRpeAtLeast(int min) {
-    return 'RPE $min o más';
+    return 'Esfuerzo $min/10 o más';
   }
 
   @override
@@ -10338,10 +10338,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get workoutEditPaceHint => 'p. ej. 5:30';
 
   @override
-  String get workoutEditRpeFromLabel => 'Esfuerzo desde (RPE)';
+  String get workoutEditRpeFromLabel => 'Esfuerzo desde (1–10)';
 
   @override
-  String get workoutEditRpeToLabel => 'Esfuerzo hasta (RPE)';
+  String get workoutEditRpeToLabel => 'Esfuerzo hasta (1–10)';
 
   @override
   String get workoutEditRpeHint =>

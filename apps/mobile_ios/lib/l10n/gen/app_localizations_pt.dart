@@ -6770,22 +6770,22 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String workoutTargetRpeBetween(int min, int max) {
-    return 'RPE $min–$max';
+    return 'Esforço $min–$max/10';
   }
 
   @override
   String workoutTargetRpeExact(int value) {
-    return 'RPE $value';
+    return 'Esforço $value/10';
   }
 
   @override
   String workoutTargetRpeAtMost(int max) {
-    return 'RPE até $max';
+    return 'Esforço até $max/10';
   }
 
   @override
   String workoutTargetRpeAtLeast(int min) {
-    return 'RPE $min ou mais';
+    return 'Esforço $min/10 ou mais';
   }
 
   @override
@@ -10338,10 +10338,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get workoutEditPaceHint => 'ex. 5:30';
 
   @override
-  String get workoutEditRpeFromLabel => 'Esforço a partir de (RPE)';
+  String get workoutEditRpeFromLabel => 'Esforço a partir de (1–10)';
 
   @override
-  String get workoutEditRpeToLabel => 'Esforço até (RPE)';
+  String get workoutEditRpeToLabel => 'Esforço até (1–10)';
 
   @override
   String get workoutEditRpeHint =>
@@ -24452,22 +24452,22 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String workoutTargetRpeBetween(int min, int max) {
-    return 'RPE $min–$max';
+    return 'Esforço $min–$max/10';
   }
 
   @override
   String workoutTargetRpeExact(int value) {
-    return 'RPE $value';
+    return 'Esforço $value/10';
   }
 
   @override
   String workoutTargetRpeAtMost(int max) {
-    return 'RPE até $max';
+    return 'Esforço até $max/10';
   }
 
   @override
   String workoutTargetRpeAtLeast(int min) {
-    return 'RPE $min ou mais';
+    return 'Esforço $min/10 ou mais';
   }
 
   @override
@@ -28011,10 +28011,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get workoutEditPaceHint => 'ex. 5:30';
 
   @override
-  String get workoutEditRpeFromLabel => 'Esforço a partir de (RPE)';
+  String get workoutEditRpeFromLabel => 'Esforço a partir de (1–10)';
 
   @override
-  String get workoutEditRpeToLabel => 'Esforço até (RPE)';
+  String get workoutEditRpeToLabel => 'Esforço até (1–10)';
 
   @override
   String get workoutEditRpeHint =>

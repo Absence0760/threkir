@@ -84,7 +84,7 @@ class SettingsPreferencesScreen extends StatefulWidget {
   final LocalGymStore? gymStore;
   final LocalFoodStore? foodStore;
 
-  /// The heart-rate prescription gate (decisions § 2087); null reads the
+  /// The heart-rate prescription gate (decisions § 2092); null reads the
   /// deploy flag. A test passes it directly.
   final bool? hrPrescription;
 
@@ -114,7 +114,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
 
   /// "My heart rate is affected by medication" is Art 9: shown only under
   /// the deploy gate, and only switchable on with health-data consent, which
-  /// the server re-checks (decisions § 2087).
+  /// the server re-checks (decisions § 2092).
   late final bool _hrPrescription = widget.hrPrescription ?? hrPrescriptionGate;
   String? _nearbyAreaLabel;
 

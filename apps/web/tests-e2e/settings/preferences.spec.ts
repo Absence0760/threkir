@@ -532,10 +532,10 @@ test.describe('settings preference pages', () => {
 		await expect(max).toHaveValue('');
 	});
 
-	test('the heart-rate medication flag saves, asks for a measured max, and marks the load', async ({
+	test('the heart-rate medication flag saves and asks for a measured max', async ({
 		page
 	}) => {
-		// decisions § 2087: Art 9, behind PUBLIC_HR_PRESCRIPTION_ENABLED (on in
+		// decisions § 2092: Art 9, behind PUBLIC_HR_PRESCRIPTION_ENABLED (on in
 		// .env.development) and the health-data consent USER_A has in the seed.
 		const admin = getAdminClient();
 		const { data: before } = await admin.from('user_settings').select('prefs').eq('user_id', USER_A.id).single();

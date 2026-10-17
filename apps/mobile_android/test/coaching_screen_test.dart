@@ -118,7 +118,7 @@ void main() {
     });
   });
 
-  group('roster flags (decisions § 2087)', () {
+  group('roster flags (decisions § 2092)', () {
     CoachRosterRow flagged() => CoachRosterRow(
           athleteId: 'a1',
           displayName: 'Alice Runner',

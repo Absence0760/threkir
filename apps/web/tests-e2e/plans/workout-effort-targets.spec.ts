@@ -6,7 +6,7 @@ import { USER_B, USER_C_PRO } from '../fixtures/users';
 
 /**
  * Effort and heart-rate targets on a planned workout, and "updated by your
- * coach" (issue #1186, decisions § 2087). USER_B coaches USER_C_PRO, who has
+ * coach" (issue #1186, decisions § 2092). USER_B coaches USER_C_PRO, who has
  * health-data consent in the seed, so the coach may set a bpm cap; the bpm
  * fields are behind PUBLIC_HR_PRESCRIPTION_ENABLED, on in .env.development.
  * The athlete then sees both targets and the provenance line on the workout.
@@ -69,7 +69,7 @@ test.describe('workout effort + heart-rate targets', () => {
 		await admin.from('notifications').delete().eq('plan_id', planId);
 	});
 
-	test('the coach prescribes RPE 3–4 under a 125 bpm cap and the athlete sees it as the coach\'s', async ({
+	test('the coach prescribes Effort 3–4/10 under a 125 bpm cap and the athlete sees it as the coach\'s', async ({
 		page,
 		browser
 	}) => {
@@ -79,34 +79,38 @@ test.describe('workout effort + heart-rate targets', () => {
 		});
 		await page.locator('.day-link', { hasText: 'Tempo' }).first().click();
 
-		await page.getByLabel('Effort from (RPE)').fill('5');
-		await page.getByLabel('Effort up to (RPE)').fill('4');
+		await page.getByLabel('Effort from (1–10)').fill('5');
+		await page.getByLabel('Effort up to (1–10)').fill('4');
 		await page.getByRole('button', { name: 'Save', exact: true }).click();
 		await expect(page.getByText("The first number can't be higher than the second.")).toBeVisible();
 
-		await page.getByLabel('Effort from (RPE)').fill('3');
+		await page.getByLabel('Effort from (1–10)').fill('3');
 		await page.getByLabel('Heart rate up to (bpm)').fill('125');
 		await page.getByRole('button', { name: 'Save', exact: true }).click();
-		await expect(page.getByRole('button', { name: 'Save', exact: true })).toHaveCount(0, { timeout: 10_000 });
+		await expect(page.getByLabel('Effort up to (1–10)')).toHaveCount(0, { timeout: 10_000 });
 
-		const { data: row } = await admin
-			.from('plan_workouts')
-			.select('target_rpe_min, target_rpe_max, target_hr_min_bpm, target_hr_max_bpm, updated_by')
-			.eq('id', tempoId)
-			.single();
-		expect(row).toEqual({
-			target_rpe_min: 3,
-			target_rpe_max: 4,
-			target_hr_min_bpm: null,
-			target_hr_max_bpm: 125,
-			updated_by: USER_B.id
-		});
+		await expect
+			.poll(async () => {
+				const { data } = await admin
+					.from('plan_workouts')
+					.select('target_rpe_min, target_rpe_max, target_hr_min_bpm, target_hr_max_bpm, updated_by')
+					.eq('id', tempoId)
+					.single();
+				return data;
+			})
+			.toEqual({
+				target_rpe_min: 3,
+				target_rpe_max: 4,
+				target_hr_min_bpm: null,
+				target_hr_max_bpm: 125,
+				updated_by: USER_B.id
+			});
 
 		const ctx = await browser.newContext({ storageState: USER_C_PRO.storageStatePath });
 		try {
 			const athlete = await ctx.newPage();
 			await athlete.goto(`/plans/${planId}/workouts/${tempoId}`);
-			await expect(athlete.getByTestId('workout-rpe-target')).toContainText('RPE 3–4', { timeout: 10_000 });
+			await expect(athlete.getByTestId('workout-rpe-target')).toContainText('Effort 3–4/10', { timeout: 10_000 });
 			await expect(athlete.getByTestId('workout-hr-target')).toContainText('Cap 125 bpm');
 			await expect(athlete.getByTestId('workout-coach-edited')).toContainText('Updated by your coach');
 		} finally {
@@ -120,12 +124,12 @@ test.describe('workout effort + heart-rate targets', () => {
 			timeout: 10_000
 		});
 		await page.locator('.day-link', { hasText: 'Tempo' }).first().click();
-		await page.getByLabel('Effort up to (RPE)').fill('6');
+		await page.getByLabel('Effort up to (1–10)').fill('6');
 		await page.getByRole('button', { name: 'Save', exact: true }).click();
-		await expect(page.getByRole('button', { name: 'Save', exact: true })).toHaveCount(0, { timeout: 10_000 });
+		await expect(page.getByLabel('Effort up to (1–10)')).toHaveCount(0, { timeout: 10_000 });
 
 		await page.goto(`/plans/${planId}/workouts/${tempoId}`);
-		await expect(page.getByTestId('workout-rpe-target')).toContainText('RPE up to 6', { timeout: 10_000 });
+		await expect(page.getByTestId('workout-rpe-target')).toContainText('Effort up to 6/10', { timeout: 10_000 });
 		await expect(page.getByTestId('workout-coach-edited')).toHaveCount(0);
 	});
 });

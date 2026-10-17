@@ -81,7 +81,7 @@ void main() {
 
     testWidgets(
         'a medication-affected HR curve is labelled less reliable '
-        '(decisions § 2087)', (tester) async {
+        '(decisions § 2092)', (tester) async {
       await _pump(tester,
           points: [_point(date: DateTime(2026, 4, 1))],
           hasHr: true,

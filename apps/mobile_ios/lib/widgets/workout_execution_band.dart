@@ -24,7 +24,7 @@ class WorkoutExecutionBand extends StatelessWidget {
   final VoidCallback onAbandon;
 
   /// The workout's effort / heart-rate target as one line ("RPE 3–4 · Cap
-  /// 125 bpm"), the same for every step; null hides it (decisions § 2087).
+  /// 125 bpm"), the same for every step; null hides it (decisions § 2092).
   final String? effortTarget;
 
   const WorkoutExecutionBand({

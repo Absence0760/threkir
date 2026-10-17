@@ -99,7 +99,7 @@ void main() {
       expect(find.text('−5s'), findsOneWidget);
     });
 
-    testWidgets('carries the workout\'s effort target line (decisions § 2087)',
+    testWidgets('carries the workout\'s effort target line (decisions § 2092)',
         (tester) async {
       await _pumpBand(
         tester,
@@ -114,10 +114,10 @@ void main() {
           complete: false,
           abandoned: false,
         ),
-        effortTarget: 'RPE 3–4 · Cap 125 bpm',
+        effortTarget: 'Effort 3–4/10 · Cap 125 bpm',
       );
       expect(find.byKey(const Key('workoutBandEffortTarget')), findsOneWidget);
-      expect(find.text('RPE 3–4 · Cap 125 bpm'), findsOneWidget);
+      expect(find.text('Effort 3–4/10 · Cap 125 bpm'), findsOneWidget);
     });
 
     testWidgets('Skip and Abandon trigger callbacks', (tester) async {

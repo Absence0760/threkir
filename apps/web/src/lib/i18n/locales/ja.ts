@@ -3910,6 +3910,7 @@ export const messages = {
 	"races.sourceManual": "ランナーが追加",
 	"races.detailShare": "共有",
 	"races.detailLinkCopied": "リンクをコピーしました。",
+	"races.detailShareFailed": "リンクを共有またはコピーできませんでした。",
 	"races.detailImportAfterRace": "公式結果はレース当日（{date}）からインポートできます。",
 	"races.detailYourRuns": "このレースでのあなたのラン",
 	"races.detailRunsFailed": "このレースのランを読み込めませんでした。",

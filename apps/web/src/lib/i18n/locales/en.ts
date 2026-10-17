@@ -3928,6 +3928,7 @@ export const en = {
 	"races.sourceManual": "Added by a runner",
 	"races.detailShare": "Share",
 	"races.detailLinkCopied": "Link copied.",
+	"races.detailShareFailed": "Couldn't share or copy the link.",
 	"races.detailImportAfterRace": "You can import your official result from race day, {date}.",
 	"races.detailYourRuns": "Your runs at this race",
 	"races.detailRunsFailed": "Couldn't load your runs for this race.",

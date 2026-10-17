@@ -33,14 +33,20 @@
 		const id = data.id;
 		loading = true;
 		loadFailed = false;
+		let next: RaceListingDetail | null = null;
+		let failed = false;
 		try {
-			race = await fetchRaceListing(id);
-		} catch {
-			race = null;
-			loadFailed = true;
-		} finally {
-			loading = false;
+			next = await fetchRaceListing(id);
+		} catch (e) {
+			console.error('fetchRaceListing failed', e);
+			failed = true;
 		}
+		// Moving to another race (or a retry) while this read was in flight
+		// started a newer load; only the newest may write the page.
+		if (id !== data.id) return;
+		race = next;
+		loadFailed = failed;
+		loading = false;
 		if (race) {
 			void loadRuns(id);
 			// Auxiliary: an empty gallery is hidden, never shown as an error.
@@ -55,7 +61,8 @@
 		try {
 			const rows = await fetchMyRunsAtRace(id);
 			if (race?.id === id) runs = rows;
-		} catch {
+		} catch (e) {
+			console.error('fetchMyRunsAtRace failed', e);
 			if (race?.id === id) runsFailed = true;
 		}
 	}
@@ -102,8 +109,11 @@
 				await navigator.clipboard.writeText(url);
 				showToast(m('races.detailLinkCopied'), 'success');
 			}
-		} catch {
-			/* user dismissed the share sheet — non-fatal */
+		} catch (e) {
+			// Dismissing the share sheet rejects with AbortError; that is not a failure.
+			if (e instanceof DOMException && e.name === 'AbortError') return;
+			console.error('race share failed', e);
+			showToast(m('races.detailShareFailed'), 'error');
 		}
 	}
 </script>

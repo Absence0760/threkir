@@ -7,7 +7,8 @@ import type { RaceImportLeg } from '#lib/integrations/race_import_providers.ts';
 // the provider is unavailable. Probing spends the import function's own hourly
 // rate limit, and a 429 reads as unavailable, so each leg is asked once and
 // the answer is kept — a second surface asking again could only make a
-// configured provider look unavailable.
+// configured provider look unavailable. A probe that THROWS is not an answer:
+// it is logged and forgotten, so the next dialog asks again.
 export const raceLegAvailable = $state<Partial<Record<RaceImportLeg, boolean>>>({});
 
 const probed = new Set<RaceImportLeg>();
@@ -15,13 +16,12 @@ const probed = new Set<RaceImportLeg>();
 export async function probeRaceLeg(leg: RaceImportLeg): Promise<void> {
 	if (probed.has(leg)) return;
 	probed.add(leg);
-	let ok = false;
 	try {
-		ok = await isRaceImportProviderConfigured(leg);
-	} catch {
-		ok = false;
+		raceLegAvailable[leg] = await isRaceImportProviderConfigured(leg);
+	} catch (e) {
+		console.error(`race import probe failed for ${leg}`, e);
+		probed.delete(leg);
 	}
-	raceLegAvailable[leg] = ok;
 }
 
 /// The leg refused a call after its probe said yes; the dialog must stop

@@ -3915,6 +3915,7 @@ export const messages = {
 	"races.sourceManual": "Von einem Läufer hinzugefügt",
 	"races.detailShare": "Teilen",
 	"races.detailLinkCopied": "Link kopiert.",
+	"races.detailShareFailed": "Der Link konnte nicht geteilt oder kopiert werden.",
 	"races.detailImportAfterRace": "Dein offizielles Ergebnis kannst du ab dem Renntag, {date}, importieren.",
 	"races.detailYourRuns": "Deine Läufe bei diesem Rennen",
 	"races.detailRunsFailed": "Deine Läufe für dieses Rennen konnten nicht geladen werden.",

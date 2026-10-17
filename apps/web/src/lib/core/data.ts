@@ -2828,7 +2828,6 @@ export async function searchRaceListings(
 export interface RaceListingDetail {
 	id: string;
 	provider: string;
-	provider_race_id: string | null;
 	name: string;
 	race_date: string;
 	distance_m: number | null;
@@ -2843,7 +2842,7 @@ export async function fetchRaceListing(id: string): Promise<RaceListingDetail | 
 	const { data, error } = await supabase
 		.from('public_race_listings')
 		.select(
-			'id, provider, provider_race_id, name, race_date, distance_m, location_label, entry_url, results_url, is_verified'
+			'id, provider, name, race_date, distance_m, location_label, entry_url, results_url, is_verified'
 		)
 		.eq('id', id)
 		.maybeSingle();
@@ -2852,7 +2851,6 @@ export async function fetchRaceListing(id: string): Promise<RaceListingDetail | 
 	return {
 		id: data.id,
 		provider: data.provider,
-		provider_race_id: data.provider_race_id,
 		name: data.name,
 		race_date: data.race_date,
 		distance_m: data.distance_m,

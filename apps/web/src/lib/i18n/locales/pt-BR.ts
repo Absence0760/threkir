@@ -3914,6 +3914,7 @@ export const messages = {
 	"races.sourceManual": "Adicionada por um corredor",
 	"races.detailShare": "Compartilhar",
 	"races.detailLinkCopied": "Link copiado.",
+	"races.detailShareFailed": "Não foi possível compartilhar nem copiar o link.",
 	"races.detailImportAfterRace": "Você pode importar seu resultado oficial a partir do dia da corrida, {date}.",
 	"races.detailYourRuns": "Suas corridas nesta prova",
 	"races.detailRunsFailed": "Não foi possível carregar suas corridas desta prova.",

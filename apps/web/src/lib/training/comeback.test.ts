@@ -324,19 +324,24 @@ test('capReturnRamp caps week 1, lets the next grow 10%, and stops at the first 
 	assert.equal(weeks[0].workouts[2].kind, 'interval');
 });
 
-test('capReturnRamp leaves every week after the first that fits alone, speed work and all', () => {
-	// 40 / 44 / 36 / 48 km against caps of 35 / 38.5 / 42.35 / 46.585 km: the
-	// step-back third week fits, so the fourth keeps its intervals and its
-	// 48 km even though that is over the cap the climb would have reached.
+test('capReturnRamp keeps climbing past a step-back week that fits, up to the last week over its cap', () => {
+	// 40 / 44 / 36 / 48 km against caps of 35 / 38.5 / 42.35 / 46.585 km. The
+	// step-back third week fits, but the fourth is over its cap, so the climb
+	// runs through both: the third keeps its distances and loses its intervals,
+	// and the fourth scales by 46.585 / 48 to the nearest 100 m.
 	const weeks = [40_000, 44_000, 36_000, 48_000].map((m, i) =>
 		rampWeek(i, [rampWorkout('long', m - 8_000), rampWorkout('interval', 8_000)]),
 	);
 	const capped = capReturnRamp(weeks, 35_000, 420);
 	assert.equal(capped[0].workouts[1].kind, 'easy');
 	assert.equal(capped[1].workouts[1].kind, 'easy');
-	assert.equal(capped[2], weeks[2]);
-	assert.equal(capped[3], weeks[3]);
-	assert.equal(capped[3].workouts[1].kind, 'interval');
+	assert.equal(capped[2].workouts[0].target_distance_m, 28_000);
+	assert.equal(capped[2].workouts[1].target_distance_m, 8_000);
+	assert.equal(capped[2].workouts[1].kind, 'easy');
+	assert.equal(capped[3].workouts[0].target_distance_m, 38_800);
+	assert.equal(capped[3].workouts[1].target_distance_m, 7_800);
+	assert.equal(capped[3].workouts[1].kind, 'easy');
+	assert.equal(weeks[3].workouts[1].kind, 'interval');
 });
 
 test('capReturnRamp drops sessions the cap would take under 3 km to rest, shortest first', () => {

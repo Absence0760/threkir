@@ -304,12 +304,15 @@ function isFixed(kind: string): boolean {
  *
  * Week 1 may ask for at most `openingCapM` of running, and each week after it
  * at most `RETURN_WEEKLY_GROWTH` times the cap before it, so the plan climbs
- * from half the runner's pre-break volume by about 10% a week. The first week
- * whose own schedule fits under its cap ends the climb: it and every week
- * after are left exactly as generated. A race is never counted against a cap
- * or touched, and rest stays rest.
+ * from half the runner's pre-break volume by about 10% a week. The climb ends
+ * after the last week whose schedule is over its cap; every week after that is
+ * left exactly as generated. A step-back week that happens to fit its cap does
+ * not end the climb early, because a bigger week after it would then run
+ * uncapped. A race is never counted against a cap or touched, and rest stays
+ * rest.
  *
- * Every week before that point is a return week:
+ * Every week up to that point is a return week (one that already fits keeps
+ * its distances and only loses its quality sessions):
  * - its tempo, interval and marathon-pace sessions become easy runs, because
  *   the first weeks back rebuild volume before intensity, and deciding that by
  *   position rather than per week stops speed work coming and going;
@@ -333,15 +336,16 @@ export function capReturnRamp<W extends RampWorkout, K extends RampWeek<W>>(
 	if (!Number.isFinite(openingCapM) || openingCapM <= 0 || weeks.length === 0) return weeks;
 	const ordered = [...weeks].sort((a, b) => a.week_index - b.week_index);
 	const firstIndex = ordered[0].week_index;
+	const capOf = (week: K) => openingCapM * RETURN_WEEKLY_GROWTH ** (week.week_index - firstIndex);
+	const runningOf = (week: K) =>
+		week.workouts.reduce((s, wo) => s + (isFixed(wo.kind) ? 0 : (wo.target_distance_m ?? 0)), 0);
+	let lastOver = -1;
+	ordered.forEach((week, i) => {
+		if (runningOf(week) > capOf(week)) lastOver = i;
+	});
 	const capped = new Map<K, K>();
-	for (const week of ordered) {
-		const capM = openingCapM * RETURN_WEEKLY_GROWTH ** (week.week_index - firstIndex);
-		const runningM = week.workouts.reduce(
-			(s, wo) => s + (isFixed(wo.kind) ? 0 : (wo.target_distance_m ?? 0)),
-			0,
-		);
-		if (runningM <= capM) break;
-		capped.set(week, capWeek(week, capM, easyPaceSecPerKm));
+	for (let i = 0; i <= lastOver; i++) {
+		capped.set(ordered[i], capWeek(ordered[i], capOf(ordered[i]), easyPaceSecPerKm));
 	}
 	return weeks.map((w) => capped.get(w) ?? w);
 }

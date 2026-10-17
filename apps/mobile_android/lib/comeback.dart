@@ -315,12 +315,15 @@ bool _isFixed(WorkoutKind k) => k == WorkoutKind.race || k == WorkoutKind.rest;
 ///
 /// Week 1 may ask for at most [openingCapM] of running, and each week after it
 /// at most [kReturnWeeklyGrowth] times the cap before it, so the plan climbs
-/// from half the runner's pre-break volume by about 10% a week. The first week
-/// whose own schedule fits under its cap ends the climb: it and every week
-/// after are left exactly as generated. A race is never counted against a cap
-/// or touched, and rest stays rest.
+/// from half the runner's pre-break volume by about 10% a week. The climb ends
+/// after the last week whose schedule is over its cap; every week after that is
+/// left exactly as generated. A step-back week that happens to fit its cap does
+/// not end the climb early, because a bigger week after it would then run
+/// uncapped. A race is never counted against a cap or touched, and rest stays
+/// rest.
 ///
-/// Every week before that point is a return week:
+/// Every week up to that point is a return week (one that already fits keeps
+/// its distances and only loses its quality sessions):
 /// - its tempo, interval and marathon-pace sessions become easy runs, because
 ///   the first weeks back rebuild volume before intensity;
 /// - its sessions scale by one factor to fit the cap (distance to the nearest
@@ -342,15 +345,18 @@ List<GeneratedWeek> capReturnRamp(
   if (!openingCapM.isFinite || openingCapM <= 0 || weeks.isEmpty) return weeks;
   final ordered = [...weeks]..sort((a, b) => a.weekIndex.compareTo(b.weekIndex));
   final firstIndex = ordered.first.weekIndex;
-  final capped = <GeneratedWeek, GeneratedWeek>{};
-  for (final week in ordered) {
-    final capM = openingCapM *
-        math.pow(kReturnWeeklyGrowth, week.weekIndex - firstIndex);
-    final runningM = week.workouts.fold<double>(
-        0, (s, wo) => s + (_isFixed(wo.kind) ? 0 : (wo.targetDistanceM ?? 0)));
-    if (runningM <= capM) break;
-    capped[week] = _capWeek(week, capM, easyPaceSecPerKm);
+  double capOf(GeneratedWeek week) =>
+      openingCapM * math.pow(kReturnWeeklyGrowth, week.weekIndex - firstIndex);
+  double runningOf(GeneratedWeek week) => week.workouts.fold<double>(
+      0, (s, wo) => s + (_isFixed(wo.kind) ? 0 : (wo.targetDistanceM ?? 0)));
+  var lastOver = -1;
+  for (var i = 0; i < ordered.length; i++) {
+    if (runningOf(ordered[i]) > capOf(ordered[i])) lastOver = i;
   }
+  final capped = <GeneratedWeek, GeneratedWeek>{
+    for (var i = 0; i <= lastOver; i++)
+      ordered[i]: _capWeek(ordered[i], capOf(ordered[i]), easyPaceSecPerKm),
+  };
   return [for (final w in weeks) capped[w] ?? w];
 }
 

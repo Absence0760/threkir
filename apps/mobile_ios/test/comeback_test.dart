@@ -386,11 +386,12 @@ void main() {
       expect(weeks[0].workouts[2].kind, WorkoutKind.interval);
     });
 
-    test('leaves every week after the first that fits alone, speed work and all',
+    test('keeps climbing past a step-back week that fits, up to the last week over its cap',
         () {
-      // 40 / 44 / 36 / 48 km against caps of 35 / 38.5 / 42.35 / 46.585 km:
-      // the step-back third week fits, so the fourth keeps its intervals and
-      // its 48 km even though that is over the cap the climb would have hit.
+      // 40 / 44 / 36 / 48 km against caps of 35 / 38.5 / 42.35 / 46.585 km.
+      // The step-back third week fits, but the fourth is over its cap, so the
+      // climb runs through both: the third keeps its distances and loses its
+      // intervals, and the fourth scales by 46.585 / 48 to the nearest 100 m.
       final weeks = [
         for (final (i, m) in [40000.0, 44000.0, 36000.0, 48000.0].indexed)
           week(i, [
@@ -401,9 +402,13 @@ void main() {
       final capped = capReturnRamp(weeks, 35000, 420);
       expect(capped[0].workouts[1].kind, WorkoutKind.easy);
       expect(capped[1].workouts[1].kind, WorkoutKind.easy);
-      expect(identical(capped[2], weeks[2]), isTrue);
-      expect(identical(capped[3], weeks[3]), isTrue);
-      expect(capped[3].workouts[1].kind, WorkoutKind.interval);
+      expect(capped[2].workouts[0].targetDistanceM, 28000);
+      expect(capped[2].workouts[1].targetDistanceM, 8000);
+      expect(capped[2].workouts[1].kind, WorkoutKind.easy);
+      expect(capped[3].workouts[0].targetDistanceM, 38800);
+      expect(capped[3].workouts[1].targetDistanceM, 7800);
+      expect(capped[3].workouts[1].kind, WorkoutKind.easy);
+      expect(weeks[3].workouts[1].kind, WorkoutKind.interval);
     });
 
     test('drops sessions the cap would take under 3 km to rest, shortest first',

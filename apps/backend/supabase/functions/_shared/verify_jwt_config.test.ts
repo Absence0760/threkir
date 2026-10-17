@@ -17,6 +17,9 @@ const ANON_REACHABLE = [
   'clip-public-track',
   'donations-checkout',
   'events-refund-sweep',
+  // A subscribed calendar app sends no header at all; the 96-hex URL token
+  // is checked in-handler against a stored SHA-256 (plan-calendar/handler.ts).
+  'plan-calendar',
   'race-listings-sweep',
   'refresh-tokens',
   'revenuecat-webhook',

@@ -3031,6 +3031,30 @@ export type Database = {
           },
         ]
       }
+      plan_calendar_feeds: {
+        Row: {
+          created_at: string
+          id: string
+          last_fetched_at: string | null
+          secret_hash: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_fetched_at?: string | null
+          secret_hash: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_fetched_at?: string | null
+          secret_hash?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       plan_weeks: {
         Row: {
           id: string
@@ -6757,6 +6781,14 @@ export type Database = {
           distance: string
         }[]
       }
+      plan_calendar_feed_events: { Args: { p_feed_id: string }; Returns: Json }
+      plan_calendar_feed_status: {
+        Args: never
+        Returns: {
+          created_at: string
+          last_fetched_at: string
+        }[]
+      }
       plan_workout_link_candidates: {
         Args: { p_run_id: string }
         Returns: {
@@ -6931,10 +6963,12 @@ export type Database = {
         }
         Returns: number
       }
+      revoke_plan_calendar_feed: { Args: never; Returns: boolean }
       revoke_unmet_distance_achievements: {
         Args: { p_user: string }
         Returns: number
       }
+      rotate_plan_calendar_feed: { Args: never; Returns: string }
       route_conditions_for_viewer: {
         Args: { p_route_id: string }
         Returns: {

@@ -3947,6 +3947,7 @@ export const messages = {
 	"races.gunTime": "Tempo oficial",
 	"races.overallPlace": "Classificação geral",
 	"races.ageGroupPlace": "Classificação por faixa etária",
+	"races.divisionAwardPlace": "Classificação na categoria de prémio",
 	"races.ageGroup": "Faixa etária",
 	"races.bib": "Número de peito",
 	"races.runSignUpBibHint": "Introduza o seu número de peito para importarmos apenas o seu resultado, não a lista inteira.",

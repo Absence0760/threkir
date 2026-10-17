@@ -3,7 +3,7 @@
 -- side, by the matcher's own 75% rule, nearest day first; only to its owner,
 -- and never once it is linked.
 begin;
-select plan(12);
+select plan(15);
 
 set local timezone = 'UTC';
 
@@ -110,8 +110,29 @@ select is(
   'a workout the runner took this run off is not offered again'
 );
 
+-- "Not this one": another user's dismissal does nothing; the owner's sticks.
+set local "request.jwt.claims" = '{"sub":"11860000-0000-0000-0000-0000000001b1","role":"authenticated"}';
+select dismiss_plan_workout_link('11860000-0000-0000-0000-0000000004a1', '11860000-0000-0000-0000-0000000005a1');
+set local "request.jwt.claims" = '{"sub":"11860000-0000-0000-0000-0000000001a1","role":"authenticated"}';
+select is(
+  (select count(*)::int from plan_workout_link_candidates('11860000-0000-0000-0000-0000000005a1')),
+  1,
+  'another user cannot dismiss a workout for this run'
+);
+select dismiss_plan_workout_link('11860000-0000-0000-0000-0000000004a1', '11860000-0000-0000-0000-0000000005a1');
+select is(
+  (select count(*)::int from plan_workout_link_candidates('11860000-0000-0000-0000-0000000005a1')),
+  0,
+  'a dismissed workout is not offered again'
+);
+
 reset role;
 set local "request.jwt.claims" = '';
+select throws_ok(
+  $$ select dismiss_plan_workout_link('11860000-0000-0000-0000-0000000004a1', '11860000-0000-0000-0000-0000000005a1') $$,
+  '42501', null,
+  'an anonymous caller cannot dismiss'
+);
 select throws_ok(
   $$ select * from plan_workout_link_candidates('11860000-0000-0000-0000-0000000005a1') $$,
   '42501', null,

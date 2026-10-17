@@ -3882,6 +3882,7 @@
   "planLinkDismiss": "これではない",
   "planLinkLinked": "プランにリンクしました。",
   "planLinkFailed": "プランにリンクできませんでした。もう一度お試しください。",
+  "planLinkDismissFailed": "回答を保存できませんでした。もう一度確認される場合があります。",
   "racesOfficialResult": "公式結果",
   "racesChipTime": "ネットタイム",
   "racesGunTime": "グロスタイム",

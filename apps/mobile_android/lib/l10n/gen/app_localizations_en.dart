@@ -13543,6 +13543,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get planLinkFailed => 'Couldn\'t link this to your plan. Try again.';
 
   @override
+  String get planLinkDismissFailed =>
+      'Couldn\'t save that answer. You may be asked again.';
+
+  @override
   String get racesOfficialResult => 'Official result';
 
   @override

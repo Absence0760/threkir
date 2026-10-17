@@ -22448,6 +22448,12 @@ abstract class AppLocalizations {
   /// **'Couldn\'t link this to your plan. Try again.'**
   String get planLinkFailed;
 
+  /// Error when saving "Not this one" on the run-detail planned-workout prompt fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save that answer. You may be asked again.'**
+  String get planLinkDismissFailed;
+
   /// Heading for the imported official-result panel
   ///
   /// In en, this message translates to:

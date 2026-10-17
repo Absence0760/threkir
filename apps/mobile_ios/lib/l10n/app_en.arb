@@ -18052,6 +18052,10 @@
   "@planLinkFailed": {
     "description": "Error after linking a run to a planned workout fails"
   },
+  "planLinkDismissFailed": "Couldn't save that answer. You may be asked again.",
+  "@planLinkDismissFailed": {
+    "description": "Error when saving \"Not this one\" on the run-detail planned-workout prompt fails"
+  },
   "racesOfficialResult": "Official result",
   "@racesOfficialResult": {
     "description": "Heading for the imported official-result panel"

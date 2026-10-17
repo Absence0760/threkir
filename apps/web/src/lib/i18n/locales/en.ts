@@ -3950,6 +3950,7 @@ export const en = {
 	"planLink.dismiss": "Not this one",
 	"planLink.linked": "Linked to your plan.",
 	"planLink.failed": "Couldn't link this to your plan. Try again.",
+	"planLink.dismissFailed": "Couldn't save that answer. You may be asked again.",
 	"races.officialResult": "Official result",
 	"races.chipTime": "Chip time",
 	"races.gunTime": "Gun time",

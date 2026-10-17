@@ -3882,6 +3882,7 @@
   "planLinkDismiss": "Não é este",
   "planLinkLinked": "Vinculado ao seu plano.",
   "planLinkFailed": "Não foi possível vincular ao seu plano. Tente novamente.",
+  "planLinkDismissFailed": "Não foi possível salvar a resposta. Talvez perguntemos de novo.",
   "racesOfficialResult": "Resultado oficial",
   "racesChipTime": "Tempo líquido",
   "racesGunTime": "Tempo bruto",

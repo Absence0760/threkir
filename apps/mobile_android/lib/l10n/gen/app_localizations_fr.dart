@@ -13707,6 +13707,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get planLinkFailed => 'Impossible de lier à votre plan. Réessayez.';
 
   @override
+  String get planLinkDismissFailed =>
+      'Impossible d\'enregistrer cette réponse. La question pourra vous être reposée.';
+
+  @override
   String get racesOfficialResult => 'Résultat officiel';
 
   @override

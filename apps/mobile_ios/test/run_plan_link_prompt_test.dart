@@ -26,11 +26,18 @@ Future<void> _pump(
   WidgetTester tester, {
   required Future<List<PlanWorkoutLinkCandidate>> Function() load,
   required Future<void> Function(String) link,
+  Future<void> Function(String)? dismiss,
 }) async {
   await tester.pumpWidget(MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
-    home: Scaffold(body: RunPlanLinkPrompt(load: load, link: link)),
+    home: Scaffold(
+      body: RunPlanLinkPrompt(
+        load: load,
+        link: link,
+        dismiss: dismiss ?? (_) async {},
+      ),
+    ),
   ));
   await tester.pump();
 }
@@ -59,13 +66,15 @@ void main() {
     await tester.pump(const Duration(seconds: 10));
   });
 
-  testWidgets('"Not this one" moves on to the next workout, links nothing',
+  testWidgets('"Not this one" is remembered, moves on, and links nothing',
       (tester) async {
     final linked = <String>[];
+    final dismissed = <String>[];
     await _pump(
       tester,
       load: () async => const [_thursdayLong, _mondayEasy],
       link: (id) async => linked.add(id),
+      dismiss: (id) async => dismissed.add(id),
     );
 
     await tester.tap(find.text('Not this one'));
@@ -78,6 +87,21 @@ void main() {
     await tester.pump();
     expect(find.byKey(const Key('plan-link-prompt')), findsNothing);
     expect(linked, isEmpty);
+    expect(dismissed, ['w-long', 'w-easy']);
+  });
+
+  testWidgets('a failed dismissal says so', (tester) async {
+    await _pump(
+      tester,
+      load: () async => const [_thursdayLong],
+      link: (_) async {},
+      dismiss: (_) async => throw Exception('offline'),
+    );
+    await tester.tap(find.text('Not this one'));
+    await tester.pump();
+    expect(find.text("Couldn't save that answer. You may be asked again."),
+        findsOneWidget);
+    await tester.pump(const Duration(seconds: 10));
   });
 
   testWidgets('a failed link says so and keeps the question', (tester) async {

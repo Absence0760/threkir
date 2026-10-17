@@ -6395,6 +6395,15 @@ export async function fetchPlanWorkoutLinkCandidates(
 	return data ?? [];
 }
 
+/** "Not this one" on that prompt: the pair is never offered again. */
+export async function dismissPlanWorkoutLink(workoutId: string, runId: string): Promise<void> {
+	const { error } = await supabase.rpc('dismiss_plan_workout_link', {
+		p_workout_id: workoutId,
+		p_run_id: runId
+	});
+	if (error) throw dbError(error);
+}
+
 export type { RelinkCandidateRun } from '../training/relink_candidates';
 
 /**

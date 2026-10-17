@@ -13685,6 +13685,10 @@ class AppLocalizationsPt extends AppLocalizations {
       'Não foi possível associar ao seu plano. Tente novamente.';
 
   @override
+  String get planLinkDismissFailed =>
+      'Não foi possível guardar a resposta. Poderemos voltar a perguntar.';
+
+  @override
   String get racesOfficialResult => 'Resultado oficial';
 
   @override
@@ -30698,6 +30702,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get planLinkFailed =>
       'Não foi possível vincular ao seu plano. Tente novamente.';
+
+  @override
+  String get planLinkDismissFailed =>
+      'Não foi possível salvar a resposta. Talvez perguntemos de novo.';
 
   @override
   String get racesOfficialResult => 'Resultado oficial';

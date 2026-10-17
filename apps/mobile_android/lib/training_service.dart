@@ -976,6 +976,15 @@ class TrainingService extends ChangeNotifier {
     ];
   }
 
+  /// "Not this one" on that prompt: the pair is never offered again. Mirrors
+  /// web `dismissPlanWorkoutLink`.
+  Future<void> dismissLinkCandidate(String workoutId, String runId) async {
+    await _c.rpc(
+      'dismiss_plan_workout_link',
+      params: {'p_workout_id': workoutId, 'p_run_id': runId},
+    );
+  }
+
   Future<void> markCompleted(
     String workoutId,
     String? runId, {

@@ -1549,6 +1549,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
         RunPlanLinkPrompt(
           load: () => _training.fetchLinkCandidates(run.id),
           link: (workoutId) => _training.markCompleted(workoutId, run.id),
+          dismiss: (workoutId) =>
+              _training.dismissLinkCandidate(workoutId, run.id),
         ),
         RunRaceSection(
           service: _raceService,

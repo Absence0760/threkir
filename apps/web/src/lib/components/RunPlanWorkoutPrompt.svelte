@@ -7,6 +7,7 @@
 	import { formatDistance } from '#lib/format/units.svelte.ts';
 	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
 	import {
+		dismissPlanWorkoutLink,
 		fetchPlanWorkoutLinkCandidates,
 		markWorkoutCompleted,
 		type PlanWorkoutLinkCandidate
@@ -22,7 +23,7 @@
 
 	// The matcher links a run on its own local day only; a workout done a day
 	// or two early or late is asked about here, never linked silently. "Not
-	// this one" moves on to the next candidate.
+	// this one" is remembered server-side and moves on to the next candidate.
 	let candidates = $state<PlanWorkoutLinkCandidate[]>([]);
 	let busy = $state(false);
 	const candidate = $derived(candidates[0] ?? null);
@@ -70,8 +71,16 @@
 		}
 	}
 
-	function dismiss() {
+	async function dismiss() {
+		if (!candidate || busy) return;
+		const dismissed = candidate;
 		candidates = candidates.slice(1);
+		try {
+			await dismissPlanWorkoutLink(dismissed.workout_id, runId);
+		} catch (e) {
+			console.warn('plan workout dismiss failed', e);
+			showToast(m('planLink.dismissFailed'), 'error');
+		}
 	}
 </script>
 

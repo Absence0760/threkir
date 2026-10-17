@@ -20,11 +20,12 @@ import { acceptCookieConsent } from '../fixtures/helpers';
  *
  * On WEB the equivalent end-to-end arc is "preview the planned structured
  * workout → run it for real → link the completed run back to the planned
- * workout → watch the plan's progress surface reflect it". The web
- * auto-complete-from-run write path is unwired (plans/auto-complete-from-
- * run.spec.ts), so the genuine run→workout LINKING path on web is the
- * Re-link picker on /plans/[id]/workouts/[wid] (markWorkoutCompleted with
- * a runId, fetchRelinkCandidateRuns → filterRelinkCandidates).
+ * workout → watch the plan's progress surface reflect it". The database
+ * links a same-day run itself (migration 20270901000001,
+ * plans/auto-complete-from-run.spec.ts); the run→workout LINKING path a
+ * runner drives by hand is the Re-link picker on
+ * /plans/[id]/workouts/[wid] (markWorkoutCompleted with a runId,
+ * fetchRelinkCandidateRuns → filterRelinkCandidates), which this spec walks.
  *
  * The existing specs each pin one slice in isolation: workout-runner-
  * surfaces.spec.ts (structure preview + WorkoutEditor mark-done),

@@ -34,10 +34,10 @@ import { browserDayAt } from '../fixtures/dates';
  *      specs each seed their own throwaway plan for one slice — here
  *      we drive them all on the lifecycle plan.)
  *   4. Complete a workout by MARKING IT DONE in the day-grid modal
- *      (WorkoutEditor → markWorkoutCompleted(manual)). The web
- *      auto-complete-from-run write path is unwired
- *      (auto-complete-from-run.spec.ts), so mark-done is the real UI
- *      completion path. Verify the day flips to .completed and the
+ *      (WorkoutEditor → markWorkoutCompleted(manual)), the completion
+ *      path a runner drives by hand (a same-day run links in the
+ *      database, auto-complete-from-run.spec.ts). Verify the day flips
+ *      to .completed and the
  *      progress ring pct ticks up.
  *   5. Verify the adherence banner renders: the over-running drift
  *      flag (.adherence-flag.drift-over) and the missed-long-run

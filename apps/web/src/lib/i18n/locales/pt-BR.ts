@@ -3936,6 +3936,7 @@ export const messages = {
 	"planLink.dismiss": "Não é este",
 	"planLink.linked": "Vinculado ao seu plano.",
 	"planLink.failed": "Não foi possível vincular ao seu plano. Tente novamente.",
+	"planLink.dismissFailed": "Não foi possível salvar a resposta. Talvez perguntemos de novo.",
 	"races.officialResult": "Resultado oficial",
 	"races.chipTime": "Tempo líquido",
 	"races.gunTime": "Tempo bruto",

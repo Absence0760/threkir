@@ -6445,9 +6445,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get planDetailToday => 'HEUTE';
 
   @override
-  String get planDetailCompleted => 'Erledigt';
-
-  @override
   String planDetailWeek(int number) {
     return 'Woche $number';
   }

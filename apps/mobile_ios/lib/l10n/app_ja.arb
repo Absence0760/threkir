@@ -1772,7 +1772,6 @@
   "planDetailDaysPerWeek": "週{count}日",
   "planDetailCurrentWeek": "今週",
   "planDetailToday": "今日",
-  "planDetailCompleted": "完了",
   "planDetailWeek": "第{number}週",
   "planDetailDriftOverFlag": "今週はここまで、計画より{pct}%多く走っています — 疲労を溜めないよう、楽な日は控えめに。",
   "planDetailDriftUnderFlag": "今週はここまでの予定{planned}のうち{done}を走りました。",

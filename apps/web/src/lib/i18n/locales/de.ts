@@ -3948,6 +3948,7 @@ export const messages = {
 	"races.gunTime": "Brutto-Zeit",
 	"races.overallPlace": "Gesamtplatzierung",
 	"races.ageGroupPlace": "Platzierung Altersklasse",
+	"races.divisionAwardPlace": "Platzierung Sonderwertung",
 	"races.ageGroup": "Altersklasse",
 	"races.bib": "Startnummer",
 	"races.runSignUpBibHint": "Gib deine Startnummer ein, damit wir nur dein Ergebnis importieren, nicht das ganze Feld.",

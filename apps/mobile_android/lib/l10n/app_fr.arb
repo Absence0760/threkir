@@ -3896,6 +3896,7 @@
   "racesGunTime": "Temps officiel",
   "racesOverallPlace": "Classement général",
   "racesAgeGroupPlace": "Classement par catégorie",
+  "racesDivisionAwardPlace": "Classement dans la catégorie primée",
   "racesAgeGroup": "Catégorie d'âge",
   "racesBib": "Dossard",
   "racesRunSignUpBibHint": "Saisissez votre dossard pour n'importer que votre résultat, pas tout le classement.",

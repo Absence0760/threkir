@@ -3961,6 +3961,7 @@ export const en = {
 	"races.gunTime": "Gun time",
 	"races.overallPlace": "Overall place",
 	"races.ageGroupPlace": "Age-group place",
+	"races.divisionAwardPlace": "Award place",
 	"races.ageGroup": "Age group",
 	"races.bib": "Bib",
 	"races.runSignUpBibHint": "Enter your bib number so we import only your result, not the whole field.",

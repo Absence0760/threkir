@@ -13094,6 +13094,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get racesAgeGroupPlace => '年代別順位';
 
   @override
+  String get racesDivisionAwardPlace => '表彰部門の順位';
+
+  @override
   String get racesAgeGroup => '年代';
 
   @override

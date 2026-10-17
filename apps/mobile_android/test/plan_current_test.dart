@@ -103,5 +103,46 @@ void main() {
           reason: status);
     }
   });
-}
 
+  PlanWorkoutStatus status(String today,
+          {String kind = 'tempo', bool completed = false, bool skipped = false}) =>
+      planWorkoutStatus(
+          scheduledIso: '2026-10-13',
+          kind: kind,
+          completed: completed,
+          skipped: skipped,
+          todayIso: today);
+  bool missed(String today,
+          {String kind = 'tempo', bool completed = false, bool skipped = false}) =>
+      isWorkoutMissed(
+          scheduledIso: '2026-10-13',
+          kind: kind,
+          completed: completed,
+          skipped: skipped,
+          todayIso: today);
+
+  test('isWorkoutMissed: a workout is missed only once its day has ended', () {
+    expect(missed('2026-10-12'), isFalse);
+    expect(missed('2026-10-13'), isFalse);
+    expect(missed('2026-10-14'), isTrue);
+  });
+
+  test('isWorkoutMissed: a done or skipped workout is never missed', () {
+    expect(missed('2026-10-20', completed: true), isFalse);
+    expect(missed('2026-10-20', skipped: true), isFalse);
+  });
+
+  test('isWorkoutMissed: a past rest day is not missed', () {
+    expect(missed('2026-10-20', kind: 'rest'), isFalse);
+  });
+
+  test('planWorkoutStatus: done beats skipped, rest is its own state, today is upcoming',
+      () {
+    expect(status('2026-10-20', completed: true, skipped: true),
+        PlanWorkoutStatus.done);
+    expect(status('2026-10-01', skipped: true), PlanWorkoutStatus.skipped);
+    expect(status('2026-10-01', kind: 'rest'), PlanWorkoutStatus.rest);
+    expect(status('2026-10-13'), PlanWorkoutStatus.upcoming);
+    expect(status('2026-10-14'), PlanWorkoutStatus.missed);
+  });
+}

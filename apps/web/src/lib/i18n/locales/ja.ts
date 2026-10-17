@@ -3943,6 +3943,7 @@ export const messages = {
 	"races.gunTime": "グロスタイム",
 	"races.overallPlace": "総合順位",
 	"races.ageGroupPlace": "年代別順位",
+	"races.divisionAwardPlace": "表彰部門の順位",
 	"races.ageGroup": "年代別",
 	"races.bib": "ゼッケン",
 	"races.runSignUpBibHint": "全体ではなくあなたの結果だけをインポートするため、ゼッケン番号を入力してください。",

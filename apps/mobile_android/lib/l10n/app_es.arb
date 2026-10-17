@@ -3896,6 +3896,7 @@
   "racesGunTime": "Tiempo oficial",
   "racesOverallPlace": "Puesto general",
   "racesAgeGroupPlace": "Puesto por categoría",
+  "racesDivisionAwardPlace": "Puesto en categoría de premio",
   "racesAgeGroup": "Categoría de edad",
   "racesBib": "Dorsal",
   "racesRunSignUpBibHint": "Introduce tu dorsal para importar solo tu resultado, no toda la clasificación.",

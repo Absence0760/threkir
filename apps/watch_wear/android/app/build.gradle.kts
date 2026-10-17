@@ -239,6 +239,12 @@ tasks.withType<Test>().configureEach {
             // Layer contracts.
             root.resolve("apps/mobile_android/android/app/src/main/kotlin/com/threkir/app/WearAuthBridge.kt"),
             root.resolve("apps/mobile_android/android/app/src/main/kotlin/com/threkir/app/WearRoutesBridge.kt"),
+            root.resolve("apps/mobile_android/android/app/src/main/kotlin/com/threkir/app/WearWorkoutBridge.kt"),
+            // WorkoutPushFixtureTest + WorkoutRunnerTest: the payload and the
+            // step-runner vectors the phone and watchOS are held to, and the
+            // phone writer's payload version.
+            root.resolve("fixtures/watch_workout_payload.json"),
+            root.resolve("apps/mobile_android/lib/watch_workout_push.dart"),
             // EnvFlagParityTest: the canonical accepted-affirmative set.
             root.resolve("apps/web/src/lib/core/env_flag.ts"),
             // MetadataRegistryTest: the runs.metadata key registry.

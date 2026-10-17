@@ -74,6 +74,8 @@ apps/watch_wear/
             │   ├── WatchRunMetadata.kt      # `buildRunMetadata` + queued-run encoder
             │   ├── SessionBridge.kt         # Wearable Data Layer listener for phone-handed session
             │   ├── RoutesBridge.kt          # Wearable Data Layer listener for phone-pushed starred routes
+            │   ├── WorkoutBridge.kt         # Wearable Data Layer listener for today's planned workout (`/todays_workout`)
+            │   ├── workout/                 # today's workout: `PushedWorkout.kt` (fail-closed decode + day check), `WorkoutRunner.kt` (port of the phone's step runner, held to `fixtures/watch_workout_payload.json`), `WorkoutCues.kt` (one haptic per feed); see docs/features/workout_execution.md § On the wrist
             │   ├── SessionStore.kt          # EncryptedSharedPreferences cache of the auth session (tokens encrypted at rest)
             │   ├── SingleFlight.kt          # coalesces concurrent token refreshes (rotating refresh token)
             │   ├── RaceSessionClient.kt     # race-mode REST client: armed/running poll, chosen course, pings, `event_results` upsert

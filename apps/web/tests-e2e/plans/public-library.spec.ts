@@ -125,6 +125,10 @@ test.describe('Public plan library — publish → browse → clone', () => {
 			timeout: 10_000
 		});
 
+		// Each week reads as what it asks of the runner, rest days skipped —
+		// not a raw row count that says 7 for every week.
+		await expect(pageB.locator('.week-count').first()).toHaveText(/^\d+ runs?( · .+)?$/);
+
 		// Clone → lands on the new plan's detail page.
 		await pageB.getByRole('button', { name: 'Clone into my plans' }).click();
 		await pageB.waitForURL(/\/plans\/[0-9a-f-]+$/, { timeout: 15_000 });

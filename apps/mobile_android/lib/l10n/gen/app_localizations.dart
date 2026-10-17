@@ -7930,6 +7930,12 @@ abstract class AppLocalizations {
   /// **'{name} assigned you a training plan'**
   String profileNotifPlanAssigned(String name);
 
+  /// Notification inbox line for the morning reminder that today has a workout on the runner's active training plan
+  ///
+  /// In en, this message translates to:
+  /// **'Today\'s workout is waiting in your plan'**
+  String get profileNotifWorkoutReminder;
+
   /// Notification text for a cancelled event occurrence, when the event title is known
   ///
   /// In en, this message translates to:
@@ -14277,6 +14283,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Email me the first time my account signs in from a browser or device it hasn\'t used before. Password-change notices always send and can\'t be turned off.'**
   String get prefsEmailNewDeviceAlertsHint;
+
+  /// Title of the switch that turns the morning today's-workout reminder on or off
+  ///
+  /// In en, this message translates to:
+  /// **'Today\'s workout'**
+  String get prefsNotifyWorkoutReminder;
+
+  /// Subtitle of the today's-workout reminder switch; it covers the inbox, email and push
+  ///
+  /// In en, this message translates to:
+  /// **'On the morning of a planned workout, remind me in the inbox and by email and push.'**
+  String get prefsNotifyWorkoutReminderHint;
 
   /// Shown when lifting a prior one-click unsubscribe block fails after re-opting into an email stream
   ///

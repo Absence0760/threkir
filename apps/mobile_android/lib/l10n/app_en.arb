@@ -6461,6 +6461,10 @@
       }
     }
   },
+  "profileNotifWorkoutReminder": "Today's workout is waiting in your plan",
+  "@profileNotifWorkoutReminder": {
+    "description": "Notification inbox line for the morning reminder that today has a workout on the runner's active training plan"
+  },
   "profileNotifEventCancelTitled": "An occurrence of \"{title}\" was cancelled",
   "@profileNotifEventCancelTitled": {
     "description": "Notification text for a cancelled event occurrence, when the event title is known",
@@ -11806,6 +11810,14 @@
   "prefsEmailNewDeviceAlertsHint": "Email me the first time my account signs in from a browser or device it hasn't used before. Password-change notices always send and can't be turned off.",
   "@prefsEmailNewDeviceAlertsHint": {
     "description": "Subtitle for the new-device sign-in alert toggle; says the password-change notice cannot be turned off"
+  },
+  "prefsNotifyWorkoutReminder": "Today's workout",
+  "@prefsNotifyWorkoutReminder": {
+    "description": "Title of the switch that turns the morning today's-workout reminder on or off"
+  },
+  "prefsNotifyWorkoutReminderHint": "On the morning of a planned workout, remind me in the inbox and by email and push.",
+  "@prefsNotifyWorkoutReminderHint": {
+    "description": "Subtitle of the today's-workout reminder switch; it covers the inbox, email and push"
   },
   "prefsEmailReOptInFailed": "Couldn't lift your earlier unsubscribe. Emails may still be blocked — try again.",
   "@prefsEmailReOptInFailed": {

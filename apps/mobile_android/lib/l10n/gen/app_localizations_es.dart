@@ -4833,6 +4833,10 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get profileNotifWorkoutReminder =>
+      'Tu entrenamiento de hoy te espera en tu plan';
+
+  @override
   String profileNotifEventCancelTitled(String title) {
     return 'Se canceló una ocurrencia de «$title»';
   }
@@ -8834,6 +8838,13 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get prefsEmailNewDeviceAlertsHint =>
       'Avisarme por correo la primera vez que se inicie sesión en mi cuenta desde un navegador o dispositivo que no haya usado antes. Los avisos de cambio de contraseña se envían siempre y no se pueden desactivar.';
+
+  @override
+  String get prefsNotifyWorkoutReminder => 'Entrenamiento de hoy';
+
+  @override
+  String get prefsNotifyWorkoutReminderHint =>
+      'La mañana de un entrenamiento planificado, recordármelo en la bandeja de entrada, por correo y con una notificación.';
 
   @override
   String get prefsEmailReOptInFailed =>

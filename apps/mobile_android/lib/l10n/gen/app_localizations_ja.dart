@@ -4567,6 +4567,9 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String get profileNotifWorkoutReminder => '今日のワークアウトがプランで待っています';
+
+  @override
   String profileNotifEventCancelTitled(String title) {
     return '「$title」の開催が1回キャンセルされました';
   }
@@ -8364,6 +8367,13 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get prefsEmailNewDeviceAlertsHint =>
       'これまで使われたことのないブラウザやデバイスからアカウントにサインインがあったときに、メールで知らせます。パスワード変更の通知は常に送信され、オフにすることはできません。';
+
+  @override
+  String get prefsNotifyWorkoutReminder => '今日のワークアウト';
+
+  @override
+  String get prefsNotifyWorkoutReminderHint =>
+      'ワークアウトが予定されている日の朝に、受信箱・メール・プッシュでお知らせします。';
 
   @override
   String get prefsEmailReOptInFailed =>

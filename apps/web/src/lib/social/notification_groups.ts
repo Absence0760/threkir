@@ -80,6 +80,10 @@ function targetKeyFor(n: GroupableNotification): string {
 			return n.challenge_id ? `challenge:${n.challenge_id}` : solo;
 		case 'message':
 			return n.actor_id ? `message:${n.actor_id}` : solo;
+		case 'workout_reminder':
+			// One a day, each about that day's session: yesterday's is not a
+			// second actor on today's, so they never collapse.
+			return solo;
 		default:
 			return solo;
 	}

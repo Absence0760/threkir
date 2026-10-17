@@ -26,6 +26,10 @@
 	let notifyReaction = $state(true);
 	let notifyCommentLike = $state(true);
 	let notifyFollowRequest = $state(true);
+	// Unlike the mutes above this one also withholds the inbox row:
+	// enqueue_workout_reminders raises nothing for a runner who turned it off,
+	// because a clock raises it every morning rather than someone's action.
+	let notifyWorkoutReminder = $state(true);
 	// Opt-OUT alert for a sign-in from a device class the account has not used
 	// before (security_email new_device_sign_in). The password-changed notice
 	// has no control on purpose: it is the one mail a takeover must not mute.
@@ -44,6 +48,7 @@
 		notifyReaction = effective<string>(settings, 'notify_reaction', 'on') !== 'off';
 		notifyCommentLike = effective<string>(settings, 'notify_comment_like', 'on') !== 'off';
 		notifyFollowRequest = effective<string>(settings, 'notify_follow_request', 'on') !== 'off';
+		notifyWorkoutReminder = effective<string>(settings, 'notify_workout_reminder', 'on') !== 'off';
 		emailNewDeviceAlerts = effective<string>(settings, 'email_new_device_alerts', 'on') !== 'off';
 	});
 
@@ -146,6 +151,18 @@
 			<span>
 				{m('prefs.notifyFollowRequest')}
 				<span class="hint">{m('prefs.notifyFollowRequestHint')}</span>
+			</span>
+		</label>
+		<label class="checkbox-row">
+			<input
+				type="checkbox"
+				bind:checked={notifyWorkoutReminder}
+				onchange={() => prefs.save({ notify_workout_reminder: notifyWorkoutReminder ? 'on' : 'off' })}
+				data-testid="notify-workout-reminder"
+			/>
+			<span>
+				{m('prefs.notifyWorkoutReminder')}
+				<span class="hint">{m('prefs.notifyWorkoutReminderHint')}</span>
 			</span>
 		</label>
 		<label class="checkbox-row">

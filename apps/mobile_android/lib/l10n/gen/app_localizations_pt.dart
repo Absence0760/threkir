@@ -4837,6 +4837,10 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get profileNotifWorkoutReminder =>
+      'O seu treino de hoje está à sua espera no plano';
+
+  @override
   String profileNotifEventCancelTitled(String title) {
     return 'Uma ocorrência de “$title” foi cancelada';
   }
@@ -8839,6 +8843,13 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get prefsEmailNewDeviceAlertsHint =>
       'Avise por e-mail na primeira vez que for iniciada sessão na minha conta a partir de um navegador ou dispositivo ainda não utilizado. Os avisos de alteração da palavra-passe são sempre enviados e não podem ser desativados.';
+
+  @override
+  String get prefsNotifyWorkoutReminder => 'Treino de hoje';
+
+  @override
+  String get prefsNotifyWorkoutReminderHint =>
+      'Na manhã de um treino planeado, lembre-me na caixa de entrada, por e-mail e por push.';
 
   @override
   String get prefsEmailReOptInFailed =>
@@ -21886,6 +21897,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
+  String get profileNotifWorkoutReminder =>
+      'Seu treino de hoje está esperando no seu plano';
+
+  @override
   String profileNotifEventCancelTitled(String title) {
     return 'Uma ocorrência de “$title” foi cancelada';
   }
@@ -25878,6 +25893,13 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get prefsEmailNewDeviceAlertsHint =>
       'Avise por e-mail na primeira vez que minha conta for acessada de um navegador ou dispositivo que ela ainda não usou. Os avisos de alteração de senha são sempre enviados e não podem ser desativados.';
+
+  @override
+  String get prefsNotifyWorkoutReminder => 'Treino de hoje';
+
+  @override
+  String get prefsNotifyWorkoutReminderHint =>
+      'Na manhã de um treino planejado, me lembre na caixa de entrada, por e-mail e por push.';
 
   @override
   String get prefsEmailReOptInFailed =>

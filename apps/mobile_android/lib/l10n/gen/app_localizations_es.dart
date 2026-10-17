@@ -1999,16 +1999,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String get runResumeDiscardedBanner => 'Carrera anterior descartada.';
 
   @override
-  String get runStartWorkout => 'Iniciar entrenamiento';
-
-  @override
-  String get runStartWorkoutSubtitle =>
-      'Corre con objetivos de paso en vivo, avisos de audio y un análisis planificado vs. real.';
-
-  @override
-  String get runViewWorkoutDetails => 'Ver detalles';
-
-  @override
   String get runWorkoutNoStructure =>
       'Este entrenamiento no tiene una estructura ejecutable.';
 

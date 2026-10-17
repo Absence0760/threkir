@@ -1920,15 +1920,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runResumeDiscardedBanner => '前回のランを破棄しました。';
 
   @override
-  String get runStartWorkout => 'ワークアウトを開始';
-
-  @override
-  String get runStartWorkoutSubtitle => 'ライブのステップ目標、音声ガイド、計画と実績の振り返り付きで走ります。';
-
-  @override
-  String get runViewWorkoutDetails => '詳細を見る';
-
-  @override
   String get runWorkoutNoStructure => 'このワークアウトには実行可能な構成がありません。';
 
   @override

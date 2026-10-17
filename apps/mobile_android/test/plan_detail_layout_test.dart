@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ui_kit/ui_kit.dart' show FullBodyLoader;
 import '../lib/disclosure_state.dart';
 import '../lib/l10n/gen/app_localizations.dart';
+import '../lib/main.dart' show pendingStartWorkout;
 import '../lib/screens/plan_detail_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
@@ -250,4 +251,23 @@ void main() {
       expect(find.text('Publish as club template'), findsNothing);
     },
   );
+
+  testWidgets(
+    "the owner's today card starts the workout through the Run tab handoff",
+    (tester) async {
+      await _pump(tester);
+      addTearDown(() => pendingStartWorkout.value = null);
+      final start = find.byKey(const Key('todaysWorkoutStart'));
+      expect(start, findsOneWidget);
+      await tester.tap(start);
+      await tester.pump();
+      expect(pendingStartWorkout.value?.id, 'wo-today');
+    },
+  );
+
+  testWidgets('another viewer gets no Start on the today card', (tester) async {
+    await _pump(tester, viewerId: 'someone-else');
+    expect(find.byType(TodaysWorkoutCard), findsOneWidget);
+    expect(find.byKey(const Key('todaysWorkoutStart')), findsNothing);
+  });
 }

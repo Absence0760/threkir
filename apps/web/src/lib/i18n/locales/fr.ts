@@ -4109,6 +4109,8 @@ export const messages = {
 	"workoutDetail.adviceRest": "Jour de repos — si vous devez bouger, marchez ou étirez-vous.",
 	"workoutDetail.unlinkRunTitle": "Dissocier la course",
 	"workoutDetail.unlinkRunMessage": "Dissocier la course associée ? La séance s'affichera comme pas encore faite.",
+	"workoutDetail.markNotDoneTitle": "Marquer comme non fait ?",
+	"workoutDetail.markNotDoneMessage": "La séance s'affichera comme pas encore faite.",
 	"workoutDetail.relink": "Réassocier",
 	"workoutDetail.relinkTitle": "Associer une autre course",
 	"workoutDetail.relinkHint": "Choisissez une course proche de la date de cette séance pour la compter comme cette séance. Les courses déjà associées à une autre séance ne sont pas affichées.",

@@ -4109,6 +4109,8 @@ export const messages = {
 	"workoutDetail.adviceRest": "Día de descanso: si necesitas moverte, camina o estira.",
 	"workoutDetail.unlinkRunTitle": "Desvincular carrera",
 	"workoutDetail.unlinkRunMessage": "¿Desvincular la carrera asociada? El entrenamiento aparecerá como aún no realizado.",
+	"workoutDetail.markNotDoneTitle": "¿Marcar como no hecho?",
+	"workoutDetail.markNotDoneMessage": "El entrenamiento aparecerá como aún no realizado.",
 	"workoutDetail.relink": "Revincular",
 	"workoutDetail.relinkTitle": "Vincular otra carrera",
 	"workoutDetail.relinkHint": "Elige una carrera cercana a la fecha de este entrenamiento para contarla como esta sesión. No se muestran las carreras ya vinculadas a otro entrenamiento.",

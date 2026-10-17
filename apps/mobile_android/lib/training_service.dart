@@ -700,7 +700,7 @@ class TrainingService extends ChangeNotifier {
         .firstOrNull;
     final active = res.workouts.where((w) => w.kind != 'rest').toList();
     final done = active
-        .where((w) => w.completedRunId != null || w.manuallyCompleted)
+        .where(isWorkoutCompleted)
         .length;
     final pct = active.isEmpty ? 0 : (100 * done / active.length).round();
     // Whole-epoch-day bucketing, not a wall-clock difference: a start→today

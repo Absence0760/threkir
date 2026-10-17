@@ -101,7 +101,7 @@
 	import { loadSettings, peekCachedSettings, effective, updateUniversal } from '#lib/settings/settings.ts';
 	import { relativeAge } from '#lib/runs/pr_recency.ts';
 	import type { LoadedSettings } from '#lib/settings/settings.ts';
-	import { fmtKm, fmtPace, formatElevation, formatWeight, setUnit } from '#lib/format/units.svelte.ts';
+	import { fmtKm, fmtPace, formatDistance as formatUnitDistance, formatElevation, formatWeight, setUnit } from '#lib/format/units.svelte.ts';
 	import { paceMinutesSeconds } from '#lib/format/pace_format.ts';
 	import { formatSignedInteger } from '#lib/format/number.ts';
 	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
@@ -1206,7 +1206,7 @@
 						<div class="plan-hero-goal">
 							<span>
 								<span class="material-symbols">flag</span>
-								{heroRace?.name ?? goalEventLabel(planOverview.plan.goal_event, planOverview.plan.goal_distance_m)}
+								{heroRace?.name ?? goalEventLabel(m, formatUnitDistance, planOverview.plan.goal_event, planOverview.plan.goal_distance_m)}
 							</span>
 							{#if raceGoal}
 								<span>

@@ -13,6 +13,7 @@
 		createTrainingPlan
 	} from '#lib/core/data.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { formatDistance } from '#lib/format/units.svelte.ts';
 	import { coachEnabled } from '#lib/coach/coach_flag.ts';
 	import { aiPlanEnabled } from '#lib/training/ai_plan_flag.ts';
 	import { currentPlanWeekIndex } from '#lib/training/plan_week.ts';
@@ -426,7 +427,7 @@
 					<div class="hero">
 						<div class="hero-metric">
 							<span class="section-label">{m('plansPage.heroGoal')}</span>
-							<span class="hero-value">{goalEventLabel(p.goal_event, p.goal_distance_m)}</span>
+							<span class="hero-value">{goalEventLabel(m, formatDistance, p.goal_event, p.goal_distance_m)}</span>
 						</div>
 						<div class="hero-metric">
 							<span class="section-label">{m('plansPage.heroTarget')}</span>
@@ -447,7 +448,7 @@
 						</span>
 						<span class="meta-item">
 							<span class="material-symbols">view_week</span>
-							{planLengthLabel(total, p.days_per_week)}
+							{planLengthLabel(m, total, p.days_per_week)}
 						</span>
 					</div>
 

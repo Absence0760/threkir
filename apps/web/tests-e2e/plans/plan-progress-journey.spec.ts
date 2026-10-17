@@ -37,7 +37,7 @@ import { browserDayAt } from '../fixtures/dates';
  *      (WorkoutEditor → markWorkoutCompleted(manual)), the completion
  *      path a runner drives by hand (a same-day run links in the
  *      database, auto-complete-from-run.spec.ts). Verify the day flips
- *      to .completed and the
+ *      to data-status="done" and the
  *      progress ring pct ticks up.
  *   5. Verify the adherence banner renders: the over-running drift
  *      flag (.adherence-flag.drift-over) and the missed-long-run
@@ -236,7 +236,7 @@ test.describe('plan progress journey', () => {
 			};
 			const initialPct = await readPct();
 			expect(initialPct).toBeGreaterThanOrEqual(0);
-			const completedCells = page.locator('.day[data-status="done"]');
+			const completedCells = page.locator('.day-grid .day[data-status="done"]');
 			const initialCompleted = await completedCells.count();
 
 			// Open today's cell (the only workout scheduled today) and mark

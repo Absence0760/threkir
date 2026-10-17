@@ -52,7 +52,7 @@ import { acceptCookieConsent } from '../fixtures/helpers';
  *      detail completed-card surfaces.
  *   5. Likewise complete the long run by linking the same-day run.
  *   6. Navigate to /plans/[id] and verify the DOWNSTREAM progress
- *      propagation: the day-grid interval cell flips to .completed, the
+ *      propagation: the day-grid interval cell flips to data-status="done", the
  *      progress ring pct is non-zero and matches completed/totalActive,
  *      the phase marker renders (≥2 phases), and the "Longest long run"
  *      stat reflects the linked run's ACTUAL distance (not the planned
@@ -358,7 +358,7 @@ test.describe('structured workout execution → plan progress journey', () => {
 
 			// The day-grid interval cell flipped to .completed (carries the
 			// Interval label) — the downstream of linking the run.
-			const intervalCell = page.locator('.day[data-status="done"]', {
+			const intervalCell = page.locator('.day-grid .day[data-status="done"]', {
 				hasText: /Interval/i
 			});
 			await expect(intervalCell.first()).toBeVisible({ timeout: 10_000 });

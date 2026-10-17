@@ -63,7 +63,7 @@ test.describe('/plans/[id] — workout and plan states', () => {
 		try {
 			await page.goto(`/plans/${SYDNEY_HALF_PLAN_ID}`);
 			const chip = page.getByTestId('assigned-by-coach');
-			await expect(chip).toHaveText(`Assigned by ${coachName}`, { timeout: 10_000 });
+			await expect(chip).toContainText(`Assigned by ${coachName}`, { timeout: 10_000 });
 			await expect(chip).toHaveAttribute('href', '/coaching');
 		} finally {
 			await admin

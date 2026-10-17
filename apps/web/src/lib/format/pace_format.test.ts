@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { paceMinutesSeconds, paceParts, isMeaningfulPace } from './pace_format';
+import { paceMinutesSeconds, paceParts, isMeaningfulPace, paceToleranceLabel } from './pace_format';
 
 test('formats whole and exact paces', () => {
 	assert.equal(paceMinutesSeconds(330), '5:30');
@@ -69,4 +69,11 @@ test('a degenerate pace gets the placeholder, never NaN, Infinity or a sign', ()
 	for (const [input, expected] of cases) {
 		assert.equal(paceMinutesSeconds(input), expected, `paceMinutesSeconds(${input})`);
 	}
+});
+
+test('a pace tolerance is converted to the pace unit and labelled with it', () => {
+	assert.equal(paceToleranceLabel(10, 'km'), '±10s/km');
+	// 10 s/km is 16.09 s/mi.
+	assert.equal(paceToleranceLabel(10, 'mi'), '±16s/mi');
+	assert.equal(paceToleranceLabel(15, 'mi'), '±24s/mi');
 });

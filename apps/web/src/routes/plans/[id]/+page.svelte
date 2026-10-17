@@ -2,7 +2,7 @@
 	import { isPlanOverlapError, thrownMessage } from '#lib/core/supabase_error.ts';
 	import { activeFormatLocale, formatDuration } from '#lib/format/time.ts';
 	import { onMount, tick } from 'svelte';
-	import { afterNavigate, replaceState } from '$app/navigation';
+	import { afterNavigate, goto, replaceState } from '$app/navigation';
 	import { page } from '$app/state';
 	import {
 		fetchPlan,
@@ -20,9 +20,11 @@
 		pausePlan,
 		resumePlan,
 		ActivePlanExistsError,
+		isActiveCoachOf,
 	} from '#lib/core/data.ts';
 	import { recoveryWorkoutPatch } from '#lib/training/plan_bulk_ops.ts';
 	import { planShiftImpact } from '#lib/training/plan_shift.ts';
+	import { workoutMoveDays } from '#lib/training/plan_move.ts';
 	import { cyclePlanWorkoutPatch, type CyclePlanConfig } from '#lib/training/cycle_plan.ts';
 	import { isCyclePlansEnabled } from '#lib/training/cycle_plan_flag.ts';
 	import { replanRemaining, type ReplanChange, type ReplanWeek } from '#lib/training/plan_replan.ts';
@@ -40,6 +42,8 @@
 	import { workoutKindMarkVar } from '#lib/training/workout_kind_color.ts';
 	import { isAdaptiveFitnessGateEnabled } from '#lib/training/adaptive_fitness_flag.ts';
 	import WorkoutEditor from '#lib/components/WorkoutEditor.svelte';
+	import FinishPlanPrompt from '#lib/components/FinishPlanPrompt.svelte';
+	import { isPlanFinished } from '#lib/training/plan_current.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import PlanAiAdjust from '#lib/components/PlanAiAdjust.svelte';
 	import { coachEnabled } from '#lib/coach/coach_flag.ts';
@@ -104,6 +108,19 @@
 	let weekStart = $state<WeekStart>('monday');
 
 	let isOwner = $derived(plan != null && plan.user_id === auth.user?.id);
+	// Coach RLS lets an athlete's active coach edit the workouts of a
+	// non-template plan; nobody else may, so nobody else gets the editor.
+	let coachesOwner = $state(false);
+	let canEditWorkouts = $derived(
+		plan != null && (isOwner || (coachesOwner && !plan.is_template))
+	);
+	function openWorkout(wo: PlanWorkout): void {
+		if (canEditWorkouts) {
+			editing = wo;
+		} else if (plan) {
+			void goto(`/plans/${plan.id}/workouts/${wo.id}`);
+		}
+	}
 
 	// ─── Named disclosures (#905 workstream 3) ───
 	// Today's session and this week lead the page; everything else sits behind
@@ -828,6 +845,15 @@
 			loadError = thrownMessage(e);
 		}
 		loading = false;
+		coachesOwner = false;
+		if (loadError === null && plan != null && !plan.is_template && plan.user_id !== auth.user?.id) {
+			try {
+				coachesOwner = await isActiveCoachOf(plan.user_id);
+			} catch (e) {
+				// Fails closed: without the link the editor stays shut.
+				console.error('isActiveCoachOf failed', e);
+			}
+		}
 		if (loadError === null && plan != null && plan.user_id === auth.user?.id) {
 			// Owner-only: the recent runs feed both the Race Day Riegel
 			// projection (within 21 days) and the current-week adherence
@@ -957,6 +983,16 @@
 	});
 
 	let today = $derived(todayISO());
+
+	/// The days the workout being edited can move to (plan_move.ts, decisions
+	/// § 2073). Only the owner is offered the move.
+	let editingMoveDays = $derived.by(() => {
+		const wo = editing;
+		if (!plan || !wo || !isOwner) return [];
+		const week = weeks.find((w) => w.id === wo.week_id);
+		if (!week) return [];
+		return workoutMoveDays(plan.start_date, plan.end_date, week.week_index, wo, workouts, today);
+	});
 
 	/// Every race the plan builds toward (plan_races.ts, decisions § 2009); the
 	/// countdown, race-week panel and hero relation follow the next one, so a
@@ -1349,6 +1385,10 @@
 			</div>
 		</header>
 
+		{#if isOwner && !plan.is_template && isPlanFinished(plan, today)}
+			<div class="finish-plan-slot"><FinishPlanPrompt {plan} onfinished={load} /></div>
+		{/if}
+
 		{#if isOwner && !plan.is_template && replanPreview}
 			<section class="replan-preview" aria-label={m('planDetail.replanPreviewAria')}>
 				<h3 tabindex="-1" bind:this={replanPreviewHeading}>{m('planDetail.replanPreviewTitle')}</h3>
@@ -1426,7 +1466,7 @@
 					class="today-link"
 					type="button"
 					aria-label={m('planDetail.editTodayWorkoutAria', { kind: workoutKindLabel(todayWorkout.kind) })}
-					onclick={() => (editing = todayWorkout)}
+					onclick={() => todayWorkout && openWorkout(todayWorkout)}
 				>
 					<div class="today-icon" class:done={isWorkoutCompleted(todayWorkout)}>
 						{#if isWorkoutCompleted(todayWorkout)}
@@ -1447,7 +1487,7 @@
 								<span>{fmtKm(todayWorkout.target_distance_m)}</span>
 							{/if}
 							{#if todayWorkout.target_pace_sec_per_km}
-								<span>@ {fmtPace(todayWorkout.target_pace_sec_per_km)}</span>
+								<span>{m('workoutDetail.atPace', { pace: fmtPace(todayWorkout.target_pace_sec_per_km) })}</span>
 							{/if}
 							{#if isWorkoutCompleted(todayWorkout)}
 								<span class="today-done">{m('planDetail.completed')}</span>
@@ -1466,7 +1506,7 @@
 					class="today-link"
 					type="button"
 					aria-label={m('planDetail.editNextWorkoutAria')}
-					onclick={() => (editing = nextWorkout)}
+					onclick={() => nextWorkout && openWorkout(nextWorkout)}
 				>
 					<div class="today-icon">
 						<span class="material-symbols">event_upcoming</span>
@@ -1482,7 +1522,7 @@
 								<span>{fmtKm(nextWorkout.target_distance_m)}</span>
 							{/if}
 							{#if nextWorkout.target_pace_sec_per_km}
-								<span>@ {fmtPace(nextWorkout.target_pace_sec_per_km)}</span>
+								<span>{m('workoutDetail.atPace', { pace: fmtPace(nextWorkout.target_pace_sec_per_km) })}</span>
 							{/if}
 						</div>
 					</div>
@@ -1524,7 +1564,7 @@
 			weekWorkouts={currentWeek ? (workoutsByWeek.get(currentWeek.id) ?? []) : []}
 			{today}
 			{weekStart}
-			onSelect={(wo) => (editing = wo)}
+			onSelect={openWorkout}
 		/>
 
 		{#if currentWeekDrift || missedLongRun}
@@ -1684,7 +1724,7 @@
 				{workouts}
 				planId={plan.id}
 				{weekStart}
-				onSelect={(wo) => (editing = wo)}
+				onSelect={openWorkout}
 			/>
 		</DisclosureSection>
 
@@ -1765,7 +1805,7 @@
 									class="day-link"
 									type="button"
 									aria-label={workoutAriaLabel(wo)}
-									onclick={() => (editing = wo)}
+									onclick={() => openWorkout(wo)}
 								>
 									<span class="dow">{dayOfWeek(wo.scheduled_date)}</span>
 									<span class="kind">
@@ -1856,6 +1896,7 @@
 {#if editing}
 	<WorkoutEditor
 		workout={editing}
+		moveDays={editingMoveDays}
 		onClose={() => (editing = null)}
 		onSaved={async () => {
 			editing = null;
@@ -2069,6 +2110,9 @@
 <style>
 	.page {
 		padding: var(--page-padding-y) var(--page-padding-x);
+	}
+	.finish-plan-slot {
+		margin: var(--space-lg) 0;
 	}
 	.back {
 		display: inline-flex;

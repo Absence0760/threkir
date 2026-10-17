@@ -84,4 +84,24 @@ void main() {
     expect(_overlap([_marathon], '2026-09-01', '2026-09-07'), ['marathon']);
     expect(_overlap([_marathon], '2026-07-01', '2026-08-01'), isEmpty);
   });
+
+  test('isPlanFinished: an active plan is finished from the day after its end day',
+      () {
+    bool f(String today) =>
+        isPlanFinished(status: 'active', endIso: _marathon.end, todayIso: today);
+    expect(f('2026-11-14'), isFalse);
+    expect(f('2026-11-15'), isFalse);
+    expect(f('2026-11-16'), isTrue);
+  });
+
+  test('isPlanFinished: only an active plan can be finished', () {
+    for (final status in ['paused', 'completed', 'abandoned']) {
+      expect(
+          isPlanFinished(
+              status: status, endIso: _marathon.end, todayIso: '2027-01-01'),
+          isFalse,
+          reason: status);
+    }
+  });
 }
+

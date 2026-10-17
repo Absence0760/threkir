@@ -473,7 +473,7 @@ Density rules so it never becomes a wall of cards:
 > this-week strip and the streak stay unfolded above the groups. Not built:
 > "one expanded at a time", a mobile **How much detail** control or
 > `disclosure.dart` consumer, and hiding a card outright
-> ([decisions § 2073](../architecture/decisions.md)).
+> ([decisions § 2080](../architecture/decisions.md)).
 > `tests-e2e/dashboard/layout.spec.ts`, `test/dashboard_trend_groups_test.dart`.
 
 ## History — one timeline, filter chips, separate detail routes

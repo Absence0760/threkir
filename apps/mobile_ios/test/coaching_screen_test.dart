@@ -66,7 +66,33 @@ Future<void> _pump(WidgetTester tester, ApiClient api, Preferences prefs) async 
   await tester.pump();
 }
 
+CoachRosterRow _rosterRow(String id, {DateTime? lastRunAt}) => CoachRosterRow(
+      athleteId: id,
+      displayName: null,
+      avatarUrl: null,
+      lastRunAt: lastRunAt,
+      runs7d: 0,
+      distance7dM: 0,
+      loadAcute: 0,
+      loadChronic: 0,
+      activePlanId: null,
+      planCompletionPct: 0,
+    );
+
 void main() {
+  test('within a risk band the roster puts the most-stale athlete first', () {
+    // The tiebreak used to compare newest-first, so the athlete who had gone
+    // quiet sank to the bottom of their band. Web twin: roster_sort.test.ts.
+    final rows = sortRosterByAttention([
+      _rosterRow('fresh', lastRunAt: DateTime.utc(2026, 10, 15, 7)),
+      _rosterRow('never'),
+      _rosterRow('quiet', lastRunAt: DateTime.utc(2026, 9, 1, 7)),
+      _rosterRow('also-never'),
+    ]);
+    expect(rows.map((r) => r.athleteId),
+        ['also-never', 'never', 'quiet', 'fresh']);
+  });
+
   setUpAll(() => initializeDateFormatting());
 
   group('coachInviteLink', () {

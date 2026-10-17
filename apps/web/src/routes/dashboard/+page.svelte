@@ -76,6 +76,8 @@
 		revealOnNavigate,
 	} from '#lib/stores/modality_visibility.svelte.ts';
 	import DashboardWeekLead from '#lib/components/DashboardWeekLead.svelte';
+	import FinishPlanPrompt from '#lib/components/FinishPlanPrompt.svelte';
+	import { isPlanFinished } from '#lib/training/plan_current.ts';
 	import { weeklyGoalTarget } from '#lib/training/week_lead.ts';
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
 	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
@@ -315,7 +317,7 @@
 	// Below the Today | Trends divider each group of trend cards folds to its
 	// one-line heading, remembered per account on this device. Every default
 	// is open: a runner who reads these cards today must not find them gone on
-	// the first visit after this shipped (decisions § 2073). The memory is what
+	// the first visit after this shipped (decisions § 2080). The memory is what
 	// makes a collapse stick, not the default. Mobile twin: dashboard_screen.dart.
 	const TREND_SCOPE = 'dashboard_trends';
 	const TREND_DEFAULTS: DisclosureState = {
@@ -909,6 +911,11 @@
 			? nextRace(planRaces(planOverview.plan, planOverview.workouts), formatISO(todayMidnight))
 			: null
 	);
+	/// The shown plan's dates have run out but the runner has not filed it yet:
+	/// the hero asks them to, and the week lead stops offering its sessions.
+	let planFinished = $derived(
+		planOverview != null && isPlanFinished(planOverview.plan, formatISO(todayMidnight))
+	);
 	let planPosition = $derived.by(() => {
 		const overview = planOverview;
 		if (!overview) return null;
@@ -1189,7 +1196,7 @@
 		{#if hasRuns}
 			<DashboardWeekLead
 				activities={runs}
-				planWorkouts={planOverview?.workouts ?? null}
+				planWorkouts={planFinished ? null : (planOverview?.workouts ?? null)}
 				weeklyGoal={weeklyGoalTarget(displayGoals)}
 				weekStart={weekStartDay}
 				{now}
@@ -1257,6 +1264,9 @@
 					</span>
 				</div>
 
+				{#if planFinished}
+					<FinishPlanPrompt plan={planOverview.plan} onfinished={reloadPlanOverview} />
+				{:else}
 				<div class="plan-hero-today">
 					{#if t}
 						<button
@@ -1284,7 +1294,7 @@
 										<span>{fmtKm(t.target_distance_m)}</span>
 									{/if}
 									{#if t.target_pace_sec_per_km}
-										<span>@ {fmtPace(t.target_pace_sec_per_km)}</span>
+										<span>{m('workoutDetail.atPace', { pace: fmtPace(t.target_pace_sec_per_km) })}</span>
 									{/if}
 									{#if todayDone}
 										<span class="plan-hero-today-done">{m('dash.completed')}</span>
@@ -1308,6 +1318,7 @@
 						</div>
 					{/if}
 				</div>
+				{/if}
 
 				{#if planOverview.upcoming}
 					<a class="plan-hero-next" href="/plans/{planOverview.upcoming.id}" data-testid="plan-hero-next">

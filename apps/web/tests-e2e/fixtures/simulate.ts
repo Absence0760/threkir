@@ -419,7 +419,7 @@ export async function insertRouteMarker(opts: {
 
 /// Clear the seed's now()-relative "Morning easy 8K" run (and any other
 /// trailing-8-day runs) for `userId`, returning a callback that restores
-/// them verbatim. Why: a freshly planted current-week goal would
+/// them verbatim, plan-workout links included. Why: a freshly planted current-week goal would
 /// otherwise read 32%, not the 0% baseline these tests assert — and the
 /// /nutrition + dashboard-readiness specs still need the seed run, so it
 /// must be put back (the 8-day window covers Monday- and Sunday-start
@@ -436,6 +436,21 @@ export async function withCleanCurrentWeek(userId: string): Promise<() => Promis
 		throw new Error(`simulate.withCleanCurrentWeek snapshot failed: ${error.message}`);
 	}
 	const snapshot = (data ?? []) as Record<string, unknown>[];
+	const runIds = snapshot.map((r) => r.id as string);
+	// Deleting a run unlinks its plan workout, and re-inserting it lets the
+	// database matcher (migration 20270901000001) link one that was open
+	// before. Snapshot the links so the restore puts back exactly these.
+	const { data: linkRows, error: linkErr } =
+		runIds.length > 0
+			? await admin
+					.from('plan_workouts')
+					.select('id, completed_run_id, completed_at')
+					.in('completed_run_id', runIds)
+			: { data: [], error: null };
+	if (linkErr) {
+		throw new Error(`simulate.withCleanCurrentWeek link snapshot failed: ${linkErr.message}`);
+	}
+	const links = (linkRows ?? []) as { id: string; completed_run_id: string; completed_at: string | null }[];
 	if (snapshot.length > 0) {
 		const { error: delErr } = await admin
 			.from('runs')
@@ -451,6 +466,35 @@ export async function withCleanCurrentWeek(userId: string): Promise<() => Promis
 		const { error: insErr } = await admin.from('runs').insert(snapshot);
 		if (insErr) {
 			throw new Error(`simulate.withCleanCurrentWeek restore failed: ${insErr.message}`);
+		}
+		const linkedBefore = new Set(links.map((l) => l.id));
+		const { data: relinked, error: relinkedErr } = await admin
+			.from('plan_workouts')
+			.select('id')
+			.in('completed_run_id', runIds);
+		if (relinkedErr) {
+			throw new Error(`simulate.withCleanCurrentWeek link read failed: ${relinkedErr.message}`);
+		}
+		const stray = (relinked ?? [])
+			.map((r) => (r as { id: string }).id)
+			.filter((id) => !linkedBefore.has(id));
+		if (stray.length > 0) {
+			const { error: unlinkErr } = await admin
+				.from('plan_workouts')
+				.update({ completed_run_id: null, completed_at: null })
+				.in('id', stray);
+			if (unlinkErr) {
+				throw new Error(`simulate.withCleanCurrentWeek unlink failed: ${unlinkErr.message}`);
+			}
+		}
+		for (const l of links) {
+			const { error: relinkErr } = await admin
+				.from('plan_workouts')
+				.update({ completed_run_id: l.completed_run_id, completed_at: l.completed_at })
+				.eq('id', l.id);
+			if (relinkErr) {
+				throw new Error(`simulate.withCleanCurrentWeek relink failed: ${relinkErr.message}`);
+			}
 		}
 	};
 }

@@ -439,7 +439,7 @@ Pure-function tests for `parseBleHeartRateMeasurement` in `lib/ble_heart_rate.da
 - Truncated payload returns null
 - Single-byte payload returns null
 
-### `apps/mobile_android/test/training_test.dart` — 86 tests
+### `apps/mobile_android/test/training_test.dart` — 88 tests
 
 Dart mirror of `apps/web/src/lib/training/training.test.ts`. The Dart engine (`lib/training.dart`) must produce the same paces and phase assignments as the TypeScript engine for the same inputs. Covers the same functions:
 
@@ -619,7 +619,7 @@ Pure-parser coverage for `RouteParser` (GPX/KML/TCX/GeoJSON) and `FitParser`. GP
 
 Regression for the `RunSource.watch` enum-map regen. Constructs a `Run` with `source: RunSource.watch`, asserts `toJson()['source'] == 'watch'` and `fromJson({'source': 'watch'}).source == RunSource.watch`. Existed to catch the crash that would otherwise hit `_$RunSourceEnumMap[instance.source]!` on any serialisation of a watch-originated run.
 
-### `apps/web/src/lib/training/training.test.ts` — 88 tests
+### `apps/web/src/lib/training/training.test.ts` — 90 tests
 
 TypeScript unit tests for the training plan engine, written against Node's `node:test` API (no test runner dependency). Run with `npx tsx --test src/lib/training/training.test.ts` from `apps/web`.
 
@@ -1267,7 +1267,7 @@ The behavioural guard on the § 1286 / § 1489 negative: no uniqueness on `gym_r
 
 Pins migration `20270808000011` (decisions § 1918). The gate: no API role can run `private.remap_recurrence_wallclock` or close the transition window, nothing in the database calls the remap, and its default call is a dry run that reports the real counts and moves and records nothing; a dry run (or dry-run sweep) smaller than the series it would select is refused `22023`, so a batched dry-run loop cannot spin, while one covering them all runs. The window: the migration seeds `recurrence_utc_clock_legacy` enabled and a deleted row reads strict; before the close `is_event_occurrence` accepts both the UTC-clock and the wall-clock instant on its default and only the wall-clock one for a strict caller, and after it only the wall-clock one; the close refuses while a row still sits on a UTC-clock-only instant and, when it succeeds, leaves the flag disabled. The remap: a New York Wednesday-evening series pairs each Tuesday row with the Wednesday after it (shift 1) across attendees, the cancellation, the reminder, the event post and the host photo; an adjacent MO/TU series moves seven rows through a chain of instants without a primary-key or result unique-key collision; the monthly 28 February clamp and the April EDT move; the 07:00 fall-back move; a row whose target its owner already holds stays and is counted while the others at that instant move; a paid order written on an old instant moves onto the wall-clock one through the strict occurrence trigger; a UTC series moves nothing. A second run is a no-op, and a sweep moves only the rows an old build wrote afterwards, leaving a wall-clock RSVP whose instant is also a UTC-clock one where it is. Every one of the fifteen mutations recorded in § 1918 fails it, the vectors file or `event_order_occurrence_test.sql`.
 
-### `apps/backend/supabase/functions/**/*.test.ts` — 1444 deno tests across 108 files
+### `apps/backend/supabase/functions/**/*.test.ts` — 1446 deno tests across 108 files
 
 Run the pure-helper slices with `cd apps/backend && deno test --no-check supabase/functions/_shared/*.test.ts` plus the per-function `lib.test.ts` / `wiring.test.ts` / `handler.test.ts` files (`auth-email`, `delete-account`, `donations-checkout`, `events-cancel`, `events-checkout`, `events-connect-onboard`, `events-refund-sweep`, `export-data`, `parkrun-import`, `race-results-import`, `refresh-tokens`, `revenuecat-webhook`, `strava-clubs`, `strava-import`, `strava-webhook`, `stripe-events-webhook`); the network-touching ones (e.g. `_shared/handler_envelope.test.ts`) need `SUPABASE_TEST_URL=http://127.0.0.1:24321 supabase functions serve --env-file .env.local` and the `--allow-net --allow-env` flags. The `edge-functions` CI job runs all of them on every PR.
 
@@ -1319,7 +1319,7 @@ The happy-path 200s with valid HMAC / freshness / dedupe still need real secrets
 
 The runtime half of the guard `build-web` runs over the build output (`scripts/check_web_removed_kit_apis.mjs`). web@1.12.0 resolved @sentry/sveltekit's Svelte 4 tracing variant, which subscribes to `$app/stores` — a stub that throws on Kit 3 — and `hooks.client.ts` runs `Sentry.init` only when `!dev && PUBLIC_SENTRY_DSN && hasAcceptedConsent()`, so every reader who accepted error reporting got a blank page while every `vite dev` lane stayed green ([decisions § 1896](../architecture/decisions.md)). Runs under `playwright.built.config.ts`: a production build with a dummy DSN, served as CloudFront serves it by `tests-e2e/scripts/serve-build.mjs`. One case seeds consent the way `consent.set('accepted')` stores it and loads `/` (prerendered — the uncaught-error check is what fails there), `/help` and `/login` (the SPA shell — a throw leaves them blank); the other accepts through the banner itself, which reloads the page, and asserts it still renders. Both require a `*.sentry.io` request to have been answered, so neither can pass without `Sentry.init` having run. Against the pre-fix `vite.config.ts` (no `sentrySvelteKit()` plugin) both fail on the `app_stores_removed` page error.
 
-### `apps/web/tests-e2e/**/*.spec.ts` — 2,218 declared tests across 585 spec files (Playwright suite)
+### `apps/web/tests-e2e/**/*.spec.ts` — 2,220 declared tests across 585 spec files (Playwright suite)
 
 End-to-end browser tests that drive the real SvelteKit app against a real local Supabase. Unit tests pin pure helpers and SQL pins RLS at the database; this suite catches the next failure mode — **a UI fetch path that bypasses or misuses an otherwise-correct policy** (a wrong join, a dropped filter, a client-side lookup that trusts the URL, an optimistic update that never round-trips). Browser-only on purpose — mobile / watch don't have an equivalent harness (Flutter `integration_test` is too slow + flaky on CI to be worth the cycles right now).
 

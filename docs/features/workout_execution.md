@@ -165,8 +165,10 @@ Reuses `audio_cues.dart`. New cue kinds, all throttled and fire-and-forget (wrap
 | Halfway (≥ 50 % of target on the step's own axis, once per step) — **paced `rep` steps only**: never on a warm-up, recovery, steady block, cool-down or walk-run interval, where "this rep" is wrong and the band already shows what is left | "Halfway through this rep." |
 | Last 50 m of a distance step over 100 m (`StepProgressKind.lastFiftyMetres`, once per step) | "Fifty metres to go." — "Fifty yards to go." in miles mode (the window is 50 m, about 55 yd) |
 | Last 10 s of a timed step over 20 s (`StepProgressKind.lastTenSeconds`, once per step) — a walk-run interval hears this before every Run / Walk switch | "Ten seconds to go." |
-| Pace drift (every ≥ 45 s while `wayBehind` / `wayAhead`) | "Pick it up — ten seconds behind pace." / "Ease up — twelve seconds ahead." |
+| Pace drift (every ≥ 45 s while `wayBehind` / `wayAhead`; never on an unpaced walk-run step) | "Pick it up — 25 seconds per kilometre behind pace." / "Ease up — 40 seconds per mile ahead of pace." — the miss is measured per km, converted to the runner's unit and rounded to 5 s (`workoutPaceDriftUtterance`) |
 | Workout complete | "Workout complete. Nice work." |
+
+**The general pace alert stands down during a workout (decisions § 2076).** The run screen's pace alert targets the saved target pace or the race-strategy phase, not the current step. While `WorkoutRunner.ownsPaceCues` is true (from arming until the workout completes or is abandoned) that alert does not fire, its haptic included, and the step's own drift cue is the only pace voice. Once the workout ends the run carries on as a free run and the general alert resumes.
 
 Transition cues stall the halfway / last-50 m tracking on the previous step — any mid-step cue that would have fired after the advance is dropped.
 

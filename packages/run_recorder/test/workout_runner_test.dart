@@ -885,6 +885,22 @@ void main() {
   });
 
   group('Pace adherence', () {
+    test('owns the pace cues until the workout completes or is abandoned', () {
+      final done = WorkoutRunner(steps: [_step(distance: 400)]);
+      expect(done.ownsPaceCues, isTrue, reason: 'armed before the first fix');
+      done.onSnapshot(_snap(distance: 0, elapsedSec: 0));
+      expect(done.ownsPaceCues, isTrue);
+      done.onSnapshot(_snap(distance: 400, elapsedSec: 100));
+      expect(done.ownsPaceCues, isFalse, reason: 'free run after the last step');
+      done.dispose();
+
+      final quit = WorkoutRunner(steps: [_step(distance: 400)]);
+      quit.onSnapshot(_snap(distance: 0, elapsedSec: 0));
+      quit.abandon();
+      expect(quit.ownsPaceCues, isFalse);
+      quit.dispose();
+    });
+
     test('flags wayBehind when 35s/km off target', () {
       final runner = WorkoutRunner(steps: [_step(distance: 400, pace: 240)]);
       runner.onSnapshot(_snap(distance: 0, elapsedSec: 0));

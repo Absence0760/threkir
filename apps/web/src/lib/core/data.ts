@@ -2834,6 +2834,85 @@ export async function searchRaceListings(
 	return (data ?? []) as RaceListingResult[];
 }
 
+/// One calendar listing, for the race detail page. Read through the redacted
+/// `public_race_listings` view — the same projection a logged-out visitor gets
+/// — so the page never depends on who submitted the race. A malformed id or a
+/// missing row is `null`; a failed read throws, so the page can tell "this race
+/// is gone" apart from "we could not load it".
+export interface RaceListingDetail {
+	id: string;
+	provider: string;
+	provider_race_id: string | null;
+	name: string;
+	race_date: string;
+	distance_m: number | null;
+	location_label: string | null;
+	entry_url: string | null;
+	results_url: string | null;
+	is_verified: boolean;
+}
+
+export async function fetchRaceListing(id: string): Promise<RaceListingDetail | null> {
+	if (!isEntityId(id)) return null;
+	const { data, error } = await supabase
+		.from('public_race_listings')
+		.select(
+			'id, provider, provider_race_id, name, race_date, distance_m, location_label, entry_url, results_url, is_verified'
+		)
+		.eq('id', id)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	if (!data || !data.id || !data.name || !data.race_date || !data.provider) return null;
+	return {
+		id: data.id,
+		provider: data.provider,
+		provider_race_id: data.provider_race_id,
+		name: data.name,
+		race_date: data.race_date,
+		distance_m: data.distance_m,
+		location_label: data.location_label,
+		entry_url: data.entry_url,
+		results_url: data.results_url,
+		is_verified: data.is_verified ?? false
+	};
+}
+
+/// The signed-in runner's own runs linked to a listing (an imported or
+/// matched result), newest first, with the official chip time when the import
+/// stamped one.
+export interface RaceListingRun {
+	id: string;
+	started_at: string;
+	distance_m: number;
+	duration_s: number;
+	chip_time: string | null;
+}
+
+export async function fetchMyRunsAtRace(listingId: string): Promise<RaceListingRun[]> {
+	const userId = auth.user?.id;
+	if (!userId || !isEntityId(listingId)) return [];
+	const { data, error } = await supabase
+		.from(TABLES.runs)
+		.select('id, started_at, distance_m, duration_s, metadata')
+		.eq('race_listing_id', listingId)
+		.eq('user_id', userId)
+		.order('started_at', { ascending: false })
+		.limit(20);
+	if (error) throw dbError(error);
+	return (data ?? []).map((r) => {
+		const meta = r.metadata && typeof r.metadata === 'object' && !Array.isArray(r.metadata)
+			? (r.metadata as Record<string, unknown>)
+			: {};
+		return {
+			id: r.id,
+			started_at: r.started_at,
+			distance_m: r.distance_m,
+			duration_s: r.duration_s,
+			chip_time: typeof meta.chip_time === 'string' ? meta.chip_time : null
+		};
+	});
+}
+
 export interface RaceListingInput {
 	provider?: RaceProvider; // defaults to 'manual'
 	name: string;

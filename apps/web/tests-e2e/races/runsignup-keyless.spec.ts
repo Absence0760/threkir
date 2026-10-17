@@ -26,13 +26,13 @@ test.describe('RunSignUp is keyless', () => {
 		listingId = await insertRaceListing({
 			provider: 'runsignup',
 			name: raceName,
-			race_date: browserDate(30),
+			race_date: browserDate(0),
 			provider_race_id: 'e2e-runsignup-1'
 		});
 		parkrunListingId = await insertRaceListing({
 			provider: 'parkrun',
 			name: parkrunName,
-			race_date: browserDate(31),
+			race_date: browserDate(0),
 			distance_m: 5000
 		});
 	});

@@ -75,7 +75,7 @@ test.describe('/races import modal — every configured leg is reachable', () =>
 				await insertRaceListing({
 					provider: leg.provider,
 					name: raceNameFor(leg.provider),
-					race_date: browserDate(45),
+					race_date: browserDate(0),
 					provider_race_id: `e2e-${leg.provider}-configured`
 				})
 			);

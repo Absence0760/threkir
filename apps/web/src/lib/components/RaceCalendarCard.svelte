@@ -22,6 +22,10 @@
 	// — a past or too-close race gets no CTA rather than a link that lands on
 	// a refusal. The wizard re-derives from the same helper, so a link that
 	// goes stale in an open tab is caught there too.
+	// A result exists only from race day on; before that the import can only
+	// come back empty, so the action is not offered.
+	let canImport = $derived(race.race_date <= todayISO());
+
 	let planHref = $derived.by(() => {
 		const preset = racePlanPreset({
 			raceDateIso: race.race_date,
@@ -41,7 +45,7 @@
 
 <li class="card-elevated race" data-testid="race-card">
 	<div class="race-main">
-		<strong class="race-title">{race.name}</strong>
+		<a class="race-title" href="/races/{race.id}" data-testid="race-detail-link">{race.name}</a>
 		<span class="race-meta">
 			{formatDate(race.race_date)}
 			{#if race.distance_m}· {formatDistance(race.distance_m)}{/if}
@@ -80,14 +84,16 @@
 				{m('races.viewResults')}
 			</a>
 		{/if}
-		<button
-			type="button"
-			class="btn btn-primary btn-sm"
-			onclick={() => onimport?.(race)}
-			data-testid="race-import"
-		>
-			{m('races.importResult')}
-		</button>
+		{#if canImport}
+			<button
+				type="button"
+				class="btn btn-primary btn-sm"
+				onclick={() => onimport?.(race)}
+				data-testid="race-import"
+			>
+				{m('races.importResult')}
+			</button>
+		{/if}
 	</div>
 </li>
 
@@ -107,6 +113,13 @@
 	}
 	.race-title {
 		font-size: 1rem;
+		font-weight: 700;
+		color: var(--color-text);
+		text-decoration: none;
+	}
+	.race-title:hover,
+	.race-title:focus-visible {
+		text-decoration: underline;
 	}
 	.race-meta {
 		font-size: 0.85rem;

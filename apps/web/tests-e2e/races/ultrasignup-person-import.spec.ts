@@ -54,7 +54,7 @@ test.describe('UltraSignup — link a person, then import as them', () => {
 		listingId = await insertRaceListing({
 			provider: 'ultrasignup',
 			name: raceName,
-			race_date: browserDate(40),
+			race_date: browserDate(0),
 			distance_m: 160_934,
 			provider_race_id: '500101'
 		});

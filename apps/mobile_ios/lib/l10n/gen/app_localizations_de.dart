@@ -6726,6 +6726,20 @@ class AppLocalizationsDe extends AppLocalizations {
       'Lauf konnte nicht entkoppelt werden. Versuche es erneut.';
 
   @override
+  String get workoutMarkNotDone => 'Als nicht erledigt markieren';
+
+  @override
+  String get workoutMarkNotDoneTitle => 'Als nicht erledigt markieren?';
+
+  @override
+  String get workoutMarkNotDoneBody =>
+      'Das Training wird dann als noch nicht erledigt angezeigt.';
+
+  @override
+  String get workoutMarkNotDoneError =>
+      'Training konnte nicht aktualisiert werden. Versuche es erneut.';
+
+  @override
   String get workoutSkipped => 'Übersprungen';
 
   @override

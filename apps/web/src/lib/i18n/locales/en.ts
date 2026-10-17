@@ -4127,6 +4127,8 @@ export const en = {
 	"workoutDetail.adviceRest": "Rest day — if you need to move, walk or stretch.",
 	"workoutDetail.unlinkRunTitle": "Unlink run",
 	"workoutDetail.unlinkRunMessage": "Unlink the matched run? The workout will show as not yet done.",
+	"workoutDetail.markNotDoneTitle": "Mark not done?",
+	"workoutDetail.markNotDoneMessage": "The workout will show as not yet done.",
 	"workoutDetail.relink": "Re-link",
 	"workoutDetail.relinkTitle": "Link a different run",
 	"workoutDetail.relinkHint": "Pick a run near this workout's date to count it as this session. Runs already linked to another workout aren't shown.",

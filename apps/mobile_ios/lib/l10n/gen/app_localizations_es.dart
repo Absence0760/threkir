@@ -6709,6 +6709,20 @@ class AppLocalizationsEs extends AppLocalizations {
       'No se pudo desvincular la carrera. Inténtalo de nuevo.';
 
   @override
+  String get workoutMarkNotDone => 'Marcar como no hecho';
+
+  @override
+  String get workoutMarkNotDoneTitle => '¿Marcar como no hecho?';
+
+  @override
+  String get workoutMarkNotDoneBody =>
+      'El entrenamiento aparecerá como aún no realizado.';
+
+  @override
+  String get workoutMarkNotDoneError =>
+      'No se pudo actualizar el entrenamiento. Inténtalo de nuevo.';
+
+  @override
   String get workoutSkipped => 'Omitido';
 
   @override

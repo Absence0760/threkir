@@ -4104,6 +4104,8 @@ export const messages = {
 	"workoutDetail.adviceRest": "休養日 — 動きたければウォーキングやストレッチを。",
 	"workoutDetail.unlinkRunTitle": "ランのリンクを解除",
 	"workoutDetail.unlinkRunMessage": "紐づいたランのリンクを解除しますか？ワークアウトは未完了として表示されます。",
+	"workoutDetail.markNotDoneTitle": "未完了にしますか？",
+	"workoutDetail.markNotDoneMessage": "ワークアウトは未完了として表示されます。",
 	"workoutDetail.relink": "リンクし直す",
 	"workoutDetail.relinkTitle": "別のランを紐づける",
 	"workoutDetail.relinkHint": "このワークアウトの日付に近いランを選んで、このセッションとして数えます。すでに別のワークアウトに紐づいているランは表示されません。",

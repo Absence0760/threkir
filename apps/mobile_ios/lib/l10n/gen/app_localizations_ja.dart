@@ -6346,6 +6346,18 @@ class AppLocalizationsJa extends AppLocalizations {
   String get workoutUnlinkError => 'ランのリンクを解除できませんでした。もう一度お試しください。';
 
   @override
+  String get workoutMarkNotDone => '未完了にする';
+
+  @override
+  String get workoutMarkNotDoneTitle => '未完了にしますか？';
+
+  @override
+  String get workoutMarkNotDoneBody => 'ワークアウトは未完了として表示されます。';
+
+  @override
+  String get workoutMarkNotDoneError => 'ワークアウトを更新できませんでした。もう一度お試しください。';
+
+  @override
   String get workoutSkipped => 'スキップ済み';
 
   @override

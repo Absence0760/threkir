@@ -23,7 +23,7 @@ class TodaysWorkoutCard extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final w = workout;
     final kind = workoutKindFromDb(w.kind);
-    final done = w.completedRunId != null || w.manuallyCompleted;
+    final done = isWorkoutCompleted(w);
 
     return Material(
       color: theme.colorScheme.primary,

@@ -403,11 +403,11 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
         .where((w) => w.kind != 'rest' && !isWorkoutSkipped(w.skippedAt))
         .toList();
     final done = real
-        .where((w) => w.manuallyCompleted == true || w.completedRunId != null)
+        .where(isWorkoutCompleted)
         .length;
     final missed = real
         .where((w) =>
-            !(w.manuallyCompleted == true || w.completedRunId != null) &&
+            !isWorkoutCompleted(w) &&
             _isoOf(w.scheduledDate).compareTo(todayISO) < 0)
         .length;
     final pct = o.completionPct;
@@ -646,7 +646,7 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
   String _workoutStatus(PlanWorkoutRow w) {
     if (w.kind == 'rest') return 'rest';
     if (isWorkoutSkipped(w.skippedAt)) return 'skipped';
-    if (w.manuallyCompleted == true || w.completedRunId != null) return 'done';
+    if (isWorkoutCompleted(w)) return 'done';
     return _isoOf(w.scheduledDate).compareTo(_todayISO()) < 0
         ? 'missed'
         : 'upcoming';

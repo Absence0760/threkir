@@ -4109,6 +4109,8 @@ export const messages = {
 	"workoutDetail.adviceRest": "Ruhetag – wenn du dich bewegen musst, geh spazieren oder dehne dich.",
 	"workoutDetail.unlinkRunTitle": "Lauf-Verknüpfung lösen",
 	"workoutDetail.unlinkRunMessage": "Zugeordneten Lauf trennen? Das Workout wird dann als noch nicht erledigt angezeigt.",
+	"workoutDetail.markNotDoneTitle": "Als nicht erledigt markieren?",
+	"workoutDetail.markNotDoneMessage": "Das Workout wird dann als noch nicht erledigt angezeigt.",
 	"workoutDetail.relink": "Neu verknüpfen",
 	"workoutDetail.relinkTitle": "Anderen Lauf verknüpfen",
 	"workoutDetail.relinkHint": "Wähle einen Lauf in der Nähe des Workout-Datums, um ihn als diese Einheit zu zählen. Läufe, die bereits mit einem anderen Workout verknüpft sind, werden nicht angezeigt.",

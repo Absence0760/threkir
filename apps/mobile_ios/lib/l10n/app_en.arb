@@ -8991,6 +8991,22 @@
   "workoutUnlinkTitle": "Unlink run",
   "workoutUnlinkBody": "Unlink the matched run? The workout will show as not yet done.",
   "workoutUnlinkError": "Couldn't unlink the run. Try again.",
+  "workoutMarkNotDone": "Mark not done",
+  "workoutMarkNotDoneTitle": "Mark not done?",
+  "@workoutMarkNotDoneTitle": {
+    "description": "Confirm dialog title before clearing a hand-marked done workout"
+  },
+  "workoutMarkNotDoneBody": "The workout will show as not yet done.",
+  "@workoutMarkNotDoneBody": {
+    "description": "Confirm dialog body before clearing a hand-marked done workout"
+  },
+  "@workoutMarkNotDone": {
+    "description": "Button on a workout the runner marked done by hand (no linked run); clears the done mark"
+  },
+  "workoutMarkNotDoneError": "Couldn't update the workout. Try again.",
+  "@workoutMarkNotDoneError": {
+    "description": "Error banner when clearing a hand-marked done workout fails"
+  },
   "@workoutUnlink": {
     "description": "Unlink-completed-run button"
   },

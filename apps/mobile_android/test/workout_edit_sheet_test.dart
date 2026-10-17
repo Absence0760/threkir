@@ -538,6 +538,19 @@ void main() {
         expect(find.text('Use whole numbers from 1 to 10.'), findsOneWidget);
       });
 
+      for (final typed in ['NaN', '1e400', '-Infinity']) {
+        testWidgets('a non-finite RPE "$typed" is refused in the field',
+            (tester) async {
+          final training = _FakeTraining();
+          await _pumpSheet(tester, _workout(), training);
+          await tester.enterText(
+              find.byKey(const Key('workoutEditRpeMax')), typed);
+          await save(tester);
+          expect(training.lastUpdate, isNull);
+          expect(find.text('Use whole numbers from 1 to 10.'), findsOneWidget);
+        });
+      }
+
       testWidgets(
           'with the gate off there is no bpm field and a stored bpm target is '
           'left alone', (tester) async {

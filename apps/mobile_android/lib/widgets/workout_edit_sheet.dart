@@ -343,12 +343,14 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
       ];
 
   /// Read one end of a typed range: empty is an open end, anything that is
-  /// not a number is refused as not whole.
+  /// not a finite number is refused as not whole.
   static ({bool ok, num? value}) _rangeEnd(String text) {
     final t = text.trim();
     if (t.isEmpty) return (ok: true, value: null);
     final v = num.tryParse(t.replaceAll(',', '.'));
-    return v == null ? (ok: false, value: null) : (ok: true, value: v);
+    return v == null || !v.isFinite
+        ? (ok: false, value: null)
+        : (ok: true, value: v);
   }
 
   ParsedRange _parseRange(

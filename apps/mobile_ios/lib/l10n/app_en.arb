@@ -17805,13 +17805,59 @@
   "@racesDistanceUltra": {
     "description": "Distance-band chip: ultra"
   },
-  "racesRegister": "Register",
+  "racesRegister": "Race page & register",
   "@racesRegister": {
-    "description": "Link to a race's registration page"
+    "description": "Opens the race's own page on the site that lists it, which carries the race details as well as registration"
   },
   "racesTrainForThis": "Train for this race",
   "@racesTrainForThis": {
     "description": "Race card action that opens the plan wizard sized around that race"
+  },
+  "racesDetailLoadFailed": "Couldn't load this race. Check your connection and try again.",
+  "@racesDetailLoadFailed": {
+    "description": "Race detail screen: the listing failed to load"
+  },
+  "racesDetailNotFound": "This race isn't in the calendar any more.",
+  "@racesDetailNotFound": {
+    "description": "Race detail screen: the listing no longer exists"
+  },
+  "racesSourceProvider": "Listed on {provider}",
+  "@racesSourceProvider": {
+    "description": "Race detail screen: which site lists the race; {provider} is a brand name such as RunSignUp",
+    "placeholders": {
+      "provider": {
+        "type": "String"
+      }
+    }
+  },
+  "racesSourceManual": "Added by a runner",
+  "@racesSourceManual": {
+    "description": "Race detail screen: the race was submitted by a runner, not a provider"
+  },
+  "racesDetailShare": "Share",
+  "@racesDetailShare": {
+    "description": "Race detail screen: share the race link"
+  },
+  "racesDetailImportAfterRace": "You can import your official result from race day, {date}.",
+  "@racesDetailImportAfterRace": {
+    "description": "Race detail screen: shown before race day instead of the import action; {date} is the race date",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "racesDetailYourRuns": "Your runs at this race",
+  "@racesDetailYourRuns": {
+    "description": "Race detail screen: heading over the runner's own runs linked to this race"
+  },
+  "racesDetailRunsFailed": "Couldn't load your runs for this race.",
+  "@racesDetailRunsFailed": {
+    "description": "Race detail screen: the runner's linked runs failed to load"
+  },
+  "racesDetailNoRuns": "No runs linked to this race yet. After race day, import your result here, or open the run you recorded and match it to this race.",
+  "@racesDetailNoRuns": {
+    "description": "Race detail screen: no runs are linked to this race yet"
   },
   "racesViewResults": "View results",
   "@racesViewResults": {

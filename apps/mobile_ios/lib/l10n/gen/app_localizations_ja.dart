@@ -12882,10 +12882,42 @@ class AppLocalizationsJa extends AppLocalizations {
   String get racesDistanceUltra => 'ウルトラ';
 
   @override
-  String get racesRegister => '登録';
+  String get racesRegister => '大会ページ・エントリー';
 
   @override
   String get racesTrainForThis => 'このレースに向けてトレーニング';
+
+  @override
+  String get racesDetailLoadFailed => 'このレースを読み込めませんでした。接続を確認して再試行してください。';
+
+  @override
+  String get racesDetailNotFound => 'このレースはカレンダーに掲載されていません。';
+
+  @override
+  String racesSourceProvider(String provider) {
+    return '$provider に掲載';
+  }
+
+  @override
+  String get racesSourceManual => 'ランナーが追加';
+
+  @override
+  String get racesDetailShare => '共有';
+
+  @override
+  String racesDetailImportAfterRace(String date) {
+    return '公式結果はレース当日（$date）からインポートできます。';
+  }
+
+  @override
+  String get racesDetailYourRuns => 'このレースでのあなたのラン';
+
+  @override
+  String get racesDetailRunsFailed => 'このレースのランを読み込めませんでした。';
+
+  @override
+  String get racesDetailNoRuns =>
+      'このレースに紐付いたランはまだありません。レース当日以降に、ここで結果をインポートするか、記録したランを開いてこのレースと紐付けてください。';
 
   @override
   String get racesViewResults => '結果を見る';

@@ -13516,10 +13516,44 @@ class AppLocalizationsDe extends AppLocalizations {
   String get racesDistanceUltra => 'Ultra';
 
   @override
-  String get racesRegister => 'Anmelden';
+  String get racesRegister => 'Rennseite & Anmeldung';
 
   @override
   String get racesTrainForThis => 'Für dieses Rennen trainieren';
+
+  @override
+  String get racesDetailLoadFailed =>
+      'Dieses Rennen konnte nicht geladen werden. Prüfe deine Verbindung und versuche es erneut.';
+
+  @override
+  String get racesDetailNotFound => 'Dieses Rennen ist nicht mehr im Kalender.';
+
+  @override
+  String racesSourceProvider(String provider) {
+    return 'Gelistet auf $provider';
+  }
+
+  @override
+  String get racesSourceManual => 'Von einem Läufer hinzugefügt';
+
+  @override
+  String get racesDetailShare => 'Teilen';
+
+  @override
+  String racesDetailImportAfterRace(String date) {
+    return 'Dein offizielles Ergebnis kannst du ab dem Renntag, $date, importieren.';
+  }
+
+  @override
+  String get racesDetailYourRuns => 'Deine Läufe bei diesem Rennen';
+
+  @override
+  String get racesDetailRunsFailed =>
+      'Deine Läufe für dieses Rennen konnten nicht geladen werden.';
+
+  @override
+  String get racesDetailNoRuns =>
+      'Noch keine Läufe mit diesem Rennen verknüpft. Importiere nach dem Renntag hier dein Ergebnis oder öffne den aufgezeichneten Lauf und ordne ihn diesem Rennen zu.';
 
   @override
   String get racesViewResults => 'Ergebnisse ansehen';

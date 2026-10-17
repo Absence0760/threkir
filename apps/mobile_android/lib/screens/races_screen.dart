@@ -17,11 +17,13 @@ import '../widgets/help_button.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/ultrasignup_link.dart';
 import 'plan_new_screen.dart';
+import 'race_detail_screen.dart';
 
 /// Race calendar discovery (race_calendar.md). Mirrors the web `/races` page:
 /// a name search + distance-band chips + "near a place" geocode over the
-/// `search_race_listings` RPC, with a Register link per result and an
-/// "Import my result" affordance (manual paste always; a provider pull when
+/// `search_race_listings` RPC, with a race-page link per result, a name that
+/// opens the race detail screen, and an
+/// "Import my result" affordance from race day on (manual paste always; a provider pull when
 /// that listing's provider has a leg and its key is configured). A "Add a
 /// race" action submits a crowd listing.
 ///
@@ -155,6 +157,18 @@ class _RacesScreenState extends State<RacesScreen> {
     );
   }
 
+  Future<void> _openDetail(RaceListingView race) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => RaceDetailScreen(
+          service: widget.service,
+          listingId: race.id,
+          training: _training,
+        ),
+      ),
+    );
+  }
+
   Future<void> _openImport(RaceListingView race) async {
     final done = await showRaceImportSheet(
       context,
@@ -258,6 +272,7 @@ class _RacesScreenState extends State<RacesScreen> {
       itemBuilder: (context, i) => _RaceCard(
         race: _results[i],
         onImport: () => _openImport(_results[i]),
+        onOpen: () => _openDetail(_results[i]),
         onTrainFor: () => _trainForRace(_results[i]),
       ),
     );
@@ -268,11 +283,13 @@ class _RaceCard extends StatelessWidget {
   final RaceListingView race;
   final VoidCallback onImport;
   final VoidCallback onTrainFor;
+  final VoidCallback onOpen;
 
   const _RaceCard({
     required this.race,
     required this.onImport,
     required this.onTrainFor,
+    required this.onOpen,
   });
 
   @override
@@ -282,11 +299,15 @@ class _RaceCard extends StatelessWidget {
     // — a past or too-close race gets no action rather than one that lands on
     // a refusal. The wizard re-derives from the same helper, so a list left
     // open across midnight is caught there too.
+    final today = toIsoDate(DateTime.now());
     final canTrainFor = racePlanPreset(
       raceDateIso: race.raceDate,
       distanceM: race.distanceM,
-      todayIso: toIsoDate(DateTime.now()),
+      todayIso: today,
     ).ok;
+    // A result exists only from race day on; before that the import can only
+    // come back empty, so the action is not offered.
+    final canImport = race.raceDate.compareTo(today) <= 0;
     final meta = <String>[
       _formatRaceDate(race.raceDate),
       if (race.distanceM != null)
@@ -302,7 +323,15 @@ class _RaceCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(race.name, style: Theme.of(context).textTheme.titleMedium),
+            InkWell(
+              onTap: onOpen,
+              child: Text(
+                race.name,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      decoration: TextDecoration.underline,
+                    ),
+              ),
+            ),
             const SizedBox(height: 4),
             Text(meta.join(' · '), style: Theme.of(context).textTheme.bodySmall),
             if (!race.isVerified)
@@ -336,7 +365,8 @@ class _RaceCard extends StatelessWidget {
                     onPressed: () => _launch(context, race.resultsUrl!),
                     child: Text(l.racesViewResults),
                   ),
-                FilledButton(onPressed: onImport, child: Text(l.racesImportResult)),
+                if (canImport)
+                  FilledButton(onPressed: onImport, child: Text(l.racesImportResult)),
               ],
             ),
           ],

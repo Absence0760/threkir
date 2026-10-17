@@ -13372,10 +13372,44 @@ class AppLocalizationsEn extends AppLocalizations {
   String get racesDistanceUltra => 'Ultra';
 
   @override
-  String get racesRegister => 'Register';
+  String get racesRegister => 'Race page & register';
 
   @override
   String get racesTrainForThis => 'Train for this race';
+
+  @override
+  String get racesDetailLoadFailed =>
+      'Couldn\'t load this race. Check your connection and try again.';
+
+  @override
+  String get racesDetailNotFound =>
+      'This race isn\'t in the calendar any more.';
+
+  @override
+  String racesSourceProvider(String provider) {
+    return 'Listed on $provider';
+  }
+
+  @override
+  String get racesSourceManual => 'Added by a runner';
+
+  @override
+  String get racesDetailShare => 'Share';
+
+  @override
+  String racesDetailImportAfterRace(String date) {
+    return 'You can import your official result from race day, $date.';
+  }
+
+  @override
+  String get racesDetailYourRuns => 'Your runs at this race';
+
+  @override
+  String get racesDetailRunsFailed => 'Couldn\'t load your runs for this race.';
+
+  @override
+  String get racesDetailNoRuns =>
+      'No runs linked to this race yet. After race day, import your result here, or open the run you recorded and match it to this race.';
 
   @override
   String get racesViewResults => 'View results';

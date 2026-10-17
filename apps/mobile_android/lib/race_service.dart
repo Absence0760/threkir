@@ -252,9 +252,43 @@ final Map<String, RaceImportProvider> _providerByToken = {
 RaceImportProvider? raceImportProviderFor(String provider) =>
     _providerByToken[provider];
 
+final _uuid = RegExp(
+    r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+    caseSensitive: false);
+
+/// One of the runner's own runs linked to a race listing (race detail screen).
+class RaceListingRun {
+  final String id;
+  final String startedAt;
+  final double distanceM;
+  final int durationS;
+  final String? chipTime;
+
+  const RaceListingRun({
+    required this.id,
+    required this.startedAt,
+    required this.distanceM,
+    required this.durationS,
+    required this.chipTime,
+  });
+
+  factory RaceListingRun.fromJson(Map<String, dynamic> j) {
+    final meta = j['metadata'];
+    final chip = meta is Map ? meta['chip_time'] : null;
+    return RaceListingRun(
+      id: j['id'] as String,
+      startedAt: j['started_at'] as String,
+      distanceM: (j['distance_m'] as num).toDouble(),
+      durationS: (j['duration_s'] as num).toInt(),
+      chipTime: chip is String ? chip : null,
+    );
+  }
+}
+
 /// All Supabase calls for the race calendar + results import (race_calendar.md).
 /// Each method mirrors the like-named export in `apps/web/src/lib/core/data.ts`
-/// — `searchRaceListings`, `submitRaceListing`, `fetchRaceResultForRun`,
+/// — `searchRaceListings`, `fetchRaceListing`, `fetchMyRunsAtRace`,
+/// `submitRaceListing`, `fetchRaceResultForRun`,
 /// `findRaceMatchCandidates`, `importRaceResult`, and the UltraSignup person
 /// calls `fetchUltraSignUpLink` / `linkUltraSignUpPerson` /
 /// `unlinkUltraSignUpPerson` / `lookupUltraSignUpPeople` — with
@@ -332,6 +366,46 @@ class RaceService extends ChangeNotifier {
       debugPrint('RaceService.searchRaceListings RPC failed: $e\n$s');
       return const [];
     }
+  }
+
+  /// One calendar listing, for the race detail screen. Read through the
+  /// redacted `public_race_listings` view, the projection a logged-out visitor
+  /// gets. A malformed id or a missing row is null; a failed read throws, so
+  /// the screen can tell "this race is gone" from "we could not load it".
+  Future<RaceListingView?> fetchRaceListing(String id) async {
+    if (!_uuid.hasMatch(id)) return null;
+    final row = await _c
+        .from('public_race_listings')
+        .select(
+            'id, provider, provider_race_id, name, race_date, distance_m, location_label, entry_url, results_url, is_verified')
+        .eq('id', id)
+        .maybeSingle();
+    if (row == null ||
+        row['id'] == null ||
+        row['name'] == null ||
+        row['race_date'] == null ||
+        row['provider'] == null) {
+      return null;
+    }
+    return RaceListingView.fromJson(row);
+  }
+
+  /// The signed-in runner's own runs linked to a listing, newest first, with
+  /// the official chip time when the import stamped one.
+  Future<List<RaceListingRun>> fetchMyRunsAtRace(String listingId) async {
+    final uid = _uid;
+    if (uid == null || !_uuid.hasMatch(listingId)) return const [];
+    final rows = await _c
+        .from('runs')
+        .select('id, started_at, distance_m, duration_s, metadata')
+        .eq('race_listing_id', listingId)
+        .eq('user_id', uid)
+        .order('started_at', ascending: false)
+        .limit(20);
+    return (rows as List)
+        .whereType<Map<String, dynamic>>()
+        .map(RaceListingRun.fromJson)
+        .toList();
   }
 
   /// Submit a crowd-sourced manual listing. `is_verified` is forced false by

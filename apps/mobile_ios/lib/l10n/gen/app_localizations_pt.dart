@@ -13511,10 +13511,44 @@ class AppLocalizationsPt extends AppLocalizations {
   String get racesDistanceUltra => 'Ultra';
 
   @override
-  String get racesRegister => 'Inscrever-se';
+  String get racesRegister => 'Página da prova e inscrição';
 
   @override
   String get racesTrainForThis => 'Treinar para esta prova';
+
+  @override
+  String get racesDetailLoadFailed =>
+      'Não foi possível carregar esta prova. Verifique a sua ligação e tente novamente.';
+
+  @override
+  String get racesDetailNotFound => 'Esta prova já não está no calendário.';
+
+  @override
+  String racesSourceProvider(String provider) {
+    return 'Publicada em $provider';
+  }
+
+  @override
+  String get racesSourceManual => 'Adicionada por um corredor';
+
+  @override
+  String get racesDetailShare => 'Partilhar';
+
+  @override
+  String racesDetailImportAfterRace(String date) {
+    return 'Pode importar o seu resultado oficial a partir do dia da prova, $date.';
+  }
+
+  @override
+  String get racesDetailYourRuns => 'As suas corridas nesta prova';
+
+  @override
+  String get racesDetailRunsFailed =>
+      'Não foi possível carregar as suas corridas desta prova.';
+
+  @override
+  String get racesDetailNoRuns =>
+      'Ainda não há corridas ligadas a esta prova. Depois do dia da prova, importe aqui o seu resultado ou abra a corrida que gravou e associe-a a esta prova.';
 
   @override
   String get racesViewResults => 'Ver resultados';
@@ -30345,10 +30379,44 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get racesDistanceUltra => 'Ultra';
 
   @override
-  String get racesRegister => 'Inscrever-se';
+  String get racesRegister => 'Página da corrida e inscrição';
 
   @override
   String get racesTrainForThis => 'Treinar para esta corrida';
+
+  @override
+  String get racesDetailLoadFailed =>
+      'Não foi possível carregar esta corrida. Verifique sua conexão e tente novamente.';
+
+  @override
+  String get racesDetailNotFound => 'Esta corrida não está mais no calendário.';
+
+  @override
+  String racesSourceProvider(String provider) {
+    return 'Publicada em $provider';
+  }
+
+  @override
+  String get racesSourceManual => 'Adicionada por um corredor';
+
+  @override
+  String get racesDetailShare => 'Compartilhar';
+
+  @override
+  String racesDetailImportAfterRace(String date) {
+    return 'Você pode importar seu resultado oficial a partir do dia da corrida, $date.';
+  }
+
+  @override
+  String get racesDetailYourRuns => 'Suas corridas nesta prova';
+
+  @override
+  String get racesDetailRunsFailed =>
+      'Não foi possível carregar suas corridas desta prova.';
+
+  @override
+  String get racesDetailNoRuns =>
+      'Ainda não há corridas vinculadas a esta prova. Depois do dia da corrida, importe seu resultado aqui ou abra a corrida que você gravou e vincule-a a esta prova.';
 
   @override
   String get racesViewResults => 'Ver resultados';

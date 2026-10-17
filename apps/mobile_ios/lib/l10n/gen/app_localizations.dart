@@ -22166,10 +22166,10 @@ abstract class AppLocalizations {
   /// **'Ultra'**
   String get racesDistanceUltra;
 
-  /// Link to a race's registration page
+  /// Opens the race's own page on the site that lists it, which carries the race details as well as registration
   ///
   /// In en, this message translates to:
-  /// **'Register'**
+  /// **'Race page & register'**
   String get racesRegister;
 
   /// Race card action that opens the plan wizard sized around that race
@@ -22177,6 +22177,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Train for this race'**
   String get racesTrainForThis;
+
+  /// Race detail screen: the listing failed to load
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load this race. Check your connection and try again.'**
+  String get racesDetailLoadFailed;
+
+  /// Race detail screen: the listing no longer exists
+  ///
+  /// In en, this message translates to:
+  /// **'This race isn\'t in the calendar any more.'**
+  String get racesDetailNotFound;
+
+  /// Race detail screen: which site lists the race; {provider} is a brand name such as RunSignUp
+  ///
+  /// In en, this message translates to:
+  /// **'Listed on {provider}'**
+  String racesSourceProvider(String provider);
+
+  /// Race detail screen: the race was submitted by a runner, not a provider
+  ///
+  /// In en, this message translates to:
+  /// **'Added by a runner'**
+  String get racesSourceManual;
+
+  /// Race detail screen: share the race link
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get racesDetailShare;
+
+  /// Race detail screen: shown before race day instead of the import action; {date} is the race date
+  ///
+  /// In en, this message translates to:
+  /// **'You can import your official result from race day, {date}.'**
+  String racesDetailImportAfterRace(String date);
+
+  /// Race detail screen: heading over the runner's own runs linked to this race
+  ///
+  /// In en, this message translates to:
+  /// **'Your runs at this race'**
+  String get racesDetailYourRuns;
+
+  /// Race detail screen: the runner's linked runs failed to load
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your runs for this race.'**
+  String get racesDetailRunsFailed;
+
+  /// Race detail screen: no runs are linked to this race yet
+  ///
+  /// In en, this message translates to:
+  /// **'No runs linked to this race yet. After race day, import your result here, or open the run you recorded and match it to this race.'**
+  String get racesDetailNoRuns;
 
   /// Link to a race's results page
   ///

@@ -10,6 +10,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/preferences.dart';
 import '../lib/race_service.dart';
 import '../lib/training.dart' show toIsoDate;
+import '../lib/screens/race_detail_screen.dart';
 import '../lib/screens/races_screen.dart';
 import '../lib/widgets/ultrasignup_link.dart';
 import 'pump_until.dart';
@@ -97,6 +98,18 @@ class _FakeRaceService extends RaceService {
   @override
   Future<bool> isProviderConfigured(String provider) async =>
       configured.contains(provider);
+
+  @override
+  Future<RaceListingView?> fetchRaceListing(String id) async {
+    for (final r in results) {
+      if (r.id == id) return r;
+    }
+    return null;
+  }
+
+  @override
+  Future<List<RaceListingRun>> fetchMyRunsAtRace(String listingId) async =>
+      const [];
 }
 
 RaceListingView _listing(String id, String name,
@@ -105,13 +118,15 @@ RaceListingView _listing(String id, String name,
         bool verified = true,
         String provider = 'manual',
         String? providerRaceId,
-        String raceDate = '2027-09-12'}) =>
+        String? raceDate}) =>
     RaceListingView(
       id: id,
       provider: provider,
       providerRaceId: providerRaceId,
       name: name,
-      raceDate: raceDate,
+      // Race day by default: the import is offered only from race day on, and
+      // most cases here walk the import sheet.
+      raceDate: raceDate ?? toIsoDate(DateTime.now()),
       distanceM: distanceM,
       locationLabel: 'Richmond, VA',
       entryUrl: 'https://example.com/register',
@@ -156,8 +171,44 @@ void main() {
     await tester.pumpWidget(_app(service));
     await tester.pump();
     expect(find.text('E2E Half'), findsOneWidget);
-    expect(find.text('Register'), findsOneWidget);
+    expect(find.text('Race page & register'), findsOneWidget);
     expect(find.text('Import my result'), findsOneWidget);
+  });
+
+  testWidgets('a race not yet run offers no import, only from race day on',
+      (tester) async {
+    final service = _FakeRaceService(
+      results: [
+        _listing('r-fut', 'Future Half',
+            distanceM: 21097, raceDate: _isoDaysOut(30)),
+        _listing('r-past', 'Past Half',
+            distanceM: 21097, raceDate: _isoDaysOut(-1)),
+      ],
+    );
+    await tester.pumpWidget(_app(service));
+    await tester.pump();
+    expect(find.text('Future Half'), findsOneWidget);
+    expect(find.text('Past Half'), findsOneWidget);
+    // Only the past race's card carries the import.
+    expect(find.widgetWithText(FilledButton, 'Import my result'), findsOneWidget);
+    final pastCard = find.ancestor(of: find.text('Past Half'), matching: find.byType(Card));
+    expect(
+      find.descendant(
+          of: pastCard, matching: find.widgetWithText(FilledButton, 'Import my result')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets("a card's name opens the race detail screen", (tester) async {
+    final service = _FakeRaceService(
+      results: [_listing('r-open', 'Open Me Half', distanceM: 21097)],
+    );
+    await tester.pumpWidget(_app(service));
+    await tester.pump();
+    await tester.tap(find.text('Open Me Half'));
+    await tester.pumpAndSettle();
+    expect(find.byType(RaceDetailScreen), findsOneWidget);
+    expect(find.text('Added by a runner'), findsOneWidget);
   });
 
   testWidgets('an unverified listing shows the unverified badge', (tester) async {
@@ -592,7 +643,7 @@ void main() {
     await tester.pumpWidget(_app(service));
     await tester.pump();
 
-    await tester.tap(find.widgetWithText(OutlinedButton, 'Register'));
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Race page & register'));
     await tester.pump();
     await tester.pump();
 
@@ -623,7 +674,7 @@ void main() {
     await tester.pumpWidget(_app(service));
     await tester.pump();
 
-    await tester.tap(find.widgetWithText(OutlinedButton, 'Register'));
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Race page & register'));
     await tester.pump();
     await tester.pump();
 

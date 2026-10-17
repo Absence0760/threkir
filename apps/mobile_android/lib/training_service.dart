@@ -48,7 +48,7 @@ PlanRunHistory planRunHistoryFromRows(
       distanceM: distanceM,
       activityType: activityType,
     ));
-    final started = DateTime.tryParse(startedAt);
+    final started = parseIsoStrictValue(startedAt);
     if (started == null ||
         nowMs - started.millisecondsSinceEpoch >
             kGoalCheckWindowDays * 86400000) {

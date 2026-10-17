@@ -10685,6 +10685,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get ttsStepCooldown => 'Retour au calme';
 
   @override
+  String get ttsStepWarmupWalk => 'Marche d\'échauffement';
+
+  @override
+  String get ttsStepCooldownWalk => 'Marche de retour au calme';
+
+  @override
   String get ttsStepRep => 'Répétition';
 
   @override

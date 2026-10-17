@@ -2936,6 +2936,8 @@
   "ttsStepRecovery": "Récupération",
   "ttsStepSteady": "Allure régulière",
   "ttsStepCooldown": "Retour au calme",
+  "ttsStepWarmupWalk": "Marche d'échauffement",
+  "ttsStepCooldownWalk": "Marche de retour au calme",
   "ttsStepRep": "Répétition",
   "ttsStepRun": "Course",
   "ttsStepWalk": "Marche",

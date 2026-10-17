@@ -17415,6 +17415,18 @@ abstract class AppLocalizations {
   /// **'Cooldown'**
   String get ttsStepCooldown;
 
+  /// Spoken intro of the walking warm-up that opens a walk-run (couch-to-5k) session, said instead of plain 'Warmup' so a beginner knows to walk
+  ///
+  /// In en, this message translates to:
+  /// **'Warm-up walk'**
+  String get ttsStepWarmupWalk;
+
+  /// Spoken intro of the walking cool-down that closes a walk-run (couch-to-5k) session
+  ///
+  /// In en, this message translates to:
+  /// **'Cool-down walk'**
+  String get ttsStepCooldownWalk;
+
   /// Spoken workout-step intro: a rep with no index
   ///
   /// In en, this message translates to:

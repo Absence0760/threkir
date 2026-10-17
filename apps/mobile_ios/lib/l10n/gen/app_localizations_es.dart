@@ -10660,6 +10660,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get ttsStepCooldown => 'Enfriamiento';
 
   @override
+  String get ttsStepWarmupWalk => 'Caminata de calentamiento';
+
+  @override
+  String get ttsStepCooldownWalk => 'Caminata de enfriamiento';
+
+  @override
   String get ttsStepRep => 'Repetición';
 
   @override

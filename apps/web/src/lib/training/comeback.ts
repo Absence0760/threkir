@@ -303,21 +303,23 @@ function isFixed(kind: string): boolean {
  * Ease a generated plan in for a runner coming back from a break.
  *
  * Week 1 may ask for at most `openingCapM` of running, and each week after it
- * at most `RETURN_WEEKLY_GROWTH` times the cap before it, so the plan climbs
- * from half the runner's pre-break volume by about 10% a week. The climb ends
- * after the last week whose schedule is over its cap; every week after that is
- * left exactly as generated. A step-back week that happens to fit its cap does
- * not end the climb early, because a bigger week after it would then run
- * uncapped. A race is never counted against a cap or touched, and rest stays
- * rest.
+ * at most `RETURN_WEEKLY_GROWTH` times the most any earlier week prescribes, so
+ * the plan climbs from half the runner's pre-break volume by about 10% a week
+ * and a step-back week holds the climb rather than letting the next week jump.
+ * The climb ends after the last week whose schedule is over its cap; every
+ * week after that is left exactly as generated. A step-back week that fits
+ * its cap does not end the climb early, because a bigger week after it would
+ * then run uncapped. A race is never counted against a cap or touched, and
+ * rest stays rest.
  *
  * Every week up to that point is a return week (one that already fits keeps
  * its distances and only loses its quality sessions):
  * - its tempo, interval and marathon-pace sessions become easy runs, because
  *   the first weeks back rebuild volume before intensity, and deciding that by
  *   position rather than per week stops speed work coming and going;
- * - its sessions scale by one factor to fit the cap (distance to the nearest
- *   100 m, duration to the second), so the week keeps its shape;
+ * - its sessions scale by one factor to fit the cap (distance down to the
+ *   100 m, so the week never runs past the cap, duration to the second), so
+ *   the week keeps its shape;
  * - a session the scaling would take under the generator's 3 km floor is
  *   dropped to rest, shortest first, and the cap is shared among the rest, so
  *   the cap never prescribes a pointless 300 m run. The last session standing
@@ -335,17 +337,29 @@ export function capReturnRamp<W extends RampWorkout, K extends RampWeek<W>>(
 ): K[] {
 	if (!Number.isFinite(openingCapM) || openingCapM <= 0 || weeks.length === 0) return weeks;
 	const ordered = [...weeks].sort((a, b) => a.week_index - b.week_index);
-	const firstIndex = ordered[0].week_index;
-	const capOf = (week: K) => openingCapM * RETURN_WEEKLY_GROWTH ** (week.week_index - firstIndex);
 	const runningOf = (week: K) =>
 		week.workouts.reduce((s, wo) => s + (isFixed(wo.kind) ? 0 : (wo.target_distance_m ?? 0)), 0);
+	// Each cap grows from what the weeks before it prescribe, not from its
+	// position, so a step-back week holds the climb rather than banking growth.
+	const caps: number[] = [];
+	const scaled = new Map<K, K>();
 	let lastOver = -1;
+	let highest = 0;
 	ordered.forEach((week, i) => {
-		if (runningOf(week) > capOf(week)) lastOver = i;
+		const cap = i === 0 ? openingCapM : RETURN_WEEKLY_GROWTH * highest;
+		caps.push(cap);
+		let prescribed = runningOf(week);
+		if (prescribed > cap) {
+			const capped = capWeek(week, cap, easyPaceSecPerKm);
+			scaled.set(week, capped);
+			prescribed = runningOf(capped);
+			lastOver = i;
+		}
+		highest = Math.max(highest, prescribed);
 	});
 	const capped = new Map<K, K>();
 	for (let i = 0; i <= lastOver; i++) {
-		capped.set(ordered[i], capWeek(ordered[i], capOf(ordered[i]), easyPaceSecPerKm));
+		capped.set(ordered[i], scaled.get(ordered[i]) ?? capWeek(ordered[i], caps[i], easyPaceSecPerKm));
 	}
 	return weeks.map((w) => capped.get(w) ?? w);
 }
@@ -380,7 +394,11 @@ function capWeek<W extends RampWorkout, K extends RampWeek<W>>(week: K, capM: nu
 			};
 		}
 		const metres =
-			wo.target_distance_m == null ? null : Math.round((wo.target_distance_m * factor) / 100) * 100;
+			wo.target_distance_m == null
+				? null
+				: factor >= 1
+					? wo.target_distance_m
+					: Math.floor((wo.target_distance_m * factor) / 100) * 100;
 		const seconds =
 			wo.target_duration_seconds == null ? null : Math.round(wo.target_duration_seconds * factor);
 		const quality = QUALITY_KINDS.has(wo.kind);

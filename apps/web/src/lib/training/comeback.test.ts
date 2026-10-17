@@ -325,10 +325,10 @@ test('capReturnRamp caps week 1, lets the next grow 10%, and stops at the first 
 });
 
 test('capReturnRamp keeps climbing past a step-back week that fits, up to the last week over its cap', () => {
-	// 40 / 44 / 36 / 48 km against caps of 35 / 38.5 / 42.35 / 46.585 km. The
-	// step-back third week fits, but the fourth is over its cap, so the climb
-	// runs through both: the third keeps its distances and loses its intervals,
-	// and the fourth scales by 46.585 / 48 to the nearest 100 m.
+	// 40 / 44 / 36 / 48 km from a 35 km opening cap. The caps grow from what
+	// was prescribed: 35, 38.5, then 42.35 for both the third and the fourth
+	// week, because the step-back third week (36 km, which fits) does not raise
+	// the most prescribed. The fourth scales by 42.35 / 48, down to the 100 m.
 	const weeks = [40_000, 44_000, 36_000, 48_000].map((m, i) =>
 		rampWeek(i, [rampWorkout('long', m - 8_000), rampWorkout('interval', 8_000)]),
 	);
@@ -338,10 +338,27 @@ test('capReturnRamp keeps climbing past a step-back week that fits, up to the la
 	assert.equal(capped[2].workouts[0].target_distance_m, 28_000);
 	assert.equal(capped[2].workouts[1].target_distance_m, 8_000);
 	assert.equal(capped[2].workouts[1].kind, 'easy');
-	assert.equal(capped[3].workouts[0].target_distance_m, 38_800);
-	assert.equal(capped[3].workouts[1].target_distance_m, 7_800);
+	assert.equal(capped[3].workouts[0].target_distance_m, 35_200);
+	assert.equal(capped[3].workouts[1].target_distance_m, 7_000);
 	assert.equal(capped[3].workouts[1].kind, 'easy');
 	assert.equal(weeks[3].workouts[1].kind, 'interval');
+});
+
+test('capReturnRamp never rises more than 10% over the most prescribed so far, step-back or not', () => {
+	// The review's series: a 50 km pre-break average (a 25 km opening cap) and
+	// generated weeks of 30 / 32 / 34 / 30 (step-back) / 39 / 41 km. Growing
+	// the cap by position let week 5 jump 22% over anything run before it.
+	const weeks = [30_000, 32_000, 34_000, 30_000, 39_000, 41_000].map((m, i) =>
+		rampWeek(i, [rampWorkout('long', m * 0.6), rampWorkout('easy', m * 0.4)]),
+	);
+	const volumes = capReturnRamp(weeks, 25_000, 420).map((w) => w.target_volume_m);
+	assert.ok(volumes[0] <= 25_000);
+	let highest = volumes[0];
+	for (const v of volumes.slice(1)) {
+		assert.ok(v <= highest * 1.1 + 1e-6, `${v} rises more than 10% over ${highest}`);
+		highest = Math.max(highest, v);
+	}
+	assert.deepEqual(volumes, [25_000, 27_500, 30_200, 30_000, 33_100, 36_300]);
 });
 
 test('capReturnRamp drops sessions the cap would take under 3 km to rest, shortest first', () => {

@@ -314,20 +314,22 @@ bool _isFixed(WorkoutKind k) => k == WorkoutKind.race || k == WorkoutKind.rest;
 /// Ease a generated plan in for a runner coming back from a break.
 ///
 /// Week 1 may ask for at most [openingCapM] of running, and each week after it
-/// at most [kReturnWeeklyGrowth] times the cap before it, so the plan climbs
-/// from half the runner's pre-break volume by about 10% a week. The climb ends
-/// after the last week whose schedule is over its cap; every week after that is
-/// left exactly as generated. A step-back week that happens to fit its cap does
-/// not end the climb early, because a bigger week after it would then run
-/// uncapped. A race is never counted against a cap or touched, and rest stays
-/// rest.
+/// at most [kReturnWeeklyGrowth] times the most any earlier week prescribes, so
+/// the plan climbs from half the runner's pre-break volume by about 10% a week
+/// and a step-back week holds the climb rather than letting the next week jump.
+/// The climb ends after the last week whose schedule is over its cap; every
+/// week after that is left exactly as generated. A step-back week that fits
+/// its cap does not end the climb early, because a bigger week after it would
+/// then run uncapped. A race is never counted against a cap or touched, and
+/// rest stays rest.
 ///
 /// Every week up to that point is a return week (one that already fits keeps
 /// its distances and only loses its quality sessions):
 /// - its tempo, interval and marathon-pace sessions become easy runs, because
 ///   the first weeks back rebuild volume before intensity;
-/// - its sessions scale by one factor to fit the cap (distance to the nearest
-///   100 m, duration to the second), so the week keeps its shape;
+/// - its sessions scale by one factor to fit the cap (distance down to the
+///   100 m, so the week never runs past the cap, duration to the second), so
+///   the week keeps its shape;
 /// - a session the scaling would take under the generator's 3 km floor is
 ///   dropped to rest, shortest first, and the cap is shared among the rest.
 ///   The last session standing is kept whatever its length;
@@ -344,18 +346,31 @@ List<GeneratedWeek> capReturnRamp(
 ) {
   if (!openingCapM.isFinite || openingCapM <= 0 || weeks.isEmpty) return weeks;
   final ordered = [...weeks]..sort((a, b) => a.weekIndex.compareTo(b.weekIndex));
-  final firstIndex = ordered.first.weekIndex;
-  double capOf(GeneratedWeek week) =>
-      openingCapM * math.pow(kReturnWeeklyGrowth, week.weekIndex - firstIndex);
   double runningOf(GeneratedWeek week) => week.workouts.fold<double>(
       0, (s, wo) => s + (_isFixed(wo.kind) ? 0 : (wo.targetDistanceM ?? 0)));
+  // Each cap grows from what the weeks before it prescribe, not from its
+  // position, so a step-back week holds the climb rather than banking growth.
+  final caps = <double>[];
+  final scaled = <GeneratedWeek, GeneratedWeek>{};
   var lastOver = -1;
+  var highest = 0.0;
   for (var i = 0; i < ordered.length; i++) {
-    if (runningOf(ordered[i]) > capOf(ordered[i])) lastOver = i;
+    final week = ordered[i];
+    final cap = i == 0 ? openingCapM : kReturnWeeklyGrowth * highest;
+    caps.add(cap);
+    var prescribed = runningOf(week);
+    if (prescribed > cap) {
+      final capped = _capWeek(week, cap, easyPaceSecPerKm);
+      scaled[week] = capped;
+      prescribed = runningOf(capped);
+      lastOver = i;
+    }
+    highest = math.max(highest, prescribed);
   }
   final capped = <GeneratedWeek, GeneratedWeek>{
     for (var i = 0; i <= lastOver; i++)
-      ordered[i]: _capWeek(ordered[i], capOf(ordered[i]), easyPaceSecPerKm),
+      ordered[i]:
+          scaled[ordered[i]] ?? _capWeek(ordered[i], caps[i], easyPaceSecPerKm),
   };
   return [for (final w in weeks) capped[w] ?? w];
 }
@@ -411,7 +426,9 @@ GeneratedWorkout _scaleWorkout(
     GeneratedWorkout wo, double factor, int easyPace) {
   final metres = wo.targetDistanceM == null
       ? null
-      : ((wo.targetDistanceM! * factor) / 100).round() * 100.0;
+      : factor >= 1
+          ? wo.targetDistanceM!
+          : ((wo.targetDistanceM! * factor) / 100).floorToDouble() * 100.0;
   final seconds = wo.targetDurationSeconds == null
       ? null
       : (wo.targetDurationSeconds! * factor).round();

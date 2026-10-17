@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
+import 'package:ui_kit/ui_kit.dart' show ListSkeleton;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/gen/app_localizations.dart';
@@ -156,7 +157,7 @@ class _PlanCalendarFeedScreenState extends State<PlanCalendarFeedScreen> {
 
     final List<Widget> body;
     if (_loading) {
-      body = [const Center(child: CircularProgressIndicator())];
+      body = [ListSkeleton.section(label: l10n.commonLoading, rows: 2)];
     } else if (_loadFailed) {
       body = [
         Text(

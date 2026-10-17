@@ -205,6 +205,21 @@ String formatWorkoutStepUtterance(WorkoutStep step, DistanceUnit unit,
   return l10n.ttsStepDistancePace(intro, dist, paceTail);
 }
 
+/// The in-step progress cue: "Halfway through this rep", the last-50 m
+/// warning in the runner's own unit ("Fifty yards to go" in miles — the
+/// window is 50 m, about 55 yd), or "Ten seconds to go" on a timed step.
+String workoutStepProgressUtterance(StepProgressKind kind, DistanceUnit unit,
+    [String? localeTag]) {
+  final l10n = ttsL10n(localeTag ?? activeLocaleTag);
+  return switch (kind) {
+    StepProgressKind.halfway => l10n.ttsStepHalfway,
+    StepProgressKind.lastFiftyMetres => unit == DistanceUnit.mi
+        ? l10n.ttsStepLastFiftyYards
+        : l10n.ttsStepLastFifty,
+    StepProgressKind.lastTenSeconds => l10n.ttsStepLastTenSeconds,
+  };
+}
+
 /// How far the runner has covered at a split, as the spoken count plus
 /// whether the unit word should be singular. The tick interval is in METRES
 /// and the unit word comes from the runner's preference, so the count has to
@@ -588,17 +603,12 @@ class AudioCues {
     await _tts.speak(formatWorkoutStepUtterance(step, unit, activeLocaleTag));
   }
 
-  /// In-step progress cue ("halfway" / "fifty metres to go").
+  /// In-step progress cue — see [workoutStepProgressUtterance].
   Future<void> announceWorkoutStepProgress(
-      WorkoutStep step, StepProgressKind kind) async {
+      StepProgressKind kind, DistanceUnit unit) async {
     await _init();
     await _applyLanguage();
-    final l10n = ttsL10n(activeLocaleTag);
-    final phrase = switch (kind) {
-      StepProgressKind.halfway => l10n.ttsStepHalfway,
-      StepProgressKind.lastFiftyMetres => l10n.ttsStepLastFifty,
-    };
-    await _tts.speak(phrase);
+    await _tts.speak(workoutStepProgressUtterance(kind, unit, activeLocaleTag));
   }
 
   /// Pace-drift nudge when the runner has been more than the tolerance

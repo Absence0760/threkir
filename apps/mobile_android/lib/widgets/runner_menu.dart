@@ -5,7 +5,8 @@ import 'package:run_recorder/run_recorder.dart' show WorkoutStep, expandWorkoutS
 
 import '../l10n/gen/app_localizations.dart';
 import '../preferences.dart' show UnitFormat;
-import '../training.dart' show toIsoDate, workoutKindFromDb;
+import '../training.dart'
+    show isWorkoutCompleted, toIsoDate, workoutKindFromDb;
 import '../training_labels.dart' show workoutKindLabel;
 
 /// What a long-press on the centre button can offer (decisions § R10MENU-1).
@@ -62,7 +63,7 @@ PlanWorkoutRow? todaysOpenWorkout(
   for (final w in workouts) {
     if (toIsoDate(w.scheduledDate) != today) continue;
     if (w.kind == 'rest') continue;
-    if (w.completedRunId != null || w.manuallyCompleted) continue;
+    if (isWorkoutCompleted(w)) continue;
     if (w.skippedAt != null) continue;
     if (_steps(w).isEmpty) continue;
     return w;

@@ -6202,11 +6202,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get planOverlapReplaceHint =>
-      'Replace marks the overlapping plans as completed. You can still find them under Manage plans.';
+      'Replace marks the overlapping plans as abandoned. You can still find them under Manage plans.';
 
   @override
   String planOverlapTrimHint(String name, String date) {
-    return 'End $name early to keep its finished weeks and remove its workouts after $date, or replace it to mark it completed.';
+    return 'End $name early to keep its finished weeks and remove its workouts after $date, or replace it to mark it abandoned.';
   }
 
   @override
@@ -6221,7 +6221,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String planOverlapTrimHintMany(String date) {
-    return 'End them early to keep their finished weeks and remove their workouts after $date, or replace them to mark them completed.';
+    return 'End them early to keep their finished weeks and remove their workouts after $date, or replace them to mark them abandoned.';
   }
 
   @override
@@ -6638,6 +6638,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get workoutUnlinkError => 'Couldn\'t unlink the run. Try again.';
+
+  @override
+  String get workoutMarkNotDone => 'Mark not done';
+
+  @override
+  String get workoutMarkNotDoneTitle => 'Mark not done?';
+
+  @override
+  String get workoutMarkNotDoneBody => 'The workout will show as not yet done.';
+
+  @override
+  String get workoutMarkNotDoneError =>
+      'Couldn\'t update the workout. Try again.';
 
   @override
   String get workoutSkipped => 'Skipped';
@@ -10430,6 +10443,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get ttsStepLastFifty => 'Fifty metres to go';
+
+  @override
+  String get ttsStepLastFiftyYards => 'Fifty yards to go';
+
+  @override
+  String get ttsStepLastTenSeconds => 'Ten seconds to go';
 
   @override
   String ttsPaceDriftAhead(int delta) {

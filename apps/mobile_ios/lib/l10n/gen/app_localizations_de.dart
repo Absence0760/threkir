@@ -6276,11 +6276,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planOverlapReplaceHint =>
-      'Beim Ersetzen werden die überschneidenden Pläne als abgeschlossen markiert. Du findest sie weiterhin unter „Pläne verwalten“.';
+      'Beim Ersetzen werden die überschneidenden Pläne als abgebrochen markiert. Du findest sie weiterhin unter „Pläne verwalten“.';
 
   @override
   String planOverlapTrimHint(String name, String date) {
-    return 'Beende $name vorzeitig, um seine abgeschlossenen Wochen zu behalten und seine Einheiten nach dem $date zu entfernen, oder ersetze ihn, um ihn als abgeschlossen zu markieren.';
+    return 'Beende $name vorzeitig, um seine abgeschlossenen Wochen zu behalten und seine Einheiten nach dem $date zu entfernen, oder ersetze ihn, um ihn als abgebrochen zu markieren.';
   }
 
   @override
@@ -6295,7 +6295,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String planOverlapTrimHintMany(String date) {
-    return 'Beende sie vorzeitig, um ihre abgeschlossenen Wochen zu behalten und ihre Einheiten nach dem $date zu entfernen, oder ersetze sie, um sie als abgeschlossen zu markieren.';
+    return 'Beende sie vorzeitig, um ihre abgeschlossenen Wochen zu behalten und ihre Einheiten nach dem $date zu entfernen, oder ersetze sie, um sie als abgebrochen zu markieren.';
   }
 
   @override
@@ -6714,6 +6714,20 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get workoutUnlinkError =>
       'Lauf konnte nicht entkoppelt werden. Versuche es erneut.';
+
+  @override
+  String get workoutMarkNotDone => 'Als nicht erledigt markieren';
+
+  @override
+  String get workoutMarkNotDoneTitle => 'Als nicht erledigt markieren?';
+
+  @override
+  String get workoutMarkNotDoneBody =>
+      'Das Training wird dann als noch nicht erledigt angezeigt.';
+
+  @override
+  String get workoutMarkNotDoneError =>
+      'Training konnte nicht aktualisiert werden. Versuche es erneut.';
 
   @override
   String get workoutSkipped => 'Übersprungen';
@@ -10546,6 +10560,12 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get ttsStepLastFifty => 'Noch fünfzig Meter';
+
+  @override
+  String get ttsStepLastFiftyYards => 'Noch fünfzig Yards';
+
+  @override
+  String get ttsStepLastTenSeconds => 'Noch zehn Sekunden';
 
   @override
   String ttsPaceDriftAhead(int delta) {

@@ -94,7 +94,7 @@ Map<String, dynamic> planWorkoutPatch({
 /// What creating or cloning a plan does to the active plans its window
 /// overlaps, resolved by the server in the same transaction as the write
 /// (decisions § 2050). [refuse] fails with [ActivePlanExistsError] so nothing
-/// the runner did not name changes; [replace] marks them completed; [trim]
+/// the runner did not name changes; [replace] marks them abandoned; [trim]
 /// ends the one plan that started before the new plan on the day before it
 /// starts. [name] is the RPC's `p_overlap` value.
 enum PlanOverlapAction { refuse, replace, trim }
@@ -700,7 +700,7 @@ class TrainingService extends ChangeNotifier {
         .firstOrNull;
     final active = res.workouts.where((w) => w.kind != 'rest').toList();
     final done = active
-        .where((w) => w.completedRunId != null || w.manuallyCompleted)
+        .where(isWorkoutCompleted)
         .length;
     final pct = active.isEmpty ? 0 : (100 * done / active.length).round();
     // Whole-epoch-day bucketing, not a wall-clock difference: a start→today

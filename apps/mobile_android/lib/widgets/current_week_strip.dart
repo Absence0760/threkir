@@ -9,11 +9,6 @@ import '../training.dart';
 import '../training_labels.dart';
 import '../workout_kind_color.dart';
 
-/// Web `isWorkoutCompleted` twin — a planned workout is done when a tracked
-/// run is linked OR the runner manually marked it complete.
-bool _isWorkoutCompleted(PlanWorkoutRow wo) =>
-    wo.completedRunId != null || wo.manuallyCompleted;
-
 /// Focused current-week 7-day ribbon for `plan_detail_screen`, mirroring web's
 /// `CurrentWeekStrip.svelte`. The 7-day window is anchored to the plan's
 /// CURRENT week bucket (`startDate + weekIndex*7`), NOT the real calendar week,
@@ -60,7 +55,7 @@ class CurrentWeekStrip extends StatelessWidget {
       for (var i = 0; i < 7; i++) addDays(weekStart, i),
     ];
 
-    final done = weekWorkouts.where(_isWorkoutCompleted).length;
+    final done = weekWorkouts.where(isWorkoutCompleted).length;
     final active = weekWorkouts
         .where((w) => w.kind != 'rest' && !isWorkoutSkipped(w.skippedAt))
         .length;
@@ -105,7 +100,7 @@ class CurrentWeekStrip extends StatelessWidget {
     final isToday = _toIso(day) == today;
     final kind = wo == null ? null : workoutKindFromDb(wo.kind);
     final kindMark = kind == null ? null : workoutKindMarkColor(theme, kind);
-    final isDone = wo != null && _isWorkoutCompleted(wo);
+    final isDone = wo != null && isWorkoutCompleted(wo);
 
     final base = Container(
       margin: const EdgeInsets.all(2),

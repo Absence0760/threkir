@@ -63,11 +63,6 @@ const DisclosureState _kDisclosureDefaults = {
   'share': true,
 };
 
-/// Web `isWorkoutCompleted` twin — a planned workout is done when a tracked
-/// run is linked OR the runner manually marked it complete.
-bool _isWorkoutCompleted(PlanWorkoutRow wo) =>
-    wo.completedRunId != null || wo.manuallyCompleted;
-
 /// Web `isWorkoutSkipped` twin — deliberately dropped, off the books.
 bool _isWorkoutSkipped(PlanWorkoutRow wo) => isWorkoutSkipped(wo.skippedAt);
 
@@ -324,7 +319,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
     final missed = (_byWeek[week.id] ?? const <PlanWorkoutRow>[]).where((w) =>
         w.kind == 'long' &&
         toIsoDate(w.scheduledDate).compareTo(today) < 0 &&
-        !_isWorkoutCompleted(w) &&
+        !isWorkoutCompleted(w) &&
         !_isWorkoutSkipped(w));
     if (missed.isEmpty) return null;
     final next = idx + 1 < _weeks.length ? _weeks[idx + 1] : null;
@@ -377,7 +372,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
                   scheduledDate: toIsoDate(x.scheduledDate),
                   kind: x.kind,
                   targetDistanceM: x.targetDistanceM,
-                  completed: _isWorkoutCompleted(x),
+                  completed: isWorkoutCompleted(x),
                   skipped: _isWorkoutSkipped(x),
                   isPast: toIsoDate(x.scheduledDate).compareTo(today) < 0,
                 ))
@@ -430,7 +425,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
               structure: x.structure,
               notes: x.notes,
               phase: w.phase,
-              completed: _isWorkoutCompleted(x),
+              completed: isWorkoutCompleted(x),
               skipped: _isWorkoutSkipped(x),
               taperApplied: x.raceTaperAppliedAt != null,
             ),
@@ -981,7 +976,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
         .expand((x) => x)
         .where((w) => w.kind != 'rest' && !_isWorkoutSkipped(w))
         .toList();
-    final done = allActive.where(_isWorkoutCompleted).length;
+    final done = allActive.where(isWorkoutCompleted).length;
     final pct =
         allActive.isEmpty ? 0 : (100 * done / allActive.length).round();
     final body = _bodyList(
@@ -1743,7 +1738,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
                   style: theme.textTheme.bodySmall),
               const SizedBox(width: 6),
             ],
-            if (_isWorkoutCompleted(wo))
+            if (isWorkoutCompleted(wo))
               Icon(Icons.check_circle, color: theme.colorScheme.primary, size: 16)
             else if (isSkipped)
               Icon(Icons.skip_next, color: theme.colorScheme.outline, size: 16),

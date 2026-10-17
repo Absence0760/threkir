@@ -57,6 +57,8 @@ A workout with no `structure` (e.g. "Easy 8 km") expands to a **single step** co
 
 **Walk-run (C25K / Galloway) — persona #22, decisions §91.** A rep or recovery block may carry `duration_s` / `recovery_duration_s` instead of distances; the runner builds duration-based steps (end condition is elapsed time, not distance). When `recovery_pace == 'walk'`, `expandWorkoutSteps` relabels the work intervals **Run i/n** (kept `WorkoutStepKind.rep`) and the rest intervals **Walk i/n** (tagged `WorkoutStepKind.walk`), so the transition cue announces "Run 1 of 8. 1 minute." / "Walk 1 of 7. 1 minute 30 seconds." (duration spoken instead of distance + pace). Example: warmup-walk → 8× (run 60s / walk 90s) → cooldown-walk expands to **17 steps** (1 + 8 runs + 7 walks + 1).
 
+**A walk-run session is not a pace test (decisions § 2074).** Every step of one, the walking warm-up and cool-down included, expands with `WorkoutStep.paced == false`: `paceAdherence` reads `onPace`, no `PaceDriftEvent` fires, and the band hides its pace pip. The voice says only the Run / Walk transitions and the end-of-step warning. `targetPaceSecPerKm` still carries the plan's easy pace, which the distance estimate and the band header read. The custom watch receives the same contract as flag bit 0 (`WORKOUT_FLAG_UNPACED`) of the `WKT1` header, which is whole-frame because the expander makes a whole session unpaced or none of it.
+
 Step resolution for symbolic paces (`'easy'`, `'jog'`): look up on the plan's `paces` bag (VDOT-derived, already stored on `training_plans`). `'easy'` → `paces.easy`, `'jog'` → `paces.recovery`. Numeric paces in `repeats.pace_sec_per_km` / `steady.pace_sec_per_km` pass through unchanged.
 
 ### `WorkoutStep` shape
@@ -160,8 +162,9 @@ Reuses `audio_cues.dart`. New cue kinds, all throttled and fire-and-forget (wrap
 | Trigger | Utterance |
 |---|---|
 | Step transition | "Next: rep three of six. Four hundred metres at four minutes per kilometre." |
-| Halfway (distance ≥ 50 % of target, fired once per step) | "Halfway through this rep." |
-| Last 50 m (once per step) | "Fifty metres to go." |
+| Halfway (≥ 50 % of target on the step's own axis, once per step) — **paced `rep` steps only**: never on a warm-up, recovery, steady block, cool-down or walk-run interval, where "this rep" is wrong and the band already shows what is left | "Halfway through this rep." |
+| Last 50 m of a distance step over 100 m (`StepProgressKind.lastFiftyMetres`, once per step) | "Fifty metres to go." — "Fifty yards to go." in miles mode (the window is 50 m, about 55 yd) |
+| Last 10 s of a timed step over 20 s (`StepProgressKind.lastTenSeconds`, once per step) — a walk-run interval hears this before every Run / Walk switch | "Ten seconds to go." |
 | Pace drift (every ≥ 45 s while `wayBehind` / `wayAhead`) | "Pick it up — ten seconds behind pace." / "Ease up — twelve seconds ahead." |
 | Workout complete | "Workout complete. Nice work." |
 
@@ -218,14 +221,14 @@ Modified:
 - `packages/run_recorder/lib/run_recorder.dart` — re-export the runner + events
 - `apps/mobile_android/lib/screens/run_screen.dart` — preload / snapshot / save wiring, route-argument plumbing for the incoming `PlanWorkoutRow`
 - `apps/mobile_android/lib/screens/workout_detail_screen.dart` — primary **Start workout** button navigates to the run screen with the workout attached
-- `apps/mobile_android/lib/widgets/todays_workout_card.dart` — an explicit **Start workout** button loads the runner; tapping the rest of the card opens the workout detail (the Start / Details sheet it used to open was removed, decisions § 2074)
+- `apps/mobile_android/lib/widgets/todays_workout_card.dart` — an explicit **Start workout** button loads the runner; tapping the rest of the card opens the workout detail (the Start / Details sheet it used to open was removed, decisions § 2076)
 - `apps/mobile_android/lib/audio_cues.dart` — new cue kinds
 - `apps/mobile_android/lib/screens/run_detail_screen.dart` — "Workout" section when `plan_workout_id` is set
 - `apps/web/src/routes/runs/[id]/+page.svelte` — same section on the web run detail
 
 ## Open questions
 
-1. **Duration-based steps.** *Shipped (v2 follow-up).* `WorkoutStep.targetDurationSec` is a nullable int — when positive, the step is duration-based and `WorkoutRunner` swaps the distance-axis checks for time-axis ones (auto-advance, halfway cue, end-of-step warning at last 10 s for `> 20 s` steps). `expandWorkoutSteps` honours `duration_s` in any block (warmup / repeats.rep / repeats.recovery / steady / cooldown); when both `distance_m` and `duration_s` are present, distance wins for backwards-compatibility. The band header renders `Stride · 30s @ 4:00/km` and the footer shows `12s to go`; the post-run review table renders time on the plan + actual columns when `target_duration_s` is on the result row. `runs.metadata.workout_step_results[].target_duration_s` is the optional registered key (see `docs/backend/metadata.md`).
+1. **Duration-based steps.** *Shipped (v2 follow-up).* `WorkoutStep.targetDurationSec` is a nullable int — when positive, the step is duration-based and `WorkoutRunner` swaps the distance-axis checks for time-axis ones (auto-advance, halfway cue, end-of-step warning at last 10 s for `> 20 s` steps, emitted as `StepProgressKind.lastTenSeconds` so the voice says "ten seconds to go" rather than a distance). `expandWorkoutSteps` honours `duration_s` in any block (warmup / repeats.rep / repeats.recovery / steady / cooldown); when both `distance_m` and `duration_s` are present, distance wins for backwards-compatibility. The band header renders `Stride · 30s @ 4:00/km` and the footer shows `12s to go`; the post-run review table renders time on the plan + actual columns when `target_duration_s` is on the result row. `runs.metadata.workout_step_results[].target_duration_s` is the optional registered key (see `docs/backend/metadata.md`).
 2. **Audio cue wording** — "four hundred metres" vs "point four kilometres" vs "four hundred" (metric unit implied). Stick with the verbose-and-clear form for v1; revisit if users flag it.
 3. **Tolerance default** — 10 s/km is tight for a beginner, loose for a racer. The existing `plan_workouts.target_pace_tolerance_sec_per_km` is editable; default stays 10 but surface it in the workout editor.
 4. **Skip vs abandon ergonomics** — two buttons that sound similar. If user testing shows confusion, collapse to one "stop workout" that the user confirms to "stop entirely" or "convert to free run".

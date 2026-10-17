@@ -107,6 +107,64 @@ void main() {
       expect(steps[2].targetDurationSec, 90);
     });
 
+    test('every walk-run step is unpaced, warm-up and cool-down included', () {
+      for (final repeats in <Map<String, dynamic>>[
+        // Generator shape.
+        {
+          'count': 3,
+          'duration_s': 60,
+          'pace_sec_per_km': 420,
+          'recovery_duration_s': 90,
+          'recovery_pace': 'walk',
+        },
+        // Spec shape.
+        {
+          'count': 3,
+          'rep': {'duration_s': 60, 'pace_sec_per_km': 420},
+          'recovery': {'duration_s': 90, 'pace': 'walk'},
+        },
+        // Graduation week: one continuous run, no walk break left.
+        {
+          'count': 1,
+          'duration_s': 1500,
+          'pace_sec_per_km': 420,
+          'recovery_pace': 'walk',
+        },
+      ]) {
+        final steps = expandWorkoutSteps(
+          structure: {
+            'warmup': {'duration_s': 300, 'pace': 'easy'},
+            'repeats': repeats,
+            'cooldown': {'duration_s': 300, 'pace': 'easy'},
+          },
+          paces: const {'easy': 360},
+          toleranceSecPerKm: 10,
+        );
+        expect(steps, isNotEmpty);
+        expect(steps.every((s) => !s.paced), isTrue,
+            reason: 'walk-run is effort-led: $repeats');
+      }
+    });
+
+    test('an interval session stays paced end to end', () {
+      final steps = expandWorkoutSteps(
+        structure: {
+          'warmup': {'distance_m': 1000, 'pace': 'easy'},
+          'repeats': {
+            'count': 2,
+            'distance_m': 400,
+            'pace_sec_per_km': 240,
+            'recovery_distance_m': 200,
+            'recovery_pace': 'jog',
+          },
+          'cooldown': {'distance_m': 1000, 'pace': 'easy'},
+        },
+        paces: const {'easy': 360, 'jog': 420},
+        toleranceSecPerKm: 10,
+      );
+      expect(steps.every((s) => s.paced), isTrue);
+    });
+
     test('no structure with fallback → single steady step', () {
       final steps = expandWorkoutSteps(
         structure: null,
@@ -297,7 +355,8 @@ void main() {
     });
 
     test('emits halfway and last-50m progress cues once each', () async {
-      final runner = WorkoutRunner(steps: [_step(distance: 1000)]);
+      final runner = WorkoutRunner(
+          steps: [_step(kind: WorkoutStepKind.rep, distance: 1000)]);
       final progress = <StepProgressKind>[];
       runner.events.listen((e) {
         if (e is StepProgressEvent) progress.add(e.kind);
@@ -313,6 +372,46 @@ void main() {
 
       expect(progress, [StepProgressKind.halfway, StepProgressKind.lastFiftyMetres]);
       runner.dispose();
+    });
+
+    test('halfway plays only on a paced rep', () async {
+      Future<List<StepProgressKind>> run(WorkoutStep step) async {
+        final runner = WorkoutRunner(steps: [step]);
+        final progress = <StepProgressKind>[];
+        runner.events.listen((e) {
+          if (e is StepProgressEvent) progress.add(e.kind);
+        });
+        runner.onSnapshot(_snap(distance: 0, elapsedSec: 0));
+        runner.onSnapshot(_snap(distance: 600, elapsedSec: 300));
+        await Future<void>.delayed(Duration.zero);
+        runner.dispose();
+        return progress;
+      }
+
+      for (final kind in [
+        WorkoutStepKind.warmup,
+        WorkoutStepKind.recovery,
+        WorkoutStepKind.walk,
+        WorkoutStepKind.steady,
+        WorkoutStepKind.cooldown,
+      ]) {
+        expect(await run(_step(kind: kind, distance: 1000)), isEmpty,
+            reason: '$kind is not a rep');
+      }
+      // A walk-run "Run" interval is a rep, but an unpaced one.
+      expect(
+        await run(const WorkoutStep(
+          kind: WorkoutStepKind.rep,
+          targetDistanceMetres: 0,
+          targetDurationSec: 480,
+          targetPaceSecPerKm: 420,
+          label: 'Run 1/3',
+          paced: false,
+        )),
+        isEmpty,
+      );
+      expect(await run(_step(kind: WorkoutStepKind.rep, distance: 1000)),
+          [StepProgressKind.halfway]);
     });
   });
 
@@ -517,8 +616,10 @@ void main() {
       long.onSnapshot(_snap(distance: 0, elapsedSec: 0));
       long.onSnapshot(_snap(distance: 250, elapsedSec: 51)); // last 10s
       await Future<void>.delayed(Duration.zero);
-      expect(longProg.contains(StepProgressKind.lastFiftyMetres), isTrue,
+      expect(longProg, contains(StepProgressKind.lastTenSeconds),
           reason: 'fires once 60 - 51 = 9 ≤ 10');
+      expect(longProg, isNot(contains(StepProgressKind.lastFiftyMetres)),
+          reason: 'a timed step never hears a distance countdown');
 
       // Short step (≤ 20 s): cue collides with halfway, suppressed.
       final short = WorkoutRunner(steps: [_durStep(durationSec: 15)]);
@@ -529,7 +630,7 @@ void main() {
       short.onSnapshot(_snap(distance: 0, elapsedSec: 0));
       short.onSnapshot(_snap(distance: 50, elapsedSec: 10));
       await Future<void>.delayed(Duration.zero);
-      expect(shortProg.contains(StepProgressKind.lastFiftyMetres), isFalse,
+      expect(shortProg.contains(StepProgressKind.lastTenSeconds), isFalse,
           reason: 'duration ≤ 20 s gates the cue off');
       long.dispose();
       short.dispose();
@@ -792,6 +893,33 @@ void main() {
       // (and clear paceAdherence) before we read it.
       runner.onSnapshot(_snap(distance: 380, elapsedSec: 105));
       expect(runner.paceAdherence, PaceAdherence.wayBehind);
+      runner.dispose();
+    });
+
+    test('an unpaced step reports onPace and never emits a drift cue',
+        () async {
+      // A C25K walk interval at a brisk walk (~12:00/km) against the plan's
+      // easy pace (5:00/km) — 420 s/km off, far past twice the tolerance.
+      final runner = WorkoutRunner(steps: const [
+        WorkoutStep(
+          kind: WorkoutStepKind.walk,
+          targetDistanceMetres: 0,
+          targetDurationSec: 600,
+          targetPaceSecPerKm: 300,
+          label: 'Walk 1/7',
+          paced: false,
+        ),
+      ]);
+      final drift = <PaceDriftEvent>[];
+      runner.events.listen((e) {
+        if (e is PaceDriftEvent) drift.add(e);
+      });
+      runner.onSnapshot(_snap(distance: 0, elapsedSec: 0));
+      runner.onSnapshot(_snap(distance: 100, elapsedSec: 72));
+      runner.onSnapshot(_snap(distance: 200, elapsedSec: 144));
+      await Future<void>.delayed(Duration.zero);
+      expect(runner.paceAdherence, PaceAdherence.onPace);
+      expect(drift, isEmpty);
       runner.dispose();
     });
   });

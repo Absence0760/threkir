@@ -33,7 +33,7 @@ class TodaysWorkoutCard extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final w = workout;
     final kind = workoutKindFromDb(w.kind);
-    final done = w.completedRunId != null || w.manuallyCompleted;
+    final done = isWorkoutCompleted(w);
     final showStart =
         onStart != null && !done && !isWorkoutSkipped(w.skippedAt);
     final pace = w.targetPaceSecPerKm == null

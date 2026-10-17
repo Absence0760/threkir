@@ -103,11 +103,12 @@ select lives_ok(
 reset role;
 
 select is(
-  (select array_agg(name order by name) from training_plans
-   where user_id = '99999999-9999-9999-9999-99999c4a1001' and status = 'completed'
+  (select array_agg(row(name, status)::text order by name) from training_plans
+   where user_id = '99999999-9999-9999-9999-99999c4a1001' and status in ('completed', 'abandoned')
      and not is_template),
-  array['Marathon block', 'Old overlapping', 'Ultra block'],
-  'a clone completes exactly the active plans its window overlaps'
+  array[row('Marathon block', 'abandoned')::text, row('Old overlapping', 'completed')::text,
+        row('Ultra block', 'abandoned')::text],
+  'a clone abandons exactly the active plans its window overlaps (20270903000001)'
 );
 
 -- trim_training_plan ends a plan early.

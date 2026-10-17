@@ -207,9 +207,42 @@ void main() {
       await _pumpWith(tester, training);
       await tester.pumpAndSettle();
 
-      // A manually-completed workout (no completed_run_id) shows no
-      // completed card with run actions — re-link is run-link-only.
+      // Re-link is run-link-only: a manually-completed workout has no run.
       expect(find.text('Re-link'), findsNothing);
+    });
+
+    testWidgets('a manually-completed workout reads Completed and can be '
+        'marked not done', (tester) async {
+      final training = _FakeTraining(
+        PlanWorkoutRow(
+          id: 'fake-workout-id',
+          weekId: 'week-1',
+          scheduledDate: DateTime(2026, 4, 5),
+          kind: 'easy',
+          targetDistanceM: 5000,
+          completedAt: DateTime(2026, 4, 5, 8),
+          manuallyCompleted: true,
+        ),
+        const [],
+      );
+      await _pumpWith(tester, training);
+      await tester.pumpAndSettle();
+
+      // It used to read as a plain to-do with a Start button, while the
+      // plan rows and calendar called it done.
+      expect(find.text('Completed'), findsOneWidget);
+      expect(find.text('Start workout'), findsNothing);
+
+      await tester.tap(find.text('Mark not done'));
+      await tester.pumpAndSettle();
+      expect(find.text('Mark not done?'), findsOneWidget);
+      await tester.tap(find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.widgetWithText(TextButton, 'Mark not done'),
+      ));
+      await tester.pumpAndSettle();
+      expect(training.markCalled, isTrue);
+      expect(training.lastMarkRunId, isNull);
     });
   });
 

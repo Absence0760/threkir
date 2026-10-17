@@ -5916,11 +5916,11 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get planOverlapReplaceHint =>
-      '置き換えると、重なっているプランは完了としてマークされます。「プランの管理」から引き続き確認できます。';
+      '置き換えると、重なっているプランは中止としてマークされます。「プランの管理」から引き続き確認できます。';
 
   @override
   String planOverlapTrimHint(String name, String date) {
-    return '$nameを早めに終了すると、終えた週は残り、$dateより後のワークアウトは削除されます。置き換えると完了としてマークされます。';
+    return '$nameを早めに終了すると、終えた週は残り、$dateより後のワークアウトは削除されます。置き換えると中止としてマークされます。';
   }
 
   @override
@@ -5935,7 +5935,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String planOverlapTrimHintMany(String date) {
-    return '早めに終了すると、終えた週は残り、$dateより後のワークアウトは削除されます。置き換えると完了としてマークされます。';
+    return '早めに終了すると、終えた週は残り、$dateより後のワークアウトは削除されます。置き換えると中止としてマークされます。';
   }
 
   @override
@@ -6335,6 +6335,18 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get workoutUnlinkError => 'ランのリンクを解除できませんでした。もう一度お試しください。';
+
+  @override
+  String get workoutMarkNotDone => '未完了にする';
+
+  @override
+  String get workoutMarkNotDoneTitle => '未完了にしますか？';
+
+  @override
+  String get workoutMarkNotDoneBody => 'ワークアウトは未完了として表示されます。';
+
+  @override
+  String get workoutMarkNotDoneError => 'ワークアウトを更新できませんでした。もう一度お試しください。';
 
   @override
   String get workoutSkipped => 'スキップ済み';
@@ -10018,6 +10030,12 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get ttsStepLastFifty => '残り五十メートル';
+
+  @override
+  String get ttsStepLastFiftyYards => '残り五十ヤード';
+
+  @override
+  String get ttsStepLastTenSeconds => '残り十秒';
 
   @override
   String ttsPaceDriftAhead(int delta) {

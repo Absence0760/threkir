@@ -6264,11 +6264,11 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get planOverlapReplaceHint =>
-      'Substituir marca os planos sobrepostos como concluídos. Continua a poder encontrá-los em Gerir planos.';
+      'Substituir marca os planos sobrepostos como abandonados. Continua a poder encontrá-los em Gerir planos.';
 
   @override
   String planOverlapTrimHint(String name, String date) {
-    return 'Termine $name mais cedo para manter as semanas já concluídas e remover os treinos depois de $date, ou substitua-o para o marcar como concluído.';
+    return 'Termine $name mais cedo para manter as semanas já concluídas e remover os treinos depois de $date, ou substitua-o para o marcar como abandonado.';
   }
 
   @override
@@ -6283,7 +6283,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String planOverlapTrimHintMany(String date) {
-    return 'Termine-os mais cedo para manter as semanas já concluídas e remover os treinos depois de $date, ou substitua-os para os marcar como concluídos.';
+    return 'Termine-os mais cedo para manter as semanas já concluídas e remover os treinos depois de $date, ou substitua-os para os marcar como abandonados.';
   }
 
   @override
@@ -6703,6 +6703,20 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get workoutUnlinkError =>
       'Não foi possível desvincular a corrida. Tente novamente.';
+
+  @override
+  String get workoutMarkNotDone => 'Marcar como não feito';
+
+  @override
+  String get workoutMarkNotDoneTitle => 'Marcar como não feito?';
+
+  @override
+  String get workoutMarkNotDoneBody =>
+      'O treino aparecerá como ainda não feito.';
+
+  @override
+  String get workoutMarkNotDoneError =>
+      'Não foi possível atualizar o treino. Tente novamente.';
 
   @override
   String get workoutSkipped => 'Ignorado';
@@ -10539,6 +10553,12 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get ttsStepLastFifty => 'Faltam cinquenta metros';
+
+  @override
+  String get ttsStepLastFiftyYards => 'Faltam cinquenta jardas';
+
+  @override
+  String get ttsStepLastTenSeconds => 'Faltam dez segundos';
 
   @override
   String ttsPaceDriftAhead(int delta) {
@@ -23103,11 +23123,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get planOverlapReplaceHint =>
-      'Substituir marca os planos sobrepostos como concluídos. Você ainda poderá encontrá-los em Gerenciar planos.';
+      'Substituir marca os planos sobrepostos como abandonados. Você ainda poderá encontrá-los em Gerenciar planos.';
 
   @override
   String planOverlapTrimHint(String name, String date) {
-    return 'Encerre $name antes para manter as semanas já concluídas e remover os treinos dele depois de $date, ou substitua-o para marcá-lo como concluído.';
+    return 'Encerre $name antes para manter as semanas já concluídas e remover os treinos dele depois de $date, ou substitua-o para marcá-lo como abandonado.';
   }
 
   @override
@@ -23122,7 +23142,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String planOverlapTrimHintMany(String date) {
-    return 'Encerre-os antes para manter as semanas já concluídas e remover os treinos deles depois de $date, ou substitua-os para marcá-los como concluídos.';
+    return 'Encerre-os antes para manter as semanas já concluídas e remover os treinos deles depois de $date, ou substitua-os para marcá-los como abandonados.';
   }
 
   @override
@@ -23542,6 +23562,20 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get workoutUnlinkError =>
       'Não foi possível desvincular a corrida. Tente novamente.';
+
+  @override
+  String get workoutMarkNotDone => 'Marcar como não feito';
+
+  @override
+  String get workoutMarkNotDoneTitle => 'Marcar como não feito?';
+
+  @override
+  String get workoutMarkNotDoneBody =>
+      'O treino aparecerá como ainda não feito.';
+
+  @override
+  String get workoutMarkNotDoneError =>
+      'Não foi possível atualizar o treino. Tente novamente.';
 
   @override
   String get workoutSkipped => 'Ignorado';
@@ -27369,6 +27403,12 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get ttsStepLastFifty => 'Faltam cinquenta metros';
+
+  @override
+  String get ttsStepLastFiftyYards => 'Faltam cinquenta jardas';
+
+  @override
+  String get ttsStepLastTenSeconds => 'Faltam dez segundos';
 
   @override
   String ttsPaceDriftAhead(int delta) {

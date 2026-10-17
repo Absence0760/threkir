@@ -22,7 +22,8 @@ import 'dart:io';
 
 import 'package:core_models/core_models.dart' show DistanceUnit;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:run_recorder/run_recorder.dart' show WorkoutStep, WorkoutStepKind;
+import 'package:run_recorder/run_recorder.dart'
+    show StepProgressKind, WorkoutStep, WorkoutStepKind;
 
 import '../lib/audio_cues.dart';
 import '../lib/preferences.dart';
@@ -427,6 +428,35 @@ void main() {
       expect(r, contains('per mile'));
       expect(r, isNot(contains('per kilometre')));
       expect(r, isNot(contains('kilometres')));
+    });
+  });
+
+  group('workoutStepProgressUtterance', () {
+    test('a timed step counts down in seconds, not metres', () {
+      for (final unit in DistanceUnit.values) {
+        expect(
+            workoutStepProgressUtterance(
+                StepProgressKind.lastTenSeconds, unit, 'en'),
+            'Ten seconds to go');
+      }
+    });
+
+    test('the distance countdown speaks the runner\'s unit', () {
+      expect(
+          workoutStepProgressUtterance(
+              StepProgressKind.lastFiftyMetres, DistanceUnit.km, 'en'),
+          'Fifty metres to go');
+      expect(
+          workoutStepProgressUtterance(
+              StepProgressKind.lastFiftyMetres, DistanceUnit.mi, 'en'),
+          'Fifty yards to go');
+    });
+
+    test('is translated', () {
+      expect(
+          workoutStepProgressUtterance(
+              StepProgressKind.lastTenSeconds, DistanceUnit.km, 'de'),
+          'Noch zehn Sekunden');
     });
   });
 

@@ -1073,11 +1073,13 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                 .announceWorkoutStepTransition(e.step, widget.preferences.unit));
       }
     } else if (e is StepProgressEvent) {
-      // Chatty in-rep progress ("halfway", "fifty metres to go") — dropped
+      // Chatty in-rep progress ("halfway", "ten seconds to go") — dropped
       // in minimal voice-feedback mode (round-5 older).
       if (widget.preferences.audioCues && _workoutCuesEnabled && _voiceVerbose) {
-        _ttsCue('announceWorkoutStepProgress',
-            () => widget.audioCues.announceWorkoutStepProgress(e.step, e.kind));
+        _ttsCue(
+            'announceWorkoutStepProgress',
+            () => widget.audioCues.announceWorkoutStepProgress(
+                e.kind, widget.preferences.unit));
       }
     } else if (e is PaceDriftEvent) {
       // Pace-drift nudge — also dropped in minimal mode.

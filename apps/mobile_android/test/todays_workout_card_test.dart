@@ -1,5 +1,6 @@
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/widgets/todays_workout_card.dart';
@@ -9,6 +10,7 @@ PlanWorkoutRow _workout({
   double? targetDistanceM = 8000,
   int? targetPaceSecPerKm = 330,
   String? completedRunId,
+  DateTime? skippedAt,
 }) =>
     PlanWorkoutRow(
       id: 'wo1',
@@ -18,6 +20,7 @@ PlanWorkoutRow _workout({
       targetDistanceM: targetDistanceM,
       targetPaceSecPerKm: targetPaceSecPerKm,
       completedRunId: completedRunId,
+      skippedAt: skippedAt,
       manuallyCompleted: false,
     );
 
@@ -25,13 +28,18 @@ Future<void> _pump(
   WidgetTester tester,
   PlanWorkoutRow workout, {
   VoidCallback? onTap,
+  VoidCallback? onStart,
 }) {
   return tester.pumpWidget(
     MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
-        body: TodaysWorkoutCard(workout: workout, onTap: onTap),
+        body: TodaysWorkoutCard(
+          workout: workout,
+          onTap: onTap,
+          onStart: onStart,
+        ),
       ),
     ),
   );
@@ -125,6 +133,53 @@ void main() {
       expect(find.byIcon(Icons.straighten), findsOneWidget);
       expect(find.byIcon(Icons.speed), findsOneWidget);
       expect(tester.takeException(), isNull);
+    });
+
+    group('Start button', () {
+      final start = find.byKey(const Key('todaysWorkoutStart'));
+
+      testWidgets('shows for an open workout and starts it, not the tap',
+          (tester) async {
+        var starts = 0;
+        var taps = 0;
+        await _pump(tester, _workout(),
+            onTap: () => taps++, onStart: () => starts++);
+        expect(start, findsOneWidget);
+        expect(find.text('Start workout'), findsOneWidget);
+        await tester.tap(start);
+        await tester.pump();
+        expect(starts, 1);
+        expect(taps, 0);
+      });
+
+      testWidgets('is hidden once the workout is done', (tester) async {
+        await _pump(tester, _workout(completedRunId: 'run-1'),
+            onStart: () {});
+        expect(start, findsNothing);
+      });
+
+      testWidgets('is hidden for a skipped workout', (tester) async {
+        await _pump(tester, _workout(skippedAt: DateTime(2026, 4, 25)),
+            onStart: () {});
+        expect(start, findsNothing);
+      });
+
+      testWidgets('is absent when the surface passes no onStart (Home)',
+          (tester) async {
+        await _pump(tester, _workout());
+        expect(start, findsNothing);
+      });
+    });
+
+    testWidgets('reads as one button whose label carries the whole card',
+        (tester) async {
+      final handle = tester.ensureSemantics();
+      await _pump(tester, _workout(), onTap: () {});
+      final node = tester.getSemantics(find.bySemanticsLabel(
+          RegExp(r"^TODAY'S WORKOUT, Tempo, 8.*, @ 5:30")));
+      expect(node.flagsCollection.isButton, isTrue);
+      expect(node.getSemanticsData().hasAction(SemanticsAction.tap), isTrue);
+      handle.dispose();
     });
   });
 }

@@ -387,7 +387,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                     ?.copyWith(fontWeight: FontWeight.w700)),
             if (tolerance != null) ...[
               const SizedBox(width: 4),
-              Text('±${tolerance}s',
+              Text(fmtPaceTolerance(tolerance),
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   )),

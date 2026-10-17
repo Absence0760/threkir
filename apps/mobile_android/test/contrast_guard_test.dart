@@ -208,7 +208,8 @@ void main() {
           theme: theme,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: Scaffold(body: TodaysWorkoutCard(workout: workout)),
+          home: Scaffold(
+              body: TodaysWorkoutCard(workout: workout, onStart: () {})),
         ));
         await tester.pump();
         final card = find.byType(TodaysWorkoutCard);
@@ -217,7 +218,11 @@ void main() {
                 find.descendant(of: card, matching: find.byType(Material)).first)
             .color;
         expect(fill, isNotNull);
-        final texts = find.descendant(of: card, matching: find.byType(Text));
+        // The summary's texts; the Start label is read against the button's
+        // own fill below.
+        final summary =
+            find.descendant(of: card, matching: find.byType(InkWell)).first;
+        final texts = find.descendant(of: summary, matching: find.byType(Text));
         expect(texts, findsAtLeastNWidgets(3));
         for (final t in tester.widgetList<Text>(texts)) {
           final fg = t.style?.color;
@@ -226,10 +231,22 @@ void main() {
           expect(ratio, greaterThanOrEqualTo(4.5),
               reason: '"${t.data}" on the card is $ratio:1 in $name');
         }
+        // The Start button inverts the card: its label on its own fill, and
+        // its fill against the card (1.4.11, 3:1).
+        final style = tester
+            .widget<FilledButton>(
+                find.descendant(of: card, matching: find.byType(FilledButton)))
+            .style!;
+        final btnBg = style.backgroundColor!.resolve(<WidgetState>{})!;
+        final btnFg = style.foregroundColor!.resolve(<WidgetState>{})!;
+        expect(_contrast(btnFg, btnBg), greaterThanOrEqualTo(4.5),
+            reason: 'Start label in $name');
+        expect(_contrast(btnBg, fill!), greaterThanOrEqualTo(3.0),
+            reason: 'Start fill against the card in $name');
         // The kind glyph sits in a `surface` disc; WCAG 1.4.11 asks 3:1.
         final s = theme.colorScheme;
         expect(_contrast(s.primary, s.surface), greaterThanOrEqualTo(3.0));
-        expect(_contrast(s.surface, fill!), greaterThanOrEqualTo(3.0));
+        expect(_contrast(s.surface, fill), greaterThanOrEqualTo(3.0));
       });
     }
   });

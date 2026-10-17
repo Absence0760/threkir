@@ -3449,24 +3449,6 @@ abstract class AppLocalizations {
   /// **'Discarded your previous run.'**
   String get runResumeDiscardedBanner;
 
-  /// Option in the workout-entry sheet to begin a structured workout
-  ///
-  /// In en, this message translates to:
-  /// **'Start workout'**
-  String get runStartWorkout;
-
-  /// Subtitle of the Start-workout option in the workout-entry sheet
-  ///
-  /// In en, this message translates to:
-  /// **'Run with live step targets, audio cues, and a planned-vs-actual review.'**
-  String get runStartWorkoutSubtitle;
-
-  /// Option in the workout-entry sheet to open the workout detail screen
-  ///
-  /// In en, this message translates to:
-  /// **'View details'**
-  String get runViewWorkoutDetails;
-
   /// Banner shown when a selected workout has no runnable steps
   ///
   /// In en, this message translates to:

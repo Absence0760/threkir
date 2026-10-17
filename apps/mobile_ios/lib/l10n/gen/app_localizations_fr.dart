@@ -2009,16 +2009,6 @@ class AppLocalizationsFr extends AppLocalizations {
   String get runResumeDiscardedBanner => 'Course précédente supprimée.';
 
   @override
-  String get runStartWorkout => 'Démarrer la séance';
-
-  @override
-  String get runStartWorkoutSubtitle =>
-      'Courez avec des objectifs d\'étape en direct, des indications audio et un bilan prévu/réalisé.';
-
-  @override
-  String get runViewWorkoutDetails => 'Voir les détails';
-
-  @override
   String get runWorkoutNoStructure =>
       'Cette séance n\'a aucune structure exécutable.';
 

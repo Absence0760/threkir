@@ -1,5 +1,6 @@
 import { expect, test } from '../fixtures/test';
 
+import { noonOnBrowserDay } from '../fixtures/dates';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { deleteRun, insertRun } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
@@ -525,6 +526,55 @@ test.describe('/dashboard — zero-data new runner', () => {
 			await expect(body).not.toContainText('CTL');
 			await expect(body).not.toContainText('ATL');
 			await expect(body).not.toContainText('TSB');
+		} finally {
+			await ctx.close();
+		}
+	});
+});
+
+/**
+ * Readiness says what it is scored from. Nothing reads sleep or resting HR
+ * yet, so the score is training balance alone, and the card has to say that
+ * in words rather than leave a single contributor chip to imply it.
+ */
+test.describe('/dashboard — readiness discloses its only input', () => {
+	let users: SagaUser[] = [];
+	let runner: SagaUser;
+	const runIds: string[] = [];
+
+	test.beforeAll(async () => {
+		users = await createSagaUsers(1, { displayNames: ['Saga Readiness'] });
+		runner = users[0];
+		for (const d of [1, 3, 5, 7, 9, 11]) {
+			runIds.push(
+				await insertRun({
+					user_id: runner.id,
+					started_at: noonOnBrowserDay(-d),
+					distance_m: 8000,
+					duration_s: 2700
+				})
+			);
+		}
+	});
+
+	test.afterAll(async () => {
+		for (const id of runIds) await deleteRun(id);
+		if (users.length > 0) await deleteSagaUsers(users);
+	});
+
+	test('the readiness card says it is scored from training load only', async ({
+		browser,
+		baseURL
+	}) => {
+		const ctx = await browser.newContext({ baseURL, storageState: runner.storageStatePath });
+		const page = await ctx.newPage();
+		try {
+			await page.goto('/dashboard');
+			const card = page.locator('.readiness-card');
+			await expect(card).toBeVisible({ timeout: 10_000 });
+			await expect(card.getByTestId('readiness-load-only')).toHaveText(
+				'Scored from your training load only. Sleep and resting heart rate are not part of it yet.'
+			);
 		} finally {
 			await ctx.close();
 		}

@@ -9,7 +9,7 @@ import { USER_A } from '../fixtures/users';
 /**
  * The signed-in race detail page, /races/[id] (race_calendar.md).
  *
- * A calendar card's name opens it. Before race day the page offers training
+ * A calendar card opens it from anywhere but its own actions. Before race day the page offers training
  * and the race's own page but no import, and says when the import opens; the
  * calendar card hides the import the same way. From race day on the import is
  * offered, and a pasted result lands under "Your runs at this race" without a
@@ -79,6 +79,40 @@ test.describe('/races/[id] — race detail', () => {
 
 		await page.getByTestId('race-detail-back').click();
 		await expect(page).toHaveURL(/\/races$/);
+	});
+
+	test('the whole card opens the race, and its actions stay their own targets', async ({
+		page
+	}) => {
+		const raceName = `E2E Detail Card ${Date.now()}`;
+		const id = await insertRaceListing({
+			provider: 'manual',
+			name: raceName,
+			race_date: browserDate(0),
+			distance_m: 10_000,
+			is_verified: false
+		});
+		listings.push(id);
+
+		await page.goto('/races');
+		await page.getByTestId('races-search').fill(raceName);
+		const card = page.getByTestId('race-card').filter({ hasText: raceName });
+		await expect(card).toBeVisible({ timeout: 15_000 });
+
+		await card.getByTestId('race-import').click();
+		await expect(page.getByRole('dialog')).toContainText(raceName);
+		await expect(page).toHaveURL(/\/races$/);
+		await page.keyboard.press('Escape');
+		await expect(page.getByRole('dialog')).toHaveCount(0);
+
+		// The stretched link sits over the card body, so Playwright's own click
+		// would refuse the badge as covered; a pointer at the badge's spot is
+		// what a runner does.
+		const badge = await card.getByTestId('race-unverified').boundingBox();
+		if (!badge) throw new Error('the unverified badge has no box');
+		await page.mouse.click(badge.x + badge.width / 2, badge.y + badge.height / 2);
+		await expect(page).toHaveURL(new RegExp(`/races/${id}$`));
+		await expect(page.getByTestId('race-detail-name')).toHaveText(raceName);
 	});
 
 	test('race day: a pasted result shows under your runs at this race', async ({ page }) => {

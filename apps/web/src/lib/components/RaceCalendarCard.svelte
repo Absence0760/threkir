@@ -98,12 +98,26 @@
 </li>
 
 <style>
+	/* The whole card opens the race: the title link's ::after is stretched over
+	   the card, and each action is lifted above it so it stays its own target.
+	   One link, one tab stop, no interactive element nested in another. */
 	.race {
+		position: relative;
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
 		gap: var(--space-md);
 		padding: var(--space-md) var(--space-lg);
+		transition:
+			box-shadow var(--transition-base),
+			border-color var(--transition-base);
+	}
+	.race:hover {
+		border-color: var(--color-primary);
+	}
+	.race:has(.race-title:focus-visible) {
+		outline: 2px solid var(--color-primary);
+		outline-offset: 2px;
 	}
 	.race-main {
 		display: flex;
@@ -117,7 +131,16 @@
 		color: var(--color-text);
 		text-decoration: none;
 	}
-	.race-title:hover,
+	.race-title::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		border-radius: var(--radius-lg);
+	}
+	.race-title:focus-visible {
+		outline: none;
+	}
+	.race:hover .race-title,
 	.race-title:focus-visible {
 		text-decoration: underline;
 	}
@@ -144,5 +167,9 @@
 		flex-shrink: 0;
 		flex-wrap: wrap;
 		justify-content: flex-end;
+	}
+	.race-actions > :global(*) {
+		position: relative;
+		z-index: 1;
 	}
 </style>

@@ -12883,6 +12883,16 @@ class AppLocalizationsPt extends AppLocalizations {
       'Nas corridas leves planeadas das últimas duas semanas, a frequência cardíaca está mais alta ao mesmo ritmo do que nas seis semanas anteriores. Só aparece para atletas que deram consentimento de dados de saúde.';
 
   @override
+  String get metricEasyHrDriftLabel => 'Deriva da FC em corridas leves';
+
+  @override
+  String get metricMissStreakLabel => 'Falhados seguidos';
+
+  @override
+  String get metricMissStreakDefinition =>
+      'Treinos planeados seguidos, a contar para trás a partir de ontem, que passaram sem corrida registada. Um treino saltado ou um dia de descanso não conta nem interrompe a sequência; um treino feito termina-a.';
+
+  @override
   String get coachingRosterRiskLow => 'Baixo';
 
   @override
@@ -30554,6 +30564,16 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get coachingRosterHrDriftHint =>
       'Nas corridas leves planejadas das últimas duas semanas, a frequência cardíaca está mais alta no mesmo ritmo do que nas seis semanas anteriores. Só aparece para atletas que deram consentimento de dados de saúde.';
+
+  @override
+  String get metricEasyHrDriftLabel => 'Deriva da FC em corridas leves';
+
+  @override
+  String get metricMissStreakLabel => 'Perdidos seguidos';
+
+  @override
+  String get metricMissStreakDefinition =>
+      'Treinos planejados seguidos, contando para trás a partir de ontem, que passaram sem corrida registrada. Um treino pulado ou um dia de descanso não conta nem interrompe a sequência; um treino concluído a encerra.';
 
   @override
   String get coachingRosterRiskLow => 'Baixo';

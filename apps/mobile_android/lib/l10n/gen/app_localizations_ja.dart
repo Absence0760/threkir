@@ -628,6 +628,43 @@ class AppLocalizationsJa extends AppLocalizations {
   String get readinessContributorRestingHr => '安静時心拍数';
 
   @override
+  String get dashboardTrendsDivider => 'トレンド';
+
+  @override
+  String get dashboardTrendGroupVolume => '走行量';
+
+  @override
+  String get dashboardTrendGroupVolumeHint => '週ごとの走行距離';
+
+  @override
+  String get dashboardTrendGroupFitness => '体力とコンディション';
+
+  @override
+  String get dashboardTrendGroupFitnessHint => '準備度・体力・トレーニング負荷';
+
+  @override
+  String get dashboardTrendGroupPerformance => 'パフォーマンス';
+
+  @override
+  String get dashboardTrendGroupPerformanceHint => '自己ベストと予想レースタイム';
+
+  @override
+  String get dashboardTrendGroupEffort => '強度';
+
+  @override
+  String get dashboardTrendGroupEffortHint => 'これまでのトレーニングのきつさ';
+
+  @override
+  String get dashboardTrendGroupRecent => '最近';
+
+  @override
+  String get dashboardTrendGroupRecentHint => '最近のセッション';
+
+  @override
+  String get readinessFromLoadOnly =>
+      'トレーニング負荷のみから算出しています。睡眠と安静時心拍数はまだ含まれていません。';
+
+  @override
   String get intensityZone1 => 'Z1（リカバリー）';
 
   @override

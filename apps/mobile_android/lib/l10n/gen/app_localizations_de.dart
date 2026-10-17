@@ -658,6 +658,46 @@ class AppLocalizationsDe extends AppLocalizations {
   String get readinessContributorRestingHr => 'Ruhepuls';
 
   @override
+  String get dashboardTrendsDivider => 'Trends';
+
+  @override
+  String get dashboardTrendGroupVolume => 'Umfang';
+
+  @override
+  String get dashboardTrendGroupVolumeHint =>
+      'Wie viel du Woche für Woche gelaufen bist';
+
+  @override
+  String get dashboardTrendGroupFitness => 'Fitness und Form';
+
+  @override
+  String get dashboardTrendGroupFitnessHint =>
+      'Bereitschaft, Fitness und Trainingsbelastung';
+
+  @override
+  String get dashboardTrendGroupPerformance => 'Leistung';
+
+  @override
+  String get dashboardTrendGroupPerformanceHint =>
+      'Persönliche Rekorde und prognostizierte Wettkampfzeiten';
+
+  @override
+  String get dashboardTrendGroupEffort => 'Anstrengung';
+
+  @override
+  String get dashboardTrendGroupEffortHint => 'Wie hart dein Training war';
+
+  @override
+  String get dashboardTrendGroupRecent => 'Zuletzt';
+
+  @override
+  String get dashboardTrendGroupRecentHint => 'Deine letzten Einheiten';
+
+  @override
+  String get readinessFromLoadOnly =>
+      'Nur aus deiner Trainingsbelastung berechnet. Schlaf und Ruhepuls fließen noch nicht ein.';
+
+  @override
   String get intensityZone1 => 'Z1 (Erholung)';
 
   @override

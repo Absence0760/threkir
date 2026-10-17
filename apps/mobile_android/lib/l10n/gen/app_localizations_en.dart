@@ -649,6 +649,46 @@ class AppLocalizationsEn extends AppLocalizations {
   String get readinessContributorRestingHr => 'Resting heart rate';
 
   @override
+  String get dashboardTrendsDivider => 'Trends';
+
+  @override
+  String get dashboardTrendGroupVolume => 'Volume';
+
+  @override
+  String get dashboardTrendGroupVolumeHint =>
+      'How much you have run, week by week';
+
+  @override
+  String get dashboardTrendGroupFitness => 'Fitness and form';
+
+  @override
+  String get dashboardTrendGroupFitnessHint =>
+      'Readiness, fitness and training load';
+
+  @override
+  String get dashboardTrendGroupPerformance => 'Performance';
+
+  @override
+  String get dashboardTrendGroupPerformanceHint =>
+      'Personal bests and predicted race times';
+
+  @override
+  String get dashboardTrendGroupEffort => 'Effort';
+
+  @override
+  String get dashboardTrendGroupEffortHint => 'How hard your training has been';
+
+  @override
+  String get dashboardTrendGroupRecent => 'Recent';
+
+  @override
+  String get dashboardTrendGroupRecentHint => 'Your latest sessions';
+
+  @override
+  String get readinessFromLoadOnly =>
+      'Scored from your training load only. Sleep and resting heart rate are not part of it yet.';
+
+  @override
   String get intensityZone1 => 'Z1 (recovery)';
 
   @override

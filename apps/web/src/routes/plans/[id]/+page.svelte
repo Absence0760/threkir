@@ -8,6 +8,7 @@
 		fetchPlan,
 		fetchMyClubs,
 		fetchRuns,
+		fetchDisplayName,
 		publishPlanAsTemplate,
 		publishPlanToLibrary,
 		unpublishFromLibrary,
@@ -832,6 +833,9 @@
 		}
 	}
 
+	/// Who assigned this plan, when a coach did and it is not the viewer.
+	let assigningCoachName = $state<string | null>(null);
+
 	async function load() {
 		loading = true;
 		loadError = null;
@@ -847,6 +851,15 @@
 			loadError = thrownMessage(e);
 		}
 		loading = false;
+		assigningCoachName = null;
+		const coachId = plan?.assigned_by_coach_id;
+		if (loadError === null && coachId && coachId !== auth.user?.id) {
+			fetchDisplayName(coachId)
+				.then((name) => {
+					if (plan?.assigned_by_coach_id === coachId) assigningCoachName = name;
+				})
+				.catch((e) => console.error('fetchDisplayName failed', e));
+		}
 		coachesOwner = false;
 		if (loadError === null && plan != null && !plan.is_template && plan.user_id !== auth.user?.id) {
 			try {
@@ -1296,6 +1309,14 @@
 					{/if}
 				</div>
 				<div class="hero-chips">
+					{#if plan.assigned_by_coach_id && plan.assigned_by_coach_id !== auth.user?.id}
+						<a class="chip chip-link" href="/coaching" data-testid="assigned-by-coach">
+							<span class="material-symbols" aria-hidden="true">sports</span>
+							{assigningCoachName
+								? m('planDetail.assignedBy', { name: assigningCoachName })
+								: m('planDetail.assignedByCoach')}
+						</a>
+					{/if}
 					{#if plan.parent_template_id}
 						<a class="chip chip-link" href="/plans/{plan.parent_template_id}">
 							<span class="material-symbols">link</span>
@@ -1361,9 +1382,11 @@
 			</div>
 			<div class="hero-position">
 				{#if planPosition}
-					<span class="week-pill">
-						{m('planDetail.weekPillPrefix', { n: planPosition.weekIndex })} <em>{m('planDetail.weekPillOf', { total: planPosition.totalWeeks })}</em>
-					</span>
+					{#if today >= plan.start_date}
+						<span class="week-pill" data-testid="week-pill">
+							{m('planDetail.weekPillPrefix', { n: planPosition.weekIndex })} <em>{m('planDetail.weekPillOf', { total: planPosition.totalWeeks })}</em>
+						</span>
+					{/if}
 					<span
 						class="relation-pill"
 						class:race-today={planPosition.raceState === 'today'}
@@ -1472,9 +1495,15 @@
 					aria-label={m('planDetail.editTodayWorkoutAria', { kind: workoutKindLabel(todayWorkout.kind) })}
 					onclick={() => todayWorkout && openWorkout(todayWorkout)}
 				>
-					<div class="today-icon" class:done={isWorkoutCompleted(todayWorkout)}>
+					<div
+						class="today-icon"
+						class:done={isWorkoutCompleted(todayWorkout)}
+						class:skipped={isWorkoutSkipped(todayWorkout)}
+					>
 						{#if isWorkoutCompleted(todayWorkout)}
 							<span class="material-symbols">check_circle</span>
+						{:else if isWorkoutSkipped(todayWorkout)}
+							<span class="material-symbols">skip_next</span>
 						{:else if todayWorkout.kind === 'rest'}
 							<span class="material-symbols">self_improvement</span>
 						{:else}
@@ -1495,6 +1524,8 @@
 							{/if}
 							{#if isWorkoutCompleted(todayWorkout)}
 								<span class="today-done">{m('planDetail.completed')}</span>
+							{:else if isWorkoutSkipped(todayWorkout)}
+								<span class="today-skipped">{m('planDetail.skippedLabel')}</span>
 							{/if}
 						</div>
 						{#if todayWorkout.notes}
@@ -1563,6 +1594,7 @@
 		{/if}
 
 		<CurrentWeekStrip
+			title={today < plan.start_date ? m('planDetail.firstWeek') : undefined}
 			startDate={plan.start_date}
 			{currentWeek}
 			weekWorkouts={currentWeek ? (workoutsByWeek.get(currentWeek.id) ?? []) : []}
@@ -2739,6 +2771,10 @@
 		background: color-mix(in srgb, var(--color-success) 18%, transparent);
 		color: var(--color-success-text);
 	}
+	.today-icon.skipped {
+		background: color-mix(in srgb, var(--color-text-tertiary) 14%, transparent);
+		color: var(--color-text-tertiary);
+	}
 	.today-icon .material-symbols { font-size: 1.5rem; }
 	.today-static .today-icon {
 		background: color-mix(in srgb, var(--color-text-tertiary) 14%, transparent);
@@ -2774,6 +2810,10 @@
 	}
 	.today-done {
 		color: var(--color-success-text);
+		font-weight: 600;
+	}
+	.today-skipped {
+		color: var(--color-text-secondary);
 		font-weight: 600;
 	}
 	.today-notes {

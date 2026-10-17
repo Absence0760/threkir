@@ -183,8 +183,11 @@ String formatWorkoutStepUtterance(WorkoutStep step, DistanceUnit unit,
   // one is an interval "Rep" (persona #22).
   final durationBased = step.isDurationBased;
   final hasIdx = step.repIndex != null && step.repTotal != null;
+  // An unpaced warm-up / cool-down is the walking one of a walk-run session:
+  // say so, or a beginner hears "Warmup" and starts running.
   final intro = switch (step.kind) {
-    WorkoutStepKind.warmup => l10n.ttsStepWarmup,
+    WorkoutStepKind.warmup =>
+      step.paced ? l10n.ttsStepWarmup : l10n.ttsStepWarmupWalk,
     WorkoutStepKind.rep => hasIdx
         ? (durationBased
             ? l10n.ttsStepRunOf(step.repIndex!, step.repTotal!)
@@ -195,7 +198,8 @@ String formatWorkoutStepUtterance(WorkoutStep step, DistanceUnit unit,
         ? l10n.ttsStepWalkOf(step.repIndex!, step.repTotal!)
         : l10n.ttsStepWalk,
     WorkoutStepKind.steady => l10n.ttsStepSteady,
-    WorkoutStepKind.cooldown => l10n.ttsStepCooldown,
+    WorkoutStepKind.cooldown =>
+      step.paced ? l10n.ttsStepCooldown : l10n.ttsStepCooldownWalk,
   };
   // Time-based steps (walk-run intervals, timed warmup/cooldown) announce
   // their duration; distance-based steps announce distance + pace.

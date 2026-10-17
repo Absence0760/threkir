@@ -2933,6 +2933,8 @@
   "ttsStepRecovery": "Erholung",
   "ttsStepSteady": "Gleichmäßig",
   "ttsStepCooldown": "Auslaufen",
+  "ttsStepWarmupWalk": "Gehen zum Aufwärmen",
+  "ttsStepCooldownWalk": "Gehen zum Abkühlen",
   "ttsStepRep": "Wiederholung",
   "ttsStepRun": "Laufen",
   "ttsStepWalk": "Gehen",

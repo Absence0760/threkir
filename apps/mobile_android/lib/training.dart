@@ -1465,6 +1465,14 @@ String fmtPace(int? secPerKm) {
   return '$m:$s/km';
 }
 
+/// A pace tolerance is stored as seconds per km. Next to a /mi pace it has
+/// to be per mile too, and say so. Mirrors web `fmtPaceTolerance`.
+String fmtPaceTolerance(int secPerKm) {
+  final unit = activeDistanceUnit;
+  final sec = unit == DistanceUnit.mi ? secPerKm * (1609.344 / 1000) : secPerKm;
+  return '±${sec.round()}s/${unit == DistanceUnit.mi ? 'mi' : 'km'}';
+}
+
 String fmtKm(num? metres, [int digits = 1]) {
   if (metres == null) return '—';
   // Honour the user's active unit pref. Function name kept as

@@ -439,7 +439,7 @@ Pure-function tests for `parseBleHeartRateMeasurement` in `lib/ble_heart_rate.da
 - Truncated payload returns null
 - Single-byte payload returns null
 
-### `apps/mobile_android/test/training_test.dart` — 81 tests
+### `apps/mobile_android/test/training_test.dart` — 85 tests
 
 Dart mirror of `apps/web/src/lib/training/training.test.ts`. The Dart engine (`lib/training.dart`) must produce the same paces and phase assignments as the TypeScript engine for the same inputs. Covers the same functions:
 

@@ -2933,6 +2933,8 @@
   "ttsStepRecovery": "Recuperación",
   "ttsStepSteady": "Ritmo constante",
   "ttsStepCooldown": "Enfriamiento",
+  "ttsStepWarmupWalk": "Caminata de calentamiento",
+  "ttsStepCooldownWalk": "Caminata de enfriamiento",
   "ttsStepRep": "Repetición",
   "ttsStepRun": "Carrera",
   "ttsStepWalk": "Caminata",

@@ -8,6 +8,7 @@ import 'package:ui_kit/ui_kit.dart' show FullBodyLoader, ListSkeleton, TextLane;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../lib/l10n/gen/app_localizations.dart';
+import '../lib/preferences.dart';
 import '../lib/relink_candidates.dart';
 import '../lib/screens/workout_detail_screen.dart';
 import '../lib/training.dart';
@@ -329,6 +330,45 @@ void main() {
       expect(tester.takeException(), isNull);
       expect(find.textContaining('1× 25:00 @ '), findsOneWidget);
       expect(find.textContaining(' with '), findsNothing);
+    });
+  });
+
+  group('WorkoutDetailScreen — pace tolerance unit', () {
+    PlanWorkoutRow tempo() => PlanWorkoutRow(
+          id: 'fake-workout-id',
+          weekId: 'week-1',
+          scheduledDate: DateTime(2026, 4, 5),
+          kind: 'tempo',
+          targetPaceSecPerKm: 300,
+          targetPaceToleranceSec: 10,
+          manuallyCompleted: false,
+        );
+
+    Future<void> withUnit(bool miles) async {
+      SharedPreferences.setMockInitialValues({'use_miles': miles});
+      final prefs = Preferences();
+      await prefs.init();
+      registerActivePreferences(prefs);
+    }
+
+    tearDown(() async => withUnit(false));
+
+    testWidgets('km mode labels the tolerance per km', (tester) async {
+      await tester.runAsync(() => withUnit(false));
+      await _pumpWith(tester, _FakeTraining(tempo(), const []));
+      await tester.pumpAndSettle();
+      expect(find.text('5:00/km'), findsOneWidget);
+      expect(find.text('±10s/km'), findsOneWidget);
+    });
+
+    testWidgets('miles mode converts the tolerance to per mile',
+        (tester) async {
+      // 10 s/km beside an 8:03/mi pace is 16 s/mi, not "±10s".
+      await tester.runAsync(() => withUnit(true));
+      await _pumpWith(tester, _FakeTraining(tempo(), const []));
+      await tester.pumpAndSettle();
+      expect(find.text('8:03/mi'), findsOneWidget);
+      expect(find.text('±16s/mi'), findsOneWidget);
     });
   });
 

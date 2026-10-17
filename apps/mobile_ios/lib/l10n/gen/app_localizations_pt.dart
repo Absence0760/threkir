@@ -10653,6 +10653,12 @@ class AppLocalizationsPt extends AppLocalizations {
   String get ttsStepCooldown => 'Desaquecimento';
 
   @override
+  String get ttsStepWarmupWalk => 'Caminhada de aquecimento';
+
+  @override
+  String get ttsStepCooldownWalk => 'Caminhada de desaquecimento';
+
+  @override
   String get ttsStepRep => 'Repetição';
 
   @override
@@ -27511,6 +27517,12 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get ttsStepCooldown => 'Desaquecimento';
+
+  @override
+  String get ttsStepWarmupWalk => 'Caminhada de aquecimento';
+
+  @override
+  String get ttsStepCooldownWalk => 'Caminhada de desaquecimento';
 
   @override
   String get ttsStepRep => 'Repetição';

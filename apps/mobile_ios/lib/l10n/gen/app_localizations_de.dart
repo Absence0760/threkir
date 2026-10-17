@@ -10660,6 +10660,12 @@ class AppLocalizationsDe extends AppLocalizations {
   String get ttsStepCooldown => 'Auslaufen';
 
   @override
+  String get ttsStepWarmupWalk => 'Gehen zum Aufwärmen';
+
+  @override
+  String get ttsStepCooldownWalk => 'Gehen zum Abkühlen';
+
+  @override
   String get ttsStepRep => 'Wiederholung';
 
   @override

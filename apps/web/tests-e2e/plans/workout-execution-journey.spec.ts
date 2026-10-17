@@ -198,8 +198,9 @@ test.describe('structured workout execution → plan progress journey', () => {
 			// Repeats descriptor: 5× · 1 km · jog recovery.
 			await expect(steps.nth(1)).toContainText(/5×/);
 			await expect(steps.nth(1)).toContainText(/jog/i);
-			// Rendered total = warmup + 5×(rep+recovery) + cooldown = 10 km.
-			await expect(page.locator('.total')).toContainText('10');
+			// A recovery sits between reps, never after the last:
+			// 1.5 + 5 × 1 + 4 × 0.4 + 1.5 = 9.6 km.
+			await expect(page.locator('.total')).toContainText('9.60');
 			// Not yet completed → no completed-card.
 			await expect(page.locator('.completed-card')).toHaveCount(0);
 		});

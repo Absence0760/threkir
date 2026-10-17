@@ -126,6 +126,11 @@ class _RunRaceSectionState extends State<RunRaceSection> {
                 ? '${result.ageGroupPlace} (${result.ageGroup})'
                 : '${result.ageGroupPlace}',
           ),
+        if (result.divisionAwardPlace != null && result.divisionAward != null)
+          _row(
+            l.racesDivisionAwardPlace,
+            '${result.divisionAwardPlace} (${result.divisionAward})',
+          ),
         if (result.bib != null) _row(l.racesBib, result.bib!),
       ];
       return Padding(

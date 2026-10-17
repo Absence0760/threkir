@@ -64,7 +64,40 @@ void main() {
       expect(wkLast.structure!.repeats!['count'], 1);
       expect(wkLast.structure!.repeats!.containsKey('recovery_duration_s'),
           isFalse);
-      expect(wkLast.notes, contains('Graduation week'));
+      expect(plan.weeks.last.phase, PlanPhase.graduation);
+    });
+
+    // Mirrors the no-generated-note test in training.test.ts.
+    test('no road-plan workout carries a generated note', () {
+      final plans = [
+        generatePlan(GeneratePlanInput(
+            goalEvent: GoalEvent.distance5k,
+            startDate: DateTime(2026, 6, 1),
+            daysPerWeek: 3,
+            beginnerWalkRun: true)),
+        generatePlan(GeneratePlanInput(
+            goalEvent: GoalEvent.distance10k,
+            startDate: DateTime(2026, 6, 7),
+            daysPerWeek: 5,
+            goalTimeSec: 50 * 60)),
+        generatePlan(GeneratePlanInput(
+            goalEvent: GoalEvent.distanceHalf,
+            startDate: DateTime(2026, 6, 7),
+            daysPerWeek: 5,
+            goalTimeSec: 105 * 60)),
+        generatePlan(GeneratePlanInput(
+            goalEvent: GoalEvent.distanceFull,
+            startDate: DateTime(2026, 6, 7),
+            daysPerWeek: 6,
+            goalTimeSec: 4 * 3600)),
+      ];
+      for (final plan in plans) {
+        for (final week in plan.weeks) {
+          for (final w in week.workouts) {
+            expect(w.notes, isNull, reason: '${w.kind} on ${w.scheduledDate}');
+          }
+        }
+      }
     });
 
     // Persona round-5 runner-comeback. Mirrors the pacesAreFallback test in

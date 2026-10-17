@@ -200,6 +200,12 @@
 						<dd>{result.age_group_place}{result.age_group ? ` (${result.age_group})` : ''}</dd>
 					</div>
 				{/if}
+				{#if result.division_award_place != null && result.division_award}
+					<div>
+						<dt>{m('races.divisionAwardPlace')}</dt>
+						<dd data-testid="race-result-award">{result.division_award_place} ({result.division_award})</dd>
+					</div>
+				{/if}
 				{#if result.bib}
 					<div><dt>{m('races.bib')}</dt><dd>{result.bib}</dd></div>
 				{/if}

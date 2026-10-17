@@ -273,7 +273,7 @@ test.describe('every swept gym and session control renders its explanation', () 
 		// shapes render different fields, so walk an interval workout through
 		// both rather than reading whichever kind the seed happened to put
 		// under the cursor.
-		await form.locator('select').first().selectOption('interval');
+		await form.getByLabel('Kind', { exact: true }).selectOption('interval');
 		await expect(form.locator('fieldset.structure')).toBeVisible({ timeout: 5_000 });
 		await assertEveryControlExplained(form, 'WorkoutEditor (repeats)');
 

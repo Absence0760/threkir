@@ -166,6 +166,15 @@ void main() {
           if (r.method == 'PATCH') r,
       ];
 
+  test('fetchMyPlans reads only the viewer\'s own plans, never templates',
+      () async {
+    await training.fetchMyPlans();
+    final read = fake.requests.singleWhere(
+        (r) => r.method == 'GET' && r.path == '/rest/v1/training_plans');
+    expect(read.query['user_id'], 'eq.viewer-1');
+    expect(read.query['is_template'], 'eq.false');
+  });
+
   group('fetchActiveOverview', () {
     test('shows the plan covering today and names the nearer queued plan as up next',
         () async {

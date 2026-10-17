@@ -593,10 +593,12 @@ class TrainingService extends ChangeNotifier {
   Future<List<TrainingPlanRow>> fetchMyPlans() async {
     final uid = _uid;
     if (uid == null) return const [];
+    // Published templates live in the same table (decisions §35).
     final rows = await _c
         .from('training_plans')
         .select()
         .eq('user_id', uid)
+        .eq('is_template', false)
         .order('created_at', ascending: false);
     return (rows as List)
         .cast<Map<String, dynamic>>()

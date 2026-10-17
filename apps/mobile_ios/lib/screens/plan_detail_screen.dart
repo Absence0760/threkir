@@ -2089,9 +2089,11 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
         border: Border.all(
           color: isToday
               ? theme.colorScheme.primary
+              // An upcoming row draws no box of its own inside the week card;
+              // only a state (done, missed) earns an outline.
               : look.dashed
                   ? Colors.transparent
-                  : (look.outline ?? theme.dividerColor),
+                  : (look.outline ?? Colors.transparent),
           width: isToday ? 1.5 : 1,
         ),
       ),

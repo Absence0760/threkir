@@ -310,7 +310,7 @@
 						<div class="metric session-metric" data-testid="walk-run-summary">
 							<span class="m-label">{t('workoutDetail.session')}</span>
 							<strong>{formatWalkRunTotal(t, walkRun)}</strong>
-							<span class="pattern">{formatWalkRunPattern(t, walkRun)}</span>
+							<span class="walk-run-pattern">{formatWalkRunPattern(t, walkRun)}</span>
 						</div>
 					{:else}
 						{#if workout.target_distance_m != null}
@@ -907,7 +907,7 @@
 	.sub-label {
 		font-weight: 600;
 	}
-	.session-metric .pattern {
+	.session-metric .walk-run-pattern {
 		display: block;
 		color: var(--color-text-secondary);
 		font-size: 0.92rem;

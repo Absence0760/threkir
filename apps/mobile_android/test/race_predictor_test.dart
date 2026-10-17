@@ -122,8 +122,22 @@ void main() {
     expect(out!.qualifyingCount, 1);
     expect([out.anchor.distanceM, out.anchor.durationS, out.anchor.ageDays],
         [real.distanceM, real.durationS, real.ageDays]);
-    expect(out.rungs.map((r) => r.predictedSec).toList(),
-        predictRaceLadder([real])!.rungs.map((r) => r.predictedSec).toList());
+    // The whole ladder, rung by rung, matches the pool without the infinite
+    // effort: web's deepEqual(out, predictRaceLadder([real])).
+    List<Object> ladder(RacePrediction p) => [
+          p.qualifyingCount,
+          p.anchor.distanceM,
+          p.anchor.durationS,
+          p.anchor.ageDays,
+          for (final r in p.rungs) ...[
+            r.distanceM,
+            r.predictedSec,
+            r.paceSecPerKm,
+            r.quality.confidence,
+            r.quality.reason,
+          ],
+        ];
+    expect(ladder(out), ladder(predictRaceLadder([real])!));
   });
 
   test('a pool of only infinite efforts is empty: null, not a throw', () {

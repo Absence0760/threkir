@@ -196,6 +196,26 @@ class RunListTile extends StatelessWidget {
     final trailingUnit =
         lastSpace > 0 ? trailingMetric.substring(lastSpace + 1) : '';
 
+    final syncMark = isBlocked
+        ? Tooltip(
+            message: l10n.historyBlockedRowTooltip,
+            child: Icon(
+              Icons.cloud_off,
+              size: 16,
+              color: theme.colorScheme.error,
+            ),
+          )
+        : isUnsynced
+        ? Tooltip(
+            message: l10n.historyQueuedToSync,
+            child: Icon(
+              Icons.cloud_upload_outlined,
+              size: 16,
+              color: theme.colorScheme.tertiary,
+            ),
+          )
+        : null;
+
     return Semantics(
       label: semanticsLabel,
       button: true,
@@ -204,76 +224,93 @@ class RunListTile extends StatelessWidget {
         color: selected
             ? theme.colorScheme.primaryContainer.withValues(alpha: 0.4)
             : null,
-        child: ListTile(
-          leading: leading,
-          title: Row(
-            children: [
-              Icon(activity.icon, size: 18, color: theme.colorScheme.primary),
-              const SizedBox(width: 6),
-              Text(
-                dist,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-          subtitle: Padding(
-            padding: const EdgeInsets.only(top: 2),
-            child: Text(
-              '$date  ·  $dur  ·  ${activityTypeLabel(l10n, activity).toLowerCase()}$vertLabel',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          trailing: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    trailingValue,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  if (isBlocked) ...[
-                    const SizedBox(width: 6),
-                    Tooltip(
-                      message: l10n.historyBlockedRowTooltip,
-                      child: Icon(
-                        Icons.cloud_off,
-                        size: 16,
-                        color: theme.colorScheme.error,
-                      ),
-                    ),
-                  ] else if (isUnsynced) ...[
-                    const SizedBox(width: 6),
-                    Tooltip(
-                      message: l10n.historyQueuedToSync,
-                      child: Icon(
-                        Icons.cloud_upload_outlined,
-                        size: 16,
-                        color: theme.colorScheme.tertiary,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-              if (trailingUnit.isNotEmpty)
-                Text(
-                  trailingUnit,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                    letterSpacing: 0.3,
-                  ),
-                ),
-            ],
-          ),
+        clipBehavior: Clip.antiAlias,
+        // Laid out by hand rather than as a ListTile: ListTile caps its
+        // trailing slot at 56 px whatever the text scale, so the stacked
+        // metric overflowed at 2x. This row grows with its content instead.
+        child: InkWell(
           onTap: onTap,
           onLongPress: onLongPress,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 56),
+              child: Row(
+                children: [
+                  leading,
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              activity.icon,
+                              size: 18,
+                              color: theme.colorScheme.primary,
+                            ),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                dist,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            '$date  ·  $dur  ·  ${activityTypeLabel(l10n, activity).toLowerCase()}$vertLabel',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            trailingValue,
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          if (syncMark != null) ...[
+                            const SizedBox(width: 6),
+                            syncMark,
+                          ],
+                        ],
+                      ),
+                      if (trailingUnit.isNotEmpty)
+                        Text(
+                          trailingUnit,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );

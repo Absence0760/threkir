@@ -14,6 +14,7 @@ import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/runs_screen.dart';
+import '../lib/widgets/run_list_tile.dart';
 import '../lib/screens/add_run_screen.dart';
 
 /// A signed-in fake whose `getRuns` always returns an empty delta page —
@@ -817,7 +818,7 @@ void main() {
       expect(find.byType(ListView), findsNothing);
       // Tiles flow into columns: the first two rows sit side by side at
       // the same vertical offset (impossible in the single-column list).
-      final tiles = find.byType(ListTile);
+      final tiles = find.byType(RunListTile);
       expect(tiles, findsAtLeastNWidgets(2));
       final first = tester.getTopLeft(tiles.at(0));
       final second = tester.getTopLeft(tiles.at(1));
@@ -853,7 +854,7 @@ void main() {
       await pumpSized(tester, runStore);
       expect(find.text(l10n.historySelectionHint), findsOneWidget);
 
-      await tester.longPress(find.byType(ListTile).first);
+      await tester.longPress(find.byType(RunListTile).first);
       await tester.pump();
       expect(find.text(l10n.historySelectionHint), findsNothing);
     });
@@ -866,7 +867,7 @@ void main() {
       final runStore = await seedThirty();
       await pumpSized(tester, runStore);
 
-      await tester.longPress(find.byType(ListTile).first);
+      await tester.longPress(find.byType(RunListTile).first);
       await tester.pump();
       expect(find.text('1 selected'), findsOneWidget);
     });
@@ -1359,10 +1360,6 @@ void main() {
       expect(at2x.height, lessThanOrEqualTo(36));
       expect(at2x.height, greaterThan(at1x.height));
 
-      // Material pins its own PopupMenuItem ListTile at 56 px, which stripes
-      // at 2x. That is a framework-managed internal, explicitly out of scope
-      // per decisions §486; consume it so this test speaks only to the dot.
-      tester.takeException();
     });
   });
 }

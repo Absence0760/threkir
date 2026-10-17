@@ -103,7 +103,7 @@ void main() {
       ),
     );
     expect(tester.takeException(), isNull);
-    expect(find.byType(ListTile), findsOneWidget);
+    expect(find.byType(RunListTile), findsOneWidget);
   });
 
   testWidgets('a row with no metadata bag builds', (tester) async {
@@ -118,7 +118,7 @@ void main() {
       ),
     );
     expect(tester.takeException(), isNull);
-    expect(find.byType(ListTile), findsOneWidget);
+    expect(find.byType(RunListTile), findsOneWidget);
   });
 
   testWidgets('the row does not widen on a flat run', (tester) async {
@@ -203,7 +203,7 @@ void main() {
       await _pump(tester, tile);
       widths.add(tester
           .getRect(find.descendant(
-              of: find.byType(ListTile), matching: find.byType(SizedBox).first))
+              of: find.byType(RunListTile), matching: find.byType(SizedBox).first))
           .width);
     }
     expect(widths.toSet(), hasLength(1),
@@ -272,5 +272,51 @@ void main() {
         contains(en.historyBlockedRowSemantics));
     expect(semantics.properties.label,
         isNot(contains(en.historyUnsyncedRowSemantics)));
+  });
+
+  testWidgets('the row fits a phone at 2x text with the sync mark showing',
+      (tester) async {
+    // ListTile capped its trailing slot at 56 px, so the value-over-unit
+    // stack overflowed by 16 px at 2x. The row now grows with its content;
+    // a narrow phone is the other half, where the title must ellipsize
+    // rather than push past the metric.
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    SharedPreferences.setMockInitialValues({});
+    await Preferences().init();
+
+    final heights = <double>[];
+    for (final scale in const [1.0, 2.0]) {
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: MediaQuery(
+          data: MediaQueryData(textScaler: TextScaler.linear(scale)),
+          child: Scaffold(
+            body: ListView(children: [
+              RunListTile.owned(
+                run: _run(metadata: const {'activity_type': 'run'}),
+                unit: DistanceUnit.km,
+                api: null,
+                onTap: () {},
+                isUnsynced: true,
+              ),
+            ]),
+          ),
+        ),
+      ));
+      await tester.pump();
+      final e = tester.takeException(); if (e != null) { debugPrint((e as FlutterError).toStringDeep()); } expect(e, isNull);
+
+      final value = tester.getRect(find.text('5:00'));
+      final unit = tester.getRect(find.text('/km'));
+      expect(unit.top, greaterThanOrEqualTo(value.bottom),
+          reason: 'the unit stays under the value');
+      heights.add(tester.getSize(find.byType(Card)).height);
+    }
+    expect(heights.last, greaterThan(heights.first),
+        reason: 'the row grows with the text instead of clipping it');
   });
 }

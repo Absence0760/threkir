@@ -181,7 +181,7 @@ test.describe('Workout-runner surfaces (web)', () => {
 			const distance = modal.locator('input[type="number"]').first();
 			await expect(distance).toBeVisible();
 			// Switch kind to rest.
-			await modal.locator('select').selectOption('rest');
+			await modal.getByLabel('Kind', { exact: true }).selectOption('rest');
 			await expect(distance).toHaveCount(0);
 			// Cancel without saving.
 			await modal.getByRole('button', { name: 'Cancel' }).click();
@@ -441,12 +441,12 @@ test.describe('Workout-runner surfaces (web)', () => {
 		});
 
 		test('Pace tolerance ± seconds renders when set', async ({ page }) => {
-			// `target_pace_tolerance_sec` is rendered as
-			// `<span class="tol">±{n}s</span>`. The seed has 8s on the
-			// tempo (2026-04-07). Pin the chip.
+			// `target_pace_tolerance_sec` is seconds per km, rendered in the
+			// pace's own unit and labelled with it (`paceToleranceLabel`). The
+			// seed has 8s on the tempo (2026-04-07) and runner is metric.
 			const wo = await findWorkoutByDate('2026-04-07');
 			await page.goto(`/plans/${SYDNEY_HALF_PLAN_ID}/workouts/${wo.id}`);
-			await expect(page.locator('.tol')).toHaveText('±8s', { timeout: 10_000 });
+			await expect(page.locator('.tol')).toHaveText('±8s/km', { timeout: 10_000 });
 		});
 	});
 

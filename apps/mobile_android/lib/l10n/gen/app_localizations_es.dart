@@ -13718,6 +13718,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get racesAgeGroupPlace => 'Puesto por categoría';
 
   @override
+  String get racesDivisionAwardPlace => 'Puesto en categoría de premio';
+
+  @override
   String get racesAgeGroup => 'Categoría de edad';
 
   @override

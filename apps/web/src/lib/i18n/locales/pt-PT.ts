@@ -2893,7 +2893,7 @@ export const messages = {
 	"planEditor.notes": "Notas",
 	"planEditor.fillFormForPreview": "Preencha o formulário para ver uma prévia.",
 	"planEditor.overlapTitle": "Este plano sobrepõe-se a um plano ativo",
-	"planEditor.overlapMessage": "As suas datas sobrepõem-se a {plans}. Os planos ativos podem suceder-se, mas não podem partilhar um dia. Substituir marca o plano antigo como concluído; terminá-lo mais cedo remove os treinos depois desse dia.",
+	"planEditor.overlapMessage": "As suas datas sobrepõem-se a {plans}. Os planos ativos podem suceder-se, mas não podem partilhar um dia. Substituir marca o plano antigo como abandonado; terminá-lo mais cedo remove os treinos depois desse dia.",
 	"planEditor.overlapPlanItem": "“{name}” ({start} – {end})",
 	"planEditor.overlapNoTrim": "Um plano que comece na nova data de início ou depois dela só pode ser substituído.",
 	"planEditor.overlapTrimOne": "Terminar “{name}” a {date}",

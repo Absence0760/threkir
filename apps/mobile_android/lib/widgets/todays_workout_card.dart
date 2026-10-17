@@ -1,9 +1,9 @@
+import 'package:core_models/core_models.dart' show PlanWorkoutRow;
 import 'package:flutter/material.dart';
 
 import '../l10n/gen/app_localizations.dart';
 import '../training.dart';
 import '../training_labels.dart';
-import '../training_service.dart';
 
 /// Today's planned workout, on Home (the plan hero), the Run tab's idle state
 /// and plan detail. On the Run tab it beats the last-run summary, which is
@@ -13,15 +13,15 @@ import '../training_service.dart';
 /// `surfaceContainerHighest` left the white type at about 1.3:1 at the far
 /// corner in light mode (WCAG 1.4.3), pinned in `contrast_guard_test.dart`.
 class TodaysWorkoutCard extends StatelessWidget {
-  final ActivePlanOverview overview;
+  final PlanWorkoutRow workout;
   final VoidCallback? onTap;
-  const TodaysWorkoutCard({super.key, required this.overview, this.onTap});
+  const TodaysWorkoutCard({super.key, required this.workout, this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    final w = overview.todayWorkout!;
+    final w = workout;
     final kind = workoutKindFromDb(w.kind);
     final done = isWorkoutCompleted(w);
 

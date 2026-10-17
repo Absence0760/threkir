@@ -1043,7 +1043,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     // exists and neither is a derived metric.
     final heroWorkoutCard = _planOverview?.todayWorkout != null
         ? TodaysWorkoutCard(
-            overview: _planOverview!,
+            workout: _planOverview!.todayWorkout!,
             onTap: _openTodayWorkout,
           )
         : null;

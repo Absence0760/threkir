@@ -6286,11 +6286,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planOverlapReplaceHint =>
-      'Beim Ersetzen werden die überschneidenden Pläne als abgeschlossen markiert. Du findest sie weiterhin unter „Pläne verwalten“.';
+      'Beim Ersetzen werden die überschneidenden Pläne als abgebrochen markiert. Du findest sie weiterhin unter „Pläne verwalten“.';
 
   @override
   String planOverlapTrimHint(String name, String date) {
-    return 'Beende $name vorzeitig, um seine abgeschlossenen Wochen zu behalten und seine Einheiten nach dem $date zu entfernen, oder ersetze ihn, um ihn als abgeschlossen zu markieren.';
+    return 'Beende $name vorzeitig, um seine abgeschlossenen Wochen zu behalten und seine Einheiten nach dem $date zu entfernen, oder ersetze ihn, um ihn als abgebrochen zu markieren.';
   }
 
   @override
@@ -6305,7 +6305,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String planOverlapTrimHintMany(String date) {
-    return 'Beende sie vorzeitig, um ihre abgeschlossenen Wochen zu behalten und ihre Einheiten nach dem $date zu entfernen, oder ersetze sie, um sie als abgeschlossen zu markieren.';
+    return 'Beende sie vorzeitig, um ihre abgeschlossenen Wochen zu behalten und ihre Einheiten nach dem $date zu entfernen, oder ersetze sie, um sie als abgebrochen zu markieren.';
   }
 
   @override
@@ -6443,9 +6443,6 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planDetailToday => 'HEUTE';
-
-  @override
-  String get planDetailCompleted => 'Erledigt';
 
   @override
   String planDetailWeek(int number) {
@@ -10573,6 +10570,12 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get ttsStepLastFifty => 'Noch fünfzig Meter';
+
+  @override
+  String get ttsStepLastFiftyYards => 'Noch fünfzig Yards';
+
+  @override
+  String get ttsStepLastTenSeconds => 'Noch zehn Sekunden';
 
   @override
   String ttsPaceDriftAhead(int delta) {

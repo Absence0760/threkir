@@ -6020,7 +6020,7 @@ async function planOverviewFor(userId: string): Promise<PlanOverviewRead> {
 
 /// What creating or cloning a plan does to the active plans its window
 /// overlaps: 'refuse' (fail with a PlanOverlapError, the default, so nothing
-/// the runner did not name is changed), 'replace' (complete them) or 'trim'
+/// the runner did not name is changed), 'replace' (abandon them) or 'trim'
 /// (end each the day before the new plan starts). Decisions § 2050.
 export type PlanOverlapChoice = 'refuse' | 'replace' | 'trim';
 

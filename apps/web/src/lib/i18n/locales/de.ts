@@ -2894,7 +2894,7 @@ export const messages = {
 	"planEditor.notes": "Notizen",
 	"planEditor.fillFormForPreview": "Fülle das Formular aus, um eine Vorschau zu sehen.",
 	"planEditor.overlapTitle": "Dieser Plan überschneidet sich mit einem aktiven Plan",
-	"planEditor.overlapMessage": "Sein Zeitraum überschneidet sich mit {plans}. Aktive Pläne können aufeinander folgen, aber keinen Tag teilen. Beim Ersetzen wird der alte Plan als abgeschlossen markiert; beendest du ihn vorzeitig, werden seine Einheiten nach diesem Tag entfernt.",
+	"planEditor.overlapMessage": "Sein Zeitraum überschneidet sich mit {plans}. Aktive Pläne können aufeinander folgen, aber keinen Tag teilen. Beim Ersetzen wird der alte Plan als abgebrochen markiert; beendest du ihn vorzeitig, werden seine Einheiten nach diesem Tag entfernt.",
 	"planEditor.overlapPlanItem": "„{name}“ ({start} – {end})",
 	"planEditor.overlapNoTrim": "Ein Plan, der am neuen Startdatum oder danach beginnt, kann nur ersetzt werden.",
 	"planEditor.overlapTrimOne": "„{name}“ am {date} beenden",

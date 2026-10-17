@@ -141,7 +141,9 @@ class _Band extends StatelessWidget {
                   ),
                 ),
               ),
-              _PacePip(adherence: state.adherence, delta: _delta(step)),
+              // A walk-run step is effort-led: no target to be on or off.
+              if (step.paced)
+                _PacePip(adherence: state.adherence, delta: _delta(step)),
             ],
           ),
           const SizedBox(height: 6),

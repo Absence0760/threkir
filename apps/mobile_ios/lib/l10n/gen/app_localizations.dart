@@ -10267,13 +10267,13 @@ abstract class AppLocalizations {
   /// Plan-overlap dialog hint when only Replace is offered
   ///
   /// In en, this message translates to:
-  /// **'Replace marks the overlapping plans as completed. You can still find them under Manage plans.'**
+  /// **'Replace marks the overlapping plans as abandoned. You can still find them under Manage plans.'**
   String get planOverlapReplaceHint;
 
   /// Plan-overlap dialog hint when the overlapping plan started earlier and can be ended the day before the new plan starts. date is that formatted end date
   ///
   /// In en, this message translates to:
-  /// **'End {name} early to keep its finished weeks and remove its workouts after {date}, or replace it to mark it completed.'**
+  /// **'End {name} early to keep its finished weeks and remove its workouts after {date}, or replace it to mark it abandoned.'**
   String planOverlapTrimHint(String name, String date);
 
   /// Plan-overlap dialog button: end the overlapping plan the day before the new one starts, so both stay active back to back
@@ -10291,7 +10291,7 @@ abstract class AppLocalizations {
   /// Plan-overlap dialog hint when several overlapping plans can be ended the day before the new plan starts. date is that formatted end date
   ///
   /// In en, this message translates to:
-  /// **'End them early to keep their finished weeks and remove their workouts after {date}, or replace them to mark them completed.'**
+  /// **'End them early to keep their finished weeks and remove their workouts after {date}, or replace them to mark them abandoned.'**
   String planOverlapTrimHintMany(String date);
 
   /// Error when the server refuses a new plan because an active plan overlaps its dates (changed since the overlap check)
@@ -10479,12 +10479,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'TODAY'**
   String get planDetailToday;
-
-  /// Completed marker on the today card
-  ///
-  /// In en, this message translates to:
-  /// **'Completed'**
-  String get planDetailCompleted;
 
   /// Week-card title
   ///
@@ -17277,17 +17271,29 @@ abstract class AppLocalizations {
   /// **'Workout complete. Nice work.'**
   String get ttsWorkoutComplete;
 
-  /// Spoken in-step progress cue at the halfway point
+  /// Spoken in-step progress cue at the halfway point of a paced interval rep (never on a warm-up, recovery, steady block or walk-run interval)
   ///
   /// In en, this message translates to:
   /// **'Halfway through this rep'**
   String get ttsStepHalfway;
 
-  /// Spoken in-step progress cue near the end of a rep
+  /// Spoken in-step progress cue in the last 50 m of a distance rep, for a runner who uses kilometres
   ///
   /// In en, this message translates to:
   /// **'Fifty metres to go'**
   String get ttsStepLastFifty;
+
+  /// Spoken in-step progress cue near the end of a distance rep, for a runner who uses miles (the cue fires inside the last 50 m, about 55 yards)
+  ///
+  /// In en, this message translates to:
+  /// **'Fifty yards to go'**
+  String get ttsStepLastFiftyYards;
+
+  /// Spoken in-step progress cue in the last ten seconds of a timed step (a walk-run interval, a timed rep or a timed warm-up)
+  ///
+  /// In en, this message translates to:
+  /// **'Ten seconds to go'**
+  String get ttsStepLastTenSeconds;
 
   /// Spoken nudge when the runner is ahead of target pace by delta seconds per km
   ///

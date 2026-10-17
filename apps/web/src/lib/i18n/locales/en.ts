@@ -2907,7 +2907,7 @@ export const en = {
 	"planEditor.notes": "Notes",
 	"planEditor.fillFormForPreview": "Fill in the form to see a preview.",
 	"planEditor.overlapTitle": "This plan overlaps an active plan",
-	"planEditor.overlapMessage": "Its dates overlap {plans}. Active plans can follow each other but cannot share a day. Replacing marks the old plan completed; ending it early removes its workouts after that day.",
+	"planEditor.overlapMessage": "Its dates overlap {plans}. Active plans can follow each other but cannot share a day. Replacing marks the old plan abandoned; ending it early removes its workouts after that day.",
 	"planEditor.overlapPlanItem": "“{name}” ({start} – {end})",
 	"planEditor.overlapNoTrim": "A plan that starts on or after the new start date can only be replaced.",
 	"planEditor.overlapTrimOne": "End “{name}” on {date}",

@@ -260,6 +260,10 @@ Daniels' official training paces are derived from VDOT via the same implicit equ
 
 If pace accuracy is ever the user-visible complaint, swap `paceFor` for a Daniels-table lookup — the public surface of `training.ts` stays the same.
 
+## Finishing a plan (`isPlanFinished`, the `plan_current` pair)
+
+Nothing writes `completed` when a plan's end date passes — there is no cron, trigger or client job, by design: a runner who ran their race and one who stopped in week 3 look the same to a clock. An `active` plan whose `end_date` is before the runner's local today is **finished** (`isPlanFinished` in `training/plan_current.ts` ↔ `plan_current.dart`; the end day itself is still inside the plan), and `pickCurrentPlan` keeps showing it as their plan until the next one starts. Finished plans ask the runner to file them: `FinishPlanPrompt.svelte` on the dashboard plan hero (in place of the today/rest block) and under the `/plans/[id]` hero for the owner, and on mobile `FinishPlanCard` in Home's race-countdown slot (where `NextRaceCard` hides once the race has passed) and under the plan detail header. **Finish plan** runs `finishPlan` / `TrainingService.finishPlan`, an update to `completed` scoped to `status = 'active'` so a plan paused or abandoned elsewhere is never relabelled. While a plan is finished the week lead stops offering its sessions (it is handed no plan, so it says nothing rather than "No more sessions scheduled"), and the Run tab's plan chip reads **Finish plan** and opens the plan. A finished plan never blocks a new one: the overlap check is by date window (§ 2008), and nothing new starts before today. Replacing an overlapped plan writes `abandoned`, never `completed` (decisions § 2075, § 2077).
+
 ## Data model
 
 Migration: `apps/backend/supabase/migrations/20260419_001_training_plans.sql`. Three tables:

@@ -15548,6 +15548,31 @@ class AppLocalizationsDe extends AppLocalizations {
       'In deinem Plan sind keine weiteren Einheiten geplant.';
 
   @override
+  String planFinishTitle(String name) {
+    return '$name ist beendet';
+  }
+
+  @override
+  String planFinishBody(String date) {
+    return 'Sein letzter Tag war der $date. Schließe ihn ab, um ihn zu deinen abgeschlossenen Plänen zu verschieben.';
+  }
+
+  @override
+  String get planFinishAction => 'Plan abschließen';
+
+  @override
+  String get planFinishFinishing => 'Wird abgeschlossen…';
+
+  @override
+  String planFinishDone(String name) {
+    return '$name ist jetzt bei deinen abgeschlossenen Plänen.';
+  }
+
+  @override
+  String get planFinishFailed =>
+      'Der Plan konnte nicht abgeschlossen werden. Versuche es erneut.';
+
+  @override
   String get dashboardLeadAddRun => 'Lauf hinzufügen';
 
   @override

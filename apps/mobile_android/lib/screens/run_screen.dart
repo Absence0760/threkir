@@ -70,6 +70,7 @@ import '../turn_cues.dart';
 import '../typed_decimal.dart';
 import '../watch_settings.dart';
 import '../web_base_url.dart';
+import '../widgets/finish_plan_card.dart';
 import '../widgets/cutoff_card.dart';
 import 'route_picker_screen.dart';
 import '../background_location_nudge.dart';
@@ -4635,9 +4636,17 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                               _refreshPlanOverview();
                             },
                             icon: const Icon(Icons.calendar_month),
+                            // A plan whose dates have run out is not the plan
+                            // this run trains for; the chip asks to file it
+                            // and still opens it, where Finish plan sits.
                             label: Text(_planOverview == null
                                 ? l10n.runTrainingPlans
-                                : _planOverview!.plan.name),
+                                : FinishPlanCard.shows(
+                                        status: _planOverview!.plan.status,
+                                        endDate: _planOverview!.plan.endDate,
+                                        now: DateTime.now())
+                                    ? l10n.planFinishAction
+                                    : _planOverview!.plan.name),
                           ),
                         ],
                       ),

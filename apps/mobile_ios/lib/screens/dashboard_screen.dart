@@ -60,6 +60,7 @@ import '../widgets/run_list_tile.dart';
 import '../widgets/this_week_strip.dart';
 import '../widgets/goal_editor_sheet.dart';
 import '../widgets/todays_workout_card.dart';
+import '../widgets/finish_plan_card.dart';
 import '../widgets/next_race_card.dart';
 import '../widgets/up_next_plan_card.dart';
 import '../widgets/training_load_chart.dart';
@@ -631,7 +632,9 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   Widget _weekLeadCard(
       List<Run> runs, List<RunGoal> goals, DistanceUnit unit, DateTime now) {
-    final planWorkouts = _leadPlanWorkouts();
+    // A finished plan has no sessions left to offer; Home asks to file it
+    // instead (FinishPlanCard), so the lead says nothing about the plan.
+    final planWorkouts = _planFinished(now) ? null : _leadPlanWorkouts();
     final lead = weekLead(
       activities: [
         for (final r in runs)
@@ -657,20 +660,42 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
+  /// The shown plan's dates have run out but the runner has not filed it.
+  bool _planFinished(DateTime now) {
+    final p = _planOverview;
+    return p != null &&
+        FinishPlanCard.shows(
+            status: p.plan.status, endDate: p.plan.endDate, now: now);
+  }
+
   /// The shown plan's race-day countdown (or "starts in" before it begins),
-  /// with the plan queued after it beneath. Null with neither: no active
-  /// plan, or a race day passed with nothing queued.
+  /// or the Finish plan card once its dates have run out, with the plan
+  /// queued after it beneath. Null with neither: no active plan, or a race
+  /// day passed with nothing queued.
   Widget? _nextRaceCard(DateTime now) {
     final p = _planOverview;
     if (p == null) return null;
-    final race = NextRaceCard.shows(p, now)
-        ? NextRaceCard(
-            key: const Key('dashboardNextRace'),
-            overview: p,
-            now: now,
-            onTap: _openTodayWorkout,
-          )
-        : null;
+    final training = widget.training;
+    final Widget? race;
+    if (_planFinished(now) && training != null) {
+      race = FinishPlanCard(
+        key: const Key('dashboardFinishPlan'),
+        training: training,
+        planId: p.plan.id,
+        planName: p.plan.name,
+        endDate: p.plan.endDate,
+        onFinished: _refreshPlanOverview,
+      );
+    } else if (NextRaceCard.shows(p, now)) {
+      race = NextRaceCard(
+        key: const Key('dashboardNextRace'),
+        overview: p,
+        now: now,
+        onTap: _openTodayWorkout,
+      );
+    } else {
+      race = null;
+    }
     final upNext = UpNextPlanCard.shows(p)
         ? UpNextPlanCard(
             key: const Key('dashboardUpNextPlan'),

@@ -15384,6 +15384,30 @@ class AppLocalizationsEn extends AppLocalizations {
       'No more sessions scheduled in your plan.';
 
   @override
+  String planFinishTitle(String name) {
+    return '$name has ended';
+  }
+
+  @override
+  String planFinishBody(String date) {
+    return 'Its last day was $date. Finish it to move it to your completed plans.';
+  }
+
+  @override
+  String get planFinishAction => 'Finish plan';
+
+  @override
+  String get planFinishFinishing => 'Finishing…';
+
+  @override
+  String planFinishDone(String name) {
+    return '$name is in your completed plans.';
+  }
+
+  @override
+  String get planFinishFailed => 'Couldn\'t finish the plan. Try again.';
+
+  @override
   String get dashboardLeadAddRun => 'Add a run';
 
   @override

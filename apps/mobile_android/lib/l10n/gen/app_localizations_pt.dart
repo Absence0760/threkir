@@ -15545,6 +15545,31 @@ class AppLocalizationsPt extends AppLocalizations {
       'Não há mais sessões agendadas no seu plano.';
 
   @override
+  String planFinishTitle(String name) {
+    return '$name terminou';
+  }
+
+  @override
+  String planFinishBody(String date) {
+    return 'O último dia foi $date. Termine-o para o passar para os seus planos concluídos.';
+  }
+
+  @override
+  String get planFinishAction => 'Terminar plano';
+
+  @override
+  String get planFinishFinishing => 'A terminar…';
+
+  @override
+  String planFinishDone(String name) {
+    return '$name está agora nos seus planos concluídos.';
+  }
+
+  @override
+  String get planFinishFailed =>
+      'Não foi possível terminar o plano. Tente novamente.';
+
+  @override
   String get dashboardLeadAddRun => 'Adicionar corrida';
 
   @override
@@ -32379,6 +32404,31 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get dashboardLeadNoNextSession =>
       'Não há mais sessões programadas no seu plano.';
+
+  @override
+  String planFinishTitle(String name) {
+    return '$name terminou';
+  }
+
+  @override
+  String planFinishBody(String date) {
+    return 'O último dia foi $date. Finalize-o para movê-lo para seus planos concluídos.';
+  }
+
+  @override
+  String get planFinishAction => 'Finalizar plano';
+
+  @override
+  String get planFinishFinishing => 'Finalizando…';
+
+  @override
+  String planFinishDone(String name) {
+    return '$name agora está nos seus planos concluídos.';
+  }
+
+  @override
+  String get planFinishFailed =>
+      'Não foi possível finalizar o plano. Tente novamente.';
 
   @override
   String get dashboardLeadAddRun => 'Adicionar corrida';

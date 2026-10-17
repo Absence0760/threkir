@@ -20246,6 +20246,45 @@
   "@dashboardLeadNoNextSession": {
     "description": "Shown on the dashboard week card when the active plan has no open session left"
   },
+  "planFinishTitle": "{name} has ended",
+  "@planFinishTitle": {
+    "description": "Heading of the Finish plan prompt shown on Home and plan detail once an active plan's last day has passed. name is the plan's name",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "planFinishBody": "Its last day was {date}. Finish it to move it to your completed plans.",
+  "@planFinishBody": {
+    "description": "Body of the Finish plan prompt. date is the plan's formatted last day",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planFinishAction": "Finish plan",
+  "@planFinishAction": {
+    "description": "Button that marks an active plan whose dates have run out as completed; also the Run tab plan chip's label for such a plan"
+  },
+  "planFinishFinishing": "Finishing…",
+  "@planFinishFinishing": {
+    "description": "Finish plan button label while the status write is in flight"
+  },
+  "planFinishDone": "{name} is in your completed plans.",
+  "@planFinishDone": {
+    "description": "Banner after a plan was finished. name is the plan's name",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "planFinishFailed": "Couldn't finish the plan. Try again.",
+  "@planFinishFailed": {
+    "description": "Error banner when finishing a plan failed; nothing changed"
+  },
   "dashboardLeadAddRun": "Add a run",
   "@dashboardLeadAddRun": {
     "description": "Button on the dashboard week card that opens the manual add-a-run form"

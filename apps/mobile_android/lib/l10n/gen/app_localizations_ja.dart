@@ -14827,6 +14827,30 @@ class AppLocalizationsJa extends AppLocalizations {
   String get dashboardLeadNoNextSession => 'プランに予定されているセッションはもうありません。';
 
   @override
+  String planFinishTitle(String name) {
+    return '$nameは終了しました';
+  }
+
+  @override
+  String planFinishBody(String date) {
+    return '最終日は$dateでした。完了すると、完了したプランに移動します。';
+  }
+
+  @override
+  String get planFinishAction => 'プランを完了';
+
+  @override
+  String get planFinishFinishing => '完了しています…';
+
+  @override
+  String planFinishDone(String name) {
+    return '$nameを完了したプランに移動しました。';
+  }
+
+  @override
+  String get planFinishFailed => 'プランを完了できませんでした。もう一度お試しください。';
+
+  @override
   String get dashboardLeadAddRun => 'ランを追加';
 
   @override

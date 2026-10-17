@@ -25550,6 +25550,42 @@ abstract class AppLocalizations {
   /// **'No more sessions scheduled in your plan.'**
   String get dashboardLeadNoNextSession;
 
+  /// Heading of the Finish plan prompt shown on Home and plan detail once an active plan's last day has passed. name is the plan's name
+  ///
+  /// In en, this message translates to:
+  /// **'{name} has ended'**
+  String planFinishTitle(String name);
+
+  /// Body of the Finish plan prompt. date is the plan's formatted last day
+  ///
+  /// In en, this message translates to:
+  /// **'Its last day was {date}. Finish it to move it to your completed plans.'**
+  String planFinishBody(String date);
+
+  /// Button that marks an active plan whose dates have run out as completed; also the Run tab plan chip's label for such a plan
+  ///
+  /// In en, this message translates to:
+  /// **'Finish plan'**
+  String get planFinishAction;
+
+  /// Finish plan button label while the status write is in flight
+  ///
+  /// In en, this message translates to:
+  /// **'Finishing…'**
+  String get planFinishFinishing;
+
+  /// Banner after a plan was finished. name is the plan's name
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is in your completed plans.'**
+  String planFinishDone(String name);
+
+  /// Error banner when finishing a plan failed; nothing changed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t finish the plan. Try again.'**
+  String get planFinishFailed;
+
   /// Button on the dashboard week card that opens the manual add-a-run form
   ///
   /// In en, this message translates to:

@@ -31,6 +31,7 @@ import '../training_load.dart';
 import '../training_service.dart';
 import '../backend_timeout.dart';
 import '../disclosure_state.dart';
+import '../widgets/finish_plan_card.dart';
 import '../widgets/error_state.dart';
 import '../widgets/current_week_strip.dart';
 import '../widgets/disclosure_section.dart';
@@ -1006,6 +1007,20 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
       children: [
         _heroCard(theme, l10n, p, pct, done, total,
             heroRace: _heroRace(p, races)),
+        if (_isOwner(p) &&
+            !p.isTemplate &&
+            FinishPlanCard.shows(
+                status: p.status, endDate: p.endDate, now: widget.now())) ...[
+          const SizedBox(height: 12),
+          FinishPlanCard(
+            key: const Key('planDetailFinishPlan'),
+            training: widget.training,
+            planId: p.id,
+            planName: p.name,
+            endDate: p.endDate,
+            onFinished: _load,
+          ),
+        ],
         if (PlanRacesList.shows(races)) ...[
           const SizedBox(height: 12),
           PlanRacesList(

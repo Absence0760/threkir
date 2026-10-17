@@ -15574,6 +15574,30 @@ class AppLocalizationsFr extends AppLocalizations {
       'Aucune autre séance n\'est prévue dans votre plan.';
 
   @override
+  String planFinishTitle(String name) {
+    return '$name est terminé';
+  }
+
+  @override
+  String planFinishBody(String date) {
+    return 'Son dernier jour était le $date. Terminez-le pour le ranger dans vos plans terminés.';
+  }
+
+  @override
+  String get planFinishAction => 'Terminer le plan';
+
+  @override
+  String get planFinishFinishing => 'Finalisation…';
+
+  @override
+  String planFinishDone(String name) {
+    return '$name est maintenant dans vos plans terminés.';
+  }
+
+  @override
+  String get planFinishFailed => 'Impossible de terminer le plan. Réessayez.';
+
+  @override
   String get dashboardLeadAddRun => 'Ajouter une course';
 
   @override

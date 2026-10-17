@@ -175,6 +175,14 @@ void main() {
     expect(read.query['is_template'], 'eq.false');
   });
 
+  test('finishPlan files only a plan that is still active', () async {
+    await training.finishPlan('ended');
+    final p = patches().single;
+    expect(p.query['id'], 'eq.ended');
+    expect(p.query['status'], 'eq.active');
+    expect(p.body, {'status': 'completed'});
+  });
+
   group('fetchActiveOverview', () {
     test('shows the plan covering today and names the nearer queued plan as up next',
         () async {

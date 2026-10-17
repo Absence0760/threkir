@@ -848,6 +848,19 @@ class TrainingService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// File an active plan whose dates have run out under Completed (the
+  /// "Finish plan" prompt, [isPlanFinished]). Scoped to `status = 'active'`
+  /// so a plan paused or abandoned on another device is never relabelled as
+  /// finished. Web twin: `finishPlan` in `data.ts`.
+  Future<void> finishPlan(String id) async {
+    await _c
+        .from('training_plans')
+        .update({'status': 'completed'})
+        .eq('id', id)
+        .eq('status', 'active');
+    notifyListeners();
+  }
+
   /// Pause an active plan — reversible by [resumePlan], and distinct from
   /// abandon/complete. Frees its dates so another plan can be active on them.
   /// Web twin: `pausePlan` in `apps/web/src/lib/core/data.ts`.

@@ -89,4 +89,17 @@ void main() {
       expect(UnitFormat.elevation(120, DistanceUnit.km), '120 m');
     });
   });
+
+  group('formatPercent', () {
+    test('puts the sign where each locale does', () {
+      expect(formatPercent(0.42, 'en'), '42%');
+      expect(formatPercent(0.42, 'de'), '42\u00a0%');
+      expect(formatPercent(0.42, 'fr'), matches(RegExp(r'^42\s%$')));
+      expect(formatPercent(1, 'ja'), '100%');
+    });
+
+    test('a non-finite fraction is a dash, not NaN%', () {
+      expect(formatPercent(double.nan, 'en'), '—');
+    });
+  });
 }

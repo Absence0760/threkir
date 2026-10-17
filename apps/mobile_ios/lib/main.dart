@@ -337,6 +337,7 @@ void main() async {
         preferences: prefs,
         cache: SharedPrefsSettingsCache(sp),
       );
+      registerActiveSettingsSync(settingsSync);
     } catch (e) {
       debugPrint('ApiClient construction failed: $e');
     }

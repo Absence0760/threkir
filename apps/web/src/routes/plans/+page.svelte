@@ -19,8 +19,7 @@
 	import { todayISO } from '#lib/training/training.ts';
 	import { goalEventLabel, planLengthLabel } from '#lib/training/goal_event_label.ts';
 	import { STARTER_PLANS, instantiateStarter } from '#lib/training/starter_plans.ts';
-	import { nextSundayIso } from '#lib/training/plan_start.ts';
-	import { shiftIsoDate } from '#lib/training/plan_bulk_ops.ts';
+	import { starterName, starterStartIso, starterSummaryText } from '#lib/training/starter_labels.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 
 	import RunSurfaceTabs from '#lib/components/RunSurfaceTabs.svelte';
@@ -211,24 +210,7 @@
 		return p.status === 'active' || p.status === 'paused';
 	}
 
-	/// Where a starter picked from the empty state begins: the Sunday at least
-	/// a week out, the same default the mobile wizard uses. Plan day 0 is the
-	/// Sunday long run, so a starter must start on a Sunday (decisions § 735).
-	const starterStart = nextSundayIso(shiftIsoDate(todayISO(), 7));
 	let creatingStarterId = $state<string | null>(null);
-
-	function starterName(id: string): string {
-		switch (id) {
-			case 'c25k':
-				return m('plansNew.starterC25k');
-			case 'half_12wk':
-				return m('plansNew.starterHalf12');
-			case 'marathon_16wk':
-				return m('plansNew.starterMarathon16');
-			default:
-				return id;
-		}
-	}
 
 	/// The list is empty, so there is no plan of the runner's own for the new
 	/// one to overlap: the server is asked to refuse one anyway, and a refusal
@@ -236,7 +218,8 @@
 	async function createStarter(id: string) {
 		if (creatingStarterId) return;
 		const starter = STARTER_PLANS.find((s) => s.id === id);
-		const generated = instantiateStarter(id, starterStart);
+		const start = starterStartIso(id, todayISO());
+		const generated = instantiateStarter(id, start);
 		if (!starter || !generated) return;
 		creatingStarterId = id;
 		try {
@@ -244,7 +227,7 @@
 				name: starterName(id),
 				goalEvent: starter.goalEvent,
 				goalDistanceM: generated.goalDistanceM,
-				startDate: starterStart,
+				startDate: start,
 				daysPerWeek: starter.daysPerWeek,
 				generated,
 				overlap: 'refuse'
@@ -393,22 +376,27 @@
 			{/if}
 			<div class="starters" role="group" aria-labelledby="starters-heading">
 				<h3 id="starters-heading">{m('plansNew.starterHeading')}</h3>
-				<p class="starters-hint">
-					{m('plansPage.starterStartsOn', { date: formatDateShort(starterStart) })}
-				</p>
-				<div class="starter-list">
+				<ul class="starter-list">
 					{#each STARTER_PLANS as s (s.id)}
-						<button
-							class="btn btn-outline"
-							type="button"
-							disabled={creatingStarterId !== null}
-							aria-busy={creatingStarterId === s.id}
-							onclick={() => createStarter(s.id)}
-						>
-							{creatingStarterId === s.id ? m('plansNew.creating') : starterName(s.id)}
-						</button>
+						<li class="starter">
+							<button
+								class="btn btn-outline"
+								type="button"
+								disabled={creatingStarterId !== null}
+								aria-busy={creatingStarterId === s.id}
+								aria-describedby="starter-{s.id}-summary"
+								onclick={() => createStarter(s.id)}
+							>
+								{creatingStarterId === s.id ? m('plansNew.creating') : starterName(s.id)}
+							</button>
+							<span class="starters-hint" id="starter-{s.id}-summary">
+								{starterSummaryText(s.id)} · {m('plansPage.starterStarts', {
+									date: formatDateShort(starterStartIso(s.id, todayISO()))
+								})}
+							</span>
+						</li>
 					{/each}
-				</div>
+				</ul>
 			</div>
 		</section>
 	{:else}
@@ -910,10 +898,20 @@
 		font-size: 0.85rem;
 	}
 	.starter-list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
 		display: flex;
-		flex-wrap: wrap;
-		justify-content: center;
+		flex-direction: column;
+		align-items: center;
 		gap: var(--space-sm);
+	}
+	.starter {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: var(--space-2xs);
+		text-align: center;
 	}
 	.filter-empty {
 		display: flex;

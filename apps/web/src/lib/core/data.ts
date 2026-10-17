@@ -3675,6 +3675,12 @@ async function fetchProfilesByIds(
 	);
 }
 
+/// One user's display name, or null when the profile is unreadable or unnamed.
+export async function fetchDisplayName(userId: string): Promise<string | null> {
+	const byId = await fetchProfilesByIds([userId]);
+	return byId.get(userId)?.display_name ?? null;
+}
+
 export async function fetchPendingRequests(clubId: string): Promise<(ClubMember & {
 	display_name: string | null;
 	avatar_url: string | null;

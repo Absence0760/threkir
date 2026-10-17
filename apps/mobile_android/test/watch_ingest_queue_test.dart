@@ -61,6 +61,53 @@ void main() {
           'source': source,
         };
 
+    group('an Apple Watch run that followed a workout', () {
+      final steps = [
+        {
+          'step_index': 0,
+          'kind': 'rep',
+          'rep_index': 1,
+          'rep_total': 2,
+          'target_distance_m': 400.0,
+          'actual_distance_m': 400.0,
+          'target_pace_sec_per_km': 240,
+          'actual_pace_sec_per_km': 238,
+          'tolerance_sec_per_km': 10,
+          'duration_s': 95,
+          'status': 'completed',
+        },
+      ];
+
+      test('carries the link and the review together', () {
+        final run = runFromWatchPayload({
+          ...baseline(),
+          'plan_workout_id': 'pw-1',
+          'workout_adherence': 'partial',
+          'workout_step_results': steps,
+        });
+        expect(run.metadata![MetadataKeys.planWorkoutId], 'pw-1');
+        expect(run.metadata![MetadataKeys.workoutAdherence], 'partial');
+        expect(run.metadata![MetadataKeys.workoutStepResults], steps);
+      });
+
+      test('a partial or malformed group is dropped whole, and the run kept',
+          () {
+        final cases = <Map<String, dynamic>>[
+          {'plan_workout_id': 'pw-1'},
+          {'plan_workout_id': '', 'workout_adherence': 'partial', 'workout_step_results': steps},
+          {'plan_workout_id': 'pw-1', 'workout_adherence': 'nearly', 'workout_step_results': steps},
+          {'plan_workout_id': 'pw-1', 'workout_adherence': 'partial', 'workout_step_results': 'x'},
+          {'plan_workout_id': 'pw-1', 'workout_adherence': 'partial', 'workout_step_results': [1]},
+          {'plan_workout_id': 7, 'workout_adherence': 'partial', 'workout_step_results': steps},
+        ];
+        for (final extra in cases) {
+          final run = runFromWatchPayload({...baseline(), ...extra});
+          expect(run.id, 'run-123', reason: '$extra');
+          expect(run.metadata, isNull, reason: '$extra');
+        }
+      });
+    });
+
     test('decodes the minimum-valid payload', () {
       final run = runFromWatchPayload(baseline());
       expect(run.id, 'run-123');

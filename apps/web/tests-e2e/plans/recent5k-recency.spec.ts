@@ -14,7 +14,7 @@ import { USER_A } from '../fixtures/users';
 test.describe('/plans/new — recent-5K recency gate', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
-	test('entered-but-unconfirmed 5K time warns; confirming clears it', async ({ page }) => {
+	test('a complete but unconfirmed 5K time warns; confirming clears it', async ({ page }) => {
 		await page.goto('/plans');
 		await page.getByRole('button', { name: /New plan/ }).first().click();
 		const modal = page.locator('.modal');
@@ -28,8 +28,12 @@ test.describe('/plans/new — recent-5K recency gate', () => {
 		await expect(confirm).toBeHidden();
 		await expect(warning).toBeHidden();
 
-		// Enter a 5K minutes value -> confirm box + warning appear.
-		await recentFieldset.locator('input[type="number"]').first().fill('22');
+		// A warning on the first digit typed is noise: minutes alone are not
+		// yet a time, so nothing shows until the seconds are in too.
+		const [minutes, seconds] = await recentFieldset.locator('input[type="number"]').all();
+		await minutes.fill('22');
+		await expect(warning).toBeHidden();
+		await seconds.fill('30');
 		await expect(confirm).toBeVisible();
 		await expect(warning).toBeVisible();
 

@@ -447,9 +447,10 @@ class _PlanLibraryPreviewScreenState extends State<PlanLibraryPreviewScreen> {
           ),
           const SizedBox(height: 8),
           if (_weeksLoading)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 16),
-              child: Center(child: CircularProgressIndicator()),
+            ListSkeleton.section(
+              label: l10n.commonLoading,
+              rowHeight: 40,
+              hasLeading: false,
             )
           else if (_weeksError)
             Row(

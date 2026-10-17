@@ -22,7 +22,6 @@ import '../l10n/number_format.dart';
 import '../local_run_store.dart';
 import '../metrics.dart';
 import '../plan_labels.dart';
-import '../plan_start.dart';
 import '../plan_week.dart';
 import '../starter_plans.dart';
 import '../training.dart';
@@ -56,12 +55,6 @@ List<TrainingPlanRow> sortPlansForList(List<TrainingPlanRow> plans) {
   });
   return out;
 }
-
-/// Where a starter picked from the empty plans list begins: the Sunday at
-/// least a week out, the wizard's own default. Plan day 0 is the Sunday long
-/// run, so a plan must start on a Sunday (decisions § 735).
-DateTime planStarterStartDate(DateTime now) =>
-    nextSunday(DateTime(now.year, now.month, now.day + 7));
 
 class PlansScreen extends StatefulWidget {
   final TrainingService training;
@@ -158,7 +151,7 @@ class _PlansScreenState extends State<PlansScreen> {
   Future<void> _createStarter(StarterPlan starter) async {
     if (_creatingStarterId != null) return;
     final l10n = AppLocalizations.of(context);
-    final start = planStarterStartDate(DateTime.now());
+    final start = starterStartDate(starter.id, DateTime.now());
     setState(() => _creatingStarterId = starter.id);
     try {
       int? age;
@@ -294,7 +287,7 @@ class _PlansScreenState extends State<PlansScreen> {
           title: l10n.plansEmptyTitle,
           body: l10n.plansEmptyBody,
           footer: _Starters(
-            start: planStarterStartDate(DateTime.now()),
+            today: DateTime.now(),
             creatingId: _creatingStarterId,
             onPick: _createStarter,
           ),
@@ -427,12 +420,12 @@ class _FilterRow extends StatelessWidget {
 }
 
 class _Starters extends StatelessWidget {
-  final DateTime start;
+  final DateTime today;
   final String? creatingId;
   final ValueChanged<StarterPlan> onPick;
 
   const _Starters({
-    required this.start,
+    required this.today,
     required this.creatingId,
     required this.onPick,
   });
@@ -451,28 +444,38 @@ class _Starters extends StatelessWidget {
               textAlign: TextAlign.center,
               style: theme.textTheme.titleSmall),
         ),
-        const SizedBox(height: 4),
-        Text(
-          l10n.plansStarterStartsOn(formatDateShort(start, tag)),
-          textAlign: TextAlign.center,
-          style: theme.textTheme.bodySmall
-              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-        ),
         const SizedBox(height: 12),
         for (final s in starterPlans)
           Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: OutlinedButton.icon(
-              key: Key('planStarter-${s.id}'),
-              onPressed: creatingId == null ? () => onPick(s) : null,
-              icon: creatingId == s.id
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.event_note),
-              label: Text(starterPlanName(l10n, s.id)),
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                OutlinedButton.icon(
+                  key: Key('planStarter-${s.id}'),
+                  onPressed: creatingId == null ? () => onPick(s) : null,
+                  icon: creatingId == s.id
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.event_note),
+                  label: Text(starterPlanName(l10n, s.id)),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  [
+                    ?starterSummaryText(l10n, s.id),
+                    l10n.plansStarterStarts(
+                        formatDateShort(starterStartDate(s.id, today), tag)),
+                  ].join(' · '),
+                  key: Key('planStarterSummary-${s.id}'),
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                ),
+              ],
             ),
           ),
       ],

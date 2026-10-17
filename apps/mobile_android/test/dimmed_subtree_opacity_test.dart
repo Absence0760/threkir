@@ -127,6 +127,7 @@ Future<Set<double>> _renderedDims(WidgetTester tester) async {
       body: PlanCalendar(
         startDate: DateTime(2024, 4, 1),
         endDate: DateTime(2024, 6, 30),
+        today: DateTime(2024, 4, 1),
         workouts: [
           PlanWorkoutRow(
             id: 'wo1',

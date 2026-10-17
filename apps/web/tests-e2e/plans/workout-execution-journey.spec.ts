@@ -52,7 +52,7 @@ import { acceptCookieConsent } from '../fixtures/helpers';
  *      detail completed-card surfaces.
  *   5. Likewise complete the long run by linking the same-day run.
  *   6. Navigate to /plans/[id] and verify the DOWNSTREAM progress
- *      propagation: the day-grid interval cell flips to .completed, the
+ *      propagation: the day-grid interval cell flips to data-status="done", the
  *      progress ring pct is non-zero and matches completed/totalActive,
  *      the phase marker renders (≥2 phases), and the "Longest long run"
  *      stat reflects the linked run's ACTUAL distance (not the planned
@@ -198,8 +198,9 @@ test.describe('structured workout execution → plan progress journey', () => {
 			// Repeats descriptor: 5× · 1 km · jog recovery.
 			await expect(steps.nth(1)).toContainText(/5×/);
 			await expect(steps.nth(1)).toContainText(/jog/i);
-			// Rendered total = warmup + 5×(rep+recovery) + cooldown = 10 km.
-			await expect(page.locator('.total')).toContainText('10');
+			// A recovery sits between reps, never after the last:
+			// 1.5 + 5 × 1 + 4 × 0.4 + 1.5 = 9.6 km.
+			await expect(page.locator('.total')).toContainText('9.60');
 			// Not yet completed → no completed-card.
 			await expect(page.locator('.completed-card')).toHaveCount(0);
 		});
@@ -357,7 +358,7 @@ test.describe('structured workout execution → plan progress journey', () => {
 
 			// The day-grid interval cell flipped to .completed (carries the
 			// Interval label) — the downstream of linking the run.
-			const intervalCell = page.locator('.day.completed', {
+			const intervalCell = page.locator('.day-grid .day[data-status="done"]', {
 				hasText: /Interval/i
 			});
 			await expect(intervalCell.first()).toBeVisible({ timeout: 10_000 });

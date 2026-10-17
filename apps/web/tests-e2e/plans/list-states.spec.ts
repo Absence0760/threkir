@@ -73,7 +73,7 @@ test.describe('/plans card states', () => {
 		await expect(card.locator('.hero-value').first()).toHaveText(/^(50\.00 km|31\.07 mi)$/);
 	});
 
-	test('an empty list offers the three built-in starters and when they begin', async ({
+	test('an empty list offers the three built-in starters, what each asks and when it begins', async ({
 		page,
 		mockRoute
 	}) => {
@@ -82,7 +82,12 @@ test.describe('/plans card states', () => {
 
 		const starters = page.getByRole('group', { name: 'Start from a built-in plan' });
 		await expect(starters).toBeVisible({ timeout: 10_000 });
-		await expect(starters).toContainText(/Each starts on /);
+		// Couch to 5K says what it asks of a new runner, and starts tomorrow
+		// rather than waiting for a Sunday: a walk-run plan has no weekday roles.
+		const c25k = starters.getByRole('button', { name: 'Couch to 5K (beginner walk-run)' });
+		await expect(c25k).toHaveAccessibleDescription(
+			/^9 weeks · 3 days a week · \d+–\d+ min a session · Starts /
+		);
 		await expect(starters.getByRole('button')).toHaveText([
 			'Couch to 5K (beginner walk-run)',
 			'Half Marathon — 12 weeks',

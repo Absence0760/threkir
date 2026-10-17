@@ -106,4 +106,45 @@ void main() {
     expect(out, isNotNull);
     expect(out!.anchor.ageDays, -3);
   });
+
+  group('goalAheadOfRecentRuns', () {
+    // Three recent 10 km runs in 50:00, so a 10K goal projects to 3000 s off
+    // a well-sampled, recent, same-distance anchor (high confidence).
+    final tenKPool = [
+      for (final ageDays in [5, 10, 15])
+        EffortForPrediction(
+            distanceM: 10000, durationS: 3000, ageDays: ageDays.toDouble()),
+    ];
+
+    test('flags a goal more than the margin faster than recent runs project',
+        () {
+      // 2600 s is 13% under the 3000 s projection; the margin is 10%.
+      expect(kGoalAheadMargin, 0.1);
+      expect(goalAheadOfRecentRuns(10000, 2600, tenKPool), 3000);
+    });
+
+    test('stays quiet for a goal inside the margin', () {
+      // 2750 s is 8.3% under the projection, and 2700 s exactly 10%: neither
+      // flags.
+      expect(goalAheadOfRecentRuns(10000, 2750, tenKPool), isNull);
+      expect(goalAheadOfRecentRuns(10000, 2700, tenKPool), isNull);
+      expect(goalAheadOfRecentRuns(10000, 3300, tenKPool), isNull);
+    });
+
+    test('stays quiet when the projection is a low-confidence guess', () {
+      // A marathon off 5 km runs is an 8.4x extrapolation, past the 4x cap.
+      final fiveK = [
+        for (final ageDays in [5, 10, 15])
+          EffortForPrediction(
+              distanceM: 5000, durationS: 1500, ageDays: ageDays.toDouble()),
+      ];
+      expect(goalAheadOfRecentRuns(42195, 3 * 3600, fiveK), isNull);
+    });
+
+    test('is null with no goal time or no usable effort', () {
+      expect(goalAheadOfRecentRuns(10000, null, tenKPool), isNull);
+      expect(goalAheadOfRecentRuns(10000, 0, tenKPool), isNull);
+      expect(goalAheadOfRecentRuns(10000, 2600, const []), isNull);
+    });
+  });
 }

@@ -60,6 +60,12 @@ int defaultPlanWeeks(GoalEvent g, [double? distanceM]) {
 /// round-5 runner-new.
 int walkRunDefaultWeeks() => kWalkRunProgression.length;
 
+/// The most training days a walk-run plan schedules. Every session is followed
+/// by a rest day, so a week holds three (offsets 0/2/4); a request for more is
+/// clamped here. The wizard offers 2 or 3 rather than letting a runner pick a
+/// number this would silently cut. Mirrors training.ts.
+const int kWalkRunMaxDaysPerWeek = 3;
+
 String goalEventDbValue(GoalEvent g) => switch (g) {
       GoalEvent.distance5k => 'distance_5k',
       GoalEvent.distance10k => 'distance_10k',
@@ -710,7 +716,7 @@ GeneratedPlan _generateWalkRunPlan(GeneratePlanInput input,
   // in _walkRunWorkout). Mirrors training.ts.
   final totalWeeks =
       max(input.weeks ?? kWalkRunProgression.length, kWalkRunProgression.length);
-  final runDays = input.daysPerWeek.clamp(1, 3);
+  final runDays = input.daysPerWeek.clamp(1, kWalkRunMaxDaysPerWeek);
   final dayOffsets = [0, 2, 4, 1, 3, 5, 6].sublist(0, runDays)..sort();
   final runSet = dayOffsets.toSet();
   final weeks = <GeneratedWeek>[];
@@ -1072,7 +1078,7 @@ List<GeneratedWorkout> _generateUltraWeek({
   final easySlots =
       max(0, daysPerWeek - daysUsed.where((d) => d != restDow).length);
   final easyDays =
-      min(easySlots, (remainingKm / _kEasyRunFloorKm).floor());
+      min(easySlots, (remainingKm / kEasyRunFloorKm).floor());
   final easyTotalKm = easyDays > 0
       ? min(remainingKm, (easyDays * _kUltraEasyMaxSec) / easyPace).floor()
       : 0;
@@ -1226,7 +1232,7 @@ List<GeneratedWorkout> _generateWeek({
   // slightly over its nominal target (persona #23 — daysPerWeek is a promise
   // the training-load phases keep).
   final easyDays = isRaceWeek
-      ? min(easySlots, (remaining / _kEasyRunFloorKm).floor())
+      ? min(easySlots, (remaining / kEasyRunFloorKm).floor())
       : easySlots;
   final easyKm = easyDays > 0 ? remaining / easyDays : 0.0;
 
@@ -1317,13 +1323,17 @@ GeneratedWorkout _longRun(DateTime date, int km, TrainingPaces p) => GeneratedWo
 
 // The shortest distance an easy/recovery run is ever prescribed at. Below this
 // there is no point emitting a run, so the race-week shakeout budget is
-// measured in whole floor-length days.
-const int _kEasyRunFloorKm = 3;
+// measured in whole floor-length days. Public so a pass that rescales a
+// generated plan (comeback.dart `capReturnRamp`) keeps to the same floor.
+const int kEasyRunFloorKm = 3;
+
+/// An easy run shorter than this is labelled a recovery run.
+const int kRecoveryRunMaxKm = 4;
 
 GeneratedWorkout _easy(DateTime date, double km, TrainingPaces p) => GeneratedWorkout(
       scheduledDate: date,
-      kind: km < 4 ? WorkoutKind.recovery : WorkoutKind.easy,
-      targetDistanceM: max(_kEasyRunFloorKm, km.round()) * 1000.0,
+      kind: km < kRecoveryRunMaxKm ? WorkoutKind.recovery : WorkoutKind.easy,
+      targetDistanceM: max(kEasyRunFloorKm, km.round()) * 1000.0,
       targetPaceSecPerKm: p.easy,
       targetPaceToleranceSec: 30,
     );

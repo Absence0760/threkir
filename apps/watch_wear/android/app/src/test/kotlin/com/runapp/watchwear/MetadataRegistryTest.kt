@@ -141,16 +141,17 @@ class MetadataRegistryTest {
         SUBSCRIPT.findAll(source).forEach { keys.add(it.groupValues[1]) }
 
         for (m in BUILD_JSON_OBJECT.findAll(source)) {
-            // Walk back over the declaration that owns this builder. It is a
-            // metadata builder when the nearest identifier behind it ends in
-            // `metadata` with no brace in between (so `fun buildRunMetadata(
-            // … ): JsonObject = buildJsonObject {`, spanning lines, matches,
-            // while an unrelated builder further down the file does not).
-            val from = maxOf(0, m.range.first - DECLARATION_WINDOW)
+            // Walk back over the declaration that owns this builder, to the
+            // nearest brace. It is a metadata builder when the nearest
+            // identifier in that span ends in `metadata` (so `fun
+            // buildRunMetadata( … ): JsonObject = buildJsonObject {`, spanning
+            // lines and however many parameters, matches, while an unrelated
+            // builder further down the file does not).
+            val from = (m.range.first - 1 downTo 0)
+                .firstOrNull { source[it] == '{' || source[it] == '}' }
+                ?.plus(1) ?: 0
             val window = source.substring(from, m.range.first)
             val name = METADATA_IDENTIFIER.findAll(window).lastOrNull() ?: continue
-            val between = window.substring(name.range.last + 1)
-            if (between.contains('{') || between.contains('}')) continue
             keys.addAll(depthOnePutKeys(source, m.range.last))
         }
         return keys
@@ -183,8 +184,6 @@ class MetadataRegistryTest {
     }
 
     private companion object {
-        const val DECLARATION_WINDOW = 400
-
         val SUBSCRIPT = Regex(
             """(?<![A-Za-z0-9_])[A-Za-z0-9_]*[Mm]etadata\s*(?:!!|\?)?\s*(?:\[|\.\s*get(?:Value)?\s*\()\s*"([a-z_][a-z0-9_]*)"""",
         )

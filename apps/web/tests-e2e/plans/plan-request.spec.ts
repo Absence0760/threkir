@@ -106,7 +106,7 @@ test.describe('/plans/new — AI plan request', () => {
 		await expect(editor.getByTestId('plan-ultra-distance')).toBeVisible();
 		// The ultra default length, and a goal time past the road 9-hour field.
 		await expect(editor.locator('.weeks .week-item')).toHaveCount(16);
-		const goalTime = editor.locator('fieldset', { hasText: 'Goal time' }).first().locator('input[type="number"]');
+		const goalTime = editor.locator('fieldset').filter({ has: page.locator('legend', { hasText: /^Goal time/ }) }).locator('input[type="number"]');
 		await expect(goalTime.nth(0)).toHaveValue('6');
 		await expect(editor.getByRole('button', { name: 'Create plan' })).toBeEnabled();
 	});
@@ -141,7 +141,7 @@ test.describe('/plans/new — AI plan request', () => {
 		const editor = await describe(page, 'a 1:55 half in twelve weeks');
 		await expect(editor.locator('.ai-applied')).toBeVisible({ timeout: 10_000 });
 		const weeksInput = editor.locator('input[type="number"][min="4"][max="24"]');
-		const goalTime = editor.locator('fieldset', { hasText: 'Goal time' }).first().locator('input[type="number"]');
+		const goalTime = editor.locator('fieldset').filter({ has: page.locator('legend', { hasText: /^Goal time/ }) }).locator('input[type="number"]');
 		await expect(weeksInput).toHaveValue('12');
 		await expect(goalTime.nth(0)).toHaveValue('1');
 

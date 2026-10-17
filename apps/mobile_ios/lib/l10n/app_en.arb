@@ -7784,15 +7784,6 @@
   "@plansLoadError": {
     "description": "Plans list generic load error"
   },
-  "plansStarterStartsOn": "Each starts on {date}.",
-  "@plansStarterStartsOn": {
-    "description": "Hint under the built-in starter plans on the empty plans list. {date} is a localized short date, always a Sunday",
-    "placeholders": {
-      "date": {
-        "type": "String"
-      }
-    }
-  },
   "plansStatusActive": "active",
   "@plansStatusActive": {
     "description": "Status pill on an active plan in the plans list. Lowercase, like the other status pills"
@@ -7914,10 +7905,6 @@
   "@planNewNameHint": {
     "description": "Plan-name field hint"
   },
-  "planNewNameRequiredHint": "Add a plan name to enable Create.",
-  "@planNewNameRequiredHint": {
-    "description": "Inline hint below the plan-name field explaining why the Create button is disabled when the name is empty"
-  },
   "planNewDefaultName": "{goal} plan",
   "@planNewDefaultName": {
     "description": "Default plan name prefilled when the plan wizard opens preselected to a goal (from the onboarding nudge)",
@@ -8002,13 +7989,9 @@
   "@planNewRecent5kConfirm": {
     "description": "Recent-5K current-fitness confirmation checkbox"
   },
-  "planNewRecent5kWarning": "Until you confirm, paces stay on the conservative goal-based estimate. Anchoring on an old result can prescribe paces that are too fast for a returning runner.",
+  "planNewRecent5kWarning": "Until you confirm, paces come from your goal time, or from a cautious default if you leave it blank. An old result can set paces that are too fast for a returning runner, and so can an ambitious goal.",
   "@planNewRecent5kWarning": {
-    "description": "Recent-5K unconfirmed warning"
-  },
-  "planNewOverrideHint": "Override total weeks",
-  "@planNewOverrideHint": {
-    "description": "Override-weeks field hint"
+    "description": "Warning under an entered but unconfirmed recent 5K time"
   },
   "planNewOverrideLabel": "Override weeks ({count} default)",
   "@planNewOverrideLabel": {
@@ -8270,15 +8253,6 @@
   "@planNewWeekOutline": {
     "description": "Week-outline preview section label"
   },
-  "planNewMoreWeeks": "+ {count} more weeks",
-  "@planNewMoreWeeks": {
-    "description": "More-weeks preview footer",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "planNewSessions": "{count} sessions",
   "@planNewSessions": {
     "description": "Active-sessions count on a preview week row",
@@ -8288,18 +8262,6 @@
       }
     }
   },
-  "planNewTemplateTitle": "Start from a club template",
-  "@planNewTemplateTitle": {
-    "description": "Plan-new club-template picker"
-  },
-  "planNewTemplateSubtitle": "Adopt a plan a club you belong to has published. It clones into your account with the start date below — edit it like any other plan.",
-  "@planNewTemplateSubtitle": {
-    "description": "Plan-new club-template picker"
-  },
-  "planNewTemplateButton": "Browse templates",
-  "@planNewTemplateButton": {
-    "description": "Plan-new club-template picker"
-  },
   "planNewTemplateCloning": "Adopting…",
   "@planNewTemplateCloning": {
     "description": "Plan-new club-template picker"
@@ -8307,14 +8269,6 @@
   "planNewTemplateCloneFailed": "Couldn't adopt that template.",
   "@planNewTemplateCloneFailed": {
     "description": "Toast when adopting a club template fails"
-  },
-  "planNewTemplatePickerTitle": "Choose a template",
-  "@planNewTemplatePickerTitle": {
-    "description": "Plan-new club-template picker"
-  },
-  "planNewTemplatePickerCancel": "Cancel",
-  "@planNewTemplatePickerCancel": {
-    "description": "Plan-new club-template picker"
   },
   "planLibraryTitle": "Public plan library",
   "@planLibraryTitle": {
@@ -8467,24 +8421,8 @@
   "@planNewStarterTitle": {
     "description": "Plan-new built-in starter-plan picker"
   },
-  "planNewStarterSubtitle": "Pick a proven training plan and we'll schedule it from your start date — you can tweak it after.",
-  "@planNewStarterSubtitle": {
-    "description": "Plan-new built-in starter-plan picker"
-  },
-  "planNewStarterButton": "Browse starter plans",
-  "@planNewStarterButton": {
-    "description": "Plan-new built-in starter-plan picker"
-  },
   "planNewStarterCreating": "Creating…",
   "@planNewStarterCreating": {
-    "description": "Plan-new built-in starter-plan picker"
-  },
-  "planNewStarterPickerTitle": "Choose a starter plan",
-  "@planNewStarterPickerTitle": {
-    "description": "Plan-new built-in starter-plan picker"
-  },
-  "planNewStarterPickerCancel": "Cancel",
-  "@planNewStarterPickerCancel": {
     "description": "Plan-new built-in starter-plan picker"
   },
   "planNewStarterCreateFailed": "Couldn't create that plan.",
@@ -9217,24 +9155,6 @@
   "workoutStructCooldown": "Cooldown",
   "@workoutStructCooldown": {
     "description": "Structure-list cooldown label"
-  },
-  "workoutStructWarmupValue": "{distance} @ easy",
-  "@workoutStructWarmupValue": {
-    "description": "Structure-list warmup value (distance at easy pace)",
-    "placeholders": {
-      "distance": {
-        "type": "String"
-      }
-    }
-  },
-  "workoutStructCooldownValue": "{distance} @ easy",
-  "@workoutStructCooldownValue": {
-    "description": "Structure-list cooldown value (distance at easy pace)",
-    "placeholders": {
-      "distance": {
-        "type": "String"
-      }
-    }
   },
   "workoutAdviceEasy": "Conversational pace. If you can't hold a conversation, you're running it too fast.",
   "@workoutAdviceEasy": {
@@ -20090,15 +20010,6 @@
       }
     }
   },
-  "rateLimitRotateCalendarLink": "You're making new calendar links too quickly — please wait {wait} and try again.",
-  "@rateLimitRotateCalendarLink": {
-    "description": "Rate-limit refusal when the plan_calendar_rotate bucket is spent (making a new training-plan calendar link)",
-    "placeholders": {
-      "wait": {
-        "type": "String"
-      }
-    }
-  },
   "rateLimitSendMessage": "You're sending messages too quickly — please wait {wait} and try again.",
   "@rateLimitSendMessage": {
     "description": "Rate-limit refusal when either direct-message send bucket is spent",
@@ -22349,6 +22260,616 @@
   "workoutMoveSaveFirst": "Save or discard your changes before moving this workout.",
   "@workoutMoveSaveFirst": {
     "description": "Shown when the runner taps Move with unsaved edits in the workout editor"
+  },
+  "workoutSummaryMin": "{n} min",
+  "@workoutSummaryMin": {
+    "description": "A whole number of minutes in a walk-run pattern",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "workoutSummarySec": "{n} s",
+  "@workoutSummarySec": {
+    "description": "A number of seconds in a walk-run pattern",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "workoutSummaryMinSec": "{m} min {s} s",
+  "@workoutSummaryMinSec": {
+    "description": "Minutes and seconds in a walk-run pattern",
+    "placeholders": {
+      "m": {
+        "type": "int"
+      },
+      "s": {
+        "type": "int"
+      }
+    }
+  },
+  "workoutSummaryIntervals": "{count} × ({run} run / {walk} walk)",
+  "@workoutSummaryIntervals": {
+    "description": "Walk-run intervals: count x (run time / walk time)",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "run": {
+        "type": "String"
+      },
+      "walk": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutSummaryContinuous": "{run} run",
+  "@workoutSummaryContinuous": {
+    "description": "One continuous run in a walk-run plan's graduation week",
+    "placeholders": {
+      "run": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutSummaryWarmup": "{duration} warm-up",
+  "@workoutSummaryWarmup": {
+    "description": "Timed warm-up walk in a walk-run pattern",
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutSummaryCooldown": "{duration} cool-down",
+  "@workoutSummaryCooldown": {
+    "description": "Timed cool-down walk in a walk-run pattern",
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutSummaryWithBoth": "{warmup}, {main}, {cooldown}",
+  "@workoutSummaryWithBoth": {
+    "description": "Walk-run pattern joined: warm-up, main set, cool-down",
+    "placeholders": {
+      "warmup": {
+        "type": "String"
+      },
+      "main": {
+        "type": "String"
+      },
+      "cooldown": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutSummaryWithWarmup": "{warmup}, {main}",
+  "@workoutSummaryWithWarmup": {
+    "description": "Walk-run pattern joined: warm-up, main set",
+    "placeholders": {
+      "warmup": {
+        "type": "String"
+      },
+      "main": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutSummaryWithCooldown": "{main}, {cooldown}",
+  "@workoutSummaryWithCooldown": {
+    "description": "Walk-run pattern joined: main set, cool-down",
+    "placeholders": {
+      "main": {
+        "type": "String"
+      },
+      "cooldown": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutSummaryAbout": "about {duration}",
+  "@workoutSummaryAbout": {
+    "description": "Approximate session length",
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutZoneNamed": "Zone {code} · {name}",
+  "@workoutZoneNamed": {
+    "description": "Pace-zone chip with the zone's name, e.g. Zone T · Tempo",
+    "placeholders": {
+      "code": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutZoneRaw": "Zone {code}",
+  "@workoutZoneRaw": {
+    "description": "Pace-zone chip for a free-text zone code",
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutEffortJog": "jog",
+  "@workoutEffortJog": {
+    "description": "Recovery effort between reps: an easy jog"
+  },
+  "workoutEffortEasy": "easy",
+  "@workoutEffortEasy": {
+    "description": "Recovery effort between reps: easy running"
+  },
+  "workoutEffortWalk": "walk",
+  "@workoutEffortWalk": {
+    "description": "Recovery effort between reps: walking"
+  },
+  "workoutTaglineWalkRun": "Walk-run session. Alternate running and walking on the timer.",
+  "@workoutTaglineWalkRun": {
+    "description": "Workout-detail tagline for a walk-run session"
+  },
+  "workoutMetricSession": "Session",
+  "@workoutMetricSession": {
+    "description": "Workout-detail metric label for a walk-run session's length and pattern"
+  },
+  "workoutStructRepeatsMain": "{count}× {distance}",
+  "@workoutStructRepeatsMain": {
+    "description": "Repeats step: count x rep distance or time",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "distance": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutStructRecovery": "Recovery",
+  "@workoutStructRecovery": {
+    "description": "Sub-row label for the recovery between reps"
+  },
+  "workoutStructRecoveryDetail": "{distance} {effort}",
+  "@workoutStructRecoveryDetail": {
+    "description": "Recovery between reps: distance or time, then effort",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      },
+      "effort": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutStructTotal": "Total: {value}",
+  "@workoutStructTotal": {
+    "description": "Structure total line",
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutStructAtEasy": "@ easy",
+  "@workoutStructAtEasy": {
+    "description": "Second line of a warm-up / cool-down step: at easy pace"
+  },
+  "workoutStructAtPace": "@ {pace}",
+  "@workoutStructAtPace": {
+    "description": "Second line of a step: at the given pace",
+    "placeholders": {
+      "pace": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutTimelineLabel": "Workout segment timeline",
+  "@workoutTimelineLabel": {
+    "description": "Screen-reader label of the proportional segment bar"
+  },
+  "workoutFreeFormTitle": "Free-form run",
+  "@workoutFreeFormTitle": {
+    "description": "Placeholder title when a workout has no segments"
+  },
+  "workoutFreeFormHint": "No segments to follow — just run the distance at the suggested pace.",
+  "@workoutFreeFormHint": {
+    "description": "Placeholder hint when a workout has no segments"
+  },
+  "workoutTaglineStructured": "Structured workout — follow each segment as written.",
+  "@workoutTaglineStructured": {
+    "description": "Workout-detail tagline for a structured session"
+  },
+  "workoutTaglineEasy": "Free-form easy effort. Run by feel.",
+  "@workoutTaglineEasy": {
+    "description": "Workout-detail tagline for an easy or recovery run"
+  },
+  "workoutTaglineLong": "Free-form long run. Pace yourself for the back half.",
+  "@workoutTaglineLong": {
+    "description": "Workout-detail tagline for a long run"
+  },
+  "workoutTaglineRest": "Rest day. Light movement only if you feel like it.",
+  "@workoutTaglineRest": {
+    "description": "Workout-detail tagline for a rest day"
+  },
+  "workoutTaglineRace": "Race day. Trust the taper.",
+  "@workoutTaglineRace": {
+    "description": "Workout-detail tagline for race day"
+  },
+  "workoutTaglineFreeForm": "Free-form run.",
+  "@workoutTaglineFreeForm": {
+    "description": "Workout-detail tagline for any other free-form run"
+  },
+  "workoutKindShortEasy": "E",
+  "@workoutKindShortEasy": {
+    "description": "Abbreviation of the Easy workout kind for a narrow plan-calendar cell (2-4 characters)"
+  },
+  "workoutKindShortLong": "L",
+  "@workoutKindShortLong": {
+    "description": "Abbreviation of the Long run workout kind for a narrow plan-calendar cell (2-4 characters)"
+  },
+  "workoutKindShortRecovery": "Rec",
+  "@workoutKindShortRecovery": {
+    "description": "Abbreviation of the Recovery workout kind for a narrow plan-calendar cell (2-4 characters)"
+  },
+  "workoutKindShortTempo": "T",
+  "@workoutKindShortTempo": {
+    "description": "Abbreviation of the Tempo workout kind for a narrow plan-calendar cell (2-4 characters)"
+  },
+  "workoutKindShortInterval": "Int",
+  "@workoutKindShortInterval": {
+    "description": "Abbreviation of the Intervals workout kind for a narrow plan-calendar cell (2-4 characters)"
+  },
+  "workoutKindShortMarathonPace": "MP",
+  "@workoutKindShortMarathonPace": {
+    "description": "Abbreviation of the Marathon pace workout kind for a narrow plan-calendar cell (2-4 characters)"
+  },
+  "workoutKindShortWalkRun": "W/R",
+  "@workoutKindShortWalkRun": {
+    "description": "Abbreviation of the Walk-run workout kind for a narrow plan-calendar cell (2-4 characters)"
+  },
+  "workoutKindShortRace": "Race",
+  "@workoutKindShortRace": {
+    "description": "Abbreviation of the Race workout kind for a narrow plan-calendar cell (2-4 characters)"
+  },
+  "workoutKindShortRest": "Rest",
+  "@workoutKindShortRest": {
+    "description": "Abbreviation of the Rest workout kind for a narrow plan-calendar cell (2-4 characters)"
+  },
+  "planDetailAriaCompletedSuffix": ", completed",
+  "@planDetailAriaCompletedSuffix": {
+    "description": "Appended to a plan workout's screen-reader label when it is done"
+  },
+  "planDetailAriaSkippedSuffix": ", skipped",
+  "@planDetailAriaSkippedSuffix": {
+    "description": "Appended to a plan workout's screen-reader label when it was skipped"
+  },
+  "planDetailAriaMissedSuffix": ", missed",
+  "@planDetailAriaMissedSuffix": {
+    "description": "Appended to a plan workout's screen-reader label when its day has passed and it was neither done nor skipped"
+  },
+  "planDetailAriaTodaySuffix": ", today",
+  "@planDetailAriaTodaySuffix": {
+    "description": "Appended to a plan workout's screen-reader label when it is scheduled today"
+  },
+  "planDetailNextUp": "Next up",
+  "@planDetailNextUp": {
+    "description": "Plan-detail Today card label when today has no workout and the next one is shown"
+  },
+  "planDetailGoAndRunIt": "Go and run it.",
+  "@planDetailGoAndRunIt": {
+    "description": "Plan-detail Today card body on race day"
+  },
+  "planDetailRestDayTitle": "Rest day",
+  "@planDetailRestDayTitle": {
+    "description": "Plan-detail Today card title on a rest day"
+  },
+  "planDetailRestDayHint": "No workout scheduled — recover and roll into tomorrow.",
+  "@planDetailRestDayHint": {
+    "description": "Plan-detail Today card hint on a rest day"
+  },
+  "planDetailTodayLabel": "Today",
+  "@planDetailTodayLabel": {
+    "description": "Plan-detail Today card label"
+  },
+  "planDetailRaceDayTitle": "Race day",
+  "@planDetailRaceDayTitle": {
+    "description": "Plan-detail Today card label on race day"
+  },
+  "planDetailWorkoutCompletion": "Workout completion",
+  "@planDetailWorkoutCompletion": {
+    "description": "Screen-reader name of the plan's progress ring"
+  },
+  "planDetailFirstWeek": "First week",
+  "@planDetailFirstWeek": {
+    "description": "Current-week strip heading before the plan has started"
+  },
+  "planDetailAssignedBy": "Assigned by {name}",
+  "@planDetailAssignedBy": {
+    "description": "Chip on a plan a coach assigned",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailAssignedByCoach": "Assigned by your coach",
+  "@planDetailAssignedByCoach": {
+    "description": "Chip on a coach-assigned plan when the coach's name is unknown"
+  },
+  "planDetailWeekOfN": "Week {week} of {total}",
+  "@planDetailWeekOfN": {
+    "description": "Plan-detail header: which week of the plan today is in",
+    "placeholders": {
+      "week": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "planDetailPausedChip": "Paused",
+  "@planDetailPausedChip": {
+    "description": "Plan-detail header chip on a paused plan"
+  },
+  "planDetailWeekDoneCount": "{done} / {total} done",
+  "@planDetailWeekDoneCount": {
+    "description": "How many of a week's workouts are done",
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "planDetailEarlierWeeks": "{count, plural, one{1 earlier week} other{{count} earlier weeks}}",
+  "@planDetailEarlierWeeks": {
+    "description": "Summary row standing in for the plan's finished weeks",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planDetailShowEarlierWeeks": "Show earlier weeks",
+  "@planDetailShowEarlierWeeks": {
+    "description": "Expands the finished weeks"
+  },
+  "planDetailHideEarlierWeeks": "Hide earlier weeks",
+  "@planDetailHideEarlierWeeks": {
+    "description": "Collapses the finished weeks"
+  },
+  "planNewStartingPoint": "Where are you starting from?",
+  "@planNewStartingPoint": {
+    "description": "Plan wizard: the first question, which decides the fields that apply"
+  },
+  "planNewStartingPointNew": "I've never run",
+  "@planNewStartingPointNew": {
+    "description": "Plan wizard starting point: has never run"
+  },
+  "planNewStartingPointNewHint": "A walk-run plan on 2 or 3 days a week that builds up to running without a walk break.",
+  "@planNewStartingPointNewHint": {
+    "description": "Plan wizard starting point: what the never-run choice builds"
+  },
+  "planNewStartingPointBuilding": "I run a bit and want to build up",
+  "@planNewStartingPointBuilding": {
+    "description": "Plan wizard starting point: runs a bit, wants to build up"
+  },
+  "planNewStartingPointBuildingHint": "No race in mind: pick a distance to build towards, with no goal time.",
+  "@planNewStartingPointBuildingHint": {
+    "description": "Plan wizard starting point: what the building-up choice builds"
+  },
+  "planNewStartingPointRace": "I'm training for a race",
+  "@planNewStartingPointRace": {
+    "description": "Plan wizard starting point: training for a race"
+  },
+  "planNewStartingPointRaceHint": "A goal race, and a goal time if you have one.",
+  "@planNewStartingPointRaceHint": {
+    "description": "Plan wizard starting point: what the race choice asks for"
+  },
+  "planNewStartDateHintWalkRun": "Week 1 begins here. A walk-run plan can start on any day, today included.",
+  "@planNewStartDateHintWalkRun": {
+    "description": "Helper under the start date for a walk-run plan, which may start on any day"
+  },
+  "planNewDaysPerWeekHint": "How many days a week the plan puts a run on; the rest are rest days. Pick the number you can hold every week, not the number your best week had.",
+  "@planNewDaysPerWeekHint": {
+    "description": "Helper under days per week"
+  },
+  "planNewDaysPerWeekWalkRunHint": "A walk-run plan puts a rest day after every session, so it runs 2 or 3 days a week.",
+  "@planNewDaysPerWeekWalkRunHint": {
+    "description": "Helper under days per week for a walk-run plan"
+  },
+  "planNewGoalRaceHint": "Sets how many weeks the plan runs and how far the long runs build to. Pick the distance you are training towards, not one you have already run.",
+  "@planNewGoalRaceHint": {
+    "description": "Helper under the goal race"
+  },
+  "planNewGoalTimeHint": "Drives the pace targets. Leave blank for a volume-only plan.",
+  "@planNewGoalTimeHint": {
+    "description": "Helper under the goal time"
+  },
+  "planNewOverrideHelp": "Leave blank for the usual length for your goal race. Set it when you are working back from a race date that is closer or further off.",
+  "@planNewOverrideHelp": {
+    "description": "Helper under the override-weeks field"
+  },
+  "planNewNameHelp": "What the plan is called in your plans list and at the top of every week. It has no effect on the schedule.",
+  "@planNewNameHelp": {
+    "description": "Helper under the plan name"
+  },
+  "planNewRecent5kConfirmHint": "Leave it unticked and your paces come from your goal time instead of the time above.",
+  "@planNewRecent5kConfirmHint": {
+    "description": "Subtitle of the recent-5K confirm switch: what happens if it stays off"
+  },
+  "planNewGoalAheadOfRecent": "Your goal is quicker than your recent runs suggest: they point to about {predicted} for this distance. Paces are set from the goal, so if it's ambitious, every pace in the plan is too. A slower goal, or a recent 5K you confirm below, sets them from what you can run now.",
+  "@planNewGoalAheadOfRecent": {
+    "description": "Warning under a goal time faster than recent runs project. {predicted} is a duration like 1:02:30",
+    "placeholders": {
+      "predicted": {
+        "type": "String"
+      }
+    }
+  },
+  "planNewReturnTitle": "Coming back from a break",
+  "@planNewReturnTitle": {
+    "description": "Heading of the note for a runner coming back from a break"
+  },
+  "planNewReturnBody": "You've had about {weeks} weeks off. Before that you averaged {pre} a week, so week 1 asks for no more than {cap} and each week adds at most 10% until the plan reaches its own schedule. Speed sessions in those weeks become easy runs.",
+  "@planNewReturnBody": {
+    "description": "Body of the comeback note. {weeks} whole weeks off; {pre} and {cap} are formatted distances",
+    "placeholders": {
+      "weeks": {
+        "type": "int"
+      },
+      "pre": {
+        "type": "String"
+      },
+      "cap": {
+        "type": "String"
+      }
+    }
+  },
+  "planNewReturnEaseBack": "Ease me back in",
+  "@planNewReturnEaseBack": {
+    "description": "Switch on the comeback note: cap the opening weeks"
+  },
+  "planNewReturnWalkRun": "Return with walk-run intervals instead",
+  "@planNewReturnWalkRun": {
+    "description": "Button on the comeback note: switch to a walk-run plan"
+  },
+  "planNewThinHistory": "You've run in fewer than 3 of the last 4 weeks, so this plan can't be checked against your recent training. If week 1 ({opening}) is more than you've been running, fewer days or walk-run intervals make a gentler start.",
+  "@planNewThinHistory": {
+    "description": "Note when the runner has too little recent running to check the plan against. {opening} is a formatted distance",
+    "placeholders": {
+      "opening": {
+        "type": "String"
+      }
+    }
+  },
+  "planNewThinHistoryWalkRun": "Start with walk-run intervals",
+  "@planNewThinHistoryWalkRun": {
+    "description": "Button on the thin-history note: switch to a walk-run plan"
+  },
+  "planNewStarterSummary": "{weeks} weeks · {days} days a week",
+  "@planNewStarterSummary": {
+    "description": "What a distance-based starter plan asks for",
+    "placeholders": {
+      "weeks": {
+        "type": "int"
+      },
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "planNewStarterSummaryTimed": "{weeks} weeks · {days} days a week · {min}–{max} min a session",
+  "@planNewStarterSummaryTimed": {
+    "description": "What a timed (walk-run) starter plan asks for; {min} and {max} are session minutes",
+    "placeholders": {
+      "weeks": {
+        "type": "int"
+      },
+      "days": {
+        "type": "int"
+      },
+      "min": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "plansStarterStarts": "Starts {date}",
+  "@plansStarterStarts": {
+    "description": "When a starter offered on the empty plans list begins. {date} is a localized short date",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planNewStartDateHint": "Week 1 begins here. The plan's weeks run Sunday to Saturday, so only a Sunday can be picked.",
+  "@planNewStartDateHint": {
+    "description": "Helper under the start date: why only Sundays can be picked"
+  },
+  "planNewStartDatePickerHelp": "Pick a Sunday",
+  "@planNewStartDatePickerHelp": {
+    "description": "Date picker heading when only Sundays can be picked"
+  },
+  "planNewStartDatePickerHelpWalkRun": "Pick any day",
+  "@planNewStartDatePickerHelpWalkRun": {
+    "description": "Date picker heading for a walk-run plan, which may start any day"
+  },
+  "planNewHoursLabel": "Hours",
+  "@planNewHoursLabel": {
+    "description": "Label of the hours box of a time entry"
+  },
+  "planNewMinutesLabel": "Minutes",
+  "@planNewMinutesLabel": {
+    "description": "Label of the minutes box of a time entry"
+  },
+  "planNewSecondsLabel": "Seconds",
+  "@planNewSecondsLabel": {
+    "description": "Label of the seconds box of a time entry"
+  },
+  "planNewNameRequired": "Add a plan name.",
+  "@planNewNameRequired": {
+    "description": "Error under an empty plan name"
+  },
+  "planNewReadyMadeTitle": "Start from a ready-made plan",
+  "@planNewReadyMadeTitle": {
+    "description": "Plan wizard card that opens the built-in and club plans"
+  },
+  "planNewReadyMadeBody": "A built-in plan, or one a club you belong to has published. You can edit it after.",
+  "@planNewReadyMadeBody": {
+    "description": "Body of the ready-made plans card"
+  },
+  "planNewReadyMadeButton": "Browse ready-made plans",
+  "@planNewReadyMadeButton": {
+    "description": "Button on the ready-made plans card"
+  },
+  "planNewReadyMadeBuiltIn": "Built-in plans",
+  "@planNewReadyMadeBuiltIn": {
+    "description": "Section heading in the ready-made plans sheet: built-in starter plans"
+  },
+  "planNewReadyMadeClubs": "From your clubs",
+  "@planNewReadyMadeClubs": {
+    "description": "Section heading in the ready-made plans sheet: club templates"
+  },
+  "planNewBuildOwn": "Or build your own",
+  "@planNewBuildOwn": {
+    "description": "Divider above the build-your-own form in the plan wizard"
+  },
+  "planNewSummary": "{weeks, plural, one{{weeks} week} other{{weeks} weeks}} · ends {date}",
+  "@planNewSummary": {
+    "description": "Compact plan summary beside Create: length and end date. {date} is a localized date",
+    "placeholders": {
+      "weeks": {
+        "type": "int"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "rateLimitRotateCalendarLink": "You're making new calendar links too quickly — please wait {wait} and try again.",
+  "@rateLimitRotateCalendarLink": {
+    "description": "Rate-limit refusal when the plan_calendar_rotate bucket is spent (making a new training-plan calendar link)",
+    "placeholders": {
+      "wait": {
+        "type": "String"
+      }
+    }
   },
   "planCalendarFeedTitle": "Training plan calendar",
   "@planCalendarFeedTitle": {

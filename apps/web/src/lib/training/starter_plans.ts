@@ -59,3 +59,35 @@ export function instantiateStarter(
 		age: age ?? null
 	});
 }
+
+export interface StarterSummary {
+	weeks: number;
+	daysPerWeek: number;
+	/// The shortest and longest session, in whole minutes rounded to the
+	/// nearest 5, for a starter whose sessions are timed (walk-run). Null for
+	/// a distance-based starter, whose session length depends on the
+	/// runner's pace.
+	sessionMinutes: { min: number; max: number } | null;
+}
+
+/// What a starter asks of the runner, for the line under its name. Read off
+/// the plan `instantiateStarter` actually builds, so the line cannot drift
+/// from the schedule. Session lengths do not depend on the start date; the
+/// fixed Sunday below only gives the generator a valid day 0.
+export function starterSummary(id: string): StarterSummary | null {
+	const starter = starterById(id);
+	const plan = instantiateStarter(id, '2026-01-04');
+	if (!starter || !plan) return null;
+	let sessionMinutes: StarterSummary['sessionMinutes'] = null;
+	if (starter.beginnerWalkRun) {
+		const seconds = plan.weeks
+			.flatMap((w) => w.workouts)
+			.filter((wo) => wo.kind === 'walk_run' && wo.target_duration_seconds != null)
+			.map((wo) => wo.target_duration_seconds as number);
+		if (seconds.length > 0) {
+			const toFive = (s: number) => Math.round(s / 300) * 5;
+			sessionMinutes = { min: toFive(Math.min(...seconds)), max: toFive(Math.max(...seconds)) };
+		}
+	}
+	return { weeks: plan.weeks.length, daysPerWeek: starter.daysPerWeek, sessionMinutes };
+}

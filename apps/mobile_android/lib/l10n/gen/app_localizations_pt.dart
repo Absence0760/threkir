@@ -5819,11 +5819,6 @@ class AppLocalizationsPt extends AppLocalizations {
       'Não foi possível carregar os planos de treino. Toque em tentar novamente.';
 
   @override
-  String plansStarterStartsOn(String date) {
-    return 'Cada um começa a $date.';
-  }
-
-  @override
   String get plansStatusActive => 'Ativo';
 
   @override
@@ -5911,10 +5906,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get planNewNameHint => 'ex. Meia maratona de outono';
 
   @override
-  String get planNewNameRequiredHint =>
-      'Adicione um nome de plano para ativar Criar.';
-
-  @override
   String planNewDefaultName(String goal) {
     return 'Plano de $goal';
   }
@@ -5978,10 +5969,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get planNewRecent5kWarning =>
-      'Até confirmar, os ritmos permanecem na estimativa conservadora baseada na meta. Basear-se num resultado antigo pode prescrever ritmos demasiado rápidos para quem está a voltar.';
-
-  @override
-  String get planNewOverrideHint => 'Substituir o total de semanas';
+      'Até confirmar, os ritmos vêm do seu tempo-objetivo, ou de um valor prudente por omissão se o deixar em branco. Um resultado antigo pode definir ritmos demasiado rápidos para quem está a voltar a correr, e um objetivo ambicioso também.';
 
   @override
   String planNewOverrideLabel(int count) {
@@ -6192,24 +6180,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get planNewWeekOutline => 'Resumo das semanas';
 
   @override
-  String planNewMoreWeeks(int count) {
-    return '+ $count semanas a mais';
-  }
-
-  @override
   String planNewSessions(int count) {
     return '$count sessões';
   }
-
-  @override
-  String get planNewTemplateTitle => 'Começar com um modelo do clube';
-
-  @override
-  String get planNewTemplateSubtitle =>
-      'Adote um plano que um clube ao qual pertence publicou. Ele é clonado na sua conta com a data de início abaixo — edite como qualquer outro plano.';
-
-  @override
-  String get planNewTemplateButton => 'Ver modelos';
 
   @override
   String get planNewTemplateCloning => 'A adotar…';
@@ -6217,12 +6190,6 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get planNewTemplateCloneFailed =>
       'Não foi possível adotar esse modelo.';
-
-  @override
-  String get planNewTemplatePickerTitle => 'Escolha um modelo';
-
-  @override
-  String get planNewTemplatePickerCancel => 'Cancelar';
 
   @override
   String get planLibraryTitle => 'Biblioteca pública de planos';
@@ -6338,20 +6305,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get planNewStarterTitle => 'Começar com um plano integrado';
 
   @override
-  String get planNewStarterSubtitle =>
-      'Escolha um plano de treino comprovado e o agendamos a partir da sua data de início; pode ajustá-lo depois.';
-
-  @override
-  String get planNewStarterButton => 'Explorar planos iniciais';
-
-  @override
   String get planNewStarterCreating => 'A criar…';
-
-  @override
-  String get planNewStarterPickerTitle => 'Escolha um plano inicial';
-
-  @override
-  String get planNewStarterPickerCancel => 'Cancelar';
 
   @override
   String get planNewStarterCreateFailed => 'Não foi possível criar esse plano.';
@@ -6893,16 +6847,6 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get workoutStructCooldown => 'Desaquecimento';
-
-  @override
-  String workoutStructWarmupValue(String distance) {
-    return '$distance @ leve';
-  }
-
-  @override
-  String workoutStructCooldownValue(String distance) {
-    return '$distance @ leve';
-  }
 
   @override
   String get workoutAdviceEasy =>
@@ -15425,11 +15369,6 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String rateLimitRotateCalendarLink(String wait) {
-    return 'Está a criar ligações de calendário demasiado depressa — aguarde $wait e tente novamente.';
-  }
-
-  @override
   String rateLimitSendMessage(String wait) {
     return 'Está a enviar mensagens demasiado depressa — aguarde $wait e tente novamente.';
   }
@@ -17140,6 +17079,403 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get workoutMoveSaveFirst =>
       'Guarde ou descarte as suas alterações antes de mover este treino.';
+
+  @override
+  String workoutSummaryMin(int n) {
+    return '$n min';
+  }
+
+  @override
+  String workoutSummarySec(int n) {
+    return '$n s';
+  }
+
+  @override
+  String workoutSummaryMinSec(int m, int s) {
+    return '$m min $s s';
+  }
+
+  @override
+  String workoutSummaryIntervals(int count, String run, String walk) {
+    return '$count × ($run a correr / $walk a caminhar)';
+  }
+
+  @override
+  String workoutSummaryContinuous(String run) {
+    return '$run a correr';
+  }
+
+  @override
+  String workoutSummaryWarmup(String duration) {
+    return '$duration de aquecimento';
+  }
+
+  @override
+  String workoutSummaryCooldown(String duration) {
+    return '$duration de desaquecimento';
+  }
+
+  @override
+  String workoutSummaryWithBoth(String warmup, String main, String cooldown) {
+    return '$warmup, $main, $cooldown';
+  }
+
+  @override
+  String workoutSummaryWithWarmup(String warmup, String main) {
+    return '$warmup, $main';
+  }
+
+  @override
+  String workoutSummaryWithCooldown(String main, String cooldown) {
+    return '$main, $cooldown';
+  }
+
+  @override
+  String workoutSummaryAbout(String duration) {
+    return 'cerca de $duration';
+  }
+
+  @override
+  String workoutZoneNamed(String code, String name) {
+    return 'Zona $code · $name';
+  }
+
+  @override
+  String workoutZoneRaw(String code) {
+    return 'Zona $code';
+  }
+
+  @override
+  String get workoutEffortJog => 'trote';
+
+  @override
+  String get workoutEffortEasy => 'leve';
+
+  @override
+  String get workoutEffortWalk => 'a caminhar';
+
+  @override
+  String get workoutTaglineWalkRun =>
+      'Sessão de caminhada-corrida. Alterne entre correr e caminhar ao ritmo do temporizador.';
+
+  @override
+  String get workoutMetricSession => 'Sessão';
+
+  @override
+  String workoutStructRepeatsMain(int count, String distance) {
+    return '$count× $distance';
+  }
+
+  @override
+  String get workoutStructRecovery => 'Recuperação';
+
+  @override
+  String workoutStructRecoveryDetail(String distance, String effort) {
+    return '$distance ($effort)';
+  }
+
+  @override
+  String workoutStructTotal(String value) {
+    return 'Total: $value';
+  }
+
+  @override
+  String get workoutStructAtEasy => '@ leve';
+
+  @override
+  String workoutStructAtPace(String pace) {
+    return '@ $pace';
+  }
+
+  @override
+  String get workoutTimelineLabel => 'Linha do tempo dos segmentos do treino';
+
+  @override
+  String get workoutFreeFormTitle => 'Corrida livre';
+
+  @override
+  String get workoutFreeFormHint =>
+      'Sem segmentos a seguir — apenas corra a distância no ritmo sugerido.';
+
+  @override
+  String get workoutTaglineStructured =>
+      'Treino estruturado — siga cada segmento como está descrito.';
+
+  @override
+  String get workoutTaglineEasy => 'Esforço leve livre. Corra pelo feeling.';
+
+  @override
+  String get workoutTaglineLong =>
+      'Longão livre. Controlo o ritmo para a segunda metade.';
+
+  @override
+  String get workoutTaglineRest =>
+      'Dia de descanso. Movimento leve só se quiser.';
+
+  @override
+  String get workoutTaglineRace => 'Dia de prova. Confie no polimento.';
+
+  @override
+  String get workoutTaglineFreeForm => 'Corrida livre.';
+
+  @override
+  String get workoutKindShortEasy => 'L';
+
+  @override
+  String get workoutKindShortLong => 'Lg';
+
+  @override
+  String get workoutKindShortRecovery => 'Rec';
+
+  @override
+  String get workoutKindShortTempo => 'T';
+
+  @override
+  String get workoutKindShortInterval => 'Int';
+
+  @override
+  String get workoutKindShortMarathonPace => 'RM';
+
+  @override
+  String get workoutKindShortWalkRun => 'C/C';
+
+  @override
+  String get workoutKindShortRace => 'Prova';
+
+  @override
+  String get workoutKindShortRest => 'Desc';
+
+  @override
+  String get planDetailAriaCompletedSuffix => ', concluído';
+
+  @override
+  String get planDetailAriaSkippedSuffix => ', ignorado';
+
+  @override
+  String get planDetailAriaMissedSuffix => ', falhado';
+
+  @override
+  String get planDetailAriaTodaySuffix => ', hoje';
+
+  @override
+  String get planDetailNextUp => 'A seguir';
+
+  @override
+  String get planDetailGoAndRunIt => 'Vá e corra!';
+
+  @override
+  String get planDetailRestDayTitle => 'Dia de descanso';
+
+  @override
+  String get planDetailRestDayHint =>
+      'Nenhum treino agendado — recupere-se e siga para amanhã.';
+
+  @override
+  String get planDetailTodayLabel => 'Hoje';
+
+  @override
+  String get planDetailRaceDayTitle => 'Dia da prova';
+
+  @override
+  String get planDetailWorkoutCompletion => 'Conclusão dos treinos';
+
+  @override
+  String get planDetailFirstWeek => 'Primeira semana';
+
+  @override
+  String planDetailAssignedBy(String name) {
+    return 'Atribuído por $name';
+  }
+
+  @override
+  String get planDetailAssignedByCoach => 'Atribuído pelo seu treinador';
+
+  @override
+  String planDetailWeekOfN(int week, int total) {
+    return 'Semana $week de $total';
+  }
+
+  @override
+  String get planDetailPausedChip => 'Pausado';
+
+  @override
+  String planDetailWeekDoneCount(int done, int total) {
+    return '$done / $total feitos';
+  }
+
+  @override
+  String planDetailEarlierWeeks(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count semanas anteriores',
+      one: '1 semana anterior',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planDetailShowEarlierWeeks => 'Mostrar semanas anteriores';
+
+  @override
+  String get planDetailHideEarlierWeeks => 'Ocultar semanas anteriores';
+
+  @override
+  String get planNewStartingPoint => 'De onde está a partir?';
+
+  @override
+  String get planNewStartingPointNew => 'Nunca corri';
+
+  @override
+  String get planNewStartingPointNewHint =>
+      'Um plano de caminhada-corrida em 2 ou 3 dias por semana que o leva a correr sem pausas para caminhar.';
+
+  @override
+  String get planNewStartingPointBuilding => 'Corro um pouco e quero evoluir';
+
+  @override
+  String get planNewStartingPointBuildingHint =>
+      'Sem prova em vista: escolha uma distância como meta, sem tempo-objetivo.';
+
+  @override
+  String get planNewStartingPointRace => 'Estou a treinar para uma prova';
+
+  @override
+  String get planNewStartingPointRaceHint =>
+      'Uma prova-objetivo e, se tiver, um tempo-objetivo.';
+
+  @override
+  String get planNewStartDateHintWalkRun =>
+      'A semana 1 começa aqui. Um plano de caminhada-corrida pode começar em qualquer dia, incluindo hoje.';
+
+  @override
+  String get planNewDaysPerWeekHint =>
+      'Quantos dias por semana o plano agenda uma corrida; os restantes são dias de descanso. Escolha o número que consegue manter todas as semanas, não o da sua melhor semana.';
+
+  @override
+  String get planNewDaysPerWeekWalkRunHint =>
+      'Um plano de caminhada-corrida coloca um dia de descanso a seguir a cada sessão, por isso tem 2 ou 3 dias por semana.';
+
+  @override
+  String get planNewGoalRaceHint =>
+      'Define quantas semanas o plano dura e até onde crescem os treinos longos. Escolha a distância para a qual está a treinar, não uma que já correu.';
+
+  @override
+  String get planNewGoalTimeHint =>
+      'Define os ritmos-alvo. Deixe em branco para um plano só de volume.';
+
+  @override
+  String get planNewOverrideHelp =>
+      'Deixe em branco para a duração habitual da sua prova-alvo. Preencha quando estiver a contar para trás a partir de uma data de prova mais próxima ou mais distante.';
+
+  @override
+  String get planNewNameHelp =>
+      'O nome com que o plano aparece na sua lista de planos e no topo de cada semana. Não afeta o calendário.';
+
+  @override
+  String get planNewRecent5kConfirmHint =>
+      'Sem marcar, os seus ritmos vêm do seu tempo-objetivo, e não do tempo acima.';
+
+  @override
+  String planNewGoalAheadOfRecent(String predicted) {
+    return 'O seu objetivo é mais rápido do que as suas corridas recentes indicam: apontam para cerca de $predicted nesta distância. Os ritmos vêm do objetivo, por isso, se for ambicioso, todos os ritmos do plano também o serão. Um objetivo mais lento, ou um 5K recente que confirme abaixo, ajusta-os ao que consegue correr agora.';
+  }
+
+  @override
+  String get planNewReturnTitle => 'Regresso depois de uma pausa';
+
+  @override
+  String planNewReturnBody(int weeks, String pre, String cap) {
+    return 'Esteve cerca de $weeks semanas parado. Antes disso, corria em média $pre por semana, por isso a semana 1 pede no máximo $cap e cada semana aumenta no máximo 10% até o plano chegar ao seu próprio calendário. Os treinos de velocidade dessas semanas passam a corridas leves.';
+  }
+
+  @override
+  String get planNewReturnEaseBack => 'Regressar aos poucos';
+
+  @override
+  String get planNewReturnWalkRun =>
+      'Regressar com intervalos de caminhada-corrida';
+
+  @override
+  String planNewThinHistory(String opening) {
+    return 'Correu em menos de 3 das últimas 4 semanas, por isso este plano não pode ser comparado com o seu treino recente. Se a semana 1 ($opening) for mais do que tem corrido, menos dias ou intervalos de caminhada-corrida são um início mais suave.';
+  }
+
+  @override
+  String get planNewThinHistoryWalkRun =>
+      'Começar com intervalos de caminhada-corrida';
+
+  @override
+  String planNewStarterSummary(int weeks, int days) {
+    return '$weeks semanas · $days dias por semana';
+  }
+
+  @override
+  String planNewStarterSummaryTimed(int weeks, int days, int min, int max) {
+    return '$weeks semanas · $days dias por semana · $min–$max min por sessão';
+  }
+
+  @override
+  String plansStarterStarts(String date) {
+    return 'Começa a $date';
+  }
+
+  @override
+  String get planNewStartDateHint =>
+      'A semana 1 começa aqui. As semanas do plano vão de domingo a sábado, por isso só é possível escolher um domingo.';
+
+  @override
+  String get planNewStartDatePickerHelp => 'Escolha um domingo';
+
+  @override
+  String get planNewStartDatePickerHelpWalkRun => 'Escolha qualquer dia';
+
+  @override
+  String get planNewHoursLabel => 'Horas';
+
+  @override
+  String get planNewMinutesLabel => 'Minutos';
+
+  @override
+  String get planNewSecondsLabel => 'Segundos';
+
+  @override
+  String get planNewNameRequired => 'Dê um nome ao plano.';
+
+  @override
+  String get planNewReadyMadeTitle => 'Começar com um plano já feito';
+
+  @override
+  String get planNewReadyMadeBody =>
+      'Um plano incluído, ou um que um clube de que faz parte publicou. Pode editá-lo depois.';
+
+  @override
+  String get planNewReadyMadeButton => 'Ver planos já feitos';
+
+  @override
+  String get planNewReadyMadeBuiltIn => 'Planos incluídos';
+
+  @override
+  String get planNewReadyMadeClubs => 'Dos seus clubes';
+
+  @override
+  String get planNewBuildOwn => 'Ou crie o seu';
+
+  @override
+  String planNewSummary(int weeks, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '$weeks semanas',
+      one: '$weeks semana',
+    );
+    return '$_temp0 · termina a $date';
+  }
+
+  @override
+  String rateLimitRotateCalendarLink(String wait) {
+    return 'Está a criar ligações de calendário demasiado depressa — aguarde $wait e tente novamente.';
+  }
 
   @override
   String get planCalendarFeedTitle => 'Calendário do plano de treino';
@@ -23047,11 +23383,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Não foi possível carregar os planos de treino. Toque em tentar novamente.';
 
   @override
-  String plansStarterStartsOn(String date) {
-    return 'Cada um começa em $date.';
-  }
-
-  @override
   String get plansStatusActive => 'ativo';
 
   @override
@@ -23139,10 +23470,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get planNewNameHint => 'ex. Meia maratona de outono';
 
   @override
-  String get planNewNameRequiredHint =>
-      'Adicione um nome de plano para ativar Criar.';
-
-  @override
   String planNewDefaultName(String goal) {
     return 'Plano de $goal';
   }
@@ -23206,10 +23533,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get planNewRecent5kWarning =>
-      'Até você confirmar, os ritmos permanecem na estimativa conservadora baseada na meta. Basear-se em um resultado antigo pode prescrever ritmos rápidos demais para quem está voltando.';
-
-  @override
-  String get planNewOverrideHint => 'Substituir o total de semanas';
+      'Até você confirmar, os ritmos vêm do seu tempo-alvo, ou de um padrão cauteloso se você deixá-lo em branco. Um resultado antigo pode definir ritmos rápidos demais para quem está voltando a correr, e uma meta ambiciosa também.';
 
   @override
   String planNewOverrideLabel(int count) {
@@ -23420,24 +23744,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get planNewWeekOutline => 'Resumo das semanas';
 
   @override
-  String planNewMoreWeeks(int count) {
-    return '+ $count semanas a mais';
-  }
-
-  @override
   String planNewSessions(int count) {
     return '$count sessões';
   }
-
-  @override
-  String get planNewTemplateTitle => 'Começar com um modelo do clube';
-
-  @override
-  String get planNewTemplateSubtitle =>
-      'Adote um plano que um clube ao qual você pertence publicou. Ele é clonado na sua conta com a data de início abaixo — edite como qualquer outro plano.';
-
-  @override
-  String get planNewTemplateButton => 'Ver modelos';
 
   @override
   String get planNewTemplateCloning => 'Adotando…';
@@ -23445,12 +23754,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get planNewTemplateCloneFailed =>
       'Não foi possível adotar esse modelo.';
-
-  @override
-  String get planNewTemplatePickerTitle => 'Escolha um modelo';
-
-  @override
-  String get planNewTemplatePickerCancel => 'Cancelar';
 
   @override
   String get planLibraryTitle => 'Biblioteca pública de planos';
@@ -23566,20 +23869,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get planNewStarterTitle => 'Começar com um plano integrado';
 
   @override
-  String get planNewStarterSubtitle =>
-      'Escolha um plano de treino comprovado e o agendamos a partir da sua data de início; você pode ajustá-lo depois.';
-
-  @override
-  String get planNewStarterButton => 'Explorar planos iniciais';
-
-  @override
   String get planNewStarterCreating => 'Criando…';
-
-  @override
-  String get planNewStarterPickerTitle => 'Escolha um plano inicial';
-
-  @override
-  String get planNewStarterPickerCancel => 'Cancelar';
 
   @override
   String get planNewStarterCreateFailed => 'Não foi possível criar esse plano.';
@@ -24121,16 +24411,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get workoutStructCooldown => 'Desaquecimento';
-
-  @override
-  String workoutStructWarmupValue(String distance) {
-    return '$distance @ leve';
-  }
-
-  @override
-  String workoutStructCooldownValue(String distance) {
-    return '$distance @ leve';
-  }
 
   @override
   String get workoutAdviceEasy =>
@@ -32641,11 +32921,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String rateLimitRotateCalendarLink(String wait) {
-    return 'Você está criando links de calendário rápido demais — espere $wait e tente de novo.';
-  }
-
-  @override
   String rateLimitSendMessage(String wait) {
     return 'Você está enviando mensagens rápido demais — espere $wait e tente de novo.';
   }
@@ -34354,6 +34629,403 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get workoutMoveSaveFirst =>
       'Salve ou descarte suas alterações antes de mover este treino.';
+
+  @override
+  String workoutSummaryMin(int n) {
+    return '$n min';
+  }
+
+  @override
+  String workoutSummarySec(int n) {
+    return '$n s';
+  }
+
+  @override
+  String workoutSummaryMinSec(int m, int s) {
+    return '$m min $s s';
+  }
+
+  @override
+  String workoutSummaryIntervals(int count, String run, String walk) {
+    return '$count × ($run correndo / $walk caminhando)';
+  }
+
+  @override
+  String workoutSummaryContinuous(String run) {
+    return '$run correndo';
+  }
+
+  @override
+  String workoutSummaryWarmup(String duration) {
+    return '$duration de aquecimento';
+  }
+
+  @override
+  String workoutSummaryCooldown(String duration) {
+    return '$duration de desaquecimento';
+  }
+
+  @override
+  String workoutSummaryWithBoth(String warmup, String main, String cooldown) {
+    return '$warmup, $main, $cooldown';
+  }
+
+  @override
+  String workoutSummaryWithWarmup(String warmup, String main) {
+    return '$warmup, $main';
+  }
+
+  @override
+  String workoutSummaryWithCooldown(String main, String cooldown) {
+    return '$main, $cooldown';
+  }
+
+  @override
+  String workoutSummaryAbout(String duration) {
+    return 'cerca de $duration';
+  }
+
+  @override
+  String workoutZoneNamed(String code, String name) {
+    return 'Zona $code · $name';
+  }
+
+  @override
+  String workoutZoneRaw(String code) {
+    return 'Zona $code';
+  }
+
+  @override
+  String get workoutEffortJog => 'trote';
+
+  @override
+  String get workoutEffortEasy => 'leve';
+
+  @override
+  String get workoutEffortWalk => 'caminhando';
+
+  @override
+  String get workoutTaglineWalkRun =>
+      'Sessão de caminhada-corrida. Alterne entre correr e caminhar seguindo o cronômetro.';
+
+  @override
+  String get workoutMetricSession => 'Sessão';
+
+  @override
+  String workoutStructRepeatsMain(int count, String distance) {
+    return '$count× $distance';
+  }
+
+  @override
+  String get workoutStructRecovery => 'Recuperação';
+
+  @override
+  String workoutStructRecoveryDetail(String distance, String effort) {
+    return '$distance ($effort)';
+  }
+
+  @override
+  String workoutStructTotal(String value) {
+    return 'Total: $value';
+  }
+
+  @override
+  String get workoutStructAtEasy => '@ leve';
+
+  @override
+  String workoutStructAtPace(String pace) {
+    return '@ $pace';
+  }
+
+  @override
+  String get workoutTimelineLabel => 'Linha do tempo dos segmentos do treino';
+
+  @override
+  String get workoutFreeFormTitle => 'Corrida livre';
+
+  @override
+  String get workoutFreeFormHint =>
+      'Sem segmentos a seguir — apenas corra a distância no ritmo sugerido.';
+
+  @override
+  String get workoutTaglineStructured =>
+      'Treino estruturado — siga cada segmento como está descrito.';
+
+  @override
+  String get workoutTaglineEasy => 'Esforço leve livre. Corra pelo feeling.';
+
+  @override
+  String get workoutTaglineLong =>
+      'Longão livre. Controle o ritmo para a segunda metade.';
+
+  @override
+  String get workoutTaglineRest =>
+      'Dia de descanso. Movimento leve só se você quiser.';
+
+  @override
+  String get workoutTaglineRace => 'Dia de prova. Confie no polimento.';
+
+  @override
+  String get workoutTaglineFreeForm => 'Corrida livre.';
+
+  @override
+  String get workoutKindShortEasy => 'L';
+
+  @override
+  String get workoutKindShortLong => 'Lg';
+
+  @override
+  String get workoutKindShortRecovery => 'Rec';
+
+  @override
+  String get workoutKindShortTempo => 'T';
+
+  @override
+  String get workoutKindShortInterval => 'Int';
+
+  @override
+  String get workoutKindShortMarathonPace => 'RM';
+
+  @override
+  String get workoutKindShortWalkRun => 'C/C';
+
+  @override
+  String get workoutKindShortRace => 'Prova';
+
+  @override
+  String get workoutKindShortRest => 'Desc';
+
+  @override
+  String get planDetailAriaCompletedSuffix => ', concluído';
+
+  @override
+  String get planDetailAriaSkippedSuffix => ', ignorado';
+
+  @override
+  String get planDetailAriaMissedSuffix => ', não realizado';
+
+  @override
+  String get planDetailAriaTodaySuffix => ', hoje';
+
+  @override
+  String get planDetailNextUp => 'A seguir';
+
+  @override
+  String get planDetailGoAndRunIt => 'Vá e corra!';
+
+  @override
+  String get planDetailRestDayTitle => 'Dia de descanso';
+
+  @override
+  String get planDetailRestDayHint =>
+      'Nenhum treino agendado — recupere-se e siga para amanhã.';
+
+  @override
+  String get planDetailTodayLabel => 'Hoje';
+
+  @override
+  String get planDetailRaceDayTitle => 'Dia da prova';
+
+  @override
+  String get planDetailWorkoutCompletion => 'Conclusão dos treinos';
+
+  @override
+  String get planDetailFirstWeek => 'Primeira semana';
+
+  @override
+  String planDetailAssignedBy(String name) {
+    return 'Atribuído por $name';
+  }
+
+  @override
+  String get planDetailAssignedByCoach => 'Atribuído pelo seu treinador';
+
+  @override
+  String planDetailWeekOfN(int week, int total) {
+    return 'Semana $week de $total';
+  }
+
+  @override
+  String get planDetailPausedChip => 'Pausado';
+
+  @override
+  String planDetailWeekDoneCount(int done, int total) {
+    return '$done / $total feitos';
+  }
+
+  @override
+  String planDetailEarlierWeeks(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count semanas anteriores',
+      one: '1 semana anterior',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planDetailShowEarlierWeeks => 'Mostrar semanas anteriores';
+
+  @override
+  String get planDetailHideEarlierWeeks => 'Ocultar semanas anteriores';
+
+  @override
+  String get planNewStartingPoint => 'De onde você está começando?';
+
+  @override
+  String get planNewStartingPointNew => 'Nunca corri';
+
+  @override
+  String get planNewStartingPointNewHint =>
+      'Um plano de caminhada-corrida em 2 ou 3 dias por semana que leva você a correr sem pausas para caminhar.';
+
+  @override
+  String get planNewStartingPointBuilding => 'Corro um pouco e quero evoluir';
+
+  @override
+  String get planNewStartingPointBuildingHint =>
+      'Sem prova em vista: escolha uma distância como meta, sem tempo-alvo.';
+
+  @override
+  String get planNewStartingPointRace => 'Estou treinando para uma prova';
+
+  @override
+  String get planNewStartingPointRaceHint =>
+      'Uma prova-alvo e, se tiver, um tempo-alvo.';
+
+  @override
+  String get planNewStartDateHintWalkRun =>
+      'A semana 1 começa aqui. Um plano de caminhada-corrida pode começar em qualquer dia, inclusive hoje.';
+
+  @override
+  String get planNewDaysPerWeekHint =>
+      'Quantos dias por semana o plano agenda uma corrida; os demais são dias de descanso. Escolha o número que você consegue manter toda semana, não o da sua melhor semana.';
+
+  @override
+  String get planNewDaysPerWeekWalkRunHint =>
+      'Um plano de caminhada-corrida coloca um dia de descanso depois de cada sessão, então tem 2 ou 3 dias por semana.';
+
+  @override
+  String get planNewGoalRaceHint =>
+      'Define quantas semanas o plano dura e até onde os longões crescem. Escolha a distância para a qual você está treinando, não uma que já correu.';
+
+  @override
+  String get planNewGoalTimeHint =>
+      'Define os ritmos-alvo. Deixe em branco para um plano só de volume.';
+
+  @override
+  String get planNewOverrideHelp =>
+      'Deixe em branco para a duração habitual da sua prova-alvo. Preencha quando estiver contando de trás para frente a partir de uma data de prova mais próxima ou mais distante.';
+
+  @override
+  String get planNewNameHelp =>
+      'O nome com que o plano aparece na sua lista de planos e no topo de cada semana. Não afeta o cronograma.';
+
+  @override
+  String get planNewRecent5kConfirmHint =>
+      'Sem marcar, seus ritmos vêm do seu tempo-alvo, e não do tempo acima.';
+
+  @override
+  String planNewGoalAheadOfRecent(String predicted) {
+    return 'Sua meta é mais rápida do que suas corridas recentes indicam: elas apontam para cerca de $predicted nesta distância. Os ritmos vêm da meta, então, se ela for ambiciosa, todos os ritmos do plano também serão. Uma meta mais lenta, ou um 5K recente que você confirmar abaixo, ajusta os ritmos ao que você consegue correr agora.';
+  }
+
+  @override
+  String get planNewReturnTitle => 'Voltando de uma pausa';
+
+  @override
+  String planNewReturnBody(int weeks, String pre, String cap) {
+    return 'Você ficou cerca de $weeks semanas parado. Antes disso, corria em média $pre por semana, então a semana 1 pede no máximo $cap e cada semana aumenta no máximo 10% até o plano chegar ao próprio cronograma. Os treinos de velocidade dessas semanas viram corridas leves.';
+  }
+
+  @override
+  String get planNewReturnEaseBack => 'Voltar aos poucos';
+
+  @override
+  String get planNewReturnWalkRun =>
+      'Voltar com intervalos de caminhada-corrida';
+
+  @override
+  String planNewThinHistory(String opening) {
+    return 'Você correu em menos de 3 das últimas 4 semanas, então este plano não pode ser comparado com seu treino recente. Se a semana 1 ($opening) for mais do que você tem corrido, menos dias ou intervalos de caminhada-corrida são um começo mais suave.';
+  }
+
+  @override
+  String get planNewThinHistoryWalkRun =>
+      'Começar com intervalos de caminhada-corrida';
+
+  @override
+  String planNewStarterSummary(int weeks, int days) {
+    return '$weeks semanas · $days dias por semana';
+  }
+
+  @override
+  String planNewStarterSummaryTimed(int weeks, int days, int min, int max) {
+    return '$weeks semanas · $days dias por semana · $min–$max min por sessão';
+  }
+
+  @override
+  String plansStarterStarts(String date) {
+    return 'Começa em $date';
+  }
+
+  @override
+  String get planNewStartDateHint =>
+      'A semana 1 começa aqui. As semanas do plano vão de domingo a sábado, então só é possível escolher um domingo.';
+
+  @override
+  String get planNewStartDatePickerHelp => 'Escolha um domingo';
+
+  @override
+  String get planNewStartDatePickerHelpWalkRun => 'Escolha qualquer dia';
+
+  @override
+  String get planNewHoursLabel => 'Horas';
+
+  @override
+  String get planNewMinutesLabel => 'Minutos';
+
+  @override
+  String get planNewSecondsLabel => 'Segundos';
+
+  @override
+  String get planNewNameRequired => 'Dê um nome ao plano.';
+
+  @override
+  String get planNewReadyMadeTitle => 'Começar com um plano pronto';
+
+  @override
+  String get planNewReadyMadeBody =>
+      'Um plano incluído no app, ou um que um clube do qual você participa publicou. Você pode editá-lo depois.';
+
+  @override
+  String get planNewReadyMadeButton => 'Ver planos prontos';
+
+  @override
+  String get planNewReadyMadeBuiltIn => 'Planos do app';
+
+  @override
+  String get planNewReadyMadeClubs => 'Dos seus clubes';
+
+  @override
+  String get planNewBuildOwn => 'Ou monte o seu';
+
+  @override
+  String planNewSummary(int weeks, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '$weeks semanas',
+      one: '$weeks semana',
+    );
+    return '$_temp0 · termina em $date';
+  }
+
+  @override
+  String rateLimitRotateCalendarLink(String wait) {
+    return 'Você está criando links de calendário rápido demais — espere $wait e tente de novo.';
+  }
 
   @override
   String get planCalendarFeedTitle => 'Calendário do plano de treino';

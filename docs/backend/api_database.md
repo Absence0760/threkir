@@ -915,7 +915,7 @@ Generated training plans + week phasing + scheduled workouts. Owner-only RLS, de
 
 #### `plan_calendar_feeds`
 
-One subscribable `.ics` feed per user (`20270910000001`, [decisions § 2088](../architecture/decisions.md), [training.md § Calendar feed](../features/training.md#calendar-feed)). Columns: `id` (uuid PK, the URL's selector half), `user_id` (unique, FK `auth.users` on delete cascade), `secret_hash` (bytea, CHECK 32 bytes — the SHA-256 of the URL secret; the secret itself is never stored), `created_at`, `last_fetched_at` (stamped by the feed read at most hourly). RLS enabled with **no policy and no client grant**: `anon` and `authenticated` hold nothing on the table, `service_role` holds CRUD. The owner reaches it only through three SECURITY DEFINER RPCs, each revoked from `public, anon`: `plan_calendar_feed_status()` (stable, the caller's two timestamps or zero rows), `rotate_plan_calendar_feed()` (mints a fresh selector + secret, replacing any feed, returns the 96-hex token once; `enforce_create_rate_limit('plan_calendar_rotate', …, 20, 3600)`), and `revoke_plan_calendar_feed()` (deletes the row, true when one existed). `plan_calendar_feed_events(p_feed_id)` is service-role only: the `plan-calendar` Edge Function calls it after matching the secret, and its projection — the active plan's non-rest workouts as id, date, kind and target fields, plus the owner's unit and locale — is the whole of what the feed can carry. Pinned by `plan_calendar_feeds_test.sql`.
+One subscribable `.ics` feed per user (`20270910000001`, [decisions § 2091](../architecture/decisions.md), [training.md § Calendar feed](../features/training.md#calendar-feed)). Columns: `id` (uuid PK, the URL's selector half), `user_id` (unique, FK `auth.users` on delete cascade), `secret_hash` (bytea, CHECK 32 bytes — the SHA-256 of the URL secret; the secret itself is never stored), `created_at`, `last_fetched_at` (stamped by the feed read at most hourly). RLS enabled with **no policy and no client grant**: `anon` and `authenticated` hold nothing on the table, `service_role` holds CRUD. The owner reaches it only through three SECURITY DEFINER RPCs, each revoked from `public, anon`: `plan_calendar_feed_status()` (stable, the caller's two timestamps or zero rows), `rotate_plan_calendar_feed()` (mints a fresh selector + secret, replacing any feed, returns the 96-hex token once; `enforce_create_rate_limit('plan_calendar_rotate', …, 20, 3600)`), and `revoke_plan_calendar_feed()` (deletes the row, true when one existed). `plan_calendar_feed_events(p_feed_id)` is service-role only: the `plan-calendar` Edge Function calls it after matching the secret, and its projection — the active plan's non-rest workouts as id, date, kind and target fields, plus the owner's unit and locale — is the whole of what the feed can carry. Pinned by `plan_calendar_feeds_test.sql`.
 
 #### `user_coach_usage`
 
@@ -2327,10 +2327,10 @@ grant  execute on function public.<fn>(<args>) to authenticated;   -- and/or ser
 
 Add `authenticated` to the revoke list when no client role should hold it at all
 (the `cleanup_*` / `enqueue_*` cron family, and helpers only a SECURITY DEFINER
-trigger calls). 121 migrations write a function-level `from public, anon` revoke
-today (104 as `revoke execute`, 20 as `revoke all`); it is the house form for
+trigger calls). 122 migrations write a function-level `from public, anon` revoke
+today (105 as `revoke execute`, 20 as `revoke all`); it is the house form for
 exactly this reason, and `check_migration_function_revoke_noop.mjs` is what
-keeps it — it replays all 578 migrations in version order and fails the PR on
+keeps it — it replays all 579 migrations in version order and fails the PR on
 any EXECUTE revoke that leaves the other channel at its image-dependent
 default, in either direction. **Those four figures are derived, not typed**: the
 guard prints them and `check_migration_function_revoke_noop.test.mjs` asserts

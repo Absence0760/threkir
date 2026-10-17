@@ -1,14 +1,10 @@
 <script lang="ts">
 	import type { PlanWorkout, PlanWeek } from '#lib/types.ts';
-	import {
-		addDays,
-		isWorkoutCompleted,
-		isWorkoutSkipped,
-		parseISO,
-		formatISO
-	} from '#lib/training/training.ts';
+	import { addDays, parseISO, formatISO } from '#lib/training/training.ts';
 	import { planWorkoutProgress } from '#lib/training/plan_progress.ts';
-	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
+	import { workoutKindLabel, workoutKindShortLabel } from '#lib/training/workout_labels.ts';
+	import { planWorkoutAriaLabel, planWorkoutStatusOf } from '#lib/training/plan_workout_view.ts';
+	import { planWorkoutStatusLook } from '#lib/training/plan_workout_status_style.ts';
 	import { workoutKindMarkVar } from '#lib/training/workout_kind_color.ts';
 	import { fmtKm } from '#lib/format/units.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
@@ -31,9 +27,19 @@
 		weekStart?: WeekStart;
 		/// Called when a workout cell is clicked (opens the inline editor).
 		onSelect?: (workout: PlanWorkout) => void;
+		/// Heading override: before the plan starts the strip shows its first
+		/// week, which is not "This week".
+		title?: string;
 	};
-	let { startDate, currentWeek, weekWorkouts, today, weekStart = 'monday', onSelect }: Props =
-		$props();
+	let {
+		startDate,
+		currentWeek,
+		weekWorkouts,
+		today,
+		weekStart = 'monday',
+		onSelect,
+		title
+	}: Props = $props();
 
 	const DOW_KEYS = [
 		'planDetail.dowSun',
@@ -80,9 +86,9 @@
 </script>
 
 {#if currentWeek}
-	<section class="strip" aria-label={m('planDetail.currentWeek')}>
+	<section class="strip" aria-label={title ?? m('planDetail.currentWeek')}>
 		<div class="strip-head">
-			<h2 class="strip-title">{m('planDetail.currentWeek')}</h2>
+			<h2 class="strip-title">{title ?? m('planDetail.currentWeek')}</h2>
 			<span class="strip-count">
 				{doneCount}<em> / {activeCount}</em> {m('planDetail.done')}
 			</span>
@@ -91,6 +97,8 @@
 			{#each cells as c (c.iso)}
 				{@const wo = c.workout}
 				{#if wo}
+					{@const status = planWorkoutStatusOf(wo, today)}
+					{@const look = planWorkoutStatusLook(status)}
 					<svelte:element
 						this={onSelect ? 'button' : 'a'}
 						role={onSelect ? 'button' : 'link'}
@@ -98,20 +106,38 @@
 						onclick={onSelect ? () => onSelect(wo) : undefined}
 						class="day has-workout"
 						class:today={c.iso === today}
-						class:done={isWorkoutCompleted(wo)}
 						class:rest={wo.kind === 'rest'}
+						data-status={status}
 						style="--kind: {workoutKindMarkVar(wo.kind)}"
-						aria-label={`${c.dow}: ${workoutKindLabel(wo.kind)}${
-							isWorkoutCompleted(wo) ? m('planDetail.ariaCompletedSuffix') : ''
-						}`}
+						style:--wo-bg={look.bg}
+						style:--wo-border={look.border}
+						style:--wo-border-style={look.borderStyle}
+						style:--wo-glyph={look.glyphColor}
+						aria-label={planWorkoutAriaLabel(
+							wo,
+							today,
+							{
+								day: c.dow,
+								kind: workoutKindLabel(wo.kind),
+								distance:
+									wo.target_distance_m != null && wo.kind !== 'rest'
+										? fmtKm(wo.target_distance_m, 1)
+										: null
+							},
+							m
+						)}
 					>
-						<span class="dow">{c.dow}</span>
-						<span class="kind">{workoutKindLabel(wo.kind)}</span>
+						<span class="dow" aria-hidden="true">{c.dow}</span>
+						<span
+							class="kind"
+							aria-hidden="true"
+							data-short={workoutKindShortLabel(wo.kind)}
+						><span class="kind-full">{workoutKindLabel(wo.kind)}</span></span>
 						{#if wo.target_distance_m != null && wo.kind !== 'rest'}
-							<span class="dist">{fmtKm(wo.target_distance_m, 1)}</span>
+							<span class="dist" aria-hidden="true">{fmtKm(wo.target_distance_m, 1)}</span>
 						{/if}
-						{#if isWorkoutCompleted(wo)}
-							<span class="material-symbols check" aria-hidden="true">check_circle</span>
+						{#if look.glyph}
+							<span class="material-symbols check" aria-hidden="true">{look.glyph}</span>
 						{/if}
 					</svelte:element>
 				{:else}
@@ -175,7 +201,13 @@
 		border-color: var(--color-primary);
 		box-shadow: 0 0 0 1px var(--color-primary);
 	}
+	.day.has-workout:not(.today) {
+		border-color: var(--wo-border, var(--color-border));
+		border-style: var(--wo-border-style);
+		border-inline-start: 3px solid var(--kind);
+	}
 	.day.has-workout {
+		background: var(--wo-bg, var(--color-bg));
 		border-inline-start: 3px solid var(--kind);
 		cursor: pointer;
 		transition: transform var(--transition-fast), box-shadow var(--transition-fast);
@@ -183,9 +215,6 @@
 	.day.has-workout:hover {
 		transform: translateY(-1px);
 		box-shadow: var(--shadow-sm);
-	}
-	.day.done {
-		background: var(--color-success-light);
 	}
 	.dow {
 		font-size: var(--font-size-section-label);
@@ -216,14 +245,26 @@
 		inset-inline-end: 0.3rem;
 		font-family: 'Material Symbols Outlined';
 		font-size: 0.95rem;
-		color: var(--color-success-text);
+		color: var(--wo-glyph);
 	}
+
 	/* The narrow-viewport cell tightens its box, not its type — the same shrink
 	   § 525 removed from `PlanCalendar`, which this strip carried verbatim. */
 	@media (max-width: 40rem) {
 		.day {
 			min-height: 3.25rem;
 			padding: 0.25rem;
+		}
+	}
+	/* The same abbreviation PlanCalendar switches to below ~600 px. */
+	@media (max-width: 37.5rem) {
+		.kind-full {
+			display: none;
+		}
+		/* A pseudo-element, so the cell's text content stays the full word. */
+		.kind::after {
+			content: attr(data-short);
+			letter-spacing: 0;
 		}
 	}
 </style>

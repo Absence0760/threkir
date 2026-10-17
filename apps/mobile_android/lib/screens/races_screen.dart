@@ -69,8 +69,6 @@ class _RacesScreenState extends State<RacesScreen> {
 
   String _query = '';
   String _distance = '';
-  // Upcoming is the calendar; Recent looks back [recentWindowDays], newest
-  // first, for importing a result after race day.
   bool _recent = false;
   String _nearPlace = '';
 

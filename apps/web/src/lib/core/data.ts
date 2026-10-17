@@ -2783,8 +2783,6 @@ export interface RaceListingFilters {
 	center?: { lng: number; lat: number };
 	radiusM?: number;
 	limit?: number;
-	/// Sort the date descending, for the calendar's Recent view — the server
-	/// sorts before it caps, so a past window keeps its latest races.
 	newestFirst?: boolean;
 }
 

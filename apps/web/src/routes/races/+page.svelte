@@ -19,8 +19,6 @@
 
 	let query = $state('');
 	let distance = $state<'' | RaceDistanceBand>('');
-	// Upcoming is the calendar; Recent looks back over the last
-	// RECENT_WINDOW_DAYS, newest first, for importing a result after race day.
 	let when = $state<'upcoming' | 'recent'>('upcoming');
 	const RECENT_WINDOW_DAYS = 30;
 

@@ -1,21 +1,7 @@
--- search_race_listings gains `p_newest_first` (default false) so the race
--- calendar can list RECENT races, newest first, for a runner coming back to
--- import a result (decisions § 2083).
---
--- The calendar's default is `race_date >= current_date` sorted soonest first,
--- which is right for upcoming races and wrong for past ones: a past window
--- sorted ascending and capped at `p_limit` returns the OLDEST races in it and
--- drops the ones a runner just ran, which is the reason to look back at all.
--- Reversing client-side cannot fix that, because the cap has already cut the
--- set. So the order is a parameter: false keeps the existing order exactly,
--- true sorts the date descending. Proximity, when a center is given, still
--- sorts first in both.
---
--- Complete body of the live definition (20270817000031) with only the new
--- parameter and the two order-by lines changed. Adding a parameter changes the
--- signature, so the old one is dropped first (CREATE OR REPLACE would leave
--- both overloads and PostgREST could not choose between them) and the grant is
--- restated against the new signature.
+-- p_newest_first: a past window must be sorted newest first BEFORE the
+-- p_limit cap, or the cap keeps the oldest races and drops the recent ones a
+-- client reverse could never recover. The old signature is dropped first
+-- because a second overload would leave PostgREST unable to resolve the call.
 
 drop function if exists search_race_listings(
   text, text, date, date, double precision, double precision, double precision, int

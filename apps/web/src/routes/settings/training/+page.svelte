@@ -228,7 +228,7 @@
 						{m('prefs.hrMedicationAffectedHint')}
 					{:else}
 						{m('prefs.hrMedicationNeedsConsent')}
-						<a href="/settings/body">{m('prefs.hrMedicationConsentLink')}</a>
+						<a href="/settings/body">{m('prefs.hrMedicationGiveConsent')}</a>
 					{/if}
 				</p>
 				{#if hrMedicationAffected && maxHrParsed === null}

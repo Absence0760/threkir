@@ -816,7 +816,7 @@ export const en = {
 	"plansPage.emptyTitle": "No plans yet.",
 	"plansPage.emptyLead": "Goal-race plans, 8–16 weeks, with easy / long / tempo / interval / marathon-pace sessions built around a Daniels-style pace engine. Your active plan drives the today's-workout card on the dashboard.",
 	"plansPage.createFirst": "Create your first plan",
-	"plansPage.starterStartsOn": "Each starts on {date}.",
+	"plansPage.starterStarts": "Starts {date}",
 	"plansPage.statusActive": "active",
 	"plansPage.statusUpcoming": "upcoming",
 	"plansPage.statusPaused": "paused",

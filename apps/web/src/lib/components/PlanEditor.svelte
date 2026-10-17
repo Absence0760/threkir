@@ -968,9 +968,10 @@
 			<fieldset class="starting-point" data-testid="plan-starting-point">
 				<legend>{t('planEditor.startingPoint')}</legend>
 				{#each STARTING_POINTS as sp (sp.value)}
-					<label class="starting-point-option">
+					<div class="starting-point-option">
 						<input
 							type="radio"
+							id="starting-point-{sp.value}"
 							name="plan-starting-point"
 							value={sp.value}
 							checked={startingPoint === sp.value}
@@ -978,10 +979,10 @@
 							aria-describedby="starting-point-{sp.value}-hint"
 						/>
 						<span>
-							<span class="starting-point-title">{t(sp.label)}</span>
+							<label class="starting-point-title" for="starting-point-{sp.value}">{t(sp.label)}</label>
 							<span class="hint" id="starting-point-{sp.value}-hint">{t(sp.hint)}</span>
 						</span>
-					</label>
+					</div>
 				{/each}
 			</fieldset>
 

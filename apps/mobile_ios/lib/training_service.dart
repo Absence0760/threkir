@@ -927,6 +927,23 @@ class TrainingService extends ChangeNotifier {
     }
   }
 
+  /// True when the viewer actively coaches [athleteId]: the test the coach
+  /// RLS policies on `plan_workouts` run (`private.is_active_coach_of`), so a
+  /// screen offers an edit only where the write will be allowed. Mirrors web
+  /// `isActiveCoachOf`.
+  Future<bool> isActiveCoachOf(String athleteId) async {
+    final uid = _uid;
+    if (uid == null || uid == athleteId) return false;
+    final rows = await _c
+        .from(CoachAthleteRow.table)
+        .select(CoachAthleteRow.colId)
+        .eq(CoachAthleteRow.colCoachId, uid)
+        .eq(CoachAthleteRow.colAthleteId, athleteId)
+        .eq(CoachAthleteRow.colStatus, 'active')
+        .limit(1);
+    return (rows as List).isNotEmpty;
+  }
+
   Future<void> markCompleted(
     String workoutId,
     String? runId, {

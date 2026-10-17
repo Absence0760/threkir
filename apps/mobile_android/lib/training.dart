@@ -76,14 +76,6 @@ GoalEvent goalEventFromDb(String s) => switch (s) {
       _ => GoalEvent.custom,
     };
 
-String goalEventLabel(GoalEvent g) => switch (g) {
-      GoalEvent.distance5k => '5K',
-      GoalEvent.distance10k => '10K',
-      GoalEvent.distanceHalf => 'Half marathon',
-      GoalEvent.distanceFull => 'Marathon',
-      GoalEvent.custom => 'Custom',
-    };
-
 WorkoutKind workoutKindFromDb(String s) => switch (s) {
       'easy' => WorkoutKind.easy,
       'long' => WorkoutKind.long,

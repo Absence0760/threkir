@@ -1016,7 +1016,10 @@ export const PAIRS = [
 	},
 	{
 		tableColumn: 'training_plans.status',
-		clients: [{ file: TS_TYPES, decl: 'PlanStatus', shape: 'union' }],
+		clients: [
+			{ file: TS_TYPES, decl: 'PlanStatus', shape: 'union' },
+			{ file: 'apps/mobile_android/lib/plan_labels.dart', decl: 'planStatusLabel', shape: 'switch' },
+		],
 	},
 	{
 		tableColumn: 'user_profiles.gender',

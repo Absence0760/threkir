@@ -147,7 +147,7 @@ works from anywhere.
    `push_notifications` defaults to `important`, and `importantKinds`
    (`mailer.go`) is exactly `event_reminder`, `event_cancel`, `plan_update`,
    `message`, `data_export_ready`, `refund_failed`, `event_waitlist_slot`,
-   `mention`, `follow_request`. A kudos is **not** in that
+   `mention`, `follow_request`, `workout_reminder`. A kudos is **not** in that
    set, so testing with one on a default account produces no push and looks
    identical to a bad credential. Either flip the pref to `all` on
    `/settings/notifications` first, or pick a kind that passes on the default:

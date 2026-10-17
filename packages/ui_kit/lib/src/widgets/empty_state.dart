@@ -18,6 +18,11 @@ class EmptyState extends StatelessWidget {
   final VoidCallback? onCta;
   final IconData ctaIcon;
 
+  /// Further ways out below the CTA, for a surface with more than one honest
+  /// next step (the plans list offers its built-in starter plans here). Laid
+  /// out by the caller; this widget only spaces it.
+  final Widget? footer;
+
   const EmptyState({
     super.key,
     required this.icon,
@@ -26,6 +31,7 @@ class EmptyState extends StatelessWidget {
     this.ctaLabel,
     this.onCta,
     this.ctaIcon = Icons.add,
+    this.footer,
   }) : assert((ctaLabel == null) == (onCta == null),
             'ctaLabel and onCta must be provided together');
 
@@ -61,6 +67,10 @@ class EmptyState extends StatelessWidget {
                 icon: Icon(ctaIcon),
                 label: Text(ctaLabel!),
               ),
+            ],
+            if (footer != null) ...[
+              const SizedBox(height: 16),
+              footer!,
             ],
           ],
         ),

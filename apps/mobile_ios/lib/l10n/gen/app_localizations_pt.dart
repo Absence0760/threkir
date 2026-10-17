@@ -10210,13 +10210,17 @@ class AppLocalizationsPt extends AppLocalizations {
   String get workoutEditKindLabel => 'Tipo';
 
   @override
-  String get workoutEditDistanceLabel => 'Distância alvo (km)';
+  String workoutEditDistanceLabel(String unit) {
+    return 'Distância alvo ($unit)';
+  }
 
   @override
   String get workoutEditDistanceHint => 'ex. 8.0';
 
   @override
-  String get workoutEditPaceLabel => 'Ritmo alvo (mm:ss /km)';
+  String workoutEditPaceLabel(String unit) {
+    return 'Ritmo alvo (mm:ss /$unit)';
+  }
 
   @override
   String get workoutEditPaceHint => 'ex. 5:30';
@@ -10259,7 +10263,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get workoutEditSave => 'Guardar';
 
   @override
-  String get workoutEditErrDistance => 'Insira uma distância positiva em km';
+  String workoutEditErrDistance(String unit) {
+    return 'Insira uma distância positiva em $unit';
+  }
 
   @override
   String get workoutEditErrPace => 'O ritmo deve ter o formato 5:30';
@@ -27086,13 +27092,17 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get workoutEditKindLabel => 'Tipo';
 
   @override
-  String get workoutEditDistanceLabel => 'Distância alvo (km)';
+  String workoutEditDistanceLabel(String unit) {
+    return 'Distância alvo ($unit)';
+  }
 
   @override
   String get workoutEditDistanceHint => 'ex. 8.0';
 
   @override
-  String get workoutEditPaceLabel => 'Ritmo alvo (mm:ss /km)';
+  String workoutEditPaceLabel(String unit) {
+    return 'Ritmo alvo (mm:ss /$unit)';
+  }
 
   @override
   String get workoutEditPaceHint => 'ex. 5:30';
@@ -27135,7 +27145,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get workoutEditSave => 'Salvar';
 
   @override
-  String get workoutEditErrDistance => 'Insira uma distância positiva em km';
+  String workoutEditErrDistance(String unit) {
+    return 'Insira uma distância positiva em $unit';
+  }
 
   @override
   String get workoutEditErrPace => 'O ritmo deve ter o formato 5:30';

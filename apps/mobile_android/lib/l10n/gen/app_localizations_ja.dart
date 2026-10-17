@@ -9692,13 +9692,17 @@ class AppLocalizationsJa extends AppLocalizations {
   String get workoutEditKindLabel => '種類';
 
   @override
-  String get workoutEditDistanceLabel => '目標距離 (km)';
+  String workoutEditDistanceLabel(String unit) {
+    return '目標距離 ($unit)';
+  }
 
   @override
   String get workoutEditDistanceHint => '例：8.0';
 
   @override
-  String get workoutEditPaceLabel => '目標ペース (mm:ss /km)';
+  String workoutEditPaceLabel(String unit) {
+    return '目標ペース (mm:ss /$unit)';
+  }
 
   @override
   String get workoutEditPaceHint => '例：5:30';
@@ -9740,7 +9744,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get workoutEditSave => '保存';
 
   @override
-  String get workoutEditErrDistance => '正の距離を km で入力してください';
+  String workoutEditErrDistance(String unit) {
+    return '正の距離を $unit で入力してください';
+  }
 
   @override
   String get workoutEditErrPace => 'ペースは 5:30 の形式で入力してください';

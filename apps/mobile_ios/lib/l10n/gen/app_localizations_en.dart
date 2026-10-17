@@ -10104,13 +10104,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workoutEditKindLabel => 'Kind';
 
   @override
-  String get workoutEditDistanceLabel => 'Target distance (km)';
+  String workoutEditDistanceLabel(String unit) {
+    return 'Target distance ($unit)';
+  }
 
   @override
   String get workoutEditDistanceHint => 'e.g. 8.0';
 
   @override
-  String get workoutEditPaceLabel => 'Target pace (mm:ss /km)';
+  String workoutEditPaceLabel(String unit) {
+    return 'Target pace (mm:ss /$unit)';
+  }
 
   @override
   String get workoutEditPaceHint => 'e.g. 5:30';
@@ -10152,7 +10156,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workoutEditSave => 'Save';
 
   @override
-  String get workoutEditErrDistance => 'Enter a positive distance in km';
+  String workoutEditErrDistance(String unit) {
+    return 'Enter a positive distance in $unit';
+  }
 
   @override
   String get workoutEditErrPace => 'Pace must look like 5:30';

@@ -16647,11 +16647,11 @@ abstract class AppLocalizations {
   /// **'Kind'**
   String get workoutEditKindLabel;
 
-  /// Label for the target distance field (km)
+  /// Label for the target distance field, in the runner's distance unit
   ///
   /// In en, this message translates to:
-  /// **'Target distance (km)'**
-  String get workoutEditDistanceLabel;
+  /// **'Target distance ({unit})'**
+  String workoutEditDistanceLabel(String unit);
 
   /// Example hint for the target distance field
   ///
@@ -16659,11 +16659,11 @@ abstract class AppLocalizations {
   /// **'e.g. 8.0'**
   String get workoutEditDistanceHint;
 
-  /// Label for the target pace field
+  /// Label for the target pace field, per the runner's distance unit
   ///
   /// In en, this message translates to:
-  /// **'Target pace (mm:ss /km)'**
-  String get workoutEditPaceLabel;
+  /// **'Target pace (mm:ss /{unit})'**
+  String workoutEditPaceLabel(String unit);
 
   /// Example hint for the target pace field
   ///
@@ -16746,8 +16746,8 @@ abstract class AppLocalizations {
   /// Validation error for the distance field
   ///
   /// In en, this message translates to:
-  /// **'Enter a positive distance in km'**
-  String get workoutEditErrDistance;
+  /// **'Enter a positive distance in {unit}'**
+  String workoutEditErrDistance(String unit);
 
   /// Validation error for the pace field
   ///

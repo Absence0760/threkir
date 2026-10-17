@@ -9,18 +9,47 @@ import { TODAY, fixture } from './test_fixture';
 
 const STEADY = { weeklyM: 38_000, activeWeeks: 4 };
 
-test('a move changes only the date, and only of that workout', () => {
+test('a move onto an empty day changes only the date, and only of that workout', () => {
 	const before = fixture();
-	const r = applyPlanEditOps(before, [{ op: 'move_workout', workoutId: 'b-long', date: '2026-10-24' }], TODAY);
+	const r = applyPlanEditOps(before, [{ op: 'move_workout', workoutId: 'b-long', date: '2026-10-21' }], TODAY);
 	assert.equal(r.applied, 1);
 	assert.equal(r.workouts.length, 1);
-	assert.deepEqual(r.workouts[0].patch, { scheduled_date: '2026-10-24' });
+	assert.deepEqual(r.workouts[0].patch, { scheduled_date: '2026-10-21' });
 	assert.equal(r.workouts[0].skip, false);
 	assert.equal(r.workouts[0].before.scheduledDate, '2026-10-25');
-	assert.equal(r.workouts[0].after.scheduledDate, '2026-10-24');
+	assert.equal(r.workouts[0].after.scheduledDate, '2026-10-21');
 	assert.deepEqual(r.weeks, []);
 	// The input is never mutated.
 	assert.equal(before.workouts.find((w) => w.id === 'b-long')!.scheduled_date, '2026-10-25');
+});
+
+test('a move onto an occupied day trades days with the occupant, rest days included', () => {
+	const r = applyPlanEditOps(fixture(), [{ op: 'move_workout', workoutId: 'b-easy', date: '2026-10-23' }], TODAY);
+	assert.equal(r.applied, 1);
+	assert.deepEqual(
+		r.workouts.map((c) => [c.workoutId, c.patch]),
+		[
+			['b-easy', { scheduled_date: '2026-10-23' }],
+			['b-rest', { scheduled_date: '2026-10-22' }],
+		],
+	);
+	const dates = r.after.workouts.filter((w) => w.week_id === 'wk1').map((w) => w.scheduled_date);
+	assert.equal(new Set(dates).size, dates.length, 'still one row per day');
+});
+
+test('a move onto a race day or a completed workout is dropped', () => {
+	const before = fixture();
+	before.workouts.find((w) => w.id === 'b-easy2')!.manually_completed = true;
+	const r = applyPlanEditOps(
+		before,
+		[
+			{ op: 'move_workout', workoutId: 'd-tempo', date: '2026-11-08' },
+			{ op: 'move_workout', workoutId: 'b-long', date: '2026-10-24' },
+		],
+		TODAY,
+	);
+	assert.equal(r.applied, 0);
+	assert.deepEqual(r.workouts, []);
 });
 
 test('a swap exchanges the two dates', () => {
@@ -194,6 +223,7 @@ test('a set mixing every operation kind applies each one, and an easier plan is 
 		r.workouts.map((c) => [c.workoutId, c.patch, c.skip]),
 		[
 			['a-tempo', null, true],
+			['b-easy2', { scheduled_date: '2026-10-25' }, false],
 			['b-long', { scheduled_date: '2026-10-24' }, false],
 			[
 				'c-tempo',

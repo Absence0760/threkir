@@ -4,6 +4,10 @@
 begin;
 select plan(21);
 
+-- The server gate (20270915000004) open, as seed.sql opens it locally.
+insert into private.feature_flags (name, enabled) values ('hr_prescription', true)
+  on conflict (name) do update set enabled = true;
+
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at) values
   ('2085aaaa-0000-0000-0000-0000000000c1', 'authenticated', 'authenticated', 'coach@pwet.local', '', now(), now()),
   ('2085aaaa-0000-0000-0000-0000000000a1', 'authenticated', 'authenticated', 'consented@pwet.local', '', now(), now()),

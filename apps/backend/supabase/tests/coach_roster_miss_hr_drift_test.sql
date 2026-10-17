@@ -8,6 +8,8 @@ begin;
 select plan(10);
 
 set local timezone = 'UTC';
+insert into private.feature_flags (name, enabled) values ('hr_prescription', true)
+  on conflict (name) do update set enabled = true;
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at) values
   ('2085eeee-0000-0000-0000-0000000000c1', 'authenticated', 'authenticated', 'coach@crhd.local', '', now(), now()),

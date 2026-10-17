@@ -213,10 +213,10 @@ Built 2026-10-17 (issue #1186, persona "coach, and an older athlete on beta-bloc
 
 ### Pre-deploy checklist (heart-rate prescription)
 
-The bpm target, the medication flag and the HR-drift flag are new Art 9 uses of heart rate. All three ship off behind `PUBLIC_HR_PRESCRIPTION_ENABLED` (web, `training/hr_prescription_flag.ts`) / `HR_PRESCRIPTION_ENABLED` (mobile, `hr_prescription_flag.dart`). Independently of the flag, the database refuses a bpm target or turning the medication flag on without the plan owner's `health_data_consent_at` (42501), computes the drift only for a consented athlete, and `withdraw_health_data_consent()` clears both.
+The bpm target, the medication flag and the HR-drift flag are new Art 9 uses of heart rate. All three ship off behind `PUBLIC_HR_PRESCRIPTION_ENABLED` (web, `training/hr_prescription_flag.ts`) / `HR_PRESCRIPTION_ENABLED` (mobile, `hr_prescription_flag.dart`). The database enforces the same gate (migration `20270915000004`, decisions § 2095): a `hr_prescription` row in `private.feature_flags` that no migration writes (seed.sql opens it locally and in CI). With it shut the database refuses a new bpm target and turning the medication flag on (42501), and `coach_roster_summary` processes no heart rate and returns a null drift; clearing a target, turning the flag off and withdrawal are never gated. With it open, the database still refuses a bpm target or turning the medication flag on without the plan owner's `health_data_consent_at` (42501), computes the drift only for a consented athlete, and `withdraw_health_data_consent()` clears both.
 
 - [ ] CISO + counsel review of the three uses against the health-data consent copy (does the existing consent cover a coach prescribing a bpm cap, a medication flag, and a coach seeing an HR-drift figure?).
-- [ ] Then set `PUBLIC_HR_PRESCRIPTION_ENABLED` (release-web secret) and `HR_PRESCRIPTION_ENABLED` (mobile dart-define) together, never one platform alone.
+- [ ] Then set `PUBLIC_HR_PRESCRIPTION_ENABLED` (release-web secret) and `HR_PRESCRIPTION_ENABLED` (mobile dart-define) together, never one platform alone, and open the server gate in the same release: `insert into private.feature_flags (name, enabled) values ('hr_prescription', true) on conflict (name) do update set enabled = true, updated_at = now();`. Closing it again is the same row set to `false`; a plan already carrying bpm targets then refuses a week duplicate or move that would re-write them until they are cleared.
 
 ## Gating / compliance
 

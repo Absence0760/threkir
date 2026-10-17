@@ -3948,6 +3948,7 @@ export const messages = {
 	"races.gunTime": "Tiempo bruto",
 	"races.overallPlace": "Puesto general",
 	"races.ageGroupPlace": "Puesto por categoría",
+	"races.divisionAwardPlace": "Puesto en categoría de premio",
 	"races.ageGroup": "Categoría de edad",
 	"races.bib": "Dorsal",
 	"races.runSignUpBibHint": "Introduce tu dorsal para importar solo tu resultado, no toda la clasificación.",

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
 	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { siteOrigin } from '#lib/core/site_url.ts';
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
@@ -2190,7 +2191,7 @@
 				</header>
 				{#if linkedWorkout}
 					<p class="workout-name">
-						{linkedWorkout.notes ?? linkedWorkout.kind}
+						{workoutKindLabel(linkedWorkout.kind)}
 						<span class="workout-target">
 							· {m('runDetail.plannedDistance', { distance: formatDistance(linkedWorkout.target_distance_m ?? 0) })}
 						</span>

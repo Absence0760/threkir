@@ -53,3 +53,28 @@ export function isPlanFinished(
 ): boolean {
 	return plan.status === 'active' && plan.end_date < todayIso;
 }
+
+/// Where a planned workout stands against the runner's local day. `done` and
+/// `skipped` are written facts; `missed` is derived, never stored: a past,
+/// non-rest workout that is neither done nor skipped once its day has ended in
+/// the runner's time zone. The scheduled day itself is never missed, so a
+/// workout still due tonight reads `upcoming`. Done wins over skipped, which
+/// the write layer keeps exclusive anyway.
+export type PlanWorkoutStatus = 'done' | 'skipped' | 'missed' | 'upcoming' | 'rest';
+
+export function planWorkoutStatus(
+	wo: { scheduled_date: string; kind: string; completed: boolean; skipped: boolean },
+	todayIso: string
+): PlanWorkoutStatus {
+	if (wo.completed) return 'done';
+	if (wo.skipped) return 'skipped';
+	if (wo.kind === 'rest') return 'rest';
+	return wo.scheduled_date < todayIso ? 'missed' : 'upcoming';
+}
+
+export function isWorkoutMissed(
+	wo: { scheduled_date: string; kind: string; completed: boolean; skipped: boolean },
+	todayIso: string
+): boolean {
+	return planWorkoutStatus(wo, todayIso) === 'missed';
+}

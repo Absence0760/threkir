@@ -13654,6 +13654,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get racesAgeGroupPlace => 'Age-group place';
 
   @override
+  String get racesDivisionAwardPlace => 'Award place';
+
+  @override
   String get racesAgeGroup => 'Age group';
 
   @override

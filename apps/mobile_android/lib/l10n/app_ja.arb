@@ -3912,6 +3912,7 @@
   "racesGunTime": "グロスタイム",
   "racesOverallPlace": "総合順位",
   "racesAgeGroupPlace": "年代別順位",
+  "racesDivisionAwardPlace": "表彰部門の順位",
   "racesAgeGroup": "年代",
   "racesBib": "ゼッケン",
   "racesRunSignUpBibHint": "全体ではなくあなたの結果だけをインポートするため、ゼッケン番号を入力してください。",

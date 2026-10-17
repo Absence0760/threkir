@@ -3912,6 +3912,7 @@
   "racesGunTime": "Bruttozeit",
   "racesOverallPlace": "Gesamtplatzierung",
   "racesAgeGroupPlace": "Platzierung Altersklasse",
+  "racesDivisionAwardPlace": "Platzierung Sonderwertung",
   "racesAgeGroup": "Altersklasse",
   "racesBib": "Startnummer",
   "racesRunSignUpBibHint": "Gib deine Startnummer ein, damit wir nur dein Ergebnis importieren, nicht das ganze Feld.",

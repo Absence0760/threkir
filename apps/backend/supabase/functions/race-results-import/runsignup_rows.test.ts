@@ -14,6 +14,7 @@ import {
   mapRunSignUpResult,
   parseClockToSeconds,
   runSignUpAgeGroup,
+  runSignUpDivisionAward,
 } from './lib.ts';
 
 const OPTS = {
@@ -238,4 +239,70 @@ Deno.test('recorded sets: weight classes and overall awards stay unset, every ag
   const placed = [...tri, ...du].filter((r) => r.ageGroup !== null);
   assertEquals([tri.filter((r) => r.ageGroup).length, du.filter((r) => r.ageGroup).length], [21, 26]);
   for (const r of placed) assert(ageInBand(r.ageGroup!.label, r.age), `${r.bib} ${r.age} ${r.ageGroup!.label}`);
+});
+
+Deno.test('an award division is one that names no age band, and only when no age group is placed', () => {
+  const award = (name: string) =>
+    runSignUpDivisionAward({ result: { 'division-7-placement': 2 }, headers: { 'division-7-placement': name } });
+  // Masters, overall, weight-class and team awards are kept.
+  for (const name of ['M Masters (40+)', 'Masters 40+', 'M Top 3 Overall', 'Top 10 Female', 'M Clydes',
+    'Clydesdale 40 and Over', 'Athena 150+', '2 Person Team']) {
+    assertEquals(award(name), { label: name, place: 2 }, name);
+  }
+  // An age group, a catch-all band and an out-of-range band are not awards.
+  for (const name of ['M 40-44', 'M2029', 'M 1-99', 'F 00-00', '200+']) {
+    assertEquals(award(name), null, name);
+  }
+});
+
+Deno.test('an award beside a placed age group is a field-wide ranking, and two awards are ambiguous', () => {
+  const headers = {
+    'division-1-placement': 'All Male',
+    'division-2-placement': 'M 30-39',
+    'division-3-placement': 'M Masters',
+    'division-4-placement': 'Clydesdale',
+  };
+  const award = (result: Record<string, unknown>) => runSignUpDivisionAward({ result, headers });
+  assertEquals(award({ 'division-1-placement': 20, 'division-2-placement': 4 }), null);
+  assertEquals(award({ 'division-3-placement': 1, 'division-4-placement': 2 }), null);
+  // An unplaced division (0, '', null) does not count.
+  assertEquals(
+    award({ 'division-3-placement': 1, 'division-2-placement': 0, 'division-4-placement': '' }),
+    { label: 'M Masters', place: 1 },
+  );
+});
+
+Deno.test('recorded sets: every runner lifted out of an age group carries the award that lifted them', () => {
+  const rows = [
+    ...extractRunSignUpResults(JSON.parse(Deno.readTextFileSync(
+      new URL('./fixtures/runsignup_results_clydesdale_bands.json', import.meta.url),
+    ))),
+    ...extractRunSignUpResults(JSON.parse(Deno.readTextFileSync(
+      new URL('./fixtures/runsignup_results_top3_weight_classes.json', import.meta.url),
+    ))),
+  ];
+  const byBib = new Map(rows.map((row) => [row.result.bib as number, runSignUpDivisionAward(row)]));
+  assertEquals(byBib.get(3496), { label: 'Clydesdale 40 and Over', place: 1 });
+  assertEquals(byBib.get(3461), { label: 'Clydesdale 39 and Under', place: 1 });
+  assertEquals(
+    [207, 147, 242, 251].map((bib) => byBib.get(bib)?.label),
+    ['M Top 3 Overall', 'F Top 3 Overall', 'M Clydes', 'F Athena'],
+  );
+  // No row holds both an age group and an award.
+  for (const row of rows) {
+    assert(runSignUpAgeGroup(row) === null || runSignUpDivisionAward(row) === null, String(row.result.bib));
+  }
+});
+
+Deno.test('a mapped run stores the award and its place together, owner-side', () => {
+  const run = mapRunSignUpResult(
+    {
+      result: { bib: 41, place: 9, chip_time: '19:02', 'division-3-placement': 1 },
+      headers: { 'division-3-placement': 'M Masters' },
+    },
+    OPTS,
+  );
+  assertEquals(run!.metadata.division_award, 'M Masters');
+  assertEquals(run!.metadata.division_award_place, 1);
+  assertEquals(run!.metadata.age_group, undefined);
 });

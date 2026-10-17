@@ -18198,6 +18198,10 @@
   "@racesAgeGroupPlace": {
     "description": "Age-group-place field label"
   },
+  "racesDivisionAwardPlace": "Award place",
+  "@racesDivisionAwardPlace": {
+    "description": "Race-result field label: the runner's place in an award division such as masters, overall top 3 or a weight class, which replaces their age-group place"
+  },
   "racesAgeGroup": "Age group",
   "@racesAgeGroup": {
     "description": "Age-group field label"

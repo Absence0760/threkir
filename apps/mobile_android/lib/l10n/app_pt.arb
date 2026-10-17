@@ -3912,6 +3912,7 @@
   "racesGunTime": "Tempo oficial",
   "racesOverallPlace": "Classificação geral",
   "racesAgeGroupPlace": "Classificação por escalão",
+  "racesDivisionAwardPlace": "Classificação na categoria de prémio",
   "racesAgeGroup": "Escalão etário",
   "racesBib": "Dorsal",
   "racesRunSignUpBibHint": "Insira o seu número de peito para importarmos apenas o seu resultado, não a lista inteira.",

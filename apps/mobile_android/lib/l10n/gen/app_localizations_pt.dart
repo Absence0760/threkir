@@ -13795,6 +13795,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get racesAgeGroupPlace => 'Classificação por escalão';
 
   @override
+  String get racesDivisionAwardPlace => 'Classificação na categoria de prémio';
+
+  @override
   String get racesAgeGroup => 'Escalão etário';
 
   @override
@@ -30904,6 +30907,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get racesAgeGroupPlace => 'Classificação por categoria';
+
+  @override
+  String get racesDivisionAwardPlace => 'Classificação na categoria de premiação';
 
   @override
   String get racesAgeGroup => 'Categoria de idade';

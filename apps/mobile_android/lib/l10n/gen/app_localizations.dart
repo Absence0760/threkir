@@ -22628,6 +22628,12 @@ abstract class AppLocalizations {
   /// **'Age-group place'**
   String get racesAgeGroupPlace;
 
+  /// Race-result field label: the runner's place in an award division such as masters, overall top 3 or a weight class, which replaces their age-group place
+  ///
+  /// In en, this message translates to:
+  /// **'Award place'**
+  String get racesDivisionAwardPlace;
+
   /// Age-group field label
   ///
   /// In en, this message translates to:

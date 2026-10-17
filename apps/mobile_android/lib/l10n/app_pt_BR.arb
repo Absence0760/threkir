@@ -3912,6 +3912,7 @@
   "racesGunTime": "Tempo bruto",
   "racesOverallPlace": "Classificação geral",
   "racesAgeGroupPlace": "Classificação por categoria",
+  "racesDivisionAwardPlace": "Classificação na categoria de premiação",
   "racesAgeGroup": "Categoria de idade",
   "racesBib": "Número de peito",
   "racesRunSignUpBibHint": "Insira seu número de peito para importarmos apenas o seu resultado, não a lista inteira.",

@@ -179,7 +179,7 @@ All three are idempotent and safe during any `isComplete` state.
 
 Three new `runs.metadata` keys — register in [metadata.md](../backend/metadata.md) in the same turn as shipping the code:
 
-- `plan_workout_id` — uuid of the linked `plan_workouts` row. Makes auto-match unnecessary for this run; the matcher only fires if absent.
+- `plan_workout_id` — uuid of the linked `plan_workouts` row. The database matcher (`private.match_runs_to_plan_workouts`, migration `20270901000001`) links that workout first, at any distance, when it belongs to the runner and is not already linked by hand; it takes the workout from an auto-matched run and clears a skip ([decisions § 2073](../architecture/decisions.md)).
 - `workout_step_results` — `Array<{ step_index, kind, rep_index?, rep_total?, target_distance_m, actual_distance_m, target_pace_sec_per_km, actual_pace_sec_per_km, duration_s, status: 'completed' | 'skipped' }>`. One row per step, including skipped ones.
 - `workout_adherence` — `'completed' | 'partial' | 'abandoned'`. `completed` = all steps hit target ±tolerance. `partial` = any step skipped or more than 20 % short. `abandoned` = user tapped abandon.
 

@@ -3,6 +3,7 @@ import { expect, test } from '../fixtures/test';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { deletePlan, deleteRun, insertRun, setPlanStatus } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
+import { browserDayAt } from '../fixtures/dates';
 
 /**
  * Plan PROGRESS / COMPLETION / ADHERENCE / RE-PLAN journey.
@@ -206,11 +207,14 @@ test.describe('plan progress journey', () => {
 			]);
 
 			// Two real runs inside week 0 summing ~52 km → +30% over the
-			// 40 km plan → the drift-over flag.
+			// 40 km plan → the drift-over flag. Both on a day with no
+			// workout: the database matcher (migration 20270901000001)
+			// would otherwise link one to yesterday's long run and clear
+			// the missed-long flag this spec is about.
 			for (let i = 0; i < 2; i++) {
 				const id = await insertRun({
 					user_id: USER_A.id,
-					started_at: new Date(Date.now() - (i + 1) * DAY_MS).toISOString(),
+					started_at: browserDayAt(-2, 8 + i * 4),
 					distance_m: 26_000,
 					duration_s: 7800
 				});

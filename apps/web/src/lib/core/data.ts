@@ -1686,13 +1686,6 @@ export async function createManualRun(input: {
 	if (error) throw dbError(error);
 	const runId = data.id as string;
 
-	try {
-		const runDate = input.startedAt.slice(0, 10);
-		await autoMatchRunToPlanWorkout(runId, runDate, input.distanceM);
-	} catch (e) {
-		console.warn('autoMatchRunToPlanWorkout failed', e);
-	}
-
 	await recomputeChallengesForRun(input.startedAt);
 
 	return { id: runId };
@@ -1854,13 +1847,6 @@ export async function saveRun(input: {
 		} catch (e) {
 			console.warn('hr-series sidecar upload failed', e);
 		}
-	}
-
-	try {
-		const runDate = input.started_at.slice(0, 10);
-		await autoMatchRunToPlanWorkout(runId, runDate, input.distance_m);
-	} catch (e) {
-		console.warn('autoMatchRunToPlanWorkout failed', e);
 	}
 
 	await recomputeChallengesForRun(input.started_at);
@@ -6293,62 +6279,6 @@ export async function markWorkoutSkipped(
 	if (error) throw dbError(error);
 }
 
-/**
- * Best-effort auto-match: link `runId` to a plan workout scheduled for the
- * same calendar date whose target distance is within ±25% of the actual.
- * Returns the matched workout id, or null. Wrong matches are manually
- * clearable via `markWorkoutCompleted(id, null)`.
- */
-export async function autoMatchRunToPlanWorkout(
-	runId: string,
-	runIsoDate: string,
-	runDistanceM: number
-): Promise<string | null> {
-	const userId = auth.user?.id;
-	if (!userId) return null;
-	// Pre-fetch the user's plan + week ids and constrain the workout
-	// query with `in('week_id', ...)`. RLS on `plan_workouts` already
-	// chains through `plan_weeks → training_plans.user_id`, but an
-	// explicit scope is defence in depth — without it, a future RLS
-	// edit that breaks the chain would silently allow this function
-	// to match a run to another user's workout. See audit
-	// `/tmp/data-isolation-audit/client-realtime.md` H2.
-	const { data: plans } = await supabase
-		.from('training_plans')
-		.select('id, plan_weeks(id)')
-		.eq('user_id', userId);
-	const weekIds = (plans ?? []).flatMap((p) =>
-		((p as { plan_weeks: { id: string }[] }).plan_weeks ?? []).map((w) => w.id),
-	);
-	if (weekIds.length === 0) return null;
-
-	const { data: candidates } = await queryChunked(weekIds, (part) =>
-		supabase
-			.from('plan_workouts')
-			.select('id, target_distance_m, completed_run_id, week_id')
-			.in('week_id', part)
-			.eq('scheduled_date', runIsoDate)
-			.is('completed_run_id', null)
-	);
-	if (!candidates || candidates.length === 0) return null;
-	const withDistance = candidates
-		.filter((c) => c.target_distance_m != null)
-		.map((c) => ({
-			id: c.id as string,
-			target: c.target_distance_m as number,
-			delta: Math.abs((c.target_distance_m as number) - runDistanceM)
-		}))
-		.filter(
-			(c) =>
-				c.delta / c.target <= 0.25 // within 25% of target distance
-		)
-		.sort((a, b) => a.delta - b.delta);
-	if (withDistance.length === 0) return null;
-	const match = withDistance[0];
-	await markWorkoutCompleted(match.id, runId);
-	return match.id;
-}
-
 export type { RelinkCandidateRun } from '../training/relink_candidates';
 
 /**
@@ -6369,8 +6299,9 @@ export async function fetchRelinkCandidateRuns(
 
 	// The set of run ids already linked anywhere in this owner's plans.
 	// Scope through the owner's plan_weeks (RLS chains the same way, but
-	// the explicit scope is defence in depth — see autoMatchRunToPlan-
-	// Workout). A run linked to ANOTHER workout must not be offered.
+	// the explicit scope is defence in depth: a future RLS edit that broke
+	// the chain must not widen it). A run linked to ANOTHER workout must not
+	// be offered.
 	const { data: plans } = await supabase
 		.from('training_plans')
 		.select('id, plan_weeks(id)')

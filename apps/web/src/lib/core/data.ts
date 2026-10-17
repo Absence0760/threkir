@@ -2783,6 +2783,9 @@ export interface RaceListingFilters {
 	center?: { lng: number; lat: number };
 	radiusM?: number;
 	limit?: number;
+	/// Sort the date descending, for the calendar's Recent view — the server
+	/// sorts before it caps, so a past window keeps its latest races.
+	newestFirst?: boolean;
 }
 
 /// A discoverable race calendar entry (the search_race_listings projection:
@@ -2814,7 +2817,8 @@ export async function searchRaceListings(
 		p_center_lng: f.center?.lng ?? undefined,
 		p_center_lat: f.center?.lat ?? undefined,
 		p_radius_m: f.radiusM ?? undefined,
-		p_limit: f.limit ?? 60
+		p_limit: f.limit ?? 60,
+		p_newest_first: f.newestFirst || undefined
 	}, { get: true });
 	if (error) throw dbError(error);
 	return (data ?? []) as RaceListingResult[];

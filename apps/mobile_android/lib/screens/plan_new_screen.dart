@@ -749,17 +749,19 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
       _error = null;
     });
     try {
-      final plan = await widget.training.createPlan(
-        name: name,
-        goalEvent: _goal,
-        goalDistanceM: preview.goalDistanceM,
-        goalTimeSec: _goalTimeSec,
-        recent5kSec: _recent5kApplied,
-        startDate: _startDate,
-        daysPerWeek: _daysPerWeek,
-        generated: preview,
-        onOverlap: action,
-      );
+      final plan = await widget.training
+          .createPlan(
+            name: name,
+            goalEvent: _goal,
+            goalDistanceM: preview.goalDistanceM,
+            goalTimeSec: _goalTimeSec,
+            recent5kSec: _recent5kApplied,
+            startDate: _startDate,
+            daysPerWeek: _daysPerWeek,
+            generated: preview,
+            onOverlap: action,
+          )
+          .timeout(kBackendLoadTimeout);
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute<void>(

@@ -957,6 +957,25 @@ class TrainingService extends ChangeNotifier {
     return (rows as List).isNotEmpty;
   }
 
+  /// Planned workouts within two days of a run that it could have been, for
+  /// the run-detail prompt (`plan_workout_link_candidates`, decisions § 2079).
+  /// The database links a run on its own local day only; these are linked
+  /// only when the runner says yes, through [markCompleted]. Empty unless the
+  /// caller owns the run and it is not linked yet. Nearest day first. Mirrors
+  /// web `fetchPlanWorkoutLinkCandidates`.
+  Future<List<PlanWorkoutLinkCandidate>> fetchLinkCandidates(
+      String runId) async {
+    final rows = await _c.rpc(
+      'plan_workout_link_candidates',
+      params: {'p_run_id': runId},
+      get: true,
+    );
+    return [
+      for (final r in rows as List)
+        PlanWorkoutLinkCandidate.fromJson(r as Map<String, dynamic>),
+    ];
+  }
+
   Future<void> markCompleted(
     String workoutId,
     String? runId, {
@@ -1185,4 +1204,35 @@ class TrainingService extends ChangeNotifier {
   // Internal alias for the public helper above. Keeps callers inside
   // this file short while the public name stays explicit.
   static String? _trimToNull(String? s) => trimToNull(s);
+}
+
+/// One row of `plan_workout_link_candidates`: a planned workout [dayOffset]
+/// days from the run's local day (positive = scheduled after it, so the run
+/// was early).
+class PlanWorkoutLinkCandidate {
+  final String workoutId;
+  final String scheduledDate;
+  final String kind;
+  final double? targetDistanceM;
+  final int? targetDurationSeconds;
+  final int dayOffset;
+
+  const PlanWorkoutLinkCandidate({
+    required this.workoutId,
+    required this.scheduledDate,
+    required this.kind,
+    this.targetDistanceM,
+    this.targetDurationSeconds,
+    required this.dayOffset,
+  });
+
+  factory PlanWorkoutLinkCandidate.fromJson(Map<String, dynamic> json) =>
+      PlanWorkoutLinkCandidate(
+        workoutId: json['workout_id'] as String,
+        scheduledDate: json['scheduled_date'] as String,
+        kind: json['kind'] as String,
+        targetDistanceM: (json['target_distance_m'] as num?)?.toDouble(),
+        targetDurationSeconds: (json['target_duration_seconds'] as num?)?.toInt(),
+        dayOffset: (json['day_offset'] as num).toInt(),
+      );
 }

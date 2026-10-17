@@ -6753,6 +6753,18 @@ export type Database = {
           distance: string
         }[]
       }
+      plan_workout_link_candidates: {
+        Args: { p_run_id: string }
+        Returns: {
+          day_offset: number
+          kind: Database["public"]["Enums"]["workout_kind"]
+          plan_id: string
+          scheduled_date: string
+          target_distance_m: number
+          target_duration_seconds: number
+          workout_id: string
+        }[]
+      }
       popular_route_tags: {
         Args: { tag_limit?: number }
         Returns: {

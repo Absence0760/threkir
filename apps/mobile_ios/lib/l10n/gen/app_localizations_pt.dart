@@ -13588,6 +13588,29 @@ class AppLocalizationsPt extends AppLocalizations {
   String get racesImported => 'Resultado oficial importado.';
 
   @override
+  String planLinkPromptEarly(String day) {
+    return 'Fez antecipadamente o treino previsto para $day?';
+  }
+
+  @override
+  String planLinkPromptLate(String day) {
+    return 'Fez mais tarde o treino previsto para $day?';
+  }
+
+  @override
+  String get planLinkConfirm => 'Associar ao plano';
+
+  @override
+  String get planLinkDismiss => 'Não é este';
+
+  @override
+  String get planLinkLinked => 'Associado ao seu plano.';
+
+  @override
+  String get planLinkFailed =>
+      'Não foi possível associar ao seu plano. Tente novamente.';
+
+  @override
   String get racesOfficialResult => 'Resultado oficial';
 
   @override
@@ -30503,6 +30526,29 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get racesImported => 'Resultado oficial importado.';
+
+  @override
+  String planLinkPromptEarly(String day) {
+    return 'Você fez antes o treino previsto para $day?';
+  }
+
+  @override
+  String planLinkPromptLate(String day) {
+    return 'Você fez depois o treino previsto para $day?';
+  }
+
+  @override
+  String get planLinkConfirm => 'Vincular ao plano';
+
+  @override
+  String get planLinkDismiss => 'Não é este';
+
+  @override
+  String get planLinkLinked => 'Vinculado ao seu plano.';
+
+  @override
+  String get planLinkFailed =>
+      'Não foi possível vincular ao seu plano. Tente novamente.';
 
   @override
   String get racesOfficialResult => 'Resultado oficial';

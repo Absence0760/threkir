@@ -17924,6 +17924,40 @@
   "@racesImported": {
     "description": "Toast after a result is imported"
   },
+  "planLinkPromptEarly": "Did you do {day}'s planned workout early?",
+  "@planLinkPromptEarly": {
+    "description": "Run detail: asks whether this run was a planned workout from a later day, done early. {day} is a weekday name.",
+    "placeholders": {
+      "day": {
+        "type": "String"
+      }
+    }
+  },
+  "planLinkPromptLate": "Did you do {day}'s planned workout late?",
+  "@planLinkPromptLate": {
+    "description": "Run detail: asks whether this run was a planned workout from an earlier day, done late. {day} is a weekday name.",
+    "placeholders": {
+      "day": {
+        "type": "String"
+      }
+    }
+  },
+  "planLinkConfirm": "Link to plan",
+  "@planLinkConfirm": {
+    "description": "Run detail: links the run to the asked-about planned workout"
+  },
+  "planLinkDismiss": "Not this one",
+  "@planLinkDismiss": {
+    "description": "Run detail: dismisses the asked-about planned workout and shows the next one, if any"
+  },
+  "planLinkLinked": "Linked to your plan.",
+  "@planLinkLinked": {
+    "description": "Toast after a run is linked to a planned workout from the run-detail prompt"
+  },
+  "planLinkFailed": "Couldn't link this to your plan. Try again.",
+  "@planLinkFailed": {
+    "description": "Error after linking a run to a planned workout fails"
+  },
   "racesOfficialResult": "Official result",
   "@racesOfficialResult": {
     "description": "Heading for the imported official-result panel"

@@ -6296,6 +6296,28 @@ export async function markWorkoutSkipped(
 	if (error) throw dbError(error);
 }
 
+export type PlanWorkoutLinkCandidate =
+	Database['public']['Functions']['plan_workout_link_candidates']['Returns'][number];
+
+/**
+ * Planned workouts within two days of a run that it could have been, for the
+ * run-detail "did you do Thursday's workout early?" prompt. The database
+ * links a run on its own local day only (decisions § 2079); this list is
+ * never linked without the runner saying yes. Empty unless the caller owns
+ * the run and it is not linked yet. Nearest day first.
+ */
+export async function fetchPlanWorkoutLinkCandidates(
+	runId: string
+): Promise<PlanWorkoutLinkCandidate[]> {
+	const { data, error } = await supabase.rpc(
+		'plan_workout_link_candidates',
+		{ p_run_id: runId },
+		{ get: true }
+	);
+	if (error) throw dbError(error);
+	return data ?? [];
+}
+
 export type { RelinkCandidateRun } from '../training/relink_candidates';
 
 /**

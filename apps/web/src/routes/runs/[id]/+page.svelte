@@ -26,6 +26,7 @@
 	import FundraiserSection from '#lib/components/FundraiserSection.svelte';
 	import RunGearChips from '#lib/components/RunGearChips.svelte';
 	import RunRaceResult from '#lib/components/RunRaceResult.svelte';
+	import RunPlanWorkoutPrompt from '#lib/components/RunPlanWorkoutPrompt.svelte';
 	import RunSegmentEfforts from '#lib/components/RunSegmentEfforts.svelte';
 	import RouteHistory from '#lib/components/RouteHistory.svelte';
 	import SplitPane from '#lib/components/SplitPane.svelte';
@@ -2113,6 +2114,8 @@
 		<section class="section">
 			<RunGearChips runId={run.id} runOwnerId={run.user_id} />
 		</section>
+
+		<RunPlanWorkoutPrompt runId={run.id} runOwnerId={run.user_id} />
 
 		<RunRaceResult
 			runId={run.id}

@@ -22286,6 +22286,42 @@ abstract class AppLocalizations {
   /// **'Official result imported.'**
   String get racesImported;
 
+  /// Run detail: asks whether this run was a planned workout from a later day, done early. {day} is a weekday name.
+  ///
+  /// In en, this message translates to:
+  /// **'Did you do {day}\'s planned workout early?'**
+  String planLinkPromptEarly(String day);
+
+  /// Run detail: asks whether this run was a planned workout from an earlier day, done late. {day} is a weekday name.
+  ///
+  /// In en, this message translates to:
+  /// **'Did you do {day}\'s planned workout late?'**
+  String planLinkPromptLate(String day);
+
+  /// Run detail: links the run to the asked-about planned workout
+  ///
+  /// In en, this message translates to:
+  /// **'Link to plan'**
+  String get planLinkConfirm;
+
+  /// Run detail: dismisses the asked-about planned workout and shows the next one, if any
+  ///
+  /// In en, this message translates to:
+  /// **'Not this one'**
+  String get planLinkDismiss;
+
+  /// Toast after a run is linked to a planned workout from the run-detail prompt
+  ///
+  /// In en, this message translates to:
+  /// **'Linked to your plan.'**
+  String get planLinkLinked;
+
+  /// Error after linking a run to a planned workout fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t link this to your plan. Try again.'**
+  String get planLinkFailed;
+
   /// Heading for the imported official-result panel
   ///
   /// In en, this message translates to:

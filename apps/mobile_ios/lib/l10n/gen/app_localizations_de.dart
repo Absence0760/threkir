@@ -13592,6 +13592,29 @@ class AppLocalizationsDe extends AppLocalizations {
   String get racesImported => 'Offizielles Ergebnis importiert.';
 
   @override
+  String planLinkPromptEarly(String day) {
+    return 'Hast du das für $day geplante Training vorgezogen?';
+  }
+
+  @override
+  String planLinkPromptLate(String day) {
+    return 'Hast du das für $day geplante Training nachgeholt?';
+  }
+
+  @override
+  String get planLinkConfirm => 'Mit Plan verknüpfen';
+
+  @override
+  String get planLinkDismiss => 'Nicht dieses';
+
+  @override
+  String get planLinkLinked => 'Mit deinem Plan verknüpft.';
+
+  @override
+  String get planLinkFailed =>
+      'Verknüpfen mit deinem Plan fehlgeschlagen. Versuch es noch einmal.';
+
+  @override
   String get racesOfficialResult => 'Offizielles Ergebnis';
 
   @override

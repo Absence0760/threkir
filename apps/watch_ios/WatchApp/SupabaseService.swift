@@ -144,7 +144,10 @@ actor SupabaseService {
                 laps: run.laps.isEmpty ? nil : run.laps.map(LapPayload.init),
                 distance_estimator: run.distanceEstimator,
                 distance_step_filled_m: run.distanceStepFilledMetres > 0 ? run.distanceStepFilledMetres : nil,
-                track_complete: run.trackComplete ? true : nil
+                track_complete: run.trackComplete ? true : nil,
+                plan_workout_id: run.workoutReview?.planWorkoutId,
+                workout_adherence: run.workoutReview?.adherence,
+                workout_step_results: run.workoutReview?.steps
             )
         )
 
@@ -229,6 +232,11 @@ actor SupabaseService {
         /// Present (true) only when the uploaded track holds every fix the
         /// estimator took (docs/features/gps_distance.md § Stored track).
         let track_complete: Bool?
+        /// The run's link to today's workout and its review, together or
+        /// not at all, as the WCSession envelope carries them.
+        let plan_workout_id: String?
+        let workout_adherence: String?
+        let workout_step_results: [WorkoutStepResultRecord]?
     }
 
     /// The registered `metadata.laps` element. Declared here rather than

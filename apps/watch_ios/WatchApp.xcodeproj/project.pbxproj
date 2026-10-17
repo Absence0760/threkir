@@ -89,6 +89,10 @@
 		4A6E1C0B5D2F000100C10001 /* LiveRace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A6E1C0B5D2F000200C10001 /* LiveRace.swift */; };
 		4A6E1C0B5D2F000100C10002 /* RaceBannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A6E1C0B5D2F000200C10002 /* RaceBannerView.swift */; };
 		4A6E1C0B5D2F000100C20001 /* LiveRaceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A6E1C0B5D2F000200C20001 /* LiveRaceTests.swift */; };
+		7D1A0C5E3B2F000100D10001 /* PushedWorkout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D1A0C5E3B2F000200D10001 /* PushedWorkout.swift */; };
+		7D1A0C5E3B2F000100D10002 /* WatchWorkoutRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D1A0C5E3B2F000200D10002 /* WatchWorkoutRunner.swift */; };
+		7D1A0C5E3B2F000100D20001 /* PushedWorkoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D1A0C5E3B2F000200D20001 /* PushedWorkoutTests.swift */; };
+		7D1A0C5E3B2F000100D20002 /* WatchWorkoutRunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D1A0C5E3B2F000200D20002 /* WatchWorkoutRunnerTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -176,6 +180,10 @@
 		4A6E1C0B5D2F000200C10001 /* LiveRace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveRace.swift; sourceTree = "<group>"; };
 		4A6E1C0B5D2F000200C10002 /* RaceBannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceBannerView.swift; sourceTree = "<group>"; };
 		4A6E1C0B5D2F000200C20001 /* LiveRaceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveRaceTests.swift; sourceTree = "<group>"; };
+		7D1A0C5E3B2F000200D10001 /* PushedWorkout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushedWorkout.swift; sourceTree = "<group>"; };
+		7D1A0C5E3B2F000200D10002 /* WatchWorkoutRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchWorkoutRunner.swift; sourceTree = "<group>"; };
+		7D1A0C5E3B2F000200D20001 /* PushedWorkoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushedWorkoutTests.swift; sourceTree = "<group>"; };
+		7D1A0C5E3B2F000200D20002 /* WatchWorkoutRunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchWorkoutRunnerTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -271,6 +279,8 @@
 				B2C3D4E5F6A70002000B0023 /* ActivityTypeVocabularyTests.swift */,
 				5164A17E0002000000000103 /* WatchAuthTests.swift */,
 				4A6E1C0B5D2F000200C20001 /* LiveRaceTests.swift */,
+				7D1A0C5E3B2F000200D20001 /* PushedWorkoutTests.swift */,
+				7D1A0C5E3B2F000200D20002 /* WatchWorkoutRunnerTests.swift */,
 			);
 			path = WatchAppTests;
 			sourceTree = "<group>";
@@ -297,6 +307,8 @@
 				A1B2C3D4E5F60002000A0012 /* ArmedRoute.swift */,
 				A1B2C3D4E5F60002000A00F1 /* GpsDistanceEstimator.swift */,
 				4A6E1C0B5D2F000200C10001 /* LiveRace.swift */,
+				7D1A0C5E3B2F000200D10001 /* PushedWorkout.swift */,
+				7D1A0C5E3B2F000200D10002 /* WatchWorkoutRunner.swift */,
 				4A6E1C0B5D2F000200C10002 /* RaceBannerView.swift */,
 				A1B2C3D4E5F60002000A0006 /* WatchConnectivityManager.swift */,
 				A1B2C3D4E5F60002000A0009 /* SupabaseService.swift */,
@@ -553,6 +565,8 @@
 				5164A17E0001000000000101 /* WatchAuth.swift in Sources */,
 				5164A17E0001000000000102 /* SignInView.swift in Sources */,
 				4A6E1C0B5D2F000100C10001 /* LiveRace.swift in Sources */,
+				7D1A0C5E3B2F000100D10001 /* PushedWorkout.swift in Sources */,
+				7D1A0C5E3B2F000100D10002 /* WatchWorkoutRunner.swift in Sources */,
 				4A6E1C0B5D2F000100C10002 /* RaceBannerView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -596,6 +610,8 @@
 				B2C3D4E5F6A70001000B0023 /* ActivityTypeVocabularyTests.swift in Sources */,
 				5164A17E0001000000000103 /* WatchAuthTests.swift in Sources */,
 				4A6E1C0B5D2F000100C20001 /* LiveRaceTests.swift in Sources */,
+				7D1A0C5E3B2F000100D20001 /* PushedWorkoutTests.swift in Sources */,
+				7D1A0C5E3B2F000100D20002 /* WatchWorkoutRunnerTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

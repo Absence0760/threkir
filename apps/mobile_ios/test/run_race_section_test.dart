@@ -29,6 +29,7 @@ class _FakeRaceService extends RaceService {
     String? mapTilerKey,
     Future<GeocodedPlace?> Function(String)? geocoder,
     int limit = 60,
+    bool newestFirst = false,
   }) async =>
       candidates;
 

@@ -378,3 +378,13 @@ export function hasTrimpSignal(runs: RunForLoad[], prefs: HrPrefs = {}): boolean
 	}
 	return false;
 }
+
+/// Whether the chart's load should be labelled low-confidence: it is reading
+/// heart rate (`hasTrimpSignal`) and the runner has said their heart rate is
+/// medication-affected (`hr_medication_affected`, decisions § 2085). A beta
+/// blocker caps and flattens the HR response that TRIMP weights, so the
+/// HR-derived stress under-reads effort even against a measured max. The
+/// distance-only curve is not HR-derived and is never flagged.
+export function isTrimpLowConfidence(hasTrimp: boolean, hrMedicationAffected: boolean): boolean {
+	return hasTrimp && hrMedicationAffected;
+}

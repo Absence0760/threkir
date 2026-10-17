@@ -3083,9 +3083,13 @@ export type Database = {
           structure: Json | null
           target_distance_m: number | null
           target_duration_seconds: number | null
+          target_hr_max_bpm: number | null
+          target_hr_min_bpm: number | null
           target_pace_end_sec_per_km: number | null
           target_pace_sec_per_km: number | null
           target_pace_tolerance_sec: number | null
+          target_rpe_max: number | null
+          target_rpe_min: number | null
           updated_at: string | null
           updated_by: string | null
           week_id: string
@@ -3106,9 +3110,13 @@ export type Database = {
           structure?: Json | null
           target_distance_m?: number | null
           target_duration_seconds?: number | null
+          target_hr_max_bpm?: number | null
+          target_hr_min_bpm?: number | null
           target_pace_end_sec_per_km?: number | null
           target_pace_sec_per_km?: number | null
           target_pace_tolerance_sec?: number | null
+          target_rpe_max?: number | null
+          target_rpe_min?: number | null
           updated_at?: string | null
           updated_by?: string | null
           week_id: string
@@ -3129,9 +3137,13 @@ export type Database = {
           structure?: Json | null
           target_distance_m?: number | null
           target_duration_seconds?: number | null
+          target_hr_max_bpm?: number | null
+          target_hr_min_bpm?: number | null
           target_pace_end_sec_per_km?: number | null
           target_pace_sec_per_km?: number | null
           target_pace_tolerance_sec?: number | null
+          target_rpe_max?: number | null
+          target_rpe_min?: number | null
           updated_at?: string | null
           updated_by?: string | null
           week_id?: string
@@ -6113,13 +6125,16 @@ export type Database = {
         Returns: {
           active_plan_id: string
           athlete_id: string
+          athlete_today: string
           avatar_url: string
           display_name: string
           distance_7d_m: number
+          easy_hr_drift_pct: number
           last_run_at: string
           load_acute: number
           load_chronic: number
           plan_completion_pct: number
+          recent_workouts: Json
           runs_7d: number
         }[]
       }

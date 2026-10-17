@@ -7,6 +7,7 @@ import {
 	computeTrainingLoadSeries,
 	localDateKey,
 	hasTrimpSignal,
+	isTrimpLowConfidence,
 	computeLiftStress,
 	rpeFactor,
 	aggregateDailyLiftStress,
@@ -494,4 +495,11 @@ test('computeTrainingLoadSeries — no lifts leaves liftStress 0 and stress unch
 	const series = computeTrainingLoadSeries(runs, {}, 90, ref);
 	assert.ok(series.every((p) => p.liftStress === 0));
 	assert.ok(series.every((p) => p.stress === p.runStress));
+});
+
+test('isTrimpLowConfidence — only an HR-read curve for a medication-affected runner', () => {
+	assert.equal(isTrimpLowConfidence(true, true), true);
+	assert.equal(isTrimpLowConfidence(true, false), false);
+	assert.equal(isTrimpLowConfidence(false, true), false);
+	assert.equal(isTrimpLowConfidence(false, false), false);
 });

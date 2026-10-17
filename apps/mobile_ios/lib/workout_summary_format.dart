@@ -1,7 +1,7 @@
 // The catalogue half of workout_summary.dart: the walk-run pattern and the
 // zone chip as a reader sees them. Mirrors
-// apps/web/src/lib/training/workout_summary_format.ts; the render glue is
-// per-platform, so it is not part of the enforced lockstep.
+// apps/web/src/lib/training/workout_summary_format.ts, a registered parity
+// pair (docs/architecture/parity_pairs.md).
 
 import 'l10n/gen/app_localizations.dart';
 import 'workout_summary.dart';

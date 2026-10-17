@@ -4795,5 +4795,10 @@
   "seasonPlanReviewDisclosure": "Revisar el aviso de IA",
   "seasonPlanRaceDatePick": "Elige el día de la carrera",
   "seasonPlanRaceGoalHint": "h:mm:ss, p. ej. 3:45:00. Déjalo vacío si no tienes tiempo objetivo.",
-  "seasonPlanRowInvalid": "La carrera {n} necesita un nombre, un día de carrera, una distancia y, o ningún tiempo objetivo, o uno con formato h:mm:ss."
+  "seasonPlanRowInvalid": "La carrera {n} necesita un nombre, un día de carrera, una distancia y, o ningún tiempo objetivo, o uno con formato h:mm:ss.",
+  "workoutMoveAction": "Mover a otro día",
+  "workoutMoveHint": "Elige un día de esta semana. Un entrenamiento que ya esté en ese día pasa al día que deja este.",
+  "workoutMoveSwapsWith": "Se intercambia con {kind}",
+  "workoutMoveError": "No se pudo mover este entrenamiento: {error}",
+  "workoutMoveSaveFirst": "Guarda o descarta tus cambios antes de mover este entrenamiento."
 }

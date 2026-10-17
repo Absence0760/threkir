@@ -16916,4 +16916,25 @@ class AppLocalizationsFr extends AppLocalizations {
   String seasonPlanRowInvalid(int n) {
     return 'La course $n doit avoir un nom, un jour de course, une distance, et soit aucun temps visé, soit un temps au format h:mm:ss.';
   }
+
+  @override
+  String get workoutMoveAction => 'Déplacer à un autre jour';
+
+  @override
+  String get workoutMoveHint =>
+      'Choisis un jour de cette semaine. Une séance déjà prévue ce jour-là prend le jour que celle-ci libère.';
+
+  @override
+  String workoutMoveSwapsWith(String kind) {
+    return 'Échange avec $kind';
+  }
+
+  @override
+  String workoutMoveError(String error) {
+    return 'Impossible de déplacer cette séance : $error';
+  }
+
+  @override
+  String get workoutMoveSaveFirst =>
+      'Enregistre ou annule tes modifications avant de déplacer cette séance.';
 }

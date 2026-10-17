@@ -27666,6 +27666,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Race {n} needs a name, a race day, a distance, and either no goal time or one written h:mm:ss.'**
   String seasonPlanRowInvalid(int n);
+
+  /// Button in the workout editor, and title of the sheet it opens, to move a planned workout to another day of its week
+  ///
+  /// In en, this message translates to:
+  /// **'Move to another day'**
+  String get workoutMoveAction;
+
+  /// Explains the move sheet: days of the same week; a workout already on the chosen day swaps into the moved one's old day
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a day in this week. A workout already on that day takes this one\'s old day.'**
+  String get workoutMoveHint;
+
+  /// Subtitle on a day in the move sheet that already holds a workout; kind is that workout's type (e.g. Rest)
+  ///
+  /// In en, this message translates to:
+  /// **'Swaps with {kind}'**
+  String workoutMoveSwapsWith(String kind);
+
+  /// Inline error when moving a workout fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t move this workout: {error}'**
+  String workoutMoveError(String error);
+
+  /// Shown when the runner taps Move with unsaved edits in the workout editor
+  ///
+  /// In en, this message translates to:
+  /// **'Save or discard your changes before moving this workout.'**
+  String get workoutMoveSaveFirst;
 }
 
 class _AppLocalizationsDelegate

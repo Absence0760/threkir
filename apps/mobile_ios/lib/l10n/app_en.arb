@@ -22001,5 +22001,35 @@
         "type": "int"
       }
     }
+  },
+  "workoutMoveAction": "Move to another day",
+  "@workoutMoveAction": {
+    "description": "Button in the workout editor, and title of the sheet it opens, to move a planned workout to another day of its week"
+  },
+  "workoutMoveHint": "Pick a day in this week. A workout already on that day takes this one's old day.",
+  "@workoutMoveHint": {
+    "description": "Explains the move sheet: days of the same week; a workout already on the chosen day swaps into the moved one's old day"
+  },
+  "workoutMoveSwapsWith": "Swaps with {kind}",
+  "@workoutMoveSwapsWith": {
+    "description": "Subtitle on a day in the move sheet that already holds a workout; kind is that workout's type (e.g. Rest)",
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutMoveError": "Couldn't move this workout: {error}",
+  "@workoutMoveError": {
+    "description": "Inline error when moving a workout fails",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutMoveSaveFirst": "Save or discard your changes before moving this workout.",
+  "@workoutMoveSaveFirst": {
+    "description": "Shown when the runner taps Move with unsaved edits in the workout editor"
   }
 }

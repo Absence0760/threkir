@@ -16704,4 +16704,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String seasonPlanRowInvalid(int n) {
     return 'Race $n needs a name, a race day, a distance, and either no goal time or one written h:mm:ss.';
   }
+
+  @override
+  String get workoutMoveAction => 'Move to another day';
+
+  @override
+  String get workoutMoveHint =>
+      'Pick a day in this week. A workout already on that day takes this one\'s old day.';
+
+  @override
+  String workoutMoveSwapsWith(String kind) {
+    return 'Swaps with $kind';
+  }
+
+  @override
+  String workoutMoveError(String error) {
+    return 'Couldn\'t move this workout: $error';
+  }
+
+  @override
+  String get workoutMoveSaveFirst =>
+      'Save or discard your changes before moving this workout.';
 }

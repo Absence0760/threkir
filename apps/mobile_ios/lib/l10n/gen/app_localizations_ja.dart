@@ -16094,4 +16094,24 @@ class AppLocalizationsJa extends AppLocalizations {
   String seasonPlanRowInvalid(int n) {
     return 'レース $n には名前・レース日・距離が必要です。目標タイムは空欄にするか h:mm:ss で入力してください。';
   }
+
+  @override
+  String get workoutMoveAction => '別の日に移動';
+
+  @override
+  String get workoutMoveHint =>
+      'この週の日を選んでください。移動先の日にすでにワークアウトがある場合は、日付が入れ替わります。';
+
+  @override
+  String workoutMoveSwapsWith(String kind) {
+    return '$kindと入れ替え';
+  }
+
+  @override
+  String workoutMoveError(String error) {
+    return 'このワークアウトを移動できませんでした: $error';
+  }
+
+  @override
+  String get workoutMoveSaveFirst => 'このワークアウトを移動する前に、変更を保存するか破棄してください。';
 }

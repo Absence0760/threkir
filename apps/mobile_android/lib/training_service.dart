@@ -1145,6 +1145,19 @@ class TrainingService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Move a planned workout to another day of its week through
+  /// `move_plan_workout` (decisions § 2073). When [dateIso] already holds a
+  /// row, the two trade days; returns the swapped workout's id, or null when
+  /// the day was free. Web `movePlanWorkout` twin.
+  Future<String?> moveWorkout(String workoutId, String dateIso) async {
+    final swapped = await _c.rpc('move_plan_workout', params: {
+      'p_workout_id': workoutId,
+      'p_date': dateIso,
+    });
+    notifyListeners();
+    return swapped as String?;
+  }
+
   /// Pure helper: trim a string then collapse empty-after-trim to
   /// null. Mirrors web's `s?.trim() || null` pattern used across
   /// `apps/web/src/lib/core/data.ts` for every optional text column.

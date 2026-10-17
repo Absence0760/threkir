@@ -12961,6 +12961,25 @@ class AppLocalizationsJa extends AppLocalizations {
   String get racesTrainForThis => 'このレースに向けてトレーニング';
 
   @override
+  String get racesWhenGroup => '期間';
+
+  @override
+  String get racesWhenUpcoming => '開催予定';
+
+  @override
+  String get racesWhenRecent => '最近の結果';
+
+  @override
+  String racesWhenHint(int days) {
+    return '「最近の結果」では過去$days日間のレースを新しい順に表示します。走ったレースを見つけて結果をインポートできます。';
+  }
+
+  @override
+  String racesEmptyRecent(int days) {
+    return '過去$days日間でこの条件に一致するレースはありません。';
+  }
+
+  @override
   String get racesDetailLoadFailed => 'このレースを読み込めませんでした。接続を確認して再試行してください。';
 
   @override

@@ -19,6 +19,9 @@ class _FakeRaceService extends RaceService {
   final List<RaceListingView> results;
   final Set<String> configured;
   bool importCalled = false;
+  String? lastFrom;
+  String? lastTo;
+  bool lastNewestFirst = false;
   String? lastImportProvider;
   String? lastImportBib;
   UltraSignUpPersonLink? lastImportPerson;
@@ -87,7 +90,12 @@ class _FakeRaceService extends RaceService {
     String? mapTilerKey,
     Future<GeocodedPlace?> Function(String)? geocoder,
     int limit = 60,
+    bool newestFirst = false,
   }) async {
+    lastFrom = from;
+    lastTo = to;
+    lastNewestFirst = newestFirst;
+    if (newestFirst) return results.where((r) => r.raceDate.compareTo(to!) <= 0).toList();
     if (distance == '5k') return const [];
     if (query != null && query.isNotEmpty) {
       return results.where((r) => r.name.contains(query)).toList();
@@ -197,6 +205,46 @@ void main() {
           of: pastCard, matching: find.widgetWithText(FilledButton, 'Import my result')),
       findsOneWidget,
     );
+  });
+
+  testWidgets('Recent results asks for the last 30 days, newest first, with the import on',
+      (tester) async {
+    final service = _FakeRaceService(
+      results: [
+        _listing('r-ran', 'Ran Last Week 10K', distanceM: 10000, raceDate: _isoDaysOut(-7)),
+      ],
+    );
+    await tester.pumpWidget(_app(service));
+    await tester.pump();
+    expect(service.lastNewestFirst, isFalse);
+    expect(service.lastFrom, isNull);
+
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Recent results'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(service.lastNewestFirst, isTrue);
+    expect(service.lastFrom, _isoDaysOut(-30));
+    expect(service.lastTo, _isoDaysOut(-1));
+    expect(find.textContaining('Recent results lists races from the last 30 days'), findsOneWidget);
+    expect(find.text('Ran Last Week 10K'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Import my result'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Upcoming'));
+    await tester.pump();
+    await tester.pump();
+    expect(service.lastNewestFirst, isFalse);
+    expect(service.lastFrom, isNull);
+  });
+
+  testWidgets('an empty Recent results view says what it looked at', (tester) async {
+    final service = _FakeRaceService(results: const []);
+    await tester.pumpWidget(_app(service));
+    await tester.pump();
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Recent results'));
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('No races in the last 30 days match these filters.'), findsOneWidget);
   });
 
   testWidgets("a card's name opens the race detail screen", (tester) async {

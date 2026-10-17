@@ -2783,6 +2783,7 @@ export interface RaceListingFilters {
 	center?: { lng: number; lat: number };
 	radiusM?: number;
 	limit?: number;
+	newestFirst?: boolean;
 }
 
 /// A discoverable race calendar entry (the search_race_listings projection:
@@ -2814,7 +2815,8 @@ export async function searchRaceListings(
 		p_center_lng: f.center?.lng ?? undefined,
 		p_center_lat: f.center?.lat ?? undefined,
 		p_radius_m: f.radiusM ?? undefined,
-		p_limit: f.limit ?? 60
+		p_limit: f.limit ?? 60,
+		p_newest_first: f.newestFirst || undefined
 	}, { get: true });
 	if (error) throw dbError(error);
 	return (data ?? []) as RaceListingResult[];

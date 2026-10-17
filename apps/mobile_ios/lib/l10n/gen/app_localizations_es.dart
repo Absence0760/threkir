@@ -13589,6 +13589,25 @@ class AppLocalizationsEs extends AppLocalizations {
   String get racesTrainForThis => 'Entrenar para esta carrera';
 
   @override
+  String get racesWhenGroup => 'Cuándo';
+
+  @override
+  String get racesWhenUpcoming => 'Próximas';
+
+  @override
+  String get racesWhenRecent => 'Resultados recientes';
+
+  @override
+  String racesWhenHint(int days) {
+    return 'Resultados recientes muestra las carreras de los últimos $days días, primero las más recientes, para que encuentres una carrera que corriste e importes tu resultado.';
+  }
+
+  @override
+  String racesEmptyRecent(int days) {
+    return 'Ninguna carrera de los últimos $days días coincide con estos filtros.';
+  }
+
+  @override
   String get racesDetailLoadFailed =>
       'No se pudo cargar esta carrera. Comprueba tu conexión e inténtalo de nuevo.';
 

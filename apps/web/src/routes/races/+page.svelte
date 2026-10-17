@@ -9,6 +9,7 @@
 		type RaceDistanceBand
 	} from '#lib/core/data.ts';
 	import { raceImportLegFor } from '#lib/integrations/race_import_providers.ts';
+	import { addDays, formatISO } from '#lib/training/training.ts';
 	import { probeRaceLeg } from '#lib/integrations/race_import_probe.svelte.ts';
 	import RunSurfaceTabs from '#lib/components/RunSurfaceTabs.svelte';
 	import RaceCalendarCard from '#lib/components/RaceCalendarCard.svelte';
@@ -18,6 +19,8 @@
 
 	let query = $state('');
 	let distance = $state<'' | RaceDistanceBand>('');
+	let when = $state<'upcoming' | 'recent'>('upcoming');
+	const RECENT_WINDOW_DAYS = 30;
 
 	let nearPlace = $state('');
 	let center = $state<{ lng: number; lat: number } | null>(null);
@@ -48,6 +51,12 @@
 		const f: RaceListingFilters = {};
 		if (query.trim()) f.query = query.trim();
 		if (distance) f.distance = distance;
+		if (when === 'recent') {
+			const today = new Date();
+			f.from = formatISO(addDays(today, -RECENT_WINDOW_DAYS));
+			f.to = formatISO(addDays(today, -1));
+			f.newestFirst = true;
+		}
 		if (center) {
 			f.center = center;
 			if (radiusM != null) f.radiusM = radiusM;
@@ -75,6 +84,7 @@
 	$effect(() => {
 		query;
 		distance;
+		when;
 		center;
 		radiusM;
 		clearTimeout(timer);
@@ -212,6 +222,35 @@
 		<div
 			class="chip-row"
 			role="group"
+			aria-label={m('races.whenGroup')}
+			aria-describedby="races-when-hint"
+		>
+			<button
+				type="button"
+				class="chip"
+				class:active={when === 'upcoming'}
+				aria-pressed={when === 'upcoming'}
+				onclick={() => (when = 'upcoming')}
+				data-testid="races-when-upcoming"
+			>
+				{m('races.whenUpcoming')}
+			</button>
+			<button
+				type="button"
+				class="chip"
+				class:active={when === 'recent'}
+				aria-pressed={when === 'recent'}
+				onclick={() => (when = 'recent')}
+				data-testid="races-when-recent"
+			>
+				{m('races.whenRecent')}
+			</button>
+		</div>
+		<p class="filter-hint" id="races-when-hint">{m('races.whenHint', { days: RECENT_WINDOW_DAYS })}</p>
+
+		<div
+			class="chip-row"
+			role="group"
 			aria-label={m('races.distanceAny')}
 			aria-describedby="races-distance-hint"
 		>
@@ -239,7 +278,9 @@
 			<button type="button" class="btn btn-outline" onclick={run}>{m('races.retry')}</button>
 		</div>
 	{:else if results.length === 0}
-		<p class="state-msg" data-testid="races-empty">{m('races.empty')}</p>
+		<p class="state-msg" data-testid="races-empty">
+			{when === 'recent' ? m('races.emptyRecent', { days: RECENT_WINDOW_DAYS }) : m('races.empty')}
+		</p>
 	{:else}
 		<ul class="results" data-testid="races-results">
 			{#each results as r (r.id)}

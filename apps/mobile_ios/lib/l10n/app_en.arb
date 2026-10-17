@@ -17927,6 +17927,36 @@
   "@racesTrainForThis": {
     "description": "Race card action that opens the plan wizard sized around that race"
   },
+  "racesWhenGroup": "When",
+  "@racesWhenGroup": {
+    "description": "Races screen: accessibility label for the Upcoming / Recent results choice"
+  },
+  "racesWhenUpcoming": "Upcoming",
+  "@racesWhenUpcoming": {
+    "description": "Races screen: show races from today on"
+  },
+  "racesWhenRecent": "Recent results",
+  "@racesWhenRecent": {
+    "description": "Races screen: show races from the last few weeks, newest first, to import a result"
+  },
+  "racesWhenHint": "Recent results lists races from the last {days} days, newest first, so you can find a race you ran and import your result.",
+  "@racesWhenHint": {
+    "description": "Races screen: explains the Recent results choice; {days} is the look-back window in days",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "racesEmptyRecent": "No races in the last {days} days match these filters.",
+  "@racesEmptyRecent": {
+    "description": "Races screen: no recent races match; {days} is the look-back window in days",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
   "racesDetailLoadFailed": "Couldn't load this race. Check your connection and try again.",
   "@racesDetailLoadFailed": {
     "description": "Race detail screen: the listing failed to load"

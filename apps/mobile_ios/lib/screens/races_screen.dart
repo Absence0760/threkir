@@ -57,6 +57,10 @@ class RacesScreen extends StatefulWidget {
 
 const _distanceBands = ['', '5k', '10k', 'half', 'marathon', 'ultra'];
 
+/// How far back Recent results looks, in days. Mirrors web's
+/// `RECENT_WINDOW_DAYS` on `/races`.
+const recentWindowDays = 30;
+
 class _RacesScreenState extends State<RacesScreen> {
   final _searchCtl = TextEditingController();
   final _placeCtl = TextEditingController();
@@ -65,6 +69,7 @@ class _RacesScreenState extends State<RacesScreen> {
 
   String _query = '';
   String _distance = '';
+  bool _recent = false;
   String _nearPlace = '';
 
   bool _loading = true;
@@ -98,10 +103,16 @@ class _RacesScreenState extends State<RacesScreen> {
       _loading = true;
       _error = false;
     });
+    final today = DateTime.now();
     try {
       final next = await widget.service.searchRaceListings(
         query: _query,
         distance: _distance.isEmpty ? null : _distance,
+        from: _recent
+            ? toIsoDate(today.subtract(const Duration(days: recentWindowDays)))
+            : null,
+        to: _recent ? toIsoDate(today.subtract(const Duration(days: 1))) : null,
+        newestFirst: _recent,
         nearPlace: _nearPlace.isEmpty ? null : _nearPlace,
         mapTilerKey: widget.mapTilerKey,
       );
@@ -225,6 +236,40 @@ class _RacesScreenState extends State<RacesScreen> {
                   },
                 ),
                 const SizedBox(height: 8),
+                Semantics(
+                  container: true,
+                  label: l.racesWhenGroup,
+                  child: Wrap(
+                    spacing: 8,
+                    children: [
+                      ChoiceChip(
+                        label: Text(l.racesWhenUpcoming),
+                        selected: !_recent,
+                        onSelected: (_) {
+                          setState(() => _recent = false);
+                          _run();
+                        },
+                      ),
+                      ChoiceChip(
+                        label: Text(l.racesWhenRecent),
+                        selected: _recent,
+                        onSelected: (_) {
+                          setState(() => _recent = true);
+                          _run();
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                if (_recent)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      l.racesWhenHint(recentWindowDays),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                const SizedBox(height: 8),
                 // A scrolling Row, not a horizontal ListView in a fixed-height
                 // box: a chip needs 58 px at 2x OS text scale and a 40 px lane
                 // cropped its label (and stole its 48 dp tap target at 1.0x).
@@ -264,7 +309,10 @@ class _RacesScreenState extends State<RacesScreen> {
       return ErrorState(message: l.racesSearchFailed, onRetry: _run);
     }
     if (_results.isEmpty) {
-      return EmptyState(icon: Icons.flag_outlined, title: l.racesEmpty);
+      return EmptyState(
+        icon: Icons.flag_outlined,
+        title: _recent ? l.racesEmptyRecent(recentWindowDays) : l.racesEmpty,
+      );
     }
     return ListView.builder(
       padding: EdgeInsets.only(bottom: fabScrollClearance(context)),

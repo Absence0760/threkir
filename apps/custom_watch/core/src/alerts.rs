@@ -948,7 +948,14 @@ impl AlertEngine {
         // The waypoint pair is in that list because a confirmation is *dropped*
         // when blocked while an excursion can still retry, so letting pace win
         // would lose the one of the two that cannot come back.
-        if snap.state == RecordState::Recording {
+        //
+        // A live structured workout owns the pace surface instead (the phone's
+        // `WorkoutRunner.ownsPaceCues`, decisions § 2076): the band is the
+        // runner's general target, not the current step's, and would call a
+        // recovery jog or a walk-run walk "too slow". It resumes once the
+        // workout completes.
+        let workout_live = snap.workout.is_some_and(|w| !w.complete);
+        if snap.state == RecordState::Recording && !workout_live {
             if let (Some((fast, slow)), Some(pace)) = (self.pace_band, snap.current_pace_s_per_km) {
                 if pace < fast || pace > slow {
                     let cooled = self
@@ -2608,6 +2615,26 @@ mod tests {
     }
 
     #[test]
+    fn a_live_workout_silences_the_pace_band_until_it_completes() {
+        let mut e = AlertEngine::new();
+        e.set_pace_band(Some((300, 420)));
+        // Way outside the band on a walk interval: the workout owns pace.
+        let mut walking = rec_workout(wv(0, 0, false), 10);
+        walking.current_pace_s_per_km = Some(720);
+        assert_eq!(e.on_update(&walking, None, 10), None);
+        // The workout finished: the band speaks again for the free-run tail.
+        let mut done = rec_workout(wv(0, 0, true), 10 + ALERT_TTL_S);
+        done.current_pace_s_per_km = Some(720);
+        let _ = e.on_update(&done, None, 10 + ALERT_TTL_S);
+        let mut after = rec_workout(wv(0, 0, true), 20 + 2 * ALERT_TTL_S);
+        after.current_pace_s_per_km = Some(720);
+        assert_eq!(
+            e.on_update(&after, None, 20 + 2 * ALERT_TTL_S),
+            Some(Alert::PaceSlow)
+        );
+    }
+
+    #[test]
     fn a_workout_transition_fires_the_step_banner_once() {
         let mut e = AlertEngine::new();
         let fired = e.on_update(&rec_workout(wv(1, 0, false), 10), None, 10);
@@ -2902,16 +2929,15 @@ mod tests {
         // The same collision one rung down: a workout banner outranks pace, so
         // a pace excursion blocked by one must retry rather than burn its
         // once-per-excursion state on a banner the workout edge overwrites.
+        // Only the finishing edge can collide now — while the workout is live
+        // the band stands down (decisions § 2076) — so the edge is DONE.
         let mut e = AlertEngine::new();
         e.set_pace_band(Some((300, 420)));
-        let mut both = rec_workout(wv(1, 0, false), 5);
+        let mut both = rec_workout(wv(0, 0, true), 5);
         both.current_pace_s_per_km = Some(250);
-        assert!(matches!(
-            e.on_update(&both, None, 5),
-            Some(Alert::WorkoutStep { .. })
-        ));
+        assert_eq!(e.on_update(&both, None, 5), Some(Alert::WorkoutDone));
         let after = 5 + ALERT_TTL_S;
-        let mut still = rec_workout(wv(1, 0, false), after);
+        let mut still = rec_workout(wv(0, 0, true), after);
         still.current_pace_s_per_km = Some(250);
         assert_eq!(e.on_update(&still, None, after), Some(Alert::PaceFast));
     }

@@ -21,6 +21,17 @@
 	import { m as t } from '#lib/i18n/store.svelte.ts';
 	import type { PlanWorkout } from '#lib/types.ts';
 	import type { WorkoutStructure } from '#lib/training/training.ts';
+	import {
+		paceZoneName,
+		structureSegments,
+		structureTotal,
+		walkRunPattern
+	} from '#lib/training/workout_summary.ts';
+	import {
+		formatPaceZone,
+		formatWalkRunPattern,
+		formatWalkRunTotal
+	} from '#lib/training/workout_summary_format.ts';
 
 	let planId = $derived(page.params.id as string);
 	let wid = $derived(page.params.wid as string);
@@ -133,28 +144,6 @@
 		}
 	}
 
-	// A step's "magnitude" for the proportional bar: distance when present,
-	// else duration (walk-run sessions are fully time-based — see training.md).
-	function mag(b: { distance_m?: number; duration_s?: number } | undefined): number {
-		if (!b) return 0;
-		return b.distance_m ?? b.duration_s ?? 0;
-	}
-	function repMag(r: WorkoutStructure['repeats']): number {
-		return r?.distance_m ?? r?.duration_s ?? 0;
-	}
-	function recMag(r: WorkoutStructure['repeats']): number {
-		return r?.recovery_distance_m ?? r?.recovery_duration_s ?? 0;
-	}
-
-	function intervalTotal(s: WorkoutStructure): number {
-		return (
-			mag(s.warmup) +
-			(s.repeats ? s.repeats.count * (repMag(s.repeats) + recMag(s.repeats)) : 0) +
-			mag(s.steady) +
-			mag(s.cooldown)
-		);
-	}
-
 	// A step reads as its distance when it has one, else its duration: a
 	// walk-run session carries only duration_s, and "—" told a beginner nothing.
 	function stepAmount(distanceM: number | undefined, durationS: number | undefined, digits: number): string {
@@ -163,49 +152,24 @@
 		return '—';
 	}
 
-	// The total sums mag(), which mixes metres and seconds when a session
-	// mixes the two, so it is only shown when every step uses one measure.
 	function totalLabel(s: WorkoutStructure): string | null {
-		const r = s.repeats;
-		const steps: { distance_m?: number; duration_s?: number }[] = [
-			...(s.warmup ? [s.warmup] : []),
-			...(r ? [{ distance_m: r.distance_m, duration_s: r.duration_s }] : []),
-			...(r && (r.recovery_distance_m != null || r.recovery_duration_s != null)
-				? [{ distance_m: r.recovery_distance_m, duration_s: r.recovery_duration_s }]
-				: []),
-			...(s.steady ? [s.steady] : []),
-			...(s.cooldown ? [s.cooldown] : [])
-		];
-		if (steps.length === 0) return null;
-		if (steps.every((x) => x.distance_m != null)) return fmtKm(intervalTotal(s), 2);
-		if (steps.every((x) => x.distance_m == null && x.duration_s != null)) {
-			return fmtHms(intervalTotal(s));
-		}
-		return null;
+		const total = structureTotal(s);
+		if (!total) return null;
+		return total.kind === 'distance' ? fmtKm(total.metres, 2) : fmtHms(total.seconds);
 	}
 
-	type SegmentVisual = {
-		role: 'warmup' | 'work' | 'recovery' | 'steady' | 'cooldown';
-		fraction: number;
-	};
+	let walkRun = $derived(walkRunPattern(structure));
+	let isWalkRunSession = $derived(walkRun != null);
 
-	function segmentVisuals(s: WorkoutStructure): SegmentVisual[] {
-		const total = intervalTotal(s);
-		if (total <= 0) return [];
-		const out: SegmentVisual[] = [];
-		if (s.warmup) out.push({ role: 'warmup', fraction: mag(s.warmup) / total });
-		if (s.repeats) {
-			for (let i = 0; i < s.repeats.count; i++) {
-				out.push({ role: 'work', fraction: repMag(s.repeats) / total });
-				if (i < s.repeats.count - 1) {
-					out.push({ role: 'recovery', fraction: recMag(s.repeats) / total });
-				}
-			}
-			out.push({ role: 'recovery', fraction: recMag(s.repeats) / total });
+	function recoveryEffort(pace: string | undefined): string | null {
+		switch (pace) {
+			case 'jog':
+				return t('workoutDetail.effortJog');
+			case 'easy':
+				return t('workoutDetail.effortEasy');
+			default:
+				return null;
 		}
-		if (s.steady) out.push({ role: 'steady', fraction: mag(s.steady) / total });
-		if (s.cooldown) out.push({ role: 'cooldown', fraction: mag(s.cooldown) / total });
-		return out;
 	}
 
 	function fmtIsoDate(iso: string): string {
@@ -288,7 +252,9 @@
 				<span class="kicker">{fmtIsoDate(workout.scheduled_date)}</span>
 				<h1>{workoutKindLabel(workout.kind)}</h1>
 				<p class="tagline">
-					{#if structure}
+					{#if workout.kind === 'walk_run'}
+						{t('workoutDetail.taglineWalkRun')}
+					{:else if structure}
 						{t('workoutDetail.taglineStructured')}
 					{:else if workout.kind === 'easy' || workout.kind === 'recovery'}
 						{t('workoutDetail.taglineEasy')}
@@ -303,6 +269,13 @@
 					{/if}
 				</p>
 				<div class="meta">
+					{#if walkRun}
+						<div class="metric session-metric" data-testid="walk-run-summary">
+							<span class="m-label">{t('workoutDetail.session')}</span>
+							<strong>{formatWalkRunTotal(t, walkRun)}</strong>
+							<span class="pattern">{formatWalkRunPattern(t, walkRun)}</span>
+						</div>
+					{:else}
 					{#if workout.target_distance_m != null}
 						<div class="metric">
 							<span class="m-label">{t('workoutDetail.distance')}</span>
@@ -330,10 +303,13 @@
 									<span class="tol">{fmtPaceTolerance(workout.target_pace_tolerance_sec)}</span>
 								{/if}
 								{#if workout.pace_zone}
-									<span class="zone">{workout.pace_zone}</span>
+									<span class="zone" data-testid="pace-zone">
+										{formatPaceZone(t, workout.pace_zone, paceZoneName(workout.pace_zone))}
+									</span>
 								{/if}
 							</span>
 						</div>
+					{/if}
 					{/if}
 				</div>
 			</div>
@@ -382,7 +358,7 @@
 			<section class="card structure-card">
 				<h3>{t('workoutDetail.structure')}</h3>
 				<div class="timeline" role="img" aria-label={t('workoutDetail.segmentTimeline')}>
-					{#each segmentVisuals(structure) as seg, i (i)}
+					{#each structureSegments(structure) as seg, i (i)}
 						<span
 							class="tl-seg tl-{seg.role}"
 							style="flex: {Math.max(seg.fraction, 0.01)};"

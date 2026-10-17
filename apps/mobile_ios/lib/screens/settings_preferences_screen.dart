@@ -886,6 +886,13 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
     await _putUniversal(SettingsKeys.emailNewDeviceAlerts, on ? 'off' : 'on');
   }
 
+  Future<void> _toggleNotifyWorkoutReminder() async {
+    // Opt-OUT, stored as 'on'|'off' (default 'on'); only the literal 'off'
+    // mutes it, matching the scheduler's and the worker's read.
+    final on = _bagValue<String>(SettingsKeys.notifyWorkoutReminder) != 'off';
+    await _putUniversal(SettingsKeys.notifyWorkoutReminder, on ? 'off' : 'on');
+  }
+
   Future<void> _editEmailLifecycleDrip() async {
     // Opt-IN consent stored as 'on'|'off' (default 'off'); a separate key from
     // both email_notifications and email_weekly_digest — one engagement stream
@@ -2078,6 +2085,18 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
                       trailing: const Icon(Icons.chevron_right),
                       enabled: _bagReady,
                       onTap: _editPushNotifications,
+                    ),
+                    SwitchListTile(
+                      title: Text(l10n.prefsNotifyWorkoutReminder),
+                      subtitle: Text(l10n.prefsNotifyWorkoutReminderHint),
+                      value:
+                          _bagValue<String>(
+                            SettingsKeys.notifyWorkoutReminder,
+                          ) !=
+                          'off',
+                      onChanged: _bagReady
+                          ? (_) => _toggleNotifyWorkoutReminder()
+                          : null,
                     ),
                     SwitchListTile(
                       title: Text(l10n.prefsEmailNewDeviceAlerts),

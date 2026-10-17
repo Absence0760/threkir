@@ -51,6 +51,18 @@ class CheckpointSerializationTest {
         privacyDefault = "public",
         pausedAccumulatedMs = 120_000,
         gnssSignal = GnssSignalSummary(samples = 900, usedMedian = 12, cn0MedianDbHz = 36.4, cn0P10DbHz = 29.0, l5Fraction = 0.25),
+        workoutReview = com.runapp.watchwear.workout.WorkoutReview(
+            planWorkoutId = "pw-1",
+            adherence = "partial",
+            steps = listOf(
+                com.runapp.watchwear.workout.WorkoutStepResultRecord(
+                    stepIndex = 0, kind = "rep", repIndex = 1, repTotal = 2,
+                    targetDistanceM = 400.0, actualDistanceM = 380.0,
+                    targetPaceSPerKm = 240, actualPaceSPerKm = 250,
+                    toleranceSPerKm = 10, durationS = 95, status = "skipped",
+                ),
+            ),
+        ),
     )
 
     @Test

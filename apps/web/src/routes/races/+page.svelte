@@ -1,35 +1,26 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
-	import { parseImportCompleteness } from '#lib/integrations/import_completeness.ts';
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import {
 		searchRaceListings,
-		importRaceResult,
-		isRaceImportProviderConfigured,
-		fetchUltraSignUpLink,
-		RACE_IMPORT_UNAVAILABLE,
-		ULTRASIGNUP_NOT_LINKED,
-		ULTRASIGNUP_PERSON_NOT_FOUND,
 		type RaceListingResult,
 		type RaceListingFilters,
 		type RaceDistanceBand
 	} from '#lib/core/data.ts';
-	import {
-		RACE_IMPORT_LEGS,
-		raceImportLegFor,
-		type RaceImportLeg
-	} from '#lib/integrations/race_import_providers.ts';
+	import { raceImportLegFor } from '#lib/integrations/race_import_providers.ts';
+	import { addDays, formatISO } from '#lib/training/training.ts';
+	import { probeRaceLeg } from '#lib/integrations/race_import_probe.svelte.ts';
 	import RunSurfaceTabs from '#lib/components/RunSurfaceTabs.svelte';
 	import RaceCalendarCard from '#lib/components/RaceCalendarCard.svelte';
+	import RaceImportDialog from '#lib/components/RaceImportDialog.svelte';
 	import RaceListingEditor from '#lib/components/RaceListingEditor.svelte';
 	import Modal from '#lib/components/Modal.svelte';
-	import { showToast } from '#lib/stores/toast.svelte.ts';
-	import type { UltraSignUpPersonLink } from '#lib/integrations/ultrasignup_person.ts';
 
 	let query = $state('');
 	let distance = $state<'' | RaceDistanceBand>('');
+	let when = $state<'upcoming' | 'recent'>('upcoming');
+	const RECENT_WINDOW_DAYS = 30;
 
 	let nearPlace = $state('');
 	let center = $state<{ lng: number; lat: number } | null>(null);
@@ -43,27 +34,7 @@
 
 	let showEditor = $state(false);
 
-	// Per-leg credential probe. Absent means "not answered yet" and renders
-	// nothing; only a resolved probe lets the modal either offer the import or
-	// state that this provider is unavailable. A failed probe resolves false.
-	let legAvailable = $state<Partial<Record<RaceImportLeg, boolean>>>({});
-	const legProbed = new Set<RaceImportLeg>();
-
-	// Import flow modal state.
 	let importing = $state<RaceListingResult | null>(null);
-	// The provider needs the import scoped to this runner before it will fetch
-	// (issue #360 — an unscoped fetch imports the whole finisher field). Which
-	// field that is differs per leg; the spec says which.
-	let scopeValue = $state('');
-	// A linked-person leg (UltraSignup) is scoped by who the runner picked in
-	// Settings, not by anything typed here. `undefined` = not read yet, `null`
-	// = no link, so the modal can say which rather than offer a dead button.
-	let linkedPerson = $state<UltraSignUpPersonLink | null | undefined>(undefined);
-	let pasteBib = $state('');
-	let pasteChip = $state('');
-	let pasteGun = $state('');
-	let pastePlace = $state<number | null>(null);
-	let importBusy = $state(false);
 
 	const DISTANCES: { v: '' | RaceDistanceBand; k: MessageKey }[] = [
 		{ v: '', k: 'races.distanceAny' },
@@ -80,13 +51,19 @@
 		const f: RaceListingFilters = {};
 		if (query.trim()) f.query = query.trim();
 		if (distance) f.distance = distance;
+		if (when === 'recent') {
+			const today = new Date();
+			f.from = formatISO(addDays(today, -RECENT_WINDOW_DAYS));
+			f.to = formatISO(addDays(today, -1));
+			f.newestFirst = true;
+		}
 		if (center) {
 			f.center = center;
 			if (radiusM != null) f.radiusM = radiusM;
 		}
 		try {
 			results = await searchRaceListings(f);
-			void probeLegsIn(results);
+			probeLegsIn(results);
 		} catch {
 			error = true;
 		} finally {
@@ -94,36 +71,20 @@
 		}
 	}
 
-	/// Probe only the legs the listings on screen can actually reach, once each.
-	/// Probing all three on every visit spends the import function's own hourly
-	/// rate limit, and a 429 reads as unavailable — the fail-closed default
-	/// would then hide a provider that is configured.
-	async function probeLegsIn(rows: RaceListingResult[]) {
-		const pending: RaceImportLeg[] = [];
+	/// Probe only the legs the listings on screen can actually reach, once each,
+	/// so the import dialog opens already knowing what it can offer.
+	function probeLegsIn(rows: RaceListingResult[]) {
 		for (const r of rows) {
 			const leg = raceImportLegFor(r.provider);
-			if (leg && !legProbed.has(leg)) {
-				legProbed.add(leg);
-				pending.push(leg);
-			}
+			if (leg) void probeRaceLeg(leg);
 		}
-		await Promise.all(
-			pending.map(async (leg) => {
-				let ok = false;
-				try {
-					ok = await isRaceImportProviderConfigured(leg);
-				} catch {
-					ok = false;
-				}
-				legAvailable = { ...legAvailable, [leg]: ok };
-			})
-		);
 	}
 
 	let timer: ReturnType<typeof setTimeout> | undefined;
 	$effect(() => {
 		query;
 		distance;
+		when;
 		center;
 		radiusM;
 		clearTimeout(timer);
@@ -189,98 +150,8 @@
 		geoError = '';
 	}
 
-	async function loadLinkedPerson() {
-		linkedPerson = undefined;
-		try {
-			linkedPerson = await fetchUltraSignUpLink();
-		} catch {
-			linkedPerson = null;
-		}
-	}
-
 	function openImport(race: RaceListingResult) {
 		importing = race;
-		scopeValue = '';
-		const leg = raceImportLegFor(race.provider);
-		if (leg && RACE_IMPORT_LEGS[leg].scopeField === 'linkedPerson') void loadLinkedPerson();
-		pasteBib = '';
-		pasteChip = '';
-		pasteGun = '';
-		pastePlace = null;
-	}
-
-	const importLeg = $derived(importing ? raceImportLegFor(importing.provider) : null);
-	const importSpec = $derived(importLeg ? RACE_IMPORT_LEGS[importLeg] : null);
-
-	async function doProviderImport() {
-		if (!importing || !importLeg || !importSpec) return;
-		const scoped = scopeValue.trim() || undefined;
-		importBusy = true;
-		try {
-			const outcome = await importRaceResult({
-				provider: importLeg,
-				listingId: importing.id,
-				bib: importSpec.scopeField === 'bib' ? scoped : undefined,
-				ultraSignUpPerson:
-					importSpec.scopeField === 'linkedPerson' ? (linkedPerson ?? undefined) : undefined
-			});
-			// A field read only as far as the cap still imports what it found,
-			// so a truncated import used to close the modal looking like a whole
-			// one (decisions § 1014).
-			const graded = parseImportCompleteness(outcome);
-			showToast(
-				graded.complete
-					? m('races.imported')
-					: m('integrations.importPartial', { n: graded.imported }),
-				graded.complete ? 'success' : 'error'
-			);
-			importing = null;
-		} catch (e) {
-			const message = thrownMessage(e);
-			if (message === RACE_IMPORT_UNAVAILABLE[importLeg]) {
-				// The leg went unavailable between the probe and the call; correct
-				// the modal as well as saying so, or it keeps offering the form.
-				legAvailable = { ...legAvailable, [importLeg]: false };
-				showToast(m(importSpec.unavailableKey), 'error');
-			} else if (message === ULTRASIGNUP_NOT_LINKED) {
-				linkedPerson = null;
-				showToast(m('races.ultraSignUpNotLinked'), 'error');
-			} else if (message === ULTRASIGNUP_PERSON_NOT_FOUND) {
-				showToast(m('races.ultraSignUpPersonNotFound'), 'error');
-			} else if (message.includes('upstream_results_truncated')) {
-				// "We read the whole field and you are not in it" and "we read the
-				// first 2,000 finishers and you were not among them" are different
-				// sentences, and only the second has the paste form as its answer.
-				showToast(m('integrations.importTruncated'), 'error');
-			} else {
-				showToast(m('races.importFailed'), 'error');
-			}
-		} finally {
-			importBusy = false;
-		}
-	}
-
-	async function doPasteImport() {
-		if (!importing) return;
-		importBusy = true;
-		try {
-			await importRaceResult({
-				provider: 'paste',
-				listingId: importing.id,
-				result: {
-					bib: pasteBib.trim() || undefined,
-					chip_time: pasteChip.trim() || undefined,
-					gun_time: pasteGun.trim() || undefined,
-					overall_place: pastePlace ?? undefined
-				}
-			});
-			showToast(m('races.imported'), 'success');
-			importing = null;
-		} catch {
-			showToast(m('races.importFailed'), 'error');
-		} finally {
-			importBusy = false;
-		}
 	}
 
 	function onCreated() {
@@ -351,6 +222,35 @@
 		<div
 			class="chip-row"
 			role="group"
+			aria-label={m('races.whenGroup')}
+			aria-describedby="races-when-hint"
+		>
+			<button
+				type="button"
+				class="chip"
+				class:active={when === 'upcoming'}
+				aria-pressed={when === 'upcoming'}
+				onclick={() => (when = 'upcoming')}
+				data-testid="races-when-upcoming"
+			>
+				{m('races.whenUpcoming')}
+			</button>
+			<button
+				type="button"
+				class="chip"
+				class:active={when === 'recent'}
+				aria-pressed={when === 'recent'}
+				onclick={() => (when = 'recent')}
+				data-testid="races-when-recent"
+			>
+				{m('races.whenRecent')}
+			</button>
+		</div>
+		<p class="filter-hint" id="races-when-hint">{m('races.whenHint', { days: RECENT_WINDOW_DAYS })}</p>
+
+		<div
+			class="chip-row"
+			role="group"
 			aria-label={m('races.distanceAny')}
 			aria-describedby="races-distance-hint"
 		>
@@ -378,7 +278,9 @@
 			<button type="button" class="btn btn-outline" onclick={run}>{m('races.retry')}</button>
 		</div>
 	{:else if results.length === 0}
-		<p class="state-msg" data-testid="races-empty">{m('races.empty')}</p>
+		<p class="state-msg" data-testid="races-empty">
+			{when === 'recent' ? m('races.emptyRecent', { days: RECENT_WINDOW_DAYS }) : m('races.empty')}
+		</p>
 	{:else}
 		<ul class="results" data-testid="races-results">
 			{#each results as r (r.id)}
@@ -397,131 +299,7 @@
 	<RaceListingEditor oncreated={onCreated} oncancel={() => (showEditor = false)} />
 </Modal>
 
-<Modal
-	open={importing != null}
-	title={importing?.name ?? ''}
-	narrow
-	onclose={() => (importing = null)}
->
-	{#if importing}
-		<div class="import-body">
-			{#if importLeg && importSpec && legAvailable[importLeg] === true && importSpec.scopeField === 'linkedPerson'}
-				{#if linkedPerson}
-					<p data-testid={importSpec.inputTestId}>
-						{m(importSpec.labelKey, {
-							name: `${linkedPerson.firstName} ${linkedPerson.lastName}`,
-							id: linkedPerson.personId
-						})}
-					</p>
-					<p class="paste-hint">{m(importSpec.hintKey)}</p>
-				{:else if linkedPerson === null}
-					<p class="paste-hint" data-testid="ultrasignup-not-linked">
-						{m('races.ultraSignUpNotLinked')}
-						<a href="/settings/integrations#ultrasignup-link">{m('races.ultraSignUpLinkInSettings')}</a>
-					</p>
-				{/if}
-				<button
-					type="button"
-					class="btn btn-primary"
-					disabled={importBusy || !linkedPerson}
-					onclick={doProviderImport}
-					data-testid={importSpec.submitTestId}
-				>
-					{m('races.importResult')}
-				</button>
-			{:else if importLeg && importSpec && legAvailable[importLeg] === true}
-				<label>
-					<span>{m(importSpec.labelKey)}</span>
-					<input
-						type="text"
-						bind:value={scopeValue}
-						data-testid={importSpec.inputTestId}
-						aria-describedby="races-import-scope-hint"
-					/>
-				</label>
-				<p class="paste-hint" id="races-import-scope-hint">{m(importSpec.hintKey)}</p>
-				<button
-					type="button"
-					class="btn btn-primary"
-					disabled={importBusy || (importSpec.scopeRequired && !scopeValue.trim())}
-					onclick={doProviderImport}
-					data-testid={importSpec.submitTestId}
-				>
-					{m('races.importResult')}
-				</button>
-			{:else if importLeg && importSpec && legAvailable[importLeg] === false}
-				<p class="unavailable" data-testid={importSpec.unavailableTestId}>
-					{m(importSpec.unavailableKey)}
-				</p>
-			{/if}
-
-			<form
-				class="editor-form"
-				onsubmit={(e) => {
-					e.preventDefault();
-					doPasteImport();
-				}}
-			>
-				<p class="paste-hint" id="races-paste-hint">{m('races.pasteResultHint')}</p>
-				<label>
-					<span>{m('races.bib')}</span>
-					<input
-						type="text"
-						bind:value={pasteBib}
-						data-testid="paste-bib"
-						aria-describedby="races-paste-hint"
-					/>
-				</label>
-				<label>
-					<span>{m('races.chipTime')}</span>
-					<input
-						type="text"
-						inputmode="numeric"
-						placeholder="1:47:23"
-						bind:value={pasteChip}
-						data-testid="paste-chip"
-						aria-describedby="races-paste-hint"
-					/>
-				</label>
-				<label>
-					<span>{m('races.gunTime')}</span>
-					<input
-						type="text"
-						inputmode="numeric"
-						placeholder="1:48:01"
-						bind:value={pasteGun}
-						data-testid="paste-gun"
-						aria-describedby="races-paste-hint"
-					/>
-				</label>
-				<label>
-					<span>{m('races.overallPlace')}</span>
-					<input
-						type="number"
-						inputmode="numeric"
-						min="0"
-						bind:value={pastePlace}
-						data-testid="paste-place"
-						aria-describedby="races-paste-hint"
-					/>
-				</label>
-				<div class="form-actions">
-					<button type="button" class="btn btn-outline" onclick={() => (importing = null)}>
-						{m('races.cancel')}
-					</button>
-					<button
-						type="submit"
-						class="btn btn-primary"
-						disabled={importBusy || (!pasteChip.trim() && !pasteGun.trim())}
-						data-testid="paste-save"
-					>
-						{m('races.matchConfirm')}
-					</button>
-				</div>
-			</form>
-		</div>
-	{/if}
-</Modal>
+<RaceImportDialog race={importing} onclose={() => (importing = null)} />
 
 <style>
 	.races-page {
@@ -625,21 +403,10 @@
 		gap: var(--space-md);
 		color: var(--color-danger-text);
 	}
-	.import-body {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-md);
-	}
 	.filter-hint {
 		color: var(--color-text-secondary);
 		font-size: 0.85rem;
 		line-height: 1.45;
 		margin: calc(var(--space-md) * -1 + 0.25rem) 0 0;
-	}
-	.paste-hint,
-	.unavailable {
-		color: var(--color-text-secondary);
-		font-size: 0.9rem;
-		margin: 0;
 	}
 </style>

@@ -868,6 +868,54 @@
   "@readinessContributorRestingHr": {
     "description": "Readiness breakdown: the points resting heart rate added to the score"
   },
+  "dashboardTrendsDivider": "Trends",
+  "@dashboardTrendsDivider": {
+    "description": "Quiet label on the hairline that separates the Home dashboard Today cards from the trend cards below. Not a shouting header."
+  },
+  "dashboardTrendGroupVolume": "Volume",
+  "@dashboardTrendGroupVolume": {
+    "description": "Home dashboard trend group heading, collapsible: the weekly distance cards"
+  },
+  "dashboardTrendGroupVolumeHint": "How much you have run, week by week",
+  "@dashboardTrendGroupVolumeHint": {
+    "description": "One-line description under the Volume trend group heading"
+  },
+  "dashboardTrendGroupFitness": "Fitness and form",
+  "@dashboardTrendGroupFitness": {
+    "description": "Home dashboard trend group heading, collapsible: readiness, fitness, load ramp and training-load chart"
+  },
+  "dashboardTrendGroupFitnessHint": "Readiness, fitness and training load",
+  "@dashboardTrendGroupFitnessHint": {
+    "description": "One-line description under the Fitness and form trend group heading"
+  },
+  "dashboardTrendGroupPerformance": "Performance",
+  "@dashboardTrendGroupPerformance": {
+    "description": "Home dashboard trend group heading, collapsible: personal bests and the race predictor"
+  },
+  "dashboardTrendGroupPerformanceHint": "Personal bests and predicted race times",
+  "@dashboardTrendGroupPerformanceHint": {
+    "description": "One-line description under the Performance trend group heading"
+  },
+  "dashboardTrendGroupEffort": "Effort",
+  "@dashboardTrendGroupEffort": {
+    "description": "Home dashboard trend group heading, collapsible: training intensity (time in heart-rate zones)"
+  },
+  "dashboardTrendGroupEffortHint": "How hard your training has been",
+  "@dashboardTrendGroupEffortHint": {
+    "description": "One-line description under the Effort trend group heading"
+  },
+  "dashboardTrendGroupRecent": "Recent",
+  "@dashboardTrendGroupRecent": {
+    "description": "Home dashboard trend group heading, collapsible: the latest logged sessions (recent lifts)"
+  },
+  "dashboardTrendGroupRecentHint": "Your latest sessions",
+  "@dashboardTrendGroupRecentHint": {
+    "description": "One-line description under the Recent trend group heading"
+  },
+  "readinessFromLoadOnly": "Scored from your training load only. Sleep and resting heart rate are not part of it yet.",
+  "@readinessFromLoadOnly": {
+    "description": "Footnote on the readiness card: the score is computed from training balance (TSB) alone, because no sleep or resting heart rate is read yet. Shown only while neither of those contributes."
+  },
   "intensityZone1": "Z1 (recovery)",
   "@intensityZone1": {
     "description": "Training intensity legend: heart-rate zone 1, named as on web Preferences"
@@ -2585,18 +2633,6 @@
   "runResumeDiscardedBanner": "Discarded your previous run.",
   "@runResumeDiscardedBanner": {
     "description": "Banner shown after the user discards a recovered partial from the resume prompt"
-  },
-  "runStartWorkout": "Start workout",
-  "@runStartWorkout": {
-    "description": "Option in the workout-entry sheet to begin a structured workout"
-  },
-  "runStartWorkoutSubtitle": "Run with live step targets, audio cues, and a planned-vs-actual review.",
-  "@runStartWorkoutSubtitle": {
-    "description": "Subtitle of the Start-workout option in the workout-entry sheet"
-  },
-  "runViewWorkoutDetails": "View details",
-  "@runViewWorkoutDetails": {
-    "description": "Option in the workout-entry sheet to open the workout detail screen"
   },
   "runWorkoutNoStructure": "This workout has no runnable structure.",
   "@runWorkoutNoStructure": {
@@ -6425,6 +6461,10 @@
       }
     }
   },
+  "profileNotifWorkoutReminder": "Today's workout is waiting in your plan",
+  "@profileNotifWorkoutReminder": {
+    "description": "Notification inbox line for the morning reminder that today has a workout on the runner's active training plan"
+  },
   "profileNotifEventCancelTitled": "An occurrence of \"{title}\" was cancelled",
   "@profileNotifEventCancelTitled": {
     "description": "Notification text for a cancelled event occurrence, when the event title is known",
@@ -7711,9 +7751,9 @@
       }
     }
   },
-  "plansAbandonBody": "You can create a new plan after.",
+  "plansAbandonBody": "Its weeks, workouts and linked runs are kept. You can create a new plan after.",
   "@plansAbandonBody": {
-    "description": "Confirm-abandon dialog body for an active plan"
+    "description": "Confirm-abandon dialog body for an active or paused plan: what is kept"
   },
   "plansActionFailed": "Couldn't update the plan: {error}",
   "@plansActionFailed": {
@@ -7724,26 +7764,9 @@
       }
     }
   },
-  "plansDaysPerWeek": "{count} days/wk",
-  "@plansDaysPerWeek": {
-    "description": "Days-per-week meta chip on a plan tile",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "plansStatusUpcoming": "upcoming",
   "@plansStatusUpcoming": {
     "description": "Status pill on a plan tile for an active plan that starts after today (queued behind the current plan). Lowercase to match the other status pills"
-  },
-  "plansSignInTitle": "Sign in to use training plans",
-  "@plansSignInTitle": {
-    "description": "Sign-in prompt title on plans list"
-  },
-  "plansSignInBody": "Plans sync to your account so they follow you across devices. Head to Settings → Sign in to connect.",
-  "@plansSignInBody": {
-    "description": "Sign-in prompt body on plans list"
   },
   "plansEmptyTitle": "No plans yet.",
   "@plansEmptyTitle": {
@@ -7760,6 +7783,124 @@
   "plansLoadError": "Couldn't load training plans. Tap retry to try again.",
   "@plansLoadError": {
     "description": "Plans list generic load error"
+  },
+  "plansStarterStartsOn": "Each starts on {date}.",
+  "@plansStarterStartsOn": {
+    "description": "Hint under the built-in starter plans on the empty plans list. {date} is a localized short date, always a Sunday",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "plansStatusActive": "active",
+  "@plansStatusActive": {
+    "description": "Status pill on an active plan in the plans list. Lowercase, like the other status pills"
+  },
+  "plansStatusPaused": "paused",
+  "@plansStatusPaused": {
+    "description": "Status pill on a paused plan in the plans list. Lowercase"
+  },
+  "plansStatusCompleted": "completed",
+  "@plansStatusCompleted": {
+    "description": "Status pill on a completed plan in the plans list. Lowercase"
+  },
+  "plansStatusAbandoned": "abandoned",
+  "@plansStatusAbandoned": {
+    "description": "Status pill on an abandoned plan in the plans list. Lowercase"
+  },
+  "plansFilterGroupLabel": "Filter plans by status",
+  "@plansFilterGroupLabel": {
+    "description": "Screen-reader label of the status filter chips above the plans list"
+  },
+  "plansFilterAll": "All",
+  "@plansFilterAll": {
+    "description": "Status filter chip on the plans list: every plan"
+  },
+  "plansFilterActive": "Active",
+  "@plansFilterActive": {
+    "description": "Status filter chip on the plans list: active plans"
+  },
+  "plansFilterPaused": "Paused",
+  "@plansFilterPaused": {
+    "description": "Status filter chip on the plans list: paused plans"
+  },
+  "plansFilterCompleted": "Completed",
+  "@plansFilterCompleted": {
+    "description": "Status filter chip on the plans list: completed plans"
+  },
+  "plansFilterAbandoned": "Abandoned",
+  "@plansFilterAbandoned": {
+    "description": "Status filter chip on the plans list: abandoned plans"
+  },
+  "plansNoFilteredPlans": "No {status} plans.",
+  "@plansNoFilteredPlans": {
+    "description": "Shown when the selected status filter matches no plan. {status} is the lowercase status label (plansStatus*)",
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "plansShowAllPlans": "Show all plans",
+  "@plansShowAllPlans": {
+    "description": "Button under plansNoFilteredPlans that resets the status filter to All"
+  },
+  "plansHeroGoal": "Goal",
+  "@plansHeroGoal": {
+    "description": "Label above the goal race (5K, Marathon…) on a plan card"
+  },
+  "plansHeroTarget": "Target",
+  "@plansHeroTarget": {
+    "description": "Label above the goal time on a plan card"
+  },
+  "plansGoalFinish": "Finish",
+  "@plansGoalFinish": {
+    "description": "Target value on a plan card when the plan has no goal time: the goal is simply to finish"
+  },
+  "plansEventHalf": "Half marathon",
+  "@plansEventHalf": {
+    "description": "Goal race name: half marathon"
+  },
+  "plansEventFull": "Marathon",
+  "@plansEventFull": {
+    "description": "Goal race name: marathon"
+  },
+  "plansEventCustom": "Custom",
+  "@plansEventCustom": {
+    "description": "Goal race name for a plan with a custom distance and no stored distance"
+  },
+  "plansWeekOf": "Week {week} of {total}",
+  "@plansWeekOf": {
+    "description": "Progress line on an active plan card",
+    "placeholders": {
+      "week": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "plansEnded": "Ended",
+  "@plansEnded": {
+    "description": "Countdown on an active plan card whose race day has passed"
+  },
+  "plansProgressLabel": "Plan progress",
+  "@plansProgressLabel": {
+    "description": "Screen-reader label of the calendar progress bar on an active plan card"
+  },
+  "plansMetaWeeks": "{weeks, plural, one{{weeks} week · {days} days/week} other{{weeks} weeks · {days} days/week}}",
+  "@plansMetaWeeks": {
+    "description": "Plan length on the plans list, the library card and the library preview: weeks and training days per week",
+    "placeholders": {
+      "weeks": {
+        "type": "int"
+      },
+      "days": {
+        "type": "int"
+      }
+    }
   },
   "planNewTitle": "New plan",
   "@planNewTitle": {
@@ -8221,24 +8362,6 @@
   "@planLibraryAnonymous": {
     "description": "Public plan library"
   },
-  "planLibraryWeeks": "{weeks} weeks",
-  "@planLibraryWeeks": {
-    "description": "Public plan library",
-    "placeholders": {
-      "weeks": {
-        "type": "int"
-      }
-    }
-  },
-  "planLibraryDaysPerWeek": "{days}×/week",
-  "@planLibraryDaysPerWeek": {
-    "description": "Public plan library",
-    "placeholders": {
-      "days": {
-        "type": "int"
-      }
-    }
-  },
   "planLibraryClone": "Clone into my plans",
   "@planLibraryClone": {
     "description": "Public plan library"
@@ -8277,6 +8400,15 @@
     "description": "Public plan library",
     "placeholders": {
       "n": {
+        "type": "int"
+      }
+    }
+  },
+  "planLibraryPreviewWeekRuns": "{count, plural, one{{count} run} other{{count} runs}}",
+  "@planLibraryPreviewWeekRuns": {
+    "description": "Per-week summary in the public plan library preview: running days (non-rest workouts) that week",
+    "placeholders": {
+      "count": {
         "type": "int"
       }
     }
@@ -8402,11 +8534,11 @@
       }
     }
   },
-  "planOverlapReplaceHint": "Replace marks the overlapping plans as completed. You can still find them under Manage plans.",
+  "planOverlapReplaceHint": "Replace marks the overlapping plans as abandoned. You can still find them under Manage plans.",
   "@planOverlapReplaceHint": {
     "description": "Plan-overlap dialog hint when only Replace is offered"
   },
-  "planOverlapTrimHint": "End {name} early to keep its finished weeks and remove its workouts after {date}, or replace it to mark it completed.",
+  "planOverlapTrimHint": "End {name} early to keep its finished weeks and remove its workouts after {date}, or replace it to mark it abandoned.",
   "@planOverlapTrimHint": {
     "description": "Plan-overlap dialog hint when the overlapping plan started earlier and can be ended the day before the new plan starts. date is that formatted end date",
     "placeholders": {
@@ -8439,7 +8571,7 @@
       }
     }
   },
-  "planOverlapTrimHintMany": "End them early to keep their finished weeks and remove their workouts after {date}, or replace them to mark them completed.",
+  "planOverlapTrimHintMany": "End them early to keep their finished weeks and remove their workouts after {date}, or replace them to mark them abandoned.",
   "@planOverlapTrimHintMany": {
     "description": "Plan-overlap dialog hint when several overlapping plans can be ended the day before the new plan starts. date is that formatted end date",
     "placeholders": {
@@ -8640,10 +8772,6 @@
   "planDetailToday": "TODAY",
   "@planDetailToday": {
     "description": "Today-card eyebrow label"
-  },
-  "planDetailCompleted": "Completed",
-  "@planDetailCompleted": {
-    "description": "Completed marker on the today card"
   },
   "planDetailWeek": "Week {number}",
   "@planDetailWeek": {
@@ -8995,6 +9123,22 @@
   "workoutUnlinkTitle": "Unlink run",
   "workoutUnlinkBody": "Unlink the matched run? The workout will show as not yet done.",
   "workoutUnlinkError": "Couldn't unlink the run. Try again.",
+  "workoutMarkNotDone": "Mark not done",
+  "workoutMarkNotDoneTitle": "Mark not done?",
+  "@workoutMarkNotDoneTitle": {
+    "description": "Confirm dialog title before clearing a hand-marked done workout"
+  },
+  "workoutMarkNotDoneBody": "The workout will show as not yet done.",
+  "@workoutMarkNotDoneBody": {
+    "description": "Confirm dialog body before clearing a hand-marked done workout"
+  },
+  "@workoutMarkNotDone": {
+    "description": "Button on a workout the runner marked done by hand (no linked run); clears the done mark"
+  },
+  "workoutMarkNotDoneError": "Couldn't update the workout. Try again.",
+  "@workoutMarkNotDoneError": {
+    "description": "Error banner when clearing a hand-marked done workout fails"
+  },
   "@workoutUnlink": {
     "description": "Unlink-completed-run button"
   },
@@ -11759,6 +11903,14 @@
   "@prefsEmailNewDeviceAlertsHint": {
     "description": "Subtitle for the new-device sign-in alert toggle; says the password-change notice cannot be turned off"
   },
+  "prefsNotifyWorkoutReminder": "Today's workout",
+  "@prefsNotifyWorkoutReminder": {
+    "description": "Title of the switch that turns the morning today's-workout reminder on or off"
+  },
+  "prefsNotifyWorkoutReminderHint": "On the morning of a planned workout, remind me in the inbox and by email and push.",
+  "@prefsNotifyWorkoutReminderHint": {
+    "description": "Subtitle of the today's-workout reminder switch; it covers the inbox, email and push"
+  },
   "prefsEmailReOptInFailed": "Couldn't lift your earlier unsubscribe. Emails may still be blocked — try again.",
   "@prefsEmailReOptInFailed": {
     "description": "Shown when lifting a prior one-click unsubscribe block fails after re-opting into an email stream"
@@ -13653,17 +13805,29 @@
   "@workoutEditKindLabel": {
     "description": "Label for the workout kind dropdown"
   },
-  "workoutEditDistanceLabel": "Target distance (km)",
+  "workoutEditDistanceLabel": "Target distance ({unit})",
   "@workoutEditDistanceLabel": {
-    "description": "Label for the target distance field (km)"
+    "description": "Label for the target distance field, in the runner's distance unit",
+    "placeholders": {
+      "unit": {
+        "type": "String",
+        "example": "km"
+      }
+    }
   },
   "workoutEditDistanceHint": "e.g. 8.0",
   "@workoutEditDistanceHint": {
     "description": "Example hint for the target distance field"
   },
-  "workoutEditPaceLabel": "Target pace (mm:ss /km)",
+  "workoutEditPaceLabel": "Target pace (mm:ss /{unit})",
   "@workoutEditPaceLabel": {
-    "description": "Label for the target pace field"
+    "description": "Label for the target pace field, per the runner's distance unit",
+    "placeholders": {
+      "unit": {
+        "type": "String",
+        "example": "km"
+      }
+    }
   },
   "workoutEditPaceHint": "e.g. 5:30",
   "@workoutEditPaceHint": {
@@ -13717,9 +13881,15 @@
   "@workoutEditSave": {
     "description": "Button to save the workout"
   },
-  "workoutEditErrDistance": "Enter a positive distance in km",
+  "workoutEditErrDistance": "Enter a positive distance in {unit}",
   "@workoutEditErrDistance": {
-    "description": "Validation error for the distance field"
+    "description": "Validation error for the distance field",
+    "placeholders": {
+      "unit": {
+        "type": "String",
+        "example": "km"
+      }
+    }
   },
   "workoutEditErrPace": "Pace must look like 5:30",
   "@workoutEditErrPace": {
@@ -13789,6 +13959,16 @@
   "todaysWorkoutToday": "TODAY'S WORKOUT",
   "@todaysWorkoutToday": {
     "description": "Badge for today's scheduled workout"
+  },
+  "todaysWorkoutAtPace": "@ {pace}",
+  "@todaysWorkoutAtPace": {
+    "description": "Target pace on the Today card, read as 'at <pace>'. {pace} is already formatted with its unit, e.g. 5:30 /km",
+    "placeholders": {
+      "pace": {
+        "type": "String",
+        "example": "5:30 /km"
+      }
+    }
   },
   "errorStateRetry": "Retry",
   "@errorStateRetry": {
@@ -14140,24 +14320,50 @@
   },
   "ttsStepHalfway": "Halfway through this rep",
   "@ttsStepHalfway": {
-    "description": "Spoken in-step progress cue at the halfway point"
+    "description": "Spoken in-step progress cue at the halfway point of a paced interval rep (never on a warm-up, recovery, steady block or walk-run interval)"
   },
   "ttsStepLastFifty": "Fifty metres to go",
   "@ttsStepLastFifty": {
-    "description": "Spoken in-step progress cue near the end of a rep"
+    "description": "Spoken in-step progress cue in the last 50 m of a distance rep, for a runner who uses kilometres"
   },
-  "ttsPaceDriftAhead": "Ease up — {delta} seconds ahead pace.",
-  "@ttsPaceDriftAhead": {
-    "description": "Spoken nudge when the runner is ahead of target pace by delta seconds per km",
+  "ttsStepLastFiftyYards": "Fifty yards to go",
+  "@ttsStepLastFiftyYards": {
+    "description": "Spoken in-step progress cue near the end of a distance rep, for a runner who uses miles (the cue fires inside the last 50 m, about 55 yards)"
+  },
+  "ttsStepLastTenSeconds": "Ten seconds to go",
+  "@ttsStepLastTenSeconds": {
+    "description": "Spoken in-step progress cue in the last ten seconds of a timed step (a walk-run interval, a timed rep or a timed warm-up)"
+  },
+  "ttsPaceDriftAheadKm": "Ease up — {delta} seconds per kilometre ahead of pace.",
+  "@ttsPaceDriftAheadKm": {
+    "description": "Spoken nudge during a structured-workout step when the runner is ahead of the step's target pace by delta seconds per kilometre",
     "placeholders": {
       "delta": {
         "type": "int"
       }
     }
   },
-  "ttsPaceDriftBehind": "Pick it up — {delta} seconds behind pace.",
-  "@ttsPaceDriftBehind": {
-    "description": "Spoken nudge when the runner is behind target pace by delta seconds per km",
+  "ttsPaceDriftAheadMi": "Ease up — {delta} seconds per mile ahead of pace.",
+  "@ttsPaceDriftAheadMi": {
+    "description": "Spoken nudge during a structured-workout step when the runner is ahead of the step's target pace by delta seconds per mile",
+    "placeholders": {
+      "delta": {
+        "type": "int"
+      }
+    }
+  },
+  "ttsPaceDriftBehindKm": "Pick it up — {delta} seconds per kilometre behind pace.",
+  "@ttsPaceDriftBehindKm": {
+    "description": "Spoken nudge during a structured-workout step when the runner is behind the step's target pace by delta seconds per kilometre",
+    "placeholders": {
+      "delta": {
+        "type": "int"
+      }
+    }
+  },
+  "ttsPaceDriftBehindMi": "Pick it up — {delta} seconds per mile behind pace.",
+  "@ttsPaceDriftBehindMi": {
+    "description": "Spoken nudge during a structured-workout step when the runner is behind the step's target pace by delta seconds per mile",
     "placeholders": {
       "delta": {
         "type": "int"
@@ -14314,6 +14520,14 @@
   "ttsStepCooldown": "Cooldown",
   "@ttsStepCooldown": {
     "description": "Spoken workout-step intro: cooldown"
+  },
+  "ttsStepWarmupWalk": "Warm-up walk",
+  "@ttsStepWarmupWalk": {
+    "description": "Spoken intro of the walking warm-up that opens a walk-run (couch-to-5k) session, said instead of plain 'Warmup' so a beginner knows to walk"
+  },
+  "ttsStepCooldownWalk": "Cool-down walk",
+  "@ttsStepCooldownWalk": {
+    "description": "Spoken intro of the walking cool-down that closes a walk-run (couch-to-5k) session"
   },
   "ttsStepRep": "Rep",
   "@ttsStepRep": {
@@ -16897,6 +17111,10 @@
   "@coachingAthleteStatusUpcoming": {
     "description": "Workout status pill: upcoming"
   },
+  "coachingAthleteStatusSkipped": "Skipped",
+  "@coachingAthleteStatusSkipped": {
+    "description": "Workout status pill: the athlete deliberately skipped this workout, so it is not a miss"
+  },
   "coachingAthleteRecentRuns": "Recent runs",
   "@coachingAthleteRecentRuns": {
     "description": "Heading of the recent-runs card on the athlete review screen"
@@ -17805,13 +18023,89 @@
   "@racesDistanceUltra": {
     "description": "Distance-band chip: ultra"
   },
-  "racesRegister": "Register",
+  "racesRegister": "Race page & register",
   "@racesRegister": {
-    "description": "Link to a race's registration page"
+    "description": "Opens the race's own page on the site that lists it, which carries the race details as well as registration"
   },
   "racesTrainForThis": "Train for this race",
   "@racesTrainForThis": {
     "description": "Race card action that opens the plan wizard sized around that race"
+  },
+  "racesWhenGroup": "When",
+  "@racesWhenGroup": {
+    "description": "Races screen: accessibility label for the Upcoming / Recent results choice"
+  },
+  "racesWhenUpcoming": "Upcoming",
+  "@racesWhenUpcoming": {
+    "description": "Races screen: show races from today on"
+  },
+  "racesWhenRecent": "Recent results",
+  "@racesWhenRecent": {
+    "description": "Races screen: show races from the last few weeks, newest first, to import a result"
+  },
+  "racesWhenHint": "Recent results lists races from the last {days} days, newest first, so you can find a race you ran and import your result.",
+  "@racesWhenHint": {
+    "description": "Races screen: explains the Recent results choice; {days} is the look-back window in days",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "racesEmptyRecent": "No races in the last {days} days match these filters.",
+  "@racesEmptyRecent": {
+    "description": "Races screen: no recent races match; {days} is the look-back window in days",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "racesDetailLoadFailed": "Couldn't load this race. Check your connection and try again.",
+  "@racesDetailLoadFailed": {
+    "description": "Race detail screen: the listing failed to load"
+  },
+  "racesDetailNotFound": "This race isn't in the calendar any more.",
+  "@racesDetailNotFound": {
+    "description": "Race detail screen: the listing no longer exists"
+  },
+  "racesSourceProvider": "Listed on {provider}",
+  "@racesSourceProvider": {
+    "description": "Race detail screen: which site lists the race; {provider} is a brand name such as RunSignUp",
+    "placeholders": {
+      "provider": {
+        "type": "String"
+      }
+    }
+  },
+  "racesSourceManual": "Added by a runner",
+  "@racesSourceManual": {
+    "description": "Race detail screen: the race was submitted by a runner, not a provider"
+  },
+  "racesDetailShare": "Share",
+  "@racesDetailShare": {
+    "description": "Race detail screen: share the race link"
+  },
+  "racesDetailImportAfterRace": "You can import your official result from race day, {date}.",
+  "@racesDetailImportAfterRace": {
+    "description": "Race detail screen: shown before race day instead of the import action; {date} is the race date",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "racesDetailYourRuns": "Your runs at this race",
+  "@racesDetailYourRuns": {
+    "description": "Race detail screen: heading over the runner's own runs linked to this race"
+  },
+  "racesDetailRunsFailed": "Couldn't load your runs for this race.",
+  "@racesDetailRunsFailed": {
+    "description": "Race detail screen: the runner's linked runs failed to load"
+  },
+  "racesDetailNoRuns": "No runs linked to this race yet. After race day, import your result here, or open the run you recorded and match it to this race.",
+  "@racesDetailNoRuns": {
+    "description": "Race detail screen: no runs are linked to this race yet"
   },
   "racesViewResults": "View results",
   "@racesViewResults": {
@@ -17858,6 +18152,44 @@
   "@racesImported": {
     "description": "Toast after a result is imported"
   },
+  "planLinkPromptEarly": "Did you do {day}'s planned workout early?",
+  "@planLinkPromptEarly": {
+    "description": "Run detail: asks whether this run was a planned workout from a later day, done early. {day} is a weekday name.",
+    "placeholders": {
+      "day": {
+        "type": "String"
+      }
+    }
+  },
+  "planLinkPromptLate": "Did you do {day}'s planned workout late?",
+  "@planLinkPromptLate": {
+    "description": "Run detail: asks whether this run was a planned workout from an earlier day, done late. {day} is a weekday name.",
+    "placeholders": {
+      "day": {
+        "type": "String"
+      }
+    }
+  },
+  "planLinkConfirm": "Link to plan",
+  "@planLinkConfirm": {
+    "description": "Run detail: links the run to the asked-about planned workout"
+  },
+  "planLinkDismiss": "Not this one",
+  "@planLinkDismiss": {
+    "description": "Run detail: dismisses the asked-about planned workout and shows the next one, if any"
+  },
+  "planLinkLinked": "Linked to your plan.",
+  "@planLinkLinked": {
+    "description": "Toast after a run is linked to a planned workout from the run-detail prompt"
+  },
+  "planLinkFailed": "Couldn't link this to your plan. Try again.",
+  "@planLinkFailed": {
+    "description": "Error after linking a run to a planned workout fails"
+  },
+  "planLinkDismissFailed": "Couldn't save that answer. You may be asked again.",
+  "@planLinkDismissFailed": {
+    "description": "Error when saving \"Not this one\" on the run-detail planned-workout prompt fails"
+  },
   "racesOfficialResult": "Official result",
   "@racesOfficialResult": {
     "description": "Heading for the imported official-result panel"
@@ -17877,6 +18209,10 @@
   "racesAgeGroupPlace": "Age-group place",
   "@racesAgeGroupPlace": {
     "description": "Age-group-place field label"
+  },
+  "racesDivisionAwardPlace": "Award place",
+  "@racesDivisionAwardPlace": {
+    "description": "Race-result field label: the runner's place in an award division such as masters, overall top 3 or a weight class, which replaces their age-group place"
   },
   "racesAgeGroup": "Age group",
   "@racesAgeGroup": {
@@ -20236,6 +20572,45 @@
   "@dashboardLeadNoNextSession": {
     "description": "Shown on the dashboard week card when the active plan has no open session left"
   },
+  "planFinishTitle": "{name} has ended",
+  "@planFinishTitle": {
+    "description": "Heading of the Finish plan prompt shown on Home and plan detail once an active plan's last day has passed. name is the plan's name",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "planFinishBody": "Its last day was {date}. Finish it to move it to your completed plans.",
+  "@planFinishBody": {
+    "description": "Body of the Finish plan prompt. date is the plan's formatted last day",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planFinishAction": "Finish plan",
+  "@planFinishAction": {
+    "description": "Button that marks an active plan whose dates have run out as completed; also the Run tab plan chip's label for such a plan"
+  },
+  "planFinishFinishing": "Finishing…",
+  "@planFinishFinishing": {
+    "description": "Finish plan button label while the status write is in flight"
+  },
+  "planFinishDone": "{name} is in your completed plans.",
+  "@planFinishDone": {
+    "description": "Banner after a plan was finished. name is the plan's name",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "planFinishFailed": "Couldn't finish the plan. Try again.",
+  "@planFinishFailed": {
+    "description": "Error banner when finishing a plan failed; nothing changed"
+  },
   "dashboardLeadAddRun": "Add a run",
   "@dashboardLeadAddRun": {
     "description": "Button on the dashboard week card that opens the manual add-a-run form"
@@ -21935,5 +22310,35 @@
         "type": "int"
       }
     }
+  },
+  "workoutMoveAction": "Move to another day",
+  "@workoutMoveAction": {
+    "description": "Button in the workout editor, and title of the sheet it opens, to move a planned workout to another day of its week"
+  },
+  "workoutMoveHint": "Pick a day in this week. A workout already on that day takes this one's old day.",
+  "@workoutMoveHint": {
+    "description": "Explains the move sheet: days of the same week; a workout already on the chosen day swaps into the moved one's old day"
+  },
+  "workoutMoveSwapsWith": "Swaps with {kind}",
+  "@workoutMoveSwapsWith": {
+    "description": "Subtitle on a day in the move sheet that already holds a workout; kind is that workout's type (e.g. Rest)",
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutMoveError": "Couldn't move this workout: {error}",
+  "@workoutMoveError": {
+    "description": "Inline error when moving a workout fails",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutMoveSaveFirst": "Save or discard your changes before moving this workout.",
+  "@workoutMoveSaveFirst": {
+    "description": "Shown when the runner taps Move with unsaved edits in the workout editor"
   }
 }

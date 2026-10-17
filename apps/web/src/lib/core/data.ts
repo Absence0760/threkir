@@ -1686,13 +1686,6 @@ export async function createManualRun(input: {
 	if (error) throw dbError(error);
 	const runId = data.id as string;
 
-	try {
-		const runDate = input.startedAt.slice(0, 10);
-		await autoMatchRunToPlanWorkout(runId, runDate, input.distanceM);
-	} catch (e) {
-		console.warn('autoMatchRunToPlanWorkout failed', e);
-	}
-
 	await recomputeChallengesForRun(input.startedAt);
 
 	return { id: runId };
@@ -1854,13 +1847,6 @@ export async function saveRun(input: {
 		} catch (e) {
 			console.warn('hr-series sidecar upload failed', e);
 		}
-	}
-
-	try {
-		const runDate = input.started_at.slice(0, 10);
-		await autoMatchRunToPlanWorkout(runId, runDate, input.distance_m);
-	} catch (e) {
-		console.warn('autoMatchRunToPlanWorkout failed', e);
 	}
 
 	await recomputeChallengesForRun(input.started_at);
@@ -2797,6 +2783,7 @@ export interface RaceListingFilters {
 	center?: { lng: number; lat: number };
 	radiusM?: number;
 	limit?: number;
+	newestFirst?: boolean;
 }
 
 /// A discoverable race calendar entry (the search_race_listings projection:
@@ -2828,10 +2815,88 @@ export async function searchRaceListings(
 		p_center_lng: f.center?.lng ?? undefined,
 		p_center_lat: f.center?.lat ?? undefined,
 		p_radius_m: f.radiusM ?? undefined,
-		p_limit: f.limit ?? 60
+		p_limit: f.limit ?? 60,
+		p_newest_first: f.newestFirst || undefined
 	}, { get: true });
 	if (error) throw dbError(error);
 	return (data ?? []) as RaceListingResult[];
+}
+
+/// One calendar listing, for the race detail page. Read through the redacted
+/// `public_race_listings` view — the same projection a logged-out visitor gets
+/// — so the page never depends on who submitted the race. A malformed id or a
+/// missing row is `null`; a failed read throws, so the page can tell "this race
+/// is gone" apart from "we could not load it".
+export interface RaceListingDetail {
+	id: string;
+	provider: string;
+	name: string;
+	race_date: string;
+	distance_m: number | null;
+	location_label: string | null;
+	entry_url: string | null;
+	results_url: string | null;
+	is_verified: boolean;
+}
+
+export async function fetchRaceListing(id: string): Promise<RaceListingDetail | null> {
+	if (!isEntityId(id)) return null;
+	const { data, error } = await supabase
+		.from('public_race_listings')
+		.select(
+			'id, provider, name, race_date, distance_m, location_label, entry_url, results_url, is_verified'
+		)
+		.eq('id', id)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	if (!data || !data.id || !data.name || !data.race_date || !data.provider) return null;
+	return {
+		id: data.id,
+		provider: data.provider,
+		name: data.name,
+		race_date: data.race_date,
+		distance_m: data.distance_m,
+		location_label: data.location_label,
+		entry_url: data.entry_url,
+		results_url: data.results_url,
+		is_verified: data.is_verified ?? false
+	};
+}
+
+/// The signed-in runner's own runs linked to a listing (an imported or
+/// matched result), newest first, with the official chip time when the import
+/// stamped one.
+export interface RaceListingRun {
+	id: string;
+	started_at: string;
+	distance_m: number;
+	duration_s: number;
+	chip_time: string | null;
+}
+
+export async function fetchMyRunsAtRace(listingId: string): Promise<RaceListingRun[]> {
+	const userId = auth.user?.id;
+	if (!userId || !isEntityId(listingId)) return [];
+	const { data, error } = await supabase
+		.from(TABLES.runs)
+		.select('id, started_at, distance_m, duration_s, metadata')
+		.eq('race_listing_id', listingId)
+		.eq('user_id', userId)
+		.order('started_at', { ascending: false })
+		.limit(20);
+	if (error) throw dbError(error);
+	return (data ?? []).map((r) => {
+		const meta = r.metadata && typeof r.metadata === 'object' && !Array.isArray(r.metadata)
+			? (r.metadata as Record<string, unknown>)
+			: {};
+		return {
+			id: r.id,
+			started_at: r.started_at,
+			distance_m: r.distance_m,
+			duration_s: r.duration_s,
+			chip_time: typeof meta.chip_time === 'string' ? meta.chip_time : null
+		};
+	});
 }
 
 export interface RaceListingInput {
@@ -3164,6 +3229,8 @@ export interface RaceResultForRun {
 	overall_place: number | null;
 	age_group_place: number | null;
 	age_group: string | null;
+	division_award_place: number | null;
+	division_award: string | null;
 }
 
 export async function fetchRaceResultForRun(runId: string): Promise<RaceResultForRun | null> {
@@ -3191,7 +3258,9 @@ export async function fetchRaceResultForRun(runId: string): Promise<RaceResultFo
 		gun_time: (meta.gun_time as string) ?? null,
 		overall_place: (meta.overall_place as number) ?? null,
 		age_group_place: (meta.age_group_place as number) ?? null,
-		age_group: (meta.age_group as string) ?? null
+		age_group: (meta.age_group as string) ?? null,
+		division_award_place: (meta.division_award_place as number) ?? null,
+		division_award: (meta.division_award as string) ?? null
 	};
 }
 
@@ -5547,11 +5616,15 @@ export async function deleteClubPost(id: string): Promise<void> {
 export async function fetchMyPlansWithError(
 	limit = 100
 ): Promise<{ plans: TrainingPlan[]; error: string | null }> {
-	// Templates live in the same table; filter them out of the
-	// user-facing plan list (decisions §35).
+	// RLS also lets a coach read their linked athletes' plans, so the owner
+	// filter is what keeps those out of the coach's own list; templates live
+	// in the same table and are filtered out too (decisions §35).
+	const userId = await currentViewerId();
+	if (!userId) return { plans: [], error: 'Not signed in' };
 	const { data, error } = await supabase
 		.from('training_plans')
 		.select('*')
+		.eq('user_id', userId)
 		.eq('is_template', false)
 		.order('created_at', { ascending: false })
 		.limit(limit);
@@ -6016,7 +6089,7 @@ async function planOverviewFor(userId: string): Promise<PlanOverviewRead> {
 
 /// What creating or cloning a plan does to the active plans its window
 /// overlaps: 'refuse' (fail with a PlanOverlapError, the default, so nothing
-/// the runner did not name is changed), 'replace' (complete them) or 'trim'
+/// the runner did not name is changed), 'replace' (abandon them) or 'trim'
 /// (end each the day before the new plan starts). Decisions § 2050.
 export type PlanOverlapChoice = 'refuse' | 'replace' | 'trim';
 
@@ -6144,6 +6217,19 @@ export async function deletePlan(id: string): Promise<void> {
 /// 'paused', which frees the one-active slot so the runner can resume later.
 export async function pausePlan(id: string): Promise<void> {
 	await updatePlanStatus(id, 'paused');
+}
+
+/// File an active plan whose dates have run out under Completed (the "Finish
+/// plan" prompt, `isPlanFinished`). Scoped to `status = 'active'` so a plan
+/// paused or abandoned in another tab is never relabelled as finished.
+export async function finishPlan(id: string): Promise<void> {
+	markListsStale('plans');
+	const { error } = await supabase
+		.from('training_plans')
+		.update({ status: 'completed' })
+		.eq('id', id)
+		.eq('status', 'active');
+	if (error) throw dbError(error);
 }
 
 /// Thrown by resumePlan when another active plan overlaps the paused plan's
@@ -6293,60 +6379,35 @@ export async function markWorkoutSkipped(
 	if (error) throw dbError(error);
 }
 
-/**
- * Best-effort auto-match: link `runId` to a plan workout scheduled for the
- * same calendar date whose target distance is within ±25% of the actual.
- * Returns the matched workout id, or null. Wrong matches are manually
- * clearable via `markWorkoutCompleted(id, null)`.
- */
-export async function autoMatchRunToPlanWorkout(
-	runId: string,
-	runIsoDate: string,
-	runDistanceM: number
-): Promise<string | null> {
-	const userId = auth.user?.id;
-	if (!userId) return null;
-	// Pre-fetch the user's plan + week ids and constrain the workout
-	// query with `in('week_id', ...)`. RLS on `plan_workouts` already
-	// chains through `plan_weeks → training_plans.user_id`, but an
-	// explicit scope is defence in depth — without it, a future RLS
-	// edit that breaks the chain would silently allow this function
-	// to match a run to another user's workout. See audit
-	// `/tmp/data-isolation-audit/client-realtime.md` H2.
-	const { data: plans } = await supabase
-		.from('training_plans')
-		.select('id, plan_weeks(id)')
-		.eq('user_id', userId);
-	const weekIds = (plans ?? []).flatMap((p) =>
-		((p as { plan_weeks: { id: string }[] }).plan_weeks ?? []).map((w) => w.id),
-	);
-	if (weekIds.length === 0) return null;
+export type PlanWorkoutLinkCandidate =
+	Database['public']['Functions']['plan_workout_link_candidates']['Returns'][number];
 
-	const { data: candidates } = await queryChunked(weekIds, (part) =>
-		supabase
-			.from('plan_workouts')
-			.select('id, target_distance_m, completed_run_id, week_id')
-			.in('week_id', part)
-			.eq('scheduled_date', runIsoDate)
-			.is('completed_run_id', null)
+/**
+ * Planned workouts within two days of a run that it could have been, for the
+ * run-detail "did you do Thursday's workout early?" prompt. The database
+ * links a run on its own local day only (decisions § 2079); this list is
+ * never linked without the runner saying yes. Empty unless the caller owns
+ * the run and it is not linked yet. Nearest day first.
+ */
+export async function fetchPlanWorkoutLinkCandidates(
+	runId: string
+): Promise<PlanWorkoutLinkCandidate[]> {
+	const { data, error } = await supabase.rpc(
+		'plan_workout_link_candidates',
+		{ p_run_id: runId },
+		{ get: true }
 	);
-	if (!candidates || candidates.length === 0) return null;
-	const withDistance = candidates
-		.filter((c) => c.target_distance_m != null)
-		.map((c) => ({
-			id: c.id as string,
-			target: c.target_distance_m as number,
-			delta: Math.abs((c.target_distance_m as number) - runDistanceM)
-		}))
-		.filter(
-			(c) =>
-				c.delta / c.target <= 0.25 // within 25% of target distance
-		)
-		.sort((a, b) => a.delta - b.delta);
-	if (withDistance.length === 0) return null;
-	const match = withDistance[0];
-	await markWorkoutCompleted(match.id, runId);
-	return match.id;
+	if (error) throw dbError(error);
+	return data ?? [];
+}
+
+/** "Not this one" on that prompt: the pair is never offered again. */
+export async function dismissPlanWorkoutLink(workoutId: string, runId: string): Promise<void> {
+	const { error } = await supabase.rpc('dismiss_plan_workout_link', {
+		p_workout_id: workoutId,
+		p_run_id: runId
+	});
+	if (error) throw dbError(error);
 }
 
 export type { RelinkCandidateRun } from '../training/relink_candidates';
@@ -6369,8 +6430,9 @@ export async function fetchRelinkCandidateRuns(
 
 	// The set of run ids already linked anywhere in this owner's plans.
 	// Scope through the owner's plan_weeks (RLS chains the same way, but
-	// the explicit scope is defence in depth — see autoMatchRunToPlan-
-	// Workout). A run linked to ANOTHER workout must not be offered.
+	// the explicit scope is defence in depth: a future RLS edit that broke
+	// the chain must not widen it). A run linked to ANOTHER workout must not
+	// be offered.
 	const { data: plans } = await supabase
 		.from('training_plans')
 		.select('id, plan_weeks(id)')
@@ -6483,6 +6545,33 @@ export async function updatePlanWorkout(
 		update.race_priority = null;
 	}
 	const { error } = await supabase.from('plan_workouts').update(update).eq('id', id);
+	if (error) throw dbError(error);
+}
+
+/// Move one planned workout to another day of its week (`move_plan_workout`,
+/// decisions § 2073). When the day already holds a row, the two trade days;
+/// the swapped workout's id is returned, or null when the day was free.
+export async function movePlanWorkout(workoutId: string, date: string): Promise<string | null> {
+	const { data, error } = await supabase.rpc('move_plan_workout', {
+		p_workout_id: workoutId,
+		p_date: date
+	});
+	if (error) throw dbError(error);
+	return data ?? null;
+}
+
+/// Set the dates of several workouts of one plan in one transaction
+/// (`reschedule_plan_workouts`, decisions § 2073), so moves and swaps that
+/// pass through each other's days land together or not at all.
+export async function reschedulePlanWorkouts(
+	planId: string,
+	moves: { id: string; date: string }[]
+): Promise<void> {
+	if (moves.length === 0) return;
+	const { error } = await supabase.rpc('reschedule_plan_workouts', {
+		p_plan_id: planId,
+		p_moves: moves
+	});
 	if (error) throw dbError(error);
 }
 
@@ -10643,6 +10732,23 @@ export async function fetchMyAthletesWithError(): Promise<{
 
 export async function fetchMyAthletes(): Promise<CoachAthleteLink[]> {
 	return (await fetchMyAthletesWithError()).athletes;
+}
+
+/// True when the signed-in viewer actively coaches [athleteId]: the test the
+/// coach RLS policies on plan_workouts run (`private.is_active_coach_of`), so
+/// a surface can offer an edit only where the write will be allowed.
+export async function isActiveCoachOf(athleteId: string): Promise<boolean> {
+	const userId = auth.user?.id;
+	if (!userId || userId === athleteId) return false;
+	const { data, error } = await supabase
+		.from(TABLES.coach_athletes)
+		.select('id')
+		.eq('coach_id', userId)
+		.eq('athlete_id', athleteId)
+		.eq('status', 'active')
+		.limit(1);
+	if (error) throw dbError(error);
+	return (data ?? []).length > 0;
 }
 
 /// One row of the multi-athlete coach roster (coach_roster.md). The shape is

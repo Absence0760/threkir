@@ -106,7 +106,7 @@ test.describe('/plans/new — standalone wizard', () => {
 				.eq('id', SEED_PLAN_ID)
 				.single()
 		);
-		expect(oldRow.status).toBe('completed');
+		expect(oldRow.status).toBe('abandoned');
 	});
 
 	test('edit a week before save → workout distance persists on detail page', async ({ page }) => {

@@ -5,7 +5,7 @@
 // suites. See docs/features/training.md.
 
 import 'dart:math';
-import 'package:core_models/core_models.dart' show DistanceUnit;
+import 'package:core_models/core_models.dart' show DistanceUnit, PlanWorkoutRow;
 
 import 'l10n/locale_support.dart' show activeLocaleTag;
 import 'l10n/number_format.dart' show formatFixed;
@@ -74,14 +74,6 @@ GoalEvent goalEventFromDb(String s) => switch (s) {
       'distance_half' => GoalEvent.distanceHalf,
       'distance_full' => GoalEvent.distanceFull,
       _ => GoalEvent.custom,
-    };
-
-String goalEventLabel(GoalEvent g) => switch (g) {
-      GoalEvent.distance5k => '5K',
-      GoalEvent.distance10k => '10K',
-      GoalEvent.distanceHalf => 'Half marathon',
-      GoalEvent.distanceFull => 'Marathon',
-      GoalEvent.custom => 'Custom',
     };
 
 WorkoutKind workoutKindFromDb(String s) => switch (s) {
@@ -263,6 +255,13 @@ bool isMastersAge(int? age) => age != null && age >= kMastersAge;
 /// achievement (it isn't done). Read sites that filter the active
 /// to-do set exclude skipped alongside completed.
 bool isWorkoutSkipped(DateTime? skippedAt) => skippedAt != null;
+
+/// Web `isWorkoutCompleted` twin — a planned workout is done when a tracked
+/// run is linked to it OR the runner marked it done by hand. Every surface
+/// that says "done" reads it through here, so the workout screen, the plan
+/// rows, the calendar, the strip and the Today card cannot disagree.
+bool isWorkoutCompleted(PlanWorkoutRow wo) =>
+    wo.completedRunId != null || wo.manuallyCompleted;
 
 TrainingPaces pacesFromGoalPace(
   double goalPaceSecPerKm, [
@@ -696,9 +695,6 @@ GeneratedWorkout _walkRunWorkout(
       repeats: repeats,
       cooldown: {'duration_s': _kWalkRunCooldownS, 'pace': 'easy'},
     ),
-    notes: hasRecovery
-        ? 'Walk ${_kWalkRunWarmupS ~/ 60} min, then run ${prog.runSec}s / walk ${prog.walkSec}s × ${prog.count}, walk ${_kWalkRunCooldownS ~/ 60} min.'
-        : 'Walk ${_kWalkRunWarmupS ~/ 60} min, run ${(prog.runSec / 60).round()} min continuous, walk ${_kWalkRunCooldownS ~/ 60} min. Graduation week.',
   );
 }
 
@@ -1252,7 +1248,6 @@ List<GeneratedWorkout> _generateWeek({
           targetDistanceM: goalDistanceM,
           targetPaceSecPerKm: goalPaceSecPerKm.round(),
           targetPaceToleranceSec: 5,
-          notes: 'Race day. Execute the plan.',
         ));
       } else {
         workouts.add(_longRun(date, longKm, paces));
@@ -1346,7 +1341,6 @@ GeneratedWorkout _tempo(DateTime date, int totalKm, TrainingPaces p) {
       steady: {'distance_m': steady * 1000, 'pace_sec_per_km': p.tempo},
       cooldown: {'distance_m': 1500, 'pace': 'easy'},
     ),
-    notes: 'Tempo: $steady km @ threshold.',
   );
 }
 
@@ -1369,7 +1363,6 @@ GeneratedWorkout _intervals(DateTime date, TrainingPaces p) {
       },
       cooldown: {'distance_m': 1500, 'pace': 'easy'},
     ),
-    notes: '$reps× $repDistance m @ VO2 with $recovery m jog.',
   );
 }
 
@@ -1381,8 +1374,8 @@ GeneratedWorkout _marathonPace(
 ) {
   final isLongGoal = goalDistanceM >= 21000;
   final mpKm = isLongGoal ? 10 : 5;
-  // On a half/marathon plan this session IS goal-pace practice — the note says
-  // so, and that is why it doubles to 10 km. On a 5K/10K plan it is a steady
+  // On a half/marathon plan this session IS goal-pace practice, which is why
+  // it doubles to 10 km. On a 5K/10K plan it is a steady
   // aerobic session at marathon *effort*, which is genuinely slower than the
   // goal, so the training band is the right prescription there.
   final steadyPace = isLongGoal ? goalPaceSecPerKm.round() : p.marathon;
@@ -1397,7 +1390,6 @@ GeneratedWorkout _marathonPace(
       steady: {'distance_m': mpKm * 1000, 'pace_sec_per_km': steadyPace},
       cooldown: {'distance_m': 1500, 'pace': 'easy'},
     ),
-    notes: '$mpKm km @ goal marathon pace.',
   );
 }
 
@@ -1456,6 +1448,14 @@ String fmtPace(int? secPerKm) {
   final m = secPerKm ~/ 60;
   final s = (secPerKm % 60).toString().padLeft(2, '0');
   return '$m:$s/km';
+}
+
+/// A pace tolerance is stored as seconds per km. Next to a /mi pace it has
+/// to be per mile too, and say so. Mirrors web `fmtPaceTolerance`.
+String fmtPaceTolerance(int secPerKm) {
+  final unit = activeDistanceUnit;
+  final sec = unit == DistanceUnit.mi ? secPerKm * (1609.344 / 1000) : secPerKm;
+  return '±${sec.round()}s/${unit == DistanceUnit.mi ? 'mi' : 'km'}';
 }
 
 String fmtKm(num? metres, [int digits = 1]) {

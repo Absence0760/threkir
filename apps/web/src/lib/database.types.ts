@@ -6206,6 +6206,10 @@ export type Database = {
           id: string
         }[]
       }
+      dismiss_plan_workout_link: {
+        Args: { p_run_id: string; p_workout_id: string }
+        Returns: undefined
+      }
       dm_threads: {
         Args: never
         Returns: {
@@ -6246,6 +6250,7 @@ export type Database = {
       enqueue_run_rematch: { Args: { p_run_id: string }; Returns: Json }
       enqueue_safety_overdue_emails: { Args: never; Returns: undefined }
       enqueue_weekly_digests: { Args: never; Returns: number }
+      enqueue_workout_reminders: { Args: { p_now?: string }; Returns: number }
       escalate_run_off_route: { Args: { p_run_id: string }; Returns: boolean }
       event_gallery_photos: {
         Args: { p_event_id: string; p_instance: string; p_limit?: number }
@@ -6673,6 +6678,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      move_plan_workout: {
+        Args: { p_date: string; p_workout_id: string }
+        Returns: string
+      }
       my_active_challenges: {
         Args: never
         Returns: {
@@ -6747,6 +6756,18 @@ export type Database = {
           achieved_at: string
           best_time_s: number
           distance: string
+        }[]
+      }
+      plan_workout_link_candidates: {
+        Args: { p_run_id: string }
+        Returns: {
+          day_offset: number
+          kind: Database["public"]["Enums"]["workout_kind"]
+          plan_id: string
+          scheduled_date: string
+          target_distance_m: number
+          target_duration_seconds: number
+          workout_id: string
         }[]
       }
       popular_route_tags: {
@@ -6898,6 +6919,10 @@ export type Database = {
         Returns: undefined
       }
       request_follow: { Args: { p_target: string }; Returns: string }
+      reschedule_plan_workouts: {
+        Args: { p_moves: Json; p_plan_id: string }
+        Returns: undefined
+      }
       resolve_target_reports: {
         Args: {
           p_resolution?: string
@@ -7136,6 +7161,7 @@ export type Database = {
           p_distance?: string
           p_from?: string
           p_limit?: number
+          p_newest_first?: boolean
           p_query?: string
           p_radius_m?: number
           p_to?: string

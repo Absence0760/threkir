@@ -25,6 +25,7 @@ import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/dashboard_screen.dart';
+import '../lib/widgets/disclosure_section.dart';
 import '../lib/widgets/this_week_strip.dart';
 
 Run _run(String id, DateTime startedAt) => Run(
@@ -76,22 +77,9 @@ void main() {
         await tester.pump();
         await tester.pump();
 
-        // The painted surface of every full-width card, top-to-bottom. Measured
-        // on the inner Material, since a Card's own render object spans its
-        // margin box.
-        final rects = tester
-            .widgetList<Card>(find.byType(Card))
-            .map((c) => tester.getRect(find
-                .descendant(of: find.byWidget(c), matching: find.byType(Material))
-                .first))
-            .where((r) => r.width > 200)
-            .toList()
-          ..sort((a, b) => a.top.compareTo(b.top));
-
-        // The self-heading run: the "This Week" strip through the training-load
-        // chart. Everything above it is a group block (the week lead, goals,
-        // the three-abreast period strip) and keeps its section gap, so the
-        // run is anchored on the strip's own card rather than on a fixed
+        // The self-heading run starts at the "This Week" strip. Everything
+        // above it is a group block (the week lead, goals, the three-abreast
+        // period strip) and keeps its section gap, so the run is anchored on the strip's own card rather than on a fixed
         // offset that any block added above it would shift.
         final stripCard = find
             .ancestor(of: find.byType(ThisWeekStrip), matching: find.byType(Card))
@@ -101,16 +89,38 @@ void main() {
                 .descendant(of: stripCard, matching: find.byType(Material))
                 .first)
             .top;
-        final headed = rects.where((r) => r.top >= stripTop).toList();
-        expect(headed.length, greaterThanOrEqualTo(6),
+        // Cards are measured on the inner Material, since a Card's own render
+        // object spans its margin box. Below the strip the cards sit in
+        // collapsible trend groups (multi_modal.md § Home, contract v1), each
+        // opening on its own heading. The rhythm holds inside each run of cards — the strip and
+        // the streak card above the first group, then each group's own stack —
+        // so the gaps are measured per run, never across a group heading.
+        final runs = <Key?, List<Rect>>{};
+        for (final c in tester.widgetList<Card>(find.byType(Card))) {
+          final rect = tester.getRect(find
+              .descendant(of: find.byWidget(c), matching: find.byType(Material))
+              .first);
+          if (rect.width <= 200 || rect.top < stripTop) continue;
+          final group = find
+              .ancestor(of: find.byWidget(c), matching: find.byType(DisclosureSection))
+              .evaluate();
+          (runs[group.isEmpty ? null : group.first.widget.key] ??= []).add(rect);
+        }
+        expect(runs.length, greaterThanOrEqualTo(3),
+            reason: 'the strip run plus at least two trend groups must mount');
+        expect(runs.values.fold<int>(0, (n, r) => n + r.length),
+            greaterThanOrEqualTo(6),
             reason: 'the card stack must actually have mounted');
 
-        final gaps = <double>[
-          for (var i = 1; i < headed.length; i++)
-            headed[i].top - headed[i - 1].bottom,
-        ];
+        final gaps = <double>[];
+        for (final run in runs.values) {
+          run.sort((a, b) => a.top.compareTo(b.top));
+          for (var i = 1; i < run.length; i++) {
+            gaps.add(run[i].top - run[i - 1].bottom);
+          }
+        }
         expect(gaps.toSet(), hasLength(1),
-            reason: 'the stack changes rhythm partway down: $gaps');
+            reason: 'a run of cards changes rhythm partway down: $gaps');
 
         // And the one gap is the card theme's own vertical margin, doubled —
         // derived from the theme rather than asserted as a number, so raising

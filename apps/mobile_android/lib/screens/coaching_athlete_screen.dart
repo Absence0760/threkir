@@ -397,13 +397,17 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
   Widget _activePlanBody(AthletePlanOverview o, AppLocalizations l10n) {
     final theme = Theme.of(context);
     final todayISO = _todayISO();
-    final real = o.workouts.where((w) => w.kind != 'rest').toList();
+    // Skipped workouts are off the books, as completionPct already treats
+    // them: never in the total, never a miss. Web twin: `compliance`.
+    final real = o.workouts
+        .where((w) => w.kind != 'rest' && !isWorkoutSkipped(w.skippedAt))
+        .toList();
     final done = real
-        .where((w) => w.manuallyCompleted == true || w.completedRunId != null)
+        .where(isWorkoutCompleted)
         .length;
     final missed = real
         .where((w) =>
-            !(w.manuallyCompleted == true || w.completedRunId != null) &&
+            !isWorkoutCompleted(w) &&
             _isoOf(w.scheduledDate).compareTo(todayISO) < 0)
         .length;
     final pct = o.completionPct;
@@ -476,6 +480,10 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
     final (label, color) = switch (status) {
       'done' => (l10n.coachingAthleteStatusDone, theme.colorScheme.primary),
       'missed' => (l10n.coachingAthleteStatusMissed, theme.colorScheme.error),
+      'skipped' => (
+          l10n.coachingAthleteStatusSkipped,
+          theme.colorScheme.onSurfaceVariant
+        ),
       _ => (
           l10n.coachingAthleteStatusUpcoming,
           theme.colorScheme.onSurfaceVariant
@@ -637,7 +645,8 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
 
   String _workoutStatus(PlanWorkoutRow w) {
     if (w.kind == 'rest') return 'rest';
-    if (w.manuallyCompleted == true || w.completedRunId != null) return 'done';
+    if (isWorkoutSkipped(w.skippedAt)) return 'skipped';
+    if (isWorkoutCompleted(w)) return 'done';
     return _isoOf(w.scheduledDate).compareTo(_todayISO()) < 0
         ? 'missed'
         : 'upcoming';

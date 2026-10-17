@@ -5,12 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ui_kit/ui_kit.dart';
+import 'package:core_models/core_models.dart' hide Route;
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_gear_store.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/gear_screen.dart';
 import '../lib/widgets/run_segment_efforts.dart';
+import '../lib/widgets/todays_workout_card.dart';
 import '../lib/widgets/workout_review_section.dart';
 
 /// Mobile contrast guard — the Dart counterpart to web's
@@ -178,6 +180,73 @@ void main() {
         final ratio = _contrast(c.fg, c.bg);
         expect(ratio, greaterThanOrEqualTo(4.5),
             reason: '"$adherence" pill contrast $ratio fails AA');
+      });
+    }
+  });
+
+  // The Today card on Home, the Run tab and plan detail. It used to fade from
+  // `primary` into `surfaceContainerHighest` with every line in `onPrimary`,
+  // which left white type at about 1.3:1 at the far corner in light mode.
+  // Every text and icon on the card is read against the card's own fill, as
+  // rendered, so a gradient or a second fill colour fails here.
+  group('TodaysWorkoutCard meets WCAG AA', () {
+    final workout = PlanWorkoutRow(
+      id: 'wo1',
+      weekId: 'wk1',
+      scheduledDate: DateTime(2026, 4, 25),
+      kind: 'tempo',
+      targetDistanceM: 8000,
+      targetPaceSecPerKm: 330,
+      manuallyCompleted: false,
+    );
+    for (final (name, theme) in [
+      ('light', AppTheme.light),
+      ('dark', AppTheme.dark),
+    ]) {
+      testWidgets('$name', (tester) async {
+        await tester.pumpWidget(MaterialApp(
+          theme: theme,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+              body: TodaysWorkoutCard(workout: workout, onStart: () {})),
+        ));
+        await tester.pump();
+        final card = find.byType(TodaysWorkoutCard);
+        final fill = tester
+            .widget<Material>(
+                find.descendant(of: card, matching: find.byType(Material)).first)
+            .color;
+        expect(fill, isNotNull);
+        // The summary's texts; the Start label is read against the button's
+        // own fill below.
+        final summary =
+            find.descendant(of: card, matching: find.byType(InkWell)).first;
+        final texts = find.descendant(of: summary, matching: find.byType(Text));
+        expect(texts, findsAtLeastNWidgets(3));
+        for (final t in tester.widgetList<Text>(texts)) {
+          final fg = t.style?.color;
+          expect(fg, isNotNull, reason: '"${t.data}" has no explicit colour');
+          final ratio = _contrast(fg!, fill!);
+          expect(ratio, greaterThanOrEqualTo(4.5),
+              reason: '"${t.data}" on the card is $ratio:1 in $name');
+        }
+        // The Start button inverts the card: its label on its own fill, and
+        // its fill against the card (1.4.11, 3:1).
+        final style = tester
+            .widget<FilledButton>(
+                find.descendant(of: card, matching: find.byType(FilledButton)))
+            .style!;
+        final btnBg = style.backgroundColor!.resolve(<WidgetState>{})!;
+        final btnFg = style.foregroundColor!.resolve(<WidgetState>{})!;
+        expect(_contrast(btnFg, btnBg), greaterThanOrEqualTo(4.5),
+            reason: 'Start label in $name');
+        expect(_contrast(btnBg, fill!), greaterThanOrEqualTo(3.0),
+            reason: 'Start fill against the card in $name');
+        // The kind glyph sits in a `surface` disc; WCAG 1.4.11 asks 3:1.
+        final s = theme.colorScheme;
+        expect(_contrast(s.primary, s.surface), greaterThanOrEqualTo(3.0));
+        expect(_contrast(s.surface, fill), greaterThanOrEqualTo(3.0));
       });
     }
   });

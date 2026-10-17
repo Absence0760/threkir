@@ -1,6 +1,7 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:ui_kit/ui_kit.dart';
 
 import '../column_limits.dart';
@@ -20,6 +21,7 @@ import '../plan_start.dart';
 import '../pro_sellable.dart';
 import '../race_plan_preset.dart';
 import '../social_service.dart' show ClubView, SocialService;
+import '../plan_labels.dart';
 import '../starter_plans.dart';
 import '../training.dart';
 import '../training_labels.dart';
@@ -519,7 +521,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
     if (widget.initialGoal != null || widget.initialBeginnerWalkRun) {
       _nameDefaulted = true;
       final l10n = AppLocalizations.of(context);
-      final goal = goalEventLabel(_goal);
+      final goal = goalEventLabel(l10n, _goal);
       _nameCtrl.text = _beginnerWalkRun
           ? l10n.planNewDefaultNameBeginner(goal)
           : l10n.planNewDefaultName(goal);
@@ -738,7 +740,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
 
   Future<void> _submit() async {
     final name = _nameCtrl.text.trim();
-    if (name.isEmpty || _busy || _checkingOverlap) return;
+    if (name.isEmpty || _busy || _checkingOverlap || _numbersInvalid) return;
     final preview = _preview();
     if (preview == null) return;
     final action = await _confirmOverlap(toIsoDate(preview.endDate));
@@ -748,17 +750,19 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
       _error = null;
     });
     try {
-      final plan = await widget.training.createPlan(
-        name: name,
-        goalEvent: _goal,
-        goalDistanceM: preview.goalDistanceM,
-        goalTimeSec: _goalTimeSec,
-        recent5kSec: _recent5kApplied,
-        startDate: _startDate,
-        daysPerWeek: _daysPerWeek,
-        generated: preview,
-        onOverlap: action,
-      );
+      final plan = await widget.training
+          .createPlan(
+            name: name,
+            goalEvent: _goal,
+            goalDistanceM: preview.goalDistanceM,
+            goalTimeSec: _goalTimeSec,
+            recent5kSec: _recent5kApplied,
+            startDate: _startDate,
+            daysPerWeek: _daysPerWeek,
+            generated: preview,
+            onOverlap: action,
+          )
+          .timeout(kBackendLoadTimeout);
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute<void>(
@@ -883,7 +887,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
               ])
                 DropdownMenuItem(
                     value: goalEventDbValue(g),
-                    child: Text(goalEventLabel(g))),
+                    child: Text(goalEventLabel(l10n, g))),
               for (final p in kUltraPresets)
                 DropdownMenuItem(
                     value: p.id, child: Text(_kUltraLabels[p.id]!)),
@@ -970,7 +974,8 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
               Expanded(
                 child: _numField(
                   _goalMinutesCtrl, 'm',
-                  (v) => setState(() => _goalMinutes = v), 0, 59),
+                  (v) => setState(() => _goalMinutes = v), 0, 59,
+                  key: const Key('planNewGoalMinutes')),
               ),
               const Text(' : '),
               Expanded(
@@ -1085,6 +1090,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
                       (_nameCtrl.text.trim().isEmpty ||
                               _busy ||
                               _checkingOverlap ||
+                              _numbersInvalid ||
                               preview == null)
                           ? null
                           : _submit,
@@ -1590,25 +1596,46 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
     int min,
     int max, {
     String? labelText,
+    Key? key,
   }) {
     return TextField(
+      key: key,
       controller: controller,
       keyboardType: TextInputType.number,
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
       decoration: InputDecoration(
         labelText: labelText,
         hintText: hint,
         isDense: true,
+        errorText: _outOfRange(controller, min, max)
+            ? AppLocalizations.of(context).prefsValueOutOfRange(min, max)
+            : null,
+        errorMaxLines: 3,
       ),
       onChanged: (s) {
-        if (s.isEmpty) {
-          onChanged(null);
-          return;
-        }
         final n = int.tryParse(s);
-        if (n != null && n >= min && n <= max) onChanged(n);
+        onChanged(n != null && n >= min && n <= max ? n : null);
       },
     );
   }
+
+  // The field keeps what was typed even when it is out of range, so the
+  // state value is cleared rather than left at the last valid number: "7"
+  // then "75" in minutes used to show 75 and create the plan with 7.
+  static bool _outOfRange(TextEditingController c, int min, int max) {
+    if (c.text.isEmpty) return false;
+    final n = int.tryParse(c.text);
+    return n == null || n < min || n > max;
+  }
+
+  bool get _numbersInvalid =>
+      _outOfRange(_goalHoursCtrl, 0, raceGoalMaxHours) ||
+      _outOfRange(_goalMinutesCtrl, 0, 59) ||
+      _outOfRange(_goalSecondsCtrl, 0, 59) ||
+      (!_beginnerWalkRun &&
+          (_outOfRange(_recent5kMinCtrl, 0, 59) ||
+              _outOfRange(_recent5kSecCtrl, 0, 59))) ||
+      _outOfRange(_weekOverrideCtrl, 4, 24);
 }
 
 /// Modal that lists the built-in starter plans and pops the chosen

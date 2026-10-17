@@ -1,11 +1,13 @@
 import 'package:core_models/core_models.dart' as cm;
 import 'package:core_models/core_models.dart' show DistanceUnit, PlanWorkoutRow;
 import 'package:flutter/material.dart';
-import 'package:run_recorder/run_recorder.dart' show WorkoutStep, expandWorkoutSteps;
+import 'package:run_recorder/run_recorder.dart' show WorkoutStep;
 
 import '../l10n/gen/app_localizations.dart';
+import '../plan_workout_steps.dart' show expandPlanWorkoutSteps;
 import '../preferences.dart' show UnitFormat;
-import '../training.dart' show toIsoDate, workoutKindFromDb;
+import '../training.dart'
+    show isWorkoutCompleted, toIsoDate, workoutKindFromDb;
 import '../training_labels.dart' show workoutKindLabel;
 
 /// What a long-press on the centre button can offer (decisions § R10MENU-1).
@@ -62,7 +64,7 @@ PlanWorkoutRow? todaysOpenWorkout(
   for (final w in workouts) {
     if (toIsoDate(w.scheduledDate) != today) continue;
     if (w.kind == 'rest') continue;
-    if (w.completedRunId != null || w.manuallyCompleted) continue;
+    if (isWorkoutCompleted(w)) continue;
     if (w.skippedAt != null) continue;
     if (_steps(w).isEmpty) continue;
     return w;
@@ -70,18 +72,7 @@ PlanWorkoutRow? todaysOpenWorkout(
   return null;
 }
 
-List<WorkoutStep> _steps(PlanWorkoutRow w) {
-  final structure = w.structure is Map<String, dynamic>
-      ? w.structure as Map<String, dynamic>
-      : null;
-  return expandWorkoutSteps(
-    structure: structure,
-    paces: const {},
-    toleranceSecPerKm: w.targetPaceToleranceSec ?? 10,
-    fallbackDistanceMetres: w.targetDistanceM,
-    fallbackPaceSecPerKm: w.targetPaceSecPerKm,
-  );
-}
+List<WorkoutStep> _steps(PlanWorkoutRow w) => expandPlanWorkoutSteps(w);
 
 /// What the workout card says under the session's kind: its distance, and
 /// its step count when it is more than one steady run. [distanceMetres] is

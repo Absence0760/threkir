@@ -13,6 +13,9 @@ import { expect, type Page } from '@playwright/test';
  * carries on; a spec that means to assert the fold itself is
  * `dashboard/disclosure.spec.ts`.
  *
+ * Returns once the opened state has been saved, so a caller can write the
+ * settings bag next without racing it.
+ *
  * Idempotent, and silent when the account renders no expander at all
  * (`standard` / `full`), so a caller needs no branch of its own.
  */
@@ -30,6 +33,14 @@ export async function expandTrainingLoad(page: Page): Promise<void> {
 	const disclosure = page.getByTestId('training-load-disclosure');
 	if ((await disclosure.count()) === 0) return;
 	if (await disclosure.evaluate((el) => (el as HTMLDetailsElement).open)) return;
+	// Opening it remembers itself in the universal bag with a read-merge-write
+	// (`pushUniversal`). A spec that writes that bag out of band next — a
+	// `setUserSetting` standing in for another device — would interleave with
+	// it and lose its own value, so wait for the write to land.
+	const saved = page.waitForResponse(
+		(r) => r.url().includes('/rest/v1/user_settings') && r.request().method() === 'POST',
+	);
 	await disclosure.locator('summary').click();
 	await expect(disclosure).toHaveJSProperty('open', true);
+	await saved;
 }

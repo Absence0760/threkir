@@ -649,6 +649,46 @@ class AppLocalizationsEn extends AppLocalizations {
   String get readinessContributorRestingHr => 'Resting heart rate';
 
   @override
+  String get dashboardTrendsDivider => 'Trends';
+
+  @override
+  String get dashboardTrendGroupVolume => 'Volume';
+
+  @override
+  String get dashboardTrendGroupVolumeHint =>
+      'How much you have run, week by week';
+
+  @override
+  String get dashboardTrendGroupFitness => 'Fitness and form';
+
+  @override
+  String get dashboardTrendGroupFitnessHint =>
+      'Readiness, fitness and training load';
+
+  @override
+  String get dashboardTrendGroupPerformance => 'Performance';
+
+  @override
+  String get dashboardTrendGroupPerformanceHint =>
+      'Personal bests and predicted race times';
+
+  @override
+  String get dashboardTrendGroupEffort => 'Effort';
+
+  @override
+  String get dashboardTrendGroupEffortHint => 'How hard your training has been';
+
+  @override
+  String get dashboardTrendGroupRecent => 'Recent';
+
+  @override
+  String get dashboardTrendGroupRecentHint => 'Your latest sessions';
+
+  @override
+  String get readinessFromLoadOnly =>
+      'Scored from your training load only. Sleep and resting heart rate are not part of it yet.';
+
+  @override
   String get intensityZone1 => 'Z1 (recovery)';
 
   @override
@@ -1981,16 +2021,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get runResumeDiscardedBanner => 'Discarded your previous run.';
-
-  @override
-  String get runStartWorkout => 'Start workout';
-
-  @override
-  String get runStartWorkoutSubtitle =>
-      'Run with live step targets, audio cues, and a planned-vs-actual review.';
-
-  @override
-  String get runViewWorkoutDetails => 'View details';
 
   @override
   String get runWorkoutNoStructure => 'This workout has no runnable structure.';
@@ -4762,6 +4792,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get profileNotifWorkoutReminder =>
+      'Today\'s workout is waiting in your plan';
+
+  @override
   String profileNotifEventCancelTitled(String title) {
     return 'An occurrence of \"$title\" was cancelled';
   }
@@ -5701,7 +5735,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get plansAbandonBody => 'You can create a new plan after.';
+  String get plansAbandonBody =>
+      'Its weeks, workouts and linked runs are kept. You can create a new plan after.';
 
   @override
   String plansActionFailed(String error) {
@@ -5709,19 +5744,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String plansDaysPerWeek(int count) {
-    return '$count days/wk';
-  }
-
-  @override
   String get plansStatusUpcoming => 'upcoming';
-
-  @override
-  String get plansSignInTitle => 'Sign in to use training plans';
-
-  @override
-  String get plansSignInBody =>
-      'Plans sync to your account so they follow you across devices. Head to Settings → Sign in to connect.';
 
   @override
   String get plansEmptyTitle => 'No plans yet.';
@@ -5737,6 +5760,89 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get plansLoadError =>
       'Couldn\'t load training plans. Tap retry to try again.';
+
+  @override
+  String plansStarterStartsOn(String date) {
+    return 'Each starts on $date.';
+  }
+
+  @override
+  String get plansStatusActive => 'active';
+
+  @override
+  String get plansStatusPaused => 'paused';
+
+  @override
+  String get plansStatusCompleted => 'completed';
+
+  @override
+  String get plansStatusAbandoned => 'abandoned';
+
+  @override
+  String get plansFilterGroupLabel => 'Filter plans by status';
+
+  @override
+  String get plansFilterAll => 'All';
+
+  @override
+  String get plansFilterActive => 'Active';
+
+  @override
+  String get plansFilterPaused => 'Paused';
+
+  @override
+  String get plansFilterCompleted => 'Completed';
+
+  @override
+  String get plansFilterAbandoned => 'Abandoned';
+
+  @override
+  String plansNoFilteredPlans(String status) {
+    return 'No $status plans.';
+  }
+
+  @override
+  String get plansShowAllPlans => 'Show all plans';
+
+  @override
+  String get plansHeroGoal => 'Goal';
+
+  @override
+  String get plansHeroTarget => 'Target';
+
+  @override
+  String get plansGoalFinish => 'Finish';
+
+  @override
+  String get plansEventHalf => 'Half marathon';
+
+  @override
+  String get plansEventFull => 'Marathon';
+
+  @override
+  String get plansEventCustom => 'Custom';
+
+  @override
+  String plansWeekOf(int week, int total) {
+    return 'Week $week of $total';
+  }
+
+  @override
+  String get plansEnded => 'Ended';
+
+  @override
+  String get plansProgressLabel => 'Plan progress';
+
+  @override
+  String plansMetaWeeks(int weeks, int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '$weeks weeks · $days days/week',
+      one: '$weeks week · $days days/week',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get planNewTitle => 'New plan';
@@ -6091,16 +6197,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get planLibraryAnonymous => 'a runner';
 
   @override
-  String planLibraryWeeks(int weeks) {
-    return '$weeks weeks';
-  }
-
-  @override
-  String planLibraryDaysPerWeek(int days) {
-    return '$days×/week';
-  }
-
-  @override
   String get planLibraryClone => 'Clone into my plans';
 
   @override
@@ -6127,6 +6223,17 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String planLibraryPreviewWeek(int n) {
     return 'Week $n';
+  }
+
+  @override
+  String planLibraryPreviewWeekRuns(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count runs',
+      one: '$count run',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -6212,11 +6319,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get planOverlapReplaceHint =>
-      'Replace marks the overlapping plans as completed. You can still find them under Manage plans.';
+      'Replace marks the overlapping plans as abandoned. You can still find them under Manage plans.';
 
   @override
   String planOverlapTrimHint(String name, String date) {
-    return 'End $name early to keep its finished weeks and remove its workouts after $date, or replace it to mark it completed.';
+    return 'End $name early to keep its finished weeks and remove its workouts after $date, or replace it to mark it abandoned.';
   }
 
   @override
@@ -6231,7 +6338,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String planOverlapTrimHintMany(String date) {
-    return 'End them early to keep their finished weeks and remove their workouts after $date, or replace them to mark them completed.';
+    return 'End them early to keep their finished weeks and remove their workouts after $date, or replace them to mark them abandoned.';
   }
 
   @override
@@ -6369,9 +6476,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get planDetailToday => 'TODAY';
-
-  @override
-  String get planDetailCompleted => 'Completed';
 
   @override
   String planDetailWeek(int number) {
@@ -6651,6 +6755,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get workoutUnlinkError => 'Couldn\'t unlink the run. Try again.';
+
+  @override
+  String get workoutMarkNotDone => 'Mark not done';
+
+  @override
+  String get workoutMarkNotDoneTitle => 'Mark not done?';
+
+  @override
+  String get workoutMarkNotDoneBody => 'The workout will show as not yet done.';
+
+  @override
+  String get workoutMarkNotDoneError =>
+      'Couldn\'t update the workout. Try again.';
 
   @override
   String get workoutSkipped => 'Skipped';
@@ -8705,6 +8822,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Email me the first time my account signs in from a browser or device it hasn\'t used before. Password-change notices always send and can\'t be turned off.';
 
   @override
+  String get prefsNotifyWorkoutReminder => 'Today\'s workout';
+
+  @override
+  String get prefsNotifyWorkoutReminderHint =>
+      'On the morning of a planned workout, remind me in the inbox and by email and push.';
+
+  @override
   String get prefsEmailReOptInFailed =>
       'Couldn\'t lift your earlier unsubscribe. Emails may still be blocked — try again.';
 
@@ -10094,13 +10218,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workoutEditKindLabel => 'Kind';
 
   @override
-  String get workoutEditDistanceLabel => 'Target distance (km)';
+  String workoutEditDistanceLabel(String unit) {
+    return 'Target distance ($unit)';
+  }
 
   @override
   String get workoutEditDistanceHint => 'e.g. 8.0';
 
   @override
-  String get workoutEditPaceLabel => 'Target pace (mm:ss /km)';
+  String workoutEditPaceLabel(String unit) {
+    return 'Target pace (mm:ss /$unit)';
+  }
 
   @override
   String get workoutEditPaceHint => 'e.g. 5:30';
@@ -10142,7 +10270,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workoutEditSave => 'Save';
 
   @override
-  String get workoutEditErrDistance => 'Enter a positive distance in km';
+  String workoutEditErrDistance(String unit) {
+    return 'Enter a positive distance in $unit';
+  }
 
   @override
   String get workoutEditErrPace => 'Pace must look like 5:30';
@@ -10186,6 +10316,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get todaysWorkoutToday => 'TODAY\'S WORKOUT';
+
+  @override
+  String todaysWorkoutAtPace(String pace) {
+    return '@ $pace';
+  }
 
   @override
   String get errorStateRetry => 'Retry';
@@ -10440,13 +10575,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ttsStepLastFifty => 'Fifty metres to go';
 
   @override
-  String ttsPaceDriftAhead(int delta) {
-    return 'Ease up — $delta seconds ahead pace.';
+  String get ttsStepLastFiftyYards => 'Fifty yards to go';
+
+  @override
+  String get ttsStepLastTenSeconds => 'Ten seconds to go';
+
+  @override
+  String ttsPaceDriftAheadKm(int delta) {
+    return 'Ease up — $delta seconds per kilometre ahead of pace.';
   }
 
   @override
-  String ttsPaceDriftBehind(int delta) {
-    return 'Pick it up — $delta seconds behind pace.';
+  String ttsPaceDriftAheadMi(int delta) {
+    return 'Ease up — $delta seconds per mile ahead of pace.';
+  }
+
+  @override
+  String ttsPaceDriftBehindKm(int delta) {
+    return 'Pick it up — $delta seconds per kilometre behind pace.';
+  }
+
+  @override
+  String ttsPaceDriftBehindMi(int delta) {
+    return 'Pick it up — $delta seconds per mile behind pace.';
   }
 
   @override
@@ -10520,6 +10671,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get ttsStepCooldown => 'Cooldown';
+
+  @override
+  String get ttsStepWarmupWalk => 'Warm-up walk';
+
+  @override
+  String get ttsStepCooldownWalk => 'Cool-down walk';
 
   @override
   String get ttsStepRep => 'Rep';
@@ -12747,6 +12904,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get coachingAthleteStatusUpcoming => 'Upcoming';
 
   @override
+  String get coachingAthleteStatusSkipped => 'Skipped';
+
+  @override
   String get coachingAthleteRecentRuns => 'Recent runs';
 
   @override
@@ -13372,10 +13532,63 @@ class AppLocalizationsEn extends AppLocalizations {
   String get racesDistanceUltra => 'Ultra';
 
   @override
-  String get racesRegister => 'Register';
+  String get racesRegister => 'Race page & register';
 
   @override
   String get racesTrainForThis => 'Train for this race';
+
+  @override
+  String get racesWhenGroup => 'When';
+
+  @override
+  String get racesWhenUpcoming => 'Upcoming';
+
+  @override
+  String get racesWhenRecent => 'Recent results';
+
+  @override
+  String racesWhenHint(int days) {
+    return 'Recent results lists races from the last $days days, newest first, so you can find a race you ran and import your result.';
+  }
+
+  @override
+  String racesEmptyRecent(int days) {
+    return 'No races in the last $days days match these filters.';
+  }
+
+  @override
+  String get racesDetailLoadFailed =>
+      'Couldn\'t load this race. Check your connection and try again.';
+
+  @override
+  String get racesDetailNotFound =>
+      'This race isn\'t in the calendar any more.';
+
+  @override
+  String racesSourceProvider(String provider) {
+    return 'Listed on $provider';
+  }
+
+  @override
+  String get racesSourceManual => 'Added by a runner';
+
+  @override
+  String get racesDetailShare => 'Share';
+
+  @override
+  String racesDetailImportAfterRace(String date) {
+    return 'You can import your official result from race day, $date.';
+  }
+
+  @override
+  String get racesDetailYourRuns => 'Your runs at this race';
+
+  @override
+  String get racesDetailRunsFailed => 'Couldn\'t load your runs for this race.';
+
+  @override
+  String get racesDetailNoRuns =>
+      'No runs linked to this race yet. After race day, import your result here, or open the run you recorded and match it to this race.';
 
   @override
   String get racesViewResults => 'View results';
@@ -13411,6 +13624,32 @@ class AppLocalizationsEn extends AppLocalizations {
   String get racesImported => 'Official result imported.';
 
   @override
+  String planLinkPromptEarly(String day) {
+    return 'Did you do $day\'s planned workout early?';
+  }
+
+  @override
+  String planLinkPromptLate(String day) {
+    return 'Did you do $day\'s planned workout late?';
+  }
+
+  @override
+  String get planLinkConfirm => 'Link to plan';
+
+  @override
+  String get planLinkDismiss => 'Not this one';
+
+  @override
+  String get planLinkLinked => 'Linked to your plan.';
+
+  @override
+  String get planLinkFailed => 'Couldn\'t link this to your plan. Try again.';
+
+  @override
+  String get planLinkDismissFailed =>
+      'Couldn\'t save that answer. You may be asked again.';
+
+  @override
   String get racesOfficialResult => 'Official result';
 
   @override
@@ -13424,6 +13663,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get racesAgeGroupPlace => 'Age-group place';
+
+  @override
+  String get racesDivisionAwardPlace => 'Award place';
 
   @override
   String get racesAgeGroup => 'Age group';
@@ -15379,6 +15621,30 @@ class AppLocalizationsEn extends AppLocalizations {
       'No more sessions scheduled in your plan.';
 
   @override
+  String planFinishTitle(String name) {
+    return '$name has ended';
+  }
+
+  @override
+  String planFinishBody(String date) {
+    return 'Its last day was $date. Finish it to move it to your completed plans.';
+  }
+
+  @override
+  String get planFinishAction => 'Finish plan';
+
+  @override
+  String get planFinishFinishing => 'Finishing…';
+
+  @override
+  String planFinishDone(String name) {
+    return '$name is in your completed plans.';
+  }
+
+  @override
+  String get planFinishFailed => 'Couldn\'t finish the plan. Try again.';
+
+  @override
   String get dashboardLeadAddRun => 'Add a run';
 
   @override
@@ -16668,4 +16934,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String seasonPlanRowInvalid(int n) {
     return 'Race $n needs a name, a race day, a distance, and either no goal time or one written h:mm:ss.';
   }
+
+  @override
+  String get workoutMoveAction => 'Move to another day';
+
+  @override
+  String get workoutMoveHint =>
+      'Pick a day in this week. A workout already on that day takes this one\'s old day.';
+
+  @override
+  String workoutMoveSwapsWith(String kind) {
+    return 'Swaps with $kind';
+  }
+
+  @override
+  String workoutMoveError(String error) {
+    return 'Couldn\'t move this workout: $error';
+  }
+
+  @override
+  String get workoutMoveSaveFirst =>
+      'Save or discard your changes before moving this workout.';
 }

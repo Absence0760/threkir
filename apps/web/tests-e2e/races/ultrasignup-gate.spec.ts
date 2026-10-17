@@ -24,7 +24,7 @@ test.describe('UltraSignup gate (leg not opted in)', () => {
 		listingId = await insertRaceListing({
 			provider: 'ultrasignup',
 			name: raceName,
-			race_date: browserDate(30),
+			race_date: browserDate(0),
 			provider_race_id: 'e2e-ultrasignup-1'
 		});
 	});

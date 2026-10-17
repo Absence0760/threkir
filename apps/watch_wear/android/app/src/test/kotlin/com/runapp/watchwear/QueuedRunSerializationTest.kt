@@ -43,6 +43,18 @@ class QueuedRunSerializationTest {
         steps = 4_500,
         isPublic = true,
         gnssSignal = GnssSignalSummary(samples = 1800, usedMedian = 0),
+        workoutReview = com.runapp.watchwear.workout.WorkoutReview(
+            planWorkoutId = "pw-1",
+            adherence = "partial",
+            steps = listOf(
+                com.runapp.watchwear.workout.WorkoutStepResultRecord(
+                    stepIndex = 0, kind = "rep", repIndex = 1, repTotal = 2,
+                    targetDistanceM = 400.0, actualDistanceM = 380.0,
+                    targetPaceSPerKm = 240, actualPaceSPerKm = 250,
+                    toleranceSPerKm = 10, durationS = 95, status = "skipped",
+                ),
+            ),
+        ),
     )
 
     @Test

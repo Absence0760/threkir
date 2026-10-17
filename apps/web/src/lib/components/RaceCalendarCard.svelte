@@ -22,6 +22,10 @@
 	// — a past or too-close race gets no CTA rather than a link that lands on
 	// a refusal. The wizard re-derives from the same helper, so a link that
 	// goes stale in an open tab is caught there too.
+	// A result exists only from race day on; before that the import can only
+	// come back empty, so the action is not offered.
+	let canImport = $derived(race.race_date <= todayISO());
+
 	let planHref = $derived.by(() => {
 		const preset = racePlanPreset({
 			raceDateIso: race.race_date,
@@ -41,7 +45,7 @@
 
 <li class="card-elevated race" data-testid="race-card">
 	<div class="race-main">
-		<strong class="race-title">{race.name}</strong>
+		<a class="race-title" href="/races/{race.id}" data-testid="race-detail-link">{race.name}</a>
 		<span class="race-meta">
 			{formatDate(race.race_date)}
 			{#if race.distance_m}· {formatDistance(race.distance_m)}{/if}
@@ -80,24 +84,40 @@
 				{m('races.viewResults')}
 			</a>
 		{/if}
-		<button
-			type="button"
-			class="btn btn-primary btn-sm"
-			onclick={() => onimport?.(race)}
-			data-testid="race-import"
-		>
-			{m('races.importResult')}
-		</button>
+		{#if canImport}
+			<button
+				type="button"
+				class="btn btn-primary btn-sm"
+				onclick={() => onimport?.(race)}
+				data-testid="race-import"
+			>
+				{m('races.importResult')}
+			</button>
+		{/if}
 	</div>
 </li>
 
 <style>
+	/* The whole card opens the race: the title link's ::after is stretched over
+	   the card, and each action is lifted above it so it stays its own target.
+	   One link, one tab stop, no interactive element nested in another. */
 	.race {
+		position: relative;
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
 		gap: var(--space-md);
 		padding: var(--space-md) var(--space-lg);
+		transition:
+			box-shadow var(--transition-base),
+			border-color var(--transition-base);
+	}
+	.race:hover {
+		border-color: var(--color-primary);
+	}
+	.race:has(.race-title:focus-visible) {
+		outline: 2px solid var(--color-primary);
+		outline-offset: 2px;
 	}
 	.race-main {
 		display: flex;
@@ -107,6 +127,22 @@
 	}
 	.race-title {
 		font-size: 1rem;
+		font-weight: 700;
+		color: var(--color-text);
+		text-decoration: none;
+	}
+	.race-title::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		border-radius: var(--radius-lg);
+	}
+	.race-title:focus-visible {
+		outline: none;
+	}
+	.race:hover .race-title,
+	.race-title:focus-visible {
+		text-decoration: underline;
 	}
 	.race-meta {
 		font-size: 0.85rem;
@@ -131,5 +167,9 @@
 		flex-shrink: 0;
 		flex-wrap: wrap;
 		justify-content: flex-end;
+	}
+	.race-actions > :global(*) {
+		position: relative;
+		z-index: 1;
 	}
 </style>

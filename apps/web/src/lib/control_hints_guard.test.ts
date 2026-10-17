@@ -40,6 +40,7 @@ const SURFACES: Array<{ name: string; file: string }> = [
 	{ name: 'ClubEditor', file: 'lib/components/ClubEditor.svelte' },
 	{ name: 'EventEditor', file: 'lib/components/EventEditor.svelte' },
 	{ name: 'RaceListingEditor', file: 'lib/components/RaceListingEditor.svelte' },
+	{ name: 'RaceImportDialog', file: 'lib/components/RaceImportDialog.svelte' },
 	{ name: 'ChallengeEditor', file: 'lib/components/ChallengeEditor.svelte' },
 	{ name: 'FundraiserEditor', file: 'lib/components/FundraiserEditor.svelte' },
 	{ name: 'RoutineEditor', file: 'lib/components/RoutineEditor.svelte' },

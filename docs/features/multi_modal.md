@@ -456,6 +456,26 @@ Density rules so it never becomes a wall of cards:
 - Nutrition is the only **always-live ring widget**; gym and run are
   event summaries (they show what happened, they don't animate).
 
+> **Status (web + mobile, 2026-10-16, #1187):** the section rhythm and the
+> v1 collapse are built on both platforms. A hairline with a quiet "Trends"
+> label (`.trends-divider` on web, `_TrendsDivider` on mobile) closes the
+> Today block: on web it sits above the source filter and the stat grid, on
+> a phone above Goals, and on a tablet above the period row. Below it the
+> trend cards fold in five named groups, in one order on both platforms:
+> **Volume** (mileage, plus consistency on web and the heatmap on mobile),
+> **Fitness and form** (readiness, the fitness snapshot, load ramp /
+> comeback, the training-load chart), **Performance** (race predictor,
+> personal bests), **Effort** (HR-zone intensity, plus the easy/hard balance
+> on web) and **Recent** (recent runs on web, recent lifts). Each group is a
+> `DisclosureSection` remembered per account on this device
+> (`disclosure_state`, scope `dashboard_trends`), opens by default, and
+> mounts only when one of its cards is sure to draw. The period stats, the
+> this-week strip and the streak stay unfolded above the groups. Not built:
+> "one expanded at a time", a mobile **How much detail** control or
+> `disclosure.dart` consumer, and hiding a card outright
+> ([decisions § 2080](../architecture/decisions.md)).
+> `tests-e2e/dashboard/layout.spec.ts`, `test/dashboard_trend_groups_test.dart`.
+
 ## History — one timeline, filter chips, separate detail routes
 
 History becomes a single reverse-chronological timeline backed by the

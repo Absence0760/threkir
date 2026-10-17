@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.runapp.watchwear.recording.GnssSignalSummary
 import com.runapp.watchwear.recording.migrateQueuedTracks
+import com.runapp.watchwear.workout.WorkoutReview
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -62,6 +63,11 @@ data class QueuedRun(
     /// `metadata.track_complete`. False on a run queued before the watch
     /// stored its off-track fixes, and the key is omitted.
     val trackComplete: Boolean = false,
+    /// The planned-vs-actual review of a run started from today's workout:
+    /// `metadata.plan_workout_id`, `workout_step_results`,
+    /// `workout_adherence`. Null on a free run, and on a run queued before
+    /// the watch ran workouts.
+    val workoutReview: WorkoutReview? = null,
 )
 
 private val Context.dataStore by preferencesDataStore(name = "watch_wear")

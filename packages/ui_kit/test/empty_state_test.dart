@@ -51,6 +51,22 @@ void main() {
         theme.textTheme.bodySmall?.fontSize);
   });
 
+  testWidgets('renders a footer below the CTA', (tester) async {
+    await _pump(
+      tester,
+      EmptyState(
+        icon: Icons.calendar_month,
+        title: 'No plans yet',
+        ctaLabel: 'New plan',
+        onCta: () {},
+        footer: const Text('Or start from a built-in plan'),
+      ),
+    );
+    final cta = tester.getBottomLeft(find.widgetWithText(FilledButton, 'New plan'));
+    final footer = tester.getTopLeft(find.text('Or start from a built-in plan'));
+    expect(footer.dy, greaterThan(cta.dy));
+  });
+
   testWidgets('omits body and CTA when not provided', (tester) async {
     await _pump(
       tester,

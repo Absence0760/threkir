@@ -272,6 +272,28 @@ $neutralised$;`,
     },
   ],
   [
+    'plan_calendar_feed_status',
+    {
+      why: 'drops `f.user_id = auth.uid()`, the whole access control here; the function takes no argument, so there is no subject selector to keep',
+      sql: `create or replace function public.plan_calendar_feed_status()
+ returns table(created_at timestamptz, last_fetched_at timestamptz)
+ language sql stable security definer set search_path to 'public'
+as $neutralised$
+  select f.created_at, f.last_fetched_at
+  from public.plan_calendar_feeds f
+  where ${mine('f')};
+$neutralised$;`,
+      subject: 'plan_calendar_feeds f',
+      witness: {
+        setup: `insert into plan_calendar_feeds (user_id, secret_hash)
+                 values ((select id from auth.users order by id limit 1),
+                         sha256(convert_to('pgtap guard witness', 'UTF8')))
+                 on conflict (user_id) do update set secret_hash = excluded.secret_hash;`,
+        probe: `select count(*) from plan_calendar_feed_status();`,
+      },
+    },
+  ],
+  [
     'my_pending_safety_requests',
     {
       why: "drops the `lower(contact_email) = lower(me.email)` match against the caller — the whole access control here — and the `auth.users` join that carries it; keeps `confirmed_at is null`, which is what makes a request pending",

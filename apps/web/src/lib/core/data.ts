@@ -6503,6 +6503,33 @@ export async function updatePlanWorkout(
 	if (error) throw dbError(error);
 }
 
+/// Move one planned workout to another day of its week (`move_plan_workout`,
+/// decisions § 2073). When the day already holds a row, the two trade days;
+/// the swapped workout's id is returned, or null when the day was free.
+export async function movePlanWorkout(workoutId: string, date: string): Promise<string | null> {
+	const { data, error } = await supabase.rpc('move_plan_workout', {
+		p_workout_id: workoutId,
+		p_date: date
+	});
+	if (error) throw dbError(error);
+	return data ?? null;
+}
+
+/// Set the dates of several workouts of one plan in one transaction
+/// (`reschedule_plan_workouts`, decisions § 2073), so moves and swaps that
+/// pass through each other's days land together or not at all.
+export async function reschedulePlanWorkouts(
+	planId: string,
+	moves: { id: string; date: string }[]
+): Promise<void> {
+	if (moves.length === 0) return;
+	const { error } = await supabase.rpc('reschedule_plan_workouts', {
+		p_plan_id: planId,
+		p_moves: moves
+	});
+	if (error) throw dbError(error);
+}
+
 /// One workout's patch for `applyWorkoutAdjustments`. A key present is
 /// written (null clears the column); a key absent leaves it alone.
 export type WorkoutAdjustment = { id: string } & Partial<{

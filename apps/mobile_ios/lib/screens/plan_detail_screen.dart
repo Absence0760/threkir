@@ -19,6 +19,7 @@ import '../plan_adherence.dart';
 import '../plan_progress.dart';
 import '../plan_replan.dart';
 import '../plan_adaptive_replan.dart';
+import '../plan_move.dart';
 import '../plan_races.dart';
 import '../plan_week.dart';
 import '../race_taper.dart';
@@ -63,11 +64,6 @@ const DisclosureState _kDisclosureDefaults = {
   'weeks': true,
   'share': true,
 };
-
-/// Web `isWorkoutCompleted` twin — a planned workout is done when a tracked
-/// run is linked OR the runner manually marked it complete.
-bool _isWorkoutCompleted(PlanWorkoutRow wo) =>
-    wo.completedRunId != null || wo.manuallyCompleted;
 
 /// Web `isWorkoutSkipped` twin — deliberately dropped, off the books.
 bool _isWorkoutSkipped(PlanWorkoutRow wo) => isWorkoutSkipped(wo.skippedAt);
@@ -325,7 +321,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
     final missed = (_byWeek[week.id] ?? const <PlanWorkoutRow>[]).where((w) =>
         w.kind == 'long' &&
         toIsoDate(w.scheduledDate).compareTo(today) < 0 &&
-        !_isWorkoutCompleted(w) &&
+        !isWorkoutCompleted(w) &&
         !_isWorkoutSkipped(w));
     if (missed.isEmpty) return null;
     final next = idx + 1 < _weeks.length ? _weeks[idx + 1] : null;
@@ -378,7 +374,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
                   scheduledDate: toIsoDate(x.scheduledDate),
                   kind: x.kind,
                   targetDistanceM: x.targetDistanceM,
-                  completed: _isWorkoutCompleted(x),
+                  completed: isWorkoutCompleted(x),
                   skipped: _isWorkoutSkipped(x),
                   isPast: toIsoDate(x.scheduledDate).compareTo(today) < 0,
                 ))
@@ -431,7 +427,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
               structure: x.structure,
               notes: x.notes,
               phase: w.phase,
-              completed: _isWorkoutCompleted(x),
+              completed: isWorkoutCompleted(x),
               skipped: _isWorkoutSkipped(x),
               taperApplied: x.raceTaperAppliedAt != null,
             ),
@@ -982,7 +978,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
         .expand((x) => x)
         .where((w) => w.kind != 'rest' && !_isWorkoutSkipped(w))
         .toList();
-    final done = allActive.where(_isWorkoutCompleted).length;
+    final done = allActive.where(isWorkoutCompleted).length;
     final pct =
         allActive.isEmpty ? 0 : (100 * done / allActive.length).round();
     final body = _bodyList(
@@ -1040,6 +1036,11 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
           TodaysWorkoutCard(
             workout: todayWorkout,
             onTap: () => _openWorkout(todayWorkout),
+            // Only the plan's runner starts its workout: a coach or a
+            // template viewer reading the plan has nothing to record.
+            onStart: _isOwner(p) && !p.isTemplate
+                ? () => _startWorkout(todayWorkout)
+                : null,
           ),
         ],
         if (_weeks.isNotEmpty) ...[
@@ -1753,7 +1754,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
                   style: theme.textTheme.bodySmall),
               const SizedBox(width: 6),
             ],
-            if (_isWorkoutCompleted(wo))
+            if (isWorkoutCompleted(wo))
               Icon(Icons.check_circle, color: theme.colorScheme.primary, size: 16)
             else if (isSkipped)
               Icon(Icons.skip_next, color: theme.colorScheme.outline, size: 16),
@@ -1776,11 +1777,28 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
     );
   }
 
+  /// The days [wo] may move to (decisions § 2073); only the owner moves.
+  List<WorkoutMoveDay> _moveDaysFor(PlanWorkoutRow wo) {
+    final plan = _plan;
+    if (plan == null || !_isOwner(plan)) return const [];
+    final week = _weeks.where((w) => w.id == wo.weekId).firstOrNull;
+    if (week == null) return const [];
+    return workoutMoveDays(
+      planStartIso: toIsoDate(plan.startDate),
+      planEndIso: toIsoDate(plan.endDate),
+      weekIndex: week.weekIndex,
+      workout: wo,
+      workouts: _byWeek[wo.weekId] ?? const [],
+      todayIso: toIsoDate(widget.now()),
+    );
+  }
+
   Future<void> _editWorkout(PlanWorkoutRow wo) async {
     final ok = await showWorkoutEditSheet(
       context,
       workout: wo,
       training: widget.training,
+      moveDays: _moveDaysFor(wo),
     );
     if (ok) await _load();
   }
@@ -1802,11 +1820,15 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
     );
     if (!mounted) return;
     if (result != null) {
-      pendingStartWorkout.value = result;
-      Navigator.of(context).popUntil((r) => r.isFirst);
+      _startWorkout(result);
       return;
     }
     _load();
+  }
+
+  void _startWorkout(PlanWorkoutRow wo) {
+    pendingStartWorkout.value = wo;
+    Navigator.of(context).popUntil((r) => r.isFirst);
   }
 }
 

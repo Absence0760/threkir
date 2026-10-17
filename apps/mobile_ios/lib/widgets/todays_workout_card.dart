@@ -12,10 +12,20 @@ import '../training_labels.dart';
 /// The fill is solid `primary` under `onPrimary`: a gradient into
 /// `surfaceContainerHighest` left the white type at about 1.3:1 at the far
 /// corner in light mode (WCAG 1.4.3), pinned in `contrast_guard_test.dart`.
+///
+/// [onStart] adds an explicit Start button, which is hidden once the workout
+/// is done or skipped. Home passes none: its card opens plan detail, because
+/// the dashboard's role is overview, not starting a run.
 class TodaysWorkoutCard extends StatelessWidget {
   final PlanWorkoutRow workout;
   final VoidCallback? onTap;
-  const TodaysWorkoutCard({super.key, required this.workout, this.onTap});
+  final VoidCallback? onStart;
+  const TodaysWorkoutCard({
+    super.key,
+    required this.workout,
+    this.onTap,
+    this.onStart,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -23,12 +33,24 @@ class TodaysWorkoutCard extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final w = workout;
     final kind = workoutKindFromDb(w.kind);
-    final done = w.completedRunId != null || w.manuallyCompleted;
+    final done = isWorkoutCompleted(w);
+    final showStart =
+        onStart != null && !done && !isWorkoutSkipped(w.skippedAt);
+    final pace = w.targetPaceSecPerKm == null
+        ? null
+        : l10n.todaysWorkoutAtPace(fmtPace(w.targetPaceSecPerKm));
+    final label = [
+      done ? l10n.todaysWorkoutDone : l10n.todaysWorkoutToday,
+      workoutKindLabel(l10n, kind),
+      if (w.targetDistanceM != null) fmtKm(w.targetDistanceM),
+      ?pace,
+    ].join(', ');
 
-    return Material(
-      color: theme.colorScheme.primary,
-      borderRadius: BorderRadius.circular(16),
-      clipBehavior: Clip.antiAlias,
+    final summary = Semantics(
+      button: onTap != null,
+      label: label,
+      onTap: onTap,
+      excludeSemantics: true,
       child: InkWell(
         onTap: onTap,
         child: Padding(
@@ -100,7 +122,7 @@ class TodaysWorkoutCard extends StatelessWidget {
                               ),
                             ],
                           ),
-                        if (w.targetPaceSecPerKm != null)
+                        if (pace != null)
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -112,7 +134,7 @@ class TodaysWorkoutCard extends StatelessWidget {
                               const SizedBox(width: 3),
                               Flexible(
                                 child: Text(
-                                  l10n.todaysWorkoutAtPace(fmtPace(w.targetPaceSecPerKm)),
+                                  pace,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
@@ -131,6 +153,33 @@ class TodaysWorkoutCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+
+    return Material(
+      color: theme.colorScheme.primary,
+      borderRadius: BorderRadius.circular(16),
+      clipBehavior: Clip.antiAlias,
+      child: showStart
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                summary,
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  child: FilledButton.icon(
+                    key: const Key('todaysWorkoutStart'),
+                    onPressed: onStart,
+                    icon: const Icon(Icons.play_arrow),
+                    label: Text(l10n.workoutStart),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: theme.colorScheme.onPrimary,
+                      foregroundColor: theme.colorScheme.primary,
+                    ),
+                  ),
+                ),
+              ],
+            )
+          : summary,
     );
   }
 

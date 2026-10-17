@@ -2009,16 +2009,6 @@ class AppLocalizationsFr extends AppLocalizations {
   String get runResumeDiscardedBanner => 'Course précédente supprimée.';
 
   @override
-  String get runStartWorkout => 'Démarrer la séance';
-
-  @override
-  String get runStartWorkoutSubtitle =>
-      'Courez avec des objectifs d\'étape en direct, des indications audio et un bilan prévu/réalisé.';
-
-  @override
-  String get runViewWorkoutDetails => 'Voir les détails';
-
-  @override
   String get runWorkoutNoStructure =>
       'Cette séance n\'a aucune structure exécutable.';
 
@@ -6727,6 +6717,20 @@ class AppLocalizationsFr extends AppLocalizations {
       'Impossible de dissocier la course. Réessayez.';
 
   @override
+  String get workoutMarkNotDone => 'Marquer comme non fait';
+
+  @override
+  String get workoutMarkNotDoneTitle => 'Marquer comme non fait ?';
+
+  @override
+  String get workoutMarkNotDoneBody =>
+      'La séance s\'affichera comme pas encore faite.';
+
+  @override
+  String get workoutMarkNotDoneError =>
+      'Impossible de mettre à jour la séance. Réessayez.';
+
+  @override
   String get workoutSkipped => 'Ignoré';
 
   @override
@@ -10219,13 +10223,17 @@ class AppLocalizationsFr extends AppLocalizations {
   String get workoutEditKindLabel => 'Type';
 
   @override
-  String get workoutEditDistanceLabel => 'Distance cible (km)';
+  String workoutEditDistanceLabel(String unit) {
+    return 'Distance cible ($unit)';
+  }
 
   @override
   String get workoutEditDistanceHint => 'ex. 8.0';
 
   @override
-  String get workoutEditPaceLabel => 'Allure cible (mm:ss /km)';
+  String workoutEditPaceLabel(String unit) {
+    return 'Allure cible (mm:ss /$unit)';
+  }
 
   @override
   String get workoutEditPaceHint => 'ex. 5:30';
@@ -10268,7 +10276,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get workoutEditSave => 'Enregistrer';
 
   @override
-  String get workoutEditErrDistance => 'Saisissez une distance positive en km';
+  String workoutEditErrDistance(String unit) {
+    return 'Saisissez une distance positive en $unit';
+  }
 
   @override
   String get workoutEditErrPace => 'L\'allure doit ressembler à 5:30';
@@ -10573,13 +10583,29 @@ class AppLocalizationsFr extends AppLocalizations {
   String get ttsStepLastFifty => 'Plus que cinquante mètres';
 
   @override
-  String ttsPaceDriftAhead(int delta) {
-    return 'Relâchez un peu — $delta secondes trop rapide.';
+  String get ttsStepLastFiftyYards => 'Plus que cinquante yards';
+
+  @override
+  String get ttsStepLastTenSeconds => 'Plus que dix secondes';
+
+  @override
+  String ttsPaceDriftAheadKm(int delta) {
+    return 'Relâchez un peu — $delta secondes par kilomètre trop rapide.';
   }
 
   @override
-  String ttsPaceDriftBehind(int delta) {
-    return 'Accélérez un peu — $delta secondes trop lent.';
+  String ttsPaceDriftAheadMi(int delta) {
+    return 'Relâchez un peu — $delta secondes par mile trop rapide.';
+  }
+
+  @override
+  String ttsPaceDriftBehindKm(int delta) {
+    return 'Accélérez un peu — $delta secondes par kilomètre trop lent.';
+  }
+
+  @override
+  String ttsPaceDriftBehindMi(int delta) {
+    return 'Accélérez un peu — $delta secondes par mile trop lent.';
   }
 
   @override
@@ -10653,6 +10679,12 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get ttsStepCooldown => 'Retour au calme';
+
+  @override
+  String get ttsStepWarmupWalk => 'Marche d\'échauffement';
+
+  @override
+  String get ttsStepCooldownWalk => 'Marche de retour au calme';
 
   @override
   String get ttsStepRep => 'Répétition';
@@ -16908,4 +16940,25 @@ class AppLocalizationsFr extends AppLocalizations {
   String seasonPlanRowInvalid(int n) {
     return 'La course $n doit avoir un nom, un jour de course, une distance, et soit aucun temps visé, soit un temps au format h:mm:ss.';
   }
+
+  @override
+  String get workoutMoveAction => 'Déplacer à un autre jour';
+
+  @override
+  String get workoutMoveHint =>
+      'Choisis un jour de cette semaine. Une séance déjà prévue ce jour-là prend le jour que celle-ci libère.';
+
+  @override
+  String workoutMoveSwapsWith(String kind) {
+    return 'Échange avec $kind';
+  }
+
+  @override
+  String workoutMoveError(String error) {
+    return 'Impossible de déplacer cette séance : $error';
+  }
+
+  @override
+  String get workoutMoveSaveFirst =>
+      'Enregistre ou annule tes modifications avant de déplacer cette séance.';
 }

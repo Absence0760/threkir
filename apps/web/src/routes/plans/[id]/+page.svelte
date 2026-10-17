@@ -23,6 +23,7 @@
 	} from '#lib/core/data.ts';
 	import { recoveryWorkoutPatch } from '#lib/training/plan_bulk_ops.ts';
 	import { planShiftImpact } from '#lib/training/plan_shift.ts';
+	import { workoutMoveDays } from '#lib/training/plan_move.ts';
 	import { cyclePlanWorkoutPatch, type CyclePlanConfig } from '#lib/training/cycle_plan.ts';
 	import { isCyclePlansEnabled } from '#lib/training/cycle_plan_flag.ts';
 	import { replanRemaining, type ReplanChange, type ReplanWeek } from '#lib/training/plan_replan.ts';
@@ -960,6 +961,16 @@
 
 	let today = $derived(todayISO());
 
+	/// The days the workout being edited can move to (plan_move.ts, decisions
+	/// § 2073). Only the owner is offered the move.
+	let editingMoveDays = $derived.by(() => {
+		const wo = editing;
+		if (!plan || !wo || !isOwner) return [];
+		const week = weeks.find((w) => w.id === wo.week_id);
+		if (!week) return [];
+		return workoutMoveDays(plan.start_date, plan.end_date, week.week_index, wo, workouts, today);
+	});
+
 	/// Every race the plan builds toward (plan_races.ts, decisions § 2009); the
 	/// countdown, race-week panel and hero relation follow the next one, so a
 	/// B race mid-block gets its own run-in before the plan's A race.
@@ -1862,6 +1873,7 @@
 {#if editing}
 	<WorkoutEditor
 		workout={editing}
+		moveDays={editingMoveDays}
 		onClose={() => (editing = null)}
 		onSaved={async () => {
 			editing = null;

@@ -188,8 +188,7 @@ class _PlanCalendarState extends State<PlanCalendar> {
 
     final kind = wo == null ? null : workoutKindFromDb(wo.kind);
     final kindMark = kind == null ? null : workoutKindMarkColor(theme, kind);
-    final isDone =
-        hasWorkout && (wo.completedRunId != null || wo.manuallyCompleted);
+    final isDone = hasWorkout && isWorkoutCompleted(wo);
 
     final base = Container(
       margin: const EdgeInsets.all(2),

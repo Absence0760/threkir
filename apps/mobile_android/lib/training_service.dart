@@ -48,9 +48,17 @@ typedef PlanWorkoutRaceFields = ({
   int? goalTimeSec,
 });
 
+/// A workout's distance and pace targets, written together by
+/// [TrainingService.updateWorkout]: a null field clears its column, so an
+/// emptied field in the edit sheet removes the target instead of keeping it.
+typedef PlanWorkoutTargets = ({double? distanceM, int? paceSecPerKm});
+
 /// The `plan_workouts` patch [TrainingService.updateWorkout] sends. A null
-/// argument leaves its column alone, except inside [race]: that writes the
-/// race name, priority and goal time as given, nulls included. A [kind]
+/// argument leaves its column alone, except inside [race] and [targets]:
+/// those write their columns as given, nulls included. A `rest` [kind]
+/// clears every target (distance, pace, pace range, tolerance, zone and
+/// structure), as web's `WorkoutEditor` does, so a day switched to rest
+/// cannot keep the tempo it used to be. A [kind]
 /// other than `race` clears the race name and priority instead, since the
 /// table allows them only on race rows (23514 otherwise), and when the row
 /// was a race ([fromKind]) it clears the race's goal time too, so a former
@@ -61,8 +69,7 @@ typedef PlanWorkoutRaceFields = ({
 Map<String, dynamic> planWorkoutPatch({
   String? kind,
   String? fromKind,
-  double? targetDistanceM,
-  int? targetPaceSecPerKm,
+  PlanWorkoutTargets? targets,
   String? notes,
   PlanWorkoutRaceFields? race,
 }) {
@@ -79,11 +86,16 @@ Map<String, dynamic> planWorkoutPatch({
     patch[PlanWorkoutRow.colRacePriority] = race.priority;
     patch[PlanWorkoutRow.colTargetDurationSeconds] = race.goalTimeSec;
   }
-  if (targetDistanceM != null) {
-    patch[PlanWorkoutRow.colTargetDistanceM] = targetDistanceM;
-  }
-  if (targetPaceSecPerKm != null) {
-    patch[PlanWorkoutRow.colTargetPaceSecPerKm] = targetPaceSecPerKm;
+  if (kind == 'rest') {
+    patch[PlanWorkoutRow.colTargetDistanceM] = null;
+    patch[PlanWorkoutRow.colTargetPaceSecPerKm] = null;
+    patch[PlanWorkoutRow.colTargetPaceEndSecPerKm] = null;
+    patch[PlanWorkoutRow.colTargetPaceToleranceSec] = null;
+    patch[PlanWorkoutRow.colPaceZone] = null;
+    patch[PlanWorkoutRow.colStructure] = null;
+  } else if (targets != null) {
+    patch[PlanWorkoutRow.colTargetDistanceM] = targets.distanceM;
+    patch[PlanWorkoutRow.colTargetPaceSecPerKm] = targets.paceSecPerKm;
   }
   if (notes != null) {
     patch[PlanWorkoutRow.colNotes] = TrainingService.trimToNull(notes);
@@ -700,7 +712,7 @@ class TrainingService extends ChangeNotifier {
         .firstOrNull;
     final active = res.workouts.where((w) => w.kind != 'rest').toList();
     final done = active
-        .where((w) => w.completedRunId != null || w.manuallyCompleted)
+        .where(isWorkoutCompleted)
         .length;
     final pct = active.isEmpty ? 0 : (100 * done / active.length).round();
     // Whole-epoch-day bucketing, not a wall-clock difference: a start→today
@@ -1113,22 +1125,33 @@ class TrainingService extends ChangeNotifier {
     String workoutId, {
     String? kind,
     String? fromKind,
-    double? targetDistanceM,
-    int? targetPaceSecPerKm,
+    PlanWorkoutTargets? targets,
     String? notes,
     PlanWorkoutRaceFields? race,
   }) async {
     final patch = planWorkoutPatch(
       kind: kind,
       fromKind: fromKind,
-      targetDistanceM: targetDistanceM,
-      targetPaceSecPerKm: targetPaceSecPerKm,
+      targets: targets,
       notes: notes,
       race: race,
     );
     if (patch.isEmpty) return;
     await _c.from(PlanWorkoutRow.table).update(patch).eq('id', workoutId);
     notifyListeners();
+  }
+
+  /// Move a planned workout to another day of its week through
+  /// `move_plan_workout` (decisions § 2073). When [dateIso] already holds a
+  /// row, the two trade days; returns the swapped workout's id, or null when
+  /// the day was free. Web `movePlanWorkout` twin.
+  Future<String?> moveWorkout(String workoutId, String dateIso) async {
+    final swapped = await _c.rpc('move_plan_workout', params: {
+      'p_workout_id': workoutId,
+      'p_date': dateIso,
+    });
+    notifyListeners();
+    return swapped as String?;
   }
 
   /// Pure helper: trim a string then collapse empty-after-trim to

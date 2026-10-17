@@ -13,7 +13,7 @@
 	} from '#lib/core/data.ts';
 	import { fmtHms, isWorkoutCompleted, isWorkoutSkipped } from '#lib/training/training.ts';
 	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
-	import { fmtKm, fmtPace } from '#lib/format/units.svelte.ts';
+	import { fmtKm, fmtPace, fmtPaceTolerance } from '#lib/format/units.svelte.ts';
 	import { formatDateShort } from '#lib/format/time.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import Modal from '#lib/components/Modal.svelte';
@@ -327,7 +327,7 @@
 							</strong>
 							<span class="pace-extras">
 								{#if workout.target_pace_tolerance_sec}
-									<span class="tol">±{workout.target_pace_tolerance_sec}s</span>
+									<span class="tol">{fmtPaceTolerance(workout.target_pace_tolerance_sec)}</span>
 								{/if}
 								{#if workout.pace_zone}
 									<span class="zone">{workout.pace_zone}</span>
@@ -498,9 +498,11 @@
 
 <ConfirmDialog
 	open={showUnlinkConfirm}
-	title={t('workoutDetail.unlinkRunTitle')}
-	message={t('workoutDetail.unlinkRunMessage')}
-	confirmLabel={t('workoutDetail.unlink')}
+	title={workout?.completed_run_id ? t('workoutDetail.unlinkRunTitle') : t('workoutDetail.markNotDoneTitle')}
+	message={workout?.completed_run_id
+		? t('workoutDetail.unlinkRunMessage')
+		: t('workoutDetail.markNotDoneMessage')}
+	confirmLabel={workout?.completed_run_id ? t('workoutDetail.unlink') : t('workoutDetail.markNotDone')}
 	onconfirm={confirmUnlink}
 	oncancel={() => showUnlinkConfirm = false}
 	danger

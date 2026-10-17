@@ -355,7 +355,8 @@ void main() {
     });
 
     test('emits halfway and last-50m progress cues once each', () async {
-      final runner = WorkoutRunner(steps: [_step(distance: 1000)]);
+      final runner = WorkoutRunner(
+          steps: [_step(kind: WorkoutStepKind.rep, distance: 1000)]);
       final progress = <StepProgressKind>[];
       runner.events.listen((e) {
         if (e is StepProgressEvent) progress.add(e.kind);
@@ -371,6 +372,46 @@ void main() {
 
       expect(progress, [StepProgressKind.halfway, StepProgressKind.lastFiftyMetres]);
       runner.dispose();
+    });
+
+    test('halfway plays only on a paced rep', () async {
+      Future<List<StepProgressKind>> run(WorkoutStep step) async {
+        final runner = WorkoutRunner(steps: [step]);
+        final progress = <StepProgressKind>[];
+        runner.events.listen((e) {
+          if (e is StepProgressEvent) progress.add(e.kind);
+        });
+        runner.onSnapshot(_snap(distance: 0, elapsedSec: 0));
+        runner.onSnapshot(_snap(distance: 600, elapsedSec: 300));
+        await Future<void>.delayed(Duration.zero);
+        runner.dispose();
+        return progress;
+      }
+
+      for (final kind in [
+        WorkoutStepKind.warmup,
+        WorkoutStepKind.recovery,
+        WorkoutStepKind.walk,
+        WorkoutStepKind.steady,
+        WorkoutStepKind.cooldown,
+      ]) {
+        expect(await run(_step(kind: kind, distance: 1000)), isEmpty,
+            reason: '$kind is not a rep');
+      }
+      // A walk-run "Run" interval is a rep, but an unpaced one.
+      expect(
+        await run(const WorkoutStep(
+          kind: WorkoutStepKind.rep,
+          targetDistanceMetres: 0,
+          targetDurationSec: 480,
+          targetPaceSecPerKm: 420,
+          label: 'Run 1/3',
+          paced: false,
+        )),
+        isEmpty,
+      );
+      expect(await run(_step(kind: WorkoutStepKind.rep, distance: 1000)),
+          [StepProgressKind.halfway]);
     });
   });
 
@@ -575,8 +616,10 @@ void main() {
       long.onSnapshot(_snap(distance: 0, elapsedSec: 0));
       long.onSnapshot(_snap(distance: 250, elapsedSec: 51)); // last 10s
       await Future<void>.delayed(Duration.zero);
-      expect(longProg.contains(StepProgressKind.lastFiftyMetres), isTrue,
+      expect(longProg, contains(StepProgressKind.lastTenSeconds),
           reason: 'fires once 60 - 51 = 9 ≤ 10');
+      expect(longProg, isNot(contains(StepProgressKind.lastFiftyMetres)),
+          reason: 'a timed step never hears a distance countdown');
 
       // Short step (≤ 20 s): cue collides with halfway, suppressed.
       final short = WorkoutRunner(steps: [_durStep(durationSec: 15)]);
@@ -587,7 +630,7 @@ void main() {
       short.onSnapshot(_snap(distance: 0, elapsedSec: 0));
       short.onSnapshot(_snap(distance: 50, elapsedSec: 10));
       await Future<void>.delayed(Duration.zero);
-      expect(shortProg.contains(StepProgressKind.lastFiftyMetres), isFalse,
+      expect(shortProg.contains(StepProgressKind.lastTenSeconds), isFalse,
           reason: 'duration ≤ 20 s gates the cue off');
       long.dispose();
       short.dispose();
@@ -842,6 +885,22 @@ void main() {
   });
 
   group('Pace adherence', () {
+    test('owns the pace cues until the workout completes or is abandoned', () {
+      final done = WorkoutRunner(steps: [_step(distance: 400)]);
+      expect(done.ownsPaceCues, isTrue, reason: 'armed before the first fix');
+      done.onSnapshot(_snap(distance: 0, elapsedSec: 0));
+      expect(done.ownsPaceCues, isTrue);
+      done.onSnapshot(_snap(distance: 400, elapsedSec: 100));
+      expect(done.ownsPaceCues, isFalse, reason: 'free run after the last step');
+      done.dispose();
+
+      final quit = WorkoutRunner(steps: [_step(distance: 400)]);
+      quit.onSnapshot(_snap(distance: 0, elapsedSec: 0));
+      quit.abandon();
+      expect(quit.ownsPaceCues, isFalse);
+      quit.dispose();
+    });
+
     test('flags wayBehind when 35s/km off target', () {
       final runner = WorkoutRunner(steps: [_step(distance: 400, pace: 240)]);
       runner.onSnapshot(_snap(distance: 0, elapsedSec: 0));

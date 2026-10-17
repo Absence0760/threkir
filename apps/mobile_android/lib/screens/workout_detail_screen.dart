@@ -99,14 +99,21 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   // Unlinking the matched run resets the plan's progress for this workout,
   // so it confirms first (parity with web's ConfirmDialog) and surfaces a
   // failure instead of swallowing it. Guarded against a double-tap.
-  Future<void> _confirmUnlink() async {
+  //
+  // A workout marked done by hand has no run to unlink; the same path clears
+  // the mark, under copy that says so. Mobile has no "mark done", so the
+  // confirm stays: the runner could not put it back from here.
+  Future<void> _confirmUnlink(PlanWorkoutRow w) async {
     if (_unlinking) return;
     final l10n = AppLocalizations.of(context);
+    final hasRun = w.completedRunId != null;
     final ok = await showDialog<bool>(
           context: context,
           builder: (_) => AlertDialog(
-            title: Text(l10n.workoutUnlinkTitle),
-            content: Text(l10n.workoutUnlinkBody),
+            title: Text(
+                hasRun ? l10n.workoutUnlinkTitle : l10n.workoutMarkNotDoneTitle),
+            content: Text(
+                hasRun ? l10n.workoutUnlinkBody : l10n.workoutMarkNotDoneBody),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
@@ -116,7 +123,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                 onPressed: () => Navigator.pop(context, true),
                 style: TextButton.styleFrom(
                     foregroundColor: Theme.of(context).colorScheme.error),
-                child: Text(l10n.workoutUnlink),
+                child: Text(
+                    hasRun ? l10n.workoutUnlink : l10n.workoutMarkNotDone),
               ),
             ],
           ),
@@ -129,7 +137,10 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       await _load();
     } catch (e, s) {
       debugPrint('WorkoutDetailScreen._confirmUnlink failed: $e\n$s');
-      if (mounted) showTopBanner(context, l10n.workoutUnlinkError);
+      if (mounted) {
+        showTopBanner(context,
+            hasRun ? l10n.workoutUnlinkError : l10n.workoutMarkNotDoneError);
+      }
     } finally {
       if (mounted) setState(() => _unlinking = false);
     }
@@ -238,7 +249,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                 ),
             ],
           ),
-          if (w.completedRunId != null) ...[
+          if (isWorkoutCompleted(w)) ...[
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
@@ -258,13 +269,16 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                         fontWeight: FontWeight.w700,
                       )),
                   const SizedBox(width: 12),
+                  if (w.completedRunId != null)
+                    TextButton(
+                      onPressed: () => _openRelinkPicker(w),
+                      child: Text(l10n.workoutRelink),
+                    ),
                   TextButton(
-                    onPressed: () => _openRelinkPicker(w),
-                    child: Text(l10n.workoutRelink),
-                  ),
-                  TextButton(
-                    onPressed: _unlinking ? null : _confirmUnlink,
-                    child: Text(l10n.workoutUnlink),
+                    onPressed: _unlinking ? null : () => _confirmUnlink(w),
+                    child: Text(w.completedRunId != null
+                        ? l10n.workoutUnlink
+                        : l10n.workoutMarkNotDone),
                   ),
                 ],
               ),
@@ -373,7 +387,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                     ?.copyWith(fontWeight: FontWeight.w700)),
             if (tolerance != null) ...[
               const SizedBox(width: 4),
-              Text('±${tolerance}s',
+              Text(fmtPaceTolerance(tolerance),
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   )),

@@ -13,7 +13,7 @@
 import type { PreferredUnit } from '../types';
 import { currentLocale } from '../i18n/store.svelte';
 import { formatDecimal, formatInteger } from './number';
-import { paceMinutesSeconds, isMeaningfulPace } from './pace_format';
+import { paceMinutesSeconds, isMeaningfulPace, paceToleranceLabel } from './pace_format';
 import {
 	type WeightUnit,
 	parseWeightUnit,
@@ -172,4 +172,9 @@ export function fmtPace(secPerKm: number | null | undefined): string {
 	if (secPerKm == null || !Number.isFinite(secPerKm) || secPerKm <= 0) return '—';
 	const sec = unit.value === 'mi' ? secPerKm * (METRES_PER_MILE / 1000) : secPerKm;
 	return `${paceMinutesSeconds(sec)}/${unit.value}`;
+}
+
+/// Plan-surface pace tolerance, in the same unit `fmtPace` shows the pace in.
+export function fmtPaceTolerance(secPerKm: number): string {
+	return paceToleranceLabel(secPerKm, unit.value);
 }

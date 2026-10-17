@@ -1074,17 +1074,21 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                 .announceWorkoutStepTransition(e.step, widget.preferences.unit));
       }
     } else if (e is StepProgressEvent) {
-      // Chatty in-rep progress ("halfway", "fifty metres to go") — dropped
+      // Chatty in-rep progress ("halfway", "ten seconds to go") — dropped
       // in minimal voice-feedback mode (round-5 older).
       if (widget.preferences.audioCues && _workoutCuesEnabled && _voiceVerbose) {
-        _ttsCue('announceWorkoutStepProgress',
-            () => widget.audioCues.announceWorkoutStepProgress(e.step, e.kind));
+        _ttsCue(
+            'announceWorkoutStepProgress',
+            () => widget.audioCues.announceWorkoutStepProgress(
+                e.kind, widget.preferences.unit));
       }
     } else if (e is PaceDriftEvent) {
       // Pace-drift nudge — also dropped in minimal mode.
       if (widget.preferences.audioCues && _workoutCuesEnabled && _voiceVerbose) {
-        _ttsCue('announceWorkoutPaceDrift',
-            () => widget.audioCues.announceWorkoutPaceDrift(e));
+        _ttsCue(
+            'announceWorkoutPaceDrift',
+            () => widget.audioCues
+                .announceWorkoutPaceDrift(e, widget.preferences.unit));
       }
     } else if (e is WorkoutCompleteEvent) {
       _publishWorkoutBand();
@@ -2934,7 +2938,11 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       // L4 — Pace alert (skip for cycling — pace target doesn't apply).
       // With an active race-strategy phase the phase's derived target pace
       // takes over from the static preference, and the cue speaks
-      // the correction amount instead of a bare "speed up".
+      // the correction amount instead of a bare "speed up". While a
+      // structured workout is live its runner owns the pace cues — each
+      // step's own target and tolerance, or none on a walk-run — so this
+      // alert stands down until the workout completes or is abandoned
+      // (decisions § 2075).
       try {
         final phaseTarget = _phasePlan.isNotEmpty && _phaseIndex >= 0
             ? phaseTargetPaceSecPerKm(
@@ -2947,7 +2955,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
             _pace != null &&
             widget.preferences.audioCues &&
             widget.preferences.voiceCueEnabled(VoiceCue.paceAlerts) &&
-            !_paceCuesMuted) {
+            !_paceCuesMuted &&
+            !(_workoutRunner?.ownsPaceCues ?? false)) {
           final diff = _pace! - target;
           final lastAlert = _lastPaceAlertAt;
           final canAlert = lastAlert == null ||
@@ -4285,53 +4294,24 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     goalCtrl.dispose();
   }
 
-  /// Bottom-sheet picker shown when the user taps today's-workout card.
-  /// "Start workout" loads the structured runner inline; "View details"
-  /// pushes the existing detail screen.
-  Future<void> _showWorkoutEntryChoice(
+  /// Today's-workout card tap: open the workout detail. The card's own
+  /// Start button loads the runner, so a tap no longer asks Start or Details,
+  /// and a workout already done or skipped never offers Start (#1186). The
+  /// detail screen pops with the row when its own Start is tapped.
+  Future<void> _openTodayWorkoutDetail(
       PlanWorkoutRow wo, String planId) async {
-    final choice = await showModalBottomSheet<String>(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.play_arrow),
-              title: Text(_l10n.runStartWorkout),
-              subtitle: Text(_l10n.runStartWorkoutSubtitle),
-              onTap: () => Navigator.pop(ctx, 'start'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.info_outline),
-              title: Text(_l10n.runViewWorkoutDetails),
-              onTap: () => Navigator.pop(ctx, 'detail'),
-            ),
-          ],
+    final result = await Navigator.of(context).push<PlanWorkoutRow?>(
+      MaterialPageRoute<PlanWorkoutRow?>(
+        builder: (_) => WorkoutDetailScreen(
+          training: widget.training,
+          planId: planId,
+          workoutId: wo.id,
         ),
       ),
     );
-    if (!mounted) return;
-    switch (choice) {
-      case 'start':
-        await _startStructuredWorkout(wo);
-      case 'detail':
-        // The detail screen pops with the PlanWorkoutRow when the user
-        // taps "Start workout" — pick that up and load the runner so
-        // the user lands back on the run tab, ready to tap GO.
-        final result = await Navigator.of(context).push<PlanWorkoutRow?>(
-          MaterialPageRoute<PlanWorkoutRow?>(
-            builder: (_) => WorkoutDetailScreen(
-              training: widget.training,
-              planId: planId,
-              workoutId: wo.id,
-            ),
-          ),
-        );
-        _refreshPlanOverview();
-        if (result != null && mounted) {
-          await _startStructuredWorkout(result);
-        }
+    _refreshPlanOverview();
+    if (result != null && mounted) {
+      await _startStructuredWorkout(result);
     }
   }
 
@@ -4716,10 +4696,12 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                           padding: const EdgeInsets.only(bottom: 8),
                           child: TodaysWorkoutCard(
                             workout: _planOverview!.todayWorkout!,
-                            onTap: () => _showWorkoutEntryChoice(
+                            onTap: () => _openTodayWorkoutDetail(
                               _planOverview!.todayWorkout!,
                               _planOverview!.plan.id,
                             ),
+                            onStart: () => _startStructuredWorkout(
+                                _planOverview!.todayWorkout!),
                           ),
                         ),
                       if (lastRun != null)

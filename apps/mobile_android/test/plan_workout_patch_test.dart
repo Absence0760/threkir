@@ -62,9 +62,34 @@ void main() {
 
   test('planWorkoutPatch: absent arguments leave their columns alone', () {
     expect(planWorkoutPatch(), isEmpty);
-    expect(planWorkoutPatch(targetDistanceM: 8000, notes: '  '), {
-      'target_distance_m': 8000.0,
-      'notes': null,
-    });
+    expect(
+        planWorkoutPatch(
+            targets: (distanceM: 8000, paceSecPerKm: null), notes: '  '),
+        {
+          'target_distance_m': 8000.0,
+          'target_pace_sec_per_km': null,
+          'notes': null,
+        });
+  });
+
+  test('planWorkoutPatch: a rest kind clears every target', () {
+    expect(
+      planWorkoutPatch(
+        kind: 'rest',
+        fromKind: 'tempo',
+        targets: (distanceM: 8000, paceSecPerKm: 300),
+      ),
+      {
+        'kind': 'rest',
+        'race_name': null,
+        'race_priority': null,
+        'target_distance_m': null,
+        'target_pace_sec_per_km': null,
+        'target_pace_end_sec_per_km': null,
+        'target_pace_tolerance_sec': null,
+        'pace_zone': null,
+        'structure': null,
+      },
+    );
   });
 }

@@ -1983,16 +1983,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runResumeDiscardedBanner => 'Discarded your previous run.';
 
   @override
-  String get runStartWorkout => 'Start workout';
-
-  @override
-  String get runStartWorkoutSubtitle =>
-      'Run with live step targets, audio cues, and a planned-vs-actual review.';
-
-  @override
-  String get runViewWorkoutDetails => 'View details';
-
-  @override
   String get runWorkoutNoStructure => 'This workout has no runnable structure.';
 
   @override
@@ -6650,6 +6640,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workoutUnlinkError => 'Couldn\'t unlink the run. Try again.';
 
   @override
+  String get workoutMarkNotDone => 'Mark not done';
+
+  @override
+  String get workoutMarkNotDoneTitle => 'Mark not done?';
+
+  @override
+  String get workoutMarkNotDoneBody => 'The workout will show as not yet done.';
+
+  @override
+  String get workoutMarkNotDoneError =>
+      'Couldn\'t update the workout. Try again.';
+
+  @override
   String get workoutSkipped => 'Skipped';
 
   @override
@@ -10091,13 +10094,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workoutEditKindLabel => 'Kind';
 
   @override
-  String get workoutEditDistanceLabel => 'Target distance (km)';
+  String workoutEditDistanceLabel(String unit) {
+    return 'Target distance ($unit)';
+  }
 
   @override
   String get workoutEditDistanceHint => 'e.g. 8.0';
 
   @override
-  String get workoutEditPaceLabel => 'Target pace (mm:ss /km)';
+  String workoutEditPaceLabel(String unit) {
+    return 'Target pace (mm:ss /$unit)';
+  }
 
   @override
   String get workoutEditPaceHint => 'e.g. 5:30';
@@ -10139,7 +10146,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workoutEditSave => 'Save';
 
   @override
-  String get workoutEditErrDistance => 'Enter a positive distance in km';
+  String workoutEditErrDistance(String unit) {
+    return 'Enter a positive distance in $unit';
+  }
 
   @override
   String get workoutEditErrPace => 'Pace must look like 5:30';
@@ -10442,13 +10451,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ttsStepLastFifty => 'Fifty metres to go';
 
   @override
-  String ttsPaceDriftAhead(int delta) {
-    return 'Ease up — $delta seconds ahead pace.';
+  String get ttsStepLastFiftyYards => 'Fifty yards to go';
+
+  @override
+  String get ttsStepLastTenSeconds => 'Ten seconds to go';
+
+  @override
+  String ttsPaceDriftAheadKm(int delta) {
+    return 'Ease up — $delta seconds per kilometre ahead of pace.';
   }
 
   @override
-  String ttsPaceDriftBehind(int delta) {
-    return 'Pick it up — $delta seconds behind pace.';
+  String ttsPaceDriftAheadMi(int delta) {
+    return 'Ease up — $delta seconds per mile ahead of pace.';
+  }
+
+  @override
+  String ttsPaceDriftBehindKm(int delta) {
+    return 'Pick it up — $delta seconds per kilometre behind pace.';
+  }
+
+  @override
+  String ttsPaceDriftBehindMi(int delta) {
+    return 'Pick it up — $delta seconds per mile behind pace.';
   }
 
   @override
@@ -10522,6 +10547,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get ttsStepCooldown => 'Cooldown';
+
+  @override
+  String get ttsStepWarmupWalk => 'Warm-up walk';
+
+  @override
+  String get ttsStepCooldownWalk => 'Cool-down walk';
 
   @override
   String get ttsStepRep => 'Rep';
@@ -16697,4 +16728,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String seasonPlanRowInvalid(int n) {
     return 'Race $n needs a name, a race day, a distance, and either no goal time or one written h:mm:ss.';
   }
+
+  @override
+  String get workoutMoveAction => 'Move to another day';
+
+  @override
+  String get workoutMoveHint =>
+      'Pick a day in this week. A workout already on that day takes this one\'s old day.';
+
+  @override
+  String workoutMoveSwapsWith(String kind) {
+    return 'Swaps with $kind';
+  }
+
+  @override
+  String workoutMoveError(String error) {
+    return 'Couldn\'t move this workout: $error';
+  }
+
+  @override
+  String get workoutMoveSaveFirst =>
+      'Save or discard your changes before moving this workout.';
 }

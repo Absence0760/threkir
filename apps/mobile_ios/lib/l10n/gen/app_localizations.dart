@@ -3449,24 +3449,6 @@ abstract class AppLocalizations {
   /// **'Discarded your previous run.'**
   String get runResumeDiscardedBanner;
 
-  /// Option in the workout-entry sheet to begin a structured workout
-  ///
-  /// In en, this message translates to:
-  /// **'Start workout'**
-  String get runStartWorkout;
-
-  /// Subtitle of the Start-workout option in the workout-entry sheet
-  ///
-  /// In en, this message translates to:
-  /// **'Run with live step targets, audio cues, and a planned-vs-actual review.'**
-  String get runStartWorkoutSubtitle;
-
-  /// Option in the workout-entry sheet to open the workout detail screen
-  ///
-  /// In en, this message translates to:
-  /// **'View details'**
-  String get runViewWorkoutDetails;
-
   /// Banner shown when a selected workout has no runnable steps
   ///
   /// In en, this message translates to:
@@ -10900,6 +10882,30 @@ abstract class AppLocalizations {
   /// **'Couldn\'t unlink the run. Try again.'**
   String get workoutUnlinkError;
 
+  /// Button on a workout the runner marked done by hand (no linked run); clears the done mark
+  ///
+  /// In en, this message translates to:
+  /// **'Mark not done'**
+  String get workoutMarkNotDone;
+
+  /// Confirm dialog title before clearing a hand-marked done workout
+  ///
+  /// In en, this message translates to:
+  /// **'Mark not done?'**
+  String get workoutMarkNotDoneTitle;
+
+  /// Confirm dialog body before clearing a hand-marked done workout
+  ///
+  /// In en, this message translates to:
+  /// **'The workout will show as not yet done.'**
+  String get workoutMarkNotDoneBody;
+
+  /// Error banner when clearing a hand-marked done workout fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t update the workout. Try again.'**
+  String get workoutMarkNotDoneError;
+
   /// Skipped badge on workout detail
   ///
   /// In en, this message translates to:
@@ -16623,11 +16629,11 @@ abstract class AppLocalizations {
   /// **'Kind'**
   String get workoutEditKindLabel;
 
-  /// Label for the target distance field (km)
+  /// Label for the target distance field, in the runner's distance unit
   ///
   /// In en, this message translates to:
-  /// **'Target distance (km)'**
-  String get workoutEditDistanceLabel;
+  /// **'Target distance ({unit})'**
+  String workoutEditDistanceLabel(String unit);
 
   /// Example hint for the target distance field
   ///
@@ -16635,11 +16641,11 @@ abstract class AppLocalizations {
   /// **'e.g. 8.0'**
   String get workoutEditDistanceHint;
 
-  /// Label for the target pace field
+  /// Label for the target pace field, per the runner's distance unit
   ///
   /// In en, this message translates to:
-  /// **'Target pace (mm:ss /km)'**
-  String get workoutEditPaceLabel;
+  /// **'Target pace (mm:ss /{unit})'**
+  String workoutEditPaceLabel(String unit);
 
   /// Example hint for the target pace field
   ///
@@ -16722,8 +16728,8 @@ abstract class AppLocalizations {
   /// Validation error for the distance field
   ///
   /// In en, this message translates to:
-  /// **'Enter a positive distance in km'**
-  String get workoutEditErrDistance;
+  /// **'Enter a positive distance in {unit}'**
+  String workoutEditErrDistance(String unit);
 
   /// Validation error for the pace field
   ///
@@ -17247,29 +17253,53 @@ abstract class AppLocalizations {
   /// **'Workout complete. Nice work.'**
   String get ttsWorkoutComplete;
 
-  /// Spoken in-step progress cue at the halfway point
+  /// Spoken in-step progress cue at the halfway point of a paced interval rep (never on a warm-up, recovery, steady block or walk-run interval)
   ///
   /// In en, this message translates to:
   /// **'Halfway through this rep'**
   String get ttsStepHalfway;
 
-  /// Spoken in-step progress cue near the end of a rep
+  /// Spoken in-step progress cue in the last 50 m of a distance rep, for a runner who uses kilometres
   ///
   /// In en, this message translates to:
   /// **'Fifty metres to go'**
   String get ttsStepLastFifty;
 
-  /// Spoken nudge when the runner is ahead of target pace by delta seconds per km
+  /// Spoken in-step progress cue near the end of a distance rep, for a runner who uses miles (the cue fires inside the last 50 m, about 55 yards)
   ///
   /// In en, this message translates to:
-  /// **'Ease up — {delta} seconds ahead pace.'**
-  String ttsPaceDriftAhead(int delta);
+  /// **'Fifty yards to go'**
+  String get ttsStepLastFiftyYards;
 
-  /// Spoken nudge when the runner is behind target pace by delta seconds per km
+  /// Spoken in-step progress cue in the last ten seconds of a timed step (a walk-run interval, a timed rep or a timed warm-up)
   ///
   /// In en, this message translates to:
-  /// **'Pick it up — {delta} seconds behind pace.'**
-  String ttsPaceDriftBehind(int delta);
+  /// **'Ten seconds to go'**
+  String get ttsStepLastTenSeconds;
+
+  /// Spoken nudge during a structured-workout step when the runner is ahead of the step's target pace by delta seconds per kilometre
+  ///
+  /// In en, this message translates to:
+  /// **'Ease up — {delta} seconds per kilometre ahead of pace.'**
+  String ttsPaceDriftAheadKm(int delta);
+
+  /// Spoken nudge during a structured-workout step when the runner is ahead of the step's target pace by delta seconds per mile
+  ///
+  /// In en, this message translates to:
+  /// **'Ease up — {delta} seconds per mile ahead of pace.'**
+  String ttsPaceDriftAheadMi(int delta);
+
+  /// Spoken nudge during a structured-workout step when the runner is behind the step's target pace by delta seconds per kilometre
+  ///
+  /// In en, this message translates to:
+  /// **'Pick it up — {delta} seconds per kilometre behind pace.'**
+  String ttsPaceDriftBehindKm(int delta);
+
+  /// Spoken nudge during a structured-workout step when the runner is behind the step's target pace by delta seconds per mile
+  ///
+  /// In en, this message translates to:
+  /// **'Pick it up — {delta} seconds per mile behind pace.'**
+  String ttsPaceDriftBehindMi(int delta);
 
   /// Spoken speed in km/h appended to a split cue
   ///
@@ -17366,6 +17396,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cooldown'**
   String get ttsStepCooldown;
+
+  /// Spoken intro of the walking warm-up that opens a walk-run (couch-to-5k) session, said instead of plain 'Warmup' so a beginner knows to walk
+  ///
+  /// In en, this message translates to:
+  /// **'Warm-up walk'**
+  String get ttsStepWarmupWalk;
+
+  /// Spoken intro of the walking cool-down that closes a walk-run (couch-to-5k) session
+  ///
+  /// In en, this message translates to:
+  /// **'Cool-down walk'**
+  String get ttsStepCooldownWalk;
 
   /// Spoken workout-step intro: a rep with no index
   ///
@@ -27660,6 +27702,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Race {n} needs a name, a race day, a distance, and either no goal time or one written h:mm:ss.'**
   String seasonPlanRowInvalid(int n);
+
+  /// Button in the workout editor, and title of the sheet it opens, to move a planned workout to another day of its week
+  ///
+  /// In en, this message translates to:
+  /// **'Move to another day'**
+  String get workoutMoveAction;
+
+  /// Explains the move sheet: days of the same week; a workout already on the chosen day swaps into the moved one's old day
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a day in this week. A workout already on that day takes this one\'s old day.'**
+  String get workoutMoveHint;
+
+  /// Subtitle on a day in the move sheet that already holds a workout; kind is that workout's type (e.g. Rest)
+  ///
+  /// In en, this message translates to:
+  /// **'Swaps with {kind}'**
+  String workoutMoveSwapsWith(String kind);
+
+  /// Inline error when moving a workout fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t move this workout: {error}'**
+  String workoutMoveError(String error);
+
+  /// Shown when the runner taps Move with unsaved edits in the workout editor
+  ///
+  /// In en, this message translates to:
+  /// **'Save or discard your changes before moving this workout.'**
+  String get workoutMoveSaveFirst;
 }
 
 class _AppLocalizationsDelegate

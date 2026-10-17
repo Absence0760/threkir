@@ -2005,16 +2005,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get runResumeDiscardedBanner => 'Vorheriger Lauf verworfen.';
 
   @override
-  String get runStartWorkout => 'Workout starten';
-
-  @override
-  String get runStartWorkoutSubtitle =>
-      'Laufe mit Live-Schrittzielen, Audiohinweisen und einem Soll-Ist-Vergleich.';
-
-  @override
-  String get runViewWorkoutDetails => 'Details ansehen';
-
-  @override
   String get runWorkoutNoStructure =>
       'Dieses Workout hat keine lauffähige Struktur.';
 

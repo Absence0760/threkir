@@ -2586,18 +2586,6 @@
   "@runResumeDiscardedBanner": {
     "description": "Banner shown after the user discards a recovered partial from the resume prompt"
   },
-  "runStartWorkout": "Start workout",
-  "@runStartWorkout": {
-    "description": "Option in the workout-entry sheet to begin a structured workout"
-  },
-  "runStartWorkoutSubtitle": "Run with live step targets, audio cues, and a planned-vs-actual review.",
-  "@runStartWorkoutSubtitle": {
-    "description": "Subtitle of the Start-workout option in the workout-entry sheet"
-  },
-  "runViewWorkoutDetails": "View details",
-  "@runViewWorkoutDetails": {
-    "description": "Option in the workout-entry sheet to open the workout detail screen"
-  },
   "runWorkoutNoStructure": "This workout has no runnable structure.",
   "@runWorkoutNoStructure": {
     "description": "Banner shown when a selected workout has no runnable steps"

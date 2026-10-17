@@ -2002,16 +2002,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get runResumeDiscardedBanner => 'Corrida anterior descartada.';
 
   @override
-  String get runStartWorkout => 'Iniciar treino';
-
-  @override
-  String get runStartWorkoutSubtitle =>
-      'Corra com metas de etapa em direto, avisos de áudio e uma análise de planeado vs. realizado.';
-
-  @override
-  String get runViewWorkoutDetails => 'Ver detalhes';
-
-  @override
   String get runWorkoutNoStructure =>
       'Este treino não tem uma estrutura executável.';
 
@@ -18850,16 +18840,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runResumeDiscardedBanner => 'Corrida anterior descartada.';
-
-  @override
-  String get runStartWorkout => 'Iniciar treino';
-
-  @override
-  String get runStartWorkoutSubtitle =>
-      'Corra com metas de etapa ao vivo, avisos de áudio e uma análise de planejado vs. realizado.';
-
-  @override
-  String get runViewWorkoutDetails => 'Ver detalhes';
 
   @override
   String get runWorkoutNoStructure =>

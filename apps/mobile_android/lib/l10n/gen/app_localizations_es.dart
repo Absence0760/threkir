@@ -654,6 +654,47 @@ class AppLocalizationsEs extends AppLocalizations {
   String get readinessContributorRestingHr => 'Frecuencia cardíaca en reposo';
 
   @override
+  String get dashboardTrendsDivider => 'Tendencias';
+
+  @override
+  String get dashboardTrendGroupVolume => 'Volumen';
+
+  @override
+  String get dashboardTrendGroupVolumeHint =>
+      'Cuánto has corrido, semana a semana';
+
+  @override
+  String get dashboardTrendGroupFitness => 'Forma física';
+
+  @override
+  String get dashboardTrendGroupFitnessHint =>
+      'Preparación, forma física y carga de entrenamiento';
+
+  @override
+  String get dashboardTrendGroupPerformance => 'Rendimiento';
+
+  @override
+  String get dashboardTrendGroupPerformanceHint =>
+      'Récords personales y tiempos de carrera previstos';
+
+  @override
+  String get dashboardTrendGroupEffort => 'Esfuerzo';
+
+  @override
+  String get dashboardTrendGroupEffortHint =>
+      'Lo duro que ha sido tu entrenamiento';
+
+  @override
+  String get dashboardTrendGroupRecent => 'Reciente';
+
+  @override
+  String get dashboardTrendGroupRecentHint => 'Tus últimas sesiones';
+
+  @override
+  String get readinessFromLoadOnly =>
+      'Calculada solo a partir de tu carga de entrenamiento. El sueño y la frecuencia cardíaca en reposo aún no cuentan.';
+
+  @override
   String get intensityZone1 => 'Z1 (recuperación)';
 
   @override

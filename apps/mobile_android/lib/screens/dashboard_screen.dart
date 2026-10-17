@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
@@ -18,6 +20,7 @@ import '../ai_disclosure_memo.dart';
 import '../auth_change_aware.dart';
 import '../current_week.dart' show WeekStart;
 import '../device_timezone.dart';
+import '../disclosure_state.dart';
 import '../goals.dart';
 import '../health_consent.dart';
 import '../l10n/date_format.dart' show formatDowDateShort;
@@ -43,6 +46,7 @@ import '../plan_ramp.dart' show RunForVolume;
 import '../training_service.dart';
 import '../week_lead.dart';
 import '../widgets/comeback_card.dart';
+import '../widgets/disclosure_section.dart';
 import '../widgets/fitness_card.dart';
 import '../widgets/load_ramp_card.dart';
 import '../widgets/race_predictor_card.dart';
@@ -80,6 +84,20 @@ import 'workout_detail_screen.dart';
 
 const _kCardPadding = EdgeInsets.all(16);
 const _kSectionGap = SizedBox(height: 24);
+
+/// The trend groups below the Today | Trends divider (multi_modal.md § Home,
+/// contract v1): each folds to its one-line heading, remembered per account on
+/// this device. Every default is open, so a runner who reads these cards today
+/// finds them where they were; the memory is what makes a fold stick, not the
+/// default (decisions § 2080). Web twin: `/dashboard`'s `TREND_DEFAULTS`.
+const String _kTrendScope = 'dashboard_trends';
+const DisclosureState _kTrendDefaults = {
+  'volume': true,
+  'fitness': true,
+  'performance': true,
+  'effort': true,
+  'recent': true,
+};
 
 /// Metres for each best-effort PB label (both the offline track-scan keys and
 /// the server `personal_records` labels). Used to age-grade a timed PB via the
@@ -204,6 +222,11 @@ class _DashboardScreenState extends State<DashboardScreen>
   /// dressing the local figure up as one (`streak_card.dart`).
   RunStreaks? _allTimeStreaks;
 
+  DisclosureState _trendOpen = Map.of(_kTrendDefaults);
+
+  /// Set once the reader toggles a group, so a slow first read can't undo it.
+  bool _trendTouched = false;
+
   @override
   void initState() {
     super.initState();
@@ -218,6 +241,22 @@ class _DashboardScreenState extends State<DashboardScreen>
     _loadPersonalRecords();
     _loadViewerProfile();
     _loadRunStreaks();
+    _loadTrendOpen();
+  }
+
+  Future<void> _loadTrendOpen() async {
+    final stored = await readDisclosureState(
+        _kTrendScope, widget.apiClient?.userId, _kTrendDefaults);
+    if (!mounted || _trendTouched) return;
+    setState(() => _trendOpen = stored);
+  }
+
+  void _setTrendOpen(String key, bool open) {
+    if (_trendOpen[key] == open) return;
+    _trendTouched = true;
+    setState(() => _trendOpen = {..._trendOpen, key: open});
+    unawaited(writeDisclosureState(
+        _kTrendScope, widget.apiClient?.userId, _trendOpen));
   }
 
   @override
@@ -264,7 +303,10 @@ class _DashboardScreenState extends State<DashboardScreen>
       _allTimeStreaks = null;
       _history = _AccountHistory.unknown;
       _bestEffortCache.clear();
+      _trendOpen = Map.of(_kTrendDefaults);
+      _trendTouched = false;
     });
+    _loadTrendOpen();
     _refreshPlanOverview();
     _hydrateModalities();
     _loadPersonalRecords();
@@ -1392,6 +1434,55 @@ class _DashboardScreenState extends State<DashboardScreen>
             )
           : null;
 
+      // The trend groups, in web's order (volume, fitness, performance, effort,
+      // recent). A group mounts only when a card in it is sure to draw, so a
+      // fold never opens on nothing; a member that self-hides still does so
+      // inside it, and without the group it renders bare (and hides alone).
+      Widget group(String key, String title, String hint, List<Widget> cards) =>
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: DisclosureSection(
+              key: ValueKey('dashboard-trend-$key'),
+              title: title,
+              hint: hint,
+              open: _trendOpen[key] ?? true,
+              onToggle: (open) => _setTrendOpen(key, open),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: cards,
+              ),
+            ),
+          );
+      final trendGroups = <Widget>[
+        group('volume', l10n.dashboardTrendGroupVolume,
+            l10n.dashboardTrendGroupVolumeHint, [mileageCard, heatmapCard]),
+        // The load chart always draws (it has its own empty state), so this
+        // group always mounts.
+        group('fitness', l10n.dashboardTrendGroupFitness,
+            l10n.dashboardTrendGroupFitnessHint, [
+          fitnessCard,
+          readinessCard,
+          loadRampCard,
+          comebackCard,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [loadChart, ?gymNote],
+          ),
+        ]),
+        if (pbCard != null)
+          group('performance', l10n.dashboardTrendGroupPerformance,
+              l10n.dashboardTrendGroupPerformanceHint, [pbCard, predictorCard])
+        else
+          predictorCard,
+        if (intensityCard.hasContent)
+          group('effort', l10n.dashboardTrendGroupEffort,
+              l10n.dashboardTrendGroupEffortHint, [intensityCard]),
+        if (liftsCard != null)
+          group('recent', l10n.dashboardTrendGroupRecent,
+              l10n.dashboardTrendGroupRecentHint, [liftsCard]),
+      ];
+      final trendsDivider = _TrendsDivider(label: l10n.dashboardTrendsDivider);
+
       if (widthClassOf(context) == WidthClass.expanded) {
         // Tablet-landscape recomposition (mirrors web /dashboard's
         // multi-column card grid): the lead cards pair up with goals,
@@ -1422,20 +1513,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         }
 
         addBlock(streakCard);
-        addBlock(mileageCard);
-        addBlock(heatmapCard);
-        if (pbCard != null) addBlock(pbCard);
-        addBlock(fitnessCard);
-        addBlock(predictorCard);
-        addBlock(readinessCard);
-        addBlock(loadRampCard);
-        addBlock(comebackCard);
-        addBlock(intensityCard);
-        addBlock(Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [loadChart, if (gymNote != null) gymNote],
-        ));
-        if (liftsCard != null) addBlock(liftsCard);
+        trendGroups.forEach(addBlock);
 
         content = contentColumn(
           context,
@@ -1461,6 +1539,7 @@ class _DashboardScreenState extends State<DashboardScreen>
               else if (leadColumn ?? goalsSection case final lead?)
                 lead,
               if (leadColumn != null || goalsSection != null) _kSectionGap,
+              trendsDivider,
               periodRow,
               if (periodLinks != null) periodLinks,
               _kSectionGap,
@@ -1505,6 +1584,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             // logged today, so a pure runner sees nothing new here
             // (multi_modal.md § Home, anti-clutter checklist).
             ..._todayModalitySection(),
+            trendsDivider,
             if (goalsSection != null) ...[goalsSection, _kSectionGap],
             periodRow,
             if (periodLinks != null) periodLinks,
@@ -1515,18 +1595,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             // — a group of cards under one heading, or a non-card block.
             thisWeekCard,
             streakCard,
-            mileageCard,
-            heatmapCard,
-            if (pbCard != null) pbCard,
-            fitnessCard,
-            predictorCard,
-            readinessCard,
-            loadRampCard,
-            comebackCard,
-            intensityCard,
-            loadChart,
-            if (gymNote != null) gymNote,
-            if (liftsCard != null) liftsCard,
+            ...trendGroups,
           ],
         );
       }
@@ -2982,4 +3051,43 @@ class _HeatmapPainter extends CustomPainter {
       old.emptyFill != emptyFill ||
       old.emptyStroke != emptyStroke ||
       old.ramp.last != ramp.last;
+}
+
+/// Today | Trends (multi_modal.md § Home, section rhythm): a hairline with a
+/// quiet label riding it, not a shouting header. Web twin: `.trends-divider`.
+class _TrendsDivider extends StatelessWidget {
+  final String label;
+  const _TrendsDivider({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      key: const Key('dashboardTrendsDivider'),
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        children: [
+          Flexible(
+            child: Semantics(
+              header: true,
+              child: Text(
+                label,
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Divider(
+              height: 1,
+              thickness: 1,
+              color: theme.colorScheme.outlineVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

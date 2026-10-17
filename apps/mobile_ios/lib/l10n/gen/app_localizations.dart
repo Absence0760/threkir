@@ -1085,6 +1085,78 @@ abstract class AppLocalizations {
   /// **'Resting heart rate'**
   String get readinessContributorRestingHr;
 
+  /// Quiet label on the hairline that separates the Home dashboard Today cards from the trend cards below. Not a shouting header.
+  ///
+  /// In en, this message translates to:
+  /// **'Trends'**
+  String get dashboardTrendsDivider;
+
+  /// Home dashboard trend group heading, collapsible: the weekly distance cards
+  ///
+  /// In en, this message translates to:
+  /// **'Volume'**
+  String get dashboardTrendGroupVolume;
+
+  /// One-line description under the Volume trend group heading
+  ///
+  /// In en, this message translates to:
+  /// **'How much you have run, week by week'**
+  String get dashboardTrendGroupVolumeHint;
+
+  /// Home dashboard trend group heading, collapsible: readiness, fitness, load ramp and training-load chart
+  ///
+  /// In en, this message translates to:
+  /// **'Fitness and form'**
+  String get dashboardTrendGroupFitness;
+
+  /// One-line description under the Fitness and form trend group heading
+  ///
+  /// In en, this message translates to:
+  /// **'Readiness, fitness and training load'**
+  String get dashboardTrendGroupFitnessHint;
+
+  /// Home dashboard trend group heading, collapsible: personal bests and the race predictor
+  ///
+  /// In en, this message translates to:
+  /// **'Performance'**
+  String get dashboardTrendGroupPerformance;
+
+  /// One-line description under the Performance trend group heading
+  ///
+  /// In en, this message translates to:
+  /// **'Personal bests and predicted race times'**
+  String get dashboardTrendGroupPerformanceHint;
+
+  /// Home dashboard trend group heading, collapsible: training intensity (time in heart-rate zones)
+  ///
+  /// In en, this message translates to:
+  /// **'Effort'**
+  String get dashboardTrendGroupEffort;
+
+  /// One-line description under the Effort trend group heading
+  ///
+  /// In en, this message translates to:
+  /// **'How hard your training has been'**
+  String get dashboardTrendGroupEffortHint;
+
+  /// Home dashboard trend group heading, collapsible: the latest logged sessions (recent lifts)
+  ///
+  /// In en, this message translates to:
+  /// **'Recent'**
+  String get dashboardTrendGroupRecent;
+
+  /// One-line description under the Recent trend group heading
+  ///
+  /// In en, this message translates to:
+  /// **'Your latest sessions'**
+  String get dashboardTrendGroupRecentHint;
+
+  /// Footnote on the readiness card: the score is computed from training balance (TSB) alone, because no sleep or resting heart rate is read yet. Shown only while neither of those contributes.
+  ///
+  /// In en, this message translates to:
+  /// **'Scored from your training load only. Sleep and resting heart rate are not part of it yet.'**
+  String get readinessFromLoadOnly;
+
   /// Training intensity legend: heart-rate zone 1, named as on web Preferences
   ///
   /// In en, this message translates to:

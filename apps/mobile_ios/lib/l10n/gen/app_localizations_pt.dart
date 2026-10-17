@@ -657,6 +657,46 @@ class AppLocalizationsPt extends AppLocalizations {
   String get readinessContributorRestingHr => 'Frequência cardíaca em repouso';
 
   @override
+  String get dashboardTrendsDivider => 'Tendências';
+
+  @override
+  String get dashboardTrendGroupVolume => 'Volume';
+
+  @override
+  String get dashboardTrendGroupVolumeHint => 'Quanto correu, semana a semana';
+
+  @override
+  String get dashboardTrendGroupFitness => 'Condição física e forma';
+
+  @override
+  String get dashboardTrendGroupFitnessHint =>
+      'Prontidão, condição física e carga de treino';
+
+  @override
+  String get dashboardTrendGroupPerformance => 'Desempenho';
+
+  @override
+  String get dashboardTrendGroupPerformanceHint =>
+      'Recordes pessoais e tempos de prova previstos';
+
+  @override
+  String get dashboardTrendGroupEffort => 'Esforço';
+
+  @override
+  String get dashboardTrendGroupEffortHint =>
+      'Quão exigente tem sido o seu treino';
+
+  @override
+  String get dashboardTrendGroupRecent => 'Recentes';
+
+  @override
+  String get dashboardTrendGroupRecentHint => 'As suas sessões mais recentes';
+
+  @override
+  String get readinessFromLoadOnly =>
+      'Calculada apenas a partir da sua carga de treino. O sono e a frequência cardíaca em repouso ainda não são considerados.';
+
+  @override
   String get intensityZone1 => 'Z1 (recuperação)';
 
   @override
@@ -17609,6 +17649,47 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get readinessContributorRestingHr => 'Frequência cardíaca em repouso';
+
+  @override
+  String get dashboardTrendsDivider => 'Tendências';
+
+  @override
+  String get dashboardTrendGroupVolume => 'Volume';
+
+  @override
+  String get dashboardTrendGroupVolumeHint =>
+      'Quanto você correu, semana a semana';
+
+  @override
+  String get dashboardTrendGroupFitness => 'Condicionamento e forma';
+
+  @override
+  String get dashboardTrendGroupFitnessHint =>
+      'Prontidão, condicionamento e carga de treino';
+
+  @override
+  String get dashboardTrendGroupPerformance => 'Desempenho';
+
+  @override
+  String get dashboardTrendGroupPerformanceHint =>
+      'Recordes pessoais e tempos de prova previstos';
+
+  @override
+  String get dashboardTrendGroupEffort => 'Esforço';
+
+  @override
+  String get dashboardTrendGroupEffortHint =>
+      'O quanto o seu treino tem sido puxado';
+
+  @override
+  String get dashboardTrendGroupRecent => 'Recentes';
+
+  @override
+  String get dashboardTrendGroupRecentHint => 'Suas sessões mais recentes';
+
+  @override
+  String get readinessFromLoadOnly =>
+      'Calculada só com a sua carga de treino. Sono e frequência cardíaca em repouso ainda não entram na conta.';
 
   @override
   String get intensityZone1 => 'Z1 (recuperação)';

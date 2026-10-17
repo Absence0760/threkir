@@ -868,6 +868,54 @@
   "@readinessContributorRestingHr": {
     "description": "Readiness breakdown: the points resting heart rate added to the score"
   },
+  "dashboardTrendsDivider": "Trends",
+  "@dashboardTrendsDivider": {
+    "description": "Quiet label on the hairline that separates the Home dashboard Today cards from the trend cards below. Not a shouting header."
+  },
+  "dashboardTrendGroupVolume": "Volume",
+  "@dashboardTrendGroupVolume": {
+    "description": "Home dashboard trend group heading, collapsible: the weekly distance cards"
+  },
+  "dashboardTrendGroupVolumeHint": "How much you have run, week by week",
+  "@dashboardTrendGroupVolumeHint": {
+    "description": "One-line description under the Volume trend group heading"
+  },
+  "dashboardTrendGroupFitness": "Fitness and form",
+  "@dashboardTrendGroupFitness": {
+    "description": "Home dashboard trend group heading, collapsible: readiness, fitness, load ramp and training-load chart"
+  },
+  "dashboardTrendGroupFitnessHint": "Readiness, fitness and training load",
+  "@dashboardTrendGroupFitnessHint": {
+    "description": "One-line description under the Fitness and form trend group heading"
+  },
+  "dashboardTrendGroupPerformance": "Performance",
+  "@dashboardTrendGroupPerformance": {
+    "description": "Home dashboard trend group heading, collapsible: personal bests and the race predictor"
+  },
+  "dashboardTrendGroupPerformanceHint": "Personal bests and predicted race times",
+  "@dashboardTrendGroupPerformanceHint": {
+    "description": "One-line description under the Performance trend group heading"
+  },
+  "dashboardTrendGroupEffort": "Effort",
+  "@dashboardTrendGroupEffort": {
+    "description": "Home dashboard trend group heading, collapsible: training intensity (time in heart-rate zones)"
+  },
+  "dashboardTrendGroupEffortHint": "How hard your training has been",
+  "@dashboardTrendGroupEffortHint": {
+    "description": "One-line description under the Effort trend group heading"
+  },
+  "dashboardTrendGroupRecent": "Recent",
+  "@dashboardTrendGroupRecent": {
+    "description": "Home dashboard trend group heading, collapsible: the latest logged sessions (recent lifts)"
+  },
+  "dashboardTrendGroupRecentHint": "Your latest sessions",
+  "@dashboardTrendGroupRecentHint": {
+    "description": "One-line description under the Recent trend group heading"
+  },
+  "readinessFromLoadOnly": "Scored from your training load only. Sleep and resting heart rate are not part of it yet.",
+  "@readinessFromLoadOnly": {
+    "description": "Footnote on the readiness card: the score is computed from training balance (TSB) alone, because no sleep or resting heart rate is read yet. Shown only while neither of those contributes."
+  },
   "intensityZone1": "Z1 (recovery)",
   "@intensityZone1": {
     "description": "Training intensity legend: heart-rate zone 1, named as on web Preferences"

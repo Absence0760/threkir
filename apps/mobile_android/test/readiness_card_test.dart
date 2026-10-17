@@ -5,7 +5,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/training_load.dart';
 import '../lib/widgets/readiness_card.dart';
 
-Future<void> _pump(WidgetTester tester, {double? width}) {
+Future<void> _pump(WidgetTester tester, {double? width, double textScale = 1}) {
   final card = ReadinessCard(
     runs: const [],
     now: DateTime(2026, 6, 10, 12),
@@ -21,6 +21,11 @@ Future<void> _pump(WidgetTester tester, {double? width}) {
   );
   return tester.pumpWidget(
     MaterialApp(
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context)
+            .copyWith(textScaler: TextScaler.linear(textScale)),
+        child: child!,
+      ),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
@@ -47,6 +52,25 @@ void main() {
       await _pump(tester);
       expect(find.text('Training balance'), findsOneWidget);
       expect(find.textContaining('TSB'), findsNothing);
+    });
+
+    testWidgets('says in words that it is scored from training load only',
+        (tester) async {
+      // Nothing reads sleep or resting HR yet, so training balance is the
+      // only contributor; the single chip used to be the only hint of that.
+      await _pump(tester);
+      expect(
+        find.text('Scored from your training load only. Sleep and resting '
+            'heart rate are not part of it yet.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('the load-only note wraps at 2.0x text on a narrow card',
+        (tester) async {
+      await _pump(tester, width: 280, textScale: 2.0);
+      expect(find.byKey(const Key('readinessLoadOnly')), findsOneWidget);
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('header row survives a narrow width without overflowing',

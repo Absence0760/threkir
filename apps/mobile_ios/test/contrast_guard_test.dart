@@ -5,12 +5,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ui_kit/ui_kit.dart';
+import 'package:core_models/core_models.dart' hide Route;
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_gear_store.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/gear_screen.dart';
 import '../lib/widgets/run_segment_efforts.dart';
+import '../lib/widgets/todays_workout_card.dart';
+import '../lib/training_service.dart';
 import '../lib/widgets/workout_review_section.dart';
 
 /// Mobile contrast guard — the Dart counterpart to web's
@@ -178,6 +181,77 @@ void main() {
         final ratio = _contrast(c.fg, c.bg);
         expect(ratio, greaterThanOrEqualTo(4.5),
             reason: '"$adherence" pill contrast $ratio fails AA');
+      });
+    }
+  });
+
+  // The Today card on Home, the Run tab and plan detail. It used to fade from
+  // `primary` into `surfaceContainerHighest` with every line in `onPrimary`,
+  // which left white type at about 1.3:1 at the far corner in light mode.
+  // Every text and icon on the card is read against the card's own fill, as
+  // rendered, so a gradient or a second fill colour fails here.
+  group('TodaysWorkoutCard meets WCAG AA', () {
+    final workout = PlanWorkoutRow(
+      id: 'wo1',
+      weekId: 'wk1',
+      scheduledDate: DateTime(2026, 4, 25),
+      kind: 'tempo',
+      targetDistanceM: 8000,
+      targetPaceSecPerKm: 330,
+      manuallyCompleted: false,
+    );
+    final overview = ActivePlanOverview(
+      plan: TrainingPlanRow(
+        id: 'p1',
+        userId: 'u1',
+        name: 'Plan',
+        goalEvent: 'marathon',
+        goalDistanceM: 42195,
+        startDate: DateTime(2026, 1, 1),
+        endDate: DateTime(2026, 5, 31),
+        daysPerWeek: 4,
+        status: 'active',
+        source: 'generated',
+        isTemplate: false,
+        isPublicTemplate: false,
+      ),
+      weeks: const [],
+      workouts: [workout],
+      todayWorkout: workout,
+      completionPct: 0,
+      currentWeekIndex: 0,
+    );
+    for (final (name, theme) in [
+      ('light', AppTheme.light),
+      ('dark', AppTheme.dark),
+    ]) {
+      testWidgets('$name', (tester) async {
+        await tester.pumpWidget(MaterialApp(
+          theme: theme,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(body: TodaysWorkoutCard(overview: overview)),
+        ));
+        await tester.pump();
+        final card = find.byType(TodaysWorkoutCard);
+        final fill = tester
+            .widget<Material>(
+                find.descendant(of: card, matching: find.byType(Material)).first)
+            .color;
+        expect(fill, isNotNull);
+        final texts = find.descendant(of: card, matching: find.byType(Text));
+        expect(texts, findsAtLeastNWidgets(3));
+        for (final t in tester.widgetList<Text>(texts)) {
+          final fg = t.style?.color;
+          expect(fg, isNotNull, reason: '"${t.data}" has no explicit colour');
+          final ratio = _contrast(fg!, fill!);
+          expect(ratio, greaterThanOrEqualTo(4.5),
+              reason: '"${t.data}" on the card is $ratio:1 in $name');
+        }
+        // The kind glyph sits in a `surface` disc; WCAG 1.4.11 asks 3:1.
+        final s = theme.colorScheme;
+        expect(_contrast(s.primary, s.surface), greaterThanOrEqualTo(3.0));
+        expect(_contrast(s.surface, fill!), greaterThanOrEqualTo(3.0));
       });
     }
   });

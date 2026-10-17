@@ -118,4 +118,11 @@ void main() {
     expect(o?.plan.id, 'a');
     expect(o?.activePlans.map((p) => p.id), ['a', 'b']);
   });
+
+  test('fetchMyPlans reads only the coach\'s own non-template plans', () async {
+    await api.fetchMyPlans();
+    final q = fake.requests.single.url.queryParameters;
+    expect(q['user_id'], 'eq.coach-1');
+    expect(q['is_template'], 'eq.false');
+  });
 }

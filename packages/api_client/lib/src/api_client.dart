@@ -8899,6 +8899,7 @@ class ApiClient {
         .from(TrainingPlanRow.table)
         .select()
         .eq(TrainingPlanRow.colUserId, uid)
+        .eq(TrainingPlanRow.colIsTemplate, false)
         .order(TrainingPlanRow.colCreatedAt, ascending: false)
         .limit(limit);
     return (rows as List)

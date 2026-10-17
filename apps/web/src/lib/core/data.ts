@@ -5547,11 +5547,15 @@ export async function deleteClubPost(id: string): Promise<void> {
 export async function fetchMyPlansWithError(
 	limit = 100
 ): Promise<{ plans: TrainingPlan[]; error: string | null }> {
-	// Templates live in the same table; filter them out of the
-	// user-facing plan list (decisions §35).
+	// RLS also lets a coach read their linked athletes' plans, so the owner
+	// filter is what keeps those out of the coach's own list; templates live
+	// in the same table and are filtered out too (decisions §35).
+	const userId = await currentViewerId();
+	if (!userId) return { plans: [], error: 'Not signed in' };
 	const { data, error } = await supabase
 		.from('training_plans')
 		.select('*')
+		.eq('user_id', userId)
 		.eq('is_template', false)
 		.order('created_at', { ascending: false })
 		.limit(limit);

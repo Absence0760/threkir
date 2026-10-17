@@ -9777,6 +9777,11 @@ class AppLocalizationsJa extends AppLocalizations {
   String get todaysWorkoutToday => '今日のワークアウト';
 
   @override
+  String todaysWorkoutAtPace(String pace) {
+    return '@ $pace';
+  }
+
+  @override
   String get errorStateRetry => '再試行';
 
   @override
@@ -12264,6 +12269,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get coachingAthleteStatusUpcoming => '予定';
+
+  @override
+  String get coachingAthleteStatusSkipped => 'スキップ';
 
   @override
   String get coachingAthleteRecentRuns => '最近のラン';

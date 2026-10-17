@@ -4109,6 +4109,7 @@ export const en = {
 	"workoutDetail.atEasy": "@ easy",
 	"workoutDetail.repeats": "Repeats",
 	"workoutDetail.repeatsDetail": "{count}× {distance} @ {pace} with {recoveryDistance} {recoveryPace}",
+	"workoutDetail.repeatsDetailNoRecovery": "{count}× {distance} @ {pace}",
 	"workoutDetail.steady": "Steady",
 	"workoutDetail.atPace": "@ {pace}",
 	"workoutDetail.cooldown": "Cooldown",

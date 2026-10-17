@@ -2,7 +2,7 @@
 -- recent_workouts (the input the client derives misses from), athlete_today,
 -- and the easy-run HR drift, which is computed only for an athlete with
 -- health-data consent and only from planned easy / recovery runs. Since
--- 20270915000003 (decisions § 2093) the drift is heart rate at the same pace,
+-- 20270915000003 (decisions § 2094) the drift is heart rate at the same pace,
 -- and a malformed avg_bpm on one run cannot fail the roster.
 begin;
 select plan(12);

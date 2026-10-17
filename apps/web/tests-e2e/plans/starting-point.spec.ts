@@ -1,6 +1,7 @@
 import type { Browser, Locator, Page } from '@playwright/test';
 import { expect, test } from '../fixtures/test';
 
+import { browserDate } from '../fixtures/dates';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { insertRun } from '../fixtures/simulate';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
@@ -19,14 +20,6 @@ import { USER_A } from '../fixtures/users';
  */
 
 const DAY_MS = 24 * 3600 * 1000;
-
-function isoDaysFromToday(days: number): string {
-	const d = new Date();
-	d.setDate(d.getDate() + days);
-	const m = String(d.getMonth() + 1).padStart(2, '0');
-	const day = String(d.getDate()).padStart(2, '0');
-	return `${d.getFullYear()}-${m}-${day}`;
-}
 
 /// A wizard fieldset by its legend. The starting-point hints mention a goal
 /// time too, so matching on any text inside would find that fieldset.
@@ -67,13 +60,13 @@ test.describe('/plans wizard — where are you starting from', () => {
 			'2 days',
 			'3 days'
 		]);
-		await expect(modal.locator('input[type="date"]').first()).toHaveValue(isoDaysFromToday(1));
+		await expect(modal.locator('input[type="date"]').first()).toHaveValue(browserDate(1));
 		await expect(modal.getByText('A walk-run plan can start on any day, today included.')).toBeVisible();
 
 		// Today is a valid start, whatever weekday it is.
-		await modal.locator('input[type="date"]').first().fill(isoDaysFromToday(0));
+		await modal.locator('input[type="date"]').first().fill(browserDate(0));
 		await modal.locator('input[type="date"]').first().dispatchEvent('change');
-		await expect(modal.locator('input[type="date"]').first()).toHaveValue(isoDaysFromToday(0));
+		await expect(modal.locator('input[type="date"]').first()).toHaveValue(browserDate(0));
 		await expect(modal.getByText('Moved to the next Sunday')).toHaveCount(0);
 	});
 
@@ -232,11 +225,11 @@ test.describe('/plans/new — the starter picker', () => {
 		await expect(page.getByTestId('starter-summary')).toHaveText(
 			/^9 weeks · 3 days a week · \d+–\d+ min a session$/
 		);
-		await expect(picker.locator('input[type="date"]')).toHaveValue(isoDaysFromToday(1));
+		await expect(picker.locator('input[type="date"]')).toHaveValue(browserDate(1));
 
 		await picker.getByLabel('Starter plan').selectOption('half_12wk');
 		await expect(page.getByTestId('starter-summary')).toHaveText('12 weeks · 4 days a week');
 		const start = await picker.locator('input[type="date"]').inputValue();
-		expect(new Date(`${start}T00:00:00`).getDay()).toBe(0);
+		expect(new Date(`${start}T00:00:00Z`).getUTCDay()).toBe(0);
 	});
 });

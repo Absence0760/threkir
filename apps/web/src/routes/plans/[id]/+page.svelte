@@ -1447,7 +1447,7 @@
 								<span>{fmtKm(todayWorkout.target_distance_m)}</span>
 							{/if}
 							{#if todayWorkout.target_pace_sec_per_km}
-								<span>@ {fmtPace(todayWorkout.target_pace_sec_per_km)}</span>
+								<span>{m('workoutDetail.atPace', { pace: fmtPace(todayWorkout.target_pace_sec_per_km) })}</span>
 							{/if}
 							{#if isWorkoutCompleted(todayWorkout)}
 								<span class="today-done">{m('planDetail.completed')}</span>
@@ -1482,7 +1482,7 @@
 								<span>{fmtKm(nextWorkout.target_distance_m)}</span>
 							{/if}
 							{#if nextWorkout.target_pace_sec_per_km}
-								<span>@ {fmtPace(nextWorkout.target_pace_sec_per_km)}</span>
+								<span>{m('workoutDetail.atPace', { pace: fmtPace(nextWorkout.target_pace_sec_per_km) })}</span>
 							{/if}
 						</div>
 					</div>

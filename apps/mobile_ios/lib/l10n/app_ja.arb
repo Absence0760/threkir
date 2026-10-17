@@ -2833,6 +2833,7 @@
   "upcomingEventInDays": "{count} 日後",
   "todaysWorkoutDone": "本日完了",
   "todaysWorkoutToday": "今日のワークアウト",
+  "todaysWorkoutAtPace": "@ {pace}",
   "errorStateRetry": "再試行",
   "shareCardRunTitle": "ランを共有",
   "shareCardExport": "エクスポート",

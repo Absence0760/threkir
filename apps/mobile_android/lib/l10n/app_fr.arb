@@ -2833,6 +2833,7 @@
   "upcomingEventInDays": "Dans {count} jours",
   "todaysWorkoutDone": "FAIT AUJOURD'HUI",
   "todaysWorkoutToday": "SÉANCE DU JOUR",
+  "todaysWorkoutAtPace": "@ {pace}",
   "errorStateRetry": "Réessayer",
   "shareCardRunTitle": "Partager la course",
   "shareCardExport": "Exporter",

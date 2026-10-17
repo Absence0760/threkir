@@ -10317,6 +10317,11 @@ class AppLocalizationsFr extends AppLocalizations {
   String get todaysWorkoutToday => 'SÉANCE DU JOUR';
 
   @override
+  String todaysWorkoutAtPace(String pace) {
+    return '@ $pace';
+  }
+
+  @override
   String get errorStateRetry => 'Réessayer';
 
   @override

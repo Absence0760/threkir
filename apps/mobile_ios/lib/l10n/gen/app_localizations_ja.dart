@@ -5925,11 +5925,11 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get planOverlapReplaceHint =>
-      '置き換えると、重なっているプランは完了としてマークされます。「プランの管理」から引き続き確認できます。';
+      '置き換えると、重なっているプランは中止としてマークされます。「プランの管理」から引き続き確認できます。';
 
   @override
   String planOverlapTrimHint(String name, String date) {
-    return '$nameを早めに終了すると、終えた週は残り、$dateより後のワークアウトは削除されます。置き換えると完了としてマークされます。';
+    return '$nameを早めに終了すると、終えた週は残り、$dateより後のワークアウトは削除されます。置き換えると中止としてマークされます。';
   }
 
   @override
@@ -5944,7 +5944,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String planOverlapTrimHintMany(String date) {
-    return '早めに終了すると、終えた週は残り、$dateより後のワークアウトは削除されます。置き換えると完了としてマークされます。';
+    return '早めに終了すると、終えた週は残り、$dateより後のワークアウトは削除されます。置き換えると中止としてマークされます。';
   }
 
   @override

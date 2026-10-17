@@ -6212,11 +6212,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get planOverlapReplaceHint =>
-      'Replace marks the overlapping plans as completed. You can still find them under Manage plans.';
+      'Replace marks the overlapping plans as abandoned. You can still find them under Manage plans.';
 
   @override
   String planOverlapTrimHint(String name, String date) {
-    return 'End $name early to keep its finished weeks and remove its workouts after $date, or replace it to mark it completed.';
+    return 'End $name early to keep its finished weeks and remove its workouts after $date, or replace it to mark it abandoned.';
   }
 
   @override
@@ -6231,7 +6231,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String planOverlapTrimHintMany(String date) {
-    return 'End them early to keep their finished weeks and remove their workouts after $date, or replace them to mark them completed.';
+    return 'End them early to keep their finished weeks and remove their workouts after $date, or replace them to mark them abandoned.';
   }
 
   @override

@@ -6286,11 +6286,11 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get planOverlapReplaceHint =>
-      'Remplacer marque les plans qui se chevauchent comme terminés. Vous les retrouverez toujours dans Gérer les plans.';
+      'Remplacer marque les plans qui se chevauchent comme abandonnés. Vous les retrouverez toujours dans Gérer les plans.';
 
   @override
   String planOverlapTrimHint(String name, String date) {
-    return 'Terminez $name plus tôt pour conserver ses semaines effectuées et supprimer ses séances après le $date, ou remplacez-le pour le marquer comme terminé.';
+    return 'Terminez $name plus tôt pour conserver ses semaines effectuées et supprimer ses séances après le $date, ou remplacez-le pour le marquer comme abandonné.';
   }
 
   @override
@@ -6305,7 +6305,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String planOverlapTrimHintMany(String date) {
-    return 'Terminez-les plus tôt pour conserver leurs semaines effectuées et supprimer leurs séances après le $date, ou remplacez-les pour les marquer comme terminés.';
+    return 'Terminez-les plus tôt pour conserver leurs semaines effectuées et supprimer leurs séances après le $date, ou remplacez-les pour les marquer comme abandonnés.';
   }
 
   @override

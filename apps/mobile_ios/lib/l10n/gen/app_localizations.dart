@@ -10267,13 +10267,13 @@ abstract class AppLocalizations {
   /// Plan-overlap dialog hint when only Replace is offered
   ///
   /// In en, this message translates to:
-  /// **'Replace marks the overlapping plans as completed. You can still find them under Manage plans.'**
+  /// **'Replace marks the overlapping plans as abandoned. You can still find them under Manage plans.'**
   String get planOverlapReplaceHint;
 
   /// Plan-overlap dialog hint when the overlapping plan started earlier and can be ended the day before the new plan starts. date is that formatted end date
   ///
   /// In en, this message translates to:
-  /// **'End {name} early to keep its finished weeks and remove its workouts after {date}, or replace it to mark it completed.'**
+  /// **'End {name} early to keep its finished weeks and remove its workouts after {date}, or replace it to mark it abandoned.'**
   String planOverlapTrimHint(String name, String date);
 
   /// Plan-overlap dialog button: end the overlapping plan the day before the new one starts, so both stay active back to back
@@ -10291,7 +10291,7 @@ abstract class AppLocalizations {
   /// Plan-overlap dialog hint when several overlapping plans can be ended the day before the new plan starts. date is that formatted end date
   ///
   /// In en, this message translates to:
-  /// **'End them early to keep their finished weeks and remove their workouts after {date}, or replace them to mark them completed.'**
+  /// **'End them early to keep their finished weeks and remove their workouts after {date}, or replace them to mark them abandoned.'**
   String planOverlapTrimHintMany(String date);
 
   /// Error when the server refuses a new plan because an active plan overlaps its dates (changed since the overlap check)

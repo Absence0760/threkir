@@ -304,6 +304,14 @@ export type RaceReading = NormalisedRace | typeof EXCLUDED | null;
 ///   move an early-morning race onto the previous day for anyone west of it.
 ///   `last_date` is the fallback for a race with no next running, so a past race
 ///   still files for a results import.
+/// - **A race the feed dates as `null` on both keys is excluded, not unusable.**
+///   Measured 2026-10-17 on the first armed sweep: 12 of a Utah window's 22 rows
+///   were ongoing virtual challenges carrying `next_date: null` and
+///   `last_date: null` explicitly. That is the feed saying there is no running
+///   to file, and counting it as `unusable` buried the shape-moved signal under
+///   it. Only the explicit null qualifies: a row with the keys ABSENT, or with a
+///   date this cannot parse, is still `null`, because that is what a renamed or
+///   reformatted field looks like.
 /// - **No `location_point`.** The feed carries an address and no coordinates,
 ///   and `search_race_listings`' proximity gate requires a point, so a synced
 ///   race is found by name, date and distance band, not by a "near me" search,
@@ -312,7 +320,8 @@ export type RaceReading = NormalisedRace | typeof EXCLUDED | null;
 export function readRunSignUpRace(row: RunSignUpRaceRow): RaceReading {
   const name = text(row.name, MAX_LISTING_NAME_LEN);
   const date = parseProviderRaceDate(row.next_date) ?? parseProviderRaceDate(row.last_date);
-  if (!name || !date) return null;
+  if (!name) return null;
+  if (!date) return row.next_date === null && row.last_date === null ? EXCLUDED : null;
   if (row.is_draft_race === 'T' || row.is_private_race === 'T') return EXCLUDED;
 
   let distanceM: number | null = null;

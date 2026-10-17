@@ -201,6 +201,23 @@ Built 2026-10-15 (issue #1168 item 8), after the roster above. The coach review 
 
 The roster note below ("raw GPS track stays owner-only … do not add a track read here") still holds for the roster: the map lives on the per-athlete review page only.
 
+## Effort targets, roster flags and the medication flag (decisions § 2092)
+
+Built 2026-10-17 (issue #1186, persona "coach, and an older athlete on beta-blockers").
+
+- **Effort targets.** `plan_workouts.target_rpe_min/max` (RPE 1-10) and `target_hr_min_bpm/max_bpm` (30-230 bpm), either end open (migration `20270912000001`). Set in the workout editor (web `WorkoutEditor.svelte`, mobile `workout_edit_sheet.dart`), shown on workout detail, the coach's athlete view and, on mobile, the live workout band. Bounds and ordering live in the `workout_prescription` parity pair. A rest day carries neither. The three cross-user copy paths (`clone_plan_template`, `clone_public_plan`, `assign_plan_to_athlete`) carry the RPE range and never the bpm range.
+- **Coach edit on mobile.** A row on `coaching_athlete_screen.dart` opens the same edit sheet the athlete uses; RLS (`20261116_001`) is what admits the write.
+- **Provenance.** The owner sees "Updated by your coach on {date}" on a workout whose `updated_by` is someone else (`isEditedByCoach`). The coach's own view never says it.
+- **Roster flags.** `coach_roster_summary` returns `athlete_today`, `recent_workouts` and `easy_hr_drift_pct` (migration `20270912000002`). A run of 2+ misses (derived on the client through `plan_current`'s `isWorkoutMissed`, `consecutiveMissedWorkouts`) shows "N missed in a row". The easy-run HR drift (efficiency factor on planned easy / recovery runs, last 14 days vs the 42 before) is computed in SQL only for an athlete with `health_data_consent_at`, inside the link-gated read, and shows at 5 % or more. The roster ACWR stays distance-based, so a beta blocker does not distort it.
+- **Medication flag.** `hr_medication_affected` (settings.md) marks the HR-derived training load low-confidence on the dashboard and asks for a measured max HR.
+
+### Pre-deploy checklist (heart-rate prescription)
+
+The bpm target, the medication flag and the HR-drift flag are new Art 9 uses of heart rate. All three ship off behind `PUBLIC_HR_PRESCRIPTION_ENABLED` (web, `training/hr_prescription_flag.ts`) / `HR_PRESCRIPTION_ENABLED` (mobile, `hr_prescription_flag.dart`). Independently of the flag, the database refuses a bpm target or turning the medication flag on without the plan owner's `health_data_consent_at` (42501), computes the drift only for a consented athlete, and `withdraw_health_data_consent()` clears both.
+
+- [ ] CISO + counsel review of the three uses against the health-data consent copy (does the existing consent cover a coach prescribing a bpm cap, a medication flag, and a coach seeing an HR-drift figure?).
+- [ ] Then set `PUBLIC_HR_PRESCRIPTION_ENABLED` (release-web secret) and `HR_PRESCRIPTION_ENABLED` (mobile dart-define) together, never one platform alone.
+
 ## Gating / compliance
 
 - **Consent is the gate, and it already exists** — every read is scoped to an `active` `coach_athletes` link

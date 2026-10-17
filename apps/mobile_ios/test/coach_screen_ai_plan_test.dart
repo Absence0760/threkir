@@ -9,7 +9,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/l10n/gen/app_localizations_en.dart';
-import '../lib/plan_ramp.dart' show RecentVolume;
 import '../lib/screens/coach_screen.dart';
 import '../lib/screens/plan_new_screen.dart';
 import '../lib/training.dart' show TrainingGender;
@@ -71,7 +70,7 @@ class _Training extends TrainingService {
   @override
   Future<int?> fetchViewerAge() async => null;
   @override
-  Future<RecentVolume?> fetchRecentRunVolume() async => null;
+  Future<PlanRunHistory?> fetchPlanRunHistory() async => null;
   @override
   Future<List<TrainingPlanRow>> fetchClubTemplates(String clubId) async =>
       const [];

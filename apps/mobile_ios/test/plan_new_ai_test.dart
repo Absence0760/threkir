@@ -5,7 +5,6 @@ import 'package:flutter_test/flutter_test.dart';
 import '../lib/l10n/date_format.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/l10n/gen/app_localizations_en.dart';
-import '../lib/plan_ramp.dart';
 import '../lib/plan_request_client.dart';
 import '../lib/plan_start.dart';
 import '../lib/screens/plan_new_screen.dart';
@@ -21,7 +20,7 @@ class _QuietTraining extends TrainingService {
   @override
   Future<int?> fetchViewerAge() async => null;
   @override
-  Future<RecentVolume?> fetchRecentRunVolume() async => null;
+  Future<PlanRunHistory?> fetchPlanRunHistory() async => null;
   @override
   Future<List<TrainingPlanRow>> fetchClubTemplates(String clubId) async =>
       const [];
@@ -92,6 +91,11 @@ Future<void> _pump(
     ),
   ));
   await _settle(tester);
+  // The box is collapsed on arrival unless a description was handed in.
+  if (available && find.byKey(const Key('plan-new-ai-field')).evaluate().isEmpty) {
+    await tester.tap(find.text(_en.planNewAiTitle));
+    await tester.pumpAndSettle();
+  }
 }
 
 Future<void> _settle(WidgetTester tester) async {
@@ -107,10 +111,14 @@ Future<void> _describe(WidgetTester tester, String text) async {
   await _settle(tester);
 }
 
-TextEditingController _fieldByHint(WidgetTester tester, String hint) =>
+/// The [index]th time box labelled [label]: the goal time's boxes come
+/// before the recent 5K's.
+TextEditingController _timeField(WidgetTester tester, String label,
+        [int index = 0]) =>
     tester
-        .widget<TextField>(find.byWidgetPredicate(
-            (w) => w is TextField && w.decoration?.hintText == hint))
+        .widgetList<TextField>(find.byWidgetPredicate(
+            (w) => w is TextField && w.decoration?.labelText == label))
+        .elementAt(index)
         .controller!;
 
 TextEditingController _nameField(WidgetTester tester) => tester
@@ -120,23 +128,29 @@ TextEditingController _nameField(WidgetTester tester) => tester
 
 TextEditingController _weeksField(WidgetTester tester) => tester
     .widget<TextField>(find.byWidgetPredicate((w) =>
-        w is TextField && w.decoration?.hintText == _en.planNewOverrideHint))
+        w is TextField && w.decoration?.helperText == _en.planNewOverrideHelp))
     .controller!;
 
+String? _selectedChip(WidgetTester tester, String prefix) {
+  for (final chip in tester.widgetList<ChoiceChip>(find.byType(ChoiceChip))) {
+    final key = chip.key;
+    if (chip.selected && key is ValueKey<String> && key.value.startsWith(prefix)) {
+      return key.value.substring(prefix.length);
+    }
+  }
+  return null;
+}
+
+String? _goalChoice(WidgetTester tester) =>
+    _selectedChip(tester, 'plan-new-goal-');
+
 GoalEvent? _goal(WidgetTester tester) {
-  final value = tester
-      .widget<DropdownButtonFormField<String>>(find.byWidgetPredicate((w) =>
-          w is DropdownButtonFormField<String> &&
-          w.key is ValueKey<String> &&
-          (w.key as ValueKey<String>).value.startsWith('plan-new-goal-')))
-      .initialValue;
+  final value = _goalChoice(tester);
   return value == null ? null : goalEventFromDb(value);
 }
 
-int? _days(WidgetTester tester) => tester
-    .widget<DropdownButtonFormField<int>>(
-        find.byType(DropdownButtonFormField<int>))
-    .initialValue;
+int? _days(WidgetTester tester) =>
+    int.tryParse(_selectedChip(tester, 'plan-new-days-') ?? '');
 
 DateTime _day(DateTime d) => DateTime(d.year, d.month, d.day);
 
@@ -175,16 +189,16 @@ void main() {
     expect(assistant.requests, ['A 3:45:30 marathon, 5 days a week']);
     expect(_goal(tester), GoalEvent.distanceFull);
     expect(_days(tester), 5);
-    expect(_fieldByHint(tester, 'h').text, '3');
-    expect(_fieldByHint(tester, 'm').text, '45');
-    expect(_fieldByHint(tester, 's').text, '30');
-    expect(_fieldByHint(tester, 'min').text, '26');
-    expect(_fieldByHint(tester, 'sec').text, '30');
+    expect(_timeField(tester, _en.planNewHoursLabel).text, '3');
+    expect(_timeField(tester, _en.planNewMinutesLabel).text, '45');
+    expect(_timeField(tester, _en.planNewSecondsLabel).text, '30');
+    expect(_timeField(tester, _en.planNewMinutesLabel, 1).text, '26');
+    expect(_timeField(tester, _en.planNewSecondsLabel, 1).text, '30');
     expect(_nameField(tester).text, 'Autumn marathon');
 
     // The recent 5K is filled but never confirmed for the runner.
-    final confirm = tester.widget<CheckboxListTile>(find.widgetWithText(
-        CheckboxListTile, _en.planNewRecent5kConfirm));
+    final confirm = tester.widget<SwitchListTile>(
+        find.byKey(const Key('plan-new-recent5k-confirm')));
     expect(confirm.value, isFalse);
 
     expect(find.byKey(const Key('plan-new-ai-status')), findsOneWidget);
@@ -208,12 +222,7 @@ void main() {
     ]);
     await _pump(tester, assistant: assistant);
 
-    String? choice() => tester
-        .widget<DropdownButtonFormField<String>>(find.byWidgetPredicate((w) =>
-            w is DropdownButtonFormField<String> &&
-            w.key is ValueKey<String> &&
-            (w.key as ValueKey<String>).value.startsWith('plan-new-goal-')))
-        .initialValue;
+    String? choice() => _goalChoice(tester);
     String distance() => tester
         .widget<TextField>(find.byKey(const Key('plan-new-ultra-distance')))
         .controller!
@@ -222,7 +231,7 @@ void main() {
     await _describe(tester, 'Two Oceans in 11 hours');
     expect(choice(), 'ultra_56k');
     expect(distance(), '56');
-    expect(_fieldByHint(tester, 'h').text, '11');
+    expect(_timeField(tester, _en.planNewHoursLabel).text, '11');
 
     await _describe(tester, 'a 100 mile race');
     expect(choice(), 'ultra_100mi');
@@ -248,10 +257,13 @@ void main() {
           ),
         ]));
     await _describe(tester, 'I have never run');
-    final beginner = tester.widget<CheckboxListTile>(find.widgetWithText(
-        CheckboxListTile, _en.planNewBeginnerTitle));
-    expect(beginner.value, isTrue);
-    expect(_goal(tester), GoalEvent.distance5k);
+    // A walk-run description answers the first question: never run, which
+    // takes the race fields away.
+    final group = tester.widget<RadioGroup<Object?>>(find.byWidgetPredicate(
+        (w) => w is RadioGroup && w.groupValue.toString().endsWith('newRunner')));
+    expect(group, isNotNull);
+    expect(find.byKey(const Key('plan-new-goal-distance_5k')), findsNothing);
+    expect(_days(tester), 3);
     expect(find.textContaining(_en.planNewAiAssumptionBeginner5k),
         findsOneWidget);
   });
@@ -286,7 +298,7 @@ void main() {
         DateTime(race.year, race.month, race.day - race.weekday % 7);
     final expectedStart = DateTime(raceWeekStart.year, raceWeekStart.month,
         raceWeekStart.day - 9 * 7);
-    expect(find.text(toIsoDate(expectedStart)), findsOneWidget);
+    expect(find.text(formatDateMed(expectedStart, 'en')), findsOneWidget);
     expect(_weeksField(tester).text, '10');
     expect(
         find.textContaining(
@@ -296,17 +308,17 @@ void main() {
     // A second description that names no race, length or goal time must not
     // inherit the first one's.
     await _describe(tester, 'Actually just a half, no race');
-    final defaultStart = nextSunday(DateTime.now().add(const Duration(days: 7)));
-    expect(find.text(toIsoDate(defaultStart)), findsOneWidget);
+    final defaultStart = defaultPlanStart(today, walkRun: false);
+    expect(find.text(formatDateMed(defaultStart, 'en')), findsOneWidget);
     expect(_weeksField(tester).text, isEmpty);
-    expect(_fieldByHint(tester, 'h').text, isEmpty);
-    expect(_fieldByHint(tester, 'm').text, isEmpty);
+    expect(_timeField(tester, _en.planNewHoursLabel).text, isEmpty);
+    expect(_timeField(tester, _en.planNewMinutesLabel).text, isEmpty);
   });
 
   testWidgets('a past race date leaves the start date and says why',
       (tester) async {
     final today = _day(DateTime.now());
-    final before = nextSunday(DateTime.now().add(const Duration(days: 7)));
+    final before = defaultPlanStart(today, walkRun: false);
     await _pump(tester,
         assistant: _Assistant([
           _inputs(
@@ -314,7 +326,7 @@ void main() {
                   DateTime(today.year, today.month, today.day - 3))),
         ]));
     await _describe(tester, 'the race I already ran');
-    expect(find.text(toIsoDate(before)), findsOneWidget);
+    expect(find.text(formatDateMed(before, 'en')), findsOneWidget);
     expect(find.textContaining(_en.planNewAiRacePast), findsOneWidget);
   });
 

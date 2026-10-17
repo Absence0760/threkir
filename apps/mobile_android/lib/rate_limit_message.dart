@@ -54,6 +54,8 @@ String rateLimitMessage(AppLocalizations l10n, RateLimitInfo info) {
       return l10n.rateLimitAdoptGymRoutine(wait);
     case 'publish_gym_routine_as_template':
       return l10n.rateLimitPublishRoutine(wait);
+    case 'plan_calendar_rotate':
+      return l10n.rateLimitRotateCalendarLink(wait);
     case 'send_direct_message':
     case 'send_direct_message_burst':
       return l10n.rateLimitSendMessage(wait);

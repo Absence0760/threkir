@@ -49,6 +49,12 @@ export function defaultPlanWeeks(goal: GoalEvent, distanceM?: number | null): nu
 	return distanceM != null && isUltraDistance(distanceM) ? ultraDefaultWeeks(distanceM) : 12;
 }
 
+/// The most training days a walk-run plan schedules. Every session is
+/// followed by a rest day, so a week holds three (offsets 0/2/4); a request
+/// for more is clamped here. The wizard offers 2 or 3 rather than letting a
+/// runner pick a number this would silently cut. Mirrors training.dart.
+export const WALK_RUN_MAX_DAYS_PER_WEEK = 3;
+
 /// Default week count for a beginner C25K walk-run plan. The continuous-run
 /// default (`defaultPlanWeeks('distance_5k')` = 8) is one week shorter than
 /// the `WALK_RUN_PROGRESSION` table, so feeding it to the walk-run generator
@@ -662,7 +668,7 @@ function generateWalkRunPlan(
 	// stage repeats for the extra weeks via the index clamp in walkRunWorkout).
 	const totalWeeks = Math.max(input.weeks ?? WALK_RUN_PROGRESSION.length, WALK_RUN_PROGRESSION.length);
 	// Beginners train 3 days/week; respect a lower request but cap at 3.
-	const runDays = Math.max(1, Math.min(input.daysPerWeek, 3));
+	const runDays = Math.max(1, Math.min(input.daysPerWeek, WALK_RUN_MAX_DAYS_PER_WEEK));
 	// Spread run days across Mon/Wed/Fri-style offsets.
 	const dayOffsets = [0, 2, 4, 1, 3, 5, 6].slice(0, runDays).sort((a, b) => a - b);
 	const weeks: GeneratedWeek[] = [];
@@ -1214,8 +1220,12 @@ interface WeekGenInput {
 
 // The shortest distance an easy/recovery run is ever prescribed at. Below this
 // there is no point emitting a run, so the race-week shakeout budget is
-// measured in whole floor-length days.
-const EASY_RUN_FLOOR_KM = 3;
+// measured in whole floor-length days. Exported so a pass that rescales a
+// generated plan (comeback.ts `capReturnRamp`) keeps to the same floor.
+export const EASY_RUN_FLOOR_KM = 3;
+
+/// An easy run shorter than this is labelled a recovery run.
+export const RECOVERY_RUN_MAX_KM = 4;
 
 function generateWeek(w: WeekGenInput): GeneratedWorkout[] {
 	const workouts: GeneratedWorkout[] = [];
@@ -1376,7 +1386,7 @@ function easyWorkout(
 ): GeneratedWorkout {
 	return {
 		scheduled_date: date,
-		kind: km < 4 ? 'recovery' : 'easy',
+		kind: km < RECOVERY_RUN_MAX_KM ? 'recovery' : 'easy',
 		target_distance_m: Math.max(EASY_RUN_FLOOR_KM, Math.round(km)) * 1000,
 		target_duration_seconds: null,
 		target_pace_sec_per_km: paces.easy,

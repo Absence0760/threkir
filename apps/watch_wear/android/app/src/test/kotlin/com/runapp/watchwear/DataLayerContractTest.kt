@@ -48,6 +48,12 @@ class DataLayerContractTest {
         ).readText()
     }
 
+    private val phoneWorkout: String by lazy {
+        repoFile(
+            "apps/mobile_android/android/app/src/main/kotlin/com/threkir/app/WearWorkoutBridge.kt",
+        ).readText()
+    }
+
     /// `const val PATH = "/x"` on either rail.
     private fun pathConst(src: String, where: String): String =
         Regex("""const val PATH = "([^"]+)"""").find(src)?.groupValues?.get(1)
@@ -113,6 +119,26 @@ class DataLayerContractTest {
             written = writtenKeys(phoneRoutes),
             read = readKeys(watchSource("RoutesBridge.kt")),
             contract = "/saved_routes",
+        )
+    }
+
+    @Test
+    fun `the workout bridge path is the same string on both rails`() {
+        assertEquals(
+            "phone WearWorkoutBridge.PATH and watch WorkoutBridge.PATH must be " +
+                "identical — a mismatch means today's workout reaches the graph " +
+                "and never the pre-run screen",
+            pathConst(phoneWorkout, "phone WearWorkoutBridge.kt"),
+            pathConst(watchSource("WorkoutBridge.kt"), "watch WorkoutBridge.kt"),
+        )
+    }
+
+    @Test
+    fun `the workout bridge writes and reads the same DataMap keys`() {
+        assertKeysAgree(
+            written = writtenKeys(phoneWorkout),
+            read = readKeys(watchSource("WorkoutBridge.kt")),
+            contract = "/todays_workout",
         )
     }
 

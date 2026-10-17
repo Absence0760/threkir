@@ -9,10 +9,80 @@ import 'health_consent.dart';
 import 'nutrition_targets.dart' show ageFromDob;
 import 'plan_copy.dart';
 import 'plan_current.dart';
+import 'comeback.dart' show kLayoffMaxDays;
+import 'fitness.dart' show qualifyingRuns;
 import 'plan_ramp.dart';
+import 'race_predictor.dart' show EffortForPrediction;
 import 'plan_week.dart';
 import 'relink_candidates.dart';
 import 'training.dart';
+
+/// The window the goal-time check reads efforts from: the same 90 days the
+/// runner's fitness is taken from. Mirrors `GOAL_CHECK_WINDOW_DAYS` on web
+/// `PlanEditor.svelte`.
+const int kGoalCheckWindowDays = 90;
+
+/// What the plan wizard reads off the runner's history: every run in the
+/// window as [RunForVolume] (the ramp check and the break detection), and
+/// the qualifying efforts of the last [kGoalCheckWindowDays] (the goal check).
+class PlanRunHistory {
+  final List<RunForVolume> runs;
+  final List<EffortForPrediction> efforts;
+
+  const PlanRunHistory({required this.runs, required this.efforts});
+}
+
+/// Rows of `runs` (id, started_at, distance_m, duration_s, activity_type,
+/// source, metadata) to a [PlanRunHistory]. Efforts go through the same
+/// [qualifyingRuns] gate the fitness card and race predictor use.
+PlanRunHistory planRunHistoryFromRows(
+    List<Map<String, dynamic>> rows, int nowMs) {
+  final runs = <RunForVolume>[];
+  final candidates = <Run>[];
+  for (final r in rows) {
+    final startedAt = r['started_at'] as String? ?? '';
+    final distanceM = (r['distance_m'] as num?)?.toDouble();
+    final activityType = r['activity_type'] as String?;
+    runs.add(RunForVolume(
+      startedAt: startedAt,
+      distanceM: distanceM,
+      activityType: activityType,
+    ));
+    final started = DateTime.tryParse(startedAt);
+    if (started == null ||
+        nowMs - started.millisecondsSinceEpoch >
+            kGoalCheckWindowDays * 86400000) {
+      continue;
+    }
+    candidates.add(Run(
+      id: r['id'] as String? ?? '',
+      startedAt: started,
+      duration: Duration(seconds: (r['duration_s'] as num?)?.round() ?? 0),
+      distanceMetres: distanceM ?? 0,
+      source: RunSource.values.firstWhere(
+        (s) => s.name == r['source'],
+        orElse: () => RunSource.app,
+      ),
+      metadata: {
+        ...?(r['metadata'] as Map?)?.cast<String, dynamic>(),
+        'activity_type': activityType,
+      },
+    ));
+  }
+  return PlanRunHistory(
+    runs: runs,
+    efforts: [
+      for (final run in qualifyingRuns(candidates))
+        EffortForPrediction(
+          distanceM: run.distanceMetres,
+          durationS: run.duration.inSeconds,
+          ageDays: ((nowMs - run.startedAt.millisecondsSinceEpoch) / 86400000)
+              .clamp(0, double.infinity)
+              .toDouble(),
+        ),
+    ],
+  );
+}
 
 /// View-model pairing a plan row with its current-week index + today's
 /// workout + completion percentage. Used by the dashboard/Run-tab card.
@@ -286,36 +356,33 @@ class TrainingService extends ChangeNotifier {
     return null;
   }
 
-  /// The viewer's chronic weekly running volume over the ramp check's
-  /// trailing window, so the plan wizard can say whether the plan it just
-  /// generated is a step the runner's current training supports. Same L4
-  /// best-effort contract as [fetchViewerGender]: null on any failure, and
-  /// the note then self-hides rather than grading against a base it doesn't
-  /// have.
-  Future<RecentVolume?> fetchRecentRunVolume() async {
+  /// The viewer's running history as the plan wizard reads it: far enough
+  /// back ([kLayoffMaxDays] plus the four-week base before it) to see the
+  /// break a returning runner is coming back from as well as the four weeks
+  /// the ramp check grades against, and the last [kGoalCheckWindowDays] of
+  /// qualifying efforts the goal-time check projects from. Mirrors the two
+  /// reads on web `PlanEditor.svelte`. Same L4 best-effort contract as
+  /// [fetchViewerGender]: null on any failure, and every note built from it
+  /// then self-hides rather than grading against a base it doesn't have.
+  Future<PlanRunHistory?> fetchPlanRunHistory() async {
     try {
       final uid = _uid;
       if (uid == null) return null;
       final nowMs = DateTime.now().millisecondsSinceEpoch;
       final from = DateTime.fromMillisecondsSinceEpoch(
-        nowMs - kChronicWindowWeeks * 7 * 86400000,
+        nowMs - (kLayoffMaxDays + kChronicWindowWeeks * 7 + 1) * 86400000,
         isUtc: true,
       );
       final rows = await _c
           .from('runs')
-          .select('started_at, distance_m, activity_type')
+          .select(
+              'id, started_at, distance_m, duration_s, activity_type, source, metadata')
           .eq('user_id', uid)
           .gte('started_at', from.toIso8601String());
-      final runs = (rows as List).cast<Map<String, dynamic>>().map((r) {
-        return RunForVolume(
-          startedAt: r['started_at'] as String? ?? '',
-          distanceM: (r['distance_m'] as num?)?.toDouble(),
-          activityType: r['activity_type'] as String?,
-        );
-      }).toList();
-      return recentRunVolume(runs, nowMs);
-    } catch (_) {
-      /* L4 best-effort — null on any failure. */
+      return planRunHistoryFromRows(
+          (rows as List).cast<Map<String, dynamic>>(), nowMs);
+    } catch (e) {
+      debugPrint('fetchPlanRunHistory failed: $e');
     }
     return null;
   }
@@ -979,6 +1046,17 @@ class TrainingService extends ChangeNotifier {
   /// RLS policies on `plan_workouts` run (`private.is_active_coach_of`), so a
   /// screen offers an edit only where the write will be allowed. Mirrors web
   /// `isActiveCoachOf`.
+  /// One user's display name, or null when the profile is unreadable or
+  /// unnamed. Web twin `fetchDisplayName` in `core/data.ts`.
+  Future<String?> fetchDisplayName(String userId) async {
+    final row = await _c
+        .from('user_profiles')
+        .select('display_name')
+        .eq('id', userId)
+        .maybeSingle();
+    return row?['display_name'] as String?;
+  }
+
   Future<bool> isActiveCoachOf(String athleteId) async {
     final uid = _uid;
     if (uid == null || uid == athleteId) return false;

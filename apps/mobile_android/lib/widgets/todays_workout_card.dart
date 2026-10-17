@@ -1,9 +1,12 @@
 import 'package:core_models/core_models.dart' show PlanWorkoutRow;
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show AppIconSize;
 
 import '../l10n/gen/app_localizations.dart';
+import '../plan_current.dart';
 import '../training.dart';
 import '../training_labels.dart';
+import 'plan_workout_status_style.dart';
 
 /// Today's planned workout, on Home (the plan hero), the Run tab's idle state
 /// and plan detail. On the Run tab it beats the last-run summary, which is
@@ -34,8 +37,15 @@ class TodaysWorkoutCard extends StatelessWidget {
     final w = workout;
     final kind = workoutKindFromDb(w.kind);
     final done = isWorkoutCompleted(w);
-    final showStart =
-        onStart != null && !done && !isWorkoutSkipped(w.skippedAt);
+    final skipped = !done && isWorkoutSkipped(w.skippedAt);
+    final doneLook = planWorkoutStatusLook(
+        theme,
+        done
+            ? PlanWorkoutStatus.done
+            : skipped
+                ? PlanWorkoutStatus.skipped
+                : PlanWorkoutStatus.upcoming);
+    final showStart = onStart != null && !done && !skipped;
     final pace = w.targetPaceSecPerKm == null
         ? null
         : l10n.todaysWorkoutAtPace(fmtPace(w.targetPaceSecPerKm));
@@ -66,9 +76,13 @@ class TodaysWorkoutCard extends StatelessWidget {
                   color: theme.colorScheme.surface,
                 ),
                 child: Icon(
-                  done ? Icons.check_circle : _iconFor(kind),
-                  color: theme.colorScheme.primary,
-                  size: 24,
+                  doneLook.glyph != null && (done || skipped)
+                      ? doneLook.glyph
+                      : _iconFor(kind),
+                  color: done || skipped
+                      ? doneLook.glyphColor
+                      : theme.colorScheme.primary,
+                  size: AppIconSize.material,
                 ),
               ),
               const SizedBox(width: 12),

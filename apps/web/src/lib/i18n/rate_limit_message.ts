@@ -38,6 +38,7 @@ const BUCKET_KEY: Record<string, MessageKey> = {
 	clone_session_template: 'rateLimit.adoptSessionPlan',
 	clone_gym_routine_template: 'rateLimit.adoptGymRoutine',
 	publish_gym_routine_as_template: 'rateLimit.publishRoutine',
+	plan_calendar_rotate: 'rateLimit.rotateCalendarLink',
 	send_direct_message: 'rateLimit.sendMessage',
 	send_direct_message_burst: 'rateLimit.sendMessage',
 };

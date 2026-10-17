@@ -27,6 +27,7 @@ const BUCKETS = [
 	'clone_session_template',
 	'clone_gym_routine_template',
 	'publish_gym_routine_as_template',
+	'plan_calendar_rotate',
 	'send_direct_message',
 	'send_direct_message_burst',
 ] as const;
@@ -179,11 +180,12 @@ for (const loc of SUPPORTED_LOCALES) {
 				'clone_session_template',
 				'clone_gym_routine_template',
 				'publish_gym_routine_as_template',
+				'plan_calendar_rotate',
 				'send_direct_message',
 				'create_widget',
 			].map((bucket) => rateLimitMessage(t, { bucket, seconds: 42 })),
 		);
-		assert.equal(distinct.size, 10, `${loc} reuses one sentence for two different activities`);
+		assert.equal(distinct.size, 11, `${loc} reuses one sentence for two different activities`);
 		assert.equal(
 			rateLimitMessage(t, { bucket: 'clone_plan_template', seconds: 42 }),
 			rateLimitMessage(t, { bucket: 'clone_public_plan', seconds: 42 }),

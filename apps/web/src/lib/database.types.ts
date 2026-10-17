@@ -3031,6 +3031,30 @@ export type Database = {
           },
         ]
       }
+      plan_calendar_feeds: {
+        Row: {
+          created_at: string
+          id: string
+          last_fetched_at: string | null
+          secret_hash: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_fetched_at?: string | null
+          secret_hash: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_fetched_at?: string | null
+          secret_hash?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       plan_weeks: {
         Row: {
           id: string
@@ -6265,6 +6289,7 @@ export type Database = {
       enqueue_run_rematch: { Args: { p_run_id: string }; Returns: Json }
       enqueue_safety_overdue_emails: { Args: never; Returns: undefined }
       enqueue_weekly_digests: { Args: never; Returns: number }
+      enqueue_workout_reminders: { Args: { p_now?: string }; Returns: number }
       escalate_run_off_route: { Args: { p_run_id: string }; Returns: boolean }
       event_gallery_photos: {
         Args: { p_event_id: string; p_instance: string; p_limit?: number }
@@ -6772,6 +6797,14 @@ export type Database = {
           distance: string
         }[]
       }
+      plan_calendar_feed_events: { Args: { p_feed_id: string }; Returns: Json }
+      plan_calendar_feed_status: {
+        Args: never
+        Returns: {
+          created_at: string
+          last_fetched_at: string
+        }[]
+      }
       plan_workout_link_candidates: {
         Args: { p_run_id: string }
         Returns: {
@@ -6946,10 +6979,12 @@ export type Database = {
         }
         Returns: number
       }
+      revoke_plan_calendar_feed: { Args: never; Returns: boolean }
       revoke_unmet_distance_achievements: {
         Args: { p_user: string }
         Returns: number
       }
+      rotate_plan_calendar_feed: { Args: never; Returns: string }
       route_conditions_for_viewer: {
         Args: { p_route_id: string }
         Returns: {

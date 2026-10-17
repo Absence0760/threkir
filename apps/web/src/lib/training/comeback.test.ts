@@ -5,7 +5,10 @@ import {
 	LAYOFF_MAX_DAYS,
 	LAYOFF_MIN_DAYS,
 	RETURN_WEEK_SHARE,
+	RETURN_WEEKLY_GROWTH,
+	capReturnRamp,
 	comebackLoad,
+	returningFromBreak,
 	shouldSurfaceComeback,
 } from './comeback';
 import { CHRONIC_WINDOW_WEEKS, MIN_ACTIVE_WEEKS } from './plan_ramp';
@@ -215,4 +218,164 @@ test('shouldSurfaceComeback narrows to the verdicts the card has copy for', () =
 		assert.equal(verdict, 'steep');
 	}
 	assert.equal(shouldSurfaceComeback(comebackLoad([], NOW)), false);
+});
+
+/// Four 40 km weeks ending `lastRunDaysAgo` days ago, and nothing since.
+function openBreakRunner(lastRunDaysAgo: number, baseWeeklyM = 40_000) {
+	return [0, 7, 14, 21].map((w) => run(lastRunDaysAgo + w, baseWeeklyM));
+}
+
+test('returningFromBreak reads a break that is still open, before the first run back', () => {
+	const r = returningFromBreak(openBreakRunner(60), NOW);
+	assert.ok(r);
+	assert.equal(r.layoffDays, 60);
+	assert.equal(r.layoffWeeks, 9);
+	assert.equal(r.preLayoffWeeklyM, 40_000);
+	assert.equal(r.openingCapM, 40_000 * RETURN_WEEK_SHARE);
+	// comebackLoad has nothing to grade until the runner runs again.
+	assert.equal(comebackLoad(openBreakRunner(60), NOW).verdict, 'insufficient');
+});
+
+test('returningFromBreak agrees with comebackLoad on a break the runner has ended', () => {
+	const runs = comebackRunner(60, 5_000);
+	const r = returningFromBreak(runs, NOW);
+	assert.ok(r);
+	assert.equal(r.layoffDays, comebackLoad(runs, NOW).layoffDays);
+	assert.equal(r.preLayoffWeeklyM, comebackLoad(runs, NOW).preLayoffWeeklyM);
+});
+
+test('returningFromBreak is null for a runner training consistently now', () => {
+	const runs = [1, 8, 15, 22].map((d) => run(d, 30_000));
+	assert.equal(returningFromBreak(runs, NOW), null);
+});
+
+test('returningFromBreak is null with no running history at all', () => {
+	assert.equal(returningFromBreak([], NOW), null);
+	assert.equal(returningFromBreak([run(3, 20_000, 'cycle')], NOW), null);
+});
+
+test('returningFromBreak is null for a break too old to anchor against', () => {
+	assert.equal(returningFromBreak(openBreakRunner(LAYOFF_MAX_DAYS + 1), NOW), null);
+	assert.ok(returningFromBreak(openBreakRunner(LAYOFF_MAX_DAYS), NOW));
+});
+
+test('returningFromBreak is null for a break that ended more than four weeks ago', () => {
+	// Four 40 km weeks ending 380 days ago, then a run a fortnight for the last
+	// 100 days: the break ended long enough ago that its base no longer
+	// describes the runner, however sporadic the running since.
+	const since = [2, 16, 30, 44, 58, 72, 86, 100].map((d) => run(d, 5_000));
+	assert.equal(returningFromBreak([...since, ...openBreakRunner(380)], NOW), null);
+	// The same break ending 20 days ago still counts.
+	const recent = [2, 20].map((d) => run(d, 5_000));
+	assert.ok(returningFromBreak([...recent, ...openBreakRunner(200)], NOW));
+});
+
+test('returningFromBreak is null when the pre-break base is a single run', () => {
+	assert.equal(returningFromBreak([run(60, 40_000)], NOW), null);
+});
+
+function rampWorkout(kind: string, metres: number | null) {
+	return {
+		kind,
+		target_distance_m: metres,
+		target_duration_seconds: null as number | null,
+		target_pace_sec_per_km: kind === 'rest' ? null : 300,
+		target_pace_tolerance_sec: kind === 'rest' ? null : 8,
+		structure: kind === 'interval' ? { repeats: { count: 5 } } : null,
+		notes: kind === 'interval' ? '5 x 1 km' : null,
+	};
+}
+function rampWeek(index: number, workouts: ReturnType<typeof rampWorkout>[]) {
+	return {
+		week_index: index,
+		target_volume_m: workouts.reduce((s, w) => s + (w.target_distance_m ?? 0), 0),
+		workouts,
+	};
+}
+
+test('capReturnRamp caps week 1, lets the next grow 10%, and stops at the first week that fits', () => {
+	const weeks = [
+		rampWeek(0, [rampWorkout('long', 12_000), rampWorkout('rest', null), rampWorkout('interval', 8_000)]),
+		rampWeek(1, [rampWorkout('long', 12_000), rampWorkout('rest', null), rampWorkout('easy', 8_000)]),
+		rampWeek(2, [rampWorkout('long', 10_000), rampWorkout('race', 5_000)]),
+	];
+	const capped = capReturnRamp(weeks, 10_000, 420);
+	// Week 1: 20 km against a 10 km cap, so every session halves.
+	assert.equal(capped[0].target_volume_m, 10_000);
+	assert.equal(capped[0].workouts[0].target_distance_m, 6_000);
+	assert.equal(capped[0].workouts[2].target_distance_m, 4_000);
+	// The interval session is an easy run at the easy pace now.
+	assert.equal(capped[0].workouts[2].kind, 'easy');
+	assert.equal(capped[0].workouts[2].target_pace_sec_per_km, 420);
+	assert.equal(capped[0].workouts[2].target_pace_tolerance_sec, 30);
+	assert.equal(capped[0].workouts[2].structure, null);
+	assert.equal(capped[0].workouts[2].notes, null);
+	assert.equal(capped[0].workouts[1], weeks[0].workouts[1]);
+	// Week 2: capped at 10 km x 1.1 = 11 km, to the nearest 100 m per session.
+	assert.equal(10_000 * RETURN_WEEKLY_GROWTH, 11_000);
+	assert.equal(capped[1].workouts[0].target_distance_m, 6_600);
+	assert.equal(capped[1].workouts[2].target_distance_m, 4_400);
+	assert.equal(capped[1].target_volume_m, 11_000);
+	// Week 3: 10 km of running fits its 12.1 km cap (the race is not counted),
+	// so the climb ends there and the week is exactly as generated.
+	assert.equal(capped[2], weeks[2]);
+	// The input is untouched.
+	assert.equal(weeks[0].target_volume_m, 20_000);
+	assert.equal(weeks[0].workouts[2].kind, 'interval');
+});
+
+test('capReturnRamp leaves every week after the first that fits alone, speed work and all', () => {
+	// 40 / 44 / 36 / 48 km against caps of 35 / 38.5 / 42.35 / 46.585 km: the
+	// step-back third week fits, so the fourth keeps its intervals and its
+	// 48 km even though that is over the cap the climb would have reached.
+	const weeks = [40_000, 44_000, 36_000, 48_000].map((m, i) =>
+		rampWeek(i, [rampWorkout('long', m - 8_000), rampWorkout('interval', 8_000)]),
+	);
+	const capped = capReturnRamp(weeks, 35_000, 420);
+	assert.equal(capped[0].workouts[1].kind, 'easy');
+	assert.equal(capped[1].workouts[1].kind, 'easy');
+	assert.equal(capped[2], weeks[2]);
+	assert.equal(capped[3], weeks[3]);
+	assert.equal(capped[3].workouts[1].kind, 'interval');
+});
+
+test('capReturnRamp drops sessions the cap would take under 3 km to rest, shortest first', () => {
+	// 20 km over four runs against a 6 km cap: scaling alone would ask for a
+	// 900 m run. The 3, 4 and 5 km runs drop in turn and the long run takes
+	// the whole 6 km.
+	const weeks = [
+		rampWeek(0, [
+			rampWorkout('long', 8_000),
+			rampWorkout('easy', 5_000),
+			rampWorkout('easy', 4_000),
+			rampWorkout('easy', 3_000),
+		]),
+	];
+	const [week] = capReturnRamp(weeks, 6_000, 420);
+	assert.equal(week.workouts[0].target_distance_m, 6_000);
+	for (const dropped of week.workouts.slice(1)) {
+		assert.equal(dropped.kind, 'rest');
+		assert.equal(dropped.target_distance_m, null);
+		assert.equal(dropped.target_pace_sec_per_km, null);
+	}
+	assert.equal(week.target_volume_m, 6_000);
+});
+
+test('capReturnRamp labels an easy run it shortens under 4 km a recovery run', () => {
+	// Two 6 km easy runs against a 7 km cap become two 3.5 km runs.
+	const [week] = capReturnRamp([rampWeek(0, [rampWorkout('easy', 6_000), rampWorkout('easy', 6_000)])], 7_000, 420);
+	assert.deepEqual(
+		week.workouts.map((w) => [w.kind, w.target_distance_m]),
+		[
+			['recovery', 3_500],
+			['recovery', 3_500],
+		],
+	);
+});
+
+test('capReturnRamp leaves a week under its cap, and every week for a cap that is not positive', () => {
+	const weeks = [rampWeek(0, [rampWorkout('easy', 5_000)])];
+	assert.equal(capReturnRamp(weeks, 10_000, 420)[0], weeks[0]);
+	assert.equal(capReturnRamp(weeks, 0, 420), weeks);
+	assert.equal(capReturnRamp(weeks, Number.NaN, 420), weeks);
 });

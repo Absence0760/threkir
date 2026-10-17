@@ -43,6 +43,7 @@
 	import InfoTip from '#lib/components/InfoTip.svelte';
 	import UltraSignUpLinkPanel from '#lib/components/UltraSignUpLinkPanel.svelte';
 	import ParkrunBarcodeCard from '#lib/components/ParkrunBarcodeCard.svelte';
+	import PlanCalendarFeedCard from '#lib/components/PlanCalendarFeedCard.svelte';
 
 	interface IntegrationUI {
 		provider: string;
@@ -508,6 +509,8 @@
 		{/if}
 
 		<ParkrunBarcodeCard storedNumber={auth.user?.parkrun_number ?? null} />
+
+		<PlanCalendarFeedCard />
 
 		<section class="card bulk-import">
 			<div class="title-row">

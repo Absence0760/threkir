@@ -2,7 +2,8 @@
 	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { lengthLimit } from '#lib/core/column_limits.ts';
-	import { formatISO, todayISO } from '#lib/training/training.ts';
+	import { todayISO } from '#lib/training/training.ts';
+	import { alignPlanStartIso, defaultPlanStartIso } from '#lib/training/plan_start.ts';
 	import { racePlanPreset } from '#lib/training/race_plan_preset.ts';
 	import { goto, afterNavigate } from '$app/navigation';
 	import { page } from '$app/state';
@@ -22,6 +23,7 @@
 		publishGymRoutineAsTemplate,
 	} from '#lib/core/data.ts';
 	import { STARTER_PLANS, starterById, instantiateStarter } from '#lib/training/starter_plans.ts';
+	import { starterName, starterSummaryText } from '#lib/training/starter_labels.ts';
 	import { PRIMARY_GOAL_VALUES, planPresetForGoal, type PrimaryGoal } from '#lib/settings/onboarding.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
@@ -118,6 +120,7 @@
 	let loadingTemplates = $state(true);
 	let selectedTemplateId = $state('');
 	let startDate = $state(defaultStartDate());
+	let startSnapped = $state(false);
 	let cloning = $state(false);
 	let selectedStarterId = $state('');
 	let creatingStarter = $state(false);
@@ -200,13 +203,12 @@
 		else goto(backHref);
 	}
 
+	/// Plan day 0 is the Sunday long run, so a plan starts on a Sunday
+	/// (decisions § 735): the default is the Sunday at least a week out. A
+	/// walk-run starter is the exemption and defaults to tomorrow, chosen in
+	/// `onStarterChange` while the runner has not touched the date.
 	function defaultStartDate(): string {
-		const d = new Date();
-		// Snap to the next Monday — that's the canonical week-start the
-		// schedule generator assumes.
-		const offset = (8 - d.getDay()) % 7;
-		d.setDate(d.getDate() + (offset === 0 ? 7 : offset));
-		return formatISO(d);
+		return defaultPlanStartIso(todayISO(), false);
 	}
 
 	onMount(async () => {
@@ -293,23 +295,32 @@
 		await run('refuse');
 	}
 
-	/// Localized display name per starter id (literal m() keys so the i18n
-	/// parity tooling can see them).
-	function starterName(id: string): string {
-		switch (id) {
-			case 'c25k':
-				return m('plansNew.starterC25k');
-			case 'half_12wk':
-				return m('plansNew.starterHalf12');
-			case 'marathon_16wk':
-				return m('plansNew.starterMarathon16');
-			default:
-				return id;
+	let selectedStarterSummary = $derived(selectedStarterId ? starterSummaryText(selectedStarterId) : null);
+
+	function starterWalkRun(): boolean {
+		return starterById(selectedStarterId)?.beginnerWalkRun ?? false;
+	}
+
+	function onStarterChange() {
+		const walkRun = starterWalkRun();
+		if (startDate === defaultPlanStartIso(todayISO(), !walkRun)) {
+			startDate = defaultPlanStartIso(todayISO(), walkRun);
 		}
+		alignStarterStart();
+	}
+
+	/// A date input cannot be limited to Sundays, so a picked weekday snaps
+	/// forward to the upcoming Sunday, unless the starter is walk-run.
+	function alignStarterStart() {
+		if (!startDate || !selectedStarterId) return;
+		const aligned = alignPlanStartIso(startDate, starterWalkRun());
+		startSnapped = aligned !== startDate;
+		startDate = aligned;
 	}
 
 	async function createFromStarter() {
 		if (!selectedStarterId || !startDate || creatingStarter) return;
+		alignStarterStart();
 		const starterId = selectedStarterId;
 		const start = startDate;
 		const starter = starterById(starterId);
@@ -423,7 +434,11 @@
 		<div class="picker-row">
 			<label class="picker-field">
 				<span>{m('plansNew.starterLabel')}</span>
-				<select bind:value={selectedStarterId} aria-describedby="starter-hint">
+				<select
+					bind:value={selectedStarterId}
+					onchange={onStarterChange}
+					aria-describedby={selectedStarterSummary ? 'starter-hint starter-summary' : 'starter-hint'}
+				>
 					<option value="">{m('plansNew.selectPlaceholder')}</option>
 					{#each STARTER_PLANS as s (s.id)}
 						<option value={s.id}>{starterName(s.id)}</option>
@@ -432,7 +447,15 @@
 			</label>
 			<label class="picker-field">
 				<span>{m('plansNew.startDateLabel')}</span>
-				<input type="date" bind:value={startDate} aria-describedby="starter-start-date-hint" />
+				<input
+					type="date"
+					bind:value={startDate}
+					onchange={alignStarterStart}
+					aria-describedby="starter-start-date-hint"
+				/>
+				{#if startSnapped}
+					<span class="field-note" role="status">{m('planEditor.movedToNextSunday')}</span>
+				{/if}
 			</label>
 			<button
 				class="btn btn-primary"
@@ -448,6 +471,11 @@
 				{/if}
 			</button>
 		</div>
+		{#if selectedStarterSummary}
+			<p class="picker-hint field-hint" id="starter-summary" data-testid="starter-summary">
+				{selectedStarterSummary}
+			</p>
+		{/if}
 		<p class="picker-hint field-hint" id="starter-start-date-hint">{m('plansNew.startDateHint')}</p>
 	</section>
 
@@ -655,6 +683,13 @@
 		font-size: 1.1rem;
 		font-weight: 700;
 		margin: 0 0 0.2rem 0;
+	}
+	.field-note {
+		display: block;
+		margin-top: var(--space-2xs);
+		font-size: 0.78rem;
+		color: var(--color-text-secondary);
+		font-weight: 400;
 	}
 	.picker-hint {
 		color: var(--color-text-secondary);

@@ -9,6 +9,7 @@
 import type { Event, RecurrenceFreq, Weekday } from '../types';
 import { expandInstances } from './recurrence';
 import { buildVtimezone } from './ics_timezone';
+import { escapeText, joinIcsLines, toIcsUtc } from './ics_text';
 import { instantForWallClock, isKnownTimeZone, wallClockIn } from './zoned_time';
 
 // The app's Weekday codes ARE the RFC 5545 weekday abbreviations, so the RRULE
@@ -74,35 +75,7 @@ export interface IcsLocalStart {
 
 const LOCAL_DATE_TIME = /^\d{8}T\d{6}$/;
 
-/** Escape a TEXT value per RFC 5545 §3.3.11 (backslash, semicolon, comma,
- * newline). Colon needs no escaping in a TEXT value. The grammar's TSAFE-CHAR
- * excludes every CONTROL character but HTAB, and no escape spells one, so
- * once the line breaks are escaped every other control character is dropped —
- * a NUL or vertical tab pasted into an event title made strict parsers refuse
- * the whole file. */
-function escapeText(value: string): string {
-	return value
-		.replace(/\\/g, '\\\\')
-		.replace(/;/g, '\\;')
-		.replace(/,/g, '\\,')
-		.replace(/\r\n|\r|\n/g, '\\n')
-		.replace(/[\u0000-\u0008\u000A-\u001F\u007F]/g, '');
-}
-
-/** Format an ISO instant as a UTC iCalendar date-time (`YYYYMMDDTHHMMSSZ`).
- * A single occurrence is one instant, so it needs no VTIMEZONE; a series is
- * written on its zone's wall clock instead (`IcsEventInput.local`). Returns
- * null for an unparseable input. */
-export function toIcsUtc(iso: string): string | null {
-	const d = new Date(iso);
-	const ms = d.getTime();
-	if (Number.isNaN(ms)) return null;
-	const p2 = (n: number) => String(n).padStart(2, '0');
-	return (
-		`${d.getUTCFullYear()}${p2(d.getUTCMonth() + 1)}${p2(d.getUTCDate())}` +
-		`T${p2(d.getUTCHours())}${p2(d.getUTCMinutes())}${p2(d.getUTCSeconds())}Z`
-	);
-}
+export { toIcsUtc };
 
 /** Render an `IcsRecurrence` as an RRULE value (no `RRULE:` prefix), or null
  * when the series cannot be stated faithfully.
@@ -142,33 +115,6 @@ export function buildRrule(r: IcsRecurrence): string | null {
 	}
 
 	return parts.join(';');
-}
-
-const encoder = new TextEncoder();
-
-/** Fold a content line to ≤75 octets per RFC 5545 §3.1, breaking on whole
- * code points (never mid-character) and prefixing continuations with a space. */
-function foldLine(line: string): string {
-	if (encoder.encode(line).length <= 75) return line;
-	const out: string[] = [];
-	let current = '';
-	let currentBytes = 0;
-	// Continuation lines carry a leading space, so cap their payload at 74 octets.
-	let limit = 75;
-	for (const ch of line) {
-		const chBytes = encoder.encode(ch).length;
-		if (currentBytes + chBytes > limit) {
-			out.push(current);
-			current = ch;
-			currentBytes = chBytes;
-			limit = 74;
-		} else {
-			current += ch;
-			currentBytes += chBytes;
-		}
-	}
-	out.push(current);
-	return out.join('\r\n ');
 }
 
 /** Build a complete VCALENDAR document (CRLF line endings) wrapping one VEVENT
@@ -243,7 +189,7 @@ export function buildEventIcs(input: IcsEventInput): string | null {
 
 	lines.push('END:VEVENT', 'END:VCALENDAR');
 
-	return lines.map(foldLine).join('\r\n') + '\r\n';
+	return joinIcsLines(lines);
 }
 
 export interface EventSeriesIcsOptions {

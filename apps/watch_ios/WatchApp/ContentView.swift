@@ -21,6 +21,7 @@ struct ContentView: View {
                         savedRoutes: connectivity.savedRoutes,
                         onPickRoute: connectivity.armRoute,
                         liveRace: connectivity.liveRace,
+                        todaysWorkout: workoutManager.offeredWorkout(connectivity.todaysWorkout),
                         onClearRoute: connectivity.clearArmedRoute,
                         onStart: { countingDown = true }
                     )
@@ -161,6 +162,15 @@ struct ContentView: View {
             // The track holds every fix the estimator took, off-track ones
             // flagged, so the server's replay sees the watch's own input.
             if run.trackComplete { metadata["track_complete"] = true }
+            // The run's link to today's workout and its planned-vs-actual
+            // review. The database matcher links the run by `plan_workout_id`
+            // (decisions § 2079); the phone forwards the group whole or not
+            // at all (`runFromWatchPayload`).
+            if let review = run.workoutReview {
+                metadata["plan_workout_id"] = review.planWorkoutId
+                metadata["workout_adherence"] = review.adherence
+                metadata["workout_step_results"] = review.steps.map(\.envelopeValue)
+            }
             // Only mark the run synced when WCSession actually queued it.
             // A false means nothing was handed off (session not yet
             // activated) — leave `thisRunSynced` false so `PostRunView`
@@ -299,6 +309,8 @@ struct PreRunView: View {
     let savedRoutes: [ArmedRoute]
     let onPickRoute: (ArmedRoute) -> Void
     let liveRace: LiveRace?
+    /// Today's workout the phone pushed, already checked against today.
+    let todaysWorkout: PushedWorkout?
     let onClearRoute: () -> Void
     let onStart: () -> Void
     @State private var selectedPaceIndex: Int? = nil
@@ -329,6 +341,32 @@ struct PreRunView: View {
                 }
 
                 RaceBannerView(race: liveRace)
+
+                if let workout = todaysWorkout {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Today's workout")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                        Text(workout.summary)
+                            .font(.caption)
+                            .foregroundColor(workoutManager.followWorkout ? AppTheme.lilac : .secondary)
+                        Button(
+                            workoutManager.followWorkout
+                                ? String(localized: "Run free instead")
+                                : String(localized: "Follow workout")
+                        ) {
+                            workoutManager.followWorkout.toggle()
+                        }
+                        .font(.caption2)
+                        .buttonStyle(.plain)
+                        .accessibilityHint(
+                            workoutManager.followWorkout
+                                ? String(localized: "Starts the next run without the workout's steps")
+                                : String(localized: "Starts the next run on today's workout, step by step")
+                        )
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
 
                 // The picker entry stands whether or not a route is armed, and
                 // whether or not the phone has pushed a list yet: an
@@ -617,6 +655,14 @@ struct RunStatsView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
 
+            if let view = workoutManager.workoutView {
+                Text(view.stepLine)
+                    .font(.caption)
+                    .foregroundColor(AppTheme.lilac)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+
             HStack {
                 VStack {
                     Text("Distance")
@@ -678,7 +724,11 @@ struct RunStatsView: View {
             }
             .buttonStyle(.bordered)
             .font(.caption)
-            .accessibilityHint("Marks a split at the current time and distance")
+            .accessibilityHint(
+                workoutManager.workoutView?.step != nil
+                    ? String(localized: "Marks a split and skips to the workout's next step")
+                    : String(localized: "Marks a split at the current time and distance")
+            )
         }
     }
 
@@ -1183,5 +1233,48 @@ struct SplitsView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+extension WorkoutStepKind {
+    /// The phone's planned-vs-actual vocabulary (`workoutReviewLabel*`), so
+    /// the wrist and the review name a step the same way.
+    var label: String {
+        switch self {
+        case .warmup: return String(localized: "Warm-up")
+        case .rep: return String(localized: "Rep")
+        case .recovery: return String(localized: "Recovery")
+        case .walk: return String(localized: "Walk")
+        case .steady: return String(localized: "Steady")
+        case .cooldown: return String(localized: "Cool-down")
+        }
+    }
+}
+
+extension PushedWorkout {
+    /// The pre-run line: step count and what the session covers, distance
+    /// and time both when it mixes the two axes.
+    var summary: String {
+        var parts = [String(localized: "\(steps.count) workout steps")]
+        if let d = totalDistanceMetres {
+            parts.append(RunFormat.distance(metres: Double(d), fractionDigits: 1))
+        }
+        if let t = totalDurationSeconds { parts.append(formatElapsed(t)) }
+        return parts.joined(separator: " · ")
+    }
+}
+
+extension WatchWorkoutView {
+    /// The running screen's step line: what the step is, and what is left of
+    /// it on its own axis.
+    var stepLine: String {
+        guard let step else { return String(localized: "Workout done") }
+        var name = step.kind.label
+        if let i = step.repIndex, let n = step.repTotal { name += " \(i)/\(n)" }
+        if let s = remainingSeconds { return "\(name) · \(formatElapsed(s))" }
+        if let m = remainingMetres {
+            return "\(name) · \(RunFormat.distance(metres: m, fractionDigits: 2))"
+        }
+        return name
     }
 }

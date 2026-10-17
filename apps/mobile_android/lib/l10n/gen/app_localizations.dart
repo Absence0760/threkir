@@ -7930,6 +7930,12 @@ abstract class AppLocalizations {
   /// **'{name} assigned you a training plan'**
   String profileNotifPlanAssigned(String name);
 
+  /// Notification inbox line for the morning reminder that today has a workout on the runner's active training plan
+  ///
+  /// In en, this message translates to:
+  /// **'Today\'s workout is waiting in your plan'**
+  String get profileNotifWorkoutReminder;
+
   /// Notification text for a cancelled event occurrence, when the event title is known
   ///
   /// In en, this message translates to:
@@ -9496,10 +9502,10 @@ abstract class AppLocalizations {
   /// **'Abandon \"{name}\"?'**
   String plansAbandonTitle(String name);
 
-  /// Confirm-abandon dialog body for an active plan
+  /// Confirm-abandon dialog body for an active or paused plan: what is kept
   ///
   /// In en, this message translates to:
-  /// **'You can create a new plan after.'**
+  /// **'Its weeks, workouts and linked runs are kept. You can create a new plan after.'**
   String get plansAbandonBody;
 
   /// Banner shown when abandoning or deleting a plan fails
@@ -9508,29 +9514,11 @@ abstract class AppLocalizations {
   /// **'Couldn\'t update the plan: {error}'**
   String plansActionFailed(String error);
 
-  /// Days-per-week meta chip on a plan tile
-  ///
-  /// In en, this message translates to:
-  /// **'{count} days/wk'**
-  String plansDaysPerWeek(int count);
-
   /// Status pill on a plan tile for an active plan that starts after today (queued behind the current plan). Lowercase to match the other status pills
   ///
   /// In en, this message translates to:
   /// **'upcoming'**
   String get plansStatusUpcoming;
-
-  /// Sign-in prompt title on plans list
-  ///
-  /// In en, this message translates to:
-  /// **'Sign in to use training plans'**
-  String get plansSignInTitle;
-
-  /// Sign-in prompt body on plans list
-  ///
-  /// In en, this message translates to:
-  /// **'Plans sync to your account so they follow you across devices. Head to Settings → Sign in to connect.'**
-  String get plansSignInBody;
 
   /// Empty-state title on plans list
   ///
@@ -9556,6 +9544,138 @@ abstract class AppLocalizations {
   /// **'Couldn\'t load training plans. Tap retry to try again.'**
   String get plansLoadError;
 
+  /// Status pill on an active plan in the plans list. Lowercase, like the other status pills
+  ///
+  /// In en, this message translates to:
+  /// **'active'**
+  String get plansStatusActive;
+
+  /// Status pill on a paused plan in the plans list. Lowercase
+  ///
+  /// In en, this message translates to:
+  /// **'paused'**
+  String get plansStatusPaused;
+
+  /// Status pill on a completed plan in the plans list. Lowercase
+  ///
+  /// In en, this message translates to:
+  /// **'completed'**
+  String get plansStatusCompleted;
+
+  /// Status pill on an abandoned plan in the plans list. Lowercase
+  ///
+  /// In en, this message translates to:
+  /// **'abandoned'**
+  String get plansStatusAbandoned;
+
+  /// Screen-reader label of the status filter chips above the plans list
+  ///
+  /// In en, this message translates to:
+  /// **'Filter plans by status'**
+  String get plansFilterGroupLabel;
+
+  /// Status filter chip on the plans list: every plan
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get plansFilterAll;
+
+  /// Status filter chip on the plans list: active plans
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get plansFilterActive;
+
+  /// Status filter chip on the plans list: paused plans
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get plansFilterPaused;
+
+  /// Status filter chip on the plans list: completed plans
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get plansFilterCompleted;
+
+  /// Status filter chip on the plans list: abandoned plans
+  ///
+  /// In en, this message translates to:
+  /// **'Abandoned'**
+  String get plansFilterAbandoned;
+
+  /// Shown when the selected status filter matches no plan. {status} is the lowercase status label (plansStatus*)
+  ///
+  /// In en, this message translates to:
+  /// **'No {status} plans.'**
+  String plansNoFilteredPlans(String status);
+
+  /// Button under plansNoFilteredPlans that resets the status filter to All
+  ///
+  /// In en, this message translates to:
+  /// **'Show all plans'**
+  String get plansShowAllPlans;
+
+  /// Label above the goal race (5K, Marathon…) on a plan card
+  ///
+  /// In en, this message translates to:
+  /// **'Goal'**
+  String get plansHeroGoal;
+
+  /// Label above the goal time on a plan card
+  ///
+  /// In en, this message translates to:
+  /// **'Target'**
+  String get plansHeroTarget;
+
+  /// Target value on a plan card when the plan has no goal time: the goal is simply to finish
+  ///
+  /// In en, this message translates to:
+  /// **'Finish'**
+  String get plansGoalFinish;
+
+  /// Goal race name: half marathon
+  ///
+  /// In en, this message translates to:
+  /// **'Half marathon'**
+  String get plansEventHalf;
+
+  /// Goal race name: marathon
+  ///
+  /// In en, this message translates to:
+  /// **'Marathon'**
+  String get plansEventFull;
+
+  /// Goal race name for a plan with a custom distance and no stored distance
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get plansEventCustom;
+
+  /// Progress line on an active plan card
+  ///
+  /// In en, this message translates to:
+  /// **'Week {week} of {total}'**
+  String plansWeekOf(int week, int total);
+
+  /// Countdown on an active plan card whose race day has passed
+  ///
+  /// In en, this message translates to:
+  /// **'Ended'**
+  String get plansEnded;
+
+  /// Screen-reader label of the calendar progress bar on an active plan card
+  ///
+  /// In en, this message translates to:
+  /// **'Plan progress'**
+  String get plansProgressLabel;
+
+  /// Plan length on the plans list, the library card and the library preview: weeks and training days per week
+  ///
+  /// In en, this message translates to:
+  /// **'{weeks, plural, one{{weeks} week · {days} days/week} other{{weeks} weeks · {days} days/week}}'**
+  String plansMetaWeeks(int weeks, int days);
+
   /// New-plan wizard AppBar title
   ///
   /// In en, this message translates to:
@@ -9573,12 +9693,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'e.g. Autumn half marathon'**
   String get planNewNameHint;
-
-  /// Inline hint below the plan-name field explaining why the Create button is disabled when the name is empty
-  ///
-  /// In en, this message translates to:
-  /// **'Add a plan name to enable Create.'**
-  String get planNewNameRequiredHint;
 
   /// Default plan name prefilled when the plan wizard opens preselected to a goal (from the onboarding nudge)
   ///
@@ -9676,17 +9790,11 @@ abstract class AppLocalizations {
   /// **'This is a time I could run today — it reflects my current fitness.'**
   String get planNewRecent5kConfirm;
 
-  /// Recent-5K unconfirmed warning
+  /// Warning under an entered but unconfirmed recent 5K time
   ///
   /// In en, this message translates to:
-  /// **'Until you confirm, paces stay on the conservative goal-based estimate. Anchoring on an old result can prescribe paces that are too fast for a returning runner.'**
+  /// **'Until you confirm, paces come from your goal time, or from a cautious default if you leave it blank. An old result can set paces that are too fast for a returning runner, and so can an ambitious goal.'**
   String get planNewRecent5kWarning;
-
-  /// Override-weeks field hint
-  ///
-  /// In en, this message translates to:
-  /// **'Override total weeks'**
-  String get planNewOverrideHint;
 
   /// Override-weeks field label with default count
   ///
@@ -10012,35 +10120,11 @@ abstract class AppLocalizations {
   /// **'Week outline'**
   String get planNewWeekOutline;
 
-  /// More-weeks preview footer
-  ///
-  /// In en, this message translates to:
-  /// **'+ {count} more weeks'**
-  String planNewMoreWeeks(int count);
-
   /// Active-sessions count on a preview week row
   ///
   /// In en, this message translates to:
   /// **'{count} sessions'**
   String planNewSessions(int count);
-
-  /// Plan-new club-template picker
-  ///
-  /// In en, this message translates to:
-  /// **'Start from a club template'**
-  String get planNewTemplateTitle;
-
-  /// Plan-new club-template picker
-  ///
-  /// In en, this message translates to:
-  /// **'Adopt a plan a club you belong to has published. It clones into your account with the start date below — edit it like any other plan.'**
-  String get planNewTemplateSubtitle;
-
-  /// Plan-new club-template picker
-  ///
-  /// In en, this message translates to:
-  /// **'Browse templates'**
-  String get planNewTemplateButton;
 
   /// Plan-new club-template picker
   ///
@@ -10053,18 +10137,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t adopt that template.'**
   String get planNewTemplateCloneFailed;
-
-  /// Plan-new club-template picker
-  ///
-  /// In en, this message translates to:
-  /// **'Choose a template'**
-  String get planNewTemplatePickerTitle;
-
-  /// Plan-new club-template picker
-  ///
-  /// In en, this message translates to:
-  /// **'Cancel'**
-  String get planNewTemplatePickerCancel;
 
   /// Public plan library
   ///
@@ -10123,18 +10195,6 @@ abstract class AppLocalizations {
   /// Public plan library
   ///
   /// In en, this message translates to:
-  /// **'{weeks} weeks'**
-  String planLibraryWeeks(int weeks);
-
-  /// Public plan library
-  ///
-  /// In en, this message translates to:
-  /// **'{days}×/week'**
-  String planLibraryDaysPerWeek(int days);
-
-  /// Public plan library
-  ///
-  /// In en, this message translates to:
   /// **'Clone into my plans'**
   String get planLibraryClone;
 
@@ -10179,6 +10239,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Week {n}'**
   String planLibraryPreviewWeek(int n);
+
+  /// Per-week summary in the public plan library preview: running days (non-rest workouts) that week
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} run} other{{count} runs}}'**
+  String planLibraryPreviewWeekRuns(int count);
 
   /// Public plan library
   ///
@@ -10249,32 +10315,8 @@ abstract class AppLocalizations {
   /// Plan-new built-in starter-plan picker
   ///
   /// In en, this message translates to:
-  /// **'Pick a proven training plan and we\'ll schedule it from your start date — you can tweak it after.'**
-  String get planNewStarterSubtitle;
-
-  /// Plan-new built-in starter-plan picker
-  ///
-  /// In en, this message translates to:
-  /// **'Browse starter plans'**
-  String get planNewStarterButton;
-
-  /// Plan-new built-in starter-plan picker
-  ///
-  /// In en, this message translates to:
   /// **'Creating…'**
   String get planNewStarterCreating;
-
-  /// Plan-new built-in starter-plan picker
-  ///
-  /// In en, this message translates to:
-  /// **'Choose a starter plan'**
-  String get planNewStarterPickerTitle;
-
-  /// Plan-new built-in starter-plan picker
-  ///
-  /// In en, this message translates to:
-  /// **'Cancel'**
-  String get planNewStarterPickerCancel;
 
   /// Toast when creating from a starter plan fails
   ///
@@ -11157,18 +11199,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cooldown'**
   String get workoutStructCooldown;
-
-  /// Structure-list warmup value (distance at easy pace)
-  ///
-  /// In en, this message translates to:
-  /// **'{distance} @ easy'**
-  String workoutStructWarmupValue(String distance);
-
-  /// Structure-list cooldown value (distance at easy pace)
-  ///
-  /// In en, this message translates to:
-  /// **'{distance} @ easy'**
-  String workoutStructCooldownValue(String distance);
 
   /// Advice text for easy / recovery workouts
   ///
@@ -14343,6 +14373,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Email me the first time my account signs in from a browser or device it hasn\'t used before. Password-change notices always send and can\'t be turned off.'**
   String get prefsEmailNewDeviceAlertsHint;
+
+  /// Title of the switch that turns the morning today's-workout reminder on or off
+  ///
+  /// In en, this message translates to:
+  /// **'Today\'s workout'**
+  String get prefsNotifyWorkoutReminder;
+
+  /// Subtitle of the today's-workout reminder switch; it covers the inbox, email and push
+  ///
+  /// In en, this message translates to:
+  /// **'On the morning of a planned workout, remind me in the inbox and by email and push.'**
+  String get prefsNotifyWorkoutReminderHint;
 
   /// Shown when lifting a prior one-click unsubscribe block fails after re-opting into an email stream
   ///
@@ -28104,6 +28146,762 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Save or discard your changes before moving this workout.'**
   String get workoutMoveSaveFirst;
+
+  /// A whole number of minutes in a walk-run pattern
+  ///
+  /// In en, this message translates to:
+  /// **'{n} min'**
+  String workoutSummaryMin(int n);
+
+  /// A number of seconds in a walk-run pattern
+  ///
+  /// In en, this message translates to:
+  /// **'{n} s'**
+  String workoutSummarySec(int n);
+
+  /// Minutes and seconds in a walk-run pattern
+  ///
+  /// In en, this message translates to:
+  /// **'{m} min {s} s'**
+  String workoutSummaryMinSec(int m, int s);
+
+  /// Walk-run intervals: count x (run time / walk time)
+  ///
+  /// In en, this message translates to:
+  /// **'{count} × ({run} run / {walk} walk)'**
+  String workoutSummaryIntervals(int count, String run, String walk);
+
+  /// One continuous run in a walk-run plan's graduation week
+  ///
+  /// In en, this message translates to:
+  /// **'{run} run'**
+  String workoutSummaryContinuous(String run);
+
+  /// Timed warm-up walk in a walk-run pattern
+  ///
+  /// In en, this message translates to:
+  /// **'{duration} warm-up'**
+  String workoutSummaryWarmup(String duration);
+
+  /// Timed cool-down walk in a walk-run pattern
+  ///
+  /// In en, this message translates to:
+  /// **'{duration} cool-down'**
+  String workoutSummaryCooldown(String duration);
+
+  /// Walk-run pattern joined: warm-up, main set, cool-down
+  ///
+  /// In en, this message translates to:
+  /// **'{warmup}, {main}, {cooldown}'**
+  String workoutSummaryWithBoth(String warmup, String main, String cooldown);
+
+  /// Walk-run pattern joined: warm-up, main set
+  ///
+  /// In en, this message translates to:
+  /// **'{warmup}, {main}'**
+  String workoutSummaryWithWarmup(String warmup, String main);
+
+  /// Walk-run pattern joined: main set, cool-down
+  ///
+  /// In en, this message translates to:
+  /// **'{main}, {cooldown}'**
+  String workoutSummaryWithCooldown(String main, String cooldown);
+
+  /// Approximate session length
+  ///
+  /// In en, this message translates to:
+  /// **'about {duration}'**
+  String workoutSummaryAbout(String duration);
+
+  /// Pace-zone chip with the zone's name, e.g. Zone T · Tempo
+  ///
+  /// In en, this message translates to:
+  /// **'Zone {code} · {name}'**
+  String workoutZoneNamed(String code, String name);
+
+  /// Pace-zone chip for a free-text zone code
+  ///
+  /// In en, this message translates to:
+  /// **'Zone {code}'**
+  String workoutZoneRaw(String code);
+
+  /// Recovery effort between reps: an easy jog
+  ///
+  /// In en, this message translates to:
+  /// **'jog'**
+  String get workoutEffortJog;
+
+  /// Recovery effort between reps: easy running
+  ///
+  /// In en, this message translates to:
+  /// **'easy'**
+  String get workoutEffortEasy;
+
+  /// Recovery effort between reps: walking
+  ///
+  /// In en, this message translates to:
+  /// **'walk'**
+  String get workoutEffortWalk;
+
+  /// Workout-detail tagline for a walk-run session
+  ///
+  /// In en, this message translates to:
+  /// **'Walk-run session. Alternate running and walking on the timer.'**
+  String get workoutTaglineWalkRun;
+
+  /// Workout-detail metric label for a walk-run session's length and pattern
+  ///
+  /// In en, this message translates to:
+  /// **'Session'**
+  String get workoutMetricSession;
+
+  /// Repeats step: count x rep distance or time
+  ///
+  /// In en, this message translates to:
+  /// **'{count}× {distance}'**
+  String workoutStructRepeatsMain(int count, String distance);
+
+  /// Sub-row label for the recovery between reps
+  ///
+  /// In en, this message translates to:
+  /// **'Recovery'**
+  String get workoutStructRecovery;
+
+  /// Recovery between reps: distance or time, then effort
+  ///
+  /// In en, this message translates to:
+  /// **'{distance} {effort}'**
+  String workoutStructRecoveryDetail(String distance, String effort);
+
+  /// Structure total line
+  ///
+  /// In en, this message translates to:
+  /// **'Total: {value}'**
+  String workoutStructTotal(String value);
+
+  /// Second line of a warm-up / cool-down step: at easy pace
+  ///
+  /// In en, this message translates to:
+  /// **'@ easy'**
+  String get workoutStructAtEasy;
+
+  /// Second line of a step: at the given pace
+  ///
+  /// In en, this message translates to:
+  /// **'@ {pace}'**
+  String workoutStructAtPace(String pace);
+
+  /// Screen-reader label of the proportional segment bar
+  ///
+  /// In en, this message translates to:
+  /// **'Workout segment timeline'**
+  String get workoutTimelineLabel;
+
+  /// Placeholder title when a workout has no segments
+  ///
+  /// In en, this message translates to:
+  /// **'Free-form run'**
+  String get workoutFreeFormTitle;
+
+  /// Placeholder hint when a workout has no segments
+  ///
+  /// In en, this message translates to:
+  /// **'No segments to follow — just run the distance at the suggested pace.'**
+  String get workoutFreeFormHint;
+
+  /// Workout-detail tagline for a structured session
+  ///
+  /// In en, this message translates to:
+  /// **'Structured workout — follow each segment as written.'**
+  String get workoutTaglineStructured;
+
+  /// Workout-detail tagline for an easy or recovery run
+  ///
+  /// In en, this message translates to:
+  /// **'Free-form easy effort. Run by feel.'**
+  String get workoutTaglineEasy;
+
+  /// Workout-detail tagline for a long run
+  ///
+  /// In en, this message translates to:
+  /// **'Free-form long run. Pace yourself for the back half.'**
+  String get workoutTaglineLong;
+
+  /// Workout-detail tagline for a rest day
+  ///
+  /// In en, this message translates to:
+  /// **'Rest day. Light movement only if you feel like it.'**
+  String get workoutTaglineRest;
+
+  /// Workout-detail tagline for race day
+  ///
+  /// In en, this message translates to:
+  /// **'Race day. Trust the taper.'**
+  String get workoutTaglineRace;
+
+  /// Workout-detail tagline for any other free-form run
+  ///
+  /// In en, this message translates to:
+  /// **'Free-form run.'**
+  String get workoutTaglineFreeForm;
+
+  /// Abbreviation of the Easy workout kind for a narrow plan-calendar cell (2-4 characters)
+  ///
+  /// In en, this message translates to:
+  /// **'E'**
+  String get workoutKindShortEasy;
+
+  /// Abbreviation of the Long run workout kind for a narrow plan-calendar cell (2-4 characters)
+  ///
+  /// In en, this message translates to:
+  /// **'L'**
+  String get workoutKindShortLong;
+
+  /// Abbreviation of the Recovery workout kind for a narrow plan-calendar cell (2-4 characters)
+  ///
+  /// In en, this message translates to:
+  /// **'Rec'**
+  String get workoutKindShortRecovery;
+
+  /// Abbreviation of the Tempo workout kind for a narrow plan-calendar cell (2-4 characters)
+  ///
+  /// In en, this message translates to:
+  /// **'T'**
+  String get workoutKindShortTempo;
+
+  /// Abbreviation of the Intervals workout kind for a narrow plan-calendar cell (2-4 characters)
+  ///
+  /// In en, this message translates to:
+  /// **'Int'**
+  String get workoutKindShortInterval;
+
+  /// Abbreviation of the Marathon pace workout kind for a narrow plan-calendar cell (2-4 characters)
+  ///
+  /// In en, this message translates to:
+  /// **'MP'**
+  String get workoutKindShortMarathonPace;
+
+  /// Abbreviation of the Walk-run workout kind for a narrow plan-calendar cell (2-4 characters)
+  ///
+  /// In en, this message translates to:
+  /// **'W/R'**
+  String get workoutKindShortWalkRun;
+
+  /// Abbreviation of the Race workout kind for a narrow plan-calendar cell (2-4 characters)
+  ///
+  /// In en, this message translates to:
+  /// **'Race'**
+  String get workoutKindShortRace;
+
+  /// Abbreviation of the Rest workout kind for a narrow plan-calendar cell (2-4 characters)
+  ///
+  /// In en, this message translates to:
+  /// **'Rest'**
+  String get workoutKindShortRest;
+
+  /// Appended to a plan workout's screen-reader label when it is done
+  ///
+  /// In en, this message translates to:
+  /// **', completed'**
+  String get planDetailAriaCompletedSuffix;
+
+  /// Appended to a plan workout's screen-reader label when it was skipped
+  ///
+  /// In en, this message translates to:
+  /// **', skipped'**
+  String get planDetailAriaSkippedSuffix;
+
+  /// Appended to a plan workout's screen-reader label when its day has passed and it was neither done nor skipped
+  ///
+  /// In en, this message translates to:
+  /// **', missed'**
+  String get planDetailAriaMissedSuffix;
+
+  /// Appended to a plan workout's screen-reader label when it is scheduled today
+  ///
+  /// In en, this message translates to:
+  /// **', today'**
+  String get planDetailAriaTodaySuffix;
+
+  /// Plan-detail Today card label when today has no workout and the next one is shown
+  ///
+  /// In en, this message translates to:
+  /// **'Next up'**
+  String get planDetailNextUp;
+
+  /// Plan-detail Today card body on race day
+  ///
+  /// In en, this message translates to:
+  /// **'Go and run it.'**
+  String get planDetailGoAndRunIt;
+
+  /// Plan-detail Today card title on a rest day
+  ///
+  /// In en, this message translates to:
+  /// **'Rest day'**
+  String get planDetailRestDayTitle;
+
+  /// Plan-detail Today card hint on a rest day
+  ///
+  /// In en, this message translates to:
+  /// **'No workout scheduled — recover and roll into tomorrow.'**
+  String get planDetailRestDayHint;
+
+  /// Plan-detail Today card label
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get planDetailTodayLabel;
+
+  /// Plan-detail Today card label on race day
+  ///
+  /// In en, this message translates to:
+  /// **'Race day'**
+  String get planDetailRaceDayTitle;
+
+  /// Screen-reader name of the plan's progress ring
+  ///
+  /// In en, this message translates to:
+  /// **'Workout completion'**
+  String get planDetailWorkoutCompletion;
+
+  /// Current-week strip heading before the plan has started
+  ///
+  /// In en, this message translates to:
+  /// **'First week'**
+  String get planDetailFirstWeek;
+
+  /// Chip on a plan a coach assigned
+  ///
+  /// In en, this message translates to:
+  /// **'Assigned by {name}'**
+  String planDetailAssignedBy(String name);
+
+  /// Chip on a coach-assigned plan when the coach's name is unknown
+  ///
+  /// In en, this message translates to:
+  /// **'Assigned by your coach'**
+  String get planDetailAssignedByCoach;
+
+  /// Plan-detail header: which week of the plan today is in
+  ///
+  /// In en, this message translates to:
+  /// **'Week {week} of {total}'**
+  String planDetailWeekOfN(int week, int total);
+
+  /// Plan-detail header chip on a paused plan
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get planDetailPausedChip;
+
+  /// How many of a week's workouts are done
+  ///
+  /// In en, this message translates to:
+  /// **'{done} / {total} done'**
+  String planDetailWeekDoneCount(int done, int total);
+
+  /// Summary row standing in for the plan's finished weeks
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{1 earlier week} other{{count} earlier weeks}}'**
+  String planDetailEarlierWeeks(int count);
+
+  /// Expands the finished weeks
+  ///
+  /// In en, this message translates to:
+  /// **'Show earlier weeks'**
+  String get planDetailShowEarlierWeeks;
+
+  /// Collapses the finished weeks
+  ///
+  /// In en, this message translates to:
+  /// **'Hide earlier weeks'**
+  String get planDetailHideEarlierWeeks;
+
+  /// Plan wizard: the first question, which decides the fields that apply
+  ///
+  /// In en, this message translates to:
+  /// **'Where are you starting from?'**
+  String get planNewStartingPoint;
+
+  /// Plan wizard starting point: has never run
+  ///
+  /// In en, this message translates to:
+  /// **'I\'ve never run'**
+  String get planNewStartingPointNew;
+
+  /// Plan wizard starting point: what the never-run choice builds
+  ///
+  /// In en, this message translates to:
+  /// **'A walk-run plan on 2 or 3 days a week that builds up to running without a walk break.'**
+  String get planNewStartingPointNewHint;
+
+  /// Plan wizard starting point: runs a bit, wants to build up
+  ///
+  /// In en, this message translates to:
+  /// **'I run a bit and want to build up'**
+  String get planNewStartingPointBuilding;
+
+  /// Plan wizard starting point: what the building-up choice builds
+  ///
+  /// In en, this message translates to:
+  /// **'No race in mind: pick a distance to build towards, with no goal time.'**
+  String get planNewStartingPointBuildingHint;
+
+  /// Plan wizard starting point: training for a race
+  ///
+  /// In en, this message translates to:
+  /// **'I\'m training for a race'**
+  String get planNewStartingPointRace;
+
+  /// Plan wizard starting point: what the race choice asks for
+  ///
+  /// In en, this message translates to:
+  /// **'A goal race, and a goal time if you have one.'**
+  String get planNewStartingPointRaceHint;
+
+  /// Helper under the start date for a walk-run plan, which may start on any day
+  ///
+  /// In en, this message translates to:
+  /// **'Week 1 begins here. A walk-run plan can start on any day, today included.'**
+  String get planNewStartDateHintWalkRun;
+
+  /// Helper under days per week
+  ///
+  /// In en, this message translates to:
+  /// **'How many days a week the plan puts a run on; the rest are rest days. Pick the number you can hold every week, not the number your best week had.'**
+  String get planNewDaysPerWeekHint;
+
+  /// Helper under days per week for a walk-run plan
+  ///
+  /// In en, this message translates to:
+  /// **'A walk-run plan puts a rest day after every session, so it runs 2 or 3 days a week.'**
+  String get planNewDaysPerWeekWalkRunHint;
+
+  /// Helper under the goal race
+  ///
+  /// In en, this message translates to:
+  /// **'Sets how many weeks the plan runs and how far the long runs build to. Pick the distance you are training towards, not one you have already run.'**
+  String get planNewGoalRaceHint;
+
+  /// Helper under the goal time
+  ///
+  /// In en, this message translates to:
+  /// **'Drives the pace targets. Leave blank for a volume-only plan.'**
+  String get planNewGoalTimeHint;
+
+  /// Helper under the override-weeks field
+  ///
+  /// In en, this message translates to:
+  /// **'Leave blank for the usual length for your goal race. Set it when you are working back from a race date that is closer or further off.'**
+  String get planNewOverrideHelp;
+
+  /// Helper under the plan name
+  ///
+  /// In en, this message translates to:
+  /// **'What the plan is called in your plans list and at the top of every week. It has no effect on the schedule.'**
+  String get planNewNameHelp;
+
+  /// Subtitle of the recent-5K confirm switch: what happens if it stays off
+  ///
+  /// In en, this message translates to:
+  /// **'Leave it unticked and your paces come from your goal time instead of the time above.'**
+  String get planNewRecent5kConfirmHint;
+
+  /// Warning under a goal time faster than recent runs project. {predicted} is a duration like 1:02:30
+  ///
+  /// In en, this message translates to:
+  /// **'Your goal is quicker than your recent runs suggest: they point to about {predicted} for this distance. Paces are set from the goal, so if it\'s ambitious, every pace in the plan is too. A slower goal, or a recent 5K you confirm below, sets them from what you can run now.'**
+  String planNewGoalAheadOfRecent(String predicted);
+
+  /// Heading of the note for a runner coming back from a break
+  ///
+  /// In en, this message translates to:
+  /// **'Coming back from a break'**
+  String get planNewReturnTitle;
+
+  /// Body of the comeback note. {weeks} whole weeks off; {pre} and {cap} are formatted distances
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve had about {weeks} weeks off. Before that you averaged {pre} a week, so week 1 asks for no more than {cap} and each week adds at most 10% until the plan reaches its own schedule. Speed sessions in those weeks become easy runs.'**
+  String planNewReturnBody(int weeks, String pre, String cap);
+
+  /// Switch on the comeback note: cap the opening weeks
+  ///
+  /// In en, this message translates to:
+  /// **'Ease me back in'**
+  String get planNewReturnEaseBack;
+
+  /// Button on the comeback note: switch to a walk-run plan
+  ///
+  /// In en, this message translates to:
+  /// **'Return with walk-run intervals instead'**
+  String get planNewReturnWalkRun;
+
+  /// Note when the runner has too little recent running to check the plan against. {opening} is a formatted distance
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve run in fewer than 3 of the last 4 weeks, so this plan can\'t be checked against your recent training. If week 1 ({opening}) is more than you\'ve been running, fewer days or walk-run intervals make a gentler start.'**
+  String planNewThinHistory(String opening);
+
+  /// Button on the thin-history note: switch to a walk-run plan
+  ///
+  /// In en, this message translates to:
+  /// **'Start with walk-run intervals'**
+  String get planNewThinHistoryWalkRun;
+
+  /// What a distance-based starter plan asks for
+  ///
+  /// In en, this message translates to:
+  /// **'{weeks} weeks · {days} days a week'**
+  String planNewStarterSummary(int weeks, int days);
+
+  /// What a timed (walk-run) starter plan asks for; {min} and {max} are session minutes
+  ///
+  /// In en, this message translates to:
+  /// **'{weeks} weeks · {days} days a week · {min}–{max} min a session'**
+  String planNewStarterSummaryTimed(int weeks, int days, int min, int max);
+
+  /// When a starter offered on the empty plans list begins. {date} is a localized short date
+  ///
+  /// In en, this message translates to:
+  /// **'Starts {date}'**
+  String plansStarterStarts(String date);
+
+  /// Helper under the start date: why only Sundays can be picked
+  ///
+  /// In en, this message translates to:
+  /// **'Week 1 begins here. The plan\'s weeks run Sunday to Saturday, so only a Sunday can be picked.'**
+  String get planNewStartDateHint;
+
+  /// Date picker heading when only Sundays can be picked
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a Sunday'**
+  String get planNewStartDatePickerHelp;
+
+  /// Date picker heading for a walk-run plan, which may start any day
+  ///
+  /// In en, this message translates to:
+  /// **'Pick any day'**
+  String get planNewStartDatePickerHelpWalkRun;
+
+  /// Label of the hours box of a time entry
+  ///
+  /// In en, this message translates to:
+  /// **'Hours'**
+  String get planNewHoursLabel;
+
+  /// Label of the minutes box of a time entry
+  ///
+  /// In en, this message translates to:
+  /// **'Minutes'**
+  String get planNewMinutesLabel;
+
+  /// Label of the seconds box of a time entry
+  ///
+  /// In en, this message translates to:
+  /// **'Seconds'**
+  String get planNewSecondsLabel;
+
+  /// Error under an empty plan name
+  ///
+  /// In en, this message translates to:
+  /// **'Add a plan name.'**
+  String get planNewNameRequired;
+
+  /// Plan wizard card that opens the built-in and club plans
+  ///
+  /// In en, this message translates to:
+  /// **'Start from a ready-made plan'**
+  String get planNewReadyMadeTitle;
+
+  /// Body of the ready-made plans card
+  ///
+  /// In en, this message translates to:
+  /// **'A built-in plan, or one a club you belong to has published. You can edit it after.'**
+  String get planNewReadyMadeBody;
+
+  /// Button on the ready-made plans card
+  ///
+  /// In en, this message translates to:
+  /// **'Browse ready-made plans'**
+  String get planNewReadyMadeButton;
+
+  /// Section heading in the ready-made plans sheet: built-in starter plans
+  ///
+  /// In en, this message translates to:
+  /// **'Built-in plans'**
+  String get planNewReadyMadeBuiltIn;
+
+  /// Section heading in the ready-made plans sheet: club templates
+  ///
+  /// In en, this message translates to:
+  /// **'From your clubs'**
+  String get planNewReadyMadeClubs;
+
+  /// Divider above the build-your-own form in the plan wizard
+  ///
+  /// In en, this message translates to:
+  /// **'Or build your own'**
+  String get planNewBuildOwn;
+
+  /// Compact plan summary beside Create: length and end date. {date} is a localized date
+  ///
+  /// In en, this message translates to:
+  /// **'{weeks, plural, one{{weeks} week} other{{weeks} weeks}} · ends {date}'**
+  String planNewSummary(int weeks, String date);
+
+  /// Rate-limit refusal when the plan_calendar_rotate bucket is spent (making a new training-plan calendar link)
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re making new calendar links too quickly — please wait {wait} and try again.'**
+  String rateLimitRotateCalendarLink(String wait);
+
+  /// Heading of the training-plan calendar feed screen and its Integrations tile
+  ///
+  /// In en, this message translates to:
+  /// **'Training plan calendar'**
+  String get planCalendarFeedTitle;
+
+  /// Subtitle of the Integrations tile that opens the plan calendar feed screen
+  ///
+  /// In en, this message translates to:
+  /// **'Your plan\'s workouts in Google, Apple or Outlook calendar'**
+  String get planCalendarFeedTileSubtitle;
+
+  /// Explains what subscribing to the plan calendar feed does
+  ///
+  /// In en, this message translates to:
+  /// **'Subscribe from Google Calendar, Apple Calendar or Outlook to see your active plan\'s workouts as all-day entries. They follow your plan as it changes.'**
+  String get planCalendarFeedDescription;
+
+  /// Shown when the calendar feed status could not be loaded
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your calendar link.'**
+  String get planCalendarFeedLoadFailed;
+
+  /// Button to retry loading the calendar feed status
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get planCalendarFeedRetry;
+
+  /// Button that creates the secret calendar subscription link
+  ///
+  /// In en, this message translates to:
+  /// **'Create calendar link'**
+  String get planCalendarFeedCreate;
+
+  /// Shown when creating or replacing the calendar link failed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t create a calendar link. Try again.'**
+  String get planCalendarFeedCreateFailed;
+
+  /// Shown when turning off the calendar link failed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t turn off the calendar link. Try again.'**
+  String get planCalendarFeedRevokeFailed;
+
+  /// Label above the freshly created calendar link
+  ///
+  /// In en, this message translates to:
+  /// **'Calendar link'**
+  String get planCalendarFeedUrlLabel;
+
+  /// Warns that the calendar link is displayed only once
+  ///
+  /// In en, this message translates to:
+  /// **'Copy this link now. It is shown only once; if you lose it, make a new one.'**
+  String get planCalendarFeedShownOnce;
+
+  /// Button that copies the calendar link
+  ///
+  /// In en, this message translates to:
+  /// **'Copy link'**
+  String get planCalendarFeedCopy;
+
+  /// Confirmation after the calendar link was copied
+  ///
+  /// In en, this message translates to:
+  /// **'Link copied'**
+  String get planCalendarFeedCopied;
+
+  /// Button that opens the calendar link in a calendar app as a subscription
+  ///
+  /// In en, this message translates to:
+  /// **'Open in calendar app'**
+  String get planCalendarFeedSubscribe;
+
+  /// When the active calendar link was created; date is a formatted date and time
+  ///
+  /// In en, this message translates to:
+  /// **'Calendar link created: {date}'**
+  String planCalendarFeedActiveSince(String date);
+
+  /// When a calendar app last downloaded the feed; date is a formatted date and time
+  ///
+  /// In en, this message translates to:
+  /// **'Last read by a calendar: {date}'**
+  String planCalendarFeedLastRead(String date);
+
+  /// Shown when no calendar app has downloaded the feed yet
+  ///
+  /// In en, this message translates to:
+  /// **'No calendar has read it yet.'**
+  String get planCalendarFeedNeverRead;
+
+  /// Explains the existing link cannot be shown again and how to get a new one
+  ///
+  /// In en, this message translates to:
+  /// **'The link can\'t be shown again. Make a new one if you need it; the old one then stops working.'**
+  String get planCalendarFeedLostLink;
+
+  /// Button that replaces the calendar link with a new one, killing the old one
+  ///
+  /// In en, this message translates to:
+  /// **'Make a new link'**
+  String get planCalendarFeedRotate;
+
+  /// Button that turns off the calendar link
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off'**
+  String get planCalendarFeedRevoke;
+
+  /// Confirm dialog title before replacing the calendar link
+  ///
+  /// In en, this message translates to:
+  /// **'Make a new calendar link?'**
+  String get planCalendarFeedRotateTitle;
+
+  /// Confirm dialog body before replacing the calendar link
+  ///
+  /// In en, this message translates to:
+  /// **'The current link stops working right away. A calendar subscribed to it stops updating until you subscribe again with the new link.'**
+  String get planCalendarFeedRotateMessage;
+
+  /// Confirm dialog title before turning off the calendar link
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off the calendar link?'**
+  String get planCalendarFeedRevokeTitle;
+
+  /// Confirm dialog body before turning off the calendar link
+  ///
+  /// In en, this message translates to:
+  /// **'The link stops working right away and subscribed calendars stop updating. Entries a calendar already copied can stay until it next refreshes.'**
+  String get planCalendarFeedRevokeMessage;
+
+  /// Privacy note: what someone holding the link can and cannot see
+  ///
+  /// In en, this message translates to:
+  /// **'Anyone with the link can see your workout dates, types and targets. It carries no location, notes or plan name. Make a new link if you shared it by mistake.'**
+  String get planCalendarFeedPrivacy;
 }
 
 class _AppLocalizationsDelegate

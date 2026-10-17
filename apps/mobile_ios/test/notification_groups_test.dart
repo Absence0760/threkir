@@ -144,6 +144,14 @@ void main() {
       expect(requests.otherCount, 1);
     });
 
+    test('workout reminders on the same plan never collapse', () {
+      final groups = groupNotifications([
+        n(id: 'w1', kind: 'workout_reminder', planId: 'p1', createdAt: ago(1000)),
+        n(id: 'w2', kind: 'workout_reminder', planId: 'p1', createdAt: ago(2000)),
+      ], nowMs: now);
+      expect(groups.length, 2);
+    });
+
     test('event RSVPs collapse per event, distinct events split', () {
       final groups = groupNotifications([
         n(id: 'e1a', kind: 'event_rsvp', eventId: 'ev1', createdAt: ago(1000)),

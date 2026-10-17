@@ -167,6 +167,15 @@ url = "env(SSO_MOCK_OIDC_URL)"
 # fail-closed empty result on error, per-IP rate limit on the anon
 # branch (pinned by apps/web/src/lib/rate_limit_guards.test.ts).
 
+# plan-calendar serves a subscribed calendar app (Google, Apple, Outlook),
+# which polls a URL and can send no header of any kind. The 96-hex token in
+# the path is the credential: plan-calendar/handler.ts rate-limits per IP,
+# then compares the secret's SHA-256 to the stored hash in constant time,
+# and answers one indistinguishable 404 for every way of not being a live
+# feed. Both rate-limit buckets fail closed.
+[functions.plan-calendar]
+verify_jwt = false
+
 [functions.strava-webhook]
 verify_jwt = false
 

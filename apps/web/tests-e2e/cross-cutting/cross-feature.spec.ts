@@ -13,7 +13,7 @@ import { setStorageOnLoad } from '../fixtures/helpers';
  *
  * Today: runs ↔ goals (a fresh run lifts a dashboard goal-card to
  * 100%) and runs ↔ plans (Mark-as-done from the plan grid sets the
- * manually_completed flag, the day cell flips to .completed). Future:
+ * manually_completed flag, the day cell flips to data-status="done"). Future:
  * a real run row linked via plan_workout_id auto-completes the
  * workout (would exercise linkRunToTodayWorkout) and the cross-user
  * kudos counter on a run-detail page (already covered indirectly by
@@ -114,7 +114,7 @@ test.describe('runs ↔ plans on /plans/[id]', () => {
 			.eq('manually_completed', true);
 	});
 
-	test('Mark-as-done in the plan grid flips the day cell to .completed', async ({
+	test('Mark-as-done in the plan grid flips the day cell to done', async ({
 		page
 	}) => {
 		await page.goto(`/plans/${SYDNEY_HALF_PLAN_ID}`);
@@ -123,16 +123,16 @@ test.describe('runs ↔ plans on /plans/[id]', () => {
 		).toBeVisible({ timeout: 10_000 });
 
 		// Snapshot the seeded completion count. The seed marks two
-		// .day.completed via completed_run_id — the week-0 (2026-03-29)
+		// .day[data-status="done"] via completed_run_id — the week-0 (2026-03-29)
 		// and week-1 (2026-04-05) long-run matches in seed.sql.
-		const completedBefore = await page.locator('.day.completed').count();
+		const completedBefore = await page.locator('.day-grid .day[data-status="done"]').count();
 		expect(completedBefore).toBe(2);
 
 		// Click the first non-rest, non-completed day-link. Day order
 		// matches workout-scheduled-date order, so picking .first()
 		// is deterministic across runs.
 		await page
-			.locator('.day:not(.rest):not(.completed) .day-link')
+			.locator('.day-grid .day:not(.rest):not([data-status="done"]) .day-link')
 			.first()
 			.click();
 
@@ -144,9 +144,9 @@ test.describe('runs ↔ plans on /plans/[id]', () => {
 
 		// Modal closes + the parent reloads via load() (see the
 		// `onSaved` handler in /plans/[id]/+page.svelte). The freshly
-		// completed workout's day cell now carries .completed.
+		// completed workout's day cell now reads data-status="done".
 		await expect(modal).toHaveCount(0);
-		await expect(page.locator('.day.completed')).toHaveCount(
+		await expect(page.locator('.day-grid .day[data-status="done"]')).toHaveCount(
 			completedBefore + 1,
 			{ timeout: 10_000 }
 		);
@@ -179,7 +179,7 @@ test.describe('runs ↔ plans on /plans/[id]', () => {
 		expect(beforePct).toBeGreaterThanOrEqual(0);
 
 		await page
-			.locator('.day:not(.rest):not(.completed) .day-link')
+			.locator('.day-grid .day:not(.rest):not([data-status="done"]) .day-link')
 			.first()
 			.click();
 		const modal = page.locator('.modal');

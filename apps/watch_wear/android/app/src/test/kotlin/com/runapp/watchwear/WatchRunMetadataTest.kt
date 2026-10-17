@@ -428,5 +428,39 @@ class WatchRunMetadataTest {
         assertEquals(setOf("samples", "used_median"), noFix.keys)
         assertFalse(md(null).containsKey("gnss_signal"))
     }
-}
 
+    @Test
+    fun `a run that followed a workout carries the three review keys, a free run none`() {
+        fun md(review: com.runapp.watchwear.workout.WorkoutReview?) = buildRunMetadata(
+            activityType = "run",
+            avgBpm = null,
+            hrCoverage = null,
+            steps = null,
+            laps = emptyList(),
+            lastModifiedAtIso = isoStamp,
+            workout = review,
+        )
+        val review = com.runapp.watchwear.workout.WorkoutReview(
+            planWorkoutId = "pw-1",
+            adherence = "completed",
+            steps = listOf(
+                com.runapp.watchwear.workout.WorkoutStepResultRecord(
+                    stepIndex = 0, kind = "steady", targetDistanceM = 5000.0,
+                    actualDistanceM = 5000.0, targetPaceSPerKm = 330,
+                    actualPaceSPerKm = 328, toleranceSPerKm = 10,
+                    durationS = 1640, status = "completed",
+                ),
+            ),
+        )
+        val with = md(review)
+        assertEquals("pw-1", with["plan_workout_id"]!!.jsonPrimitive.content)
+        assertEquals("completed", with["workout_adherence"]!!.jsonPrimitive.content)
+        val row = with["workout_step_results"]!!.jsonArray.single().jsonObject
+        assertEquals(0, row["step_index"]!!.jsonPrimitive.int)
+        assertEquals(328, row["actual_pace_sec_per_km"]!!.jsonPrimitive.int)
+        val without = md(null)
+        for (k in listOf("plan_workout_id", "workout_step_results", "workout_adherence")) {
+            assertFalse(k, without.containsKey(k))
+        }
+    }
+}

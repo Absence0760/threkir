@@ -117,9 +117,11 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
     });
 
-    testWidgets('initial Scaffold has no AppBar yet', (tester) async {
+    testWidgets('the loading Scaffold keeps an AppBar, so back works',
+        (tester) async {
       await _pump(tester);
-      expect(find.byType(AppBar), findsNothing);
+      expect(find.byType(AppBar), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 400));
     });
   });
 
@@ -319,17 +321,134 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       // Week 1: walk 5 min, run 1:00 / walk 1:30 x 8, walk 5 min.
-      expect(find.text('5:00 @ easy'), findsNWidgets(2));
-      expect(find.textContaining('8× 1:00 @ '), findsOneWidget);
-      expect(find.textContaining('with 1:30 walk'), findsOneWidget);
+      expect(find.text('5:00'), findsNWidgets(2));
+      expect(find.text('@ easy'), findsNWidgets(2));
+      expect(find.text('8× 1:00'), findsOneWidget);
+      expect(
+          tester
+              .widget<Text>(find.byKey(const Key('workoutStepRecovery')))
+              .textSpan!
+              .toPlainText(),
+          'Recovery  1:30 walk');
+      expect(find.textContaining(' with '), findsNothing);
+    });
+
+    testWidgets('the hero reads the session as a pattern and a length',
+        (tester) async {
+      await _pumpWith(tester, _FakeTraining(walkRunRow(0), const []));
+      await tester.pumpAndSettle();
+      expect(
+          tester.widget<Text>(find.byKey(const Key('walkRunPattern'))).data,
+          '5 min warm-up, 8 × (1 min run / 90 s walk), 5 min cool-down');
+      // 300 + 8 × 60 + 7 × 90 + 300 = 1710 s: a recovery sits between reps.
+      expect(tester.widget<Text>(find.byKey(const Key('walkRunTotal'))).data,
+          'about 29 min');
+      expect(
+          tester.widget<Text>(find.byKey(const Key('workoutDetailTotal'))).data,
+          'Total: 28:30');
+      expect(find.byKey(const Key('workoutDetailTimeline')), findsOneWidget);
     });
 
     testWidgets('the graduation run has no recovery clause', (tester) async {
       await _pumpWith(tester, _FakeTraining(walkRunRow(8), const []));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
-      expect(find.textContaining('1× 25:00 @ '), findsOneWidget);
-      expect(find.textContaining(' with '), findsNothing);
+      expect(find.text('1× 25:00'), findsOneWidget);
+      expect(find.byKey(const Key('workoutStepRecovery')), findsNothing);
+      expect(
+          tester.widget<Text>(find.byKey(const Key('walkRunPattern'))).data,
+          contains('25 min run'));
+    });
+  });
+
+  group('WorkoutDetailScreen — header', () {
+    PlanWorkoutRow row({String kind = 'tempo', String? zone}) => PlanWorkoutRow(
+          id: 'fake-workout-id',
+          weekId: 'week-1',
+          scheduledDate: DateTime(2026, 4, 5),
+          kind: kind,
+          targetPaceSecPerKm: 300,
+          paceZone: zone,
+          manuallyCompleted: false,
+        );
+
+    testWidgets('the date is localized, not ISO, and the kind is not repeated '
+        'in the AppBar', (tester) async {
+      await _pumpWith(tester, _FakeTraining(row(), const []));
+      await tester.pumpAndSettle();
+      expect(
+          tester.widget<Text>(find.byKey(const Key('workoutDetailDate'))).data,
+          'Apr 5, 2026');
+      expect(find.text('2026-04-05'), findsNothing);
+      expect(find.text('Tempo'), findsOneWidget);
+    });
+
+    testWidgets('a Daniels zone code is explained, free text is kept',
+        (tester) async {
+      await _pumpWith(tester, _FakeTraining(row(zone: 'T'), const []));
+      await tester.pumpAndSettle();
+      expect(find.text('Zone T · Tempo'), findsOneWidget);
+    });
+
+    testWidgets('a session with no segments shows the free-form placeholder',
+        (tester) async {
+      await _pumpWith(tester, _FakeTraining(row(kind: 'easy'), const []));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('workoutDetailFreeForm')), findsOneWidget);
+      expect(find.text('Free-form run'), findsOneWidget);
+    });
+
+    testWidgets('a rest day has no free-form placeholder', (tester) async {
+      await _pumpWith(tester, _FakeTraining(row(kind: 'rest'), const []));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('workoutDetailFreeForm')), findsNothing);
+    });
+  });
+
+  group('WorkoutDetailScreen — status panels reflow', () {
+    Future<void> pumpGerman(WidgetTester tester, PlanWorkoutRow w) async {
+      tester.view.physicalSize = const Size(360, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('de'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context)
+                .copyWith(textScaler: const TextScaler.linear(2.0)),
+            child: child!,
+          ),
+          home: WorkoutDetailScreen(
+            training: _FakeTraining(w, const []),
+            planId: 'fake-plan-id',
+            workoutId: 'fake-workout-id',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('the completed panel fits in German at 2.0x', (tester) async {
+      await pumpGerman(tester, _completedWorkout());
+      expect(tester.takeException(), isNull);
+      expect(find.byKey(const Key('workoutDetailCompleted')), findsOneWidget);
+    });
+
+    testWidgets('the skipped panel fits in German at 2.0x', (tester) async {
+      await pumpGerman(
+          tester,
+          PlanWorkoutRow(
+            id: 'fake-workout-id',
+            weekId: 'week-1',
+            scheduledDate: DateTime(2026, 4, 5),
+            kind: 'easy',
+            skippedAt: DateTime(2026, 4, 5, 9),
+            manuallyCompleted: false,
+          ));
+      expect(tester.takeException(), isNull);
+      expect(find.byKey(const Key('workoutDetailSkipped')), findsOneWidget);
     });
   });
 

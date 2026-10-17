@@ -83,6 +83,10 @@ struct RunCheckpoint: Codable {
     // stored only the gated fixes, so a run continued or recovered from it
     // claims no complete track.
     let trackComplete: Bool?
+    // The workout review so far, the step in progress as a skipped row, so a
+    // recovered or continued run keeps its link to the plan workout. Nil on a
+    // free run and from an older build.
+    let workoutReview: WorkoutReview?
 
     init(
         id: String,
@@ -104,6 +108,7 @@ struct RunCheckpoint: Codable {
         hrMeanUngraded: Double? = nil,
         hrCoveredSeconds: Double? = nil,
         trackComplete: Bool? = nil,
+        workoutReview: WorkoutReview? = nil,
         version: Int = RunCheckpoint.currentVersion
     ) {
         self.version = version
@@ -126,6 +131,7 @@ struct RunCheckpoint: Codable {
         self.hrMeanUngraded = hrMeanUngraded
         self.hrCoveredSeconds = hrCoveredSeconds
         self.trackComplete = trackComplete
+        self.workoutReview = workoutReview
     }
 
     /// Every field is decoded with a fallback default rather than the
@@ -160,6 +166,7 @@ struct RunCheckpoint: Codable {
         hrMeanUngraded = try c.decodeIfPresent(Double.self, forKey: .hrMeanUngraded)
         hrCoveredSeconds = try c.decodeIfPresent(Double.self, forKey: .hrCoveredSeconds)
         trackComplete = try c.decodeIfPresent(Bool.self, forKey: .trackComplete)
+        workoutReview = try? c.decodeIfPresent(WorkoutReview.self, forKey: .workoutReview)
     }
 }
 

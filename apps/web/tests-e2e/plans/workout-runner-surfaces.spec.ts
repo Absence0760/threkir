@@ -196,7 +196,7 @@ test.describe('Workout-runner surfaces (web)', () => {
 			// host's onSaved → load() re-fetch. The button label is
 			// derived from wasCompleted. Use a SPECIFIC workout
 			// (2026-04-07 tempo) so we can re-open the same cell — a
-			// `.day.completed .day-link .first()` would land on the
+			// `.day[data-status="done"] .day-link .first()` would land on the
 			// seed-completed Apr 5 long run which has a linked run and
 			// thus a disabled Mark button (different test case).
 			const wo = await findWorkoutByDate('2026-04-07');
@@ -208,7 +208,7 @@ test.describe('Workout-runner surfaces (web)', () => {
 			// specifically.
 			await page.goto(`/plans/${SYDNEY_HALF_PLAN_ID}`);
 			const tempoDay = page.locator(
-				'.weeks .week .day:not(.completed) .day-link',
+				'.weeks .week .day:not([data-status="done"]) .day-link',
 				{ hasText: /Tempo/ }
 			).first();
 			await tempoDay.click();
@@ -220,7 +220,7 @@ test.describe('Workout-runner surfaces (web)', () => {
 			// Re-open the SAME Tempo day — it now carries .completed.
 			// The editor's label should read "Mark not done".
 			const doneTempo = page.locator(
-				'.weeks .week .day.completed .day-link',
+				'.weeks .week .day[data-status="done"] .day-link',
 				{ hasText: /Tempo/ }
 			).first();
 			await expect(doneTempo).toBeVisible({ timeout: 10_000 });
@@ -272,7 +272,7 @@ test.describe('Workout-runner surfaces (web)', () => {
 			// completed Long day.
 			await page.goto(`/plans/${SYDNEY_HALF_PLAN_ID}`);
 			const linkedDay = page.locator(
-				'.weeks .week .day.completed .day-link',
+				'.weeks .week .day[data-status="done"] .day-link',
 				{ hasText: /Long/ }
 			).first();
 			await linkedDay.click();

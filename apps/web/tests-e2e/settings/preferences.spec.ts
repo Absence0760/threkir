@@ -230,21 +230,21 @@ test.describe('settings preference pages', () => {
 		await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
 	});
 
-	test('the mention / reaction / comment-like / follow-request mutes save off and survive a reload', async ({
+	test('the mention / reaction / comment-like / follow-request / workout-reminder mutes save off and survive a reload', async ({
 		page
 	}) => {
 		// decisions § 1971: opt-OUT per-kind mutes the worker's kindMuted
 		// reads. Absent reads as on; unticking writes the literal 'off'.
 		await page.goto('/settings/notifications');
 		await page.waitForLoadState('networkidle');
-		for (const id of ['notify-mention', 'notify-reaction', 'notify-comment-like', 'notify-follow-request']) {
+		for (const id of ['notify-mention', 'notify-reaction', 'notify-comment-like', 'notify-follow-request', 'notify-workout-reminder']) {
 			const box = page.getByTestId(id);
 			await expect(box).toBeChecked();
 			await box.uncheck();
 			await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
 		}
 		await page.reload();
-		for (const id of ['notify-mention', 'notify-reaction', 'notify-comment-like', 'notify-follow-request']) {
+		for (const id of ['notify-mention', 'notify-reaction', 'notify-comment-like', 'notify-follow-request', 'notify-workout-reminder']) {
 			const box = page.getByTestId(id);
 			await expect(box).not.toBeChecked();
 			await box.check();

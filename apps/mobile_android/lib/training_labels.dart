@@ -18,6 +18,22 @@ String workoutKindLabel(AppLocalizations l10n, WorkoutKind k) => switch (k) {
       WorkoutKind.rest => l10n.workoutKindRest,
     };
 
+/// The compact form a 7-column grid cell can hold below ~600 dp, where the
+/// full word is cut to an ellipsis. The full label stays in the cell's
+/// semantics label. Web twin `workoutKindShortLabel`.
+String workoutKindShortLabel(AppLocalizations l10n, WorkoutKind k) =>
+    switch (k) {
+      WorkoutKind.easy => l10n.workoutKindShortEasy,
+      WorkoutKind.long => l10n.workoutKindShortLong,
+      WorkoutKind.recovery => l10n.workoutKindShortRecovery,
+      WorkoutKind.tempo => l10n.workoutKindShortTempo,
+      WorkoutKind.interval => l10n.workoutKindShortInterval,
+      WorkoutKind.marathonPace => l10n.workoutKindShortMarathonPace,
+      WorkoutKind.walkRun => l10n.workoutKindShortWalkRun,
+      WorkoutKind.race => l10n.workoutKindShortRace,
+      WorkoutKind.rest => l10n.workoutKindShortRest,
+    };
+
 /// A `plan_workouts.race_priority` value as a picker option.
 String racePriorityOptionLabel(AppLocalizations l10n, String priority) =>
     switch (priority) {

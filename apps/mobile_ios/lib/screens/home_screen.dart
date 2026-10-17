@@ -38,6 +38,7 @@ import '../sync_service.dart';
 import '../shared_file_import.dart' show incomingRouteImport;
 import '../social_service.dart';
 import '../training_service.dart';
+import '../watch_workout_push.dart' show WatchWorkoutBridge;
 import '../fab_clearance.dart';
 import '../help_destination.dart';
 import '../help_guides.dart';
@@ -989,6 +990,9 @@ class _HomeScreenState extends State<HomeScreen>
       final p =
           await widget.training.fetchActiveOverview().timeout(kBackendLoadTimeout);
       if (mounted) _planOverview = p;
+      // The same read keeps both watches holding today's workout; a failed
+      // read pushes nothing, so the wrist keeps what it had.
+      unawaited(WatchWorkoutBridge().publish(p));
     } catch (e) {
       debugPrint('home: plan overview for the runner menu failed: $e');
     }

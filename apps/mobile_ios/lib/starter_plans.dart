@@ -67,3 +67,53 @@ GeneratedPlan? instantiateStarter(String id, DateTime startDate, {int? age}) {
     age: age,
   ));
 }
+
+/// What a starter asks of the runner, for the line under its name.
+class StarterSummary {
+  final int weeks;
+  final int daysPerWeek;
+
+  /// The shortest and longest session, in whole minutes rounded to the nearest
+  /// 5, for a starter whose sessions are timed (walk-run). Null for a
+  /// distance-based starter, whose session length depends on the runner's
+  /// pace.
+  final ({int min, int max})? sessionMinutes;
+
+  const StarterSummary({
+    required this.weeks,
+    required this.daysPerWeek,
+    required this.sessionMinutes,
+  });
+}
+
+/// Read off the plan [instantiateStarter] actually builds, so the line cannot
+/// drift from the schedule. Session lengths do not depend on the start date;
+/// the fixed Sunday below only gives the generator a valid day 0. Mirrors
+/// `starterSummary` in starter_plans.ts.
+StarterSummary? starterSummary(String id) {
+  final starter = starterById(id);
+  final plan = instantiateStarter(id, DateTime(2026, 1, 4));
+  if (starter == null || plan == null) return null;
+  ({int min, int max})? sessionMinutes;
+  if (starter.beginnerWalkRun) {
+    final seconds = [
+      for (final w in plan.weeks)
+        for (final wo in w.workouts)
+          if (wo.kind == WorkoutKind.walkRun &&
+              wo.targetDurationSeconds != null)
+            wo.targetDurationSeconds!,
+    ];
+    if (seconds.isNotEmpty) {
+      int toFive(int s) => (s / 300).round() * 5;
+      sessionMinutes = (
+        min: toFive(seconds.reduce((a, b) => a < b ? a : b)),
+        max: toFive(seconds.reduce((a, b) => a > b ? a : b)),
+      );
+    }
+  }
+  return StarterSummary(
+    weeks: plan.weeks.length,
+    daysPerWeek: starter.daysPerWeek,
+    sessionMinutes: sessionMinutes,
+  );
+}

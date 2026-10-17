@@ -16,21 +16,26 @@ import { USER_A } from '../fixtures/users';
 test.describe('/plans/new — onboarding goal preselection', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
-	test('a beginner goal ticks the walk-run toggle and seeds the 5K', async ({ page }) => {
+	test('a beginner goal starts from "never run": the walk-run 5K', async ({ page }) => {
 		await page.goto('/plans/new?type=training&goal=5k');
-		const goal = page.getByLabel('Goal race');
-		await expect(goal).toBeVisible({ timeout: 5_000 });
-		// 5k / general_fitness / weight_loss all seed the beginner walk-run 5K.
-		await expect(goal).toHaveValue('distance_5k');
-		await expect(page.getByRole('checkbox', { name: /New to running/i })).toBeChecked();
+		// A beginner preset answers the first question: never run, which is the
+		// walk-run 5K with no race fields to fill.
+		await expect(page.getByRole('radio', { name: "I've never run" })).toBeChecked({
+			timeout: 5_000
+		});
+		await expect(page.getByLabel('Goal race')).toHaveCount(0);
+		await expect(page.getByRole('checkbox', { name: /New to running/i })).toHaveCount(0);
 	});
 
 	test('general_fitness also seeds the beginner walk-run 5K', async ({ page }) => {
 		await page.goto('/plans/new?type=training&goal=general_fitness');
-		const goal = page.getByLabel('Goal race');
-		await expect(goal).toBeVisible({ timeout: 5_000 });
-		await expect(goal).toHaveValue('distance_5k');
-		await expect(page.getByRole('checkbox', { name: /New to running/i })).toBeChecked();
+		// A beginner preset answers the first question: never run, which is the
+		// walk-run 5K with no race fields to fill.
+		await expect(page.getByRole('radio', { name: "I've never run" })).toBeChecked({
+			timeout: 5_000
+		});
+		await expect(page.getByLabel('Goal race')).toHaveCount(0);
+		await expect(page.getByRole('checkbox', { name: /New to running/i })).toHaveCount(0);
 	});
 
 	test('a distance goal preselects that distance without the walk-run toggle', async ({ page }) => {

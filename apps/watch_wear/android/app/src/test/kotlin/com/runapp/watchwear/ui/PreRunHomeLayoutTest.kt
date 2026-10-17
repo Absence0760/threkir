@@ -98,8 +98,8 @@ class PreRunHomeLayoutTest {
     fun `every setting chip states its current value`() {
         val list = listContent(preRun())
         assertEquals(
-            "Activity, Pace and Route each render as a label-plus-value chip",
-            3,
+            "Workout, Activity, Pace and Route each render as a label-plus-value chip",
+            4,
             Regex("""PreRunSettingChip\(""").findAll(list).count(),
         )
         assertTrue("Activity must show the current activity", list.contains("value = label") && list.contains("activityLabel(activityType)"))
@@ -107,6 +107,11 @@ class PreRunHomeLayoutTest {
         assertTrue("Pace must carry its unit", list.contains("R.string.pace_per_km"))
         assertTrue("Route must say None rather than go blank", list.contains("R.string.route_none"))
         assertTrue("Route must show the selected route's name", list.contains("selectedRouteName"))
+        assertTrue("Workout must say Off rather than go blank", list.contains("R.string.workout_off"))
+        assertTrue(
+            "Workout appears only when the phone pushed one for today",
+            list.contains("if (todaysWorkout != null)"),
+        )
         val chip = ui.substring(ui.indexOf("private fun PreRunSettingChip("))
         assertTrue(
             "the value is the secondary label of a full chip, not a second control",

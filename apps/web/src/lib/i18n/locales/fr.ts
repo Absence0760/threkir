@@ -2894,7 +2894,7 @@ export const messages = {
 	"planEditor.notes": "Notes",
 	"planEditor.fillFormForPreview": "Remplissez le formulaire pour voir un aperçu.",
 	"planEditor.overlapTitle": "Ce plan chevauche un plan actif",
-	"planEditor.overlapMessage": "Ses dates chevauchent {plans}. Des plans actifs peuvent se suivre mais ne peuvent pas partager un même jour. Remplacer marque l'ancien plan comme terminé ; y mettre fin plus tôt supprime ses séances après ce jour.",
+	"planEditor.overlapMessage": "Ses dates chevauchent {plans}. Des plans actifs peuvent se suivre mais ne peuvent pas partager un même jour. Remplacer marque l'ancien plan comme abandonné ; y mettre fin plus tôt supprime ses séances après ce jour.",
 	"planEditor.overlapPlanItem": "« {name} » ({start} – {end})",
 	"planEditor.overlapNoTrim": "Un plan qui commence à la nouvelle date de début ou après ne peut qu'être remplacé.",
 	"planEditor.overlapTrimOne": "Terminer « {name} » le {date}",

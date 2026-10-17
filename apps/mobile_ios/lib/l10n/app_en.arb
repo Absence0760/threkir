@@ -8402,11 +8402,11 @@
       }
     }
   },
-  "planOverlapReplaceHint": "Replace marks the overlapping plans as completed. You can still find them under Manage plans.",
+  "planOverlapReplaceHint": "Replace marks the overlapping plans as abandoned. You can still find them under Manage plans.",
   "@planOverlapReplaceHint": {
     "description": "Plan-overlap dialog hint when only Replace is offered"
   },
-  "planOverlapTrimHint": "End {name} early to keep its finished weeks and remove its workouts after {date}, or replace it to mark it completed.",
+  "planOverlapTrimHint": "End {name} early to keep its finished weeks and remove its workouts after {date}, or replace it to mark it abandoned.",
   "@planOverlapTrimHint": {
     "description": "Plan-overlap dialog hint when the overlapping plan started earlier and can be ended the day before the new plan starts. date is that formatted end date",
     "placeholders": {
@@ -8439,7 +8439,7 @@
       }
     }
   },
-  "planOverlapTrimHintMany": "End them early to keep their finished weeks and remove their workouts after {date}, or replace them to mark them completed.",
+  "planOverlapTrimHintMany": "End them early to keep their finished weeks and remove their workouts after {date}, or replace them to mark them abandoned.",
   "@planOverlapTrimHintMany": {
     "description": "Plan-overlap dialog hint when several overlapping plans can be ended the day before the new plan starts. date is that formatted end date",
     "placeholders": {

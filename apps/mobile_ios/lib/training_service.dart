@@ -94,7 +94,7 @@ Map<String, dynamic> planWorkoutPatch({
 /// What creating or cloning a plan does to the active plans its window
 /// overlaps, resolved by the server in the same transaction as the write
 /// (decisions § 2050). [refuse] fails with [ActivePlanExistsError] so nothing
-/// the runner did not name changes; [replace] marks them completed; [trim]
+/// the runner did not name changes; [replace] marks them abandoned; [trim]
 /// ends the one plan that started before the new plan on the day before it
 /// starts. [name] is the RPC's `p_overlap` value.
 enum PlanOverlapAction { refuse, replace, trim }

@@ -1,8 +1,8 @@
--- Pins 20270915000005 (decisions § 2096): flipping a plan to a (public)
+-- Pins 20270915000005 (decisions § 2096) and 20270917000003 (§ 2107): flipping a plan to a (public)
 -- template nulls its workouts' bpm targets, and a week carrying one cannot
 -- move into a template plan. RPE targets are not Art 9 and survive the flip.
 begin;
-select plan(6);
+select plan(7);
 
 insert into private.feature_flags (name, enabled) values ('hr_prescription', true)
   on conflict (name) do update set enabled = true;
@@ -56,6 +56,12 @@ select lives_ok(
      where id = '2096cccc-0000-0000-0000-0000000000a2' $$,
   'a week with no bpm target moves into a template');
 reset role;
+
+-- 20270917000003: the workout check reads the plan row FOR SHARE, so a flip
+-- and a concurrent bpm write on the same plan serialise.
+select ok(
+  pg_get_functiondef('private.check_plan_workout_hr_target()'::regprocedure) ~* 'for share of tp',
+  'the bpm target check locks the plan row it reads');
 
 select * from finish();
 rollback;

@@ -1247,6 +1247,77 @@ $neutralised$;`,
       },
     },
   ],
+  [
+    'plan_workout_link_candidates',
+    {
+      why: "drops the two `= auth.uid()` gates — that the caller owns the run, and that the plans offered are the caller's — and the not-authenticated guard above them. The plans are still the RUN OWNER'S (`tp.user_id = r.user_id`), because whose plans a run is matched against is the subject, not a permission; the ride, already-linked, open-workout, two-day window, refusal and 75% fit filters are all kept, since each says which workouts the assertion is asking about",
+      sql: `create or replace function public.plan_workout_link_candidates(p_run_id uuid)
+ returns table(workout_id uuid, plan_id uuid, scheduled_date date, kind workout_kind,
+               target_distance_m numeric, target_duration_seconds integer, day_offset integer)
+ language sql stable security definer set search_path to 'public', 'pg_catalog'
+as $neutralised$
+  with run as (
+    select r.id, r.user_id, r.distance_m, r.duration_s,
+           private.athlete_local_date(us.prefs ->> 'time_zone', r.started_at) as day
+      from runs r
+      left join user_settings us on us.user_id = r.user_id
+     where r.id = p_run_id
+       and r.activity_type is distinct from 'cycle'
+       and not exists (select 1 from plan_workouts l where l.completed_run_id = p_run_id)
+  )
+  select pw.id, tp.id, pw.scheduled_date, pw.kind, pw.target_distance_m,
+         pw.target_duration_seconds, (pw.scheduled_date - run.day)::integer
+    from run
+    join training_plans tp on tp.user_id = run.user_id
+    join plan_weeks wk on wk.plan_id = tp.id
+    join plan_workouts pw on pw.week_id = wk.id
+   where tp.status = 'active'
+     and not tp.is_template
+     and pw.scheduled_date between run.day - 2 and run.day + 2
+     and pw.scheduled_date <> run.day
+     and pw.kind <> 'rest'
+     and pw.skipped_at is null
+     and not pw.manually_completed
+     and pw.completed_run_id is null
+     and not exists (
+       select 1 from private.plan_workout_link_refusals f
+        where f.workout_id = pw.id and f.run_id = p_run_id
+     )
+     and private.plan_match_score(pw.target_distance_m, pw.target_duration_seconds,
+                                  run.distance_m, run.duration_s) is not null
+     and ${mine('pw')};
+$neutralised$;`,
+      subject: 'plan_workouts pw — the workouts offered, not the run they are offered for',
+      witness: {
+        // Its own owner, plan and run rather than the seed's: the owner is a
+        // user no seed row names, so no committed plan can overlap the window
+        // or answer the probe. The run is at 00:00 UTC, so its local day is
+        // the 5th or the 4th in any zone, and the workout on the 6th is never
+        // on the run's own day, where the matcher would link it on insert.
+        setup: `insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
+                  values ('00000000-0000-0000-0000-00000000c0a1', 'authenticated', 'authenticated',
+                          'pgtap-guard-witness@local', '', now(), now());
+                insert into user_profiles (id, display_name, age_confirmed_at)
+                  values ('00000000-0000-0000-0000-00000000c0a1', 'Guard witness', now())
+                  on conflict (id) do update set age_confirmed_at = excluded.age_confirmed_at;
+                insert into training_plans (id, user_id, name, goal_event, goal_distance_m, start_date,
+                                            end_date, days_per_week, status)
+                  values ('00000000-0000-0000-0000-00000000c0a2', '00000000-0000-0000-0000-00000000c0a1',
+                          'Guard witness', 'distance_10k', 10000, '2041-03-01', '2041-03-28', 4, 'active');
+                insert into plan_weeks (id, plan_id, week_index)
+                  values ('00000000-0000-0000-0000-00000000c0a3', '00000000-0000-0000-0000-00000000c0a2', 0);
+                insert into plan_workouts (id, week_id, scheduled_date, kind, target_distance_m)
+                  values ('00000000-0000-0000-0000-00000000c0a4', '00000000-0000-0000-0000-00000000c0a3',
+                          '2041-03-06', 'easy', 10000);
+                insert into runs (id, user_id, started_at, duration_s, distance_m, source, activity_type)
+                  values ('00000000-0000-0000-0000-00000000c0a5', '00000000-0000-0000-0000-00000000c0a1',
+                          '2041-03-05 00:00:00+00', 3000, 10000, 'app', 'run');
+                select set_config('request.jwt.claims',
+                  '{"sub":"00000000-0000-0000-0000-00000000c0b1","role":"authenticated"}', true);`,
+        probe: `select count(*) from plan_workout_link_candidates('00000000-0000-0000-0000-00000000c0a5');`,
+      },
+    },
+  ],
 ]);
 
 // Definer relations a zero-or-empty assertion reads and that deliberately have

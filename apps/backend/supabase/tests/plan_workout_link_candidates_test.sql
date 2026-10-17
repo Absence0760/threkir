@@ -80,6 +80,7 @@ select is(
 );
 
 set local "request.jwt.claims" = '{"sub":"11860000-0000-0000-0000-0000000001b1","role":"authenticated"}';
+-- refusal: the caller must own the run; the two fitting workouts are still open
 select is(
   (select count(*)::int from plan_workout_link_candidates('11860000-0000-0000-0000-0000000005a1')),
   0,

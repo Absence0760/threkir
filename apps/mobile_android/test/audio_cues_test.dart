@@ -326,6 +326,25 @@ void main() {
           label: 'test',
         );
 
+    test('a walk-run warm-up and cool-down say they are walks', () {
+      WorkoutStep walking(WorkoutStepKind kind) => WorkoutStep(
+            kind: kind,
+            targetDistanceMetres: 0,
+            targetDurationSec: 300,
+            targetPaceSecPerKm: 360,
+            label: 'test',
+            paced: false,
+          );
+      expect(
+          formatWorkoutStepUtterance(
+              walking(WorkoutStepKind.warmup), DistanceUnit.km, 'en'),
+          'Warm-up walk. 5 minutes.');
+      expect(
+          formatWorkoutStepUtterance(
+              walking(WorkoutStepKind.cooldown), DistanceUnit.mi, 'en'),
+          'Cool-down walk. 5 minutes.');
+    });
+
     test('warmup intro reads "Warmup."', () {
       final r = formatWorkoutStepUtterance(
           step(kind: WorkoutStepKind.warmup), DistanceUnit.km);

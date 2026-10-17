@@ -14363,6 +14363,14 @@
   "@ttsStepCooldown": {
     "description": "Spoken workout-step intro: cooldown"
   },
+  "ttsStepWarmupWalk": "Warm-up walk",
+  "@ttsStepWarmupWalk": {
+    "description": "Spoken intro of the walking warm-up that opens a walk-run (couch-to-5k) session, said instead of plain 'Warmup' so a beginner knows to walk"
+  },
+  "ttsStepCooldownWalk": "Cool-down walk",
+  "@ttsStepCooldownWalk": {
+    "description": "Spoken intro of the walking cool-down that closes a walk-run (couch-to-5k) session"
+  },
   "ttsStepRep": "Rep",
   "@ttsStepRep": {
     "description": "Spoken workout-step intro: a rep with no index"

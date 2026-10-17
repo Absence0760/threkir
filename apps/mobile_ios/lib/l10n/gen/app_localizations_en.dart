@@ -10553,6 +10553,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ttsStepCooldown => 'Cooldown';
 
   @override
+  String get ttsStepWarmupWalk => 'Warm-up walk';
+
+  @override
+  String get ttsStepCooldownWalk => 'Cool-down walk';
+
+  @override
   String get ttsStepRep => 'Rep';
 
   @override

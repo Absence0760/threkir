@@ -2936,6 +2936,8 @@
   "ttsStepRecovery": "リカバリー",
   "ttsStepSteady": "一定ペース",
   "ttsStepCooldown": "クールダウン",
+  "ttsStepWarmupWalk": "ウォームアップのウォーク",
+  "ttsStepCooldownWalk": "クールダウンのウォーク",
   "ttsStepRep": "レップ",
   "ttsStepRun": "ラン",
   "ttsStepWalk": "ウォーク",

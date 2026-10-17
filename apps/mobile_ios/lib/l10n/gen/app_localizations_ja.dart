@@ -10139,6 +10139,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get ttsStepCooldown => 'クールダウン';
 
   @override
+  String get ttsStepWarmupWalk => 'ウォームアップのウォーク';
+
+  @override
+  String get ttsStepCooldownWalk => 'クールダウンのウォーク';
+
+  @override
   String get ttsStepRep => 'レップ';
 
   @override

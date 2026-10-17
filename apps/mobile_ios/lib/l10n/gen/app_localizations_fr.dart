@@ -4851,6 +4851,10 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get profileNotifWorkoutReminder =>
+      'Votre séance du jour vous attend dans votre plan';
+
+  @override
   String profileNotifEventCancelTitled(String title) {
     return 'Une occurrence de « $title » a été annulée';
   }
@@ -8858,6 +8862,13 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get prefsEmailNewDeviceAlertsHint =>
       'Me prévenir par e-mail la première fois que mon compte se connecte depuis un navigateur ou un appareil qu\'il n\'a jamais utilisé. Les avis de changement de mot de passe sont toujours envoyés et ne peuvent pas être désactivés.';
+
+  @override
+  String get prefsNotifyWorkoutReminder => 'Séance du jour';
+
+  @override
+  String get prefsNotifyWorkoutReminderHint =>
+      'Le matin d\'une séance prévue, me le rappeler dans la boîte de réception, par e-mail et par notification.';
 
   @override
   String get prefsEmailReOptInFailed =>

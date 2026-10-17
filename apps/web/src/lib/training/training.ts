@@ -641,9 +641,7 @@ function walkRunWorkout(
 			repeats,
 			cooldown: { duration_s: WALK_RUN_COOLDOWN_S, pace: 'easy' }
 		},
-		notes: hasRecovery
-			? `Walk ${WALK_RUN_WARMUP_S / 60} min, then run ${prog.runSec}s / walk ${prog.walkSec}s × ${prog.count}, walk ${WALK_RUN_COOLDOWN_S / 60} min.`
-			: `Walk ${WALK_RUN_WARMUP_S / 60} min, run ${Math.round(prog.runSec / 60)} min continuous, walk ${WALK_RUN_COOLDOWN_S / 60} min. Graduation week.`
+		notes: null
 	};
 }
 
@@ -1292,7 +1290,7 @@ function generateWeek(w: WeekGenInput): GeneratedWorkout[] {
 					target_pace_sec_per_km: Math.round(w.goalPaceSecPerKm),
 					target_pace_tolerance_sec: 5,
 					structure: null,
-					notes: 'Race day. Execute the plan.'
+					notes: null
 				});
 			} else {
 				workouts.push(longRunWorkout(date, longRunKm, w));
@@ -1442,7 +1440,7 @@ function tempoWorkout(
 			steady: { distance_m: steady * 1000, pace_sec_per_km: paces.tempo },
 			cooldown: { distance_m: 1500, pace: 'easy' }
 		},
-		notes: `Tempo: ${steady} km @ threshold.`
+		notes: null
 	};
 }
 
@@ -1468,7 +1466,7 @@ function intervalsWorkout(date: string, paces: TrainingPaces): GeneratedWorkout 
 			},
 			cooldown: { distance_m: 1500, pace: 'easy' }
 		},
-		notes: `${reps}× ${repDistance} m @ VO2 with ${recovery} m jog.`
+		notes: null
 	};
 }
 
@@ -1480,8 +1478,8 @@ function marathonPaceWorkout(
 ): GeneratedWorkout {
 	const isLongGoal = goalDistanceM >= 21_000;
 	const mpKm = isLongGoal ? 10 : 5;
-	// On a half/marathon plan this session IS goal-pace practice — the note
-	// says so, and that is why it doubles to 10 km. On a 5K/10K plan it is a
+	// On a half/marathon plan this session IS goal-pace practice, which is
+	// why it doubles to 10 km. On a 5K/10K plan it is a
 	// steady aerobic session at marathon *effort*, which is genuinely slower
 	// than the goal, so the training band is the right prescription there.
 	const steadyPace = isLongGoal ? Math.round(goalPaceSecPerKm) : paces.marathon;
@@ -1497,7 +1495,7 @@ function marathonPaceWorkout(
 			steady: { distance_m: mpKm * 1000, pace_sec_per_km: steadyPace },
 			cooldown: { distance_m: 1500, pace: 'easy' }
 		},
-		notes: `${mpKm} km @ goal marathon pace.`
+		notes: null
 	};
 }
 

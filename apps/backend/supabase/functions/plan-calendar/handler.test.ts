@@ -87,7 +87,7 @@ Deno.test('a valid token serves the calendar as private, cacheable text/calendar
   const res = await makePlanCalendarHandler(feeds.deps())(new Request(url(feed)));
   assertEquals(res.status, 200);
   assertEquals(res.headers.get('content-type'), 'text/calendar; charset=utf-8');
-  assertEquals(res.headers.get('cache-control'), 'private, max-age=900');
+  assertEquals(res.headers.get('cache-control'), 'private, max-age=300');
   assertEquals(res.headers.get('x-content-type-options'), 'nosniff');
   const body = await res.text();
   assert(body.startsWith('BEGIN:VCALENDAR\r\n'));
@@ -146,14 +146,14 @@ Deno.test('a feed revoked between the secret check and the body read answers 404
   await assertNotFound(await makePlanCalendarHandler(deps)(new Request(url(feed))));
 });
 
-Deno.test('a malformed token is a 404 without a table read', async () => {
+Deno.test('a malformed token is a 404 that spends no bucket and reads no table', async () => {
   const feeds = new FakeFeeds();
   const res = await makePlanCalendarHandler(feeds.deps())(new Request(`${BASE}/not-a-token.ics`));
   await assertNotFound(res);
-  assertEquals(feeds.calls, ['ip']);
+  assertEquals(feeds.calls, []);
 });
 
-Deno.test('the per-IP limit runs first, before the token is read', async () => {
+Deno.test('the per-IP limit runs before the secret is read', async () => {
   const feeds = new FakeFeeds();
   const feed = await feeds.mint();
   const denied = new Response('slow down', { status: 429 });

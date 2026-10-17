@@ -37,6 +37,7 @@ import {
   checkRateLimitTiered,
   ipBucketKey,
   trustedIpHeaderName,
+  trustedRequestIp,
 } from './rate_limit.ts';
 
 // ───────────────────── ipBucketKey ─────────────────────
@@ -116,6 +117,13 @@ Deno.test('ipBucketKey: IPv6 is accepted and case-normalised', async () => {
   const none = await ipBucketKey(reqWithHeaders({}));
   assertEquals(upper, lower, 'IPv6 case must not fan out buckets');
   assert(upper !== none, 'a valid IPv6 address must establish its own bucket');
+});
+
+Deno.test('trustedRequestIp: names the trusted header\'s address and nothing a client can forge', () => {
+  assertEquals(trustedRequestIp(reqWithHeaders({ 'cf-connecting-ip': '203.0.113.7' })), '203.0.113.7');
+  assertEquals(trustedRequestIp(reqWithHeaders({ 'x-forwarded-for': '203.0.113.7' })), null);
+  assertEquals(trustedRequestIp(reqWithHeaders({ 'cf-connecting-ip': '203.0.113.7, 198.51.100.1' })), null);
+  assertEquals(trustedRequestIp(reqWithHeaders({})), null);
 });
 
 Deno.test('trustedIpHeaderName: defaults to cf-connecting-ip, overridable for self-hosting', () => {

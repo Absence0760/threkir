@@ -77,6 +77,23 @@ export async function feedBucketKey(feedId: string): Promise<string> {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-8${hex.slice(13, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
 }
 
+/// The coarse per-address ceiling. Calendar providers poll from shared
+/// pools, so one address can carry thousands of subscribers' feeds; this
+/// bucket only stops one address grinding the secret read at network rate.
+/// The per-feed bucket (30 an hour, after the secret check) is the tight one.
+export const PLAN_CALENDAR_IP_PER_HOUR = 3600;
+
+/// The per-address limiter, applied only to a caller the trusted header
+/// names. A request it does not name is left to the per-feed bucket rather
+/// than put in one bucket shared by every such caller, where one client
+/// could lock every feed out.
+export function planCalendarIpLimiter(
+  ipOf: (req: Request) => string | null,
+  check: (req: Request) => Promise<Response | null>,
+): (req: Request) => Promise<Response | null> {
+  return (req) => (ipOf(req) === null ? Promise.resolve(null) : check(req));
+}
+
 // ─────────────────── feed document ───────────────────
 
 export const WORKOUT_KINDS = [

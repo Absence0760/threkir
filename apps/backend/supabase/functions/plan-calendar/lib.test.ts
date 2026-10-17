@@ -14,6 +14,7 @@ import {
   KIND_LABELS,
   parseFeedDocument,
   parseFeedToken,
+  planCalendarIpLimiter,
   secretMatches,
   sha256Hex,
   targetPaceText,
@@ -227,4 +228,20 @@ Deno.test('an empty plan is a valid, empty calendar', () => {
   const ics = buildPlanFeedIcs({ ...DOC, workouts: [] }, NOW);
   assert(!ics.includes('BEGIN:VEVENT'));
   assert(ics.trimEnd().endsWith('END:VCALENDAR'));
+});
+
+Deno.test('the per-IP limiter checks a named caller and leaves an unnamed one to the per-feed bucket', async () => {
+  const checked: string[] = [];
+  const limiter = planCalendarIpLimiter(
+    (req) => req.headers.get('cf-connecting-ip'),
+    (req) => {
+      checked.push(req.headers.get('cf-connecting-ip') ?? '');
+      return Promise.resolve(new Response('slow down', { status: 429 }));
+    },
+  );
+  assertEquals(await limiter(new Request('http://x/a.ics')), null);
+  assertEquals(checked, []);
+  const named = await limiter(new Request('http://x/a.ics', { headers: { 'cf-connecting-ip': '203.0.113.7' } }));
+  assertEquals(named?.status, 429);
+  assertEquals(checked, ['203.0.113.7']);
 });

@@ -12753,6 +12753,16 @@ class AppLocalizationsEn extends AppLocalizations {
       'On planned easy runs over the last two weeks, heart rate is higher for the same pace than in the six weeks before. Shown only for athletes who gave health-data consent.';
 
   @override
+  String get metricEasyHrDriftLabel => 'Easy HR drift';
+
+  @override
+  String get metricMissStreakLabel => 'Missed in a row';
+
+  @override
+  String get metricMissStreakDefinition =>
+      'Planned workouts in a row, counting back from yesterday, that passed with no run logged. A skipped workout or a rest day doesn\'t count and doesn\'t break the run; a done workout ends it.';
+
+  @override
   String get coachingRosterRiskLow => 'Low';
 
   @override

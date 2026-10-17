@@ -1,9 +1,11 @@
 -- Pins 20270912000002 (issue #1186, decisions § 2092): the roster's
 -- recent_workouts (the input the client derives misses from), athlete_today,
 -- and the easy-run HR drift, which is computed only for an athlete with
--- health-data consent and only from planned easy / recovery runs.
+-- health-data consent and only from planned easy / recovery runs. Since
+-- 20270915000003 (decisions § 2093) the drift is heart rate at the same pace,
+-- and a malformed avg_bpm on one run cannot fail the roster.
 begin;
-select plan(8);
+select plan(10);
 
 set local timezone = 'UTC';
 
@@ -29,9 +31,9 @@ insert into plan_weeks (id, plan_id, week_index, phase, target_volume_m)
 select ('2085ffff-1111-0000-0000-0000000000' || t || '1')::uuid, ('2085ffff-0000-0000-0000-0000000000' || t || '1')::uuid, 0, 'build', 30000
 from (values ('a'), ('b')) v(t);
 
--- Easy runs for both athletes: the same 10 km in 60 min, at 140 bpm over the
--- older window and 150 bpm over the last 14 days -- more beats for the same
--- speed, so EF falls by 1 - 140/150 = 6.67 %.
+-- Easy runs for both athletes: the same 10 km in 60 min (6:00/km), at 140 bpm
+-- over the older window and 150 bpm over the last 14 days -- more beats at the
+-- same pace, so the drift is 150/140 - 1 = 7.14 %.
 create temp table _runs (n int, days int, bpm int) on commit drop;
 insert into _runs values (1, 40, 140), (2, 33, 140), (3, 26, 140), (4, 10, 150), (5, 3, 150);
 insert into runs (id, user_id, started_at, duration_s, distance_m, source, is_dnf, metadata)
@@ -75,13 +77,38 @@ select ok(
   'a skipped workout arrives marked skipped');
 select is(
   (select round(easy_hr_drift_pct::numeric, 2) from coach_roster_summary() where athlete_id = '2085eeee-0000-0000-0000-0000000000a1'),
-  6.67,
-  'easy-run HR drift is the efficiency-factor fall, recent 14 days against the 42 before');
+  7.14,
+  'easy-run HR drift is mean HR at the same pace, recent 14 days against the 42 before');
 select is(
   (select easy_hr_drift_pct from coach_roster_summary() where athlete_id = '2085eeee-0000-0000-0000-0000000000b1'),
   null,
   'no HR drift is computed for an athlete without health-data consent');
 reset role;
+
+-- A recent easy run 60 s/km faster at a higher HR is a different effort, not
+-- drift; and one with a string avg_bpm is skipped rather than failing the read.
+set local "request.jwt.claims" = '{}';
+insert into runs (id, user_id, started_at, duration_s, distance_m, source, is_dnf, metadata) values
+  ('2085ffff-2222-0000-0000-00000000a106', '2085eeee-0000-0000-0000-0000000000a1', now() - interval '6 days', 3000, 10000, 'app', false,
+   jsonb_build_object('activity_type', 'run', 'avg_bpm', 175)),
+  ('2085ffff-2222-0000-0000-00000000a107', '2085eeee-0000-0000-0000-0000000000a1', now() - interval '7 days', 3600, 10000, 'app', false,
+   jsonb_build_object('activity_type', 'run', 'avg_bpm', 'n/a', 'hr_coverage', 'high'));
+insert into plan_workouts (week_id, scheduled_date, kind, target_distance_m, completed_run_id) values
+  ('2085ffff-1111-0000-0000-0000000000a1', current_date - 6, 'easy', 10000, '2085ffff-2222-0000-0000-00000000a106'),
+  ('2085ffff-1111-0000-0000-0000000000a1', current_date - 7, 'easy', 10000, '2085ffff-2222-0000-0000-00000000a107');
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"2085eeee-0000-0000-0000-0000000000c1","role":"authenticated"}';
+select lives_ok(
+  $$ select * from coach_roster_summary() $$,
+  'a run with a string avg_bpm and hr_coverage does not fail the roster');
+select is(
+  (select round(easy_hr_drift_pct::numeric, 2) from coach_roster_summary() where athlete_id = '2085eeee-0000-0000-0000-0000000000a1'),
+  7.14,
+  'a run outside 15 s/km of the median easy pace does not move the drift');
+reset role;
+set local "request.jwt.claims" = '{}';
+delete from plan_workouts where completed_run_id in ('2085ffff-2222-0000-0000-00000000a106', '2085ffff-2222-0000-0000-00000000a107');
+delete from runs where id in ('2085ffff-2222-0000-0000-00000000a106', '2085ffff-2222-0000-0000-00000000a107');
 
 -- One recent run alone is too little to compare.
 set local role authenticated;

@@ -140,6 +140,16 @@ export const METRICS = {
 				'an <option>, which cannot hold a disclosure, so the string spells out perceived effort',
 		},
 	},
+	easyHrDrift: {
+		label: 'metric.easyHrDrift.label',
+		definition: 'coaching.roster.hrDriftHint',
+		variants: { chip: 'coaching.roster.hrDrift' },
+	},
+	missStreak: {
+		label: 'metric.missStreak.label',
+		definition: 'metric.missStreak.definition',
+		variants: { chip: 'coaching.roster.missStreak' },
+	},
 	kom: {
 		label: 'metric.kom.label',
 		definition: 'metric.kom.definition',

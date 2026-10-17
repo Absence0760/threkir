@@ -10480,12 +10480,6 @@ abstract class AppLocalizations {
   /// **'TODAY'**
   String get planDetailToday;
 
-  /// Completed marker on the today card
-  ///
-  /// In en, this message translates to:
-  /// **'Completed'**
-  String get planDetailCompleted;
-
   /// Week-card title
   ///
   /// In en, this message translates to:
@@ -16797,6 +16791,12 @@ abstract class AppLocalizations {
   /// **'TODAY\'S WORKOUT'**
   String get todaysWorkoutToday;
 
+  /// Target pace on the Today card, read as 'at <pace>'. {pace} is already formatted with its unit, e.g. 5:30 /km
+  ///
+  /// In en, this message translates to:
+  /// **'@ {pace}'**
+  String todaysWorkoutAtPace(String pace);
+
   /// Retry button on the shared error state
   ///
   /// In en, this message translates to:
@@ -21061,6 +21061,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Upcoming'**
   String get coachingAthleteStatusUpcoming;
+
+  /// Workout status pill: the athlete deliberately skipped this workout, so it is not a miss
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped'**
+  String get coachingAthleteStatusSkipped;
 
   /// Heading of the recent-runs card on the athlete review screen
   ///

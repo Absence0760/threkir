@@ -10,6 +10,7 @@ import '../lib/social_service.dart';
 import '../lib/training_service.dart';
 import '../lib/widgets/current_week_strip.dart';
 import '../lib/widgets/plan_calendar.dart';
+import '../lib/widgets/todays_workout_card.dart';
 import 'pump_until.dart';
 
 const _owner = 'owner-uuid';
@@ -139,7 +140,9 @@ void main() {
     (tester) async {
       await _pump(tester);
 
-      final today = _top(tester, find.text('TODAY').first);
+      // Plan detail draws the same TodaysWorkoutCard as Home and the Run
+      // tab, not a second treatment of its own (#1186).
+      final today = _top(tester, find.byType(TodaysWorkoutCard));
       final week = _top(tester, find.byType(CurrentWeekStrip));
       expect(today, lessThan(week));
 

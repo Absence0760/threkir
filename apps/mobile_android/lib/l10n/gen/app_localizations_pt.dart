@@ -6433,9 +6433,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get planDetailToday => 'HOJE';
 
   @override
-  String get planDetailCompleted => 'Concluído';
-
-  @override
   String planDetailWeek(int number) {
     return 'Semana $number';
   }
@@ -10294,6 +10291,11 @@ class AppLocalizationsPt extends AppLocalizations {
   String get todaysWorkoutToday => 'TREINO DE HOJE';
 
   @override
+  String todaysWorkoutAtPace(String pace) {
+    return '@ $pace';
+  }
+
+  @override
   String get errorStateRetry => 'Tentar novamente';
 
   @override
@@ -12877,6 +12879,9 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get coachingAthleteStatusUpcoming => 'Próximo';
+
+  @override
+  String get coachingAthleteStatusSkipped => 'Ignorado';
 
   @override
   String get coachingAthleteRecentRuns => 'Corridas recentes';
@@ -23277,9 +23282,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get planDetailToday => 'HOJE';
 
   @override
-  String get planDetailCompleted => 'Concluído';
-
-  @override
   String planDetailWeek(int number) {
     return 'Semana $number';
   }
@@ -27129,6 +27131,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get todaysWorkoutToday => 'TREINO DE HOJE';
 
   @override
+  String todaysWorkoutAtPace(String pace) {
+    return '@ $pace';
+  }
+
+  @override
   String get errorStateRetry => 'Tentar novamente';
 
   @override
@@ -29712,6 +29719,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get coachingAthleteStatusUpcoming => 'Próximo';
+
+  @override
+  String get coachingAthleteStatusSkipped => 'Ignorado';
 
   @override
   String get coachingAthleteRecentRuns => 'Corridas recentes';

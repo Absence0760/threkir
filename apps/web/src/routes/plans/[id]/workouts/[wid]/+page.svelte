@@ -155,6 +155,35 @@
 		);
 	}
 
+	// A step reads as its distance when it has one, else its duration: a
+	// walk-run session carries only duration_s, and "—" told a beginner nothing.
+	function stepAmount(distanceM: number | undefined, durationS: number | undefined, digits: number): string {
+		if (distanceM != null) return fmtKm(distanceM, digits);
+		if (durationS != null) return fmtHms(durationS);
+		return '—';
+	}
+
+	// The total sums mag(), which mixes metres and seconds when a session
+	// mixes the two, so it is only shown when every step uses one measure.
+	function totalLabel(s: WorkoutStructure): string | null {
+		const r = s.repeats;
+		const steps: { distance_m?: number; duration_s?: number }[] = [
+			...(s.warmup ? [s.warmup] : []),
+			...(r ? [{ distance_m: r.distance_m, duration_s: r.duration_s }] : []),
+			...(r && (r.recovery_distance_m != null || r.recovery_duration_s != null)
+				? [{ distance_m: r.recovery_distance_m, duration_s: r.recovery_duration_s }]
+				: []),
+			...(s.steady ? [s.steady] : []),
+			...(s.cooldown ? [s.cooldown] : [])
+		];
+		if (steps.length === 0) return null;
+		if (steps.every((x) => x.distance_m != null)) return fmtKm(intervalTotal(s), 2);
+		if (steps.every((x) => x.distance_m == null && x.duration_s != null)) {
+			return fmtHms(intervalTotal(s));
+		}
+		return null;
+	}
+
 	type SegmentVisual = {
 		role: 'warmup' | 'work' | 'recovery' | 'steady' | 'cooldown';
 		fraction: number;
@@ -366,7 +395,7 @@
 						<li class="step step-warmup">
 							<span class="step-kind">{t('workoutDetail.warmup')}</span>
 							<span class="step-body">
-								<span class="step-main">{fmtKm(structure.warmup.distance_m, 1)}</span>
+								<span class="step-main">{stepAmount(structure.warmup.distance_m, structure.warmup.duration_s, 1)}</span>
 								<span class="step-pace">{t('workoutDetail.atEasy')}</span>
 							</span>
 						</li>
@@ -376,13 +405,25 @@
 							<span class="step-kind">{t('workoutDetail.repeats')}</span>
 							<span class="step-body">
 								<span class="step-main">
-									{t('workoutDetail.repeatsDetail', {
-										count: structure.repeats.count,
-										distance: fmtKm(structure.repeats.distance_m, 2),
-										pace: fmtPace(structure.repeats.pace_sec_per_km),
-										recoveryDistance: fmtKm(structure.repeats.recovery_distance_m, 2),
-										recoveryPace: structure.repeats.recovery_pace ?? ''
-									})}
+									{#if structure.repeats.recovery_distance_m != null || structure.repeats.recovery_duration_s != null}
+										{t('workoutDetail.repeatsDetail', {
+											count: structure.repeats.count,
+											distance: stepAmount(structure.repeats.distance_m, structure.repeats.duration_s, 2),
+											pace: fmtPace(structure.repeats.pace_sec_per_km),
+											recoveryDistance: stepAmount(
+												structure.repeats.recovery_distance_m,
+												structure.repeats.recovery_duration_s,
+												2
+											),
+											recoveryPace: structure.repeats.recovery_pace ?? ''
+										})}
+									{:else}
+										{t('workoutDetail.repeatsDetailNoRecovery', {
+											count: structure.repeats.count,
+											distance: stepAmount(structure.repeats.distance_m, structure.repeats.duration_s, 2),
+											pace: fmtPace(structure.repeats.pace_sec_per_km)
+										})}
+									{/if}
 								</span>
 							</span>
 						</li>
@@ -391,7 +432,7 @@
 						<li class="step step-steady">
 							<span class="step-kind">{t('workoutDetail.steady')}</span>
 							<span class="step-body">
-								<span class="step-main">{fmtKm(structure.steady.distance_m, 1)}</span>
+								<span class="step-main">{stepAmount(structure.steady.distance_m, structure.steady.duration_s, 1)}</span>
 								<span class="step-pace">{t('workoutDetail.atPace', { pace: fmtPace(structure.steady.pace_sec_per_km) })}</span>
 							</span>
 						</li>
@@ -400,13 +441,17 @@
 						<li class="step step-cooldown">
 							<span class="step-kind">{t('workoutDetail.cooldown')}</span>
 							<span class="step-body">
-								<span class="step-main">{fmtKm(structure.cooldown.distance_m, 1)}</span>
+								<span class="step-main">{stepAmount(structure.cooldown.distance_m, structure.cooldown.duration_s, 1)}</span>
 								<span class="step-pace">{t('workoutDetail.atEasy')}</span>
 							</span>
 						</li>
 					{/if}
 				</ol>
-				<p class="total">{t('workoutDetail.total', { value: fmtKm(intervalTotal(structure), 2) })}</p>
+				{#if totalLabel(structure)}
+					<p class="total" data-testid="structure-total">
+						{t('workoutDetail.total', { value: totalLabel(structure) ?? '' })}
+					</p>
+				{/if}
 			</section>
 		{:else if workout.kind !== 'rest'}
 			<section class="card structure-empty">

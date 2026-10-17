@@ -21,6 +21,30 @@ import 'coaching_athlete_screen.dart';
 /// shareable invite links + manages their athlete roster; an athlete sees the
 /// coaches they're linked to. Reads/writes through [ApiClient]'s coaching
 /// methods. DISTINCT from `coach_screen.dart`, which is the AI-chat coach.
+/// The roster in the order a coach should read it: riskiest band first, then
+/// within a band the athlete who went quiet longest (a never-ran athlete
+/// first of all), then the id so the order is total. Mirrors web
+/// `sortRoster(rows, 'risk', 'desc')` in `routes/coaching/roster_sort.ts`.
+List<CoachRosterRow> sortRosterByAttention(List<CoachRosterRow> roster) {
+  const rank = {
+    InjuryRiskBand.high: 4,
+    InjuryRiskBand.elevated: 3,
+    InjuryRiskBand.optimal: 2,
+    InjuryRiskBand.low: 1,
+    InjuryRiskBand.insufficient: 0,
+  };
+  return [...roster]..sort((a, b) {
+      final byRisk = (rank[injuryRiskBand(b.loadAcute, b.loadChronic)] ?? 0) -
+          (rank[injuryRiskBand(a.loadAcute, a.loadChronic)] ?? 0);
+      if (byRisk != 0) return byRisk;
+      final aMs = a.lastRunAt?.millisecondsSinceEpoch ?? 0;
+      final bMs = b.lastRunAt?.millisecondsSinceEpoch ?? 0;
+      final byStaleness = aMs.compareTo(bMs);
+      if (byStaleness != 0) return byStaleness;
+      return a.athleteId.compareTo(b.athleteId);
+    });
+}
+
 class CoachingScreen extends StatefulWidget {
   final ApiClient api;
   final Preferences preferences;
@@ -216,24 +240,7 @@ class _CoachingScreenState extends State<CoachingScreen> {
   Widget _rosterCard(AppLocalizations l10n) {
     final theme = Theme.of(context);
     final unit = widget.preferences.unit;
-    // Risk-first, then most-stale last-run first, so the athletes who need
-    // attention float to the top (mirrors the web roster sort default).
-    const rank = {
-      InjuryRiskBand.high: 4,
-      InjuryRiskBand.elevated: 3,
-      InjuryRiskBand.optimal: 2,
-      InjuryRiskBand.low: 1,
-      InjuryRiskBand.insufficient: 0,
-    };
-    final rows = [..._roster];
-    rows.sort((a, b) {
-      final byRisk = (rank[injuryRiskBand(b.loadAcute, b.loadChronic)] ?? 0) -
-          (rank[injuryRiskBand(a.loadAcute, a.loadChronic)] ?? 0);
-      if (byRisk != 0) return byRisk;
-      final aMs = a.lastRunAt?.millisecondsSinceEpoch ?? 0;
-      final bMs = b.lastRunAt?.millisecondsSinceEpoch ?? 0;
-      return bMs.compareTo(aMs);
-    });
+    final rows = sortRosterByAttention(_roster);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),

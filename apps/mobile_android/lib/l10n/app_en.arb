@@ -8641,10 +8641,6 @@
   "@planDetailToday": {
     "description": "Today-card eyebrow label"
   },
-  "planDetailCompleted": "Completed",
-  "@planDetailCompleted": {
-    "description": "Completed marker on the today card"
-  },
   "planDetailWeek": "Week {number}",
   "@planDetailWeek": {
     "description": "Week-card title",
@@ -13790,6 +13786,16 @@
   "@todaysWorkoutToday": {
     "description": "Badge for today's scheduled workout"
   },
+  "todaysWorkoutAtPace": "@ {pace}",
+  "@todaysWorkoutAtPace": {
+    "description": "Target pace on the Today card, read as 'at <pace>'. {pace} is already formatted with its unit, e.g. 5:30 /km",
+    "placeholders": {
+      "pace": {
+        "type": "String",
+        "example": "5:30 /km"
+      }
+    }
+  },
   "errorStateRetry": "Retry",
   "@errorStateRetry": {
     "description": "Retry button on the shared error state"
@@ -16896,6 +16902,10 @@
   "coachingAthleteStatusUpcoming": "Upcoming",
   "@coachingAthleteStatusUpcoming": {
     "description": "Workout status pill: upcoming"
+  },
+  "coachingAthleteStatusSkipped": "Skipped",
+  "@coachingAthleteStatusSkipped": {
+    "description": "Workout status pill: the athlete deliberately skipped this workout, so it is not a miss"
   },
   "coachingAthleteRecentRuns": "Recent runs",
   "@coachingAthleteRecentRuns": {

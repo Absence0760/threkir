@@ -36,6 +36,7 @@ import '../widgets/current_week_strip.dart';
 import '../widgets/disclosure_section.dart';
 import '../widgets/plan_calendar.dart';
 import '../widgets/plan_races_list.dart';
+import '../widgets/todays_workout_card.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/workout_edit_sheet.dart';
 import 'workout_detail_screen.dart';
@@ -1021,7 +1022,10 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
         ],
         if (todayWorkout != null) ...[
           const SizedBox(height: 12),
-          _todayCard(theme, l10n, p, todayWorkout),
+          TodaysWorkoutCard(
+            workout: todayWorkout,
+            onTap: () => _openWorkout(todayWorkout),
+          ),
         ],
         if (_weeks.isNotEmpty) ...[
           const SizedBox(height: 16),
@@ -1595,72 +1599,6 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _todayCard(ThemeData theme, AppLocalizations l10n, TrainingPlanRow p,
-      PlanWorkoutRow wo) {
-    final kind = workoutKindFromDb(wo.kind);
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: () => _openWorkout(wo),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              theme.colorScheme.primaryContainer,
-              theme.colorScheme.surfaceContainerHighest,
-            ],
-          ),
-          border: Border.all(color: theme.dividerColor),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(l10n.planDetailToday,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.primary,
-                  letterSpacing: 0.8,
-                  fontWeight: FontWeight.w700,
-                )),
-            const SizedBox(height: 4),
-            Text(workoutKindLabel(l10n, kind),
-                style: theme.textTheme.titleLarge
-                    ?.copyWith(fontWeight: FontWeight.w700)),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                if (wo.targetDistanceM != null) ...[
-                  Text(fmtKm(wo.targetDistanceM)),
-                  const SizedBox(width: 8),
-                ],
-                if (wo.targetPaceSecPerKm != null)
-                  Text(
-                    '@ ${fmtPace(wo.targetPaceSecPerKm)}',
-                    style: TextStyle(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                if (_isWorkoutCompleted(wo)) ...[
-                  const SizedBox(width: 10),
-                  Icon(Icons.check_circle,
-                      color: theme.colorScheme.primary, size: 18),
-                  const SizedBox(width: 3),
-                  Flexible(
-                    child: Text(l10n.planDetailCompleted,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: theme.colorScheme.primary)),
-                  ),
-                ],
-              ],
-            ),
-          ],
-        ),
       ),
     );
   }

@@ -4090,6 +4090,7 @@ export const messages = {
 	"workoutDetail.atEasy": "@ leve",
 	"workoutDetail.repeats": "Repetições",
 	"workoutDetail.repeatsDetail": "{count}× {distance} @ {pace} com {recoveryDistance} {recoveryPace}",
+	"workoutDetail.repeatsDetailNoRecovery": "{count}× {distance} @ {pace}",
 	"workoutDetail.steady": "Constante",
 	"workoutDetail.atPace": "@ {pace}",
 	"workoutDetail.cooldown": "Desaquecimento",

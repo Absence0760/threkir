@@ -4706,7 +4706,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                         Padding(
                           padding: const EdgeInsets.only(bottom: 8),
                           child: TodaysWorkoutCard(
-                            overview: _planOverview!,
+                            workout: _planOverview!.todayWorkout!,
                             onTap: () => _showWorkoutEntryChoice(
                               _planOverview!.todayWorkout!,
                               _planOverview!.plan.id,

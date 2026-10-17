@@ -476,7 +476,7 @@ class _CoachingScreenState extends State<CoachingScreen> {
           children: [
             IconButton(
               tooltip: l10n.coachingCopyLink,
-              icon: const Icon(Icons.copy_outlined),
+              icon: const Icon(Icons.copy),
               onPressed: () => _copyLink(inv.inviteToken),
             ),
             IconButton(

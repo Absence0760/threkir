@@ -716,7 +716,7 @@ class PlanListCard extends StatelessWidget {
                 semantic.success
               ),
             _ => (
-                Icons.cancel,
+                Icons.cancel_outlined,
                 scheme.onSurfaceVariant,
                 scheme.surfaceContainerHigh
               ),

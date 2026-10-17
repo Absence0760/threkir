@@ -1266,7 +1266,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
       ];
       return card(
         key: const Key('planDetailTodayNextUp'),
-        icon: Icons.event_available_outlined,
+        icon: Icons.event_available,
         label: l10n.planDetailNextUp,
         title: workoutKindLabel(l10n, workoutKindFromDb(next.kind)),
         meta: parts.join(' · '),

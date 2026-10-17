@@ -193,7 +193,7 @@ void main() {
     await _pump(tester, api, prefs);
     final l10n = await AppLocalizations.delegate.load(const Locale('en'));
     expect(find.text(l10n.coachingPendingInvite), findsOneWidget);
-    expect(find.byIcon(Icons.copy_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.copy), findsOneWidget);
     expect(find.byIcon(Icons.ios_share), findsOneWidget);
   });
 }

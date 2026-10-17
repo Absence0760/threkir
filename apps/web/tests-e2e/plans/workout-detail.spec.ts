@@ -209,11 +209,17 @@ test.describe('/plans/[id]/workouts/[wid]', () => {
 			await expect(steps).toBeVisible({ timeout: 10_000 });
 			await expect(steps.locator('.step-warmup .step-main')).toHaveText('5:00');
 			await expect(steps.locator('.step-cooldown .step-main')).toHaveText('5:00');
-			await expect(steps.locator('.step-work .step-main')).toContainText('8× 1:00 @');
-			await expect(steps.locator('.step-work .step-main')).toContainText('1:30 walk');
+			await expect(steps.locator('.step-work .step-main')).toHaveText('8× 1:00');
+			await expect(steps.getByTestId('step-recovery')).toHaveText(/Recovery\s*1:30 walk/);
 			await expect(steps).not.toContainText('—');
-			// 300 + 8 * (60 + 90) + 300 = 1800 s.
-			await expect(page.getByTestId('structure-total')).toHaveText('Total: 30:00');
+			// A recovery sits between reps, never after the last:
+			// 300 + 8 × 60 + 7 × 90 + 300 = 1710 s.
+			await expect(page.getByTestId('structure-total')).toHaveText('Total: 28:30');
+			const summary = page.getByTestId('walk-run-summary');
+			await expect(summary).toContainText('about 29 min');
+			await expect(summary).toContainText(
+				'5 min warm-up, 8 × (1 min run / 90 s walk), 5 min cool-down'
+			);
 		} finally {
 			await admin.from('plan_workouts').update({ structure: wo.structure }).eq('id', wo.id);
 		}

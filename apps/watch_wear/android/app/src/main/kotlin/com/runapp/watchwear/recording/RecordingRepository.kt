@@ -114,6 +114,10 @@ object RecordingRepository {
         /// the active-run tile (a separate process reading this StateFlow)
         /// render distance / pace in the runner's chosen unit.
         val preferredUnit: DistanceUnit = DistanceUnit.KM,
+        /// The live step of today's workout, null on a free run.
+        val workoutView: com.runapp.watchwear.workout.WorkoutView? = null,
+        /// Set with `Finished` on a run that followed a workout.
+        val workoutReview: com.runapp.watchwear.workout.WorkoutReview? = null,
     ) {
         val isActive: Boolean get() = stage == Stage.Recording || stage == Stage.Paused
     }

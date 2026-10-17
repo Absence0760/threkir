@@ -600,7 +600,8 @@ export type NotificationKind =
 	| 'follow_request'
 	| 'reaction'
 	| 'comment_like'
-	| 'mention';
+	| 'mention'
+	| 'workout_reminder';
 
 // `invite_token` is excluded from the base type because the column-
 // level grant lockdown (migrations 20260801_001 + 20260818_001 redo)

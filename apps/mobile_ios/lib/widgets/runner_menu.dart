@@ -1,9 +1,10 @@
 import 'package:core_models/core_models.dart' as cm;
 import 'package:core_models/core_models.dart' show DistanceUnit, PlanWorkoutRow;
 import 'package:flutter/material.dart';
-import 'package:run_recorder/run_recorder.dart' show WorkoutStep, expandWorkoutSteps;
+import 'package:run_recorder/run_recorder.dart' show WorkoutStep;
 
 import '../l10n/gen/app_localizations.dart';
+import '../plan_workout_steps.dart' show expandPlanWorkoutSteps;
 import '../preferences.dart' show UnitFormat;
 import '../training.dart'
     show isWorkoutCompleted, toIsoDate, workoutKindFromDb;
@@ -71,18 +72,7 @@ PlanWorkoutRow? todaysOpenWorkout(
   return null;
 }
 
-List<WorkoutStep> _steps(PlanWorkoutRow w) {
-  final structure = w.structure is Map<String, dynamic>
-      ? w.structure as Map<String, dynamic>
-      : null;
-  return expandWorkoutSteps(
-    structure: structure,
-    paces: const {},
-    toleranceSecPerKm: w.targetPaceToleranceSec ?? 10,
-    fallbackDistanceMetres: w.targetDistanceM,
-    fallbackPaceSecPerKm: w.targetPaceSecPerKm,
-  );
-}
+List<WorkoutStep> _steps(PlanWorkoutRow w) => expandPlanWorkoutSteps(w);
 
 /// What the workout card says under the session's kind: its distance, and
 /// its step count when it is more than one steady run. [distanceMetres] is

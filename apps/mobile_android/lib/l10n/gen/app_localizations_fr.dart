@@ -4851,6 +4851,10 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get profileNotifWorkoutReminder =>
+      'Votre séance du jour vous attend dans votre plan';
+
+  @override
   String profileNotifEventCancelTitled(String title) {
     return 'Une occurrence de « $title » a été annulée';
   }
@@ -5801,7 +5805,8 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get plansAbandonBody => 'Vous pourrez créer un nouveau plan ensuite.';
+  String get plansAbandonBody =>
+      'Ses semaines, ses séances et les courses associées sont conservées. Vous pourrez créer un nouveau plan ensuite.';
 
   @override
   String plansActionFailed(String error) {
@@ -5809,20 +5814,7 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String plansDaysPerWeek(int count) {
-    return '$count jours/sem.';
-  }
-
-  @override
   String get plansStatusUpcoming => 'à venir';
-
-  @override
-  String get plansSignInTitle =>
-      'Connectez-vous pour utiliser les plans d\'entraînement';
-
-  @override
-  String get plansSignInBody =>
-      'Les plans se synchronisent avec votre compte et vous suivent sur tous vos appareils. Allez dans Réglages → Se connecter pour vous connecter.';
 
   @override
   String get plansEmptyTitle => 'Aucun plan pour l\'instant.';
@@ -5838,6 +5830,89 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get plansLoadError =>
       'Impossible de charger les plans d\'entraînement. Appuyez sur Réessayer.';
+
+  @override
+  String plansStarterStartsOn(String date) {
+    return 'Chacun commence le $date.';
+  }
+
+  @override
+  String get plansStatusActive => 'actif';
+
+  @override
+  String get plansStatusPaused => 'en pause';
+
+  @override
+  String get plansStatusCompleted => 'terminé';
+
+  @override
+  String get plansStatusAbandoned => 'abandonné';
+
+  @override
+  String get plansFilterGroupLabel => 'Filtrer les plans par statut';
+
+  @override
+  String get plansFilterAll => 'Tous';
+
+  @override
+  String get plansFilterActive => 'Actifs';
+
+  @override
+  String get plansFilterPaused => 'En pause';
+
+  @override
+  String get plansFilterCompleted => 'Terminés';
+
+  @override
+  String get plansFilterAbandoned => 'Abandonnés';
+
+  @override
+  String plansNoFilteredPlans(String status) {
+    return 'Aucun plan $status.';
+  }
+
+  @override
+  String get plansShowAllPlans => 'Afficher tous les plans';
+
+  @override
+  String get plansHeroGoal => 'Objectif';
+
+  @override
+  String get plansHeroTarget => 'Cible';
+
+  @override
+  String get plansGoalFinish => 'Terminer';
+
+  @override
+  String get plansEventHalf => 'Semi-marathon';
+
+  @override
+  String get plansEventFull => 'Marathon';
+
+  @override
+  String get plansEventCustom => 'Personnalisé';
+
+  @override
+  String plansWeekOf(int week, int total) {
+    return 'Semaine $week sur $total';
+  }
+
+  @override
+  String get plansEnded => 'Terminé';
+
+  @override
+  String get plansProgressLabel => 'Progression du plan';
+
+  @override
+  String plansMetaWeeks(int weeks, int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '$weeks semaines · $days jours/semaine',
+      one: '$weeks semaine · $days jours/semaine',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get planNewTitle => 'Nouveau plan';
@@ -6195,16 +6270,6 @@ class AppLocalizationsFr extends AppLocalizations {
   String get planLibraryAnonymous => 'un coureur';
 
   @override
-  String planLibraryWeeks(int weeks) {
-    return '$weeks semaines';
-  }
-
-  @override
-  String planLibraryDaysPerWeek(int days) {
-    return '$days×/semaine';
-  }
-
-  @override
   String get planLibraryClone => 'Cloner dans mes plans';
 
   @override
@@ -6231,6 +6296,17 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String planLibraryPreviewWeek(int n) {
     return 'Semaine $n';
+  }
+
+  @override
+  String planLibraryPreviewWeekRuns(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count courses',
+      one: '$count course',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -6829,17 +6905,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get workoutStructSteady => 'Régulier';
 
   @override
-  String get workoutStructCooldown => 'Récupération';
-
-  @override
-  String workoutStructWarmupValue(String distance) {
-    return '$distance @ facile';
-  }
-
-  @override
-  String workoutStructCooldownValue(String distance) {
-    return '$distance @ facile';
-  }
+  String get workoutStructCooldown => 'Retour au calme';
 
   @override
   String get workoutAdviceEasy =>
@@ -8858,6 +8924,13 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get prefsEmailNewDeviceAlertsHint =>
       'Me prévenir par e-mail la première fois que mon compte se connecte depuis un navigateur ou un appareil qu\'il n\'a jamais utilisé. Les avis de changement de mot de passe sont toujours envoyés et ne peuvent pas être désactivés.';
+
+  @override
+  String get prefsNotifyWorkoutReminder => 'Séance du jour';
+
+  @override
+  String get prefsNotifyWorkoutReminderHint =>
+      'Le matin d\'une séance prévue, me le rappeler dans la boîte de réception, par e-mail et par notification.';
 
   @override
   String get prefsEmailReOptInFailed =>
@@ -17085,6 +17158,145 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get workoutMoveSaveFirst =>
       'Enregistre ou annule tes modifications avant de déplacer cette séance.';
+
+  @override
+  String workoutSummaryMin(int n) {
+    return '$n min';
+  }
+
+  @override
+  String workoutSummarySec(int n) {
+    return '$n s';
+  }
+
+  @override
+  String workoutSummaryMinSec(int m, int s) {
+    return '$m min $s s';
+  }
+
+  @override
+  String workoutSummaryIntervals(int count, String run, String walk) {
+    return '$count × ($run de course / $walk de marche)';
+  }
+
+  @override
+  String workoutSummaryContinuous(String run) {
+    return '$run de course';
+  }
+
+  @override
+  String workoutSummaryWarmup(String duration) {
+    return '$duration d\'échauffement';
+  }
+
+  @override
+  String workoutSummaryCooldown(String duration) {
+    return '$duration de retour au calme';
+  }
+
+  @override
+  String workoutSummaryWithBoth(String warmup, String main, String cooldown) {
+    return '$warmup, $main, $cooldown';
+  }
+
+  @override
+  String workoutSummaryWithWarmup(String warmup, String main) {
+    return '$warmup, $main';
+  }
+
+  @override
+  String workoutSummaryWithCooldown(String main, String cooldown) {
+    return '$main, $cooldown';
+  }
+
+  @override
+  String workoutSummaryAbout(String duration) {
+    return 'environ $duration';
+  }
+
+  @override
+  String workoutZoneNamed(String code, String name) {
+    return 'Zone $code · $name';
+  }
+
+  @override
+  String workoutZoneRaw(String code) {
+    return 'Zone $code';
+  }
+
+  @override
+  String get workoutEffortJog => 'footing';
+
+  @override
+  String get workoutEffortEasy => 'facile';
+
+  @override
+  String get workoutEffortWalk => 'marche';
+
+  @override
+  String get workoutTaglineWalkRun =>
+      'Séance de marche-course. Alternez course et marche au chrono.';
+
+  @override
+  String get workoutMetricSession => 'Séance';
+
+  @override
+  String workoutStructRepeatsMain(int count, String distance) {
+    return '$count× $distance';
+  }
+
+  @override
+  String get workoutStructRecovery => 'Récupération';
+
+  @override
+  String workoutStructRecoveryDetail(String distance, String effort) {
+    return '$distance ($effort)';
+  }
+
+  @override
+  String workoutStructTotal(String value) {
+    return 'Total : $value';
+  }
+
+  @override
+  String get workoutStructAtEasy => '@ facile';
+
+  @override
+  String workoutStructAtPace(String pace) {
+    return '@ $pace';
+  }
+
+  @override
+  String get workoutTimelineLabel => 'Chronologie des segments de la séance';
+
+  @override
+  String get workoutFreeFormTitle => 'Course en libre';
+
+  @override
+  String get workoutFreeFormHint =>
+      'Aucun segment à suivre — courez simplement la distance à l\'allure suggérée.';
+
+  @override
+  String get workoutTaglineStructured =>
+      'Séance structurée — suivez chaque segment tel qu\'indiqué.';
+
+  @override
+  String get workoutTaglineEasy => 'Effort facile en libre. Courez au feeling.';
+
+  @override
+  String get workoutTaglineLong =>
+      'Sortie longue en libre. Gardez des forces pour la seconde moitié.';
+
+  @override
+  String get workoutTaglineRest =>
+      'Jour de repos. Bougez légèrement seulement si vous en avez envie.';
+
+  @override
+  String get workoutTaglineRace =>
+      'Jour de course. Faites confiance à l\'affûtage.';
+
+  @override
+  String get workoutTaglineFreeForm => 'Course en libre.';
 
   @override
   String get workoutKindShortEasy => 'EF';

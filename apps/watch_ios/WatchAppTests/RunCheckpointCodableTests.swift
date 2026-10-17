@@ -51,6 +51,39 @@ final class RunCheckpointCodableTests: XCTestCase {
         XCTAssertEqual(back.hrCoverage, 0.75)
     }
 
+    func testTheWorkoutReviewRoundTripsAndAnOlderCheckpointHasNone() throws {
+        let review = WorkoutReview(
+            planWorkoutId: "pw-1",
+            adherence: "partial",
+            steps: [WorkoutStepResultRecord(
+                stepIndex: 0, kind: "rep", repIndex: 1, repTotal: 2,
+                targetDistanceMetres: 400, targetDurationSeconds: nil,
+                actualDistanceMetres: 380, targetPaceSecondsPerKm: 240,
+                actualPaceSecondsPerKm: 250, toleranceSecondsPerKm: 10,
+                durationSeconds: 95, status: "skipped"
+            )]
+        )
+        let cp = RunCheckpoint(
+            id: "run-1",
+            startedAt: Date(timeIntervalSince1970: 1_700_000_000),
+            distanceMetres: 380,
+            activeDurationSeconds: 95,
+            pausedIntervalSeconds: 0,
+            trackPointCount: 90,
+            cacheFileURL: URL(fileURLWithPath: "/tmp/run.ndjson"),
+            averageBPM: nil,
+            hrCoverage: nil,
+            steps: nil,
+            laps: nil,
+            workoutReview: review
+        )
+        let decoded = try decoder().decode(RunCheckpoint.self, from: encoder().encode(cp))
+        XCTAssertEqual(decoded.workoutReview, review)
+
+        let older = #"{"id":"run-1","distanceMetres":1}"#.data(using: .utf8)!
+        XCTAssertNil(try decoder().decode(RunCheckpoint.self, from: older).workoutReview)
+    }
+
     func testCurrentVersionIsOne() {
         XCTAssertEqual(RunCheckpoint.currentVersion, 1)
     }

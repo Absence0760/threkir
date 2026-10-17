@@ -39,6 +39,7 @@
 	import { planRaceCountdown } from '#lib/training/plan_week.ts';
 	import { nextRace, planRaces } from '#lib/training/plan_races.ts';
 	import { formatISO } from '#lib/training/training.ts';
+	import { goalEventLabel } from '#lib/training/goal_event_label.ts';
 	import {
 		DISCLOSURE_LEVEL_KEY,
 		resolveDisclosureLevel,
@@ -878,23 +879,6 @@
 	/// relation). Inlined here rather than lifted to #lib so the only
 	/// other caller — the plan list — keeps owning its own copy until a
 	/// third surface needs them.
-	/// Locale-aware goal-event label. 5K / 10K are language-neutral
-	/// race distances and stay verbatim; the rest route through the
-	/// message catalogue. Unknown events fall back to "Custom".
-	function goalEventLabel(event: string): string {
-		switch (event) {
-			case 'distance_5k':
-				return '5K';
-			case 'distance_10k':
-				return '10K';
-			case 'distance_half':
-				return m('dash.goalHalfMarathon');
-			case 'distance_full':
-				return m('dash.goalMarathon');
-			default:
-				return m('dash.goalCustom');
-		}
-	}
 	function planMidnight(iso: string): Date {
 		const [y, m, d] = iso.split('-').map(Number);
 		return new Date(y, (m ?? 1) - 1, d ?? 1);
@@ -1215,7 +1199,7 @@
 						<div class="plan-hero-goal">
 							<span>
 								<span class="material-symbols">flag</span>
-								{heroRace?.name ?? goalEventLabel(planOverview.plan.goal_event)}
+								{heroRace?.name ?? goalEventLabel(planOverview.plan.goal_event, planOverview.plan.goal_distance_m)}
 							</span>
 							{#if raceGoal}
 								<span>

@@ -105,6 +105,33 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
 
     var targetPaceSecondsPerKm: Double? = nil
 
+    /// Whether Start runs today's workout. On by default, so a runner with a
+    /// session today gets it without a tap; the pre-run toggle runs free.
+    @Published var followWorkout = true
+    /// The live step, while the run follows a workout.
+    @Published private(set) var workoutView: WatchWorkoutView?
+    /// Today's workout, when this run follows it. Fed on the 1 s clock with
+    /// ACTIVE time; while it owns pace cues the general pace alert stands
+    /// down (decisions § 2076).
+    private var workoutRunner: WatchWorkoutRunner?
+    /// The review a run continued after a termination carried in its
+    /// checkpoint. The runner itself is not rebuilt (its step clock cannot
+    /// be), so the continued run saves what was reviewed before it.
+    private var carriedWorkoutReview: WorkoutReview?
+    /// The workout this watch last started a run on. It is not offered again
+    /// until the phone pushes something else: the phone learns it is done
+    /// only when it next reads the plan, and a second Start must not run the
+    /// same session twice.
+    private var startedWorkoutId: String?
+
+    /// Today's workout the pre-run screen offers from `push`, or nil.
+    func offeredWorkout(_ push: WorkoutPush?, now: Date = Date()) -> PushedWorkout? {
+        guard let w = WorkoutPush.offered(push, today: now), w.planWorkoutId != startedWorkoutId else {
+            return nil
+        }
+        return w
+    }
+
     private let locationManager = CLLocationManager()
     // Reused across every GPS fix — ISO8601DateFormatter is expensive to
     // construct (backing NSDateFormatter + ICU state), so allocating one per
@@ -210,6 +237,10 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         /// `metadata.track_complete`: the track file holds every fix the
         /// estimator took, off-track ones flagged, and is not empty.
         var trackComplete: Bool = false
+        /// The planned-vs-actual review of a run started from today's
+        /// workout; nil on a free run. Rides the envelope as
+        /// `plan_workout_id`, `workout_step_results` and `workout_adherence`.
+        var workoutReview: WorkoutReview? = nil
     }
 
     /// A track point in the wire shape the phone, web and mobile clients
@@ -359,6 +390,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         resetDistanceEstimator()
         announcer.reset()
         armRouteGuidance()
+        armWorkout()
         mapTrail.reset()
         mapPosition = nil
         lapMarks = []
@@ -391,6 +423,43 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         checkLocationPrecision()
         publishComplicationSnapshot()
         announcer.announceStart()
+    }
+
+    /// Today's workout from what the phone last pushed, re-checked against
+    /// today at Start, so a pre-run screen left open past midnight cannot
+    /// arm yesterday's session.
+    private func armWorkout() {
+        carriedWorkoutReview = nil
+        let workout = followWorkout ? offeredWorkout(PushedWorkoutStore.load()) : nil
+        workoutRunner = workout.map { WatchWorkoutRunner(workout: $0) }
+        workoutView = workoutRunner?.view()
+        if let workout { startedWorkoutId = workout.planWorkoutId }
+    }
+
+    /// One feed of the run's totals to the workout runner. Called from the
+    /// 1 s clock inside its `.recording` guard, so a paused run is not fed.
+    private func feedWorkout() {
+        guard let runner = workoutRunner else { return }
+        let events = runner.onTotals(
+            distanceMetres: distanceMetres,
+            elapsedSeconds: elapsedSeconds,
+            now: ProcessInfo.processInfo.systemUptime
+        )
+        publishWorkout(events)
+    }
+
+    private func publishWorkout(_ events: [WatchWorkoutEvent]) {
+        workoutView = workoutRunner?.view()
+        // L4: a haptic or a spoken cue must never reach the recording.
+        switch WatchWorkoutCue.cue(for: events) {
+        case .step?: WKInterfaceDevice.current().play(.start)
+        case .stepEnding?: WKInterfaceDevice.current().play(.click)
+        case .complete?: WKInterfaceDevice.current().play(.success)
+        case .paceAlert(let tooSlow)?:
+            WKInterfaceDevice.current().play(.notification)
+            announcer.announcePaceAlert(tooSlow: tooSlow)
+        case nil: break
+        }
     }
 
     /// The armed route's guidance and its map line, from whatever the phone
@@ -443,6 +512,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             // Inside the `.recording` guard, so a pause neither credits
             // coverage nor charges the run for it (decisions § 1156).
             self.healthKit.advanceCoverage(activeElapsedSeconds: self.elapsedSeconds)
+            self.feedWorkout()
         }
 
         checkpointTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in
@@ -548,6 +618,9 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         lapMarks = cp.laps ?? []
         steps = cp.steps
         storedTrackComplete = cp.trackComplete ?? false
+        workoutRunner = nil
+        workoutView = nil
+        carriedWorkoutReview = cp.workoutReview
 
         let store = CheckpointStore(runId: cp.id)
         checkpointStore = store
@@ -590,6 +663,11 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             atSeconds: elapsedSeconds,
             distanceMetres: distanceMetres
         ))
+        // The lap press also skips the workout's current step, Garmin's
+        // grammar and the custom watch's (decisions § 354).
+        if let runner = workoutRunner {
+            publishWorkout(runner.skipStep())
+        }
         writeCheckpoint()
     }
 
@@ -685,8 +763,11 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             isPublic: PrivacyDefault.isPublic(PrivacyDefault.stored()),
             distanceEstimator: Self.distanceEstimatorTag,
             distanceStepFilledMetres: distanceStepFilledMetres,
-            trackComplete: storedTrackComplete && trackPointCount > 0
+            trackComplete: storedTrackComplete && trackPointCount > 0,
+            workoutReview: workoutRunner?.review() ?? carriedWorkoutReview
         )
+        workoutRunner = nil
+        workoutView = nil
 
         state = .finished
         publishComplicationSnapshot()
@@ -739,6 +820,9 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         mapPosition = nil
         lapMarks = []
         steps = nil
+        workoutRunner = nil
+        workoutView = nil
+        carriedWorkoutReview = nil
         checkpointStore = nil
         currentRunId = nil
         state = .idle
@@ -1110,7 +1194,8 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             pausedAt: pausedAt,
             hrMeanUngraded: measured.mean,
             hrCoveredSeconds: measured.coveredSeconds,
-            trackComplete: storedTrackComplete
+            trackComplete: storedTrackComplete,
+            workoutReview: workoutRunner?.review() ?? carriedWorkoutReview
         )
         store.write(checkpoint: cp)
         // Match the track's crash-durability window to the checkpoint's.
@@ -1160,7 +1245,8 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             isPublic: cp.isPublic,
             distanceEstimator: cp.distanceEstimator,
             distanceStepFilledMetres: cp.distanceStepFilledMetres ?? 0,
-            trackComplete: (cp.trackComplete ?? false) && count > 0
+            trackComplete: (cp.trackComplete ?? false) && count > 0,
+            workoutReview: cp.workoutReview
         )
     }
 
@@ -1177,6 +1263,8 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     /// The drift threshold and the rate limit both live in `PaceAlertGate`,
     /// which Wear OS's `PaceAlert.kt` is held to value-for-value.
     private func checkPaceAlert(pace: Double) {
+        // A live workout judges pace against its own step (decisions § 2076).
+        guard workoutRunner?.ownsPaceCues != true else { return }
         guard let target = targetPaceSecondsPerKm, distanceMetres > 200 else { return }
         let now = Date()
         let decision = PaceAlertGate.decide(

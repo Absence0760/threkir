@@ -148,6 +148,30 @@ final class WatchIngestBridgeTests: XCTestCase {
         XCTAssertEqual(payload["route_lng"] as? [Double], longitudes)
     }
 
+    // MARK: - Workout push
+
+    func testWorkoutPushForwardsTheJsonTextUnderOneKey() {
+        let json = #"{"v":1,"plan_workout_id":"pw-3","steps":[]}"#
+        let payload = WatchIngestBridge.workoutUserInfo(from: ["workout_json": json])
+        XCTAssertEqual(payload?.keys.sorted(), ["todays_workout"])
+        XCTAssertEqual(payload?["todays_workout"] as? String, json)
+    }
+
+    func testWorkoutPushForwardsTheNothingTodayValue() {
+        // The explicit empty push is how the wrist drops a stale workout, so
+        // it must reach the queue like any other.
+        XCTAssertNotNil(WatchIngestBridge.workoutUserInfo(from: ["workout_json": #"{"v":1}"#]))
+    }
+
+    func testWorkoutPushRefusesWhatTheWatchCouldNeverDecode() {
+        XCTAssertNil(WatchIngestBridge.workoutUserInfo(from: [:]))
+        XCTAssertNil(WatchIngestBridge.workoutUserInfo(from: ["workout_json": NSNumber(value: 1)]))
+        XCTAssertNil(WatchIngestBridge.workoutUserInfo(from: ["workout_json": "not json"]))
+        XCTAssertNil(WatchIngestBridge.workoutUserInfo(from: ["workout_json": "[1,2]"]))
+        XCTAssertNil(WatchIngestBridge.workoutUserInfo(from: ["workout_json": #"{"v":2}"#]))
+        XCTAssertNil(WatchIngestBridge.workoutUserInfo(from: ["workout_json": #"{"plan_workout_id":"x"}"#]))
+    }
+
     // MARK: - Ingest payload
 
     private var fullMetadata: [String: Any] {
@@ -164,6 +188,13 @@ final class WatchIngestBridgeTests: XCTestCase {
             "steps": NSNumber(value: 7_412),
             "laps": "[{\"n\":1}]",
             "is_public": true,
+            "plan_workout_id": "pw-3",
+            "workout_adherence": "partial",
+            "workout_step_results": [[
+                "step_index": NSNumber(value: 0),
+                "kind": "warmup",
+                "status": "completed",
+            ]],
         ]
     }
 

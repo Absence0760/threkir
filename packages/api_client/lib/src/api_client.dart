@@ -8578,6 +8578,9 @@ class ApiClient {
         loadChronic: (r['load_chronic'] as num?)?.toDouble() ?? 0,
         activePlanId: r['active_plan_id'] as String?,
         planCompletionPct: (r['plan_completion_pct'] as num?)?.toInt() ?? 0,
+        athleteToday: r['athlete_today'] as String?,
+        recentWorkouts: r['recent_workouts'],
+        easyHrDriftPct: (r['easy_hr_drift_pct'] as num?)?.toDouble(),
       );
     }).toList();
   }
@@ -9229,6 +9232,17 @@ class CoachRosterRow {
   final String? activePlanId;
   final int planCompletionPct;
 
+  /// The athlete's local date, the `today` the miss count is derived against.
+  final String? athleteToday;
+
+  /// The current plan's non-rest workouts over the last 28 local days, raw;
+  /// the app reads them with `parseRosterRecentWorkouts` (coach_load.dart).
+  final Object? recentWorkouts;
+
+  /// Easy-run efficiency drift, per cent. Null without health-data consent
+  /// or too few runs to compare (decisions § 2087).
+  final double? easyHrDriftPct;
+
   const CoachRosterRow({
     required this.athleteId,
     required this.displayName,
@@ -9240,6 +9254,9 @@ class CoachRosterRow {
     required this.loadChronic,
     required this.activePlanId,
     required this.planCompletionPct,
+    this.athleteToday,
+    this.recentWorkouts,
+    this.easyHrDriftPct,
   });
 }
 

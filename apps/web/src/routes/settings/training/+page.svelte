@@ -1,5 +1,8 @@
 <script lang="ts">
 	import { effective } from '#lib/settings/settings.ts';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { dbError } from '#lib/core/supabase_error.ts';
+	import { hrPrescriptionEnabled } from '#lib/training/hr_prescription_flag.ts';
 	import { m, currentLocale } from '#lib/i18n/store.svelte.ts';
 	import {
 		MAX_HR_BPM_MIN,
@@ -62,6 +65,15 @@
 	// dashboard readiness stays run-only. Default off (gym counts).
 	let excludeGymFromReadiness = $state(false);
 
+	// "My heart rate is affected by medication" (decisions § 2087). Art 9, so
+	// it is behind the deploy gate and the health-data consent, which the
+	// server re-checks on write. A runner on a beta blocker is told to set a
+	// measured max, and their HR-derived training load is labelled
+	// low-confidence.
+	const hrPrescription = hrPrescriptionEnabled();
+	let hrMedicationAffected = $state(false);
+	let healthConsentGranted = $state(false);
+
 	// Race-fueling intake rates — the per-hour carbs + fluid the roadbook fuel
 	// plan scales onto each leg. Defaults 60 g/hr + 500 ml/hr (fuel_plan.ts).
 	let carbsPerHour = $state('60');
@@ -83,6 +95,14 @@
 			z5 = zones.z5?.toString() ?? '';
 		}
 		excludeGymFromReadiness = effective<boolean>(settings, 'exclude_gym_from_readiness', false) === true;
+		if (hrPrescription) {
+			hrMedicationAffected = effective<boolean>(settings, 'hr_medication_affected', false) === true;
+			const { data: prof, error: profErr } = await supabase
+				.rpc('get_my_profile', undefined, { get: true })
+				.maybeSingle();
+			if (profErr) throw dbError(profErr);
+			healthConsentGranted = prof?.health_data_consent_at != null;
+		}
 		carbsPerHour = (effective<number>(settings, 'carbs_per_hour', 60) ?? 60).toString();
 		fluidPerHour = (effective<number>(settings, 'fluid_per_hour', 500) ?? 500).toString();
 		coachPersonality = effective(settings, 'coach_personality', 'supportive') ?? 'supportive';
@@ -190,6 +210,34 @@
 			<label><span class="label-text">{m('prefs.zone4Threshold')}</span><input type="number" bind:value={z4} placeholder="175" aria-describedby="hr-zones-desc" onblur={saveHrZones} /></label>
 			<label><span class="label-text">{m('prefs.zone5Max')}</span><input type="number" bind:value={z5} placeholder="195" aria-describedby="hr-zones-desc" onblur={saveHrZones} /></label>
 		</div>
+		{#if hrPrescription}
+			<div class="field" data-testid="hr-medication">
+				<label class="checkbox-row">
+					<input
+						type="checkbox"
+						bind:checked={hrMedicationAffected}
+						disabled={!healthConsentGranted && !hrMedicationAffected}
+						aria-describedby="hr-medication-hint"
+						data-testid="hr-medication-toggle"
+						onchange={() => prefs.save({ hr_medication_affected: hrMedicationAffected })}
+					/>
+					<span>{m('prefs.hrMedicationAffected')}</span>
+				</label>
+				<p class="hint" id="hr-medication-hint">
+					{#if healthConsentGranted}
+						{m('prefs.hrMedicationAffectedHint')}
+					{:else}
+						{m('prefs.hrMedicationNeedsConsent')}
+						<a href="/settings/body">{m('prefs.hrMedicationConsentLink')}</a>
+					{/if}
+				</p>
+				{#if hrMedicationAffected && maxHrParsed === null}
+					<p class="field-error" data-testid="hr-medication-max-prompt">
+						{m('prefs.hrMedicationSetMaxHr')}
+					</p>
+				{/if}
+			</div>
+		{/if}
 		<label class="checkbox-row">
 			<input type="checkbox" bind:checked={excludeGymFromReadiness} onchange={() => prefs.save({ exclude_gym_from_readiness: excludeGymFromReadiness })} />
 			<span>

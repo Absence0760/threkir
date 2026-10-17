@@ -6728,6 +6728,57 @@ class AppLocalizationsPt extends AppLocalizations {
   String get workoutMetricTargetPace => 'Ritmo-alvo';
 
   @override
+  String get workoutMetricEffort => 'Esforço';
+
+  @override
+  String get workoutMetricHeartRate => 'Frequência cardíaca';
+
+  @override
+  String workoutUpdatedByCoach(String date) {
+    return 'Atualizado pelo seu treinador a $date';
+  }
+
+  @override
+  String workoutTargetRpeBetween(int min, int max) {
+    return 'RPE $min–$max';
+  }
+
+  @override
+  String workoutTargetRpeExact(int value) {
+    return 'RPE $value';
+  }
+
+  @override
+  String workoutTargetRpeAtMost(int max) {
+    return 'RPE até $max';
+  }
+
+  @override
+  String workoutTargetRpeAtLeast(int min) {
+    return 'RPE $min ou mais';
+  }
+
+  @override
+  String workoutTargetHrBetween(int min, int max) {
+    return '$min–$max bpm';
+  }
+
+  @override
+  String workoutTargetHrExact(int value) {
+    return '$value bpm';
+  }
+
+  @override
+  String workoutTargetHrAtMost(int max) {
+    return 'Teto $max bpm';
+  }
+
+  @override
+  String workoutTargetHrAtLeast(int min) {
+    return 'Pelo menos $min bpm';
+  }
+
+  @override
   String get workoutCompleted => 'Concluído';
 
   @override
@@ -9326,6 +9377,10 @@ class AppLocalizationsPt extends AppLocalizations {
       'Inclui sessões de ginásio — musculação também soma fadiga.';
 
   @override
+  String get trainingLoadLowConfidenceMedication =>
+      'Menos fiável: indicou que uma medicação afeta a sua frequência cardíaca, o que faz a carga por frequência cardíaca ficar baixa.';
+
+  @override
   String get intensityTitle => 'INTENSIDADE DE TREINO';
 
   @override
@@ -10254,6 +10309,39 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get workoutEditPaceHint => 'ex. 5:30';
+
+  @override
+  String get workoutEditRpeFromLabel => 'Esforço a partir de (RPE)';
+
+  @override
+  String get workoutEditRpeToLabel => 'Esforço até (RPE)';
+
+  @override
+  String get workoutEditRpeHint =>
+      'Quão difícil deve parecer, de 1 (muito fácil) a 10 (no limite). Qualquer extremo pode ficar vazio: de 3 a 4 é uma corrida leve em que dá para conversar.';
+
+  @override
+  String get workoutEditHrFromLabel => 'Frequência cardíaca a partir de (bpm)';
+
+  @override
+  String get workoutEditHrToLabel => 'Frequência cardíaca até (bpm)';
+
+  @override
+  String get workoutEditHrHint =>
+      'Deixe o extremo inferior vazio para um teto, como 125. A frequência cardíaca é um dado de saúde, por isso uma meta precisa do consentimento de dados de saúde do corredor.';
+
+  @override
+  String workoutEditErrRangeBounds(int min, int max) {
+    return 'Use números inteiros de $min a $max.';
+  }
+
+  @override
+  String get workoutEditErrRangeReversed =>
+      'O primeiro número não pode ser maior que o segundo.';
+
+  @override
+  String get workoutEditErrHrNeedsConsent =>
+      'Uma meta de frequência cardíaca precisa do consentimento de dados de saúde do corredor. Apague-a ou peça-lhe que dê o consentimento nas definições.';
 
   @override
   String get workoutEditNotesLabel => 'Notas';
@@ -12168,6 +12256,22 @@ class AppLocalizationsPt extends AppLocalizations {
       'Por predefinição, as sessões de ginásio aumentam a sua fadiga e reduzem o seu preparo, como uma corrida. Ative isto para que o seu condicionamento, fadiga e forma se baseiem apenas nas corridas.';
 
   @override
+  String get prefsHrMedicationAffected =>
+      'A minha frequência cardíaca é afetada por medicação';
+
+  @override
+  String get prefsHrMedicationAffectedHint =>
+      'Por exemplo, um betabloqueante. As zonas pela idade e a carga de treino por frequência cardíaca ficam baixas, por isso a carga aparece como menos fiável. É um dado de saúde e é apagado se retirar o consentimento.';
+
+  @override
+  String get prefsHrMedicationNeedsConsent =>
+      'É um dado de saúde, por isso primeiro precisa do seu consentimento de dados de saúde.';
+
+  @override
+  String get prefsHrMedicationSetMaxHr =>
+      'Indique uma frequência cardíaca máxima medida, num esforço intenso ou num teste, para que as suas zonas se ajustem a si.';
+
+  @override
   String get nutritionEmptyTitle => 'Nada registado hoje';
 
   @override
@@ -12736,6 +12840,20 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get coachingRosterRiskInsufficient => 'Novo';
+
+  @override
+  String coachingRosterMissStreak(int n) {
+    return '$n falhados seguidos';
+  }
+
+  @override
+  String coachingRosterHrDrift(int pct) {
+    return 'FC no leve +$pct%';
+  }
+
+  @override
+  String get coachingRosterHrDriftHint =>
+      'Nas corridas leves planeadas das últimas duas semanas, a frequência cardíaca está mais alta ao mesmo ritmo do que nas seis semanas anteriores. Só aparece para atletas que deram consentimento de dados de saúde.';
 
   @override
   String get coachingRosterRiskLow => 'Baixo';
@@ -23779,6 +23897,57 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get workoutMetricTargetPace => 'Ritmo-alvo';
 
   @override
+  String get workoutMetricEffort => 'Esforço';
+
+  @override
+  String get workoutMetricHeartRate => 'Frequência cardíaca';
+
+  @override
+  String workoutUpdatedByCoach(String date) {
+    return 'Atualizado pelo seu treinador em $date';
+  }
+
+  @override
+  String workoutTargetRpeBetween(int min, int max) {
+    return 'RPE $min–$max';
+  }
+
+  @override
+  String workoutTargetRpeExact(int value) {
+    return 'RPE $value';
+  }
+
+  @override
+  String workoutTargetRpeAtMost(int max) {
+    return 'RPE até $max';
+  }
+
+  @override
+  String workoutTargetRpeAtLeast(int min) {
+    return 'RPE $min ou mais';
+  }
+
+  @override
+  String workoutTargetHrBetween(int min, int max) {
+    return '$min–$max bpm';
+  }
+
+  @override
+  String workoutTargetHrExact(int value) {
+    return '$value bpm';
+  }
+
+  @override
+  String workoutTargetHrAtMost(int max) {
+    return 'Teto $max bpm';
+  }
+
+  @override
+  String workoutTargetHrAtLeast(int min) {
+    return 'Pelo menos $min bpm';
+  }
+
+  @override
   String get workoutCompleted => 'Concluído';
 
   @override
@@ -26368,6 +26537,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Inclui sessões de academia — musculação também soma fadiga.';
 
   @override
+  String get trainingLoadLowConfidenceMedication =>
+      'Menos confiável: você informou que uma medicação afeta sua frequência cardíaca, o que faz a carga por frequência cardíaca ficar baixa.';
+
+  @override
   String get intensityTitle => 'INTENSIDADE DE TREINO';
 
   @override
@@ -27296,6 +27469,39 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get workoutEditPaceHint => 'ex. 5:30';
+
+  @override
+  String get workoutEditRpeFromLabel => 'Esforço a partir de (RPE)';
+
+  @override
+  String get workoutEditRpeToLabel => 'Esforço até (RPE)';
+
+  @override
+  String get workoutEditRpeHint =>
+      'Quão difícil deve parecer, de 1 (muito fácil) a 10 (no limite). Qualquer extremo pode ficar vazio: de 3 a 4 é uma corrida leve em que dá para conversar.';
+
+  @override
+  String get workoutEditHrFromLabel => 'Frequência cardíaca a partir de (bpm)';
+
+  @override
+  String get workoutEditHrToLabel => 'Frequência cardíaca até (bpm)';
+
+  @override
+  String get workoutEditHrHint =>
+      'Deixe o extremo inferior vazio para um teto, como 125. Frequência cardíaca é dado de saúde, então uma meta precisa do consentimento de dados de saúde do corredor.';
+
+  @override
+  String workoutEditErrRangeBounds(int min, int max) {
+    return 'Use números inteiros de $min a $max.';
+  }
+
+  @override
+  String get workoutEditErrRangeReversed =>
+      'O primeiro número não pode ser maior que o segundo.';
+
+  @override
+  String get workoutEditErrHrNeedsConsent =>
+      'Uma meta de frequência cardíaca precisa do consentimento de dados de saúde do corredor. Apague-a ou peça que ele dê o consentimento nas configurações.';
 
   @override
   String get workoutEditNotesLabel => 'Notas';
@@ -29211,6 +29417,22 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Por padrão, as sessões de musculação aumentam sua fadiga e reduzem seu preparo, como uma corrida. Ative isto para que seu condicionamento, fadiga e forma se baseiem apenas nas corridas.';
 
   @override
+  String get prefsHrMedicationAffected =>
+      'Minha frequência cardíaca é afetada por medicação';
+
+  @override
+  String get prefsHrMedicationAffectedHint =>
+      'Por exemplo, um betabloqueador. As zonas pela idade e a carga de treino por frequência cardíaca ficam baixas, então a carga aparece como menos confiável. É um dado de saúde e é apagado se você retirar o consentimento.';
+
+  @override
+  String get prefsHrMedicationNeedsConsent =>
+      'É um dado de saúde, então primeiro precisa do seu consentimento de dados de saúde.';
+
+  @override
+  String get prefsHrMedicationSetMaxHr =>
+      'Informe uma frequência cardíaca máxima medida, num esforço forte ou num teste, para que suas zonas combinem com você.';
+
+  @override
   String get nutritionEmptyTitle => 'Nada registrado hoje';
 
   @override
@@ -29778,6 +30000,20 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get coachingRosterRiskInsufficient => 'Novo';
+
+  @override
+  String coachingRosterMissStreak(int n) {
+    return '$n perdidos seguidos';
+  }
+
+  @override
+  String coachingRosterHrDrift(int pct) {
+    return 'FC no leve +$pct%';
+  }
+
+  @override
+  String get coachingRosterHrDriftHint =>
+      'Nas corridas leves planejadas das últimas duas semanas, a frequência cardíaca está mais alta no mesmo ritmo do que nas seis semanas anteriores. Só aparece para atletas que deram consentimento de dados de saúde.';
 
   @override
   String get coachingRosterRiskLow => 'Baixo';
@@ -30764,7 +31000,8 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get racesAgeGroupPlace => 'Classificação por categoria';
 
   @override
-  String get racesDivisionAwardPlace => 'Classificação na categoria de premiação';
+  String get racesDivisionAwardPlace =>
+      'Classificação na categoria de premiação';
 
   @override
   String get racesAgeGroup => 'Categoria de idade';

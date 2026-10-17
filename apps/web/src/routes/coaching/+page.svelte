@@ -18,12 +18,24 @@
 	} from '#lib/core/data.ts';
 	import { formatRelativeTime } from '#lib/format/time.ts';
 	import { formatDistance } from '#lib/format/units.svelte.ts';
-	import { loadTrend } from '#lib/training/coach_load.ts';
+	import {
+		CONSECUTIVE_MISS_FLAG,
+		consecutiveMissedWorkouts,
+		isEasyHrDriftFlagged,
+		loadTrend
+	} from '#lib/training/coach_load.ts';
+	import { hrPrescriptionEnabled } from '#lib/training/hr_prescription_flag.ts';
 	import { rosterRisk, sortRoster, type RosterSortKey } from './roster_sort';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+
+	const hrPrescription = hrPrescriptionEnabled();
+
+	function missStreak(r: CoachRosterRow): number {
+		return r.athlete_today ? consecutiveMissedWorkouts(r.recent_workouts, r.athlete_today) : 0;
+	}
 
 	let athletes = $state<CoachAthleteLink[]>([]);
 	let pending = $state<PendingCoachInvite[]>([]);
@@ -283,6 +295,7 @@
 							<tbody>
 								{#each sortedRoster as r (r.athlete_id)}
 									{@const band = rosterRisk(r)}
+									{@const misses = missStreak(r)}
 									<tr
 										class="roster-row"
 										data-testid="roster-row"
@@ -314,6 +327,11 @@
 										<td>
 											{#if r.active_plan_id}
 												<span>{r.plan_completion_pct}%</span>
+												{#if misses >= CONSECUTIVE_MISS_FLAG}
+													<span class="flag-chip" data-testid="roster-miss-flag">
+														{m('coaching.roster.missStreak', { n: misses })}
+													</span>
+												{/if}
 											{:else}
 												<span class="muted">{m('coaching.roster.noPlan')}</span>
 											{/if}
@@ -322,6 +340,15 @@
 											<span class="risk-chip risk-{band}" data-testid="risk-chip">
 												{riskLabel(band)}
 											</span>
+											{#if hrPrescription && isEasyHrDriftFlagged(r.easy_hr_drift_pct)}
+												<span
+													class="flag-chip"
+													data-testid="roster-hr-drift-flag"
+													title={m('coaching.roster.hrDriftHint')}
+												>
+													{m('coaching.roster.hrDrift', { pct: Math.round(r.easy_hr_drift_pct ?? 0) })}
+												</span>
+											{/if}
 										</td>
 									</tr>
 								{/each}
@@ -641,6 +668,16 @@
 		border-radius: var(--radius-sm);
 		font-size: 0.76rem;
 		font-weight: 700;
+	}
+	.flag-chip {
+		display: inline-block;
+		margin-left: var(--space-2xs);
+		padding: 0.1rem 0.5rem;
+		border-radius: var(--radius-sm);
+		font-size: 0.76rem;
+		font-weight: 700;
+		background: var(--color-warning-light);
+		color: var(--color-warning-text);
 	}
 	.risk-high {
 		background: var(--color-danger-light);

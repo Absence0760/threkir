@@ -59,6 +59,8 @@ class _FakeTraining extends TrainingService {
     PlanWorkoutTargets? targets,
     String? notes,
     PlanWorkoutRaceFields? race,
+    PlanWorkoutRange? rpe,
+    PlanWorkoutRange? hr,
   }) async {
     final distanceM = targets?.distanceM;
     if (distanceM != null) updated[workoutId] = distanceM;

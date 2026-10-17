@@ -75,6 +75,25 @@ export interface RosterRecentWorkout {
 	skipped: boolean;
 }
 
+/// Read `recent_workouts` off a roster row. An element missing its date or
+/// kind drops out instead of failing the whole row; a non-array reads as none.
+export function parseRosterRecentWorkouts(json: unknown): RosterRecentWorkout[] {
+	if (!Array.isArray(json)) return [];
+	const out: RosterRecentWorkout[] = [];
+	for (const e of json) {
+		if (!e || typeof e !== 'object') continue;
+		const r = e as Record<string, unknown>;
+		if (typeof r.scheduled_date !== 'string' || typeof r.kind !== 'string') continue;
+		out.push({
+			scheduled_date: r.scheduled_date,
+			kind: r.kind,
+			completed: r.completed === true,
+			skipped: r.skipped === true
+		});
+	}
+	return out;
+}
+
 /// Consecutive misses at or above which the roster flags the athlete.
 export const CONSECUTIVE_MISS_FLAG = 2;
 

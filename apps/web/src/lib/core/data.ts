@@ -159,6 +159,7 @@ import {
 } from '../training/relink_candidates';
 import type { GeneratedPlan, GoalEvent, PlanPhase } from '../training/training';
 import type { RacePriority } from '../training/plan_races';
+import { parseRosterRecentWorkouts, type RosterRecentWorkout } from '../training/coach_load';
 import { auth } from '../stores/auth.svelte';
 import { lineLngLat, trackLine } from '../runs/track_line';
 import {
@@ -6030,6 +6031,19 @@ export async function fetchWorkout(
 	return { workout: (data as PlanWorkout | null) ?? null, error: error?.message ?? null };
 }
 
+/// Who owns a plan, for the "updated by your coach" line on a workout
+/// (`isEditedByCoach`). Null when the row can't be read; the line then stays
+/// hidden rather than guessing.
+export async function fetchPlanOwnerId(planId: string): Promise<string | null> {
+	const { data, error } = await supabase
+		.from('training_plans')
+		.select('user_id')
+		.eq('id', planId)
+		.maybeSingle();
+	if (error) return null;
+	return data?.user_id ?? null;
+}
+
 /// A plan overview read. `error` is set when a read failed, so a caller can
 /// say "couldn't load your plan" instead of showing the no-plan state over a
 /// plan that exists.
@@ -6516,6 +6530,10 @@ export async function updatePlanWorkout(
 		structure: JsonObject | null;
 		race_name: string | null;
 		race_priority: RacePriority | null;
+		target_rpe_min: number | null;
+		target_rpe_max: number | null;
+		target_hr_min_bpm: number | null;
+		target_hr_max_bpm: number | null;
 	}>
 ): Promise<void> {
 	// Normalise the `notes` patch the same way `createTrainingPlan`
@@ -6531,7 +6549,7 @@ export async function updatePlanWorkout(
 	// are TS<->Dart parity modules (`plan_replan`, `cycle_plan`) whose patch
 	// types spell it that way; the column's CHECK is what constrains it.
 	// Restated field-by-field rather than casting the whole patch, so the other
-	// nine fields stay checked against the table they are sent to.
+	// fields stay checked against the table they are sent to.
 	if ('race_name' in normalisedPatch) {
 		normalisedPatch.race_name = normalisedPatch.race_name?.trim() || null;
 	}
@@ -10768,6 +10786,13 @@ export interface CoachRosterRow {
 	load_chronic: number;
 	active_plan_id: string | null;
 	plan_completion_pct: number;
+	/// The athlete's local date, the `today` the miss count is derived against.
+	athlete_today: string | null;
+	/// The current plan's non-rest workouts over the last 28 local days.
+	recent_workouts: RosterRecentWorkout[];
+	/// Easy-run efficiency drift, per cent. Null without health-data consent
+	/// or too few runs to compare (decisions § 2087).
+	easy_hr_drift_pct: number | null;
 }
 
 /// The whole roster in one consent-gated round-trip. Surfaces the RPC error so
@@ -10792,7 +10817,13 @@ export async function fetchCoachRosterSummaryWithError(): Promise<{
 		load_acute: Number(r.load_acute) || 0,
 		load_chronic: Number(r.load_chronic) || 0,
 		active_plan_id: (r.active_plan_id as string | null) ?? null,
-		plan_completion_pct: Number(r.plan_completion_pct) || 0
+		plan_completion_pct: Number(r.plan_completion_pct) || 0,
+		athlete_today: typeof r.athlete_today === 'string' ? r.athlete_today : null,
+		recent_workouts: parseRosterRecentWorkouts(r.recent_workouts),
+		easy_hr_drift_pct:
+			typeof r.easy_hr_drift_pct === 'number' && Number.isFinite(r.easy_hr_drift_pct)
+				? r.easy_hr_drift_pct
+				: null
 	}));
 	return { rows, error: null };
 }

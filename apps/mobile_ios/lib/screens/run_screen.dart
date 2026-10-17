@@ -37,6 +37,8 @@ import '../goal_time.dart';
 import '../guided_runs.dart';
 import '../health_connect_exporter.dart';
 import '../activity_type_labels.dart';
+import '../hr_prescription_flag.dart';
+import '../workout_target_label.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../l10n/number_format.dart';
@@ -639,6 +641,10 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   WorkoutRunner? _workoutRunner;
   StreamSubscription<WorkoutExecEvent>? _workoutEventsSub;
   String? _activeWorkoutId;
+
+  /// The planned workout the runner is executing, for its effort /
+  /// heart-rate target line on the band (decisions § 2087).
+  PlanWorkoutRow? _activeWorkoutRow;
   final ValueNotifier<WorkoutBandState> _workoutBand =
       ValueNotifier(WorkoutBandState.empty);
 
@@ -1020,6 +1026,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     _workoutEventsSub = runner.events.listen(_onWorkoutEvent);
     _workoutRunner = runner;
     _activeWorkoutId = wo.id;
+    _activeWorkoutRow = wo;
     _publishWorkoutBand();
   }
 
@@ -4320,6 +4327,17 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   /// idle screen ready to tap GO. Reused by today's-workout card; safe
   /// to call when no workout is currently set, idempotent if the same
   /// workout is selected twice.
+  String? _workoutEffortTarget() {
+    final wo = _activeWorkoutRow;
+    if (wo == null) return null;
+    final parts = [
+      rpeTargetLabel(_l10n, wo.targetRpeMin, wo.targetRpeMax),
+      if (hrPrescriptionGate)
+        hrTargetLabel(_l10n, wo.targetHrMinBpm, wo.targetHrMaxBpm),
+    ].whereType<String>().toList();
+    return parts.isEmpty ? null : parts.join(' · ');
+  }
+
   Future<void> _startStructuredWorkout(PlanWorkoutRow wo) async {
     if (_state != _ScreenState.idle) return;
     Map<String, int> paces = const {};
@@ -4355,6 +4373,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     setState(() {
       _workoutRunner = runner;
       _activeWorkoutId = wo.id;
+      _activeWorkoutRow = wo;
     });
     _publishWorkoutBand();
     if (mounted) {
@@ -4962,6 +4981,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                   onSkip: _onSkipWorkoutStep,
                   onRewind: _onRewindWorkoutStep,
                   onAbandon: _onAbandonWorkout,
+                  effortTarget: _workoutEffortTarget(),
                 ),
           // Persistent live-share indicator on the left while a
           // broadcast is active (issue #613) — standing confirmation

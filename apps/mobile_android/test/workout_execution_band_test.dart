@@ -42,6 +42,7 @@ Future<void> _pumpBand(
   VoidCallback? onSkip,
   VoidCallback? onRewind,
   VoidCallback? onAbandon,
+  String? effortTarget,
 }) {
   final notifier = ValueNotifier<WorkoutBandState>(state);
   return tester.pumpWidget(
@@ -54,6 +55,7 @@ Future<void> _pumpBand(
           onSkip: onSkip ?? () {},
           onRewind: onRewind ?? () {},
           onAbandon: onAbandon ?? () {},
+          effortTarget: effortTarget,
         ),
       ),
     ),
@@ -95,6 +97,27 @@ void main() {
       expect(find.text('300 m to go'), findsOneWidget);
       // Pace pip shows signed delta.
       expect(find.text('−5s'), findsOneWidget);
+    });
+
+    testWidgets('carries the workout\'s effort target line (decisions § 2087)',
+        (tester) async {
+      await _pumpBand(
+        tester,
+        state: WorkoutBandState(
+          step: _step(),
+          totalSteps: 14,
+          currentIndex: 4,
+          progress: 0.25,
+          remainingMetres: 300,
+          actualPaceSecPerKm: 235,
+          adherence: PaceAdherence.ahead,
+          complete: false,
+          abandoned: false,
+        ),
+        effortTarget: 'RPE 3–4 · Cap 125 bpm',
+      );
+      expect(find.byKey(const Key('workoutBandEffortTarget')), findsOneWidget);
+      expect(find.text('RPE 3–4 · Cap 125 bpm'), findsOneWidget);
     });
 
     testWidgets('Skip and Abandon trigger callbacks', (tester) async {

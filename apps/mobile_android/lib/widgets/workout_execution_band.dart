@@ -23,12 +23,17 @@ class WorkoutExecutionBand extends StatelessWidget {
   final VoidCallback onRewind;
   final VoidCallback onAbandon;
 
+  /// The workout's effort / heart-rate target as one line ("RPE 3–4 · Cap
+  /// 125 bpm"), the same for every step; null hides it (decisions § 2087).
+  final String? effortTarget;
+
   const WorkoutExecutionBand({
     super.key,
     required this.state,
     required this.onSkip,
     required this.onRewind,
     required this.onAbandon,
+    this.effortTarget,
   });
 
   @override
@@ -40,6 +45,7 @@ class WorkoutExecutionBand extends StatelessWidget {
         onSkip: onSkip,
         onRewind: onRewind,
         onAbandon: onAbandon,
+        effortTarget: effortTarget,
       ),
     );
   }
@@ -90,11 +96,13 @@ class _Band extends StatelessWidget {
   final VoidCallback onSkip;
   final VoidCallback onRewind;
   final VoidCallback onAbandon;
+  final String? effortTarget;
   const _Band({
     required this.state,
     required this.onSkip,
     required this.onRewind,
     required this.onAbandon,
+    this.effortTarget,
   });
 
   @override
@@ -146,6 +154,16 @@ class _Band extends StatelessWidget {
                 _PacePip(adherence: state.adherence, delta: _delta(step)),
             ],
           ),
+          if (effortTarget != null)
+            Text(
+              effortTarget!,
+              key: const Key('workoutBandEffortTarget'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
           const SizedBox(height: 6),
           ProgressBar(value: state.progress.clamp(0.0, 1.0)),
           const SizedBox(height: 4),

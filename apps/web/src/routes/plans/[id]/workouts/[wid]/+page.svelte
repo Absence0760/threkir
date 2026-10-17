@@ -5,6 +5,7 @@
 	import { afterNavigate } from '$app/navigation';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import {
+		fetchPlanOwnerId,
 		fetchWorkout,
 		markWorkoutCompleted,
 		markWorkoutSkipped,
@@ -13,6 +14,9 @@
 	} from '#lib/core/data.ts';
 	import { fmtHms, isWorkoutCompleted, isWorkoutSkipped } from '#lib/training/training.ts';
 	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
+	import { isEditedByCoach } from '#lib/training/workout_prescription.ts';
+	import { hrTargetLabel, rpeTargetLabel } from '#lib/training/workout_target_label.ts';
+	import { hrPrescriptionEnabled } from '#lib/training/hr_prescription_flag.ts';
 	import { fmtKm, fmtPace, fmtPaceTolerance } from '#lib/format/units.svelte.ts';
 	import { formatDateShort } from '#lib/format/time.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
@@ -25,6 +29,8 @@
 	let planId = $derived(page.params.id as string);
 	let wid = $derived(page.params.wid as string);
 	let workout = $state<PlanWorkout | null>(null);
+	let ownerId = $state<string | null>(null);
+	const hrPrescription = hrPrescriptionEnabled();
 	let loading = $state(true);
 	let loadError = $state(false);
 	let showUnlinkConfirm = $state(false);
@@ -51,8 +57,9 @@
 	async function load() {
 		loading = true;
 		loadError = false;
-		const res = await fetchWorkout(wid);
+		const [res, owner] = await Promise.all([fetchWorkout(wid), fetchPlanOwnerId(planId)]);
 		workout = res.workout;
+		ownerId = owner;
 		loadError = res.error !== null;
 		loading = false;
 	}
@@ -61,6 +68,12 @@
 		await auth.ready();
 		await load();
 	});
+
+	let rpeLabel = $derived(workout ? rpeTargetLabel(workout.target_rpe_min, workout.target_rpe_max) : null);
+	let hrLabel = $derived(
+		workout && hrPrescription ? hrTargetLabel(workout.target_hr_min_bpm, workout.target_hr_max_bpm) : null
+	);
+	let editedByCoach = $derived(workout != null && isEditedByCoach(workout, ownerId, auth.user?.id));
 
 	let structure = $derived(
 		(workout?.structure as unknown as WorkoutStructure | null) ?? null
@@ -335,7 +348,25 @@
 							</span>
 						</div>
 					{/if}
+					{#if rpeLabel}
+						<div class="metric" data-testid="workout-rpe-target">
+							<span class="m-label">{t('workoutDetail.effort')}</span>
+							<strong>{rpeLabel}</strong>
+						</div>
+					{/if}
+					{#if hrPrescription && hrLabel}
+						<div class="metric" data-testid="workout-hr-target">
+							<span class="m-label">{t('workoutDetail.heartRate')}</span>
+							<strong>{hrLabel}</strong>
+						</div>
+					{/if}
 				</div>
+				{#if editedByCoach && workout.updated_at}
+					<p class="provenance" data-testid="workout-coach-edited">
+						<span class="material-symbols" aria-hidden="true">sports</span>
+						{t('workoutDetail.updatedByCoach', { date: formatDateShort(workout.updated_at) })}
+					</p>
+				{/if}
 			</div>
 			{#if isWorkoutCompleted(workout)}
 				<div class="completed-card">
@@ -623,6 +654,17 @@
 		line-height: 1.5;
 		max-width: 44rem;
 		margin: var(--space-2xs) 0 var(--space-xs) 0;
+	}
+	.provenance {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2xs);
+		margin: var(--space-xs) 0 0 0;
+		color: var(--color-text-secondary);
+		font-size: 0.9rem;
+	}
+	.provenance .material-symbols {
+		font-size: 1.1rem;
 	}
 	.meta {
 		display: flex;

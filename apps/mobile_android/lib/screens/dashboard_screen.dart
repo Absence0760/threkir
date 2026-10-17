@@ -23,6 +23,7 @@ import '../device_timezone.dart';
 import '../disclosure_state.dart';
 import '../goals.dart';
 import '../health_consent.dart';
+import '../hr_prescription_flag.dart';
 import '../l10n/date_format.dart' show formatDowDateShort;
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart' show activeLocaleTag;
@@ -914,10 +915,16 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   Widget _buildTrainingLoadChart(
       List<Run> runs, DateTime now, List<TrainingLoadPoint> series) {
+    final hasHr = hasTrimpSignal(runs, _hrPrefs());
+    final medicationAffected = widget.settingsSync?.service
+            ?.effective<bool>(SettingsKeys.hrMedicationAffected) ==
+        true;
     return TrainingLoadChart(
       points: series,
-      hasHr: hasTrimpSignal(runs, _hrPrefs()),
+      hasHr: hasHr,
       includesLifts: series.any((p) => p.liftStress > 0),
+      lowConfidence:
+          hrPrescriptionGate && isTrimpLowConfidence(hasHr, medicationAffected),
     );
   }
 

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import { appErrorMessage } from '#lib/core/supabase_error.ts';
+	import { appErrorMessage, DbError } from '#lib/core/supabase_error.ts';
 	import {
 		markWorkoutCompleted,
 		markWorkoutSkipped,
@@ -17,6 +17,14 @@
 	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
 	import { RACE_GOAL_MAX_HOURS, RACE_PRIORITIES, type RacePriority } from '#lib/training/plan_races.ts';
 	import { raceGoalInputSeconds } from '#lib/training/race_goal_input.ts';
+	import {
+		parseTargetRange,
+		RPE_BOUNDS,
+		TARGET_HR_BOUNDS,
+		type ParsedRange,
+		type RangeBounds
+	} from '#lib/training/workout_prescription.ts';
+	import { hrPrescriptionEnabled } from '#lib/training/hr_prescription_flag.ts';
 	import type { WorkoutMoveDay } from '#lib/training/plan_move.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { getUnit } from '#lib/format/units.svelte.ts';
@@ -98,6 +106,11 @@
 		initialGoal != null ? Math.floor((initialGoal % 3600) / 60) : null
 	);
 	let goalSec = $state<number | null>(initialGoal != null ? initialGoal % 60 : null);
+	let rpeMin = $state<number | null>(untrack(() => workout.target_rpe_min ?? null));
+	let rpeMax = $state<number | null>(untrack(() => workout.target_rpe_max ?? null));
+	const hrPrescription = hrPrescriptionEnabled();
+	let hrMin = $state<number | null>(untrack(() => workout.target_hr_min_bpm ?? null));
+	let hrMax = $state<number | null>(untrack(() => workout.target_hr_max_bpm ?? null));
 
 	const initialStructure = untrack(
 		() => (workout.structure as WorkoutStructure | null) ?? null
@@ -214,6 +227,10 @@
 		goalHours,
 		goalMin,
 		goalSec,
+		rpeMin,
+		rpeMax,
+		hrMin,
+		hrMax,
 		mode,
 		warmupDistance,
 		cooldownDistance,
@@ -328,11 +345,32 @@
 		return hasAny ? next : null;
 	}
 
+	function rangeError(range: ParsedRange, bounds: RangeBounds): string | null {
+		if (range.ok) return null;
+		if (range.reason === 'reversed') return t('workoutEditor.targetRangeReversed');
+		return t('workoutEditor.targetRangeOutOfBounds', { min: bounds.min, max: bounds.max });
+	}
+
 	async function save() {
 		error = null;
 		const goal = raceGoalInputSeconds(goalHours, goalMin, goalSec);
 		if (kind === 'race' && !goal.ok) {
 			error = t('workoutEditor.raceGoalInvalid', { max: RACE_GOAL_MAX_HOURS });
+			return;
+		}
+		const isRestKind = kind === 'rest';
+		const rpe = isRestKind
+			? ({ ok: true, min: null, max: null } as const)
+			: parseTargetRange(rpeMin, rpeMax, RPE_BOUNDS);
+		const hr = isRestKind
+			? ({ ok: true, min: null, max: null } as const)
+			: parseTargetRange(hrMin, hrMax, TARGET_HR_BOUNDS);
+		if (!rpe.ok) {
+			error = rangeError(rpe, RPE_BOUNDS);
+			return;
+		}
+		if (hrPrescription && !hr.ok) {
+			error = rangeError(hr, TARGET_HR_BOUNDS);
 			return;
 		}
 		busy = true;
@@ -383,11 +421,21 @@
 				structure: isUnstructured
 					? null
 					: (nextStructure as unknown as JsonObject | null),
+				target_rpe_min: rpe.min,
+				target_rpe_max: rpe.max,
+				...(hrPrescription && hr.ok
+					? { target_hr_min_bpm: hr.min, target_hr_max_bpm: hr.max }
+					: isRestKind
+						? { target_hr_min_bpm: null, target_hr_max_bpm: null }
+						: {})
 			});
 			dirty.rebaseline();
 			onSaved();
 		} catch (e: unknown) {
-			error = appErrorMessage(e) ?? t('workoutEditor.saveFailed');
+			error =
+				e instanceof DbError && e.code === '42501' && (hrMin != null || hrMax != null)
+					? t('workoutEditor.hrTargetNeedsConsent')
+					: (appErrorMessage(e) ?? t('workoutEditor.saveFailed'));
 		} finally {
 			busy = false;
 		}
@@ -591,6 +639,68 @@
 				</label>
 				<span class="hint" id="wo-zone-hint">{t('workoutEditor.zoneMeaningHint')}</span>
 			</div>
+
+			<fieldset data-testid="workout-rpe-target">
+				<legend>{t('workoutEditor.rpeTarget')}</legend>
+				<div class="pace-row">
+					<input
+						type="number"
+						inputmode="numeric"
+						min={RPE_BOUNDS.min}
+						max={RPE_BOUNDS.max}
+						step="1"
+						bind:value={rpeMin}
+						placeholder={t('workoutEditor.rangeFrom')}
+						aria-label={t('workoutEditor.rpeTargetFrom')}
+						aria-describedby="wo-rpe-hint"
+					/>
+					<span class="arrow">–</span>
+					<input
+						type="number"
+						inputmode="numeric"
+						min={RPE_BOUNDS.min}
+						max={RPE_BOUNDS.max}
+						step="1"
+						bind:value={rpeMax}
+						placeholder={t('workoutEditor.rangeTo')}
+						aria-label={t('workoutEditor.rpeTargetTo')}
+						aria-describedby="wo-rpe-hint"
+					/>
+				</div>
+				<p class="hint" id="wo-rpe-hint">{t('workoutEditor.rpeTargetHint')}</p>
+			</fieldset>
+
+			{#if hrPrescription}
+				<fieldset data-testid="workout-hr-target">
+					<legend>{t('workoutEditor.hrTarget')}</legend>
+					<div class="pace-row">
+						<input
+							type="number"
+							inputmode="numeric"
+							min={TARGET_HR_BOUNDS.min}
+							max={TARGET_HR_BOUNDS.max}
+							step="1"
+							bind:value={hrMin}
+							placeholder={t('workoutEditor.rangeFrom')}
+							aria-label={t('workoutEditor.hrTargetFrom')}
+							aria-describedby="wo-hr-hint"
+						/>
+						<span class="arrow">–</span>
+						<input
+							type="number"
+							inputmode="numeric"
+							min={TARGET_HR_BOUNDS.min}
+							max={TARGET_HR_BOUNDS.max}
+							step="1"
+							bind:value={hrMax}
+							placeholder={t('workoutEditor.rangeTo')}
+							aria-label={t('workoutEditor.hrTargetTo')}
+							aria-describedby="wo-hr-hint"
+						/>
+					</div>
+					<p class="hint" id="wo-hr-hint">{t('workoutEditor.hrTargetHint')}</p>
+				</fieldset>
+			{/if}
 		{/if}
 
 		{#if showStructure}

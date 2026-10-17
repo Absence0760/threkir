@@ -1,8 +1,10 @@
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 
 import '../auth_error.dart';
 import '../goal_time.dart';
+import '../hr_prescription_flag.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../plan_move.dart';
 import '../plan_races.dart';
@@ -11,6 +13,7 @@ import '../training.dart';
 import '../training_labels.dart';
 import '../training_service.dart';
 import '../typed_decimal.dart';
+import '../workout_prescription.dart';
 import 'full_screen_form.dart';
 import 'workout_move_sheet.dart';
 
@@ -21,12 +24,15 @@ import 'workout_move_sheet.dart';
 /// for refreshing the plan view after the sheet returns. Presentation
 /// goes through [showFullScreenForm], the shared create/edit-entity wrapper.
 /// A non-empty [moveDays] (from `workoutMoveDays`) adds "Move to another
-/// day", which opens [showWorkoutMoveSheet].
+/// day", which opens [showWorkoutMoveSheet]. Every non-rest workout also
+/// takes an effort range (RPE), and a heart-rate range when [hrPrescription]
+/// is on (null reads the deploy gate, decisions § 2087).
 Future<bool> showWorkoutEditSheet(
   BuildContext context, {
   required PlanWorkoutRow workout,
   required TrainingService training,
   List<WorkoutMoveDay> moveDays = const [],
+  bool? hrPrescription,
 }) async {
   final formKey = GlobalKey<_WorkoutEditSheetState>();
   final ok = await showFullScreenForm<bool>(
@@ -38,6 +44,7 @@ Future<bool> showWorkoutEditSheet(
       workout: workout,
       training: training,
       moveDays: moveDays,
+      hrPrescription: hrPrescription ?? hrPrescriptionGate,
     ),
   );
   return ok == true;
@@ -47,11 +54,13 @@ class _WorkoutEditSheet extends StatefulWidget {
   final PlanWorkoutRow workout;
   final TrainingService training;
   final List<WorkoutMoveDay> moveDays;
+  final bool hrPrescription;
   const _WorkoutEditSheet({
     super.key,
     required this.workout,
     required this.training,
     required this.moveDays,
+    required this.hrPrescription,
   });
 
   @override
@@ -65,6 +74,12 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
   late final TextEditingController _notesCtl;
   late final TextEditingController _raceNameCtl;
   late final TextEditingController _raceGoalCtl;
+  late final TextEditingController _rpeMinCtl;
+  late final TextEditingController _rpeMaxCtl;
+  late final TextEditingController _hrMinCtl;
+  late final TextEditingController _hrMaxCtl;
+  String? _rpeError;
+  String? _hrError;
   String? _racePriority;
   // Targets are typed and shown in the runner's unit and stored per km.
   late final bool _miles;
@@ -99,6 +114,10 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
     );
     _racePriority =
         racePriorities.contains(w.racePriority) ? w.racePriority : null;
+    _rpeMinCtl = TextEditingController(text: w.targetRpeMin?.toString() ?? '');
+    _rpeMaxCtl = TextEditingController(text: w.targetRpeMax?.toString() ?? '');
+    _hrMinCtl = TextEditingController(text: w.targetHrMinBpm?.toString() ?? '');
+    _hrMaxCtl = TextEditingController(text: w.targetHrMaxBpm?.toString() ?? '');
     _initialSnapshot = _snapshot();
   }
 
@@ -116,6 +135,10 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
         _raceNameCtl.text,
         _raceGoalCtl.text,
         _racePriority ?? '',
+        _rpeMinCtl.text,
+        _rpeMaxCtl.text,
+        _hrMinCtl.text,
+        _hrMaxCtl.text,
       ].join('\u0000');
 
   bool get isDirty => _snapshot() != _initialSnapshot;
@@ -127,6 +150,10 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
     _notesCtl.dispose();
     _raceNameCtl.dispose();
     _raceGoalCtl.dispose();
+    _rpeMinCtl.dispose();
+    _rpeMaxCtl.dispose();
+    _hrMinCtl.dispose();
+    _hrMaxCtl.dispose();
     super.dispose();
   }
 
@@ -182,6 +209,7 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
               }
             },
           ),
+          if (_kind != WorkoutKind.rest) ..._targetRangeFields(l10n),
           if (_kind == WorkoutKind.race) ..._raceFields(l10n),
           const SizedBox(height: 8),
           TextField(
@@ -234,6 +262,109 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
           ),
         ],
       );
+  }
+
+  Widget _rangeRow({
+    required Key fromKey,
+    required Key toKey,
+    required TextEditingController fromCtl,
+    required TextEditingController toCtl,
+    required String fromLabel,
+    required String toLabel,
+    required String? error,
+    required VoidCallback onEdit,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: TextField(
+            key: fromKey,
+            controller: fromCtl,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(labelText: fromLabel, errorText: error),
+            onChanged: (_) => onEdit(),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: TextField(
+            key: toKey,
+            controller: toCtl,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(
+                labelText: toLabel, errorText: error == null ? null : ''),
+            onChanged: (_) => onEdit(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  List<Widget> _targetRangeFields(AppLocalizations l10n) => [
+        const SizedBox(height: 8),
+        _rangeRow(
+          fromKey: const Key('workoutEditRpeMin'),
+          toKey: const Key('workoutEditRpeMax'),
+          fromCtl: _rpeMinCtl,
+          toCtl: _rpeMaxCtl,
+          fromLabel: l10n.workoutEditRpeFromLabel,
+          toLabel: l10n.workoutEditRpeToLabel,
+          error: _rpeError,
+          onEdit: () {
+            if (_rpeError != null) setState(() => _rpeError = null);
+          },
+        ),
+        Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(l10n.workoutEditRpeHint,
+              style: Theme.of(context).textTheme.bodySmall),
+        ),
+        if (widget.hrPrescription) ...[
+          const SizedBox(height: 8),
+          _rangeRow(
+            fromKey: const Key('workoutEditHrMin'),
+            toKey: const Key('workoutEditHrMax'),
+            fromCtl: _hrMinCtl,
+            toCtl: _hrMaxCtl,
+            fromLabel: l10n.workoutEditHrFromLabel,
+            toLabel: l10n.workoutEditHrToLabel,
+            error: _hrError,
+            onEdit: () {
+              if (_hrError != null) setState(() => _hrError = null);
+            },
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(l10n.workoutEditHrHint,
+                style: Theme.of(context).textTheme.bodySmall),
+          ),
+        ],
+      ];
+
+  /// Read one end of a typed range: empty is an open end, anything that is
+  /// not a number is refused as not whole.
+  static ({bool ok, num? value}) _rangeEnd(String text) {
+    final t = text.trim();
+    if (t.isEmpty) return (ok: true, value: null);
+    final v = num.tryParse(t.replaceAll(',', '.'));
+    return v == null ? (ok: false, value: null) : (ok: true, value: v);
+  }
+
+  ParsedRange _parseRange(
+      TextEditingController lo, TextEditingController hi, RangeBounds b) {
+    final a = _rangeEnd(lo.text);
+    final c = _rangeEnd(hi.text);
+    if (!a.ok || !c.ok) return const ParsedRange.refused(RangeRefusal.notWhole);
+    return parseTargetRange(a.value, c.value, b);
+  }
+
+  String? _rangeErrorText(
+      AppLocalizations l10n, ParsedRange r, RangeBounds b) {
+    if (r.ok) return null;
+    return r.reason == RangeRefusal.reversed
+        ? l10n.workoutEditErrRangeReversed
+        : l10n.workoutEditErrRangeBounds(b.min, b.max);
   }
 
   List<Widget> _raceFields(AppLocalizations l10n) => [
@@ -333,10 +464,19 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
       }
     }
 
+    final isRest = _kind == WorkoutKind.rest;
+    final rpe = _parseRange(_rpeMinCtl, _rpeMaxCtl, rpeBounds);
+    final hr = _parseRange(_hrMinCtl, _hrMaxCtl, targetHrBounds);
+    var rpeError = _rangeErrorText(l10n, rpe, rpeBounds);
+    var hrError =
+        widget.hrPrescription ? _rangeErrorText(l10n, hr, targetHrBounds) : null;
+
     // A rest day has no targets to validate: the patch clears them all.
-    if (_kind == WorkoutKind.rest) {
+    if (isRest) {
       distanceError = null;
       paceError = null;
+      rpeError = null;
+      hrError = null;
     }
 
     final isRace = _kind == WorkoutKind.race;
@@ -352,8 +492,14 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
       _distanceError = distanceError;
       _paceError = paceError;
       _raceGoalError = raceGoalError;
+      _rpeError = rpeError;
+      _hrError = hrError;
     });
-    if (distanceError != null || paceError != null || raceGoalError != null) {
+    if (distanceError != null ||
+        paceError != null ||
+        raceGoalError != null ||
+        rpeError != null ||
+        hrError != null) {
       return;
     }
 
@@ -375,14 +521,23 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
                 goalTimeSec: goalTimeSec,
               )
             : null,
+        rpe: isRest ? null : (min: rpe.min, max: rpe.max),
+        hr: isRest || !widget.hrPrescription
+            ? null
+            : (min: hr.min, max: hr.max),
       );
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       debugPrint('workout edit save error: $e');
       if (mounted) {
+        final needsConsent = e is PostgrestException &&
+            e.code == '42501' &&
+            (hr.min != null || hr.max != null);
         setState(() {
           _saving = false;
-          _error = l10n.workoutEditSaveError(friendlyError(l10n, e));
+          _error = needsConsent
+              ? l10n.workoutEditErrHrNeedsConsent
+              : l10n.workoutEditSaveError(friendlyError(l10n, e));
         });
       }
     }

@@ -1,6 +1,7 @@
 import { expect, test } from '../fixtures/test';
 
 import { RUNNER_PUBLIC_RUN_ID } from '../fixtures/seeded-data';
+import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
 import { acceptCookieConsent } from '../fixtures/helpers';
 
@@ -529,6 +530,43 @@ test.describe('settings preference pages', () => {
 		await page.reload();
 		await expect(resting).toHaveValue('');
 		await expect(max).toHaveValue('');
+	});
+
+	test('the heart-rate medication flag saves, asks for a measured max, and marks the load', async ({
+		page
+	}) => {
+		// decisions § 2087: Art 9, behind PUBLIC_HR_PRESCRIPTION_ENABLED (on in
+		// .env.development) and the health-data consent USER_A has in the seed.
+		const admin = getAdminClient();
+		const { data: before } = await admin.from('user_settings').select('prefs').eq('user_id', USER_A.id).single();
+		const original = (before?.prefs as Record<string, unknown>) ?? {};
+		const start = { ...original };
+		delete start.hr_medication_affected;
+		delete start.max_hr_bpm;
+		await admin.from('user_settings').update({ prefs: start }).eq('user_id', USER_A.id);
+		try {
+			await page.goto('/settings/training');
+			const toggle = page.getByTestId('hr-medication-toggle');
+			await expect(toggle).toBeEnabled({ timeout: 10_000 });
+			await expect(toggle).not.toBeChecked();
+			await expect(page.getByTestId('hr-medication-max-prompt')).toHaveCount(0);
+
+			await toggle.check();
+			await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
+			await expect(page.getByTestId('hr-medication-max-prompt')).toBeVisible();
+
+			await page.getByTestId('max-hr').fill('150');
+			await page.getByTestId('max-hr').blur();
+			await expect(page.getByTestId('hr-medication-max-prompt')).toHaveCount(0);
+			await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
+
+			await page.reload();
+			await expect(page.getByTestId('hr-medication-toggle')).toBeChecked({ timeout: 10_000 });
+			const { data } = await admin.from('user_settings').select('prefs').eq('user_id', USER_A.id).single();
+			expect((data?.prefs as Record<string, unknown>).hr_medication_affected).toBe(true);
+		} finally {
+			await admin.from('user_settings').update({ prefs: original }).eq('user_id', USER_A.id);
+		}
 	});
 
 	test('theme toggle: Dark applies html[data-theme] + survives reload', async ({

@@ -13,6 +13,9 @@ import '../training.dart';
 import '../training_labels.dart';
 import '../training_service.dart';
 import '../backend_timeout.dart';
+import '../hr_prescription_flag.dart';
+import '../workout_prescription.dart';
+import '../workout_target_label.dart';
 import '../widgets/error_state.dart';
 import '../widgets/top_banner.dart';
 
@@ -20,11 +23,16 @@ class WorkoutDetailScreen extends StatefulWidget {
   final TrainingService training;
   final String planId;
   final String workoutId;
+
+  /// The heart-rate prescription gate (decisions § 2087); null reads the
+  /// deploy flag. A test passes it directly.
+  final bool? hrPrescription;
   const WorkoutDetailScreen({
     super.key,
     required this.training,
     required this.planId,
     required this.workoutId,
+    this.hrPrescription,
   });
 
   @override
@@ -33,6 +41,11 @@ class WorkoutDetailScreen extends StatefulWidget {
 
 class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   PlanWorkoutRow? _workout;
+  late final bool _hrPrescription = widget.hrPrescription ?? hrPrescriptionGate;
+
+  /// Whether the athlete's coach made the last edit. Auxiliary: a failed
+  /// owner read leaves the line hidden and never touches the workout.
+  bool _editedByCoach = false;
   bool _loading = true;
   bool _unlinking = false;
   bool _skipping = false;
@@ -58,6 +71,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         _workout = w;
         _loading = false;
       });
+      unawaited(_loadProvenance(w));
     } on TimeoutException catch (e) {
       debugPrint('WorkoutDetailScreen._load timed out: $e');
       if (mounted) {
@@ -74,6 +88,25 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           _error = _WorkoutLoadError.generic;
         });
       }
+    }
+  }
+
+  Future<void> _loadProvenance(PlanWorkoutRow? w) async {
+    if (w == null || w.updatedBy == null) return;
+    try {
+      final owner = await widget.training
+          .fetchPlanOwnerId(widget.planId)
+          .timeout(kBackendLoadTimeout);
+      final edited = isEditedByCoach(
+        updatedBy: w.updatedBy,
+        ownerId: owner,
+        viewerId: widget.training.currentUserId,
+      );
+      if (mounted && edited != _editedByCoach) {
+        setState(() => _editedByCoach = edited);
+      }
+    } catch (e) {
+      debugPrint('WorkoutDetailScreen._loadProvenance failed: $e');
     }
   }
 
@@ -247,8 +280,41 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                   tolerance: w.targetPaceToleranceSec,
                   zone: w.paceZone,
                 ),
+              if (rpeTargetLabel(l10n, w.targetRpeMin, w.targetRpeMax)
+                  case final rpe?)
+                KeyedSubtree(
+                  key: const Key('workoutDetailRpeTarget'),
+                  child: _metric(theme, l10n.workoutMetricEffort, rpe),
+                ),
+              if (_hrPrescription)
+                if (hrTargetLabel(l10n, w.targetHrMinBpm, w.targetHrMaxBpm)
+                    case final hr?)
+                  KeyedSubtree(
+                    key: const Key('workoutDetailHrTarget'),
+                    child: _metric(theme, l10n.workoutMetricHeartRate, hr),
+                  ),
             ],
           ),
+          if (_editedByCoach && w.updatedAt != null) ...[
+            const SizedBox(height: 10),
+            Row(
+              key: const Key('workoutDetailCoachEdited'),
+              children: [
+                Icon(Icons.sports,
+                    size: 16, color: theme.colorScheme.onSurfaceVariant),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    l10n.workoutUpdatedByCoach(
+                        formatDateShort(w.updatedAt!.toLocal(), activeLocaleTag)),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
           if (isWorkoutCompleted(w)) ...[
             const SizedBox(height: 16),
             Container(

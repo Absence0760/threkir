@@ -143,6 +143,11 @@ class SettingsKeys {
   /// + lift→load math elsewhere are unaffected; only the readiness series
   /// drops lifts. Web twin: `exclude_gym_from_readiness` (decisions §134).
   static const excludeGymFromReadiness = 'exclude_gym_from_readiness';
+  /// Art 9: "my heart rate is affected by medication" (e.g. a beta blocker).
+  /// Marks the HR-derived training load low-confidence and prompts for a
+  /// measured max. Server-gated on health-data consent and dropped on its
+  /// withdrawal (decisions § 2087). Web twin: `hr_medication_affected`.
+  static const hrMedicationAffected = 'hr_medication_affected';
   /// Explicit show/hide choice for the mobile Gym surfaces (Fitness hub tab,
   /// Log action, Home cards). Absent = shown only once a lift is logged.
   /// Mobile-only reader; web has no equivalent toggle (settings.md).

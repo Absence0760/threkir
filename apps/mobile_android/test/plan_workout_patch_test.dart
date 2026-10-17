@@ -89,7 +89,43 @@ void main() {
         'target_pace_tolerance_sec': null,
         'pace_zone': null,
         'structure': null,
+        'target_rpe_min': null,
+        'target_rpe_max': null,
+        'target_hr_min_bpm': null,
+        'target_hr_max_bpm': null,
       },
     );
+  });
+
+  test(
+      'planWorkoutPatch: effort and heart-rate ranges are written as given, '
+      'and left alone when not passed', () {
+    expect(
+      planWorkoutPatch(
+        rpe: (min: 3, max: 4),
+        hr: (min: null, max: 125),
+      ),
+      {
+        'target_rpe_min': 3,
+        'target_rpe_max': 4,
+        'target_hr_min_bpm': null,
+        'target_hr_max_bpm': 125,
+      },
+    );
+    expect(planWorkoutPatch(rpe: (min: null, max: null)), {
+      'target_rpe_min': null,
+      'target_rpe_max': null,
+    });
+  });
+
+  test('planWorkoutPatch: a rest day clears the ranges it was handed', () {
+    final patch = planWorkoutPatch(
+      kind: 'rest',
+      rpe: (min: 3, max: 4),
+      hr: (min: null, max: 125),
+    );
+    expect(patch['target_rpe_min'], isNull);
+    expect(patch['target_hr_max_bpm'], isNull);
+    expect(patch.containsKey('target_hr_max_bpm'), isTrue);
   });
 }

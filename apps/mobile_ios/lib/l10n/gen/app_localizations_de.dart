@@ -6739,6 +6739,57 @@ class AppLocalizationsDe extends AppLocalizations {
   String get workoutMetricTargetPace => 'Zieltempo';
 
   @override
+  String get workoutMetricEffort => 'Belastung';
+
+  @override
+  String get workoutMetricHeartRate => 'Herzfrequenz';
+
+  @override
+  String workoutUpdatedByCoach(String date) {
+    return 'Am $date von deinem Coach geändert';
+  }
+
+  @override
+  String workoutTargetRpeBetween(int min, int max) {
+    return 'RPE $min–$max';
+  }
+
+  @override
+  String workoutTargetRpeExact(int value) {
+    return 'RPE $value';
+  }
+
+  @override
+  String workoutTargetRpeAtMost(int max) {
+    return 'RPE bis $max';
+  }
+
+  @override
+  String workoutTargetRpeAtLeast(int min) {
+    return 'RPE $min oder härter';
+  }
+
+  @override
+  String workoutTargetHrBetween(int min, int max) {
+    return '$min–$max bpm';
+  }
+
+  @override
+  String workoutTargetHrExact(int value) {
+    return '$value bpm';
+  }
+
+  @override
+  String workoutTargetHrAtMost(int max) {
+    return 'Max. $max bpm';
+  }
+
+  @override
+  String workoutTargetHrAtLeast(int min) {
+    return 'Mind. $min bpm';
+  }
+
+  @override
   String get workoutCompleted => 'Erledigt';
 
   @override
@@ -9334,6 +9385,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Fitnessstudio-Einheiten enthalten – Krafttraining erhöht auch die Ermüdung.';
 
   @override
+  String get trainingLoadLowConfidenceMedication =>
+      'Weniger verlässlich: Du hast angegeben, dass Medikamente deine Herzfrequenz beeinflussen, dadurch fällt die Herzfrequenz-Last zu niedrig aus.';
+
+  @override
   String get intensityTitle => 'TRAININGSINTENSITÄT';
 
   @override
@@ -10261,6 +10316,39 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get workoutEditPaceHint => 'z. B. 5:30';
+
+  @override
+  String get workoutEditRpeFromLabel => 'Belastung ab (RPE)';
+
+  @override
+  String get workoutEditRpeToLabel => 'Belastung bis (RPE)';
+
+  @override
+  String get workoutEditRpeHint =>
+      'Wie hart es sich anfühlen soll, von 1 (sehr leicht) bis 10 (maximal). Ein Ende darf leer bleiben: 3 bis 4 ist ein lockerer Lauf, bei dem du dich noch unterhalten kannst.';
+
+  @override
+  String get workoutEditHrFromLabel => 'Herzfrequenz ab (bpm)';
+
+  @override
+  String get workoutEditHrToLabel => 'Herzfrequenz bis (bpm)';
+
+  @override
+  String get workoutEditHrHint =>
+      'Lass das untere Ende leer für eine Obergrenze, etwa 125. Die Herzfrequenz ist ein Gesundheitsdatum, deshalb braucht ein Zielwert die Gesundheitsdaten-Einwilligung der laufenden Person.';
+
+  @override
+  String workoutEditErrRangeBounds(int min, int max) {
+    return 'Nutze ganze Zahlen von $min bis $max.';
+  }
+
+  @override
+  String get workoutEditErrRangeReversed =>
+      'Die erste Zahl darf nicht höher sein als die zweite.';
+
+  @override
+  String get workoutEditErrHrNeedsConsent =>
+      'Ein Herzfrequenz-Ziel braucht die Gesundheitsdaten-Einwilligung der laufenden Person. Lösche es oder bitte sie, in ihren Einstellungen einzuwilligen.';
 
   @override
   String get workoutEditNotesLabel => 'Notizen';
@@ -12176,6 +12264,22 @@ class AppLocalizationsDe extends AppLocalizations {
       'Standardmäßig erhöhen Gym-Einheiten deine Ermüdung und senken deine Bereitschaft, wie ein Lauf. Aktiviere dies, um Fitness, Ermüdung und Form nur auf Läufen basieren zu lassen.';
 
   @override
+  String get prefsHrMedicationAffected =>
+      'Meine Herzfrequenz wird durch Medikamente beeinflusst';
+
+  @override
+  String get prefsHrMedicationAffectedHint =>
+      'Zum Beispiel ein Betablocker. Altersbasierte Zonen und die Herzfrequenz-Trainingslast fallen zu niedrig aus, deshalb wird die Trainingslast als weniger verlässlich markiert. Das ist ein Gesundheitsdatum und wird gelöscht, wenn du deine Einwilligung widerrufst.';
+
+  @override
+  String get prefsHrMedicationNeedsConsent =>
+      'Das ist ein Gesundheitsdatum und braucht zuerst deine Gesundheitsdaten-Einwilligung.';
+
+  @override
+  String get prefsHrMedicationSetMaxHr =>
+      'Trag eine gemessene maximale Herzfrequenz ein, aus einer harten Belastung oder einem Test, damit deine Zonen zu dir passen.';
+
+  @override
   String get nutritionEmptyTitle => 'Heute noch nichts erfasst';
 
   @override
@@ -12743,6 +12847,20 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get coachingRosterRiskInsufficient => 'Neu';
+
+  @override
+  String coachingRosterMissStreak(int n) {
+    return '$n in Folge verpasst';
+  }
+
+  @override
+  String coachingRosterHrDrift(int pct) {
+    return 'Locker-HF +$pct %';
+  }
+
+  @override
+  String get coachingRosterHrDriftHint =>
+      'Bei geplanten lockeren Läufen der letzten zwei Wochen ist die Herzfrequenz beim gleichen Tempo höher als in den sechs Wochen davor. Nur für Athleten mit Gesundheitsdaten-Einwilligung angezeigt.';
 
   @override
   String get coachingRosterRiskLow => 'Niedrig';

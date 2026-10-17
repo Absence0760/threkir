@@ -481,4 +481,85 @@ void main() {
       expect(tester.getSize(termLane()).width, greaterThanOrEqualTo(180));
     });
   });
+
+  group('WorkoutDetailScreen — effort targets and provenance (decisions § 2087)',
+      () {
+    PlanWorkoutRow edited({String? updatedBy = 'coach-id'}) => PlanWorkoutRow(
+          id: 'fake-workout-id',
+          weekId: 'week-1',
+          scheduledDate: DateTime(2031, 3, 4),
+          kind: 'easy',
+          targetDistanceM: 8000,
+          targetRpeMin: 3,
+          targetRpeMax: 4,
+          targetHrMaxBpm: 125,
+          updatedBy: updatedBy,
+          updatedAt: DateTime.utc(2031, 3, 2, 9),
+          manuallyCompleted: false,
+        );
+
+    Future<void> pump(WidgetTester tester, _OwnerTraining training,
+        {required bool hr}) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: WorkoutDetailScreen(
+            training: training,
+            planId: 'fake-plan-id',
+            workoutId: 'fake-workout-id',
+            hrPrescription: hr,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('the owner sees the targets and that their coach set them',
+        (tester) async {
+      await pump(tester, _OwnerTraining(edited(), owner: 'me', viewer: 'me'),
+          hr: true);
+      expect(find.text('RPE 3–4'), findsOneWidget);
+      expect(find.text('Cap 125 bpm'), findsOneWidget);
+      expect(find.byKey(const Key('workoutDetailCoachEdited')), findsOneWidget);
+      expect(find.textContaining('Updated by your coach'), findsOneWidget);
+    });
+
+    testWidgets('with the gate off the bpm target stays hidden',
+        (tester) async {
+      await pump(tester, _OwnerTraining(edited(), owner: 'me', viewer: 'me'),
+          hr: false);
+      expect(find.text('RPE 3–4'), findsOneWidget);
+      expect(find.byKey(const Key('workoutDetailHrTarget')), findsNothing);
+    });
+
+    testWidgets(
+        'the owner\'s own edit, and the coach viewing, carry no provenance '
+        'line', (tester) async {
+      await pump(
+          tester, _OwnerTraining(edited(updatedBy: 'me'), owner: 'me', viewer: 'me'),
+          hr: true);
+      expect(find.byKey(const Key('workoutDetailCoachEdited')), findsNothing);
+      await pump(tester,
+          _OwnerTraining(edited(), owner: 'me', viewer: 'coach-id'),
+          hr: true);
+      expect(find.byKey(const Key('workoutDetailCoachEdited')), findsNothing);
+    });
+  });
+}
+
+class _OwnerTraining extends TrainingService {
+  _OwnerTraining(this.workout, {required this.owner, required this.viewer});
+  final PlanWorkoutRow workout;
+  final String owner;
+  final String viewer;
+
+  @override
+  Future<PlanWorkoutRow?> fetchWorkout(String id) async => workout;
+
+  @override
+  Future<String?> fetchPlanOwnerId(String planId) async => owner;
+
+  @override
+  String? get currentUserId => viewer;
 }

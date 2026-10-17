@@ -6,6 +6,7 @@ import {
 	injuryRiskBand,
 	isEasyHrDriftFlagged,
 	loadTrend,
+	parseRosterRecentWorkouts,
 	type RosterRecentWorkout
 } from './coach_load';
 
@@ -104,6 +105,23 @@ test('consecutiveMissedWorkouts: today and later are not misses, and order does 
 	assert.equal(consecutiveMissedWorkouts(recent, '2031-03-10'), 0);
 	assert.equal(consecutiveMissedWorkouts([wo('2031-03-08'), wo('2031-03-09')], '2031-03-10'), 2);
 	assert.equal(consecutiveMissedWorkouts([], '2031-03-10'), 0);
+});
+
+test('parseRosterRecentWorkouts: drops a malformed element, reads a non-array as none', () => {
+	assert.deepEqual(
+		parseRosterRecentWorkouts([
+			{ scheduled_date: '2031-03-09', kind: 'easy', completed: true, skipped: false },
+			{ kind: 'easy' },
+			'junk',
+			{ scheduled_date: '2031-03-08', kind: 'tempo' }
+		]),
+		[
+			{ scheduled_date: '2031-03-09', kind: 'easy', completed: true, skipped: false },
+			{ scheduled_date: '2031-03-08', kind: 'tempo', completed: false, skipped: false }
+		]
+	);
+	assert.deepEqual(parseRosterRecentWorkouts(null), []);
+	assert.deepEqual(parseRosterRecentWorkouts({}), []);
 });
 
 // ─────────────────────── isEasyHrDriftFlagged ───────────────────────

@@ -9019,6 +9019,102 @@
   "@workoutMetricTargetPace": {
     "description": "Workout-detail target-pace metric label"
   },
+  "workoutMetricEffort": "Effort",
+  "@workoutMetricEffort": {
+    "description": "Workout-detail effort (RPE) target metric label"
+  },
+  "workoutMetricHeartRate": "Heart rate",
+  "@workoutMetricHeartRate": {
+    "description": "Workout-detail heart-rate target metric label"
+  },
+  "workoutUpdatedByCoach": "Updated by your coach on {date}",
+  "@workoutUpdatedByCoach": {
+    "description": "Shown to the athlete on a workout their coach last edited",
+    "placeholders": {
+      "date": {
+        "type": "String",
+        "example": "12 Mar"
+      }
+    }
+  },
+  "workoutTargetRpeBetween": "RPE {min}–{max}",
+  "@workoutTargetRpeBetween": {
+    "description": "An effort target with both ends, e.g. RPE 3-4",
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "workoutTargetRpeExact": "RPE {value}",
+  "@workoutTargetRpeExact": {
+    "description": "An effort target of one value",
+    "placeholders": {
+      "value": {
+        "type": "int"
+      }
+    }
+  },
+  "workoutTargetRpeAtMost": "RPE up to {max}",
+  "@workoutTargetRpeAtMost": {
+    "description": "An effort target with only an upper end",
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "workoutTargetRpeAtLeast": "RPE {min} or harder",
+  "@workoutTargetRpeAtLeast": {
+    "description": "An effort target with only a lower end",
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "workoutTargetHrBetween": "{min}–{max} bpm",
+  "@workoutTargetHrBetween": {
+    "description": "A heart-rate target range in beats per minute",
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "workoutTargetHrExact": "{value} bpm",
+  "@workoutTargetHrExact": {
+    "description": "A heart-rate target of one value",
+    "placeholders": {
+      "value": {
+        "type": "int"
+      }
+    }
+  },
+  "workoutTargetHrAtMost": "Cap {max} bpm",
+  "@workoutTargetHrAtMost": {
+    "description": "A heart-rate cap, e.g. Cap 125 bpm",
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "workoutTargetHrAtLeast": "At least {min} bpm",
+  "@workoutTargetHrAtLeast": {
+    "description": "A heart-rate floor",
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
   "workoutCompleted": "Completed",
   "@workoutCompleted": {
     "description": "Completed badge on workout detail"
@@ -12453,6 +12549,10 @@
   "@trainingLoadIncludesLifts": {
     "description": "Hint on the fitness/fatigue/form chart when logged gym sessions contribute to the load curve"
   },
+  "trainingLoadLowConfidenceMedication": "Less reliable: you said your heart rate is affected by medication, which makes the heart-rate load read low.",
+  "@trainingLoadLowConfidenceMedication": {
+    "description": "Training-load chart note when the runner said their heart rate is medication-affected"
+  },
   "intensityTitle": "TRAINING INTENSITY",
   "@intensityTitle": {
     "description": "Title of the dashboard training-intensity card"
@@ -13728,6 +13828,50 @@
   "workoutEditPaceHint": "e.g. 5:30",
   "@workoutEditPaceHint": {
     "description": "Example hint for the target pace field"
+  },
+  "workoutEditRpeFromLabel": "Effort from (RPE)",
+  "@workoutEditRpeFromLabel": {
+    "description": "Lower end of the effort (RPE 1-10) target field"
+  },
+  "workoutEditRpeToLabel": "Effort up to (RPE)",
+  "@workoutEditRpeToLabel": {
+    "description": "Upper end of the effort (RPE 1-10) target field"
+  },
+  "workoutEditRpeHint": "How hard it should feel, from 1 (very easy) to 10 (all-out). Either end can stay empty: 3 to 4 is a conversational easy run.",
+  "@workoutEditRpeHint": {
+    "description": "Explains the RPE scale under the effort target fields"
+  },
+  "workoutEditHrFromLabel": "Heart rate from (bpm)",
+  "@workoutEditHrFromLabel": {
+    "description": "Lower end of the heart-rate target field, in beats per minute"
+  },
+  "workoutEditHrToLabel": "Heart rate up to (bpm)",
+  "@workoutEditHrToLabel": {
+    "description": "Upper end of the heart-rate target field (a cap), in beats per minute"
+  },
+  "workoutEditHrHint": "Leave the low end empty for a cap, such as 125. Heart rate is health data, so a target needs the runner's health-data consent.",
+  "@workoutEditHrHint": {
+    "description": "Explains the heart-rate target fields and that they need the runner's health-data consent"
+  },
+  "workoutEditErrRangeBounds": "Use whole numbers from {min} to {max}.",
+  "@workoutEditErrRangeBounds": {
+    "description": "Error when an effort or heart-rate target is not a whole number inside its range",
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "workoutEditErrRangeReversed": "The first number can't be higher than the second.",
+  "@workoutEditErrRangeReversed": {
+    "description": "Error when the low end of a target range is above the high end"
+  },
+  "workoutEditErrHrNeedsConsent": "A heart-rate target needs the runner's health-data consent. Clear it, or ask them to give consent in their settings.",
+  "@workoutEditErrHrNeedsConsent": {
+    "description": "Save error when the server refuses a heart-rate target because the plan owner has no health-data consent"
   },
   "workoutEditNotesLabel": "Notes",
   "@workoutEditNotesLabel": {
@@ -15960,6 +16104,22 @@
   "dashGymReadinessExcluded": "Gym load is excluded from your run readiness.",
   "prefsExcludeGymFromReadiness": "Exclude gym load from run readiness",
   "prefsExcludeGymFromReadinessHint": "By default, gym sessions add to your fatigue and lower your readiness, like a run. Turn this on to keep your fitness, fatigue and form based on runs only.",
+  "prefsHrMedicationAffected": "My heart rate is affected by medication",
+  "@prefsHrMedicationAffected": {
+    "description": "Switch: the runner's heart rate is affected by medication (Art 9 health data)"
+  },
+  "prefsHrMedicationAffectedHint": "For example a beta blocker. Age-based zones and the heart-rate training load read low, so the training load is marked as less reliable. This is health data, and it is cleared if you withdraw consent.",
+  "@prefsHrMedicationAffectedHint": {
+    "description": "Explains what the medication switch changes"
+  },
+  "prefsHrMedicationNeedsConsent": "This is health data, so it needs your health-data consent first.",
+  "@prefsHrMedicationNeedsConsent": {
+    "description": "Shown under the medication switch while health-data consent is not on record"
+  },
+  "prefsHrMedicationSetMaxHr": "Set a measured max heart rate, from a hard effort or a test, so your zones fit you.",
+  "@prefsHrMedicationSetMaxHr": {
+    "description": "Prompt to set a measured max heart rate when the medication switch is on and none is set"
+  },
   "@nutritionGoalBreakdown": {
     "description": "Calorie goal breakdown: base goal + exercise kcal added today",
     "placeholders": {
@@ -16662,6 +16822,28 @@
   "coachingRosterRiskInsufficient": "New",
   "@coachingRosterRiskInsufficient": {
     "description": "Injury-risk band: insufficient history"
+  },
+  "coachingRosterMissStreak": "{n} missed in a row",
+  "@coachingRosterMissStreak": {
+    "description": "Roster flag: the athlete missed this many planned workouts in a row (always 2 or more)",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "coachingRosterHrDrift": "Easy HR +{pct}%",
+  "@coachingRosterHrDrift": {
+    "description": "Roster flag: heart rate on easy runs has drifted up by this percentage",
+    "placeholders": {
+      "pct": {
+        "type": "int"
+      }
+    }
+  },
+  "coachingRosterHrDriftHint": "On planned easy runs over the last two weeks, heart rate is higher for the same pace than in the six weeks before. Shown only for athletes who gave health-data consent.",
+  "@coachingRosterHrDriftHint": {
+    "description": "Tooltip explaining the easy-run heart-rate drift roster flag"
   },
   "coachingRosterRiskLow": "Low",
   "@coachingRosterRiskLow": {

@@ -110,6 +110,7 @@ const HOMES: Record<string, Home> = {
 	show_gym: { page: 'display' },
 	show_nutrition: { page: 'display' },
 	exclude_gym_from_readiness: { page: 'training' },
+	hr_medication_affected: { page: 'training' },
 	week_start_day: { page: 'display' },
 	privacy_zones: { page: 'privacy', via: 'PRIVACY_ZONES_KEY' },
 	safety_overdue_minutes: { page: 'safety' },

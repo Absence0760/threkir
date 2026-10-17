@@ -7,6 +7,7 @@ import 'package:ui_kit/ui_kit.dart' show SectionHeader;
 
 import '../adaptive_width.dart';
 import '../goals.dart';
+import '../hr_prescription_flag.dart';
 import '../hr_zones.dart'
     show kMaxHrBpmMax, kMaxHrBpmMin, kRestingHrBpmMax, kRestingHrBpmMin;
 import '../l10n/gen/app_localizations.dart';
@@ -83,6 +84,10 @@ class SettingsPreferencesScreen extends StatefulWidget {
   final LocalGymStore? gymStore;
   final LocalFoodStore? foodStore;
 
+  /// The heart-rate prescription gate (decisions § 2087); null reads the
+  /// deploy flag. A test passes it directly.
+  final bool? hrPrescription;
+
   const SettingsPreferencesScreen({
     super.key,
     this.apiClient,
@@ -90,6 +95,7 @@ class SettingsPreferencesScreen extends StatefulWidget {
     required this.settingsSync,
     this.gymStore,
     this.foodStore,
+    this.hrPrescription,
   });
 
   @override
@@ -105,6 +111,11 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
   /// the opt-in switch, the area row, and the `my_discoverable_area` read
   /// behind it — must be absent while the sign-off gate is off (decisions §270).
   final bool _nearbyGate = nearbyRunnersGate;
+
+  /// "My heart rate is affected by medication" is Art 9: shown only under
+  /// the deploy gate, and only switchable on with health-data consent, which
+  /// the server re-checks (decisions § 2087).
+  late final bool _hrPrescription = widget.hrPrescription ?? hrPrescriptionGate;
   String? _nearbyAreaLabel;
 
   /// user_profiles.profile_private, not a prefs key: RLS and the public views
@@ -1064,6 +1075,37 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
     await _loadNearbyAreaLabel();
   }
 
+  Future<void> _toggleHrMedicationAffected() async {
+    final current = _bagValue<bool>(SettingsKeys.hrMedicationAffected) ?? false;
+    await _putUniversal(SettingsKeys.hrMedicationAffected, !current);
+  }
+
+  List<Widget> _hrMedicationTiles(AppLocalizations l10n) {
+    final on = _bagValue<bool>(SettingsKeys.hrMedicationAffected) ?? false;
+    final consented = _healthConsentAt != null;
+    return [
+      SwitchListTile(
+        key: const Key('prefsHrMedicationAffected'),
+        title: Text(l10n.prefsHrMedicationAffected),
+        subtitle: Text(consented
+            ? l10n.prefsHrMedicationAffectedHint
+            : l10n.prefsHrMedicationNeedsConsent),
+        value: on,
+        onChanged: _bagReady && (consented || on)
+            ? (_) => _toggleHrMedicationAffected()
+            : null,
+      ),
+      if (on && _bagValue<num>(SettingsKeys.maxHrBpm) == null)
+        ListTile(
+          key: const Key('prefsHrMedicationMaxPrompt'),
+          leading: const Icon(Icons.info_outline),
+          title: Text(l10n.prefsHrMedicationSetMaxHr),
+          enabled: _bagReady,
+          onTap: _editMaxHr,
+        ),
+    ];
+  }
+
   Future<void> _editExcludeGymFromReadiness() async {
     final current =
         _bagValue<bool>(SettingsKeys.excludeGymFromReadiness) ?? false;
@@ -1858,6 +1900,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
                       enabled: _bagReady,
                       onTap: _editMaxHr,
                     ),
+                    if (_hrPrescription) ..._hrMedicationTiles(l10n),
                     ListTile(
                       title: Text(l10n.prefsHrZones),
                       subtitle: Text(_hrZonesSummary()),

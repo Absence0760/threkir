@@ -29,6 +29,7 @@ Future<void> _pump(
   required List<TrainingLoadPoint> points,
   required bool hasHr,
   ThemeData? theme,
+  bool lowConfidence = false,
 }) {
   return tester.pumpWidget(
     MaterialApp(
@@ -36,7 +37,8 @@ Future<void> _pump(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
-        body: TrainingLoadChart(points: points, hasHr: hasHr),
+        body: TrainingLoadChart(
+            points: points, hasHr: hasHr, lowConfidence: lowConfidence),
       ),
     ),
   );
@@ -75,6 +77,19 @@ void main() {
         hasHr: true,
       );
       expect(find.textContaining('Heart-rate TRIMP'), findsOneWidget);
+    });
+
+    testWidgets(
+        'a medication-affected HR curve is labelled less reliable '
+        '(decisions § 2087)', (tester) async {
+      await _pump(tester,
+          points: [_point(date: DateTime(2026, 4, 1))],
+          hasHr: true,
+          lowConfidence: true);
+      expect(find.byKey(const Key('trainingLoadLowConfidence')), findsOneWidget);
+      await _pump(tester,
+          points: [_point(date: DateTime(2026, 4, 1))], hasHr: true);
+      expect(find.byKey(const Key('trainingLoadLowConfidence')), findsNothing);
     });
 
     testWidgets('renders the legend keys when points are non-empty',

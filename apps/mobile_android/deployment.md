@@ -171,6 +171,7 @@ Each define is passed from a GitHub Secret; `main.dart`'s `String.fromEnvironmen
 | `ADAPTIVE_FITNESS_GATE` | plan-generator-v2 P2 health-derived load → prescription; unset → exactly shipped P1. CISO / Security-Analyst sign-off. |
 | `WEIGH_IN_GATE` | Art 9 checkpoint weigh-in fields; unset → never collected or sent. Owner + CISO + counsel sign-off. |
 | `WEIGHT_FLUID_ENABLED` | the roadbook's "Fluid from body weight" toggle (decisions § 1976); unset → no body weight is read and the flat fluid rate stands. CISO + counsel review of the new Art 9 use; flip together with web's `PUBLIC_WEIGHT_FLUID_ENABLED`. |
+| `HR_PRESCRIPTION_ENABLED` | the bpm target on a planned workout, the "Heart rate is affected by medication" setting with its low-confidence training-load label, and the coach roster's easy-run HR-drift flag (decisions § 2087); unset → none of the three renders and nothing writes a bpm target or the setting. CISO + counsel review of the new Art 9 uses; flip together with web's `PUBLIC_HR_PRESCRIPTION_ENABLED`. |
 | `ENABLE_NEARBY_RUNNERS` | opt-in person-location discovery; unset → the surface is unreachable. Owner + CISO/counsel sign-off. |
 | `USDA_FDC_API_KEY` | second food-search source; unset → Open Food Facts only, no error. |
 | `TILE_URL_TEMPLATE` | `{z}/{x}/{y}` raster override that outranks MapTiler (decisions §68) — the wire for a self-hosted Protomaps migration. |

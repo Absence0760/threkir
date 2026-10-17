@@ -6359,6 +6359,57 @@ class AppLocalizationsJa extends AppLocalizations {
   String get workoutMetricTargetPace => '目標ペース';
 
   @override
+  String get workoutMetricEffort => '主観的強度';
+
+  @override
+  String get workoutMetricHeartRate => '心拍数';
+
+  @override
+  String workoutUpdatedByCoach(String date) {
+    return '$date にコーチが更新';
+  }
+
+  @override
+  String workoutTargetRpeBetween(int min, int max) {
+    return 'RPE $min〜$max';
+  }
+
+  @override
+  String workoutTargetRpeExact(int value) {
+    return 'RPE $value';
+  }
+
+  @override
+  String workoutTargetRpeAtMost(int max) {
+    return 'RPE $max まで';
+  }
+
+  @override
+  String workoutTargetRpeAtLeast(int min) {
+    return 'RPE $min 以上';
+  }
+
+  @override
+  String workoutTargetHrBetween(int min, int max) {
+    return '$min〜$max bpm';
+  }
+
+  @override
+  String workoutTargetHrExact(int value) {
+    return '$value bpm';
+  }
+
+  @override
+  String workoutTargetHrAtMost(int max) {
+    return '上限 $max bpm';
+  }
+
+  @override
+  String workoutTargetHrAtLeast(int min) {
+    return '$min bpm 以上';
+  }
+
+  @override
   String get workoutCompleted => '完了';
 
   @override
@@ -8835,6 +8886,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get trainingLoadIncludesLifts => 'ジムのセッションを含む — 筋力トレーニングも疲労に加算されます。';
 
   @override
+  String get trainingLoadLowConfidenceMedication =>
+      '信頼性低: 薬が心拍数に影響していると設定されているため、心拍数による負荷が低く出ます。';
+
+  @override
   String get intensityTitle => 'トレーニング強度';
 
   @override
@@ -9734,6 +9789,38 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get workoutEditPaceHint => '例：5:30';
+
+  @override
+  String get workoutEditRpeFromLabel => '主観的強度の下限（RPE）';
+
+  @override
+  String get workoutEditRpeToLabel => '主観的強度の上限（RPE）';
+
+  @override
+  String get workoutEditRpeHint =>
+      'どのくらいきつく感じるべきかを 1（とても楽）から 10（全力）で示します。どちらか一方は空欄でもかまいません。会話できるイージーランなら 3〜4 です。';
+
+  @override
+  String get workoutEditHrFromLabel => '心拍数の下限（bpm）';
+
+  @override
+  String get workoutEditHrToLabel => '心拍数の上限（bpm）';
+
+  @override
+  String get workoutEditHrHint =>
+      '上限だけにするなら下限を空欄にします（例: 125）。心拍数は健康データのため、目標の設定にはランナー本人の健康データへの同意が必要です。';
+
+  @override
+  String workoutEditErrRangeBounds(int min, int max) {
+    return '$min〜$max の整数を入力してください。';
+  }
+
+  @override
+  String get workoutEditErrRangeReversed => '最初の数値を 2 つ目より大きくすることはできません。';
+
+  @override
+  String get workoutEditErrHrNeedsConsent =>
+      '心拍数の目標にはランナー本人の健康データへの同意が必要です。目標を消すか、本人に設定で同意してもらってください。';
 
   @override
   String get workoutEditNotesLabel => 'メモ';
@@ -11570,6 +11657,20 @@ class AppLocalizationsJa extends AppLocalizations {
       'デフォルトでは、ジムのセッションはランと同様に疲労を増やし準備度を下げます。フィットネス・疲労・フォームをランのみに基づかせるにはこれをオンにしてください。';
 
   @override
+  String get prefsHrMedicationAffected => '服用中の薬が心拍数に影響している';
+
+  @override
+  String get prefsHrMedicationAffectedHint =>
+      'たとえばβ遮断薬です。年齢ベースのゾーンや心拍数によるトレーニング負荷が低く出るため、トレーニング負荷は信頼性が低いと表示されます。これは健康データで、同意を撤回すると消去されます。';
+
+  @override
+  String get prefsHrMedicationNeedsConsent => 'これは健康データのため、先に健康データへの同意が必要です。';
+
+  @override
+  String get prefsHrMedicationSetMaxHr =>
+      'ゾーンを自分に合わせるため、きつい運動やテストで測った最大心拍数を入力してください。';
+
+  @override
   String get nutritionEmptyTitle => '今日はまだ何も記録していません';
 
   @override
@@ -12121,6 +12222,20 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get coachingRosterRiskInsufficient => '新規';
+
+  @override
+  String coachingRosterMissStreak(int n) {
+    return '$n 回連続で未実施';
+  }
+
+  @override
+  String coachingRosterHrDrift(int pct) {
+    return 'イージー心拍 +$pct%';
+  }
+
+  @override
+  String get coachingRosterHrDriftHint =>
+      '直近 2 週間の予定どおりのイージーランで、同じペースでの心拍数がその前の 6 週間より高くなっています。健康データに同意したアスリートにのみ表示されます。';
 
   @override
   String get coachingRosterRiskLow => '低';

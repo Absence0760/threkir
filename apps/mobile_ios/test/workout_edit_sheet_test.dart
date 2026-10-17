@@ -2,6 +2,7 @@ import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import '../lib/preferences.dart';
 import '../lib/training.dart' show WorkoutKind;
 import '../lib/training_service.dart';
@@ -18,6 +19,8 @@ class _FakeTraining extends TrainingService {
     int? targetPaceSecPerKm,
     String? notes,
     PlanWorkoutRaceFields? race,
+    PlanWorkoutRange? rpe,
+    PlanWorkoutRange? hr,
   })? lastUpdate;
   Object? errorToThrow;
 
@@ -29,6 +32,8 @@ class _FakeTraining extends TrainingService {
     PlanWorkoutTargets? targets,
     String? notes,
     PlanWorkoutRaceFields? race,
+    PlanWorkoutRange? rpe,
+    PlanWorkoutRange? hr,
   }) async {
     if (errorToThrow != null) throw errorToThrow!;
     lastUpdate = (
@@ -40,6 +45,8 @@ class _FakeTraining extends TrainingService {
       targetPaceSecPerKm: targets?.paceSecPerKm,
       notes: notes,
       race: race,
+      rpe: rpe,
+      hr: hr,
     );
   }
 }
@@ -70,8 +77,9 @@ PlanWorkoutRow _workout({
 Future<bool?> _pumpSheet(
   WidgetTester tester,
   PlanWorkoutRow workout,
-  _FakeTraining training,
-) async {
+  _FakeTraining training, {
+  bool hrPrescription = false,
+}) async {
   bool? result;
   await tester.binding.setSurfaceSize(const Size(400, 700));
   await tester.pumpWidget(
@@ -86,6 +94,7 @@ Future<bool?> _pumpSheet(
                 ctx,
                 workout: workout,
                 training: training,
+                hrPrescription: hrPrescription,
               );
             },
             child: const Text('Open'),
@@ -491,6 +500,81 @@ void main() {
       // 480 s/mi / 1.609344 = 298.26 s/km.
       expect(training.lastUpdate!.targetPaceSecPerKm, 298);
     });
-  });
 
+    group('effort and heart-rate targets (decisions § 2087)', () {
+      Future<void> save(WidgetTester tester) async {
+        await tester.ensureVisible(find.text('Save'));
+        await tester.tap(find.text('Save'));
+        await tester.pumpAndSettle();
+      }
+
+      testWidgets('an RPE range and a bpm cap are written as typed',
+          (tester) async {
+        final training = _FakeTraining();
+        await _pumpSheet(tester, _workout(), training, hrPrescription: true);
+        await tester.enterText(find.byKey(const Key('workoutEditRpeMin')), '3');
+        await tester.enterText(find.byKey(const Key('workoutEditRpeMax')), '4');
+        await tester.enterText(find.byKey(const Key('workoutEditHrMax')), '125');
+        await save(tester);
+        expect(training.lastUpdate?.rpe, (min: 3, max: 4));
+        expect(training.lastUpdate?.hr, (min: null, max: 125));
+      });
+
+      testWidgets('a reversed or out-of-range RPE is refused in the field',
+          (tester) async {
+        final training = _FakeTraining();
+        await _pumpSheet(tester, _workout(), training);
+        await tester.enterText(find.byKey(const Key('workoutEditRpeMin')), '5');
+        await tester.enterText(find.byKey(const Key('workoutEditRpeMax')), '4');
+        await save(tester);
+        expect(training.lastUpdate, isNull);
+        expect(find.text("The first number can't be higher than the second."),
+            findsOneWidget);
+
+        await tester.enterText(find.byKey(const Key('workoutEditRpeMin')), '');
+        await tester.enterText(find.byKey(const Key('workoutEditRpeMax')), '11');
+        await save(tester);
+        expect(training.lastUpdate, isNull);
+        expect(find.text('Use whole numbers from 1 to 10.'), findsOneWidget);
+      });
+
+      testWidgets(
+          'with the gate off there is no bpm field and a stored bpm target is '
+          'left alone', (tester) async {
+        final training = _FakeTraining();
+        await _pumpSheet(
+          tester,
+          PlanWorkoutRow(
+            id: 'wo1',
+            weekId: 'wk1',
+            scheduledDate: DateTime(2026, 4, 25),
+            kind: 'easy',
+            targetDistanceM: 8000,
+            targetHrMaxBpm: 130,
+            manuallyCompleted: false,
+          ),
+          training,
+        );
+        expect(find.byKey(const Key('workoutEditHrMax')), findsNothing);
+        await save(tester);
+        expect(training.lastUpdate, isNotNull);
+        expect(training.lastUpdate?.hr, isNull);
+        expect(training.lastUpdate?.rpe, (min: null, max: null));
+      });
+
+      testWidgets(
+          'a server refusal for want of consent says so, not a generic error',
+          (tester) async {
+        final training = _FakeTraining()
+          ..errorToThrow = const PostgrestException(
+              message: 'needs consent', code: '42501');
+        await _pumpSheet(tester, _workout(), training, hrPrescription: true);
+        await tester.enterText(find.byKey(const Key('workoutEditHrMax')), '125');
+        await save(tester);
+        expect(
+            find.textContaining("needs the runner's health-data consent"),
+            findsWidgets);
+      });
+    });
+  });
 }

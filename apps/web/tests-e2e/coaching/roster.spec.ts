@@ -1,5 +1,6 @@
 import { expect, test } from '../fixtures/test';
 
+import { browserDate } from '../fixtures/dates';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A, USER_B, USER_C_PRO } from '../fixtures/users';
 
@@ -90,6 +91,75 @@ test.describe('coach roster dashboard', () => {
 			await expect(
 				page.getByRole('heading', { level: 2, name: 'Recent runs' })
 			).toBeVisible({ timeout: 10_000 });
+		});
+	});
+
+	test.describe('flags', () => {
+		test.use({ storageState: USER_A.storageStatePath });
+		let planId: string;
+		test.beforeEach(async () => {
+			await seedLinks();
+			const admin = getAdminClient();
+			planId = crypto.randomUUID();
+			const weekId = crypto.randomUUID();
+			expect(
+				(
+					await admin.from('training_plans').insert({
+						id: planId,
+						user_id: USER_C_PRO.id,
+						name: 'e2e roster miss flag',
+						goal_event: 'distance_10k',
+						goal_distance_m: 10_000,
+						start_date: browserDate(-6),
+						end_date: browserDate(7),
+						status: 'active',
+						days_per_week: 3
+					})
+				).error
+			).toBeNull();
+			expect(
+				(await admin.from('plan_weeks').insert({ id: weekId, plan_id: planId, week_index: 0, phase: 'build', target_volume_m: 15_000 })).error
+			).toBeNull();
+			expect(
+				(
+					await admin.from('plan_workouts').insert([
+						{ week_id: weekId, scheduled_date: browserDate(-5), kind: 'easy', target_distance_m: 5_000, manually_completed: true },
+						{ week_id: weekId, scheduled_date: browserDate(-4), kind: 'rest', manually_completed: false },
+						{ week_id: weekId, scheduled_date: browserDate(-3), kind: 'easy', target_distance_m: 5_000, manually_completed: false },
+						{ week_id: weekId, scheduled_date: browserDate(-2), kind: 'tempo', target_distance_m: 6_000, manually_completed: false },
+						{ week_id: weekId, scheduled_date: browserDate(3), kind: 'easy', target_distance_m: 5_000, manually_completed: false }
+					])
+				).error
+			).toBeNull();
+		});
+		test.afterEach(async () => {
+			await getAdminClient().from('training_plans').delete().eq('id', planId);
+			await clearLinks();
+		});
+
+		test('an athlete with two misses in a row is flagged, and the easy-HR drift chip renders from the RPC', async ({
+			page
+		}) => {
+			// The drift needs weeks of HR-bearing runs linked to planned easy
+			// workouts; coach_roster_miss_hr_drift_test.sql measures that SQL. Here
+			// the response is patched so the chip's rendering is what is asserted.
+			await page.route('**/rest/v1/rpc/coach_roster_summary**', async (route) => {
+				const response = await route.fetch();
+				const rows = (await response.json()) as Array<Record<string, unknown>>;
+				for (const r of rows) if (r.athlete_id === USER_C_PRO.id) r.easy_hr_drift_pct = 6.6;
+				await route.fulfill({ response, json: rows });
+			});
+			await page.goto('/coaching');
+			const morgan = page.getByTestId('roster-row').filter({
+				has: page.locator(`a[href="/coaching/athletes/${USER_C_PRO.id}"]`)
+			});
+			await expect(morgan.getByTestId('roster-miss-flag')).toHaveText('2 missed in a row', { timeout: 10_000 });
+			await expect(morgan.getByTestId('roster-hr-drift-flag')).toHaveText('Easy HR +7%');
+			const alex = page.getByTestId('roster-row').filter({
+				has: page.locator(`a[href="/coaching/athletes/${USER_B.id}"]`)
+			});
+			await expect(alex.getByTestId('roster-miss-flag')).toHaveCount(0);
+			await expect(alex.getByTestId('roster-hr-drift-flag')).toHaveCount(0);
 		});
 	});
 

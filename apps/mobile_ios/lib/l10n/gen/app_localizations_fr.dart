@@ -6741,6 +6741,57 @@ class AppLocalizationsFr extends AppLocalizations {
   String get workoutMetricTargetPace => 'Allure cible';
 
   @override
+  String get workoutMetricEffort => 'Effort';
+
+  @override
+  String get workoutMetricHeartRate => 'Fréquence cardiaque';
+
+  @override
+  String workoutUpdatedByCoach(String date) {
+    return 'Modifiée par votre coach le $date';
+  }
+
+  @override
+  String workoutTargetRpeBetween(int min, int max) {
+    return 'RPE $min–$max';
+  }
+
+  @override
+  String workoutTargetRpeExact(int value) {
+    return 'RPE $value';
+  }
+
+  @override
+  String workoutTargetRpeAtMost(int max) {
+    return 'RPE jusqu\'à $max';
+  }
+
+  @override
+  String workoutTargetRpeAtLeast(int min) {
+    return 'RPE $min ou plus';
+  }
+
+  @override
+  String workoutTargetHrBetween(int min, int max) {
+    return '$min–$max bpm';
+  }
+
+  @override
+  String workoutTargetHrExact(int value) {
+    return '$value bpm';
+  }
+
+  @override
+  String workoutTargetHrAtMost(int max) {
+    return 'Plafond $max bpm';
+  }
+
+  @override
+  String workoutTargetHrAtLeast(int min) {
+    return 'Au moins $min bpm';
+  }
+
+  @override
   String get workoutCompleted => 'Terminé';
 
   @override
@@ -9348,6 +9399,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Séances de musculation incluses — elles ajoutent aussi de la fatigue.';
 
   @override
+  String get trainingLoadLowConfidenceMedication =>
+      'Moins fiable : vous avez indiqué qu\'un médicament modifie votre fréquence cardiaque, ce qui sous-estime la charge cardiaque.';
+
+  @override
   String get intensityTitle => 'INTENSITÉ D\'ENTRAÎNEMENT';
 
   @override
@@ -10278,6 +10333,39 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get workoutEditPaceHint => 'ex. 5:30';
+
+  @override
+  String get workoutEditRpeFromLabel => 'Effort à partir de (RPE)';
+
+  @override
+  String get workoutEditRpeToLabel => 'Effort jusqu\'à (RPE)';
+
+  @override
+  String get workoutEditRpeHint =>
+      'Le ressenti visé, de 1 (très facile) à 10 (à fond). Une borne peut rester vide : 3 à 4 correspond à un footing où l\'on peut parler.';
+
+  @override
+  String get workoutEditHrFromLabel => 'Fréquence cardiaque à partir de (bpm)';
+
+  @override
+  String get workoutEditHrToLabel => 'Fréquence cardiaque jusqu\'à (bpm)';
+
+  @override
+  String get workoutEditHrHint =>
+      'Laissez la borne basse vide pour un plafond, par exemple 125. La fréquence cardiaque est une donnée de santé : une cible demande le consentement aux données de santé du coureur.';
+
+  @override
+  String workoutEditErrRangeBounds(int min, int max) {
+    return 'Utilisez des nombres entiers de $min à $max.';
+  }
+
+  @override
+  String get workoutEditErrRangeReversed =>
+      'Le premier nombre ne peut pas dépasser le second.';
+
+  @override
+  String get workoutEditErrHrNeedsConsent =>
+      'Une cible de fréquence cardiaque demande le consentement aux données de santé du coureur. Effacez-la, ou demandez-lui de donner son consentement dans ses réglages.';
 
   @override
   String get workoutEditNotesLabel => 'Notes';
@@ -12192,6 +12280,22 @@ class AppLocalizationsFr extends AppLocalizations {
       'Par défaut, les séances de muscu augmentent votre fatigue et réduisent votre forme, comme une course. Activez ceci pour que votre forme, votre fatigue et votre fraîcheur ne reposent que sur les courses.';
 
   @override
+  String get prefsHrMedicationAffected =>
+      'Ma fréquence cardiaque est modifiée par un médicament';
+
+  @override
+  String get prefsHrMedicationAffectedHint =>
+      'Par exemple un bêtabloquant. Les zones selon l\'âge et la charge d\'entraînement cardiaque sont sous-estimées : la charge est donc signalée comme moins fiable. C\'est une donnée de santé, effacée si vous retirez votre consentement.';
+
+  @override
+  String get prefsHrMedicationNeedsConsent =>
+      'C\'est une donnée de santé : il faut d\'abord votre consentement aux données de santé.';
+
+  @override
+  String get prefsHrMedicationSetMaxHr =>
+      'Indiquez une fréquence cardiaque max mesurée, lors d\'un effort intense ou d\'un test, pour que vos zones vous correspondent.';
+
+  @override
   String get nutritionEmptyTitle => 'Rien d\'enregistré aujourd\'hui';
 
   @override
@@ -12760,6 +12864,20 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get coachingRosterRiskInsufficient => 'Nouveau';
+
+  @override
+  String coachingRosterMissStreak(int n) {
+    return '$n manquées d\'affilée';
+  }
+
+  @override
+  String coachingRosterHrDrift(int pct) {
+    return 'FC en footing +$pct %';
+  }
+
+  @override
+  String get coachingRosterHrDriftHint =>
+      'Sur les footings prévus des deux dernières semaines, la fréquence cardiaque est plus haute à allure égale que sur les six semaines d\'avant. Affiché seulement pour les athlètes ayant donné leur consentement aux données de santé.';
 
   @override
   String get coachingRosterRiskLow => 'Faible';

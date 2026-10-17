@@ -35,7 +35,8 @@
 	// Hide the "Ask the Coach" promo when the Coach is off (rock-bottom deploy).
 	const coachOn = coachEnabled();
 	import { computeReadiness, type ReadinessContributorKind } from '#lib/training/readiness.ts';
-	import { computeTrainingLoadSeries, hasTrimpSignal } from '#lib/training/training_load.ts';
+	import { computeTrainingLoadSeries, hasTrimpSignal, isTrimpLowConfidence } from '#lib/training/training_load.ts';
+	import { hrPrescriptionEnabled } from '#lib/training/hr_prescription_flag.ts';
 	import { planRaceCountdown } from '#lib/training/plan_week.ts';
 	import { nextRace, planRaces } from '#lib/training/plan_races.ts';
 	import { formatISO } from '#lib/training/training.ts';
@@ -362,6 +363,11 @@
 	);
 
 	let trainingLoadHasHr = $derived(hasTrimpSignal(runs, trimpPrefs));
+	const hrPrescription = hrPrescriptionEnabled();
+	let hrMedicationAffected = $state(false);
+	let trainingLoadLowConfidence = $derived(
+		hrPrescription && isTrimpLowConfidence(trainingLoadHasHr, hrMedicationAffected)
+	);
 	// Single source of truth for CTL/ATL/TSB on this page. The fitness
 	// card's numbers, the recovery advice, and the readiness ring used to
 	// read computeSnapshot (fitness.ts) while the chart below read
@@ -791,6 +797,7 @@
 			max_hr_bpm: effective<number>(settings, 'max_hr_bpm') ?? null,
 		};
 		excludeGymFromReadiness = effective<boolean>(settings, 'exclude_gym_from_readiness') === true;
+		hrMedicationAffected = effective<boolean>(settings, 'hr_medication_affected') === true;
 		storedDisclosure = effective<string>(settings, DISCLOSURE_LEVEL_KEY);
 		primaryGoal = effective<string>(settings, PRIMARY_GOAL_KEY) ?? null;
 		trainingLoadExpanded = effective<boolean>(settings, TRAINING_LOAD_EXPANDED_KEY) === true;
@@ -1731,7 +1738,11 @@
 
 			{#snippet trainingLoadChart()}
 				<section class="fitness-card">
-					<TrainingLoadChart points={trainingLoadSeries} hasHr={trainingLoadHasHr} />
+					<TrainingLoadChart
+						points={trainingLoadSeries}
+						hasHr={trainingLoadHasHr}
+						lowConfidence={trainingLoadLowConfidence}
+					/>
 				</section>
 			{/snippet}
 

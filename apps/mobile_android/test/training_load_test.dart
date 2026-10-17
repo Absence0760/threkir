@@ -512,4 +512,12 @@ void main() {
       expect(series.every((p) => p.stress == p.runStress), isTrue);
     });
   });
+
+  test('isTrimpLowConfidence — only an HR-read curve for a medication-affected runner',
+      () {
+    expect(isTrimpLowConfidence(true, true), isTrue);
+    expect(isTrimpLowConfidence(true, false), isFalse);
+    expect(isTrimpLowConfidence(false, true), isFalse);
+    expect(isTrimpLowConfidence(false, false), isFalse);
+  });
 }

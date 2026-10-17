@@ -15,6 +15,9 @@ function row(over: Partial<CoachRosterRow> & { athlete_id: string }): CoachRoste
 		load_chronic: 0,
 		active_plan_id: null,
 		plan_completion_pct: 0,
+		athlete_today: null,
+		recent_workouts: [],
+		easy_hr_drift_pct: null,
 		...over,
 	};
 }

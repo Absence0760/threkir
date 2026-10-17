@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import '../auth_error.dart';
 import '../coach_load.dart';
+import '../hr_prescription_flag.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/date_format.dart';
 import '../l10n/locale_support.dart';
@@ -49,10 +50,15 @@ class CoachingScreen extends StatefulWidget {
   final ApiClient api;
   final Preferences preferences;
 
+  /// The heart-rate prescription gate (decisions § 2087); null reads the
+  /// deploy flag. A test passes it directly.
+  final bool? hrPrescription;
+
   const CoachingScreen({
     super.key,
     required this.api,
     required this.preferences,
+    this.hrPrescription,
   });
 
   @override
@@ -68,6 +74,7 @@ String coachInviteLink(String token, {String? webBase}) {
 }
 
 class _CoachingScreenState extends State<CoachingScreen> {
+  late final bool _hrPrescription = widget.hrPrescription ?? hrPrescriptionGate;
   bool _loading = true;
   bool _minting = false;
   List<CoachAthleteLink> _athletes = const [];
@@ -272,19 +279,67 @@ class _CoachingScreenState extends State<CoachingScreen> {
     final plan = r.activePlanId == null
         ? l10n.coachingRosterNoPlan
         : '${r.planCompletionPct}%';
+    final today = r.athleteToday;
+    final misses = r.activePlanId == null || today == null
+        ? 0
+        : consecutiveMissedWorkouts(
+            parseRosterRecentWorkouts(r.recentWorkouts), today);
+    final drift = _hrPrescription && isEasyHrDriftFlagged(r.easyHrDriftPct);
+    final summary = Text(
+      '$lastRun · ${UnitFormat.distance(r.distance7dM, unit)} · $plan',
+      style: theme.textTheme.bodySmall?.copyWith(
+        color: theme.colorScheme.onSurfaceVariant,
+      ),
+    );
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 4),
       leading: CircleAvatar(child: Text(_initial(r.displayName))),
       title: Text(r.displayName ?? l10n.coachingRunner,
           maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: Text(
-        '$lastRun · ${UnitFormat.distance(r.distance7dM, unit)} · $plan',
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
-        ),
-      ),
+      subtitle: misses < consecutiveMissFlag && !drift
+          ? summary
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                summary,
+                const SizedBox(height: 4),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: [
+                    if (misses >= consecutiveMissFlag)
+                      _flagChip(l10n.coachingRosterMissStreak(misses),
+                          key: Key('rosterMissFlag-${r.athleteId}')),
+                    if (drift)
+                      Tooltip(
+                        message: l10n.coachingRosterHrDriftHint,
+                        child: _flagChip(
+                            l10n.coachingRosterHrDrift(
+                                r.easyHrDriftPct!.round()),
+                            key: Key('rosterHrDriftFlag-${r.athleteId}')),
+                      ),
+                  ],
+                ),
+              ],
+            ),
       trailing: _riskChip(band, l10n),
       onTap: () => _openAthleteById(r.athleteId, r.displayName),
+    );
+  }
+
+  Widget _flagChip(String label, {Key? key}) {
+    final theme = Theme.of(context);
+    return Container(
+      key: key,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.tertiaryContainer,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(label,
+          style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onTertiaryContainer,
+              fontWeight: FontWeight.w700)),
     );
   }
 
@@ -338,6 +393,7 @@ class _CoachingScreenState extends State<CoachingScreen> {
           athleteId: athleteId,
           displayName: displayName,
           acceptedAt: null,
+          hrPrescription: _hrPrescription,
         ),
       ),
     );
@@ -472,6 +528,7 @@ class _CoachingScreenState extends State<CoachingScreen> {
           athleteId: a.userId,
           displayName: a.displayName,
           acceptedAt: a.acceptedAt,
+          hrPrescription: _hrPrescription,
         ),
       ),
     );

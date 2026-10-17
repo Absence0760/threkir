@@ -19,9 +19,12 @@ import '../plan_assign.dart';
 import '../preferences.dart';
 import '../training.dart';
 import '../training_labels.dart';
-import '../training_service.dart' show currentOrUpcomingPlan;
+import '../hr_prescription_flag.dart';
+import '../training_service.dart' show TrainingService, currentOrUpcomingPlan;
 import '../widgets/run_track_preview.dart';
 import '../widgets/top_banner.dart';
+import '../widgets/workout_edit_sheet.dart';
+import '../workout_target_label.dart';
 
 /// Coach run-review surface — mobile mirror of web
 /// `/coaching/athletes/[id]` (`.../athletes/[id]/+page.svelte`): a linked
@@ -35,6 +38,15 @@ class CoachingAthleteScreen extends StatefulWidget {
   final String? displayName;
   final DateTime? acceptedAt;
 
+  /// Writes the coach's edit to one of the athlete's workouts. The
+  /// active-coach RLS policy on plan_workouts (20261116_001) is what admits
+  /// it; null builds the app's own service on first use.
+  final TrainingService? training;
+
+  /// The heart-rate prescription gate (decisions § 2087); null reads the
+  /// deploy flag. A test passes it directly.
+  final bool? hrPrescription;
+
   const CoachingAthleteScreen({
     super.key,
     required this.api,
@@ -42,6 +54,8 @@ class CoachingAthleteScreen extends StatefulWidget {
     required this.athleteId,
     this.displayName,
     this.acceptedAt,
+    this.training,
+    this.hrPrescription,
   });
 
   @override
@@ -49,6 +63,8 @@ class CoachingAthleteScreen extends StatefulWidget {
 }
 
 class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
+  late final TrainingService _training = widget.training ?? TrainingService();
+  late final bool _hrPrescription = widget.hrPrescription ?? hrPrescriptionGate;
   bool _loading = true;
   List<AthleteRunSummary> _runs = const [];
 
@@ -498,41 +514,64 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
       target.add(
           '${UnitFormat.pace(w.targetPaceSecPerKm!.toDouble(), unit)} ${UnitFormat.paceLabel(unit)}');
     }
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Row(
-        children: [
-          TextLane(
-            width: 84,
-            child: Text(formatDateShort(w.scheduledDate, activeLocaleTag),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                )),
-          ),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(workoutKindLabel(l10n, workoutKindFromDb(w.kind)),
-                    style: theme.textTheme.bodyMedium
-                        ?.copyWith(fontWeight: FontWeight.w600)),
-                if (target.isNotEmpty)
-                  Text(target.join(' · '),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      )),
-              ],
+    final rpe = rpeTargetLabel(l10n, w.targetRpeMin, w.targetRpeMax);
+    if (rpe != null) target.add(rpe);
+    final hr = _hrPrescription
+        ? hrTargetLabel(l10n, w.targetHrMinBpm, w.targetHrMaxBpm)
+        : null;
+    if (hr != null) target.add(hr);
+    return InkWell(
+      key: Key('coachWorkoutRow-${w.id}'),
+      onTap: () => _editWorkout(w),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: Row(
+          children: [
+            TextLane(
+              width: 84,
+              child: Text(formatDateShort(w.scheduledDate, activeLocaleTag),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  )),
             ),
-          ),
-          StatusPill(
-            label: label,
-            foreground: color,
-            fill: color.withValues(alpha: 0.16),
-            size: StatusPillSize.compact,
-          ),
-        ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(workoutKindLabel(l10n, workoutKindFromDb(w.kind)),
+                      style: theme.textTheme.bodyMedium
+                          ?.copyWith(fontWeight: FontWeight.w600)),
+                  if (target.isNotEmpty)
+                    Text(target.join(' · '),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        )),
+                ],
+              ),
+            ),
+            StatusPill(
+              label: label,
+              foreground: color,
+              fill: color.withValues(alpha: 0.16),
+              size: StatusPillSize.compact,
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+  /// The coach edits one of the athlete's workouts in the same sheet the
+  /// athlete uses (web reaches it through the plan link). A save reloads the
+  /// overview so the row shows what the athlete will now see.
+  Future<void> _editWorkout(PlanWorkoutRow w) async {
+    final ok = await showWorkoutEditSheet(
+      context,
+      workout: w,
+      training: _training,
+      hrPrescription: _hrPrescription,
+    );
+    if (ok && mounted) await _load();
   }
 
   Widget _runsCard(AppLocalizations l10n) {

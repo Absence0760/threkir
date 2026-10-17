@@ -10924,6 +10924,72 @@ abstract class AppLocalizations {
   /// **'Target pace'**
   String get workoutMetricTargetPace;
 
+  /// Workout-detail effort (RPE) target metric label
+  ///
+  /// In en, this message translates to:
+  /// **'Effort'**
+  String get workoutMetricEffort;
+
+  /// Workout-detail heart-rate target metric label
+  ///
+  /// In en, this message translates to:
+  /// **'Heart rate'**
+  String get workoutMetricHeartRate;
+
+  /// Shown to the athlete on a workout their coach last edited
+  ///
+  /// In en, this message translates to:
+  /// **'Updated by your coach on {date}'**
+  String workoutUpdatedByCoach(String date);
+
+  /// An effort target with both ends, e.g. RPE 3-4
+  ///
+  /// In en, this message translates to:
+  /// **'RPE {min}–{max}'**
+  String workoutTargetRpeBetween(int min, int max);
+
+  /// An effort target of one value
+  ///
+  /// In en, this message translates to:
+  /// **'RPE {value}'**
+  String workoutTargetRpeExact(int value);
+
+  /// An effort target with only an upper end
+  ///
+  /// In en, this message translates to:
+  /// **'RPE up to {max}'**
+  String workoutTargetRpeAtMost(int max);
+
+  /// An effort target with only a lower end
+  ///
+  /// In en, this message translates to:
+  /// **'RPE {min} or harder'**
+  String workoutTargetRpeAtLeast(int min);
+
+  /// A heart-rate target range in beats per minute
+  ///
+  /// In en, this message translates to:
+  /// **'{min}–{max} bpm'**
+  String workoutTargetHrBetween(int min, int max);
+
+  /// A heart-rate target of one value
+  ///
+  /// In en, this message translates to:
+  /// **'{value} bpm'**
+  String workoutTargetHrExact(int value);
+
+  /// A heart-rate cap, e.g. Cap 125 bpm
+  ///
+  /// In en, this message translates to:
+  /// **'Cap {max} bpm'**
+  String workoutTargetHrAtMost(int max);
+
+  /// A heart-rate floor
+  ///
+  /// In en, this message translates to:
+  /// **'At least {min} bpm'**
+  String workoutTargetHrAtLeast(int min);
+
   /// Completed badge on workout detail
   ///
   /// In en, this message translates to:
@@ -15093,6 +15159,12 @@ abstract class AppLocalizations {
   /// **'Gym sessions included — lifts add to fatigue too.'**
   String get trainingLoadIncludesLifts;
 
+  /// Training-load chart note when the runner said their heart rate is medication-affected
+  ///
+  /// In en, this message translates to:
+  /// **'Less reliable: you said your heart rate is affected by medication, which makes the heart-rate load read low.'**
+  String get trainingLoadLowConfidenceMedication;
+
   /// Title of the dashboard training-intensity card
   ///
   /// In en, this message translates to:
@@ -16724,6 +16796,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'e.g. 5:30'**
   String get workoutEditPaceHint;
+
+  /// Lower end of the effort (RPE 1-10) target field
+  ///
+  /// In en, this message translates to:
+  /// **'Effort from (RPE)'**
+  String get workoutEditRpeFromLabel;
+
+  /// Upper end of the effort (RPE 1-10) target field
+  ///
+  /// In en, this message translates to:
+  /// **'Effort up to (RPE)'**
+  String get workoutEditRpeToLabel;
+
+  /// Explains the RPE scale under the effort target fields
+  ///
+  /// In en, this message translates to:
+  /// **'How hard it should feel, from 1 (very easy) to 10 (all-out). Either end can stay empty: 3 to 4 is a conversational easy run.'**
+  String get workoutEditRpeHint;
+
+  /// Lower end of the heart-rate target field, in beats per minute
+  ///
+  /// In en, this message translates to:
+  /// **'Heart rate from (bpm)'**
+  String get workoutEditHrFromLabel;
+
+  /// Upper end of the heart-rate target field (a cap), in beats per minute
+  ///
+  /// In en, this message translates to:
+  /// **'Heart rate up to (bpm)'**
+  String get workoutEditHrToLabel;
+
+  /// Explains the heart-rate target fields and that they need the runner's health-data consent
+  ///
+  /// In en, this message translates to:
+  /// **'Leave the low end empty for a cap, such as 125. Heart rate is health data, so a target needs the runner\'s health-data consent.'**
+  String get workoutEditHrHint;
+
+  /// Error when an effort or heart-rate target is not a whole number inside its range
+  ///
+  /// In en, this message translates to:
+  /// **'Use whole numbers from {min} to {max}.'**
+  String workoutEditErrRangeBounds(int min, int max);
+
+  /// Error when the low end of a target range is above the high end
+  ///
+  /// In en, this message translates to:
+  /// **'The first number can\'t be higher than the second.'**
+  String get workoutEditErrRangeReversed;
+
+  /// Save error when the server refuses a heart-rate target because the plan owner has no health-data consent
+  ///
+  /// In en, this message translates to:
+  /// **'A heart-rate target needs the runner\'s health-data consent. Clear it, or ask them to give consent in their settings.'**
+  String get workoutEditErrHrNeedsConsent;
 
   /// Label for the workout notes field
   ///
@@ -19875,6 +20001,30 @@ abstract class AppLocalizations {
   /// **'By default, gym sessions add to your fatigue and lower your readiness, like a run. Turn this on to keep your fitness, fatigue and form based on runs only.'**
   String get prefsExcludeGymFromReadinessHint;
 
+  /// Switch: the runner's heart rate is affected by medication (Art 9 health data)
+  ///
+  /// In en, this message translates to:
+  /// **'My heart rate is affected by medication'**
+  String get prefsHrMedicationAffected;
+
+  /// Explains what the medication switch changes
+  ///
+  /// In en, this message translates to:
+  /// **'For example a beta blocker. Age-based zones and the heart-rate training load read low, so the training load is marked as less reliable. This is health data, and it is cleared if you withdraw consent.'**
+  String get prefsHrMedicationAffectedHint;
+
+  /// Shown under the medication switch while health-data consent is not on record
+  ///
+  /// In en, this message translates to:
+  /// **'This is health data, so it needs your health-data consent first.'**
+  String get prefsHrMedicationNeedsConsent;
+
+  /// Prompt to set a measured max heart rate when the medication switch is on and none is set
+  ///
+  /// In en, this message translates to:
+  /// **'Set a measured max heart rate, from a hard effort or a test, so your zones fit you.'**
+  String get prefsHrMedicationSetMaxHr;
+
   /// No description provided for @nutritionEmptyTitle.
   ///
   /// In en, this message translates to:
@@ -20840,6 +20990,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'New'**
   String get coachingRosterRiskInsufficient;
+
+  /// Roster flag: the athlete missed this many planned workouts in a row (always 2 or more)
+  ///
+  /// In en, this message translates to:
+  /// **'{n} missed in a row'**
+  String coachingRosterMissStreak(int n);
+
+  /// Roster flag: heart rate on easy runs has drifted up by this percentage
+  ///
+  /// In en, this message translates to:
+  /// **'Easy HR +{pct}%'**
+  String coachingRosterHrDrift(int pct);
+
+  /// Tooltip explaining the easy-run heart-rate drift roster flag
+  ///
+  /// In en, this message translates to:
+  /// **'On planned easy runs over the last two weeks, heart rate is higher for the same pace than in the six weeks before. Shown only for athletes who gave health-data consent.'**
+  String get coachingRosterHrDriftHint;
 
   /// Injury-risk band: low
   ///

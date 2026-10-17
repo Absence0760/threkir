@@ -53,6 +53,11 @@ typedef PlanWorkoutRaceFields = ({
 /// emptied field in the edit sheet removes the target instead of keeping it.
 typedef PlanWorkoutTargets = ({double? distanceM, int? paceSecPerKm});
 
+/// A workout's effort range (RPE 1..10) or heart-rate range (bpm), written
+/// together by [TrainingService.updateWorkout]. Either end may be null, and a
+/// null end clears its column (decisions § 2087).
+typedef PlanWorkoutRange = ({int? min, int? max});
+
 /// The `plan_workouts` patch [TrainingService.updateWorkout] sends. A null
 /// argument leaves its column alone, except inside [race] and [targets]:
 /// those write their columns as given, nulls included. A `rest` [kind]
@@ -65,13 +70,18 @@ typedef PlanWorkoutTargets = ({double? distanceM, int? paceSecPerKm});
 /// race does not keep its finish time as a duration target. Matches web's
 /// `WorkoutEditor` save. [notes] is
 /// trimmed and an empty result nulls the column, matching web's
-/// `updatePlanWorkout`.
+/// `updatePlanWorkout`. [rpe] and [hr] write the effort and heart-rate
+/// ranges as given; a null argument leaves them alone, which is how the
+/// sheet keeps a bpm target it may not show (the deploy gate is off). A rest
+/// day clears both, since the table allows neither on one.
 Map<String, dynamic> planWorkoutPatch({
   String? kind,
   String? fromKind,
   PlanWorkoutTargets? targets,
   String? notes,
   PlanWorkoutRaceFields? race,
+  PlanWorkoutRange? rpe,
+  PlanWorkoutRange? hr,
 }) {
   final patch = <String, dynamic>{};
   if (kind != null) patch[PlanWorkoutRow.colKind] = kind;
@@ -93,9 +103,23 @@ Map<String, dynamic> planWorkoutPatch({
     patch[PlanWorkoutRow.colTargetPaceToleranceSec] = null;
     patch[PlanWorkoutRow.colPaceZone] = null;
     patch[PlanWorkoutRow.colStructure] = null;
-  } else if (targets != null) {
-    patch[PlanWorkoutRow.colTargetDistanceM] = targets.distanceM;
-    patch[PlanWorkoutRow.colTargetPaceSecPerKm] = targets.paceSecPerKm;
+    patch[PlanWorkoutRow.colTargetRpeMin] = null;
+    patch[PlanWorkoutRow.colTargetRpeMax] = null;
+    patch[PlanWorkoutRow.colTargetHrMinBpm] = null;
+    patch[PlanWorkoutRow.colTargetHrMaxBpm] = null;
+  } else {
+    if (targets != null) {
+      patch[PlanWorkoutRow.colTargetDistanceM] = targets.distanceM;
+      patch[PlanWorkoutRow.colTargetPaceSecPerKm] = targets.paceSecPerKm;
+    }
+    if (rpe != null) {
+      patch[PlanWorkoutRow.colTargetRpeMin] = rpe.min;
+      patch[PlanWorkoutRow.colTargetRpeMax] = rpe.max;
+    }
+    if (hr != null) {
+      patch[PlanWorkoutRow.colTargetHrMinBpm] = hr.min;
+      patch[PlanWorkoutRow.colTargetHrMaxBpm] = hr.max;
+    }
   }
   if (notes != null) {
     patch[PlanWorkoutRow.colNotes] = TrainingService.trimToNull(notes);
@@ -664,6 +688,17 @@ class TrainingService extends ChangeNotifier {
     );
   }
 
+  /// Who owns a plan, for the "updated by your coach" line on a workout
+  /// (`isEditedByCoach`). Web `fetchPlanOwnerId` twin.
+  Future<String?> fetchPlanOwnerId(String planId) async {
+    final row = await _c
+        .from(TrainingPlanRow.table)
+        .select(TrainingPlanRow.colUserId)
+        .eq(TrainingPlanRow.colId, planId)
+        .maybeSingle();
+    return row?[TrainingPlanRow.colUserId] as String?;
+  }
+
   Future<PlanWorkoutRow?> fetchWorkout(String id) async {
     final row = await _c
         .from('plan_workouts')
@@ -1173,6 +1208,8 @@ class TrainingService extends ChangeNotifier {
     PlanWorkoutTargets? targets,
     String? notes,
     PlanWorkoutRaceFields? race,
+    PlanWorkoutRange? rpe,
+    PlanWorkoutRange? hr,
   }) async {
     final patch = planWorkoutPatch(
       kind: kind,
@@ -1180,6 +1217,8 @@ class TrainingService extends ChangeNotifier {
       targets: targets,
       notes: notes,
       race: race,
+      rpe: rpe,
+      hr: hr,
     );
     if (patch.isEmpty) return;
     await _c.from(PlanWorkoutRow.table).update(patch).eq('id', workoutId);

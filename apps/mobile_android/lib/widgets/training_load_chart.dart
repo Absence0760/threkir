@@ -30,11 +30,16 @@ class TrainingLoadChart extends StatelessWidget {
   /// running (multi_modal.md Tier-1 lift→load).
   final bool includesLifts;
 
+  /// The runner said their heart rate is medication-affected and the curve
+  /// reads it (`isTrimpLowConfidence`, decisions § 2087).
+  final bool lowConfidence;
+
   const TrainingLoadChart({
     super.key,
     required this.points,
     required this.hasHr,
     this.includesLifts = false,
+    this.lowConfidence = false,
   });
 
   @override
@@ -59,6 +64,16 @@ class TrainingLoadChart extends StatelessWidget {
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
+            if (lowConfidence) ...[
+              const SizedBox(height: 4),
+              Text(
+                l10n.trainingLoadLowConfidenceMedication,
+                key: const Key('trainingLoadLowConfidence'),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
             if (includesLifts) ...[
               const SizedBox(height: 4),
               Text(

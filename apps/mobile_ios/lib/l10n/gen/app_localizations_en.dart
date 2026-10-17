@@ -6664,6 +6664,57 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workoutMetricTargetPace => 'Target pace';
 
   @override
+  String get workoutMetricEffort => 'Effort';
+
+  @override
+  String get workoutMetricHeartRate => 'Heart rate';
+
+  @override
+  String workoutUpdatedByCoach(String date) {
+    return 'Updated by your coach on $date';
+  }
+
+  @override
+  String workoutTargetRpeBetween(int min, int max) {
+    return 'RPE $min–$max';
+  }
+
+  @override
+  String workoutTargetRpeExact(int value) {
+    return 'RPE $value';
+  }
+
+  @override
+  String workoutTargetRpeAtMost(int max) {
+    return 'RPE up to $max';
+  }
+
+  @override
+  String workoutTargetRpeAtLeast(int min) {
+    return 'RPE $min or harder';
+  }
+
+  @override
+  String workoutTargetHrBetween(int min, int max) {
+    return '$min–$max bpm';
+  }
+
+  @override
+  String workoutTargetHrExact(int value) {
+    return '$value bpm';
+  }
+
+  @override
+  String workoutTargetHrAtMost(int max) {
+    return 'Cap $max bpm';
+  }
+
+  @override
+  String workoutTargetHrAtLeast(int min) {
+    return 'At least $min bpm';
+  }
+
+  @override
   String get workoutCompleted => 'Completed';
 
   @override
@@ -9227,6 +9278,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Gym sessions included — lifts add to fatigue too.';
 
   @override
+  String get trainingLoadLowConfidenceMedication =>
+      'Less reliable: you said your heart rate is affected by medication, which makes the heart-rate load read low.';
+
+  @override
   String get intensityTitle => 'TRAINING INTENSITY';
 
   @override
@@ -10148,6 +10203,39 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get workoutEditPaceHint => 'e.g. 5:30';
+
+  @override
+  String get workoutEditRpeFromLabel => 'Effort from (RPE)';
+
+  @override
+  String get workoutEditRpeToLabel => 'Effort up to (RPE)';
+
+  @override
+  String get workoutEditRpeHint =>
+      'How hard it should feel, from 1 (very easy) to 10 (all-out). Either end can stay empty: 3 to 4 is a conversational easy run.';
+
+  @override
+  String get workoutEditHrFromLabel => 'Heart rate from (bpm)';
+
+  @override
+  String get workoutEditHrToLabel => 'Heart rate up to (bpm)';
+
+  @override
+  String get workoutEditHrHint =>
+      'Leave the low end empty for a cap, such as 125. Heart rate is health data, so a target needs the runner\'s health-data consent.';
+
+  @override
+  String workoutEditErrRangeBounds(int min, int max) {
+    return 'Use whole numbers from $min to $max.';
+  }
+
+  @override
+  String get workoutEditErrRangeReversed =>
+      'The first number can\'t be higher than the second.';
+
+  @override
+  String get workoutEditErrHrNeedsConsent =>
+      'A heart-rate target needs the runner\'s health-data consent. Clear it, or ask them to give consent in their settings.';
 
   @override
   String get workoutEditNotesLabel => 'Notes';
@@ -12041,6 +12129,22 @@ class AppLocalizationsEn extends AppLocalizations {
       'By default, gym sessions add to your fatigue and lower your readiness, like a run. Turn this on to keep your fitness, fatigue and form based on runs only.';
 
   @override
+  String get prefsHrMedicationAffected =>
+      'My heart rate is affected by medication';
+
+  @override
+  String get prefsHrMedicationAffectedHint =>
+      'For example a beta blocker. Age-based zones and the heart-rate training load read low, so the training load is marked as less reliable. This is health data, and it is cleared if you withdraw consent.';
+
+  @override
+  String get prefsHrMedicationNeedsConsent =>
+      'This is health data, so it needs your health-data consent first.';
+
+  @override
+  String get prefsHrMedicationSetMaxHr =>
+      'Set a measured max heart rate, from a hard effort or a test, so your zones fit you.';
+
+  @override
   String get nutritionEmptyTitle => 'No food logged today';
 
   @override
@@ -12604,6 +12708,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get coachingRosterRiskInsufficient => 'New';
+
+  @override
+  String coachingRosterMissStreak(int n) {
+    return '$n missed in a row';
+  }
+
+  @override
+  String coachingRosterHrDrift(int pct) {
+    return 'Easy HR +$pct%';
+  }
+
+  @override
+  String get coachingRosterHrDriftHint =>
+      'On planned easy runs over the last two weeks, heart rate is higher for the same pace than in the six weeks before. Shown only for athletes who gave health-data consent.';
 
   @override
   String get coachingRosterRiskLow => 'Low';

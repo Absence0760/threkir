@@ -26,8 +26,11 @@
 	import { isWorkoutSkipped } from '#lib/training/training.ts';
 	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
 	import { assignBlockers, assignCollision, firstStartAfter } from '#lib/training/plan_assign.ts';
+	import { hrTargetLabel, rpeTargetLabel } from '#lib/training/workout_target_label.ts';
+	import { hrPrescriptionEnabled } from '#lib/training/hr_prescription_flag.ts';
 
 	const athleteId = $derived(page.params.id);
+	const hrPrescription = hrPrescriptionEnabled();
 
 	let loading = $state(true);
 	let loadError = $state<string | null>(null);
@@ -294,6 +297,12 @@
 								{#if w.target_distance_m}{formatDistance(w.target_distance_m)}{/if}
 								{#if w.target_pace_sec_per_km}
 									· {formatPace(w.target_pace_sec_per_km, 1000)}
+								{/if}
+								{#if rpeTargetLabel(w.target_rpe_min, w.target_rpe_max)}
+									· <span data-testid="coach-workout-rpe">{rpeTargetLabel(w.target_rpe_min, w.target_rpe_max)}</span>
+								{/if}
+								{#if hrPrescription && hrTargetLabel(w.target_hr_min_bpm, w.target_hr_max_bpm)}
+									· <span data-testid="coach-workout-hr">{hrTargetLabel(w.target_hr_min_bpm, w.target_hr_max_bpm)}</span>
 								{/if}
 							</span>
 							<span class="w-status status-pill status-{status}">

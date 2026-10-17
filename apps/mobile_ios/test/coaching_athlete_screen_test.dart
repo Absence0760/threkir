@@ -14,6 +14,7 @@ import '../lib/l10n/date_format.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/coaching_athlete_screen.dart';
+import '../lib/training_service.dart';
 
 class _FakeApi extends ApiClient {
   _FakeApi({
@@ -260,6 +261,8 @@ Future<void> _pump(
   ApiClient api,
   Preferences prefs, {
   Locale? locale,
+  TrainingService? training,
+  bool? hrPrescription,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -272,11 +275,33 @@ Future<void> _pump(
         athleteId: 'a1',
         displayName: 'Alice Runner',
         acceptedAt: DateTime.utc(2026, 1, 2),
+        training: training,
+        hrPrescription: hrPrescription,
       ),
     ),
   );
   await tester.pump();
   await tester.pump();
+}
+
+class _EditTraining extends TrainingService {
+  String? editedId;
+  PlanWorkoutRange? rpe;
+
+  @override
+  Future<void> updateWorkout(
+    String workoutId, {
+    String? kind,
+    String? fromKind,
+    PlanWorkoutTargets? targets,
+    String? notes,
+    PlanWorkoutRaceFields? race,
+    PlanWorkoutRange? rpe,
+    PlanWorkoutRange? hr,
+  }) async {
+    editedId = workoutId;
+    this.rpe = rpe;
+  }
 }
 
 void main() {
@@ -517,6 +542,45 @@ void main() {
       find.textContaining(l10n.coachingAthleteMissedCount(1), findRichText: true),
       findsOneWidget,
     );
+  });
+
+  testWidgets(
+      'a workout row shows its effort targets and opens the edit sheet for '
+      'the coach (decisions § 2087)', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(500, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final prefs = await _prefs();
+    final tomorrow = DateTime.now().add(const Duration(days: 1));
+    final overview = AthletePlanOverview(
+      plan: _plan('p1', 'My Plan'),
+      weeks: const [],
+      workouts: [
+        PlanWorkoutRow(
+          id: 'easy-1',
+          weekId: 'wk1',
+          scheduledDate: tomorrow,
+          kind: 'easy',
+          targetRpeMin: 3,
+          targetRpeMax: 4,
+          targetHrMaxBpm: 125,
+          manuallyCompleted: false,
+        ),
+      ],
+      completionPct: 0,
+    );
+    final training = _EditTraining();
+    await _pump(tester, _FakeApi(overview: overview), prefs,
+        training: training, hrPrescription: true);
+    expect(find.textContaining('RPE 3–4 · Cap 125 bpm'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('coachWorkoutRow-easy-1')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('workoutEditRpeMax')), '5');
+    await tester.ensureVisible(find.text('Save'));
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect(training.editedId, 'easy-1');
+    expect(training.rpe, (min: 3, max: 5));
   });
 
   testWidgets('every workout kind renders the catalogue label, not the raw '

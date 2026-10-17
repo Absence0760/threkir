@@ -68,4 +68,88 @@ void main() {
       expect(loadTrend(50, 0), LoadTrend.steady);
     });
   });
+
+  RosterRecentWorkout wo(
+    String date, {
+    String kind = 'easy',
+    bool completed = false,
+    bool skipped = false,
+  }) =>
+      RosterRecentWorkout(
+        scheduledDate: date,
+        kind: kind,
+        completed: completed,
+        skipped: skipped,
+      );
+
+  group('consecutiveMissedWorkouts', () {
+    test('counts back from yesterday until a done workout', () {
+      final recent = [
+        wo('2031-03-09'),
+        wo('2031-03-08'),
+        wo('2031-03-07', completed: true),
+        wo('2031-03-06'),
+      ];
+      expect(consecutiveMissedWorkouts(recent, '2031-03-10'), 2);
+    });
+
+    test('a skipped workout and a rest day neither count nor end the run', () {
+      final recent = [
+        wo('2031-03-09'),
+        wo('2031-03-08', skipped: true),
+        wo('2031-03-07', kind: 'rest'),
+        wo('2031-03-06'),
+        wo('2031-03-05', completed: true),
+      ];
+      expect(consecutiveMissedWorkouts(recent, '2031-03-10'), 2);
+    });
+
+    test('today and later are not misses, and order does not matter', () {
+      final recent = [
+        wo('2031-03-11'),
+        wo('2031-03-10'),
+        wo('2031-03-08'),
+        wo('2031-03-09', completed: true),
+      ];
+      expect(consecutiveMissedWorkouts(recent, '2031-03-10'), 0);
+      expect(
+        consecutiveMissedWorkouts(
+            [wo('2031-03-08'), wo('2031-03-09')], '2031-03-10'),
+        2,
+      );
+      expect(consecutiveMissedWorkouts([], '2031-03-10'), 0);
+    });
+  });
+
+  test('parseRosterRecentWorkouts: drops a malformed element, reads a non-list as none',
+      () {
+    final parsed = parseRosterRecentWorkouts([
+      {
+        'scheduled_date': '2031-03-09',
+        'kind': 'easy',
+        'completed': true,
+        'skipped': false,
+      },
+      {'kind': 'easy'},
+      'junk',
+      {'scheduled_date': '2031-03-08', 'kind': 'tempo'},
+    ]);
+    expect(parsed.length, 2);
+    expect(parsed[0].scheduledDate, '2031-03-09');
+    expect(parsed[0].completed, isTrue);
+    expect(parsed[1].kind, 'tempo');
+    expect(parsed[1].completed, isFalse);
+    expect(parsed[1].skipped, isFalse);
+    expect(parseRosterRecentWorkouts(null), isEmpty);
+    expect(parseRosterRecentWorkouts(<String, Object>{}), isEmpty);
+  });
+
+  test('isEasyHrDriftFlagged: flags at 5 % and above, never on null', () {
+    expect(isEasyHrDriftFlagged(5), isTrue);
+    expect(isEasyHrDriftFlagged(6.7), isTrue);
+    expect(isEasyHrDriftFlagged(4.99), isFalse);
+    expect(isEasyHrDriftFlagged(-8), isFalse);
+    expect(isEasyHrDriftFlagged(null), isFalse);
+    expect(isEasyHrDriftFlagged(double.nan), isFalse);
+  });
 }

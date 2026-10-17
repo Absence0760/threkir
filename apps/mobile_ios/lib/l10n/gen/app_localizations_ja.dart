@@ -5460,7 +5460,8 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get plansAbandonBody => 'その後、新しいプランを作成できます。';
+  String get plansAbandonBody =>
+      'このプランの週、ワークアウト、紐付いたランはすべて残ります。その後、新しいプランを作成できます。';
 
   @override
   String plansActionFailed(String error) {
@@ -5468,19 +5469,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String plansDaysPerWeek(int count) {
-    return '週$count日';
-  }
-
-  @override
   String get plansStatusUpcoming => '開始前';
-
-  @override
-  String get plansSignInTitle => 'ログインしてトレーニングプランを使用';
-
-  @override
-  String get plansSignInBody =>
-      'プランはアカウントに同期され、すべてのデバイスで利用できます。設定 → ログインから接続してください。';
 
   @override
   String get plansEmptyTitle => 'まだプランがありません。';
@@ -5493,6 +5482,89 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get plansLoadError => 'トレーニングプランを読み込めませんでした。再試行をタップしてください。';
+
+  @override
+  String plansStarterStartsOn(String date) {
+    return 'いずれも$dateに開始します。';
+  }
+
+  @override
+  String get plansStatusActive => 'アクティブ';
+
+  @override
+  String get plansStatusPaused => '一時停止中';
+
+  @override
+  String get plansStatusCompleted => '完了';
+
+  @override
+  String get plansStatusAbandoned => '中止';
+
+  @override
+  String get plansFilterGroupLabel => 'ステータスでプランを絞り込む';
+
+  @override
+  String get plansFilterAll => 'すべて';
+
+  @override
+  String get plansFilterActive => 'アクティブ';
+
+  @override
+  String get plansFilterPaused => '一時停止中';
+
+  @override
+  String get plansFilterCompleted => '完了';
+
+  @override
+  String get plansFilterAbandoned => '中止';
+
+  @override
+  String plansNoFilteredPlans(String status) {
+    return '$statusのプランはありません。';
+  }
+
+  @override
+  String get plansShowAllPlans => 'すべてのプランを表示';
+
+  @override
+  String get plansHeroGoal => '目標';
+
+  @override
+  String get plansHeroTarget => '目標タイム';
+
+  @override
+  String get plansGoalFinish => '完走';
+
+  @override
+  String get plansEventHalf => 'ハーフマラソン';
+
+  @override
+  String get plansEventFull => 'マラソン';
+
+  @override
+  String get plansEventCustom => 'カスタム';
+
+  @override
+  String plansWeekOf(int week, int total) {
+    return '第$week週／全$total週';
+  }
+
+  @override
+  String get plansEnded => '終了';
+
+  @override
+  String get plansProgressLabel => 'プランの進捗';
+
+  @override
+  String plansMetaWeeks(int weeks, int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '$weeks週間・週$days日',
+      one: '$weeks週間・週$days日',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get planNewTitle => '新しいプラン';
@@ -5834,16 +5906,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get planLibraryAnonymous => 'あるランナー';
 
   @override
-  String planLibraryWeeks(int weeks) {
-    return '$weeks 週間';
-  }
-
-  @override
-  String planLibraryDaysPerWeek(int days) {
-    return '週$days回';
-  }
-
-  @override
   String get planLibraryClone => '自分のプランにクローン';
 
   @override
@@ -5869,6 +5931,16 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String planLibraryPreviewWeek(int n) {
     return '第$n週';
+  }
+
+  @override
+  String planLibraryPreviewWeekRuns(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'ラン$count回',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -13082,6 +13154,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get racesAgeGroupPlace => '年代別順位';
+
+  @override
+  String get racesDivisionAwardPlace => '表彰部門の順位';
 
   @override
   String get racesAgeGroup => '年代';

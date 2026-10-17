@@ -128,7 +128,25 @@ test('generatePlan(beginnerWalkRun, weeks=8): keeps the graduation week (off-by-
 	const wkLast = plan.weeks[plan.weeks.length - 1].workouts.find((w) => w.kind === 'walk_run')!;
 	assert.equal(wkLast.structure?.repeats?.count, 1);
 	assert.equal(wkLast.structure?.repeats?.recovery_duration_s, undefined);
-	assert.match(wkLast.notes ?? '', /Graduation week/);
+	assert.equal(plan.weeks[plan.weeks.length - 1].phase, 'graduation');
+});
+
+test('generatePlan: no road-plan workout carries a generated note', () => {
+	// The notes column is free text the runner or a coach owns. A generated
+	// English sentence restating the structure ("Tempo: 6 km @ threshold.")
+	// showed under Notes in every locale; the structure itself is rendered
+	// from localized keys.
+	const plans = [
+		generatePlan({ goalEvent: 'distance_5k', startDate: '2026-06-01', daysPerWeek: 3, beginnerWalkRun: true }),
+		generatePlan({ goalEvent: 'distance_10k', startDate: '2026-06-07', daysPerWeek: 5, goalTimeSec: 50 * 60 }),
+		generatePlan({ goalEvent: 'distance_half', startDate: '2026-06-07', daysPerWeek: 5, goalTimeSec: 105 * 60 }),
+		generatePlan({ goalEvent: 'distance_full', startDate: '2026-06-07', daysPerWeek: 6, goalTimeSec: 4 * 3600 })
+	];
+	for (const plan of plans) {
+		for (const week of plan.weeks) {
+			for (const w of week.workouts) assert.equal(w.notes, null, `${w.kind} on ${w.scheduled_date}`);
+		}
+	}
 });
 
 // Persona round-5 runner-comeback: when the engine can't derive paces from a

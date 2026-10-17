@@ -9496,10 +9496,10 @@ abstract class AppLocalizations {
   /// **'Abandon \"{name}\"?'**
   String plansAbandonTitle(String name);
 
-  /// Confirm-abandon dialog body for an active plan
+  /// Confirm-abandon dialog body for an active or paused plan: what is kept
   ///
   /// In en, this message translates to:
-  /// **'You can create a new plan after.'**
+  /// **'Its weeks, workouts and linked runs are kept. You can create a new plan after.'**
   String get plansAbandonBody;
 
   /// Banner shown when abandoning or deleting a plan fails
@@ -9508,29 +9508,11 @@ abstract class AppLocalizations {
   /// **'Couldn\'t update the plan: {error}'**
   String plansActionFailed(String error);
 
-  /// Days-per-week meta chip on a plan tile
-  ///
-  /// In en, this message translates to:
-  /// **'{count} days/wk'**
-  String plansDaysPerWeek(int count);
-
   /// Status pill on a plan tile for an active plan that starts after today (queued behind the current plan). Lowercase to match the other status pills
   ///
   /// In en, this message translates to:
   /// **'upcoming'**
   String get plansStatusUpcoming;
-
-  /// Sign-in prompt title on plans list
-  ///
-  /// In en, this message translates to:
-  /// **'Sign in to use training plans'**
-  String get plansSignInTitle;
-
-  /// Sign-in prompt body on plans list
-  ///
-  /// In en, this message translates to:
-  /// **'Plans sync to your account so they follow you across devices. Head to Settings → Sign in to connect.'**
-  String get plansSignInBody;
 
   /// Empty-state title on plans list
   ///
@@ -9555,6 +9537,144 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t load training plans. Tap retry to try again.'**
   String get plansLoadError;
+
+  /// Hint under the built-in starter plans on the empty plans list. {date} is a localized short date, always a Sunday
+  ///
+  /// In en, this message translates to:
+  /// **'Each starts on {date}.'**
+  String plansStarterStartsOn(String date);
+
+  /// Status pill on an active plan in the plans list. Lowercase, like the other status pills
+  ///
+  /// In en, this message translates to:
+  /// **'active'**
+  String get plansStatusActive;
+
+  /// Status pill on a paused plan in the plans list. Lowercase
+  ///
+  /// In en, this message translates to:
+  /// **'paused'**
+  String get plansStatusPaused;
+
+  /// Status pill on a completed plan in the plans list. Lowercase
+  ///
+  /// In en, this message translates to:
+  /// **'completed'**
+  String get plansStatusCompleted;
+
+  /// Status pill on an abandoned plan in the plans list. Lowercase
+  ///
+  /// In en, this message translates to:
+  /// **'abandoned'**
+  String get plansStatusAbandoned;
+
+  /// Screen-reader label of the status filter chips above the plans list
+  ///
+  /// In en, this message translates to:
+  /// **'Filter plans by status'**
+  String get plansFilterGroupLabel;
+
+  /// Status filter chip on the plans list: every plan
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get plansFilterAll;
+
+  /// Status filter chip on the plans list: active plans
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get plansFilterActive;
+
+  /// Status filter chip on the plans list: paused plans
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get plansFilterPaused;
+
+  /// Status filter chip on the plans list: completed plans
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get plansFilterCompleted;
+
+  /// Status filter chip on the plans list: abandoned plans
+  ///
+  /// In en, this message translates to:
+  /// **'Abandoned'**
+  String get plansFilterAbandoned;
+
+  /// Shown when the selected status filter matches no plan. {status} is the lowercase status label (plansStatus*)
+  ///
+  /// In en, this message translates to:
+  /// **'No {status} plans.'**
+  String plansNoFilteredPlans(String status);
+
+  /// Button under plansNoFilteredPlans that resets the status filter to All
+  ///
+  /// In en, this message translates to:
+  /// **'Show all plans'**
+  String get plansShowAllPlans;
+
+  /// Label above the goal race (5K, Marathon…) on a plan card
+  ///
+  /// In en, this message translates to:
+  /// **'Goal'**
+  String get plansHeroGoal;
+
+  /// Label above the goal time on a plan card
+  ///
+  /// In en, this message translates to:
+  /// **'Target'**
+  String get plansHeroTarget;
+
+  /// Target value on a plan card when the plan has no goal time: the goal is simply to finish
+  ///
+  /// In en, this message translates to:
+  /// **'Finish'**
+  String get plansGoalFinish;
+
+  /// Goal race name: half marathon
+  ///
+  /// In en, this message translates to:
+  /// **'Half marathon'**
+  String get plansEventHalf;
+
+  /// Goal race name: marathon
+  ///
+  /// In en, this message translates to:
+  /// **'Marathon'**
+  String get plansEventFull;
+
+  /// Goal race name for a plan with a custom distance and no stored distance
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get plansEventCustom;
+
+  /// Progress line on an active plan card
+  ///
+  /// In en, this message translates to:
+  /// **'Week {week} of {total}'**
+  String plansWeekOf(int week, int total);
+
+  /// Countdown on an active plan card whose race day has passed
+  ///
+  /// In en, this message translates to:
+  /// **'Ended'**
+  String get plansEnded;
+
+  /// Screen-reader label of the calendar progress bar on an active plan card
+  ///
+  /// In en, this message translates to:
+  /// **'Plan progress'**
+  String get plansProgressLabel;
+
+  /// Plan length on the plans list, the library card and the library preview: weeks and training days per week
+  ///
+  /// In en, this message translates to:
+  /// **'{weeks, plural, one{{weeks} week · {days} days/week} other{{weeks} weeks · {days} days/week}}'**
+  String plansMetaWeeks(int weeks, int days);
 
   /// New-plan wizard AppBar title
   ///
@@ -10123,18 +10243,6 @@ abstract class AppLocalizations {
   /// Public plan library
   ///
   /// In en, this message translates to:
-  /// **'{weeks} weeks'**
-  String planLibraryWeeks(int weeks);
-
-  /// Public plan library
-  ///
-  /// In en, this message translates to:
-  /// **'{days}×/week'**
-  String planLibraryDaysPerWeek(int days);
-
-  /// Public plan library
-  ///
-  /// In en, this message translates to:
   /// **'Clone into my plans'**
   String get planLibraryClone;
 
@@ -10179,6 +10287,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Week {n}'**
   String planLibraryPreviewWeek(int n);
+
+  /// Per-week summary in the public plan library preview: running days (non-rest workouts) that week
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} run} other{{count} runs}}'**
+  String planLibraryPreviewWeekRuns(int count);
 
   /// Public plan library
   ///
@@ -22513,6 +22627,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Age-group place'**
   String get racesAgeGroupPlace;
+
+  /// Race-result field label: the runner's place in an award division such as masters, overall top 3 or a weight class, which replaces their age-group place
+  ///
+  /// In en, this message translates to:
+  /// **'Award place'**
+  String get racesDivisionAwardPlace;
 
   /// Age-group field label
   ///

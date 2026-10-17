@@ -128,6 +128,8 @@ export interface RaceResultFields {
   overall_place?: unknown;
   age_group_place?: unknown;
   age_group?: unknown;
+  division_award_place?: unknown;
+  division_award?: unknown;
 }
 
 export interface MappedRaceRun {
@@ -201,6 +203,12 @@ export function mapRaceResult(
   if (agPlace != null) metadata.age_group_place = agPlace;
   const ag = capField(r.age_group, 40);
   if (ag) metadata.age_group = ag;
+  const awardPlace = toPositiveInt(r.division_award_place);
+  const award = capField(r.division_award, 40);
+  if (award && awardPlace != null) {
+    metadata.division_award = award;
+    metadata.division_award_place = awardPlace;
+  }
 
   return {
     started_at: startedAt,
@@ -648,6 +656,17 @@ function bandIsAgeGroup(lo: number, hi: number): boolean {
  * shape this does not know leaves the age group unset rather than guessed.
  */
 function isRunSignUpAgeGroupName(name: string): boolean {
+  const band = runSignUpBand(name);
+  return band !== null && bandIsAgeGroup(band[0], band[1]);
+}
+
+/**
+ * The age band a RunSignUp division name spells, read from its shape, or null
+ * when it names none (an award such as `M Masters`, `F Top 3 Overall` or
+ * `M Clydes`). A band that is not an age group (`M 1-99`, `F 00-00`) is still
+ * returned, so a caller can tell a catch-all from an award.
+ */
+function runSignUpBand(name: string): [number, number] | null {
   let s = name.toLowerCase().replace(/&/g, ' and ').replace(/\s+/g, ' ').trim();
   s = s.replace(EVENT_PREFIX, '');
   let sex = false;
@@ -663,20 +682,20 @@ function isRunSignUpAgeGroupName(name: string): boolean {
   if (!sex) s = s.replace(SEX_TRAIL, '');
 
   const range = RANGE.exec(s);
-  if (range) return bandIsAgeGroup(Number(range[1]), Number(range[2]));
+  if (range) return [Number(range[1]), Number(range[2])];
   const compact = fused ? COMPACT.exec(s) : null;
   if (compact) {
     const digits = compact[1];
     const split = digits.length === 6 ? 3 : 2;
-    return bandIsAgeGroup(Number(digits.slice(0, split)), Number(digits.slice(split)));
+    return [Number(digits.slice(0, split)), Number(digits.slice(split))];
   }
   const over = OVER.exec(s);
-  if (over) return bandIsAgeGroup(Number(over[1] ?? over[2]), MAX_AGE);
+  if (over) return [Number(over[1] ?? over[2]), MAX_AGE];
   const under = UNDER.exec(s);
-  if (under) return bandIsAgeGroup(0, Number(under[1] ?? under[2]));
+  if (under) return [0, Number(under[1] ?? under[2])];
   const single = word ? SINGLE.exec(s) : null;
-  if (single) return bandIsAgeGroup(Number(single[1]), Number(single[1]));
-  return false;
+  if (single) return [Number(single[1]), Number(single[1])];
+  return null;
 }
 
 /**
@@ -706,6 +725,38 @@ export function runSignUpAgeGroup(
   return found;
 }
 
+/**
+ * The award division the runner placed in and their place in it, or null.
+ *
+ * An award division is one whose name spells no age band at all: masters
+ * tiers, overall top-N, weight classes, team or challenged divisions. These
+ * lift a runner out of their age group (§ 1913), so without this the runner
+ * who won one would carry no division at all. A catch-all band (`M 1-99`) is
+ * not an award, and neither is anything beside a placed age group: a runner
+ * still in their age group was not lifted out of it, so a named division next
+ * to it (`All Male`, place 20) is a field-wide ranking, not a prize. Two placed
+ * award divisions leave it unset rather than pick, the same rule
+ * `runSignUpAgeGroup` follows.
+ */
+export function runSignUpDivisionAward(
+  row: RunSignUpResultRow,
+): { label: string; place: number } | null {
+  let found: { label: string; place: number } | null = null;
+  for (const [key, value] of Object.entries(row.result)) {
+    if (!DIVISION_COLUMN.test(key)) continue;
+    const place = toPositiveInt(value);
+    if (place === null) continue;
+    const label = capField(row.headers[key], 40);
+    if (!label) continue;
+    const band = runSignUpBand(label);
+    if (band !== null && bandIsAgeGroup(band[0], band[1])) return null;
+    if (band !== null) continue;
+    if (found) return null;
+    found = { label, place };
+  }
+  return found;
+}
+
 /** Map one RunSignUp result row onto a runs row (see `mapRaceResult`). */
 export function mapRunSignUpResult(
   row: RunSignUpResultRow,
@@ -721,6 +772,7 @@ export function mapRunSignUpResult(
 ): MappedRaceRun | null {
   const r = row.result;
   const ag = runSignUpAgeGroup(row);
+  const award = runSignUpDivisionAward(row);
   return mapRaceResult(
     {
       bib: r.bib,
@@ -729,6 +781,8 @@ export function mapRunSignUpResult(
       overall_place: r.place,
       age_group: ag?.label,
       age_group_place: ag?.place,
+      division_award: award?.label,
+      division_award_place: award?.place,
     },
     opts,
   );

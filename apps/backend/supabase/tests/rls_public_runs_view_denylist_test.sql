@@ -13,6 +13,8 @@
 --   20270410_001_safety_sms_escalation.sql  — expected_return_at
 --   20270430_001_public_runs_strip_watch_workout.sql — watch_workout
 --   20270627000001_public_runs_strip_guided_run.sql  — guided_run_id
+--   20270909000001_public_runs_strip_division_award.sql — division_award,
+--                                              division_award_place
 -- Each addition closed a real audit finding (race-source PII, perceived
 -- effort leaking through seed rows, parkrun attendance counter). Every
 -- one is a "you only catch the leak if someone tests for it" — the
@@ -91,6 +93,8 @@ insert into runs (
     'perceived_effort', 7,
     -- New race-results-import owner-only keys (20270214_001)
     'gun_time', '24:30', 'age_group_place', 3, 'age_group', 'M35-39',
+    -- Race award division (20270909000001)
+    'division_award', 'M Masters', 'division_award_place', 2,
     -- parkrun attendance counter (20260724_001)
     'run_number', 100,
     -- Public-safe bag keys included to confirm they DO survive the view
@@ -128,6 +132,7 @@ declare
     'safety_escalated_at', 'expected_return_at',
     'race_name', 'bib', 'overall_place', 'chip_time', 'perceived_effort',
     'gun_time', 'age_group_place', 'age_group',
+    'division_award', 'division_award_place',
     'run_number'
   ];
 begin
